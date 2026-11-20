@@ -12,18 +12,13 @@ in `E09-log.md`; increments 1 to 4 (closed by T10, T20, T30 and T41) in `E09-arc
 task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T45 — `shared/`** (round 3, decision 181; design note `E09-design.md` §98; `cross-lane`):
-T45a the four drafts `docs/lanes/town/adr-drafts/*-increment-5.md` into the ADRs with T44's
-verdicts (survey `docs/rules/surveys/E09-guild.md` §21: every row of batch TWN-5 as the reading),
-the glossary (the guild's slots and spare, the guild level, the Aurora set, the Vortex's week
-flag, the opening), `docs/06-security.md`'s town lines (§94); T45b the flag of `TWN-QUIRK-14`
-(`h3-content`): **T-18 confirmed by TWN-5-2** (the Aurora teaches the map's ban), so it may be
-added; no new stream (decision 179). In merge order with E08's increment 14's `shared/` task.
+**E09 T46 — the town part v9** (round 4, decision 181; design note `E09-design.md` §83, ADR-0028
+point 5 as amended by T45): the guild weights harvested from both LODs' `SPTRAITS.TXT`
+(`h3-harvest`, `cross-lane`), the four roles `guild`, `library`, `aurora`, `mana_vortex`, the
+slots, the book's price, the Vortex's factor (TWN-GLD-001), the packs. Needs the original data.
 Cut at its start. **Status:** next.
 
-**E09 T46 to T51** (queued, design §98's rounds 4 to 8; each cut confirmed at its start): T46 the
-town part v9 (§83: the guild weights harvested `cross-lane`, the roles, the slots, the book's
-price, the Vortex's factor); T47 the guild drawn and shown (§84 to §87, §94: T47a the map's town
+**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start): T47 the guild drawn and shown (§84 to §87, §94: T47a the map's town
 spell sets with import v28 (the writer's `AnyTown::spells` and `Map::banned_spells` exist since
 T44), the draw from the towns' stream, the store v4, the replays re-recorded with the week
 replays' outcomes; T47b the owner's view, the protocol); T48 learning (§88, §89: T48a the set

@@ -5499,3 +5499,61 @@ T44a/T44b (decision 182).
 - **Scored** (survey `E09-guild.md` §21): every row as the code reading in both runs: TD-25, TD-26,
   TD-10, TD-27 the original's (decisions 167 to 170 stand), VCMI's refuted on each; **T-18
   confirmed** (the Aurora teaches the map's ban), so T45b may add `TWN-QUIRK-14`'s flag.
+
+### T45 — `shared/`: increment 5's drafts into the ADRs, the glossary, the security lines, the flag of `TWN-QUIRK-14` (2026-11-20)
+
+One session, the user present at the start; branch `shared/e09-t45`, `cross-lane` (the ADRs, the
+glossary, `docs/06-security.md` and `h3-content` shared; the harvester and `packs/base` the
+battle lane's, the golden adventure replays the adventure lane's, the bot reports the AI lane's,
+one test literal the server lane's). Starting point: `master` at 4771688 (#1076, T44's, merged);
+E08 T134a (#1077) merged during the session, the branch rebased onto it (b0efed6) before T45b, so
+the re-record is on top of its v22 goldens. The setup's full baseline was stopped at its coverage
+step for disk (its tests passed on 4771688); CI's run on `master` stands for it. The user's
+computer was connected at the start only: 64 files of `original-data/` (the client lane's list)
+and the four manuals with three help files staged, SHA-256 checked. **Kept whole** with the
+`cross-lane` consent (decision 183).
+
+- **T45a, the ADRs** (the four drafts of T43, accepted at `TWN-Q33`, deleted from
+  `adr-drafts/`): ADR-0013 points **15.5** (a guild's teaching by `can_learn_spell`) and **16.6**
+  (the town's refill, the Vortex's points); ADR-0016 point 4's kind `Town` (the town entered in
+  the visit's outcome); ADR-0017 points 1 (`Open`, `BuySpellBook`, the state, the setup's town
+  spells, the build's draw and the start's learning), 2 (the owner's guild view and the events), 3
+  (the week's flags, the night's refill, no turn start), 4 (the guilds from the towns' stream), 8
+  (the env's two entries), 9 (the versions, E08 T134a's numbers as merged), 10 (the learning's
+  triggers); ADR-0028 points 2, 5, 6, 9, the header's amendments line, **the Consequences and
+  Alternatives for increment 5** (from decisions 173 to 179); each revision history, the ADR
+  index's rows. Each block cites batch TWN-5's rows that confirmed it (survey `E09-guild.md`
+  §21: every row as read).
+- **T45a, the docs:** `docs/03-domain.md`'s terms (the guild's slots and spare, the guild level,
+  the Aurora set, the Mana Vortex's week flag, the night's refill, the opening, the town's heroes'
+  learning); `docs/06-security.md`'s section "The mage guild (E09 increment 5)" (design §94: the
+  owner's alone, the unshown slots never told, the stream server-only, `Open` and `BuySpellBook`
+  the owner's, the events).
+- **T45b, `h3-content`:** `quirk.town.aurora_ignores_map_bans` (`QuirkFlag(44)`,
+  `AURORA_IGNORES_MAP_BANS`, T-18): the registry's 45 positions, its two tests; read from T48a.
+  No encoding changed: `RULESET_HASH_VERSION` 53 and the pack format kept. **`h3-pack`:**
+  `the_harvested_flag_of_e09_increment_5` (on in `faithful`, off in `strict-fixed`, every
+  expansion). **The harvester's** two profiles and `packs/base/core.toml`'s two profile lines (the
+  synthetic packs name no town flag).
+- **The ledger:** `TWN-QUIRK-14` entered (`quirks-town.md`; confirmed by TWN-5-2; its rule's
+  regression test with T48a, the profiles' now).
+- **Replays and records:** the base faithful ruleset hash moved 0x6ba8109889b34a25 to
+  **0x36b98ea152b4db95** (`strict-fixed`'s and the synthetic's kept). The 101 golden adventure
+  replays on it re-recorded from their commands by a scratch script (`h3 adventure run` in
+  release, 4 s): only `ruleset_hash` moved; the three `strict-fixed` ones and the ten battle
+  replays unchanged; all 114 verified (`h3 adventure verify`, `h3 verify`). `h3-server`'s record
+  literal; the AI lane's `bots-report-v1.json` and `bots-neutral-v1.json` regenerated (2.5
+  minutes): only `engine.core` moved.
+- **Also:** the battle lane's HANDOFF version line (quirk flags 44, the hash); the adventure
+  lane's inbox (the replays' header, mechanical at a merge).
+- *Agent's calls:* ADR-0013's two draft sentences as new items 15.5 and 16.6 (increments 3 and 4
+  added 16.4, 14.5 and 16.5 so); ADR-0028's Consequences and Alternatives for increment 5 (the
+  drafts had none; written from decisions 173 to 179); the ledger entry made with the flag, as
+  T35b's (decision 131's pattern).
+
+**The queue:** T45 out; T46 next (the town part v9). Ids: decisions next 184; quirks next
+`TWN-QUIRK-15`.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
+check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo test -p h3-content -p
+h3-pack -p h3-harvest -p h3-server -p h3-protocol`; CI on the pull request is the record.
