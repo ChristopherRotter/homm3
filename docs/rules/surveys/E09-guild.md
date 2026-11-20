@@ -681,3 +681,28 @@ the weights in the town records, the guilds drawn from the towns' stream with th
 town, the Aurora in increment 5, the engine's triggers (§89), `TownCommand::Open` and
 `BuySpellBook`, the night's refill after the day's regain, the Vortex's flag in the town state, the
 owner's guild view; batch TWN-5's five rows are T44's.
+
+## 21. Batch TWN-5's results (T44, 2026-11-20)
+
+Run by an agent on the capture harness (the same Complete 4.0 `Heroes3.exe` under Wine, without
+the HD mod; hot seat, Easy, the starting bonus Gold), each part twice in new games: specs
+`experiments/specs/E09-batch-5a.toml` (rows 1 to 4, day 1) and `-5b.toml` (row 5, three weeks;
+the date written to each week's last day, the spell points written before each skip), recipes
+`clients/capture/batches/E09-batch-5a.toml`, `-5b.toml`, the filled templates
+`experiments/results/E09-batch-5a.md`, `-5a-run2.md`, `-5b.md`, `-5b-run2.md`. An SoD map for row
+1, not §9's AB (the required set is read in every version above RoE, §3.4; agent's call). Every
+row as the code reading, in both runs:
+
+| Row | Observed (both runs) | Verdict |
+|---|---|---|
+| TWN-5-1 | Magic Arrow required and banned: in none of its Castle's six level-1 slots; Haste the same; the control (both required, none banned) Magic Arrow, Haste in slots 1 and 2; no slot of the six towns holds Armageddon (the map's ban) or Titan's Lightning Bolt; no spell twice in a level | **TD-25 the reading** (the ban wins), VCMI's refuted |
+| TWN-5-2 | the Expert in Wisdom at the Conflux with the Aurora and Mage Guild 1 learns **68 spells**: every one of 0 to 69 but Implosion (the town's ban) and 57, **Armageddon (the map's ban) among them**; the guild level 1 | **TD-26 the reading; T-18 confirmed** (the map-wide bans not tested), VCMI's refuted |
+| TWN-5-3 | the Tower with Mage Guild 5 shows **5, 4, 3, 2, 1**; the visitor learns those 15 on the screen; the Library built there: **6, 5, 4, 3, 2** (each level's spare as drawn at the start), the visitor knowing the five spares at once (20) | §3.3, §4 the reading |
+| TWN-5-4 | Red's main Tower with Mage Guild 2 generates a Tower hero (Iona, Torosar: neither with Wisdom) that knows on day 1, before any action, exactly the guild's 5 level-1 and 4 level-2 shown spells (its own spell among them) | **TD-10 the reading**, VCMI's refuted |
+| TWN-5-5 | G (maximum 20) 40 at its week-1 visit (message GENRLTXT 580, the flag 0); week 2's turn start **G 20** (5 refilled, not doubled), the flag 1; the screen opened from the town list: the message, **G 40**, the flag 0; V's visit: no message, **V 30**; week 3's turn start **G 20, V 30**, the flag 1; the screen opened: the message, **G 40, V 30** | **TD-27 the reading** (the opening's trigger, the garrison hero first, never a turn's start; once a week a town), §14's refill, VCMI's turn starts refuted |
+
+**Not predicted, nothing for the engine:** a Castle's level-5 slots stay empty (its level-5
+weights are 0, §3.2's total of 0); the Vortex's message comes over the town screen a moment after
+it shows (the harness's, `clients/capture/README.md`). **For T45:** the drafts' verdicts as
+decided (decisions 167 to 170: the original); TWN-5-2 confirms T-18, so `TWN-QUIRK-14`'s flag
+may be added (T45b).

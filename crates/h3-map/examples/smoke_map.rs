@@ -94,6 +94,7 @@ fn smoke_map(pikeman: ObjectTemplate) -> Map {
         level_limit: 0,
         banned_skills: Vec::new(),
         banned_artifacts: Vec::new(),
+        banned_spells: Vec::new(),
         events: Vec::new(),
         teams: None,
     }

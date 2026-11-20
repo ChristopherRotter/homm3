@@ -2390,3 +2390,95 @@ an entry only where a task builds on it.
   shots 0.467 from 3.6 k on: the bias finds the teacher's shot targets first). The checkpoint
   54 MB, the held-out set 3.7 MB compressed. The Python suite 285 passed, 1 skipped (3.6
   minutes).
+
+## T39 — The bench probe (2026-11-19 to 2026-11-20)
+
+- **The run** (the user's GPU, commit `38d422b` (#1040's merge, clean); C ABI v38, observation v23,
+  system policy 19; `python/records/distill/reach-1.json`): two segments, 15 004 s to 3 523 402
+  samples (stopped), then 3 256 s to the budget at 4 016 647 and the ladders; the students'
+  passes 5 484, 5 519, 5 523 s, the teacher's play 239 s with the preview (4.04 M decisions in
+  77 557 episodes, none lost, 12 truncated), the ladders 21 minutes. The held-out set T32's (16 384
+  decisions, the same categories).
+- **(a) At 4 M** (the curve every 0.5 M in the record):
+
+  | Student | CE entry | Agreement | Tactics | Wait, defend | Moves | Melee | Shots | Casts | Value | µs | MB |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | control (v22's prefix) | 0.659 | 0.7575 | 0.906 | 0.620 | 0.671 | 0.718 | 0.767 | **0.763** | 0.567 | 686 | 3 093 |
+  | `reach` | 0.662 | 0.7590 | 0.904 | 0.634 | **0.680** | 0.721 | 0.775 | 0.745 | 0.573 | 690 | 2 460 |
+  | `reach`, `preview` | **0.643** | **0.7646** | **0.907** | **0.675** | 0.673 | **0.732** | **0.790** | 0.728 | **0.593** | 691 | 2 460 |
+  | T32's control | 0.666 | 0.752 | 0.906 | 0.648 | 0.667 | 0.706 | 0.743 | 0.778 | 0.562 | 712 | 3 079 |
+
+  Each arm's lead in agreement over the control at 0.5, 1, …, 4 M: `reach` +0.006, +0.003,
+  +0.003, −0.001, +0.002, +0.003, −0.002, +0.002; with the preview +0.018, +0.014, +0.016,
+  +0.012, +0.011, +0.012, +0.008, +0.007 (its lead shrinking as the others learn the kills). The
+  first student's peak memory is cuDNN's autotuning (T32's second student, the same network,
+  2 455 MB). The arms cost +0.6 % and +0.7 % a sample-pass.
+- **(b) The ladders** (500 a kind; the hero battles' seats attacking, defending):
+
+  | Student | Fair actor | Hero | Siege hero | Siege garrison | Hero's seats | All-seeing | Neutral set |
+  |---|---:|---:|---:|---:|---:|---:|---:|
+  | control | 0.457 ± 0.018, −0.035 | 0.448 | 0.455 | 0.500 | 0.647, 0.248 | 0.457, −0.035 | 0.986, +0.266 |
+  | `reach` | **0.460** ± 0.018, −0.035 | 0.457 | 0.447 | 0.497 | 0.665, 0.248 | 0.453, −0.036 | 0.988, +0.268 |
+  | `reach`, `preview` | 0.459 ± 0.018, **−0.031** | 0.457 | 0.445 | 0.498 | 0.661, 0.252 | 0.453, −0.035 | 0.987, **+0.271** |
+  | T32's control | 0.457 ± 0.018, −0.033 | 0.453 | 0.444 | 0.501 | 0.653, 0.252 | 0.458, −0.034 | 0.986, +0.264 |
+
+- **The rule** (stated before the run, the AI queue's T39): **no arm passes.** Against the fair
+  actor `reach` leads the control by +0.002 and the preview's arm by +0.002 (−0.000 against
+  `reach`), each far below +0.02 and inside the interval (±0.018); their agreement is not below
+  the control's. **T40 does not run; increment 9 closes at T41.**
+- **The read:** the bench reproduces (the control's ladder T32's to 0.003, its agreement to 0.006,
+  the segments and the GPU's draws apart). **The reach changes nothing the clone plays:** its
+  moves' agreement +0.009 (the category T37 found blind to the reach), the rest level. **The kill
+  preview is learned faster, not played better:** it leads early (+0.018 at 0.5 M) on the strikes
+  (shots +0.023, melee +0.013 at 4 M) and the value (+0.026), and its lead shrinks as the control
+  learns the kills from the stacks' features, as the MLP's preview moved E06 T6e's targeting and
+  not its outcomes. With T37 (nothing the fair actor reads is hidden from v22) the gap to the
+  teacher is not information the network lacks; with increment 8 (size, PPO's settings, the
+  search at play, the anchor, the outcome's weight, a long taught regime) not the levers
+  increments 8 and 9 had. #2 stays the current best.
+
+## T42 — The rollout tool (2026-11-20)
+
+- **`h3 ai ceiling`** (`crates/h3-cli/src/ai/ceiling.rs`, this lane's; no engine or C ABI
+  change): the rollout-improved fair actor (`rollout-system`) plays `h3 ai eval`'s held-out sets,
+  its decisions by rollouts of the fair actor on both sides to the battle's end (reward v1), on
+  the true battle (`--worlds true`, `BattleEnv::fork`) or the side's worlds (`--worlds side`,
+  `BattleEnv::world` with the other hero guessed as `BattleBatch::determinize` guesses it, a world
+  per rollout). The candidates are every command the batch lets an agent play: `legal_commands`
+  but Retreat and Surrender, each castable spell with each target and second target, the stack's
+  cast with each target (a hero battle's decision about 157, a siege's 77 to 90). Its record:
+  per opponent `h3 ai eval`'s report of the pair (`EvalReport`: rates, intervals, values, by kind
+  and side; on the neutral set the fair actor's own row beside), and per category of the fair
+  actor's choice (`distill.CATEGORIES`' names) the decisions, how often the improved command
+  differs, what into, and its mean advantage on the rollouts. Threads by game (a game's result
+  depends on its seed alone); every finished game appended to `--out` (TOML), which a restart
+  with the same settings continues (the user's rule for runs over 2 hours).
+- **The budget, the agent's call:** a first smoke with 4 uniform rollouts a candidate (2
+  episodes a kind, 14 games) changed 75 % of the melee decisions and won 7 of 14: the maximum of
+  about 120 noisy means is chosen by luck. The decision's budget (`--budget`, rollouts a candidate
+  on average, 8 by default) is spent by **sequential halving** (rounds of the same rollouts for
+  the candidates still in, the better half kept, the fair actor's command always kept), so the
+  last rounds compare a few contenders on many rollouts and the advantage is a paired
+  difference on equal rollouts. Rollouts stay full-length: the policy's results are a lower bound
+  on the ceiling whatever the budget; a larger budget can only raise it.
+- **The cost** (the sandbox, release, 4 threads; the report set, 1 episode a kind against the
+  fair actor, side worlds, budget 8: 6 games in 283 s): 102 decisions, 145 candidates and 1 082
+  rollouts each, about 10 ms a rollout, about 190 thread-seconds a game. Every attacker won in both
+  orientations; the improved seat's value +0.072 (6 games: no reading).
+- **Refusals:** 46 of 110 400 candidate rollouts were refused in a side world, every one a cast
+  (Lightning Bolt, Curse: `InvalidSpellTarget`): the other hero's spell defences (Pendant of
+  Negativity, of Holiness) are guessed in a world while the side's cast candidates show the
+  battle's, the battle lane's known gap BAT-STUB-19 (`world.rs`). Such a candidate scores a loss
+  in that rollout; the record counts them.
+- **Tests** (`ceiling/tests.rs`, 24 s in debug): without a budget the improved seat plays `h3 ai
+  eval`'s games of the fair actor against itself (both sets); a run is the same on one and three
+  threads and continues from its games file cut after two games (and refuses other settings);
+  a decision keeps every legal command and the fair actor's as candidates, each applies, and on
+  the side's worlds decides exactly as the battle with the other hero's private part guessed anew
+  (nothing hidden read; the decision repeats with fresh scratch); a true world is the battle on
+  the rollout's stream; the settings and categories.
+- **For T43** (the user's 24 threads; about 16 cores' worth assumed): the report set's 600 games
+  (100 a kind, both seats) against the fair actor at budget 8 are about 32 thread-hours, about 2
+  hours a world; the neutral set's 300 games about 1 hour; the all-seeing opponent doubles a set.
+  A budget check first: 20 episodes a kind at budgets 4, 8 and 16 (about 12, 24 and 48 minutes),
+  the value against the fair actor on the same episodes.

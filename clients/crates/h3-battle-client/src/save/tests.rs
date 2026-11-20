@@ -296,6 +296,7 @@ fn a_load_refuses_a_save_that_does_not_fit() {
         level_limit: 0,
         banned_skills: Vec::new(),
         banned_artifacts: Vec::new(),
+        banned_spells: Vec::new(),
         events: Vec::new(),
         teams: None,
     };

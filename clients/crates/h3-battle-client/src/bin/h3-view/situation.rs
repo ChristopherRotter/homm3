@@ -638,6 +638,7 @@ fn map(
         // No banned skills (E08 T36b's field; the bytes the writer wrote before it).
         banned_skills: Vec::new(),
         banned_artifacts: Vec::new(),
+        banned_spells: Vec::new(),
         events: Vec::new(),
         teams: None,
     })

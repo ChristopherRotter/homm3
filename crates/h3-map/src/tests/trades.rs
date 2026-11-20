@@ -102,6 +102,7 @@ fn trades_map(keep: impl Fn(usize) -> bool) -> w::Map {
         level_limit: 0,
         banned_skills: Vec::new(),
         banned_artifacts: Vec::new(),
+        banned_spells: Vec::new(),
         events: Vec::new(),
         teams: None,
     }
