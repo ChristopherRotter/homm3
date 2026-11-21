@@ -63,6 +63,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-21, E27 M4 T6 (in progress; `client/e27-m4-t6`).** The PC's 71 files staged (sizes
+  and `installation.md`'s SHA-256). T6a done: three fresh reviews, the user's answers (decision 78,
+  CLT-Q162 to CLT-Q173). In progress: the fixes (a fixer in the clone), every recipe played again
+  under Wine (`/home/claude/tools/replay-all.sh`, its summary in `/home/claude/replay/`); then
+  M4 to the archive, the README's row (`shared/`), M5's prerequisites.
 - **2026-11-21, E27 M4 T5b2 (done; `client/e27-m4-t5b2`).** The PC's 71 files staged and checked
   as T5b1's. Kept whole. Read Random Map's case 130 (every item drawn
   and the redraw after its toggle, in a load too). Built a flag's press in a load (the saved
@@ -76,10 +81,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   save's rows and duration, the names placed (§41.1), `Scenario::seated`, `h3-view save
   --player/--duration` and the makers' `viewer` players. `mp-load` 6 of 6, `adv-load` 14 of 19,
   `adv-load-more` 2 of 2. Record: `E27-log.md`, "M4 T5b1".
-- **2026-11-21, E27 M4 T5a (done; `client/e27-m4-t5a`).** The PC's 64 files, the manuals and
-  the help files staged (SHA-256 checked). T5 cut in two with the user (decision 75). Read the
-  hot-seat load's slots, the names' placing and the begin after a load, the save's `.GM<n>`, the
-  list's filter, the options in a load, Random Map in a load. Two hot-seat makers (`Pair.GM2`,
-  `Four.GM4`: every colour human with its choices); `adv-load` recorded again (19 shots),
-  `adv-load-more` new (2), twice the same; CLT-Q160, CLT-Q161 asked. Record: `E27-log.md`,
-  "M4 T5a".
