@@ -77,6 +77,9 @@ T139a (batch E15): a `cast`'s spell found by name in the book (`button`, `hover`
 `targets`, `cancel`: a target dialog played, its cursor, tile and accept flag read), a list of
 `popup` tiles, and the observations cast:<part>, hero:facing, hero:doors, hero:fly,
 hero:water_walk, hero:scrolls, hero:name, hero:byte:<offset>, path_order, explored_in and popups
+(the README's "Casts on the adventure map"). Since E08 T139a (batch E15c): a recipe's `boats` (the
+boats by name), the steps `save = "<name>"` and `load = "<name>"` (a save from play and its load
+in one batch), and the observations boat:<name>[:<part>], boats, boats:beside, saved and loaded
 (the README's "Casts on the adventure map").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
@@ -3639,15 +3642,75 @@ def boat_text(mem, boat):
             f"; aboard {boat['aboard']}")
 
 
+# E08 T139a (batch E15c): the recipe's boats by name (`boats = { B1 = [38, 55, 1], … }`), each the
+# index of the record in use on its tile at the game's start (name_boats). The records keep their
+# order, so a boat summoned elsewhere or sunk (in use 0) keeps its name; a load keeps the names
+# (the save's records in their order: load_game compares them with the save's).
+BOAT_NAMES = {}
+BOAT_PARTS = ("tile", "in_use", "type", "facing", "owner", "captain", "aboard")
+
+
+def name_boats(recipe, mem):
+    """Names the recipe's boats (BOAT_NAMES) by the record in use on each tile: one, or the
+    batch stops."""
+    BOAT_NAMES.clear()
+    boats = mem.boats()
+    for name, tile in recipe.get("boats", {}).items():
+        tile = [*tile, 0][:3]
+        found = [b["index"] for b in boats if b["used"] and b["tile"] == tile]
+        if len(found) != 1:
+            raise RuntimeError(f"the recipe's boat {name}: {len(found)} boats in use on "
+                               f"{tile_name(tile)}, not one")
+        BOAT_NAMES[name] = found[0]
+
+
+def boat_named(mem, boat):
+    """A record with its name (`B1: tile 38,55,1; …`; an unnamed one by its index, `#3: …`)."""
+    names = {index: name for name, index in BOAT_NAMES.items()}
+    return f"{names.get(boat['index'], '#' + str(boat['index']))}: {boat_text(mem, boat)}"
+
+
+def boat_part(mem, boat, part):
+    """One field of a boat's record (`boat:<name>:<part>`, BOAT_PARTS): a table's cell."""
+    if part not in BOAT_PARTS:
+        raise ValueError(f"`boat:…:{part}`: one of {', '.join(BOAT_PARTS)}")
+    captain, colour = boat["hero"], boat["colour"]
+    return {"tile": tile_name(boat["tile"]), "in_use": str(boat["used"]),
+            "type": str(boat["type"]), "facing": str(boat["facing"]),
+            "owner": COLOURS[colour] if 0 <= colour < 8 else "none",
+            "captain": (mem.hero(captain)["name"] if 0 <= captain < h3mem.HERO_COUNT
+                        else "none"),
+            "aboard": str(boat["aboard"])}[part]
+
+
 def boat_value(mem, hero, what):
     """`boat` (the boat in use whose captain is the step's hero, the one aboard first, else the
     last: E08 T68a), `boat[<hero>]` the same for a hero named, `boat:x,y[,z]` the boat in use
     whose record stands on the tile, `boats:used` how many are in use; `none` for no boat. Since
     E08 T68b `boat_record:x,y[,z]` every record on the tile, in use or not (batch E8b's E8-11 and
-    E8-12: a beaten hero's boat freed), ` | ` between them."""
+    E8-12: a beaten hero's boat freed), ` | ` between them. Since E08 T139a (batch E15c) the
+    recipe's boats by name (BOAT_NAMES): `boat:<name>` its record in use or not, `boat:<name>:
+    <part>` one field (BOAT_PARTS), `boats` every record with its name (an unnamed one `#<index>`),
+    `boats:beside` those in use on the step's hero's tile and its eight neighbours."""
     boats = mem.boats()
     if what == "boats:used":
         return str(sum(1 for b in boats if b["used"]))
+    if what == "boats":
+        return " | ".join(boat_named(mem, b) for b in boats) or "none"
+    if what == "boats:beside":
+        if hero is None:
+            raise ValueError("`boats:beside` reads the step's hero: a step without one has none")
+        x, y, z = hero["tile"]
+        return " | ".join(boat_named(mem, b) for b in boats if b["used"] and b["tile"][2] == z
+                          and max(abs(b["tile"][0] - x), abs(b["tile"][1] - y)) <= 1) or "none"
+    if m := re.match(r"boat:([A-Za-z]\w*)(?::(\w+))?$", what):
+        if m.group(1) not in BOAT_NAMES:
+            raise ValueError(f"`{what}`: no boat {m.group(1)} in the recipe's `boats`")
+        found = [b for b in boats if b["index"] == BOAT_NAMES[m.group(1)]]
+        if not found:
+            return "none"
+        return boat_text(mem, found[0]) if m.group(2) is None else boat_part(mem, found[0],
+                                                                             m.group(2))
     if m := re.match(r"boat_record:(\d+),(\d+)(?:,(\d))?$", what):
         tile = [int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)]
         return " | ".join(boat_text(mem, b) for b in boats if b["tile"] == tile) or "none"
@@ -4637,6 +4700,13 @@ def value(obs, what, mem):
         return mem.difficulty()
     if what == "map_kind":
         return mem.map_kind()  # E08 T57: RoE, AB or SoD (game +0x1F698)
+    # E08 T139a (batch E15c): a `save` step's file and messages, a `load` step's file and whether
+    # the loaded boats' records are the save's.
+    if what == "saved":
+        return f"{', '.join(obs['files'])} ({', '.join(obs['messages']) or 'no message'})"
+    if what == "loaded":
+        return (f"{', '.join(obs['files'])}; the boats' records as saved: "
+                f"{yes[obs['boats_as_saved']]}")
     if what == "date":
         return "month {}, week {}, day {}".format(*mem.date())
     if what in ("draws", "turn_draws", "start_draws") \
@@ -4925,9 +4995,11 @@ def value(obs, what, mem):
     # E08 T68a (batch E8a): the boats' records (boat_value), what the view draws on a hero's
     # tile, the last battle's opening (terrain, special field, ship flag, the obstacles' hexes),
     # whether a walk's second click was made (`again_if`) and what an arrow key did (`key`).
-    if what in ("boat", "boats:used") or re.match(r"boat(:\d+,\d+(,\d)?|\[.+\])$", what) \
+    # E08 T139a (batch E15c): the recipe's boats by name, every record, those beside the hero.
+    if what in ("boat", "boats", "boats:used", "boats:beside") \
+            or re.match(r"boat(:\d+,\d+(,\d)?|\[.+\]|:[A-Za-z]\w*(:\w+)?)$", what) \
             or re.match(r"boat_record:\d+,\d+(,\d)?$", what):
-        hero = after["hero"]
+        hero = after.get("hero")  # E08 T139a: none in a step without a hero (a load's)
         if m := re.match(r"boat\[(.+)\]$", what):
             hero, what = mem.hero_named(m.group(1)), "boat"
         return boat_value(mem, hero, what)
@@ -5504,6 +5576,90 @@ def start_game(game, map_path, recipe, restarts):
         game.stop()
 
 
+# E08 T139a (batch E15c's save 2): a save from play and its load, in one batch. The main menu's
+# Load Game and the load menu's Multiplayer (the shell's recipes' points, shell/advanced.toml);
+# the load menu's probes are the shell's (shell/menus.screens.toml).
+LOAD_GAME, LOAD_MULTIPLAYER = (645, 192), (649, 180)
+SAVED = {}  # a save's name: the day, the current player and the boats' records at the save
+
+
+def save_game(game, mem, name):
+    """A `save = "<name>"` step (E08 T139a, batch E15c): the system options (O) and their Save
+    (S; game_save_dialog 0x418160), the name typed over the field's, Return; the message after
+    it (GENRLTXT 351) kept and closed. An earlier run's save of that name is removed from the
+    run's Games/ first (no overwrite question). Returns the step's observation."""
+    games = h3drive.GAME_DIR / "Games"
+    for old in games.glob(f"{name}.*"):
+        old.unlink()
+    game.move(*PARK)
+    game.key("o", 1.0)
+    game.key("s", 1.5)
+    for _ in range(30):
+        game.key("BackSpace", 0.02)
+    h3drive.run("xdotool", "type", "--delay", "50", name)
+    game.key("Return", 1.0)
+    obs = {"save": name, "messages": []}
+    wait_for(lambda: screen_kind(mem) == "message", "the save's message", 20.0)
+    while screen_kind(mem) == "message":
+        obs["messages"].append(message_record(mem))
+        click_item(game, mem, "ok", None)
+        time.sleep(0.5)
+    dismiss(game)
+    obs["files"] = sorted(p.name for p in games.glob(f"{name}.*"))
+    if not obs["files"]:
+        raise RuntimeError(f"the save {name} left no file in {games}")
+    SAVED[name] = {"day": absolute_day(mem), "player": mem.current_player(),
+                   "boats": [boat_text(mem, b) for b in mem.boats()]}
+    return obs
+
+
+def load_game(game, mem, recipe, name):
+    """A `load = "<name>"` step (E08 T139a, batch E15c): the game stopped and started again (the
+    map left in Maps/), the main menu's Load Game, Multiplayer, Hot Seat with the recipe's names,
+    the list's Load (the run's Games/ must hold that save alone: the list's selection is not
+    read), the turn's dialogs passed. The save's day, current player and boats' records are
+    compared with the loaded game's. Returns the new memory and the step's observation."""
+    games = h3drive.GAME_DIR / "Games"
+    held = sorted(p.name for p in games.iterdir() if p.is_file())
+    if name not in SAVED or [p.split(".")[0] for p in held] != [name]:
+        raise RuntimeError(f"`load = {name!r}`: the run's Games/ holds {held or 'nothing'}; a "
+                           "load needs the batch's own save of that name alone")
+    mem.file.close()
+    game.stop()
+    game.start(None)
+    if "load_game_menu" not in game.screens:
+        game.screens.update(tomllib.loads((Path(__file__).parent / "shell" /
+                                           "menus.screens.toml").read_text()))
+    game.wait("main_menu", 90)
+    game.click(*LOAD_GAME, 1.0)
+    game.wait("load_game_menu")
+    game.click(*LOAD_MULTIPLAYER, 1.0)
+    game.wait("multiplayer")
+    game.click(*HOT_SEAT, 1.0)
+    game.wait("hotseat_names")
+    x, y, step = NAME_FIELDS
+    for i, player in enumerate(recipe["players"]):
+        if i:
+            game.click(x, y + step * i, 0.3)
+        h3drive.run("xdotool", "type", "--delay", "50", player)
+    game.click(*NAMES_OK, 2.0)
+    game.move(*PARK)
+    time.sleep(1.0)
+    game.click(*BEGIN, 1.0)  # the list's Load, where the new game's Begin is
+    game.move(*PARK)
+    game.wait("turn_dialog", 60)
+    dismiss(game)
+    mem = h3mem.Mem()
+    force_draws(game, recipe.get("rolls"))
+    saved = SAVED[name]
+    same = [boat_text(mem, b) for b in mem.boats()] == saved["boats"]
+    if (absolute_day(mem), mem.current_player()) != (saved["day"], saved["player"]):
+        raise RuntimeError(f"the load of {name}: day {absolute_day(mem)}, player "
+                           f"{mem.current_player()}, not the save's {saved['day']}, "
+                           f"{saved['player']}")
+    return mem, {"load": name, "files": held, "messages": [], "boats_as_saved": same}
+
+
 def prepare(mem, step):
     """E09 T34 (batch TWN-4): what a step writes into the game before it plays: `resources = {
     <colour> = [wood, mercury, ore, sulfur, crystal, gems, gold] }` (player +0x9C), `mana = {
@@ -5620,6 +5776,7 @@ def batch(recipe_path, map_path=None, out=None):
     try:
         restarts = []
         mem = start_game(game, map_path, recipe, restarts)
+        name_boats(recipe, mem)  # E08 T139a: the recipe's boats by name
         force_draws(game, recipe.get("rolls"))  # E09 T23: the recipe's, at each new game
         START_DRAWS[:] = logged_draws(game)  # E09 T34
         # The generator reads `mem` at each step's expansion (a closure over this function's
@@ -5642,12 +5799,27 @@ def batch(recipe_path, map_path=None, out=None):
                 game.stop()
                 mem.file.close()
                 mem = start_game(game, map_path, recipe, restarts)
+                name_boats(recipe, mem)
                 force_draws(game, recipe.get("rolls"))
                 force_draws(game, step.get("rolls"), step.get("roll"))
                 if "date" in step:
                     mem.write_date(*step["date"])
                 drawn = 0
                 obs = {"new_game": True, "player": mem.current_player()}
+                obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
+                                              for c in range(8) if mem.player(c)["heroes"]}}
+            elif "save" in step or "load" in step:
+                # E08 T139a (batch E15c's save 2): a save from play (save_game) or its load
+                # (load_game: the game started again, a new memory); `record` and `note` as an
+                # end-turn step's.
+                if "hero" in step or ("save" in step and "load" in step):
+                    raise ValueError("a `save` or `load` step has no `hero` and does one of them")
+                if "save" in step:
+                    obs = save_game(game, mem, step["save"])
+                else:
+                    mem, obs = load_game(game, mem, recipe, step["load"])
+                    drawn = 0
+                obs["player"] = mem.current_player()
                 obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
                                               for c in range(8) if mem.player(c)["heroes"]}}
             elif step.get("end_turn"):
@@ -5896,7 +6068,12 @@ def batch(recipe_path, map_path=None, out=None):
               # E09 T3b: the new games the recipe's steps started (batch TWN-1's games 2, 3).
               + (f" The map started anew {games} more time(s) by the recipe's `new_game` steps "
                  "(new games, no save loaded)."
-                 if (games := sum(1 for s in steps if s.get("new_game"))) else ""))
+                 if (games := sum(1 for s in steps if s.get("new_game"))) else "")
+              # E08 T139a: the saves and loads the recipe's steps made (batch E15c's save 2).
+              + (" Saved and loaded again in the batch by the recipe's `save` and `load` steps ("
+                 + ", ".join(f"{'saved' if 'save' in s else 'loaded'} {s.get('save', s.get('load'))}"
+                             for s in steps if "save" in s or "load" in s) + ")."
+                 if any("save" in s or "load" in s for s in steps) else ""))
     filled = fill(Path(template).read_text(), values, notes, header)
     result = out / f"{name}.md"
     result.write_text(filled)

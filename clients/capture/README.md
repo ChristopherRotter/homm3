@@ -622,6 +622,7 @@ the same way:
 | `cast:<part>` | since E08 T139a: a cast step's parts (`book`, `button`, `listed`, `place`, `view`, `dialog`, `hovers`, `hover:<n>`, `clicks`, `click:<n>`, `cancel`, `spell_points`): below, "Casts on the adventure map" |
 | `hero:facing`, `hero:doors`, `hero:fly`, `hero:water_walk`, `hero:scrolls`, `hero:name`, `hero:byte:<offset>` | since E08 T139a: the facing (+0x47: 0 up, clockwise, 2 right), the day's Dimension Doors (i8 +0x10D), Fly's and Water Walk's levels today (i32 +0x112, +0x116: -1 not cast; structs.toml "hero"), the worn Spell Scrolls' spells (`misc 1: Dimension Door`), the record's name with its type (`Prisoner 1 (type 8)`), a signed byte of the record read live |
 | `path_order`, `explored_in:x0,y0..x1,y1[,level][:<colour>]`, `popups` | since E08 T139a: the path's marks in walking order (chained from the hero's tile by neighbours: `5,24 6,24 …`), the explored tiles of a box (`16,10 17,10`; `none`), a step's `popup = [[x, y], ...]` windows in order (`10,10: ?: [class 62 name]; …`) |
+| `boat:<name>`, `boat:<name>:<part>`, `boats`, `boats:beside`, `saved`, `loaded` | since E08 T139a (batch E15c): a recipe's boat by name (`boats`), one field of it, every record by name, those beside the step's hero; a `save` step's file and message, a `load` step's file and whether the boats' records are the save's: above, "Casts on the adventure map" |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
 notes a difference under the encounter's "anything odd" (`dialogs = true`: dialogs passed after
@@ -1033,6 +1034,35 @@ the hero (`adventure_cast_open`: the corner the hero's tile less (9, 8)). The re
 `hero:doors`, `hero:fly`, `hero:water_walk` (also `before:`), `hero:scrolls`, `path_order`,
 `explored_in:` (the reads table); a tile's `explored:` before a cast is a step of its own (a read
 step without a walk).
+
+Since batch E15c (E08 T139a; `batches/E08-batch-15c.toml`): **the boats by name.** A recipe's
+`boats = { B1 = [38, 55, 1], … }` names, at the game's start (and at a `new_game`'s), the record in
+use on each tile (one, or the batch stops); the records keep their order, so a boat summoned
+elsewhere or sunk (in use 0) keeps its name. `boat:<name>` its record, `boat:<name>:<part>` one
+field (`tile`, `in_use`, `type`, `facing`, `owner`, `captain`, `aboard`: a table's cell), `boats`
+every record with its name (`B1: tile 38,55,1; in use 1; …`; an unnamed one `#<index>`),
+`boats:beside` those in use on the step's hero's tile and its eight neighbours (the boat a Summon
+Boat brought). **Saves and loads in a batch.** A step `save = "<name>"` (no hero) saves from the
+system options (O, then their Save, S: game_save_dialog 0x418160), the field's name cleared and
+`<name>` typed, Return; the message after it (GENRLTXT 351) kept and closed (`saved`: `E15c2.GM2
+(GENRLTXT:351)`); an earlier run's save of that name is removed from the run's `Games/` first.
+A step `load = "<name>"` stops the game, starts it again (the map stays in `Maps/`) and loads the
+save by the main menu's Load Game (645, 192), Multiplayer (649, 180; the load menu's probes are
+the shell's, `shell/menus.screens.toml`), Hot Seat with the recipe's `players`, the list's Load
+(497, 553); the run's `Games/` must hold that save alone (the list's selection is not read). The
+loaded day and current player must be the save's; `loaded` says whether the boats' records are
+the save's (`E15c2.GM2; the boats' records as saved: yes`). A save from a hot seat of two humans
+is `<name>.GM2`; the load list showed it selected, the turn's dialog (`turn_dialog`) after it.
+Both steps take `record` and `note` as an end-turn step's (`boats`, `boat:<name>`, `date`).
+Observed (E15c, two runs): Scuttle Boat's target dialog is the vtable 0x63DBD8 (`cast:dialog`
+`scuttle (0x63dbd8)`), played as the door's: its cursor over an empty boat, seen or not, is
+type 1 frame 42 (cradvntr.DEF 0x2A) with the accept flag 1, over an occupied boat or a tree type
+1 frame 0 with 0; a click on a refused tile leaves the dialog open, a click on a boat closes it.
+The map area's last column (cell 18, x 576 to 599) is reached by an offset from the column before
+it (`{ at = [20, 12], offset = [38, 16] }`: x 590); `tile_point` reaches 18 columns. A hero with
+the Admiral's Hat finds Summon Boat and Scuttle Boat on its book's page besides its own spells
+(`cast:listed`); a book of two to four spells lists them from place 0, and the lookup by name
+found each.
 
 Observed (E12a and E12b, two runs each): the garrison's dialog opens on the entrance only (a walk
 through an own garrison opens none); the hero screen opens on a click on the selected hero's own
