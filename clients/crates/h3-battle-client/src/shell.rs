@@ -905,6 +905,8 @@ fn menus(
             ),
         }),
         no_saves: Some(laid("shell.scenario.no-saves", Style::Ok)),
+        // E27 M4 T5b1: the hot seat's load's Show Saved Games (GENRLTXT 656).
+        list_saved: text("shell.scenario.list-saved"),
     };
     // A save the client cannot list (E27 M4 T4b1: GENRLTXT 431, 505).
     let broken = crate::saves::Broken {
@@ -1567,9 +1569,12 @@ fn in_window(
     // The begin's choices (T6) until play's start, and the game it began, kept for E24 M5.
     let mut begun: Option<Begun> = None;
     let mut game: Option<crate::begin::Game> = None;
-    // The save the load mode's Load named, and the game it loaded, kept for E24 M5 (E27 M4 T4b2).
+    // The save the load mode's Load named, and the game it loaded, kept for E24 M5 (E27 M4 T4b2);
+    // the hot seat's load's names by colour (E27 M4 T5b1, CLT-Q160 (a): who is human after the
+    // load, E24 M5's to apply over the loaded game).
     let mut to_load: Option<PathBuf> = None;
     let mut loaded: Option<crate::save::Loaded> = None;
+    let mut seated: Option<[Option<String>; 8]> = None;
     loop {
         let playing = shell.screen() == Screen::Start;
         // Play's fade (T6) steps every 50 ms, the credits every 100 (E27 M4 T2): the window's
@@ -1672,6 +1677,7 @@ fn in_window(
                 if let (Ended::Scenario(true), Some(Front::Scenario(s))) = (ended, front.as_ref()) {
                     begun = s.begun();
                     to_load = s.loaded().map(|file| drawer.games.join(file));
+                    seated = s.seated();
                 }
                 // The game kept for E24 M5 left as play's stub ends.
                 if let (Ended::Play(_), Some(game)) = (ended, game.take()) {
@@ -1679,6 +1685,7 @@ fn in_window(
                 }
                 if let (Ended::Play(_), Some(loaded)) = (ended, loaded.take()) {
                     eprintln!("h3-view shell: {} left (E24 M5 hosts it)", loaded.game.file);
+                    seated = None;
                 }
                 let _ = shell.end(ended);
                 println!("{}", text::describe(shell.screen()));
@@ -1785,7 +1792,12 @@ fn in_window(
             on = Some(shell.screen());
             // The load mode's saves listed anew at each opening (E27 M4 T4b1: the original reads
             // its folder at each one).
-            if shell.screen() == Screen::Scenario(Game::Load, h3_view::shell::Kind::Single) {
+            // E27 M4 T5b1: the hot seat's load's too.
+            if let Screen::Scenario(
+                Game::Load,
+                h3_view::shell::Kind::Single | h3_view::shell::Kind::Multiplayer,
+            ) = shell.screen()
+            {
                 let install = options.install.as_path();
                 let saves =
                     crate::saves::entries(&drawer.games, install, &drawer.rules, &drawer.broken);
@@ -1843,6 +1855,10 @@ fn in_window(
                             game.game.file,
                             game.state.day()
                         );
+                        // The hot seat's names decide who is human (CLT-Q160 (a)): E24 M5's.
+                        if let Some(names) = &seated {
+                            eprintln!("h3-view shell: the hot seat's names by colour {names:?}");
+                        }
                         loaded = Some(game);
                         Some(&drawer.play.loaded)
                     }

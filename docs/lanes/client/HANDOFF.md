@@ -17,8 +17,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   its end, the notice with no saves, Load's end at play's stub through `save::load`; §40;
   `scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5) done 2026-11-20;
   **T5a** (decision 75: the hot-seat load read, two hot-seat makers, `adv-load` again and
-  `adv-load-more`; §41) done 2026-11-21. **Next: M4 T5b** (the hot seat's load screen; the
-  queue), then T6 (M4's closure).
+  `adv-load-more`; §41) and **T5b1** (decision 76: the hot seat's load screen, the save's rows,
+  the names placed, `h3-view save` for a hot seat; §42; `mp-load` 6 of 6, `adv-load` 14 of 19,
+  `adv-load-more` 2 of 2) done 2026-11-21. **Next: M4 T5b2** (the load's flags; the queue), then
+  T6 (M4's closure).
   Decisions to carry (all: the epic's list): the dialogs' input one implementation (20;
   `h3_ui::input`); the shell's code as the battle's (21); every pixel of a Smacker clip through
   its palette (24); every clip's sound at the effects setting (27); a menu opening anew takes the
@@ -28,8 +30,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   background's key pixel a drawing bug (§36.3); a save loads only under the rules and over the
   map it was made with (review item 18); the shell's recipes pinned to a time zone (`tz`, review
   item 23); a right press without a popup redraws nothing but on the description and the
-  players' items (review item 27); a disabled button takes no hotkey (review item 33). Open pull
-  request: T5a's, branch `client/e27-m4-t5a`: watch it until it merges. E17 done
+  players' items (review item 27); a disabled button takes no hotkey (review item 33); the names
+  decide who is human after a hot-seat load (CLT-Q160 (a)), no Random Map in a load (CLT-Q161
+  (b)). Open pull request: T5b1's, branch `client/e27-m4-t5b1`: watch it until it merges. E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -40,8 +43,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Checkpoints** per milestone (below), a fresh reviewer agent first (at M1 T3: one per area, the
   shots as contact sheets). **Open:** CLT-Q158 (after Reset the creatures' frame 0; built as the
   original's, blocks nothing), CLT-Q159 (Delete's unchecked failure; built as the original's,
-  blocks nothing), CLT-Q160 (a hot-seat load's names decide its humans) and CLT-Q161 (Random Map
-  in a hot-seat load does nothing): T5b's, neither blocks. Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
+  blocks nothing). Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
   "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle), `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
@@ -67,6 +69,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-21, E27 M4 T5b1 (done; `client/e27-m4-t5b1`).** The PC's 64 files, the manuals and
+  the help files staged (the PC's shell down: sizes against its listing, the LODs and executables
+  against `installation.md`'s SHA-256). T5b cut in two, CLT-Q160 (a), CLT-Q161 (b) (decision 76).
+  Read the load's dimmed duration bar (`dialog_item_darken`). Built the hot seat's load mode, the
+  save's rows and duration, the names placed (§41.1), `Scenario::seated`, `h3-view save
+  --player/--duration` and the makers' `viewer` players. `mp-load` 6 of 6, `adv-load` 14 of 19,
+  `adv-load-more` 2 of 2. Record: `E27-log.md`, "M4 T5b1".
 - **2026-11-21, E27 M4 T5a (done; `client/e27-m4-t5a`).** The PC's 64 files, the manuals and
   the help files staged (SHA-256 checked). T5 cut in two with the user (decision 75). Read the
   hot-seat load's slots, the names' placing and the begin after a load, the save's `.GM<n>`, the
@@ -81,10 +90,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   end (the save loaded by the engine at play's start, kept for E24 M5); CLT-STUB-15 lifted.
   `scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5; CLT-Q159 asked.
   Record: `E27-log.md`, "M4 T4b2".
-- **2026-11-20, E27 M4 T4b1 (done; `client/e27-m4-t4b1`).** The PC's 63 files and the manuals
-  staged (SHA-256 checked). T4b cut at Delete with the user (decision 73). Built the load mode's
-  screen (`Scenario::loading`), the client's saves listed (`saves`: `games`, `<name>.GM<n>`, a
-  broken file's look), the date at SDL's present offset, `Command::Delete`, the viewer's
-  `games-time` and `key-hold`, `h3-view save` and `drawn`'s made client saves; read the right
-  press (no redraw without a popup). `scn-load` 19 of 25 exact, the other groups as recorded.
-  Record: `E27-log.md`, "M4 T4b1".

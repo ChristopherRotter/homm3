@@ -195,7 +195,12 @@ id = "adv-load-make-two"
 what = "§41: makes `Pair.GM2`, A Warm and Familiar Place (two colours, both human: A, B) at Impossible"
 maps = ["A Warm and Familiar Place.h3m"]
 makes = ["Pair.GM2"]
-viewer = { difficulty = 4 }
+# E27 M4 T5b1: the client's save the same: A on Red (the map's town, Marius 50, the artifact), B on
+# Green (Inferno 3, Ignatius 51, gold), 20 minutes (turndur.txt's record 7).
+viewer = { difficulty = 4, duration = 7, players = [
+  { colour = 0, name = "A", hero = 50, bonus = "artifact" },
+  { colour = 3, name = "B", town = 3, hero = 51, bonus = "gold" },
+] }
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
   "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B",
@@ -215,7 +220,15 @@ id = "adv-load-make-four"
 what = "§41: makes `Four.GM4`, Arrogance (four colours, all human: A to D) at Easy"
 maps = ["Arrogance.h3m"]
 makes = ["Four.GM4"]
-viewer = { difficulty = 0 }
+# E27 M4 T5b1: the client's save the same: A on Red (Castle 0, Orrin 0), B on Blue (Rampart 1,
+# Mephala 16), C on Purple (Tower 2, Piquedram 32), D on Teal (Inferno 3, Fiona 48), each the
+# artifact; 20 minutes.
+viewer = { difficulty = 0, duration = 7, players = [
+  { colour = 0, name = "A", town = 0, hero = 0, bonus = "artifact" },
+  { colour = 1, name = "B", town = 1, hero = 16, bonus = "artifact" },
+  { colour = 5, name = "C", town = 2, hero = 32, bonus = "artifact" },
+  { colour = 6, name = "D", town = 3, hero = 48, bonus = "artifact" },
+] }
 steps = [
   "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
   "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B", "key:Tab", "type:C", "key:Tab", "type:D",

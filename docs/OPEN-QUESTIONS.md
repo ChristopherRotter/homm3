@@ -113,34 +113,6 @@ client's standard error (built); (b) the client's profile keeps the entry and sh
 (c) (b) without the message. **Recommended (a)** (a failure is rare, and the next opening shows
 the truth; (b) adds a box of the client's own). Built as (a). Blocks nothing.
 
-#### CLT-Q160 — A hot-seat load gives the colours to the names, not to the save's humans (E27 M4 T5a, a reading and a recording)
-
-A hot-seat load (`scenario_players_init` 0x584CC8; `docs/epics/E27-design.md` §41.1) gives the
-save's human colours, in colour order, to the hot seat's names in their order, then each name
-left over the next colour a human may play that no name holds (a computer's in the save), and
-the begin after the load (`scenario_load_begin` 0x58C419, `scenario_dialog_begin`) makes human
-exactly the colours a name holds. So with fewer names than the save's humans, the saved humans
-past the names play on as computers (recorded: `adv-load` advanced, `Four.GM4`'s four humans
-under two names, two rows "Computer"); with more, a name takes over a computer's colour
-(`adv-load-more` advanced, `Week_one.GM1`'s one human under two names: B on Blue). CLT-Q110 (b)
-already keeps a flag's press among the save's humans. Options: (a) the original's: the names
-decide who is human after the load (the engine's game loaded under the save's players, then the
-humans changed: a command or a setup step the engine must offer, E24 M5's); (b) refuse a hot-seat
-load whose names are not as many as the save's humans (the client's own message); (c) (a) for
-fewer names only (a saved human may drop out, no computer is taken over), more names refused.
-**Recommended (a)** (it is how the hot seat lets players leave or join a game; the engine's part
-waits for E24 M5 either way). Not built yet (T5b builds it as the original's). Blocks nothing.
-
-#### CLT-Q161 — The Random Map button shows in a hot-seat load and does nothing (E27 M4 T5a, a recording)
-
-A hot-seat load shows the panel's Random Map button (130) with its popup ("Play a randomly
-created map"), but `random_map_toggle` 0x57FEB0 returns at once in a load (`docs/epics/E27-design.md`
-§41.2): its press and its key R change nothing (`adv-load` random, random-key, random-popup). A
-single load shows no panel button at all. Options: (a) copy; (b) hide it in a load (as the single
-load's panel); (c) show it disabled. **Recommended (b)** (a button that does nothing misleads;
-hiding matches the single load's look). Not built yet (T5b; built as the original's meanwhile).
-Blocks nothing.
-
 ### Map client lane (`MCL-Q<n>`)
 
 #### MCL-Q29 — The Deity's week names the Imp's growth for the Familiar (E24 M4 T1a, a reading)

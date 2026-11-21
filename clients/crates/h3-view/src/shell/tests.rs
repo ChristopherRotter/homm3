@@ -246,7 +246,7 @@ fn each_screen_names_the_task_that_builds_it() {
     assert_eq!(Screen::Scenario(Game::Load, Kind::Single).task(), "E27 M3");
     assert_eq!(
         Screen::Scenario(Game::Load, Kind::Multiplayer).task(),
-        "E27 M4 T5"
+        "E27 M4 T5b1"
     );
     assert_eq!(Screen::Scenario(Game::Load, Kind::Campaign).task(), "E20");
     assert_eq!(Screen::Play { restart: true }.task(), "E24 M5");
@@ -282,7 +282,10 @@ fn the_menus_and_the_multiplayer_dialog_are_built_the_others_stubs_or_not() {
             (Screen::Multiplayer(Game::Load), Built::Whole),
             (Screen::Scenario(Game::Load, Kind::Single), Built::Whole),
             (Screen::Scenario(Game::Load, Kind::Campaign), Built::Stub),
-            (Screen::Scenario(Game::Load, Kind::Multiplayer), Built::Stub),
+            (
+                Screen::Scenario(Game::Load, Kind::Multiplayer),
+                Built::Whole
+            ),
             (Screen::Scenario(Game::Load, Kind::Tutorial), Built::Stub)
         ]
     );

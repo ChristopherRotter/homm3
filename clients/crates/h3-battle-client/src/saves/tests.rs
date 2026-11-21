@@ -78,13 +78,13 @@ fn a_made_save_is_listed_with_its_map_its_difficulty_and_its_time() {
     // Key 2: a broken file's no format before the duel's SoD.
     assert_eq!(files, ["junk.gm2", "AUTOSAVE.GM1"]);
     let [junk, auto] = [&entries[0], &entries[1]];
+    let saved = auto.saved.unwrap();
     assert_eq!(
-        auto.saved,
-        Some(Saved {
-            difficulty: 3,
-            time: 1_009_838_340
-        })
+        (saved.difficulty, saved.time, saved.duration),
+        (3, 1_009_838_340, UNLIMITED)
     );
+    // E27 M4 T5b1: the single player's colour the save's one human.
+    assert_eq!(saved.humans.iter().filter(|h| **h).count(), 1);
     let map = crate::maps::entry(
         DUEL.to_owned(),
         &crate::begin::read(&crate::begin::map_path(&install, DUEL)).unwrap(),
@@ -100,8 +100,8 @@ fn a_made_save_is_listed_with_its_map_its_difficulty_and_its_time() {
     assert_eq!(
         junk.saved,
         Some(Saved {
-            difficulty: 0,
-            time: 7
+            time: 7,
+            ..Saved::default()
         })
     );
     // No folder: nothing.
@@ -167,4 +167,142 @@ fn delete_removes_a_listed_file_of_the_folder_alone() {
     assert!(delete(&games, "notes.txt").is_err());
     assert!(delete(&games, "").is_err());
     let _ = fs::remove_dir_all(&dir);
+}
+
+/// E27 M4 T5b1: a hot seat's made save holds its players as humans with their names and choices
+/// and the turn's duration; its entry shows them (the hot seat's load's rows).
+#[test]
+fn a_hot_seat_save_holds_its_players_choices_and_duration() {
+    let rules = crate::maps::rules().unwrap();
+    let (install, games) = dirs("hot-seat");
+    let seated = Seated {
+        players: vec![
+            Player::parse("0:A:random:random:gold").unwrap(),
+            Player::parse("1:B:random:random:resource").unwrap(),
+        ],
+        duration: 7,
+    };
+    let save = made_with(&install, &rules, DUEL, (4, 1), &seated, "Pair").unwrap();
+    assert_eq!(save.duration, 7);
+    assert_eq!(save.names[0].as_deref(), Some("A"));
+    assert_eq!(save.names[1].as_deref(), Some("B"));
+    assert_eq!(save.bonuses[..2], [Bonus::Gold, Bonus::Resource]);
+    let loaded = crate::save::load(&save, &install, &rules).unwrap();
+    assert_eq!(
+        loaded.game.setup.players.iter().filter(|p| p.human).count(),
+        2
+    );
+    let path = games.join("Pair.GM2");
+    crate::save::write_file(&path, &save).unwrap();
+    let entries = entries(&games, &install, &rules, &broken());
+    let listed = entries[0].saved.unwrap();
+    assert_eq!(listed.difficulty, 4);
+    assert_eq!(listed.duration, 7);
+    assert_eq!(listed.humans[..3], [true, true, false]);
+    assert_eq!(listed.records[0].bonus, Bonus::Gold);
+    assert_eq!(listed.records[1].bonus, Bonus::Resource);
+    assert!(
+        listed
+            .records
+            .iter()
+            .all(|r| r.colour.is_none() && r.handicap == 0)
+    );
+    // The table's choices and the replay's are what `saved` reads.
+    let mut fixed = save.clone();
+    fixed.replay.players[0].faction = Some(FactionChoice::Fixed(
+        h3_content::FactionId::from_index(3).unwrap(),
+    ));
+    fixed.replay.players[0].hero = h3_content::HeroTypeId::from_index(50);
+    fixed.replay.players[1].faction = Some(FactionChoice::Random);
+    fixed.replay.players[1].colour = 9;
+    fixed.handicaps[0] = 2;
+    let shown = saved(&fixed);
+    assert_eq!(
+        (shown.records[0].town, shown.records[0].hero),
+        (Some(3), Some(50))
+    );
+    assert_eq!(shown.records[0].handicap, 2);
+    // A player of a colour past the eight is passed over.
+    assert!(!shown.humans[1]);
+    // Two players of one colour are refused.
+    let twice = Seated {
+        players: vec![
+            Player::parse("0:A:random:random:gold").unwrap(),
+            Player::parse("0:B:random:random:gold").unwrap(),
+        ],
+        duration: UNLIMITED,
+    };
+    assert!(made_with(&install, &rules, DUEL, (0, 1), &twice, "x").is_err());
+    let _ = fs::remove_dir_all(&install);
+}
+
+#[test]
+fn a_hot_seat_player_parses_from_its_five_fields() {
+    let p = Player::parse("5:C:2:32:artifact").unwrap();
+    assert_eq!(
+        p,
+        Player {
+            colour: 5,
+            name: String::from("C"),
+            town: Some(2),
+            hero: Some(32),
+            bonus: Bonus::Artifact,
+        }
+    );
+    let random = Player::parse("7:D:random:random:random").unwrap();
+    assert_eq!(
+        (random.town, random.hero, random.bonus),
+        (None, None, Bonus::Random)
+    );
+    for bad in [
+        "8:A:random:random:gold",
+        "x:A:random:random:gold",
+        "0:A:random:random",
+        "0:A:random:random:gold:x",
+        "0:A:t:random:gold",
+        "0:A:random:300:gold",
+        "0:A:random:random:coins",
+    ] {
+        assert!(Player::parse(bad).is_err(), "{bad}");
+    }
+}
+
+#[test]
+fn the_save_command_takes_a_hot_seat_s_players_and_duration() {
+    let args = |a: &[&str]| -> Vec<String> { a.iter().map(|s| (*s).to_owned()).collect() };
+    let base = [
+        "--map",
+        DUEL,
+        "--difficulty",
+        "2",
+        "--name",
+        "n",
+        "--out",
+        "o",
+        "--install",
+        "i",
+    ];
+    let single = Options::parse(&args(&base)).unwrap();
+    assert_eq!(single.seated, Seated::default());
+    let mut more = base.to_vec();
+    more.extend([
+        "--player",
+        "0:A:random:50:gold",
+        "--player",
+        "3:B:3:51:artifact",
+    ]);
+    more.extend(["--duration", "7"]);
+    let hot = Options::parse(&args(&more)).unwrap();
+    assert_eq!(hot.seated.players.len(), 2);
+    assert_eq!(hot.seated.players[1].town, Some(3));
+    assert_eq!(hot.seated.duration, 7);
+    for bad in [
+        &["--duration", "11"][..],
+        &["--duration", "x"],
+        &["--player", "9:A:1:1:gold"],
+    ] {
+        let mut wrong = base.to_vec();
+        wrong.extend_from_slice(bad);
+        assert!(Options::parse(&args(&wrong)).is_err(), "{bad:?}");
+    }
 }

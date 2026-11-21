@@ -365,6 +365,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   whose default `xkb_symbols "basic"` includes `de(basic)`, and pass `-xkbdir <copy>`. Then
   `xdotool key <keycode>` types by the key's place (29 `z`, 34 `ü`, 21 the dead acute); SDL's
   text events compose dead keys with `LANG=C.UTF-8`.
+- **A disabled item's look** (E27 M4 T5b1): the original's redraw darkens a shown and disabled
+  item after drawing it (its vtable +0x20, the base's `dialog_item_darken` 0x5FE800: a scroll
+  bar's, any item that keeps the base's), while a DEF button draws its disabled frame and a
+  caption its colour 2 more; `h3_ui`'s `State::disabled` gives only the last two, so a disabled
+  bar or picture takes a `Draw::Darken` of its own (the load's duration bar, design §42.1). A
+  control the original leaves "not enabled" (bit 2 cleared: a single player's handicap, a load's)
+  is drawn up, not disabled.
 - **A flag a path tests, read in one function** (E27 M3 T1b2): grep every write of it before
   building or capturing the path (`scripts/exe.py grep '\+ 0x1864\]'`): design §3.3's first
   showing with GENRLTXT 503 was a network game's alone, the constructor setting the flag (a
@@ -396,7 +403,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   skip; peak memory about 2 GB of 8), with `source scripts/llvm-tools.sh && llvm_tools_env` and
   `check.sh`'s `cargo llvm-cov` line, and the staged-data tests on their own without coverage
   (`RUST_TEST_THREADS=1 cargo test -p h3-battle-client`). CI's green run on `master` stands in for
-  a lost baseline.
+  a lost baseline. CI's line fails under 100% of the **regions** too (E27 M4 T5b1: an `if let`'s
+  untaken else with every line covered): run it with `--fail-under-regions 100`, as
+  `--show-missing-lines` lists lines alone.
 - **Captures beside builds: memory and disk** (E27 M2 T8): the VM restarted with the Wine runs
   beside a parallel `cargo test` and rustc (7 GB of RAM), so beside captures every cargo command
   runs as `CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1 nice`, and coverage only with no capture

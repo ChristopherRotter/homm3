@@ -94,16 +94,16 @@ pub const GAME_TYPE_BUTTONS: [u16; 5] = [100, 101, 102, 103, 104];
 pub const TITLE: u16 = 105;
 
 /// The client's stubs (E27 M2 T6b2, T7; High Scores built since E27 M4 T1a, Credits since T2):
-/// each screen, the
-/// menu its notice shows over and the notice's OK's ending. The scenario screen's (a new single scenario's built since M3 T1a, the
-/// hot seat's since M3 T4a, a single load's since M4 T4b1; the other loads' until M4 T5 and E20)
-/// shows over the game type menu it was reached from (by Campaign, Tutorial or Load Game's
-/// Multiplayer), its OK back there. Play's (E27 M3 T6, CLT-STUB-13: until E24 M5 hosts the game) shows over the main menu
-/// after the loading screen's fade ([`super::play`]), its OK the main menu.
-pub const STUBS: [(Screen, Kind, Ended); 6] = [
+/// each screen, the menu its notice shows over and the notice's OK's ending. The scenario
+/// screen's (a new single scenario's built since M3 T1a, the hot seat's since M3 T4a, a single
+/// load's since M4 T4b1, the hot seat's load since M4 T5b1; the campaign's and the tutorial's
+/// loads until E20 and CLT-Q84) shows over the game type menu it was reached from (Load Game's
+/// Campaign or Tutorial), its OK back there. Play's (E27 M3 T6, CLT-STUB-13: until E24 M5 hosts
+/// the game) shows over the main menu after the loading screen's fade ([`super::play`]), its OK
+/// the main menu.
+pub const STUBS: [(Screen, Kind, Ended); 5] = [
     (Screen::Campaigns, Kind::GameType(Game::New), Ended::Back),
     (Screen::Tutorial, Kind::GameType(Game::New), Ended::Back),
-    scenario(Game::Load, ScenarioKind::Multiplayer),
     scenario(Game::Load, ScenarioKind::Campaign),
     scenario(Game::Load, ScenarioKind::Tutorial),
     (
@@ -799,7 +799,8 @@ impl Menus {
     /// Multiplayer dialog over the game type menu `previous` left (E27 M2 T7); a new single
     /// scenario's screen (E27 M3 T1a: its background `gamselb0.pcx` until the caller draws,
     /// [`Scenario::with_background`]), or the hot seat's after the Multiplayer dialog `previous`,
-    /// its names the players (E27 M3 T4a); High Scores opened anew (E27 M4 T1a); none for
+    /// its names the players (E27 M3 T4a), a new game's or a load's (E27 M4 T5b1); High Scores
+    /// opened anew (E27 M4 T1a); none for
     /// another screen. A scenario screen `previous`
     /// leaves its kept map to the next (E27 M3 T2c: `scenario_last_map` 0x683238, the last
     /// map selected), High Scores its tables (E27 M4 T1b).
@@ -839,6 +840,16 @@ impl Menus {
                 let names = m.names();
                 Some(Front::Scenario(Box::new(
                     self.scenario.opened_hot_seat(hovers, names),
+                )))
+            }
+            // The hot seat's load (E27 M4 T5b1; §41): Load Game's Multiplayer, its names' OK.
+            (
+                Screen::Scenario(Game::Load, ScenarioKind::Multiplayer),
+                Some(Front::Multiplayer(m)),
+            ) => {
+                let names = m.names();
+                Some(Front::Scenario(Box::new(
+                    self.load.opened_hot_seat(hovers, names),
                 )))
             }
             // High Scores (E27 M4 T1a): opened anew, the main menu's last items kept.

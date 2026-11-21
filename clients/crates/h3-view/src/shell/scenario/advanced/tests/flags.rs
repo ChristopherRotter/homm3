@@ -117,6 +117,7 @@ fn a_flag_moves_only_to_a_colour_a_human_may_play() {
         seats,
         heroes: Heroes::default(),
         local: Some(0),
+        saved: None,
     };
     let mut dialog = Dialog {
         place: [0, 0],

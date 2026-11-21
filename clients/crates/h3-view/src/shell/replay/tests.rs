@@ -313,6 +313,25 @@ fn the_multiplayer_dialog_and_the_hot_seat_take_the_harness_s_inputs() {
         (vec![String::from("A"), String::from("C")], 0)
     );
     assert_eq!(r.menu(), None);
+    // E27 M4 T5b1: from Load Game's Multiplayer, the hot seat's names' OK opens the load mode's
+    // hot seat (`mp-load`).
+    let load = [
+        "until:main_menu",
+        "click:645,192",
+        "check:load_game_menu",
+        "click:649,180",
+        "check:multiplayer",
+        "type:A",
+        "click:578,157",
+        "check:hotseat_names",
+        "key:Tab",
+        "type:B",
+        "click:345,450",
+    ];
+    let (_, stop, r) = replay(false, &load);
+    let scenario = Screen::Scenario(Game::Load, Kind::Multiplayer);
+    assert_eq!((stop, r.screen()), (None, scenario));
+    assert!(matches!(r.front(), Some(Front::Scenario(s)) if s.hot_seat() && s.is_load()));
     // A network mode's notice is the client's: a shot under it stops the replay.
     let (seen, stop, _) = replay(
         false,
