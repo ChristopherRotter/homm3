@@ -24,6 +24,11 @@ const LORE: SkillId = SkillId::from_raw(1);
 /// for a special one; the book kept; 23 places; 5 × ⌊AI value / 40⌋), the core's one faction's
 /// heroes sacrificing both.
 fn altar_rules() -> GameRuleset {
+    altar_rules_of(23)
+}
+
+/// [`altar_rules`] with an Altar of `places` places.
+fn altar_rules_of(places: u8) -> GameRuleset {
     let mut pack = core_pack(false);
     pack.artifacts[RING.index()].class = ArtifactClass::Major;
     pack.creatures[IMP.index()].info.ai_value = 80;
@@ -36,7 +41,7 @@ fn altar_rules() -> GameRuleset {
             ObjectKindDef::Altar(AltarDef {
                 experience: [1000, 1500, 3000, 6000, 0],
                 keeps: vec![key("t:book")],
-                places: 23,
+                places,
                 creature_factor: 5,
                 creature_divisor: 40,
             }),
@@ -65,7 +70,15 @@ fn at_altar(
     experience: u32,
     skills: Vec<(SkillId, u8)>,
 ) -> (GameState, Vec<GameEvent>) {
-    let mut setup = setup();
+    at_altar_with(rules, (experience, skills), setup())
+}
+
+/// [`at_altar`] from `setup` (its hero's army).
+fn at_altar_with(
+    rules: &GameRuleset,
+    (experience, skills): (u32, Vec<(SkillId, u8)>),
+    mut setup: GameSetup,
+) -> (GameState, Vec<GameEvent>) {
     setup.map.objects = vec![reward_at(rules, "t:altar", Holds::Nothing)];
     setup.heroes[0].details = HeroDetailsSetup {
         experience: Some(experience),
@@ -177,11 +190,17 @@ fn an_altars_visit_opens_its_decision_for_its_owner_until_it_is_left() {
         },
     };
     assert_eq!(view(&state, &rules), seen);
-    // Its `Leave` is its listed answer and the system's default; the turn waits for it.
+    // Listed: the two alls (E08 T135a: the ring and both charms, the book kept; the imps but
+    // one), then its `Leave`, the system's default; the turn waits for it.
     let leave = Answer::Altar(AltarAnswer::Leave);
+    let back = ArtifactPlace::Backpack;
     assert_eq!(
         legal_commands(&state, &rules, Actor::Player(RED)),
-        [answered(leave)]
+        [
+            artifacts(&[worn(2), back(0), back(1)]),
+            altar(AltarAnswer::Creatures([0, 8, 0, 0, 0, 0, 0])),
+            answered(leave)
+        ]
     );
     assert_eq!(default_answer(&state, &rules, RED), Some(leave));
     let other_kinds = [
@@ -332,4 +351,44 @@ fn a_sacrifices_level_up_closes_the_altar_and_its_visit_returns_after_it() {
         .count();
     assert_eq!(gained, 3);
     assert!(state.altar(RED).is_some());
+}
+
+// covers: GAM-DEC-012, ADV-ALT-002, ADV-ALT-003
+#[test]
+fn the_listed_alls_fill_the_altars_places_and_keep_the_lowest_slot_a_creature() {
+    // Two places; four imps in slot 0 and one in slot 1 (the rules' two). Level 14 with every skill at Expert, so
+    // no sacrifice here reaches the next level.
+    let rules = altar_rules_of(2);
+    let mut setup = setup();
+    let stack = |slot, count| ArmyStack {
+        slot,
+        creature: IMP,
+        count,
+    };
+    setup.heroes[0].army = HeroArmy::Custom(vec![stack(0, 4), stack(1, 1)]);
+    let (mut state, _) = at_altar_with(&rules, (28_784, expert()), setup);
+    let listed = |state: &GameState| legal_commands(state, &rules, Actor::Player(RED));
+    // The ring and the first charm fill the two places (the book kept); every imp but one of
+    // the lowest occupied slot's.
+    let back = ArtifactPlace::Backpack;
+    let creatures = altar(AltarAnswer::Creatures([3, 1, 0, 0, 0, 0, 0]));
+    let leave = altar(AltarAnswer::Leave);
+    assert_eq!(
+        listed(&state),
+        [
+            artifacts(&[worn(2), back(0)]),
+            creatures.clone(),
+            leave.clone()
+        ]
+    );
+    for command in listed(&state) {
+        let mut probe = state.clone();
+        assert!(
+            play(&mut probe, &rules, RED, command.clone()).is_ok(),
+            "{command:?}"
+        );
+    }
+    // The army's lone imp gives nothing: the creatures' all is listed no more.
+    play(&mut state, &rules, RED, creatures).unwrap();
+    assert_eq!(listed(&state), [artifacts(&[worn(2), back(0)]), leave]);
 }

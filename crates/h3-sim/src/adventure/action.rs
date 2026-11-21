@@ -22,6 +22,13 @@
 //! | 31 | Open the hire dialog of the building in the building head in the town whose entrance is the tile in the tile head (E09 T27) |
 //! | 32 + m, m < 3 | Move a hero between the two bars of the town whose entrance is the tile in the tile head: `m` 0 the visitor into the garrison, 1 the garrison hero out, 2 the two swapped (E09 T28a) |
 //! | 35 + s, s < 2 | Hire the hero in slot `s` of the player's tavern at the town whose entrance is the tile in the tile head (E09 T38a2) |
+//! | 37 + p, p < 42 | Trade one lot of the pair `p` at the player's open market: given `p / 6`, wanted the `p % 6`-th of the others, in the core's order (E08 T135a) |
+//! | 79 + s, s < 7 | Sell one lot of the stack in army slot `s` for the market parameters' cost resource (the original's gold) at the player's open market (E08 T135a) |
+//! | 86 + e, e < 7 | Buy the entry `e` of the player's open Black Market, paid in the cost resource (E08 T135a) |
+//! | 93 | Sacrifice the artifacts' all at the player's open Altar (E08 T135a) |
+//! | 94 | Sacrifice the creatures' all at the player's open Altar (E08 T135a) |
+//! | 95 + s, s < 7 | Upgrade the stack in army slot `s` at the player's open Hill Fort (E08 T135a) |
+//! | 102 | Upgrade every stack that upgrades at the player's open Hill Fort (E08 T135a) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
@@ -64,9 +71,13 @@
 //! `legal_commands` lists for it, so an entry is legal when that creature's most is 1 or more) and
 //! its `Close` (GAM-DEC-008), a map Tavern's hires of the two slots and its `Close` (GAM-DEC-010,
 //! version 13), a market's `Leave` (GAM-DEC-011, version 14), an Altar's `Leave` (GAM-DEC-012,
-//! version 15), a Hill Fort's `Leave` (GAM-DEC-013, version 16). With no open decision of that role the entry decodes to the offer's
-//! or the level-up's answer, or the purchase (a hire entry's: a `Buy` of 0, [`hire_answer`]),
-//! which `apply` rejects.
+//! version 15), a Hill Fort's `Leave` (GAM-DEC-013, version 16); since version 17 (E08 T135a) a
+//! market's trades of one lot by their pairs, its sales of one lot for the cost resource by their
+//! slots and its purchases in it by their entries, an Altar's two alls, a Hill Fort's upgrades by
+//! their slots and its `All`, each the answer `legal_commands` lists for it. With no open decision
+//! of that role the entry decodes to the offer's or the level-up's answer, or the purchase (a hire
+//! entry's: a `Buy` of 0, [`hire_answer`]), or the trade's, sale's, purchase's or upgrade's
+//! answer its entry names, or an Altar's empty sacrifice ([`answer_of`]), which `apply` rejects.
 //!
 //! In the battle phase an action is one of the battle lane's encoding (`crate::action`, its own
 //! version: entries and the spell and target heads), for the side the player owns; its masks
@@ -124,11 +135,22 @@
 //! Altar of Sacrifice's decision (GAM-DEC-012) onto the closing role, no new entry: its `Leave`;
 //! its sacrifices have none until T135a appends its two alls. Version 16 (E08 T134b1, the same)
 //! maps a Hill Fort's decision (GAM-DEC-013) onto the closing role, no new entry: its `Leave`;
-//! its upgrades have none until T135a appends them.
+//! its upgrades have none until T135a appends them. Version 17 (E08 T135a, the same; decision 372,
+//! increment 14's design note §18) appends 66 entries for the answers `legal_commands` lists for
+//! the trades and services, each with tile 0 alone, legal where it lists the answer: a market's
+//! [`MARKET_TRADE`] (one lot of each pair of the first [`MARKET_RESOURCES`] resources, the given
+//! then the wanted in the core's order), [`MARKET_SELL`] (one lot of a slot's stack for the market
+//! parameters' cost resource) and [`MARKET_BUY`] (an entry of the stock, paid in it); an Altar's
+//! [`ALTAR_ARTIFACTS`] and [`ALTAR_CREATURES`] (its two alls, `h3_game`'s listing: every artifact
+//! it takes up to its places, every creature but one of the lowest occupied slot); a Hill Fort's
+//! [`HILL_FORT_UPGRADE`] (a slot's stack) and [`HILL_FORT_ALL`]. A market's transfer, another
+//! lot, resource or set has no entry (an amount head stays the AI lane's, as the hire dialog's);
+//! the closing role stays each kind's `Leave`. The factory needs none: its offer's and its hire
+//! dialog's entries.
 
-use h3_adventure::{AdventureCommand, Pos, Reach};
+use h3_adventure::{ALTAR_SLOTS, AdventureCommand, AltarPlaces, MarketParams, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
-use h3_content::CreatureTypeId;
+use h3_content::{CreatureTypeId, ResourceId};
 use h3_contracts::TownId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
@@ -141,7 +163,7 @@ use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 16;
+pub const ACTION_ENCODING_VERSION: u32 = 17;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -219,8 +241,51 @@ pub const TAVERN_SLOTS: usize = 2;
 /// note's `HIRE + s`).
 pub const TAVERN_HIRE: usize = TOWN_HEROES + TOWN_HERO_MOVES.len();
 
+/// The resources whose pairs [`MARKET_TRADE`]'s entries trade (E08 T135a): the original's seven,
+/// the first in the core's order (a pack's further resources trade with no agent of this
+/// encoding).
+pub const MARKET_RESOURCES: usize = 7;
+
+/// The pairs of two of the first [`MARKET_RESOURCES`] resources (E08 T135a): 42.
+pub const MARKET_PAIRS: usize = MARKET_RESOURCES * (MARKET_RESOURCES - 1);
+
+/// The army slots the entries of a sale and of an upgrade name (E08 T135a): the original's seven.
+pub const ARMY_SLOTS: usize = 7;
+
+/// The Black Market's entries the purchases name (E08 T135a): the original's seven.
+pub const MARKET_STOCK: usize = 7;
+
+/// The entry that trades one lot of the pair 0 at the player's open market; pair `p` is
+/// `MARKET_TRADE + p`, given the `p / 6`-th resource for the `p % 6`-th of the others, in the
+/// core's order ([`market_pair`]; E08 T135a, ADV-MKT-003).
+pub const MARKET_TRADE: usize = TAVERN_HIRE + TAVERN_SLOTS;
+
+/// The entry that sells one lot of the stack in army slot 0 for the market parameters' cost
+/// resource at the player's open market; slot `s` is `MARKET_SELL + s` (E08 T135a, ADV-MKT-005).
+pub const MARKET_SELL: usize = MARKET_TRADE + MARKET_PAIRS;
+
+/// The entry that buys the entry 0 of the player's open Black Market, paid in the market
+/// parameters' cost resource; entry `e` is `MARKET_BUY + e` (E08 T135a, ADV-MKT-007).
+pub const MARKET_BUY: usize = MARKET_SELL + ARMY_SLOTS;
+
+/// The entry that sacrifices the artifacts' all at the player's open Altar (E08 T135a,
+/// ADV-ALT-002): the sacrifice `legal_commands` lists.
+pub const ALTAR_ARTIFACTS: usize = MARKET_BUY + MARKET_STOCK;
+
+/// The entry that sacrifices the creatures' all at the player's open Altar (E08 T135a,
+/// ADV-ALT-003): the sacrifice `legal_commands` lists.
+pub const ALTAR_CREATURES: usize = ALTAR_ARTIFACTS + 1;
+
+/// The entry that upgrades the stack in army slot 0 at the player's open Hill Fort; slot `s` is
+/// `HILL_FORT_UPGRADE + s` (E08 T135a, ADV-HFT-002).
+pub const HILL_FORT_UPGRADE: usize = ALTAR_CREATURES + 1;
+
+/// The entry that upgrades every stack that upgrades at the player's open Hill Fort (E08 T135a,
+/// ADV-HFT-002).
+pub const HILL_FORT_ALL: usize = HILL_FORT_UPGRADE + ARMY_SLOTS;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = TAVERN_HIRE + TAVERN_SLOTS;
+pub const ENTRY_COUNT: usize = HILL_FORT_ALL + 1;
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -697,12 +762,38 @@ pub fn second_mask(
     }
 }
 
-/// Whether `entry` takes no tile: `EndTurn`, an answer (a hire dialog's purchase too) or a
-/// revisit (E08 T105b2).
+/// Whether `entry` takes no tile: `EndTurn`, an answer (a hire dialog's purchase too; since E08
+/// T135a the trades' and services') or a revisit (E08 T105b2).
 const fn tileless(entry: usize) -> bool {
     entry == END_TURN
         || (entry >= ACCEPT && entry < BUILD_BOAT)
         || (entry >= HIRE_BASE && entry < BUILD)
+        || (entry >= MARKET_TRADE && entry < ENTRY_COUNT)
+}
+
+/// The [`MARKET_TRADE`] entry of the pair (`give`, `take`) (E08 T135a): `MARKET_TRADE + give ×
+/// 6` plus the place of `take` among the other resources, in the core's order; none for a
+/// resource past the first [`MARKET_RESOURCES`] or a resource for itself.
+pub const fn trade_entry(give: ResourceId, take: ResourceId) -> Option<usize> {
+    let (give, take) = (give.index(), take.index());
+    if give >= MARKET_RESOURCES || take >= MARKET_RESOURCES || give == take {
+        return None;
+    }
+    let other = if take > give { take - 1 } else { take };
+    Some(MARKET_TRADE + give * (MARKET_RESOURCES - 1) + other)
+}
+
+/// The pair at `index` among [`MARKET_TRADE`]'s entries (E08 T135a): the given and the wanted
+/// resource ([`trade_entry`]'s inverse); none past [`MARKET_PAIRS`].
+pub fn market_pair(index: usize) -> Option<(ResourceId, ResourceId)> {
+    if index >= MARKET_PAIRS {
+        return None;
+    }
+    let give = index / (MARKET_RESOURCES - 1);
+    let other = index % (MARKET_RESOURCES - 1);
+    let take = if other >= give { other + 1 } else { other };
+    let resource = |at: usize| ResourceId::from_index(at).unwrap_or_default();
+    Some((resource(give), resource(take)))
 }
 
 /// The entry of `answer` by its role (E08 T63a; the module's table): an offer's acceptance; a
@@ -713,9 +804,14 @@ const fn tileless(entry: usize) -> bool {
 /// slot 0 the first, of slot 1 the second (none for another slot); since version 14 (E08 T133b) a
 /// market's `Leave` the closing role (none for its other answers until T135a); since version 15
 /// (E08 T134a) an Altar's `Leave` the closing role (none for its sacrifices until T135a); since
-/// version 16 (E08 T134b1) a Hill Fort's `Leave` the closing role (none for its upgrades until
-/// T135a). None for a hire dialog's purchase, whose entry is its creature's place in the dialog's source, which the answer
-/// does not carry ([`hire_entry`], E08 T95b).
+/// version 16 (E08 T134b1) a Hill Fort's `Leave` the closing role; since version 17 (E08 T135a)
+/// a market's trade of one lot by its pair ([`trade_entry`]: none for another lot or a pair past
+/// the entries), its sale of one lot by its slot and its purchase by its entry (whatever the
+/// resource: the listed one is the cost resource's, [`encode`] names no other), an Altar's
+/// sacrifices by their kind (whatever the set: the listed one is the all), a Hill Fort's upgrade
+/// by its slot and its `All` (none for a slot or an entry past the entries). None for a hire
+/// dialog's purchase, whose entry is its creature's place in the dialog's source, which the answer
+/// does not carry ([`hire_entry`], E08 T95b), and for a market's transfer.
 pub const fn answer_entry(answer: Answer) -> Option<usize> {
     match answer {
         Answer::Offer(Consent::Accept) => Some(ACCEPT),
@@ -746,11 +842,85 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
                 None
             }
         }
+        Answer::Market(MarketAnswer::Trade {
+            give,
+            take,
+            lots: 1,
+        }) => trade_entry(give, take),
+        Answer::Market(MarketAnswer::Sell { slot, lots: 1, .. }) => {
+            below(slot as usize, ARMY_SLOTS, MARKET_SELL)
+        }
+        Answer::Market(MarketAnswer::Buy { entry, .. }) => {
+            below(entry as usize, MARKET_STOCK, MARKET_BUY)
+        }
+        Answer::Altar(AltarAnswer::Artifacts(_)) => Some(ALTAR_ARTIFACTS),
+        Answer::Altar(AltarAnswer::Creatures(_)) => Some(ALTAR_CREATURES),
+        Answer::HillFort(HillFortAnswer::Upgrade(slot)) => {
+            below(slot as usize, ARMY_SLOTS, HILL_FORT_UPGRADE)
+        }
+        Answer::HillFort(HillFortAnswer::All) => Some(HILL_FORT_ALL),
         Answer::Hire(HireAnswer::Buy { .. })
         | Answer::Tavern(TavernAnswer::Hire { .. })
-        | Answer::Market(_)
-        | Answer::Altar(_)
-        | Answer::HillFort(_) => None,
+        | Answer::Market(_) => None,
+    }
+}
+
+/// `base + at` for an `at` below `count`; none past it.
+const fn below(at: usize, count: usize, base: usize) -> Option<usize> {
+    if at < count { Some(base + at) } else { None }
+}
+
+/// Whether `answer`'s entry names one answer of its role among several (E08 T135a: a market's
+/// sale or purchase, whose resource the entry leaves to the listing; an Altar's sacrifice, whose
+/// set or amounts it does): [`encode`] gives its entry only for the answer [`legal_commands`]
+/// lists.
+const fn listed_only(answer: &Answer) -> bool {
+    matches!(
+        answer,
+        Answer::Market(MarketAnswer::Sell { .. } | MarketAnswer::Buy { .. })
+            | Answer::Altar(AltarAnswer::Artifacts(_) | AltarAnswer::Creatures(_))
+    )
+}
+
+/// The answer the trade's or service's entry `entry` (from [`MARKET_TRADE`], below
+/// [`ENTRY_COUNT`]) names when [`legal_commands`] lists none of its role (E08 T135a): the trade of
+/// one lot of its pair, the sale of one lot of its slot's stack and the purchase of its entry in
+/// the market parameters' cost resource (resource 0 without the parameters, where no market
+/// opens), the Hill Fort's upgrade of its slot or `All`, which `apply` accepts or rejects with the
+/// reason (no decision, the wrong kind, the price, the lot, the stack), or an Altar's empty
+/// sacrifice, which it rejects.
+fn service_answer(rules: &GameRuleset, entry: usize) -> Answer {
+    let cost = rules
+        .adventure()
+        .params()
+        .market()
+        .map_or(ResourceId::default(), MarketParams::cost);
+    // Each base's entries are fewer than 256.
+    let slot = |base: usize| u8::try_from(entry - base).unwrap_or(u8::MAX);
+    match entry {
+        ALTAR_ARTIFACTS => Answer::Altar(AltarAnswer::Artifacts(AltarPlaces::NONE)),
+        ALTAR_CREATURES => Answer::Altar(AltarAnswer::Creatures([0; ALTAR_SLOTS])),
+        HILL_FORT_ALL => Answer::HillFort(HillFortAnswer::All),
+        _ if entry >= HILL_FORT_UPGRADE => {
+            Answer::HillFort(HillFortAnswer::Upgrade(slot(HILL_FORT_UPGRADE)))
+        }
+        _ if entry >= MARKET_BUY => Answer::Market(MarketAnswer::Buy {
+            entry: slot(MARKET_BUY),
+            pay: cost,
+        }),
+        _ if entry >= MARKET_SELL => Answer::Market(MarketAnswer::Sell {
+            slot: slot(MARKET_SELL),
+            take: cost,
+            lots: 1,
+        }),
+        _ => {
+            let (give, take) = market_pair(entry - MARKET_TRADE).unwrap_or_default();
+            Answer::Market(MarketAnswer::Trade {
+                give,
+                take,
+                lots: 1,
+            })
+        }
     }
 }
 
@@ -827,14 +997,18 @@ fn hire_answer(state: &GameState, rules: &GameRuleset, player: PlayerId, place: 
 /// The answer an answer entry names for `player` (E08 T63a): the answer of its role that
 /// [`legal_commands`] lists for its open decision, else the entry's answer to an offer or a
 /// level-up, or its purchase, which `apply` rejects with the reason (no decision, the wrong
-/// kind, the slot or the price); a hire entry's: [`hire_answer`] (E08 T95b).
+/// kind, the slot or the price), or since E08 T135a a trade's or service's
+/// ([`service_answer`]); a hire entry's: [`hire_answer`] (E08 T95b).
 fn answer_of(
     state: &GameState,
     rules: &GameRuleset,
     player: PlayerId,
     entry: usize,
 ) -> Option<Answer> {
-    if let Some(place) = entry.checked_sub(HIRE_BASE) {
+    if let Some(place) = entry
+        .checked_sub(HIRE_BASE)
+        .filter(|&place| place < HIRE_SLOTS)
+    {
         return Some(hire_answer(state, rules, player, place));
     }
     legal_commands(state, rules, Actor::Player(player))
@@ -843,11 +1017,12 @@ fn answer_of(
             GameCommand::Answer(answer) if answer_entry(answer) == Some(entry) => Some(answer),
             _ => None,
         })
-        .or(match entry {
+        .or_else(|| match entry {
             ACCEPT => Some(Answer::Offer(Consent::Accept)),
             DECLINE => Some(Answer::Offer(Consent::Decline)),
             FIRST => Some(Answer::LevelUp(SkillOffer::First)),
             SECOND => Some(Answer::LevelUp(SkillOffer::Second)),
+            _ if entry >= MARKET_TRADE => Some(service_answer(rules, entry)),
             _ => u8::try_from(entry - BUY_BASE)
                 .ok()
                 .map(|slot| Answer::University(UniversityAnswer::Buy(slot))),
@@ -1019,7 +1194,8 @@ pub fn decode(
         if action.tile != 0 {
             return None;
         }
-        if let Some(slot) = action.entry.checked_sub(REVISIT_BASE) {
+        let revisit = action.entry.checked_sub(REVISIT_BASE);
+        if let Some(slot) = revisit.filter(|&slot| slot < HERO_SLOTS) {
             let hero = hero_in_slot(state, player, slot)?;
             return Some(GameCommand::Adventure(AdventureCommand::Revisit { hero }));
         }
@@ -1097,6 +1273,14 @@ pub fn encode(
                 Vec::new()
             };
             return tileless_entry(command, &hire).map(|entry| Action::map(entry, 0));
+        }
+        // E08 T135a: a sale's, a purchase's or a sacrifice's entry names the listed one alone.
+        GameCommand::Answer(answer) if listed_only(answer) => {
+            let listed = legal_commands(state, rules, seat.actor()).contains(command);
+            return listed
+                .then(|| tileless_entry(command, &[]))
+                .flatten()
+                .map(|entry| Action::map(entry, 0));
         }
         other => return tileless_entry(other, &[]).map(|entry| Action::map(entry, 0)),
     };

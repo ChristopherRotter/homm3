@@ -659,6 +659,14 @@ original's windows stay open for more trades). The system actor's default is `Le
   factory needs none (the offer's and the hire dialog's entries). An amount head stays the AI
   lane's. The AI lane's inbox told. *Decided* (decision 372, the user at ADV-Q58: the `cross-lane`
   change consented for T135a).
+- *As built* (T135a, decisions 389, 390): the listing as above, the sales and purchases in the
+  market parameters' cost resource, the Altar's artifacts' all over every worn position (the
+  button's 0 to 15 left, decision 390), each kind's answers before its `Leave`
+  (`GameState::market_answers`, `altar_answers`, `hill_fort_answers`); the env's version 17
+  (version 13 went to the town lane's taverns, 14 to 16 to the closing roles) with **66** entries,
+  the `LEAVE` being each kind's closing role: `MARKET_TRADE` 37 to `HILL_FORT_ALL` 102. A sale's,
+  a purchase's and a sacrifice's entry encodes the listed answer alone; an entry of no listed
+  answer decodes to the answer it names (an Altar's empty sacrifice), which `apply` rejects.
 - **Replays** (the adventure replay format's next version, v19 today; the town lane's T39a plans
   v19 too): `answer market trade <give> <take> <lots>`, `answer market transfer <resource>
   <amount> <player>`, `answer market sell <slot> <take> <lots>`, `answer market buy <entry> <pay>`,

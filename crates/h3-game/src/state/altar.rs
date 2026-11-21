@@ -8,7 +8,9 @@
 //! amended, decision 371); its view. The experience is the state's answer (ADR-0004: nothing from
 //! the payload).
 
-use h3_adventure::AltarVisit;
+use alloc::vec::Vec;
+
+use h3_adventure::{ALTAR_SLOTS, AltarPlaces, AltarVisit};
 use h3_contracts::PlayerId;
 use h3_heroes::HeroChange;
 
@@ -108,6 +110,64 @@ impl GameState {
             self.push_decision(level_up);
         }
         Ok(())
+    }
+
+    /// The answers [`crate::legal_commands`] lists for an open Altar `visit` but its `Leave`
+    /// (GAM-DEC-012; E08 T135a, increment 14's design note §18), each one `apply` accepts, in
+    /// this order: the artifacts' all, every artifact of the hero the Altar takes (none for a
+    /// kept one), the worn ones by position, then the backpack's in its order, until the Altar's
+    /// places, when its check passes ([`h3_adventure::AdventureState::check_artifact_sacrifice`]:
+    /// the screen, a total above 0); the creatures' all, every stack whole but one creature of the
+    /// lowest occupied slot (the original's `altar_all_creatures` 0x564CF0: the army keeps one),
+    /// when its check passes ([`h3_adventure::AdventureState::check_creature_sacrifice`]: the
+    /// screen, a total above 0). The original's all button for artifacts (`altar_all_to_altar`
+    /// 0x564340) takes the worn positions 0 to 15 alone: the listed all takes every position, the
+    /// fifth misc slot too (decision 390; the Catapult and the Spell Book are kept anyway). Every
+    /// other sacrifice the view allows stays legal for `apply`.
+    // rule: GAM-DEC-012, ADV-ALT-002, ADV-ALT-003
+    pub(crate) fn altar_answers(
+        &self,
+        rules: &GameRuleset,
+        visit: &AltarVisit,
+    ) -> Vec<AltarAnswer> {
+        let checks = (rules.core(), rules.adventure(), self.heroes.as_slice());
+        // As `altar_view`'s: the visit's hero stays on the map while the decision is open.
+        let offers = self
+            .adventure
+            .altar_offers(checks, visit)
+            .unwrap_or_default();
+        let places = offers
+            .artifacts
+            .iter()
+            .filter(|offer| offer.experience.is_some())
+            .take(usize::from(offers.places))
+            .fold(AltarPlaces::NONE, |places, offer| {
+                places.with(offer.place).unwrap_or(places)
+            });
+        let army = self
+            .adventure
+            .hero(visit.hero)
+            .map_or(&[][..], |hero| &hero.army[..]);
+        let mut amounts = [0; ALTAR_SLOTS];
+        for (slot, amount) in (0_u8..).zip(&mut amounts) {
+            *amount = army
+                .iter()
+                .find(|stack| stack.slot == slot)
+                .map_or(0, |stack| stack.count);
+        }
+        // The lowest occupied slot keeps a creature (its stack holds one at least).
+        let occupied = amounts.iter_mut().filter(|amount| **amount > 0);
+        occupied.take(1).for_each(|lowest| *lowest -= 1);
+        let adventure = &self.adventure;
+        let artifacts = adventure
+            .check_artifact_sacrifice(checks, visit, places)
+            .is_ok()
+            .then_some(AltarAnswer::Artifacts(places));
+        let creatures = adventure
+            .check_creature_sacrifice(checks, visit, amounts)
+            .is_ok()
+            .then_some(AltarAnswer::Creatures(amounts));
+        artifacts.into_iter().chain(creatures).collect()
     }
 
     /// `visit` as its owner sees it (ADV-ALT-001 to -003, GAM-DEC-012; E08 T134a, increment 14's

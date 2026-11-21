@@ -142,14 +142,10 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
     assert_eq!(env.phase(PlayerId::new(0)), Phase::Adventure);
     let mut mask = [true; ENTRY_COUNT];
     env.legal_mask(PlayerId::new(0), &mut mask);
-    assert_eq!(
-        mask,
-        [
-            true, true, true, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, false, false, false, false, false, false, false, false, false
-        ]
-    );
+    // `EndTurn` and the two heroes' moves alone.
+    let mut expected = [false; ENTRY_COUNT];
+    expected[..3].fill(true);
+    assert_eq!(mask, expected);
     env.legal_mask(PlayerId::new(1), &mut mask);
     assert_eq!(mask, [false; ENTRY_COUNT]);
     // After a legal `EndTurn` the tile head allows 0 alone; after an illegal one nothing.
@@ -181,8 +177,8 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 16);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 37));
+    assert_eq!(ACTION_ENCODING_VERSION, 17);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 103));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
     assert_eq!((BUILD, RECRUIT, BUILDING_COUNT), (30, 31, 64));
@@ -203,20 +199,75 @@ fn tiles_and_actions_encode_as_documented() {
         ],
         [Some(FIRST), Some(SECOND), None, Some(DECLINE)]
     );
-    // E08 T133b (v14): a market's `Leave` the closing role, its other answers none until T135a.
+    // E08 T133b (v14): a market's `Leave` the closing role; E08 T135a (v17): a trade of one lot
+    // by its pair, a sale of one lot by its slot, a purchase by its entry; no transfer, no other
+    // lot, nothing past the entries.
+    assert_eq!((MARKET_TRADE, MARKET_PAIRS, MARKET_RESOURCES), (37, 42, 7));
+    assert_eq!(
+        (MARKET_SELL, ARMY_SLOTS, MARKET_BUY, MARKET_STOCK),
+        (79, 7, 86, 7)
+    );
     let market = |answer| answer_entry(h3_game::Answer::Market(answer));
-    let wood = h3_content::ResourceId::from_raw(0);
+    let resource = h3_content::ResourceId::from_raw;
+    let (wood, mercury, gold, eighth) = (resource(0), resource(1), resource(6), resource(7));
+    let trade = |give, take, lots| h3_game::MarketAnswer::Trade { give, take, lots };
+    let sell = |slot, lots| h3_game::MarketAnswer::Sell {
+        slot,
+        take: gold,
+        lots,
+    };
+    let buy = |entry| h3_game::MarketAnswer::Buy { entry, pay: wood };
+    let transfer = h3_game::MarketAnswer::Transfer {
+        resource: gold,
+        amount: 1,
+        to: PlayerId::new(1),
+    };
     assert_eq!(
         [
             market(h3_game::MarketAnswer::Leave),
-            market(h3_game::MarketAnswer::Buy {
-                entry: 0,
-                pay: wood
-            }),
+            market(trade(wood, mercury, 1)),
+            market(trade(mercury, wood, 1)),
+            market(trade(gold, wood, 1)),
+            market(trade(gold, mercury, 2)),
+            market(trade(gold, gold, 1)),
+            market(trade(gold, eighth, 1)),
+            market(trade(eighth, gold, 1)),
+            market(sell(6, 1)),
+            market(sell(7, 1)),
+            market(sell(0, 2)),
+            market(buy(6)),
+            market(buy(7)),
+            market(transfer),
         ],
-        [Some(DECLINE), None]
+        [
+            Some(DECLINE),
+            Some(37),
+            Some(43),
+            Some(73),
+            None,
+            None,
+            None,
+            None,
+            Some(85),
+            None,
+            None,
+            Some(92),
+            None,
+            None
+        ]
     );
-    // E08 T134a (v15): an Altar's `Leave` the closing role, its sacrifices none until T135a.
+    // The pairs in their entries' order, given then wanted.
+    let pairs: Vec<_> = (0..=MARKET_PAIRS).map(market_pair).collect();
+    assert_eq!(pairs[0], Some((wood, mercury)));
+    assert_eq!(pairs[41], Some((gold, resource(5))));
+    assert_eq!(pairs[42], None);
+    for (index, pair) in pairs.iter().enumerate().take(MARKET_PAIRS) {
+        let (give, take) = pair.unwrap();
+        assert_eq!(trade_entry(give, take), Some(MARKET_TRADE + index));
+    }
+    // E08 T134a (v15): an Altar's `Leave` the closing role; E08 T135a (v17): its two sacrifices,
+    // whatever their sets (the listed ones are the alls).
+    assert_eq!((ALTAR_ARTIFACTS, ALTAR_CREATURES), (93, 94));
     let altar = |answer| answer_entry(h3_game::Answer::Altar(answer));
     assert_eq!(
         [
@@ -224,17 +275,21 @@ fn tiles_and_actions_encode_as_documented() {
             altar(h3_game::AltarAnswer::Artifacts(h3_game::AltarPlaces::NONE)),
             altar(h3_game::AltarAnswer::Creatures([1, 0, 0, 0, 0, 0, 0])),
         ],
-        [Some(DECLINE), None, None]
+        [Some(DECLINE), Some(93), Some(94)]
     );
-    // E08 T134b1 (v16): a Hill Fort's `Leave` the closing role, its upgrades none until T135a.
+    // E08 T134b1 (v16): a Hill Fort's `Leave` the closing role; E08 T135a (v17): its upgrades by
+    // slot and its `All`.
+    assert_eq!((HILL_FORT_UPGRADE, HILL_FORT_ALL), (95, 102));
     let fort = |answer| answer_entry(h3_game::Answer::HillFort(answer));
     assert_eq!(
         [
             fort(h3_game::HillFortAnswer::Leave),
             fort(h3_game::HillFortAnswer::Upgrade(0)),
+            fort(h3_game::HillFortAnswer::Upgrade(6)),
+            fort(h3_game::HillFortAnswer::Upgrade(7)),
             fort(h3_game::HillFortAnswer::All),
         ],
-        [Some(DECLINE), None, None]
+        [Some(DECLINE), Some(95), Some(101), None, Some(102)]
     );
     // E09 T38a2 (v12): a hire of each of the two tavern slots.
     assert_eq!((TAVERN_HIRE, TAVERN_SLOTS), (35, 2));
@@ -426,14 +481,18 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
             check_build_boat(env, player, &commands, &tiles)?;
             continue;
         }
-        if (TOWN_HEROES..ENTRY_COUNT).contains(&entry) {
+        if (TOWN_HEROES..MARKET_TRADE).contains(&entry) {
             check_town_heroes(env, (player, entry), &commands, &tiles)?;
             continue;
         }
         if !is_move(entry) {
             prop_assert_eq!(tiles.iter().filter(|&&t| t).count(), usize::from(legal));
             let command = action::decode(state, rules, player, Action::map(entry, 0));
-            if let Some(slot) = entry.checked_sub(REVISIT_BASE) {
+            let revisits = REVISIT_BASE..REVISIT_BASE + HERO_SLOTS;
+            if let Some(slot) = entry
+                .checked_sub(REVISIT_BASE)
+                .filter(|_| revisits.contains(&entry))
+            {
                 let revisit = hero_in_slot(state, player, slot)
                     .map(|hero| GameCommand::Adventure(AdventureCommand::Revisit { hero }));
                 prop_assert_eq!(&command, &revisit);
@@ -446,8 +505,9 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
                 "entry {}",
                 entry
             );
+            // E08 T135a: a trade's or service's entry names an answer too.
             prop_assert!(
-                entry >= REVISIT_BASE || command.is_some(),
+                revisits.contains(&entry) || command.is_some(),
                 "entry {}",
                 entry
             );

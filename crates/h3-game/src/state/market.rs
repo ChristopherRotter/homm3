@@ -8,7 +8,7 @@
 
 use alloc::vec::Vec;
 
-use h3_adventure::{MarketError, MarketScreen, MarketVisit};
+use h3_adventure::{MarketError, MarketParams, MarketScreen, MarketVisit};
 use h3_content::ResourceId;
 use h3_contracts::PlayerId;
 use h3_heroes::HeroChange;
@@ -142,6 +142,67 @@ impl GameState {
             }
         }
         Ok(())
+    }
+
+    /// The answers [`crate::legal_commands`] lists for `player`'s open market `visit` but its
+    /// `Leave` (GAM-DEC-011; E08 T135a, increment 14's design note §18), each one `apply`
+    /// accepts, a representative per action as the hire dialog's most, in this order: a trade of
+    /// one lot for each pair the window values whose lot the treasury pays (the given, then the
+    /// wanted, in the core's order: [`h3_adventure::MarketOffers::trades`]); a sale of one lot of
+    /// each stack of the hero's army, in its order, for the market parameters' cost resource (the
+    /// original's gold) whose check passes ([`h3_adventure::AdventureState::check_sale`]: the
+    /// stack holds a lot, the army keeps a creature); a purchase in that resource of each entry
+    /// of the stock whose check passes ([`h3_adventure::AdventureState::check_buy`]: unsold, the
+    /// hero's room) and whose price the treasury holds. No transfer is listed (as the management
+    /// commands, decision 99: a client sends one from the view); every other answer the view
+    /// allows stays legal for `apply`.
+    // rule: GAM-DEC-011, ADV-MKT-003, ADV-MKT-005, ADV-MKT-007
+    pub(crate) fn market_answers(
+        &self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        visit: &MarketVisit,
+    ) -> Vec<MarketAnswer> {
+        let checks = (rules.core(), rules.adventure());
+        // As `market_view`'s: the visit's hero stays on the map while the decision is open.
+        let offers = self
+            .adventure
+            .market_offers(checks, visit)
+            .unwrap_or_default();
+        // The part refuses a market kind without its parameters, so an open market has a cost.
+        let cost = rules.adventure().params().market().map(MarketParams::cost);
+        let trades = offers
+            .trades
+            .iter()
+            .filter(|offer| self.held(player, offer.give) / offer.lot.give.max(1) > 0)
+            .map(|offer| MarketAnswer::Trade {
+                give: offer.give,
+                take: offer.take,
+                lots: 1,
+            });
+        let sales = offers
+            .sales
+            .iter()
+            .flat_map(|offer| cost.map(|take| (offer.slot, take)))
+            .filter(|&(slot, take)| {
+                let sale = self.adventure.check_sale(checks, visit, (slot, take, 1));
+                sale.is_ok()
+            })
+            .map(|(slot, take)| MarketAnswer::Sell {
+                slot,
+                take,
+                lots: 1,
+            });
+        let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
+        let purchases = (0..=u8::MAX)
+            .take(offers.stock.len())
+            .flat_map(|entry| cost.map(|pay| (entry, pay)))
+            .filter(|&(entry, pay)| {
+                let purchase = self.adventure.check_buy(rules3, visit, (entry, pay));
+                purchase.is_ok_and(|purchase| self.can_pay(player, &[purchase.price()]))
+            })
+            .map(|(entry, pay)| MarketAnswer::Buy { entry, pay });
+        trades.chain(sales).chain(purchases).collect()
     }
 
     /// How much of `resource` `player`'s treasury holds (none for a resource or a player the

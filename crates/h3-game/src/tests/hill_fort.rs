@@ -163,11 +163,17 @@ fn a_hill_forts_visit_opens_its_decision_for_its_owner_until_it_is_left() {
         all_state: HillFortState::Affordable,
     };
     assert_eq!(view(&state, &rules), seen);
-    // Its `Leave` is its listed answer and the system's default; the turn waits for it.
+    // Listed: both rows' upgrades and All (E08 T135a), then its `Leave`, the system's default;
+    // the turn waits for it.
     let leave = Answer::HillFort(HillFortAnswer::Leave);
     assert_eq!(
         legal_commands(&state, &rules, Actor::Player(RED)),
-        [answered(leave)]
+        [
+            fort(HillFortAnswer::Upgrade(0)),
+            fort(HillFortAnswer::Upgrade(1)),
+            fort(HillFortAnswer::All),
+            answered(leave)
+        ]
     );
     assert_eq!(default_answer(&state, &rules, RED), Some(leave));
     let other_kinds = [
@@ -272,5 +278,40 @@ fn all_upgrades_every_row_in_slot_order_when_the_whole_is_affordable() {
     assert_eq!(
         GameCommandError::HillFort(HillFortError::Nothing).to_string(),
         "no stack of the army upgrades"
+    );
+}
+
+// covers: GAM-DEC-013, ADV-HFT-002
+#[test]
+fn the_listed_answers_are_the_upgrades_of_state_1_then_all_when_the_whole_is() {
+    let rules = fort_rules();
+    let listed = |state: &GameState| legal_commands(state, &rules, Actor::Player(RED));
+    let leave = fort(HillFortAnswer::Leave);
+    // 70 gogs: their row and the whole too dear (state 2), the free imps' row listed alone.
+    let (mut state, _) = at_fort(&rules, 70);
+    assert_eq!(
+        listed(&state),
+        [fort(HillFortAnswer::Upgrade(1)), leave.clone()]
+    );
+    // Each listed answer applies.
+    for command in listed(&state) {
+        let mut probe = state.clone();
+        assert!(
+            play(&mut probe, &rules, RED, command.clone()).is_ok(),
+            "{command:?}"
+        );
+    }
+    // Upgraded, the imps' row has none (state 0) and the gogs' stays too dear: `Leave` alone;
+    // with 2 100 gold the gogs' row and the whole are listed.
+    play(&mut state, &rules, RED, fort(HillFortAnswer::Upgrade(1))).unwrap();
+    assert_eq!(listed(&state), core::slice::from_ref(&leave));
+    state.set_resource(RED, GOLD, 2100);
+    assert_eq!(
+        listed(&state),
+        [
+            fort(HillFortAnswer::Upgrade(0)),
+            fort(HillFortAnswer::All),
+            leave
+        ]
     );
 }
