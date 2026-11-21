@@ -464,7 +464,7 @@ mod tests {
     fn the_hash_covers_every_town_and_static_part() {
         let base = hash_of(&Towns::new(towns()).unwrap());
         // Pinned: a change of the encoding bumps `TOWN_STATE_HASH_VERSION` and this value.
-        assert_eq!(base, 0xFA14_A109_A1EC_2745);
+        assert_eq!(base, 0x79C0_7378_D0E0_4452);
         assert_eq!(
             hash_of(&Towns::default()),
             hash_of(&Towns::new(Vec::new()).unwrap())

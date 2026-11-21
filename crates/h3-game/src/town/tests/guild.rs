@@ -22,7 +22,8 @@ const T1: TownId = TownId::new(1);
 
 /// The town tests' rules with the core's spells `t:gust` (level 1, 0), `t:gate` (level 3, 1),
 /// `t:spark` (level 1, 2), the creature ability `t:breath` (3) and `t:bolt` (level 1, granted by
-/// name only, 4); `t:town`'s guild weights gust 3, spark 1, gate 2, bolt 5.
+/// name only, 4), the three new ones adventure spells (the battle part needs no record of them);
+/// `t:town`'s guild weights gust 3, spark 1, gate 2, bolt 5.
 fn guild_rules() -> GameRuleset {
     let mut core = towns_core_pack(false);
     let spell = |k: &str, category, level, by_name| SpellDef {
@@ -33,12 +34,12 @@ fn guild_rules() -> GameRuleset {
         ..core.spells[0].clone()
     };
     let extra = [
-        spell("t:spark", SpellCategory::Combat, 1, false),
+        spell("t:spark", SpellCategory::Adventure, 1, false),
         SpellDef {
             schools: vec![],
             ..spell("t:breath", SpellCategory::Ability, 1, false)
         },
-        spell("t:bolt", SpellCategory::Combat, 1, true),
+        spell("t:bolt", SpellCategory::Adventure, 1, true),
     ];
     core.spells.extend(extra);
     let mut towns = town_pack(false);
