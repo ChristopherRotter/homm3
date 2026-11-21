@@ -38,6 +38,9 @@ h3-sdl = { path = "crates/h3-sdl" }
 h3-smacker = { path = "crates/h3-smacker" }
 h3-ui = { path = "crates/h3-ui" }
 h3-view = { path = "crates/h3-view" }
+# The battle client as a library a host runs (E17 M7 T3a1): the map viewer's window hosts its
+# battles (E24 M4 T5b1, the user: a dependency of the map viewer's binary).
+h3-battle-client = { path = "crates/h3-battle-client" }
 # Engine crates (public crates only, ADR-0020 point 1). A change the client needs in one of them
 # goes through that crate's lane.
 h3-formats = { path = "../crates/h3-formats" }

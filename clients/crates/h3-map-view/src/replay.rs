@@ -174,6 +174,14 @@ impl Replay {
         Ok(out)
     }
 
+    /// The battles the map handed over up to the furthest millisecond run (E24 M4 T5b1,
+    /// [`Loop::battles`]): each at its millisecond, with the record's number of the `GameEvents`
+    /// that began it.
+    #[must_use]
+    pub fn battles(&self) -> &[(u32, u32)] {
+        self.l.battles()
+    }
+
     /// The last millisecond run.
     #[must_use]
     pub fn ran(&self) -> u32 {

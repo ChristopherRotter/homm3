@@ -54,6 +54,7 @@ use h3_ui::clock::Clock;
 use h3_ui::keys::Window as Own;
 
 use crate::audio::{Library, Player};
+use crate::battles::{self, Battles};
 use crate::files;
 use crate::paint::{self, Assets, Painter, Setup, Widened};
 
@@ -530,6 +531,22 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         bugs: options.bugs,
     };
     let (setup, what) = set_up(&assets, options)?;
+    // A record's battles (E24 M4 T5b1, design §5.20): hosted where the map hands each over.
+    let battles = match &options.record {
+        Some((path, _, packs)) => {
+            let here = Path::new(KEYS_FILE);
+            let keys = options
+                .keys
+                .as_deref()
+                .or_else(|| here.exists().then_some(here));
+            Some(Battles::read(path, packs, &options.install, keys)?)
+        }
+        None => None,
+    };
+    // The battles handed over so far (their place among the replay's), and a whole redraw after
+    // one.
+    let mut handed = 0;
+    let mut after_battle = false;
     let Setup {
         mut painter,
         mut start,
@@ -559,9 +576,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // The cues at 0 taken now, their music decoded before the window opens; played at its first
     // turn.
     let mut first_cues = Vec::new();
-    if let Some((library, _)) = &mut audio {
+    if let Some((library, player)) = &mut audio {
         first_cues = replay.take_cues(0).map_err(unplayable)?;
-        library.prepare(&first_cues, &mut lines);
+        library.prepare(&first_cues, player, &mut lines);
     }
     // The map is live after a sequence's last input (from the start without one).
     let live_after = actions.keys().next_back().copied();
@@ -644,7 +661,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 .min(WAIT_MS)
         });
 
-        let mut redraw = false;
+        let mut redraw = std::mem::take(&mut after_battle);
         // The pointer's last move not yet given (a batch's moves are one).
         let mut pointer: Option<[i32; 2]> = None;
         for event in win.wait(timeout) {
@@ -745,6 +762,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Some(Command::Window(Own::Restart)) => {
                     replay = new_replay()?;
+                    handed = 0;
                     if let Some((_, player)) = &mut audio {
                         player.reset();
                     }
@@ -935,6 +953,52 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             texture.held = None;
         }
         let mut presented = false;
+        // A battle the map handed over (E24 M4 T5b1, design §5.20, *provisional*: a plain cut,
+        // T5b2 draws the original's fades): hosted before the map's frame at its millisecond, its
+        // sound on the host's; then the map's clock on from that millisecond, as if the battle
+        // took none (the harness's battle step's way, design §5.19), the cursor and the whole
+        // frame set again.
+        if let Some(list) = &battles
+            && let Some(&(t, n)) = replay.battles().get(handed)
+            && t <= ms
+            && pending.is_empty()
+            && next.as_ref().is_none_or(|f| f.change.t >= t)
+        {
+            handed += 1;
+            let Some(k) = list.began(n) else {
+                lines.push(format!(
+                    "battle at {t} ms (the record's events {n}): none of the record's {} opens after \
+                     it; not shown",
+                    list.len()
+                ));
+                continue 'run;
+            };
+            let sound = audio.as_mut().and_then(|(_, player)| player.lend());
+            let run = battles::Run {
+                unattended,
+                drawn_cursor: !look.hardware,
+                stop_ns: stop_ns.map(|s| started.saturating_add(s)),
+            };
+            let (sound, shown) = battles::host(&mut win, list, k, sound, run, &mut lines)?;
+            if let (Some((_, player)), Some(sound)) = (&mut audio, sound) {
+                player.take_back(sound);
+            }
+            lines.push(format!(
+                "battle {} at {t} ms: {} frames shown, {}",
+                k + 1,
+                shown.frames,
+                shown
+                    .outcome
+                    .map_or_else(|| "not closed".to_owned(), |o| format!("closed: {o}"))
+            ));
+            if shown.quit {
+                break 'run;
+            }
+            clock.seek(win.ticks_ns(), t);
+            hw = None;
+            (renew, after_battle) = (true, true);
+            continue 'run;
+        }
         // A later change may be due already: the latest is shown instead; if it shows what shows,
         // nothing new is presented (a redraw still is).
         let held_due = hold.is_none_or(|(due, _)| win.ticks_ns() >= due);

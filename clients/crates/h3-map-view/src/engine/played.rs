@@ -196,6 +196,8 @@ struct Open {
     before: Vec<Pos>,
     end: Option<Pos>,
     sea: Option<Sea>,
+    /// The record's number of its `GameEvents` whose `BattleStarted` began a battle (E24 M4 T5b1).
+    battle: Option<u32>,
 }
 
 /// The walks and turns of `loaded`'s record (the module's documentation), its map's art `art`
@@ -273,6 +275,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             before: explored(&observation, art),
                             end: None,
                             sea: None,
+                            battle: None,
                         });
                     }
                     GameCommand::Answer { answer } => {
@@ -283,7 +286,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     _ => visiting = false,
                 }
             }
-            ServerMessage::GameEvents { events, .. } => {
+            ServerMessage::GameEvents { n, events } => {
                 if let Some(visit) = visits.last_mut().filter(|_| visiting) {
                     match visit.answers.last_mut() {
                         Some((_, after)) => after.extend(events.iter().cloned()),
@@ -305,6 +308,13 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                         untaken.push(at);
                     }
                     match event {
+                        // The viewer's walk began a battle (E24 M4 T5b1, design §5.20): its end
+                        // hands the battle over.
+                        GameEvent::BattleStarted { .. } => {
+                            if let Some(walk) = open.as_mut() {
+                                walk.battle.get_or_insert(*n);
+                            }
+                        }
                         GameEvent::Adventure {
                             event: AdventureEvent::HeroStepped { hero, to, .. },
                         } => {
@@ -677,6 +687,7 @@ fn close(
         points,
         revealed: per_step,
         sea: walk.sea,
+        battle: walk.battle,
     });
     ends.push(walk.end);
     walkers.push(walk.hero);

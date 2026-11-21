@@ -30,6 +30,7 @@ fn east_walk() -> Move {
         points: vec![None, None, None, Some(1160)],
         revealed: vec![Vec::new(); 4],
         sea: None,
+        battle: None,
     }
 }
 
