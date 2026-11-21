@@ -83,6 +83,9 @@ fn a_made_save_is_listed_with_its_map_its_difficulty_and_its_time() {
         (saved.difficulty, saved.time, saved.duration),
         (3, 1_009_838_340, UNLIMITED)
     );
+    // E27 M4 T6 (CLT-Q166 (b)): the zone's offset at the file's own date.
+    assert_eq!(saved.offset, h3_sdl::local_offset_at(1_009_838_340));
+    assert!(saved.offset.is_some());
     // E27 M4 T5b1: the single player's colour the save's one human.
     assert_eq!(saved.humans.iter().filter(|h| **h).count(), 1);
     let map = crate::maps::entry(
@@ -101,11 +104,25 @@ fn a_made_save_is_listed_with_its_map_its_difficulty_and_its_time() {
         junk.saved,
         Some(Saved {
             time: 7,
+            offset: h3_sdl::local_offset_at(7),
             ..Saved::default()
         })
     );
-    // No folder: nothing.
+    // No folder: nothing, nothing told (E27 M4 T6).
     assert!(entries_of(&install.join("none"), &install, &rules).is_empty());
+    assert_eq!(
+        listing(&install.join("none"), &install, &rules, &broken()),
+        Listing::default()
+    );
+    // E27 M4 T6 (the review's B5): a folder that does not read (a file in its place) lists
+    // nothing and says why.
+    let unreadable = listing(&path, &install, &rules, &broken());
+    assert!(unreadable.entries.is_empty());
+    assert_eq!(unreadable.unread.len(), 1);
+    assert!(
+        unreadable.unread[0].starts_with(&format!("{}: ", path.display())),
+        "{unreadable:?}"
+    );
 }
 
 fn entries_of(dir: &Path, install: &Path, rules: &GameRuleset) -> Vec<Entry> {
@@ -129,6 +146,30 @@ fn a_save_without_its_map_or_of_other_rules_is_broken() {
     assert_eq!(listed[0].file, "other.GM1");
     assert_eq!(listed[0].name, "Broken");
     assert_ne!(listed[1].name, "Broken");
+    // E27 M4 T6 (the review's B7): why a save is listed broken, told once a listing.
+    let told = listing(&games, &install, &rules, &broken()).unread;
+    assert_eq!(told.len(), 1, "{told:?}");
+    let other = games.join("other.GM1");
+    assert!(
+        told[0].starts_with(&format!("{}: listed broken: ", other.display())),
+        "{told:?}"
+    );
+    // B3: a file past a save's most is listed broken by its size, not read (a sparse file).
+    let huge = games.join("huge.GM1");
+    fs::File::create(&huge)
+        .unwrap()
+        .set_len(crate::save::MOST_BYTES + 1)
+        .unwrap();
+    let all = listing(&games, &install, &rules, &broken());
+    assert_eq!(all.entries.len(), 3);
+    assert!(
+        all.unread
+            .iter()
+            .any(|l| l.contains("huge.GM1: ") && l.contains("bytes, past")),
+        "{:?}",
+        all.unread
+    );
+    fs::remove_file(&huge).unwrap();
     fs::remove_file(install.join(MAPS).join(DUEL)).unwrap();
     assert_eq!(
         names(&entries_of(&games, &install, &rules)),
@@ -178,7 +219,7 @@ fn a_hot_seat_save_holds_its_players_choices_and_duration() {
     let seated = Seated {
         players: vec![
             Player::parse("0:A:random:random:gold").unwrap(),
-            Player::parse("1:B:random:random:resource").unwrap(),
+            Player::parse("1:B:random:random:resource:1").unwrap(),
         ],
         duration: 7,
     };
@@ -187,10 +228,26 @@ fn a_hot_seat_save_holds_its_players_choices_and_duration() {
     assert_eq!(save.names[0].as_deref(), Some("A"));
     assert_eq!(save.names[1].as_deref(), Some("B"));
     assert_eq!(save.bonuses[..2], [Bonus::Gold, Bonus::Resource]);
+    // E27 M4 T6 (the review's C9): B's handicap written into the save.
+    assert_eq!(save.handicaps[..2], [0, 1]);
     let loaded = crate::save::load(&save, &install, &rules).unwrap();
     assert_eq!(
         loaded.game.setup.players.iter().filter(|p| p.human).count(),
         2
+    );
+    // E27 M4 T6 (the review's item 38): the game's draws at the save, as the loaded state tells
+    // them (the duel's heroes placed, no towns: none drawn).
+    assert_eq!(
+        save.drawn,
+        crate::save::drawn(&loaded.game.setup, &loaded.state)
+    );
+    // E27 M4 T6 (CLT-Q170 (a)): a single load plays it on alone, the colour whose turn it is
+    // (red's, the first day's first) the only human; the hot seat's load hands its names on.
+    assert_eq!(loaded.humans(None), Some(crate::save::Humans::Alone(0)));
+    let names = save.names.clone();
+    assert_eq!(
+        loaded.humans(Some(names.clone())),
+        Some(crate::save::Humans::Named(names))
     );
     let path = games.join("Pair.GM2");
     crate::save::write_file(&path, &save).unwrap();
@@ -201,12 +258,13 @@ fn a_hot_seat_save_holds_its_players_choices_and_duration() {
     assert_eq!(listed.humans[..3], [true, true, false]);
     assert_eq!(listed.records[0].bonus, Bonus::Gold);
     assert_eq!(listed.records[1].bonus, Bonus::Resource);
-    assert!(
-        listed
-            .records
-            .iter()
-            .all(|r| r.colour.is_none() && r.handicap == 0)
-    );
+    assert!(listed.records.iter().all(|r| r.colour.is_none()));
+    assert_eq!(listed.records.map(|r| r.handicap)[..3], [0, 1, 0]);
+    // The Random choices shown as the game drew them (the original's load shows the game's).
+    for c in 0..2 {
+        let (record, drawn) = (listed.records[c], save.drawn[c]);
+        assert_eq!((record.town, record.hero), (drawn.town, drawn.hero), "{c}");
+    }
     // The table's choices and the replay's are what `saved` reads.
     let mut fixed = save.clone();
     fixed.replay.players[0].faction = Some(FactionChoice::Fixed(
@@ -220,6 +278,14 @@ fn a_hot_seat_save_holds_its_players_choices_and_duration() {
     assert_eq!(
         (shown.records[0].town, shown.records[0].hero),
         (Some(3), Some(50))
+    );
+    // Without the draws (a save that does not tell): Random.
+    let mut untold = save.clone().with_drawn(Default::default());
+    untold.replay.players[0].faction = None;
+    let shown_untold = saved(&untold);
+    assert_eq!(
+        (shown_untold.records[0].town, shown_untold.records[0].hero),
+        (None, None)
     );
     assert_eq!(shown.records[0].handicap, 2);
     // A player of a colour past the eight is passed over.
@@ -247,8 +313,12 @@ fn a_hot_seat_player_parses_from_its_five_fields() {
             town: Some(2),
             hero: Some(32),
             bonus: Bonus::Artifact,
+            handicap: 0,
         }
     );
+    // E27 M4 T6 (the review's C9): a sixth field, the handicap (0 to 2).
+    assert_eq!(Player::parse("5:C:2:32:artifact:2").unwrap().handicap, 2);
+    assert_eq!(Player::parse("5:C:2:32:artifact:0").unwrap(), p);
     let random = Player::parse("7:D:random:random:random").unwrap();
     assert_eq!(
         (random.town, random.hero, random.bonus),
@@ -259,6 +329,8 @@ fn a_hot_seat_player_parses_from_its_five_fields() {
         "x:A:random:random:gold",
         "0:A:random:random",
         "0:A:random:random:gold:x",
+        "0:A:random:random:gold:3",
+        "0:A:random:random:gold:1:x",
         "0:A:t:random:gold",
         "0:A:random:300:gold",
         "0:A:random:random:coins",
@@ -305,4 +377,53 @@ fn the_save_command_takes_a_hot_seat_s_players_and_duration() {
         wrong.extend_from_slice(bad);
         assert!(Options::parse(&args(&wrong)).is_err(), "{bad:?}");
     }
+}
+
+/// E27 M4 T6 (the review's item 38): a made save holds each colour's town and first hero as the
+/// game drew them: over `e09-towns-36.h3m` red's Castle and its random hero's drawn type (hero 3,
+/// the first random hero, takes the hero choice), blue's Stronghold and no hero (none random,
+/// none generated); the save's file keeps them.
+#[test]
+fn a_made_save_holds_the_game_s_draws() {
+    let rules = crate::maps::rules().unwrap();
+    let (install, games) = dirs("drawn");
+    let towns = "e09-towns-36.h3m";
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../fixtures/maps");
+    fs::copy(fixture.join(towns), install.join(MAPS).join(towns)).unwrap();
+    let save = made(&install, &rules, towns, (0, 1), "Towns").unwrap();
+    let loaded = crate::save::load(&save, &install, &rules).unwrap();
+    let hero3 = loaded
+        .state
+        .hero(h3_contracts::HeroId::new(3))
+        .and_then(|d| u8::try_from(d.hero_type.index()).ok());
+    assert!(hero3.is_some());
+    assert_eq!(
+        save.drawn[..2],
+        [
+            crate::save::Drawn {
+                town: Some(0),
+                hero: hero3,
+            },
+            crate::save::Drawn {
+                town: Some(6),
+                hero: None,
+            },
+        ]
+    );
+    assert!(
+        save.drawn[2..]
+            .iter()
+            .all(|d| *d == crate::save::Drawn::default())
+    );
+    let path = games.join("Towns.GM1");
+    crate::save::write_file(&path, &save).unwrap();
+    assert_eq!(crate::save::read_file(&path).unwrap(), save);
+    let listed = entries(&games, &install, &rules, &broken())[0]
+        .saved
+        .unwrap();
+    assert_eq!(
+        (listed.records[0].town, listed.records[0].hero),
+        (Some(0), hero3)
+    );
+    let _ = fs::remove_dir_all(&install);
 }

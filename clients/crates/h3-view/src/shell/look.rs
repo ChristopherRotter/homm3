@@ -12,7 +12,8 @@
 //! drawn background, its dialog and its popup ([`super::scenario`]). Play's start (M3 T6) is the
 //! loading screen, its bar and the fade's step, then its stub's menu ([`super::play`]). High
 //! Scores (M4 T1a) is its tab's picture, the headings and rows, its dialog over them and Reset's
-//! notice over all ([`super::scores`]); its creatures' DEFs are the adapter's (not in
+//! question (T1b) or the scores file's error box (T6) over all ([`super::scores`]); its
+//! creatures' DEFs are the adapter's (not in
 //! [`names`]). The credits (M4 T2) are the main menu's background, `mainmenu.pcx` over its
 //! buttons, the text's part in the window and the closing text ([`super::credits`]).
 
@@ -215,7 +216,7 @@ pub fn look(layout: &ShellLayout, screen: Screen, front: Option<&Front>) -> Opti
             });
         }
         // High Scores (E27 M4 T1a): the tab's picture, its headings, rows and the dialog over
-        // them; Reset's notice over all.
+        // them; Reset's question (T1b) or the scores file's error box (T6) over all.
         Front::Scores(scores) => {
             return (screen == Screen::HighScores).then(|| Look {
                 background: String::from(scores.background()),

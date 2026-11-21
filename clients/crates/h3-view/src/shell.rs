@@ -240,7 +240,8 @@ impl Screen {
             Self::GameType(_) => "E27 M2 T6b1",
             Self::Multiplayer(_) => "E27 M2 T7",
             // E27 M4 T4b1: the loads' by their task (a single load's built then, the hot seat's at
-            // T5b1).
+            // T5b1; T6, the review's A6: the single load's had fallen to the new game's).
+            Self::Scenario(Game::Load, Kind::Single) => "E27 M4 T4b1",
             Self::Scenario(Game::Load, Kind::Multiplayer) => "E27 M4 T5b1",
             Self::Scenario(Game::Load, Kind::Campaign) => "E20",
             Self::Scenario(Game::Load, Kind::Tutorial) => "CLT-Q84",

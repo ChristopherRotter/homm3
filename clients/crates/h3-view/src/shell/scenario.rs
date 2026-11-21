@@ -93,10 +93,14 @@
 //!   shows it, its press and its key R doing nothing, `random_map_toggle` 0x57FEB0), the flags'
 //!   strip; the advanced options the save's (`advanced`'s load: the saved choices, no arrows, the
 //!   handicap not enabled, the duration's bar disabled and dimmed, the names placed by the save's
-//!   humans first, CLT-Q160 (a)); Load hands the names' places on ([`Scenario::seated`]).
+//!   humans first, CLT-Q160 (a)); a flag's press moves a name onto its colour's saved choices,
+//!   among the save's humans in the client's profile (CLT-Q110 (b), T5b2; past the last name to
+//!   the first, E27 M4 T6); Load hands the names' places on ([`Scenario::seated`]), in the
+//!   client's profile refused as Begin is while a name holds no colour (E27 M4 T6, CLT-Q171 (a)).
+//!   A single load hands none: the adapter makes the loaded game's current player its only human
+//!   (E27 M4 T6, CLT-Q170 (a)).
 //!
-//! *Not built yet:* the save mode (M5); the hot seat's load's flags' presses among the save's
-//! humans, the name onto the colour's saved choices (CLT-Q110 (b), T5b2); GENRLTXT 503 while the
+//! *Not built yet:* the save mode (M5); GENRLTXT 503 while the
 //! list is read again (a network game's message 1015 alone, `scenario_list_reread` 0x58B120: the
 //! network modes', `CLT-STUB-6`; design §20.3).
 
@@ -888,6 +892,9 @@ pub struct Scenario {
     /// The save Delete's OK deleted, until the caller takes it (E27 M4 T4b2:
     /// [`Scenario::take_deleted`]).
     deleted: Option<String>,
+    /// Every save Delete's OK removed since the screen opened (E27 M4 T6, the review's B6 = C3:
+    /// [`Scenario::keep`] takes them out of the next opening's list).
+    gone: Vec<String>,
     bugs: Bugs,
 }
 
@@ -979,6 +986,7 @@ impl Scenario {
             drawn_rating: String::new(),
             asked: Asked::Told,
             deleted: None,
+            gone: Vec::new(),
             bugs,
         };
         Advanced::hide_items(&mut scenario.shown);
@@ -1004,10 +1012,12 @@ impl Scenario {
         if left.loading.is_some() == self.loading.is_some() {
             self.kept.clone_from(&left.kept);
         }
-        // The saves as Delete left them (E27 M4 T4b2: the original reads its folder again at the
-        // next opening, where the deleted file is gone; a window lists its folder anew there).
+        // The saves less those Delete deleted (E27 M4 T4b2: the original reads its folder again
+        // at the next opening, where the deleted file is gone; a window lists its folder anew
+        // there). T6, the review's B6 = C3: not the left screen's list, a hot-seat load's being
+        // filtered (the maps two humans may play): each kind lists its own.
         if left.loading.is_some() && self.loading.is_some() {
-            self.entries.clone_from(&left.entries);
+            self.entries.retain(|e| !left.gone.contains(&e.file));
         }
     }
 
@@ -1040,14 +1050,22 @@ impl Scenario {
 
     /// The last-write time of the save `file` (every save's without one), in seconds from 1970
     /// UTC (E27 M4 T4b1: the harness's `games-time`, its run's files' times); shown at the next
-    /// opening.
+    /// opening, at the zone's present offset (the file's date's, of the time it had, dropped).
     pub fn set_time(&mut self, file: Option<&str>, time: i64) {
         for entry in &mut self.entries {
             let named = file.is_none_or(|f| f.eq_ignore_ascii_case(&entry.file));
             if let Some(saved) = entry.saved.as_mut().filter(|_| named) {
                 saved.time = time;
+                saved.offset = None;
             }
         }
+    }
+
+    /// The zone's present offset from UTC (seconds east) read anew (E27 M4 T6, the review's B2:
+    /// the window's at each opening of the load mode, as the original converts at each draw);
+    /// shown from the next opening.
+    pub const fn set_offset(&mut self, offset: i32) {
+        self.offset = offset;
     }
 
     /// The load mode set over the screen as [`Scenario::new`] made it (E27 M4 T4b1;
@@ -1927,9 +1945,17 @@ impl Scenario {
             String::from(kept_name(&entry.name, self.bugs))
         };
         shown.texts.insert(NAME, name);
+        // At the zone's present offset in the original's profile, at the file's own date's in
+        // the client's where the adapter gave it (E27 M4 T6, CLT-Q166 (b)).
         let date = entry
             .saved
-            .map(|saved| date(&t.date, local(saved.time, self.offset)))
+            .map(|saved| {
+                let offset = match self.bugs {
+                    Bugs::Original => self.offset,
+                    Bugs::Fixed => saved.offset.unwrap_or(self.offset),
+                };
+                date(&t.date, local(saved.time, offset))
+            })
             .unwrap_or_default();
         shown.texts.insert(DATE, date);
         shown.texts.insert(DESCRIPTION, self.description.text());
@@ -2129,18 +2155,22 @@ impl Scenario {
     /// ends, [`Scenario::begun`] what it hands on).
     fn begin(&mut self) -> Did {
         // stub: CLT-STUB-12
-        // The load mode's Load (E27 M4 T4b2): the screen ends over a selected save.
+        // The load mode's Load (E27 M4 T4b2): the screen ends over a selected save. The hot
+        // seat's in the client's profile refuses as Begin does where a name holds no colour (E27
+        // M4 T6, CLT-Q171 (a), the review's C2: GENRLTXT 531, then 83); the original's Load is
+        // not read for it (its begin after a load drops the name, *inferred*).
         if self.loading.is_some() {
+            let checked = self.hot_seat && self.bugs == Bugs::Fixed && self.entry().is_some();
+            if checked && let Some(message) = self.refused() {
+                return self.told(message);
+            }
             return self.load();
         }
         let message = if self.random.chosen() {
             self.texts.random_stub.clone()
         } else if self.entry().is_some() {
-            self.sync_options();
-            let map = self.players();
-            match self.advanced.as_ref().and_then(|a| a.refusal(&map)) {
-                Some(Refusal::Unplaced) => self.texts.unplaced.clone(),
-                Some(Refusal::TooFew) => self.texts.too_few.clone(),
+            match self.refused() {
+                Some(message) => message,
                 None => {
                     return Did {
                         ended: Some(Ended::Scenario(true)),
@@ -2153,6 +2183,23 @@ impl Scenario {
                 self.bugs == Bugs::Fixed || self.game.as_ref().is_some_and(|g| g.format.is_some());
             self.texts.no_maps.clone().filter(|_| checked)
         };
+        self.told(message)
+    }
+
+    /// The advanced options' refusal of Begin over the map the screen gives the game (E27 M3 T4b;
+    /// [`Advanced::refusal`], the options synced first): its message, GENRLTXT 531 or 83 (none
+    /// without its text); none where they take it.
+    fn refused(&mut self) -> Option<Option<MessageBox>> {
+        self.sync_options();
+        let map = self.players();
+        match self.advanced.as_ref().and_then(|a| a.refusal(&map))? {
+            Refusal::Unplaced => Some(self.texts.unplaced.clone()),
+            Refusal::TooFew => Some(self.texts.too_few.clone()),
+        }
+    }
+
+    /// Begin's `message` over the screen, its OK closing it (none: nothing).
+    fn told(&mut self, message: Option<MessageBox>) -> Did {
         match message {
             Some(message) => self.notice(message, Asked::Told),
             None => Did::default(),
@@ -2196,7 +2243,9 @@ impl Scenario {
     /// The hot seat's load's names by the colour each holds, red first, as Load hands them on (E27
     /// M4 T5b1; CLT-Q160 (a): the names decide who is human after the load, the begin after a load
     /// making human exactly the colours a name holds, `scenario_load_begin` 0x58C419); none
-    /// outside the hot seat's load or with no save selected.
+    /// outside the hot seat's load or with no save selected. A single load hands none: the
+    /// loaded game's current player is then its only human (E27 M4 T6, CLT-Q170 (a);
+    /// `scenario_load_begin`, design §41.1), the adapter's to tell from the loaded state.
     #[must_use]
     pub fn seated(&self) -> Option<[Option<String>; 8]> {
         if !self.hot_seat || self.loading.is_none() {

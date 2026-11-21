@@ -243,7 +243,10 @@ fn each_screen_names_the_task_that_builds_it() {
     assert_eq!(Screen::GameType(Game::New).task(), "E27 M2 T6b1");
     assert_eq!(Screen::Multiplayer(Game::Load).task(), "E27 M2 T7");
     assert_eq!(Screen::Scenario(Game::New, Kind::Single).task(), "E27 M3");
-    assert_eq!(Screen::Scenario(Game::Load, Kind::Single).task(), "E27 M3");
+    assert_eq!(
+        Screen::Scenario(Game::Load, Kind::Single).task(),
+        "E27 M4 T4b1"
+    );
     assert_eq!(
         Screen::Scenario(Game::Load, Kind::Multiplayer).task(),
         "E27 M4 T5b1"

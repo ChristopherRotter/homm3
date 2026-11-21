@@ -52,6 +52,15 @@ the engine lanes' inboxes, its gap shown in the comparison, never a rule copied 
 
 ## Inbox
 
+- 2026-11-21 (the client lane, E27 M4 T6, `client/e27-m4-t6`; **for E24 M5**): a load's
+  hand-over. Load Game's Load keeps the loaded game (`save::Loaded`) and the names by colour
+  (`Scenario::seated`) for E24 M5, which makes exactly those colours human (CLT-Q160 (a): fewer
+  names leave saved humans to the computer, more take a computer's colour); a hot-seat save loaded
+  from Load Game single names the loaded game's current player's colour alone (CLT-Q170 (a)). The
+  engine step that changes a loaded game's human flags is asked of the adventure lane (its inbox).
+  E27 M5 (the system menu in play, Options, Save from play, Restart, the end of a scenario) is
+  refined once E24 M5 hosts play.
+
 - 2026-11-20 (the adventure lane, E08 T134a, `adventure/e08-t134a`, `cross-lane`; **built, for
   your view's fold; nothing to do now**): the Altar of Sacrifice is entered and its visit sets the
   team's kind mark (k 28: `KindKnown`), then opens `DecisionView::Altar` (`AltarView`: the screens,

@@ -1477,11 +1477,30 @@ pub fn load_wav(bytes: &[u8], whole: bool) -> Result<(u32, u16, Vec<i16>), Strin
 /// The system's present offset of local time from UTC, in seconds (E27 M4 T4b1: a save's date on
 /// the scenario screen's load mode, as the original's `FileTimeToLocalFileTime` converts a file's
 /// time by the zone's present bias whatever the file's date; design §38.1): SDL's local date of
-/// now (`SDL_GetCurrentTime`, `SDL_TimeToDateTime` with its local flag: the C library's
-/// `localtime_r` and its `TZ`, Windows' time zone). None when SDL cannot tell.
+/// now (`SDL_GetCurrentTime`, then [`offset_at`]). None when SDL cannot tell.
 #[must_use]
 pub fn local_offset() -> Option<i32> {
     let mut now: SDL_Time = 0;
+    // SAFETY: it writes only the value it is given; it needs no SDL initialised.
+    if !unsafe { SDL_GetCurrentTime(&raw mut now) } {
+        return None;
+    }
+    offset_at(now)
+}
+
+/// The offset of local time from UTC, in seconds, at the time `seconds` from 1970 UTC (E27 M4
+/// T6, CLT-Q166 (b): the client's profile shows a save's date at its own date's offset, a
+/// daylight saving time's where it falls): SDL's local date of that time ([`offset_at`]). None
+/// when SDL cannot tell (a time past its range).
+#[must_use]
+pub fn local_offset_at(seconds: i64) -> Option<i32> {
+    offset_at(seconds.checked_mul(1_000_000_000)?)
+}
+
+/// The local offset at SDL's time `ticks` (nanoseconds from 1970 UTC): `SDL_TimeToDateTime` with
+/// its local flag (the C library's `localtime_r` and its `TZ`, Windows' time zone and its rules
+/// for that date).
+fn offset_at(ticks: SDL_Time) -> Option<i32> {
     let mut date = SDL_DateTime {
         year: 0,
         month: 0,
@@ -1493,11 +1512,9 @@ pub fn local_offset() -> Option<i32> {
         day_of_week: 0,
         utc_offset: 0,
     };
-    // SAFETY: both write only the value they are given; neither needs SDL initialised.
-    unsafe {
-        if !SDL_GetCurrentTime(&raw mut now) || !SDL_TimeToDateTime(now, &raw mut date, true) {
-            return None;
-        }
+    // SAFETY: it writes only the value it is given; it needs no SDL initialised.
+    if !unsafe { SDL_TimeToDateTime(ticks, &raw mut date, true) } {
+        return None;
     }
     Some(date.utc_offset)
 }
@@ -1510,6 +1527,12 @@ mod tests {
     fn the_local_offset_is_within_a_day() {
         let offset = local_offset().expect("SDL tells the local offset");
         assert!(offset.abs() < 24 * 3600, "{offset}");
+        // E27 M4 T6: at a file's date, within a day too; a time past SDL's range none.
+        for seconds in [0, 1_016_336_220, 1_750_000_000] {
+            let at = local_offset_at(seconds).expect("SDL tells the offset at a date");
+            assert!(at.abs() < 24 * 3600, "{seconds}: {at}");
+        }
+        assert_eq!(local_offset_at(i64::MAX), None);
     }
 
     #[test]
