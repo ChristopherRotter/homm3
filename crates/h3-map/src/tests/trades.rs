@@ -22,8 +22,9 @@ use h3_game::{Actor, GameCommand, GameState, apply};
 /// Market (7), the Hill Fort (35) on the editor's dirt and grass, the Trading Post (99) on dirt
 /// and grass and on rough, the snow Trading Post (221), the War Machine Factory (106) and the
 /// Freelancer's Guild (213). The first seven are entered at their anchor, the last two at the
-/// tile west of it.
-const PICTURES: [&str; 9] = [
+/// tile west of it. The trades maps lay them out (E08 T135b1: `trades_map.rs`,
+/// `trades_xl_map.rs`).
+pub(super) const PICTURES: [&str; 9] = [
     "AvXAltar.def 001111111111111111111111111111111111111111111111 \
      100000000000000000000000000000000000000000000000 111111111 011111111 2 0 0 0",
     "AVXmktb0.def 001111111111111111111111111111111111111111111111 \
