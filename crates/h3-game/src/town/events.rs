@@ -30,7 +30,8 @@ use crate::{GameRuleset, GameState};
 /// 2. its buildings (TWN-EVT-003; `town_events_apply` 0x5BFEB0, survey §8.3):
 ///    `h3_towns::event_buildings` with whether the town has its spot (the Shipyard's water,
 ///    TWN-SET-011), each in index order built without the day's mark and told as a build
-///    ([`build_told`]: `TownBuilt` with the event's place, then the views it changed); a building
+///    ([`build_told`]: `TownBuilt` with the event's place, then the views it changed, then since
+///    E09 T48a the town's heroes learning its guild's spells, TWN-GLD-005); a building
 ///    standing by its turn (an earlier building of the event or an earlier event of the turn
 ///    start brought it) is not built again. No
 ///    requirement, forbidden, Capitol, Grail, cost or mark test (T-8: an event's Capitol beside

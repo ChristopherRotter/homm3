@@ -410,7 +410,8 @@ impl GameState {
     /// Summoning that the setup built, in `TownId` order (TWN-GRO-007, E09 T26b: the setup
     /// stream's last draws), the adventure's start of the game
     /// after them (the heroes' day's points and reveals from their details, E08 T40; each owned
-    /// town's reveal by its own radius, TWN-CAP-001), a stream
+    /// town's reveal by its own radius, TWN-CAP-001), then (E09 T48a) the heroes of each main town
+    /// that generates its hero learning its guild's spells (TWN-GLD-005, TD-10), a stream
     /// and the difficulty's human row of starting resources per player (GAM-RES-002), sequential
     /// play (GAM-TRN-001) on day 1 (GAM-CAL-001), day 1's start-of-day step and the first group's
     /// turn started, so the first day starts as every later one (ADR-0017 point 3).
@@ -509,6 +510,9 @@ impl GameState {
             progression: Arc::new(progression),
             adventure,
         };
+        // rule: TWN-GLD-005
+        // E09 T48a: the main towns' heroes learn their guilds' spells (TD-10), drawing nothing.
+        town::guild::at_start(&mut state, rules, setup);
         // E09 T37a: the start's fill (TWN-TAV-002), each `Random` choice no start read drawn at
         // it (TWN-SET-001; design note §61).
         let undrawn: Vec<Option<town::FactionSet>> = setup

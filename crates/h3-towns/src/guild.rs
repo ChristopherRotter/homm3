@@ -1,15 +1,19 @@
 //! The mage guild (E09 increment 5, design note §85 to §87; survey `E09-guild.md` §3 to §5): a
 //! town's guild slots drawn once at the game's build ([`draw_guild`], TWN-GLD-002), what the guild
 //! shows of them as it is built ([`guild_level`], [`shown`], TWN-GLD-003) and the town's Aurora
-//! set ([`aurora_set`], the set TWN-GLD-004 teaches). Pure functions over a town record, the part
-//! and the core with the spells the map and the scenario give ([`GuildSets`]); the game draws
-//! every town's guild at the build from the towns' stream (E09 decision 179) and keeps the slots
-//! and the set in the town's record (the store v4, E09 T47a2).
+//! set ([`aurora_set`], the set TWN-GLD-004 teaches), and since E09 T48a what a hero learns there
+//! ([`teaches`], TWN-GLD-004). Pure functions over a town record, the part and the core with the
+//! spells the map and the scenario give ([`GuildSets`]); the game draws every town's guild at the
+//! build from the towns' stream (E09 decision 179), keeps the slots and the set in the town's
+//! record (the store v4, E09 T47a2) and teaches its heroes at the town's triggers (TWN-GLD-005).
+
+use alloc::vec::Vec;
 
 use h3_content::{AURORA_IGNORES_MAP_BANS, MAX_SPELLS, Ruleset, Spell, SpellCategory, SpellId};
+use h3_heroes::HeroDetails;
 use h3_kernel::Rng;
 
-use crate::record::Town;
+use crate::record::{Town, TownStatic};
 use crate::ruleset::{TownParams, TownRecord, TownRuleset};
 
 /// The spell levels a guild holds, 1 to 5 (the part's `guild_slots`, TWN-GLD-001).
@@ -294,6 +298,50 @@ pub fn aurora_set(core: &Ruleset, sets: &GuildSets) -> SpellSet {
         .map(|(id, _)| id)
         .filter(|&id| !excluded.contains(id))
         .fold(SpellSet::EMPTY, SpellSet::with)
+}
+
+/// The spells a hero learns at `town` (E09 design §88; survey §5, §11: the original's
+/// `town_heroes_learn_spells` 0x5BE030 for one hero), in the order it learns them: none unless a
+/// building of role `guild` was ever built there (the original's Mage Guild 1 in the every-built
+/// set; `statics` the town's, `part` with its faction's record); with a building of role `aurora`
+/// ever built, every spell of the town's Aurora set (`statics.aurora`, [`aurora_set`]: T-18's flag
+/// read there) in spell order, whatever the guild's level; else the spells the guild shows
+/// ([`shown`]) level after level from 1, each level's in slot order. Of either, only those the hero
+/// can learn ([`h3_heroes::can_learn_spell`] with the known spells counting: a spell book worn, a
+/// level at most its learnable level, HER-SPL-005's Wisdom + 2, a spell not learned), so a hero
+/// without a book learns nothing and the Aurora's levels are bounded by Wisdom alone. Neither the
+/// owner of the town or of the hero nor the hero's class is tested, nor the scenario's bans (the
+/// guild drew without them; the Aurora's are T-18's). The game applies each as
+/// `HeroChange::LearnSpell` (HER-CHG-001 accepts every one).
+// rule: TWN-GLD-004
+pub fn teaches(
+    town: &Town,
+    statics: &TownStatic,
+    part: &TownRuleset,
+    core: &Ruleset,
+    details: &HeroDetails,
+) -> Vec<SpellId> {
+    let built = part.town(town.faction()).map(|record| {
+        town.built()
+            .iter()
+            .filter_map(|id| record.building(id))
+            .fold((false, false), |(guild, aurora), building| {
+                (
+                    guild || building.roles.guild.is_some(),
+                    aurora || building.roles.aurora,
+                )
+            })
+    });
+    let learns = |spell: &SpellId| h3_heroes::can_learn_spell(details, core, *spell, true);
+    match built {
+        Some((true, true)) => statics.aurora.iter().filter(learns).collect(),
+        Some((true, false)) => (1..)
+            .take(LEVELS)
+            .flat_map(|level| shown(town.guild(), town, part, level))
+            .filter(learns)
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 #[cfg(test)]

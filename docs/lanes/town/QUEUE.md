@@ -8,19 +8,20 @@ Epic: `docs/epics/E09-towns.md` (increment 5: the mage guild, refined at T41, `T
 161 to 164; its survey T42a and T42b with the checkpoint `TWN-Q31`, decisions 165 to 171; its
 drafts, cut and exit criteria by T43, `TWN-Q32`, `TWN-Q33`, decisions 172 to 181; batch TWN-5 by
 T44, decision 182; the drafts in the ADRs by T45, decision 183; the part v9 by T46, decisions 184,
-185; T47a cut in two, T47a1's module, decisions 186, 187; T47a2 whole, decision 188; T47b whole with the inbox's guild fix, decision 189; the services are increment 6, travel and
+185; T47a cut in two, T47a1's module, decisions 186, 187; T47a2 whole, decision 188; T47b whole with the inbox's guild fix, decision 189; T48a whole, decision 190; the services are increment 6, travel and
 the Grail 7, decision 162); done tasks
 in `E09-log.md`; increments 1 to 4 (closed by T10, T20, T30 and T41) in `E09-archive.md`. Each
 task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start; **T48a**
+**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start; **T48b**
 next): T47 the guild drawn and shown (§84 to §87, §94; T47a cut in two, decision 186: T47a1
 `h3-towns`' guild module and T47a2 the map's town spell sets with import v28, the store v4, the
 game's draw at the build, game state hash v38, every golden re-recorded, both done; **T47b** the
 owner's view (TWN-VEW-004, the protocol v78), done (decision 189)); T48 learning (§88, §89: T48a the set
-with the Aurora and T-18, the town's own triggers, `TWN-STUB-6` and `-15` lifted; T48b the
-visit's end, a capture, a siege's end, `cross-lane`); T49 the spell points and the commands (§90
+with the Aurora and T-18, the town's own triggers, `TWN-STUB-6` and `-15` lifted, done (decision
+190); **T48b** the visit's end, a capture, a siege's end, `cross-lane`: `town::guild::learn` called
+from `AdventureOutcome::town_entered` in `settle_outcome` and the siege's end); T49 the spell points and the commands (§90
 to §93, §95: T49a the night's refill, the Mana Vortex, `Open`, its env entry and replay word; T49b
 `BuySpellBook`, its entry and word); T50 the guild map, its replays, the census, the properties,
 the benchmarks (§97); T51 the audit against §99's criteria, increment 5 closed, increment 6

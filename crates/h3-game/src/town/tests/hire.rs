@@ -170,7 +170,7 @@ fn a_hire_places_the_slots_hero_on_the_entrance_with_its_away_record() {
         ]
     );
     // The hero on the entrance as the visitor, with the away record as it was; its details as
-    // they were (the guild's spells are increment 5's, TWN-STUB-15).
+    // they were (no guild stands: since E09 T48a a guild teaches it, `super::learn`'s tests).
     let placed = HeroOnMap {
         id,
         owner: RED,

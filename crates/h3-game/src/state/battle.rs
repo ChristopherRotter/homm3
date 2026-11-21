@@ -761,8 +761,9 @@ impl GameState {
 
     /// Applies `change`, checked, to the details of `hero` in the store (copied on its first
     /// write when a fork shares it) and tells it to the hero's owner (`HeroChanged`; E08 T19a2a;
-    /// a management command's since T51a).
-    pub(super) fn change_hero<S: Sink>(
+    /// a management command's since T51a; a town's guild teaching since E09 T48a,
+    /// `town::guild::learn`).
+    pub(crate) fn change_hero<S: Sink>(
         &mut self,
         core: &Ruleset,
         hero: HeroId,
