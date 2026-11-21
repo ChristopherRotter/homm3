@@ -3299,3 +3299,31 @@ first minutes.
   (`--check`: every battle closed, every map frame read back exact, every change the headless
   loop's). Not handed over: a defending battle (`MCL-STUB-3`).
 
+
+### M4 T5b2 (2026-11-21; kept whole by the user at its start)
+
+- **Asked at the start:** a cut at the battle's edge (the switch first, or the result first); the
+  user kept the task whole.
+- **Built** (*provisional* unless said; design §5.21): `sequence::BattlePlan` (the harness's
+  `battle`, accepted); `engine::Battled` (`Visit::battle`), `visits::Told::Fight` and
+  `Told::Guarded`; `timeline::Fight`, `AfterBattle`, `Found::fight` and `Found::battles`,
+  `Answer::fight` and `Answer::flag`, `Switch` (`Draw::switch`), `Draw::left`, `State::battle`
+  (the timeline's `battle` line), `Action::BattleClosed`, `BATTLE_CURSOR`, `FADE_MS`,
+  `FADE_BLACK`; the loop's switch (`switch_out`, `switch_step`, `switch_back`, `map_back`) and the
+  result (`after_battle`, `left_map`); the layout's combat cursor (`battle_def`, `battle_frame`,
+  `battle_hot`); the catalogue's `map.find.mine-guards` (ADVEVENT 85); the binary's painter's
+  `switched` and `battle_frame`, `battles::first_frame`, the battle's last frame kept from its
+  hosting, the window's `BattleClosed` after it, the sequences run keeping no frame from the
+  result's OK until the map is back.
+- **Recorded:** T5a's three moved into `sequences.toml` as scripted games; their situations as the
+  other scripted games' (the original's random starting bonus had widened the hero's explored
+  circle: the gold bonus, the resources written, a second hero to show them); `battle-mine` an
+  abandoned mine under engine seed 5 (100 Troglodytes, written for the original; 173 reached a
+  level-up). Each recorded twice the same under Wine; the battle's starting stacks equal the
+  record's.
+- **Checked:** the three timelines as recorded (no gap); the frames exact but the known
+  differences (`timelines/battle-*-frames.txt`: MCL-Q36's morale icon, MCL-Q49's battle frames,
+  the hero's pose at the attack, the panel's buttons after a retreat, MCL-Q48's MINEEVNT box);
+  `h3map.py drawn` over every situation and sequence; `check.sh`; the coverage of `h3-map-view`.
+- **Questions:** MCL-Q48 (an abandoned mine's resource; the adventure lane's inbox), MCL-Q49 (a
+  map battle's obstacles; the battle lane's inbox).

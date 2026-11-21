@@ -1,14 +1,24 @@
-# A battle handed over and back (E24 M4 T5a; clients/map/to-record.toml `battle-mine`; E24 design
-# §5.19): a neutral Sawmill's guards fought after their question and beaten, then the mine's
-# boxes and Red's flag (§5.6's, after a battle).
-# Red's hero on (5, 5) with five Archers steps up onto the Sawmill's entrance (5, 4); its 15
-# Peasants are shot before they reach the Archers. Red's town out of the way, so that no visit's
-# scenario test warns of a town lost; Blue's hero far off in the fog.
+# A battle handed over and back (E24 M4 T5a; E24 design §5.19; an abandoned mine since T5b2,
+# §5.21: the engine guards a neutral mine only so): a neutral mine's guards fought after their
+# question and beaten, then the mine's boxes and Red's flag (§5.6's, after a battle).
+# Red's hero on (5, 5) with 150 Marksmen in three stacks steps up onto the abandoned mine's
+# entrance (5, 4); its 100 Troglodytes (the engine's draw under its seed 5, written for the
+# original; few enough that the experience reaches no level: the two stacks the battle splits
+# them into) are shot in two rounds, never reaching the Marksmen. Red's
+# town out of the way, so that no visit's scenario test warns of a town lost; Blue's hero far off.
 size = 36
 terrain = "grass"
-heroes = [{ at = [5, 5], class = 2, map_army = [[2, 5]] }, { at = [32, 32], owner = 1 }]
+heroes = [
+    { at = [5, 5], class = 2, map_army = [[3, 50], [3, 50], [3, 50]] },
+    { at = [30, 5], class = 5, map_army = [[28, 20]] },
+    { at = [32, 32], owner = 1 },
+]
 towns = [{ at = [16, 12], faction = 0, owner = 0, buildings = "fort" }]
 view = [0, 0, 0]
-hidden = [[20, 16, 35, 35]]
-objects = [{ def = "AVMsawg0.def", at = [6, 4] }]
-visits = [{ at = [6, 4], guards = [[139, 15]] }]
+explored = "start"
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { hero = [30, 5] }
+reselect = [5, 5]
+objects = [{ def = "AvMAbMG.def", at = [6, 4] }]
+visits = [{ at = [6, 4], guards = [[70, 100]] }]

@@ -63,6 +63,13 @@ busy = 2
 # The default cursor's frame the spell book leaves at its close (E24 M4 T2d3, design §5.8: frame 1,
 # the book's over its place; *provisional*, the book is M5's), until the cast ends.
 book = 1
+# The combat cursor (the mouse manager's type 2, cursor_defs 0x67FF38; E24 M4 T5b2, design §5.21):
+# battle_start 0x462A20 sets its frame 6 at the black between the map's fade out and the battle's
+# fade in (recorded, battle-won at 250); the frame's hot spot 0x67FF50's (the battle client's
+# layouts/battle.toml, its seventh).
+battle_def = "crcombat.def"
+battle_frame = 6
+battle_hot = [0, 0]
 
 # The adventure screen's dialog (E24 M3 T2a; design §4.1: adventure_dialog_create 0x401510, the
 # manager's +0x44): at (0, 0), its items in the executable's order, each with its control id (the

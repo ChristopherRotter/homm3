@@ -47,7 +47,7 @@ use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
 use h3_map_view::sound;
-use h3_map_view::timeline::{self, Action, CURSOR_TYPE, Cursor, Rules, Start, Unplayable};
+use h3_map_view::timeline::{self, Action, CURSOR_TYPE, Cursor, Found, Rules, Start, Unplayable};
 use h3_render::Bugs;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_ui::clock::Clock;
@@ -555,6 +555,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         ..
     } = setup;
     start.live = true;
+    // The battles' first frames the switches fade in (E24 M4 T5b2, design §5.21).
+    if let Some(list) = &battles {
+        for n in start.finds.iter().flat_map(Found::battles) {
+            if let Some(k) = list.began(n)
+                && let Some(screen) = battles::first_frame(list, k, &mut lines)?
+            {
+                painter.battle_frame(n, false, screen);
+            }
+        }
+    }
     let rules = Rules::new(&tables, &layout, options.bugs);
     let new_replay =
         || Replay::new(rules.clone(), &start, actions.clone()).map_err(|why| unplayable((0, why)));
@@ -869,6 +879,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     | Action::BoxKey(_)
                     | Action::BoxKeyUp(_)
                     | Action::Offer(_)
+                    | Action::BattleClosed
                     | Action::Visit
                     | Action::Up
                     | Action::Choose(_)
@@ -996,6 +1007,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             if let (Some((_, player)), Some(sound)) = (&mut audio, sound) {
                 player.take_back(sound);
             }
+            // A switch's battle (E24 M4 T5b2, design §5.21): its last frame faded out, its close
+            // given to the map in the next millisecond (the switch back from there).
+            if let Some(last) = &shown.last {
+                painter.battle_frame(n, true, last.clone());
+            }
+            replay.give(t.saturating_add(1), Action::BattleClosed);
             lines.push(format!(
                 "battle {} at {t} ms: {} frames shown, {}",
                 k + 1,

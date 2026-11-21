@@ -1279,6 +1279,13 @@ original = [{ at = "GENRLTXT:422", printf = ["dwelling", "size", "creature"] }]
 id = "map.ask.mine"
 original = [{ at = "ADVEVENT:84" }]
 
+# A neutral mine's guards beaten (`visit_mine` 0x4A39A0, ADVEVENT 85; E24 M4 T5b2, design §5.21):
+# its box after the battle, before the flag's.
+
+[[key]]
+id = "map.find.mine-guards"
+original = [{ at = "ADVEVENT:85" }]
+
 [[key]]
 id = "map.ask.bank"
 args = { bank = "text" }

@@ -1547,8 +1547,8 @@ part gets a `[[battle]]` table (`at`, `winner` 0 the attacker, 1 the defender, �
 `retreated`, `surrendered` −1 or the side, the stacks `[side, creature, count, hex]` at its
 `start` and `end`). A situation's battle must have one outcome however long it runs (a sure win
 without losses, a retreat): the battle's own draws follow real time. A sound run's samples during
-the battle are left out. T5a's sequences (`battle-*`) wait in `map/to-record.toml` until the
-viewer plays them (T5b).
+the battle are left out. T5a's sequences (`battle-*`) waited in `map/to-record.toml` until T5b2
+moved them into `sequences.toml` as scripted games (the file removed).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live

@@ -122,6 +122,7 @@ fn stone() -> Found {
         blocks: None,
         flag: None,
         ask: None,
+        fight: None,
     }
 }
 
@@ -145,6 +146,8 @@ fn chest(experience: i32) -> Found {
             yes: Some(Answer {
                 gain: gold,
                 taken: Some((CHEST, Fade::Pickup)),
+                fight: None,
+                flag: None,
                 ..Answer::default()
             }),
             no: Some(Answer::default()),
@@ -155,9 +158,12 @@ fn chest(experience: i32) -> Found {
                     experience,
                     ..Gain::default()
                 },
+                fight: None,
+                flag: None,
                 ..Answer::default()
             }),
         }),
+        fight: None,
     }
 }
 
@@ -360,6 +366,8 @@ fn answering() -> (Start, BTreeMap<u32, Vec<Action>>) {
             experience: 1500,
             ..Gain::default()
         },
+        fight: None,
+        flag: None,
         ..Answer::default()
     });
     start.finds = vec![found];

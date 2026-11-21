@@ -156,6 +156,22 @@ pub const CURSOR_TYPE: u32 = 1;
 /// T1a, `mouse_set_cursor(0, 0)` at 0x4F74AC).
 pub const DEFAULT_CURSOR: u32 = 0;
 
+/// The mouse manager's type of the combat cursor (2, `crcombat.def`; E24 M4 T5b2, design §5.21):
+/// `battle_start` 0x462A20 sets it at the black before the battle's fade in.
+pub const BATTLE_CURSOR: u32 = 2;
+
+/// A fade's step, ms (`screen_fade_out` 0x6030E0: each step 50 ms of the clock after the last
+/// began; the fade in, `screen_fade_in` 0x6032E0 not read, observed so: E27 design §32.2).
+pub const FADE_MS: u32 = 50;
+
+/// A [`Switch`]'s shift that shows black (E24 M4 T5b2).
+pub const FADE_BLACK: u8 = u8::MAX;
+
+/// The palettes' next cycle after the map comes back from a battle, ms (E24 M4 T5b2,
+/// *provisional*: as recorded, `battle-won` at 730, `battle-mine` at 1730; the harness writes the
+/// pending step back across the battle, design §5.19).
+const BACK_CYCLE_MS: u32 = 20;
+
 /// The last green arrow (1 to 25 green, a step the hero pays today; 26 to 50 red: design §2.10).
 pub use crate::live::GREEN;
 
@@ -301,6 +317,10 @@ pub enum Action {
     /// player's: the tile need not show on the view): the path among the ones the map knows that
     /// leads there shown, then walked; none, nothing.
     Walk(Pos),
+    /// The battle's result window closed by its host (E24 M4 T5b2, design §5.21: the battle
+    /// client's element run to its OK in the window): the battle's switch back to the map goes
+    /// on; elsewhere nothing.
+    BattleClosed,
 }
 
 impl Action {
@@ -609,6 +629,8 @@ pub struct Rules {
     pub cast: CastArt,
     /// The default cursor's frame the spell book leaves (E24 M4 T2d3: 1, over its place).
     pub book: u32,
+    /// The combat cursor's frame a battle's switch sets (E24 M4 T5b2, design §5.21: 6).
+    pub battle_cursor: u32,
 }
 
 impl Rules {
@@ -644,6 +666,7 @@ impl Rules {
             level_up: tables.map.level_up.clone(),
             cast: tables.map.cast.clone(),
             book: layout.cursor.book,
+            battle_cursor: layout.cursor.battle_frame,
         }
     }
 
@@ -1015,6 +1038,58 @@ pub struct Found {
     /// before its hire, `set_dwelling_owner` 0x4C67B0). Nothing is drawn by it: the visit's end
     /// draws the minimap with it, the view's next draw its flag.
     pub flag: Option<(usize, u8)>,
+    /// The battle the visit begins at once (E24 M4 T5b2, design §5.21: a savage monster's from
+    /// beside): the attack drawn, the battle's switch, then its result on the map.
+    pub fight: Option<Fight>,
+}
+
+impl Found {
+    /// The battles its visit may begin (E24 M4 T5b2): its own fight's and its question's
+    /// answers', by their record's numbers.
+    #[must_use]
+    pub fn battles(&self) -> Vec<u32> {
+        let answers = self
+            .ask
+            .iter()
+            .flat_map(|q| [&q.yes, &q.second, &q.no])
+            .flatten()
+            .filter_map(|a| a.fight.as_ref());
+        self.fight.iter().chain(answers).map(|f| f.battle).collect()
+    }
+}
+
+/// A battle a visit begins (E24 M4 T5b2, design §5.21, *provisional*: a record's): a monster's
+/// attack drawn, the battle's winner and what the map shows after it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Fight {
+    /// The monster's picture's frame in the attack DEF (as [`Question::attacker`]: twice its
+    /// creature; plus 1 with the hero left of it, added at the visit).
+    pub attacker: u32,
+    /// The battle: the record's number of the `GameEvents` whose `BattleStarted` began it.
+    pub battle: u32,
+    /// The winner: 0 the attacker, 1 the defender (an attacker's retreat too).
+    pub winner: i32,
+    /// What follows the map's fade in.
+    pub after: AfterBattle,
+    /// The experience the hero gains (the record's), which nothing shows (its levels).
+    pub experience: i32,
+}
+
+/// What the map shows after a battle's switch (E24 M4 T5b2, design §5.19's rest).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AfterBattle {
+    /// The monster beaten and taken off the map (`monster_fight` 0x4A6C60's removal:
+    /// `killfade.82M`, the view's middle dissolved).
+    Taken,
+    /// The hero beaten or retreated: it leaves the map (`adventure_battle`'s `hero_loss_effect`
+    /// with 0, after `battle_aftermath` 0x4AC930's way: the hero gone first, then dissolved), then
+    /// the player's next hero or town selected (`mobilize_hero(0, 0, 1)`).
+    Lost,
+    /// Nothing more (the monster stands: a defender beaten elsewhere, not built).
+    Stays,
+    /// The answer's boxes that began it, one after another (`visit_mine` 0x4A39A0: ADVEVENT 85,
+    /// then MINEEVNT's), and its flag.
+    Boxes,
 }
 
 /// A visit's question (E24 M4 T2b2 part A1, design §5.4, *provisional*: the viewer's facts at 0,
@@ -1069,6 +1144,12 @@ pub struct Answer {
     /// A Cancel's answer marks the find answered as an OK's does (E24 M4 T2b2 part B: the
     /// Arena's, MCL-Q33).
     pub marks: bool,
+    /// The battle the answer begins (E24 M4 T5b2, design §5.21: a mine's guards'): at its box's
+    /// close the battle's switch, the answer's boxes after it.
+    pub fight: Option<Fight>,
+    /// The flag raised past the answer's last box (E24 M4 T5b2: a guarded mine's, after
+    /// MINEEVNT's box: the object and the colour).
+    pub flag: Option<(usize, u8)>,
 }
 
 /// The viewer's boxes of a turn without a town (E24 M4 T2a2, design §5.3): the warning at its
@@ -1285,6 +1366,28 @@ pub struct Draw {
     /// §5.13: a step's reveal shows from its first frame; the minimap's are
     /// [`Minimap::walked`]).
     pub walked: Walked,
+    /// A battle's switch shown instead of this draw as it is (E24 M4 T5b2, design §5.21): the
+    /// map's fade out and in, the battle's fade in and out.
+    pub switch: Option<Switch>,
+    /// A hero gone off the map (E24 M4 T5b2: a battle lost), its index among the map's heroes:
+    /// drawn nowhere.
+    pub left: Option<usize>,
+}
+
+/// What a battle's switch shows (E24 M4 T5b2, design §5.21, *provisional*: the host draws it,
+/// the battle's frames the battle client's): the draw it belongs to faded, or the battle's frame
+/// faded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Switch {
+    /// The battle's frame instead of the map's (the record's number of the `GameEvents` whose
+    /// `BattleStarted` began it: its first frame, or with [`Switch::ended`] its last).
+    pub battle: Option<u32>,
+    /// The fade's step: each channel shifted down so many bits (0 to 2); [`FADE_BLACK`] black.
+    pub shift: u8,
+    /// The battle's last frame under its result window, from its result's OK (its fade out):
+    /// the harness's battle step keeps no screen there (`clients/capture/README.md`, "A battle in
+    /// a sequence"), so a sequence's run draws nothing of it.
+    pub ended: bool,
 }
 
 /// A dissolve's step (`screen_dissolve` 0x602DC0; E17 design §7.25, E24 design §5.3): the
@@ -1344,6 +1447,9 @@ pub struct State {
     /// The spell book open over the map (E24 M4 T2d3, design §5.8): the timeline's `book`; its
     /// screens are M5's.
     pub book: bool,
+    /// The battle shown whole at this millisecond (E24 M4 T5b2, design §5.21): its winner, the
+    /// timeline's `battle` (the harness's `<ms> battle <winner>`).
+    pub battle: Option<i32>,
 }
 
 /// A walk under way: inside a key's step or the path's walk, which wait for their frames' times.
@@ -1496,6 +1602,16 @@ pub struct Loop {
     found: Option<FoundStatus>,
     /// An object's dissolve under way (E24 M4 T2a2 part B): the map stopped until its end.
     dissolving: Option<Dissolving>,
+    /// A battle's switch under way (E24 M4 T5b2, design §5.21): the map stopped until its end.
+    switching: Option<Switching>,
+    /// The millisecond the last battle showed whole and its winner (the timeline's `battle`).
+    whole: Option<(u32, i32)>,
+    /// The battles a switch handed over (their record's numbers): a walk's end lists none of
+    /// them again ([`Loop::battles`]).
+    switched: Vec<u32>,
+    /// The hero a battle took off the map (E24 M4 T5b2): its index among the map's heroes and
+    /// its slot in the kingdom's list.
+    left: Option<usize>,
     /// The input queue emptied (`input_flush` 0x4EC570: a box's opening, a human's turn's
     /// start): the actions after this one in its millisecond are dropped.
     flush: bool,
@@ -1641,6 +1757,37 @@ struct Dissolving {
     then: Then,
 }
 
+/// A battle's switch under way (E24 M4 T5b2, design §5.21): its phase and when it began, the
+/// screen as the map last showed it, the find whose visit began it and its battle.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Switching {
+    phase: Phase,
+    start: u32,
+    before: Arc<Draw>,
+    find: usize,
+    fight: Fight,
+    /// The answer that began it, its boxes shown after it (E24 M4 T5b2: a mine's guards').
+    rest: Option<Box<Answer>>,
+}
+
+/// A battle's switch's phases (E24 M4 T5b2, design §5.19, §5.21).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Phase {
+    /// The map's fade out (`battle_start` 0x462A20: `screen_fade_out` 0x6030E0's shifts 0, 1, 2
+    /// of the screen as it showed, then black).
+    Out,
+    /// The battle's fade in at the black (three steps, the last the battle whole).
+    In,
+    /// The battle under way: its result window's OK (Enter's release, the result's command
+    /// 0x200/0xD; the host's [`Action::BattleClosed`]) ends it.
+    Battle,
+    /// The battle's fade out with its result window (`battle_manager_exit` 0x463260).
+    Back,
+    /// The map back (`manager_run` 0x4B0C70: the whole screen drawn, the mouse-over again) and
+    /// faded in from the black.
+    Map,
+}
+
 /// What follows a dissolve's end (E24 M4 T2d2).
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Then {
@@ -1662,6 +1809,9 @@ enum Then {
     /// A computer's boarding (E24 M4 T4c2): the step onto the boat and whether it is one draw,
     /// its animation next, then its turn going on.
     AiBoard(Hero, bool),
+    /// A hero a battle took off the map (E24 M4 T5b2): its slot left out of the kingdom's list,
+    /// then the player's next hero or town.
+    Lost,
 }
 
 /// A step onto a boat held by its dissolve (E24 M4 T2d2): the walk, the boat's tile and whether
@@ -1822,6 +1972,8 @@ impl Loop {
                 hidden: false,
                 boats: Arc::new(start.boats.clone()),
                 walked: Arc::new(Vec::new()),
+                switch: None,
+                left: None,
             },
             hero: start.hero,
             lifted: false,
@@ -1887,6 +2039,10 @@ impl Loop {
             days: -1,
             found: None,
             dissolving: None,
+            switching: None,
+            whole: None,
+            switched: Vec::new(),
+            left: None,
             flush: false,
             computer_pixels,
             blackout: start.computer.blackout,
@@ -1983,6 +2139,10 @@ impl Loop {
                 _ => None,
             },
             book: self.book,
+            battle: self
+                .whole
+                .filter(|(at, _)| *at == t)
+                .map(|(_, winner)| winner),
         }
     }
 
@@ -2026,9 +2186,13 @@ impl Loop {
         self.within.clear();
         // The loop's turn and a walk's wait alike run the tick (0x4ED490: the poll, the palettes).
         self.tick(t);
-        // An object's dissolve (E24 M4 T2a2 part B): the map stopped until its end, then the
-        // step's end, the actions given meanwhile and the idle step.
-        if self.dissolving.is_some() {
+        // A battle's switch (E24 M4 T5b2): the map stopped until its end, then the battle's
+        // result on the map.
+        if self.switching.is_some() {
+            self.switch_step(t)?;
+        } else if self.dissolving.is_some() {
+            // An object's dissolve (E24 M4 T2a2 part B): the map stopped until its end, then the
+            // step's end, the actions given meanwhile and the idle step.
             if self.dissolve_step(t)
                 && let Some(dissolving) = self.dissolving.take()
             {
@@ -2042,6 +2206,17 @@ impl Loop {
         // the Arena's box at 250).
         self.flush = false;
         for &action in actions {
+            // During a battle's switch only its result's OK counts (*provisional*: the fades'
+            // and the battle's own input the battle manager's); the mouse's point is read.
+            if let Some(switching) = &self.switching {
+                self.pointer = action.point().unwrap_or(self.pointer);
+                if switching.phase == Phase::Battle
+                    && matches!(action, Action::BoxKeyUp(Key::Ok) | Action::BattleClosed)
+                {
+                    self.switch_back(t);
+                }
+                continue;
+            }
             if let Some(dissolving) = &mut self.dissolving {
                 // The mouse's point is read at once; the message waits as during a walk.
                 self.pointer = action.point().unwrap_or(self.pointer);
@@ -2139,7 +2314,13 @@ impl Loop {
             // An object's dissolve holds the cycling: the deadline moves on, the palettes stay
             // (E24 M4 T2a2 part B: `find-pile`'s due 200 at 165, 400 at 230, its cycles 0 to
             // 800); a boat's does not (E24 M4 T2d2).
-            if !self.dissolving.as_ref().is_some_and(|d| d.holds) {
+            // So does a battle from its black until the map is back (E24 M4 T5b2, design §5.21:
+            // recorded, `battle-won` none from 250 to 710).
+            let battle = self
+                .switching
+                .as_ref()
+                .is_some_and(|s| matches!(s.phase, Phase::In | Phase::Battle | Phase::Back));
+            if !self.dissolving.as_ref().is_some_and(|d| d.holds) && !battle {
                 self.ticks = self.ticks.saturating_add(1);
             }
             self.palette_at = t.saturating_add(self.rules.cycle_ms);
@@ -2240,7 +2421,8 @@ impl Loop {
             | Action::RightRelease
             | Action::BoxKey(_)
             | Action::BoxKeyUp(_)
-            | Action::Offer(_) => {}
+            | Action::Offer(_)
+            | Action::BattleClosed => {}
             Action::Choose(i) => self.choose_slot(t, i)?,
             Action::Walk(to) => self.walk_to(t, to)?,
         }
@@ -3682,7 +3864,21 @@ impl Loop {
     /// its next question asked, its object taken ([`Loop::take`]: the step's end after the
     /// dissolve) or its terrains revealed (the view and the minimap drawn again: `visit_object`'s
     /// common end 0x4A9AD3), and the visit ended.
-    fn answered(&mut self, t: u32, i: usize, k: usize, answer: Answer) -> Result<(), Unplayable> {
+    fn answered(
+        &mut self,
+        t: u32,
+        i: usize,
+        k: usize,
+        mut answer: Answer,
+    ) -> Result<(), Unplayable> {
+        // Its battle first (E24 M4 T5b2, design §5.21: a mine's guards'; the objects stepped
+        // once at the box's close, recorded, `battle-mine` at 1060), its boxes after it.
+        if let Some(fight) = answer.fight.take() {
+            self.step_objects(t);
+            self.draw(t);
+            self.switch_out(t, i, fight, Some(Box::new(answer)));
+            return Ok(());
+        }
         if let Some((next, shows)) = answer.boxes.get(k) {
             self.gain(*shows);
             let next = Arc::clone(next);
@@ -3690,6 +3886,9 @@ impl Loop {
             return Ok(());
         }
         self.gain(answer.gain);
+        // Its flag past its boxes (E24 M4 T5b2: a guarded mine's, `set_mine_owner` 0x4C66E0
+        // after MINEEVNT's box): drawn at the view's next draw.
+        self.raise(answer.flag.take());
         // The levels its experience reaches (E24 M4 T2c: Pandora's Box's after its rewards'
         // boxes, `grant_rewards`).
         if let Some(After::Answer(i, answer)) =
@@ -3822,6 +4021,19 @@ impl Loop {
             self.open_box(Arc::clone(first), Told::Found(i, 0));
             return;
         }
+        if let (Some(fight), Some(object), Some(hero)) = (&found.fight, found.blocks, self.hero) {
+            // A savage monster fought at once (E24 M4 T5b2, design §5.21): drawn as its attack,
+            // the view drawn and shown (as a question's), then the battle's switch.
+            let left = u32::from(hero.at.x < found.at.x);
+            self.drawn.attacking = Some(Attacking {
+                object,
+                frame: fight.attacker + left,
+            });
+            self.draw(t);
+            self.step_objects(t);
+            self.switch_out(t, i, fight.clone(), None);
+            return;
+        }
         if let Some(question) = &found.ask {
             // A monster drawn as its attack (its frame + 1 with the hero left of it), the view
             // drawn and shown (`visit_object` 0x4A97B2 to 0x4A97F4; E24 M4 T2b2 part A2).
@@ -3935,6 +4147,7 @@ impl Loop {
                 self.ai_animate(t, to, single);
                 return self.ai_on(t).map(|_| ());
             }
+            Then::Lost => self.left_map(t, queued)?,
             Then::Taken => {
                 self.gain(gain);
                 // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,
@@ -3982,6 +4195,228 @@ impl Loop {
             Then::Cast(cast) => self.cast_end(t, &cast, queued)?,
         }
         Ok(())
+    }
+
+    /// A battle's switch begun at `t` by find `i`'s visit (E24 M4 T5b2, design §5.19, §5.21,
+    /// *provisional*): the busy cursor, the screen as it shows faded out from now
+    /// ([`Loop::switch_step`]), the battle listed as handed over by the switch.
+    fn switch_out(&mut self, t: u32, i: usize, fight: Fight, rest: Option<Box<Answer>>) {
+        self.set_cursor(DEFAULT_CURSOR, self.rules.busy);
+        self.cursor.shown = false;
+        self.switched.push(fight.battle);
+        self.switching = Some(Switching {
+            phase: Phase::Out,
+            start: t,
+            before: Arc::new(self.drawn.clone()),
+            find: i,
+            fight,
+            rest,
+        });
+    }
+
+    /// A battle's switch's turn at `t` (E24 M4 T5b2, design §5.19, §5.21; recorded, `battle-*`):
+    /// the map's fade out's shifts 1 and 2 of the screen as it showed, 50 ms apart, then at the
+    /// black the combat cursor and the battle's fade in at once, its shifts 2, 1 and the battle
+    /// whole 50 ms apart (the battle handed over then: [`Loop::battles`]); from its result's OK the
+    /// battle's fade out likewise, then at the black the map back (the whole screen drawn, the
+    /// mouse-over again, the adventure cursor) and faded in likewise; at its end the battle's
+    /// result on the map ([`Loop::after_battle`]).
+    fn switch_step(&mut self, t: u32) -> Result<(), Unplayable> {
+        let Some(switching) = &self.switching else {
+            return Ok(());
+        };
+        let since = t.saturating_sub(switching.start);
+        let steps = since / FADE_MS;
+        if since == 0 || since % FADE_MS != 0 {
+            return Ok(());
+        }
+        let battle = Some(switching.fight.battle);
+        let shift = |s: u32| u8::try_from(s).unwrap_or(FADE_BLACK);
+        match switching.phase {
+            Phase::Out if steps < 3 => {
+                let mut faded = (*switching.before).clone();
+                faded.switch = Some(Switch {
+                    battle: None,
+                    shift: shift(steps),
+                    ended: false,
+                });
+                self.drawn = faded;
+            }
+            Phase::Out => {
+                self.set_cursor(BATTLE_CURSOR, self.rules.battle_cursor);
+                self.cursor.shown = true;
+                self.drawn.switch = Some(Switch {
+                    battle,
+                    shift: 2,
+                    ended: false,
+                });
+                self.rephase(t, Phase::In);
+            }
+            Phase::In if steps < 2 => {
+                self.drawn.switch = Some(Switch {
+                    battle,
+                    shift: shift(2 - steps),
+                    ended: false,
+                });
+            }
+            Phase::In => {
+                self.drawn.switch = Some(Switch {
+                    battle,
+                    shift: 0,
+                    ended: false,
+                });
+                let fight = &switching.fight;
+                self.whole = Some((t, fight.winner));
+                self.battles.push((t, fight.battle));
+                self.rephase(t, Phase::Battle);
+            }
+            Phase::Battle => {}
+            Phase::Back if steps < 3 => {
+                self.drawn.switch = Some(Switch {
+                    battle,
+                    shift: shift(steps),
+                    ended: true,
+                });
+            }
+            Phase::Back => self.map_back(t),
+            Phase::Map if steps < 2 => {
+                self.drawn.switch = Some(Switch {
+                    battle: None,
+                    shift: shift(2 - steps),
+                    ended: false,
+                });
+            }
+            Phase::Map => {
+                self.drawn.switch = None;
+                // The switch under way (always: this is its turn) ends.
+                self.switching
+                    .take()
+                    .map(|switching| self.after_battle(t, switching))
+                    .transpose()?;
+            }
+        }
+        Ok(())
+    }
+
+    /// The switch's next phase from `t`.
+    fn rephase(&mut self, t: u32, phase: Phase) {
+        if let Some(switching) = &mut self.switching {
+            switching.phase = phase;
+            switching.start = t;
+        }
+    }
+
+    /// The battle's result window's OK at `t` (E24 M4 T5b2): its fade out from now.
+    fn switch_back(&mut self, t: u32) {
+        let battle = self.switching.as_ref().map(|s| s.fight.battle);
+        self.drawn.switch = Some(Switch {
+            battle,
+            shift: 0,
+            ended: true,
+        });
+        self.rephase(t, Phase::Back);
+    }
+
+    /// The map back at the black after the battle (`manager_run` 0x4B0C70, design §5.19): its
+    /// palettes' cycling and objects' steps on again (*provisional*: the next cycle 20 ms on, as
+    /// recorded), the whole screen drawn with the attack's picture cleared, the adventure cursor
+    /// over it, the fade in's first step at once.
+    fn map_back(&mut self, t: u32) {
+        self.palette_at = t.saturating_add(BACK_CYCLE_MS);
+        self.set_cursor(CURSOR_TYPE, self.rules.arrow);
+        self.draw(t);
+        self.drawn.switch = Some(Switch {
+            battle: None,
+            shift: 2,
+            ended: false,
+        });
+        self.rephase(t, Phase::Map);
+    }
+
+    /// A battle's result on the map at the end of its switch at `t` (E24 M4 T5b2, design §5.19's
+    /// rest, *provisional*): a beaten monster taken off the map with `killfade.82M` (its dissolve
+    /// holding the cycling, the experience gained at its end, the visit's step's end after it).
+    fn after_battle(&mut self, t: u32, switching: Switching) -> Result<(), Unplayable> {
+        let Switching {
+            find, fight, rest, ..
+        } = switching;
+        // The selected hero's path made again (`mobilize_hero(0, 0, 1)`, design §5.19): none to
+        // the tile it fought for, so move hero is disabled (recorded, `battle-won` at 810).
+        self.path.clear();
+        self.buttons.move_hero = false;
+        let gain = Gain {
+            experience: fight.experience,
+            ..Gain::default()
+        };
+        let object = self.finds.get(find).and_then(|f| f.blocks);
+        match (fight.after, object) {
+            // The answer's boxes after the battle, its flag past them (E24 M4 T5b2: a mine's).
+            (AfterBattle::Boxes, _) => {
+                if let Some(answer) = rest {
+                    self.gain(gain);
+                    return self.answered(t, find, 0, *answer);
+                }
+                self.visited(t, find);
+            }
+            (AfterBattle::Taken, Some(object)) => {
+                self.take(t, object, gain, Fade::Killfade);
+            }
+            (AfterBattle::Lost, _) => {
+                // `battle_aftermath` 0x4AC930's way: the view shown with the hero, its objects
+                // stepped (`view_show_step`: recorded, `battle-retreat`'s at 810, the flag's frame
+                // the step's), the hero leaving the game (none selected, the lists drawn so), then
+                // its dissolve (`killfade.82M`, the palettes cycling on) into the view without it.
+                self.step_objects(t);
+                // Its tile and facing kept in the map's heroes (as a choice away from it does).
+                self.keep_path();
+                let (slot, index) = (self.selected_hero(), self.index);
+                self.lifted = false;
+                self.hero = None;
+                self.index = None;
+                self.selected_id = None;
+                self.kingdom.selected = Selected::None;
+                // Its slot out of the kingdom's list at once (`hero_leave_game` 0x4D9EC0:
+                // recorded, `battle-retreat`'s list at 810).
+                let mut i = 0;
+                self.kingdom.heroes.retain(|_| {
+                    i += 1;
+                    Some(i - 1) != slot
+                });
+                let mut i = 0;
+                self.chosen.heroes.retain(|_| {
+                    i += 1;
+                    Some(i - 1) != slot
+                });
+                self.draw_lists();
+                self.draw(t);
+                self.left = index;
+                self.lose(t, Then::Lost);
+            }
+            _ => {
+                self.gain(gain);
+                self.draw(t);
+                self.visited(t, find);
+            }
+        }
+        Ok(())
+    }
+
+    /// A hero's dissolve off the map ended at `t` (E24 M4 T5b2, design §5.19): the lists and the
+    /// minimap drawn (`hero_list_update`, `minimap_redraw`), then the player's next hero or town
+    /// chosen as `mobilize_hero(0, 0, 1)` does with none selected (*provisional*: the first hero,
+    /// else the first town), the actions given meanwhile, the idle step.
+    fn left_map(&mut self, t: u32, queued: Vec<Action>) -> Result<(), Unplayable> {
+        self.draw_lists();
+        self.draw_minimap();
+        if self.kingdom.heroes.is_empty() {
+            if let Some(chosen) = self.chosen.towns.first().cloned().flatten() {
+                self.choose_town(t, 0, chosen);
+            }
+        } else {
+            self.choose_slot(t, 0)?;
+        }
+        self.cursor.shown = true;
+        self.resume(t, queued)
     }
 
     /// `hero_loss_effect` 0x4ACBB0 with 0 (E24 M4 T2d2, design §5.7: a boat boarded or left):
@@ -5096,7 +5531,11 @@ impl Loop {
         // record (a walk a message ended).
         if let (Some(moves), Some((m, k))) = (&self.moves, self.walking.take()) {
             // The battle the walk began handed over at its end (E24 M4 T5b1, design §5.20).
-            if let Some(n) = moves.get(m).and_then(|w| w.battle) {
+            if let Some(n) = moves
+                .get(m)
+                .and_then(|w| w.battle)
+                .filter(|n| !self.switched.contains(n))
+            {
                 self.battles.push((t, n));
             }
             if let Some(&left) = moves.get(m).and_then(|w| w.tiles.get(k)) {
@@ -5642,6 +6081,8 @@ impl Loop {
                 Arc::new(self.boats.clone())
             },
             walked: Arc::clone(&self.walked_tiles),
+            switch: None,
+            left: self.left,
         };
         self.choose(t, false);
     }
@@ -6006,6 +6447,10 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
                     .collect();
                 out.push(format!("{} arrows{arrows}", s.t));
             }
+        }
+        // The battle shown whole (E24 M4 T5b2): its winner.
+        if let Some(winner) = s.battle {
+            out.push(format!("{} battle {winner}", s.t));
         }
         if s.t > 0
             && let Some([x0, y0, x1, y1]) = screens.get(&s.t)

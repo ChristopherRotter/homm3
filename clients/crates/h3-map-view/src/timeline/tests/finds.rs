@@ -73,6 +73,7 @@ fn finding(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
         blocks: None,
         flag: None,
         ask: None,
+        fight: None,
     }];
     (start, actions, ms, timeline)
 }
@@ -338,6 +339,7 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             blocks: Some(OBJECT),
             flag: None,
             ask: None,
+            fight: None,
         },
         "find-artifact" => Found {
             at: ENTRANCE,
@@ -353,6 +355,7 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             blocks: Some(OBJECT),
             flag: None,
             ask: None,
+            fight: None,
         },
         _ => Found {
             at: ENTRANCE,
@@ -391,6 +394,7 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             blocks: None,
             flag: None,
             ask: None,
+            fight: None,
         },
     };
     start.finds = vec![found];

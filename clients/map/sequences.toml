@@ -1770,3 +1770,72 @@ script = [
     "1 move 2 19,11,0",
     "1 end-turn",
 ]
+
+# The battles handed over and back (E24 M4 T5a, design §5.19; played from their engine records
+# since T5b2, §5.21): each battle played by the harness's battle step with the clock running
+# (`battle`, `h3adv.fight`'s plan) from the millisecond its screen first shows whole, taking none
+# of the sequence's time (the result window's OK and the inputs after it count from there: README,
+# "A battle in a sequence"); `script` the engine's game of the same visit, its battle's commands
+# the attacker's shots or retreat and the guards' `defend` (their moves are not drawn: the battle
+# is compared from its first frame only).
+
+[[sequence]]
+id = "battle-won"
+situation = "seq-battle-won"
+ms = 1600
+hero_speed = 4
+seed = 7
+battle = "auto"
+why = "a savage monster fought at once and beaten by auto combat: the switch to the battle and back by Enter at its result, then the monster taken off the map"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 500, keydown = "Return" }, { at = 560, keyup = "Return" },
+]
+script = [
+    "0 move 0 5,4,0",
+    "0 battle shoot 1 49",
+    "system battle defend",
+    "0 battle shoot 2 151",
+]
+
+[[sequence]]
+id = "battle-mine"
+situation = "seq-battle-mine"
+ms = 3600
+hero_speed = 4
+seed = 7
+battle = "auto"
+why = "an abandoned mine's Troglodytes fought after their question (Enter) and beaten: the result's Enter, ADVEVENT 85's box and MINEEVNT's closed by Enter, then Red's flag"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1500, keydown = "Return" }, { at = 1560, keyup = "Return" },
+    { at = 2300, keydown = "Return" }, { at = 2360, keyup = "Return" },
+    { at = 2900, keydown = "Return" }, { at = 2960, keyup = "Return" },
+]
+engine_seed = 5
+script = [
+    "0 move 0 5,4,0",
+    "0 answer offer accept",
+    "0 battle shoot 3 49",
+    "system battle defend",
+    "0 battle shoot 3 49",
+    "0 battle shoot 4 151",
+    "system battle defend",
+    "0 battle shoot 4 151",
+    "0 battle shoot 4 151",
+]
+
+[[sequence]]
+id = "battle-retreat"
+situation = "seq-battle-retreat"
+ms = 1800
+hero_speed = 4
+seed = 7
+battle = "retreat"
+why = "a savage monster fought at once, the hero retreating at its first turn: the result's Enter, then the hero dissolved off the map, the monster left"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 500, keydown = "Return" }, { at = 560, keyup = "Return" },
+]
+script = ["0 move 0 5,4,0", "0 battle retreat"]
