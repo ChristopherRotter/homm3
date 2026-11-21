@@ -80,8 +80,11 @@ pub(crate) fn draw_guilds(
 /// a town the store or the map lacks. Called at the town's own triggers (E09 T48a): every build,
 /// a command's and a town event's ([`super::command::build_told`]), a town's hire
 /// ([`super::hire::hire`]), a move between the bars that leaves a visitor
-/// ([`super::rows::heroes`]) and the start's main towns ([`at_start`], TD-10); the visit's end, a
-/// capture and a siege's end are T48b's, the opening and the book T49's.
+/// ([`super::rows::heroes`]) and the start's main towns ([`at_start`], TD-10); since E09 T48b the
+/// visit's end (a step or a `Revisit` entering a town of the team, an undefended capture: the
+/// outcome's `town_entered`, after the capture, in `GameState::settle_outcome`) and a siege's end
+/// whoever won (in `GameState::end_battle`, before the winner's levels); the opening and the book
+/// are T49's.
 // rule: TWN-GLD-005
 pub(crate) fn learn<S: Sink>(
     state: &mut GameState,

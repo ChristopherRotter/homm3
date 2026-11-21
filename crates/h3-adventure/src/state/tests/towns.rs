@@ -586,8 +586,15 @@ fn a_town_of_the_heros_team_is_entered_and_ends_the_walk() {
         );
         assert_eq!(state.town_visitor(TownId::new(0)), None);
         let (outcome, events) = walk(&rules, &mut state, &[], &[ENTRANCE]).unwrap();
-        // No service, no decision, no event beyond the step's.
-        assert_eq!(outcome, AdventureOutcome::default());
+        // No service, no decision, no event beyond the step's; the visit's end names the town
+        // (E09 T48b: the game teaches its heroes, TWN-GLD-005).
+        assert_eq!(
+            outcome,
+            AdventureOutcome {
+                town_entered: Some(TownId::new(0)),
+                ..AdventureOutcome::default()
+            }
+        );
         assert_eq!(events.len(), 1);
         assert!(matches!(
             events[0].kind,
@@ -623,11 +630,13 @@ fn an_undefended_town_of_another_player_or_none_is_entered_for_its_capture() {
         let reach = state.reach(&rules.0, &rules.1, &[], HERO).unwrap();
         assert_eq!(reach.path(ENTRANCE), Some(vec![ENTRANCE]));
         let (outcome, events) = walk(&rules, &mut state, &[], &[ENTRANCE]).unwrap();
-        // The capture is the game's: the step changes no owner.
+        // The capture is the game's: the step changes no owner; the visit's end names the town
+        // (E09 T48b).
         assert_eq!(
             outcome,
             AdventureOutcome {
                 capture: Some(TownId::new(0)),
+                town_entered: Some(TownId::new(0)),
                 ..AdventureOutcome::default()
             }
         );
@@ -704,7 +713,8 @@ fn a_town_its_garrison_defends_is_besieged_from_the_tile_before() {
     // Red's own town with a garrison is entered, not besieged (TWN-VIS-001's first case).
     let mut state = at_town(&rules, Some(0), garrison(), (FAR, None));
     let (outcome, _) = walk(&rules, &mut state, &[], &[ENTRANCE]).unwrap();
-    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(outcome.town_entered, Some(TownId::new(0)));
+    assert_eq!(outcome.battle, None);
     // The garrison's formation is the map's (the town epic's design note §8).
     assert_eq!(
         state.map().town_formation(TownId::new(0)),

@@ -679,6 +679,11 @@ impl GameState {
             if let Some(captured) = outcome.capture {
                 town::capture(self, rules, (captured, player), sink);
             }
+            // rule: TWN-GLD-005
+            // E09 T48b: the visit's end, after a capture's effects (design §89, §90).
+            if let Some(entered) = outcome.town_entered {
+                town::guild::learn(self, rules, entered, sink);
+            }
             // rule: TWN-GRO-007
             if outcome.flagged_dwelling {
                 town::portal::on_flag(self, rules, player, sink);

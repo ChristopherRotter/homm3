@@ -14,15 +14,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (decision 189: the owner's `TownBuildingsView` gains `guild`, `aurora`, `vortex`; protocol v78)
   and **T48a** (decision 190, `cross-lane`: `h3_towns::teaches`, TWN-GLD-004 complete; the game's
   `town::guild::learn` at a build, a town event's build, the bars' moves, a hire and the start,
-  TWN-GLD-005; `TWN-STUB-6` and `-15` lifted; no version, no replay moved) done. **Next:**
-  **T48b**, the visit's end, a capture, a siege's end (`cross-lane`: `settle_outcome`'s
-  `town_entered`, the siege's end; `QUEUE.md`; confirm its cut). Waiting
+  TWN-GLD-005; `TWN-STUB-6` and `-15` lifted; no version, no replay moved) and **T48b**
+  (decision 191, `cross-lane`: `AdventureOutcome::town_entered`, the visit's end and a siege's
+  end teach; no version, no replay moved) done. **Next:** **T49a**, the night's refill, the Mana
+  Vortex, `Open` (`QUEUE.md`; confirm its cut). Waiting
   elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach), `TWN-STUB-2` (the
   victory conditions), `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
   **Found, pre-existing:** a hygiene case of `h3-map`'s `a_viewer_learns_nothing_it_cannot_see`
   that fails on `master` too (a captured town's garrison seen; the lane's inbox).
-- **Open pull requests:** T48a's #1115 (`town/e09-t48a`, `cross-lane`), opened at the session's end;
-  watch it until it merges (T47b's #1102 merged 2026-11-21).
+- **Open pull requests:** T48b's #1120 (`town/e09-t48b`, `cross-lane`), opened at the session's end;
+  watch it until it merges (T48a's #1115 merged 2026-11-21).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -34,11 +35,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   v27, replay format v23), the env's (v16, E08 T134b1) and the protocol's (v78, T47b) are bumped
   `cross-lane` (each task's record in `E09-log.md`; increment 5's plan in design §96). Shared: core
   ruleset hash v53, pack format v53 (E08 T124a), quirk flags 44 (T45: `TWN-QUIRK-14`'s).
-- **Ids** (next): questions `TWN-Q34`; decisions 191; quirks `TWN-QUIRK-15` (`-14` entered by T45,
+- **Ids** (next): questions `TWN-Q34`; decisions 192; quirks `TWN-QUIRK-15` (`-14` entered by T45,
   taught by T48a's Aurora); stubs `TWN-STUB-21`; experiment batch `TWN-6`; disputes `TD-28`;
   quirk candidates `T-19`. ADR-0028 is the lane's; no drafts open; TWN-GLD-001 to -003, -004's
   Aurora set, TWN-SET-012, TWN-VEW-004's guild, TWN-GLD-004's learning and -005's town triggers built
-  (T46 to T48a), planned -005's visit, capture and siege, -006 to -009.
+  (T46 to T48a), -005's visit, capture and siege (T48b); planned -006 to -009.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
 
@@ -47,6 +48,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-21 — T48b: the visit's end and a siege's end teach the guild's spells, `cross-lane`
+
+Baseline 35bedb9 (#1115 merged; CI green: the setup's light gates only, `check-exe-map` red with
+the executable staged: E31's addresses, the AI lane's inbox). The user's computer was connected at
+the start only: 71 files staged, its shell down; SHA-256 checked. The draft was measured first (the
+111 goldens unchanged), then the user kept T48b whole (decision 191). Built:
+`AdventureOutcome::town_entered` set by `visit_town`, `learn` after `settle_outcome`'s capture and
+in `end_battle` for a siege's town before the levels; three tests, three adventure tests amended.
 
 ### 2026-11-21 — T48a: heroes learn the guild's spells at the town's own triggers, `cross-lane`
 
@@ -67,14 +77,3 @@ were compared. The user kept T47b whole with the inbox's guild fix (decision 189
 three fields (`h3_towns::shown_slots`, `has_aurora`; `GuildSlots::with` public), the wire's and
 the fold's, protocol v78; the oracle's fields and its break at `ThievesGuildSeen` (the seed fails
 without it); `GameEvent` 72 → 104 bytes. The server and adventure lanes' inboxes told.
-
-### 2026-11-21 — T47a2: the town spell sets (import v28), the store v4, the guilds at the build, `cross-lane`
-
-Baseline 87c83f6 (#1092 merged, #1090 before it; the setup's full baseline: its tests passed,
-stopped at coverage for disk). The user's computer was connected at the start only: 71 files
-staged; its shell did not start, so sizes and the LODs' and executables' SHA-256 were compared.
-The user kept T47a2 whole (decision 188). Built: TWN-SET-012, the store v4, the game's draw (game
-state hash v38, map import v28); 38 benchmarks inside the gate, none re-baselined; the 104 goldens
-re-recorded and E08 T135b1's seven after the merge (`towns-s173-d21`'s siege re-played by the
-battle AI), the bot reports unchanged; the
-adventure and server lanes' inboxes told.
