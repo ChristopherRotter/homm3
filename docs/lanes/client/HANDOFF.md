@@ -5,30 +5,26 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 77). **M1 to M3 closed** (2026-11-13, -16, -19; `E27-archive.md`; the build record
-  `E27-log.md`; the readings `E27-design.md` §1 to §33): the start's clips and sound, the menus,
-  the hot seat's names, the scenario screen (list, panel, advanced options, random map, the begin:
-  the setup validated and kept for E24 M5, play's stub `CLT-STUB-13`). **M4** (decision 69: around
-  play but outside it; a **new M5 in play**, refined once the shell hosts play, E24 M5): T1a to
-  T4b2 done 2026-11-19 and -20 (High Scores, Credits, the save file, the single load; the epic's
-  M4 table), T5a, T5b1 and T5b2 (the hot-seat load read, its screen and its flags; design §41 to
-  §43; `mp-load` 6 of 6, `adv-load` 19 of 19, `adv-load-more` 2 of 2) done 2026-11-21. **Next: M4
-  T6a** (M4's reviews and the replay; T6 cut in two, decision 77; then T6b, the closure; the
-  queue).
+  to 78). **M1 to M4 closed** (2026-11-13, -16, -19, -21; `E27-archive.md`; the build record
+  `E27-log.md`; the readings `E27-design.md` §1 to §44): the start's clips and sound, the menus,
+  the hot seat's names, the scenario screen and a game's begin (the setup kept for E24 M5, play's
+  stub `CLT-STUB-13`), High Scores, Credits, the save file (the engine's adventure replay with
+  the setup's choices and the client's table v2), Load Game single and hot seat (the loaded game
+  and who is human after it kept for E24 M5: `save::Loaded`, `save::Humans`). **Next: none
+  queued.** M5 (in play: decision 69) is refined with the user once E24 M5 hosts play; its
+  prerequisites are the epic's "M5" section (the map-client and adventure lanes' inboxes told,
+  2026-11-21); until then the lane's next work is the user's choice (E28, E29: `BACKLOG.md`).
   Decisions to carry (all: the epic's list): the dialogs' input one implementation (20;
   `h3_ui::input`); the shell's code as the battle's (21); every pixel of a Smacker clip through
-  its palette (24); every clip's sound at the effects setting (27); a menu opening anew takes the
-  hover (40); the list and the description drawn whole in the client's profile (48, CLT-Q148
-  (b)); a map's name and description whole (CLT-Q151 (b)); the advanced rows made again when the
-  map changes (CLT-Q152 (b)); a press's stale edges as CLT-Q118's (§34.2); the credits'
-  background's key pixel a drawing bug (§36.3); a save loads only under the rules and over the
-  map it was made with (review item 18); the shell's recipes pinned to a time zone (`tz`, review
-  item 23); a right press without a popup redraws nothing but on the description and the
-  players' items (review item 27); a disabled button takes no hotkey (review item 33); the names
-  decide who is human after a hot-seat load (CLT-Q160 (a)), no Random Map in a load (CLT-Q161
-  (b)). Open pull request: T5b2's, branch `client/e27-m4-t5b2`: watch it until it merges. E17 done
-  (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
-  queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
+  its palette (24); every clip's sound at the effects setting (27); the client draws whole where
+  the original's partial redraws leave stale pixels (48, CLT-Q138's class); a save loads only
+  under the rules and over the map it was made with (CLT-Q173: refused for now, the saves to be
+  reworked later to be independent of the engine's version); the shell's recipes pinned to a
+  time zone (`tz`); a disabled button takes no hotkey; the names decide who is human after a
+  hot-seat load (CLT-Q160 (a)), a single load's current player alone (CLT-Q170 (a)). Open pull
+  requests: T6's, branch `client/e27-m4-t6`, and the README's row, `shared/e27-m4-closure`:
+  watch both until they merge. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  epic's "Placed at the closure", the queue's inbox). Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
@@ -43,7 +39,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
   modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial), `CLT-STUB-9` (the starting bonus), `CLT-STUB-10` (the handicap), `CLT-STUB-11` (the turn's timer), `CLT-STUB-12` (the random map's generation) and `CLT-STUB-13` (play: the game begun or loaded, kept for E24 M5) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q162, CLT-STUB-16.
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q174, CLT-STUB-16.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs (`MP3DEC.ASI` there too since 2026-11-17), `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 39 non-campaign MP3s (63 files); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -63,11 +59,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-21, E27 M4 T6 (in progress; `client/e27-m4-t6`).** The PC's 71 files staged (sizes
-  and `installation.md`'s SHA-256). T6a done: three fresh reviews, the user's answers (decision 78,
-  CLT-Q162 to CLT-Q173). In progress: the fixes (a fixer in the clone), every recipe played again
-  under Wine (`/home/claude/tools/replay-all.sh`, its summary in `/home/claude/replay/`); then
-  M4 to the archive, the README's row (`shared/`), M5's prerequisites.
+- **2026-11-21, E27 M4 T6 (done; `client/e27-m4-t6`, `shared/e27-m4-closure`).** The PC's 71
+  files staged (sizes and `installation.md`'s SHA-256). T6 in one session (decision 78): three
+  fresh reviews (35 items kept, 7 changed, 28 findings, CLT-Q162 to CLT-Q173 answered), one fixer
+  (24 fixes, design §44; the reading of Delete over the advanced options), every recipe played
+  again (95, as kept; three with a first run a step off, as kept alone), `drawn` as recorded. M4
+  to the archive, M5's prerequisites recorded, the inboxes told. Record: `E27-log.md`, "M4 T6".
 - **2026-11-21, E27 M4 T5b2 (done; `client/e27-m4-t5b2`).** The PC's 71 files staged and checked
   as T5b1's. Kept whole. Read Random Map's case 130 (every item drawn
   and the redraw after its toggle, in a load too). Built a flag's press in a load (the saved
