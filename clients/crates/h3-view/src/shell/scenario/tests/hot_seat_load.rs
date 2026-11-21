@@ -296,7 +296,11 @@ fn a_flag_s_press_moves_the_name_onto_the_colour_s_saved_choices() {
         // whole at every press.
         s.moved([790, 300]);
         assert_eq!(s.draws("P"), opening, "{bugs:?}");
-        assert_eq!(s.stale_draws("P").is_some(), bugs == Bugs::Original, "{bugs:?}");
+        assert_eq!(
+            s.stale_draws("P").is_some(),
+            bugs == Bugs::Original,
+            "{bugs:?}"
+        );
         click(&mut s, [514, 115]);
         assert_eq!(s.draws("P"), opening, "{bugs:?}");
         assert!(s.stale_draws("P").is_none(), "{bugs:?}");
@@ -308,7 +312,11 @@ fn the_client_moves_a_load_s_colours_among_the_save_s_humans_only() {
     // `adv-load-more`'s save: red its one human, B on blue (a computer's in the save). A press on
     // purple (the computer's in the save): the original's moves A there, the client's takes none
     // (CLT-Q110 (b)); a press on red (the save's) the client's passes on.
-    let mut s = hot_load(vec![saved("Week_one.GM1", &[0])], &["A", "B"], Bugs::Original);
+    let mut s = hot_load(
+        vec![saved("Week_one.GM1", &[0])],
+        &["A", "B"],
+        Bugs::Original,
+    );
     options(&mut s);
     click(&mut s, flag(2));
     assert_eq!(s.records().unwrap()[5].colour, Some(5));
