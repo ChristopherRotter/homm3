@@ -7071,7 +7071,17 @@ fn check_town_hire(
             if player == actor && hero == id && s == slot && pos == entrance)
     });
     prop_assert!(told, "{:?}", events);
-    prop_assert_eq!(after.towns().get(town), state.towns().get(town));
+    // E09 T49a1: the hire's Mana Vortex (TWN-GLD-009) to the hired hero alone, which clears the
+    // town's week flag; the town's record unchanged else.
+    let vortex = events.iter().any(|e| {
+        matches!(*e, GameEvent::HeroChanged { hero, change: HeroChange::SetSpellPoints(_), .. }
+            if hero == id)
+    });
+    let expected = state
+        .towns()
+        .get(town)
+        .map(|record| record.with_vortex(record.vortex() && !vortex));
+    prop_assert_eq!(after.towns().get(town), expected.as_ref());
     Ok(())
 }
 
@@ -7813,9 +7823,13 @@ fn check_conservation(
                     prop_assert!(checked.is_ok(), "{:?}: {:?}", change, checked);
                     h3_heroes::apply_change(&mut told, rules.core(), change);
                 }
-                // E08 T85b: a new day's regain (HER-MAN-002), which no event tells.
+                // E08 T85b: a new day's regain (HER-MAN-002), which no event tells; since E09
+                // T49a1 then the towns' night, as silent (TWN-GLD-008).
                 GameEvent::DayStarted { .. } => {
                     told.mana = h3_heroes::day_mana(&told, rules.core());
+                    if let Some(points) = night_refill(before, rules, id, &told) {
+                        told.mana = points;
+                    }
                 }
                 _ => {}
             }
@@ -9724,6 +9738,33 @@ fn armies(state: &GameState) -> Vec<(HeroId, Vec<h3_contracts::ArmyStack>)> {
 
 /// A hero on the map or (E09 T28a) a town's garrison hero, by id (E09 T29b: a garrison hero
 /// defends its town's siege, TWN-SIE-001 amended).
+/// The spell points the towns' night gives `id` with `details` (TWN-GLD-008, E09 T49a1), by an
+/// independent reading: the town it stands in as its visitor or its garrison hero in `state` (the
+/// state before the command whose day advance it is: nothing moves between them), with a building
+/// of role `guild` ever built there, raises its points to the maximum.
+fn night_refill(
+    state: &GameState,
+    rules: &GameRuleset,
+    id: HeroId,
+    details: &h3_heroes::HeroDetails,
+) -> Option<u16> {
+    let adventure = state.adventure();
+    let towns = state.towns();
+    let town = (0..=u16::MAX).take(towns.len()).map(TownId::new).find(|&town| {
+        adventure.town_visitor(town) == Some(id)
+            || adventure.town_hero(town).is_some_and(|on| on.id == id)
+    })?;
+    let record = towns.get(town)?;
+    let part = rules.towns().town(record.faction())?;
+    let guild = record
+        .built()
+        .iter()
+        .filter_map(|b| part.building(b))
+        .any(|b| b.roles.guild.is_some());
+    let most = h3_heroes::max_mana(details, rules.core());
+    (guild && details.mana < most).then_some(most)
+}
+
 fn hero_anywhere(state: &GameState, id: HeroId) -> Option<&h3_adventure::HeroOnMap> {
     let adventure = state.adventure();
     adventure.hero(id).or_else(|| {

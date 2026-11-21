@@ -5873,3 +5873,46 @@ asked (no golden replay moved); **T48b kept whole** (decision 191).
   town before the winner's levels, whoever won (design §89's level-up paragraph had guessed a
   Wisdom counts at once: the engine's level-ups are decisions, so it counts at the next trigger,
   as the original's).
+
+### T49a1 — the night's refill and the Mana Vortex at the visit's end, the builds and the hire (2026-11-21)
+
+One session, the user present at the start; branch `town/e09-t49a1`, `cross-lane` with the
+user's consent (the adventure lane's `h3-game` `src/state/day.rs`, `advance_day`, and
+`src/state.rs`, `settle_outcome`; `docs/rules/catalog/game.toml`'s GAM-CAL-002; `h3-map`'s
+`src/tests/play.rs` and `view.rs`). Starting point: `master` at a9d593d (T48b's #1120 merged;
+the setup's full baseline passed every step up to coverage, stopped there for time and disk; CI
+on `master` running). The user's computer was connected at the start only: 71 files staged, its
+shell down ("Workspace unavailable"); the LODs' and executables' SHA-256 checked against
+`docs/formats/installation.md`. **T49a cut in two** at its start (decision 192): this task the
+refill and the Vortex, T49a2 `Open` whole.
+
+- **The rules** (`h3-towns`' guild module): `refill(town, part, core, details)` (TWN-GLD-008:
+  a building of role `guild` ever built, the maximum where the points are below it) and
+  `vortex(town, part, core, details)` (TWN-GLD-009: the parameters, the week flag and a standing
+  `mana_vortex` before the maximum; `vortex_factor × max_mana`, saturating); the fixture's
+  `vortex_keep` (the Mana Vortex at 31). `Town::with_vortex` public (the oracles').
+- **The game** (`town::guild`): `refill` (every town in `TownId` order, the visitor then the
+  garrison hero, `SetSpellPoints` through `change_hero` without an owner: silent), called by
+  `advance_day` right after `regain_mana`; `vortex_to` (the first of the given heroes it raises:
+  `HeroChanged`, `take_vortex`, the town's `Told`, taken only then), `vortex` (the garrison hero,
+  then the visitor) and `visit` (the Vortex, then the learning). Callers: `build_told` after its
+  learning; `hire` after its learning, the hired visitor alone; `settle_outcome`'s
+  `town_entered` through `visit`. `advance_day` sets every town's flag
+  (`Towns::start_week`) on a week's first day after the towns' growth, before the taverns' week:
+  `Told::before` was taken before the growth, so the week's views tell the set flags.
+- **Catalog:** TWN-GLD-008 and -009 new (`implemented`; TWN-5-5's observation among their
+  sources); TWN-GLD-005 (the visit's end runs the Vortex first), TWN-BLD-005, TWN-EVT-003,
+  TWN-TAV-003 and GAM-CAL-002 amended.
+- **Tests:** `h3-towns`' two (a superseded guild counts, no book; the factor, the flag, a
+  superseded or unbuilt Vortex, no record, no parameters); the game's five in
+  `town/tests/mana.rs` (the night raises a garrison hero and an allied town's visitor, a turn's
+  end no night, above the maximum kept; no guild and a hero beside the town nothing; the visit's
+  end over two weeks: the points, the told flag before the learning, nothing until day 8, the
+  week's view to red alone, the threshold; a build's Vortex to the garrison hero first, at its
+  threshold the visitor; a hire's to the hired hero alone, a move between the bars nothing).
+- **The oracles** (`h3-map`, three properties failed on the draft): the conservation's
+  `DayStarted` arm applies `night_refill`; a hire's check expects the flag cleared when the
+  hired hero took the Vortex; the hire fold sets the hired view's points at a `SetSpellPoints`.
+  The lane's `TRAPS.md` ("A silent write of a hero's details meets two oracles").
+- **Nothing moved:** the 111 golden adventure replays reproduce their hashes (measured on the
+  draft, in release); no version, no bot report.

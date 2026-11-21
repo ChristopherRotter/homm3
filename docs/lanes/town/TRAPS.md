@@ -83,6 +83,13 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   owner's `TownChanged` for either, and compares the rest of the record as before. A new writer
   of them (T27's hire) is told and taught there.
 
+- **A silent write of a hero's details meets two oracles** (E09 T49a1, the night's refill and a
+  hire's Mana Vortex): `play.rs`' conservation (`check_conservation`) folds each hero's details
+  from its told changes, with the day's regain and the towns' night modelled at `DayStarted`
+  (`night_refill`, read from the state before the command), and `view.rs`' hire fold
+  (`check_hired`) builds a hired hero from its slot's view and parts; a hire's check
+  (`check_town_hire`) compares the town's record whole. A new silent writer is modelled there.
+
 - **A plan's town has no `KINDS` entry** (E09 T9b1): `towns_laid_out` lays the plan's towns
   (`TownPlan`) out after every other object but the boats, each with a template appended after
   the objects'. Code that reads a plan object's kind from its template (`(template - 1) /

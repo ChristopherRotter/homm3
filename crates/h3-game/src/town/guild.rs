@@ -2,14 +2,19 @@
 //! the setup's town spell sets checked (TWN-SET-012), then every town's guild drawn from the
 //! towns' stream and its Aurora set computed (TWN-GLD-002, TWN-GLD-004's set), each with the
 //! town's required and banned spells and the scenario's bans (GAM-SET-003; E09 T47a2); since E09
-//! T48a the town's heroes learning its spells at the town's triggers ([`learn`], TWN-GLD-005).
+//! T48a the town's heroes learning its spells at the town's triggers ([`learn`], TWN-GLD-005);
+//! since E09 T49a1 the spell points a town gives its heroes: the night's refill ([`refill`],
+//! TWN-GLD-008) and the Mana Vortex once a week a town ([`vortex`], [`visit`], TWN-GLD-009).
+
+use alloc::vec::Vec;
 
 use h3_content::{SpellCategory, SpellId};
-use h3_contracts::TownId;
+use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_heroes::HeroChange;
 use h3_kernel::Rng;
 use h3_towns::{GuildSets, GuildSlots, SpellSet, Town, TownStatic};
 
+use super::Told;
 use crate::command::Sink;
 use crate::{GameRuleset, GameSetup, GameSetupError, GameState};
 
@@ -83,8 +88,9 @@ pub(crate) fn draw_guilds(
 /// ([`super::rows::heroes`]) and the start's main towns ([`at_start`], TD-10); since E09 T48b the
 /// visit's end (a step or a `Revisit` entering a town of the team, an undefended capture: the
 /// outcome's `town_entered`, after the capture, in `GameState::settle_outcome`) and a siege's end
-/// whoever won (in `GameState::end_battle`, before the winner's levels); the opening and the book
-/// are T49's.
+/// whoever won (in `GameState::end_battle`, before the winner's levels); since E09 T49a1 the
+/// visit's end through [`visit`], after the Vortex; the opening and the book are T49a2's and
+/// T49b's.
 // rule: TWN-GLD-005
 pub(crate) fn learn<S: Sink>(
     state: &mut GameState,
@@ -92,12 +98,8 @@ pub(crate) fn learn<S: Sink>(
     town: TownId,
     sink: &mut S,
 ) {
-    let adventure = state.adventure();
-    let visitor = adventure
-        .town_visitor(town)
-        .and_then(|hero| adventure.hero(hero));
-    let heroes = [visitor, adventure.town_hero(town)].map(|on| on.map(|on| (on.id, on.owner)));
-    for (hero, owner) in heroes.into_iter().flatten() {
+    let [visitor, garrison] = heroes(state, town);
+    for (hero, owner) in [visitor, garrison].into_iter().flatten() {
         let towns = state.towns();
         let spells = towns
             .get(town)
@@ -130,5 +132,119 @@ pub(crate) fn at_start(state: &mut GameState, rules: &GameRuleset, setup: &GameS
         .filter(|main| main.generates_hero);
     for main in towns {
         learn(state, rules, main.town, &mut crate::command::NoopSink);
+    }
+}
+
+/// The town's visitor, then its garrison hero, each with its owner, where one stands (the
+/// adventure's records: ADR-0028 point 2).
+pub(crate) fn heroes(state: &GameState, town: TownId) -> [Option<(HeroId, PlayerId)>; 2] {
+    let adventure = state.adventure();
+    let visitor = adventure
+        .town_visitor(town)
+        .and_then(|hero| adventure.hero(hero));
+    [visitor, adventure.town_hero(town)].map(|on| on.map(|on| (on.id, on.owner)))
+}
+
+/// The town's visit at its end (TWN-GLD-005, TWN-GLD-009; design §89, §90; survey `E09-guild.md`
+/// §12, §15: the original's town screen opened by `town_visit` 0x4AAFD0, its
+/// `town_screen_init` 0x5C63C0 visiting the buildings, then the visit's learning): the Mana
+/// Vortex to the garrison hero, then the visitor ([`vortex`]), then their learning ([`learn`]).
+/// Called at the visit's end (a step or a `Revisit` entering a town of the team, an undefended
+/// capture: `GameState::settle_outcome`'s `town_entered`, after the capture's effects); the
+/// opening (T49a2) applies the same. Not at a siege's end, which teaches alone.
+// rule: TWN-GLD-005, TWN-GLD-009
+pub(crate) fn visit<S: Sink>(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    town: TownId,
+    sink: &mut S,
+) {
+    vortex(state, rules, town, sink);
+    learn(state, rules, town, sink);
+}
+
+/// The Mana Vortex of `town` to its garrison hero, then its visitor ([`vortex_to`]): the visit's
+/// end ([`visit`]) and every build after its learning ([`super::command::build_told`]).
+// rule: TWN-GLD-009
+pub(crate) fn vortex<S: Sink>(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    town: TownId,
+    sink: &mut S,
+) {
+    let [visitor, garrison] = heroes(state, town);
+    vortex_to(state, rules, town, [garrison, visitor], sink);
+}
+
+/// The Mana Vortex of `town` given to the first of `heroes`, in order, whose points it raises
+/// (TWN-GLD-009; design §93; survey `E09-guild.md` §15: the original's `town_visit_buildings`
+/// 0x5BD8E0, its first branch): [`h3_towns::vortex`]'s points set (`HeroChange::SetSpellPoints`,
+/// HER-CHG-001; `HeroChanged` to the hero's owner), the town's week flag cleared
+/// ([`h3_towns::Towns::take_vortex`]), then the views it changed told to their viewers ([`Told`]:
+/// the owner's flag, TWN-VEW-004), so the rest gets nothing until the week's start sets the flag
+/// again (`Towns::start_week`, GAM-CAL-002). No owner is tested (an allied visitor takes it) and
+/// nothing is drawn; nothing without a hero it raises. Its callers: the visit's end and every
+/// build after its learning, a command's and a town event's (the garrison hero, then the visitor:
+/// [`vortex`]), and a town's hire (the hired hero, [`super::hire::hire`]); never a turn's start,
+/// the night or a siege's end.
+// rule: TWN-GLD-009
+pub(crate) fn vortex_to<S: Sink>(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    town: TownId,
+    heroes: [Option<(HeroId, PlayerId)>; 2],
+    sink: &mut S,
+) {
+    let (core, part) = (rules.core(), rules.towns());
+    let Some(record) = state.towns().get(town).filter(|record| record.vortex()) else {
+        return;
+    };
+    let taken = heroes.into_iter().flatten().find_map(|(hero, owner)| {
+        state
+            .hero(hero)
+            .and_then(|details| h3_towns::vortex(record, part, core, details))
+            .map(|points| (hero, owner, points))
+    });
+    let Some((hero, owner, points)) = taken else {
+        return;
+    };
+    let told = Told::before::<S>(state, rules, &[town], &[]);
+    let change = HeroChange::SetSpellPoints(points);
+    state.change_hero(core, hero, Some(owner), change, sink);
+    state.towns_mut().take_vortex(town);
+    told.tell(state, rules, sink);
+}
+
+/// The night's refill (TWN-GLD-008, GAM-CAL-002 amended; design §92; survey `E09-guild.md` §14:
+/// the original's `new_day` 0x4C82E4 to 0x4C8434, after every hero's daily regain): each town in
+/// `TownId` order raises its visitor's, then its garrison hero's spell points to the hero's
+/// maximum where [`h3_towns::refill`] gives them (a building of role `guild` ever built there),
+/// never lowering them; no spell book, no owner is tested. Silent, as the daily regain
+/// (`GameState::regain_mana`): a hero's points show in its owner's observation. Called by the day
+/// advance right after the regain (day 1 has no night).
+// rule: TWN-GLD-008
+pub(crate) fn refill(state: &mut GameState, rules: &GameRuleset) {
+    let (core, part) = (rules.core(), rules.towns());
+    let shared: &GameState = state;
+    let towns = shared.towns();
+    let raised: Vec<(HeroId, u16)> = (0..=u16::MAX)
+        .take(towns.len())
+        .map(TownId::new)
+        .filter_map(|town| towns.get(town).map(|record| (town, record)))
+        .flat_map(|(town, record)| {
+            heroes(shared, town)
+                .into_iter()
+                .flatten()
+                .filter_map(move |(hero, _)| {
+                    shared
+                        .hero(hero)
+                        .and_then(|details| h3_towns::refill(record, part, core, details))
+                        .map(|points| (hero, points))
+                })
+        })
+        .collect();
+    for (hero, points) in raised {
+        let change = HeroChange::SetSpellPoints(points);
+        state.change_hero(core, hero, None, change, &mut crate::command::NoopSink);
     }
 }

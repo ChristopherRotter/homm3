@@ -57,7 +57,9 @@ impl GameState {
     ///    setup's `roe`; E09 decision 75, so the game's stream stays as it was),
     ///    [`GameEvent::WeekStarted`] with it, then the towns' week (E09 T26a1, TWN-GRO-003: every
     ///    town's counts grown with its inputs and the week's kind, `town::growth`, TWN-GRO-001),
-    ///    then since E09 T37a the taverns' release and fill from the taverns' stream, each changed
+    ///    then since E09 T49a1 every town's Mana Vortex flag set (TWN-GLD-009:
+    ///    [`h3_towns::Towns::start_week`], told with the week's views), then since E09 T37a the
+    ///    taverns' release and fill from the taverns' stream, each changed
     ///    slot told to its player (TWN-TAV-002: `town::tavern::weekly`), then the adventure's week
     ///    step with the game's stream
     ///    (`h3_adventure::AdventureState::start_week`: the weekly objects refilled, the monsters
@@ -78,12 +80,14 @@ impl GameState {
     ///    viewers, `town::start_day`; since E09 T26b on a week's first day every view that the
     ///    week, the month or the day changed, TWN-VEW-004), then every player's income
     ///    ([`Self::pay_income`]);
-    /// 5. every hero's spell points ([`Self::regain_mana`]);
+    /// 5. every hero's spell points ([`Self::regain_mana`]), then since E09 T49a1 the towns'
+    ///    night: each town with a guild ever built raises its visitor's, then its garrison hero's
+    ///    to the maximum (TWN-GLD-008, `town::guild::refill`);
     /// 6. the adventure's start-of-day step (E08 T40: in `strict-fixed` each hero's reveal,
     ///    ADV-FOG-003).
     // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004, TWN-GRO-002
     // rule: TWN-GRO-003, TWN-GRO-004, TWN-GRO-006, TWN-GRO-007, TWN-VEW-004, TWN-TAV-002
-    // rule: TWN-TAV-005
+    // rule: TWN-TAV-005, TWN-GLD-008, TWN-GLD-009
     pub(super) fn advance_day<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let (core, part) = (rules.core(), rules.adventure());
         self.day = self.day.saturating_add(1);
@@ -120,6 +124,9 @@ impl GameState {
             }
             let inputs = town::growth::inputs(self, rules);
             town::growth::grow_week(self, rules, &inputs);
+            // E09 T49a1: every town's Mana Vortex flag set (TWN-GLD-009), told with the week's
+            // views.
+            self.towns_mut().start_week();
             // E09 T37a: the taverns' release and fill (TWN-TAV-002), told to each player.
             town::tavern::weekly(self, rules, sink);
             self.adventure
@@ -149,6 +156,8 @@ impl GameState {
         town::start_day(self, rules, week, sink);
         self.pay_income(rules, week_start, sink);
         self.regain_mana(rules);
+        // E09 T49a1: the towns' night (TWN-GLD-008).
+        town::guild::refill(self, rules);
         self.adventure.start_day(core, part, &self.heroes);
     }
 

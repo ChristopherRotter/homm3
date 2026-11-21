@@ -274,6 +274,9 @@ pub(crate) const MAGE_GUILD_4: usize = 27;
 pub(crate) const MAGE_GUILD_5: usize = 28;
 pub(crate) const LIBRARY: usize = 29;
 pub(crate) const AURORA: usize = 30;
+/// The Keep's Mana Vortex (role `mana_vortex`), after [`AURORA`] in [`vortex_keep`]'s record (E09
+/// T49a1).
+pub(crate) const VORTEX: usize = 31;
 
 /// [`core_with`] with a school `t:fire` and the guild's spells (E09 T47a1; `L1_A` and the others
 /// above): each of `cost` 5, power 10, the school's but the ability.
@@ -437,6 +440,16 @@ pub(crate) fn guild_keep(keep: &mut TownRecord) {
         building("aurora", &[], roles(|r| r.aurora = true)),
     ]);
     keep.guild = GUILD_WEIGHTS.to_vec();
+}
+
+/// [`guild_keep`]'s record with the Mana Vortex at [`VORTEX`] (E09 T49a1).
+pub(crate) fn vortex_keep(keep: &mut TownRecord) {
+    guild_keep(keep);
+    keep.buildings.push(building(
+        "mana_vortex",
+        &[],
+        roles(|r| r.mana_vortex = true),
+    ));
 }
 
 /// The fixture's core pack changed by `edit`, its profile enabling `quirks`.

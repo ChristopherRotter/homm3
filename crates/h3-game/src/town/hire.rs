@@ -118,15 +118,17 @@ impl HiredPart {
 /// ([`replace`], TWN-TAV-004); then the owner's changed slot told ([`tavern::tell`]: its
 /// `TavernOffered` with its parts, or its emptying); then the town's heroes learn its guild's
 /// spells (TWN-GLD-005, E09 T48a, [`guild::learn`]: the hired visitor first, then the garrison
-/// hero, each `HeroChanged` to its owner; the original's 0x5BE030 after `hero_place`). The town's
-/// views do not move (the visitor is the adventure's hero view); the hero's points come by the
+/// hero, each `HeroChanged` to its owner; the original's 0x5BE030 after `hero_place`); then the
+/// town's Mana Vortex to the hired hero alone (TWN-GLD-009, E09 T49a1, [`guild::vortex_to`]: the
+/// original's `town_tavern_click` 0x5D846C), its cleared flag told. The town's views do not move
+/// otherwise (the visitor is the adventure's hero view); the hero's movement points come by the
 /// command's `MovementChanged`. No field of the command is trusted but the town's id and the
 /// slot: the price is the part's (ADR-0004).
 ///
 /// # Errors
 ///
 /// [`GameCommandError::Town`] with the town's refusal, or [`GameCommandError::CannotPay`].
-// rule: TWN-TAV-003, TWN-GLD-005
+// rule: TWN-TAV-003, TWN-GLD-005, TWN-GLD-009
 pub(crate) fn hire<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -138,6 +140,9 @@ pub(crate) fn hire<S: Sink>(
     place(state, rules, (player, slot), checked, sink);
     // rule: TWN-GLD-005
     guild::learn(state, rules, town, sink);
+    // rule: TWN-GLD-009
+    let [hired, _] = guild::heroes(state, town);
+    guild::vortex_to(state, rules, town, [hired, None], sink);
     Ok(())
 }
 

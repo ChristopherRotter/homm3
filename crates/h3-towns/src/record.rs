@@ -81,8 +81,10 @@ impl Town {
     }
 
     /// The town with its Mana Vortex's week flag `vortex`, the rest kept (the store's writes, E09
-    /// design §86: [`crate::Towns::start_week`], [`crate::Towns::take_vortex`]).
-    pub(crate) const fn with_vortex(&self, vortex: bool) -> Self {
+    /// design §86: [`crate::Towns::start_week`], [`crate::Towns::take_vortex`]; public since E09
+    /// T49a1 for the property tests' oracles, a copy that writes nothing).
+    #[must_use]
+    pub const fn with_vortex(&self, vortex: bool) -> Self {
         Self { vortex, ..*self }
     }
 

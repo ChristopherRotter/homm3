@@ -2,7 +2,8 @@
 //! [`guild_keep`]'s record (level 1 `L1_A` 10, `L1_ZERO` 0, `L1_B` 30, the ability 50, `L1_C` 60;
 //! level 2 `L2_A` 40, `L2_B` 60; level 3 `L3` 100; level 4 `L4_ZERO` 0; level 5 the bolt 100,
 //! `L5_A` 50, `L5_B` 50), the part's slots 5, 4, 3, 2, 1 (six, five, four, three and two drawn).
-//! Since E09 T48a what a hero learns there ([`teaches`]), with [`guild_core`]'s [`sage`].
+//! Since E09 T48a what a hero learns there ([`teaches`]), with [`guild_core`]'s [`sage`]; since
+//! E09 T49a1 the night's refill ([`refill`]) and the Mana Vortex ([`vortex`], [`vortex_keep`]).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -12,8 +13,9 @@ use h3_kernel::{Rng, StreamId};
 use super::*;
 use crate::fixture::{
     ABILITY, AURORA, BOLT, KEEP, L1_A, L1_B, L1_C, L1_ZERO, L2_A, L2_B, L3, L4_ZERO, L5_A, L5_B,
-    LIBRARY, MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3, MAGE_GUILD_4, MAGE_GUILD_5, WILD,
-    empty_part, guild_core, guild_keep, part_with_keep, sage, town, town_of,
+    LIBRARY, MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3, MAGE_GUILD_4, MAGE_GUILD_5, VORTEX, WILD,
+    empty_part, guild_core, guild_keep, part_changed, part_with_keep, sage, set, town, town_of,
+    vortex_keep,
 };
 use crate::record::TownStatic;
 
@@ -470,4 +472,67 @@ fn the_aurora_teaches_its_set_in_spell_order_at_any_guild_level_up_to_wisdom() {
     let all = [L1_A, L1_ZERO, L1_B, L1_C, L2_B, L3, L4_ZERO, L5_A, L5_B];
     assert_eq!(learned(&faithful, set, (true, 3, &[])), all);
     assert!(!all.contains(&ABILITY) && !all.contains(&BOLT));
+}
+
+/// [`sage`] without a book in `core` with `mana` spell points, and its maximum (20: Knowledge 2).
+fn sage_at(core: &Ruleset, mana: u16) -> (HeroDetails, u16) {
+    let mut hero = sage(core, false, 0, &[]);
+    hero.mana = mana;
+    let max = h3_heroes::max_mana(&hero, core);
+    (hero, max)
+}
+
+// covers: TWN-GLD-008
+#[test]
+fn a_night_in_a_town_with_a_guild_ever_built_fills_a_hero_s_points_to_its_maximum() {
+    let (core, part) = (guild_core(&[]), guild_part());
+    // No spell book needed; any guild level, even one superseded since.
+    let (empty, max) = sage_at(&core, 0);
+    assert_eq!(max, 20);
+    for built in [&[MAGE_GUILD_1][..], &[MAGE_GUILD_1, MAGE_GUILD_3]] {
+        assert_eq!(refill(&town(built), &part, &core, &empty), Some(max));
+    }
+    let keep = town(&[MAGE_GUILD_1]);
+    assert_eq!(
+        refill(&keep, &part, &core, &sage_at(&core, 19).0),
+        Some(max)
+    );
+    // At or above the maximum the points stay (never lowered).
+    for mana in [20, 35] {
+        assert_eq!(refill(&keep, &part, &core, &sage_at(&core, mana).0), None);
+    }
+    // No guild ever built (the Library alone), no faction's record: nothing.
+    assert_eq!(refill(&town(&[LIBRARY]), &part, &core, &empty), None);
+    let wild = town_of(WILD, &[MAGE_GUILD_1]);
+    assert_eq!(refill(&wild, &part, &core, &empty), None);
+    assert_eq!(refill(&keep, &empty_part(), &core, &empty), None);
+}
+
+// covers: TWN-GLD-009
+#[test]
+fn a_standing_mana_vortex_with_the_week_s_flag_gives_the_factor_times_the_maximum() {
+    let (core, part) = (guild_core(&[]), part_with_keep(vortex_keep));
+    let keep = town(&[MAGE_GUILD_1, VORTEX]);
+    let (empty, max) = sage_at(&core, 0);
+    assert!(keep.vortex());
+    assert_eq!(vortex(&keep, &part, &core, &empty), Some(2 * max));
+    // Below twice the maximum it gives; at or above it nothing (the flag stays for the next).
+    let points = |mana| vortex(&keep, &part, &core, &sage_at(&core, mana).0);
+    assert_eq!(points(39), Some(40));
+    assert_eq!((points(40), points(55)), (None, None));
+    // The part's factor; the flag cleared, the Vortex not standing, never built: nothing.
+    let five = part_changed(|p| p.vortex_factor = 5, vortex_keep);
+    assert_eq!(vortex(&keep, &five, &core, &empty), Some(5 * max));
+    assert_eq!(vortex(&keep.with_vortex(false), &part, &core, &empty), None);
+    let superseded = part_with_keep(|keep| {
+        vortex_keep(keep);
+        keep.buildings[LIBRARY].supersedes = set(&[VORTEX]);
+    });
+    let both = town(&[MAGE_GUILD_1, VORTEX, LIBRARY]);
+    assert_eq!(vortex(&both, &superseded, &core, &empty), None);
+    assert_eq!(vortex(&town(&[MAGE_GUILD_1]), &part, &core, &empty), None);
+    // No faction's record, no parameters: nothing.
+    let wild = town_of(WILD, &[MAGE_GUILD_1, VORTEX]);
+    assert_eq!(vortex(&wild, &part, &core, &empty), None);
+    assert_eq!(vortex(&keep, &empty_part(), &core, &empty), None);
 }

@@ -3282,6 +3282,13 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   where it changes (as `regain_mana`), no event.
 - **Tests:** a visitor's and a garrison hero's points raised; above the maximum kept; no guild no
   refill; day 1 none.
+- *As built* (T49a1, decision 192): `h3_towns::refill(town, part, core, details) -> Option<u16>`
+  (a guild ever built, then the maximum where the points are below it); the game's
+  `town::guild::refill` collects every town's raises first (`TownId` order, the visitor then the
+  garrison hero) and applies each as `HeroChange::SetSpellPoints` through `change_hero` without an
+  owner, so nothing is told. Tests: `h3-towns`' one (a superseded guild counts, no book needed), the
+  game's two in `town/tests/mana.rs` (a turn's end no night; a hero beside the town nothing). No
+  golden replay moved.
 
 ### 93. The Mana Vortex (TWN-GLD-009; §15)
 
@@ -3296,6 +3303,17 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   the taverns' week); the build sets it (`town_init`).
 - **Tests:** once a week a town; twice the maximum; a hero at or above it leaves the flag; the
   garrison hero first; the build's and the hire's.
+- *As built* (T49a1, decision 192): `h3_towns::vortex` checks the parameters, the flag and the
+  standing building before the maximum (`max_mana × factor`, saturating). The game's
+  `town::guild::vortex_to(state, rules, town, heroes, sink)` gives the first hero it raises,
+  then `take_vortex` and the town's `Told` (taken only when a hero takes it); `vortex` orders the
+  garrison hero, then the visitor (a build after its learning, in `build_told`), `visit` runs it
+  before the learning (the visit's end in `settle_outcome`, and T49a2's `Open`), the hire passes
+  the hired visitor alone. `Towns::start_week` after the week's growth, before the taverns' week,
+  so `Told::before` (taken before the growth) tells the set flags with the week's views. No
+  golden replay moved (none takes a Vortex); no version moved. Tests: `h3-towns`' one, the game's
+  three in `town/tests/mana.rs` (the visit's end over two weeks with the told flags, the build's
+  garrison hero first and at the threshold the visitor, the hire's hired hero alone).
 
 ### 94. The views and events (TWN-VEW-004 amended; `docs/06-security.md`'s town section by the `shared/` task)
 
