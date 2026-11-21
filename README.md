@@ -64,7 +64,7 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓▓░` 9 I done, open-ended | I9 closed (a richer observation: no gain, #2 stays); I10 (the ceiling of play against the system actor) next; shaped at each checkpoint |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
 
-Not started yet (sketches in the backlog): game orchestration beyond the import (E10), map-object
+Not started yet (sketches in the backlog unless marked): game orchestration (E10, refined; after E08), map-object
 long tail (E12), adventure AI (E13), map generator (E14), web portal (E21), packaging and hosting
 (E22), ranked play in the native client (E28), HD layouts (E29), campaigns (E20), save import (E19).
 
