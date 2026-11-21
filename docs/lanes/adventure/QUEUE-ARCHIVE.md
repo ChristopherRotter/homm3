@@ -2527,3 +2527,20 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
 - **Depends on:** T136 (`adventure/e08-t136`, merged first). **Status:** ready once T136 merges
   (the original data and the shipped maps: staging per `docs/08-work-process.md`, "Cloud
   sandbox"); its cut confirmed at its start.
+
+## T137b (moved 2026-11-21, done whole: `adventure/e08-t137b`, decisions 398 to 407, ADV-Q63; design note `E08-design.md`, the three drafts, T138 to T145 cut)
+
+**E08 T137b — the ADR amendment drafts, the design note and the cut** (decision 395)
+
+- **Scope:** as T127b for increment 14: the drafts `adr-drafts/0016-increment-15.md` and
+  `0017-increment-15.md` (and ADR-0013's if the survey finds a change of the hero's derived
+  properties), increment 15's design note `E08-design.md` (its parts by side), the building tasks'
+  cut and the exit criteria; the checkpoint with the user (the note, the drafts, the agent's calls,
+  the cut).
+- **Inputs:** the survey `docs/rules/surveys/E08-spells.md` (its open points, the interfaces'
+  sketch, batch E15, the proposed ids); decisions 394, 395 and the survey checkpoint's; ADR-0013,
+  ADR-0015 to -0017; T127b's drafts as the form.
+- **Depends on:** T137a (done 2026-11-21, `adventure/e08-t137a`); its questions (survey §17) are
+  asked at T137b's start or checkpoint. **Status:** ready (docs only; the executable staged only if
+  a reading is reopened).
+
