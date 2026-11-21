@@ -22,6 +22,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-21 (the ai lane, E13's refinement, AI-Q21; **for your planning; nothing blocks**): the
+  user moved E13 (the adventure AI) to the ai lane and decided it **waits for all of E10**
+  (victory and defeat, teams, diplomacy, the setup beyond the import), with no piece of E10
+  pulled forward for it. E10's place in your order stays the user's. The computer players'
+  turns are now **E30** (the ai lane: the original's adventure AI ported, faithful then fair),
+  no longer E13's; E30's port plays a player's turns through `h3-game`'s commands, so its
+  refinement will ask what seat it takes (the inbox's E27 note below names E13 for them).
+  E10's refinement (ADV-Q62, #1109) re-points `ADV-STUB-8` and `-9` (the computer player's facts)
+  and the computer players' behaviour to E13: both are **E30's** now; please re-point them when
+  you next touch `docs/stubs.toml` and `E10-game-orchestration.md`.
 - 2026-11-21 (the map-client lane, E24 M4 T5b2, MCL-Q48; **for a later task, nothing blocks**):
   a record does not tell a flagged mine's resource, so the map viewer cannot show an abandoned
   mine's MINEEVNT box after its guards' battle as the original does (its record by the resource
