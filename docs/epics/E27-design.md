@@ -4227,3 +4227,58 @@ that change nothing (CLT-Q161 for Random Map), a flag's press among the save's h
 (b)), the popups. `h3-view save` for a hot seat (the humans, their names and choices; the makers'
 `viewer` tables to grow them), so that `drawn` gives the viewer saves of the same names; exact
 against `mp-load`, `adv-load` and `adv-load-more` (its masked cells aside).
+
+## 42. Load Game hot seat: the screen (M4 T5b1, 2026-11-21)
+
+Decision 76: T5b cut in two, T5b1 the hot seat's load mode, its list, panel and the advanced
+options from the save, T5b2 the presses (the flags among the save's humans, CLT-Q110 (b)) and
+the popups. CLT-Q160 (a): the names decide who is human after the load; CLT-Q161 (b): no Random
+Map in a load in the client's profile.
+
+### 42.1 Read
+
+- **A load's duration bar is drawn dimmed.** `scenario_advanced_toggle` skips the bar's enabling
+  in a load (0x581383: the vtable +0x24, `scrollbar_enable` 0x597140, whose true clears the state
+  bits 0x20 and 0x1000), so the bar keeps the disabled state it was made with; the redraw of a
+  shown and disabled item calls its +0x20 after its draw (`dialog_item_message` 0x5FE54B: state &
+  0xC), the base's `dialog_item_darken` 0x5FE800, `screen_darken` over its rectangle: the arrows,
+  the track and the thumb each channel halved (recorded: `adv-load` advanced). The bar's own draw
+  (0x596C40) has no disabled branch; a DEF button's +0x20 darkens nothing (its disabled frame).
+- **A load's handicap** is not enabled as a single player's (bit 2 cleared, 0x581743): drawn up
+  with its caption, taking no press and no right press (recorded: the caption's look as a new hot
+  seat's, not the disabled colour).
+
+### 42.2 As built
+
+- **The mode** (`Scenario::opened_hot_seat` of the load mode, `Menus::front`'s Load Game
+  Multiplayer after the hot seat's names; `Screen::Scenario(Load, Multiplayer)` built, its stub
+  gone): the saves of maps two humans may play (the new hot seat's filter), the list shown and
+  built, the panel's Show Saved Games (128, GENRLTXT 656: `shell.scenario.list-saved`) and Show
+  Advanced Options, Random Map in the original's profile alone (CLT-Q161 (b)), the flags' strip
+  (before the rows are made: the save's first human a human may play, else the first colour a
+  human may play); Random Map's press and key do nothing in a load. The window lists its folder
+  anew at the hot seat's load's opening too.
+- **A save's entry** (`Saved` grown; `h3-battle-client`'s `saves::saved`): the colours its
+  replay's players hold as human, each colour's town (a fixed faction's choice, else Random) and
+  first hero (the pick, else Random), its table's bonus and handicap, the turn's duration.
+- **The rows** (`Advanced::set_load`, `remake`, `seating`): the save's choices by colour, a human
+  record taking the record of the colour it is seated on; the seating §41.1's two passes (a saved
+  human no human may play any longer passed over: no engine rule loses a colour yet, E10's); no
+  arrows; the handicap not enabled; the duration the save's, its bar not enabled and dimmed.
+- **Load** hands on the names by colour (`Scenario::seated`); the window keeps them beside the
+  loaded game for E24 M5, which makes human exactly the colours a name holds (CLT-Q160 (a): no
+  engine command changes the humans yet; `CLT-STUB-13`).
+- **`h3-view save`** for a hot seat (`saves::made_with`, `Player`, `Seated`): `--player
+  <colour>:<name>:<town>:<hero>:<bonus>` each a human of its colour (every other the computer's),
+  `--duration`; the makers' `viewer` tables name the players (`adv-load-make-two`: A on Red,
+  Marius 50, the artifact; B on Green, Inferno, Ignatius 51, gold; `adv-load-make-four`: A to D on
+  Red, Blue, Purple and Teal, Castle to Inferno, Orrin 0, Mephala 16, Piquedram 32, Fiona 48, the
+  artifact; both 20 minutes, record 7), `h3shell.py`'s `client_save` passing them.
+
+### 42.3 Compared
+
+`mp-load` 6 of 6 exact; `adv-load` 14 of 19 (the screen, the options, the presses that change
+nothing, the popups, the list's shots); `adv-load-more` 2 of 2. Not yet: `adv-load`'s flag-3,
+flag-1 (a flag's press moves the name with a new game's rule, its town and hero Random, where the
+original's takes the colour's saved choices) and random, random-key, random-popup after them
+(the rows as flag-1 left them): T5b2.

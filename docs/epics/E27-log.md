@@ -1836,3 +1836,33 @@ Kept whole (no seam needed).
 - **Questions:** CLT-Q160 (the names, not the save's humans, decide who is human after a
   hot-seat load), CLT-Q161 (Random Map shown in a hot-seat load, doing nothing). **The agent's
   calls** (*provisional*: M4's review list items 35, 36).
+
+## M4 T5b1 — Load Game hot seat's screen (2026-11-21)
+
+- **Start:** the PC's 64 files of `original-data/` (the 40 non-campaign tracks), the manuals and
+  the help files staged; the PC's shell did not start, so the 71 sizes were checked against its
+  listing and the four LODs and both executables against `installation.md`'s SHA-256. The setup's
+  baseline stopped at coverage (fmt, clippy, the doc tests, deny passed); T5a's #1089 merged,
+  `master`'s CI green. T5b cut in two at its start, CLT-Q160 (a), CLT-Q161 (b) (decision 76).
+  The original's `adv-load` and `adv-load-more` played once under Wine (the makers first): as
+  kept.
+- **Read** (design §42.1): a load's duration bar dimmed (`scrollbar_enable` skipped, the redraw's
+  `dialog_item_darken` over a shown and disabled item); a load's handicap not enabled (drawn up).
+  The map: `scrollbar_enable`, `scrollbar_keys_on`, `scrollbar_keys_off`, `dialog_item_darken`
+  new; `dialog_item_message` extended.
+- **Built** (design §42.2): `scenario`'s hot seat's load (`set_load`'s hot seat, `Texts::list_saved`,
+  the flags' local colour from the save, Random Map nothing in a load, `seated`), `advanced`'s load
+  (`Map::saved`, `set_load`, `remake` and `seating` from the save, no arrows, the handicap and the
+  bar taking no press, the bar's `Draw::Darken`), `Saved` grown (humans, records, duration),
+  `Menus::front` and `Screen::built` for Load Game's Multiplayer (its stub gone from `STUBS`);
+  the battle client's `saves::saved`, `made_with`, `Player`, `Seated`, `h3-view save --player
+  --duration`, the window's relisting and `seated` at Load; the catalogue's
+  `shell.scenario.list-saved`; `h3shell.py`'s `client_save` with the `viewer` players, the two
+  hot-seat makers' `viewer` tables.
+- **Compared:** at the first build `mp-load` 6 of 6 exact, `adv-load` 5 of 19 (the options: the
+  handicap drawn disabled, the bar not dimmed), `adv-load-more` 1 of 2; then `adv-load` 14 of 19
+  (the flags' two and the three after them: T5b2), `adv-load-more` 2 of 2. The other groups as
+  recorded. `drawn --record` for the three.
+- **Gates:** `check.sh --no-coverage`, the coverage of `h3-view` and `h3-ui`, the real-asset gate,
+  the client scope's verify with the original data; `cargo xtask check-exe-map`.
+- **The agent's calls** (*provisional*: M4's review list items 37 to 40).
