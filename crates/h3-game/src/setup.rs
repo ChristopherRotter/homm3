@@ -294,6 +294,10 @@ pub enum GameSetupError {
     BannedSpell(SpellId),
     /// A banned artifact is not the ruleset's (E08 T61b).
     BannedArtifact(ArtifactTypeId),
+    /// A spell the town's setup requires or bans is not the ruleset's or is a creature ability
+    /// (TWN-SET-012, E09 T47a2): the first such town in `TownId` order, its required spells
+    /// before its banned ones, and the spell.
+    TownSpell(TownId, SpellId),
     /// More timed events than a `u16` names; the number (E08 T83a).
     Events(usize),
     /// The timed event at this index names a player twice, out of order or not of the game,
@@ -373,6 +377,12 @@ impl fmt::Display for GameSetupError {
             Self::BannedArtifact(artifact) => {
                 write!(f, "banned artifact {} is not the ruleset's", artifact.raw())
             }
+            Self::TownSpell(town, spell) => write!(
+                f,
+                "town {}'s spell {} is not a hero spell of the ruleset",
+                town.raw(),
+                spell.raw()
+            ),
             Self::Events(n) => write!(f, "{n} timed events are too many"),
             Self::Event(event) => write!(f, "timed event {event} is invalid"),
             Self::TownCount(n) => write!(f, "{n} towns do not give one per town of the map"),
@@ -520,6 +530,11 @@ impl GameSetup {
             .find(|&&artifact| rules.core().artifact(artifact).is_none())
         {
             return Err(GameSetupError::BannedArtifact(artifact));
+        }
+        // rule: TWN-SET-012
+        // E09 T47a2: each town's required and banned spells a hero spell of the ruleset's.
+        if let Some(refused) = town::town_spell_refused(self, rules) {
+            return Err(refused);
         }
         // rule: GAM-HER-001
         // E09 T37b: each customised type the ruleset's and named once, its entry valid on its own

@@ -4,7 +4,7 @@
 //! formations.
 
 use h3_adventure::{Holds, Pos as TilePos, TileMask};
-use h3_content::{FactionId, Formation, HeroTypeId};
+use h3_content::{FactionId, Formation, HeroTypeId, SpellId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
     BuildingsSetup, FactionChoice, FactionSet, GameRuleset, GameSetup, GarrisonCreature,
@@ -15,7 +15,7 @@ use super::import::{ROE, SOD, object, template};
 use super::{limits, read, sample};
 use crate::import::codes;
 use crate::model::{
-    Body, Buildings, CustomHero, DisposedHero, HeroBody, MainTown as MapMainTown, Player,
+    Bits, Body, Buildings, CustomHero, DisposedHero, HeroBody, MainTown as MapMainTown, Player,
     PlayerDetails, Pos, RawMap, Stack, Text, Tile, TimedEvent, TownBody, TownEvent, Version,
 };
 use crate::{ImportError, Unsupported, import};
@@ -416,6 +416,8 @@ fn a_towns_buildings_garrison_name_and_events_are_the_maps() {
                 buildings: SlotSet::from_bits(1 | 1 << 40),
                 creatures: [1, 2, 3, 4, 5, 6, 7],
             }],
+            required_spells: Vec::new(),
+            banned_spells: Vec::new(),
         }
     );
     // RoE's one-byte codes: 0xFE level 1, 0xF1 level 7 upgraded.
@@ -483,6 +485,8 @@ fn a_towns_buildings_garrison_name_and_events_are_the_maps() {
                 garrison: None,
                 name: None,
                 events: vec![],
+                required_spells: Vec::new(),
+                banned_spells: Vec::new(),
             },
             TownSetup {
                 faction: TownFaction::Random { alignment: None },
@@ -490,9 +494,70 @@ fn a_towns_buildings_garrison_name_and_events_are_the_maps() {
                 garrison: None,
                 name: None,
                 events: vec![],
+                required_spells: Vec::new(),
+                banned_spells: Vec::new(),
             },
         ]
     );
+}
+
+/// E09 T47a2 (map import v28, design §84): a town's required and banned spells, the spell of each
+/// set bit 0 to 69 in spell order, bits 70 and 71 dropped; an RoE map's required set empty.
+// covers: TWN-SET-012
+#[test]
+fn a_towns_required_and_banned_spells_are_the_maps() {
+    let bits = |codes: &[usize]| {
+        let mut bytes = vec![0u8; 9];
+        for &code in codes {
+            bytes[code / 8] |= 1 << (code % 8);
+        }
+        Bits(bytes)
+    };
+    let spells = |codes: &[usize]| -> Vec<SpellId> {
+        let mut spells: Vec<SpellId> = codes
+            .iter()
+            .map(|&code| SOD.core().spell_by_key(codes::SPELLS[code]).unwrap())
+            .collect();
+        spells.sort_unstable();
+        spells
+    };
+    for version in [Version::Ab, Version::Sod] {
+        let mut m = town_map(version);
+        m.objects[0].body = Body::Town(Box::new(TownBody {
+            owner: 0,
+            alignment: 0xFF,
+            // Magic Arrow (15), Dimension Door (8), Titan's Lightning Bolt (57) and Armageddon (69)
+            // required, Dimension Door also banned (TD-25: the draw leaves it out); 70 and 71 dropped.
+            required_spells: Some(bits(&[69, 15, 8, 57, 70])),
+            banned_spells: bits(&[8, 0, 71]),
+            ..TownBody::default()
+        }));
+        let town = imported(&m).towns.remove(0);
+        assert_eq!(town.required_spells, spells(&[8, 15, 57, 69]));
+        assert_eq!(town.banned_spells, spells(&[0, 8]));
+        assert_eq!(imported(&m).validate(&SOD), Ok(()));
+    }
+    // An RoE map reads no required set; its banned set as any map's; a town without its body, none.
+    let mut m = town_map(Version::RoE);
+    m.objects[0].body = Body::Town(Box::new(TownBody {
+        owner: 0,
+        alignment: 0xFF,
+        banned_spells: bits(&[2]),
+        ..TownBody::default()
+    }));
+    m.objects.push(object(6, 7, 1, Body::None));
+    let setup = import(&m, &ROE).unwrap();
+    assert_eq!(
+        (
+            &setup.towns[0].required_spells,
+            &setup.towns[0].banned_spells
+        ),
+        (
+            &vec![],
+            &vec![ROE.core().spell_by_key("base:visions").unwrap()]
+        )
+    );
+    assert!(setup.towns[1].required_spells.is_empty() && setup.towns[1].banned_spells.is_empty());
 }
 
 // covers: TWN-SET-010

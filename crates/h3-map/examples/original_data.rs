@@ -729,6 +729,8 @@ fn check(
             garrison: None,
             name: None,
             events: Vec::new(),
+            required_spells: Vec::new(),
+            banned_spells: Vec::new(),
         })
         .collect();
     let players = map

@@ -588,29 +588,29 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x5827523ab7b324ea",
-    "0x2c23323f71b26f94",
-    "0xd080314d78e66507",
-    "0xe570241df7ece54a",
-    "0x35bd553783c5ed8f",
-    "0xb4ad1a863ef4adaf",
-    "0x261f9d146e9a41de",
-    "0xcbf98cf1639ccf36",
-    "0x35cc3fe5fad3dfc9",
-    "0x34bdd41170bdde6e",
-    "0x9d25d96632382261",
-    "0x77d96c5b7a83297a",
-    "0xab248283183038e5",
-    "0x28a8d1be9487cd7a",
-    "0xc77512c1f343023d",
-    "0x9778acfb57d91e8a",
-    "0x77a3739e5c3e6264",
-    "0x6600fb5b0efda314",
-    "0x42cf68148008deff",
-    "0x167632cc1e5426d7",
-    "0xd1d2c23dbfb2f579",
-    "0x3218a490b3df83c2",
-    "0x7a389d3c30d4eb1b",
+    "0xfe82c72fc1c10a8a",
+    "0xe7636fd1c83728ac",
+    "0x907717b47423f9cb",
+    "0x196927e781de189e",
+    "0x38d7042d2af248d7",
+    "0xff6366e25d9a1713",
+    "0xd0047c5d45c13e72",
+    "0x0a154d3d02a67e62",
+    "0x104b305b5d8ce8b1",
+    "0x037292a0626f1b96",
+    "0xfdc74beaa95f9379",
+    "0xa03b5a80e584067a",
+    "0x784e3ba8fae0ef8d",
+    "0x05a6558c2304d8ce",
+    "0x4b030710509a87bd",
+    "0xff36877a30e550db",
+    "0x4c430e386dc6b757",
+    "0xa0a31973c991f849",
+    "0x1735c47425a5e9ee",
+    "0xd5d949d323c73a07",
+    "0xb0dab611b3a28e1e",
+    "0x90bada6f1bee8cd3",
+    "0xfb29c0f7bd54861e",
 ]
 
 [replay]
@@ -640,18 +640,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 37
+game_state_hash_version = 38
 adventure_state_hash_version = 27
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e09-towns-36.h3m"
 hash = "0x2f996b94548f5ae2"
-import_version = 27
+import_version = 28
 
 [result]
 day = 22
-final_hash = "0xa177e775bfabbe49"
+final_hash = "0xd59a9471ed1119a9"
 
 [[players]]
 colour = 0

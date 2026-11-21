@@ -91,8 +91,11 @@ pub use parse::parse;
 /// Tavern (class 95) and the Den of Thieves (97) typed, without a body. v27 (E08 T132b): the trades
 /// and services typed at subclass 0, none with a body: the Altar of Sacrifice (2), the Black Market
 /// (7), the Hill Fort (35), the Trading Post (99, and the snow one 221 as 99), the War Machine
-/// Factory (106) and the Freelancer's Guild (213); a subclass past 0 refused.
-pub const MAP_IMPORT_VERSION: u32 = 27;
+/// Factory (106) and the Freelancer's Guild (213); a subclass past 0 refused. v28 (E09 T47a2): a
+/// town's required and banned spells into its setup (`TownSetup::required_spells`,
+/// `banned_spells`, TWN-SET-012: the spell of each set bit 0 to 69, bits 70 and 71 dropped; an RoE
+/// map's required set empty).
+pub const MAP_IMPORT_VERSION: u32 = 28;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

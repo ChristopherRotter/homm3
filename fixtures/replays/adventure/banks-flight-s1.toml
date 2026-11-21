@@ -33,18 +33,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 37
+game_state_hash_version = 38
 adventure_state_hash_version = 27
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-banks-36.h3m"
 hash = "0xda3dd80d4aa94083"
-import_version = 27
+import_version = 28
 
 [result]
 day = 2
-final_hash = "0xb5951d8dc5663c15"
+final_hash = "0x8189d6e216db0407"
 
 [[players]]
 colour = 0

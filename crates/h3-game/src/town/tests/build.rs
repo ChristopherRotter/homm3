@@ -10,8 +10,8 @@ use h3_content::{FactionId, TerrainId};
 use h3_contracts::{ArmyStack, PlayerId, TownId};
 use h3_kernel::{Rng, StreamId};
 use h3_towns::{
-    BuildingId, BuildingsSetup, GarrisonCreature, GarrisonStack, SlotSet, TownFaction, town_setup,
-    without_water,
+    BuildingId, BuildingsSetup, GarrisonCreature, GarrisonStack, SlotSet, TownFaction, TownStatic,
+    town_setup, without_water,
 };
 
 use super::{
@@ -210,7 +210,13 @@ fn the_store_holds_each_town_as_built_before_the_starting_armies() {
             // No water on the map: each Shipyard forbidden (TWN-SET-011, E09 T18a).
             let dry = without_water(&built.town, rules.towns());
             assert_eq!(towns.get(id), Some(&dry));
-            assert_eq!(towns.town_static(id), Some(&built.town_static));
+            // E09 T47a2: the Aurora set the game's build computes, no spell banned.
+            let aurora = h3_towns::aurora_set(rules.core(), &h3_towns::GuildSets::default());
+            let town_static = TownStatic {
+                aurora,
+                ..built.town_static
+            };
+            assert_eq!(towns.town_static(id), Some(&town_static));
             assert_eq!(
                 game.adventure().town_garrison(index),
                 Some(&built.garrison[..])

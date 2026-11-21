@@ -18,7 +18,8 @@
 //! ([`garrison`]) and draws the Portals of Summoning ([`portal`]); since E09 T27 it opens a town's
 //! hire dialog and makes its purchases ([`recruit`]); since E09 T38b1 a hero that leaves the game
 //! goes back to the hero pool or its owner's tavern ([`leave`]); since E09 T39b1 it answers the
-//! Thieves' Guild ([`thieves`]).
+//! Thieves' Guild ([`thieves`]); since E09 T47a2 it checks the towns' spell sets and draws every
+//! town's mage guild at the build ([`guild`]).
 
 use alloc::vec::Vec;
 
@@ -36,6 +37,7 @@ pub(crate) mod day;
 pub(crate) mod events;
 pub(crate) mod garrison;
 pub(crate) mod growth;
+pub(crate) mod guild;
 pub(crate) mod heroes;
 pub(crate) mod hire;
 pub(crate) mod income;
@@ -55,6 +57,7 @@ pub(crate) use capture::{capture, holds_capitol};
 pub(crate) use command::command;
 pub(crate) use day::start_day;
 pub(crate) use events::fire_events;
+pub(crate) use guild::{draw_guilds, town_spell_refused};
 pub(crate) use heroes::{custom_records, main_town_heroes};
 pub(crate) use income::add_income;
 pub(crate) use offer::legal_builds;

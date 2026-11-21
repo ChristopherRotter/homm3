@@ -16,10 +16,11 @@ use core::num::{NonZeroU8, NonZeroU16};
 use h3_adventure::{AdventurePack, AdventureRuleset, Holds, ObjectSetup, Pos, Scenery, TileMask};
 use h3_content::{
     ContentPack, CreatureDef, FactionDef, FactionId, Formation, HeroClassDef, HeroTypeDef,
-    HeroTypeId, Ruleset,
+    HeroTypeId, Ruleset, SpellCategory,
 };
 use h3_content_battle::{
-    BallisticsRecord, BattleCreatureDef, SiegeDef, SiegeFieldDef, WallKind, WallTarget,
+    BallisticsRecord, BattleCreatureDef, BattleSpellDef, SiegeDef, SiegeFieldDef, WallKind,
+    WallTarget,
 };
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::{
@@ -364,6 +365,19 @@ pub(super) fn rules_edited(
             pack.creatures.push(ent);
         }
         pack.battle.as_mut().unwrap().siege = Some(siege_field());
+        // E09 T47a2: each creature ability of the core takes the first spell's row (the guild
+        // tests' core has one).
+        let abilities = core
+            .spells()
+            .iter()
+            .filter(|spell| spell.category == SpellCategory::Ability);
+        let rows: Vec<BattleSpellDef> = abilities
+            .map(|spell| BattleSpellDef {
+                key: spell.key.clone(),
+                ..pack.spells[0].clone()
+            })
+            .collect();
+        pack.spells.extend(rows);
         pack.sieges = factions
             .iter()
             .map(|faction| SiegeDef {
@@ -406,6 +420,8 @@ fn town(faction: TownFaction) -> TownSetup {
         garrison: None,
         name: None,
         events: vec![],
+        required_spells: Vec::new(),
+        banned_spells: Vec::new(),
     }
 }
 
@@ -1031,6 +1047,7 @@ mod custom;
 mod events;
 mod garrison;
 mod growth;
+mod guild;
 mod heroes;
 mod hire;
 mod income;

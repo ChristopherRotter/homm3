@@ -7,7 +7,7 @@ commands = [
     "0 end-turn",
     "1 end-turn",
 ]
-checkpoints = ["0xbdde98a3e4d49977"]
+checkpoints = ["0x8a26178c49ff9079"]
 
 [replay]
 format = 23
@@ -36,18 +36,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 37
+game_state_hash_version = 38
 adventure_state_hash_version = 27
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-garrisons-36.h3m"
 hash = "0xa3cbaec168902eb6"
-import_version = 27
+import_version = 28
 
 [result]
 day = 2
-final_hash = "0x7e7b4a3c333bfad9"
+final_hash = "0x745e50ee6fb1bc4b"
 
 [[players]]
 colour = 0

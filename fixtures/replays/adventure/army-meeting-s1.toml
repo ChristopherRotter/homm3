@@ -18,9 +18,9 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xd0f388284cf172fd",
-    "0xe9e2ae95ac58ba95",
-    "0x58cf250a377bf9d7",
+    "0x5d4da6f79837f0fd",
+    "0xcbaa37e08508b695",
+    "0x756b0d1513bbd54b",
 ]
 
 [replay]
@@ -50,18 +50,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 37
+game_state_hash_version = 38
 adventure_state_hash_version = 27
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-army-12.h3m"
 hash = "0x40320993e64e5b23"
-import_version = 27
+import_version = 28
 
 [result]
 day = 2
-final_hash = "0xaaa6256ebe4c788a"
+final_hash = "0xa9de3137478f0622"
 
 [[players]]
 colour = 0
