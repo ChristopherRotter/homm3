@@ -4651,3 +4651,49 @@ Not a reading: the hand-over's place is the record's, its look a plain cut.
 - *Provisional*: the names; the plain cut; the battle's keys and settings as `h3-view window`'s;
   its fidgets' seed 0; the map's clock as if the battle took none.
 
+### 5.21 The switch and the result as the original's (M4 T5b2)
+
+Kept whole by the user at its start (2026-11-21). The switch and the result §5.19 read, built from
+a record's facts and compared with T5a's three sequences, recorded again.
+
+- **The sequences** (`sequences.toml`, the "battles handed over" block): T5a's three as scripted
+  games (`script`: the engine's game of the same visit, the attacker's shots or retreat, the
+  guards' `defend`; `battle` the harness's plan, the viewer only accepts it,
+  `sequence::BattlePlan`). Their situations as the other scripted games' (the new game's explored
+  tiles, the gold bonus, the resources written and shown by a second hero's selection: the
+  original's random bonus had given the hero a wider explored circle); `battle-mine` an abandoned
+  mine (the engine guards no other neutral mine) whose 100 Troglodytes are the engine's draw under
+  `engine_seed = 5` written for the original (173, under seed 1, reached a level-up, whose dialog
+  held the map). Each recorded twice the same; the battle's starting stacks equal the engine's.
+- **The record's side** (`engine::played`, `engine::visits`): a visit's battle
+  (`Visit::battle`: the `GameEvents` whose `BattleStarted` began it, the events from its
+  `BattleEnded` on in the batch that ends it). A wandering monster's (class 54) is
+  `Told::Fight` (its winner: 0 the attacker, 1 the defender or a retreated or surrendered
+  attacker, −1 a draw; `ObjectRemoved` takes it, `HeroRemoved` the hero; the experience); a
+  mine's (53) after its question accepted `Told::Guarded` (the flag's colour from its
+  `ObjectFlagged`; the resource its subclass, MCL-Q48). The binary builds a `Fight` find (visited
+  from beside, its attack frame twice the creature) or the mine's question (Part A's `Ask::Mine`)
+  whose OK's `Answer` carries the `Fight` and, past ADVEVENT 85's box (`map.find.mine-guards`) and
+  MINEEVNT's, the flag.
+- **The switch** (`Loop::switch_out`, `switch_step`; `Draw::switch`, `Switch`): at the hand-over
+  (a fight's attack drawn; an answer's box closed, the objects stepped once) the busy cursor and
+  the screen as it showed, then the map's shifts 1, 2 at 50 and 100 ms; at 150 the combat cursor
+  (`crcombat.def` frame 6, the layout's) and the battle's first frame at shift 2, 1 at 200, whole
+  at 250 (the timeline's `battle <winner>`, the battle handed over then: `Loop::battles`); the
+  palettes do not cycle from that black until the map is back. The result's OK (Enter's release;
+  the window's host gives `Action::BattleClosed`) starts the battle's fade out (`Switch::ended`:
+  its last frame, not kept by a sequence's run, as the harness keeps none), at 150 the map back
+  (drawn, the adventure cursor, the next cycle 20 ms on, *provisional*) at shift 2, 1 at 200, the
+  map whole at 250. The painter fades with the shell's `faded` (`screen_fade_out`'s shifts); the
+  battle's first frame is its element's at its start (`battles::first_frame`: unattended, no
+  sound, a stopped clock), its last the hosted battle's.
+- **The result** (`Loop::after_battle`): the hero's path made again (none: move hero disabled);
+  a monster beaten taken off the map with `killfade.82M` (the dissolve holding the cycling, the
+  experience at its end); a retreated hero (`AfterBattle::Lost`) shown with its objects stepped,
+  deselected, its slot out of the lists at once, drawn nowhere from its dissolve (`Draw::left`;
+  `killfade.82M`, the palettes cycling on), then the first hero, else the first town, chosen; a
+  mine's answer's boxes after the battle, its flag past the last.
+- **Compared** (`timelines/battle-*-frames.txt`, the original's frames under Wine): every
+  timeline as recorded; the frames exact but the known differences (the epic's review list):
+  the morale icon (MCL-Q36), the battle's fade in (its obstacles the engine's: MCL-Q49), the
+  hero's pose at the attack, the panel's buttons after a retreat, MINEEVNT's resource (MCL-Q48).

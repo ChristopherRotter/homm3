@@ -1111,3 +1111,28 @@ the user (the log's "M4 T4c", design §5.16, §5.17); its one remainder:
   `check.sh` all gates.
 - **Depends on:** T4c (done). **Status:** done 2026-11-21 (whole: the log's "M4 T4c2", design
   §5.18; MCL-Q46).
+
+### E24 M4 T5 — the battles handed over
+
+- **Scope:** a battle of the game drawn by the battle client's viewer in the map viewer's
+  window, as the original switches screens (its sounds and music), and the map back with the
+  result applied (a monster beaten: taken off the map, the hero's army and experience, a guarded
+  mine's flag, design §5.6; moved here from T2d by the user, 2026-11-18); the battle's background and colours from the game (CLT-Q4, CLT-Q6:
+  `BattleSetup.background`, `colours`, set by `h3-game`).
+- **Acceptance:** a golden replay's battles shown in the window; the switch compared with the
+  original's recording where it is drawn; `check.sh` all gates.
+- **Depends on:** T4 (done with T4c2, 2026-11-21); the client lane's library entry (its inbox,
+  2026-10-31: complete, E17 M7 T3a to T3c). **Status:** cut in two by the user at its start
+  (2026-11-21, the reading first): **T5a done** (the reading and the recordings: the log's "M4
+  T5a", design §5.19; the harness's battle step; `battle-won`, `battle-mine`, `battle-retreat` in
+  `map/to-record.toml`; MCL-Q47); T5b cut in two by the user at its start (2026-11-21, the
+  hosting first; the crate structure: `h3-map-view`'s binary depends on `h3-battle-client`, not a
+  binary over both): **T5b1 done** (the log's "M4 T5b1", design §5.20: a record's battles hosted
+  in the map's window, a walk's at its end and an answer's where its box closes, a plain cut; the
+  map's sound on `HostSound`; `MCL-STUB-3`, a defending battle); **T5b2 next**: the switch and the
+  result as the original's (§5.19: the map's fade out, the battle's in and out, the map's in, who
+  draws them settled with the battle's first frame; the beaten monster's and the loser hero's
+  dissolves, a guarded mine's boxes and flag, the map after the battle; MCL-Q47 (a) as built, by
+  ear at T6; T5a's three moved into `sequences.toml` and compared with `drawn`; `check.sh`);
+  **T5b2 done** 2026-11-21, kept whole by the user (the log's "M4 T5b2", design §5.21;
+  MCL-Q48, MCL-Q49).

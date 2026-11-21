@@ -1811,7 +1811,7 @@ enum Then {
     AiBoard(Hero, bool),
     /// A hero a battle took off the map (E24 M4 T5b2): its slot left out of the kingdom's list,
     /// then the player's next hero or town.
-    Lost(Option<usize>),
+    Lost,
 }
 
 /// A step onto a boat held by its dissolve (E24 M4 T2d2): the walk, the boat's tile and whether
@@ -4147,7 +4147,7 @@ impl Loop {
                 self.ai_animate(t, to, single);
                 return self.ai_on(t).map(|_| ());
             }
-            Then::Lost(slot) => self.left_map(t, slot, queued)?,
+            Then::Lost => self.left_map(t, queued)?,
             Then::Taken => {
                 self.gain(gain);
                 // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,
@@ -4373,10 +4373,20 @@ impl Loop {
                 self.index = None;
                 self.selected_id = None;
                 self.kingdom.selected = Selected::None;
+                // Its slot out of the kingdom's list at once (`hero_leave_game` 0x4D9EC0:
+                // recorded, `battle-retreat`'s list at 810).
+                if let Some(slot) = slot.filter(|&s| s < self.kingdom.heroes.len()) {
+                    self.kingdom.heroes.remove(slot);
+                    let rest = self
+                        .chosen
+                        .heroes
+                        .split_off(slot.min(self.chosen.heroes.len()));
+                    self.chosen.heroes.extend(rest.into_iter().skip(1));
+                }
                 self.draw_lists();
                 self.draw(t);
                 self.left = index;
-                self.lose(t, Then::Lost(slot));
+                self.lose(t, Then::Lost);
             }
             _ => {
                 self.gain(gain);
@@ -4387,23 +4397,11 @@ impl Loop {
         Ok(())
     }
 
-    /// A hero's dissolve off the map ended at `t` (E24 M4 T5b2, design §5.19): its slot `slot`
-    /// left out of the kingdom's list and the lists and the minimap drawn (`hero_list_update`,
-    /// `minimap_redraw`), then the player's next hero or town chosen as `mobilize_hero(0, 0, 1)`
-    /// does with none selected (*provisional*: the first hero, else the first town), the actions
-    /// given meanwhile, the idle step.
-    fn left_map(
-        &mut self,
-        t: u32,
-        slot: Option<usize>,
-        queued: Vec<Action>,
-    ) -> Result<(), Unplayable> {
-        if let Some(slot) = slot.filter(|&s| s < self.kingdom.heroes.len()) {
-            self.kingdom.heroes.remove(slot);
-            if slot < self.chosen.heroes.len() {
-                self.chosen.heroes.remove(slot);
-            }
-        }
+    /// A hero's dissolve off the map ended at `t` (E24 M4 T5b2, design §5.19): the lists and the
+    /// minimap drawn (`hero_list_update`, `minimap_redraw`), then the player's next hero or town
+    /// chosen as `mobilize_hero(0, 0, 1)` does with none selected (*provisional*: the first hero,
+    /// else the first town), the actions given meanwhile, the idle step.
+    fn left_map(&mut self, t: u32, queued: Vec<Action>) -> Result<(), Unplayable> {
         self.draw_lists();
         self.draw_minimap();
         if self.kingdom.heroes.is_empty() {

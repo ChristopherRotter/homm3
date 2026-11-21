@@ -228,9 +228,9 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   the crate structure: `h3-map-view`'s binary depends on `h3-battle-client`, design §5.20): T5b1,
   the window hosting a record's battles, the map's sound on `HostSound` (**done** 2026-11-21: the
   log's "M4 T5b1", design §5.20; `MCL-STUB-3`), T5b2, the switch and the result as the original's
-  (the fades, the monster's and the loser hero's dissolves, a guarded mine's boxes and flag,
-  MCL-Q47 (a) by ear at T6, T5a's three in `sequences.toml` and compared; next); T6, M4's closure. A task that grows is cut at a seam agreed
-  with the user.
+  (**done** 2026-11-21, kept whole by the user: the log's "M4 T5b2", design §5.21; T5a's three
+  in `sequences.toml` as scripted games, every timeline as recorded; MCL-Q48, MCL-Q49); T6, M4's
+  closure (next). A task that grows is cut at a seam agreed with the user.
 - **Exit:** Part A's situations and sequences exact on the whole screen (or each difference an
   `MCL-Q<n>`); the engine's starts and scripted games equal to the original's frames; a golden
   adventure replay, as the protocol's record, viewable from start to end in the window with its
@@ -516,3 +516,15 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   settings as `h3-view window`'s (`settings.toml` here, which its options dialog writes); its
   fidgets' seed 0; the map's sound on `HostSound`, lent with the map's effects stopped; a
   defending battle not handed over (`MCL-STUB-3`).
+- **M4 T5b2, the switch and the result** (*provisional*; design §5.21): the host (the map viewer)
+  draws all four fades, the battle's from the battle client's first frame and last frame (no
+  change to the client lane's crate); the fade in's steps as observed (`screen_fade_in` not
+  read); the palettes' next cycle 20 ms after the map comes back (as recorded: the harness's
+  written-back step); a retreated hero's next selection the first hero, else the first town; T5a's
+  situations changed to the scripted games' way (the new game's explored tiles, the gold bonus, a
+  second hero) and the mine to an abandoned mine under engine seed 5 (the engine guards no other
+  neutral mine). Known differences in the frame counts (`timelines/battle-*-frames.txt`): the
+  hero's morale icon (MCL-Q36), the battle's three fade-in frames (its obstacles, MCL-Q49), the
+  hero drawn standing at the attack where the original draws its moving pose (about 590 pixels at
+  the hand-over and a flag column at the map's return), the panel's buttons after a retreat, the
+  MINEEVNT box's resource (MCL-Q48).

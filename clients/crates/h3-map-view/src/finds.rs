@@ -127,8 +127,9 @@ pub fn pickup(art: &FindArt, n: usize) -> Option<&str> {
 /// The string catalogue's keys the finds and the turn's boxes show (`clients/text/keys.toml`);
 /// the names are the families `resource`, `artifact`, `artifact-event`, `spell`, `player-colour`,
 /// `skill-level`, `secondary-skill`, `primary-skill`, `creature`, `hero`, `sign`'s and (E24 M4
-/// T2d1) `mine-event`'s, a mine's box (MINEEVNT's records).
-pub const KEYS: [&str; 45] = [
+/// T2d1) `mine-event`'s, a mine's box (MINEEVNT's records); since E24 M4 T5b2 a mine's guards
+/// beaten (ADVEVENT 85).
+pub const KEYS: [&str; 46] = [
     "map.find.per-day",
     "map.find.level",
     "map.find.count",
@@ -171,6 +172,7 @@ pub const KEYS: [&str; 45] = [
     "map.find.reward-creature",
     "map.find.reward-creatures",
     "map.find.lighthouse",
+    "map.find.mine-guards",
     "map.turn.town-lost",
     "map.turn.days-left",
     "map.turn.last-day",
