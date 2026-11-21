@@ -20506,3 +20506,73 @@ coverage step to keep the disk for the branch's build (about 10 GB free with it)
 - **Versions:** the env's action encoding v17 (the AI lane's, `cross-lane`; its inbox told);
   nothing else moved. No fixture map holds a trade, so the goldens, the plans' listing oracle, the
   benches' random courses and the bots tables are as they were (T135b's maps bring them).
+
+### Increment 14, round 8: T135b1, the trades maps and their replays (2026-11-21, `adventure/e08-t135b1`, `cross-lane`)
+
+**The cut** (decision 391; asked at T135b's start, `AskUserQuestion`, with the `cross-lane` consent
+for the server lane's counts of the golden adventure replays): T135b in two, the two maps and the
+replays first (recommended was three, as T125b's); T135b2 the plans and oracles, the benchmarks
+and `--with-original-data`. **Baseline:** `master` 87c83f6 (#1093, T135a, and #1092 merged; CI's
+`master` run in progress at the start). The setup's `verify-once` ran in full (the code not
+verified yet): fmt, clippy, deny, the checks and the tests passed; stopped at its coverage step to
+keep the disk for the branch's builds, CI's `master` run stands for it. The original data staged
+from the user's repo folder at the start (the 64 files with the four manuals and three help
+files; the PC's shell did not start, "Workspace unavailable": the sizes against `device_list_dir`
+and the LODs' and executables' SHA-256 against `docs/formats/installation.md`, all equal).
+
+- **The trades map** (`fixtures/maps/e08-trades-36.h3m`; `h3-map`'s `tests/trades_map.rs`):
+  SoD, 36 × 36 of grass, dirt on columns 0 to 11, rough on columns 24 to 35 of rows 0 to 8, snow
+  on columns 24 to 35 of rows 21 to 35; every class twice, by anchor: in the north the Trading
+  Post on dirt (4, 4), the Freelancer's Guild (11, 4), the Altar (16, 4), the Black Market (22, 4),
+  the rough Trading Post (30, 4), the Hill Fort on dirt (4, 10), the factory (17, 10); in the
+  south the Altar (16, 24), the factory (23, 24), the snow Trading Posts (30, 24) and (30, 30), the
+  guild (11, 30), the Hill Fort on grass (16, 30), the Black Market (22, 30); `trades.rs`'
+  pictures shared (`pub(super)`). Batch E14-3's bans (every treasure, minor and major below 127
+  but seventeen). Eleven heroes, each below an entrance (the scripted replays' one step): red's
+  Orrin, Valeska, Edric (900 experience, the Helm of Chaos and a Spell Book worn, a Skull Helmet
+  carried), Sylvia, Christian (a relic in the hands, the head, the torso and the five misc
+  positions, 64 Clovers of Fortune: room for none of the seventeen), Sorsha (five stacks of levels
+  1 to 6), Tyris; blue's Straker (a Death Knight: Skeletons, Walking Dead, Wights), Yog (a
+  Barbarian, a Badge of Courage carried), Gurnisson, Adela. Two tests: the file read back as
+  written, the fourteen's types and anchors, each one entrance (the guild's and the factory's
+  west of the anchor), each Black Market's seven three treasures, three minors and one major of
+  the seventeen, the two markets' fourteen distinct, at the seeds 1 to 16 (ADV-MKT-006);
+  `the_full_hero_s_purchase_on_the_trades_map_is_refused_changing_nothing`: Christian onto the
+  north's Black Market, each of the seven entries refused with `MarketError::NoRoom` and the state
+  hash unchanged (ADV-MKT-007, A-46 fixed).
+- **The trades XL** (`fixtures/maps/e08-trades-144.h3m`; `tests/trades_xl_map.rs`): SoD, 144 ×
+  144 of grass over subterranean ground on the dwellings XL's lattice (the economy XL's heroes, one
+  object to an 8 × 8 cell on its tile (5, 5), a wandering monster on every hundredth free tile,
+  397); the census's most of each class (survey §1; 49): 7 Altars, 6 Black Markets, 7 factories
+  and 7 guilds, the larger half of each on the surface, 11 Hill Forts (the grass picture) and 9 +
+  2 Trading Posts (each class 221 on a snow patch) on the surface; no bans. The test: the classes'
+  counts by level, their anchors, each Black Market's seven by class. Its benchmark is T135b2's.
+- **The golden replays** (`adventure_replays.rs`' list; 111 now): random play `trades-s208-d28`,
+  `-s1257-d28`, `-s1390-d28` (a scratch sweep over the seeds 1 to 1 500 counting each game's
+  answers by kind, not committed: 549 games trade, 27 304 trades in all, 348 sell, 384 buy, 147
+  sacrifice artifacts, 135 creatures, 288 upgrade a row and 237 all at a Hill Fort, 354 buy a war
+  machine; 463 steps a game on average, 1 533 at most; the three together every listed answer
+  kind, each under 460 steps). Seed 208 holds the full hero's Altar all: 23 places, ten worn (a
+  war machine he starts with among them, for 0: ADV-QUIRK-49) and thirteen carried, 67 000
+  experience, a level-up after another (decision 390). Scripted (`--seed 1 --checkpoint-every 5
+  --script`): `trades-market-s1` (a Trading Post's three trades and a transfer of 2 500 gold, a
+  guild's two sales, a snow post's trade), `trades-black-market-s1` (a purchase, then the full
+  hero's visit left), `trades-altar-s1` (the good hero's two sacrifices, each closing the Altar
+  before its level-ups and the Altar again after them; the evil hero's creatures; the neutral
+  hero's artifact, its level-up, then creatures), `trades-services-s1` (a Hill Fort's row then
+  all, the level-1 stack free; the factory's question and its three machines).
+- *Found on the way* (nothing wrong in the rules): 1 392 of the 1 500 games enter a trade object
+  (the random agent draws a move's tile uniformly from the reach, so not at once though each hero
+  stands below an entrance); once in a market it trades many lots before leaving (§22's risk,
+  measured: 27 304 trades in 549 games).
+- *Agent's calls (change freely):* the maps' layouts, heroes, armies, artifacts and bans; the
+  seeds and their criteria; the XL without bans.
+- **Gates:** `h3-map`'s three map tests; `h3-cli`'s `adventure_replays` over the 111; on the
+  server lane's paths (`cross-lane`, the user's consent): `h3-protocol`'s `tests::game_fold` and
+  `tests::game_session` and `h3-server`'s `tests::record` count 111 and pass over them. The scoped
+  verify `--with-original-data`: every step passing but `check-lane` (by design for a `cross-lane`
+  branch; `check-lane --cross-lane` ok): coverage 1 040 s, determinism 383 s (the 111 goldens),
+  bench-check 830 s (every workload inside its gate, no engine code changed; the nearest
+  `fork-economy-xl-144` +1.28 % and `day-start-builds-36` +1.06 %), original-data 56 s;
+  `cargo check --workspace --all-targets` clean. The server lane's inbox told.
+- **Versions:** none.

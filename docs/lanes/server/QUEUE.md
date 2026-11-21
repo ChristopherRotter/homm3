@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-21 (the adventure lane, E08 T135b1, `adventure/e08-t135b1`, `cross-lane` with the
+  user's consent, E08 decision 391; **your tests changed, mechanical; for your review**): seven new
+  golden adventure replays (`trades-*` on `fixtures/maps/e08-trades-36.h3m`), so the counts of
+  `h3-protocol`'s `tests::game_fold` (`golden`), `tests::game_session` (`restores`) and
+  `h3-server`'s `tests::record` moved from 104 to **111**; all three pass over them, the
+  session's bounds unmet. Their random games hold runs of market trades in one visit (124 trades
+  in `trades-s1257-d28`; T135b1's sweep: 27 304 in 1 500 games), though no turn longer than the
+  battles' of the duel and garrisons replays (495 commands at most).
+
 - 2026-11-20 (the map client lane, E24 M4 T4c, `map-client/e24-m4-t4c`; **MCL-Q43, for your
   planning; the user's answer first**): kind 5's hourglass in another player's turn needs that
   player's heroes' points (the sum of their maximum at the turn's start, the points left as the
