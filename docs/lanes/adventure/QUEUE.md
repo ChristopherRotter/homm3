@@ -4,20 +4,25 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list), T138 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T138 — batch E15's maps: the writer's prison and Market of Time, the spec's fields, the specs** (decision 407)
+**E08 T139 — batch E15's run: the harness's cast flow and reads, the recipes, the run, scored** (design note `E08-design.md` §19, §20's round 3)
 
-- **Scope:** as T128 for batch E14: `h3_map::writer`'s prison with a hero body (type, experience,
-  army, skills, artifacts) and class 50 among the plain objects, a placed hero's learned spells and
-  worn scrolls if not yet written; `h3-experiment`'s spec fields (battle-owned, `cross-lane`, the
-  consent asked at the start): prisons, the Market of Time, special grounds under a hero, learned
-  spells and scrolls, hidden tiles by design; the specs and their maps for the 16 rows (design note
-  `E08-design.md` §19, survey `E08-spells.md` §15).
-- **Inputs:** the design note §7, §19; the survey §15; T128's spec and writer as the form.
-- **Depends on:** T137b (done 2026-11-21, `adventure/e08-t137b`). **Status:** ready (the staging:
-  the executable, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`, as T128). Then T139
-  (the run on the client lane's harness, scored), T140 (`shared/`), T141 to T145 (the epic's tasks).
+- **Scope:** T139a: the capture harness (`clients/capture/`, common): the cast's flow (the cast
+  button, the book's click by spell, the target's click by tile, a cancel), reads of the hero's
+  +0x10D, +0x112, +0x116 and spell points +0x18, the mouse cursor's frame, the boats' records
+  (game +0x4E3BC: tile, level, owner, last captain, in use); the recipes for
+  `E08-batch-15a`, `-15b`, `-15c` (T138's specs: compile them again, the stamps in their headers);
+  the run under Wine (SoD on Easy, hot seat) and the scoring of rows E15-1 to E15-16 into the
+  survey and the results files (the quirks' confirmations: A-13, A-49 to A-54, D-75, D-78,
+  D-79/O-1 with ADV-STUB-21, the Prison's class against `object_classes_not_entered` 0x63AA58).
+  T139b: the order of the prisoners' level draws (§15) read and recorded, if T139a leaves it open.
+- **Inputs:** the specs' headers (each row's agent's calls: E15-9 split in 9a and 9b, E15-12
+  recorded under E15-11, E15-16 under E15-8, E15-13's price corrected to the movement survey's
+  lesser-of rule); the survey `E08-spells.md` §15; T129a's harness work as the form
+  (`E08-log.md`, grep `T129a`); `clients/capture/README.md`.
+- **Depends on:** T138 (`adventure/e08-t138`). **Status:** ready (the staging: the client lane's
+  set, as T129a; its cut confirmed at its start).
 
 ## Inbox
 

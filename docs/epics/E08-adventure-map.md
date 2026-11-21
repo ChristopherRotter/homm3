@@ -79,13 +79,14 @@ Refined with the user on 2026-11-21 (T136; ADV-Q61, asked at T136's start). Buil
 405. **The mastery on a ground is `h3-heroes`' derivation** with the raise an input (ADR-0013 point 2, new point 17; the battle's hero casts may share it, `cross-lane` at its choice). As recommended.
 406. **Visions, View Earth, View Air and Disguise go to E12** with the information objects (`ADV-STUB-19`). As recommended.
 407. **The checkpoint** (ADV-Q63's second round): the cut T138 to T145, the three drafts and the agent's calls as written (the `empty` kind, the one `Cast` command, the raise and the casting limit read by the game from the battle part, the env's two 19 × 17 windows), but **the flight's compromise charges only the steps up to its last stop node** (the passes beyond it free, their reveals kept; the agent recommended charging every step made).
+408. **T138's cut** (the user, 2026-11-21): both parts, the writer with the spec's fields and the specs, in one session (the agent recommended T138b in the next); the `cross-lane` change of `h3-experiment` consented.
 
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T136 Increment 15 refined** (with increment 14's audit and closure). Done (2026-11-21, `adventure/e08-t136`, whole: decision 393; decisions 394, 395): the Prison, the Market of Time and the adventure spells; the first round queued (T137a, T137b).
 - **T137a** the survey (decision 395). Done (2026-11-21, `adventure/e08-t137a`, whole: decision 397): survey `docs/rules/surveys/E08-spells.md`; D-75 to D-79, A-49 to A-54, batch E15 planned; the checkpoint's questions for T137b (§17).
 - **T137b** the ADR amendment drafts, the design note and the cut (decision 395). Done (2026-11-21, `adventure/e08-t137b`, whole: decision 398; decisions 399 to 407, ADV-Q63): design note `E08-design.md`, the drafts `adr-drafts/0013`, `0016`, `0017-increment-15.md`, the cut below.
-- **T138** batch E15's maps: the writer's prison body and class 50, the spec's fields (`cross-lane`), the specs and their maps (design §19).
+- **T138** batch E15's maps: the writer's prison body and class 50, the spec's fields (`cross-lane`), the specs and their maps (design §19). Done (2026-11-21, `adventure/e08-t138`, both parts in one session: decision 408): `MapObject::Prison`, the Market of Time among the plain objects; `[[map.prison]]`, `HeroSpec::ground`, `[[map.hidden]]`; the specs `E08-batch-15a` to `-15c`.
 - **T139** T139a the harness's cast flow and reads, the recipe, the run, scored; T139b the prisoners' level draws' order if left open (§15).
 - **T140** `shared/` (`cross-lane`): the three drafts with T139's outcome, the quirk flags in the profiles, the glossary, `docs/06-security.md`.
 - **T141** T141a the Prison and the Market of Time with their events and wire (§1, §2, §7, §9, §15); T141b `h3-heroes`' `spell_masteries_on`, `map_spell_cost`, `can_cast_on_map` (§5, §6).

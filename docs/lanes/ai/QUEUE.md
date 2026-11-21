@@ -17,9 +17,23 @@ user at T41, AI-Q20; its decisions in the epic file). **T43 done** (2026-11-21, 
 T43: budget 4; +0.085 over the fair actor's play on the side's worlds, +0.115 on the true
 battle; the records in `python/records/ceiling/`).
 
-- **T44 — where #2 diverges** (after T42): #2's decisions against the fair actor (its ladder's
-  episodes replayed by seed and commands, `inspect`'s recorder) valued by the same rollouts: the
-  value its choice leaves against the best command, by category, beside the fair actor's own.
+- **T44 — where #2 diverges** (the tool done 2026-11-21, `E25-log.md` T44: `inspect
+  --commands` records #2's games, `h3 ai ceiling --commands` replays and values them). **#2's
+  games recorded** (2026-11-21, the sandbox: `python/records/ceiling/e25-structure-1-commands.toml`,
+  599 games). **The valuation** (the user's machine, 16 threads, the build of this branch: T43's
+  identity holds; about 75 minutes; Ctrl-C keeps the finished games, the same command
+  continues), from the repository's root:
+  1. `cargo run --release -p h3-cli -- ai ceiling --commands
+     python/records/ceiling/e25-structure-1-commands.toml --budget 4 --confirm 32 --worlds side
+     --threads 16 --leave-out siege_hero:54:attacker --out
+     target/ceiling/e25-structure-1-side-4.toml --json
+     python/records/ceiling/e25-structure-1-side-4.json`;
+  2. optional: the same with `--worlds true` (`e25-structure-1-true-4`).
+
+  Uploaded: the JSON records and the games files. The read: by category #2's regret against the
+  fair actor's at the same decisions, its value paired with `report-0` and `report-side-4` by
+  (kind, env, seat).
+
 - **T45 — increment 10's checkpoint** (the user): the headroom, the information's cost, the
   divergence; the next lever.
 
@@ -41,14 +55,7 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
-**From the town lane** (E09 T48b's setup, 2026-11-21; **to fix: a gate red with the original
-data staged**): `cargo xtask check-exe-map` fails once `original-data/install/Heroes3.exe` is
-staged (CI has no executable, so it skips and stays green): `docs/epics/E31-original-computer-player.md`
-cites 0x42A000, 0x42DE50, 0x42FBE9, 0x432F90 and 0x692950 (the last two also in this `QUEUE.md`),
-which no entry of `docs/exe/map.toml` covers (E31's refinement, #1116, #1117). Every lane's
-`verify --with-original-data` fails its light gates until `map.toml` gains the entries
-(`scripts/exe.py cited`; `docs/exe/README.md`, "Recording a reading").
-
+<<<<<<< HEAD
 **From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**):
 
 - 2026-11-21: E08 increment 15 (design note `docs/epics/E08-design.md` §17, decision 407) gives

@@ -1,0 +1,471 @@
+# Experiment batch E15c (E08 T138; ADV-Q63's checkpoint, decision 407): increment 15's plan, the boats'
+# spells, Fly and Water Walk at sea, Cursed Ground and an anti-magic garrison (survey
+# docs/rules/surveys/E08-spells.md §15 with docs/epics/E08-design.md §19's changes), in SoD on
+# Easy, hot seat, days 1 and 2. The Prison and the Market of Time are `E08-batch-15a.toml`, the door
+# and the fog `E08-batch-15b.toml`. Build: docs/experiments/README.md. Predictions are for the
+# agent who evaluates the results; the template never shows them.
+#
+# | row    | settles                                   | the reading (faithful)                        | the other source(s)                    |
+# | E15-4  | §4.1: Cursed Ground, an anti-magic        | Fly (level 5) refused (GENRLTXT 748), free;   | VCMI: a spell's problems (not compared |
+# |        | garrison                                  | Summon Boat (level 1) cast; in the garrison   | further)                               |
+# |        |                                           | both refused (685), free                      |                                        |
+# | E15-9  | §5, D-75: Summon Boat's choice            | E15-9a: its last boat, from the underground;  | VCMI: the nearest by `dist2d`, any     |
+# |        |                                           | E15-9b: the nearest own (Manhattan), never    | owner: Blue's both times; the manual:  |
+# |        |                                           | Blue's nearer one                             | the hero's own boats first             |
+# | E15-10 | §6, A-50: Scuttle Boat's target           | the cursor on a hidden empty boat, none on an | VCMI `ignoreFow` false: no cursor on   |
+# |        |                                           | occupied boat or a hidden tree; sunk at       | the hidden boat; the manual "a boat,   |
+# |        |                                           | Expert                                        | unless occupied"                       |
+# | E15-11 | §7.1: Fly's casts                         | the second: nothing, free; with Angel Wings:  | the wiki (shoutwiki): not on a boat    |
+# |        |                                           | nothing, free; in a boat: GENRLTXT 193, free  |                                        |
+# | E15-12 | §7.1, A-49: Water Walk cast in a boat     | charged; after the landing the hero walks on  | not compared                           |
+# |        |                                           | water (421 by the level-0 prices)             |                                        |
+#
+# **Changes from survey §15** (agent's calls): **E15-9** splits into E15-9a (the hero whose last
+# boat lies underground, far) and E15-9b (a hero that never sailed, from the same shore) instead of
+# one hero twice: the plan's "the boats reset" is a reload of save 2 between the two casts. The
+# boats' last captains and owners come from sailing first in the procedure (design §19): a hero
+# with the Admiral's Hat boards and lands again the same day (free boarding keeps its points,
+# D-41), so B1 (underground, E15-9a's), B2 (Red's, E15-9r's) and B3 (Blue's, E15-9blue's) keep
+# their tiles. **E15-12** is E15-11's hero after its Fly in the boat (the Admiral's Hat lets it
+# land and walk the same day; every effect lasts until the new day), recorded in E15-11's
+# encounter (Red holds eight heroes already). **E15-10**'s added click (design §19) is on a hidden
+# tree; a seen empty boat CB is the cursor's control.
+#
+# **The fog** (`[[map.hidden]]`, checked by the build; each Red hero reveals radius 5 at the
+# start, dx² + dy² ≤ 30; the anti-magic garrison 3 around its tiles; the towns 5): the rectangle
+# (18, 10) to (21, 14) (E15-10's hidden boat HB on (19, 12) and tree on (21, 12)), inside the
+# scuttle dialog's view (the view centred on the caster: dx −9 to +9, dy −8 to +8). After E15-10o
+# boards O on (14, 17) its reveal reaches neither (25 + 25 = 50 to HB).
+#
+# **The boats** (`AVXboat0` to `AVXboat2`): a boat stands one column west of its `at`; it is
+# boarded by a click on it from a land tile beside it (boarding without the Hat leaves 0 points),
+# and a click on a land tile beside a hero's boat lands it. Summon Boat (survey §5,
+# `summon_boat_choice` 0x4E54A0): 1. the first boat whose last captain is the hero, no hero aboard,
+# whatever its owner and level; 2. else among the empty boats of the player or of none the least
+# |dx| + |dy|, levels ignored, a tie to the later; it goes to the hero's first water neighbour
+# clockwise from up. On day 2 the empty boats and their Manhattan distances from E15-9a's tile
+# (4, 57) and E15-9b's (6, 57): B3 (4, 50) Blue's 7 and 9; B2 (16, 56) Red's 13 and 11; B1 (38, 55,
+# underground) Red's 36 and 34; CB (15, 8) none's, B5 (40, 35) Red's after E15-11, B4 (50, 6)
+# after E15-4: 50 or more.
+#
+# **The heroes.** Red has eight, Blue one. Every army is 10 Pikemen (speed 4, native to grass):
+# 1 560 points a day on land; a step costs 100 on grass and on subterranean ground, 141
+# diagonally. With the Admiral's Hat the sea's maximum is 3 000 (1 500 and the Hat's 1 500):
+# boarding converts the points after the step × 3 000 ÷ 1 560, landing × 1 560 ÷ 3 000, truncated
+# (D-41, batch E8's E8-1 and E8-2). A caster wears a spell book with the spells listed and starts
+# with 10 × knowledge spell points. The costs (packs/base/core.toml): Summon Boat 8 at None, 7
+# above; Scuttle Boat 8, 6; Fly 20, 15; Water Walk 12, 8; the chances 50, 50, 75, 100 (Expert:
+# certain, the draw made). Level-0 Water Walk prices a step from land onto water at the land's
+# price, from water 140 (survey `E08-hero-movement.md` §2.3). No hero has a skill or an artifact
+# but those listed.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact; the template asks for gold. An artifact the spec does not give goes under "anything
+# odd".
+
+[map]
+name = "E08 batch E15c"
+description = "Engine-generated experiment map (E08, batch E15c): Summon Boat's choice among a hero's last boat underground, its own and an enemy's; Scuttle Boat in the fog and on an occupied boat; Fly and Water Walk at sea; Cursed Ground and an anti-magic garrison. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-15c.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1) and at the start of Red's day 2 (save 2).",
+    "Most records are the game's memory: a hero's tile and level, movement points (hero +0x4D), spell points (+0x18), status flags (+0x105; bit 18, 0x40000, the hero in a boat), Fly (+0x112) and Water Walk (+0x116) levels; the boats' records (game +0x4E3BC, 0x28 bytes each: tile, in use +0x18, type +0x1A, facing +0x1B, owner +0x1C, captain +0x20, aboard +0x24; `docs/exe/structs.toml` \"boat\"); whether a tile is explored for Red; the mouse cursor's frame over a tile in a target dialog; the messages in their order; the path's marks after one click. The capture harness reads them (`clients/capture/batches/E08-batch-15c.toml`, E08 T139). Played by hand, read the screens instead (an unexplored tile is black) and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left; the underground's tiles carry \"level 1\". A walk: click the target once (the path's marks show), then again (the hero goes). **A cast:** select the hero, click the cast button (the spell book opens), click the spell named; Scuttle Boat then waits for a tile: move the pointer over the tiles the procedure names (note the cursor over each: the spell's cursor or none) and left-click the target named. Close every message with its OK button.",
+    "Order: day 1, Red's turn: E15-10 (first: nothing else moves before it), E15-4, E15-11 (with E15-12), E15-9's day 1 (E15-9r, then E15-9a); end the turn. Blue's turn: E15-9's Blue step; end the turn. Day 2, Red's turn: save 2, E15-9a, then load save 2 and E15-9b. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- The towns (no row reads them) -------------------------------------------------------------------
+
+[[map.town]]
+entrance = [66, 66]
+faction = "castle"
+owner = "red"
+
+[[map.town]]
+entrance = [66, 40]
+faction = "rampart"
+owner = "blue"
+
+# --- The fog: E15-10's hidden boat and tree ------------------------------------------------------------
+
+[[map.hidden]]
+from = [18, 10]
+to = [21, 14]
+
+# --- E15-10: a lake (14, 6) to (20, 18); HB on (19, 12) (hidden), CB on (15, 8) (seen), O on (14, 17);
+# a tree on (21, 12) (hidden) --------------------------------------------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [14, 6]
+to = [20, 18]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [20, 12]
+
+[[map.object]]
+picture = "AVXboat1"
+at = [16, 8]
+
+[[map.object]]
+picture = "AVXboat2"
+at = [15, 17]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [21, 12]
+
+# --- E15-4: a lake (50, 4) to (56, 10), B4 on (52, 7); the Cursed Ground (21, 6 x 4) over (44, 6) to
+# (49, 9); Red's anti-magic garrison over (48, 14) to (50, 14), its entrance (49, 14) ----------------
+
+[[map.patch]]
+terrain = "water"
+from = [50, 4]
+to = [56, 10]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [53, 7]
+
+[[map.ground]]
+picture = "AVXcrsd0"
+at = [49, 9]
+
+[[map.ownable]]
+picture = "AVCgar20"
+at = [50, 14]
+owner = "red"
+
+# --- E15-11 and E15-12: a strait (40, 30) to (41, 40), B5 on (40, 35) ------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [40, 30]
+to = [41, 40]
+
+[[map.object]]
+picture = "AVXboat1"
+at = [41, 35]
+
+# --- E15-9: a sea (2, 50) to (30, 56), B3 on (4, 50), B2 on (16, 56); underground a lake (38, 52) to
+# (44, 58), B1 on (38, 55); the Subterranean Gates, the surface's entrance (9, 62), the
+# underground's (35, 60) ----------------------------------------------------------------------------------
+
+[map.underground]
+terrain = "subterranean"
+
+[[map.underground.patch]]
+terrain = "water"
+from = [38, 52]
+to = [44, 58]
+
+[[map.patch]]
+terrain = "water"
+from = [2, 50]
+to = [30, 56]
+
+[[map.object]]
+picture = "AVXboat2"
+at = [5, 50]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [17, 56]
+
+[[map.object]]
+picture = "AVXboat1"
+at = [39, 55]
+level = 1
+
+[[map.object]]
+picture = "AvTCave"
+at = [10, 62]
+pair = [36, 60]
+
+[[map.object]]
+picture = "AvTCave"
+at = [36, 60]
+level = 1
+pair = [10, 62]
+
+# --- E15-10 ------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-10"
+title = "Scuttle Boat's cursor over a hidden empty boat, a seen one, an occupied one and a hidden tree; the hidden boat sunk at Expert"
+questions = ["A-50", "ADV-SPL-004", "ADV-FOG-002"]
+procedure = [
+    "Day 1, Red's turn, **first**: E15-10 stands at (12, 12) with Expert Water Magic, west of a lake (columns 14 to 20, rows 6 to 18); E15-10o stands at (13, 17). Empty boats lie at (19, 12) (HB, unexplored for Red), (15, 8) (CB, explored) and (14, 17) (O); a tree at (21, 12) is unexplored. Read whether (15, 8), (19, 12) and (21, 12) are explored for Red, and the boats' records.",
+    "Select E15-10o and click O (14, 17) twice: it boards O. Read E15-10o's tile, points and status flags, O's record, and whether (19, 12) and (21, 12) are still unexplored.",
+    "Select E15-10. Note its spell points. Cast **Scuttle Boat**: the target dialog opens (the view centred on E15-10). Move the pointer over CB (15, 8), O (14, 17), HB (19, 12) and the tree (21, 12), in that order: note the cursor over each.",
+    "Left-click the tree (21, 12): note what happens (does the dialog close? a message?) and E15-10's spell points. If the dialog closed, cast Scuttle Boat again (note any message).",
+    "Left-click HB (19, 12). Note every message, E15-10's spell points, HB's record and the boats at (19, 12); read whether (19, 12) and (21, 12) are explored now.",
+]
+record = [
+    { field = "explored before: (15, 8); (19, 12); (21, 12); the boats' records (HB, CB, O)" },
+    { field = "after boarding: E15-10o's tile; points; status flags; O's record; (19, 12) and (21, 12) explored" },
+    { field = "before the cast: E15-10's spell points" },
+    { table = ["the pointer over", "explored", "the cursor"], labels = ["CB (15, 8), seen, empty", "O (14, 17), occupied", "HB (19, 12), hidden, empty", "the tree (21, 12), hidden"] },
+    { field = "the click on the tree: what happens; spell points" },
+    { field = "the click on HB: messages; spell points; HB's record; what lies on (19, 12)" },
+    { field = "explored after: (19, 12); (21, 12)" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-10 (survey §6, A-50; `scuttle_target_proc` 0x491D00: a target is a tile of class 8 with the
+entrance bit, **no fog test, no owner test**):
+
+- Before: (15, 8) explored, (19, 12) and (21, 12) not (the build checks them); E15-10o's
+  boarding: 0 points, bit 18 set, O's owner Red, captain E15-10o, aboard 1; HB and the tree still
+  unexplored (radius 5 around (14, 17): 50 and 74).
+- The cursor: **CB the scuttle cursor**; **O none** (a hero's tile, class 34); **HB the scuttle
+  cursor** (the leak: the cursor tells a hidden boat); **the tree none**.
+- The tree's click: **nothing** (no target; the dialog stays), nothing spent.
+- HB's click (Expert: chance 100, cost 6): **sunk**: HB's record "in use" (+0x18) cleared, nothing
+  on (19, 12); 20 → **14** spell points. Nothing revealed (`hero_hide` and the dissolve only):
+  (19, 12) and (21, 12) still unexplored.
+- VCMI 1.7.5 (`ignoreFow` false): no cursor on HB. The engine fixes A-50 (explored tiles only).
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [12, 12]
+primary = [1, 1, 1, 2]
+army = [["Pikeman", 10]]
+skills = [["Water Magic", 3]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Scuttle Boat"]
+
+[[encounter.also]]
+type = "Edric"
+specialty = "creature Griffin"
+name = "E15-10o"
+at = [13, 17]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+# --- E15-4 -------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-4"
+title = "Fly and Summon Boat cast on Cursed Ground, then both in an anti-magic garrison"
+questions = ["ADV-SPL-001", "GAM-SPL-001", "ADV-SPL-003"]
+procedure = [
+    "Day 1, Red's turn, after E15-10: E15-4 stands at (49, 7) on Cursed Ground (columns 44 to 49, rows 6 to 9) with Expert Water Magic, beside a lake (columns 50 to 56, rows 4 to 10); an empty boat B4 lies at (52, 7). Note its points and spell points and B4's record.",
+    "Cast **Fly**: note every message, the spell points and the Fly level (+0x112).",
+    "Cast **Summon Boat**: note every message, the spell points and where B4 is (its record) and any other boat beside E15-4.",
+    "Walk E15-4 to Red's anti-magic garrison's entrance (49, 14) in two legs, each clicked twice: (49, 13), then (49, 14). Note the window that opens and close it. Note E15-4's tile and points.",
+    "In the garrison: cast **Fly**, then **Summon Boat**: after each note every message and the spell points.",
+]
+record = [
+    { field = "before: points; spell points; B4's record" },
+    { field = "Fly on Cursed Ground: messages; spell points; the Fly level" },
+    { field = "Summon Boat on Cursed Ground: messages; spell points; B4's record; the boats beside E15-4" },
+    { field = "at the garrison: the window; E15-4's tile; points" },
+    { field = "Fly in the garrison: messages; spell points" },
+    { field = "Summon Boat in the garrison: messages; spell points" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-4 (survey §4.1; `hero_special_ground` 0x4E4EC0 after the book's cost test):
+
+- Before: 1 560 points, 40 spell points.
+- **Fly** (level 5) on Cursed Ground (class 21, the RoE picture the reading names):
+  **GENRLTXT 748**, nothing spent (40), the level −1.
+- **Summon Boat** (level 1): **cast**: Expert, the draw at 100 never above it; no boat of
+  E15-4's as last captain, so the nearest empty one of Red's or of none: **B4** (Manhattan 3), put
+  on E15-4's first water neighbour clockwise from up, **(50, 6)** ((49, 6) is land), its facing
+  kept; 40 → **33**.
+- The walk: 600 and 100: E15-4 on the entrance **(49, 14) with 860**; the garrison's window (its
+  own: the exchange) opens.
+- In the garrison (class 33's anti-magic subclass; `hero_special_ground` 33): **GENRLTXT 685**
+  for both, **free** (33, 33).
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [49, 7]
+primary = [1, 1, 1, 4]
+army = [["Pikeman", 10]]
+skills = [["Water Magic", 3]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Fly", "Summon Boat"]
+ground = "cursed ground"
+
+# --- E15-11 and E15-12 -------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-11"
+title = "Fly cast twice, Fly with Angel Wings, Fly in a boat (E15-11); Water Walk cast in a boat, then the landing and a walk on water (E15-12)"
+questions = ["ADV-SPL-002", "A-49", "A-51", "ADV-MOV-010"]
+procedure = [
+    "**E15-11.** Day 1, Red's turn, after E15-4: E15-11 stands at (39, 35) with the Admiral's Hat, west of a strait (columns 40 and 41, rows 30 to 40) and of an empty boat B5 on (40, 35). Note its points, spell points, Fly and Water Walk levels.",
+    "Cast **Fly**: note every message, the spell points and the Fly level. Cast **Fly** again: note every message (does the book close at once?), the spell points and the level.",
+    "Select E15-11w (at (36, 30), wearing Angel Wings): note its spell points; cast **Fly**: note every message, the spell points and the Fly level.",
+    "Select E15-11 and click B5 (40, 35) twice: it boards. Note its tile, points, status flags, Fly level. Cast **Fly**: note every message, the spell points and the level.",
+    "**E15-12.** Still in the boat: cast **Water Walk**: note every message, the spell points and the Water Walk level.",
+    "Click (39, 35) twice: E15-11 lands. Note its tile, points, status flags, Fly and Water Walk levels.",
+    "Click (42, 36) once: note the target's mark and the marks (the tiles, in order). Click it again: note where E15-11 arrives and its points.",
+]
+record = [
+    { field = "before: E15-11's points; spell points; Fly and Water Walk levels" },
+    { field = "Fly 1: messages; spell points; Fly level" },
+    { field = "Fly 2: messages; spell points; Fly level" },
+    { field = "E15-11w's Fly (Angel Wings): spell points before; messages; after; Fly level" },
+    { field = "after boarding: tile; points; status flags; Fly level" },
+    { field = "Fly in the boat: messages; spell points; Fly level" },
+    { field = "E15-12: Water Walk in the boat: messages; spell points; Water Walk level" },
+    { field = "after the landing: tile; points; status flags; Fly and Water Walk levels" },
+    { field = "the click on (42, 36): the target's mark; the marks" },
+    { field = "after the walk: tile; points" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-11 (survey §7.1; 0x41C6B8, `hero_cast_fly` 0x4E59A0):
+
+- Before: 1 560 points, 40 spell points, the levels −1.
+- Fly 1: cast, 40 → **20**, the level **0**. Fly 2 (already flying, +0x112 not −1): **nothing at
+  all, free** (the book closes; 20, level 0).
+- E15-11w (Angel Wings, 72): **nothing, free** (20 → 20; the level −1: the wings fly by the
+  artifact's level 3 without the spell's field).
+- Boarding (the step 100 from free land, the lesser of the fly price and the walk): 1 460, then
+  × 3 000 ÷ 1 560 = **2 807**; bit 18 set; `hero_boards_boat` clears Fly: **−1**.
+- Fly in the boat (bit 18): **GENRLTXT 193**, **free** (20). The wiki the same.
+
+E15-12 (§7.1, A-49):
+
+- Water Walk in the boat: the "already on" and Boots tests skipped: **cast**, 20 → **8**, the
+  level **0**.
+- The landing on (39, 35): the step 100 (2 707), then × 1 560 ÷ 3 000 = **1 407**; bit 18 clear;
+  the Water Walk level **0 kept** (landing does not clear it), Fly −1.
+- The walk to (42, 36): a green mark, **3 marks** (40, 36), (41, 36), (42, 36): from land onto
+  water the land's diagonal 141, then 140 and 140 from water (level 0): **421**, E15-11 **on
+  (42, 36) with 986**. The engine's water walk as the artifacts' at level 3 would be 100 each.
+"""
+[encounter.hero]
+type = "Christian"
+specialty = "creature Ballista"
+at = [39, 35]
+primary = [1, 1, 1, 4]
+army = [["Pikeman", 10]]
+artifacts = { "head" = "Admiral's Hat", "spell book" = "Spell Book" }
+spells = ["Fly", "Water Walk"]
+
+[[encounter.also]]
+type = "Tyris"
+specialty = "creature Cavalier"
+name = "E15-11w"
+at = [36, 30]
+primary = [1, 1, 1, 2]
+army = [["Pikeman", 10]]
+artifacts = { "shoulders" = "Angel Wings", "spell book" = "Spell Book" }
+spells = ["Fly"]
+
+# --- E15-9 -------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-9a"
+title = "Summon Boat by a hero whose last boat lies far away underground, with Red's and Blue's empty boats nearer"
+questions = ["D-75", "ADV-SPL-003"]
+level = 1
+procedure = [
+    "**Day 1**, Red's turn, after E15-9r's step (E15-9b's encounter): E15-9a stands underground at (37, 55, level 1) with the Admiral's Hat and Expert Water Magic, beside an empty boat B1 on (38, 55, level 1). Click B1 twice: E15-9a boards it. Note its points. Click (37, 55) twice: it lands. Note its points and B1's record (owner, captain, tile).",
+    "Walk E15-9a in two legs, each clicked twice: (37, 59, level 1), then the Subterranean Gate's entrance (35, 60, level 1): it goes through to the surface's gate at (9, 62). Note its points after the first leg, then its tile and points. End Red's turn.",
+    "**Day 2**, Red's turn, after save 2: read every boat's record. Walk E15-9a to (4, 57) (the south shore), clicked twice. Note its tile and spell points. Cast **Summon Boat**: note every message, the spell points, which boat now lies beside E15-9a (its record: tile, owner, captain) and the other boats' records. Then load save 2 for E15-9b.",
+]
+record = [
+    { field = "day 1: points after boarding; after the landing; B1's record (tile; owner; captain)" },
+    { field = "day 1: points after (37, 59); after the gate: tile; points" },
+    { table = ["boat, day 2 before the cast", "tile (level)", "in use", "owner", "captain", "aboard"], labels = ["B1", "B2", "B3", "B4", "B5", "CB", "HB", "O"] },
+    { field = "day 2: E15-9a's tile; spell points before" },
+    { field = "Summon Boat: messages; spell points; the boat beside E15-9a (which; its tile; owner; captain)" },
+    { field = "the other boats' tiles after" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-9a (survey §5, D-75; `summon_boat_choice` 0x4E54A0):
+
+- Day 1: boarding 1 460 × 3 000 ÷ 1 560 = 2 807; the landing 2 707 × 1 560 ÷ 3 000 = **1 407**;
+  B1 on (38, 55, 1), owner Red, captain E15-9a, aboard 0. The legs 400 (1 007) and 382 (100,
+  141, 141: entered from below): E15-9a on (9, 62) on the surface with **625**. Day 2: the walk
+  to (4, 57) about 905 (the engine's path leaves the gate downwards first).
+- Day 2's records: B1 Red's (E15-9a), B2 Red's (E15-9r), B3 Blue's (E15-9blue), B4 on (50, 6) and
+  B5 Red's (E15-11), CB none's, HB not in use, O aboard.
+- **The reading:** step 1, the first boat whose last captain is E15-9a and empty: **B1, from the
+  other level**, put on (4, 56) (the first water neighbour clockwise from up, on E15-9a's level);
+  10 → **3** spell points (Expert: 7). The manual (the hero's boats first) the same.
+- **VCMI 1.7.5** (the nearest by `dist2d`, any owner, not boarded): **B3** (Blue's, 7.0 against
+  B2's 12.0).
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [37, 55]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+skills = [["Water Magic", 3]]
+artifacts = { "head" = "Admiral's Hat", "spell book" = "Spell Book" }
+spells = ["Summon Boat"]
+
+[[encounter]]
+id = "E15-9b"
+title = "Summon Boat by a hero that never sailed: Red's nearest boat or Blue's nearer one (the boats reset); the boats' owners set by sailing first"
+questions = ["D-75", "ADV-SPL-003", "ADV-SEA-003"]
+procedure = [
+    "**Day 1**, Red's turn, after E15-11 and before E15-9a: E15-9r stands at (16, 57) with the Admiral's Hat, beside an empty boat B2 on (16, 56). Click B2 twice: it boards. Click (16, 57) twice: it lands. Note B2's record (owner, captain, tile).",
+    "**Blue's turn**, day 1: E15-9blue stands at (4, 49) with the Admiral's Hat, beside an empty boat B3 on (4, 50). Click B3 twice: it boards. Click (4, 49) twice: it lands. Note B3's record. End Blue's turn.",
+    "**Day 2**, Red's turn, after E15-9a's cast and **load save 2** (the boats as before it): E15-9b stands at (6, 57) with Expert Water Magic (it never sailed). Read the boats' records. Note its spell points. Cast **Summon Boat**: note every message, the spell points, which boat now lies beside E15-9b (its record: tile, owner, captain) and the other boats' tiles.",
+]
+record = [
+    { field = "day 1: B2's record after E15-9r's landing (tile; owner; captain)" },
+    { field = "Blue's day 1: B3's record after E15-9blue's landing (tile; owner; captain)" },
+    { field = "day 2 after the load: the boats' records as in E15-9a's table (the same?)" },
+    { field = "E15-9b: spell points before" },
+    { field = "Summon Boat: messages; spell points; the boat beside E15-9b (which; its tile; owner; captain)" },
+    { field = "the other boats' tiles after" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-9b (survey §5 step 2, D-75):
+
+- Day 1: B2 owner Red, captain E15-9r; B3 owner Blue, captain E15-9blue; both on their tiles
+  (landing on the tile they came from leaves the boat where it lay).
+- **The reading:** no boat of E15-9b's as last captain; among the empty boats of Red's or of
+  none the least |dx| + |dy| from (6, 57): **B2** (11; B1 34, B5 56, CB 58; Blue's B3 at 9
+  excluded), put on (6, 56); 10 → **3**. A forum's "own or neutral" the same; the manual silent.
+- **VCMI 1.7.5:** **B3** (Blue's, the nearest at 7.3 against B2's 10.0).
+"""
+[encounter.hero]
+type = "Rion"
+specialty = "skill First Aid"
+at = [6, 57]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+skills = [["Water Magic", 3]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Summon Boat"]
+
+[[encounter.also]]
+type = "Adela"
+specialty = "spell Bless"
+name = "E15-9r"
+at = [16, 57]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "head" = "Admiral's Hat" }
+
+[[encounter.also]]
+type = "Mephala"
+specialty = "skill Armorer"
+name = "E15-9blue"
+owner = "blue"
+at = [4, 49]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "head" = "Admiral's Hat" }

@@ -12,8 +12,10 @@ from h3env.train import layout as L
 from h3env.train.evaluate import play, random_agent, report
 from h3env.train.inspect import (
     CATEGORIES,
+    Commands,
     Recorder,
     category,
+    commands_toml,
     inspect,
     lines,
     spell_names,
@@ -77,6 +79,48 @@ def test_the_neutral_set_is_attacked_against_the_system_actor() -> None:
     assert groups["all"]["hero"]["battles"] <= groups["all"]["battles"] == 6
     with pytest.raises(ValueError, match="stratified"):
         inspect(_random, held_out="v0")
+
+
+def test_the_games_actions_are_recorded_for_the_ceilings_replay() -> None:
+    # E25 T44: every counted battle once, the network's side and its actions in order, its end
+    # as the ladder counted it; the text a TOML file of them (`h3 ai ceiling --commands`, whose
+    # tests replay the batch's own recordings).
+    import tomllib
+
+    per_kind = 2
+    result = inspect(
+        _random, opponents=["system"], per_kind=per_kind, max_steps=300, commands=True
+    )["system"]
+    games = result["commands"]
+    assert len(games) == 6 * per_kind
+    keys = {(g["kind"], g["env"], g["side"]) for g in games}
+    assert keys == {
+        (k, e, s)
+        for k in ("hero", "siege_hero", "siege_garrison")
+        for e in range(per_kind)
+        for s in (0, 1)
+    }
+    assert all(g["actions"] and all(len(a) == 4 for a in g["actions"]) for g in games)
+    for kind, sides in result["groups"].items():
+        if kind == "all":
+            continue
+        for s, side in enumerate(("attacker", "defender")):
+            won = sum(g["winner"] == s for g in games if (g["kind"], g["side"]) == (kind, s))
+            assert won == round(sides[side]["all"]["won"] * per_kind)
+    record = {"network": "runs/x/best.pt", "set": "report-v1", "episodes": per_kind}
+    text = commands_toml(record, reversed(games))
+    parsed = tomllib.loads(text)
+    assert parsed["record"] == record
+    order = [(g["kind"], g["env"], g["side"]) for g in parsed["game"]]
+    assert order[0] == ("hero", 0, 0) and order[-1] == ("siege_garrison", per_kind - 1, 1)
+    assert sorted(map(str, parsed["game"])) == sorted(map(str, games))
+    # The plain analysis records none; a battle the play leaves open is left out.
+    assert (
+        "commands" not in inspect(_random, opponents=["system"], per_kind=1, max_steps=50)["system"]
+    )
+    c = Commands(_random(0, "attacker"), "attacker")
+    c.finish()
+    assert c.games == []
 
 
 def test_the_recorder_needs_the_kill_preview() -> None:
