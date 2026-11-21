@@ -910,7 +910,7 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
 ### 3.16 The random map (button 130, `random_map_toggle` 0x57FEB0)
 
 - **Opens** in a new game only (as read; its button 130 shows in a hot-seat load too, recorded,
-  M1 T3: `adv-load` screen; no recipe presses it there: M3); shown, a press hides it
+  M1 T3: `adv-load` screen; pressed at M4 T5a: nothing, §41.1, CLT-Q161); shown, a press hides it
   (`random_map_hide` 0x581D80: 103, 280 to
   335, +0x37E cleared); else the list and the advanced options hidden, 103 `RanMapBk.pcx` and 280
   to 335 shown, the record into the game, +0x37E set, and the first time +0x37F (a random map
@@ -4123,3 +4123,107 @@ Read with `scripts/exe.py` (§40.1); recorded again under Wine (`scn-load`, `scn
 second opening drew `gamselb1.pcx`: the recipe's `backgrounds`), `scn-load-none` 5 of 5. The
 `scenario`, `advanced`, `menus`, `multiplayer`, `end`, `options` and `scores` groups as
 recorded.
+
+## 41. Load Game hot seat: the reading and the recordings (M4 T5a, 2026-11-21)
+
+Decision 75: T5 cut in two as T4, T5a the hot-seat load's reading and recordings (the harness
+and the docs, no client code), T5b the client against them. Read with `scripts/exe.py` (§41.1);
+recorded under Wine (`adv-load` again over made saves, `adv-load-more` new; §41.2).
+
+### 41.1 Read
+
+- **The slots** (`scenario_slots_load` 0x57F581 to 0x57F69E, not network): as a new game's
+  (§3.12): in the hot seat one slot per name of `hot_seat_names` 0x69CA50 (index 1 up) through
+  `scenario_version_from_slots`, then the local slot 1 named as the game's player (+0x20B9C) and
+  the names freed; single the local slot with `network_default_name`. The turn's duration the
+  save's (game +0x1F843 to +0x378); the list built, the kept save looked for and selected.
+- **The rows** (`scenario_players_init` 0x584C57 to 0x584D99, a hot-seat load): every record's
+  colour −1, a colour lost in the save no longer one a human may play (game +0x1F636: the map
+  player's flag at +0x1F90C + 0x44 *c* cleared); then (1) each colour in order that the save held
+  as human (`load_slots` 0x69FDA4, the record's +0xC80 copied by `scenario_to_game`) and a human
+  may still play, to the first record in use without a colour; (2) each colour a human may play
+  that no record holds, to the first record without one, until none is left. So the save's
+  humans go to the names in colour order, a name left over takes the next colour a human may
+  play (a computer's in the save), and a saved human past the names keeps no record: its row
+  "Computer" (GENRLTXT 469), its kind still ArrayTxt 206 (recorded).
+- **The begin after a load** (`scenario_load_begin` 0x58C290, read): the bar stepped; the turn
+  timer's limit by the save's duration (`turn_timer_set_limit`, `turn_duration_minutes`); single
+  only `scenario_players_init` again; the game loaded (0x4BF330, the week's and month's globals
+  kept around it); single only the local record's colour set to the loaded game's current
+  player; then `scenario_dialog_begin`(0) in every mode: the human flags from the records
+  (§3.17), so a hot-seat load makes human exactly the colours a name holds (CLT-Q160).
+- **The save's extension** (`.GM<n>`): from play (`game_save_dialog`, §3.6) *n* the humans still
+  playing; the autosave (`game_save` 0x4BEFB0, `%s.GM%d`) *n* is `begin_humans` 0x699274, the
+  human records holding a colour counted by `scenario_dialog_begin` (0x588402; single 1); a
+  campaign's `CGM`, the tutorial's `TGM` (0x4BEF66, 0x4BEF7A).
+- **The list** (`scenario_list_build`, site `scenario_list_two_humans`): in the hot seat a save
+  is listed only with its record's +8 (the colours a human may play, the players column's second
+  figure) at least 2, as a map: a single game's save of a map for two humans or more is listed
+  (recorded: `Week_one.GM1`, Middletown 4/2).
+- **The advanced options in a load** (`scenario_advanced_toggle` 0x581383, 0x581743): the
+  duration's bar is not enabled (its vtable +0x24 skipped: its arrows take no press, recorded; it
+  is drawn as in a new game) and the handicap is disabled (no popup on its right press, where a
+  new hot seat's caption shows one: recorded).
+- **The Random Map button** (`random_map_toggle` 0x57FEB0): returns at once in the load and save
+  modes, but the button shows in a hot-seat load (§3.16): its press and its key R change nothing,
+  its popup shows (recorded; CLT-Q161).
+
+### 41.2 The harness and the recordings
+
+- **The makers** (`shell/advanced.toml`, as §38.2's): a hot seat's new game, every colour human
+  with its town, hero and bonus chosen by the arrows, so the save holds no random draw a client's
+  save could not repeat; the duration's left arrow three times (20 minutes); Begin, the turn
+  dialog's Enter, the map's message's OK, then the system options' Save on the first player's
+  first day. `adv-load-make-two` `Pair.GM2`: A Warm and Familiar Place at Impossible, A on Red
+  (Inferno, the map's; Marius; Artifact), B on Green (Inferno; Ignatius; Gold).
+  `adv-load-make-four` `Four.GM4`: Arrogance at Easy, A on Red (Castle, Orrin, Artifact), B on
+  Blue (Rampart, Mephala, Artifact), C on Purple (Tower, Piquedram, Artifact), D on Teal (Inferno,
+  Fiona, Artifact). Their `viewer` tables give the difficulty alone: `h3-view save` makes a
+  single game's save of the name until T5b gives it the hot seat (`drawn` stops at the hot seat's
+  load before any shot meanwhile).
+- **`adv-load`** (recorded again; the user's random-map saves gone from it): the names A and B
+  over `Four.GM4` and `Pair.GM2` (Asia/Kolkata, each file its own time); 19 shots, twice the
+  same. **`adv-load-more`** (new): `Week_one.GM1` (§38.2's maker) under A and B, the rows' town,
+  hero and bonus cells masked (164, 130 to 392, 330: the original's draws); 2 shots, twice the
+  same.
+- The list's rows lie at y 135 + 25 *k* (a press at 210 with three saves listed falls past the
+  list: the first take's `row-3` selected nothing).
+- Not recorded: three or more names over a save; a load's begin in the hot seat (play: M5); a
+  network load.
+
+### 41.3 What the recordings show
+
+- **The screen** (`adv-load` screen): the single load's title (ArrayTxt 230) and Load, but the
+  panel's buttons (Show Saved Games, GENRLTXT 656; Random Map; Show Advanced Options) and the
+  flags' strip; the list in key 2's order (`Four.GM4`, `Pair.GM2`: SoD both, by name), the first
+  selected; the save's difficulty selected on the disabled buttons, its rating.
+- **The advanced options** (advanced): the save's rows (§3.14: the town, the first hero, the
+  bonus; no arrows): A on Red and B on Blue (the save's first two humans), Purple and Teal
+  "Computer" with their saved choices and the kind Human or CPU; the handicap disabled; the
+  duration the save's (20 Minutes).
+- **Presses that change nothing:** row 1's town, hero and bonus arrows' places, its handicap and
+  the duration's left arrow (arrows), the duration's right arrow (duration-back), Random Map and
+  its key R (random, random-key); the handicap's right press shows nothing (handicap-popup).
+- **Popups:** the town's (Castle), the hero's (Orrin), the bonus's (Artifact) as a new game's; a
+  saved human's past the names (hero-popup-3: Piquedram); Random Map's (random-popup).
+- **Flags** (flag-3, flag-1): Purple's press moves A there, Red becomes "Computer" (the hot
+  seat's press, §3.14; both are the save's humans, so CLT-Q110 (b) allows it); Red's press gives
+  the opening's rows back.
+- **The list** (list: the opening's screen again), the second row (row-2: `Pair.GM2`) and its
+  options (advanced-2: A on Red, Inferno, Marius, Artifact; B on Green, Inferno, Ignatius, Gold;
+  Impossible, 200%; 20 Minutes), the list again and hidden (list-hidden: the background on the
+  left, as a new game's opening).
+- **More names** (`adv-load-more` advanced): the save's one human (Red) to A, B on Blue (a
+  computer in the save, one a human may play), Green and Orange "Computer" with the kind CPU; the
+  duration Unlimited (the single game's).
+
+### 41.4 For T5b
+
+The hot seat's load mode: the Multiplayer dialog's hot seat over Load Game's menu ending in it
+(`mp-load` load, load-closed: the notice with no saves), the list's hot-seat filter, the panel's
+buttons and flags; the advanced options from the save (its humans, towns, first heroes, bonuses,
+duration: the client's save holds them, §37), the names placed as §41.1 (CLT-Q160), the presses
+that change nothing (CLT-Q161 for Random Map), a flag's press among the save's humans (CLT-Q110
+(b)), the popups. `h3-view save` for a hot seat (the humans, their names and choices; the makers'
+`viewer` tables to grow them), so that `drawn` gives the viewer saves of the same names; exact
+against `mp-load`, `adv-load` and `adv-load-more` (its masked cells aside).

@@ -353,7 +353,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   viewer lists every shipped map, the original only the recipe's. **A recipe's saves** (E27 M4
   T4b1): `drawn` makes the client's saves of `made_games` with the release `h3-view save` (its
   maker's `viewer` table) into the run's own `--games` folder at each run, so an engine change of
-  the rules or a hash version moves nothing kept, but a maker without `viewer` stops the recipe. **The scenario screen's
+  the rules or a hash version moves nothing kept, but a maker without `viewer` stops the recipe. **A maker's draws** (E27 M4 T5a): a choice left Random in a maker (a town, a hero, a bonus, a computer's hero) is the original's draw, which no client's save repeats: choose every one by the arrows (every colour human in a hot seat), or mask the drawn cells (`adv-load-more`). The list's rows lie at y 135 + 25 *k*. **The scenario screen's
   redraws** (E27 M3 T1b1, CLT-Q138): each command of the screen is a whole redraw or the select's
   partial one (`Scenario::whole`, `partial`); a new command that leaves it as it was draws the
   original's profile with the last one's stale pixels (design §19.4): say which in the same
