@@ -5623,3 +5623,51 @@ decisions next 186.
 check-lane --cross-lane`, `cargo check --workspace --all-targets`, `cargo clippy --workspace
 --all-targets -- -D warnings`, `cargo test -p h3-harvest -p h3-protocol -p h3-server -p h3-cli -p
 h3-sim -p h3-game -p h3-towns -p h3-pack-towns`; CI on the pull request is the record.
+
+### T47a1 — `h3-towns`' guild module: the draw, what the guild shows, the Aurora set (2026-11-20)
+
+One session, the user present at the start; branch `town/e09-t47a1`, the town lane's paths only.
+Starting point: `master` at 9413c3f (#1087, E08 T134b2; #1086, T46's, merged before it); CI's run
+on `master` still running at the start, so the setup ran the full baseline: its tests passed, it
+was stopped at coverage (the disk at 9 GB free). The user's computer was connected at the start
+only: 71 files staged (the four LODs, the executables and DLLs, both `.snd`, the three videos,
+`maps.tar`, `extracted.tar`, the three saves, 40 MP3s, the four manuals and three help files),
+SHA-256 checked (one hash of each side's sorted list). **T47a cut in two** at its start (decision
+186): this is T47a1.
+
+- **`h3-towns`' `guild` module** (new; design §85 to §87): `SpellSet` (a `u128` by spell handle:
+  `of`, `bits`, `contains`, `with`, `union`, `iter`), `GuildSets` (the town's required and banned
+  spells and the scenario's bans), `GuildSlots` (six slots at each of the five levels, a byte a
+  slot; `slot`, `level`), `MAX_GUILD_SLOTS`; `draw_guild` (TWN-GLD-002: the excluded set, the
+  first required spell in spell order, else a draw of 1 to the level's open weights and the first
+  running weight to reach it, a total of 0 leaving the slot empty without a draw), `guild_level`
+  and `shown` (TWN-GLD-003: the highest standing `guild` building; each built level's part slots,
+  one more with a `library` ever built, cut at the first empty slot), `aurora_set` (TWN-GLD-004's
+  set: every hero spell not granted by name only that the town does not ban, less the scenario's
+  bans with `quirk.town.aurora_ignores_map_bans` off). Exported from the crate's root.
+- **The fixture** (`fixture.rs`): `guild_core` (the core with a school and twelve spells of every
+  level: a weight of 0 at levels 1 and 4, a creature ability, Titan's Lightning Bolt's flag) and
+  `guild_keep` (the Keep's Mage Guilds 1 to 5, Library and Aurora Borealis at 24 to 30, its guild
+  weights), for T48's and T49's tests too; `core_with` now over `core_edited`.
+- **Tests** (`guild/tests.rs`, 13): each level's weighted spells once and the rest empty over 32
+  seeds; the law by the first slot's roll replayed over 64 seeds (each of its three spells met);
+  the required spells first in spell order whatever their weight, a guild whose every slot is
+  required or empty drawing nothing; TD-25; the scenario's ban, the bolt and the ability never,
+  required or not; an empty level; one seed alike, seeds differing; the slots' bounds; the guild
+  level; the counts with and without the Library and a level or the Library built later; an empty
+  slot ends its level; `twn_quirk_14_…` (the set under both settings); the spell set. `h3-towns`
+  at 100 % (`cargo llvm-cov -p h3-towns`).
+- **Docs:** the catalog's TWN-GLD-002, -003, -004 (`implemented`; -004's learning planned for
+  T48a); `TWN-QUIRK-14`'s regression test; design §85 to §87's *As built*; decisions 186, 187.
+- *Agent's calls* (decision 187): six slots at every level (§86's twenty were the base part's:
+  any level's spare may make six); the parameters and a `GuildSets` as `draw_guild`'s inputs;
+  `shown` over the slots beside the town until the store v4; `SpellSet` in `h3-towns`; the Aurora
+  set under TWN-GLD-004 with the quirk's rule test.
+
+No version moved, no replay re-recorded, nothing `cross-lane`: nothing calls the module yet.
+
+**The queue:** T47a1 out; T47a2 next (TWN-SET-012 with import v28, the store v4, the game's draw,
+every golden re-recorded). Ids: decisions next 188.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.

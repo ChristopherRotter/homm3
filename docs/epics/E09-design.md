@@ -3081,6 +3081,18 @@ something, a visit's end, a capture and a siege's end applying the same (175); t
   spell absent (TD-25); the scenario's ban; 57 never; an empty level when every spell is excluded
   (`Heroes of Might not Magic`'s towns, §1); the draw's law on a small record (the running sums);
   two games of one seed draw alike; a fork shares the slots.
+- *As built* (T47a1, decisions 186, 187): `h3_towns::draw_guild(record, params, core, sets,
+  draws)` takes the part's parameters (`&TownParams`, which the game holds where it builds a
+  town: no `None` to handle) in place of the part, and `sets` as a `GuildSets` of three
+  `SpellSet`s (`required`, `banned`, `scenario`; the game makes them of `TownSetup`'s lists and
+  the scenario's bans, T47a2). A level's slots are `guild_slots[L] + 1`, at most
+  `MAX_GUILD_SLOTS` (6). The unit tests on the fixture's guild (`guild_core`'s spells,
+  `guild_keep`'s record): each level's weighted spells once, the rest empty; the law by the first
+  slot's roll replayed over 64 seeds; the required spells first in spell order, a weight of 0
+  among them, and a guild whose every slot is required or empty drawing nothing; TD-25; the
+  scenario's ban, Titan's Lightning Bolt and a creature ability (each weighted, required too)
+  never; an empty level; one seed alike. The game's draw at the build, two games and a fork:
+  T47a2.
 
 ### 86. The store v4: the slots, the Vortex's flag, the Aurora set (`h3-towns`' `record.rs`, `store.rs`)
 
@@ -3097,6 +3109,14 @@ something, a visit's end, a capture and a siege's end applying the same (175); t
 - **Hash** v4 (`TOWN_STATE_HASH_VERSION`): after each town's Portal its twenty slots (0 empty, else
   1 and the spell's handle) and its flag; after each static part's events its Aurora set (its bits).
 - **Tests:** the hash pinned; a fork's flag write copies one town; the week sets every flag.
+- *As built in part* (T47a1, decision 187): `h3_towns::GuildSlots` holds **six slots at every
+  level** (thirty bytes, a spell's handle a byte, `u8::MAX` empty): T46 bounds the part's slots 1
+  to 5 at every level, so any level's spare may make six; "the twenty slots (6, 5, 4, 3, 2)"
+  above are the base part's, and the hash v4 folds the thirty the same way. `h3_towns::SpellSet`
+  (one `u128`, a bit per handle below `MAX_SPELLS`) holds the Aurora set and the draw's sets;
+  `h3_towns::aurora_set(core, sets)` computes the set, reading `TWN-QUIRK-14`'s flag from the
+  core (the quirk's rule test there, TWN-GLD-004's set). The store's fields, writes and hash v4
+  are T47a2's.
 
 ### 87. What the guild shows (TWN-GLD-003; §3.3, §4)
 
@@ -3109,6 +3129,11 @@ something, a visit's end, a capture and a siege's end applying the same (175); t
   buildings (Castle 4, Stronghold and Fortress 3, the others 5).
 - **Tests:** each level's count with and without the Library; a level built later; the Library
   built later shows each built level's spare; an empty slot ends the level.
+- *As built* (T47a1, decision 187): `shown(slots, town, part, level)` returns an iterator of the
+  spells (the slots are bytes, no slice of `SpellId`s), the slots passed beside the town until
+  they join its record (T47a2: `shown(town.guild(), town, part, level)`); nothing at a level 0 or
+  above 5, for a faction without a record or a part without parameters. `guild_level` gives 0
+  for a faction without a record.
 
 ### 88. What a hero learns (TWN-GLD-004; §5, §11; `h3-towns`' `guild` module)
 
