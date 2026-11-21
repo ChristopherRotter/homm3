@@ -18,13 +18,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   turns from a record, the record player `director`, `record` and `window --record` with the
   playback keys, ten golden replays viewed to their end; design §5.16, §5.17); **T4c2 done**
   (2026-11-21, whole: a computer's boarding and landing in sight, design §5.18; `game-ai-boat` in
-  `sequences.toml`, exact but MCL-Q43's and MCL-Q46's gaps; `to-record.toml` gone). **Next: T5**
-  (the battles handed over; waits on the client lane's library entry), then T6. The inbox: the
+  `sequences.toml`, exact but MCL-Q43's and MCL-Q46's gaps); T5 cut in two by the user
+  (2026-11-21, the reading first): **T5a done** (2026-11-21, design §5.19: the switch into a
+  battle and back read, the harness's battle step, `battle-won`, `battle-mine` and
+  `battle-retreat` recorded in `map/to-record.toml`; MCL-Q47). **Next: T5b** (the viewer hosting
+  the battle client's element: QUEUE; confirm its cut and the crate structure with the user at its
+  start), then T6. The inbox: the
   viewer's tests' catalogues hold a few of the original's sentences (the user's to decide; offered
-  at T4c2's start, no answer yet). Open questions: **MCL-Q29** to **MCL-Q46** (none blocks;
+  at T4c2's start, no answer yet). Open questions: **MCL-Q29** to **MCL-Q47** (none blocks;
   MCL-Q36, Q37, Q39 to Q44, Q46: facts not in the record, (a) recommended, the engine lanes'
-  inboxes told; MCL-Q45 (b) built; MCL-Q46 (c) built). Next ids **MCL-Q47**, **MCL-STUB-3**.
-- **Open pull requests** (2026-11-21): T4c2's (`map-client/e24-m4-t4c2`): check it first. Merged
+  inboxes told; MCL-Q45 (b) built; MCL-Q46 (c) built; MCL-Q47 the music after a battle, (a) to
+  build at T5b). Next ids **MCL-Q48**, **MCL-STUB-3**.
+- **Open pull requests** (2026-11-21): T5a's (`map-client/e24-m4-t5a`): check it first. Merged
   branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
@@ -49,6 +54,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-21, E24 M4 T5a** (T5 cut in two by the user at its start, the reading first): the
+  client lane's entry checked complete; the switch into a battle and back read (design §5.19);
+  the harness's sequences play a battle (`battle`, common, additive); three battle sequences
+  recorded twice the same in `map/to-record.toml` (the log's "M4 T5a"); MCL-Q47. Original data
+  staged (the 64 files and the manuals; the PC's shell was down, so sizes checked and the LODs and
+  executables against `installation.md`'s hashes); the PC was not needed after the first minutes.
+
 - **2026-11-21, E24 M4 T4c2** (offered whole at the start, no seam): `game-ai-boat` recorded
   again twice the same, a computer's boarding and landing in sight built (the same class switch
   as a human's; `hero_boards_boat` draws nothing for a computer), the move's last step's draw and
@@ -62,9 +74,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   ten golden replays viewed to their end; `game-ai` and `game-ai-boat` recorded by a sub-agent
   (the log's "M4 T4c"); the computer's boat left to T4c2. Original data staged (the 64 files and
   the manuals), SHA-256 checked; the PC was not needed after the first minutes.
-
-- **2026-11-20, E24 M4 T4b2** (the user at the start: kept whole): two scripted games recorded
-  and played from their records (`game-flags`, `game-boats`; the record's flags, hire, boarding
-  and landing; the turn's start after its message; a dissolve's date window), both exact (the
-  log's "M4 T4b2"). Original data staged (the 64 files and the manuals), SHA-256 checked; the
-  PC was not needed after the first minutes. Nothing is waiting on the user's computer.
