@@ -30,7 +30,8 @@
 //! design Part F): the tavern weights and the hire's price in the part (E09 T36), a hire's town
 //! half ([`check_hire`]; E09 T38a1). Increment 5 (the mage guild, E09 design Part G): the guild
 //! weights, roles and parameters in the part (E09 T46), the guild's draw, what it shows and the
-//! Aurora set ([`draw_guild`], [`guild_level`], [`shown`], [`aurora_set`]; E09 T47a1).
+//! Aurora set ([`draw_guild`], [`guild_level`], [`shown`], [`aurora_set`]; E09 T47a1), what a hero
+//! learns there ([`teaches`]; E09 T48a).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -82,7 +83,7 @@ pub use garrison::{GarrisonWeek, garrison_week};
 pub use growth::{GrowthInputs, event_creatures, growth, index_creature};
 pub use guild::{
     GuildSets, GuildSlots, MAX_GUILD_SLOTS, SpellSet, aurora_set, draw_guild, guild_level,
-    has_aurora, shown, shown_slots,
+    has_aurora, shown, shown_slots, teaches,
 };
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
 pub use h3_contracts::Moat;

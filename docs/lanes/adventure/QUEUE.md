@@ -22,6 +22,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-21 (the town lane, E09 T48a, `town/e09-t48a`, `cross-lane` with the user's consent;
+  **in your paths, nothing to do**): `GameState::change_hero` (`state/battle.rs`) is
+  `pub(crate)` (the town's guild teaches through it) and `GameState::new` (`state.rs`) calls
+  `town::guild::at_start` once the state is assembled, before the start's tavern fill (TD-10: a
+  generating main town's hero learns its guild's spells, no event). A town's build (a command's or
+  an event's), a hire and a bars' move that leaves a visitor now tell `HeroChanged`
+  (`LearnSpell`) for the town's visitor, then its garrison hero (TWN-GLD-005). `h3-map`'s plans
+  follow: `check_timed` expects the learning after each event's build, the details' check and the
+  views' fold take a hero hired in the command as the hirer's. No golden replay, version or bot
+  report moved.
 - 2026-11-21 (the rmg lane, E14's refinement, RMG-Q1; **informational, nothing to do yet**): E14
   (the map generator) left your lane: the new rmg lane ports the original's random map
   generator (`docs/epics/E14-original-map-generator.md`), E30 the custom one. Its maps go through

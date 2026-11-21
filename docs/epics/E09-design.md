@@ -3179,6 +3179,12 @@ something, a visit's end, a capture and a siege's end applying the same (175); t
 - **Tests:** a hero without a book learns nothing; Wisdom's bound (none 2, Basic 3, Expert 5);
   a known spell skipped; the Aurora's set at a level-1 guild to level 5; the town's ban kept out of
   the Aurora's, the scenario's in by the flag on and out by it off; no owner or class test.
+- *As built* (T48a, decision 190): `h3_towns::teaches(town, statics, part, core, details)` in the
+  guild module (`h3-towns` now depends on `h3-heroes`, as `arch.toml` allowed): the guild and the
+  Aurora read by role from the town's every-built set through its faction's record (none without
+  it), each spell through `can_learn_spell` with the known spells counting (the book, the level,
+  the known spell in one test). The fixture's `guild_core` gained Wisdom, a class, the type `SAGE`
+  and the spell book `BOOK` (`fixture::sage`); three tests.
 
 ### 89. When the town's heroes learn (TWN-GLD-005; §12; ADR-0017 point 10's list)
 
@@ -3208,6 +3214,17 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
 - **Tests** per trigger (a hero with a book learns each guild spell once; the order of the two
   heroes); nothing at a turn start or a new day; a capture teaches the capturer; a siege's
   defender learns; a bars' move without a visitor teaches nothing.
+- *As built* (T48a, decision 190; the town's own triggers): `town::guild::learn(state, rules,
+  town, sink)` teaches the town's visitor, then its garrison hero (no hero list: every trigger of
+  T48a names both; the computer's one-hero call is E10's), each spell by `GameState::change_hero`
+  (made `pub(crate)`, `cross-lane`). Called at the end of `town::command::build_told` (after
+  `TownBuilt` and the views told; an event's buildings each in turn), after `town::hire::hire`'s
+  placement and its events (the map Tavern's hire none), at the end of `town::rows::heroes` while
+  a visitor stands after the move, and by `town::guild::at_start` in `GameState::new` once the
+  state is assembled, before the start's tavern fill and the first turn (each generating main
+  town in player order, `NoopSink`: the build tells nothing). Six tests (`town/tests/learn.rs`).
+  No golden replay moved (none of the 111 meets one of these triggers with a guild built and a
+  hero with a book there), and no version moved.
 
 ### 90. The opening (TWN-GLD-006; `TownCommand::Open { town }`; decisions 170, 175)
 

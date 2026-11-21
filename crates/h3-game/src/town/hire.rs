@@ -5,7 +5,8 @@
 //! room and entrance and the treasury, each refusal changing nothing and drawing nothing; then
 //! the price paid, the hero placed on the town's entrance as its visitor with its away record, the
 //! slot refilled from the hirer's stream. The original's `town_tavern_hire` 0x5C12E0, read whole.
-//! A hired hero learning the town's guild spells is increment 5's (`TWN-STUB-15`). Since E09 T38a2
+//! Since E09 T48a the hired hero, then the town's garrison hero, learn the town's guild spells
+//! after the placement (TWN-GLD-005, [`super::guild::learn`]; `TWN-STUB-15` lifted). Since E09 T38a2
 //! the legal commands list the hires that pass ([`legal_hires`], the same checks). Since E09 T39a
 //! the map Tavern's hire (GAM-DEC-010, design note §66): the tavern decision's answer
 //! ([`map_hire`], [`map_hires`]), checked as the town's without the town and its visitor, the hero
@@ -22,9 +23,9 @@ use h3_heroes::{ArtifactInstance, HeroDetails, OfferLevels};
 use h3_towns::{TownCommand, TownCommandError};
 
 use super::command::owner;
-use super::leave;
 use super::rows::{most_heroes, town_error};
 use super::tavern::{self, Parts, TAVERN_BACKPACK_SHOWN};
+use super::{guild, leave};
 use crate::command::{Answer, GameCommand, GameCommandError, GameEvent, Sink, TavernAnswer};
 use crate::{GameRuleset, GameState};
 
@@ -115,15 +116,17 @@ impl HiredPart {
 /// visitor (no reveal, no visit); [`GameEvent::HeroHired`] to the owner and every player that
 /// sees the tile, then to the owner its [`GameEvent::HiredPartSeen`]s; the slot refilled
 /// ([`replace`], TWN-TAV-004); then the owner's changed slot told ([`tavern::tell`]: its
-/// `TavernOffered` with its parts, or its emptying). The town's views do not move (the visitor is
-/// the adventure's hero view); the hero's points come by the command's `MovementChanged`. No
-/// field of the command is trusted but the town's id and the slot: the price is the part's
-/// (ADR-0004).
+/// `TavernOffered` with its parts, or its emptying); then the town's heroes learn its guild's
+/// spells (TWN-GLD-005, E09 T48a, [`guild::learn`]: the hired visitor first, then the garrison
+/// hero, each `HeroChanged` to its owner; the original's 0x5BE030 after `hero_place`). The town's
+/// views do not move (the visitor is the adventure's hero view); the hero's points come by the
+/// command's `MovementChanged`. No field of the command is trusted but the town's id and the
+/// slot: the price is the part's (ADR-0004).
 ///
 /// # Errors
 ///
 /// [`GameCommandError::Town`] with the town's refusal, or [`GameCommandError::CannotPay`].
-// rule: TWN-TAV-003
+// rule: TWN-TAV-003, TWN-GLD-005
 pub(crate) fn hire<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -132,8 +135,9 @@ pub(crate) fn hire<S: Sink>(
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
     let checked = check(state, rules, player, (town, slot))?;
-    // stub: TWN-STUB-15 (the town's guild spells, `town_heroes_learn_spells` 0x5BE030: increment 5)
     place(state, rules, (player, slot), checked, sink);
+    // rule: TWN-GLD-005
+    guild::learn(state, rules, town, sink);
     Ok(())
 }
 
