@@ -1,0 +1,17 @@
+# A battle handed over and back (E24 M4 T5a; clients/map/to-record.toml `battle-retreat`; E24
+# design §5.19): a savage monster fought at once, the hero retreating at its first turn: it
+# leaves the map (the loss's sound and dissolve) and the monster stays.
+# Red's hero on (5, 5) with five Archers steps up onto the 15 Peasants on (5, 4) (no question);
+# the Archers act first and retreat. Red keeps its town (16, 12), so the game goes on without a
+# hero; Blue's hero far off in the fog.
+size = 36
+terrain = "grass"
+heroes = [{ at = [5, 5], class = 2, map_army = [[2, 5]] }, { at = [32, 32], owner = 1 }]
+towns = [{ at = [16, 12], faction = 0, owner = 0, buildings = "fort" }]
+view = [0, 0, 0]
+hidden = [[20, 16, 35, 35]]
+
+[[objects]]
+def = "AVWpeas.def"
+at = [5, 4]
+monster = { count = 15, disposition = 4, never_flees = true }

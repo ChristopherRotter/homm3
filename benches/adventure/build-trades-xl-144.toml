@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the game's build of 2 games on the trades XL map (E08 T135b2, increment 14's design note §18, as build-banks-xl-144; T135b1's e08-trades-144.h3m: 144 x 144 with an underground on the dwellings XL's lattice, the census's 49 trades and services, six Black Markets drawing their 42 from the whole pool), each Black Market's stock from the setup stream in object order (ADV-MKT-006: three treasures, three minors and one major from the one pool): about 8.06 M Ir a build, the artifact pool's draws 2.2 % (ArtifactPool::draw), the terrain shares 25 %, AdventureState::new 21 % itself, the static map's hash 15 %; counts only inside h3_cli::adventure::bench::game_build (GameState::new: the static map, its draws, the heroes, the start); baselined at its first count"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-trades-144.h3m",
+    "--workload",
+    "build",
+    "--games",
+    "2",
+    "--days",
+    "1",
+    "--seed",
+    "1",
+]
+collect = "*game_build*"
+instructions = 16116095
+threshold_percent = 2

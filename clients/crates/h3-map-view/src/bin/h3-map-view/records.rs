@@ -7,9 +7,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use h3_map_view::replay::Replay;
 use h3_map_view::timeline::{self, Draw, Rules};
 use h3_render::Bugs;
 
+use crate::battles::Battles;
 use crate::paint::{self, Assets, Record};
 use crate::{files, window};
 
@@ -109,11 +111,30 @@ fn play(options: &Options) -> Result<String, String> {
         mut painter,
         start,
         actions,
+        battles: answered,
         ..
     } = setup;
     let rules = Rules::new(&tables, &layout, options.bugs);
-    let states = timeline::play(rules, &start, &actions, end)
+    let states = timeline::play(rules.clone(), &start, &actions, end)
         .map_err(|(t, why)| format!("at {t} ms: {why}"))?;
+    // The battles the map hands over (E24 M4 T5b1, design §5.20): each walk's that began one,
+    // found among the record's battles.
+    let mut replay =
+        Replay::new(rules, &start, actions.clone()).map_err(|why| format!("at 0 ms: {why}"))?;
+    replay
+        .at(end)
+        .map_err(|(t, why)| format!("at {t} ms: {why}"))?;
+    let list = Battles::read(&options.record, &options.packs, &options.install, None)?;
+    // A walk's and an answer's, in the order they are handed over.
+    let mut all: Vec<(u32, u32)> = replay.battles().iter().chain(&answered).copied().collect();
+    all.sort_by_key(|&(t, _)| t);
+    let handed: Vec<String> = all
+        .iter()
+        .map(|&(t, n)| match list.began(n) {
+            Some(k) => format!("{} at {t} ms", k + 1),
+            None => format!("none at {t} ms (the events {n})"),
+        })
+        .collect();
     // Every screen the record shows drawn (a draw the painter cannot make fails here).
     let mut shown: Option<&Draw> = None;
     let mut screens = 0;
@@ -130,7 +151,15 @@ fn play(options: &Options) -> Result<String, String> {
     }
     let inputs: usize = actions.values().map(Vec::len).sum();
     Ok(format!(
-        "{}: viewed to its end at {end} ms ({inputs} inputs, {screens} screens drawn)",
-        options.record.display()
+        "{}: viewed to its end at {end} ms ({inputs} inputs, {screens} screens drawn); battles \
+         handed over: {} of the record's {}{}",
+        options.record.display(),
+        handed.len(),
+        list.len(),
+        if handed.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", handed.join(", "))
+        }
     ))
 }

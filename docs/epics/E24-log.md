@@ -3249,3 +3249,53 @@ first minutes.
   pickup without a step; 454 in the library, 100 % of its lines and regions.
 - **Question:** MCL-Q46 (the hero that takes an object without a step), a note in the adventure
   lane's inbox.
+
+### M4 T5a (2026-11-21; T5 cut in two by the user at its start: the reading and the recordings first)
+
+- **Checked first:** the client lane's library entry is complete (E17 M7 T3a to T3c, E17 closed:
+  `h3-battle-client`'s `window::Hosted`, `game_seat::GameSeat`, `audio::HostSound`) and `h3-game`
+  sets the battle's background and colours (GAM-BAT-011).
+- **Read** (design §5.19): `adventure_battle` after its battle (0x4AE2BD to 0x4AE99E: the
+  level-ups, Necromancy's sound and box, the loser hero's leaving with `hero_loss_effect`, the
+  computer's AI theme, `mobilize_hero(0, 0, 1)`), `manager_run` whole (the adventure manager
+  paused by its +0x34, put back with `adventure_full_update`, the mouse-over again and the fade
+  in), `battle_start`'s fade out and in, the battle manager's exit (its fade out), the adventure
+  manager's exit (the terrain track left playing), `battle_aftermath` whole (the draw's case),
+  `monster_fight`'s removal (killfade and §5.7's dissolve), `adventure_mouse_again`,
+  `window_menu_set`, `computer_turn_music`; `hero_select`'s music again (MCL-Q47). Map entries:
+  five updated, five new; `structs.toml`'s adventure manager +0x34.
+- **The harness** (common, additive): `h3map.py`'s sequences take `battle` (`h3adv.fight`'s plan
+  or a list), played with the clock running from the battle's screen shown whole, the pointer put
+  back, the clock frozen at the result window and the battle taking none of the sequence's time;
+  the palette's pending step carried across; nothing kept, written or read from the result window
+  until the map is the active manager again; `<ms> battle <winner>` and a `[[battle]]` table;
+  `h3adv.fight(…, close=False)`. Two first runs found the battle's dialogs read as boxes and the
+  palette's phase after the battle following its real-time length: both fixed as above.
+- **Recorded** (under Wine, seed 7, twice the same; `clients/map/to-record.toml`, situations
+  `seq-battle-*`): `battle-won` (39 lines, 19 screens: the battle at 350, the map back at 810, the
+  Peasants dissolved to 1330), `battle-mine` (58, 19: the question, the battle at 1310, ADVEVENT
+  85's box with the map back at 1810, MINEEVNT's, the flag), `battle-retreat` (46, 18: the
+  retreat, the hero dissolved off to 1330, the town selected and the view moved); each frame at 0
+  exact. No viewer change: T5b plays them.
+- **Question:** MCL-Q47 (no terrain track asked for after a battle on the hero's own terrain; (a)
+  as the original recommended, checked by ear at T6).
+
+### M4 T5b1 (2026-11-21; T5b cut in two by the user at its start: the hosting first)
+
+- **Asked at the start:** the cut (T5b1 the window's hosting, the sound on `HostSound`, a golden
+  replay's battles; T5b2 the fades, the result applied, MCL-Q47 by ear and T5a's three compared)
+  and the crate structure: the user took a dependency of `h3-map-view`'s binary on
+  `h3-battle-client` (and `h3-view`), not a binary over both libraries (design §5.20).
+- **Built** (*provisional* unless said; design §5.20): `Move::battle` (a walk's `BattleStarted`),
+  `Loop::battles`, `Replay::battles`; `engine::Command::Battle` after an answer that began one,
+  `director::Directed::battles` (at its box's release, or where an answer with no box is passed
+  over); the binary's `battles` (the record's `GameRecord::battles`, each loaded with
+  `Ground::load_battle` and run as a hosted element in the map's window before the map's frame
+  at its millisecond, the map's clock on from there), `audio::Player` on `HostSound` (`lend`,
+  `take_back`; the tracks added to it once decoded), `paint::Setup::battles`, `record`'s line of
+  the battles handed over; the purity test's binary-only list.
+- **Checked:** every battle of the attacking side's golden replay records handed over headless (12
+  in 10 records); `rewards-stone-guard-s1` and `dwellings-guards-s1` in the window under Xvfb
+  (`--check`: every battle closed, every map frame read back exact, every change the headless
+  loop's). Not handed over: a defending battle (`MCL-STUB-3`).
+

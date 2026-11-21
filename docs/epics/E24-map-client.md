@@ -220,8 +220,16 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   (**done** 2026-11-21, whole: the log's "M4 T4c2", design §5.18; `game-ai-boat` exact but
   MCL-Q43's and MCL-Q46's gaps; MCL-Q46); the kept live parts' message texts
   as labels first (ADR-0009, found at T4a1, the user: none new meanwhile; **done** 2026-11-20,
-  whole: the log's "M4, the labels"); T5, the battles handed over
-  (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
+  whole: the log's "M4, the labels"); T5, the battles handed over (the client lane's entry
+  complete), cut in two by the user at its start (2026-11-21, the reading first): T5a, the
+  reading and the recordings (**done** 2026-11-21: the log's "M4 T5a", design §5.19; the
+  harness's battle step; `battle-won`, `battle-mine`, `battle-retreat` in `to-record.toml`;
+  MCL-Q47), T5b, the viewer, cut in two by the user at its start (2026-11-21, the hosting first;
+  the crate structure: `h3-map-view`'s binary depends on `h3-battle-client`, design §5.20): T5b1,
+  the window hosting a record's battles, the map's sound on `HostSound` (**done** 2026-11-21: the
+  log's "M4 T5b1", design §5.20; `MCL-STUB-3`), T5b2, the switch and the result as the original's
+  (the fades, the monster's and the loser hero's dissolves, a guarded mine's boxes and flag,
+  MCL-Q47 (a) by ear at T6, T5a's three in `sequences.toml` and compared; next); T6, M4's closure. A task that grows is cut at a seam agreed
   with the user.
 - **Exit:** Part A's situations and sequences exact on the whole screen (or each difference an
   `MCL-Q<n>`); the engine's starts and scripted games equal to the original's frames; a golden
@@ -494,3 +502,17 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   tile off the record; the viewer's turn's start built once its message is folded (the engine
   tells the new points after `TurnStarted`); a boat's dissolve keeps the status window its draw
   chose (the date's step, shown at once by the original).
+- **M4 T5a, the harness's battle step** (*provisional*; design §5.19; the runbook's "A battle in a
+  sequence"): a battle played on real time takes none of the sequence's time; the palette's
+  pending step carried across it; from its result window until the map is the active manager
+  again (the adventure manager's +0x34) no screen kept, no line, no box read; the pointer put
+  back before the clock stops; a battle's situation must have one outcome however long it runs (a
+  sure win without losses, a retreat). T5b compares the map's frames around the battle; the
+  battle's own are E17's.
+- **M4 T5b1, a record's battles in the window** (*provisional*; design §5.20): the crate's binary
+  depends on `h3-battle-client` (the user's choice); a walk's battle handed over at its end, an
+  answer's where its box closes, before the map's frame at that millisecond, the map's clock on
+  from there as if the battle took none; a plain cut (T5b2's fades); the battle's keys and combat
+  settings as `h3-view window`'s (`settings.toml` here, which its options dialog writes); its
+  fidgets' seed 0; the map's sound on `HostSound`, lent with the map's effects stopped; a
+  defending battle not handed over (`MCL-STUB-3`).

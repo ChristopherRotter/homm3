@@ -1525,9 +1525,30 @@ player's commands in its `script` are the original's computer's walk as recorded
 sequence's `seed` (its `hero` lines in that turn; hero ids the engine's, the situation's `heroes`
 in order), recorded first and the script written after; the viewer's record then holds the steps
 Red sees (`game-ai`, `game-ai-boat`). A whole game's record without a recording: `h3-map-view
-record <r.jsonl> --record-map <map.h3m>` plays it headless to its end, `window --record` in the
-window (design §5.17); a golden replay's record comes from `h3-server record <replay.toml>
+record <r.jsonl> --record-map <map.h3m>` plays it headless to its end (naming the battles it hands
+over), `window --record` in the window (design §5.17), its battles in it (§5.20, E24 M4
+T5b1); a golden replay's record comes from `h3-server record <replay.toml>
 --packs-dir packs --root . --out <dir>`.
+
+**A battle in a sequence** (E24 M4 T5a, design §5.19): a sequence's `battle` is a plan of
+`h3adv.fight` (`"auto"`, `"retreat"`, a table: "Playing battles" above) or a list of them, one
+per battle in the order they open; a battle without a plan stops the run, a plan left over too.
+Where the battle's screen first shows whole (`h3adv.in_battle`, past its fade in), after that
+millisecond's own reads, `frames` plays it with the clock running (`fight(…, close=False)`),
+puts the pointer back where the sequence held it (`h3adv.PARK` or its last `pointer`/`click`),
+freezes the clock at the result window and goes on as if the battle took no time: the next
+millisecond is the result window's, so the result's OK (Enter) and every input after it are
+given from the battle's millisecond on, read off a first run's `<ms> battle <winner>` line. The
+palette's pending step (palette_tick_time) is written back as far ahead as it stood before the
+battle. From the result window until the map is the active manager again (the adventure
+manager's +0x34 is 1: through the battle's fade out) no screen is kept, no timeline line written
+and no box read (they follow the battle's real-time run; the battle client's anyway); the live
+part gets a `[[battle]]` table (`at`, `winner` 0 the attacker, 1 the defender, −1 none,
+`retreated`, `surrendered` −1 or the side, the stacks `[side, creature, count, hex]` at its
+`start` and `end`). A situation's battle must have one outcome however long it runs (a sure win
+without losses, a retreat): the battle's own draws follow real time. A sound run's samples during
+the battle are left out. T5a's sequences (`battle-*`) wait in `map/to-record.toml` until the
+viewer plays them (T5b).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live

@@ -399,21 +399,21 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xe613bc191632be9a",
-    "0xee3a8e785fd66b99",
-    "0x862812c5d45fda40",
-    "0x3f46ebb006e1a270",
-    "0x5df3043931036e62",
-    "0x6f966ba4089f8b47",
-    "0xdd9de26525a36667",
-    "0x6f033509a03e2b3b",
-    "0xd999cd2f8fe79ae0",
-    "0xc25e8f3337481cf9",
-    "0x28b0a5c8355538c2",
-    "0xe89a1f6e78ef345f",
-    "0x652f4cad3188e01a",
-    "0x31f32160833d247a",
-    "0x2b778f4470d7392c",
+    "0x37a49551223e88f2",
+    "0x5a805e7afd0b36a1",
+    "0x54441a66a0030d40",
+    "0xec482f58da7c99ee",
+    "0xc7a697ed13218034",
+    "0x99da3c1e700eeb09",
+    "0xc1c4df865f412f9f",
+    "0x571707c755a1a987",
+    "0x9328b41f7f0a09e8",
+    "0xf8e30c277fbd0fbb",
+    "0x8510c7425cef0346",
+    "0x67db9436aab6ebdf",
+    "0x16595a6acaf46bba",
+    "0x38169e6f13c54c56",
+    "0xb0fc39b09013261c",
 ]
 
 [replay]
@@ -443,18 +443,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 37
+game_state_hash_version = 38
 adventure_state_hash_version = 27
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-teleporters-36.h3m"
 hash = "0x27ac37d3c2d89975"
-import_version = 27
+import_version = 28
 
 [result]
 day = 29
-final_hash = "0xbd4e5e24f86461e9"
+final_hash = "0xd9c61de6712ccf4f"
 
 [[players]]
 colour = 0

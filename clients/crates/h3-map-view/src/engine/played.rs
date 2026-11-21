@@ -117,6 +117,11 @@ pub enum Command {
     Answer(Answer),
     /// A command of a screen the map has not (a town's, a hero's, an army's: M5's): not shown.
     Other,
+    /// The battle the command before began (E24 M4 T5b1, design §5.20, *provisional*: an answer's,
+    /// a guards' question accepted; a walk's is its [`crate::timeline::Move::battle`]): the
+    /// record's number of the `GameEvents` whose `BattleStarted` began it. No command of the
+    /// record's: the map hands the battle over where that command's box closes.
+    Battle(u32),
 }
 
 /// Another player's turn in the viewer's sight (E24 M4 T4c, design §5.16, *provisional*): its
@@ -196,6 +201,8 @@ struct Open {
     before: Vec<Pos>,
     end: Option<Pos>,
     sea: Option<Sea>,
+    /// The record's number of its `GameEvents` whose `BattleStarted` began a battle (E24 M4 T5b1).
+    battle: Option<u32>,
 }
 
 /// The walks and turns of `loaded`'s record (the module's documentation), its map's art `art`
@@ -234,6 +241,8 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
         .filter_map(|h| tile(h.pos.x, h.pos.y, h.pos.level).map(|at| (h.id, at)))
         .collect();
     let slots = slots(&observation, viewer);
+    // Whether the last command accepted is an answer that has begun no battle yet (E24 M4 T5b1).
+    let mut answering = false;
     for (i, message) in loaded.record.messages.iter().enumerate().skip(1) {
         match message {
             ServerMessage::GameAccepted { command, .. } => {
@@ -244,6 +253,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     (&mut moves, &mut ends, &mut walkers),
                 );
                 commands.push(command_of(command));
+                answering = matches!(command, GameCommand::Answer { .. });
                 match command {
                     GameCommand::Adventure {
                         command: AdventureCommand::MoveHero { hero, path },
@@ -273,6 +283,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             before: explored(&observation, art),
                             end: None,
                             sea: None,
+                            battle: None,
                         });
                     }
                     GameCommand::Answer { answer } => {
@@ -283,7 +294,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     _ => visiting = false,
                 }
             }
-            ServerMessage::GameEvents { events, .. } => {
+            ServerMessage::GameEvents { n, events } => {
                 if let Some(visit) = visits.last_mut().filter(|_| visiting) {
                     match visit.answers.last_mut() {
                         Some((_, after)) => after.extend(events.iter().cloned()),
@@ -305,6 +316,16 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                         untaken.push(at);
                     }
                     match event {
+                        // The viewer's walk began a battle (E24 M4 T5b1, design §5.20): its end
+                        // hands the battle over; an answer's, the box it closes.
+                        GameEvent::BattleStarted { .. } => {
+                            if let Some(walk) = open.as_mut() {
+                                walk.battle.get_or_insert(*n);
+                            } else if core::mem::take(&mut answering) {
+                                commands.push(Command::Battle(*n));
+                            }
+                            // stub: MCL-STUB-3 (a battle the viewer defends: not handed over)
+                        }
                         GameEvent::Adventure {
                             event: AdventureEvent::HeroStepped { hero, to, .. },
                         } => {
@@ -677,6 +698,7 @@ fn close(
         points,
         revealed: per_step,
         sea: walk.sea,
+        battle: walk.battle,
     });
     ends.push(walk.end);
     walkers.push(walk.hero);

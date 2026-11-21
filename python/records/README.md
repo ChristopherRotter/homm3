@@ -165,6 +165,18 @@ rescaled the completed values (T8c), when the search played as the sampled polic
 (T1a), and `-true` is the search over the true battle's copies (`--true-worlds --no-sampled`,
 T1b; its sampled row is the run without the suffix, on the same episodes).
 
+## The ceiling
+
+`ceiling/<name>.json` (E25 T43): `h3 ai ceiling … --json` (`crates/h3-cli/src/ai/ceiling.rs`,
+E25 T42), the rollout-improved fair actor against a system actor on a held-out set: the settings
+(set, episodes a kind, opponents, budget, worlds, seed, the engine's identity), per opponent `h3
+ai eval`'s report of the pair and the improved decisions by category of the fair actor's choice
+(decisions, how many differ, what into, the summed rollout advantage). `<name>-games.toml` is the
+run's games file (`--out`), kept for the paired comparisons (by kind, episode and seat). The
+budget check (`budget-<n>`, the report set's 20 a kind on the side's worlds; `budget-0` the fair
+actor's own play on the same episodes) was rebuilt in the sandbox from the user's games files:
+its `seconds` are 0. The findings in `docs/epics/E25-log.md` T43.
+
 ## Lineage
 
 The promoted networks (from E06 T3b: a run's `promoted/<n>.pt`, its record's `promotions`) and

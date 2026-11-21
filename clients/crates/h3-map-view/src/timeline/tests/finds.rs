@@ -684,6 +684,7 @@ fn a_record_s_visit_from_beside_takes_its_move() {
         points: vec![points],
         revealed: vec![Vec::new()],
         sea: None,
+        battle: None,
     };
     start.moves = Some(vec![onto(ENTRANCE, Some(1234))]);
     let run = |start: &Start, until: u32| {

@@ -1,0 +1,1929 @@
+[settings]
+set = "report-v1"
+episodes = 20
+opponents = ["system"]
+budget = 4
+worlds = "side"
+max_steps = 2000
+seed = 0
+identity = "Identity { encounters: 1, core: 3943339772268043157, battle: 18299168994995231966, adventure: 892011319095939670, system_policy: 19 }"
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 7
+improved = 1
+winner = 0
+truncated = false
+reward = [0.12309730052947998, -0.12309730052947998]
+decisions = [0, 0, 0, 5, 0, 0, 2, 0]
+differ = [0, 0, 0, 3, 0, 0, 1, 0]
+into = [0, 0, 0, 4, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.0062676952131912175, 0.0, 0.0, 0.00044395203714246874, 0.0]
+candidates = 553
+rollouts = 2286
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 7
+improved = 0
+winner = 0
+truncated = false
+reward = [0.18097078800201416, -0.18097078800201416]
+decisions = [1, 2, 4, 4, 2, 0, 1, 0]
+differ = [1, 1, 2, 1, 0, 0, 1, 0]
+into = [1, 0, 2, 2, 0, 0, 1, 0]
+advantage = [0.005124686019761222, 0.003267302458721494, 0.0013757185106389007, 0.012708988297602227, 0.0, 0.0, 0.00045389379374682903, 0.0]
+candidates = 1226
+rollouts = 5071
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 8
+improved = 1
+winner = 0
+truncated = false
+reward = [0.20261366665363312, -0.20261366665363312]
+decisions = [0, 0, 0, 8, 1, 0, 2, 0]
+differ = [0, 0, 0, 5, 1, 0, 2, 0]
+into = [0, 0, 1, 4, 1, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0, 0.03444420655297406, 0.001861492028603187, 0.0, 0.02768868467082148, 0.0]
+candidates = 697
+rollouts = 2841
+refused = 1
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 4
+improved = 1
+winner = 0
+truncated = false
+reward = [0.10327030718326569, -0.10327030718326569]
+decisions = [0, 1, 2, 7, 4, 0, 3, 0]
+differ = [0, 1, 1, 7, 2, 0, 3, 0]
+into = [0, 3, 4, 3, 1, 0, 3, 0]
+advantage = [0.0, 0.04884034573015841, 0.02640067585385763, 0.10755561086294872, 0.00950221923024704, 0.0, 0.1039556256079111, 0.0]
+candidates = 1399
+rollouts = 5821
+refused = 2
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 8
+improved = 0
+winner = 0
+truncated = false
+reward = [0.29518091678619385, -0.29518091678619385]
+decisions = [8, 0, 5, 13, 2, 2, 3, 0]
+differ = [5, 0, 2, 3, 1, 1, 2, 0]
+into = [5, 1, 1, 2, 1, 1, 3, 0]
+advantage = [0.07732309667528042, 0.0, 0.0006177317012440075, 0.021496391815907623, 0.0006794241758493277, 0.006275850534439087, 0.0016410859494373714, 0.0]
+candidates = 2520
+rollouts = 10273
+refused = 9
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 3
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.008834261447191238, 0.008834261447191238]
+decisions = [0, 1, 0, 14, 9, 0, 9, 0]
+differ = [0, 1, 0, 9, 6, 0, 6, 0]
+into = [0, 1, 6, 6, 3, 0, 6, 0]
+advantage = [0.0, 0.009792071101920945, 0.0, 0.09822255770834908, 0.1278550478279747, 0.0, 0.14761640950622312, 0.0]
+candidates = 2538
+rollouts = 10367
+refused = 25
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 4
+improved = 0
+winner = 0
+truncated = false
+reward = [0.3562106192111969, -0.3562106192111969]
+decisions = [0, 5, 5, 10, 2, 0, 0, 0]
+differ = [0, 3, 4, 7, 1, 0, 0, 0]
+into = [0, 5, 3, 4, 1, 0, 2, 0]
+advantage = [0.0, 0.03813222126740304, 0.09910216891513511, 0.09018578555288964, 0.0167402776165141, 0.0, 0.0, 0.0]
+candidates = 3253
+rollouts = 13711
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 0
+improved = 0
+winner = 0
+truncated = false
+reward = [0.26741307973861694, -0.26741307973861694]
+decisions = [0, 0, 2, 17, 8, 0, 5, 0]
+differ = [0, 0, 0, 10, 5, 0, 4, 0]
+into = [0, 4, 2, 9, 2, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0, 0.04143582635036882, 0.021499762306626587, 0.0, 0.06600316480259519, 0.0]
+candidates = 3759
+rollouts = 15762
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 9
+improved = 1
+winner = 0
+truncated = false
+reward = [0.29491090774536133, -0.29491090774536133]
+decisions = [0, 0, 0, 2, 0, 0, 10, 0]
+differ = [0, 0, 0, 2, 0, 0, 10, 0]
+into = [0, 1, 0, 9, 0, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0, 0.005189677593150514, 0.0, 0.0, 0.283863169605932, 0.0]
+candidates = 3032
+rollouts = 12996
+refused = 44
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 9
+improved = 0
+winner = 0
+truncated = false
+reward = [0.36686718463897705, -0.36686718463897705]
+decisions = [6, 0, 3, 12, 4, 0, 5, 0]
+differ = [5, 0, 0, 7, 1, 0, 4, 0]
+into = [5, 2, 0, 8, 1, 0, 1, 0]
+advantage = [0.05150146095392928, 0.0, 0.0, 0.007461276753142856, 0.0004209354519844055, 0.0, 0.03875736298134824, 0.0]
+candidates = 3909
+rollouts = 16372
+refused = 47
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 5
+improved = 0
+winner = 0
+truncated = false
+reward = [0.39881351590156555, -0.39881351590156555]
+decisions = [8, 0, 1, 17, 8, 0, 6, 0]
+differ = [5, 0, 0, 9, 4, 0, 5, 0]
+into = [5, 3, 1, 7, 3, 0, 4, 0]
+advantage = [0.10008628368702678, 0.0, 0.0, 0.05551814645512689, 0.01346695435290434, 0.0, 0.2913044023957075, 0.0]
+candidates = 3298
+rollouts = 13642
+refused = 13
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 12
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.2579282522201538, 0.2579282522201538]
+decisions = [0, 0, 3, 9, 4, 0, 1, 0]
+differ = [0, 0, 2, 4, 3, 0, 1, 0]
+into = [0, 4, 2, 0, 3, 0, 1, 0]
+advantage = [0.0, 0.0, 0.002751750002304713, 0.01807588911973513, 0.010536273469634634, 0.0, 0.005006067454814911, 0.0]
+candidates = 1868
+rollouts = 7758
+refused = 4
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 13
+improved = 0
+winner = 0
+truncated = false
+reward = [0.31770408153533936, -0.31770408153533936]
+decisions = [13, 0, 7, 10, 2, 0, 2, 0]
+differ = [8, 0, 4, 3, 1, 0, 1, 0]
+into = [8, 0, 4, 3, 1, 0, 1, 0]
+advantage = [0.08216692617797589, 0.0, 0.003332539807560011, 0.01716092387336699, 0.005594361396062942, 0.0, 0.003329924742380778, 0.0]
+candidates = 2143
+rollouts = 8590
+refused = 3
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 0
+improved = 1
+winner = 0
+truncated = false
+reward = [0.041474148631095886, -0.041474148631095886]
+decisions = [0, 0, 2, 20, 5, 0, 3, 0]
+differ = [0, 0, 2, 10, 3, 0, 3, 0]
+into = [0, 5, 7, 2, 0, 0, 4, 0]
+advantage = [0.0, 0.0, 0.009824868278974053, 0.12199947018019441, 0.004662980573347135, 0.0, 0.021140681181794786, 0.0]
+candidates = 5671
+rollouts = 24882
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 2
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.1531611531972885, 0.1531611531972885]
+decisions = [0, 3, 8, 23, 0, 0, 5, 0]
+differ = [0, 0, 7, 14, 0, 0, 3, 0]
+into = [0, 7, 8, 7, 0, 0, 2, 0]
+advantage = [0.0, 0.0, 0.16178382499966226, 0.11748669888027868, 0.0, 0.0, 0.14275903646232457, 0.0]
+candidates = 4103
+rollouts = 17108
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 10
+improved = 0
+winner = 0
+truncated = false
+reward = [0.327521950006485, -0.327521950006485]
+decisions = [0, 1, 4, 23, 8, 0, 10, 0]
+differ = [0, 1, 3, 11, 3, 0, 9, 0]
+into = [0, 7, 9, 7, 2, 0, 2, 0]
+advantage = [0.0, 0.0006833885397229876, 0.000671919755326107, 0.024106615960024252, 0.015572647226380777, 0.0, 0.19971004878168996, 0.0]
+candidates = 3072
+rollouts = 12403
+refused = 16
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 3
+improved = 0
+winner = 0
+truncated = false
+reward = [0.2615709602832794, -0.2615709602832794]
+decisions = [0, 1, 5, 26, 5, 0, 9, 0]
+differ = [0, 0, 5, 16, 2, 0, 9, 0]
+into = [0, 4, 12, 10, 1, 0, 5, 0]
+advantage = [0.0, 0.0, 0.05846478273317031, 0.43541835337061563, 0.11130909963470438, 0.0, 0.9122317933458313, 0.0]
+candidates = 6972
+rollouts = 28889
+refused = 120
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 13
+improved = 1
+winner = 0
+truncated = false
+reward = [0.2406081259250641, -0.2406081259250641]
+decisions = [0, 0, 0, 10, 4, 0, 2, 0]
+differ = [0, 0, 0, 4, 4, 0, 2, 0]
+into = [0, 1, 1, 3, 2, 0, 3, 0]
+advantage = [0.0, 0.0, 0.0, 0.01299271531766488, 0.043470739709274564, 0.0, 0.041156169715628306, 0.0]
+candidates = 2884
+rollouts = 12495
+refused = 16
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 11
+improved = 1
+winner = 0
+truncated = false
+reward = [0.09533093869686127, -0.09533093869686127]
+decisions = [0, 0, 0, 20, 2, 2, 3, 0]
+differ = [0, 0, 0, 16, 2, 2, 3, 0]
+into = [0, 3, 5, 9, 1, 0, 5, 0]
+advantage = [0.0, 0.0, 0.0, 0.1242119505507285, 0.029681624296833485, 0.04928752779960632, 0.06118506517394088, 0.0]
+candidates = 3851
+rollouts = 16061
+refused = 44
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 2
+improved = 0
+winner = 1
+truncated = false
+reward = [-0.030832938849925995, 0.030832938849925995]
+decisions = [0, 1, 2, 34, 26, 0, 4, 0]
+differ = [0, 0, 2, 20, 16, 0, 2, 0]
+into = [0, 8, 15, 5, 7, 0, 5, 0]
+advantage = [0.0, 0.0, 0.039993586085374705, 0.3498175055869168, 0.24920667275144343, 0.0, 0.016510355372828505, 0.0]
+candidates = 5960
+rollouts = 24397
+refused = 6
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 14
+improved = 1
+winner = 0
+truncated = false
+reward = [0.13100896775722504, -0.13100896775722504]
+decisions = [0, 0, 0, 11, 3, 0, 6, 0]
+differ = [0, 0, 0, 7, 1, 0, 6, 0]
+into = [0, 2, 2, 6, 1, 0, 3, 0]
+advantage = [0.0, 0.0, 0.0, 0.04553182331905874, 0.006164841172171802, 0.0, 0.05795898749445486, 0.0]
+candidates = 1906
+rollouts = 7894
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 15
+improved = 0
+winner = 0
+truncated = false
+reward = [0.32935675978660583, -0.32935675978660583]
+decisions = [0, 0, 1, 22, 4, 0, 1, 0]
+differ = [0, 0, 1, 14, 1, 0, 1, 0]
+into = [0, 3, 4, 9, 0, 0, 1, 0]
+advantage = [0.0, 0.0, 0.0020683705806732178, 0.12052709709833354, 0.007418204098939896, 0.0, 0.005759051325274449, 0.0]
+candidates = 2178
+rollouts = 8944
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 10
+improved = 1
+winner = 0
+truncated = false
+reward = [0.16524603962898254, -0.16524603962898254]
+decisions = [7, 0, 7, 20, 4, 0, 1, 0]
+differ = [4, 0, 6, 13, 4, 0, 1, 0]
+into = [4, 2, 11, 7, 1, 0, 3, 0]
+advantage = [0.1402419842102311, 0.0, 0.07308503556026923, 0.12552323545806687, 0.03710524897141504, 0.0, 0.009352692608105935, 0.0]
+candidates = 3062
+rollouts = 12580
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 14
+improved = 0
+winner = 0
+truncated = false
+reward = [0.2456512600183487, -0.2456512600183487]
+decisions = [0, 0, 2, 13, 3, 2, 1, 0]
+differ = [0, 0, 0, 5, 1, 1, 1, 0]
+into = [0, 0, 1, 3, 1, 1, 2, 0]
+advantage = [0.0, 0.0, 0.0, 0.027561564645110764, 0.002837100703465311, 0.00021674484014511108, 0.0016005209885364355, 0.0]
+candidates = 7438
+rollouts = 32820
+refused = 2
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 19
+improved = 1
+winner = 0
+truncated = false
+reward = [0.20910155773162842, -0.20910155773162842]
+decisions = [0, 2, 2, 6, 1, 0, 4, 0]
+differ = [0, 1, 0, 6, 0, 0, 4, 0]
+into = [0, 1, 5, 2, 0, 0, 3, 0]
+advantage = [0.0, 0.08110690451091311, 0.0, 0.08829170261301979, 0.0, 0.0, 0.23531603076871715, 0.0]
+candidates = 936
+rollouts = 3752
+refused = 21
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 19
+improved = 0
+winner = 0
+truncated = false
+reward = [0.33829960227012634, -0.33829960227012634]
+decisions = [0, 1, 6, 2, 11, 0, 0, 0]
+differ = [0, 1, 5, 1, 1, 0, 0, 0]
+into = [0, 2, 4, 1, 0, 0, 1, 0]
+advantage = [0.0, 0.07340651934005703, 0.06620587272195014, 0.006006845997439491, 0.0030871459415980746, 0.0, 0.0, 0.0]
+candidates = 1389
+rollouts = 5548
+refused = 33
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 0
+improved = 0
+winner = 0
+truncated = false
+reward = [0.31301453709602356, -0.31301453709602356]
+decisions = [0, 0, 2, 8, 4, 0, 0, 3]
+differ = [0, 0, 2, 4, 1, 0, 0, 3]
+into = [0, 4, 0, 2, 1, 0, 1, 2]
+advantage = [0.0, 0.0, 0.00013199787248264659, 0.03010408717860034, 0.00014946024332727705, 0.0, 0.0, 0.05201141719903367]
+candidates = 1340
+rollouts = 5523
+refused = 1
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 18
+improved = 1
+winner = 0
+truncated = false
+reward = [0.18064680695533752, -0.18064680695533752]
+decisions = [0, 0, 0, 6, 0, 0, 2, 0]
+differ = [0, 0, 0, 5, 0, 0, 2, 0]
+into = [0, 0, 2, 3, 0, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0, 0.01914738185795737, 0.0, 0.0, 0.13776049642246194, 0.0]
+candidates = 2519
+rollouts = 11088
+refused = 11
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 16
+improved = 0
+winner = 0
+truncated = false
+reward = [0.39314576983451843, -0.39314576983451843]
+decisions = [0, 0, 0, 7, 5, 0, 6, 0]
+differ = [0, 0, 0, 3, 2, 0, 3, 0]
+into = [0, 0, 2, 4, 2, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.01644473203590938, 0.007692692028848748, 0.0, 0.01349423997932829, 0.0]
+candidates = 3428
+rollouts = 14465
+refused = 6
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 0
+improved = 1
+winner = 0
+truncated = false
+reward = [0.2343379706144333, -0.2343379706144333]
+decisions = [15, 6, 0, 3, 2, 0, 7, 0]
+differ = [7, 4, 0, 1, 2, 0, 7, 0]
+into = [7, 1, 3, 3, 4, 0, 3, 0]
+advantage = [0.062454475211241256, 0.11123166564698843, 0.0, 0.0027645313885153793, 0.009348076865786597, 0.0, 0.12637462548863782, 0.0]
+candidates = 2367
+rollouts = 9653
+refused = 23
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 18
+improved = 0
+winner = 0
+truncated = false
+reward = [0.2639729678630829, -0.2639729678630829]
+decisions = [27, 0, 1, 7, 4, 0, 2, 0]
+differ = [18, 0, 0, 3, 0, 0, 1, 0]
+into = [18, 1, 0, 2, 0, 0, 1, 0]
+advantage = [0.05776799167722383, 0.0, 0.0, 0.0014133975660495332, 0.0, 0.0, 0.0009241572448185512, 0.0]
+candidates = 2791
+rollouts = 11147
+refused = 3
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 3
+improved = 0
+winner = 0
+truncated = false
+reward = [0.16900299489498138, -0.16900299489498138]
+decisions = [0, 1, 3, 8, 4, 0, 3, 0]
+differ = [0, 0, 3, 4, 1, 0, 3, 0]
+into = [0, 2, 4, 2, 0, 0, 3, 0]
+advantage = [0.0, 0.0, 0.02058439661609641, 0.003928310434095656, 0.0014343553263208141, 0.0, 0.007424196347623714, 0.0]
+candidates = 1189
+rollouts = 4835
+refused = 6
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 2
+improved = 1
+winner = 0
+truncated = false
+reward = [0.07230101525783539, -0.07230101525783539]
+decisions = [0, 0, 0, 12, 1, 0, 3, 0]
+differ = [0, 0, 0, 8, 1, 0, 2, 0]
+into = [0, 1, 6, 2, 0, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0, 0.1712386741036673, 0.00010336988738604955, 0.0, 0.12618093386357246, 0.0]
+candidates = 2277
+rollouts = 9636
+refused = 18
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 3
+improved = 1
+winner = 0
+truncated = false
+reward = [0.07405604422092438, -0.07405604422092438]
+decisions = [0, 1, 1, 7, 4, 0, 4, 0]
+differ = [0, 1, 1, 4, 2, 0, 4, 0]
+into = [0, 4, 5, 0, 0, 0, 3, 0]
+advantage = [0.0, 0.00680627953261137, 0.0006675018983728745, 0.00988031999481301, 0.007092877151444554, 0.0, 0.04154469145931558, 0.0]
+candidates = 1437
+rollouts = 5734
+refused = 2
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 16
+improved = 1
+winner = 0
+truncated = false
+reward = [0.3336235284805298, -0.3336235284805298]
+decisions = [0, 1, 0, 15, 4, 0, 3, 0]
+differ = [0, 1, 0, 8, 3, 0, 3, 0]
+into = [0, 0, 5, 5, 2, 0, 3, 0]
+advantage = [0.0, 0.0060901721318562824, 0.0, 0.05214545627230034, 0.011822847856415642, 0.0, 0.14197946827751412, 0.0]
+candidates = 2842
+rollouts = 11875
+refused = 28
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 2
+improved = 0
+winner = 0
+truncated = false
+reward = [0.30538350343704224, -0.30538350343704224]
+decisions = [26, 0, 3, 12, 2, 0, 3, 3]
+differ = [18, 0, 1, 6, 1, 0, 2, 0]
+into = [18, 1, 4, 4, 0, 0, 1, 0]
+advantage = [0.2072966156701227, 0.0, 0.004287572072471602, 0.08634008425103662, 0.0025908203843312385, 0.0, 0.013707493725007978, 0.0]
+candidates = 5493
+rollouts = 22733
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 12
+improved = 0
+winner = 1
+truncated = false
+reward = [-0.17137403786182404, 0.17137403786182404]
+decisions = [22, 3, 0, 10, 6, 0, 3, 0]
+differ = [16, 1, 0, 5, 2, 0, 2, 0]
+into = [16, 3, 0, 4, 1, 0, 2, 0]
+advantage = [0.06075405461369937, 0.00582778760015148, 0.0, 0.04536946861832821, 0.0007558976852195384, 0.0, 0.006294728842580397, 0.0]
+candidates = 6223
+rollouts = 27002
+refused = 16
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 17
+improved = 0
+winner = 0
+truncated = false
+reward = [0.09361331164836884, -0.09361331164836884]
+decisions = [16, 0, 0, 38, 3, 0, 10, 0]
+differ = [12, 0, 0, 22, 2, 0, 9, 0]
+into = [12, 3, 11, 13, 1, 0, 5, 0]
+advantage = [0.351295600669187, 0.0, 0.0, 0.28512434258706515, 0.027140017671303616, 0.0, 0.2687728434218044, 0.0]
+candidates = 7560
+rollouts = 30649
+refused = 109
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 6
+improved = 0
+winner = 1
+truncated = false
+reward = [-0.09866190701723099, 0.09866190701723099]
+decisions = [1, 0, 13, 9, 21, 0, 0, 0]
+differ = [1, 0, 6, 5, 7, 0, 0, 0]
+into = [1, 6, 7, 1, 3, 0, 1, 0]
+advantage = [0.06148617384023965, 0.0, 0.14086093038385397, 0.1118209179872566, 0.0559524668322649, 0.0, 0.0, 0.0]
+candidates = 2303
+rollouts = 9245
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 11
+improved = 0
+winner = 0
+truncated = false
+reward = [0.3214532434940338, -0.3214532434940338]
+decisions = [0, 0, 0, 18, 4, 0, 3, 0]
+differ = [0, 0, 0, 9, 0, 0, 2, 0]
+into = [0, 3, 3, 3, 0, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0, 0.08778752795090834, 0.0, 0.0, 0.30203543330263943, 0.0]
+candidates = 8376
+rollouts = 37122
+refused = 64
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 6
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.27866190671920776, 0.27866190671920776]
+decisions = [0, 0, 2, 9, 4, 0, 20, 0]
+differ = [0, 0, 2, 1, 0, 0, 20, 0]
+into = [0, 1, 9, 5, 2, 0, 6, 0]
+advantage = [0.0, 0.0, 0.02558429590003057, 0.000219804048538208, 0.0, 0.0, 1.0409197388844833, 0.0]
+candidates = 3394
+rollouts = 13995
+refused = 87
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 15
+improved = 1
+winner = 0
+truncated = false
+reward = [0.19119253754615784, -0.19119253754615784]
+decisions = [0, 1, 3, 13, 1, 0, 5, 0]
+differ = [0, 1, 3, 10, 1, 0, 3, 0]
+into = [0, 3, 5, 7, 1, 0, 2, 0]
+advantage = [0.0, 0.012108270823955537, 0.030259270378280197, 0.09355778403913866, 0.0026471646542244767, 0.0, 0.06514116774786191, 0.0]
+candidates = 7891
+rollouts = 34680
+refused = 13
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 1
+improved = 0
+winner = 1
+truncated = false
+reward = [0.08287572860717773, -0.08287572860717773]
+decisions = [0, 1, 7, 37, 8, 5, 2, 0]
+differ = [0, 0, 5, 23, 3, 2, 1, 0]
+into = [0, 4, 7, 11, 3, 1, 8, 0]
+advantage = [0.0, 0.0, 0.20800167461574776, 0.5265622676159406, 0.01677433383603977, 0.08198315732588526, 0.04180977092405288, 0.0]
+candidates = 5947
+rollouts = 24674
+refused = 2
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 7
+improved = 0
+winner = 0
+truncated = false
+reward = [0.1362825334072113, -0.1362825334072113]
+decisions = [0, 0, 1, 27, 14, 6, 0, 0]
+differ = [0, 0, 0, 15, 8, 2, 0, 0]
+into = [0, 6, 4, 8, 6, 1, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.1804156167244467, 0.11083376371307958, 0.008991376683115958, 0.0, 0.0]
+candidates = 3751
+rollouts = 15388
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 9
+improved = 0
+winner = 0
+truncated = false
+reward = [0.2320174276828766, -0.2320174276828766]
+decisions = [0, 0, 2, 4, 0, 0, 6, 0]
+differ = [0, 0, 2, 0, 0, 0, 5, 0]
+into = [0, 1, 5, 1, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.01553028776573065, 0.0, 0.0, 0.0, 0.02899004223508409, 0.0]
+candidates = 1062
+rollouts = 4418
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 8
+improved = 0
+winner = 0
+truncated = false
+reward = [0.2551853656768799, -0.2551853656768799]
+decisions = [0, 1, 0, 11, 3, 0, 3, 0]
+differ = [0, 1, 0, 7, 2, 0, 3, 0]
+into = [0, 2, 3, 6, 0, 0, 2, 0]
+advantage = [0.0, 0.003966746753767917, 0.0, 0.03052996587763372, 0.00013257194348055906, 0.0, 0.16779497259113607, 0.0]
+candidates = 1844
+rollouts = 7632
+refused = 37
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 1
+improved = 1
+winner = -1
+truncated = false
+reward = [-0.2473263293504715, 0.2473263293504715]
+decisions = [27, 3, 5, 21, 15, 0, 1, 0]
+differ = [18, 3, 3, 12, 11, 0, 0, 0]
+into = [18, 1, 16, 7, 2, 0, 3, 0]
+advantage = [0.6886353958558141, 0.0063203532248735424, 0.0694252934538791, 0.1307591265030543, 0.17870653592711797, 0.0, 0.0, 0.0]
+candidates = 6194
+rollouts = 25735
+refused = 1
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 9
+improved = 1
+winner = 0
+truncated = false
+reward = [0.18308375775814056, -0.18308375775814056]
+decisions = [0, 0, 2, 10, 0, 0, 0, 0]
+differ = [0, 0, 2, 5, 0, 0, 0, 0]
+into = [0, 3, 2, 0, 0, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0044373764910481195, 0.027159347716706854, 0.0, 0.0, 0.0, 0.0]
+candidates = 1003
+rollouts = 4049
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 10
+improved = 1
+winner = 0
+truncated = false
+reward = [0.21618831157684326, -0.21618831157684326]
+decisions = [0, 2, 0, 2, 1, 0, 3, 0]
+differ = [0, 1, 0, 1, 0, 0, 3, 0]
+into = [0, 1, 3, 0, 0, 0, 1, 0]
+advantage = [0.0, 0.0019684537098957943, 0.0, 0.007630457835538047, 0.0, 0.0, 0.061677792725882176, 0.0]
+candidates = 1140
+rollouts = 4808
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 12
+improved = 0
+winner = 0
+truncated = false
+reward = [0.1726769059896469, -0.1726769059896469]
+decisions = [0, 0, 4, 6, 3, 1, 0, 3]
+differ = [0, 0, 3, 2, 2, 0, 0, 2]
+into = [0, 1, 3, 1, 2, 0, 1, 1]
+advantage = [0.0, 0.0, 0.0060037796050955205, 0.0048502084081020426, 0.0035275941903608436, 0.0, 0.0, 0.009634310409829424]
+candidates = 1511
+rollouts = 6248
+refused = 1
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 7
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.2688198387622833, 0.2688198387622833]
+decisions = [10, 0, 3, 37, 1, 0, 0, 0]
+differ = [8, 0, 3, 20, 0, 0, 0, 0]
+into = [8, 4, 8, 11, 0, 0, 0, 0]
+advantage = [0.21221239079880538, 0.0, 0.04324531020543316, 0.25153624796086815, 0.0, 0.0, 0.0, 0.0]
+candidates = 5321
+rollouts = 22062
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 11
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.42307183146476746, 0.42307183146476746]
+decisions = [0, 1, 14, 17, 4, 6, 6, 0]
+differ = [0, 1, 9, 8, 3, 2, 5, 0]
+into = [0, 9, 9, 4, 1, 0, 5, 0]
+advantage = [0.0, 0.0008551517258519712, 0.11022300465930325, 0.03525684192065286, 0.05237323659307817, 0.02057459205389023, 0.4274058448440381, 0.0]
+candidates = 2434
+rollouts = 9889
+refused = 29
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 11
+improved = 0
+winner = 1
+truncated = false
+reward = [-0.2519778907299042, 0.2519778907299042]
+decisions = [19, 0, 5, 12, 9, 0, 0, 10]
+differ = [15, 0, 5, 8, 2, 0, 0, 6]
+into = [15, 4, 7, 4, 0, 0, 3, 3]
+advantage = [0.41696048923700774, 0.0, 0.11101063119625687, 0.07017232103249832, 0.019211573169331236, 0.0, 0.0, 0.06717520715749781]
+candidates = 1999
+rollouts = 7885
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 12
+improved = 1
+winner = 0
+truncated = false
+reward = [0.14646616578102112, -0.14646616578102112]
+decisions = [0, 0, 0, 11, 2, 0, 0, 0]
+differ = [0, 0, 0, 8, 1, 0, 0, 0]
+into = [0, 1, 3, 2, 1, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0, 0.035417698651105785, 0.0035900264978408814, 0.0, 0.0, 0.0]
+candidates = 1114
+rollouts = 4508
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 5
+improved = 1
+winner = 0
+truncated = false
+reward = [0.26911136507987976, -0.26911136507987976]
+decisions = [0, 0, 0, 11, 2, 0, 9, 0]
+differ = [0, 0, 0, 5, 1, 0, 8, 0]
+into = [0, 3, 2, 3, 2, 0, 4, 0]
+advantage = [0.0, 0.0, 0.0, 0.08091498034333319, 0.0014439679004929283, 0.0, 0.2400781549376716, 0.0]
+candidates = 8087
+rollouts = 35889
+refused = 143
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 5
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.4800604581832886, 0.4800604581832886]
+decisions = [0, 0, 6, 37, 46, 0, 2, 0]
+differ = [0, 0, 5, 22, 35, 0, 2, 0]
+into = [0, 16, 23, 4, 16, 0, 5, 0]
+advantage = [0.0, 0.0, 0.09906623308605667, 0.3949096509797692, 0.6719568681600927, 0.0, 0.025819476656239442, 0.0]
+candidates = 4663
+rollouts = 18701
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 10
+improved = 0
+winner = 0
+truncated = false
+reward = [0.24208451807498932, -0.24208451807498932]
+decisions = [0, 0, 3, 4, 4, 0, 3, 0]
+differ = [0, 0, 2, 1, 2, 0, 2, 0]
+into = [0, 3, 2, 1, 0, 0, 1, 0]
+advantage = [0.0, 0.0, 0.000010328264665586229, 0.00000438853254858053, 0.0021805692455665864, 0.0, 0.004070769904226489, 0.0]
+candidates = 7473
+rollouts = 33225
+refused = 4
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 1
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.21763022243976593, 0.21763022243976593]
+decisions = [0, 0, 0, 19, 4, 0, 7, 0]
+differ = [0, 0, 0, 12, 1, 0, 6, 0]
+into = [0, 2, 5, 9, 0, 0, 3, 0]
+advantage = [0.0, 0.0, 0.0, 0.19422432363833128, 0.062061860758279054, 0.0, 0.25018661161646444, 0.0]
+candidates = 8244
+rollouts = 36265
+refused = 42
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 14
+improved = 0
+winner = 0
+truncated = false
+reward = [0.27387017011642456, -0.27387017011642456]
+decisions = [0, 0, 1, 10, 3, 0, 0, 3]
+differ = [0, 0, 0, 7, 2, 0, 0, 2]
+into = [0, 1, 2, 3, 2, 0, 2, 1]
+advantage = [0.0, 0.0, 0.0, 0.061037406145256025, 0.005979660570948989, 0.0, 0.0, 0.005219652464515285]
+candidates = 1323
+rollouts = 5436
+refused = 7
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 6
+improved = 0
+winner = 0
+truncated = false
+reward = [0.21748943626880646, -0.21748943626880646]
+decisions = [0, 0, 0, 30, 6, 5, 3, 0]
+differ = [0, 0, 0, 19, 3, 4, 3, 0]
+into = [0, 3, 6, 11, 2, 2, 5, 0]
+advantage = [0.0, 0.0, 0.0, 0.16932851703045895, 0.020940233467645446, 0.016706727870873045, 0.2746775068352455, 0.0]
+candidates = 6074
+rollouts = 25526
+refused = 54
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 13
+improved = 0
+winner = 0
+truncated = false
+reward = [0.22163920104503632, -0.22163920104503632]
+decisions = [0, 0, 1, 14, 2, 0, 1, 0]
+differ = [0, 0, 0, 6, 0, 0, 1, 0]
+into = [0, 1, 2, 2, 0, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0, 0.03149560233933964, 0.0, 0.0, 0.11818298956086813, 0.0]
+candidates = 3036
+rollouts = 12856
+refused = 35
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 13
+improved = 1
+winner = 0
+truncated = false
+reward = [0.11449261754751205, -0.11449261754751205]
+decisions = [27, 0, 0, 13, 1, 0, 3, 0]
+differ = [16, 0, 0, 7, 1, 0, 3, 0]
+into = [16, 0, 3, 5, 1, 0, 2, 0]
+advantage = [0.12533961286909015, 0.0, 0.0, 0.04671739168534535, 0.0012835679719081293, 0.0, 0.028574015790544298, 0.0]
+candidates = 2109
+rollouts = 8409
+refused = 9
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 17
+improved = 0
+winner = 0
+truncated = false
+reward = [0.17625556886196136, -0.17625556886196136]
+decisions = [11, 0, 1, 9, 3, 0, 0, 3]
+differ = [10, 0, 0, 5, 0, 0, 0, 2]
+into = [10, 1, 1, 2, 0, 0, 2, 1]
+advantage = [0.11173920382266207, 0.0, 0.0, 0.03619519729149847, 0.0, 0.0, 0.0, 0.015858918412698812]
+candidates = 1947
+rollouts = 8010
+refused = 7
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 5
+improved = 0
+winner = 1
+truncated = false
+reward = [-0.2314862161874771, 0.2314862161874771]
+decisions = [13, 1, 20, 16, 8, 0, 2, 0]
+differ = [13, 1, 17, 9, 4, 0, 2, 0]
+into = [13, 7, 14, 6, 1, 0, 5, 0]
+advantage = [0.31301928296427195, 0.0006372939358960401, 0.20459942916758106, 0.19725536524982698, 0.03957306120573562, 0.0, 0.07181589184508014, 0.0]
+candidates = 5141
+rollouts = 21058
+refused = 39
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 18
+improved = 1
+winner = 0
+truncated = false
+reward = [0.06734686344861984, -0.06734686344861984]
+decisions = [0, 0, 0, 9, 2, 6, 10, 0]
+differ = [0, 0, 0, 6, 1, 4, 7, 0]
+into = [0, 5, 2, 6, 4, 0, 1, 0]
+advantage = [0.0, 0.0, 0.0, 0.05471828785718019, 0.028697503979007402, 0.051078020442854345, 0.10212688420035006, 0.0]
+candidates = 2191
+rollouts = 8909
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 18
+improved = 0
+winner = 0
+truncated = false
+reward = [0.23279130458831787, -0.23279130458831787]
+decisions = [20, 0, 8, 5, 3, 0, 4, 0]
+differ = [11, 0, 5, 1, 1, 0, 1, 0]
+into = [11, 1, 5, 2, 0, 0, 0, 0]
+advantage = [0.04350088170047588, 0.0, 0.019046466145106022, 0.002770397918564933, 0.010840302994174341, 0.0, 0.058903187370071046, 0.0]
+candidates = 2403
+rollouts = 9680
+refused = 14
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 0
+improved = 1
+winner = 0
+truncated = false
+reward = [0.09046781063079834, -0.09046781063079834]
+decisions = [0, 0, 0, 2, 0, 0, 0, 0]
+differ = [0, 0, 0, 2, 0, 0, 0, 0]
+into = [0, 1, 0, 1, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.0013384429779317644, 0.0, 0.0, 0.0, 0.0]
+candidates = 102
+rollouts = 405
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 0
+improved = 0
+winner = 0
+truncated = false
+reward = [0.0909411683678627, -0.0909411683678627]
+decisions = [0, 1, 4, 3, 4, 0, 1, 0]
+differ = [0, 0, 0, 0, 0, 0, 1, 0]
+into = [0, 0, 0, 0, 0, 0, 1, 0]
+advantage = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0003091943120852308, 0.0]
+candidates = 3047
+rollouts = 13244
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 8
+improved = 1
+winner = 0
+truncated = false
+reward = [0.15939262509346008, -0.15939262509346008]
+decisions = [0, 1, 1, 8, 5, 0, 6, 0]
+differ = [0, 1, 0, 5, 5, 0, 5, 0]
+into = [0, 3, 5, 4, 3, 0, 1, 0]
+advantage = [0.0, 0.013836311916989016, 0.0, 0.038597423371527446, 0.020270964731672343, 0.0, 0.01466572876995046, 0.0]
+candidates = 4858
+rollouts = 20912
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 14
+improved = 1
+winner = 0
+truncated = false
+reward = [0.009280030615627766, -0.009280030615627766]
+decisions = [0, 0, 1, 17, 14, 0, 7, 0]
+differ = [0, 0, 1, 10, 6, 0, 5, 0]
+into = [0, 7, 3, 8, 2, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0008240014028090697, 0.09002492826081657, 0.04032944601770503, 0.0, 0.08299981079217886, 0.0]
+candidates = 4315
+rollouts = 17977
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 2
+improved = 1
+winner = 0
+truncated = false
+reward = [0.04837332293391228, -0.04837332293391228]
+decisions = [0, 0, 0, 4, 3, 0, 0, 0]
+differ = [0, 0, 0, 3, 2, 0, 0, 0]
+into = [0, 2, 1, 0, 1, 0, 1, 0]
+advantage = [0.0, 0.0, 0.0, 0.009128935191602934, 0.001145974684555035, 0.0, 0.0, 0.0]
+candidates = 489
+rollouts = 1993
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 2
+improved = 0
+winner = 0
+truncated = false
+reward = [0.0980735644698143, -0.0980735644698143]
+decisions = [0, 0, 3, 1, 1, 0, 1, 0]
+differ = [0, 0, 3, 0, 0, 0, 1, 0]
+into = [0, 2, 1, 0, 0, 0, 1, 0]
+advantage = [0.0, 0.0, 0.01317329206292019, 0.0, 0.0, 0.0, 0.012874358601402491, 0.0]
+candidates = 1574
+rollouts = 6894
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 3
+improved = 1
+winner = 0
+truncated = false
+reward = [0.20877723395824432, -0.20877723395824432]
+decisions = [0, 0, 2, 8, 1, 0, 0, 0]
+differ = [0, 0, 2, 5, 0, 0, 0, 0]
+into = [0, 4, 1, 2, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0053001348778866884, 0.0158027078912489, 0.0, 0.0, 0.0, 0.0]
+candidates = 532
+rollouts = 2108
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 3
+improved = 0
+winner = 0
+truncated = false
+reward = [0.24838806688785553, -0.24838806688785553]
+decisions = [4, 0, 10, 6, 2, 0, 0, 0]
+differ = [4, 0, 6, 4, 0, 0, 0, 0]
+into = [4, 1, 5, 2, 0, 0, 2, 0]
+advantage = [0.006222060545311346, 0.0, 0.006614619420848232, 0.02924064410067668, 0.0, 0.0, 0.0, 0.0]
+candidates = 1513
+rollouts = 6164
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 15
+improved = 1
+winner = 0
+truncated = false
+reward = [0.11075484752655029, -0.11075484752655029]
+decisions = [0, 0, 0, 24, 3, 0, 0, 0]
+differ = [0, 0, 0, 18, 0, 0, 0, 0]
+into = [0, 1, 2, 14, 0, 0, 1, 0]
+advantage = [0.0, 0.0, 0.0, 0.14044559433757134, 0.0, 0.0, 0.0, 0.0]
+candidates = 2557
+rollouts = 10527
+refused = 5
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 5
+improved = 0
+winner = 0
+truncated = false
+reward = [0.07162053883075714, -0.07162053883075714]
+decisions = [0, 0, 1, 1, 0, 0, 0, 2]
+differ = [0, 0, 1, 0, 0, 0, 0, 2]
+into = [0, 1, 0, 0, 0, 0, 1, 1]
+advantage = [0.0, 0.0, 0.002990187350976265, 0.0, 0.0, 0.0, 0.0, 0.0024656652162472407]
+candidates = 288
+rollouts = 1162
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 19
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.25479501485824585, 0.25479501485824585]
+decisions = [0, 2, 1, 10, 8, 0, 4, 0]
+differ = [0, 0, 1, 4, 5, 0, 2, 0]
+into = [0, 4, 2, 3, 3, 0, 0, 0]
+advantage = [0.0, 0.0, 0.006254211493900844, 0.004240012369021551, 0.011929662893267839, 0.0, 0.0034264871596445027, 0.0]
+candidates = 3022
+rollouts = 12682
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 17
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.44558969140052795, 0.44558969140052795]
+decisions = [0, 0, 0, 21, 3, 3, 5, 0]
+differ = [0, 0, 0, 16, 1, 2, 3, 0]
+into = [0, 1, 5, 10, 1, 2, 3, 0]
+advantage = [0.0, 0.0, 0.0, 0.4213466262152225, 0.001565948941490867, 0.005726552009582519, 0.043384927026737956, 0.0]
+candidates = 8468
+rollouts = 36890
+refused = 18
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 5
+improved = 1
+winner = 0
+truncated = false
+reward = [0.06845343112945557, -0.06845343112945557]
+decisions = [0, 0, 0, 1, 0, 0, 0, 0]
+differ = [0, 0, 0, 0, 0, 0, 0, 0]
+into = [0, 0, 0, 0, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+candidates = 160
+rollouts = 696
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 4
+improved = 0
+winner = 0
+truncated = false
+reward = [0.12941692769527435, -0.12941692769527435]
+decisions = [1, 3, 2, 5, 2, 0, 0, 3]
+differ = [1, 0, 1, 3, 0, 0, 0, 2]
+into = [1, 2, 1, 1, 0, 0, 1, 1]
+advantage = [0.011924777712140764, 0.0, 0.00047435611486434937, 0.004994807554266567, 0.0, 0.0, 0.0, 0.003118619845285044]
+candidates = 1902
+rollouts = 7863
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 4
+improved = 1
+winner = 0
+truncated = false
+reward = [0.11244133859872818, -0.11244133859872818]
+decisions = [0, 0, 0, 4, 1, 0, 0, 0]
+differ = [0, 0, 0, 3, 1, 0, 0, 0]
+into = [0, 0, 1, 2, 1, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.008647952797926134, 0.00010418226676327842, 0.0, 0.0, 0.0]
+candidates = 436
+rollouts = 1751
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 6
+improved = 1
+winner = 0
+truncated = false
+reward = [0.05125949904322624, -0.05125949904322624]
+decisions = [0, 2, 1, 3, 2, 0, 0, 0]
+differ = [0, 1, 1, 1, 1, 0, 0, 0]
+into = [0, 0, 2, 1, 1, 0, 0, 0]
+advantage = [0.0, 0.000028201820034729807, 0.00007783367552540518, 0.00035861875401454026, 0.0008849669247865677, 0.0, 0.0, 0.0]
+candidates = 513
+rollouts = 2085
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 7
+improved = 1
+winner = 0
+truncated = false
+reward = [0.06984217464923859, -0.06984217464923859]
+decisions = [0, 0, 0, 7, 2, 0, 0, 0]
+differ = [0, 0, 0, 5, 1, 0, 0, 0]
+into = [0, 2, 2, 2, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.014355901723405473, 0.001333118780799534, 0.0, 0.0, 0.0]
+candidates = 559
+rollouts = 2297
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 6
+improved = 0
+winner = 0
+truncated = false
+reward = [0.06968753039836884, -0.06968753039836884]
+decisions = [3, 0, 4, 3, 3, 0, 4, 0]
+differ = [3, 0, 0, 0, 0, 0, 2, 0]
+into = [3, 1, 1, 0, 0, 0, 0, 0]
+advantage = [0.004293750738725066, 0.0, 0.0, 0.0, 0.0, 0.0, 0.016333680882937563, 0.0]
+candidates = 1734
+rollouts = 7081
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 7
+improved = 0
+winner = 0
+truncated = false
+reward = [0.08765924721956253, -0.08765924721956253]
+decisions = [1, 1, 3, 6, 2, 0, 1, 0]
+differ = [1, 0, 0, 1, 0, 0, 1, 0]
+into = [1, 1, 0, 0, 0, 0, 1, 0]
+advantage = [0.0058783931951773795, 0.0, 0.0, 0.00017317171607698713, 0.0, 0.0, 0.0008954263195909303, 0.0]
+candidates = 1372
+rollouts = 5699
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 9
+improved = 1
+winner = 0
+truncated = false
+reward = [0.18660224974155426, -0.18660224974155426]
+decisions = [0, 0, 3, 4, 2, 0, 0, 0]
+differ = [0, 0, 2, 2, 1, 0, 0, 0]
+into = [0, 1, 2, 1, 1, 0, 0, 0]
+advantage = [0.0, 0.0, 0.001852601923440632, 0.006016689719575824, 0.003028898858107053, 0.0, 0.0, 0.0]
+candidates = 374
+rollouts = 1453
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 8
+improved = 1
+winner = 0
+truncated = false
+reward = [0.15386919677257538, -0.15386919677257538]
+decisions = [0, 5, 3, 10, 3, 0, 2, 0]
+differ = [0, 3, 3, 9, 2, 0, 1, 0]
+into = [0, 3, 15, 0, 0, 0, 0, 0]
+advantage = [0.0, 0.10657390356678403, 0.025821481880979217, 0.19011827984942944, 0.04148038867072862, 0.0, 0.014507501601026608, 0.0]
+candidates = 878
+rollouts = 3408
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 9
+improved = 0
+winner = 0
+truncated = false
+reward = [0.20055168867111206, -0.20055168867111206]
+decisions = [0, 3, 3, 4, 6, 0, 1, 0]
+differ = [0, 2, 2, 1, 1, 0, 0, 0]
+into = [0, 2, 3, 0, 0, 0, 1, 0]
+advantage = [0.0, 0.0012002025804822409, 0.0009639465146594578, 0.003851078193763207, 0.00015071982687169856, 0.0, 0.0, 0.0]
+candidates = 1369
+rollouts = 5599
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 11
+improved = 0
+winner = 0
+truncated = false
+reward = [0.14117108285427094, -0.14117108285427094]
+decisions = [1, 0, 0, 8, 2, 0, 0, 0]
+differ = [1, 0, 0, 5, 1, 0, 0, 0]
+into = [1, 2, 1, 1, 1, 0, 1, 0]
+advantage = [0.0038039359179410067, 0.0, 0.0, 0.00753412416637402, 0.0002766326069831848, 0.0, 0.0, 0.0]
+candidates = 851
+rollouts = 3464
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 8
+improved = 0
+winner = 0
+truncated = false
+reward = [0.2935889661312103, -0.2935889661312103]
+decisions = [0, 0, 8, 12, 3, 0, 3, 0]
+differ = [0, 0, 3, 4, 1, 0, 1, 0]
+into = [0, 3, 3, 1, 0, 0, 2, 0]
+advantage = [0.0, 0.0, 0.0008641784424548382, 0.026517549211888515, 0.00011581411728492149, 0.0, 0.012544481621848212, 0.0]
+candidates = 2164
+rollouts = 8966
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 11
+improved = 1
+winner = 0
+truncated = false
+reward = [0.12104834616184235, -0.12104834616184235]
+decisions = [0, 2, 1, 4, 3, 0, 0, 0]
+differ = [0, 0, 0, 2, 2, 0, 0, 0]
+into = [0, 0, 0, 2, 2, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.006756348872468585, 0.002921410415782578, 0.0, 0.0, 0.0]
+candidates = 769
+rollouts = 3181
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 12
+improved = 1
+winner = 0
+truncated = false
+reward = [0.05094030499458313, -0.05094030499458313]
+decisions = [0, 0, 0, 3, 2, 0, 0, 0]
+differ = [0, 0, 0, 1, 2, 0, 0, 0]
+into = [0, 0, 3, 0, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.0012691718127046312, 0.008634309218978403, 0.0, 0.0, 0.0]
+candidates = 380
+rollouts = 1527
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 12
+improved = 0
+winner = 0
+truncated = false
+reward = [0.06280501186847687, -0.06280501186847687]
+decisions = [1, 0, 5, 5, 2, 0, 1, 0]
+differ = [1, 0, 0, 2, 0, 0, 1, 0]
+into = [1, 0, 1, 1, 0, 0, 1, 0]
+advantage = [0.003283724866130135, 0.0, 0.0, 0.0005598883566834171, 0.0, 0.0, 0.0010238205584195944, 0.0]
+candidates = 1560
+rollouts = 6430
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 1
+improved = 0
+winner = 0
+truncated = false
+reward = [0.40755414962768555, -0.40755414962768555]
+decisions = [0, 7, 8, 13, 6, 0, 2, 9]
+differ = [0, 4, 4, 8, 5, 0, 1, 6]
+into = [0, 2, 19, 0, 0, 0, 4, 3]
+advantage = [0.0, 0.017760354799754692, 0.05108090520170801, 0.03867871776875832, 0.01878896608629966, 0.0, 0.0008963252368726229, 0.061656760240049235]
+candidates = 3316
+rollouts = 13566
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 14
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.09481737017631531, 0.09481737017631531]
+decisions = [0, 0, 7, 2, 3, 0, 0, 0]
+differ = [0, 0, 5, 0, 0, 0, 0, 0]
+into = [0, 1, 4, 0, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.04940790295646359, 0.0, 0.0, 0.0, 0.0, 0.0]
+candidates = 636
+rollouts = 2535
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 13
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.1750403791666031, 0.1750403791666031]
+decisions = [0, 0, 5, 10, 6, 0, 0, 0]
+differ = [0, 0, 4, 4, 3, 0, 0, 0]
+into = [0, 3, 6, 0, 2, 0, 0, 0]
+advantage = [0.0, 0.0, 0.24200532012392587, 0.05437029249634925, 0.08622893630211716, 0.0, 0.0, 0.0]
+candidates = 1287
+rollouts = 5249
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 1
+improved = 1
+winner = 0
+truncated = false
+reward = [0.21648463606834412, -0.21648463606834412]
+decisions = [0, 1, 3, 23, 4, 0, 0, 0]
+differ = [0, 1, 3, 17, 4, 0, 0, 0]
+into = [0, 3, 16, 6, 0, 0, 0, 0]
+advantage = [0.0, 0.005470470271327279, 0.10012203450461277, 0.6333212195182223, 0.14035141118860484, 0.0, 0.0, 0.0]
+candidates = 2004
+rollouts = 8032
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 13
+improved = 0
+winner = 1
+truncated = false
+reward = [0.07030519098043442, -0.07030519098043442]
+decisions = [0, 0, 2, 16, 11, 0, 1, 0]
+differ = [0, 0, 2, 10, 3, 0, 1, 0]
+into = [0, 7, 5, 3, 0, 0, 1, 0]
+advantage = [0.0, 0.0, 0.0423563794911821, 0.0693823922122805, 0.017457935015035897, 0.0, 0.02392375158181168, 0.0]
+candidates = 1375
+rollouts = 5495
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 15
+improved = 1
+winner = 0
+truncated = false
+reward = [0.2434803545475006, -0.2434803545475006]
+decisions = [0, 1, 1, 5, 2, 0, 0, 0]
+differ = [0, 0, 0, 4, 0, 0, 0, 0]
+into = [0, 0, 2, 2, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.023615835914302406, 0.0, 0.0, 0.0, 0.0]
+candidates = 573
+rollouts = 2318
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 14
+improved = 0
+winner = 1
+truncated = false
+reward = [0.07994828373193741, -0.07994828373193741]
+decisions = [0, 2, 5, 6, 3, 0, 5, 0]
+differ = [0, 2, 3, 1, 1, 0, 5, 0]
+into = [0, 4, 4, 0, 0, 0, 4, 0]
+advantage = [0.0, 0.010308767819928157, 0.00924050170879343, 0.012679986292269171, 0.00012632421065314576, 0.0, 0.1114818799130054, 0.0]
+candidates = 1448
+rollouts = 5933
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 17
+improved = 0
+winner = 1
+truncated = false
+reward = [0.012756307609379292, -0.012756307609379292]
+decisions = [1, 0, 0, 10, 0, 0, 0, 5]
+differ = [1, 0, 0, 5, 0, 0, 0, 1]
+into = [1, 3, 1, 1, 0, 0, 1, 0]
+advantage = [0.019370689367254574, 0.0, 0.0, 0.030773268454537015, 0.0, 0.0, 0.0, 0.027364640962332487]
+candidates = 420
+rollouts = 1620
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 15
+improved = 0
+winner = 0
+truncated = false
+reward = [0.26983416080474854, -0.26983416080474854]
+decisions = [0, 0, 1, 8, 4, 0, 4, 0]
+differ = [0, 0, 0, 4, 1, 0, 2, 0]
+into = [0, 3, 3, 0, 1, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0, 0.005895880929285658, 0.002180618860504844, 0.0, 0.07665332684329912, 0.0]
+candidates = 1435
+rollouts = 5892
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 16
+improved = 1
+winner = 0
+truncated = false
+reward = [0.16867704689502716, -0.16867704689502716]
+decisions = [0, 0, 1, 17, 2, 0, 0, 0]
+differ = [0, 0, 1, 11, 2, 0, 0, 0]
+into = [0, 2, 5, 5, 2, 0, 0, 0]
+advantage = [0.0, 0.0, 0.008135832168839195, 0.06160358440654639, 0.014917899171511333, 0.0, 0.0, 0.0]
+candidates = 738
+rollouts = 2899
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 17
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.12964187562465668, 0.12964187562465668]
+decisions = [0, 0, 5, 9, 0, 0, 0, 0]
+differ = [0, 0, 3, 4, 0, 0, 0, 0]
+into = [0, 1, 5, 1, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.0795883518019384, 0.06764941628576103, 0.0, 0.0, 0.0, 0.0]
+candidates = 1063
+rollouts = 4353
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 10
+improved = 0
+winner = 0
+truncated = false
+reward = [0.2828443646430969, -0.2828443646430969]
+decisions = [1, 1, 7, 7, 5, 0, 1, 6]
+differ = [1, 1, 6, 4, 3, 0, 0, 3]
+into = [1, 1, 10, 2, 1, 0, 2, 1]
+advantage = [0.04170714744499752, 0.006234069881231889, 0.062316821485939214, 0.030006734855735427, 0.0034002962258907706, 0.0, 0.0, 0.006891237658837057]
+candidates = 2232
+rollouts = 9184
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 18
+improved = 0
+winner = 0
+truncated = false
+reward = [0.4252869486808777, -0.4252869486808777]
+decisions = [0, 1, 4, 5, 5, 0, 2, 0]
+differ = [0, 1, 3, 1, 1, 0, 0, 0]
+into = [0, 0, 3, 1, 1, 0, 1, 0]
+advantage = [0.0, 0.00013746456666426226, 0.013013629969036933, 0.004716817289590836, 0.005624673432774014, 0.0, 0.0, 0.0]
+candidates = 1222
+rollouts = 5005
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 19
+improved = 0
+winner = 0
+truncated = false
+reward = [0.42335060238838196, -0.42335060238838196]
+decisions = [0, 0, 8, 14, 1, 0, 3, 0]
+differ = [0, 0, 5, 7, 1, 0, 1, 0]
+into = [0, 4, 6, 2, 0, 0, 2, 0]
+advantage = [0.0, 0.0, 0.04746577632096079, 0.01404991431507157, 0.034415360540151596, 0.0, 0.0019340766593813896, 0.0]
+candidates = 1565
+rollouts = 6305
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 18
+improved = 1
+winner = 0
+truncated = false
+reward = [0.3091277778148651, -0.3091277778148651]
+decisions = [0, 2, 2, 7, 5, 0, 0, 0]
+differ = [0, 1, 2, 4, 4, 0, 0, 0]
+into = [0, 1, 6, 2, 2, 0, 0, 0]
+advantage = [0.0, 0.006772250813596389, 0.03453611092347848, 0.07090879521130418, 0.014504508761358899, 0.0, 0.0, 0.0]
+candidates = 836
+rollouts = 3325
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 16
+improved = 0
+winner = 0
+truncated = false
+reward = [0.31209003925323486, -0.31209003925323486]
+decisions = [0, 1, 8, 7, 3, 0, 2, 0]
+differ = [0, 0, 5, 2, 0, 0, 2, 0]
+into = [0, 2, 3, 1, 0, 0, 3, 0]
+advantage = [0.0, 0.0, 0.08166666283017524, 0.0005968910806319293, 0.0, 0.0, 0.010687531294037805, 0.0]
+candidates = 1765
+rollouts = 7140
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 19
+improved = 1
+winner = 0
+truncated = false
+reward = [0.2355266660451889, -0.2355266660451889]
+decisions = [0, 0, 4, 20, 7, 0, 0, 0]
+differ = [0, 0, 3, 9, 1, 0, 0, 0]
+into = [0, 6, 6, 1, 0, 0, 0, 0]
+advantage = [0.0, 0.0, 0.03905181672710639, 0.05147890278512978, 0.010331194400787353, 0.0, 0.0, 0.0]
+candidates = 1776
+rollouts = 7187
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 4
+improved = 0
+winner = 0
+truncated = false
+reward = [0.06670139729976654, -0.06670139729976654]
+decisions = [0, 1, 0, 41, 2, 0, 4, 5]
+differ = [0, 1, 0, 25, 2, 0, 3, 4]
+into = [0, 3, 8, 16, 1, 0, 5, 2]
+advantage = [0.0, 0.04391853081535608, 0.0, 0.2892194089924822, 0.05435666075000205, 0.0, 0.16794235451791317, 0.07867506826440895]
+candidates = 7837
+rollouts = 32574
+refused = 42
+
+[[game]]
+opponent = 0
+stratum = 2
+env = 10
+improved = 1
+winner = 0
+truncated = false
+reward = [0.17383861541748047, -0.17383861541748047]
+decisions = [0, 0, 6, 7, 9, 0, 0, 0]
+differ = [0, 0, 6, 4, 8, 0, 0, 0]
+into = [0, 1, 13, 2, 2, 0, 0, 0]
+advantage = [0.0, 0.0, 0.13491896575543907, 0.01931676539290688, 0.20293222810036496, 0.0, 0.0, 0.0]
+candidates = 1521
+rollouts = 6149
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 4
+improved = 1
+winner = 1
+truncated = false
+reward = [-0.4391928017139435, 0.4391928017139435]
+decisions = [0, 0, 0, 37, 1, 0, 5, 0]
+differ = [0, 0, 0, 25, 1, 0, 5, 0]
+into = [0, 1, 12, 12, 0, 0, 6, 0]
+advantage = [0.0, 0.0, 0.0, 0.3024313632939125, 0.0007031605793879583, 0.0, 0.376817224767433, 0.0]
+candidates = 5580
+rollouts = 23008
+refused = 62
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 17
+improved = 1
+winner = 0
+truncated = false
+reward = [-0.06843952089548111, 0.06843952089548111]
+decisions = [0, 0, 0, 17, 3, 4, 10, 0]
+differ = [0, 0, 0, 10, 3, 2, 10, 0]
+into = [0, 3, 2, 10, 3, 1, 6, 0]
+advantage = [0.0, 0.0, 0.0, 0.04592906764352492, 0.01820542195387054, 0.010672746971249581, 0.16750517804771914, 0.0]
+candidates = 6107
+rollouts = 26144
+refused = 2
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 1
+improved = 0
+winner = 0
+truncated = false
+reward = [0.1990993469953537, -0.1990993469953537]
+decisions = [0, 0, 5, 14, 6, 0, 16, 7]
+differ = [0, 0, 2, 9, 3, 0, 13, 5]
+into = [0, 4, 16, 5, 1, 0, 3, 3]
+advantage = [0.0, 0.0, 0.028890439852451284, 0.020786560960297934, 0.07556387090848551, 0.0, 0.3615542933259078, 0.058792757678032784]
+candidates = 13193
+rollouts = 58003
+refused = 139
+
+[[game]]
+opponent = 0
+stratum = 0
+env = 6
+improved = 1
+winner = 0
+truncated = false
+reward = [-0.11184105277061462, 0.11184105277061462]
+decisions = [10, 0, 1, 25, 13, 0, 12, 0]
+differ = [3, 0, 0, 16, 5, 0, 10, 0]
+into = [3, 6, 4, 11, 3, 0, 7, 0]
+advantage = [0.02913215593190642, 0.0, 0.0, 0.4893524761011409, 0.06653137144042245, 0.0, 0.12523392025183477, 0.0]
+candidates = 10307
+rollouts = 44448
+refused = 0
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 16
+improved = 1
+winner = 0
+truncated = false
+reward = [-0.040890514850616455, 0.040890514850616455]
+decisions = [23, 0, 1, 21, 10, 0, 8, 0]
+differ = [14, 0, 1, 12, 6, 0, 5, 0]
+into = [14, 1, 5, 7, 6, 0, 5, 0]
+advantage = [0.06102701475839376, 0.0, 0.000855552196940955, 0.06265228284376809, 0.02230428421688114, 0.0, 0.07533686294708866, 0.0]
+candidates = 5137
+rollouts = 20921
+refused = 16
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 15
+improved = 0
+winner = 0
+truncated = false
+reward = [0.28337782621383667, -0.28337782621383667]
+decisions = [0, 0, 0, 29, 3, 4, 1, 8]
+differ = [0, 0, 0, 15, 1, 2, 1, 4]
+into = [0, 6, 7, 3, 0, 2, 4, 1]
+advantage = [0.0, 0.0, 0.0, 0.17238511726706782, 0.00022820830345153808, 0.000839628279209137, 0.04832310076707449, 0.09479210413275181]
+candidates = 7902
+rollouts = 34467
+refused = 16
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 19
+improved = 0
+winner = 1
+truncated = false
+reward = [-0.20524325966835022, 0.20524325966835022]
+decisions = [4, 1, 10, 1, 1, 0, 7, 0]
+differ = [3, 1, 7, 1, 1, 0, 5, 0]
+into = [3, 3, 8, 2, 1, 0, 1, 0]
+advantage = [0.0368501650435584, 0.00019719004631042482, 0.013373409476065214, 0.0045309927390546215, 0.0018363946451331085, 0.0, 0.043622843066827795, 0.0]
+candidates = 5437
+rollouts = 23790
+refused = 11
+
+[[game]]
+opponent = 0
+stratum = 1
+env = 16
+improved = 0
+winner = 0
+truncated = false
+reward = [0.2534320056438446, -0.2534320056438446]
+decisions = [0, 0, 2, 15, 6, 0, 2, 0]
+differ = [0, 0, 0, 11, 3, 0, 1, 0]
+into = [0, 1, 4, 6, 1, 0, 3, 0]
+advantage = [0.0, 0.0, 0.0, 0.0370166630251409, 0.014417321572480815, 0.0, 0.003307798665158356, 0.0]
+candidates = 9186
+rollouts = 40501
+refused = 6

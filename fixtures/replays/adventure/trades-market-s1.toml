@@ -1,0 +1,72 @@
+commands = [
+    "0 move 0 4,4,0",
+    "0 answer market trade 0 6 1",
+    "0 answer market trade 2 6 3",
+    "0 answer market trade 6 5 1",
+    "0 answer market transfer 6 2500 1",
+    "0 answer market leave",
+    "0 move 1 10,4,0",
+    "0 answer market sell 0 6 1",
+    "0 answer market sell 1 6 1",
+    "0 answer market leave",
+    "0 end-turn",
+    "1 move 9 30,24,0",
+    "1 answer market trade 6 0 1",
+    "1 answer market leave",
+    "1 end-turn",
+]
+checkpoints = [
+    "0xc8a0f7c685ec7506",
+    "0x972135957b590b0e",
+    "0x586da4acffd33dea",
+]
+
+[replay]
+format = 23
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x36b98ea152b4db95"
+adventure_ruleset_hash = "0x0c610f9192575256"
+town_ruleset_hash = "0xcf8db1aa2bb768d2"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 38
+adventure_state_hash_version = 27
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-trades-36.h3m"
+hash = "0x48433d5f224b496d"
+import_version = 28
+
+[result]
+day = 2
+final_hash = "0x586da4acffd33dea"
+
+[[players]]
+colour = 0
+human = true
+faction = 0
+
+[[players]]
+colour = 1
+human = true
+faction = 0

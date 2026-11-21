@@ -80,7 +80,7 @@ const PILES: [&str; 7] = [
     "avtgems0.def",
     "avtgold0.def",
 ];
-/// The longest line a record may hold (as `h3_view::record`'s).
+/// The longest line a record may hold (as `h3-view`'s `record`'s).
 const MAX_LINE: usize = 64 << 20;
 /// A hero's facing at a new game's start: right (`live::Facing::Right`).
 const RIGHT: i64 = 2;
@@ -157,7 +157,7 @@ impl fmt::Display for Refused {
     }
 }
 
-/// Reads a whole game's record's text; blank lines are skipped (as `h3_view::game_record`).
+/// Reads a whole game's record's text; blank lines are skipped (as `h3-view`'s `game_record`).
 ///
 /// # Errors
 /// [`Refused::Empty`], the first line that does not read, a format or protocol not this

@@ -413,6 +413,8 @@ fn the_whole_town_draws_its_garrison_then_its_buildings() {
         garrison: None,
         name: Some("Keepstead".into()),
         events: vec![event.clone(), TownEventSetup::default()],
+        required_spells: Vec::new(),
+        banned_spells: Vec::new(),
     };
     let record = part.town(KEEP).unwrap();
     let params = part.params().unwrap();
@@ -540,6 +542,8 @@ fn a_faction_without_a_town_record_or_parameters_cannot_be_set_up() {
         garrison: None,
         name: None,
         events: vec![],
+        required_spells: Vec::new(),
+        banned_spells: Vec::new(),
     };
     let mut rng = draws(15);
     let before = rng.clone();

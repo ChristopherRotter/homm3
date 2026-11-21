@@ -679,16 +679,69 @@ original's windows stay open for more trades). The system actor's default is `Le
   a Black Market under bans) with a random replay and a scripted one (each answer kind, a
   sacrifice with a level-up and the Altar's return, a transfer, a refused purchase with a full
   hero); `e08-trades-144.h3m` (XL, two levels) for the workloads.
+- *As built* (T135b1, decision 391): the 36 map's fourteen (seven north, seven south; the dirt and
+  rough Trading Posts, two snow ones, the dirt and grass Hill Forts), eleven heroes each below an
+  entrance (Knights of Castle, a Death Knight, two Barbarians, a Cleric), batch E14-3's bans (the
+  two Black Markets' fourteen drawn from seventeen, distinct at 16 seeds), a hero with a relic in
+  every position the seventeen take and 64 artifacts carried; the XL on the dwellings XL's lattice
+  with the census's 49 (`trades_map.rs`, `trades_xl_map.rs`). Seven golden replays: three random
+  of 28 days (seeds 208, 1257, 1390 of 1 500 searched: together every listed answer kind) and four
+  scripted (the markets with a transfer, the Black Market with the full hero's visit, the three
+  alignments' sacrifices with the Altar's return, the Hill Fort and the factory). The full hero's
+  refused purchases are the map's test (a replay holds no refused command). Random play: 549 of
+  the 1 500 games trade, 27 304 trades in all, 463 steps a game on average (§22's risk: the
+  trades' listed answers lengthen visits).
 - **The plans** (`h3-map`'s `tests/play.rs`): `TRADES`, `Step::Market`, `Step::Altar`,
   `Step::HillFort` and the factory's steps; oracles `check_trades` (each trade's paid and gained
   amounts as its lot says; a transfer's sum kept; the army never emptied; the stock's sold entries
   only grow; an artifact bought appears on the hero, a sacrificed one is gone; the experience the
   sum of the items'), and the conservation, isolation and management checks taught the new answers.
+- *As built* (T135b2, decision 392): `KINDS` 135 to 141 (`TRADES`, `TRADE_OBJECTS`, the
+  original's templates; an RoE plan lays out the Trading Post for AB's two classes), drawn apart
+  from `plan()` and `steps()` (`trade_plan`: one to three near the heroes in two plans of three,
+  one to four artifacts for the first one's hero in one case of two; `trade_steps`: a run of 16 to
+  95 `Step::Trade`s in one case of two), so every cover test keeps its cases. One step for the
+  seven (`Step::Trade`, `seek_trade`; *agent's call* over the four above): an open decision's
+  `Leave` in one step of six, else in three of five the listed answer, else one drawn from the view
+  (several lots, a transfer, another resource, an entry past the stock, a part of a sacrifice, a
+  slot past the army); the factory's question accepted in three of four; on the map a revisit, an
+  entry, an approach. The oracles (`play/trades.rs`): `trade_answers` (the listing over candidates
+  built from the decision, the hero and the core, kept by `apply`'s acceptance, in the listing's
+  order), `check_trade_listing` (each listed answer's effects; refusals with the state unchanged:
+  a pair of one resource, a lot past the most, a transfer to the actor or past the treasury, a
+  slot past the army, an entry past the stock, the empty sacrifices and the creatures' whole, each
+  row not affordable), `check_trade_answer` (each accepted answer, listed or not, against the
+  view: the paid and gained amounts by lot, saturating; the transfer's recipient and sum; the
+  sale's stack, the army kept; the purchase's artifact and the entry shown sold; the sacrifice's
+  removals in the change's order and its experience, with Learning by `h3_heroes`; its levels and
+  the Altar's close before a level of two offers; the upgrade's price and creature, the count
+  kept; `Leave` nothing else), `check_trades` (each Black Market's stock its draw, its sold entries
+  growing only by their purchase). In `play.rs` `hiring`, `managed`, `settle`, `check_legal`,
+  `check_unlisted` (an unlisted market or Altar answer the view allows), `check_decisions` (the
+  three openings on the entrance, the factory's question of its machines), `check_conservation`
+  (`trade_moves`), `check_isolation` (a transfer's recipient) and the hire oracles (the factory's
+  stock and room, its purchase's artifact, the army kept) taught them; `view.rs`' hire sources
+  the factory (unowned, as a camp: found by the views property, its seed kept). Cover test
+  `the_plans_trade_and_use_the_services` (256 fixed cases): laid by class 31, 9, 6, 18, 19, 18,
+  15 (99, 221, 213, 7, 2, 35, 106); opened 306 markets, 117 Altars, 113 Hill Forts, 113 factory
+  questions; accepted and refused: trades 406 and 57, transfers 35 and 56, sales 39 and 76,
+  purchases 47 and 80, artifacts' sacrifices 12 and 27, creatures' 7 and 18, upgrades 14 and 58,
+  alls 6 and 7; 17 sacrifices opened a level-up, 15 returns of the Altar after it; 7 free
+  upgrades; 86 factory dialogs, 43 machines bought; 505 leaves. A mutant (a trade's gain plus one)
+  failed it at once.
 - **Benchmarks** (`homm3-bench-regression`): the 1 058 objects stop being inert blockers on 148
   shipped maps and their entrances end paths; their answers enter the random agent's draws (the
   lane's trap: every random game's course moves). The `random-play-*` workloads re-baselined with
   the reason, a new `random-play-trades-36`, `build-trades-xl-144` (the Black Markets' draws); the
   reach is unchanged (an entered object as any).
+- *As built* (T135b2): no fixture map of the `random-play-*` workloads holds one of the seven
+  (T135a's finding), so none moved and none was re-baselined. `random-play-trades-36`: seed 68 of
+  1 to 100 by a scratch probe (not committed; the bench's games replayed) counting the answers that
+  changed a treasury or an army at an open trade, every kind among them: 1 835 steps, 220 with a
+  trade open, 175 such answers (167 markets, 2 Altars, 3 Hill Forts, 3 factories), 4 816 203 463
+  Ir (about 2.6 M a step, 85 % in `legal_moves`, `Reach::search` 72 % itself; the trades' code
+  inlined, under 0.1 %). `build-trades-xl-144`: 2 builds, 16 116 095 Ir (8.06 M a build, the
+  artifact pool's draws 2.2 %). The benches README's rows in `shared/e08-t135b2-benches`.
 
 ### 19. Versions, rule ids, quirks, stubs
 

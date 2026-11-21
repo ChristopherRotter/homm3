@@ -36,10 +36,18 @@ const PURE: [(&str, &[&str]); 1] = [(
 /// Dependencies of the package that only its binary (an adapter) uses: Cargo has no binary-only
 /// dependencies, so the library's sources must never name them (*provisional*, E24 M1 T2: the
 /// archives' reader `h3-formats`, the gate's; E24 M2 T4a: the window's adapter `h3-sdl`; E24 M2 T5:
-/// the music's decoder `nanomp3`; E24 M4 T3a: the packs' reader `h3-files`).
+/// the music's decoder `nanomp3`; E24 M4 T3a: the packs' reader `h3-files`; E24 M4 T5b1: the
+/// battle client `h3-battle-client`, whose element the window hosts, and its scene model `h3-view`).
 const BINARY_ONLY: [(&str, &[&str]); 1] = [(
     "h3-map-view",
-    &["h3-files", "h3-formats", "h3-sdl", "nanomp3"],
+    &[
+        "h3-battle-client",
+        "h3-files",
+        "h3-formats",
+        "h3-sdl",
+        "h3-view",
+        "nanomp3",
+    ],
 )];
 
 /// Attributes every pure crate root carries.
