@@ -214,8 +214,12 @@ impl AdventureState {
             };
         }
         let own = self.owner(index).is_some_and(|owner| allied(owner, player));
+        let town = self.map().town_id(index);
+        // rule: TWN-GLD-005
+        // E09 T48b: the visit's end teaches the town's heroes (the game's `town::guild::learn`).
         AdventureOutcome {
-            capture: self.map().town_id(index).filter(|_| !own),
+            capture: town.filter(|_| !own),
+            town_entered: town,
             ..AdventureOutcome::default()
         }
     }

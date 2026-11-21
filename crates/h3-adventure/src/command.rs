@@ -310,6 +310,13 @@ pub struct AdventureOutcome {
     /// player's hero won, given after the winner's levels
     /// ([`crate::AdventureState::give_won`], TWN-CAP-003). The outcome changes no owner itself.
     pub capture: Option<TownId>,
+    /// The town whose visit the outcome ends (TWN-GLD-005; E09 T48b, the town epic's design note
+    /// §89's first row; survey `E09-guild.md` §12, the original's `town_visit` 0x4AB3C3): a town
+    /// a step or a `Revisit` entered (`Visit::Enter`), of the hero's team or captured
+    /// undefended, whose heroes the game teaches its guild's spells after the capture
+    /// (`h3_game`'s `town::guild::learn`). None for a siege (its end teaches, in the game) and
+    /// for a siege's capture after the winner's levels (the winner stays outside).
+    pub town_entered: Option<TownId>,
     /// The creatures a Sirens' visit took from the hero's army (ADV-BON-008; E08 T115b, increment
     /// 12's design note §9), each with how many: the game sums their hit points (the battle part's,
     /// which the adventure does not read: ADR-0005's layers) into the hero's experience through
