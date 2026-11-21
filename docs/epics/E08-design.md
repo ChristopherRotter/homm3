@@ -320,8 +320,8 @@ button, the book's spell click, the target click), the hero's +0x10D, +0x112, +0
 reads, the cursor's frame, the boats' records (game +0x4E3BC); a boat's last captain by sailing
 first in the recipe.
 
-*Run and scored* (T139a, 2026-11-22; survey §18): every row as the reading predicts; D-75 and
-D-78 the reading's, A-13, A-49, A-50, A-52 to A-54 seen, D-79 settled (no book on the map: §6);
+*Run and scored* (T139a, 2026-11-22; survey §18): every row the reading predicts as predicted;
+D-75 (its last boat and owner test) and D-78 the reading's, A-13, A-49, A-50, A-52 to A-54 seen, D-79 settled (no book on the map: §6);
 the original's click on a hidden blocked tile (the door's) or a hidden tree (Scuttle Boat's) is no
 cast and reveals nothing, a sunk hidden boat reveals nothing. T139b (the prisoners' draws) stays
 open.

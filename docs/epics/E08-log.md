@@ -21971,9 +21971,10 @@ skills drawn at load: 2/1/3/4, 2/3/2/3); the templates filled from 15a's and 15b
 `Games/` to hold that save alone; the tree at (21, 12) in the map area's last column pointed at
 from the column before (the dialog picked it).
 
-**Scored** (survey `E08-spells.md` §18, a table of the 17 records): every row as the reading
-predicts. **D-75 confirmed** (E15-9a: the last boat from the underground; E15-9b: Red's nearest by
-|dx| + |dy|, never Blue's nearer one); **D-78 the reading's** (no path over hidden water);
+**Scored** (survey `E08-spells.md` §18, a table of the 17 records; a fresh review's nine
+findings taken, none changing a verdict): every row the reading predicts as predicted. **D-75's last boat and owner test confirmed** (E15-9a: the last boat from the
+underground; E15-9b: Red's boat, never Blue's nearer one; Manhattan, levels and ties not told apart
+here); **D-78 the reading's** (no path over hidden water);
 **D-79**: a worn scroll's Dimension Door cast by a hero without a book, the book opened and listing
 it (VCMI 1.7.5 alike: `canCastThisSpell` counts the scroll, the cast shortcut has no book test), so
 decision 404's row settles it: no book test on the map (design §6, exit criterion 3), ADV-STUB-21
