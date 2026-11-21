@@ -216,8 +216,9 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
   Summon Boat moved out of T4b (the engine casts no adventure spell yet); T4c the other
   players' turns, the viewer's controls and a golden replay (**done** 2026-11-20, kept whole by
   the user: the log's "M4 T4c", design §5.16, §5.17; `game-ai` exact but MCL-Q43's gaps; ten
-  golden replays viewed to their end; MCL-Q43 to MCL-Q45; a computer's boat in sight left to
-  T4c2, `MCL-STUB-2`, `game-ai-boat` recorded in `to-record.toml`); the kept live parts' message texts
+  golden replays viewed to their end; MCL-Q43 to MCL-Q45); T4c2 a computer's boat in sight
+  (**done** 2026-11-21, whole: the log's "M4 T4c2", design §5.18; `game-ai-boat` exact but
+  MCL-Q43's and MCL-Q46's gaps; MCL-Q46); the kept live parts' message texts
   as labels first (ADR-0009, found at T4a1, the user: none new meanwhile; **done** 2026-11-20,
   whole: the log's "M4, the labels"); T5, the battles handed over
   (after the client lane's entry); T6, M4's closure. A task that grows is cut at a seam agreed
@@ -310,6 +311,16 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   the turn's place (the original draws one at random); the queued step sound's wrap during a
   computer's walk as the human's (pass 9 during it not read); kind 5's step at a computer's pickup
   (recorded, its caller not read).
+- **M4 T4c2, the objects' steps in a computer's turn** (*provisional*; design §5.18): the turn's
+  end steps them once when due, then the deadline at least a step on from the clock (recorded,
+  not read: `game-ai-boat`'s next step at 2960 after one at 2780, where `view_show_step`'s rule
+  leaves the deadline at the clock); the hero before put back as the next is chosen steps them
+  (`game-ai`'s 1180); the move's last step's own step read. Replaces T1b2's catch-up of every
+  step missed.
+- **M4 T4c2, a computer's step after its boarding in its walk** (*provisional*, not recorded: the
+  Admiral's Hat's points): the hero lifted and the view drawn without a human's path.
+- **M4 T4c2, MCL-Q46 (c)** (*provisional*): another player's pickup without a step in sight taken
+  off the map as the next turn the record shows starts, nothing shown.
 
 - **M4 T2a2, a find's facts without the engine** (*provisional*; design §5.3, *Built*): a
   sequence's finds take their facts from the map and the live part (the Windmill's, the Witch

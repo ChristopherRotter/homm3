@@ -1790,10 +1790,16 @@ fn a_record_s_other_players_turns() {
             events(vec![
                 GameEvent::TurnEnded { player: 1 },
                 GameEvent::TurnStarted { player: 2 },
-                // Purple's: an object taken and a landing with no walk, nothing.
+                // Purple's: an object taken with no step (E24 M4 T4c2, MCL-Q46: off the map as
+                // the next turn table starts), one off the map's positions (nothing) and a
+                // landing with no walk (nothing).
                 event(AdventureEvent::ObjectRemoved {
                     object_type: 79,
                     anchor: pos(13, 12),
+                }),
+                event(AdventureEvent::ObjectRemoved {
+                    object_type: 79,
+                    anchor: pos(300, 12),
                 }),
                 event(AdventureEvent::Landed {
                     hero: blue,
@@ -1855,6 +1861,8 @@ fn a_record_s_other_players_turns() {
     assert_eq!(kingdom["heroes"].as_array().unwrap().len(), 2);
     assert_eq!(numbers(&kingdom["selected"]), [1, 0]);
     assert_eq!(table(&played.turns[1])["player"].as_integer(), Some(0));
+    // Purple's pickup without a step: given to Red's day 2's table.
+    assert_eq!(played.taken, [(1, vec![tile(13, 12)])]);
 }
 
 #[test]

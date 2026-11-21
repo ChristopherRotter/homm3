@@ -131,6 +131,8 @@ pub struct Played {
     pub others: Vec<engine::OtherTurn>,
     pub shown: Vec<(u16, Pos)>,
     pub slots: Vec<(u16, usize)>,
+    /// Since E24 M4 T4c2: the objects other players took without a walk, by turn table.
+    pub taken: Vec<(usize, Vec<Pos>)>,
 }
 
 /// The record's start (`engine::start`) with its turns' starts as the `turn` tables, and its
@@ -164,6 +166,7 @@ pub fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<P
         others: game.others,
         shown: game.shown,
         slots: game.slots,
+        taken: game.taken,
     })
 }
 
@@ -859,12 +862,19 @@ impl<'a> Painter<'a> {
                     },
                     _ => turn::walks(&live.turns, i, &live.heroes, lines)?,
                 };
+                // The objects taken without a walk before this turn (E24 M4 T4c2, MCL-Q46 (c)).
+                let taken = record
+                    .iter()
+                    .flat_map(|p| p.taken.iter().filter(|(turn, _)| *turn == i))
+                    .flat_map(|(_, at)| at.iter().filter_map(|&at| object_at(at)))
+                    .collect();
                 Ok(NextTurn {
                     turn: t.clone(),
                     message: turn::message(texts, art, (t.kingdom.date, t.week, t.month), growth)
                         .map(|text| laid(&text, Style::Ok)),
                     heroes: turn::placed(&live.heroes, &live.boats, t)?,
                     walks,
+                    taken,
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;

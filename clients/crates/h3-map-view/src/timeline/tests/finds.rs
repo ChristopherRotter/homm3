@@ -226,6 +226,7 @@ fn the_days_left_then_the_weeks_message_one_after_the_other() {
         turn,
         heroes: Vec::new(),
         walks: Vec::new(),
+        taken: Vec::new(),
     };
     let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
     l.days = 3;

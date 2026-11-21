@@ -93,6 +93,11 @@ pub struct Played {
     /// The viewer's heroes' places in its kingdom's list at the start, by their ids (E24 M4 T4c:
     /// the panels' order, their types'; a hero hired later not listed).
     pub slots: Vec<(u16, usize)>,
+    /// The objects other players' heroes took without a step in a command (E24 M4 T4c2: a pickup
+    /// from beside, `ObjectRemoved` alone; MCL-Q46 (c), *provisional*: the record does not tell
+    /// the hero), by their anchors, each list with the place among [`Played::turns`] of the next
+    /// turn table: off the map as that turn starts, nothing shown.
+    pub taken: Vec<(usize, Vec<Pos>)>,
 }
 
 /// One of the viewer's commands in a record (E24 M4 T4c, *provisional*), as a record played
@@ -155,6 +160,9 @@ struct OtherOpen {
     player: u8,
     colour: u8,
     walks: Vec<OtherWalk>,
+    /// Whether the command's events under way have a step (E24 M4 T4c2: an object removed in a
+    /// command without one is taken without a walk).
+    stepped: bool,
 }
 
 /// One of the viewer's visits in a record (E24 M4 T4b1, design §5.14, *provisional*): a walk's
@@ -216,6 +224,9 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
     let mut commands = Vec::new();
     let mut others = Vec::new();
     let mut other: Option<OtherOpen> = None;
+    // The objects taken without a walk since the last turn table, and those given to a table.
+    let mut untaken: Vec<Pos> = Vec::new();
+    let mut taken = Vec::new();
     let shown = observation
         .adventure
         .heroes
@@ -282,11 +293,16 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                 // The viewer's turn's start (E24 M4 T4b2): its table once the batch is folded (the
                 // engine tells the heroes' new points after `TurnStarted`: `game-boats` at 1460).
                 let mut starts = false;
+                if let Some(o) = &mut other {
+                    o.stepped = false;
+                }
                 for event in events {
                     level(&mut levels, &mut pending, &observation, event);
                     observation.fold(event);
-                    if let (Some(o), GameEvent::Adventure { event }) = (&mut other, event) {
-                        other_event(o, event);
+                    if let (Some(o), GameEvent::Adventure { event }) = (&mut other, event)
+                        && let Some(at) = other_event(o, event)
+                    {
+                        untaken.push(at);
                     }
                     match event {
                         GameEvent::Adventure {
@@ -342,6 +358,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                                 player: *player,
                                 colour,
                                 walks: Vec::new(),
+                                stepped: false,
                             });
                         }
                         GameEvent::TurnEnded { player } => {
@@ -362,6 +379,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                                     (week, month),
                                     (o.colour, heroes.len()),
                                 ));
+                                table(&mut taken, &mut untaken, turns.len());
                                 others.push(OtherTurn {
                                     turn: turns.len() - 1,
                                     player: o.colour,
@@ -374,6 +392,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                 }
                 if starts {
                     turns.push(turn(&observation, loaded, art, rules, week, month));
+                    table(&mut taken, &mut untaken, turns.len());
                 }
             }
             ServerMessage::GameReveal { reveal, .. } => observation.reveal(reveal),
@@ -408,6 +427,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
         others,
         shown,
         slots,
+        taken,
     })
 }
 
@@ -427,10 +447,13 @@ fn command_of(command: &GameCommand) -> Command {
 }
 
 /// Another player's hero's event folded into its turn `other` (E24 M4 T4c): a step a new step
-/// (a new walk when another hero steps), a boarding or a landing its last step's.
-fn other_event(other: &mut OtherOpen, event: &AdventureEvent) {
+/// (a new walk when another hero steps), a boarding or a landing its last step's, an object
+/// removed the walk's; one removed in a command without a step returned (E24 M4 T4c2, MCL-Q46:
+/// taken without a walk).
+fn other_event(other: &mut OtherOpen, event: &AdventureEvent) -> Option<Pos> {
     match event {
         AdventureEvent::HeroStepped { hero, from, to } => {
+            other.stepped = true;
             let step = OtherStep {
                 from: from.and_then(|p| tile(p.x, p.y, p.level)),
                 to: to.and_then(|p| tile(p.x, p.y, p.level)),
@@ -466,14 +489,23 @@ fn other_event(other: &mut OtherOpen, event: &AdventureEvent) {
             }
         }
         AdventureEvent::ObjectRemoved { anchor, .. } => {
-            if let (Some(walk), Some(at)) = (
-                other.walks.last_mut(),
-                tile(anchor.x, anchor.y, anchor.level),
-            ) {
-                walk.taken.push(at);
+            let at = tile(anchor.x, anchor.y, anchor.level)?;
+            match other.walks.last_mut().filter(|_| other.stepped) {
+                Some(walk) => walk.taken.push(at),
+                // stub: MCL-Q46 (the hero that takes an object without a step not told)
+                None => return Some(at),
             }
         }
         _ => {}
+    }
+    None
+}
+
+/// The objects taken without a walk since the last turn table `untaken` given to the table just
+/// pushed (`tables` long: E24 M4 T4c2, [`Played::taken`]).
+fn table(taken: &mut Vec<(usize, Vec<Pos>)>, untaken: &mut Vec<Pos>, tables: usize) {
+    if !untaken.is_empty() {
+        taken.push((tables - 1, core::mem::take(untaken)));
     }
 }
 

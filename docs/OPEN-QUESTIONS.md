@@ -377,6 +377,21 @@ that player in the kingdom's order. **Recommended (b)** for scripted games and r
 script's turn has no AI order to tell); the difference listed where a comparison meets it. Built
 as (b). Blocks nothing.
 
+#### MCL-Q46 — A record does not tell which of another player's heroes takes an object without a step (E24 M4 T4c2, a record)
+
+A computer's hero takes a pile or an artifact from beside without stepping when it already stands
+next to it (`game-ai-boat`'s day 3: Blue's hero on (19, 12) takes the pile on (19, 11)): the
+original selects the hero (the view centred on it, standing, turned to the object) and dissolves
+the object off with the pickup's sound, as at a walk's end (design §5.16, §5.18). The viewer's
+record holds only the command's `ObjectRemoved` (the type and the anchor): no step, no hero, so the
+viewer cannot choose the hero, centre the view or turn it. Options: (a) the engine tells the visit
+to the viewers who see it (the hero in `ObjectRemoved`, or an event of the visit with the hero and
+the object; the adventure lane, a protocol change); (b) the client takes the player's one hero
+standing beside the anchor (an inference; two beside it ambiguous); (c) the object taken off the
+map as the next turn the record shows starts, the turn not shown (no time, nothing drawn; the
+comparisons list the difference). **Recommended (a)**; a note in the adventure lane's inbox
+(2026-11-21). Meanwhile (c) (`stub: MCL-Q46` in `h3_map_view::engine`'s played). Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)

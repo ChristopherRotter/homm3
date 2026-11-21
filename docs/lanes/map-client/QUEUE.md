@@ -35,24 +35,10 @@ the viewer's controls and a golden replay. T4a cut again at its start (the agree
 MCL-Q39, MCL-Q40), then T4a2 (**done** 2026-11-20, kept whole by the user: the log's "M4
 T4a2", design §5.13; its entry in `QUEUE-ARCHIVE.md`). T4b (**done** 2026-11-20, in two by
 family: the log's "M4 T4b1" and "M4 T4b2", design §5.14 and §5.15; its entry in
-`QUEUE-ARCHIVE.md`). A fact the record lacks becomes an
-`MCL-Q<n>` with a note in the engine lanes' inboxes, its gap shown in the comparison, never a rule
-copied into the client.
-
-#### E24 M4 T4c2 — a computer's boat in sight
-
-T4c (the other players' turns, the controls, a golden replay) **done** 2026-11-20, kept whole by
-the user (the log's "M4 T4c", design §5.16, §5.17); its one remainder:
-
-- **Scope:** a computer's boarding and landing in the viewer's sight from a record (`OtherStep::sea`,
-  read and kept, not played: `MCL-STUB-2`): the hero turned to the boat, dissolved off the land
-  (`hero_loss_effect`, as the viewer's own boarding, design §5.7), its step onto the boat; the
-  landing's boat put back facing the record's way; `game-ai-boat` (in `clients/map/to-record.toml`,
-  recorded twice the same at T4c; record it again, `frames --sequences map/to-record.toml --only
-  game-ai-boat --no-check`, about 10 minutes) moved into `sequences.toml` exact but MCL-Q43's gaps.
-- **Acceptance:** `game-ai-boat` as `game-ai` (its gaps MCL-Q43's); `drawn` all the same;
-  `check.sh` all gates.
-- **Depends on:** T4c (done). **Status:** **next**.
+`QUEUE-ARCHIVE.md`). T4c (**done** 2026-11-20, kept whole: the log's "M4 T4c", design §5.16,
+§5.17) and its remainder T4c2 (**done** 2026-11-21, whole: the log's "M4 T4c2", design §5.18;
+its entry in `QUEUE-ARCHIVE.md`). A fact the record lacks becomes an `MCL-Q<n>` with a note in
+the engine lanes' inboxes, its gap shown in the comparison, never a rule copied into the client.
 
 ### E24 M4 T5 — the battles handed over
 
@@ -63,8 +49,8 @@ the user (the log's "M4 T4c", design §5.16, §5.17); its one remainder:
   `BattleSetup.background`, `colours`, set by `h3-game`).
 - **Acceptance:** a golden replay's battles shown in the window; the switch compared with the
   original's recording where it is drawn; `check.sh` all gates.
-- **Depends on:** T4; the client lane's library entry (its inbox, 2026-10-31). **Status:**
-  waiting.
+- **Depends on:** T4 (done with T4c2, 2026-11-21); the client lane's library entry (its inbox,
+  2026-10-31). **Status:** **next** (confirm with the client lane that its entry is there).
 
 ### E24 M4 T6 — M4's closure
 

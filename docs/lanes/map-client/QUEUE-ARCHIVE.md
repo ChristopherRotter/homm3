@@ -1095,3 +1095,19 @@ Inbox item done at T4a1's session (2026-11-19: the window's library decodes the 
   question leads to a battle (T5's).
 - **Depends on:** T4a2 (done). **Status:** done 2026-11-20 (T4b1, then T4b2 kept whole by the
   user: the log's "M4 T4b2", design §5.15).
+
+#### E24 M4 T4c2 — a computer's boat in sight
+
+T4c (the other players' turns, the controls, a golden replay) **done** 2026-11-20, kept whole by
+the user (the log's "M4 T4c", design §5.16, §5.17); its one remainder:
+
+- **Scope:** a computer's boarding and landing in the viewer's sight from a record (`OtherStep::sea`,
+  read and kept, not played: `MCL-STUB-2`): the hero turned to the boat, dissolved off the land
+  (`hero_loss_effect`, as the viewer's own boarding, design §5.7), its step onto the boat; the
+  landing's boat put back facing the record's way; `game-ai-boat` (in `clients/map/to-record.toml`,
+  recorded twice the same at T4c; record it again, `frames --sequences map/to-record.toml --only
+  game-ai-boat --no-check`, about 10 minutes) moved into `sequences.toml` exact but MCL-Q43's gaps.
+- **Acceptance:** `game-ai-boat` as `game-ai` (its gaps MCL-Q43's); `drawn` all the same;
+  `check.sh` all gates.
+- **Depends on:** T4c (done). **Status:** done 2026-11-21 (whole: the log's "M4 T4c2", design
+  §5.18; MCL-Q46).

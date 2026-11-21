@@ -276,6 +276,7 @@ pub fn walks(
         slot,
         steps,
         unseen: Vec::new(),
+        sea: Vec::new(),
         taken: Vec::new(),
     }])
 }
@@ -295,8 +296,10 @@ pub fn record_heroes(shown: &[(u16, Pos)], map: &[LiveHero]) -> Vec<(u16, usize)
 /// kingdom the order its heroes first walk in (the turn's table's), its steps: one with both tiles
 /// facing from the one to the other; one into sight (no tile it left: MCL-Q44) taken unseen onto
 /// its tile, facing as before; one out of sight (no tile it entered: MCL-Q44) left out, the hero
-/// standing where the viewer last saw it; the objects the record takes off the map after a walk
-/// taken at its end, each by its anchor and its index `object_at` gives (none: left out).
+/// standing where the viewer last saw it; a step's boarding or landing (E24 M4 T4c2) kept by its
+/// place, one out of sight's left out with it (MCL-Q44: the boat a landing out of sight leaves is
+/// not shown); the objects the record takes off the map after a walk taken at its end, each by
+/// its anchor and its index `object_at` gives (none: left out).
 ///
 /// # Errors
 /// A walk's hero the record's start does not show (not built), a step between tiles that are not
@@ -335,7 +338,11 @@ pub fn record_walks(
                 .unwrap_or(Direction::ALL[0]);
             let mut steps = Vec::new();
             let mut unseen = Vec::new();
+            let mut sea = Vec::new();
             for step in &walk.steps {
+                if let (Some(boat), Some(_)) = (step.sea, step.to) {
+                    sea.push((steps.len(), boat));
+                }
                 match (step.from, step.to) {
                     (Some(from), Some(to)) => {
                         facing = Direction::between(from, to).ok_or_else(|| {
@@ -358,7 +365,7 @@ pub fn record_walks(
                 slot,
                 steps,
                 unseen,
-                // stub: MCL-STUB-2 (a computer's boarding and landing in sight: plain steps)
+                sea,
                 taken: walk
                     .taken
                     .iter()
