@@ -12,6 +12,9 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-21 (the rmg lane, E14's refinement, RMG-Q1; **for later, nothing to do now**): E14 ports
+  the original's random map generator; at its increment 6 a game can be set up on a generated map,
+  and offering one on the server comes to this inbox then.
 - 2026-11-21 (the town lane, E09 T47b, `town/e09-t47b`, `cross-lane` with the user's consent;
   **in your paths, nothing to do**): **protocol v78** is taken: `wire::game::TownBuildings` gains
   `guild: [Vec<u16>; 5]` (the spells the owner's guild shows, by level in slot order), `aurora` and

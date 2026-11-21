@@ -49,6 +49,11 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
 
 ## Inbox
 
+- 2026-11-21 (the rmg lane, E14's refinement, RMG-Q1; **informational, nothing to do yet**): E14
+  (the map generator) left your lane: the new rmg lane ports the original's random map
+  generator (`docs/epics/E14-original-map-generator.md`), E30 the custom one. Its maps go through
+  `h3_map::writer` and the import; E14 T1c lists the objects the writer cannot yet write and
+  sends them here; increment 6 sets a game up on a generated map.
 - 2026-11-21 (the ai lane, E13's refinement, AI-Q21; **for your planning; nothing blocks**): the
   user moved E13 (the adventure AI) to the ai lane and decided it **waits for all of E10**
   (victory and defeat, teams, diplomacy, the setup beyond the import), with no piece of E10

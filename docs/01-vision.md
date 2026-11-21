@@ -24,7 +24,7 @@ Build a backend engine for Heroes of Might and Magic III with **exceptional perf
 - Fan-made extensions (WoG, HotA), HD-mod features, QoL and graphical fixes — **but** nothing may be built that makes them require a massive rewrite (guardrails in ADR-0006).
 - Original save-file import/export (future scope, low-ish priority).
 - Campaigns (future scope).
-- Bit-exact reproduction of the original's RNG or of its random map generator.
+- Bit-exact reproduction of the original's RNG in play. (The random map generator is the exception: E14 ports it to give the same map per seed as the original; the user, 2026-11-21, RMG-Q1.)
 
 ## Success criteria
 
