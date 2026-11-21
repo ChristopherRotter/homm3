@@ -1,5 +1,7 @@
 # E08 batch E15a — results
 
+> Played by the capture harness on 2026-11-21 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-15a.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
 Map file: `E08-batch-15a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `a7b4e9e8`.** The map's description in the scenario list starts with "Stamp a7b4e9e8.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -30,16 +32,16 @@ Map file: `E08-batch-15a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- the start: Red's hero list (count; heroes in order); Rion's and Adela's `hero_owner`; P1's and P2's popups: 
-- after the garrison step: Red's hero list (count; heroes); the town's garrison hero: 
-- E15-1 before: points; at P1: the messages (in order): 
-- E15-1 after: tile; points: 
-- the freed hero: name; tile; facing; points; day's maximum; status flags: 
-- the freed hero: experience; level; primary skills; secondary skills; spell points; army: 
-- after the freeing: Red's hero list (count; heroes in order; the selected one); Rion's `hero_owner`; P1 still there: 
-- E15-2 at P2: the messages (in order); E15-2's tile; points: 
-- after P2: Red's hero list (count); Adela's `hero_owner`; P2 still there: 
-- anything odd: 
+- the start: Red's hero list (count; heroes in order); Rion's and Adela's `hero_owner`; P1's and P2's popups: Red's list: 8: E15-1, E15-2, E15-3, Filler 2, Filler 1, Filler 3, E15-2g, Filler 4; Rion's (Prisoner 1's type): a prisoner's; Adela's (Prisoner 2's): a prisoner's; P1 (10, 10): class 62; P2 (16, 10): class 62; popups: 10,10: ?: [class 62 name]; 16,10: ?: [class 62 name]
+- after the garrison step: Red's hero list (count; heroes); the town's garrison hero: the town screen: messages: none; garrison hero: E15-2g; visitor: none; after closing: Red's list: 7: E15-1, E15-2, E15-3, Filler 2, Filler 1, Filler 3, Filler 4; garrison hero: E15-2g; visitor: none
+- E15-1 before: points; at P1: the messages (in order): points: 1560; tile: 10,12,0; the path: 10,11 10,10; messages: ADVEVENT:102; pictures: none; questions: none
+- E15-1 after: tile; points: 10,11,0; points: 1360
+- the freed hero: name; tile; facing; points; day's maximum; status flags: Prisoner 1 (type 8); tile: 10,10,0; facing: 2; points: 1560; day's maximum: 1560; status: 0x0; owner: red
+- the freed hero: experience; level; primary skills; secondary skills; spell points; army: experience: 5000; level: 5; primary: 2/1/3/4; skills: Archery expert, Armorer expert, Offense expert, Resistance expert, Ballistics expert, Artillery expert, Tactics expert, First Aid expert; spell points: 40; army: 4 Swordsmen, 10 Pikemen; artifacts: none; spells: none
+- after the freeing: Red's hero list (count; heroes in order; the selected one); Rion's `hero_owner`; P1 still there: Red's list: 8: E15-1, E15-2, E15-3, Filler 2, Filler 1, Filler 3, Filler 4, Prisoner 1; selected: E15-1; Rion's: red; (10, 10): 0x00000008 class 34.0; hero Prisoner 1, under it 0xffffffff class 0; (9, 10): 0x00000008 class 0.0; popups: 10,10: ?: [other: 26 characters]; 9,10: GENRLTXT:331: [other: 18 characters]
+- E15-2 at P2: the messages (in order); E15-2's tile; points: messages: ADVEVENT:103; pictures: none; questions: none; tile: 16,11,0; points: 1360
+- after P2: Red's hero list (count); Adela's `hero_owner`; P2 still there: Red's list: 8: E15-1, E15-2, E15-3, Filler 2, Filler 1, Filler 3, Filler 4, Prisoner 1; Adela's: a prisoner's; (16, 10): 0x00000009 class 62.0; class 62; Prisoner 2: none; 16,10,0; popup: 16,10: ?: [class 62 name]
+- anything odd: the date at the start: month 1, week 1, day 1; the game's version: SoD; the difficulty: easy; Prisoner 1 at the start: Prisoner 1 (type 8); 5; 5000; 2/1/3/4; 40; the garrison step: a town screen; how it closed: yes; click; the agent (E08 T139a): Red's list at the start is not in the spec's listing but by the heroes' types as far as read (E15-1 type 0, E15-2 2, E15-3 5, E15-2g 102; the fillers' not read); the freed hero's primary skills drawn at load differ by run (run 2: 2/3/2/3 and 30 spell points; level 5 and the eight Expert skills in both); after the freeing (10, 10)'s right click shows the freed hero's window (it stands there), not a prison's
 
 ## E15-2 — A prison visited with eight heroes on the map (E15-2's second half; the procedure is E15-1's last step) (ADV-PRI-002)
 
@@ -60,12 +62,12 @@ Map file: `E08-batch-15a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- before: points: 
-- the path's marks: 
-- after the walk: messages and windows; tile; points: 
-- Space: what opens; tile; points: 
-- the popups of (22, 10) and (21, 10): 
-- anything odd: 
+- before: points: 1560; tile: 22,12,0
+- the path's marks: marks: 2; mark: green; tiles: 22,11 22,10
+- after the walk: messages and windows; tile; points: messages: none; questions: none; screens: none; unknown screens: none; tile: 22,10,0; points: 1360
+- Space: what opens; tile; points: the key: nothing; in order: none; messages: none; unknown screens: none; tile: 22,10,0; points: 1360
+- the popups of (22, 10) and (21, 10): 22,10: ?: [other: 19 characters]; 21,10: ?: [class 50 name]; the tiles: 0xffffffff class 50.0; 0xffffffff class 50.0
+- anything odd: the agent (E08 T139a): (22, 10)'s right click showed E15-3's own window (it stands on the entrance), not the Market's; (21, 10)'s the Market's name (class 50)
 
 - A prison at [10, 10], its prisoner **Prisoner 1** (Rion, specialty skill First Aid, 5000 experience): attack 1, defense 1, power 2, knowledge 2; Expert Archery, Expert Armorer, Expert Offense, Expert Resistance, Expert Ballistics, Expert Artillery, Expert Tactics, Expert First Aid; no artifacts; no spells; army 4 Swordsman, 10 Pikeman.
 
