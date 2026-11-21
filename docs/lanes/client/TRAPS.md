@@ -322,7 +322,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   and below 5 MB shows GENRLTXT 708 and quits; with the free bytes between 2 GiB and 4 GiB + 5 MB
   modulo 4 GiB every run fails at `until:main_menu` (the display: "Insufficient Disk Space"). A
   ballast file moves it: `fallocate -l 3G ballast` took 21.47 GB free (read as −1.2 MB) to
-  about 1 GB; free space changes with every build, so check `df -B1 /` before a long run.
+  about 1 GB; free space changes with every build, so check `df -B1 /` before a long run. A recipe's
+  second run checks again after its first run's frames (E27 M4 T6's runner: the free bytes
+  modulo 4 GiB sized to 1.5 GiB before each recipe, room for builds and frames either way).
 - **Wine and `TMPDIR`** (E27 M3 T3b2): Wine 9's 32-bit loader crashes at its start where `TMPDIR`
   is set (the sandbox sets `TMPDIR=/tmp`, found 2026-11-18: wineboot's segfault in i386 libc, or
   `free(): invalid pointer`; `dmesg` shows `segfault at ff…00000`). `setup.sh` unsets it and

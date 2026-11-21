@@ -1886,3 +1886,62 @@ Kept whole (no seam needed).
   the client scope's verify with the original data.
 - **The agent's calls** (*provisional*: M4's review list items 41 and 42).
 - **The user** (at the end): T6 cut in two, T6a in the next session (decision 77).
+
+## M4 T6 — M4's closure: three fresh reviews, their fixes, every recipe played again (2026-11-21)
+
+On `client/e27-m4-t6`, the user present at the start and at T6a's end; `master` at `0e6a840`
+(#1094; its Clients run green). **T6 in one session** (the user; decision 78), sub-agents for the
+bounded jobs: three fresh reviewers one after another, one fixer in the clone (never in
+`clients/capture/`, which the replay read).
+
+- **Start:** the PC's 64 files of `original-data/`, the manuals and the help files staged at once;
+  the PC's shell did not start ("Workspace unavailable"), so the 71 sizes were checked against its
+  listing and the four LODs and both executables against `installation.md`'s SHA-256 (the PC's
+  tools went away about 25 minutes in). The setup's baseline stopped by a watcher at coverage
+  (fmt, clippy, the doc tests, deny passed).
+- **The reviews** (the viewer's frames of M4's recipes as contact sheets, six a sheet at half
+  scale, each exact against the kept digests: 67, 37 and 27 shots in 12, 7 and 5 sheets;
+  `/home/claude/tools/sheets.py`): reviewer 1 (High Scores, Credits; items 1 to 13) 11 kept, 2
+  changed (7, 10), findings A1 to A7, two oddities; reviewer 2 (the save file, the single load;
+  items 14 to 34) 18 kept, 3 changed (18, 19, 20), findings B1 to B11 (B1 a bug: Delete's version
+  sort leaving the old key current), five oddities; reviewer 3 (the hot-seat load; items 35 to
+  42) 6 kept, 2 changed (38, 41), findings C1 to C10 (C1 a bug: a flag's press past the last
+  name gave a saved human's colour to the computer), four oddities.
+- **The user's answers** (decision 78): the review list accepted with the changes, every finding
+  fixed or handed on; CLT-Q162 to CLT-Q172 as recommended; CLT-Q173 refused for now, the saves to
+  be reworked later to be independent of the engine's version.
+- **The fixes** (the fixer; design §44): 24 items, each with its test; the reading of Delete over
+  the advanced options (§44.1: the original allows it). The fixer's calls (*provisional*): the
+  scores error box names the written path; the selection after Delete the sort's first row; the
+  options hidden (not rebuilt) after a Delete over them; the first hero the setup's hero choice
+  (TWN-SET-008, else TWN-SET-009); the current player of a single load the first acting player.
+- **Handed on:** the adventure lane's inbox (a `Replay` function returning the state; the
+  players' error wording; two "format v4" comments; the engine step that changes a loaded game's
+  humans), the map-client lane's (the load's hand-over for E24 M5).
+- **The sandbox:** the VM restarted once (about 13:03, under the replay's `start-bink-sound`); the
+  runner resumed from its summary, the fixer (outside the VM) carried on; the three start-sound
+  recipes moved to the replay's end so the fixer's builds could run beside the rest.
+- **Played again** (`h3shell.py run`, every recipe twice against `kept/`, one at a time by a
+  runner, `/home/claude/tools/replay-all.sh`: the disk check's ballast sized before each recipe to
+  1.5 GiB modulo 4 GiB, a recipe's frames deleted once it played as kept; `start-smacker` and
+  `start-smacker-sound` left out as at M2 T8 and M3 T7; the three start-sound recipes last, with
+  nothing else running): 95 recipes, 1 032 shots and clips, 92 the same in both runs and as kept;
+  three with their first run a step off, the same pixels, the second as kept (`adv-hotseat-begin`'s
+  load clip 10 ms longer and its two shots after it; `adv-begin`'s load clip; `end-conquest`'s
+  score clip a frame shorter and the shots over it), each as kept in both runs played again alone
+  (`adv-begin` at once, the other two at the third play: a first run after a while away from a
+  map's load read its files cold). Nothing recorded anew. `start-bink-sound` 51 minutes.
+- **The comparisons:** `drawn` with the fixed viewer, by group (the start group a recipe at a
+  time, the frames deleted between): every recipe as recorded, 748 of 1 039 shots drawn, 740 exact
+  (`scn-sort`'s 8 the ties, decision 12; the options', end's and the loads' play shots M5's).
+- **Gates:** `RUST_TEST_THREADS=1 check.sh --no-coverage` with the data staged (niced beside the
+  replay): every gate passed; the coverage of `h3-view` and `h3-ui` as CI runs it (`H3_INSTALL`
+  empty, no capture running): 100 % of lines and regions on every shell file (`book.rs` 138 to
+  143 only, as noted); `h3-view gate`: passed; `cargo xtask verify --scope client --summary
+  --with-original-data`: no failing step (exit 2).
+- **Change freely** (the agent's): the contact sheets' tool, the replay's runner, its pause and
+  finish scripts (`/home/claude/tools/`, outside the repo).
+- **After merging `master`** (#1097's map import v28 and game state hash v38, #1100, #1101):
+  `check.sh --no-coverage`, `drawn` of the scenario, advanced, multiplayer, menus and scores
+  groups (as recorded), the gate and the client scope's verify with the original data passed
+  again.

@@ -88,6 +88,20 @@
 //! - **Begin with the name's edit open** (E27 M3 T7, the review's B2): the client's profile takes
 //!   the edit's text into the record first, as Enter does ([`Advanced::begun`]); the original's
 //!   path is not read (design §26.5), its record's name as it was.
+//! - **The hot seat's load** (E27 M4 T5b1, T5b2; design §41 to §43): the options in the load
+//!   mode (`Advanced::set_load`, the `load` mark): no arrows, the handicap not enabled (drawn up,
+//!   taking no press), the duration's bar disabled and dimmed. Their records are the save's
+//!   (`Advanced::remake`): every colour's saved choices (its town and first hero, Random where
+//!   the save drew none, its bonus and handicap) and the save's duration; the names seated in two
+//!   passes (`Advanced::seating`: first the colours the save holds as human a human may still
+//!   play, then those a human may play the save gave the computer, until the names run out;
+//!   CLT-Q160 (a)); each human record holding a colour takes its saved choices
+//!   (`Advanced::take_saved`), at the remake and after a flag's press, so a row shows the game's
+//!   whoever holds it. A flag's press passes the colour on as the hot seat's does, in the
+//!   client's profile only on a colour the save holds as human (CLT-Q110 (b)) and past the last
+//!   name to the first (E27 M4 T6, the review's C1: always an exchange, never to the computer).
+//!   Load hands on the names by colour (the screen's `seated`); the client's profile refuses it
+//!   as Begin while a name holds no colour (E27 M4 T6, CLT-Q171 (a): [`Advanced::refusal`]).
 //!
 //! *Not built yet:* the name written to
 //! the setting `Network Default Name` (0x698817 and `settings_save` 0x50C1B0 at the edit's close:
@@ -1186,10 +1200,20 @@ impl Advanced {
     /// 13; *provisional* in its detail): to the human record after its holder, the two exchanging
     /// colours (a taker without one leaves the holder with none); past the last record to the
     /// computer, the holder left with none; with no holder the first record takes it, its own the
-    /// computer's. Each record that moves has its town and hero Random.
+    /// computer's. Each record that moves has its town and hero Random. In a load (E27 M4 T6, the
+    /// review's C1 and item 41) past the last record to the first, always an exchange: a press
+    /// never turns a colour the save holds as human into the computer's (CLT-Q110 (b)).
     fn pass(&mut self, c: u8) {
         let holder = self.humans.iter().position(|h| h.record.colour == Some(c));
-        let taker = holder.map_or(0, |h| h + 1);
+        // A holder is a record, so the records are not none.
+        let next = |h: usize| {
+            if self.load {
+                (h + 1) % self.humans.len()
+            } else {
+                h + 1
+            }
+        };
+        let taker = holder.map_or(0, next);
         let own = self.humans.get(taker).and_then(|t| t.record.colour);
         let moved = |record: &mut Record, colour: Option<u8>| {
             record.colour = colour;

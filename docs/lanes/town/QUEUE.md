@@ -8,18 +8,17 @@ Epic: `docs/epics/E09-towns.md` (increment 5: the mage guild, refined at T41, `T
 161 to 164; its survey T42a and T42b with the checkpoint `TWN-Q31`, decisions 165 to 171; its
 drafts, cut and exit criteria by T43, `TWN-Q32`, `TWN-Q33`, decisions 172 to 181; batch TWN-5 by
 T44, decision 182; the drafts in the ADRs by T45, decision 183; the part v9 by T46, decisions 184,
-185; T47a cut in two, T47a1's module, decisions 186, 187; T47a2 whole, decision 188; the services are increment 6, travel and
+185; T47a cut in two, T47a1's module, decisions 186, 187; T47a2 whole, decision 188; T47b whole with the inbox's guild fix, decision 189; the services are increment 6, travel and
 the Grail 7, decision 162); done tasks
 in `E09-log.md`; increments 1 to 4 (closed by T10, T20, T30 and T41) in `E09-archive.md`. Each
 task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start; **T47b**
+**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start; **T48a**
 next): T47 the guild drawn and shown (§84 to §87, §94; T47a cut in two, decision 186: T47a1
 `h3-towns`' guild module and T47a2 the map's town spell sets with import v28, the store v4, the
 game's draw at the build, game state hash v38, every golden re-recorded, both done; **T47b** the
-owner's view: the shown spells by level, the Aurora mark and the Vortex's week flag in the town
-view (TWN-VEW-004, decision 180), the protocol, `cross-lane`); T48 learning (§88, §89: T48a the set
+owner's view (TWN-VEW-004, the protocol v78), done (decision 189)); T48 learning (§88, §89: T48a the set
 with the Aurora and T-18, the town's own triggers, `TWN-STUB-6` and `-15` lifted; T48b the
 visit's end, a capture, a siege's end, `cross-lane`); T49 the spell points and the commands (§90
 to §93, §95: T49a the night's refill, the Mana Vortex, `Open`, its env entry and replay word; T49b
@@ -29,19 +28,6 @@ refined.
 
 ## Inbox
 
-- 2026-11-21 (the adventure lane, E08 T135a, `adventure/e08-t135a`; **a hygiene property's gap in
-  your Thieves' Guild, for you to fix**): `h3-map`'s `a_viewer_learns_nothing_it_cannot_see`
-  (`src/tests/view.rs`) failed once in the adventure lane's scoped verify with a case that fails on
-  `master` 9413c3f's game code too: a plan's map Tavern (E09 T40b's `taverns`) shows the viewer
-  the Thieves' Guild (`ThievesGuildSeen` level 5, then `GuildPartSeen`), whose row of the other
-  player shows its best hero's primary skills ([1, 0, 2, 2] in one game, [4, 3, 4, 4] in the
-  other), and the property's hidden difference had varied that hero's experience (`Unseen`'s
-  `experience`). The report is legitimate (the guild shows what it shows); the oracle does not
-  know it (its comment at the `ThievesGuildSeen` arm still says no plan lays out a Den): end the
-  comparison when the viewer is shown a guild, as at a tavern hire, or compare only the rows its
-  level hides. Replay: append `cc 9b8b2dc95e3ed123192aa2987368078396dc835a9e3e82de23545cf364f37d53`
-  to `crates/h3-map/proptest-regressions/tests/view.txt` (not committed by T135a, so CI stays
-  green until a random case meets it again).
 - 2026-11-20 (the adventure lane, E08 T133a2 and T133b, `adventure/e08-t133a2`,
   `adventure/e08-t133b`; **for your increment 6's planning, nothing to build**): the map's
   markets are built whole: the checks (`h3_adventure::AdventureState`'s `trade_lot`,

@@ -3794,7 +3794,7 @@ DEF item setters) and recorded under Wine (`scores-reset` played once again, as 
   it, as the settings file), a failure told on standard error (not the original's
   `file_error_box`). The replay starts from the defaults and writes nothing.
 - **The replay** (`h3_view::shell::replay`): `press`, `point` and `until-button` on a front's
-  original box (`Front::question`: High Scores' alone so far) at the probes' point
+  original box (`Front::question`: High Scores' question, since T4b2 the scenario screen's boxes too; §44) at the probes' point
   (`replay::button_point`); `Stop::NoButton` when it does not show.
 
 
@@ -3900,7 +3900,7 @@ Load Game's (T4) and Save's (M5).
 
 In order: the replay's header against the rules (`ReplayHeader::check`: a save of other packs, a
 profile, the rules' hashes or the state hash versions refused before anything is read, the field
-named); the map read again (`read_map`: a plain name below `Maps`, `h3-map`'s size limit), its
+named); the map read again (`read_map`: a relative path below `Maps` with no parent or root part, a sub-folder allowed; `h3-map`'s size limit; §44), its
 content hash and import version against the replay's; read and imported as the begin reads a map
 (`h3_map::read`, `h3_map::import`); a colour the replay makes human must be one the import lets a
 human play (E27 M3 T7's rule: the engine cannot check it again); the choices set over the import
@@ -4019,8 +4019,10 @@ client's `saves` and `shell`; `h3shell.py drawn`. Nothing new read but the right
   file's last-write time (`Saved`). The window reads the folder again at each opening of the load
   mode (as the original); a replay once, its `games-time` setting the times (`Step::GamesTime`).
 - **A save the client cannot list** (the file does not read as a save, its replay's header the
-  rules refuse, its map is missing or moved): as the original lists a broken file (§3.3: GENRLTXT
-  431 its name, 505 its description), no map's columns, difficulty Easy. Load's full check (the
+  rules refuse, its map is missing or moved, since T6 a file over 64 MiB): shown as the original
+  shows a broken file (§3.3: GENRLTXT 431 its name, 505 its description), no map's columns,
+  difficulty Easy; a deliberate departure where the original leaves a file it cannot read out of
+  the list (§44), the reason on standard error since T6. Load's full check (the
   commands replayed, `save::load`) is T4b2's.
 - **Made saves for `drawn`** (`h3-view save --map --difficulty --day --name --out`): a single
   game begun on the map as Begin begins it with the advanced options untouched (the single
@@ -4314,3 +4316,57 @@ Decision 76's second half: a flag's press in a hot-seat load and what follows it
 
 `adv-load` 19 of 19 exact (flag-3, flag-1, random, random-key, random-popup since this task);
 every other group as recorded.
+
+## 44. M4's closure: the reviews' fixes and one reading (M4 T6, 2026-11-21)
+
+Three fresh reviewers (High Scores and Credits; the save file and the single load; the hot-seat
+load), the user's answers (decision 78, CLT-Q162 to CLT-Q173); the record: `E27-log.md`, "M4 T6".
+
+### 44.1 Read: Delete over the advanced options
+
+`scenario_dialog_proc`'s key switch (0x587E7E, its table 0x5882D0, the index the key − 28): Delete
+(83, case 5) goes to 0x587E85, which calls `saved_game_delete` 0x58DFB0 at once, reading no
+list's showing (+0x37D; Up, 72, case 1 at 0x587E91, tests it first). `saved_game_delete` checks
+only the shown list's count (+0x1054 to +0x1058 not empty, 0x58DFBD to 0x58DFE4), the network
+game's save mode (0x58DFEA) and the load or save mode (+0x64, +0x65; 0x58DFFD to 0x58E009). So the
+original deletes with the advanced options showing, and its rows stay the deleted save's (Load
+then hands on names for another save). The client's profile hides the options and shows the list
+again before the list is read anew (`Scenario::delete`); the original's for the comparisons.
+
+### 44.2 Built (the client's profile unless named; the original's profile unchanged)
+
+- **High Scores:** a failed write of the scores file shows `file_error_box` (GENRLTXT 11) over
+  the dialog in the window, its OK closing it, the line on standard error kept (review item 7;
+  the box names the path the window writes, the original the file alone, *provisional*); Exit's
+  keys dropped while the mouse holds a button (both profiles: the button's own loop takes every
+  message, §33.1); the window's 5 ms wait for High Scores too; Reset clears the newest rows
+  (CLT-Q162 (b)); CampHigh.txt's refusal names its 24 records.
+- **The credits:** the next step due 100 ms after the last step's due time (review item 10,
+  CLT-Q129 (b)'s pattern); the original's profile after the reading, as recorded.
+- **The save file** (`h3-battle-client`'s `save`): the client's table version 2, each colour's
+  drawn town (`GameState::player_tavern`'s faction, TWN-SET-001) and first hero (the player's
+  first random hero, TWN-SET-008, else its main town's generated one, TWN-SET-009; *provisional*)
+  kept as `town` and `hero` (review item 38); a file over 64 MiB refused before it is read whole
+  (`save::MOST_BYTES`, review item 20); the map's path a relative one below `Maps` (a sub-folder
+  allowed, no parent or root part); `Loaded::humans`, the hand-over for E24 M5: the hot seat's
+  names by colour, or a single load's current player alone (`save::Humans::Alone`, CLT-Q170 (a));
+  `h3-view save --player` takes a sixth field, the handicap.
+- **The list** (`saves::listing`): an unreadable folder (not a missing one) and each broken save's
+  reason told on standard error once a listing (findings B5, B7; CLT-Q173 (a): the strict refusal
+  kept); the window lists the folder only at each opening (not at its start) and reads the zone's
+  offset then; a save's time at its own date's offset (`h3_sdl::local_offset_at`, CLT-Q166 (b);
+  the original's profile the present offset).
+- **The load mode:** Delete keeps the player's sort (CLT-Q164 (b); the original's re-sorts by the
+  version in the last direction), the first row selected; each kind of load lists its own after a
+  Delete (`Scenario::gone`; the viewer's replay had copied the hot seat's filtered list); the
+  single load's task named `E27 M4 T4b1` in the text driver.
+- **The hot-seat load:** a flag's press past the last name hands the colour to the first name,
+  never to the computer (`Advanced::pass`, review item 41); Load refuses as Begin does while a
+  name holds no colour (531, then 83 with fewer than two placed; CLT-Q171 (a)); the rows show the
+  save's drawn town and hero where the choice was Random (both profiles: the original's rows show
+  the game's draws; `adv-load-more` masks them, the client's draws not the original's).
+
+### 44.3 Compared
+
+`drawn` with the fixed viewer, by group: every recipe as recorded (the scenario group's 8 not
+exact `scn-sort`'s ties, decision 12; the options', end's and the loads' play shots M5's).

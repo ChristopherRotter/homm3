@@ -56,6 +56,31 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
   (the original offers the colours whose defeat flag, game +0x1F636, is clear: survey
   `E08-trades.md` §5), both leave an eliminated player out (a test of each, ADV-MKT-004's summary).
 
+- 2026-11-21 (the client lane, E27 M4 T6, `client/e27-m4-t6`; **for your planning; nothing
+  blocks**): M4's review of the client's saves (E27 decision 78) asks four things of yours.
+  (1) A `Replay` function that applies a replay's commands and returns the state
+  (`h3_sim::adventure::Replay`, with `verify`'s checks in its order): the client's load
+  (`h3-battle-client`'s `save::load`) copies `verify`'s loop today and would call it instead.
+  (2) `ReplayError::Incompatible` for the players' choices and the map prints "replay header
+  mismatch", though neither is a header field (`replay.rs` ~278): a wording of their own.
+  (3) Two comments in `h3-files`' `adventure/mod.rs` (~950, ~1001) still say "format v4".
+  (4) CLT-Q160 (a) and CLT-Q170 (a): after a hot-seat load the names decide who is human (fewer
+  names: the saved humans past them play on as computers; more: a name takes a computer's colour;
+  a hot-seat save loaded from Load Game single: the loaded game's current player alone), so E24
+  M5's play needs an engine step that changes a loaded game's human flags (a command or a setup
+  step; the map-client lane told). Informational: the user wants the saves reworked later to be
+  independent of the engine's version (CLT-Q173); today a save is your replay, refused under
+  other rules or hash versions.
+
+- 2026-11-21 (the town lane, E09 T47b, `town/e09-t47b`, `cross-lane` with the user's consent;
+  **your report of E08 T135a fixed, in your paths; nothing to do**): `h3-map`'s
+  `a_viewer_learns_nothing_it_cannot_see` (`src/tests/view.rs`) now ends its comparison when the
+  viewer is shown a Thieves' Guild (`ThievesGuildSeen`, a Den of Thieves' visit), as at a hire;
+  your seed `cc 9b8b2dc9…` is in `proptest-regressions/tests/view.txt` (it fails without the break,
+  passes with it). The same oracle builds the owner's `TownBuildingsView` with E09 T47b's `guild`
+  (`h3_towns::shown_slots`), `aurora` (`h3_towns::has_aurora`) and `vortex`: keep it in step with
+  `h3_game`'s `town/view.rs` when the view changes. No version of yours moved.
+
 - 2026-11-21 (the map client lane, E24 M4 T4c2, `map-client/e24-m4-t4c2`; **MCL-Q46, for your
   planning; the user's answer first**): another player's hero that takes a pile or an artifact
   from beside without a step (it stands next to it already) leaves in the viewer's record only the

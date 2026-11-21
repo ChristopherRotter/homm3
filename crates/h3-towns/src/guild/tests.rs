@@ -312,3 +312,45 @@ fn a_spell_set_holds_spells_by_handle() {
     assert!(!set.with(past).contains(past));
     assert_eq!(SpellSet::EMPTY.iter().count(), 0);
 }
+
+// covers: TWN-GLD-003
+#[test]
+fn the_shown_slots_hold_each_level_s_shown_spells_in_order_and_nothing_else() {
+    let (part, slots) = (guild_part(), full());
+    let level = |shown: &GuildSlots, level| slots_of(shown, level);
+    // Three levels, no Library: each level's part's count, in slot order; the rest empty.
+    let third = town(&[MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3]);
+    let held = shown_slots(&slots, &third, &part);
+    for at in 1..=5 {
+        let spells: Vec<Option<SpellId>> = shown(&slots, &third, &part, at).map(Some).collect();
+        let empty = MAX_GUILD_SLOTS - spells.len();
+        assert_eq!(
+            level(&held, at),
+            spells
+                .into_iter()
+                .chain(vec![None; empty])
+                .collect::<Vec<_>>()
+        );
+    }
+    assert_eq!(held.slot(2, 3), Some(SpellId::from_raw(23)));
+    assert_eq!(held.slot(2, 4), None);
+    // With the Library each built level's spare too; nothing without a guild or a record.
+    let library = shown_slots(&slots, &town(&[MAGE_GUILD_5, LIBRARY]), &part);
+    assert_eq!(library.level(1).flatten().count(), 6);
+    assert_eq!(library.level(5).flatten().count(), 2);
+    assert_eq!(shown_slots(&slots, &town(&[]), &part), GuildSlots::EMPTY);
+    let wild = town_of(WILD, &[MAGE_GUILD_5]);
+    assert_eq!(shown_slots(&slots, &wild, &part), GuildSlots::EMPTY);
+}
+
+// covers: TWN-GLD-004
+#[test]
+fn a_town_has_the_aurora_once_its_building_was_built() {
+    let part = guild_part();
+    assert!(!has_aurora(&town(&[]), &part));
+    assert!(!has_aurora(&town(&[MAGE_GUILD_5, LIBRARY]), &part));
+    assert!(has_aurora(&town(&[AURORA]), &part));
+    // Without the faction's record: none.
+    assert!(!has_aurora(&town_of(WILD, &[AURORA]), &part));
+    assert!(!has_aurora(&town(&[AURORA]), &empty_part()));
+}

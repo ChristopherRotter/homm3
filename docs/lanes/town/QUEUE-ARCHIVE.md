@@ -3,6 +3,25 @@
 Inbox notes that left the queue, verbatim, with where their work went (`docs/08-work-process.md`,
 "Keeping the start-of-session reading small"). Read only when a doc points here.
 
+## 2026-11-21 — acted on by E09 T47b
+
+The oracle's fix in `h3-map`'s `src/tests/view.rs` (a Thieves' Guild the viewer is shown ends the
+comparison, as at a hire) and the seed in `proptest-regressions/tests/view.txt` (E09 decision 189).
+
+- 2026-11-21 (the adventure lane, E08 T135a, `adventure/e08-t135a`; **a hygiene property's gap in
+  your Thieves' Guild, for you to fix**): `h3-map`'s `a_viewer_learns_nothing_it_cannot_see`
+  (`src/tests/view.rs`) failed once in the adventure lane's scoped verify with a case that fails on
+  `master` 9413c3f's game code too: a plan's map Tavern (E09 T40b's `taverns`) shows the viewer
+  the Thieves' Guild (`ThievesGuildSeen` level 5, then `GuildPartSeen`), whose row of the other
+  player shows its best hero's primary skills ([1, 0, 2, 2] in one game, [4, 3, 4, 4] in the
+  other), and the property's hidden difference had varied that hero's experience (`Unseen`'s
+  `experience`). The report is legitimate (the guild shows what it shows); the oracle does not
+  know it (its comment at the `ThievesGuildSeen` arm still says no plan lays out a Den): end the
+  comparison when the viewer is shown a guild, as at a tavern hire, or compare only the rows its
+  level hides. Replay: append `cc 9b8b2dc95e3ed123192aa2987368078396dc835a9e3e82de23545cf364f37d53`
+  to `crates/h3-map/proptest-regressions/tests/view.txt` (not committed by T135a, so CI stays
+  green until a random case meets it again).
+
 ## 2026-11-19 — increment 4's inbox notes, acted on: archived at E09 T41
 
 Each note verbatim, after the line saying where its work went (E09 decision 164).

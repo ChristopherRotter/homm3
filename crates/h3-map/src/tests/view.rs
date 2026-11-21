@@ -1878,7 +1878,8 @@ fn check_told(
             // writer's events), what it gives and builds told around it as above.
             GameEvent::TownEventFired { player, .. } => prop_assert_eq!(player, viewer),
             // E09 T39b2: a Den of Thieves' Thieves' Guild, the visitor's owner's alone; a snapshot
-            // no view holds (no plan lays out a Den).
+            // no view holds. Since E09 T40b the plans lay out Dens (`taverns`): the comparison
+            // ends when the viewer is shown one (below).
             GameEvent::ThievesGuildSeen { player, .. }
             | GameEvent::GuildPartSeen { player, .. } => {
                 prop_assert_eq!(player, viewer);
@@ -2906,12 +2907,15 @@ fn check_town_views(
                 income: h3_towns::daily_income(record, part),
                 garrison_hero: held.is_some(),
             }),
-            // E09 T26b: the owner's counts and Portal (TWN-VEW-004).
+            // E09 T26b: the owner's counts and Portal; E09 T47b: its guild (TWN-VEW-004).
             buildings: (owner == Some(viewer)).then(|| TownBuildingsView {
                 built: record.built(),
                 forbidden: record.forbidden(),
                 available: core::array::from_fn(|i| record.available(i)),
                 portal: record.portal(),
+                guild: h3_towns::shown_slots(record.guild(), record, part),
+                aurora: h3_towns::has_aurora(record, part),
+                vortex: record.vortex(),
             }),
         });
     }
@@ -3164,10 +3168,11 @@ proptest! {
     /// any battle, and another player's bank battle must go alike in both games ([`outcome`]).
     /// Since E09 T38a2 the plans hire: a hire the viewer is told ends the comparison (the hired
     /// hero is a draw of the taverns' stream, below), and another player's must hire alike in both
-    /// games ([`outcome`]). Since E08 T136 the viewer's own visit of a Black Market shows it, in
-    /// its decision, the stock the build drew from the seed (ADV-MKT-006): a market opened by its
-    /// own command whose decisions differ between the two games ends the comparison, the events
-    /// it is told the same.
+    /// games ([`outcome`]). Since E09 T47b a Thieves' Guild the viewer is shown (a Den of
+    /// Thieves') ends it too: its rows show the players' heroes the differences change. Since E08
+    /// T136 the viewer's own visit of a Black Market shows it, in its decision, the stock the
+    /// build drew from the seed (ADV-MKT-006): a market opened by its own command whose decisions
+    /// differ between the two games ends the comparison, the events it is told the same.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),
@@ -3281,6 +3286,18 @@ proptest! {
                     .any(|e| matches!(e, GameEvent::HeroHired { .. }))
             };
             if hired(&ta) || hired(&tb) {
+                break;
+            }
+            // E09 T47b (the adventure lane's report of E08 T135a): a Den of Thieves shows its
+            // visitor's owner every player's best hero and creature (TWN-TAV-008), facts the hidden
+            // differences change (an unseen hero's experience, and so its primary skills): the
+            // comparison ends when the viewer is shown a guild, as at a hire.
+            let guild = |events: &[GameEvent]| {
+                events
+                    .iter()
+                    .any(|e| matches!(e, GameEvent::ThievesGuildSeen { .. }))
+            };
+            if guild(&ta) || guild(&tb) {
                 break;
             }
             // A monster's answer follows from its aggression, drawn from the seed and never

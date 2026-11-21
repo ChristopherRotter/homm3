@@ -6,30 +6,15 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 **E27, the game shell** (refined 2026-11-12, M0, with the user: `docs/epics/E27-game-shell.md`,
 decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 closed 2026-11-13 (T3),
-M2 2026-11-16 (T8), M3 2026-11-19 (T7); M4 (around play, outside it) below, refined at M3 T7
-(decision 69); M5 (in play) is refined once the shell hosts play (E24 M5). The original files:
-stage them from the user's `original-data/install/` (one large file per staging call; the user's
-computer must be online); never from the installation. The captures need the five DLLs,
-`Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
-`clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local check;
-CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
-`clients/`.
-
-#### E27 M4 T6a
-
-T6a M4's reviews (decision 77, the user's cut of T6): fresh reviewer agents one after another, one
-per area (High Scores and Credits: T1a to T2; the save file and the single load: T3a to T4b2; the
-hot-seat load: T5a to T5b2), the code and its screens' shots as contact sheets, each against M4's
-review list items 1 to 42; every recipe played again under Wine against `kept/` (`h3shell.py run`,
-one at a time, as M3 T7's runner did: `E27-log.md`, "M3 T7"); the reviewers' findings, the
-oddities as `CLT-Q<n>` and the review list brought to the user. The original files: stage them
-again (the PC online).
-
-#### E27 M4 T6b
-
-T6b M4's closure (decision 77): the user's answers and their fixes, M4's scope, decisions and
-tasks to `E27-archive.md`, the README's epic row (a `shared/` PR), M5's refinement once the shell
-hosts play (E24 M5), else its prerequisites recorded.
+M2 2026-11-16 (T8), M3 2026-11-19 (T7), M4 2026-11-21 (T6, decision 78). **No task is queued:**
+M5 (in play: the system menu and Options, Save from play, Restart, the end screens) is refined
+with the user once E24 M5 hosts play; its prerequisites are in the epic's "M5" section. Until
+then the lane's next work is the user's choice (E28 after E27, the website E21 first; E29 a
+sketch: `docs/BACKLOG.md`). The original files: stage them from the user's
+`original-data/install/` (one large file per staging call; the user's computer must be online);
+never from the installation. The client's gates: `clients/scripts/check.sh`, the real-asset gate
+`cargo run -p h3-battle-client -- gate` from `clients/`; the harness's runbook:
+`clients/capture/README.md`.
 
 ## Inbox
 

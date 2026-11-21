@@ -81,7 +81,8 @@ pub use command::{TownCommand, TownCommandError, TownHeroChange};
 pub use garrison::{GarrisonWeek, garrison_week};
 pub use growth::{GrowthInputs, event_creatures, growth, index_creature};
 pub use guild::{
-    GuildSets, GuildSlots, MAX_GUILD_SLOTS, SpellSet, aurora_set, draw_guild, guild_level, shown,
+    GuildSets, GuildSlots, MAX_GUILD_SLOTS, SpellSet, aurora_set, draw_guild, guild_level,
+    has_aurora, shown, shown_slots,
 };
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
 pub use h3_contracts::Moat;

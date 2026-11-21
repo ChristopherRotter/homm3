@@ -16,9 +16,9 @@ use h3_battle::BattleSide;
 use h3_content::Formation as EngineFormation;
 use h3_contracts::{ArmyStack as EngineStack, FortLevel, HeroId, PlayerId, TownId};
 use h3_game::{
-    BuildingId, BuildingSet, DecisionView, GameRuleset, GarrisonStackView, GarrisonView, HireView,
-    LevelUpView, MapGarrisonView, MonthKind, PlayerView, SlotState as EngineSlot,
-    TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
+    BuildingId, BuildingSet, DecisionView, GameRuleset, GarrisonStackView, GarrisonView,
+    GuildSlots, HireView, LevelUpView, MapGarrisonView, MonthKind, PlayerView,
+    SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::PrimarySkill as EnginePrimary;
 use h3_kernel::handle::Handle;
@@ -976,7 +976,7 @@ fn town_back(t: &Town) -> TownView {
             income: amounts_back(&f.income),
             garrison_hero: f.garrison_hero,
         }),
-        buildings: t.buildings.map(|b| TownBuildingsView {
+        buildings: t.buildings.as_ref().map(|b| TownBuildingsView {
             built: set_back(b.built.0),
             forbidden: set_back(b.forbidden.0),
             available: b.available,
@@ -984,8 +984,26 @@ fn town_back(t: &Town) -> TownView {
                 creature: Handle::from_raw(p.creature),
                 count: p.count,
             }),
+            guild: guild_back(&b.guild),
+            aurora: b.aurora,
+            vortex: b.vortex,
         }),
     }
+}
+
+/// A town's shown guild back from the wire's levels (E09 T47b).
+pub(super) fn guild_back(levels: &[Vec<u16>; 5]) -> GuildSlots {
+    levels
+        .iter()
+        .enumerate()
+        .fold(GuildSlots::EMPTY, |slots, (index, spells)| {
+            spells
+                .iter()
+                .enumerate()
+                .fold(slots, |slots, (slot, &spell)| {
+                    slots.with(index, slot, Handle::from_raw(spell))
+                })
+        })
 }
 
 /// A garrison as a viewer's level shows it back in the engine's types (a town's, a map
@@ -1563,6 +1581,13 @@ pub(super) fn every_game_part(
                 creature: Handle::from_raw(8),
                 count: 6,
             }),
+            // E09 T47b: two spells at level 1, one at level 5, the Aurora built.
+            guild: GuildSlots::EMPTY
+                .with(0, 0, Handle::from_raw(9))
+                .with(0, 1, Handle::from_raw(2))
+                .with(4, 0, Handle::from_raw(64)),
+            aurora: true,
+            vortex: false,
         }),
     };
     let garrison = |anchor, owner: Option<u8>, level: u8| {

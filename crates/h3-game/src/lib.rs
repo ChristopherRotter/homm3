@@ -124,8 +124,9 @@ pub use h3_towns::{
     TownSetup,
 };
 /// What a Portal of Summoning holds and the number of a town's available creatures' indexes (E09
-/// T26b; `h3_towns`' types): a [`TownBuildingsView`]'s `portal` and `available`.
-pub use h3_towns::{CREATURE_INDEXES, Summoned};
+/// T26b; `h3_towns`' types): a [`TownBuildingsView`]'s `portal` and `available`; since E09 T47b
+/// its `guild`'s slots.
+pub use h3_towns::{CREATURE_INDEXES, GuildSlots, Summoned};
 pub use legal::{
     default_answer, hire_range, legal_commands, legal_management, legal_moves,
     legal_town_management, split_range,

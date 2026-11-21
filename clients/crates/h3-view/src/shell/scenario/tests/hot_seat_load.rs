@@ -335,3 +335,156 @@ fn the_client_moves_a_load_s_colours_among_the_save_s_humans_only() {
         [Some("B"), Some("A")]
     );
 }
+
+/// Delete's question about the selected save, answered OK by Enter.
+fn delete_selected(s: &mut Scenario) {
+    s.key(None, Some(Command::Delete), "Delete");
+    s.key_up("Delete");
+    s.key(None, Some(Command::Message(message::Key::Ok)), "Return");
+    s.key_up("Return");
+}
+
+/// E27 M4 T6 (the review's B6 = C3): leaving a hot-seat load takes the deleted save alone out of
+/// the load's list, not the hot seat's filtered list: the next single load lists the save of a
+/// map one human alone may play still.
+#[test]
+fn a_hot_seat_load_s_delete_leaves_the_single_load_its_own_list() {
+    let mut single = map("Single.h3m", "Single");
+    single.seats[1].human = false;
+    let one = Entry {
+        file: String::from("One.GM1"),
+        saved: Some(Saved::default()),
+        ..single
+    };
+    let layout = parse_layout(LAYOUT).unwrap();
+    let saves = vec![
+        one,
+        saved("Four.GM4", &[0, 1, 5, 6]),
+        saved("Two.GM2", &[0, 1]),
+    ];
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let mut base = with_options_in(saves.clone(), bugs).loading(&layout.scenario.load_begin, 0);
+        let names = [String::from("A"), String::from("B")];
+        let mut hot = base.opened_hot_seat(Hovers::default(), &names);
+        assert_eq!(names_of(&hot), ["Four.GM4", "Two.GM2"]);
+        delete_selected(&mut hot);
+        assert_eq!(hot.take_deleted().as_deref(), Some("Four.GM4"));
+        assert_eq!(names_of(&hot), ["Two.GM2"]);
+        base.keep(&hot);
+        let single = base.opened(Hovers::default());
+        assert_eq!(names_of(&single), ["One.GM1", "Two.GM2"], "{bugs:?}");
+        let hot = base.opened_hot_seat(Hovers::default(), &names);
+        assert_eq!(names_of(&hot), ["Two.GM2"], "{bugs:?}");
+    }
+}
+
+/// The rows' files' names drawn.
+fn names_of(s: &Scenario) -> Vec<String> {
+    names(&s.draws("P"))
+}
+
+/// The names Load hands on, by colour, red's and blue's.
+fn red_blue(s: &Scenario) -> [Option<String>; 2] {
+    let names = s.seated().unwrap();
+    [names[0].clone(), names[1].clone()]
+}
+
+/// E27 M4 T6 (the review's C1, item 41): in the client's profile a load's press passes past the
+/// last name on to the first (always an exchange), never to the computer: `adv-load`'s Blue (the
+/// last name's) gives A blue and B red; a one-human save's red pressed twice gives each name its
+/// colour back.
+#[test]
+fn a_load_s_press_past_the_last_name_hands_it_to_the_first() {
+    let [a, b] = [Some(String::from("A")), Some(String::from("B"))];
+    let mut s = hot_load(
+        vec![saved("Four.GM4", &[0, 1, 5, 6])],
+        &["A", "B"],
+        Bugs::Fixed,
+    );
+    options(&mut s);
+    assert!(click(&mut s, flag(1)).changed);
+    assert_eq!(red_blue(&s), [b.clone(), a.clone()]);
+    assert_eq!(s.seated().unwrap().iter().flatten().count(), 2);
+    // `adv-load-more`'s save: red its one human, B on blue (a computer's in the save).
+    let mut s = hot_load(vec![saved("Week_one.GM1", &[0])], &["A", "B"], Bugs::Fixed);
+    options(&mut s);
+    click(&mut s, flag(0));
+    assert_eq!(red_blue(&s), [b.clone(), a.clone()]);
+    click(&mut s, flag(0));
+    assert_eq!(red_blue(&s), [a, b]);
+    // Each row the save's choices of its colour, whoever holds it.
+    assert_eq!(s.records().unwrap()[0].town, Some(0));
+}
+
+/// E27 M4 T6 (CLT-Q171 (a), the review's C2): the client's hot-seat Load refuses as Begin does
+/// where a name holds no colour (GENRLTXT 531: more names than colours a human may play); the
+/// original's ends the screen (its begin after a load drops the name, *inferred*).
+#[test]
+fn a_hot_seat_load_refuses_a_name_without_a_colour_in_the_client_s_profile() {
+    let five = ["A", "B", "C", "D", "E"];
+    let four = || vec![saved("Four.GM4", &[0, 1, 5, 6])];
+    let mut s = hot_load(four(), &five, Bugs::Fixed);
+    let did = click(&mut s, [497, 555]);
+    assert_eq!(did.ended, None);
+    assert!(s.question().is_some());
+    assert_eq!(s.asked, Asked::Told);
+    let mut s = hot_load(four(), &five, Bugs::Original);
+    assert_eq!(click(&mut s, [497, 555]).ended, Some(Ended::Scenario(true)));
+    // Every name placed: Load ends the screen; without the message's text nothing.
+    let mut s = hot_load(four(), &["A", "B"], Bugs::Fixed);
+    assert_eq!(click(&mut s, [497, 555]).ended, Some(Ended::Scenario(true)));
+    let mut s = hot_load(four(), &five, Bugs::Fixed);
+    s.texts.unplaced = None;
+    let did = click(&mut s, [497, 555]);
+    assert_eq!(did.ended, None);
+    assert!(s.question().is_none());
+}
+
+/// E27 M4 T6 (the review's C4): Delete while the advanced options show. The original takes it
+/// (0x587E85 reads no list's showing), the rows left the deleted save's; the client's profile
+/// hides the options and shows the list again, Load then handing on names over the save now
+/// selected.
+#[test]
+fn delete_over_the_advanced_options_shows_the_list_again_in_the_client_s_profile() {
+    let two = || vec![saved("Four.GM4", &[0, 1, 5, 6]), saved("Two.GM2", &[5, 6])];
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        let mut s = hot_load(two(), &["A", "B"], bugs);
+        options(&mut s);
+        delete_selected(&mut s);
+        assert_eq!(s.take_deleted().as_deref(), Some("Four.GM4"));
+        let fixed = bugs == Bugs::Fixed;
+        assert_eq!(s.advanced_showing(), !fixed, "{bugs:?}");
+        assert_eq!(s.showing(), fixed, "{bugs:?}");
+        if fixed {
+            assert_eq!(names_of(&s), ["Two.GM2"]);
+            // Two's saved humans, purple and teal, take the names.
+            let names = s.seated().unwrap();
+            assert_eq!(
+                [&names[5], &names[6]].map(|n| n.as_deref()),
+                [Some("A"), Some("B")]
+            );
+        }
+    }
+}
+
+/// E27 M4 T6 (the review's C10): Show Advanced Options over no saves (`mp-load` load-closed: the
+/// button enabled) shows an empty panel: no rows, nothing handed on.
+#[test]
+fn the_advanced_options_over_no_saves_show_no_rows() {
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        let mut s = hot_load(Vec::new(), &["A", "B"], bugs);
+        assert_eq!(s.asked, Asked::NoSaves);
+        s.key(None, Some(Command::Message(message::Key::Ok)), "Return");
+        s.key_up("Return");
+        assert!(s.question().is_none());
+        options(&mut s);
+        assert_eq!(
+            row_names(&s),
+            [None, None, None, None, None, None, None, None]
+        );
+        assert_eq!(s.seated(), None);
+        assert_eq!(s.duration(), Some(UNLIMITED));
+        // Load stays disabled: nothing.
+        assert_eq!(click(&mut s, [497, 555]).ended, None);
+    }
+}

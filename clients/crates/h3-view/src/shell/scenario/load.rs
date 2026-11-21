@@ -8,7 +8,10 @@
 //! - **The date** (`scenario_info_draw` 0x5841C8 to 0x58426B, design §38.1): the file's time
 //!   through `FileTimeToLocalFileTime` and `FileTimeToSystemTime`, "%d/%d/%d - %d:%02d" of the
 //!   month, the day, the year, the hour (0 to 23) and the minute: the zone's present offset,
-//!   whatever the file's date ([`local`]; the adapter gives the offset, `h3_sdl::local_offset`).
+//!   whatever the file's date ([`local`]; the adapter gives the offset, `h3_sdl::local_offset`,
+//!   read anew at each opening: E27 M4 T6, the review's B2). The client's profile converts at
+//!   the offset of the file's own date where the adapter gives it ([`Saved::offset`]: E27 M4
+//!   T6, CLT-Q166 (b); a save's time no longer moves an hour at each change of daylight saving).
 //! - **The autosave** (§3.3, §3.4): a file whose name begins with GENRLTXT 77's text shows that
 //!   text as its name in the panel ([`Texts::autosave`](super::Texts::autosave)); the name's sort
 //!   takes one whose name begins `AUTOSAVE.` as a space and its file's name, so it leads
@@ -18,7 +21,8 @@
 //!   box takes its pixels back), OK deletes it: the file the caller's to delete from its folder
 //!   ([`Scenario::take_deleted`]; the original's `DeleteFileA`, whose failure it does not check),
 //!   the entry gone from both lists, the bar's range; with saves left the full list sorted by the
-//!   version in the direction the last sort left (`scenario_list_sort`(2), the recorded key kept),
+//!   version in the direction the last sort left (`scenario_list_sort`(2), the recorded key kept;
+//!   the client's profile by the recorded key, the player's sort kept: E27 M4 T6, CLT-Q164 (b)),
 //!   the first selected with the select's partial redraw (CLT-Q138: the difficulty's buttons and
 //!   the rating stale); with none the whole redraw, nothing selected (the panel as an empty
 //!   list's) and Load disabled (`scenario_select`(−1), 0x585922: Begin disabled over an empty full
@@ -37,7 +41,7 @@ use h3_assets::fnt::Font;
 use h3_render::Bugs;
 use h3_ui::ui::State;
 
-use super::{BEGIN, BUILT_KEY, Did, Ended, Open, Over, Record, Scenario, UNLIMITED};
+use super::{Advanced, BEGIN, BUILT_KEY, Did, Ended, Open, Over, Record, Scenario, UNLIMITED};
 use crate::message::{self, MessageBox, MessageLayout, Style};
 use crate::shell::menu::BOX_PLAYER;
 
@@ -166,7 +170,22 @@ impl Scenario {
         else {
             return;
         };
-        self.deleted = Some(self.entries.remove(at).file);
+        let file = self.entries.remove(at).file;
+        self.gone.push(file.clone());
+        self.deleted = Some(file);
+        // The original takes Delete whatever shows (the procedure's Delete, 0x587E85, reads no
+        // list's showing, +0x37D, as Up's does at 0x587E91; `saved_game_delete` 0x58DFB0 checks
+        // the shown list's count, +0x1054 to +0x1058, and the mode, +0x64 and +0x65, alone), so
+        // over the hot seat's advanced options their rows stay the deleted save's. The client's
+        // profile hides them and shows the list again, the deletion seen (E27 M4 T6, the
+        // review's C4; *provisional*).
+        if self.bugs == Bugs::Fixed && self.advanced.as_ref().is_some_and(Advanced::showing) {
+            self.advanced
+                .iter_mut()
+                .for_each(|a| a.hide(&mut self.shown));
+            self.list_items(true);
+            self.showing = true;
+        }
         self.relist();
         self.bar.reset(self.ticks());
         if self.listed.is_empty() {
@@ -176,8 +195,15 @@ impl Scenario {
             self.whole();
         } else {
             // The sort gives its first row's save to the game and redraws whole, then the select
-            // of that row, which it already is: the partial redraw (as a column's press).
-            self.sort_list(BUILT_KEY, self.descending);
+            // of that row, which it already is: the partial redraw (as a column's press). The
+            // original's sorts by the version whatever the player's sort, its recorded key kept
+            // (CLT-Q91 (1)'s oddity again); the client's by the key it recorded, the player's
+            // (E27 M4 T6, CLT-Q164 (b): the rows as they were less the deleted one).
+            let key = match self.bugs {
+                Bugs::Original => BUILT_KEY,
+                Bugs::Fixed => self.key,
+            };
+            self.sort_list(key, self.descending);
             self.give_to_game();
             self.whole();
             self.select();
@@ -209,6 +235,10 @@ pub struct Saved {
     pub difficulty: u8,
     /// The file's last-write time, in seconds from 1970-01-01 UTC.
     pub time: i64,
+    /// The zone's offset from UTC at that time, in seconds east (E27 M4 T6, CLT-Q166 (b): the
+    /// adapter's, `h3_sdl::local_offset_at`; none where it cannot tell): the client's profile
+    /// shows the date at it, the original's at the zone's present offset ([`local`]).
+    pub offset: Option<i32>,
     /// Each colour the save holds as human, red first (the original's `load_slots` 0x69FDA4, the
     /// records' +0xC80; the client's: the replay's players' human flags).
     pub humans: [bool; 8],
@@ -227,6 +257,7 @@ impl Default for Saved {
         Self {
             difficulty: 0,
             time: 0,
+            offset: None,
             humans: [false; 8],
             records: [Record::NEW; 8],
             duration: UNLIMITED,
