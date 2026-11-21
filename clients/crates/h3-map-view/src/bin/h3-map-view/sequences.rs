@@ -218,6 +218,7 @@ impl Context<'_> {
             start,
             actions,
             recorded,
+            ..
         } = setup;
         let assets = self.assets;
         let rules = Rules::new(assets.tables, assets.layout, assets.bugs);

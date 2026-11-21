@@ -101,6 +101,10 @@ pub struct Setup<'a> {
     pub actions: BTreeMap<u32, Vec<Action>>,
     /// The recorded timeline (`timelines/<id>.txt`), if any.
     pub recorded: Option<String>,
+    /// A record's battles its answers began (E24 M4 T5b1, `director::Directed::battles`): each at
+    /// the millisecond the map hands it over, with the record's number of the `GameEvents` that
+    /// began it (a walk's are the timeline's own, `Replay::battles`).
+    pub battles: Vec<(u32, u32)>,
 }
 
 /// A whole game's record a sequence is played from (E24 M4 T4a2, design §5.13): the record (a
@@ -355,6 +359,7 @@ pub fn for_sequence<'a>(
         start,
         actions: sequence.actions()?,
         recorded,
+        battles: Vec::new(),
     })
 }
 
@@ -463,6 +468,7 @@ pub fn for_record<'a>(
             start,
             actions: directed.actions,
             recorded: None,
+            battles: directed.battles,
         },
         directed.end,
     ))
@@ -560,6 +566,7 @@ pub fn for_situation<'a>(
         start,
         actions: BTreeMap::new(),
         recorded: None,
+        battles: Vec::new(),
     })
 }
 

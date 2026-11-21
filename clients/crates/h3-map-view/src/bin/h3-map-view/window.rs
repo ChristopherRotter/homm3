@@ -543,14 +543,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         }
         None => None,
     };
-    // The battles handed over so far (their place among the replay's), and a whole redraw after
-    // one.
-    let mut handed = 0;
+    // The battles handed over so far (their places among the replay's, the walks', and among the
+    // answers'), and a whole redraw after one.
+    let mut handed = (0, 0);
     let mut after_battle = false;
     let Setup {
         mut painter,
         mut start,
         actions,
+        battles: answered,
         ..
     } = setup;
     start.live = true;
@@ -762,7 +763,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Some(Command::Window(Own::Restart)) => {
                     replay = new_replay()?;
-                    handed = 0;
+                    handed = (0, 0);
                     if let Some((_, player)) = &mut audio {
                         player.reset();
                     }
@@ -958,13 +959,25 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // sound on the host's; then the map's clock on from that millisecond, as if the battle
         // took none (the harness's battle step's way, design §5.19), the cursor and the whole
         // frame set again.
+        // The next of a walk's and an answer's, the walk's first in the same millisecond.
+        let walk = replay.battles().get(handed.0).copied();
+        let answer = answered.get(handed.1).copied();
+        let due_battle = match (walk, answer) {
+            (Some(w), Some(a)) if a.0 < w.0 => Some((a, false)),
+            (Some(w), _) => Some((w, true)),
+            (None, a) => a.map(|a| (a, false)),
+        };
         if let Some(list) = &battles
-            && let Some(&(t, n)) = replay.battles().get(handed)
+            && let Some(((t, n), walked)) = due_battle
             && t <= ms
             && pending.is_empty()
             && next.as_ref().is_none_or(|f| f.change.t >= t)
         {
-            handed += 1;
+            if walked {
+                handed.0 += 1;
+            } else {
+                handed.1 += 1;
+            }
             let Some(k) = list.began(n) else {
                 lines.push(format!(
                     "battle at {t} ms (the record's events {n}): none of the record's {} opens after \

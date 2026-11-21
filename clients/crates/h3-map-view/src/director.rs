@@ -14,6 +14,11 @@
 //! - **A command of a screen the map has not** ([`Command::Other`]: a town's, a hero's, an
 //!   army's; M5's): nothing shown, its events folded with the others'.
 //!
+//! - **A battle an answer began** ([`Command::Battle`], E24 M4 T5b1, design §5.20): handed over
+//!   where the answer's box closes (its key's release), or where the answer was passed over with
+//!   no box open ([`Directed::battles`]; a walk's battle is the map's own, at the walk's end:
+//!   `Loop::battles`).
+//!
 //! The record has played to its end once its last command has been given and the map waits again.
 
 use alloc::collections::BTreeMap;
@@ -51,6 +56,10 @@ pub struct Directed {
     pub actions: BTreeMap<u32, Vec<Action>>,
     /// The millisecond the map waits again after the last command: the record's end.
     pub end: u32,
+    /// The battles the record's answers began (E24 M4 T5b1, [`Command::Battle`]), in order: each
+    /// at the millisecond the map hands it over, with the record's number of the `GameEvents`
+    /// that began it.
+    pub battles: Vec<(u32, u32)>,
 }
 
 /// The input that plays `commands` (the viewer's, in order) on the map from `start` under
@@ -70,6 +79,7 @@ pub fn direct(
 ) -> Result<Directed, (u32, Unplayable)> {
     let mut map = Loop::start(rules, start).map_err(|why| (0, why))?;
     let mut actions: BTreeMap<u32, Vec<Action>> = BTreeMap::new();
+    let mut battles = Vec::new();
     let mut next = 0;
     // The millisecond the map last started to wait, and the last one with input to come.
     let mut waiting: Option<u32> = None;
@@ -115,11 +125,20 @@ pub fn direct(
                     give(at.saturating_add(pace.hold), Action::BoxKeyUp(key));
                 }
             }
+            // The battle the answer began: where its box closes.
+            if let Some(&Command::Battle(n)) = commands.get(next) {
+                next += 1;
+                battles.push((at.saturating_add(pace.hold), n));
+            }
             continue;
         }
         let Some(&command) = commands.get(next) else {
             return match map.walks_left() {
-                0 => Ok(Directed { actions, end: t }),
+                0 => Ok(Directed {
+                    actions,
+                    end: t,
+                    battles,
+                }),
                 n => Err((t, Unplayable::Untaken(n))),
             };
         };
@@ -138,8 +157,16 @@ pub fn direct(
                 give(at, Action::Key(Hotkey::EndTurn));
                 give(at.saturating_add(pace.hold), Action::KeyUp(Hotkey::EndTurn));
             }
-            // An answer with no box open, a screen's command: nothing on the map.
-            Command::Answer(_) | Command::Other => {}
+            // An answer with no box open: nothing on the map, its battle handed over here.
+            Command::Answer(_) => {
+                if let Some(&Command::Battle(n)) = commands.get(next) {
+                    next += 1;
+                    battles.push((at, n));
+                }
+            }
+            // A battle no answer began (*provisional*: none in a record), a screen's command:
+            // nothing on the map.
+            Command::Battle(_) | Command::Other => {}
         }
     }
     Err((limit, Unplayable::Record([-1, -1, -1])))

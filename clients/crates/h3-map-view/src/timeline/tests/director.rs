@@ -79,6 +79,30 @@ fn a_walk_given_by_its_last_tile() {
 }
 
 #[test]
+fn a_walk_that_began_a_battle_hands_it_over_at_its_end() {
+    // E24 M4 T5b1 (design §5.20): the walk's end, in its millisecond at speed 4, names the
+    // record's `GameEvents` that began the battle; the replay tells it from there.
+    let mut start = record_start();
+    if let Some(moves) = &mut start.moves {
+        moves[0].battle = Some(7);
+    }
+    let mut l = Loop::start(rules(Bugs::Fixed), &start).unwrap();
+    assert!(l.battles().is_empty());
+    l.run(3, &[Action::Walk(at(21, 17))]).unwrap();
+    assert_eq!(l.battles(), [(3, 7)]);
+    // A walk without one hands none over.
+    let mut l = Loop::start(rules(Bugs::Fixed), &record_start()).unwrap();
+    l.run(3, &[Action::Walk(at(21, 17))]).unwrap();
+    assert!(l.battles().is_empty());
+    // The replay of the same input tells it once it ran that far.
+    let actions = BTreeMap::from([(3, vec![Action::Walk(at(21, 17))])]);
+    let mut replay = crate::replay::Replay::new(rules(Bugs::Fixed), &start, actions).unwrap();
+    assert!(replay.battles().is_empty());
+    replay.at(10).unwrap();
+    assert_eq!(replay.battles(), [(3, 7)]);
+}
+
+#[test]
 fn a_hero_chosen_by_its_place() {
     let (start, _, _, _) = choosing("choose-lists");
     let r = rules(Bugs::Original);
@@ -125,7 +149,7 @@ fn a_records_commands_as_input() {
     .unwrap();
     // The screen's command nothing; the walk's hero chosen after the wait, its walk after another;
     // an answer with no box open nothing; the end after the walk's wait.
-    let Directed { actions, end } = directed;
+    let Directed { actions, end, .. } = directed;
     let given: Vec<(u32, Action)> = actions
         .iter()
         .flat_map(|(&t, a)| a.iter().map(move |&a| (t, a)))
@@ -221,4 +245,63 @@ fn a_records_answers_in_its_boxes() {
         .collect();
         assert_eq!(given, keys, "{answer:?}");
     }
+}
+
+#[test]
+fn a_battle_an_answer_began_is_handed_over_where_its_box_closes() {
+    // E24 M4 T5b1 (design §5.20): an answer given in its box, at its key's release; an answer
+    // with no box open, where it is passed over.
+    let r = rules(Bugs::Fixed);
+    let mut start = record_start();
+    start.moves = None;
+    start.live = true;
+    start.move_reminder = true;
+    start.kingdom.heroes[0].movable = true;
+    start.question = Some(turns::laid("End your turn?", Style::OkCancel));
+    let accept = Command::Answer(Answer::Offer {
+        consent: Consent::Accept,
+    });
+    let commands = [Command::EndTurn, accept, Command::Battle(9)];
+    let d = director::direct(r.clone(), &start, &commands, &[], Pace::default(), 3000).unwrap();
+    let release = d
+        .actions
+        .iter()
+        .find(|(_, a)| a.contains(&Action::BoxKeyUp(Key::Ok)))
+        .map(|(&t, _)| t)
+        .unwrap();
+    assert_eq!(d.battles, [(release, 9)]);
+    // No box open: the answer passed over and its battle at once, no wait of its own.
+    let walk = Command::Walk {
+        hero: 4,
+        to: at(21, 17),
+    };
+    let chest = Command::Answer(Answer::Chest {
+        choice: ChestChoice::Gold,
+    });
+    let pace = Pace::default();
+    let d = director::direct(
+        r.clone(),
+        &record_start(),
+        &[walk, chest, Command::Battle(5)],
+        &[(4, 0)],
+        pace,
+        5000,
+    )
+    .unwrap();
+    // As `a_records_commands_as_input`'s without its screen's command: a wait less.
+    assert_eq!(d.end, 1604);
+    assert_eq!(d.battles.len(), 1);
+    assert_eq!(d.battles[0].1, 5);
+    assert!((803..1604).contains(&d.battles[0].0));
+    // A battle no answer began: nothing, at a command's wait.
+    let d = director::direct(
+        r,
+        &record_start(),
+        &[walk, Command::Battle(5)],
+        &[(4, 0)],
+        pace,
+        5000,
+    )
+    .unwrap();
+    assert!(d.battles.is_empty());
 }
