@@ -13,7 +13,7 @@
 #   checked (a pull request's head). A run that finds its fingerprint on the pull request's head
 #   or previous head, on the heads of the pull requests a push merged, or on the last ten commits of
 #   the target branch skips the full verify and runs only the gates that read the left-out paths
-#   (check-rules, check-stubs, check-docs). A gate or test that starts reading a left-out path must
+#   (check-rules, check-stubs, check-docs, check-exe-map). A gate or test that starts reading a left-out path must
 #   take it out of BOTH exclusion lists below (`paths-ignore` and the "Plan" step).
 # - A pull request whose merge with its base changes only left-out paths brings no code of its own:
 #   it runs only those gates even when no run has verified the base's code yet (the base branch's
@@ -139,10 +139,10 @@ jobs:
           if [ "$FORCE" = true ]; then
             full=true; why="full verify"
           elif [ -n "$found" ]; then
-            full=false; why="verified on $found: only check-rules, check-stubs, check-docs"
+            full=false; why="verified on $found: only check-rules, check-stubs, check-docs, check-exe-map"
           elif [ "$docs_only" = true ]; then
             full=false; record=false
-            why="no code against the base (the base branch's runs verify it): only check-rules, check-stubs, check-docs"
+            why="no code against the base (the base branch's runs verify it): only check-rules, check-stubs, check-docs, check-exe-map"
           else
             full=true; why="full verify"
           fi
@@ -202,6 +202,7 @@ jobs:
           cargo xtask check-rules
           cargo xtask check-stubs
           cargo xtask check-docs
+          cargo xtask check-exe-map
 
       # Also after the cheap gates, so that the fingerprint follows the commits that carry it; not
       # after a pull request without code of its own whose fingerprint no run has verified. Not for
