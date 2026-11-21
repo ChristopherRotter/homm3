@@ -4,21 +4,20 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 is the survey (T137a, done: decision 397, survey `docs/rules/surveys/E08-spells.md`) and the drafts with the design note and the cut (T137b), below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list), T138 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T137b — the ADR amendment drafts, the design note and the cut** (decision 395)
+**E08 T138 — batch E15's maps: the writer's prison and Market of Time, the spec's fields, the specs** (decision 407)
 
-- **Scope:** as T127b for increment 14: the drafts `adr-drafts/0016-increment-15.md` and
-  `0017-increment-15.md` (and ADR-0013's if the survey finds a change of the hero's derived
-  properties), increment 15's design note `E08-design.md` (its parts by side), the building tasks'
-  cut and the exit criteria; the checkpoint with the user (the note, the drafts, the agent's calls,
-  the cut).
-- **Inputs:** the survey `docs/rules/surveys/E08-spells.md` (its open points, the interfaces'
-  sketch, batch E15, the proposed ids); decisions 394, 395 and the survey checkpoint's; ADR-0013,
-  ADR-0015 to -0017; T127b's drafts as the form.
-- **Depends on:** T137a (done 2026-11-21, `adventure/e08-t137a`); its questions (survey §17) are
-  asked at T137b's start or checkpoint. **Status:** ready (docs only; the executable staged only if
-  a reading is reopened).
+- **Scope:** as T128 for batch E14: `h3_map::writer`'s prison with a hero body (type, experience,
+  army, skills, artifacts) and class 50 among the plain objects, a placed hero's learned spells and
+  worn scrolls if not yet written; `h3-experiment`'s spec fields (battle-owned, `cross-lane`, the
+  consent asked at the start): prisons, the Market of Time, special grounds under a hero, learned
+  spells and scrolls, hidden tiles by design; the specs and their maps for the 16 rows (design note
+  `E08-design.md` §19, survey `E08-spells.md` §15).
+- **Inputs:** the design note §7, §19; the survey §15; T128's spec and writer as the form.
+- **Depends on:** T137b (done 2026-11-21, `adventure/e08-t137b`). **Status:** ready (the staging:
+  the executable, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`, as T128). Then T139
+  (the run on the client lane's harness, scored), T140 (`shared/`), T141 to T145 (the epic's tasks).
 
 ## Inbox
 

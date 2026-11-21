@@ -29,6 +29,13 @@ refined.
 
 ## Inbox
 
+- 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`; **for your planning, nothing
+  to build**): from E08 T141a every prisoner is a hero in the store with details (a placed hero's:
+  levels at load, army, skills, artifacts, spells), in no list, still `HeroStatus::Prisoner` in the
+  pool; a prison's freeing takes the type for the visitor's colour (its mask's bit added) and
+  shares the hire's limit (the town part's most heroes, TWN-TAV-002). Code that reads the store
+  by status sees them (design note `docs/epics/E08-design.md` §15).
+
 - 2026-11-21 (the town lane itself, E09 T48a's verify; **a pre-existing hygiene failure, to
   triage**): `h3-map`'s `a_viewer_learns_nothing_it_cannot_see` (`src/tests/view.rs`, the
   adventure lane's file) failed on a random case that fails on `master` (c0ce729's code) too, so

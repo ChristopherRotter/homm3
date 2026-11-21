@@ -1,0 +1,37 @@
+{
+ "tool": "h3 ai ceiling",
+ "settings": {"set": "report-v1", "episodes": 100, "opponents": ["system"], "budget": 0, "worlds": "side", "max_steps": 2000, "seed": 0, "identity": "Identity { encounters: 1, core: 3943339772268043157, battle: 18299168994995231966, adventure: 892011319095939670, system_policy: 19 }"},
+ "games": 600,
+ "seconds": 3.7,
+ "opponents": [
+  {"opponent": "system", "report": {
+  "schema": 3,
+  "set": "report-v1",
+  "max_steps": 2000,
+  "engine": {"encounters": 1, "core": "36b98ea152b4db95", "battle": "fdf3b53f6f885cde", "adventure": "0c610f9192575256", "system_policy": 19},
+  "policies": ["rollout-system", "system"],
+  "defender": null,
+  "strata": [
+    {"name": "hero", "weight": 100, "seed": "0x5eede7a100010002", "envs": 100, "episodes_per_env": 1},
+    {"name": "siege_hero", "weight": 50, "seed": "0x5eede7a100010003", "envs": 100, "episodes_per_env": 1},
+    {"name": "siege_garrison", "weight": 25, "seed": "0x5eede7a100010004", "envs": 100, "episodes_per_env": 1}
+  ],
+  "pairs": [
+    {"attacker": "rollout-system", "defender": "system", "stratum": "hero", "episodes": 100, "wins": [74, 26], "truncated": 0, "reward": [0.1040, -0.1040]},
+    {"attacker": "rollout-system", "defender": "system", "stratum": "siege_hero", "episodes": 100, "wins": [51, 49], "truncated": 0, "reward": [-0.0610, 0.0610]},
+    {"attacker": "rollout-system", "defender": "system", "stratum": "siege_garrison", "episodes": 100, "wins": [94, 6], "truncated": 0, "reward": [0.1538, -0.1538]},
+    {"attacker": "system", "defender": "rollout-system", "stratum": "hero", "episodes": 100, "wins": [74, 26], "truncated": 0, "reward": [0.1040, -0.1040]},
+    {"attacker": "system", "defender": "rollout-system", "stratum": "siege_hero", "episodes": 100, "wins": [51, 49], "truncated": 0, "reward": [-0.0610, 0.0610]},
+    {"attacker": "system", "defender": "rollout-system", "stratum": "siege_garrison", "episodes": 100, "wins": [94, 6], "truncated": 0, "reward": [0.1538, -0.1538]}
+  ],
+  "rates": [
+    {"policy": "rollout-system", "opponent": "system", "win_rate": 0.5000, "interval": 0.0403, "value": 0.0000, "by_stratum": {"hero": {"attacker": 0.7400, "defender": 0.2600}, "siege_hero": {"attacker": 0.5100, "defender": 0.4900}, "siege_garrison": {"attacker": 0.9400, "defender": 0.0600}}},
+    {"policy": "system", "opponent": "rollout-system", "win_rate": 0.5000, "interval": 0.0403, "value": 0.0000, "by_stratum": {"hero": {"attacker": 0.7400, "defender": 0.2600}, "siege_hero": {"attacker": 0.5100, "defender": 0.4900}, "siege_garrison": {"attacker": 0.9400, "defender": 0.0600}}}
+  ],
+  "ratings": [
+    {"policy": "rollout-system", "rating": 1500.0, "deviation": 21.2},
+    {"policy": "system", "rating": 1500.0, "deviation": 21.2}
+  ]
+}, "decisions": {"categories": ["tactics", "wait_defend", "move", "melee", "shot", "heal", "cast", "other"], "decisions": [3179, 1232, 2030, 6231, 2491, 152, 1787, 234], "differ": [0, 0, 0, 0, 0, 0, 0, 0], "into": [0, 0, 0, 0, 0, 0, 0, 0], "advantage": [0, 0, 0, 0, 0, 0, 0, 0], "candidates": 1835145, "rollouts": 0, "refused": 0}}
+ ]
+}
