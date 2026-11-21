@@ -35,7 +35,9 @@ pub const USAGE: &str = "usage:
   h3 ai ceiling [--set report-v1|neutral-v1] [--episodes <per kind, 100>]
                 [--opponents system,system-all-seeing] [--budget 8] [--worlds side|true]
                 [--max-steps 2000] [--seed 0] [--threads <cores>] [--out <games file>]
-                [--json <file>]
+                [--json <file>] [--leave-out <kind:env:side>,...]
+                [--commands <recorded games> [--confirm 32]] (set, episodes, opponent and
+                step limit then the recording's)
   h3 ai eval [--set report-v1|neutral-v1|v0]
              [--policies random,aggressor,greedy,system,system-all-seeing]
              [--max-steps 2000] [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
@@ -251,12 +253,25 @@ fn ceiling(args: &Args) -> Result<(), String> {
         "threads",
         "out",
         "json",
+        "commands",
+        "confirm",
+        "leave-out",
     ])?;
-    let set = args.get("set").unwrap_or("report-v1").to_owned();
-    let default = if set == "neutral-v1" {
-        eval::NEUTRAL_DEFENDER.0
-    } else {
-        "system,system-all-seeing"
+    // A replay's set, episodes, opponent and step limit default to its recording's (E25 T44).
+    let commands = args
+        .get("commands")
+        .map(|path| ceiling::Recorded::read(std::path::Path::new(path)))
+        .transpose()?;
+    let recorded = commands.as_ref().map(|c| &c.record);
+    let set = args
+        .get("set")
+        .or(recorded.map(|r| r.set.as_str()))
+        .unwrap_or("report-v1")
+        .to_owned();
+    let default = match recorded {
+        Some(r) => r.opponent.as_str(),
+        None if set == "neutral-v1" => eval::NEUTRAL_DEFENDER.0,
+        None => "system,system-all-seeing",
     };
     let opponents = args
         .get("opponents")
@@ -270,13 +285,17 @@ fn ceiling(args: &Args) -> Result<(), String> {
     }
     let settings = ceiling::Settings {
         set,
-        episodes: args.num("episodes", 100)?,
+        episodes: args.num("episodes", recorded.map_or(100, |r| r.episodes))?,
         opponents,
         budget: args.num("budget", 8)?,
         worlds: ceiling::Worlds::parse(args.get("worlds").unwrap_or("side"))?,
-        max_steps: args.num("max-steps", 2000)?,
+        max_steps: args.num("max-steps", recorded.map_or(2000, |r| r.max_steps))?,
         seed,
         identity: String::new(),
+        commands: commands
+            .as_ref()
+            .map_or(String::new(), ceiling::Recorded::name),
+        confirm: args.num("confirm", if commands.is_some() { 32 } else { 0 })?,
     };
     if settings.max_steps == 0 {
         return Err("--max-steps: ceiling needs a step limit (not 0)".to_owned());
@@ -298,6 +317,10 @@ fn ceiling(args: &Args) -> Result<(), String> {
         settings,
         threads,
         out: args.get("out").map(PathBuf::from),
+        commands,
+        leave_out: args.get("leave-out").map_or(Vec::new(), |v| {
+            v.split(',').map(|k| k.trim().to_owned()).collect()
+        }),
     };
     let sampler = bench::sampler()?;
     let report = ceiling::run(&sampler, &options, &mut |line| eprintln!("{line}"))?;

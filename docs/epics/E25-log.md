@@ -2597,3 +2597,62 @@ an entry only where a task builds on it.
   what the side may know, +0.115 seeing all); most of it is in melee and casts; what hidden
   information costs is a quarter of it, part of that the guess's gap. T44 (where #2's choices
   lose value) next.
+
+## T44 — Where #2 diverges: the tool (2026-11-21)
+
+- **The replay** (`h3 ai ceiling --commands <recording>`, `crates/h3-cli/src/ai/ceiling.rs`;
+  no engine or C ABI change): the seat replays a network's recorded games from their episodes'
+  seeds instead of playing (the set, episodes a kind, opponent and step limit the recording's),
+  and refuses a game that does not end as recorded (winner, truncation, both rewards, every
+  action played). At each of the network's decisions the fair actor's choice is drawn from the
+  side's seat stream as T43's improved seat draws it (the batch never draws from an external
+  seat's stream), every candidate is valued as in T43 with the network's command kept through
+  the halving beside the fair actor's, and the halving's best, the network's and the fair
+  actor's command are valued again on `--confirm` fresh rollouts (stream `AGENT` of the
+  decision's seed; 32 by default). The record (`Valued` in each game, summed per opponent): by
+  the network's category its decisions, the shares that are the fair actor's command and the
+  best, its regret (the best's value less its own) and the fair actor's at the same decisions;
+  by the best's category the decisions and the network's regret there; by the fair actor's
+  category its own regret; the halving's in-sample regret; the confirmation's refusals per
+  command. `Game`'s T43 fields hold the network's command against the fair actor's (differ,
+  into, the halving's paired difference). `--leave-out kind:env:side` takes games out of any run
+  (the record names them; a resume reads the games file's others).
+- **The recorder** (`python -m h3env.train.inspect --commands <file>`, `Commands`,
+  `commands_toml` in `h3env/train/inspect.py`): with one opponent, per counted battle its kind,
+  env and the network's side, its actions (entry, spell, target, second) and its end, as TOML
+  (the network's name a POSIX path; the action encoding v13, which the replay checks).
+- **The agent's calls (change freely):** both commands kept through the halving, so their
+  difference is paired on all its rollouts and unbiased; the confirmation because T43's in-sample
+  advantage is the maximum of noisy means (0.264 a game against the realised +0.085): on fresh
+  rollouts the best's value less a command's is unbiased for the halving's choice (a lower bound
+  on the regret against the true best, in expectation, in the side's belief). The decision seeds
+  are T43's (`decision_seed`): a state T43's improved seat reached is valued on its streams
+  (identically while the network's command is the fair actor's). A refused rollout scores a loss
+  as in T42, so a refused cast raises a regret: the confirmation counts them per command.
+- **Tests** (`ceiling/tests.rs`, 7 tests, 38 s in debug): a recording made through
+  `BattleBatch` as the Python ladder plays (per kind and side a batch of the stratum's seed and
+  envs, the fair actor inside, `choice` for the external seat) replays to its recorded ends on
+  both sets, and a changed reward, an action less or more is refused; the fair actor's own play
+  replayed is the fair actor's command at every decision (equal regrets, no difference), Random's
+  is valued with the halving's regret never negative, the same on 2 and 3 threads and continued
+  from its games file; another recording or settings refused; `--leave-out` and its errors, a
+  resume past a left-out game; `--confirm` without `--commands`, another encoding and a name
+  needing escapes refused. Python: `test_the_games_actions_are_recorded_for_the_ceilings_replay`.
+- **Checks in the sandbox:** the Python recorder through the C ABI (Random's and the fair
+  actor's play, `BattleBatch.choice`, 3 a kind: 18 games each) replayed by the release build:
+  every game ends as recorded, the fair actor's command the recorded one at every decision. T43's
+  `budget-4-games.toml` reads back to `budget-4.json` exactly (but `seconds`): the engine's
+  identity is T43's, so T44's run pairs with T43's records by (kind, env, seat).
+- **The cost, a first look** (release, 4 threads; the fair actor's own recorded play, the report
+  set's first 3 a kind, 18 games, budget 4, confirm 32, side worlds; not kept): 552 decisions, 138
+  candidates and 632 rollouts each, **121 thread-seconds a game** (600 games on 16 threads:
+  about 75 minutes). The fair actor's regret a decision **+0.0118 confirmed against the
+  halving's +0.0175**: a third of the in-sample estimate is the maximum's luck. By its category:
+  casts +0.033, melee +0.010, move +0.010, shot +0.009, wait or defend +0.009, tactics +0.004
+  (18 games: no reading). Summed over a game +0.36, above T43's realised +0.085: one-step gains on
+  the fair actor's own states are not the improved policy's realised gain (and 161 refused
+  rollouts, losses, add to them; counted per command since).
+- **Next (the user's machine, 16 threads):** #2's 600 games of the report set (100 a kind, the
+  episodes T43 played) recorded and valued on the side's worlds, siege_hero 54 attacking left
+  out (T43's stalled game: its first decision is the state T43's stalled at, on the same seed);
+  the commands in `QUEUE.md`.
