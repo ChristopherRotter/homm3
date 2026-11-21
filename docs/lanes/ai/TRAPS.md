@@ -166,7 +166,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   cast, the battle lane's inbox of 2026-11-21) takes hours: find its key in the games file
   (the plan's game missing), replay it alone on a copy, and stack-sample it (`gdb -p <pid>
   -batch -ex "thread apply all bt"` on a `CARGO_PROFILE_RELEASE_DEBUG=line-tables-only` build in
-  its own `CARGO_TARGET_DIR`).
+  its own `CARGO_TARGET_DIR`). Then `--leave-out kind:env:side` takes it out (E25 T44; the
+  record names it, the run continues from its games file).
+- **A recording replays on its engine only** (E25 T44, `h3 ai ceiling --commands`): the replay
+  refuses a game that does not end as recorded; record and value on one build, and a later
+  engine change (the identity) also breaks the pairing with T43's records.
 - **A user's run over 2 hours must resume** (the user, 2026-11-05; no overnight runs): the
   trainer's `--resume`, the benches' since E25 T26a; a run that cannot resume is split into parts
   under 2 hours or not handed over.
