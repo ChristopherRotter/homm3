@@ -37,6 +37,13 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
   refused); its first decision runs the stalling rollouts.
   Open points: whether a refused hero cast should give the stack's own action instead, and
   whether a real battle (the fair actor's world against the true battle) can meet it too.
+- 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`, docs only; **two asks for
+  later, nothing blocks**): (1) **T138 asks your consent** for `h3-experiment`'s spec fields for
+  batch E15 (`cross-lane`): prisons with a hero body, the Market of Time, special grounds under a
+  hero, learned spells and worn scrolls, hidden tiles by design (design note `docs/epics/E08-design.md`
+  §19). (2) `h3_heroes::spell_masteries_on(details, core, SchoolRaise)` (T141b, ADR-0013 point 17
+  drafted, E08 decision 405) gives Expert for the raised schools: BAT-TER-005's hero half could
+  call it instead of its own raise, at your choice of when (`cross-lane` then).
 
 - 2026-11-21 (the map-client lane, E24 M4 T5b2, MCL-Q49; **for E11 or later, nothing blocks**):
   a map battle's obstacles are the engine's own draw, not the original's: `battle-won`'s

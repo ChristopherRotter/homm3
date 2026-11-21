@@ -41,6 +41,16 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
+**From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**):
+
+- 2026-11-21: E08 increment 15 (design note `docs/epics/E08-design.md` §17, decision 407) gives
+  the adventure env's action encoding **v18** at T144a, `cross-lane` in your paths: three casts
+  without a target (Summon Boat, Fly, Water Walk) and two 19 × 17 target windows around the hero
+  (Dimension Door, Scuttle Boat), masked by `legal_commands` (up to 323 targets each: the random
+  workloads' weights and step cap are yours); the own hero's observation gains its day spells.
+  Under `strict-fixed` a flight's move may end early at hidden rock (its rest dropped, as an
+  event's stop); four new fix-optional flags make `faithful`'s legal moves read hidden tiles.
+
 **From the town lane** (E09 T43, `town/e09-t43`, docs only; **planned, nothing to do now**):
 
 - 2026-11-20: E09 increment 5 (the mage guild; design note `docs/epics/E09-design.md` §95, accepted

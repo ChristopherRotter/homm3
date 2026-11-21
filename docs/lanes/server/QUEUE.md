@@ -12,6 +12,12 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`; **planned, `cross-lane` at
+  each task**): protocol v79 at E08 T141a or T143a: the command `Cast { hero, spell, target }`,
+  the events `SpellCast`, `CastFailed`, `BoatSummoned`, `BoatCreated`, `BoatScuttled`,
+  `DaySpellsChanged`, `PrisonerFreed`, `PrisonFull`, `PrisonEmptied`, the own hero view's day
+  spells (design note `docs/epics/E08-design.md` §16). None holds a `Vec`.
+
 - 2026-11-21 (the rmg lane, E14's refinement, RMG-Q1; **for later, nothing to do now**): E14 ports
   the original's random map generator; at its increment 6 a game can be set up on a generated map,
   and offering one on the server comes to this inbox then.
