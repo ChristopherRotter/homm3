@@ -14,9 +14,9 @@ use super::limits;
 use crate::model::{Body, RawMap};
 use crate::writer as w;
 use crate::{ImportError, import, read};
-use h3_adventure::{AdventureCommand, Holds, ObjectKind, Pos};
-use h3_contracts::PlayerId;
-use h3_game::{Actor, GameCommand, GameState, apply};
+use h3_adventure::{AdventureCommand, AdventureCommandError, Holds, ObjectKind, ObjectSetup, Pos};
+use h3_contracts::{ArmyStack, PlayerId};
+use h3_game::{Actor, GameCommand, GameCommandError, GameState, HeroArmy, apply};
 
 /// The game's `Objects.txt` lines (`H3bitmap.lod`'s): the Altar of Sacrifice (2), the Black
 /// Market (7), the Hill Fort (35) on the editor's dirt and grass, the Trading Post (99) on dirt
@@ -266,7 +266,7 @@ fn the_map_s_banned_artifacts_are_written_beside_the_default_ones() {
     );
 }
 
-// covers: ADV-OBJ-002, ADV-MKT-001, ADV-ALT-001, ADV-WMF-001
+// covers: ADV-OBJ-002, ADV-MKT-001, ADV-ALT-001, ADV-HFT-001, ADV-WMF-001
 #[test]
 fn the_import_types_the_trades() {
     // The seven classes at subclass 0 (increment 14's design note §7): 2 the Altar of Sacrifice,
@@ -323,7 +323,8 @@ fn the_import_types_the_trades() {
     }
 }
 
-// covers: ADV-OBJ-003, ADV-MKT-001, ADV-ALT-001, ADV-HFT-001, ADV-WMF-001
+// covers: ADV-OBJ-003, ADV-MKT-001, ADV-ALT-001, ADV-HFT-001, ADV-HFT-002, ADV-WMF-001
+// covers: ADV-HIR-002, GAM-DEC-008, GAM-DEC-011, GAM-DEC-012, GAM-DEC-013
 #[test]
 fn a_step_onto_each_trade_or_service_enters_it() {
     // A market's visit is built (E08 T133a2): the step onto its entrance ends the move there (its
@@ -481,4 +482,165 @@ fn gold_id(rules: &h3_game::GameRuleset) -> h3_content::ResourceId {
     let resources = rules.core().resources();
     let at = resources.iter().position(|r| r.key.as_str() == "base:gold");
     h3_content::ResourceId::from_index(at.unwrap()).unwrap()
+}
+
+/// The entrance of `object`, its one visitable tile.
+fn entrance_of(object: &ObjectSetup) -> Pos {
+    let (column, row) = object.visitable.offsets().next().unwrap();
+    Pos::new(
+        object.anchor.x - u16::from(column),
+        object.anchor.y - u16::from(row),
+        0,
+    )
+}
+
+/// Red's first hero's one step onto `to`: the command's result.
+fn step(
+    state: &mut GameState,
+    rules: &h3_game::GameRuleset,
+    to: Pos,
+) -> Result<(), GameCommandError> {
+    let hero = state.adventure().heroes()[0].id;
+    let path = vec![to];
+    apply(
+        state,
+        rules,
+        Actor::Player(PlayerId::new(0)),
+        GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }),
+        &mut Vec::new(),
+    )
+}
+
+// covers: ADV-HFT-001, ADV-HFT-002
+#[test]
+fn a_hill_fort_upgrades_the_elementals_only_with_the_ab_pack() {
+    // Decision 378 (the enabled packs decide): red's hero with the four elementals steps into a
+    // Hill Fort. Under RoE's rules alone (the base pack) none of its rows has an upgrade; under
+    // SoD's (the ab pack's `upgrades` override) each its own: the Storm, Magma, Energy and Ice
+    // Elementals.
+    let elementals = ["air", "earth", "fire", "water"];
+    let upgrades = ["storm", "magma", "energy", "ice"];
+    for (format, rules, keep) in [
+        (w::Format::RoE, &*ROE, in_roe as fn(usize) -> bool),
+        (w::Format::Sod, &*SOD, |_| true),
+    ] {
+        let ab = matches!(format, w::Format::Sod);
+        let creature = |k: String| rules.core().creature_by_key(&k).unwrap();
+        let raw = read_back(&w::write_in(&trades_map(keep), format).unwrap());
+        let mut setup = import(&raw, rules).unwrap();
+        let fort = setup.map.objects.iter().find(|object| {
+            let ty = object
+                .object_type
+                .and_then(|ty| rules.adventure().object_type(ty));
+            matches!(ty.map(|ty| &ty.kind), Some(ObjectKind::HillFort(_)))
+        });
+        let entrance = entrance_of(fort.unwrap());
+        setup.heroes[0].pos = Pos::new(entrance.x, entrance.y + 1, 0);
+        let army = elementals.iter().zip(0..);
+        let army = army.map(|(e, slot)| ArmyStack {
+            slot,
+            creature: creature(format!("base:{e}_elemental")),
+            count: 1,
+        });
+        setup.heroes[0].army = HeroArmy::Custom(army.collect());
+        let mut state = GameState::new(rules, &setup, 1).unwrap();
+        step(&mut state, rules, entrance).unwrap();
+        let red = h3_game::Viewer::Player(PlayerId::new(0));
+        let seen = h3_game::observe(&state, rules, red).decision;
+        let Some(h3_game::DecisionView::HillFort(view)) = seen else {
+            panic!("{format:?}: {seen:?}")
+        };
+        let shown: Vec<_> = view.rows.iter().map(|row| row.row.upgrade).collect();
+        let expected: Vec<_> = upgrades
+            .iter()
+            .map(|u| ab.then(|| creature(format!("ab:{u}_elemental"))))
+            .collect();
+        assert_eq!(shown, expected, "{format:?}");
+    }
+}
+
+// covers: ADV-MKT-008
+#[test]
+fn another_player_sees_each_trade_by_its_type_and_nothing_of_the_visit() {
+    // Blue's hero beside red's below each entrance: once red stepped in, blue's observation shows
+    // the object by its type at its anchor (the same to every viewer) and no decision of its own;
+    // red's window (and the factory's question) are red's alone.
+    let rules = &*SOD;
+    let raw = read_back(&w::write(&trades_map(|_| true)).unwrap());
+    let setup = import(&raw, rules).unwrap();
+    let blue = PlayerId::new(1);
+    for (index, object) in setup.map.objects.iter().enumerate() {
+        let entrance = entrance_of(object);
+        let mut setup = setup.clone();
+        setup.heroes[0].pos = Pos::new(entrance.x, entrance.y + 1, 0);
+        let mut theirs = setup.heroes[0].clone();
+        theirs.owner = blue;
+        theirs.hero_type = None;
+        theirs.pos = Pos::new(entrance.x + 1, entrance.y + 1, 0);
+        setup.heroes.push(theirs);
+        let mut state = GameState::new(rules, &setup, 1).unwrap();
+        step(&mut state, rules, entrance).unwrap();
+        let red = h3_game::Viewer::Player(PlayerId::new(0));
+        assert!(
+            h3_game::observe(&state, rules, red).decision.is_some(),
+            "{index}"
+        );
+        let seen = h3_game::observe(&state, rules, h3_game::Viewer::Player(blue));
+        let shown = seen
+            .adventure
+            .objects
+            .iter()
+            .find(|o| o.anchor == object.anchor);
+        assert_eq!(shown.map(|o| o.object_type), object.object_type, "{index}");
+        assert_eq!(seen.decision, None, "{index}");
+        let open = (state.market(blue), state.altar(blue), state.hill_fort(blue));
+        assert_eq!(open, (None, None, None), "{index}");
+    }
+}
+
+// covers: ADV-OBJ-004
+#[test]
+fn no_trade_or_service_is_entered_from_above() {
+    // None of the seven classes is visited from above: red's hero on a free tile of the three
+    // above an entrance does not step down onto it (`FromAbove`), the state unchanged.
+    let rules = &*SOD;
+    let raw = read_back(&w::write(&trades_map(|_| true)).unwrap());
+    let setup = import(&raw, rules).unwrap();
+    let blocked: Vec<Pos> = setup
+        .map
+        .objects
+        .iter()
+        .flat_map(|object| {
+            object.blocked.offsets().map(|(column, row)| {
+                let (x, y) = (object.anchor.x, object.anchor.y);
+                Pos::new(x - u16::from(column), y - u16::from(row), 0)
+            })
+        })
+        .collect();
+    let mut tried = 0;
+    for (index, object) in setup.map.objects.iter().enumerate() {
+        let ty = rules.adventure().object_type(object.object_type.unwrap());
+        assert!(!ty.unwrap().from_above, "{index}");
+        let entrance = entrance_of(object);
+        for x in entrance.x - 1..=entrance.x + 1 {
+            let from = Pos::new(x, entrance.y - 1, 0);
+            if blocked.contains(&from) {
+                continue;
+            }
+            tried += 1;
+            let mut setup = setup.clone();
+            setup.heroes[0].pos = from;
+            let mut state = GameState::new(rules, &setup, 1).unwrap();
+            let before = state.clone();
+            let refused = AdventureCommandError::FromAbove { step: 0 };
+            assert_eq!(
+                step(&mut state, rules, entrance),
+                Err(GameCommandError::Adventure(refused)),
+                "{index}: {from:?}"
+            );
+            assert_eq!(state, before, "{index}: {from:?}");
+        }
+    }
+    // The three tiles above each of the nine entrances are free.
+    assert_eq!(tried, 3 * PICTURES.len());
 }

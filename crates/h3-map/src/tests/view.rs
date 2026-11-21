@@ -3164,7 +3164,10 @@ proptest! {
     /// any battle, and another player's bank battle must go alike in both games ([`outcome`]).
     /// Since E09 T38a2 the plans hire: a hire the viewer is told ends the comparison (the hired
     /// hero is a draw of the taverns' stream, below), and another player's must hire alike in both
-    /// games ([`outcome`]).
+    /// games ([`outcome`]). Since E08 T136 the viewer's own visit of a Black Market shows it, in
+    /// its decision, the stock the build drew from the seed (ADV-MKT-006): a market opened by its
+    /// own command whose decisions differ between the two games ends the comparison, the events
+    /// it is told the same.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),
@@ -3515,6 +3518,20 @@ proptest! {
                     }
                 } else {
                     prop_assert_eq!(decision(&a), decision(&b), "{:?}", question);
+                }
+            }
+            // E08 T136: a Black Market's window shows its visitor's owner the stock the build drew
+            // from the seed (ADV-MKT-006, ADV-MKT-008), which the other game's may change. When
+            // the viewer's own command opens a market (`MarketOpened`, the object named only)
+            // whose decisions differ between the two games, the told events are the same and the
+            // comparison ends, as at a camp's question.
+            let market = ta.iter().any(|e| matches!(e, GameEvent::MarketOpened { .. }));
+            if actor == Actor::Player(viewer) && market {
+                let decision =
+                    |game: &GameState| observe(game, rules, Viewer::Player(viewer)).decision;
+                if decision(&a) != decision(&b) {
+                    prop_assert_eq!(ta, tb);
+                    break;
                 }
             }
             prop_assert_eq!(ta, tb);

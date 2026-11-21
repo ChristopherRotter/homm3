@@ -282,7 +282,8 @@ fn pile_body(amount: u32, message: Option<Message>) -> Body {
     Body::Resource { message, amount }
 }
 
-// covers: ADV-OBJ-002, ADV-MIN-001, ADV-TEL-001, ADV-GAR-001, ADV-BON-001
+// covers: ADV-OBJ-002, ADV-MIN-001, ADV-TEL-001, ADV-GAR-001, ADV-BON-001, ADV-VIS-007
+// covers: ADV-VIS-008, ADV-MKT-001, ADV-ALT-001, ADV-HFT-001, ADV-WMF-001
 #[test]
 fn the_typed_classes_import_as_their_object_types() {
     let colours = [

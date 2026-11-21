@@ -169,10 +169,10 @@ impl MarketParams {
         )
     }
 
-    /// The lot of a creature of gold cost `cost` sold for `take` at `count` Marketplaces (screen 4,
+    /// The lot of a creature of cost `cost` (in [`Self::cost`]'s resource) sold for `take` at `count` Marketplaces (screen 4,
     /// `market_creature_rate` 0x5ECE80): a = f32(f32(cost) × C), q = f32(v(take) / a); q ≥ 1
     /// gives round(q) creatures for one `take`, else one creature for round(1 / q) of `take`. None
-    /// for a creature of no gold cost, a count outside the parameters, a resource they do not
+    /// for a creature of no cost, a count outside the parameters, a resource they do not
     /// value, or a lot past `u32`.
     // rule: ADV-MKT-002
     pub fn creature_lot(&self, count: u8, cost: u32, take: ResourceId) -> Option<Lot> {
@@ -181,7 +181,7 @@ impl MarketParams {
         lot(stored(cost).times(row.creatures).round(SINGLE_BITS), wanted)
     }
 
-    /// The price in `pay` of an artifact of cost `cost` at `count` Marketplaces (screen 2,
+    /// The price in `pay` of an artifact of cost `cost` (in [`Self::cost`]'s resource) at `count` Marketplaces (screen 2,
     /// `market_buy_artifact_proc` 0x5ED9E0): a = f32(f32(w(pay)) × A), round(f32(f32(cost) /
     /// a)). None for an artifact of no cost, a price that rounds to 0 (no price, as the
     /// original's 0), a count outside the parameters, a resource they do not value, or a price

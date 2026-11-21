@@ -70,7 +70,7 @@ fn the_hash_sees_every_part_of_the_visits() {
     }
 }
 
-// covers: ADV-MKT-006
+// covers: ADV-MKT-006, ADV-MKT-007
 #[test]
 fn visits_keep_each_black_markets_sold_entries() {
     let mut visits = Visits::new(40, 2);

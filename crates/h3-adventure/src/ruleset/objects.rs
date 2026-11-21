@@ -632,7 +632,7 @@ impl ObjectKind {
     /// the monoliths and the Subterranean Gates, whose visit is the jump; T105a2: the Whirlpool,
     /// whose visit is its loss and the jump; T114a1: the garrisons; T115b: the fifteen bonus
     /// visitables; E09 T39a: the map's Tavern and the Den of Thieves; E08 T133a2: the markets;
-    /// T134a: the Altars; T134b1: the Hill Forts.
+    /// T134a: the Altars; T134b1: the Hill Forts; T134b2: the War Machine Factories.
     /// Who reaches a kind's visit is the passage's: on water
     /// only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {

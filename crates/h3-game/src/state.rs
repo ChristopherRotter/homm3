@@ -657,10 +657,11 @@ impl GameState {
     /// decision ([`Self::open_tavern`]), alone; since E09 T39b2 a Den of Thieves' Thieves' Guild
     /// at everything, told to the player ([`town::thieves::tell_den`]), alone; since E08 T133b a
     /// market's decision ([`Self::open_market`]), alone; since E08 T134a an Altar's
-    /// ([`Self::open_altar`]), alone.
+    /// ([`Self::open_altar`]), alone; since E08 T134b1 a Hill Fort's
+    /// ([`Self::open_hill_fort`]), alone.
     // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, GAM-DEC-008, ADV-MON-006
     // rule: TWN-SIE-002, GAM-DEC-009, TWN-GRO-007, GAM-DEC-010, ADV-VIS-008, GAM-DEC-011
-    // rule: GAM-DEC-012
+    // rule: GAM-DEC-012, GAM-DEC-013
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -1061,7 +1062,9 @@ impl GameState {
     /// purchase ([`Self::buy`]) or leaving (GAM-DEC-006), a hire dialog's purchase
     /// ([`Self::hire`]) or closing (GAM-DEC-008, E08 T95b), a map Tavern's hire or closing, each
     /// closing it (GAM-DEC-010, E09 T39a), a market's trade, transfer, sale, purchase or leaving
-    /// ([`Self::answer_market`], GAM-DEC-011, E08 T133b).
+    /// ([`Self::answer_market`], GAM-DEC-011, E08 T133b), an Altar's sacrifice or leaving
+    /// ([`Self::answer_altar`], GAM-DEC-012, E08 T134a), a Hill Fort's upgrade, all or leaving
+    /// ([`Self::answer_hill_fort`], GAM-DEC-013, E08 T134b1).
     ///
     /// # Errors
     ///
@@ -1070,9 +1073,10 @@ impl GameState {
     /// for an acceptance, `SlotClosed` and `CannotPay` for a University's purchase (T63a), `Hire`
     /// and `CannotPay` for a hire dialog's (T95b), `Tavern` and `CannotPay` for a map Tavern's
     /// hire (E09 T39a: [`town::hire::map_hire`]), `Market` and `CannotPay` for a market's (E08
-    /// T133b); the state is then unchanged.
+    /// T133b), `Altar` for an Altar's (E08 T134a), `HillFort` and `CannotPay` for a Hill Fort's
+    /// (E08 T134b1); the state is then unchanged.
     // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006
-    // rule: GAM-DEC-008, GAM-DEC-010, GAM-DEC-011
+    // rule: GAM-DEC-008, GAM-DEC-010, GAM-DEC-011, GAM-DEC-012, GAM-DEC-013
     pub(crate) fn answer<S: Sink>(
         &mut self,
         rules: &GameRuleset,

@@ -217,3 +217,29 @@ fn a_factorys_dialog_sells_one_of_each_machine_the_hero_lacks_as_its_artifact() 
     assert!(again.contains(&offered), "{again:?}");
     assert_eq!(decision(&state), Some(question));
 }
+
+// covers: GAM-DEC-008, ADV-WMF-001
+#[test]
+fn a_factorys_dialogs_default_answer_is_its_close_and_loses_nothing() {
+    // The hire dialog's system default (the original's Close): applied, it closes the dialog and
+    // leaves the treasury, the army and the hero's artifacts as they were.
+    let rules = factory_rules();
+    let mut state = at_factory(&rules);
+    visit(&mut state, &rules);
+    play(&mut state, &rules, RED, ACCEPT).unwrap();
+    assert!(state.hire_dialog(RED).is_some());
+    let default = default_answer(&state, &rules, RED).unwrap();
+    assert_eq!(default, Answer::Hire(HireAnswer::Close));
+    let before = state.clone();
+    let events = play(&mut state, &rules, RED, GameCommand::Answer(default)).unwrap();
+    assert_eq!(events, [GameEvent::DecisionClosed { player: RED }]);
+    assert_eq!(state.hire_dialog(RED), None);
+    assert_eq!(observe(&state, &rules, Viewer::Player(RED)).decision, None);
+    assert_eq!(state.treasury(RED), before.treasury(RED));
+    assert_eq!(
+        state.adventure().hero(HERO).unwrap().army,
+        before.adventure().hero(HERO).unwrap().army
+    );
+    assert_eq!(state.heroes()[0].worn, before.heroes()[0].worn);
+    assert_eq!(state.heroes()[0].backpack, before.heroes()[0].backpack);
+}
