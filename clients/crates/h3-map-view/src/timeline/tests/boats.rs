@@ -375,6 +375,7 @@ fn on_record(x: u8, sea: Option<Sea>) -> impl FnOnce(&mut Start) {
             points: vec![Some(0)],
             revealed: vec![Vec::new()],
             sea,
+            battle: None,
         }]);
     }
 }

@@ -117,8 +117,10 @@ pub use week::{
 /// town's static part (its name, its events), in `TownId` order ([`Towns`]' `hash_into`). v2
 /// (E09 T17a): each town's day's mark after its forbidden set ([`Town::built_today`]; E09 design
 /// §26). v3 (E09 T25a): each town's fourteen available counts and its Portal after its mark
-/// ([`Town::available`], [`Town::portal`]; E09 design §40).
-pub const TOWN_STATE_HASH_VERSION: u32 = 3;
+/// ([`Town::available`], [`Town::portal`]; E09 design §40). v4 (E09 T47a2): each town's guild
+/// slots and Mana Vortex flag after its Portal, each static part's Aurora set after its events
+/// ([`Town::guild`], [`Town::vortex`], [`TownStatic::aurora`]; E09 design §86).
+pub const TOWN_STATE_HASH_VERSION: u32 = 4;
 
 /// Version of the town ruleset part's canonical hash encoding (ADR-0028 points 5 and 9; owned by
 /// the town lane). v1 (E09 T5a1; the constant since T4b): the first encoding, the parameters and

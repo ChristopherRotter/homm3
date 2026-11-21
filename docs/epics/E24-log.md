@@ -3279,3 +3279,23 @@ first minutes.
   exact. No viewer change: T5b plays them.
 - **Question:** MCL-Q47 (no terrain track asked for after a battle on the hero's own terrain; (a)
   as the original recommended, checked by ear at T6).
+
+### M4 T5b1 (2026-11-21; T5b cut in two by the user at its start: the hosting first)
+
+- **Asked at the start:** the cut (T5b1 the window's hosting, the sound on `HostSound`, a golden
+  replay's battles; T5b2 the fades, the result applied, MCL-Q47 by ear and T5a's three compared)
+  and the crate structure: the user took a dependency of `h3-map-view`'s binary on
+  `h3-battle-client` (and `h3-view`), not a binary over both libraries (design §5.20).
+- **Built** (*provisional* unless said; design §5.20): `Move::battle` (a walk's `BattleStarted`),
+  `Loop::battles`, `Replay::battles`; `engine::Command::Battle` after an answer that began one,
+  `director::Directed::battles` (at its box's release, or where an answer with no box is passed
+  over); the binary's `battles` (the record's `GameRecord::battles`, each loaded with
+  `Ground::load_battle` and run as a hosted element in the map's window before the map's frame
+  at its millisecond, the map's clock on from there), `audio::Player` on `HostSound` (`lend`,
+  `take_back`; the tracks added to it once decoded), `paint::Setup::battles`, `record`'s line of
+  the battles handed over; the purity test's binary-only list.
+- **Checked:** every battle of the attacking side's golden replay records handed over headless (12
+  in 10 records); `rewards-stone-guard-s1` and `dwellings-guards-s1` in the window under Xvfb
+  (`--check`: every battle closed, every map frame read back exact, every change the headless
+  loop's). Not handed over: a defending battle (`MCL-STUB-3`).
+

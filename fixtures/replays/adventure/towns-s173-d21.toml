@@ -139,72 +139,17 @@ commands = [
     "0 end-turn",
     "1 move 4 33,11,0 32,11,0 31,12,0 30,13,0 29,14,0 28,15,0 27,16,0 26,17,0 25,18,0 24,19,0 23,19,0 22,18,0",
     "1 battle shoot-wall 3",
-    "1 battle move 38",
-    "system battle move 66",
-    "1 battle move 23",
-    "1 battle move 157",
-    "1 battle shoot-wall 4",
-    "1 battle move 52",
-    "system battle move 46",
-    "1 battle move 110",
-    "1 battle move 154",
-    "1 battle shoot-wall 4",
-    "1 battle move 3",
-    "system battle move 32",
-    "1 battle move 40",
-    "1 battle move 105",
-    "1 battle shoot-wall 2",
+    "system battle move 95",
     "1 battle move 92",
     "system battle defend",
-    "1 battle move 4",
-    "1 battle move 172",
-    "1 battle shoot-wall 1",
-    "1 battle move 122",
-    "system battle move 83",
-    "1 battle move 91",
-    "1 battle move 157",
-    "1 battle shoot-wall 4",
-    "1 battle move 20",
-    "system battle move 48",
-    "1 battle move 122",
-    "1 battle move 125",
+    "1 battle move 40",
+    "1 battle move 106",
     "1 battle shoot-wall 3",
-    "1 battle move 8",
-    "system battle move 47",
-    "1 battle move 74",
-    "1 battle move 91",
-    "1 battle shoot-wall 3",
-    "1 battle move 26",
-    "system battle move 83",
-    "1 battle move 142",
-    "1 battle move 89",
-    "1 battle move 24",
-    "system battle move 13",
-    "1 battle move 90",
-    "1 battle move 38",
-    "1 battle move 56",
-    "system battle move 10",
-    "1 battle move 161",
-    "1 battle move 75",
-    "1 battle move 92",
-    "system battle move 42",
-    "1 battle move 173",
-    "1 battle move 91",
-    "1 battle move 25",
-    "system battle move 22",
-    "1 battle move 156",
-    "1 battle defend",
-    "1 battle move 29",
-    "system battle move 7",
-    "1 battle move 142",
-    "1 battle move 157",
-    "1 battle move 58",
-    "system battle move 109",
-    "1 battle move 75",
-    "1 battle move 137",
-    "1 battle move 145",
-    "system battle move 58",
-    "1 battle attack 4 59",
+    "system battle attack 2 108",
+    "1 battle attack 5 92",
+    "system battle move 78",
+    "1 battle attack 4 76",
+    "1 battle attack 5 106",
     "1 answer level-up second",
     "1 move 5 27,24,0 27,23,0 26,22,0 26,21,0 26,20,0 26,19,0 26,18,0 26,17,0 26,16,0 26,15,0 27,14,0 28,13,0",
     "1 end-turn",
@@ -245,15 +190,13 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x0435899d7d1f7245",
-    "0x37902eb0cba87c46",
-    "0x867fbd1f044ca1f9",
-    "0xe1d3271c781484c1",
-    "0xb80c2c8a6f10a88e",
-    "0xbeb6af396b3ef85f",
-    "0xd287a918dddb30cb",
-    "0x088dd1ae7871d856",
-    "0x8dbc237f5492a633",
+    "0x0efb856585ef8d93",
+    "0x8ca3f84675e341e4",
+    "0xead7fb417a64f24b",
+    "0xd3f371ce4343e5b7",
+    "0xe78f1d5658d5cd50",
+    "0xcc5c130acd9cf914",
+    "0x106a9840e692c454",
 ]
 
 [replay]
@@ -283,18 +226,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 37
+game_state_hash_version = 38
 adventure_state_hash_version = 27
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e09-towns-36.h3m"
 hash = "0x2f996b94548f5ae2"
-import_version = 27
+import_version = 28
 
 [result]
 day = 22
-final_hash = "0xd14c04dc464be595"
+final_hash = "0xc40d5dca2b66a194"
 
 [[players]]
 colour = 0

@@ -233,6 +233,33 @@ impl Towns {
         held
     }
 
+    /// Starts a week for the towns (E09 design §86; GAM-CAL-002's week): sets every town's Mana
+    /// Vortex flag ([`Town::vortex`]). Only the towns whose flag the Vortex cleared are written; a
+    /// store without one copies nothing.
+    pub fn start_week(&mut self) {
+        self.0
+            .iter_mut()
+            .filter(|store| store.towns.iter().any(|t| !t.vortex()))
+            .for_each(|store| {
+                Arc::make_mut(store)
+                    .towns
+                    .iter_mut()
+                    .filter(|t| !t.vortex())
+                    .for_each(|t| *t = Arc::new(t.with_vortex(true)));
+            });
+    }
+
+    /// Clears `town`'s Mana Vortex flag (E09 design §86, §93: a hero's spell points doubled there
+    /// this week); whether it was set. A town the store lacks or whose flag is clear changes
+    /// nothing; otherwise copies only the one town.
+    pub fn take_vortex(&mut self, town: TownId) -> bool {
+        let set = self.get(town).is_some_and(Town::vortex);
+        if set {
+            self.update(town, |t| t.with_vortex(false));
+        }
+        set
+    }
+
     /// Writes `record` as `town`'s (E09 design §40: the result of a rule over the town's own
     /// record, a week's, a month's, a garrison week's, the Portal's draw, increment 3's §42 to
     /// §46); whether the store holds the town. Copies only the one town; a town the store lacks
@@ -260,11 +287,14 @@ impl Towns {
 }
 
 impl CanonicalHash for Towns {
-    /// Encoding v3 (E09 T25a; v2 E09 T17a; v1 E09 T6a, the first): version; the number of towns;
-    /// each town in `TownId` order: its faction's handle, the bits of its ever-built and forbidden
-    /// sets, its day's mark (v2), its fourteen available counts and its Portal (0 empty, else 1,
-    /// the creature's handle and the count; v3); then each town's static part in `TownId` order:
-    /// its name (0 for none, else 1 and the text), its events (length, then each: `hash_event`).
+    /// Encoding v4 (E09 T47a2; v3 E09 T25a; v2 E09 T17a; v1 E09 T6a, the first): version; the
+    /// number of towns; each town in `TownId` order: its faction's handle, the bits of its
+    /// ever-built and forbidden sets, its day's mark (v2), its fourteen available counts and its
+    /// Portal (0 empty, else 1, the creature's handle and the count; v3), its guild's thirty slots
+    /// by level then slot (each 0 empty, else 1 and the spell's handle) and its Mana Vortex's flag
+    /// (v4); then each town's static part in `TownId` order: its name (0 for none, else 1 and the
+    /// text), its events (length, then each: `hash_event`), its Aurora set's sixteen bytes (its
+    /// bits, little-endian; v4).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(TOWN_STATE_HASH_VERSION);
         let (towns, statics) = self.parts();
@@ -283,6 +313,16 @@ impl CanonicalHash for Towns {
                     h.write_u16(p.count);
                 }
             }
+            for slot in town.guild().all() {
+                match slot {
+                    None => h.write_u8(0),
+                    Some(spell) => {
+                        h.write_u8(1);
+                        spell.hash_into(h);
+                    }
+                }
+            }
+            h.write_bool(town.vortex());
         }
         for part in statics {
             match &part.name {
@@ -296,6 +336,7 @@ impl CanonicalHash for Towns {
             for event in &part.events {
                 hash_event(event, h);
             }
+            h.write_bytes(&part.aurora.bits().to_le_bytes());
         }
     }
 }
@@ -330,17 +371,18 @@ mod tests {
     use std::vec;
     use std::vec::Vec;
 
-    use h3_content::{FactionId, ResourceId};
+    use h3_content::{FactionId, ResourceId, SpellId};
     use h3_contracts::{Moat, PlayerId};
     use h3_kernel::hash::hash_of;
 
     use super::*;
-    use crate::MAX_AVAILABLE;
     use crate::building::{BuildingId, BuildingSet};
     use crate::fixture::{
         CAPITOL, CASTLE, CITADEL, CITY_HALL, DWELLING_1, DWELLING_2, FORT, GOLD, KEEP, ORE, SILO,
         TAVERN, TOWN_HALL, UPG_DWELLING_1, VILLAGE_HALL, WILD, WOOD, core, part, town, town_of,
     };
+    use crate::guild::{GuildSlots, SpellSet};
+    use crate::{MAX_AVAILABLE, MAX_GUILD_SLOTS};
     use crate::{daily_income, has_tavern, siege};
 
     fn set(indices: &[usize]) -> BuildingSet {
@@ -376,6 +418,7 @@ mod tests {
                 TownStatic {
                     name: Some("Tirlan".into()),
                     events: vec![event()],
+                    aurora: SpellSet::of(&[SpellId::from_raw(3), SpellId::from_raw(69)]),
                 },
             ),
             (
@@ -421,12 +464,20 @@ mod tests {
     fn the_hash_covers_every_town_and_static_part() {
         let base = hash_of(&Towns::new(towns()).unwrap());
         // Pinned: a change of the encoding bumps `TOWN_STATE_HASH_VERSION` and this value.
-        assert_eq!(base, 0xFA14_A109_A1EC_2745);
+        assert_eq!(base, 0x79C0_7378_D0E0_4452);
         assert_eq!(
             hash_of(&Towns::default()),
             hash_of(&Towns::new(Vec::new()).unwrap())
         );
-        let changed: [fn(&mut Parts); 19] = [
+        let changed: [fn(&mut Parts); 26] = [
+            // The guild's slots, the Vortex's flag and the Aurora set (v4).
+            |t| t[1].0 = t[1].0.with_guild(guild(&[(0, 0, 3)])),
+            |t| t[0].0 = t[0].0.with_guild(guild(&[(4, 1, 69)])),
+            |t| t[1].0 = t[1].0.with_guild(guild(&[(0, MAX_GUILD_SLOTS - 1, 0)])),
+            |t| t[1].0 = t[1].0.with_vortex(false),
+            |t| t[0].1.aurora = SpellSet::of(&[spell(3)]),
+            |t| t[1].1.aurora = SpellSet::of(&[spell(127)]),
+            |t| t[0].1.aurora = SpellSet::EMPTY,
             |t| t[1].0 = Town::new(FactionId::from_raw(7), set(&[0]), BuildingSet::EMPTY),
             |t| t[1].0 = t[1].0.rebuilt(set(&[0]), true),
             // The counts and the Portal (v3).
@@ -468,6 +519,79 @@ mod tests {
         }
     }
 
+    /// The handle `raw`'s spell.
+    const fn spell(raw: u16) -> SpellId {
+        SpellId::from_raw(raw)
+    }
+
+    /// Guild slots holding each `(level index, slot, spell handle)`.
+    fn guild(slots: &[(usize, usize, u16)]) -> GuildSlots {
+        slots
+            .iter()
+            .fold(GuildSlots::EMPTY, |guild, &(index, slot, raw)| {
+                guild.with(index, slot, spell(raw))
+            })
+    }
+
+    #[test]
+    fn a_town_keeps_its_guild_and_flag_and_the_static_part_its_aurora_set() {
+        let store = Towns::new(towns()).unwrap();
+        let first = TownId::new(0);
+        // From the build: every slot empty, the flag set; the slots as the build writes them.
+        let town = store.get(first).unwrap();
+        assert!(town.guild().all().all(|slot| slot.is_none()) && town.vortex());
+        let drawn = town.with_guild(guild(&[(0, 0, 3), (0, 1, 5), (4, 0, 69)]));
+        assert_eq!(
+            (drawn.guild().slot(1, 1), drawn.guild().slot(5, 0)),
+            (Some(spell(5)), Some(spell(69)))
+        );
+        assert_eq!(drawn.guild().all().flatten().count(), 3);
+        assert_eq!(drawn.guild().all().count(), 5 * MAX_GUILD_SLOTS);
+        assert_eq!(
+            store
+                .town_static(first)
+                .unwrap()
+                .aurora
+                .iter()
+                .collect::<Vec<_>>(),
+            [spell(3), spell(69)]
+        );
+    }
+
+    #[test]
+    fn the_vortex_clears_one_town_of_a_fork_and_the_week_sets_every_flag() {
+        let store = keep_towns();
+        let mut fork = store.clone();
+        let second = TownId::new(1);
+        // The Vortex clears the flag once, writing the one town; again, or a town the store
+        // lacks, nothing.
+        assert!(fork.take_vortex(second));
+        assert!(!fork.get(second).unwrap().vortex() && store.get(second).unwrap().vortex());
+        let (old, new) = stores(&store, &fork);
+        assert!(!Arc::ptr_eq(old, new) && Arc::ptr_eq(&old.statics, &new.statics));
+        assert!(Arc::ptr_eq(&old.towns[0], &new.towns[0]));
+        assert!(Arc::ptr_eq(&old.towns[2], &new.towns[2]));
+        assert_ne!(hash_of(&fork), hash_of(&store));
+        assert!(!fork.take_vortex(second) && !fork.take_vortex(TownId::new(3)));
+        // The week sets every cleared flag, writing only those towns.
+        assert!(fork.take_vortex(TownId::new(2)));
+        let before = Arc::clone(&stores(&fork, &fork).0.towns[0]);
+        fork.start_week();
+        assert_eq!(fork, store);
+        assert!(Arc::ptr_eq(&stores(&fork, &fork).0.towns[0], &before));
+        // With every flag set, or no town, the week copies nothing.
+        let mut again = store.clone();
+        again.start_week();
+        assert!(Arc::ptr_eq(
+            stores(&store, &again).0,
+            stores(&store, &again).1
+        ));
+        let mut empty = Towns::default();
+        empty.start_week();
+        assert!(!empty.take_vortex(second));
+        assert_eq!(empty, Towns::default());
+    }
+
     /// The Portal holding `count` of the creature of handle `raw`.
     const fn imp(raw: u16, count: u16) -> Summoned {
         Summoned {
@@ -483,7 +607,7 @@ mod tests {
     fn keep_towns() -> Towns {
         let named = TownStatic {
             name: Some("Tirlan".into()),
-            events: Vec::new(),
+            ..TownStatic::default()
         };
         Towns::new(vec![
             (town(&HALLS), TownStatic::default()),

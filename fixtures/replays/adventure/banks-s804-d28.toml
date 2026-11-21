@@ -592,29 +592,29 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x4f1ac69b71512692",
-    "0x18130eabb1bb9adc",
-    "0xd5284896d1ed2f10",
-    "0x796f57c9327f879e",
-    "0xc9acb7656dcae74f",
-    "0x509cd426bbfd9593",
-    "0x5763980b1b6a97d7",
-    "0xc2f59d1520c10df5",
-    "0xcf393f317eb536aa",
-    "0x1f3b92aa509b0f29",
-    "0x6c6f318a98509285",
-    "0xb438abf037048930",
-    "0x74eac1b9b9a542f2",
-    "0xe825fa00518a21ac",
-    "0x86ad332f97d44cd6",
-    "0x01fe715720fc576a",
-    "0xc2b5454555b04307",
-    "0xdcb7b319bcf8d50b",
-    "0xa1ad1b58adcec063",
-    "0xd511c1ad503f84f8",
-    "0x933310ae2d6eb7cc",
-    "0x87b7d9c3df92eb05",
-    "0xcfffc88cf83dceca",
+    "0x8e1ba3fce69a7ed2",
+    "0x44425a060ca6c014",
+    "0x82b91d373c2cf08e",
+    "0xb51f8140050f2aa8",
+    "0x8ecf3b21d7ea2af1",
+    "0x5d662ad6ef5107ad",
+    "0x7cb53f85388bfa5f",
+    "0x8513aa472a942aa9",
+    "0xfe8c8e71a29b91ac",
+    "0xbfbcb9bbdeaf7e5b",
+    "0xaccdd5da9ee136c1",
+    "0xd6455a7a4d700c74",
+    "0xdc8435cd3f5c213e",
+    "0x22f60d10f7f38ee4",
+    "0x1d48c90fd3eb884e",
+    "0xb43981d2cabf74be",
+    "0x8e44b74adc4fccc7",
+    "0x16f0182df41b78cb",
+    "0x4b389c2bba828faf",
+    "0x7edd3562aefb3216",
+    "0x0c980cd01a9efeae",
+    "0x2b5258c9672309a7",
+    "0xc4ad698e308b47b8",
 ]
 
 [replay]
@@ -644,18 +644,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 37
+game_state_hash_version = 38
 adventure_state_hash_version = 27
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-banks-36.h3m"
 hash = "0xda3dd80d4aa94083"
-import_version = 27
+import_version = 28
 
 [result]
 day = 29
-final_hash = "0x31b7575f8a4ccc38"
+final_hash = "0x28337347703ada60"
 
 [[players]]
 colour = 0

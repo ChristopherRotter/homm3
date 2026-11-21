@@ -434,6 +434,11 @@ impl GameState {
             .map_err(GameSetupError::Adventure)?;
         // E09 T18a: the Shipyards without water, the spots fixed by the static map (TWN-SET-011).
         town::without_water(&mut towns, adventure.map(), rules);
+        // rule: TWN-GLD-002
+        // E09 T47a2: every town's guild and Aurora set, the towns' stream's first draws (E09
+        // decision 179), before any week draws from it.
+        let mut towns_rng = Rng::for_stream(seed, StreamId::TOWNS);
+        town::draw_guilds(setup, rules, &mut towns, &mut towns_rng);
         // rule: TWN-CAP-001
         let reveals: Vec<TownReveal> = towns
             .iter()
@@ -496,7 +501,7 @@ impl GameState {
             roe: setup.roe,
             calendar: Calendar::new(setup, &towns),
             rng: Rng::for_stream(seed, StreamId::GAME),
-            towns_rng: Rng::for_stream(seed, StreamId::TOWNS),
+            towns_rng,
             taverns_rng: Rng::for_stream(seed, StreamId::TAVERNS),
             heroes,
             pool: Arc::new(pool),

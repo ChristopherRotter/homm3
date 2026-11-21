@@ -2,6 +2,7 @@
 //! prints; what it computes comes from the pure library.
 
 mod audio;
+mod battles;
 mod files;
 mod gate;
 mod paint;

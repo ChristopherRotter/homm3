@@ -200,5 +200,8 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// market's object index, type and anchor). v36 (E08 T134a): an Altar of Sacrifice's decision
 /// among the decisions (GAM-DEC-012: its tag 11, the owner, the hero, the Altar's object index,
 /// type and anchor). v37 (E08 T134b1): a Hill Fort's decision among the decisions (GAM-DEC-013:
-/// its tag 12, the owner, the hero, the Hill Fort's object index, type and anchor).
-pub const GAME_STATE_HASH_VERSION: u32 = 37;
+/// its tag 12, the owner, the hero, the Hill Fort's object index, type and anchor). v38 (E09
+/// T47a2): the store of towns' encoding v4, each town's guild slots and Mana Vortex flag and each
+/// static part's Aurora set (`h3_towns::Town::guild`, `vortex`, `TownStatic::aurora`; E09 design
+/// §86); the towns' stream's first draws the guilds' at the build (E09 decision 179).
+pub const GAME_STATE_HASH_VERSION: u32 = 38;

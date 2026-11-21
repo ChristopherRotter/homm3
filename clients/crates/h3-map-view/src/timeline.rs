@@ -935,6 +935,10 @@ pub struct Move {
     /// What its last step does with a boat (E24 M4 T4b2, design §5.15): the record's boarding or
     /// landing; none, nothing (on a record the boats' rules of Part A are not asked).
     pub sea: Option<Sea>,
+    /// The battle the walk began (E24 M4 T5b1, design §5.20, *provisional*): the record's number
+    /// of the `GameEvents` whose `BattleStarted` began it; at the walk's end the map hands the
+    /// battle over ([`Loop::battles`]). None: no battle.
+    pub battle: Option<u32>,
 }
 
 /// A record's walk's last step with a boat (E24 M4 T4b2, design §5.15, *provisional*): the
@@ -1531,6 +1535,9 @@ pub struct Loop {
     walking: Option<(usize, usize)>,
     walked_tiles: Walked,
     off_record: Option<Unplayable>,
+    /// The battles handed over so far (E24 M4 T5b1): each walk's end that began one, its
+    /// millisecond and [`Move::battle`].
+    battles: Vec<(u32, u32)>,
 }
 
 /// A computer player's turn under way (E24 M4 T1b2, design §5.2, *provisional*): its facts, kind
@@ -1899,6 +1906,7 @@ impl Loop {
             moves: start.moves.clone().map(Arc::new),
             next_move: 0,
             walking: None,
+            battles: Vec::new(),
             walked_tiles: Arc::new(Vec::new()),
             off_record: None,
             rules,
@@ -2307,6 +2315,15 @@ impl Loop {
         self.moves
             .as_ref()
             .map_or(0, |m| m.len().saturating_sub(self.next_move))
+    }
+
+    /// The battles the map handed over so far (E24 M4 T5b1, design §5.20, *provisional*), in
+    /// order: each at the millisecond its walk ended, with the record's number of the
+    /// `GameEvents` that began it ([`Move::battle`]). The battle takes none of the map's time: a
+    /// host shows it before that millisecond's frame and goes on from there.
+    #[must_use]
+    pub fn battles(&self) -> &[(u32, u32)] {
+        &self.battles
     }
 
     /// Whether a box is open (E24 M4 T4c: the record player's): a message box, a question or a
@@ -5077,10 +5094,14 @@ impl Loop {
     fn finish(&mut self, t: u32, key: bool) {
         // One of the engine's walks ends whole (E24 M4 T4a2): a step it does not take is off the
         // record (a walk a message ended).
-        if let (Some(moves), Some((m, k))) = (&self.moves, self.walking.take())
-            && let Some(&left) = moves.get(m).and_then(|w| w.tiles.get(k))
-        {
-            self.off(left);
+        if let (Some(moves), Some((m, k))) = (&self.moves, self.walking.take()) {
+            // The battle the walk began handed over at its end (E24 M4 T5b1, design §5.20).
+            if let Some(n) = moves.get(m).and_then(|w| w.battle) {
+                self.battles.push((t, n));
+            }
+            if let Some(&left) = moves.get(m).and_then(|w| w.tiles.get(k)) {
+                self.off(left);
+            }
         }
         self.stand();
         if let Some(sound) = &mut self.sound {

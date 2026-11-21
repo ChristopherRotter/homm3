@@ -420,7 +420,10 @@
 //!
 //! - `towns-s173-d21`: on day 2 Sorsha attacks blue's Tower, Yog defending with the garrison merged
 //!   into his army, and loses; on day 12 Valeska enters red's random town; on day 16 Yog besieges
-//!   the neutral town aligned to blue, its garrison alone, wins and captures it for blue.
+//!   the neutral town aligned to blue, its garrison alone, wins and captures it for blue (E09
+//!   T47a2: that siege's battle played again by `h3_battle_ai::choose` for both sides, 11
+//!   commands for the 67 recorded, the rest of the commands kept: the guilds' draws at the build
+//!   moved the towns' stream, so the garrison's weeks grew it otherwise and it acts first).
 //! - `towns-s1702-d21`: on day 7 hero 6 besieges the Tower, its garrison alone after Yog left, and
 //!   loses; on day 12 the random hero takes blue's main Stronghold undefended, its Capitol limited
 //!   to a City Hall (`TownChanged`: red keeps Haven's); hero battles on days 16 (Gurnisson against

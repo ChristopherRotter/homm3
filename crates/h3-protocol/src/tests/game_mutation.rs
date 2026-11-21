@@ -431,7 +431,8 @@ fn the_samples_hold_every_kind_of_a_games_frame() {
     }
     // The hand-built events and commands of every kind join them.
     assert!(FRAMES.len() > messages.len() + 30);
-    assert!(COMMANDS.len() > every_command().len() + 200);
+    // The replay's own commands (E09 T47a2: `towns-s173-d21` holds 189 since its siege's re-play).
+    assert!(COMMANDS.len() > every_command().len() + 150);
 }
 
 #[test]

@@ -2327,3 +2327,86 @@ fn a_record_s_boats() {
     };
     assert_eq!(seas, [Some(Sea::Board(2)), Some(Sea::Land(boat)), None]);
 }
+
+#[test]
+fn a_record_s_battles() {
+    // E24 M4 T5b1 (design §5.20): a walk whose events begin a battle names their message; a
+    // battle begun with no walk of the viewer's open (another player's) names none; an answer's is
+    // a command after it.
+    use h3_map_view::engine::Command;
+    use h3_protocol::wire::game::{
+        AdventureCommand, AdventureEvent, Answer, Consent, GameCommand, GameEvent, Pos,
+    };
+    let g = game();
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .id;
+    let pos = |x, y| Pos { x, y, level: 0 };
+    let moved = |x, y| {
+        accepted(GameCommand::Adventure {
+            command: AdventureCommand::MoveHero {
+                hero: red,
+                path: vec![pos(x, y)],
+            },
+        })
+    };
+    let stepped = |x, y| GameEvent::Adventure {
+        event: AdventureEvent::HeroStepped {
+            hero: red,
+            from: None,
+            to: Some(pos(x, y)),
+        },
+    };
+    let started = |x, y| GameEvent::BattleStarted {
+        heroes: [Some(red), None],
+        tile: pos(x, y),
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            // A walk into a battle, its start told twice (the first kept); a walk without one.
+            moved(12, 10),
+            ServerMessage::GameEvents {
+                n: 61,
+                events: vec![stepped(11, 10), started(12, 10)],
+            },
+            events(vec![started(12, 10)]),
+            moved(11, 11),
+            events(vec![stepped(11, 11)]),
+            ServerMessage::GameTurn {
+                n: 70,
+                legal: Vec::new(),
+                castable: Vec::new(),
+            },
+            // No walk open: none.
+            events(vec![started(20, 20)]),
+            // An answer's (a guards' question accepted): a command of its own after it, once.
+            accepted(GameCommand::Answer {
+                answer: Answer::Offer {
+                    consent: Consent::Accept,
+                },
+            }),
+            events(vec![started(13, 13)]),
+            events(vec![started(13, 13)]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let battles: Vec<_> = played.moves.iter().map(|m| m.battle).collect();
+    assert_eq!(battles, [Some(61), None]);
+    assert_eq!(
+        played.commands[2..],
+        [
+            Command::Answer(Answer::Offer {
+                consent: Consent::Accept
+            }),
+            Command::Battle(51)
+        ]
+    );
+}

@@ -35,6 +35,13 @@ h3-sdl.workspace = true
 nanomp3.workspace = true
 # The packs a record's rules are read from (E24 M4 T3a): the binary only (`render --record`).
 h3-files.workspace = true
+# A record's battles in the window (E24 M4 T5b1, the user's choice at its start: a dependency on the
+# client lane's crate, not a binary over both): the battle client's hosted element
+# (`window::Hosted`), its ground from a whole game's battle (`battle::Ground::load_battle`) and the
+# host's sound (`audio::HostSound`), the map's sound on it too; `h3-view` for the battle's record
+# (`game_record`), its keys and its combat options' settings. The binary only.
+h3-battle-client.workspace = true
+h3-view.workspace = true
 
 [dev-dependencies]
 # A player's id in the engine's tests (E24 M4 T3a: a game observed for Red).

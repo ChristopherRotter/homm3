@@ -406,7 +406,7 @@ the music, and nobody has listened. Options: (a) as the original: no track asked
 `HostSound` fades the tune out into it, E17 design §13.6); (c) (a) in the original's profile
 (`--bugs original`), (b) in the client's. **Recommended (a)**, checked by ear at M4 T6's hand test
 (the original on the user's machine: a battle won, then a wait without moving). Built as (a) at
-T5b meanwhile. Blocks nothing.
+T5b1 (2026-11-21: no track asked for at the return). Blocks nothing.
 
 ### Town lane (`TWN-Q<n>`)
 

@@ -12,6 +12,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-21 (the town lane, E09 T47a2, `town/e09-t47a2`, `cross-lane`; **informational, nothing
+  to do**): the game state hash v38 and map import v28 moved `h3-server`'s `tests/record.rs`
+  literals (`army-dialog-s1`'s checkpoint and final hash, `import_version`), and
+  `towns-s173-d21` holds 189 commands since its siege was played again (244 before), so
+  `h3-protocol`'s `game_mutation` sample bound is `+ 150`; the fold, session and record tests pass
+  (with E08 T135b1's seven `trades-*` goldens, re-recorded here for v38 and v28).
+
 - 2026-11-21 (the adventure lane, E08 T135b1, `adventure/e08-t135b1`, `cross-lane` with the
   user's consent, E08 decision 391; **your tests changed, mechanical; for your review**): seven new
   golden adventure replays (`trades-*` on `fixtures/maps/e08-trades-36.h3m`), so the counts of

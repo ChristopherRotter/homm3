@@ -2,10 +2,11 @@
 //! hero pool's inputs (E09 T7a1; design note `docs/epics/E09-design.md` §7, survey
 //! `docs/rules/surveys/E09-towns.md` §1 to §5). Since E09 T8a1 a town's static layer is typed
 //! (design note §8, [`object`]): the type `town`, its owner and its garrison's formation; the game
-//! builds the rest (E09 T7b2a: the towns; T7b2b: the main towns' heroes).
+//! builds the rest (E09 T7b2a: the towns; T7b2b: the main towns' heroes). Since E09 T47a2 (map
+//! import v28, design §84) a town's required and banned spells (TWN-SET-012).
 
 use h3_adventure::{Holds, ObjectSetup, Pos};
-use h3_content::{Formation, HeroTypeId};
+use h3_content::{Formation, HeroTypeId, SpellId};
 use h3_contracts::{PlayerId, TownId};
 use h3_game::{
     BuildingsSetup, FactionChoice, FactionSet, GameRuleset, GarrisonCreature, GarrisonStack,
@@ -15,7 +16,7 @@ use h3_game::{
 use super::{
     ImportError, blocks, codes, creature, entrances, object_owner, random_stack, resource,
 };
-use crate::model::{Army, Body, Buildings, RawMap, Template, TownBody, TownEvent, Version};
+use crate::model::{Army, Bits, Body, Buildings, RawMap, Template, TownBody, TownEvent, Version};
 use crate::model::{Object, Text};
 
 /// The factions by the format's town codes, `TOWNTYPE.TXT`'s order (a class 98 town's subclass,
@@ -42,6 +43,10 @@ const CONFLUX_HEROES: core::ops::Range<usize> = 128..144;
 
 /// The format's hero types (`codes::HERO_TYPES`), 0 to 155.
 const HERO_TYPE_CODES: usize = codes::HERO_TYPES.len();
+
+/// The spells a town's sets name (survey `E09-guild.md` §3.4): the hero spells, codes 0 to 69;
+/// the sets' bits 70 and 71 are dropped.
+const TOWN_SPELLS: usize = 70;
 
 /// The format's town alignment byte for none (SoD's "same as owner or random"; `0xFF` before SoD).
 const NO_ALIGNMENT: u8 = 0xFF;
@@ -147,8 +152,9 @@ pub(super) fn object(
 /// The towns (classes 77 and 98) in the map's order, each as the map gives it (design note §5 and
 /// §7): a town's faction by its subclass ([`FACTIONS`]), a random town's by its SoD alignment;
 /// the buildings' slots as stored; the custom garrison, a random stack's code read as its level
-/// and upgrade, a stack of count 0 an empty slot; the name (Windows-1252); the events. An object
-/// of these classes without a town's body (never the reader's) is a neutral town's defaults.
+/// and upgrade, a stack of count 0 an empty slot; the name (Windows-1252); the events; since E09
+/// T47a2 the required and banned spells ([`town_spells`], TWN-SET-012). An object of these
+/// classes without a town's body (never the reader's) is a neutral town's defaults.
 ///
 /// # Errors
 ///
@@ -209,9 +215,28 @@ pub(super) fn towns(
                     .iter()
                     .map(|event| town_event(rules, colours, event))
                     .collect::<Result<_, _>>()?,
+                required_spells: town_spells(rules, body.required_spells.as_ref()),
+                banned_spells: town_spells(rules, Some(&body.banned_spells)),
             })
         })
         .collect()
+}
+
+/// A town's set of spells (TWN-SET-012; E09 design §84, survey `E09-guild.md` §3.4): the spell of
+/// each set bit's code from 0 to 69 (bit `i % 8` of byte `i / 8`), as the map-wide set's
+/// (GAM-SET-003), in spell order, each once; none for a set the map does not give (an RoE map's
+/// required spells). The bits past 69 are dropped, as the original's reader drops them; a spell
+/// the ruleset lacks is left out, as the pool's hero types are ([`pool`]): no guild can draw it.
+// rule: TWN-SET-012
+fn town_spells(rules: &GameRuleset, bits: Option<&Bits>) -> Vec<SpellId> {
+    let mut spells: Vec<SpellId> = (0..TOWN_SPELLS)
+        .filter(|&code| bits.is_some_and(|bits| bits.get(code)))
+        .filter_map(|code| codes::SPELLS.get(code))
+        .filter_map(|key| rules.core().spell_by_key(key))
+        .collect();
+    spells.sort_unstable();
+    spells.dedup();
+    spells
 }
 
 /// A random town's alignment byte (survey §2.3): `0xFF` none, 0 to 7 a colour; 8 to 254 read

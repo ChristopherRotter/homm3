@@ -4601,3 +4601,53 @@ harness's new battle step (below).
   `ended` where it comes back); who draws the switch's fades (the map's out, the battle's in and
   out, the map's in), the host or the element, is T5b's to settle with the battle's first frame
   (the battle client's comparisons start at the battle shown whole); the dissolves are §5.7's.
+### 5.20 A record's battles in the window (M4 T5b1)
+
+T5b cut in two by the user at its start (2026-11-21): the window's hosting first (T5b1), the switch
+and the result as the original's, compared, second (T5b2). The crate structure (the user, the same
+day): `h3-map-view`'s package depends on the client lane's `h3-battle-client` (and on `h3-view`),
+its binary only (`tests/purity.rs`' binary-only list); rejected: a new binary crate over both
+libraries with the window's and the sound's adapters moved into it. So the map viewer's binary is
+the game's top host: `h3-battle-client` cannot depend back (M5's shell an element of it too).
+Not a reading: the hand-over's place is the record's, its look a plain cut.
+
+- **Where the map hands a battle over** (*provisional*): a record's battle begun by one of the
+  viewer's walks (`engine::played`: the walk's `GameEvents` hold `BattleStarted`, `Move::battle`
+  its message's number) at the walk's end (`Loop::finish`, `Loop::battles`, `Replay::battles`);
+  one begun by an answer (a guards' question accepted: a dwelling's, a mine's, Pandora's Box's)
+  where the answer's box closes, its key's release, or where the record player passes the answer
+  over with no box open (`Command::Battle` after the answer, `director::Directed::battles`). A
+  battle begun otherwise (another player's attack on the viewer, a defending battle) is not
+  handed over (`MCL-STUB-3`; §5.19's "not read"). The battle is the first of
+  `GameRecord::battles()` whose snapshot follows that message (`InGame::opened`).
+- **The window** (`window --record`, the binary's `battles`): before the map's frame at the
+  hand-over's millisecond, the battle's element (`window::Hosted`, E17 design §13.2) runs its
+  passes in the map's window to its closed result window: `Ground::load_battle` (watched, no side
+  played; the record's packs folder and the installation), the battle window's keys (the keys
+  file's `[battle]` table over the defaults), the combat options' settings (a first run's, or
+  `settings.toml` here), the battle's frames presented whole as they fall due, its cursor drawn
+  or the hardware's as the map's; an unattended run presses its result's OK. Then the map's clock
+  goes on from the hand-over's millisecond, as if the battle took none (the harness's battle
+  step's way, §5.19), the cursor and the whole frame set again. Esc over the battle quits the
+  window; a restart hands the battles over again.
+- **The sound on the host's** (`audio::Player` on `h3_battle_client::audio::HostSound`, E17 design
+  §13.6): the device and the music the battle client's, the map's step, ambient and once-played
+  streams on its device, its tracks decoded on threads and added to it; lent to the battle with
+  the map's effects stopped (`adventure_manager_exit` 0x4077E0: the track plays on into the
+  battle) and handed back with the battle's streams removed. No track is asked for at the return
+  (MCL-Q47 (a)): the result's tune plays out and the map is silent until its timeline asks for one.
+- **The map after the battle** is the record's as the timeline folds it: the beaten monster still
+  drawn, the loser hero still there, a guarded mine's boxes and flag as before (T5b2's, §5.19).
+- **Checked:** `h3-map-view record` names the battles each record hands over; of the golden
+  replays with battles (`fixtures/replays/adventure/`, `h3-server record`), every battle of the
+  attacking player's records (`rewards-stone-guard-s1`, `rewards-event-guard-s1`,
+  `rewards-guarded-box-s1`, `dwellings-guards-s1` (two), `economy-guards-s1` (Blue's),
+  `sea-deck-monster-s1`, `sea-landing-guards-s1`, `teleporters-exit-battle-s1`,
+  `teleporters-guard-s1`, `teleporters-whirlpool-battle-s1`), none of a defender's (the two
+  teleporters' Blue: `MCL-STUB-3`); `window --record … --check` under Xvfb with SDL's `disk` audio
+  for `rewards-stone-guard-s1` (60 s: the battle's 60 frames, then 286 of 286 map frames read back
+  exact, 285 of 285 changes the headless loop's) and `dwellings-guards-s1` (90 s: both battles,
+  393 of 393 exact, 392 of 392).
+- *Provisional*: the names; the plain cut; the battle's keys and settings as `h3-view window`'s;
+  its fidgets' seed 0; the map's clock as if the battle took none.
+

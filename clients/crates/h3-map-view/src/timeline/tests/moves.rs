@@ -36,6 +36,7 @@ fn east_move() -> Move {
             Vec::new(),
         ],
         sea: None,
+        battle: None,
     }
 }
 
@@ -88,6 +89,7 @@ fn a_key_s_step_takes_the_next_walk() {
         points: vec![Some(1460)],
         revealed: vec![Vec::new()],
         sea: None,
+        battle: None,
     };
     let mut l = on_record(4, Vec::new(), vec![step]);
     l.run(1, &[Action::Step(Direction::East)]).unwrap();
@@ -120,6 +122,7 @@ fn a_step_off_the_record_refuses_its_millisecond() {
         points: vec![None; 5],
         revealed: vec![Vec::new(); 5],
         sea: None,
+        battle: None,
     };
     let mut l = on_record(4, vec![east()], vec![longer]);
     l.run(1, &[click]).unwrap();

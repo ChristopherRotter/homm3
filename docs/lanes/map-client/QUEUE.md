@@ -53,13 +53,15 @@ the engine lanes' inboxes, its gap shown in the comparison, never a rule copied 
   2026-10-31: complete, E17 M7 T3a to T3c). **Status:** cut in two by the user at its start
   (2026-11-21, the reading first): **T5a done** (the reading and the recordings: the log's "M4
   T5a", design §5.19; the harness's battle step; `battle-won`, `battle-mine`, `battle-retreat` in
-  `map/to-record.toml`; MCL-Q47); **T5b next**: the viewer (`h3-map-view`'s window hosting
-  `h3-battle-client`'s element, the map's sound on `HostSound`; a record's battles played,
-  `GameRecord::battles()`, and the map after them as §5.19 reads it; T5a's three moved into
-  `sequences.toml` and compared; a golden replay's battles in the window; `check.sh`). Large:
-  confirm its cut at its start (seam: the window's hosting first, the switch and the result
-  compared second); its first question, the crate structure (a dependency on the client lane's
-  crate or a binary over both libraries, M4 T0's decision), for the user then.
+  `map/to-record.toml`; MCL-Q47); T5b cut in two by the user at its start (2026-11-21, the
+  hosting first; the crate structure: `h3-map-view`'s binary depends on `h3-battle-client`, not a
+  binary over both): **T5b1 done** (the log's "M4 T5b1", design §5.20: a record's battles hosted
+  in the map's window, a walk's at its end and an answer's where its box closes, a plain cut; the
+  map's sound on `HostSound`; `MCL-STUB-3`, a defending battle); **T5b2 next**: the switch and the
+  result as the original's (§5.19: the map's fade out, the battle's in and out, the map's in, who
+  draws them settled with the battle's first frame; the beaten monster's and the loser hero's
+  dissolves, a guarded mine's boxes and flag, the map after the battle; MCL-Q47 (a) as built, by
+  ear at T6; T5a's three moved into `sequences.toml` and compared with `drawn`; `check.sh`).
 
 ### E24 M4 T6 — M4's closure
 
