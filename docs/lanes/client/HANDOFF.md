@@ -5,24 +5,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 74). **M1 to M3 closed** (2026-11-13, -16, -19; `E27-archive.md`; the build record
+  to 77). **M1 to M3 closed** (2026-11-13, -16, -19; `E27-archive.md`; the build record
   `E27-log.md`; the readings `E27-design.md` §1 to §33): the start's clips and sound, the menus,
   the hot seat's names, the scenario screen (list, panel, advanced options, random map, the begin:
   the setup validated and kept for E24 M5, play's stub `CLT-STUB-13`). **M4** (decision 69: around
-  play but outside it; a **new M5 in play**, refined once the shell hosts play, E24 M5): T1a, T1b
-  (High Scores, its scores file) and T2 (Credits) done 2026-11-19; T3a (the adventure replay
-  format v20 with the players' choices) and T3b (the client's save file and its load,
-  `h3-battle-client`'s `save`, design §37), T4a (the load mode read and recorded, design §38),
-  T4b1 (the load mode's screen and the client's saves, §39) and **T4b2** (Delete's question and
-  its end, the notice with no saves, Load's end at play's stub through `save::load`; §40;
-  `scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5) done 2026-11-20;
-  **T5a** (decision 75: the hot-seat load read, two hot-seat makers, `adv-load` again and
-  `adv-load-more`; §41) and **T5b1** (decision 76: the hot seat's load screen, the save's rows,
-  the names placed, `h3-view save` for a hot seat; §42; `mp-load` 6 of 6, `adv-load` 14 of 19,
-  `adv-load-more` 2 of 2) and **T5b2** (the flags: a moved name takes its colour's saved choices,
-  CLT-Q110 (b)'s press only on a saved human's colour; Random Map's whole redraw in a load; §43;
-  `adv-load` 19 of 19) done 2026-11-21. **Next: M4 T6** (M4's closure and the user's checkpoint;
-  the queue).
+  play but outside it; a **new M5 in play**, refined once the shell hosts play, E24 M5): T1a to
+  T4b2 done 2026-11-19 and -20 (High Scores, Credits, the save file, the single load; the epic's
+  M4 table), T5a, T5b1 and T5b2 (the hot-seat load read, its screen and its flags; design §41 to
+  §43; `mp-load` 6 of 6, `adv-load` 19 of 19, `adv-load-more` 2 of 2) done 2026-11-21. **Next: M4
+  T6a** (M4's reviews and the replay; T6 cut in two, decision 77; then T6b, the closure; the
+  queue).
   Decisions to carry (all: the epic's list): the dialogs' input one implementation (20;
   `h3_ui::input`); the shell's code as the battle's (21); every pixel of a Smacker clip through
   its palette (24); every clip's sound at the effects setting (27); a menu opening anew takes the
@@ -75,7 +67,8 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   as T5b1's. Kept whole. Read Random Map's case 130 (every item drawn
   and the redraw after its toggle, in a load too). Built a flag's press in a load (the saved
   choices taken, the client's profile's press only on a saved human's colour) and Random Map's
-  whole redraw there. `adv-load` 19 of 19 exact. Record: `E27-log.md`, "M4 T5b2".
+  whole redraw there. `adv-load` 19 of 19 exact. T6 cut in two (decision 77), T6a next session.
+  Record: `E27-log.md`, "M4 T5b2".
 - **2026-11-21, E27 M4 T5b1 (done; `client/e27-m4-t5b1`).** The PC's 64 files, the manuals and
   the help files staged (the PC's shell down: sizes against its listing, the LODs and executables
   against `installation.md`'s SHA-256). T5b cut in two, CLT-Q160 (a), CLT-Q161 (b) (decision 76).

@@ -1885,3 +1885,4 @@ Kept whole (no seam needed).
 - **Gates:** `check.sh --no-coverage`, the coverage of `h3-view` and `h3-ui`, the real-asset gate,
   the client scope's verify with the original data.
 - **The agent's calls** (*provisional*: M4's review list items 41 and 42).
+- **The user** (at the end): T6 cut in two, T6a in the next session (decision 77).

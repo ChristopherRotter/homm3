@@ -15,13 +15,21 @@ computer must be online); never from the installation. The captures need the fiv
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M4 T6
+#### E27 M4 T6a
 
-T6 M4's closure (the epic's M4 table): a fresh reviewer agent first (M4's screens, the code and
-its review list items 1 to 42), M4's review list to the user (the checkpoint), M4's scope,
-decisions and tasks to `E27-archive.md`, the README's epic row (a `shared/` PR), and M5's
-refinement once the shell hosts play (E24 M5), else its prerequisites recorded. The captures at a
-milestone's closure: the runbook ("Which captures a change needs").
+T6a M4's reviews (decision 77, the user's cut of T6): fresh reviewer agents one after another, one
+per area (High Scores and Credits: T1a to T2; the save file and the single load: T3a to T4b2; the
+hot-seat load: T5a to T5b2), the code and its screens' shots as contact sheets, each against M4's
+review list items 1 to 42; every recipe played again under Wine against `kept/` (`h3shell.py run`,
+one at a time, as M3 T7's runner did: `E27-log.md`, "M3 T7"); the reviewers' findings, the
+oddities as `CLT-Q<n>` and the review list brought to the user. The original files: stage them
+again (the PC online).
+
+#### E27 M4 T6b
+
+T6b M4's closure (decision 77): the user's answers and their fixes, M4's scope, decisions and
+tasks to `E27-archive.md`, the README's epic row (a `shared/` PR), M5's refinement once the shell
+hosts play (E24 M5), else its prerequisites recorded.
 
 ## Inbox
 
