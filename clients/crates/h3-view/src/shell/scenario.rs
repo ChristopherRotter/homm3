@@ -1554,9 +1554,12 @@ impl Scenario {
     /// game (`scenario_to_game` 0x583580) and, with no random map chosen yet, the own record built
     /// (in the client's profile at each opening: CLT-Q111 (b)); the screen redrawn whole.
     fn toggle_random(&mut self) {
-        // Nothing in a load (`random_map_toggle` 0x57FEB0 returns at once in the load and save
-        // modes; E27 M4 T5b1, §41.1: the button the original's profile's alone, CLT-Q161 (b)).
+        // Nothing in a load but the whole redraw (`random_map_toggle` 0x57FEB0 returns at once
+        // in the load and save modes; E27 M4 T5b1, §41.1: the button the original's profile's
+        // alone, CLT-Q161 (b)); its caller still draws every item and redraws (0x586FA7), so a
+        // flags' strip a flag's press left stale is drawn again (E27 M4 T5b2: `adv-load` random).
         if self.loading.is_some() {
+            self.whole();
             return;
         }
         if self.random.showing() {

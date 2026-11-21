@@ -893,16 +893,22 @@ impl Advanced {
         self.seat_humans(map);
         if let Some(saved) = map.saved.filter(|_| self.load) {
             self.computers = saved.records.map(|r| Record { colour: None, ..r });
-            for human in &mut self.humans {
-                if let Some(c) = human.record.colour {
-                    human.record = Record {
-                        colour: Some(c),
-                        ..saved.records[usize::from(c & 7)]
-                    };
-                }
-            }
+            self.take_saved(&saved);
             self.duration = saved.duration.min(UNLIMITED);
             self.bar.set_value(i32::from(self.duration));
+        }
+    }
+
+    /// In a load each human record holding a colour takes that colour's saved choices (its town,
+    /// first hero, bonus and handicap): a row shows the game's (§3.14), whoever holds it.
+    fn take_saved(&mut self, saved: &Saved) {
+        for human in &mut self.humans {
+            if let Some(c) = human.record.colour {
+                human.record = Record {
+                    colour: Some(c),
+                    ..saved.records[usize::from(c & 7)]
+                };
+            }
         }
     }
 
@@ -1101,16 +1107,27 @@ impl Advanced {
     /// player's record to it, its town and hero Random (`scenario_hero_lists`); the hot seat
     /// (E27 M3 T4b), the colour passed on ([`Advanced::cycle`], the original's; the client's
     /// [`Advanced::pass`], CLT-Q94); then the names set and every row drawn again (the redraw).
-    /// The screen's flags are the caller's.
+    /// The screen's flags are the caller's. In a load (E27 M4 T5b2; design §43) a record that
+    /// moves takes its new colour's saved choices (a row shows the game's, §3.14:
+    /// `adv-load` flag-3, flag-1), and in the client's profile a press is taken only on a colour
+    /// the save holds as human (CLT-Q110 (b), decision 22; *provisional* in its detail).
     pub(super) fn flag_click(&mut self, c: u8, map: &Map, shown: &mut Shown) {
         self.close_edit(shown);
         let seat = map.seats[usize::from(c & 7)];
         let old = self.local_held();
         if self.hot_seat {
-            if seat.human {
+            let loaded = map.saved.filter(|_| self.load);
+            let taken = match (self.bugs, loaded) {
+                (Bugs::Fixed, Some(saved)) => saved.humans[usize::from(c & 7)],
+                _ => true,
+            };
+            if seat.human && taken {
                 match self.bugs {
                     Bugs::Original => self.cycle(c),
                     Bugs::Fixed => self.pass(c),
+                }
+                if let Some(saved) = loaded {
+                    self.take_saved(&saved);
                 }
             }
         } else if seat.human
