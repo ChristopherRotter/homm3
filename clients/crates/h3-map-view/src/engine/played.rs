@@ -324,6 +324,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             } else if core::mem::take(&mut answering) {
                                 commands.push(Command::Battle(*n));
                             }
+                            // stub: MCL-STUB-3 (a battle the viewer defends: not handed over)
                         }
                         GameEvent::Adventure {
                             event: AdventureEvent::HeroStepped { hero, to, .. },

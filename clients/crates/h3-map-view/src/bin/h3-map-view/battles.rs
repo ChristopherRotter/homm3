@@ -161,7 +161,7 @@ pub fn host(
     let prepared = Prepared::new(&ground)?;
     let setup = Setup {
         keys: battles.keys.clone(),
-        settings: battles.settings.clone(),
+        settings: battles.settings,
         settings_path: PathBuf::from(SETTINGS_FILE),
         from: 0,
         sound,

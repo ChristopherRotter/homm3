@@ -207,6 +207,13 @@ epic   = "E16"
 # reason = "A record's random artifact, dwelling and town keep their random templates (E24 M4 T3a, design section 5.9): the original draws each as what it became (an artifact's ava%04d.def of its id, a dwelling's template of its class and subclass, a town's picture by its faction and buildings; design sections 2.7, 2.9), but the view names no drawn artifact (asked of the adventure lane, its inbox 2026-11-19), a drawn dwelling's class and subclass are the import's table (crate-private in h3-map) and a town's picture is T3b's. Lifted by E24 M4 T3b and the adventure lane's answer"
 # epic   = "E24"
 
+# MCL-STUB-3, a comment for the same reason; its marker `// stub: MCL-STUB-3` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-3"
+# where  = "clients/crates/h3-map-view/src/engine/played.rs::played"
+# reason = "A battle the record's viewer defends (another player's hero attacking the viewer's hero or town in that player's turn) is not handed over to the battle client in the map's window (E24 M4 T5b1, design section 5.20): only a battle begun by one of the viewer's walks or answers is; the original's switch for a defending human's battle was not read (design section 5.19). Lifted when it is read and built (E24 M4 T5b2 or M5)"
+# epic   = "E24"
+
 # --- town (TWN-STUB-<n>) ---
 
 [[stub]]
