@@ -55,6 +55,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   golden another lane merges while its pull request is open, which GitHub still shows mergeable:
   merge `master` in and re-record once more right before the merge (E08 T132b: #1053's six
   taverns replays left `master` red).
+- A scripted replay holds no refused command (`run --script` stops at the first): a refusal on a
+  fixture map is that map's `h3-map` test (E08 T135b1: the full hero's purchase). Its words name
+  worn artifacts by the engine's positions (`w<position>`: misc 9 to 13, the war machines 14 to
+  17, the book 18; `h3_heroes::Position`), while the writer's `HeroArtifacts::worn` takes
+  `ArtSlots.txt`'s (the war machines 13 to 16, the book 17, the fifth misc 18).
 - A replay format, encoding or protocol bump also breaks another lane's literal of the old
   number, which only that lane's workflow runs (E08 T134a: the client lane's `save/tests.rs`
   replaced `format = 20`, which matched nothing once T133b's v21 met #1070, so its refusal check
