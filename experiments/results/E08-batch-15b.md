@@ -1,6 +1,8 @@
 # E08 batch E15b — results
 
 > Played by the capture harness on 2026-11-21 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-15b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+>
+> **Scored** by E08 T139a (2026-11-22; the first of two runs): survey `docs/rules/surveys/E08-spells.md` §18.
 
 Map file: `E08-batch-15b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
