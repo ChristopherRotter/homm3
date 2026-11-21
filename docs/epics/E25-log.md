@@ -2534,3 +2534,66 @@ an entry only where a task builds on it.
   both worlds, then the neutral set; their games files uploaded with the records, for the paired
   difference of the worlds (the information's cost) and against the fair actor's own play, which
   the sandbox replays at budget 0 on the same build.
+
+## T43 — The ceiling measured: the measurement at budget 4 (2026-11-21)
+
+- **The runs** (the user's CPU, 16 threads, one build: the identity of the budget check):
+  the report set v1, 100 a kind, against the fair actor on the side's worlds and the true
+  battle, and the neutral set v1 on the side's worlds; the user uploaded the games files. The
+  neutral set on the true battle and the all-seeing opponent were not run (optional). In
+  `python/records/ceiling/`: `report-true-4.json` rebuilt from its games file (`seconds` 0),
+  `neutral-side-4.json` with its last game played in the sandbox (the user's run left it
+  looking stuck: the set's heaviest game, 49 decisions and 55 070 rollouts, 213 s on one thread
+  with no progress line until it ends; a game depends on its seed alone), `report-0` the fair
+  actor's own play on the report set's episodes (`--budget 0`), every games file
+  (`<name>-games.toml`).
+- **The stalled game** (`report-side-4`: 599 of 600 games, no JSON record): siege_hero episode
+  54, the improved seat attacking, side worlds only (the true run played it in 15 decisions and
+  24 397 rollouts, its longest 51 steps). Traced in the sandbox (a temporary instrumented build,
+  not committed): at its first decision (step 24) the candidate Wait leads, in the rollouts'
+  world, to both sides' fair actors choosing Armageddon at every turn (`unchecked`), which the
+  battle refuses (`InvalidSpellTarget`: no stack it could affect, `no_target`), so `checked`
+  gives Defend for the stack's whole turn; every stack of both sides defends for about 110
+  rounds until the war machines and turrets end it (step 1 550, the attacker's victory), at
+  2.4 s a rollout (the fair actor's hero evaluates Teleport every turn, about 1.5 ms a step)
+  where a rollout takes about 8 ms. At budget 4 a decision gives such candidates hundreds of
+  rollouts: hours for the game. The fair actor's world guesses the other hero's spell defences
+  while the battle (here the rollouts' world, itself guessed) refuses by its own: BAT-STUB-19's
+  family, the battle lane's (its inbox, 2026-11-21). **The user's call** (2026-11-21): read the
+  measurement now with that game left out of both worlds (599 pairs; one game of 600).
+- **The report set** (599 games in both worlds; `h3 ai eval`'s weights; paired by kind, episode
+  and seat against the fair actor's own play, 95 % intervals):
+
+  | | win rate | value | value over the fair actor's, paired | win rate over it |
+  |---|---|---|---|---|
+  | the fair actor (budget 0) | 0.499 | −0.001 | — | — |
+  | rollouts on the side's worlds | 0.554 | +0.084 | **+0.085 ± 0.010** | +0.054 ± 0.022 |
+  | rollouts on the true battle | 0.602 | +0.115 | **+0.115 ± 0.011** | +0.103 ± 0.028 |
+
+  **The information's cost** (the true battle over the side's worlds, paired): **+0.030 ±
+  0.008** in value, +0.049 ± 0.024 in win rate, a quarter of the true battle's gain. By kind
+  (side / true over the fair actor; the attacker's wins of 99 or 100): hero +0.085 / +0.115
+  attacking (74 to 81 / 87), +0.084 / +0.121 defending; siege_hero +0.111 / +0.152 attacking (50
+  to 59 / 66), +0.107 / +0.140 defending; siege_garrison +0.033 / +0.035 and +0.047 / +0.052,
+  its winners nearly unchanged.
+- **The neutral set** (side worlds, 300 games against the fair actor's own 300 on the same
+  episodes): **+0.334** against its +0.287 (`bots-neutral-v1.json`'s seat: +0.285), paired
+  **+0.047 ± 0.008**; win rate 0.997 to 0.998, siege_neutral's 90 to 94 of 100.
+- **Beside #2** (`e25-structure-1` #2, T29: 0.511 ± 0.019 and +0.027 against the fair actor on
+  the report set, the neutral set +0.302; other episodes): the legitimate bound is about three
+  times #2's value gain on the report set (+0.085 against +0.027) and above it on the neutral
+  set (+0.334 against +0.302). Budget 4's bound sits about 0.015 below budget 16's (the check).
+- **By category** (the fair actor's choice: decisions, the share changed, the mean rollout
+  advantage a decision, side / true): melee 7 713 / 8 177, 0.57 / 0.53, +0.0062 / +0.0060;
+  shot 0.49 / 0.48, +0.0049 / +0.0047; move 0.62 / 0.59, +0.0076 / +0.0070; tactics 0.59 /
+  0.57, +0.0102 / +0.0082; **casts** 2 149 / 1 966, 0.77 / 0.63, **+0.0270 / +0.0105**. Summed:
+  melee 48 / 49 and casts 58 / 21 of 158 / 119 (the estimate optimistic: 0.264 / 0.198 a game
+  against the realised +0.085 / +0.115). The side worlds' casts gain twice the true battle's by
+  the estimate and are changed more often: 8 261 of 7.5 M candidate rollouts refused there (none
+  on the true battle), a refused candidate scoring a loss, so a cast the guessed defences refuse
+  looks worse than it is (BAT-STUB-19). On the neutral set (no hidden hero, none refused) the
+  shares are lower (melee 0.32, casts 0.58, +0.0071).
+- **For T45:** the headroom against the fair actor is real and large beside #2's (+0.085 by
+  what the side may know, +0.115 seeing all); most of it is in melee and casts; what hidden
+  information costs is a quarter of it, part of that the guess's gap. T44 (where #2's choices
+  lose value) next.

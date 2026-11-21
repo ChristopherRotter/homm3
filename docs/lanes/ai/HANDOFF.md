@@ -35,13 +35,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   legal command, common random numbers), on the true battle and the side's worlds, then where
   #2's choices lose value. **T42 done** (`E25-log.md` T42): `h3 ai ceiling`, the rollout-improved
   fair actor on `h3 ai eval`'s sets, sequential halving, a resumable games file; about 190
-  thread-seconds a game at budget 8. **T43's budget check done** (`E25-log.md` T43): budget 4,
-  the rollout-improved fair actor +0.083 over the fair actor's own play (paired; 0.543), three
-  times #2's +0.027; 8 and 16 within noise of 4. **Next: T43's measurement** at budget 4 on the
-  user's CPU (the commands in `QUEUE.md`; the games files uploaded too), T44 (where #2 diverges)
-  beside it.
-- **Open pull requests:** #1117 (`ai/e31-refinement`, E31's refinement) after #1116 (`shared/e31-refinement`, its backlog and README rows; merge first). Merged: #1110 (E13's refinement), #1084
-  (the stop fix), #1083 (`shared/e25-ceiling`), #1075 (T39, T41, T42).
+  thread-seconds a game at budget 8. **T43 done** (`E25-log.md` T43; records in
+  `python/records/ceiling/`): at budget 4 the rollout-improved fair actor gains, paired over the
+  fair actor's own play on the report set, +0.085 ± 0.010 on the side's worlds (#2: +0.027) and
+  +0.115 on the true battle (the information +0.030), the neutral set +0.047 (+0.334); one
+  stalled game of 600 left out (the user), the fair actor's refused cast (the battle lane's
+  inbox). **Next: T44** (where #2 diverges), then T45 (the checkpoint).
+- **Open pull requests:** this branch's (T43's measurement read; E31's cited addresses in the
+  exe map), then `shared/ci-exe-map` (pushed: CI's docs-only path runs `check-exe-map`; its pull
+  request after this one merges, its full verify needs the map's fix). Merged: #1117 and #1116
+  (E31's refinement), #1110 (E13's), #1099 (T43's budget check), #1084 (the stop fix).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
@@ -58,6 +61,16 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
+### 2026-11-21 — E25 T43: the budget check and the measurement read
+
+- The user ran both on 16 threads and uploaded the games files; `cargo build --release -p
+  h3-cli`, the JSON records rebuilt from them (identity matched), `--budget 0` played as the
+  pairing's base. Budget 4 chosen (#1099 merged). The measurement's two "stuck" last games:
+  the neutral one only slow (played here, 213 s), the report set's a stall traced by gdb and a
+  temporary instrumented build (not committed) to the fair actor; the user chose to leave it
+  out. `check-exe-map` failed on `master` (E31's citations): `Heroes3.exe` staged (the user's
+  upload, SHA-256 checked) for the map's entries.
+
 ### 2026-11-21 — E31 refined (AI-Q22)
 
 - A refinement session with the user, docs only (the PC's shell down, a cloud clone;
@@ -70,10 +83,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - A refinement session with the user, docs only (the PC's shell down, a cloud clone). E13 and
   E31 move to this lane (`shared/e13-refinement`, `lanes.toml`, `BACKLOG.md`); E13's epic file,
   AI-Q21, the adventure lane's inbox told. No original data (none needed).
-
-### 2026-11-21 — E25 T43: the budget check read, budget 4
-
-- #1083, #1084 merged. The user ran the budget check (16 threads) and uploaded the three games
-  files; `cargo build --release -p h3-cli`, the JSON records rebuilt from them (identity
-  matched) and `--budget 0` played as the pairing's base (`python/records/ceiling/`). No
-  original data (none needed). The measurement's commands at budget 4 in `QUEUE.md`.

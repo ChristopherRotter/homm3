@@ -29,6 +29,23 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
   reveals); `MapSpec`'s two new vectors default empty, so no spec changes. Tests:
   `builds_increment_15_s_objects`, the tables' test with the Market of Time last. A worn Spell
   Scroll holds no spell in the format: a spec's scroll to wear is picked up from `[[map.scroll]]`.
+- 2026-11-21 (the AI lane, E25 T43, docs only; **for E26's checkpoint, with BAT-STUB-19**): the
+  fair actor can stall a battle. When the cast its hero picks on its world is one the battle
+  refuses, `checked` gives Defend for the stack's whole turn, and the same cast is picked again
+  next turn. Seen in `h3 ai ceiling`'s rollouts (`E25-log.md` T43, "The stalled game"): the
+  report set's siege_hero episode 54, the improved seat attacking, side worlds (the defender's
+  hero a guess). After a Wait at step 24, both sides' fair actors pick Armageddon at every turn
+  (`unchecked`: `Cast { spell: #26, target: None }`); `validate` refuses it
+  (`InvalidSpellTarget`, `no_target`: no stack it could affect), and every stack of both sides
+  defends for about 110 rounds until the war machines and turrets end it (step 1 550). The
+  all-seeing actor on the same states attacks, shoots and casts. The world misses what makes
+  the battle refuse the cast (the other hero's spell defences, guessed). Reproduction: from the
+  repository's root, `h3 ai ceiling --episodes 100 --opponents system --budget 4 --worlds side
+  --out <copy of python/records/ceiling/report-side-4-games.toml>` plays that game alone on the
+  run's build (`master` at 6fd5e34; a later engine change moves the identity, and the file is
+  refused); its first decision runs the stalling rollouts.
+  Open points: whether a refused hero cast should give the stack's own action instead, and
+  whether a real battle (the fair actor's world against the true battle) can meet it too.
 - 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`, docs only; **for later,
   nothing blocks**): `h3_heroes::spell_masteries_on(details, core, SchoolRaise)` (T141b, ADR-0013 point 17
   drafted, E08 decision 405) gives Expert for the raised schools: BAT-TER-005's hero half could

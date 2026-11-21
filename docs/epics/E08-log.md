@@ -21837,7 +21837,8 @@ the map client lane (the types, the cast's targets) and the town lane (prisoners
 Baseline: `master` 4d41455 (#1118, T137b, merged; CI green on it, standing in for the sandbox's
 baseline, stopped at its coverage step: fmt, clippy, deny and the check steps passed; its
 `test` step's one failure, `xtask`'s `exemap::tests::the_real_map_passes` with the original data
-staged, is the AI lane's E31 refinement's citations without exe-map entries, told to its inbox).
+staged, was the AI lane's E31 refinement's citations without exe-map entries, fixed on `master` by
+#1119 during the session).
 Staged while the PC was up (its shell did not start: sizes against `device_list_dir`, the
 executables' and the LODs' SHA-256 against `installation.md`): the 71 files as T137a. **The cut**
 (decision 408): both parts in this session (the user's choice; the recommendation was T138a now,
@@ -21930,8 +21931,8 @@ stated.
 **Versions:** none moved (the writer's object and header bits; the import reads both classes as
 before). **Verify:** the scoped `cargo xtask verify --scope adventure --summary
 --with-original-data`: every step it runs passes but `check-lane` (by design on a `cross-lane`
-branch; `cargo xtask check-lane --cross-lane` ok) and `check-exe-map` (pre-existing on `master`,
-the AI lane's E31 citations, its inbox told); `cargo check --workspace --all-targets` and clippy
+branch; `cargo xtask check-lane --cross-lane` ok) and `check-exe-map` (the AI lane's E31
+citations, fixed by #1119: ok after merging `master` a9d593d); `cargo check --workspace --all-targets` and clippy
 with `-D warnings` on `h3-map` and `h3-experiment` clean; the clients' build is CI's (the sandbox's
 SDL build fails; every client match on `MapObject` has a wildcard arm). CI's full verify on the
 pull request is the record. **Next:** T139.

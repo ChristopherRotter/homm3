@@ -1,7 +1,8 @@
 //! Tests of the town's heroes learning its guild's spells at the town's own triggers (E09 T48a,
 //! design note `E09-design.md` §88, §89; TWN-GLD-004, -005): a build (the command's and a town
 //! event's), a move between the bars that leaves a visitor, a town's hire (the hired visitor, then
-//! the garrison hero) and the start's main towns (TD-10); each spell `HeroChanged` to the hero's
+//! the garrison hero) and the start's main towns (TD-10); since E09 T48b the visit's end (a step, a
+//! `Revisit`, an undefended capture; the siege's end in `siege.rs`); each spell `HeroChanged` to the hero's
 //! owner, nothing without a spell book, nothing at a turn's start or a new day. On the town tests'
 //! game: red's T0 on (1, 1) and blue's T1 on (3, 0), each built by its setup's slots only; every
 //! hero type with a spell book and a starting army; `t:town`'s Mage Guild 1 (map slot 0), Library, Aurora Borealis and
@@ -12,9 +13,11 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::Pos;
+use h3_adventure::{AdventureCommand, AdventureEventKind, Pos};
 use h3_content::{Ruleset, SpellId, StartingStackDef};
-use h3_contracts::{HeroId, PlayerId, TownId};
+use h3_contracts::{
+    Army, ArmyStack, BattleOutcome, BattleResult, BattleSide, HeroId, PlayerId, TownId,
+};
 use h3_heroes::HeroChange;
 use h3_towns::{
     BuildingDef, BuildingId, BuildingRoles, BuildingsSetup, SlotSet, TownCommand, TownEventSetup,
@@ -379,4 +382,129 @@ fn td_10_a_main_town_s_new_hero_learns_at_the_start_a_placed_one_not() {
         game.hero(generated).unwrap().hero_type
     );
     assert_eq!(spells(&bare, generated), []);
+}
+
+/// Red's hero stepped onto `to` (one step): the game's events.
+fn step(rules: &GameRuleset, game: &mut GameState, to: Pos) -> Vec<GameEvent> {
+    let command = GameCommand::Adventure(AdventureCommand::MoveHero {
+        hero: RED_HERO,
+        path: vec![to],
+    });
+    run(rules, game, RED, command).unwrap()
+}
+
+// covers: TWN-GLD-005, TWN-VIS-001, ADV-TEL-008
+#[test]
+fn a_step_into_an_own_town_and_a_revisit_teach_at_the_visit_s_end() {
+    let rules = rules();
+    // Red's hero beside T0, then on its entrance: the step's visit teaches, after the step.
+    let mut setup = setup(&rules, &[GUILD_SLOT]);
+    setup.heroes[0].pos = Pos::new(0, 1, 0);
+    let mut game = game(&rules, &setup);
+    let [slot, _] = level_1(&game, T0);
+    let before = spells(&game, RED_HERO);
+    let events = step(&rules, &mut game, ENTRANCE);
+    assert_eq!(taught(&events), [(RED, RED_HERO, slot)]);
+    let stepped = events
+        .iter()
+        .position(|e| {
+            matches!(e, GameEvent::Adventure(e)
+                if matches!(e.kind, AdventureEventKind::HeroStepped { .. }))
+        })
+        .unwrap();
+    let learned = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::HeroChanged { .. }))
+        .unwrap();
+    assert!(stepped < learned);
+    assert_eq!(spells(&game, RED_HERO), [&before[..], &[slot]].concat());
+    // A placed visitor (it learned nothing at the start) learns at its `Revisit`; a second one
+    // teaches nothing more.
+    let mut game = self::game(&rules, &self::setup(&rules, &[GUILD_SLOT]));
+    let revisit = GameCommand::Adventure(AdventureCommand::Revisit { hero: RED_HERO });
+    let events = run(&rules, &mut game, RED, revisit.clone()).unwrap();
+    assert_eq!(taught(&events), [(RED, RED_HERO, slot)]);
+    let events = run(&rules, &mut game, RED, revisit).unwrap();
+    assert_eq!(taught(&events), []);
+}
+
+// covers: TWN-GLD-005, TWN-CAP-001
+#[test]
+fn an_undefended_capture_teaches_the_capturer_after_the_capture_s_events() {
+    let rules = rules();
+    // Blue's T1 with Mage Guild 1 and no garrison, blue's hero away; red's beside it.
+    let mut setup = setup(&rules, &[GUILD_SLOT]);
+    setup.heroes[0].pos = Pos::new(3, 1, 0);
+    setup.towns[1].garrison = Some(Vec::new());
+    let mut game = game(&rules, &setup);
+    let [slot, _] = level_1(&game, T1);
+    let events = step(&rules, &mut game, T1_ENTRANCE);
+    assert_eq!(game.adventure().owner(1), Some(RED));
+    assert_eq!(taught(&events), [(RED, RED_HERO, slot)]);
+    let captured = events
+        .iter()
+        .position(|e| {
+            matches!(e, GameEvent::Adventure(e)
+                if matches!(e.kind, AdventureEventKind::TownCaptured { .. }))
+        })
+        .unwrap();
+    // After the capture and the town's views it tells.
+    let learned = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::HeroChanged { .. }))
+        .unwrap();
+    let viewed = events
+        .iter()
+        .rposition(|e| matches!(e, GameEvent::TownChanged { .. }))
+        .unwrap();
+    assert!(captured < viewed && viewed < learned, "{events:?}");
+}
+
+/// A battle's end won by `winner` with `survivors` by side, the heroes' spell points as they are.
+fn won(winner: BattleSide, survivors: [Vec<ArmyStack>; 2]) -> BattleOutcome {
+    BattleOutcome {
+        result: BattleResult::Victory(winner),
+        survivors: survivors.map(|stacks| Army { stacks }),
+        war_machines: [vec![], vec![]],
+        stacks: [vec![], vec![]],
+        surrender_cost: None,
+        heroes: [None, None],
+        rounds: 1,
+    }
+}
+
+// covers: TWN-GLD-005, TWN-CAP-003
+#[test]
+fn a_siege_s_end_teaches_the_town_s_heroes_as_they_stand_whoever_won() {
+    let rules = rules();
+    // Blue's visitor on T1 (Mage Guild 1) defends against red's hero below it.
+    let mut setup = setup(&rules, &[GUILD_SLOT]);
+    setup.heroes[0].pos = Pos::new(3, 1, 0);
+    setup.heroes[1].pos = T1_ENTRANCE;
+    let game = game(&rules, &setup);
+    let [slot, _] = level_1(&game, T1);
+    let army = |hero| game.adventure().hero(hero).unwrap().army.clone();
+    let sides = (
+        [Some(RED), Some(BLUE)],
+        [Some(RED_HERO), Some(BLUE_HERO)],
+        T1_ENTRANCE,
+    );
+    let end = |town: Option<TownId>, outcome: &BattleOutcome| {
+        let mut after = game.clone();
+        let mut events = Vec::new();
+        after.end_battle(&rules, sides, town, outcome, &mut events);
+        (after, events)
+    };
+    // The defender's win: the visitor, still standing, learns.
+    let defended = won(BattleSide::Defender, [vec![], army(BLUE_HERO)]);
+    let (after, events) = end(Some(T1), &defended);
+    assert_eq!(taught(&events), [(BLUE, BLUE_HERO, slot)]);
+    assert!(spells(&after, BLUE_HERO).contains(&slot));
+    // No siege (the battle beside a garrison hero, the original's town argument 0): nothing.
+    assert_eq!(taught(&end(None, &defended).1), []);
+    // The attacker's win: the visitor left, the attacker outside: nobody learns.
+    let taken = won(BattleSide::Attacker, [army(RED_HERO), vec![]]);
+    let (after, events) = end(Some(T1), &taken);
+    assert_eq!(taught(&events), []);
+    assert!(!spells(&after, RED_HERO).contains(&slot));
 }

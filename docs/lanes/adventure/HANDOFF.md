@@ -22,7 +22,7 @@ Moved to `TRAPS.md`: forks without deep copies, RNG seeds server-only, template 
 
 ### 2026-11-21 — increment 15, round 2: T138, batch E15's maps (both parts, `cross-lane`)
 
-Baseline: `master` 4d41455 (#1118 merged; CI green standing in, the sandbox's baseline stopped at coverage; `xtask`'s `the_real_map_passes` and the verify's `check-exe-map` fail on `master` with the original data: the AI lane's E31 citations, its inbox told). Staged the 71 files (the PC's shell down; hashes checked); the repo from GitHub. The cut: both parts in one session (decision 408); `h3-experiment`'s change consented. T138a: `MapObject::Prison`, the Market of Time among the plain objects, `[[map.prison]]`, `HeroSpec::ground`, `[[map.hidden]]`. T138b (a worker agent, a fresh review's 4 findings taken): `E08-batch-15a` to `-15c` (stamps a7b4e9e8, 24eb46ac, 0ebfde6e). No version moved. Records: `E08-log.md`. Next: T139.
+Baseline: `master` 4d41455 (#1118 merged; CI green standing in, the sandbox's baseline stopped at coverage; `check-exe-map` failed on it, the AI lane's E31 citations, fixed by #1119; `master` a9d593d merged in). Staged the 71 files (the PC's shell down; hashes checked); the repo from GitHub. The cut: both parts in one session (decision 408); `h3-experiment`'s change consented. T138a: `MapObject::Prison`, the Market of Time among the plain objects, `[[map.prison]]`, `HeroSpec::ground`, `[[map.hidden]]`. T138b (a worker agent, a fresh review's 4 findings taken): `E08-batch-15a` to `-15c` (stamps a7b4e9e8, 24eb46ac, 0ebfde6e). No version moved. Records: `E08-log.md`. Next: T139.
 
 ### 2026-11-21 — increment 15, round 1: T137b, the design note, the drafts, the cut (whole)
 

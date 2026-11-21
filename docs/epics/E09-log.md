@@ -5839,3 +5839,37 @@ checked by SHA-256 against `docs/formats/installation.md`, the rest by size). **
 
 **The queue:** T48a out; T48b next (the visit's end, a capture, a siege's end). Ids: decisions
 next 191.
+
+### T48b — the visit's end and a siege's end teach the guild's spells (2026-11-21)
+
+One session, the user present at the start; branch `town/e09-t48b`, `cross-lane` with the user's
+consent (the adventure lane's `h3-adventure` `src/command.rs`, `AdventureOutcome::town_entered`,
+and `src/state/tests/towns.rs`; its `h3-game` `src/state.rs`, `settle_outcome`, and
+`src/state/battle.rs`, `end_battle`). Starting point: `master` at 35bedb9 (T48a's #1115 merged;
+CI green, so the setup ran the light gates only). The user's computer was connected at the start
+only: 71 files staged, its shell down ("Workspace unavailable"); the LODs' and executables'
+SHA-256 checked against `docs/formats/installation.md`. The draft was measured before the cut was
+asked (no golden replay moved); **T48b kept whole** (decision 191).
+
+- **The visit's end** (design §89's first row, TWN-GLD-005): `visit_town` (the town lane's
+  `h3-adventure` `town.rs`) sets the new `AdventureOutcome::town_entered` for every entered town
+  (`Visit::Enter`: a step or a `Revisit` into a town of the team, the undefended capture);
+  `GameState::settle_outcome` calls `town::guild::learn` for it right after `town::capture`.
+- **A siege's end** (§89's second row): `GameState::end_battle` calls `learn` for the battle's
+  town (a siege only) after the outcome, the unowned battle's end and the attacker's held capture,
+  before `give_levels` (the original's `town_visit` 0x4AB3C3 before `hero_level_up` 0x4AB3CB): a
+  defending visitor or garrison hero that won learns; an attacker's win teaches nobody (the
+  winner outside, TWN-CAP-003); the capture after the levels (`town_won`) sets no `town_entered`.
+- **Catalog:** TWN-GLD-005 (the two triggers in, out of "Planned").
+- **Tests:** the game's three in `town/tests/learn.rs` (a step into an own town and a `Revisit`, a
+  second `Revisit` teaching nothing more; an undefended capture after the capture's events and
+  views; a siege's end: the defender's win teaches the visitor, no siege nothing, the attacker's
+  win nobody); `h3-adventure`'s three town tests (`state/tests/towns.rs`) expect the new field.
+- **Nothing moved:** the 111 golden adventure replays reproduce their hashes (measured on the
+  draft, in release), `h3-map`'s 202 lib tests pass in release; no version, no bot report.
+- **Found, pre-existing** (not this task's): with `Heroes3.exe` staged, `check-exe-map` fails on
+  five addresses E31's refinement cites (CI skips it without the executable); the AI lane's inbox.
+- *Agent's calls* (decision 191): the learning after the capture; the siege's for the battle's
+  town before the winner's levels, whoever won (design §89's level-up paragraph had guessed a
+  Wisdom counts at once: the engine's level-ups are decisions, so it counts at the next trigger,
+  as the original's).
