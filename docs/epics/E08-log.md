@@ -20576,3 +20576,97 @@ and the LODs' and executables' SHA-256 against `docs/formats/installation.md`, a
   `fork-economy-xl-144` +1.28 % and `day-start-builds-36` +1.06 %), original-data 56 s;
   `cargo check --workspace --all-targets` clean. The server lane's inbox told.
 - **Versions:** none.
+
+### Increment 14, round 8: T135b2, the trades in the plans' properties, two workloads and the original data (2026-11-21, `adventure/e08-t135b2`)
+
+**The cut** (decision 392; asked at its start, `AskUserQuestion`; recommended was three, the
+benchmarks and the original data first while the PC's data were staged): whole, one pull request;
+the benches README's two rows in `shared/e08-t135b2-benches` (#1098). **Baseline:** `master`
+6fd5e34 (#1095, T135b1, merged; CI green on it; the setup's `verify-once` found the code verified
+there, light gates only). The original data staged from the user's repo folder and installation
+(71 files; the PC's shell did not start: sizes against `device_list_dir`, the LODs' and
+executables' SHA-256 against `installation.md`). Built by the main session.
+
+- **The plans** (`h3-map`'s `play.rs`; `KINDS` 135 to 141, appended: `TRADES`, `TRADE_OBJECTS`
+  with the original's templates, two tiles entered on the anchor, the factory's on the left one,
+  the Freelancer's Guild's three on the middle one; `AB_TRADES` laid out as the Trading Post on an
+  RoE plan). `Plan::trades`, laid out with the bonus visitables, the banks and the map Taverns
+  (`bonuses_laid_out`); drawn apart from `plan()` (`trade_plan`, wrapping `tavern_plan`: one to
+  three near the heroes in two plans of three, one to four artifacts of codes 7 to 40 for the
+  first one's hero in one case of two) and its runs apart from `steps()` (`trade_steps`: in one
+  case of two a run of 16 to 95 `Step::Trade`s with ends of turn between two of `steps()`'s), so
+  the cover tests keep their cases (the town lane's taverns' precedent). The properties of
+  `play.rs` and `view.rs` draw them.
+- **The step:** `Step::Trade` (`seek_trade`): in a battle as `fight`; an open market's, Altar's or
+  Hill Fort's `Leave` in one step of six, else in three of five the listed answer, else one drawn
+  from the view (`drawn_answer`: a trade of 1 to 3 lots of a drawn pair, one resource too; a
+  transfer of 1 to 10 to a drawn player, the actor too; a sale of a drawn slot for a drawn
+  resource; a purchase of a drawn entry, one past the stock too, in a drawn resource; the first
+  of the listed all's artifacts; half of each stack; a Hill Fort's slot, one past the army too, or
+  its `All`); the factory's question accepted, declined in one step of four; another decision
+  settled; on the map a revisit in one step of four, an entry, an approach. `settle` answers the
+  three by the listing.
+- **The oracles** (`play/trades.rs`, a child module of `play.rs`): `trade_answers` (the listing:
+  candidates from the decision, the hero and the core alone, a market's one lot of every pair,
+  one lot of every stack and every entry in the cost resource, an Altar's two alls, a Hill Fort's
+  every slot and `All`, kept by `apply`'s acceptance in the listing's order, then `Leave`);
+  `check_trade_listing` (each listed answer applied and checked; refused with the state, its hash
+  and the events unchanged: a pair of one resource, one lot past each pair's most, a transfer to
+  the actor and one past the treasury, a slot past the army, an entry past the stock, the empty
+  sacrifices and the creatures' whole, each row not affordable, `All` unless the whole is,
+  a free slot); `check_trade_answer` (each accepted answer, listed or not, against the view on the
+  state before it: a trade's lots paid and gained, saturating at 2³¹ − 1, the adventure
+  unchanged; a transfer to a listed recipient, the sum kept but what saturates; a sale's stack
+  lowered by its lots, the army keeping a creature; a purchase's price, its artifact
+  (`HeroChanged`) and the entry shown sold; a sacrifice's removals in the change's order with the
+  view's experience, or its stacks lowered with each stack's experience by
+  `h3_heroes::gained_experience`, the army keeping one, then its plain levels and before a level
+  of two offers the Altar's close and the level-up; an upgrade's price and the stack made its
+  upgrade, the count kept, `All` each row in slot order; `Leave` alone; every treasury as paid
+  and gained); `check_trades` (each Black Market's stock its build's draw, its sold entries only
+  growing and only by the command's purchase of that entry there; an accepted trade answer through
+  `check_trade_answer`). Taught the trades in `play.rs`: `hiring` and `managed` name the three
+  (`trade_open`), `settle`, `check_legal` (their listing, no moves while one is open),
+  `check_unlisted` (an unlisted market or Altar answer of an open one), `check_decisions` (the
+  three openings, on the entrance, nothing else open; the factory's hire question of its machines,
+  never refused; its dialog opened by `hire_opens`), `check_conservation` (`trade_moves`: the gains
+  and the price of a market's or a Hill Fort's answer), `check_isolation` (a transfer's
+  recipient's treasury), the hire oracles (`hire_stock` and `hire_most` take the dialog's target:
+  the factory's machines 1 while the hero lacks the artifact, the room `AddArtifact`'s check;
+  `check_hire`'s purchase of a machine pays, gives the artifact, joins nothing). `view.rs`: the
+  factory a hire source as a camp (unowned); the views property found it (a factory's question
+  open with no hire source known), its seed kept in `proptest-regressions/tests/view.txt`.
+- **The cover test** `the_plans_trade_and_use_the_services` (256 fixed cases, `trade_plans`: one
+  trade or more, the difficulty other than impossible in three cases of four, steps mostly
+  `Step::Trade`): laid by class 31, 9, 6, 18, 19, 18, 15 (99, 221, 213, 7, 2, 35, 106); opened 306
+  markets, 117 Altars, 113 Hill Forts, 113 factory questions; accepted and refused: trades 406 and
+  57, transfers 35 and 56, sales 39 and 76, purchases 47 and 80, artifacts' sacrifices 12 and 27,
+  creatures' 7 and 18, upgrades 14 and 58, alls 6 and 7; 17 sacrifices opened a level-up and the
+  Altar returned 15 times after it; 7 free upgrades; 86 factory dialogs, 43 machines bought; 505
+  leaves. A mutant (a trade's gain plus one) failed it at once.
+- **The workloads** (`benches/adventure/`, each baselined at its first count; no `random-play-*`
+  map holds a trade, so none moved):
+
+  | Workload | Seed | What it plays | Ir | Per operation |
+  |---|---|---|---|---|
+  | `random-play-trades-36` | 68 | 5 games of 28 days on the trades map: 1 835 steps, 220 with a trade open, 175 answers that changed a treasury or an army (167 markets, 2 Altars, 3 Hill Forts, 3 factories) | 4 816 203 463 | about 2.6 M a step; 85 % in `legal_moves`, `Reach::search` 72 % itself; the trades' code inlined, under 0.1 % |
+  | `build-trades-xl-144` | 1 | 2 builds of the trades XL (six Black Markets' 42 draws each) | 16 116 095 | 8.06 M a build; the artifact pool's draws 2.2 %, `terrain_shares` 25 %, `AdventureState::new` 21 % itself, the static map's hash 15 % |
+
+  The seed by a scratch probe (not committed: a release test in `h3-cli` replaying the bench's
+  games) over seeds 1 to 100: the most answers changing a treasury or an army at an open trade,
+  every kind among them, in fewer steps (seeds 76 and 18 more answers in more steps).
+- *Found on the way* (no engine fault): the factory was no hire source of the views property's,
+  so its question looked open without a visit (fixed in `view.rs`).
+- *Agent's calls (change freely):* one step for the seven; the draws and weights; the artifacts for
+  the Altar; the drawn answers; the listing's oracle by `apply`'s acceptance; the cover test's
+  counts and its difficulty; the seed's criterion.
+- **Gates:** the scoped verify `--with-original-data` passed every step it runs on its first run
+  (`check-lane` included: no `cross-lane` path): coverage 1 389 s, determinism 526 s (the golden
+  replays unchanged), bench-check 779 s (the two new at their first counts; every other inside its
+  gate as `master` left it, the nearest `random-play-bonuses-36` at +1.67 % and `legal-towns-36` at
+  +1.45 %: for T136's criterion 10), original-data 57 s (the 160 shipped maps read and built;
+  `h3-pack-adventure`'s check skipped there for `extracted/H3ab_bmp` not copied into the clone,
+  TRAPS' E08 T103b, then run alone and passed: the seven trade classes against their types, kinds
+  and the executable's tables). `h3-map`'s clippy clean; the main property, the views property and
+  the hygiene property soaked at 192 random cases each (the hygiene also at 256), all passing.
+- **Versions:** none (no engine code changed).

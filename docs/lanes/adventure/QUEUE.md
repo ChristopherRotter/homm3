@@ -4,23 +4,21 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 and T133a2 done (the stock and its draw; the visit and the adventure's checks), T133b done (the decision and its wire; decision 384), T134a done (the Altar with its wire; decisions 385, 386), T134b in two (decision 387): T134b1 done (the Hill Fort with its wire), T134b2 done (the factory; decision 388), T135a done (the listing and the env's entries; decisions 389, 390), T135b in two (decision 391): T135b1 done (the two maps and seven golden replays), T135b2 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 and T133a2 done (the stock and its draw; the visit and the adventure's checks), T133b done (the decision and its wire; decision 384), T134a done (the Altar with its wire; decisions 385, 386), T134b in two (decision 387): T134b1 done (the Hill Fort with its wire), T134b2 done (the factory; decision 388), T135a done (the listing and the env's entries; decisions 389, 390), T135b in two (decision 391): T135b1 done (the two maps and seven golden replays), T135b2 done (whole, decision 392: the plans and oracles, the two workloads, the original data). Round 9: T136 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T135b2 — the trades' plans and oracles, benchmarks and original data** (round 8; design
-note §18, §21; decision 391)
+**E08 T136 — increment 14's audit** (round 9; design `E08-design.md` §21's exit criteria)
 
-- **Scope** (design note §18; T135b1 left the maps and the replays): the plans (`h3-map`'s
-  `tests/play.rs`: `TRADES`, `Step::Market`, `Step::Altar`, `Step::HillFort` and the factory's
-  steps; the oracles' `check_trades`, and `check_legal`'s `expected` taught the three kinds'
-  listings, `GameState::market_answers` and its two siblings' orders; the conservation, isolation
-  and management checks taught the new answers; `hiring`'s other kinds named, TRAPS "The plans'
-  decision helpers"); the benchmarks (`random-play-*` re-baselined where a trade object appears
-  with the reason, `random-play-trades-36` on `e08-trades-36.h3m`, `build-trades-xl-144` on
-  `e08-trades-144.h3m`: its six Black Markets' draws); `--with-original-data` over the shipped
-  maps. T135b1's sweep (1 500 random games on the 36 map: 463 steps a game on average, 1 533 at
-  most, 27 304 trades) is the workload's scale.
-- **Depends on:** T135b1's pull request. **Status:** ready after it; the user chose it as one
-  task (decision 391).
+- **Scope** (`adventure/e08-t136`): the audit against the ten exit criteria with a fresh reviewer;
+  increment 14 closed (its scope, decisions 361 to 392 and tasks to `E08-archive.md`, the design
+  note to `E08-log.md`; the README's epic table in the session's `shared/` pull request);
+  increment 15 refined with the user (the sketch's item 15, quests, or another order). Criterion
+  10's benchmarks: T135b2 baselined the two new workloads and found no other on a map with a
+  trade (its record in `E08-log.md`).
+- **Inputs:** design §21 (the exit criteria), §18's *As built*; T126's audit (`E08-log.md`) as the
+  form; the epic's sketch.
+- **Depends on:** T135b2 (`adventure/e08-t135b2`, merged first). **Status:** ready once T135b2
+  merges (the original data to stage for criterion 1's census and criterion 10's gates); its cut
+  confirmed at its start.
 
 ## Inbox
 
@@ -32,18 +30,6 @@ note §18, §21; decision 391)
   passes with it). The same oracle builds the owner's `TownBuildingsView` with E09 T47b's `guild`
   (`h3_towns::shown_slots`), `aurora` (`h3_towns::has_aurora`) and `vortex`: keep it in step with
   `h3_game`'s `town/view.rs` when the view changes. No version of yours moved.
-
-- 2026-11-21 (the town lane, E09 T47a2, `town/e09-t47a2`, `cross-lane`; **versions taken and the
-  goldens re-recorded, nothing to do now**): map import **v28** (a town's required and banned
-  spells into `TownSetup`, TWN-SET-012) and game state hash **v38** (the store of towns v4: the
-  guild slots, the Vortex flag, the Aurora set; the guilds drawn at the build as the towns'
-  stream's first draws) are taken: your next import change takes v29, your next game hash v39. The
-  104 golden adventure replays re-recorded from their commands (the hash lines and the two versions
-  only), but `towns-s173-d21`, whose day-16 siege no longer fit (the towns' stream grew the neutral
-  garrison otherwise): that battle played again by `h3_battle_ai::choose` for both sides, the rest
-  of its commands kept, the same features; your T135b1's seven `trades-*` too (hash lines and
-  versions only). `TownSetup` gained two fields: every struct literal
-  (`h3-map`'s examples and `tests/towns.rs`) has them. `GameSetupError::TownSpell` is new.
 
 - 2026-11-21 (the map client lane, E24 M4 T4c2, `map-client/e24-m4-t4c2`; **MCL-Q46, for your
   planning; the user's answer first**): another player's hero that takes a pile or an artifact

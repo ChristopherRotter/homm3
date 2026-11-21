@@ -74,6 +74,11 @@ use crate::model::{
 };
 use crate::{Limits, import, parse};
 
+/// The trades and services in the plans (E08 T135b2, increment 14's design note §18): their
+/// layout's draw, their step, their listing's oracle, their answers' oracles and their cover test.
+mod trades;
+pub(super) use trades::{trade_plan, trade_steps};
+
 fn rules(profile: &str) -> GameRuleset {
     let (core, part) = compile(&ORIGINAL_PACKS, profile).unwrap();
     let battle = h3_pack_battle::compile(
@@ -142,8 +147,9 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// increment 12's design note §16) the map garrisons ([`GARRISONS`]) and (E08 T116b2) the bonus
 /// visitables ([`BONUSES`]); then (E08 T125b2a, increment 13's design note §17) the creature banks
 /// ([`BANKS`]); then (E09 T40b, the town epic's design note §78) the adventure map's Tavern and the
-/// Den of Thieves ([`TAVERNS`]).
-pub(super) const KINDS: [(u32, u32, Option<u32>); 135] = [
+/// Den of Thieves ([`TAVERNS`]); then (E08 T135b2, increment 14's design note §18) the trades and
+/// services ([`TRADES`]).
+pub(super) const KINDS: [(u32, u32, Option<u32>); 142] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -279,6 +285,13 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 135] = [
     (85, 0, None),
     (95, 0, None),
     (97, 0, None),
+    (99, 0, None),
+    (221, 0, None),
+    (213, 0, None),
+    (7, 0, None),
+    (2, 0, None),
+    (35, 0, None),
+    (106, 0, None),
 ];
 /// Increment 7's kinds in [`KINDS`] (E08 T64b, increment 7's design note §16): the first of them,
 /// and how many. In order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow
@@ -509,6 +522,28 @@ pub(super) const TAVERN_OBJECT: usize = BLOCKERS.len() * TAVERNS.0;
 /// The Den of Thieves' object (the original's template: two tiles of a row, entered on the anchor).
 pub(super) const DEN_OBJECT: usize = BLOCKERS.len() * (TAVERNS.0 + 1);
 
+/// Increment 14's trades and services in [`KINDS`] (E08 T135b2, increment 14's design note §18):
+/// the first of them, and how many. In order: the Trading Post (99) and the snow one (221), the
+/// Freelancer's Guild (213), the Black Market (7), the Altar of Sacrifice (2), the Hill Fort (35)
+/// and the War Machine Factory (106), each entered (ADV-OBJ-003). None has a body: the build draws
+/// each Black Market's stock (ADV-MKT-006).
+pub(super) const TRADES: (usize, usize) = (135, 7);
+/// The trades' and services' objects, by kind (the original's templates, `trades.rs`'
+/// [`PICTURES`](super::trades::PICTURES): two tiles of a row entered on the anchor, but the
+/// factory's entered on the left one and the Freelancer's Guild's three entered on the middle).
+pub(super) const TRADE_OBJECTS: [usize; 7] = {
+    let mut objects = [0; 7];
+    let mut i = 0;
+    while i < objects.len() {
+        objects[i] = BLOCKERS.len() * (TRADES.0 + i);
+        i += 1;
+    }
+    objects
+};
+/// The snow Trading Post's and the Freelancer's Guild's objects, AB's classes ([`TRADE_OBJECTS`]'
+/// second and third): an RoE plan lays out the Trading Post (99) for either.
+pub(super) const AB_TRADES: [usize; 2] = [TRADE_OBJECTS[1], TRADE_OBJECTS[2]];
+
 /// Whether an object of kind `kind` is ownable, its owner at load from the plan's
 /// [`Plan::owners`]: [`OWNABLE`]'s (E08 T86b1) and (E08 T96b1) a dwelling or a random dwelling of
 /// [`DWELLINGS`] (not the camp), as the import's ownable kinds (ADV-OWN-001).
@@ -606,7 +641,9 @@ pub(super) type Mask = &'static [(u8, u8)];
 /// Dragon Fly Hive's one left of the anchor; Dragon Utopia's twelve, [`UTOPIA_BLOCKED`]) and the
 /// sea's two one tile ([`BANK_OBJECTS`]); (E09 T40b) the map Tavern's and the Den's original
 /// templates (two tiles of a row, visited on the left one for the Tavern, on the anchor for the
-/// Den: [`TAVERN_OBJECT`], [`DEN_OBJECT`]).
+/// Den: [`TAVERN_OBJECT`], [`DEN_OBJECT`]); (E08 T135b2) the trades' and services' (two tiles of a
+/// row entered on the anchor, the factory's on the left one, the Freelancer's Guild's three
+/// entered on the middle one: [`TRADE_OBJECTS`]).
 pub(super) fn masks(object: usize) -> (Mask, Mask) {
     let (class, subclass, _) = KINDS[object / BLOCKERS.len()];
     match (class, subclass) {
@@ -634,6 +671,10 @@ pub(super) fn masks(object: usize) -> (Mask, Mask) {
         111 => (&[(0, 0), (0, 1)], &[(0, 0), (0, 1)]),
         33 => (&[(0, 0), (1, 0), (2, 0)], &[(1, 0)]),
         219 => (&[(0, 0), (0, 1), (0, 2)], &[(0, 1)]),
+        // E08 T135b2: the trades and services ([`TRADE_OBJECTS`]).
+        99 | 221 | 7 | 2 | 35 => (&[(0, 0), (1, 0)], &[(0, 0)]),
+        106 => (&[(0, 0), (1, 0)], &[(1, 0)]),
+        213 => (&[(0, 0), (1, 0), (2, 0)], &[(1, 0)]),
         21 | 46 | 225 => (&[], &[]),
         _ => BLOCKERS[object % BLOCKERS.len()],
     }
@@ -991,6 +1032,10 @@ pub(super) struct Plan {
     /// ([`taverns`]): each one's anchor (modulo the map) and object ([`TAVERN_OBJECT`],
     /// [`DEN_OBJECT`]), laid out after the creature banks (with them, [`bonuses_laid_out`]).
     pub(super) taverns: Vec<(Spot, usize)>,
+    /// (E08 T135b2; increment 14's design note §18) The trades and services
+    /// ([`trades::trades`]): each one's anchor (modulo the map) and object ([`TRADE_OBJECTS`]),
+    /// laid out after the map Taverns (with them, [`bonuses_laid_out`]).
+    pub(super) trades: Vec<(Spot, usize)>,
 }
 
 /// A plan's map garrison (E08 T116b1; increment 12's design note §16; ADV-GAR-001): where it
@@ -1570,6 +1615,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     bonuses: bonused,
                     banks: banked,
                     taverns: Vec::new(),
+                    trades: Vec::new(),
                 }
             },
         )
@@ -2096,6 +2142,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     let used = used.chain(plan.banks.iter().map(|&(_, o)| o));
     // E09 T40b: the map Taverns' and Dens'.
     let used = used.chain(plan.taverns.iter().map(|&(_, o)| o));
+    // E08 T135b2: the trades' and services'.
+    let used = used.chain(plan.trades.iter().map(|&(_, o)| o));
     let used = used.map(|o| o + 1).max().unwrap_or(0);
     m.templates.extend((0..used.max(BLOCKERS.len())).map(|o| {
         let (blocked, visitable) = masks(o);
@@ -2506,7 +2554,8 @@ fn garrisons_laid_out(
 /// two of a type share an anchor. One anywhere else is left out; plans without bonus visitables
 /// keep their maps. (E08 T125b2a) The creature banks after them, laid out alike ([`Plan::banks`]):
 /// the nine on land, the sea's two on water (the Shipwreck's tile beside the coast or not); (E09
-/// T40b) the map Taverns and Dens last, on land ([`Plan::taverns`]).
+/// T40b) the map Taverns and Dens, on land ([`Plan::taverns`]); (E08 T135b2) the trades and
+/// services last, on land ([`Plan::trades`]).
 fn bonuses_laid_out(
     m: &mut RawMap,
     plan: &Plan,
@@ -2514,7 +2563,8 @@ fn bonuses_laid_out(
     covered: &mut Vec<Spot>,
 ) {
     let (side, levels) = (plan.side, 1 + u8::from(plan.two_levels));
-    for &((x, y, z), bonus) in plan.bonuses.iter().chain(&plan.banks).chain(&plan.taverns) {
+    let laid = plan.bonuses.iter().chain(&plan.banks).chain(&plan.taverns);
+    for &((x, y, z), bonus) in laid.chain(&plan.trades) {
         let (ax, ay, az) = (x % side, y % side, z % levels);
         let (blocked, visitable) = masks(bonus);
         let tiles = |mask: Mask| -> Vec<Spot> {
@@ -3027,6 +3077,12 @@ pub(super) enum Step {
     /// or one that gets nearer to a visitable tile ([`seek_bank`]); as `Bonus(n)` on a map without
     /// banks.
     Bank(u16),
+    /// (E08 T135b2; increment 14's design note §18) In a battle as `Fight(n)`; an open market's,
+    /// Altar's or Hill Fort's answer, the listed or one drawn from its view; a War Machine
+    /// Factory's question accepted, declined in one step of four; another decision settled; on the
+    /// map a trade's revisit, an option that ends on a trade's entrance, or one that gets nearer to
+    /// one ([`trades::seek_trade`]); as `Bank(n)` on a map without trades.
+    Trade(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -3331,7 +3387,8 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
 /// The acting player's answer to its open decision but a battle, if it has one (E08 T63a): an
 /// offer declined, a level-up's first offer taken, a meeting or an army dialog closed, a choice,
 /// a University or (E08 T95b) a hire dialog answered with the `n`-th of its legal answers (a hire
-/// dialog's: a `Buy` of each creature's most, then `Close`).
+/// dialog's: a `Buy` of each creature's most, then `Close`); since E08 T135b2 a market, an Altar
+/// or a Hill Fort alike (its listed answers, then `Leave`).
 fn settle(state: &GameState, legal: &[GameCommand], n: u16) -> Option<GameCommand> {
     let actor = acting(state);
     if state.decision(actor).is_some() {
@@ -3347,18 +3404,21 @@ fn settle(state: &GameState, legal: &[GameCommand], n: u16) -> Option<GameComman
     {
         return Some(CLOSE);
     }
-    // E09 T39a: a map Tavern too (GAM-DEC-010: its listed hires, then `Close`).
+    // E09 T39a: a map Tavern too (GAM-DEC-010: its listed hires, then `Close`); E08 T135b2: a
+    // market, an Altar or a Hill Fort (GAM-DEC-011 to -013: its listed answers, then `Leave`).
     (state.choice(actor).is_some()
         || state.university(actor).is_some()
         || state.tavern(actor).is_some()
+        || trades::trade_open(state, actor).is_some()
         || hiring(state, actor))
     .then(|| legal[usize::from(n) % legal.len()].clone())
 }
 
 /// Whether `player`'s first open decision is a hire dialog (GAM-DEC-008, E08 T95b): an open
 /// decision of none of the other kinds (since E08 T116b1 an exchange among them, GAM-DEC-009;
-/// since E09 T39a a map Tavern, GAM-DEC-010), as `GameState` shows a hire dialog only through its
-/// owner's observation ([`hire_view`]).
+/// since E09 T39a a map Tavern, GAM-DEC-010; since E08 T135b2 a market, an Altar and a Hill Fort,
+/// GAM-DEC-011 to -013), as `GameState` shows a hire dialog only through its owner's observation
+/// ([`hire_view`]).
 fn hiring(state: &GameState, player: PlayerId) -> bool {
     state.has_decision(player)
         && state.battle(player).is_none()
@@ -3368,6 +3428,7 @@ fn hiring(state: &GameState, player: PlayerId) -> bool {
         && state.army_dialog(player).is_none()
         && state.exchange(player).is_none()
         && state.tavern(player).is_none()
+        && trades::trade_open(state, player).is_none()
         && state.choice(player).is_none()
         && state.university(player).is_none()
 }
@@ -3425,7 +3486,8 @@ fn seek(state: &GameState, legal: &[GameCommand], n: u16) -> GameCommand {
 /// heroes, an army dialog's hero and group, else each of its heroes alone; none while it may
 /// not manage (a battle, an offer or a level-up open, the game waiting for another player; since
 /// E08 T64b's plans a choice or a University open, GAM-DEC-005, GAM-DEC-006; since E08 T95b a
-/// hire dialog, GAM-DEC-008; since E09 T40b's plans a map Tavern's decision, GAM-DEC-010).
+/// hire dialog, GAM-DEC-008; since E09 T40b's plans a map Tavern's decision, GAM-DEC-010; since
+/// E08 T135b2's a market's, an Altar's and a Hill Fort's, GAM-DEC-011 to -013).
 fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
     let player = acting(state);
     if actor(state) != Actor::Player(player)
@@ -3434,6 +3496,7 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
         || state.choice(player).is_some()
         || state.university(player).is_some()
         || state.tavern(player).is_some()
+        || trades::trade_open(state, player).is_some()
         || hiring(state, player)
         || state.waiting_for().is_some()
     {
@@ -5084,6 +5147,7 @@ pub(super) fn resolve(
         Step::Exchange(n) => (who, exchange_with(state, rules, legal, *n)),
         Step::Bonus(n) => (who, seek_bonus(state, rules, legal, *n)),
         Step::Bank(n) => (who, seek_bank(state, rules, legal, *n)),
+        Step::Trade(n) => (who, trades::seek_trade(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
             let boat = |c: &GameCommand| {
                 matches!(
@@ -5329,11 +5393,12 @@ fn choice_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> V
 /// (ADV-HIR-002, E08 T95b), read apart from the dialog: a dwelling's kind's creatures in its order
 /// with the dwelling's counts, a Refugee Camp's week's creature and count; since E09 T27 a town's
 /// index's creature, an upgraded index's upgrade then its base creature, each with the index's one
-/// count, or the Portal's creature and count (TWN-REC-001, -002).
+/// count, or the Portal's creature and count (TWN-REC-001, -002); since E08 T135b2 a War Machine
+/// Factory's machines for the dialog's hero `target` ([`trades::factory_stock`], ADV-WMF-001).
 fn hire_stock(
     rules: &GameRuleset,
     state: &GameState,
-    source: HireSeen,
+    (source, target): (HireSeen, HireTarget),
 ) -> Vec<(CreatureTypeId, u32)> {
     let (object_type, anchor) = match source {
         HireSeen::Object {
@@ -5373,6 +5438,10 @@ fn hire_stock(
                 .collect()
         }
         Some(ObjectKind::RefugeeCamp { .. }) => adventure.camp(index).into_iter().collect(),
+        Some(ObjectKind::WarMachineFactory(factory)) => match target {
+            HireTarget::Hero(hero) => trades::factory_stock(state, factory, hero),
+            HireTarget::Garrison(_) => Vec::new(),
+        },
         _ => Vec::new(),
     }
 }
@@ -5407,17 +5476,24 @@ fn unit_cost(rules: &GameRuleset, creature: CreatureTypeId) -> Vec<(ResourceId, 
 /// `target`'s army (GAM-DEC-008, ADV-ARM-007; E08 T95b; since E09 T27 a town's garrison), by an
 /// independent reading: the least of the count, the treasury divided by the cost of one for each
 /// resource it costs, and the room, a stack's most with a slot free, else the most less the least
-/// count among the army's stacks of the creature, else 0.
+/// count among the army's stacks of the creature, else 0; (E08 T135b2) a War Machine Factory's
+/// machine's room 1 while the hero can receive its artifact (`HeroChange::AddArtifact`'s check,
+/// ADV-HIR-002), else 0.
 fn hire_most(
     rules: &GameRuleset,
     state: &GameState,
-    (player, target): (PlayerId, HireTarget),
+    (player, target, source): (PlayerId, HireTarget, HireSeen),
     (creature, count): (CreatureTypeId, u32),
 ) -> u32 {
     let params = rules.adventure().params();
     let (slots, most) = (params.army_slots(), params.max_stack_count());
     let army = &hire_army(state, target);
-    let room = if army.len() < usize::from(slots) {
+    let machine = factory_machine(rules, (source, target), creature);
+    let room = if let Some((hero, artifact)) = machine {
+        let change = HeroChange::AddArtifact(artifact.into());
+        let details = state.hero(hero).unwrap();
+        u32::from(h3_heroes::check_change(details, rules.core(), change).is_ok())
+    } else if army.len() < usize::from(slots) {
         most
     } else {
         army.iter()
@@ -5433,6 +5509,26 @@ fn hire_most(
         .fold(count.min(room), u32::min)
 }
 
+/// The hero and the machine's artifact of a War Machine Factory's dialog's `creature` (E08 T135b2;
+/// ADV-WMF-001), if the source is a factory selling it to a hero.
+fn factory_machine(
+    rules: &GameRuleset,
+    (source, target): (HireSeen, HireTarget),
+    creature: CreatureTypeId,
+) -> Option<(HeroId, ArtifactTypeId)> {
+    let (HireSeen::Object { object_type, .. }, HireTarget::Hero(hero)) = (source, target) else {
+        return None;
+    };
+    match &rules.adventure().object_type(object_type)?.kind {
+        ObjectKind::WarMachineFactory(factory) => factory
+            .machines
+            .iter()
+            .find(|m| m.0 == creature)
+            .map(|m| (hero, m.1)),
+        _ => None,
+    }
+}
+
 /// The answers to `player`'s open hire dialog as `legal_commands` must list them (GAM-DEC-008,
 /// E08 T95b), from the source's stock, the treasury and the army read independently
 /// ([`hire_stock`], [`hire_most`]): a `Buy` of the most of each creature in the source's order
@@ -5441,13 +5537,11 @@ fn hire_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec
     let Some(view) = hire_view(state, rules, player) else {
         return Vec::new();
     };
-    hire_stock(rules, state, view.source)
+    hire_stock(rules, state, (view.source, view.target))
         .into_iter()
         .map(|(creature, count)| {
-            (
-                creature,
-                hire_most(rules, state, (player, view.target), (creature, count)),
-            )
+            let dialog = (player, view.target, view.source);
+            (creature, hire_most(rules, state, dialog, (creature, count)))
         })
         .filter(|&(_, most)| most > 0)
         .map(|(creature, amount)| Answer::Hire(HireAnswer::Buy { creature, amount }))
@@ -5476,7 +5570,7 @@ fn check_hire(
     legal: &[GameCommand],
 ) -> Result<(), TestCaseError> {
     let (target, source) = (view.target, view.source);
-    let stock = hire_stock(rules, state, source);
+    let stock = hire_stock(rules, state, (source, target));
     let shown: Vec<(CreatureTypeId, u32)> = view
         .creatures
         .iter()
@@ -5504,7 +5598,7 @@ fn check_hire(
         |creature, amount| GameCommand::Answer(Answer::Hire(HireAnswer::Buy { creature, amount }));
     let mut refused = Vec::new();
     for &(creature, count) in &stock {
-        let most = hire_most(rules, state, (actor, target), (creature, count));
+        let most = hire_most(rules, state, (actor, target, source), (creature, count));
         let range = hire_range(state, rules, actor, creature);
         prop_assert_eq!(range.clone(), 1..=most, "{:?}", creature);
         refused.extend([buy(creature, 0), buy(creature, range.end() + 1)]);
@@ -5554,6 +5648,38 @@ fn check_hire(
             .into_iter()
             .map(|(resource, each)| (resource, each * amount))
             .collect();
+        // E08 T135b2: a War Machine Factory's machine (ADV-WMF-001, ADV-HIR-002): its price paid,
+        // its artifact given to the hero (`HeroChanged`), the army unchanged, the machine's count 0
+        // after it (the hero holds it), the dialog closing exactly when it sells one machine.
+        if let Some((hero, artifact)) = factory_machine(rules, (source, target), creature) {
+            let mut expected: Vec<GameEvent> = price
+                .iter()
+                .map(|&(resource, amount)| GameEvent::ResourcePaid {
+                    player: actor,
+                    resource,
+                    amount,
+                })
+                .collect();
+            expected.push(GameEvent::HeroChanged {
+                player: actor,
+                hero,
+                change: HeroChange::AddArtifact(artifact.into()),
+            });
+            expected.extend(single.then_some(GameEvent::DecisionClosed { player: actor }));
+            prop_assert_eq!(&events[..], &expected[..], "{:?}", command);
+            prop_assert_eq!(&hire_army(&after, target), &hire_army(state, target));
+            let mut left = stock.clone();
+            let place = left.iter().position(|&(sold, _)| sold == creature).unwrap();
+            left[place].1 -= amount;
+            prop_assert_eq!(hire_stock(rules, &after, (source, target)), left);
+            prop_assert_eq!(hire_view(&after, rules, actor).is_none(), single);
+            let mut treasury = state.treasury(actor).unwrap().to_vec();
+            for &(resource, paid) in &price {
+                treasury[usize::from(resource.raw())] -= paid;
+            }
+            prop_assert_eq!(after.treasury(actor).unwrap(), &treasury[..]);
+            continue;
+        }
         let mut army = hire_army(state, target);
         let fits = |s: &h3_contracts::ArmyStack| {
             s.creature == creature && s.count.saturating_add(amount) <= most
@@ -5655,7 +5781,7 @@ fn check_hire(
                 *count -= amount;
             }
         }
-        prop_assert_eq!(hire_stock(rules, &after, source), left);
+        prop_assert_eq!(hire_stock(rules, &after, (source, target)), left);
         let open = hire_view(&after, rules, actor);
         prop_assert_eq!(open.is_none(), single, "{:?}", command);
         if let Some(open) = open {
@@ -5685,7 +5811,8 @@ fn check_hire(
 /// it holds the game, so its owner acts (in its turn or not: a battle's defender that won) and no
 /// one else lists a command. A hire dialog (E08 T95b) lists its answers ([`hire_answers`]), each
 /// checked by [`check_hire`]; a map Tavern's decision (E09 T40b) its own ([`tavern_answers`]), each
-/// checked by [`check_map_hire`].
+/// checked by [`check_map_hire`]; a market's, an Altar's or a Hill Fort's (E08 T135b2) theirs
+/// ([`trades::trade_answers`]), each checked by [`trades::check_trade_listing`].
 fn check_legal(
     state: &GameState,
     rules: &GameRuleset,
@@ -5708,6 +5835,8 @@ fn check_legal(
     let hiring = hire_view(state, rules, actor);
     // E09 T40b: a map Tavern's decision (GAM-DEC-010).
     let taverning = state.tavern(actor).is_some();
+    // E08 T135b2: a market's, an Altar's or a Hill Fort's (GAM-DEC-011 to -013).
+    let trading = trades::trade_answers(state, rules, actor);
     let system = legal_commands(state, rules, Actor::System);
     prop_assert_eq!(system.is_empty(), who != Actor::System);
     prop_assert!(system.iter().all(|c| matches!(c, GameCommand::Battle(_))));
@@ -5738,6 +5867,8 @@ fn check_legal(
                 choice_answers(state, rules, player)
             } else if taverning {
                 tavern_answers(state, rules, player)
+            } else if let Some(answers) = &trading {
+                answers.clone()
             } else if hiring.is_some() {
                 hire_answers(state, rules, player)
             } else {
@@ -5759,6 +5890,7 @@ fn check_legal(
                 && !exchanging
                 && !choosing
                 && !taverning
+                && trading.is_none()
                 && hiring.is_none()
                 && !levelling
                 && !fighting
@@ -5903,6 +6035,12 @@ fn check_legal(
     if taverning {
         prop_assert_eq!(legal, &tavern_answers(state, rules, actor)[..]);
         return check_map_hire(state, rules, actor, legal);
+    }
+    // E08 T135b2: a market's, an Altar's or a Hill Fort's answers, each applied
+    // ([`trades::check_trade_listing`]).
+    if let Some(answers) = &trading {
+        prop_assert_eq!(legal, &answers[..]);
+        return trades::check_trade_listing(state, rules, actor, legal);
     }
     // E08 T95b: a hire dialog's answers, each applied ([`check_hire`]).
     if let Some(view) = &hiring {
@@ -7101,6 +7239,18 @@ fn check_unlisted(
         prop_assert!(listed || split, "unlisted {:?} accepted", command);
         return Ok(());
     }
+    // E08 T135b2: an answer to an open market or Altar the view allows, a trade of several lots,
+    // a transfer, a sale or a purchase in another resource, a part of a sacrifice (GAM-DEC-011,
+    // GAM-DEC-012: no transfer and one answer per action are listed), its effects
+    // [`trades::check_trades`]'; a Hill Fort lists every answer `apply` accepts.
+    if let GameCommand::Answer(Answer::Market(_) | Answer::Altar(_)) = command {
+        prop_assert!(
+            before.market(actor).is_some() || before.altar(actor).is_some(),
+            "unlisted {:?} accepted",
+            command
+        );
+        return Ok(());
+    }
     let (hero, path) =
         as_move(command).ok_or_else(|| fail(format!("unlisted {command:?} accepted")))?;
     prop_assert_eq!(before.adventure().hero(hero).map(|h| h.owner), Some(actor));
@@ -7546,7 +7696,10 @@ fn check_timed(
 /// hire dialog's purchase pays the cost of one times the amount and joins the amount as a join does.
 /// Since E09 T38a2 a town's hire pays the part's price, and its hero joins the map with its tavern
 /// slot's army; its slot's refill may add a record; since E09 T40b a map Tavern's hire alike. Since E09 T38b2 a dismissed hero leaves the
-/// map with its army, its record's spell points full untold.
+/// map with its army, its record's spell points full untold. Since E08 T135b2 a market's and a Hill
+/// Fort's answers pay and gain what their view prices ([`trades::trade_moves`]: a trade's lots, a
+/// transfer's amount to its recipient, a sale's lots, a purchase's price, an upgrade's), and a
+/// War Machine Factory's purchase pays the machine's cost and gives its artifact, the army kept.
 fn check_conservation(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -7725,6 +7878,22 @@ fn check_conservation(
     if let Some((_, level, _)) = bank_looted(rules, (before, after)) {
         contents.extend(level.resources.iter().copied());
     }
+    // E08 T135b2: a market's trade, transfer or sale gains what its view prices, a purchase and a
+    // Hill Fort's upgrade pay it ([`trades::trade_moves`]; ADV-MKT-003 to -005, -007, ADV-HFT-002).
+    let trader = acting(before);
+    let trading =
+        matches!(command, GameCommand::Answer(_)) && trades::trade_open(before, trader).is_some();
+    let (trade_paid, trade_gains) = match command {
+        GameCommand::Answer(answer) if trading => {
+            trades::trade_moves(rules, before, trader, answer)
+        }
+        _ => Default::default(),
+    };
+    contents.extend(
+        trade_gains
+            .iter()
+            .map(|&(_, resource, amount)| (resource, amount)),
+    );
     // A guarding monster's treasure comes before the visit its answer held (decision 279: the
     // guard first, GAM-DEC-007), so before [`visit_gains`]' (the town lane's inbox, E09 T19a: a
     // join for gold before the Mystical Garden it guarded).
@@ -7879,7 +8048,11 @@ fn check_conservation(
                     resource,
                     amount,
                 } => {
-                    prop_assert!(removed || at > day_at, "{:?} without a visit", event);
+                    prop_assert!(
+                        removed || !trade_gains.is_empty() || at > day_at,
+                        "{:?} without a visit",
+                        event
+                    );
                     if owner == player {
                         treasury[usize::from(resource.raw())] += amount;
                     }
@@ -7890,10 +8063,12 @@ fn check_conservation(
                     amount,
                 } => {
                     // E08 T64b: or a School's choice (GAM-DEC-005) or a University's purchase
-                    // (GAM-DEC-006) answered; (E08 T95b) or a hire dialog's purchase (GAM-DEC-008).
+                    // (GAM-DEC-006) answered; (E08 T95b) or a hire dialog's purchase (GAM-DEC-008);
+                    // (E08 T135b2) or a market's or a Hill Fort's answer (GAM-DEC-011, -013).
                     let answered = matches!(command, GameCommand::Answer(_))
                         && (before.choice(owner).is_some()
                             || before.university(owner).is_some()
+                            || trades::trade_open(before, owner).is_some()
                             || hiring(before, owner));
                     prop_assert!(
                         accepted == Some(owner)
@@ -7918,7 +8093,9 @@ fn check_conservation(
             }
         }
         prop_assert_eq!(after.treasury(player).unwrap(), &treasury[..]);
-        if accepted == Some(player) {
+        if trading && player == trader {
+            prop_assert_eq!(&paid[..], &trade_paid[..], "{:?}", command);
+        } else if accepted == Some(player) {
             prop_assert_eq!(&paid[..], before.decision(player).unwrap().price());
         } else if let Some(price) = boat.filter(|_| !paid.is_empty()) {
             prop_assert_eq!(&paid[..], &price[..]);
@@ -11708,6 +11885,14 @@ fn check_decisions(
                             creatures: vec![camp.unwrap().0],
                         }
                     }
+                    // E08 T135b2: a War Machine Factory's hire question, at every visit, never
+                    // refused (no price), its machines in order (ADV-WMF-001).
+                    ObjectKind::WarMachineFactory(factory) => {
+                        prop_assert!(opened, "{:?}: a hire question is never refused", event);
+                        OfferKind::Hire {
+                            creatures: factory.machines.iter().map(|m| m.0).collect(),
+                        }
+                    }
                     _ => return Err(fail(format!("{event:?} offers no offer"))),
                 };
                 let offer = Offer {
@@ -11956,18 +12141,26 @@ fn check_decisions(
     // E09 T40b: a map Tavern's decision (GAM-DEC-010), by its visitor and the Tavern's anchor,
     // opened as told when nothing of these is open and closed as told (a hire or `Close`).
     let tavern = |state: &GameState| state.tavern(actor).map(|v| (v.hero, v.anchor));
+    // E08 T135b2: a market's, an Altar's or a Hill Fort's (GAM-DEC-011 to -013), by its visitor,
+    // type and anchor, opened as told when nothing of these is open and closed as told (`Leave`,
+    // or an Altar's sacrifice before its level-up, GAM-DEC-007).
+    let trade = |state: &GameState| trades::trade_open(state, actor);
     let mut exchange = (
         before.meeting(actor),
         dialog(before),
         choosing(before),
         garrison(before),
         tavern(before),
+        trade(before),
     );
     let mut guards = false;
     for event in events {
         match *event {
             GameEvent::MeetingOpened { player, heroes } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
+                prop_assert_eq!(
+                    (player, exchange),
+                    (actor, (None, None, None, None, None, None))
+                );
                 for hero in heroes {
                     let owner = after.adventure().hero(hero).map(|h| h.owner);
                     prop_assert_eq!(owner, Some(actor));
@@ -11982,7 +12175,10 @@ fn check_decisions(
                 object_type,
                 anchor,
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
+                prop_assert_eq!(
+                    (player, exchange),
+                    (actor, (None, None, None, None, None, None))
+                );
                 let map = after.adventure().map();
                 let own = map.objects().iter().enumerate().any(|(i, o)| {
                     (o.object_type, o.anchor) == (Some(object_type), anchor)
@@ -11995,11 +12191,14 @@ fn check_decisions(
             GameEvent::ArmyDialogOpened { player, hero, .. } if guards => {
                 prop_assert_eq!(
                     (player, exchange),
-                    (actor, (None, Some(hero), None, None, None))
+                    (actor, (None, Some(hero), None, None, None, None))
                 );
             }
             GameEvent::ArmyDialogOpened { player, hero, .. } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
+                prop_assert_eq!(
+                    (player, exchange),
+                    (actor, (None, None, None, None, None, None))
+                );
                 exchange.1 = Some(hero);
             }
             GameEvent::ChoiceOpened { player, hero, .. }
@@ -12009,7 +12208,10 @@ fn check_decisions(
                 target: HireTarget::Hero(hero),
                 ..
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
+                prop_assert_eq!(
+                    (player, exchange),
+                    (actor, (None, None, None, None, None, None))
+                );
                 prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
                 exchange.2 = Some(HireTarget::Hero(hero));
             }
@@ -12019,7 +12221,10 @@ fn check_decisions(
                 target: target @ HireTarget::Garrison(town),
                 ..
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
+                prop_assert_eq!(
+                    (player, exchange),
+                    (actor, (None, None, None, None, None, None))
+                );
                 let adventure = after.adventure();
                 let index = adventure.map().town_object(town);
                 prop_assert_eq!(index.and_then(|i| adventure.owner(i)), Some(actor));
@@ -12052,7 +12257,7 @@ fn check_decisions(
                     prop_assert_eq!(open, Some((hero, garrison)));
                     continue;
                 }
-                prop_assert_eq!(exchange, (None, None, None, None, None));
+                prop_assert_eq!(exchange, (None, None, None, None, None, None));
                 exchange.3 = Some((hero, garrison));
             }
             GameEvent::TavernOpened {
@@ -12061,20 +12266,58 @@ fn check_decisions(
                 object_type,
                 anchor,
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None, None, None)));
+                prop_assert_eq!(
+                    (player, exchange),
+                    (actor, (None, None, None, None, None, None))
+                );
                 prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
                 let kind = &rules.adventure().object_type(object_type).unwrap().kind;
                 prop_assert!(matches!(kind, ObjectKind::Tavern), "{:?}", event);
                 exchange.4 = Some((hero, anchor));
             }
+            GameEvent::MarketOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            }
+            | GameEvent::AltarOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            }
+            | GameEvent::HillFortOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            } => {
+                let none = (None, None, None, None, None, None);
+                prop_assert_eq!((player, exchange), (actor, none));
+                prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
+                let kind = trades::trade_kind(rules, object_type);
+                let told = match event {
+                    GameEvent::MarketOpened { .. } => trades::TradeKind::Market,
+                    GameEvent::AltarOpened { .. } => trades::TradeKind::Altar,
+                    _ => trades::TradeKind::HillFort,
+                };
+                prop_assert_eq!(kind, Some(told), "{:?}", event);
+                // Entered: the visitor on the object's entrance (ADV-OBJ-003).
+                let pos = after.adventure().hero(hero).unwrap().pos;
+                let at = visited_at(after, pos).and_then(|i| after.adventure().object(i));
+                let at = at.map(|o| (o.object_type, o.anchor));
+                prop_assert_eq!(at, Some((Some(object_type), anchor)), "{:?}", event);
+                exchange.5 = Some((hero, object_type, anchor));
+            }
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, actor);
                 prop_assert!(
-                    exchange != (None, None, None, None, None),
+                    exchange != (None, None, None, None, None, None),
                     "{:?} with nothing open",
                     event
                 );
-                exchange = (None, None, None, None, None);
+                exchange = (None, None, None, None, None, None);
                 guards = false;
             }
             _ => {}
@@ -12086,6 +12329,7 @@ fn check_decisions(
         choosing(after),
         garrison(after),
         tavern(after),
+        trade(after),
     );
     prop_assert_eq!(open, exchange);
     prop_assert_eq!(after.decision(actor), decision.as_ref());
@@ -12115,7 +12359,8 @@ fn hire_opens(
                     .iter()
                     .any(|&c| rules.core().creature(c).unwrap().level > free)
         }
-        Some(ObjectKind::RefugeeCamp { .. }) => true,
+        // E08 T135b2: a War Machine Factory's (ADV-WMF-001).
+        Some(ObjectKind::RefugeeCamp { .. } | ObjectKind::WarMachineFactory(_)) => true,
         _ => false,
     }
 }
@@ -12328,7 +12573,13 @@ fn check_isolation(
             // E08 T85b: a new day pays every player its income ([`check_income`]), and a turn's
             // start fires its player's timed events ([`check_timed`]).
             let started = events.contains(&GameEvent::TurnStarted { player });
-            if !(surrendered && partners.contains(&player)) && !new_day && !started {
+            // E08 T135b2: a market's transfer gives its recipient the amount (ADV-MKT-004;
+            // [`check_conservation`] checks it as told).
+            let given = before.market(actor).is_some()
+                && events.iter().any(
+                    |e| matches!(*e, GameEvent::ResourceGained { player: p, .. } if p == player),
+                );
+            if !(surrendered && partners.contains(&player)) && !new_day && !started && !given {
                 prop_assert_eq!(before.treasury(player), after.treasury(player));
             }
             prop_assert!(
@@ -12366,10 +12617,10 @@ proptest! {
     /// ([`check_dismissals`]).
     #[test]
     fn every_step_keeps_the_commands_invariants(
-        plan in tavern_plan(),
+        plan in trade_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in steps(),
+        steps in trade_steps(),
         experience in proptest::option::weighted(0.5, vec(experience(), 6)),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
@@ -12447,6 +12698,8 @@ proptest! {
             check_bonuses(rules, (&before, &state), &command, &events)?;
             // E08 T125b2a: the creature banks' draws, guards, loots and rewards.
             check_banks(rules, (&before, &state), (player, &command), &events)?;
+            // E08 T135b2: the trades' stocks and the answers' effects, listed or not.
+            trades::check_trades(rules, (&before, &state), (player, &command), &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -12462,9 +12715,9 @@ proptest! {
     /// parent evolve identically under the same commands.
     #[test]
     fn forks_evolve_as_their_parent(
-        plan in tavern_plan(),
+        plan in trade_plan(),
         seed in any::<u64>(),
-        steps in steps().prop_filter("a step", |steps| !steps.is_empty()),
+        steps in trade_steps().prop_filter("a step", |steps| !steps.is_empty()),
         split in any::<proptest::sample::Index>(),
     ) {
         let rules = &*FAITHFUL;
@@ -12507,10 +12760,10 @@ proptest! {
     /// forked with the state).
     #[test]
     fn a_forks_week_is_its_parents(
-        plan in tavern_plan(),
+        plan in trade_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in steps(),
+        steps in trade_steps(),
         n in any::<u16>(),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
@@ -12566,9 +12819,9 @@ proptest! {
     /// also with the rules compiled again.
     #[test]
     fn replays_are_deterministic(
-        plan in tavern_plan(),
+        plan in trade_plan(),
         seed in any::<u64>(),
-        steps in steps(),
+        steps in trade_steps(),
     ) {
         let m = lay_out(&plan);
         prop_assert_eq!(parse(&encode(&m), &Limits::default()), Ok(m));
@@ -13256,6 +13509,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         bonuses: Vec::new(),
         banks: Vec::new(),
         taverns: Vec::new(),
+        trades: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.
