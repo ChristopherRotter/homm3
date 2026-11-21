@@ -40,7 +40,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   times #2's +0.027; 8 and 16 within noise of 4. **Next: T43's measurement** at budget 4 on the
   user's CPU (the commands in `QUEUE.md`; the games files uploaded too), T44 (where #2 diverges)
   beside it.
-- **Open pull requests:** this branch's (T43's budget check: records, log, queue). Merged: #1084
+- **Open pull requests:** #1110 (`shared/e13-refinement`), #1111 (`ai/e13-refinement`, E13's refinement; stacked). Merged: #1084
   (the stop fix), #1083 (`shared/e25-ceiling`), #1075 (T39, T41, T42).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
