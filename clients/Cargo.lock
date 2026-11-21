@@ -464,6 +464,7 @@ version = "0.1.0"
 dependencies = [
  "h3-adventure",
  "h3-assets",
+ "h3-battle-client",
  "h3-contracts",
  "h3-files",
  "h3-formats",
@@ -474,6 +475,7 @@ dependencies = [
  "h3-render",
  "h3-sdl",
  "h3-ui",
+ "h3-view",
  "nanomp3",
  "serde",
  "toml 1.1.8+spec-1.1.0",

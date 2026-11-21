@@ -1525,8 +1525,9 @@ player's commands in its `script` are the original's computer's walk as recorded
 sequence's `seed` (its `hero` lines in that turn; hero ids the engine's, the situation's `heroes`
 in order), recorded first and the script written after; the viewer's record then holds the steps
 Red sees (`game-ai`, `game-ai-boat`). A whole game's record without a recording: `h3-map-view
-record <r.jsonl> --record-map <map.h3m>` plays it headless to its end, `window --record` in the
-window (design §5.17); a golden replay's record comes from `h3-server record <replay.toml>
+record <r.jsonl> --record-map <map.h3m>` plays it headless to its end (naming the battles it hands
+over), `window --record` in the window (design §5.17), its battles in it (§5.20, E24 M4
+T5b1); a golden replay's record comes from `h3-server record <replay.toml>
 --packs-dir packs --root . --out <dir>`.
 
 **A battle in a sequence** (E24 M4 T5a, design §5.19): a sequence's `battle` is a plan of
