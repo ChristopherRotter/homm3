@@ -983,10 +983,16 @@ def map_timeline(states):
     change; since T1b1 `<ms> other <crest> <sand> <glass>` (kind 5's frames, `Mem.other_turn`)
     where they change while kind 5 is shown, `<ms> other` once it is not. Since E24 M4 T2d3
     `<ms> book 1` where the spell book comes on top and `<ms> book 0` where it leaves (design
-    §5.8; no screen is kept while it shows)."""
+    §5.8; no screen is kept while it shows). Since E24 M4 T5a `<ms> battle <winner>` where a
+    battle's screen first shows whole (0 the attacker won, 1 the defender, -1 neither): the battle
+    played then takes none of the sequence's time, its next millisecond the result window's;
+    from there until the map is the active manager again (the result window, the battle's fade
+    out) no line (design §5.19)."""
     lines, last = [], {}
     for state in states:
         t = state["t"]
+        if "away" in state:
+            continue  # a battle's span (E24 M4 T5a): the battle client's
         for key in ("view", "objects", "cycles", "cursor", "buttons", "points"):
             if key in state and last.get(key) != state[key]:
                 lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
@@ -998,6 +1004,8 @@ def map_timeline(states):
                 # No hero selected (E24 M3 T6b1: a town chosen): the line without numbers.
                 lines.append(f"{t} {key} {' '.join(map(str, state[key]))}".rstrip())
             last[key] = state[key]
+        if "battle" in state:
+            lines.append(f"{t} battle " + " ".join(map(str, state["battle"])))
         if "arrows" in last and last["arrows"] != state["arrows"]:
             lines.append(f"{t} arrows" + "".join(" " + ",".join(map(str, a))
                                                  for a in state["arrows"]))
@@ -1040,6 +1048,9 @@ INPUTS = ("keydown", "keyup", "pointer", "click", "press", "release")
 # T6b3 Space (`space`: the selected hero chosen again, its tile visited); since E24 M4 T1a a
 # message box's Enter and Escape (`Return`, `Escape`: its OK's and Cancel's hotkeys); since E24
 # M4 T2c the digits 1 and 2 (the level-up dialog's left and right offers, design §5.5).
+# The adventure manager's state (E24 M4 T5a, design §5.19): 1 while it is the active manager,
+# 2 while manager_run 0x4B0C70 runs another (a battle) over it.
+MANAGER_STATE = 0x34
 DIRECTION_KEYS = ("Up", "Prior", "Right", "Next", "Down", "End", "Left", "Home")
 HOTKEYS = ("k", "u", "q", "z", "w", "m", "c", "a", "o", "h", "e")
 OTHER_KEYS = ("space", "Return", "Escape", "1", "2")
@@ -1167,7 +1178,8 @@ def sequence_inputs(entry):
     # `script` (E24 M4 T4a1, design §5.12): a scripted game's engine commands, the viewer's (a
     # string per command as `h3 adventure run --script` reads them).
     unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", "rolls",
-                            "seed", "sound", "script", "engine_seed", *OPTIONS}
+                            "seed", "sound", "script", "engine_seed", "battle", *OPTIONS}
+    battle_plans(entry)
     script = entry.get("script", [])
     if not (isinstance(script, list) and all(isinstance(c, str) and c.strip() for c in script)):
         raise ValueError(f"{entry['id']}: `script` is a list of engine commands: {script!r}")
@@ -1230,6 +1242,32 @@ def sequence_inputs(entry):
     return options, inputs
 
 
+def battle_plans(entry):
+    """A sequence's battles (E24 M4 T5a, design §5.19): `battle`, one plan of `h3adv.fight` (
+    "auto", "retreat", a table) or a list of them, one per battle in the order they open; none
+    without it. `fight` checks each plan's words when its battle opens."""
+    plans = entry.get("battle", [])
+    plans = plans if isinstance(plans, list) else [plans]
+    if not plans and "battle" in entry or not all(isinstance(p, (str, dict)) for p in plans):
+        raise ValueError(f"{entry['id']}: `battle` is a battle plan or a list of them: "
+                         f"{entry['battle']!r}")
+    return plans
+
+
+def battle_toml(record, t):
+    """A battle the sequence played (E24 M4 T5a, design §5.19), numbers only: the millisecond its
+    screen first showed whole (`at`), its winning side (0 the attacker, 1 the defender, -1 none),
+    the side that retreated or surrendered (-1 none) and the stacks at its start and its end
+    (`[side, creature, count, hex]` each, `h3adv.stacks`)."""
+    side = lambda s: -1 if s is None else s  # noqa: E731
+    rows = lambda stacks: "[" + ", ".join(  # noqa: E731
+        "[" + ", ".join(map(str, s)) + "]" for s in stacks) + "]"
+    return (f"\n[[battle]]\nat = {t}\nwinner = {record['winner']}\n"
+            f"retreated = {side(record['retreated'])}\n"
+            f"surrendered = {side(record['surrendered'])}\n"
+            f"start = {rows(record['start'])}\nend = {rows(record['end'])}\n")
+
+
 def give_input(game, kind, value):
     """One input to the original (T1a2): xdotool's `keydown`, `keyup` or `mousemove`; since T1b
     a click (`mousemove`, then the left button's `click`, no wait between: the clock stands)."""
@@ -1266,6 +1304,7 @@ def sequence(entry, out):
     pixels."""
     situation_path = SITUATIONS / f"{entry['situation']}.toml"
     options, inputs = sequence_inputs(entry)
+    plans = battle_plans(entry)
     # An earlier run's files go first (M2 T6a, the reviewer's R3-3): a run that failed midway
     # left them beside its own partial screens, and `--reuse` took the mix as one run.
     kept = out / "frames"
@@ -1299,6 +1338,9 @@ def sequence(entry, out):
     game, mem, sit, turn = stage(situation_path, out, seed=seed, sound=sound)
     own = own_texts(sit)
     down = set()
+    # Where the sequence holds the pointer (E24 M4 T5a): `h3adv.fight` parks it over the battle's
+    # panel, and the map's mouse-over is redone where it stands once the map is back (0x419570).
+    pointer = tuple(sit["pointer"]) if "pointer" in sit else h3adv.PARK
     try:
         kept.mkdir(parents=True)
         # The objects' phases fixed (T1b): the load gives each a random one (design §1.6), and
@@ -1344,6 +1386,9 @@ def sequence(entry, out):
         h3adv.wait_for(lambda: min(mem.map_due()) > now,
                        lambda: f"the deadlines past the frozen clock at {now} ({mem.map_due()})")
         t0 = now + 1
+        # Each battle played (E24 M4 T5a): the clock when its screen showed whole, the clock when
+        # it was frozen again at the result window, and the sequence's millisecond of both.
+        t0_first, jumps = t0, []
         # The objects' frame steps 0 (T1b): with the phases (above) an object's frame at the
         # redraw at 0 is the same in every run; the count since the load is its real time's.
         mem.write_frame_steps(0)
@@ -1376,15 +1421,22 @@ def sequence(entry, out):
         counted = {"cycles": base["cycles"], "ticks": (0, 0)}
         live = live_part(mem, sit, turn, *base["cycles"], kingdom=shown)
 
-        def state(t, pix, before):
+        def state(t, pix, before, span=False):
+            # `span` (E24 M4 T5a, design §5.19): after a battle played until the map is the
+            # active manager again (its result window, the battle's fade out): the battle
+            # client's screens, kept by none and in no timeline line, its palette's steps
+            # followed but not counted (they follow the battle's real-time run).
             k = cycle_now(mem)
-            ticks = tuple(n + (now_k - was) % 36 for n, now_k, was
-                          in zip(counted["ticks"], k, counted["cycles"]))
-            counted.update(cycles=k, ticks=ticks)
+            if span:
+                counted["cycles"] = k
+            else:
+                ticks = tuple(n + (now_k - was) % 36 for n, now_k, was
+                              in zip(counted["ticks"], k, counted["cycles"]))
+                counted.update(cycles=k, ticks=ticks)
             index, hero = mem.selected()
             s = {"t": t - t0, "view": list(mem.view()) + [mem.view_level()],
                  "date": list(mem.date()), "player": [mem.current_player()],
-                 "objects": [mem.frame_steps() - base["objects"]], "cycles": list(ticks),
+                 "objects": [mem.frame_steps() - base["objects"]], "cycles": list(counted["ticks"]),
                  "cursor": mem.cursor(), "due": [d - t0 for d in mem.map_due()],
                  "hero": hero, "walk": mem.walk(), "arrows": mem.path_arrows(),
                  "buttons": mem.buttons(), "other": mem.other_turn(),
@@ -1394,7 +1446,10 @@ def sequence(entry, out):
                  "book": [int(mem.spell_book())]}
             if index >= 0:
                 s["points"] = [mem.points(index)]
-            box = None if before is None or s["book"][0] else view_changed(before, pix)
+            if span:
+                s["away"] = [1]
+            box = (None if before is None or s["book"][0] or span
+                   else view_changed(before, pix))
             if before is None or box:
                 s["changed"] = box
                 s["frame"] = f"t{t - t0:05d}.npz"
@@ -1411,6 +1466,7 @@ def sequence(entry, out):
         shown_box, shown_found, finds = None, mem.status_shown() == 6, []
         shown_level_up = None
         shown_book, casting, boats_before = False, None, []
+        battle_shown = battle_span = False
         for i in range(entry["ms"]):
             t = game.clock("step 1", settle_reads=500)
             # Each step one millisecond (M2 T6a, the reviewer's R3-6): an input at a skipped one
@@ -1419,6 +1475,8 @@ def sequence(entry, out):
                 raise RuntimeError(f"the clock stepped to {t - t0}, not {i + 1}")
             for kind, value in inputs.get(t - t0, []):
                 give_input(game, kind, value)
+                if kind in ("pointer", "click", "press", "release"):
+                    pointer = tuple(value)
                 if kind in ("keydown", "keyup"):
                     (down.add if kind == "keydown" else down.discard)(value)
                 elif kind in ("press", "release"):
@@ -1432,13 +1490,18 @@ def sequence(entry, out):
             if t - t0 in inputs:
                 game.clock("step 0", settle_reads=500)
             pix = game.settled()
-            states.append(state(t, pix, last))
+            # E24 M4 T5a (design §5.19): while another manager runs (a battle: manager_run
+            # 0x4B0C70 holds the adventure manager's +0x34 at 2 until the map is back) its dialogs
+            # are not the map's boxes; after a battle played, the battle's span until then.
+            away = mem.manager_field(MANAGER_STATE) != 1
+            battle_span = battle_span and away
+            states.append(state(t, pix, last, battle_span))
             if "frame" in states[-1]:
                 last = pix
             if [states[-1][k] for k in ("date", "player")] != [states[-2][k]
                                                                  for k in ("date", "player")]:
                 turns.append(turn_toml(mem, t - t0))
-            box = mem.message_box()
+            box = None if away else mem.message_box()
             # E24 M4 T2b1: a choice made or a button's state changed is a table of its own.
             key = None if box is None else (box["box"], box["texts"], box["pictures"],
                                             box["chosen"], box["marks"])
@@ -1447,14 +1510,14 @@ def sequence(entry, out):
             shown_box = key
             # E24 M4 T2c (design §5.5): the level-up dialog, a table at its build and at each
             # change of its choice or its OK.
-            level_up = mem.level_up_box()
+            level_up = None if away else mem.level_up_box()
             key = None if level_up is None else (level_up["box"], level_up["texts"],
                                                  level_up["pictures"], level_up["chosen"],
                                                  level_up["marks"])
             if key is not None and key != shown_level_up:
                 finds.append(level_up_toml(level_up, t - t0, own))
             shown_level_up = key
-            found = mem.status_shown() == 6
+            found = not away and mem.status_shown() == 6
             if found and not shown_found:
                 finds.append(found_toml(mem.found(), t - t0, own))
             shown_found = found
@@ -1474,15 +1537,63 @@ def sequence(entry, out):
                 finds.append(cast_toml(mem, casting, t - t0))
                 casting = None
             shown_book = book
+            # E24 M4 T5a (design §5.19): a battle's screen shown whole, past its fade in. The
+            # battle is played with the clock running (`h3adv.fight`, its result window left
+            # open), the clock frozen again, the pointer put back where the sequence had it, and
+            # the sequence's time goes on as if the battle took none: its next millisecond the
+            # result window's, the inputs after it given from there. The battle's own screens are
+            # the battle client's (E17); its screen stays on until its fade out darkens it.
+            battle_now = h3adv.in_battle(game, pix)
+            if battle_now and not battle_shown:
+                if not plans:
+                    raise RuntimeError(f"a battle at {t - t0} that the sequence does not plan")
+                at, opened = t - t0, t
+                # The palette's next step (palette_tick_time 0x6989B4, one for the map and the
+                # battle: set to now + 200, or 110 in a battle, when it fires, never caught up)
+                # put back after the battle as far ahead as it stood here: otherwise its phase
+                # back on the map follows the battle's real-time run, run to run.
+                tick_ahead = mem.u32(h3mem.PALETTE_TICK_TIME) - opened
+                game.clock("run")
+                record = h3adv.fight(game, mem, plans.pop(0), close=False)
+                # The pointer back before the clock stops: a move on the frozen clock is taken
+                # only some milliseconds later (the first run's cursor at the battle's panel).
+                game.move(*pointer)
+                h3adv.wait_for(lambda: tuple(mem.cursor()[2:]) == pointer,
+                               lambda: f"the cursor back at {pointer} ({mem.cursor()})", 10)
+                now = game.clock("freeze")
+                mem.write_u32(h3mem.PALETTE_TICK_TIME, now + tick_ahead)
+                jumps.append((opened, now, at))
+                t0 = now - at
+                states[-1]["battle"] = [record["winner"]]
+                finds.append(battle_toml(record, at))
+                battle_span = True
+            battle_shown = battle_now
         if casting:
             finds.append(cast_toml(mem, casting, None))
+        if plans:
+            raise RuntimeError(f"the battles planned never opened: {plans}")
+
+        def at_ms(c):
+            # A clock's millisecond of the sequence's (E24 M4 T5a): before a battle's screen as
+            # it was, during the battle none, after it from the time the battle took off.
+            base = t0_first
+            for opened, back, at in jumps:
+                if c <= opened:
+                    return c - base
+                if c <= back:
+                    return None
+                base = back - at
+            return c - base
+
         if sound:
             # `<ms> <channel> <length ms> <loops>` from the sequence's 0, each sample started
             # since the map's own sounds settled (the channel: xdd.dll's numbering of the game's
-            # sample handles, so two starts on two channels sound together).
+            # sample handles, so two starts on two channels sound together). A battle's own
+            # samples, played while its clock ran (E24 M4 T5a), are the battle client's: left out.
             (out / "sounds.txt").write_text("".join(
-                f"{t - t0} {channel} {length} {loops}\n"
-                for t, channel, length, loops in h3drive.sounds(game)[heard:]))
+                f"{at_ms(t)} {channel} {length} {loops}\n"
+                for t, channel, length, loops in h3drive.sounds(game)[heard:]
+                if at_ms(t) is not None))
     finally:
         # A key left down stays down on the display for the next game (T1a2); the game stopped
         # whatever the release meets (M2 T6a, the reviewer's R3-4).

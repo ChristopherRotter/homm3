@@ -50,7 +50,16 @@ the engine lanes' inboxes, its gap shown in the comparison, never a rule copied 
 - **Acceptance:** a golden replay's battles shown in the window; the switch compared with the
   original's recording where it is drawn; `check.sh` all gates.
 - **Depends on:** T4 (done with T4c2, 2026-11-21); the client lane's library entry (its inbox,
-  2026-10-31). **Status:** **next** (confirm with the client lane that its entry is there).
+  2026-10-31: complete, E17 M7 T3a to T3c). **Status:** cut in two by the user at its start
+  (2026-11-21, the reading first): **T5a done** (the reading and the recordings: the log's "M4
+  T5a", design §5.19; the harness's battle step; `battle-won`, `battle-mine`, `battle-retreat` in
+  `map/to-record.toml`; MCL-Q47); **T5b next**: the viewer (`h3-map-view`'s window hosting
+  `h3-battle-client`'s element, the map's sound on `HostSound`; a record's battles played,
+  `GameRecord::battles()`, and the map after them as §5.19 reads it; T5a's three moved into
+  `sequences.toml` and compared; a golden replay's battles in the window; `check.sh`). Large:
+  confirm its cut at its start (seam: the window's hosting first, the switch and the result
+  compared second); its first question, the crate structure (a dependency on the client lane's
+  crate or a binary over both libraries, M4 T0's decision), for the user then.
 
 ### E24 M4 T6 — M4's closure
 
