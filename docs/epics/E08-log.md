@@ -21789,3 +21789,45 @@ SHA-256 against `installation.md`). Survey `docs/rules/surveys/E08-spells.md` §
 (`visit_object`, `adventure_spell`, `scuttle_boat_cast` and `adventure_spell_cast` now read,
 `hero_special_ground` read, `hero_move_record` read, `summon_boat_choice`); `structs.toml`: the
 hero's +0x10D, +0x10E, +0x129. **Versions:** none (docs only). Next: T137b.
+
+### Increment 15, round 1: T137b, the design note, the drafts, the cut and the checkpoint (2026-11-21, `adventure/e08-t137b`)
+
+**The cut** (decision 398, the user at T137b's start: two parts recommended, by side offered):
+**whole**. **Baseline:** `master` 83121b4 (#1114, T137a, merged); docs only. Staged at the start
+while the PC was up: `Heroes3.exe` (SHA-256 `aac39e8c…` checked), the three manuals and two help
+files (not needed in the end); the repo cloned from GitHub.
+
+**The checkpoint** (ADV-Q63, four rounds before the note, one after; decisions 399 to 407): the
+survey §17's questions asked at the start, each alone at the user's request. A-13 and A-53 as
+fix-optional flags with the compromise their fixed side, a failed door onto a hidden tile
+revealing it (399); D-75 fix-optional, the fixed side by straight distance on the hero's level
+(400); the door's 9 × 8 window (401); A-50 by the door's compromise behind a flag, the user's
+reason a boat a player may know of under the fog (402); A-49 accepted, A-51 and A-52
+fix-optional (403); a book needed until row E15-15 (404); the mastery on a ground in
+`h3-heroes` (405); the four information spells to E12 (406). After the note: the cut, the drafts
+and the agent's calls as written, but the flight's compromise charges only up to its last stop
+node (407).
+
+**The design note** `E08-design.md` (§1 to §21): **A** the content (§1 `prison`, visited from a
+neighbour; §2 the Market of Time as a new kind `empty`, entered and never visited; §3 the five
+spells' bindings `[[spell]]` and `[params.spells]`; §4 the quirk table: ADV-QUIRK-15
+reclassified, 51 to 55 fix-optional, 56 bug-fix, 57 accepted); **B** the hero (§5
+`spell_masteries_on` with `SchoolRaise` from the battle part's battlefield, derived by the game;
+§6 `map_spell_cost`, `can_cast_on_map`); **C** the map (§7 the prisoners' bodies imported, map
+import v29; §8 `DaySpells` on the hero, adventure state hash v28; §9 the prison's visit; §10 the
+five casts' checks and effects with their charged failures; §11 the hidden tiles under each flag;
+§12 the day's end and boarding; §13 information); **D** the game (§14 `GameCommand::Cast` and its
+order; §15 the prisoners in the store and their freeing at the hire's limit; §16 the events and
+protocol v79; §17 the env's v18, the replay's v24, the maps and properties; §18 versions, ids,
+stubs ADV-STUB-19 to -21); **E** (§19 batch E15 amended; §20 the shared and `cross-lane` work, the
+cut T138 to T145 and ten exit criteria; §21 risks).
+
+**The drafts** `docs/lanes/adventure/adr-drafts/0013-increment-15.md` (point 2, new point 17),
+`0016-increment-15.md` (points 1, 3 to 6) and `0017-increment-15.md` (points 1, 4, 8 to 10),
+accepted at the checkpoint for T140 with batch E15's outcome. ADR-0015 needs none.
+
+**Docs:** decisions 398 to 407 and the tasks T138 to T145 in the epic; ADV-Q63 in
+`QUESTIONS-ANSWERED.md`; T137b's entry to `QUEUE-ARCHIVE.md`, T138 queued; the inboxes of the
+battle lane (T138's spec consent, `spell_masteries_on`), the AI lane (v18), the server lane (v79),
+the map client lane (the types, the cast's targets) and the town lane (prisoners in the store).
+**Verify:** docs only: `check-docs`, `check-lane`. No code, version or replay moved. **Next:** T138.
