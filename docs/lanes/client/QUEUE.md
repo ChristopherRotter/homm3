@@ -15,16 +15,13 @@ computer must be online); never from the installation. The captures need the fiv
 CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`.
 
-#### E27 M4 T5b2
+#### E27 M4 T6
 
-T5b2 the hot-seat load's flags (decision 76; design §42.3, the recording §41.3): a flag's press
-among the save's humans (CLT-Q110 (b) in the client's profile; the original's for the
-comparisons: Purple's press moves A there, Red "Computer", Red's press gives the opening's rows
-back), the name moving onto the colour's saved choices (built since T5b1 with a new game's rule:
-its town and hero Random). Exact against `adv-load`'s `flag-3`, `flag-1` and the three Random
-Map shots after them (`random`, `random-key`, `random-popup`: the rows as `flag-1` leaves them).
-The presses that change nothing and the popups are exact since T5b1 (14 of 19). Then T6, M4's
-closure.
+T6 M4's closure (the epic's M4 table): a fresh reviewer agent first (M4's screens, the code and
+its review list items 1 to 42), M4's review list to the user (the checkpoint), M4's scope,
+decisions and tasks to `E27-archive.md`, the README's epic row (a `shared/` PR), and M5's
+refinement once the shell hosts play (E24 M5), else its prerequisites recorded. The captures at a
+milestone's closure: the runbook ("Which captures a change needs").
 
 ## Inbox
 

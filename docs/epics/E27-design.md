@@ -4282,3 +4282,35 @@ nothing, the popups, the list's shots); `adv-load-more` 2 of 2. Not yet: `adv-lo
 flag-1 (a flag's press moves the name with a new game's rule, its town and hero Random, where the
 original's takes the colour's saved choices) and random, random-key, random-popup after them
 (the rows as flag-1 left them): T5b2.
+
+## 43. Load Game hot seat: the flags (M4 T5b2, 2026-11-21)
+
+Decision 76's second half: a flag's press in a hot-seat load and what follows it in `adv-load`.
+
+### 43.1 Read
+
+- **Random Map's press redraws in a load.** `scenario_dialog_click`'s case 130 calls
+  `random_map_toggle` 0x57FEB0 (returning at once in a load, §41.1), then `random_map_tab_draw`
+  0x57EF70 (nothing while the tab is not shown, +0x37E), then at 0x586FA7 every item drawn (the
+  dialog's vtable +0x14 with 0, 0xFFFF0001, 0xFFFF) and `scenario_dialog_redraw`. So a flags'
+  strip a flag's press left stale (CLT-Q138's slip, §26.1: two pixels at (456, 413 to 418) in
+  `adv-load` flag-1) is drawn again by the press and by its key R: `adv-load` random equals the
+  options' opening (advanced), where flag-1 does not.
+- **A moved record's choices:** inferred from `flag-3` and `flag-1` (a row shows the game's
+  player of its colour, §3.14): the name on purple shows purple's saved town, hero and bonus, red
+  "Computer" red's; red's press gives the opening's rows back.
+
+### 43.2 As built
+
+- **The press** (`Advanced::flag_click`): in a load, after the original's cycle or the client's
+  exchange, every human record holding a colour takes that colour's saved record
+  (`Advanced::take_saved`, the rows' remake's too). In the client's profile a press is taken only
+  on a colour the save holds as human (CLT-Q110 (b), decision 22; *provisional* in its detail:
+  M4's review list item 41).
+- **Random Map in a load** (`Scenario::toggle_random`): nothing but the whole redraw (the stale
+  strip cleared).
+
+### 43.3 Compared
+
+`adv-load` 19 of 19 exact (flag-3, flag-1, random, random-key, random-popup since this task);
+every other group as recorded.

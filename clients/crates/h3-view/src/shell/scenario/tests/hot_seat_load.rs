@@ -2,7 +2,9 @@
 //! play, its panel's buttons and flags, Random Map in the original's profile alone (CLT-Q161 (b))
 //! and doing nothing; the advanced options the save's (its choices, no arrows, the handicap taking
 //! no press, the duration's bar dimmed and taking no press), the names placed by the save's humans
-//! first (CLT-Q160 (a)), as `adv-load` and `adv-load-more` recorded them.
+//! first (CLT-Q160 (a)), as `adv-load` and `adv-load-more` recorded them; a flag's press moving
+//! a name onto its colour's saved choices, among the save's humans in the client's profile
+//! (CLT-Q110 (b)), and Random Map's whole redraw (E27 M4 T5b2; design §43).
 
 use super::super::advanced::tests::with_options_in;
 use super::super::advanced::{FLAG, HANDICAP, HERO_LEFT, PLAYER, TOWN_LEFT};
@@ -243,4 +245,85 @@ fn only_the_hot_seat_s_load_with_a_save_selected_hands_on_names() {
         .loading(&layout.scenario.load_begin, KOLKATA)
         .opened_hot_seat(Hovers::default(), &[String::from("A"), String::from("B")]);
     assert_eq!(bare.seated(), None);
+}
+
+/// Row `r`'s flag.
+const fn flag(r: i32) -> [i32; 2] {
+    [35, 155 + 50 * r]
+}
+
+/// Each colour's (town, hero) the rows hold, red first.
+fn choices(s: &Scenario) -> [(Option<u8>, Option<u8>); 8] {
+    s.records().unwrap().map(|r| (r.town, r.hero))
+}
+
+#[test]
+fn a_flag_s_press_moves_the_name_onto_the_colour_s_saved_choices() {
+    let saved_choices: [(Option<u8>, Option<u8>); 8] = core::array::from_fn(|c| {
+        let k = u8::try_from(c % 4).unwrap();
+        (Some(k), Some(16 * k))
+    });
+    let computer = || Some(String::from("Computer"));
+    let a = || Some(String::from("A"));
+    let b = || Some(String::from("B"));
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let mut s = hot_load(vec![saved("Four.GM4", &[0, 1, 5, 6])], &["A", "B"], bugs);
+        options(&mut s);
+        let opening = s.draws("P");
+        // `adv-load` flag-3: purple's press moves A there, red the computer's; every row the
+        // save's choices of its colour, whoever holds it (both are the save's humans:
+        // CLT-Q110 (b) takes it).
+        assert!(click(&mut s, flag(2)).changed);
+        assert_eq!(
+            row_names(&s),
+            [computer(), b(), None, None, None, a(), computer(), None]
+        );
+        assert_eq!(s.records().unwrap()[5].colour, Some(5));
+        assert_eq!(choices(&s), saved_choices, "{bugs:?}");
+        // flag-1: red's press gives the opening's rows back.
+        assert!(click(&mut s, flag(0)).changed);
+        assert_eq!(
+            row_names(&s),
+            [a(), b(), None, None, None, computer(), computer(), None]
+        );
+        assert_eq!(choices(&s), saved_choices, "{bugs:?}");
+        let mut seated: [Option<String>; 8] = Default::default();
+        seated[0] = a();
+        seated[1] = b();
+        assert_eq!(s.seated(), Some(seated));
+        // random: in the original's profile the flags' strip the presses left stale until Random
+        // Map's press, which changes nothing but the whole redraw (0x586FA7); the client's draws
+        // whole at every press.
+        s.moved([790, 300]);
+        assert_eq!(s.draws("P"), opening, "{bugs:?}");
+        assert_eq!(s.stale_draws("P").is_some(), bugs == Bugs::Original, "{bugs:?}");
+        click(&mut s, [514, 115]);
+        assert_eq!(s.draws("P"), opening, "{bugs:?}");
+        assert!(s.stale_draws("P").is_none(), "{bugs:?}");
+    }
+}
+
+#[test]
+fn the_client_moves_a_load_s_colours_among_the_save_s_humans_only() {
+    // `adv-load-more`'s save: red its one human, B on blue (a computer's in the save). A press on
+    // purple (the computer's in the save): the original's moves A there, the client's takes none
+    // (CLT-Q110 (b)); a press on red (the save's) the client's passes on.
+    let mut s = hot_load(vec![saved("Week_one.GM1", &[0])], &["A", "B"], Bugs::Original);
+    options(&mut s);
+    click(&mut s, flag(2));
+    assert_eq!(s.records().unwrap()[5].colour, Some(5));
+    let mut s = hot_load(vec![saved("Week_one.GM1", &[0])], &["A", "B"], Bugs::Fixed);
+    options(&mut s);
+    let before = s.records().unwrap();
+    click(&mut s, flag(2));
+    assert_eq!(s.records().unwrap(), before);
+    click(&mut s, flag(0));
+    let held = s.records().unwrap().map(|r| r.colour);
+    assert_eq!(held[0], Some(0));
+    assert_eq!(held[1], Some(1));
+    let names = s.seated().unwrap();
+    assert_eq!(
+        [&names[0], &names[1]].map(|n| n.as_deref()),
+        [Some("B"), Some("A")]
+    );
 }

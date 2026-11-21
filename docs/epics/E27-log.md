@@ -1866,3 +1866,22 @@ Kept whole (no seam needed).
 - **Gates:** `check.sh --no-coverage`, the coverage of `h3-view` and `h3-ui`, the real-asset gate,
   the client scope's verify with the original data; `cargo xtask check-exe-map`.
 - **The agent's calls** (*provisional*: M4's review list items 37 to 40).
+
+## M4 T5b2 — Load Game hot seat's flags (2026-11-21)
+
+- **Start:** the PC's 64 files of `original-data/`, the manuals and the help files staged; the
+  PC's shell did not start ("Workspace unavailable"), so the 71 sizes were checked against its
+  listing and the four LODs and both executables against `installation.md`'s SHA-256. The setup's
+  baseline stopped at coverage (fmt, clippy, the doc tests, deny passed); T5b1's #1092 merged,
+  `master`'s Clients run green. Kept whole (small; no seam offered).
+- **Read** (design §43.1): Random Map's case 130 draws every item and redraws after its toggle,
+  in a load too; a moved record's choices inferred from the shots.
+- **Built** (design §43.2): `Advanced::flag_click` in a load (the saved record taken by every
+  moved record, `take_saved`; the client's profile's press only on a saved human's colour),
+  `Scenario::toggle_random`'s whole redraw in a load. Two tests in `hot_seat_load.rs`.
+- **Compared:** at the first build `adv-load` 16 of 19 (random, random-key, random-popup: the
+  stale strip kept); then 19 of 19. The other groups as recorded. `drawn --record` for
+  `advanced`.
+- **Gates:** `check.sh --no-coverage`, the coverage of `h3-view` and `h3-ui`, the real-asset gate,
+  the client scope's verify with the original data.
+- **The agent's calls** (*provisional*: M4's review list items 41 and 42).

@@ -19,8 +19,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **T5a** (decision 75: the hot-seat load read, two hot-seat makers, `adv-load` again and
   `adv-load-more`; §41) and **T5b1** (decision 76: the hot seat's load screen, the save's rows,
   the names placed, `h3-view save` for a hot seat; §42; `mp-load` 6 of 6, `adv-load` 14 of 19,
-  `adv-load-more` 2 of 2) done 2026-11-21. **Next: M4 T5b2** (the load's flags; the queue), then
-  T6 (M4's closure).
+  `adv-load-more` 2 of 2) and **T5b2** (the flags: a moved name takes its colour's saved choices,
+  CLT-Q110 (b)'s press only on a saved human's colour; Random Map's whole redraw in a load; §43;
+  `adv-load` 19 of 19) done 2026-11-21. **Next: M4 T6** (M4's closure and the user's checkpoint;
+  the queue).
   Decisions to carry (all: the epic's list): the dialogs' input one implementation (20;
   `h3_ui::input`); the shell's code as the battle's (21); every pixel of a Smacker clip through
   its palette (24); every clip's sound at the effects setting (27); a menu opening anew takes the
@@ -32,7 +34,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   item 23); a right press without a popup redraws nothing but on the description and the
   players' items (review item 27); a disabled button takes no hotkey (review item 33); the names
   decide who is human after a hot-seat load (CLT-Q160 (a)), no Random Map in a load (CLT-Q161
-  (b)). Open pull request: T5b1's, branch `client/e27-m4-t5b1`: watch it until it merges. E17 done
+  (b)). Open pull request: T5b2's, branch `client/e27-m4-t5b2`: watch it until it merges. E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -69,6 +71,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-21, E27 M4 T5b2 (done; `client/e27-m4-t5b2`).** The PC's 71 files staged and checked
+  as T5b1's. Kept whole. Read Random Map's case 130 (every item drawn
+  and the redraw after its toggle, in a load too). Built a flag's press in a load (the saved
+  choices taken, the client's profile's press only on a saved human's colour) and Random Map's
+  whole redraw there. `adv-load` 19 of 19 exact. Record: `E27-log.md`, "M4 T5b2".
 - **2026-11-21, E27 M4 T5b1 (done; `client/e27-m4-t5b1`).** The PC's 64 files, the manuals and
   the help files staged (the PC's shell down: sizes against its listing, the LODs and executables
   against `installation.md`'s SHA-256). T5b cut in two, CLT-Q160 (a), CLT-Q161 (b) (decision 76).
@@ -83,10 +90,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `Four.GM4`: every colour human with its choices); `adv-load` recorded again (19 shots),
   `adv-load-more` new (2), twice the same; CLT-Q160, CLT-Q161 asked. Record: `E27-log.md`,
   "M4 T5a".
-- **2026-11-20, E27 M4 T4b2 (done; `client/e27-m4-t4b2`).** The PC's 63 files, the manuals and
-  the help files staged (SHA-256 checked). Kept whole (decision 74). Read Delete's end, the select
-  of none and the opening with no saves (Load disabled before the notice). Built Delete's question
-  and its end (the window deletes the file of its own folder), the notice with no saves, Load's
-  end (the save loaded by the engine at play's start, kept for E24 M5); CLT-STUB-15 lifted.
-  `scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5; CLT-Q159 asked.
-  Record: `E27-log.md`, "M4 T4b2".
