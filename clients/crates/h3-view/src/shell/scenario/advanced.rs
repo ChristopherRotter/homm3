@@ -545,8 +545,8 @@ pub(super) struct Advanced {
     /// human may play, the handicap is a caption button, no name has an edit.
     hot_seat: bool,
     /// The hot seat's load (E27 M4 T5b1; design §41.1): the rows the save's (its choices and
-    /// duration, the names placed by its humans first), no arrows, the handicap disabled, the
-    /// duration's bar not enabled.
+    /// duration, the names placed by its humans first), no arrows, the handicap not enabled, the
+    /// duration's bar disabled (dimmed, taking no press).
     load: bool,
     /// The human records in the slots' order (+0x1064: `scenario_slot_add` 0x577BE0, ids 1 on):
     /// the single player's alone (the local slot's), or the hot seat's names'; the first is the
@@ -1030,7 +1030,7 @@ impl Advanced {
 
     /// Whether `point` (from the dialog's corner) is on the duration's bar while the options show
     /// and the bar is enabled (not in a load, E27 M4 T5b1: its vtable +0x24 skipped, 0x581383;
-    /// drawn as in a new game, its arrows taking no press: recorded).
+    /// drawn dimmed, its arrows taking no press: recorded).
     pub(super) fn on_bar(&self, point: [i32; 2]) -> bool {
         self.showing && !self.load && self.bar.contains(point)
     }

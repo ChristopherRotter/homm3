@@ -92,13 +92,13 @@
 //!   Advanced Options, Random Map in the original's profile alone (CLT-Q161 (b): the original's
 //!   shows it, its press and its key R doing nothing, `random_map_toggle` 0x57FEB0), the flags'
 //!   strip; the advanced options the save's (`advanced`'s load: the saved choices, no arrows, the
-//!   handicap and the duration's bar disabled, the names placed by the save's humans first,
-//!   CLT-Q160 (a)); Load hands the names' places on ([`Scenario::seated`]).
+//!   handicap not enabled, the duration's bar disabled and dimmed, the names placed by the save's
+//!   humans first, CLT-Q160 (a)); Load hands the names' places on ([`Scenario::seated`]).
 //!
-//! *Not built yet:* the save mode (M5), the hot seat's load's presses that change nothing, its
-//! flags' presses among the save's humans (CLT-Q110 (b)) and its popups (T5b2), GENRLTXT 503 while the list is
-//! read again (a network game's message 1015 alone, `scenario_list_reread` 0x58B120: the network modes',
-//! `CLT-STUB-6`; design §20.3).
+//! *Not built yet:* the save mode (M5); the hot seat's load's flags' presses among the save's
+//! humans, the name onto the colour's saved choices (CLT-Q110 (b), T5b2); GENRLTXT 503 while the
+//! list is read again (a network game's message 1015 alone, `scenario_list_reread` 0x58B120: the
+//! network modes', `CLT-STUB-6`; design §20.3).
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
