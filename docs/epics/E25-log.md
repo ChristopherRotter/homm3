@@ -2486,3 +2486,51 @@ an entry only where a task builds on it.
 - **Stopping** (after #1075): Ctrl-C keeps the finished games; a stop during an append could cut
   the last one short, which the resume now drops and plays again (a test). A real SIGINT on the
   release build 70 s into a 12-game run kept 4 games; the same command played the other 8.
+
+## T43 — The ceiling measured: the budget check (2026-11-21)
+
+- **The runs** (the user's CPU, 16 threads, `master` at #1084's tool): the report set v1, 20
+  episodes a kind, against the fair actor on the side's worlds at budgets 4, 8 and 16; the
+  user uploaded the three games files. Their JSON records were rebuilt in the sandbox by the same
+  commands on those files (the identity matched: 120 games held, none played; `seconds` 0 in
+  them), and the fair actor's own play on the same episodes (`--budget 0`, under a second) added
+  as the pairing's base. All in `python/records/ceiling/` (`budget-<n>.json`, the games files
+  `budget-<n>-games.toml`).
+- **The results** (`h3 ai eval`'s weights, hero 100, siege_hero 50, siege_garrison 25; the
+  improved seat on both sides of every episode; paired: the same (kind, episode, seat) at budget
+  0, a 95 % interval from the kinds' variances):
+
+  | budget | rollouts a decision | win rate | value | value over the fair actor's, paired |
+  |---|---|---|---|---|
+  | 0 (the fair actor) | 0 | 0.500 ± 0.087 | +0.000 | — |
+  | 4 | 481 | 0.543 ± 0.081 | +0.083 | +0.083 ± 0.020 |
+  | 8 | 830 | 0.571 ± 0.076 | +0.089 | +0.089 ± 0.022 |
+  | 16 | 1 661 | 0.614 ± 0.076 | +0.098 | +0.098 ± 0.024 |
+
+  Between budgets, paired: 8 − 4 +0.006 ± 0.015 in value (win rate +0.029 ± 0.053), 16 − 8
+  +0.009 ± 0.015 (+0.043 ± 0.047), 16 − 4 +0.015 ± 0.015 (+0.071 ± 0.057; the six games whose
+  winner changed all went to budget 16). Every kind and side gains at every budget (budget 4,
+  paired: hero +0.111 attacking, +0.062 defending; siege_hero +0.091, +0.102; siege_garrison
+  +0.032, +0.052, its winners unchanged), no truncation.
+- **The budget: 4** (the queue's rule, the smallest within the noise of the next: 8 − 4 is
+  +0.006 ± 0.015). Each doubling adds about +0.006 to +0.009, so the bound at 4 sits about 0.015
+  below 16's, small beside the headroom it shows: the rollout-improved fair actor's +0.083 is
+  about three times #2's +0.027 against the same actor (T29, 2 998 games of the report set; not
+  the same episodes), its win rate 0.543 to #2's 0.511. The measurement at budget 4 costs 58 %
+  of budget 8's rollouts (T42's 2 hours a world of the report set: about 70 minutes).
+- **By category** (the fair actor's choice; the share it changes and the mean rollout advantage
+  a decision, budget 4 / 16): tactics 0.685 / 0.554, +0.010 / +0.004; melee (1 482 decisions)
+  0.569 / 0.564, +0.006 / +0.005; shot 0.495 / 0.470, +0.006 / +0.003; casts 0.802 / 0.773,
+  **+0.024 / +0.021**, four times a melee's. Summed over decisions, casts and melee hold about
+  two thirds of the estimated advantage (8.7 and 9.3 of 28.5 at budget 4). The estimate is
+  optimistic (the maximum of noisy means: summed over a game, 0.24 at budget 4 and 0.17 at 16
+  against the realised +0.083 and +0.098) and shrinks with the budget, the casts' least.
+  The improved seat plays fewer tactics decisions (327 to 404 against the fair actor's 807: it
+  ends the phase sooner) and turns many choices into a move or a wait (`into`: 556 moves, 298
+  waits or defends from 334 and 78).
+- **Refusals** 1 534, 2 623 and 4 269 of 1.6, 2.7 and 5.5 M rollouts (0.1 %, BAT-STUB-19's casts
+  as in T42).
+- **Next, the measurement at budget 4** (the queue's commands): the report set's 100 a kind on
+  both worlds, then the neutral set; their games files uploaded with the records, for the paired
+  difference of the worlds (the information's cost) and against the fair actor's own play, which
+  the sandbox replays at budget 0 on the same build.

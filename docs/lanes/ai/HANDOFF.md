@@ -35,11 +35,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   legal command, common random numbers), on the true battle and the side's worlds, then where
   #2's choices lose value. **T42 done** (`E25-log.md` T42): `h3 ai ceiling`, the rollout-improved
   fair actor on `h3 ai eval`'s sets, sequential halving, a resumable games file; about 190
-  thread-seconds a game at budget 8. **Next: T43** on the user's CPU (the budget check, then the
-  measurement; the commands in `QUEUE.md`), T44 (where #2 diverges) beside it.
-- **Open pull requests:** this branch's (the stop fix, T43's 16 threads) and #1083
-  (`shared/e25-ceiling`: the README's E25 row, `h3 ai ceiling` in `docs/07`). Merged: #1075
-  (T39, T41, T42), #1040 (T38b).
+  thread-seconds a game at budget 8. **T43's budget check done** (`E25-log.md` T43): budget 4,
+  the rollout-improved fair actor +0.083 over the fair actor's own play (paired; 0.543), three
+  times #2's +0.027; 8 and 16 within noise of 4. **Next: T43's measurement** at budget 4 on the
+  user's CPU (the commands in `QUEUE.md`; the games files uploaded too), T44 (where #2 diverges)
+  beside it.
+- **Open pull requests:** this branch's (T43's budget check: records, log, queue). Merged: #1084
+  (the stop fix), #1083 (`shared/e25-ceiling`), #1075 (T39, T41, T42).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
@@ -51,6 +53,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-21 — E25 T43: the budget check read, budget 4
+
+- #1083, #1084 merged. The user ran the budget check (16 threads) and uploaded the three games
+  files; `cargo build --release -p h3-cli`, the JSON records rebuilt from them (identity
+  matched) and `--budget 0` played as the pairing's base (`python/records/ceiling/`). No
+  original data (none needed). The measurement's commands at budget 4 in `QUEUE.md`.
 
 ### 2026-11-20 — E25 T39 read, T41: increment 9 closed, increment 10 the ceiling
 
@@ -67,11 +76,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   --release -p h3-ffi`, `uv sync --group train`; the scoped verify (coverage's tool installed
   by hand: the setup script was not run). T39's bench as a CPU smoke (`--set` small), stopped by
   SIGINT and resumed. Python only. #1040, watched until it merges.
-
-### 2026-11-19 — E25 T38a: the reach query, observation v23, C ABI v38
-
-- #1028 merged. No original data (none needed). `cargo build --release -p h3-ffi`, `uv sync
-  --group train`; the Python suite took 70 minutes beside the benches (alone 3.5). The batch
-  workloads measured right after the first build (+340 %), the strike hexes rewritten on a
-  neighbour table (+176 %), then re-baselined; a `master` worktree (`target/wt-master`) for the
-  siege workload's per-function check. #1036 (`cross-lane`), watched until it merges.

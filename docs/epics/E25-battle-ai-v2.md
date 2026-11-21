@@ -169,7 +169,7 @@ where #2's choices lose value, so that the next lever aims at them.
 | Task | Scope | Status |
 |---|---|---|
 | T42 | The rollout tool: `h3 ai ceiling` (the improved fair actor against the system actors, both worlds, sequential halving with common random numbers, a resumable games file, a JSON record), its tests and timing (about 190 thread-seconds a game at budget 8) | done 2026-11-20 |
-| T43 | The ceiling measured (the user's CPU): a budget check (4, 8, 16), then the report set v1 and the neutral set v1, both worlds | next |
+| T43 | The ceiling measured (the user's CPU): a budget check (4, 8, 16), then the report set v1 and the neutral set v1, both worlds | budget check done 2026-11-21 (budget 4: +0.083 over the fair actor's play, paired, 8 and 16 within noise of it); the measurement next |
 | T44 | Where #2 diverges: #2's decisions against the fair actor replayed, every command valued by the same rollouts; the value its choice leaves by category, beside the fair actor's own | after T42 |
 | T45 | Increment 10's checkpoint: the headroom, the information's cost, the divergence; the next lever | after T43, T44 |
 
