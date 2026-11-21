@@ -354,8 +354,8 @@ fn the_trades_map_is_committed_as_written_and_imports_the_fourteen() {
         .zip(OBJECTS.iter().map(|&(tile, _)| at(tile)))
         .collect();
     assert_eq!(placed, expected);
-    // Each entrance one below its hero's tile, where a hero stands (the guild's and the factory's
-    // west of the anchor).
+    // Each object one entrance on its anchor's row: on the anchor, the guild's and the factory's
+    // west of it (each hero stands on the tile below one).
     for (index, object) in setup.map.objects.iter().enumerate() {
         let (column, row) = object.visitable.offsets().next().unwrap();
         assert_eq!(
