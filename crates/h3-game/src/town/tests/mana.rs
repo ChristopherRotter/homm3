@@ -228,7 +228,10 @@ fn a_build_gives_the_vortex_after_its_learning_to_the_garrison_hero_first() {
 #[test]
 fn a_hire_gives_the_vortex_to_the_hired_hero_alone_a_move_between_the_bars_nothing() {
     let rules = rules();
-    let mut game = game(&rules, &setup(&rules, &[GUILD_SLOT, TAVERN_SLOT, VORTEX_SLOT]));
+    let mut game = game(
+        &rules,
+        &setup(&rules, &[GUILD_SLOT, TAVERN_SLOT, VORTEX_SLOT]),
+    );
     // Into the garrison, drained: a move between the bars gives nothing.
     game.set_mana(RED_HERO, 0);
     let events = run(&rules, &mut game, RED, enter()).unwrap();

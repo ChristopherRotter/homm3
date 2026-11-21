@@ -3,7 +3,7 @@
 //! towns' stream and its Aurora set computed (TWN-GLD-002, TWN-GLD-004's set), each with the
 //! town's required and banned spells and the scenario's bans (GAM-SET-003; E09 T47a2); since E09
 //! T48a the town's heroes learning its spells at the town's triggers ([`learn`], TWN-GLD-005);
-//! since E09 T49a1 the spell points a town gives its heroes: the night's refill ([`refill`],
+//! since E09 T49a1 the spell points a town gives its heroes: the night's refill ([`refilled`],
 //! TWN-GLD-008) and the Mana Vortex once a week a town ([`vortex`], [`visit`], TWN-GLD-009).
 
 use alloc::vec::Vec;
@@ -215,36 +215,31 @@ pub(crate) fn vortex_to<S: Sink>(
     told.tell(state, rules, sink);
 }
 
-/// The night's refill (TWN-GLD-008, GAM-CAL-002 amended; design §92; survey `E09-guild.md` §14:
-/// the original's `new_day` 0x4C82E4 to 0x4C8434, after every hero's daily regain): each town in
-/// `TownId` order raises its visitor's, then its garrison hero's spell points to the hero's
-/// maximum where [`h3_towns::refill`] gives them (a building of role `guild` ever built there),
-/// never lowering them; no spell book, no owner is tested. Silent, as the daily regain
-/// (`GameState::regain_mana`): a hero's points show in its owner's observation. Called by the day
-/// advance right after the regain (day 1 has no night).
+/// The heroes the towns' night refills (TWN-GLD-008, GAM-CAL-002 amended; design §92; survey
+/// `E09-guild.md` §14: the original's `new_day` 0x4C82E4 to 0x4C8434, after every hero's daily
+/// regain): each town in `TownId` order whose night refills ([`h3_towns::refills`]: a building of
+/// role `guild` ever built there), its visitor, then its garrison hero, where one stands; no spell
+/// book, no owner is tested. Read by the day's regain (`GameState::regain_mana`), which gives each
+/// its points or its maximum, whichever is more, in place of the regain (the regain never passes
+/// the maximum nor lowers the points, so the night's result is the same, the maximum computed
+/// once: `bench-check`'s day-start workloads); silent, as the regain.
 // rule: TWN-GLD-008
-pub(crate) fn refill(state: &mut GameState, rules: &GameRuleset) {
-    let (core, part) = (rules.core(), rules.towns());
-    let shared: &GameState = state;
-    let towns = shared.towns();
-    let raised: Vec<(HeroId, u16)> = (0..=u16::MAX)
-        .take(towns.len())
-        .map(TownId::new)
-        .filter_map(|town| towns.get(town).map(|record| (town, record)))
-        .flat_map(|(town, record)| {
-            heroes(shared, town)
-                .into_iter()
-                .flatten()
-                .filter_map(move |(hero, _)| {
-                    shared
-                        .hero(hero)
-                        .and_then(|details| h3_towns::refill(record, part, core, details))
-                        .map(|points| (hero, points))
-                })
-        })
-        .collect();
-    for (hero, points) in raised {
-        let change = HeroChange::SetSpellPoints(points);
-        state.change_hero(core, hero, None, change, &mut crate::command::NoopSink);
+pub(crate) fn refilled(state: &GameState, rules: &GameRuleset) -> Vec<HeroId> {
+    let adventure = state.adventure();
+    let towns = state.towns();
+    let mut heroes = Vec::new();
+    for town in (0..=u16::MAX).take(towns.len()).map(TownId::new) {
+        let visitor = adventure.town_visitor(town);
+        let garrison = adventure.town_hero(town).map(|on| on.id);
+        if visitor.is_none() && garrison.is_none() {
+            continue;
+        }
+        if towns
+            .get(town)
+            .is_some_and(|record| h3_towns::refills(record, rules.towns()))
+        {
+            heroes.extend(visitor.into_iter().chain(garrison));
+        }
     }
+    heroes
 }

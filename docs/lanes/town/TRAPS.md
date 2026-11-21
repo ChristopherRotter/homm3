@@ -63,6 +63,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   resources over the upper bars' stacks as a `Chain` of `Flatten`s into a `BTreeSet` cost
   `day-start-builds-36` +7.9 % and `day-start-towns-36` +5 %; noting only the creature types
   with an ability in a short `Vec` (most stacks pass over with one lookup) left +0.2 %.
+- **A hero's maximum spell points are dear at the day's start** (E09 T49a1): the night's refill
+  as its own pass after `regain_mana` (`max_mana` again for every refilled hero) cost
+  `day-start-builds-36` +5.4 %; the regain now takes the refilled heroes
+  (`town::guild::refilled`) and computes their points once. A new day-start rule on a hero's
+  points goes into that walk too.
 - **CI's verify job stops at 55 minutes** (`ci.yml`'s `timeout-minutes`, 40 until #1009; the
   user, 2026-11-18): `master`'s full run about 36, the runner's apt step 6 to 10 of them,
   `bench-check` about 6. A workload whose random games grow (E09 T38a2: the hires tripled

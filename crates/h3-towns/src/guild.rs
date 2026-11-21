@@ -3,7 +3,7 @@
 //! shows of them as it is built ([`guild_level`], [`shown`], TWN-GLD-003) and the town's Aurora
 //! set ([`aurora_set`], the set TWN-GLD-004 teaches), and since E09 T48a what a hero learns there
 //! ([`teaches`], TWN-GLD-004), and since E09 T49a1 the spell points a town gives a hero: the
-//! night's refill ([`refill`], TWN-GLD-008) and the Mana Vortex ([`vortex`], TWN-GLD-009). Pure
+//! night's refill ([`refills`], TWN-GLD-008) and the Mana Vortex ([`vortex`], TWN-GLD-009). Pure
 //! functions over a town record, the part and the core with the spells the map and the scenario
 //! give ([`GuildSets`]); the game draws every town's guild at the build from the towns' stream (E09
 //! decision 179), keeps the slots and the set in the town's record (the store v4, E09 T47a2),
@@ -346,35 +346,22 @@ pub fn teaches(
     }
 }
 
-/// Whether a building of role `guild` was ever built in `town` (TWN-GLD-008; survey
-/// `E09-guild.md` §14: the original's building 0 in the every-built set); none without its
-/// faction's record in `part`.
-fn has_guild(town: &Town, part: &TownRuleset) -> bool {
+/// Whether a night in `town` refills its heroes' spell points (E09 design §92; survey
+/// `E09-guild.md` §14: the original's `new_day` 0x4C82E4 to 0x4C8434, a town whose every-built set
+/// holds building 0): a building of role `guild` was ever built there (TWN-GLD-001: a guild of any
+/// level, even one superseded since); none without its faction's record in `part`. Its visitor and
+/// its garrison hero then end the night at their points or their maximum
+/// ([`h3_heroes::max_mana`], HER-MAN-001), whichever is more, after the day's regain (HER-MAN-002,
+/// which never passes the maximum nor lowers the points): never lowered. Neither a spell book,
+/// the owner of the town or of the hero nor the guild's level is tested.
+// rule: TWN-GLD-008
+pub fn refills(town: &Town, part: &TownRuleset) -> bool {
     part.town(town.faction()).is_some_and(|record| {
         town.built()
             .iter()
             .filter_map(|id| record.building(id))
             .any(|b| b.roles.guild.is_some())
     })
-}
-
-/// The spell points a night in `town` gives a hero (E09 design §92; survey `E09-guild.md` §14: the
-/// original's `new_day` 0x4C82E4 to 0x4C8434, after every hero's daily regain): with a building of
-/// role `guild` ever built there, the hero's maximum ([`h3_heroes::max_mana`], HER-MAN-001) when
-/// its points are below it; `None` else (points above the maximum stay, never lowered). Neither a
-/// spell book, the owner of the town or of the hero nor the guild's level is tested.
-// rule: TWN-GLD-008
-pub fn refill(
-    town: &Town,
-    part: &TownRuleset,
-    core: &Ruleset,
-    details: &HeroDetails,
-) -> Option<u16> {
-    if !has_guild(town, part) {
-        return None;
-    }
-    let max = h3_heroes::max_mana(details, core);
-    (details.mana < max).then_some(max)
 }
 
 /// The spell points `town`'s Mana Vortex gives a hero (E09 design §93; survey `E09-guild.md` §15:

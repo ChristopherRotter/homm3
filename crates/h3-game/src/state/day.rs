@@ -80,9 +80,9 @@ impl GameState {
     ///    viewers, `town::start_day`; since E09 T26b on a week's first day every view that the
     ///    week, the month or the day changed, TWN-VEW-004), then every player's income
     ///    ([`Self::pay_income`]);
-    /// 5. every hero's spell points ([`Self::regain_mana`]), then since E09 T49a1 the towns'
-    ///    night: each town with a guild ever built raises its visitor's, then its garrison hero's
-    ///    to the maximum (TWN-GLD-008, `town::guild::refill`);
+    /// 5. every hero's spell points ([`Self::regain_mana`]; since E09 T49a1 with the towns'
+    ///    night: a town with a guild ever built raises its visitor's and its garrison hero's to
+    ///    the maximum, TWN-GLD-008);
     /// 6. the adventure's start-of-day step (E08 T40: in `strict-fixed` each hero's reveal,
     ///    ADV-FOG-003).
     // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004, TWN-GRO-002
@@ -156,8 +156,6 @@ impl GameState {
         town::start_day(self, rules, week, sink);
         self.pay_income(rules, week_start, sink);
         self.regain_mana(rules);
-        // E09 T49a1: the towns' night (TWN-GLD-008).
-        town::guild::refill(self, rules);
         self.adventure.start_day(core, part, &self.heroes);
     }
 
@@ -326,20 +324,30 @@ impl GameState {
     /// `h3_heroes::day_mana`, written only where it changes (a write copies the store's list and
     /// that hero's details when a fork shares them). No event: a hero's points show in its
     /// owner's observation.
-    // rule: HER-MAN-002
+    ///
+    /// Since E09 T49a1 with the towns' night after it (TWN-GLD-008, design note `E09-design.md`
+    /// §92: `town::guild::refilled`, a town with a guild ever built): its visitor and its garrison
+    /// hero end at their points or their maximum, whichever is more, computed in place of the
+    /// regain, which never passes the maximum nor lowers the points (the same result, the maximum
+    /// once).
+    // rule: HER-MAN-002, TWN-GLD-008
     fn regain_mana(&mut self, rules: &GameRuleset) {
         let core = rules.core();
         // E09 T37a: a tavern record at its maximum since its fill stays as it is (`Away::full`).
         let full = self.pool.full_records();
-        let changed: Vec<(usize, u16)> = self
-            .heroes
-            .iter()
-            .enumerate()
-            .filter(|&(index, _)| {
-                let id = u16::try_from(index).map(h3_contracts::HeroId::new);
-                id.is_ok_and(|id| !full.contains(&id))
+        let refilled = town::guild::refilled(self, rules);
+        let changed: Vec<(usize, u16)> = (0..=u16::MAX)
+            .map(h3_contracts::HeroId::new)
+            .zip(self.heroes.iter().enumerate())
+            .filter(|(id, _)| !full.contains(id))
+            .map(|(id, (index, details))| {
+                let mana = if refilled.contains(&id) {
+                    details.mana.max(h3_heroes::max_mana(details, core))
+                } else {
+                    h3_heroes::day_mana(details, core)
+                };
+                (index, mana)
             })
-            .map(|(index, details)| (index, h3_heroes::day_mana(details, core)))
             .filter(|&(index, mana)| self.heroes[index].mana != mana)
             .collect();
         if changed.is_empty() {

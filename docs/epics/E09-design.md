@@ -3282,13 +3282,16 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   where it changes (as `regain_mana`), no event.
 - **Tests:** a visitor's and a garrison hero's points raised; above the maximum kept; no guild no
   refill; day 1 none.
-- *As built* (T49a1, decision 192): `h3_towns::refill(town, part, core, details) -> Option<u16>`
-  (a guild ever built, then the maximum where the points are below it); the game's
-  `town::guild::refill` collects every town's raises first (`TownId` order, the visitor then the
-  garrison hero) and applies each as `HeroChange::SetSpellPoints` through `change_hero` without an
-  owner, so nothing is told. Tests: `h3-towns`' one (a superseded guild counts, no book needed), the
-  game's two in `town/tests/mana.rs` (a turn's end no night; a hero beside the town nothing). No
-  golden replay moved.
+- *As built* (T49a1, decision 192): `h3_towns::refills(town, part)` (a guild ever built); the
+  game's `town::guild::refilled` lists the heroes it refills (`TownId` order, the visitor then the
+  garrison hero; towns without a hero skipped before the guild test), read by `regain_mana`, which
+  gives each `points.max(max_mana)` in place of `day_mana`: the regain never passes the maximum
+  nor lowers the points, so regain-then-refill is that value, the maximum computed once. A
+  separate pass after the regain (the first draft) cost `day-start-builds-36` +5.4 %,
+  `day-start-towns-36` +3.3 %, `month-start-builds-36` +2.8 % (`max_mana` twice for every
+  refilled hero). Tests: `h3-towns`' one (a superseded guild counts), the game's two in
+  `town/tests/mana.rs` (a turn's end no night; a hero beside the town nothing). No golden replay
+  moved.
 
 ### 93. The Mana Vortex (TWN-GLD-009; §15)
 

@@ -3,7 +3,7 @@
 //! level 2 `L2_A` 40, `L2_B` 60; level 3 `L3` 100; level 4 `L4_ZERO` 0; level 5 the bolt 100,
 //! `L5_A` 50, `L5_B` 50), the part's slots 5, 4, 3, 2, 1 (six, five, four, three and two drawn).
 //! Since E09 T48a what a hero learns there ([`teaches`]), with [`guild_core`]'s [`sage`]; since
-//! E09 T49a1 the night's refill ([`refill`]) and the Mana Vortex ([`vortex`], [`vortex_keep`]).
+//! E09 T49a1 the night's refill ([`refills`]) and the Mana Vortex ([`vortex`], [`vortex_keep`]).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -484,28 +484,20 @@ fn sage_at(core: &Ruleset, mana: u16) -> (HeroDetails, u16) {
 
 // covers: TWN-GLD-008
 #[test]
-fn a_night_in_a_town_with_a_guild_ever_built_fills_a_hero_s_points_to_its_maximum() {
-    let (core, part) = (guild_core(&[]), guild_part());
-    // No spell book needed; any guild level, even one superseded since.
-    let (empty, max) = sage_at(&core, 0);
-    assert_eq!(max, 20);
-    for built in [&[MAGE_GUILD_1][..], &[MAGE_GUILD_1, MAGE_GUILD_3]] {
-        assert_eq!(refill(&town(built), &part, &core, &empty), Some(max));
+fn a_night_refills_in_a_town_with_a_guild_ever_built() {
+    let part = guild_part();
+    // Any guild level, even one superseded since.
+    for built in [
+        &[MAGE_GUILD_1][..],
+        &[MAGE_GUILD_1, MAGE_GUILD_3],
+        &[MAGE_GUILD_5],
+    ] {
+        assert!(refills(&town(built), &part));
     }
-    let keep = town(&[MAGE_GUILD_1]);
-    assert_eq!(
-        refill(&keep, &part, &core, &sage_at(&core, 19).0),
-        Some(max)
-    );
-    // At or above the maximum the points stay (never lowered).
-    for mana in [20, 35] {
-        assert_eq!(refill(&keep, &part, &core, &sage_at(&core, mana).0), None);
-    }
-    // No guild ever built (the Library alone), no faction's record: nothing.
-    assert_eq!(refill(&town(&[LIBRARY]), &part, &core, &empty), None);
-    let wild = town_of(WILD, &[MAGE_GUILD_1]);
-    assert_eq!(refill(&wild, &part, &core, &empty), None);
-    assert_eq!(refill(&keep, &empty_part(), &core, &empty), None);
+    // No guild ever built (the Library alone), no faction's record: none.
+    assert!(!refills(&town(&[LIBRARY]), &part));
+    assert!(!refills(&town_of(WILD, &[MAGE_GUILD_1]), &part));
+    assert!(!refills(&town(&[MAGE_GUILD_1]), &empty_part()));
 }
 
 // covers: TWN-GLD-009
@@ -514,6 +506,7 @@ fn a_standing_mana_vortex_with_the_week_s_flag_gives_the_factor_times_the_maximu
     let (core, part) = (guild_core(&[]), part_with_keep(vortex_keep));
     let keep = town(&[MAGE_GUILD_1, VORTEX]);
     let (empty, max) = sage_at(&core, 0);
+    assert_eq!(max, 20);
     assert!(keep.vortex());
     assert_eq!(vortex(&keep, &part, &core, &empty), Some(2 * max));
     // Below twice the maximum it gives; at or above it nothing (the flag stays for the next).

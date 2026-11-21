@@ -9750,10 +9750,13 @@ fn night_refill(
 ) -> Option<u16> {
     let adventure = state.adventure();
     let towns = state.towns();
-    let town = (0..=u16::MAX).take(towns.len()).map(TownId::new).find(|&town| {
-        adventure.town_visitor(town) == Some(id)
-            || adventure.town_hero(town).is_some_and(|on| on.id == id)
-    })?;
+    let town = (0..=u16::MAX)
+        .take(towns.len())
+        .map(TownId::new)
+        .find(|&town| {
+            adventure.town_visitor(town) == Some(id)
+                || adventure.town_hero(town).is_some_and(|on| on.id == id)
+        })?;
     let record = towns.get(town)?;
     let part = rules.towns().town(record.faction())?;
     let guild = record

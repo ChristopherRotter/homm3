@@ -56,8 +56,9 @@ In `TRAPS.md`.
 
 Baseline a9d593d (#1120 merged; the setup's full baseline passed every step up to coverage,
 stopped there). The user's computer was connected at the start only: 71 files staged, its shell
-down; SHA-256 checked. The user cut T49a in two (decision 192). Built: `h3_towns::refill`,
-`vortex`; the game's `town::guild::refill` (in `advance_day`), `vortex_to`, `vortex`, `visit`
+down; SHA-256 checked. The user cut T49a in two (decision 192). Built: `h3_towns::refills`,
+`vortex`; the game's `town::guild::refilled` (read by `regain_mana`: a separate pass failed the
+bench gate), `vortex_to`, `vortex`, `visit`
 (the visit's end, the builds, the hire), the week's flags; five game tests, two pure ones; three
 `h3-map` oracles taught. The 111 goldens unchanged.
 

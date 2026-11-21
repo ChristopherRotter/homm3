@@ -5886,14 +5886,17 @@ shell down ("Workspace unavailable"); the LODs' and executables' SHA-256 checked
 `docs/formats/installation.md`. **T49a cut in two** at its start (decision 192): this task the
 refill and the Vortex, T49a2 `Open` whole.
 
-- **The rules** (`h3-towns`' guild module): `refill(town, part, core, details)` (TWN-GLD-008:
-  a building of role `guild` ever built, the maximum where the points are below it) and
+- **The rules** (`h3-towns`' guild module): `refills(town, part)` (TWN-GLD-008: a building of
+  role `guild` ever built) and
   `vortex(town, part, core, details)` (TWN-GLD-009: the parameters, the week flag and a standing
   `mana_vortex` before the maximum; `vortex_factor × max_mana`, saturating); the fixture's
   `vortex_keep` (the Mana Vortex at 31). `Town::with_vortex` public (the oracles').
-- **The game** (`town::guild`): `refill` (every town in `TownId` order, the visitor then the
-  garrison hero, `SetSpellPoints` through `change_hero` without an owner: silent), called by
-  `advance_day` right after `regain_mana`; `vortex_to` (the first of the given heroes it raises:
+- **The game** (`town::guild`): `refilled` (every town in `TownId` order whose night refills,
+  its visitor then its garrison hero), read by `GameState::regain_mana`, which gives each its
+  points or its maximum, whichever is more, in place of the regain (the same result; silent).
+  The first draft's separate pass after the regain failed the bench gate (`day-start-builds-36`
+  +5.37 %, `day-start-towns-36` +3.25 %, `month-start-builds-36` +2.83 %: `max_mana` twice per
+  refilled hero); `vortex_to` (the first of the given heroes it raises:
   `HeroChanged`, `take_vortex`, the town's `Told`, taken only then), `vortex` (the garrison hero,
   then the visitor) and `visit` (the Vortex, then the learning). Callers: `build_told` after its
   learning; `hire` after its learning, the hired visitor alone; `settle_outcome`'s
@@ -5903,8 +5906,8 @@ refill and the Vortex, T49a2 `Open` whole.
 - **Catalog:** TWN-GLD-008 and -009 new (`implemented`; TWN-5-5's observation among their
   sources); TWN-GLD-005 (the visit's end runs the Vortex first), TWN-BLD-005, TWN-EVT-003,
   TWN-TAV-003 and GAM-CAL-002 amended.
-- **Tests:** `h3-towns`' two (a superseded guild counts, no book; the factor, the flag, a
-  superseded or unbuilt Vortex, no record, no parameters); the game's five in
+- **Tests:** `h3-towns`' two (a superseded guild counts; the factor, the flag, a superseded or
+  unbuilt Vortex, no record, no parameters); the game's five in
   `town/tests/mana.rs` (the night raises a garrison hero and an allied town's visitor, a turn's
   end no night, above the maximum kept; no guild and a hero beside the town nothing; the visit's
   end over two weeks: the points, the told flag before the learning, nothing until day 8, the
