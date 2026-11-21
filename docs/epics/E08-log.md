@@ -20449,3 +20449,60 @@ the setup's baseline only the light gates, CI's fingerprint on `master`'s code).
 - **Versions:** none moved (no hashed or wire shape changed: `Effect` is not hashed, the dialog
   and its answer are T95b's); no fixture map holds a factory, so the 104 goldens, the benches'
   courses and the bots tables are as they were.
+
+### Increment 14, round 8: T135a, the trades' and services' answers listed and their env entries (2026-11-21, `adventure/e08-t135a`, `cross-lane`)
+
+**The cut** (decisions 389, 390, the user at its start): whole, one pull request, `cross-lane` in
+the AI lane's `h3-sim` (consented at decision 372); the Altar's listed all over every worn
+position. Baseline: `master` 9413c3f (#1087 merged); the setup's full baseline was stopped in its
+coverage step to keep the disk for the branch's build (about 10 GB free with it), CI's run on
+`master` stands for it.
+
+- **The game** (design §18; `state/market.rs`, `state/altar.rs`, `state/hill_fort.rs`,
+  `legal.rs`): `answers` lists before each kind's `Leave` a representative answer per action, each
+  one `apply` accepts. `GameState::market_answers`: a `Trade` of one lot of each pair of
+  `MarketOffers::trades` whose lot the treasury holds (the given, then the wanted, in the core's
+  order), a `Sell` of one lot of each stack for the market parameters' cost resource whose
+  `check_sale` passes (the stack holds a lot, the army keeps a creature), a `Buy` in it of each
+  stock entry whose `check_buy` passes (unsold, the hero's room) and whose price the treasury
+  holds; no transfer (decision 99's reason). `GameState::altar_answers`: the artifacts' all (every
+  artifact the Altar takes, worn by position, then the backpack's, until its places, as
+  `AltarPlaces`; decision 390) and the creatures' all (every stack whole, the lowest occupied slot
+  less one: `altar_all_creatures` 0x564CF0), each when its check passes (the screen, a total above
+  0). `GameState::hill_fort_answers`: an `Upgrade` of each row of `HillFortState::Affordable`, in
+  slot order, then `All` when the whole is, from `hill_fort_view`.
+- **The env** (`h3-sim`'s `adventure/action.rs`, encoding v17): 66 entries after the taverns',
+  each tileless: `MARKET_TRADE` 37 + 42 (`trade_entry`, `market_pair`: the pair `give × 6` plus
+  `take`'s place among the others, the first `MARKET_RESOURCES` 7), `MARKET_SELL` 79 + 7,
+  `MARKET_BUY` 86 + 7, `ALTAR_ARTIFACTS` 93, `ALTAR_CREATURES` 94, `HILL_FORT_UPGRADE` 95 + 7,
+  `HILL_FORT_ALL` 102 (`ENTRY_COUNT` 103; `ARMY_SLOTS`, `MARKET_STOCK` 7). `answer_entry` maps a
+  trade of one lot by its pair, a sale of one lot by its slot and a purchase by its entry whatever
+  their resource, an Altar's two by their kinds whatever their sets, a Hill Fort's by slot and
+  `All`; `encode` gives a sale's, a purchase's or a sacrifice's entry only to the listed answer
+  (`listed_only`). `decode` names the listed answer of the entry's role, else `service_answer`'s
+  (the trade of one lot, the sale and the purchase in the cost resource, the upgrade, `All`, an
+  Altar's empty sacrifice), which `apply` rejects with its reason. **Fixed on the way:** `decode`
+  read every tileless entry from `REVISIT_BASE` on as a revisit and `answer_of` every entry from
+  `HIRE_BASE` on as a hire: both bounded by their counts (`HERO_SLOTS`, `HIRE_SLOTS`), and the
+  masks' property test's ranges with them.
+- **Tests:** `h3-game`'s `tests/markets.rs` (the visit's listing with the one payable trade; a new
+  test: the post's pairs by the treasury, the guild's lot of imps for gold and none for the last
+  creature, the Black Market's ring once 5 000 gold pay it and none once bought, each listed
+  answer applied), `tests/altar.rs` (the visit's two alls; a new test with two places and two
+  stacks: the ring and the first charm, three of four imps and the lone one, then the creatures'
+  all no more), `tests/hill_fort.rs` (the visit's two upgrades and `All`; a new test: the gogs too
+  dear, the free imps' row alone, then 2 100 gold); `h3-sim`'s version test (the v17 layout, the
+  pairs' round trip), two tests in `adventure/tests/decisions.rs` (each kind visited on the duel
+  map through the env: a Trading Post's 42 pairs, a Freelancer's Guild's two sales, a Black
+  Market's seven entries, a Castle hero's artifacts' all, a Hill Fort's two upgrades and `All`,
+  each step's effect, another lot, resource or set encoding to none; with no decision each new
+  entry illegal and decoding to the answer it names, rejected).
+- **Rules:** GAM-DEC-011 to -013 amended (the listing, the entries).
+- **Found on the way** (not T135a's): the first scoped verify's coverage run failed in `h3-map`'s
+  hygiene property with a case that fails on `master`'s code too: a map Tavern's Thieves' Guild
+  shows the viewer the other player's best hero's primary skills, which the property's hidden
+  difference had varied (its experience); the oracle does not know the guild's rows. Told to the
+  town lane's inbox with the seed (not committed, so CI stays green); the rerun passed it.
+- **Versions:** the env's action encoding v17 (the AI lane's, `cross-lane`; its inbox told);
+  nothing else moved. No fixture map holds a trade, so the goldens, the plans' listing oracle, the
+  benches' random courses and the bots tables are as they were (T135b's maps bring them).

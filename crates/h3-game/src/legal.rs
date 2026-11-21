@@ -53,7 +53,7 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// exchange's management commands [`legal_management`]'s.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
 // rule: GAM-DEC-008, GAM-DEC-009, ADV-SHY-003, ADV-TEL-008, TWN-BLD-001, TWN-TAV-003
-// rule: GAM-DEC-010
+// rule: GAM-DEC-010, GAM-DEC-011, GAM-DEC-012, GAM-DEC-013
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -119,10 +119,12 @@ const LISTED: usize = 16;
 /// slot order, then `Leave` (GAM-DEC-006); a hire dialog's `Buy` of the most of each creature in
 /// the source's order whose most is at least 1 (`GameState::hire_mosts`), then `Close`
 /// (GAM-DEC-008, E08 T95b); a map Tavern's `Hire` of each slot whose hire passes, in slot order,
-/// then `Close` (GAM-DEC-010, E09 T39a); a market's `Leave` alone (GAM-DEC-011, E08 T133b: its
-/// trades, sales and purchases are listed from T135a, increment 14's design note §18; every answer
-/// its view allows is legal for `apply`), an Altar's (GAM-DEC-012, E08 T134a) and a Hill Fort's
-/// (GAM-DEC-013, E08 T134b1) alike.
+/// then `Close` (GAM-DEC-010, E09 T39a); since E08 T135a (increment 14's design note §18) a
+/// representative answer per action, then `Leave`: a market's trades of one lot, sales of one lot
+/// for the cost resource and purchases in it (GAM-DEC-011, `GameState::market_answers`: no
+/// transfer), an Altar's two alls (GAM-DEC-012, `GameState::altar_answers`), a Hill Fort's
+/// upgrades of state 1, then `All` (GAM-DEC-013, `GameState::hill_fort_answers`); every other
+/// answer their views allow is legal for `apply`.
 fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answer> {
     if let Some(offer) = state.decision(player) {
         let accept = state.adventure().offer_stands(offer);
@@ -182,16 +184,31 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
             .collect();
     }
     // rule: GAM-DEC-011
-    if state.market(player).is_some() {
-        return vec![Answer::Market(MarketAnswer::Leave)];
+    if let Some(visit) = state.market(player) {
+        return state
+            .market_answers(rules, player, visit)
+            .into_iter()
+            .chain([MarketAnswer::Leave])
+            .map(Answer::Market)
+            .collect();
     }
     // rule: GAM-DEC-012
-    if state.altar(player).is_some() {
-        return vec![Answer::Altar(AltarAnswer::Leave)];
+    if let Some(visit) = state.altar(player) {
+        return state
+            .altar_answers(rules, visit)
+            .into_iter()
+            .chain([AltarAnswer::Leave])
+            .map(Answer::Altar)
+            .collect();
     }
     // rule: GAM-DEC-013
-    if state.hill_fort(player).is_some() {
-        return vec![Answer::HillFort(HillFortAnswer::Leave)];
+    if let Some(visit) = state.hill_fort(player) {
+        return state
+            .hill_fort_answers(rules, player, visit)
+            .into_iter()
+            .chain([HillFortAnswer::Leave])
+            .map(Answer::HillFort)
+            .collect();
     }
     // The other decisions but a battle: a meeting, an army dialog or an exchange.
     vec![Answer::Close]

@@ -154,11 +154,17 @@ fn a_markets_visit_opens_its_decision_for_its_owner_until_it_is_left() {
         recipients: vec![BLUE],
     };
     assert_eq!(view(&state, &rules), seen);
-    // Its `Leave` is its listed answer and the system's default; the turn waits for it.
+    // Listed: a lot of gold for wood (E08 T135a: no wood to give, no transfer), then its `Leave`,
+    // the system's default; the turn waits for it.
     let leave = Answer::Market(MarketAnswer::Leave);
+    let lot_of_gold = MarketAnswer::Trade {
+        give: GOLD,
+        take: WOOD,
+        lots: 1,
+    };
     assert_eq!(
         legal_commands(&state, &rules, Actor::Player(RED)),
-        [answered(leave)]
+        [market(lot_of_gold), answered(leave)]
     );
     assert_eq!(default_answer(&state, &rules, RED), Some(leave));
     let other_kinds = [
@@ -433,4 +439,69 @@ fn a_purchase_pays_its_price_gives_the_artifact_and_empties_the_entry() {
         play(&mut guild, &rules, RED, buy(0, GOLD)),
         refused(MarketError::Screen)
     );
+}
+
+// covers: GAM-DEC-011, ADV-MKT-003, ADV-MKT-005, ADV-MKT-007
+#[test]
+fn the_listed_answers_are_a_lot_of_each_trade_sale_and_purchase_the_treasury_and_army_allow() {
+    let rules = market_rules();
+    let listed = |state: &GameState| legal_commands(state, &rules, Actor::Player(RED));
+    let applies = |state: &GameState| {
+        for command in listed(state) {
+            let mut probe = state.clone();
+            assert!(
+                play(&mut probe, &rules, RED, command.clone()).is_ok(),
+                "{command:?}"
+            );
+        }
+    };
+    let leave = market(MarketAnswer::Leave);
+    let trade = |give, take| {
+        market(MarketAnswer::Trade {
+            give,
+            take,
+            lots: 1,
+        })
+    };
+    // A Trading Post: each pair whose lot the treasury holds, in the core's order (gold, then
+    // wood); none with nothing to give.
+    let (mut post, _) = at_market(&rules, "t:post");
+    post.set_resource(RED, WOOD, 1);
+    assert_eq!(
+        listed(&post),
+        [trade(GOLD, WOOD), trade(WOOD, GOLD), leave.clone()]
+    );
+    applies(&post);
+    post.set_resource(RED, GOLD, 832);
+    post.set_resource(RED, WOOD, 0);
+    assert_eq!(listed(&post), core::slice::from_ref(&leave));
+    // A Freelancer's Guild: a lot of the imps for gold, the cost resource; none for the army's
+    // last creature.
+    let (mut guild, _) = at_market(&rules, "t:guild");
+    let sell = market(MarketAnswer::Sell {
+        slot: 1,
+        take: GOLD,
+        lots: 1,
+    });
+    assert_eq!(listed(&guild), [sell.clone(), leave.clone()]);
+    applies(&guild);
+    let eight = market(MarketAnswer::Sell {
+        slot: 1,
+        take: GOLD,
+        lots: 8,
+    });
+    play(&mut guild, &rules, RED, eight).unwrap();
+    assert_eq!(listed(&guild), core::slice::from_ref(&leave));
+    // A Black Market: the ring in gold once the treasury pays its 5 000; none once bought.
+    let (mut black, _) = at_market(&rules, "t:black");
+    assert_eq!(listed(&black), core::slice::from_ref(&leave));
+    black.set_resource(RED, GOLD, 5000);
+    let buy = market(MarketAnswer::Buy {
+        entry: 0,
+        pay: GOLD,
+    });
+    assert_eq!(listed(&black), [buy.clone(), leave.clone()]);
+    applies(&black);
+    play(&mut black, &rules, RED, buy).unwrap();
+    assert_eq!(listed(&black), [leave]);
 }

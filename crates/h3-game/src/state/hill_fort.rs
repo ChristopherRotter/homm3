@@ -103,6 +103,28 @@ impl GameState {
         Ok(())
     }
 
+    /// The answers [`crate::legal_commands`] lists for `player`'s open Hill Fort `visit` but its
+    /// `Leave` (GAM-DEC-013; E08 T135a, increment 14's design note §18), each one `apply` accepts,
+    /// as its view's states give them ([`Self::hill_fort_view`]): the `Upgrade` of each row of
+    /// state 1 (`HillFortState::Affordable`: a stack that upgrades at a price the treasury pays),
+    /// in slot order, then `All` when the whole's state is 1.
+    // rule: GAM-DEC-013, ADV-HFT-002
+    pub(crate) fn hill_fort_answers(
+        &self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        visit: &HillFortVisit,
+    ) -> Vec<HillFortAnswer> {
+        let view = self.hill_fort_view(rules, player, visit);
+        let affordable = |state| state == HillFortState::Affordable;
+        view.rows
+            .iter()
+            .filter(|row| affordable(row.state))
+            .map(|row| HillFortAnswer::Upgrade(row.row.slot))
+            .chain(affordable(view.all_state).then_some(HillFortAnswer::All))
+            .collect()
+    }
+
     /// `visit` as its owner `player` sees it (ADV-HFT-002, GAM-DEC-013; E08 T134b1, increment
     /// 14's design note §15; survey §13): the hero, the Hill Fort by type and anchor (never by
     /// index, ADR-0016 point 6), each row ([`h3_adventure::AdventureState::hill_fort_rows`]) with

@@ -448,3 +448,164 @@ fn increment_7s_decisions_are_answered_through_the_env() {
     let far = Answer::University(h3_game::UniversityAnswer::Buy(4));
     assert_eq!(answer_entry(far), None);
 }
+
+/// The stack in `slot` of red's hero in slot 0.
+fn count_at(env: &AdventureEnv, slot: u8) -> Option<(h3_content::CreatureTypeId, u32)> {
+    let hero = hero_in_slot(env.state(), RED, 0).unwrap();
+    let army = &env.state().adventure().hero(hero).unwrap().army;
+    let stack = army.iter().find(|stack| stack.slot == slot)?;
+    Some((stack.creature, stack.count))
+}
+
+// covers: GAM-DEC-011, GAM-DEC-012, GAM-DEC-013
+/// E08 T135a (encoding v17): a market's trades of one lot by their pairs' entries, its sales of
+/// one lot for gold by their slots', its purchases in gold by their entries'; an Altar's all by
+/// its kind's entry; a Hill Fort's upgrades by their slots' and its `All`: each the listed answer,
+/// which encodes back to its entry, while another lot, resource or set encodes to none.
+#[test]
+fn increment_14s_trades_and_services_are_answered_through_the_env() {
+    let resource = h3_content::ResourceId::from_raw;
+    let (wood, mercury, gold) = (resource(0), resource(1), resource(6));
+    let none = |env: &AdventureEnv, answer| {
+        let command = GameCommand::Answer(Answer::Market(answer));
+        action::encode(env.state(), env.rules(), RED, &command)
+    };
+    // A Trading Post: the duel's treasury pays a lot of each of the 42 pairs.
+    let mut env = visited("base:trading_post");
+    check_answers(&env, RED);
+    let pairs: Vec<usize> = (MARKET_TRADE..MARKET_SELL).collect();
+    assert_eq!(legal_entries(&env, RED), [vec![DECLINE], pairs].concat());
+    let before = env.state().treasury(RED).unwrap().to_vec();
+    env.step(RED, Action::map(MARKET_TRADE, 0)).unwrap();
+    let after = env.state().treasury(RED).unwrap();
+    assert!(after[0] < before[0] && after[1] > before[1], "{after:?}");
+    assert!(env.state().market(RED).is_some());
+    check_answers(&env, RED);
+    let two = h3_game::MarketAnswer::Trade {
+        give: wood,
+        take: mercury,
+        lots: 2,
+    };
+    assert_eq!(none(&env, two), None);
+    // A Freelancer's Guild: a lot of each stack for gold.
+    let mut env = visited("ab:freelancers_guild");
+    check_answers(&env, RED);
+    assert_eq!(
+        legal_entries(&env, RED),
+        [DECLINE, MARKET_SELL, MARKET_SELL + 1]
+    );
+    let (pikeman, pikemen) = count_at(&env, 0).unwrap();
+    let gold_before = env.state().treasury(RED).unwrap()[gold.index()];
+    env.step(RED, Action::map(MARKET_SELL, 0)).unwrap();
+    assert_eq!(count_at(&env, 0), Some((pikeman, pikemen - 1)));
+    assert!(env.state().treasury(RED).unwrap()[gold.index()] > gold_before);
+    check_answers(&env, RED);
+    let for_wood = h3_game::MarketAnswer::Sell {
+        slot: 0,
+        take: wood,
+        lots: 1,
+    };
+    assert_eq!(none(&env, for_wood), None);
+    // A Black Market: each of its seven entries in gold; one bought is listed no more.
+    let mut env = visited("base:black_market");
+    check_answers(&env, RED);
+    let entries: Vec<usize> = (MARKET_BUY..ALTAR_ARTIFACTS).collect();
+    assert_eq!(legal_entries(&env, RED), [vec![DECLINE], entries].concat());
+    let in_wood = h3_game::MarketAnswer::Buy {
+        entry: 0,
+        pay: wood,
+    };
+    assert_eq!(none(&env, in_wood), None);
+    env.step(RED, Action::map(MARKET_BUY, 0)).unwrap();
+    assert!(!legal_entries(&env, RED).contains(&MARKET_BUY));
+    check_answers(&env, RED);
+    // An Altar: the duel's Castle hero sacrifices artifacts alone, its two at once.
+    let mut env = visited("base:altar_of_sacrifice");
+    check_answers(&env, RED);
+    assert_eq!(legal_entries(&env, RED), [DECLINE, ALTAR_ARTIFACTS]);
+    let (state, rules) = (env.state(), env.rules());
+    let other = h3_game::AltarAnswer::Artifacts(h3_game::AltarPlaces::NONE);
+    let other = GameCommand::Answer(Answer::Altar(other));
+    assert_eq!(action::encode(state, rules, RED, &other), None);
+    env.step(RED, Action::map(ALTAR_ARTIFACTS, 0)).unwrap();
+    assert!(!legal_entries(&env, RED).contains(&ALTAR_ARTIFACTS));
+    // A Hill Fort: both stacks upgrade within the treasury, then nothing is left to upgrade.
+    let mut env = visited("base:hill_fort");
+    check_answers(&env, RED);
+    let upgrades = [
+        DECLINE,
+        HILL_FORT_UPGRADE,
+        HILL_FORT_UPGRADE + 1,
+        HILL_FORT_ALL,
+    ];
+    assert_eq!(legal_entries(&env, RED), upgrades);
+    env.step(RED, Action::map(HILL_FORT_ALL, 0)).unwrap();
+    assert_eq!(legal_entries(&env, RED), [DECLINE]);
+    check_answers(&env, RED);
+}
+
+// covers: GAM-DEC-011, GAM-DEC-012, GAM-DEC-013
+/// E08 T135a (encoding v17): with no open decision a trade's or service's entry is illegal and
+/// decodes to the answer it names (the trade of one lot of its pair, the sale and the purchase in
+/// gold, the upgrade of its slot, `All`) or an Altar's empty sacrifice, which the game rejects.
+#[test]
+fn an_entry_of_no_listed_trade_or_service_decodes_to_the_answer_it_names() {
+    let mut env = env(1, 0);
+    let resource = h3_content::ResourceId::from_raw;
+    let gold = resource(6);
+    let named = [
+        (
+            MARKET_TRADE + 41,
+            Answer::Market(h3_game::MarketAnswer::Trade {
+                give: gold,
+                take: resource(5),
+                lots: 1,
+            }),
+        ),
+        (
+            MARKET_SELL + 6,
+            Answer::Market(h3_game::MarketAnswer::Sell {
+                slot: 6,
+                take: gold,
+                lots: 1,
+            }),
+        ),
+        (
+            MARKET_BUY + 6,
+            Answer::Market(h3_game::MarketAnswer::Buy {
+                entry: 6,
+                pay: gold,
+            }),
+        ),
+        (
+            ALTAR_ARTIFACTS,
+            Answer::Altar(h3_game::AltarAnswer::Artifacts(h3_game::AltarPlaces::NONE)),
+        ),
+        (
+            ALTAR_CREATURES,
+            Answer::Altar(h3_game::AltarAnswer::Creatures([0; 7])),
+        ),
+        (
+            HILL_FORT_UPGRADE + 6,
+            Answer::HillFort(h3_game::HillFortAnswer::Upgrade(6)),
+        ),
+        (
+            HILL_FORT_ALL,
+            Answer::HillFort(h3_game::HillFortAnswer::All),
+        ),
+    ];
+    let mut tiles = Vec::new();
+    for (entry, answer) in named {
+        let (state, rules) = (env.state(), env.rules());
+        assert!(!legal_entries(&env, RED).contains(&entry));
+        action::tile_mask(state, rules, RED, entry, &mut tiles);
+        assert!(!tiles.contains(&true), "{entry}");
+        let command = action::decode(state, rules, RED, Action::map(entry, 0));
+        assert_eq!(command, Some(GameCommand::Answer(answer)), "{entry}");
+        let refused = env.step(RED, Action::map(entry, 0));
+        assert!(
+            matches!(refused, Err(StepError::Rejected(_))),
+            "{entry}: {refused:?}"
+        );
+    }
+}

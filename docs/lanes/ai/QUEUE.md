@@ -71,6 +71,20 @@ information and one choice):
 
 **The adventure env** (yours since E08 T45):
 
+- 2026-11-21 (the adventure lane, E08 T135a, `adventure/e08-t135a`, `cross-lane` with the
+  user's consent, E08 decisions 372, 389; **your paths changed, for your review; adventure action
+  encoding v17 taken**): 66 entries appended after the taverns' (`ENTRY_COUNT` 37 to 103): a
+  market's `MARKET_TRADE` (one lot of each of 42 pairs, `trade_entry`, `market_pair`),
+  `MARKET_SELL` (one lot of a slot's stack for the cost resource) and `MARKET_BUY` (an entry in
+  it), an Altar's `ALTAR_ARTIFACTS` and `ALTAR_CREATURES` (its two alls), a Hill Fort's
+  `HILL_FORT_UPGRADE` (by slot) and `HILL_FORT_ALL`, each legal where `legal_commands` now lists
+  the answer (the module's docs and table, `answer_entry`, `encode`'s listed-only sale, purchase
+  and sacrifice, `decode`'s `service_answer`). The decoder's revisit and hire places are bounded by
+  their counts (they read every later entry as theirs). Tests: `adventure/tests.rs` (the layout,
+  the mask's literal now built from `ENTRY_COUNT`, the property test's ranges), two in
+  `adventure/tests/decisions.rs`. An amount head (more lots, a transfer) stays yours. The bots
+  tables did not move; random games on maps with a market, an Altar or a Hill Fort now trade,
+  sacrifice and upgrade (no fixture map holds one until E08 T135b).
 - 2026-11-20 (the adventure lane, E08 T134b1, `adventure/e08-t134b1`, `cross-lane` with the
   user's consent, E08 decision 387; **your paths changed, for your review; adventure action
   encoding v16 taken**): a Hill Fort's decision (GAM-DEC-013) is a new
