@@ -39,7 +39,8 @@ Status: **Proposed** (E08 T137b, 2026-11-21; decisions 394, 399 to 403, ADV-Q63)
 >   stop, refused when truly rock. Off (`strict-fixed`), the compromise: an unexplored tile is
 >   assumed flyable at a pass's price, never a stop; the move walks step by step, each step
 >   revealing; a step whose revealed tile the hero may not pass is not made, the move ending on
->   the last stop node reached, charged the steps made, the rest dropped. Walkers and water-walkers
+>   the last stop node reached, charged only the steps up to it (the passes after it free, their
+>   reveals kept), the rest dropped (E08 decision 407). Walkers and water-walkers
 >   never enter an unexplored tile in either setting.
 >
 > This amends this point's rule that the legal moves never depend on a hidden tile: it holds

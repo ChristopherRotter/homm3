@@ -69,11 +69,30 @@ Refined with the user on 2026-11-21 (T136; ADV-Q61, asked at T136's start). Buil
 396. **E08 closes with increment 15** (the user at E10's refinement, 2026-11-21, ADV-Q62; E10 decision 3): E10 is built after E08, so increment 15 is the last; the quests (the sketch's item 16, placed after E10 by decision 127) and the items not placed yet move to **E12** (the map objects' long tail), refined after E10. Not chosen: E08 closing with increment 14 (increment 15 to E12); quests as increment 16 after E10, E08 kept open across it.
 397. **T137a whole** (the user at T137a's start, after the reading was measured: the Prison's visit about 0.9 KB with its callees, the Market of Time no code, the five spells about 3.5 KB mostly unread, with A-13's trade-off and the other four named). Not chosen: the Prison and the Market of Time first, the spells in a second part (recommended); the spells first.
 
+398. **T137b whole** (the user at T137b's start, after increment 14's 950-line note was weighed; two parts recommended: the Prison, the Market of Time and the cast's frame first, the spells' effects, the env and the cut second). Not chosen: by side.
+399. **The flight over the unexplored (A-13) and the door's hidden targets (A-53) are fix-optional flags** (ADV-Q63; `ADV-QUIRK-15` reclassified, `ADV-QUIRK-51`): `faithful` the original's (the reach and the targets read the hidden truth), `strict-fixed` the compromise (survey §13's C, A-53's (c): an unexplored tile assumed flyable and never a stop, every hidden tile a door's target, the truth deciding at the step or the cast); **a failed door onto a hidden tile reveals it** (the user's addition). Not chosen: the compromise without a flag (recommended), A kept, B alone.
+400. **Summon Boat's choice (D-75) is a fix-optional flag** (`ADV-QUIRK-53`): on, the reading's (the hero's last boat, then the least |dx| + |dy| of the player's or nobody's, levels ignored, ties to the later); off, the last boat, then the least dx² + dy² on the hero's level, ties to the lower index. Not chosen: the reading alone (recommended), VCMI's whole rule.
+401. **The door's window is 9 × 8** (D-76, VCMI's), its extra row below the view fixed (A-54, `ADV-QUIRK-56`), a parameter. As recommended.
+402. **Scuttle Boat's hidden boats (A-50) by the door's compromise, a fix-optional flag** (`ADV-QUIRK-52`): off, any hidden tile in the window a target, a hidden empty boat drawn for, any other hidden tile a charged failure, the hidden target revealed in every outcome; on, the original's cursor. The user's reasoning: a player may know of a boat under the fog (an enemy sailing into it). Not chosen: always fixed (recommended), the compromise without a flag or without the reveal.
+403. **A-49 harmless and accepted** (`ADV-QUIRK-57`, no flag; as recommended); **A-51 and A-52 fix-optional** (`ADV-QUIRK-54`: off, a re-cast at a higher mastery raises the level; `ADV-QUIRK-55`: off, an explored target of the wrong kind not offered, a hidden one still failing charged). Not chosen: A-51 and A-52 accepted (recommended).
+404. **A bookless hero's scroll (D-79)** is settled by row E15-15; until then a book is needed (HER-BAT-011's test; `ADV-STUB-21`). As recommended.
+405. **The mastery on a ground is `h3-heroes`' derivation** with the raise an input (ADR-0013 point 2, new point 17; the battle's hero casts may share it, `cross-lane` at its choice). As recommended.
+406. **Visions, View Earth, View Air and Disguise go to E12** with the information objects (`ADV-STUB-19`). As recommended.
+407. **The checkpoint** (ADV-Q63's second round): the cut T138 to T145, the three drafts and the agent's calls as written (the `empty` kind, the one `Cast` command, the raise and the casting limit read by the game from the battle part, the env's two 19 × 17 windows), but **the flight's compromise charges only the steps up to its last stop node** (the passes beyond it free, their reveals kept; the agent recommended charging every step made).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T136 Increment 15 refined** (with increment 14's audit and closure). Done (2026-11-21, `adventure/e08-t136`, whole: decision 393; decisions 394, 395): the Prison, the Market of Time and the adventure spells; the first round queued (T137a, T137b).
 - **T137a** the survey (decision 395). Done (2026-11-21, `adventure/e08-t137a`, whole: decision 397): survey `docs/rules/surveys/E08-spells.md`; D-75 to D-79, A-49 to A-54, batch E15 planned; the checkpoint's questions for T137b (§17).
-- **T137b** the ADR amendment drafts, the design note and the cut; the checkpoint (decision 395).
+- **T137b** the ADR amendment drafts, the design note and the cut (decision 395). Done (2026-11-21, `adventure/e08-t137b`, whole: decision 398; decisions 399 to 407, ADV-Q63): design note `E08-design.md`, the drafts `adr-drafts/0013`, `0016`, `0017-increment-15.md`, the cut below.
+- **T138** batch E15's maps: the writer's prison body and class 50, the spec's fields (`cross-lane`), the specs and their maps (design §19).
+- **T139** T139a the harness's cast flow and reads, the recipe, the run, scored; T139b the prisoners' level draws' order if left open (§15).
+- **T140** `shared/` (`cross-lane`): the three drafts with T139's outcome, the quirk flags in the profiles, the glossary, `docs/06-security.md`.
+- **T141** T141a the Prison and the Market of Time with their events and wire (§1, §2, §7, §9, §15); T141b `h3-heroes`' `spell_masteries_on`, `map_spell_cost`, `can_cast_on_map` (§5, §6).
+- **T142** the cast's frame (§3, §8, §12, §14) with Fly and Water Walk (§10.3, .4) and the flight's flag (§11.1), measured against `master` at once.
+- **T143** T143a Summon Boat and Scuttle Boat (§10.1, .2, §11.3); T143b Dimension Door (§10.5, §11.2); their events and wire.
+- **T144** T144a `legal_commands`, the env's entries (v18, `cross-lane`), the replay words (v24); T144b the maps, replays, plans and oracles, benchmarks, `--with-original-data` (§17).
+- **T145** the audit against the exit criteria (design §20); increment 15 and E08 closed (decision 396).
 
 ## Later increments (sketch)
 

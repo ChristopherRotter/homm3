@@ -1,6 +1,6 @@
 # E08 design note: increment 15 (the Prison, the Market of Time and the adventure spells)
 
-Written by T137b (2026-11-21; E08 decisions 394, 395, 397 and the checkpoint's 398 to 406). The
+Written by T137b (2026-11-21; E08 decisions 394, 395, 397 and the checkpoint's 398 to 407). The
 code cites it as "increment 15's design note §M". Increment 14's note (the trades and services) is
 in `E08-log.md` ("Increment 14's design note at its closure", moved by T136), increments 9's to
 13's beside it. Inputs: the survey `docs/rules/surveys/E08-spells.md` (§N below is the survey's
@@ -17,7 +17,8 @@ Summon Boat's choice a fix-optional flag, its fixed side by straight distance on
 (400); the door's range 9 × 8, the extra row fixed (401); Scuttle Boat's hidden boats by the same
 compromise behind a flag (402); A-49 accepted, A-51 and A-52 fix-optional (403); a book needed
 until row E15-15 (404); the mastery on a ground in `h3-heroes`' derivation (405); the four
-information spells to E12 (406).
+information spells to E12 (406); the cut, the drafts and the agent's calls as written, the
+flight's stop charged only to its stop node (407).
 
 ## Part A — the content
 
@@ -187,10 +188,10 @@ failure** is an accepted cast with `CastFailed` (the mana spent, §14).
    the reach and the path depend only on what the player knows. The move walks the path step by
    step as today, each step revealing by the scouting radius; **a step whose tile, once revealed,
    the hero may not pass** (rock, or land a pass cannot cross) is not made: the move ends on the
-   last stop node it reached, charged the steps made (the passes after that node included: their
-   reveals are kept, so a probe into the unknown is never free), the rest dropped
-   (`AdventureOutcome::dropped`, as an event's stop). *Agent's call:* charging the passes made;
-   the alternative (only up to the stop node) makes a free scout. A walker and a water-walker keep
+   last stop node it reached, **charged only the steps up to that node** (the passes after it are
+   undone and free, their reveals kept), the rest dropped (`AdventureOutcome::dropped`, as an
+   event's stop). The user's call at the checkpoint (decision 407: not the agent's proposal to
+   charge every step made). A walker and a water-walker keep
    ADV-MOV-008 (no unexplored tile) in both settings; D-78 (row E15-14) only records the original.
 2. **The door** (ADV-SPL-008). **On** (faithful): a hidden tile is a target when free (neither
    blocked nor an entrance), so the legal targets read the hidden truth. **Off:** **every hidden
@@ -388,6 +389,9 @@ once every cast exists, so the encoding and the format move once.
 - **The prisoners' level draws' order** (§15): the setup stream's order by type (the original's
   loop) or by object; a wrong order changes every prisoner's levels on the shipped maps but not a
   rule; T139 reads it.
+- **A free probe** (decision 407): a flyer under `strict-fixed` may aim at the unknown and, stopped
+  by hidden rock, pays only to its last stop node while keeping the passes' reveals; a scouting
+  gain the original does not give. The audit (T145) looks at it in the bots' games.
 - **D-78, D-79** rest on rows E15-14, E15-15; a verdict against the reading moves ADV-MOV-010 or
   lifts ADV-STUB-21 in the building task.
 - **Not read:** the computer's casts (E31), network play's messages, the four information spells'

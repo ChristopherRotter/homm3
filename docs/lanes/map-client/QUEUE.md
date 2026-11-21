@@ -52,6 +52,13 @@ the engine lanes' inboxes, its gap shown in the comparison, never a rule copied 
 
 ## Inbox
 
+- 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`; **for your planning**):
+  increment 15 types the Prison (62, visited from a neighbour; the prisoner never shown) and the
+  Market of Time (50, kind `empty`: entered, nothing happens), and adds the cast on the map
+  (`GameCommand::Cast`; the door's and Scuttle Boat's cursors by the legal targets: under
+  `strict-fixed` every hidden tile in the 9 × 8 window is offered, under `faithful` the original's;
+  the events of design note `docs/epics/E08-design.md` §16).
+
 - 2026-11-21 (the client lane, E27 M4 T6, `client/e27-m4-t6`; **for E24 M5**): a load's
   hand-over. Load Game's Load keeps the loaded game (`save::Loaded`) and the names by colour
   (`Scenario::seated`) for E24 M5, which makes exactly those colours human (CLT-Q160 (a): fewer
