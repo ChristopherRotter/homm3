@@ -24,7 +24,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   victory conditions), `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
   **Found, pre-existing:** a hygiene case of `h3-map`'s `a_viewer_learns_nothing_it_cannot_see`
   that fails on `master` too (a captured town's garrison seen; the lane's inbox).
-- **Open pull requests:** T49a1's (`town/e09-t49a1`, `cross-lane`), opened at the session's end;
+- **Open pull requests:** T49a1's #1124 (`town/e09-t49a1`, `cross-lane`), opened at the session's end;
   watch it until it merges (T48b's #1120 merged 2026-11-21).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
