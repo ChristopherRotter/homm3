@@ -4288,9 +4288,11 @@ impl Loop {
             }
             Phase::Map => {
                 self.drawn.switch = None;
-                if let Some(switching) = self.switching.take() {
-                    self.after_battle(t, switching)?;
-                }
+                // The switch under way (always: this is its turn) ends.
+                self.switching
+                    .take()
+                    .map(|switching| self.after_battle(t, switching))
+                    .transpose()?;
             }
         }
         Ok(())
@@ -4375,14 +4377,16 @@ impl Loop {
                 self.kingdom.selected = Selected::None;
                 // Its slot out of the kingdom's list at once (`hero_leave_game` 0x4D9EC0:
                 // recorded, `battle-retreat`'s list at 810).
-                if let Some(slot) = slot.filter(|&s| s < self.kingdom.heroes.len()) {
-                    self.kingdom.heroes.remove(slot);
-                    let rest = self
-                        .chosen
-                        .heroes
-                        .split_off(slot.min(self.chosen.heroes.len()));
-                    self.chosen.heroes.extend(rest.into_iter().skip(1));
-                }
+                let mut i = 0;
+                self.kingdom.heroes.retain(|_| {
+                    i += 1;
+                    Some(i - 1) != slot
+                });
+                let mut i = 0;
+                self.chosen.heroes.retain(|_| {
+                    i += 1;
+                    Some(i - 1) != slot
+                });
                 self.draw_lists();
                 self.draw(t);
                 self.left = index;

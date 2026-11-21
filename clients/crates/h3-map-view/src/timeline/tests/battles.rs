@@ -213,7 +213,10 @@ fn a_retreat_s_hero_leaves_and_the_next_is_chosen() {
     assert_eq!(l.drawn().left, Some(0));
     assert_eq!(l.kingdom.heroes.len(), 1);
     let l = run_to("battle-retreat", 1330);
-    assert_eq!(l.state(1330).hero.map(|h| h.at), Some(Pos { x: 30, y: 5, z: 0 }));
+    assert_eq!(
+        l.state(1330).hero.map(|h| h.at),
+        Some(Pos { x: 30, y: 5, z: 0 })
+    );
     // With no hero left the first town is chosen; with none either, nothing.
     let (mut start, actions, _, _) = battling("battle-retreat");
     start.kingdom.heroes.truncate(1);
@@ -294,10 +297,7 @@ fn a_find_s_battles() {
     }
     assert_eq!(mine.battles(), [BATTLE, 9]);
     assert!(battled("battle-won").ask.is_none());
-    let plain = Found {
-        fight: None,
-        ..won
-    };
+    let plain = Found { fight: None, ..won };
     assert!(plain.battles().is_empty());
 }
 
@@ -310,4 +310,37 @@ fn a_battle_s_line() {
     let got = lines(&states, &screens);
     let at = got.iter().position(|l| l == "350 battle 1").unwrap();
     assert_eq!(got[at + 1], "350 screen 0,0,800,600");
+}
+
+#[test]
+fn what_a_battle_s_result_refuses() {
+    // A guards' answer with no box whose experience reaches a level the loop has no dialog for:
+    // refused where the map comes back (1810).
+    let (mut start, actions, _, _) = battling("battle-mine");
+    start.experience = Some(0);
+    if let Some(Answer { boxes, fight, .. }) =
+        start.finds[0].ask.as_mut().and_then(|q| q.yes.as_mut())
+    {
+        boxes.clear();
+        if let Some(fight) = fight {
+            fight.experience = 5000;
+        }
+    }
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let refused = (1..=1810).find_map(|t| {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .err()
+            .map(|why| (t, why))
+    });
+    assert_eq!(refused, Some((1810, Unplayable::LevelUp(2))));
+    // A retreated hero's next one without its facts: refused at the dissolve's end (1330).
+    let (mut start, actions, _, _) = battling("battle-retreat");
+    start.chosen.heroes.truncate(1);
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let refused = (1..=1330).find_map(|t| {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .err()
+            .map(|why| (t, why))
+    });
+    assert_eq!(refused.map(|(t, _)| t), Some(1330));
 }
