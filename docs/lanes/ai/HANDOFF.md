@@ -45,7 +45,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q21, AI-QUIRK-1, AI-STUB-2.
+  ids: AI-Q22, AI-QUIRK-1, AI-STUB-2.
+- **After E25 increment 10** (AI-Q21, 2026-11-21): E30 (the original's computer player: code
+  reading, a faithful port, then a fair one; refined when taken), then E13 (refined in shape,
+  `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -53,6 +56,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-21 — E13 refined in shape (AI-Q21), E30 sketched
+
+- A refinement session with the user, docs only (the PC's shell down, a cloud clone). E13 and
+  E30 move to this lane (`shared/e13-refinement`, `lanes.toml`, `BACKLOG.md`); E13's epic file,
+  AI-Q21, the adventure lane's inbox told. No original data (none needed).
 
 ### 2026-11-21 — E25 T43: the budget check read, budget 4
 
@@ -69,10 +78,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   built (`cargo build --release -p h3-cli`, timing runs in the sandbox; the refused casts traced
   to BAT-STUB-19 by a temporary print, removed). #1075 merged. The user limits T43 to 16 threads
   (`TRAPS.md`); a stop during an append now drops the torn last game on resume.
-
-### 2026-11-19 — E25 T38b: `[network] reach` and `preview`, the bench's preview rows
-
-- #1036 and the `shared/` docs/07 line merged. No original data (none needed). `cargo build
-  --release -p h3-ffi`, `uv sync --group train`; the scoped verify (coverage's tool installed
-  by hand: the setup script was not run). T39's bench as a CPU smoke (`--set` small), stopped by
-  SIGINT and resumed. Python only. #1040, watched until it merges.
