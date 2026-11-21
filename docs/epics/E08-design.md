@@ -679,6 +679,18 @@ original's windows stay open for more trades). The system actor's default is `Le
   a Black Market under bans) with a random replay and a scripted one (each answer kind, a
   sacrifice with a level-up and the Altar's return, a transfer, a refused purchase with a full
   hero); `e08-trades-144.h3m` (XL, two levels) for the workloads.
+- *As built* (T135b1, decision 391): the 36 map's fourteen (seven north, seven south; the dirt and
+  rough Trading Posts, two snow ones, the dirt and grass Hill Forts), eleven heroes each below an
+  entrance (Knights of Castle, a Death Knight, two Barbarians, a Cleric), batch E14-3's bans (the
+  two Black Markets' fourteen drawn from seventeen, distinct at 16 seeds), a hero with a relic in
+  every position the seventeen take and 64 artifacts carried; the XL on the dwellings XL's lattice
+  with the census's 49 (`trades_map.rs`, `trades_xl_map.rs`). Seven golden replays: three random
+  of 28 days (seeds 208, 1257, 1390 of 1 500 searched: together every listed answer kind) and four
+  scripted (the markets with a transfer, the Black Market with the full hero's visit, the three
+  alignments' sacrifices with the Altar's return, the Hill Fort and the factory). The full hero's
+  refused purchases are the map's test (a replay holds no refused command). Random play: 549 of
+  the 1 500 games trade, 27 304 trades in all, 463 steps a game on average (§22's risk: the
+  trades' listed answers lengthen visits).
 - **The plans** (`h3-map`'s `tests/play.rs`): `TRADES`, `Step::Market`, `Step::Altar`,
   `Step::HillFort` and the factory's steps; oracles `check_trades` (each trade's paid and gained
   amounts as its lot says; a transfer's sum kept; the army never emptied; the stock's sold entries
