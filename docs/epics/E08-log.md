@@ -20776,6 +20776,13 @@ and GAM-DEC-007 on the cover test, ADV-ALT-002, -003 on the game's Altar visit t
   `FromAbove`, the state unchanged; each type's `from_above` false); helpers `entrance_of`, `step`.
 - `view.rs`: the guard clause above (the property's doc a sentence).
 
+*Found on the way* (no engine fault): the final tree's verify met a case of the main property
+(`every_step_keeps_the_commands_invariants`, `master`'s code): a garrison hero's formation set off
+the map, accepted (`own_record_mut`'s town branch since E09 T28a, TWN-ROW-001) and listed by
+`legal_town_management`, which `check_unlisted` did not ask (only the map's heroes'): the oracle
+now asks the garrison heroes' listings too, the seed kept in `proptest-regressions/tests/play.txt`
+(it passes with it and at the default cases).
+
 **Left, recorded:** the hygiene property does not reach a viewer's own trade window while comparing
 (400 cases); the creature and artifact values at counts other than the survey's; the *As built*
 lines of design §1, §7, §10 and §11 that name a later task as pending are kept as their tasks'
@@ -20824,7 +20831,9 @@ every step it runs: fmt, clippy, check-arch, -rules, -stubs, -docs, -exe-map, -l
 original-data 54 s (the census: 1 058 trades and services on 148 maps, each class's count as
 survey §1; the 160 maps built; the eighth pack check: the seven classes against their types,
 kinds, the executable's class lists, the market's values and factors and the Hill Fort's percents);
-on the final tree: VERIFY_FINAL.
+on the final tree every step but coverage passed (determinism 704 s, bench-check 783 s with the
+same counts, original-data 35 s), coverage meeting the case above; after the oracle's fix the
+coverage step again passed (1 080 s, the 109 gated files at 100 %).
 **Versions:** none (tests, markers, comments and docs; no engine behaviour changed).
 
 #### Increment 14's design note at its closure (moved by T136)
