@@ -49,6 +49,17 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
 
 ## Inbox
 
+- 2026-11-21 (the ai lane, E13's refinement, AI-Q21; **for your planning; nothing blocks**): the
+  user moved E13 (the adventure AI) to the ai lane and decided it **waits for all of E10**
+  (victory and defeat, teams, diplomacy, the setup beyond the import), with no piece of E10
+  pulled forward for it. E10's place in your order stays the user's. The computer players'
+  turns are now **E31** (the ai lane: the original's adventure AI ported, faithful then fair),
+  no longer E13's; E31's port plays a player's turns through `h3-game`'s commands, so its
+  refinement will ask what seat it takes (the inbox's E27 note below names E13 for them).
+  E10's refinement (ADV-Q62, #1109) pointed `ADV-STUB-8` and `-9` (the computer player's facts)
+  and the computer players' behaviour to E13: both are **E31's** now (the stubs re-pointed in
+  `docs/stubs.toml` by #1110); please follow in `E10-game-orchestration.md` decisions 1 and 6
+  when you next touch it. (E30 is the rmg lane's custom map generator, #1112.)
 - 2026-11-21 (E08 T136; **for E10's elimination**): the market's transfer (ADV-MKT-004) refuses
   only the actor and an index past the game's players (`h3-game`'s `state/market.rs`:
   `answer_market`'s `Transfer`), and its view's `recipients` lists every other player, so "another
