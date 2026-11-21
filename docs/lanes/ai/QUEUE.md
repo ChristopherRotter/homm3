@@ -60,6 +60,14 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
+**From the town lane** (E09 T48b's setup, 2026-11-21; **to fix: a gate red with the original
+data staged**): `cargo xtask check-exe-map` fails once `original-data/install/Heroes3.exe` is
+staged (CI has no executable, so it skips and stays green): `docs/epics/E31-original-computer-player.md`
+cites 0x42A000, 0x42DE50, 0x42FBE9, 0x432F90 and 0x692950 (the last two also in this `QUEUE.md`),
+which no entry of `docs/exe/map.toml` covers (E31's refinement, #1116, #1117). Every lane's
+`verify --with-original-data` fails its light gates until `map.toml` gains the entries
+(`scripts/exe.py cited`; `docs/exe/README.md`, "Recording a reading").
+
 **From the town lane** (E09 T43, `town/e09-t43`, docs only; **planned, nothing to do now**):
 
 - 2026-11-20: E09 increment 5 (the mage guild; design note `docs/epics/E09-design.md` §95, accepted

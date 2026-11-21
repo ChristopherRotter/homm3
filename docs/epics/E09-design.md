@@ -3225,6 +3225,19 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   town in player order, `NoopSink`: the build tells nothing). Six tests (`town/tests/learn.rs`).
   No golden replay moved (none of the 111 meets one of these triggers with a guild built and a
   hero with a book there), and no version moved.
+- *As built* (T48b, decision 191; the visit's end and the siege's end): `h3_adventure`'s
+  `AdventureOutcome::town_entered` (new, `cross-lane`) names the town `visit_town` entered
+  (`Visit::Enter`: a step or a `Revisit` into a town of the team, or the undefended capture);
+  `GameState::settle_outcome` calls `learn` for it right after `town::capture` (the capture's
+  reveal, Portal and views first). A siege's end: `GameState::end_battle` calls `learn` for the
+  battle's town (`town`, a siege only: the battle beside a garrison hero has none) after the
+  outcome, the unowned battle's end and the attacker's held capture, **before** `give_levels`
+  (the original's 0x4AB3C3 before 0x4AB3CB; the engine's level-ups are decisions, so a Wisdom
+  the battle brings counts at the next trigger, as the original's, not at once as the
+  level-up paragraph above guessed). A defending visitor or garrison hero that won learns; an
+  attacker's win teaches nobody (the winner outside, the defender gone); the siege's capture
+  after the levels (`town_won`) sets no `town_entered`. Three tests (`town/tests/learn.rs`).
+  No golden replay, bot report or version moved; `h3-map`'s plan properties pass unchanged.
 
 ### 90. The opening (TWN-GLD-006; `TownCommand::Open { town }`; decisions 170, 175)
 

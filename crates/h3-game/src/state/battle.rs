@@ -632,6 +632,12 @@ impl GameState {
         {
             self.hold(owner, hero, Rest::Won(tile));
         }
+        // rule: TWN-GLD-005
+        // E09 T48b: a siege's end teaches the town's heroes as they stand, whoever won, before
+        // the winner's levels (the original's `town_visit` 0x4AB3C3 before 0x4AB3CB; design §89).
+        if let Some(town) = town {
+            town::guild::learn(self, rules, town, sink);
+        }
         // rule: GAM-BAT-008
         let levelled = winner.and_then(|w| heroes[w.index()].zip(owners[w.index()]));
         if let Some(hero) = levelled {
