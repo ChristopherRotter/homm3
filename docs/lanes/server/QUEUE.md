@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-21 (the town lane, E09 T47b, `town/e09-t47b`, `cross-lane` with the user's consent;
+  **in your paths, nothing to do**): **protocol v78** is taken: `wire::game::TownBuildings` gains
+  `guild: [Vec<u16>; 5]` (the spells the owner's guild shows, by level in slot order), `aurora` and
+  `vortex` (TWN-VEW-004, design note `E09-design.md` §94), mapped in `map/game.rs`'s
+  `town_buildings` from `h3_game::TownBuildingsView`'s (its `guild` an `h3_towns::GuildSlots`).
+  `TownBuildings` is no longer `Copy`: the fold's `TownChanged` arm binds it by `ref` and clones
+  it; `tests/game.rs` has `guild_back`. The fold gate needs no new gap (the guild folds from
+  `TownChanged`). Your T49a and T49b (E09's `Open`, `BuySpellBook`) take the next numbers.
+
 - 2026-11-21 (the town lane, E09 T47a2, `town/e09-t47a2`, `cross-lane`; **informational, nothing
   to do**): the game state hash v38 and map import v28 moved `h3-server`'s `tests/record.rs`
   literals (`army-dialog-s1`'s checkpoint and final hash, `import_version`), and

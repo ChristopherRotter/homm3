@@ -14,8 +14,8 @@ use h3_content::Formation as EngineFormation;
 use h3_contracts::{ArmyStack as EngineStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
 use h3_game::{
     ArmyRef, ArmySlot, ArtifactPlace, BuildingId, BuildingSet, GameEvent, GarrisonStackView,
-    GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow, HeroChange, HireSeen, HireTarget,
-    MonthKind, Position, ThievesGuildView, TownBuildingsView, Viewer, WeekKind,
+    GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow, GuildSlots, HeroChange, HireSeen,
+    HireTarget, MonthKind, Position, ThievesGuildView, TownBuildingsView, Viewer, WeekKind,
 };
 use h3_heroes::{ArtifactInstance, OfferLevels, PrimarySkill as EnginePrimary};
 use h3_kernel::handle::Handle;
@@ -23,7 +23,7 @@ use h3_kernel::rng::{Rng, StreamId};
 use h3_sim::adventure::AdventureEnv;
 use h3_sim::adventure::rollout::choose;
 
-use super::game::{RULES, hire_seen_back, hire_target_back, round_trips, set_back};
+use super::game::{RULES, guild_back, hire_seen_back, hire_target_back, round_trips, set_back};
 use crate::map::from_engine;
 use crate::map::game::events;
 use crate::wire::game as w;
@@ -829,7 +829,7 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             slots,
             hall,
             garrison_hero,
-            buildings: buildings.map(|b| TownBuildingsView {
+            buildings: buildings.as_ref().map(|b| TownBuildingsView {
                 built: set_back(b.built.0),
                 forbidden: set_back(b.forbidden.0),
                 available: b.available,
@@ -837,6 +837,9 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
                     creature: Handle::from_raw(p.creature),
                     count: p.count,
                 }),
+                guild: guild_back(&b.guild),
+                aurora: b.aurora,
+                vortex: b.vortex,
             }),
         },
         G::TownStackSeen {
@@ -1283,6 +1286,10 @@ pub(super) fn every_event() -> Vec<GameEvent> {
                     creature: Handle::from_raw(30),
                     count: 4,
                 }),
+                // E09 T47b: a spell at level 3, the Vortex's flag set.
+                guild: GuildSlots::EMPTY.with(2, 0, Handle::from_raw(41)),
+                aurora: false,
+                vortex: true,
             }),
         },
         GameEvent::TownStackSeen {

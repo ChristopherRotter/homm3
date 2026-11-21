@@ -1439,8 +1439,10 @@ pub struct Town {
 /// A town's buildings as its owner sees them (TWN-VEW-004), each set a bit per building of its
 /// faction's town record (bit `i` the building of index `i`, a decimal string as every 64-bit
 /// value): the standing ones derive from the first with the town part. Since v55 (E09 T26b) its
-/// available creatures and its Portal of Summoning, the town screen's.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// available creatures and its Portal of Summoning, the town screen's; since v78 (E09 T47b) its
+/// mage guild's shown spells, the Aurora's mark and the Mana Vortex's week flag, the guild
+/// window's.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TownBuildings {
     /// Every building it has had, the superseded ones too.
@@ -1452,6 +1454,15 @@ pub struct TownBuildings {
     pub available: [u16; h3_game::CREATURE_INDEXES],
     /// What its Portal of Summoning holds; none while it holds nothing (or stands not).
     pub portal: Option<Summoned>,
+    /// What its mage guild shows (TWN-GLD-003), by spell level 1 to 5: the spells' handles in
+    /// slot order; none above the guild level, never a slot the guild does not show (the spare
+    /// without a Library).
+    pub guild: [Vec<u16>; 5],
+    /// It has ever built an Aurora Borealis (TWN-GLD-004): every spell is taught there.
+    pub aurora: bool,
+    /// Its Mana Vortex's week flag (TWN-GLD-009), kept in every town; it matters only where a
+    /// Mana Vortex stands.
+    pub vortex: bool,
 }
 
 /// What a Portal of Summoning holds (TWN-GRO-007): a creature of one of its owner's dwellings.

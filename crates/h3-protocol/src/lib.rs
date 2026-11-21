@@ -238,8 +238,11 @@ pub mod wire;
 /// `Answer::HillFort` (`HillFortAnswer`: a row's upgrade by slot, all, leaving),
 /// `GameReject::HillFort` (`HillFortReject`), `Decision::HillFort` (`HillFortWindow`: each row's
 /// stack, upgrade, price and state, the whole's price and state) and its event `HillFortOpened`,
-/// which carries no view (folded as an Altar's, `SRV-STUB-5`).
-pub const PROTOCOL_VERSION: u32 = 77;
+/// which carries no view (folded as an Altar's, `SRV-STUB-5`). v78 (E09 T47b, the town lane's,
+/// `cross-lane`): a town's owner sees its mage guild (TWN-VEW-004, TWN-GLD-003:
+/// `wire::game::TownBuildings`' `guild`, the shown spells by level in slot order, `aurora` and
+/// `vortex`), folded from `TownChanged` as the rest of the buildings.
+pub const PROTOCOL_VERSION: u32 = 78;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

@@ -371,7 +371,7 @@ const PARTS: &[Part] = &[
     Part {
         name: "town buildings",
         stubs: &[],
-        agree: |a, b| towns(a, b, |t| t.buildings),
+        agree: |a, b| towns(a, b, |t| t.buildings.clone()),
     },
     Part {
         name: "garrisons",
@@ -1623,6 +1623,10 @@ fn town_changed(town: u16, hall: Option<u8>) -> GameEvent {
                 creature: 12,
                 count: 3,
             }),
+            // E09 T47b: the guild folds as the rest of the buildings.
+            guild: [vec![4, 1], vec![], vec![], vec![], vec![]],
+            aurora: false,
+            vortex: true,
         }),
     }
 }
@@ -1709,12 +1713,15 @@ fn the_fold_replaces_a_towns_view_by_its_told_one() {
                     creature: 12,
                     count: 3,
                 }),
+                guild: [vec![4, 1], vec![], vec![], vec![], vec![]],
+                aurora: false,
+                vortex: true,
             }),
         }
     );
     let other = &v.towns[1];
     assert_eq!(
-        (other.owner, other.capitol, other.buildings),
+        (other.owner, other.capitol, other.buildings.clone()),
         (None, false, None)
     );
     assert_eq!(
