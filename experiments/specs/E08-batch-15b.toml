@@ -1,0 +1,451 @@
+# Experiment batch E15b (E08 T138; ADV-Q63's checkpoint, decision 407): increment 15's plan, Dimension Door,
+# the Magic Plains, the fog and a bookless scroll (survey docs/rules/surveys/E08-spells.md §15
+# with docs/epics/E08-design.md §19's changes), in SoD on Easy, hot seat, day 1. The Prison and the
+# Market of Time are `E08-batch-15a.toml`, the boats and the grounds `E08-batch-15c.toml`. Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the template
+# never shows them.
+#
+# | row    | settles                                   | the reading (faithful)                        | the other source(s)                    |
+# | E15-5  | §4.2: Magic Plains raise every school     | 4 casts, 200 points and 20 spell points each; | VCMI the same (casts 1, 2, 3, 4)       |
+# |        |                                           | the fifth refused (GENRLTXT 339), free        |                                        |
+# | E15-6  | §8.1: the door's points                   | 1 left: cast, 0; 0: refused (126), free       | VCMI, the manual: > 0 needed           |
+# | E15-7  | §8.1, A-52: a door from land onto water   | "failed" (71); 300 and 25 spent, the cast     | VCMI `waterLandFailureTakesPoints`     |
+# |        |                                           | used (the next refused: 339)                  | (SoD) the same                         |
+# | E15-8  | §8.2, A-53: the door's cursor in the fog  | the cursor on a hidden free tile, none on a   | VCMI `ignoreFow`, `exposeFow`; the     |
+# |        |                                           | hidden tree; the tree's click nothing; the    | manual "visible"                       |
+# |        |                                           | free one: the hero there, revealed around it  |                                        |
+# | E15-13 | §13, A-13: Fly (level 0) over a hidden    | through the strip; 100 from each free tile,   | VCMI (and the engine): no path; the    |
+# |        |                                           | 140 from the hidden tree: 420 left            | plan's 140 a hidden tile: 300 left     |
+# | E15-14 | D-78: Water Walk facing hidden water      | no path (the fog first)                       | the wiki's Sea page: across, 400 left  |
+# | E15-15 | D-79, O-1: a bookless hero's worn scroll  | not read: the record decides (ADV-STUB-21)    | HER-BAT-011 (the battle's): no cast    |
+# | E15-16 | §8.2, A-54: the door's target at dy +9    | accepted (the view's last 8 pixel rows)       | VCMI `rangeY` 8: refused               |
+#
+# **Changes from survey §15** (agent's calls): **E15-13**'s prediction: the plan's "140 a step"
+# is the fly price from a blocked tile; `step_cost` (survey `E08-hero-movement.md` §2.1 point 5)
+# takes the lesser of the fly price and the walking price from every tile no object blocks, and
+# the fog does not change that bit, so the reading prices the strip's free tiles at 100 and only a
+# blocked one at 140: a hidden tree in the strip (12, 24) shows both, and the record tells the
+# reading (420 left) from the plan's (300). **E15-14** is clicked once only (the path, the row's
+# question): a walk across would reveal E15-13's strip; it runs first. **E15-16** is E15-8's
+# hero's second cast from its arrival, recorded in E15-8's encounter (Red holds eight heroes
+# already); its target (17, 19) is explored by then (E15-13's arrival on (15, 24): 4 + 25 ≤ 30), a
+# free tile a target either way. E15-8 has **Advanced** Air Magic (three a day, knowledge 6): if the
+# original spends a cast on the click at the hidden tree, E15-16 still has one (the review's). **E15-6**'s one point comes from a walk
+# of 1 259 (a swamp diagonal 247, a sand diagonal 212, eight grass steps; the door takes 300 at
+# least 0 and has no drop), then a second cast at 0 needs a third one allowed: Advanced Air Magic
+# (three a day). **The spell points** cover every attempt the book is asked for (the book tests
+# the cost first, GENRLTXT 207): E15-5's five attempts 5 × 20, E15-6's three 3 × 20, E15-7's two
+# 2 × 25, E15-8's three 3 × 20.
+#
+# **The fog** (`[[map.hidden]]`, checked by the build: each Red hero reveals radius 5 at the start,
+# dx² + dy² ≤ 30; Red's town 5 around its entrance): the rectangle (16, 6) to (19, 14) (E15-8's
+# targets) and (10, 20) to (13, 31) (E15-13's and E15-14's strip:
+# E15-13 at (4, 24) and E15-14 at (4, 27) reveal up to column 9, the scout E15-13s at (19, 25) from
+# column 14). Every hidden target lies inside Dimension Door's window (dx −9 to +9, dy −8 to +9
+# around the hero, survey §8.2), outside the radius.
+#
+# **The heroes.** Red has eight, Blue none (its town only). Every army is 10 Pikemen (speed 4,
+# native to grass): 1 560 points a day; a step costs 100 on grass, 141 diagonally, from swamp 175
+# (247), from sand 150 (212) (packs/base/adventure.toml). A caster wears a spell book with the
+# spells listed (none for E15-15) and starts with 10 × knowledge spell points (no Intelligence).
+# Dimension Door (packs/base/core.toml): cost 25 at None, 20 above; casts a day 1, 2, 3, 4; 300
+# points, 200 at Expert. Fly costs 20 at None, Water Walk 12. No hero has a skill or an artifact
+# but those listed.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact; the template asks for gold. An artifact the spec does not give goes under "anything
+# odd".
+
+[map]
+name = "E08 batch E15b"
+description = "Engine-generated experiment map (E08, batch E15b): Dimension Door on Magic Plains, with one point, onto water, into the fog and at the window's last row; Fly and Water Walk facing unexplored tiles; a bookless hero's scroll. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-15b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "Most records are the game's memory: a hero's tile, movement points (hero +0x4D), spell points (+0x18), the day's Dimension Doors (+0x10D), Fly (+0x112) and Water Walk (+0x116) levels, worn artifacts; whether a tile is explored for Red; the mouse cursor's frame over a tile in a target dialog; the messages in their order; the path's marks after one click. The capture harness reads them (`clients/capture/batches/E08-batch-15b.toml`, E08 T139). Played by hand, read the screens instead (an unexplored tile is black) and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). **A cast:** select the hero, click the cast button (the spell book opens), click the spell named; a target spell (Dimension Door) then waits for a tile: move the pointer over the tiles the procedure names (note the cursor over each: the spell's cursor or none) and left-click the target named; a right click or Escape cancels it. Close every message with its OK button.",
+    "Order: day 1, Red's turn: E15-14 (one click, first: nothing may move before it), E15-13, E15-8, E15-16, then E15-5, E15-6, E15-7, E15-15. Then the map is done: one day.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- The towns (no row reads them) -------------------------------------------------------------------
+
+[[map.town]]
+entrance = [30, 22]
+faction = "castle"
+owner = "red"
+
+[[map.town]]
+entrance = [6, 34]
+faction = "rampart"
+owner = "blue"
+
+# --- The fog -----------------------------------------------------------------------------------------
+
+[[map.hidden]]
+from = [16, 6]
+to = [19, 14]
+
+[[map.hidden]]
+from = [10, 20]
+to = [13, 31]
+
+# --- E15-8: a tree at (17, 12), hidden; a seen tree at (13, 12) (the control) -------------------------
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [17, 12]
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [13, 12]
+
+# --- E15-13: a tree in the hidden strip at (12, 24); E15-14: water (10, 26) to (13, 28) ---------------
+
+[[map.object]]
+picture = "AVLtr3d0"
+at = [12, 24]
+
+[[map.patch]]
+terrain = "water"
+from = [10, 26]
+to = [13, 28]
+
+# --- E15-5: Magic Plains (46, 6 x 4) over columns 25 to 30, rows 2 to 5 --------------------------------
+
+[[map.ground]]
+picture = "AVXplns0"
+at = [30, 5]
+
+# --- E15-6: a swamp tile (23, 30), a sand tile (24, 31) --------------------------------------------------
+
+[[map.patch]]
+terrain = "swamp"
+from = [23, 30]
+to = [23, 30]
+
+[[map.patch]]
+terrain = "sand"
+from = [24, 31]
+to = [24, 31]
+
+# --- E15-7: a pond (30, 9) to (33, 11) -------------------------------------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [30, 9]
+to = [33, 11]
+
+# --- E15-15: the Dimension Door scroll at (5, 4) ---------------------------------------------------------
+
+[[map.scroll]]
+spell = "Dimension Door"
+at = [5, 4]
+
+# --- E15-14 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-14"
+title = "Water Walk (None) facing unexplored water between two explored land tiles: the path"
+questions = ["D-78", "ADV-MOV-008", "ADV-MOV-010"]
+procedure = [
+    "Day 1, Red's turn, **first** (nothing else moves before it): E15-14 stands at (4, 27); a water strip lies on columns 10 to 13, rows 26 to 28, unexplored (black) for Red; (9, 27) west of it is explored (E15-14's reveal) and (14, 27) east of it too (the scout E15-13s at (19, 25)). Read whether (9, 27), (10, 27), (13, 27) and (14, 27) are explored for Red.",
+    "Note E15-14's points and spell points. Cast **Water Walk**: note every message, the spell points and the Water Walk level (+0x116).",
+    "Click (14, 27) **once**: note the target's mark (green, red or none) and the marks (the tiles, in order). **Do not click again**: cancel the path (click E15-14 itself or press Escape). Note E15-14's tile.",
+]
+record = [
+    { field = "explored before: (9, 27); (10, 27); (13, 27); (14, 27)" },
+    { field = "before the cast: points; spell points" },
+    { field = "the cast: messages; spell points; the Water Walk level" },
+    { field = "the click on (14, 27): the target's mark; the marks" },
+    { field = "E15-14's tile after" },
+    { field = "anything odd" },
+]
+predictions = """
+- The fog: (9, 27) and (14, 27) **explored**, (10, 27) and (13, 27) **not** (the build checks the
+  rectangle).
+- The cast (survey §7.1): spell points 20 → **8** (12 at None), the level **0**; no message.
+- **The reading** (§7.3; `pathfinder_expand`: the fog test before water's case): an unexplored tile
+  is passable only flying, so **no path** (no mark).
+- **The wiki's Sea page** (D-78): shroud on water between two seen land tiles does not stop a
+  walking hero: a green mark, **10 marks** along row 27, 1 160 by the level-0 prices (500 on land,
+  100 from (9, 27) onto the water, 140 from each water tile) and 400 left had it walked.
+- VCMI 1.7.5: never over unexplored tiles (no path), the reading's side.
+"""
+[encounter.hero]
+type = "Rion"
+specialty = "skill First Aid"
+at = [4, 27]
+primary = [1, 1, 1, 2]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Water Walk"]
+
+# --- E15-13 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-13"
+title = "Fly (None, level 0) over a strip of unexplored land with a hidden tree: the path and its price (as E5-9)"
+questions = ["A-13", "ADV-QUIRK-15", "ADV-MOV-008", "ADV-MOV-009"]
+procedure = [
+    "Day 1, Red's turn, after E15-14: E15-13 stands at (4, 24), the scout E15-13s at (19, 25); columns 10 to 13 are unexplored for Red on rows 20 to 31, a tree hidden at (12, 24). Read whether (9, 24), (10, 24), (12, 24), (13, 24) and (15, 24) are explored for Red.",
+    "Note E15-13's points and spell points. Cast **Fly**: note every message, the spell points and the Fly level (+0x112).",
+    "Click (15, 24) once: note the target's mark and the marks (the tiles, in order). Click it again: note where E15-13 arrives and its points. Read which of (10, 24) to (13, 24) and (12, 23), (12, 25) are explored after.",
+]
+record = [
+    { field = "explored before: (9, 24); (10, 24); (12, 24); (13, 24); (15, 24)" },
+    { field = "before the cast: points; spell points" },
+    { field = "the cast: messages; spell points; the Fly level" },
+    { field = "the click on (15, 24): the target's mark; the marks" },
+    { field = "after the walk: E15-13's tile; points" },
+    { field = "explored after: (10, 24) to (13, 24); (12, 23); (12, 25)" },
+    { field = "anything odd" },
+]
+predictions = """
+- The fog: (9, 24) and (15, 24) explored, (10, 24) to (13, 24) not.
+- The cast (§7.1, `hero_cast_fly` 0x4E59A0): spell points 20 → **0**, the level **0**; no message.
+- **The reading** (§7.3, A-13; survey `E08-hero-movement.md` §3.1 point 3): an unexplored tile is
+  passable only flying, so a **green mark, 11 marks** straight along row 24 (over the tree: 240
+  for its two steps against 282 around it). The price (`step_cost`, ibid. §2.1 point 5): from a
+  free land tile the lesser of the fly price (140 at level 0) and the walk (100), from a blocked
+  tile the fly price, the truth's under the fog: 10 × 100 and 140 from the tree, **1 140**:
+  E15-13 **on (15, 24) with 420**. The plan's "140 a step" through the strip (every hidden tile
+  priced as blocked): 4 × 140 + 7 × 100 = 1 260, **300** left.
+- **VCMI 1.7.5** (unexplored tiles blocked in every layer) and the engine today (A-13 fixed,
+  decision 75): **no path**. Option C of §13 (the engine's recommendation): the path, each hidden
+  tile at the fly price from a blocked tile (300), then the tree found by the steps' reveals.
+- The flight reveals around each tile it passes (radius 5): the strip on row 24 explored after.
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [4, 24]
+primary = [1, 1, 1, 2]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Fly"]
+
+[[encounter.also]]
+type = "Adela"
+specialty = "spell Bless"
+name = "E15-13s"
+at = [19, 25]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+# --- E15-8 and E15-16 -------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-8"
+title = "Dimension Door's cursor over explored and unexplored tiles, free and blocked; a click on a hidden tree; the door onto a hidden free tile and what it reveals (E15-8); the second door at dy +9 (E15-16)"
+questions = ["A-53", "A-54", "D-76", "ADV-FOG-002"]
+procedure = [
+    "**E15-8.** Day 1, Red's turn, after E15-13: E15-8 stands at (10, 10) with Advanced Air Magic. Columns 16 to 19 are unexplored for Red on rows 6 to 14; a tree is hidden at (17, 12), a seen one at (13, 12). Read whether (13, 10), (13, 12), (17, 10) and (17, 12) are explored. Note E15-8's points, spell points and the day's doors (+0x10D).",
+    "Cast **Dimension Door**: the target dialog opens (the view centred on E15-8). Move the pointer over (13, 10) (seen, free), (13, 12) (the seen tree), (17, 10) (hidden, free) and (17, 12) (the hidden tree), in that order: note the cursor over each (the door's cursor or none).",
+    "**The hidden tree:** left-click (17, 12): note what happens (does the dialog close? a message?), E15-8's tile, points, spell points and the day's doors, and which of (16, 10) to (19, 14) are explored now.",
+    "If the dialog is still open: left-click (17, 10). If it closed: cast Dimension Door again (note any message) and left-click (17, 10). Note every message, E15-8's tile, points, spell points and the day's doors. Read which tiles around (17, 10) are explored: (17, 5), (22, 10), (17, 15), (16, 14), (21, 13), (22, 13).",
+    "**E15-16.** From (17, 10), cast **Dimension Door** again: the view centres on E15-8 at (17, 10), its map area's last cell row (y 544 to 551 on the screen, the 8 pixel rows below the last drawn row) picks the row dy +9, (17, 19). Put the pointer at x = the column of (17, 10) on the screen, y = 548: note the cursor and the tile the game picks (the harness: the dialog's tile). Left-click there. Note every message, E15-8's tile, points, spell points and the day's doors.",
+]
+record = [
+    { field = "explored before: (13, 10); (13, 12); (17, 10); (17, 12)" },
+    { field = "before: points; spell points; the day's doors" },
+    { table = ["the pointer over", "explored", "the cursor"], labels = ["(13, 10) seen, free", "(13, 12) the seen tree", "(17, 10) hidden, free", "(17, 12) the hidden tree"] },
+    { field = "the click on the hidden tree: what happens; tile; points; spell points; the day's doors; explored in (16, 10) to (19, 14)" },
+    { field = "the door onto (17, 10): messages; tile; points; spell points; the day's doors" },
+    { field = "explored after: (17, 5); (22, 10); (17, 15); (16, 14); (21, 13); (22, 13)" },
+    { field = "E15-16: (17, 19) explored before the cast; the cursor at y 548; the tile picked" },
+    { field = "E15-16 after the click: messages; tile; points; spell points; the day's doors" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-8 (survey §8.2, A-53; `door_target_proc` 0x491900: a target is a tile without bit 0x100 or
+0x1000 in its word, **no fog test**):
+
+- Before: 1 560 points, 60 spell points, 0 doors.
+- The cursor: **(13, 10) the door's**, **(13, 12) none**, **(17, 10) the door's**, **(17, 12)
+  none** (the cursor tells a hidden tree from a hidden free tile: A-53's leak).
+- The click on the hidden tree: **nothing** (no accept flag): the dialog stays open, nothing
+  spent, nothing revealed.
+- The door onto (17, 10) (§8.1 points 6, 7; Advanced: 300, cost 20): E15-8 **on (17, 10)** with
+  **1 260** points, **40** spell points, **1** door; revealed around it by radius 5
+  (`hero_relocate`): (17, 5), (22, 10), (17, 15) and (21, 13) explored (dx² + dy² 25 each, ≤ 30)
+  and (16, 14) (17; hidden at the start, 52 from (10, 10)), (22, 13) not (34); no guard, no visit.
+  Had the tree's click spent a cast (A-52 style), the doors read one more and the spell points 20
+  less here and after E15-16.
+- Engine, A-53's options: (a) the original's, as above; (b) explored tiles only: neither hidden
+  tile a target; (c) (recommended) any hidden tile a target, the tree's click failing as A-52's
+  (300 and the cost spent).
+
+E15-16 (§8.2, A-54; D-76): the pick at y 548 is the cell row 17 (548 / 32), dy **+9**: (17, 19)
+(free, **explored** since E15-13's arrival on (15, 24): a target either way). **Accepted**: E15-8
+on (17, 19) with **960**, **20** spell points, **2** doors. VCMI (`rangeY` 8): out of range. The engine fixes A-54 (9 × 8), whatever this shows.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [10, 10]
+primary = [1, 1, 1, 6]
+army = [["Pikeman", 10]]
+skills = [["Air Magic", 2]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Dimension Door"]
+
+# --- E15-5 ------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-5"
+title = "A hero without Air Magic on Magic Plains casts Dimension Door five times"
+questions = ["HER-SPL-003", "ADV-SPL-001", "D-77"]
+procedure = [
+    "Day 1, Red's turn, after E15-8 (with E15-16): E15-5 stands at (26, 3) on Magic Plains (columns 25 to 30, rows 2 to 5), with no Air Magic. Note its points, spell points and the day's doors.",
+    "Cast **Dimension Door** and click (29, 3). Note every message, E15-5's tile, points, spell points and the day's doors.",
+    "Cast it again and click (26, 3); again and click (29, 3); again and click (26, 3). After each note the same.",
+    "Cast it a fifth time: note every message (does the target dialog open?), the points, spell points and the day's doors. If the dialog opens, click (29, 3) and note the same.",
+]
+record = [
+    { field = "before: points; spell points; the day's doors" },
+    { table = ["cast", "messages", "tile", "points", "spell points", "the day's doors"], labels = ["1 (29, 3)", "2 (26, 3)", "3 (29, 3)", "4 (26, 3)", "5"] },
+    { field = "anything odd" },
+]
+predictions = """
+E15-5 (survey §4.2, §8.1; `hero_school_mastery` 0x4E5100: the field 1 gives Expert in every
+school): **Expert** on the plains.
+
+- Before: 1 560, 100 spell points, 0 doors.
+- Casts 1 to 4: each **200** points (Expert, 0x41D28D) and **20** spell points (the cost at
+  Expert): 1 360 / 80, 1 160 / 60, 960 / 40, **760 / 20**, the doors 1 to 4; the tiles (29, 3),
+  (26, 3), (29, 3), (26, 3) (each on the plains: the next cast Expert again).
+- Cast 5: **GENRLTXT 339** (the day's casts at Expert's 4) before the dialog, **free**: 760 / 20,
+  4 doors.
+- Without the raise (the hero's None): one cast, 300 and 25, then 339. VCMI the same casts.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [26, 3]
+primary = [1, 1, 1, 10]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Dimension Door"]
+ground = "magic plains"
+
+# --- E15-6 ------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-6"
+title = "Dimension Door with 1 point left, then with 0"
+questions = ["D-77", "ADV-SPL-001"]
+procedure = [
+    "Day 1, Red's turn, after E15-5: E15-6 stands at (23, 30) on a swamp tile with Advanced Air Magic. Note its points and spell points.",
+    "Walk in four legs, each target clicked twice: (24, 31) (the sand tile, one diagonal step), (25, 32) (one diagonal step), (30, 32) (five steps east), then (33, 32) (three steps east; the original draws no path onto a tile not yet explored). Note the points after each leg.",
+    "Cast **Dimension Door** and click (33, 28). Note every message, E15-6's tile, points, spell points and the day's doors.",
+    "Cast it again and click (33, 24). Note the same.",
+    "Cast it a third time: note every message (does the target dialog open?), the points, spell points and the day's doors.",
+]
+record = [
+    { field = "before: points; spell points" },
+    { field = "the points after the legs: (24, 31); (25, 32); (30, 32); (33, 32)" },
+    { field = "door 1 (33, 28): messages; tile; points; spell points; the day's doors" },
+    { field = "door 2 (33, 24): messages; tile; points; spell points; the day's doors" },
+    { field = "door 3: messages; the dialog; points; spell points; the day's doors" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-6 (survey §8.1 points 1, 7; §8.3):
+
+- The legs: from swamp a diagonal **247** (1 313), from sand **212** (1 101), five grass steps
+  (601), three (**301** left on (33, 32); no drop: 301 is not below 100).
+- Door 1 (Advanced: 300, cost 20): **1** point left, 60 → **40** spell points, 1 door, on
+  (33, 28).
+- Door 2 with 1 point (> 0): **cast**, the points **0** (300 taken at least 0), 40 → **20**, 2
+  doors, on (33, 24).
+- Door 3 at 0 points: **GENRLTXT 126** before the dialog, **free** (20 spell points, 2 doors; the
+  third cast a day of Advanced would be allowed: the points refuse it). VCMI
+  (`movementPointsRequired` 0, 300 taken) and the manual ("zero stops it") the same.
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [23, 30]
+primary = [1, 1, 1, 6]
+army = [["Pikeman", 10]]
+skills = [["Air Magic", 2]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Dimension Door"]
+
+# --- E15-7 ------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-7"
+title = "Dimension Door from land onto a water tile: the failure and what it spends"
+questions = ["A-52", "ADV-SPL-001"]
+procedure = [
+    "Day 1, Red's turn, after E15-6: E15-7 stands at (29, 10), west of a pond (columns 30 to 33, rows 9 to 11). Note its points, spell points and the day's doors.",
+    "Cast **Dimension Door**: note the cursor over (31, 10) (water). Left-click (31, 10). Note every message, E15-7's tile, points, spell points and the day's doors.",
+    "Cast it again: note every message (does the target dialog open?); if it opens, click (27, 10) (land) and note the same.",
+]
+record = [
+    { field = "before: points; spell points; the day's doors" },
+    { field = "the cursor over (31, 10)" },
+    { field = "after the click: messages; tile; points; spell points; the day's doors" },
+    { field = "the second cast: messages; the dialog; tile; points; spell points; the day's doors" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-7 (survey §8.1 point 5, A-52; None: one cast, 300, cost 25):
+
+- The cursor over (31, 10): **the door's** (water is a target in the dialog, §8.2).
+- The click: **GENRLTXT 71 ("failed")**, E15-7 **stays on (29, 10)**, and everything is spent:
+  **1 260** points, 50 → **25** spell points, **1** door. VCMI (`waterLandFailureTakesPoints`,
+  SoD) the same.
+- The second cast: **GENRLTXT 339** (one a day at None), free.
+"""
+[encounter.hero]
+type = "Christian"
+specialty = "creature Ballista"
+at = [29, 10]
+primary = [1, 1, 1, 5]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Dimension Door"]
+
+# --- E15-15 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-15"
+title = "A hero without a spell book wearing a Dimension Door scroll: the cast button and the book"
+questions = ["D-79", "O-1", "ADV-STUB-21", "HER-BAT-011"]
+procedure = [
+    "Day 1, Red's turn, after E15-7: E15-15 stands at (4, 4) with no spell book and no artifact; a Spell Scroll of Dimension Door lies at (5, 4). Note its points, spell points and worn artifacts. Click (5, 4) twice: E15-15 takes the scroll (from its tile). Note every message, its tile, points and worn artifacts (where the scroll is).",
+    "Note whether the cast button is enabled. Click it: note what opens (a book? which spells it lists? an empty book? a message?). If Dimension Door is listed, click it, then click (4, 8): note every message, E15-15's tile, points, spell points and the day's doors. Close whatever is open.",
+]
+record = [
+    { field = "before: points; spell points; worn artifacts" },
+    { field = "the scroll: messages; tile; points; where the scroll is worn" },
+    { field = "the cast button: enabled?; what opens; the spells listed" },
+    { field = "the cast (if listed): messages; tile; points; spell points; the day's doors" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-15 (survey §4.1, D-79, O-1; ADV-STUB-21):
+
+- The scroll from (4, 4): 100 paid, E15-15 stays on (4, 4) with 1 460, the scroll in **misc 1**;
+  30 spell points.
+- **Not read:** the button tests only a selected, owned hero and a human player
+  (`cast_button_state` 0x403BF0), so it is **enabled**; nothing on the map's path tests the book
+  (`hero_wears_artifact(0)` only in the battle and the computer). What the book lists for a
+  bookless hero is O-1. If it lists Dimension Door and the cast goes (None: 300, cost 25): on
+  (4, 8) with **1 160**, **5** spell points, 1 door; then the engine lifts ADV-STUB-21 (a scroll
+  casts without a book). If nothing opens or nothing is listed: the engine keeps the book's test
+  (HER-BAT-011's) and closes the stub.
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [4, 4]
+primary = [1, 1, 1, 3]
+army = [["Pikeman", 10]]

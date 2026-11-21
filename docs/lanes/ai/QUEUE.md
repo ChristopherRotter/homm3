@@ -60,6 +60,16 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
+**From the adventure lane** (E08 T138, `adventure/e08-t138`; **a pre-existing failure in your
+docs, to fix at your next session**):
+
+- 2026-11-21: with the original data staged, `xtask`'s `exemap::tests::the_real_map_passes`
+  (run by `cargo xtask verify … --with-original-data`, never by CI) fails on `master` 4d41455:
+  five addresses E31's refinement cites (`docs/epics/E31-original-computer-player.md` and this
+  queue's E31 entry; `scripts/exe.py cited` lists them) have no `docs/exe/map.toml` entry
+  covering them; the same failure is the scoped verify's `check-exe-map` step (`docs/exe/README.md`, "Recording a reading";
+  `scripts/exe.py cited`).
+
 **From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**):
 
 - 2026-11-21: E08 increment 15 (design note `docs/epics/E08-design.md` §17, decision 407) gives

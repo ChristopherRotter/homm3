@@ -21831,3 +21831,107 @@ accepted at the checkpoint for T140 with batch E15's outcome. ADR-0015 needs non
 battle lane (T138's spec consent, `spell_masteries_on`), the AI lane (v18), the server lane (v79),
 the map client lane (the types, the cast's targets) and the town lane (prisoners in the store).
 **Verify:** docs only: `check-docs`, `check-lane`. No code, version or replay moved. **Next:** T138.
+
+### Increment 15, round 2: T138, batch E15's maps: the writer's prison and Market of Time, the spec's fields and the specs (2026-11-21, `adventure/e08-t138`, `cross-lane`)
+
+Baseline: `master` 4d41455 (#1118, T137b, merged; CI green on it, standing in for the sandbox's
+baseline, stopped at its coverage step: fmt, clippy, deny and the check steps passed; its
+`test` step's one failure, `xtask`'s `exemap::tests::the_real_map_passes` with the original data
+staged, is the AI lane's E31 refinement's citations without exe-map entries, told to its inbox).
+Staged while the PC was up (its shell did not start: sizes against `device_list_dir`, the
+executables' and the LODs' SHA-256 against `installation.md`): the 71 files as T137a. **The cut**
+(decision 408): both parts in this session (the user's choice; the recommendation was T138a now,
+T138b next); the `cross-lane` change of `h3-experiment` consented at the start.
+
+**T138a, the writer** (`h3_map::writer`): `MapObject::Prison(Prison)` (class 62,
+`PRISON_OBJECT`): the prison's position its entrance, `ObjectTemplate::prison` (`Objects.txt`'s
+`AVXprsn0.def`: the anchor and the tile west of it blocked, the anchor visited); the prisoner a
+`Hero` whose body is written as a placed hero's with the owner `0xFF` (its tile, owner and class
+not written; *agent's call*: the placed hero's type reused rather than a copy of its fields), its
+body checked as a placed hero's (`validate_body`, split from `validate_hero`: the type, RoE's
+refusals, skills, army, artifacts); **the prisoner's type cleared from the map's allowed heroes**
+(`without_prisoners`; *agent's call*: the editor's maps, survey §1's census "no prisoner of a type
+its map allows"); no player's header lists it. The Market of Time (`MARKET_OF_TIME_OBJECT` 50)
+among `PLAIN_OBJECTS` (57 classes), subclass 0 alone; `ObjectTemplate::market_of_time` is
+`Titans Winter`'s (`AVXmktt0.def`, the same footprint as the prison's): `Objects.txt` has no line
+for class 50. `ground_size` public (the import's table, for the spec's ground check). **Worn
+scrolls:** a hero's slot holds an artifact's code alone, so the format cannot give a worn scroll a
+spell; a scroll to wear is picked up from a map Spell Scroll (E14-9's precedent). Tests
+(`tests/prisons.rs`): the prisoner's body read back in SoD (Gelu: name, 5 000 experience, two
+skills, two stacks, tight, worn and carried artifacts, three spells, primary skills) and RoE
+(Orrin, without spells and primary skills); the template's masks; the pool without its type; the
+writer's checks (an unwritten owner refuses nothing; a type, a skill, RoE's spells refused); the
+Market of Time without a body, its template, another subclass refused; the import until T141a
+(the prisoner's type in `GameSetup::prisoners`, out of the allowed heroes, both objects untyped).
+
+**T138a, the spec** (`h3-experiment`, battle-owned, `cross-lane`): `[[map.prison]]` (`PrisonSpec`:
+`at` the entrance, `level`, `prisoner` a `HeroSpec` without `owner`, `at` or `ground`; its type
+used as a placed hero's, in no player's count; the template lists "A prison at …, its prisoner
+…"); the Market of Time by its picture (`Tables::plains` appends its template);
+**`HeroSpec::ground`** (*agent's call* for design §19's "special grounds under a hero": the
+grounds existed since E04c, so the field is the check that the hero stands on the named one, the
+last of the spec's grounds covering its tile by the import's picture sizes, `GROUND_NAMES`, or
+"none"); **`[[map.hidden]]`** (`HiddenSpec`: `from`, `to`, `level`, `player`; *agent's call* for
+"hidden tiles by design": the build proves the rectangle unexplored by the original's start reveal,
+ADV-FOG-002's disk around each of the player's heroes by its scouting radius (a hero with its
+type's skills or artifacts taken as 10, the largest), its towns' entrances 5 (a Tower 20, a
+Lookout Tower possible) and its other owned objects' tiles 3; no prisoner reveals). Tests:
+`builds_increment_15_s_objects` (the prisoner's body, the template's line, the Market of Time, the
+pool; the ground's mismatch and an unknown name, a type twice, a prisoner's `at`, a tile shared
+with the prison's west tile, a prison on column 0, the disk's edge at (10, 5) and (8, 9) seen,
+(11, 5) and (9, 9) not, the corners off the map, an unknown player), the tables' test with the
+Market of Time last. The experiments README: "Increment 15's objects".
+
+**T138b, the specs** (written by one worker agent, reviewed by a fresh one; SoD on Easy, hot seat;
+the maps in `experiments/out/`, not committed). `E08-batch-15a` (36 × 36 grass, day 1; stamp
+a7b4e9e8): prisons P1 (10, 10, Rion: 5 000 experience, eight Expert skills without Logistics,
+Pathfinding or Scouting so its levels at load add primary skills only, Swordsmen and Pikemen) and
+P2 (16, 10, Adela), the Market of Time (22, 10), Red's town and eight heroes: E15-2g walks into the
+garrison first (seven on the map), E15-1 frees P1 (E15-1's records and E15-2's first half), E15-2
+visits P2 with eight on the map; E15-3 steps onto the Market of Time. `E08-batch-15b` (36 × 36,
+day 1; stamp 24eb46ac): E15-5 on Magic Plains (`AVXplns0`) hopping between (26, 3) and (29, 3)
+five times; E15-6 on swamp with Advanced Air Magic, a walk of 1 259 to 301 points, then doors to 1
+and 0 and the refusal; E15-7's door onto a pond and the day's second; E15-8 (Advanced Air Magic)
+with the cursor over seen and hidden free and blocked tiles, the click on the hidden tree, the door
+to hidden (17, 10), the reveal, then **E15-16** from there (dy +9 at the pointer's y 548); E15-13's
+strip (columns 10 to 13 hidden, a hidden tree at (12, 24)); E15-14's hidden water, clicked once;
+E15-15's bookless hero picking up a Dimension Door scroll. `E08-batch-15c` (72 × 72 with an
+underground, days 1 and 2; stamp 0ebfde6e): E15-4 on RoE Cursed Ground (`AVXcrsd0`, class 21, the
+class the reading tests) casting Fly and Summon Boat, then both in Red's anti-magic garrison;
+**E15-9a** (the hero whose last boat lies underground) and **E15-9b** (a hero that never sailed),
+the boats' captains and owners set by sailing first with the Admiral's Hat (boarding and landing
+the same day), a reload of save 2 between the two casts; E15-10 (a hidden empty boat, a hidden
+tree, a seen control boat, an occupied boat); E15-11 with **E15-12** (Fly twice, with Angel Wings,
+in a boat; Water Walk in the boat, the landing and the walk). Every fog row's tiles declared with
+`[[map.hidden]]`. **Changes from the plan** (*agent's calls*, the headers say so): E15-9 split in
+two; E15-12 recorded under E15-11 and E15-16 under E15-8 (Red holds eight heroes already);
+**E15-13's prediction corrected**: from a free tile a flyer pays the lesser of the fly price and
+the walk, the fog changing nothing (survey `E08-hero-movement.md` §2.1 point 5), so the reading
+predicts 1 140 (420 left) against the plan's 140 a hidden step (300 left); E15-14 clicked once
+only, before E15-13 (a walk across would reveal the strip).
+
+**The checks** (a throwaway test outside the commit, as T128's): every map built (the tiles, the
+grounds, the hidden tiles), imported and validated, played two days by `h3 adventure run`; the
+walks priced by the engine's reach (E15-6's 247, 212, 500, 300 in legs, the fog's; E15-1's
+1 460 and 1 360; E15-4's 600 + 100; boarding with the Hat 2 807; E15-9a's underground legs 400 +
+382; the scroll's pickup 1 460), the Market of Time's step (a blocker until T141a) and the walks
+under the spells (E15-12's 421) by hand.
+
+**The review** (a fresh agent against survey §2 to §8, §13, §15, design §19, the movement
+survey's prices; 4 findings, all taken): (1) E15-1 records Rion's `hero_owner` after the freeing;
+(2) E15-16's target is explored by then (E15-13's arrival on (15, 24)): the header and
+prediction say so and a record line reads it; (3) E15-8 with Advanced Air Magic and knowledge 6,
+so a cast the hidden tree's click might spend still leaves E15-16 its door (the spell points
+60, 40, 20); (4) the reveal's check reads (16, 14) (hidden at the start) instead of (12, 10).
+Found right: the hero counts, every fog layout and reveal, the spells' costs and casts a day, the
+walks, the door's window, Summon Boat's distances and the first water neighbour, every change
+stated.
+
+**Versions:** none moved (the writer's object and header bits; the import reads both classes as
+before). **Verify:** the scoped `cargo xtask verify --scope adventure --summary
+--with-original-data`: every step it runs passes but `check-lane` (by design on a `cross-lane`
+branch; `cargo xtask check-lane --cross-lane` ok) and `check-exe-map` (pre-existing on `master`,
+the AI lane's E31 citations, its inbox told); `cargo check --workspace --all-targets` and clippy
+with `-D warnings` on `h3-map` and `h3-experiment` clean; the clients' build is CI's (the sandbox's
+SDL build fails; every client match on `MapObject` has a wildcard arm). CI's full verify on the
+pull request is the record. **Next:** T139.

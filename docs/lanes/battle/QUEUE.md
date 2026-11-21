@@ -20,11 +20,17 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
-- 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`, docs only; **two asks for
-  later, nothing blocks**): (1) **T138 asks your consent** for `h3-experiment`'s spec fields for
-  batch E15 (`cross-lane`): prisons with a hero body, the Market of Time, special grounds under a
-  hero, learned spells and worn scrolls, hidden tiles by design (design note `docs/epics/E08-design.md`
-  §19). (2) `h3_heroes::spell_masteries_on(details, core, SchoolRaise)` (T141b, ADR-0013 point 17
+- 2026-11-21 (the adventure lane, E08 T138, `adventure/e08-t138`, `cross-lane` with the user's
+  consent; **in your paths, nothing to do**): `h3-experiment` gained batch E15's fields:
+  `[[map.prison]]` (`PrisonSpec`, a prisoner's `HeroSpec` without owner or tile, its type used),
+  the Market of Time `AVXmktt0` in `Tables::plains` (appended: `Objects.txt` has none),
+  `HeroSpec::ground` (the ground under the hero checked, `GROUND_NAMES`) and `[[map.hidden]]`
+  (`HiddenSpec`: tiles a player has not explored at the start, checked against the start's
+  reveals); `MapSpec`'s two new vectors default empty, so no spec changes. Tests:
+  `builds_increment_15_s_objects`, the tables' test with the Market of Time last. A worn Spell
+  Scroll holds no spell in the format: a spec's scroll to wear is picked up from `[[map.scroll]]`.
+- 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`, docs only; **for later,
+  nothing blocks**): `h3_heroes::spell_masteries_on(details, core, SchoolRaise)` (T141b, ADR-0013 point 17
   drafted, E08 decision 405) gives Expert for the raised schools: BAT-TER-005's hero half could
   call it instead of its own raise, at your choice of when (`cross-lane` then).
 
