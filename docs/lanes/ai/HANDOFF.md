@@ -41,7 +41,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   +0.115 on the true battle (the information +0.030), the neutral set +0.047 (+0.334); one
   stalled game of 600 left out (the user), the fair actor's refused cast (the battle lane's
   inbox). **Next: T44** (where #2 diverges), then T45 (the checkpoint).
-- **Open pull requests:** this branch's (T43's measurement read). Merged: #1117 and #1116
+- **Open pull requests:** this branch's (T43's measurement read; E31's cited addresses in the
+  exe map), then `shared/ci-exe-map` (pushed: CI's docs-only path runs `check-exe-map`; its pull
+  request after this one merges, its full verify needs the map's fix). Merged: #1117 and #1116
   (E31's refinement), #1110 (E13's), #1099 (T43's budget check), #1084 (the stop fix).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
@@ -66,7 +68,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   pairing's base. Budget 4 chosen (#1099 merged). The measurement's two "stuck" last games:
   the neutral one only slow (played here, 213 s), the report set's a stall traced by gdb and a
   temporary instrumented build (not committed) to the fair actor; the user chose to leave it
-  out. No original data (none needed).
+  out. `check-exe-map` failed on `master` (E31's citations): `Heroes3.exe` staged (the user's
+  upload, SHA-256 checked) for the map's entries.
 
 ### 2026-11-21 — E31 refined (AI-Q22)
 
