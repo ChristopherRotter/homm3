@@ -619,6 +619,9 @@ the same way:
 | `mine:x,y[,level]`, `tile:x,y[,level]`, `cursor`, `screens`, `opening:sides`, `opening:stacks:<side>`, `opening:slots:<side>`, `stops` | since E08 T79a: below, "Mines, Lighthouses and Shipyards" |
 | `income[:<colour>]`, `gardens[:<colour>]`, `growth:x,y[,level]`, `gain[:<colour>]` | since E08 T79b: below, "The day's start" |
 | `town:x,y[,level]:<part>`, `towns:every_vs_built`, `towns:owned_garrisons`, `hero:slot:<n>`, `opening:slot:<n>:<side>`, `town_screen`, `unknown_screens` | since E09 T3b: below, "Towns" |
+| `cast:<part>` | since E08 T139a: a cast step's parts (`book`, `button`, `listed`, `place`, `view`, `dialog`, `hovers`, `hover:<n>`, `clicks`, `click:<n>`, `cancel`, `spell_points`): below, "Casts on the adventure map" |
+| `hero:facing`, `hero:doors`, `hero:fly`, `hero:water_walk`, `hero:scrolls`, `hero:name`, `hero:byte:<offset>` | since E08 T139a: the facing (+0x47: 0 up, clockwise, 2 right), the day's Dimension Doors (i8 +0x10D), Fly's and Water Walk's levels today (i32 +0x112, +0x116: -1 not cast; structs.toml "hero"), the worn Spell Scrolls' spells (`misc 1: Dimension Door`), the record's name with its type (`Prisoner 1 (type 8)`), a signed byte of the record read live |
+| `path_order`, `explored_in:x0,y0..x1,y1[,level][:<colour>]`, `popups` | since E08 T139a: the path's marks in walking order (chained from the hero's tile by neighbours: `5,24 6,24 …`), the explored tiles of a box (`16,10 17,10`; `none`), a step's `popup = [[x, y], ...]` windows in order (`10,10: ?: [class 62 name]; …`) |
 
 `expect = { marks = <n>, path = "green", question = "join, flee", battle = true, dialogs = true }`
 notes a difference under the encounter's "anything odd" (`dialogs = true`: dialogs passed after
@@ -997,6 +1000,39 @@ dialog's items (id, state, frame; the box and vtable), a probe for a new screen.
 `skip_quietly = true` whose `only_if` does not hold records nothing (a row's rare branch). The
 scenario list's starting bonus: each row's arrow is clicked until the memory reads Gold (a
 player with a town and no hero has no Artifact: Random, Gold, Resource; batch E12b's Blue).
+
+**Casts on the adventure map (E08 T139, batch E15;** `docs/rules/surveys/E08-spells.md` §4, §7,
+§8). A step's `cast = "<spell>"` or `cast = { spell, place, button, hover, target, targets,
+cancel }` opens the selected hero's spell book by the key C (`button = true`: by a click on the
+panel's cast button, the adventure dialog's item 8, its state kept: `cast:button`, `enabled
+(state 0x6)`), finds the spell's place by its name among the page's twelve places (the book
+dialog's +0x7C + 4k, -1 an empty place; observed: the hero's adventure spells from place 0, a
+bookless hero's worn scroll's spell listed too; `place` still forces one) and clicks it; the page
+is `cast:listed` (`Dimension Door (place 0)`), a spell not listed closes the book (`cast:place`
+`not listed`). Every message of the cast is kept in order (`messages`: a refusal over the book,
+GENRLTXT 207, the book then closed; GENRLTXT 339 or 126 after it; 71 after a door onto water), a
+spell's view (View Earth's) is closed by Escape, and the step ends once the map shows with the
+hero's tile, points and spell points still for 1.5 s (a door's dissolve over). **A target
+dialog** (Dimension Door's, vtable 0x63DB9C; Scuttle Boat's 0x63DBD8, kind `target`;
+`cast:dialog` `door (0x63db9c)` or `none`): the mouse goes over each `hover` entry in order, then
+left-clicks each `targets` entry (`target` one) while the dialog shows; a dialog still open after
+them is cancelled (`cancel = "escape"`, the default, or `"right"`; `cast:cancel`). At each point
+the harness moves the mouse to the cell beside first (the dialog reads a tile only when the
+mouse's cell changes), waits until the adventure manager's +0xEC, +0xF0 hold the point's cell
+(x / 32, y / 32), then reads the cursor (the mouse manager's type and frame: the door's **1/41**,
+cradvntr.DEF frame 0x29; a refused tile's 1/0), the tile the cell picks (the view's corner plus
+the cell) and the accept flag (the window manager's +0x38, 1 a target): `cast:hover:<n>` (`cursor
+1/41, picks 17,19 (cell 9,17), accept 1`); `cast:click:<n>` adds whether the dialog stayed open or
+closed and the messages after it. An entry is `[x, y]` (the drawn tile's centre), `[x, y, dx,
+dy]` or `{ at = [x, y], offset = [dx, dy], record, note }`: the pointer dx, dy pixels from the
+drawn tile's top-left corner (tiles are drawn from y 8 + 32 j but picked at y / 32, so a drawn
+tile's lower 8 rows pick the row below, A-54: E15-16's `{ at = [17, 18], offset = [16, 28] }` is
+y 548 and picks (17, 19)), its `record` and `note` read right after it as an action's (the
+dialog's state between two clicks: E15-8's hidden tree). The view is the one the cast centred on
+the hero (`adventure_cast_open`: the corner the hero's tile less (9, 8)). The reads around a cast:
+`hero:doors`, `hero:fly`, `hero:water_walk` (also `before:`), `hero:scrolls`, `path_order`,
+`explored_in:` (the reads table); a tile's `explored:` before a cast is a step of its own (a read
+step without a walk).
 
 Observed (E12a and E12b, two runs each): the garrison's dialog opens on the entrance only (a walk
 through an own garrison opens none); the hero screen opens on a click on the selected hero's own

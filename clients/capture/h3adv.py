@@ -72,7 +72,12 @@ the bonus visitables"). Since E08 T120 (batch E13): a `[[require]]`'s `bank`, a 
 a step's `walk = "pick"` with `pick`, the battle plan `{ shoot, then }`, `only_if`'s
 `points_at_least`, and the observations bank:x,y[:part], starts, pick, order, order:rows,
 questions:at, opening:cover, opening:cover_rows, opening:machines, opening:shots, shoot[:part],
-hero:backpack:classes and hero:artifacts:classes (the README's "Creature banks").
+hero:backpack:classes and hero:artifacts:classes (the README's "Creature banks"). Since E08
+T139a (batch E15): a `cast`'s spell found by name in the book (`button`, `hover`, `target`,
+`targets`, `cancel`: a target dialog played, its cursor, tile and accept flag read), a list of
+`popup` tiles, and the observations cast:<part>, hero:facing, hero:doors, hero:fly,
+hero:water_walk, hero:scrolls, hero:name, hero:byte:<offset>, path_order, explored_in and popups
+(the README's "Casts on the adventure map").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -1814,50 +1819,276 @@ SLOT_PLACES = {
 }
 
 
+def spell_id(mem, name):
+    """A spell's id by its name in the game's spell table (E08 T139a)."""
+    for spell in range(h3mem.SPELL_COUNT):
+        if mem.spell_name(spell) == name:
+            return spell
+    raise ValueError(f"no spell named {name!r}")
+
+
+def cast_entry(entry):
+    """A cast's `hover` or `targets` entry (E08 T139a): [x, y], [x, y, dx, dy] (the pointer dx, dy
+    pixels from the drawn tile's top-left corner, else its centre) or { at = [x, y], offset = [dx,
+    dy], record, note } (read right after it): (tile, offset or None, record, note)."""
+    if isinstance(entry, dict):
+        return (list(entry["at"]), entry.get("offset"), entry.get("record", {}),
+                entry.get("note", {}))
+    return list(entry[:2]), (list(entry[2:4]) if len(entry) == 4 else None), {}, {}
+
+
+def cast_point(mem, tile, offset):
+    """The screen point for a tile of the view (E08 T139a): its centre, or `offset` pixels from
+    its drawn top-left corner (E15-16's pointer in a tile's lower 8 pixel rows, which pick the row
+    below: tiles are drawn from y 8 + 32 j but picked at y / 32, survey E08-spells.md §8.2)."""
+    x, y = tile_point(mem, *tile)
+    return (x, y) if offset is None else (x - TILE // 2 + offset[0], y - TILE // 2 + offset[1])
+
+
+def target_read(game, mem, point):
+    """The mouse to `point` over a target dialog and what the dialog made of it (E08 T139a;
+    door_target_proc 0x491900): the cell it saw (the manager's +0xEC, +0xF0: the point / 32), the
+    tile that cell picks (the view's corner plus the cell, view_cell_tile 0x407B10), the cursor
+    (type, frame) and the accept flag (the window manager's +0x38). The mouse goes to the cell
+    beside first, so that the point's cell is a new one (the dialog reads a tile only then)."""
+    cell = (point[0] // TILE, point[1] // TILE)
+    away = (point[0] - TILE, point[1]) if point[0] - TILE >= MAP_AREA[0] else (point[0] + TILE,
+                                                                               point[1])
+    game.move(*away)
+    wait_for(lambda: mem.view_cell() == (away[0] // TILE, away[1] // TILE),
+             lambda: f"the target dialog's cell at {away} (it holds {mem.view_cell()})")
+    game.move(*point)
+    wait_for(lambda: mem.view_cell() == cell,
+             lambda: f"the target dialog's cell at {point} (it holds {mem.view_cell()})")
+    time.sleep(0.3)
+    vx, vy = mem.view()
+    return {"point": list(point), "cell": list(cell), "picked": [vx + cell[0], vy + cell[1]],
+            "cursor": mem.cursor()[:2], "accept": mem.modal_answer()}
+
+
+def cast_quiet(game, mem, obs, index, limit=30.0):
+    """After a cast's book or target dialog (E08 T139a): each message's record kept (in order, in
+    obs["messages"]) and its OK clicked, any screen but the map, the book and a target dialog
+    (a spell's view: View Earth's) closed by Escape, until the map shows with the hero's tile,
+    points and spell points unchanged for QUIET seconds (a door's dissolve over); returns early
+    while the book or a target dialog shows."""
+    last, since, end = None, time.monotonic(), time.monotonic() + limit
+    while time.monotonic() < end:
+        kind = screen_kind(mem)
+        if kind == "message":
+            obs["messages"].append(message_record(mem))
+            click_item(game, mem, "ok", None)
+            last = None
+            continue
+        if kind == "target" or mem.spell_book():
+            return
+        if kind not in ("map", None):
+            game.key("Escape", 1.0)
+            game.move(*PARK)
+            last = None
+            continue
+        hero = mem.hero(index)
+        now = (tuple(hero["tile"]), hero["points"], hero["spell_points"])
+        if now != last:
+            last, since = now, time.monotonic()
+        elif time.monotonic() - since >= QUIET:
+            game.settled()
+            return
+        time.sleep(0.1)
+    game.dump(game.out / "cast-stuck.xwd")
+    raise RuntimeError(f"the cast does not end (the display: {game.out / 'cast-stuck.xwd'})")
+
+
+def cast_reads(mem, obs, first, index, record, note, messages=()):
+    """An entry's `record` and `note` of a cast (E08 T139a), read right after it as an action's
+    (run_actions): the step's hero before the step and now, the entry's messages."""
+    now = {"before": first, "after": snapshot(mem, index), "messages": list(messages),
+           "cast": obs["cast"]}
+    obs["actions"].append({
+        "record": {field: record_value(now, field, what, mem) for field, what in record.items()},
+        "notes": [f"{label}: {got}" for label, what in note.items()
+                  if (got := value(now, what, mem)) != "none"]})
+
+
+def target_play(game, mem, plan, obs, first, index):
+    """A target dialog's part of a cast (E08 T139a, batch E15; survey E08-spells.md §8.2, §6):
+    the mouse over each `hover` entry in turn (target_read: the cursor, the tile picked, the
+    accept flag), then a left click on each `targets` entry (`target` one) while the dialog
+    shows (an entry after it closed: `not clicked`), each click's messages and how it left the
+    dialog kept; a dialog still open after them cancelled (`cancel`: "escape", the default, or
+    "right", a right click where the mouse is)."""
+    cast = obs["cast"]
+    for entry in plan.get("hover", []):
+        tile, offset, record, note = cast_entry(entry)
+        cast["hovers"].append({"tile": tile, **target_read(game, mem, cast_point(mem, tile,
+                                                                                 offset))})
+        if record or note:
+            cast_reads(mem, obs, first, index, record, note)
+    targets = plan.get("targets", [plan["target"]] if "target" in plan else [])
+    for entry in targets:
+        tile, offset, record, note = cast_entry(entry)
+        click, heard = {"tile": tile, "messages": []}, len(obs["messages"])
+        if mem.target_dialog() is None:
+            click["result"] = "not clicked: the dialog had closed"
+        else:
+            click.update(target_read(game, mem, cast_point(mem, tile, offset)))
+            game.click(*click["point"], 0.8)
+            if mem.target_dialog() is not None:
+                click["result"] = "the dialog stays open"
+            else:
+                game.move(*PARK)
+                cast_quiet(game, mem, obs, index)
+                click["result"] = "the dialog closed"
+            click["messages"] = obs["messages"][heard:]
+        cast["clicks"].append(click)
+        if record or note:
+            cast_reads(mem, obs, first, index, record, note, click["messages"])
+    if mem.target_dialog() is not None:
+        how = plan.get("cancel", "escape")
+        if how == "right":
+            h3drive.run("xdotool", "click", "3")
+            time.sleep(0.8)
+        elif how == "escape":
+            game.key("Escape", 0.8)
+        else:
+            raise ValueError(f"`cancel = {how!r}`: \"escape\" or \"right\"")
+        heard = len(obs["messages"])
+        game.move(*PARK)
+        cast_quiet(game, mem, obs, index)
+        cast["cancel"] = {"how": how, "closed": mem.target_dialog() is None,
+                          "messages": obs["messages"][heard:]}
+
+
+def target_text(read):
+    """A target dialog's reading (target_read; E08 T139a): `cursor 0/41, picks 17,19 (cell 9,17),
+    accept 1`."""
+    return (f"cursor {read['cursor'][0]}/{read['cursor'][1]}, picks {tile_name(read['picked'])} "
+            f"(cell {read['cell'][0]},{read['cell'][1]}), accept {read['accept']}")
+
+
+def cast_text(cast, part, mem):
+    """A cast step's part (E08 T139a; `cast:<part>`): `book` (opened, refused: <record>, nothing),
+    `button` (the cast button's state before its click), `listed` (the book page's spells and
+    their places: `Dimension Door (place 0)`; `none`), `place`, `view` (what the book's click
+    showed), `dialog` (the target dialog: `door (0x63db9c)`, `none`), `hovers`, `hover:<n>` (from
+    1; target_text), `clicks`, `click:<n>` (the tile, target_text, how the dialog was left, the
+    messages after it), `cancel`, `spell_points` (`20 then 8`)."""
+    if not cast:
+        return "no cast"
+    if part in ("book", "dialog"):
+        return cast[part]
+    if part in ("button", "view"):
+        return cast.get(part, "none")
+    if part == "listed":
+        if "listed" not in cast:
+            return "the book did not open"
+        return ", ".join(f"{mem.spell_name(s)} (place {k})" for k, s in cast["listed"]) or "none"
+    if part == "place":
+        return str(cast.get("place", "none"))
+    if part == "spell_points":
+        return f"{cast['before']} then {cast['after']}"
+
+    def clicked(c):
+        messages = ", ".join(c["messages"]) or "no message"
+        return (f"{tile_name(c['tile'])}: " + (f"{target_text(c)}; " if "cursor" in c else "")
+                + f"{c['result']}; {messages}")
+    if part == "hovers":
+        return "; ".join(f"{tile_name(h['tile'])}: {target_text(h)}"
+                         for h in cast["hovers"]) or "none"
+    if part == "clicks":
+        return "; ".join(clicked(c) for c in cast["clicks"]) or "none"
+    if m := re.match(r"(hover|click):(\d+)$", part):
+        got, n = cast[m.group(1) + "s"], int(m.group(2))
+        if not 1 <= n <= len(got):
+            return (f"no {m.group(1)}: no target dialog" if cast["dialog"] == "none"
+                    else f"no {m.group(1)} {n}")
+        return target_text(got[n - 1]) if m.group(1) == "hover" else clicked(got[n - 1])
+    if part == "cancel":
+        cancel = cast.get("cancel")
+        if not cancel:
+            return "none"
+        return (f"by {cancel['how']}: the dialog {'closed' if cancel['closed'] else 'stays'}; "
+                + (", ".join(cancel["messages"]) or "no message"))
+    raise ValueError(f"unknown cast part `{part}`")
+
+
 def cast_on_map(game, mem, name, plan):
     """E08 T110 (batch E12b's E12-14, E12-9): the selected hero's spell book on the adventure map
     (its key C, the panel's book button's), the book's place `place` (default 0: the hero's only
     adventure spell) clicked, the view the spell opens (View Earth's) closed with Escape, every
     message's OK clicked (its record kept). `plan`: the spell's name, or { spell, place }.
     Returns the observation: the book (`opened`, `refused` with the message's record), the screen
-    the cast showed, the spell points before and after."""
-    spell, place = (plan, 0) if isinstance(plan, str) else (plan["spell"], plan.get("place", 0))
+    the cast showed, the spell points before and after.
+
+    Since E08 T139a (batch E15) the spell's place is found by its name among the book's page's
+    places (the dialog's +0x7C + 4k; `place` still chooses one), the page's spells kept
+    (`listed`), `button = true` clicks the panel's cast button (item 8; its state kept) instead of
+    the key, every message of the cast kept in order (`messages`), and a target spell's dialog
+    (Dimension Door's, Scuttle Boat's: kind `target`) played by target_play (`hover`, `target`
+    or `targets`, `cancel`); the hero's points, spell points, day marks and tile are the step's
+    `before` and `after`."""
+    plan = {"spell": plan} if isinstance(plan, str) else dict(plan)
+    spell = plan["spell"]
     index = mem.hero_named(name)["index"]
-    obs = {"hero": name, "messages": [], "cast": {"spell": spell,
-                                                  "before": mem.hero(index)["spell_points"]}}
+    first = snapshot(mem, index)
+    cast = {"spell": spell, "before": first["hero"]["spell_points"], "hovers": [], "clicks": [],
+            "dialog": "none"}
+    obs = {"hero": name, "messages": [], "cast": cast, "actions": []}
     game.move(*PARK)
-    game.key(BOOK_KEY, BOOK_WAIT)
+    if plan.get("button"):
+        state = mem.item_states([h3mem.CAST_BUTTON]).get(h3mem.CAST_BUTTON)
+        cast["button"] = "not found" if state is None else (
+            f"{'disabled' if state & h3mem.DISABLED else 'enabled'} (state {state:#x})")
+        game.click(*item_centre(mem, h3mem.CAST_BUTTON), BOOK_WAIT)
+        game.move(*PARK)
+    else:
+        game.key(BOOK_KEY, BOOK_WAIT)
     kind = screen_kind(mem)
     if kind == "message":
-        obs["cast"]["book"] = f"refused: {message_record(mem)}"
+        cast["book"] = f"refused: {message_record(mem)}"
+        obs["messages"].append(message_record(mem))
         click_item(game, mem, "ok", None)
     elif kind in ("map", None):
-        obs["cast"]["book"] = "nothing (no dialog)"
+        cast["book"] = "nothing (no dialog)"
+    elif not mem.spell_book():
+        cast["book"] = f"another screen ({kind}, {mem.dialog()['vtable']:#x})"
     else:
-        obs["cast"]["book"] = "opened"
-        game.move(*h3drive.book_place(place))
-        time.sleep(0.3)
-        game.click(*h3drive.book_place(place), settle=1.5)
-        shown = mem.dialog()
-        kind = screen_kind(mem)
-        obs["cast"]["view"] = (kind if kind not in ("other", None) else
-                               hex(shown["vtable"]) if shown else "none")
-        for _ in range(4):
+        cast["book"] = "opened"
+        places = mem.book_spells()
+        cast["listed"] = [[k, s] for k, s in enumerate(places) if s >= 0]
+        place = plan.get("place")
+        if place is None:
+            wanted = spell_id(mem, spell)
+            place = places.index(wanted) if wanted in places else None
+        if place is None:
+            cast["place"] = "not listed"
+            game.key("Escape", 1.0)
+        else:
+            cast["place"] = place
+            game.move(*h3drive.book_place(place))
+            time.sleep(0.3)
+            game.click(*h3drive.book_place(place), settle=1.5)
+            shown = mem.dialog()
             kind = screen_kind(mem)
-            if kind in ("map", None):
-                break
-            if kind == "message":
-                obs["messages"].append(message_record(mem))
-                click_item(game, mem, "ok", None)
-            else:
-                game.key("Escape", 1.0)
-        if screen_kind(mem) not in ("map", None):
-            game.dump(game.out / "cast-stuck.xwd")
-            raise RuntimeError(f"the cast's view does not close (the display: "
-                               f"{game.out / 'cast-stuck.xwd'})")
+            cast["view"] = (kind if kind not in ("other", None) else
+                            hex(shown["vtable"]) if shown else "none")
     game.move(*PARK)
-    quiet_screen(game, 0.5)
-    obs["cast"]["after"] = mem.hero(index)["spell_points"]
+    for _ in range(6):
+        cast_quiet(game, mem, obs, index)
+        if mem.target_dialog() is not None:
+            cast["dialog"] = f"{mem.target_dialog()} ({mem.dialog()['vtable']:#x})"
+            target_play(game, mem, plan, obs, first, index)
+        elif mem.spell_book():
+            # The book still open (a refusal's message closed: GENRLTXT 207): closed.
+            game.key("Escape", 1.0)
+            game.move(*PARK)
+        else:
+            break
+    if screen_kind(mem) not in ("map", None):
+        game.dump(game.out / "cast-stuck.xwd")
+        raise RuntimeError(f"the cast's view does not close (the display: "
+                           f"{game.out / 'cast-stuck.xwd'})")
+    cast["after"] = mem.hero(index)["spell_points"]
     return obs
 
 
@@ -2075,6 +2306,9 @@ ALTAR_ITEMS = {"worn": 102, "backpack": 139, "backpack left": 144, "backpack rig
 ALTAR_STEPS = {"worn": 2, "place": 2, "slot": 3}  # the ids from a part's n-th to its next
 ALTAR_CREATURES_ALL = 250
 SCREEN_KINDS[h3mem.ALTAR_VTABLE] = "altar"
+# E08 T139a (batch E15): an adventure spell's target dialog (Dimension Door's 0x63DB9C, Scuttle
+# Boat's 0x63DBD8; h3mem.TARGET_VTABLES), played by a cast (target_play).
+SCREEN_KINDS.update({vtable: "target" for vtable in h3mem.TARGET_VTABLES})
 SCREEN_ITEMS["altar"] = ALTAR_ITEMS
 # The Hill Fort's dialog (h3mem.HILL_FORT_VTABLE), kind `hill_fort`: each row's button 261 + slot
 # and All 204 (hill_fort_dialog_proc 0x4E8850, read), OK 30722; the creatures' pictures 205-211,
@@ -3235,6 +3469,20 @@ def hero_value(mem, hero, field):
     # record read live (`word:<offset>`, hex: the School of War bits +0x7B).
     if m := re.match(r"bit:(\d+)$", field):
         return "set" if hero["status"] >> int(m.group(1)) & 1 else "clear"
+    # E08 T139a (batch E15): the facing (+0x47), the day's Dimension Doors (+0x10D), Fly's and
+    # Water Walk's levels today (+0x112, +0x116: -1 not cast), and a signed byte of the record
+    # read live (`byte:<offset>`).
+    if field in ("facing", "doors", "fly", "water_walk"):
+        return str(hero[field])
+    if field == "name":
+        return f"{hero['name']} (type {hero['index']})"
+    if field == "scrolls":
+        return ", ".join(f"{slot}: {mem.spell_name(spell)}"
+                         for slot, spell in hero["scrolls"].items()) or "none"
+    if m := re.match(r"byte:(0x[0-9a-fA-F]+|\d+)$", field):
+        offset = int(m.group(1), 0)
+        got = mem.read(mem.game() + h3mem.HEROES + h3mem.HERO_SIZE * hero["index"] + offset, 1)[0]
+        return str(got - 256 if got > 127 else got)
     if m := re.match(r"word:(0x[0-9a-fA-F]+|\d+)$", field):
         offset = int(m.group(1), 0)
         address = mem.game() + h3mem.HEROES + h3mem.HERO_SIZE * hero["index"] + offset
@@ -4279,6 +4527,7 @@ LIVE_READS = ("explored", "word", "object", "monster", "aggression", "never_flee
               "town", "towns",  # E09 T3b: the towns' records
               "dwelling", "teams", "objects", "access", "camp", "hire",  # E08 T90
               "bank",  # E08 T120
+              "explored_in",  # E08 T139a
               "market", "black_market",  # E08 T129a
               "altar", "hill_fort")  # E08 T129b
 
@@ -4358,6 +4607,22 @@ def value(obs, what, mem):
         return str(obs[what])
     if what == "points_if_moved":
         return str(obs["points"]) if obs["moved"] else ""
+    # E08 T139a (batch E15b): the path's marked tiles in walking order, chained from the hero's
+    # tile by neighbours (`31,12 32,12 …`); tiles no single neighbour chain reaches listed after.
+    if what == "path_order":
+        left, at, order = set(map(tuple, obs.get("tiles", []))), tuple(obs["from"]), []
+        while left:
+            near = [t for t in left
+                    if t[2] == at[2] and max(abs(t[0] - at[0]), abs(t[1] - at[1])) == 1]
+            if len(near) != 1:
+                break
+            at = near[0]
+            order.append(at)
+            left.discard(at)
+        rest = sorted(left, key=lambda t: (t[2], t[1], t[0]))
+        return (" ".join(tile_name(t) for t in order)
+                + (f" (not chained: {' '.join(tile_name(t) for t in rest)})" if rest else "")
+                ).strip() or "none"
     # E08 T37b (batch E5b's E5-11): the tiles the path's marks lay on at the first click, by row
     # then column (`31,12 31,13 31,14 31,15`), or those of one row (`path_tiles:14`); `none`.
     if m := re.match(r"path_tiles(?::(\d+))?$", what):
@@ -4641,6 +4906,13 @@ def value(obs, what, mem):
         rest = (m.group(5) or "") + (m.group(6) or "")
         return ", ".join(f"{x},{y} " + value(obs, f"explored:{x},{y}{rest}", mem)
                          for y in range(y0, y1 + 1) for x in range(x0, x1 + 1))
+    # E08 T139a (batch E15b's E15-8): the explored tiles of a box, row by row (`16,10 17,10`;
+    # `none`), the player as below.
+    if m := re.match(r"explored_in:(\d+),(\d+)\.\.(\d+),(\d+)(,\d)?(:[a-z]+)?$", what):
+        x0, y0, x1, y1 = map(int, m.groups()[:4])
+        rest = (m.group(5) or "") + (m.group(6) or "")
+        return " ".join(f"{x},{y}" for y in range(y0, y1 + 1) for x in range(x0, x1 + 1)
+                        if value(obs, f"explored:{x},{y}{rest}", mem) == "yes") or "none"
     # E08 T37a (batch E5's E5-9, E5-10, E5-11): whether a player has explored a tile, its bit in
     # the tile's vision word; the player the step's hero's owner unless named.
     if m := re.match(r"explored:(\d+),(\d+)(?:,(\d))?(?::([a-z]+))?$", what):
@@ -4852,6 +5124,13 @@ def value(obs, what, mem):
         view = f"; the view {cast['view']}" if "view" in cast else ""
         return (f"the book {cast['book']}; {cast['spell']}{view}; spell points {cast['before']} "
                 f"then {cast['after']}")
+    if what.startswith("cast:"):
+        return cast_text(obs.get("cast"), what[5:], mem)
+    if what == "popups":
+        # E08 T139a (batch E15a): each popup of the step's list, `x,y: <record>: <parts>`.
+        return "; ".join(f"{tile_name(p['tile'])}: " + (f"{p['record']}: {p['parts']}"
+                                                          if p["opened"] else "no window")
+                         for p in obs.get("popups", [])) or "none"
     if what == "hints":
         # E08 T110 (batch E12b): each hint of the step's list, `x,y: <parts>`.
         return "; ".join(f"{tile_name(h['tile'])}: {h['parts']}"
@@ -5498,7 +5777,12 @@ def batch(recipe_path, map_path=None, out=None):
                     elif "hint" in step:
                         obs["hint"] = hint_at(game, mem, *step["hint"])
                         obs["hints"] = [{**obs["hint"], "tile": step["hint"]}]
-                    if "popup" in step:
+                    if "popup" in step and isinstance(step["popup"][0], list):
+                        # E08 T139a (batch E15a): several tiles' popups in order (`popups`).
+                        obs["popups"] = [{**popup_at(game, mem, *tile), "tile": tile}
+                                         for tile in step["popup"]]
+                        obs["popup"] = obs["popups"][0]
+                    elif "popup" in step:
                         obs["popup"] = popup_at(game, mem, *step["popup"])
                 elif "key" in step and "repeat" in step:
                     # E08 T100b (batch E11b): the key again and again, a row each (presses).

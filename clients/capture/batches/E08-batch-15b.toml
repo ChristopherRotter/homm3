@@ -1,0 +1,245 @@
+# E08 batch E15b played by the capture harness (E08 T139a; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-15b.toml as steps, on Easy, the starting bonus gold, Red and Blue
+# human in hot seat; day 1, Red's turn only, in the spec's order: E15-14 (its one click first:
+# nothing moves before it), E15-13, E15-8 with E15-16, E15-5, E15-6, E15-7, E15-15. Each row's
+# reads before a cast are a step of their own (a tile's `explored:` is read live, never `before:`).
+#
+# A cast (README, "Casts on the adventure map"): `cast = "<spell>"` or `{ spell, hover, target,
+# targets, cancel, button }` opens the selected hero's spell book by the key C (`button = true`:
+# by the panel's cast button, its state kept: E15-15), clicks the spell's place found by its name
+# among the page's places (`cast:listed` the page), keeps every message in order (`messages`)
+# and plays a target dialog (Dimension Door's): the mouse over each `hover` tile (`cast:hover:<n>`:
+# the cursor's type and frame, the tile the dialog picks, its accept flag), a left click on each
+# `targets` entry while the dialog shows (`cast:click:<n>`: what it did, the messages after it;
+# an entry's `record` read right after its click), the dialog cancelled by Escape if still open
+# (`cast:cancel`). `[x, y, dx, dy]` or `offset = [dx, dy]` puts the pointer dx, dy pixels from
+# the drawn tile's top-left corner (E15-16: (17, 18)'s lower 8 rows pick (17, 19)). The day's
+# marks: `hero:doors` (+0x10D), `hero:fly` (+0x112), `hero:water_walk` (+0x116; -1 not cast).
+# A path's tiles in order: `path_order` (chained from the hero's tile). E15-14's path is not
+# cancelled: the next step selects E15-13 (its path not shown) and E15-14 never moves again.
+
+spec = "experiments/specs/E08-batch-15b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Day 1, Red: E15-14 (Water Walk facing hidden water; one click, first) ------------------------------
+
+[[step]]
+encounter = "E15-14"
+hero = "E15-14"
+record = { "explored before: (9, 27); (10, 27); (13, 27); (14, 27)" = ["explored:9,27", "explored:10,27", "explored:13,27", "explored:14,27"], "before the cast: points; spell points" = ["text:points: ", "hero:points", "text:spell points: ", "hero:spell_points"] }
+note = { "the date at the start" = "date", "the game's version" = "map_kind", "the difficulty" = "difficulty", "E15-14 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E15-14"
+hero = "E15-14"
+cast = "Water Walk"
+record = { "the cast: messages; spell points; the Water Walk level" = ["text:messages: ", "messages", "text:spell points: ", "cast:spell_points", "text:level before: ", "before:hero:water_walk", "text:after: ", "hero:water_walk", "text:the book: ", "cast:book", "text:listed: ", "cast:listed", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E15-14"
+hero = "E15-14"
+walk = [14, 27]
+once = true
+record = { "the click on (14, 27): the target's mark; the marks" = ["text:mark: ", "mark", "text:marks: ", "marks", "text:tiles: ", "path_order", "text:the cursor over (14, 27): ", "cursor"], "E15-14's tile after" = ["hero:tile", "text:points: ", "hero:points"] }
+
+# --- Day 1, Red: E15-13 (Fly over a hidden strip with a hidden tree) -------------------------------------
+
+[[step]]
+encounter = "E15-13"
+hero = "E15-13"
+record = { "explored before: (9, 24); (10, 24); (12, 24); (13, 24); (15, 24)" = ["explored:9,24", "explored:10,24", "explored:12,24", "explored:13,24", "explored:15,24"], "before the cast: points; spell points" = ["text:points: ", "hero:points", "text:spell points: ", "hero:spell_points"] }
+note = { "E15-13 worn at the start (the starting bonus)" = "hero:equipment", "E15-13s's" = "hero[E15-13s]:equipment" }
+
+[[step]]
+encounter = "E15-13"
+hero = "E15-13"
+cast = "Fly"
+record = { "the cast: messages; spell points; the Fly level" = ["text:messages: ", "messages", "text:spell points: ", "cast:spell_points", "text:level before: ", "before:hero:fly", "text:after: ", "hero:fly", "text:the book: ", "cast:book", "text:listed: ", "cast:listed", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E15-13"
+hero = "E15-13"
+walk = [15, 24]
+record = { "the click on (15, 24): the target's mark; the marks" = ["text:mark: ", "mark", "text:marks: ", "marks", "text:tiles: ", "path_order"], "after the walk: E15-13's tile; points" = ["hero:tile", "text:points: ", "hero:points"], "explored after: (10, 24) to (13, 24); (12, 23); (12, 25)" = ["explored:10,24..13,24", "text:(12, 23): ", "explored:12,23", "text:(12, 25): ", "explored:12,25"] }
+
+# --- Day 1, Red: E15-8 (the door's cursor in the fog, the hidden tree, the door) and E15-16 ------------
+
+[[step]]
+encounter = "E15-8"
+hero = "E15-8"
+record = { "explored before: (13, 10); (13, 12); (17, 10); (17, 12)" = ["explored:13,10", "explored:13,12", "explored:17,10", "explored:17,12"], "before: points; spell points; the day's doors" = ["text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"], "(13, 10) seen, free | explored" = "explored:13,10", "(13, 12) the seen tree | explored" = "explored:13,12", "(17, 10) hidden, free | explored" = "explored:17,10", "(17, 12) the hidden tree | explored" = "explored:17,12" }
+note = { "E15-8 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E15-8"
+hero = "E15-8"
+[step.cast]
+spell = "Dimension Door"
+hover = [[13, 10], [13, 12], [17, 10], [17, 12]]
+[[step.cast.targets]]
+at = [17, 12]
+record = { "the click on the hidden tree: what happens; tile; points; spell points; the day's doors; explored in (16, 10) to (19, 14)" = ["cast:click:1", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors", "text:explored: ", "explored_in:16,10..19,14"] }
+[[step.cast.targets]]
+at = [17, 10]
+[step.record]
+"(13, 10) seen, free | the cursor" = "cast:hover:1"
+"(13, 12) the seen tree | the cursor" = "cast:hover:2"
+"(17, 10) hidden, free | the cursor" = "cast:hover:3"
+"(17, 12) the hidden tree | the cursor" = "cast:hover:4"
+"the door onto (17, 10): messages; tile; points; spell points; the day's doors" = ["cast:click:2", "text:dialog: ", "cast:dialog", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"]
+"explored after: (17, 5); (22, 10); (17, 15); (16, 14); (21, 13); (22, 13)" = ["explored:17,5", "explored:22,10", "explored:17,15", "explored:16,14", "explored:21,13", "explored:22,13"]
+
+# The hidden tree's click closed the dialog (the hero still on (10, 10)): the door cast again.
+[[step]]
+encounter = "E15-8"
+hero = "E15-8"
+only_if = { at = [10, 10] }
+skip_quietly = true
+cast = { spell = "Dimension Door", target = [17, 10] }
+record = { "the door onto (17, 10): messages; tile; points; spell points; the day's doors" = ["text:cast again: ", "cast:book", "cast:click:1", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"], "explored after: (17, 5); (22, 10); (17, 15); (16, 14); (21, 13); (22, 13)" = ["explored:17,5", "explored:22,10", "explored:17,15", "explored:16,14", "explored:21,13", "explored:22,13"] }
+
+# E15-16: the pointer at (17, 10)'s column, y 548 (the drawn row (17, 18)'s lower 8 pixels: the cell
+# row 17, dy +9).
+[[step]]
+encounter = "E15-8"
+hero = "E15-8"
+[step.cast]
+spell = "Dimension Door"
+target = { at = [17, 18], offset = [16, 28] }
+[[step.cast.hover]]
+at = [17, 18]
+offset = [16, 28]
+record = { "E15-16: (17, 19) explored before the cast; the cursor at y 548; the tile picked" = ["text:(17, 19) explored: ", "explored:17,19", "text:at y 548: ", "cast:hover:1"] }
+[step.record]
+"E15-16 after the click: messages; tile; points; spell points; the day's doors" = ["cast:click:1", "text:cancel: ", "cast:cancel", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"]
+
+# --- Day 1, Red: E15-5 (Magic Plains: five doors without Air Magic) --------------------------------------
+
+[[step]]
+encounter = "E15-5"
+hero = "E15-5"
+record = { "before: points; spell points; the day's doors" = ["text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"] }
+note = { "E15-5 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E15-5"
+hero = "E15-5"
+cast = { spell = "Dimension Door", target = [29, 3] }
+record = { "1 (29, 3) | messages" = ["messages", "text:dialog: ", "cast:dialog", "text:click: ", "cast:click:1"], "1 (29, 3) | tile" = "hero:tile", "1 (29, 3) | points" = "hero:points", "1 (29, 3) | spell points" = "hero:spell_points", "1 (29, 3) | the day's doors" = "hero:doors" }
+
+[[step]]
+encounter = "E15-5"
+hero = "E15-5"
+cast = { spell = "Dimension Door", target = [26, 3] }
+record = { "2 (26, 3) | messages" = ["messages", "text:dialog: ", "cast:dialog", "text:click: ", "cast:click:1"], "2 (26, 3) | tile" = "hero:tile", "2 (26, 3) | points" = "hero:points", "2 (26, 3) | spell points" = "hero:spell_points", "2 (26, 3) | the day's doors" = "hero:doors" }
+
+[[step]]
+encounter = "E15-5"
+hero = "E15-5"
+cast = { spell = "Dimension Door", target = [29, 3] }
+record = { "3 (29, 3) | messages" = ["messages", "text:dialog: ", "cast:dialog", "text:click: ", "cast:click:1"], "3 (29, 3) | tile" = "hero:tile", "3 (29, 3) | points" = "hero:points", "3 (29, 3) | spell points" = "hero:spell_points", "3 (29, 3) | the day's doors" = "hero:doors" }
+
+[[step]]
+encounter = "E15-5"
+hero = "E15-5"
+cast = { spell = "Dimension Door", target = [26, 3] }
+record = { "4 (26, 3) | messages" = ["messages", "text:dialog: ", "cast:dialog", "text:click: ", "cast:click:1"], "4 (26, 3) | tile" = "hero:tile", "4 (26, 3) | points" = "hero:points", "4 (26, 3) | spell points" = "hero:spell_points", "4 (26, 3) | the day's doors" = "hero:doors" }
+
+[[step]]
+encounter = "E15-5"
+hero = "E15-5"
+cast = { spell = "Dimension Door", target = [29, 3] }
+record = { "5 | messages" = ["messages", "text:dialog: ", "cast:dialog", "text:click: ", "cast:click:1"], "5 | tile" = "hero:tile", "5 | points" = "hero:points", "5 | spell points" = "hero:spell_points", "5 | the day's doors" = "hero:doors" }
+
+# --- Day 1, Red: E15-6 (the door with 1 point left, then 0) ----------------------------------------------
+
+[[step]]
+encounter = "E15-6"
+hero = "E15-6"
+record = { "before: points; spell points" = ["text:points: ", "hero:points", "text:spell points: ", "hero:spell_points"] }
+note = { "E15-6 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E15-6"
+hero = "E15-6"
+walk = [24, 31]
+record = { "+the points after the legs: (24, 31); (25, 32); (30, 32); (33, 32)" = ["text:(24, 31): ", "points", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E15-6"
+hero = "E15-6"
+walk = [25, 32]
+record = { "+the points after the legs: (24, 31); (25, 32); (30, 32); (33, 32)" = ["text:(25, 32): ", "points", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E15-6"
+hero = "E15-6"
+walk = [30, 32]
+record = { "+the points after the legs: (24, 31); (25, 32); (30, 32); (33, 32)" = ["text:(30, 32): ", "points", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E15-6"
+hero = "E15-6"
+walk = [33, 32]
+record = { "+the points after the legs: (24, 31); (25, 32); (30, 32); (33, 32)" = ["text:(33, 32): ", "points", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E15-6"
+hero = "E15-6"
+cast = { spell = "Dimension Door", target = [33, 28] }
+record = { "door 1 (33, 28): messages; tile; points; spell points; the day's doors" = ["text:messages: ", "messages", "text:dialog: ", "cast:dialog", "text:click: ", "cast:click:1", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"] }
+
+[[step]]
+encounter = "E15-6"
+hero = "E15-6"
+cast = { spell = "Dimension Door", target = [33, 24] }
+record = { "door 2 (33, 24): messages; tile; points; spell points; the day's doors" = ["text:messages: ", "messages", "text:dialog: ", "cast:dialog", "text:click: ", "cast:click:1", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"] }
+
+# The third door: no target (the dialog, if it opens, cancelled by Escape).
+[[step]]
+encounter = "E15-6"
+hero = "E15-6"
+cast = { spell = "Dimension Door" }
+record = { "door 3: messages; the dialog; points; spell points; the day's doors" = ["text:messages: ", "messages", "text:the dialog: ", "cast:dialog", "text:cancel: ", "cast:cancel", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"] }
+
+# --- Day 1, Red: E15-7 (the door from land onto water) ----------------------------------------------------
+
+[[step]]
+encounter = "E15-7"
+hero = "E15-7"
+record = { "before: points; spell points; the day's doors" = ["text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"] }
+note = { "E15-7 worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E15-7"
+hero = "E15-7"
+cast = { spell = "Dimension Door", hover = [[31, 10]], target = [31, 10] }
+record = { "the cursor over (31, 10)" = "cast:hover:1", "after the click: messages; tile; points; spell points; the day's doors" = ["cast:click:1", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"] }
+
+[[step]]
+encounter = "E15-7"
+hero = "E15-7"
+cast = { spell = "Dimension Door", target = [27, 10] }
+record = { "the second cast: messages; the dialog; tile; points; spell points; the day's doors" = ["text:messages: ", "messages", "text:the dialog: ", "cast:dialog", "text:click: ", "cast:click:1", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"] }
+
+# --- Day 1, Red: E15-15 (a bookless hero's Dimension Door scroll) -----------------------------------------
+
+[[step]]
+encounter = "E15-15"
+hero = "E15-15"
+record = { "before: points; spell points; worn artifacts" = ["text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:worn: ", "hero:artifacts"] }
+
+[[step]]
+encounter = "E15-15"
+hero = "E15-15"
+walk = [5, 4]
+expect = { dialogs = true }
+record = { "the scroll: messages; tile; points; where the scroll is worn" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:worn: ", "hero:artifacts", "text:the scrolls' spells: ", "hero:scrolls", "text:spells learned: ", "hero:spells"] }
+
+[[step]]
+encounter = "E15-15"
+hero = "E15-15"
+cast = { spell = "Dimension Door", button = true, target = [4, 8] }
+record = { "the cast button: enabled?; what opens; the spells listed" = ["text:the button: ", "cast:button", "text:opens: ", "cast:book", "text:listed: ", "cast:listed"], "the cast (if listed): messages; tile; points; spell points; the day's doors" = ["text:place: ", "cast:place", "text:dialog: ", "cast:dialog", "text:click: ", "cast:click:1", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:doors: ", "hero:doors"] }
