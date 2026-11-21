@@ -12,6 +12,12 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-21 (the town lane, E09 T47a2, `town/e09-t47a2`, `cross-lane`; **informational, nothing
+  to do**): the game state hash v38 and map import v28 moved `h3-server`'s `tests/record.rs`
+  literals (`army-dialog-s1`'s checkpoint and final hash, `import_version`), and
+  `towns-s173-d21` holds 189 commands since its siege was played again (244 before), so
+  `h3-protocol`'s `game_mutation` sample bound is `+ 150`; the fold, session and record tests pass.
+
 - 2026-11-20 (the map client lane, E24 M4 T4c, `map-client/e24-m4-t4c`; **MCL-Q43, for your
   planning; the user's answer first**): kind 5's hourglass in another player's turn needs that
   player's heroes' points (the sum of their maximum at the turn's start, the points left as the

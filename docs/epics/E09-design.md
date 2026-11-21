@@ -3056,6 +3056,14 @@ something, a visit's end, a capture and a siege's end applying the same (175); t
   requires and bans Dimension Door (TD-25).
 - **Tests:** an AB map's required and banned bits to spells; an RoE map's required set empty; a
   bit past 69 dropped; the refusal.
+- *As built* (T47a2, decision 188): `h3_map`'s `import/town.rs` `town_spells` (the bits 0 to 69
+  by `codes::SPELLS`, sorted by handle); a spell the ruleset lacks is **left out**, as the pool's
+  hero types (no guild can draw it; every hero spell is a base pack's, so the shipped maps lose
+  none), not refused by the import; the setup's refusal `GameSetupError::TownSpell(TownId,
+  SpellId)` (a spell the ruleset lacks or a creature ability; one granted by name only allowed)
+  right after the scenario's bans, through `h3_game`'s `town::town_spell_refused`. Tests: an AB
+  and a SoD map's sets (Titan's Lightning Bolt required, Dimension Door required and banned, bits
+  70 and 71 dropped), an RoE map's, a town without its body; the refusal's order and text.
 
 ### 85. The draw (TWN-GLD-002; `h3-towns`' `guild` module, new; `town_setup_spells` 0x5BE600)
 
@@ -3093,6 +3101,16 @@ something, a visit's end, a capture and a siege's end applying the same (175); t
   scenario's ban, Titan's Lightning Bolt and a creature ability (each weighted, required too)
   never; an empty level; one seed alike. The game's draw at the build, two games and a fork:
   T47a2.
+- *As built* (T47a2, decision 188): `h3_game`'s `town/guild.rs` `draw_guilds`, called by
+  `GameState::new` right after the Shipyards without water (`without_water`) and before the store
+  is made, on the built `(Town, TownStatic)` pairs: each town's `GuildSets` of its `TownSetup`'s
+  lists and the scenario's `banned_spells`, its slots by `draw_guild` written with
+  `Town::with_guild`, its Aurora set by `aurora_set` into `TownStatic::aurora`; the towns' stream
+  made before them and moved into the state. A pack without guild weights (the game's own test
+  part) draws nothing, so no existing unit test's stream moved. Tests (`town/tests/guild.rs`): the
+  slots of two towns (a required spell first, a town's ban, a spell granted by name only never),
+  the towns' stream after the build equal to the guilds' draws replayed, the Aurora sets, nothing
+  shown without a Mage Guild, two games alike and a fork; the scenario's ban with the quirk.
 
 ### 86. The store v4: the slots, the Vortex's flag, the Aurora set (`h3-towns`' `record.rs`, `store.rs`)
 
@@ -3117,6 +3135,15 @@ something, a visit's end, a capture and a siege's end applying the same (175); t
   `h3_towns::aurora_set(core, sets)` computes the set, reading `TWN-QUIRK-14`'s flag from the
   core (the quirk's rule test there, TWN-GLD-004's set). The store's fields, writes and hash v4
   are T47a2's.
+- *As built* (T47a2, decision 188): `Town`'s `guild` (`GuildSlots`, empty from `Town::new`;
+  `with_guild`, public for the game's build; `guild()`) and `vortex` (true from `Town::new`;
+  `vortex()`, the crate's `with_vortex`); `TownStatic::aurora` (a public field, empty until the
+  game's build: `town_setup` lacks the scenario's bans); `Towns::start_week` (writes only the
+  towns whose flag is clear) and `Towns::take_vortex(town) -> bool`, both called by T49a with the
+  Vortex (nothing clears a flag before it); `GuildSlots::all` (the thirty slots in the hash's
+  order). Hash v4: after each town's Portal its thirty slots (0, or 1 and the handle) and its flag;
+  after each static part's events its Aurora set's sixteen bytes. The store's pinned hash
+  0x79C0_7378_D0E0_4452.
 
 ### 87. What the guild shows (TWN-GLD-003; §3.3, §4)
 

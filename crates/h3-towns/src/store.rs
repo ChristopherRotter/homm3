@@ -377,12 +377,12 @@ mod tests {
 
     use super::*;
     use crate::building::{BuildingId, BuildingSet};
-    use crate::guild::{GuildSlots, SpellSet};
-    use crate::{MAX_AVAILABLE, MAX_GUILD_SLOTS};
     use crate::fixture::{
         CAPITOL, CASTLE, CITADEL, CITY_HALL, DWELLING_1, DWELLING_2, FORT, GOLD, KEEP, ORE, SILO,
         TAVERN, TOWN_HALL, UPG_DWELLING_1, VILLAGE_HALL, WILD, WOOD, core, part, town, town_of,
     };
+    use crate::guild::{GuildSlots, SpellSet};
+    use crate::{MAX_AVAILABLE, MAX_GUILD_SLOTS};
     use crate::{daily_income, has_tavern, siege};
 
     fn set(indices: &[usize]) -> BuildingSet {
@@ -548,7 +548,12 @@ mod tests {
         assert_eq!(drawn.guild().all().flatten().count(), 3);
         assert_eq!(drawn.guild().all().count(), 5 * MAX_GUILD_SLOTS);
         assert_eq!(
-            store.town_static(first).unwrap().aurora.iter().collect::<Vec<_>>(),
+            store
+                .town_static(first)
+                .unwrap()
+                .aurora
+                .iter()
+                .collect::<Vec<_>>(),
             [spell(3), spell(69)]
         );
     }
@@ -577,7 +582,10 @@ mod tests {
         // With every flag set, or no town, the week copies nothing.
         let mut again = store.clone();
         again.start_week();
-        assert!(Arc::ptr_eq(stores(&store, &again).0, stores(&store, &again).1));
+        assert!(Arc::ptr_eq(
+            stores(&store, &again).0,
+            stores(&store, &again).1
+        ));
         let mut empty = Towns::default();
         empty.start_week();
         assert!(!empty.take_vortex(second));

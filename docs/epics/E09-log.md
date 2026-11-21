@@ -5671,3 +5671,52 @@ every golden re-recorded). Ids: decisions next 188.
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T47a2 — the map's town spell sets (import v28), the store v4, the guilds drawn at the build (2026-11-21)
+
+One session, the user present at the start; branch `town/e09-t47a2`, `cross-lane` with the user's
+consent (the adventure lane's `h3-map` `lib.rs`, `tests/towns.rs`, `examples/original_data.rs`,
+`h3-game`'s `setup.rs`, `state.rs`, `lib.rs`, `h3-cli`'s `tests/adventure_replays.rs`, the 104
+golden adventure replays; the AI lane's `h3-cli` `src/ai/census.rs`; the server lane's `h3-server`
+`tests/record.rs` and `h3-protocol`'s `tests/game_mutation.rs`). Starting point: `master` at
+87c83f6 (#1092; T47a1's #1090 merged before it); CI's fingerprint not yet on `master`, so the
+setup ran the full baseline: its tests passed, stopped at coverage for the disk. The user's
+computer was connected at the start only: 71 files staged (as T47a1's); its shell did not start
+("Workspace unavailable"), so the sizes were compared with the listing and the LODs and
+executables with `docs/formats/installation.md`'s SHA-256. **T47a2 kept whole** (decision 188).
+
+- **TWN-SET-012** (design §84): `h3_towns::TownSetup::required_spells`, `banned_spells` (sorted,
+  each once); `h3_map`'s import `town_spells` (bits 0 to 69, 70 and 71 dropped, an RoE map's
+  required set empty, a spell the ruleset lacks left out); **map import v28**;
+  `GameSetupError::TownSpell(TownId, SpellId)` (a spell the ruleset lacks or a creature ability,
+  after the scenario's bans; `town::town_spell_refused`). Catalog entry new; GAM-SET-003 amended.
+- **The store v4** (design §86): `Town::guild` (`with_guild`), `Town::vortex` (set from the build),
+  `TownStatic::aurora`; `Towns::start_week`, `take_vortex` (tested, first called by T49a);
+  `GuildSlots::all`; **town state hash v4** (the slots and flag after the Portal, the Aurora set's
+  bytes after the events; the pinned store hash 0x79c07378d0e04452).
+- **The game's draw** (design §85): `h3_game`'s `town/guild.rs` `draw_guilds` in `GameState::new`
+  after the Shipyards without water: each town's `GuildSets`, its slots by `draw_guild`, its Aurora
+  set by `aurora_set`, the towns' stream's first draws (decision 179); **game state hash v38**.
+  Tests: `town/tests/guild.rs` (three: the draw and the stream replayed, two games alike and a
+  fork; the scenario's ban and the quirk; the refusal's order), `tests/build.rs`' Aurora set, the
+  store's two, the import's one; the game's town test part gives each creature ability a battle row.
+- **Benchmarks:** the 38 adventure workloads under the gate against their baselines, none
+  re-baselined (the largest `random-play-bonuses-36` +1.67 %, `day-start-builds-36` +1.47 %;
+  `build-*` −0.17 % and −0.01 %).
+- **Replays:** the 104 goldens re-recorded from their commands by a scratch script: 103 moved only
+  `final_hash`, the checkpoints, `game_state_hash_version` and `import_version`; no week replay's
+  outcome line moved. **`towns-s173-d21`** was refused at command 140 (the neutral garrison of its
+  day-16 siege, grown otherwise by the moved towns' stream, now acts first): a scratch probe played
+  that battle again with `h3_battle_ai::choose` for both sides (11 commands for the 67), Yog still
+  wins, levels up and takes the town for blue; the other commands kept (189 for 244, day 22).
+  All 104 verified; the bot reports unchanged. `h3-server`'s record literals and `h3-protocol`'s
+  sample bound (`+ 150`) moved; `h3-protocol`, `h3-server`, `h3-sim`, `h3-files`, `h3-cli` tested.
+- **Inbox:** the adventure lane (v28 and v38 taken, the goldens), the server lane (its literals).
+- *Agent's calls* (decision 188): a spell the ruleset lacks left out by the import; the refusal in
+  the game's town module; the Aurora set in `TownStatic`; the Vortex's writes before their caller;
+  the s173 siege re-played rather than the replay replaced (the protocol's tests use it).
+
+**The queue:** T47a2 out; T47b next (the owner's view, the protocol). Ids: decisions next 189.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.

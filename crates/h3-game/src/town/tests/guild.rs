@@ -71,7 +71,8 @@ fn slots(game: &GameState, town: TownId, level: u8) -> Vec<SpellId> {
 #[test]
 fn every_town_s_guild_is_drawn_at_the_build_from_the_towns_stream() {
     let rules = guild_rules();
-    let [gust, gate, spark, bolt] = ["t:gust", "t:gate", "t:spark", "t:bolt"].map(|k| spell(&rules, k));
+    let [gust, gate, spark, bolt] =
+        ["t:gust", "t:gate", "t:spark", "t:bolt"].map(|k| spell(&rules, k));
     let mut setup = towns_setup(&rules);
     // Town 0 requires spark and bolt (granted by name only: never drawn); town 1 bans gust.
     setup.towns[0].required_spells = vec![spark, bolt];
@@ -80,12 +81,22 @@ fn every_town_s_guild_is_drawn_at_the_build_from_the_towns_stream() {
     // Town 0: spark first without a draw, then gust (the only weight left) at level 1; gate at 3.
     assert_eq!(slots(&game, T0, 1), [spark, gust]);
     assert_eq!(slots(&game, T0, 3), [gate]);
-    assert!([2, 4, 5].iter().all(|&level| slots(&game, T0, level).is_empty()));
+    assert!(
+        [2, 4, 5]
+            .iter()
+            .all(|&level| slots(&game, T0, level).is_empty())
+    );
     // Town 1 (random, aligned to blue: `t:town` too): spark, the gust banned; gate.
-    assert_eq!((slots(&game, T1, 1), slots(&game, T1, 3)), (vec![spark], vec![gate]));
+    assert_eq!(
+        (slots(&game, T1, 1), slots(&game, T1, 3)),
+        (vec![spark], vec![gate])
+    );
     // The towns' stream: the guilds' draws in `TownId` order, its first ones.
     let part = rules.towns();
-    let (record, params) = part.town(faction(&rules, "t:town")).zip(part.params()).unwrap();
+    let (record, params) = part
+        .town(faction(&rules, "t:town"))
+        .zip(part.params())
+        .unwrap();
     let mut stream = Rng::for_stream(9, StreamId::TOWNS);
     let sets = |required: &[SpellId], banned: &[SpellId]| GuildSets {
         required: SpellSet::of(required),
@@ -99,9 +110,17 @@ fn every_town_s_guild_is_drawn_at_the_build_from_the_towns_stream() {
     assert_eq!(game.town_draws(Draws::Towns).2, &stream);
     // The Aurora sets: every hero spell but those granted by name only and the town's bans.
     let aurora = |town| -> Vec<SpellId> {
-        game.towns().town_static(town).unwrap().aurora.iter().collect()
+        game.towns()
+            .town_static(town)
+            .unwrap()
+            .aurora
+            .iter()
+            .collect()
     };
-    assert_eq!((aurora(T0), aurora(T1)), (vec![gust, gate, spark], vec![gate, spark]));
+    assert_eq!(
+        (aurora(T0), aurora(T1)),
+        (vec![gust, gate, spark], vec![gate, spark])
+    );
     // No Mage Guild stands in the test towns: they show nothing; every flag set from the build.
     let town = game.towns().get(T0).unwrap();
     assert_eq!(h3_towns::guild_level(town, part), 0);
@@ -111,7 +130,10 @@ fn every_town_s_guild_is_drawn_at_the_build_from_the_towns_stream() {
     let again = GameState::new(&rules, &setup, 9).unwrap();
     assert_eq!(again.state_hash(), game.state_hash());
     let fork = game.clone();
-    assert_eq!(fork.towns().get(T1).unwrap().guild(), game.towns().get(T1).unwrap().guild());
+    assert_eq!(
+        fork.towns().get(T1).unwrap().guild(),
+        game.towns().get(T1).unwrap().guild()
+    );
 }
 
 // covers: TWN-GLD-002, TWN-GLD-004, GAM-SET-003
@@ -137,7 +159,10 @@ fn the_scenario_s_bans_leave_every_guild_and_the_aurora_set_by_the_quirk() {
         let aurora = game.towns().town_static(town).unwrap().aurora;
         assert_eq!(aurora, h3_towns::aurora_set(rules.core(), &sets));
         // `TWN-QUIRK-14`: the scenario's ban in the set only with the flag on.
-        let flag = rules.core().quirks().is_enabled(h3_content::AURORA_IGNORES_MAP_BANS);
+        let flag = rules
+            .core()
+            .quirks()
+            .is_enabled(h3_content::AURORA_IGNORES_MAP_BANS);
         assert_eq!(aurora.contains(gate), flag);
     }
 }
@@ -150,16 +175,24 @@ fn a_town_spell_is_a_hero_spell_of_the_ruleset() {
     let unknown = SpellId::from_raw(u16::MAX);
     // A creature ability or a spell the ruleset lacks; a town's required spells before its
     // banned ones, the towns in `TownId` order.
-    let error = refused(&rules, "town 1's spell 3 is not a hero spell of the ruleset", |s| {
-        s.towns[1].banned_spells = vec![unknown];
-        s.towns[1].required_spells = vec![spell(&rules, "t:gust"), breath];
-    });
+    let error = refused(
+        &rules,
+        "town 1's spell 3 is not a hero spell of the ruleset",
+        |s| {
+            s.towns[1].banned_spells = vec![unknown];
+            s.towns[1].required_spells = vec![spell(&rules, "t:gust"), breath];
+        },
+    );
     assert_eq!(error, GameSetupError::TownSpell(T1, breath));
     assert_eq!(
-        refused(&rules, "town 0's spell 65535 is not a hero spell of the ruleset", |s| {
-            s.towns[0].banned_spells = vec![unknown];
-            s.towns[1].required_spells = vec![breath];
-        }),
+        refused(
+            &rules,
+            "town 0's spell 65535 is not a hero spell of the ruleset",
+            |s| {
+                s.towns[0].banned_spells = vec![unknown];
+                s.towns[1].required_spells = vec![breath];
+            }
+        ),
         GameSetupError::TownSpell(T0, unknown)
     );
     // After the scenario's bans; a spell granted by name only is allowed.

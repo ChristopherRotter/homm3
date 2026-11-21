@@ -548,8 +548,14 @@ fn a_towns_required_and_banned_spells_are_the_maps() {
     m.objects.push(object(6, 7, 1, Body::None));
     let setup = import(&m, &ROE).unwrap();
     assert_eq!(
-        (&setup.towns[0].required_spells, &setup.towns[0].banned_spells),
-        (&vec![], &vec![ROE.core().spell_by_key("base:visions").unwrap()])
+        (
+            &setup.towns[0].required_spells,
+            &setup.towns[0].banned_spells
+        ),
+        (
+            &vec![],
+            &vec![ROE.core().spell_by_key("base:visions").unwrap()]
+        )
     );
     assert!(setup.towns[1].required_spells.is_empty() && setup.towns[1].banned_spells.is_empty());
 }

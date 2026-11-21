@@ -929,43 +929,43 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xcb03909ce9c485cb",
-    "0x39edcc5d61a4cfff",
-    "0x809fe6de06e89705",
-    "0x939a8904d4c5771f",
-    "0x28c61bb4d13571d1",
-    "0x272781eae66fbd4c",
-    "0xebb027a2887e2a9c",
-    "0x6acb40f57faa4450",
-    "0x886aa225ad29cc49",
-    "0xee05de58e81d3e57",
-    "0x8edf227fdf21dc0a",
-    "0x8134bedba5976343",
-    "0x9733432214ba0f8a",
-    "0x2b5e0b4ddb926873",
-    "0x26774b20d270abf3",
-    "0x98ebf570f84cea94",
-    "0xc2bf37f07582a67d",
-    "0x645c1fb9f380b3e3",
-    "0xe5ab02c0eaaf7b9a",
-    "0xfd64e010e2d2c53b",
-    "0xaaec576b280282b3",
-    "0xaa910a19c4fa51c2",
-    "0xca432dd373c1ee91",
-    "0x5d0f09d8598c7707",
-    "0x9d200ab84ecaeaad",
-    "0x72a012d48ac82df2",
-    "0xdc1ab755d0bfa389",
-    "0xe3143bd3d93c3419",
-    "0xccd94fd87e02e0ce",
-    "0xa77b8fafdc9bafd7",
-    "0xa63a14825c4ab52c",
-    "0x0f48c2cecd1634d7",
-    "0xb22e2ed927546b06",
-    "0xaa629653fe47a4d0",
-    "0xf934c3a85f3f0951",
-    "0x71cdc62c05601cd2",
-    "0x22f5edd4bc2b4ea6",
+    "0xd79da85289cbe83b",
+    "0xe3eb68c7117c9127",
+    "0xc8b78448df103135",
+    "0x27bb54899d6a6ccf",
+    "0xdab00a73c817af19",
+    "0x60f63005aafe231a",
+    "0x15a02fda817cb6dc",
+    "0xb633f4348d43faf8",
+    "0xc2f2fd60bf90a0c1",
+    "0x51c9a4158be10f67",
+    "0x80fec96f8da74bd2",
+    "0xb6429b92ad0a95ef",
+    "0x2fda923c84c336ae",
+    "0x6c22af4352b0f091",
+    "0x047da69433165beb",
+    "0xaf813639d8e6a1e2",
+    "0xaece38aaff225347",
+    "0xc26ff6e048ef04c1",
+    "0x9a93a52ed4a32b70",
+    "0xbb52aeaa47e12c0f",
+    "0x66bbb8730b4b5c4f",
+    "0x0421fd0fe32e983a",
+    "0x6e0a0b5c9b269d49",
+    "0x37c7ebf47a1800db",
+    "0xb058f2d025d18473",
+    "0xc5c443152cba81ae",
+    "0xd747bfc6d6bfe2cb",
+    "0x088f79f89dbeb5ef",
+    "0x19afc03e3a64dc04",
+    "0xcc76d54488a0ffcd",
+    "0x1a54aa52be9b5fea",
+    "0xda6567ab1f3b4db9",
+    "0xb464c21cc03fbfb4",
+    "0xe9bf54f77293ad7a",
+    "0xf56d562fd23110cd",
+    "0x8272ec8c8df44dee",
+    "0x316a05f97e5e324e",
 ]
 
 [replay]
@@ -995,18 +995,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 37
+game_state_hash_version = 38
 adventure_state_hash_version = 27
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-economy-36.h3m"
 hash = "0x0d7ea287c88b7469"
-import_version = 27
+import_version = 28
 
 [result]
 day = 61
-final_hash = "0xfc5865417e69da21"
+final_hash = "0x254eda31a65531b9"
 
 [[players]]
 colour = 0

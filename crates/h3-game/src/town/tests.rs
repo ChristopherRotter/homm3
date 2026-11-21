@@ -19,7 +19,8 @@ use h3_content::{
     HeroTypeId, Ruleset, SpellCategory,
 };
 use h3_content_battle::{
-    BallisticsRecord, BattleCreatureDef, BattleSpellDef, SiegeDef, SiegeFieldDef, WallKind, WallTarget,
+    BallisticsRecord, BattleCreatureDef, BattleSpellDef, SiegeDef, SiegeFieldDef, WallKind,
+    WallTarget,
 };
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::{
