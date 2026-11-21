@@ -50,7 +50,10 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E01](docs/epics/E01-walking-skeleton.md) | Walking skeleton: minimal battle end to end | battle | `██████████` done | 2026-09-30 |
 | [E02](docs/epics/E02-content-pipeline.md) | Content pipeline: packs `base`/`ab`/`sod` harvested from the game's tables | battle | `██████████` done | 2026-10-01 |
 | [E03](docs/epics/E03-battle-core.md) | Battle core (RoE rules) | battle | `██████████` done | 2026-10-01 |
-| [E04a–c](docs/epics/E04c-sieges-and-battlefields.md) | Battle: heroes, skills, artifacts, magic, sieges, special battlefields | battle | `██████████` done | 2026-10-05 to 10-16 |
+| [E04a](docs/epics/E04a-heroes-in-battle.md) | Heroes in battle: classes, skills, artifacts, specialties, war machines, retreat and surrender | battle | `██████████` done | 2026-10-05 |
+| [E04b](docs/epics/E04b-battle-magic.md) | Battle magic: spells, casting, timed effects, summons, resistance, spellcasting creatures | battle | `██████████` done | 2026-10-12 |
+| [R01](docs/epics/R01-content-split.md) | Content split: the core content and the battle's parts in their own crates | shared | `██████████` done | 2026-10-13 |
+| [E04c](docs/epics/E04c-sieges-and-battlefields.md) | Sieges and special battlefields: walls, towers, Catapult, magic terrains, ship battles | battle | `██████████` done | 2026-10-16 |
 | [E05](docs/epics/E05-battle-env.md) | Battle environment for RL: batch API, C ABI, Python binding (`h3env`) | ai | `██████████` done | 2026-10-20 |
 | [E23](docs/epics/E23-original-battle-ai.md) | The original's battle AI, read from the executable | battle | `██████████` done | 2026-10-24 |
 | [E06](docs/epics/E06-battle-ai.md) | Battle AI v1: PPO self-play, league, evaluation gate, ladders | ai | `██████████` done | 2026-10-27 |
@@ -64,9 +67,11 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓▓░` 9 I done, open-ended | I9 closed (a richer observation: no gain, #2 stays); I10 (the ceiling of play against the system actor) next; shaped at each checkpoint |
 | [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `░░░░░░░░░░` 0/1 I | refined; increment 1 (the reading, the oracle, the survey) next |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
+| [E10](docs/epics/E10-game-orchestration.md) | Game orchestration: teams, the game's end, special victory and loss conditions, the score, the starting bonus and handicap | adventure | `░░░░░░░░░░` planned | refined; after E08 (its increments sketched) |
+| [E13](docs/epics/E13-adventure-ai.md) | Adventure AI (hierarchical): macro-actions over a deterministic executor | ai | `░░░░░░░░░░` planned | refined in shape; after all of E10 and E31 |
 
-Not started yet (sketches in the backlog unless marked): game orchestration (E10, refined; after E08), map-object
-long tail (E12), adventure AI (E13), the custom map generator (E30), web portal (E21), packaging and hosting
+Not started yet (sketches in the backlog): map-object long tail (E12), the original's computer
+player (E31), the custom map generator (E30), web portal (E21), packaging and hosting
 (E22), ranked play in the native client (E28), HD layouts (E29), campaigns (E20), save import (E19).
 
 ## Quick start
