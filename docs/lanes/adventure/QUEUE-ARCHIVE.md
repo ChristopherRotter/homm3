@@ -2352,3 +2352,17 @@ design note §4, §5, §10, §11's upgrade and factory, §15, §16; survey `E08-
   v37, protocol v77, format v23, encoding v16).
 - **Depends on:** T134a's pull request. **Status:** ready after it; its cut confirmed at its start
   (the user's working agreement: a seam if it is big, as T134a's offer of T134a1 and T134a2).
+
+## Inbox notes settled at E08 T135b2 (2026-11-21)
+
+- 2026-11-21 (the town lane, E09 T47a2, `town/e09-t47a2`, `cross-lane`; **versions taken and the
+  goldens re-recorded, nothing to do now**): map import **v28** (a town's required and banned
+  spells into `TownSetup`, TWN-SET-012) and game state hash **v38** (the store of towns v4: the
+  guild slots, the Vortex flag, the Aurora set; the guilds drawn at the build as the towns'
+  stream's first draws) are taken: your next import change takes v29, your next game hash v39. The
+  104 golden adventure replays re-recorded from their commands (the hash lines and the two versions
+  only), but `towns-s173-d21`, whose day-16 siege no longer fit (the towns' stream grew the neutral
+  garrison otherwise): that battle played again by `h3_battle_ai::choose` for both sides, the rest
+  of its commands kept, the same features; your T135b1's seven `trades-*` too (hash lines and
+  versions only). `TownSetup` gained two fields: every struct literal
+  (`h3-map`'s examples and `tests/towns.rs`) has them. `GameSetupError::TownSpell` is new. *(Settled: the HANDOFF's versions line names v38 and v28 taken, the next v39 and v29.)*

@@ -26,7 +26,7 @@ use super::play::{
     STRICT, Slots, Spot, Step, TELEPORTER_OBJECTS, TOWN_BLOCKED, TOWN_BUILDINGS, TOWN_ENTRANCE,
     TownPlan, WHIRLPOOL_OBJECT, add_town, all_objects, army, at_sea, experience, experienced,
     lay_out, masks, object_index, object_reach, options, plan, player_of, resolve, slots, start_on,
-    steps, tavern_plan, teleporter_at, tile,
+    steps, teleporter_at, tile, trade_plan, trade_steps,
 };
 use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 
@@ -42,7 +42,7 @@ use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 /// plans' teleporters (T106b1's `TELEPORTERS`), which draw nothing at the setup: [`vary`] removes
 /// and adds those the viewer never sees, so that a jump's draw or a gate's pair may differ.
 fn hygienic() -> impl Strategy<Value = super::play::Plan> {
-    tavern_plan().prop_map(|mut plan| {
+    trade_plan().prop_map(|mut plan| {
         plan.towns.iter_mut().for_each(hygienic_town);
         plan
     })
@@ -1878,7 +1878,8 @@ fn check_told(
             // writer's events), what it gives and builds told around it as above.
             GameEvent::TownEventFired { player, .. } => prop_assert_eq!(player, viewer),
             // E09 T39b2: a Den of Thieves' Thieves' Guild, the visitor's owner's alone; a snapshot
-            // no view holds (no plan lays out a Den).
+            // no view holds. Since E09 T40b the plans lay out Dens (`taverns`): the comparison
+            // ends when the viewer is shown one (below).
             GameEvent::ThievesGuildSeen { player, .. }
             | GameEvent::GuildPartSeen { player, .. } => {
                 prop_assert_eq!(player, viewer);
@@ -2531,11 +2532,12 @@ fn check_told(
 
 /// Whether objects of type `object_type` hire out creatures (E08 T96b1, increment 10's objects):
 /// some(false) for a dwelling or a random dwelling (which the build resolves to a dwelling,
-/// ADV-DWL-005), some(true) for a Refugee Camp, none for every other type.
+/// ADV-DWL-005), some(true) for a Refugee Camp and (E08 T135b2) a War Machine Factory (unowned:
+/// ADV-WMF-001, its hire question at every visit), none for every other type.
 fn hire_source(rules: &GameRuleset, object_type: h3_adventure::ObjectTypeId) -> Option<bool> {
     match rules.adventure().object_type(object_type).map(|t| &t.kind) {
         Some(ObjectKind::Dwelling { .. } | ObjectKind::RandomDwelling) => Some(false),
-        Some(ObjectKind::RefugeeCamp { .. }) => Some(true),
+        Some(ObjectKind::RefugeeCamp { .. } | ObjectKind::WarMachineFactory(_)) => Some(true),
         _ => None,
     }
 }
@@ -2905,12 +2907,15 @@ fn check_town_views(
                 income: h3_towns::daily_income(record, part),
                 garrison_hero: held.is_some(),
             }),
-            // E09 T26b: the owner's counts and Portal (TWN-VEW-004).
+            // E09 T26b: the owner's counts and Portal; E09 T47b: its guild (TWN-VEW-004).
             buildings: (owner == Some(viewer)).then(|| TownBuildingsView {
                 built: record.built(),
                 forbidden: record.forbidden(),
                 available: core::array::from_fn(|i| record.available(i)),
                 portal: record.portal(),
+                guild: h3_towns::shown_slots(record.guild(), record, part),
+                aurora: h3_towns::has_aurora(record, part),
+                vortex: record.vortex(),
             }),
         });
     }
@@ -3163,13 +3168,14 @@ proptest! {
     /// any battle, and another player's bank battle must go alike in both games ([`outcome`]).
     /// Since E09 T38a2 the plans hire: a hire the viewer is told ends the comparison (the hired
     /// hero is a draw of the taverns' stream, below), and another player's must hire alike in both
-    /// games ([`outcome`]).
+    /// games ([`outcome`]). Since E09 T47b a Thieves' Guild the viewer is shown (a Den of
+    /// Thieves') ends it too: its rows show the players' heroes the differences change.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in steps(),
+        steps in trade_steps(),
         viewer in any::<u8>(),
         own in own_army(),
         unseen in unseen(),
@@ -3277,6 +3283,18 @@ proptest! {
                     .any(|e| matches!(e, GameEvent::HeroHired { .. }))
             };
             if hired(&ta) || hired(&tb) {
+                break;
+            }
+            // E09 T47b (the adventure lane's report of E08 T135a): a Den of Thieves shows its
+            // visitor's owner every player's best hero and creature (TWN-TAV-008), facts the hidden
+            // differences change (an unseen hero's experience, and so its primary skills): the
+            // comparison ends when the viewer is shown a guild, as at a hire.
+            let guild = |events: &[GameEvent]| {
+                events
+                    .iter()
+                    .any(|e| matches!(e, GameEvent::ThievesGuildSeen { .. }))
+            };
+            if guild(&ta) || guild(&tb) {
                 break;
             }
             // A monster's answer follows from its aggression, drawn from the seed and never
@@ -3531,10 +3549,10 @@ proptest! {
     /// ([`check_bank_views`]).
     #[test]
     fn views_move_as_the_events_say(
-        plan in tavern_plan(),
+        plan in trade_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in steps(),
+        steps in trade_steps(),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start_on(&lay_out(&plan), rules, seed);
@@ -3749,6 +3767,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         bonuses: Vec::new(),
         banks: Vec::new(),
         taverns: Vec::new(),
+        trades: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -3852,6 +3871,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         bonuses: Vec::new(),
         banks: Vec::new(),
         taverns: Vec::new(),
+        trades: Vec::new(),
     };
     let m = lay_out(&plan);
     let random = |m: &RawMap| -> Vec<(Spot, u32)> {
@@ -3930,6 +3950,7 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
         bonuses: Vec::new(),
         banks: Vec::new(),
         taverns: Vec::new(),
+        trades: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -4014,6 +4035,7 @@ fn vary_changes_the_teleporters_the_viewer_never_sees_only() {
         bonuses: Vec::new(),
         banks: Vec::new(),
         taverns: Vec::new(),
+        trades: Vec::new(),
     };
     let m = lay_out(&plan);
     let objects = |m: &RawMap| -> Vec<(u8, u8, u32)> {
@@ -4137,6 +4159,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
         bonuses: Vec::new(),
         banks: Vec::new(),
         taverns: Vec::new(),
+        trades: Vec::new(),
     };
     let m = lay_out(&plan);
     // Each town's anchor, owner, garrison and buildings.
@@ -4277,6 +4300,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         bonuses: Vec::new(),
         banks: Vec::new(),
         taverns: Vec::new(),
+        trades: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -4353,6 +4377,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         bonuses: Vec::new(),
         banks: Vec::new(),
         taverns: Vec::new(),
+        trades: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {

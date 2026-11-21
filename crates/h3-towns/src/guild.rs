@@ -127,8 +127,9 @@ impl GuildSlots {
     }
 
     /// The slots with `spell` in slot `slot` of the level at `index` (level `index + 1`); a slot
-    /// past the slots changes nothing.
-    pub(crate) fn with(mut self, index: usize, slot: usize, spell: SpellId) -> Self {
+    /// past the slots changes nothing, a spell past the content's leaves the slot empty. Public
+    /// since E09 T47b (a view's slots built back from the wire).
+    pub fn with(mut self, index: usize, slot: usize, spell: SpellId) -> Self {
         let raw = u8::try_from(spell.raw()).unwrap_or(EMPTY_SLOT);
         self.0
             .get_mut(index)
@@ -247,6 +248,33 @@ pub fn shown<'a>(
         .level(level)
         .take(count)
         .map_while(core::convert::identity)
+}
+
+/// What `town`'s guild shows of its `slots` at every level, as slots (E09 T47b, design §94: the
+/// owner's view): each level's [`shown`] spells in its first slots, in order, every other slot
+/// empty, so a view holds them as a record's own copyable type.
+// rule: TWN-GLD-003
+pub fn shown_slots(slots: &GuildSlots, town: &Town, part: &TownRuleset) -> GuildSlots {
+    (1..)
+        .zip(0..LEVELS)
+        .fold(GuildSlots::EMPTY, |out, (level, index)| {
+            shown(slots, town, part, level)
+                .enumerate()
+                .fold(out, |out, (slot, spell)| out.with(index, slot, spell))
+        })
+}
+
+/// Whether `town` has ever built a building of role `aurora` (E09 T47b, design §94: the owner's
+/// view's mark; TWN-GLD-004: the Aurora Borealis teaches its town's Aurora set); none without its
+/// faction's record in `part`.
+// rule: TWN-GLD-004
+pub fn has_aurora(town: &Town, part: &TownRuleset) -> bool {
+    part.town(town.faction()).is_some_and(|record| {
+        town.built()
+            .iter()
+            .filter_map(|id| record.building(id))
+            .any(|b| b.roles.aurora)
+    })
 }
 
 /// A town's Aurora set (E09 design §86; survey §5; the original's `town_heroes_learn_spells`
