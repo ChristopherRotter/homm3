@@ -1,8 +1,9 @@
 //! A town's own record (ADR-0028 point 2; E09 increment 1's design note §4): [`Town`], what the
 //! rules change (its faction, the buildings ever built and forbidden, the day's mark; increment
-//! 3's available creatures and Portal of Summoning, design §40), and
-//! [`TownStatic`], what the map gives and nothing changes (its name, its events). The store ([`crate::Towns`]) holds
-//! both by `h3_contracts::TownId`.
+//! 3's available creatures and Portal of Summoning, design §40; increment 5's guild slots and Mana
+//! Vortex flag, design §86), and [`TownStatic`], what the map gives and nothing changes (its
+//! name, its events, since increment 5 its Aurora set). The store ([`crate::Towns`]) holds both
+//! by `h3_contracts::TownId`.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -11,6 +12,7 @@ use h3_content::{CreatureTypeId, FactionId, ResourceId};
 use h3_contracts::PlayerId;
 
 use crate::building::BuildingSet;
+use crate::guild::{GuildSlots, SpellSet};
 use crate::ruleset::{MAX_CREATURE_LEVELS, TownRecord};
 
 /// A town's creature indexes (E09 design §40): index `level - 1` the level's creature, `level - 1 +
@@ -34,7 +36,8 @@ pub struct Summoned {
 /// A town's record: its faction and the buildings ever built and forbidden, each a set over its
 /// faction's town record's buildings ([`TownRecord::buildings`]), whether it was built in today
 /// (the day's mark, E09 design §26), its available creatures by index and its Portal of
-/// Summoning's (E09 design §40).
+/// Summoning's (E09 design §40), its mage guild's slots and its Mana Vortex's week flag (E09
+/// design §86).
 ///
 /// `built` is **every building ever built**, the superseded ones too (the original's every-built
 /// set +0x158; E09 survey §16.5); the buildings **standing** are derived from it
@@ -48,12 +51,15 @@ pub struct Town {
     built_today: bool,
     available: [u16; CREATURE_INDEXES],
     portal: Option<Summoned>,
+    guild: GuildSlots,
+    vortex: bool,
 }
 
 impl Town {
     /// A town of `faction` with the buildings `built` ever built and `forbidden` forbidden, each
     /// a set over the faction's town record (the build's setup gives them, E09 T6c), not built in
-    /// today, without available creatures, its Portal empty.
+    /// today, without available creatures, its Portal empty, its guild's slots empty (the game's
+    /// build draws them, [`Town::with_guild`]) and its Mana Vortex's flag set.
     pub const fn new(faction: FactionId, built: BuildingSet, forbidden: BuildingSet) -> Self {
         Self {
             faction,
@@ -62,7 +68,22 @@ impl Town {
             built_today: false,
             available: [0; CREATURE_INDEXES],
             portal: None,
+            guild: GuildSlots::EMPTY,
+            vortex: true,
         }
+    }
+
+    /// The town with its mage guild's slots `guild`, the rest kept (E09 design §85, §86: the
+    /// game's build draws them, [`crate::draw_guild`], and nothing writes them again).
+    #[must_use]
+    pub const fn with_guild(&self, guild: GuildSlots) -> Self {
+        Self { guild, ..*self }
+    }
+
+    /// The town with its Mana Vortex's week flag `vortex`, the rest kept (the store's writes, E09
+    /// design §86: [`crate::Towns::start_week`], [`crate::Towns::take_vortex`]).
+    pub(crate) const fn with_vortex(&self, vortex: bool) -> Self {
+        Self { vortex, ..*self }
     }
 
     /// The town with the buildings `built` ever built and the day's mark `built_today`, the rest
@@ -147,6 +168,18 @@ impl Town {
         self.portal
     }
 
+    /// Its mage guild's slots (TWN-GLD-002, drawn at the game's build; what the guild shows of
+    /// them: [`crate::shown`], TWN-GLD-003).
+    pub const fn guild(&self) -> &GuildSlots {
+        &self.guild
+    }
+
+    /// Whether its Mana Vortex may still double a hero's spell points this week (E09 design §86,
+    /// §93): set from the build and at each week's start, cleared by the Vortex.
+    pub const fn vortex(&self) -> bool {
+        self.vortex
+    }
+
     /// The buildings standing: those ever built less every building an ever-built one supersedes
     /// (each [`crate::Building::supersedes`] is closed already), read from `record`, its
     /// faction's town record (E09 survey §16.5: a Capitol leaves the Village, Town and City
@@ -164,7 +197,8 @@ impl Town {
 }
 
 /// What the map gives a town that no rule changes (E09 increment 1's design note §4): its name and
-/// its events, kept for the increments that read them. Shared by every fork.
+/// its events, kept for the increments that read them, and since increment 5 its Aurora set,
+/// fixed at the build. Shared by every fork.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TownStatic {
     /// Its name, if the map gives one (an unnamed town's name is the client's: the original's
@@ -172,6 +206,10 @@ pub struct TownStatic {
     pub name: Option<String>,
     /// Its events in the map's order, which increment 2 applies (none in increment 1).
     pub events: Vec<TownEvent>,
+    /// Its Aurora set (TWN-GLD-004's set, E09 design §86): what a building of role `aurora` ever
+    /// built teaches there, computed at the game's build for every town ([`crate::aurora_set`]);
+    /// empty before it.
+    pub aurora: SpellSet,
 }
 
 /// A town's event as the map gives it (the h3m's town event: a timed event with buildings and

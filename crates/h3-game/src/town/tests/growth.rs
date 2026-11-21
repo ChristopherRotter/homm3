@@ -151,6 +151,8 @@ pub(super) fn setup(rules: &GameRuleset) -> GameSetup {
         garrison: None,
         name: None,
         events: vec![],
+        required_spells: Vec::new(),
+        banned_spells: Vec::new(),
     };
     setup.towns = vec![bare; 4];
     setup.map.objects = vec![

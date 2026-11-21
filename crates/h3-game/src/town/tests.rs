@@ -406,6 +406,8 @@ fn town(faction: TownFaction) -> TownSetup {
         garrison: None,
         name: None,
         events: vec![],
+        required_spells: Vec::new(),
+        banned_spells: Vec::new(),
     }
 }
 
@@ -1031,6 +1033,7 @@ mod custom;
 mod events;
 mod garrison;
 mod growth;
+mod guild;
 mod heroes;
 mod hire;
 mod income;

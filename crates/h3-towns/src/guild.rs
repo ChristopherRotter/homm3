@@ -121,9 +121,14 @@ impl GuildSlots {
         (0..MAX_GUILD_SLOTS).map(move |slot| self.slot(level, slot))
     }
 
+    /// Every slot, by level 1 to 5 then slot (the canonical hash's order, the store v4).
+    pub fn all(&self) -> impl Iterator<Item = Option<SpellId>> + '_ {
+        (1..).take(LEVELS).flat_map(|level| self.level(level))
+    }
+
     /// The slots with `spell` in slot `slot` of the level at `index` (level `index + 1`); a slot
     /// past the slots changes nothing.
-    fn with(mut self, index: usize, slot: usize, spell: SpellId) -> Self {
+    pub(crate) fn with(mut self, index: usize, slot: usize, spell: SpellId) -> Self {
         let raw = u8::try_from(spell.raw()).unwrap_or(EMPTY_SLOT);
         self.0
             .get_mut(index)

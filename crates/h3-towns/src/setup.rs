@@ -1,6 +1,6 @@
 //! A town's setup at the game's build (E09 increment 1's design note §5): what the map gives a
 //! town ([`TownSetup`]: its faction, its buildings by the map editor's slots, its garrison, its
-//! name and events) and the pure functions `h3-game` calls with the setup stream once it has
+//! name and events, since E09 T47a2 its required and banned spells) and the pure functions `h3-game` calls with the setup stream once it has
 //! resolved the faction (design §14, E09 T7b2): the buildings ([`town_buildings_setup`],
 //! TWN-SET-003), the garrison ([`town_garrison`], TWN-SET-004) and the whole town
 //! ([`town_setup`]). The original's `town_setup` (0x5C0670) and `town_buildings_setup` (0x5C08C0;
@@ -10,12 +10,13 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{CreatureTypeId, FactionId, ResourceId, Ruleset};
+use h3_content::{CreatureTypeId, FactionId, ResourceId, Ruleset, SpellId};
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_kernel::Rng;
 
 use crate::building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 use crate::growth::first_creatures;
+use crate::guild::SpellSet;
 use crate::record::{Town, TownEvent, TownStatic};
 use crate::ruleset::{
     BUILDING_SLOTS, Building, Dwelling, MAX_CREATURE_LEVELS, TownParams, TownRecord, TownRuleset,
@@ -168,6 +169,14 @@ pub struct TownSetup {
     pub name: Option<String>,
     /// Its events, in the map's order.
     pub events: Vec<TownEventSetup>,
+    /// The spells the map requires in its mage guild (TWN-SET-012, E09 T47a2; design §84): a
+    /// guild slot of a spell's level takes the first not excluded ([`crate::draw_guild`]). In
+    /// spell order, each once; empty for a map that gives none (an RoE map's).
+    pub required_spells: Vec<SpellId>,
+    /// The spells the map bans from its mage guild and from its Aurora set (TWN-SET-012; design
+    /// §84, §86): never drawn, even when required (TD-25), never taught by a building of role
+    /// `aurora`. In spell order, each once; empty for a map that gives none.
+    pub banned_spells: Vec<SpellId>,
 }
 
 /// A town as the build makes it ([`town_setup`]): its record, its static part and its garrison,
@@ -490,6 +499,8 @@ pub fn town_setup(
             .iter()
             .map(|event| town_event(record, event))
             .collect(),
+        // The game's build computes it with the scenario's bans (E09 design §86).
+        aurora: SpellSet::EMPTY,
     };
     Ok(BuiltTown {
         town,
