@@ -1,0 +1,68 @@
+commands = [
+    "0 move 5 4,10,0",
+    "0 answer hill-fort upgrade 1",
+    "0 answer hill-fort all",
+    "0 answer hill-fort leave",
+    "0 move 6 16,10,0",
+    "0 answer offer accept",
+    "0 answer hire buy 119 1",
+    "0 answer hire buy 120 1",
+    "0 answer hire buy 121 1",
+    "0 answer hire close",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x8d4fda33f21774b1",
+    "0x3e5a1652bc1688ce",
+]
+
+[replay]
+format = 23
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x36b98ea152b4db95"
+adventure_ruleset_hash = "0x0c610f9192575256"
+town_ruleset_hash = "0xcf8db1aa2bb768d2"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 37
+adventure_state_hash_version = 27
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-trades-36.h3m"
+hash = "0x48433d5f224b496d"
+import_version = 27
+
+[result]
+day = 2
+final_hash = "0x3b5c0972d4be7bc9"
+
+[[players]]
+colour = 0
+human = true
+faction = 0
+
+[[players]]
+colour = 1
+human = true
+faction = 0

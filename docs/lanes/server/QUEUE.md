@@ -16,7 +16,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   to do**): the game state hash v38 and map import v28 moved `h3-server`'s `tests/record.rs`
   literals (`army-dialog-s1`'s checkpoint and final hash, `import_version`), and
   `towns-s173-d21` holds 189 commands since its siege was played again (244 before), so
-  `h3-protocol`'s `game_mutation` sample bound is `+ 150`; the fold, session and record tests pass.
+  `h3-protocol`'s `game_mutation` sample bound is `+ 150`; the fold, session and record tests pass
+  (with E08 T135b1's seven `trades-*` goldens, re-recorded here for v38 and v28).
+
+- 2026-11-21 (the adventure lane, E08 T135b1, `adventure/e08-t135b1`, `cross-lane` with the
+  user's consent, E08 decision 391; **your tests changed, mechanical; for your review**): seven new
+  golden adventure replays (`trades-*` on `fixtures/maps/e08-trades-36.h3m`), so the counts of
+  `h3-protocol`'s `tests::game_fold` (`golden`), `tests::game_session` (`restores`) and
+  `h3-server`'s `tests::record` moved from 104 to **111**; all three pass over them, the
+  session's bounds unmet. Their random games hold runs of market trades in one visit (124 trades
+  in `trades-s1257-d28`; T135b1's sweep: 27 304 in 1 500 games), though no turn longer than the
+  battles' of the duel and garrisons replays (495 commands at most).
 
 - 2026-11-20 (the map client lane, E24 M4 T4c, `map-client/e24-m4-t4c`; **MCL-Q43, for your
   planning; the user's answer first**): kind 5's hourglass in another player's turn needs that

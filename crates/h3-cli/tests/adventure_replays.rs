@@ -732,6 +732,68 @@
 //! - `banks-flight-s1`: Tyris flies from (26, 15) to the island (29, 15) over the Shipwreck's
 //!   entrance and anchor, and back to (26, 16): no visit (ADV-MOV-009, ADV-SEA-002).
 //!
+//! **Trades** (E08 T135b1, increment 14), on `fixtures/maps/e08-trades-36.h3m` (written by
+//! `h3_map::writer`; `fixtures/maps/README.md`): SoD, 36 × 36 of grass, dirt on columns 0 to 11,
+//! rough on columns 24 to 35 of rows 0 to 8, snow on columns 24 to 35 of rows 21 to 35; every class
+//! of increment 14 twice, by its entrance: in the north the Trading Post (4, 4), the Freelancer's
+//! Guild (10, 4), the Altar of Sacrifice (16, 4), the Black Market (22, 4), the rough Trading Post
+//! (30, 4), the Hill Fort (4, 10) and the War Machine Factory (16, 10); in the south the Altar
+//! (16, 24), the factory (22, 24), the snow Trading Posts (30, 24) and (30, 30), the guild
+//! (10, 30), the Hill Fort (16, 30) and the Black Market (22, 30); batch E14-3's bans (seventeen
+//! artifacts left to the markets' draw). Red's Orrin (hero 0) on (4, 5), Valeska (hero 1) on
+//! (10, 5), Edric (hero 2; 900 experience, the Helm of Chaos and a Spell Book worn, a Skull Helmet
+//! carried) on (16, 5), Sylvia (hero 3) on (22, 5), Christian (hero 4; a relic in every position
+//! the seventeen take, 64 Clovers of Fortune carried: no room) on (23, 5), Sorsha (hero 5; twenty
+//! Pikemen, ten Archers, five Griffins, four Swordsmen, two Cavaliers) on (4, 11), Tyris (hero 6)
+//! on (16, 11); blue's Straker (hero 7, a Death Knight; twenty Skeletons, ten Walking Dead, five
+//! Wights) on (16, 25), Yog (hero 8, a Barbarian; a Badge of Courage carried) on (17, 25),
+//! Gurnisson (hero 9) on (30, 25), Adela (hero 10) on (19, 28); the others their types' own.
+//! Random play, recorded with `--map fixtures/maps/e08-trades-36.h3m --seed N --agent-seed N --days
+//! 28`: three of a search over the seeds 1 to 1 500 (a scratch probe counting each game's answers
+//! by kind, not committed: 549 games trade, 27 304 trades in all, 348 sell, 384 buy, 147 sacrifice
+//! artifacts and 135 creatures, 288 upgrade a row and 237 all at a Hill Fort, 354 buy a war
+//! machine; 463 steps a game on average, 1 533 at most), together every answer kind in under 460
+//! steps each:
+//!
+//! - `trades-s208-d28`: Edric upgrades a row at the north's Hill Fort, then all (day 4); Orrin sells
+//!   four lots at the south's guild and Straker buys three entries at the south's Black Market
+//!   (day 15); Edric buys the Ammo Cart at the factory (day 16), declines its question twice, then
+//!   buys the Ballista and the First Aid Tent (day 17); Christian sacrifices the Altar's all at the
+//!   south's Altar (day 28): 23 places (ten worn, a war machine he starts with among them for 0,
+//!   ADV-QUIRK-49; thirteen carried) for 67 000 experience, a level-up after another (decision
+//!   390).
+//! - `trades-s1257-d28`: 124 trades at the Trading Posts, the rough and the snow ones among them;
+//!   Edric sells at the north's guild; Straker upgrades a row at the south's Hill Fort, then all;
+//!   Yog sacrifices his Badge of Courage (a level-up, the Altar again), then creatures for 300.
+//! - `trades-s1390-d28`: Yog buys four entries at the south's Black Market; Gurnisson sells at the
+//!   south's guild; Adela upgrades a row at the south's Hill Fort, then all at a later visit; Sorsha
+//!   buys the Ammo Cart at the north's factory; 33 trades.
+//!
+//! **Scripted** (E08 T135b1: increment 14's design note §18's paths), on the same map, recorded
+//! with `h3 adventure run --map fixtures/maps/e08-trades-36.h3m --seed 1 --checkpoint-every 5
+//! --script <script> --record <replay>` (each hero one step onto its entrance); each ends with both
+//! players' turns. A replay holds no refused command, so the full hero's refused purchase is
+//! `h3-map`'s test `the_full_hero_s_purchase_on_the_trades_map_is_refused_changing_nothing`.
+//!
+//! - `trades-market-s1`: Orrin at the Trading Post (ADV-MKT-003, -004): a lot of wood for 75 gold,
+//!   three lots of ore for 225, 1 667 gold for a lot of gems, 2 500 gold to blue (1 : 1); Valeska at
+//!   the guild (ADV-MKT-005): one Archer of each of two stacks for 70 gold each; Gurnisson at the
+//!   snow Trading Post (class 221, typed as the Trading Post): 833 gold for a lot of wood.
+//! - `trades-black-market-s1`: Sylvia at the Black Market buys its first entry, the Bird of
+//!   Perception, for 2 500 gold (ADV-MKT-007: paid, given, the entry sold) and steps off; Christian
+//!   onto it: its window opens, he has room for none of the entries, he leaves (A-46 fixed: the
+//!   refusal is the map's test).
+//! - `trades-altar-s1`: Edric (good: the artifacts' screen) sacrifices his Skull Helmet: 1 000
+//!   experience, level 2: the Altar closes before the level-up and returns after its answer
+//!   (GAM-DEC-012, GAM-DEC-007's `Rest::Visit`); then his Helm of Chaos: 1 500, levels 3 and 4, the
+//!   Altar again; he leaves (his Spell Book kept). Straker (evil: the creatures' screen) five
+//!   Skeletons, three Walking Dead and a Wight for 85 (ADV-ALT-003); off; Yog (neutral: both) his
+//!   Badge of Courage (1 000, level 2, the Altar again), then five Goblins for 25.
+//! - `trades-services-s1`: Sorsha at the Hill Fort (ADV-HFT-001, -002): the Archers' row for 125
+//!   gold, then all: the Pikemen free (level 1), the Griffins 100, the Swordsmen 300, the Cavaliers
+//!   400; Tyris at the factory (ADV-WMF-001): its question accepted, the Ballista (2 500), the First
+//!   Aid Tent (750) and the Ammo Cart (1 000) bought, closed.
+//!
 //! **Builds** (E09 T19a, the town lane's increment 2: design note `docs/epics/E09-design.md`
 //! §32's), on `fixtures/maps/e09-builds-36.h3m` (written by `h3_map::writer`;
 //! `fixtures/maps/README.md`): red (Castle) and blue (Conflux); red's Orrin (hero 0, ten pikemen) on

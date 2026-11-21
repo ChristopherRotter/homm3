@@ -40,6 +40,8 @@ mod teleporters_xl_map;
 mod towns;
 mod towns_map;
 mod trades;
+mod trades_map;
+mod trades_xl_map;
 mod view;
 
 use proptest::prelude::*;

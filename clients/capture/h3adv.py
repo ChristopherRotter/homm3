@@ -995,7 +995,7 @@ def shoot_turn(game, mem, plan, end):
                  "the next stack's turn", 30)
 
 
-def fight(game, mem, plan, limit=300.0):
+def fight(game, mem, plan, limit=300.0, close=True):
     """Plays the battle on the screen as `plan` says and returns its record: the stacks at the
     start and the end, the outcome and how it was played. `plan`: "auto" (auto combat: the
     computer plays every human side; setup.sh's `Combat Auto Creatures`), or "retreat" or
@@ -1013,7 +1013,9 @@ def fight(game, mem, plan, limit=300.0):
     T3b (batch TWN-1's siege won) the table's `attack` may be a list of creatures, attacked in
     turn while every other stack defends (one not standing when its turn comes passed over), and
     in a retreat or surrender the side's Catapult (a siege's; it acts by itself without
-    Ballistics) is waited out: the side's first stack that is not a machine retreats."""
+    Ballistics) is waited out: the side's first stack that is not a machine retreats. Since E24
+    M4 T5a `close=False` returns with the result window open (h3map's sequences close it on
+    their frozen clock, so that the screens back to the map are recorded)."""
     if plan is None:
         raise RuntimeError("a battle the step does not plan (`battle`)")
     if isinstance(plan, dict) and "shoot" in plan:
@@ -1131,7 +1133,8 @@ def fight(game, mem, plan, limit=300.0):
     time.sleep(0.3)
     record["end"] = stacks(mem)
     record.update(mem.battle_outcome())
-    click_button(game, "battle_ok", find_button(game, "battle_ok")[0])
+    if close:
+        click_button(game, "battle_ok", find_button(game, "battle_ok")[0])
     return record
 
 

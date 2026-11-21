@@ -514,6 +514,12 @@ The user, 2026-11-19 (M3 T7's start):
     part, the humans changed over the loaded game, E24 M5's). CLT-Q161 (b): no Random Map button
     in a load in the client's profile, the original's (shown, its press and key doing nothing)
     for the comparisons only.
+77. **T6 cut in two** (the user, 2026-11-21, at T5b2's end; offered: the cut with T6a at once,
+    the cut with T6a in the next session, or T6 whole): T6a fresh reviewers by area (High Scores
+    and Credits; the save file and the single load; the hot-seat load), every recipe played again
+    under Wine against `kept/`, the reviewers' findings and M4's review list to the user; T6b the
+    user's answers and their fixes, M4 to the archive, the README's row, M5's refinement or its
+    prerequisites. T6a in the next session (the original files staged again).
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -626,10 +632,11 @@ load mode), §3.12 to §3.14 (a load's rows).
 | T4b2 | Delete's question (688) both ways and its end (the version sort in the last direction, the first selected, the stale buttons and rating), the notice with no saves (686, Load disabled), Load's end at play's stub (as M3's begin: `save::load`'s `Loaded` kept for E24 M5; a save the load refuses its call), CLT-STUB-15 lifted; exact against `scn-load`'s Delete shots, `scn-load-last`, `scn-load-none` (`scn-load`'s `load` clip and `map` are play's, M5's) | done 2026-11-20 (`scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5; design §40; CLT-Q159) |
 | T5a | Load Game hot seat's reading and recordings (§41; decision 75): the slots, the names' placing (the save's humans first; CLT-Q160), the begin after a load, the save's extension, the list's filter, the options in a load (the duration's bar and the handicap disabled), Random Map in a load (§6.4; CLT-Q161); two hot-seat makers (`Pair.GM2`, `Four.GM4`: every colour human with its choices), `adv-load` recorded again over them, `adv-load-more` new | done 2026-11-21 (19 and 2 shots, twice the same; CLT-Q160, CLT-Q161 asked) |
 | T5b1 | Load Game hot seat's screen (§3.12 to §3.14, §41.4; decision 76): the hot seat's load mode over the Multiplayer dialog (the notice with no saves), the list's filter, the panel's buttons and the flags' strip (no Random Map in the client's profile: CLT-Q161 (b)), the advanced options from the save (the saved choices, no arrows, the handicap and the duration's bar disabled, the names placed: CLT-Q160 (a)); `h3-view save` for a hot seat, the makers' `viewer` tables; exact against `mp-load`, `adv-load`'s screen, options and list shots, `adv-load-more` | done 2026-11-21 (`mp-load` 6 of 6 exact, `adv-load` 14 of 19: all but the flags' two and the three after them, `adv-load-more` 2 of 2; design §42) |
-| T5b2 | The hot-seat load's flags (decision 76; the presses that change nothing and the popups exact since T5b1): a flag's press among the save's humans (CLT-Q110 (b)), the name moving onto the colour's saved choices; exact against the rest of `adv-load` | after T5b1 |
-| T6 | M4's closure: a fresh reviewer, M4's review list to the user, M4 to the archive, M5's refinement once the shell hosts play (else its prerequisites recorded) | after T5b2 |
+| T5b2 | The hot-seat load's flags (decision 76; the presses that change nothing and the popups exact since T5b1): a flag's press among the save's humans (CLT-Q110 (b)), the name moving onto the colour's saved choices; exact against the rest of `adv-load` | done 2026-11-21 (`adv-load` 19 of 19 exact; design §43) |
+| T6a | M4's reviews (decision 77): fresh reviewers by area (High Scores and Credits; the save file and the single load; the hot-seat load), every recipe played again under Wine against `kept/`, the findings and M4's review list to the user | after T5b2 |
+| T6b | M4's closure (decision 77): the user's answers and their fixes, M4 to the archive, the README's row (`shared/`), M5's refinement once the shell hosts play (else its prerequisites recorded) | after T6a |
 
-**M4's review list** (the agent's calls, *provisional*, for T6):
+**M4's review list** (the agent's calls, *provisional*, for T6a):
 
 1. (T1a) High Scores' layout `[high_scores]`: the creatures' pairs as the executable's numbers,
    the columns by tab, `drawn` (the buttons' canvas for the original's stale edges).
@@ -754,6 +761,13 @@ load mode), §3.12 to §3.14 (a load's rows).
     for E24 M5, which makes the humans those (no engine command changes them yet).
 40. (T5b1) `h3-view save`'s hot seat: `--player <colour>:<name>:<town>:<hero>:<bonus>` and
     `--duration`; the makers' `viewer` tables name the players by indexes.
+41. (T5b2) CLT-Q110 (b)'s detail in the client's profile: in a load a flag's press is taken only on
+    a colour the save holds as human (else nothing, as a colour no human may play), then passed
+    on as CLT-Q94's exchange; a colour a name holds through the seating's second pass (a computer's
+    in the save, CLT-Q160 (a)) moves with that exchange.
+42. (T5b2) In a load a record that moves by a flag's press takes its new colour's saved record
+    whole (the town, the first hero, the bonus and the handicap), as item 37's rows; the handicap
+    is not read from the original (a load's handicap takes no press, §42.1).
 
 ## Dependencies and boundaries
 

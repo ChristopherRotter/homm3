@@ -1,0 +1,39 @@
+0 view 0 0 0
+0 objects 0
+0 cycles 0 0
+0 cursor 1 0 700 300
+0 buttons 0 1
+0 points 1560
+100 view -4 -3 0
+100 cursor 0 2 700 300
+100 buttons 1 1
+100 points 1460
+100 hero 5 5 0 0
+100 walk 0 0 0 0
+100 screen 8,8,710,572
+150 screen 0,0,800,600
+200 cycles 1 1
+200 screen 0,0,800,600
+250 cursor 2 6 700 300
+250 screen 0,0,800,600
+300 screen 0,0,800,600
+350 battle 0
+350 screen 0,0,800,600
+710 cursor 1 0 700 300
+710 screen 0,0,800,600
+730 cycles 2 2
+760 screen 0,0,800,600
+810 buttons 0 1
+810 screen 0,0,800,600
+875 screen 273,222,320,264
+940 screen 270,222,320,264
+1005 screen 272,222,320,264
+1070 screen 270,222,320,264
+1135 screen 270,222,320,264
+1200 screen 272,222,320,264
+1265 screen 270,222,320,264
+1330 objects 2
+1330 screen 270,222,710,318
+1510 objects 3
+1510 screen 276,241,296,249
+1530 cycles 3 3

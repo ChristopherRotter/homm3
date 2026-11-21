@@ -1,0 +1,17 @@
+# A battle handed over and back (E24 M4 T5a; clients/map/to-record.toml `battle-won`; E24 design
+# §5.19): a savage monster fought at once and beaten, then taken off the map.
+# Red's hero on (5, 5) with five Archers steps up onto the 15 Peasants on (5, 4): the power's ratio
+# about 3, so the savage Peasants fight (no question) and the Archers shoot them before they reach
+# them (the same outcome however the battle's clock runs). Red's town out of the way, so that no
+# visit's scenario test warns of a town lost; Blue's hero far off in the fog.
+size = 36
+terrain = "grass"
+heroes = [{ at = [5, 5], class = 2, map_army = [[2, 5]] }, { at = [32, 32], owner = 1 }]
+towns = [{ at = [16, 12], faction = 0, owner = 0, buildings = "fort" }]
+view = [0, 0, 0]
+hidden = [[20, 16, 35, 35]]
+
+[[objects]]
+def = "AVWpeas.def"
+at = [5, 4]
+monster = { count = 15, disposition = 4, never_flees = true }

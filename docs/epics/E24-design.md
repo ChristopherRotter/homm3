@@ -4506,3 +4506,98 @@ player); `hero_loss_effect` 0x4ACBB0; `view_show_step` 0x40F270 and `adventure_h
   objects' step at 1180 and the second pickup's dissolve's box now the original's; its frames'
   differences the glass's alone, 30 of 41); the other sequences and the situations as recorded
   (`drawn`).
+
+### 5.19 A battle handed over and back: the reading and the recordings (M4 T5a)
+
+The user's cut at T5's start (2026-11-21): the reading and the recordings first (T5a), the viewer
+second (T5b, cut again at its start if it grows). The client lane's library entry is complete (E17
+M7 T3a to T3c: `h3-battle-client`'s `window::Hosted`, `game_seat::GameSeat`, `audio::HostSound`;
+E17 design §13.2 to §13.6) and `h3-game` sets the battle's background and colours (GAM-BAT-011).
+Read: `adventure_battle` 0x4AD470 after its battle (0x4AE2BD to 0x4AE99E), `manager_run` 0x4B0C70
+whole, `battle_start` 0x462A20's two fades, the battle manager's exit `battle_manager_exit`
+0x463260 (to 0x46335C), the adventure manager's exit `adventure_manager_exit` 0x4077E0 (to
+0x407828), `battle_aftermath` 0x4AC930 whole, `monster_fight` 0x4A6C60's removal,
+`adventure_mouse_again` 0x419570, `window_menu_set` 0x4F8180 and `computer_turn_music` 0x4C6F80
+whole; `hero_select`'s music (0x418104 to 0x41812D) again. Recorded: three sequences in
+`clients/map/to-record.toml` (the situations `seq-battle-*`), each twice the same, through the
+harness's new battle step (below).
+
+- **Into the battle** (a shown battle: Quick Combat off): the visit's last draw stands (a
+  monster's drawn attacking from `avwattak.def`, §5.4); `adventure_battle` runs the battle manager
+  over the map (`manager_run`: the adventure manager's +0x34 = 2; its exit stops the effects and
+  lets the terrain track play on, `music_track_play(-1)` asking for nothing); `battle_start`
+  plays `battle%02d.wav`, fades the map out (E27 design §10's fade: the shifts 0, 1 and 2 of each
+  channel 50 ms apart, then black; the mouse hidden), builds and draws the battle, sets its cursor
+  (6) and fades it in (E27 §32.2's three steps from the black), then waits for the sample and
+  starts the combat music (E17's). Recorded (`battle-won`: Up at 100): the step's draw at 100, the
+  fade's frames at 150 and 200, the black with the battle's cursor at 250, 300, the battle whole
+  at 350; `battle-mine` the same from the question's Enter released at 1060 (the box's area put
+  back with the fade's first shift) to the battle at 1310.
+- **Back** (the result window's OK by Enter, `battle_result_dialog`'s command 0x200/0xD): the
+  battle manager's exit fades the battle out with its result window (the same fade, from the
+  release), stops the effects and clears the palette's battle mode; `manager_run` puts the map
+  back: its +0x34 = 1, the whole screen drawn (`adventure_full_update`), the mouse-over done again
+  where the mouse stands (`adventure_mouse_again`), the status window's kind 0 asked, then the
+  fade in. Recorded: from the release at 560, the black with the map's cursor and the fade in's
+  first step at 710, 760, the map whole at 810 (`battle-mine`: 1560 to 1810; the battle's fade
+  out itself lies in the battle's span, below).
+- **Then `adventure_battle`'s rest, in order:** the winner's level-ups (§5.5's dialogs; none
+  here); a human attacker's win that raised creatures (Necromancy: battle manager +0x13D4C the
+  count, +0x13D50 the creature) `pickup%02d.82M` (random_between(1, 7)) and an OK box of GENRLTXT
+  147 (one: the creature's singular name) or 146 (the count, the plural), the creature's picture
+  (type 21); the loser hero leaves (the first flag, set by every caller read): an attacking hero
+  beaten or retreated (winner 1) and a defending hero beaten (0) through `hero_loss_effect` 0
+  (§5.7: `killfade.82M`, the view's middle 224 × 224 dissolved in 8 steps of 65 ms), a town's
+  garrison hero (not on the map) through −1 (no sound), a draw (−1) through `battle_aftermath`
+  (the same, the hero's leaving first); in a computer's turn its AI theme (`computer_turn_music`)
+  and the covered view's redraw; `mobilize_hero(0, 0, 1)` (the selected hero's view centred and
+  shown at once; with none the player's next hero or town); the mouse shown. The terrain track is
+  asked for only where `hero_select` finds the terrain changed (+0x58), so after a battle on the
+  hero's own terrain none (MCL-Q47; not heard: the harness logs samples, not the music).
+- **The caller's rest:** a wandering monster beaten (`monster_fight`): its treasure's boxes
+  (`monster_treasure`, §5.3) and the victory test while it still stands, then, none left, taken
+  off: the palette's cycle and the objects' steps held, the view drawn and shown,
+  `remove_map_object`, `killfade.82M`, the view's middle dissolved into the view without it (the
+  same 8 steps of 65 ms), both put back; `visit_object`'s case then clears the attack's picture
+  (+0x218, +0x21C, §5.4). A guarded mine (`visit_mine`): ADVEVENT 85's box (the guards beaten),
+  then §5.6's MINEEVNT box and the flag.
+- **Recorded** (hero speed 4, seed 7, each twice the same; Red's hero on (5, 5) with five Archers
+  steps up onto (5, 4); the 15 Peasants, savage and never fleeing, fight at once (the power's
+  ratio about 3, §5.4) and are shot before they reach the Archers, so the outcome is the same
+  however long the battle runs):
+  - `battle-won`: the switch above, the battle at 350 (`battle 0`, no Archer lost), its Enter at
+    500 and 560, the map whole at 810, the Peasants dissolved from 810 to 1330 (the boxes 270 to
+    320 × 222 to 264, where their sprite stood; at 1330 the mouse shown again), the objects' step
+    at 1510.
+  - `battle-mine`: ADVEVENT 84's question at 100, Enter at 1000 and 1060, the battle at 1310, its
+    Enter at 1500 and 1560, the map whole at 1810 with ADVEVENT 85's box drawn in the same
+    millisecond, Enter at 2300 and 2360 and MINEEVNT's box, Enter at 2900 and 2960 and the flag at
+    the next redraw.
+  - `battle-retreat`: the battle at 350 (`battle 1`, the attacker retreated), its Enter at 500 and
+    560, the map whole at 810 with no hero selected, the hero dissolved off from 810 to 1330, then
+    the town selected and the view moved to it at 1330.
+- **Not read or not recorded:** a battle whose attacker is not a local human (0x4AE194: the hot
+  seat's covered view with GENRLTXT 49, 50 or 430 through `covered_view_new_week`, not read; M5's),
+  Quick Combat (no switch), a defending human's battle, a siege, the level-ups after a battle and
+  Necromancy's box (not recorded: the battle runs on real time in the harness, so draws after it
+  could differ run to run), the music back on the map (MCL-Q47).
+- **The harness's battle step** (`clients/capture/h3map.py`, common, additive; README "A battle in
+  a sequence"): a sequence's `battle` is `h3adv.fight`'s plan, or a list of them in order. Where
+  the battle's screen first shows whole (`h3adv.in_battle`), after that millisecond's own reads,
+  the battle is played with the clock running (`fight(…, close=False)`: auto combat, the
+  attacker's retreat), the pointer put back where the sequence held it (the map's mouse-over is
+  redone there) and the clock frozen at the result window; the sequence's time goes on as if the
+  battle took none (its next millisecond the result window's), the palette's pending step written
+  back as far ahead as it stood (palette_tick_time 0x6989B4 serves the map and the battle and is
+  never caught up: its phase would follow the battle's length). From there until the map is the
+  active manager again (the adventure manager's +0x34, `structs.toml`) no screen is kept, no
+  timeline line written and no box read: the result window's clip, the battle's palette steps and
+  its fade out follow its real-time run. The line `<ms> battle <winner>` at the battle's screen and
+  a `[[battle]]` table in the live part (`at`, `winner`, the side that `retreated` or
+  `surrendered`, the stacks at its `start` and `end`); a sound run's samples during the battle
+  left out. The objects' redraw deadline is left as the battle left it (past at the return, as in
+  the original's every battle).
+- **For T5b:** the record's battles (`GameRecord::battles()`: `opened` where the map hands over,
+  `ended` where it comes back); who draws the switch's fades (the map's out, the battle's in and
+  out, the map's in), the host or the element, is T5b's to settle with the battle's first frame
+  (the battle client's comparisons start at the battle shown whole); the dissolves are §5.7's.

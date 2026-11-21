@@ -184,6 +184,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   morale and luck (MCL-Q36) or a revisit to a once-per-hero object (MCL-Q42) are gaps, and a
   click's pointer left over the map gives the original's reach cursor after a box (MCL-Q37):
   move it off the map in the same millisecond.
+- **A battle in a sequence runs on real time** (M4 T5a, design §5.19): `h3map.py`'s battle step
+  plays it with the clock running, so its situation must have one outcome however long it runs (a
+  sure win without losses, a retreat) and nothing after it may draw at random (a level-up's
+  offers, Necromancy's sound); the inputs after it count from its `battle` line's millisecond (the
+  battle takes none of the sequence's time), and from its result window until the map is the
+  active manager again nothing is kept.
 - **Two tests pin the recorded sequences** (M4 T2d1): moving a task's sequences from
   `to-record.toml` into `sequences.toml` fails `sequence::tests::reads_the_recorded_sequences`
   (their count) and `timeline::tests::the_walks_frames_are_m2_t3bs` (the ids replayed, in order)

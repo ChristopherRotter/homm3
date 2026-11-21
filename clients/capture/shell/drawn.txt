@@ -151,11 +151,11 @@ adv-load town-popup t3200 ff4cd089b2a3d5a0
 adv-load hero-popup t3400 6c956068aed17760
 adv-load bonus-popup t3600 c5d135f710eaa8e0
 adv-load hero-popup-3 t3800 623628dfc8f1acfd
-adv-load flag-3 t4100 0eda5f9893fb9342
-adv-load flag-1 t4300 6e4e749352d7b385
-adv-load random t4500 6e4e749352d7b385
-adv-load random-key t4700 6e4e749352d7b385
-adv-load random-popup t4800 a2113612b892408e
+adv-load flag-3 t4100 0fc1ed677bb54c61
+adv-load flag-1 t4300 d8e8674c4e44a247
+adv-load random t4500 0f76c1844c0f02d6
+adv-load random-key t4700 0f76c1844c0f02d6
+adv-load random-popup t4800 901b38141a4bacea
 adv-load list t5100 dd40ecfae7c5bc6a
 adv-load row-2 t5300 07c9550fddfa3336
 adv-load advanced-2 t5500 898653f8298150e4
