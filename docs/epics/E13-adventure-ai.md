@@ -33,7 +33,8 @@ its player's projection (`docs/06-security.md`, "Information hiding"), as the ba
    reading confirms or refutes this. A fair variant then decides only on its player's projection,
    as E26 did for battle. *Agent's reading, as ADR-0026 point 8 amended for battle (E25 decision
    2):* the faithful one is a target and ladder opponent only and trains no agent; the fair one
-   may train and becomes the game's default computer player. Confirmed at E31's refinement.
+   may train and becomes the game's default computer player. Confirmed at E31's refinement
+   (AI-Q22, E31 decision 3).
 5. **Macro-actions over a deterministic executor** (`docs/07-simulation-and-ai.md` §3). The
    policy chooses a goal, for example: go to an object, a hero or a town; build; recruit; split or
    merge armies; trade; end the hero's or the player's turn. An executor in `h3-sim` (pathing,

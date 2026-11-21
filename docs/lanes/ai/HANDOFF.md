@@ -45,9 +45,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q22, AI-QUIRK-1, AI-STUB-2.
-- **After E25 increment 10** (AI-Q21, 2026-11-21): E31 (the original's computer player: code
-  reading, a faithful port, then a fair one; refined when taken), then E13 (refined in shape,
+  ids: AI-Q23, AI-QUIRK-1, AI-STUB-2.
+- **After E25 increment 10** (T43 to T45): **E31** (the original's computer player; refined
+  2026-11-21, AI-Q22: `docs/epics/E31-original-computer-player.md`, increment 1 the reading's
+  map and the survey; next E31 T1a1 in `QUEUE.md`), then E13 (refined in shape,
   `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -56,6 +57,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-21 — E31 refined (AI-Q22)
+
+- A refinement session with the user, docs only (the PC's shell down, a cloud clone;
+  `Heroes3.exe` staged alone, SHA-256 checked, for the first look's size by a scratch script
+  over `scripts/exe.py`'s `Code`, not committed). E31's epic file, AI-Q22, the queue's E31 T1a1;
+  the backlog's and README's rows in `shared/e31-refinement`.
 
 ### 2026-11-21 — E13 refined in shape (AI-Q21), E31 sketched
 
@@ -69,12 +77,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   files; `cargo build --release -p h3-cli`, the JSON records rebuilt from them (identity
   matched) and `--budget 0` played as the pairing's base (`python/records/ceiling/`). No
   original data (none needed). The measurement's commands at budget 4 in `QUEUE.md`.
-
-### 2026-11-20 — E25 T39 read, T41: increment 9 closed, increment 10 the ceiling
-
-- #1040 merged. The user ran T39 on the GPU (two segments, 5.1 hours) and uploaded
-  `report.json` (committed as `python/records/distill/reach-1.json`). The checkpoint (AI-Q20):
-  the user proposed the ceiling; the rollout design agreed (the fair actor, both worlds). T42
-  built (`cargo build --release -p h3-cli`, timing runs in the sandbox; the refused casts traced
-  to BAT-STUB-19 by a temporary print, removed). #1075 merged. The user limits T43 to 16 threads
-  (`TRAPS.md`); a stop during an append now drops the torn last game on resume.

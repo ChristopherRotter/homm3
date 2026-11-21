@@ -42,6 +42,15 @@ user at T41, AI-Q20; its decisions in the epic file).
 - **T45 — increment 10's checkpoint** (the user): the headroom, the information's cost, the
   divergence; the next lever.
 
+**E31** (`docs/epics/E31-original-computer-player.md`, AI-Q22; refined 2026-11-21): after T45.
+
+- **E31 T1a1 — the computer player's frame** (the epic's increment 1 table; needs only
+  `Heroes3.exe` staged, SHA-256 `aac39e8c…`, and `pip install capstone pefile`; a cloud
+  sandbox is enough): `ai_player_turn` 0x525E80, `ai_next_hero` 0x526A90, `ai_hero_turn`
+  0x5261F0, the planning 0x42DE50 and `ai_hero_replan` 0x42E0B0, the walk, the turn's end; the
+  records at 0x692950 into `structs.toml`. Confirm T1a's cut at its start (by size). Then T1a2
+  to T1a4, T1b.
+
 ## Inbox
 
 Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10-19); the
