@@ -118,6 +118,8 @@ fn choice(id: &str) -> Found {
     let answer = |gain: Gain, taken: bool| Answer {
         gain,
         taken: taken.then_some((OBJECT, Fade::Pickup)),
+        fight: None,
+        flag: None,
         ..Answer::default()
     };
     let chest = id.starts_with("choose-chest");
@@ -133,6 +135,8 @@ fn choice(id: &str) -> Found {
             answer(gain(0, [0, 2, 0, 0]), false),
             Answer {
                 marks: true,
+                fight: None,
+                flag: None,
                 ..answer(gain(0, [2, 0, 0, 0]), false)
             },
         )

@@ -1222,6 +1222,61 @@ impl<'a> Painter<'a> {
                         experience,
                     }),
                 },
+                // A neutral mine's guards fought after their question (E24 M4 T5b2, design §5.21):
+                // ADVEVENT 84's question (Part A's), its OK the battle's switch, then ADVEVENT 85's
+                // box and MINEEVNT's by the mine's resource (MCL-Q48: its subclass), the flag past
+                // them.
+                Visited::Guarded {
+                    battle,
+                    winner,
+                    flag,
+                    resource,
+                    experience,
+                } => {
+                    let mut question = self.question(&Ask::Mine, o)?;
+                    question.no = None;
+                    question.second = None;
+                    let beaten = Told {
+                        text: texts.text("map.find.mine-guards", &Args::new()),
+                        pictures: Vec::new(),
+                    };
+                    let mut boxes = vec![(self.told(&beaten)?, Gain::default())];
+                    let flagged = Find::Mine { resource };
+                    if let Some(said) = flagged.told(&assets.tables.map.finds, texts) {
+                        boxes.push((self.told(&said)?, Gain::default()));
+                    }
+                    question.yes = Some(Answer {
+                        boxes,
+                        gain: Gain::default(),
+                        chooses: false,
+                        then: None,
+                        taken: None,
+                        after: Gain::default(),
+                        reveal: 0,
+                        marks: false,
+                        fight: Some(Fight {
+                            attacker: 0,
+                            battle,
+                            winner,
+                            after: AfterBattle::Boxes,
+                            experience,
+                        }),
+                        flag: flag.map(|colour| (o, colour)),
+                    });
+                    Found {
+                        at: pos,
+                        first: Vec::new(),
+                        again: None,
+                        gain: Gain::default(),
+                        found: None,
+                        taken: None,
+                        event: false,
+                        blocks: None,
+                        ask: Some(question),
+                        flag: None,
+                        fight: None,
+                    }
+                }
                 Visited::Find {
                     find,
                     gain,
@@ -1561,6 +1616,8 @@ impl<'a> Painter<'a> {
             after: reply.after,
             reveal: reply.reveal,
             marks: reply.marks,
+            fight: None,
+            flag: None,
         })
     }
 
@@ -1741,6 +1798,10 @@ impl<'a> Painter<'a> {
             }
             // No hero selected from the start: the live part's as it is.
             (None, None) => {}
+        }
+        // A hero a battle took off the map (E24 M4 T5b2): drawn nowhere.
+        if let Some(index) = draw.left {
+            self.live.walking.hidden = Some(index);
         }
         // The boats as the draw has them (E24 M4 T2d2): one boarded off its tile and its hero in
         // it, one left back on the water.

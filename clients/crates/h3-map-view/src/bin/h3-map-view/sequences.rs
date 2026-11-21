@@ -21,7 +21,7 @@ use std::process::ExitCode;
 
 use h3_map_view::live::Buttons;
 use h3_map_view::sequence::{Sequence, Sequences};
-use h3_map_view::timeline::{self, Cursor, Draw, Rules, Unplayable};
+use h3_map_view::timeline::{self, Cursor, Draw, Found, Rules, Unplayable};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 
@@ -224,11 +224,7 @@ impl Context<'_> {
         // The battles' first frames the switches fade in (E24 M4 T5b2, design §5.21): the
         // record's, as the battle client's element draws them.
         if let Some((path, _)) = &options.record {
-            let fights: Vec<u32> = start
-                .finds
-                .iter()
-                .filter_map(|f| f.fight.as_ref().map(|f| f.battle))
-                .collect();
+            let fights: Vec<u32> = start.finds.iter().flat_map(Found::battles).collect();
             if !fights.is_empty() {
                 let battles = Battles::read(path, &options.packs, &options.install, None)?;
                 let mut notes = Vec::new();

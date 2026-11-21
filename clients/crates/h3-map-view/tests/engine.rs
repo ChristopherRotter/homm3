@@ -1934,6 +1934,7 @@ fn what_a_record_s_visits_tell() {
         at,
         events,
         answers: Vec::new(),
+        battle: None,
     };
     let found = |class, events| visits::told(&visit(events), [class, 0], "Rion");
     let find = |told: Option<Told>| match told {
@@ -2152,6 +2153,7 @@ fn what_a_record_s_flags_tell() {
         at,
         events,
         answers,
+        battle: None,
     };
     let told = |v: &engine::Visit, class, subclass| visits::told(v, [class, subclass], "Rion");
     let flag = |told: Option<Told>| match told {
@@ -2409,4 +2411,211 @@ fn a_record_s_battles() {
             Command::Battle(51)
         ]
     );
+}
+
+#[test]
+fn a_visit_s_battle_in_a_record() {
+    use h3_protocol::wire::game::{AdventureCommand, AdventureEvent, GameCommand, GameEvent, Pos};
+    use h3_protocol::wire::{Outcome, Side};
+    let g = game();
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .id;
+    let tile = Pos {
+        x: 11,
+        y: 10,
+        level: 0,
+    };
+    let started = GameEvent::BattleStarted {
+        heroes: [Some(red), None],
+        tile,
+    };
+    let ended = GameEvent::BattleEnded {
+        heroes: [Some(red), None],
+        result: Outcome::Victory {
+            side: Side::Attacker,
+        },
+    };
+    let removed = GameEvent::Adventure {
+        event: AdventureEvent::ObjectRemoved {
+            object_type: 30,
+            anchor: tile,
+        },
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            // A walk's battle (E24 M4 T5b2): its end's events from `BattleEnded` on kept, after
+            // a command of the battle's.
+            accepted(GameCommand::Adventure {
+                command: AdventureCommand::MoveHero {
+                    hero: red,
+                    path: vec![tile],
+                },
+            }),
+            events(vec![started.clone()]),
+            accepted(GameCommand::EndTurn {}),
+            events(vec![removed.clone(), ended.clone(), removed.clone()]),
+            // A battle no visit began (the turn's): none kept, its end nobody's.
+            events(vec![started, ended.clone()]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let [visit] = &played.visits[..] else {
+        panic!("one visit: {:?}", played.visits);
+    };
+    assert_eq!(
+        visit.battle,
+        Some(engine::Battled {
+            started: 51,
+            ended: vec![ended, removed],
+        })
+    );
+}
+
+#[test]
+fn what_a_record_s_battles_tell() {
+    use h3_map_view::engine::visits::{self, Told};
+    use h3_protocol::wire::game::{AdventureEvent, Answer, Consent, GameEvent, HeroChange, Pos};
+    use h3_protocol::wire::{Outcome, Side};
+    let anchor = Pos {
+        x: 5,
+        y: 4,
+        level: 0,
+    };
+    let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
+    let end = |result| GameEvent::BattleEnded {
+        heroes: [Some(0), None],
+        result,
+    };
+    let adventure = |event| GameEvent::Adventure { event };
+    let removed = adventure(AdventureEvent::ObjectRemoved {
+        object_type: 30,
+        anchor,
+    });
+    let gone = adventure(AdventureEvent::HeroRemoved {
+        hero: 0,
+        pos: anchor,
+    });
+    let flagged = adventure(AdventureEvent::ObjectFlagged {
+        object_type: 84,
+        anchor,
+        owner: 0,
+    });
+    let experience = GameEvent::HeroChanged {
+        player: 0,
+        hero: 0,
+        change: HeroChange::GainExperience { amount: 15 },
+    };
+    let visit = |ended: Vec<GameEvent>, answers: Vec<(Answer, Vec<GameEvent>)>| engine::Visit {
+        at,
+        events: Vec::new(),
+        answers,
+        battle: Some(engine::Battled { started: 4, ended }),
+    };
+    let fight =
+        |ended: Vec<GameEvent>| match visits::told(&visit(ended, Vec::new()), [54, 139], "Rion") {
+            Some(Told::Fight {
+                battle,
+                winner,
+                taken,
+                lost,
+                experience,
+            }) => Some((battle, winner, taken, lost, experience)),
+            _ => None,
+        };
+    // A monster beaten and taken, the experience gained; the hero retreated and gone.
+    let won = end(Outcome::Victory {
+        side: Side::Attacker,
+    });
+    assert_eq!(
+        fight(vec![won.clone(), experience.clone(), removed.clone()]),
+        Some((4, 0, true, false, 15))
+    );
+    let retreated = end(Outcome::Retreat {
+        side: Side::Attacker,
+    });
+    assert_eq!(fight(vec![retreated, gone]), Some((4, 1, false, true, 0)));
+    // Every winner (a side's retreat or surrender the other's win; a draw none's).
+    for (result, winner) in [
+        (
+            Outcome::Victory {
+                side: Side::Defender,
+            },
+            1,
+        ),
+        (
+            Outcome::Retreat {
+                side: Side::Defender,
+            },
+            0,
+        ),
+        (
+            Outcome::Surrender {
+                side: Side::Attacker,
+            },
+            1,
+        ),
+        (
+            Outcome::Surrender {
+                side: Side::Defender,
+            },
+            0,
+        ),
+        (Outcome::Draw {}, -1),
+    ] {
+        assert_eq!(fight(vec![end(result)]).map(|f| f.1), Some(winner));
+    }
+    // Not ended yet, or another class's: no battle told.
+    assert_eq!(fight(Vec::new()), None);
+    assert!(!matches!(
+        visits::told(&visit(vec![won.clone()], Vec::new()), [96, 0], "Rion"),
+        Some(Told::Fight { .. })
+    ));
+    // A mine's guards fought after their question accepted: its flag and resource (MCL-Q48: the
+    // subclass); without a flag none; declined, or not ended: nothing of the battle.
+    let accept = (
+        Answer::Offer {
+            consent: Consent::Accept,
+        },
+        Vec::new(),
+    );
+    let guarded = |ended: Vec<GameEvent>, answers| match visits::told(
+        &visit(ended, answers),
+        [53, 7],
+        "Rion",
+    ) {
+        Some(Told::Guarded {
+            battle,
+            winner,
+            flag,
+            resource,
+            experience,
+        }) => Some((battle, winner, flag, resource, experience)),
+        _ => None,
+    };
+    assert_eq!(
+        guarded(vec![won.clone(), experience, flagged], vec![accept.clone()]),
+        Some((4, 0, Some(0), 7, 15))
+    );
+    assert_eq!(
+        guarded(vec![won.clone()], vec![accept.clone()]),
+        Some((4, 0, None, 7, 0))
+    );
+    let decline = (
+        Answer::Offer {
+            consent: Consent::Decline,
+        },
+        Vec::new(),
+    );
+    assert_eq!(guarded(vec![won.clone()], vec![decline]), None);
+    assert_eq!(guarded(Vec::new(), vec![accept]), None);
+    assert_eq!(guarded(vec![won], Vec::new()), None);
 }

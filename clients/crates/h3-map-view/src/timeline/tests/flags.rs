@@ -113,6 +113,8 @@ fn flagged(id: &str) -> Found {
                     army: [Some(pikemen), None, None, None, None, None, None],
                     ..Gain::default()
                 },
+                fight: None,
+                flag: None,
                 ..Answer::default()
             }),
             no: Some(Answer::default()),

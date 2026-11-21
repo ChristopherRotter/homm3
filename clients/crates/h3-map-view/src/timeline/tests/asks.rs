@@ -95,6 +95,8 @@ fn question(id: &str) -> Found {
                 morale: [-3, -3],
                 ..Gain::default()
             },
+            fight: None,
+            flag: None,
             ..Answer::default()
         }),
         "ask-hire" => Some(Answer {
@@ -103,6 +105,8 @@ fn question(id: &str) -> Found {
                 army: [Some(PIKEMEN), None, None, None, None, None, None],
                 ..Gain::default()
             },
+            fight: None,
+            flag: None,
             ..Answer::default()
         }),
         _ => None,

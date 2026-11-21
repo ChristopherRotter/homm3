@@ -1813,16 +1813,15 @@ inputs = [
     { at = 2300, keydown = "Return" }, { at = 2360, keyup = "Return" },
     { at = 2900, keydown = "Return" }, { at = 2960, keyup = "Return" },
 ]
+engine_seed = 5
 script = [
     "0 move 0 5,4,0",
     "0 answer offer accept",
     "0 battle shoot 3 49",
-    "0 battle shoot 3 49",
     "system battle defend",
     "0 battle shoot 3 49",
     "0 battle shoot 4 151",
     "system battle defend",
-    "0 battle shoot 4 151",
     "0 battle shoot 4 151",
     "0 battle shoot 4 151",
 ]

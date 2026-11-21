@@ -79,6 +79,8 @@ fn joined(stack: Stack, gold: i32) -> Answer {
         gain,
         chooses: true,
         taken: Some((OBJECT, Fade::Killfade)),
+        fight: None,
+        flag: None,
         ..Answer::default()
     }
 }
@@ -92,6 +94,8 @@ fn flight(attacker: u32) -> Question {
         yes: None,
         no: Some(Answer {
             taken: Some((OBJECT, Fade::Killfade)),
+            fight: None,
+            flag: None,
             ..Answer::default()
         }),
         attacker: Some(attacker),
@@ -107,6 +111,8 @@ fn question(id: &str) -> Found {
             joined(PEASANTS, 0),
             Some(Answer {
                 then: Some(Box::new(flight(278))),
+                fight: None,
+                flag: None,
                 ..Answer::default()
             }),
             Some(278),
@@ -115,6 +121,8 @@ fn question(id: &str) -> Found {
             joined(PIKEMEN, 300),
             Some(Answer {
                 then: Some(Box::new(flight(0))),
+                fight: None,
+                flag: None,
                 ..Answer::default()
             }),
             Some(0),
@@ -122,6 +130,8 @@ fn question(id: &str) -> Found {
         "ask-guard" => (
             Answer {
                 taken: Some((OBJECT, Fade::Pickup)),
+                fight: None,
+                flag: None,
                 ..Answer::default()
             },
             cancel,
@@ -134,6 +144,8 @@ fn question(id: &str) -> Found {
                     ..Gain::default()
                 },
                 reveal: LAND,
+                fight: None,
+                flag: None,
                 ..Answer::default()
             },
             cancel,
@@ -149,6 +161,8 @@ fn question(id: &str) -> Found {
                     },
                 )],
                 taken: Some((OBJECT, Fade::Pickup)),
+                fight: None,
+                flag: None,
                 ..Answer::default()
             },
             cancel,

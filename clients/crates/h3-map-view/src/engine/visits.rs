@@ -106,6 +106,22 @@ pub enum Told {
         /// The experience gained.
         experience: i32,
     },
+    /// A neutral mine's guards' question accepted and their battle (E24 M4 T5b2, design §5.21):
+    /// the battle, its winner, the colour of the flag raised after it (the record's
+    /// `ObjectFlagged`), the mine's resource (its subclass: an abandoned mine's 7, MCL-Q48: the
+    /// record tells none) and the experience gained.
+    Guarded {
+        /// The record's number of the `GameEvents` whose `BattleStarted` began it.
+        battle: u32,
+        /// The winner, as [`Told::Fight`]'s.
+        winner: i32,
+        /// The flag's colour.
+        flag: Option<u8>,
+        /// The resource.
+        resource: u8,
+        /// The experience gained.
+        experience: i32,
+    },
 }
 
 /// Which of a question's answers the record's takes: its OK or a choice's first picture, a
@@ -146,6 +162,31 @@ pub fn told(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<To
             winner: winner(result),
             taken: removed(false),
             lost: removed(true),
+            experience: gain(&battle.ended).experience,
+        });
+    }
+    // A neutral mine's guards fought after their question (E24 M4 T5b2), once it ended.
+    if class == MINE
+        && let Some(battle) = &visit.battle
+        && let Some(GameEvent::BattleEnded { result, .. }) = battle.ended.first()
+        && let Some((
+            Answer::Offer {
+                consent: Consent::Accept,
+            },
+            _,
+        )) = visit.answers.first()
+    {
+        let flag = battle.ended.iter().find_map(|e| match e {
+            GameEvent::Adventure {
+                event: AdventureEvent::ObjectFlagged { owner, .. },
+            } => Some(*owner),
+            _ => None,
+        });
+        return Some(Told::Guarded {
+            battle: battle.started,
+            winner: winner(result),
+            flag,
+            resource: u8::try_from(subclass).unwrap_or(u8::MAX),
             experience: gain(&battle.ended).experience,
         });
     }

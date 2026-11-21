@@ -123,6 +123,8 @@ pub struct Shown {
     pub outcome: Option<String>,
     /// The window quit during it (Esc over the battle, the window closed).
     pub quit: bool,
+    /// Its last frame shown (E24 M4 T5b2: the switch's fade out fades it).
+    pub last: Option<Screen>,
 }
 
 /// What the window's run asks of a hosted battle.
@@ -184,6 +186,7 @@ pub fn host(
     let sound = hosted.take_sound();
     let mut shown = shown?;
     shown.outcome = hosted.outcome().map(|o| format!("{o:?}"));
+    shown.last = hosted.shown().map(|f| f.screen.clone());
     Ok((sound, shown))
 }
 
