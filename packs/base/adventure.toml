@@ -2173,7 +2173,8 @@ den_of_thieves = {}
 # E08-trades.md sections 1 to 14): every one entered and none from above (none of classes 2, 7,
 # 35, 99, 106, 213, 221 is in object_classes_not_entered 0x63AA58 or object_classes_from_above
 # 0x63AB00; VCMI 1.7.5's markets.json and generic.json: no blockedVisitable; batch E14's E14-16
-# saw the hero on each entrance). Their visits come with T133 and T134.
+# saw the hero on each entrance). Their visits: E08 T133a2 (the markets), T134a (the Altar), T134b1
+# (the Hill Fort), T134b2 (the factory).
 #
 # ADV-MKT-001: the Trading Post (class 99; 221, the snow one, is ab's class with this type):
 # resources for resources and resources to another player (visit_object's case 99, the trade
@@ -2188,7 +2189,8 @@ market = { screens = ["trade", "transfer"], count = 5 }
 
 # ADV-MKT-001, ADV-MKT-006: the Black Market (class 7): artifacts bought (screen 2) at five
 # Marketplaces; its stock of seven drawn when the game is built, three treasures, three minors and
-# one major (black_markets_setup, survey section 7.1; VCMI's rollMarketArtifactSet the same).
+# one major (setup_map_objects' black_market_draw 0x4C0E31, survey section 7.1; VCMI's
+# rollMarketArtifactSet the same).
 [[object_type]]
 id = "black_market"
 name = "Black Market"
