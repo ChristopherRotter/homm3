@@ -12,7 +12,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (`h3-towns`' guild module) and **T47a2** (decision 188, kept whole, `cross-lane`: TWN-SET-012
   with map import v28 and `GameSetupError::TownSpell`; the store v4: `Town::guild`, `vortex`,
   `TownStatic::aurora`, `Towns::start_week`, `take_vortex`; the guilds drawn at the build as the
-  towns' stream's first draws, `h3_game`'s `town/guild.rs`; game state hash v38; the 104 goldens
+  towns' stream's first draws, `h3_game`'s `town/guild.rs`; game state hash v38; the 111 goldens
   re-recorded, `towns-s173-d21`'s day-16 siege played again by the battle AI) done. **Next:**
   **T47b**, the owner's view (the shown spells by level, the Aurora mark, the Vortex's week flag;
   TWN-VEW-004, decision 180) and the protocol, `cross-lane` (`QUEUE.md`; confirm its cut). Waiting
@@ -52,7 +52,8 @@ stopped at coverage for disk). The user's computer was connected at the start on
 staged; its shell did not start, so sizes and the LODs' and executables' SHA-256 were compared.
 The user kept T47a2 whole (decision 188). Built: TWN-SET-012, the store v4, the game's draw (game
 state hash v38, map import v28); 38 benchmarks inside the gate, none re-baselined; the 104 goldens
-re-recorded (`towns-s173-d21`'s siege re-played by the battle AI), the bot reports unchanged; the
+re-recorded and E08 T135b1's seven after the merge (`towns-s173-d21`'s siege re-played by the
+battle AI), the bot reports unchanged; the
 adventure and server lanes' inboxes told.
 
 ### 2026-11-20 — T47a1: `h3-towns`' guild module (the draw, what the guild shows, the Aurora set)

@@ -32,7 +32,8 @@ note §18, §21; decision 391)
   104 golden adventure replays re-recorded from their commands (the hash lines and the two versions
   only), but `towns-s173-d21`, whose day-16 siege no longer fit (the towns' stream grew the neutral
   garrison otherwise): that battle played again by `h3_battle_ai::choose` for both sides, the rest
-  of its commands kept, the same features. `TownSetup` gained two fields: every struct literal
+  of its commands kept, the same features; your T135b1's seven `trades-*` too (hash lines and
+  versions only). `TownSetup` gained two fields: every struct literal
   (`h3-map`'s examples and `tests/towns.rs`) has them. `GameSetupError::TownSpell` is new.
 
 - 2026-11-21 (the map client lane, E24 M4 T4c2, `map-client/e24-m4-t4c2`; **MCL-Q46, for your

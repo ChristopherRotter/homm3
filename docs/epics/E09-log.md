@@ -5709,7 +5709,8 @@ executables with `docs/formats/installation.md`'s SHA-256. **T47a2 kept whole** 
   day-16 siege, grown otherwise by the moved towns' stream, now acts first): a scratch probe played
   that battle again with `h3_battle_ai::choose` for both sides (11 commands for the 67), Yog still
   wins, levels up and takes the town for blue; the other commands kept (189 for 244, day 22).
-  All 104 verified; the bot reports unchanged. `h3-server`'s record literals and `h3-protocol`'s
+  E08 T135b1's seven `trades-*` goldens (#1095, merged meanwhile) re-recorded after the merge
+  with `master`: hash lines and versions only. All 111 verified; the bot reports unchanged. `h3-server`'s record literals and `h3-protocol`'s
   sample bound (`+ 150`) moved; `h3-protocol`, `h3-server`, `h3-sim`, `h3-files`, `h3-cli` tested.
 - **Inbox:** the adventure lane (v28 and v38 taken, the goldens), the server lane (its literals).
 - *Agent's calls* (decision 188): a spell the ruleset lacks left out by the import; the refusal in
