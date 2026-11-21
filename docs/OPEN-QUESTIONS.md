@@ -408,6 +408,32 @@ the music, and nobody has listened. Options: (a) as the original: no track asked
 (the original on the user's machine: a battle won, then a wait without moving). Built as (a) at
 T5b1 (2026-11-21: no track asked for at the return). Blocks nothing.
 
+#### MCL-Q48 — A record does not tell an abandoned mine's resource (E24 M4 T5b2, a record)
+
+An abandoned mine's flag box after its guards' battle is MINEEVNT's record by the mine's resource
+(`visit_mine` 0x4A39A0, §5.6), which the original draws at the load (`battle-mine`: crystal, its
+record 4). The engine imports an abandoned mine with the resource it draws, but the record tells
+the viewer neither that resource (`ObjectFlagged` has the owner only) nor the mine's income. The
+viewer shows the mine's subclass's record (7, "Abandoned Mine"), so `battle-mine`'s two frames with
+MINEEVNT's box differ from the original's (design §5.21). Options: (a) the record tells a flagged
+mine's resource (`ObjectFlagged` or the object's view; the adventure lane's, then the server
+lane's wire); (b) the viewer reads it from the map file (impossible: the draw is the import's); (c)
+leave the gap. **Recommended (a)**; the adventure lane's inbox told. Meanwhile the subclass's
+record, *provisional*. Blocks nothing.
+
+#### MCL-Q49 — A record's battle on the map is not laid out as the original's (E24 M4 T5b2, a recording)
+
+The battle the engine plays for a wandering monster or a mine's guards starts with the original's
+stacks on the original's hexes (`battle-won`, `battle-mine`: the harness's `[[battle]]` `start`
+equals the record's), but its obstacles are the engine's own draw: the original's `monster_battle`
+0x4AC580 seeds the battle from the tile (248071 x + 276589 y + 310111 z + 155303), and on
+`battle-won`'s grass it laid a pond, rocks and a stump where the engine's battle has a ridge and
+rocks. So the switch's three frames of the battle's fade in differ (about 45 000 pixels each;
+design §5.21). Options: (a) the engine draws a map battle's obstacles as the original does (the
+battle lane's: the obstacle draw under the tile's seed); (b) leave the gap (the battle client's
+comparisons start from its own situations). **Recommended (a)**; the battle lane's inbox told.
+Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)

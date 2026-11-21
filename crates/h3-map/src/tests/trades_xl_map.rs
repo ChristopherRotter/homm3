@@ -8,8 +8,8 @@
 //! lattice: the Hill Forts and the Trading Posts on the surface (their pictures' terrains: grass,
 //! a snow patch under each snow Trading Post), the larger half of the others there and the rest
 //! underground. No bans: the six Black Markets draw their 42 from the whole pool. Written by
-//! [`crate::writer`] with the original's templates; to be played by the benchmark
-//! `build-trades-xl-144` (T135b2: the game's build with the Black Markets' draws). The test checks
+//! [`crate::writer`] with the original's templates; played by the benchmark
+//! `build-trades-xl-144` (E08 T135b2: the game's build with the Black Markets' draws). The test checks
 //! that the committed file reads to the map written here (it is rewritten when
 //! `H3_WRITE_FIXTURES` is set), imports every class at its count by level, and builds with each
 //! Black Market's seven drawn.

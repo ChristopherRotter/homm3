@@ -325,7 +325,8 @@ pub fn run(options: &Options) -> ExitCode {
         // and write no file.
         Mode::Replay { maps, .. } => maps_named(maps.as_deref())
             .and_then(|only| {
-                let given = (only.as_deref(), options.games());
+                // The replay lists the saves once, at its start (E27 M4 T6, the review's B4).
+                let given = (only.as_deref(), options.games(), true);
                 Drawer::load(&options.install, Bugs::Original, given, None)
             })
             .and_then(|drawer| replay_steps(options, &drawer)),
@@ -336,8 +337,8 @@ pub fn run(options: &Options) -> ExitCode {
                 .unwrap_or_else(|| PathBuf::from(SCORES_FILE));
             scores_text(&path)
                 .and_then(|text| {
-                    let file = text.as_deref().map(|t| (path.as_path(), t));
-                    let given = (None, options.games());
+                    let file = Some((path.as_path(), text.as_deref()));
+                    let given = (None, options.games(), false);
                     Drawer::load(&options.install, Bugs::Fixed, given, file)
                 })
                 .and_then(|drawer| in_window(options, *scale, &drawer, &path))
@@ -432,12 +433,15 @@ struct Drawer {
 impl Drawer {
     /// The layout (`clients/layouts/shell.toml`) and its assets from `install`'s archives, read
     /// by their tables in one batch (CLT-Q2); High Scores' tables the scores file's (its path
-    /// and text, `scores`) over the defaults (E27 M4 T1b), the defaults with none.
+    /// and text, `scores`: the window's, its text none while there is no file) over the defaults
+    /// (E27 M4 T1b), the defaults with none; its error box named after the path (T6). The saves
+    /// of `games` listed now when `listed` (the replay's, which lists once; the window lists them
+    /// at each opening of the load mode, E27 M4 T6, the review's B4).
     fn load(
         install: &Path,
         bugs: Bugs,
-        (maps, games): (Option<&[String]>, PathBuf),
-        scores: Option<(&Path, &str)>,
+        (maps, games, listed): (Option<&[String]>, PathBuf, bool),
+        scores: Option<(&Path, Option<&str>)>,
     ) -> Result<Self, String> {
         let path = assets::clients_dir().join("layouts").join("shell.toml");
         let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -461,7 +465,7 @@ impl Drawer {
             &layout,
             (&batch, &tables),
             &lods,
-            (install, maps, &games),
+            (install, maps, listed.then_some(games.as_path())),
             (scores_tables, pictures),
             bugs,
         )?;
@@ -609,14 +613,18 @@ const MONSTER: u32 = 54;
 fn scores_tables(
     look: &ScoresLook,
     lods: &Lods,
-    file: Option<(&Path, &str)>,
+    file: Option<(&Path, Option<&str>)>,
 ) -> Result<(ScoresTables, std::collections::BTreeMap<i32, String>), String> {
     let bytes = lods.lookup("CAMPHIGH.TXT")?;
     let table =
         h3_formats::text::TextTable::parse(&bytes).map_err(|e| format!("CAMPHIGH.TXT: {e:?}"))?;
-    let defaults = Tables::defaults(&table.records)
-        .ok_or("CAMPHIGH.TXT: not 23 records of the player, the land, the days and the score")?;
+    // The headers 0 and 12 and the rows 1 to 11 and 13 to 23 (E27 M4 T6, the review's A5).
+    let defaults = Tables::defaults(&table.records).ok_or(
+        "CAMPHIGH.TXT: fewer than 24 records (the headers 0 and 12, the rows 1 to 11 and 13 to \
+         23), or a row without the player, the land, the days and the score",
+    )?;
     let tables = file
+        .and_then(|(path, text)| Some((path, text?)))
         .map(|(path, text)| Tables::read(text).map_err(|e| format!("{}: {e}", path.display())))
         .transpose()?;
     // Latin-1, one byte a character; the first line the count.
@@ -647,13 +655,23 @@ fn scores_tables(
             Some((c, def.clone()))
         })
         .collect();
-    Ok((ScoresTables { defaults, tables }, defs))
+    let file = file.map(|(path, _)| path.to_path_buf());
+    Ok((
+        ScoresTables {
+            defaults,
+            tables,
+            file,
+        },
+        defs,
+    ))
 }
 
-/// High Scores' tables as the start reads them (E27 M4 T1b): the defaults, and a scores file's.
+/// High Scores' tables as the start reads them (E27 M4 T1b): the defaults, and a scores file's;
+/// the window's file, which its error box names (T6; none in the replay, which writes none).
 struct ScoresTables {
     defaults: Tables,
     tables: Option<Tables>,
+    file: Option<PathBuf>,
 }
 
 /// Each creature's picture: its DEF and the frames of its group 0 in `batch` (0 when the batch
@@ -675,12 +693,13 @@ fn creature_pictures(batch: &Batch, defs: std::collections::BTreeMap<i32, String
 /// `shell.main-menu.help.<button>`, `shell.game-type.help.<button>`: Load Game's the same as New
 /// Game's), and the stubs' notices (T6b2: `shell.stub.<screen>`, the client's own pack's, style
 /// 1), framed in the viewing player's colours; High Scores (E27 M4 T1a) with `scores`' tables and
-/// creatures, its headings and Reset's question (T1b) the user's tables' (`shell.high-scores.*`).
+/// creatures, its headings and Reset's question (T1b) the user's tables' (`shell.high-scores.*`);
+/// the load mode's screen over the saves of `games` (none given: none yet, E27 M4 T6).
 fn menus(
     layout: &ShellLayout,
     (batch, tables): (&Batch, &h3_view::tables::Tables),
     lods: &Lods,
-    (install, maps, games): (&Path, Option<&[String]>, &Path),
+    (install, maps, games): (&Path, Option<&[String]>, Option<&Path>),
     (scores_tables, pictures): (ScoresTables, Pictures),
     bugs: Bugs,
 ) -> Result<(Menus, GameRuleset, PlayNotices, crate::saves::Broken), String> {
@@ -908,14 +927,53 @@ fn menus(
         // E27 M4 T5b1: the hot seat's load's Show Saved Games (GENRLTXT 656).
         list_saved: text("shell.scenario.list-saved"),
     };
+    // High Scores (E27 M4 T1a), the scores file's error box at a failed write named after the
+    // window's file (T6, the review's item 7: `file_error_box`, GENRLTXT 11, style 1; the
+    // original's names the file alone, `high_score_file_name`, the client's the path it writes).
+    let scores_screen = Scores::new(
+        layout.high_scores.clone(),
+        scores::Texts {
+            rank: text("shell.high-scores.rank"),
+            player: text("shell.high-scores.player"),
+            land: text("shell.high-scores.land"),
+            days: text("shell.high-scores.days"),
+            campaign: text("shell.high-scores.campaign"),
+            score: text("shell.high-scores.score"),
+        },
+        scores_tables.defaults.clone(),
+        pictures,
+        laid("shell.high-scores.reset", Style::OkCancel),
+        bugs,
+    )
+    .with_tables(scores_tables.tables.unwrap_or(scores_tables.defaults));
+    let scores_screen = match &scores_tables.file {
+        Some(path) => {
+            let args = Args::new().text("file", &path.display().to_string());
+            scores_screen.with_file_error(message::layout(
+                &layout.message,
+                fonts,
+                &catalogue.text("shell.high-scores.file-error", &args),
+                Style::Ok,
+                None,
+                (menu::BOX_PLAYER, bugs),
+            ))
+        }
+        None => scores_screen,
+    };
     // A save the client cannot list (E27 M4 T4b1: GENRLTXT 431, 505).
     let broken = crate::saves::Broken {
         name: text("shell.scenario.broken-name"),
         description: text("shell.scenario.broken"),
     };
-    // The load mode's screen (E27 M4 T4b1): the saves of `games`, their dates at the zone's
-    // present offset.
+    // The load mode's screen (E27 M4 T4b1): the saves of `games` (the replay's; T6, the
+    // review's B4: the window's none until its first opening lists them), their dates at the
+    // zone's present offset (the window's read again at each opening, the review's B2).
     let offset = h3_sdl::local_offset().unwrap_or(0);
+    let saves = games.map_or_else(Vec::new, |games| {
+        let listing = crate::saves::listing(games, install, &rules, &broken);
+        tell_unread(&listing.unread);
+        listing.entries
+    });
     let load = Scenario::new(
         layout.scenario.dialog.clone(),
         (
@@ -923,7 +981,7 @@ fn menus(
             layout.scenario.description.clone(),
         ),
         scenario_texts.clone(),
-        crate::saves::entries(games, install, &rules, &broken),
+        saves,
         bugs,
     )
     .loading(&layout.scenario.load_begin, offset);
@@ -958,22 +1016,7 @@ fn menus(
         .with_random_offers(crate::maps::random_offers(&rules)),
         load,
         // High Scores (E27 M4 T1a).
-        scores: Scores::new(
-            layout.high_scores.clone(),
-            scores::Texts {
-                rank: text("shell.high-scores.rank"),
-                player: text("shell.high-scores.player"),
-                land: text("shell.high-scores.land"),
-                days: text("shell.high-scores.days"),
-                campaign: text("shell.high-scores.campaign"),
-                score: text("shell.high-scores.score"),
-            },
-            scores_tables.defaults.clone(),
-            pictures,
-            laid("shell.high-scores.reset", Style::OkCancel),
-            bugs,
-        )
-        .with_tables(scores_tables.tables.unwrap_or(scores_tables.defaults)),
+        scores: scores_screen,
         // The credits (E27 M4 T2): Credits.txt's two records, the text's lines counted in its
         // font.
         credits: Credits::laid(
@@ -1572,15 +1615,18 @@ fn in_window(
     // The save the load mode's Load named, and the game it loaded, kept for E24 M5 (E27 M4 T4b2);
     // the hot seat's load's names by colour (E27 M4 T5b1, CLT-Q160 (a): who is human after the
     // load, E24 M5's to apply over the loaded game).
+    // Who is human in the loaded game is kept beside it (E27 M4 T6: the hot seat's names, or a
+    // single load's current player alone, CLT-Q170 (a)).
     let mut to_load: Option<PathBuf> = None;
-    let mut loaded: Option<crate::save::Loaded> = None;
+    let mut loaded: Option<(crate::save::Loaded, Option<crate::save::Humans>)> = None;
     let mut seated: Option<[Option<String>; 8]> = None;
     loop {
         let playing = shell.screen() == Screen::Start;
-        // Play's fade (T6) steps every 50 ms, the credits every 100 (E27 M4 T2): the window's
-        // wait as the start's.
+        // Play's fade (T6) steps every 50 ms, the credits every 100 (E27 M4 T2), High Scores'
+        // creatures once more than 200 ms passed (T1a; T6, the review's A3: under the idle 50 ms
+        // wait their pace was 200 to 250 ms): the window's wait as the start's.
         let fading = matches!(&front, Some(Front::Play(p)) if !p.noticing())
-            || matches!(&front, Some(Front::Credits(_)));
+            || matches!(&front, Some(Front::Credits(_) | Front::Scores(_)));
         // The edits' typing (T7b): text input while one has the focus.
         win.set_text_input(front.as_ref().is_some_and(Front::typing));
         // A held key's repeats on the scenario screen (E27 M4 T4b1: the original queues every key
@@ -1644,13 +1690,10 @@ fn in_window(
             }
             dirty |= did.changed;
             // High Scores' Reset (E27 M4 T1b): the scores file written whole as its OK resets
-            // the tables (the original's HiScore.dat; a failure told, *provisional*: the
-            // original's `file_error_box`).
-            if let Some(Front::Scores(s)) = front.as_mut()
-                && let Some(text) = s.take_save()
-                && let Err(e) = crate::window::write_whole(scores, &text)
-            {
-                eprintln!("h3-view shell: scores: {}: {e}", scores.display());
+            // the tables (the original's HiScore.dat); a failure told on standard error and by
+            // the original's `file_error_box` over the dialog (T6, the review's item 7).
+            if let Some(Front::Scores(s)) = front.as_mut() {
+                dirty |= save_scores(s, scores, crate::window::write_whole);
             }
             // The load mode's Delete (E27 M4 T4b2): its OK deletes the file from the client's own
             // folder (the original does not check its `DeleteFileA`: a failure told).
@@ -1683,7 +1726,7 @@ fn in_window(
                 if let (Ended::Play(_), Some(game)) = (ended, game.take()) {
                     eprintln!("h3-view shell: {} left (E24 M5 hosts it)", game.file);
                 }
-                if let (Ended::Play(_), Some(loaded)) = (ended, loaded.take()) {
+                if let (Ended::Play(_), Some((loaded, _))) = (ended, loaded.take()) {
                     eprintln!("h3-view shell: {} left (E24 M5 hosts it)", loaded.game.file);
                     seated = None;
                 }
@@ -1799,9 +1842,13 @@ fn in_window(
             ) = shell.screen()
             {
                 let install = options.install.as_path();
-                let saves =
-                    crate::saves::entries(&drawer.games, install, &drawer.rules, &drawer.broken);
-                menus.load.set_entries(saves);
+                let listing =
+                    crate::saves::listing(&drawer.games, install, &drawer.rules, &drawer.broken);
+                // What the listing could not read told once a listing (E27 M4 T6, the review's
+                // B5 and B7), the zone's present offset read anew (B2).
+                tell_unread(&listing.unread);
+                menus.load.set_entries(listing.entries);
+                menus.load.set_offset(h3_sdl::local_offset().unwrap_or(0));
             }
             front = menus.front(shell.screen(), previous.take(), pointer.unwrap_or(PARK));
             // The scenario screen's background, the client's own draw (E27 M3 T1a, a look):
@@ -1855,11 +1902,12 @@ fn in_window(
                             game.game.file,
                             game.state.day()
                         );
-                        // The hot seat's names decide who is human (CLT-Q160 (a)): E24 M5's.
-                        if let Some(names) = &seated {
-                            eprintln!("h3-view shell: the hot seat's names by colour {names:?}");
-                        }
-                        loaded = Some(game);
+                        // The hot seat's names decide who is human (CLT-Q160 (a)); a single load
+                        // makes the current player the only one (E27 M4 T6, CLT-Q170 (a)): E24
+                        // M5's to apply.
+                        let humans = game.humans(seated.take());
+                        eprintln!("h3-view shell: who is human after the load: {humans:?}");
+                        loaded = Some((game, humans));
                         Some(&drawer.play.loaded)
                     }
                     Some(Err(e)) => {
@@ -1904,6 +1952,35 @@ fn in_window(
             };
             win.present(&frame.xrgb())?;
             dirty = false;
+        }
+    }
+}
+
+/// What a listing of the saves could not read (E27 M4 T6, the review's B5 and B7:
+/// `crate::saves::Listing::unread`), a line each on standard error.
+fn tell_unread(unread: &[String]) {
+    for line in unread {
+        eprintln!("h3-view shell: saves: {line}");
+    }
+}
+
+/// High Scores' scores file written at `path` by `write` when Reset's OK set the tables since the
+/// last time (E27 M4 T1b: `Scores::take_save`); a failure told on standard error, the path and
+/// the reason, and by the original's `file_error_box` over the dialog (T6, the review's item 7:
+/// `Scores::write_failed`). Whether what shows changed.
+fn save_scores(
+    s: &mut Scores,
+    path: &Path,
+    write: impl FnOnce(&Path, &str) -> io::Result<()>,
+) -> bool {
+    let Some(text) = s.take_save() else {
+        return false;
+    };
+    match write(path, &text) {
+        Ok(()) => false,
+        Err(e) => {
+            eprintln!("h3-view shell: scores: {}: {e}", path.display());
+            s.write_failed()
         }
     }
 }
@@ -2030,7 +2107,8 @@ mod tests {
     use std::path::{Path, PathBuf};
 
     use super::{
-        Given, Mode, Options, PARK, loaded_game, merged, refused_word, scores_text, skips_start,
+        Given, Mode, Options, PARK, loaded_game, merged, refused_word, save_scores, scores_text,
+        skips_start,
     };
     use h3_sdl::{Event, Key, KeyScan};
     use h3_ui::keys::Keys;
@@ -2260,5 +2338,85 @@ mod tests {
         assert!(loaded_game(&path, (&dir, &rules), &mut || steps += 1).is_err());
         assert_eq!(steps, 1);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// E27 M4 T6 (the review's item 7, A7): Reset's OK writes the scores file; a failed write
+    /// shows the file's error box over High Scores (and is told on standard error).
+    #[test]
+    fn a_failed_write_of_the_scores_file_shows_its_error_box() {
+        use h3_assets::fnt::{Font, Glyph};
+        use h3_render::Bugs;
+        use h3_ui::ui::Item;
+        use h3_view::message::{self, Key, Style};
+        use h3_view::shell::scores::{Pictures, RESET, Scores, Tables, Texts};
+        let path = crate::assets::clients_dir()
+            .join("layouts")
+            .join("shell.toml");
+        let layout =
+            h3_view::shell::look::parse_layout(&fs::read_to_string(path).unwrap()).unwrap();
+        let glyph = Glyph {
+            left: 0,
+            width: 8,
+            right: 0,
+            pixels: Vec::new(),
+        };
+        let font = Font {
+            height: 16,
+            y_offset: 0,
+            glyphs: vec![glyph; 256],
+        };
+        let laid = |text: &str, style| {
+            message::layout(
+                &layout.message,
+                (&font, &font),
+                text,
+                style,
+                None,
+                (h3_view::shell::menu::BOX_PLAYER, Bugs::Fixed),
+            )
+        };
+        let records: Vec<Vec<String>> = (0..24)
+            .map(|r| (0..5).map(|f| format!("{}", r * 10 + f)).collect())
+            .collect();
+        let mut s = Scores::new(
+            layout.high_scores.clone(),
+            Texts::default(),
+            Tables::defaults(&records).unwrap(),
+            Pictures::new(),
+            laid("Reset?", Style::OkCancel),
+            Bugs::Fixed,
+        )
+        .with_file_error(laid("Error opening file scores.toml!", Style::Ok));
+        let reset = layout
+            .high_scores
+            .dialog
+            .items
+            .iter()
+            .find_map(|i| match i {
+                Item::Button(b) if b.id == RESET => Some([b.at[0] + 5, b.at[1] + 5]),
+                _ => None,
+            })
+            .unwrap();
+        let reset_ok = |s: &mut Scores| {
+            s.press(reset);
+            s.release();
+            s.key(Some(Command::Message(Key::Ok)), "Return");
+            s.key_up("Return");
+            assert!(s.question().is_none());
+        };
+        let dir = Path::new("no/such/scores.toml");
+        // Nothing due: nothing written.
+        assert!(!save_scores(&mut s, dir, |_, _| panic!("written")));
+        reset_ok(&mut s);
+        let mut written = None;
+        assert!(!save_scores(&mut s, dir, |_, text| {
+            written = Some(text.to_owned());
+            Ok(())
+        }));
+        assert!(written.is_some_and(|t| t.contains("version = 1")));
+        assert!(s.question().is_none());
+        reset_ok(&mut s);
+        assert!(save_scores(&mut s, dir, crate::window::write_whole));
+        assert!(s.question().is_some());
     }
 }

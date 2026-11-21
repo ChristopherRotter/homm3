@@ -199,6 +199,29 @@ fn a_hill_forts_visit_opens_its_decision_for_its_owner_until_it_is_left() {
     assert_eq!(default_answer(&left, &rules, RED), None);
 }
 
+// covers: GAM-DEC-001, GAM-DEC-013
+#[test]
+fn another_players_answer_to_a_hill_forts_open_decision_is_refused() {
+    // Red's Hill Fort open; blue (no decision of its own) answers it with a valid-looking answer
+    // of its kind: refused, nothing changed or told ([`play`] checks it).
+    let rules = fort_rules();
+    let (mut state, _) = at_fort(&rules, 3);
+    let answers = [
+        HillFortAnswer::Upgrade(0),
+        HillFortAnswer::All,
+        HillFortAnswer::Leave,
+    ];
+    for answer in answers {
+        assert_eq!(
+            play(&mut state, &rules, BLUE, fort(answer)),
+            Err(GameCommandError::NoDecision),
+            "{answer:?}"
+        );
+    }
+    assert!(state.hill_fort(RED).is_some());
+    assert_eq!(state.hill_fort(BLUE), None);
+}
+
 // covers: GAM-DEC-013, ADV-HFT-002
 #[test]
 fn a_rows_upgrade_pays_its_price_and_upgrades_the_stack_keeping_the_fort_open() {

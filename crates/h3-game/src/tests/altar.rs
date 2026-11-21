@@ -134,7 +134,7 @@ fn view(state: &GameState, rules: &GameRuleset) -> AltarView {
     }
 }
 
-// covers: GAM-DEC-012, ADV-ALT-001, ADV-BON-009
+// covers: GAM-DEC-012, ADV-ALT-001, ADV-ALT-002, ADV-ALT-003, ADV-BON-009
 #[test]
 fn an_altars_visit_opens_its_decision_for_its_owner_until_it_is_left() {
     let rules = altar_rules();
@@ -230,6 +230,29 @@ fn an_altars_visit_opens_its_decision_for_its_owner_until_it_is_left() {
         left.adventure().hero(HERO).unwrap().army,
         state.adventure().hero(HERO).unwrap().army
     );
+}
+
+// covers: GAM-DEC-001, GAM-DEC-012
+#[test]
+fn another_players_answer_to_an_altars_open_decision_is_refused() {
+    // Red's Altar open; blue (no decision of its own) answers it with a valid-looking answer of
+    // its kind: refused, nothing changed or told ([`play`] checks it).
+    let rules = altar_rules();
+    let (mut state, _) = at_altar(&rules, 0, vec![(LORE, 1)]);
+    let answers = [
+        artifacts(&[worn(2)]),
+        altar(AltarAnswer::Creatures([0, 8, 0, 0, 0, 0, 0])),
+        altar(AltarAnswer::Leave),
+    ];
+    for answer in answers {
+        assert_eq!(
+            play(&mut state, &rules, BLUE, answer.clone()),
+            Err(GameCommandError::NoDecision),
+            "{answer:?}"
+        );
+    }
+    assert!(state.altar(RED).is_some());
+    assert_eq!(state.altar(BLUE), None);
 }
 
 // covers: ADV-ALT-002, GAM-DEC-012, HER-EXP-001

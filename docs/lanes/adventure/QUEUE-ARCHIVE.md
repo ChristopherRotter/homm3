@@ -2366,3 +2366,133 @@ design note §4, §5, §10, §11's upgrade and factory, §15, §16; survey `E08-
   of its commands kept, the same features; your T135b1's seven `trades-*` too (hash lines and
   versions only). `TownSetup` gained two fields: every struct literal
   (`h3-map`'s examples and `tests/towns.rs`) has them. `GameSetupError::TownSpell` is new. *(Settled: the HANDOFF's versions line names v38 and v28 taken, the next v39 and v29.)*
+
+## T136 (moved 2026-11-21, done whole: `adventure/e08-t136`, decision 393; increment 14 closed, increment 15 refined: decisions 394, 395; T137a and T137b queued)
+
+The "Tasks" text as it stood:
+
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T126 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 13 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18; increment 13, creature banks, by T126's audit). **Increment 14, the trades and services**, refined with the user at T126 (ADV-Q56; decisions 361, 362): round 1 done: the survey (T127a1, T127a2; decision 363) and the drafts with the design note and the cut (T127b, whole: decision 369); the checkpoints ADV-Q57 and ADV-Q58 answered (decisions 365 to 368, 370 to 373). The building tasks T128 to T136 (decision 373, design note §21): T128 done (decision 374), T129a and T129b done (decisions 376, 377), T130 done (batch E14 scored; the checkpoint ADV-Q59: decisions 378, 379), T131 done (the `shared/` task), T132a1 and T132a2 done (the rates, the kinds; decisions 380, 381), T132b done (the import; decision 382), T133 cut in three (decision 383): T133a1 and T133a2 done (the stock and its draw; the visit and the adventure's checks), T133b done (the decision and its wire; decision 384), T134a done (the Altar with its wire; decisions 385, 386), T134b in two (decision 387): T134b1 done (the Hill Fort with its wire), T134b2 done (the factory; decision 388), T135a done (the listing and the env's entries; decisions 389, 390), T135b in two (decision 391): T135b1 done (the two maps and seven golden replays), T135b2 done (whole, decision 392: the plans and oracles, the two workloads, the original data). Round 9: T136 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+
+**E08 T136 — increment 14's audit** (round 9; design `E08-design.md` §21's exit criteria)
+
+- **Scope** (`adventure/e08-t136`): the audit against the ten exit criteria with a fresh reviewer;
+  increment 14 closed (its scope, decisions 361 to 392 and tasks to `E08-archive.md`, the design
+  note to `E08-log.md`; the README's epic table in the session's `shared/` pull request);
+  increment 15 refined with the user (the sketch's item 15, quests, or another order). Criterion
+  10's benchmarks: T135b2 baselined the two new workloads and found no other on a map with a
+  trade (its record in `E08-log.md`).
+- **Inputs:** design §21 (the exit criteria), §18's *As built*; T126's audit (`E08-log.md`) as the
+  form; the epic's sketch.
+- **Depends on:** T135b2 (`adventure/e08-t135b2`, merged first). **Status:** ready once T135b2
+  merges (the original data to stage for criterion 1's census and criterion 10's gates); its cut
+  confirmed at its start.
+
+## Inbox notes settled at E08 T136 (2026-11-21)
+
+The town lane's notes of changes in this lane's paths (E09 T33b to T46), built on by T127 to T135b2; their lasting rules one line in `TRAPS.md` ("The town lane's parts of your crates").
+
+- 2026-11-20 (the town lane, E09 T46, `town/e09-t46`, `cross-lane` with the user's consent;
+  **your replays' header, mechanical; act only at a merge**): the town ruleset part v9 (the mage
+  guild's weights, roles and parameters) moves `town_ruleset_hash` 0xab3ee3f1cb243f30 to
+  **0xcf8db1aa2bb768d2** in all 104 golden adventure replays, re-recorded from their commands
+  (nothing else moved: no state reads the part's new fields until E09 T47a). A branch of yours
+  that re-records goldens across this merge keeps the new line. `h3-game`'s `tests/mod.rs` town
+  pack literal gained the new fields (`guild`, `guild_slots`, `spell_book_price`,
+  `vortex_factor`).
+
+- 2026-11-20 (the town lane, E09 T45, `shared/e09-t45`, `cross-lane` with the user's consent;
+  **your replays' header, mechanical; act only at a merge**): one `quirk.town` flag
+  (`QuirkFlag(44)`, `quirk.town.aurora_ignores_map_bans`, `TWN-QUIRK-14`, on in `faithful`) moves
+  the base faithful ruleset hash 0x6ba8109889b34a25 to **0x36b98ea152b4db95**: the 101 golden
+  adventure replays on it re-recorded from their commands (only `ruleset_hash` moved; the three
+  `strict-fixed` ones and the ten battle replays unchanged). A branch of yours that re-records
+  goldens across this merge keeps the new hash (re-record after merging `master`). Also: ADR-0016
+  point 4's kind `Town` holds E09 increment 5's `AdventureOutcome::town_entered` (T45a).
+
+- 2026-11-20 (the town lane, E09 T44, `town/e09-t44`, `cross-lane`; **a field in your writer and
+  the harness's town screen; nothing to do now**): `h3_map::writer::Map` gains `banned_spells:
+  Vec<u8>` (the header's nine bytes, refused past 70 and in RoE) beside `banned_skills` and
+  `banned_artifacts`; every literal in the workspace and the clients got `banned_spells:
+  Vec::new()`, so a new `Map { .. }` literal in an open branch of yours needs it too. The town's
+  `AnyTown::spells` (`TownSpells`) is the town lane's. The capture harness: a walk's town screen
+  now waits for the screen to settle and passes a message that comes over it (the Mana Vortex's)
+  before its `actions`; `hall = true` hovers the hall's box until the status line names it; new
+  reads `town:x,y:guild`, `:guild_level`, `:week_flag`, `:standing` (`clients/capture/README.md`,
+  "Towns"). The harness's own check passed after.
+
+- 2026-11-19 (the town lane, E09 T39b2, `town/e09-t39b2`, `cross-lane` with the user's consent, E09
+  decisions 151, 154; **your paths changed, for your review; no version moved**): a Den of
+  Thieves' visit sets `AdventureOutcome::thieves_guild` (a flag, `command.rs`; `state.rs`' `visit`,
+  `TWN-STUB-20` lifted; `Effect::DenOfThieves`' doc in `ruleset/objects.rs`); `h3-game`'s
+  `settle_outcome` tells it last through the town lane's `town::thieves::tell_den` (`state.rs`),
+  as `GameEvent::ThievesGuildSeen { player, level }` then `GuildPartSeen { player, part }` per
+  part (`command.rs`; the owner's alone in `observe.rs`' `project`); `h3-map`'s told views
+  (`tests/view.rs`) take both as the viewer's own; ADV-VIS-008's summary. Nothing is stored (a
+  sink that keeps nothing is told nothing): no hash moved. The census: the 98 goldens' 12 maps
+  lay out no Den, nothing re-recorded.
+
+- 2026-11-19 (the town lane, E09 T39b1, `town/e09-t39b1`, `cross-lane` with the user's consent, E09
+  decisions 151, 152; **your paths changed, for your review; the town part v8 moved your goldens'
+  `town_ruleset_hash`**): `h3_adventure::army_value` (split out of `power`, `answer.rs`) and
+  `power` are public, exported from `lib.rs` (ADV-MON-007's summary a sentence); `h3_heroes::
+  primary_skills` (the four effective primary skills beside `attack_defense`, HER-ADV-001's
+  summary a sentence, a test in `tests/derive.rs`); `h3-game`'s `GameState::day_income`
+  (`pub(crate)`, factored out of `pay_income` in `state/day.rs`, the same sums: the Thieves'
+  Guild's income row reads its gold). The town part v8 (`guild_resources`) moved all 98 goldens'
+  `town_ruleset_hash` 0xabc9756b93a29a55 to 0xab3ee3f1cb243f30 (nothing else: the guild changes
+  no state); a replay recorded on a branch from before the merge carries the old line. Next, E09
+  T39b2 adds the Den of Thieves' outcome in your `visit` (`TWN-STUB-20`), as T39a planned.
+
+- 2026-11-18 (the town lane, E09 T39a, `town/e09-t39a`, `cross-lane` with the user's consent, E09
+  decision 149; **your paths changed, for your review; map import v26, part v22, game state hash
+  v34 and replay format v19 taken**): two kinds, `ObjectKind::Tavern` (ADV-VIS-007: visited from
+  a neighbour, its visit `AdventureOutcome::tavern`, an `h3_adventure::TavernVisit`) and
+  `ObjectKind::DenOfThieves` (ADV-VIS-008: entered, its visit nothing until E09 T39b,
+  `TWN-STUB-20` in `state.rs`' `visit`), their `Effect`s, defs (`tavern = {}`,
+  `den_of_thieves = {}`), the visit-mode checks and hash tags 45, 46 (`ruleset/objects.rs`,
+  **adventure part v22**); the base pack's `base:tavern` and `base:den_of_thieves` appended last
+  among base's types, so the AB and SoD types' ids moved by 2 (the duel's and the sea's replays'
+  hashes with them); `h3-map`'s `codes.rs` types classes 95 and 97 (**map import v26**; the
+  typed-classes test's cases, `tests/taverns.rs`). `h3-game`: `Decision::Tavern` (hash kind 9,
+  **game state hash v34**), `Answer::Tavern(TavernAnswer)`, `GameCommandError::Tavern`,
+  `GameEvent::TavernOpened`, `DecisionView::Tavern`, `GameState::tavern`, the answer's arm in
+  `state.rs` (the hire is the town lane's `town::hire::map_hire`), the listing and the default
+  answer in `legal.rs`. `check_stand`'s doc: a map Tavern's hire places a hero on a
+  neighbour-visited tile. The replay format **v19** (`answer tavern hire <slot>|close`): the 98
+  goldens re-recorded from their commands (only the version lines, the part hash, the
+  checkpoints and `final_hash` moved), `h3-cli`'s literals, `h3-server`'s `tests/record.rs`; the
+  bots tables' `engine.adventure` line. The plans name the kind in `settle` and `hiring` only.
+  Your next bumps: import v27, part v23, game state hash v35, replay format v20.
+
+- 2026-11-18 (the town lane, E09 T38b2, `town/e09-t38b2`, `cross-lane` with the user's consent;
+  **your paths changed, for your review; replay format v18 taken**): `h3_game::Manage::Dismiss
+  { hero }` (GAM-MAN-003) with `ManageError::{NotOnMap, InTown, LastHero}` (`manage.rs`),
+  applied in `state/manage.rs` (`DecisionOpen` unless no decision is open) through the town
+  lane's `town::leave::dismiss`; `legal_management` lists it last, outside a decision
+  (`legal.rs`), so `tests/manage.rs`' and `tests/exchanges.rs`' candidates hold it.
+  `AdventureState::remove_hero((player, hero))` (`state.rs`): `end_battle`'s removal (the marks,
+  `HeroRemoved`, the boat) is one private `remove_at` that both use. The adventure replay format
+  is **v18** (`dismiss <hero>`, a bare management word; `h3-files`' word and doc, `h3-sim`'s
+  `REPLAY_FORMAT_VERSION`, the 98 goldens' `format` line only, `h3-cli`'s and `h3-sim`'s
+  literals): your next bump is v19. The plans (`h3-map`'s `tests/play.rs`): `managing` leaves
+  the dismissals out, `dismissal` plays one in one `Step::Manage` of sixteen, and
+  `check_management`, `check_conservation` and `check_isolation` know it. No hash version moved.
+
+- 2026-11-16 (the town lane, E09 T33b, `town/e09-t33b`, docs only; **planned `cross-lane` changes
+  in your paths, for your planning; nothing changed yet**): E09 increment 4's drafts are accepted
+  (`TWN-Q18`; `docs/lanes/town/adr-drafts/0016-`, `0017-increment-4.md`; the building tasks T34 to
+  T41 in `docs/epics/E09-design.md` §79, the order against your increment 13 there). In your
+  paths, each `cross-lane` with the user's consent at its task: T35 amends ADR-0016 and -0017
+  (merge order with your T122); T37a the game state hash (the pool's `Offered`, records and away
+  records, the players' factions and tavern slots, `StreamId::TAVERNS`) and the week's step (the
+  taverns' week after the towns'); T37b `GameSetup`'s customised hero types and the import (after
+  your T123's map import v24); T38a the adventure's placement of a hired hero (ADR-0016 point 3:
+  a town's entrance or a map Tavern's visited tile, with its away record; `HeroHired`), `legal.rs`,
+  the replay format (`town hire`); T38b a hero that leaves the game composed after your battle's
+  end in `state/battle.rs` (merge order with your T124b), the dismissal `Manage::Dismiss`
+  (`manage dismiss`); T39a the kinds `Tavern` (class 95, visited from a neighbour) and
+  `DenOfThieves` (class 97, entered; every visit tells the game's Thieves' Guild) in the adventure
+  part, the import and the writer (after your T123); T39b `h3_adventure`'s `answer::power`
+  (ADV-MON-007) made public for the guild's army row and best hero, and the day's gold factored
+  out of `GameState::pay_income`. T34's fixture needs the writer's classes 95 and 97 (as your
+  T119's banks).

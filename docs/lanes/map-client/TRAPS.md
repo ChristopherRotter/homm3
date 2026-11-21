@@ -190,6 +190,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   offers, Necromancy's sound); the inputs after it count from its `battle` line's millisecond (the
   battle takes none of the sequence's time), and from its result window until the map is the
   active manager again nothing is kept.
+- **A battle sequence is a scripted game** (M4 T5b2, design §5.21): the viewer hands over only a
+  record's battle, so the situation must agree with the engine's start (the new game's explored
+  tiles, the gold bonus: a random one may give an artifact that widens the hero's sight) and the
+  engine's draws (guards' counts, a mine's split) come from the map and its `engine_seed`: write
+  them for the original (`visits`' guards) after reading the record, search seeds for a count whose
+  experience reaches no level (a level-up's dialog holds the map), and keep the engine's script's
+  battle commands in step (a changed map or seed changes them: `system battle defend` for the
+  guards, the attacker's shots read from the record's legal commands).
 - **Two tests pin the recorded sequences** (M4 T2d1): moving a task's sequences from
   `to-record.toml` into `sequences.toml` fails `sequence::tests::reads_the_recorded_sequences`
   (their count) and `timeline::tests::the_walks_frames_are_m2_t3bs` (the ids replayed, in order)

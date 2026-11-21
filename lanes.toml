@@ -17,7 +17,8 @@
 # `h3-harvest`, `h3-experiment`) are battle's until a formats/tools lane opens. The AI lane took
 # `h3-sim` and `h3-ffi` at E05 (the user, 2026-10-18, AI-Q1). The battle lane leads E11 (the
 # user, 2026-10-24, Q58). The town lane builds E09 in parallel with the adventure lane (the user,
-# 2026-10-31, TWN-Q1). The epics E15 and E18–E20 have no lane yet: their files get a pattern
+# 2026-10-31, TWN-Q1). The rmg lane ports the original's random map generator, E14 (the user,
+# 2026-11-21, RMG-Q1). The epics E15 and E18–E20 have no lane yet: their files get a pattern
 # here when they start.
 
 [shared]
@@ -121,6 +122,7 @@ paths = [
     "docs/lanes/map-client/QUEUE.md",
     "docs/lanes/server/QUEUE.md",
     "docs/lanes/town/QUEUE.md",
+    "docs/lanes/rmg/QUEUE.md",
 ]
 
 [[lane]]
@@ -199,27 +201,19 @@ paths = [
     "docs/rules/surveys/E08*",
     "docs/rules/surveys/E10*",
     "docs/rules/surveys/E12*",
-    "docs/rules/surveys/E13*",
-    "docs/rules/surveys/E14*",
     # Experiments in the original game follow the epic prefix (`experiments/specs/E07-batch-1.toml`).
     "experiments/specs/E07*",
     "experiments/specs/E08*",
     "experiments/specs/E10*",
     "experiments/specs/E12*",
-    "experiments/specs/E13*",
-    "experiments/specs/E14*",
     "experiments/results/E07*",
     "experiments/results/E08*",
     "experiments/results/E10*",
     "experiments/results/E12*",
-    "experiments/results/E13*",
-    "experiments/results/E14*",
     "docs/epics/E07*",
     "docs/epics/E08*",
     "docs/epics/E10*",
     "docs/epics/E12*",
-    "docs/epics/E13*",
-    "docs/epics/E14*",
     "docs/lanes/adventure/",
 ]
 
@@ -258,6 +252,29 @@ paths = [
     "experiments/results/E09*",
     "docs/epics/E09*",
     "docs/lanes/town/",
+]
+
+
+# The original's random map generator (E14; the user, 2026-11-21, RMG-Q1, opening the lane beside
+# the adventure lane's E08): its pure crate `h3-rmg` (made at E14 increment 2, a shared change),
+# each pack's `rmg.toml` (the template tables, harvested `cross-lane` through `h3-harvest`), the
+# RMG rules and quirks, E14's epic, surveys and experiments. The generator's output is written by
+# the adventure lane's `h3_map::writer`; a gap there goes to that lane's inbox.
+[[lane]]
+name = "rmg"
+code = "RMG"
+paths = [
+    "crates/h3-rmg/",
+    "packs/ab/rmg.toml",
+    "packs/sod/rmg.toml",
+    "packs/synthetic/rmg.toml",
+    "docs/rules/catalog/rmg.toml",
+    "docs/rules/quirks-rmg.md",
+    "docs/rules/surveys/E14*",
+    "experiments/specs/E14*",
+    "experiments/results/E14*",
+    "docs/epics/E14*",
+    "docs/lanes/rmg/",
 ]
 
 [[lane]]
@@ -315,5 +332,15 @@ paths = [
     "docs/epics/E05*",
     "docs/epics/E06*",
     "docs/epics/E25*",
+    # The adventure AI (E13) and the original's computer player (E31): the user, 2026-11-21,
+    # AI-Q21 (E13 moved from the adventure lane; the code reading's survey and experiments too).
+    "docs/epics/E13*",
+    "docs/epics/E31*",
+    "docs/rules/surveys/E13*",
+    "docs/rules/surveys/E31*",
+    "experiments/specs/E13*",
+    "experiments/specs/E31*",
+    "experiments/results/E13*",
+    "experiments/results/E31*",
     "docs/lanes/ai/",
 ]

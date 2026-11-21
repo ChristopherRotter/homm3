@@ -56,7 +56,9 @@ mod panels;
 mod played;
 pub mod visits;
 
-pub use played::{Command, Leveled, OtherStep, OtherTurn, OtherWalk, Played, Visit, played};
+pub use played::{
+    Battled, Command, Leveled, OtherStep, OtherTurn, OtherWalk, Played, Visit, played,
+};
 
 /// A random hero (class 70): the import places it as a hero, not a static object.
 const RANDOM_HERO: u32 = 70;

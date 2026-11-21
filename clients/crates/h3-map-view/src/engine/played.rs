@@ -181,6 +181,19 @@ pub struct Visit {
     pub events: Vec<GameEvent>,
     /// The answers after it, in order, each with its events.
     pub answers: Vec<(Answer, Vec<GameEvent>)>,
+    /// The battle it began (E24 M4 T5b2, design §5.21): its command's or an answer's.
+    pub battle: Option<Battled>,
+}
+
+/// The battle a visit began (E24 M4 T5b2, design §5.21, *provisional*): the record's number of
+/// the `GameEvents` whose `BattleStarted` began it, and the events from its `BattleEnded` on in
+/// the batch that ends it (its result, then its effects on the map); none before its end.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Battled {
+    /// The `GameEvents`' number.
+    pub started: u32,
+    /// The events from its end on.
+    pub ended: Vec<GameEvent>,
 }
 
 /// One of the viewer's heroes' level-ups in a record (E24 M4 T4b1, *provisional*): its dialog's
@@ -243,6 +256,8 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
     let slots = slots(&observation, viewer);
     // Whether the last command accepted is an answer that has begun no battle yet (E24 M4 T5b1).
     let mut answering = false;
+    // The visit whose battle is under way (E24 M4 T5b2).
+    let mut fighting: Option<usize> = None;
     for (i, message) in loaded.record.messages.iter().enumerate().skip(1) {
         match message {
             ServerMessage::GameAccepted { command, .. } => {
@@ -271,6 +286,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                                     at,
                                     events: Vec::new(),
                                     answers: Vec::new(),
+                                    battle: None,
                                 });
                                 true
                             }
@@ -307,6 +323,16 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                 if let Some(o) = &mut other {
                     o.stepped = false;
                 }
+                // A visit's battle ended (E24 M4 T5b2): its result and its effects on the map.
+                if let Some(k) = fighting
+                    && let Some(end) = events
+                        .iter()
+                        .position(|e| matches!(e, GameEvent::BattleEnded { .. }))
+                    && let Some(battle) = visits.get_mut(k).and_then(|v| v.battle.as_mut())
+                {
+                    battle.ended = events[end..].to_vec();
+                    fighting = None;
+                }
                 for event in events {
                     level(&mut levels, &mut pending, &observation, event);
                     observation.fold(event);
@@ -319,6 +345,14 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                         // The viewer's walk began a battle (E24 M4 T5b1, design §5.20): its end
                         // hands the battle over; an answer's, the box it closes.
                         GameEvent::BattleStarted { .. } => {
+                            // The visit's battle (E24 M4 T5b2): its end's events kept below.
+                            if visiting && let Some(visit) = visits.last_mut() {
+                                visit.battle = Some(Battled {
+                                    started: *n,
+                                    ended: Vec::new(),
+                                });
+                                fighting = Some(visits.len() - 1);
+                            }
                             if let Some(walk) = open.as_mut() {
                                 walk.battle.get_or_insert(*n);
                             } else if core::mem::take(&mut answering) {

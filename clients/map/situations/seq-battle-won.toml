@@ -3,13 +3,23 @@
 # Red's hero on (5, 5) with five Archers steps up onto the 15 Peasants on (5, 4): the power's ratio
 # about 3, so the savage Peasants fight (no question) and the Archers shoot them before they reach
 # them (the same outcome however the battle's clock runs). Red's town out of the way, so that no
-# visit's scenario test warns of a town lost; Blue's hero far off in the fog.
+# visit's scenario test warns of a town lost; Blue's hero far off.
+# Since T5b2 as the scripted games (sequences.toml): the new game's explored tiles, the gold bonus
+# (no artifact) and the resources written, shown by a second hero's selection (on (30, 5), far off).
 size = 36
 terrain = "grass"
-heroes = [{ at = [5, 5], class = 2, map_army = [[2, 5]] }, { at = [32, 32], owner = 1 }]
+heroes = [
+    { at = [5, 5], class = 2, map_army = [[2, 5]] },
+    { at = [30, 5], class = 5, map_army = [[28, 20]] },
+    { at = [32, 32], owner = 1 },
+]
 towns = [{ at = [16, 12], faction = 0, owner = 0, buildings = "fort" }]
 view = [0, 0, 0]
-hidden = [[20, 16, 35, 35]]
+explored = "start"
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { hero = [30, 5] }
+reselect = [5, 5]
 
 [[objects]]
 def = "AVWpeas.def"

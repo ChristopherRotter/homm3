@@ -520,6 +520,15 @@ The user, 2026-11-19 (M3 T7's start):
     under Wine against `kept/`, the reviewers' findings and M4's review list to the user; T6b the
     user's answers and their fixes, M4 to the archive, the README's row, M5's refinement or its
     prerequisites. T6a in the next session (the original files staged again).
+78. **T6 in one session; M4's review list accepted with the reviewers' changes; CLT-Q162 to
+    CLT-Q173** (the user, 2026-11-21: T6a and T6b in one session, then at T6a's end): items 7,
+    10, 19, 20, 38 and 41 changed as the reviewers proposed (36 superseded by 40), every finding
+    fixed in T6b but those on other lanes' paths (the replay's error wording and two comments of
+    `h3-files`, the `Replay` function of item 19, CLT-Q160 (a)'s and CLT-Q170 (a)'s hand-over:
+    the adventure and map-client lanes' inboxes); CLT-Q162 (b), Q163 (a), Q164 (b), Q165 (a),
+    Q166 (b), Q167 (a), Q168 (a), Q169 (b, built with M5's Save), Q170 (a, its hand-over built),
+    Q171 (a), Q172 (a); CLT-Q173: a save made under other rules or hash versions refused for now,
+    its reason told, the saves to be reworked later to be independent of the engine's version.
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -588,7 +597,7 @@ tasks are refined here.
 | M1 | (closed 2026-11-13) **Reading and captures:** the catalogue of the original's screens, each with its entry points, transitions, assets, texts (table and record) and sounds; the clips cut from the user's `VIDEO.VID`; the harness on every screen and its captures; the traps list; the questions the reading finds |
 | M2 | (closed 2026-11-16) **The start and the menus:** the Smacker decoder (decision 5); the clips at start and their sound; start-up loading by the LODs' tables (CLT-Q2); the main menu, New Game, Load Game's choice, Multiplayer and the hot seat's names, Quit's question, their hover, press, sounds and music, exact against the captures; the shell's state machine with a headless driver (the text client first, E17's pattern) |
 | M3 | (closed 2026-11-19) **A game's setup:** scenario selection, the players' setup, the advanced options, the game's begin (the filled `GameSetup` kept for E24 M5, CLT-Q135; the stubs of decision 6) |
-| M4 | (refined 2026-11-19) **Around play, outside it:** High Scores, Credits, the save file (the engine's record with the setup's choices, decision 69), Load Game single and hot seat |
+| M4 | (closed 2026-11-21) **Around play, outside it:** High Scores, Credits, the save file (the engine's record with the setup's choices, decision 69), Load Game single and hot seat |
 | M5 | **In play** (decision 69; refined once the shell hosts play, E24 M5): the system menu in play and Options, one dialog (with the map-client lane; decision 44), Save from play, Restart, the end of a scenario's screens |
 
 ### M1 — reading and captures (closed 2026-11-13)
@@ -611,163 +620,34 @@ Tasks T1a to T7 and the review list (accepted at T7 with its changes, decisions 
 §33. The scenario screen, its list, the advanced options, the random map's tab and the begin are
 M4's ground (its load mode reuses the list and the options' rows).
 
-### M4 — around play, outside it (refined 2026-11-19, M4 T0 at M3 T7)
+### M4 — around play, outside it (closed 2026-11-21)
 
-Decisions 8 and 69 bind it: the screens around play that need no play (High Scores, Credits, Load
-Game), a save the engine's adventure replay with the setup's choices and the client's own table
-(CLT-Q156 (a)); what play reaches (the options, Save, Restart, the end of a scenario) is M5's
-(CLT-Q155 (a)). Each screen exact against its group's shots, each of design §6.4's recipe fixes
-recorded by the task that builds its screen. The readings: design §2.8, §2.9, §3.1 to §3.6 (the
-load mode), §3.12 to §3.14 (a load's rows).
+Tasks T1a to T6b and the review list (accepted at T6 with its changes, decision 78):
+`E27-archive.md` (verbatim); the build record: `E27-log.md`; the readings: `E27-design.md` §34 to
+§44. High Scores, Credits, the save file (the engine's adventure replay with the setup's choices
+and the client's table), Load Game single and hot seat; Load's end keeps the loaded game and who
+is human after it for E24 M5 (`save::Loaded`, `save::Humans`).
 
-| Task | Scope | Status |
-|---|---|---|
-| T1a | High Scores (§2.8, §34; decision 70): the dialog, both tabs and their buttons and keys, the rows from `CampHigh.txt`'s defaults, the eleven creatures stepping (the adventure map's DEFs by `high_score_creatures`), M2's stub lifted, Reset a client's notice (CLT-STUB-14); exact against `scores-tabs` | done 2026-11-19 (`scores-tabs` 28 of 28 exact; CLT-Q157 (a)) |
-| T1b | High Scores' Reset (§2.8, §35): its question (GENRLTXT 667) resetting both tables to the defaults, the client's own scores file (read at the start, written at Reset; never `HiScore.dat`), CLT-STUB-14 lifted; exact against `scores-reset` | done 2026-11-19 (`scores-reset` 10 of 10 exact, `scores-tabs` 28 of 28; CLT-Q158 asked) |
-| T2 | Credits (§2.9): `Credits.fnt`, `Credits.txt`'s two records wrapped to 328 px, the scroll of 2 px ten times a second (CLT-Q88), the closing text's moment read from the kept frames, a key (but F4) or a press ending it, M2's stub lifted; exact against `credits-scroll`, `credits-end` | done 2026-11-19 (`credits-scroll` 5 of 5 exact, its scroll's 2 611 frames; `credits-end` 8 of 8; design §36) |
-| T3a | The save file's engine part (decisions 69, 71; `cross-lane`): the adventure replay format v20, `Replay::players` (each player's human flag, faction's choice and hero's pick, recorded from the setup, set over the import by `Replay::setup` when verifying, none the import's), its `[[players]]` tables in `h3-files`' file, the 104 golden replays recorded again (only the version and the players' lines moved) | done 2026-11-20 (the adventure lane's inbox: its increment 14 takes v21) |
-| T3b | The save file (decisions 69, 71): the client's own file, its table (the names, bonuses, handicaps, the turn's duration, the save's name) beside the engine's replay of T3a, written and read with its version; a load's setup rebuilt (`Replay::setup` over the map's import) and its commands replayed by the engine; tests, no screen | done 2026-11-20 (`h3-battle-client`'s `save`; design §37) |
-| T4a | Load Game single's reading and recordings (§38; decision 72): the date's order, the load mode's name, Delete's end read; the original's saves of shipped maps made by maker recipes (the user's are a random map's), a pinned time zone, a held key's repeats (`h3shell.py`); `scn-load` recorded again (§6.4's fixes: a day above 12, three sizes, the held key), `scn-load-last` new (Delete of the last save) | done 2026-11-20 (25 and 9 shots, twice the same; `scn-load-none` as kept) |
-| T4b1 | Load Game single's screen (§3.1, §3.3 to §3.6, §38, §39; decision 73): the load mode (title, no panel buttons or flags, Load, the save's difficulty on the disabled buttons and its rating), the client's saves listed (the folder `games`, `<name>.GM<n>`, the map's header from the map the replay names, a save it cannot list as a broken file, the file's local time), the keys and a held key's repeats (the viewer's `key-hold`, the window's), the sorts with CLT-Q138's stale buttons and rating, Load's and a disabled difficulty's popups, a right press without a popup redrawing nothing; the viewer given client saves made as the makers' (`h3-view save`, the makers' `viewer`) and `games-time`; Load and Delete the client's notice (CLT-STUB-15) | done 2026-11-20 (`scn-load` 19 of 25 exact: all but Delete's four, the load's clip and the map) |
-| T4b2 | Delete's question (688) both ways and its end (the version sort in the last direction, the first selected, the stale buttons and rating), the notice with no saves (686, Load disabled), Load's end at play's stub (as M3's begin: `save::load`'s `Loaded` kept for E24 M5; a save the load refuses its call), CLT-STUB-15 lifted; exact against `scn-load`'s Delete shots, `scn-load-last`, `scn-load-none` (`scn-load`'s `load` clip and `map` are play's, M5's) | done 2026-11-20 (`scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5; design §40; CLT-Q159) |
-| T5a | Load Game hot seat's reading and recordings (§41; decision 75): the slots, the names' placing (the save's humans first; CLT-Q160), the begin after a load, the save's extension, the list's filter, the options in a load (the duration's bar and the handicap disabled), Random Map in a load (§6.4; CLT-Q161); two hot-seat makers (`Pair.GM2`, `Four.GM4`: every colour human with its choices), `adv-load` recorded again over them, `adv-load-more` new | done 2026-11-21 (19 and 2 shots, twice the same; CLT-Q160, CLT-Q161 asked) |
-| T5b1 | Load Game hot seat's screen (§3.12 to §3.14, §41.4; decision 76): the hot seat's load mode over the Multiplayer dialog (the notice with no saves), the list's filter, the panel's buttons and the flags' strip (no Random Map in the client's profile: CLT-Q161 (b)), the advanced options from the save (the saved choices, no arrows, the handicap and the duration's bar disabled, the names placed: CLT-Q160 (a)); `h3-view save` for a hot seat, the makers' `viewer` tables; exact against `mp-load`, `adv-load`'s screen, options and list shots, `adv-load-more` | done 2026-11-21 (`mp-load` 6 of 6 exact, `adv-load` 14 of 19: all but the flags' two and the three after them, `adv-load-more` 2 of 2; design §42) |
-| T5b2 | The hot-seat load's flags (decision 76; the presses that change nothing and the popups exact since T5b1): a flag's press among the save's humans (CLT-Q110 (b)), the name moving onto the colour's saved choices; exact against the rest of `adv-load` | done 2026-11-21 (`adv-load` 19 of 19 exact; design §43) |
-| T6a | M4's reviews (decision 77): fresh reviewers by area (High Scores and Credits; the save file and the single load; the hot-seat load), every recipe played again under Wine against `kept/`, the findings and M4's review list to the user | after T5b2 |
-| T6b | M4's closure (decision 77): the user's answers and their fixes, M4 to the archive, the README's row (`shared/`), M5's refinement once the shell hosts play (else its prerequisites recorded) | after T6a |
+### M5 — in play (not refined: its prerequisites, recorded at M4 T6)
 
-**M4's review list** (the agent's calls, *provisional*, for T6a):
+Decision 69: the system menu in play and Options (one dialog, decision 44), Save from play,
+Restart, the end of a scenario's screens; refined with the user once the shell hosts play. Its
+prerequisites:
 
-1. (T1a) High Scores' layout `[high_scores]`: the creatures' pairs as the executable's numbers,
-   the columns by tab, `drawn` (the buttons' canvas for the original's stale edges).
-2. (T1a) A press's stale edges (§34.2) taken as CLT-Q118's class (decision 22: the client draws
-   the frame whole, the original's profile for the comparisons), not asked again.
-3. (T1a) Exit's command (`scores-exit`: Enter and Escape) ends the dialog at its key down whatever
-   key the user binds; C and S press their buttons as hotkeys.
-4. (T1a) The creatures' DEFs loaded at the start for the tables' rows alone (T1b's file and M5's
-   entry load what theirs need); a creature without a template shows none.
-5. (T1a) Reset shows the client's notice until T1b (CLT-STUB-14), the replay stopping under it
-   (lifted at T1b).
-6. (T1b) The scores file (§35.3): `scores.toml` in the working directory (`--scores` names
-   another), TOML with a version, both tables of 11 rows; a file the window cannot read stops it
-   with the path and the reason, as the settings file; a name longer than the original's 40 bytes
-   kept whole.
-7. (T1b) A failed write of the scores file told on standard error, not the original's
-   `file_error_box` (GENRLTXT 11) over the dialog.
-8. (T1b) The close of Reset's question by a key runs the step due as the mouse's release does
-   (§35.2; only the mouse recorded).
-9. (T1b) The replay takes `press`, `point` and `until-button` on a front's original box alone
-   (`Front::question`: High Scores' question so far), at the probes' point by the box's layout,
-   not by a search of the frame.
-10. (T2) The credits' clock (§36.4): one step a reading, the first 100 ms after the opening, each
-    next 100 ms after the reading that ran the last (the original's on the harness's frozen
-    clock); the window waits 5 ms at a turn while they show; a late window is not caught up.
-11. (T2) The background's key pixel (§36.3, (463, 553) black during the credits) taken as a
-    drawing bug (E17's binding decisions, CLT-Q138's class), not asked: the client's profile
-    draws the background whole, the original's for the comparisons only.
-12. (T2) `h3_ui`'s two new draws, `Draw::Part` (the text's picture made whole at each draw, 328 ×
-    4 774: no cache) and `Draw::Keyed` (the original's profile); a part's source rows past its
-    picture not copied (the original reads past it: no caller does).
-13. (T2) The text driver names the lost and won screens' task E27 M5 (decision 69's M5).
-14. (T3a) A replay records every player's choices from the setup it was recorded from (the
-    golden replays' import's included), not only the ones a scenario screen changed: the import a
-    verifier is given then decides nothing of them; a replay naming none of them (the server's
-    whole-game journals, a file before v20) is the import's.
-15. (T3a) A choice of a colour the import has no player of, or of a colour twice, is refused as
-    `ReplayError::Incompatible("players")` before the game is built; the game itself checks the
-    rest (an unoffered pick, a faction outside the player's).
-16. (T3a) The file names a faction's choice by the faction's index or the word `random`, a pick by
-    the hero type's index; the server's journals and its measure write none (the server lane's
-    inbox: its seats' choices are its to carry).
-17. (T3b) The save's file (design §37.1): one file, the engine's replay text whole, then the
-    client's table from the line `[save]` on (its version 1; eight `[[save.colours]]`, a name for
-    a human's, the bonus by its word); the part before that line is an engine replay file. The
-    date not kept (the file's last-write time, as the original's list), nor the map's header (the
-    map the replay names, T4's).
-18. (T3b) The replay names its map by the file's name in the installation's `Maps`: a save loads
-    only over the same map's bytes and import version and under the same rules (the replay's
-    header: the packs, the profile, the rules' hashes, the state hash versions), so every engine
-    change of the rules or of a hash version leaves the saves before it refused, the field named
-    (T4 lists them; the original lists a save of another version as a broken file, §3.3).
-19. (T3b) The load applies the commands itself through `h3_game::apply` with `Replay::verify`'s
-    checks in its order (the engine's `verify` keeps no state; no engine change: a `Replay`
-    function returning the state, the adventure lane's file, would replace the client's loop).
-20. (T3b) The load refuses a save making a colour human where the map lets none play (the
-    import's mark, which the engine cannot check; the begin's rule of M3 T7) and a name for a
-    colour no human holds; a save file is read whole, with no size limit (as the settings and
-    scores files).
-21. (T4a) The load's recipes use saves the original made of shipped maps (three maker recipes,
-    design §38.2: Middletown at Hard, Arrogance at Easy, Dawn of War's autosave at Expert on its
-    second day) in place of the user's (a random map's, which no client's save can name); the
-    makers run when their saves are missing or their recipe changed, no digest of a save kept
-    (its bytes differ by a few heap pointers from run to run).
-22. (T4a) After a sort in the load mode the partial redraw leaves the difficulty buttons and the
-    rating stale too (the rating's text drawn over the last one; design §38.3), taken as
-    CLT-Q138's class (decision 48: the client draws whole, the original's for the comparisons),
-    not asked again.
-23. (T4a) Every shell run's time zone pinned (`tz`, UTC by default; the load's recipes Asia/Kolkata,
-    a zone without daylight saving time: the original shows a file's time by the present
-    offset); the display's auto-repeat off at each run's start, on only for `key-hold`, whose
-    repeats' count follows real time (a recipe holds a key until the list's end, so it does not
-    matter).
-24. (T4b1) The client's saves (design §39.1): the folder `games` in the working directory (the
-    window's `--games` names another), a save's file `<name>.GM<n>` as the original's (the rows
-    show the same names), up to 5 000 files of `*.gm?` read in their names' order; the folder read
-    again at each opening of the load mode (the window), a replay's once.
-25. (T4b1) A save the client cannot list (it does not read, its replay's header the rules
-    refuse, its map missing or moved) shows as the original's broken file (GENRLTXT 431 and 505,
-    no map's columns, difficulty Easy); the full load (the commands replayed) is Load's, T4b2's.
-26. (T4b1) A save's date at the zone's present offset from SDL (`h3_sdl::local_offset`:
-    `localtime_r`'s `TZ` on Linux, Windows' zone), as the original's `FileTimeToLocalFileTime`;
-    no time-zone crate.
-27. (T4b1) A right press without a popup redraws nothing (`dialog_right_click` 0x5FF790 read:
-    the redraw follows a popup alone), but on the description's box (its scrolling text,
-    `scn-long-text` right-bar) and on the players' items 362 to 385 (their own cases redraw);
-    M3's "redrawn whole" for the others was an inference no recording told apart.
-28. (T4b1) The shell's window takes a held key's repeats on the scenario screen alone (the
-    original queues every key down everywhere; the other screens' keys were not recorded held);
-    the viewer gives `key-hold`'s presses by Xvfb's rate (1 under 660 ms, then one each 40 ms).
-29. (T4b1) The autosave known by its file's name: the panel's name GENRLTXT 77 where the file
-    begins with that text, the name's sort's lead where it begins `AUTOSAVE.`, both any case (the
-    original's compares' case not read).
-30. (T4b1) The made saves (`h3-view save`, a maker's `viewer` table, left out of its digest): the
-    single player's colour the map's, the advanced options untouched, seed 1, every player's End
-    Turn until the day; the computers make no moves (the list shows no more of them).
-31. (T4b2) Load's end: the save read and loaded by the engine at play's start (`save::load`, the
-    loading screen's bar stepped by the read and the load), the game kept for E24 M5; play's
-    notice in the client's words (`shell.stub.loaded`, or `shell.stub.load-refused` with the error
-    on standard error) where the original plays. A save the list shows broken is loaded and
-    refused there too (the original's load of a broken file not read).
-32. (T4b2) Delete deletes a listed file of the client's own folder alone (`saves::delete`: a plain
-    name of the pattern, a file); a failure is told on standard error and the entry leaves the
-    list all the same, as the original's unchecked `DeleteFileA` (CLT-Q159).
-33. (T4b2) A disabled button takes no hotkey on the scenario screen (recorded for Load: `scn-load-last`
-    and `scn-load-none` enter; the other screens' disabled buttons not recorded).
-34. (T4b2) The viewer's replay keeps the saves Delete left for the next opening (the original reads
-    its folder again; the window lists its folder anew at each opening).
-35. (T5a) The hot-seat load's saves made by the original from shipped maps with every colour
-    human and its town, hero and bonus chosen by the arrows (`Pair.GM2`, `Four.GM4`), so the
-    rows hold no random draw a client's save cannot repeat; a single game's save under two names
-    (`adv-load-more`) with its rows' drawn cells masked instead.
-36. (T5a) The hot-seat makers' `viewer` tables give the difficulty alone until T5b's `h3-view
-    save` makes a hot seat's (`drawn` stops at the hot seat's load, before any shot, meanwhile).
-37. (T5b1) A hot-seat load's row reads its colour's saved choices whoever holds it: a human record
-    seated on a colour takes that colour's record (the original's rows read the game's player of
-    the colour, inferred from `adv-load` and `adv-load-more`).
-38. (T5b1) A computer's saved town and hero show the save's choice (Random where it was drawn), the
-    original's the drawn town and hero (`adv-load-more` masks them): the client's save keeps the
-    choices, not the draws (the loaded state knows them, but the list does not replay a save).
-39. (T5b1) The names by colour handed on at Load (`Scenario::seated`), kept beside the loaded game
-    for E24 M5, which makes the humans those (no engine command changes them yet).
-40. (T5b1) `h3-view save`'s hot seat: `--player <colour>:<name>:<town>:<hero>:<bonus>` and
-    `--duration`; the makers' `viewer` tables name the players by indexes.
-41. (T5b2) CLT-Q110 (b)'s detail in the client's profile: in a load a flag's press is taken only on
-    a colour the save holds as human (else nothing, as a colour no human may play), then passed
-    on as CLT-Q94's exchange; a colour a name holds through the seating's second pass (a computer's
-    in the save, CLT-Q160 (a)) moves with that exchange.
-42. (T5b2) In a load a record that moves by a flag's press takes its new colour's saved record
-    whole (the town, the first hero, the bonus and the handicap), as item 37's rows; the handicap
-    is not read from the original (a load's handicap takes no press, §42.1).
+- **E24 M5** (the map-client lane): the shell hosts play, taking the game from Begin (the filled
+  `GameSetup`, CLT-STUB-13) and from Load (`save::Loaded` with `save::Humans`: the hot seat's
+  names by colour, CLT-Q160 (a); a single load's current player alone, CLT-Q170 (a)); the
+  map-client lane's inbox (2026-11-21).
+- **The engine** (the adventure lane's inbox, 2026-11-21): a step that changes a loaded game's
+  human flags (the two answers above); a `Replay` function returning the state for the load
+  (review item 19); E10 for victory and defeat (the end screens), the starting bonus and the
+  handicap; E13 for the computers' turns behind the end screens' recipes.
+- **What M5 builds on:** the recorded groups `options` (7 recipes), `end` (30) and `scn-save`,
+  `scn-save-none` (CLT-Q155's 37 recipes, every one through the adventure screen); the save
+  file (T3b, its table v2 since T6) written by Save from play, its name `.GM<n>` counting the
+  humans at the begin (CLT-Q169 (b)); High Scores' entry after a won scenario (Reset's newest
+  rows since T6, CLT-Q162 (b)); the saves to be reworked to be independent of the engine's
+  version later (CLT-Q173), not M5's unless the user says so.
 
 ## Dependencies and boundaries
 
@@ -797,3 +677,6 @@ load mode), §3.12 to §3.14 (a load's rows).
   game's begin starts maps that cannot yet be played as the original's (every map's game builds
   at the census's seed; M3's begin shows an engine refusal should one come).
 - **Unknown size:** the screens are listed from the code at M1; M2 to M5 are a sketch until then.
+- **Saves tied to the engine's version** (CLT-Q173, decision 78): a save is the engine's adventure
+  replay, refused once the rules or a state hash version change (its reason on standard error);
+  the user plans a rework of the saves to be independent of the engine's version (not refined).

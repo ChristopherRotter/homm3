@@ -36,7 +36,12 @@ fn texts() -> Texts {
 
 /// The installation's credits: 153 lines of `Credits.fnt`'s 31 rows (§36.1).
 pub(crate) fn credits() -> Credits {
-    Credits::new(look(), texts(), (153 * 31, 31), Bugs::Fixed)
+    credits_in(Bugs::Fixed)
+}
+
+/// [`credits`] in the profile `bugs`.
+fn credits_in(bugs: Bugs) -> Credits {
+    Credits::new(look(), texts(), (153 * 31, 31), bugs)
 }
 
 /// The text's part in `draws`: the rows it copies and where (none when it draws none).
@@ -171,7 +176,8 @@ fn then_it_leaves_at_the_top_the_closing_text_once_under_435_rows() {
 
 #[test]
 fn a_step_is_due_100_ms_after_the_last_one_reading_at_a_time() {
-    let mut c = credits();
+    // The original's profile: the next step 100 ms after the reading that ran the last.
+    let mut c = credits_in(Bugs::Original);
     assert_eq!(c.clock(u32::MAX - 50), Did::default());
     // Not yet due, then due across the clock's wrap.
     assert_eq!(c.clock(u32::MAX), Did::default());
@@ -182,6 +188,29 @@ fn a_step_is_due_100_ms_after_the_last_one_reading_at_a_time() {
     assert_eq!(part(&c.draws()).map(|p| p.0[3]), Some(4));
     assert_eq!(c.clock(1_099), Did::default());
     assert_eq!(c.clock(1_100), Did::CHANGED);
+}
+
+/// E27 M4 T6 (the review's A2, CLT-Q129 (b)'s pattern): in the client's profile a step is due
+/// 100 ms after the last one's due time, so a reading's lateness does not add up, and a late
+/// window catches up a step a reading.
+#[test]
+fn the_client_s_steps_are_due_100_ms_after_the_last_one_s_due_time() {
+    let mut c = credits_in(Bugs::Fixed);
+    assert_eq!(c.clock(u32::MAX - 50), Did::default());
+    assert_eq!(c.clock(u32::MAX), Did::default());
+    assert_eq!(c.clock(49), Did::CHANGED);
+    // A reading 9 ms late keeps the pace: the next due at 249, not 258.
+    assert_eq!(c.clock(158), Did::CHANGED);
+    assert_eq!(c.clock(248), Did::default());
+    assert_eq!(c.clock(249), Did::CHANGED);
+    assert_eq!(part(&c.draws()).map(|p| p.0[3]), Some(6));
+    // Late by 650 ms: one step a reading until the pace is back (due 449, 549, ..., 1049).
+    for t in 1_000..1_007 {
+        assert_eq!(c.clock(t), Did::CHANGED, "{t}");
+    }
+    assert_eq!(c.clock(1_007), Did::default());
+    assert_eq!(c.clock(1_049), Did::CHANGED);
+    assert_eq!(part(&c.draws()).map(|p| p.0[3]), Some(2 * 11));
 }
 
 #[test]

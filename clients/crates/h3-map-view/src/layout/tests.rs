@@ -30,6 +30,9 @@ default_def = "crdeflt.def"
 default_hot = [0, 0]
 busy = 2
 book = 1
+battle_def = "crcombat.def"
+battle_frame = 6
+battle_hot = [0, 0]
 
 [dialog]
 place = [0, 0]
