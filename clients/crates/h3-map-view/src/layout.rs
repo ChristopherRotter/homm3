@@ -122,6 +122,13 @@ pub struct CursorArt {
     /// The default cursor's frame the spell book leaves at its close (E24 M4 T2d3, design §5.8:
     /// 1, over its place; *provisional*, the book is M5's), until the cast ends.
     pub book: u32,
+    /// The combat cursor's DEF (the mouse manager's type 2, `crcombat.def`; E24 M4 T5b2, design
+    /// §5.21): a battle's switch sets it at the black before the battle's fade in.
+    pub battle_def: String,
+    /// The frame `battle_start` 0x462A20 sets (6).
+    pub battle_frame: u32,
+    /// Its hot spot (0x67FF50's).
+    pub battle_hot: [i32; 2],
 }
 
 /// The scroll's directions, one edge cursor each.

@@ -126,6 +126,7 @@ fn question(id: &str) -> Found {
             attacker: None,
             second: None,
         }),
+        fight: None,
     }
 }
 

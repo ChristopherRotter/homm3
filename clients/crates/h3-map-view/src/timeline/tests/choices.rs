@@ -166,6 +166,7 @@ fn choice(id: &str) -> Found {
             attacker: None,
             second: Some(second),
         }),
+        fight: None,
     }
 }
 

@@ -25,6 +25,7 @@ use h3_map_view::timeline::{self, Cursor, Draw, Rules, Unplayable};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 
+use crate::battles::{self, Battles};
 use crate::files;
 use crate::paint::{self, Assets};
 
@@ -220,6 +221,29 @@ impl Context<'_> {
             recorded,
             ..
         } = setup;
+        // The battles' first frames the switches fade in (E24 M4 T5b2, design §5.21): the
+        // record's, as the battle client's element draws them.
+        if let Some((path, _)) = &options.record {
+            let fights: Vec<u32> = start
+                .finds
+                .iter()
+                .filter_map(|f| f.fight.as_ref().map(|f| f.battle))
+                .collect();
+            if !fights.is_empty() {
+                let battles = Battles::read(path, &options.packs, &options.install, None)?;
+                let mut notes = Vec::new();
+                for n in fights {
+                    if let Some(k) = battles.began(n)
+                        && let Some(screen) = battles::first_frame(&battles, k, &mut notes)?
+                    {
+                        painter.battle_frame(n, false, screen);
+                    }
+                }
+                for note in notes {
+                    eprintln!("{}: {note}", sequence.id);
+                }
+            }
+        }
         let assets = self.assets;
         let rules = Rules::new(assets.tables, assets.layout, assets.bugs);
         let states = timeline::play(rules, &start, &actions, sequence.ms)
@@ -241,6 +265,11 @@ impl Context<'_> {
             // The spell book's screens are M5's (E24 M4 T2d3): none kept while it shows, the next
             // compared with the last kept before it.
             if s.book {
+                continue;
+            }
+            // Nor from a battle's result's OK until the map is back (E24 M4 T5b2: the harness's
+            // battle step keeps none there).
+            if s.drawn.switch.is_some_and(|w| w.ended) {
                 continue;
             }
             let now = (s.drawn.clone(), s.buttons, s.cursor);

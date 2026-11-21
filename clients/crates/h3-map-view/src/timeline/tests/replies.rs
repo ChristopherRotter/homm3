@@ -173,6 +173,7 @@ fn question(id: &str) -> Found {
             attacker,
             second: None,
         }),
+        fight: None,
     }
 }
 

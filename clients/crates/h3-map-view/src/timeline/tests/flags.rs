@@ -134,6 +134,7 @@ fn flagged(id: &str) -> Found {
         blocks: None,
         ask,
         flag: Some(FLAG),
+        fight: None,
     }
 }
 

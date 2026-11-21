@@ -17,7 +17,7 @@ fn one(rest: &str) -> Sequence {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 106);
+    assert_eq!(sequences.sequence.len(), 109);
     // A scripted game's engine commands (E24 M4 T4a2): read, the viewer plays its record; since
     // E24 M4 T4b1 its engine's seed, accepted.
     let walk = sequences.get("game-walk").unwrap();
@@ -26,6 +26,15 @@ fn reads_the_recorded_sequences() {
     assert!(sequences.get("scroll-0").unwrap().script.is_empty());
     assert_eq!(walk.engine_seed, None);
     assert_eq!(sequences.get("game-level").unwrap().engine_seed, Some(74));
+    // The battle step's plan (E24 M4 T5b2): accepted, one or one per battle.
+    let won = sequences.get("battle-won").unwrap();
+    assert_eq!(won.battle, Some(BattlePlan::One("auto".into())));
+    assert_eq!(walk.battle, None);
+    let each = one("battle = [\"auto\", \"retreat\"]");
+    assert_eq!(
+        each.battle,
+        Some(BattlePlan::Each(vec!["auto".into(), "retreat".into()]))
+    );
     // The status window's kind asked at 0 (E24 M3 T5b2).
     let date = sequences.get("status-date-end").unwrap();
     assert_eq!(date.asked(), Ok(Some(Asked { kind: 1, end: 3000 })));

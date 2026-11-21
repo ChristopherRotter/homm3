@@ -869,6 +869,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     | Action::BoxKey(_)
                     | Action::BoxKeyUp(_)
                     | Action::Offer(_)
+                    | Action::BattleClosed
                     | Action::Visit
                     | Action::Up
                     | Action::Choose(_)

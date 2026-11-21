@@ -29,6 +29,7 @@ use h3_map::model::Rewards;
 use h3_protocol::wire::game::{
     AdventureEvent, Answer, ArenaChoice, ChestChoice, Consent, GameEvent, HeroChange, NothingWhy,
 };
+use h3_protocol::wire::{Outcome, Side};
 
 use super::played::Visit;
 use crate::asks::Ask;
@@ -55,6 +56,8 @@ const PANDORA: u32 = 6;
 const CHEST: u32 = 101;
 /// A mine's.
 const MINE: u32 = 53;
+/// A wandering monster's (E24 M4 T5b2).
+const MONSTER: u32 = 54;
 /// A Lighthouse's.
 const LIGHTHOUSE: u32 = 42;
 /// A dwelling's.
@@ -88,6 +91,21 @@ pub enum Told {
         /// The colour the object's flag is raised in before it asks (E24 M4 T4b2: a dwelling's).
         flag: Option<u8>,
     },
+    /// A wandering monster fought at once (E24 M4 T5b2, design §5.21): the record's battle, its
+    /// winner, what the map shows after it and the experience gained.
+    Fight {
+        /// The record's number of the `GameEvents` whose `BattleStarted` began it.
+        battle: u32,
+        /// The winner: 0 the attacker, 1 the defender (an attacker's retreat or surrender), −1
+        /// none.
+        winner: i32,
+        /// The monster taken off the map after it (`ObjectRemoved`).
+        taken: bool,
+        /// The hero gone after it (`HeroRemoved`).
+        lost: bool,
+        /// The experience gained.
+        experience: i32,
+    },
 }
 
 /// Which of a question's answers the record's takes: its OK or a choice's first picture, a
@@ -107,6 +125,30 @@ pub enum Answered {
 #[must_use]
 pub fn told(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told> {
     let events = &visit.events;
+    // A wandering monster's battle begun by the step (E24 M4 T5b2), once it ended.
+    if class == MONSTER
+        && let Some(battle) = &visit.battle
+        && let Some(GameEvent::BattleEnded { result, .. }) = battle.ended.first()
+    {
+        let removed = |hero: bool| {
+            battle.ended.iter().any(|e| match e {
+                GameEvent::Adventure {
+                    event: AdventureEvent::ObjectRemoved { .. },
+                } => !hero,
+                GameEvent::Adventure {
+                    event: AdventureEvent::HeroRemoved { .. },
+                } => hero,
+                _ => false,
+            })
+        };
+        return Some(Told::Fight {
+            battle: battle.started,
+            winner: winner(result),
+            taken: removed(false),
+            lost: removed(true),
+            experience: gain(&battle.ended).experience,
+        });
+    }
     let flag = events.iter().find_map(|e| match e {
         GameEvent::Adventure {
             event: AdventureEvent::ObjectFlagged { owner, .. },
@@ -304,6 +346,32 @@ fn resource(gained: &Gain) -> Option<(i32, i32)> {
         return None;
     }
     Some((i32::try_from(resource).unwrap_or(0), amount))
+}
+
+/// A battle's winner as the timeline's `battle` line gives it (E24 M4 T5b2): 0 the attacker, 1
+/// the defender (an attacker that retreated or surrendered lost), −1 a draw.
+fn winner(result: &Outcome) -> i32 {
+    match result {
+        Outcome::Victory {
+            side: Side::Attacker,
+        }
+        | Outcome::Retreat {
+            side: Side::Defender,
+        }
+        | Outcome::Surrender {
+            side: Side::Defender,
+        } => 0,
+        Outcome::Victory {
+            side: Side::Defender,
+        }
+        | Outcome::Retreat {
+            side: Side::Attacker,
+        }
+        | Outcome::Surrender {
+            side: Side::Attacker,
+        } => 1,
+        _ => -1,
+    }
 }
 
 /// What `events` give that the panels show: the resources gained (in the bar's order), the

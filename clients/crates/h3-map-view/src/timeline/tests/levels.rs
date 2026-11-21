@@ -122,6 +122,7 @@ fn stone() -> Found {
         blocks: None,
         flag: None,
         ask: None,
+        fight: None,
     }
 }
 
@@ -158,6 +159,7 @@ fn chest(experience: i32) -> Found {
                 ..Answer::default()
             }),
         }),
+        fight: None,
     }
 }
 
