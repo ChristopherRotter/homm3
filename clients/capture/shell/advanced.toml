@@ -186,18 +186,90 @@ steps = [
   "click:35,205", "move:790,300", "shot:flag-green-2",
 ]
 
+# E27 M4 T5a: the hot-seat load's saves, made by the original from shipped maps as T4a's
+# (`makes`; design §41): a hot seat's new game, every colour human with its town, hero and bonus
+# chosen by the arrows (no random draw a client's save could not repeat), the duration's left
+# arrow three times (20 minutes), saved from the system options on the first player's first day.
+[[recipe]]
+id = "adv-load-make-two"
+what = "§41: makes `Pair.GM2`, A Warm and Familiar Place (two colours, both human: A, B) at Impossible"
+maps = ["A Warm and Familiar Place.h3m"]
+makes = ["Pair.GM2"]
+viewer = { difficulty = 4 }
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B",
+  "click:345,450", "move:790,300", "until:scenario_list", "click:649,478", "click:514,519",
+  "click:230,145", "click:306,145", "click:382,145",
+  "click:230,195", "click:230,195", "click:306,195", "click:382,195", "click:382,195",
+  "click:66,565", "click:66,565", "click:66,565", "move:790,300",
+  "settle:8", "click:497,555", "until:turn_dialog|adventure", "key:Return", "until-button:ok",
+  "press:ok", "until:adventure", "move:700,300",
+  "key:o", "key:s", "step:500",
+  "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace",
+  "type:Pair", "key:Return", "step:500", "press:ok",
+]
+
+[[recipe]]
+id = "adv-load-make-four"
+what = "§41: makes `Four.GM4`, Arrogance (four colours, all human: A to D) at Easy"
+maps = ["Arrogance.h3m"]
+makes = ["Four.GM4"]
+viewer = { difficulty = 0 }
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B", "key:Tab", "type:C", "key:Tab", "type:D",
+  "click:345,450", "move:790,300", "until:scenario_list", "click:521,478", "click:514,519",
+  "click:230,145", "click:306,145", "click:382,145",
+  "click:230,195", "click:230,195", "click:306,195", "click:382,195",
+  "click:230,245", "click:230,245", "click:230,245", "click:306,245", "click:382,245",
+  "click:230,295", "click:230,295", "click:230,295", "click:230,295", "click:306,295", "click:382,295",
+  "click:66,565", "click:66,565", "click:66,565", "move:790,300",
+  "settle:8", "click:497,555", "until:turn_dialog|adventure", "key:Return", "until-button:ok",
+  "press:ok", "until:adventure", "move:700,300",
+  "key:o", "key:s", "step:500",
+  "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace",
+  "type:Four", "key:Return", "step:500", "press:ok",
+]
+
 [[recipe]]
 id = "adv-load"
-what = "§3.13, §3.14: a hot-seat load's screen and its advanced options (the saved choices, no arrows); a row's popups"
-games = ["AUTOSAVE.GM1", "save1.GM1"]
+what = "§3.12 to §3.14, §3.16, §41: a hot-seat load (two names) over two saves of shipped maps, every colour human in each (four, two): the screen, each save's advanced options (the saved choices, no arrows, the handicap disabled, the save's duration; the saved humans past the names as computers), the arrows pressed, the flags pressed (CLT-Q110), a row's popups, the Random Map button pressed, by its key and its popup, the list again"
+tz = "Asia/Kolkata"
+made_games = [
+  { by = "adv-load-make-four", file = "Four.GM4" },
+  { by = "adv-load-make-two", file = "Pair.GM2" },
+]
 steps = [
-  "move:400,300", "until:main_menu", "games-time:1000000000", "click:645,192", "check:load_game_menu", "click:649,180", "check:multiplayer",
+  "move:400,300", "until:main_menu",
+  "games-time:1003826100:Four.GM4", "games-time:1009838340:Pair.GM2",
+  "click:645,192", "check:load_game_menu", "click:649,180", "check:multiplayer",
   "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B",
   "click:345,450", "step:1000", "move:790,300", "shot:screen", "click:514,519", "move:790,300", "shot:advanced",
-  "click:230,145", "click:135,163", "click:35,155", "move:790,300", "shot:pressed",
+  "click:230,145", "click:306,145", "click:382,145", "click:135,163", "click:66,565", "move:790,300", "shot:arrows",
+  "click:244,565", "move:790,300", "shot:duration-back",
+  "right:135,163", "shot:handicap-popup", "right-up",
   "right:200,146", "shot:town-popup", "right-up", "right:276,146", "shot:hero-popup", "right-up",
-  "right:352,146", "shot:bonus-popup", "right-up",
-  "click:514,91", "move:790,300", "shot:list", "click:514,91", "move:790,300", "shot:list-hidden",
+  "right:352,146", "shot:bonus-popup", "right-up", "right:276,246", "shot:hero-popup-3", "right-up",
+  "click:35,255", "move:790,300", "shot:flag-3", "click:35,155", "move:790,300", "shot:flag-1",
+  "click:514,115", "move:790,300", "shot:random", "key:r", "move:790,300", "shot:random-key",
+  "right:514,115", "shot:random-popup", "right-up",
+  "click:514,91", "move:790,300", "shot:list",
+  "click:216,160", "move:790,300", "shot:row-2", "click:514,519", "move:790,300", "shot:advanced-2",
+  "click:514,91", "move:790,300", "shot:list-again", "click:514,91", "move:790,300", "shot:list-hidden",
+]
+
+[[recipe]]
+id = "adv-load-more"
+what = "§3.12, §41: a hot-seat load with more names than the save's humans (a single game's save, one human, under two names): the second name takes the next colour a human may play, a computer's in the save; the rows' town, hero and bonus masked (the original's random draws, which no client's save repeats)"
+tz = "Asia/Kolkata"
+made_games = [{ by = "scn-load-make-large", file = "Week_one.GM1" }]
+steps = [
+  "move:400,300", "until:main_menu", "games-time:1016336220",
+  "click:645,192", "check:load_game_menu", "click:649,180", "check:multiplayer",
+  "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B",
+  "click:345,450", "step:1000", "move:790,300", "shot:screen",
+  "click:514,519", "move:790,300", "mask:164,130,392,330", "shot:advanced", "unmask",
 ]
 
 [[recipe]]

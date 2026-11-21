@@ -15,8 +15,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `h3-battle-client`'s `save`, design §37), T4a (the load mode read and recorded, design §38),
   T4b1 (the load mode's screen and the client's saves, §39) and **T4b2** (Delete's question and
   its end, the notice with no saves, Load's end at play's stub through `save::load`; §40;
-  `scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5) done 2026-11-20.
-  **Next: M4 T5** (the hot seat's load; the queue), then T6 (M4's closure).
+  `scn-load` 23 of 25 exact, `scn-load-last` 9 of 9, `scn-load-none` 5 of 5) done 2026-11-20;
+  **T5a** (decision 75: the hot-seat load read, two hot-seat makers, `adv-load` again and
+  `adv-load-more`; §41) done 2026-11-21. **Next: M4 T5b** (the hot seat's load screen; the
+  queue), then T6 (M4's closure).
   Decisions to carry (all: the epic's list): the dialogs' input one implementation (20;
   `h3_ui::input`); the shell's code as the battle's (21); every pixel of a Smacker clip through
   its palette (24); every clip's sound at the effects setting (27); a menu opening anew takes the
@@ -27,7 +29,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   map it was made with (review item 18); the shell's recipes pinned to a time zone (`tz`, review
   item 23); a right press without a popup redraws nothing but on the description and the
   players' items (review item 27); a disabled button takes no hotkey (review item 33). Open pull
-  request: T4b2's #1085 (`client/e27-m4-t4b2`): watch it until it merges. E17 done
+  request: T5a's, branch `client/e27-m4-t5a`: watch it until it merges. E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -38,13 +40,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Checkpoints** per milestone (below), a fresh reviewer agent first (at M1 T3: one per area, the
   shots as contact sheets). **Open:** CLT-Q158 (after Reset the creatures' frame 0; built as the
   original's, blocks nothing), CLT-Q159 (Delete's unchecked failure; built as the original's,
-  blocks nothing). Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
+  blocks nothing), CLT-Q160 (a hot-seat load's names decide its humans) and CLT-Q161 (Random Map
+  in a hot-seat load does nothing): T5b's, neither blocks. Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
   "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle), `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) and `CLT-STUB-6` (the Multiplayer dialog's network
   modes), `CLT-STUB-7` and `-8` (Campaign, Tutorial), `CLT-STUB-9` (the starting bonus), `CLT-STUB-10` (the handicap), `CLT-STUB-11` (the turn's timer), `CLT-STUB-12` (the random map's generation) and `CLT-STUB-13` (play: the game begun or loaded, kept for E24 M5) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q160, CLT-STUB-16.
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q162, CLT-STUB-16.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs (`MP3DEC.ASI` there too since 2026-11-17), `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 39 non-campaign MP3s (63 files); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -64,6 +67,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-21, E27 M4 T5a (done; `client/e27-m4-t5a`).** The PC's 64 files, the manuals and
+  the help files staged (SHA-256 checked). T5 cut in two with the user (decision 75). Read the
+  hot-seat load's slots, the names' placing and the begin after a load, the save's `.GM<n>`, the
+  list's filter, the options in a load, Random Map in a load. Two hot-seat makers (`Pair.GM2`,
+  `Four.GM4`: every colour human with its choices); `adv-load` recorded again (19 shots),
+  `adv-load-more` new (2), twice the same; CLT-Q160, CLT-Q161 asked. Record: `E27-log.md`,
+  "M4 T5a".
 - **2026-11-20, E27 M4 T4b2 (done; `client/e27-m4-t4b2`).** The PC's 63 files, the manuals and
   the help files staged (SHA-256 checked). Kept whole (decision 74). Read Delete's end, the select
   of none and the opening with no saves (Load disabled before the notice). Built Delete's question
@@ -78,9 +88,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `games-time` and `key-hold`, `h3-view save` and `drawn`'s made client saves; read the right
   press (no redraw without a popup). `scn-load` 19 of 25 exact, the other groups as recorded.
   Record: `E27-log.md`, "M4 T4b1".
-- **2026-11-20, E27 M4 T4a (done; `client/e27-m4-t4a`).** The PC's 64 files and the manuals
-  staged (SHA-256 checked). T4 cut in two with the user (decision 72). `master`'s Clients job red
-  (T3b's test against the replay format v21): fixed, #1073. Read the date's order, the load
-  mode's name, Delete's end; `h3shell.py`'s maker recipes (`makes`, `made_games`), `tz`, one
-  file's `games-time`, `key-hold`; `scn-load` recorded again and `scn-load-last` new (twice the
-  same), `scn-save` and `adv-load` again under the pinned zone. Record: `E27-log.md`, "M4 T4a".
