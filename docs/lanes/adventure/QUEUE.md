@@ -4,36 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 is the survey (T137a) and the drafts with the design note and the cut (T137b), below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T137a — the Prison, the Market of Time and the adventure spells survey** (decision 395; as
-T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
-
-- **Scope:** the census of classes 62 (the Prison) and 50 (the Market of Time) on the 160 shipped
-  maps (T97c's counts in `E08-log.md`, T97c), their `.h3m` bodies (`docs/formats/h3m.md`: the
-  Prison's is a hero's) and the prisoners' heroes against the hero pool (E09's `prisoners`); their
-  visits in the original's code (`docs/exe/README.md`, `scripts/exe.py`): the prisoner freed for the
-  visitor's player (its limits, its levels at load: the inbox note of 2026-10-20), the Market of
-  Time's visit; the adventure spells Fly, Water Walk, Dimension Door, Summon Boat and Scuttle Boat:
-  each one's effect by mastery, its spell points, what it refuses, a day's limits, a scroll's cast,
-  the boats Summon Boat moves and Scuttle Boat sinks, boarding's clearing of Fly and Water Walk
-  (survey `E08-hero-movement.md` §6); flying revisited and **A-13's trade-off** (the inbox note of
-  2026-10-22; decisions 75, 78; `ADV-QUIRK-15`); the other adventure spells (Visions, View Earth,
-  View Air, Disguise) named with their readings' size for the checkpoint (decision 394's agent's
-  call; Visions' parameters are the town lane's, the inbox note of 2026-11-06); what a viewer sees
-  of each; VCMI's and the wiki's rules; disputes `D-<n>` from 75, reading quirk candidates `A-<n>`
-  from 49; the proposed rule ids; batch E15's plan on the client lane's harness. Likely in parts
-  (the Prison and the Market of Time apart from the spells), confirmed with the user at its start,
-  the reading measured first.
-- **Inputs:** decisions 394, 395; ADR-0015 to -0017 (ADR-0016 point 4's flight and A-13, point 6),
-  ADR-0013 (the hero's spells, mastery and spell points: `h3-heroes`, the global HANDOFF's trap);
-  increment 5's survey `E08-hero-movement.md` (§2.1, §3, §6; A-13, A-14, D-24), increment 8's
-  boats (boarding, landing, the Shipyard's boat), increment 4's levels; E09's spell book and mage
-  guild (the town lane's increment 5: which spells a hero holds) and Town Portal's ownership (E09
-  decision 6); the inbox notes of 2026-10-20, 2026-10-22 and 2026-11-06; the lane's `TRAPS.md`.
-- **Depends on:** T136 (`adventure/e08-t136`, merged first). **Status:** ready once T136 merges
-  (the original data and the shipped maps: staging per `docs/08-work-process.md`, "Cloud
-  sandbox"); its cut confirmed at its start.
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 is the survey (T137a, done: decision 397, survey `docs/rules/surveys/E08-spells.md`) and the drafts with the design note and the cut (T137b), below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T137b — the ADR amendment drafts, the design note and the cut** (decision 395)
 
@@ -45,7 +16,9 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
 - **Inputs:** the survey `docs/rules/surveys/E08-spells.md` (its open points, the interfaces'
   sketch, batch E15, the proposed ids); decisions 394, 395 and the survey checkpoint's; ADR-0013,
   ADR-0015 to -0017; T127b's drafts as the form.
-- **Depends on:** T137a (its checkpoint answered). **Status:** waiting (docs only).
+- **Depends on:** T137a (done 2026-11-21, `adventure/e08-t137a`); its questions (survey §17) are
+  asked at T137b's start or checkpoint. **Status:** ready (docs only; the executable staged only if
+  a reading is reopened).
 
 ## Inbox
 
