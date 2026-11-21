@@ -31,7 +31,8 @@ Every step it takes is one of the game's validated commands.
   61 KB. Some valuations are shared with the battle AI (`ai_caster_record` 0x526D40, the spell
   values 0x5270E0 to 0x5275B0, read by E23) and some are reached through a function table
   (0x432F90).
-- **Draws:** almost none. One `random_between` call (0x42FBE9, in `ai_hero_step`), no direct
+- **Draws:** almost none. One `random_between` call (0x42FBE9: 76 to 100, in a callee of `ai_hero_replan`, not
+  in `ai_hero_step`; E25 T43), no direct
   `crt_rand`. About 750 x87 instructions, most in the values.
 - **Hidden state, a first case:** the adventure pathfinder lets a computer player step from an
   explored tile into an unexplored one, or anywhere while its player record's +0x3E is above 0

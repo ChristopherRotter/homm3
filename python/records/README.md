@@ -175,7 +175,10 @@ ai eval`'s report of the pair and the improved decisions by category of the fair
 run's games file (`--out`), kept for the paired comparisons (by kind, episode and seat). The
 budget check (`budget-<n>`, the report set's 20 a kind on the side's worlds; `budget-0` the fair
 actor's own play on the same episodes) was rebuilt in the sandbox from the user's games files:
-its `seconds` are 0. The findings in `docs/epics/E25-log.md` T43.
+its `seconds` are 0. The measurement at budget 4 (100 a kind): `report-side-4` (599 games, no
+JSON: one game stalled, the fair actor's), `report-true-4` (rebuilt, `seconds` 0),
+`neutral-side-4` (its last game played in the sandbox), `report-0` (the fair actor's own play on
+the report set's episodes). The findings in `docs/epics/E25-log.md` T43.
 
 ## Lineage
 

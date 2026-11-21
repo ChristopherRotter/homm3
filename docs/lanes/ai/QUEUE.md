@@ -13,28 +13,9 @@ T37 to T39); **`e25-structure-1` #2 the current best** (AI-Q17, T29: 0.511 and 0
 the fair and the all-seeing system actor, the neutral set +0.302). **A long run stops early**
 (the user, 2026-11-18, T36): `[gate] futility` at least 1, gates at least every quarter of the
 budget, the check named in its rule (`TRAPS.md`, Python). **Increment 10: the ceiling** (the
-user at T41, AI-Q20; its decisions in the epic file).
-
-- **T43 — the ceiling measured** (the user's CPU, **16 threads**, the user's limit; parts under 2
-  hours: Ctrl-C keeps the finished games, the same command continues from its `--out`; T42's
-  tool, `E25-log.md` T42; from the repository's root, the records into `python/records/ceiling/`,
-  the games files into `target/ceiling/`). **The budget check done** (2026-11-21, `E25-log.md`
-  T43): **budget 4**. **The measurement** at budget 4, all runs on one build (a later engine
-  change moves the identity and the pairing), each about 70 minutes for the report set and 35
-  for the neutral set:
-  1. `cargo run --release -p h3-cli -- ai ceiling --episodes 100 --opponents system --budget 4
-     --threads 16 --worlds side --out target/ceiling/report-side-4.toml --json
-     python/records/ceiling/report-side-4.json`
-  2. the same with `--worlds true`, `report-true-4.toml`, `report-true-4.json`;
-  3. the neutral set: `--set neutral-v1` with `--worlds side`, `neutral-side-4.toml`,
-     `neutral-side-4.json`;
-  4. if the time allows: the neutral set with `--worlds true` (`neutral-true-4`; little to read:
-     no hidden hero there), then the all-seeing opponent on the report set's side worlds
-     (`--opponents system-all-seeing`, `report-side-4-all-seeing`).
-
-  The user uploads the JSON records **and the games files** (the worlds' difference and the gain
-  over the fair actor's own play are paired by episode; the sandbox replays `--budget 0` on the
-  same build).
+user at T41, AI-Q20; its decisions in the epic file). **T43 done** (2026-11-21, `E25-log.md`
+T43: budget 4; +0.085 over the fair actor's play on the side's worlds, +0.115 on the true
+battle; the records in `python/records/ceiling/`).
 
 - **T44 — where #2 diverges** (after T42): #2's decisions against the fair actor (its ladder's
   episodes replayed by seed and commands, `inspect`'s recorder) valued by the same rollouts: the

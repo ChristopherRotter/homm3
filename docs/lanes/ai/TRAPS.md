@@ -160,6 +160,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   the rule stated before it runs names the check. A resume past it: `--set gate.futility=0`.
 - **A user's CPU run takes at most 16 threads** (the user, 2026-11-20, E25 T43): its commands
   name them (`h3 ai ceiling --threads 16`; the tool's default is every core).
+- **`h3 ai ceiling`'s last game can look stuck** (E25 T43): progress is printed per finished
+  game, so the slowest game ends the run alone on one thread with no line (the neutral set's
+  heaviest at budget 4: about 4 minutes). A game whose rollouts stall (the fair actor's refused
+  cast, the battle lane's inbox of 2026-11-21) takes hours: find its key in the games file
+  (the plan's game missing), replay it alone on a copy, and stack-sample it (`gdb -p <pid>
+  -batch -ex "thread apply all bt"` on a `CARGO_PROFILE_RELEASE_DEBUG=line-tables-only` build in
+  its own `CARGO_TARGET_DIR`).
 - **A user's run over 2 hours must resume** (the user, 2026-11-05; no overnight runs): the
   trainer's `--resume`, the benches' since E25 T26a; a run that cannot resume is split into parts
   under 2 hours or not handed over.
