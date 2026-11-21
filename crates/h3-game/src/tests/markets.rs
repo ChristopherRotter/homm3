@@ -8,7 +8,7 @@
 use h3_adventure::{Holds, Market, MarketParamsDef, ObjectKindDef};
 use h3_content::{ArtifactClass, ResourceDef, ResourceId};
 
-use super::decisions::{BLUE, GOLD, RED, play};
+use super::decisions::{BLUE, GOLD, RED, move_hero, play};
 use super::rewards::{AT, HERO, answered, changed, reward_at, visit};
 use super::*;
 
@@ -439,6 +439,83 @@ fn a_purchase_pays_its_price_gives_the_artifact_and_empties_the_entry() {
         play(&mut guild, &rules, RED, buy(0, GOLD)),
         refused(MarketError::Screen)
     );
+}
+
+// covers: ADV-MKT-006, ADV-MKT-007, ADV-MKT-008
+#[test]
+fn a_black_markets_stock_is_never_redrawn_by_a_new_month() {
+    // Bought, left and visited again a month later (batch E14-3's day 29): the stock drawn at the
+    // build, the bought entry still empty.
+    let rules = market_rules();
+    let (mut state, _) = at_market(&rules, "t:black");
+    let ring = rules.core().artifact_by_key("t:ring").unwrap();
+    let drawn = StockEntry {
+        artifact: Some(ring),
+        prices: vec![(GOLD, 5000), (WOOD, 40)],
+    };
+    assert_eq!(view(&state, &rules).offers.stock, [drawn]);
+    state.set_resource(RED, GOLD, 5000);
+    let buy = market(MarketAnswer::Buy {
+        entry: 0,
+        pay: GOLD,
+    });
+    play(&mut state, &rules, RED, buy.clone()).unwrap();
+    let left = play(&mut state, &rules, RED, market(MarketAnswer::Leave)).unwrap();
+    assert_eq!(left, [GameEvent::DecisionClosed { player: RED }]);
+    // Left: the visitor's observation holds no decision (no stock seen outside the window).
+    assert_eq!(observe(&state, &rules, Viewer::Player(RED)).decision, None);
+    // Every player ends its turns until day 29, the second month's first day, told to red.
+    let mut told = Vec::new();
+    while state.day() < 29 {
+        told.clear();
+        for player in [RED, BLUE] {
+            told.extend(play(&mut state, &rules, player, GameCommand::EndTurn).unwrap());
+        }
+    }
+    let started = told
+        .iter()
+        .find(|e| matches!(e, GameEvent::MonthStarted { month: 2, .. }))
+        .copied()
+        .unwrap();
+    assert_eq!(project(&started, Viewer::Player(RED)), Some(started));
+    // Visited again (off its entrance and back): the build's one entry, still empty, refused.
+    play(&mut state, &rules, RED, move_hero(0, &[Pos::new(0, 0, 0)])).unwrap();
+    visit(&mut state, &rules);
+    let empty = StockEntry {
+        artifact: None,
+        prices: vec![],
+    };
+    assert_eq!(view(&state, &rules).offers.stock, [empty]);
+    assert_eq!(
+        play(&mut state, &rules, RED, buy),
+        refused(MarketError::Entry(0))
+    );
+}
+
+// covers: GAM-DEC-001, GAM-DEC-011
+#[test]
+fn another_players_answer_to_a_markets_open_window_is_refused() {
+    // Red's Trading Post open; blue (no decision of its own) answers it with a valid-looking
+    // answer of its kind: refused, nothing changed or told ([`play`] checks it).
+    let rules = market_rules();
+    let (mut state, _) = at_market(&rules, "t:post");
+    let answers = [
+        MarketAnswer::Trade {
+            give: GOLD,
+            take: WOOD,
+            lots: 1,
+        },
+        MarketAnswer::Leave,
+    ];
+    for answer in answers {
+        assert_eq!(
+            play(&mut state, &rules, BLUE, answered(Answer::Market(answer))),
+            Err(GameCommandError::NoDecision),
+            "{answer:?}"
+        );
+    }
+    assert!(state.market(RED).is_some());
+    assert_eq!(state.market(BLUE), None);
 }
 
 // covers: GAM-DEC-011, ADV-MKT-003, ADV-MKT-005, ADV-MKT-007

@@ -65,7 +65,7 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `░░░░░░░░░░` 0/1 I | refined; increment 1 (the reading, the oracle, the survey) next |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
 
-Not started yet (sketches in the backlog): game orchestration beyond the import (E10), map-object
+Not started yet (sketches in the backlog unless marked): game orchestration (E10, refined; after E08), map-object
 long tail (E12), adventure AI (E13), the custom map generator (E30), web portal (E21), packaging and hosting
 (E22), ranked play in the native client (E28), HD layouts (E29), campaigns (E20), save import (E19).
 

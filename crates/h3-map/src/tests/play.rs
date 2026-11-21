@@ -7223,10 +7223,13 @@ fn check_unlisted(
         return Ok(());
     }
     // E08 T52: a management command `apply` accepts is one its hero lists, or a split to a count
-    // in its pair's range (GAM-MAN-002).
+    // in its pair's range (GAM-MAN-002); (E08 T136) a garrison hero's too, off the map since E09
+    // T28a (TWN-ROW-001: its formation, flag and artifacts, as `legal_town_management` lists
+    // them; the seed T136's verify found is kept in `proptest-regressions/tests/play.txt`).
     if let GameCommand::Manage(manage) = *command {
         let player = Actor::Player(actor);
-        let heroes = before.adventure().heroes().iter();
+        let garrisons = before.adventure().town_heroes().iter().map(|(_, h)| h);
+        let heroes = before.adventure().heroes().iter().chain(garrisons);
         let listed = heroes
             .clone()
             .any(|h| legal_management(before, rules, player, h.id).contains(&manage));

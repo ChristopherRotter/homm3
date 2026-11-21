@@ -98,9 +98,9 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   the town lane changes them in a `cross-lane` pull request, merged in order with the adventure
   lane's (the second rebases). Its scoped verify also runs the adventure lane's crates, replays
   and workloads (`verify_with` in `lanes.toml`).
-- **ai** (since E05; the user, 2026-10-18, AI-Q1): `h3-sim` (its `src/adventure/` stays the
-  adventure lane's until E13), `h3-ffi`, `h3-cli`'s `src/ai/`, the Python side `python/`,
-  `benches/ai/`, the epics E05 and E06. The battle lane still changes rules that the encodings
+- **ai** (since E05; the user, 2026-10-18, AI-Q1): `h3-sim` (its `src/adventure/` too since E08
+  T45, but `replay.rs`), `h3-ffi`, `h3-cli`'s `src/ai/`, the Python side `python/`,
+  `benches/ai/`, the epics E05, E06, E25, E13 and E31 (AI-Q21). The battle lane still changes rules that the encodings
   show: such a change (a new observation feature, a new action entry) is a `cross-lane` pull
   request from the battle lane, with the AI lane's version bumps in it.
 - **server:** the new adapter crates `h3-protocol` and `h3-server`, `benches/server/`, E16.

@@ -733,6 +733,12 @@ numeric  = "integer"
   retrieved  = "2026-11-03"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-14.md (survey E08-trades.md section 21; cited by E08 T136): E14-15 (a War Machine Factory's hire dialog opened after its question and open after each of its two purchases)"
+  retrieved  = "2026-11-19"
+  confidence = "high"
+
 [[rule]]
 id       = "GAM-DEC-009"
 title    = "A map garrison's exchange: a pending decision closed by its owner"
