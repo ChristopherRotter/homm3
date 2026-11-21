@@ -81,8 +81,13 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   town lane's modules in them, adventure-owned sub-paths of the battle lane's crates and folders (`h3-sim`'s and
   `h3-cli`'s and `h3-files`' `src/adventure/`, `fixtures/replays/adventure/`, the packs' `adventure.toml`; the
   longest match decides), `docs/formats/h3m.md`, the ADV and GAM rules, its own quirks
-  ledger `docs/rules/quirks-adventure.md`, `benches/adventure/`, the epics E07, E08, E10 and
-  E12–E14.
+  ledger `docs/rules/quirks-adventure.md`, `benches/adventure/`, the epics E07, E08, E10,
+  E12 and E13.
+- **rmg** (since 2026-11-21; the user opened it at E14's refinement, RMG-Q1): the original's
+  random map generator, E14, and the custom generator, E30: the pure crate `h3-rmg` (made at
+  E14 increment 2), each pack's `rmg.toml`, the RMG rules and its quirks ledger
+  `docs/rules/quirks-rmg.md`, E14's epic, surveys and experiments. It writes maps through the
+  adventure lane's `h3_map::writer`; a gap there goes to that lane's inbox.
 - **town** (since 2026-10-31; the user opened it beside the adventure lane's E08 at E09's
   refinement, TWN-Q1): towns, E09: the town context's crate `h3-towns`, its pack adapter
   `h3-pack-towns` and each pack's `towns.toml` (E09 T4b), the town modules inside the

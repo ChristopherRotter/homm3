@@ -62,10 +62,11 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E09](docs/epics/E09-towns.md) | Towns and economy | town | `██████░░░░` 4/7 I | I1–I4 closed (towns on the map, construction, growth and recruitment, the Tavern); I5 (the mage guild) refined; services, travel and Grail follow |
 | [E27](docs/epics/E27-game-shell.md) | Game shell: menus, scenario setup, load/save, options, start clips | client | `████████░░` 4/5 M | M1–M4 closed (reading, start and menus, a game's setup, High Scores, Credits, the save file and Load Game); M5 (in play) after E24 M5 |
 | [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓▓░` 9 I done, open-ended | I9 closed (a richer observation: no gain, #2 stays); I10 (the ceiling of play against the system actor) next; shaped at each checkpoint |
+| [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `░░░░░░░░░░` 0/1 I | refined; increment 1 (the reading, the oracle, the survey) next |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
 
 Not started yet (sketches in the backlog): game orchestration beyond the import (E10), map-object
-long tail (E12), adventure AI (E13), map generator (E14), web portal (E21), packaging and hosting
+long tail (E12), adventure AI (E13), the custom map generator (E30), web portal (E21), packaging and hosting
 (E22), ranked play in the native client (E28), HD layouts (E29), campaigns (E20), save import (E19).
 
 ## Quick start

@@ -18,7 +18,7 @@ A thin, allocation-conscious wrapper over the game logic:
 - **Opponents** (AI-Q1): agents face each other (a hero against a hero) and the system actor (a neutral side; E23's policy of the original's computer), whose seat the engine plays inside a step
 - Exposed to other languages via the C ABI (`h3-ffi`), batch-oriented to amortize call overhead
 
-The scenario distribution matters as much as the engine: training on few fixed setups overfits. Battle setups are sampled from generators (armies, terrain, heroes, artifacts, spells); adventure training needs generated maps (epic: map generator, seeded by the user's existing project, optimizing zone balance and minimal teleport connections among other objectives).
+The scenario distribution matters as much as the engine: training on few fixed setups overfits. Battle setups are sampled from generators (armies, terrain, heroes, artifacts, spells); adventure training needs generated maps (epic E30: a custom generator on E14's port of the original's, seeded by the user's existing project, optimizing zone balance and minimal teleport connections among other objectives).
 
 ### 1.1 The battle environment as built (E05, ADR-0025)
 
