@@ -850,6 +850,7 @@ fn the_items_and_names_of_every_colour() {
         seats: [open(); 8],
         heroes: Heroes::default(),
         local: Some(0),
+        saved: None,
     };
     assert!(!advanced.click(TOWN_RIGHT, &map, &mut shown));
     assert_eq!(advanced.popup(TOWN_AREA, &map), None);

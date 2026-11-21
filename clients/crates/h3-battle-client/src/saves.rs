@@ -10,7 +10,9 @@
 //!   the pattern `*.gm?` (any case), as the original's search, read in the order of their names.
 //! - **An entry** ([`entry`]): the map the save's replay names, read from the installation's `Maps`
 //!   as a new game's list reads it (`crate::maps::entry`: its header and heroes), the save's file's
-//!   name, its difficulty and its file's last-write time ([`Saved`]).
+//!   name, its difficulty and its file's last-write time ([`Saved`]); for the hot seat's load (E27
+//!   M4 T5b1) the colours it holds as human, each colour's choices (the replay's players' faction
+//!   and hero, the table's bonus and handicap) and the turn's duration ([`saved`]).
 //! - **A save the client cannot list** (the task's call): a file that does not read as a save,
 //!   whose replay's header the rules refuse (other packs, profile, rules' hashes or state hash
 //!   versions: `ReplayHeader::check`), or whose map is missing or moved (its content hash or
@@ -25,7 +27,7 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use h3_contracts::PlayerId;
-use h3_game::{Actor, GameCommand, GameRuleset, GameState, NoopSink, apply};
+use h3_game::{Actor, FactionChoice, GameCommand, GameRuleset, GameState, NoopSink, apply};
 use h3_map::Limits;
 use h3_sim::adventure::replay::Replay;
 use h3_view::shell::scenario::{self, Begun, Bonus, Entry, Heroes, Record, Saved, Seat, UNLIMITED};
@@ -110,9 +112,9 @@ pub fn entry(
 ) -> Entry {
     let time = modified(path);
     match map_of(path, install, rules) {
-        Ok((map, difficulty)) => Entry {
+        Ok((map, saved)) => Entry {
             file,
-            saved: Some(Saved { difficulty, time }),
+            saved: Some(Saved { time, ..saved }),
             ..map
         },
         Err(_) => Entry {
@@ -129,8 +131,8 @@ pub fn entry(
             teams: [0, 1, 2, 3, 4, 5, 6, 7],
             heroes: Heroes::default(),
             saved: Some(Saved {
-                difficulty: 0,
                 time,
+                ..Saved::default()
             }),
         },
     }
@@ -147,9 +149,9 @@ fn modified(path: &Path) -> i64 {
     }
 }
 
-/// The save at `path`'s map's entry (as a new game's list reads it) and its difficulty, or why it
-/// cannot be listed.
-fn map_of(path: &Path, install: &Path, rules: &GameRuleset) -> Result<(Entry, u8), String> {
+/// The save at `path`'s map's entry (as a new game's list reads it) and what the save shows of
+/// itself ([`saved`], its time the caller's), or why it cannot be listed.
+fn map_of(path: &Path, install: &Path, rules: &GameRuleset) -> Result<(Entry, Saved), String> {
     let save = crate::save::read_file(path)?;
     let replay = &save.replay;
     replay.header.check(rules).map_err(|e| e.to_string())?;
@@ -162,7 +164,42 @@ fn map_of(path: &Path, install: &Path, rules: &GameRuleset) -> Result<(Entry, u8
     }
     let raw = h3_map::read(&bytes, &Limits::default()).map_err(|e| e.to_string())?;
     let entry = crate::maps::entry(replay.map.path.clone(), &raw, rules);
-    Ok((entry, replay.difficulty))
+    Ok((entry, saved(&save)))
+}
+
+/// What `save` shows of itself on the scenario screen (E27 M4 T5b1; design §41.1), its file's
+/// time 0: its difficulty, the colours its replay's players hold as human, each colour's town
+/// (a fixed faction's choice, else Random) and first hero (the pick, else Random), bonus and
+/// handicap (its table's), and the turn's duration.
+#[must_use]
+pub fn saved(save: &crate::save::Save) -> Saved {
+    let mut saved = Saved {
+        difficulty: save.replay.difficulty,
+        duration: save.duration,
+        ..Saved::default()
+    };
+    for (record, (&bonus, &handicap)) in saved
+        .records
+        .iter_mut()
+        .zip(save.bonuses.iter().zip(&save.handicaps))
+    {
+        record.bonus = bonus;
+        record.handicap = handicap;
+    }
+    for player in &save.replay.players {
+        let c = usize::from(player.colour);
+        let (Some(human), Some(record)) = (saved.humans.get_mut(c), saved.records.get_mut(c))
+        else {
+            continue;
+        };
+        *human = player.human;
+        record.town = match player.faction {
+            Some(FactionChoice::Fixed(f)) => u8::try_from(f.index()).ok(),
+            Some(FactionChoice::Random) | None => None,
+        };
+        record.hero = player.hero.and_then(|h| u8::try_from(h.index()).ok());
+    }
+    saved
 }
 
 /// The game's seed of a made save ([`made`]).
@@ -181,24 +218,133 @@ pub fn made(
     install: &Path,
     rules: &GameRuleset,
     map: &str,
+    at: (u8, u32),
+    name: &str,
+) -> Result<crate::save::Save, String> {
+    made_with(install, rules, map, at, &Seated::default(), name)
+}
+
+/// A hot seat's player of a made save (E27 M4 T5b1: the hot-seat makers' `viewer` tables, design
+/// §41.2): its colour, its name and its choices as the advanced options' arrows chose them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Player {
+    /// Its colour (0 red to 7 pink).
+    pub colour: u8,
+    /// Its name.
+    pub name: String,
+    /// Its town's faction, none for Random (or the map's own town).
+    pub town: Option<u8>,
+    /// Its first hero's type, none for Random.
+    pub hero: Option<u8>,
+    /// Its starting bonus.
+    pub bonus: Bonus,
+}
+
+impl Player {
+    /// Parses `<colour>:<name>:<town>:<hero>:<bonus>`: the colour 0 to 7, a name without a colon,
+    /// the town's faction and the hero's type by their indexes or `random`, the bonus `artifact`,
+    /// `gold`, `resource` or `random`.
+    ///
+    /// # Errors
+    /// Not five fields, or a field out of its range.
+    pub fn parse(text: &str) -> Result<Self, String> {
+        let bad = || format!("save: player `{text}` (<colour>:<name>:<town>:<hero>:<bonus>)");
+        let fields: Vec<&str> = text.split(':').collect();
+        let &[colour, name, town, hero, bonus] = fields.as_slice() else {
+            return Err(bad());
+        };
+        let index = |field: &str| -> Result<Option<u8>, String> {
+            match field {
+                "random" => Ok(None),
+                n => n.parse().map(Some).map_err(|_| bad()),
+            }
+        };
+        Ok(Self {
+            colour: colour.parse().ok().filter(|c| *c < 8).ok_or_else(bad)?,
+            name: name.to_owned(),
+            town: index(town)?,
+            hero: index(hero)?,
+            bonus: crate::save::bonus(bonus).ok_or_else(bad)?,
+        })
+    }
+}
+
+/// Who plays a made save and its turn's duration (E27 M4 T5b1): no players, the single player's
+/// game of [`made`]; else the hot seat's, each player a human of its colour, every other colour
+/// the computer's (Random choices).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Seated {
+    /// The hot seat's players, none for a single game.
+    pub players: Vec<Player>,
+    /// The turn's duration (`turndur.txt`'s record, at most unlimited's).
+    pub duration: u8,
+}
+
+impl Default for Seated {
+    /// A single game of unlimited turns.
+    fn default() -> Self {
+        Self {
+            players: Vec::new(),
+            duration: UNLIMITED,
+        }
+    }
+}
+
+/// [`made`] played by `seated` (E27 M4 T5b1): a single game's, or the hot seat's players with
+/// their names and choices; the turn's duration `seated`'s.
+///
+/// # Errors
+/// As [`made`]'s; two players of one colour.
+pub fn made_with(
+    install: &Path,
+    rules: &GameRuleset,
+    map: &str,
     (difficulty, day): (u8, u32),
+    seated: &Seated,
     name: &str,
 ) -> Result<crate::save::Save, String> {
     let raw = crate::begin::read(&crate::begin::map_path(install, map))?;
-    let local = crate::maps::entry(map.to_owned(), &raw, rules).local();
-    let records = core::array::from_fn(|c| Record {
-        colour: local.filter(|&l| l == c).and_then(|l| u8::try_from(l).ok()),
-        town: None,
-        hero: None,
-        bonus: Bonus::Random,
-        handicap: 0,
-    });
+    let (records, names) = if seated.players.is_empty() {
+        let local = crate::maps::entry(map.to_owned(), &raw, rules).local();
+        let records = core::array::from_fn(|c| Record {
+            colour: local.filter(|&l| l == c).and_then(|l| u8::try_from(l).ok()),
+            town: None,
+            hero: None,
+            bonus: Bonus::Random,
+            handicap: 0,
+        });
+        (records, Default::default())
+    } else {
+        let mut records = [Record {
+            colour: None,
+            town: None,
+            hero: None,
+            bonus: Bonus::Random,
+            handicap: 0,
+        }; 8];
+        let mut names: [Option<String>; 8] = Default::default();
+        for player in &seated.players {
+            let c = usize::from(player.colour & 7);
+            if names[c].is_some() {
+                return Err(format!("{map}: two players of colour {c}"));
+            }
+            records[c] = Record {
+                colour: Some(player.colour & 7),
+                town: player.town,
+                hero: player.hero,
+                bonus: player.bonus,
+                handicap: 0,
+            };
+            names[c] = Some(player.name.clone());
+        }
+        (records, names)
+    };
     let begun = Begun {
         file: map.to_owned(),
         difficulty,
         records,
-        names: Default::default(),
-        duration: UNLIMITED,
+        names,
+        duration: seated.duration.min(UNLIMITED),
     };
     let setup = crate::begin::setup(&raw, &begun, rules)?;
     crate::begin::validated(&setup, rules)?;
@@ -234,15 +380,17 @@ pub struct Options {
     map: String,
     difficulty: u8,
     day: u32,
+    seated: Seated,
     name: String,
     out: PathBuf,
     install: PathBuf,
 }
 
 impl Options {
-    /// Parses `--map <file> --difficulty <0..4> [--day <n>] --name <name> --out <file>
-    /// [--install <dir>]`: the day 1 by default; the installation `$H3_INSTALL`, then the
-    /// repository's `original-data/install`.
+    /// Parses `--map <file> --difficulty <0..4> [--day <n>] [--player <p>]... [--duration <0..10>]
+    /// --name <name> --out <file> [--install <dir>]`: the day 1 by default; each `--player` a hot
+    /// seat's ([`Player::parse`], E27 M4 T5b1; none: a single game), the duration unlimited (10)
+    /// by default; the installation `$H3_INSTALL`, then the repository's `original-data/install`.
     ///
     /// # Errors
     /// An unknown argument, a flag without its value, a value out of its range, or a flag missing.
@@ -250,6 +398,7 @@ impl Options {
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         let (mut map, mut difficulty, mut day, mut name, mut out, mut install) =
             (None, None, 1, None, None, None);
+        let mut seated = Seated::default();
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -276,6 +425,15 @@ impl Options {
                         .filter(|d| *d >= 1)
                         .ok_or_else(|| format!("save: day `{v}` (1 on)"))?;
                 }
+                "--player" => seated.players.push(Player::parse(&value()?)?),
+                "--duration" => {
+                    let v = value()?;
+                    seated.duration = v
+                        .parse::<u8>()
+                        .ok()
+                        .filter(|d| *d <= UNLIMITED)
+                        .ok_or_else(|| format!("save: duration `{v}` (0 to {UNLIMITED})"))?;
+                }
                 "--name" => name = Some(value()?),
                 "--out" => out = Some(PathBuf::from(value()?)),
                 "--install" => install = Some(PathBuf::from(value()?)),
@@ -288,6 +446,7 @@ impl Options {
             map: map.ok_or_else(|| missing("--map"))?,
             difficulty: difficulty.ok_or_else(|| missing("--difficulty"))?,
             day,
+            seated,
             name: name.ok_or_else(|| missing("--name"))?,
             out: out.ok_or_else(|| missing("--out"))?,
             install: install
@@ -302,7 +461,8 @@ impl Options {
 pub fn run(options: &Options) -> std::process::ExitCode {
     let done = crate::maps::rules().and_then(|rules| {
         let at = (options.difficulty, options.day);
-        let save = made(&options.install, &rules, &options.map, at, &options.name)?;
+        let (map, seated) = (&options.map, &options.seated);
+        let save = made_with(&options.install, &rules, map, at, seated, &options.name)?;
         crate::save::write_file(&options.out, &save)
     });
     match done {

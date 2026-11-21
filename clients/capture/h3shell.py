@@ -52,7 +52,10 @@ A recipe (a `[[recipe]]` of shell/<group>.toml): `id`, `what` (the catalogue's s
             `drawn` gives the viewer the client's saves of the same names (E27 M4 T4b1,
             `h3-view save`), made on the maker's first map with its `viewer` table
   viewer    a maker's save as the client makes it (E27 M4 T4b1): `difficulty` (0 to 4) and `day`
-            (the day it is made on, default 1); left out of the maker's digest
+            (the day it is made on, default 1); a hot seat's (E27 M4 T5b1) its `players` (tables
+            of `colour`, `name`, `town` and `hero` by index, Random without, `bonus`) and the
+            turn's `duration` (turndur.txt's record, default 10: unlimited); left out of the
+            maker's digest
   tz        the run's time zone (E27 M4 T4a; Wine's local time is the TZ variable's, the list's
             dates by it: design §38), default "UTC"; a zone without daylight saving time, since
             the original converts a file's time by the present offset
@@ -317,18 +320,24 @@ def recipe_by_id(ident):
 
 def client_save(made, folder):
     """The client's save matching a maker's (E27 M4 T4b1, `made_games` for `drawn`): `h3-view
-    save` on the maker's map with its `viewer` table's `difficulty` and `day` (default 1), named
-    and written as the maker's file in `folder`."""
+    save` on the maker's map with its `viewer` table's `difficulty` and `day` (default 1), its hot
+    seat's `players` and `duration` (E27 M4 T5b1), named and written as the maker's file in
+    `folder`."""
     by, name = made["by"], made["file"]
     maker = recipe_by_id(by)
     viewer = maker.get("viewer")
     if viewer is None or not maker.get("maps"):
         raise RuntimeError(f"`{by}` has no `viewer` table or map: no client's save of {name}")
-    done = subprocess.run(
-        [str(H3VIEW), "save", "--map", maker["maps"][0], "--difficulty", str(viewer["difficulty"]),
-         "--day", str(viewer.get("day", 1)), "--name", Path(name).stem, "--out",
-         str(folder / name)],
-        capture_output=True, text=True)
+    args = [str(H3VIEW), "save", "--map", maker["maps"][0], "--difficulty",
+            str(viewer["difficulty"]), "--day", str(viewer.get("day", 1)), "--name",
+            Path(name).stem, "--out", str(folder / name)]
+    for p in viewer.get("players", []):
+        args += ["--player", ":".join(str(x) for x in (
+            p["colour"], p["name"], p.get("town", "random"), p.get("hero", "random"),
+            p.get("bonus", "random")))]
+    if "duration" in viewer:
+        args += ["--duration", str(viewer["duration"])]
+    done = subprocess.run(args, capture_output=True, text=True)
     if done.returncode != 0:
         raise RuntimeError(f"{by}: the client's {name}: {(done.stdout + done.stderr).strip()}")
     return folder / name

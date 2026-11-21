@@ -105,7 +105,7 @@ use h3_ui::scrollbar::{self, Scrollbar};
 use h3_ui::ui::{Area, Button, Caption, Def, Dialog, Draw, Item, Label, Shown, State};
 use serde::Deserialize;
 
-use super::{Heroes, Seat};
+use super::{Heroes, Saved, Seat};
 use crate::message::MessageBox;
 
 /// What stands for a hero's name in [`AdvancedTexts::hero_line`].
@@ -525,6 +525,9 @@ pub(in crate::shell) struct Map {
     pub(in crate::shell) heroes: Heroes,
     /// The single player's colour.
     pub(in crate::shell) local: Option<u8>,
+    /// The save the hot seat's load shows (E27 M4 T5b1): its humans, its choices and its turn's
+    /// duration; none in a new game.
+    pub(in crate::shell) saved: Option<Saved>,
 }
 
 /// The advanced options' state.
@@ -541,6 +544,10 @@ pub(super) struct Advanced {
     /// The hot seat's (`game_type` 0x6989F0 3; E27 M3 T4a): every human record takes a colour a
     /// human may play, the handicap is a caption button, no name has an edit.
     hot_seat: bool,
+    /// The hot seat's load (E27 M4 T5b1; design §41.1): the rows the save's (its choices and
+    /// duration, the names placed by its humans first), no arrows, the handicap disabled, the
+    /// duration's bar not enabled.
+    load: bool,
     /// The human records in the slots' order (+0x1064: `scenario_slot_add` 0x577BE0, ids 1 on):
     /// the single player's alone (the local slot's), or the hot seat's names'; the first is the
     /// local one (`local_slot` 0x69D608: id 1).
@@ -592,6 +599,7 @@ impl Advanced {
             showing: false,
             changed: true,
             hot_seat: false,
+            load: false,
             humans: alloc::vec![Human {
                 name: String::new(),
                 record: Record::NEW,
@@ -624,15 +632,23 @@ impl Advanced {
         self
     }
 
+    /// The hot seat's options in its load mode (E27 M4 T5b1; `scenario_advanced_toggle` 0x581383,
+    /// 0x581743, design §41.1): the rows made from the save the map holds ([`Map::saved`]).
+    pub(super) const fn set_load(&mut self) {
+        self.load = true;
+        self.changed = true;
+    }
+
     /// Whether the options show.
     pub(super) const fn showing(&self) -> bool {
         self.showing
     }
 
     /// Whether item `id` takes the mouse: not a single player's handicap (not enabled; the hot
-    /// seat's is, 0x58170E).
+    /// seat's is, 0x58170E), nor a load's (not enabled, 0x581743: no popup on its right press,
+    /// recorded; E27 M4 T5b1).
     pub(super) fn takes(&self, id: u16) -> bool {
-        self.hot_seat || !(HANDICAP..HANDICAP + 8).contains(&id)
+        (self.hot_seat && !self.load) || !(HANDICAP..HANDICAP + 8).contains(&id)
     }
 
     /// The human record holding colour `c`, if one does.
@@ -840,6 +856,8 @@ impl Advanced {
             // taking no press ([`Advanced::takes`]); the name's edit hidden (0x58173B). The hot
             // seat's handicap is enabled, its caption the constructor's first name (0x57B0A4:
             // `handicap_names`' first) until a press; its edits stay hidden as made.
+            // A load's not enabled either (E27 M4 T5b1: 0x581743, design §41.1): drawn up, taking
+            // no press ([`Advanced::takes`]).
             set(shown, HANDICAP + u16::from(c), |s| *s = State::default());
             set(shown, EDIT + u16::from(c), |s| s.hidden = true);
             if self.hot_seat {
@@ -862,7 +880,9 @@ impl Advanced {
     }
 
     /// The records made again over `map` (`scenario_players_init` 0x584C40): every record's
-    /// colour, town and hero cleared, the human records seated.
+    /// colour, town and hero cleared, the human records seated. In a load (E27 M4 T5b1; design
+    /// §41.1) every colour's record the save's choices and the turn's duration the save's: a
+    /// human record takes the record of the colour it is seated on.
     fn remake(&mut self, map: &Map) {
         let humans = self.humans.iter_mut().map(|h| &mut h.record);
         for record in humans.chain(&mut self.computers) {
@@ -871,6 +891,19 @@ impl Advanced {
             record.hero = None;
         }
         self.seat_humans(map);
+        if let Some(saved) = map.saved.filter(|_| self.load) {
+            self.computers = saved.records.map(|r| Record { colour: None, ..r });
+            for human in &mut self.humans {
+                if let Some(c) = human.record.colour {
+                    human.record = Record {
+                        colour: Some(c),
+                        ..saved.records[usize::from(c & 7)]
+                    };
+                }
+            }
+            self.duration = saved.duration.min(UNLIMITED);
+            self.bar.set_value(i32::from(self.duration));
+        }
     }
 
     /// Each colour's record and the name of the human record holding it, red first, as Begin
@@ -908,13 +941,28 @@ impl Advanced {
     /// single, the local record's the map's single player's colour (the only human record); the
     /// hot seat, each colour a human may play, in colour order, to the next human record (the loop
     /// 0x584DF0's hot-seat branch), the colours past the last name the computer's, the names past
-    /// the last such colour none.
+    /// the last such colour none. In a load (E27 M4 T5b1; `scenario_players_init` 0x584C57 to
+    /// 0x584D99, design §41.1, CLT-Q160 (a)): first each colour the save holds as human that a
+    /// human may still play, in colour order, to the next record without one; then each colour a
+    /// human may play that no record holds (a computer's in the save), until the names run out;
+    /// a saved human past the names keeps no record (its row the computer's).
     fn seating(&self, map: &Map) -> Vec<Option<u8>> {
         if !self.hot_seat {
             return self.humans.iter().map(|_| map.local).collect();
         }
-        let mut colours = (0..8u8).filter(|&c| map.seats[usize::from(c)].human);
-        self.humans.iter().map(|_| colours.next()).collect()
+        let may = |c: u8| map.seats[usize::from(c)].human;
+        let mut colours: Vec<u8> = match map.saved.filter(|_| self.load) {
+            Some(saved) => {
+                let saved_human = |c: u8| saved.humans[usize::from(c)];
+                let first = (0..8u8).filter(|&c| may(c) && saved_human(c));
+                first
+                    .chain((0..8u8).filter(|&c| may(c) && !saved_human(c)))
+                    .collect()
+            }
+            None => (0..8u8).filter(|&c| may(c)).collect(),
+        };
+        colours.reverse();
+        self.humans.iter().map(|_| colours.pop()).collect()
     }
 
     /// Why Begin is refused over `map` (`scenario_begin_tail` 0x58C11F, a new game): GENRLTXT 531
@@ -980,9 +1028,11 @@ impl Advanced {
         self.duration
     }
 
-    /// Whether `point` (from the dialog's corner) is on the duration's bar while the options show.
+    /// Whether `point` (from the dialog's corner) is on the duration's bar while the options show
+    /// and the bar is enabled (not in a load, E27 M4 T5b1: its vtable +0x24 skipped, 0x581383;
+    /// drawn as in a new game, its arrows taking no press: recorded).
     pub(super) fn on_bar(&self, point: [i32; 2]) -> bool {
-        self.showing && self.bar.contains(point)
+        self.showing && !self.load && self.bar.contains(point)
     }
 
     /// Whether the mouse holds the duration's bar (its own loop runs: no hover, key or right
@@ -1318,14 +1368,15 @@ impl Advanced {
     /// Whether colour `c`'s town may change (`scenario_town_choosable` 0x58CEB0, a single player's
     /// new game): its record the single player's or a computer's, and the map offering a choice.
     fn town_choosable(&self, seat: Seat, _c: u8) -> bool {
-        offered(seat)
+        !self.load && offered(seat)
     }
 
     /// Whether colour `c`'s hero may change (`scenario_hero_choosable` 0x58CFB0): a human record's
     /// (outside the hot seat the single player's: the only one), its shown town not Random, and
     /// its main town generating its hero or the random-hero flag (TWN-SET-006).
     fn hero_choosable(&self, seat: Seat, c: u8) -> bool {
-        self.human_of(c).is_some()
+        !self.load
+            && self.human_of(c).is_some()
             && self.shown_town(seat, c).is_some()
             && (seat.generates || seat.random_hero)
     }
@@ -1337,10 +1388,11 @@ impl Advanced {
         // (E27 M3 T7, the review's B6: in a new game every colour's town shows a town or may
         // change, so the hot seat's and the local colour's terms decide nothing before the load's
         // records, M4: a load's colour whose town neither shows nor changes.)
-        self.hot_seat
-            || self.local_held() == Some(c)
-            || self.shown_town(seat, c).is_some()
-            || self.town_choosable(seat, c)
+        !self.load
+            && (self.hot_seat
+                || self.local_held() == Some(c)
+                || self.shown_town(seat, c).is_some()
+                || self.town_choosable(seat, c))
     }
 
     /// Whether colour `c` has no hero to take an artifact: its record's hero Random and the
@@ -1786,7 +1838,11 @@ impl Advanced {
     }
 
     /// The draws of the options after the dialog's items (`scenario_dialog_redraw` 0x584550): the
-    /// duration's bar, then each row (`scenario_player_row_draw` 0x58D510).
+    /// duration's bar, then each row (`scenario_player_row_draw` 0x58D510). A load's bar stays
+    /// disabled as made (E27 M4 T5b1: its enabling, vtable +0x24 0x597140, skipped at 0x581383),
+    /// so its redraw darkens it after drawing it (`dialog_item_message` 0x5FE54B: a shown and
+    /// disabled item's +0x20, 0x5FE800, `screen_darken` over its rectangle; recorded, `adv-load`
+    /// advanced).
     pub(super) fn draws(
         &self,
         map: &Map,
@@ -1798,6 +1854,13 @@ impl Advanced {
             return Vec::new();
         }
         let mut draws = self.bar.draws(dialog.place);
+        if self.load {
+            let look = self.bar.look();
+            let [x, y] = [dialog.place[0] + look.at[0], dialog.place[1] + look.at[1]];
+            draws.push(Draw::Darken {
+                rect: [x, y, look.size[0], look.size[1]],
+            });
+        }
         for c in 0..8u8 {
             if let Some(row) = self.rows[usize::from(c)] {
                 draws.extend(self.row_draws((map, c, row), dialog, shown, players));

@@ -113,6 +113,7 @@ pub(crate) fn texts(bugs: Bugs) -> Texts {
             None,
             (BOX_PLAYER, bugs),
         )),
+        list_saved: String::from("Show Saved Games"),
     }
 }
 
@@ -166,7 +167,11 @@ pub(crate) fn scenario_of(entries: Vec<Entry>, bugs: Bugs) -> Scenario {
 pub(crate) fn save(file: &str, map: Entry, difficulty: u8, time: i64) -> Entry {
     Entry {
         file: file.to_string(),
-        saved: Some(Saved { difficulty, time }),
+        saved: Some(Saved {
+            difficulty,
+            time,
+            ..Saved::default()
+        }),
         ..map
     }
 }
@@ -1456,5 +1461,6 @@ fn a_select_keeping_the_map_keeps_the_description_s_scroll_in_the_client_s_profi
     assert_eq!(described(&s), (Some("line 0".into()), Some(thumb_at(0))));
 }
 
+mod hot_seat_load;
 mod load;
 mod review;

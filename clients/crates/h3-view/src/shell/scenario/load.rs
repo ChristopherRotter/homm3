@@ -37,7 +37,7 @@ use h3_assets::fnt::Font;
 use h3_render::Bugs;
 use h3_ui::ui::State;
 
-use super::{BEGIN, BUILT_KEY, Did, Ended, Open, Over, Scenario};
+use super::{BEGIN, BUILT_KEY, Did, Ended, Open, Over, Record, Scenario, UNLIMITED};
 use crate::message::{self, MessageBox, MessageLayout, Style};
 use crate::shell::menu::BOX_PLAYER;
 
@@ -199,14 +199,39 @@ impl Scenario {
 }
 
 /// What a save adds to its map's entry (the original's `scenario_info` of a save file: the save's
-/// header, `sub_4BC750`): its difficulty and its file's time.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+/// header, `sub_4BC750`): its difficulty and its file's time; for the hot seat's load (E27 M4
+/// T5b1, design §41.1) what the advanced options show of it: the colours it holds as human, each
+/// colour's saved choices and the turn's duration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Saved {
     /// The save's difficulty (0 easy to 4 impossible): the difficulty's buttons show it, disabled,
     /// and the rating is its.
     pub difficulty: u8,
     /// The file's last-write time, in seconds from 1970-01-01 UTC.
     pub time: i64,
+    /// Each colour the save holds as human, red first (the original's `load_slots` 0x69FDA4, the
+    /// records' +0xC80; the client's: the replay's players' human flags).
+    pub humans: [bool; 8],
+    /// Each colour's saved choices, red first, no colour held: its town and first hero (the
+    /// replay's players' faction's choice and hero's pick, Random where it has none), its bonus
+    /// and handicap (the client's table).
+    pub records: [Record; 8],
+    /// The turn's duration (`turndur.txt`'s record, the client's table; the original's game
+    /// +0x1F843).
+    pub duration: u8,
+}
+
+impl Default for Saved {
+    /// A save of no humans, Random choices and unlimited turns (a save the client cannot list).
+    fn default() -> Self {
+        Self {
+            difficulty: 0,
+            time: 0,
+            humans: [false; 8],
+            records: [Record::NEW; 8],
+            duration: UNLIMITED,
+        }
+    }
 }
 
 /// The date's text item (the client's id: the info draw's own, §3.5): "%d/%d/%d - %d:%02d" at

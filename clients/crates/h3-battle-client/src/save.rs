@@ -232,7 +232,7 @@ const fn word(bonus: Bonus) -> &'static str {
 }
 
 /// The bonus of a file's `text`, none for another word.
-fn bonus(text: &str) -> Option<Bonus> {
+pub(crate) fn bonus(text: &str) -> Option<Bonus> {
     [Bonus::Artifact, Bonus::Gold, Bonus::Resource, Bonus::Random]
         .into_iter()
         .find(|b| word(*b) == text)

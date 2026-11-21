@@ -215,11 +215,16 @@ commands:
           first unless its key is kept here, then the new one): the key so far stays due at
           every server in the pins file (default pins.txt), where `connect` and `window
           --server` re-key the account at their next login.
-  save --map <file> --difficulty <0-4> [--day <n>] --name <name> --out <file> [--install <dir>]
+  save --map <file> --difficulty <0-4> [--day <n>] [--player <p>]... [--duration <0-10>]
+       --name <name> --out <file> [--install <dir>]
           a saved game of the shell (E27 M4 T4b1: the harness's made saves): a single game
           begun on the installation's map <file> at the difficulty (0 easy to 4 impossible),
           the single player's colour the map's, each player's turn ended until day <n>
-          (default 1) begins; written to <file> as the load mode lists it.
+          (default 1) begins; written to <file> as the load mode lists it. Each --player
+          <colour>:<name>:<town>:<hero>:<bonus> a hot seat's human instead (E27 M4 T5b1: the
+          town's faction and the hero's type by index or `random`; the bonus artifact, gold,
+          resource or random), every other colour the computer's; --duration the turn's
+          (turndur.txt's record, default 10: unlimited).
   shell [--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>] [--input-step <ms>]
         | --window [--scale <n>] [--keys <file>] [--scores <file>]] [--games <dir>] [--no-intro]
         [--install <dir>]

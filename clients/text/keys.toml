@@ -3173,6 +3173,11 @@ original = [{ at = "GENRLTXT:688", printf = ["file"] }]
 id = "shell.scenario.no-saves"
 original = [{ at = "GENRLTXT:686" }]
 
+# E27 M4 T5b1: the hot seat's load's Show Saved Games (the caption of 128; design §41.3).
+[[key]]
+id = "shell.scenario.list-saved"
+original = [{ at = "GENRLTXT:656" }]
+
 [[key]]
 id = "shell.scenario.broken"
 original = [{ at = "GENRLTXT:505" }]

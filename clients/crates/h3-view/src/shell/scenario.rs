@@ -86,8 +86,17 @@
 //! - **The load mode** (E27 M4 T4b1, T4b2; §38, §39, §40): a single load's screen over the
 //!   client's saves (`load`'s docs: the saves' entries, the date, Delete's question and its end,
 //!   the notice with no saves, Load).
+//! - **The hot seat's load** (E27 M4 T5b1; §41): opened from the Multiplayer dialog's hot seat
+//!   over Load Game's menu ([`Scenario::opened_hot_seat`] of the load mode): the saves of maps two
+//!   humans may play, the list shown; the panel's Show Saved Games (128, GENRLTXT 656) and Show
+//!   Advanced Options, Random Map in the original's profile alone (CLT-Q161 (b): the original's
+//!   shows it, its press and its key R doing nothing, `random_map_toggle` 0x57FEB0), the flags'
+//!   strip; the advanced options the save's (`advanced`'s load: the saved choices, no arrows, the
+//!   handicap and the duration's bar disabled, the names placed by the save's humans first,
+//!   CLT-Q160 (a)); Load hands the names' places on ([`Scenario::seated`]).
 //!
-//! *Not built yet:* the save mode and the hot seat's load (M5, T5), GENRLTXT 503 while the list is
+//! *Not built yet:* the save mode (M5), the hot seat's load's presses that change nothing, its
+//! flags' presses among the save's humans (CLT-Q110 (b)) and its popups (T5b2), GENRLTXT 503 while the list is
 //! read again (a network game's message 1015 alone, `scenario_list_reread` 0x58B120: the network modes',
 //! `CLT-STUB-6`; design §20.3).
 
@@ -665,6 +674,8 @@ pub struct Texts {
     /// The notice at an opening of the load mode with no saves (E27 M4 T4b2: GENRLTXT 686 in an
     /// OK box; none: no notice, Load enabled).
     pub no_saves: Option<MessageBox>,
+    /// The hot seat's load's Show Saved Games (E27 M4 T5b1: GENRLTXT 656, the caption of 128).
+    pub list_saved: String,
 }
 
 /// The teams' dialog's look (`scenario_teams_dialog` 0x576540; the layout's `[scenario.teams]`):
@@ -1040,13 +1051,26 @@ impl Scenario {
     }
 
     /// The load mode set over the screen as [`Scenario::new`] made it (E27 M4 T4b1;
-    /// [`Scenario::loading`]): its items, the list shown and built.
+    /// [`Scenario::loading`]): its items, the list shown and built. The hot seat's (E27 M4 T5b1;
+    /// §41.3) keeps the panel's buttons and the flags' strip, Show Available Scenarios as Show
+    /// Saved Games, Random Map in the original's profile alone (CLT-Q161 (b)); its advanced
+    /// options the save's.
     fn set_load(&mut self, begin: String, offset: i32) {
-        for id in [LIST, ADVANCED, RANDOM, ALLIES_LABEL, ENEMIES_LABEL, TEAMS] {
-            hide(&mut self.shown, id);
-        }
-        for id in ALLIES..ENEMIES + 8 {
-            hide(&mut self.shown, id);
+        if self.hot_seat {
+            self.shown.texts.insert(LIST, self.texts.list_saved.clone());
+            if self.bugs == Bugs::Fixed {
+                hide(&mut self.shown, RANDOM);
+            }
+            if let Some(advanced) = &mut self.advanced {
+                advanced.set_load();
+            }
+        } else {
+            for id in [LIST, ADVANCED, RANDOM, ALLIES_LABEL, ENEMIES_LABEL, TEAMS] {
+                hide(&mut self.shown, id);
+            }
+            for id in ALLIES..ENEMIES + 8 {
+                hide(&mut self.shown, id);
+            }
         }
         for id in DIFFICULTIES {
             let state = self.shown.state(id);
@@ -1412,6 +1436,8 @@ impl Scenario {
             seats: self.seats_of(e),
             heroes: e.heroes.clone(),
             local: e.local().and_then(|c| u8::try_from(c).ok()),
+            // The hot seat's load (E27 M4 T5b1): the rows the save's.
+            saved: e.saved.filter(|_| self.hot_seat && self.loading.is_some()),
         })
     }
 
@@ -1528,6 +1554,11 @@ impl Scenario {
     /// game (`scenario_to_game` 0x583580) and, with no random map chosen yet, the own record built
     /// (in the client's profile at each opening: CLT-Q111 (b)); the screen redrawn whole.
     fn toggle_random(&mut self) {
+        // Nothing in a load (`random_map_toggle` 0x57FEB0 returns at once in the load and save
+        // modes; E27 M4 T5b1, §41.1: the button the original's profile's alone, CLT-Q161 (b)).
+        if self.loading.is_some() {
+            return;
+        }
         if self.random.showing() {
             self.random.hide(&mut self.shown);
         } else {
@@ -1924,8 +1955,9 @@ impl Scenario {
         shown
             .frames
             .insert(LOSS_MARK, header.loss.map_or(3, u32::from));
-        // No flags in a single load (`scenario_team_flags` 0x585300; E27 M4 T4b1).
-        if flags && self.loading.is_none() {
+        // No flags in a single load (`scenario_team_flags` 0x585300; E27 M4 T4b1); the hot seat's
+        // load's as a new hot seat's (E27 M4 T5b1).
+        if flags && (self.loading.is_none() || self.hot_seat) {
             self.team_flags(&entry);
         }
         self.random_size_mark();
@@ -1944,7 +1976,13 @@ impl Scenario {
             .map_or_else(
                 || {
                     if self.hot_seat {
-                        entry.first_human()
+                        // A load's first name takes the save's first human a human may play
+                        // (E27 M4 T5b1, §41.1), else the first colour a human may play.
+                        let saved = entry
+                            .saved
+                            .filter(|_| self.loading.is_some())
+                            .and_then(|s| (0..8).find(|&c| s.humans[c] && entry.seats[c].human));
+                        saved.or_else(|| entry.first_human())
                     } else {
                         entry.local()
                     }
@@ -2150,6 +2188,21 @@ impl Scenario {
             names,
             duration: self.duration().unwrap_or(UNLIMITED),
         })
+    }
+
+    /// The hot seat's load's names by the colour each holds, red first, as Load hands them on (E27
+    /// M4 T5b1; CLT-Q160 (a): the names decide who is human after the load, the begin after a load
+    /// making human exactly the colours a name holds, `scenario_load_begin` 0x58C419); none
+    /// outside the hot seat's load or with no save selected.
+    #[must_use]
+    pub fn seated(&self) -> Option<[Option<String>; 8]> {
+        if !self.hot_seat || self.loading.is_none() {
+            return None;
+        }
+        self.entry()?;
+        let map = self.players();
+        let moved = self.options_moved();
+        self.advanced.as_ref().map(|a| a.begun(&map, moved).1)
     }
 
     /// The screen's draw list as it is (the background is the caller's: [`Scenario::background`]):
