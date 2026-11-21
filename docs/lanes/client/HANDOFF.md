@@ -22,8 +22,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   reworked later to be independent of the engine's version); the shell's recipes pinned to a
   time zone (`tz`); a disabled button takes no hotkey; the names decide who is human after a
   hot-seat load (CLT-Q160 (a)), a single load's current player alone (CLT-Q170 (a)). Open pull
-  requests: T6's, branch `client/e27-m4-t6`, and the README's row, `shared/e27-m4-closure`:
-  watch both until they merge. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  requests: T6's, branch `client/e27-m4-t6`, and the README's row, #1104
+  (`shared/e27-m4-closure`): watch both until they merge. E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`.

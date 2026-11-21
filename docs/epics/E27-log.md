@@ -1941,3 +1941,7 @@ bounded jobs: three fresh reviewers one after another, one fixer in the clone (n
   --with-original-data`: no failing step (exit 2).
 - **Change freely** (the agent's): the contact sheets' tool, the replay's runner, its pause and
   finish scripts (`/home/claude/tools/`, outside the repo).
+- **After merging `master`** (#1097's map import v28 and game state hash v38, #1100, #1101):
+  `check.sh --no-coverage`, `drawn` of the scenario, advanced, multiplayer, menus and scores
+  groups (as recorded), the gate and the client scope's verify with the original data passed
+  again.
