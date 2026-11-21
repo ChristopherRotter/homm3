@@ -1,6 +1,6 @@
 //! Increment 14's kinds and tables in the ruleset part (E08 T132a2; increment 14's design note §1
 //! to §5): the market, the Altar of Sacrifice, the Hill Fort and the War Machine Factory, every
-//! one entered and without a built visit yet; `[params.market]` compiled into the rates
+//! one entered, each with its visit (E08 T133a2 to T134b2); `[params.market]` compiled into the rates
 //! (`crate::MarketParams`); the Altar's factions; every check and the hash (part v23; the cost
 //! resource v24, E08 T133b).
 

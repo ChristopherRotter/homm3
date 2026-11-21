@@ -241,6 +241,7 @@ fn what_has_no_rate_is_refused() {
     assert_eq!(market.artifact_price(5, 2_000, UNKNOWN), None);
 }
 
+// covers: ADV-MKT-002
 #[test]
 fn the_parameters_refuse_what_no_rate_can_use() {
     let rows = [[30, 40, 70]];

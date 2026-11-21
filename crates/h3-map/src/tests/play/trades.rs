@@ -1127,7 +1127,7 @@ fn trade_plans() -> impl Strategy<Value = (Plan, bool, u64, Vec<Step>)> {
 /// [`check_isolation`], [`check_conservation`]) see each.
 // covers: GAM-DEC-008, GAM-DEC-011, GAM-DEC-012, GAM-DEC-013, ADV-MKT-001, ADV-MKT-003
 // covers: ADV-MKT-004, ADV-MKT-005, ADV-MKT-006, ADV-MKT-007, ADV-ALT-001, ADV-ALT-002
-// covers: ADV-ALT-003, ADV-HFT-001, ADV-HFT-002, ADV-WMF-001
+// covers: ADV-ALT-003, ADV-HFT-001, ADV-HFT-002, ADV-WMF-001, ADV-HIR-002, GAM-DEC-007
 #[test]
 fn the_plans_trade_and_use_the_services() {
     use proptest::strategy::ValueTree;

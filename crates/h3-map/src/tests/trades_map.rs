@@ -322,7 +322,7 @@ fn black_markets() -> impl Iterator<Item = usize> {
     (0..OBJECTS.len()).filter(|&i| OBJECTS[i].1 == BLACK_MARKET)
 }
 
-// covers: ADV-MKT-001, ADV-MKT-006
+// covers: ADV-MKT-001, ADV-MKT-006, GAM-SET-003
 #[test]
 fn the_trades_map_is_committed_as_written_and_imports_the_fourteen() {
     let rules = &*SOD;
