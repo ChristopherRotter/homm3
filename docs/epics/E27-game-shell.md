@@ -520,6 +520,15 @@ The user, 2026-11-19 (M3 T7's start):
     under Wine against `kept/`, the reviewers' findings and M4's review list to the user; T6b the
     user's answers and their fixes, M4 to the archive, the README's row, M5's refinement or its
     prerequisites. T6a in the next session (the original files staged again).
+78. **T6 in one session; M4's review list accepted with the reviewers' changes; CLT-Q162 to
+    CLT-Q173** (the user, 2026-11-21: T6a and T6b in one session, then at T6a's end): items 7,
+    10, 19, 20, 38 and 41 changed as the reviewers proposed (36 superseded by 40), every finding
+    fixed in T6b but those on other lanes' paths (the replay's error wording and two comments of
+    `h3-files`, the `Replay` function of item 19, CLT-Q160 (a)'s and CLT-Q170 (a)'s hand-over:
+    the adventure and map-client lanes' inboxes); CLT-Q162 (b), Q163 (a), Q164 (b), Q165 (a),
+    Q166 (b), Q167 (a), Q168 (a), Q169 (b, built with M5's Save), Q170 (a, its hand-over built),
+    Q171 (a), Q172 (a); CLT-Q173: a save made under other rules or hash versions refused for now,
+    its reason told, the saves to be reworked later to be independent of the engine's version.
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
