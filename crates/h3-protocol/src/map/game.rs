@@ -20,7 +20,7 @@ use h3_adventure::{
     RevealedTile as EngineRevealedTile, StaticTile, TileMask, TileView,
     UniversityVisit as EngineVisit,
 };
-use h3_content::{CreatureTypeId, Formation as EngineFormation, ResourceId};
+use h3_content::{CreatureTypeId, Formation as EngineFormation, ResourceId, SpellId};
 use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
     AltarView, DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView,
@@ -834,6 +834,9 @@ pub(crate) fn town_buildings(
         forbidden,
         available,
         portal,
+        guild,
+        aurora,
+        vortex,
     }: TownBuildingsView,
 ) -> TownBuildings {
     TownBuildings {
@@ -844,6 +847,10 @@ pub(crate) fn town_buildings(
             creature: summoned.creature.raw(),
             count: summoned.count,
         }),
+        guild: [1, 2, 3, 4, 5]
+            .map(|level| guild.level(level).flatten().map(SpellId::raw).collect()),
+        aurora,
+        vortex,
     }
 }
 

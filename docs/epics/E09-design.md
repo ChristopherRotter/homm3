@@ -3281,6 +3281,20 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   (no new gap); `HeroChanged`'s `LearnSpell` and `SetSpellPoints` fold already (E08's).
 - **Tests** (`town/tests/view.rs`): the owner sees the guild, another player nothing; each change
   told once.
+- *As built* (T47b, decision 189): `TownBuildingsView::guild` is an `h3_towns::GuildSlots` holding
+  only the shown slots (`h3_towns::shown_slots`: each level's shown spells in its first slots, in
+  slot order, the rest empty), not `[Vec<SpellId>; 5]`: `GameEvent` is `Copy` and `TownChanged`
+  carries the view (`GameEvent` grows from 72 to 104 bytes, `TownChanged` its largest variant).
+  `aurora` is `h3_towns::has_aurora` (a building of role `aurora` ever built); `vortex` the raw
+  flag of every town (set from the build; nothing clears it before T49a). On the wire (protocol
+  v78) `TownBuildings`' `guild: [Vec<u16>; 5]` (the handles by level), `aurora`, `vortex`;
+  `TownBuildings` is no longer `Copy` (the fold clones it). `GuildSlots::with` is public (the
+  protocol's tests build a view back). No `Told` change: the guild changes only by a build, an
+  event or a capture, which tell the owner's view already; the Vortex's cleared flag and the
+  week's set flags are T49a's. Tests: `h3-towns`' two (`shown_slots`, `has_aurora`), the game's
+  `the_owner_sees_what_its_guild_shows_told_at_each_build_and_another_player_nothing` (a level,
+  the Library's spare, the Aurora, each told once to the owner, blue the mark alone), the
+  protocol's round trips and fold with a guild; `h3-map`'s hygiene oracle reads the same.
 
 ### 95. The env, the protocol and the replays
 

@@ -38,6 +38,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   independent of the engine's version (CLT-Q173); today a save is your replay, refused under
   other rules or hash versions.
 
+- 2026-11-21 (the town lane, E09 T47b, `town/e09-t47b`, `cross-lane` with the user's consent;
+  **your report of E08 T135a fixed, in your paths; nothing to do**): `h3-map`'s
+  `a_viewer_learns_nothing_it_cannot_see` (`src/tests/view.rs`) now ends its comparison when the
+  viewer is shown a Thieves' Guild (`ThievesGuildSeen`, a Den of Thieves' visit), as at a hire;
+  your seed `cc 9b8b2dc9…` is in `proptest-regressions/tests/view.txt` (it fails without the break,
+  passes with it). The same oracle builds the owner's `TownBuildingsView` with E09 T47b's `guild`
+  (`h3_towns::shown_slots`), `aurora` (`h3_towns::has_aurora`) and `vortex`: keep it in step with
+  `h3_game`'s `town/view.rs` when the view changes. No version of yours moved.
+
 - 2026-11-21 (the map client lane, E24 M4 T4c2, `map-client/e24-m4-t4c2`; **MCL-Q46, for your
   planning; the user's answer first**): another player's hero that takes a pile or an artifact
   from beside without a step (it stands next to it already) leaves in the viewer's record only the

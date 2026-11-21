@@ -252,7 +252,7 @@ impl GameObservation {
                 slots,
                 hall,
                 garrison_hero,
-                buildings,
+                ref buildings,
             } => {
                 if let Some(view) = self.town_mut(town) {
                     view.owner = owner;
@@ -269,7 +269,7 @@ impl GameObservation {
                         income: Vec::new(),
                         garrison_hero,
                     });
-                    view.buildings = buildings;
+                    view.buildings.clone_from(buildings);
                 }
             }
             GameEvent::TownStackSeen {

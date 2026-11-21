@@ -5721,3 +5721,54 @@ executables with `docs/formats/installation.md`'s SHA-256. **T47a2 kept whole** 
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T47b — the guild in the owner's town view, protocol v78, the hygiene oracle's guild fix (2026-11-21)
+
+One session, the user present at the start; branch `town/e09-t47b`, `cross-lane` with the user's
+consent (the server lane's `h3-protocol`: `wire/game.rs`, `wire/game/fold.rs`, `map/game.rs`,
+`lib.rs`, `tests/game.rs`, `tests/game_event.rs`, `tests/game_fold.rs`; the adventure lane's
+`h3-map` `src/tests/view.rs` and `proptest-regressions/tests/view.txt`). Starting point: `master`
+at cfd2f0c (T47a2's #1097 merged); CI's fingerprint not yet on `master`, so the setup's full
+baseline ran (its tests passed; stopped at coverage for disk). The user's computer was connected
+at the start only: 71 files staged; its shell did not start ("Workspace unavailable"), so the sizes
+were compared with the listing and the LODs and executables with `docs/formats/installation.md`'s
+SHA-256. **T47b kept whole, with the inbox's guild fix** (decision 189).
+
+- **The view** (design §94, TWN-VEW-004 amended): `h3_game::TownBuildingsView` gains `guild` (an
+  `h3_towns::GuildSlots` of the shown slots: `h3_towns::shown_slots`, each level's `shown` spells
+  in its first slots, in slot order), `aurora` (`h3_towns::has_aurora`: a building of role
+  `aurora` ever built) and `vortex` (`Town::vortex`, raw in every town); `GuildSlots::with` public,
+  `h3_game` re-exports `GuildSlots`. Not the design's `[Vec<SpellId>; 5]`: `GameEvent` is `Copy`
+  and `TownChanged` carries the view; `GameEvent` grows from 72 to 104 bytes (`TownChanged` its
+  largest variant). No `Told` change: a build, an event and a capture tell the owner's view already.
+- **The protocol v78** (design §95): `wire::game::TownBuildings`' `guild: [Vec<u16>; 5]` (the
+  handles by level), `aurora`, `vortex`; no longer `Copy` (the fold's `TownChanged` arm binds it by
+  `ref`, `clone_from`); the round trips (`guild_back`) and the fold tests with a guild.
+- **The hygiene oracle** (`h3-map`'s `a_viewer_learns_nothing_it_cannot_see`): its
+  `TownBuildingsView` with the three fields; its comparison ends when the viewer is shown a Thieves'
+  Guild (`ThievesGuildSeen`, a Den of Thieves' visit), as at a hire (the adventure lane's report of
+  E08 T135a: the guild's rows show a hero whose experience the hidden difference varied). The
+  report's seed `cc 9b8b2dc9…` added: it fails without the break and passes with it.
+- **Tests:** `h3-towns`' `the_shown_slots_hold_each_level_s_shown_spells_in_order_and_nothing_else`
+  and `a_town_has_the_aurora_once_its_building_was_built`; the game's
+  `the_owner_sees_what_its_guild_shows_told_at_each_build_and_another_player_nothing` (a level 1
+  guild shows its slot, the Library its spare, the Aurora its mark; each told once to the owner,
+  blue the public mark alone); the first view test's expected value; `h3-towns`, `h3-game`,
+  `h3-protocol`, `h3-map`'s view tests, `h3-server`, `h3-sim`, `h3-files`, `h3-cli` tested.
+- **Benchmarks:** the 38 adventure workloads under the gate, none re-baselined, each as T47a2's
+  (the largest `random-play-bonuses-36` +1.67 %, `legal-towns-36` and `day-start-builds-36`
+  +1.45 %): a sink that keeps nothing reads no view, so the larger event costs nothing there.
+- **Verify:** the scoped verify with original data, every step passing but `check-lane` (by
+  design; `--cross-lane` ok): coverage 20.5 minutes, determinism 10.3, bench-check 16. The
+  setup copies four original files only: `h3-pack-adventure`'s check skipped until
+  `extracted.tar` was untarred into the clone, then passed with the harvest check.
+- **Inbox:** the server lane (v78, `TownBuildings` not `Copy`), the adventure lane (the oracle's
+  break and fields); the town lane's own note of 2026-11-21 archived (`QUEUE-ARCHIVE.md`).
+- *Agent's calls* (decision 189): the view's guild as the record's `GuildSlots`; the wire's as
+  handles by level; the Vortex's flag raw in every town.
+
+**The queue:** T47b out; T48a next (learning: the Aurora, T-18, the town's own triggers). Ids:
+decisions next 190.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.

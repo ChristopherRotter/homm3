@@ -40,7 +40,7 @@ Licensed **GPL-2.0-or-later** ([LICENSE](LICENSE), [ADR-0009](docs/adr/0009-lice
 ## Status
 
 The project is developed incrementally, in parallel work lanes ([docs/BACKLOG.md](docs/BACKLOG.md)
-has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-20.
+has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-21.
 
 Progress is the share of an epic's refined increments (**I**) or milestones (**M**) that are closed;
 epics whose later increments are still sketches grow as those get refined, so their bar can step back.
@@ -56,11 +56,11 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E06](docs/epics/E06-battle-ai.md) | Battle AI v1: PPO self-play, league, evaluation gate, ladders | ai | `██████████` done | 2026-10-27 |
 | [E17](docs/epics/E17-clients.md) | Battle client (SDL 3, assets from your copy, frame-exact against the original) | client | `██████████` done (M0–M7) | 2026-11-12 |
 | [E16](docs/epics/E16-server.md) | Server: protocol, lobbies, accounts, ranked ladders, whole games, spectators | server | `██████████` done (M0–M6) | 2026-11-15 |
-| [E08](docs/epics/E08-adventure-map.md) | Adventure map core on real `.h3m` maps: movement, fog, objects, monsters, heroes, garrisons, creature banks | adventure | `█████████░` 13/14 I | the trades and services (I14) next; later increments sketched |
+| [E08](docs/epics/E08-adventure-map.md) | Adventure map core on real `.h3m` maps: movement, fog, objects, monsters, heroes, garrisons, creature banks, trades and services | adventure | `█████████░` 14/15 I | the Prison, the Market of Time and the adventure spells (I15) next; later increments sketched |
 | [E24](docs/epics/E24-map-client.md) | Adventure map client | map-client | `██████░░░░` 3/5 M | M1–M3 closed (stills, map moving, adventure screen); M4 next |
 | [E26](docs/epics/E26-fair-system-actor.md) | Fair system actor: the original's AI on what its side may know | battle | `█████░░░░░` 1/2 I | increment 1 built; checkpoint with you next |
 | [E09](docs/epics/E09-towns.md) | Towns and economy | town | `██████░░░░` 4/7 I | I1–I4 closed (towns on the map, construction, growth and recruitment, the Tavern); I5 (the mage guild) refined; services, travel and Grail follow |
-| [E27](docs/epics/E27-game-shell.md) | Game shell: menus, scenario setup, load/save, options, start clips | client | `██████░░░░` 3/5 M | M1–M3 closed (reading, start and menus, a game's setup); M4 (around play) next; M5 (in play) after E24 M5 |
+| [E27](docs/epics/E27-game-shell.md) | Game shell: menus, scenario setup, load/save, options, start clips | client | `████████░░` 4/5 M | M1–M4 closed (reading, start and menus, a game's setup, High Scores, Credits, the save file and Load Game); M5 (in play) after E24 M5 |
 | [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓▓░` 9 I done, open-ended | I9 closed (a richer observation: no gain, #2 stays); I10 (the ceiling of play against the system actor) next; shaped at each checkpoint |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
 

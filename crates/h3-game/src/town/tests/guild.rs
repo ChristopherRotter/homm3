@@ -7,10 +7,10 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{Ruleset, SpellCategory, SpellDef, SpellId};
+use h3_content::{ContentPack, Ruleset, SpellCategory, SpellDef, SpellId};
 use h3_contracts::TownId;
 use h3_kernel::{Rng, StreamId};
-use h3_towns::{GuildSets, SpellSet};
+use h3_towns::{GuildSets, SpellSet, TownPack};
 
 use super::{faction, refused, rules_of, town_pack, towns_core_pack, towns_setup};
 use crate::tests::key;
@@ -25,6 +25,18 @@ const T1: TownId = TownId::new(1);
 /// name only, 4), the three new ones adventure spells (the battle part needs no record of them);
 /// `t:town`'s guild weights gust 3, spark 1, gate 2, bolt 5.
 fn guild_rules() -> GameRuleset {
+    let (core, towns) = guild_packs();
+    rules_of(
+        Ruleset::compile(&[core], "t:faithful").unwrap(),
+        &towns,
+        false,
+        4,
+    )
+}
+
+/// The core pack and the town part of [`guild_rules`] (E09 T47b: the view's tests add the guild's
+/// buildings).
+pub(super) fn guild_packs() -> (ContentPack, TownPack) {
     let mut core = towns_core_pack(false);
     let spell = |k: &str, category, level, by_name| SpellDef {
         key: key(k),
@@ -48,12 +60,7 @@ fn guild_rules() -> GameRuleset {
         .zip([3, 1, 2, 5])
         .map(|(k, weight)| (key(k), weight))
         .collect();
-    rules_of(
-        Ruleset::compile(&[core], "t:faithful").unwrap(),
-        &towns,
-        false,
-        4,
-    )
+    (core, towns)
 }
 
 /// The rules' spell of key `k`.
