@@ -2544,3 +2544,17 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
   asked at T137b's start or checkpoint. **Status:** ready (docs only; the executable staged only if
   a reading is reopened).
 
+## T138 (moved 2026-11-21, done whole: `adventure/e08-t138`, decision 408, `cross-lane`; the writer's prison and Market of Time, the spec's fields, the specs `E08-batch-15a` to `-15c`)
+
+**E08 T138 — batch E15's maps: the writer's prison and Market of Time, the spec's fields, the specs** (decision 407)
+
+- **Scope:** as T128 for batch E14: `h3_map::writer`'s prison with a hero body (type, experience,
+  army, skills, artifacts) and class 50 among the plain objects, a placed hero's learned spells and
+  worn scrolls if not yet written; `h3-experiment`'s spec fields (battle-owned, `cross-lane`, the
+  consent asked at the start): prisons, the Market of Time, special grounds under a hero, learned
+  spells and scrolls, hidden tiles by design; the specs and their maps for the 16 rows (design note
+  `E08-design.md` §19, survey `E08-spells.md` §15).
+- **Inputs:** the design note §7, §19; the survey §15; T128's spec and writer as the form.
+- **Depends on:** T137b (done 2026-11-21, `adventure/e08-t137b`). **Status:** ready (the staging:
+  the executable, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`, as T128). Then T139
+  (the run on the client lane's harness, scored), T140 (`shared/`), T141 to T145 (the epic's tasks).

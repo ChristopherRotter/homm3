@@ -1,0 +1,236 @@
+# Experiment batch E15a (E08 T138; ADV-Q63's checkpoint, decision 407): increment 15's plan, the Prison and
+# the Market of Time (survey docs/rules/surveys/E08-spells.md §15 with docs/epics/E08-design.md
+# §19's changes), in SoD on Easy, hot seat, day 1. The spells are `E08-batch-15b.toml` (the door,
+# the fog) and `E08-batch-15c.toml` (the boats, the grounds). Build: docs/experiments/README.md.
+# Predictions are for the agent who evaluates the results; the template never shows them.
+#
+# | row    | settles                                   | the reading (faithful)                        | the other source(s)                    |
+# | E15-1  | §2.2: the freed prisoner                  | level 5 at load (5 000), 1 560 points (a full | VCMI: full points, the mana set to its |
+# |        |                                           | day's), facing right, on the entrance (10,    | maximum (the loaded mana is it)        |
+# |        |                                           | 10), last of Red's eight                      |                                        |
+# | E15-2  | §2.2: the eight on the map                | 7 on the map and a garrison hero: freed       | VCMI `HEROES_PER_PLAYER_ON_MAP_CAP` 8, |
+# |        |                                           | (E15-1); then with 8: ADVEVENT 103's message, | garrisons not counted; the wiki "eight |
+# |        |                                           | nothing changed, the prison kept              | heroes outside of towns"               |
+# | E15-3  | §3: the Market of Time                    | a step's price (100), no message              | VCMI: "not implemented", no effect     |
+#
+# **Changes from survey §15** (agent's calls): E15-1 and E15-2 share the map as the task's cut
+# says: Red's eighth hero E15-2g goes into its town's garrison first, so Red has seven on the map
+# when E15-1 frees prisoner 1 (E15-2's first half) and eight when E15-2 visits prison 2. **The
+# prisoner's levels at load** (GAM-SET-002; batch E14's precedent): prisoner 1 knows eight Expert
+# skills, none of them Logistics, Pathfinding or Scouting, so its four levels at load add primary
+# skills only and its day's points are its army's (1 560).
+#
+# **The pictures:** a prison (class 62, `[[map.prison]]`) stands on its entrance `at` and blocks
+# the tile west of it; the Market of Time `AVXmktt0` (class 50) is entered at `at` and blocks the
+# tile west of it. Neither is entered from the three tiles above its entrance (ADV-OBJ-004): every
+# hero here comes from below. A prison is visited from the neighbouring tile: the visitor pays the
+# step (ADV-OBJ-003) and stays where it was; the freed hero appears on the prison's entrance.
+#
+# **The heroes.** Red has eight (the most a player holds on the map), Blue none (its town only).
+# Every army's slowest is speed 4 (Pikemen): 1 560 points a day (packs/base/adventure.toml
+# `land_points`); a step costs 100 on grass. No hero has a skill or an artifact but those listed.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact; the template asks for gold. An artifact the spec does not give goes under "anything
+# odd".
+
+[map]
+name = "E08 batch E15a"
+description = "Engine-generated experiment map (E08, batch E15a): two prisons, the eight heroes on the map with a garrison hero, the Market of Time. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-15a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "Most records are the game's memory: a hero's tile, movement points (hero +0x4D) and day's maximum (+0x49), facing (+0x47), status flags (+0x105), experience, level, primary skills, spell points (+0x18) and army; the player's hero list (record +0x1 the count, +0x8 the list); `hero_owner` (game +0x4DF18) of the prisoners' types; the messages in their order. The capture harness reads them (`clients/capture/batches/E08-batch-15a.toml`, E08 T139). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). Close every message with its OK button.",
+    "Order: day 1, Red's turn: the start reads (E15-1's first step), E15-2's garrison step, E15-1, E15-2's second visit, E15-3. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- The towns: Red's (its garrison empty: E15-2g goes into it), Blue's ---------------------------
+
+[[map.town]]
+entrance = [18, 20]
+faction = "castle"
+owner = "red"
+garrison = []
+
+[[map.town]]
+entrance = [31, 33]
+faction = "rampart"
+owner = "blue"
+
+# --- The prisons P1 (10, 10) and P2 (16, 10); the Market of Time (22, 10) ---------------------------
+
+[[map.prison]]
+at = [10, 10]
+[map.prison.prisoner]
+type = "Rion"
+specialty = "skill First Aid"
+name = "Prisoner 1"
+experience = 5000
+primary = [1, 1, 2, 2]
+army = [["Swordsman", 4], ["Pikeman", 10]]
+skills = [["Archery", 3], ["Armorer", 3], ["Offense", 3], ["Resistance", 3], ["Ballistics", 3], ["Artillery", 3], ["Tactics", 3], ["First Aid", 3]]
+
+[[map.prison]]
+at = [16, 10]
+[map.prison.prisoner]
+type = "Adela"
+specialty = "spell Bless"
+name = "Prisoner 2"
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 5]]
+
+[[map.object]]
+picture = "AVXmktt0"
+at = [22, 10]
+
+# --- E15-1 and E15-2 -------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-1"
+title = "A prisoner freed with seven heroes on the map and one in a garrison (E15-1, E15-2's first half); then a prison visited with eight on the map (E15-2)"
+questions = ["ADV-PRI-001", "ADV-PRI-002", "TWN-SET-005", "GAM-SET-002"]
+procedure = [
+    "**The start.** Day 1, Red's turn, before any hero moves: read Red's hero list (the count and the heroes in order) and both prisoners' `hero_owner` marks (Rion's, Prisoner 1's type; Adela's, Prisoner 2's): 0x41 means a prisoner. Right-click each prison (P1 at (10, 10), P2 at (16, 10)): note what the popup shows.",
+    "**E15-2's garrison step.** E15-2g stands at (18, 21), right below Red's town's entrance (18, 20). Click the entrance twice: E15-2g walks in and the town's screen opens. Move E15-2g from the visiting row into the garrison row (drag its portrait up, or select it and swap). Close the town's screen. Read Red's hero list again (the count and the heroes).",
+    "**E15-1.** E15-1 stands at (10, 12), two tiles below P1's entrance. Note its points. Click P1's entrance (10, 10) twice: E15-1 walks to (10, 11) and visits the prison. Note every message in order. Then read E15-1's tile and points, and the freed hero's: name, tile, facing, movement points and day's maximum, status flags, experience, level, primary skills, secondary skills, spell points and army. Read Red's hero list (the count, the heroes in order, the selected one), Rion's `hero_owner` mark and whether P1 still stands (right-click (10, 10) and (9, 10)).",
+    "**E15-2.** E15-2 stands at (16, 12), two tiles below P2's entrance. Click P2's entrance (16, 10) twice: E15-2 walks to (16, 11) and visits it. Note every message in order. Then read E15-2's tile and points, Red's hero list, Adela's `hero_owner` mark and whether P2 still stands (right-click it).",
+]
+record = [
+    { field = "the start: Red's hero list (count; heroes in order); Rion's and Adela's `hero_owner`; P1's and P2's popups" },
+    { field = "after the garrison step: Red's hero list (count; heroes); the town's garrison hero" },
+    { field = "E15-1 before: points; at P1: the messages (in order)" },
+    { field = "E15-1 after: tile; points" },
+    { field = "the freed hero: name; tile; facing; points; day's maximum; status flags" },
+    { field = "the freed hero: experience; level; primary skills; secondary skills; spell points; army" },
+    { field = "after the freeing: Red's hero list (count; heroes in order; the selected one); Rion's `hero_owner`; P1 still there" },
+    { field = "E15-2 at P2: the messages (in order); E15-2's tile; points" },
+    { field = "after P2: Red's hero list (count); Adela's `hero_owner`; P2 still there" },
+    { field = "anything odd" },
+]
+predictions = """
+The start (survey §2.1; `load_hero_body` 0x5021C0, `placed_hero_setup` 0x4D8B30): both
+prisoners' types marked **0x41**; Red's list **8** (E15-1, E15-2, E15-3, E15-2g, the four
+fillers, in the map's order). A prison's popup **the object's name** ("Prison"), never the hero
+(§2.3).
+
+The garrison step (survey `E09-tavern.md` §3): Red's list **7**, E15-2g the town's garrison hero
+(the list is the heroes on the map).
+
+E15-1 (§2.2 point 3; `visit_prison` 0x4A3EB0):
+
+- The walk (10, 11) and the visit's step: 200; E15-1 **on (10, 11) with 1 360**.
+- ADVEVENT 102's box (the freeing); the prison **gone** from (10, 10) and (9, 10).
+- The freed hero **on (10, 10)**, **facing right** (+0x47 = 2), status flags **0**, points and
+  day's maximum **1 560** (`hero_max_movement`: Pikemen, speed 4); **level 5** (5 000: its four
+  levels taken at load, the computer choosing, each a primary skill since its eight skills are at
+  Expert), its army 4 Swordsmen and 10 Pikemen, its spell points those of the load (its
+  maximum: 10 × knowledge after the levels; VCMI sets the maximum, the same).
+- Red's list **8**, the freed hero **last**; Rion's `hero_owner` Red (0).
+
+E15-2 (§2.2 point 2): the count 8 (the freed hero counts, E15-2g in the garrison does not):
+ADVEVENT 103's box, **nothing changes**: P2 stays, Adela's mark still 0x41, the list 8. E15-2 on
+(16, 11) with 1 360 (the visit's step paid). VCMI and the wiki the same (8 outside towns).
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [10, 12]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+[[encounter.also]]
+type = "Crag Hack"
+specialty = "skill Offense"
+name = "E15-2g"
+at = [18, 21]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+[[encounter.also]]
+type = "Thorgrim"
+specialty = "skill Resistance"
+name = "Filler 1"
+at = [4, 28]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+[[encounter.also]]
+type = "Mephala"
+specialty = "skill Armorer"
+name = "Filler 2"
+at = [7, 28]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+[[encounter.also]]
+type = "Neela"
+specialty = "skill Armorer"
+name = "Filler 3"
+at = [10, 28]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+[[encounter.also]]
+type = "Tazar"
+specialty = "skill Armorer"
+name = "Filler 4"
+at = [13, 28]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+[[encounter]]
+id = "E15-2"
+title = "A prison visited with eight heroes on the map (E15-2's second half; the procedure is E15-1's last step)"
+questions = ["ADV-PRI-002"]
+procedure = [
+    "E15-2 stands at (16, 12): its walk and visit are E15-1's last step (after the freeing). Record them there.",
+]
+record = [
+    { field = "anything odd" },
+]
+predictions = """
+See E15-1: ADVEVENT 103's message, nothing changed.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [16, 12]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
+
+# --- E15-3 -----------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E15-3"
+title = "The Market of Time's entrance: a step and nothing else"
+questions = ["ADV-OBJ-008"]
+procedure = [
+    "Day 1, Red's turn, after E15-2: E15-3 stands at (22, 12), two tiles below the Market of Time's entrance (22, 10). Note its points. Click (22, 10) once: note the path's marks (the tiles, in order). Click it again: E15-3 walks. Note every message and window, E15-3's tile and points.",
+    "Press Space (the visit of the tile the hero stands on): note what opens and E15-3's tile and points. Right-click (22, 10) and (21, 10): note the popups.",
+]
+record = [
+    { field = "before: points" },
+    { field = "the path's marks" },
+    { field = "after the walk: messages and windows; tile; points" },
+    { field = "Space: what opens; tile; points" },
+    { field = "the popups of (22, 10) and (21, 10)" },
+    { field = "anything odd" },
+]
+predictions = """
+E15-3 (survey §3; `visit_object` 0x4A853A's out-of-range case for class 50): two marks (22, 11),
+(22, 10); E15-3 **on (22, 10) with 1 360** (two steps' price), **no message, no window**; Space
+nothing. The popups the object's name. VCMI 1.7.5 the same ("not implemented", a `generic`
+handler).
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [22, 12]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10]]
