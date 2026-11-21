@@ -18,24 +18,22 @@ T43: budget 4; +0.085 over the fair actor's play on the side's worlds, +0.115 on
 battle; the records in `python/records/ceiling/`).
 
 - **T44 — where #2 diverges** (the tool done 2026-11-21, `E25-log.md` T44: `inspect
-  --commands` records #2's games, `h3 ai ceiling --commands` replays and values them). **The
-  measurement** (the user's machine, 16 threads, one build: T43's identity holds; about 80
-  minutes; Ctrl-C keeps the finished games, the same command continues):
-  1. from `python/` (a few minutes on the CPU): `uv run --group train python -m
-     h3env.train.inspect --checkpoint runs/e25-structure-1/best.pt --opponents system
-     --episodes 100 --threads 16 --commands records/ceiling/e25-structure-1-commands.toml
-     --json records/inspect/e25-structure-1-report-100.json` (or `best.pt` uploaded, a few MB:
-     the sandbox records);
-  2. from the repository's root: `cargo run --release -p h3-cli -- ai ceiling --commands
+  --commands` records #2's games, `h3 ai ceiling --commands` replays and values them). **#2's
+  games recorded** (2026-11-21, the sandbox: `python/records/ceiling/e25-structure-1-commands.toml`,
+  599 games). **The valuation** (the user's machine, 16 threads, the build of this branch: T43's
+  identity holds; about 75 minutes; Ctrl-C keeps the finished games, the same command
+  continues), from the repository's root:
+  1. `cargo run --release -p h3-cli -- ai ceiling --commands
      python/records/ceiling/e25-structure-1-commands.toml --budget 4 --confirm 32 --worlds side
      --threads 16 --leave-out siege_hero:54:attacker --out
      target/ceiling/e25-structure-1-side-4.toml --json
      python/records/ceiling/e25-structure-1-side-4.json`;
-  3. optional: the same with `--worlds true` (`e25-structure-1-true-4`).
+  2. optional: the same with `--worlds true` (`e25-structure-1-true-4`).
 
-  Uploaded: the recording, the JSON records and the games files. The read: by category #2's
-  regret against the fair actor's at the same decisions, its value paired with `report-0` and
-  `report-side-4` by (kind, env, seat).
+  Uploaded: the JSON records and the games files. The read: by category #2's regret against the
+  fair actor's at the same decisions, its value paired with `report-0` and `report-side-4` by
+  (kind, env, seat).
+
 - **T45 — increment 10's checkpoint** (the user): the headroom, the information's cost, the
   divergence; the next lever.
 

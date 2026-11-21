@@ -2652,7 +2652,14 @@ an entry only where a task builds on it.
   (18 games: no reading). Summed over a game +0.36, above T43's realised +0.085: one-step gains on
   the fair actor's own states are not the improved policy's realised gain (and 161 refused
   rollouts, losses, add to them; counted per command since).
-- **Next (the user's machine, 16 threads):** #2's 600 games of the report set (100 a kind, the
-  episodes T43 played) recorded and valued on the side's worlds, siege_hero 54 attacking left
-  out (T43's stalled game: its first decision is the state T43's stalled at, on the same seed);
-  the commands in `QUEUE.md`.
+- **#2's games recorded** (the sandbox's CPU, the user's upload of `runs/e25-structure-1/best.pt`:
+  `HexConv`, 1.49 M parameters, trained on batch seed 1; 76 s on 4 threads): the report set's 100
+  a kind against the fair actor, `python/records/ceiling/e25-structure-1-commands.toml` (599
+  games, 18 301 actions; the analysis `python/records/inspect/e25-structure-1-report-100.json`).
+  #2 plays as on its ladder: **0.509 ± 0.040, value +0.026** (T29: 0.511, +0.027 on 500 a kind).
+  The batch skipped siege_garrison 51 defending (it ends before #2's side can act; T43's
+  `report-0` holds it with the fair actor's play alone), so with siege_hero 54 attacking left out
+  (T43's stalled game: its first decision is the state T43's stalled at, on the same seed) 598
+  games are valued, each paired with T43's records.
+- **Next (the user's machine, 16 threads, about 75 minutes):** the valuation on the side's worlds,
+  the command in `QUEUE.md`.

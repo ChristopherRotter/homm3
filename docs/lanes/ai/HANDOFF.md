@@ -42,10 +42,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   stalled game of 600 left out (the user), the fair actor's refused cast (the battle lane's
   inbox). **T44's tool done** (`E25-log.md` T44): `inspect --commands` records #2's games, `h3
   ai ceiling --commands` replays them and values each decision (T43's halving, both commands
-  kept, `--confirm` fresh rollouts), `--leave-out`; 121 thread-seconds a game. **Next: T44's
-  measurement** (the user's machine, the commands in `QUEUE.md`; or `best.pt` uploaded for the
-  recording), then T45 (the checkpoint).
-- **Open pull requests:** this branch's (`claude/gifted-goodall-is3bgu`: T44's tool). Merged:
+  kept, `--confirm` fresh rollouts), `--leave-out`; 121 thread-seconds a game. #2's games
+  recorded (599; 0.509, +0.026). **Next: T44's valuation** (the user's machine, the command in
+  `QUEUE.md`), then T45 (the checkpoint).
+- **Open pull requests:** #1123 (this branch, `claude/gifted-goodall-is3bgu`: T44's tool and
+  #2's recording). Merged:
   #1121 (`shared/ci-exe-map`: CI's docs-only path runs `check-exe-map`), #1119 (T43's
   measurement read, E31's cited addresses), #1117 and #1116 (E31's refinement).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
@@ -69,7 +70,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - `h3 ai ceiling --commands` and `inspect --commands` (code, tests, docs); the release build's
   checks in the sandbox: Python recordings through the C ABI replay to their ends, T43's games
   file reads back to its record, a timing on the fair actor's own 18 games (no original data
-  needed). #2's network is not in the sandbox: the measurement waits for the user.
+  needed). The user uploaded #2's `best.pt` (`python/runs/`, ignored); the train group synced;
+  #2's games recorded here. The valuation is the user's (their choice: 16 threads).
 
 ### 2026-11-21 — E25 T43: the budget check and the measurement read
 
