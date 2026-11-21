@@ -21744,3 +21744,48 @@ the encoding and the format move once.
   human.
 - **Not read:** the windows' redraws and texts (the clients'), network play's transfer message, the
   town's screen 3 and the merchants' monthly draw (the town lane's).
+
+### Increment 15, round 1: T137a, the Prison, Market of Time and adventure spells survey (2026-11-21, `adventure/e08-t137a`)
+
+**The cut** (decision 397, the user at T137a's start after the reading was measured: the Prison's
+visit about 0.9 KB with its callees, the Market of Time no code, the five spells about 3.5 KB mostly
+unread): **whole**; not chosen: the Prison and the Market of Time first (recommended), the spells
+first. **Baseline:** `master` 0733186 (#1107, #1109, #1110 merged). Staged the 71 files at the start
+(the PC's shell did not start: sizes against `device_list_dir`, the executable's and the LODs'
+SHA-256 against `installation.md`). Survey `docs/rules/surveys/E08-spells.md` §0 to §17:
+
+- **The census** (§1, a throwaway program over `h3_map::read`, not committed): 89 prisons on 41
+  maps, none on water, no two of one type on a map, none allowed, restricted or customised
+  map-wide; 61 with a custom experience; one Market of Time (`Titans Winter`); the five spells'
+  sources (11 scrolls, 11 Summon Boat shrines, two Pandora's Boxes, two placed heroes, Gem, the
+  artifacts, the guilds; 26 maps ban some); the special grounds and anti-magic garrisons.
+- **The Prison** (§2; `visit_prison` 0x4A3EB0 read whole): the prisoner set up at load as a placed
+  hero (`placed_heroes_setup`'s every type), joining nobody; freed for the visitor's player unless 8
+  heroes are on the map (the list), on the entrance, facing right, a full day's points, flags
+  cleared; a campaign's carried hero can empty a prison (ADVEVENT 104).
+- **The Market of Time** (§3): no visit (`visit_object`'s out-of-range case).
+- **Casting** (§4): Cursed Ground above level 1 and an anti-magic garrison refuse, free; the
+  mastery by the hero's tile's special ground (Magic Plains every school, four grounds one each:
+  an ADR-0013 point for T137b); the cost at least 1, never the armies' ±2 on the map; `new_day`
+  clears the five day fields of all 156 heroes.
+- **The spells** (§5 to §8): Summon Boat's choice (the hero's last boat, then the nearest
+  Manhattan on any level, own or unowned, ties to the later: D-75); Scuttle Boat any empty boat in
+  the view, fog or not (A-50), its failure charged; Fly refused in a boat and silently while on or
+  with Angel Wings; Water Walk cast in a boat (A-49); re-casts keep the first level (A-51);
+  Dimension Door needs points above 0, 1 to 4 casts a day, any free tile of the view centred on the
+  hero explored or not (A-53; dy +9 through the pick's last 8 pixel rows: A-54, D-76), its
+  water/land failure charged (A-52), 300 or 200 points, no guard, no visit.
+- **Named** (§9): Visions, View Earth, View Air, Disguise, about 1.5 KB read and 4 to 6 KB unread;
+  recommended to E12 with the information objects.
+- **VCMI and the wiki** (§11), the disputes and candidates (§12: D-75 to D-79, A-49 to A-54, O-1,
+  O-2), **A-13's trade-off** (§13: keep it fixed, the original's, or the compromise: unexplored
+  tiles assumed flyable, the move stopped where a hidden rock turns up; recommended), the
+  interfaces' sketch (§14), batch E15's 16 rows (§15), the ids (§16: ADV-PRI, ADV-OBJ-008, ADV-SPL,
+  HER-SPL-003 amended), the checkpoint's nine questions (§17).
+
+`docs/exe/map.toml`: ten entries new (`view_area_contains`, `view_cell_tile`, `door_target_create`,
+`door_target_proc`, `scuttle_target_create` inferred, `scuttle_target_proc`, `visit_prison`,
+`hero_cast_fly`, `hero_cast_water_walk`, `hero_displayed_army` inferred), seven amended
+(`visit_object`, `adventure_spell`, `scuttle_boat_cast` and `adventure_spell_cast` now read,
+`hero_special_ground` read, `hero_move_record` read, `summon_boat_choice`); `structs.toml`: the
+hero's +0x10D, +0x10E, +0x129. **Versions:** none (docs only). Next: T137b.
