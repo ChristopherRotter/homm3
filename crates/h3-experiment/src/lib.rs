@@ -16,7 +16,8 @@
 //! E08 T89a (batch E10) the dwellings, the random dwellings with their factions and levels, the
 //! Refugee Camp and the map's teams; from E08 T99a (batch E11) the teleporters on either level;
 //! from E08 T109a (batch E12) the garrisons with their armies and removable flags and the fifteen
-//! bonus visitables.
+//! bonus visitables; from E08 T138 (batch E15) the prisons with their prisoners, the Market of
+//! Time, a hero's ground checked and tiles a player must not have explored at the start.
 
 pub mod tables;
 
@@ -28,12 +29,12 @@ use h3_map::writer::{
     ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS,
     AnyTown, BOAT_OBJECT, EVENT_OBJECT, Event, Format, GARRISON_OBJECT, Ground, Guards, Hero,
     HeroArtifacts, MINE_OBJECT, MainTown, Map, MapObject, Message, Monster, ObjectTemplate,
-    OwnedBody, OwnedObject, PANDORA_OBJECT, PLAYERS, Patch, Pile, Plain, Player,
+    OwnedBody, OwnedObject, PANDORA_OBJECT, PLAYERS, Patch, Pile, Plain, Player, Prison,
     RANDOM_ARTIFACT_OBJECTS, RANDOM_DWELLING_BY_FACTION_OBJECT, RANDOM_DWELLING_BY_LEVEL_OBJECT,
     RANDOM_DWELLING_OBJECT, RewardBody, RewardObject, Road, RoadKind, SCROLL_OBJECT,
-    SHRINE_OBJECTS, SIGN_OBJECTS, SUBTERRANEAN_GATE_OBJECT, Teams, Terrain, TimedEvent, Town,
-    TownBuildings, TownSpells, Treasure, Underground, VERTICAL_GARRISON_OBJECT, WHIRLPOOL_OBJECT,
-    WITCH_HUT_OBJECT,
+    SHRINE_OBJECTS, SIGN_OBJECTS, SUBTERRANEAN_GATE_OBJECT, TOWN_OBJECT, Teams, Terrain,
+    TimedEvent, Town, TownBuildings, TownSpells, Treasure, Underground, VERTICAL_GARRISON_OBJECT,
+    WHIRLPOOL_OBJECT, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -47,6 +48,10 @@ const COLUMN_STEP: u8 = 6;
 const ROW_STEP: u8 = 5;
 /// First encounter column and row.
 const ORIGIN: u8 = 3;
+/// Scouting's skill id (`SSTRAITS.TXT`'s fourth row).
+const SCOUTING: u8 = 3;
+/// The Tower's faction (the town object's subclass, [`FACTIONS`]).
+const TOWER: u32 = 2;
 /// The Ocean Bottle's object class (E08 T67).
 const OCEAN_BOTTLE: u32 = SIGN_OBJECTS[0];
 /// Slot names of a hero's artifacts, in map slot order.
@@ -301,6 +306,55 @@ pub struct MapSpec {
     /// playing colour in none plays alone. None (the default): no teams.
     #[serde(default)]
     pub teams: Vec<Vec<String>>,
+    /// The prisons with their prisoners (`[[map.prison]]`, E08 T138: batch E15's E15-1, E15-2).
+    #[serde(default)]
+    pub prison: Vec<PrisonSpec>,
+    /// Rectangles of tiles a player has not explored when the game starts (`[[map.hidden]]`,
+    /// E08 T138: batch E15's rows on the fog), checked when the map is built.
+    #[serde(default)]
+    pub hidden: Vec<HiddenSpec>,
+}
+
+/// A prison with its prisoner (E08 T138: batch E15; survey `docs/rules/surveys/E08-spells.md`
+/// §2). The prison stands on `at`, its entrance, where the freed hero appears; it also blocks the
+/// tile west of it. The prisoner is a hero's spec whose `owner` and `at` are not taken (a prison
+/// has no owner); its name is its hero type's unless given; its type is used as a placed hero's
+/// (no other hero of the map takes it) and leaves the map's pool, but it counts in no player's
+/// heroes.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PrisonSpec {
+    /// The prison's position and entrance, `[column, row]`.
+    pub at: [u8; 2],
+    /// The level: 0 the surface (the default), 1 the underground.
+    #[serde(default)]
+    pub level: u8,
+    /// The prisoner.
+    pub prisoner: HeroSpec,
+}
+
+/// A rectangle of tiles that `player` must not have explored at the game's start (E08 T138:
+/// batch E15's E15-8, E15-10, E15-13, E15-14; increment 15's design note §19, "hidden tiles by
+/// design"). The build checks the original's start reveal (ADV-FOG-002's disk `dx² + dy² ≤ r² +
+/// r`): around each of the player's heroes with its scouting radius (5, plus its Scouting's level
+/// and 1 for each of a worn Speculum and Spyglass, ADV-FOG-001; a hero with its type's skills or
+/// artifacts counts as Expert Scouting with both, 10), each of its towns' entrances (5; a Tower's
+/// 20: it may hold a Lookout Tower) and every tile its other owned objects cover (3; E08 T80). No
+/// prisoner reveals.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HiddenSpec {
+    /// The north-west corner, `[column, row]`.
+    pub from: [u8; 2],
+    /// The south-east corner, `[column, row]` (the default: `from`, one tile).
+    #[serde(default)]
+    pub to: Option<[u8; 2]>,
+    /// The level: 0 the surface (the default), 1 the underground.
+    #[serde(default)]
+    pub level: u8,
+    /// "red" (the default), "blue" or "tan".
+    #[serde(default = "red")]
+    pub player: String,
 }
 
 /// Where copies of an object stand (E08 T56): the first on `at`, then `columns` × `rows` of them
@@ -960,7 +1014,30 @@ pub struct HeroSpec {
     /// Tight formation.
     #[serde(default)]
     pub tight: bool,
+    /// The special ground the hero stands on when the map starts, checked when it is built (E08
+    /// T138: batch E15's E15-4, E15-5): a name of [`GROUND_NAMES`] ("cursed ground", "magic
+    /// plains", …) for the last of the spec's grounds whose picture covers the hero's tile, or
+    /// "none". Absent: not checked.
+    #[serde(default)]
+    pub ground: Option<String>,
 }
+
+/// The special grounds' names by object class ([`h3_map::writer::GROUND_OBJECTS`]): what
+/// [`HeroSpec::ground`] names.
+pub const GROUND_NAMES: [(u32, &str); 12] = [
+    (21, "cursed ground"),
+    (46, "magic plains"),
+    (222, "clover field"),
+    (223, "cursed ground"),
+    (224, "evil fog"),
+    (225, "favorable winds"),
+    (226, "fiery fields"),
+    (227, "holy ground"),
+    (228, "lucid pools"),
+    (229, "magic clouds"),
+    (230, "magic plains"),
+    (231, "rocklands"),
+];
 
 fn red() -> String {
     "red".into()
@@ -1216,6 +1293,15 @@ pub fn build_only(
         }
         objects.push((0, MapObject::Owned(owned)));
     }
+    // The grounds' names and tiles, in the spec's order (E08 T138: a hero's ground checked).
+    let ground_tiles: Vec<(&str, Vec<(u8, u8)>)> = objects
+        .iter()
+        .filter_map(|(_, o)| match o {
+            MapObject::Ground(g) => Some(g),
+            _ => None,
+        })
+        .map(|g| (ground_name(g.template.class), ground_cover(g)))
+        .collect();
     let mut used_types = Vec::new();
     let mut heroes_per_player = [0usize; PLAYERS];
     let mut towns_per_player = [0usize; PLAYERS];
@@ -1267,6 +1353,15 @@ pub fn build_only(
         let mut add_hero = |h: &HeroSpec, tile: (u8, u8), name: Option<&str>, owner: &str| {
             let tile = h.at.map_or(tile, |[x, y]| (x, y));
             let hero = hero(h, tables, tile, name, owner, roe).map_err(ctx)?;
+            if let Some(expected) = &h.ground {
+                let under = ground_under(&ground_tiles, level, hero.tile);
+                if !under.eq_ignore_ascii_case(expected.trim()) {
+                    return Err(ctx(format!(
+                        "the hero at {:?} stands on {under}, the spec expects `{expected}`",
+                        hero.tile
+                    )));
+                }
+            }
             if used_types.contains(&hero.hero_type) {
                 return Err(ctx(format!(
                     "hero type {} is used twice",
@@ -1463,6 +1558,50 @@ pub fn build_only(
         }
         objects.push((m.level, map_monster(m, tables, size)?));
     }
+    // The prisons (E08 T138), after every placed hero: a prisoner's type is used as theirs.
+    for p in &spec.map.prison {
+        let ctx = |e: String| format!("the prison at {:?}: {e}", p.at);
+        if p.level >= levels {
+            return Err(ctx(format!(
+                "level {}: no such level (`[map.underground]` adds level 1)",
+                p.level
+            )));
+        }
+        let [x, y] = p.at;
+        if x == 0 || x >= size || y >= size {
+            return Err(ctx(
+                "off the map (it also covers the tile west of `at`)".into()
+            ));
+        }
+        let h = &p.prisoner;
+        if h.at.is_some() || h.owner != "red" {
+            return Err(ctx("a prisoner has no `owner` and no `at`".into()));
+        }
+        if h.ground.is_some() {
+            return Err(ctx("a prisoner stands on no ground: no `ground`".into()));
+        }
+        let prisoner = hero(h, tables, (x, y), None, "red", roe).map_err(ctx)?;
+        if used_types.contains(&prisoner.hero_type) {
+            return Err(ctx(format!(
+                "hero type {} is used twice",
+                tables.heroes[usize::from(prisoner.hero_type)]
+            )));
+        }
+        used_types.push(prisoner.hero_type);
+        let summary = hero_summary(h, &prisoner, tables).replacen("Red hero", "prisoner", 1);
+        if !text.ends_with("\n\n") {
+            text.push('\n');
+        }
+        let below = if p.level == 1 { " underground" } else { "" };
+        let _ = writeln!(text, "- A prison at {:?}{below}, its {summary}.", p.at);
+        objects.push((
+            p.level,
+            MapObject::Prison(Prison {
+                tile: (x, y),
+                prisoner,
+            }),
+        ));
+    }
     // Heroes and monsters stand on grounds; two grounds may overlap (the game takes the last). A
     // plain object counts with every tile it covers. A spec makes no town of any kind and no
     // random hero (the town lane's writer objects, E09 T9a).
@@ -1488,6 +1627,10 @@ pub fn build_only(
                 .map(|tile| (*level, tile))
                 .collect(),
             MapObject::Owned(o) => covered(&o.template, o.tile)
+                .into_iter()
+                .map(|tile| (*level, tile))
+                .collect(),
+            MapObject::Prison(p) => covered(&ObjectTemplate::prison(), p.tile)
                 .into_iter()
                 .map(|tile| (*level, tile))
                 .collect(),
@@ -1549,6 +1692,9 @@ pub fn build_only(
         }
     }
     let teams = teams(&spec.map.teams, &players)?;
+    for h in &spec.map.hidden {
+        hidden(h, &objects, tables, levels, size)?;
+    }
     let map = Map {
         name: spec.map.name.clone(),
         description: format!("Stamp {}. {}", spec.stamp, spec.map.description),
@@ -1948,6 +2094,148 @@ fn covered(template: &ObjectTemplate, anchor: (u8, u8)) -> Vec<(u8, u8)> {
         }
     }
     tiles
+}
+
+/// A special ground's name by its class ([`GROUND_NAMES`]).
+fn ground_name(class: u32) -> &'static str {
+    GROUND_NAMES
+        .iter()
+        .find(|&&(c, _)| c == class)
+        .map_or("an unnamed ground", |&(_, name)| name)
+}
+
+/// The tiles a special ground's picture covers: its size's (the import's,
+/// [`h3_map::writer::ground_size`]) to the left of and above its position.
+fn ground_cover(g: &Ground) -> Vec<(u8, u8)> {
+    let (width, height) = h3_map::writer::ground_size(&g.template);
+    let (x, y) = g.tile;
+    (0..height)
+        .flat_map(|dy| (0..width).map(move |dx| (dx, dy)))
+        .filter_map(|(dx, dy)| x.checked_sub(dx).zip(y.checked_sub(dy)))
+        .collect()
+}
+
+/// The name of the last ground covering `tile` on `level` (every ground lies on the surface), or
+/// "none".
+fn ground_under(
+    grounds: &[(&'static str, Vec<(u8, u8)>)],
+    level: u8,
+    tile: (u8, u8),
+) -> &'static str {
+    grounds
+        .iter()
+        .rev()
+        .find(|(_, tiles)| level == 0 && tiles.contains(&tile))
+        .map_or("none", |&(name, _)| name)
+}
+
+/// Checks that no start reveal of `h.player`'s explores a tile of the rectangle ([`HiddenSpec`]).
+fn hidden(
+    h: &HiddenSpec,
+    objects: &[(u8, MapObject)],
+    tables: &Tables,
+    levels: u8,
+    size: u8,
+) -> Result<(), String> {
+    let player = match h.player.as_str() {
+        "red" => 0,
+        "blue" => 1,
+        "tan" => 2,
+        other => return Err(format!("hidden tiles of `{other}` (red, blue or tan)")),
+    };
+    let to = h.to.unwrap_or(h.from);
+    let ([x0, y0], [x1, y1]) = (h.from, to);
+    if x0 > x1 || y0 > y1 || x1 >= size || y1 >= size || h.level >= levels {
+        return Err(format!(
+            "hidden tiles from {:?} to {to:?} on level {}: off the map or the corners swapped",
+            h.from, h.level
+        ));
+    }
+    let code = |name: &str| {
+        let i = tables.artifacts.iter().position(|a| a.name == name);
+        i.and_then(|i| u16::try_from(i).ok())
+    };
+    let (speculum, spyglass) = (code("Speculum"), code("Spyglass"));
+    // Each reveal: its centres, its radius and what reveals.
+    type Reveal = (Vec<(u8, u8)>, u32, String);
+    let mut reveals: Vec<Reveal> = Vec::new();
+    for (_, object) in objects.iter().filter(|(l, _)| *l == h.level) {
+        match object {
+            MapObject::Hero(hero) if hero.owner == player => {
+                let radius = hero.skills.as_ref().zip(hero.artifacts.as_ref()).map_or(
+                    10,
+                    |(skills, artifacts)| {
+                        let scouting = skills
+                            .iter()
+                            .find(|&&(skill, _)| skill == SCOUTING)
+                            .map_or(0, |&(_, level)| u32::from(level));
+                        let worn = |a: Option<u16>| {
+                            u32::from(a.is_some_and(|a| artifacts.worn.contains(&Some(a))))
+                        };
+                        5 + scouting + worn(speculum) + worn(spyglass)
+                    },
+                );
+                let name = hero
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| tables.heroes[usize::from(hero.hero_type)].clone());
+                reveals.push((vec![hero.tile], radius, format!("the hero {name}")));
+            }
+            MapObject::Town(Town {
+                tile,
+                template,
+                owner: Some(owner),
+                ..
+            })
+            | MapObject::AnyTown(AnyTown {
+                tile,
+                template,
+                owner: Some(owner),
+                ..
+            }) if *owner == player => {
+                let tower = template.class == TOWN_OBJECT && template.subclass == TOWER;
+                let entrance = (tile.0.saturating_sub(2), tile.1);
+                let radius = if tower { 20 } else { 5 };
+                reveals.push((vec![entrance], radius, format!("the town at {entrance:?}")));
+            }
+            MapObject::Owned(o) if owned_by(o.body) == Some(player) => {
+                reveals.push((
+                    covered(&o.template, o.tile),
+                    3,
+                    format!("the object at {:?}", o.tile),
+                ));
+            }
+            _ => {}
+        }
+    }
+    for y in y0..=y1 {
+        for x in x0..=x1 {
+            for (centres, r, what) in &reveals {
+                let seen = centres.iter().any(|&(cx, cy)| {
+                    let (dx, dy) = (u32::from(x.abs_diff(cx)), u32::from(y.abs_diff(cy)));
+                    dx * dx + dy * dy <= r * r + r
+                });
+                if seen {
+                    return Err(format!(
+                        "the hidden tile {:?} on level {}: {what} explores it at the start                          (radius {r})",
+                        (x, y),
+                        h.level
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// An owned object's owner (E08 T138).
+fn owned_by(body: OwnedBody) -> Option<u8> {
+    match body {
+        OwnedBody::Owner(owner)
+        | OwnedBody::RandomDwelling { owner, .. }
+        | OwnedBody::Garrison { owner, .. } => owner,
+        _ => None,
+    }
 }
 
 /// A town with its entrance on `entrance`, and the line that describes it in the template.
@@ -4019,7 +4307,8 @@ mod tests {
                 | MapObject::AnyTown(_)
                 | MapObject::RandomHero(_)
                 | MapObject::Reward(_)
-                | MapObject::Owned(_) => None,
+                | MapObject::Owned(_)
+                | MapObject::Prison(_) => None,
             })
             .collect();
         // The encounter's hero, its `also` heroes, then the opponent beside the hero.
@@ -5953,5 +6242,126 @@ mod tests {
                 .expect("spec");
         let err = build(&spec, &t, "b.h3m").expect_err("slots with defaults");
         assert!(err.contains("lists no army"), "{err}");
+    }
+
+    const PRISONS: &str = r#"
+        [map]
+        name = "Prisons"
+        description = "d"
+        terrain = "grass"
+
+        [[map.ground]]
+        picture = "AVXfw5"
+        at = [6, 6]
+
+        [[map.object]]
+        picture = "avxmktt0"
+        at = [20, 10]
+
+        [[map.prison]]
+        at = [10, 10]
+        [map.prison.prisoner]
+        type = "Sylvia"
+        specialty = "resource gold"
+        experience = 5000
+        primary = [1, 2, 3, 4]
+        army = [["Pikeman", 3]]
+
+        [[map.hidden]]
+        from = [10, 10]
+        to = [25, 25]
+
+        [[encounter]]
+        id = "E1"
+        title = "The prison"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        at = [5, 5]
+        primary = [1, 1, 1, 1]
+        army = [["Pikeman", 10]]
+        ground = "Favorable Winds"
+    "#;
+
+    #[test]
+    fn builds_increment_15_s_objects() {
+        // E08 T138 (batch E15): a prison with its prisoner's body, no owner, its type used; the
+        // Market of Time by its picture; the hero's ground checked; the hidden tiles checked
+        // against the start's reveals (the prisoner reveals nothing).
+        let mut t = tables();
+        t.plains.push(ObjectTemplate::market_of_time());
+        let (map, text) = build(&parse(PRISONS).expect("spec"), &t, "p.h3m").expect("build");
+        let prisons: Vec<&Prison> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Prison(p) => Some(p),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(prisons.len(), 1);
+        let prisoner = &prisons[0].prisoner;
+        assert_eq!(prisons[0].tile, (10, 10));
+        assert_eq!((prisoner.hero_type, prisoner.experience), (1, Some(5000)));
+        assert_eq!(prisoner.primary, Some([1, 2, 3, 4]));
+        assert_eq!(prisoner.army.unwrap()[0], Some((0, 3)));
+        assert!(
+            text.contains("- A prison at [10, 10], its prisoner **Sylvia**"),
+            "{text}"
+        );
+        let market = map.objects.iter().any(|o| {
+            matches!(o, MapObject::Plain(p)
+                if p.template.class == h3_map::writer::MARKET_OF_TIME_OBJECT && p.tile == (20, 10))
+        });
+        assert!(market);
+        // Red's one hero: the prisoner is in no player's list.
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        assert!(!raw.allowed_heroes.get(1));
+        let fails = |from: &str, to: &str| {
+            let spec = parse(&PRISONS.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "p.h3m").expect_err(to)
+        };
+        let err = fails("ground = \"Favorable Winds\"", "ground = \"none\"");
+        assert!(err.contains("stands on favorable winds"), "{err}");
+        let err = fails("ground = \"Favorable Winds\"", "ground = \"x\"");
+        assert!(err.contains("the spec expects `x`"), "{err}");
+        let err = fails(
+            "type = \"Sylvia\"\n        specialty = \"resource gold\"",
+            "type = \"Orrin\"\n        specialty = \"skill Archery\"",
+        );
+        assert!(err.contains("hero type Orrin is used twice"), "{err}");
+        let err = fails(
+            "experience = 5000",
+            "experience = 5000\n        at = [1, 1]",
+        );
+        assert!(err.contains("no `owner` and no `at`"), "{err}");
+        let err = fails(
+            "at = [5, 5]\n        primary = [1, 1, 1, 1]\n        army = [[\"Pikeman\", 10]]\n        \
+             ground = \"Favorable Winds\"",
+            "at = [9, 10]\n        primary = [1, 1, 1, 1]\n        army = [[\"Pikeman\", 10]]",
+        );
+        assert!(err.contains("two objects on the tile (9, 10)"), "{err}");
+        let err = fails(
+            "at = [10, 10]\n        [map.prison.prisoner]",
+            "at = [0, 10]\n        [map.prison.prisoner]",
+        );
+        assert!(err.contains("off the map"), "{err}");
+        // The reveal's disk, radius 5 around (5, 5): (10, 5) and (8, 9) are in it (25 ≤ 30), (11, 5)
+        // and (9, 9) not (36, 32).
+        for (tile, seen) in [
+            ("[10, 5]", true),
+            ("[11, 5]", false),
+            ("[9, 9]", false),
+            ("[8, 9]", true),
+        ] {
+            let spec = PRISONS.replacen("from = [10, 10]", &format!("from = {tile}"), 1);
+            let built = build(&parse(&spec).expect("spec"), &t, "p.h3m");
+            assert_eq!(built.is_err(), seen, "{tile}: {:?}", built.err());
+        }
+        let err = fails("to = [25, 25]", "to = [36, 25]");
+        assert!(err.contains("off the map or the corners swapped"), "{err}");
+        let err = fails("to = [25, 25]", "to = [25, 25]\n        player = \"pink\"");
+        assert!(err.contains("(red, blue or tan)"), "{err}");
     }
 }

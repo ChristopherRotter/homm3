@@ -26,6 +26,7 @@ mod garrisons_map;
 mod gates_map;
 mod import;
 mod play;
+mod prisons;
 mod rewards;
 mod rewards_map;
 mod sea;

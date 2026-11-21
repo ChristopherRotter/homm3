@@ -59,6 +59,13 @@
 //! not in the RoE format) as [`Plain`] objects without a body, and the map's banned artifacts
 //! ([`Map::banned_artifacts`]).
 //!
+//! Since E08 T138 (batch E15's maps, increment 15's design note `docs/epics/E08-design.md` §7,
+//! §19) it writes the Prison ([`Prison`]: class 62 with its prisoner's body, a placed hero's
+//! without an owner; the prisoner's type left out of the map's allowed heroes, as the editor's
+//! maps) and the Market of Time ([`MARKET_OF_TIME_OBJECT`], [`ObjectTemplate::market_of_time`]) as
+//! a [`Plain`] object. A hero's worn Spell Scroll holds no spell in the format (a slot holds an
+//! artifact's code alone): a scroll to wear comes from the map, a Spell Scroll object picked up.
+//!
 //! Since E09 T9a (the town map, design note `docs/epics/E09-design.md` §18) it writes a town of
 //! any kind ([`AnyTown`]: random towns with their alignments, a player's main town in the header,
 //! a name, random garrison stacks) and random heroes ([`RandomHero`]); since E09 T19a (design
@@ -239,6 +246,15 @@ pub const PLAYERS: usize = 8;
 
 /// Object class of a hero on the map.
 const OBJECT_HERO: u32 = 34;
+/// The owner byte of an object no player owns: a prison's (E08 T138).
+const NO_OWNER: u8 = 0xff;
+/// Object class of a prison (E08 T138): its body is a hero's, its owner none (`0xFF`).
+pub const PRISON_OBJECT: u32 = 62;
+/// Object class of the Market of Time (E08 T138: batch E15's E15-3; survey
+/// `docs/rules/surveys/E08-spells.md` §1.2, §3), among [`PLAIN_OBJECTS`], subclass 0, no body.
+/// `Objects.txt` lists no template for it: [`ObjectTemplate::market_of_time`] is the one map that
+/// holds one's (`Titans Winter`, RoE).
+pub const MARKET_OF_TIME_OBJECT: u32 = 50;
 /// Object classes whose body is a wandering monster (monster, random monsters).
 const MONSTER_OBJECTS: [u32; 5] = [54, 71, 162, 163, 164];
 /// Object class of a resource pile (subclass = resource, `RESTYPES.TXT` order: wood, mercury,
@@ -275,11 +291,12 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// body, batch E12's E12-17: a refused visit's kind mark, decision 313). Since E08 T119 increment
 /// 13's creature banks ([`BANK_OBJECTS`]). Since E09 T34 increment 4's Tavern (95) and Den of
 /// Thieves (97; batch TWN-4, survey `docs/rules/surveys/E09-tavern.md` §3, §6: no body, subclass
-/// 0). Since E08 T128 increment 14's trades and services ([`TRADE_OBJECTS`]). On either level (a
-/// level's objects, [`Underground::objects`]).
-pub const PLAIN_OBJECTS: [u32; 56] = [
-    2, 7, 8, 11, 13, 14, 16, 22, 24, 25, 28, 29, 30, 31, 35, 38, 43, 44, 45, 48, 49, 52, 55, 56,
-    63, 64, 78, 82, 84, 85, 86, 92, 94, 95, 96, 97, 99, 100, 101, 103, 104, 105, 106, 107, 108,
+/// 0). Since E08 T128 increment 14's trades and services ([`TRADE_OBJECTS`]). Since E08 T138 the
+/// Market of Time ([`MARKET_OF_TIME_OBJECT`], subclass 0). On either level (a level's objects,
+/// [`Underground::objects`]).
+pub const PLAIN_OBJECTS: [u32; 57] = [
+    2, 7, 8, 11, 13, 14, 16, 22, 24, 25, 28, 29, 30, 31, 35, 38, 43, 44, 45, 48, 49, 50, 52, 55,
+    56, 63, 64, 78, 82, 84, 85, 86, 92, 94, 95, 96, 97, 99, 100, 101, 103, 104, 105, 106, 107, 108,
     109, 110, 111, 112, 124, 135, 137, 155, 212, 213, 221,
 ];
 /// Object classes of increment 14's trades and services (E08 T128: batch E14; survey
@@ -486,6 +503,41 @@ impl ObjectTemplate {
         }
     }
 
+    /// The prison's template (E08 T138), `Objects.txt`'s one class-62 line (`AVXprsn0.def`): it
+    /// blocks the object's position and the tile west of it and is visited at the position, the
+    /// prison's entrance, where the freed hero appears (survey `docs/rules/surveys/E08-spells.md`
+    /// §2.2); every terrain but in the editor's menus water.
+    pub fn prison() -> Self {
+        Self {
+            def: "AVXprsn0.def".into(),
+            passable: [0xff, 0xff, 0xff, 0xff, 0xff, 0x3f],
+            visitable: [0, 0, 0, 0, 0, 0x80],
+            terrains: 0x1ff,
+            menu: 0xff,
+            class: PRISON_OBJECT,
+            subclass: 0,
+            group: 0,
+            priority: 0,
+        }
+    }
+
+    /// The Market of Time's template (E08 T138), as the one shipped map that holds one writes it
+    /// (`Titans Winter`, RoE: `AVXmktt0.def`; `Objects.txt` has no line for class 50): it blocks
+    /// the object's position and the tile west of it and is entered at the position.
+    pub fn market_of_time() -> Self {
+        Self {
+            def: "AVXmktt0.def".into(),
+            passable: [0xff, 0xff, 0xff, 0xff, 0xff, 0x3f],
+            visitable: [0, 0, 0, 0, 0, 0x80],
+            terrains: 0x1ff,
+            menu: 0xff,
+            class: MARKET_OF_TIME_OBJECT,
+            subclass: 0,
+            group: 0,
+            priority: 0,
+        }
+    }
+
     fn write(&self, out: &mut Out) -> Result<(), WriteError> {
         out.string(&self.def)?;
         out.bytes(&self.passable);
@@ -578,6 +630,19 @@ pub struct Hero {
     pub spells: Option<[u8; 9]>,
     /// Attack, defense, power, knowledge.
     pub primary: Option<[u8; 4]>,
+}
+
+/// A prison with its prisoner (E08 T138: batch E15; increment 15's design note
+/// `docs/epics/E08-design.md` §7), template [`ObjectTemplate::prison`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Prison {
+    /// The object's position, the prison's entrance (the template blocks it and the tile west
+    /// of it).
+    pub tile: (u8, u8),
+    /// The prisoner: its type and body as a placed hero's (experience, skills, army, artifacts,
+    /// spells, primary skills, name; every `Option` the hero type's). Its `tile`, `owner`,
+    /// `class` are not written: a prison holds no owner (`0xFF`) and has one picture.
+    pub prisoner: Hero,
 }
 
 /// A wandering monster placed on the map.
@@ -723,6 +788,8 @@ pub enum MapObject {
     /// An ownable object with its body (E08 T78): a mine, an abandoned mine, a Lighthouse, a
     /// Shipyard; since E08 T89a a dwelling, since E08 T109a a garrison.
     Owned(OwnedObject),
+    /// A prison with its prisoner (E08 T138).
+    Prison(Prison),
 }
 
 /// A rectangle of tiles with a terrain of its own (E08 T10a: movement experiments).
@@ -908,11 +975,11 @@ fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, Writ
         }
     }
     if sod {
-        out.bytes(&DEFAULT_ALLOWED_HEROES);
+        out.bytes(&without_prisoners(map, DEFAULT_ALLOWED_HEROES));
         out.u32(0); // no campaign hero placeholders
         out.u8(0); // no disposed heroes
     } else {
-        out.bytes(&ROE_ALLOWED_HEROES);
+        out.bytes(&without_prisoners(map, ROE_ALLOWED_HEROES));
     }
     out.bytes(&[0; 31]); // map options (unused)
     if sod {
@@ -973,6 +1040,13 @@ fn write_all(map: &Map, extras: &Extras, format: Format) -> Result<Vec<u8>, Writ
             MapObject::RandomHero(hero) => town::write_hero(&mut out, hero, identifier)?,
             MapObject::Reward(reward) => rewards::write_body(&mut out, &reward.body)?,
             MapObject::Owned(owned) => economy::write_body(&mut out, owned.body),
+            MapObject::Prison(prison) => {
+                let prisoner = Hero {
+                    owner: NO_OWNER,
+                    ..prison.prisoner.clone()
+                };
+                write_hero(&mut out, &prisoner, identifier)?;
+            }
         }
     }
     for (index, object) in extras.objects.iter().enumerate() {
@@ -1073,6 +1147,7 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
             MapObject::RandomHero(hero) => hero.tile,
             MapObject::Reward(reward) => reward.tile,
             MapObject::Owned(owned) => owned.tile,
+            MapObject::Prison(prison) => prison.tile,
         };
         if x >= map.size || y >= map.size {
             return Err(out_of_range(
@@ -1091,6 +1166,7 @@ fn validate(map: &Map, codes: &Codes) -> Result<(), WriteError> {
             MapObject::RandomHero(hero) => town::validate_hero(map, hero, codes)?,
             MapObject::Reward(reward) => rewards::validate(reward, codes)?,
             MapObject::Owned(owned) => economy::validate(map, owned, codes)?,
+            MapObject::Prison(prison) => validate_body(&prison.prisoner, codes)?,
         }
     }
     town::validate_main_towns(map)?;
@@ -1117,6 +1193,19 @@ fn validate_hero(map: &Map, hero: &Hero, codes: &Codes) -> Result<(), WriteError
     {
         return Err(out_of_range("hero owner (no playable player)", hero.owner));
     }
+    if hero.class >= HERO_CLASS_COUNT {
+        return Err(out_of_range("hero class", hero.class));
+    }
+    // The hero's object position is one column right of its tile.
+    if hero.tile.0.checked_add(1).is_none_or(|x| x >= map.size) {
+        return Err(out_of_range("hero tile (last column)", hero.tile.0));
+    }
+    validate_body(hero, codes)
+}
+
+/// A hero's body, a placed hero's or a prisoner's (E08 T138): its type, the RoE refusals, the
+/// skills, the army and the artifacts.
+fn validate_body(hero: &Hero, codes: &Codes) -> Result<(), WriteError> {
     if usize::from(hero.hero_type) >= codes.heroes {
         return Err(out_of_range("hero type", hero.hero_type));
     }
@@ -1125,13 +1214,6 @@ fn validate_hero(map: &Map, hero: &Hero, codes: &Codes) -> Result<(), WriteError
     }
     if hero.primary.is_some() {
         codes.refuse("hero primary skills in an RoE map", hero.hero_type)?;
-    }
-    if hero.class >= HERO_CLASS_COUNT {
-        return Err(out_of_range("hero class", hero.class));
-    }
-    // The hero's object position is one column right of its tile.
-    if hero.tile.0.checked_add(1).is_none_or(|x| x >= map.size) {
-        return Err(out_of_range("hero tile (last column)", hero.tile.0));
     }
     if let Some(skills) = &hero.skills {
         if skills.len() > 8 {
@@ -1210,6 +1292,8 @@ fn validate_plain(plain: &Plain, codes: &Codes) -> Result<(), WriteError> {
         Err(out_of_range("plain object class", template.class))
     } else if template.class == CREATURE_BANK_OBJECT && template.subclass >= BANK_SUBCLASSES {
         Err(out_of_range("creature bank subclass", template.subclass))
+    } else if template.class == MARKET_OF_TIME_OBJECT && template.subclass != 0 {
+        Err(out_of_range("Market of Time subclass", template.subclass))
     } else if AB_TRADE_OBJECTS.contains(&template.class) {
         codes.refuse("an AB trade in an RoE map", template.class)
     } else {
@@ -1354,6 +1438,7 @@ fn object_template(object: &MapObject) -> ObjectTemplate {
         MapObject::RandomHero(_) => ObjectTemplate::random_hero(),
         MapObject::Reward(reward) => reward.template.clone(),
         MapObject::Owned(owned) => owned.template.clone(),
+        MapObject::Prison(_) => ObjectTemplate::prison(),
     }
 }
 
@@ -1383,6 +1468,7 @@ fn position(object: &MapObject) -> (u8, u8) {
         MapObject::RandomHero(hero) => (hero.tile.0.saturating_add(1), hero.tile.1),
         MapObject::Reward(reward) => reward.tile,
         MapObject::Owned(owned) => owned.tile,
+        MapObject::Prison(prison) => prison.tile,
     }
 }
 
@@ -1485,6 +1571,27 @@ fn write_army(out: &mut Out, army: &[Option<(u16, u16)>; ARMY_SLOTS]) {
 /// required or banned spells, no events, the alignment of its owner.
 fn write_town(out: &mut Out, town: &Town, identifier: u32) {
     town::write_unnamed(out, town, identifier);
+}
+
+/// The size in tiles (width, height) of a special ground's picture, as the import takes it (E08
+/// T138: the experiments' check of a hero's ground): its `.msk`'s, else 1 × 1.
+pub fn ground_size(template: &ObjectTemplate) -> (u8, u8) {
+    crate::import::codes::ground_size(template.def.as_bytes())
+}
+
+/// The allowed heroes without the prisoners' types (E08 T138): the editor clears a prisoner's
+/// type in its map's pool (survey `docs/rules/surveys/E08-spells.md` §1: no shipped map allows a
+/// prisoner's type).
+fn without_prisoners<const N: usize>(map: &Map, mut allowed: [u8; N]) -> [u8; N] {
+    for (_, object) in map.placed() {
+        if let MapObject::Prison(prison) = object {
+            let code = usize::from(prison.prisoner.hero_type);
+            if let Some(byte) = allowed.get_mut(code / 8) {
+                *byte &= !(1 << (code % 8));
+            }
+        }
+    }
+    allowed
 }
 
 fn len32(len: usize) -> u32 {

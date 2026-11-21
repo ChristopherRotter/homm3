@@ -90,7 +90,8 @@ pub struct Tables {
     /// pickups but the bottle, the holes; since E08 T89a the Refugee Camp; since E08 T99a the
     /// teleporters; since E08 T109a the fifteen bonus visitables; since E08 T109b the School of
     /// War; since E08 T119 the creature banks; since E09 T34 the Tavern and the Den of Thieves;
-    /// since E08 T128 the trades and services), in the file's order.
+    /// since E08 T128 the trades and services), in the file's order; since E08 T138 the Market of
+    /// Time last ([`ObjectTemplate::market_of_time`]: the file has none).
     pub plains: Vec<ObjectTemplate>,
     /// Town templates (`Objects.txt`, class [`TOWN_OBJECT`]) as (faction, template; E04c T5b).
     pub towns: Vec<(u32, ObjectTemplate)>,
@@ -257,10 +258,12 @@ impl Tables {
             .filter(|t| GROUND_OBJECTS.contains(&t.class))
             .cloned()
             .collect();
+        // `Objects.txt` lists no Market of Time (E08 T138): the shipped map's template.
         let plains = templates
             .iter()
             .filter(|t| PLAIN_OBJECTS.contains(&t.class))
             .cloned()
+            .chain(std::iter::once(ObjectTemplate::market_of_time()))
             .collect();
         let rewards = templates
             .iter()
@@ -408,7 +411,7 @@ mod tests {
         assert_eq!(grounds, [("AVXcf0.def", 222), ("AVXcg5.def", 223)]);
         // The Cartographers (E08 T32a); the Refugee Camp (E08 T89a); the teleporters (E08 T99a);
         // two bonus visitables (E08 T109a); the five bank classes (E08 T119); two trades (E08
-        // T128).
+        // T128); the Market of Time last, which the file lacks (E08 T138).
         let plains: Vec<_> = t.plains.iter().map(|p| (p.def.as_str(), p.class)).collect();
         assert_eq!(
             plains,
@@ -428,7 +431,8 @@ mod tests {
                 ("AVAdlic0.def", 24),
                 ("AVAwre20.def", 85),
                 ("AvXAltar.def", 2),
-                ("avxfgld.def", 213)
+                ("avxfgld.def", 213),
+                ("AVXmktt0.def", 50),
             ]
         );
         // A mine and a Lighthouse (E08 T78); a dwelling and a random dwelling (E08 T89a); the
