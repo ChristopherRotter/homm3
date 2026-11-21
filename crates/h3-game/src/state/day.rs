@@ -329,7 +329,7 @@ impl GameState {
     /// §92: `town::guild::refilled`, a town with a guild ever built): its visitor and its garrison
     /// hero end at their points or their maximum, whichever is more, computed in place of the
     /// regain, which never passes the maximum nor lowers the points (the same result, the maximum
-    /// once).
+    /// once), and written as `HeroChange::SetSpellPoints` writes them (ADR-0013 point 16.6).
     // rule: HER-MAN-002, TWN-GLD-008
     fn regain_mana(&mut self, rules: &GameRuleset) {
         let core = rules.core();
