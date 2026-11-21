@@ -218,6 +218,14 @@ fn a_name_past_the_save_s_humans_takes_the_next_colour_a_human_may_play() {
         [&names[5], &names[1], &names[6]].map(|n| n.as_deref()),
         [Some("A"), Some("B"), Some("C")]
     );
+    // More names than colours a human may play: the last keeps none (its record the save's
+    // nowhere).
+    let five = ["A", "B", "C", "D", "E"];
+    let mut s = hot_load(vec![saved("Four.GM4", &[0, 1, 5, 6])], &five, Bugs::Fixed);
+    options(&mut s);
+    let names = s.seated().unwrap();
+    assert_eq!(names.iter().flatten().count(), 4);
+    assert!(!names.iter().flatten().any(|n| n == "E"));
 }
 
 #[test]

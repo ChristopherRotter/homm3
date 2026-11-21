@@ -403,7 +403,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   skip; peak memory about 2 GB of 8), with `source scripts/llvm-tools.sh && llvm_tools_env` and
   `check.sh`'s `cargo llvm-cov` line, and the staged-data tests on their own without coverage
   (`RUST_TEST_THREADS=1 cargo test -p h3-battle-client`). CI's green run on `master` stands in for
-  a lost baseline.
+  a lost baseline. CI's line fails under 100% of the **regions** too (E27 M4 T5b1: an `if let`'s
+  untaken else with every line covered): run it with `--fail-under-regions 100`, as
+  `--show-missing-lines` lists lines alone.
 - **Captures beside builds: memory and disk** (E27 M2 T8): the VM restarted with the Wine runs
   beside a parallel `cargo test` and rustc (7 GB of RAM), so beside captures every cargo command
   runs as `CARGO_BUILD_JOBS=1 RUST_TEST_THREADS=1 nice`, and coverage only with no capture
