@@ -26,6 +26,15 @@ decisions 372, 384; design note §18, §21)
 
 ## Inbox
 
+- 2026-11-21 (the map client lane, E24 M4 T4c2, `map-client/e24-m4-t4c2`; **MCL-Q46, for your
+  planning; the user's answer first**): another player's hero that takes a pile or an artifact
+  from beside without a step (it stands next to it already) leaves in the viewer's record only the
+  command's `ObjectRemoved` (type and anchor), so the viewer cannot select that hero, centre the
+  view on it and turn it to the object as the original does (E24 design §5.18, `game-ai-boat`'s day
+  3). Recommended: the visit told to the viewers who see it with its hero (the hero in
+  `ObjectRemoved`, or an event of the visit). Meanwhile the viewer takes the object off as the
+  next turn starts.
+
 - 2026-11-20 (the map client lane, E24 M4 T4c, `map-client/e24-m4-t4c`; **MCL-Q43 and MCL-Q44,
   for your planning; the user's answers first**): another player's turn played from a viewer's
   record (E24 design §5.16). (1) MCL-Q43: the record holds no other player's heroes' points, which

@@ -7,7 +7,7 @@ use super::*;
 use alloc::collections::BTreeMap;
 
 use crate::art::{MapArt, Piece, TileArt};
-use crate::live::{Explored, Live, LiveBoat, Moment, TurnStatus, Walking};
+use crate::live::{Boat, Explored, Facing, Live, LiveBoat, Moment, TurnStatus, Walking};
 use crate::objects::{DrawLists, Shapes};
 use crate::replay::Replay;
 use crate::status::OtherArt;
@@ -157,6 +157,7 @@ fn computing(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str)
             message: None,
             heroes: turn::placed(&heroes, &boats, t).unwrap(),
             walks: turn::walks(&turns, i, &heroes, &lines).unwrap(),
+            taken: Vec::new(),
         })
         .collect();
     start.points = sequence.points(timeline).unwrap();
@@ -517,6 +518,7 @@ fn a_turns_heroes_and_walks_from_its_facts() {
             slot: 0,
             steps: vec![east(6), east(7)],
             unseen: Vec::new(),
+            sea: Vec::new(),
             taken: Vec::new(),
         }])
     );
@@ -682,4 +684,142 @@ fn a_computers_pickup_in_sight_and_out() {
     let l = run(&start, 161);
     assert!(l.dissolving.is_none());
     assert_eq!(l.drawn.gone.len(), 2);
+}
+
+/// A computer's boarding and landing in sight (E24 M4 T4c2, design §5.18): the hero dissolved off
+/// the land, then its step onto the boat, the boat sailed in the computer's colour and the hero
+/// drawn nowhere until it steps again (lifted then); the landing's boat put back, the hero
+/// dissolved in on the land, the turn going on after it; the objects taken without a walk off the
+/// map as the turns start. Out of sight (Blackout) each visit made at once, nothing dissolved; a
+/// boarding with no boat there a plain step, off the record.
+#[test]
+fn a_computers_boarding_and_landing() {
+    let (mut start, actions, _, _) = computing("ai-walk");
+    let walk = &start.turns[0].walks[0];
+    let (hero, steps) = (walk.hero, walk.steps.clone());
+    assert!(steps.len() > 4 && start.turns.len() > 1);
+    let facing = Facing::ALL[0];
+    let boat = LiveBoat {
+        at: steps[1].at,
+        kind: 1,
+        facing,
+    };
+    let left = LiveBoat {
+        at: steps[2].at,
+        ..boat
+    };
+    start.boats.empty.push(boat);
+    start.boats.sailed = vec![None; start.heroes.len()];
+    start.turns[0].walks[0].sea = vec![(1, Sea::Board(1)), (3, Sea::Land(left))];
+    start.turns[0].taken = vec![0];
+    start.turns[1].taken = vec![1];
+    start.sound = Some(crate::sound::tests::sound(crate::sound::tests::tiles(
+        36,
+        |_, _| 2,
+        |_, _| None,
+    )));
+    let sailed = Some(Boat { kind: 1, colour: 1 });
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    l.take_cues();
+    let (mut dissolves, mut was) = (Vec::new(), false);
+    let mut boarded = None;
+    for t in 1..=4000 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+        let now = l.dissolving.is_some();
+        if now && !was {
+            dissolves.push((t, l.hidden, l.lifted));
+        }
+        was = now;
+        if t == 160 {
+            // The computer's start: the object taken without a walk off the map.
+            assert_eq!(*l.drawn.gone, [0]);
+        }
+        if boarded.is_none() && l.boats.sailed[hero] == sailed {
+            boarded = Some((t, l.hidden, l.lifted, l.boats.empty.clone()));
+        }
+    }
+    // The boarding's dissolve: the hero off its tile, not lifted; the boat taken off at its
+    // step's end after it, in the millisecond its next step lifts the hero again.
+    let [(board, true, false), (land, false, true)] = dissolves[..] else {
+        panic!("two dissolves: {dissolves:?}");
+    };
+    let Some((at, false, true, empty)) = boarded else {
+        panic!("boarded: {boarded:?}");
+    };
+    assert!(at > board && land > at && empty.is_empty());
+    // The landing: the boat back where the hero left it, none sailed; killfade at each; the
+    // turn over, the next day's object off too.
+    assert_eq!(
+        (l.boats.empty.clone(), l.boats.sailed[hero]),
+        (vec![left], None)
+    );
+    let killfades = l
+        .take_cues()
+        .into_iter()
+        .filter(|(_, c)| matches!(c, Cue::Effect(e) if e.starts_with("killfade")))
+        .map(|(t, _)| t)
+        .collect::<Vec<_>>();
+    assert_eq!(killfades, [board, land]);
+    assert!(l.ai.is_none() && l.off_record.is_none());
+    assert_eq!(*l.drawn.gone, [0, 1]);
+    // Out of sight: the visits at once, no dissolve; a boarding where no boat lies refused as off
+    // the record (the step made: the landing after it too, in the same millisecond).
+    let refused = |start: &Start, until: u32| {
+        let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
+        for t in 1..=until {
+            let run = l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice));
+            assert!(l.dissolving.is_none());
+            if let Err(why) = run {
+                return (l, why);
+            }
+        }
+        panic!("not refused by {until}");
+    };
+    let moved = |at: Pos| Unplayable::Moved([at.x, at.y, at.z].map(i32::from));
+    start.computer.blackout = true;
+    start.turns[0].walks[0].sea =
+        vec![(1, Sea::Board(1)), (2, Sea::Board(2)), (3, Sea::Land(left))];
+    let (l, why) = refused(&start, 400);
+    assert_eq!(why, moved(steps[2].at));
+    assert_eq!(
+        (l.boats.empty.clone(), l.boats.sailed[hero]),
+        (vec![left], None)
+    );
+    // In sight, a boarding where no boat lies: a plain step, refused.
+    start.computer.blackout = false;
+    start.boats.empty.clear();
+    start.turns[0].walks[0].sea = vec![(1, Sea::Board(1))];
+    let (l, why) = refused(&start, 1000);
+    assert_eq!(why, moved(steps[1].at));
+    assert!(l.boats.sailed[hero].is_none());
+}
+
+/// The hero before put back as a turn's next hero is chosen (E24 M4 T4c2, design §5.18:
+/// `adventure_hero_stop`'s objects' step, `game-ai`'s 1180): after a walk that ends with a pickup
+/// from beside (its dissolve's end at 2180), the next hero's choice steps the objects, then the
+/// turn's end.
+#[test]
+fn a_computers_next_hero_steps_the_objects() {
+    let (mut start, actions, _, _) = computing("ai-walk");
+    start.turns[0].walks[0].taken = vec![(Pos { x: 21, y: 24, z: 0 }, 0)];
+    let steps_at = |start: &Start, until: u32| {
+        let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
+        for t in 1..=until {
+            l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+                .unwrap();
+        }
+        l.steps
+    };
+    let alone = steps_at(&start, 2180);
+    let first = start.turns[0].walks[0].clone();
+    start.turns[0].walks.push(Steps {
+        steps: Vec::new(),
+        unseen: Vec::new(),
+        sea: Vec::new(),
+        taken: Vec::new(),
+        ..first
+    });
+    assert_eq!(steps_at(&start, 2179), alone - 1);
+    assert_eq!(steps_at(&start, 2180), alone + 1);
 }

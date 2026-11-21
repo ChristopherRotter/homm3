@@ -1747,3 +1747,26 @@ script = [
     "1 move 3 19,20,0 19,19,0 19,18,0 19,17,0 19,16,0 19,15,0",
     "1 end-turn",
 ]
+
+[[sequence]]
+id = "game-ai-boat"
+situation = "game-ai-boat"
+ms = 5600
+seed = 1
+why = "a scripted game's computer player at sea in sight: End Turn's key, Blue's hero walking round a lake onto an empty boat in Red's sight; the next days End Turn again, the hero sailing a tile and landing on an island in the lake (the boat left, the points 0), the day after taking the island's gold pile from below"
+inputs = [
+    { at = 100, keydown = "e" }, { at = 160, keyup = "e" },
+    { at = 2000, keydown = "e" }, { at = 2060, keyup = "e" },
+    { at = 4400, keydown = "e" }, { at = 4460, keyup = "e" },
+]
+script = [
+    "0 end-turn",
+    "1 move 2 21,14,0 21,13,0 21,12,0 21,11,0 21,10,0 20,9,0 19,9,0 18,10,0",
+    "1 end-turn",
+    "0 end-turn",
+    "1 move 2 18,11,0 19,12,0",
+    "1 end-turn",
+    "0 end-turn",
+    "1 move 2 19,11,0",
+    "1 end-turn",
+]

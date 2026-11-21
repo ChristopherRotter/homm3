@@ -6,8 +6,9 @@
 # are not written (ours 0) and kind 5's glass rises a frame a step (the value 1 000, no points
 # left) where the original's stays at 3 and 4: its `other` lines and the screens it changes (the
 # frames' differences, `game-ai-frames.txt`, are the glass's alone).
-# Recorded, not read (*provisional*): the objects' step the original draws at 1180 (the redraw
-# after the first pickup's dissolve) and the second pickup's dissolve's box one row shorter.
+# The objects' step at 1180 (the first hero put back as the second is chosen,
+# `adventure_hero_stop`) and the second pickup's dissolve's box are the original's since E24 M4
+# T4c2 (design §5.18).
 + 160 points 0
 - 260 points 1460
 - 360 points 1360
@@ -26,7 +27,6 @@
 - 660 screen 276,240,742,499
 + 660 other 1 5 5
 + 660 screen 276,240,752,509
-- 1180 objects 1
 - 1180 points 1560
 - 1180 other 1 6 3
 - 1180 screen 8,8,742,552
@@ -53,19 +53,5 @@
 - 1680 points 959
 - 1680 other 1 1 4
 - 1680 screen 277,239,742,500
-- 1745 screen 287,243,320,262
-- 1810 screen 286,243,320,262
-- 1875 screen 286,243,320,262
-- 1940 screen 286,243,320,262
-- 2005 screen 286,243,320,262
-- 2070 screen 286,243,320,262
-- 2135 screen 286,243,320,262
 + 1680 other 1 1 9
-+ 1680 screen 276,240,742,487
-+ 1745 screen 287,243,320,263
-+ 1810 screen 286,243,320,263
-+ 1875 screen 286,243,320,263
-+ 1940 screen 286,243,320,263
-+ 2005 screen 286,243,320,263
-+ 2070 screen 286,243,320,263
-+ 2135 screen 286,243,320,263
++ 1680 screen 277,239,742,487

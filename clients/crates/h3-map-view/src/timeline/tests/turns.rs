@@ -95,6 +95,7 @@ fn next(turn: Turn) -> NextTurn {
         turn,
         heroes: Vec::new(),
         walks: Vec::new(),
+        taken: Vec::new(),
     }
 }
 

@@ -1117,6 +1117,9 @@ pub struct NextTurn {
     /// A computer player's turn's heroes' walks, in order (E24 M4 T1b2: [`turn::walks`]); none
     /// for a human's.
     pub walks: Vec<Steps>,
+    /// The map's objects (their indexes among the map's objects) taken off as the turn starts
+    /// (E24 M4 T4c2: a record's other player's pickups without a step, MCL-Q46 (c)).
+    pub taken: Vec<usize>,
 }
 
 /// A computer player's hero's walk in its turn (E24 M4 T1b2, *provisional*): the hero (its index
@@ -1135,6 +1138,9 @@ pub struct Steps {
     /// The steps taken unseen whatever the viewer sees (E24 M4 T4c: a record's step into sight,
     /// whose start it does not give, MCL-Q44), by their places among [`Steps::steps`].
     pub unseen: Vec<usize>,
+    /// The steps that board an empty boat or land from one (E24 M4 T4c2: a record's `Boarded`,
+    /// `Landed`), each by its place among [`Steps::steps`].
+    pub sea: Vec<(usize, Sea)>,
     /// The objects taken off the map at its end, each by its anchor and its index among the
     /// map's objects (E24 M4 T4c: a record's pile or artifact the hero picks up from beside).
     pub taken: Vec<(Pos, usize)>,
@@ -1540,11 +1546,14 @@ struct AiTurn {
     /// The heroes' walks left.
     walks: VecDeque<Steps>,
     /// The walking hero's place in the computer's kingdom (the current player's selected hero:
-    /// the timeline's `points`) and its steps left, each with whether it is taken unseen.
+    /// the timeline's `points`) and its steps left, each with whether it is taken unseen and
+    /// what it does with a boat (E24 M4 T4c2).
     slot: usize,
-    steps: VecDeque<(Hero, bool)>,
+    steps: VecDeque<(Hero, bool, Option<Sea>)>,
     /// The objects the walk under way takes at its end (E24 M4 T4c).
     taken: Vec<(Pos, usize)>,
+    /// Whether a hero of the turn was chosen (E24 M4 T4c2: the next one's choice puts it back).
+    chosen: bool,
     /// The viewer's turn's end.
     ended: Ended,
 }
@@ -1641,6 +1650,11 @@ enum Then {
     Cast(Box<Cast>),
     /// A computer's pickup (E24 M4 T4c): its turn going on.
     Ai,
+    /// A computer's hero's landing (E24 M4 T4c2): its turn going on.
+    AiLanded,
+    /// A computer's boarding (E24 M4 T4c2): the step onto the boat and whether it is one draw,
+    /// its animation next, then its turn going on.
+    AiBoard(Hero, bool),
 }
 
 /// A step onto a boat held by its dissolve (E24 M4 T2d2): the walk, the boat's tile and whether
@@ -2654,6 +2668,7 @@ impl Loop {
             turn,
             message,
             heroes,
+            taken,
             ..
         } = next;
         let Ended {
@@ -2662,6 +2677,7 @@ impl Loop {
             path,
         } = ended;
         self.place(&heroes);
+        self.take_off(&taken);
         self.player = turn.player;
         let selected = turn.kingdom.selected;
         let mut kingdom = turn.kingdom;
@@ -2757,6 +2773,17 @@ impl Loop {
         }
     }
 
+    /// The map's objects `taken` off the map at once as a turn starts ([`NextTurn::taken`]: E24
+    /// M4 T4c2, MCL-Q46 (c)): the next draw shows them gone.
+    fn take_off(&mut self, taken: &[usize]) {
+        if !taken.is_empty() {
+            let gone = Arc::make_mut(&mut self.drawn.gone);
+            gone.extend(taken);
+            gone.sort_unstable();
+            gone.dedup();
+        }
+    }
+
     /// Whether the loop plays a computer's turn in sight from `next` (E24 M4 T1b2): the viewer's
     /// explored tiles known (the mouse-over's facts) and each walk's hero on the map.
     fn computer_playable(&self, next: &NextTurn) -> bool {
@@ -2785,9 +2812,11 @@ impl Loop {
             turn,
             heroes,
             walks,
+            taken,
             ..
         } = next;
         self.place(&heroes);
+        self.take_off(&taken);
         self.player = turn.player;
         // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*).
         let tracks = &self.rules.turn.computer;
@@ -2815,6 +2844,7 @@ impl Loop {
             walks: walks.into(),
             steps: VecDeque::new(),
             taken: Vec::new(),
+            chosen: false,
             ended,
         });
         self.ai_on(t)?;
@@ -2835,6 +2865,9 @@ impl Loop {
                     return Ok(Some(false));
                 }
                 let last = ai.steps.is_empty();
+                // A walk that ends taking an object from beside: the object's node is the move's
+                // last, not this step (E24 M4 T4c2: `game-ai` at 660, its draw at 1180).
+                let beside = !ai.taken.is_empty();
                 if let Some(&pixels) = self.computer_pixels.get(frame) {
                     self.ai_step = Some((
                         direction,
@@ -2851,6 +2884,9 @@ impl Loop {
                 self.ai_spend(t);
                 if last {
                     self.stand();
+                    if !beside {
+                        self.last_drawn(t);
+                    }
                 }
                 // The step's end's sounds (0x481216 to 0x48141B; E24 M4 T4c): a new terrain at the
                 // view's middle asks for its music, its step sound played or queued.
@@ -2859,10 +2895,22 @@ impl Loop {
                     sound.step_end(t, middle, hero.at, last, self.walk.frame);
                 }
                 self.walk.offset = [0, 0];
+                // The step's visit of a boat (`visit_object`'s cases 8 and 3; E24 M4 T4c2): the
+                // landing's dissolve holds the turn.
+                match self.aboard.take() {
+                    Some(Aboard::Board(boat)) => self.ai_board(boat),
+                    Some(Aboard::Land) => {
+                        self.ai_land(t);
+                        return Ok(Some(false));
+                    }
+                    None => {}
+                }
                 continue;
             }
-            if let Some((to, unseen)) = ai.steps.pop_front() {
-                self.computer_step(t, to, unseen);
+            if let Some((to, unseen, sea)) = ai.steps.pop_front() {
+                if self.computer_step(t, to, unseen, sea) {
+                    return Ok(Some(false));
+                }
                 continue;
             }
             if !ai.taken.is_empty() {
@@ -2873,15 +2921,19 @@ impl Loop {
                 continue;
             }
             if let Some(walk) = ai.walks.pop_front() {
+                let again = core::mem::replace(&mut ai.chosen, true);
                 ai.slot = walk.slot;
                 ai.taken = walk.taken;
                 ai.steps = walk
                     .steps
                     .iter()
                     .enumerate()
-                    .map(|(i, &h)| (h, walk.unseen.contains(&i)))
+                    .map(|(i, &h)| {
+                        let sea = walk.sea.iter().find(|(s, _)| *s == i).map(|&(_, sea)| sea);
+                        (h, walk.unseen.contains(&i), sea)
+                    })
                     .collect();
-                self.ai_hero(t, walk.hero);
+                self.ai_hero(t, walk.hero, again);
                 continue;
             }
             let ended = core::mem::take(&mut ai.ended);
@@ -2892,13 +2944,19 @@ impl Loop {
     }
 
     /// A computer's hero's turn (`ai_hero_turn` 0x5261F0, design §5.2): kind 5's step; the
-    /// selected one put back (`adventure_hero_stop`) and this one selected (`hero_select` with 1,
-    /// 0, 1: lifted, standing; the view's corner its tile less the middle, never clamped, drawn
-    /// and shown when the viewer sees its tile or a neighbour, never under Blackout Computer; no
-    /// list, status window or minimap drawn).
-    fn ai_hero(&mut self, t: u32, index: usize) {
+    /// selected one put back (`adventure_hero_stop`: shown on its tile; `again`, a hero of this
+    /// turn before, its redraw's objects' step when due, 0x4177D3, *provisional*: E24 M4 T4c2,
+    /// `game-ai`'s second hero chosen at 1180) and this one selected (`hero_select` with 1, 0, 1:
+    /// lifted, standing; the view's corner its tile less the middle, never clamped, drawn and
+    /// shown when the viewer sees its tile or a neighbour, never under Blackout Computer; no list,
+    /// status window or minimap drawn).
+    fn ai_hero(&mut self, t: u32, index: usize, again: bool) {
         self.ai_status_step(t);
         self.keep_hero();
+        self.hidden = false;
+        if again {
+            self.step_objects(t);
+        }
         self.index = Some(index);
         self.hero = self.heroes.get(index).copied();
         self.lifted = true;
@@ -2915,16 +2973,22 @@ impl Loop {
     }
 
     /// A computer's hero's step onto `to` (`ai_hero_step` 0x42FC50, `hero_move_step` 0x4805E0;
-    /// design §5.2; `unseen` a record's step whose start it does not give, E24 M4 T4c): kind 5's
-    /// step (*provisional*: at every step's start, its 50 ms deciding; which
-    /// call steps it is not read); the steps the facts do not show before it (unseen: no time,
-    /// nothing drawn) bring the hero to its start, their points the recording's. A step the viewer
-    /// sees (`step_seen` 0x480000: its start or its end tile or a neighbour of either explored;
-    /// never under Blackout Computer) hides the cursor until the turn's end (`mouse_hide`) and is a
-    /// human's step (the view centred on the hero's new tile, never clamped: MCL-Q31's view under
-    /// the fog as the original's), its frames at Computer Walk Speed; at speed 4 its one draw kept
-    /// for the window ([`Loop::take_held`]). One it does not see moves the hero and takes no time.
-    fn computer_step(&mut self, t: u32, to: Hero, unseen: bool) {
+    /// design §5.2; `unseen` a record's step whose start it does not give, E24 M4 T4c; `sea` what
+    /// it does with a boat, E24 M4 T4c2, design §5.18): kind 5's step (*provisional*: at every
+    /// step's start, its 50 ms deciding; which call steps it is not read); the steps the facts do
+    /// not show before it (unseen: no time, nothing drawn) bring the hero to its start, their
+    /// points the recording's. A step the viewer sees (`step_seen` 0x480000: its start or its end
+    /// tile or a neighbour of either explored; never under Blackout Computer) hides the cursor
+    /// until the turn's end (`mouse_hide`) and is a human's step (the view centred on the hero's
+    /// new tile, never clamped: MCL-Q31's view under the fog as the original's), its frames at
+    /// Computer Walk Speed; at speed 4 its one draw kept for the window ([`Loop::take_held`]); its
+    /// boarding's start dissolves the hero off the land before them, the step's animation after
+    /// it ([`Then::AiBoard`]), its landing's start puts the boat back first, as a human's
+    /// ([`Loop::board_start`], [`Loop::land_start`]: the class switch is the same code). One it
+    /// does not see moves the hero and takes no time, its boat's visit made at once
+    /// ([`Loop::sea_unseen`]: `view_shown` 0, so nothing is drawn). Whether the step holds the
+    /// turn (the boarding's dissolve).
+    fn computer_step(&mut self, t: u32, to: Hero, unseen: bool, sea: Option<Sea>) -> bool {
         self.ai_status_step(t);
         let number = usize::try_from(to.facing.number()).unwrap_or(0);
         let back = Direction::ALL[number.saturating_add(4) % Direction::ALL.len()];
@@ -2935,16 +2999,100 @@ impl Loop {
         let seen = !unseen && !self.blackout && (self.sees(from) || self.sees(to.at));
         if !seen {
             self.hero = Some(to);
-            return;
+            self.sea_unseen(to.at, sea);
+            return false;
         }
         self.cursor.shown = false;
         let single = self.computer_pixels.is_empty();
-        self.step(t, to.facing, to.at, single);
+        if !self.lifted {
+            // A step after the hero's boarding in its walk (the Admiral's Hat's points; not
+            // recorded, *provisional*): `mobilize_hero` 0x480914 lifts it and shows the view,
+            // without a human's path.
+            self.lifted = true;
+            self.hidden = false;
+            self.stand();
+            self.draw(t);
+        }
+        match sea {
+            Some(Sea::Board(kind)) => {
+                if let Some(boat) = self.boarded(to.at, kind) {
+                    self.board_start(t, to.facing, boat);
+                    self.lose(t, Then::AiBoard(to, single));
+                    return true;
+                }
+            }
+            Some(Sea::Land(boat)) => self.land_start(t, to.facing, boat),
+            None => {}
+        }
+        self.ai_animate(t, to, single);
+        false
+    }
+
+    /// A computer's step's animation onto `to` ([`Loop::animate`]; `single` at speed 4: its one
+    /// draw kept for the window), its frames from `t` ([`Loop::ai_on`]).
+    fn ai_animate(&mut self, t: u32, to: Hero, single: bool) {
+        self.animate(t, to.facing, to.at, single);
         if single {
             let state = self.state(t);
             self.within.push(state);
         }
         self.ai_step = Some((to.facing, 0, t));
+    }
+
+    /// A computer's hero's boat boarded at its step's end (`visit_object`'s case 8,
+    /// `hero_boards_boat` 0x4A1010; E24 M4 T4c2, design §5.18): the boat taken off its tile, the
+    /// hero in it with its type and its owner's colour; its points 0 (the record holds none:
+    /// MCL-Q43) and the hero list's slot −1 (the viewer's, nothing selected in a computer's turn:
+    /// nothing drawn). For a player not human here (0x4A10C7) the boat's picture is not lifted nor
+    /// the view drawn: the hero stays off its tile and not lifted, so that nothing draws it until
+    /// it is put back ([`Loop::ai_hero`], [`Loop::ai_end`]: `adventure_hero_stop`), the screen
+    /// the animation's last frame (the boat on its tile, no hero; `game-ai-boat` at 1430).
+    fn ai_board(&mut self, boat: LiveBoat) {
+        self.boats.empty.retain(|b| b.at != boat.at);
+        self.sail(Some(Boat {
+            kind: boat.kind,
+            colour: self.player,
+        }));
+    }
+
+    /// A computer's hero's land stepped onto from its boat at its step's end (`visit_object`'s case
+    /// 3, `hero_lands_from_boat` 0x49E670, no test of the player there; E24 M4 T4c2, design
+    /// §5.18): out of its boat, standing, lifted, then [`Loop::lose`]: the hero dissolved in on
+    /// the land (`killfade.82M`), its turn going on at its end ([`Then::AiLanded`]); the points and
+    /// the slot as [`Loop::ai_board`]'s.
+    fn ai_land(&mut self, t: u32) {
+        self.sail(None);
+        self.stand();
+        self.lifted = true;
+        self.hidden = false;
+        self.lose(t, Then::AiLanded);
+    }
+
+    /// A computer's move's last step's end (`hero_move_step` with `ai_hero_step`'s fifth argument
+    /// 1, 0x42FDF6, and the view shown: 0x481237 to 0x481264; E24 M4 T4c2): the view drawn and the
+    /// objects' step when due (`game-ai-boat`'s landing at 2260). A walk that ends taking an object
+    /// from beside has the object's node last, which takes no step: none (`game-ai` at 660).
+    fn last_drawn(&mut self, t: u32) {
+        self.draw(t);
+        self.step_objects(t);
+    }
+
+    /// A computer's step's boat visit out of the viewer's sight (E24 M4 T4c2): its boarding or
+    /// landing made at once, nothing drawn (`hero_move_step` sets `view_shown` to whether the
+    /// viewer sees the step, 0x48071F, and the dissolves and draws test it).
+    fn sea_unseen(&mut self, at: Pos, sea: Option<Sea>) {
+        match sea {
+            Some(Sea::Board(kind)) => {
+                if let Some(boat) = self.boarded(at, kind) {
+                    self.ai_board(boat);
+                }
+            }
+            Some(Sea::Land(boat)) => {
+                self.boats.empty.push(boat);
+                self.sail(None);
+            }
+            None => {}
+        }
     }
 
     /// The objects `taken` (anchors, indexes) a computer's hero takes from beside at its walk's end (E24 M4
@@ -2967,10 +3115,7 @@ impl Loop {
         self.stand();
         let seen = !self.blackout && at.is_some_and(|a| self.sees(a));
         let Some((&object, rest)) = objects.split_first().filter(|_| seen) else {
-            let gone = Arc::make_mut(&mut self.drawn.gone);
-            gone.extend(objects);
-            gone.sort_unstable();
-            gone.dedup();
+            self.take_off(&objects);
             return false;
         };
         Arc::make_mut(&mut self.drawn.gone).extend(rest);
@@ -2986,14 +3131,18 @@ impl Loop {
     fn ai_end(&mut self, t: u32, ended: Ended) -> Result<(), Unplayable> {
         self.lifted = false;
         self.keep_hero();
+        self.hidden = false;
         self.set_cursor(CURSOR_TYPE, self.rules.arrow);
         self.cursor.shown = true;
-        // The redraws the turn's walks missed caught up before the next turn starts, the objects
-        // stepped for each (*provisional*: recorded, not read: `ai-walk` at 1660 two steps, the
-        // deadline 1840, and the next day's whole redraw showing the last, unchanged at 1840).
-        while t >= self.frame_at {
-            self.step_objects(t);
-        }
+        // The turn's end's redraw (`adventure_hero_stop`'s, 0x4177D3), the objects stepped when
+        // due, then the deadline at least a step on from the clock (*provisional*: recorded, not
+        // read; E24 M4 T4c2, after the move's last step's own step in [`Loop::ai_on`]: `ai-walk`'s
+        // two at 1660, the next at 1840; `game-ai-boat`'s two at 1480, the next at 1660, and its
+        // one at 2780 after the landing's dissolve, the next at 2960, not at the late deadline).
+        self.step_objects(t);
+        self.frame_at = self
+            .frame_at
+            .max(t.saturating_add(self.rules.frame_ms.max(1)));
         let refused = Unplayable::Command(panels::id::END_TURN);
         let Some(next) = self.turns.get(self.next_turn).cloned() else {
             return self.unbuilt(refused);
@@ -3762,8 +3911,13 @@ impl Loop {
             ..
         } = dissolving;
         match then {
-            // A computer's pickup: its turn on in the dissolve's last millisecond.
-            Then::Ai => return self.ai_on(t).map(|_| ()),
+            // A computer's pickup or landing: its turn on in the dissolve's last millisecond.
+            Then::Ai | Then::AiLanded => return self.ai_on(t).map(|_| ()),
+            // A computer's boarding: its step's animation onto the boat, its turn on.
+            Then::AiBoard(to, single) => {
+                self.ai_animate(t, to, single);
+                return self.ai_on(t).map(|_| ());
+            }
             Then::Taken => {
                 self.gain(gain);
                 // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,
@@ -4746,13 +4900,6 @@ impl Loop {
         if let Some(moving) = self.stride(t, moving, next) {
             self.carry_on(t, moving);
         }
-    }
-
-    /// A step's start (`hero_move_step` 0x4805E0, then `hero_walk_animation` 0x480380): see
-    /// [`Loop::mobilize`] and [`Loop::animate`] (a computer's: E24 M4 T1b2).
-    fn step(&mut self, t: u32, direction: Direction, next: Pos, single: bool) {
-        self.mobilize(t, direction, next);
-        self.animate(t, direction, next, single);
     }
 
     /// A human's step onto `next` (E24 M4 T2d2, design §5.7): its start ([`Loop::mobilize`]), then

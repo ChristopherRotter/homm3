@@ -1,0 +1,89 @@
+# The record's gaps from the original's timeline (E24 M4 T4c2, design §5.18): `h3-map-view
+# sequences game-ai-boat --record` plays the sequence from its script's engine record (Blue's hero
+# round a lake onto an empty boat in Red's sight, the next day sailing a tile and landing on an
+# island, the day after taking the island's gold pile from below) and lists its timeline's
+# differences from the recorded one, `- ` the original's line and `+ ` ours, in order; they must
+# be these.
+# MCL-Q43 (c): a record holds no other player's heroes' points, so the computer's `points` lines
+# are not written (ours 0) and kind 5's glass rises a frame a step (the value 1 000, no points
+# left): its `other` lines and the screens it changes (the frames' differences to 1430,
+# `game-ai-boat-frames.txt`, are the glass's alone).
+# MCL-Q46 (c): the record does not tell which hero takes the pile from beside on day 3 (its
+# command's events an `ObjectRemoved` alone), so that turn is not shown (from 4460 the original's
+# hero chosen and the pile's dissolve, its turn's end at 4980) and the pile is taken off as Red's
+# day 4 starts at 4460; the objects' steps after it fall 520 ms early (the frames' differences from
+# 4460).
++ 160 points 0
+- 260 points 1460
+- 360 points 1360
+- 460 points 1260
+- 560 points 1160
+- 660 points 1060
+- 760 points 919
+- 760 other 1 6 5
+- 760 screen 8,8,742,552
++ 760 other 1 6 6
++ 760 screen 8,8,755,552
+- 860 points 819
+- 860 other 1 7 6
+- 860 screen 729,469,755,509
++ 860 other 1 7 7
++ 860 screen 729,469,753,508
+- 2060 points 1500
++ 2060 points 0
+- 2160 points 1400
+- 2260 points 0
+- 4460 view 10 4 0
+- 4460 cursor 0 2 700 300
+- 4460 points 1459
+- 4460 hero 19 12 0 0
+- 4460 walk 0 0 0 0
+- 4460 player 1
+- 4460 other 1 0 0
+- 4460 screen 8,8,790,566
+- 4525 screen 294,244,320,263
+- 4590 screen 289,244,320,263
+- 4655 screen 294,244,320,263
+- 4720 screen 289,244,320,263
+- 4785 screen 290,244,320,263
+- 4850 screen 289,244,320,263
+- 4915 screen 290,244,320,263
+- 4980 view 6 2 0
+- 4980 cursor 1 0 700 300
+- 4980 points 1560
+- 4980 hero 15 10 0 2
+- 4980 walk 2 0 0 0
+- 4980 date 1 1 4
+- 4980 player 0
+- 4980 other
+- 4980 screen 8,8,790,591
+- 5000 cycles 23 23
+- 5160 objects 17
+- 5160 screen 320,89,789,552
+- 5200 cycles 24 24
+- 5340 objects 18
+- 5340 screen 288,89,789,552
+- 5400 cycles 25 25
+- 5520 objects 19
+- 5520 screen 288,89,789,552
+- 5600 cycles 26 26
++ 4460 date 1 1 4
++ 4460 screen 288,240,789,591
++ 4580 objects 17
++ 4580 screen 614,400,789,548
++ 4600 cycles 23 23
++ 4760 objects 18
++ 4760 screen 288,89,789,552
++ 4800 cycles 24 24
++ 4940 objects 19
++ 4940 screen 288,89,789,552
++ 5000 cycles 25 25
++ 5120 objects 20
++ 5120 screen 288,89,789,552
++ 5200 cycles 26 26
++ 5300 objects 21
++ 5300 screen 288,91,789,556
++ 5400 cycles 27 27
++ 5480 objects 22
++ 5480 screen 288,89,789,563
++ 5600 cycles 28 28

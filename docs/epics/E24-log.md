@@ -3220,3 +3220,32 @@ first minutes.
   army's and the XL map (`obj.def` templates), `economy-shipyard-s1` (a built boat).
 - **Questions:** MCL-Q43 (the computer's points: kind 5's glass), MCL-Q44 (a seen step's hidden
   end), MCL-Q45 (which heroes take a turn), notes in the adventure and server lanes' inboxes.
+
+### M4 T4c2 (2026-11-21; offered whole at the start, no seam: a small task)
+
+- **Read** (design §5.18): `ai_hero_step`'s call of `hero_move_step` (its fifth argument 1, the
+  move's last step its second), `hero_move_step`'s `view_shown` at each step's start (0x48071F),
+  its boarding and landing (the human's code, no test of the player) and its last step's draw
+  (0x481237 to 0x481264); `hero_boards_boat` for a player not human (0x4A10C7: no lifted boat, no
+  draw); `hero_lands_from_boat` (no test); `hero_loss_effect`; `view_show_step` and
+  `adventure_hero_stop`'s objects' step; `visit_resource_pile`'s hold (+0x104).
+- **Recorded** (under Wine, seed 1): `game-ai-boat` twice the same (211 lines, 64 screens: the
+  boarding's dissolve 860 to 1380, the landing's frames 2160 and 2210 and its dissolve in 2260 to
+  2780, day 3's pickup from below 4460 to 4980); `game-ai` once again, as recorded at T4c (its
+  live part's colour cycles 21 for 22: the capture's refresh, the frame at 0 exact).
+- **Built** (*provisional* unless said): `Steps::sea` from `record_walks`; a computer's boarding
+  (`board_start`, `lose` with `Then::AiBoard`, `ai_animate`, `ai_board`) and landing
+  (`land_start`, `ai_land`, `Then::AiLanded`) in sight, out of sight at once (`sea_unseen`); a
+  step after a boarding lifts the hero without a path; the objects' steps of a computer's turn
+  (`last_drawn`, `ai_hero`'s for the hero before, the turn's end's one step and its deadline);
+  `Loop::step` removed. MCL-Q46 (c): `Played::taken`, `NextTurn::taken`, `Loop::take_off`.
+- **Found:** `game-ai-boat` exact but its 74 listed gaps (MCL-Q43's to 2260, MCL-Q46's from
+  4460), its frames' differences the glass's alone to 1430; `game-ai` with fewer gaps (46 from
+  61: the objects' step at 1180 and the second pickup's dissolve's box now the original's); the
+  other sequences and situations as recorded (`drawn`); `drawn --record` for the two.
+- **Tests:** `a_computers_boarding_and_landing` (the dissolves, the boat sailed and put back, the
+  lift without a path, the killfades, Blackout, a boarding without a boat refused, a turn's
+  taken objects), `a_computers_next_hero_steps_the_objects`, `record_walks`' boats, `played`'s
+  pickup without a step; 454 in the library, 100 % of its lines and regions.
+- **Question:** MCL-Q46 (the hero that takes an object without a step), a note in the adventure
+  lane's inbox.

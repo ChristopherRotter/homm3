@@ -131,11 +131,13 @@ fn the_tables_section_reads_from_toml() {
 }
 
 /// A record's other player's turn (E24 M4 T4c): Blue's hero 7 seen from (5, 5) walking east,
-/// then a step out of sight, then one back into sight; hero 9 not shown at the start.
+/// then a step out of sight, then one back into sight; hero 9 not shown at the start. Its boats
+/// (E24 M4 T4c2): a boarding kept by its step's place, one out of sight's left out, a landing.
 #[test]
 fn a_record_s_other_turn_as_walks() {
     use crate::engine::{OtherStep, OtherTurn, OtherWalk};
-    use crate::live::Facing;
+    use crate::live::{Facing, LiveBoat};
+    use crate::timeline::Sea;
     let at = |x, y| Pos { x, y, z: 0 };
     let hero = |x, owner| LiveHero {
         at: at(x, 5),
@@ -157,7 +159,7 @@ fn a_record_s_other_turn_as_walks() {
         steps,
         taken: vec![at(9, 4)],
     };
-    let other = OtherTurn {
+    let mut other = OtherTurn {
         turn: 1,
         player: 1,
         walks: vec![
@@ -173,6 +175,14 @@ fn a_record_s_other_turn_as_walks() {
             walk(7, vec![step(Some(at(9, 6)), Some(at(9, 5)))]),
         ],
     };
+    let boat = LiveBoat {
+        at: at(9, 6),
+        kind: 1,
+        facing: Facing::ALL[0],
+    };
+    other.walks[0].steps[1].sea = Some(Sea::Board(1));
+    other.walks[0].steps[2].sea = Some(Sea::Board(2));
+    other.walks[1].steps[0].sea = Some(Sea::Land(boat));
     let walks = record_walks(&other, &ids, &map, &|at| (at.x == 9).then_some(4)).unwrap();
     let to = |x, y, facing| Hero {
         at: at(x, y),
@@ -190,6 +200,7 @@ fn a_record_s_other_turn_as_walks() {
                     to(9, 6, Direction::SouthEast),
                 ],
                 unseen: vec![2],
+                sea: vec![(1, Sea::Board(1))],
                 taken: vec![(at(9, 4), 4)],
             },
             Steps {
@@ -197,6 +208,7 @@ fn a_record_s_other_turn_as_walks() {
                 slot: 0,
                 steps: vec![to(9, 5, Direction::North)],
                 unseen: Vec::new(),
+                sea: vec![(0, Sea::Land(boat))],
                 taken: vec![(at(9, 4), 4)],
             },
         ]

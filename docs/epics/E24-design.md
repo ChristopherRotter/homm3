@@ -4396,7 +4396,7 @@ players' turns, the viewer's controls, a golden replay).
   the second pickup's dissolve's box one row shorter); its 41 frames differ only in the glass (411
   to 780 pixels). `game-ai-boat` not played yet: a computer's boarding and landing in sight (the
   hero's dissolve off the land, then its step onto the boat; the boat put back at the landing)
-  are not built for a computer's turn (`MCL-STUB-2`, T4c2).
+  are not built for a computer's turn (`MCL-STUB-2`: built at T4c2, §5.18).
 
 ### 5.17 A record played without a recording: the record player, the controls, the golden replays (M4 T4c)
 
@@ -4435,3 +4435,74 @@ players' turns, the viewer's controls, a golden replay).
   the headless loop's. Not playable: the duel's and the army's maps (`obj.def`, no original
   template: nothing to draw), `economy-shipyard-s1` (a boat a Shipyard builds is not on the map:
   M5's dialog).
+
+### 5.18 A computer's boat in sight from a record (M4 T4c2)
+
+The remainder of T4c (§5.16: `MCL-STUB-2`), one task. Read again: `ai_hero_step` 0x42FC50's call
+of `hero_move_step` (0x42FDEA to 0x42FE0E: its second argument the move's last step, its fifth 1),
+`hero_move_step`'s step start (`view_shown` set to whether the viewer sees the step, 0x48071F,
+`step_seen` 0x480000), its class switch's boarding (0x480D05 to 0x480D84) and landing (0x480949 to
+0x480B0C) and its step end at a move's last step (0x481191 to 0x481264); `hero_boards_boat`
+0x4A1010 for a player not human here (0x4A10C7); `hero_lands_from_boat` 0x49E670 (no test of the
+player); `hero_loss_effect` 0x4ACBB0; `view_show_step` 0x40F270 and `adventure_hero_stop`'s step
+(0x4177D3). Recorded (`game-ai-boat`, seed 1, twice the same: 211 timeline lines, 64 screens).
+
+- **The same code as a human's:** a computer's step runs `hero_move_step` with the viewer's
+  sight as `view_shown`, so its boarding and landing in sight are §5.7's (the class switch has no
+  test of the player); one out of sight draws and dissolves nothing (`hero_loss_effect` and the
+  landing's draw test `view_shown`).
+- **The boarding** (`game-ai-boat` day 1, Blue's hero from (19, 9) onto the boat on (18, 10)): at
+  the step's start (860) kind 5 stepped, the hero turned the step's way and standing (group 3, its
+  facing 5), no longer lifted and off its tile; `killfade.82M` and the dissolve of the view's
+  middle (as last shown: the walk's last frame) into the view without the hero, steps at 925 to
+  1315; at 1380 the animation's first frame (the view centred on the boat's tile, the walking
+  group, frame 0 throughout: nothing lifted), 1430 the second. `hero_boards_boat` for a player
+  not human (0x4A10C7) skips the boat's lifted picture and the view's draw: the boat off its tile,
+  the hero in it in its owner's colour, the points 0, the hero list's slot −1 (the viewer's: none
+  selected in a computer's turn), and nothing draws the hero until `adventure_hero_stop` puts it
+  back (here the turn's end at 1480, the next day's whole redraw showing it in its boat).
+- **The landing** (day 2, from the boat on (18, 11) onto (19, 12)): at the step's start (2160)
+  the boat put back facing the step's way, the view drawn and shown at once with the empty boat,
+  the animation's frames at 2160 and 2210 with nothing lifted; at the step's end (2260, the move's
+  last step: the fifth argument 1) the view drawn and the objects stepped when due (`objects 6`);
+  then `hero_lands_from_boat`: out of the boat, points 0, the hero lifted and standing (group 3),
+  `killfade.82M` and the dissolve in (2325 to 2715); the turn's end at 2780.
+- **The objects' steps in a computer's turn** (read where said; `view_show_step` 0x40F270 and
+  `adventure_hero_stop`'s 0x4177D3: a step when the deadline has passed and the manager's +0x104
+  is clear, the deadline on by the larger of the step and the lateness): the move's last step's
+  end draws the view and steps (0x481237 to 0x481264, read), but a walk that ends taking an object
+  from beside has the object's node last, which takes no step (`game-ai` at 660: none); the pile's
+  own redraw holds them (+0x104 set, `visit_resource_pile` 0x4A4CCB); the hero before put back as
+  the next is chosen steps them (`adventure_hero_stop`, *provisional*: `game-ai`'s 1180, the
+  first hero's after its pickup, which T4c listed as recorded, not read); the turn's end steps
+  them once (`adventure_hero_stop` again): two at 1480 (the last step's and the turn's end's),
+  the next at 1660, and at 2780 one, the next at 2960, although the rule leaves the deadline at
+  the clock there (recorded, not read: built as the deadline at least a step on from the clock
+  after the turn's end's step, *provisional*, a review item; `ai-walk`'s two at 1660 and the next
+  at 1840, `game-ai`'s one at 2200 and the next at 2380 hold under it).
+- **Day 3** (the hero on (19, 12) takes the pile on (19, 11) from below): the hero chosen (the
+  view centred, standing, turned up), the pile's dissolve 4460 to 4915, the turn's end at 4980.
+  The viewer's record holds only `ObjectRemoved` in that command: no step and no hero (MCL-Q46).
+- **Built** (*provisional* unless said): `Steps::sea` (a step's `Boarded` or `Landed` by its place,
+  `turn::record_walks`; one out of sight's left out with it); `Loop::computer_step` with the sea:
+  the boarding's start (`board_start`) and `lose` with `Then::AiBoard`, whose end runs the step's
+  animation (`ai_animate`) and the turn on; the landing's start (`land_start`); at the step's end
+  `ai_board` (the boat sailed, the hero not lifted nor drawn) or `ai_land` (the hero lifted,
+  `lose` with `Then::Ai`); out of sight `sea_unseen` (each visit at once); a hero not lifted at a
+  step (one after its boarding in its walk, the Admiral's Hat's: not recorded) lifted and drawn
+  without a human's path; the hero shown on its tile again at the next hero's turn and the turn's
+  end; the objects' steps above (`Loop::last_drawn` at a move's last step not before a pickup,
+  `ai_hero`'s step for the hero before, the turn's end's single step in place of T1b2's catch-up
+  of every step missed; `Then::AiLanded` the landing's dissolve's end). `Loop::step` removed (a
+  computer's step only). MCL-Q46 (c):
+  `engine::played` keeps an object removed in a command without a step (`Played::taken`, by the
+  next turn table), the binary gives it to that turn (`NextTurn::taken`), and the timeline takes
+  it off as the turn starts (`Loop::take_off`, also `ai_take`'s out of sight).
+- **Checked:** `game-ai-boat` moved into `sequences.toml` (`to-record.toml` removed): the record's
+  74 gaps as listed (`timelines/game-ai-boat-gaps.txt`: MCL-Q43's points and glass to 2260,
+  MCL-Q46's day 3 from 4460 and the objects' steps after it 520 ms early), the frames' differences
+  the glass's alone to 1430, none on day 2, day 3's from 4460 (`game-ai-boat-frames.txt`);
+  `game-ai` recorded again (the original's as before) and its listed gaps fewer (46 from 61: the
+  objects' step at 1180 and the second pickup's dissolve's box now the original's; its frames'
+  differences the glass's alone, 30 of 41); the other sequences and the situations as recorded
+  (`drawn`).
