@@ -108,7 +108,7 @@ fn a_save_writes_reads_and_loads_its_game() {
         format!("{HEADER}{replay}").trim_end()
     );
     assert!(
-        text[at..].starts_with("[save]\nversion = 1\nname = \"Week one\"\nduration = 4\n"),
+        text[at..].starts_with("[save]\nversion = 2\nname = \"Week one\"\nduration = 4\n"),
         "{}",
         &text[at..]
     );
@@ -142,6 +142,19 @@ fn a_save_writes_reads_and_loads_its_game() {
         refused.contains("week-one.toml: no line `[save]`"),
         "{refused}"
     );
+    // E27 M4 T6 (the review's item 20, B3): a file past a save's most is refused by its size,
+    // not read (a sparse file); one at the most is read (and here not a save).
+    let huge = install.join("huge.GM1");
+    let file = fs::File::create(&huge).unwrap();
+    file.set_len(MOST_BYTES + 1).unwrap();
+    let refused = read_file(&huge).unwrap_err();
+    assert!(
+        refused.contains(&format!("huge.GM1: {} bytes, past", MOST_BYTES + 1)),
+        "{refused}"
+    );
+    file.set_len(MOST_BYTES).unwrap();
+    let refused = read_file(&huge).unwrap_err();
+    assert!(!refused.contains("bytes, past"), "{refused}");
     fs::remove_dir_all(install).unwrap();
 }
 
@@ -158,14 +171,35 @@ fn a_save_s_table_is_read_strictly() {
         assert!(e.contains(part), "{part}: {e}");
     };
     refused(&text[..at], "no line `[save]`");
+    // E27 M4 T6: version 1's table (before the draws) is refused as any other.
     refused(
-        &text.replace("version = 1\n", "version = 2\n"),
-        "version 2: this client",
+        &text.replace("version = 2\n", "version = 1\n"),
+        "version 1: this client reads version 2",
     );
-    refused(&text.replace("version = 1\n", ""), "no `version` number");
     refused(
-        &text.replace("version = 1\n", "version = \"1\"\n"),
+        &text.replace("version = 2\n", "version = 3\n"),
+        "version 3: this client",
+    );
+    refused(&text.replace("version = 2\n", ""), "no `version` number");
+    refused(
+        &text.replace("version = 2\n", "version = \"2\"\n"),
         "no `version`",
+    );
+    // The draws (E27 M4 T6): a colour's `town` and `hero` read, each a byte.
+    let drawn = text.replace("handicap = 1\n", "handicap = 1\ntown = 3\nhero = 50\n");
+    let read = Save::read(&drawn).unwrap();
+    let first = read.names.iter().position(Option::is_some).unwrap();
+    assert_eq!(
+        read.drawn[first],
+        Drawn {
+            town: Some(3),
+            hero: Some(50)
+        }
+    );
+    assert_eq!(Save::read(&read.write().unwrap()).unwrap(), read);
+    refused(
+        &text.replace("handicap = 1\n", "handicap = 1\ntown = 300\n"),
+        "[save]",
     );
     refused(&format!("{text}level = 3\n"), "level");
     refused(&format!("{text}\n[other]\n"), "other");

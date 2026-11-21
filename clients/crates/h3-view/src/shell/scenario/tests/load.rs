@@ -228,6 +228,35 @@ fn delete_s_ok_removes_the_save_and_sorts_by_the_version_in_the_last_direction()
     assert!(!s.shown.state(BEGIN).disabled);
 }
 
+/// E27 M4 T6 (CLT-Q164 (b), the review's B1): the client's Delete keeps the player's sort (the
+/// rows as they were less the deleted one, the first selected), so the column's next press flips
+/// that order; the original's sorts by the version, the name's key still recorded (its next press
+/// flips a list not in its order).
+#[test]
+fn delete_keeps_the_player_s_sort_in_the_client_s_profile() {
+    let kept = ["AUTOSAVE.GM1", "Week_one.GM1"];
+    let version = ["Week_one.GM1", "AUTOSAVE.GM1"];
+    for (bugs, after) in [(Bugs::Fixed, kept), (Bugs::Original, version)] {
+        let mut s = load(bugs);
+        click(&mut s, [216, 106]);
+        assert_eq!(
+            names(&s.draws("")),
+            ["AUTOSAVE.GM1", "small.GM1", "Week_one.GM1"]
+        );
+        s.key(None, Some(Command::List(Scroll::Down)), "Down");
+        assert_eq!(s.rows(), (Some(1), 0));
+        s.key(None, Some(Command::Delete), "Delete");
+        s.key_up("Delete");
+        answer(&mut s, message::Key::Ok, "Return");
+        assert_eq!(s.take_deleted().as_deref(), Some("small.GM1"));
+        assert_eq!(names(&s.draws("")), after, "{bugs:?}");
+        assert_eq!(s.rows(), (Some(0), 0));
+        // The name's next press: descending in both.
+        click(&mut s, [216, 106]);
+        assert_eq!(names(&s.draws("")), version, "{bugs:?}");
+    }
+}
+
 #[test]
 fn deleting_the_last_save_empties_the_panel_and_disables_load() {
     for bugs in [Bugs::Original, Bugs::Fixed] {
@@ -374,6 +403,37 @@ fn an_opening_keeps_the_save_and_shows_the_times_given() {
     let opened = again.opened(Hovers::default());
     assert_eq!(opened.rows(), (None, 0));
     assert_eq!(label(&opened.draws(""), DATE).as_deref(), Some(""));
+}
+
+/// E27 M4 T6 (CLT-Q166 (b), the review's B2): the client's profile shows a save's time at its own
+/// date's offset where the adapter gave one, the original's at the zone's present offset; the
+/// present offset read anew shows from the next opening; a time the harness sets drops the
+/// date's offset.
+#[test]
+fn a_save_s_time_shows_at_its_date_s_offset_in_the_client_s_profile() {
+    // Week_one's 1_016_336_220: 3/17/2002 3:37 UTC; its date's offset +2:00 here.
+    for (bugs, own) in [(Bugs::Fixed, "5:37"), (Bugs::Original, "9:07")] {
+        let mut s = load(bugs);
+        s.entries[0].saved.as_mut().unwrap().offset = Some(7200);
+        let shown = |s: &Scenario| label(&s.opened(Hovers::default()).draws(""), DATE);
+        assert_eq!(shown(&s), Some(format!("3/17/2002 - {own}")), "{bugs:?}");
+        // The present offset read anew (UTC): the original's follows it, the client's keeps the
+        // date's.
+        s.set_offset(0);
+        let present = match bugs {
+            Bugs::Original => "3:37",
+            Bugs::Fixed => "5:37",
+        };
+        assert_eq!(
+            shown(&s),
+            Some(format!("3/17/2002 - {present}")),
+            "{bugs:?}"
+        );
+        // A save without its date's offset: the present one in both.
+        s.set_time(Some("Week_one.GM1"), 1_016_336_220);
+        assert_eq!(s.entries[0].saved.unwrap().offset, None);
+        assert_eq!(shown(&s).as_deref(), Some("3/17/2002 - 3:37"), "{bugs:?}");
+    }
 }
 
 #[test]

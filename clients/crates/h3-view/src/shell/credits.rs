@@ -11,7 +11,9 @@
 //!   colour its copies skip (`h3_ui::ui::Draw::Part`). The window: (460, 10, 328, 580).
 //! - **The steps** (*recorded*, §36.2: every frame of `credits-scroll` and `credits-end` as the
 //!   original's): one every 100 ms of the clock (CLT-Q88 (a): the menus' placeholder clip's ten
-//!   frames a second, no clip), the first 100 ms after the screen opens. Each puts the window's
+//!   frames a second, no clip), the first 100 ms after the screen opens (the next after the
+//!   reading that ran a step in the original's profile, after its due time in the client's: E27
+//!   M4 T6, [`Credits::clock`]). Each puts the window's
 //!   background back and moves the text [`CreditsLook::step`] (2) pixels: first in from the
 //!   window's bottom (580 rows to go: the picture's top rows shown at the window's bottom), then
 //!   up (its first row shown moving on) while that row is above the text's height less the
@@ -170,8 +172,11 @@ impl Credits {
     }
 
     /// The shell's clock is `now`: the first reading times the first step, a step due runs (one
-    /// a reading, the next [`CreditsLook::every`] later). The step after the text has left ends
-    /// the credits.
+    /// a reading, the next [`CreditsLook::every`] later: after the reading in the original's
+    /// profile, the clip's `SmackWait` pace whose lateness adds up; after the step's due time in
+    /// the client's, E27 M4 T6, the review's A2, CLT-Q129 (b)'s pattern as
+    /// [`super::start::smack_wait`]'s, so a late window catches up a step a reading). The step
+    /// after the text has left ends the credits.
     pub fn clock(&mut self, now: u32) -> Did {
         let Some(due) = self.due else {
             self.due = Some(now.wrapping_add(self.look.every));
@@ -180,7 +185,11 @@ impl Credits {
         if (now.wrapping_sub(due) as i32) < 0 {
             return Did::default();
         }
-        self.due = Some(now.wrapping_add(self.look.every));
+        let from = match self.bugs {
+            Bugs::Original => now,
+            Bugs::Fixed => due,
+        };
+        self.due = Some(from.wrapping_add(self.look.every));
         if self.step() {
             Did::CHANGED
         } else {

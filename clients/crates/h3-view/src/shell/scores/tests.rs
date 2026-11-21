@@ -387,6 +387,21 @@ fn exit_s_click_and_its_keys_at_their_press_end_it() {
     // The right release ends a hold as the left's (a click over the button).
     scores.press(middle(EXIT));
     assert_eq!(scores.right_release().ended, done);
+    // E27 M4 T6 (the review's A1): Exit's keys are dropped while the mouse holds a button (its
+    // loop takes them), in both profiles; the hold's release clicks as ever.
+    for bugs in [Bugs::Fixed, Bugs::Original] {
+        let mut scores = super::tests::scores(bugs);
+        scores.press(middle(CAMPAIGN));
+        for by in ["Escape", "Return"] {
+            assert_eq!(scores.key(Some(Command::Dialog(EXIT)), by), Did::default());
+        }
+        scores.release();
+        assert_eq!(scores.tab(), Tab::Campaigns);
+        assert_eq!(
+            scores.key(Some(Command::Dialog(EXIT)), "Return").ended,
+            done
+        );
+    }
 }
 
 #[test]
@@ -571,6 +586,90 @@ fn reset_s_cancel_keeps_the_tables_its_ok_sets_the_defaults_and_the_creatures_ag
     // The campaigns' first player is the default's again.
     click(&mut scores, middle(CAMPAIGN));
     assert!(texts(&scores).iter().any(|t| t == "C0"));
+}
+
+/// The file's error box laid out in fonts of 8-wide glyphs (the window's: GENRLTXT 11).
+fn file_error(bugs: Bugs) -> MessageBox {
+    let layout = parse_layout(LAYOUT).unwrap();
+    let (medium, small) = (font(8, 16), font(5, 10));
+    message::layout(
+        &layout.message,
+        (&medium, &small),
+        "Error opening file scores.toml!",
+        Style::Ok,
+        None,
+        (BOX_PLAYER, bugs),
+    )
+}
+
+/// E27 M4 T6 (the review's item 7, A7): a failed write of the scores file shows the original's
+/// `file_error_box` over the dialog where the window laid it out (none in the replay); its OK
+/// closes it, by the mouse or Enter, the tables kept as Reset left them; it outlives an opening.
+#[test]
+fn a_failed_write_shows_the_file_s_error_box_its_ok_closes_it() {
+    // None laid (the replay, which writes nothing): nothing shows.
+    let mut bare = scores(Bugs::Fixed);
+    assert!(!bare.write_failed());
+    assert!(bare.question().is_none());
+    let defaults = Tables::defaults(&records()).unwrap();
+    let mut scores = scores(Bugs::Fixed)
+        .with_tables(file_tables())
+        .with_file_error(file_error(Bugs::Fixed));
+    click(&mut scores, middle(RESET));
+    let ok = ok_point(&scores);
+    click(&mut scores, ok);
+    assert!(scores.take_save().is_some());
+    assert!(scores.write_failed());
+    let open = scores.question().unwrap();
+    assert_eq!(open.message, file_error(Bugs::Fixed));
+    assert_eq!(scores.context(), Context::Question);
+    // No step meanwhile (its modal loop's); its OK by the mouse closes it, nothing else changed.
+    scores.clock(0);
+    assert!(!scores.clock(1000));
+    let ok = button_point(&scores, message::OK);
+    assert!(click(&mut scores, ok).changed);
+    assert!(scores.question().is_none());
+    assert_eq!(scores.tables(), &defaults);
+    assert_eq!(scores.take_save(), None);
+    // Again by Enter, at its key up; an opening keeps the box for the next failure.
+    let mut again = scores.opened(Hovers::default());
+    assert!(again.write_failed());
+    again.key(Some(Command::Message(Key::Ok)), "Return");
+    assert!(again.key_up("Return").changed);
+    assert!(again.question().is_none());
+}
+
+/// E27 M4 T6 (CLT-Q162 (b)): Reset's OK clears both tabs' newest rows in the client's profile;
+/// the original's keeps them (`high_scores_reset` never writes `high_score_newest`), a default
+/// record then drawn as the newest.
+#[test]
+fn reset_clears_the_newest_rows_in_the_client_s_profile_alone() {
+    let newest_colour = look().newest;
+    let coloured = |scores: &Scores| {
+        scores
+            .draws("PLAYERS.PAL")
+            .into_iter()
+            .filter(|d| matches!(d, Draw::Label { item, .. } if item.colour == newest_colour))
+            .count()
+    };
+    for (bugs, kept) in [(Bugs::Fixed, 0), (Bugs::Original, 5)] {
+        let mut scores = scores(bugs)
+            .with_newest(Tab::Scenarios, 2)
+            .with_newest(Tab::Campaigns, 0);
+        // The scenarios' row 2: its five fields in the newest's colour.
+        assert_eq!(coloured(&scores), 5);
+        // Cancel keeps it.
+        click(&mut scores, middle(RESET));
+        let cancel = button_point(&scores, message::NO);
+        click(&mut scores, cancel);
+        assert_eq!(coloured(&scores), 5);
+        click(&mut scores, middle(RESET));
+        let ok = ok_point(&scores);
+        click(&mut scores, ok);
+        assert_eq!(coloured(&scores), kept, "{bugs:?}");
+        click(&mut scores, middle(CAMPAIGN));
+        assert_eq!(coloured(&scores), kept * 4 / 5, "{bugs:?}");
+    }
 }
 
 #[test]
