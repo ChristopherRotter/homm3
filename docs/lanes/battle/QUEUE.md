@@ -20,6 +20,12 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-21 (the map-client lane, E24 M4 T5b2, MCL-Q49; **for E11 or later, nothing blocks**):
+  a map battle's obstacles are the engine's own draw, not the original's: `battle-won`'s
+  wandering Peasants on (5, 4) give the original a pond, rocks and a stump (`monster_battle`
+  0x4AC580 seeds from the tile) where the engine's battle has a ridge and rocks; the stacks and
+  hexes agree. The map viewer's switch fades the record's first frame in, so its three frames
+  differ (`docs/OPEN-QUESTIONS.md`, MCL-Q49).
 - 2026-11-20 (the town lane, E09 T46, `town/e09-t46`, `cross-lane` with the user's consent;
   **in your crate, for information; nothing to do**): `h3-harvest` now harvests `SPTRAITS.TXT`'s
   town columns (fields 16 to 24 of the hero spells' rows, `heroes::spell_guilds`) into each

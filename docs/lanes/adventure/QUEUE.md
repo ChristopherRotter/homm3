@@ -56,6 +56,12 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
   (the original offers the colours whose defeat flag, game +0x1F636, is clear: survey
   `E08-trades.md` §5), both leave an eliminated player out (a test of each, ADV-MKT-004's summary).
 
+- 2026-11-21 (the map-client lane, E24 M4 T5b2, MCL-Q48; **for a later task, nothing blocks**):
+  a record does not tell a flagged mine's resource, so the map viewer cannot show an abandoned
+  mine's MINEEVNT box after its guards' battle as the original does (its record by the resource
+  the import drew). Recommended: `ObjectFlagged` (or the mine's view) carries the resource; the
+  server lane's wire follows (`docs/OPEN-QUESTIONS.md`, MCL-Q48).
+
 - 2026-11-21 (the client lane, E27 M4 T6, `client/e27-m4-t6`; **for your planning; nothing
   blocks**): M4's review of the client's saves (E27 decision 78) asks four things of yours.
   (1) A `Replay` function that applies a replay's commands and returns the state

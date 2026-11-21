@@ -1,0 +1,6 @@
+# The record's gaps from the original's timeline (E24 M4 T5b2, design §5.21): `h3-map-view
+# sequences battle-mine --record` plays the sequence from its script's engine record and lists its
+# timeline's differences from the recorded one, `- ` the original's line and `+ ` ours, in order;
+# they must be these.
+# None: the battle's facts the record gives draw the timeline (its frames' differences:
+# battle-mine-frames.txt).

@@ -418,7 +418,10 @@ fn the_walks_frames_are_m2_t3bs() {
             "game-asks",
             "game-level",
             "game-flags",
-            "game-boats"
+            "game-boats",
+            "battle-won",
+            "battle-mine",
+            "battle-retreat"
         ]
     );
 }
@@ -3121,6 +3124,7 @@ fn a_hotkeys_up_during_a_hold_releases_its_button_in_the_client() {
 }
 
 mod asks;
+mod battles;
 mod boats;
 mod casts;
 mod choices;

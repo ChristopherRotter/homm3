@@ -27,7 +27,7 @@ use h3_battle_client::audio::HostSound;
 use h3_battle_client::battle::{Ground, Source};
 use h3_battle_client::live::Computer;
 use h3_battle_client::window::{Flow, Frame, Hosted, Prepared, Presses, Setup, Took};
-use h3_render::screen::Widening;
+use h3_render::screen::{Screen, Widening};
 use h3_sdl::{Key, Window};
 use h3_ui::cursor::Cursor;
 use h3_ui::keys::Window as Own;
@@ -123,6 +123,8 @@ pub struct Shown {
     pub outcome: Option<String>,
     /// The window quit during it (Esc over the battle, the window closed).
     pub quit: bool,
+    /// Its last frame shown (E24 M4 T5b2: the switch's fade out fades it).
+    pub last: Option<Screen>,
 }
 
 /// What the window's run asks of a hosted battle.
@@ -184,6 +186,7 @@ pub fn host(
     let sound = hosted.take_sound();
     let mut shown = shown?;
     shown.outcome = hosted.outcome().map(|o| format!("{o:?}"));
+    shown.last = hosted.shown().map(|f| f.screen.clone());
     Ok((sound, shown))
 }
 
@@ -299,6 +302,53 @@ fn pass(
             }
         }
     }
+}
+
+/// Battle `k` of `battles`' first frame as its element draws it at its start (E24 M4 T5b2,
+/// design §5.21, *provisional*: a switch's fade in): started unattended, with no sound, on a
+/// stopped clock. None where it does not load or start (noted in `lines`).
+pub fn first_frame(
+    battles: &Battles,
+    k: usize,
+    lines: &mut Vec<String>,
+) -> Result<Option<Screen>, String> {
+    let Some(battle) = battles.list.get(k).cloned() else {
+        return Ok(None);
+    };
+    let ground = match Ground::load_battle(&battles.source, battle) {
+        Ok(ground) => ground,
+        Err(e) => {
+            lines.push(format!("battle {}: {e}; its first frame not drawn", k + 1));
+            return Ok(None);
+        }
+    };
+    let prepared = Prepared::new(&ground)?;
+    let setup = Setup {
+        keys: battles.keys.clone(),
+        settings: battles.settings,
+        settings_path: PathBuf::from(SETTINGS_FILE),
+        from: 0,
+        sound: None,
+        install: battles.source.install.clone(),
+        seed: battles.source.seed,
+        unattended: true,
+        presses: Some(Presses {
+            close_result: true,
+            ..Presses::default()
+        }),
+    };
+    let mut hosted = match prepared.start(setup, &|| 0, lines) {
+        Ok(hosted) => hosted,
+        Err(not) => {
+            lines.push(format!(
+                "battle {}: {}; its first frame not drawn",
+                k + 1,
+                not.error
+            ));
+            return Ok(None);
+        }
+    };
+    Ok(hosted.due(0)?.map(|frame| frame.screen))
 }
 
 /// Presents the battle's `frame`, with the drawn cursor at `pointer` if any (only its rectangle

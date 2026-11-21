@@ -82,6 +82,20 @@ pub struct Sequence {
     /// --seed`), one whose draws are the original's under [`Sequence::seed`]: the viewer reads
     /// only the record, so it only accepts it.
     pub engine_seed: Option<u64>,
+    /// The battle step's plan (E24 M4 T5a, design §5.19: `h3adv.fight`'s, `"auto"` or
+    /// `"retreat"`, or a list of them, one per battle): the harness plays the original's battle
+    /// by it; the viewer plays the record's (E24 M4 T5b2), so it only accepts it.
+    pub battle: Option<BattlePlan>,
+}
+
+/// A sequence's battle plan (E24 M4 T5b2): one plan, or one per battle in order.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged)]
+pub enum BattlePlan {
+    /// The plan of its battle, or of each.
+    One(String),
+    /// A plan per battle.
+    Each(Vec<String>),
 }
 
 /// One input: at a millisecond, exactly one of a key pressed or released, the pointer moved, a

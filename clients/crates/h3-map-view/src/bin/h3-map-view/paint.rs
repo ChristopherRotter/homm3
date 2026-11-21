@@ -43,8 +43,9 @@ use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
-    Action, Answer, Boats, Computer, Cursor, DEFAULT_CURSOR, Direction, Dissolve, Draw, Found,
-    Hero, LevelBox, NextTurn, Owners, Question, Rules, Start, TownBoxes, Walked,
+    Action, AfterBattle, Answer, BATTLE_CURSOR, Boats, Computer, Cursor, DEFAULT_CURSOR, Direction,
+    Dissolve, Draw, FADE_BLACK, Fight, Found, Hero, LevelBox, NextTurn, Owners, Question, Rules,
+    Start, Switch, TownBoxes, Walked,
 };
 use h3_map_view::{engine, status, timeline, turn};
 use h3_render::Bugs;
@@ -53,6 +54,7 @@ use h3_ui::cursor::{Cursor as Sprite, Image};
 use h3_ui::message::{self, MessageBox, Picture, Style};
 use h3_ui::text::Args;
 use h3_ui::ui::Item;
+use h3_view::shell::start::faded;
 
 use crate::{files, render, situation};
 
@@ -640,6 +642,9 @@ pub struct Painter<'a> {
     widening: Widening,
     /// The cursors' frames read, by the mouse manager's type and the frame.
     cursors: BTreeMap<[u32; 2], Sprite>,
+    /// The battles' frames a switch shows (E24 M4 T5b2, design §5.21), by the record's number of
+    /// the battle and whether it is its last (its fade out's) or its first.
+    battle_frames: BTreeMap<(u32, bool), Screen>,
     /// A walk's hero (its index in the live part's heroes): each draw puts it where the draw has
     /// it, lifted or on its tile; none for a map that walks no hero.
     selected: Option<usize>,
@@ -728,12 +733,14 @@ impl<'a> Painter<'a> {
             rects: Vec::new(),
             widening: Widening::new(FORMAT),
             cursors: BTreeMap::new(),
+            battle_frames: BTreeMap::new(),
             selected: None,
             diplomacy: 0,
         };
         painter.add([
             assets.layout.cursor.def.to_ascii_uppercase(),
             assets.layout.cursor.default_def.to_ascii_uppercase(),
+            assets.layout.cursor.battle_def.to_ascii_uppercase(),
             assets.layout.message.font.to_ascii_uppercase(),
         ])?;
         painter.preload()?;
@@ -1068,6 +1075,7 @@ impl<'a> Painter<'a> {
                                 blocks: None,
                                 ask: None,
                                 flag: Some((o, self.live.viewer)),
+                                fight: None,
                             });
                             continue;
                         }
@@ -1112,6 +1120,7 @@ impl<'a> Painter<'a> {
                         blocks: find.taken().then_some(o),
                         ask: None,
                         flag: None,
+                        fight: None,
                     });
                 }
             }
@@ -1180,6 +1189,94 @@ impl<'a> Painter<'a> {
                 continue;
             };
             let found = match told {
+                // A savage monster fought at once (E24 M4 T5b2, design §5.21): visited from
+                // beside, drawn as its attack (twice its creature in the attack DEF, as a
+                // monster's question's), the battle's switch, then the monster taken off the map
+                // or the hero gone.
+                Visited::Fight {
+                    battle,
+                    winner,
+                    taken,
+                    lost,
+                    experience,
+                } => Found {
+                    at: pos,
+                    first: Vec::new(),
+                    again: None,
+                    gain: Gain::default(),
+                    found: None,
+                    taken: None,
+                    event: false,
+                    blocks: Some(o),
+                    ask: None,
+                    flag: None,
+                    fight: Some(Fight {
+                        attacker: tile.subclass.saturating_mul(2),
+                        battle,
+                        winner,
+                        after: match (taken, lost) {
+                            (true, _) => AfterBattle::Taken,
+                            (false, true) => AfterBattle::Lost,
+                            (false, false) => AfterBattle::Stays,
+                        },
+                        experience,
+                    }),
+                },
+                // A neutral mine's guards fought after their question (E24 M4 T5b2, design §5.21):
+                // ADVEVENT 84's question (Part A's), its OK the battle's switch, then ADVEVENT 85's
+                // box and MINEEVNT's by the mine's resource (MCL-Q48: its subclass), the flag past
+                // them.
+                Visited::Guarded {
+                    battle,
+                    winner,
+                    flag,
+                    resource,
+                    experience,
+                } => {
+                    let mut question = self.question(&Ask::Mine, o)?;
+                    question.no = None;
+                    question.second = None;
+                    let beaten = Told {
+                        text: texts.text("map.find.mine-guards", &Args::new()),
+                        pictures: Vec::new(),
+                    };
+                    let mut boxes = vec![(self.told(&beaten)?, Gain::default())];
+                    let flagged = Find::Mine { resource };
+                    if let Some(said) = flagged.told(&assets.tables.map.finds, texts) {
+                        boxes.push((self.told(&said)?, Gain::default()));
+                    }
+                    question.yes = Some(Answer {
+                        boxes,
+                        gain: Gain::default(),
+                        chooses: false,
+                        then: None,
+                        taken: None,
+                        after: Gain::default(),
+                        reveal: 0,
+                        marks: false,
+                        fight: Some(Fight {
+                            attacker: 0,
+                            battle,
+                            winner,
+                            after: AfterBattle::Boxes,
+                            experience,
+                        }),
+                        flag: flag.map(|colour| (o, colour)),
+                    });
+                    Found {
+                        at: pos,
+                        first: Vec::new(),
+                        again: None,
+                        gain: Gain::default(),
+                        found: None,
+                        taken: None,
+                        event: false,
+                        blocks: None,
+                        ask: Some(question),
+                        flag: None,
+                        fight: None,
+                    }
+                }
                 Visited::Find {
                     find,
                     gain,
@@ -1210,6 +1307,7 @@ impl<'a> Painter<'a> {
                         blocks: taken.then_some(o),
                         ask: None,
                         flag: flag.map(|colour| (o, colour)),
+                        fight: None,
                     }
                 }
                 Visited::Ask {
@@ -1245,6 +1343,7 @@ impl<'a> Painter<'a> {
                         blocks: ask.beside().then_some(o),
                         ask: Some(question),
                         flag: flag.map(|colour| (o, colour)),
+                        fight: None,
                     }
                 }
             };
@@ -1286,6 +1385,7 @@ impl<'a> Painter<'a> {
             blocks: None,
             ask: None,
             flag: None,
+            fight: None,
         }))
     }
 
@@ -1412,6 +1512,7 @@ impl<'a> Painter<'a> {
                 blocks: None,
                 ask: None,
                 flag: None,
+                fight: None,
             }));
         }
         Ok(Some(Found {
@@ -1426,6 +1527,7 @@ impl<'a> Painter<'a> {
             ask: Some(self.question(&ask, o)?),
             // A dwelling of another team's flag before its hire (E24 M4 T2d1).
             flag: ask.flags().then_some((o, self.live.viewer)),
+            fight: None,
         }))
     }
 
@@ -1514,6 +1616,8 @@ impl<'a> Painter<'a> {
             after: reply.after,
             reveal: reply.reveal,
             marks: reply.marks,
+            fight: None,
+            flag: None,
         })
     }
 
@@ -1694,6 +1798,10 @@ impl<'a> Painter<'a> {
             }
             // No hero selected from the start: the live part's as it is.
             (None, None) => {}
+        }
+        // A hero a battle took off the map (E24 M4 T5b2): drawn nowhere.
+        if let Some(index) = draw.left {
+            self.live.walking.hidden = Some(index);
         }
         // The boats as the draw has them (E24 M4 T2d2): one boarded off its tile and its hero in
         // it, one left back on the water.
@@ -1992,9 +2100,10 @@ impl<'a> Painter<'a> {
         buttons: Buttons,
         cursor: Cursor,
     ) -> Result<Screen, String> {
-        let mut screen = match &drawn.dissolve {
-            Some(dissolve) => self.dissolved(drawn, dissolve, buttons)?,
-            None => self.view(drawn, buttons)?.clone(),
+        let mut screen = match (&drawn.switch, &drawn.dissolve) {
+            (Some(switch), _) => self.switched(drawn, *switch, buttons, false)?,
+            (None, Some(dissolve)) => self.dissolved(drawn, dissolve, buttons)?,
+            (None, None) => self.view(drawn, buttons)?.clone(),
         };
         let Cursor {
             kind,
@@ -2023,10 +2132,11 @@ impl<'a> Painter<'a> {
         buttons: Buttons,
         cursor: Cursor,
     ) -> Result<Screen, String> {
-        let mut screen = match &drawn.dissolve {
+        let mut screen = match (&drawn.switch, &drawn.dissolve) {
+            (Some(switch), _) => self.switched(drawn, *switch, buttons, true)?,
             // A dissolve's (E24 M4 T2a2 part B): its draws composed afresh.
-            Some(dissolve) => self.dissolved_afresh(drawn, dissolve, buttons)?,
-            None => self.composed(drawn, buttons)?,
+            (None, Some(dissolve)) => self.dissolved_afresh(drawn, dissolve, buttons)?,
+            (None, None) => self.composed(drawn, buttons)?,
         };
         if cursor.shown {
             let assets = self.assets;
@@ -2039,6 +2149,52 @@ impl<'a> Painter<'a> {
             sprite.draw(&mut screen, cursor.at[0], cursor.at[1]);
         }
         Ok(screen)
+    }
+
+    /// A battle's switch's screen (E24 M4 T5b2, design §5.21, *provisional*): the battle's frame
+    /// it names ([`Painter::battle_frame`]; its first where its last is not known, black where
+    /// neither is) or the draw's own view (composed `afresh` or not), each channel shifted down
+    /// its steps (`h3_view::shell::start::faded`, `screen_fade_out` 0x6030E0's), black at
+    /// [`FADE_BLACK`].
+    fn switched(
+        &mut self,
+        drawn: &Draw,
+        switch: Switch,
+        buttons: Buttons,
+        afresh: bool,
+    ) -> Result<Screen, String> {
+        let shown = match switch.battle {
+            Some(n) => self
+                .battle_frames
+                .get(&(n, switch.ended))
+                .or_else(|| self.battle_frames.get(&(n, false)))
+                .cloned(),
+            None => {
+                let plain = Draw {
+                    switch: None,
+                    ..drawn.clone()
+                };
+                Some(if afresh {
+                    self.composed(&plain, buttons)?
+                } else {
+                    self.view(&plain, buttons)?.clone()
+                })
+            }
+        };
+        let [w, h] = self.assets.layout.frame;
+        let mut out = Screen::new(w, h, FORMAT).ok_or("the frame's side is too large")?;
+        if let Some(shown) =
+            shown.filter(|s| switch.shift != FADE_BLACK && (s.width(), s.height()) == (w, h))
+        {
+            faded(&shown, &mut out, switch.shift);
+        }
+        Ok(out)
+    }
+
+    /// A battle's frame `screen` a switch shows (E24 M4 T5b2): battle `n`'s first, or with
+    /// `last` its last (its fade out's).
+    pub fn battle_frame(&mut self, n: u32, last: bool, screen: Screen) {
+        self.battle_frames.insert((n, last), screen);
     }
 
     /// A draw's view composed afresh, with no frame kept.
@@ -2059,7 +2215,7 @@ impl<'a> Painter<'a> {
         cursor: Cursor,
         out: &mut Widened,
     ) -> Result<(), String> {
-        if drawn.dissolve.is_some() {
+        if drawn.dissolve.is_some() || drawn.switch.is_some() {
             let screen = self.screen(drawn, buttons, cursor)?;
             self.widening.widen(&screen, &mut out.xrgb);
             out.held = None;
@@ -2154,6 +2310,9 @@ fn cursor_in<'c>(
         Entry::Vacant(new) => {
             let (def, [hx, hy]) = if kind == DEFAULT_CURSOR {
                 (&art.default_def, art.default_hot)
+            } else if kind == BATTLE_CURSOR {
+                // The combat cursor a battle's switch sets (E24 M4 T5b2).
+                (&art.battle_def, art.battle_hot)
             } else {
                 let hot = usize::try_from(frame)
                     .ok()
