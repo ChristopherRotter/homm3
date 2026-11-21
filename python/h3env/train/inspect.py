@@ -36,6 +36,11 @@ group (`summary`):
 Hit points are the creatures' (no war machines, no turrets): a stack's `(count - 1) × hp + top
 hp`. The opponent's decisions are not seen (its seat plays inside the batch); its hero's casts
 show in its mana.
+
+`--commands <file>` (E25 T44) also writes the games against the one opponent as a recording
+(`Commands`, `commands_toml`): per counted battle its kind, env and the network's side, its
+actions in order and how it ended. `h3 ai ceiling --commands <file>` replays them from their
+episodes' seeds and values each of the network's decisions by rollouts of the fair actor.
 """
 
 from __future__ import annotations
@@ -88,6 +93,20 @@ OPPONENTS = ("system", "greedy")
 
 #: The packs the encounters load, in load order: a spell's handle indexes their spells.
 PACKS = ("base", "ab", "sod")
+
+#: The action encoding of the batch's actions (`h3_sim::action::ACTION_ENCODING_VERSION`; the
+#: binding's entry constants are its): a recording names it, `h3 ai ceiling` refuses another.
+ACTION_ENCODING = 13
+
+#: The winning side of each battle result code (0 the attacker, 1 the defender; -1 none).
+WINNERS = {
+    _ffi.RESULT_ATTACKER: 0,
+    _ffi.RESULT_DEFENDER_RETREATED: 0,
+    _ffi.RESULT_DEFENDER_SURRENDERED: 0,
+    _ffi.RESULT_DEFENDER: 1,
+    _ffi.RESULT_ATTACKER_RETREATED: 1,
+    _ffi.RESULT_ATTACKER_SURRENDERED: 1,
+}
 
 
 def _entry_categories() -> np.ndarray:
@@ -338,6 +357,75 @@ class Recorder:
         self.battles.append((battle.kind, won, st, battle.spells))
 
 
+class Commands:
+    """An agent for one `evaluate.play` batch (E25 T44): plays `agent` and records, for the
+    episode the play counts of each env (its first), the actions it played as `side`, in order,
+    and how the battle ended (settled at the next call, or `finish`), as `games`: dicts of the
+    kind, env, side, winner (`WINNERS`), truncation, both sides' rewards and the actions (entry,
+    spell, target, second). `h3 ai ceiling --commands` replays them from the episodes' seeds."""
+
+    def __init__(self, agent: Agent, side: str) -> None:
+        self.agent = agent
+        self.side = 0 if side == "attacker" else 1
+        self.open: dict[int, tuple[str, list[list[int]]]] = {}
+        self.games: list[dict] = []
+        self.batch: BattleBatch | None = None
+
+    def __call__(self, batch: BattleBatch) -> None:
+        self.batch = batch
+        self._settle(batch)
+        rows = np.nonzero((batch.episode < 1) & (batch.to_move >= 0))[0]
+        self.agent(batch)
+        a = batch.actions
+        for e in map(int, rows):
+            kind, actions = self.open.setdefault(
+                e, (_ffi.ENCOUNTER_KINDS[int(batch.encounter[e])], [])
+            )
+            actions.append([int(a[h][e]) for h in ("entry", "spell", "target", "second")])
+
+    def finish(self) -> None:
+        """Settles the battles the play's last call ended; one still open is left out."""
+        if self.batch is not None:
+            self._settle(self.batch)
+
+    def _settle(self, batch: BattleBatch) -> None:
+        for e in [e for e in self.open if batch.done[e]]:
+            kind, actions = self.open.pop(e)
+            self.games.append(
+                {
+                    "kind": kind,
+                    "env": e,
+                    "side": self.side,
+                    "winner": WINNERS.get(int(batch.result[e]), -1),
+                    "truncated": bool(batch.truncated[e]),
+                    "reward": [float(r) for r in batch.reward[e]],
+                    "actions": actions,
+                }
+            )
+
+
+def _toml(value) -> str:
+    """A TOML value of a recording: a string (JSON's escapes are TOML's), a boolean, a number
+    (a float's `repr` round-trips) or a list of them."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        return json.dumps(value)
+    if isinstance(value, (list, tuple)):
+        return "[" + ", ".join(map(_toml, value)) + "]"
+    return repr(value)
+
+
+def commands_toml(record: dict, games: Iterable[dict]) -> str:
+    """A recording's text (`h3 ai ceiling --commands`' file): `record`'s keys, then a `[[game]]`
+    per game in the order of the kinds (`ENCOUNTER_KINDS`), envs and sides."""
+    out = ["[record]", *(f"{k} = {_toml(v)}" for k, v in record.items())]
+    order = _ffi.ENCOUNTER_KINDS.index
+    for g in sorted(games, key=lambda g: (order(g["kind"]), g["env"], g["side"])):
+        out += ["", "[[game]]", *(f"{k} = {_toml(v)}" for k, v in g.items())]
+    return "\n".join(out) + "\n"
+
+
 def spell_names(packs: Iterable[str] = PACKS) -> list[str]:
     """The spells' names by handle: the packs' spells in load order (`BattleRuleset::spells`)."""
     root = Path(__file__).resolve().parents[3] / "packs"
@@ -459,11 +547,13 @@ def inspect(
     rng_seed: int = 0,
     threads: int = 0,
     max_steps: int = 2000,
+    commands: bool = False,
 ) -> dict[str, dict]:
     """Plays a stratified set as the ladder does (`evaluate.report`, agents from
     `make_agent(seed, side)`) against each of `opponents` (the neutral set's one: the system
     actor) with the kill preview on, recording every counted battle; returns per opponent the
-    ladder's row (`evaluate.compact`) and the battles' `groups`."""
+    ladder's row (`evaluate.compact`) and the battles' `groups`, with `commands` also the games'
+    actions (`Commands.games`, under `commands`; E25 T44)."""
     if held_out not in STRATIFIED:
         raise ValueError(f"not a stratified set: {held_out!r} (one of {tuple(STRATIFIED)})")
     if held_out == "neutral-v1":
@@ -472,10 +562,16 @@ def inspect(
     out = {}
     for opponent in opponents:
         recorders: list[Recorder] = []
+        played: list[Commands] = []
 
-        def make(seed: int, side: str, recorders: list[Recorder] = recorders) -> Agent:
+        def make(
+            seed: int, side: str, recorders: list[Recorder] = recorders, played=played
+        ) -> Agent:
             recorders.append(Recorder(make_agent(seed, side), side))
-            return recorders[-1]
+            if not commands:
+                return recorders[-1]
+            played.append(Commands(recorders[-1], side))
+            return played[-1]
 
         row = report(
             make,
@@ -490,6 +586,10 @@ def inspect(
         for r in recorders:
             r.finish()
         out[opponent] = {"ladder": compact(row), "groups": groups(recorders, names)}
+        if commands:
+            for c in played:
+                c.finish()
+            out[opponent]["commands"] = [g for c in played for g in c.games]
     return out
 
 
@@ -508,7 +608,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--max-steps", type=int, default=2000)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--json", help="also write the results to this file")
+    parser.add_argument(
+        "--commands",
+        help="also write the games' actions to this file, for `h3 ai ceiling --commands` (one "
+        "opponent)",
+    )
     args = parser.parse_args(argv)
+    opponents = args.opponents.split(",")
+    if args.commands and args.held_out != "neutral-v1" and len(opponents) != 1:
+        parser.error("--commands records the games against one opponent (--opponents)")
     trained = trained_seed(args.checkpoint)
     if trained in HELD_OUT_BATCH_SEEDS:
         parser.error(f"the checkpoint was trained on a held-out set's episodes (seed {trained:#x})")
@@ -516,15 +624,29 @@ def main(argv: list[str] | None = None) -> None:
     policy.eval()
     results = inspect(
         sampled(policy),
-        opponents=args.opponents.split(","),
+        opponents=opponents,
         held_out=args.held_out,
         per_kind=args.episodes,
         rng_seed=args.seed,
         threads=args.threads,
         max_steps=args.max_steps,
+        commands=bool(args.commands),
     )
     for opponent, result in results.items():
         print("\n".join(lines(opponent, result)), flush=True)
+        if args.commands:
+            record = {
+                "network": Path(args.checkpoint).as_posix(),
+                "set": args.held_out,
+                "episodes": args.episodes,
+                "opponent": opponent,
+                "max_steps": args.max_steps,
+                "action_encoding": ACTION_ENCODING,
+                "seed": args.seed,
+                "device": args.device,
+            }
+            text = commands_toml(record, result.pop("commands"))
+            Path(args.commands).write_text(text, encoding="utf-8")
     if args.json:
         Path(args.json).write_text(json.dumps(results, indent=1) + "\n", encoding="utf-8")
 

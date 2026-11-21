@@ -180,6 +180,15 @@ JSON: one game stalled, the fair actor's), `report-true-4` (rebuilt, `seconds` 0
 `neutral-side-4` (its last game played in the sandbox), `report-0` (the fair actor's own play on
 the report set's episodes). The findings in `docs/epics/E25-log.md` T43.
 
+A replay (E25 T44): `ceiling/<run>-commands.toml` is a network's recorded games
+(`h3env.train.inspect --commands`: the network, set, episodes a kind, opponent and step limit,
+then per game its kind, env, side, end and actions); `ceiling/<run>-<worlds>-<budget>.json` the
+`h3 ai ceiling --commands` record of it: the settings name the recording (the network and the
+file's hash) and the confirmation's rollouts, `seat` the network, and each opponent's
+`decisions` add `valued` (by the network's, the best's and the fair actor's category: the
+decisions, the shares equal to the fair actor's command and the best, the regrets, the
+confirmation's refusals per command). The findings in `docs/epics/E25-log.md` T44.
+
 ## Lineage
 
 The promoted networks (from E06 T3b: a run's `promoted/<n>.pt`, its record's `promotions`) and
