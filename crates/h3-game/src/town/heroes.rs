@@ -52,13 +52,13 @@ pub(crate) fn custom_records<'s, 'r>(
 /// adventure's check of the heroes' tiles, which refuses the second hero there
 /// (`SetupError::HeroTile` with `StandError::Occupied`; the original draws the new hero over the
 /// visitor, `TWN-QUIRK-6`). The original then teaches the town's visitor and garrison hero the
-/// guild's spells (0x5BE030 at 0x4CA1A2), which this does not (`TWN-STUB-6`, increment 5).
+/// guild's spells (0x5BE030 at 0x4CA1A2), which the game does once the guilds are drawn
+/// ([`super::guild::at_start`], E09 T48a, TD-10; `TWN-STUB-6` lifted).
 ///
 /// # Errors
 ///
 /// [`GameSetupError::NoFreeHero`] for the first player whose draw finds no type (`TWN-QUIRK-4`).
 // rule: TWN-SET-009
-// stub: TWN-STUB-6 (the town's guild spells at the start: increment 5)
 pub(crate) fn main_town_heroes<'r>(
     setup: &GameSetup,
     rules: &'r GameRuleset,

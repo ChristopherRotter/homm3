@@ -9,7 +9,7 @@ use h3_contracts::{PlayerId, TownId};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use super::view::Told;
-use super::{Draws, hire, holds_capitol, portal, recruit, rows};
+use super::{Draws, guild, hire, holds_capitol, portal, recruit, rows};
 use crate::command::{GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
@@ -85,10 +85,13 @@ pub(crate) fn command<S: Sink>(
 /// a command's from `player`'s stream, an event's from the towns' stream); then
 /// [`GameEvent::TownBuilt`] to `player`, then each view the build changed told to its viewer
 /// ([`Told`]: the town's by every player that sees it; for a town without a standing Tavern
-/// before, the owner's of every town, whose garrison levels a new Tavern raises, TWN-VEW-002).
-/// The caller checked the store's town and its record's building; the treasury holds nothing a
-/// view shows, so a price paid before changes no view.
-// rule: TWN-BLD-005, TWN-VEW-004, TWN-GRO-007
+/// before, the owner's of every town, whose garrison levels a new Tavern raises, TWN-VEW-002);
+/// then the town's heroes learn its guild's spells (TWN-GLD-005, E09 T48a, [`guild::learn`]: the
+/// original's `town_build_effects` 0x5BEDE0 after every build, before the building's visit), so a
+/// guild level's, the Library's or the Aurora Borealis' build teaches at once. The caller checked
+/// the store's town and its record's building; the treasury holds nothing a view shows, so a
+/// price paid before changes no view.
+// rule: TWN-BLD-005, TWN-VEW-004, TWN-GRO-007, TWN-GLD-005
 pub(crate) fn build_told<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -122,6 +125,8 @@ pub(crate) fn build_told<S: Sink>(
         event,
     });
     told.tell(state, rules, sink);
+    // rule: TWN-GLD-005
+    guild::learn(state, rules, town, sink);
 }
 
 /// The owner of `town` (the adventure's owner of its object; E09 increment 1's design note §11),

@@ -7504,7 +7504,10 @@ fn town_id(place: usize) -> TownId {
 /// of the town as the turn starts (with the Shipyard's water, TWN-SET-011) and that does not
 /// stand by its turn (an earlier building or event brought it), a `TownBuilt` with the event's
 /// place, in index order; its creatures no event (TWN-EVT-004). The views a build tells after its
-/// `TownBuilt` are the told-views property's (`view.rs`), left out of the comparison.
+/// `TownBuilt` are the told-views property's (`view.rs`), left out of the comparison. Since E09
+/// T48a each build is followed by the town's heroes learning its guild's spells (TWN-GLD-005):
+/// its visitor's, then its garrison hero's `HeroChanged`s, as `h3_towns::teaches` gives them of
+/// the town as built so far and the hero's spells as learned so far in the command.
 fn check_timed(
     rules: &GameRuleset,
     before: &GameState,
@@ -7540,6 +7543,7 @@ fn check_timed(
         }
     }
     let mut expected = Vec::new();
+    let mut learned = std::collections::BTreeMap::<HeroId, h3_heroes::HeroDetails>::new();
     for event in &events[turn..] {
         let GameEvent::TurnStarted { player } = *event else {
             continue;
@@ -7626,13 +7630,31 @@ fn check_timed(
                         continue;
                     }
                     let built = h3_towns::built_with(&standing, part, building).unwrap();
-                    standing = h3_towns::Town::new(standing.faction(), built, standing.forbidden());
+                    standing = h3_towns::Town::new(standing.faction(), built, standing.forbidden())
+                        .with_guild(*record.guild());
                     expected.push(GameEvent::TownBuilt {
                         player,
                         town,
                         building,
                         event: Some(at),
                     });
+                    // E09 T48a: the town's heroes learn (TWN-GLD-005).
+                    let adventure = before.adventure();
+                    let visitor = adventure.town_visitor(town).and_then(|h| adventure.hero(h));
+                    for on in [visitor, adventure.town_hero(town)].into_iter().flatten() {
+                        let details = learned
+                            .entry(on.id)
+                            .or_insert_with(|| before.hero(on.id).unwrap().clone());
+                        let core = rules.core();
+                        for spell in h3_towns::teaches(&standing, statics, part, core, details) {
+                            details.spells.push(spell);
+                            expected.push(GameEvent::HeroChanged {
+                                player: on.owner,
+                                hero: on.id,
+                                change: HeroChange::LearnSpell(spell),
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -7750,7 +7772,11 @@ fn check_conservation(
         // (HER-ART-005, -006), each applied in order; (E08 T30) by the levels it is told it
         // gained answering its level-up, each the next level (GAM-DEC-002, HER-LVL-005).
         // E09 T29b: or a garrison hero's ([`hero_anywhere`]: its level-up answered in its town).
-        let owner = hero_anywhere(before, id).map(|h| h.owner);
+        // E09 T48a: or one the command hired, which learns the town's guild spells at once
+        // (TWN-GLD-005): its owner after it.
+        let owner = hero_anywhere(before, id)
+            .or_else(|| hero_anywhere(after, id))
+            .map(|h| h.owner);
         let mut told = (**b).clone();
         for event in events {
             match *event {

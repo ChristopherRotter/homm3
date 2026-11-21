@@ -5772,3 +5772,70 @@ decisions next 190.
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T48a — heroes learn the guild's spells at the town's own triggers (2026-11-21)
+
+One session, the user present at the start; branch `town/e09-t48a`, `cross-lane` with the user's
+consent (the adventure lane's `h3-game` `src/state.rs`, the start's call, and
+`src/state/battle.rs`, `GameState::change_hero` made `pub(crate)`; its `h3-map` `src/tests/play.rs`
+and `src/tests/view.rs`). Starting point: `master` at
+c0ce729 (T47b's #1102 merged; CI green, so the setup ran the light gates only). The user's
+computer was connected at the start only: 71 files staged (the four LODs and both executables
+checked by SHA-256 against `docs/formats/installation.md`, the rest by size). **T48a kept whole**
+(decision 190).
+
+- **What a hero learns** (design §88, TWN-GLD-004 complete): `h3_towns::teaches(town, statics,
+  part, core, details)` in the guild module: nothing without a building of role `guild` ever built
+  (or without the faction's record); with one of role `aurora` ever built the town's Aurora set
+  (`TownStatic::aurora`, T-18 read into it at the build) in spell order, else `shown` level after
+  level in slot order; each spell through `h3_heroes::can_learn_spell` with the known spells
+  counting (the worn book, Wisdom + 2, a spell not learned). `h3-towns` depends on `h3-heroes`
+  (allowed by `arch.toml` already; both lockfiles). The fixture's `guild_core` gained Wisdom, a
+  class, the type `SAGE` and a spell book (`fixture::sage`).
+- **When** (design §89, TWN-GLD-005 new): `h3_game`'s `town::guild::learn(state, rules, town,
+  sink)` teaches the visitor, then the garrison hero, each spell `HeroChanged` to the hero's owner
+  through `GameState::change_hero`. Called at the end of `town::command::build_told` (a command's
+  build and each building of a town event, after `TownBuilt` and the views), after
+  `town::hire::hire`'s placement (the map Tavern's hire none), at the end of `town::rows::heroes`
+  while a visitor stands after the move (`Leave`, `Swap`), and by `town::guild::at_start` in
+  `GameState::new` once the state is assembled (each generating main town in player order, before
+  the start's tavern fill; `NoopSink`). `TWN-STUB-6` and `TWN-STUB-15` lifted.
+- **Catalog:** TWN-GLD-004 (its learning), TWN-GLD-005 (new); TWN-SET-009, TWN-TAV-003 (its stub
+  sentences replaced), TWN-BLD-005, TWN-EVT-003, TWN-ROW-002 to -004 amended.
+- **Tests:** `h3-towns`' three (`a_hero_with_a_book_learns_what_the_guild_shows_up_to_its_wisdom_level_then_slot`,
+  `nothing_is_taught_without_a_guild_ever_built_or_the_faction_s_record`,
+  `the_aurora_teaches_its_set_in_spell_order_at_any_guild_level_up_to_wisdom`); the game's six in
+  `town/tests/learn.rs` (a build's and the Library's, the Aurora past the guild's level and a hero
+  without a book, a town event's, the bars with a new day teaching nothing, a hire's two heroes in
+  order, TD-10's start with a placed hero not taught); the workspace's tests but `h3-map`'s outside
+  the verify.
+- **The plans** (`h3-map`, found by the verify's coverage run): `check_timed` expects, after each
+  town event's `TownBuilt`, the visitor's then the garrison hero's `LearnSpell`s as `teaches`
+  gives them (the town as built so far with its guild, the spells learned so far in the command);
+  the details' check takes the owner of a hero the command hired from the state after it; the
+  views' fold takes such a hero as the viewer's own and folds its learned spells after its parts
+  (`check_hired`). The 199 lib tests pass in release.
+- **Nothing moved:** the 111 golden adventure replays reproduce their hashes (none meets one of
+  these triggers with a guild built and a hero with a book there), so no replay, bot report or
+  version; `h3-sim`'s town-map tests unchanged.
+- **Found, pre-existing:** `a_viewer_learns_nothing_it_cannot_see` failed on a random case
+  (`cc cc8693ab…95e5`) that fails with `master`'s `h3-game`, `h3-towns` and `h3-map` too (and with
+  the learning switched off): a captured town's garrison stacks told differently in the two games.
+  Not committed to `view.txt`; the lane's inbox holds it for triage.
+- *Agent's calls* (decision 190): `learn` without a hero list; the build's learning after its
+  events; the hire's after the placement's; the bars' only with a visitor after the move; the
+  start's before the tavern fill, telling nothing. `h3-map`'s census example still names
+  `TWN-STUB-6` in two comments (the adventure lane's file): T50's census of the start's learning
+  rewrites them.
+- **Benchmarks:** the 38 adventure workloads inside the gate, none re-baselined (the largest
+  `day-start-builds-36` +1.68 %, `random-play-bonuses-36` +1.67 %, `legal-towns-36` +1.45 %, as
+  T47b's).
+- **Verify:** the scoped verify with original data: its first run failed `check-rules` (a VCMI
+  source without its URL, a `covers:` of a quirk id), `clients-lock` (`h3-towns`' new dependency)
+  and coverage (the plans above); determinism (5 minutes) and bench-check (12) passed. After the
+  fixes `check-rules`, `check-lane --cross-lane` and the formatting pass, and coverage again
+  alone (18 minutes; 130 gated files at 100 %, `h3-map`'s tests passing in it); the workspace's
+  other tests (`cargo test --workspace --exclude xtask --exclude h3-map`) passed before.
+
+**The queue:** T48a out; T48b next (the visit's end, a capture, a siege's end). Ids: decisions
+next 191.

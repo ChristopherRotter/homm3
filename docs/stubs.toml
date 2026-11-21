@@ -223,12 +223,6 @@ reason = "The start's forbid the original adds before a town's buildings (E09 su
 epic   = "E09"
 
 [[stub]]
-id     = "TWN-STUB-6"
-where  = "crates/h3-game/src/town/heroes.rs::main_town_heroes"
-reason = "A main town's hero learns none of the town's guild spells at the start (TWN-SET-009; E09 T7b2b): the original's main_town_heroes calls town_heroes_learn_spells 0x5BE030 at 0x4CA1A2 after placing the hero, which teaches the town's visitor and garrison hero the spells of the town's Mage Guild when that hero has a spell book and the town has its Mage Guild ever built (building 0); VCMI 1.7.5 teaches them nothing at the start: a dispute for increment 5, when the guild's spells are drawn (they are not yet). The census (h3-map's example original_data, seed 0): 33 of the 523 main towns' heroes of the 156 shipped maps that build start with a spell book in a main town with a Mage Guild built"
-epic   = "E09"
-
-[[stub]]
 id     = "TWN-STUB-8"
 where  = "crates/h3-game/src/town/siege.rs::siege_setup"
 reason = "A walled town whose faction's record draws natural obstacles in a siege (TWN-SIE-005, h3_towns::siege_obstacles: the base pack's Stronghold with a Citadel or a Castle, as RoE and AB play it; the SoD pack's override clears it, so the full pack set never meets it) gets none (E09 T8b1): the battle's generator (generate_setup_obstacles) places none at a town with a fort, and generate_battlefield_obstacles knows no walls, while the original's placement (0x466010) keeps every obstacle hex off a blocked hex (the walls) and, under RoE or AB rules in a Stronghold with a Citadel or a Castle, keeps the anchor plus the type's width below its row's wall hex less 2 (0x466147 to 0x466194, read 2026-11-15; docs/formats/installation.md section 7.27). Lifted by a siege-aware draw in h3-battle (the battle lane's queue, for E11)"
@@ -238,12 +232,6 @@ epic   = "E09"
 id     = "TWN-STUB-13"
 where  = "crates/h3-game/src/town/view.rs::Told"
 reason = "A change of Visions' reach is not told (E09 T18b2a; SRV-Q26: a server keeps a viewer's town views by events alone): a viewer one of whose heroes has a Visions creature sees another team's town within its radius at the popup's top level (TWN-VEW-003), so the hero's step, a change of its army or Power, or its loss in another player's battle moves that viewer's view of a town (its garrison's counts, the hall, the income) with no TownChanged, which the game tells after a build, a capture, a siege's merge, a garrison's battle and the day's start only. Since E08 T114b (the adventure lane's, `cross-lane`) the same for a map garrison's view (ADV-GAR-006: its army's counts, `crates/h3-game/src/garrisons.rs::Told`) with no GarrisonChanged, told after its battle's end, an exchange's command, its capture and a Tavern's build or a town's capture only. Telling it means comparing each Visions holder's reach before and after every command. Lifted when Visions' reach is told (increment 5 casts Visions on the map; the server lane's fold test exempts it until then)"
-epic   = "E09"
-
-[[stub]]
-id     = "TWN-STUB-15"
-where  = "crates/h3-game/src/town/hire.rs::hire"
-reason = "A hired hero learns none of the town's guild spells (TWN-TAV-003; E09 T38a1, design note E09-design.md section 64): the original's town_tavern_hire 0x5C12E0 calls town_heroes_learn_spells 0x5BE030 with 0 after hero_place, which teaches the town's visitor (the hired hero, first) and its garrison hero the spells of the town's Mage Guild when that hero has a spell book (batch TWN-4's TWN-4-2: Clavius, Xarfax and Fafner learned them, a Knight none; VCMI 1.7.5's objectVisited(town) too). The guild's spells are not drawn yet (increment 5, the mage guild and the services); lifted there with TWN-STUB-6"
 epic   = "E09"
 
 [[stub]]

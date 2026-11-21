@@ -15,11 +15,14 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef, FactionId,
-    PackManifest, ProfileDef, ResourceDef, ResourceId, Ruleset, SpellCategory, SpellDef, SpellId,
-    SpellSchoolDef,
+    ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentKey, ContentPack,
+    CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef, FactionId, HeroClassDef, HeroEffect,
+    HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, ResourceId,
+    Ruleset, SecondarySkillDef, SkillId, SpellCategory, SpellDef, SpellId, SpellSchoolDef,
+    StartingStackDef,
 };
 use h3_contracts::Moat;
+use h3_heroes::{ArtifactInstance, HeroDetails, OfferLevels};
 
 use crate::building::{BuildingId, BuildingSet};
 use crate::record::Town;
@@ -311,7 +314,105 @@ pub(crate) fn guild_core(quirks: &[&str]) -> Ruleset {
             spell("t:l5_a", combat, 5, false),
             spell("t:l5_b", adventure, 5, false),
         ];
+        guild_heroes(pack);
     })
+}
+
+/// What a hero needs to learn in a guild (E09 T48a, TWN-GLD-004): the hero parameters (spell level
+/// 2 learnable without Wisdom), Wisdom `t:wisdom` raising it by its level, a class and one hero
+/// type ([`SAGE`]), and a spell book ([`BOOK`], the `spell_book` effect) on a slot of its own.
+fn guild_heroes(pack: &mut ContentPack) {
+    pack.skills = vec![SecondarySkillDef {
+        key: key("t:wisdom"),
+        name: "Wisdom".into(),
+        levels: [1, 2, 3].map(|levels| vec![HeroEffect::LearnLevel { levels }]),
+    }];
+    pack.hero_classes = vec![HeroClassDef {
+        key: key("t:mage"),
+        name: "Mage".into(),
+        faction: key("t:keep"),
+        primary: [0, 0, 2, 2],
+        primary_gain: [[25, 25, 25, 25], [25, 25, 25, 25]],
+        skill_weights: vec![],
+        offer_intervals: [6, 4],
+    }];
+    pack.heroes = vec![HeroTypeDef {
+        key: key("t:sage"),
+        name: "Sage".into(),
+        class: key("t:mage"),
+        skills: vec![],
+        spell_book: false,
+        spells: vec![],
+        army: vec![StartingStackDef {
+            creature: key("t:c0"),
+            count: [1, 2],
+        }],
+        war_machines: vec![],
+        specialty: vec![],
+    }];
+    pack.artifact_slots = vec![ArtifactSlotDef {
+        key: key("t:book"),
+        name: "Book".into(),
+        count: 1,
+        backpack: false,
+    }];
+    pack.artifacts = vec![ArtifactDef {
+        key: key("t:book"),
+        name: "Spell Book".into(),
+        class: ArtifactClass::Treasure,
+        cost: vec![],
+        slot: Some(key("t:book")),
+        war_machine: None,
+        needs_skill: None,
+        effects: vec![HeroEffect::SpellBook],
+        parts: vec![],
+    }];
+    pack.hero_params = Some(HeroParamsDef {
+        primary_min: [0, 0, 1, 1],
+        primary_max: 99,
+        backpack: 64,
+        learn_level: 2,
+        experience: vec![
+            0, 1000, 2000, 3200, 4600, 6200, 8000, 10000, 12200, 14700, 17500, 20600,
+        ],
+        max_level: 74,
+        wisdom: key("t:wisdom"),
+        schools: vec![],
+        mana_ceiling: 999,
+        base_mana_regain: 1,
+        regain_specialist_bonus: 1,
+    });
+}
+
+/// [`guild_core`]'s hero type, Wisdom and spell book (E09 T48a).
+pub(crate) const SAGE: HeroTypeId = HeroTypeId::from_raw(0);
+pub(crate) const WISDOM: SkillId = SkillId::from_raw(0);
+pub(crate) const BOOK: ArtifactTypeId = ArtifactTypeId::from_raw(0);
+
+/// A hero of [`SAGE`] in [`guild_core`] (E09 T48a): with the spell book worn when `book`, Wisdom at
+/// `wisdom` (0: none) and the spells `known` learned.
+pub(crate) fn sage(core: &Ruleset, book: bool, wisdom: u8, known: &[SpellId]) -> HeroDetails {
+    let worn: &[ArtifactInstance] = if book {
+        &[ArtifactInstance::from(BOOK)]
+    } else {
+        &[]
+    };
+    HeroDetails {
+        hero_type: SAGE,
+        level: 1,
+        experience: 0,
+        offered: OfferLevels::default(),
+        primary: [0, 0, 2, 2],
+        skills: if wisdom > 0 {
+            vec![(WISDOM, wisdom)]
+        } else {
+            vec![]
+        },
+        worn: h3_heroes::wearing(core, worn),
+        backpack: vec![],
+        spells: known.to_vec(),
+        mana: 0,
+    }
 }
 
 /// The Keep's record with its guild (E09 T47a1): the buildings from [`MAGE_GUILD_1`] to

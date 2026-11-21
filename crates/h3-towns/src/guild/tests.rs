@@ -2,6 +2,7 @@
 //! [`guild_keep`]'s record (level 1 `L1_A` 10, `L1_ZERO` 0, `L1_B` 30, the ability 50, `L1_C` 60;
 //! level 2 `L2_A` 40, `L2_B` 60; level 3 `L3` 100; level 4 `L4_ZERO` 0; level 5 the bolt 100,
 //! `L5_A` 50, `L5_B` 50), the part's slots 5, 4, 3, 2, 1 (six, five, four, three and two drawn).
+//! Since E09 T48a what a hero learns there ([`teaches`]), with [`guild_core`]'s [`sage`].
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -12,8 +13,9 @@ use super::*;
 use crate::fixture::{
     ABILITY, AURORA, BOLT, KEEP, L1_A, L1_B, L1_C, L1_ZERO, L2_A, L2_B, L3, L4_ZERO, L5_A, L5_B,
     LIBRARY, MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3, MAGE_GUILD_4, MAGE_GUILD_5, WILD,
-    empty_part, guild_core, guild_keep, part_with_keep, town, town_of,
+    empty_part, guild_core, guild_keep, part_with_keep, sage, town, town_of,
 };
+use crate::record::TownStatic;
 
 /// The fixture's part with the Keep's guild.
 fn guild_part() -> TownRuleset {
@@ -353,4 +355,119 @@ fn a_town_has_the_aurora_once_its_building_was_built() {
     // Without the faction's record: none.
     assert!(!has_aurora(&town_of(WILD, &[AURORA]), &part));
     assert!(!has_aurora(&town(&[AURORA]), &empty_part()));
+}
+
+/// Slots of every level's own order (E09 T48a): level 1 `L1_C`, `L1_A`; level 2 `L2_B`, `L2_A`;
+/// level 3 `L3`; level 4 none; level 5 `L5_A`, then `L5_B` (the spare: shown with the Library).
+fn ordered() -> GuildSlots {
+    GuildSlots::EMPTY
+        .with(0, 0, L1_C)
+        .with(0, 1, L1_A)
+        .with(1, 0, L2_B)
+        .with(1, 1, L2_A)
+        .with(2, 0, L3)
+        .with(4, 0, L5_A)
+        .with(4, 1, L5_B)
+}
+
+/// What [`sage`] (`book`, Wisdom `wisdom`, `known` learned) learns at the Keep built `built` with
+/// [`ordered`] slots and the Aurora set `aurora`, in `core`.
+fn learned(
+    core: &Ruleset,
+    (built, aurora): (&[usize], SpellSet),
+    (book, wisdom, known): (bool, u8, &[SpellId]),
+) -> Vec<SpellId> {
+    let town = town(built).with_guild(ordered());
+    let statics = TownStatic {
+        aurora,
+        ..TownStatic::default()
+    };
+    teaches(
+        &town,
+        &statics,
+        &guild_part(),
+        core,
+        &sage(core, book, wisdom, known),
+    )
+}
+
+// covers: TWN-GLD-004
+#[test]
+fn a_hero_with_a_book_learns_what_the_guild_shows_up_to_its_wisdom_level_then_slot() {
+    let core = guild_core(&[]);
+    let all = [MAGE_GUILD_5, LIBRARY];
+    let five = (&all[..], SpellSet::EMPTY);
+    // Wisdom's bound: none 2, Basic 3, Expert 5 (Advanced 4: the guild has no level-4 spell).
+    let two = [L1_C, L1_A, L2_B, L2_A];
+    assert_eq!(learned(&core, five, (true, 0, &[])), two);
+    assert_eq!(
+        learned(&core, five, (true, 1, &[])),
+        [&two[..], &[L3]].concat()
+    );
+    assert_eq!(
+        learned(&core, five, (true, 2, &[])),
+        [&two[..], &[L3]].concat()
+    );
+    let every = [&two[..], &[L3, L5_A, L5_B]].concat();
+    assert_eq!(learned(&core, five, (true, 3, &[])), every);
+    // Without the Library level 5 shows its one slot; the guild level bounds what is taught.
+    let fifth = [MAGE_GUILD_5];
+    let shown_5 = [&two[..], &[L3, L5_A]].concat();
+    assert_eq!(
+        learned(&core, (&fifth, SpellSet::EMPTY), (true, 3, &[])),
+        shown_5
+    );
+    let second = [MAGE_GUILD_1, MAGE_GUILD_2];
+    assert_eq!(
+        learned(&core, (&second, SpellSet::EMPTY), (true, 3, &[])),
+        two
+    );
+    // A known spell is skipped; a hero without a book learns nothing.
+    assert_eq!(learned(&core, five, (true, 0, &[L1_A, L2_B])), [L1_C, L2_A]);
+    assert_eq!(learned(&core, five, (false, 3, &[])), []);
+}
+
+// covers: TWN-GLD-004
+#[test]
+fn nothing_is_taught_without_a_guild_ever_built_or_the_faction_s_record() {
+    let core = guild_core(&[]);
+    let aurora = aurora_set(&core, &GuildSets::default());
+    let hero = (true, 3, &[][..]);
+    assert_eq!(learned(&core, (&[], aurora), hero), []);
+    // The Aurora Borealis alone teaches nothing either.
+    assert_eq!(learned(&core, (&[LIBRARY, AURORA], aurora), hero), []);
+    let wild = town_of(WILD, &[MAGE_GUILD_5]).with_guild(ordered());
+    let statics = TownStatic::default();
+    let details = sage(&core, true, 3, &[]);
+    assert_eq!(teaches(&wild, &statics, &guild_part(), &core, &details), []);
+    let keep = town(&[MAGE_GUILD_5]).with_guild(ordered());
+    assert_eq!(teaches(&keep, &statics, &empty_part(), &core, &details), []);
+}
+
+// covers: TWN-GLD-004
+#[test]
+fn the_aurora_teaches_its_set_in_spell_order_at_any_guild_level_up_to_wisdom() {
+    let sets = GuildSets {
+        required: SpellSet::EMPTY,
+        banned: SpellSet::of(&[L2_A]),
+        scenario: SpellSet::of(&[L3]),
+    };
+    let built = [MAGE_GUILD_1, AURORA];
+    // `strict-fixed` (the flag off): neither ban taught; every other guild spell, a weight of 0
+    // too, never the ability nor the bolt; level 5 at a level-1 guild with Expert Wisdom.
+    let strict = guild_core(&[]);
+    let set = (&built[..], aurora_set(&strict, &sets));
+    let low = [L1_A, L1_ZERO, L1_B, L1_C, L2_B];
+    assert_eq!(learned(&strict, set, (true, 0, &[])), low);
+    let high = [&low[..], &[L4_ZERO, L5_A, L5_B]].concat();
+    assert_eq!(learned(&strict, set, (true, 3, &[])), high);
+    let known = [L1_A, L1_ZERO, L1_C, L2_B, L4_ZERO, L5_A, L5_B];
+    assert_eq!(learned(&strict, set, (true, 3, &[L1_B])), known);
+    assert_eq!(learned(&strict, set, (false, 3, &[])), []);
+    // `faithful` (on, T-18): the scenario's ban taught, the town's never.
+    let faithful = guild_core(&["quirk.town.aurora_ignores_map_bans"]);
+    let set = (&built[..], aurora_set(&faithful, &sets));
+    let all = [L1_A, L1_ZERO, L1_B, L1_C, L2_B, L3, L4_ZERO, L5_A, L5_B];
+    assert_eq!(learned(&faithful, set, (true, 3, &[])), all);
+    assert!(!all.contains(&ABILITY) && !all.contains(&BOLT));
 }

@@ -9,6 +9,7 @@ use h3_contracts::{PlayerId, TownId};
 use h3_towns::{TownCommand, TownCommandError, TownHeroChange};
 
 use super::command::owner;
+use super::guild;
 use super::view::{Told, named};
 use crate::command::{AdventureSink, GameCommand, GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
@@ -28,12 +29,16 @@ const MOVES: [TownHeroChange; 3] = [
 /// entrance, the owner moving its own view; by name only to the players that see the town's
 /// garrison hero, [`named`], E09 T31); then each army slot `Enter` changed told to `player`
 /// (`StackChanged`: the hero's army, the town's garrison), then each view of the town the move
-/// changed told to its viewer ([`Told`]: `Enter` empties the garrison).
+/// changed told to its viewer ([`Told`]: `Enter` empties the garrison); then, while a visitor
+/// stands at the town after the move (`Leave` and `Swap`, never `Enter`), the town's heroes
+/// learn its guild's spells (TWN-GLD-005, E09 T48a, [`guild::learn`]: the original's town
+/// screen's two bars built again after the click, `town_screen_bars` 0x5C6E10, which teaches only
+/// with a visitor there).
 ///
 /// # Errors
 ///
 /// [`GameCommandError::Town`] with the town's refusal; nothing changed.
-// rule: TWN-ROW-002, TWN-ROW-003, TWN-ROW-004
+// rule: TWN-ROW-002, TWN-ROW-003, TWN-ROW-004, TWN-GLD-005
 pub(crate) fn heroes<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -67,6 +72,10 @@ pub(crate) fn heroes<S: Sink>(
         sink.emit(GameEvent::StackChanged { player, at, stack });
     }
     told.tell(state, rules, sink);
+    // rule: TWN-GLD-005
+    if state.adventure().town_visitor(town).is_some() {
+        guild::learn(state, rules, town, sink);
+    }
     Ok(())
 }
 

@@ -1051,6 +1051,7 @@ mod guild;
 mod heroes;
 mod hire;
 mod income;
+mod learn;
 mod offer;
 mod pool;
 mod portal;
