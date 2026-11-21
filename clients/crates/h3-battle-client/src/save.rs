@@ -3,7 +3,9 @@
 //! its file and content hash, the seed, the difficulty, the players' choices, the commands and the
 //! hashes) followed by the client's table (the save's name, the turn's duration, each colour's
 //! human's name, starting bonus and handicap: what the engine's setup has no field for,
-//! [`Game`]), with its own [`VERSION`]. The original's save file (`game_save` 0x4BEEA0, the
+//! [`Game`]; since version 2, E27 M4 T6, each colour's town and first hero as the game drew them,
+//! [`Drawn`], which the hot seat's load shows where the choice was Random), with its own
+//! [`VERSION`]. The original's save file (`game_save` 0x4BEEA0, the
 //! game's whole memory) is not this one: the original's saves stay the original's (decision 8).
 //!
 //! - **The file** ([`Save::write`], [`Save::read`]; *provisional*): the replay's text as
@@ -13,7 +15,8 @@
 //!   name in the installation's `Maps`, the folder it is resolved against ([`map`]).
 //! - **The load** ([`load`]): the replay's header checked against the rules before anything is
 //!   read; its map read again from the installation (`h3_files::adventure::read_map`'s checks: a
-//!   plain name below `Maps`, within `h3-map`'s size limit) and refused when its content hash or
+//!   relative path of plain components that stays below `Maps` once resolved, within `h3-map`'s
+//!   size limit; the client writes plain names alone) and refused when its content hash or
 //!   the import's version moved; imported as [`crate::begin::setup`] reads a map; the replay's
 //!   choices set over the import (`Replay::setup`), a human only where the import lets one play
 //!   (as the begin refuses it, E27 M3 T7) and a name only for a human; then the commands
@@ -24,8 +27,10 @@
 //! (M5); a save is made from play (M5's Save, its host's replay).
 
 use std::fs;
+use std::io::Read;
 use std::path::Path;
 
+use h3_contracts::{HeroId, PlayerId};
 use h3_game::{GameRuleset, GameSetup, GameState, NoopSink, apply};
 use h3_map::Limits;
 use h3_sim::adventure::replay::{MapRef, Replay, ReplayError};
@@ -35,9 +40,9 @@ use serde::Deserialize;
 use crate::begin::Game;
 
 /// The version of the client's table (`[save]`'s `version`, *provisional*): a file of another, or
-/// of none, is refused. The replay part has its own (`h3_sim`'s `REPLAY_FORMAT_VERSION`), checked
-/// at the load.
-pub const VERSION: i64 = 1;
+/// of none, is refused (version 1's too: E27 M4 T6 added the colours' `town` and `hero`). The
+/// replay part has its own (`h3_sim`'s `REPLAY_FORMAT_VERSION`), checked at the load.
+pub const VERSION: i64 = 2;
 
 /// The line that begins the client's table: the replay's text ends before it.
 const TABLE: &str = "[save]";
@@ -65,14 +70,29 @@ pub struct Save {
     pub handicaps: [u8; 8],
     /// The turn's duration (`turndur.txt`'s record, [`Game::duration`]).
     pub duration: u8,
+    /// Each colour's town and first hero as the game drew them, red first (E27 M4 T6: [`drawn`],
+    /// at the save; none where the save does not tell).
+    pub drawn: [Drawn; 8],
     /// The engine's record of the game: its map, seed, difficulty, players' choices, commands and
     /// hashes.
     pub replay: Replay,
 }
 
+/// What the game gave a colour at its begin (E27 M4 T6, the review's item 38): its town's faction
+/// and its first hero's type (by their indexes), a Random choice's draw; none where it has none.
+/// The original's load shows them (the game's player records, design §3.14); the bonus is the
+/// choice's still (the engine draws none yet, E10).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Drawn {
+    /// The town's faction.
+    pub town: Option<u8>,
+    /// The first hero's type.
+    pub hero: Option<u8>,
+}
+
 impl Save {
     /// The save named `name` of `game` and its engine's `replay` (the record of the game `game`
-    /// began, its map named by [`map`]).
+    /// began, its map named by [`map`]), no draws told ([`Save::with_drawn`]).
     #[must_use]
     pub fn of(name: &str, game: &Game, replay: Replay) -> Self {
         Self {
@@ -81,8 +101,16 @@ impl Save {
             bonuses: game.bonuses,
             handicaps: game.handicaps,
             duration: game.duration,
+            drawn: [Drawn::default(); COLOURS],
             replay,
         }
+    }
+
+    /// The save with each colour's draws `drawn` ([`drawn`]: the game's at the save).
+    #[must_use]
+    pub const fn with_drawn(mut self, drawn: [Drawn; 8]) -> Self {
+        self.drawn = drawn;
+        self
     }
 
     /// The save's file: the replay's text, then the client's table ([`Save::read`]).
@@ -112,6 +140,12 @@ impl Save {
                 word(self.bonuses[colour]),
                 self.handicaps[colour]
             ));
+            let Drawn { town, hero } = self.drawn[colour];
+            for (key, value) in [("town", town), ("hero", hero)] {
+                if let Some(value) = value {
+                    text.push_str(&format!("{key} = {value}\n"));
+                }
+            }
         }
         Ok(text)
     }
@@ -119,7 +153,8 @@ impl Save {
     /// The save of a file's `text` ([`Save::write`]'s format): the replay's text up to the line
     /// `[save]`, the client's table from it on: its `version` the [`VERSION`], the `name`, the
     /// `duration` (at most unlimited's), eight `colours`, each with a `bonus` (`artifact`, `gold`,
-    /// `resource` or `random`), a `handicap` (0 to 2) and, for a human's, its `name`.
+    /// `resource` or `random`), a `handicap` (0 to 2), for a human's its `name`, and the `town`
+    /// and `hero` the game drew, where it drew them ([`Drawn`]).
     ///
     /// # Errors
     /// No line `[save]`; the table not TOML, of another version or none, not as above; the
@@ -171,6 +206,10 @@ impl Save {
         let replay = h3_files::adventure::parse_replay(replay).map_err(|e| e.to_string())?;
         Ok(Self {
             name: table.name,
+            drawn: colours.each_ref().map(|c| Drawn {
+                town: c.town,
+                hero: c.hero,
+            }),
             names: colours.map(|c| c.name),
             bonuses,
             handicaps,
@@ -219,6 +258,10 @@ struct Colour {
     name: Option<String>,
     bonus: String,
     handicap: u8,
+    #[serde(default)]
+    town: Option<u8>,
+    #[serde(default)]
+    hero: Option<u8>,
 }
 
 /// A bonus's word in the file.
@@ -253,13 +296,67 @@ fn quoted(text: &str) -> String {
     quoted
 }
 
-/// The save file at `path`, read whole ([`Save::read`]).
+/// The most bytes a save file may hold (E27 M4 T6, the review's item 20 and B3, *provisional*):
+/// the list reads every save of its folder (up to `crate::saves::MOST`), so a larger file is
+/// refused by its size before it is read (listed as broken, its Load refused). The scores and
+/// settings files, one each, have none.
+pub const MOST_BYTES: u64 = 64 << 20;
+
+/// Each colour's town and first hero as the game `state` begun from `setup` drew them, red first
+/// (E27 M4 T6, the review's item 38): the player's faction (`GameState::player_tavern`'s, a
+/// Random choice's draw, TWN-SET-001) and the type of the hero its hero choice gave: the
+/// player's first random hero (TWN-SET-008), else its main town's generated one (TWN-SET-009;
+/// their ids follow the setup's heroes, in player order), a pick's or the draw's.
+#[must_use]
+pub fn drawn(setup: &GameSetup, state: &GameState) -> [Drawn; 8] {
+    let mut drawn = [Drawn::default(); COLOURS];
+    let mut generated = setup.heroes.len();
+    for (player, id) in setup.players.iter().zip((0..=u8::MAX).map(PlayerId::new)) {
+        let generates = player.start.main_town.is_some_and(|t| t.generates_hero);
+        let first = setup
+            .heroes
+            .iter()
+            .position(|h| h.owner == id && h.hero_type.is_none())
+            .or_else(|| generates.then_some(generated));
+        generated += usize::from(generates);
+        let hero = first
+            .and_then(|k| u16::try_from(k).ok())
+            .and_then(|k| state.hero(HeroId::new(k)))
+            .and_then(|d| u8::try_from(d.hero_type.index()).ok());
+        let town = state
+            .player_tavern(id)
+            .and_then(|t| t.faction)
+            .and_then(|f| u8::try_from(f.index()).ok());
+        if let Some(slot) = drawn.get_mut(usize::from(player.colour)) {
+            *slot = Drawn { town, hero };
+        }
+    }
+    drawn
+}
+
+/// The save file at `path`, read whole ([`Save::read`]) when it holds at most [`MOST_BYTES`]
+/// (its size checked before it is read, and the read stopped past it).
 ///
 /// # Errors
-/// The file does not read, or is not a save.
+/// The file does not read, is larger, or is not a save.
 pub fn read_file(path: &Path) -> Result<Save, String> {
-    let text = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-    Save::read(&text).map_err(|e| format!("{}: {e}", path.display()))
+    let named = |e: &dyn std::fmt::Display| format!("{}: {e}", path.display());
+    let file = fs::File::open(path).map_err(|e| named(&e))?;
+    let size = file.metadata().map_err(|e| named(&e))?.len();
+    let over = |size: u64| named(&format!("{size} bytes, past a save's most, {MOST_BYTES}"));
+    if size > MOST_BYTES {
+        return Err(over(size));
+    }
+    let mut text = String::new();
+    file.take(MOST_BYTES + 1)
+        .read_to_string(&mut text)
+        .map_err(|e| named(&e))?;
+    // Grown since its size was read.
+    let read = u64::try_from(text.len()).unwrap_or(u64::MAX);
+    if read > MOST_BYTES {
+        return Err(over(read));
+    }
+    Save::read(&text).map_err(|e| named(&e))
 }
 
 /// Writes `save` to `path` whole or not at all (as the settings file: a sibling renamed over it).
@@ -275,8 +372,8 @@ pub fn write_file(path: &Path, save: &Save) -> Result<(), String> {
 /// [`load`] resolves it against): the name, the file's content hash, the import's version.
 ///
 /// # Errors
-/// Not a plain name of a file in `install`'s `Maps`, the file does not read, or is over
-/// `h3-map`'s size limit.
+/// Not a relative path that stays below `install`'s `Maps` (`h3_files`' `check_map_path`: its
+/// plain components, resolved there), the file does not read, or is over `h3-map`'s size limit.
 pub fn map(install: &Path, file: &str) -> Result<MapRef, String> {
     h3_files::adventure::read_map(&install.join(crate::maps::MAPS), file)
         .map(|(_, map)| map)
@@ -291,6 +388,37 @@ pub struct Loaded {
     pub game: Game,
     /// The game's state after the save's commands, replayed by the engine.
     pub state: GameState,
+}
+
+/// Who is human in a loaded game, as the scenario screen's Load hands it on (E27 M4 T6), for E24
+/// M5 to apply over the loaded game (a step the engine has not got yet: CLT-STUB-13's).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Humans {
+    /// The hot seat's load (E27 M4 T5b1, CLT-Q160 (a)): the names by the colour each holds, red
+    /// first; the colours they hold the humans, every other the computer's.
+    Named([Option<String>; 8]),
+    /// A single load (CLT-Q170 (a); `scenario_load_begin`, design §41.1: the local record's colour
+    /// set to the loaded game's current player): the colour whose turn it is the only human,
+    /// every other the computer's (a hot seat's save played on alone).
+    Alone(u8),
+}
+
+impl Loaded {
+    /// Who is human after the load: the hot seat's `names` where its Load handed them on, else
+    /// a single load's (the colour whose turn runs in the loaded game; none where none does).
+    #[must_use]
+    pub fn humans(&self, names: Option<[Option<String>; 8]>) -> Option<Humans> {
+        if let Some(names) = names {
+            return Some(Humans::Named(names));
+        }
+        let state = &self.state;
+        (0..=u8::MAX)
+            .take(state.players())
+            .map(PlayerId::new)
+            .find(|&p| state.is_acting(p))
+            .and_then(|p| state.colour(p))
+            .map(Humans::Alone)
+    }
 }
 
 /// `save`'s game under `rules` over the installation `install`'s map (the module's docs).

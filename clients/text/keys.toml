@@ -4073,6 +4073,13 @@ original = [{ at = "GENRLTXT:76" }]
 id = "shell.high-scores.reset"
 original = [{ at = "GENRLTXT:667" }]
 
+# E27 M4 T6 (the review's item 7): a failed write of the scores file (high_scores_proc 0x4EA426:
+# file_error_box 0x4F3A60, GENRLTXT 11 with the file's name, style 1).
+[[key]]
+id = "shell.high-scores.file-error"
+args = { file = "text" }
+original = [{ at = "GENRLTXT:11", printf = ["file"] }]
+
 # E27 M4 T2: the credits (credits_text_load 0x5B9840: Credits.txt as a line file, its record 1
 # the text scrolled, record 2 the closing text drawn at the window's bottom near the end).
 [[key]]

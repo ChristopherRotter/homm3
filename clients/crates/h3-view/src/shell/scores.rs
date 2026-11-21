@@ -40,7 +40,10 @@
 //!   the next step shows each counter's next frame); it redraws nothing itself.
 //! - **The scores file** (E27 M4 T1b, *provisional*: its place and format the client's; never
 //!   the installation's `HiScore.dat`): [`Tables::read`] at the start over the defaults,
-//!   [`Tables::write`] at Reset's OK, a TOML file of the [`FILE_VERSION`].
+//!   [`Tables::write`] at Reset's OK, a TOML file of the [`FILE_VERSION`]. A failed write shows
+//!   the original's `file_error_box` over the dialog (E27 M4 T6: [`Scores::write_failed`]).
+//! - **The newest row** (`high_score_newest`, M5's entry): the original's Reset keeps it, the
+//!   client's profile clears it (E27 M4 T6, CLT-Q162 (b)).
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
@@ -435,7 +438,11 @@ pub struct Scores {
     input: Input,
     /// Reset's question (GENRLTXT 667, style 2), laid out.
     question: MessageBox,
-    /// The question when open.
+    /// The box a failed write of the scores file shows (`file_error_box` 0x4F3A60: GENRLTXT 11
+    /// with the file's name, style 1), laid out by the window ([`Scores::with_file_error`]);
+    /// none where nothing is written (the replay).
+    file_error: Option<MessageBox>,
+    /// The question, or the file's error box, when open.
     open: Option<Box<Open>>,
     /// The tables Reset's OK set, not yet taken for the scores file ([`Scores::take_save`]).
     unsaved: bool,
@@ -473,6 +480,7 @@ impl Scores {
             whole: BTreeMap::new(),
             input: Input::new(bugs),
             question,
+            file_error: None,
             open: None,
             unsaved: false,
             hovers: Hovers::default(),
@@ -498,9 +506,30 @@ impl Scores {
             self.bugs,
         )
         .with_tables(self.tables.clone());
+        scores.file_error.clone_from(&self.file_error);
         scores.newest = self.newest;
         scores.hovers = hovers;
         scores
+    }
+
+    /// The dialog with `laid` the box a failed write of the scores file shows (E27 M4 T6, the
+    /// review's item 7: the original's `file_error_box` at 0x4EA426, GENRLTXT 11 with the file's
+    /// name, style 1; the window's, which writes the file).
+    #[must_use]
+    pub fn with_file_error(mut self, laid: MessageBox) -> Self {
+        self.file_error = Some(laid);
+        self
+    }
+
+    /// The scores file [`Scores::take_save`] gave could not be written: its error box shows over
+    /// the dialog (its modal loop's, as Reset's question: no step while it shows; its OK closes
+    /// it, nothing else changed). Whether it shows (none laid: nothing).
+    pub fn write_failed(&mut self) -> bool {
+        let Some(laid) = &self.file_error else {
+            return false;
+        };
+        self.open = Some(Box::new(Open::new(laid.clone())));
+        true
     }
 
     /// The dialog with the tables `tables` (a scores file's, read over the defaults at the start:
@@ -855,13 +884,15 @@ impl Scores {
     }
 
     /// A key down: its command `command` (the key table's in [`Scores::context`]), its name `by`
-    /// (whose release clicks). Exit's keys end the dialog at their press; a tab's key presses its
-    /// button.
+    /// (whose release clicks). Exit's keys end the dialog at their press, but not while the mouse
+    /// holds a button (its own loop takes every message and acts on the moves and the release
+    /// alone, `def_button_message` 0x456341 to 0x45641C: E27 M4 T6, the review's A1, as the
+    /// scenario screen's); a tab's key presses its button.
     pub fn key(&mut self, command: Option<Command>, by: &str) -> Did {
         match (&mut self.open, command) {
             (Some(open), Some(Command::Message(key))) => Did::box_press(open.key(key, by)),
             (Some(_), _) => Did::default(),
-            (None, Some(Command::Dialog(EXIT))) => Did {
+            (None, Some(Command::Dialog(EXIT))) if !self.input.holds_button() => Did {
                 ended: Some(Ended::Done),
                 ..Did::default()
             },
@@ -918,6 +949,10 @@ impl Scores {
     /// (`high_scores_reset` 0x4E8FB0), the scores file due and every creature set again; then the
     /// step due at the close's time runs, as after a button's hold (*recorded*, `scores-reset`:
     /// Cancel's release at 400 stepped, so Reset's OK at 600 did not and the tick at 700 did).
+    /// The original's reset leaves `high_score_newest` 0x67F1F4 as it was (its two references
+    /// write it at the entry, 0x4E961E, and read it at the draw, 0x4EA03A), so a default record
+    /// shows as the newest; the client's profile clears both tabs' (E27 M4 T6, CLT-Q162 (b)).
+    /// The file's error box closes by its OK alone (0x7802: nothing else changes).
     fn answered(&mut self, outcome: Outcome) -> Did {
         match outcome {
             Outcome::Nothing => Did::default(),
@@ -928,6 +963,9 @@ impl Scores {
                     self.tables.clone_from(&self.defaults);
                     self.unsaved = true;
                     self.set_creatures();
+                    if self.bugs == Bugs::Fixed {
+                        self.newest = [None; 2];
+                    }
                 }
                 self.step_due();
                 Did::CHANGED

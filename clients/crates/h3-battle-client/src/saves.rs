@@ -16,8 +16,12 @@
 //! - **A save the client cannot list** (the task's call): a file that does not read as a save,
 //!   whose replay's header the rules refuse (other packs, profile, rules' hashes or state hash
 //!   versions: `ReplayHeader::check`), or whose map is missing or moved (its content hash or
-//!   import version): listed as the original lists a broken file (§3.3: a save of another version,
-//!   GENRLTXT 431 its name and 505 its description), with no map's columns. The full load (the
+//!   import version), or past a save's most bytes (`crate::save::MOST_BYTES`, E27 M4 T6): listed
+//!   as the original lists a save of another version (§3.3: GENRLTXT 431 its name and 505 its
+//!   description), with no map's columns, and why told ([`Listing::unread`]). A deliberate
+//!   departure (the review's B11): the original lists as broken only a save of another version
+//!   and leaves out a file that fails to read (`scenario_list_build`), where the client lists
+//!   every file it cannot read, so the player sees it and may Delete it. The full load (the
 //!   commands replayed, `save::load`) is Load's (T4b2).
 //! - **Delete** (E27 M4 T4b2, [`delete`]): a listed file of the folder alone, by its plain name
 //!   (the original's `DeleteFileA` in `games`, 0x58E08B).
@@ -49,13 +53,38 @@ pub struct Broken {
     pub description: String,
 }
 
-/// The entries of the saves in `dir` (none without the folder) whose maps `install`'s `Maps`
-/// holds, imported under `rules`, in the list's order ([`scenario::sort`]); one the client cannot
-/// list shows `broken`.
+/// The saves' folder listed (E27 M4 T6): its entries, and a line for each thing the listing
+/// could not read, for the caller to tell once (the window on standard error): the folder's
+/// error but its absence (the review's B5: the list then empty, the notice with no saves) and
+/// each save listed broken, the file and why (B7: CLT-Q173 (a), the strict refusal kept).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Listing {
+    /// The entries, in the list's order.
+    pub entries: Vec<Entry>,
+    /// What could not be read, a line each.
+    pub unread: Vec<String>,
+}
+
+/// The saves in `dir` listed ([`listing`]): their entries alone.
 #[must_use]
 pub fn entries(dir: &Path, install: &Path, rules: &GameRuleset, broken: &Broken) -> Vec<Entry> {
-    let Ok(read) = fs::read_dir(dir) else {
-        return Vec::new();
+    listing(dir, install, rules, broken).entries
+}
+
+/// The saves in `dir` (none without the folder) whose maps `install`'s `Maps` holds, imported
+/// under `rules`, in the list's order ([`scenario::sort`]); one the client cannot list shows
+/// `broken`; what could not be read told ([`Listing::unread`]).
+#[must_use]
+pub fn listing(dir: &Path, install: &Path, rules: &GameRuleset, broken: &Broken) -> Listing {
+    let read = match fs::read_dir(dir) {
+        Ok(read) => read,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Listing::default(),
+        Err(e) => {
+            return Listing {
+                entries: Vec::new(),
+                unread: vec![format!("{}: {e}", dir.display())],
+            };
+        }
     };
     let mut files: Vec<(String, PathBuf)> = read
         .filter_map(Result::ok)
@@ -65,12 +94,17 @@ pub fn entries(dir: &Path, install: &Path, rules: &GameRuleset, broken: &Broken)
         .collect();
     files.sort();
     files.truncate(MOST);
+    let mut unread = Vec::new();
     let mut entries: Vec<Entry> = files
         .into_iter()
-        .map(|(name, path)| entry(name, &path, install, rules, broken))
+        .map(|(name, path)| {
+            let (entry, why) = entry_or_why(name, &path, install, rules, broken);
+            unread.extend(why.map(|why| format!("{}: listed broken: {why}", path.display())));
+            entry
+        })
         .collect();
     scenario::sort(&mut entries);
-    entries
+    Listing { entries, unread }
 }
 
 /// Deletes the save `name` of the folder `dir` (E27 M4 T4b2: Delete's OK): a plain file name the
@@ -101,7 +135,8 @@ pub fn listed(name: &str) -> bool {
 }
 
 /// The entry of the save file `file` at `path`: its map's, the save's difficulty and the file's
-/// time; `broken`'s for a save the client cannot list.
+/// time (and the zone's offset at that time, E27 M4 T6: `h3_sdl::local_offset_at`, CLT-Q166
+/// (b)); `broken`'s for a save the client cannot list.
 #[must_use]
 pub fn entry(
     file: String,
@@ -110,31 +145,54 @@ pub fn entry(
     rules: &GameRuleset,
     broken: &Broken,
 ) -> Entry {
+    entry_or_why(file, path, install, rules, broken).0
+}
+
+/// [`entry`], and why a save is listed broken.
+fn entry_or_why(
+    file: String,
+    path: &Path,
+    install: &Path,
+    rules: &GameRuleset,
+    broken: &Broken,
+) -> (Entry, Option<String>) {
     let time = modified(path);
+    let offset = h3_sdl::local_offset_at(time);
     match map_of(path, install, rules) {
-        Ok((map, saved)) => Entry {
-            file,
-            saved: Some(Saved { time, ..saved }),
-            ..map
-        },
-        Err(_) => Entry {
-            file,
-            format: None,
-            name: broken.name.clone(),
-            description: broken.description.clone(),
-            size: 0,
-            difficulty: 0,
-            victory: None,
-            standard: false,
-            loss: None,
-            seats: [Seat::default(); 8],
-            teams: [0, 1, 2, 3, 4, 5, 6, 7],
-            heroes: Heroes::default(),
-            saved: Some(Saved {
-                time,
-                ..Saved::default()
-            }),
-        },
+        Ok((map, saved)) => (
+            Entry {
+                file,
+                saved: Some(Saved {
+                    time,
+                    offset,
+                    ..saved
+                }),
+                ..map
+            },
+            None,
+        ),
+        Err(why) => (
+            Entry {
+                file,
+                format: None,
+                name: broken.name.clone(),
+                description: broken.description.clone(),
+                size: 0,
+                difficulty: 0,
+                victory: None,
+                standard: false,
+                loss: None,
+                seats: [Seat::default(); 8],
+                teams: [0, 1, 2, 3, 4, 5, 6, 7],
+                heroes: Heroes::default(),
+                saved: Some(Saved {
+                    time,
+                    offset,
+                    ..Saved::default()
+                }),
+            },
+            Some(why),
+        ),
     }
 }
 
@@ -169,8 +227,9 @@ fn map_of(path: &Path, install: &Path, rules: &GameRuleset) -> Result<(Entry, Sa
 
 /// What `save` shows of itself on the scenario screen (E27 M4 T5b1; design §41.1), its file's
 /// time 0: its difficulty, the colours its replay's players hold as human, each colour's town
-/// (a fixed faction's choice, else Random) and first hero (the pick, else Random), bonus and
-/// handicap (its table's), and the turn's duration.
+/// (a fixed faction's choice, else the game's draw the table tells, E27 M4 T6: the original
+/// shows the game's, else Random) and first hero (the pick, else the draw, else Random), bonus
+/// (the choice: the engine draws none yet) and handicap (its table's), and the turn's duration.
 #[must_use]
 pub fn saved(save: &crate::save::Save) -> Saved {
     let mut saved = Saved {
@@ -188,16 +247,22 @@ pub fn saved(save: &crate::save::Save) -> Saved {
     }
     for player in &save.replay.players {
         let c = usize::from(player.colour);
-        let (Some(human), Some(record)) = (saved.humans.get_mut(c), saved.records.get_mut(c))
-        else {
+        let (Some(human), Some(record), Some(drawn)) = (
+            saved.humans.get_mut(c),
+            saved.records.get_mut(c),
+            save.drawn.get(c),
+        ) else {
             continue;
         };
         *human = player.human;
         record.town = match player.faction {
             Some(FactionChoice::Fixed(f)) => u8::try_from(f.index()).ok(),
-            Some(FactionChoice::Random) | None => None,
+            Some(FactionChoice::Random) | None => drawn.town,
         };
-        record.hero = player.hero.and_then(|h| u8::try_from(h.index()).ok());
+        record.hero = player
+            .hero
+            .and_then(|h| u8::try_from(h.index()).ok())
+            .or(drawn.hero);
     }
     saved
 }
@@ -238,20 +303,30 @@ pub struct Player {
     pub hero: Option<u8>,
     /// Its starting bonus.
     pub bonus: Bonus,
+    /// Its handicap (0 none, 1 mild, 2 severe; E27 M4 T6, the review's C9).
+    pub handicap: u8,
 }
 
 impl Player {
-    /// Parses `<colour>:<name>:<town>:<hero>:<bonus>`: the colour 0 to 7, a name without a colon,
-    /// the town's faction and the hero's type by their indexes or `random`, the bonus `artifact`,
-    /// `gold`, `resource` or `random`.
+    /// Parses `<colour>:<name>:<town>:<hero>:<bonus>[:<handicap>]`: the colour 0 to 7, a name
+    /// without a colon, the town's faction and the hero's type by their indexes or `random`, the
+    /// bonus `artifact`, `gold`, `resource` or `random`, the handicap 0 to 2 (none: 0; E27 M4 T6).
     ///
     /// # Errors
-    /// Not five fields, or a field out of its range.
+    /// Not five or six fields, or a field out of its range.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let bad = || format!("save: player `{text}` (<colour>:<name>:<town>:<hero>:<bonus>)");
+        let bad = || {
+            format!("save: player `{text}` (<colour>:<name>:<town>:<hero>:<bonus>[:<handicap>])")
+        };
         let fields: Vec<&str> = text.split(':').collect();
-        let &[colour, name, town, hero, bonus] = fields.as_slice() else {
-            return Err(bad());
+        let ([colour, name, town, hero, bonus], handicap) = match *fields.as_slice() {
+            [c, n, t, h, b] => ([c, n, t, h, b], None),
+            [c, n, t, h, b, k] => ([c, n, t, h, b], Some(k)),
+            _ => return Err(bad()),
+        };
+        let handicap = match handicap {
+            None => 0,
+            Some(h) => h.parse().ok().filter(|h| *h <= 2).ok_or_else(bad)?,
         };
         let index = |field: &str| -> Result<Option<u8>, String> {
             match field {
@@ -265,6 +340,7 @@ impl Player {
             town: index(town)?,
             hero: index(hero)?,
             bonus: crate::save::bonus(bonus).ok_or_else(bad)?,
+            handicap,
         })
     }
 }
@@ -333,7 +409,7 @@ pub fn made_with(
                 town: player.town,
                 hero: player.hero,
                 bonus: player.bonus,
-                handicap: 0,
+                handicap: player.handicap,
             };
             names[c] = Some(player.name.clone());
         }
@@ -371,7 +447,9 @@ pub fn made_with(
     let map_ref = crate::save::map(install, map)?;
     let replay = Replay::record_commands(rules, (&game.setup, map_ref), MADE_SEED, commands, 10)
         .map_err(|e| format!("{map}: {e:?}"))?;
-    Ok(crate::save::Save::of(name, &game, replay))
+    // The game's draws at the save (E27 M4 T6): the hot seat's load shows them.
+    let drawn = crate::save::drawn(&game.setup, &state);
+    Ok(crate::save::Save::of(name, &game, replay).with_drawn(drawn))
 }
 
 /// `h3-view save`'s options (E27 M4 T4b1: the harness's made saves, `h3shell.py drawn`).

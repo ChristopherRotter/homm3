@@ -26,6 +26,15 @@ fn a_screen_is_described_by_its_name_its_task_and_its_words() {
         describe(Screen::Scenario(Game::Load, Kind::Tutorial)),
         "scenario (load game, tutorial) [CLT-Q84]: begin back"
     );
+    // E27 M4 T6 (the review's A6): each load by the task that built it.
+    assert_eq!(
+        describe(Screen::Scenario(Game::Load, Kind::Single)),
+        "scenario (load game, single) [E27 M4 T4b1]: begin back"
+    );
+    assert_eq!(
+        describe(Screen::Scenario(Game::Load, Kind::Multiplayer)),
+        "scenario (load game, multiplayer) [E27 M4 T5b1]: begin back"
+    );
     assert_eq!(
         describe(Screen::Play { restart: true }),
         "play (restart) [E24 M5]: main-menu new-game load-game restart quit lost won"
