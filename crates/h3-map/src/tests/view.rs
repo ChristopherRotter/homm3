@@ -15,7 +15,7 @@ use h3_game::{
     OWNER_LEVEL, TAVERN_LEVELS, TavernHeroView, TavernPart, TownBuildingsView, TownOwnerView,
     TownView, Viewer, apply, legal_commands, legal_moves, observe, project,
 };
-use h3_heroes::{ArtifactPlace, HeroDetails, Position};
+use h3_heroes::{ArtifactPlace, HeroChange, HeroDetails, Position};
 use proptest::collection::vec;
 use proptest::prelude::*;
 use proptest::test_runner::TestCaseError;
@@ -1377,10 +1377,25 @@ fn check_told(
             | GameEvent::CreaturesRaised { player, hero, .. }
             | GameEvent::LevelGained { player, hero, .. } => {
                 prop_assert_eq!(player, viewer);
+                // Since E09 T48a a hire's hero learns the town's guild spells at once
+                // (TWN-GLD-005): one hired by this command is the viewer's own too, each spell
+                // folded after its parts as the details learn it ([`check_hired`]).
+                let at = hired.iter_mut().rev().find(|(id, ..)| *id == hero);
                 let own = before
                     .heroes
                     .iter()
-                    .any(|h| h.id == hero && h.details.is_some());
+                    .any(|h| h.id == hero && h.details.is_some())
+                    || at.is_some();
+                if let (
+                    Some(at),
+                    GameEvent::HeroChanged {
+                        change: HeroChange::LearnSpell(spell),
+                        ..
+                    },
+                ) = (at, *event)
+                {
+                    at.2.push(HiredPart::Spell(spell));
+                }
                 prop_assert!(
                     own,
                     "{:?} of a hero the viewer did not see as its own",

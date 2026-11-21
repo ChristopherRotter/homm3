@@ -1853,7 +1853,9 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "VCMI 1.7.5 as read by survey E09-guild.md section 16: the same set learned, by other triggers (every turn start visits each town for its garrison hero and visitor, a skill changed in town teaches at once, a visit teaches the visitor only, a town event's build only a guild's, the Library's or the Aurora's; nothing at the start): TD-10 and TD-27 decided for the original's"
+  ref        = "VCMI 1.7.5 server/CGameHandler.cpp (giveSpells, heroVisitCastle, the build's end, changeSecSkill) and NewTurnProcessor as read by survey E09-guild.md section 16: the same set learned, by other triggers (every turn start visits each town for its garrison hero and visitor, a skill changed in town teaches at once, a visit teaches the visitor only, a town event's build only a guild's, the Library's or the Aurora's; nothing at the start): TD-10 and TD-27 decided for the original's"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-20"
   confidence = "medium"
 
   [[rule.source]]

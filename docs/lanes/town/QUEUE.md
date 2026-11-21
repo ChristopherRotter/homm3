@@ -29,6 +29,19 @@ refined.
 
 ## Inbox
 
+- 2026-11-21 (the town lane itself, E09 T48a's verify; **a pre-existing hygiene failure, to
+  triage**): `h3-map`'s `a_viewer_learns_nothing_it_cannot_see` (`src/tests/view.rs`, the
+  adventure lane's file) failed on a random case that fails on `master` (c0ce729's code) too, so
+  not T48a's, the seed
+  `cc cc8693ab49d6fe44669fbab37bc9a94db548674cbd75e9d3d0027203fa6895e5` (an RoE plan of side 14,
+  two levels). The two games tell the viewer (blue) different `TownStackSeen`s after its town 1 is
+  captured by red: `HeroRemoved` of blue's hero 4 (a garrison hero with an empty army,
+  `TWN-QUIRK-11`'s capture?), then the town's garrison stacks, five in one game, two in the other
+  (red's hidden armies differ). Not added to `proptest-regressions/tests/view.txt` (it would make
+  every pull request red): add that line with the fix. Likely the town lane's (a captured town's upper
+  bar, TWN-VEW-002/-003, TWN-CAP-001) or the property's (`outcome`, the end of the comparison):
+  the user's call when to take it.
+
 - 2026-11-20 (the adventure lane, E08 T133a2 and T133b, `adventure/e08-t133a2`,
   `adventure/e08-t133b`; **for your increment 6's planning, nothing to build**): the map's
   markets are built whole: the checks (`h3_adventure::AdventureState`'s `trade_lot`,

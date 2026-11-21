@@ -444,7 +444,7 @@ fn nothing_is_taught_without_a_guild_ever_built_or_the_faction_s_record() {
     assert_eq!(teaches(&keep, &statics, &empty_part(), &core, &details), []);
 }
 
-// covers: TWN-GLD-004, TWN-QUIRK-14
+// covers: TWN-GLD-004
 #[test]
 fn the_aurora_teaches_its_set_in_spell_order_at_any_guild_level_up_to_wisdom() {
     let sets = GuildSets {
