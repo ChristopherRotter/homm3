@@ -6,7 +6,7 @@
 use h3_content::{SpellCategory, SpellId};
 use h3_contracts::TownId;
 use h3_kernel::Rng;
-use h3_towns::{GuildSets, SpellSet, Town, TownStatic};
+use h3_towns::{GuildSets, GuildSlots, SpellSet, Town, TownStatic};
 
 use crate::{GameRuleset, GameSetup, GameSetupError};
 
@@ -58,10 +58,13 @@ pub(crate) fn draw_guilds(
             scenario,
         };
         let part = rules.towns();
-        if let Some((record, params)) = part.town(town.faction()).zip(part.params()) {
-            let slots = h3_towns::draw_guild(record, params, rules.core(), &sets, draws);
-            *town = town.with_guild(slots);
-        }
+        let slots = part
+            .town(town.faction())
+            .zip(part.params())
+            .map(|(record, params)| {
+                h3_towns::draw_guild(record, params, rules.core(), &sets, draws)
+            });
+        *town = town.with_guild(slots.unwrap_or(GuildSlots::EMPTY));
         town_static.aurora = h3_towns::aurora_set(rules.core(), &sets);
     }
 }
