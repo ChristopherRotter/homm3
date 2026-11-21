@@ -10,7 +10,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{Holds, ObjectSetup, Pos, Scenery, TileMask, TileSetup};
-use h3_content::{CreatureTypeId, ProfileDef, ResourceId, Ruleset, TerrainId};
+use h3_content::{CreatureTypeId, ProfileDef, ResourceId, Ruleset, SpellId, TerrainId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{
     BuildingDef, BuildingId, BuildingRoles, BuildingsSetup, CREATURE_INDEXES, GarrisonCreature,
@@ -25,8 +25,8 @@ use crate::tests::key;
 use crate::town::view::{in_visions, named};
 use crate::{
     Actor, BitGrid, GameCommand, GameEvent, GameRuleset, GameSetup, GameState, GarrisonStackView,
-    GarrisonView, HeroArmy, NoopSink, OWNER_LEVEL, TownBuildingsView, TownOwnerView, TownView,
-    Viewer, apply, observe, project, reveal,
+    GarrisonView, GuildSlots, HeroArmy, NoopSink, OWNER_LEVEL, TownBuildingsView, TownOwnerView,
+    TownView, Viewer, apply, observe, project, reveal,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -151,11 +151,15 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
                 garrison_hero: false,
             }),
             // No dwelling stands, no Portal (E09 T26b).
+            // No mage guild stands (E09 T47b): nothing shown; the Vortex's flag set at the build.
             buildings: Some(TownBuildingsView {
                 built: record.built(),
                 forbidden: record.forbidden(),
                 available: [0; CREATURE_INDEXES],
                 portal: None,
+                guild: GuildSlots::EMPTY,
+                aurora: false,
+                vortex: true,
             }),
         }
     );
@@ -708,6 +712,138 @@ fn the_days_start_tells_each_viewer_the_marks_it_cleared() {
         !events[day + 1 + told.len()..]
             .iter()
             .any(|e| matches!(e, GameEvent::TownChanged { .. }))
+    );
+}
+
+/// The guild tests' rules (`super::guild::guild_packs`: level 1's spells gust and spark, level
+/// 3's gate) with one slot a level and `t:town`'s mage guild of level 1, Library and Aurora
+/// Borealis (E09 T47b; no map slot, so not in the standard set): level 1 draws its slot and its
+/// spare, gust and spark in the draw's order.
+fn guild_view_rules() -> GameRuleset {
+    let (core, mut towns) = super::guild::guild_packs();
+    let building = |k: &str, roles| BuildingDef {
+        key: k.to_string(),
+        name: "Building".into(),
+        slot: None,
+        supersedes: vec![],
+        forbidden_with: None,
+        auto_with: vec![],
+        requires: vec![],
+        cost: vec![],
+        roles,
+    };
+    let guild = BuildingRoles {
+        guild: Some(1),
+        ..BuildingRoles::default()
+    };
+    let library = BuildingRoles {
+        library: true,
+        ..BuildingRoles::default()
+    };
+    let aurora = BuildingRoles {
+        aurora: true,
+        ..BuildingRoles::default()
+    };
+    towns.towns[0].buildings.extend([
+        building("guild", guild),
+        building("library", library),
+        building("aurora", aurora),
+    ]);
+    towns.params.as_mut().unwrap().guild_slots = [1; 5];
+    rules_of(
+        Ruleset::compile(&[core], "t:faithful").unwrap(),
+        &towns,
+        false,
+        4,
+    )
+}
+
+/// The views of `town` the `TownChanged` events of `events` tell, by viewer, in order.
+fn told_buildings(events: &[GameEvent], at: TownId) -> Vec<(PlayerId, Option<TownBuildingsView>)> {
+    events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::TownChanged {
+                player,
+                town,
+                buildings,
+                ..
+            } if town == at => Some((player, buildings)),
+            _ => None,
+        })
+        .collect()
+}
+
+// covers: TWN-VEW-004, TWN-GLD-003
+#[test]
+fn the_owner_sees_what_its_guild_shows_told_at_each_build_and_another_player_nothing() {
+    let rules = guild_view_rules();
+    let mut setup = towns_setup(&rules);
+    setup.towns[0].buildings = BuildingsSetup::Custom {
+        built: SlotSet::EMPTY,
+        forbidden: SlotSet::EMPTY,
+    };
+    let mut game = GameState::new(&rules, &setup, 9).unwrap();
+    let record = rules.towns().town(faction(&rules, "t:town")).unwrap();
+    let [guild, library, aurora] =
+        ["guild", "library", "aurora"].map(|k| record.building_by_key(k).unwrap());
+    let drawn: Vec<SpellId> = game
+        .towns()
+        .get(T0)
+        .unwrap()
+        .guild()
+        .level(1)
+        .flatten()
+        .collect();
+    assert_eq!(drawn.len(), 2);
+    let owners = |game: &GameState| {
+        observe(game, &rules, Viewer::Player(RED)).towns[0]
+            .buildings
+            .unwrap()
+    };
+    let shown = |view: TownBuildingsView, level| -> Vec<SpellId> {
+        view.guild.level(level).flatten().collect()
+    };
+    // No guild stands: nothing shown, though its slots are drawn; the Vortex's flag set.
+    let before = owners(&game);
+    assert_eq!(
+        (before.guild, before.aurora, before.vortex),
+        (GuildSlots::EMPTY, false, true)
+    );
+    // The mage guild: level 1's slot, not its spare, nor level 3's gate; told after the build to
+    // its owner, blue told only the public mark, never the guild.
+    let events = run(&rules, &mut game, RED, build(T0, guild));
+    let seen = owners(&game);
+    assert_eq!(shown(seen, 1), drawn[..1]);
+    assert!((2..=5).all(|level| shown(seen, level).is_empty()));
+    assert!(!seen.aurora);
+    assert_eq!(
+        told_buildings(&events, T0),
+        [(RED, Some(seen)), (BLUE, None)]
+    );
+    assert_eq!(
+        observe(&game, &rules, Viewer::Player(BLUE)).towns[0].buildings,
+        None
+    );
+    // The next day the Library: the spare shown at once, told once.
+    end_turn(&rules, &mut game, RED);
+    end_turn(&rules, &mut game, BLUE);
+    let events = run(&rules, &mut game, RED, build(T0, library));
+    let seen = owners(&game);
+    assert_eq!(shown(seen, 1), drawn);
+    assert_eq!(
+        told_buildings(&events, T0),
+        [(RED, Some(seen)), (BLUE, None)]
+    );
+    // The day after the Aurora Borealis: its mark, the guild as it was.
+    end_turn(&rules, &mut game, RED);
+    end_turn(&rules, &mut game, BLUE);
+    let events = run(&rules, &mut game, RED, build(T0, aurora));
+    let after = owners(&game);
+    assert_eq!((after.guild, after.aurora), (seen.guild, true));
+    assert_eq!(
+        told_buildings(&events, T0),
+        [(RED, Some(after)), (BLUE, None)]
     );
 }
 

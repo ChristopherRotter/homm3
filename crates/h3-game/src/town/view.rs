@@ -6,6 +6,7 @@
 //! (E09 T8c2), the facts of the popup's top level (`docs/06-security.md`, "Towns"). Since E09
 //! T18b2a the day's mark to every viewer and the buildings to the owner (TWN-VEW-004), and each
 //! viewer's changed views told ([`Told`], SRV-Q26: a server keeps a viewer's views by events).
+//! Since E09 T47b the owner's guild ([`TownBuildingsView::guild`], `aurora`, `vortex`).
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -13,7 +14,7 @@ use alloc::vec::Vec;
 use h3_adventure::{AdventureObservation, AdventureState, Pos, Viewers, allied};
 use h3_content::{CreatureTypeId, FactionId, ResourceId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
-use h3_towns::{BuildingSet, CREATURE_INDEXES, Summoned, TownRuleset, Towns};
+use h3_towns::{BuildingSet, CREATURE_INDEXES, GuildSlots, Summoned, TownRuleset, Towns};
 
 use crate::command::{GameEvent, Sink};
 use crate::{GameRuleset, GameState};
@@ -64,14 +65,17 @@ pub struct TownView {
     /// Its buildings, for its owner alone (TWN-VEW-004; E09 T18b2a): the original opens the town
     /// screen from its owner's town list at any time, an ally's only at a visit (E10's teams,
     /// `TWN-STUB-11`) and Visions' top level never (the popup shows no buildings). Since E09 T26b
-    /// with its available creatures and its Portal, the town screen's too.
+    /// with its available creatures and its Portal, the town screen's too; since E09 T47b its
+    /// guild (the quick view shows no spells).
     pub buildings: Option<TownBuildingsView>,
 }
 
 /// A town's buildings as its owner sees them (TWN-VEW-004; E09 T18b2a, the town epic's design
 /// note §31), each set over its faction's town record: the standing ones derive from the first
 /// with the part (`h3_towns::Town::standing`). Since E09 T26b its available creatures and its
-/// Portal of Summoning (design §47: the town screen's, the owner's alone).
+/// Portal of Summoning (design §47: the town screen's, the owner's alone). Since E09 T47b its mage
+/// guild's shown spells, the Aurora's mark and the Mana Vortex's week flag (design §94: the guild
+/// window's, the owner's alone).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TownBuildingsView {
     /// Every building it has had, the superseded ones too (`h3_towns::Town::built`).
@@ -83,6 +87,16 @@ pub struct TownBuildingsView {
     pub available: [u16; CREATURE_INDEXES],
     /// What its Portal of Summoning holds (`h3_towns::Town::portal`, TWN-GRO-007).
     pub portal: Option<Summoned>,
+    /// What its mage guild shows (TWN-GLD-003; E09 T47b): each level's shown spells in its first
+    /// slots, in slot order, every other slot empty (`h3_towns::shown_slots`): nothing above the
+    /// guild level, never a slot the guild does not show (the spare without a Library).
+    pub guild: GuildSlots,
+    /// Whether it has ever built an Aurora Borealis (`h3_towns::has_aurora`, TWN-GLD-004): the
+    /// guild window's mark that every spell is taught there.
+    pub aurora: bool,
+    /// Its Mana Vortex's week flag (`h3_towns::Town::vortex`, TWN-GLD-009), kept in every town as
+    /// the original's; it matters only where a Mana Vortex stands.
+    pub vortex: bool,
 }
 
 /// A town's garrison as a viewer sees it (TWN-VEW-002, -003; survey `E09-towns.md` §12.3,
@@ -252,6 +266,10 @@ impl<'a> Seer<'a> {
                 forbidden: record.forbidden(),
                 available: core::array::from_fn(|index| record.available(index)),
                 portal: record.portal(),
+                // rule: TWN-GLD-003
+                guild: h3_towns::shown_slots(record.guild(), record, part),
+                aurora: h3_towns::has_aurora(record, part),
+                vortex: record.vortex(),
             }),
         })
     }
