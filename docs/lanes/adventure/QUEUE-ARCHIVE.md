@@ -4,6 +4,20 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-22, E08 T139b: done, a reading, decision 410; the record in `E08-log.md`; T140 queued.)* **E08 T139b — the order of the prisoners' level draws: read and recorded** (design note
+`E08-design.md` §15, §21; T139a left it open, decision 409)
+
+- **Scope:** read in `Heroes3.exe` the order in which the setup stream draws the levels at load of
+  the placed heroes and the prisoners (`placed_heroes_setup`: the original's loop over every hero
+  type, or by object), and whether a prisoner draws in that loop; record it in the survey
+  `E08-spells.md` (§2.1 and §18's T139b point), design §15 (the order the build takes) and
+  `docs/exe/map.toml`; compare with VCMI (`CGHeroInstance` init order) as a second source. No code.
+- **Inputs:** survey §2.1, §18 (beside the rows (1): Red's start list in the heroes' type order, a
+  lead); `E08-progression.md` §3.2 (`placed_hero_setup` 0x4D8B30); `docs/exe/README.md`.
+- **Depends on:** T139a (done 2026-11-22, `adventure/e08-t139`). **Status:** ready (only
+  `Heroes3.exe` staged, SHA-256 `aac39e8c…`; `pip install capstone pefile`). Then T140
+  (`shared/`), T141 to T145 (the epic's tasks).
+
 *(Moved 2026-11-19, E08 T132a2: done in T132a1's pull request, decision 381; the record in `E08-log.md`; T132b queued.)* **E08 T132a2 and T132b — the kinds, the packs, the import** (round 5; decisions 370, 373, 378,
 380; design note §1 to §7, §19, §21; T132a1, the rates, done)
 

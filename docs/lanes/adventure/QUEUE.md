@@ -4,21 +4,27 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a done (2026-11-22), T139b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a and T139b done (2026-11-22), T140 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T139b — the order of the prisoners' level draws: read and recorded** (design note
-`E08-design.md` §15, §21; T139a left it open, decision 409)
+**E08 T140 — the `shared/` task** (round 4; design note `E08-design.md` §20's shared work; as
+T131 for increment 14; `shared/e08-t140`, `cross-lane`)
 
-- **Scope:** read in `Heroes3.exe` the order in which the setup stream draws the levels at load of
-  the placed heroes and the prisoners (`placed_heroes_setup`: the original's loop over every hero
-  type, or by object), and whether a prisoner draws in that loop; record it in the survey
-  `E08-spells.md` (§2.1 and §18's T139b point), design §15 (the order the build takes) and
-  `docs/exe/map.toml`; compare with VCMI (`CGHeroInstance` init order) as a second source. No code.
-- **Inputs:** survey §2.1, §18 (beside the rows (1): Red's start list in the heroes' type order, a
-  lead); `E08-progression.md` §3.2 (`placed_hero_setup` 0x4D8B30); `docs/exe/README.md`.
-- **Depends on:** T139a (done 2026-11-22, `adventure/e08-t139`). **Status:** ready (only
-  `Heroes3.exe` staged, SHA-256 `aac39e8c…`; `pip install capstone pefile`). Then T140
-  (`shared/`), T141 to T145 (the epic's tasks).
+- **Scope:** the three accepted drafts applied (`adr-drafts/0013-`, `0016-`,
+  `0017-increment-15.md`: ADR-0013 points 2, 17; ADR-0016 points 1, 3 to 6; ADR-0017 points 1, 4,
+  8 to 10) with batch E15's outcome (survey `E08-spells.md` §18; point 17's book: a worn scroll's
+  spell casts on the map without a book, D-79, the draft's "until E15-15" goes; T139b's order,
+  decision 410, needs no ADR line), then the drafts deleted; the six fix-optional flags of design
+  §4 (`quirk.adventure.flight_reads_hidden`, `door_reads_hidden`, `scuttle_reads_hidden`,
+  `summon_boat_by_steps`, `spell_recast_refused`, `door_failure_charged`) in `packs/base/core.toml`'s
+  two profiles (on in `faithful`, off in `strict-fixed`; the core ruleset hash moves, its version
+  noted); `docs/03-domain.md`'s terms (prisoner, a cast on the map, the day spells, a spell's raise
+  by a ground); `docs/06-security.md`'s lines (§13; the cast's target validated, the draws
+  server-side); the ADR index's Read-when cells; the inboxes design §20 names, each told what
+  reaches it now.
+- **Inputs:** the drafts; design §4, §13, §20; survey §18; T131's record in `E08-log.md` as the form.
+- **Depends on:** T139 (done 2026-11-22). **Status:** ready (docs and the core pack; no original
+  data); confirm its cut at its start. Then T141a, T141b (the epic's tasks; T141a also compares the
+  start list's order: the original's placed heroes in type order, survey §2.1).
 
 ## Inbox
 
