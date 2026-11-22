@@ -4,9 +4,9 @@ Written by T137b (2026-11-21; E08 decisions 394, 395, 397 and the checkpoint's 3
 code cites it as "increment 15's design note §M". Increment 14's note (the trades and services) is
 in `E08-log.md` ("Increment 14's design note at its closure", moved by T136), increments 9's to
 13's beside it. Inputs: the survey `docs/rules/surveys/E08-spells.md` (§N below is the survey's
-when it says so), ADR-0013, ADR-0015 to -0017. Drafts: `docs/lanes/adventure/adr-drafts/`
-`0013-increment-15.md` (point 2 and a new point 17: the mastery on a ground, the cost on the map),
-`0016-increment-15.md` (points 1, 3, 4, 5, 6) and `0017-increment-15.md` (points 1, 4, 8, 9, 10).
+when it says so), ADR-0013, ADR-0015 to -0017. The three drafts (ADR-0013 point 2 and a new point
+17: the mastery on a ground, the cost on the map; ADR-0016 points 1, 3, 4, 5, 6; ADR-0017 points
+1, 4, 8, 9, 10) were applied by T140 with batch E15's outcome and deleted.
 ADR-0015 needs none (no crate, no new dependency: the game hands the adventure the ground's raise,
 §5).
 
@@ -76,7 +76,7 @@ shared, `cross-lane`, at the `shared/` task, §20). **The AI trains under the pr
 original's leaks); `strict-fixed` keeps ADR-0016 point 4's rule that the legal moves never depend
 on a hidden tile.
 
-## Part B — the hero (`h3-heroes`; ADR-0013 draft)
+## Part B — the hero (`h3-heroes`; ADR-0013 point 17)
 
 ### 5. The mastery on a ground (HER-SPL-003 amended; decision 405)
 

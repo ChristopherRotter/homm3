@@ -22011,3 +22011,56 @@ settled; §21's risk settled).
 **Docs:** survey §2.1 and §18's T139b point; design §15, §21; `docs/exe/map.toml`
 (`placed_heroes_setup`, the site `placed_hero_listed`, `hero_setup_reset`, `set_random_seed`);
 decision 410 and the task's line. **Versions:** none moved. **Next:** T140 (`shared/`).
+
+### Increment 15, round 4: T140, the `shared/` task (2026-11-22, `shared/e08-t140`, `cross-lane`)
+
+**The cut** (decision 411, asked at the start with the consent to the `cross-lane` changes):
+whole, one `shared/` pull request, the docs in one commit, the flags in the next (E09 T45's form).
+Not chosen: two parts (the docs now, recommended); the flags with their readers. **Baseline:**
+`master` ff25e2f (#1126 merged). Only `Heroes3.exe` staged (not needed).
+
+- **The ADRs** (the three drafts accepted at ADV-Q63, applied with batch E15's outcome, survey
+  `E08-spells.md` §18, and T139b's order, decision 410; then deleted with their folder):
+  **ADR-0013** point 2 (the mastery also on a ground that raises it) and the new **point 17** (the
+  raise an input, BAT-TER-005's battlefields; the cost on the map without the armies' ±2; who may
+  cast: the available spells, **no book test**, D-79 by E15-15, ADV-STUB-21 withdrawn), each with
+  its rows (E15-4, E15-5); a consequence, an alternative (the draft's book test among them), the
+  history. **ADR-0016** points 1 (**Increment 15's objects**, no new block), 3 (the day spells;
+  E15-6, E15-11, E15-12), 4 (**Increment 15's kinds**, the spells' bindings, the flight's two
+  settings, the hidden-tile rule's amendment; a batch E15 paragraph citing every row), 5 (the three
+  reveals; none under `faithful`, E15-8, E15-10), 6 (the prison's view, the day spells, the failed
+  cast's reason; E15-1), a consequence, an alternative (VCMI's Summon Boat refuted by E15-9b), the
+  history. **ADR-0017** points 1 (`Cast` and its checks, no book test; the prisoners in the
+  setup's object order with the levels at load in hero id order, decision 410; E15-1, E15-2), 4
+  (the boats' chance draws), 8 (encoding v18's plan), 9 (increment 15's versions, the next at
+  merge; the flags move no version), 10 (the outcomes; E15-7, E15-9a, -9b, -10), a consequence, an
+  alternative, the history. The index's Read-when cells of ADR-0013, -0016 and -0017.
+- **The glossary** (`docs/03-domain.md`): Prison and prisoner, Market of Time, a cast on the map
+  and a charged failure, day spells, a spell's raise by a ground.
+- **`docs/06-security.md`**: increment 15's lines (design §11, §13, §14: a prison's type and never
+  its prisoner; the day spells the owner's; the cast's validation against the trusted actor and
+  the state, each refusal untouched, a charged failure the caster's; the chance draws
+  server-only; the hidden tiles by the profile).
+- **The flags** (`h3-content`, shared): `FLIGHT_READS_HIDDEN` (`ADV-QUIRK-15`, `QuirkFlag(45)`),
+  `DOOR_READS_HIDDEN` (`-51`, 46), `SCUTTLE_READS_HIDDEN` (`-52`, 47), `SUMMON_BOAT_BY_STEPS`
+  (`-53`, 48), `SPELL_RECAST_REFUSED` (`-54`, 49), `DOOR_FAILURE_CHARGED` (`-55`, 50); the
+  registry's 51 positions and its two tests. No encoding changed: `RULESET_HASH_VERSION` 53 and
+  the pack format kept. **`h3-pack`:** `the_harvested_flags_of_e08_increment_15` (on in
+  `faithful`, off in `strict-fixed`, every expansion). **The harvester's** two profile texts and
+  `packs/base/core.toml`'s two lines (battle-owned), their comments' ids. Nothing reads the flags
+  until T142 and T143 (each flag's doc names its reader). *Agent's call:* the ledger entries stay
+  the building tasks' (design §4); `ADV-QUIRK-15`'s entry notes the reclassification and the flag.
+- **Replays and records:** the base faithful ruleset hash moved `0x36b98ea152b4db95` to
+  **`0x0ee6066a4c802530`** (`strict-fixed`'s and the synthetic's kept). One replay re-recorded
+  from its commands showed only `ruleset_hash` moving; the 108 headers on it patched; all 111
+  adventure and the ten battle replays verified (`h3 adventure verify`, `h3 verify`).
+  `h3-server`'s record literal; `bots-report-v1.json` and `bots-neutral-v1.json` regenerated (only
+  `engine.core` moved); the E25 ceiling records keep theirs (the AI lane's inbox).
+- **Also:** the battle lane's HANDOFF versions line (quirk flags 50, the hash); the inboxes of the
+  battle, AI and town lanes; a stray `<<<<<<< HEAD` line in the AI lane's queue (from an earlier
+  merge) removed. The design note's header (applied), Part B's title.
+
+**Verify:** `cargo test -p h3-content -p h3-pack -p h3-harvest`, `cargo test -p h3-server
+record`, `cargo check --workspace --all-targets`, xtask's docs gates, `cargo xtask check-lane
+--cross-lane`; CI on the pull request is the record. **Versions:** none moved (the flags change the
+profiles' hashes, not a version). T141 (round 5, its cut at its start) next.
