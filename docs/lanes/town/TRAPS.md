@@ -68,6 +68,19 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   `day-start-builds-36` +5.4 %; the regain now takes the refilled heroes
   (`town::guild::refilled`) and computes their points once. A new day-start rule on a hero's
   points goes into that walk too.
+- **A listing's test of a town's guild is dear** (E09 T49a2, the opening): asked of every owned
+  town a hero stands in at every listing, `vortex` or `teaches` hero by hero cost
+  `legal-towns-36` +49 % on `master`'s games (no opening listed): `guild_level` walked the
+  standing set once a level, `can_learn_spell` built and dropped a `BTreeSet` of the hero's
+  effects per spell, `vortex` derived the standing set in every town (the week's flag is set in
+  every town). `h3_towns::opening_gives` answers the listing alone: the part's derived
+  `GuildRoles` per record (unhashed, as the Portals: the roles' sets and the buildings that can
+  supersede a guild or a Vortex, the only ones walked), the shown spells as one `SpellSet`, each
+  hero's known spells taken first, its book and Wisdom read once (`h3_heroes::spell_learner`);
+  and `legal_builds` finds the hero on a town's entrance once for the hires, the opening and the
+  moves (`AdventureState::town_entrance_hero`). Left: +5.3 %, the rule's own cost (about 470 Ir a
+  listing). A new listed town command shares that lookup and reads derived roles.
+
 - **CI's verify job stops at 55 minutes** (`ci.yml`'s `timeout-minutes`, 40 until #1009; the
   user, 2026-11-18): `master`'s full run about 36, the runner's apt step 6 to 10 of them,
   `bench-check` about 6. A workload whose random games grow (E09 T38a2: the hires tripled

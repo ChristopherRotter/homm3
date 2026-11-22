@@ -4,7 +4,8 @@
 //! town's required and banned spells and the scenario's bans (GAM-SET-003; E09 T47a2); since E09
 //! T48a the town's heroes learning its spells at the town's triggers ([`learn`], TWN-GLD-005);
 //! since E09 T49a1 the spell points a town gives its heroes: the night's refill ([`refilled`],
-//! TWN-GLD-008) and the Mana Vortex once a week a town ([`vortex`], [`visit`], TWN-GLD-009).
+//! TWN-GLD-008) and the Mana Vortex once a week a town ([`vortex`], [`visit`], TWN-GLD-009);
+//! since E09 T49a2 the town screen's opening ([`open`], listed by [`opens`], TWN-GLD-006).
 
 use alloc::vec::Vec;
 
@@ -12,10 +13,10 @@ use h3_content::{SpellCategory, SpellId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_heroes::HeroChange;
 use h3_kernel::Rng;
-use h3_towns::{GuildSets, GuildSlots, SpellSet, Town, TownStatic};
+use h3_towns::{GuildSets, GuildSlots, SpellSet, Town, TownCommandError, TownStatic};
 
 use super::Told;
-use crate::command::Sink;
+use crate::command::{GameCommandError, Sink};
 use crate::{GameRuleset, GameSetup, GameSetupError, GameState};
 
 /// The setup's first town spell that is no hero spell of the ruleset (TWN-SET-012; design §84): a
@@ -89,8 +90,8 @@ pub(crate) fn draw_guilds(
 /// visit's end (a step or a `Revisit` entering a town of the team, an undefended capture: the
 /// outcome's `town_entered`, after the capture, in `GameState::settle_outcome`) and a siege's end
 /// whoever won (in `GameState::end_battle`, before the winner's levels); since E09 T49a1 the
-/// visit's end through [`visit`], after the Vortex; the opening and the book are T49a2's and
-/// T49b's.
+/// visit's end through [`visit`], after the Vortex; since E09 T49a2 the opening ([`open`]); the
+/// book is T49b's.
 // rule: TWN-GLD-005
 pub(crate) fn learn<S: Sink>(
     state: &mut GameState,
@@ -150,8 +151,8 @@ pub(crate) fn heroes(state: &GameState, town: TownId) -> [Option<(HeroId, Player
 /// `town_screen_init` 0x5C63C0 visiting the buildings, then the visit's learning): the Mana
 /// Vortex to the garrison hero, then the visitor ([`vortex`]), then their learning ([`learn`]).
 /// Called at the visit's end (a step or a `Revisit` entering a town of the team, an undefended
-/// capture: `GameState::settle_outcome`'s `town_entered`, after the capture's effects); the
-/// opening (T49a2) applies the same. Not at a siege's end, which teaches alone.
+/// capture: `GameState::settle_outcome`'s `town_entered`, after the capture's effects) and by the
+/// opening ([`open`], E09 T49a2). Not at a siege's end, which teaches alone.
 // rule: TWN-GLD-005, TWN-GLD-009
 pub(crate) fn visit<S: Sink>(
     state: &mut GameState,
@@ -161,6 +162,77 @@ pub(crate) fn visit<S: Sink>(
 ) {
     vortex(state, rules, town, sink);
     learn(state, rules, town, sink);
+}
+
+/// Opens `player`'s `town`'s screen (TWN-GLD-006; E09 T49a2, design §90; decisions 170, 175, 178;
+/// survey `E09-guild.md` §12, §15: the original's `town_screen_open` 0x5BE210 from the town list,
+/// its `town_screen_init` 0x5C63C0 visiting the buildings, then the screen's bars and the guild
+/// window teaching), the turn checked by the caller ([`GameState::check_ready`]: the player's turn,
+/// no decision open, no level-up held), in this order, each refusal changing nothing:
+///
+/// 1. the town in the store of towns, else [`TownCommandError::UnknownTown`];
+/// 2. its owner, the adventure's owner of its object, is `player`, else
+///    [`TownCommandError::NotOwner`] (TD-11's rule, E09 decision 42: only the owner opens its
+///    town screen; an ally's visitor of the town still takes what the owner's opening gives).
+///
+/// Then [`visit`]: the Mana Vortex to the garrison hero, then the visitor, its cleared flag told
+/// to the town's owner (TWN-GLD-009), then the visitor's, then the garrison hero's learning
+/// (TWN-GLD-005; decision 178: with or without a visitor), each `HeroChanged` to the hero's owner.
+/// No other refusal: an opening that changes nothing is accepted and changes nothing (no event,
+/// the state's hash unchanged). Nothing is drawn; no movement point is spent.
+///
+/// # Errors
+///
+/// [`GameCommandError::Town`] with [`TownCommandError::UnknownTown`] or
+/// [`TownCommandError::NotOwner`].
+// rule: TWN-GLD-006
+pub(crate) fn open<S: Sink>(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    town: TownId,
+    sink: &mut S,
+) -> Result<(), GameCommandError> {
+    if state.towns().get(town).is_none() {
+        return Err(GameCommandError::Town(TownCommandError::UnknownTown));
+    }
+    if super::command::owner(state, town) != Some(player) {
+        return Err(GameCommandError::Town(TownCommandError::NotOwner));
+    }
+    visit(state, rules, town, sink);
+    Ok(())
+}
+
+/// Whether [`open`] of `town`, one of the lister's own, would change something, so that
+/// [`crate::legal_commands`] lists it (TWN-GLD-006; design §90, decision 175: never an idle
+/// opening, which would flood the env's plans): its garrison hero or its visitor would take the
+/// Mana Vortex ([`h3_towns::vortex`]: a standing Vortex, the week's flag set, the hero below the
+/// factor times its maximum), or would learn a spell ([`h3_towns::teaches`] not empty): one
+/// question to the town's part for both heroes ([`h3_towns::opening_gives`]). `visitor`
+/// is the hero on its entrance, the listing's (`AdventureState::town_entrance_hero`, found once a
+/// town for the hires, the opening and the moves). False for a town no hero stands in, the
+/// cheapest test first (the heroes, then the town's record).
+// rule: TWN-GLD-006
+pub(crate) fn opens(
+    state: &GameState,
+    rules: &GameRuleset,
+    town: TownId,
+    visitor: Option<HeroId>,
+) -> bool {
+    let adventure = state.adventure();
+    let garrison = adventure.town_hero(town).map(|on| on.id);
+    if garrison.is_none() && visitor.is_none() {
+        return false;
+    }
+    let towns = state.towns();
+    let (Some(record), Some(statics)) = (towns.get(town), towns.town_static(town)) else {
+        return false;
+    };
+    let heroes = garrison
+        .into_iter()
+        .chain(visitor)
+        .filter_map(|hero| state.hero(hero));
+    h3_towns::opening_gives(record, statics, rules.towns(), rules.core(), heroes)
 }
 
 /// The Mana Vortex of `town` to its garrison hero, then its visitor ([`vortex_to`]): the visit's

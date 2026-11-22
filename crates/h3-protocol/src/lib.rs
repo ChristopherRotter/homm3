@@ -241,8 +241,10 @@ pub mod wire;
 /// which carries no view (folded as an Altar's, `SRV-STUB-5`). v78 (E09 T47b, the town lane's,
 /// `cross-lane`): a town's owner sees its mage guild (TWN-VEW-004, TWN-GLD-003:
 /// `wire::game::TownBuildings`' `guild`, the shown spells by level in slot order, `aurora` and
-/// `vortex`), folded from `TownChanged` as the rest of the buildings.
-pub const PROTOCOL_VERSION: u32 = 78;
+/// `vortex`), folded from `TownChanged` as the rest of the buildings. v79 (E09 T49a2, the town
+/// lane's, `cross-lane`): `TownCommand::Open` (TWN-GLD-006: a town screen's opening, its Mana
+/// Vortex and its guild's spells), no new refusal or event.
+pub const PROTOCOL_VERSION: u32 = 79;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

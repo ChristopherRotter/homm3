@@ -592,7 +592,61 @@ pub struct TownRuleset {
     /// Each record's buildings of role `portal`, where it has some, in faction order (E09 T26b,
     /// [`crate::has_portal`]; derived, not hashed).
     portals: Vec<(FactionId, BuildingSet)>,
+    /// Each record's buildings the town screen's opening reads, in faction order beside `towns`
+    /// (E09 T49a2, [`crate::opening_gives`]; derived, not hashed).
+    guilds: Vec<GuildRoles>,
     hash: u64,
+}
+
+/// A record's buildings of the roles a town screen's opening reads (E09 T49a2,
+/// [`crate::opening_gives`]; derived from the record when the part is built, so that the legal
+/// listing's test of an opening walks no town's buildings: `bench-check`'s `legal-towns-36`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct GuildRoles {
+    /// Of role `guild`.
+    pub(crate) guild: BuildingSet,
+    /// Of role `mana_vortex`.
+    pub(crate) vortex: BuildingSet,
+    /// Of role `aurora`.
+    pub(crate) aurora: BuildingSet,
+    /// Of role `library`.
+    pub(crate) library: BuildingSet,
+    /// Those that supersede one of `guild` or `vortex`: of a town's buildings only these can make
+    /// such a building not stand.
+    pub(crate) superseding: BuildingSet,
+}
+
+impl GuildRoles {
+    /// The roles of `record`'s buildings.
+    fn of(record: &TownRecord) -> Self {
+        let ids = (0..).map_while(BuildingId::from_index);
+        let mut roles =
+            record
+                .buildings
+                .iter()
+                .zip(ids)
+                .fold(Self::default(), |mut roles, (b, id)| {
+                    let add = |set: &mut BuildingSet, role: bool| {
+                        if role {
+                            *set = set.with(id);
+                        }
+                    };
+                    add(&mut roles.guild, b.roles.guild.is_some());
+                    add(&mut roles.vortex, b.roles.mana_vortex);
+                    add(&mut roles.aurora, b.roles.aurora);
+                    add(&mut roles.library, b.roles.library);
+                    roles
+                });
+        let read = roles.guild.union(roles.vortex);
+        let ids = (0..).map_while(BuildingId::from_index);
+        roles.superseding = record
+            .buildings
+            .iter()
+            .zip(ids)
+            .filter(|(b, _)| b.supersedes.intersects(read))
+            .fold(BuildingSet::EMPTY, |set, (_, id)| set.with(id));
+        roles
+    }
 }
 
 /// What the week's draw reads (TWN-GRO-002, E09 T26a2; [`crate::draw_week`]), derived from the
@@ -676,6 +730,7 @@ impl TownRuleset {
             params,
             week: WeekDraw::of(&towns),
             portals,
+            guilds: towns.iter().map(GuildRoles::of).collect(),
             towns,
             hash: 0,
         };
@@ -717,6 +772,19 @@ impl TownRuleset {
             .iter()
             .find_map(|&(f, set)| (f == faction).then_some(set))
             .unwrap_or(BuildingSet::EMPTY)
+    }
+
+    /// The town record of `faction` with its buildings' roles an opening reads (E09 T49a2), if
+    /// it has one.
+    pub(crate) fn town_with_guild_roles(
+        &self,
+        faction: FactionId,
+    ) -> Option<(&TownRecord, GuildRoles)> {
+        let at = self
+            .towns
+            .binary_search_by_key(&faction, |t| t.faction)
+            .ok()?;
+        Some((&self.towns[at], self.guilds[at]))
     }
 
     /// The town record of `faction`, if it has one.

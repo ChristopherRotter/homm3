@@ -55,7 +55,6 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
-<<<<<<< HEAD
 **From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**):
 
 - 2026-11-21: E08 increment 15 (design note `docs/epics/E08-design.md` §17, decision 407) gives
@@ -67,6 +66,17 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
   event's stop); four new fix-optional flags make `faithful`'s legal moves read hidden tiles.
 
 **From the town lane** (E09 T43, `town/e09-t43`, docs only; **planned, nothing to do now**):
+
+- 2026-11-22 (E09 T49a2, `town/e09-t49a2`, `cross-lane` in your paths with the user's consent,
+  E09 decision 193; **adventure action encoding v18 taken, for your review**): `TOWN_OPEN` = 103,
+  appended after E08 T135a's entries rather than beside the taverns' (so that no entry moves;
+  `ENTRY_COUNT` 104): a town screen's opening by its town's entrance in the tile head, building
+  0, one action per `Open` `legal_commands` lists, which it lists only where the opening would
+  give the Mana Vortex or a spell (the random games on the town map met none: `h3-sim`'s
+  town-map seeds and their counts unchanged). The module's table and docs, `tileless` (its
+  answers' range now ends before it), `tile_mask`, `decode`, `encode`, `Action::town_open`, the
+  layout test and the mask property's `check_town_heroes`. The adventure lane's v18 above
+  (E08 T144a) becomes **v19**, its entries from 104. `SPELL_BOOK` (T49b) is still to come.
 
 - 2026-11-20: E09 increment 5 (the mage guild; design note `docs/epics/E09-design.md` §95, accepted
   at `TWN-Q33`) appends two entries to the adventure env's action encoding, `cross-lane` in your

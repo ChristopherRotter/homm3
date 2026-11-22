@@ -5919,3 +5919,68 @@ refill and the Vortex, T49a2 `Open` whole.
   The lane's `TRAPS.md` ("A silent write of a hero's details meets two oracles").
 - **Nothing moved:** the 111 golden adventure replays reproduce their hashes (measured on the
   draft, in release); no version, no bot report.
+
+### T49a2 — the town screen's opening, `TownCommand::Open`: the rule, its listing, the wire, the word, the env's entry (2026-11-22)
+
+One session, the user present at the start; branch `town/e09-t49a2` (`cross-lane`: the adventure
+lane's `h3-heroes` `spells.rs`, `h3-files`' replay word, `h3-sim`'s replay version and
+`src/adventure/` (action encoding v18, the AI lane's paths), the 111 goldens' `format` line,
+`h3-map`'s `tests/play.rs`, `h3-cli`'s literals; the server lane's `h3-protocol`; the adventure
+workload `legal-towns-36`; with the user's consent). Starting point: `master` at e478f97 (#1124
+merged; the setup's full baseline passed every step up to coverage, stopped there by a watcher;
+CI on `master` was running). The user's computer was connected at the start only: its shell did
+not start ("Workspace unavailable"), 71 files staged (SHA-256 checked against
+`docs/formats/installation.md`), the repo cloned from GitHub. The agent recommended a cut in two
+(the rule with the wire and the word, then the listing with the env and the benchmarks); **the
+user kept T49a2 whole** (decision 193).
+
+- **The town's half** (`h3-towns`): `TownCommand::Open { town }` (no new refusal);
+  `opening_gives` (the listing's question for a town and its heroes: `vortex` or `teaches` for
+  one of them), read through the part's derived `GuildRoles` per record (`ruleset.rs`, not
+  hashed, as the Portals: the roles `guild`, `mana_vortex`, `aurora`, `library` and the
+  buildings that supersede a guild or a Vortex, `town_with_guild_roles`); `SpellSet::difference`,
+  `is_empty`, `BuildingSet::intersection`; `teaches` takes the known spells first and reads the
+  book and Wisdom once (`learnable`), the guild's counts once (`shown_counts`, `counts_of`,
+  `shown_at`, `shown_levels`; `shown` and `shown_slots` on them); `vortex` tests ever-built
+  before the standing set. The same answers (the guild tests pass unchanged).
+- **The heroes** (`h3-heroes`, the adventure lane's): `spell_learner` (the book and the
+  learnable level once; `can_learn_spell` delegates); `wears_book` counts per copy (the same
+  `any`, no set of types).
+- **The game** (`h3-game`'s `town/guild.rs`): `open` (the store's town, then the owner, then
+  `visit`: the Vortex with its told flag, then the learning) dispatched from `town::command`;
+  `opens` (the garrison hero, the listing's visitor, then `opening_gives`), chained in
+  `legal_builds` after the hires and before the moves. `legal_builds` finds the hero on each
+  town's entrance once (`AdventureState::town_entrance_hero`, the town lane's `rows.rs` in
+  `h3-adventure`) for the hires (`legal_hires`' `free`), the opening and the moves
+  (`town_hero_moves_at`; `town_hero_moves` on it).
+- **The wire** (protocol **v79**): the command both ways. **The replays:** format **v24**
+  (`town open <town>`), the 111 goldens' `format` line only, `h3-cli`'s and `h3-sim`'s literals.
+  **The env** (encoding **v18**): `TOWN_OPEN` = 103, appended after E08 T135a's entries
+  (design §95's *As built*), `tileless` ending before it, `tile_mask`, `decode`, `encode`,
+  `Action::town_open`; the layout test and the mask property (`check_town_heroes`).
+- **The plans** (`h3-map`'s `play.rs`): `town_builds` probes every town's opening after its
+  hires; `accepted_builds` keeps an accepted opening only where the probe changed the state; an
+  unlisted opening may be accepted changing nothing; `check_town_open` reads a listed one apart;
+  `Step::Town` plays a listed opening in one step of eight (`n % 8 == 6`). All of `h3-map`'s
+  tests passed; the play and view blocks once at 240 cases (24 minutes).
+- **Tests:** the game's four (`town/tests/open.rs`); `h3-towns`'
+  `an_opening_gives_exactly_where_the_vortex_or_the_guild_would` (4 parts, 9 built sets, both
+  flags, 18 heroes alone and in pairs against `vortex` and `teaches`); `h3-files`' round trip
+  and four refusals; the protocol's round trip; the env's layout. `h3-sim`'s 130 tests passed
+  unchanged: the random games on the town map list no opening, so their seeds and counts hold.
+- **Catalog:** TWN-GLD-006 entered `implemented` (the code reading, batch TWN-5's TWN-5-5, VCMI,
+  the wiki); TWN-GLD-005 and -009 name the opening.
+- **The bench** (`master` built in `target/wt-master`, per function): the first build cost
+  `legal-towns-36` +49 % on the same games (3 360 steps, 2 653 listings, 12 720 town commands,
+  no opening listed): `vortex` and `teaches` hero by hero (`guild_level` once a level,
+  `can_learn_spell`'s set of the hero's effects per spell, `vortex`'s standing set in every town).
+  The design pass, measured after each step: the counts once and the book once (+27 %), known
+  spells first and the shared entrance lookup (+14 %), `opening_gives` in one walk (+8 %), the
+  part's derived roles (+5.25 %: master 23 792 510 in the same sandbox, 25 042 654; about 470 Ir a
+  listing, the rule's own cost); re-baselined with the reason. Every other workload within its
+  gate (`random-play-bonuses-36` +1.67 % the largest, as at T38a2).
+- **Versions:** protocol v79, adventure replay format v24, adventure action encoding v18; the
+  adventure lane's planned v79, v24 and v18 (E08 T143, T144) become v80, v25 and v19 (its
+  inbox, the AI lane's and the server lane's). No hash moved.
+- **Found:** a stray `<<<<<<< HEAD` line in the AI lane's `QUEUE.md` on `master` (no other
+  marker): removed with this task's inbox note there.

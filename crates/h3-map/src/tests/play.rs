@@ -3813,7 +3813,8 @@ fn hire(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
 /// [`Step::Town`] (E09 T9b1; the town epic's design note §18): in a battle as [`fight`] (a
 /// siege's too, either side's); an open decision settled as [`seek`] settles it; (E09 T29b) a
 /// listed hero move between an own town's bars in five steps of eight (`Enter` in three, `Leave`
-/// and `Swap` in one each); on the map the
+/// and `Swap` in one each), (E09 T38a2) a listed hire in one of eight, (E09 T49a2) a listed
+/// opening in another; on the map the
 /// `n`-th of its options that end on a town's entrance (its own entered, TWN-VIS-001; another
 /// player's or a neutral one captured or besieged, TWN-CAP-001, TWN-SIE-001; another team's
 /// visitor besieged with the garrison merged, TWN-SIE-002), in three steps of four of a town not
@@ -3853,6 +3854,14 @@ fn visit_town(
         .find(|c| matches!(c, GameCommand::Town(TownCommand::Hire { .. })));
     if let Some(hire) = hire.filter(|_| n % 8 == 5) {
         return hire.clone();
+    }
+    // E09 T49a2: a listed opening (TWN-GLD-006) in one step of eight, so that the Mana Vortex and
+    // the guild's spells reach the heroes a step or a build left out.
+    let open = legal
+        .iter()
+        .find(|c| matches!(c, GameCommand::Town(TownCommand::Open { .. })));
+    if let Some(open) = open.filter(|_| n % 8 == 6) {
+        return open.clone();
     }
     let row = legal.iter().find(|c| {
         matches!(c, GameCommand::Town(TownCommand::Heroes { change, .. }) if Some(*change) == wanted)
@@ -6756,7 +6765,8 @@ fn check_build_boat(
 /// Every town command to probe in `state` (E09 T18b2b): for each town of the store and one past it,
 /// in `TownId` order, a build of each building of its faction's record and one past it, in index
 /// order, then (E09 T27) a recruitment at each of them, in the same order, then (E09 T38a2) a hire
-/// of each tavern slot and one past them, then (E09 T28a) the three hero moves.
+/// of each tavern slot and one past them, then (E09 T49a2) its opening, then (E09 T28a) the three
+/// hero moves.
 fn town_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -6773,6 +6783,8 @@ fn town_builds<'a>(
         let recruits = ids().map(move |building| TownCommand::Recruit { town, building });
         // E09 T38a2: the hires of its Tavern (TWN-TAV-003).
         let hires = (0..=2).map(move |slot| TownCommand::Hire { town, slot });
+        // E09 T49a2: its opening (TWN-GLD-006).
+        let open = core::iter::once(TownCommand::Open { town });
         // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
         let rows = [
             TownHeroChange::Enter,
@@ -6783,6 +6795,7 @@ fn town_builds<'a>(
         builds
             .chain(recruits)
             .chain(hires)
+            .chain(open)
             .chain(rows)
             .map(move |command| (town, GameCommand::Town(command)))
     })
@@ -6790,14 +6803,17 @@ fn town_builds<'a>(
 
 /// The town commands `player` may give in `state` by `apply`'s checks alone (E09 T18b2b;
 /// TWN-BLD-001; since E09 T27 TWN-REC-001): of [`town_builds`], those a probe accepts, in that
-/// order, as `legal_commands` must list them.
+/// order, as `legal_commands` must list them; since E09 T49a2 an opening only where the probe
+/// changed the state (TWN-GLD-006: an opening that changes nothing is accepted but not listed).
 fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
     town_builds(state, rules)
         .map(|(_, command)| command)
         .filter(|command| {
             let mut probe = state.clone();
             let actor = Actor::Player(player);
+            let opening = matches!(command, GameCommand::Town(TownCommand::Open { .. }));
             apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
+                && (!opening || probe != *state)
         })
         .collect()
 }
@@ -7022,6 +7038,53 @@ fn check_map_hire(
     Ok(())
 }
 
+/// A listed opening of `actor`'s `town` (E09 T49a2; TWN-GLD-006, design note §90), from `state`
+/// to `after`, by an independent reading: the town is the actor's and the opening changed the
+/// state (a listed opening changes something); of its garrison hero, then its visitor, the first
+/// that [`h3_towns::vortex`] raises holds its points, the week flag then cleared, the others'
+/// points unchanged; each hero's spells grown by [`h3_towns::teaches`]' in their order (the
+/// learning reads no spell points); the town's record but the flag, the heroes on the map and the
+/// garrison heroes' records and the treasury unchanged.
+fn check_town_open(
+    (state, after): (&GameState, &GameState),
+    rules: &GameRuleset,
+    actor: PlayerId,
+    town: TownId,
+) -> Result<(), TestCaseError> {
+    let was = state.adventure();
+    let index = was.map().town_object(town).unwrap();
+    prop_assert_eq!(was.owner(index), Some(actor));
+    prop_assert!(
+        after != state,
+        "a listed opening of {:?} changed nothing",
+        town
+    );
+    let (core, part) = (rules.core(), rules.towns());
+    let record = state.towns().get(town).unwrap();
+    let statics = state.towns().town_static(town).unwrap();
+    let garrison = was.town_hero(town).map(|h| h.id);
+    let mut taken = false;
+    for hero in garrison.into_iter().chain(was.town_visitor(town)) {
+        let details = state.hero(hero).unwrap();
+        let points = (!taken)
+            .then(|| h3_towns::vortex(record, part, core, details))
+            .flatten();
+        taken |= points.is_some();
+        let mut spells = details.spells.clone();
+        spells.extend(h3_towns::teaches(record, statics, part, core, details));
+        let now = after.hero(hero).unwrap();
+        prop_assert_eq!(now.mana, points.unwrap_or(details.mana), "{:?}", hero);
+        prop_assert_eq!(&now.spells, &spells, "{:?}", hero);
+    }
+    let expected = record.with_vortex(record.vortex() && !taken);
+    prop_assert_eq!(after.towns().get(town), Some(&expected));
+    let now = after.adventure();
+    prop_assert_eq!(now.heroes(), was.heroes());
+    prop_assert_eq!(now.town_heroes(), was.town_heroes());
+    prop_assert_eq!(after.treasury(actor), state.treasury(actor));
+    Ok(())
+}
+
 /// A listed hire of `actor`'s tavern slot `slot` at `town` (E09 T38a2; TWN-TAV-003), from
 /// `state` to `after`, by an independent reading: the slot's hero in the actor's tavern view
 /// before stands on the town's entrance after as its visitor, the actor's, with the view's army,
@@ -7103,7 +7166,13 @@ fn check_town_builds(
             &mut events,
         );
         if !legal.contains(&command) {
-            prop_assert!(result.is_err(), "unlisted {:?} accepted", command);
+            // E09 T49a2: an unlisted opening is accepted when it changes nothing (TWN-GLD-006).
+            let opening = matches!(command, GameCommand::Town(TownCommand::Open { .. }));
+            prop_assert!(
+                result.is_err() || opening,
+                "unlisted {:?} accepted",
+                command
+            );
             prop_assert_eq!(&probe, state);
             prop_assert!(events.is_empty());
             continue;
@@ -7138,6 +7207,11 @@ fn check_town_builds(
             // E09 T38a2: a listed hire, by an independent reading of the actor's tavern view.
             GameCommand::Town(TownCommand::Hire { slot, .. }) => {
                 check_town_hire((state, &probe), rules, actor, (town, slot), &events)?;
+                continue;
+            }
+            // E09 T49a2: a listed opening, by an independent reading of the town's heroes.
+            GameCommand::Town(TownCommand::Open { .. }) => {
+                check_town_open((state, &probe), rules, actor, town)?;
                 continue;
             }
             _ => return Err(fail(format!("{command:?}"))),

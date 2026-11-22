@@ -30,7 +30,7 @@ pub use action::{
     FIRST, HERO_SLOTS, HILL_FORT_ALL, HILL_FORT_UPGRADE, HIRE_BASE, HIRE_SLOTS, MARKET_BUY,
     MARKET_PAIRS, MARKET_RESOURCES, MARKET_SELL, MARKET_STOCK, MARKET_TRADE, MOVE_BASE, MapAction,
     Phase, RECRUIT, REVISIT_BASE, SECOND, Seat, TAVERN_HIRE, TAVERN_SLOTS, TOWN_HERO_MOVES,
-    TOWN_HEROES, UNIVERSITY_SLOTS, answer_entry, market_pair, trade_entry,
+    TOWN_HEROES, TOWN_OPEN, UNIVERSITY_SLOTS, answer_entry, market_pair, trade_entry,
 };
 pub use env::{AdventureEnv, StepError, StepResult};
 pub use rollout::{RolloutResult, random_rollout};

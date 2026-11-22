@@ -262,6 +262,14 @@ fn commands_round_trip_through_their_text() {
             }),
             "2 town heroes 7 swap",
         ),
+        // Format v24 (E09 T49a2): a town screen's opening, by its town.
+        (
+            PlayerId::new(1),
+            GameCommand::Town(TownCommand::Open {
+                town: TownId::new(3),
+            }),
+            "1 town open 3",
+        ),
         // Format v12 (E08 T105b2): a revisit, by its hero.
         (
             PlayerId::new(1),
@@ -492,6 +500,10 @@ fn commands_round_trip_through_their_text() {
         "0 town build",
         "0 town build 2",
         "0 town raze 2 7",
+        "0 town open",
+        "0 town open x",
+        "0 town open 70000",
+        "0 town open 2 now",
         "0 town build x 7",
         "0 town build 70000 7",
         "0 town build 2 x",

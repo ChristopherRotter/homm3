@@ -3256,6 +3256,27 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   entering hero's town, after a capture's effects (the capture's reveal, Portal and views first).
 - **Tests:** each refusal changes nothing; the Vortex to the garrison hero first; a garrison hero
   alone learns; the listing on and off; the replay word.
+- *As built* (T49a2, decision 193): `h3_towns::TownCommand::Open { town }`, no new refusal and no
+  event. The game's `town::guild::open` checks the store's town, then the owner
+  (`command::owner`), then runs `visit` (§93's *As built*): the Vortex with its told flag, then the
+  learning, as at the visit's end, so the flag's view (told whole, its parts after its
+  `TownChanged`) comes between the Vortex's `HeroChanged` and the learning's. `opens` serves the
+  listing: the garrison hero (`town_hero`, a binary search) and the visitor (the hero on the
+  entrance, which `legal_builds` now finds once a town for the hires, the opening and the moves:
+  `AdventureState::town_entrance_hero`), `false` for a town no hero stands in; then
+  `h3_towns::opening_gives` (the same answer as `vortex` or `teaches` for either, read through the
+  part's derived `GuildRoles`: the bench gate, the lane's `TRAPS.md`); chained after the hires
+  and before the moves. Tests: the
+  game's four in `town/tests/open.rs` (the Vortex to the garrison hero with the flag told before
+  the visitor's then the garrison hero's learning, a repeat changing nothing; a garrison hero
+  alone learning, no guild nothing; the refusals; the listing's place, on and off with the week's
+  flag and the threshold, none in a town without a hero); `h3-files`' round trip and refusals of
+  `town open`. The plans (`h3-map`'s `play.rs`): `town_builds` probes each town's opening after
+  its hires; `accepted_builds` keeps an accepted opening only where the probe changed the state;
+  an unlisted opening may be accepted when it changes nothing; `check_town_open` reads a listed
+  one apart (the town the actor's, the state changed, the Vortex to the first of the garrison hero
+  and the visitor it raises, each hero's spells grown by `teaches`, the record but the flag, the
+  heroes and the treasury unchanged); `Step::Town` plays a listed opening in one step of eight.
 
 ### 91. The spell book (TWN-GLD-007; `TownCommand::BuySpellBook { town }`; decision 176; §6, §13)
 
@@ -3361,6 +3382,16 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   `cross-lane`): `town open <town>`, `town book <town>` (the replay word in the same pull request as
   the command, the town lane's `TRAPS.md`); the format the next at merge (E08 T133b took v21 after
   the client lane's v20; its T134a plans v22).
+- *As built* (T49a2, decision 193): the env's encoding **v18** appends `TOWN_OPEN` (103) after
+  E08 T135a's trades and services (encoding v17, written after this section), not beside the
+  taverns' entries, so that no entry moves; `tileless` stops before it; `tile_mask`, `decode`
+  and `encode` take the town by its entrance (building 0); the mask property's
+  `check_town_heroes` covers it. The protocol **v79**: `wire::game::TownCommand::Open { town }`.
+  The adventure replay format **v24** (`town open <town>`): the 111 goldens' `format` line only,
+  `h3-cli`'s and `h3-sim`'s literals. The adventure lane's planned v79, v24 and v18 (E08 T143,
+  T144; `E08-design.md` §16) move to v80, v25 and v19 (its inbox, the AI lane's and the server
+  lane's). An opening is listed only where it changes something, which random play rarely meets:
+  `h3-sim`'s town-map tests kept their seeds.
 
 ### 96. The increment's ids, versions, quirks and stubs
 
