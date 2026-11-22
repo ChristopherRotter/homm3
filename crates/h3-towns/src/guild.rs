@@ -2,10 +2,12 @@
 //! town's guild slots drawn once at the game's build ([`draw_guild`], TWN-GLD-002), what the guild
 //! shows of them as it is built ([`guild_level`], [`shown`], TWN-GLD-003) and the town's Aurora
 //! set ([`aurora_set`], the set TWN-GLD-004 teaches), and since E09 T48a what a hero learns there
-//! ([`teaches`], TWN-GLD-004). Pure functions over a town record, the part and the core with the
-//! spells the map and the scenario give ([`GuildSets`]); the game draws every town's guild at the
-//! build from the towns' stream (E09 decision 179), keeps the slots and the set in the town's
-//! record (the store v4, E09 T47a2) and teaches its heroes at the town's triggers (TWN-GLD-005).
+//! ([`teaches`], TWN-GLD-004), and since E09 T49a1 the spell points a town gives a hero: the
+//! night's refill ([`refills`], TWN-GLD-008) and the Mana Vortex ([`vortex`], TWN-GLD-009). Pure
+//! functions over a town record, the part and the core with the spells the map and the scenario
+//! give ([`GuildSets`]); the game draws every town's guild at the build from the towns' stream (E09
+//! decision 179), keeps the slots and the set in the town's record (the store v4, E09 T47a2),
+//! teaches its heroes at the town's triggers (TWN-GLD-005) and gives them its points.
 
 use alloc::vec::Vec;
 
@@ -342,6 +344,52 @@ pub fn teaches(
             .collect(),
         _ => Vec::new(),
     }
+}
+
+/// Whether a night in `town` refills its heroes' spell points (E09 design §92; survey
+/// `E09-guild.md` §14: the original's `new_day` 0x4C82E4 to 0x4C8434, a town whose every-built set
+/// holds building 0): a building of role `guild` was ever built there (TWN-GLD-001: a guild of any
+/// level, even one superseded since); none without its faction's record in `part`. Its visitor and
+/// its garrison hero then end the night at their points or their maximum
+/// ([`h3_heroes::max_mana`], HER-MAN-001), whichever is more, after the day's regain (HER-MAN-002,
+/// which never passes the maximum nor lowers the points): never lowered. Neither a spell book,
+/// the owner of the town or of the hero nor the guild's level is tested.
+// rule: TWN-GLD-008
+pub fn refills(town: &Town, part: &TownRuleset) -> bool {
+    part.town(town.faction()).is_some_and(|record| {
+        town.built()
+            .iter()
+            .filter_map(|id| record.building(id))
+            .any(|b| b.roles.guild.is_some())
+    })
+}
+
+/// The spell points `town`'s Mana Vortex gives a hero (E09 design §93; survey `E09-guild.md` §15:
+/// the original's `town_visit_buildings` 0x5BD8E0, its first branch): with a standing building of
+/// role `mana_vortex` and the town's week flag set ([`Town::vortex`]), the part's `vortex_factor`
+/// times the hero's maximum ([`h3_heroes::max_mana`], HER-MAN-001; at most `u16::MAX`) when its
+/// points are below them; `None` else, so a hero at or above them leaves the flag for the next. No
+/// spell book, no owner is tested. The game sets the points (`HeroChange::SetSpellPoints`) and
+/// clears the flag ([`crate::Towns::take_vortex`]): once a week a town.
+// rule: TWN-GLD-009
+pub fn vortex(
+    town: &Town,
+    part: &TownRuleset,
+    core: &Ruleset,
+    details: &HeroDetails,
+) -> Option<u16> {
+    let factor = part.params().map(|params| params.vortex_factor)?;
+    let record = part.town(town.faction()).filter(|_| town.vortex())?;
+    let standing = town
+        .standing(record)
+        .iter()
+        .filter_map(|id| record.building(id))
+        .any(|b| b.roles.mana_vortex);
+    if !standing {
+        return None;
+    }
+    let points = h3_heroes::max_mana(details, core).saturating_mul(u16::from(factor));
+    (details.mana < points).then_some(points)
 }
 
 #[cfg(test)]

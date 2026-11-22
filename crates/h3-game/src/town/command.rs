@@ -88,10 +88,12 @@ pub(crate) fn command<S: Sink>(
 /// before, the owner's of every town, whose garrison levels a new Tavern raises, TWN-VEW-002);
 /// then the town's heroes learn its guild's spells (TWN-GLD-005, E09 T48a, [`guild::learn`]: the
 /// original's `town_build_effects` 0x5BEDE0 after every build, before the building's visit), so a
-/// guild level's, the Library's or the Aurora Borealis' build teaches at once. The caller checked
+/// guild level's, the Library's or the Aurora Borealis' build teaches at once; then its Mana Vortex
+/// to the garrison hero, then the visitor (TWN-GLD-009, E09 T49a1, [`guild::vortex`]: the
+/// building's visit, 0x5BF1B1), so the Vortex's own build gives it at once. The caller checked
 /// the store's town and its record's building; the treasury holds nothing a view shows, so a
 /// price paid before changes no view.
-// rule: TWN-BLD-005, TWN-VEW-004, TWN-GRO-007, TWN-GLD-005
+// rule: TWN-BLD-005, TWN-VEW-004, TWN-GRO-007, TWN-GLD-005, TWN-GLD-009
 pub(crate) fn build_told<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -127,6 +129,8 @@ pub(crate) fn build_told<S: Sink>(
     told.tell(state, rules, sink);
     // rule: TWN-GLD-005
     guild::learn(state, rules, town, sink);
+    // rule: TWN-GLD-009
+    guild::vortex(state, rules, town, sink);
 }
 
 /// The owner of `town` (the adventure's owner of its object; E09 increment 1's design note §11),

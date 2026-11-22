@@ -679,10 +679,11 @@ impl GameState {
             if let Some(captured) = outcome.capture {
                 town::capture(self, rules, (captured, player), sink);
             }
-            // rule: TWN-GLD-005
-            // E09 T48b: the visit's end, after a capture's effects (design §89, §90).
+            // rule: TWN-GLD-005, TWN-GLD-009
+            // E09 T48b: the visit's end, after a capture's effects (design §89, §90); since E09
+            // T49a1 the Mana Vortex before the learning.
             if let Some(entered) = outcome.town_entered {
-                town::guild::learn(self, rules, entered, sink);
+                town::guild::visit(self, rules, entered, sink);
             }
             // rule: TWN-GRO-007
             if outcome.flagged_dwelling {

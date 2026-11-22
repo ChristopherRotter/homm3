@@ -26,6 +26,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-21 (the town lane, E09 T49a1, `town/e09-t49a1`, `cross-lane` with the user's consent;
+  **in your paths, nothing to do**): `GameState::advance_day` (`state/day.rs`) calls
+  `towns_mut().start_week()` on a week's first day right after the towns' growth (every town's
+  Mana Vortex flag set, TWN-GLD-009, told with the week's views), and `regain_mana` reads
+  `town::guild::refilled` (TWN-GLD-008: a town with a guild ever built; its visitor and garrison
+  hero get their points or their maximum, whichever is more, in place of `day_mana`: the same
+  as the regain then the refill, the maximum once, for the day-start benchmarks); `settle_outcome` (`state.rs`) calls
+  `town::guild::visit` for `town_entered` (the Vortex to the garrison hero, then the visitor,
+  then the learning); GAM-CAL-002's summary says both. `h3-map`'s oracles taught them:
+  `play.rs`' conservation applies `night_refill` after a `DayStarted`'s regain, a hire's check
+  expects the town's flag cleared when the hired hero took the Vortex (`Town::with_vortex`, now
+  public); `view.rs`' hire fold sets the hired view's points at a `SetSpellPoints`. No version,
+  no golden replay moved.
+
 - 2026-11-21 (the town lane, E09 T48a, `town/e09-t48a`, `cross-lane` with the user's consent;
   **in your paths, nothing to do**): `GameState::change_hero` (`state/battle.rs`) is
   `pub(crate)` (the town's guild teaches through it) and `GameState::new` (`state.rs`) calls
