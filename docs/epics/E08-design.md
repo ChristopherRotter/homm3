@@ -246,10 +246,13 @@ the order of §10. A computer player's casts are E31's.
 
 - **At the build:** each `PrisonerSetup` becomes a hero in the store (its details as a placed
   hero's: GAM-SET-001's army, the levels at load from its custom experience, its skills, artifacts,
-  spells, then its spell points full), in the setup's object order after the placed heroes (the
-  original's loop over every type, `placed_heroes_setup`: by type; T139b compares the two orders'
-  draws and takes the original's), **in no player's list**, its pool status `Prisoner` (E09's,
-  TWN-SET-005 kept). The new day regains a stored hero's spell points as every hero's (already full).
+  spells, then its spell points full), in the setup's object order after the placed heroes, its
+  levels at load in hero id order with the other heroes' (decision 410; survey §2.1, T139b: the
+  original's loop, `placed_heroes_setup`, goes by type and levels a prisoner at its type's place,
+  but each level reseeds from the hero's own seed byte, so the order changes no hero's levels;
+  VCMI goes by object), **in no player's list**, its pool status `Prisoner` (E09's, TWN-SET-005
+  kept). The original's start list holds a player's placed heroes in type order (0x4CAF25, survey
+  §18 (1)): T141a compares the engine's. The new day regains a stored hero's spell points as every hero's (already full).
 - **At the visit** (`AdventureOutcome::prison`): the prisoner's status no longer `Prisoner` (no
   path reaches it without campaigns): the prison removed, `PrisonEmptied` to the visitor's owner.
   The visitor's player at the town part's most heroes on the map (garrison heroes not counted, as
@@ -324,7 +327,7 @@ first in the recipe.
 D-75 (its last boat and owner test) and D-78 the reading's, A-13, A-49, A-50, A-52 to A-54 seen, D-79 settled (no book on the map: §6);
 the original's click on a hidden blocked tile (the door's) or a hidden tree (Scuttle Boat's) is no
 cast and reveals nothing, a sunk hidden boat reveals nothing. T139b (the prisoners' draws) stays
-open.
+open. *Read* (T139b, 2026-11-22): the order changes no hero's levels; decision 410 (§15).
 
 ### 20. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -396,7 +399,9 @@ once every cast exists, so the encoding and the format move once.
   weights are the AI lane's (Revisit's and the market's precedent).
 - **The prisoners' level draws' order** (§15): the setup stream's order by type (the original's
   loop) or by object; a wrong order changes every prisoner's levels on the shipped maps but not a
-  rule; T139 reads it.
+  rule; T139 reads it. *Settled* (T139b, decision 410): each level is reseeded from the hero's own
+  seed byte, so the original's order changes no hero's levels; the build keeps the hero id order
+  (survey §2.1).
 - **A free probe** (decision 407): a flyer under `strict-fixed` may aim at the unknown and, stopped
   by hidden rock, pays only to its last stop node while keeping the passes' reveals; a scouting
   gain the original does not give. The audit (T145) looks at it in the bots' games.
