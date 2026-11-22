@@ -189,6 +189,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      - **Nothing else:** the Trading Posts, the Freelancer's Guild, the Altar of Sacrifice, the
        Hill Fort and the War Machine Factory keep no state (no visit limit, no owner, no week);
        the Altar's and the Hill Fort's visits set increment 12's kind marks.
+   - **Increment 15's objects** (E08 decision 394): **no new block.**
+     - **A prison's prisoner** is its drawn content in the static map (its `HeroId`; the hero's
+       details are the game's store); the freeing removes the object (increment 2's occupancy).
+     - **The Market of Time** keeps no state.
+     - **A hero's day spells** are plain per-hero fields (point 3).
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -346,6 +351,13 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    rest (its player, its last hero, ADR-0017 point 1). The setup's stand rule (ADV-MAP-001's
    `StandError::Visited`) is unchanged: only a hire places a hero on a tile its object is visited
    from.
+   From increment 15 a hero on the map holds its **day spells** (`DaySpells`): the Fly and Water
+   Walk levels (none, or 0 to 3 by the cast's mastery) and the day's Dimension Door casts. Its
+   flying and water-walking levels for its steps are the best of its details' (`h3_heroes::movement`,
+   the artifacts') and its day spells'. The adventure's start of the day clears them for every hero
+   on the map; boarding clears Fly and Water Walk; nothing else but a cast writes them. Batch E15
+   read them so (E08 T139a, survey `E08-spells.md` §18: E15-11, boarding cleared Fly; E15-12, Water
+   Walk cast aboard and kept after landing, A-49; E15-6, the day's doors counted).
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -971,6 +983,45 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      2 gems, four Air Elementals 25), its states (E14-13); the factory's machines (E14-15). E14-14's
      RoE-format map played at the game's version SoD and upgraded its Air Elementals, as the
      packs' rule above (E08 decision 378).
+   - **Increment 15's kinds:** `prison` (class 62; visited from a neighbour, by every player; its
+     visit's outcome names the prisoner, the game decides: the eight heroes, the store; freed, the
+     hero is placed on the entrance with a full day's land points, nothing revealed or visited) and
+     `empty` (class 50, the Market of Time: entered, never visited, the move ending on its entrance).
+   - **The adventure spells** (the adventure part's `[[spell]]` bindings of five core spells to a
+     closed `AdventureSpell`; `[params.spells]`: the door's points by mastery, the target window
+     9 × 8, the most boats): each cast is checked by the adventure after the game's checks
+     (ADR-0017 point 1) and applied infallibly; a charged failure (Summon Boat's and Scuttle Boat's
+     chance, a boat not found or not created, the door's wrong or hidden target) is an accepted
+     command. Summon Boat's choice by `ADV-QUIRK-53` (the reading's order, or the straight
+     distance on the hero's level), A-49 accepted, `ADV-QUIRK-54` (a re-cast) and `ADV-QUIRK-55` (the
+     door's wrong target charged) fix-optional, the window's extra row fixed (`ADV-QUIRK-56`). No
+     spell book is needed for a cast on the map (ADR-0013 point 17.3).
+   - **The flight over the unexplored** (`ADV-QUIRK-15`, reclassified fix-optional, E08 decision
+     399): on (`faithful`), the original's: an unexplored tile is passable only flying, never a
+     stop, refused when truly rock. Off (`strict-fixed`), the compromise: an unexplored tile is
+     assumed flyable at a pass's price, never a stop; the move walks step by step, each step
+     revealing; a step whose revealed tile the hero may not pass is not made, the move ending on
+     the last stop node reached, charged only the steps up to it (the passes after it free, their
+     reveals kept), the rest dropped (E08 decision 407). Walkers and water-walkers
+     never enter an unexplored tile in either setting.
+
+   This amends this point's rule that the legal moves never depend on a hidden tile: it holds
+   under `strict-fixed`; under `faithful` the flight's reach, the door's targets (`ADV-QUIRK-51`)
+   and Scuttle Boat's (`ADV-QUIRK-52`) read the hidden truth, as the original's (the user's flags,
+   E08 decisions 399, 402; E08 decision 7: the AI trains under the profile played).
+   Batch E15 (E08 T139a; survey `E08-spells.md` §18) confirmed every row of it as the original's:
+   the prison visited from the neighbour, its prisoner on the entrance facing right with a full
+   day's points, last in its owner's list (E15-1), the eight heroes on the map with garrisons not
+   counted (E15-2), the Market of Time entered and never visited (E15-3); the ground's and the
+   anti-magic garrison's refusals (E15-4), the door's casts a day by the mastery on a raising
+   ground (E15-5) and its points (E15-6), its charged failure on water (A-52, E15-7), its hidden
+   targets (A-53, E15-8: a click on a hidden blocked tile is no cast and reveals nothing) and the
+   window's extra row (A-54, E15-16); Summon Boat's last boat first, from another level (E15-9a),
+   and its owner test, the player's boat over another player's nearer one (E15-9b; D-75); Scuttle
+   Boat's hidden empty boat a target, nothing revealed at its sinking (A-50, E15-10); Fly's
+   re-cast free and without effect, a cast aboard refused (A-51, E15-11); the flight through the
+   unexplored at the hidden truth's prices (A-13, E15-13); no path over hidden water for a
+   water-walker (D-78, E15-14); a worn scroll's spell cast without a book (D-79, E15-15).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -1000,6 +1051,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    plus object appearance under the `faithful` profile once `ADV-QUIRK-1` is confirmed (Q30's rule:
    until then the clean behaviour only); nothing else of a hidden tile. Shared vision of allies
    comes with teams (E10).
+   From increment 15 three reveals: a door's arrival reveals around it by the scouting radius
+   (increment 11's jump; batch E15's E15-8); under `strict-fixed` a door's failed cast onto a hidden
+   tile, and every Scuttle Boat cast onto a hidden tile, reveal **that tile** for the caster's team
+   (E08 decisions 399, 402); under `faithful` neither reveals, as the original's (E15-8, E15-10).
 6. **Information hiding.** `observe` and `project` take the viewer (ADR-0004 point 6). An
    event's visibility is resolved when it is emitted, with the state at hand: it carries the
    players who may see it (a move per step, since the fog changes during it), so `project`
@@ -1134,6 +1189,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    and the Hill Fort's kind marks are increment 12's (told to the team that gains one). A trade's,
    a sacrifice's and an upgrade's changes are the game's events to the owner; a transfer shows
    its recipient its gain alone. `docs/06-security.md` lists it (E08 T131).
+   From increment 15 a viewer that sees a prison sees its type, never its prisoner (batch E15's
+   E15-1: the original's popup names the prison alone); a freed prisoner arrives as a hired hero
+   does (its owner and the tile's viewers). A hero's day spells are its owner's; other viewers see
+   their effects only (a door's jump by its two ends, a boat's leave, arrival, creation or sinking
+   by its tiles). A failed cast and its reason are the caster's. `docs/06-security.md` lists it
+   (E08 T140).
 
 ## Consequences
 
@@ -1227,6 +1288,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   block (adventure state hash's next version); the Hill Fort's elementals follow the enabled packs,
   not the map's format (batch E14, E08 decision 378); 1 058 objects on 148 shipped maps stop being
   inert blockers.
+- Increment 15 (E08 T137b, T140): 89 prisons on 41 shipped maps and the one Market of Time stop
+  being inert; the passage's row for unexplored tiles gains its two settings on the reach loop
+  (measured at T142); the hygiene property holds under `strict-fixed` only, and its plans run that
+  profile.
 
 ## Alternatives considered
 
@@ -1333,6 +1398,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   decision 378: the original's game version is the scenario dialog's, from the players' editions,
   so the Complete edition plays an RoE-format map at SoD's and upgrades them; the packs decide, E08
   decision 104).
+- Increment 15 (ADV-Q63): the flight kept fixed (no unexplored tile ever entered; A-13's option A)
+  and the original's alone (option B, no flag); the door's and Scuttle Boat's hidden targets refused
+  (explored tiles only); a failed door revealing nothing; Summon Boat by VCMI's whole rule (any
+  owner, no last boat first: refuted by batch E15's E15-9b); the door's window with the extra row
+  kept; the Market of Time as an inert blocker with an entrance (no kind).
 
 ## Revision history
 
@@ -1489,3 +1559,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   outcome (`AdventureOutcome::town_entered`, not state). Drafted in E09 T43 (design note
   `E09-design.md` §89); batch TWN-5's outcome (T44, survey `E09-guild.md` §21: every row as read)
   folded in.
+- 2026-11-22 (E08 T140 `shared/`; E08 decisions 394, 399 to 403, 407, ADV-Q63): points 1, 3, 4, 5
+  and 6 amended for increment 15, the Prison, the Market of Time and the adventure spells. Drafted
+  in E08 T137b (design note `E08-design.md` §1 to §13); batch E15's outcome (T139a, survey
+  `E08-spells.md` §18: every row as read; D-79, no book on the map) folded in.

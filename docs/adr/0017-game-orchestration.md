@@ -250,6 +250,25 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    Factory's question with the offers' answers and its dialog with the hire dialog's (batch E14's
    E14-16: the move ends on the entrance, the hero stays there through the window, and `Revisit`
    opens it again).
+   **The cast** (increment 15): `GameCommand::Cast { hero, spell, target }`, in the actor's turn
+   with no decision open. The game checks, in order, each refusal typed and changing nothing: the
+   actor's hero on the map; the spell castable on the map (`h3_heroes::can_cast_on_map`: among
+   the available spells, worn scrolls included, no book test, ADR-0013 point 17.3); one of the
+   adventure part's spells; the ground (the special ground's battlefield's highest spell level, an
+   anti-magic garrison's tile); the cost (`map_spell_cost` at the mastery on the hero's tile's
+   ground, the raise from the battle part) against the spell points; then the adventure's checks
+   (ADR-0016 point 4). The adventure applies, the game sets the spell points less the cost (at
+   least 0). Batch E15 saw the refusals change nothing (E08 T139a, survey `E08-spells.md` §18:
+   E15-4's ground and garrison, E15-5's fifth door, E15-6's door without movement points, E15-11's
+   cast aboard).
+   **The prisoners** (increment 15): the build stores each prisoner's details as a placed hero's
+   (its levels at load, army, skills, artifacts, spells, then its spell points), in the setup's
+   object order after the placed heroes, the levels at load in hero id order with the others
+   (E08 decision 410: the original's loop by type levels each hero from its own seed, so no
+   order is the original's), in no player's list, its type `Prisoner` in the pool (E09's). A
+   prison's visit outcome names it; the game frees it unless the visitor's player has the town
+   part's most heroes on the map (garrisons not counted, as the hire): its colour takes the type,
+   the hero joins the end of the player's list with its day's land points (E15-1, E15-2).
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -635,6 +654,8 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (170 101 x + 223 252 y + 250 037 z + 82 037) has no counterpart, since the engine's battle
    draws are its own. Batch E13's E13-1 found the original's records in the walk's order (each
    start drawing anew, the 27 levels against their chances with no evidence against them).
+   **Increment 15's draws:** Summon Boat's and Scuttle Boat's chance draws come from the caster's
+   stream, one draw each, in the cast's order (the draw made at 100 % too, as the original's).
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
@@ -981,6 +1002,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    Hill Fort's upgrade per slot (7) and `All` (1); one `Leave` for the three kinds (E08 decision
    372, `cross-lane`). The factory uses the offer's and the hire dialog's entries. An amount head
    stays the AI lane's.
+   **Increment 15's action encoding** (the next version at merge, v18; the AI lane's,
+   `cross-lane`): three casts without a target and two 19 × 17 windows around the hero (Dimension
+   Door, Scuttle Boat); the masks from `legal_commands`, which lists each castable spell after the
+   hero's moves (every offered target of the two windows in row order). The own hero's observation
+   gains its day spells.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -1063,6 +1089,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    stay. The numbers are the next at merge; after E09's increment 4 (merged first: part v22, map
    import v26, game state hash v34, replay format v19, encoding v13) they are part v23, map import
    v27, adventure state hash v27, game state hash v35, replay format v20 and encoding v14.
+   **Increment 15** bumps the adventure ruleset part (the two kinds, the spells' bindings and
+   parameters), the map import (the prisons and the Market of Time), the adventure state hash (the
+   day spells), the game state hash (the prisoners, the cast), the adventure replay format (`cast`),
+   the env's action encoding (the AI lane's, point 8) and `h3-protocol`'s protocol once per wire
+   task (the server lane's); the next at merge: part v25, map import v29, adventure state hash v28,
+   game state hash v39, replay format v24, encoding v18, protocol v79. Shared (E08 T140): the six
+   quirk flags of `ADV-QUIRK-15` and `-51` to `-55` in the core's profiles (no version moves: the
+   faithful profiles' ruleset hashes do); no new stream.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -1200,6 +1234,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     upgrade. A rejection leaves everything untouched. Every rate, price and most is the state's
     answer, never the command's. Batch E14 saw the gains and costs so (E14-1, E14-5, E14-6: Red
     −5 ore, Blue +5 on its turn; E14-4, E14-8, E14-10, E14-12, E14-15).
+    **Increment 15's outcomes:** a prison's visit names its prisoner (the game frees it or reports
+    the eight; no decision); a cast's outcome names its effects (a boat moved, created or sunk, a
+    hero relocated, the day spells set) or its charged failure with its reason; the spell points
+    are the game's change (the hero's details), never the adventure's. Batch E15 saw them so
+    (E15-1, E15-2; E15-7's charged door; E15-4's, E15-9a's and E15-9b's boats moved, E15-10's sunk).
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -1446,6 +1485,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   machines; the first gain of a player other than the actor (a transfer); `h3-protocol` maps the
   new answers, views, events and errors at each wire task (`cross-lane`), and the env appends 67
   entries once every answer exists.
+- Increment 15 (E08 T137b, T140): the cast is one command with an optional target, validated in
+  the game and the adventure before anything changes; a charged failure is an accepted command,
+  not a rejection, so a rejected cast still leaves the state untouched.
 
 ## Alternatives considered
 
@@ -1553,6 +1595,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   a transfer's giver to its recipient (the original's hot seat shows the treasury only); every
   trade amount in `legal_commands` (thousands per pair, as the hire dialog's amounts); a smaller
   env set without the market's trades, or no env change (E08 decision 372).
+- Increment 15 (ADV-Q63): the cast as an adventure command validating the spell points itself
+  (the adventure would hold or copy the hero's mana and the raise: rejected by ADR-0013 point 2);
+  a target dialog as a pending decision (the original's modal dialog; nothing waits on another
+  player, and a cancel is no command, so one command suffices); Visions as part of increment 15
+  (E12 with the information objects, decision 406); the cast's book test (the draft's, until
+  batch E15's E15-15 read none); the levels at load in type order, as the original's loop (E08
+  decision 410: no outcome against the original differs).
 
 ## Revision history
 
@@ -1729,3 +1778,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   two entries, the versions, the learning's triggers. Drafted in E09 T43 (design note
   `E09-design.md` Part G §82 to §100); batch TWN-5's outcome (T44, survey `E09-guild.md` §21:
   every row as read) folded in; placed after E09 increment 4's text.
+- 2026-11-22 (E08 T140 `shared/`; E08 decisions 394, 404 to 406, 410, ADV-Q63): points 1, 4, 8, 9
+  and 10 amended for increment 15, the cast and the prisoners. Drafted in E08 T137b (design note
+  `E08-design.md` §14 to §18); batch E15's outcome (T139a, survey `E08-spells.md` §18: every row as
+  read; D-79, no book test) and T139b's order (survey §2.1, decision 410) folded in.
