@@ -229,7 +229,7 @@ fn a_hire_dialog_is_answered_through_the_env() {
 /// verifies.
 #[test]
 fn a_replay_records_a_hire_dialogs_answers() {
-    assert_eq!(replay::REPLAY_FORMAT_VERSION, 23);
+    assert_eq!(replay::REPLAY_FORMAT_VERSION, 24);
     let (mut env, mut commands) = hired("t:several");
     for action in [Action::hire(2), Action::decline()] {
         let (_, command) = env.step_decoded(RED, action, &mut Vec::new()).unwrap();

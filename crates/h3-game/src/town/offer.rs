@@ -63,12 +63,13 @@ impl GameState {
 /// dialog opens ([`h3_towns::recruiting`]: a standing dwelling, horde, or Portal holding a
 /// creature), in the record's order (TWN-REC-001, -002; design §49), then since E09 T38a2 a hire
 /// of each of the player's two tavern slots that passes, in slot order (TWN-TAV-003; design §64,
-/// §76: `hire::legal_hires`), then since E09 T28a the hero moves between its bars `Enter`,
+/// §76: `hire::legal_hires`), then since E09 T49a2 its opening where it would change something
+/// (TWN-GLD-006; design §90: `guild::opens`), then since E09 T28a the hero moves between its bars `Enter`,
 /// `Leave`, `Swap` the adventure accepts (TWN-ROW-002 to -004; `rows::legal_moves`). A town built
 /// in today offers no build (TWN-BLD-004) and costs no Capitol test; a map without towns walks
 /// nothing.
 // rule: TWN-BLD-001, TWN-BLD-004, TWN-REC-001, TWN-REC-002, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004
-// rule: TWN-TAV-003
+// rule: TWN-TAV-003, TWN-GLD-006
 pub(crate) fn legal_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -101,11 +102,21 @@ pub(crate) fn legal_builds<'a>(
             let recruits = recruiting
                 .iter()
                 .map(move |building| GameCommand::Town(TownCommand::Recruit { town, building }));
+            // E09 T49a2: the hero on its entrance found once, for the hires, the opening and the
+            // moves (`bench-check`'s `legal-towns-36`).
+            let entrance = adventure.town_entrance_hero(town);
+            let visitor = entrance
+                .and_then(|(_, at)| at)
+                .map(|at| adventure.heroes()[at].id);
+            let free = entrance.is_some_and(|(_, at)| at.is_none());
             // E09 T38a2: the hires of its Tavern (TWN-TAV-003).
-            let hires = super::hire::legal_hires(state, rules, (town, hiring));
+            let hires = super::hire::legal_hires(state, rules, (town, hiring), free);
+            // E09 T49a2: its opening, only where it would change something (TWN-GLD-006).
+            let open = super::guild::opens(state, rules, town, visitor)
+                .then_some(GameCommand::Town(TownCommand::Open { town }));
             // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
-            let moves = super::rows::legal_moves(state, rules, player, town);
-            builds.chain(recruits).chain(hires).chain(moves)
+            let moves = super::rows::legal_moves(state, rules, player, (town, entrance));
+            builds.chain(recruits).chain(hires).chain(open).chain(moves)
         })
 }
 

@@ -29,6 +29,7 @@
 //! | 94 | Sacrifice the creatures' all at the player's open Altar (E08 T135a) |
 //! | 95 + s, s < 7 | Upgrade the stack in army slot `s` at the player's open Hill Fort (E08 T135a) |
 //! | 102 | Upgrade every stack that upgrades at the player's open Hill Fort (E08 T135a) |
+//! | 103 | Open the town screen of the town whose entrance is the tile in the tile head: its Mana Vortex, its guild's spells (E09 T49a2) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
@@ -53,7 +54,8 @@
 //! listed builds (E09 T19c1: the player's own towns, the entrance its hero enters by, TWN-VIS-001;
 //! one town an entrance), after [`RECRUIT`] those of the listed recruitments (E09 T27), after a
 //! [`TOWN_HEROES`] entry those of the listed hero moves of its kind (E09 T28a), after a
-//! [`TAVERN_HIRE`] entry those of the listed hires of its slot (E09 T38a2). A move's destination is a tile the hero's reachable-tiles query
+//! [`TAVERN_HIRE`] entry those of the listed hires of its slot (E09 T38a2), after [`TOWN_OPEN`]
+//! those of the listed openings (E09 T49a2). A move's destination is a tile the hero's reachable-tiles query
 //! lists, not its own; a tile another player's hero stands on is one (the visit is a battle,
 //! GAM-BAT-004). The action carries no path: the command takes the path the query chose
 //! (`h3_game::legal_moves`). A client may send any other path the hero can pay (`apply` checks
@@ -146,7 +148,13 @@
 //! [`HILL_FORT_UPGRADE`] (a slot's stack) and [`HILL_FORT_ALL`]. A market's transfer, another
 //! lot, resource or set has no entry (an amount head stays the AI lane's, as the hire dialog's);
 //! the closing role stays each kind's `Leave`. The factory needs none: its offer's and its hire
-//! dialog's entries.
+//! dialog's entries. Version 18 (E09 T49a2, the town lane's `cross-lane` change with the user's
+//! consent, E09 decision 193; the town epic's design note §95) appends [`TOWN_OPEN`]: a town
+//! screen's opening (`TownCommand::Open`, TWN-GLD-006) by its town's entrance in the tile head, the
+//! building head 0; one action per listed `Open`, which `legal_commands` lists only where it
+//! would change something (the Mana Vortex taken or a spell learned). Appended after the trades'
+//! and services' entries rather than beside the taverns' (the design note's place, written
+//! before version 17), so that no entry moves.
 
 use h3_adventure::{ALTAR_SLOTS, AdventureCommand, AltarPlaces, MarketParams, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -163,7 +171,7 @@ use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 17;
+pub const ACTION_ENCODING_VERSION: u32 = 18;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -284,8 +292,13 @@ pub const HILL_FORT_UPGRADE: usize = ALTAR_CREATURES + 1;
 /// ADV-HFT-002).
 pub const HILL_FORT_ALL: usize = HILL_FORT_UPGRADE + ARMY_SLOTS;
 
+/// The entry that opens the town screen of the town whose entrance is the tile in the tile head
+/// (E09 T49a2; TWN-GLD-006): its Mana Vortex to its garrison hero, then its visitor, then both
+/// learning its guild's spells.
+pub const TOWN_OPEN: usize = HILL_FORT_ALL + 1;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = HILL_FORT_ALL + 1;
+pub const ENTRY_COUNT: usize = TOWN_OPEN + 1;
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -447,6 +460,12 @@ impl Action {
         Self::map(TAVERN_HIRE + slot, tile)
     }
 
+    /// Opens the town screen of the town whose entrance is the tile at `tile` (E09 T49a2):
+    /// [`TOWN_OPEN`].
+    pub const fn town_open(tile: u32) -> Self {
+        Self::map(TOWN_OPEN, tile)
+    }
+
     /// The map phase's action of `entry` with `tile` (building 0).
     pub const fn map(entry: usize, tile: u32) -> Self {
         Self::Adventure(MapAction {
@@ -553,8 +572,8 @@ pub fn moves(
 /// (`EndTurn` while its turn runs, and [`BUILD_BOAT`] when it lists a `BuildBoat`, E08 T85b2b; a
 /// hero's revisit entry when it lists the hero's `Revisit`, E08 T105b2; [`BUILD`] when it lists a
 /// town's build, E09 T19c1, [`RECRUIT`] a town's recruitment, E09 T27, a [`TOWN_HEROES`] entry
-/// a hero move of its kind, E09 T28a, a [`TAVERN_HIRE`] entry a hire of its slot, E09 T38a2;
-/// or with an open decision its answers alone: `Decline`, and `Accept` while the offer stands,
+/// a hero move of its kind, E09 T28a, a [`TAVERN_HIRE`] entry a hire of its slot, E09 T38a2,
+/// [`TOWN_OPEN`] a town's opening, E09 T49a2; or with an open decision its answers alone: `Decline`, and `Accept` while the offer stands,
 /// E08 T15a; a level-up's `First` and `Second`, E08 T30; a hire dialog's purchases by their
 /// creatures' places, E08 T95b), and each hero slot with a tile to move to ([`legal_moves`]: none
 /// with a decision open); none in the battle phase, where the listed commands are the battle's
@@ -585,7 +604,9 @@ pub fn legal_mask(
 /// `BuildBoat`s after [`BUILD_BOAT`] (E08 T85b2b), the entrances of the towns of the listed builds
 /// after [`BUILD`] (E09 T19c1, [`town_tile`]) and of the listed recruitments after [`RECRUIT`]
 /// (E09 T27), of the listed hero moves of a [`TOWN_HEROES`] entry's kind after it (E09 T28a), and
-/// of the listed hires of a [`TAVERN_HIRE`] entry's slot after it (E09 T38a2); none after an illegal entry or in the battle phase (none for the neutral seat).
+/// of the listed hires of a [`TAVERN_HIRE`] entry's slot after it (E09 T38a2), and of the listed
+/// openings after [`TOWN_OPEN`] (E09 T49a2); none after an illegal entry or in the battle phase
+/// (none for the neutral seat).
 pub fn tile_mask(
     state: &GameState,
     rules: &GameRuleset,
@@ -634,6 +655,14 @@ pub fn tile_mask(
         for command in legal_commands(state, rules, seat.actor()) {
             if let GameCommand::Town(TownCommand::Hire { town, slot: listed }) = command
                 && listed == slot
+                && let Some(index) = town_tile(state, town)
+            {
+                mask[index as usize] = true;
+            }
+        }
+    } else if entry == TOWN_OPEN {
+        for command in legal_commands(state, rules, seat.actor()) {
+            if let GameCommand::Town(TownCommand::Open { town }) = command
                 && let Some(index) = town_tile(state, town)
             {
                 mask[index as usize] = true;
@@ -763,12 +792,12 @@ pub fn second_mask(
 }
 
 /// Whether `entry` takes no tile: `EndTurn`, an answer (a hire dialog's purchase too; since E08
-/// T135a the trades' and services') or a revisit (E08 T105b2).
+/// T135a the trades' and services') or a revisit (E08 T105b2); not [`TOWN_OPEN`] (E09 T49a2).
 const fn tileless(entry: usize) -> bool {
     entry == END_TURN
         || (entry >= ACCEPT && entry < BUILD_BOAT)
         || (entry >= HIRE_BASE && entry < BUILD)
-        || (entry >= MARKET_TRADE && entry < ENTRY_COUNT)
+        || (entry >= MARKET_TRADE && entry < TOWN_OPEN)
 }
 
 /// The [`MARKET_TRADE`] entry of the pair (`give`, `take`) (E08 T135a): `MARKET_TRADE + give ×
@@ -1052,7 +1081,9 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
 /// The entry of a command [`legal_commands`] lists outside a battle for `seat`:
 /// [`tileless_entry`]'s (with `hire`, the open hire dialog's creatures), [`BUILD_BOAT`] for a
 /// `BuildBoat` (E08 T85b2b), a `Revisit`'s by its hero's slot ([`revisit_entry`], E08 T105b2),
-/// [`BUILD`] for a town's build (E09 T19c1), or [`RECRUIT`] for its recruitment (E09 T27).
+/// [`BUILD`] for a town's build (E09 T19c1), [`RECRUIT`] for its recruitment (E09 T27), a
+/// [`TOWN_HEROES`] entry for a hero move (E09 T28a), a [`TAVERN_HIRE`] entry for a hire (E09
+/// T38a2), or [`TOWN_OPEN`] for an opening (E09 T49a2).
 fn command_entry(
     state: &GameState,
     seat: Seat,
@@ -1070,6 +1101,7 @@ fn command_entry(
             Some(TOWN_HEROES + town_hero_index(*change))
         }
         GameCommand::Town(TownCommand::Hire { slot, .. }) => tavern_entry(*slot),
+        GameCommand::Town(TownCommand::Open { .. }) => Some(TOWN_OPEN),
         other => tileless_entry(other, hire),
     }
 }
@@ -1148,9 +1180,9 @@ fn build_boat(
 /// town's build of the building at the building head's index in the town whose entrance is the
 /// tile (E09 T19c1), or since E09 T27 its recruitment there, or since E09 T28a a hero's move
 /// between its bars of a [`TOWN_HEROES`] entry's kind (building 0), or since E09 T38a2 its hire of
-/// the hero in the player's tavern slot of a [`TAVERN_HIRE`] entry (building 0) (a building other than 0 with another
-/// entry names none); none for the neutral
-/// seat. In the battle phase: the battle command the battle's encoding decodes the
+/// the hero in the player's tavern slot of a [`TAVERN_HIRE`] entry (building 0), or since E09
+/// T49a2 its opening with [`TOWN_OPEN`] (building 0) (a building other than 0 with another entry
+/// names none); none for the neutral seat. In the battle phase: the battle command the battle's encoding decodes the
 /// action to ([`battle::decode`]), for the seat's battle ([`battle_of`]). Whether the command may
 /// be issued now (whose turn it is, an open decision, the price, the side to act) is `apply`'s.
 pub fn decode(
@@ -1177,6 +1209,10 @@ pub fn decode(
         let town = town_of_tile(state, action.tile)?;
         return (action.building == 0)
             .then_some(GameCommand::Town(TownCommand::Hire { town, slot }));
+    }
+    if action.entry == TOWN_OPEN {
+        let town = town_of_tile(state, action.tile)?;
+        return (action.building == 0).then_some(GameCommand::Town(TownCommand::Open { town }));
     }
     if action.entry == BUILD || action.entry == RECRUIT {
         let town = town_of_tile(state, action.tile)?;
@@ -1226,8 +1262,9 @@ pub fn decode(
 /// its Shipyard's anchor (E08 T85b2b), a `Revisit` by its hero's slot (tile 0, E08 T105b2), a
 /// town's build by its town's entrance and its building's index (E09 T19c1), its recruitment the
 /// same way (E09 T27), a hero's move between its bars by its kind's entry and the town's entrance
-/// (E09 T28a), a hire by its slot's entry and the town's entrance (E09 T38a2; none of these for
-/// the neutral seat), a battle command by the
+/// (E09 T28a), a hire by its slot's entry and the town's entrance (E09 T38a2), an opening by
+/// [`TOWN_OPEN`] and the town's entrance (E09 T49a2; none of these for the neutral seat), a
+/// battle command by the
 /// battle's encoding for the seat's battle ([`battle::encode`]). [`decode`] gives the command back
 /// when a move's path is the one the hero's query chose (a move along another path decodes to the
 /// query's path to the same tile) and a `BuildBoat`'s Shipyard is one the player may use.
@@ -1264,6 +1301,9 @@ pub fn encode(
             tavern_entry(*slot)?;
             return town_tile(state, *town)
                 .map(|tile| Action::tavern_hire(tile, usize::from(*slot)));
+        }
+        GameCommand::Town(TownCommand::Open { town }) => {
+            return town_tile(state, *town).map(Action::town_open);
         }
         GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) => {
             let listed = legal_commands(state, rules, seat.actor());

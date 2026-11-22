@@ -187,6 +187,10 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         town: TownId::new(1),
         slot: 1,
     }));
+    // E09 T49a2 (protocol v79).
+    commands.push(GameCommand::Town(TownCommand::Open {
+        town: TownId::new(2),
+    }));
     // E16 M5 T14 (v56): the system actor's own commands.
     let player = PlayerId::new(1);
     commands.extend(

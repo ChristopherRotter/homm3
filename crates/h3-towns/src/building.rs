@@ -66,6 +66,12 @@ impl BuildingSet {
         Self(self.0 & !other.0)
     }
 
+    /// The buildings of both sets (E09 T49a2).
+    #[must_use]
+    pub const fn intersection(self, other: Self) -> Self {
+        Self(self.0 & other.0)
+    }
+
     /// Whether the two sets share a building (E09 T26b).
     pub const fn intersects(self, other: Self) -> bool {
         self.0 & other.0 != 0

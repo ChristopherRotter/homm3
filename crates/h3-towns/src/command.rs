@@ -5,8 +5,9 @@
 //! recruitment opens the hire dialog of what a building sells ([`crate::recruit_source`]); since
 //! E09 T28a a hero moves between the town's two bars ([`TownHeroChange`], the rules the adventure
 //! context's, whose records the garrison hero and the visitor are, ADR-0028 point 2); since E09
-//! T38a1 a tavern hero is hired at the town's Tavern ([`crate::check_hire`], TWN-TAV-003). A
-//! refused command changes nothing.
+//! T38a1 a tavern hero is hired at the town's Tavern ([`crate::check_hire`], TWN-TAV-003); since
+//! E09 T49a2 the town screen is opened, its heroes visiting the Mana Vortex and learning the
+//! guild's spells (TWN-GLD-006). A refused command changes nothing.
 
 use core::fmt;
 
@@ -19,6 +20,7 @@ use crate::building::BuildingId;
 /// that the game and the wire match every variant (SRV-Q25; E09 T18b1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 // rule: TWN-BLD-001, TWN-REC-001, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004, TWN-TAV-003
+// rule: TWN-GLD-006
 pub enum TownCommand {
     /// Builds `building` in `town`, the player's, as its hall offers it ([`crate::buildable`]),
     /// for the part's price (TWN-BLD-001): no hero, no visit, no field trusted but the two ids.
@@ -56,6 +58,16 @@ pub enum TownCommand {
         town: TownId,
         /// The player's tavern slot: 0 or 1.
         slot: u8,
+    },
+    /// Opens the town screen of `town`, the player's (TWN-GLD-006; E09 T49a2, design §90,
+    /// decisions 170, 175, 178: the original's town screen from the town list, `town_screen_init`
+    /// 0x5C63C0 visiting the buildings, then its bars and its guild window teaching): the town's
+    /// Mana Vortex to its garrison hero, then its visitor (TWN-GLD-009), then both learning the
+    /// guild's spells, the visitor first (TWN-GLD-005). No visit, no movement points, no field
+    /// trusted but the town's id; an opening that changes nothing is accepted and changes nothing.
+    Open {
+        /// The town.
+        town: TownId,
     },
 }
 
