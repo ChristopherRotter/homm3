@@ -55,8 +55,7 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
-<<<<<<< HEAD
-**From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**):
+**From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**; E08 T140, `shared/e08-t140`, `cross-lane`; **in your paths, nothing to do**):
 
 - 2026-11-21: E08 increment 15 (design note `docs/epics/E08-design.md` §17, decision 407) gives
   the adventure env's action encoding **v18** at T144a, `cross-lane` in your paths: three casts
@@ -65,6 +64,12 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
   workloads' weights and step cap are yours); the own hero's observation gains its day spells.
   Under `strict-fixed` a flight's move may end early at hidden rock (its rest dropped, as an
   event's stop); four new fix-optional flags make `faithful`'s legal moves read hidden tiles.
+- 2026-11-22 (E08 T140): increment 15's six fix-optional flags joined the core's profiles
+  (`ADV-QUIRK-15`, `-51` to `-55`, `QuirkFlag(45)` to `(50)`, on in `faithful`), so the base
+  faithful ruleset hash moved `0x36b98ea152b4db95` to `0x0ee6066a4c802530`: `bots-report-v1.json`
+  and `bots-neutral-v1.json` regenerated (only `engine.core` moved). The E25 ceiling records
+  (`python/records/ceiling/*.json`) keep the old `core` as the record of their runs (no test reads
+  it); nothing reads the flags until E08 T142 and T143.
 
 **From the town lane** (E09 T43, `town/e09-t43`, docs only; **planned, nothing to do now**):
 

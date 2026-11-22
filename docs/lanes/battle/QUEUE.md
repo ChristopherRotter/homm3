@@ -20,6 +20,17 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-22 (the adventure lane, E08 T140, `shared/e08-t140`, `cross-lane` with the user's
+  consent; **in your paths, nothing to do**): `h3-harvest`'s two profile texts and
+  `packs/base/core.toml`'s two profile lines gained increment 15's six fix-optional flags
+  (`quirk.adventure.flight_reads_hidden`, `door_reads_hidden`, `scuttle_reads_hidden`,
+  `summon_boat_by_steps`, `spell_recast_refused`, `door_failure_charged`: `QuirkFlag(45)` to
+  `(50)`, on in `faithful`, off in `strict-fixed`; their ids in the lines' comments). The base
+  faithful ruleset hash moved to `0x0ee6066a4c802530`; `RULESET_HASH_VERSION` and the pack format
+  kept; the ten battle replays (synthetic) unchanged; your HANDOFF's versions line updated. ADR-0013
+  point 17 (`spell_masteries_on` with an explicit raise, from E08 T141b) is open to your hero casts
+  at your choice of when (`cross-lane` only when you take it).
+
 - 2026-11-21 (the adventure lane, E08 T138, `adventure/e08-t138`, `cross-lane` with the user's
   consent; **in your paths, nothing to do**): `h3-experiment` gained batch E15's fields:
   `[[map.prison]]` (`PrisonSpec`, a prisoner's `HeroSpec` without owner or tile, its type used),
