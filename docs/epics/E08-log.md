@@ -21986,3 +21986,28 @@ order (a lead for T139b, a point for T141a), the Admiral's Hat's boat spells (HE
 **Docs:** decision 409 and the task's line; design note §6, §18, §19 (*Run and scored*), §20's
 criterion 3, §21; survey §0 and §18; the results files' header lines. **Versions:** none moved.
 **Next:** T139b (the prisoners' level draws' order, a reading), then T140.
+
+### Increment 15, round 3: T139b, the order of the prisoners' level draws read (2026-11-22, `adventure/e08-t139b`)
+
+A code reading (only `Heroes3.exe` staged, SHA-256 checked; the repo from GitHub, the PC's shell
+down). No code.
+
+**Read:** `placed_heroes_setup` (0x4CAE10) whole again: 156 passes over the setup records in slot
+order, slot i holding type i (`hero_setup_reset` 0x4B8450 from `game_reset`; the bodies written by
+type), so the loop goes by type; every record reaches `placed_hero_setup`, placed or not, so a
+prisoner gets its levels at its type's place before its 0x41 test (survey `E08-spells.md` §2.1). A
+placed hero joins its owner's list in the loop's order (0x4CAF25): batch E15's start list in type
+order is the loop's (for T141a). Each level reseeds the C runtime's generator from the hero's own
+seed byte (drawn per type in type order by `new_game_heroes` before the map), and nothing else on
+the path draws (the choice 0x52BBD0 and its two callees included), so the order changes no hero's
+levels; it shows only in the generator left for the setup's later draws (`set_random_seed` keeps
+no seed to restore; nothing for the build, ADR-0017 point 4). VCMI 1.7.5 levels the heroes on the
+map in object order, prisons among them, each type from its own generator (`heroSkillSeed`).
+
+**Decided:** decision 410 (the user): the levels at load keep the hero id order, a prisoner's
+record after the placed heroes in the setup's object order (design §15 as drafted, its wording
+settled; §21's risk settled).
+
+**Docs:** survey §2.1 and §18's T139b point; design §15, §21; `docs/exe/map.toml`
+(`placed_heroes_setup`, the site `placed_hero_listed`, `hero_setup_reset`, `set_random_seed`);
+decision 410 and the task's line. **Versions:** none moved. **Next:** T140 (`shared/`).

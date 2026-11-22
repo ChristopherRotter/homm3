@@ -161,6 +161,44 @@ no reveal, not shown (0x4CAEF9), and it is never moved onto a town's entrance (0
 record then rests in the game's array until a visit. The new day regenerates its spell points as
 every record's (survey `E08-economy.md` §12), already at its maximum.
 
+**The loop's order (E08 T139b, `placed_heroes_setup` read whole again).** It walks the 156 records
+in slot order (from game +0xA4, step 0x334, 0x4CAE1B to 0x4CAFB4). `game_reset` (0x4BF2BC) gives
+slot i its own type i (`hero_setup_reset` 0x4B8450: owner −1, type i, no position, no flag), and
+`map_custom_heroes_read` and `load_hero_body` write a body into its type's record (a random hero's
+into its drawn type's, 0x502374), so the loop goes **by type**. Every record reaches
+`placed_hero_setup`, placed (0x4CAEEE) or not (0x4CAFA2): a prisoner gets its levels in the loop at
+its type's place, before its 0x41 test, and so does an SoD customised type that is not on the map.
+A placed hero that is not a prisoner joins its owner's list there (the player record's +0x8, its
+count +0x1; 0x4CAF25), so **a player's placed heroes start in type order** (row E15-1's lead, §18
+(1); for T141a).
+
+**The order changes no hero's levels.** Each level reseeds the C runtime's generator from the
+hero's own seed byte S and the new level (survey `E08-progression.md` §2.2, `ADV-QUIRK-9`), and S
+is drawn for the 156 types in type order before the map is read (`new_game_heroes` 0x4BFE8D to
+0x4BFEE7: per type its default experience, its starting army, then S). Nothing else in
+`placed_hero_setup` draws, nor does the levels' choice (0x52BBD0 with 0x524690 and 0x524DD0). So
+a hero's levels at load follow from its S, class, skills and counters, wherever it stands in the
+loop. The order shows only in the generator the loop leaves behind: `set_random_seed` (0x50C5F0)
+keeps no earlier seed to restore, and none of its twelve callers restores one, so the setup's
+draws after the loop (`main_town_heroes` 0x4C004D, the taverns' heroes 0x4C012A) run on from the
+last level given there, when any: that of the highest type levelled at load. The program seeds the generator once
+from `timeGetTime` (`window_procedure` 0x4F7C40). The engine draws all of these from its own
+streams (ADR-0017 point 4, E08 decision 9): nothing for the build. Each start draws S anew, so a
+prisoner's levels differ between starts (T139a: 15a's prisoner 2/1/3/4, then 2/3/2/3).
+
+**VCMI 1.7.5** (`CGameState::initHeroes`, `CGHeroInstance::initHero`, `GameRandomizer`) sets up
+every hero on the map in the order it was added (the file's object order; a prison is a
+`CGHeroInstance` among them, and the boats' loop skips `Obj::PRISON`), then the pool's unused
+types. A set experience is levelled by `levelUpAutomatically` from a generator of the hero type's
+own (`heroSkillSeed`, seeded at the type's first roll from the game's default generator) and
+takes the first offer (D-20). So VCMI also levels each hero from its own generator; its object
+order decides only which default draw seeds that generator. Neither order is a rule.
+
+**For the build** (design §15, decision 410): the levels at load in hero id order as today, a
+prisoner's record after the placed heroes in the setup's object order. In `faithful` a hero's
+levels follow its own level seed (GAM-HER-002, the seeds drawn in hero id order); in
+`strict-fixed` they follow the setup stream in hero id order. Both are the engine's own.
+
 ### 2.2 The visit (`visit_prison` 0x4A3EB0)
 
 Args: the visitor, the tile, the packed entrance, the human flag (messages only). The prisoner's
@@ -603,7 +641,10 @@ Hat left 2 807 and then 1 407 of E15-11's 1 560: D-41's conversions after a step
 vtables 0x63DB9C (the door's) and 0x63DBD8 (Scuttle Boat's), observed (`docs/exe/map.toml`).
 
 **For T139b:** the prisoners' level draws' order (§15, design §21) is left open: each start draws
-anew and one prisoner levels here; (1) is the lead. **For T140** (the drafts with this outcome):
+anew and one prisoner levels here; (1) is the lead. *Settled by T139b* (2026-11-22, §2.1): the
+loop goes by type and levels a prisoner at its type's place, but each level is reseeded from the
+hero's own S, so the order changes no hero's levels; (1) is the loop's (0x4CAF25); the build
+keeps the hero id order (decision 410). **For T140** (the drafts with this outcome):
 every point as drafted but ADR-0013 point 17's book: a worn scroll's spell casts on the map
 without a book (D-79; the draft's "until E15-15" goes). **Toward `verified`** (by building task,
 exit criterion 10): ADV-PRI-001 to -003 (E15-1, -2; the prisons' popups) and ADV-OBJ-008 (E15-3) at T141a; HER-SPL-003
