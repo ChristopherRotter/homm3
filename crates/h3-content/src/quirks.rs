@@ -132,6 +132,12 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.town.leave_points_over_cleared_army",
     "quirk.town.guild_artifacts_by_backpacks",
     "quirk.town.aurora_ignores_map_bans",
+    "quirk.adventure.flight_reads_hidden",
+    "quirk.adventure.door_reads_hidden",
+    "quirk.adventure.scuttle_reads_hidden",
+    "quirk.adventure.summon_boat_by_steps",
+    "quirk.adventure.spell_recast_refused",
+    "quirk.adventure.door_failure_charged",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -374,6 +380,54 @@ pub const GUILD_ARTIFACTS_BY_BACKPACKS: QuirkFlag = QuirkFlag(43);
 /// Class `fix-optional`; read by `h3-towns`' Aurora set from E09 T48a.
 pub const AURORA_IGNORES_MAP_BANS: QuirkFlag = QuirkFlag(44);
 
+/// ADV-QUIRK-15 (A-13, reclassified fix-optional by E08 decision 399; survey `E08-spells.md`
+/// §7.3, §13, batch E15's E15-13): the original's pathfinder lets a flying hero pass over a tile
+/// its player has not explored, never stop there, and refuses it only where the hidden tile is
+/// rock (`pathfinder_expand` 0x4B2300), so the flight's reach and prices read the hidden truth.
+/// Off: the compromise (increment 15's design note §11.1): an unexplored tile is assumed flyable
+/// at a pass's price, never a stop; the move walks step by step, each step revealing, and ends on
+/// the last stop node reached before a step the revealed tile forbids, charged only up to it (E08
+/// decision 407). Walkers and water-walkers never enter an unexplored tile either way. Class
+/// `fix-optional`; read by the adventure's passage from E08 T142.
+pub const FLIGHT_READS_HIDDEN: QuirkFlag = QuirkFlag(45);
+
+/// ADV-QUIRK-51 (A-53, E08 decision 399; survey `E08-spells.md` §8.2, batch E15's E15-8): the
+/// original's Dimension Door target dialog offers a hidden tile of its window when the tile is
+/// truly free and none where it is blocked (`door_target_proc` 0x491900 reads the hidden truth);
+/// a click on a hidden blocked tile is no cast. Off: every hidden tile of the window is a target,
+/// the truth read at the cast (a wrong one fails, charged, and is revealed to the caster's team).
+/// Class `fix-optional`; read by the door from E08 T143b.
+pub const DOOR_READS_HIDDEN: QuirkFlag = QuirkFlag(46);
+
+/// ADV-QUIRK-52 (A-50, E08 decision 402; survey `E08-spells.md` §6, batch E15's E15-10): the
+/// original's Scuttle Boat dialog offers a hidden tile only where an empty boat truly lies, and
+/// sinks it revealing nothing. Off: every hidden tile of the window is a target, a hidden empty
+/// boat drawn for and sunk, any other hidden tile a charged failure, the tile revealed to the
+/// caster's team in every outcome. Class `fix-optional`; read by Scuttle Boat from E08 T143a.
+pub const SCUTTLE_READS_HIDDEN: QuirkFlag = QuirkFlag(47);
+
+/// ADV-QUIRK-53 (D-75, E08 decision 400; survey `E08-spells.md` §5, batch E15's E15-9a and
+/// E15-9b): after the hero's last empty boat, Summon Boat takes the least |dx| + |dy| among the
+/// empty boats of the caster's player or of nobody, levels ignored, a tie to the later index (the
+/// reading). Off: the least dx² + dy² on the hero's level, a tie to the lower index. Class
+/// `fix-optional`; read by Summon Boat from E08 T143a.
+pub const SUMMON_BOAT_BY_STEPS: QuirkFlag = QuirkFlag(48);
+
+/// ADV-QUIRK-54 (A-51, E08 decision 403; survey `E08-spells.md` §7.1, batch E15's E15-11): Fly is
+/// refused while it is on or Angel Wings are worn, and Water Walk on land while it is on or Boots
+/// of Levitation are worn, free and silent (the original's "nothing"), so a re-cast at a higher
+/// mastery never raises the level. Off: refused only when the new level would not exceed the
+/// current one (the artifacts' 3 included). Class `fix-optional`; read by Fly and Water Walk from
+/// E08 T142.
+pub const SPELL_RECAST_REFUSED: QuirkFlag = QuirkFlag(49);
+
+/// ADV-QUIRK-55 (A-52, E08 decision 403; survey `E08-spells.md` §8.1, batch E15's E15-7): an
+/// explored Dimension Door target of the wrong kind (land from a boat, water from land) is
+/// offered and its cast fails, charged (GENRLTXT 71: the mana, the points, a cast of the day).
+/// Off: such an explored target is refused, changing nothing; a hidden one still fails charged.
+/// Class `fix-optional`; read by the door from E08 T143b.
+pub const DOOR_FAILURE_CHARGED: QuirkFlag = QuirkFlag(50);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -416,7 +470,27 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 45);
+        assert_eq!(REGISTRY.len(), 51);
+        assert_eq!(
+            [
+                "quirk.adventure.flight_reads_hidden",
+                "quirk.adventure.door_reads_hidden",
+                "quirk.adventure.scuttle_reads_hidden",
+                "quirk.adventure.summon_boat_by_steps",
+                "quirk.adventure.spell_recast_refused",
+                "quirk.adventure.door_failure_charged",
+            ]
+            .map(|name| REGISTRY.lookup(name)),
+            [
+                FLIGHT_READS_HIDDEN,
+                DOOR_READS_HIDDEN,
+                SCUTTLE_READS_HIDDEN,
+                SUMMON_BOAT_BY_STEPS,
+                SPELL_RECAST_REFUSED,
+                DOOR_FAILURE_CHARGED,
+            ]
+            .map(Some)
+        );
         assert_eq!(
             [
                 REGISTRY.lookup("quirk.town.creature_month_exact"),
@@ -617,7 +691,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 45);
+        assert_eq!(REGISTRY.len(), 51);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -631,7 +705,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..45).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..51).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

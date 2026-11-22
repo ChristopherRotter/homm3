@@ -1001,7 +1001,13 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.sirens_again_after_battle\" = true, \
          \"quirk.town.leave_points_over_cleared_army\" = true, \
          \"quirk.town.guild_artifacts_by_backpacks\" = true, \
-         \"quirk.town.aurora_ignores_map_bans\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-14\n",
+         \"quirk.town.aurora_ignores_map_bans\" = true, \
+         \"quirk.adventure.flight_reads_hidden\" = true, \
+         \"quirk.adventure.door_reads_hidden\" = true, \
+         \"quirk.adventure.scuttle_reads_hidden\" = true, \
+         \"quirk.adventure.summon_boat_by_steps\" = true, \
+         \"quirk.adventure.spell_recast_refused\" = true, \
+         \"quirk.adventure.door_failure_charged\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-14\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -1045,7 +1051,13 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.sirens_again_after_battle\" = false, \
          \"quirk.town.leave_points_over_cleared_army\" = false, \
          \"quirk.town.guild_artifacts_by_backpacks\" = false, \
-         \"quirk.town.aurora_ignores_map_bans\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-14\n",
+         \"quirk.town.aurora_ignores_map_bans\" = false, \
+         \"quirk.adventure.flight_reads_hidden\" = false, \
+         \"quirk.adventure.door_reads_hidden\" = false, \
+         \"quirk.adventure.scuttle_reads_hidden\" = false, \
+         \"quirk.adventure.summon_boat_by_steps\" = false, \
+         \"quirk.adventure.spell_recast_refused\" = false, \
+         \"quirk.adventure.door_failure_charged\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-14\n",
     );
 
     // ab
