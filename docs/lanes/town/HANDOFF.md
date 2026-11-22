@@ -39,7 +39,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   lane's (with T47a2: game state hash v38, map import v28; adventure part v24, adventure state hash
   v27; replay format v24, T49a2), the env's (v18, T49a2) and the protocol's (v79, T49a2) are bumped
   `cross-lane` (each task's record in `E09-log.md`; increment 5's plan in design §96). Shared: core
-  ruleset hash v53, pack format v53 (E08 T124a), quirk flags 44 (T45: `TWN-QUIRK-14`'s).
+  ruleset hash v53, pack format v53 (E08 T124a), quirk flags 51 (E08 T140; `TWN-QUIRK-14`'s at T45).
 - **Ids** (next): questions `TWN-Q34`; decisions 194; quirks `TWN-QUIRK-15` (`-14` entered by T45,
   taught by T48a's Aurora); stubs `TWN-STUB-21`; experiment batch `TWN-6`; disputes `TD-28`;
   quirk candidates `T-19`. ADR-0028 is the lane's; no drafts open; TWN-GLD-001 to -003, -004's

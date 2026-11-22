@@ -32,6 +32,14 @@ refined.
 
 ## Inbox
 
+- 2026-11-22 (the adventure lane, E08 T140, `shared/e08-t140`, `cross-lane` with the user's
+  consent; **mechanical at a merge**): the base faithful ruleset hash moved
+  `0x36b98ea152b4db95` to `0x0ee6066a4c802530` (increment 15's six flags in the profiles), so every
+  golden adventure replay's `ruleset_hash` header moved (commands and hashes kept; all 111
+  verified): a branch that adds or re-records a replay takes the new header after merging
+  `master`. ADR-0017 point 1 now holds the prisoners' build and freeing (T137b's note below), ADR-0016
+  point 4 the kinds `prison` and `empty`.
+
 - 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`; **for your planning, nothing
   to build**): from E08 T141a every prisoner is a hero in the store with details (a placed hero's:
   levels at load, army, skills, artifacts, spells), in no list, still `HeroStatus::Prisoner` in the

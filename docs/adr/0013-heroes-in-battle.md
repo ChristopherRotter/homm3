@@ -59,7 +59,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    towns depend on it; `h3-battle` never does and sees only `BattleHero` (points 4 and 5). **What a
    hero has from its details in every context is derived here once** (BAT-Q19): its available spells
    (learned, worn scrolls, the spell-giving artifacts) and its mastery of a spell
-   (`h3_heroes::available_spells`, `spell_masteries`), from E08 increment 3 the adventure's Attack
+   (`h3_heroes::available_spells`, `spell_masteries`), also **on a ground that raises it** (from E08
+   increment 15, point 17: `spell_masteries_on` with the ground's raise, which the caller derives
+   from the battlefield; `spell_masteries` is the ordinary ground's), from E08 increment 3 the adventure's Attack
    and Defense, Diplomacy's join bonus, the maximum spell points, Necromancy and Learning, from
    increment 4 progression (point 12), from increment 5 its movement and scouting (point 13), from
    increment 6 its artifact moves (point 14), from increment 7 its rewards (point 15); no context
@@ -372,6 +374,28 @@ are computed before the seam (03-domain). The seam must change once for E04a and
        `HeroChange::SetSpellPoints` (ADR-0017 points 3 and 10); `h3-heroes` gives the maximum.
        Batch TWN-5 confirmed both (E09 T44, TWN-5-5: the guild's refill to 20 at a turn's start,
        not doubled; the Vortex's 40 at a visit or an opening, once a week a town).
+17. **A spell's mastery on a ground and its cost on the map are `h3-heroes`' derivations** (E08
+    increment 15; pure functions of the details, the core ruleset and an explicit raise):
+    1. **The raise** (`SchoolRaise`: none, every school, or a set of schools) is an input. Each
+       caller derives it from the ground's battlefield of the battle part
+       (`Battlefield::expert_schools`, BAT-TER-005's data): the battle from its battlefield, the
+       game from the special ground of the hero's tile (`AdventureState::special_ground`). A raised
+       school gives Expert to every spell among its schools; the rest is HER-SPL-003's (the best
+       school mastery, the `spell_mastery` effects, at most Expert). The original's
+       `hero_school_mastery` 0x4E5100 with the tile's field (survey `E08-spells.md` §4.2).
+       `h3-heroes` reads no battle content; the battle may call it for its heroes' casts (its
+       choice of when, `cross-lane`), so one rule serves both contexts. Batch E15 confirmed it (E08
+       T139a, survey `E08-spells.md` §18: E15-5, Magic Plains raise Air to Expert, four doors a
+       day; E15-4, Cursed Ground leaves a mastery above None as it is).
+    2. **The cost on the map** (`map_spell_cost`, HER-SPL-008): the core's cost at that mastery,
+       at least 1, without the armies' ±2 (battle-only: `hero_spell_cost` 0x4E5240 adds them only
+       with an enemy army). Spent by the existing spell points change. Confirmed by E15-4 and
+       E15-5 (Summon Boat's 7 at Expert Water Magic, Dimension Door's 20 at the raised Expert).
+    3. **Who may cast on the map** (`can_cast_on_map`): the spell among the available spells (its
+       worn scrolls included), **no spell book test**: batch E15's row E15-15 saw the original cast
+       a worn scroll's Dimension Door by a hero without a book, the book opening and listing it
+       (E08 decision 404's row, D-79; VCMI 1.7.5 alike: `canCastThisSpell` counts a worn scroll);
+       `ADV-STUB-21` withdrawn.
 
 ## Consequences
 
@@ -426,6 +450,10 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   hero on the map instead of returning a hero change; `derive_battle_hero` and the land points
   take an input more; the battle names each visit's morale and luck by its mark, which the client
   lane's lines read. No seam changes (`EffectSource::Visit { mark: u8 }` stays).
+- The adventure's casts (point 17, increment 15) read their mastery from the same derivation as
+  the battle's, with the ground as an input: no copy of the raise in the adventure part.
+  `h3-game` derives the raise and the casting limit from the battle part it already bundles
+  (ADR-0015 point 2), so no crate gains a dependency.
 
 ## Alternatives considered
 
@@ -471,6 +499,11 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   records keep them for a hero off the map); the original's several bits per kind (the
   Fountain's four, the Idol's and the Temple's two) with the amounts from content (a table passed
   in, the unmarked part only by subtraction); the mark widened to `u16` with the seam.
+- The spells on the map (E08 decision 405): an adventure-only helper (`h3-heroes` gains a map
+  function, the battle's raise stays in `h3-battle`): two homes for one rule; the raise as core
+  data (the special grounds' schools in `h3-content`): battle content moved to the core for one
+  reader; the cast's book test of the draft (HER-BAT-011's), until row E15-15 read the original's
+  bookless scroll.
 
 ## Revision history
 
@@ -576,3 +609,8 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   increment 5, the mage guild: a guild's teaching by `can_learn_spell`; the town's refill and the
   Vortex's points. Drafted in E09 T43 (design note `E09-design.md` §88, §92, §93), accepted at
   `TWN-Q33`; batch TWN-5's outcome (T44, survey `E09-guild.md` §21: every row as read) folded in.
+- 2026-11-22 (E08 T140 `shared/`; E08 decisions 404, 405, ADV-Q63): point 2 amended and point 17
+  added for E08 increment 15, the adventure spells: the mastery on a ground by an explicit raise,
+  the cost on the map, who may cast on the map (no book test). Drafted in E08 T137b (design note
+  `E08-design.md` §5, §6); batch E15's outcome (T139a, survey `E08-spells.md` §18: every row as
+  read; D-79, the original casts a worn scroll's spell without a book) folded in.

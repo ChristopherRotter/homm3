@@ -4,27 +4,28 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a and T139b done (2026-11-22), T140 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T140 — the `shared/` task** (round 4; design note `E08-design.md` §20's shared work; as
-T131 for increment 14; `shared/e08-t140`, `cross-lane`)
+**E08 T141a — the Prison and the Market of Time** (round 5; design note `E08-design.md` §1, §2,
+§7, §9, §13, §15, §16; `adventure/e08-t141a`, `cross-lane` for the wire)
 
-- **Scope:** the three accepted drafts applied (`adr-drafts/0013-`, `0016-`,
-  `0017-increment-15.md`: ADR-0013 points 2, 17; ADR-0016 points 1, 3 to 6; ADR-0017 points 1, 4,
-  8 to 10) with batch E15's outcome (survey `E08-spells.md` §18; point 17's book: a worn scroll's
-  spell casts on the map without a book, D-79, the draft's "until E15-15" goes; T139b's order,
-  decision 410, needs no ADR line), then the drafts deleted; the six fix-optional flags of design
-  §4 (`quirk.adventure.flight_reads_hidden`, `door_reads_hidden`, `scuttle_reads_hidden`,
-  `summon_boat_by_steps`, `spell_recast_refused`, `door_failure_charged`) in `packs/base/core.toml`'s
-  two profiles (on in `faithful`, off in `strict-fixed`; the core ruleset hash moves, its version
-  noted); `docs/03-domain.md`'s terms (prisoner, a cast on the map, the day spells, a spell's raise
-  by a ground); `docs/06-security.md`'s lines (§13; the cast's target validated, the draws
-  server-side); the ADR index's Read-when cells; the inboxes design §20 names, each told what
-  reaches it now.
-- **Inputs:** the drafts; design §4, §13, §20; survey §18; T131's record in `E08-log.md` as the form.
-- **Depends on:** T139 (done 2026-11-22). **Status:** ready (docs and the core pack; no original
-  data); confirm its cut at its start. Then T141a, T141b (the epic's tasks; T141a also compares the
-  start list's order: the original's placed heroes in type order, survey §2.1).
+- **Scope:** the kinds `prison` (class 62, visited from a neighbour, ADV-PRI-001 to -003) and
+  `empty` (class 50, the Market of Time: entered, never visited, ADV-OBJ-008) in the adventure
+  part (v25) and the base pack; the import's `PrisonerSetup` with the prisoner's body read as a
+  placed hero's and class 50 (map import v29); the prison's drawn `HeroId` in the static map and
+  `AdventureOutcome::prison` with the infallible `free_prisoner` (§9); the game's store of
+  prisoners as placed heroes (their levels at load in hero id order, after the placed heroes in
+  the setup's object order: decision 410), their freeing below the town part's most heroes on
+  the map, appended last to the player's list with a full day's land points (§15; game state hash
+  v39); `PrisonerFreed`, `PrisonFull`, `PrisonEmptied` and their wire (§16, protocol v79,
+  `cross-lane`); a viewer never sees the prisoner (§13). Also compare the start list's order: the
+  original lists a player's placed heroes in type order (survey `E08-spells.md` §2.1, 0x4CAF25);
+  the engine's order and what to do go to the user. The ledger entries the task builds; the
+  rules toward `verified` (survey §18: ADV-PRI-001 to -003, ADV-OBJ-008).
+- **Inputs:** design §1, §2, §7, §9, §13, §15, §16, §18; survey §1.1, §2, §18; ADR-0016 points 1, 4,
+  6, ADR-0017 points 1, 10 (as applied by T140); the town lane's T137b note (the pool's prisoners).
+- **Depends on:** T140 (done 2026-11-22). **Status:** ready; confirm its cut at its start (it may
+  split: the content and the import, then the game and the wire). Then T141b, T142 to T145.
 
 ## Inbox
 

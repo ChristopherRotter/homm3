@@ -4,6 +4,26 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-22, E08 T140: done whole, decision 411; the record in `E08-log.md`; T141a queued.)* **E08 T140 — the `shared/` task** (round 4; design note `E08-design.md` §20's shared work; as
+T131 for increment 14; `shared/e08-t140`, `cross-lane`)
+
+- **Scope:** the three accepted drafts applied (`adr-drafts/0013-`, `0016-`,
+  `0017-increment-15.md`: ADR-0013 points 2, 17; ADR-0016 points 1, 3 to 6; ADR-0017 points 1, 4,
+  8 to 10) with batch E15's outcome (survey `E08-spells.md` §18; point 17's book: a worn scroll's
+  spell casts on the map without a book, D-79, the draft's "until E15-15" goes; T139b's order,
+  decision 410, needs no ADR line), then the drafts deleted; the six fix-optional flags of design
+  §4 (`quirk.adventure.flight_reads_hidden`, `door_reads_hidden`, `scuttle_reads_hidden`,
+  `summon_boat_by_steps`, `spell_recast_refused`, `door_failure_charged`) in `packs/base/core.toml`'s
+  two profiles (on in `faithful`, off in `strict-fixed`; the core ruleset hash moves, its version
+  noted); `docs/03-domain.md`'s terms (prisoner, a cast on the map, the day spells, a spell's raise
+  by a ground); `docs/06-security.md`'s lines (§13; the cast's target validated, the draws
+  server-side); the ADR index's Read-when cells; the inboxes design §20 names, each told what
+  reaches it now.
+- **Inputs:** the drafts; design §4, §13, §20; survey §18; T131's record in `E08-log.md` as the form.
+- **Depends on:** T139 (done 2026-11-22). **Status:** ready (docs and the core pack; no original
+  data); confirm its cut at its start. Then T141a, T141b (the epic's tasks; T141a also compares the
+  start list's order: the original's placed heroes in type order, survey §2.1).
+
 *(Moved 2026-11-22, E08 T139b: done, a reading, decision 410; the record in `E08-log.md`; T140 queued.)* **E08 T139b — the order of the prisoners' level draws: read and recorded** (design note
 `E08-design.md` §15, §21; T139a left it open, decision 409)
 
