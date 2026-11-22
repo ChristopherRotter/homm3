@@ -2558,3 +2558,23 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
 - **Depends on:** T137b (done 2026-11-21, `adventure/e08-t137b`). **Status:** ready (the staging:
   the executable, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`, as T128). Then T139
   (the run on the client lane's harness, scored), T140 (`shared/`), T141 to T145 (the epic's tasks).
+
+## T139 (moved 2026-11-22, T139a done whole: `adventure/e08-t139`, decision 409; the harness's casts on the map, batch E15's recipes and runs, scored in survey `E08-spells.md` §18; T139b queued on its own)
+
+**E08 T139 — batch E15's run: the harness's cast flow and reads, the recipes, the run, scored** (design note `E08-design.md` §19, §20's round 3)
+
+- **Scope:** T139a: the capture harness (`clients/capture/`, common): the cast's flow (the cast
+  button, the book's click by spell, the target's click by tile, a cancel), reads of the hero's
+  +0x10D, +0x112, +0x116 and spell points +0x18, the mouse cursor's frame, the boats' records
+  (game +0x4E3BC: tile, level, owner, last captain, in use); the recipes for
+  `E08-batch-15a`, `-15b`, `-15c` (T138's specs: compile them again, the stamps in their headers);
+  the run under Wine (SoD on Easy, hot seat) and the scoring of rows E15-1 to E15-16 into the
+  survey and the results files (the quirks' confirmations: A-13, A-49 to A-54, D-75, D-78,
+  D-79/O-1 with ADV-STUB-21, the Prison's class against `object_classes_not_entered` 0x63AA58).
+  T139b: the order of the prisoners' level draws (§15) read and recorded, if T139a leaves it open.
+- **Inputs:** the specs' headers (each row's agent's calls: E15-9 split in 9a and 9b, E15-12
+  recorded under E15-11, E15-16 under E15-8, E15-13's price corrected to the movement survey's
+  lesser-of rule); the survey `E08-spells.md` §15; T129a's harness work as the form
+  (`E08-log.md`, grep `T129a`); `clients/capture/README.md`.
+- **Depends on:** T138 (`adventure/e08-t138`). **Status:** ready (the staging: the client lane's
+  set, as T129a; its cut confirmed at its start).

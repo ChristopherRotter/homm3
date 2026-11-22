@@ -440,6 +440,21 @@ LEVEL_UP_MARKS = (0x7DC, 0x7DD, 0x7802)
 # §5.8): on the map the cast's opening (adventure_cast_open 0x41C2F0) runs it modal, and its
 # answer stays in the window manager's +0x38 (the spell, 0x7801 for none) until the next modal.
 SPELL_BOOK_VTABLE, MODAL_ANSWER = 0x641DCC, 0x38
+# E08 T139a (batch E15; docs/rules/surveys/E08-spells.md §8.2): the places' spells of the book's page
+# (spell_book_proc 0x59D040: place k's spell at the dialog's +0x7C + 4k, -1 an empty place;
+# observed under Wine). The target dialogs of Dimension Door (door_target_create 0x4916F0, its
+# vtable 0x63DB9C) and Scuttle Boat (scuttle_target_create 0x491AF0, 0x63DBD8): a mouse move to
+# a new cell of the view writes the cell (the screen point / 32) into the adventure manager's
+# +0xEC and +0xF0 (i32 each; view_cell_tile 0x407B10 adds the view's corner) and the accept flag
+# into the window manager's +0x38 (MODAL_ANSWER: 1 a target, 0 not). The cast button is the
+# adventure dialog's item 8 (cast_button_state 0x403BF0). A hero's day marks of the adventure
+# spells (adventure_spell 0x41C490, adventure_spell_cast 0x41D090; structs.toml "hero"): the
+# day's Dimension Doors (i8 +0x10D), Fly's level (i32 +0x112, -1 not cast today), Water Walk's
+# (i32 +0x116).
+BOOK_PLACE_SPELLS, BOOK_PLACES = 0x7C, 12
+DOOR_TARGET_VTABLE, SCUTTLE_TARGET_VTABLE, VIEW_CELL, CAST_BUTTON = 0x63DB9C, 0x63DBD8, 0xEC, 8
+TARGET_VTABLES = {DOOR_TARGET_VTABLE: "door", SCUTTLE_TARGET_VTABLE: "scuttle"}
+DOORS_CAST, FLY_LEVEL, WATER_WALK_LEVEL = 0x10D, 0x112, 0x116
 MOVE_HERO, NEXT_HERO, QUEST_LOG = 7, 11, 5
 # A path arrow's frame: 0 none, 1 to 25 a move today (green), 26 to 50 a later one (red).
 GREEN_FRAMES = range(1, 26)
@@ -916,7 +931,8 @@ class Mem:
         types = struct.unpack_from("<7i", raw, ARMY)
         counts = struct.unpack_from("<7i", raw, ARMY + 28)
         levels, slots = raw[SECONDARY:SECONDARY + 28], raw[SLOTS:SLOTS + 28]
-        worn = struct.unpack_from(f"<{2 * WORN_SLOTS}i", raw, WORN)[::2]
+        pairs = struct.unpack_from(f"<{2 * WORN_SLOTS}i", raw, WORN)
+        worn = pairs[::2]
         packed = struct.unpack_from(f"<{2 * BACKPACK_SLOTS}i", raw, BACKPACK)[::2]
         return {
             "index": index,
@@ -956,6 +972,14 @@ class Mem:
             # E09 T34 (batch TWN-4): the type and the class.
             "type": struct.unpack_from("<i", raw, HERO_TYPE)[0],
             "class": struct.unpack_from("<i", raw, HERO_CLASS)[0],
+            # E08 T139a (batch E15): the facing (u8 +0x47), the adventure spells' day marks and
+            # the worn Spell Scrolls' spells (artifact 1: the slot's second word).
+            "facing": raw[HERO_FACING],
+            "scrolls": {ARTIFACT_SLOTS[s]: pairs[2 * s + 1] for s in range(WORN_SLOTS)
+                        if pairs[2 * s] == 1},
+            "doors": struct.unpack_from("<b", raw, DOORS_CAST)[0],
+            "fly": struct.unpack_from("<i", raw, FLY_LEVEL)[0],
+            "water_walk": struct.unpack_from("<i", raw, WATER_WALK_LEVEL)[0],
         }
 
     def pool(self):
@@ -1609,6 +1633,27 @@ class Mem:
         """The last modal dialog's answer (the window manager's +0x38, E24 M4 T2d3): after the
         spell book, the spell chosen (0 to 69) or 0x7801 (closed)."""
         return self.i32(self.u32(WINDOW_MANAGER_POINTER) + MODAL_ANSWER)
+
+    def book_spells(self):
+        """The spells of the open spell book's twelve places (E08 T139a: the dialog's +0x7C + 4k,
+        -1 an empty place), None while the book is not on top."""
+        shown = self.dialog()
+        if shown is None or shown["vtable"] != SPELL_BOOK_VTABLE:
+            return None
+        return list(struct.unpack(f"<{BOOK_PLACES}i",
+                                  self.read(shown["at"] + BOOK_PLACE_SPELLS, 4 * BOOK_PLACES)))
+
+    def target_dialog(self):
+        """The kind of the adventure spell's target dialog on top (E08 T139a): `door`,
+        `scuttle`, None for none."""
+        shown = self.dialog()
+        return TARGET_VTABLES.get(shown["vtable"]) if shown else None
+
+    def view_cell(self):
+        """The view's cell the mouse was last seen in (E08 T139a; the adventure manager's +0xEC,
+        +0xF0: the screen point / 32, written by a target dialog's mouse move): (column, row)."""
+        manager = self.u32(ADVENTURE_MANAGER_POINTER)
+        return self.i32(manager + VIEW_CELL), self.i32(manager + VIEW_CELL + 4)
 
     def level_up_box(self):
         """The level-up dialog on top (E24 M4 T2c, design §5.5), None if another or none shows:

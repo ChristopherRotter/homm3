@@ -93,6 +93,10 @@ sources and tests.
 - **VCMI** (§11) agrees on almost every amount; it differs on Summon Boat's choice (**D-75**),
   Scuttle Boat's fog (A-50), the door's range (**D-76**: 9 and 8) and the Prison's mana (equal in
   effect). **A-13's trade-off** (§13): three options for the checkpoint.
+- **Batch E15** (§18, T139a): every row the reading predicts as predicted. D-75 (its last boat and
+  owner test; Manhattan, levels and ties not told apart), D-76, D-77 and D-78 the reading's; A-13,
+  A-49, A-50, A-52, A-53 and A-54 seen; **D-79** (no reading): a worn scroll's adventure spell is
+  cast without a book (VCMI alike).
 
 ## 1. The census
 
@@ -556,3 +560,53 @@ spells and worn scrolls at the start, hidden tiles placed by design.
 9. **The cut:** likely the Prison and the Market of Time (one task), the cast's frame with Summon
    and Scuttle Boat, Fly and Water Walk, Dimension Door, the env and wire, batch E15's spec and
    recipe, its scoring, the audit.
+
+## 18. Batch E15 scored (T139a)
+
+Scored on 2026-11-22 (E08 T139a) from the recorded runs `experiments/results/E08-batch-15a.md`,
+`-15b.md` (each the first of two runs) and `-15c.md` (the second of two; save 2 loaded between
+E15-9a and E15-9b), played by the capture harness (`clients/capture/batches/E08-batch-15a.toml`,
+`-15b.toml`, `-15c.toml`) in SoD 4.0 on Easy, hot seat, and read from the game's memory. The two
+runs of each map agree in every rule-level record (the workers' comparison; one run of each map
+is kept); only 15a's freed prisoner's primary skills differ (drawn at load: 2/1/3/4 with 40 spell
+points, then 2/3/2/3 with 30). Each row against §15's
+prediction with design §19's changes and the specs' headers (`experiments/specs/E08-batch-15a.toml`
+to `-15c.toml`). A target dialog's cursor is the mouse manager's type 1: frame 41 the door's, 42
+Scuttle Boat's, 0 none (no target).
+
+| Row | Predicted | Observed | Verdict |
+|---|---|---|---|
+| E15-1 (§2.2) | level 5 at load, a full day's 1 560, facing right, on the entrance (10, 10), last of Red's eight | at the start the prisons' popups show the prison's name only (the prisoner hidden); ADVEVENT 102; the visitor pays the step and stays on (10, 11) (1 360); Prisoner 1 (type 8) on (10, 10), facing 2, 1 560 of 1 560, status 0, Red's, 5 000, level 5, its eight Expert skills and army, spell points 10 × knowledge as loaded; Red's list 8, it last, the visitor still selected; the prison gone | confirmed; the class visited from the neighbour (62 among `object_classes_not_entered` 0x63AA58) |
+| E15-2 (§2.2) | seven on the map and a garrison hero: freed; with eight: ADVEVENT 103, nothing changed | the garrison step takes E15-2g out of the list (8 → 7), so E15-1 frees (above); E15-2 at P2 with eight: ADVEVENT 103, the step paid (1 360), the list 8, Adela still a prisoner, P2 stands | confirmed: the eight on the map, garrisons not counted |
+| E15-3 (§3) | a step's price, no message | two steps of 100 onto the entrance (22, 10), 1 360 left; no message, no window; Space nothing | confirmed: entered, never visited |
+| E15-4 (§4.1) | Fly (level 5) refused (748), free; Summon Boat (level 1) cast; in the garrison both refused (685), free | on Cursed Ground: Fly GENRLTXT 748, 40 kept, Fly's level −1; Summon Boat no message, 40 → 33 (7: a mastery above None; the spec's hero has Expert Water Magic), B4 (52, 7), nobody's, to (50, 6); in the anti-magic garrison (49, 14) both GENRLTXT 685, 33 kept | confirmed; Cursed Ground does not lower the mastery to None (Expert, §4.2's field −1, is the reading's: 7 at every mastery above None) |
+| E15-5 (§4.2) | 4 casts, 200 points and 20 each; the fifth refused (339), free | 1 360/80/1, 1 160/60/2, 960/40/3, 760/20/4; the fifth GENRLTXT 339, no dialog, nothing spent | confirmed: Magic Plains raise Air to Expert |
+| E15-6 (§8.1) | 1 left: cast, 0; 0: refused (126), free | 301 after the legs; door 1 leaves 1; door 2 at 1: cast, 0, doors 2; door 3 at 0: GENRLTXT 126, no dialog, nothing spent | confirmed (D-77) |
+| E15-7 (§8.1, A-52) | "failed" (71); 300 and 25 spent, the cast used; the next refused (339) | the cursor over water (31, 10) the door's, accepted; the click: GENRLTXT 71, the hero stays on (29, 10), 1 260, 50 → 25, doors 1; the second cast GENRLTXT 339 | **A-52 seen** as read (fix-optional, decision 403) |
+| E15-8 (§8.2, A-53) | the cursor on a hidden free tile, none on a hidden tree; the tree's click nothing; the free one: the hero there, the reveal | cursors: explored free (13, 10) 41, explored tree (13, 12) 0, hidden free (17, 10) 41, hidden tree (17, 12) 0; the tree's click: the dialog stays, nothing spent, nothing revealed; onto (17, 10): 1 260, 40, doors 1; revealed after: the five read at dx² + dy² of 17 or 25, not (22, 13) at 34 (the spec's radius ≤ 30 consistent) | **A-53 seen** as read (the flag's faithful side, decision 399); the original's click on a hidden blocked tile is no cast and reveals nothing (design §19's added click) |
+| E15-16 (§8.2, A-54) | dy +9 accepted | from (17, 10) the pointer at y 548, 28 pixels into (17, 18)'s cell, the view's last 8 pixel rows: cell (9, 17), (17, 19) picked, the door's cursor, accepted; 960, 20, doors 2 | **A-54 seen** (D-76 the reading's; the engine's window 9 × 8, decision 401) |
+| E15-9a (§5, D-75) | the hero's last boat, from the underground | day 2 from (4, 57): B1 (38, 55, underground, its captain) to (4, 56) on the surface, 10 → 3; B3 (Blue's, 7 away) and B2 (Red's, 13) not moved | **D-75's first rule confirmed**: the last boat first, on another level |
+| E15-9b (§5, D-75) | the nearest own (Manhattan), never Blue's nearer one | save 2 loaded (every boat's record as saved); from (6, 57): B2 (Red's, 11) to (6, 56), 10 → 3; B3 (Blue's, 9) not moved | **D-75's owner test confirmed**: Red's boat over Blue's nearer one (VCMI's nearest of any owner refuted; a nobody's boat summoned at E15-4); Manhattan against the straight line (B2 nearest by both), levels ignored and ties not told apart here |
+| E15-10 (§6, A-50) | the cursor on a hidden empty boat, none on an occupied one or a hidden tree; sunk at Expert | cursors: the seen empty CB 42, the occupied O 0, the hidden empty HB 42, the hidden tree 0; the tree's click nothing; HB's: no message, 20 → 14, HB's record out of use, its tile empty, (19, 12) still unexplored | **A-50 seen** as read (flag, decision 402); the original reveals nothing at a sunk hidden boat |
+| E15-11 (§7.1, A-51) | the second free and nothing; with Angel Wings nothing, free; in a boat GENRLTXT 193, free | Fly 40 → 20, level 0; the second: no message, 20 kept, level 0; E15-11w with Angel Wings: no message, 20, level −1; boarding B5 clears Fly (0 → −1); aboard: GENRLTXT 193, 20, level −1 | confirmed; A-51's refusal while on seen at one mastery (its raised mastery not played) |
+| E15-12 (§7.1, A-49) | charged; after landing the hero walks on water (421) | aboard B5: no message, 20 → 8, Water Walk 0; landed on (39, 35) with 1 407, Water Walk still 0; (40, 36) and (41, 36) on the strait's water, then (42, 36) on the east shore: 986 left (141 + 140 + 140, each step priced by the tile it leaves) | **A-49 seen** (accepted, decision 403) |
+| E15-13 (§13, A-13) | through the strip, 420 left (the reading) or 300 (the plan's 140 a hidden tile); VCMI and the engine today: no path | Fly level 0; the path green, 11 steps (5, 24) to (15, 24) through the hidden strip; 420 left (100 from every free tile, 140 from the hidden tree); the strip and the tree's neighbours revealed | **A-13 seen** as read: the faithful side's reach and prices read the hidden truth (the tree told apart) |
+| E15-14 (D-78) | no path (the reading) or across, 400 left (the wiki) | Water Walk 20 → 8, level 0; the click on (14, 27): no mark, no path, the cursor 0; the hero stays on (4, 27) with 1 560 | **D-78: the reading** (no path over hidden water); ADV-MOV-010 unchanged |
+| E15-15 (D-79, O-1) | not read: the record decides | the scroll picked up (ADVEVENT 135), worn on misc 1; the cast button enabled; the book opens with no book worn and lists Dimension Door; the cast: (4, 4) to (4, 8), 1 460 → 1 160, 30 → 5, doors 1 | **D-79: the original casts** a worn scroll's adventure spell without a book (VCMI 1.7.5 alike: `CGHeroInstance::canCastThisSpell` counts a worn scroll as a source, the cast shortcut opens the book without a test); **O-1:** the book opens and lists the scroll's spells; ADV-STUB-21 not needed (decision 404's row) |
+
+**Beside the rows.** (1) Red's list at the start is in the heroes' type order (E15-1 type 0, E15-2
+2, E15-3 5, then the fillers and E15-2g, type 102, as far as read), not the map's: a lead for T139b
+(the original's setup loop by type) and a point for T141a (the engine's list order at the start;
+a freed prisoner goes last). (2) The Admiral's Hat lists Summon Boat and Scuttle Boat in the book
+(its Sea Captain's Hat part's, HER-SPL-002's combination rule). (3) Boarding and landing with the
+Hat left 2 807 and then 1 407 of E15-11's 1 560: D-41's conversions after a step of 100 each way. (4) The two target dialogs:
+vtables 0x63DB9C (the door's) and 0x63DBD8 (Scuttle Boat's), observed (`docs/exe/map.toml`).
+
+**For T139b:** the prisoners' level draws' order (§15, design §21) is left open: each start draws
+anew and one prisoner levels here; (1) is the lead. **For T140** (the drafts with this outcome):
+every point as drafted but ADR-0013 point 17's book: a worn scroll's spell casts on the map
+without a book (D-79; the draft's "until E15-15" goes). **Toward `verified`** (by building task,
+exit criterion 10): ADV-PRI-001 to -003 (E15-1, -2; the prisons' popups) and ADV-OBJ-008 (E15-3) at T141a; HER-SPL-003
+and HER-SPL-008 (E15-4's cost, E15-5) at T141b; ADV-SPL-001, -002, -005, -006, GAM-SPL-001 and
+ADV-MOV-008 to -010 (E15-4, -5, -11 to -15) at T142; ADV-SPL-003, -004 (E15-4, -9a, -9b, -10)
+at T143a; ADV-SPL-007 to -009 (E15-5 to -8, -16) at T143b.

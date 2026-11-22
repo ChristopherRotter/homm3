@@ -21936,3 +21936,53 @@ citations, fixed by #1119: ok after merging `master` a9d593d); `cargo check --wo
 with `-D warnings` on `h3-map` and `h3-experiment` clean; the clients' build is CI's (the sandbox's
 SDL build fails; every client match on `MapObject` has a wildcard arm). CI's full verify on the
 pull request is the record. **Next:** T139.
+
+### Increment 15, round 3: T139a, batch E15 run under Wine and scored (2026-11-21 to -22, `adventure/e08-t139`)
+
+Baseline: `master` 94c783a (#1122, T138, merged; CI green on it; the sandbox's setup ran only the
+light gates, CI's fingerprint standing in). Staged the 71 files (the PC's shell down, "Workspace
+unavailable": `device_stage_files`; the LODs' and executables' SHA-256 against
+`installation.md`); the repo from GitHub. **The cut** (decision 409): whole, in one session (the
+agent recommended 15b and 15a first). The three maps compiled again: stamps `a7b4e9e8`,
+`24eb46ac`, `0ebfde6e`, each template byte-equal to the committed one. Two worker agents in turn
+(15a with 15b, then 15c), the runner scoring.
+
+**The harness** (`clients/capture/h3adv.py`, `h3mem.py`, common; README "Casts on the adventure
+map (E08 T139, batch E15)"): a step's cast finds its spell's place in the book by name (the book's
+page memory +0x7C + 4k; heroes with two to four spells, the Admiral's Hat's two among them), `button
+= true` clicks the panel's cast button (the adventure dialog's item 8) and records its state, every
+message kept in order, the cast settled when the map shows and the hero's tile, points and spell
+points hold for 1.5 s; the target dialogs (the door's, Scuttle Boat's) played with `hover` (the
+cursor's type and frame, the tile picked, the accept flag: the window manager's +0x38),
+`target`/`targets` (each a click with reads after it) and `cancel`, a tile with a pixel offset
+(`[x, y, dx, dy]`: E15-16's y 548); reads of the day's doors (+0x10D), the Fly and Water Walk
+levels (+0x112, +0x116: i32 as `structs.toml`, −1 off), facing, worn scrolls, a raw byte, a path's
+tiles, a box's explored tiles, right-click popups; boats named by their records at the start
+(`boats = { name = [x, y(, level)] }`; `boat:<name>[:<part>]`, `boats`, `boats:beside`), a step's
+`save` from the system options and `load` through Load Game (the loaded day, player and boats
+checked). `docs/exe/map.toml`: the door's target dialog 0x63DB9C and Scuttle Boat's 0x63DBD8 (seen
+live), the book's place spells; `structs.toml`: the adventure manager's mouse cell (+0xEC), the
+window manager's +0x38. The harness check passed (23 steps) and its tests (25).
+
+**The recipes and runs:** `clients/capture/batches/E08-batch-15a.toml`, `-15b.toml`,
+`-15c.toml`; two runs each, alike in every rule-level record (15a's freed prisoner's primary
+skills drawn at load: 2/1/3/4, 2/3/2/3); the templates filled from 15a's and 15b's first runs and
+15c's second. The spec's save 1 of 15c not made (no record reads it); a load needs the harness's
+`Games/` to hold that save alone; the tree at (21, 12) in the map area's last column pointed at
+from the column before (the dialog picked it).
+
+**Scored** (survey `E08-spells.md` §18, a table of the 17 records; a fresh review's nine
+findings taken, none changing a verdict): every row the reading predicts as predicted. **D-75's last boat and owner test confirmed** (E15-9a: the last boat from the
+underground; E15-9b: Red's boat, never Blue's nearer one; Manhattan, levels and ties not told apart
+here); **D-78 the reading's** (no path over hidden water);
+**D-79**: a worn scroll's Dimension Door cast by a hero without a book, the book opened and listing
+it (VCMI 1.7.5 alike: `canCastThisSpell` counts the scroll, the cast shortcut has no book test), so
+decision 404's row settles it: no book test on the map (design §6, exit criterion 3), ADV-STUB-21
+withdrawn; A-13 (the hidden tree at 140, 420 left), A-49, A-50 (no reveal at the sunk hidden
+boat), A-52, A-53 (the hidden tree's click no cast, no reveal), A-54 seen as read; the Prison's
+class visited from the neighbour (0x63AA58). Beside the rows: Red's start list in the heroes' type
+order (a lead for T139b, a point for T141a), the Admiral's Hat's boat spells (HER-SPL-002's parts).
+
+**Docs:** decision 409 and the task's line; design note §6, §18, §19 (*Run and scored*), §20's
+criterion 3, §21; survey §0 and §18; the results files' header lines. **Versions:** none moved.
+**Next:** T139b (the prisoners' level draws' order, a reading), then T140.

@@ -1,0 +1,109 @@
+# E08 batch E15a played by the capture harness (E08 T139a; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-15a.toml as steps, on Easy, the starting bonus gold, Red and Blue
+# human in hot seat; day 1, Red's turn only, in the spec's order: the start reads (E15-1's first
+# step), E15-2's garrison step (E15-2g into Red's town's garrison: `hero_in`, README "Towns"),
+# E15-1 (the freeing), E15-2's second visit, E15-3 (the Market of Time). E15-2's records are
+# E15-1's (the template's E15-2 section has only its "anything odd").
+#
+# The reads (README, "Casts on the adventure map", and the reads table): Red's hero list
+# (`heroes:red`: the count and the heroes in order, player +0x1 and +0x8), the selected hero
+# (`selected`), a prisoner's `hero_owner` mark by its record's name (`pool:Prisoner 1`: game
+# +0x4DF18 of its type, `a prisoner's` for 0x41, a colour once freed), the freed hero by name
+# (`hero[Prisoner 1]:<detail>`, among the 156 records: `name`, `tile`, `facing` +0x47, `points`,
+# `day_points` +0x49, `status` +0x105, `experience`, `level`, `primary`, `skills`,
+# `spell_points`, `army`), whether a prison still stands (`object:x,y` on its entrance, `tile:x,y`
+# its blocked tile; a step's `popup = [[x, y], ...]` the right-click windows in order, `popups`).
+
+spec = "experiments/specs/E08-batch-15a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Day 1, Red: the start (before any hero moves) ----------------------------------------------------
+
+[[step]]
+encounter = "E15-1"
+hero = "E15-1"
+record = { "the start: Red's hero list (count; heroes in order); Rion's and Adela's `hero_owner`; P1's and P2's popups" = ["text:Red's list: ", "heroes:red", "text:Rion's (Prisoner 1's type): ", "pool:Prisoner 1", "text:Adela's (Prisoner 2's): ", "pool:Prisoner 2", "text:P1 (10, 10): ", "object:10,10", "text:P2 (16, 10): ", "object:16,10"] }
+note = { "the date at the start" = "date", "the game's version" = "map_kind", "the difficulty" = "difficulty", "E15-1 worn at the start (the starting bonus)" = "hero:equipment", "E15-2g's" = "hero[E15-2g]:equipment", "E15-2's" = "hero[E15-2]:equipment", "E15-3's" = "hero[E15-3]:equipment", "Prisoner 1 at the start" = ["hero[Prisoner 1]:name", "hero[Prisoner 1]:level", "hero[Prisoner 1]:experience", "hero[Prisoner 1]:primary", "hero[Prisoner 1]:spell_points"] }
+
+[[step]]
+encounter = "E15-1"
+hero = "E15-1"
+popup = [[10, 10], [16, 10]]
+record = { "+the start: Red's hero list (count; heroes in order); Rion's and Adela's `hero_owner`; P1's and P2's popups" = ["text:popups: ", "popups"] }
+
+# --- Day 1, Red: E15-2's garrison step (E15-2g into the town's garrison) ------------------------------
+
+[[step]]
+encounter = "E15-1"
+hero = "E15-2g"
+walk = [18, 20]
+expect = { question = "none", battle = false }
+[[step.actions]]
+hero_in = true
+record = { "after the garrison step: Red's hero list (count; heroes); the town's garrison hero" = ["text:the town screen: messages: ", "messages", "text:garrison hero: ", "town:18,20:garrison_hero", "text:visitor: ", "town:18,20:visitor"] }
+[step.record]
+"+after the garrison step: Red's hero list (count; heroes); the town's garrison hero" = ["text:after closing: Red's list: ", "heroes:red", "text:garrison hero: ", "town:18,20:garrison_hero", "text:visitor: ", "town:18,20:visitor"]
+[step.note]
+"the garrison step: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+
+# --- Day 1, Red: E15-1 (Prisoner 1 freed with seven heroes on the map) ---------------------------------
+
+[[step]]
+encounter = "E15-1"
+hero = "E15-1"
+record = { "E15-1 before: points; at P1: the messages (in order)" = ["text:points: ", "hero:points", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E15-1"
+hero = "E15-1"
+walk = [10, 10]
+expect = { dialogs = true }
+record = { "+E15-1 before: points; at P1: the messages (in order)" = ["text:the path: ", "path_order", "text:messages: ", "messages", "text:pictures: ", "message_pictures", "text:questions: ", "questions"], "E15-1 after: tile; points" = ["hero:tile", "text:points: ", "hero:points"], "the freed hero: name; tile; facing; points; day's maximum; status flags" = ["hero[Prisoner 1]:name", "text:tile: ", "hero[Prisoner 1]:tile", "text:facing: ", "hero[Prisoner 1]:facing", "text:points: ", "hero[Prisoner 1]:points", "text:day's maximum: ", "hero[Prisoner 1]:day_points", "text:status: ", "hero[Prisoner 1]:status", "text:owner: ", "hero[Prisoner 1]:owner"], "the freed hero: experience; level; primary skills; secondary skills; spell points; army" = ["text:experience: ", "hero[Prisoner 1]:experience", "text:level: ", "hero[Prisoner 1]:level", "text:primary: ", "hero[Prisoner 1]:primary", "text:skills: ", "hero[Prisoner 1]:skills", "text:spell points: ", "hero[Prisoner 1]:spell_points", "text:army: ", "hero[Prisoner 1]:army", "text:artifacts: ", "hero[Prisoner 1]:equipment", "text:spells: ", "hero[Prisoner 1]:spells"], "after the freeing: Red's hero list (count; heroes in order; the selected one); Rion's `hero_owner`; P1 still there" = ["text:Red's list: ", "heroes:red", "text:selected: ", "selected", "text:Rion's: ", "pool:Prisoner 1", "text:(10, 10): ", "tile:10,10", "text:(9, 10): ", "tile:9,10"] }
+
+[[step]]
+encounter = "E15-1"
+hero = "E15-1"
+popup = [[10, 10], [9, 10]]
+record = { "+after the freeing: Red's hero list (count; heroes in order; the selected one); Rion's `hero_owner`; P1 still there" = ["text:popups: ", "popups"] }
+
+# --- Day 1, Red: E15-2 (Prisoner 2 visited with eight on the map) --------------------------------------
+
+[[step]]
+encounter = "E15-1"
+hero = "E15-2"
+walk = [16, 10]
+expect = { dialogs = true }
+record = { "E15-2 at P2: the messages (in order); E15-2's tile; points" = ["text:messages: ", "messages", "text:pictures: ", "message_pictures", "text:questions: ", "questions", "text:tile: ", "hero:tile", "text:points: ", "hero:points"], "after P2: Red's hero list (count); Adela's `hero_owner`; P2 still there" = ["text:Red's list: ", "heroes:red", "text:Adela's: ", "pool:Prisoner 2", "text:(16, 10): ", "tile:16,10", "object:16,10", "text:Prisoner 2: ", "hero[Prisoner 2]:owner", "hero[Prisoner 2]:tile"] }
+
+[[step]]
+encounter = "E15-1"
+hero = "E15-2"
+popup = [[16, 10]]
+record = { "+after P2: Red's hero list (count); Adela's `hero_owner`; P2 still there" = ["text:popup: ", "popups"] }
+
+# --- Day 1, Red: E15-3 (the Market of Time's entrance) --------------------------------------------------
+
+[[step]]
+encounter = "E15-3"
+hero = "E15-3"
+record = { "before: points" = ["hero:points", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E15-3"
+hero = "E15-3"
+walk = [22, 10]
+record = { "the path's marks" = ["text:marks: ", "marks", "text:mark: ", "mark", "text:tiles: ", "path_order"], "after the walk: messages and windows; tile; points" = ["text:messages: ", "messages", "text:questions: ", "questions", "text:screens: ", "screens", "text:unknown screens: ", "unknown_screens", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E15-3"
+hero = "E15-3"
+key = "space"
+record = { "Space: what opens; tile; points" = ["text:the key: ", "key", "text:in order: ", "order", "text:messages: ", "messages", "text:unknown screens: ", "unknown_screens", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E15-3"
+hero = "E15-3"
+popup = [[22, 10], [21, 10]]
+record = { "the popups of (22, 10) and (21, 10)" = ["popups", "text:the tiles: ", "tile:22,10", "tile:21,10"] }

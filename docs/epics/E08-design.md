@@ -97,8 +97,10 @@ inbox, its choice of when: `cross-lane` only when it does), so one rule serves b
 `h3_heroes::map_spell_cost(details, core, spell, raise)`: the core's cost at the mastery on that
 ground, at least 1; **no army's ±2** (Pegasi, Mages: battle-only, 0x4E52DA). The spell points are
 spent by the existing `HeroChange::SetSpellPoints` (at least 0). The book (D-79, decision 404):
-`h3_heroes::can_cast_on_map(details, core, spell)`: the spell among `available_spells` and a spell
-book worn (HER-BAT-011's test), until row E15-15 decides; a hero without a book then has no cast.
+`h3_heroes::can_cast_on_map(details, core, spell)`: the spell among `available_spells`, **no book
+test** (row E15-15, T139a: the original casts a worn scroll's adventure spell without a book, VCMI
+alike; survey §18). *Agent's call for T141b:* the same for every available spell (the original's
+path has no book test; a learned spell without a book was not played).
 
 ## Part C — the map (`h3-map`, `h3-adventure`)
 
@@ -299,8 +301,8 @@ event's size: none of these holds a `Vec`.
   spell's levels), GAM-SET-001 amended (prisoners).
 - **Quirks:** §4 (ADV-QUIRK-15 reclassified, 51 to 57). **Stubs:** ADV-STUB-19 (the four
   information spells' casts, E12: decision 406), ADV-STUB-20 (Town Portal's cast on the map, E09
-  increment 7), ADV-STUB-21 (a bookless hero's scroll, until row E15-15: lifted or closed by its
-  verdict).
+  increment 7), ADV-STUB-21 withdrawn (row E15-15: a bookless hero casts its worn scroll's
+  spell, no stub needed; next ADV-STUB-22).
 
 ## Part E — batch E15 and the cut
 
@@ -317,6 +319,12 @@ harness's map with its fog). The harness (`clients/capture/`, common): the cast'
 button, the book's spell click, the target click), the hero's +0x10D, +0x112, +0x116 and +0x18
 reads, the cursor's frame, the boats' records (game +0x4E3BC); a boat's last captain by sailing
 first in the recipe.
+
+*Run and scored* (T139a, 2026-11-22; survey §18): every row the reading predicts as predicted;
+D-75 (its last boat and owner test) and D-78 the reading's, A-13, A-49, A-50, A-52 to A-54 seen, D-79 settled (no book on the map: §6);
+the original's click on a hidden blocked tile (the door's) or a hidden tree (Scuttle Boat's) is no
+cast and reveals nothing, a sunk hidden boat reveals nothing. T139b (the prisoners' draws) stays
+open.
 
 ### 20. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -358,7 +366,7 @@ once every cast exists, so the encoding and the format move once.
 2. A prison's visit frees its hero for the visitor's player below the eight on the map (garrisons
    not counted): on the entrance, a full day's land points, last in the list, the prison gone; at
    eight nothing changes; a viewer never sees the prisoner (ADV-PRI-002, -003).
-3. A cast on the map is refused, changing nothing, without the spell or a book, on Cursed Ground
+3. A cast on the map is refused, changing nothing, without the spell (no book test: §6), on Cursed Ground
    above level 1, in or on an anti-magic garrison, above the spell points, or by the spell's own
    test; the mastery is the hero's on its tile's ground; the cost the table's at least 1 without
    the armies' (ADV-SPL-001, HER-SPL-003, -008, GAM-SPL-001).
@@ -393,6 +401,7 @@ once every cast exists, so the encoding and the format move once.
   by hidden rock, pays only to its last stop node while keeping the passes' reveals; a scouting
   gain the original does not give. The audit (T145) looks at it in the bots' games.
 - **D-78, D-79** rest on rows E15-14, E15-15; a verdict against the reading moves ADV-MOV-010 or
-  lifts ADV-STUB-21 in the building task.
+  lifts ADV-STUB-21 in the building task. *Settled* (T139a): both the reading's; ADV-MOV-010
+  unchanged, ADV-STUB-21 withdrawn (§6, §18).
 - **Not read:** the computer's casts (E31), network play's messages, the four information spells'
   readers (E12), Town Portal (E09 increment 7), the pictures, texts and sounds.

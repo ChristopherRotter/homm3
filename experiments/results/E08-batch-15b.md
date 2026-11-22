@@ -1,5 +1,9 @@
 # E08 batch E15b — results
 
+> Played by the capture harness on 2026-11-21 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-15b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+>
+> **Scored** by E08 T139a (2026-11-22; the first of two runs): survey `docs/rules/surveys/E08-spells.md` §18.
+
 Map file: `E08-batch-15b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `24eb46ac`.** The map's description in the scenario list starts with "Stamp 24eb46ac.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -24,12 +28,12 @@ Map file: `E08-batch-15b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- explored before: (9, 27); (10, 27); (13, 27); (14, 27): 
-- before the cast: points; spell points: 
-- the cast: messages; spell points; the Water Walk level: 
-- the click on (14, 27): the target's mark; the marks: 
-- E15-14's tile after: 
-- anything odd: 
+- explored before: (9, 27); (10, 27); (13, 27); (14, 27): yes; no; no; yes
+- before the cast: points; spell points: points: 1560; spell points: 20
+- the cast: messages; spell points; the Water Walk level: messages: none; spell points: 20 then 8; level before: -1; after: 0; the book: opened; listed: Water Walk (place 0); points: 1560
+- the click on (14, 27): the target's mark; the marks: mark: none; marks: 0; tiles: none; the cursor over (14, 27): type 1, frame 0
+- E15-14's tile after: 4,27,0; points: 1560
+- anything odd: the date at the start: month 1, week 1, day 1; the game's version: SoD; the difficulty: easy; the agent (E08 T139a): no path showed (no mark), so none was cancelled; the next step selected E15-13 and E15-14 never moved
 
 ## E15-13 — Fly (None, level 0) over a strip of unexplored land with a hidden tree: the path and its price (as E5-9) (A-13, ADV-QUIRK-15, ADV-MOV-008, ADV-MOV-009)
 
@@ -42,12 +46,12 @@ Map file: `E08-batch-15b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- explored before: (9, 24); (10, 24); (12, 24); (13, 24); (15, 24): 
-- before the cast: points; spell points: 
-- the cast: messages; spell points; the Fly level: 
-- the click on (15, 24): the target's mark; the marks: 
-- after the walk: E15-13's tile; points: 
-- explored after: (10, 24) to (13, 24); (12, 23); (12, 25): 
+- explored before: (9, 24); (10, 24); (12, 24); (13, 24); (15, 24): yes; no; no; no; yes
+- before the cast: points; spell points: points: 1560; spell points: 20
+- the cast: messages; spell points; the Fly level: messages: none; spell points: 20 then 0; level before: -1; after: 0; the book: opened; listed: Fly (place 0); points: 1560
+- the click on (15, 24): the target's mark; the marks: mark: green; marks: 11; tiles: 5,24 6,24 7,24 8,24 9,24 10,24 11,24 12,24 13,24 14,24 15,24
+- after the walk: E15-13's tile; points: 15,24,0; points: 420
+- explored after: (10, 24) to (13, 24); (12, 23); (12, 25): 10,24 yes, 11,24 yes, 12,24 yes, 13,24 yes; (12, 23): yes; (12, 25): yes
 - anything odd: 
 
 ## E15-8 — Dimension Door's cursor over explored and unexplored tiles, free and blocked; a click on a hidden tree; the door onto a hidden free tile and what it reveals (E15-8); the second door at dy +9 (E15-16) (A-53, A-54, D-76, ADV-FOG-002)
@@ -62,21 +66,21 @@ Map file: `E08-batch-15b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- explored before: (13, 10); (13, 12); (17, 10); (17, 12): 
-- before: points; spell points; the day's doors: 
+- explored before: (13, 10); (13, 12); (17, 10); (17, 12): yes; yes; no; no
+- before: points; spell points; the day's doors: points: 1560; spell points: 60; doors: 0
 
 | the pointer over | explored | the cursor |
 |---|---|---|
-| (13, 10) seen, free |   |   |
-| (13, 12) the seen tree |   |   |
-| (17, 10) hidden, free |   |   |
-| (17, 12) the hidden tree |   |   |
+| (13, 10) seen, free | yes | cursor 1/41, picks 13,10 (cell 12,8), accept 1 |
+| (13, 12) the seen tree | yes | cursor 1/0, picks 13,12 (cell 12,10), accept 0 |
+| (17, 10) hidden, free | no | cursor 1/41, picks 17,10 (cell 16,8), accept 1 |
+| (17, 12) the hidden tree | no | cursor 1/0, picks 17,12 (cell 16,10), accept 0 |
 
-- the click on the hidden tree: what happens; tile; points; spell points; the day's doors; explored in (16, 10) to (19, 14): 
-- the door onto (17, 10): messages; tile; points; spell points; the day's doors: 
-- explored after: (17, 5); (22, 10); (17, 15); (16, 14); (21, 13); (22, 13): 
-- E15-16: (17, 19) explored before the cast; the cursor at y 548; the tile picked: 
-- E15-16 after the click: messages; tile; points; spell points; the day's doors: 
+- the click on the hidden tree: what happens; tile; points; spell points; the day's doors; explored in (16, 10) to (19, 14): 17,12: cursor 1/0, picks 17,12 (cell 16,10), accept 0; the dialog stays open; no message; tile: 10,10,0; points: 1560; spell points: 60; doors: 0; explored: none
+- the door onto (17, 10): messages; tile; points; spell points; the day's doors: 17,10: cursor 1/41, picks 17,10 (cell 16,8), accept 1; the dialog closed; no message; dialog: door (0x63db9c); messages: none; tile: 17,10,0; points: 1260; spell points: 40; doors: 1
+- explored after: (17, 5); (22, 10); (17, 15); (16, 14); (21, 13); (22, 13): yes; yes; yes; yes; yes; no
+- E15-16: (17, 19) explored before the cast; the cursor at y 548; the tile picked: (17, 19) explored: yes; at y 548: cursor 1/41, picks 17,19 (cell 9,17), accept 1
+- E15-16 after the click: messages; tile; points; spell points; the day's doors: 17,18: cursor 1/41, picks 17,19 (cell 9,17), accept 1; the dialog closed; no message; cancel: none; messages: none; tile: 17,19,0; points: 960; spell points: 20; doors: 2
 - anything odd: 
 
 ## E15-5 — A hero without Air Magic on Magic Plains casts Dimension Door five times (HER-SPL-003, ADV-SPL-001, D-77)
@@ -90,15 +94,15 @@ Map file: `E08-batch-15b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- before: points; spell points; the day's doors: 
+- before: points; spell points; the day's doors: points: 1560; spell points: 100; doors: 0
 
 | cast | messages | tile | points | spell points | the day's doors |
 |---|---|---|---|---|---|
-| 1 (29, 3) |   |   |   |   |   |
-| 2 (26, 3) |   |   |   |   |   |
-| 3 (29, 3) |   |   |   |   |   |
-| 4 (26, 3) |   |   |   |   |   |
-| 5 |   |   |   |   |   |
+| 1 (29, 3) | none; dialog: door (0x63db9c); click: 29,3: cursor 1/41, picks 29,3 (cell 12,8), accept 1; the dialog closed; no message | 29,3,0 | 1360 | 80 | 1 |
+| 2 (26, 3) | none; dialog: door (0x63db9c); click: 26,3: cursor 1/41, picks 26,3 (cell 6,8), accept 1; the dialog closed; no message | 26,3,0 | 1160 | 60 | 2 |
+| 3 (29, 3) | none; dialog: door (0x63db9c); click: 29,3: cursor 1/41, picks 29,3 (cell 12,8), accept 1; the dialog closed; no message | 29,3,0 | 960 | 40 | 3 |
+| 4 (26, 3) | none; dialog: door (0x63db9c); click: 26,3: cursor 1/41, picks 26,3 (cell 6,8), accept 1; the dialog closed; no message | 26,3,0 | 760 | 20 | 4 |
+| 5 | GENRLTXT:339; dialog: none; click: no click: no target dialog | 26,3,0 | 760 | 20 | 4 |
 
 - anything odd: 
 
@@ -114,11 +118,11 @@ Map file: `E08-batch-15b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- before: points; spell points: 
-- the points after the legs: (24, 31); (25, 32); (30, 32); (33, 32): 
-- door 1 (33, 28): messages; tile; points; spell points; the day's doors: 
-- door 2 (33, 24): messages; tile; points; spell points; the day's doors: 
-- door 3: messages; the dialog; points; spell points; the day's doors: 
+- before: points; spell points: points: 1560; spell points: 60
+- the points after the legs: (24, 31); (25, 32); (30, 32); (33, 32): (24, 31): 1313; tile: 24,31,0; (25, 32): 1101; tile: 25,32,0; (30, 32): 601; tile: 30,32,0; (33, 32): 301; tile: 33,32,0
+- door 1 (33, 28): messages; tile; points; spell points; the day's doors: messages: none; dialog: door (0x63db9c); click: 33,28: cursor 1/41, picks 33,28 (cell 9,4), accept 1; the dialog closed; no message; tile: 33,28,0; points: 1; spell points: 40; doors: 1
+- door 2 (33, 24): messages; tile; points; spell points; the day's doors: messages: none; dialog: door (0x63db9c); click: 33,24: cursor 1/41, picks 33,24 (cell 9,4), accept 1; the dialog closed; no message; tile: 33,24,0; points: 0; spell points: 20; doors: 2
+- door 3: messages; the dialog; points; spell points; the day's doors: messages: GENRLTXT:126; the dialog: none; cancel: none; tile: 33,24,0; points: 0; spell points: 20; doors: 2
 - anything odd: 
 
 ## E15-7 — Dimension Door from land onto a water tile: the failure and what it spends (A-52, ADV-SPL-001)
@@ -131,10 +135,10 @@ Map file: `E08-batch-15b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- before: points; spell points; the day's doors: 
-- the cursor over (31, 10): 
-- after the click: messages; tile; points; spell points; the day's doors: 
-- the second cast: messages; the dialog; tile; points; spell points; the day's doors: 
+- before: points; spell points; the day's doors: points: 1560; spell points: 50; doors: 0
+- the cursor over (31, 10): cursor 1/41, picks 31,10 (cell 11,8), accept 1
+- after the click: messages; tile; points; spell points; the day's doors: 31,10: cursor 1/41, picks 31,10 (cell 11,8), accept 1; the dialog closed; GENRLTXT:71; messages: GENRLTXT:71; tile: 29,10,0; points: 1260; spell points: 25; doors: 1
+- the second cast: messages; the dialog; tile; points; spell points; the day's doors: messages: GENRLTXT:339; the dialog: none; click: no click: no target dialog; tile: 29,10,0; points: 1260; spell points: 25; doors: 1
 - anything odd: 
 
 ## E15-15 — A hero without a spell book wearing a Dimension Door scroll: the cast button and the book (D-79, O-1, ADV-STUB-21, HER-BAT-011)
@@ -146,8 +150,8 @@ Map file: `E08-batch-15b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- before: points; spell points; worn artifacts: 
-- the scroll: messages; tile; points; where the scroll is worn: 
-- the cast button: enabled?; what opens; the spells listed: 
-- the cast (if listed): messages; tile; points; spell points; the day's doors: 
+- before: points; spell points; worn artifacts: points: 1560; spell points: 30; worn: Catapult (war machine 4)
+- the scroll: messages; tile; points; where the scroll is worn: messages: ADVEVENT:135; tile: 4,4,0; points: 1460; worn: Spell Scroll (misc 1), Catapult (war machine 4); the scrolls' spells: misc 1: Dimension Door; spells learned: none
+- the cast button: enabled?; what opens; the spells listed: the button: enabled (state 0x6); opens: opened; listed: Dimension Door (place 0)
+- the cast (if listed): messages; tile; points; spell points; the day's doors: place: 0; dialog: door (0x63db9c); click: 4,8: cursor 1/41, picks 4,8 (cell 9,12), accept 1; the dialog closed; no message; messages: none; tile: 4,8,0; points: 1160; spell points: 5; doors: 1
 - anything odd: 
