@@ -225,14 +225,16 @@ pub(crate) fn opens(
         return false;
     }
     let towns = state.towns();
-    let (Some(record), Some(statics)) = (towns.get(town), towns.town_static(town)) else {
-        return false;
-    };
     let heroes = garrison
         .into_iter()
         .chain(visitor)
         .filter_map(|hero| state.hero(hero));
-    h3_towns::opening_gives(record, statics, rules.towns(), rules.core(), heroes)
+    towns
+        .get(town)
+        .zip(towns.town_static(town))
+        .is_some_and(|(record, statics)| {
+            h3_towns::opening_gives(record, statics, rules.towns(), rules.core(), heroes)
+        })
 }
 
 /// The Mana Vortex of `town` to its garrison hero, then its visitor ([`vortex_to`]): the visit's

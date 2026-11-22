@@ -100,15 +100,6 @@ impl AdventureState {
         on_map < usize::from(most)
     }
 
-    /// Whether `town`'s entrance is the map's and no hero stands on it, another player's included:
-    /// [`Self::check_tavern_hire`]'s entrance (TWN-TAV-003; E09 T38a2: a listing's test a town).
-    // rule: TWN-TAV-003
-    pub fn entrance_free(&self, town: TownId) -> bool {
-        self.map()
-            .town_entrance(town)
-            .is_some_and(|entrance| self.heroes().iter().all(|on| on.pos != entrance))
-    }
-
     /// Places `hero`, a hired hero with the away record the game gives (its army, points left and
     /// day's maximum, formation and tactics flag; no battle bonuses, no timed marks), on its tile,
     /// the entrance [`Self::check_tavern_hire`] gave, on land, among the heroes on the map in id order:

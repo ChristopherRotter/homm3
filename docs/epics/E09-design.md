@@ -2721,7 +2721,7 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
 (`legal_builds`: each own town's builds, recruitments, **hires**, then hero moves) through
 `town/hire.rs`' `hire_slots` (once a listing: the part's price in the treasury, room below the most
 heroes, `AdventureState::has_room`; the slots holding a hero) and `legal_hires` (a town: its
-entrance free, `AdventureState::entrance_free`, then its standing Tavern), the same conditions as
+entrance free, `AdventureState::entrance_free`, since E09 T49a2 the listing's `town_entrance_hero`, then its standing Tavern), the same conditions as
 `hire`'s checks, the cheapest first; `legal_commands` folds its chain into a list sized 16 (the
 bench, the town lane's `TRAPS.md`). The env's **v12**: `TAVERN_HIRE + s` (35, 36; `TAVERN_SLOTS`;
 `Action::tavern_hire`), masked and decoded as the hero moves between the bars (the town's entrance
