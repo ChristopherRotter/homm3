@@ -64,4 +64,5 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   claims' 16-bit offset that wraps near a colleague's destination.
 - **Not read:** the values the planning calls (`ai_army_fight_sim`, `ai_fight_estimate`, the
   node's key +0x10 and the expansion's sixth argument behind it, the per-class value table):
-  T1a2; the walk: T1a1c; `ai_hero_candidates`' other caller 0x431BD0: T1a4.
+  T1a2; the walk: T1a1c; `ai_hero_candidates`' other caller `ai_town_hero_prospects` 0x431BD0
+  (inferred, mapped): T1a3, T1a4.

@@ -219,7 +219,7 @@ T1a1c. The values the frame and the planning call (`ai_vision_area_value`, the d
 `ai_army_fight_sim` 0x427330, `ai_fight_estimate` 0x528040, the node's key +0x10 and the
 expansion's sixth argument behind it, the per-class value table `ai_class_tables_init` fills):
 T1a2. The build loop, the artifact step and the allies' shares: T1a3. `ai_hero_candidates`'
-other caller 0x431BD0: T1a4.
+other caller, `ai_town_hero_prospects` 0x431BD0 (inferred): T1a3, T1a4.
 
 ### 1.9 The planning: the danger map and the destination (T1a1b)
 

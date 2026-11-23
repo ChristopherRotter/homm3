@@ -58,7 +58,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 - A cloud clone, `Heroes3.exe` staged from the user's PC (its local `master` was behind GitHub's,
   which already had #1131). Read the danger map, the destination's choice and its helpers, the
-  candidates, the claims, the score and its draw; 20 map entries, `pathfinder_node` and
+  candidates, the claims, the score and its draw; 21 map entries, `pathfinder_node` and
   `ai_candidate`, the survey's §1.9. Scratch scripts over `scripts/exe.py` (not committed).
 
 ### 2026-11-23 — E31 T1a1a: the turn's loop and the records

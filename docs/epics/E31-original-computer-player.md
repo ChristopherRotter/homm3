@@ -155,6 +155,6 @@ or HotA's AI, but as pointers.
   (`ai_player_record`); 42 map entries (35 new); the survey `docs/rules/surveys/E31-computer-player.md`
   §0, §1 (`E31-log.md` T1a1a).
 - **T1a1b** (2026-11-23): the planning: the danger map, the candidates and the colleagues' claims,
-  the value field, the score with its draw, the choice; 20 map entries (12 new, 5 rewritten, 3 renamed in),
+  the value field, the score with its draw, the choice; 21 map entries (13 new, 5 rewritten, 3 renamed in),
   `pathfinder_node` and `ai_candidate` in `structs.toml`; the survey §1.9; two quirk candidates
   for T1b (`E31-log.md` T1a1b).
