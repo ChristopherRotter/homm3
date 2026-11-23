@@ -1,6 +1,7 @@
 /* xdd.dll for the reference captures (clients/capture/README.md). Built by setup.sh with
    mingw-w64; our own code. The original's files never change; in its memory only the import
-   slots of 2 and 5 and the roll calls of 3.
+   slots of 2 and 5, the roll calls of 3 and, with H3RMG, rand's entry and the generator's calls
+   of 10.
 
    1. A forwarder (E17 M1 T8): the GOG Heroes3.exe imports DirectDrawCreate from xdd.dll, its
       DDrawCompat wrapper, which does not run under Wine; this xdd.dll hands the call to Wine's own
@@ -124,7 +125,30 @@
       and GetSystemTime. With H3TIME set to a number of seconds since 1970-01-01 00:00 UTC (and
       H3CLOCK, as for everything here), Heroes3.exe's imports of both return that time, fixed,
       to every caller: with TZ=UTC (the shell's runs) time() returns H3TIME, the map's seed.
-      The ack's seventeenth field counts the two imports hooked (2). */
+      The ack's seventeenth field counts the two imports hooked (2).
+  10. The generator's phases (E14 T1b2, *provisional*; docs/lanes/rmg/ORACLE.md, "The phase
+      oracle"): with H3RMG set as well (any value), the C library's rand (0x617E5C) is entered
+      through rmg_rand, which draws as rand does (the thread's seed, +0x14 of its thread data,
+      times 0x343FD plus 0x269EC3; bits 16 to 30 returned), and 18 calls of the generator go
+      through rmg_thunk_jmp or rmg_thunk_call, each only where its bytes are the call the table
+      names (as 3.'s): its srand(time()) (0x536148), rmg_generate_map's call (0x54C01C), the 15
+      steps' calls in rmg_generate_map (survey §1.5) and rmg_write_map's call (0x54C05B). From
+      that srand to rmg_write_map's return every draw on the generator's thread is appended to
+      <H3CLOCK>\rmg<g>.draws (g the generation, from 1) as "<site> <value>": the call's address
+      (its return address - 5) in hex and the draw as returned. Between them: "seed <s>",
+      "generate", "step <k>" at step k's first call, "generated <0|1>" (rmg_generate_map's
+      answer), "write", and last "end <draws> <elsewhere>": the draws logged and those of other
+      threads inside the window (their own seeds; not logged). The generator's cells are dumped
+      after each step k that ran, at the next step's first call (k = 0: before step 1; after 15
+      at rmg_generate_map's return), to <H3CLOCK>\rmg<g>-<k>.cells, little-endian 32-bit words:
+      "H3RMGCEL", the format 1, k, the width, height and levels; per cell in the map's order
+      (level, row, column) 12 words: the objects on it, the first three's indices in the
+      generator's objects (+0xEC4; -1 none or not there), then its words +0x10 to +0x2C as they
+      are (the objects' vector is pointers, left out); the objects' count and per object six
+      words: its template's index in objects.txt's list (the generator's +0x24, 0x4C bytes each;
+      -1 another), the template's type and subtype, x, y and z; the count of further places and
+      per place three words: the cell's index, the place on it (from 3) and the object's index.
+      The ack's eighteenth field counts the hooks placed (19 with H3RMG). */
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -264,6 +288,7 @@ static DWORD main_thread;  /* 6.: with sound only the main thread's reads count 
 static DWORD game_thread;  /* 8.: the main thread, whatever the sound */
 static volatile LONG seed_pending, seeds_set;
 static int date_hooks; /* 9.: the ack's seventeenth field, the date imports hooked */
+static int rmg_hooked; /* 10.: the ack's eighteenth field, the generator's hooks placed */
 static DWORD seed_value;
 
 static DWORD WINAPI virtual_time(void)
@@ -1201,11 +1226,11 @@ static DWORD WINAPI control(LPVOID unused)
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld %d %ld %d %d %ld %ld %d\n", applied,
+            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld %d %ld %d %d %ld %ld %d %d\n", applied,
                     (unsigned long)t, (long)reads, (long)forced_draws, waiting, redirected,
                     (long)refused, bink_clock, sound_hooks, (long)unfollowed, smack_clock,
                     (long)clip_reads, summary_hooked, smack_sound, (long)bink_sound,
-                    (long)seeds_set, date_hooks);
+                    (long)seeds_set, date_hooks, rmg_hooked);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
@@ -1317,6 +1342,358 @@ static void date_of(unsigned long s, SYSTEMTIME *t)
     t->wMilliseconds = 0;
 }
 
+/* 10.: the generator's phases. */
+#define RMG_SEED 16
+#define RMG_GENERATE 17
+#define RMG_WRITE 18
+struct rmg_hook {
+    DWORD call;   /* the call instruction */
+    DWORD target; /* what it calls */
+    int what;     /* a step 1 to 15, or RMG_SEED, RMG_GENERATE, RMG_WRITE */
+    int post;     /* called through rmg_thunk_call: rmg_post runs at its return */
+};
+
+static const struct rmg_hook rmg_hooks[] = {
+    {0x536148, 0x617E4Fu, RMG_SEED, 0},       /* rmg_generator_base_init: srand(time()) */
+    {0x54C01C, 0x549930u, RMG_GENERATE, 1},   /* rmg_generate_and_write: rmg_generate_map */
+    {0x549ADE, 0x53BCB0u, 1, 0},              /* rmg_zones_lay_out */
+    {0x549AF9, 0x53E050u, 2, 0},              /* rmg_level_zones_partition, per level */
+    {0x549B08, 0x53E6A0u, 3, 0},              /* rmg_terrain_paint */
+    {0x549B30, 0x544A50u, 4, 0},              /* rmg_zone_first_town, per zone */
+    {0x549B5B, 0x544AE0u, 5, 0},              /* rmg_zone_towns_place, per zone */
+    {0x549B65, 0x544920u, 6, 0},              /* rmg_paths_and_connections */
+    {0x549B9F, 0x5446A0u, 7, 0},              /* rmg_junction_zone_paths, per junction zone */
+    {0x549BA9, 0x545F60u, 8, 0},              /* rmg_mines_place */
+    {0x549C10, 0x5405D0u, 9, 0},              /* rmg_zone_paths_connect */
+    {0x549C39, 0x547360u, 10, 0},             /* rmg_zone_treasures_place, per zone */
+    {0x549C82, 0x5439E0u, 11, 0},             /* rmg_underground_rock_paint (two levels) */
+    {0x549C8A, 0x531310u, 12, 0},             /* rmg_map_shores_mark */
+    {0x549C91, 0x537970u, 13, 0},             /* rmg_obstacles_fill */
+    {0x549C98, 0x548290u, 14, 0},             /* rmg_roads_lay */
+    {0x549C9F, 0x549870u, 15, 0},             /* rmg_rivers_lay */
+    {0x54C05B, 0x54ABF0u, RMG_WRITE, 1},      /* rmg_generate_and_write: rmg_write_map */
+};
+#define RMG_HOOKS (sizeof rmg_hooks / sizeof *rmg_hooks)
+/* rand's tail (0x617E70: the seed stored, then copied to eax), where rmg_rand_tail is entered. */
+#define RMG_RAND_TAIL 0x617E70u
+static const BYTE rmg_rand_tail_bytes[5] = {0x89, 0x48, 0x14, 0x8B, 0xC1};
+/* Where rmg_rand_tail goes on: rand's shift and mask (0x617E75). */
+DWORD rmg_rand_back = RMG_RAND_TAIL + 5;
+
+static char rmg_dir[MAX_PATH - 32];
+/* Read by rmg_rand_tail: the window open, the generator's thread, other threads' draws. */
+volatile LONG rmg_on;
+DWORD rmg_thread;
+volatile LONG rmg_elsewhere;
+static FILE *rmg_log;
+static int rmg_generation;
+static int rmg_step = -1; /* the last step that ran: -1 none yet, 0 rmg_generate_map entered */
+static BYTE *rmg_gen;     /* the generator record (rmg_generate_map's this) */
+static long rmg_draws;
+/* The calls through rmg_thunk_call under way: their hooks and return addresses (they nest:
+   the steps run inside rmg_generate_map's call). */
+#define RMG_DEPTH 8
+static int rmg_open_hook[RMG_DEPTH];
+static DWORD rmg_open_back[RMG_DEPTH];
+static int rmg_depth;
+/* For the asm below, on the generator's thread alone: the call's target, the caller's return
+   address, the game's stack pointer while the hooks run on their own stack. */
+DWORD rmg_target, rmg_back, rmg_game_esp;
+/* The hooks' own stack: what they do never touches the game's stack below a call, whose bytes
+   the generator reads uninitialised (step 2's temporary zone, survey §2.6). */
+#define RMG_STACK (1 << 18)
+__attribute__((aligned(16))) BYTE rmg_stack[RMG_STACK];
+
+/* A draw of the generator's thread (`back` the return address of rand's caller, `seed` the
+   new seed), logged; on the hooks' stack. */
+__attribute__((used)) void __cdecl rmg_draw(DWORD back, DWORD seed)
+{
+    fprintf(rmg_log, "%lX %lu\n", (unsigned long)back - 5, (unsigned long)((seed >> 16) & 0x7FFF));
+    rmg_draws++;
+}
+
+static int rmg_by_pointer(const void *a, const void *b)
+{
+    DWORD x = *(const DWORD *)a, y = *(const DWORD *)b;
+    return x < y ? -1 : x > y;
+}
+
+static void rmg_words(FILE *f, const long *w, size_t n)
+{
+    fwrite(w, sizeof *w, n, f);
+}
+
+/* The generator's cells after step `step` (the format: the header's 10.). */
+static void rmg_dump(int step)
+{
+    char path[MAX_PATH];
+    BYTE *map = rmg_gen + 0xC;
+    BYTE *cells = *(BYTE **)(map + 8);
+    long width = *(long *)(map + 0xC), height = *(long *)(map + 0x10);
+    long levels = *(long *)(map + 0x14);
+    DWORD *objects = *(DWORD **)(rmg_gen + 0xEC8), *objects_end = *(DWORD **)(rmg_gen + 0xECC);
+    BYTE *templates = *(BYTE **)(rmg_gen + 0x28), *templates_end = *(BYTE **)(rmg_gen + 0x2C);
+    long count = objects ? (long)(objects_end - objects) : 0, cell_count = width * height * levels;
+    long head[5], k, extras = 0;
+    DWORD *index = malloc(sizeof *index * 2 * (size_t)(count ? count : 1));
+    FILE *f;
+    snprintf(path, sizeof path, "%s\\rmg%d-%d.cells", rmg_dir, rmg_generation, step);
+    f = fopen(path, "wb");
+    if (!f || !index) {
+        if (f)
+            fclose(f);
+        free(index);
+        return;
+    }
+    for (k = 0; k < count; k++) {
+        index[2 * k] = objects[k];
+        index[2 * k + 1] = (DWORD)k;
+    }
+    qsort(index, (size_t)count, 2 * sizeof *index, rmg_by_pointer);
+    fwrite("H3RMGCEL", 1, 8, f);
+    head[0] = 1;
+    head[1] = step;
+    head[2] = width;
+    head[3] = height;
+    head[4] = levels;
+    rmg_words(f, head, 5);
+    /* The cells, and the places past the third counted for the end. */
+    for (k = 0; k < cell_count; k++) {
+        BYTE *cell = cells + 0x30 * k;
+        DWORD *on = *(DWORD **)(cell + 4), *on_end = *(DWORD **)(cell + 8);
+        long w[12], n = on ? (long)(on_end - on) : 0, j;
+        w[0] = n;
+        for (j = 0; j < 3; j++) {
+            DWORD *hit = j < n ? bsearch(&on[j], index, (size_t)count, 2 * sizeof *index,
+                                         rmg_by_pointer) : NULL;
+            w[1 + j] = hit ? (long)hit[1] : -1;
+        }
+        memcpy(&w[4], cell + 0x10, 0x20);
+        rmg_words(f, w, 12);
+        if (n > 3)
+            extras += n - 3;
+    }
+    rmg_words(f, &count, 1);
+    for (k = 0; k < count; k++) {
+        BYTE *o = (BYTE *)objects[k];
+        BYTE *prototype = *(BYTE **)(o + 4);
+        BYTE *template = prototype ? *(BYTE **)prototype : NULL;
+        long w[6];
+        int ours = template && template >= templates && template < templates_end
+                   && (template - templates) % 0x4C == 0;
+        w[0] = ours ? (long)((template - templates) / 0x4C) : -1;
+        w[1] = template ? *(long *)(template + 0x1C) : -1;
+        w[2] = template ? *(long *)(template + 0x20) : -1;
+        memcpy(&w[3], o + 8, 12);
+        rmg_words(f, w, 6);
+    }
+    rmg_words(f, &extras, 1);
+    for (k = 0; k < cell_count && extras; k++) {
+        BYTE *cell = cells + 0x30 * k;
+        DWORD *on = *(DWORD **)(cell + 4), *on_end = *(DWORD **)(cell + 8);
+        long n = on ? (long)(on_end - on) : 0, j;
+        for (j = 3; j < n; j++) {
+            DWORD *hit = bsearch(&on[j], index, (size_t)count, 2 * sizeof *index,
+                                 rmg_by_pointer);
+            long w[3];
+            w[0] = k;
+            w[1] = j;
+            w[2] = hit ? (long)hit[1] : -1;
+            rmg_words(f, w, 3);
+        }
+    }
+    fclose(f);
+    free(index);
+}
+
+/* Before a hooked call (`back` its return address, `ecx` and `args` its this and stack
+   arguments): the hook's work; returns the call's target. */
+__attribute__((used)) DWORD __cdecl rmg_pre(DWORD back, DWORD ecx, DWORD *args)
+{
+    size_t i;
+    const struct rmg_hook *h = NULL;
+    for (i = 0; i < RMG_HOOKS; i++)
+        if (rmg_hooks[i].call + 5 == back)
+            h = &rmg_hooks[i];
+    if (!h)
+        return 0; /* never: the thunks are reached from the table's calls alone */
+    if (h->post && rmg_depth < RMG_DEPTH) {
+        rmg_open_hook[rmg_depth] = (int)(h - rmg_hooks);
+        rmg_open_back[rmg_depth++] = back;
+    }
+    if (h->what == RMG_SEED) {
+        char path[MAX_PATH];
+        if (rmg_log)
+            fclose(rmg_log);
+        snprintf(path, sizeof path, "%s\\rmg%d.draws", rmg_dir, ++rmg_generation);
+        rmg_log = fopen(path, "w");
+        if (rmg_log) {
+            setvbuf(rmg_log, NULL, _IOFBF, 1 << 20);
+            fprintf(rmg_log, "seed %lu\n", (unsigned long)args[0]);
+            rmg_thread = GetCurrentThreadId();
+            rmg_draws = 0;
+            InterlockedExchange(&rmg_elsewhere, 0);
+            rmg_step = -1;
+            rmg_gen = NULL;
+            InterlockedExchange(&rmg_on, 1);
+        }
+    } else if (rmg_on && h->what == RMG_GENERATE) {
+        rmg_gen = (BYTE *)ecx;
+        rmg_step = 0;
+        fprintf(rmg_log, "generate\n");
+    } else if (rmg_on && h->what == RMG_WRITE) {
+        fprintf(rmg_log, "write\n");
+    } else if (rmg_on && rmg_gen && h->what != rmg_step) {
+        rmg_dump(rmg_step);
+        rmg_step = h->what;
+        fprintf(rmg_log, "step %d\n", rmg_step);
+        fflush(rmg_log);
+    }
+    return h->target;
+}
+
+/* At the return of a call through rmg_thunk_call (`eax` its answer): the hook's work; returns
+   the caller's return address. */
+__attribute__((used)) DWORD __cdecl rmg_post(DWORD eax)
+{
+    const struct rmg_hook *h;
+    if (rmg_depth == 0)
+        return 0; /* never: a call through rmg_thunk_call has its return address kept */
+    h = &rmg_hooks[rmg_open_hook[--rmg_depth]];
+    if (rmg_on && h->what == RMG_GENERATE) {
+        if (rmg_step > 0)
+            rmg_dump(rmg_step);
+        fprintf(rmg_log, "generated %d\n", (int)(eax & 0xFF));
+        fflush(rmg_log);
+    } else if (rmg_on && h->what == RMG_WRITE) {
+        InterlockedExchange(&rmg_on, 0);
+        fprintf(rmg_log, "end %ld %ld\n", rmg_draws, (long)rmg_elsewhere);
+        fclose(rmg_log);
+        rmg_log = NULL;
+    }
+    return rmg_open_back[rmg_depth];
+}
+
+/* rand entered at its tail (rmg_rand_tail, by a jump that replaces its two instructions there):
+   the instructions done, the draw logged on the hooks' stack when the window is open and the
+   thread is the generator's (its id read from the thread block, fs:0x24, with no call); another
+   thread's counted; then back to rand's shift and mask. Nothing is written to the game's
+   stack. The hooked calls go through rmg_thunk_jmp or rmg_thunk_call, which move to the hooks'
+   stack before saving anything (pushal: eax, ecx, edx, ebx, esp, ebp, esi, edi; after pushfl
+   ecx at 28(%esp)) and give rmg_pre the call's return address, this and arguments from the
+   game's stack: rmg_thunk_jmp jumps to the target, which returns to the caller; rmg_thunk_call
+   calls it in the caller's place (its return address kept by rmg_pre) and jumps back to the
+   caller after rmg_post. */
+void rmg_rand_tail(void);
+void rmg_thunk_jmp(void);
+void rmg_thunk_call(void);
+__asm__(".text\n"
+        ".globl _rmg_rand_tail\n"
+        "_rmg_rand_tail:\n"
+        "    movl %ecx, 0x14(%eax)\n"
+        "    movl %ecx, %eax\n"
+        "    cmpl $0, _rmg_on\n"
+        "    je 1f\n"
+        "    movl %fs:0x24, %edx\n"
+        "    cmpl _rmg_thread, %edx\n"
+        "    jne 2f\n"
+        "    movl %esp, %edx\n"
+        "    movl $_rmg_stack+262144, %esp\n"
+        "    pushl %edx\n"
+        "    pushl %eax\n"
+        "    pushl %eax\n"
+        "    pushl (%edx)\n"
+        "    call _rmg_draw\n"
+        "    addl $8, %esp\n"
+        "    popl %eax\n"
+        "    popl %esp\n"
+        "    jmp 1f\n"
+        "2:  lock incl _rmg_elsewhere\n"
+        "1:  jmp *_rmg_rand_back\n"
+        ".globl _rmg_thunk_jmp\n"
+        "_rmg_thunk_jmp:\n"
+        "    movl %esp, _rmg_game_esp\n"
+        "    movl $_rmg_stack+262144, %esp\n"
+        "    pushal\n"
+        "    pushfl\n"
+        "    movl _rmg_game_esp, %eax\n"
+        "    leal 4(%eax), %edx\n"
+        "    pushl %edx\n"
+        "    pushl 32(%esp)\n"
+        "    pushl (%eax)\n"
+        "    call _rmg_pre\n"
+        "    addl $12, %esp\n"
+        "    movl %eax, _rmg_target\n"
+        "    popfl\n"
+        "    popal\n"
+        "    movl _rmg_game_esp, %esp\n"
+        "    jmp *_rmg_target\n"
+        ".globl _rmg_thunk_call\n"
+        "_rmg_thunk_call:\n"
+        "    movl %esp, _rmg_game_esp\n"
+        "    movl $_rmg_stack+262144, %esp\n"
+        "    pushal\n"
+        "    pushfl\n"
+        "    movl _rmg_game_esp, %eax\n"
+        "    leal 4(%eax), %edx\n"
+        "    pushl %edx\n"
+        "    pushl 32(%esp)\n"
+        "    pushl (%eax)\n"
+        "    call _rmg_pre\n"
+        "    addl $12, %esp\n"
+        "    movl %eax, _rmg_target\n"
+        "    popfl\n"
+        "    popal\n"
+        "    movl _rmg_game_esp, %esp\n"
+        "    leal 4(%esp), %esp\n"
+        "    call *_rmg_target\n"
+        "    movl %esp, _rmg_game_esp\n"
+        "    movl $_rmg_stack+262144, %esp\n"
+        "    pushal\n"
+        "    pushfl\n"
+        "    pushl 32(%esp)\n"
+        "    call _rmg_post\n"
+        "    addl $4, %esp\n"
+        "    movl %eax, _rmg_back\n"
+        "    popfl\n"
+        "    popal\n"
+        "    movl _rmg_game_esp, %esp\n"
+        "    jmp *_rmg_back\n");
+
+/* Writes a 5-byte instruction `op` (0xE8 call, 0xE9 jmp) at `at` to `to`; 1 when written. */
+static int rmg_patch(DWORD at, BYTE op, DWORD to)
+{
+    DWORD old, rel = to - (at + 5);
+    if (!VirtualProtect((void *)at, 5, PAGE_EXECUTE_READWRITE, &old))
+        return 0;
+    *(BYTE *)at = op;
+    memcpy((BYTE *)at + 1, &rel, sizeof rel);
+    VirtualProtect((void *)at, 5, old, &old);
+    return 1;
+}
+
+/* Hooks rand's tail and the table's calls (each where its bytes are what the table says);
+   returns how many. */
+static int rmg_hook_all(void)
+{
+    size_t i;
+    int n = 0;
+    if (!memcmp((const void *)RMG_RAND_TAIL, rmg_rand_tail_bytes, sizeof rmg_rand_tail_bytes))
+        n += rmg_patch(RMG_RAND_TAIL, 0xE9, (DWORD)rmg_rand_tail);
+    for (i = 0; i < RMG_HOOKS; i++) {
+        const struct rmg_hook *h = &rmg_hooks[i];
+        BYTE *at = (BYTE *)h->call;
+        DWORD rel;
+        memcpy(&rel, at + 1, sizeof rel);
+        if (at[0] != 0xE8 || h->call + 5 + rel != h->target)
+            continue;
+        n += rmg_patch(h->call, 0xE8,
+                       h->post ? (DWORD)rmg_thunk_call : (DWORD)rmg_thunk_jmp);
+    }
+    FlushInstructionCache(GetCurrentProcess(), NULL, 0);
+    return n;
+}
+
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
     char dir[MAX_PATH - 8];
@@ -1355,6 +1732,11 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
                          + (hook_by_name(exe, "kernel32.dll", "GetSystemTime",
                                          (FARPROC)fixed_system_time) != NULL);
         }
+    }
+    if (GetEnvironmentVariableA("H3RMG", NULL, 0)) {
+        /* 10.: the generator's draws and cells, beside the clock's files. */
+        snprintf(rmg_dir, sizeof rmg_dir, "%s", dir);
+        rmg_hooked = rmg_hook_all();
     }
     {
         char at[16];

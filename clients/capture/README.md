@@ -1761,11 +1761,21 @@ file there (2 to 3 s), checks the seed and choices its description names, and ke
 adventure map's System Options at (727, 309), Main Menu at (565, 437), the question's OK); the
 tab shows two levels at each opening of the scenario screen.
 
+The phase oracle (E14 T1b2, `--phases`): with `H3RMG` set as well, `xdd.dll` (`xdd.c` section
+10) enters the C library's `rand` through its own copy, which logs every draw of the generator's
+thread from its `srand` to `rmg_write_map`'s return with the call's address, and puts 18 of the
+generator's calls through two thunks that mark the steps in the log and dump the generator's
+cells after each step, into the run's clock folder (`rmg<g>.draws`, `rmg<g>-<step>.cells`; the
+formats in `xdd.c`); the ack's eighteenth field counts the hooks placed (19). The driver waits for
+the log's `end` line after the map, keeps the log's and the dumps' digests in `rmg/phases.txt`, and
+`phases` sets the logs against survey §2.6's sites per step.
+
 ```
-python3 h3rmg.py one --seed <s> [--size M] [--levels 2] [--players 2] [--teams 0] [--computers 0] [--computer-teams 0] [--water normal] [--monsters normal] [--again] [--before "<step>;..."]
-python3 h3rmg.py corpus [--only <id>,...] [--twice] [--again] [--record]   # rmg/corpus.toml against rmg/kept.txt
-python3 h3rmg.py read                                                        # h3_map's reader over the corpus's maps
-python3 h3rmg.py templates                                                   # each case's template from either rmg.txt
+python3 h3rmg.py one --seed <s> [--size M] [--levels 2] [--players 2] [--teams 0] [--computers 0] [--computer-teams 0] [--water normal] [--monsters normal] [--again] [--before "<step>;..."] [--phases]
+python3 h3rmg.py corpus [--only <id>,...] [--twice] [--again] [--phases] [--record]   # rmg/corpus.toml against rmg/kept.txt (and rmg/phases.txt)
+python3 h3rmg.py phases [--only <id>,...] [--runs]                                     # the logs per step against survey §2.6
+python3 h3rmg.py read                                                                  # h3_map's reader over the corpus's maps
+python3 h3rmg.py templates                                                             # each case's template from either rmg.txt
 ```
 
 ## The recipes' coordinates (800 × 600)
