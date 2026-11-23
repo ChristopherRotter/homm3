@@ -2663,3 +2663,64 @@ an entry only where a task builds on it.
   games are valued, each paired with T43's records.
 - **Next (the user's machine, 16 threads, about 75 minutes):** the valuation on the side's worlds,
   the command in `QUEUE.md`.
+
+## T44 — Where #2 diverges: the valuation (2026-11-23)
+
+- **The run** (the user's machine, 16 threads, 5 754 s; `master` after #1123): `h3 ai ceiling
+  --commands python/records/ceiling/e25-structure-1-commands.toml --budget 4 --confirm 32 --worlds
+  side --leave-out siege_hero:54:attacker`; `python/records/ceiling/e25-structure-1-side-4.json`
+  and its games file (`-games.toml`). 598 games, 18 290 decisions of #2, 99 candidates and 483
+  rollouts each. The identity's `core` hash moved since T43 (`master`'s town and adventure
+  content), its battle ruleset, encounters and system policy are T43's, and every game recorded
+  on T43's identity replayed to its recorded end: the battles are T43's, the pairing holds.
+- **The check, the performance difference:** #2's value over the fair actor's own play, paired
+  on the 598 games (`report-0`; `h3 ai eval`'s weights), **+0.0258 ± 0.0099** (win rate +0.009 ±
+  0.022; T29: +0.027); the confirmation's values at #2's decisions, the fair actor's regret less
+  #2's summed over a game and weighted alike, **+0.0254**. The one-step values on the side's
+  worlds account for #2's realised gain: the measure reads what #2's play is worth.
+- **The headroom over #2** (paired, the same 598 games): the rollout-improved fair actor
+  (`report-side-4`) over #2 **+0.059 ± 0.010** in value, +0.045 ± 0.023 in win rate (hero
+  +0.067 attacking, +0.054 defending; siege_hero +0.078, +0.068; siege_garrison +0.029, +0.027).
+  #2's regret against the halving's best **0.28 a game** (weighted; 152 summed), the fair
+  actor's at the same decisions 0.31 (167); by the halving's own means 242 (the maximum's luck,
+  a third of it). A decision's regret by kind: siege_hero defending the largest (0.0104; 0.44 a
+  game, 42 decisions), hero about 0.009, siege_garrison 0.004 to 0.006.
+- **By category** (#2's command; its decisions, the share that is the fair actor's command and
+  the best, its regret a decision and the fair actor's at the same decisions, its share of #2's
+  regret, the fair actor's regret less #2's summed; then by the best's category the decisions and
+  #2's regret summed):
+
+  | category | #2 | =fair | =best | regret | fair's | share | #2's gain | the best | missed |
+  |---|---|---|---|---|---|---|---|---|---|
+  | tactics | 2 068 | 0.22 | 0.14 | 0.0077 | 0.0072 | 0.10 | −0.9 | 2 068 | 15.9 |
+  | wait, defend | 1 594 | 0.27 | 0.20 | 0.0072 | 0.0106 | 0.08 | +5.4 | 1 907 | 10.7 |
+  | move | 3 200 | 0.06 | 0.08 | 0.0066 | 0.0068 | 0.14 | +0.6 | **5 900** | **57.7** |
+  | melee | 6 682 | 0.51 | 0.23 | 0.0070 | 0.0084 | 0.31 | **+9.1** | 4 731 | 35.3 |
+  | shot | 2 340 | 0.55 | 0.33 | 0.0034 | 0.0040 | 0.05 | +1.5 | 1 559 | 2.9 |
+  | cast | 1 981 | 0.17 | 0.13 | **0.0240** | 0.0236 | 0.31 | −0.8 | 1 896 | 29.7 |
+  | heal, other | 425 | 0.85 | 0.32 | 0.0019 | 0.0018 | 0.01 | 0.0 | 229 | −0.1 |
+
+  The fair actor's regret by its own command's category: casts 0.0246, melee 0.0086, wait or
+  defend 0.0089, tactics 0.0072, move 0.0070, shot 0.0036. #2 plays the fair actor's command at
+  35 % of its decisions and the best at 19 %.
+- **The read:**
+  1. **#2's edge over the fair actor is in melee and waiting** (+9.1 and +5.4 of +14.9): it
+     strikes less (6 682 against the fair actor's 7 759 at the same states), waits or defends
+     more (1 594 against 1 027) and moves more (3 200 against 2 594), and where it waits the fair
+     actor's choice would cost 0.0106 a decision to its 0.0072. In tactics and casts it is no
+     better than its teacher (−0.9, −0.8).
+  2. **Casts cost the most a decision**, 0.024, 3.4 times a melee's, as the fair actor's own
+     (0.0246): #2 learned nothing beyond its teacher there. Part of it is the side's worlds'
+     refusals (BAT-STUB-19): #2's command was refused in 668 of the confirmation's rollouts, the
+     fair actor's in 699, the best in 117, each a loss; at about 1/32 of a regret each, up to about
+     17 of the casts' 47.5 (#2's command refused is always a cast), so about 0.015 a decision
+     without them, still twice a melee's.
+  3. **The missed moves are the largest sum:** the best is a move at 5 900 of the decisions
+     (32 %), #2 moves at 3 200 (17 %) and its move is the best's hex at 8 %; where the best is a
+     move #2 leaves 0.0098 a decision, 58 of 152 (38 %). Melee as the best 35, casts 30, tactics 16.
+  4. **No single capability is missing** (T30's reading): the regret is spread over every kind of
+     decision, about 0.007 a decision outside the casts and shots (the record holds the
+     categories' margins, not their crossing).
+- **For T45** (the checkpoint): the legitimate headroom against the fair actor is +0.085 (T43),
+  #2 holds +0.026 of it, +0.059 is left; by category the casts a decision, the moves and melee
+  in sum; a measure (the confirmed one-step values) that reads a policy's realised value.
