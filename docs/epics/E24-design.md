@@ -4699,12 +4699,12 @@ a record's facts and compared with T5a's three sequences, recorded again.
   (`crcombat.def` frame 6, the layout's) and the battle's first frame at shift 2, 1 at 200, whole
   at 250 (the timeline's `battle <winner>`, the battle handed over then: `Loop::battles`); the
   palettes do not cycle from that black until the map is back. The result's OK (Enter's release;
-  the window's host gives `Action::BattleClosed`) starts the battle's fade out (`Switch::ended`:
-  its last frame, not kept by a sequence's run, as the harness keeps none), at 150 the map back
-  (drawn, the adventure cursor, the next cycle 20 ms on, *provisional*) at shift 2, 1 at 200, the
-  map whole at 250. The painter fades with the shell's `faded` (`screen_fade_out`'s shifts); the
-  battle's first frame is its element's at its start (`battles::first_frame`: unattended, no
-  sound, a stopped clock), its last the hosted battle's.
+  on a record the record player's `Action::BattleClosed`, since M4 T6) starts the battle's fade
+  out (`Switch::ended`: its last frame, not kept by a sequence's run, as the harness keeps none),
+  at 150 the map back (drawn, the adventure cursor, the next cycle 20 ms on, *provisional*) at
+  shift 2, 1 at 200, the map whole at 250. The painter fades with the shell's `faded`
+  (`screen_fade_out`'s shifts); the battle's first frame is its element's at its start
+  (`battles::first_frame`: unattended, no sound, a stopped clock), its last the hosted battle's.
 - **The result** (`Loop::after_battle`): the hero's path made again (none: move hero disabled);
   a monster beaten taken off the map with `killfade.82M` (the dissolve holding the cycling, the
   experience at its end); a retreated hero (`AfterBattle::Lost`) shown with its objects stepped,
@@ -4715,3 +4715,21 @@ a record's facts and compared with T5a's three sequences, recorded again.
   timeline as recorded; the frames exact but the known differences (the epic's review list):
   the morale icon (MCL-Q36), the battle's fade in (its obstacles the engine's: MCL-Q49), the
   hero's pose at the attack, the panel's buttons after a retreat, MINEEVNT's resource (MCL-Q48).
+- **As built at M4 T6** (the review's R5, R3-2): a record's walk whose path ends on an object
+  that blocks its tile (a monster, a pile, an artifact) visits it from beside at that last node
+  (`Loop::last_node`: its arrow zeroed, then `visit_beside`; no step, *provisional*, as §5.18's
+  computer's walk), so a record's monster fight takes the switch (it walked onto the monster's
+  tile, a plain cut); the record player waits through a switch (`Loop::idle`) and closes the
+  battle in the millisecond it shows whole (`Loop::battle_whole_at`, `Action::BattleClosed`: the
+  battle takes none of the map's time, that millisecond's change its fade out's first, the
+  window's frame of it made again after the battle; the window gives no close of its own), lists
+  an answer's battle the switch hands over once (`Directed::battles` the plain cuts' only), and
+  moves each later hero's place up after a hero a battle took off the map (`Loop::slots_left`);
+  a battle's commands (the viewer's, the system's for it) are none of `Played::commands` (no
+  400 ms each, the user's call). The result follows the record's outcome: a mine's guards' boxes
+  and flag only after the hero's win, a loss or retreat the hero gone as a retreat's
+  (`AfterBattle::of_guards`; the original's boxes then: MCL-Q51), a draw that takes both the
+  hero's dissolve, then the monster's (`AfterBattle::Both`). The window reads the combat options
+  again before each battle and tells a failed write, gives the map the mouse where the battle
+  left it and the focus as it stands, runs the device for a battle reached while paused, and
+  under `--check` fails unless every battle that came due closed.

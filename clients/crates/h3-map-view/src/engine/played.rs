@@ -49,7 +49,7 @@ use h3_map::model::Pos;
 use h3_protocol::wire::ServerMessage;
 use h3_protocol::wire::game::{
     AdventureCommand, AdventureEvent, Answer, GameCommand, GameEvent, GameObservation, Month,
-    PrimarySkill, Week,
+    PrimarySkill, SystemCommand, Week,
 };
 use toml::{Table, Value};
 
@@ -83,7 +83,8 @@ pub struct Played {
     /// Each of [`Played::moves`]' hero, the record's id (E24 M4 T4c: a hero's walks chain from
     /// where its last left it).
     pub walkers: Vec<u16>,
-    /// The viewer's commands, in order (E24 M4 T4c).
+    /// The viewer's commands, in order (E24 M4 T4c), but a battle's (E24 M4 T6, R5-6: the battle
+    /// handed over whole takes none of the map's time).
     pub commands: Vec<Command>,
     /// The other players' turns in sight (E24 M4 T4c), in order.
     pub others: Vec<OtherTurn>,
@@ -115,7 +116,8 @@ pub enum Command {
     EndTurn,
     /// A question's or a choice's answer.
     Answer(Answer),
-    /// A command of a screen the map has not (a town's, a hero's, an army's: M5's): not shown.
+    /// A command of a screen the map has not (a town's, a hero's, an army's: M5's): not shown. A
+    /// battle's is none of the map's commands (E24 M4 T6, R5-6).
     Other,
     /// The battle the command before began (E24 M4 T5b1, design §5.20, *provisional*: an answer's,
     /// a guards' question accepted; a walk's is its [`crate::timeline::Move::battle`]): the
@@ -267,7 +269,11 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     art,
                     (&mut moves, &mut ends, &mut walkers),
                 );
-                commands.push(command_of(command));
+                // A battle's command takes none of the map's time (E24 M4 T6, the reviewer's
+                // R5-6): the battle is handed over whole, or not at all (MCL-STUB-3).
+                if !in_battle(command) {
+                    commands.push(command_of(command));
+                }
                 answering = matches!(command, GameCommand::Answer { .. });
                 match command {
                     GameCommand::Adventure {
@@ -484,6 +490,18 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
         slots,
         taken,
     })
+}
+
+/// Whether `command` is a battle's (the viewer's own or the system's for it, E24 M4 T6): none of
+/// the map's [`Played::commands`].
+fn in_battle(command: &GameCommand) -> bool {
+    matches!(
+        command,
+        GameCommand::Battle { .. }
+            | GameCommand::System {
+                command: SystemCommand::Battle { .. }
+            }
+    )
 }
 
 /// A command echoed as the map's [`Command`].

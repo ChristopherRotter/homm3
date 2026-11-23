@@ -317,9 +317,10 @@ pub enum Action {
     /// player's: the tile need not show on the view): the path among the ones the map knows that
     /// leads there shown, then walked; none, nothing.
     Walk(Pos),
-    /// The battle's result window closed by its host (E24 M4 T5b2, design §5.21: the battle
-    /// client's element run to its OK in the window): the battle's switch back to the map goes
-    /// on; elsewhere nothing.
+    /// The battle's result window closed (E24 M4 T5b2, design §5.21: the battle client's element
+    /// run to its OK in the window; since E24 M4 T6, R5-3, a record player's input, given where
+    /// the switch shows the battle whole, `crate::director`): the battle's switch back to the map
+    /// goes on; elsewhere nothing.
     BattleClosed,
 }
 
@@ -1085,11 +1086,45 @@ pub enum AfterBattle {
     /// with 0, after `battle_aftermath` 0x4AC930's way: the hero gone first, then dissolved), then
     /// the player's next hero or town selected (`mobilize_hero(0, 0, 1)`).
     Lost,
-    /// Nothing more (the monster stands: a defender beaten elsewhere, not built).
+    /// A draw (E24 M4 T6, the reviewer's R5-4: the record takes both off the map): the hero
+    /// leaves as [`AfterBattle::Lost`]'s (`battle_aftermath`'s way, the hero's leaving first),
+    /// then the monster is taken off as [`AfterBattle::Taken`]'s (`monster_fight`'s rest: none
+    /// left), *provisional*: not recorded.
+    Both,
+    /// Nothing more (the monster stands: a defender beaten elsewhere, not built; since E24 M4 T6,
+    /// R5-4, a mine's guards' battle lost by a hero the record keeps).
     Stays,
     /// The answer's boxes that began it, one after another (`visit_mine` 0x4A39A0: ADVEVENT 85,
     /// then MINEEVNT's), and its flag.
     Boxes,
+}
+
+impl AfterBattle {
+    /// What a wandering monster's battle leaves by what the record's end of it took off the map
+    /// (E24 M4 T5b2; since E24 M4 T6, the reviewer's R5-4, a draw's both): the monster `taken`,
+    /// the hero `lost`.
+    #[must_use]
+    pub const fn of_fight(taken: bool, lost: bool) -> Self {
+        match (taken, lost) {
+            (true, true) => Self::Both,
+            (true, false) => Self::Taken,
+            (false, true) => Self::Lost,
+            (false, false) => Self::Stays,
+        }
+    }
+
+    /// What a mine's guards' battle leaves (E24 M4 T6, the reviewers' R5-4 and R3-2): the
+    /// answer's boxes after the hero's win (`winner` 0); else the hero gone where the record
+    /// takes it off the map (`lost`: beaten, retreated or a draw), or nothing (MCL-Q51: what the
+    /// original shows then not read).
+    #[must_use]
+    pub const fn of_guards(winner: i32, lost: bool) -> Self {
+        match (winner, lost) {
+            (0, _) => Self::Boxes,
+            (_, true) => Self::Lost,
+            (_, false) => Self::Stays,
+        }
+    }
 }
 
 /// A visit's question (E24 M4 T2b2 part A1, design §5.4, *provisional*: the viewer's facts at 0,
@@ -1612,6 +1647,9 @@ pub struct Loop {
     /// The hero a battle took off the map (E24 M4 T5b2): its index among the map's heroes and
     /// its slot in the kingdom's list.
     left: Option<usize>,
+    /// The kingdom's slots of the heroes battles took off the map, in order (E24 M4 T6:
+    /// [`Loop::slots_left`]).
+    slots_left: Vec<usize>,
     /// The input queue emptied (`input_flush` 0x4EC570: a box's opening, a human's turn's
     /// start): the actions after this one in its millisecond are dropped.
     flush: bool,
@@ -1652,7 +1690,8 @@ pub struct Loop {
     walked_tiles: Walked,
     off_record: Option<Unplayable>,
     /// The battles handed over so far (E24 M4 T5b1): each walk's end that began one, its
-    /// millisecond and [`Move::battle`].
+    /// millisecond and [`Move::battle`]; since E24 M4 T5b2 each switch's where it shows the
+    /// battle whole ([`Loop::battles`]).
     battles: Vec<(u32, u32)>,
 }
 
@@ -1810,8 +1849,11 @@ enum Then {
     /// its animation next, then its turn going on.
     AiBoard(Hero, bool),
     /// A hero a battle took off the map (E24 M4 T5b2): its slot left out of the kingdom's list,
-    /// then the player's next hero or town.
-    Lost,
+    /// then the player's next hero or town; since E24 M4 T6 (R5-4, a draw) the monster to take
+    /// off after it, if any.
+    Lost(Option<usize>),
+    /// The actions given meanwhile, then the idle step (E24 M4 T6: a draw's monster taken).
+    Resume,
 }
 
 /// A step onto a boat held by its dissolve (E24 M4 T2d2): the walk, the boat's tile and whether
@@ -2043,6 +2085,7 @@ impl Loop {
             whole: None,
             switched: Vec::new(),
             left: None,
+            slots_left: Vec::new(),
             flush: false,
             computer_pixels,
             blackout: start.computer.blackout,
@@ -2477,12 +2520,14 @@ impl Loop {
     }
 
     /// Whether the map waits for input (E24 M4 T4c: the record player's, `crate::director`): no
-    /// walk, computer's turn, dissolve, box, spell book or held button under way.
+    /// walk, computer's turn, dissolve, battle's switch (E24 M4 T6, the reviewer's R5-3), box,
+    /// spell book or held button under way.
     #[must_use]
     pub fn idle(&self) -> bool {
         self.moving.is_none()
             && self.ai.is_none()
             && self.dissolving.is_none()
+            && self.switching.is_none()
             && self.boxed.is_none()
             && self.waiting.is_empty()
             && !self.book
@@ -2500,12 +2545,32 @@ impl Loop {
     }
 
     /// The battles the map handed over so far (E24 M4 T5b1, design §5.20, *provisional*), in
-    /// order: each at the millisecond its walk ended, with the record's number of the
-    /// `GameEvents` that began it ([`Move::battle`]). The battle takes none of the map's time: a
-    /// host shows it before that millisecond's frame and goes on from there.
+    /// order: each at the millisecond its walk ended (a plain cut) or, since E24 M4 T5b2, its
+    /// switch showed it whole (a visit's fight, an answer's), with the record's number of the
+    /// `GameEvents` that began it. The battle takes none of the map's time: a host shows it before
+    /// that millisecond's frame and goes on from there.
     #[must_use]
     pub fn battles(&self) -> &[(u32, u32)] {
         &self.battles
+    }
+
+    /// The millisecond the battle's switch under way shows the battle whole and hands it over
+    /// (E24 M4 T6, the reviewer's R5-3 and R5-7: the record player closes it there, so that the
+    /// battle takes none of the map's time and that millisecond's change is its fade out's
+    /// first), once the battle's fade in has begun; none otherwise.
+    #[must_use]
+    pub fn battle_whole_at(&self) -> Option<u32> {
+        self.switching
+            .as_ref()
+            .filter(|s| s.phase == Phase::In)
+            .map(|s| s.start.saturating_add(2 * FADE_MS))
+    }
+
+    /// The kingdom's slots the heroes a battle took off the map left, in order (E24 M4 T6, the
+    /// reviewer's R5-6: each later slot one less from then on; the record player's places).
+    #[must_use]
+    pub fn slots_left(&self) -> &[usize] {
+        &self.slots_left
     }
 
     /// Whether a box is open (E24 M4 T4c: the record player's): a message box, a question or a
@@ -3993,11 +4058,14 @@ impl Loop {
         self.cursor.shown = false;
         self.walked = true;
         // One of the engine's walks (E24 M4 T4b1, design §5.14): a visit from beside is a move
-        // onto the object's tile with no step, its points the move's.
+        // onto the object's tile with no step, its points the move's; since E24 M4 T6 (R5-1) a
+        // path's last node too, its walk under way ([`Loop::last_node`]).
         if let Some(found) = self.finds.get(i).map(|f| f.at)
             && self.moves.is_some()
         {
-            self.take_move(found);
+            if self.walking.is_none() {
+                self.take_move(found);
+            }
             self.step_on_record(found);
         }
         if !self.lifted {
@@ -4064,6 +4132,17 @@ impl Loop {
             Some(object) => self.take(t, object, Gain::default(), Fade::Pickup),
             None => self.visited(t, i),
         }
+    }
+
+    /// A path's last node onto find `i`'s object, which blocks its tile `next` (E24 M4 T6, the
+    /// reviewer's R5-1, *provisional*: `hero_move_step` 0x4805E0's blocked visit not read; design
+    /// §5.18, a computer's walk that ends taking an object from beside has the object's node
+    /// last, which takes no step): the node's arrow zeroed as a step's start does
+    /// ([`Loop::mobilize`], 0x480B30), then the visit as a key's step's ([`Loop::visit_beside`]:
+    /// a record's monster fought, a pile or an artifact taken).
+    fn last_node(&mut self, t: u32, direction: Direction, next: Pos, i: usize) {
+        self.path.retain(|(_, a)| a.at != next);
+        self.visit_beside(t, direction, i);
     }
 
     /// The object `object` taken off the map (`remove_map_object` 0x4AABB0 between the view's
@@ -4147,7 +4226,11 @@ impl Loop {
                 self.ai_animate(t, to, single);
                 return self.ai_on(t).map(|_| ());
             }
-            Then::Lost => self.left_map(t, queued)?,
+            Then::Lost(monster) => self.left_map(t, queued, monster)?,
+            Then::Resume => {
+                self.cursor.shown = true;
+                self.resume(t, queued)?;
+            }
             Then::Taken => {
                 self.gain(gain);
                 // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,
@@ -4361,7 +4444,7 @@ impl Loop {
             (AfterBattle::Taken, Some(object)) => {
                 self.take(t, object, gain, Fade::Killfade);
             }
-            (AfterBattle::Lost, _) => {
+            (AfterBattle::Lost | AfterBattle::Both, _) => {
                 // `battle_aftermath` 0x4AC930's way: the view shown with the hero, its objects
                 // stepped (`view_show_step`: recorded, `battle-retreat`'s at 810, the flag's frame
                 // the step's), the hero leaving the game (none selected, the lists drawn so), then
@@ -4370,6 +4453,10 @@ impl Loop {
                 // Its tile and facing kept in the map's heroes (as a choice away from it does).
                 self.keep_path();
                 let (slot, index) = (self.selected_hero(), self.index);
+                // The engine's walk under way ends here (E24 M4 T6: the next visit from beside
+                // takes the next), the slot left told ([`Loop::slots_left`]).
+                self.walking = None;
+                self.slots_left.extend(slot);
                 self.lifted = false;
                 self.hero = None;
                 self.index = None;
@@ -4390,7 +4477,9 @@ impl Loop {
                 self.draw_lists();
                 self.draw(t);
                 self.left = index;
-                self.lose(t, Then::Lost);
+                // A draw's monster taken off after the hero (E24 M4 T6, R5-4).
+                let monster = object.filter(|_| fight.after == AfterBattle::Both);
+                self.lose(t, Then::Lost(monster));
             }
             _ => {
                 self.gain(gain);
@@ -4404,8 +4493,15 @@ impl Loop {
     /// A hero's dissolve off the map ended at `t` (E24 M4 T5b2, design §5.19): the lists and the
     /// minimap drawn (`hero_list_update`, `minimap_redraw`), then the player's next hero or town
     /// chosen as `mobilize_hero(0, 0, 1)` does with none selected (*provisional*: the first hero,
-    /// else the first town), the actions given meanwhile, the idle step.
-    fn left_map(&mut self, t: u32, queued: Vec<Action>) -> Result<(), Unplayable> {
+    /// else the first town), the actions given meanwhile, the idle step; since E24 M4 T6 (R5-4,
+    /// a draw) `monster` taken off the map first if any (`monster_fight`'s rest after
+    /// `battle_aftermath`: `killfade.82M`, the actions given meanwhile after its dissolve).
+    fn left_map(
+        &mut self,
+        t: u32,
+        queued: Vec<Action>,
+        monster: Option<usize>,
+    ) -> Result<(), Unplayable> {
         self.draw_lists();
         self.draw_minimap();
         if self.kingdom.heroes.is_empty() {
@@ -4414,6 +4510,13 @@ impl Loop {
             }
         } else {
             self.choose_slot(t, 0)?;
+        }
+        if let Some(object) = monster {
+            self.take_then(t, object, Gain::default(), Fade::Killfade, Then::Resume);
+            if let Some(dissolving) = &mut self.dissolving {
+                dissolving.queued = queued;
+            }
+            return Ok(());
         }
         self.cursor.shown = true;
         self.resume(t, queued)
@@ -5337,6 +5440,15 @@ impl Loop {
         next: Pos,
         rest: VecDeque<(Direction, Pos)>,
     ) {
+        // A path's one step onto an object visited from beside: no step (E24 M4 T6, the
+        // reviewer's R5-1; [`Loop::last_node`]).
+        if !key
+            && rest.is_empty()
+            && let Some(found) = self.beside(next)
+        {
+            self.last_node(t, direction, next, found);
+            return;
+        }
         self.cursor.shown = false;
         self.walked = true;
         self.take_move(next);
@@ -5511,6 +5623,20 @@ impl Loop {
                 }
                 return Some(moving.queued);
             };
+            // The path's last node onto an object visited from beside: no step (E24 M4 T6, the
+            // reviewer's R5-1); the input waiting behind its dissolve, emptied by its box
+            // (`input_flush`), dropped by its switch.
+            if !moving.key
+                && moving.rest.is_empty()
+                && let Some(found) = self.beside(next)
+            {
+                self.last_node(t, direction, next, found);
+                if let Some(dissolving) = &mut self.dissolving {
+                    dissolving.queued.append(&mut moving.queued);
+                    return None;
+                }
+                return self.boxed.is_some().then(Vec::new);
+            }
             moving.direction = direction;
             moving.last = moving.rest.is_empty();
             moving.frame = 0;

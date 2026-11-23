@@ -211,7 +211,7 @@ epic   = "E16"
 # [[stub]]
 # id     = "MCL-STUB-3"
 # where  = "clients/crates/h3-map-view/src/engine/played.rs::played"
-# reason = "A battle the record's viewer defends (another player's hero attacking the viewer's hero or town in that player's turn) is not handed over to the battle client in the map's window (E24 M4 T5b1, design section 5.20): only a battle begun by one of the viewer's walks or answers is; the original's switch for a defending human's battle was not read (design section 5.19). Lifted when it is read and built (E24 M4 T5b2 or M5)"
+# reason = "A battle the record's viewer defends (another player's hero attacking the viewer's hero or town in that player's turn) is not handed over to the battle client in the map's window (E24 M4 T5b1, design section 5.20): only a battle begun by one of the viewer's walks or answers is; the original's switch for a defending human's battle was not read (design section 5.19). Lifted when it is read and built (M5; E24 M4 T5b2 built the switch for the viewer's own battles only)"
 # epic   = "E24"
 
 # --- town (TWN-STUB-<n>) ---

@@ -344,3 +344,175 @@ fn what_a_battle_s_result_refuses() {
     });
     assert_eq!(refused.map(|(t, _)| t), Some(1330));
 }
+
+/// A one-tile walk onto `to` as a record gives it, with its battle if any.
+fn record_walk(to: Pos, battle: Option<u32>) -> Move {
+    Move {
+        tiles: vec![to],
+        points: vec![Some(1460)],
+        revealed: vec![Vec::new()],
+        sea: None,
+        battle,
+    }
+}
+
+/// A battle sequence's start as a record's (E24 M4 T6, the reviewer's R5-11): the engine's walks
+/// `moves` with their paths (each one arrow, the destination), no recorded input.
+fn as_record(id: &str, moves: Vec<Move>) -> Start {
+    let (mut start, ..) = battling(id);
+    start.paths = moves
+        .iter()
+        .map(|m| {
+            m.tiles
+                .iter()
+                .map(|&at| Arrow {
+                    at,
+                    arrow: DESTINATION,
+                })
+                .collect()
+        })
+        .collect();
+    start.moves = Some(moves);
+    start
+}
+
+/// The record player's input for `commands` from `start` (the heroes 1 and 2 in slots 0 and 1),
+/// and the loop run with it to the record's end.
+fn directed(start: &Start, commands: &[Command]) -> (crate::director::Directed, Loop) {
+    let d = crate::director::direct(
+        rules(Bugs::Original),
+        start,
+        commands,
+        &[(1, 0), (2, 1)],
+        crate::director::Pace::default(),
+        20_000,
+    )
+    .unwrap();
+    let l = run_start(start, &d.actions, d.end);
+    (d, l)
+}
+
+use crate::engine::Command;
+
+#[test]
+fn a_record_s_walk_onto_a_monster_fights_it_from_beside() {
+    // E24 M4 T6 (the reviewer's R5-1, R5-3, R5-7): the record's walk onto the monster's tile is
+    // its visit from beside (the hero stays on (5, 5), turned north), the switch as a key's
+    // step's; the record player waits through it and closes the battle where it shows whole, that
+    // millisecond's change the battle's fade out's first; the monster taken off, the record at its
+    // end with the map idle; the battle the map's own, listed once.
+    let start = as_record("battle-won", vec![record_walk(AT, Some(BATTLE))]);
+    let walk = Command::Walk { hero: 1, to: AT };
+    let (d, l) = directed(&start, &[walk]);
+    let [(whole, n)] = l.battles() else {
+        panic!("one battle handed over: {:?}", l.battles());
+    };
+    assert_eq!(*n, BATTLE);
+    assert!(d.battles.is_empty());
+    assert!(d.actions[whole].contains(&Action::BattleClosed));
+    let at_whole = run_start(&start, &d.actions, *whole);
+    assert_eq!(at_whole.drawn().switch, switch(Some(BATTLE), 0, true));
+    assert_eq!(at_whole.state(*whole).battle, Some(0));
+    assert_eq!(
+        l.hero.map(|h| (h.at, h.facing)),
+        Some((Pos { x: 5, y: 5, z: 0 }, Direction::North))
+    );
+    assert!(l.drawn().gone.contains(&OBJECT));
+    assert!(l.idle() && l.walks_left() == 0);
+}
+
+#[test]
+fn a_record_s_mine_guards_battle_is_handed_over_once_and_its_boxes_answered() {
+    // E24 M4 T6 (R5-2, R5-3): the mine's question answered, its battle handed over by the switch
+    // alone (none of the record player's own), the switch waited through and closed, the boxes
+    // after it given their OK, the flag raised at the record's end.
+    let start = as_record("battle-mine", vec![record_walk(AT, None)]);
+    let accept = Command::Answer(h3_protocol::wire::game::Answer::Offer {
+        consent: h3_protocol::wire::game::Consent::Accept,
+    });
+    let commands = [
+        Command::Walk { hero: 1, to: AT },
+        accept,
+        Command::Battle(BATTLE),
+    ];
+    let (d, l) = directed(&start, &commands);
+    assert!(d.battles.is_empty());
+    assert_eq!(l.battles().len(), 1);
+    assert!(l.switching.is_none() && l.boxed.is_none());
+    assert_eq!(l.owners.to_vec(), [(OBJECT, 0)]);
+}
+
+#[test]
+fn a_record_s_hero_gone_after_a_battle_moves_the_later_heroes_up() {
+    // E24 M4 T6 (R5-6's note): the first hero retreats from the monster; the second, chosen
+    // then, is the list's first: its walk's choice is its slot now, nothing chosen again.
+    let east = Pos { x: 31, y: 5, z: 0 };
+    let start = as_record(
+        "battle-retreat",
+        vec![record_walk(AT, Some(BATTLE)), record_walk(east, None)],
+    );
+    let commands = [
+        Command::Walk { hero: 1, to: AT },
+        Command::Walk { hero: 2, to: east },
+    ];
+    let (d, l) = directed(&start, &commands);
+    assert_eq!(l.slots_left(), [0]);
+    let chosen: Vec<_> = d
+        .actions
+        .values()
+        .flatten()
+        .filter(|a| matches!(a, Action::Choose(_)))
+        .collect();
+    assert_eq!(chosen, [&Action::Choose(0), &Action::Choose(0)]);
+    assert_eq!(l.hero.map(|h| h.at), Some(east));
+}
+
+#[test]
+fn what_a_record_s_battle_leaves() {
+    // E24 M4 T6 (R5-4, R3-2): a monster's by what its end took off the map; a mine's guards'
+    // boxes only after the hero's win, the hero gone where the record takes it.
+    assert_eq!(AfterBattle::of_fight(true, false), AfterBattle::Taken);
+    assert_eq!(AfterBattle::of_fight(false, true), AfterBattle::Lost);
+    assert_eq!(AfterBattle::of_fight(true, true), AfterBattle::Both);
+    assert_eq!(AfterBattle::of_fight(false, false), AfterBattle::Stays);
+    assert_eq!(AfterBattle::of_guards(0, false), AfterBattle::Boxes);
+    assert_eq!(AfterBattle::of_guards(1, true), AfterBattle::Lost);
+    assert_eq!(AfterBattle::of_guards(-1, true), AfterBattle::Lost);
+    assert_eq!(AfterBattle::of_guards(1, false), AfterBattle::Stays);
+}
+
+#[test]
+fn a_mine_s_guards_beaten_the_hero_leaves_with_no_box_and_no_flag() {
+    // E24 M4 T6 (R5-4, R3-2): the question's OK, the battle lost: no guards' box, no mine's box,
+    // no flag; the hero gone at the map's fade in's end as a retreat's, the next one chosen.
+    let (mut start, actions, _, _) = battling("battle-mine");
+    if let Some(answer) = start.finds[0].ask.as_mut().and_then(|q| q.yes.as_mut()) {
+        answer.boxes.clear();
+        answer.flag = None;
+        if let Some(fight) = &mut answer.fight {
+            fight.winner = 1;
+            fight.after = AfterBattle::of_guards(1, true);
+        }
+    }
+    let l = run_start(&start, &actions, 1810);
+    assert_eq!(l.state(1810).hero, None);
+    assert!(l.boxed.is_none() && l.owners.is_empty());
+    let l = run_start(&start, &actions, 2400);
+    assert!(l.hero.is_some() && l.owners.is_empty() && l.boxed.is_none());
+}
+
+#[test]
+fn a_draw_takes_the_hero_then_the_monster() {
+    // E24 M4 T6 (R5-4): the hero's dissolve first (gone at 810, the next chosen at its end), then
+    // the monster's (`killfade.82M`, 8 steps of 65 ms), the mouse shown at its end.
+    let (mut start, actions, _, _) = battling("battle-retreat");
+    start.finds[0].fight = Some(fight(-1, AfterBattle::of_fight(true, true)));
+    let l = run_start(&start, &actions, 810);
+    assert_eq!(l.state(810).hero, None);
+    assert!(!l.drawn().gone.contains(&OBJECT));
+    let l = run_start(&start, &actions, 1330);
+    assert!(l.hero.is_some() && l.dissolving.is_some());
+    assert!(l.drawn().gone.contains(&OBJECT));
+    let l = run_start(&start, &actions, 1900);
+    assert!(l.dissolving.is_none() && l.cursor().shown);
+}

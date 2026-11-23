@@ -2487,10 +2487,25 @@ fn a_record_s_boats() {
 fn a_record_s_battles() {
     // E24 M4 T5b1 (design §5.20): a walk whose events begin a battle names their message; a
     // battle begun with no walk of the viewer's open (another player's) names none; an answer's is
-    // a command after it.
+    // a command after it. Since E24 M4 T6 (the reviewer's R5-6) a battle's commands, the viewer's
+    // and the system's for it, are none of the map's.
     use h3_map_view::engine::Command;
     use h3_protocol::wire::game::{
         AdventureCommand, AdventureEvent, Answer, Consent, GameCommand, GameEvent, Pos,
+        SystemCommand,
+    };
+    let battle_command = || {
+        accepted(GameCommand::Battle {
+            command: h3_protocol::wire::Command::Defend {},
+        })
+    };
+    let system_command = || {
+        accepted(GameCommand::System {
+            command: SystemCommand::Battle {
+                player: 1,
+                command: h3_protocol::wire::Command::Wait {},
+            },
+        })
     };
     let g = game();
     let red = g
@@ -2532,6 +2547,8 @@ fn a_record_s_battles() {
                 events: vec![stepped(11, 10), started(12, 10)],
             },
             events(vec![started(12, 10)]),
+            battle_command(),
+            system_command(),
             moved(11, 11),
             events(vec![stepped(11, 11)]),
             ServerMessage::GameTurn {
@@ -2548,6 +2565,7 @@ fn a_record_s_battles() {
                 },
             }),
             events(vec![started(13, 13)]),
+            battle_command(),
             events(vec![started(13, 13)]),
         ],
     );
@@ -2555,6 +2573,7 @@ fn a_record_s_battles() {
     let played = engine::played(&loaded, &g.art, rules()).unwrap();
     let battles: Vec<_> = played.moves.iter().map(|m| m.battle).collect();
     assert_eq!(battles, [Some(61), None]);
+    assert_eq!(played.commands.len(), 4);
     assert_eq!(
         played.commands[2..],
         [
@@ -2695,7 +2714,10 @@ fn what_a_record_s_battles_tell() {
     let retreated = end(Outcome::Retreat {
         side: Side::Attacker,
     });
-    assert_eq!(fight(vec![retreated, gone]), Some((4, 1, false, true, 0)));
+    assert_eq!(
+        fight(vec![retreated, gone.clone()]),
+        Some((4, 1, false, true, 0))
+    );
     // Every winner (a side's retreat or surrender the other's win; a draw none's).
     for (result, winner) in [
         (
@@ -2748,19 +2770,28 @@ fn what_a_record_s_battles_tell() {
         Some(Told::Guarded {
             battle,
             winner,
+            lost,
             flag,
             resource,
             experience,
-        }) => Some((battle, winner, flag, resource, experience)),
+        }) => Some((battle, winner, lost, flag, resource, experience)),
         _ => None,
     };
     assert_eq!(
         guarded(vec![won.clone(), experience, flagged], vec![accept.clone()]),
-        Some((4, 0, Some(0), 7, 15))
+        Some((4, 0, false, Some(0), 7, 15))
     );
     assert_eq!(
         guarded(vec![won.clone()], vec![accept.clone()]),
-        Some((4, 0, None, 7, 0))
+        Some((4, 0, false, None, 7, 0))
+    );
+    // E24 M4 T6 (the reviewers' R5-4, R3-2): beaten by the guards, the hero gone.
+    let beaten = end(Outcome::Victory {
+        side: Side::Defender,
+    });
+    assert_eq!(
+        guarded(vec![beaten, gone.clone()], vec![accept.clone()]),
+        Some((4, 1, true, None, 7, 0))
     );
     let decline = (
         Answer::Offer {

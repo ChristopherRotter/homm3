@@ -17,7 +17,15 @@
 //! - **A battle an answer began** ([`Command::Battle`], E24 M4 T5b1, design §5.20): handed over
 //!   where the answer's box closes (its key's release), or where the answer was passed over with
 //!   no box open ([`Directed::battles`]; a walk's battle is the map's own, at the walk's end:
-//!   `Loop::battles`).
+//!   `Loop::battles`). Since E24 M4 T6 (the reviewer's R5-2) one the map's switch hands over
+//!   (a mine's guards', T5b2) is the map's own too, listed once.
+//! - **A battle's switch** (E24 M4 T5b2, design §5.21; since E24 M4 T6, the reviewer's R5-3):
+//!   the map waits through it, and the battle is closed ([`Action::BattleClosed`]) in the
+//!   millisecond its switch shows it whole (`Loop::battle_whole_at`): the battle takes none of
+//!   the map's time, and that millisecond's change is its fade out's first (R5-7). A host shows
+//!   the battle before that millisecond's frame.
+//! - **A hero a battle took off the map** (E24 M4 T6, the reviewer's R5-6): each later hero's
+//!   place in the kingdom's list one less from then on (`Loop::slots_left`).
 //!
 //! The record has played to its end once its last command has been given and the map waits again.
 
@@ -56,15 +64,17 @@ pub struct Directed {
     pub actions: BTreeMap<u32, Vec<Action>>,
     /// The millisecond the map waits again after the last command: the record's end.
     pub end: u32,
-    /// The battles the record's answers began (E24 M4 T5b1, [`Command::Battle`]), in order: each
-    /// at the millisecond the map hands it over, with the record's number of the `GameEvents`
-    /// that began it.
+    /// The battles the record's answers began (E24 M4 T5b1, [`Command::Battle`]) that the map
+    /// does not hand over itself (since E24 M4 T6, R5-2: a switch's is `Loop::battles`'), in
+    /// order: each at the millisecond the map hands it over (a plain cut), with the record's
+    /// number of the `GameEvents` that began it.
     pub battles: Vec<(u32, u32)>,
 }
 
 /// The input that plays `commands` (the viewer's, in order) on the map from `start` under
-/// `rules`, each hero's place in the kingdom's list by `slots` (its record id, its place), at
-/// `pace`; at most until `limit` ms.
+/// `rules`, each hero's place in the kingdom's list by `slots` (its record id, its place at the
+/// start; those after a hero a battle took off the map one less from then on), at `pace`; at
+/// most until `limit` ms.
 ///
 /// # Errors
 /// What the map cannot play, with its millisecond; a walk's hero `slots` does not hold, or a
@@ -84,9 +94,27 @@ pub fn direct(
     // The millisecond the map last started to wait, and the last one with input to come.
     let mut waiting: Option<u32> = None;
     let mut given_until = 0;
+    // Each hero's place in the kingdom's list as it stands (R5-6), and the slots left so far.
+    let mut places = slots.to_vec();
+    let mut left = 0;
     for t in 1..=limit {
         let given = actions.get(&t).cloned().unwrap_or_default();
         map.run(t, &given).map_err(|why| (t, why))?;
+        for &slot in map.slots_left().get(left..).unwrap_or_default() {
+            places.retain(|&(_, place)| place != slot);
+            for (_, place) in &mut places {
+                if *place > slot {
+                    *place -= 1;
+                }
+            }
+        }
+        left = map.slots_left().len();
+        // A battle's switch: closed where it shows the battle whole (R5-3, R5-7).
+        let at = t.saturating_add(1);
+        if map.battle_whole_at() == Some(at) {
+            actions.entry(at).or_default().push(Action::BattleClosed);
+            given_until = given_until.max(at);
+        }
         if t <= given_until || !map.idle() && !map.boxed() {
             waiting = None;
             continue;
@@ -133,6 +161,8 @@ pub fn direct(
             continue;
         }
         let Some(&command) = commands.get(next) else {
+            // An answer's battle the map's switch handed over is the map's own (R5-2).
+            battles.retain(|&(_, n)| map.battles().iter().all(|&(_, m)| m != n));
             return match map.walks_left() {
                 0 => Ok(Directed {
                     actions,
@@ -145,7 +175,7 @@ pub fn direct(
         next += 1;
         match command {
             Command::Walk { hero, to } => {
-                let slot = slots
+                let slot = places
                     .iter()
                     .find(|(id, _)| *id == hero)
                     .map(|&(_, slot)| slot)

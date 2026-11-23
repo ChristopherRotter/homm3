@@ -103,9 +103,10 @@ pub struct Setup<'a> {
     pub actions: BTreeMap<u32, Vec<Action>>,
     /// The recorded timeline (`timelines/<id>.txt`), if any.
     pub recorded: Option<String>,
-    /// A record's battles its answers began (E24 M4 T5b1, `director::Directed::battles`): each at
-    /// the millisecond the map hands it over, with the record's number of the `GameEvents` that
-    /// began it (a walk's are the timeline's own, `Replay::battles`).
+    /// A record's battles its answers began that the map hands over as a plain cut (E24 M4 T5b1,
+    /// `director::Directed::battles`): each at the millisecond the map hands it over, with the
+    /// record's number of the `GameEvents` that began it (a walk's and, since E24 M4 T5b2, a
+    /// switch's are the timeline's own, `Replay::battles`; E24 M4 T6, R5-2: listed once).
     pub battles: Vec<(u32, u32)>,
 }
 
@@ -1203,7 +1204,7 @@ impl<'a> Painter<'a> {
                 // A savage monster fought at once (E24 M4 T5b2, design §5.21): visited from
                 // beside, drawn as its attack (twice its creature in the attack DEF, as a
                 // monster's question's), the battle's switch, then the monster taken off the map
-                // or the hero gone.
+                // or the hero gone (since E24 M4 T6, R5-4: both after a draw that takes both).
                 Visited::Fight {
                     battle,
                     winner,
@@ -1225,21 +1226,21 @@ impl<'a> Painter<'a> {
                         attacker: tile.subclass.saturating_mul(2),
                         battle,
                         winner,
-                        after: match (taken, lost) {
-                            (true, _) => AfterBattle::Taken,
-                            (false, true) => AfterBattle::Lost,
-                            (false, false) => AfterBattle::Stays,
-                        },
+                        after: AfterBattle::of_fight(taken, lost),
                         experience,
                     }),
                 },
                 // A neutral mine's guards fought after their question (E24 M4 T5b2, design §5.21):
                 // ADVEVENT 84's question (Part A's), its OK the battle's switch, then ADVEVENT 85's
                 // box and MINEEVNT's by the mine's resource (MCL-Q48: its subclass), the flag past
-                // them.
+                // them. Since E24 M4 T6 (the reviewers' R5-4, R3-2) the battle's outcome decides:
+                // the boxes only after the hero's win; lost, retreated or drawn none, the hero
+                // gone where the record takes it off the map (MCL-Q51: the original's boxes then
+                // not read), the flag the record's alone.
                 Visited::Guarded {
                     battle,
                     winner,
+                    lost,
                     flag,
                     resource,
                     experience,
@@ -1247,15 +1248,20 @@ impl<'a> Painter<'a> {
                     let mut question = self.question(&Ask::Mine, o)?;
                     question.no = None;
                     question.second = None;
-                    let beaten = Told {
-                        text: texts.text("map.find.mine-guards", &Args::new()),
-                        pictures: Vec::new(),
-                    };
-                    let mut boxes = vec![(self.told(&beaten)?, Gain::default())];
-                    let flagged = Find::Mine { resource };
-                    if let Some(said) = flagged.told(&assets.tables.map.finds, texts) {
-                        boxes.push((self.told(&said)?, Gain::default()));
+                    let mut boxes = Vec::new();
+                    if winner == 0 {
+                        let beaten = Told {
+                            text: texts.text("map.find.mine-guards", &Args::new()),
+                            pictures: Vec::new(),
+                        };
+                        boxes.push((self.told(&beaten)?, Gain::default()));
+                        let flagged = Find::Mine { resource };
+                        if let Some(said) = flagged.told(&assets.tables.map.finds, texts) {
+                            boxes.push((self.told(&said)?, Gain::default()));
+                        }
                     }
+                    // stub: MCL-Q51 (what the original shows after a mine's guards' battle lost)
+                    let after = AfterBattle::of_guards(winner, lost);
                     question.yes = Some(Answer {
                         boxes,
                         gain: Gain::default(),
@@ -1269,7 +1275,7 @@ impl<'a> Painter<'a> {
                             attacker: 0,
                             battle,
                             winner,
-                            after: AfterBattle::Boxes,
+                            after,
                             experience,
                         }),
                         flag: flag.map(|colour| (o, colour)),

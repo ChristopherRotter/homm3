@@ -109,12 +109,15 @@ pub enum Told {
     /// A neutral mine's guards' question accepted and their battle (E24 M4 T5b2, design §5.21):
     /// the battle, its winner, the colour of the flag raised after it (the record's
     /// `ObjectFlagged`), the mine's resource (its subclass: an abandoned mine's 7, MCL-Q48: the
-    /// record tells none) and the experience gained.
+    /// record tells none) and the experience gained; since E24 M4 T6 (the reviewers' R5-4,
+    /// R3-2) whether the hero is gone after it.
     Guarded {
         /// The record's number of the `GameEvents` whose `BattleStarted` began it.
         battle: u32,
         /// The winner, as [`Told::Fight`]'s.
         winner: i32,
+        /// The hero gone after it (`HeroRemoved`: beaten, retreated or a draw).
+        lost: bool,
         /// The flag's colour.
         flag: Option<u8>,
         /// The resource.
@@ -141,22 +144,25 @@ pub enum Answered {
 #[must_use]
 pub fn told(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told> {
     let events = &visit.events;
+    // What a battle's end took off the map: the object (`ObjectRemoved`) or the hero
+    // (`HeroRemoved`).
+    let removed = |ended: &[GameEvent], hero: bool| {
+        ended.iter().any(|e| match e {
+            GameEvent::Adventure {
+                event: AdventureEvent::ObjectRemoved { .. },
+            } => !hero,
+            GameEvent::Adventure {
+                event: AdventureEvent::HeroRemoved { .. },
+            } => hero,
+            _ => false,
+        })
+    };
     // A wandering monster's battle begun by the step (E24 M4 T5b2), once it ended.
     if class == MONSTER
         && let Some(battle) = &visit.battle
         && let Some(GameEvent::BattleEnded { result, .. }) = battle.ended.first()
     {
-        let removed = |hero: bool| {
-            battle.ended.iter().any(|e| match e {
-                GameEvent::Adventure {
-                    event: AdventureEvent::ObjectRemoved { .. },
-                } => !hero,
-                GameEvent::Adventure {
-                    event: AdventureEvent::HeroRemoved { .. },
-                } => hero,
-                _ => false,
-            })
-        };
+        let removed = |hero: bool| removed(&battle.ended, hero);
         return Some(Told::Fight {
             battle: battle.started,
             winner: winner(result),
@@ -185,6 +191,7 @@ pub fn told(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<To
         return Some(Told::Guarded {
             battle: battle.started,
             winner: winner(result),
+            lost: removed(&battle.ended, true),
             flag,
             resource: u8::try_from(subclass).unwrap_or(u8::MAX),
             experience: gain(&battle.ended).experience,
