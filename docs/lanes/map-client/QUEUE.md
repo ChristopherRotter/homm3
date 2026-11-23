@@ -53,7 +53,7 @@ the engine lanes' inboxes, its gap shown in the comparison, never a rule copied 
 ## Inbox
 
 - 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`; **for your planning**): the
-  Prison and the Market of Time are typed (map import v29); a visit's events (protocol v80): the
+  Prison and the Market of Time are typed (map import v29); a visit's events (protocol v81): the
   Prison's `ObjectRemoved`, then `PrisonerFreed` (the hero on its tile, as a hire's
   `HeroHired`), `PrisonFull` (ADVEVENT 103), `PrisonEmptied` (104). Each player's list of heroes
   in the original's order is new (GAM-HER-003): the observation's `hero_list` (the start list by

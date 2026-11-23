@@ -494,7 +494,7 @@ pub struct GameObservation {
     /// The heroes the viewer sees on the adventure map, by id: each hero's type, and the details
     /// of its own only (GAM-HER-001).
     pub heroes: Vec<HeroInfo>,
-    /// The viewer's list of heroes (GAM-HER-003; protocol v80, E08 T141a): its heroes on the map in
+    /// The viewer's list of heroes (GAM-HER-003; protocol v81, E08 T141a): its heroes on the map in
     /// the order they joined it, its garrison heroes not among them.
     pub hero_list: Vec<u16>,
     /// The adventure map as the viewer sees it.

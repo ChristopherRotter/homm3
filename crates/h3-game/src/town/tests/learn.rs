@@ -14,7 +14,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{AdventureCommand, AdventureEventKind, Pos};
-use h3_content::{Ruleset, SpellId, StartingStackDef};
+use h3_content::{ContentPack, Ruleset, SpellId, StartingStackDef};
 use h3_contracts::{
     Army, ArmyStack, BattleOutcome, BattleResult, BattleSide, HeroId, PlayerId, TownId,
 };
@@ -45,6 +45,12 @@ pub(super) const VORTEX_SLOT: u8 = 18;
 /// type's), the five buildings after the record's (since E09 T49a1 the Mana Vortex), free and
 /// without requirements.
 pub(super) fn rules() -> GameRuleset {
+    rules_edited(|_| {})
+}
+
+/// [`rules`] with the core pack changed by `edit` after its hero types' (E09 T49b: a core without
+/// a spell book).
+pub(super) fn rules_edited(edit: impl FnOnce(&mut ContentPack)) -> GameRuleset {
     let (mut core, mut towns) = super::guild::guild_packs();
     for ty in &mut core.heroes {
         ty.spell_book = true;
@@ -80,6 +86,7 @@ pub(super) fn rules() -> GameRuleset {
     ]);
     towns.towns[0].tavern = vec![(key("t:knight"), 3), (key("t:cleric"), 2)];
     towns.params.as_mut().unwrap().guild_slots = [1; 5];
+    edit(&mut core);
     rules_of(
         Ruleset::compile(&[core], "t:faithful").unwrap(),
         &towns,

@@ -22,7 +22,7 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
 - 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`, `cross-lane`; **in your
-  paths, nothing else to do**): the wire's `GameObservation` gained `hero_list` (protocol v80: the
+  paths, nothing else to do**): the wire's `GameObservation` gained `hero_list` (protocol v81: the
   viewer's list of heroes in the original's order, GAM-HER-003); `h3-view`'s
   `game_record/tests.rs` literal gives it empty. Four new `GameEvent`s (a Prison's), which
   your `match`es did not need.

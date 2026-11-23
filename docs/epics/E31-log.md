@@ -88,3 +88,81 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   that zeroes the points, how the pathfinder makes the walk's marks and reads the boat marks
   (`pathfinder_gate_exit` 0x56A730 among them): T1a3, T1a4.
 
+
+## T1a2 — the values (2026-11-23, increment 1)
+
+- **Cut** at its start (AI-Q25): as queued about 45 KB with its helpers (39 KB unread), so four
+  parts by the code's seams; the user: the main session reads one and three sub-agents the
+  others, each in its own worktree, the main session merging. T1a2a the object value (main
+  session, about 12.6 KB), T1a2b the simulated combat (about 14 KB), T1a2c the army values (about
+  7 KB), T1a2d the towns', heroes' and artifacts' values and the frame's leftovers (about 6 KB).
+- **Read** (the survey §2): `ai_object_value` 0x528040 whole (renamed from `ai_fight_estimate`:
+  the value of any map object, a switch on its class; `ai_fight_answer` returns it) with its 40
+  per-class helpers; the simulated combat 0x423EE0 to 0x427330 but its spell values,
+  `ai_army_fight_sim`, `ai_quick_battle`, `sim_battle_finish`, `ai_town_capture_sim`; the army plan
+  (the seven slots, morale, speed, shooters), the dwelling's purchase, the army exchange, the
+  resource weights' demand list; the town's three values (capture, visit, own), the hero's values
+  (`ai_hero_effectiveness`: H3API's AI fields agree), `ai_hero_artifact_value`, the vision area
+  and its per-class table, the defence functor, the puzzle target, the node's key +0x10.
+- **Mapped:** 150 new entries and 23 rewritten (overlaps between parts merged into one line each,
+  the fuller reading kept); `structs.toml`: `sim_combat`, `sim_combat_stack`, `sim_spell`,
+  `ai_army_plan`, `ai_army_offer`, `pathfinder_node` +0x10, the hero's AI fields +0x109, +0x11D
+  (now `ai_threat_value`), +0x47A to +0x48E. Renamed: 0x528040 `ai_object_value`, 0x428580
+  `ai_town_defence_recruit` (was `ai_town_defence_value`: an action, not a value).
+- **Found:** `ai_quick_battle` decides every battle without a human side by the simulation and
+  three draws, with real casualties, experience, artifacts and captures (a rule for the battle and
+  adventure lanes; the epic's battle seat to revisit at T1b); a Quick Combat battle past round 30
+  is re-fought by the simulation (the battle lane's; this reading alone); the defence functor buys
+  recruits into threatened towns (a rule, T1a3); the values read the true state nearly everywhere
+  (§2.5); no draw in any value; 19 quirk candidates for T1b, one a possible crash (the Angelic
+  Alliance's faction set at −1, §2.3).
+- **Process:** a scratch merge script over the four worktrees' `map.toml` lines by address; the
+  main session's compact listings hid `push esi`/`edi`/`ebx` once and so misread two call sites'
+  arguments (caught against T1a2d's signature, corrected before the merge): filter only the
+  prologue and epilogue. Scratch scripts not committed.
+- **Not read** (each section's last list): the spell values inside the simulation, the 24
+  artifact effect methods, the puzzle's pick, the quests' checks and the Seer's reward value, the
+  army plan's commit (0x42C3B0, 0x42D8E0), the town builders: T1a3, T1a4.
+
+## T1a3a — the build choice (2026-11-23, increment 1)
+
+- **The cut** (AI-Q26, the user at T1a3's start): T1a3 as queued about 6 000 instructions in
+  about 60 functions, so four parts (T1a3a the build choice, T1a3b the hires, T1a3c the town visit
+  with the army plan's open pieces, T1a3d the answers, the market visits and the table); this
+  session T1a3a and T1a3b, one pull request.
+- **Read** (the survey §3.1): `ai_build_excluded_creatures` 0x429D50 (renamed from
+  `ai_build_candidates`: a creature list, not candidates), `ai_town_build_choice` 0x42AE00 whole
+  with its two switches, `ai_build_score` 0x42A150, the six value helpers 0x42B520 to 0x42B8B0,
+  `town_horde_record` 0x5C1230, `ai_town_buy_hook` 0x526D20, `creature_cost_array` 0x54E7C0.
+- **Found:** one building a call, the best score over all towns; the score is value × 1 000 over
+  the weighted cost of the building and its unbuilt requirements, added to each of them; dwellings
+  and hordes priced with the army they would buy; under threat only the Citadel, the Castle and
+  three defence specials; the Mage Guilds, the Tavern, the Marketplace, the Blacksmith and most
+  specials have no value of their own; on Easy a handicap (no level 7, no growth past the
+  strongest human's) that reads the humans' towns. All choices (the build is `town_buy`, a
+  human's tests); three quirk candidates (the ×1 000 wraps for the victory bonus, the Citadel
+  valued as the Castle, the Amplifier counting Necromancers only).
+
+## T1a3b — the hires (2026-11-23, increment 1)
+
+- **Read** (the survey §3.2): `ai_hero_hire_choice` 0x431360 (renamed from
+  `ai_turn_artifacts`: the step values the offers' artifacts but is the hire), `ai_hero_hire`
+  0x431800, `ai_town_hero_prospects` 0x431BD0 whole (its army plan's calls read at their calls:
+  T1a3c), `game_hero` 0x4317D0 (H3API's `H3Main::GetHero`), `pathfinder_construct` 0x4B1370 and
+  `pathfinder_destroy` 0x4B13E0; the hero limits by difficulty (0x660518, 0x66052C); the player's
+  tavern offers (+0x28) in `structs.toml`; `ai_army_plan_run`'s arguments corrected (the morale
+  and the spare were "a mode, a word").
+- **Found:** one hire a day at most, in an own town's Tavern only (bought first when missing);
+  per difficulty at most 2 to 6 heroes, and 8 to 20 for all computers together; the offer by its
+  artifacts' value to the player's heroes, then the primary skills; the town by the hero's worth
+  plus its prospects there (the hire played out on the real state and undone: the army plan with
+  the garrison and the recruits, then the candidates from the entrance, shared with the own heroes
+  already reaching it), above a bar of heroes owned × gold weight × 2 500. Choices (the human's
+  hire and its tests). One quirk candidate: with no second offer the first is never hired (a stale
+  stack slot, 0x431745).
+- **Process:** a cloud clone, `Heroes3.exe` staged from the user's repo folder; the setup's
+  baseline ran in the main clone while the edits went to a `git worktree`. Scratch scripts over
+  `scripts/exe.py` (a function list by range, a call tree, the game's calls into the computer's
+  ranges: 43 callees, the input of T1a3d), not committed.
+- **Not read:** the town visit and the army plan's open pieces (T1a3c); the answers, the market
+  visits, the allies' shares and the table (T1a3d).

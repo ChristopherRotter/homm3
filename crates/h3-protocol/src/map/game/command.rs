@@ -85,6 +85,8 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                 },
                 // E09 T49a2 (v79).
                 EngineTown::Open { town } => TownCommand::Open { town: town.raw() },
+                // E09 T49b (v80).
+                EngineTown::BuySpellBook { town } => TownCommand::BuySpellBook { town: town.raw() },
             },
         },
         // E16 M5 T14 (v56): the system actor's own commands, the host's.
@@ -365,6 +367,10 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                 TownCommand::Open { town } => EngineTown::Open {
                     town: TownId::new(town),
                 },
+                // E09 T49b (v80).
+                TownCommand::BuySpellBook { town } => EngineTown::BuySpellBook {
+                    town: TownId::new(town),
+                },
             })
         }
         // E16 M5 T14 (v56): the engine refuses it from a seat (`SystemOnly`).
@@ -612,6 +618,10 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 TownCommandError::NoTavern => TownReject::NoTavern {},
                 TownCommandError::UnknownSlot => TownReject::UnknownSlot {},
                 TownCommandError::EmptySlot => TownReject::EmptySlot {},
+                // E09 T49b (v80).
+                TownCommandError::NoGuild => TownReject::NoGuild {},
+                TownCommandError::NoHero => TownReject::NoHero {},
+                TownCommandError::HasSpellBook => TownReject::HasSpellBook {},
             },
         },
         E::Tavern(error) => GameReject::Tavern {

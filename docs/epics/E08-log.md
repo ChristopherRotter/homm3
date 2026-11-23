@@ -22110,8 +22110,8 @@ manuals and help files staged (SHA-256 checked); the repo from GitHub. The VM re
   `HeroPool::free_prisoner`, the adventure's freeing, `PrisonerFreed` with the owner's view, then
   for a recording sink `PrisonerPartSeen` and `HiredPartSeen`); the observation's `hero_list`; the
   projections (`PrisonerFreed` as `HeroHired`).
-- **The wire** (protocol v80, `cross-lane`): the four events, `hero_list`; the fold's `keep_list`
-  after each event (`fold_event`), `see_freed`, `put_artifact`. **The env** (encoding v19, the AI
+- **The wire** (protocol v81, `cross-lane`; v80 the town lane's T49b, merged first): the four events, `hero_list`; the fold's `keep_list`
+  after each event (`fold_event`), `see_freed`, `put_artifact`. **The env** (encoding v20, the AI
   lane's, `cross-lane`): `hero_in_slot` by `listed_hero`, `revisit_entry` by the hero's place.
 - **Tests:** the adventure's `state/tests/prisons.rs` (eight: the build, the setup's refusals, the
   visit, the freeing, the emptying, the Market of Time, the lists and their hash) and
@@ -22130,8 +22130,8 @@ manuals and help files staged (SHA-256 checked); the repo from GitHub. The VM re
   another type (the bodies' census is T144b's); both `original_data` examples pass.
 - **Docs:** the catalog (ADV-PRI-001 to -003, ADV-OBJ-008, GAM-SET-004, GAM-HER-003 new;
   GAM-SET-001, -002 amended); the survey §2.1 (the list's writers); the design note §15, §16, §18
-  as built (the versions after T141a: the day spells adventure state v29, the casts protocol v81
-  and encoding v20); the ADR draft `adr-drafts/0016-0017-hero-list.md` (for T145's `shared/`
+  as built (the versions after T141a: the day spells adventure state v29, the casts protocol v82
+  and encoding v21); the ADR draft `adr-drafts/0016-0017-hero-list.md` (for T145's `shared/`
   task); `docs/exe/map.toml`, `structs.toml` (the player record's list read); a trap; the inboxes
   of the town, AI, server, map-client and client lanes.
 
@@ -22149,4 +22149,4 @@ manuals and help files staged (SHA-256 checked); the repo from GitHub. The VM re
 **Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session);
 `cargo check --workspace --all-targets`, the clients' workspace; CI on the pull request is the
 record. **Versions:** adventure ruleset part v25, map import v29, adventure state hash v28, game
-state hash v39, protocol v80, action encoding v19. Next: T141b.
+state hash v39, protocol v81, action encoding v20. Next: T141b.

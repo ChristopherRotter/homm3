@@ -414,7 +414,7 @@ fn event(e: &EngineEvent) -> GameEvent {
             hero: hero.raw(),
             part: hired_part(part),
         },
-        // E08 T141a (v80).
+        // E08 T141a (v81).
         EngineEvent::PrisonerFreed {
             player,
             hero,

@@ -2608,7 +2608,7 @@ fn a_map_taverns_decision_folds_whole_and_a_stray_part_changes_nothing() {
 
 #[test]
 fn a_freed_prisoner_folds_as_a_hire_and_joins_the_end_of_its_owners_list() {
-    // E08 T141a (v80; ADV-PRI-002, -003, GAM-HER-003): the owner's view from the event's head,
+    // E08 T141a (v81; ADV-PRI-002, -003, GAM-HER-003): the owner's view from the event's head,
     // its lists from `PrisonerPartSeen`, its other parts from `HiredPartSeen`; another viewer
     // sees the hero without its own; a full or emptied Prison folds into nothing; a hero that
     // leaves the map leaves the viewer's list.

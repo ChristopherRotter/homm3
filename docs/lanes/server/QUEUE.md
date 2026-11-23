@@ -12,8 +12,19 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent;
+  **in your paths, nothing to do**): **protocol v80** is taken: `wire::game::TownCommand::BuySpellBook
+  { town }` (TWN-GLD-007, a spell book bought at a town's Mage Guild) and the refusals
+  `TownReject::NoGuild`, `NoHero`, `HasSpellBook`, mapped both ways in `map/game/command.rs`; no
+  new event (`ResourcePaid`, `HeroChanged`), so no fold change; `tests/game_command.rs`' round
+  trip and the rejections' list (149) have them. The journal's replay word is `town book <town>`
+  (adventure replay format v25). The adventure lane's planned v80 (E08 T141a/T143a) becomes
+  **v81**. **Found, to triage:** `tests::clock::a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles_void`
+  failed once under `verify-step coverage --scope server` while another build ran beside it
+  (`clock.rs:801`, `told[0]`'s turn clock `None`: the player's turn clock not yet told), then
+  passed alone three times and in a second coverage run on an idle machine: timing under load.
 - 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`, `cross-lane` with the user's
-  consent, E08 decisions 412, 413; **in your paths, for your review**): **protocol v80**: four
+  consent, E08 decisions 412, 413; **in your paths, for your review**): **protocol v81** (v80 is the town lane's E09 T49b): four
   events, `PrisonerFreed { player, hero, hero_type, pos, view: Option<TavernHeroHead> }` (a hire's
   shape, the view for its owner alone), `PrisonerPartSeen { player, hero, part: TavernPart }`,
   `PrisonFull`, `PrisonEmptied` (`{ player, hero }`, the visitor's owner's); the observation's

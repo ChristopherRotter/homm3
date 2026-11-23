@@ -225,8 +225,8 @@ the computer's turn and the Thieves' Guild's best-hero tie-break (survey `E09-ta
 The user (ADV-Q64) chose to build the list in T141a: `HeroOnMap::listed`, each hero's place in its
 owner's list from 0 (dense, so a state has one encoding), the start list by type then the main
 towns' heroes (GAM-SET-004), each join at the end and each leave closing up (GAM-HER-003), the
-viewer's list in its observation (protocol v80) and the env's slots its first eight places
-(action encoding v19).
+viewer's list in its observation (protocol v81) and the env's slots its first eight places
+(action encoding v20).
 
 ### 2.2 The visit (`visit_prison` 0x4A3EB0)
 

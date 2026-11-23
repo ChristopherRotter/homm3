@@ -58,9 +58,10 @@ use super::rollout::choose;
 /// artifacts by their places, of creatures by slot, `Leave`; GAM-DEC-012); version 23 (E08
 /// T134b1): a Hill Fort's answers (`h3_game::HillFortAnswer`: a row's upgrade by its slot, `All`,
 /// `Leave`; GAM-DEC-013); version 24 (E09 T49a2): a town screen's opening
-/// (`h3_towns::TownCommand::Open` by its town, TWN-GLD-006). A replay of another version is refused
-/// ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 24;
+/// (`h3_towns::TownCommand::Open` by its town, TWN-GLD-006); version 25 (E09 T49b): a spell book's
+/// purchase (`h3_towns::TownCommand::BuySpellBook` by its town, TWN-GLD-007). A replay of another
+/// version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 25;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -940,7 +940,7 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
                 w::HiredPart::Spell { spell } => h3_game::HiredPart::Spell(Handle::from_raw(spell)),
             },
         },
-        // E08 T141a (v80).
+        // E08 T141a (v81).
         G::PrisonerFreed {
             player,
             hero,
@@ -1426,7 +1426,7 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             hero: HeroId::new(6),
             part: h3_game::HiredPart::Spell(Handle::from_raw(30)),
         },
-        // E08 T141a (v80): a freed prisoner both see, its view and its parts player 0's alone;
+        // E08 T141a (v81): a freed prisoner both see, its view and its parts player 0's alone;
         // a full player's and an emptied Prison's visits player 0's.
         GameEvent::PrisonerFreed {
             player: P0,

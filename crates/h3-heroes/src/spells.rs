@@ -8,7 +8,8 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use h3_content::{
-    HeroEffect, MAX_SKILL_LEVEL, MAX_SPELL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SpellId,
+    ArtifactTypeId, HeroEffect, MAX_SKILL_LEVEL, MAX_SPELL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset,
+    SpellId,
 };
 
 use crate::derive::{Count, effects};
@@ -122,6 +123,27 @@ pub fn meeting_spells(
             .collect()
     };
     (learns(a, b), learns(b, a))
+}
+
+/// Whether the hero wears a spell book: one of its worn artifacts' effects gives one
+/// (HER-BAT-011; in the original the Spell Book at its position, `hero_wears_artifact` 0x4D91F0
+/// with 0; Titan's Thunder equips one, HER-ART-007). A town's Mage Guild sells a book to a hero
+/// without one (TWN-GLD-007, E09 T49b): the original's test there, `hero_has_artifact` 0x4D91B0
+/// with 0, counts the backpack too, which a spell book never reaches (its slot is not carried,
+/// HER-ART-002), so the two agree.
+pub fn wears_spell_book(details: &HeroDetails, ruleset: &Ruleset) -> bool {
+    wears_book(details, ruleset)
+}
+
+/// The ruleset's spell book: its first artifact with the `spell_book` effect (the original's
+/// artifact 0), as a hero type's book at the setup and Titan's Thunder's ([`crate::equip`],
+/// HER-ART-007) find it; none in a ruleset without one. A town's Mage Guild sells it
+/// (TWN-GLD-007, E09 T49b).
+pub fn spell_book(ruleset: &Ruleset) -> Option<ArtifactTypeId> {
+    (0_u16..)
+        .zip(ruleset.artifacts())
+        .find(|(_, artifact)| artifact.effects.contains(&HeroEffect::SpellBook))
+        .map(|(raw, _)| ArtifactTypeId::from_raw(raw))
 }
 
 /// Whether the hero wears a spell book: one of its effects gives one (HER-BAT-011; in the
