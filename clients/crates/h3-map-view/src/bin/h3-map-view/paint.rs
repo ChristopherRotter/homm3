@@ -142,10 +142,15 @@ pub struct Played {
 }
 
 /// The record's start (`engine::start`) with its turns' starts as the `turn` tables, and its
-/// walks (`engine::played`) on the map `raw`.
-pub fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<Played, String> {
-    let map = fs::read(record.map).map_err(|e| format!("{}: {e}", record.map.display()))?;
-    let (loaded, rules) = render::load_record(record.path, &map, record.packs)?;
+/// walks (`engine::played`) on the map `raw`, `map` the bytes of the map file the record names
+/// (`record.map`).
+pub fn played(
+    assets: &Assets<'_>,
+    raw: &RawMap,
+    map: &[u8],
+    record: Record<'_>,
+) -> Result<Played, String> {
+    let (loaded, rules) = render::load_record(record.path, map, record.packs)?;
     let art = MapArt::from_raw(raw).map_err(|e| e.to_string())?;
     let failed = |why: &dyn std::fmt::Display| format!("{}: {why}", record.path.display());
     let start = engine::start(
@@ -153,6 +158,7 @@ pub fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<P
         &art,
         assets.templates,
         &assets.tables.map.towns,
+        &assets.tables.records,
         &rules,
     )
     .map_err(|e| failed(&e))?;
@@ -235,7 +241,12 @@ pub fn for_sequence<'a>(
         },
         Path::to_path_buf,
     );
-    let played = record.map(|r| played(assets, &raw, r)).transpose()?;
+    let played = record
+        .map(|r| {
+            let map = fs::read(r.map).map_err(|e| format!("{}: {e}", r.map.display()))?;
+            played(assets, &raw, &map, r)
+        })
+        .transpose()?;
     let after = played.as_ref().map(|p| (p.label.as_str(), &p.table));
     let mut painter = Painter::new(assets, &raw, Some(&live_path), after, view, &[])?;
     // The recording's facts, or none with a record (E24 M4 T4a2): its timeline only compared.
@@ -384,7 +395,7 @@ pub fn for_record<'a>(
         h3_map::parse(&bytes, &Limits::default())
     }
     .map_err(|e| format!("{}: {e}", file.display()))?;
-    let played = played(assets, &raw, record)?;
+    let played = played(assets, &raw, &bytes, record)?;
     let corner = ViewAt { x: 0, y: 0, z: 0 };
     let after = Some((played.label.as_str(), &played.table));
     let mut painter = Painter::new(assets, &raw, None, after, corner, &[])?;

@@ -204,7 +204,7 @@ epic   = "E16"
 # [[stub]]
 # id     = "MCL-STUB-1"
 # where  = "clients/crates/h3-map-view/src/engine.rs::became"
-# reason = "A record's random artifact, dwelling and town keep their random templates (E24 M4 T3a, design section 5.9): the original draws each as what it became (an artifact's ava%04d.def of its id, a dwelling's template of its class and subclass, a town's picture by its faction and buildings; design sections 2.7, 2.9), but the view names no drawn artifact (asked of the adventure lane, its inbox 2026-11-19), a drawn dwelling's class and subclass are the import's table (crate-private in h3-map) and a town's picture is T3b's. Lifted by E24 M4 T3b and the adventure lane's answer"
+# reason = "A record's random artifact and dwelling keep their random templates (E24 M4 T3a, design section 5.9): the original draws each as what it became (an artifact's ava%04d.def of its id, a dwelling's template of its class and subclass; design sections 2.7, 2.9), but the view names no drawn artifact (asked of the adventure lane, its inbox 2026-11-19) and a drawn dwelling's class and subclass are the import's table (crate-private in h3-map). A random town is drawn as a town of its faction since E24 M4 T3b2 (design section 5.11). Lifted by the adventure lane's answer"
 # epic   = "E24"
 
 # MCL-STUB-3, a comment for the same reason; its marker `// stub: MCL-STUB-3` is in the code.

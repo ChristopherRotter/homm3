@@ -3964,6 +3964,12 @@ start is M1's (§1, §2, §2.7 to §2.10), its capture `h3map.py set` with `expl
   boats). `tests/engine.rs`: a game built on a writer's map (a random resource, monster,
   artifact and dwelling, a sawmill, a pile, three colours' heroes, a boat), every refusal, what
   `differences` finds.
+- **As built at M4 T6** (the review's R4): a record whose header's `first` is not 1 (a server's
+  bounded record cut at a later snapshot) is refused (`Refused::Cut`: a mid-game start is not
+  M4's); the start is built on the map file's own art before `--live` changes it (a random
+  dwelling the capture's: its comparison now names `MCL-STUB-1`), and an art of another map is
+  refused (`Setup`); `--check` needs `--record` and `--live`, `--packs` needs `--record`; the
+  record is decoded once (`engine::check`). `MCL-STUB-1` no longer holds a random town (§5.11).
 
 ### 5.10 A record's start: the panels (M4 T3b1)
 
@@ -4075,6 +4081,12 @@ adventure lane's). No reading of the original: the hover is M3's (§4.10 to §4.
   harness writes them); `h3map.py engine`: all six starts as expected, every explored tile's
   hint and cursor the capture's, the pixels only the panels' MCL-Q36 morale, the bonus's gold
   (`engine-start-owners`) and the two level-ups' skills.
+- **As built at M4 T6** (the review's R4): the facts' class rules read the class the game loads
+  (`Records::game_class`: 219 a garrison's 33, 220 a mine's 53, as the tiles' records the hint
+  dispatches on; the live part's `classes` keep the map's, which the sound reads); `--check`
+  prints what it compared, names the choices as not compared when the capture holds no
+  `[chosen]` (a situation's `choose`, by design: §5.10's "when the capture holds one") and fails
+  on a capture without `[hover]` (one from before T3b2: the comparison holds the mouse-over).
 
 ### 5.12 A record's own walks and turns: the reading and the scripted games (M4 T4a1)
 

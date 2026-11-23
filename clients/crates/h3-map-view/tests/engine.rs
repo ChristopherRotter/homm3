@@ -17,8 +17,9 @@ use h3_map::{Limits, MAP_IMPORT_VERSION};
 use h3_map_view::art::MapArt;
 use h3_map_view::engine::{self, Refused};
 use h3_map_view::hover::Facts;
+use h3_map_view::record::Records;
 use h3_map_view::situation::Situation;
-use h3_map_view::tables::TownArt;
+use h3_map_view::tables::{self, TownArt};
 use h3_protocol::RECORD_FORMAT_VERSION;
 use h3_protocol::codec;
 use h3_protocol::map::game::{manifest, observe};
@@ -110,6 +111,18 @@ fn rules() -> &'static GameRuleset {
     })
 }
 
+/// The committed tables' records (`[map.records]`): the classes the game loads the map's as.
+fn records() -> &'static Records {
+    static RECORDS: OnceLock<Records> = OnceLock::new();
+    RECORDS.get_or_init(|| {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml");
+        let text = std::fs::read_to_string(path).unwrap();
+        tables::load(&[tables::parse(&text).unwrap()], "base")
+            .unwrap()
+            .records
+    })
+}
+
 /// A situation's map file, gzip-compressed as the engine reads it.
 fn map_file(text: &str) -> Vec<u8> {
     let (map, extras) = Situation::parse(text)
@@ -178,7 +191,14 @@ fn snapshot(observation: &GameObservation) -> ServerMessage {
 fn start(g: &Game, observation: &GameObservation) -> Result<engine::Start, Refused> {
     let record = text(&g.header, &[snapshot(observation)]);
     let loaded = engine::load(&record, &g.bytes, rules())?;
-    engine::start(&loaded, &g.art, &templates(), &town_art(), rules())
+    engine::start(
+        &loaded,
+        &g.art,
+        &templates(),
+        &town_art(),
+        records(),
+        rules(),
+    )
 }
 
 /// Every faction's town pictures, named by their list and faction.
@@ -438,8 +458,21 @@ fn records_it_refuses() {
     };
     let loaded = engine::load(&text(&g.header, &[turn]), &g.bytes, rules()).unwrap();
     assert_eq!(
-        engine::start(&loaded, &g.art, &[], &town_art(), rules()),
+        engine::start(&loaded, &g.art, &[], &town_art(), records(), rules()),
         Err(Refused::NoStart)
+    );
+    // A record its bound cut, beginning at a later snapshot (E24 M4 T6, R4-4): not a new game's
+    // start; its walks are not played either.
+    let mut cut = g.header.clone();
+    cut.first = 40;
+    let loaded = engine::load(&text(&cut, &[snapshot(&g.observation)]), &g.bytes, rules()).unwrap();
+    assert_eq!(
+        engine::start(&loaded, &g.art, &[], &town_art(), records(), rules()),
+        Err(Refused::Cut(40))
+    );
+    assert_eq!(
+        engine::played(&loaded, &g.art, rules()).map(|_| ()),
+        Err(Refused::Cut(40))
     );
     // Another map's art; an object, a hero or a player the map or the view does not hold.
     let loaded = engine::load(&good, &g.bytes, rules()).unwrap();
@@ -451,7 +484,23 @@ fn records_it_refuses() {
         })
         .unwrap();
     assert_eq!(
-        engine::start(&loaded, &other, &[], &town_art(), rules()),
+        engine::start(&loaded, &other, &[], &town_art(), records(), rules()),
+        Err(Refused::Setup)
+    );
+    // An art with a hero more before the objects: the static ones as many, their indices past the
+    // file's objects (E24 M4 T6, R4-11).
+    let shifted = MapArt::from_raw(&h3_map::read(&g.bytes, &Limits::default()).unwrap())
+        .map(|mut art| {
+            let hero = (0..art.objects.len())
+                .find(|&i| art.templates[art.objects[i].template].class == 34)
+                .unwrap();
+            let copy = art.objects[hero];
+            art.objects.insert(0, copy);
+            art
+        })
+        .unwrap();
+    assert_eq!(
+        engine::start(&loaded, &shifted, &[], &town_art(), records(), rules()),
         Err(Refused::Setup)
     );
     let changed = |change: &dyn Fn(&mut GameObservation)| {
@@ -494,12 +543,14 @@ fn each_refusal_says_why() {
         Refused::Object(4, [1, 2, 0]),
         Refused::Hero(5),
         Refused::Player(9),
+        Refused::Cut(40),
     ];
     let texts: Vec<String> = all.iter().map(ToString::to_string).collect();
     assert!(texts.iter().all(|t| !t.is_empty()));
     assert_eq!(texts[1], "line 3: bad");
     assert!(texts[4].contains("0x0000000000000001"));
     assert!(texts[10].contains("(1, 2, 0)"));
+    assert!(texts[13].contains("message 40, not at the game's start"));
 }
 
 /// The panels' map (E24 M4 T3b1): Red's two heroes out of their types' order (Astral named by
@@ -767,7 +818,8 @@ fn what_differs_in_the_panels() {
 
 /// E24 M4 T3b2: the map of the mouse-over's facts: Red's hero among objects of every case the
 /// facts write (each a one-tile template of its own, `HOVER_LINES`), Red's named Castle, a neutral
-/// Rampart, a random monster, Blue's hero far off and a Hill Fort out of sight.
+/// Rampart, a random monster, Blue's hero far off and a Hill Fort out of sight; since E24 M4 T6
+/// (R4-1) an abandoned mine of class 220 and a vertical garrison (219).
 const HOVER: &str = r#"
 size = 36
 terrain = "grass"
@@ -882,6 +934,14 @@ at = [14, 16]
 [[objects]]
 def = "hv92.def"
 at = [15, 16]
+
+[[objects]]
+def = "hv2207.def"
+at = [12, 16]
+
+[[objects]]
+def = "hv219.def"
+at = [12, 10]
 "#;
 
 /// The templates of `HOVER`'s objects: one tile, visited there, by class and subclass; a
@@ -913,6 +973,10 @@ fn hover_templates() -> Vec<ObjectTemplate> {
         ("hv53.def", 53, 2),
         ("hv14.def", 14, 0),
         ("hv92.def", 92, 0),
+        // The classes the game loads as others (E24 M4 T6, R4-1): the abandoned mine 220.7 as
+        // 53, the vertical garrison 219 as 33.
+        ("hv2207.def", 220, 7),
+        ("hv219.def", 219, 0),
     ]
     .iter()
     .map(|&(def, class, subclass)| one(def, class, subclass))
@@ -1021,6 +1085,21 @@ fn the_hover_s_facts_of_a_start() {
     let owned = object_at(&g, "hv53.def", [11, 16]);
     assert_eq!(mines(ore).as_array().unwrap()[1], Value::Integer(2));
     assert_eq!(mines(owned).as_array().unwrap()[1], Value::Integer(2));
+    // The abandoned mine of class 220 a mine by the class the game loads (53, E24 M4 T6, R4-1):
+    // its row as the one of class 53's, its resource the game's draw (none written).
+    let abandoned = object_at(&g, "hv2207.def", [12, 16]);
+    let abandoned53 = object_at(&g, "hv537.def", [9, 16]);
+    assert!(start.seen[abandoned]);
+    assert_eq!(
+        mines(abandoned).as_array().unwrap()[1],
+        mines(abandoned53).as_array().unwrap()[1]
+    );
+    assert_eq!(mines(abandoned).as_array().unwrap()[1], Value::Integer(0));
+    // The live part keeps the map's class (the sound reads it: 220's own entrance sound).
+    assert_eq!(
+        numbers(&start.table["classes"].as_array().unwrap()[abandoned]),
+        [220, 7]
+    );
     // The map's own town names, in its order of towns (an empty one none).
     assert_eq!(g.art.town_names, [Some("Brightmoor".to_string()), None]);
     let mut raw = h3_map::read(&g.bytes, &Limits::default()).unwrap();
@@ -1035,6 +1114,7 @@ fn the_hover_s_facts_of_a_start() {
     let facts = Facts::read(&start.table["hover"], g.art.objects.len(), heroes, 36, 1).unwrap();
     assert_eq!(facts.words[castle], Some(0));
     assert!(facts.contents.contains_key(&ore));
+    assert!(facts.contents.contains_key(&abandoned));
 }
 
 #[test]
@@ -1141,9 +1221,14 @@ fn the_hover_s_facts_of_what_the_player_learnt() {
         .unwrap();
     details.spells.push(spell);
     details.skills.push(SkillLevel { skill, level: 1 });
-    let anchor = reference(&mut o, garrison).anchor;
+    // The vertical garrison (219) a garrison by the class the game loads (33, E24 M4 T6, R4-1).
+    let vertical = index("hv219.def", [12, 10]);
+    let anchors = [
+        reference(&mut o, garrison).anchor,
+        reference(&mut o, vertical).anchor,
+    ];
     for g in &mut o.garrisons {
-        if g.anchor == anchor {
+        if anchors.contains(&g.anchor) {
             g.garrison.stacks = vec![GarrisonStack {
                 creature: 1,
                 count_word: None,
@@ -1205,7 +1290,7 @@ fn the_hover_s_facts_of_what_the_player_learnt() {
     );
     assert_eq!(visits[tent], [0, 1]);
     let armed = numbers(&hover["armed"]);
-    assert_eq!((armed[garrison], armed[castle]), (1, 1));
+    assert_eq!((armed[garrison], armed[vertical], armed[castle]), (1, 1, 1));
     // A Swan Pond's and the Sirens' once-marks the hero does not hold.
     let (pond, sirens) = (index("hv14.def", [14, 16]), index("hv92.def", [15, 16]));
     assert_eq!(
@@ -1246,6 +1331,74 @@ fn row_of_none(hover: &toml::Table, i: usize) -> Value {
         .find(|r| r.as_array().unwrap()[0] == Value::Integer(i64::try_from(i).unwrap()))
         .cloned()
         .unwrap()
+}
+
+/// E24 M4 T6 (R4-7): a random town in Red's sight and a neutral Rampart with a Capitol out of it.
+const TOWNS: &str = r#"
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [12, 12], class = 2 },
+    { at = [34, 34], owner = 1, class = 6 },
+]
+towns = [{ at = [30, 24], faction = 1, buildings = "capitol" }]
+view = [0, 0, 0]
+
+[[objects]]
+def = "AVCranx0.def"
+at = [12, 7]
+"#;
+
+#[test]
+fn a_random_town_in_sight_and_a_town_out_of_it() {
+    let random = LINES[0]
+        .replace("AVCcasx0.def", "AVCranx0.def")
+        .replace(" 98 0 ", " 77 0 ");
+    let mut lines = hover_templates();
+    lines.push(ObjectTemplate::from_objects_txt(&random).unwrap());
+    let (map, extras) = Situation::parse(TOWNS)
+        .unwrap()
+        .build(&BTreeMap::new(), &lines)
+        .unwrap();
+    let g = game_on(writer::gzip(&writer::write_with(&map, &extras).unwrap()));
+    let start = start(&g, &g.observation).unwrap();
+    let defs = start.table["defs"].as_array().unwrap();
+    let classes = start.table["classes"].as_array().unwrap();
+    // The random town a town of the faction the game drew, by its view's fort and Capitol
+    // (design §5.11); its word, by the town class's rule, its index among the towns written.
+    let random = object_at(&g, "AVCranx0.def", [12, 7]);
+    assert!(start.seen[random]);
+    let view = g
+        .observation
+        .adventure
+        .objects
+        .iter()
+        .find(|o| (o.anchor.x, o.anchor.y) == (12, 7))
+        .unwrap();
+    let (at, town) = g
+        .observation
+        .towns
+        .iter()
+        .enumerate()
+        .find(|(_, t)| Some(t.town) == view.town)
+        .unwrap();
+    let list = match (town.capitol, town.fort > 0) {
+        (true, _) => "capitol",
+        (false, true) => "fort",
+        (false, false) => "village",
+    };
+    assert_eq!(
+        defs[random].as_str(),
+        Some(format!("{list}{}.def", town.faction).as_str())
+    );
+    assert_eq!(numbers(&classes[random]), [98, i64::from(town.faction)]);
+    let words = numbers(&start.table["hover"]["words"]);
+    assert_eq!(words[random], i64::try_from(at).unwrap());
+    // The Rampart out of sight: its new game's picture by the map's buildings, a Capitol's.
+    let rampart = object_at(&g, "AVCramx0.def", [30, 24]);
+    assert!(!start.seen[rampart]);
+    assert_eq!(defs[rampart].as_str(), Some("capitol1.def"));
+    assert_eq!(words[rampart], -1);
 }
 
 /// A game of `MAP` hosted (`GameSession`), Red's hero walking two tiles north, then every

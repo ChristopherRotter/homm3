@@ -34,7 +34,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - **The starting bonus's rows sit in two arrays** (E24 M4 T3b1): `h3mem.starting_bonuses` reads
   16 values; with three players Blue's row was the second array's, so `h3drive.gold_bonus` counts
   the Gold read, not a row's index.
-- **A template's class in memory is the game's** (T5b1): the load turns the map's 219 into 33, 220 into 53, decorations 165–205 into others (§2.9), so `live.toml`'s `classes` differ from the map's with no random draw.
+- **A template's class in memory is the game's** (T5b1): the load turns the map's 219 into 33, 220 into 53, decorations 165–205 into others (§2.9), so `live.toml`'s `classes` differ from the map's with no random draw. A class rule (the hint's, the cursor's, an engine start's `[hover]` facts: M4 T6, R4-1) reads the game's (`Records::game_class`); the engine's start's `classes` keep the map's (the sound reads 220).
 - **A situation changed since its capture** shows as `STALE` in `drawn` (T6b: the kept live part records the situation's digest): capture it again (`set --only <id>`).
 - **A recording reads the tree as it goes** (M2 T2): each `frames --only` run loads `h3map.py`
   afresh and its end draws ours with the release `h3-map-view` and the committed tables and

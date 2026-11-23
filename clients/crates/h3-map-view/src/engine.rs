@@ -3,13 +3,20 @@
 //! [`GameRecordHeader`], every further line one numbered server message the player was sent)
 //! read, checked against the viewer's own rules and the map file it draws, and its first
 //! observation turned into a live part as a capture of the original keeps it (`h3map.py still`'s
-//! `live.toml`: `viewer`, `defs` and `classes`, `owners`, `heroes`, `boats`, `explored`), which the
-//! binary's `render --live` applies as it applies a capture's.
+//! `live.toml`: `viewer`, `defs` and `classes`, `owners`, `heroes`, `boats`, `explored`; since
+//! T3b1 the panels' `kingdom`, `status`, `realm` and `[chosen]`, since T3b2 the mouse-over's
+//! `[hover]`), which the binary's `render --record` applies as `render --live` applies a
+//! capture's (or, with `--check`, compares with it).
 //!
 //! - **The record is this build's game:** the manifest the protocol makes of the viewer's rules
 //!   and of the map file (`h3_protocol::map::game::manifest`, the map by its content hash and the
 //!   import's version) equals the record's, and the engine's import takes the map (MCL-Q21 (b):
 //!   the viewer's load refuses a map the import refuses).
+//! - **The record is the whole game's** (its header's `first` is 1, its first message the game's
+//!   snapshot): a server's bounded record that let its oldest go begins at a later snapshot,
+//!   which the start's new-game rules (heroes facing right, the hero list by type, no object
+//!   added in play) would misread, so it is refused ([`Refused::Cut`]); showing one from there is
+//!   not M4's.
 //! - **Each object of the view** (in tile order, without an index: `docs/06-security.md`) is
 //!   found in the map's file by its type, anchor and masks (two alike special grounds either
 //!   way), else as a random object at its anchor (a random dwelling's also one column right of
@@ -18,9 +25,12 @@
 //!   out (`h3_map::import_map`).
 //! - **What a random object became** (design §2.7): a random resource the pile of its drawn
 //!   resource (`avtwood0` … `avtgold0`, 0x677958), a random monster the last template of class 54
-//!   with its creature (0x505EA0). A random artifact, dwelling or town keeps its random template
+//!   with its creature (0x505EA0). A random artifact or dwelling keeps its random template
 //!   (`MCL-STUB-1`: the view names no drawn artifact, a dwelling's class and subclass are the
-//!   import's table, a town's picture is T3b's).
+//!   import's table).
+//! - **A town's picture** (T3b2) by its faction and its view's fort and Capitol, a random town a
+//!   town of its faction (class 98); a town the view does not show by the map's buildings at a
+//!   new game, as the capture's.
 //! - **The owners, heroes and boats** by colour (the view names players: its `players` give their
 //!   colours); a hero's class its type's, facing right as the original's new game has them (the
 //!   engine keeps no facing: M4 T4 takes it from the steps), its boat's flag its owner's; an
@@ -49,6 +59,7 @@ use toml::{Table, Value};
 use crate::art::MapArt;
 use crate::live::{BOAT_CLASS, HERO_CLASS, TOWN_CLASS, built_at_start, owner};
 use crate::objects;
+use crate::record::Records;
 use crate::tables::{CAPITOL, FORT, TownArt};
 
 mod hover;
@@ -117,6 +128,10 @@ pub enum Refused {
     Import(String),
     /// Its first message is not the game's snapshot.
     NoStart,
+    /// It does not begin at the game's start: its header's first message's number (a bounded
+    /// record let its oldest go and begins at a later snapshot, which the start's new-game rules
+    /// would misread).
+    Cut(u32),
     /// The import's static objects are not the file's objects but its heroes and boats.
     Setup,
     /// The view shows an object the file holds none of there: its type and anchor.
@@ -148,6 +163,11 @@ impl fmt::Display for Refused {
             Self::Read(why) => write!(f, "the map does not read: {why}"),
             Self::Import(why) => write!(f, "the engine's import refuses the map: {why}"),
             Self::NoStart => f.write_str("the record does not begin with the game's snapshot"),
+            Self::Cut(first) => write!(
+                f,
+                "the record begins at its message {first}, not at the game's start (its bound let \
+                 the oldest go): only a whole game's record is shown"
+            ),
             Self::Setup => f.write_str("the import's objects are not the map's"),
             Self::Object(object_type, [x, y, z]) => write!(
                 f,
@@ -216,7 +236,15 @@ pub struct Loaded {
 /// The record does not read ([`parse`]); its map is not the file; its manifest is not the one
 /// the protocol makes of `rules` and the map; the map does not read; the import refuses it.
 pub fn load(text: &str, map: &[u8], rules: &GameRuleset) -> Result<Loaded, Refused> {
-    let record = parse(text)?;
+    check(parse(text)?, map, rules)
+}
+
+/// The record `record`, already read ([`parse`]: its header names the rules to read), checked
+/// as [`load`] checks it.
+///
+/// # Errors
+/// As [`load`]'s but the reading's.
+pub fn check(record: GameRecord, map: &[u8], rules: &GameRuleset) -> Result<Loaded, Refused> {
     let ours = MapIdentity {
         content_hash: WireU64(content_hash(map)),
         import_version: MAP_IMPORT_VERSION,
@@ -237,8 +265,13 @@ impl Loaded {
     /// The game's first observation: the record's first message, its snapshot.
     ///
     /// # Errors
-    /// [`Refused::NoStart`]: the record begins with another message, or with none.
+    /// [`Refused::Cut`]: the record does not begin at the game's start (its header's `first` is
+    /// not 1); [`Refused::NoStart`]: it begins with another message, or with none.
     pub fn first(&self) -> Result<&GameObservation, Refused> {
+        let first = self.record.header.first;
+        if first != 1 {
+            return Err(Refused::Cut(first));
+        }
         match self.record.messages.first() {
             Some(ServerMessage::GameSnapshot { observation, .. }) => Ok(observation),
             _ => Err(Refused::NoStart),
@@ -257,19 +290,27 @@ pub struct Start {
 
 /// The live part of `loaded`'s first observation (the module's documentation), its map's art
 /// `art` (`MapArt::from_raw` of `loaded.raw`), the game's templates `templates` (`Objects.txt`:
-/// a random monster's picture) and towns' pictures `town_art` (`[map.towns]`) under `rules`.
+/// a random monster's picture), towns' pictures `town_art` (`[map.towns]`) and the classes the
+/// game loads the map's as `records` (`[map.records]`: the mouse-over's class rules read the
+/// game's, 219 a garrison's 33 and 220 a mine's 53, as the tiles' records do) under `rules`.
 ///
 /// # Errors
-/// [`Refused::NoStart`]; [`Refused::Setup`]; an object the file does not hold where the view
-/// shows it; a hero of no known type; a player the view does not list.
+/// [`Refused::NoStart`], [`Refused::Cut`]; [`Refused::Setup`] (`art` is not of `loaded`'s map);
+/// an object the file does not hold where the view shows it; a hero of no known type; a player
+/// the view does not list.
 pub fn start(
     loaded: &Loaded,
     art: &MapArt,
     templates: &[ObjectTemplate],
     town_art: &TownArt,
+    records: &Records,
     rules: &GameRuleset,
 ) -> Result<Start, Refused> {
     let observation = loaded.first()?;
+    // An art of another map (its objects not the file's) would index past the file's below.
+    if art.objects.len() != loaded.raw.objects.len() {
+        return Err(Refused::Setup);
+    }
     let colour = |player: u8| {
         observation
             .players
@@ -397,7 +438,10 @@ pub fn start(
     // The mouse-over's facts (E24 M4 T3b2, design §5.11).
     let sight = hover::Sight {
         views,
-        classes: drawn,
+        classes: drawn
+            .iter()
+            .map(|&(c, s)| (records.game_class(c), s))
+            .collect(),
     };
     let facts = hover::table(observation, &loaded.raw, art, rules, &sight);
     table.insert("hover".to_string(), Value::Table(facts));
@@ -489,7 +533,7 @@ fn became(
             ((*def).to_string(), PILE, subclass)
         });
     }
-    // stub: MCL-STUB-1 (a random artifact, dwelling or town keeps its random template)
+    // stub: MCL-STUB-1 (a random artifact or dwelling keeps its random template)
     if !RANDOM_MONSTERS.contains(&class) {
         return None;
     }
