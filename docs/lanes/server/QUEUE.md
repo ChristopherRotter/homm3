@@ -12,6 +12,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`, `cross-lane` with the user's
+  consent, E08 decisions 412, 413; **in your paths, for your review**): **protocol v80**: four
+  events, `PrisonerFreed { player, hero, hero_type, pos, view: Option<TavernHeroHead> }` (a hire's
+  shape, the view for its owner alone), `PrisonerPartSeen { player, hero, part: TavernPart }`,
+  `PrisonFull`, `PrisonEmptied` (`{ player, hero }`, the visitor's owner's); the observation's
+  `hero_list` (the viewer's list of heroes, GAM-HER-003). The fold: `fold` now calls
+  `fold_event`, then `keep_list` (a hero that left the viewer's heroes on the map leaves the list,
+  one that came joins its end); `put_artifact` shared by the hire's view and `see_freed`. Tests:
+  `game_fold.rs`' new freed-prisoner test; `tests/game.rs`' fixture lists the viewer's two heroes.
+  The goldens re-recorded (hashes and versions only; no new replay).
+
 - 2026-11-22 (the town lane, E09 T49a2, `town/e09-t49a2`, `cross-lane` with the user's consent;
   **in your paths, nothing to do**): **protocol v79** is taken: `wire::game::TownCommand::Open {
   town }` (TWN-GLD-006, a town screen's opening: its Mana Vortex, its guild's spells), mapped

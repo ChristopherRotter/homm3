@@ -619,10 +619,11 @@ impl StaticMap {
             return Err(SetupError::Prisoners(prisoners.len()));
         }
         for (index, prisoner) in prisons.into_iter().zip(prisoners) {
-            let army = check_army(core, part, &prisoner.army).map_err(|error| SetupError::Army {
-                hero: prisoner.id,
-                error,
-            })?;
+            let army =
+                check_army(core, part, &prisoner.army).map_err(|error| SetupError::Army {
+                    hero: prisoner.id,
+                    error,
+                })?;
             self.objects[index].resolved = Resolved::Prisoner {
                 hero: prisoner.id,
                 army,
@@ -2636,7 +2637,9 @@ impl AdventureState {
             Effect::DenOfThieves => outcome.thieves_guild = true,
             // rule: ADV-PRI-002
             Effect::Prison => {
-                if let Resolved::Prisoner { hero: prisoner, .. } = self.object_at(visit.object).resolved {
+                if let Resolved::Prisoner { hero: prisoner, .. } =
+                    self.object_at(visit.object).resolved
+                {
                     outcome.prison = Some(PrisonVisit {
                         hero,
                         index: visit.object,

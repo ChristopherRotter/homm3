@@ -9185,13 +9185,23 @@ fn check_towns(
                 town
             );
         }
+        // E09 T49a2's week flag (found by E08 T141a's run): a week's start fills every town's Mana
+        // Vortex again (`Towns::start_week`); its taking is the hires' and the openings' checks'
+        // (`check_town_hire`, `check_town_open`).
+        prop_assert!(
+            !week || new.vortex(),
+            "{:?}'s Vortex not filled by the week",
+            town
+        );
         let with_old_counts = (0..h3_towns::CREATURE_INDEXES)
             .fold(new.clone(), |t, index| {
                 t.with_available(index, old.available(index))
             })
-            .with_portal(old.portal());
+            .with_portal(old.portal())
+            .with_vortex(if week { old.vortex() } else { new.vortex() });
         if *old != with_old_counts {
             let cleared = day_started && old.built_today();
+
             prop_assert!(
                 !captured.is_empty() || !built.is_empty() || cleared,
                 "{:?} rebuilt without a capture, a build or the day's start",

@@ -38,13 +38,13 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x1247bb79e0bfd3fa",
-    "0xf8861be27502e931",
-    "0xa82e5da4c7a795af",
-    "0x15b1eaa62a4352c2",
-    "0xf5188e712ce35ae2",
-    "0x5114ac9f1dc785ed",
-    "0x6266de5bdd2761af",
+    "0x71d9362634b93bdc",
+    "0xd98fc5749e7b07a0",
+    "0x665ebaa6077557f6",
+    "0x6eb7dbf271146a17",
+    "0x83520265d900aeff",
+    "0xdf5534649e93d2d0",
+    "0xb027c67a6eb4ccac",
 ]
 
 [replay]
@@ -68,24 +68,24 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x0c610f9192575256"
+adventure_ruleset_hash = "0x888a0c8963f09a43"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 38
-adventure_state_hash_version = 27
+game_state_hash_version = 39
+adventure_state_hash_version = 28
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-economy-36.h3m"
 hash = "0x0d7ea287c88b7469"
-import_version = 28
+import_version = 29
 
 [result]
 day = 4
-final_hash = "0x0dc47e11d23bf956"
+final_hash = "0xd2e0e89f94726d83"
 
 [[players]]
 colour = 0

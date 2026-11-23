@@ -12,8 +12,8 @@ use h3_contracts::{HeroId, PlayerId};
 use h3_kernel::{Rng, StreamId};
 
 use super::{faction, hero, towns_rules, towns_rules_with, towns_setup};
-use crate::tests::{held, imprison};
 use crate::tests::setup as setup_without_towns;
+use crate::tests::{held, imprison};
 use crate::town::pool::{HeroPool, HeroStatus, draw_heroes};
 use crate::town::{FactionChoice, FactionSet};
 use crate::{GamePrisonerSetup, GameRuleset, GameSetup, GameSetupError, GameState};

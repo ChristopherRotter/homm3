@@ -139,8 +139,8 @@ pub use observe::{
 };
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
-    DEFAULT_DIFFICULTY, GameHeroSetup, GamePrisonerSetup, GameSetup, GameSetupError, HeroArmy, HeroArtifactsSetup,
-    HeroDetailsSetup, PlayerSetup, TimedEventSetup,
+    DEFAULT_DIFFICULTY, GameHeroSetup, GamePrisonerSetup, GameSetup, GameSetupError, HeroArmy,
+    HeroArtifactsSetup, HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 pub use state::{GameState, MonthKind, OpenBattle};
 pub use system::SystemCommand;

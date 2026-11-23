@@ -22,8 +22,7 @@ use h3_content::{CreatureTypeId, FactionId, Formation, HeroTypeId, ResourceId, S
 use h3_contracts::{ArmyStack, HeroSex, PlayerId, TownId};
 use h3_game::{
     DEFAULT_DIFFICULTY, GameHeroSetup, GamePrisonerSetup, GameRuleset, GameSetup, HeroArmy,
-    HeroArtifactsSetup,
-    HeroDetailsSetup, PlayerSetup, PlayerStart, TimedEventSetup,
+    HeroArtifactsSetup, HeroDetailsSetup, PlayerSetup, PlayerStart, TimedEventSetup,
 };
 
 use crate::model::{

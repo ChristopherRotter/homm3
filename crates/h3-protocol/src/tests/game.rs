@@ -1647,7 +1647,8 @@ pub(super) fn every_game_part(
                 details: None,
             },
         ],
-        hero_list: vec![HeroId::new(2), HeroId::new(0)],
+        // The viewer's two heroes on the map in its list's order, not by id (E08 T141a, GAM-HER-003).
+        hero_list: vec![HeroId::new(5), HeroId::new(4)],
         adventure: every_part(),
         towns: vec![
             town(FortLevel::None, false),

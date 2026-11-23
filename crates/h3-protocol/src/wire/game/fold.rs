@@ -67,7 +67,9 @@ impl GameObservation {
     fn keep_list(&mut self) {
         let viewer = self.viewer;
         let on_map = |id: u16, heroes: &[MapHero]| {
-            heroes.iter().any(|hero| hero.id == id && hero.owner == viewer)
+            heroes
+                .iter()
+                .any(|hero| hero.id == id && hero.owner == viewer)
         };
         let heroes = &self.adventure.heroes;
         self.hero_list.retain(|&id| on_map(id, heroes));

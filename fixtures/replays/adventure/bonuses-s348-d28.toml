@@ -600,29 +600,29 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xd8070a4253ed71a5",
-    "0x1f95b6eb73ee4117",
-    "0xebcf5a6d1ce81cf5",
-    "0x9a1af005649fafd4",
-    "0xae6e460650ef86fc",
-    "0xc510f0c6d34a7dfc",
-    "0xb34af6995a010931",
-    "0x85c40b12e96c503e",
-    "0x60b1adb04d898793",
-    "0xa7d9ca260d3ebe6e",
-    "0x850781986dc01620",
-    "0x7075c95603be0133",
-    "0x508d27fb9ccef053",
-    "0x0ed5fe7c842dbe95",
-    "0x5cf14e52ddf234cc",
-    "0x2c1b419d4490de0d",
-    "0xdde9fca56cc16402",
-    "0xa8d1df1bd5e91998",
-    "0x38a1dcf75f5996d1",
-    "0x80f2a055d3f90d2a",
-    "0x283599699b2e9608",
-    "0x9cd08a864f1a42c9",
-    "0x4a0bb68ec32ef10a",
+    "0xc2834931f677ae76",
+    "0xd8ed8144ac88f939",
+    "0x11dbd6c7fc90994e",
+    "0x313a7d0f74f9d503",
+    "0xfcf0d2713785a071",
+    "0x051ebbe2328b7a24",
+    "0x9c0f5e551b62dcf5",
+    "0x451057c2d26df77a",
+    "0xa440b1b07b33595b",
+    "0x946c330f990d618a",
+    "0x58e537aa2f140d96",
+    "0x239dcb6c1a0b0c1f",
+    "0x13e6d92f88209667",
+    "0x85566f1556b2c994",
+    "0xbc0936246af9481e",
+    "0xcc404c87a305bd97",
+    "0xbf1fc89a48b2d17c",
+    "0xf7b5a392aa1e7602",
+    "0x3d1d913c896e3fa3",
+    "0xd04118a4bb346ca8",
+    "0x812e07f5568cdf9e",
+    "0x89e0ecc80cfd2447",
+    "0xb5cafe0a0d6e69a0",
 ]
 
 [replay]
@@ -646,24 +646,24 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x0c610f9192575256"
+adventure_ruleset_hash = "0x888a0c8963f09a43"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 38
-adventure_state_hash_version = 27
+game_state_hash_version = 39
+adventure_state_hash_version = 28
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-bonuses-36.h3m"
 hash = "0x25a3fac98e5682f3"
-import_version = 28
+import_version = 29
 
 [result]
 day = 29
-final_hash = "0xea6d3c12fda68f56"
+final_hash = "0x0b82a6864952a779"
 
 [[players]]
 colour = 0

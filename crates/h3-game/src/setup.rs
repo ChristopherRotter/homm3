@@ -8,7 +8,8 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_adventure::{
-    AdventureParams, AdventureSetup, Bans, HeroSetup, MapSetup, Pos, PrisonerSetup, Seat, SetupError,
+    AdventureParams, AdventureSetup, Bans, HeroSetup, MapSetup, Pos, PrisonerSetup, Seat,
+    SetupError,
 };
 use h3_content::{
     ArtifactTypeId, CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, ResourceId,
@@ -625,8 +626,7 @@ impl GameSetup {
             .iter()
             .filter(|player| player.start.main_town.is_some_and(|t| t.generates_hero))
             .count();
-        let count =
-            self.heroes.len() + generating + self.prisoners.len() + self.custom_types.len();
+        let count = self.heroes.len() + generating + self.prisoners.len() + self.custom_types.len();
         if count > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Heroes(count));
         }

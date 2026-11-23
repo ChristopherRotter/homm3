@@ -187,7 +187,10 @@ fn a_setup_gives_one_valid_prisoner_per_prison_with_an_id_of_its_own() {
         })
         .collect();
     assert_eq!(held, [Some(PRISONER), Some(HeroId::new(4))]);
-    assert_eq!(SetupError::Prisoners(2).to_string(), "2 prisoners do not give one per prison");
+    assert_eq!(
+        SetupError::Prisoners(2).to_string(),
+        "2 prisoners do not give one per prison"
+    );
 }
 
 // covers: ADV-PRI-002
@@ -345,8 +348,12 @@ fn a_players_list_holds_its_heroes_on_the_map_in_the_order_they_joined_it() {
     let rules = rules();
     // Red's heroes in the setup's order 5, 1, 4 (not by id); blue's 2.
     let mut setup = setup_of(vec![], vec![]);
-    setup.heroes.insert(0, hero_at(5, 0, Pos::new(5, 1, 0), &[PEASANT]));
-    setup.heroes.push(hero_at(4, 0, Pos::new(7, 1, 0), &[PEASANT]));
+    setup
+        .heroes
+        .insert(0, hero_at(5, 0, Pos::new(5, 1, 0), &[PEASANT]));
+    setup
+        .heroes
+        .push(hero_at(4, 0, Pos::new(7, 1, 0), &[PEASANT]));
     let mut state = started(&rules, &setup).unwrap();
     let ids = |list: &[u16]| list.iter().map(|&id| HeroId::new(id)).collect::<Vec<_>>();
     assert_eq!(state.hero_list(RED), ids(&[5, 1, 4]));
@@ -359,12 +366,20 @@ fn a_players_list_holds_its_heroes_on_the_map_in_the_order_they_joined_it() {
     );
     assert_eq!(state.listed_hero(RED, usize::MAX), None);
     // The heroes stay by id; each place from 0, per owner.
-    let places: Vec<_> = state.heroes().iter().map(|h| (h.id.raw(), h.listed)).collect();
+    let places: Vec<_> = state
+        .heroes()
+        .iter()
+        .map(|h| (h.id.raw(), h.listed))
+        .collect();
     assert_eq!(places, [(1, 1), (2, 0), (4, 2), (5, 0)]);
     // A hero that leaves the map leaves the list, the later ones moving up.
     state.remove_hero(&rules.0, (RED, HeroId::new(5)), &mut Vec::new());
     assert_eq!(state.hero_list(RED), ids(&[1, 4]));
-    let places: Vec<_> = state.heroes().iter().map(|h| (h.id.raw(), h.listed)).collect();
+    let places: Vec<_> = state
+        .heroes()
+        .iter()
+        .map(|h| (h.id.raw(), h.listed))
+        .collect();
     assert_eq!(places, [(1, 0), (2, 0), (4, 1)]);
 }
 

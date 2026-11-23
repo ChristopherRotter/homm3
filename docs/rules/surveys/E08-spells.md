@@ -199,6 +199,35 @@ prisoner's record after the placed heroes in the setup's object order. In `faith
 levels follow its own level seed (GAM-HER-002, the seeds drawn in hero id order); in
 `strict-fixed` they follow the setup stream in hero id order. Both are the engine's own.
 
+**The players' lists (E08 T141a, decision 413).** The engine had no list: a player's heroes were
+its heroes on the map by id, and the env's slots took them so. The original keeps one per player
+(the record's i32 list at +0x8, its count at +0x1), changed in two ways only, read at every writer
+of the count (a scan of the byte writes at +0x1 and the list's indexed reads, `docs/exe/map.toml`):
+
+- **appended**: `placed_heroes_setup`'s placed heroes in type order (0x4CAF25, above); each main
+  town's hero after them, in player order (`main_town_heroes` 0x4CA040 through `town_hero_place`
+  0x4C8D00); every hire, the town's and the map's Tavern's; a garrison hero stepping out
+  (`town_garrison_to_visitor`) and in a swap (`town_swap_heroes` 0x5BE450, after the visitor's
+  removal); all through `hero_place` 0x4D7900, which appends; and a freed prisoner (0x4A40C1);
+- **removed, the rest closed up**: a visitor going into a town's garrison
+  (`town_visitor_to_garrison` 0x4B9FC0 at 0x4BA0A3) and a hero leaving the game (a battle's
+  loser, a retreat, a surrender, a dismissal: `hero_leave_game` 0x4D9EC0 at 0x4DA0F5) and the
+  visitor of a swap (`town_swap_heroes` 0x5BE4B9), each finding the hero's place (its own loop, or
+  `hero_list_place` 0x4BA9E0), shifting the later ones down, clearing the last and decrementing
+  the count.
+
+Nothing else writes the count but a whole record's copy (a save's load, a campaign's start). The
+engine's order differed in two cases: two placed heroes of one player out of type order (by id
+they follow the map's object order), and a hero joining whose id is lower than an earlier one's
+(a freed prisoner's id comes after the placed heroes', before the main towns' and the taverns').
+No rule draws on the order; the clients' hero list, "next hero", the env's slots, E31's port of
+the computer's turn and the Thieves' Guild's best-hero tie-break (survey `E09-tavern.md` §3) do.
+The user (ADV-Q64) chose to build the list in T141a: `HeroOnMap::listed`, each hero's place in its
+owner's list from 0 (dense, so a state has one encoding), the start list by type then the main
+towns' heroes (GAM-SET-004), each join at the end and each leave closing up (GAM-HER-003), the
+viewer's list in its observation (protocol v80) and the env's slots its first eight places
+(action encoding v19).
+
 ### 2.2 The visit (`visit_prison` 0x4A3EB0)
 
 Args: the visitor, the tile, the packed entrance, the human flag (messages only). The prisoner's

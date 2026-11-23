@@ -633,14 +633,16 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
             pos,
             seen_by,
             view,
-        } => seen_by.contains(player).then_some(GameEvent::PrisonerFreed {
-            player: owner,
-            hero,
-            hero_type,
-            pos,
-            seen_by: alone,
-            view: view.filter(|_| owner == player),
-        }),
+        } => seen_by
+            .contains(player)
+            .then_some(GameEvent::PrisonerFreed {
+                player: owner,
+                hero,
+                hero_type,
+                pos,
+                seen_by: alone,
+                view: view.filter(|_| owner == player),
+            }),
         GameEvent::ResourceGained { player: owner, .. }
         | GameEvent::ResourceLost { player: owner, .. }
         | GameEvent::ResourcePaid { player: owner, .. }

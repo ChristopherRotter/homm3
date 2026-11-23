@@ -6,12 +6,12 @@ use h3_adventure::PrisonVisit;
 use h3_contracts::PlayerId;
 
 use super::GameState;
+use crate::GameRuleset;
 use crate::command::{AdventureSink, GameEvent, Sink};
 use crate::town::hire::HiredPart;
 use crate::town::pool::HeroStatus;
 use crate::town::rows::most_heroes;
 use crate::town::tavern::TavernHeroView;
-use crate::GameRuleset;
 
 impl GameState {
     /// Settles `player`'s hero's visit of a Prison (ADV-PRI-002; the original's `visit_prison`
@@ -31,7 +31,7 @@ impl GameState {
     ///    ([`GameEvent::HiredPartSeen`]).
     ///
     /// The visitor stays on its tile, untouched.
-    // rule: ADV-PRI-002, GAM-SET-001
+    // rule: ADV-PRI-002
     pub(crate) fn settle_prison<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -63,9 +63,9 @@ impl GameState {
         let colour = self.colour(player).unwrap_or(u8::MAX);
         alloc::sync::Arc::make_mut(&mut self.pool).free_prisoner(hero_type, colour);
         let part = (core, rules.adventure(), self.heroes.as_slice());
-        let seen_by =
-            self.adventure
-                .free_prisoner(part, &visit, player, &mut AdventureSink(sink));
+        let seen_by = self
+            .adventure
+            .free_prisoner(part, &visit, player, &mut AdventureSink(sink));
         let details = self.hero(visit.prisoner);
         let on_map = self.adventure.hero(visit.prisoner);
         let view = details.zip(on_map).map(|(details, hero)| {
@@ -101,3 +101,6 @@ impl GameState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

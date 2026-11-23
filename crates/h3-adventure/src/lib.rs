@@ -70,8 +70,7 @@ pub use command::{
     BattleStart, Choice, ChoiceKind, Combatant, Defender, Drowned, Exchange, Garrison, HeroGains,
     HillFortError, HillFortVisit, HireDialog, HireError, HireSource, HireTarget, MarketError,
     MarketVisit, Meeting, NoRoom, NothingWhy, Offer, OfferKind, OwnHeroes, Pick, PrisonVisit,
-    ServiceVisit,
-    ShipyardBlock, Sink, UniversityVisit, Viewers,
+    ServiceVisit, ShipyardBlock, Sink, UniversityVisit, Viewers,
 };
 pub use market::{Lot, MarketParams, MarketParamsError};
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};

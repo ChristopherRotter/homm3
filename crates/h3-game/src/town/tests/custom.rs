@@ -15,8 +15,8 @@ use h3_contracts::{HeroId, HeroSex, PlayerId};
 use h3_heroes::{DetailsError, max_mana};
 
 use super::{faction, hero, rules_of, start, town_pack, towns_core_pack, towns_rules, towns_setup};
-use crate::tests::{held, imprison, key};
 use crate::tests::levels::oracle;
+use crate::tests::{held, imprison, key};
 use crate::{GameRuleset, GameSetupError, GameState, HeroDetailsSetup};
 
 const RED: PlayerId = PlayerId::new(0);

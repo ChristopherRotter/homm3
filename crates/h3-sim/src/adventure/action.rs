@@ -1135,15 +1135,15 @@ fn tavern_slot(entry: usize) -> Option<u8> {
 }
 
 /// The revisit entry of `player`'s hero `hero` (E08 T105b2): [`REVISIT_BASE`] plus its slot among
-/// the player's heroes ([`hero_in_slot`]'s order); none for a hero past the slots, off the map or
+/// the player's heroes ([`hero_in_slot`]'s order: since version 19 its place in the player's
+/// list, `h3_adventure::HeroOnMap::listed`); none for a hero past the slots, off the map or
 /// another player's.
 fn revisit_entry(state: &GameState, player: PlayerId, hero: HeroId) -> Option<usize> {
     state
         .adventure()
-        .heroes()
-        .iter()
+        .hero(hero)
         .filter(|h| h.owner == player)
-        .position(|h| h.id == hero)
+        .and_then(|h| usize::try_from(h.listed).ok())
         .filter(|&slot| slot < HERO_SLOTS)
         .map(|slot| REVISIT_BASE + slot)
 }

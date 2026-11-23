@@ -428,4 +428,4 @@ pub(crate) fn needs_faction(
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

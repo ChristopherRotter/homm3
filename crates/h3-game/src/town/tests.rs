@@ -315,7 +315,7 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
 }
 
 /// The game's rules on [`towns_core`]: `t:town` has a town record and its siege, `t:other` none.
-fn towns_rules() -> GameRuleset {
+pub(crate) fn towns_rules() -> GameRuleset {
     towns_rules_with(false)
 }
 
@@ -458,7 +458,7 @@ pub(super) fn town_object(
 /// town, which generates no hero; red's starting hero is random, its choice `t:town`) and a random
 /// town aligned to blue on (3, 0), blue's, whose choice is random among `t:town`; every hero type
 /// allowed.
-fn towns_setup(rules: &GameRuleset) -> GameSetup {
+pub(crate) fn towns_setup(rules: &GameRuleset) -> GameSetup {
     let castle = faction(rules, "t:town");
     let mut setup = setup();
     setup.towns = vec![

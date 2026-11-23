@@ -58,34 +58,34 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xb25ba07c375aeaf7",
-    "0xf83a451b90c1c403",
-    "0xa0c8d0a57254ccec",
-    "0x7c3e0988486af5f7",
-    "0xd043d5bfac06e1d8",
-    "0x319366882ac1305e",
-    "0x8c307e3c5268f83a",
-    "0xe60b831ec8eb9e76",
-    "0xf2f9d441b2eee235",
-    "0x27ca40bec8054ea4",
-    "0x64c41f532138b1d3",
-    "0x437cc8590c282b27",
-    "0xf372858e80935156",
-    "0x0232cc2ae31d3f37",
-    "0xd559e451e1018101",
-    "0x3cd42bb3b674b263",
-    "0x16c9bb0b2d4d5b6a",
-    "0x7e96547a8773af35",
-    "0x13c0838c1ef8b3a5",
-    "0x5f928387d7076b6f",
-    "0x38fa70125e9b9154",
-    "0x4bd84bc089f1be37",
-    "0xae42feb7c53f0ddc",
-    "0x46eee642c9ec7a0f",
-    "0x6d4a5d53543e45f7",
-    "0x5551c79f87d8006d",
-    "0xe385cd38b3d8160a",
-    "0x0b2a671b2a41c76a",
+    "0x22e096fd9d385a24",
+    "0x1fcfbf8a9aefa510",
+    "0x01bb4867c6ef21d3",
+    "0xfd6907ca1d2a9c5c",
+    "0x1e6dfe38fc413d17",
+    "0xebc7d33e03685b4d",
+    "0x5f8af86fefa572ed",
+    "0xa55331f62fe33780",
+    "0x75f68fed1502870f",
+    "0x4a0d01e5eecccfa2",
+    "0x2d47f960f91e94e9",
+    "0xecbbc6e9fa48c965",
+    "0xc2cbf492c1a40098",
+    "0xffedbe4e25dc952d",
+    "0x13047ece1f4c053c",
+    "0xee1d9e2dcf47a672",
+    "0x45d9882289646abf",
+    "0x23060a1daa34b030",
+    "0x2cc797b60eb7129c",
+    "0x318259c083023b02",
+    "0x5d9dec08bed94169",
+    "0x3945aaa6f02f4422",
+    "0x5e1173fb51fee4b1",
+    "0x0e1b1d87799685de",
+    "0xb06c648f8ff99166",
+    "0xb2ad52ab89ab1d18",
+    "0xbaca124f36987ac7",
+    "0x096377d424679047",
 ]
 
 [replay]
@@ -109,24 +109,24 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x0c610f9192575256"
+adventure_ruleset_hash = "0x888a0c8963f09a43"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 38
-adventure_state_hash_version = 27
+game_state_hash_version = 39
+adventure_state_hash_version = 28
 checkpoint_every = 2
 
 [map]
 path = "fixtures/maps/e09-builds-36.h3m"
 hash = "0x36e954b6f38638d8"
-import_version = 28
+import_version = 29
 
 [result]
 day = 29
-final_hash = "0x7c68d4aaf4084657"
+final_hash = "0x0b0f18a30fd2abfc"
 
 [[players]]
 colour = 0

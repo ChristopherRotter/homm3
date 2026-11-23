@@ -76,7 +76,10 @@ impl AdventureState {
     fn held_prisoner(
         &self,
         visit: &PrisonVisit,
-    ) -> Option<(alloc::vec::Vec<h3_contracts::ArmyStack>, h3_content::Formation)> {
+    ) -> Option<(
+        alloc::vec::Vec<h3_contracts::ArmyStack>,
+        h3_content::Formation,
+    )> {
         if self.is_removed(visit.index) {
             return None;
         }

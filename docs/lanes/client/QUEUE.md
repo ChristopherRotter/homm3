@@ -21,6 +21,12 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`, `cross-lane`; **in your
+  paths, nothing else to do**): the wire's `GameObservation` gained `hero_list` (protocol v80: the
+  viewer's list of heroes in the original's order, GAM-HER-003); `h3-view`'s
+  `game_record/tests.rs` literal gives it empty. Four new `GameEvent`s (a Prison's), which
+  your `match`es did not need.
+
 - 2026-11-21 (the rmg lane, E14's refinement, RMG-Q1; **for later, nothing to do now**): a random
   map generator is now planned: E14 ports the original's to give the same map per seed
   (`docs/epics/E14-original-map-generator.md`). CLT-STUB-12 (Begin with a random map) lifts when

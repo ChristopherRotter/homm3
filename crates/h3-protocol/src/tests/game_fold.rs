@@ -2605,3 +2605,137 @@ fn a_map_taverns_decision_folds_whole_and_a_stray_part_changes_nothing() {
     v.fold(&GameEvent::DecisionClosed { player: v.viewer });
     assert_eq!(v, before);
 }
+
+#[test]
+fn a_freed_prisoner_folds_as_a_hire_and_joins_the_end_of_its_owners_list() {
+    // E08 T141a (v80; ADV-PRI-002, -003, GAM-HER-003): the owner's view from the event's head,
+    // its lists from `PrisonerPartSeen`, its other parts from `HiredPartSeen`; another viewer
+    // sees the hero without its own; a full or emptied Prison folds into nothing; a hero that
+    // leaves the map leaves the viewer's list.
+    let ring = Artifact {
+        artifact: 4,
+        spell: None,
+    };
+    let head = TavernHeroHead {
+        id: 30,
+        hero_type: 8,
+        level: 5,
+        experience: 5000,
+        primary: [2, 2, 1, 1],
+        mana: 10,
+        carried: 0,
+        formation: Formation::Tight,
+        tactics: true,
+    };
+    let freed = |player, view| GameEvent::PrisonerFreed {
+        player,
+        hero: 30,
+        hero_type: 8,
+        pos: at(3, 2),
+        view,
+    };
+    let part = |part| GameEvent::PrisonerPartSeen {
+        player: 1,
+        hero: 30,
+        part,
+    };
+    let mut own = view();
+    let list = own.hero_list.clone();
+    let before = own.clone();
+    fold(
+        &mut own,
+        &[
+            GameEvent::PrisonFull { player: 1, hero: 4 },
+            GameEvent::PrisonEmptied { player: 1, hero: 4 },
+        ],
+    );
+    assert_eq!(own, before);
+    fold(
+        &mut own,
+        &[
+            freed(1, Some(head)),
+            part(TavernPart::Stack { stack: stack(4, 7) }),
+            part(TavernPart::Stack { stack: stack(1, 2) }),
+            part(TavernPart::Skill {
+                skill: SkillLevel { skill: 5, level: 2 },
+            }),
+            part(TavernPart::Artifact {
+                place: ArtifactPlace::Worn { position: 1 },
+                artifact: ring,
+            }),
+            part(TavernPart::Artifact {
+                place: ArtifactPlace::Backpack { index: 0 },
+                artifact: ring,
+            }),
+            GameEvent::HiredPartSeen {
+                player: 1,
+                hero: 30,
+                part: HiredPart::Spell { spell: 12 },
+            },
+        ],
+    );
+    let mut joined = list.clone();
+    joined.push(30);
+    assert_eq!(own.hero_list, joined);
+    let info = own.heroes.iter().find(|h| h.id == 30).unwrap();
+    let details = info.details.as_ref().unwrap();
+    assert_eq!((details.level, details.experience), (5, 5000));
+    assert_eq!(details.skills, [SkillLevel { skill: 5, level: 2 }]);
+    assert_eq!(
+        (details.worn.clone(), details.backpack.clone()),
+        (vec![None, Some(ring)], vec![ring])
+    );
+    assert_eq!(details.spells, [12]);
+    let seen = own.adventure.heroes.iter().find(|h| h.id == 30).unwrap();
+    let mine = seen.own.as_ref().unwrap();
+    assert_eq!((seen.owner, seen.pos), (1, at(3, 2)));
+    assert_eq!(mine.army, [stack(4, 7), stack(1, 2)]);
+    assert_eq!((mine.formation, mine.tactics), (Formation::Tight, true));
+    // A part for a hero the view does not hold changes nothing.
+    let held = own.clone();
+    fold(
+        &mut own,
+        &[GameEvent::PrisonerPartSeen {
+            player: 1,
+            hero: 99,
+            part: TavernPart::Stack { stack: stack(0, 1) },
+        }],
+    );
+    assert_eq!(own, held);
+    // The first hero of the list leaves the map: the rest move up.
+    let first = own.hero_list[0];
+    fold(
+        &mut own,
+        &[adventure(AdventureEvent::HeroRemoved {
+            hero: first,
+            pos: at(0, 0),
+        })],
+    );
+    assert_eq!(own.hero_list, joined[1..]);
+    // Another viewer: the hero with its type alone, its list unchanged.
+    let mut other = view();
+    other.viewer = 0;
+    other.adventure.viewer = 0;
+    other.hero_list = Vec::new();
+    fold(&mut other, &[freed(1, None)]);
+    let info = other.heroes.iter().find(|h| h.id == 30).unwrap();
+    assert_eq!((info.hero_type, info.details.is_none()), (8, true));
+    assert!(
+        other
+            .adventure
+            .heroes
+            .iter()
+            .find(|h| h.id == 30)
+            .unwrap()
+            .own
+            .is_none()
+    );
+    let others: Vec<u16> = other
+        .adventure
+        .heroes
+        .iter()
+        .filter(|h| h.owner == 0)
+        .map(|h| h.id)
+        .collect();
+    assert_eq!(other.hero_list, others);
+}
