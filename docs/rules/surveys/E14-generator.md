@@ -70,7 +70,7 @@ are read (§1.4); with none kept the constructor stops there and `rmg_generate_m
 3). Else it clears the banned heroes and artifacts and the counts by object type, builds the
 object generators, bans the heroes (a hero is banned when its table byte +0x3A is set, or when
 its byte for the version is clear: +0x39 for AB and SoD, +0x38 for RoE), sets two tables of 232
-limits by object type (`rmg_type_limit_a` 0x69CE4C, `rmg_type_limit_b` 0x69D1F4) to 32000 and
+limits by object type (`rmg_type_limit_map` 0x69CE4C, `rmg_type_limit_zone` 0x69D1F4) to 32000 and
 then from the pairs at 0x640718 (30 types: 32, 48, 64 or 200) and 0x640808 (24 types: 1; type
 113: 3), and clears the human flags. No other draw happens before `rmg_generate_map`.
 
@@ -106,14 +106,14 @@ the archives' priority, not read here (T1b observes it, T1c records it).
 | 4 | `rmg_zone_first_town` 0x544A50 | per zone | at most one town, nearest the zone's centre: the first kind asked for that is placed (castle and town of its colour, neutral castle and town; §2.2) | 7, 2.8 kB, 1 |
 | 5 | `rmg_zone_towns_place` 0x544AE0 | per zone | the remaining least towns, then towns by density until none fits, each farthest from the objects placed (§2.2) | 3, 1.9 kB, 3 |
 | 6 | `rmg_paths_and_connections` 0x544920 | once | which cells take obstacles and which stay free (lanes, zone walls, islets in water zones, each zone's free cells joined, unconnected shores sealed), then the template's connections: land passages, shipyards, subterranean gates, monoliths, with their guards (§2.3) | 35, 23.9 kB, 21 |
-| 7 | `rmg_phase_07_junctions` 0x5446A0 | per junction zone (type 3) not on water | | 2, 1.4 kB, 1 |
-| 8 | `rmg_phase_08_mines` 0x545F60 | once (per zone inside) | each resource's minimum mines (zone +0x4C), the first wood and ore of a start zone with a town flagged | 5, 2.7 kB, 3 |
+| 7 | `rmg_junction_zone_paths` 0x5446A0 | per junction zone (type 3) not on water | every empty cell an obstacle, then jagged free paths joining its passage points (§2.4) | 2, 1.4 kB, 1 |
+| 8 | `rmg_mines_place` 0x545F60 | once (per zone inside) | each resource's minimum mines (zone +0x4C; the first wood and ore of a start zone with a town near it), then mines by density; each guarded, up to 3 resources beside it (§2.4) | 5, 2.7 kB, 3 |
 | — | inline | once | the towns counted, in all and by type | — |
 | 9 | `rmg_zone_paths_connect` 0x5405D0 | once (also in step 6, and per monolith border guard) | the zone floods reset; per zone a flood from a free cell and a path carved to every free cell it did not reach (§2.3) | (in step 6's) |
-| 10 | `rmg_phase_10` 0x547360 | per zone | `sqrt`; the progress shared out | 21, 9.9 kB, 5 |
-| 11 | `rmg_phase_11_levels` 0x5439E0 | with two levels | game functions outside the range | 1, 0.6 kB, 0 |
-| 12 | `rmg_phase_12` 0x531310 | once, on the map | land cells not rock flagged | 1, 0.3 kB, 0 |
-| 13 | `rmg_phase_13` 0x537970 | once | cells flagged blocked | 4, 3.7 kB, 1 |
+| 10 | `rmg_zone_treasures_place` 0x547360 | per zone | treasure piles by band density: objects chosen by value and density on a 16 × 16 pile, guarded, placed farthest from the objects; a placed Keymaster's Tent or quest artifact sends its Border Guard or seer hut to a near zone (§2.4) | 22 and 8 reached through the objects' vtables, 9.9 + 3.7 kB, 5 + 3 |
+| 11 | `rmg_underground_rock_paint` 0x5439E0 | with two levels | level 1's cells neither free nor holding an object painted rock, the zones' free rock cells given back their terrain (§2.4) | 1, 0.6 kB, 0 |
+| 12 | `rmg_map_shores_mark` 0x531310 | once, on the map | land beside water flagged (bit 21, §2.4) | 1, 0.3 kB, 0 |
+| 13 | `rmg_obstacles_fill` 0x537970 | once | obstacles grown over the cells marked for them (bit 26), chosen by rand_trn.txt's scores; every cell left made free (§2.4) | 4, 3.7 kB, 1 |
 | 14 | `rmg_phase_14_roads` 0x548290 | once | the road targets, costs up to 30000 | 3, 3.2 kB, 1 |
 | 15 | `rmg_phase_15_shipyards` 0x549870 | once | cells near objects of types 5, 53, 126, 134 flagged; next to each shipyard (109) two helpers | 6, 5.1 kB, 2 |
 
@@ -164,7 +164,7 @@ with it as 9 dwords; the code indexes position + 1); the object generators go to
 - **Not read:** the 15 steps' bodies (but steps 4, 8 and 15's own code, step 1's in part; steps 1 to 5: §2.2), the header before
   its end, the cell and template writers, the per-object writers (the setup's readers and the
   destructor: §2.1). The limits by
-  type are set but where they are read was not found.
+  type are read only by step 10's object choice: one per map, one per zone (§2.4).
 - **For T1b:** a generated map names its template and seed in its description, and the
   original's choices are reproducible only without Random ones (§1.1); the oracle can read the
   seed back from the file to check a fixed clock.
@@ -580,7 +580,7 @@ pending border guard) unless they place the guard. H3API's names for bits 25 to 
 | 0x53F470 `rmg_water_zone_islets`, 0x53F1A0 `rmg_zone_distance_flood` | 0x544920 per zone generator; 0x53F470 | islets in water zones far from their edge (below); the distance flood | read |
 | 0x53EFA0 `rmg_islet_draw`, 0x53ED00 `rmg_islet_heightmap`, 0x53E9E0 `rmg_heightmap_quadrants_push`, 0x54C670 `entry24_vector_size` | 0x53F470 down | an islet's terrain, shape and obstacles | read; read; inferred; read |
 | 0x5405D0 `rmg_zone_paths_connect` | 0x544920, step 9, 0x542B00 | the floods reset; per zone the free cells joined (below) | read |
-| 0x531460 `rmg_zone_cost_flood` | 0x5405D0; step 7's `rmg_phase_07_junctions` | a zone's cost flood (below) | read |
+| 0x531460 `rmg_zone_cost_flood` | 0x5405D0; step 7's `rmg_junction_zone_paths` | a zone's cost flood (below) | read |
 | 0x5408E0 `rmg_path_carve` | 0x5405D0, 0x541140 | a path back to the zone's free cells; pending border guards placed | read |
 | 0x5378E0 `rmg_map_item` | the connection functions, 0x5408E0, three of later steps | a cell's address (H3API's `GetMapItem`) | read |
 | 0x53FCB0 `rmg_water_shores_seal` | 0x544920 | the shores of unconnected water sealed (below) | read |
@@ -779,3 +779,259 @@ again); `rmg_guard_monster_create` 0x540B20 and the four guard tables are also u
 functions of steps 10 and on; `rmg_zone_cost_flood` by step 7; shipyards join the road targets
 (+0x14B0); the Keymaster colour +0xF5C advances with each border guard; monoliths are in +0x14C0
 and +0x14D0.
+
+### 2.4 Steps 7, 8 and 10 to 13: junctions, mines, treasures, rock, shores, obstacles (T1a2d)
+
+Path read: `rmg_generate_map`'s calls of steps 7, 8 and 10 to 13 and everything they reach by
+direct calls, with the two object methods step 10 reaches through the placed objects' vtables
+(slot 2, "placed", of the Keymaster's Tent and the quest artifact, and their callees) and slot 1,
+"release", of the prison. Other indirect calls: the generator's slot 1 (`rmg_generator_add_object`),
+the object generators' slots (create, value, constant test), the objects' deleting destructors and
+the progress window's +8. 39 functions named here (38 read, 1 inferred), 4 of §2.1 used
+(`rmg_map_init`, `rmg_map_cell_reset`, `rmg_map_place_object`, `rmg_map_destroy`), one table
+added and the two limits by type settled; one new record, `rmg_treasure_pile` (`structs.toml`).
+Earlier parts' functions used: `rmg_zone_cost_flood`, `rmg_guard_monster_create` 0x540B20,
+`rmg_prototype_draw` 0x546040, `rmg_map_can_place` 0x531CF0, `rmg_map_footprint_blocked`
+0x5318B0, `rmg_map_outline_clear` 0x531170, `rmg_prototype_outline` 0x532C80, `rmg_object_init`
+0x5330E0, `rmg_map_item`, `point3_init` and the library vectors.
+
+| Function | Called from | What it does | Conf. |
+|---|---|---|---|
+| 0x5446A0 `rmg_junction_zone_paths` (was `rmg_phase_07_junctions`) | step 7 | a junction zone's empty cells made obstacles, its passage points joined (below) | read |
+| 0x5443A0 `rmg_junction_path_draw` | 0x5446A0 | a jagged free path between two cells | read |
+| 0x545F60 `rmg_mines_place` (was `rmg_phase_08_mines`) | step 8 | per zone the least mines, then the mines by density | read |
+| 0x545990 `rmg_mine_place`, 0x545580 `rmg_mine_site_place` | 0x545F60, 0x545E60; 0x545990 | a mine with its guard and resources; its position (below) | read |
+| 0x545E00 `rmg_guard_value` | 0x545990 | the guard value of a value at a strength index (§2.3's formula) | read |
+| 0x545E60 `rmg_zone_mines_by_density` | 0x545F60 | mines by density, spaced as step 5's towns | read |
+| 0x547360 `rmg_zone_treasures_place` (was `rmg_phase_10`) | step 10, per zone | the treasure bands' piles (below) | read |
+| 0x535040 `rmg_pile_reset`, 0x531140 `rmg_map_cells_reset`, 0x546990 `rmg_map_cell_at`, 0x546940 `rmg_map_cell_set_land` | 0x547360, 0x5466E0 and the hooks | a pile emptied; every cell reset; a first-level cell; a cell's land | read |
+| 0x5466E0 `rmg_pile_build` | 0x547360 | a band's pile: target, fill, guard, outline | read |
+| 0x546520 `rmg_pile_fill` | 0x5466E0, 0x54B8C0 | objects up to a target value | read |
+| 0x546190 `rmg_object_choose` | 0x546520, 0x5338E0, 0x54B490 | an object by value and density (below) | read |
+| 0x535970 `rmg_pile_object_add`, 0x5355E0 `rmg_pile_site_fits` | 0x546520; 0x535970, 0x535110 | an object beside the pile's entrances; the fit on the pile | read |
+| 0x535110 `rmg_pile_guard_place` | 0x5466E0, 0x54B8C0 | the guard before the pile's entrances | read |
+| 0x535DF0 `rmg_pile_bounds_compute`, 0x535EE0 `rmg_pile_outline_trace` | the pile functions | the pile's box; the ring of free cells around its objects | read |
+| 0x54C6F0 `point_vector_erase`, 0x54C120 `point_vector_clear` | 0x5466E0, 0x547360 | the library's 8-byte vector code | read |
+| 0x5470D0 `rmg_pile_place_in_zone`, 0x546C70 `rmg_pile_fits_at`, 0x5469B0 `rmg_pile_commit` | 0x547360, 0x54B300 | the pile's offset in the zone; its fit there; the copy onto the map and the placed hooks | read |
+| 0x5338E0 `rmg_keymaster_object_placed`, 0x533A50 `rmg_quest_artifact_object_placed` | slot 2 of `rmg_keymaster_object_vtable` 0x640AE4 and `rmg_quest_artifact_object_vtable` 0x640AF4 (from 0x5469B0) | a placed tent's Border Guard; a placed quest artifact's seer hut | read |
+| 0x533C70 `rmg_prison_object_release` | slot 1 of `rmg_prison_object_vtable` 0x640B14 (the steps' cleanups) | the prison's hero may be drawn again | read |
+| 0x54B8C0 `rmg_keymaster_guard_pile_place`, 0x54B490 `rmg_seer_hut_place` | 0x5338E0; 0x533A50 | a pile of 1.5 × the tent's value behind its Border Guard; the quest drawn and the hut, each in a near zone | read |
+| 0x54B300 `rmg_pile_place_in_near_zone`, 0x54B180 `rmg_zone_hop_distances` | 0x54B8C0, 0x54B490; 0x54B300 | a pile tried in the zones by connection hops | read |
+| 0x54BC50 `rmg_generator_remove_object` | 0x5338E0, 0x54B490 | an object taken off the map (add-object's inverse) | read |
+| 0x5439E0 `rmg_underground_rock_paint` (was `rmg_phase_11_levels`) | step 11, with two levels | level 1's leftover cells made rock (below) | read |
+| 0x531310 `rmg_map_shores_mark` (was `rmg_phase_12`) | step 12 | every land cell (not rock) beside water gets +0x28 bit 21 (H3API's shore) | read |
+| 0x537970 `rmg_obstacles_fill` (was `rmg_phase_13`) | step 13 | obstacles over the cells of bit 26, then every leftover cell made free | read |
+| 0x5373A0 `rmg_obstacle_fill_from`, 0x536BC0 `rmg_obstacle_score`, 0x532E40 `rmg_prototype_depth_grid` | 0x537970 down | obstacles grown from a cell; a placement's score; a prototype's depth grid | read; read; inferred |
+| 0x6408EC `rmg_obstacle_types` | 0x5373A0 | the 45 obstacle types: 114-123, 125-138, 147-161, 206-211 | read |
+
+**Step 7, junctions** (per zone of type 3 whose terrain is not water). Every cell of the zone in its
+box, not water, gets its own cost reset (32000, previous cell -1) and, when empty and without a
+pending guard, becomes an obstacle (+0x28 bit 26): **a junction zone starts full**. Then a cost
+flood (`rmg_zone_cost_flood`, §2.3) from its first passage point (+0x404, the cells step 6's land
+passages left in it), and per later point whose cost is 1 to 30000: back along the previous cells
+to the first cell of cost 0 (a cell already joined), a jagged path from the point to that cell
+(`rmg_junction_path_draw`: step 6's lane splitting, the midpoint moved by r × (−dy, dx) / L with
+r = `rand() %` min(L, the zone's size) − min / 2; each step's cell made free and its 3 × 3 in the
+zone cleared of bit 26), then a flood from the point. Points of cost 0 or unreached are skipped.
+
+**Step 8, mines.** Per zone generator in order, per resource 0 to 6 (wood, mercury, ore, sulfur,
+crystal, gems, gold): its least mines (zone +0x4C), each by `rmg_mine_place` with spacing 0, until
+the resource's first failure; the first wood and the first ore of a start zone (type 0 or 1) with a
+town are placed **near the town**. Then `rmg_zone_mines_by_density`: the resources of positive density
+(+0x68), S and P their sum and product, spacing r = trunc(sqrt(82944 / S)), step P / d, key step ×
+least count; repeatedly the resource not exhausted with the least key (the first on ties) adds its
+step and places one more mine at spacing r; a resource is exhausted at its first failure.
+`rmg_mine_place`: the mine prototypes (type 53) of the resource allowed on the zone's terrain, else
+all of that resource, one drawn; `rmg_mine_site_place` scans the zone's box (row by row) for positions
+`rmg_map_can_place` allows; near the town, only entrances 4 to 200 cells from the town's entrance
+(squared distance 16 to 40000), every squared distance up to 144 counted as 144, the least kept;
+then a position is skipped when its object distance (§2.1's flood) is below the greatest kept so far
+(first the spacing) or when its count of outline cells that are obstacles (bit 26, passable, not
+rock; on or above its row; at most 5) is below the greatest kept so far; a greater count or distance
+empties the list; one drawn. The cell below the entrance is made free; **its guard** is
+`rmg_guard_value`(1500 wood and ore, 7000 gold, 3500 the others; index s = the zone's monster strength
++ the map's (+0x10BC) − 3, clamped 0 to 5), none when the zone's strength is 0 (n) or the value under
+2000, by `rmg_guard_monster_create` on the cell below the entrance when it is empty. Then a resource
+prototype of the same resource (type 79) and, per cell of the row below the footprint from x − width
+to x + 1, while at most 2 are placed, `rand() & 1`: on 0 a resource where `rmg_map_can_place` allows
+(at most 3). After all zones: progress +3900; then the towns are counted (§1.5) and step 9 runs.
+
+**Step 10, treasures** (per zone generator, water zones included; progress 6900 / zones each). The
+zone's three bands (low, high, density: columns 67-75) count when high ≥ 100 and density > 0;
+spacing r = trunc(sqrt(800 / S)) (1600 for a water zone; S the densities' sum, the division
+integer); each band's step P / d, keys from 0. Repeatedly the band not exhausted with the least key
+(first on ties) adds its step and tries: **three times `rmg_pile_build` without the density filter,
+then three times with it**; a built pile goes to `rmg_pile_place_in_zone` (spacing r); a pile that
+cannot be placed is released (its objects' slot 1, then deleted) and the pile cleared. A band is
+exhausted when one pick's six tries all fail; the step ends when every band is.
+
+- **A pile** (`rmg_treasure_pile`: a 16 × 16 one-level map, its objects, its outline): target t =
+  low + `rand() %` (high − low) (high when high ≤ low); `rmg_pile_fill`: a first object worth t/4 to t
+  (any type; three tries) at the pile's centre, then while the total is below t and the rest is 1500
+  or more or at least half the total, an object worth rest/4 to 5 × rest/4 (not a type whose object
+  settings +0 is set and +2 clear) beside the others: its entrance on a neighbour of an earlier
+  object's entrance (all 8 when that type's settings +1 is set, else SE, S, SW), kept off the pile's
+  edges and allowed by `rmg_pile_site_fits`, one drawn; three null choices or three failed additions
+  end the fill.
+- **Choosing an object** (`rmg_object_choose`). Over the object generators (+0x10F0, §2.1's order),
+  a generator is a candidate when its type's count on the map (+0x1110) is below
+  `rmg_type_limit_map` 0x69CE4C (**per map**: 32000 unless listed; 200 for types 6 and 26, 64 for 8, 48
+  for 57 and 83, 32 for 25 others) and its count in the zone (zone generator +0x44, the objects whose
+  entrance is in it) below `rmg_type_limit_zone` 0x69D1F4 (**per zone**: 1 for 23 types, 3 for the
+  Witch Hut 113, else 32000), its value
+  (slot 1; −1 refuses) lies in [min, max], `rmg_prototype_draw` finds a prototype of its type and
+  subtype for the zone's terrain (**a draw per candidate**), the footprint is free when a point is
+  given, and, with the density filter, its value per occupied footprint cell (cells not passable or
+  enterable) is at least 3/4 of the best so far (one above 4/3 of the best empties the list and
+  becomes the best). The choice is `rand() %` the candidates' densities summed (+0x10), by weight;
+  the object is created by the generator's slot 0 with the drawn prototype and its value read again.
+  The constant test (§2.1) is applied only when the caller asks: the replacements below, which so
+  refuse seer huts and Keymaster's Tents. Nowhere else are the limits by type read.
+- **The guard** (`rmg_pile_build`): none when the zone's strength is 0; else the guard value of the
+  pile's total (index as for mines) and, when 2000 or more, `rmg_guard_monster_create`; no monster:
+  the pile stays unguarded. `rmg_pile_guard_place` marks the empty cells before each entrance (bit 26;
+  their 3 × 3 loses bit 27), keeps the outline cells among them where the monster fits (one of its
+  entrance's neighbours open), draws one, places the monster and frees its entrance's 8 neighbours (not
+  those of bit 26 for a Border Guard) and one or three cells beyond each when unmarked; none: the pile
+  is refused.
+- **Placing it** (`rmg_pile_place_in_zone`): per offset that keeps the pile's box in the zone's (rows
+  outer), the zone cell under the pile's box centre must be in the zone with an object distance of at
+  least r, and `rmg_pile_fits_at` true: every footprint free on the map, the guard's 3 × 3 holding no
+  monster, the last object's entrance (the guard's) beside a free outline cell over a map cell kept
+  free (bit 27; water exactly in a water zone), `rmg_map_outline_clear` over the outline, no pile cell
+  that is not free over a map object. **The farthest such offset from the objects** (ties: one drawn).
+  `rmg_pile_commit` places the objects through slot 1, makes map obstacles under the pile's cells of
+  bit 26 (the marked entrance cells the guard does not cover: **the guard is the only way in**), takes
+  bit 27 off the map cells under the pile's non-free empty cells, then calls each object's slot 2.
+- **The placed hooks.** A Keymaster's Tent (`rmg_keymaster_object_placed`): its colour's Border Guard
+  prototype, the colour marked (+0x1100) and +0xF5C moved to the next unmarked colour, a new pile filled
+  to 1.5 × the tent's value in the tent's zone and guarded by that Border Guard, placed by
+  `rmg_pile_place_in_near_zone`; on failure the colour is unmarked, the tent removed
+  (`rmg_generator_remove_object`) and an object worth v to 1.5 v (not a seer hut or tent) put at its
+  position. A quest artifact (`rmg_quest_artifact_object_placed` → `rmg_seer_hut_place`): the treasure
+  artifacts (class 2) among 0-143 not disabled and not used, under 20 of them blocking further seer
+  huts (+0x10B4), one drawn as the quest, the artifact object given that artifact's prototype, the hut
+  alone in a pile placed by `rmg_pile_place_in_near_zone`; success marks the artifact used and moves
+  +0xF58 to the next seer hut prototype; failure removes the artifact and puts an object of the hut
+  generator's value v to 1.5 v at its position, the hut deleted. `rmg_pile_place_in_near_zone`: the
+  connection hops from the zone (`rmg_zone_hop_distances`), keys 10 × hops + `rand() % 10`, **a
+  neighbour (one hop) 1000 + `rand() % 10`**, the zones other than this one, not junctions, not
+  water, keyed at most 2000, tried in key order (stable): neighbours only after every farther reachable
+  zone. The new pile is committed in turn, so its own tents and quest artifacts chain the same way
+  (a tent of the next colour can sit behind a Border Guard).
+
+**Step 11, rock underground** (two levels). Through a view of level 1 the terrain painter makes rock
+every cell that is passable, empty, not rock and not kept free (the obstacle cells and the cells
+marked neither), then gives each level-1 zone's rock cells that are kept free or hold an object its
+terrain back; progress +1200 twice. Step 13 then skips them (rock): **underground obstacles are rock**.
+
+**Step 13, obstacles.** n = the cells with bit 26; per such cell (level, row, column order) that is
+passable and not rock, `rmg_obstacle_fill_from`; then every cell neither kept free nor rock, passable
+and without a pending guard is made free. A fill: a stack of cells from the given one; per cell popped,
+per type of `rmg_obstacle_types` in order, per prototype of it with a `rand_trn.txt` row (§2.1) whose
+modifier for the cell's land is above −5000 (types 165 and on refused in RoE; the test for 222 and on
+below SoD refuses none), per position of its footprint over the cell with a blocking cell there:
+`rmg_obstacle_score`, kept when positive. The score: −5000 when a blocking cell of its visible mask
+(+0x3C) lies on a land its template does not allow or on a kept-free cell; else the sum of its row's
+modifiers for the lands under those cells (returned when below −1000; −1 when none is positive); plus,
+per object on a blocked cell of the footprint widened by one, its row's Overlap value for that object's
+row when a blocking cell lies on it (−5000 when that object has no row), else its Adjacent value when
+beside it; −5000 when their depths on shared visible cells compare both ways, the two interleaving
+(their prototypes' depth grids, `rmg_prototype_depth_grid`). One candidate drawn by weight `rand() %` the scores' sum; a plain object
+placed through slot 1; the cells of bit 26 in its footprint widened by one lose the bit and are pushed.
+Progress 276300 / n per cell (a cell popped counts again).
+
+**Draw sites** (13 here, and those of §2.1 and §2.3 that these steps reach; in the order they run):
+
+| Site | Function | Drawn | Per | Condition |
+|---|---|---|---|---|
+| 0x5444B4 `rmg_junction_jitter_draw` | `rmg_junction_path_draw` | `rand() %` min(L, zone size) (signed) | segment split | L > 1 |
+| 0x545AA8 `rmg_mine_prototype_draw` | `rmg_mine_place` | `rand() %` mine prototypes (unsigned) | mine tried | a prototype |
+| 0x54591A `rmg_mine_site_draw` | `rmg_mine_site_place` | `rand() %` positions kept (unsigned) | mine | a position |
+| 0x540C61, 0x540CCE, 0x540CD8 (§2.3) | `rmg_guard_monster_create` | the guard's creature, count + and − | mine | guard value ≥ 2000, the cell below the entrance empty |
+| 0x546154 (§2.1) | `rmg_prototype_draw` | the resources' prototype | mine | always after the guard |
+| 0x545D0C `rmg_mine_resource_cell_draw` | `rmg_mine_place` | `rand() & 1` (signed form) | cell of the row below | a resource prototype, at most 2 placed |
+| 0x546154 (§2.1) | `rmg_prototype_draw` from `rmg_path_carve` | step 9: a Border Guard prototype (§2.3) | pending guard crossed | a path through a marked cell |
+| 0x546771 `rmg_pile_target_draw` | `rmg_pile_build` | `rand() %` (high − low) (signed) | pile built | high > low |
+| 0x546154 (§2.1) | `rmg_prototype_draw` from `rmg_object_choose` | a prototype of the generator | candidate generator | its count, limits and value pass |
+| 0x546489 `rmg_object_weight_draw` | `rmg_object_choose` | `rand() %` densities summed (signed) | object chosen | a candidate |
+| 0x535B31 `rmg_pile_object_cell_draw` | `rmg_pile_object_add` | `rand() %` positions (unsigned) | object after the first | a position |
+| 0x540C61, 0x540CCE, 0x540CD8 (§2.3) | `rmg_guard_monster_create` | the pile's guard | pile | guard value ≥ 2000, zone strength not 0 |
+| 0x5353B9 `rmg_pile_guard_cell_draw` | `rmg_pile_guard_place` | `rand() %` guard cells (unsigned) | pile guarded | a cell |
+| 0x5472F0 `rmg_pile_offset_draw` | `rmg_pile_place_in_zone` | `rand() %` farthest offsets (unsigned) | pile placed | an offset |
+| 0x54B511 `rmg_quest_artifact_draw` | `rmg_seer_hut_place` | `rand() %` free treasure artifacts (signed) | quest artifact committed | one left |
+| 0x54B366 `rmg_near_zone_neighbour_draw`, 0x54B382 `rmg_near_zone_order_draw` | `rmg_pile_place_in_near_zone` | `rand() % 10` (signed) | zone generator (every one, in order) | a tent's or seer hut's pile |
+| 0x5376AA `rmg_obstacle_weight_draw` | `rmg_obstacle_fill_from` | `rand() %` scores summed (signed) | cell popped | a candidate |
+
+Within a pick of step 10: the target, then per object the candidates' prototype draws and the weight
+draw (and for later objects the cell), then the guard's three draws and its cell, then the offset,
+then per committed object in pile order its hook's draws: a tent's pile (fill, guard cell, the
+near-zone keys, the offset in the first zone that fits) or its replacement (prototype draws, weight);
+a quest artifact's quest, the near-zone keys, the offset, or the replacement. A failed try's draws
+are not undone.
+
+**Float sites** (x87 only, every conversion `crt_ftol`, truncating):
+
+| Function | Computed | Constants |
+|---|---|---|
+| `rmg_zone_mines_by_density` (2) | trunc(sqrt(f64(82944 / S))), the integer quotient converted by `fild` | none (82944 integer) |
+| `rmg_zone_treasures_place` (4) | trunc(sqrt(f64(800 / S))), 1600 / S for water, the same way | none |
+| `rmg_junction_path_draw` | the segment length by `vector_length_int` 0x5FCEB0 (§2.2's table) | none |
+
+**Clocks, retries, limits, failures:** no clock. **Step 10 retries:** each pick tries six times
+(three without, three with the density filter) and a band ends at a pick that fails all six; the
+first object of a pile gets three tries, each later one three null choices and three placements; the
+step's loop has no cap: it ends when the zone stops taking piles. Elsewhere one pass: step 7 per
+passage point, step 8 until each resource's first failure, step 13 until its stack is empty.
+**Give-ups:** a mine or pile with no position is dropped silently; a pile whose guard finds no
+monster is placed unguarded; a tent or quest artifact whose pile cannot be placed is swapped for an
+object of about its value, or left out when none fits; a cell of bit 26 without a candidate obstacle is
+made free. Faults reachable only with other data: `rand() % 0` in `rmg_junction_path_draw` for a zone
+of size 0, a division by zero in `rmg_object_choose` for a template with no blocking or enterable cell
+(density filter), `rmg_seer_hut_place` reading past the artifact prototypes when none has the quest's
+id. Progress: +3900 (mines), 6900 / zones per zone (treasures), +1200 twice (rock), 276300 / n per
+obstacle cell.
+
+**Outside callees** (24): mapped already 11 (`crt_rand`, `crt_sqrt`, `crt_ftol`, `vector_length_int`,
+the terrain painter's four, `pointer_vector_insert` 0x54D120, `entry12_vector_insert` 0x4347A0,
+`empty_ret_8` 0x404140); the C runtime 3 (operator new, free, the array destructor); the C++ library
+10 by their callers (a pointer vector's insert, erase, clear, construction and destruction, an 8-byte
+point vector's insert, a 12-byte element copy, the 48-bit and 10-bit bitset tests and the bitset's
+range error; not read). UI: the progress window's +8 only. No file. Tables read in place:
+`object_settings_pointer` 0x660428 (bytes +0, +1, +2), `artifact_setup_pointer` 0x660B68 (+0xC
+class, +0x1C disabled), `rmg_neighbours` 0x69CDC0, the guard tables (§2.3).
+
+**Quirk candidates (as read, unclassified):**
+
+- `rmg_mine_site_place` and `rmg_object_choose`'s density filter keep a running best and test each
+  candidate against it, so the result depends on the scan order: a position with more obstacles
+  around it but a smaller distance than one kept earlier is skipped; a ratio above 4/3 of the best
+  drops earlier ones that would pass 3/4 of the new best.
+- `rmg_object_choose` draws a prototype for every candidate generator before the weighted choice (and
+  before the density filter): the stream advances by the number of candidates, not of objects.
+- A treasure pile whose value calls for a guard but finds no monster in range is placed unguarded.
+- Mines and treasures index the guard tables with the zone's strength plus the map's (− 3, clamped),
+  connections (§2.3) with the map's alone; a zone of strength none (n) gets no mine or treasure guard.
+- Seer hut quests are treasure-class artifacts only, counted over 0-143 for every version; under 20
+  left, no seer hut generator is valued again.
+- A Border Guard's pile and a seer hut go to the nearest zone by connections but **never a neighbour
+  while a farther zone fits**; the pile can chain (its tents and quest artifacts run the same hooks).
+- A tent or quest artifact whose partner cannot be placed is taken off the map but not deleted: its
+  prototype's use count stays raised, so its template may be written (§1.6) with no object using it.
+- Underground, every cell neither free nor holding an object becomes rock, including those step 13
+  would fill with obstacles.
+- `rmg_obstacle_fill_from`'s SoD test (types 222 and on) refuses none of the 45 types.
+- `rmg_pile_place_in_zone` lets the pile's box end one cell past the zone's (its offsets run to the
+  zone's max + 1 − the pile's); the fit test still applies.
+
+**Not read:** the increments of `rmg_prototype_depth_grid`'s values (only that they order two
+obstacles); what the object settings bytes +0, +1, +2 mean beyond the tests above; the library
+helpers; the objects' write methods (§2.5); whether `rmg_map_outline_clear` (§2.2, read in part)
+refuses what the pile's ring needs.
+
+**For the next parts:** step 14's roads start after every object is placed; the cells now carry bit 21
+(shore; bit 23 is set only on the piles' own maps); after step 13 every passable cell that is not rock
+and has no pending guard is kept free (bit 27). The placed objects'
+slots: 0 delete, 1 release (the prison's frees its hero), 2 placed hook (tent, quest artifact; true
+otherwise), 3 write. The zone generators' +0x40 holds the last near-zone keys; the generator's +0xF58,
++0x10B4, +0x1024 and +0x1100 are final after step 10.
