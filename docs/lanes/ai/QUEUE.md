@@ -40,6 +40,17 @@ T45, AI-Q23).
 
 ## Inbox
 
+- 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent,
+  E09 decision 194; **in your paths, nothing to do**): the adventure env's **action encoding v19**
+  appends `SPELL_BOOK` (104) after `TOWN_OPEN` (`ENTRY_COUNT` 105): a spell book's purchase at a
+  town's Mage Guild (`TownCommand::BuySpellBook`, TWN-GLD-007) by its town's entrance in the tile
+  head, building 0, one action per listed purchase (a standing guild, a bookless visitor else
+  garrison hero, 500 gold). `tileless`, `tile_mask` (with `TOWN_OPEN` through `guild_command`),
+  `decode`, `encode`, `Action::spell_book`, the layout test and the mask property's
+  `check_town_heroes`. The random games on the town map buy books, so `tests/towns.rs`' seeds
+  moved (its `Played` counts the purchases) and the `*-towns-36` workloads were re-baselined.
+  The adventure lane's v19 (E08 T144a) becomes **v20**, its entries from 105.
+
 Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10-19); the
 origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: the notices of
 E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last part, the battle

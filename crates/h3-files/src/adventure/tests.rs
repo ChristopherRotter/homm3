@@ -270,6 +270,14 @@ fn commands_round_trip_through_their_text() {
             }),
             "1 town open 3",
         ),
+        // Format v25 (E09 T49b): a spell book's purchase, by its town.
+        (
+            PlayerId::new(2),
+            GameCommand::Town(TownCommand::BuySpellBook {
+                town: TownId::new(4),
+            }),
+            "2 town book 4",
+        ),
         // Format v12 (E08 T105b2): a revisit, by its hero.
         (
             PlayerId::new(1),
@@ -504,6 +512,10 @@ fn commands_round_trip_through_their_text() {
         "0 town open x",
         "0 town open 70000",
         "0 town open 2 now",
+        "0 town book",
+        "0 town book x",
+        "0 town book 70000",
+        "0 town book 2 now",
         "0 town build x 7",
         "0 town build 70000 7",
         "0 town build 2 x",
