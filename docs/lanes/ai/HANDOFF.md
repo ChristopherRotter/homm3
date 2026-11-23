@@ -32,8 +32,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** the one of `ai/e31-t1a2` (E31 T1a2, docs and the map; named in the
-  newest session entry). Merged: #1133 (T1a1b, T1a1c), #1131 (T1a1a), #1129, #1130.
+- **Open pull requests:** #1137 (`ai/e31-t1a2`: E31 T1a2, docs and the map). Merged: #1133
+  (T1a1b, T1a1c), #1131 (T1a1a), #1129, #1130.
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
