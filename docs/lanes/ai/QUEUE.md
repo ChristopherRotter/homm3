@@ -21,15 +21,17 @@ T45, AI-Q23).
 
 - **E31 T1a1 — the frame, in three parts** (AI-Q24): **done** 2026-11-23 (`E31-log.md` T1a1a
   to T1a1c; the survey's §1).
-- **E31 T1a2 — the values** (the epic's increment 1 table; `Heroes3.exe` staged, SHA-256
-  `aac39e8c…`, `pip install capstone pefile`, a cloud sandbox): what a hero's plan weighs. Open
-  from T1a1 (the survey §1.8): `ai_army_fight_sim` 0x427330 (the danger map's), `ai_fight_estimate`
-  0x528040 (a candidate's value, 5.7 KB), the pathfinder node's key +0x10 and the expansion's
-  sixth argument behind it, the per-class value table `ai_class_tables_init` 0x428070 fills, the
-  frame's `ai_vision_area_value`, the defence functor, `ai_hero_effectiveness`, the puzzle's target,
-  the list inside `ai_resource_weights`; every hidden read. Confirm its cut at its start by size
-  (`ai_fight_estimate` alone is a third of it).
-- Then T1a3, T1a4 (T1a4 maps the third range, 0x423EE0 to 0x42A000: the survey's §0), T1b.
+- **E31 T1a2 — the values, in four parts** (AI-Q25: T1a2b to T1a2d read by sub-agents):
+  **done** 2026-11-23 (`E31-log.md` T1a2; the survey's §2).
+- **E31 T1a3 — the towns and the answers** (the epic's increment 1 table; `Heroes3.exe`
+  staged, `pip install capstone pefile`, a cloud sandbox): `ai_town_build_choice` 0x42AE00 and
+  the helpers after it, `ai_town_visit` 0x5253D0, the hiring, the markets; every `ai_*` call
+  inside a visit classified a choice or a rule, with T1a2's (the survey §2.5: `ai_quick_battle`,
+  the round-30 re-fight, `ai_town_defence_recruit`, the trades), into the survey's §3 table.
+  Open from T1a2: where `ai_army_plan_run`'s purchases go (0x42C3B0, 0x42D8E0), the army
+  plan's town setup (0x42D1B0, 0x42D870), how `ai_fight_answer`'s 17 callers use the object
+  value, the Seer's reward (0x573A70). Confirm its cut at its start by size.
+- Then T1a4 (it maps the rest of the third range, 0x423EE0 to 0x42A000: the survey's §0), T1b.
 
 ## Inbox
 
