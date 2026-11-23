@@ -368,7 +368,7 @@ fn an_artifact_moves_between_two_heroes() {
     );
 }
 
-// covers: HER-ART-007
+// covers: HER-ART-007, HER-BAT-011
 #[test]
 fn equipping_titans_thunder_adds_a_spell_book_that_stays() {
     let r = artifacts_ruleset();
@@ -416,6 +416,15 @@ fn equipping_titans_thunder_adds_a_spell_book_that_stays() {
     let mut worn = wearing(&plain, &[]);
     assert!(equip(&mut worn, &plain, thunder, Position(3)));
     assert_eq!((worn[3], worn[8]), (Some(thunder), None));
+    // E09 T49b: the ruleset's spell book and whether a hero wears one (TWN-GLD-007's queries):
+    // Titan's Thunder's book counts, one in no ruleset's artifact neither.
+    assert_eq!(spell_book(&r), Some(a("t:book").artifact));
+    assert_eq!(spell_book(&plain), None);
+    assert!(!wears_spell_book(&bookless, &r));
+    let mut thundered = bookless.clone();
+    apply_all(&r, &mut thundered, &[HeroChange::AddArtifact(thunder)]);
+    assert!(wears_spell_book(&thundered, &r));
+    assert!(!wears_spell_book(&full, &r));
     // `equip` at a position that refuses changes nothing.
     let mut worn = wearing(&r, &[]);
     assert!(!equip(&mut worn, &r, thunder, Position(0)));

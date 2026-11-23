@@ -69,6 +69,15 @@ pub enum TownCommand {
         /// The town.
         town: TownId,
     },
+    /// Buys a spell book at `town`'s Mage Guild, the town the player's, for its visitor, else its
+    /// garrison hero, for the part's price (TWN-GLD-007; E09 T49b, design §91, decision 176: the
+    /// original's guild window, `mage_guild_open` 0x5CE560, offering the book as it opens): the
+    /// book given to the hero, then the town's heroes learning the guild's spells (TWN-GLD-005).
+    /// No visit, no movement points, no field trusted but the town's id.
+    BuySpellBook {
+        /// The town.
+        town: TownId,
+    },
 }
 
 /// A hero's move between a town's two bars (TWN-ROW-002 to -004; E09 T28a, design §53).
@@ -90,8 +99,12 @@ pub enum TownHeroChange {
 /// [`Self::UnknownBuilding`] to [`Self::BuiltToday`], the first that applies in the order they are
 /// listed (E09 design §27: the hall's texts' order, the day's mark last); for a recruitment
 /// [`crate::recruit_source`] [`Self::UnknownBuilding`], then [`Self::NotRecruiting`] to
-/// [`Self::NothingSummoned`] (E09 T27); for a hero's move the adventure's rules the last eight
-/// (E09 T28a, TWN-ROW-002 to -004).
+/// [`Self::NothingSummoned`] (E09 T27); for a hero's move the adventure's rules
+/// [`Self::GarrisonHeld`] to [`Self::EmptyArmy`] (E09 T28a, TWN-ROW-002 to -004); for a hire
+/// [`crate::check_hire`] [`Self::NoTavern`], then the game [`Self::UnknownSlot`],
+/// [`Self::EmptySlot`] (E09 T38a1); for a spell book's purchase [`crate::check_spell_book`]
+/// [`Self::NoGuild`], then the game [`Self::NoHero`], [`Self::HasSpellBook`] (E09 T49b,
+/// TWN-GLD-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TownCommandError {
     /// The town is not in the game's store.
@@ -148,6 +161,13 @@ pub enum TownCommandError {
     UnknownSlot,
     /// The slot holds no hero (TWN-TAV-003: no type was free at its last fill).
     EmptySlot,
+    /// No Mage Guild stands in the town (TWN-GLD-007: a building of role `guild`, any level), or
+    /// the ruleset has no spell book to sell.
+    NoGuild,
+    /// No hero stands in the town: neither a visitor nor a garrison hero (TWN-GLD-007).
+    NoHero,
+    /// The town's hero (its visitor, else its garrison hero) wears a spell book (TWN-GLD-007).
+    HasSpellBook,
 }
 
 impl fmt::Display for TownCommandError {
@@ -179,6 +199,9 @@ impl fmt::Display for TownCommandError {
             Self::NoTavern => f.write_str("the town has no standing Tavern"),
             Self::UnknownSlot => f.write_str("no such tavern slot"),
             Self::EmptySlot => f.write_str("the tavern slot holds no hero"),
+            Self::NoGuild => f.write_str("no mage guild sells a spell book in the town"),
+            Self::NoHero => f.write_str("no hero stands in the town"),
+            Self::HasSpellBook => f.write_str("the town's hero has a spell book"),
         }
     }
 }
@@ -221,6 +244,9 @@ mod tests {
             TownCommandError::NoTavern,
             TownCommandError::UnknownSlot,
             TownCommandError::EmptySlot,
+            TownCommandError::NoGuild,
+            TownCommandError::NoHero,
+            TownCommandError::HasSpellBook,
         ];
         for error in errors {
             assert!(!error.to_string().is_empty(), "{error:?}");
@@ -257,5 +283,15 @@ mod tests {
             slot: 1,
         };
         assert_ne!(hire, command);
+        // covers: TWN-GLD-007
+        let book = TownCommand::BuySpellBook {
+            town: TownId::new(2),
+        };
+        assert_ne!(
+            book,
+            TownCommand::Open {
+                town: TownId::new(2)
+            }
+        );
     }
 }

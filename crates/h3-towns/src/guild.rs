@@ -7,17 +7,21 @@
 //! functions over a town record, the part and the core with the spells the map and the scenario
 //! give ([`GuildSets`]); the game draws every town's guild at the build from the towns' stream (E09
 //! decision 179), keeps the slots and the set in the town's record (the store v4, E09 T47a2),
-//! teaches its heroes at the town's triggers (TWN-GLD-005) and gives them its points.
+//! teaches its heroes at the town's triggers (TWN-GLD-005) and gives them its points; since E09
+//! T49b the town part's test of a spell book's purchase ([`check_spell_book`], TWN-GLD-007).
 
 use alloc::vec::Vec;
 
-use h3_content::{AURORA_IGNORES_MAP_BANS, MAX_SPELLS, Ruleset, Spell, SpellCategory, SpellId};
+use h3_content::{
+    AURORA_IGNORES_MAP_BANS, MAX_SPELLS, ResourceId, Ruleset, Spell, SpellCategory, SpellId,
+};
 use h3_heroes::HeroDetails;
 use h3_kernel::Rng;
 
 use crate::building::BuildingSet;
+use crate::command::TownCommandError;
 use crate::record::{Town, TownStatic};
-use crate::ruleset::{TownParams, TownRecord, TownRuleset};
+use crate::ruleset::{GuildRoles, TownParams, TownRecord, TownRuleset};
 
 /// The spell levels a guild holds, 1 to 5 (the part's `guild_slots`, TWN-GLD-001).
 const LEVELS: usize = 5;
@@ -424,60 +428,159 @@ pub fn opening_gives<'a>(
     core: &Ruleset,
     heroes: impl IntoIterator<Item = &'a HeroDetails>,
 ) -> bool {
-    let Some((record, roles)) = part.town_with_guild_roles(town.faction()) else {
-        return false;
+    GuildRead::of(town, part)
+        .and_then(|read| read.gift(town, statics, part))
+        .is_some_and(|gift| heroes.into_iter().any(|details| gift.gives(details, core)))
+}
+
+/// What a town's guild offers its heroes, as the legal listing asks it ([`guild_offers`]; E09
+/// T49b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GuildOffers<'a> {
+    /// Whether an opening gives one of the heroes anything ([`opening_gives`]).
+    pub opening: bool,
+    /// The spell book's price where one is sold to the town's hero: a Mage Guild stands
+    /// ([`check_spell_book`]) and the visitor, else the garrison hero, wears no spell book
+    /// ([`h3_heroes::wears_spell_book`]).
+    pub book: Option<&'a [(ResourceId, u32)]>,
+}
+
+/// The legal listing's two questions to `town`'s guild at once (E09 T49b, design §90, §91): whether
+/// its opening gives its garrison hero or its visitor anything ([`opening_gives`], TWN-GLD-006),
+/// and the spell book's price where one is sold to its visitor, else its garrison hero
+/// ([`check_spell_book`] with the hero's book, TWN-GLD-007). The same answers as those, the
+/// town's derived roles and what supersedes its guild read once for both (`bench-check`'s
+/// `legal-towns-36`: the listing asks it of every owned town a hero stands in). The treasury and
+/// the ruleset's book are the game's to test.
+// rule: TWN-GLD-006, TWN-GLD-007
+pub fn guild_offers<'a>(
+    town: &Town,
+    statics: &TownStatic,
+    part: &'a TownRuleset,
+    core: &Ruleset,
+    (visitor, garrison): (Option<&HeroDetails>, Option<&HeroDetails>),
+) -> GuildOffers<'a> {
+    let Some(read) = GuildRead::of(town, part) else {
+        return GuildOffers {
+            opening: false,
+            book: None,
+        };
     };
-    let built = town.built();
-    let guilds = built.intersection(roles.guild);
-    let aurora = built.intersects(roles.aurora);
-    let library = built.intersects(roles.library);
-    // What makes a guild or a Vortex not stand: only these of the built buildings supersede one.
-    let superseded = built
-        .intersection(roles.superseding)
-        .iter()
-        .filter_map(|id| record.building(id))
-        .fold(BuildingSet::EMPTY, |set, b| set.union(b.supersedes));
-    // `vortex`'s tests but the hero's: the part's factor, the week's flag, a standing Vortex.
-    let standing = built.intersection(roles.vortex).difference(superseded);
-    let factor = part
-        .params()
-        .map(|params| params.vortex_factor)
-        .filter(|_| town.vortex() && !standing.is_empty());
-    // `teaches`' set: none without a guild ever built; the Aurora set with an Aurora ever built;
-    // else what the guild shows, its level the highest of its standing guild buildings.
-    let spells = if guilds.is_empty() {
-        SpellSet::EMPTY
-    } else if aurora {
-        statics.aurora
-    } else {
-        let top = guilds
-            .difference(superseded)
+    let opening = read.gift(town, statics, part).is_some_and(|gift| {
+        garrison.is_some_and(|details| gift.gives(details, core))
+            || visitor.is_some_and(|details| gift.gives(details, core))
+    });
+    let book = visitor
+        .or(garrison)
+        .filter(|details| read.guild_stands(town) && !h3_heroes::wears_spell_book(details, core))
+        .map(|_| book_price(part));
+    GuildOffers { opening, book }
+}
+
+/// A town's guild read through its part's derived roles (E09 T49a2's design, shared since E09
+/// T49b): the town's record, the roles' sets and what its built buildings supersede, walking only
+/// those that can supersede a guild or a Vortex.
+struct GuildRead<'a> {
+    record: &'a TownRecord,
+    roles: GuildRoles,
+    superseded: BuildingSet,
+}
+
+impl<'a> GuildRead<'a> {
+    /// `town`'s read; none without its faction's record in `part`.
+    fn of(town: &Town, part: &'a TownRuleset) -> Option<Self> {
+        let (record, roles) = part.town_with_guild_roles(town.faction())?;
+        let built = town.built();
+        let superseded = built
+            .intersection(roles.superseding)
             .iter()
-            .filter_map(|id| record.building(id).and_then(|b| b.roles.guild))
-            .max()
-            .unwrap_or(0);
-        part.params().map_or(SpellSet::EMPTY, |params| {
-            (1..)
-                .zip(counts_of(params, top, library))
-                .flat_map(|(level, count)| shown_at(town.guild(), level, count))
-                .fold(SpellSet::EMPTY, SpellSet::with)
+            .filter_map(|id| record.building(id))
+            .fold(BuildingSet::EMPTY, |set, b| set.union(b.supersedes));
+        Some(Self {
+            record,
+            roles,
+            superseded,
         })
-    };
-    if factor.is_none() && spells.is_empty() {
-        return false;
     }
-    heroes.into_iter().any(|details| {
-        let raised = factor.is_some_and(|factor| {
+
+    /// Whether a building of role `guild` stands in `town` (TWN-GLD-007's test).
+    fn guild_stands(&self, town: &Town) -> bool {
+        !town
+            .built()
+            .intersection(self.roles.guild)
+            .difference(self.superseded)
+            .is_empty()
+    }
+
+    /// What an opening of `town` would give a hero ([`opening_gives`]): the Vortex's factor where
+    /// it would give one (`vortex`'s tests but the hero's: the part's factor, the week's flag, a
+    /// standing Vortex) and what the town teaches (`teaches`' set: none without a guild ever
+    /// built; the Aurora set with an Aurora ever built; else what the guild shows, its level the
+    /// highest of its standing guild buildings); none when neither gives anything.
+    fn gift(&self, town: &Town, statics: &TownStatic, part: &TownRuleset) -> Option<Gift> {
+        let (record, roles, superseded) = (self.record, &self.roles, self.superseded);
+        let built = town.built();
+        let guilds = built.intersection(roles.guild);
+        let aurora = built.intersects(roles.aurora);
+        let library = built.intersects(roles.library);
+        let standing = built.intersection(roles.vortex).difference(superseded);
+        let factor = part
+            .params()
+            .map(|params| params.vortex_factor)
+            .filter(|_| town.vortex() && !standing.is_empty());
+        let spells = if guilds.is_empty() {
+            SpellSet::EMPTY
+        } else if aurora {
+            statics.aurora
+        } else {
+            let top = guilds
+                .difference(superseded)
+                .iter()
+                .filter_map(|id| record.building(id).and_then(|b| b.roles.guild))
+                .max()
+                .unwrap_or(0);
+            part.params().map_or(SpellSet::EMPTY, |params| {
+                (1..)
+                    .zip(counts_of(params, top, library))
+                    .flat_map(|(level, count)| shown_at(town.guild(), level, count))
+                    .fold(SpellSet::EMPTY, SpellSet::with)
+            })
+        };
+        (factor.is_some() || !spells.is_empty()).then_some(Gift { factor, spells })
+    }
+}
+
+/// What an opening of a town would give a hero ([`GuildRead::gift`]).
+#[derive(Clone, Copy)]
+struct Gift {
+    /// The Vortex's factor, where the Vortex would give.
+    factor: Option<u8>,
+    /// The spells the town teaches.
+    spells: SpellSet,
+}
+
+impl Gift {
+    /// Whether it gives `details`' hero anything: the Vortex raises its points, or it learns a
+    /// spell, its known spells taken first, its book and learnable level read only for a spell it
+    /// does not know ([`h3_heroes::spell_learner`]).
+    fn gives(self, details: &HeroDetails, core: &Ruleset) -> bool {
+        let raised = self.factor.is_some_and(|factor| {
             details.mana < h3_heroes::max_mana(details, core).saturating_mul(u16::from(factor))
         });
         raised || {
-            let fresh = spells.difference(SpellSet::of(&details.spells));
+            let fresh = self.spells.difference(SpellSet::of(&details.spells));
             !fresh.is_empty()
                 && fresh
                     .iter()
                     .any(h3_heroes::spell_learner(details, core, true))
         }
-    })
+    }
+}
+
+/// The part's spell book price (TWN-GLD-001); none for a part without parameters.
+fn book_price(part: &TownRuleset) -> &[(ResourceId, u32)] {
+    part.params()
+        .map_or(&[], |params| params.spell_book_price.as_slice())
 }
 
 /// Whether a night in `town` refills its heroes' spell points (E09 design §92; survey
@@ -526,6 +629,31 @@ pub fn vortex(
     }
     let points = h3_heroes::max_mana(details, core).saturating_mul(u16::from(factor));
     (details.mana < points).then_some(points)
+}
+
+/// The town part's test of a spell book's purchase at `town` (TWN-GLD-007; E09 T49b, design §91;
+/// survey `E09-guild.md` §6, §13: the original's `mage_guild_open` 0x5CE560 offering the book as
+/// the guild's window opens, which the town screen's standing Mage Guild opens): a standing
+/// building of role `guild` (TWN-GLD-001: a Mage Guild of any level), else
+/// [`TownCommandError::NoGuild`]; then the book's price, the part's (`TownParams::spell_book_price`,
+/// 500 gold in every edition; none for a part without parameters, which has no town record to
+/// stand a guild in). Read through the part's derived roles (as [`opening_gives`]: the legal
+/// listing asks it of every owned town a hero stands in). The game checks the rest (the town's
+/// owner, the hero, its book, the treasury), pays the price and gives the book (ADR-0028 point
+/// 6, as a hire's).
+///
+/// # Errors
+///
+/// [`TownCommandError::NoGuild`]; the state is the caller's and unchanged.
+// rule: TWN-GLD-007
+pub fn check_spell_book<'a>(
+    town: &Town,
+    part: &'a TownRuleset,
+) -> Result<&'a [(ResourceId, u32)], TownCommandError> {
+    if !GuildRead::of(town, part).is_some_and(|read| read.guild_stands(town)) {
+        return Err(TownCommandError::NoGuild);
+    }
+    Ok(book_price(part))
 }
 
 #[cfg(test)]

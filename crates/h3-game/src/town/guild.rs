@@ -5,7 +5,8 @@
 //! T48a the town's heroes learning its spells at the town's triggers ([`learn`], TWN-GLD-005);
 //! since E09 T49a1 the spell points a town gives its heroes: the night's refill ([`refilled`],
 //! TWN-GLD-008) and the Mana Vortex once a week a town ([`vortex`], [`visit`], TWN-GLD-009);
-//! since E09 T49a2 the town screen's opening ([`open`], listed by [`opens`], TWN-GLD-006).
+//! since E09 T49a2 the town screen's opening ([`open`], TWN-GLD-006); since E09 T49b a spell
+//! book's purchase at the guild ([`buy_book`], TWN-GLD-007), both listed by [`offers`].
 
 use alloc::vec::Vec;
 
@@ -203,38 +204,115 @@ pub(crate) fn open<S: Sink>(
     Ok(())
 }
 
-/// Whether [`open`] of `town`, one of the lister's own, would change something, so that
-/// [`crate::legal_commands`] lists it (TWN-GLD-006; design §90, decision 175: never an idle
-/// opening, which would flood the env's plans): its garrison hero or its visitor would take the
-/// Mana Vortex ([`h3_towns::vortex`]: a standing Vortex, the week's flag set, the hero below the
-/// factor times its maximum), or would learn a spell ([`h3_towns::teaches`] not empty): one
-/// question to the town's part for both heroes ([`h3_towns::opening_gives`]). `visitor`
-/// is the hero on its entrance, the listing's (`AdventureState::town_entrance_hero`, found once a
-/// town for the hires, the opening and the moves). False for a town no hero stands in, the
-/// cheapest test first (the heroes, then the town's record).
-// rule: TWN-GLD-006
-pub(crate) fn opens(
+/// Buys a spell book at `player`'s `town`'s Mage Guild (TWN-GLD-007; E09 T49b, design §91,
+/// decision 176; survey `E09-guild.md` §6, §13: the original's `mage_guild_open` 0x5CE560 asking
+/// GENRLTXT 215 as the guild's window opens, `hero_give_artifact` 0x4E3070 and the price taken,
+/// then the town screen's learning at 0x5D3589), the turn checked by the caller
+/// ([`GameState::check_ready`]: the player's turn, no decision open, no level-up held), in this
+/// order, each refusal changing nothing:
+///
+/// 1. the town in the store of towns, else [`TownCommandError::UnknownTown`];
+/// 2. its owner, the adventure's owner of its object, is `player`, else
+///    [`TownCommandError::NotOwner`] (TD-11's rule, E09 decision 42: only the owner opens its
+///    town screen);
+/// 3. a standing Mage Guild and the book's price ([`h3_towns::check_spell_book`]), and the
+///    ruleset's spell book ([`h3_heroes::spell_book`]), else [`TownCommandError::NoGuild`];
+/// 4. the town's hero: its visitor, any player's (the original's guild window offers the book to
+///    the hero in the visitor's bar), else its garrison hero, else [`TownCommandError::NoHero`];
+/// 5. that hero wears no spell book ([`h3_heroes::wears_spell_book`]), else
+///    [`TownCommandError::HasSpellBook`];
+/// 6. `player`'s treasury holds the price, else [`GameCommandError::CannotPay`] (the original's
+///    GENRLTXT 214 below 500 gold).
+///
+/// Then, infallibly: the price paid (`ResourcePaid` per resource, the part's order), the book
+/// given (`HeroChange::AddArtifact`, worn at its free position, which only a spell book takes:
+/// HER-CHG-002; `HeroChanged` to the hero's owner), then the town's heroes [`learn`] its guild's
+/// spells, the visitor first (TWN-GLD-005), so that the bought book teaches at once. No Mana
+/// Vortex (the guild window's purchase, not the screen's opening); no movement point is spent.
+/// The original's question is the command itself; Yog's campaign refusal (GENRLTXT 737) waits
+/// for the campaigns. No field of the command is trusted but the town's id: the price is the
+/// part's (ADR-0004).
+///
+/// # Errors
+///
+/// [`GameCommandError::Town`] with the town's refusal, or [`GameCommandError::CannotPay`].
+// rule: TWN-GLD-007
+pub(crate) fn buy_book<S: Sink>(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    town: TownId,
+    sink: &mut S,
+) -> Result<(), GameCommandError> {
+    let record = state
+        .towns()
+        .get(town)
+        .ok_or(GameCommandError::Town(TownCommandError::UnknownTown))?;
+    if super::command::owner(state, town) != Some(player) {
+        return Err(GameCommandError::Town(TownCommandError::NotOwner));
+    }
+    let core = rules.core();
+    let price =
+        h3_towns::check_spell_book(record, rules.towns()).map_err(GameCommandError::Town)?;
+    let book =
+        h3_heroes::spell_book(core).ok_or(GameCommandError::Town(TownCommandError::NoGuild))?;
+    let [visitor, garrison] = heroes(state, town);
+    let (hero, owner) = visitor
+        .or(garrison)
+        .ok_or(GameCommandError::Town(TownCommandError::NoHero))?;
+    if state
+        .hero(hero)
+        .is_none_or(|details| h3_heroes::wears_spell_book(details, core))
+    {
+        return Err(GameCommandError::Town(TownCommandError::HasSpellBook));
+    }
+    if !state.can_pay(player, price) {
+        return Err(GameCommandError::CannotPay);
+    }
+    state.pay_price(player, price, sink);
+    let change = HeroChange::AddArtifact(book.into());
+    state.change_hero(core, hero, Some(owner), change, sink);
+    learn(state, rules, town, sink);
+    Ok(())
+}
+
+/// The town's guild commands [`crate::legal_commands`] lists for `town`, one of `player`'s own
+/// (E09 T49a2, T49b; design §90, §91): whether its opening ([`open`]) would change something
+/// (TWN-GLD-006, decision 175: never an idle opening, which would flood the env's plans): its
+/// garrison hero or its visitor would take the Mana Vortex ([`h3_towns::vortex`]: a standing
+/// Vortex, the week's flag set, the hero below the factor times its maximum) or would learn a
+/// spell ([`h3_towns::teaches`] not empty); and whether its spell book's purchase ([`buy_book`])
+/// would be accepted (TWN-GLD-007): a standing Mage Guild, its visitor, else its garrison hero,
+/// wearing no spell book, `player`'s treasury holding the price, the ruleset having a book. One
+/// question to the town's part for both ([`h3_towns::guild_offers`]: its derived roles read once).
+/// `visitor` is the hero on its entrance, the listing's (`AdventureState::town_entrance_hero`,
+/// found once a town for the hires, these and the moves), `garrison` its garrison hero. Neither
+/// for a town no hero stands in, the cheapest test first (the heroes, then the town's record;
+/// `bench-check`'s `legal-towns-36`, the town lane's `TRAPS.md`).
+// rule: TWN-GLD-006, TWN-GLD-007
+pub(crate) fn offers(
     state: &GameState,
     rules: &GameRuleset,
-    town: TownId,
-    visitor: Option<HeroId>,
-) -> bool {
-    let adventure = state.adventure();
-    let garrison = adventure.town_hero(town).map(|on| on.id);
+    (town, player): (TownId, PlayerId),
+    (visitor, garrison): (Option<HeroId>, Option<HeroId>),
+) -> (bool, bool) {
     if garrison.is_none() && visitor.is_none() {
-        return false;
+        return (false, false);
     }
     let towns = state.towns();
-    let heroes = garrison
-        .into_iter()
-        .chain(visitor)
-        .filter_map(|hero| state.hero(hero));
-    towns
-        .get(town)
-        .zip(towns.town_static(town))
-        .is_some_and(|(record, statics)| {
-            h3_towns::opening_gives(record, statics, rules.towns(), rules.core(), heroes)
-        })
+    let Some((record, statics)) = towns.get(town).zip(towns.town_static(town)) else {
+        return (false, false);
+    };
+    let core = rules.core();
+    let heroes = (
+        visitor.and_then(|hero| state.hero(hero)),
+        garrison.and_then(|hero| state.hero(hero)),
+    );
+    let offers = h3_towns::guild_offers(record, statics, rules.towns(), core, heroes);
+    let book = offers
+        .book
+        .is_some_and(|price| state.can_pay(player, price) && h3_heroes::spell_book(core).is_some());
+    (offers.opening, book)
 }
 
 /// The Mana Vortex of `town` to its garrison hero, then its visitor ([`vortex_to`]): the visit's

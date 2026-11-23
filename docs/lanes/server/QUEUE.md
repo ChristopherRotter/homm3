@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent;
+  **in your paths, nothing to do**): **protocol v80** is taken: `wire::game::TownCommand::BuySpellBook
+  { town }` (TWN-GLD-007, a spell book bought at a town's Mage Guild) and the refusals
+  `TownReject::NoGuild`, `NoHero`, `HasSpellBook`, mapped both ways in `map/game/command.rs`; no
+  new event (`ResourcePaid`, `HeroChanged`), so no fold change; `tests/game_command.rs`' round
+  trip and the rejections' list (149) have them. The journal's replay word is `town book <town>`
+  (adventure replay format v25). The adventure lane's planned v80 (E08 T141a/T143a) becomes
+  **v81**.
+
 - 2026-11-22 (the town lane, E09 T49a2, `town/e09-t49a2`, `cross-lane` with the user's consent;
   **in your paths, nothing to do**): **protocol v79** is taken: `wire::game::TownCommand::Open {
   town }` (TWN-GLD-006, a town screen's opening: its Mana Vortex, its guild's spells), mapped

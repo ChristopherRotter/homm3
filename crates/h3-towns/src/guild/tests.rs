@@ -12,10 +12,10 @@ use h3_kernel::{Rng, StreamId};
 
 use super::*;
 use crate::fixture::{
-    ABILITY, AURORA, BOLT, KEEP, L1_A, L1_B, L1_C, L1_ZERO, L2_A, L2_B, L3, L4_ZERO, L5_A, L5_B,
-    LIBRARY, MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3, MAGE_GUILD_4, MAGE_GUILD_5, VORTEX, WILD,
-    empty_part, guild_core, guild_keep, part_changed, part_with_keep, sage, set, town, town_of,
-    vortex_keep,
+    ABILITY, AURORA, BOLT, GOLD, KEEP, L1_A, L1_B, L1_C, L1_ZERO, L2_A, L2_B, L3, L4_ZERO, L5_A,
+    L5_B, LIBRARY, MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3, MAGE_GUILD_4, MAGE_GUILD_5, VORTEX,
+    WILD, building, empty_part, guild_core, guild_keep, part_changed, part_with_keep, roles, sage,
+    set, town, town_of, vortex_keep,
 };
 use crate::record::TownStatic;
 
@@ -531,7 +531,9 @@ fn a_standing_mana_vortex_with_the_week_s_flag_gives_the_factor_times_the_maximu
 }
 
 /// Whether an opening of `town` gives one of `heroes` anything, by [`vortex`] and [`teaches`]
-/// asked hero by hero, checked against [`opening_gives`] (E09 T49a2).
+/// asked hero by hero, checked against [`opening_gives`] (E09 T49a2); since E09 T49b also against
+/// [`guild_offers`] with the first hero the visitor and the second the garrison hero, its book
+/// against [`check_spell_book`] and the book hero's spell book.
 fn gives(
     (town, statics): (&Town, &TownStatic),
     part: &TownRuleset,
@@ -552,10 +554,28 @@ fn gives(
             .map(|h| (h.mana, &h.spells))
             .collect::<Vec<_>>()
     );
+    let (visitor, garrison) = (heroes.first(), heroes.get(1));
+    let book = visitor
+        .or(garrison)
+        .filter(|hero| !h3_heroes::wears_spell_book(hero, core))
+        .and_then(|_| check_spell_book(town, part).ok());
+    let offers = guild_offers(town, statics, part, core, (visitor, garrison));
+    assert_eq!(
+        offers,
+        GuildOffers {
+            opening: expected,
+            book
+        },
+        "{:?}",
+        town.built()
+    );
+    // Either hero alone as the garrison hero.
+    let alone = guild_offers(town, statics, part, core, (None, visitor));
+    assert_eq!(alone.book, visitor.and(book), "{:?}", town.built());
     expected
 }
 
-// covers: TWN-GLD-006
+// covers: TWN-GLD-006, TWN-GLD-007
 #[test]
 fn an_opening_gives_exactly_where_the_vortex_or_the_guild_would() {
     let core = guild_core(&[]);
@@ -621,6 +641,59 @@ fn an_opening_gives_exactly_where_the_vortex_or_the_guild_would() {
     let keep = town(&[MAGE_GUILD_5, VORTEX]).with_guild(ordered());
     let statics = TownStatic::default();
     assert!(!opening_gives(&keep, &statics, &parts[1], &core, &[]));
+    let none = GuildOffers {
+        opening: false,
+        book: None,
+    };
+    let offers = guild_offers(&keep, &statics, &parts[1], &core, (None, None));
+    assert_eq!(offers, none);
     let wild = town_of(WILD, &[MAGE_GUILD_5, VORTEX]).with_guild(ordered());
     assert!(!gives((&wild, &statics), &parts[1], &core, &heroes[..1]));
+}
+
+// covers: TWN-GLD-007
+#[test]
+fn a_spell_book_is_sold_where_a_mage_guild_stands_for_the_part_s_price() {
+    let part = guild_part();
+    let price: &[(ResourceId, u32)] = &[(GOLD, 500)];
+    fn sells<'a>(
+        built: &[usize],
+        part: &'a TownRuleset,
+    ) -> Result<&'a [(ResourceId, u32)], TownCommandError> {
+        check_spell_book(&town(built), part)
+    }
+    assert_eq!(sells(&[MAGE_GUILD_1], &part), Ok(price));
+    // Any level: the highest, standing over the lower ones.
+    let third = [MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3];
+    assert_eq!(sells(&third, &part), Ok(price));
+    assert_eq!(sells(&[MAGE_GUILD_5, LIBRARY, AURORA], &part), Ok(price));
+    // No guild: nothing else of the guild's sells one.
+    for built in [&[][..], &[LIBRARY], &[AURORA]] {
+        assert_eq!(sells(built, &part), Err(TownCommandError::NoGuild));
+    }
+    // A guild ever built but superseded by a building that is none stands no more.
+    let ruin = part_with_keep(|keep| {
+        guild_keep(keep);
+        keep.buildings
+            .push(building("ruin", &[MAGE_GUILD_1], roles(|_| {})));
+    });
+    assert_eq!(
+        sells(&[MAGE_GUILD_1, 31], &ruin),
+        Err(TownCommandError::NoGuild)
+    );
+    assert_eq!(sells(&[MAGE_GUILD_1], &ruin), Ok(price));
+    // The part's price, whatever it is.
+    let dear = part_changed(|p| p.spell_book_price = vec![(GOLD, 700)], guild_keep);
+    let dearer: &[(ResourceId, u32)] = &[(GOLD, 700)];
+    assert_eq!(sells(&[MAGE_GUILD_2], &dear), Ok(dearer));
+    // Without the faction's record or the part's parameters: none.
+    let wild = town_of(WILD, &[MAGE_GUILD_1]);
+    assert_eq!(
+        check_spell_book(&wild, &part),
+        Err(TownCommandError::NoGuild)
+    );
+    assert_eq!(
+        sells(&[MAGE_GUILD_1], &empty_part()),
+        Err(TownCommandError::NoGuild)
+    );
 }

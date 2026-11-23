@@ -3293,6 +3293,37 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
 - **Listed** after the opening: where the guild stands, the hero lacks a book and the treasury
   holds the price.
 - **Tests:** each refusal; the book worn; the learning right after; the price.
+- *As built* (T49b, decision 194: kept whole): `h3_towns::TownCommand::BuySpellBook { town }` and
+  the refusals `NoGuild`, `NoHero`, `HasSpellBook` (appended to `TownCommandError`).
+  `h3_towns::check_spell_book` reads a standing guild through the part's derived `GuildRoles`
+  (built ∩ `guild` less what the built `superseding` buildings supersede, shared with
+  `opening_gives` as `superseded`) and names `spell_book_price`. `h3_heroes` gains
+  `wears_spell_book` (the private `wears_book`: a worn artifact's `spell_book` effect) and
+  `spell_book` (the ruleset's first artifact with the effect, the original's artifact 0, as the
+  setup and Titan's Thunder find it); the original's `hero_has_artifact` counts the backpack too,
+  which a spell book never reaches (its slot `backpack = false`, HER-ART-002), so "wears" is the
+  original's test. The game's `town::guild::buy_book` checks the store's town, the owner, then
+  `check_spell_book`, then `h3_heroes::spell_book` (none: `NoGuild`), then the hero (`heroes`'
+  visitor, any player's, else the garrison hero: `NoHero`), its book (`HasSpellBook`: a visitor
+  with one is offered none even beside a bookless garrison hero, as the original's window),
+  then the treasury (`CannotPay`); pays, gives `HeroChange::AddArtifact` (told `HeroChanged` to
+  the hero's owner), then `learn` (no Vortex). The listing: `book_paid` once a listing (the
+  part's price against the treasury, as the hires' player-wide tests), then per town
+  `sells_book` (the listing's visitor, else `town_hero`; the details; `check_spell_book`; the
+  book; the ruleset's book), chained after the opening and before the moves. Tests: the game's
+  four in `town/tests/book.rs` (the events in order, the price, a repeat refused; the garrison
+  hero alone, a hired visitor with its type's book refusing, the swap; every refusal and a
+  ruleset without a book; the listing's place after the opening, on and off); `h3-towns'`
+  `a_spell_book_is_sold_where_a_mage_guild_stands_for_the_part_s_price` (any level, the Library
+  or the Aurora alone none, a guild superseded by a non-guild none, another price, no record or
+  parameters none); `h3-heroes'` Titan's Thunder test with the two queries; `h3-files`' round
+  trip and four refusals of `town book`. The plans (`h3-map`'s `play.rs`): `town_builds` probes
+  each town's purchase after its opening; `check_town_book` reads a listed one apart (the town
+  the actor's with a guild, the visitor else the garrison hero bookless before and wearing the
+  ruleset's book after, its other artifacts and every hero's points unchanged, each hero's spells
+  grown by `teaches` read after the book, the price paid, the town's record unchanged);
+  `check_conservation` takes the book's price; `Step::Town` plays a listed purchase in one step
+  of eight (`n % 8 == 7`).
 
 ### 92. The night's refill (TWN-GLD-008; GAM-CAL-002 amended; §14)
 
@@ -3392,6 +3423,16 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   T144; `E08-design.md` §16) move to v80, v25 and v19 (its inbox, the AI lane's and the server
   lane's). An opening is listed only where it changes something, which random play rarely meets:
   `h3-sim`'s town-map tests kept their seeds.
+- *As built* (T49b, decision 194): encoding **v19** appends `SPELL_BOOK` (104) after
+  `TOWN_OPEN`; `tileless` stops before both; `tile_mask` (the two through `guild_command`),
+  `decode` and `encode` take the town by its entrance (building 0); the mask property's
+  `check_town_heroes` covers it. The protocol **v80**: `wire::game::TownCommand::BuySpellBook {
+  town }`, `TownReject::NoGuild`, `NoHero`, `HasSpellBook`. The adventure replay format **v25**
+  (`town book <town>`): the 111 goldens' `format` line only, `h3-cli`'s and `h3-sim`'s literals.
+  The adventure lane's planned v80, v25 and v19 (E08 T143, T144) move to v81, v26 and v20 (its
+  inbox, the AI lane's and the server lane's). A purchase is listed wherever a bookless hero
+  stands in an own town with a guild and the treasury holds 500 gold, which random play meets
+  often: the town-map games change course (`h3-sim`'s seeds, the `*-towns-36` workloads).
 
 ### 96. The increment's ids, versions, quirks and stubs
 
