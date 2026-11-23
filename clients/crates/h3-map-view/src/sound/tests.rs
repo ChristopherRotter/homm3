@@ -243,7 +243,9 @@ fn the_tables_with_and_without_sound() {
     let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
     assert_eq!(quiet.sounds().len(), 94);
     assert!(!quiet.sounds().contains("KILLFADE"));
-    assert_eq!(t.tracks().len(), 9);
+    // The terrains' nine and (E24 M4 T6, the reviewer's R6-2) a computer's turn's three.
+    assert_eq!(t.tracks().len(), 12);
+    assert!((0..3).all(|i| t.tracks().contains(&format!("AITheme{i}"))));
     // Without `[map.sound]`, no sound; a river's music, an error.
     let without = text.replace("[map.sound]", "[unused]");
     let start = without.find("[unused]").unwrap();

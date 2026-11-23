@@ -56,8 +56,8 @@ use h3_kernel::Handle;
 use h3_map::model::Pos;
 use h3_protocol::wire::ServerMessage;
 use h3_protocol::wire::game::{
-    AdventureCommand, AdventureEvent, Answer, GameCommand, GameEvent, GameObservation, Month,
-    PrimarySkill, SystemCommand, Week,
+    AdventureCommand, AdventureEvent, Answer, Boat, GameCommand, GameEvent, GameObservation, Month,
+    Pos as WirePos, PrimarySkill, SystemCommand, Week,
 };
 use toml::{Table, Value};
 
@@ -191,6 +191,10 @@ pub struct OtherEnd {
     pub flagged: Vec<(Pos, u8)>,
     /// The heroes off the map after it (`HeroRemoved`: a hero lost in sight), by their record ids.
     pub lost: Vec<u16>,
+    /// The empty boats the viewer is told of after it (E24 M4 T6, the reviewer's R3-3: a boat
+    /// built, `BoatBuilt`; between tables, [`Played::between`], also the viewer's own boats told
+    /// with no walk of its after them, a `GameReveal`'s).
+    pub boats: Vec<LiveBoat>,
 }
 
 impl OtherEnd {
@@ -200,6 +204,7 @@ impl OtherEnd {
             && self.removed.is_empty()
             && self.flagged.is_empty()
             && self.lost.is_empty()
+            && self.boats.is_empty()
     }
 }
 
@@ -306,6 +311,10 @@ pub struct Visit {
     pub answers: Vec<(Answer, Vec<GameEvent>)>,
     /// The battle it began (E24 M4 T5b2, design §5.21): its command's or an answer's.
     pub battle: Option<Battled>,
+    /// The colour of the flag it raises (E24 M4 T6, the reviewers' R3-1 and R3-4): the first
+    /// `ObjectFlagged` of its events, its answers' or its battle's end, its owner (a player id)
+    /// in that player's colour by the observation then; none without one.
+    pub flag: Option<u8>,
 }
 
 /// What a visit's hero held as its walk began (E24 M4 T6, the reviewer's R2-4): its spell points
@@ -355,6 +364,8 @@ struct Open {
     sea: Option<Sea>,
     /// The record's number of its `GameEvents` whose `BattleStarted` began a battle (E24 M4 T5b1).
     battle: Option<u32>,
+    /// The empty boats the viewer is told of since the walk before (E24 M4 T6, R3-3).
+    boats: Vec<LiveBoat>,
 }
 
 /// The walks and turns of `loaded`'s record (the module's documentation), its map's art `art`
@@ -404,6 +415,9 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
     let mut due = OtherEnd::default();
     let mut between = Vec::new();
     let mut lists = Vec::new();
+    // The empty boats the viewer is told of with no walk of its open (E24 M4 T6, R3-3: a boat
+    // built, a reveal's), the next walk's or the next table's, whichever comes first.
+    let mut told_boats: Vec<LiveBoat> = Vec::new();
     let shown: Vec<(u16, Pos)> = observation
         .adventure
         .heroes
@@ -455,6 +469,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                                     events: Vec::new(),
                                     answers: Vec::new(),
                                     battle: None,
+                                    flag: None,
                                 });
                                 true
                             }
@@ -468,6 +483,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             end: None,
                             sea: None,
                             battle: None,
+                            boats: core::mem::take(&mut told_boats),
                         });
                     }
                     GameCommand::Answer { answer } => {
@@ -525,6 +541,15 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     match event {
                         GameEvent::ArmyDialogOpened { .. } => army = owner.is_some(),
                         GameEvent::DecisionClosed { .. } => army = false,
+                        // The visit's flag (E24 M4 T6, the reviewers' R3-1, R3-4): the record
+                        // names its owner by its player id, the map draws its colour.
+                        GameEvent::Adventure {
+                            event: AdventureEvent::ObjectFlagged { owner: player, .. },
+                        } => {
+                            if let Some(visit) = owner.and_then(|k| visits.get_mut(k)) {
+                                visit.flag.get_or_insert(colour(&observation, *player));
+                            }
+                        }
                         _ => {}
                     }
                     observation.fold(event);
@@ -535,6 +560,17 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             rules,
                         };
                         other_event(o, event, &seen, &mut untold);
+                    } else if let GameEvent::Adventure {
+                        event: AdventureEvent::BoatBuilt { tile: at, .. },
+                    } = event
+                    {
+                        // A boat the viewer built (E24 M4 T6, R3-3): the open walk's, else the
+                        // next walk's or table's.
+                        let boat = built(&observation, *at);
+                        match open.as_mut() {
+                            Some(walk) => walk.boats.extend(boat),
+                            None => told_boats.extend(boat),
+                        }
                     }
                     match event {
                         // The viewer's walk began a battle (E24 M4 T5b1, design §5.20): its end
@@ -585,15 +621,8 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                                     facing,
                                 },
                         } => {
-                            let left = tile(at.x, at.y, at.level).zip(Facing::from_number(*facing));
-                            if let Some(walk) = open.as_mut().filter(|w| w.hero == *hero)
-                                && let Some((at, facing)) = left
-                            {
-                                walk.sea = Some(Sea::Land(LiveBoat {
-                                    at,
-                                    kind: *boat,
-                                    facing,
-                                }));
+                            if let Some(walk) = open.as_mut().filter(|w| w.hero == *hero) {
+                                walk.sea = landed(*at, *boat, *facing).or(walk.sea);
                             }
                         }
                         GameEvent::WeekStarted { week: n, kind } => week = (*n, *kind),
@@ -617,7 +646,8 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                                     ));
                                     lists.push(list(&observation, viewer));
                                     // What came before it at its start, its own after it
-                                    // (R1-6).
+                                    // (R1-6); the boats told meanwhile (R3-3).
+                                    due.boats.append(&mut told_boats);
                                     give(&mut between, &mut due, turns.len());
                                     due = core::mem::take(&mut untold);
                                     others.push(o.turn(turns.len() - 1, false));
@@ -631,10 +661,20 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     turns.push(turn(&observation, loaded, art, rules, week, month));
                     lists.push(list(&observation, viewer));
                     extend(&mut due, core::mem::take(&mut untold));
+                    due.boats.append(&mut told_boats);
                     give(&mut between, &mut due, turns.len());
                 }
             }
-            ServerMessage::GameReveal { reveal, .. } => observation.reveal(reveal),
+            ServerMessage::GameReveal { reveal, .. } => {
+                observation.reveal(reveal);
+                // The empty boats it shows (E24 M4 T6, the reviewer's R3-3): the open walk's, else
+                // the next walk's or table's.
+                let boats = reveal.adventure.boats.iter().filter_map(live_boat);
+                match open.as_mut() {
+                    Some(walk) => walk.boats.extend(boats),
+                    None => told_boats.extend(boats),
+                }
+            }
             ServerMessage::GameTurn { .. } => close(
                 &mut open,
                 &observation,
@@ -656,6 +696,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
     );
     // A turn under way at the record's end (E24 M4 T6, R1-1): its walks so far, no end.
     if let Some(o) = other {
+        due.boats.append(&mut told_boats);
         turns.push(computer_turn(
             &observation,
             loaded,
@@ -789,13 +830,8 @@ fn other_event(
             at,
             facing,
         } => {
-            let left = tile(at.x, at.y, at.level).zip(Facing::from_number(*facing));
-            if let (Some(step), Some((at, facing))) = (last_step(other, *hero), left) {
-                step.sea = Some(Sea::Land(LiveBoat {
-                    at,
-                    kind: *boat,
-                    facing,
-                }));
+            if let Some(step) = last_step(other, *hero) {
+                step.sea = landed(*at, *boat, *facing).or(step.sea);
             }
         }
         AdventureEvent::ObjectRemoved {
@@ -824,8 +860,50 @@ fn other_event(
         AdventureEvent::HeroRemoved { hero, .. } => {
             move_end(other).unwrap_or(pending).lost.push(*hero);
         }
+        // A boat built in sight (E24 M4 T6, the reviewer's R3-3).
+        AdventureEvent::BoatBuilt { tile: at, .. } => {
+            let boats = built(seen.observation, *at);
+            move_end(other).unwrap_or(pending).boats.extend(boats);
+        }
         _ => {}
     }
+}
+
+/// A `Landed`'s boat left on `at`, of type `boat` facing `facing` (its number); a facing past 7
+/// the timeline refuses (E24 M4 T6, the reviewer's R3-6: [`Sea::Unfaced`]); none off the map's
+/// positions.
+fn landed(at: WirePos, boat: u8, facing: u8) -> Option<Sea> {
+    let at = tile(at.x, at.y, at.level)?;
+    Some(match Facing::from_number(facing) {
+        Some(facing) => Sea::Land(LiveBoat {
+            at,
+            kind: boat,
+            facing,
+        }),
+        None => Sea::Unfaced(facing),
+    })
+}
+
+/// An empty boat of the record as the timeline draws it ([`LiveBoat`]); none off the map's
+/// positions or with a facing past 7.
+fn live_boat(boat: &Boat) -> Option<LiveBoat> {
+    let p = boat.tile;
+    Some(LiveBoat {
+        at: tile(p.x, p.y, p.level)?,
+        kind: boat.kind,
+        facing: Facing::from_number(boat.facing)?,
+    })
+}
+
+/// The boat `BoatBuilt` put on `at`, as the observation folded with it holds it (its type, the
+/// built boats' facing: `GameObservation::fold`'s).
+fn built(observation: &GameObservation, at: WirePos) -> Option<LiveBoat> {
+    observation
+        .adventure
+        .boats
+        .iter()
+        .find(|b| b.tile == at)
+        .and_then(live_boat)
 }
 
 /// The end of the move under way in `other`, none outside a command with a step.
@@ -844,6 +922,7 @@ fn extend(into: &mut OtherEnd, from: OtherEnd) {
     into.removed.extend(from.removed);
     into.flagged.extend(from.flagged);
     into.lost.extend(from.lost);
+    into.boats.extend(from.boats);
 }
 
 /// The changes `due` given to the turn table just pushed (`tables` long: E24 M4 T4c2, since T6
@@ -1050,6 +1129,7 @@ fn close(
         revealed: per_step,
         sea: walk.sea,
         battle: walk.battle,
+        boats: walk.boats,
     });
     ends.push(walk.end);
     walkers.push(walk.hero);

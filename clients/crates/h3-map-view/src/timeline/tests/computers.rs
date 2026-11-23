@@ -161,6 +161,7 @@ fn computing(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str)
             taken: Vec::new(),
             flags: Vec::new(),
             lost: Vec::new(),
+            boats: Vec::new(),
             list: None,
             first: false,
             open: false,
@@ -812,6 +813,36 @@ fn a_computers_boarding_and_landing() {
     let (l, why) = refused(&start, 1000);
     assert_eq!(why, moved(steps[1].at));
     assert!(l.boats.sailed[hero].is_none());
+    // E24 M4 T6 (the reviewer's R3-6): a landing with a facing past 7 refused, in sight and out
+    // of it.
+    let landing = |at: Pos| Unplayable::Landing([at.x, at.y, at.z].map(i32::from));
+    start.turns[0].walks[0].sea = vec![(2, Sea::Unfaced(9))];
+    let (_, why) = refused(&start, 1000);
+    assert_eq!(why, landing(steps[2].at));
+    start.computer.blackout = true;
+    let (_, why) = refused(&start, 400);
+    assert_eq!(why, landing(steps[2].at));
+}
+
+#[test]
+fn a_computers_boat_built_in_sight_at_its_move_s_end() {
+    // E24 M4 T6 (the reviewer's R3-3): a boat a computer's command builds in sight is on the map
+    // from its move's end, with the move's other changes.
+    let (mut start, ..) = computing("ai-walk");
+    let walk = &start.turns[0].walks[0];
+    let (after, at) = (walk.steps.len(), walk.steps[0].at);
+    let built = LiveBoat {
+        at,
+        kind: 2,
+        facing: Facing::Right,
+    };
+    start.turns[0].walks[0].ends = vec![End {
+        after,
+        boats: vec![built],
+        ..End::default()
+    }];
+    let l = run_from(&start, "ai-walk", 3000);
+    assert!(l.ai.is_none() && l.boats.empty.contains(&built));
 }
 
 /// The hero before put back as a turn's next hero is chosen (E24 M4 T4c2, design §5.18:

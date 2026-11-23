@@ -3907,6 +3907,12 @@ returned and the book closed when it costs at most the hero's mana), `screen_dis
   dissolves' boxes and steps, the boat moved and made, MCL-Q14 in both profiles, the sound's cue,
   the cursor, a second cast with the hero lifted), 430 in the library, 100 % of `h3-map-view`'s
   library (lines, regions, functions).
+- **As built at M4 T6** (the reviewer's R3-5): `summon_boat_cast`'s two view draws are
+  `view_draw_here` 0x40F870 (the exe map's reading), `adventure_view_draw` with its
+  `status_window_choose` 0x40F861, as `hero_loss_effect`'s; so each dissolve keeps the status
+  window its draw chose in the screen it dissolves from (`Loop::drawn_over`, shared with `lose`,
+  §5.15). The recordings cast with the hero's window, which an unforced draw leaves as it is: no
+  frame moved.
 
 ### 5.9 A record's start: the map's view (M4 T3a)
 
@@ -4324,7 +4330,7 @@ start (the same day; offered a cut by family, the flags first).
 - **A record's facts** (protocol v76, record format 5; the engine's games of `game-flags` and
   `game-boats` read first): a step onto a mine's or a Lighthouse's entrance is a `MoveHero` whose
   events are `HeroStepped`, `ObjectFlagged { object_type, anchor, owner }` (the visitor's
-  colour), `TilesRevealed` (none new here: the step's reveal covered the radius) and
+  player id, not its colour: as built at M4 T6 below), `TilesRevealed` (none new here: the step's reveal covered the radius) and
   `MovementChanged`; a dwelling's has `OfferOpened` after its flag, its answer `offer accept`
   then `OfferAnswered` and `CreaturesJoined` (the Guardhouse's 14 Pikemen; the engine tells
   `JoinRefused` without room and `NoneToRecruit` with none, not recorded here); a boarding
@@ -4374,6 +4380,18 @@ start (the same day; offered a cut by family, the flags first).
   tests (`tests/engine.rs`' flags, hires and boats, the turn's points; the timeline's record
   boarding, landing and refusal, the dissolve's date window); `check.sh` all gates,
   `h3-map-view`'s coverage at 100 %; the scoped verify.
+- **As built at M4 T6** (the reviewer's R3-1, R3-3, R3-4, R3-6, *provisional*): a visit's flag is
+  its `ObjectFlagged`'s owner, a player id, drawn in that player's colour by the observation then
+  (`Visit::flag`: the first of its command's events, its answers' or its battle's end); a visit
+  whose flag is all Part A builds of it (a dwelling's hire declined, not free or of class 20, a
+  Shipyard, an abandoned mine, a guarded dwelling) raises it alone (`Told::Flagged`: no box, the
+  minimap drawn after the visit), and another player's in sight at its move's end (R1-5). The
+  empty boats the record tells after its start (a `GameReveal`'s, a `BoatBuilt`'s) go on the map:
+  a walk's own and those told before it at its first step, with its reveal (`Move::boats`); those
+  with no walk of the viewer's after them at the next turn table's start (`NextTurn::boats`); a
+  computer's built in sight at its move's end (`End::boats`); one on a tile with an empty boat
+  replaces it. A `Landed` with a facing past 7 is refused where it is played (`Sea::Unfaced`,
+  `Unplayable::Landing`), as a boarding with no boat is.
 
 ### 5.16 The other players' turns from a record (M4 T4c)
 

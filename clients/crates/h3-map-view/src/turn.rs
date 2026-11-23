@@ -388,6 +388,7 @@ pub fn record_walks(
                         .filter_map(|&(at, colour)| object_at(at).map(|o| (o, colour)))
                         .collect(),
                     lost: map_heroes(&end.lost, ids),
+                    boats: end.boats.clone(),
                     seen: match end.after.checked_sub(1) {
                         Some(last) => walk.steps.get(last).is_some_and(|s| s.to.is_some()),
                         None => chosen,

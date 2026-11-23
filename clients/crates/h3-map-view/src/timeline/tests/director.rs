@@ -31,6 +31,7 @@ pub(super) fn east_walk() -> Move {
         revealed: vec![Vec::new(); 4],
         sea: None,
         battle: None,
+        boats: Vec::new(),
     }
 }
 

@@ -42,6 +42,11 @@
 //!   (*provisional*: where it lands the record does not tell, SRV-STUB-7).
 //! - **A dwelling of class 20** (R2-5): its hire tells nothing (not built: ADVEVENT 36 and its
 //!   names).
+//! - **A flag in its owner's colour** (the reviewers' R3-1, R3-4): the record's `ObjectFlagged`
+//!   names the owner by its player id, which `super::played` turns into its colour
+//!   ([`Visit::flag`]); a visit that raises a flag and tells nothing else Part A builds (a
+//!   dwelling's hire not built, a Shipyard, an abandoned mine, a guarded dwelling) raises it
+//!   alone ([`Told::Flagged`]), so that every flag the viewer's visits raise is drawn.
 
 use alloc::string::String;
 
@@ -150,6 +155,13 @@ pub enum Told {
         /// The experience gained.
         experience: i32,
     },
+    /// A flag raised and nothing else built (E24 M4 T6, the reviewers' R3-4, *provisional*): a
+    /// dwelling whose hire is declined, not free or of class 20, a Shipyard, an abandoned mine, a
+    /// guarded dwelling's battle won; the object the owner's from the visit's end on, no box.
+    Flagged {
+        /// The flag's colour.
+        flag: u8,
+    },
 }
 
 /// Which of a question's answers the record's takes: its OK or a choice's first picture, a
@@ -166,8 +178,15 @@ pub enum Answered {
 
 /// What `visit` of an object of `class` and `subclass` shows (the module's documentation), the
 /// hero named `hero` in Pandora's Box's boxes; none for another class or events that tell none.
+/// Since E24 M4 T6 (the reviewers' R3-1, R3-4) a visit whose flag the record raises shows at
+/// least that ([`Told::Flagged`]), in its owner's colour ([`Visit::flag`]).
 #[must_use]
-pub fn told(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told> {
+pub fn told(visit: &Visit, class: [u32; 2], hero: &str) -> Option<Told> {
+    shown(visit, class, hero).or_else(|| visit.flag.map(|flag| Told::Flagged { flag }))
+}
+
+/// What [`told`] builds of `visit` beyond its flag alone.
+fn shown(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told> {
     let events = &visit.events;
     // What a battle's end took off the map: the object (`ObjectRemoved`) or the hero
     // (`HeroRemoved`).
@@ -207,27 +226,16 @@ pub fn told(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<To
             _,
         )) = visit.answers.first()
     {
-        let flag = battle.ended.iter().find_map(|e| match e {
-            GameEvent::Adventure {
-                event: AdventureEvent::ObjectFlagged { owner, .. },
-            } => Some(*owner),
-            _ => None,
-        });
         return Some(Told::Guarded {
             battle: battle.started,
             winner: winner(result),
             lost: removed(&battle.ended, true),
-            flag,
+            flag: visit.flag,
             resource: u8::try_from(subclass).unwrap_or(u8::MAX),
             experience: gain(&battle.ended).experience,
         });
     }
-    let flag = events.iter().find_map(|e| match e {
-        GameEvent::Adventure {
-            event: AdventureEvent::ObjectFlagged { owner, .. },
-        } => Some(*owner),
-        _ => None,
-    });
+    let flag = visit.flag;
     let gained = gain(events);
     let taken = events.iter().any(|e| {
         matches!(
@@ -301,6 +309,7 @@ pub fn told(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<To
         ARENA | PANDORA | CHEST | SCHOOL => asked(visit, class, hero),
         MINE | LIGHTHOUSE => {
             let find = match class {
+                // stub: MCL-Q55 (a record's mine's income: the tables', SRV-STUB-10)
                 MINE => Find::Mine {
                     resource: u8::try_from(subclass).ok().filter(|r| *r <= 6)?,
                 },
@@ -590,7 +599,7 @@ impl Kept {
                 ..
             } => Self { no: true, ..none },
             Told::Guarded { .. } => Self { yes: true, ..none },
-            Told::Find { .. } | Told::Fight { .. } => none,
+            Told::Find { .. } | Told::Fight { .. } | Told::Flagged { .. } => none,
         }
     }
 }
@@ -624,7 +633,7 @@ pub fn lay(
             }
             let blocks = match &told {
                 Told::Fight { .. } => true,
-                Told::Guarded { .. } => false,
+                Told::Guarded { .. } | Told::Flagged { .. } => false,
                 Told::Find { taken, .. } => *taken,
                 Told::Ask { ask, .. } => ask.beside(),
             };

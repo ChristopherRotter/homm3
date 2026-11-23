@@ -184,6 +184,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   a record without it is told at every visit to its tile as a recording's (its `again`). Its
   level-ups ride on it (`Found::levels`), so a record's `Start::experience` and `level_ups` stay
   empty (the tables' thresholds are a recording's).
+- **A record names players by id, the map draws colours** (M4 T6, the reviewer's R3-1, design
+  §5.15): an event's `owner` or `player` (`ObjectFlagged`, `TurnStarted`, a hero's owner) is an
+  index into the observation's `players`, each with its own `colour`; every M4 game has Red id 0
+  and Blue id 1, so the two agree there. Turn it into the colour where the observation is at hand
+  (`engine::played`: `Visit::flag`, `OtherOpen`'s colour); a test with ids and colours apart
+  (`tests/engine.rs::a_record_s_flags_in_their_owners_colours`) catches a raw id drawn.
 - **A scripted game draws at random in both games** (M4 T4b1, design §5.14): the original's
   draws under the sequence's `seed` and the engine's under its own differ (a level-up's primary
   skill and offers): record the original first, read its draws from the live part (`[[level_up]]`),

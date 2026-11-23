@@ -98,6 +98,7 @@ fn next(turn: Turn) -> NextTurn {
         taken: Vec::new(),
         flags: Vec::new(),
         lost: Vec::new(),
+        boats: Vec::new(),
         list: None,
         first: false,
         open: false,
@@ -252,6 +253,27 @@ fn end_turn_without_its_question_starts_the_next_day_at_once() {
         l.run(162, &[Action::KeyUp(Hotkey::EndTurn)]),
         Err(Unplayable::Command(12))
     );
+}
+
+#[test]
+fn a_record_s_boats_told_are_on_the_map_as_the_turn_starts() {
+    // E24 M4 T6 (the reviewer's R3-3): a boat the record tells between two tables, with no walk
+    // of the viewer's after it (one built), on the map from the next table's start, which draws
+    // the whole screen.
+    let (mut start, actions, ..) = turning("turn-day");
+    let boat = LiveBoat {
+        at: Pos { x: 3, y: 3, z: 0 },
+        kind: 1,
+        facing: Facing::Right,
+    };
+    start.turns[0].boats = vec![boat];
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..=160 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+        assert_eq!(l.boats.empty.contains(&boat), t == 160, "{t}");
+    }
+    assert!(l.drawn().boats.empty.contains(&boat));
 }
 
 #[test]

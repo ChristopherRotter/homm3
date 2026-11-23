@@ -516,6 +516,9 @@ pub enum Unplayable {
     /// A walk's step the engine's record does not take (E24 M4 T4a2: a tile off the move's, or
     /// a walk past the record's last), by the tile stepped onto.
     Moved([i32; 3]),
+    /// A record's landing whose boat's facing the record gives past 7 (E24 M4 T6, the reviewer's
+    /// R3-6: [`Sea::Unfaced`]), by the tile stepped onto.
+    Landing([i32; 3]),
     /// A record played without a recording (E24 M4 T4c, `crate::director`): a walk to the tile
     /// whose hero the kingdom's list does not hold, or (the tile `[-1, -1, -1]`) the record not
     /// at its end by the limit.
@@ -552,6 +555,12 @@ impl fmt::Display for Unplayable {
                 write!(
                     f,
                     "a step onto ({x}, {y}, {z}) the record's walks do not take"
+                )
+            }
+            Self::Landing([x, y, z]) => {
+                write!(
+                    f,
+                    "a landing onto ({x}, {y}, {z}) whose boat's facing the record gives past 7"
                 )
             }
             Self::Record([-1, -1, -1]) => write!(f, "the record not at its end by the limit"),
@@ -965,6 +974,11 @@ pub struct Move {
     /// of the `GameEvents` whose `BattleStarted` began it; at the walk's end the map hands the
     /// battle over ([`Loop::battles`]). None: no battle.
     pub battle: Option<u32>,
+    /// The empty boats the viewer is told of since the walk before (E24 M4 T6, the reviewer's
+    /// R3-3, *provisional*: a record's `GameReveal`'s boats, its walk's own, and a `BoatBuilt`'s),
+    /// put on the map at its first step with its reveal, before a boarding there; one on a tile
+    /// with an empty boat replaces it.
+    pub boats: Vec<LiveBoat>,
 }
 
 /// A record's walk's last step with a boat (E24 M4 T4b2, design §5.15, *provisional*): the
@@ -977,6 +991,10 @@ pub enum Sea {
     /// The hero's boat left on its water tile, of its type and facing the record's way
     /// (`Landed`).
     Land(LiveBoat),
+    /// A `Landed` whose facing the record gives past 7 (E24 M4 T6, the reviewer's R3-6): no boat
+    /// the map can leave, so the step is refused where it is played ([`Unplayable::Landing`]), as
+    /// a boarding with no boat is.
+    Unfaced(u8),
 }
 
 /// The tiles the viewer's walks explored since the sequence's 0 (E24 M4 T4a2, design §5.13: a
@@ -1260,6 +1278,10 @@ pub struct NextTurn {
     /// The map's heroes taken off the map as the turn starts, by their indexes (as
     /// [`NextTurn::flags`]).
     pub lost: Vec<usize>,
+    /// The empty boats put on the map as the turn starts (E24 M4 T6, the reviewer's R3-3,
+    /// *provisional*: a record's boats told since the table before and before any walk of the
+    /// viewer's, a boat built; as [`NextTurn::flags`], nothing shown).
+    pub boats: Vec<LiveBoat>,
     /// The map's hero of each of the kingdom's heroes, slot by slot, none for one no map hero is
     /// (E24 M4 T6, the reviewer's R1-4: a record's, its list at the turn's start, a hero lost or
     /// hired since); none: the start's choices by their slots (a recording's).
@@ -1321,6 +1343,9 @@ pub struct End {
     /// The map's heroes off the map, drawn nowhere from then on (a hero lost in sight), by their
     /// indexes.
     pub lost: Vec<usize>,
+    /// The empty boats put on the map (E24 M4 T6, the reviewer's R3-3: a boat the command built
+    /// in sight, `BoatBuilt`).
+    pub boats: Vec<LiveBoat>,
     /// Whether the viewer sees the hero's tile there, by the record's judgement ([`Steps::seen`]:
     /// the move's last step's end told).
     pub seen: bool,
@@ -3078,6 +3103,7 @@ impl Loop {
             taken,
             flags,
             lost,
+            boats,
             list,
             ..
         } = next;
@@ -3087,7 +3113,7 @@ impl Loop {
             path,
         } = ended;
         self.place(&heroes);
-        self.changed(&taken, &flags, &lost);
+        self.changed(&taken, &flags, &lost, &boats);
         // The choices by the day's list (E24 M4 T6, R1-4): each hero's as it was, a hired one's
         // none.
         if let Some(list) = list {
@@ -3193,10 +3219,17 @@ impl Loop {
 
     /// What a turn's start changes at once ([`NextTurn::taken`], [`NextTurn::flags`],
     /// [`NextTurn::lost`]; E24 M4 T4c2, MCL-Q46 (c); E24 M4 T6, R1-5), also a computer's move's
-    /// end's ([`End`]): the objects taken off, the flags raised, the heroes off the map; the next
-    /// draw shows them.
-    fn changed(&mut self, taken: &[usize], flags: &[(usize, u8)], lost: &[usize]) {
+    /// end's ([`End`]): the objects taken off, the flags raised, the heroes off the map and (E24
+    /// M4 T6, R3-3) the boats told put on it; the next draw shows them.
+    fn changed(
+        &mut self,
+        taken: &[usize],
+        flags: &[(usize, u8)],
+        lost: &[usize],
+        boats: &[LiveBoat],
+    ) {
         self.take_off(taken);
+        self.put_boats(boats);
         for &flag in flags {
             self.raise(Some(flag));
         }
@@ -3258,11 +3291,12 @@ impl Loop {
             taken,
             flags,
             lost,
+            boats,
             open,
             ..
         } = next;
         self.place(&heroes);
-        self.changed(&taken, &flags, &lost);
+        self.changed(&taken, &flags, &lost, &boats);
         self.player = turn.player;
         // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*).
         let tracks = &self.rules.turn.computer;
@@ -3363,7 +3397,7 @@ impl Loop {
             if ai.ends.front().is_some_and(|e| e.after <= ai.done) {
                 let end = ai.ends.pop_front().unwrap_or_default();
                 let seen = ai.judged.map(|_| end.seen);
-                self.changed(&end.removed, &end.flags, &end.lost);
+                self.changed(&end.removed, &end.flags, &end.lost, &end.boats);
                 if !end.taken.is_empty() && self.ai_take(t, &end.taken, seen) {
                     return Ok(Some(false));
                 }
@@ -3493,6 +3527,7 @@ impl Loop {
                 }
             }
             Some(Sea::Land(boat)) => self.land_start(t, to.facing, boat),
+            Some(Sea::Unfaced(_)) => self.refuse(to.at, Unplayable::Landing),
             None => {}
         }
         self.ai_animate(t, to, single);
@@ -3562,6 +3597,7 @@ impl Loop {
                 self.boats.empty.push(boat);
                 self.sail(None);
             }
+            Some(Sea::Unfaced(_)) => self.refuse(at, Unplayable::Landing),
             None => {}
         }
     }
@@ -4082,7 +4118,16 @@ impl Loop {
             None => {
                 // Its flag raised before its question (E24 M4 T2d1: a dwelling's).
                 self.raise(found.flag);
-                self.ask(t, i)
+                if self.ask(t, i) {
+                    return true;
+                }
+                // A record's flag raised alone (E24 M4 T6, the reviewers' R3-4: what the visit
+                // shows besides is not built): the minimap drawn after the visit
+                // (`visit_and_update` 0x4AAAA0), the view at its next draw.
+                if found.flag.is_some() {
+                    self.draw_minimap();
+                }
+                false
             }
         }
     }
@@ -4756,20 +4801,28 @@ impl Loop {
     /// into the view drawn now, the palettes cycling on; `then` at its end. The view's draw
     /// chooses the status window, shown at once (E24 M4 T4b2: the date's frame stepped).
     fn lose(&mut self, t: u32, then: Then) {
+        let before = self.drawn_over(t);
+        if let Some(sound) = &mut self.sound {
+            sound.effect(t, &self.rules.finds.killfade);
+        }
+        self.dissolve(t, before, Gain::default(), false, then);
+    }
+
+    /// The view drawn for a dissolve, and the screen it dissolves from: the screen as last shown
+    /// with the status window that draw chose. The draw (`view_draw_here` 0x40F870, as
+    /// `hero_loss_effect` 0x4ACBB0 and `summon_boat_cast` 0x41C8A0 call it) runs
+    /// `adventure_view_draw`'s `status_window_choose` 0x40F861, and `status_date_update` 0x4511A0
+    /// shows the date's step at once, outside the box dissolved (E24 M4 T4b2: `game-boats`'
+    /// landing at 4250; since E24 M4 T6, the reviewer's R3-5, Summon Boat's two dissolves too).
+    fn drawn_over(&mut self, t: u32) -> Arc<Draw> {
         let mut before = self.drawn.clone();
         self.draw(t);
-        // The status window the draw chose is shown at once (`status_date_update` 0x4511A0: the
-        // date's step; E24 M4 T4b2, `game-boats`' landing at 4250), outside the view's middle.
         if before.kingdom.status != self.drawn.kingdom.status {
             Arc::make_mut(&mut before.kingdom)
                 .status
                 .clone_from(&self.drawn.kingdom.status);
         }
-        let before = Arc::new(before);
-        if let Some(sound) = &mut self.sound {
-            sound.effect(t, &self.rules.finds.killfade);
-        }
-        self.dissolve(t, before, Gain::default(), false, then);
+        Arc::new(before)
     }
 
     /// A dissolve's turn at `t` (`screen_dissolve` 0x602DC0; E17 design §7.25): step k shown at
@@ -4915,9 +4968,10 @@ impl Loop {
     /// Summon Boat cast (`adventure_spell` 0x41C490's case 0, `summon_boat_cast` 0x41C8A0; design
     /// §5.8, *provisional*: its boat the facts', its chance and refusals the engine's from Part B):
     /// the boat moved taken off its old tile; when that tile lies in the view on its level, its box
-    /// (the tables', [`Loop::boat_box`]) saved, the view drawn without it and dissolved into it in
-    /// eight steps, the palettes cycling on; then its arrival ([`Loop::arrive`]). Only Summon Boat
-    /// with one boat moved or made is built.
+    /// (the tables', [`Loop::boat_box`]) saved, the view drawn without it (the status window it
+    /// chooses shown at once, [`Loop::drawn_over`]) and dissolved into it in eight steps, the
+    /// palettes cycling on; then its arrival ([`Loop::arrive`]). Only Summon Boat with one boat
+    /// moved or made is built.
     fn summon(&mut self, t: u32, cast: Cast) -> Result<(), Unplayable> {
         if cast.spell != SUMMON_BOAT {
             return Err(Unplayable::Spell(cast.spell));
@@ -4929,8 +4983,7 @@ impl Loop {
         if let Some(from) = boat.from {
             self.boats.empty.retain(|b| b.at != from);
             if self.in_view(from) {
-                let before = Arc::new(self.drawn.clone());
-                self.draw(t);
+                let before = self.drawn_over(t);
                 let then = Then::Summoned(cast, boat);
                 let dissolving = self.cast_dissolve(t, before, None, from, then);
                 self.dissolve_over(t, dissolving);
@@ -4944,7 +4997,8 @@ impl Loop {
     /// Summon Boat's boat put on its new tile, its type and facing the facts' (a boat made, type
     /// 0 facing right, likewise), the spell's sound (the spell table's +0x4), the new tile's box
     /// saved (from the back buffer: `back`, the view a first dissolve drew, else the screen), the
-    /// view drawn with the boat and dissolved into it; the cast's end at the dissolve's
+    /// view drawn with the boat (as [`Loop::summon`]'s) and dissolved into it; the cast's end at
+    /// the dissolve's
     /// ([`Loop::cast_end`]), the actions `queued` and those given meanwhile after it.
     fn arrive(
         &mut self,
@@ -4958,8 +5012,7 @@ impl Loop {
         if let Some(sound) = &mut self.sound {
             sound.effect(t, &self.rules.cast.summon_boat);
         }
-        let before = Arc::new(self.drawn.clone());
-        self.draw(t);
+        let before = self.drawn_over(t);
         let mut dissolving = self.cast_dissolve(t, before, back, boat.to.at, Then::Cast(cast));
         dissolving.queued = queued;
         self.dissolve_over(t, dissolving);
@@ -5727,6 +5780,10 @@ impl Loop {
         let landing = match record {
             None => self.landing(next, direction),
             Some(Some(Sea::Land(boat))) => Some(boat),
+            Some(Some(Sea::Unfaced(_))) => {
+                self.refuse(next, Unplayable::Landing);
+                None
+            }
             Some(_) => None,
         };
         if let Some(boat) = landing {
@@ -6330,14 +6387,37 @@ impl Loop {
             walked.extend(tiles.iter().copied());
             self.walked_tiles = Arc::new(walked);
         }
+        // The boats told since the walk before, with its first step's reveal (E24 M4 T6, R3-3).
+        if k == 0
+            && let Some(w) = walk
+        {
+            self.put_boats(&w.boats);
+        }
+    }
+
+    /// The empty boats `boats` put on the map (E24 M4 T6, the reviewer's R3-3: a record's boats
+    /// told after its start, [`Move::boats`], [`NextTurn::boats`], [`End::boats`]), each in place
+    /// of an empty one on its tile: the view's next draw shows them.
+    fn put_boats(&mut self, boats: &[LiveBoat]) {
+        for &boat in boats {
+            self.boats.empty.retain(|b| b.at != boat.at);
+            self.boats.empty.push(boat);
+        }
     }
 
     /// A step off the engine's record (E24 M4 T4a2): the first of the millisecond refuses it
     /// when the millisecond ends ([`Loop::run`]).
     fn off(&mut self, next: Pos) {
+        self.refuse(next, Unplayable::Moved);
+    }
+
+    /// A step onto `next` the record refuses (E24 M4 T4a2; since E24 M4 T6 any refusal by the
+    /// tile, `why`: R3-6's landing): the first of the millisecond refuses it when the millisecond
+    /// ends ([`Loop::run`]).
+    fn refuse(&mut self, next: Pos, why: fn([i32; 3]) -> Unplayable) {
         if self.off_record.is_none() {
             let at = [i32::from(next.x), i32::from(next.y), i32::from(next.z)];
-            self.off_record = Some(Unplayable::Moved(at));
+            self.off_record = Some(why(at));
         }
     }
 

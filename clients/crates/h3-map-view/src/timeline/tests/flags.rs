@@ -8,60 +8,8 @@ use h3_ui::message::Style;
 
 use super::turns::{laid, started_by};
 
-/// The four sequences as `clients/map/to-record.toml` gives them (until they move into
-/// `sequences.toml`): their inputs and times.
-const SEQUENCES: &str = r#"
-[[sequence]]
-id = "flag-mine"
-situation = "seq-flag-mine"
-ms = 1800
-hero_speed = 4
-seed = 7
-why = "a neutral Sawmill without guards taken"
-inputs = [
-    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
-id = "flag-mine-blue"
-situation = "seq-flag-mine-blue"
-ms = 1800
-hero_speed = 4
-seed = 7
-why = "Blue's Ore Pit without guards taken by Red"
-inputs = [
-    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
-id = "flag-lighthouse"
-situation = "seq-flag-lighthouse"
-ms = 1800
-hero_speed = 4
-seed = 7
-why = "a neutral Lighthouse taken"
-inputs = [
-    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-]
-
-[[sequence]]
-id = "flag-dwelling"
-situation = "seq-flag-dwelling"
-ms = 2200
-hero_speed = 4
-seed = 7
-why = "a neutral Guardhouse taken, its hire accepted"
-inputs = [
-    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
-    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
-    { at = 1600, keydown = "Return" }, { at = 1660, keyup = "Return" },
-]
-"#;
-
-/// The sequences' situations, timelines and kept live parts.
+/// The sequences' situations, timelines and kept live parts (their inputs and times the committed
+/// `clients/map/sequences.toml`'s, [`SEQUENCES`]).
 const FLAGGING: [(&str, &str, &str, &str); 4] = [
     (
         "flag-mine",
@@ -232,4 +180,34 @@ fn a_flag_raised_again_or_by_another_colour() {
     l.raise(Some((5, 2)));
     l.raise(None);
     assert_eq!(l.owners.to_vec(), [(5, 2), FLAG]);
+}
+
+#[test]
+fn a_records_flag_raised_alone_at_the_walks_end() {
+    // E24 M4 T6 (the reviewers' R3-4): a record's visit whose flag is all the viewer builds (a
+    // dwelling's hire not built, a Shipyard): no box; at the step onto its entrance the flag
+    // raised, the minimap drawn with it (`visit_and_update`), the view at its next draw.
+    let (mut start, actions, ..) = flagging("flag-mine");
+    start.finds[0].first.clear();
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..=100 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert!(l.drawn().message.is_none() && l.boxed.is_none());
+    let [memory, _, minimap] = owners(&l);
+    assert_eq!((memory, minimap), (vec![FLAG], vec![FLAG]));
+    let drawn = (101..1000).find(|&t| {
+        l.run(t, &[]).unwrap();
+        l.drawn().owners.to_vec() == [FLAG]
+    });
+    assert!(drawn.is_some());
+    // A find of nothing at all (no box, no question, no flag): nothing raised or drawn.
+    start.finds[0].flag = None;
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..=100 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert_eq!(owners(&l), [vec![], vec![], vec![]]);
 }

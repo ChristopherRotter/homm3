@@ -229,6 +229,7 @@ fn the_days_left_then_the_weeks_message_one_after_the_other() {
         taken: Vec::new(),
         flags: Vec::new(),
         lost: Vec::new(),
+        boats: Vec::new(),
         list: None,
         first: false,
         open: false,
@@ -696,6 +697,7 @@ fn a_record_s_visit_from_beside_takes_its_move() {
         revealed: vec![Vec::new()],
         sea: None,
         battle: None,
+        boats: Vec::new(),
     };
     start.moves = Some(vec![onto(ENTRANCE, Some(1234))]);
     let run = |start: &Start, until: u32| {

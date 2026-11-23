@@ -890,6 +890,11 @@ impl<'a> Painter<'a> {
                         .collect(),
                     None => Vec::new(),
                 };
+                // The boats told since the table before (E24 M4 T6, R3-3: a boat built).
+                let boats = between
+                    .iter()
+                    .flat_map(|end| end.boats.iter().copied())
+                    .collect();
                 // The day's list by the record's (E24 M4 T6, R1-4); a computer's turn's none.
                 let list = record
                     .zip(ids.as_ref())
@@ -910,6 +915,7 @@ impl<'a> Painter<'a> {
                     taken,
                     flags,
                     lost,
+                    boats,
                     list,
                     first: i == 0 && record.is_some_and(|p| p.waits),
                     open: other.is_some_and(|o| o.open),
@@ -1361,6 +1367,9 @@ impl<'a> Painter<'a> {
                     found.ask = Some(question);
                     found.flag = flag.map(|colour| (o, colour));
                 }
+                // A flag raised and nothing else built (E24 M4 T6, the reviewers' R3-4): no box,
+                // the flag at the walk's end.
+                Visited::Flagged { flag } => found.flag = Some((o, flag)),
             }
             out.push(found);
         }

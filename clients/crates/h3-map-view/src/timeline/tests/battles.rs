@@ -389,6 +389,7 @@ fn record_walk(to: Pos, battle: Option<u32>) -> Move {
         revealed: vec![Vec::new()],
         sea: None,
         battle,
+        boats: Vec::new(),
     }
 }
 

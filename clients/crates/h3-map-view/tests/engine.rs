@@ -2330,6 +2330,7 @@ fn what_a_record_s_visits_tell() {
         events,
         answers: Vec::new(),
         battle: None,
+        flag: None,
     };
     let found = |class, events| visits::told(&visit(events), [class, 0], "Rion");
     let find = |told: Option<Told>| match told {
@@ -2653,6 +2654,7 @@ fn what_a_record_s_box_tells() {
             ),
         ],
         battle: None,
+        flag: None,
     };
     let Some(Told::Ask {
         ask: Ask::OpenBox { rewards, hero },
@@ -2755,6 +2757,7 @@ fn a_record_s_visits_laid_out_each_on_its_own() {
             events,
             answers,
             battle: None,
+            flag: None,
         }
     };
     let mut visits = vec![
@@ -2958,6 +2961,7 @@ fn what_a_record_s_flags_tell() {
         hero_type: None,
         held: engine::Held::default(),
         levels: Vec::new(),
+        flag: events.contains(&flagged).then_some(2),
         events,
         answers,
         battle: None,
@@ -2970,7 +2974,8 @@ fn what_a_record_s_flags_tell() {
         _ => None,
     };
     // A mine of its type's resource and a Lighthouse flagged: their finds in the record's
-    // colour; unflagged (another's own visit), an abandoned mine's type: nothing.
+    // colour (the visit's, as `played` gives it: 2 here); unflagged (another's own visit):
+    // nothing; an abandoned mine's type (E24 M4 T6, the reviewers' R3-4): its flag alone.
     let flags = visit(vec![flagged.clone()], Vec::new());
     assert_eq!(
         flag(told(&flags, 53, 0)),
@@ -2981,7 +2986,7 @@ fn what_a_record_s_flags_tell() {
         Some((Find::Lighthouse, false, Some(2)))
     );
     assert_eq!(told(&visit(Vec::new(), Vec::new()), 53, 0), None);
-    assert_eq!(told(&flags, 53, 7), None);
+    assert_eq!(told(&flags, 53, 7), Some(Told::Flagged { flag: 2 }));
     // A dwelling flagged, its hire accepted: the creatures joined free; one of the visitor's own
     // not flagged; declined, or none joined: nothing.
     let accept = Answer::Offer {
@@ -3046,8 +3051,13 @@ fn what_a_record_s_flags_tell() {
         None
     );
     assert_eq!(hire(vec![flagged.clone()], Vec::new()), None);
+    // Its hire not built, the flag raised alone (E24 M4 T6, the reviewers' R3-4): none told
+    // after an accept, declined, a class-20 dwelling's; unflagged, nothing.
+    let alone = Some(Told::Flagged { flag: 2 });
+    let untold = visit(vec![flagged.clone()], vec![(accept, Vec::new())]);
+    assert_eq!(told(&untold, 17, 0), alone);
     let declined = visit(
-        vec![flagged],
+        vec![flagged.clone()],
         vec![(
             Answer::Offer {
                 consent: Consent::Decline,
@@ -3055,8 +3065,10 @@ fn what_a_record_s_flags_tell() {
             Vec::new(),
         )],
     );
-    assert_eq!(told(&declined, 20, 0), None);
-    assert_eq!(told(&declined, 17, 0), None);
+    assert_eq!(told(&declined, 20, 0), alone);
+    assert_eq!(told(&declined, 17, 0), alone);
+    // A Shipyard's (87) flag likewise.
+    assert_eq!(told(&flags, 87, 0), alone);
     assert_eq!(told(&visit(Vec::new(), Vec::new()), 17, 0), None);
     // A class-20 dwelling's hire accepted (E24 M4 T6, the reviewer's R2-5): nothing (ADVEVENT 36
     // and its names not built), where class 17's of the same subclass asks its hire.
@@ -3072,10 +3084,122 @@ fn what_a_record_s_flags_tell() {
 }
 
 #[test]
+fn a_record_s_flags_in_their_owners_colours() {
+    // E24 M4 T6 (the reviewers' R3-1, R3-4): a visit's flag is its `ObjectFlagged`'s owner, a
+    // player id, drawn in that player's colour (here Red, id 0, colour 5, and Blue, id 1, colour
+    // 3): in its command's events (the first only), an answer's or its battle's end; none
+    // without one. A mine taken, then taken back by the other: each visit its own flag.
+    use h3_map_view::engine::visits::{self, Told};
+    use h3_map_view::finds::Find;
+    use h3_protocol::wire::game::{
+        AdventureCommand, AdventureEvent, Answer, Consent, GameCommand, GameEvent, Pos,
+    };
+    use h3_protocol::wire::{Command as BattleCommand, Outcome, Side};
+    let g = game();
+    let mut observation = g.observation.clone();
+    observation.players[0].colour = 5;
+    observation.players[1].colour = 3;
+    let red = observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .id;
+    let pos = |x, y| Pos { x, y, level: 0 };
+    let walk = |x, y| {
+        accepted(GameCommand::Adventure {
+            command: AdventureCommand::MoveHero {
+                hero: red,
+                path: vec![pos(x, y)],
+            },
+        })
+    };
+    let flagged = |owner| GameEvent::Adventure {
+        event: AdventureEvent::ObjectFlagged {
+            object_type: 53,
+            anchor: pos(5, 4),
+            owner,
+        },
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&observation),
+            walk(5, 4),
+            events(vec![flagged(0), flagged(1)]),
+            walk(6, 4),
+            events(Vec::new()),
+            accepted(GameCommand::Answer {
+                answer: Answer::Offer {
+                    consent: Consent::Accept,
+                },
+            }),
+            events(vec![flagged(1)]),
+            walk(7, 4),
+            events(vec![GameEvent::BattleStarted {
+                heroes: [Some(red), None],
+                tile: pos(7, 4),
+            }]),
+            accepted(GameCommand::Battle {
+                command: BattleCommand::Defend {},
+            }),
+            events(vec![
+                GameEvent::BattleEnded {
+                    heroes: [Some(red), None],
+                    result: Outcome::Victory {
+                        side: Side::Attacker,
+                    },
+                },
+                flagged(0),
+            ]),
+            walk(8, 4),
+            events(Vec::new()),
+            // The first walk's mine visited again: the flag the record raises then, Blue's.
+            walk(5, 4),
+            events(vec![flagged(1)]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let flags: Vec<Option<u8>> = played.visits.iter().map(|v| v.flag).collect();
+    assert_eq!(flags, [Some(5), Some(3), Some(5), None, Some(3)]);
+    // Laid out on a mine (the first and the last walk's) and a Shipyard: each visit's own flag,
+    // a Shipyard's alone.
+    let object_at = |at: h3_map::model::Pos| match at.x {
+        5 => Some((0, [53, 0])),
+        6 => Some((1, [87, 0])),
+        _ => None,
+    };
+    let text = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml"),
+    )
+    .unwrap();
+    let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
+    let laid = visits::lay(&played.visits, object_at, &tables.map.finds, |_| {
+        String::new()
+    });
+    let told: Vec<(usize, Told)> = laid.into_iter().map(|l| (l.walk, l.told)).collect();
+    let mine = |flag| Told::Find {
+        find: Find::Mine { resource: 0 },
+        gain: h3_map_view::finds::Gain::default(),
+        taken: false,
+        flag: Some(flag),
+    };
+    assert_eq!(
+        told,
+        [(0, mine(5)), (1, Told::Flagged { flag: 3 }), (4, mine(3))]
+    );
+}
+
+#[test]
 fn a_record_s_boats() {
     use h3_map_view::live::{Facing, LiveBoat};
     use h3_map_view::timeline::Sea;
-    use h3_protocol::wire::game::{AdventureCommand, AdventureEvent, GameCommand, GameEvent, Pos};
+    use h3_protocol::wire::game::{
+        AdventureCommand, AdventureEvent, AdventureReveal, Answer, Boat, Consent, GameCommand,
+        GameEvent, GameReveal, Pos,
+    };
     let g = game();
     let hero = |owner| {
         g.observation
@@ -3112,6 +3236,44 @@ fn a_record_s_boats() {
             facing,
         })
     };
+    let seen = |at, facing| Boat {
+        tile: pos(at, at),
+        kind: 0,
+        facing,
+    };
+    let built = |at, boat_type| {
+        adventure(AdventureEvent::BoatBuilt {
+            tile: pos(at, at),
+            boat_type,
+        })
+    };
+    // A boat off the map's positions: left out.
+    let off = Boat {
+        tile: Pos {
+            x: 300,
+            y: 1,
+            level: 0,
+        },
+        kind: 0,
+        facing: 0,
+    };
+    let reveal = |boats| ServerMessage::GameReveal {
+        n: 52,
+        reveal: GameReveal {
+            adventure: AdventureReveal {
+                viewer: 0,
+                palette: Vec::new(),
+                areas: Vec::new(),
+                heroes: Vec::new(),
+                objects: Vec::new(),
+                boats,
+                towns: Vec::new(),
+            },
+            heroes: Vec::new(),
+            towns: Vec::new(),
+            garrisons: Vec::new(),
+        },
+    };
     let record = text(
         &g.header,
         &[
@@ -3129,24 +3291,122 @@ fn a_record_s_boats() {
             moved(12, 10),
             events(vec![stepped(12, 10), landed(red, 6), landed(blue, 2)]),
             moved(13, 10),
-            events(vec![stepped(13, 10), landed(red, 9)]),
+            events(vec![
+                stepped(13, 10),
+                landed(red, 9),
+                // One off the map's positions: none, the landing before kept.
+                adventure(AdventureEvent::Landed {
+                    hero: red,
+                    boat: 1,
+                    at: Pos {
+                        x: 300,
+                        y: 10,
+                        level: 0,
+                    },
+                    facing: 0,
+                }),
+            ]),
             // Another hero's boarding: no walk of its own open.
             events(vec![adventure(AdventureEvent::Boarded {
                 hero: blue,
                 boat: 0,
                 at: pos(30, 30),
             })]),
+            // E24 M4 T6 (the reviewer's R3-3): a walk's reveal's boats (one with no facing left
+            // out), the walk's; a boat built after it, the next walk's; one built with no walk
+            // after it, the next turn table's.
+            moved(14, 10),
+            events(vec![stepped(14, 10)]),
+            reveal(vec![seen(20, 3), seen(25, 9), off]),
+            accepted(GameCommand::Answer {
+                answer: Answer::Offer {
+                    consent: Consent::Accept,
+                },
+            }),
+            events(vec![built(21, 1)]),
+            reveal(vec![seen(26, 0)]),
+            moved(15, 10),
+            events(vec![stepped(15, 10), built(27, 0)]),
+            accepted(GameCommand::EndTurn {}),
+            events(vec![
+                built(22, 2),
+                GameEvent::TurnEnded { player: 0 },
+                GameEvent::TurnStarted { player: 1 },
+            ]),
+            // Blue's: one built at its move's end, one with no step the next table's.
+            events(vec![
+                adventure(AdventureEvent::HeroStepped {
+                    hero: blue,
+                    from: Some(pos(30, 30)),
+                    to: Some(pos(31, 30)),
+                }),
+                built(23, 0),
+            ]),
+            events(vec![built(24, 1)]),
+            events(vec![
+                GameEvent::TurnEnded { player: 1 },
+                GameEvent::DayStarted { day: 2 },
+                GameEvent::TurnStarted { player: 0 },
+            ]),
         ],
     );
     let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
     let played = engine::played(&loaded, &g.art, rules()).unwrap();
     let seas: Vec<_> = played.moves.iter().map(|m| m.sea).collect();
+    let tile = |x, y| h3_map::model::Pos { x, y, z: 0 };
     let boat = LiveBoat {
-        at: h3_map::model::Pos { x: 11, y: 10, z: 0 },
+        at: tile(11, 10),
         kind: 1,
         facing: Facing::Left,
     };
-    assert_eq!(seas, [Some(Sea::Board(2)), Some(Sea::Land(boat)), None]);
+    // E24 M4 T6 (the reviewer's R3-6): a landing with a facing past 7 refused where it is played.
+    assert_eq!(
+        seas,
+        [
+            Some(Sea::Board(2)),
+            Some(Sea::Land(boat)),
+            Some(Sea::Unfaced(9)),
+            None,
+            None
+        ]
+    );
+    let boats: Vec<Vec<LiveBoat>> = played.moves.iter().map(|m| m.boats.clone()).collect();
+    let empty = |at, kind, facing| LiveBoat { at, kind, facing };
+    assert_eq!(
+        boats,
+        [
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            vec![empty(tile(20, 20), 0, Facing::DownRight)],
+            // A built boat faces as the fold builds it; one revealed with no walk open, and one
+            // built during the walk, the walk's too.
+            vec![
+                empty(tile(21, 21), 1, Facing::Right),
+                empty(tile(26, 26), 0, Facing::Up),
+                empty(tile(27, 27), 0, Facing::Right),
+            ],
+        ]
+    );
+    let between: Vec<(usize, Vec<LiveBoat>)> = played
+        .between
+        .iter()
+        .map(|(turn, end)| (*turn, end.boats.clone()))
+        .collect();
+    // The viewer's before Blue's table, Blue's stepless one before the viewer's next.
+    assert_eq!(
+        between,
+        [
+            (0, vec![empty(tile(22, 22), 2, Facing::Right)]),
+            (1, vec![empty(tile(24, 24), 1, Facing::Right)])
+        ]
+    );
+    let ends: Vec<Vec<LiveBoat>> = played.others[0].walks[0]
+        .ends
+        .iter()
+        .map(|e| e.boats.clone())
+        .collect();
+    assert_eq!(ends, [vec![empty(tile(23, 23), 0, Facing::Right)]]);
 }
 
 #[test]
@@ -3361,6 +3621,7 @@ fn what_a_record_s_battles_tell() {
         levels: Vec::new(),
         events: Vec::new(),
         answers,
+        flag: ended.contains(&flagged).then_some(0),
         battle: Some(engine::Battled { started: 4, ended }),
     };
     let fight =
@@ -3449,7 +3710,10 @@ fn what_a_record_s_battles_tell() {
         _ => None,
     };
     assert_eq!(
-        guarded(vec![won.clone(), experience, flagged], vec![accept.clone()]),
+        guarded(
+            vec![won.clone(), experience, flagged.clone()],
+            vec![accept.clone()]
+        ),
         Some((4, 0, false, Some(0), 7, 15))
     );
     assert_eq!(
