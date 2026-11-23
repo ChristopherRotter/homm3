@@ -120,6 +120,13 @@ pub enum TownCommand {
         /// The town.
         town: u16,
     },
+    /// Buys a spell book at the Mage Guild of a town of the actor's for its visitor, else its
+    /// garrison hero, for the town part's price; then the town's heroes learn its guild's spells
+    /// (TWN-GLD-007; E09 T49b, v80).
+    BuySpellBook {
+        /// The town.
+        town: u16,
+    },
 }
 
 /// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v64).
@@ -702,6 +709,12 @@ pub enum TownReject {
     UnknownSlot {},
     /// The slot holds no hero (TWN-TAV-003).
     EmptySlot {},
+    /// No Mage Guild stands in the town to sell a spell book (TWN-GLD-007; E09 T49b, v80).
+    NoGuild {},
+    /// No hero stands in the town, neither a visitor nor a garrison hero (TWN-GLD-007; v80).
+    NoHero {},
+    /// The town's hero wears a spell book (TWN-GLD-007; v80).
+    HasSpellBook {},
 }
 
 /// Why the adventure map refused a command (`h3_adventure::AdventureCommandError`); a step is

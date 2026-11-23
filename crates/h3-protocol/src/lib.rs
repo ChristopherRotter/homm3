@@ -243,8 +243,11 @@ pub mod wire;
 /// `wire::game::TownBuildings`' `guild`, the shown spells by level in slot order, `aurora` and
 /// `vortex`), folded from `TownChanged` as the rest of the buildings. v79 (E09 T49a2, the town
 /// lane's, `cross-lane`): `TownCommand::Open` (TWN-GLD-006: a town screen's opening, its Mana
-/// Vortex and its guild's spells), no new refusal or event.
-pub const PROTOCOL_VERSION: u32 = 79;
+/// Vortex and its guild's spells), no new refusal or event. v80 (E09 T49b, the town lane's,
+/// `cross-lane`): `TownCommand::BuySpellBook` (TWN-GLD-007: a spell book bought at a town's Mage
+/// Guild for its hero) and its refusals `TownReject::NoGuild`, `NoHero`, `HasSpellBook`; no new
+/// event (the book and the learning are `HeroChanged`).
+pub const PROTOCOL_VERSION: u32 = 80;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

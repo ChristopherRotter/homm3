@@ -5984,3 +5984,72 @@ user kept T49a2 whole** (decision 193).
   inbox, the AI lane's and the server lane's). No hash moved.
 - **Found:** a stray `<<<<<<< HEAD` line in the AI lane's `QUEUE.md` on `master` (no other
   marker): removed with this task's inbox note there.
+
+### T49b — a spell book bought at a town's Mage Guild, `TownCommand::BuySpellBook`: the rule, its listing, the wire, the word, the env's entry (2026-11-23)
+
+One session, the user present at the start; branch `town/e09-t49b` (`cross-lane`: the adventure
+lane's `h3-heroes` `spells.rs`, `h3-files`' replay word, `h3-sim`'s replay version and
+`src/adventure/` (action encoding v19, the AI lane's paths; the town map's seed), the 111 goldens'
+`format` line, `h3-map`'s `tests/play.rs`, `h3-cli`'s literals; the server lane's
+`h3-protocol`; the adventure workload `day-start-builds-36`; with the user's consent). Starting
+point: `master` at f1c4a53 (#1128 merged; the setup's light gates only, CI's fingerprint on
+`master`'s code). The user's computer was connected at the start: its shell worked this time;
+71 files staged (SHA-256 checked against `docs/formats/installation.md`), the repo cloned from
+GitHub. The agent recommended a cut in two (the rule with the wire and the word, nothing listed;
+then the listing with the env, the seeds and the benchmarks); **the user kept T49b whole**
+(decision 194).
+
+- **The town's half** (`h3-towns`): `TownCommand::BuySpellBook { town }`, the refusals
+  `NoGuild`, `NoHero`, `HasSpellBook`; `check_spell_book` (a standing guild through the part's
+  derived roles, the part's `spell_book_price`); `guild_offers` with `GuildOffers` (the
+  listing's two questions, the opening's gift and the book's price, the derived roles and what
+  supersedes the guild read once: the private `GuildRead`, `Gift`; `opening_gives` on them, the
+  same answers). The fixture's `building` and `roles` crate-public for a test.
+- **The heroes** (`h3-heroes`, the adventure lane's): `wears_spell_book` (the private
+  `wears_book`) and `spell_book` (the ruleset's first artifact with the `spell_book` effect).
+- **The game** (`h3-game`'s `town/guild.rs`): `buy_book` (the store's town, the owner,
+  `check_spell_book`, the ruleset's book, the visitor else the garrison hero, its book, the
+  treasury; then the price, `AddArtifact`, the learning) dispatched from `town::command`;
+  `offers` (both heroes, then `guild_offers`, then the treasury, the ruleset's book and the
+  hero's own book last) replacing T49a2's `opens`, chained in `legal_builds` after the hires and
+  before the moves, the opening and the book carried as town commands and mapped once.
+- **The wire** (protocol **v80**): the command both ways, the three refusals. **The replays:**
+  format **v25** (`town book <town>`), the 111 goldens' `format` line only, `h3-cli`'s and
+  `h3-sim`'s literals. **The env** (encoding **v19**): `SPELL_BOOK` = 104 after `TOWN_OPEN`,
+  `tileless` ending before both, `tile_mask` (both through `guild_command`), `decode`, `encode`,
+  `Action::spell_book`; the layout test and the mask property (`check_town_heroes`).
+- **The town map's seed** (`h3-sim`'s `tests/towns.rs`): seed 2541 met no siege won once the
+  agent bought books; a search over the seeds 1 to 3 000 (a throwaway release test without the
+  masks, 510 s) found four meeting every feature, 277 the shortest (657 steps, 30 builds, 29
+  dialogs, 9 hires, a book); `Played` counts the purchases and the test asks for one. The fork
+  test's seed 6 held.
+- **The plans** (`h3-map`'s `play.rs`): `town_builds` probes every town's purchase after its
+  opening; `check_town_book` reads a listed one apart; `check_conservation` takes its price;
+  `Step::Town` plays a listed purchase in one step of eight (`n % 8 == 7`).
+- **Tests:** the game's four (`town/tests/book.rs`); `h3-towns'`
+  `a_spell_book_is_sold_where_a_mage_guild_stands_for_the_part_s_price` and the opening's test
+  checking `guild_offers` against `opening_gives` and `check_spell_book` (4 parts, 9 built sets,
+  18 heroes alone and in pairs); `h3-heroes'` Titan's Thunder test with the two queries;
+  `h3-files`' round trip and four refusals; the protocol's round trip and rejections (149).
+- **Catalog:** TWN-GLD-007 entered `implemented` (the code reading, VCMI, the wiki and the
+  manual); TWN-GLD-005 names the purchase.
+- **The bench** (`master` built in `target/wt-master`, per function; `legal-towns-36` measured on
+  `master`'s games with the agent made to skip the purchase): +5.54 % at the first build
+  (`sells_book` and `check_spell_book` for every owned town, the book's price once a listing,
+  the chain carrying two `Option<GameCommand>`s and `legal_builds` no longer inlined), +4.75 %
+  with the commands carried as town commands, +3.63 % with the price asked after the guild,
+  +2.77 % with the opening and the book reading the derived roles once (`guild_offers`), +1.58 %
+  with the hero's own book (an effects walk, about 170 Ir) asked last: inside the gate, no
+  re-baseline. With the purchase in the agent's draw every workload within its gate but
+  `day-start-builds-36` (-2.54 %, the games changed course: master 3 528 759 in the same
+  sandbox, the same functions in the same shares), re-baselined with the reason;
+  `random-play-bonuses-36` +1.65 % the largest, as at T49a2.
+- **Versions:** protocol v80, adventure replay format v25, adventure action encoding v19; the
+  adventure lane's planned v80, v25 and v19 (E08 T143, T144) become v81, v26 and v20 (its
+  inbox, the AI lane's and the server lane's). No hash moved.
+- **CI's first run** (#1136) failed in `every_step_keeps_the_commands_invariants` (seed `cc
+  8b2ce4c0…`, an AB plan of side 16): a town hire in a Dungeon town took the Mana Vortex (T49a1)
+  and cleared the week flag, which `check_towns` (the oracle over every command) did not know;
+  the plans' games met it once the books changed their course. `check_towns` sets the flag aside,
+  allowing it to clear with a `SetSpellPoints` told for the town's hero and to be set at a
+  week's start, told to the owner; the seed added to `proptest-regressions/tests/play.txt`.
