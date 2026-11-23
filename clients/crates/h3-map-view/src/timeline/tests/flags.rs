@@ -137,6 +137,8 @@ fn flagged(id: &str) -> Found {
         ask,
         flag: Some(FLAG),
         fight: None,
+        walk: None,
+        levels: Vec::new(),
     }
 }
 

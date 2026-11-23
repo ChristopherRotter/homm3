@@ -127,6 +127,7 @@ use h3_map::model::Pos;
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_ui::message::{self as boxes, Key, MessageBox, Open, Outcome};
+use h3_ui::ui::Item;
 
 use crate::asks::Fade;
 use crate::finds::{FindArt, Gain, pickup};
@@ -918,11 +919,12 @@ pub struct Start {
     /// not played.
     pub town: Option<TownBoxes>,
     /// The selected hero's experience at 0 (E24 M4 T2c, design §5.5, *provisional*: a
-    /// situation's, which the map gives it; the engine's from Part B): the levels a visit's
-    /// experience reaches from it. None: not known (a new game's draw), and no level is reached.
+    /// situation's, which the map gives it): the levels a visit's experience reaches from it.
+    /// None: not known (a new game's draw; since E24 M4 T6, R2-3, a record's, whose finds carry
+    /// their own level-ups, [`Found::levels`]), and no level is reached.
     pub experience: Option<u32>,
     /// The selected hero's level-ups' dialogs, by their level (E24 M4 T2c: the adapter's, laid
-    /// out from a recording's facts).
+    /// out from a recording's facts; none for a record's, R2-3).
     pub level_ups: Vec<LevelBox>,
     /// The boats at 0 (E24 M4 T2d2, design §5.7: the live part's, [`Boats::of`]).
     pub boats: Boats,
@@ -1042,6 +1044,16 @@ pub struct Found {
     /// The battle the visit begins at once (E24 M4 T5b2, design §5.21: a savage monster's from
     /// beside): the attack drawn, the battle's switch, then its result on the map.
     pub fight: Option<Fight>,
+    /// A record's visit (E24 M4 T6, the reviewer's R2-1): the record's walk (its place among
+    /// [`Start::moves`]) whose end visits it, told at that visit alone (each of a record's visits
+    /// to a tile is a find of its own, with its own boxes, gain, flag and level-ups); none: a
+    /// recording's, told at every visit to its tile (its first boxes, then [`Found::again`]).
+    pub walk: Option<usize>,
+    /// A record's visit's level-ups (E24 M4 T6, the reviewer's R2-3: the record's own, any
+    /// hero's), in order: due once the visit's experience is shown ([`Loop::gain`]), opened where
+    /// the visit's handler calls `hero_level_up` as [`Start::level_ups`]' are; none for a
+    /// recording's (the tables' thresholds).
+    pub levels: Vec<LevelBox>,
 }
 
 impl Found {
@@ -1719,6 +1731,10 @@ pub struct Loop {
     hero_level: u8,
     experienced: Option<usize>,
     level_ups: Arc<Vec<LevelBox>>,
+    /// A record's find whose visit is under way and whose level-ups wait for its experience, and
+    /// the level-ups due (E24 M4 T6, the reviewer's R2-3: [`Found::levels`]).
+    leveling: Option<usize>,
+    due_levels: VecDeque<LevelBox>,
     /// The boats in memory and the map's water ([`Start::boats`], [`Start::water`]), and the boat's
     /// visit the step under way ends with (E24 M4 T2d2).
     boats: Boats,
@@ -1735,6 +1751,9 @@ pub struct Loop {
     moves: Option<Arc<Vec<Move>>>,
     next_move: usize,
     walking: Option<(usize, usize)>,
+    /// The engine's walk taken last (E24 M4 T6, R2-1: a record's find is its end's,
+    /// [`Found::walk`]); none before the first or past the last.
+    last_move: Option<usize>,
     walked_tiles: Walked,
     off_record: Option<Unplayable>,
     /// The battles handed over so far (E24 M4 T5b1): each walk's end that began one, its
@@ -1824,6 +1843,9 @@ enum After {
     Answer(usize, Box<Answer>),
     /// A dissolve's end: the step's end, then the actions given meanwhile.
     Step(Vec<Action>),
+    /// A visit's end with nothing more to show (E24 M4 T6, the reviewer's R2-3: a battle whose
+    /// monster stands, [`Loop::visited`]).
+    Visited(usize),
 }
 
 /// An object's dissolve under way (E24 M4 T2a2 part B, design §5.3): its start, the draw before
@@ -2150,6 +2172,8 @@ impl Loop {
             hero_level: start.experience.map_or(1, |e| rules.level_up.level_of(e)),
             experienced: start.index,
             level_ups: Arc::new(start.level_ups.clone()),
+            leveling: None,
+            due_levels: VecDeque::new(),
             boats: start.boats.clone(),
             water: Arc::clone(&start.water),
             aboard: None,
@@ -2159,6 +2183,7 @@ impl Loop {
             moves: start.moves.clone().map(Arc::new),
             next_move: 0,
             walking: None,
+            last_move: None,
             battles: Vec::new(),
             walked_tiles: Arc::new(Vec::new()),
             off_record: None,
@@ -2665,6 +2690,33 @@ impl Loop {
     #[must_use]
     pub fn boxed(&self) -> bool {
         self.boxed.is_some()
+    }
+
+    /// Whether the open box takes an answer (E24 M4 T6, the reviewer's R2-2: the record player's):
+    /// a question or a choice, a level-up's dialog, End Turn's question; not a find's box, an
+    /// answer's, the week's message (each closed by Enter, the record's next answer kept for the
+    /// box it answers: Pandora's Box's map text before its question).
+    #[must_use]
+    pub fn asks(&self) -> bool {
+        self.boxed
+            .as_ref()
+            .is_some_and(|b| matches!(b.told, Told::Asked(..) | Told::Level(_) | Told::Question))
+    }
+
+    /// The middle of the open box's choice frame `n` (E24 M4 T6, the reviewer's R2-2: where the
+    /// record player clicks the picture its answer chose, as a player's mouse would; a chest's,
+    /// the Arena's, a School's, `CHOICE + n`); none without a choice's box open.
+    #[must_use]
+    pub fn choice_at(&self, n: usize) -> Option<[i32; 2]> {
+        let dialog = &self.boxed.as_ref()?.open.message.dialog;
+        let id = boxes::CHOICE.checked_add(u16::try_from(n).ok()?)?;
+        dialog.items.iter().find_map(|item| match item {
+            Item::Area(a) if a.id == id => Some([
+                dialog.place[0] + a.at[0] + a.size[0] / 2,
+                dialog.place[1] + a.at[1] + a.size[1] / 2,
+            ]),
+            _ => None,
+        })
     }
 
     /// An action while the mouse holds a button down (`def_button_message`'s own loop from
@@ -3880,7 +3932,8 @@ impl Loop {
     /// one at 0, *provisional*). A level whose dialog the facts lack is refused in a recording
     /// ([`Unplayable::LevelUp`]) and passed over live.
     fn levels_due(&mut self) -> Result<VecDeque<LevelBox>, Unplayable> {
-        let mut due = VecDeque::new();
+        // A record's visit's own, due since its experience was shown (E24 M4 T6, R2-3).
+        let mut due = core::mem::take(&mut self.due_levels);
         let Some(experience) = self.experience.filter(|_| self.index == self.experienced) else {
             return Ok(due);
         };
@@ -3981,6 +4034,10 @@ impl Loop {
                 self.finish(t, true);
                 self.resume(t, queued)
             }
+            After::Visited(i) => {
+                self.visited(t, i);
+                Ok(())
+            }
         }
     }
 
@@ -3993,13 +4050,14 @@ impl Loop {
         let Some(at) = self.hero.map(|h| h.at) else {
             return false;
         };
-        let Some(i) = self
-            .finds
-            .iter()
-            .position(|f| f.at == at && f.blocks.is_none())
-        else {
+        // A record's find is its walk's end's (E24 M4 T6, R2-1): the walk just ended.
+        let walk = self.last_move;
+        let Some(i) = self.finds.iter().position(|f| {
+            f.at == at && f.blocks.is_none() && f.walk.is_none_or(|w| Some(w) == walk)
+        }) else {
             return false;
         };
+        self.visiting(i);
         let found = Arc::clone(&self.finds);
         let found = &found[i];
         if self.answered.contains(&i) {
@@ -4195,10 +4253,20 @@ impl Loop {
     /// blocks its tile (since T2b2 [`Found::blocks`]: a guarded pile's too), not taken yet; its
     /// place among the finds.
     fn beside(&self, at: Pos) -> Option<usize> {
+        // A record's find is its walk's (E24 M4 T6, R2-1): the one under way, else the next.
+        let walk = self.walking.map_or(self.next_move, |(m, _)| m);
         self.finds.iter().position(|f| {
             f.blocks
                 .is_some_and(|o| f.at == at && !self.drawn.gone.contains(&o))
+                && f.walk.is_none_or(|w| w == walk)
         })
+    }
+
+    /// Find `i`'s visit begun (E24 M4 T6, the reviewer's R2-3): a record's level-ups wait for its
+    /// experience ([`Found::levels`]), none due from an earlier visit.
+    fn visiting(&mut self, i: usize) {
+        self.leveling = Some(i);
+        self.due_levels.clear();
     }
 
     /// A key's step onto a pile or an artifact (E24 M4 T2a2 part B, design §5.3; recorded,
@@ -4238,6 +4306,7 @@ impl Loop {
         self.draw_minimap();
         self.draw_slot();
         self.told.push(i);
+        self.visiting(i);
         let finds = Arc::clone(&self.finds);
         let found = &finds[i];
         if let Some((first, shows)) = found.first.first() {
@@ -4641,7 +4710,10 @@ impl Loop {
             _ => {
                 self.gain(gain);
                 self.draw(t);
-                self.visited(t, find);
+                // Its levels (E24 M4 T6, R2-3: a record's, none dropped), then the visit's end.
+                if let Some(After::Visited(find)) = self.level_up(t, After::Visited(find))? {
+                    self.visited(t, find);
+                }
             }
         }
         Ok(())
@@ -4733,6 +4805,14 @@ impl Loop {
     /// spell points in the kingdom's list, the window shown drawn; since E24 M4 T2c its
     /// experience, which nothing shows (its levels: [`Loop::levels_due`]).
     fn gain(&mut self, gain: Gain) {
+        // A record's visit's level-ups due with its experience (E24 M4 T6, the reviewer's R2-3:
+        // the record's, any hero's).
+        if gain.experience != 0
+            && let Some(i) = self.leveling.take()
+            && let Some(found) = self.finds.get(i)
+        {
+            self.due_levels.extend(found.levels.iter().cloned());
+        }
         // The experience (E24 M4 T2c): the selected hero's when it is the one known.
         if gain.experience != 0 && self.index == self.experienced {
             self.experience = self
@@ -6222,9 +6302,11 @@ impl Loop {
         };
         if self.next_move < moves.len() {
             self.walking = Some((self.next_move, 0));
+            self.last_move = Some(self.next_move);
             self.next_move += 1;
         } else {
             self.walking = None;
+            self.last_move = None;
             self.off(next);
         }
     }

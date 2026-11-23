@@ -4295,6 +4295,26 @@ day: the engine casts no adventure spell (`AdventureCommand` holds `MoveHero`, `
   as the first); `drawn` all the same (the 102 sequences with the three new); `check.sh` all gates
   (its tests but the client lane's `save` test, red on `master` at the start and fixed there
   during the session), `h3-map-view`'s coverage at 100 %; the scoped verify.
+- **As built at M4 T6** (the reviewer's R2-1 to R2-9, *provisional*): each of a record's visits is
+  a find of its own (`engine::visits::lay`, `Laid`, `Kept`: tested in the library), told at its own
+  walk's end (`Found::walk`, the timeline's last walk taken; from beside, the walk under way or the
+  next), with its own box, gain, flag and level-ups: a Windmill taken, then found empty; a dwelling
+  hired by each hero; Pandora's Box declined, then opened. A recording's find (no walk) is told as
+  before (its first boxes, then `again`). The level-ups are the record's own (`Visit::levels`:
+  each `LevelUpOpened` or lone `LevelGained` while the visit's events are read, its battle's end's
+  too), any hero's, laid out with the hero's own name, class (the record's rules') and portrait
+  (its slot's in the start's list, else its type's), due once the visit's experience shows and
+  opened where its handler calls `hero_level_up` (a battle whose monster stands too); the tables'
+  thresholds only for a recording. Pandora's Box shows every part the record tells
+  (`visits::rewards`: the experience, the primary and secondary skills, the spell points and the
+  battle bonuses against `Visit::held`, the resources gained and lost, the artifacts, the spells,
+  the creatures joined and those of the army dialog), its map text (read from the map file at run
+  time) in a box of its own before the question; a Box whose guards the answer fights, and a
+  class-20 dwelling's hire, tell nothing (not built); the visit goes on through its army dialog
+  (GAM-DEC-004: a reward's creatures with no room). An artifact picked up shows its primary
+  skills on the hero's window (the tables' `artifact_skills`, taken as worn: SRV-STUB-7). A
+  School of Magic bought from tells its box (its gain and price the record's; left, nothing:
+  MCL-Q41). The parts the record does not tell: MCL-Q54.
 
 ### 5.15 A record's visits played: the flags and the boats (M4 T4b2)
 
@@ -4472,6 +4492,13 @@ players' turns, the viewer's controls, a golden replay).
   the headless loop's. Not playable: the duel's and the army's maps (`obj.def`, no original
   template: nothing to draw), `economy-shipyard-s1` (a boat a Shipyard builds is not on the map:
   M5's dialog).
+- **As built at M4 T6** (the reviewer's R2-2, *provisional*): only a box that takes an answer takes
+  the record's (a question, a choice, a level-up, End Turn's question: `Loop::asks`); a find's box
+  before its question takes Enter and leaves the answer for it. A choice's answer clicks the
+  picture it chose at its middle (`Loop::choice_at`: a chest's gold or experience, the Arena's
+  Attack or Defense, a School's first or second skill), the pointer back where it was in that
+  millisecond (MCL-Q37), then Enter; a School left Escape. The commands before an answer that the
+  map does not show (an army dialog's and its close) are passed over.
 
 ### 5.18 A computer's boat in sight from a record (M4 T4c2)
 

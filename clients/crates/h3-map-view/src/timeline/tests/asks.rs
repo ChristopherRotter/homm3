@@ -131,6 +131,8 @@ fn question(id: &str) -> Found {
             second: None,
         }),
         fight: None,
+        walk: None,
+        levels: Vec::new(),
     }
 }
 

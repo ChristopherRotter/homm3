@@ -9,12 +9,12 @@ use h3_ui::message::Style;
 use crate::director::{self, Directed, Pace};
 use crate::engine::Command;
 
-fn at(x: u8, y: u8) -> Pos {
+pub(super) fn at(x: u8, y: u8) -> Pos {
     Pos { x, y, z: 0 }
 }
 
 /// Four tiles east of the hero in their order, the last the green cross.
-fn east_in_order() -> Vec<Arrow> {
+pub(super) fn east_in_order() -> Vec<Arrow> {
     vec![
         arrow(18, 17, 12),
         arrow(19, 17, 12),
@@ -24,7 +24,7 @@ fn east_in_order() -> Vec<Arrow> {
 }
 
 /// The walk east as a record gives it.
-fn east_walk() -> Move {
+pub(super) fn east_walk() -> Move {
     Move {
         tiles: vec![at(18, 17), at(19, 17), at(20, 17), at(21, 17)],
         points: vec![None, None, None, Some(1160)],
@@ -35,7 +35,7 @@ fn east_walk() -> Move {
 }
 
 /// `walking_start`'s start with its hero in the kingdom's list and the walk east as a record's.
-fn record_start() -> Start {
+pub(super) fn record_start() -> Start {
     let mut start = walking_start(4, vec![east_in_order()]);
     start.kingdom.heroes = vec![KingdomHero {
         points: 1560,
@@ -210,7 +210,7 @@ fn a_records_answers_in_its_boxes() {
     start.live = true;
     start.move_reminder = true;
     start.kingdom.heroes[0].movable = true;
-    start.question = Some(turns::laid("End your turn?", Style::OkCancel));
+    start.question = Some(turns::laid("TURN?", Style::OkCancel));
     for (answer, keys) in [
         (
             Some(Answer::Offer {
@@ -257,7 +257,7 @@ fn a_battle_an_answer_began_is_handed_over_where_its_box_closes() {
     start.live = true;
     start.move_reminder = true;
     start.kingdom.heroes[0].movable = true;
-    start.question = Some(turns::laid("End your turn?", Style::OkCancel));
+    start.question = Some(turns::laid("TURN?", Style::OkCancel));
     let accept = Command::Answer(Answer::Offer {
         consent: Consent::Accept,
     });

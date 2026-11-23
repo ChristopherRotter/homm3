@@ -107,7 +107,7 @@ fn next(turn: Turn) -> NextTurn {
 /// The boxes of a turn without a town (E24 M4 T2a2): the warning and the days left's, seven.
 fn town() -> TownBoxes {
     TownBoxes {
-        lost: laid("Red, you have lost your last town.", Style::Ok),
+        lost: laid("Red: no town left.", Style::Ok),
         left: (1..=7)
             .map(|d| laid(&alloc::format!("{d} days left"), Style::Ok))
             .collect(),

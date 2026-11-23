@@ -84,14 +84,6 @@ the engine lanes' inboxes, its gap shown in the comparison, never a rule copied 
   `town` step pass a message that comes over the screen before their actions; `hall = true`
   hovers the hall's box until the status line names it (`clients/capture/README.md`, "Towns").
 
-- 2026-11-20 (this lane, the labels task; **the user's to decide, then a small task**): the
-  viewer's tests' own catalogues (`h3-map-view`'s `finds/tests.rs`, `asks/tests.rs`,
-  `status/tests.rs`) imitate the catalogue's texts, and a few are the original's sentences or
-  their starts (a sign's default text, RANDSIGN 5; a pile's, ADVEVENT 113; a bank's, ADVEVENT 32;
-  a luck reward's, ADVEVENT's; `levels.rs`'s doc comment quotes GENRLTXT 446's words). The tests
-  compare the viewer's composition, so words of our own serve as well (ADR-0009); found by the
-  labels task's scan, outside its `clients/map/`.
-
 - 2026-11-19 (the client lane, E27 M3 T7 (M4 T0), `client/e27-m3-t7`; **informational, nothing to
   do**): E27's dialogs in play (the system options and the menu in play, Save from play, Restart,
   the end of a scenario's boxes) move to a new **E27 M5**, refined once your E24 M5 hosts play

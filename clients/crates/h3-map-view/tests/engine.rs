@@ -1914,17 +1914,125 @@ fn a_record_s_visits_and_level_ups() {
             .iter()
             .all(|l| u16::from(l.up.hero) == details.hero_type)
     );
-    // The heroes' experience at the start, by their tiles.
+    // E24 M4 T6 (the reviewer's R2-1, R2-3, R2-4): each visit's walk (the empty walk's none), its
+    // hero, what it held, its own level-ups (the walk's and its answers', none after End Turn);
+    // each level-up's class the record's rules'.
+    assert_eq!((first.walk, second.walk), (0, 1));
+    assert_eq!((first.hero, second.hero), (red.id, red.id));
+    let hero_type = u8::try_from(details.hero_type).ok();
+    assert_eq!((first.hero_type, second.hero_type), (hero_type, hero_type));
+    assert_eq!(first.held.mana, details.mana);
     assert_eq!(
-        played.experience,
-        [(
-            tile(
-                u8::try_from(red.pos.x).unwrap(),
-                u8::try_from(red.pos.y).unwrap()
-            ),
-            details.experience
-        )]
+        (first.levels.as_slice(), second.levels.as_slice()),
+        (&[0][..], &[1, 2][..])
     );
+    let class = rules()
+        .core()
+        .hero_type(h3_kernel::Handle::from_raw(details.hero_type))
+        .map(|t| u8::try_from(t.class.index()).unwrap())
+        .unwrap();
+    assert!(played.levels.iter().all(|l| l.class == class));
+}
+
+/// A visit through its army dialog (E24 M4 T6, the reviewer's R2-4: a reward's creatures with no
+/// room, GAM-DEC-004): the dialog's commands keep the visit, its close's events (the experience,
+/// the level-up) and the level-up's answer are the visit's; a command after the dialog's close
+/// ends it.
+#[test]
+fn a_record_s_visit_through_its_army_dialog() {
+    use h3_protocol::wire::game::{
+        AdventureCommand, Answer, ArmyStack, Consent, GameCommand, GameEvent, HeroChange, Manage,
+        Pos, PrimarySkill, SkillOffer,
+    };
+    let g = game();
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .clone();
+    let tactics = accepted(GameCommand::Manage {
+        manage: Manage::Tactics {
+            hero: red.id,
+            on: true,
+        },
+    });
+    let answer = |answer| accepted(GameCommand::Answer { answer });
+    let level = |level| GameEvent::LevelGained {
+        player: 0,
+        hero: red.id,
+        level,
+        primary: PrimarySkill::Attack,
+        skill: None,
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            accepted(GameCommand::Adventure {
+                command: AdventureCommand::MoveHero {
+                    hero: red.id,
+                    path: vec![Pos {
+                        x: 11,
+                        y: 10,
+                        level: 0,
+                    }],
+                },
+            }),
+            answer(Answer::Offer {
+                consent: Consent::Accept,
+            }),
+            events(vec![GameEvent::ArmyDialogOpened {
+                player: 0,
+                hero: red.id,
+                stack: ArmyStack {
+                    slot: 0,
+                    creature: 18,
+                    count: 10,
+                },
+            }]),
+            tactics.clone(),
+            answer(Answer::Close {}),
+            events(vec![
+                GameEvent::DecisionClosed { player: 0 },
+                GameEvent::HeroChanged {
+                    player: 0,
+                    hero: red.id,
+                    change: HeroChange::GainExperience { amount: 1000 },
+                },
+                level(2),
+            ]),
+            answer(Answer::LevelUp {
+                offer: SkillOffer::First,
+            }),
+            // The dialog closed: a management command ends the visit.
+            tactics,
+            events(vec![level(3)]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let [visit] = &played.visits[..] else {
+        panic!("one visit: {:?}", played.visits);
+    };
+    let answers: Vec<Answer> = visit.answers.iter().map(|(a, _)| *a).collect();
+    assert_eq!(
+        answers,
+        [
+            Answer::Offer {
+                consent: Consent::Accept
+            },
+            Answer::Close {},
+            Answer::LevelUp {
+                offer: SkillOffer::First
+            },
+        ]
+    );
+    assert_eq!(visit.answers[1].1.len(), 3);
+    assert_eq!(visit.levels, [0]);
+    assert_eq!(played.levels.len(), 2);
 }
 
 /// Another player's turn in a record (E24 M4 T4c, design §5.16): Blue's steps by hero, a boat
@@ -2154,7 +2262,7 @@ fn what_a_record_s_visits_tell() {
     use h3_map_view::finds::{Find, Gain};
     use h3_protocol::wire::game::{
         AdventureEvent, Answer, ArenaChoice, ChestChoice, Consent, GameEvent, HeroChange,
-        NothingWhy, Pos,
+        NothingWhy, Pos, SchoolChoice,
     };
     let anchor = Pos {
         x: 5,
@@ -2214,6 +2322,11 @@ fn what_a_record_s_visits_tell() {
     let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
     let visit = |events: Vec<GameEvent>| engine::Visit {
         at,
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
         events,
         answers: Vec::new(),
         battle: None,
@@ -2393,6 +2506,39 @@ fn what_a_record_s_visits_tell() {
             Answered::Second
         ))
     );
+    // A School of Magic (E24 M4 T6, R2-2): a skill bought, its gain and price the record's; left,
+    // or no price told, nothing.
+    let school = |choice| Answer::School { choice };
+    let paid = GameEvent::ResourcePaid {
+        player: 0,
+        resource: 6,
+        amount: 1000,
+    };
+    let bought = Ask::School {
+        gain: 1,
+        price: [6, 1000],
+    };
+    assert_eq!(
+        asked(
+            47,
+            school(SchoolChoice::First),
+            vec![paid.clone(), primary([0, 0, 1, 0])]
+        ),
+        Some((bought.clone(), Answered::Yes))
+    );
+    assert_eq!(
+        asked(
+            47,
+            school(SchoolChoice::Second),
+            vec![paid, primary([0, 0, 0, 1])]
+        ),
+        Some((bought, Answered::Second))
+    );
+    assert_eq!(asked(47, school(SchoolChoice::Leave), Vec::new()), None);
+    assert_eq!(
+        asked(47, school(SchoolChoice::First), vec![primary([0, 0, 1, 0])]),
+        None
+    );
     // What the panels show: an unknown resource, another change and another event left out.
     let gain = visits::gain(&[
         resource(9, 5),
@@ -2402,6 +2548,380 @@ fn what_a_record_s_visits_tell() {
     ]);
     assert_eq!(gain.resources, [5, 0, 0, 0, 0, 0, 0]);
     assert_eq!(gain.skills, [0; 4]);
+}
+
+/// Pandora's Box as a record tells it (E24 M4 T6, the reviewer's R2-4): every part its answers'
+/// events tell (the experience given after the army dialog's close), the spell points and the
+/// battle bonuses against what the hero held, brought on by the walk's own events; its guards
+/// fought, nothing (not built).
+#[test]
+fn what_a_record_s_box_tells() {
+    use h3_map::model::{Rewards, Stack};
+    use h3_map_view::asks::Ask;
+    use h3_map_view::engine::visits::{self, Answered, Told};
+    use h3_protocol::wire::game::{
+        AdventureEvent, Answer, ArmyStack, Artifact, Consent, GameEvent, HeroChange,
+    };
+    let changed = |change| GameEvent::HeroChanged {
+        player: 0,
+        hero: 0,
+        change,
+    };
+    let bonus = |morale, luck| GameEvent::Adventure {
+        event: AdventureEvent::BonusChanged {
+            hero: 0,
+            morale,
+            luck,
+        },
+    };
+    let opened = vec![
+        GameEvent::ResourceGained {
+            player: 0,
+            resource: 6,
+            amount: 1000,
+        },
+        GameEvent::ResourceLost {
+            player: 0,
+            resource: 0,
+            amount: 5,
+        },
+        GameEvent::ResourceLost {
+            player: 0,
+            resource: 9,
+            amount: 5,
+        },
+        changed(HeroChange::GainPrimary {
+            primary: [0, 1, 0, 0],
+        }),
+        changed(HeroChange::RaiseSkill { skill: 6, level: 2 }),
+        changed(HeroChange::RaiseSkill {
+            skill: 300,
+            level: 1,
+        }),
+        changed(HeroChange::SetSpellPoints { points: 25 }),
+        changed(HeroChange::AddArtifact {
+            artifact: Artifact {
+                artifact: 7,
+                spell: None,
+            },
+        }),
+        changed(HeroChange::LearnSpell { spell: 15 }),
+        changed(HeroChange::LearnSpell { spell: 300 }),
+        GameEvent::Adventure {
+            event: AdventureEvent::CreaturesJoined {
+                hero: 0,
+                creature: 18,
+                count: 10,
+            },
+        },
+        bonus(3, -1),
+        GameEvent::ArmyDialogOpened {
+            player: 0,
+            hero: 0,
+            stack: ArmyStack {
+                slot: 0,
+                creature: 20,
+                count: 4,
+            },
+        },
+        GameEvent::DayStarted { day: 2 },
+    ];
+    let visit = engine::Visit {
+        at: h3_map::model::Pos { x: 5, y: 4, z: 0 },
+        walk: 3,
+        hero: 0,
+        hero_type: Some(1),
+        held: engine::Held {
+            mana: 10,
+            morale: 1,
+            luck: 0,
+        },
+        levels: Vec::new(),
+        // The walk's own events bring the morale on: what the Box changes is told against it.
+        events: vec![bonus(2, 0)],
+        answers: vec![
+            (
+                Answer::Offer {
+                    consent: Consent::Accept,
+                },
+                opened,
+            ),
+            // The army dialog's close: the experience, given last.
+            (
+                Answer::Close {},
+                vec![changed(HeroChange::GainExperience { amount: 2000 })],
+            ),
+        ],
+        battle: None,
+    };
+    let Some(Told::Ask {
+        ask: Ask::OpenBox { rewards, hero },
+        answered: Answered::Yes,
+        flag: None,
+    }) = visits::told(&visit, [6, 0], "Rion")
+    else {
+        panic!("Pandora's Box opened");
+    };
+    assert_eq!(
+        rewards,
+        Rewards {
+            experience: 2000,
+            mana: 15,
+            morale: 1,
+            luck: -1,
+            resources: [-5, 0, 0, 0, 0, 0, 1000],
+            primary: [0, 1, 0, 0],
+            skills: vec![(6, 2)],
+            artifacts: vec![7],
+            spells: vec![15],
+            creatures: vec![
+                Stack {
+                    creature: 18,
+                    count: 10
+                },
+                Stack {
+                    creature: 20,
+                    count: 4
+                }
+            ],
+        }
+    );
+    assert_eq!(hero, "Rion");
+    // Its guards fought: nothing (ADVEVENT 16, the battle, then its rewards: not built).
+    let mut guarded = visit;
+    guarded.battle = Some(engine::Battled {
+        started: 2,
+        ended: Vec::new(),
+    });
+    assert_eq!(visits::told(&guarded, [6, 0], "Rion"), None);
+}
+
+/// A record's visits laid out (E24 M4 T6, the reviewers' R2-1, R2-6 and R2-8): one find a visit,
+/// three of them on one Windmill, Pandora's Box declined then opened, each question's answers
+/// kept (the record's, the Arena's Cancel with its Attack, a guarded mine's OK), the objects that
+/// block their tiles, an artifact's primary skills, the level-ups; a visit on no object, or one
+/// that tells nothing, left out.
+#[test]
+fn a_record_s_visits_laid_out_each_on_its_own() {
+    use h3_map_view::engine::visits::{self, Answered, Kept, Laid, Told};
+    use h3_map_view::finds::Find;
+    use h3_protocol::wire::game::{
+        AdventureEvent, Answer, ArenaChoice, Artifact, Consent, GameEvent, HeroChange, Pos,
+    };
+    use h3_protocol::wire::{Outcome, Side};
+    let anchor = Pos {
+        x: 5,
+        y: 4,
+        level: 0,
+    };
+    let wood = GameEvent::ResourceGained {
+        player: 0,
+        resource: 0,
+        amount: 3,
+    };
+    let emptied = GameEvent::Adventure {
+        event: AdventureEvent::ObjectEmpty {
+            object_type: 1,
+            anchor,
+        },
+    };
+    let removed = GameEvent::Adventure {
+        event: AdventureEvent::ObjectRemoved {
+            object_type: 1,
+            anchor,
+        },
+    };
+    let primary = |primary| GameEvent::HeroChanged {
+        player: 0,
+        hero: 0,
+        change: HeroChange::GainPrimary { primary },
+    };
+    let offer = |consent| Answer::Offer { consent };
+    let won = GameEvent::BattleEnded {
+        heroes: [Some(0), None],
+        result: Outcome::Victory {
+            side: Side::Attacker,
+        },
+    };
+    let tile = |x| h3_map::model::Pos { x, y: 4, z: 0 };
+    let visit = |walk: usize, x, events: Vec<GameEvent>, answers: Vec<(Answer, Vec<GameEvent>)>| {
+        engine::Visit {
+            at: tile(x),
+            walk,
+            hero: 0,
+            hero_type: Some(1),
+            held: engine::Held::default(),
+            levels: Vec::new(),
+            events,
+            answers,
+            battle: None,
+        }
+    };
+    let mut visits = vec![
+        // A Windmill's three visits: its wood, its wood a week later, empty the same week.
+        visit(0, 5, vec![wood.clone()], Vec::new()),
+        visit(1, 5, vec![wood.clone()], Vec::new()),
+        visit(2, 5, vec![emptied], Vec::new()),
+        // Pandora's Box declined, then opened.
+        visit(
+            3,
+            6,
+            Vec::new(),
+            vec![(offer(Consent::Decline), Vec::new())],
+        ),
+        visit(
+            5,
+            6,
+            Vec::new(),
+            vec![(offer(Consent::Accept), vec![removed.clone()])],
+        ),
+        // The Arena: Attack (its Cancel kept, MCL-Q33), Defense.
+        visit(
+            6,
+            7,
+            Vec::new(),
+            vec![(
+                Answer::Arena {
+                    choice: ArenaChoice::Attack,
+                },
+                vec![primary([2, 0, 0, 0])],
+            )],
+        ),
+        visit(
+            7,
+            7,
+            Vec::new(),
+            vec![(
+                Answer::Arena {
+                    choice: ArenaChoice::Defense,
+                },
+                vec![primary([0, 2, 0, 0])],
+            )],
+        ),
+        // A guarded mine's battle, a monster's.
+        visit(8, 8, Vec::new(), vec![(offer(Consent::Accept), Vec::new())]),
+        visit(9, 9, Vec::new(), Vec::new()),
+        // An artifact picked up (R2-6: its primary skills, the tables').
+        visit(
+            10,
+            10,
+            vec![
+                removed,
+                GameEvent::HeroChanged {
+                    player: 0,
+                    hero: 0,
+                    change: HeroChange::AddArtifact {
+                        artifact: Artifact {
+                            artifact: 7,
+                            spell: None,
+                        },
+                    },
+                },
+            ],
+            Vec::new(),
+        ),
+        // A Temple that tells nothing; a tile with no object.
+        visit(11, 11, Vec::new(), Vec::new()),
+        visit(12, 12, vec![wood], Vec::new()),
+    ];
+    for k in [7, 8] {
+        visits[k].battle = Some(engine::Battled {
+            started: 4,
+            ended: vec![won.clone()],
+        });
+    }
+    visits[1].levels = vec![0, 1];
+    let object_at = |at: h3_map::model::Pos| match at.x {
+        5 => Some((1, [112, 0])),
+        6 => Some((2, [6, 0])),
+        7 => Some((3, [4, 0])),
+        8 => Some((4, [53, 0])),
+        9 => Some((5, [54, 139])),
+        10 => Some((6, [5, 0])),
+        11 => Some((7, [96, 0])),
+        _ => None,
+    };
+    let text = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml"),
+    )
+    .unwrap();
+    let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
+    let laid = visits::lay(&visits, object_at, &tables.map.finds, |hero| {
+        format!("hero {hero:?}")
+    });
+    let walks: Vec<usize> = laid.iter().map(|l| l.walk).collect();
+    assert_eq!(walks, [0, 1, 2, 3, 5, 6, 7, 8, 9, 10]);
+    // The Windmill: each visit its own find, its own box and gain.
+    let windmill: Vec<(Find, i32)> = laid[..3]
+        .iter()
+        .map(|l| match &l.told {
+            Told::Find { find, gain, .. } => (find.clone(), gain.resources[0]),
+            other => panic!("a find: {other:?}"),
+        })
+        .collect();
+    let mill = |amount| Find::Windmill {
+        resource: 0,
+        amount,
+    };
+    assert_eq!(windmill, [(mill(3), 3), (mill(3), 3), (mill(0), 0)]);
+    assert!(laid[..3].iter().all(|l| (l.object, l.at) == (1, tile(5))));
+    assert_eq!(
+        laid.iter().map(|l| l.levels.len()).collect::<Vec<_>>(),
+        [0, 2, 0, 0, 0, 0, 0, 0, 0, 0]
+    );
+    // The answers each question keeps, and the objects that block their tiles.
+    let kept = |yes, second, no| Kept { yes, second, no };
+    let shape: Vec<(Kept, bool)> = laid.iter().map(|l| (l.kept, l.blocks)).collect();
+    assert_eq!(
+        shape,
+        [
+            (Kept::default(), false),
+            (Kept::default(), false),
+            (Kept::default(), false),
+            (kept(false, false, true), true),
+            (kept(true, false, false), true),
+            (kept(true, false, true), false),
+            (kept(false, true, false), false),
+            (kept(true, false, false), false),
+            (Kept::default(), true),
+            (Kept::default(), true),
+        ]
+    );
+    let answered: Vec<Option<Answered>> = laid
+        .iter()
+        .map(|l| match l.told {
+            Told::Ask { answered, .. } => Some(answered),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        answered[3..7],
+        [
+            Some(Answered::No),
+            Some(Answered::Yes),
+            Some(Answered::Yes),
+            Some(Answered::Second)
+        ]
+    );
+    assert!(matches!(laid[7].told, Told::Guarded { .. }));
+    assert!(matches!(laid[8].told, Told::Fight { .. }));
+    // The Box's boxes name the visit's hero.
+    assert!(matches!(
+        &laid[4].told,
+        Told::Ask {
+            ask: h3_map_view::asks::Ask::OpenBox { hero, .. },
+            ..
+        } if hero == "hero Some(1)"
+    ));
+    // The artifact's primary skills on the window (the tables' Centaur's Axe: +2 Attack).
+    let Laid {
+        told: Told::Find { gain, taken, .. },
+        ..
+    } = &laid[9]
+    else {
+        panic!("an artifact's find");
+    };
+    assert_eq!((gain.skills, *taken), ([2, 0, 0, 0], true));
 }
 
 #[test]
@@ -2433,6 +2953,11 @@ fn what_a_record_s_flags_tell() {
     let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
     let visit = |events: Vec<GameEvent>, answers: Vec<(Answer, Vec<GameEvent>)>| engine::Visit {
         at,
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
         events,
         answers,
         battle: None,
@@ -2531,7 +3056,19 @@ fn what_a_record_s_flags_tell() {
         )],
     );
     assert_eq!(told(&declined, 20, 0), None);
+    assert_eq!(told(&declined, 17, 0), None);
     assert_eq!(told(&visit(Vec::new(), Vec::new()), 17, 0), None);
+    // A class-20 dwelling's hire accepted (E24 M4 T6, the reviewer's R2-5): nothing (ADVEVENT 36
+    // and its names not built), where class 17's of the same subclass asks its hire.
+    let accepted = visit(Vec::new(), vec![(accept, vec![joined])]);
+    assert!(matches!(
+        told(&accepted, 17, 0),
+        Some(Told::Ask {
+            ask: Ask::Hire { .. },
+            ..
+        })
+    ));
+    assert_eq!(told(&accepted, 20, 0), None);
 }
 
 #[test]
@@ -2817,6 +3354,11 @@ fn what_a_record_s_battles_tell() {
     };
     let visit = |ended: Vec<GameEvent>, answers: Vec<(Answer, Vec<GameEvent>)>| engine::Visit {
         at,
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
         events: Vec::new(),
         answers,
         battle: Some(engine::Battled { started: 4, ended }),

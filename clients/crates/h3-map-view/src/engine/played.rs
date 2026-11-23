@@ -52,6 +52,7 @@ use alloc::vec::Vec;
 
 use h3_adventure::{ObjectKind, ObjectTypeId};
 use h3_game::GameRuleset;
+use h3_kernel::Handle;
 use h3_map::model::Pos;
 use h3_protocol::wire::ServerMessage;
 use h3_protocol::wire::game::{
@@ -93,11 +94,10 @@ pub struct Played {
     pub waits: bool,
     /// The viewer's visits (E24 M4 T4b1), one a walk, in order.
     pub visits: Vec<Visit>,
-    /// The viewer's heroes' level-ups (E24 M4 T4b1), in order.
+    /// The viewer's heroes' level-ups (E24 M4 T4b1), in order: each visit's its own
+    /// ([`Visit::levels`]; since E24 M4 T6, the reviewer's R2-3, the record's start's experience
+    /// is no longer followed through the tables' thresholds).
     pub levels: Vec<Leveled>,
-    /// The viewer's heroes' experience at the record's start, by their tiles (E24 M4 T4b1: the
-    /// levels a visit's experience reaches from it).
-    pub experience: Vec<(Pos, u32)>,
     /// Each of [`Played::moves`]' hero, the record's id (E24 M4 T4c: a hero's walks chain from
     /// where its last left it).
     pub walkers: Vec<u16>,
@@ -279,17 +279,46 @@ pub fn pickup(rules: &GameRuleset, object_type: u16) -> bool {
 
 /// One of the viewer's visits in a record (E24 M4 T4b1, design §5.14, *provisional*): a walk's
 /// last tile, the visited object's entrance or its own tile visited from beside, the command's
-/// events and the answers the record gives after it, each with its events.
+/// events and the answers the record gives after it, each with its events. Since E24 M4 T6 (the
+/// reviewer's R2-1, R2-3, R2-4) its walk, its hero, what the hero held as it began and the visit's
+/// level-ups; the visit goes on through its army dialog (a reward's creatures with no room).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Visit {
     /// The walk's last tile.
     pub at: Pos,
+    /// The walk's place among [`Played::moves`] (R2-1: each visit to a tile played at its own
+    /// walk's end).
+    pub walk: usize,
+    /// The walk's hero (the record's id) and its type (none without details: R2-3, R2-4, its
+    /// level-ups' dialog and Pandora's Box's boxes name it).
+    pub hero: u16,
+    /// The hero's type.
+    pub hero_type: Option<u8>,
+    /// What the hero held as the walk began (R2-4): a record tells its spell points and its
+    /// battle bonuses as they are after a change, so what a visit changed is told against this.
+    pub held: Held,
+    /// The visit's level-ups (R2-3: a `LevelUpOpened` or a `LevelGained` without one while the
+    /// visit's events are read, its battle's end's too), their places among [`Played::levels`].
+    pub levels: Vec<usize>,
     /// The command's events.
     pub events: Vec<GameEvent>,
     /// The answers after it, in order, each with its events.
     pub answers: Vec<(Answer, Vec<GameEvent>)>,
     /// The battle it began (E24 M4 T5b2, design §5.21): its command's or an answer's.
     pub battle: Option<Battled>,
+}
+
+/// What a visit's hero held as its walk began (E24 M4 T6, the reviewer's R2-4): its spell points
+/// and the morale and luck no once-mark names (`Bonuses`), as the record's observation holds
+/// them.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Held {
+    /// The spell points.
+    pub mana: u16,
+    /// The morale.
+    pub morale: i8,
+    /// The luck.
+    pub luck: i8,
 }
 
 /// The battle a visit began (E24 M4 T5b2, design §5.21, *provisional*): the record's number of
@@ -304,13 +333,16 @@ pub struct Battled {
 }
 
 /// One of the viewer's heroes' level-ups in a record (E24 M4 T4b1, *provisional*): its dialog's
-/// facts and the offer the record's answer took (none: no offer, or none taken yet).
+/// facts and the offer the record's answer took (none: no offer, or none taken yet); since E24 M4
+/// T6 (the reviewer's R2-3: any hero's dialog) the hero's class, which the dialog names.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Leveled {
     /// The dialog's facts.
     pub up: LevelUp,
     /// The offer taken, the dialog's left first.
     pub chosen: Option<usize>,
+    /// The hero type's class in the record's rules (0 for a type they do not hold).
+    pub class: u8,
 }
 
 /// A walk being read: its tiles, the points it left and the tiles explored before it.
@@ -347,12 +379,13 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
     let mut week = (1, observation.week);
     let mut month = (1, observation.month);
     let mut visits: Vec<Visit> = Vec::new();
-    // The visit the next events belong to (the last one, from its walk to another command).
+    // The visit the next events belong to (the last one, from its walk to another command), and
+    // whether its army dialog is open (E24 M4 T6, R2-4).
     let mut visiting = false;
+    let mut army = false;
     let mut levels = Vec::new();
     // The level-up opened and not answered yet (its place among `levels`).
     let mut pending = None;
-    let experience = experience(&observation, viewer);
     let mut walkers = Vec::new();
     let mut commands = Vec::new();
     let mut others = Vec::new();
@@ -411,8 +444,14 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             })?;
                         visiting = match tiles.last() {
                             Some(&at) => {
+                                let (hero_type, held) = held(&observation, *hero);
                                 visits.push(Visit {
                                     at,
+                                    walk: moves.len(),
+                                    hero: *hero,
+                                    hero_type,
+                                    held,
+                                    levels: Vec::new(),
                                     events: Vec::new(),
                                     answers: Vec::new(),
                                     battle: None,
@@ -436,6 +475,10 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             visit.answers.push((*answer, Vec::new()));
                         }
                     }
+                    // The visit's army dialog's commands (E24 M4 T6, R2-4: a reward's creatures
+                    // with no room, GAM-DEC-004): the visit goes on to the dialog's close and what
+                    // follows it (the reward's experience, its level-ups).
+                    GameCommand::Manage { .. } if army => {}
                     _ => visiting = false,
                 }
             }
@@ -453,6 +496,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     o.stepped = false;
                 }
                 // A visit's battle ended (E24 M4 T5b2): its result and its effects on the map.
+                let mut ended = None;
                 if let Some(k) = fighting
                     && let Some(end) = events
                         .iter()
@@ -461,9 +505,28 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                 {
                     battle.ended = events[end..].to_vec();
                     fighting = None;
+                    ended = Some(k);
                 }
+                // The visit the batch's level-ups and army dialog are of (E24 M4 T6, R2-3, R2-4):
+                // the one under way, else the one whose battle the batch ends.
+                let owner = if visiting {
+                    visits.len().checked_sub(1)
+                } else {
+                    ended
+                };
                 for event in events {
-                    level(&mut levels, &mut pending, &observation, event);
+                    let leveled = levels.len();
+                    level(&mut levels, &mut pending, (&observation, rules), event);
+                    if levels.len() > leveled
+                        && let Some(visit) = owner.and_then(|k| visits.get_mut(k))
+                    {
+                        visit.levels.push(leveled);
+                    }
+                    match event {
+                        GameEvent::ArmyDialogOpened { .. } => army = owner.is_some(),
+                        GameEvent::DecisionClosed { .. } => army = false,
+                        _ => {}
+                    }
                     observation.fold(event);
                     if let (Some(o), GameEvent::Adventure { event }) = (&mut other, event) {
                         let seen = Seen {
@@ -613,7 +676,6 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
         waits,
         visits,
         levels,
-        experience,
         walkers,
         commands,
         others,
@@ -832,23 +894,28 @@ fn slots(observation: &GameObservation, viewer: u8) -> Vec<(u16, usize)> {
         .collect()
 }
 
-/// The viewer's heroes' experience in `observation`, by their tiles.
-fn experience(observation: &GameObservation, viewer: u8) -> Vec<(Pos, u32)> {
-    observation
+/// Hero `hero`'s type and what it holds in `observation` (E24 M4 T6, R2-4: [`Held`]); none and
+/// nothing for a hero without details or not on the map.
+fn held(observation: &GameObservation, hero: u16) -> (Option<u8>, Held) {
+    let details = observation
+        .heroes
+        .iter()
+        .find(|i| i.id == hero)
+        .and_then(|i| i.details.as_ref());
+    let bonuses = observation
         .adventure
         .heroes
         .iter()
-        .filter(|h| h.owner == viewer)
-        .filter_map(|h| {
-            let experience = observation
-                .heroes
-                .iter()
-                .find(|i| i.id == h.id)
-                .and_then(|i| i.details.as_ref())
-                .map(|d| d.experience);
-            tile(h.pos.x, h.pos.y, h.pos.level).zip(experience)
-        })
-        .collect()
+        .find(|h| h.id == hero)
+        .and_then(|h| h.own.as_ref())
+        .map(|o| &o.bonuses);
+    let held = Held {
+        mana: details.map_or(0, |d| d.mana),
+        morale: bonuses.map_or(0, |b| b.morale),
+        luck: bonuses.map_or(0, |b| b.luck),
+    };
+    let hero_type = details.and_then(|d| u8::try_from(d.hero_type).ok());
+    (hero_type, held)
 }
 
 /// A level-up's facts folded into `levels` before `event` is (E24 M4 T4b1): a `LevelUpOpened`'s
@@ -859,9 +926,16 @@ fn experience(observation: &GameObservation, viewer: u8) -> Vec<(Pos, u32)> {
 fn level(
     levels: &mut Vec<Leveled>,
     pending: &mut Option<usize>,
-    observation: &GameObservation,
+    (observation, rules): (&GameObservation, &GameRuleset),
     event: &GameEvent,
 ) {
+    let class = |up: &LevelUp| {
+        rules
+            .core()
+            .hero_type(Handle::from_raw(u16::from(up.hero)))
+            .and_then(|t| u8::try_from(t.class.index()).ok())
+            .unwrap_or(0)
+    };
     match *event {
         GameEvent::LevelUpOpened {
             hero,
@@ -872,7 +946,12 @@ fn level(
         } => {
             if let Some(up) = level_up(observation, hero, level, primary, &offers) {
                 *pending = Some(levels.len());
-                levels.push(Leveled { up, chosen: None });
+                let class = class(&up);
+                levels.push(Leveled {
+                    up,
+                    chosen: None,
+                    class,
+                });
             }
         }
         GameEvent::LevelGained {
@@ -890,7 +969,8 @@ fn level(
             let offers: Vec<u16> = skill.into_iter().collect();
             if let Some(up) = level_up(observation, hero, level, primary, &offers) {
                 let chosen = skill.map(|_| 0);
-                levels.push(Leveled { up, chosen });
+                let class = class(&up);
+                levels.push(Leveled { up, chosen, class });
             }
         }
         _ => {}

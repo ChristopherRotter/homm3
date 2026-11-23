@@ -74,6 +74,8 @@ fn finding(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
         flag: None,
         ask: None,
         fight: None,
+        walk: None,
+        levels: Vec::new(),
     }];
     (start, actions, ms, timeline)
 }
@@ -181,10 +183,7 @@ const TOWNLESS: (&str, &str, &str, &str) = (
 fn a_turn_without_a_town_warns_then_tells_the_days_left() {
     // End Turn's release at 160: the warning, the days counted from 7.
     let l = town_to(160);
-    assert_eq!(
-        text(&l).as_deref(),
-        Some("Red, you have lost your last town.")
-    );
+    assert_eq!(text(&l).as_deref(), Some("Red: no town left."));
     assert_eq!((l.days, l.state(160).date.day), (7, 1));
     // Enter's release at 1060 closes it: the turn's end counts down, the next day's start tells
     // six days over its whole redraw.
@@ -345,6 +344,8 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             flag: None,
             ask: None,
             fight: None,
+            walk: None,
+            levels: Vec::new(),
         },
         "find-artifact" => Found {
             at: ENTRANCE,
@@ -361,6 +362,8 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             flag: None,
             ask: None,
             fight: None,
+            walk: None,
+            levels: Vec::new(),
         },
         _ => Found {
             at: ENTRANCE,
@@ -400,6 +403,8 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             flag: None,
             ask: None,
             fight: None,
+            walk: None,
+            levels: Vec::new(),
         },
     };
     start.finds = vec![found];
@@ -553,10 +558,7 @@ fn an_event_without_a_town_tests_the_scenario() {
         l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
             .unwrap();
     }
-    assert_eq!(
-        text(&l).as_deref(),
-        Some("Red, you have lost your last town.")
-    );
+    assert_eq!(text(&l).as_deref(), Some("Red: no town left."));
     assert_eq!(l.days, 7);
     l.run(2300, &[Action::BoxKey(Key::Ok)]).unwrap();
     l.run(2360, &[Action::BoxKeyUp(Key::Ok)]).unwrap();

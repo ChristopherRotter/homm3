@@ -209,13 +209,13 @@ fn texts() -> Catalogue {
         "object": { "9": "Border Guard", "10": "Tent", "42": "Lighthouse", "88": "Shrine",
             "102": "Tree", "113": "Witch Hut", "83": "Seer's Hut", "215": "Quest Guard" },
         "keymaster": { "0": "Light blue" },
-        "player-owned": { "0": "Owned by red", "1": "Owned by blue" },
+        "player-owned": { "0": "OWNER red", "1": "OWNER blue" },
         "dwelling1": { "56": "Guardhouse" }, "dwelling4": { "1": "Golem Factory" },
         "resource": { "0": "Wood", "5": "Gems", "6": "Gold" },
         "mine": { "0": "Sawmill", "7": "Abandoned Mine" },
         "bank": { "0": "Cyclops Stockpile" },
         "spell": { "3": "Haste" }, "secondary-skill": { "2": "Logistics" },
-        "tree-price": { "1": " (+1 level for gold)" },
+        "tree-price": { "1": " (TREE gold)" },
         "seer-name": { "4": "Engle" },
         "primary-skill": { "0": "Attack", "3": "Knowledge" },
         "artifact": { "7": "Axe", "8": "Shard", "9": "Flail" },
@@ -259,12 +259,12 @@ fn a_contents_hints_text() {
     assert_eq!(text(keymaster(10, 0, Some(true))), "Light blue Tent (seen)");
     assert_eq!(text(keymaster(232, 8, None)), " ");
     let dwelling = |class, kind, owner| Hint::Dwelling { class, kind, owner };
-    assert_eq!(text(dwelling(17, 56, Some(0))), "Guardhouse - Owned by red");
+    assert_eq!(text(dwelling(17, 56, Some(0))), "Guardhouse - OWNER red");
     assert_eq!(text(dwelling(20, 1, None)), "Golem Factory");
     assert_eq!(text(dwelling(20, 2, None)), "");
     assert_eq!(
         text(Hint::Lighthouse { owner: Some(1) }),
-        "Lighthouse - Owned by blue"
+        "Lighthouse - OWNER blue"
     );
     assert_eq!(text(Hint::Lighthouse { owner: Some(8) }), "Lighthouse - ");
     assert_eq!(text(Hint::Lighthouse { owner: None }), "Lighthouse");
@@ -278,7 +278,7 @@ fn a_contents_hints_text() {
             produces: Some(0),
             guards: guards(Some(13), 4),
         }),
-        "Sawmill Owned by red (Wood) Guarded by a few Archangels"
+        "Sawmill OWNER red (Wood) Guarded by a few Archangels"
     );
     assert_eq!(
         text(Hint::Mine {
@@ -296,7 +296,7 @@ fn a_contents_hints_text() {
             produces: None,
             guards: None,
         }),
-        "Sawmill Owned by blue"
+        "Sawmill OWNER blue"
     );
     let bank = |mark| Hint::Bank { bank: 0, mark };
     assert_eq!(
@@ -336,7 +336,7 @@ fn a_contents_hints_text() {
     assert_eq!(text(teaches(88, None, None, None)), "Shrine");
     assert_eq!(
         text(teaches(102, None, Some(Teach::Price(1)), Some(false))),
-        "Tree  (+1 level for gold) (unseen)"
+        "Tree  (TREE gold) (unseen)"
     );
     assert_eq!(
         text(teaches(113, None, Some(Teach::Skill(2, true)), None)),

@@ -178,6 +178,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   answered, a fact the record gains) reports "a gap CHANGED": the run's `gaps.txt` under
   `clients/out/map-frames/<id>/` is the new list, copied in under the file's comments once
   reviewed, with `<id>-frames.txt` and `drawn --only <id> --record`.
+- **A record's find is its walk's** (M4 T6, the reviewer's R2-1, design §5.14): `Found::walk`
+  ties a record's visit to the walk whose end visits it (`Visit::walk`: its place among
+  `Played::moves`, not among the visits; an empty path is a walk without one); a find built for
+  a record without it is told at every visit to its tile as a recording's (its `again`). Its
+  level-ups ride on it (`Found::levels`), so a record's `Start::experience` and `level_ups` stay
+  empty (the tables' thresholds are a recording's).
 - **A scripted game draws at random in both games** (M4 T4b1, design §5.14): the original's
   draws under the sequence's `seed` and the engine's under its own differ (a level-up's primary
   skill and offers): record the original first, read its draws from the live part (`[[level_up]]`),

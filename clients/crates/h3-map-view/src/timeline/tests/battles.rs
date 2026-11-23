@@ -70,6 +70,8 @@ fn battled(id: &str) -> Found {
         ask: None,
         flag: None,
         fight: None,
+        walk: None,
+        levels: Vec::new(),
     };
     match id {
         "battle-won" => Found {
@@ -202,6 +204,40 @@ fn the_host_closes_the_battle_and_nothing_else_counts_meanwhile() {
     let mut l = run_start(&start, &BTreeMap::new(), 50);
     l.run(51, &[Action::BattleClosed]).unwrap();
     assert!(l.switching.is_none());
+}
+
+#[test]
+fn a_battle_whose_monster_stands_opens_its_level_ups_then_ends_the_visit() {
+    // E24 M4 T6 (the reviewer's R2-3): a fight whose record leaves the monster standing
+    // (`AfterBattle::Stays`): the experience shown at the map's fade in's end, the visit's own
+    // level-ups then (before, none: the next find's), the visit's end after their last.
+    let (mut start, mut actions, _, _) = battling("battle-won");
+    actions.retain(|&t, _| t < 810);
+    start.finds[0].fight = Some(fight(0, AfterBattle::Stays));
+    start.finds[0].levels = vec![LevelBox {
+        level: 2,
+        dialog: laid("Level 2.", Style::Ok),
+        offers: Vec::new(),
+        primary: 1,
+        chosen: None,
+    }];
+    let l = run_start(&start, &actions, 810);
+    assert!(l.boxed() && l.asks());
+    actions.insert(900, vec![Action::BoxKey(Key::Ok)]);
+    actions.insert(960, vec![Action::BoxKeyUp(Key::Ok)]);
+    let l = run_start(&start, &actions, 1000);
+    assert!(!l.boxed() && l.dissolving.is_none());
+    assert!(!l.drawn().gone.contains(&OBJECT));
+    // A recording's hero whose experience reaches a level with no dialog: refused there.
+    start.finds[0].levels.clear();
+    start.experience = Some(990);
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let refused = (1..=810).find_map(|t| {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .err()
+            .map(|why| (t, why))
+    });
+    assert_eq!(refused, Some((810, Unplayable::LevelUp(2))));
 }
 
 #[test]
