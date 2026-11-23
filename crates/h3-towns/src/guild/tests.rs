@@ -557,7 +557,6 @@ fn gives(
     let (visitor, garrison) = (heroes.first(), heroes.get(1));
     let book = visitor
         .or(garrison)
-        .filter(|hero| !h3_heroes::wears_spell_book(hero, core))
         .and_then(|_| check_spell_book(town, part).ok());
     let offers = guild_offers(town, statics, part, core, (visitor, garrison));
     assert_eq!(

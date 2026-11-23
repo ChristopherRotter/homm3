@@ -439,19 +439,20 @@ pub fn opening_gives<'a>(
 pub struct GuildOffers<'a> {
     /// Whether an opening gives one of the heroes anything ([`opening_gives`]).
     pub opening: bool,
-    /// The spell book's price where one is sold to the town's hero: a Mage Guild stands
-    /// ([`check_spell_book`]) and the visitor, else the garrison hero, wears no spell book
-    /// ([`h3_heroes::wears_spell_book`]).
+    /// The spell book's price where the guild would sell one to the town's hero: a Mage Guild
+    /// stands ([`check_spell_book`]) and a hero stands there to buy it (the visitor, else the
+    /// garrison hero). Whether that hero wears one ([`h3_heroes::wears_spell_book`]) is the
+    /// caller's to ask, after the treasury (the dearer test last).
     pub book: Option<&'a [(ResourceId, u32)]>,
 }
 
 /// The legal listing's two questions to `town`'s guild at once (E09 T49b, design §90, §91): whether
 /// its opening gives its garrison hero or its visitor anything ([`opening_gives`], TWN-GLD-006),
-/// and the spell book's price where one is sold to its visitor, else its garrison hero
-/// ([`check_spell_book`] with the hero's book, TWN-GLD-007). The same answers as those, the
-/// town's derived roles and what supersedes its guild read once for both (`bench-check`'s
-/// `legal-towns-36`: the listing asks it of every owned town a hero stands in). The treasury and
-/// the ruleset's book are the game's to test.
+/// and the spell book's price where a guild stands to sell one to a hero there
+/// ([`check_spell_book`], TWN-GLD-007). The same answers as those, the town's derived roles and
+/// what supersedes its guild read once for both (`bench-check`'s `legal-towns-36`: the listing
+/// asks it of every owned town a hero stands in). The treasury, the hero's own book and the
+/// ruleset's book are the game's to test.
 // rule: TWN-GLD-006, TWN-GLD-007
 pub fn guild_offers<'a>(
     town: &Town,
@@ -470,10 +471,8 @@ pub fn guild_offers<'a>(
         garrison.is_some_and(|details| gift.gives(details, core))
             || visitor.is_some_and(|details| gift.gives(details, core))
     });
-    let book = visitor
-        .or(garrison)
-        .filter(|details| read.guild_stands(town) && !h3_heroes::wears_spell_book(details, core))
-        .map(|_| book_price(part));
+    let book = ((visitor.is_some() || garrison.is_some()) && read.guild_stands(town))
+        .then(|| book_price(part));
     GuildOffers { opening, book }
 }
 
@@ -517,6 +516,7 @@ impl<'a> GuildRead<'a> {
     /// standing Vortex) and what the town teaches (`teaches`' set: none without a guild ever
     /// built; the Aurora set with an Aurora ever built; else what the guild shows, its level the
     /// highest of its standing guild buildings); none when neither gives anything.
+    #[inline]
     fn gift(&self, town: &Town, statics: &TownStatic, part: &TownRuleset) -> Option<Gift> {
         let (record, roles, superseded) = (self.record, &self.roles, self.superseded);
         let built = town.built();
@@ -563,6 +563,7 @@ impl Gift {
     /// Whether it gives `details`' hero anything: the Vortex raises its points, or it learns a
     /// spell, its known spells taken first, its book and learnable level read only for a spell it
     /// does not know ([`h3_heroes::spell_learner`]).
+    #[inline]
     fn gives(self, details: &HeroDetails, core: &Ruleset) -> bool {
         let raised = self.factor.is_some_and(|factor| {
             details.mana < h3_heroes::max_mana(details, core).saturating_mul(u16::from(factor))

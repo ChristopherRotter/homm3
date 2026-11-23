@@ -309,9 +309,13 @@ pub(crate) fn offers(
         garrison.and_then(|hero| state.hero(hero)),
     );
     let offers = h3_towns::guild_offers(record, statics, rules.towns(), core, heroes);
-    let book = offers
-        .book
-        .is_some_and(|price| state.can_pay(player, price) && h3_heroes::spell_book(core).is_some());
+    // The hero's own book last: a walk over its effects, dearer than the treasury.
+    let buyer = heroes.0.or(heroes.1);
+    let book = offers.book.zip(buyer).is_some_and(|(price, buyer)| {
+        state.can_pay(player, price)
+            && h3_heroes::spell_book(core).is_some()
+            && !h3_heroes::wears_spell_book(buyer, core)
+    });
     (offers.opening, book)
 }
 
