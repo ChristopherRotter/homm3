@@ -114,8 +114,8 @@ the archives' priority, not read here (T1b observes it, T1c records it).
 | 11 | `rmg_underground_rock_paint` 0x5439E0 | with two levels | level 1's cells neither free nor holding an object painted rock, the zones' free rock cells given back their terrain (§2.4) | 1, 0.6 kB, 0 |
 | 12 | `rmg_map_shores_mark` 0x531310 | once, on the map | land beside water flagged (bit 21, §2.4) | 1, 0.3 kB, 0 |
 | 13 | `rmg_obstacles_fill` 0x537970 | once | obstacles grown over the cells marked for them (bit 26), chosen by rand_trn.txt's scores; every cell left made free (§2.4) | 4, 3.7 kB, 1 |
-| 14 | `rmg_phase_14_roads` 0x548290 | once | the road targets, costs up to 30000 | 3, 3.2 kB, 1 |
-| 15 | `rmg_phase_15_shipyards` 0x549870 | once | cells near objects of types 5, 53, 126, 134 flagged; next to each shipyard (109) two helpers | 6, 5.1 kB, 2 |
+| 14 | `rmg_roads_lay` 0x548290 | once | the road type drawn, then every pair of road targets (towns' and shipyards' entrances) joined by a road along a cost flood, later roads reusing earlier ones (§2.5) | 3, 3.2 kB, 1 |
+| 15 | `rmg_rivers_lay` 0x549870 | once | rivers: sources (lakes 126, mountains 134, mines of subtype 5) and mouths (the coast, the map's border) marked, then per Water Wheel (109, not a shipyard) a river up to a source and one down to a mouth, with a river delta at the sea (§2.5) | 6, 5.1 kB, 2 |
 
 It returns true. The only failure it reports is no template (code 3); an exception inside gives
 code 1 (§1.2). Whether a step retries, loops to a limit or reads a clock is T1a2's (none of the
@@ -130,9 +130,8 @@ frame's functions does).
    teams drawn by `rmg_teams_draw` 0x54AB40 (twice: one draw per playing colour, **at write time,
    after every draw of the generation**: the players spread over the teams as evenly as possible,
    each colour drawing among the teams with room left); for SoD the banned spells (70 bits, 9
-   bytes) and skills (28 bits, 4 bytes) and 156 zero bytes. Just before, a 17-byte block of 129 bits
-   (the banned artifacts, presumably; the code before it not read); the reader's SoD block is
-   18 bytes (`h3m.md`): T1b's map shows which.
+   bytes) and skills (28 bits, 4 bytes) and 156 zero bytes. Just before, the banned artifacts:
+   the 17-byte block of 129 bits is AB's, SoD writes 18 bytes as the reader expects (§2.5).
 2. A u32 0. The reader's order is the rumours' count, then SoD's 156 hero bytes: the generator
    writes the 156 bytes first, the same 160 zero bytes.
 3. Every cell (`rmg_write_cell` 0x532890), level by level, row by row.
@@ -1035,3 +1034,216 @@ and has no pending guard is kept free (bit 27). The placed objects'
 slots: 0 delete, 1 release (the prison's frees its hero), 2 placed hook (tent, quest artifact; true
 otherwise), 3 write. The zone generators' +0x40 holds the last near-zone keys; the generator's +0xF58,
 +0x10B4, +0x1024 and +0x1100 are final after step 10.
+
+### 2.5 Steps 14 and 15 and the writer (T1a2e)
+
+Path read: `rmg_generate_map`'s steps 14 and 15 and what they reach by direct calls, with the
+road and river views the game's painters call back through; `rmg_write_map` 0x54ABF0 →
+`rmg_write_header` 0x549CB0 (whole), `rmg_teams_draw` 0x54AB40, `rmg_write_cell` 0x532890,
+`rmg_write_template` 0x54AE30, and slots 3 (write) and 0 (delete) of the 15 object vtables; then
+every function start of the range still without an entry. 66 functions named or re-read here (all
+read; 61 new), 4 draw sites, 10 tables; two steps renamed. **The range is closed:** of its 255
+function starts, 254 have a function entry (237 read, 17 inferred) and one, 0x53D640
+`rmg_zone_flood_fill_tail`, a site (§2.2: a continuation the tool takes for a start).
+
+| Function | Called from | What it does | Conf. |
+|---|---|---|---|
+| 0x548290 `rmg_roads_lay` (was `rmg_phase_14_roads`) | step 14 | the road type drawn; every pair of road targets joined (below) | read |
+| 0x547880 `rmg_road_cost_flood`, 0x548040 `rmg_road_trace` | 0x548290 | the flood over the map; a road laid back along it | read |
+| 0x549870 `rmg_rivers_lay` (was `rmg_phase_15_shipyards`) | step 15 | the marks, then two rivers per Water Wheel (below) | read |
+| 0x5497A0 `rmg_river_sources_mark`; 0x548C70 `rmg_river_mouths_mark` → 0x548A40 `rmg_river_delta_site_mark` | 0x549870 | bit 29 on the sources; bit 30 on the map's border and the delta sites | read |
+| 0x548500 `rmg_river_to_source`, 0x548DF0 `rmg_river_to_mouth`, 0x549790 `rmg_river_delta_offsets_destroy` | 0x549870; an exit function | the upper and the lower course; the empty destructor of `rmg_river_delta_offsets` 0x69CE28 | read |
+| 0x532320 to 0x5324B0 `rmg_road_view_*`, 0x5324E0 to 0x532860 `rmg_river_view_*`, 0x532790 `rmg_tile_view_size`, 0x537910, 0x537940 (the bases' deletes) | `rmg_road_view_vtable` 0x640A04, `rmg_river_view_vtable` 0x640A3C (bases 0x640A20, 0x640A58): the game's road and river painters | a level of the map seen as roads or rivers: set, set type, size, get, get type, get land | read |
+| 0x549CB0 `rmg_write_header` | 0x54ABF0 | the header (below) | read |
+| 0x532890 `rmg_write_cell`, 0x54AE30 `rmg_write_template` | 0x54ABF0 | a cell's 7 bytes; a template in the reader's layout | read |
+| 0x533170 `rmg_object_write`, 0x5331F0, 0x5332F0, 0x533460, 0x533500, 0x5335C0, 0x5336F0, 0x533A90, 0x533C80, 0x533E70, 0x533F40, 0x533FF0, 0x5340C0 (`rmg_<kind>_object_write`) | slot 3 of the object vtables (0x54ABF0) | an object's header and body (below) | read |
+| 0x533120 `rmg_object_delete`, 0x533590 `rmg_object_derived_delete`, 0x533680, 0x5339C0 (Pandora's, quest artifact's); 0x5338D0 `rmg_object_destroy`, 0x5336B0, 0x5339F0 | slot 0; the steps' cleanups and the destructor | the prototype's use count less 1; a Pandora's spells freed; **a quest artifact deletes its seer hut** | read |
+| 0x5357E0, 0x535840, 0x5358A0, 0x535910, 0x535BB0, 0x535C10, 0x535C70, 0x535CD0, 0x535D30, 0x535D90 `rmg_static_terrain_set_init_1` to `_10` | the C runtime's initializer table (not reached otherwise) | a terrain set holding dirt alone into a global no code reads | read |
+| 0x5361E0 `rmg_prototype_vector_init` | the array constructor in `rmg_generator_base_init` | an empty prototype vector | read |
+| 0x5361A0 `rmg_map_base_destroy`, 0x5329A0 `rmg_zone_destroy`, 0x5477C0 `rmg_pile_destroy`, 0x54C170 `rmg_obstacle_vector_free`, 0x54C6A0 `rmg_list_clear` | unwind funclets only (an exception inside a step) | destructors | read |
+
+**Step 14, roads.** One draw, `rand() % 3 + 1`: the type of every road (1 dirt, 2 gravel, 3
+cobblestone). For each road target i but the last (+0x14B0 in order: the towns' entrances of steps
+4 and 5, then the shipyards' of step 6), every cell's cost is reset (32000, previous −1) and
+`rmg_road_cost_flood` runs from it **over the whole map**: least cost first (a sorted vector, ties
+first in, first out); a step costs 2 from a road cell onto a road cell, else 20, ×3 diagonally;
+off the map, water, rock and impassable cells (+0x28 bit 25 clear: the obstacles) are refused, and
+so are objects whose type's settings +0 is set and +2 clear; an object whose settings +1 and +2
+are clear is left only toward its five lower and side neighbours and entered only not moving SE,
+S or SW; a one-way monolith also reaches every one-way monolith of its subtype (+0x14C0, exits
+and entrances alike) at +50, a two-way one those of +0x14D0, a subterranean gate the same x, y on
+the other level at +1. Per later target j whose cost is at most 30000, `rmg_road_trace` walks back
+from j: the stretch at j's end already of this type is skipped, then every cell to the origin goes
+to the game's road painter (outside the range), a new stroke after each diagonal step and level
+change; when it painted and j is not the last target, the flood from i runs again, so later roads
+follow earlier ones (cost 2). An unreachable target gets no road. Progress +1000 per re-flood and
+per i.
+
+**Step 15, rivers** (T1a1's shipyards are Water Wheels, type 109). Bit 29 (a river or a source) on
+one cell of every lake (126), mountain (134) and Gem Pond (53, subtype 5): its entrance, else the
+cell half its footprint up and left of its position. Bit 30 (a river's end) on the map's border
+cells and on the **delta sites**: for each water cell and orthogonal direction d, when the three
+cells across it are water, the three beyond them land and the next four cells in d land, all
+without objects, the fourth (4 cells inland) gets bit 30 and d in bits 8-11. Then per Water Wheel
+in placing order `rmg_river_to_source` from its entrance and `rmg_river_to_mouth` from three
+cells: two left of its entrance, the one above it and the one right of that. Both are least-cost floods over E, S, W, N that refuse
+water, rock and the other snowness (on snow an icy river, type 2, else a clear one, type 1: a
+river never passes between snow and other land) and **test no object, obstacle or passability**;
+a step costs **(rand() & 31) + 1, a draw per neighbour examined**, +30 into a road cell; each stops
+at the first neighbour it improves that carries its target bit (29 upward, 30 downward) and paints
+the river from there back to its start through the river view. The lower course also refuses cells
+beside an earlier river (bit 31: the river view marks the 3 × 3 of every river cell) and enters a
+delta site only along its direction; at a delta site it places a **river delta** (type 143: the
+n-th of its prototypes allowed on that land, n by direction from 0x6409A0 for a clear river,
+0x6409B0 for an icy one; none: no delta) through slot 1 at the site + `rmg_river_delta_offsets`
+0x69CE28, and the river gets one cell more toward the sea. Its cells get bit 30, so a later wheel's
+lower course can end on it; the river view clears bit 30 in the 5 × 5 around each new river cell
+that holds no river. A flood that reaches nothing paints nothing. Progress +1000 per mark and per
+wheel.
+
+**The file** (settles §1.6; `h3m.md`'s reader table; ✓ = as the reader expects):
+
+1. **Header, in write order:** format (0x0E, 0x15, 0x1C by the version), 1, the width (one side),
+   levels > 1 ✓; the name "Random Map", the description, difficulty 1, AB's level limit 0 ✓. Per
+   colour: the bools from its zones that hold a town (a human start: human and computer; a
+   computer start: computer only), and human-start colours beyond the players that are not
+   human-flagged turned computer-only, pink first; AI tactic 0, SoD's town-choice byte 0, the
+   allowed towns = those zones' town types (u8 RoE, u16 from AB), random town 0, a main town with
+   AB's generate-hero 1 and town type 0xFF at the zone's first town's **entrance** (zone generator
+   +0x30), no random hero, hero type 0xFF, AB's byte 0 and no heroes; a colour without such a zone
+   fills the reader's 6, 12 or 13 unused bytes (zeros and the hero type 0xFF) ✓. Standard victory and loss ✓; the teams ✓
+   (below); the allowed heroes (not banned at +0xF88: 16 bytes of 128 in RoE, 20 of 156) ✓; AB's
+   u32 0 placeholders, SoD's u8 0 disposed heroes ✓; 31 zero bytes ✓; **the banned artifacts**:
+   those whose setup record +0x14 is not −1 (H3API's combination index; 129-140 in `Untitled.h3m`)
+   and 127 and 128: **AB 17 bytes of 129 bits, SoD 18 of 144** ✓ (T1a1's 17-byte block was AB's
+   branch); SoD's 9 and 4 zero bytes (no spell or skill banned) ✓, then 156 zero bytes. The
+   reader's order is the rumours' count, then the 156 hero bytes: `rmg_write_map`'s u32 0 after
+   the header is the rumours' count, the same 160 zero bytes in the other order.
+2. **Teams:** a computers' team count of 0 becomes the computers, a team count of 0 the players,
+   with no computers at least 2; teams ≥ players and computers' teams ≥ computers: no teams (count
+   0); else both clamped to 1 .. their colours (recounted from the bools above), the players spread
+   from team 0, the computers from the players' team count on, one draw per flagged colour.
+3. **The rest:** every cell (7 bytes: land, picture, river, picture, road, picture, flags = the
+   three mirror pairs and the shore 0x40) ✓; the templates (count + 2, the first prototypes of
+   groups 71 and 124 (random monster, hole), then every prototype in use by its type's object settings group, so
+   `Untitled.h3m`'s classes are not sorted; name, the two 6-byte masks repacked, two u16 terrain
+   masks from +0x14 and +0x18, class, subclass, the bytes +0x24 and +0x28, 16 zero) ✓; the
+   objects: their count, in placing order **first those whose type's object settings +0xC is set,
+   then the rest**, each through its slot 3 with the version: x, y, z, the template index, 5 zero
+   bytes, the body ✓: monster (AB's identifier, count, disposition +0x24, no treasure, 0, 0, 2
+   zero), town (identifier, owner, no name or garrison, formation 0, no building list, has fort,
+   AB's 9 + 9 zero spell bytes, no events, SoD's 0xFF, 3 zero), dwelling and shipyard (owner 0xFF),
+   random and quest artifact (no message), resource (no message, amount 0, 4 zero), Pandora's Box
+   (its rewards: experience, resources, spells, one creature), seer hut (RoE the artifact; AB a
+   quest of one artifact, no deadline, empty texts; the reward experience, creature or resource),
+   prison (identifier, hero, experience, the rest default), Scholar (bonus 0xFF), shrine (spell
+   0xFF), scroll (its spell), Witch Hut (AB's skills 0xEFDF), the plain kind (a Keymaster's Tent
+   among others) the header alone; then the timed events' u32 0. **No 124 padding bytes are
+   written.**
+4. **The description:** "Map created by the Random Map Generator.  Template was …" with, in order,
+   the template's name, the seed (+4), the width, the levels, "humans" = the dialog's players
+   (humans and computers, +0xF48), the computers, water (None, normal, islands), the monster
+   strength 1 to 5; then the version (original, first expansion, second expansion map); then per
+   colour in order ", <colour> is human" when its human flag is set and ", <colour> town choice is
+   <town>" when it has a town choice, **the town's name taken by the colour's index** (`rmg_town_names`
+   0x68272C[colour]: red always reads castle). **Nothing in the file depends on the time or the
+   machine but the seed** (no date or name; `Untitled.h3m`'s gzip header has time 0, OS 0x0B).
+5. **Draws in the writer:** only the teams' (0x54ABA6), after every draw of the generation.
+
+**`Untitled.h3m` against this reading** (observation): it matches in all but three points: each
+main town's type byte holds that town's type where the code writes 0xFF; the file ends with 124
+zero bytes after the events' count, which `rmg_write_map` does not write (its last objects are
+bodiless 12-byte ones, then 128 zero bytes); its description names no colour as human, which a run
+with a human player gives as read. The user plays with the HD mod (`docs/epics/E17-design.md`): a
+runtime patch of the writer, and possibly of the generation, is the likely cause. Its 11 Witch Huts
+carry 0xEFDF as read.
+
+**Draw sites** (4):
+
+| Site | Function | Drawn | Per | Condition |
+|---|---|---|---|---|
+| 0x54829B `rmg_road_type_draw` | `rmg_roads_lay` | `rand() % 3 + 1` | run | always |
+| 0x54876F `rmg_river_source_cost_draw` | `rmg_river_to_source` | `(rand() & 31) + 1` | neighbour examined, per cell popped (a cell can pop more than once) | on the map, not water or rock, same snowness |
+| 0x549153 `rmg_river_mouth_cost_draw` | `rmg_river_to_mouth` | the same | the same | also not beside a river |
+| 0x54ABA6 `rmg_team_draw` | `rmg_teams_draw` | `rand() %` teams with room left (signed) | flagged colour, players then computers | the map has teams |
+
+**Float sites:** none (no x87 or SSE instruction in the 66 functions).
+
+**Clocks, retries, limits, failures:** no clock (the seed is only printed). No retry and no cap: the
+floods run until their queue is empty; step 14 floods once per target and once more per road laid
+(one road per pair of targets at most), step 15 twice per wheel. Give-ups, all silent: a target of cost above
+30000 gets no road; a wheel whose flood reaches no source or end gets no course; a delta without its
+n-th prototype is not placed. `rmg_river_delta_site_mark` bounds x by `x > width` (x = width
+accepted): it reads the next row's first cell, and at the map's last cell **one cell past the
+array**, whose bytes decide whether that delta site is marked (memory-dependent).
+
+**Outside callees** (32): mapped already 6 (`empty_ret_8`, `vector_insert_u32`,
+`entry12_vector_insert`, `c_sprintf`, two H3API guesses: string init, free); the game's road and
+river painters 5 (a road and a river painter's start and end, a stroke's next cell, shared); a
+template's name 1; the C runtime 4 more (operator new, the exception throw, atexit, the array
+destructor); the C++ library 16 (strings, vectors, bitsets of 10, 48, 128, 129,
+144 and 156 bits and their range errors, exception objects). I/O: the stream's write (+8) only, no
+file opened here; UI: the progress window's +8.
+
+**Quirk candidates (as read, unclassified):**
+
+- The description's town choice prints the town of the colour's index, not the choice; "humans"
+  counts the computers too.
+- Rivers test no objects or obstacles: a river can run under them.
+- The river floods draw per neighbour examined, a cell popped again drawing again: the stream
+  depends on the queue's details, not only on the map.
+- Generated Witch Huts offer skills 0-4, 6-11 and 13-15 only (never Navigation, Necromancy or any
+  of 16-27; `Untitled.h3m` agrees).
+- Every map bans artifacts 127 and 128 besides the combination artifacts.
+- Roads treat one-way monoliths both ways and jump to the far monolith's position.
+- `rmg_river_delta_site_mark`'s x bound (above).
+- The main town's position is the town's entrance (`Untitled.h3m`'s towns lie two cells right of
+  it); T1c compares with the reader's convention.
+
+**Not read:** the game's road and river painters (which picture they choose; they write through the
+views' slots 1 and 2); which types set object settings +0xC (the first pass); where the river
+view's bits 29-31 are read beyond step 15 (nowhere else in the range).
+
+**For the next parts:** every draw site of the run is now listed (§2.6); the oracle (T1b) must
+generate with the plain executable or record which patch ran, since `Untitled.h3m` differs from the
+code read; a generated file names its seed, template, choices and version, and its 124 trailing
+bytes, the town type bytes and the human list show whether the HD mod wrote it.
+
+### 2.6 The stream's draws in order
+
+One stream (`crt_rand`, Begin's thread), in execution order; the sites from §1.1 to §2.5.
+
+| Phase | Sites in order | Per |
+|---|---|---|
+| dialog | 0x586168, 0x586183, 0x5861B1, 0x5861E4, 0x58621D | Random choice, on the game's earlier state |
+| setup | `srand(time())` 0x536148; water 0x537C89 | once; water Random |
+| template | 0x549975 | once |
+| step 1 | per template zone 0x532A5B (its town types), 0x53BB5F; two more passes of 0x53BB5F; per zone 0x532B00 or none, 0x53BFC0 | zone, pass |
+| step 2 | 0x532A5B per temporary and water zone (by uninitialised bytes); 0x53C0F2 | level; segment split |
+| step 3 | 0x53CE1D | split (islands) |
+| steps 4, 5 | 0x545492; 0x544DEC or 0x544E22, 0x545174 | town |
+| step 6 | 0x543EB8, 0x54403E; per water zone 0x53F745, 0x53F794, 0x53EFE4, 0x53EEFF to 0x53EF43; 0x546154 (joining, again per monolith Border Guard); per connection the way (0x541B78, 0x541D6C; 0x5421BC, 0x542387; 0x54146B per passage), then its guards (0x542A8F, or 0x541673 and 0x540C61, 0x540CCE, 0x540CD8) | level, split; islet; guard crossed; connection |
+| step 7 | 0x5444B4 | split |
+| step 8 | 0x545AA8, 0x54591A, the guard's three, 0x546154, 0x545D0C | mine; cell |
+| step 9 | 0x546154 | guard crossed |
+| step 10 | 0x546771; per object 0x546154 per candidate, 0x546489, 0x535B31; the guard's three, 0x5353B9; 0x5472F0; the hooks' 0x54B511, 0x54B366, 0x54B382 and their piles' draws | pile, per pick and try |
+| any object made | 0x54B136 (prison), 0x534F06 (scroll), 0x546154 (seer's artifact) | object created |
+| step 13 | 0x5376AA | cell popped |
+| step 14 | 0x54829B | once |
+| step 15 | 0x54876F, then 0x549153 | neighbour examined, per wheel |
+| writer | 0x54ABA6 | flagged colour, with teams |
+
+**The run's floats:** x87 only, every conversion `crt_ftol` (truncation): step 1's candidates
+trunc(f64(r) × T[k] + f64(o)) with `rmg_layout_cos` 0x682500 and `rmg_layout_sin` 0x682600 (f64,
+four decimals) at the control word's precision; step 2's points (s × T[k] doubled + x, trunc;
+`fcomp` bounds); trunc(sqrt(f64(dx² + dy²))) in `rmg_zone_position_fits`, `rmg_zones_touch` and
+`vector_length_int` 0x5FCEB0 (steps 1, 2, 6, 7); the spacings trunc(sqrt(f64(q))) of an integer
+quotient: 82944 / S (steps 5, 8), 800 / S or 1600 / S (step 10). None elsewhere.
+
+**Clocks, retries, limits:** the clock: `time()` in seconds, once (the seed, printed in the file).
+Memory-dependent: step 2's uninitialised town-type bytes (whether 0x532A5B draws) and step 15's
+read past the cells (§2.5). Fixed iterations: step 1's three passes, 32 (65 with two levels)
+candidates per placement. Retries: step 10 only (six per pick, three per object). Limits: a land
+connection's passages ≤ ceil(n / 40) of ≤ 100 candidates; roads to costs ≤ 30000; the limits by
+type in step 10's choice. Every other give-up is silent; the run's only reported failure is no
+template (code 3), an exception anywhere code 1.
