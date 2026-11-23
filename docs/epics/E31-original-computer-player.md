@@ -158,3 +158,6 @@ or HotA's AI, but as pointers.
   the value field, the score with its draw, the choice; 21 map entries (13 new, 5 rewritten, 3 renamed in),
   `pathfinder_node` and `ai_candidate` in `structs.toml`; the survey §1.9; two quirk candidates
   for T1b (`E31-log.md` T1a1b).
+- **T1a1c** (2026-11-23): the walk: the dig, the jumps (Castle Gate, Town Portal, Dimension
+  Door), the spells on the way, the boat bought, the step's visit, the replan; 10 map entries; the
+  survey §1.10 (`E31-log.md` T1a1c). **T1a1 done.**

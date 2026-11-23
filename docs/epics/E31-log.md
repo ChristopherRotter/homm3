@@ -66,3 +66,25 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   node's key +0x10 and the expansion's sixth argument behind it, the per-class value table):
   T1a2; the walk: T1a1c; `ai_hero_candidates`' other caller `ai_town_hero_prospects` 0x431BD0
   (inferred, mapped): T1a3, T1a4.
+
+## T1a1c — the walk (2026-11-23, increment 1)
+
+- **Read** (the survey §1.10): `ai_hero_walk` 0x42FEE0 whole, `ai_walk_cast` 0x4309A0,
+  `ai_walk_dimension_door` 0x430AB0 (the target's choice in outline), `ai_boat_create` 0x430F80
+  whole; `ai_walk_path` 0x430610 and `ai_hero_step` 0x42FC50 in the parts the walk depends on.
+  Done in the session of T1a1b, on its branch (the user: a couple of small tasks at a time).
+- **Mapped:** 10 entries: four new functions (`ai_walk_path`, `ai_walk_cast`,
+  `ai_walk_dimension_door`, `hero_summon_boat_possible` 0x4E5550 inferred), the table
+  `ai_door_thresholds` 0x660500 (it follows `ai_difficulty_weight_b` 0x6604FC, read through that
+  address: that entry corrected), `ai_hero_walk` and `ai_boat_create` rewritten, `ai_hero_step`
+  extended, 0x40EC90 renamed `hero_dig` (was `path_rebuild`; the map-client lane's inbox told).
+- **Found:** the walk's own rules for T1a3's table: the boat bought without a visit, a town's
+  Shipyard and the Castle Gate (building 22) bought mid-walk, the gate's jump made even when its
+  purchase fails, Town Portal and Dimension Door applied directly (Town Portal 300 points, 200 at
+  expert; the door no points), Fly, Water Walk and Summon Boat cast as a human casts them; the
+  dig at the puzzle target; a visit ends the walk; the Eye value zeroed after a Hut of the Magi
+  (the record's +0x04 write the queue asked for).
+- **Not read:** `ai_walk_path`'s branch for a Fly node not next to its from-tile, the move's flag
+  that zeroes the points, how the pathfinder makes the walk's marks and reads the boat marks
+  (`pathfinder_gate_exit` 0x56A730 among them): T1a3, T1a4.
+

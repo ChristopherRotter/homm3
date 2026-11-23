@@ -32,8 +32,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** none; this branch `ai/e31-t1a1b` (E31 T1a1b, docs and the map) opens
-  one when ready. Merged: #1131 (T1a1a), #1129 (T44's valuation read, T45), #1130
+- **Open pull requests:** this branch `ai/e31-t1a1b` (E31 T1a1b and T1a1c, docs and the map)
+  opens one when ready. Merged: #1131 (T1a1a), #1129 (T44's valuation read, T45), #1130
   (`shared/e25-pause`).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
@@ -42,9 +42,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, the survey
   `docs/rules/surveys/E31-computer-player.md`): T1a1 cut in three (AI-Q24); **T1a1a done** (the
-  turn's loop, the records); **T1a1b done** (the planning: the danger map, the candidates, the
-  score, the choice; two quirk candidates for T1b). **Next: E31 T1a1c** (the walk) in `QUEUE.md`,
-  `Heroes3.exe` staged in a cloud sandbox. Then E13 (refined in shape,
+  turn's loop, the records), **T1a1b** (the planning; two quirk candidates for T1b) and **T1a1c**
+  (the walk) done: **T1a1 done**. **Next: E31 T1a2** (the values) in `QUEUE.md`, `Heroes3.exe`
+  staged in a cloud sandbox. Then E13 (refined in shape,
   `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -54,12 +54,15 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-11-23 — E31 T1a1b: the planning
+### 2026-11-23 — E31 T1a1b and T1a1c: the planning and the walk
 
 - A cloud clone, `Heroes3.exe` staged from the user's PC (its local `master` was behind GitHub's,
-  which already had #1131). Read the danger map, the destination's choice and its helpers, the
-  candidates, the claims, the score and its draw; 21 map entries, `pathfinder_node` and
-  `ai_candidate`, the survey's §1.9. Scratch scripts over `scripts/exe.py` (not committed).
+  which already had #1131). T1a1b: the danger map, the destination's choice, the candidates, the
+  claims, the score and its draw (21 map entries, `pathfinder_node`, `ai_candidate`, the survey's
+  §1.9). T1a1c on the same branch: the walk (10 entries, §1.10; 0x40EC90 renamed `hero_dig`, the
+  map-client lane's inbox told). Scratch scripts over `scripts/exe.py` (not committed). The scoped
+  verify with `--with-original-data` fails the harvester step without the LODs (only the
+  executable was staged): run it without the flag.
 
 ### 2026-11-23 — E31 T1a1a: the turn's loop and the records
 

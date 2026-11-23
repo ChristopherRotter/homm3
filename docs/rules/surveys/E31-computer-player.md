@@ -84,8 +84,9 @@ garrison hero (and +0x43), so nothing a human would call sleeping lasts past the
 5. **The boat marks**, with at least 10 wood and 1000 gold: each of the player's towns marks its
    boat tile (map item +0xD bit 0x08) when its Shipyard is built, or can be bought now with the
    Shipyard's cost plus 10 wood and 1000 gold left over; each map Shipyard it owns marks its boat
-   tile without a test. The marks are cleared once the walk is over. (How the search and the step
-   use them: T1a1c; the step's boat is `ai_boat_create` 0x430F80.)
+   tile without a test. The marks are cleared once the walk is over. A step onto a marked tile buys
+   the boat (`ai_boat_create` 0x430F80, §1.10); where the search reads the mark is not found yet
+   (T1a4).
 6. **The search and the walk** (0x5267B0, §1.4).
 7. **The garrison:** a hero still on the map, without points or asleep, standing on its own town's
    entrance, goes into an empty garrison; with a garrison hero there, the two swap when the
@@ -107,7 +108,7 @@ garrison hero (and +0x43), so nothing a human would call sleeping lasts past the
 - **No destination:** the hero is put asleep and its destination cleared.
 - **The week's last day:** a hero on a town's entrance whose destination is worth less than 75
   stays (asleep) on day 7, to meet the new week's growth there.
-- Otherwise **the walk** (`ai_hero_walk` 0x42FEE0; T1a1c).
+- Otherwise **the walk** (`ai_hero_walk` 0x42FEE0, §1.10).
 - **A reveal:** if the destination was unexplored before the walk and is explored after it, and
   the turn's flag F is still set, the record's Eye value is recomputed (§1.6), F is cleared and
   every hero of the player is woken: they all plan again once in this turn.
@@ -209,12 +210,19 @@ the computer's last turn decide there. In the game's records, the hero's destina
   the garrison swap at a turn's end; the resources shared with allies; Easy without a human ally
   skips the danger map; the computer's sleep lasting one turn. The planning adds none: the danger
   map, the candidates and the choice are the policy's, and the pathfinder's computer mode (the
-  tile buffer folded into its nodes) shapes only the computer's own searches.
+  tile buffer folded into its nodes) shapes only the computer's own searches. The walk's (§1.10):
+  the boat bought without visiting the Shipyard, and a town's Shipyard bought mid-walk; the
+  Castle Gate bought in both towns mid-walk and the jump made even when a purchase fails; Town
+  Portal and Dimension Door applied directly (moved, mana spent; Town Portal 300 points, 200 at
+  expert; Dimension Door none) instead of the human's cast; Fly, Water Walk and Summon Boat cast
+  as a human casts them; the dig.
 
 ### 1.8 Not read yet
 
-The walk (`ai_hero_walk` 0x42FEE0, the step's points, the path, the spells cast on the way):
-T1a1c. The values the frame and the planning call (`ai_vision_area_value`, the defence functor,
+The walk's leftovers (§1.10): `ai_walk_path`'s branch for a Fly node not next to its from-tile,
+the flag of `hero_move_step` that zeroes the points, how the pathfinder makes the walk's marks
+(0x200, 0x400, 0x800, the Castle Gate's and Town Portal's nodes: `pathfinder_gate_exit` 0x56A730
+among them) and reads the boat marks: T1a3 and T1a4. The values the frame and the planning call (`ai_vision_area_value`, the defence functor,
 `ai_hero_effectiveness`, the puzzle's target, the list inside `ai_resource_weights`,
 `ai_army_fight_sim` 0x427330, `ai_fight_estimate` 0x528040, the node's key +0x10 and the
 expansion's sixth argument behind it, the per-class value table `ai_class_tables_init` fills):
@@ -296,3 +304,44 @@ classes 0 to 36 instead of the 37 listed (the artifact, the resources, the chest
 colleague's claims are offset by its +0x41 less its points left only when +0x41 is not larger
 (16-bit), so tiles nearer its destination than that difference claim nothing. Both shape only
 which of a player's heroes takes which target.
+
+### 1.10 The walk (T1a1c)
+
+Read whole: `ai_hero_walk` 0x42FEE0, `ai_walk_cast` 0x4309A0, `ai_walk_dimension_door` 0x430AB0
+(its target's choice in outline), `ai_boat_create` 0x430F80; `ai_walk_path` 0x430610 and the step
+`ai_hero_step` 0x42FC50 (with E24 M4's reading) in the parts the walk depends on. The walk follows
+the path the pathfinder builds to the hero's destination (+0x35), node by node, with no wait
+between steps; the node's flags carry the walk's marks (`pathfinder_node` +0x4).
+
+- **The Grail:** a hero whose destination is the player's puzzle target and who stands on it digs
+  (`hero_dig` 0x40EC90, the human's dig) if it has not moved today, else its points go to 0 and it
+  waits for the next day.
+- **The path:** none, and the points go to 0 (the hero is done). A first node marked 0x200: the
+  hero visits the object it stands on, and the walk ends.
+- **Jumps:** a Castle Gate node (0x100): building 22 is bought in the town the hero stands on and
+  in the node's town when missing (`town_buy`, paid; the result is not tested, so the jump is made
+  even when a purchase fails: whether the pathfinder ever offers such a jump is T1a3's), 100
+  points are taken and the hero is moved; the walk ends. A Town Portal first node (0x40): the hero
+  is moved, the spell's mana spent, 300 points taken (200 at expert); the walk ends. A Dimension
+  Door (at a node marked 0x800, `ai_walk_dimension_door`): with the spell, off Cursed Ground, at
+  least its cost plus 20 spell points and a cast left today, to the farthest waypoint within 9
+  columns and 8 rows whose saving over walking (its cost less the cost so far, plus 200) reaches a
+  threshold set by how many casts it can pay for (1000 % of the day's points for one, then 150,
+  100, 75, 50 and 25 % for six or more; 200 points toward a Magic Well or Spring), or any when the
+  stretch needs a jump; the mana is spent, no points; the walk ends.
+- **Spells on the way:** a Fly or Water Walk stretch is cast for (as a human casts it) when the
+  hero lacks the effect and has the points for the stretch up to the next waypoint; otherwise the
+  walk ends (at the first node with the points zeroed). A boat node entered from land: a hero
+  that can summon a boat casts Summon Boat on the walk's first step and stops (it plans again in
+  the second pass); else a marked boat tile has its boat bought (`ai_boat_create`: the town's
+  Shipyard bought first when missing, then 10 wood and 1000 gold, no visit).
+- **The step:** the last one when the next node costs more than the points left. A step that ends
+  on an object visits it and ends the walk (the hero plans again in the second pass); after a Hut
+  of the Magi the record's Eye value (+0x04) is set to 0; after any visit the hero's values are
+  recomputed (`ai_hero_effectiveness`, T1a2). A hero no longer the player's (lost) ends it.
+- **Replanning:** after a waypoint (0x400) with 100 points or more left and no must-go, the
+  destination is chosen again (`ai_hero_destination`, mode 5, the budget the cost of the eighth
+  node ahead or the last, at most the points left, at least 350); a new destination rebuilds the
+  path. The destination's cost (+8) is lowered by each step's cost.
+
+No draw, hidden read or float of its own in the walk (the replans draw, §1.9).

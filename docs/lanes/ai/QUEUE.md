@@ -19,14 +19,17 @@ resumes (the epic file); its tasks are cut then.
 **E31** (`docs/epics/E31-original-computer-player.md`, AI-Q22; refined 2026-11-21): next (since
 T45, AI-Q23).
 
-- **E31 T1a1 — the frame, in three parts** (AI-Q24, the user at T1a1's start: about 16 KB with
-  its own helpers; `Heroes3.exe` staged, SHA-256 `aac39e8c…`, `pip install capstone pefile`, a
-  cloud sandbox). **T1a1a done** (2026-11-23, `E31-log.md` T1a1a; the survey's §1.1 to §1.8).
-  **T1a1b done** (2026-11-23, `E31-log.md` T1a1b; the survey's §1.9).
-  - **T1a1c — the walk:** `ai_hero_walk` 0x42FEE0 (its path and the two routines after it, the
-    spells cast on the way), `ai_hero_step` 0x42FC50's points and its write of the record's +0x04,
-    the boat marks' use and `ai_boat_create` 0x430F80. About 5 KB.
-  - Then T1a2 to T1a4 (T1a4 maps the third range, 0x423EE0 to 0x42A000: the survey's §0), T1b.
+- **E31 T1a1 — the frame, in three parts** (AI-Q24): **done** 2026-11-23 (`E31-log.md` T1a1a
+  to T1a1c; the survey's §1).
+- **E31 T1a2 — the values** (the epic's increment 1 table; `Heroes3.exe` staged, SHA-256
+  `aac39e8c…`, `pip install capstone pefile`, a cloud sandbox): what a hero's plan weighs. Open
+  from T1a1 (the survey §1.8): `ai_army_fight_sim` 0x427330 (the danger map's), `ai_fight_estimate`
+  0x528040 (a candidate's value, 5.7 KB), the pathfinder node's key +0x10 and the expansion's
+  sixth argument behind it, the per-class value table `ai_class_tables_init` 0x428070 fills, the
+  frame's `ai_vision_area_value`, the defence functor, `ai_hero_effectiveness`, the puzzle's target,
+  the list inside `ai_resource_weights`; every hidden read. Confirm its cut at its start by size
+  (`ai_fight_estimate` alone is a third of it).
+- Then T1a3, T1a4 (T1a4 maps the third range, 0x423EE0 to 0x42A000: the survey's §0), T1b.
 
 ## Inbox
 
