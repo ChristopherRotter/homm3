@@ -1426,6 +1426,33 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             hero: HeroId::new(6),
             part: h3_game::HiredPart::Spell(Handle::from_raw(30)),
         },
+        // E08 T141a (v80): a freed prisoner both see, its view and its parts player 0's alone;
+        // a full player's and an emptied Prison's visits player 0's.
+        GameEvent::PrisonerFreed {
+            player: P0,
+            hero: HeroId::new(8),
+            hero_type: Handle::from_raw(14),
+            pos: at,
+            seen_by,
+            view: Some(h3_game::TavernHero {
+                id: HeroId::new(8),
+                hero_type: Handle::from_raw(14),
+                level: 5,
+                experience: 5000,
+                primary: [2, 1, 1, 3],
+                mana: 30,
+                carried: 0,
+                formation: h3_content::Formation::Tight,
+                tactics: true,
+            }),
+        },
+        GameEvent::PrisonerPartSeen {
+            player: P0,
+            hero: HeroId::new(8),
+            part: h3_game::TavernPart::Stack(stack),
+        },
+        GameEvent::PrisonFull { player: P0, hero },
+        GameEvent::PrisonEmptied { player: P0, hero },
         // E09 T39b2 (v74): a Den of Thieves' guild, player 0's alone, a part of each kind.
         GameEvent::ThievesGuildSeen {
             player: P0,
@@ -1841,8 +1868,9 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
     // `GarrisonChanged`, `GarrisonStackSeen`; E09 T37a: `TavernOffered`, `TavernPartSeen`; T38a1:
     // `HeroHired`, `HiredPartSeen`; T39a: `TavernOpened`; T39b2: `ThievesGuildSeen`,
     // `GuildPartSeen`; E08 T133b: `MarketOpened`; T134a: `AltarOpened`; T134b1:
-    // `HillFortOpened`).
-    assert_eq!(distinct.len(), 49, "{distinct:?}");
+    // `HillFortOpened`; T141a: `PrisonerFreed`, `PrisonerPartSeen`, `PrisonFull`,
+    // `PrisonEmptied`).
+    assert_eq!(distinct.len(), 53, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);
@@ -1865,6 +1893,7 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
         "Battle",
         "BattleEnded",
         "HeroHired",
+        "PrisonerFreed",
     ]
     .map(String::from)
     .into();

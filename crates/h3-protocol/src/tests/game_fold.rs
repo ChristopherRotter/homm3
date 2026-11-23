@@ -2695,11 +2695,28 @@ fn a_freed_prisoner_folds_as_a_hire_and_joins_the_end_of_its_owners_list() {
     let held = own.clone();
     fold(
         &mut own,
-        &[GameEvent::PrisonerPartSeen {
-            player: 1,
-            hero: 99,
-            part: TavernPart::Stack { stack: stack(0, 1) },
-        }],
+        &[
+            GameEvent::PrisonerPartSeen {
+                player: 1,
+                hero: 99,
+                part: TavernPart::Stack { stack: stack(0, 1) },
+            },
+            GameEvent::PrisonerPartSeen {
+                player: 1,
+                hero: 99,
+                part: TavernPart::Skill {
+                    skill: SkillLevel { skill: 5, level: 2 },
+                },
+            },
+            GameEvent::PrisonerPartSeen {
+                player: 1,
+                hero: 99,
+                part: TavernPart::Artifact {
+                    place: ArtifactPlace::Worn { position: 1 },
+                    artifact: ring,
+                },
+            },
+        ],
     );
     assert_eq!(own, held);
     // The first hero of the list leaves the map: the rest move up.
