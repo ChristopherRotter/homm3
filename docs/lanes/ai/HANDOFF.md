@@ -32,16 +32,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1129 (this branch, `claude/gifted-goodall-is3bgu`: T44's valuation
-  read, T45, increment 10 closed) after `shared/e25-pause` (README, BACKLOG). Merged: #1123 (T44's tool, #2's recording), #1121 (`shared/ci-exe-map`), #1119 (T43's
-  measurement read, E31's cited addresses).
+- **Open pull requests:** #1131 (`ai/e31-t1a1`: E31 T1a1a, docs and the map). Merged: #1129 (T44's
+  valuation read, T45), #1130 (`shared/e25-pause`), #1123 (T44's tool, #2's recording).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q24, AI-QUIRK-1, AI-STUB-2.
-- **Next: E31** (the original's computer player; refined 2026-11-21, AI-Q22:
-  `docs/epics/E31-original-computer-player.md`, increment 1 the reading's map and the survey;
-  **E31 T1a1** in `QUEUE.md`, `Heroes3.exe` staged), then E13 (refined in shape,
+  ids: AI-Q25, AI-QUIRK-1, AI-STUB-2.
+- **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
+  `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, the survey
+  `docs/rules/surveys/E31-computer-player.md`): T1a1 cut in three (AI-Q24); **T1a1a done** (the
+  turn's loop, the records). **Next: E31 T1a1b** (the planning) in `QUEUE.md`, `Heroes3.exe`
+  staged in a cloud sandbox. Then E13 (refined in shape,
   `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -50,6 +51,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-23 — E31 T1a1a: the turn's loop and the records
+
+- A cloud clone (the user's PC for staging `Heroes3.exe` only), the branch stacked on #1129. The
+  cut asked at the start (AI-Q24: three parts). Read the turn, the hero order, a hero's turn, the
+  search's frame, the start and middle; 42 map entries, `ai_player_record` and fields in
+  `structs.toml`, the survey's §0 and §1. Scratch call-tree scripts over `scripts/exe.py` (not
+  committed). The fog test's entry corrected (the adventure lane hears with T1a3's table).
 
 ### 2026-11-23 — E25 T44: the valuation read
 
@@ -64,13 +73,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   file reads back to its record, a timing on the fair actor's own 18 games (no original data
   needed). The user uploaded #2's `best.pt` (`python/runs/`, ignored); the train group synced;
   #2's games recorded here. The valuation is the user's (their choice: 16 threads).
-
-### 2026-11-21 — E25 T43: the budget check and the measurement read
-
-- The user ran both on 16 threads and uploaded the games files; `cargo build --release -p
-  h3-cli`, the JSON records rebuilt from them (identity matched), `--budget 0` played as the
-  pairing's base. Budget 4 chosen (#1099 merged). The measurement's two "stuck" last games:
-  the neutral one only slow (played here, 213 s), the report set's a stall traced by gdb and a
-  temporary instrumented build (not committed) to the fair actor; the user chose to leave it
-  out. `check-exe-map` failed on `master` (E31's citations): `Heroes3.exe` staged (the user's
-  upload, SHA-256 checked) for the map's entries.
