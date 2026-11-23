@@ -253,10 +253,10 @@ impl HeroPool {
     /// army was the Prison's).
     // rule: ADV-PRI-002
     pub(crate) fn free_prisoner(&mut self, id: HeroTypeId, colour: u8) {
-        if let Some(entry) = self.types.get_mut(id.index()) {
-            entry.status = HeroStatus::Taken(colour);
-            entry.mask |= 1_u8.checked_shl(u32::from(colour)).unwrap_or(0);
-        }
+        // A prisoner's type is the ruleset's (its status read before, [`Self::status`]).
+        let entry = &mut self.types[id.index()];
+        entry.status = HeroStatus::Taken(colour);
+        entry.mask |= 1_u8.checked_shl(u32::from(colour)).unwrap_or(0);
     }
 
     /// `id`, a hero that left the game without returning (TWN-TAV-006; E09 T38b1, design note

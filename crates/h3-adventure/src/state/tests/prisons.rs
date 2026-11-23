@@ -133,6 +133,15 @@ fn a_prison_holds_its_prisoner_from_the_build_by_slot() {
             formation: Formation::Tight,
         }
     );
+    assert_eq!(
+        prison.resolved.prisoner(),
+        Some((
+            PRISONER,
+            &[prisoner_army()[1], prisoner_army()[0]][..],
+            Formation::Tight
+        ))
+    );
+    assert_eq!(Resolved::Nothing.prisoner(), None);
     // Off the map, in no list.
     assert!(state.hero(PRISONER).is_none());
     assert_eq!(state.hero_list(RED), [HERO]);
@@ -285,6 +294,11 @@ fn a_freed_prisoner_stands_on_the_entrance_last_in_its_owners_list_with_a_full_d
         ..visit
     };
     let none = fresh.free_prisoner((&rules.0, &rules.1, &heroes), &wrong, RED, &mut events);
+    assert_eq!((none, events.len()), (Viewers::NONE, 0));
+    assert_eq!(fresh, before);
+    // Nor one naming an index past the objects.
+    let past = PrisonVisit { index: 9, ..visit };
+    let none = fresh.free_prisoner((&rules.0, &rules.1, &heroes), &past, RED, &mut events);
     assert_eq!((none, events.len()), (Viewers::NONE, 0));
     assert_eq!(fresh, before);
 }

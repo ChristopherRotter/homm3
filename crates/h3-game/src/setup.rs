@@ -610,14 +610,17 @@ impl GameSetup {
         }
         // E08 T141a: each prisoner's type the ruleset's and no placed hero's or earlier
         // prisoner's, before any draw.
+        let mut prisoner_types = Vec::with_capacity(self.prisoners.len());
         for (index, prisoner) in self.prisoners.iter().enumerate() {
             let t = prisoner.hero_type;
-            if rules.core().hero_type(t).is_none()
-                || self.heroes.iter().any(|hero| hero.hero_type == Some(t))
-                || self.prisoners[..index].iter().any(|p| p.hero_type == t)
-            {
+            let hero_type = rules.core().hero_type(t).filter(|_| {
+                !self.heroes.iter().any(|hero| hero.hero_type == Some(t))
+                    && !self.prisoners[..index].iter().any(|p| p.hero_type == t)
+            });
+            let Some(hero_type) = hero_type else {
                 return Err(GameSetupError::PrisonerType(index));
-            }
+            };
+            prisoner_types.push((t, hero_type));
         }
         // E09 T7b2b: one hero more per main town that generates one (TWN-SET-009); E09 T37b: at
         // most one record per customised type; E08 T141a: one per prisoner.
@@ -668,13 +671,9 @@ impl GameSetup {
         // built as a placed hero (its army now, its details below), in no player's list.
         let first_prisoner = heroes.len();
         let mut prisoners = Vec::with_capacity(self.prisoners.len());
-        for (prisoner, index) in self.prisoners.iter().zip(first_prisoner..) {
+        let held = self.prisoners.iter().zip(prisoner_types);
+        for ((prisoner, (type_id, hero_type)), index) in held.zip(first_prisoner..) {
             let id = HeroId::new(u16::try_from(index).unwrap_or(u16::MAX));
-            let type_id = prisoner.hero_type;
-            // Checked above: the ruleset has the type.
-            let Some(hero_type) = rules.core().hero_type(type_id) else {
-                return Err(GameSetupError::PrisonerType(index - first_prisoner));
-            };
             let (army, given) = match &prisoner.army {
                 HeroArmy::Custom(stacks) => (stacks.clone(), Vec::new()),
                 HeroArmy::Starting => starting_army(hero_type, params, draws)
@@ -716,8 +715,9 @@ impl GameSetup {
         // type (a random one by its drawn type; the id breaks a tie no import makes), then the main
         // towns' heroes.
         let types: Vec<HeroTypeId> = drawn.types.iter().map(|&(id, _)| id).collect();
-        heroes[..self.heroes.len()]
-            .sort_by_key(|hero| (types.get(usize::from(hero.id.raw())).copied(), hero.id));
+        let _ = h3_kernel::order::sort_by_unique_key(&mut heroes[..self.heroes.len()], |hero| {
+            (types.get(usize::from(hero.id.raw())).copied(), hero.id)
+        });
         // E09 T37b: the customised types' records after them, each its entry (checked above) with
         // a drawn default experience when it has none, so valid; no army (a fill gives it).
         for ((type_id, hero_type), entry) in records {

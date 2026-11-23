@@ -138,6 +138,18 @@ impl Resolved {
             _ => &[],
         }
     }
+
+    /// A Prison's prisoner with its army and formation ([`Self::Prisoner`]), if these are.
+    pub fn prisoner(&self) -> Option<(HeroId, &[ArmyStack], Formation)> {
+        match self {
+            Self::Prisoner {
+                hero,
+                army,
+                formation,
+            } => Some((*hero, army, *formation)),
+            _ => None,
+        }
+    }
 }
 
 impl CanonicalHash for Resolved {

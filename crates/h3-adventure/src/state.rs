@@ -2637,16 +2637,13 @@ impl AdventureState {
             Effect::DenOfThieves => outcome.thieves_guild = true,
             // rule: ADV-PRI-002
             Effect::Prison => {
-                if let Resolved::Prisoner { hero: prisoner, .. } =
-                    self.object_at(visit.object).resolved
-                {
-                    outcome.prison = Some(PrisonVisit {
-                        hero,
-                        index: visit.object,
-                        entrance: visit.tile,
-                        prisoner,
-                    });
-                }
+                let held = self.object_at(visit.object).resolved.prisoner();
+                outcome.prison = held.map(|(prisoner, ..)| PrisonVisit {
+                    hero,
+                    index: visit.object,
+                    entrance: visit.tile,
+                    prisoner,
+                });
             }
             // rule: ADV-OBJ-008
             Effect::Empty => {}
@@ -3184,8 +3181,9 @@ impl AdventureState {
             .filter(|hero| hero.owner == player)
             .map(|hero| (hero.listed, hero.id))
             .collect();
-        // One owner's places are distinct ([`next_listed`], [`leave_list`]): no tie to break.
-        listed.sort_unstable();
+        // One owner's places are distinct ([`next_listed`], [`leave_list`]); the id makes the key
+        // unique whatever happens.
+        let _ = h3_kernel::order::sort_by_unique_key(&mut listed, |&(place, id)| (place, id));
         listed.into_iter().map(|(_, id)| id).collect()
     }
 

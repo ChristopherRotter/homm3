@@ -9,7 +9,7 @@ use h3_content::Ruleset;
 use h3_contracts::PlayerId;
 use h3_heroes::HeroDetails;
 
-use super::{AdventureState, HeroOnMap, Resolved, next_listed};
+use super::{AdventureState, HeroOnMap, next_listed};
 use crate::command::{PrisonVisit, Sink, Viewers};
 use crate::movement::{day_points, details_of};
 use crate::ruleset::AdventureRuleset;
@@ -18,7 +18,7 @@ impl AdventureState {
     /// Frees the prisoner of `visit` for `owner` (ADV-PRI-002; the original's `visit_prison`
     /// 0x4A3EB0, survey `E08-spells.md` §2.2 point 3; batch E15's E15-1): the Prison taken off the
     /// map (`ObjectRemoved` to the players that see it), then the hero put on its visitable tile,
-    /// on land, with the army and formation the build gave it ([`Resolved::Prisoner`]), its
+    /// on land, with the army and formation the build gave it ([`crate::Resolved::Prisoner`]), its
     /// tactics flag on, no boat, last in `owner`'s list ([`HeroOnMap::listed`]), and as its points
     /// and the day's maximum a full day's land points for that army over its details in
     /// `heroes`, the game's store ([`day_points`] without week marks: it has none, as a tavern
@@ -80,16 +80,11 @@ impl AdventureState {
         alloc::vec::Vec<h3_contracts::ArmyStack>,
         h3_content::Formation,
     )> {
-        if self.is_removed(visit.index) {
-            return None;
-        }
-        match &self.object(visit.index)?.resolved {
-            Resolved::Prisoner {
-                hero,
-                army,
-                formation,
-            } if *hero == visit.prisoner => Some((army.clone(), *formation)),
-            _ => None,
-        }
+        let held = (!self.is_removed(visit.index))
+            .then(|| self.object(visit.index))
+            .flatten()
+            .and_then(|object| object.resolved.prisoner());
+        held.filter(|&(hero, ..)| hero == visit.prisoner)
+            .map(|(_, army, formation)| (army.to_vec(), formation))
     }
 }

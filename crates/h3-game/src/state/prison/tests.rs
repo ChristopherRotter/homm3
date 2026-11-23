@@ -13,7 +13,7 @@ use h3_content::HeroTypeId;
 use h3_contracts::{HeroId, PlayerId};
 
 use crate::GameRuleset;
-use crate::command::{Actor, GameCommand, GameEvent, apply};
+use crate::command::{Actor, GameCommand, GameEvent, NoopSink, apply};
 use crate::observe::{Viewer, observe};
 use crate::setup::{GamePrisonerSetup, GameSetup, GameSetupError, HeroArmy, HeroDetailsSetup};
 use crate::state::GameState;
@@ -126,6 +126,11 @@ fn a_prisoners_type_is_the_rulesets_and_no_other_heros() {
         GameSetupError::PrisonerType(1).to_string(),
         "prisoner 1's hero type is unknown or taken"
     );
+    // A starting army that does not fit is refused, as a placed hero's.
+    assert_eq!(
+        refused(&|s| s.prisoners[0] = GamePrisonerSetup::of_type(hero_type(&rules, "t:crowd"))),
+        Some(GameSetupError::StartingArmy(PRISONER))
+    );
     // A custom army, as a placed hero's.
     let mut setup = prison_setup(&rules);
     setup.prisoners[0] = held(hero_type(&rules, "t:sage"));
@@ -160,7 +165,7 @@ fn a_visit_frees_the_prisoner_last_in_the_visitors_owners_list() {
         view,
     } = events[freed.unwrap()]
     else {
-        unreachable!()
+        panic!("the freeing is told")
     };
     assert_eq!(
         (player, hero, hero_type, pos),
@@ -214,6 +219,30 @@ fn a_visit_frees_the_prisoner_last_in_the_visitors_owners_list() {
             GameEvent::PrisonerPartSeen { .. } | GameEvent::HiredPartSeen { .. }
         ));
     }
+    // A sink that keeps nothing frees it the same way, its views not even computed.
+    let mut quiet = GameState::new(&rules, &prison_setup(&rules), 3).unwrap();
+    let command = GameCommand::Adventure(h3_adventure::AdventureCommand::MoveHero {
+        hero: HeroId::new(0),
+        path: vec![Pos::new(0, 1, 0), Pos::new(0, 2, 0), BESIDE, PRISON],
+    });
+    apply(
+        &mut quiet,
+        &rules,
+        Actor::Player(RED),
+        command,
+        &mut NoopSink,
+    )
+    .unwrap();
+    assert_eq!(quiet.state_hash(), game.state_hash());
+}
+
+/// `event` as `viewer` sees it is `event` for its player, nothing for the other.
+fn told_only_to_red(event: &GameEvent) {
+    assert_eq!(
+        crate::observe::project(event, Viewer::Player(RED)).as_ref(),
+        Some(event)
+    );
+    assert_eq!(crate::observe::project(event, Viewer::Player(BLUE)), None);
 }
 
 // covers: ADV-PRI-002
@@ -234,6 +263,7 @@ fn a_player_at_the_most_heroes_frees_nobody() {
             hero: HeroId::new(0),
         }]
     );
+    told_only_to_red(game_events(&events)[0]);
     assert!(game.adventure().hero(PRISONER).is_none());
     assert!(!game.adventure().is_removed(2));
     assert_eq!(game.pool(), before.pool());
@@ -256,6 +286,7 @@ fn a_prison_whose_prisoner_is_no_prisoner_is_emptied() {
             hero: HeroId::new(0),
         }]
     );
+    told_only_to_red(game_events(&events)[0]);
     assert!(game.adventure().is_removed(2));
     assert!(game.adventure().hero(PRISONER).is_none());
     assert_eq!(game.pool().status(sage), Some(HeroStatus::Taken(1)));
