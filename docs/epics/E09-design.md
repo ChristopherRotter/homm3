@@ -3296,8 +3296,8 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
 - *As built* (T49b, decision 194: kept whole): `h3_towns::TownCommand::BuySpellBook { town }` and
   the refusals `NoGuild`, `NoHero`, `HasSpellBook` (appended to `TownCommandError`).
   `h3_towns::check_spell_book` reads a standing guild through the part's derived `GuildRoles`
-  (built ∩ `guild` less what the built `superseding` buildings supersede, shared with
-  `opening_gives` as `superseded`) and names `spell_book_price`. `h3_heroes` gains
+  (built ∩ `guild` less what the built `superseding` buildings supersede: the private
+  `GuildRead`, shared with `opening_gives`) and names `spell_book_price`. `h3_heroes` gains
   `wears_spell_book` (the private `wears_book`: a worn artifact's `spell_book` effect) and
   `spell_book` (the ruleset's first artifact with the effect, the original's artifact 0, as the
   setup and Titan's Thunder find it); the original's `hero_has_artifact` counts the backpack too,
@@ -3307,14 +3307,18 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   visitor, any player's, else the garrison hero: `NoHero`), its book (`HasSpellBook`: a visitor
   with one is offered none even beside a bookless garrison hero, as the original's window),
   then the treasury (`CannotPay`); pays, gives `HeroChange::AddArtifact` (told `HeroChanged` to
-  the hero's owner), then `learn` (no Vortex). The listing: `book_paid` once a listing (the
-  part's price against the treasury, as the hires' player-wide tests), then per town
-  `sells_book` (the listing's visitor, else `town_hero`; the details; `check_spell_book`; the
-  book; the ruleset's book), chained after the opening and before the moves. Tests: the game's
+  the hero's owner), then `learn` (no Vortex). The listing: `town::guild::offers` (replacing
+  T49a2's `opens`) asks both guild commands of a town at once: no hero there, neither; else
+  `h3_towns::guild_offers` (`GuildOffers`: the opening's answer as `opening_gives` and the book's
+  price where a guild stands, the derived roles read once), then the treasury, the ruleset's book
+  and the hero's own book last (an effects walk); `legal_builds` finds the garrison hero once for
+  both and chains them as town commands after the hires and before the moves (the bench gate:
+  the lane's `TRAPS.md`). Tests: the game's
   four in `town/tests/book.rs` (the events in order, the price, a repeat refused; the garrison
   hero alone, a hired visitor with its type's book refusing, the swap; every refusal and a
   ruleset without a book; the listing's place after the opening, on and off); `h3-towns'`
-  `a_spell_book_is_sold_where_a_mage_guild_stands_for_the_part_s_price` (any level, the Library
+  `a_spell_book_is_sold_where_a_mage_guild_stands_for_the_part_s_price` and the opening's test
+  checking `guild_offers` against `opening_gives` and `check_spell_book` (any level, the Library
   or the Aurora alone none, a guild superseded by a non-guild none, another price, no record or
   parameters none); `h3-heroes'` Titan's Thunder test with the two queries; `h3-files`' round
   trip and four refusals of `town book`. The plans (`h3-map`'s `play.rs`): `town_builds` probes
