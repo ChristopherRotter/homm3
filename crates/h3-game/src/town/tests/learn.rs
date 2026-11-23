@@ -33,16 +33,18 @@ use crate::{
 };
 
 /// T0's entrance (its one tile) and T1's.
-const ENTRANCE: Pos = Pos::new(1, 1, 0);
-const T1_ENTRANCE: Pos = Pos::new(3, 0, 0);
-/// The map slots of the Mage Guild and the Tavern (the h3m's).
-const GUILD_SLOT: u8 = 0;
-const TAVERN_SLOT: u8 = 5;
+pub(super) const ENTRANCE: Pos = Pos::new(1, 1, 0);
+pub(super) const T1_ENTRANCE: Pos = Pos::new(3, 0, 0);
+/// The map slots of the Mage Guild, the Tavern and (E09 T49a1) the Mana Vortex (the h3m's).
+pub(super) const GUILD_SLOT: u8 = 0;
+pub(super) const TAVERN_SLOT: u8 = 5;
+pub(super) const VORTEX_SLOT: u8 = 18;
 
 /// The learning tests' rules (above): `super::guild::guild_packs`' spells and weights, every hero
 /// type with a spell book (and a type without an army 2 to 3 imps: a main town's hero takes its
-/// type's), the four buildings after the record's, free and without requirements.
-fn rules() -> GameRuleset {
+/// type's), the five buildings after the record's (since E09 T49a1 the Mana Vortex), free and
+/// without requirements.
+pub(super) fn rules() -> GameRuleset {
     let (mut core, mut towns) = super::guild::guild_packs();
     for ty in &mut core.heroes {
         ty.spell_book = true;
@@ -74,6 +76,7 @@ fn rules() -> GameRuleset {
         building("library", None, roles(|r| r.library = true)),
         building("aurora", None, roles(|r| r.aurora = true)),
         building("tavern", Some(TAVERN_SLOT), roles(|r| r.tavern = true)),
+        building("vortex", Some(VORTEX_SLOT), roles(|r| r.mana_vortex = true)),
     ]);
     towns.towns[0].tavern = vec![(key("t:knight"), 3), (key("t:cleric"), 2)];
     towns.params.as_mut().unwrap().guild_slots = [1; 5];
@@ -86,14 +89,14 @@ fn rules() -> GameRuleset {
 }
 
 /// `t:town`'s building of key `k`.
-fn building(rules: &GameRuleset, k: &str) -> BuildingId {
+pub(super) fn building(rules: &GameRuleset, k: &str) -> BuildingId {
     let record = rules.towns().town(faction(rules, "t:town")).unwrap();
     record.building_by_key(k).unwrap()
 }
 
 /// The town tests' setup with both towns built by `slots` alone and red's hero (0) on T0's
 /// entrance; blue's (1) stays on (2, 2).
-fn setup(rules: &GameRuleset, slots: &[u8]) -> GameSetup {
+pub(super) fn setup(rules: &GameRuleset, slots: &[u8]) -> GameSetup {
     let mut setup = towns_setup(rules);
     let built = slots
         .iter()
@@ -109,14 +112,14 @@ fn setup(rules: &GameRuleset, slots: &[u8]) -> GameSetup {
 }
 
 /// The game of `setup` with red holding 10 000 gold.
-fn game(rules: &GameRuleset, setup: &GameSetup) -> GameState {
+pub(super) fn game(rules: &GameRuleset, setup: &GameSetup) -> GameState {
     let mut game = GameState::new(rules, setup, 9).unwrap();
     game.set_resource(RED, h3_content::ResourceId::from_raw(0), 10_000);
     game
 }
 
 /// T0's guild's level-1 slots: its slot, then its spare.
-fn level_1(game: &GameState, town: TownId) -> [SpellId; 2] {
+pub(super) fn level_1(game: &GameState, town: TownId) -> [SpellId; 2] {
     let slots: Vec<SpellId> = game
         .towns()
         .get(town)
@@ -134,7 +137,7 @@ fn spell(rules: &GameRuleset, k: &str) -> SpellId {
 }
 
 /// The spells `events` teach, as (owner, hero, spell) in order.
-fn taught(events: &[GameEvent]) -> Vec<(PlayerId, HeroId, SpellId)> {
+pub(super) fn taught(events: &[GameEvent]) -> Vec<(PlayerId, HeroId, SpellId)> {
     events
         .iter()
         .filter_map(|e| match *e {
@@ -152,12 +155,12 @@ fn spells(game: &GameState, hero: HeroId) -> Vec<SpellId> {
     game.hero(hero).unwrap().spells.clone()
 }
 
-fn town_command(command: TownCommand) -> GameCommand {
+pub(super) fn town_command(command: TownCommand) -> GameCommand {
     GameCommand::Town(command)
 }
 
 /// The next day's red turn: both players' turns ended.
-fn next_day(rules: &GameRuleset, game: &mut GameState) -> Vec<GameEvent> {
+pub(super) fn next_day(rules: &GameRuleset, game: &mut GameState) -> Vec<GameEvent> {
     end_turn(rules, game, RED);
     let mut events = Vec::new();
     crate::apply(
@@ -171,8 +174,8 @@ fn next_day(rules: &GameRuleset, game: &mut GameState) -> Vec<GameEvent> {
     events
 }
 
-const RED_HERO: HeroId = HeroId::new(0);
-const BLUE_HERO: HeroId = HeroId::new(1);
+pub(super) const RED_HERO: HeroId = HeroId::new(0);
+pub(super) const BLUE_HERO: HeroId = HeroId::new(1);
 
 // covers: TWN-GLD-005, TWN-BLD-005, TWN-GLD-004
 #[test]
@@ -385,7 +388,7 @@ fn td_10_a_main_town_s_new_hero_learns_at_the_start_a_placed_one_not() {
 }
 
 /// Red's hero stepped onto `to` (one step): the game's events.
-fn step(rules: &GameRuleset, game: &mut GameState, to: Pos) -> Vec<GameEvent> {
+pub(super) fn step(rules: &GameRuleset, game: &mut GameState, to: Pos) -> Vec<GameEvent> {
     let command = GameCommand::Adventure(AdventureCommand::MoveHero {
         hero: RED_HERO,
         path: vec![to],

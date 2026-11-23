@@ -62,13 +62,27 @@ pub fn can_learn_spell(
     spell: SpellId,
     known_counts: bool,
 ) -> bool {
+    spell_learner(details, ruleset, known_counts)(spell)
+}
+
+/// [`can_learn_spell`] for many spells of one hero (E09 T49a2: a town's guild asks it of every
+/// spell it shows, for every hero standing in an owned town at every listing): the spell book and
+/// the learnable level ([`learn_level`]) read once, the returned closure answering each spell as
+/// [`can_learn_spell`] does.
+pub fn spell_learner<'a>(
+    details: &'a HeroDetails,
+    ruleset: &'a Ruleset,
+    known_counts: bool,
+) -> impl Fn(SpellId) -> bool + 'a {
     // rule: HER-CHG-004
-    let level = ruleset.spell(spell).map(|s| s.level);
-    let fresh = !known_counts || !details.spells.contains(&spell);
-    wears_book(details, ruleset)
-        && level.is_some_and(|level| level <= learn_level(details, ruleset))
-        && hero_spell(spell, ruleset).is_ok()
-        && fresh
+    let top = wears_book(details, ruleset).then(|| learn_level(details, ruleset));
+    move |spell| {
+        let level = ruleset.spell(spell).map(|s| s.level);
+        let fresh = !known_counts || !details.spells.contains(&spell);
+        top.is_some_and(|top| level.is_some_and(|level| level <= top))
+            && hero_spell(spell, ruleset).is_ok()
+            && fresh
+    }
 }
 
 /// The spells two meeting heroes teach each other (HER-SPL-007, E08 T49b; Scholar): `s` is the
@@ -113,8 +127,9 @@ pub fn meeting_spells(
 /// Whether the hero wears a spell book: one of its effects gives one (HER-BAT-011; in the
 /// original the Spell Book worn, not in the backpack).
 fn wears_book(details: &HeroDetails, ruleset: &Ruleset) -> bool {
-    effects(details, ruleset, Count::OncePerType)
-        .any(|effect| matches!(effect, HeroEffect::SpellBook))
+    // E09 T49a2: per copy, which answers `any` as once per type does without the types' set
+    // (`bench-check`'s `legal-towns-36`: the listing's opening asks it of heroes in towns).
+    effects(details, ruleset, Count::PerCopy).any(|effect| matches!(effect, HeroEffect::SpellBook))
 }
 
 /// The hero's available spells, in spell order (HER-SPL-002): the learned spells, the spell of

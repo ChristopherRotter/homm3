@@ -4,6 +4,40 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-22, E08 T140: done whole, decision 411; the record in `E08-log.md`; T141a queued.)* **E08 T140 — the `shared/` task** (round 4; design note `E08-design.md` §20's shared work; as
+T131 for increment 14; `shared/e08-t140`, `cross-lane`)
+
+- **Scope:** the three accepted drafts applied (`adr-drafts/0013-`, `0016-`,
+  `0017-increment-15.md`: ADR-0013 points 2, 17; ADR-0016 points 1, 3 to 6; ADR-0017 points 1, 4,
+  8 to 10) with batch E15's outcome (survey `E08-spells.md` §18; point 17's book: a worn scroll's
+  spell casts on the map without a book, D-79, the draft's "until E15-15" goes; T139b's order,
+  decision 410, needs no ADR line), then the drafts deleted; the six fix-optional flags of design
+  §4 (`quirk.adventure.flight_reads_hidden`, `door_reads_hidden`, `scuttle_reads_hidden`,
+  `summon_boat_by_steps`, `spell_recast_refused`, `door_failure_charged`) in `packs/base/core.toml`'s
+  two profiles (on in `faithful`, off in `strict-fixed`; the core ruleset hash moves, its version
+  noted); `docs/03-domain.md`'s terms (prisoner, a cast on the map, the day spells, a spell's raise
+  by a ground); `docs/06-security.md`'s lines (§13; the cast's target validated, the draws
+  server-side); the ADR index's Read-when cells; the inboxes design §20 names, each told what
+  reaches it now.
+- **Inputs:** the drafts; design §4, §13, §20; survey §18; T131's record in `E08-log.md` as the form.
+- **Depends on:** T139 (done 2026-11-22). **Status:** ready (docs and the core pack; no original
+  data); confirm its cut at its start. Then T141a, T141b (the epic's tasks; T141a also compares the
+  start list's order: the original's placed heroes in type order, survey §2.1).
+
+*(Moved 2026-11-22, E08 T139b: done, a reading, decision 410; the record in `E08-log.md`; T140 queued.)* **E08 T139b — the order of the prisoners' level draws: read and recorded** (design note
+`E08-design.md` §15, §21; T139a left it open, decision 409)
+
+- **Scope:** read in `Heroes3.exe` the order in which the setup stream draws the levels at load of
+  the placed heroes and the prisoners (`placed_heroes_setup`: the original's loop over every hero
+  type, or by object), and whether a prisoner draws in that loop; record it in the survey
+  `E08-spells.md` (§2.1 and §18's T139b point), design §15 (the order the build takes) and
+  `docs/exe/map.toml`; compare with VCMI (`CGHeroInstance` init order) as a second source. No code.
+- **Inputs:** survey §2.1, §18 (beside the rows (1): Red's start list in the heroes' type order, a
+  lead); `E08-progression.md` §3.2 (`placed_hero_setup` 0x4D8B30); `docs/exe/README.md`.
+- **Depends on:** T139a (done 2026-11-22, `adventure/e08-t139`). **Status:** ready (only
+  `Heroes3.exe` staged, SHA-256 `aac39e8c…`; `pip install capstone pefile`). Then T140
+  (`shared/`), T141 to T145 (the epic's tasks).
+
 *(Moved 2026-11-19, E08 T132a2: done in T132a1's pull request, decision 381; the record in `E08-log.md`; T132b queued.)* **E08 T132a2 and T132b — the kinds, the packs, the import** (round 5; decisions 370, 373, 378,
 380; design note §1 to §7, §19, §21; T132a1, the rates, done)
 
@@ -2558,3 +2592,23 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
 - **Depends on:** T137b (done 2026-11-21, `adventure/e08-t137b`). **Status:** ready (the staging:
   the executable, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`, as T128). Then T139
   (the run on the client lane's harness, scored), T140 (`shared/`), T141 to T145 (the epic's tasks).
+
+## T139 (moved 2026-11-22, T139a done whole: `adventure/e08-t139`, decision 409; the harness's casts on the map, batch E15's recipes and runs, scored in survey `E08-spells.md` §18; T139b queued on its own)
+
+**E08 T139 — batch E15's run: the harness's cast flow and reads, the recipes, the run, scored** (design note `E08-design.md` §19, §20's round 3)
+
+- **Scope:** T139a: the capture harness (`clients/capture/`, common): the cast's flow (the cast
+  button, the book's click by spell, the target's click by tile, a cancel), reads of the hero's
+  +0x10D, +0x112, +0x116 and spell points +0x18, the mouse cursor's frame, the boats' records
+  (game +0x4E3BC: tile, level, owner, last captain, in use); the recipes for
+  `E08-batch-15a`, `-15b`, `-15c` (T138's specs: compile them again, the stamps in their headers);
+  the run under Wine (SoD on Easy, hot seat) and the scoring of rows E15-1 to E15-16 into the
+  survey and the results files (the quirks' confirmations: A-13, A-49 to A-54, D-75, D-78,
+  D-79/O-1 with ADV-STUB-21, the Prison's class against `object_classes_not_entered` 0x63AA58).
+  T139b: the order of the prisoners' level draws (§15) read and recorded, if T139a leaves it open.
+- **Inputs:** the specs' headers (each row's agent's calls: E15-9 split in 9a and 9b, E15-12
+  recorded under E15-11, E15-16 under E15-8, E15-13's price corrected to the movement survey's
+  lesser-of rule); the survey `E08-spells.md` §15; T129a's harness work as the form
+  (`E08-log.md`, grep `T129a`); `clients/capture/README.md`.
+- **Depends on:** T138 (`adventure/e08-t138`). **Status:** ready (the staging: the client lane's
+  set, as T129a; its cut confirmed at its start).

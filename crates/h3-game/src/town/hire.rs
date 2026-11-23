@@ -118,15 +118,17 @@ impl HiredPart {
 /// ([`replace`], TWN-TAV-004); then the owner's changed slot told ([`tavern::tell`]: its
 /// `TavernOffered` with its parts, or its emptying); then the town's heroes learn its guild's
 /// spells (TWN-GLD-005, E09 T48a, [`guild::learn`]: the hired visitor first, then the garrison
-/// hero, each `HeroChanged` to its owner; the original's 0x5BE030 after `hero_place`). The town's
-/// views do not move (the visitor is the adventure's hero view); the hero's points come by the
+/// hero, each `HeroChanged` to its owner; the original's 0x5BE030 after `hero_place`); then the
+/// town's Mana Vortex to the hired hero alone (TWN-GLD-009, E09 T49a1, [`guild::vortex_to`]: the
+/// original's `town_tavern_click` 0x5D846C), its cleared flag told. The town's views do not move
+/// otherwise (the visitor is the adventure's hero view); the hero's movement points come by the
 /// command's `MovementChanged`. No field of the command is trusted but the town's id and the
 /// slot: the price is the part's (ADR-0004).
 ///
 /// # Errors
 ///
 /// [`GameCommandError::Town`] with the town's refusal, or [`GameCommandError::CannotPay`].
-// rule: TWN-TAV-003, TWN-GLD-005
+// rule: TWN-TAV-003, TWN-GLD-005, TWN-GLD-009
 pub(crate) fn hire<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -138,6 +140,9 @@ pub(crate) fn hire<S: Sink>(
     place(state, rules, (player, slot), checked, sink);
     // rule: TWN-GLD-005
     guild::learn(state, rules, town, sink);
+    // rule: TWN-GLD-009
+    let [hired, _] = guild::heroes(state, town);
+    guild::vortex_to(state, rules, town, [hired, None], sink);
     Ok(())
 }
 
@@ -371,21 +376,22 @@ pub(crate) fn hire_slots(
 /// The hires `player` may give at `town`, one of its own, now, for [`crate::legal_commands`] in
 /// its turn without a decision (E09 T38a2, design §64, §76; TWN-TAV-003): with `slots` its
 /// player-wide part ([`hire_slots`]), a `Hire` of each slot it names, in slot order, when no hero
-/// stands on the town's entrance and the town has a standing Tavern; so a listed hire passes
-/// every check of [`hire`] (the same conditions, the cheapest first). None for a town without a
-/// Tavern or with its entrance held.
+/// stands on the town's entrance (`free`, the listing's: `AdventureState::town_entrance_hero`,
+/// E09 T49a2) and the town has a standing Tavern; so a listed hire passes every check of
+/// [`hire`] (the same conditions, the cheapest first). None for a town without a Tavern or with
+/// its entrance held.
 // rule: TWN-TAV-003
 pub(crate) fn legal_hires<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
     (town, slots): (TownId, Option<[bool; 2]>),
+    free: bool,
 ) -> impl Iterator<Item = GameCommand> + 'a {
     let open = slots.filter(|_| {
-        state.adventure().entrance_free(town)
-            && state
-                .towns()
-                .get(town)
-                .is_some_and(|record| h3_towns::has_tavern(record, rules.towns()))
+        free && state
+            .towns()
+            .get(town)
+            .is_some_and(|record| h3_towns::has_tavern(record, rules.towns()))
     });
     let held = open.unwrap_or([false; 2]);
     (0..TAVERN_SLOTS)

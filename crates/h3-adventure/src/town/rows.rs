@@ -187,10 +187,34 @@ impl AdventureState {
         player: PlayerId,
         (town, most): (TownId, u8),
     ) -> [bool; 3] {
-        let Ok((index, entrance)) = self.town_entrance(town) else {
+        let Some(at) = self.town_entrance_hero(town) else {
             return [false; 3];
         };
-        let visitor = self.own_visitor(player, entrance).ok();
+        self.town_hero_moves_at(part, player, (town, most), at)
+    }
+
+    /// `town`'s object index and the place among the heroes on the map of the hero on its entrance,
+    /// any player's, if one stands there (TWN-VIS-002); none for a town the map lacks. The legal
+    /// listing's one walk over the heroes a town (E09 T49a2, `bench-check`'s `legal-towns-36`),
+    /// shared by its hires (the entrance free), its opening (the visitor) and its hero moves
+    /// ([`Self::town_hero_moves_at`]).
+    pub fn town_entrance_hero(&self, town: TownId) -> Option<(usize, Option<usize>)> {
+        let (index, entrance) = self.town_entrance(town).ok()?;
+        let at = self.heroes().iter().position(|on| on.pos == entrance);
+        Some((index, at))
+    }
+
+    /// [`Self::town_hero_moves`] with `town`'s object index and its entrance's hero as
+    /// [`Self::town_entrance_hero`] gives them: the visitor the hero there when it is `player`'s
+    /// (TD-17: an ally's moves no hero).
+    pub fn town_hero_moves_at(
+        &self,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        (town, most): (TownId, u8),
+        (index, at): (usize, Option<usize>),
+    ) -> [bool; 3] {
+        let visitor = at.filter(|&at| self.heroes()[at].owner == player);
         self.moves_at(part, player, (town, most), (index, visitor))
     }
 

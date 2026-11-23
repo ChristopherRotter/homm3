@@ -2,10 +2,12 @@
 //! town's guild slots drawn once at the game's build ([`draw_guild`], TWN-GLD-002), what the guild
 //! shows of them as it is built ([`guild_level`], [`shown`], TWN-GLD-003) and the town's Aurora
 //! set ([`aurora_set`], the set TWN-GLD-004 teaches), and since E09 T48a what a hero learns there
-//! ([`teaches`], TWN-GLD-004). Pure functions over a town record, the part and the core with the
-//! spells the map and the scenario give ([`GuildSets`]); the game draws every town's guild at the
-//! build from the towns' stream (E09 decision 179), keeps the slots and the set in the town's
-//! record (the store v4, E09 T47a2) and teaches its heroes at the town's triggers (TWN-GLD-005).
+//! ([`teaches`], TWN-GLD-004), and since E09 T49a1 the spell points a town gives a hero: the
+//! night's refill ([`refills`], TWN-GLD-008) and the Mana Vortex ([`vortex`], TWN-GLD-009). Pure
+//! functions over a town record, the part and the core with the spells the map and the scenario
+//! give ([`GuildSets`]); the game draws every town's guild at the build from the towns' stream (E09
+//! decision 179), keeps the slots and the set in the town's record (the store v4, E09 T47a2),
+//! teaches its heroes at the town's triggers (TWN-GLD-005) and gives them its points.
 
 use alloc::vec::Vec;
 
@@ -13,6 +15,7 @@ use h3_content::{AURORA_IGNORES_MAP_BANS, MAX_SPELLS, Ruleset, Spell, SpellCateg
 use h3_heroes::HeroDetails;
 use h3_kernel::Rng;
 
+use crate::building::BuildingSet;
 use crate::record::{Town, TownStatic};
 use crate::ruleset::{TownParams, TownRecord, TownRuleset};
 
@@ -65,6 +68,17 @@ impl SpellSet {
     #[must_use]
     pub const fn union(self, other: Self) -> Self {
         Self(self.0 | other.0)
+    }
+
+    /// The spells of the set not in `other` (E09 T49a2).
+    #[must_use]
+    pub const fn difference(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
+    }
+
+    /// Whether the set holds no spell (E09 T49a2).
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
     }
 
     /// The set's spells, in handle order.
@@ -232,26 +246,58 @@ pub fn shown<'a>(
     part: &TownRuleset,
     level: u8,
 ) -> impl Iterator<Item = SpellId> + 'a {
-    let count = part
-        .town(town.faction())
-        .zip(part.params())
-        .filter(|_| (1..=guild_level(town, part)).contains(&level))
-        .and_then(|(record, params)| {
-            let library = town
-                .built()
-                .iter()
-                .filter_map(|id| record.building(id))
-                .any(|b| b.roles.library);
-            usize::from(level)
-                .checked_sub(1)
-                .and_then(|index| params.guild_slots.get(index))
-                .map(|&n| usize::from(n) + usize::from(library))
-        })
+    let count = usize::from(level)
+        .checked_sub(1)
+        .and_then(|index| shown_counts(town, part).get(index).copied())
         .unwrap_or(0);
+    shown_at(slots, level, count)
+}
+
+/// How many slots `town`'s guild shows at each level from 1 ([`shown`]'s counts): the guild level
+/// ([`guild_level`]) and the Library read once for every level (E09 T49a2: the listing's
+/// opening asks every level of a town at once, `bench-check`'s `legal-towns-36`).
+fn shown_counts(town: &Town, part: &TownRuleset) -> [usize; LEVELS] {
+    let Some((record, params)) = part.town(town.faction()).zip(part.params()) else {
+        return [0; LEVELS];
+    };
+    let library = town
+        .built()
+        .iter()
+        .filter_map(|id| record.building(id))
+        .any(|b| b.roles.library);
+    counts_of(params, guild_level(town, part), library)
+}
+
+/// [`shown_counts`] of a guild of level `top` with or without a Library ever built.
+fn counts_of(params: &TownParams, top: u8, library: bool) -> [usize; LEVELS] {
+    let mut counts = [0; LEVELS];
+    for (index, count) in counts.iter_mut().enumerate().take(usize::from(top)) {
+        *count = params
+            .guild_slots
+            .get(index)
+            .map_or(0, |&n| usize::from(n) + usize::from(library));
+    }
+    counts
+}
+
+/// The first `count` spells of `slots` at `level`, cut at the first empty slot ([`shown`]).
+fn shown_at(slots: &GuildSlots, level: u8, count: usize) -> impl Iterator<Item = SpellId> + '_ {
     slots
         .level(level)
         .take(count)
         .map_while(core::convert::identity)
+}
+
+/// Every spell `town`'s guild shows, level after level from 1, each level's in slot order
+/// ([`shown`] at each level, the counts read once: [`shown_counts`]).
+fn shown_levels<'a>(
+    slots: &'a GuildSlots,
+    town: &Town,
+    part: &TownRuleset,
+) -> impl Iterator<Item = SpellId> + 'a {
+    (1..)
+        .zip(shown_counts(town, part))
+        .flat_map(move |(level, count)| shown_at(slots, level, count))
 }
 
 /// What `town`'s guild shows of its `slots` at every level, as slots (E09 T47b, design §94: the
@@ -259,13 +305,14 @@ pub fn shown<'a>(
 /// empty, so a view holds them as a record's own copyable type.
 // rule: TWN-GLD-003
 pub fn shown_slots(slots: &GuildSlots, town: &Town, part: &TownRuleset) -> GuildSlots {
-    (1..)
-        .zip(0..LEVELS)
-        .fold(GuildSlots::EMPTY, |out, (level, index)| {
-            shown(slots, town, part, level)
+    (1..).zip(0..LEVELS).zip(shown_counts(town, part)).fold(
+        GuildSlots::EMPTY,
+        |out, ((level, index), count)| {
+            shown_at(slots, level, count)
                 .enumerate()
                 .fold(out, |out, (slot, spell)| out.with(index, slot, spell))
-        })
+        },
+    )
 }
 
 /// Whether `town` has ever built a building of role `aurora` (E09 T47b, design §94: the owner's
@@ -332,16 +379,153 @@ pub fn teaches(
                 )
             })
     });
-    let learns = |spell: &SpellId| h3_heroes::can_learn_spell(details, core, *spell, true);
     match built {
-        Some((true, true)) => statics.aurora.iter().filter(learns).collect(),
-        Some((true, false)) => (1..)
-            .take(LEVELS)
-            .flat_map(|level| shown(town.guild(), town, part, level))
-            .filter(learns)
-            .collect(),
+        Some((true, true)) => learnable(details, core, statics.aurora.iter()),
+        Some((true, false)) => learnable(details, core, shown_levels(town.guild(), town, part)),
         _ => Vec::new(),
     }
+}
+
+/// Of `spells`, in their order, those `details`' hero can learn ([`h3_heroes::can_learn_spell`]
+/// with the known spells counting), the spells it knows passed over first, so that the book and
+/// the learnable level are read only for a spell it does not know, and once
+/// ([`h3_heroes::spell_learner`]; E09 T49a2, `bench-check`'s `legal-towns-36`: the listing's
+/// opening asks it of every hero standing in an owned town, who mostly knows them all or has no
+/// book).
+fn learnable(
+    details: &HeroDetails,
+    core: &Ruleset,
+    spells: impl Iterator<Item = SpellId>,
+) -> Vec<SpellId> {
+    let mut fresh = spells
+        .filter(|spell| !details.spells.contains(spell))
+        .peekable();
+    if fresh.peek().is_none() {
+        return Vec::new();
+    }
+    let learner = h3_heroes::spell_learner(details, core, true);
+    fresh.filter(|&spell| learner(spell)).collect()
+}
+
+/// Whether an opening of `town` gives one of `heroes` anything (E09 T49a2, design §90, decision
+/// 175: the legal listing's test of `TownCommand::Open`): for one of them [`vortex`] gives points
+/// or [`teaches`] a spell. The same answer, read cheaply (`bench-check`'s `legal-towns-36`: the
+/// listing asks it of every owned town a hero stands in, at every listing): the town's ever-built
+/// set read through its record's roles (the part's, derived at its build: its guild and Vortex
+/// buildings, the Aurora, the Library, and the buildings that can supersede a guild or a Vortex,
+/// the only ones walked); what the town teaches as one set (the Aurora set, or what the guild shows, [`shown`]); of it each hero's
+/// known spells taken first, its book and learnable level read only for a spell it does not
+/// know ([`h3_heroes::spell_learner`]).
+// rule: TWN-GLD-006
+pub fn opening_gives<'a>(
+    town: &Town,
+    statics: &TownStatic,
+    part: &TownRuleset,
+    core: &Ruleset,
+    heroes: impl IntoIterator<Item = &'a HeroDetails>,
+) -> bool {
+    let Some((record, roles)) = part.town_with_guild_roles(town.faction()) else {
+        return false;
+    };
+    let built = town.built();
+    let guilds = built.intersection(roles.guild);
+    let aurora = built.intersects(roles.aurora);
+    let library = built.intersects(roles.library);
+    // What makes a guild or a Vortex not stand: only these of the built buildings supersede one.
+    let superseded = built
+        .intersection(roles.superseding)
+        .iter()
+        .filter_map(|id| record.building(id))
+        .fold(BuildingSet::EMPTY, |set, b| set.union(b.supersedes));
+    // `vortex`'s tests but the hero's: the part's factor, the week's flag, a standing Vortex.
+    let standing = built.intersection(roles.vortex).difference(superseded);
+    let factor = part
+        .params()
+        .map(|params| params.vortex_factor)
+        .filter(|_| town.vortex() && !standing.is_empty());
+    // `teaches`' set: none without a guild ever built; the Aurora set with an Aurora ever built;
+    // else what the guild shows, its level the highest of its standing guild buildings.
+    let spells = if guilds.is_empty() {
+        SpellSet::EMPTY
+    } else if aurora {
+        statics.aurora
+    } else {
+        let top = guilds
+            .difference(superseded)
+            .iter()
+            .filter_map(|id| record.building(id).and_then(|b| b.roles.guild))
+            .max()
+            .unwrap_or(0);
+        part.params().map_or(SpellSet::EMPTY, |params| {
+            (1..)
+                .zip(counts_of(params, top, library))
+                .flat_map(|(level, count)| shown_at(town.guild(), level, count))
+                .fold(SpellSet::EMPTY, SpellSet::with)
+        })
+    };
+    if factor.is_none() && spells.is_empty() {
+        return false;
+    }
+    heroes.into_iter().any(|details| {
+        let raised = factor.is_some_and(|factor| {
+            details.mana < h3_heroes::max_mana(details, core).saturating_mul(u16::from(factor))
+        });
+        raised || {
+            let fresh = spells.difference(SpellSet::of(&details.spells));
+            !fresh.is_empty()
+                && fresh
+                    .iter()
+                    .any(h3_heroes::spell_learner(details, core, true))
+        }
+    })
+}
+
+/// Whether a night in `town` refills its heroes' spell points (E09 design §92; survey
+/// `E09-guild.md` §14: the original's `new_day` 0x4C82E4 to 0x4C8434, a town whose every-built set
+/// holds building 0): a building of role `guild` was ever built there (TWN-GLD-001: a guild of any
+/// level, even one superseded since); none without its faction's record in `part`. Its visitor and
+/// its garrison hero then end the night at their points or their maximum
+/// ([`h3_heroes::max_mana`], HER-MAN-001), whichever is more, after the day's regain (HER-MAN-002,
+/// which never passes the maximum nor lowers the points): never lowered. Neither a spell book,
+/// the owner of the town or of the hero nor the guild's level is tested.
+// rule: TWN-GLD-008
+pub fn refills(town: &Town, part: &TownRuleset) -> bool {
+    part.town(town.faction()).is_some_and(|record| {
+        town.built()
+            .iter()
+            .filter_map(|id| record.building(id))
+            .any(|b| b.roles.guild.is_some())
+    })
+}
+
+/// The spell points `town`'s Mana Vortex gives a hero (E09 design §93; survey `E09-guild.md` §15:
+/// the original's `town_visit_buildings` 0x5BD8E0, its first branch): with a standing building of
+/// role `mana_vortex` and the town's week flag set ([`Town::vortex`]), the part's `vortex_factor`
+/// times the hero's maximum ([`h3_heroes::max_mana`], HER-MAN-001; at most `u16::MAX`) when its
+/// points are below them; `None` else, so a hero at or above them leaves the flag for the next. No
+/// spell book, no owner is tested. The game sets the points (`HeroChange::SetSpellPoints`) and
+/// clears the flag ([`crate::Towns::take_vortex`]): once a week a town.
+// rule: TWN-GLD-009
+pub fn vortex(
+    town: &Town,
+    part: &TownRuleset,
+    core: &Ruleset,
+    details: &HeroDetails,
+) -> Option<u16> {
+    let factor = part.params().map(|params| params.vortex_factor)?;
+    let record = part.town(town.faction()).filter(|_| town.vortex())?;
+    let vortex = |set: BuildingSet| {
+        set.iter()
+            .filter_map(|id| record.building(id))
+            .any(|b| b.roles.mana_vortex)
+    };
+    // E09 T49a2: ever built first, the standing set only then (the listing asks every town with
+    // a hero; the week's flag is set in every town).
+    if !vortex(town.built()) || !vortex(town.standing(record)) {
+        return None;
+    }
+    let points = h3_heroes::max_mana(details, core).saturating_mul(u16::from(factor));
+    (details.mana < points).then_some(points)
 }
 
 #[cfg(test)]

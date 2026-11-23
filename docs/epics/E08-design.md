@@ -4,9 +4,9 @@ Written by T137b (2026-11-21; E08 decisions 394, 395, 397 and the checkpoint's 3
 code cites it as "increment 15's design note §M". Increment 14's note (the trades and services) is
 in `E08-log.md` ("Increment 14's design note at its closure", moved by T136), increments 9's to
 13's beside it. Inputs: the survey `docs/rules/surveys/E08-spells.md` (§N below is the survey's
-when it says so), ADR-0013, ADR-0015 to -0017. Drafts: `docs/lanes/adventure/adr-drafts/`
-`0013-increment-15.md` (point 2 and a new point 17: the mastery on a ground, the cost on the map),
-`0016-increment-15.md` (points 1, 3, 4, 5, 6) and `0017-increment-15.md` (points 1, 4, 8, 9, 10).
+when it says so), ADR-0013, ADR-0015 to -0017. The three drafts (ADR-0013 point 2 and a new point
+17: the mastery on a ground, the cost on the map; ADR-0016 points 1, 3, 4, 5, 6; ADR-0017 points
+1, 4, 8, 9, 10) were applied by T140 with batch E15's outcome and deleted.
 ADR-0015 needs none (no crate, no new dependency: the game hands the adventure the ground's raise,
 §5).
 
@@ -76,7 +76,7 @@ shared, `cross-lane`, at the `shared/` task, §20). **The AI trains under the pr
 original's leaks); `strict-fixed` keeps ADR-0016 point 4's rule that the legal moves never depend
 on a hidden tile.
 
-## Part B — the hero (`h3-heroes`; ADR-0013 draft)
+## Part B — the hero (`h3-heroes`; ADR-0013 point 17)
 
 ### 5. The mastery on a ground (HER-SPL-003 amended; decision 405)
 
@@ -97,8 +97,10 @@ inbox, its choice of when: `cross-lane` only when it does), so one rule serves b
 `h3_heroes::map_spell_cost(details, core, spell, raise)`: the core's cost at the mastery on that
 ground, at least 1; **no army's ±2** (Pegasi, Mages: battle-only, 0x4E52DA). The spell points are
 spent by the existing `HeroChange::SetSpellPoints` (at least 0). The book (D-79, decision 404):
-`h3_heroes::can_cast_on_map(details, core, spell)`: the spell among `available_spells` and a spell
-book worn (HER-BAT-011's test), until row E15-15 decides; a hero without a book then has no cast.
+`h3_heroes::can_cast_on_map(details, core, spell)`: the spell among `available_spells`, **no book
+test** (row E15-15, T139a: the original casts a worn scroll's adventure spell without a book, VCMI
+alike; survey §18). *Agent's call for T141b:* the same for every available spell (the original's
+path has no book test; a learned spell without a book was not played).
 
 ## Part C — the map (`h3-map`, `h3-adventure`)
 
@@ -244,10 +246,13 @@ the order of §10. A computer player's casts are E31's.
 
 - **At the build:** each `PrisonerSetup` becomes a hero in the store (its details as a placed
   hero's: GAM-SET-001's army, the levels at load from its custom experience, its skills, artifacts,
-  spells, then its spell points full), in the setup's object order after the placed heroes (the
-  original's loop over every type, `placed_heroes_setup`: by type; T139b compares the two orders'
-  draws and takes the original's), **in no player's list**, its pool status `Prisoner` (E09's,
-  TWN-SET-005 kept). The new day regains a stored hero's spell points as every hero's (already full).
+  spells, then its spell points full), in the setup's object order after the placed heroes, its
+  levels at load in hero id order with the other heroes' (decision 410; survey §2.1, T139b: the
+  original's loop, `placed_heroes_setup`, goes by type and levels a prisoner at its type's place,
+  but each level reseeds from the hero's own seed byte, so the order changes no hero's levels;
+  VCMI goes by object), **in no player's list**, its pool status `Prisoner` (E09's, TWN-SET-005
+  kept). The original's start list holds a player's placed heroes in type order (0x4CAF25, survey
+  §18 (1)): T141a compares the engine's. The new day regains a stored hero's spell points as every hero's (already full).
 - **At the visit** (`AdventureOutcome::prison`): the prisoner's status no longer `Prisoner` (no
   path reaches it without campaigns): the prison removed, `PrisonEmptied` to the visitor's owner.
   The visitor's player at the town part's most heroes on the map (garrison heroes not counted, as
@@ -299,8 +304,8 @@ event's size: none of these holds a `Vec`.
   spell's levels), GAM-SET-001 amended (prisoners).
 - **Quirks:** §4 (ADV-QUIRK-15 reclassified, 51 to 57). **Stubs:** ADV-STUB-19 (the four
   information spells' casts, E12: decision 406), ADV-STUB-20 (Town Portal's cast on the map, E09
-  increment 7), ADV-STUB-21 (a bookless hero's scroll, until row E15-15: lifted or closed by its
-  verdict).
+  increment 7), ADV-STUB-21 withdrawn (row E15-15: a bookless hero casts its worn scroll's
+  spell, no stub needed; next ADV-STUB-22).
 
 ## Part E — batch E15 and the cut
 
@@ -317,6 +322,12 @@ harness's map with its fog). The harness (`clients/capture/`, common): the cast'
 button, the book's spell click, the target click), the hero's +0x10D, +0x112, +0x116 and +0x18
 reads, the cursor's frame, the boats' records (game +0x4E3BC); a boat's last captain by sailing
 first in the recipe.
+
+*Run and scored* (T139a, 2026-11-22; survey §18): every row the reading predicts as predicted;
+D-75 (its last boat and owner test) and D-78 the reading's, A-13, A-49, A-50, A-52 to A-54 seen, D-79 settled (no book on the map: §6);
+the original's click on a hidden blocked tile (the door's) or a hidden tree (Scuttle Boat's) is no
+cast and reveals nothing, a sunk hidden boat reveals nothing. T139b (the prisoners' draws) stays
+open. *Read* (T139b, 2026-11-22): the order changes no hero's levels; decision 410 (§15).
 
 ### 20. Shared and `cross-lane` work; the building tasks; the exit criteria
 
@@ -358,7 +369,7 @@ once every cast exists, so the encoding and the format move once.
 2. A prison's visit frees its hero for the visitor's player below the eight on the map (garrisons
    not counted): on the entrance, a full day's land points, last in the list, the prison gone; at
    eight nothing changes; a viewer never sees the prisoner (ADV-PRI-002, -003).
-3. A cast on the map is refused, changing nothing, without the spell or a book, on Cursed Ground
+3. A cast on the map is refused, changing nothing, without the spell (no book test: §6), on Cursed Ground
    above level 1, in or on an anti-magic garrison, above the spell points, or by the spell's own
    test; the mastery is the hero's on its tile's ground; the cost the table's at least 1 without
    the armies' (ADV-SPL-001, HER-SPL-003, -008, GAM-SPL-001).
@@ -388,11 +399,14 @@ once every cast exists, so the encoding and the format move once.
   weights are the AI lane's (Revisit's and the market's precedent).
 - **The prisoners' level draws' order** (§15): the setup stream's order by type (the original's
   loop) or by object; a wrong order changes every prisoner's levels on the shipped maps but not a
-  rule; T139 reads it.
+  rule; T139 reads it. *Settled* (T139b, decision 410): each level is reseeded from the hero's own
+  seed byte, so the original's order changes no hero's levels; the build keeps the hero id order
+  (survey §2.1).
 - **A free probe** (decision 407): a flyer under `strict-fixed` may aim at the unknown and, stopped
   by hidden rock, pays only to its last stop node while keeping the passes' reveals; a scouting
   gain the original does not give. The audit (T145) looks at it in the bots' games.
 - **D-78, D-79** rest on rows E15-14, E15-15; a verdict against the reading moves ADV-MOV-010 or
-  lifts ADV-STUB-21 in the building task.
+  lifts ADV-STUB-21 in the building task. *Settled* (T139a): both the reading's; ADV-MOV-010
+  unchanged, ADV-STUB-21 withdrawn (§6, §18).
 - **Not read:** the computer's casts (E31), network play's messages, the four information spells'
   readers (E12), Town Portal (E09 increment 7), the pictures, texts and sounds.

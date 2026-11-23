@@ -4,27 +4,58 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T139 — batch E15's run: the harness's cast flow and reads, the recipes, the run, scored** (design note `E08-design.md` §19, §20's round 3)
+**E08 T141a — the Prison and the Market of Time** (round 5; design note `E08-design.md` §1, §2,
+§7, §9, §13, §15, §16; `adventure/e08-t141a`, `cross-lane` for the wire)
 
-- **Scope:** T139a: the capture harness (`clients/capture/`, common): the cast's flow (the cast
-  button, the book's click by spell, the target's click by tile, a cancel), reads of the hero's
-  +0x10D, +0x112, +0x116 and spell points +0x18, the mouse cursor's frame, the boats' records
-  (game +0x4E3BC: tile, level, owner, last captain, in use); the recipes for
-  `E08-batch-15a`, `-15b`, `-15c` (T138's specs: compile them again, the stamps in their headers);
-  the run under Wine (SoD on Easy, hot seat) and the scoring of rows E15-1 to E15-16 into the
-  survey and the results files (the quirks' confirmations: A-13, A-49 to A-54, D-75, D-78,
-  D-79/O-1 with ADV-STUB-21, the Prison's class against `object_classes_not_entered` 0x63AA58).
-  T139b: the order of the prisoners' level draws (§15) read and recorded, if T139a leaves it open.
-- **Inputs:** the specs' headers (each row's agent's calls: E15-9 split in 9a and 9b, E15-12
-  recorded under E15-11, E15-16 under E15-8, E15-13's price corrected to the movement survey's
-  lesser-of rule); the survey `E08-spells.md` §15; T129a's harness work as the form
-  (`E08-log.md`, grep `T129a`); `clients/capture/README.md`.
-- **Depends on:** T138 (`adventure/e08-t138`). **Status:** ready (the staging: the client lane's
-  set, as T129a; its cut confirmed at its start).
+- **Scope:** the kinds `prison` (class 62, visited from a neighbour, ADV-PRI-001 to -003) and
+  `empty` (class 50, the Market of Time: entered, never visited, ADV-OBJ-008) in the adventure
+  part (v25) and the base pack; the import's `PrisonerSetup` with the prisoner's body read as a
+  placed hero's and class 50 (map import v29); the prison's drawn `HeroId` in the static map and
+  `AdventureOutcome::prison` with the infallible `free_prisoner` (§9); the game's store of
+  prisoners as placed heroes (their levels at load in hero id order, after the placed heroes in
+  the setup's object order: decision 410), their freeing below the town part's most heroes on
+  the map, appended last to the player's list with a full day's land points (§15; game state hash
+  v39); `PrisonerFreed`, `PrisonFull`, `PrisonEmptied` and their wire (§16, protocol v79,
+  `cross-lane`); a viewer never sees the prisoner (§13). Also compare the start list's order: the
+  original lists a player's placed heroes in type order (survey `E08-spells.md` §2.1, 0x4CAF25);
+  the engine's order and what to do go to the user. The ledger entries the task builds; the
+  rules toward `verified` (survey §18: ADV-PRI-001 to -003, ADV-OBJ-008).
+- **Inputs:** design §1, §2, §7, §9, §13, §15, §16, §18; survey §1.1, §2, §18; ADR-0016 points 1, 4,
+  6, ADR-0017 points 1, 10 (as applied by T140); the town lane's T137b note (the pool's prisoners).
+- **Depends on:** T140 (done 2026-11-22). **Status:** ready; confirm its cut at its start (it may
+  split: the content and the import, then the game and the wire). Then T141b, T142 to T145.
 
 ## Inbox
+
+- 2026-11-22 (the town lane, E09 T49a2, `town/e09-t49a2`, `cross-lane` with the user's consent,
+  E09 decision 193; **your increment 15's versions move**): `TownCommand::Open` (TWN-GLD-006)
+  took **protocol v79**, the adventure **replay format v24** (`town open <town>`; the 111
+  goldens' `format` line only) and the env's **action encoding v18** (`TOWN_OPEN` = 103, appended
+  after T135a's entries; `ENTRY_COUNT` 104). Your planned v79, v24 and v18 (E08 T141a/T143a,
+  T144a; `E08-design.md` §16 to §18) are now **v80, v25 and v19**, the casts' entries from 104.
+  In your paths, nothing else to do: `h3-heroes` gains `spell_learner` (`can_learn_spell`
+  delegates to it, the same answers) and `wears_book` counts per copy (the same answer, no set);
+  `legal.rs` unchanged (the opening is listed in the town's `legal_builds`); `h3-map`'s
+  `play.rs` probes each town's opening in `town_builds` (an unlisted one may be accepted only
+  when it changes nothing, `accepted_builds` keeps one only where it changed the state,
+  `check_town_open` reads a listed one) and `Step::Town` plays a listed opening in one step of
+  eight (`n % 8 == 6`): all of `h3-map`'s tests pass, the play and view blocks once at 240 cases.
+
+- 2026-11-21 (the town lane, E09 T49a1, `town/e09-t49a1`, `cross-lane` with the user's consent;
+  **in your paths, nothing to do**): `GameState::advance_day` (`state/day.rs`) calls
+  `towns_mut().start_week()` on a week's first day right after the towns' growth (every town's
+  Mana Vortex flag set, TWN-GLD-009, told with the week's views), and `regain_mana` reads
+  `town::guild::refilled` (TWN-GLD-008: a town with a guild ever built; its visitor and garrison
+  hero get their points or their maximum, whichever is more, in place of `day_mana`: the same
+  as the regain then the refill, the maximum once, for the day-start benchmarks); `settle_outcome` (`state.rs`) calls
+  `town::guild::visit` for `town_entered` (the Vortex to the garrison hero, then the visitor,
+  then the learning); GAM-CAL-002's summary says both. `h3-map`'s oracles taught them:
+  `play.rs`' conservation applies `night_refill` after a `DayStarted`'s regain, a hire's check
+  expects the town's flag cleared when the hired hero took the Vortex (`Town::with_vortex`, now
+  public); `view.rs`' hire fold sets the hired view's points at a `SetSpellPoints`. No version,
+  no golden replay moved.
 
 - 2026-11-21 (the town lane, E09 T48a, `town/e09-t48a`, `cross-lane` with the user's consent;
   **in your paths, nothing to do**): `GameState::change_hero` (`state/battle.rs`) is

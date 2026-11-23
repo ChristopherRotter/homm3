@@ -114,6 +114,12 @@ pub enum TownCommand {
         /// The slot: 0 or 1 (another is refused, [`TownReject::UnknownSlot`]).
         slot: u8,
     },
+    /// Opens the town screen of a town of the actor's: its Mana Vortex to its garrison hero, then
+    /// its visitor, then both learning its guild's spells (TWN-GLD-006; E09 T49a2, v79).
+    Open {
+        /// The town.
+        town: u16,
+    },
 }
 
 /// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v64).

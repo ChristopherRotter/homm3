@@ -86,10 +86,13 @@ pub(crate) fn legal_moves(
     state: &GameState,
     rules: &GameRuleset,
     player: PlayerId,
-    town: TownId,
+    (town, entrance): (TownId, Option<(usize, Option<usize>)>),
 ) -> impl Iterator<Item = GameCommand> + use<> {
     let adventure: &AdventureState = state.adventure();
-    let legal = adventure.town_hero_moves(rules.adventure(), player, (town, most_heroes(rules)));
+    let most = (town, most_heroes(rules));
+    let legal = entrance.map_or([false; 3], |at| {
+        adventure.town_hero_moves_at(rules.adventure(), player, most, at)
+    });
     MOVES
         .into_iter()
         .zip(legal)

@@ -136,7 +136,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     };
     let (replay, text) = run_random(&packs, &dir, &easy).unwrap();
     assert_eq!(replay.difficulty, 0);
-    assert!(text.contains("format = 23\n"), "{text}");
+    assert!(text.contains("format = 24\n"), "{text}");
     assert!(text.contains("difficulty = 0\n"), "{text}");
     let (normal, _) = run_random(&packs, &dir, &options(1)).unwrap();
     assert_eq!(normal.difficulty, h3_game::DEFAULT_DIFFICULTY);
@@ -165,7 +165,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
     // A v1 file: no difficulty, refused by its version before its map is read.
     let v1 = text
-        .replacen("format = 23", "format = 1", 1)
+        .replacen("format = 24", "format = 1", 1)
         .replacen("difficulty = 0\n", "", 1);
     assert_eq!(
         parse_replay(&v1).unwrap().difficulty,
@@ -197,7 +197,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
         .unwrap();
     let townless = text.replacen(&format!("{line}\n"), "", 1);
     assert_eq!(parse_replay(&townless).unwrap().header.town_ruleset_hash, 0);
-    let e = verify(&townless.replacen("format = 23", "format = 8", 1)).unwrap_err();
+    let e = verify(&townless.replacen("format = 24", "format = 8", 1)).unwrap_err();
     assert!(
         matches!(
             e,

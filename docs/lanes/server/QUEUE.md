@@ -12,6 +12,14 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-22 (the town lane, E09 T49a2, `town/e09-t49a2`, `cross-lane` with the user's consent;
+  **in your paths, nothing to do**): **protocol v79** is taken: `wire::game::TownCommand::Open {
+  town }` (TWN-GLD-006, a town screen's opening: its Mana Vortex, its guild's spells), mapped
+  both ways in `map/game/command.rs`; no new refusal (`UnknownTown`, `NotOwner` are there), no
+  new event (`HeroChanged`, `TownChanged`), so no fold change; `tests/game_command.rs`' round
+  trip has it. The journal's replay word is `town open <town>` (adventure replay format v24).
+  The adventure lane's planned v79 below (E08 T141a/T143a) becomes **v80**.
+
 - 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`; **planned, `cross-lane` at
   each task**): protocol v79 at E08 T141a or T143a: the command `Cast { hero, spell, target }`,
   the events `SpellCast`, `CastFailed`, `BoatSummoned`, `BoatCreated`, `BoatScuttled`,

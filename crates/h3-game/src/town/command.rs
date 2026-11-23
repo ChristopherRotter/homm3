@@ -16,7 +16,8 @@ use crate::{GameRuleset, GameState};
 /// Runs `player`'s town command, whose turn [`GameState::check_ready`] checked: a recruitment
 /// opens a hire dialog (TWN-REC-001, -002; E09 T27, [`recruit::open`]); a hero's move between the
 /// town's bars moves it (TWN-ROW-002 to -004; E09 T28a, [`rows::heroes`]); a hire hires its tavern
-/// hero (TWN-TAV-003; E09 T38a1, [`hire::hire`]); a build (TWN-BLD-001),
+/// hero (TWN-TAV-003; E09 T38a1, [`hire::hire`]); an opening visits the Mana Vortex and teaches
+/// the guild's spells (TWN-GLD-006; E09 T49a2, [`guild::open`]); a build (TWN-BLD-001),
 /// checked in this order, each refusal changing nothing:
 ///
 /// 1. the town in the store of towns, else [`TownCommandError::UnknownTown`];
@@ -57,6 +58,7 @@ pub(crate) fn command<S: Sink>(
         TownCommand::Hire { town, slot } => {
             return hire::hire(state, rules, player, (town, slot), sink);
         }
+        TownCommand::Open { town } => return guild::open(state, rules, player, town, sink),
     };
     let part = rules.towns();
     let record = state
@@ -88,10 +90,12 @@ pub(crate) fn command<S: Sink>(
 /// before, the owner's of every town, whose garrison levels a new Tavern raises, TWN-VEW-002);
 /// then the town's heroes learn its guild's spells (TWN-GLD-005, E09 T48a, [`guild::learn`]: the
 /// original's `town_build_effects` 0x5BEDE0 after every build, before the building's visit), so a
-/// guild level's, the Library's or the Aurora Borealis' build teaches at once. The caller checked
+/// guild level's, the Library's or the Aurora Borealis' build teaches at once; then its Mana Vortex
+/// to the garrison hero, then the visitor (TWN-GLD-009, E09 T49a1, [`guild::vortex`]: the
+/// building's visit, 0x5BF1B1), so the Vortex's own build gives it at once. The caller checked
 /// the store's town and its record's building; the treasury holds nothing a view shows, so a
 /// price paid before changes no view.
-// rule: TWN-BLD-005, TWN-VEW-004, TWN-GRO-007, TWN-GLD-005
+// rule: TWN-BLD-005, TWN-VEW-004, TWN-GRO-007, TWN-GLD-005, TWN-GLD-009
 pub(crate) fn build_told<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -127,6 +131,8 @@ pub(crate) fn build_told<S: Sink>(
     told.tell(state, rules, sink);
     // rule: TWN-GLD-005
     guild::learn(state, rules, town, sink);
+    // rule: TWN-GLD-009
+    guild::vortex(state, rules, town, sink);
 }
 
 /// The owner of `town` (the adventure's owner of its object; E09 increment 1's design note §11),

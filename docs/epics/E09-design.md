@@ -2721,7 +2721,7 @@ per-player parts, the window's clicks), §1 (the census), §9 (batch TWN-4), VCM
 (`legal_builds`: each own town's builds, recruitments, **hires**, then hero moves) through
 `town/hire.rs`' `hire_slots` (once a listing: the part's price in the treasury, room below the most
 heroes, `AdventureState::has_room`; the slots holding a hero) and `legal_hires` (a town: its
-entrance free, `AdventureState::entrance_free`, then its standing Tavern), the same conditions as
+entrance free, `AdventureState::entrance_free`, since E09 T49a2 the listing's `town_entrance_hero`, then its standing Tavern), the same conditions as
 `hire`'s checks, the cheapest first; `legal_commands` folds its chain into a list sized 16 (the
 bench, the town lane's `TRAPS.md`). The env's **v12**: `TAVERN_HIRE + s` (35, 36; `TAVERN_SLOTS`;
 `Action::tavern_hire`), masked and decoded as the hero moves between the bars (the town's entrance
@@ -3256,6 +3256,27 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   entering hero's town, after a capture's effects (the capture's reveal, Portal and views first).
 - **Tests:** each refusal changes nothing; the Vortex to the garrison hero first; a garrison hero
   alone learns; the listing on and off; the replay word.
+- *As built* (T49a2, decision 193): `h3_towns::TownCommand::Open { town }`, no new refusal and no
+  event. The game's `town::guild::open` checks the store's town, then the owner
+  (`command::owner`), then runs `visit` (§93's *As built*): the Vortex with its told flag, then the
+  learning, as at the visit's end, so the flag's view (told whole, its parts after its
+  `TownChanged`) comes between the Vortex's `HeroChanged` and the learning's. `opens` serves the
+  listing: the garrison hero (`town_hero`, a binary search) and the visitor (the hero on the
+  entrance, which `legal_builds` now finds once a town for the hires, the opening and the moves:
+  `AdventureState::town_entrance_hero`), `false` for a town no hero stands in; then
+  `h3_towns::opening_gives` (the same answer as `vortex` or `teaches` for either, read through the
+  part's derived `GuildRoles`: the bench gate, the lane's `TRAPS.md`); chained after the hires
+  and before the moves. Tests: the
+  game's four in `town/tests/open.rs` (the Vortex to the garrison hero with the flag told before
+  the visitor's then the garrison hero's learning, a repeat changing nothing; a garrison hero
+  alone learning, no guild nothing; the refusals; the listing's place, on and off with the week's
+  flag and the threshold, none in a town without a hero); `h3-files`' round trip and refusals of
+  `town open`. The plans (`h3-map`'s `play.rs`): `town_builds` probes each town's opening after
+  its hires; `accepted_builds` keeps an accepted opening only where the probe changed the state;
+  an unlisted opening may be accepted when it changes nothing; `check_town_open` reads a listed
+  one apart (the town the actor's, the state changed, the Vortex to the first of the garrison hero
+  and the visitor it raises, each hero's spells grown by `teaches`, the record but the flag, the
+  heroes and the treasury unchanged); `Step::Town` plays a listed opening in one step of eight.
 
 ### 91. The spell book (TWN-GLD-007; `TownCommand::BuySpellBook { town }`; decision 176; §6, §13)
 
@@ -3282,6 +3303,16 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   where it changes (as `regain_mana`), no event.
 - **Tests:** a visitor's and a garrison hero's points raised; above the maximum kept; no guild no
   refill; day 1 none.
+- *As built* (T49a1, decision 192): `h3_towns::refills(town, part)` (a guild ever built); the
+  game's `town::guild::refilled` lists the heroes it refills (`TownId` order, the visitor then the
+  garrison hero; towns without a hero skipped before the guild test), read by `regain_mana`, which
+  gives each `points.max(max_mana)` in place of `day_mana`: the regain never passes the maximum
+  nor lowers the points, so regain-then-refill is that value, the maximum computed once. A
+  separate pass after the regain (the first draft) cost `day-start-builds-36` +5.4 %,
+  `day-start-towns-36` +3.3 %, `month-start-builds-36` +2.8 % (`max_mana` twice for every
+  refilled hero). Tests: `h3-towns`' one (a superseded guild counts), the game's two in
+  `town/tests/mana.rs` (a turn's end no night; a hero beside the town nothing). No golden replay
+  moved.
 
 ### 93. The Mana Vortex (TWN-GLD-009; §15)
 
@@ -3296,6 +3327,17 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   the taverns' week); the build sets it (`town_init`).
 - **Tests:** once a week a town; twice the maximum; a hero at or above it leaves the flag; the
   garrison hero first; the build's and the hire's.
+- *As built* (T49a1, decision 192): `h3_towns::vortex` checks the parameters, the flag and the
+  standing building before the maximum (`max_mana × factor`, saturating). The game's
+  `town::guild::vortex_to(state, rules, town, heroes, sink)` gives the first hero it raises,
+  then `take_vortex` and the town's `Told` (taken only when a hero takes it); `vortex` orders the
+  garrison hero, then the visitor (a build after its learning, in `build_told`), `visit` runs it
+  before the learning (the visit's end in `settle_outcome`, and T49a2's `Open`), the hire passes
+  the hired visitor alone. `Towns::start_week` after the week's growth, before the taverns' week,
+  so `Told::before` (taken before the growth) tells the set flags with the week's views. No
+  golden replay moved (none takes a Vortex); no version moved. Tests: `h3-towns`' one, the game's
+  three in `town/tests/mana.rs` (the visit's end over two weeks with the told flags, the build's
+  garrison hero first and at the threshold the visitor, the hire's hired hero alone).
 
 ### 94. The views and events (TWN-VEW-004 amended; `docs/06-security.md`'s town section by the `shared/` task)
 
@@ -3340,6 +3382,16 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   `cross-lane`): `town open <town>`, `town book <town>` (the replay word in the same pull request as
   the command, the town lane's `TRAPS.md`); the format the next at merge (E08 T133b took v21 after
   the client lane's v20; its T134a plans v22).
+- *As built* (T49a2, decision 193): the env's encoding **v18** appends `TOWN_OPEN` (103) after
+  E08 T135a's trades and services (encoding v17, written after this section), not beside the
+  taverns' entries, so that no entry moves; `tileless` stops before it; `tile_mask`, `decode`
+  and `encode` take the town by its entrance (building 0); the mask property's
+  `check_town_heroes` covers it. The protocol **v79**: `wire::game::TownCommand::Open { town }`.
+  The adventure replay format **v24** (`town open <town>`): the 111 goldens' `format` line only,
+  `h3-cli`'s and `h3-sim`'s literals. The adventure lane's planned v79, v24 and v18 (E08 T143,
+  T144; `E08-design.md` §16) move to v80, v25 and v19 (its inbox, the AI lane's and the server
+  lane's). An opening is listed only where it changes something, which random play rarely meets:
+  `h3-sim`'s town-map tests kept their seeds.
 
 ### 96. The increment's ids, versions, quirks and stubs
 

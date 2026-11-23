@@ -787,7 +787,7 @@ checkpoints = [
 ]
 
 [replay]
-format = 23
+format = 24
 engine = "0.1.0"
 seed = "169"
 difficulty = 1
@@ -806,7 +806,7 @@ packs = [
 ],
 ]
 profile = "base:faithful"
-ruleset_hash = "0x36b98ea152b4db95"
+ruleset_hash = "0x0ee6066a4c802530"
 adventure_ruleset_hash = "0x0c610f9192575256"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"

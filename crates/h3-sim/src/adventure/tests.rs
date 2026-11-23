@@ -177,8 +177,8 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 17);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 103));
+    assert_eq!(ACTION_ENCODING_VERSION, 18);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 104));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
     assert_eq!((BUILD, RECRUIT, BUILDING_COUNT), (30, 31, 64));
@@ -297,6 +297,9 @@ fn tiles_and_actions_encode_as_documented() {
         [Action::tavern_hire(9, 0), Action::tavern_hire(9, 1)],
         [Action::map(35, 9), Action::map(36, 9)]
     );
+    // E09 T49a2 (v18): a town screen's opening, appended after the trades' and services'.
+    assert_eq!(TOWN_OPEN, 103);
+    assert_eq!(Action::town_open(9), Action::map(103, 9));
     assert_eq!(
         Action::recruit(7, 19),
         Action::Adventure(MapAction {
@@ -411,8 +414,8 @@ fn is_move(entry: usize) -> bool {
 /// the towns of the listed builds and its buildings theirs ([`check_build`], E09 T19c1), and
 /// [`RECRUIT`]'s those of the listed recruitments (E09 T27); a [`TOWN_HEROES`] entry's the
 /// entrances of the towns of the listed hero moves of its kind, each decoding to that move
-/// ([`check_town_heroes`], E09 T28a), and a [`TAVERN_HIRE`] entry's those of the listed hires of
-/// its slot (E09 T38a2); after
+/// ([`check_town_heroes`], E09 T28a), a [`TAVERN_HIRE`] entry's those of the listed hires of
+/// its slot (E09 T38a2), and [`TOWN_OPEN`]'s those of the listed openings (E09 T49a2); after
 /// another entry the building head allows 0 alone at its first legal tile, nothing after an
 /// illegal entry, and a building other than 0 decodes to nothing. In the battle phase (the neutral
 /// seat's only phase) every map mask is empty. The battle masks: [`check_battle_masks`].
@@ -481,7 +484,7 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
             check_build_boat(env, player, &commands, &tiles)?;
             continue;
         }
-        if (TOWN_HEROES..MARKET_TRADE).contains(&entry) {
+        if (TOWN_HEROES..MARKET_TRADE).contains(&entry) || entry == TOWN_OPEN {
             check_town_heroes(env, (player, entry), &commands, &tiles)?;
             continue;
         }
@@ -591,7 +594,8 @@ fn check_build_boat(
 /// T27).
 /// A [`TOWN_HEROES`] entry's tiles (E09 T28a): the entrances of the towns of the listed hero
 /// moves of its kind, each decoding to its move, which encodes back to it; a [`TAVERN_HIRE`]
-/// entry's the same with the listed hires of its slot (E09 T38a2).
+/// entry's the same with the listed hires of its slot (E09 T38a2), [`TOWN_OPEN`]'s with the listed
+/// openings (E09 T49a2).
 fn check_town_heroes(
     env: &AdventureEnv,
     (player, entry): (PlayerId, usize),
@@ -610,6 +614,9 @@ fn check_town_heroes(
             GameCommand::Town(TownCommand::Hire { town, slot: s })
                 if Some(usize::from(s)) == slot =>
             {
+                town_tile(state, town)
+            }
+            GameCommand::Town(TownCommand::Open { town }) if entry == TOWN_OPEN => {
                 town_tile(state, town)
             }
             _ => None,

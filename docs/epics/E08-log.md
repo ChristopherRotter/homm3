@@ -21936,3 +21936,131 @@ citations, fixed by #1119: ok after merging `master` a9d593d); `cargo check --wo
 with `-D warnings` on `h3-map` and `h3-experiment` clean; the clients' build is CI's (the sandbox's
 SDL build fails; every client match on `MapObject` has a wildcard arm). CI's full verify on the
 pull request is the record. **Next:** T139.
+
+### Increment 15, round 3: T139a, batch E15 run under Wine and scored (2026-11-21 to -22, `adventure/e08-t139`)
+
+Baseline: `master` 94c783a (#1122, T138, merged; CI green on it; the sandbox's setup ran only the
+light gates, CI's fingerprint standing in). Staged the 71 files (the PC's shell down, "Workspace
+unavailable": `device_stage_files`; the LODs' and executables' SHA-256 against
+`installation.md`); the repo from GitHub. **The cut** (decision 409): whole, in one session (the
+agent recommended 15b and 15a first). The three maps compiled again: stamps `a7b4e9e8`,
+`24eb46ac`, `0ebfde6e`, each template byte-equal to the committed one. Two worker agents in turn
+(15a with 15b, then 15c), the runner scoring.
+
+**The harness** (`clients/capture/h3adv.py`, `h3mem.py`, common; README "Casts on the adventure
+map (E08 T139, batch E15)"): a step's cast finds its spell's place in the book by name (the book's
+page memory +0x7C + 4k; heroes with two to four spells, the Admiral's Hat's two among them), `button
+= true` clicks the panel's cast button (the adventure dialog's item 8) and records its state, every
+message kept in order, the cast settled when the map shows and the hero's tile, points and spell
+points hold for 1.5 s; the target dialogs (the door's, Scuttle Boat's) played with `hover` (the
+cursor's type and frame, the tile picked, the accept flag: the window manager's +0x38),
+`target`/`targets` (each a click with reads after it) and `cancel`, a tile with a pixel offset
+(`[x, y, dx, dy]`: E15-16's y 548); reads of the day's doors (+0x10D), the Fly and Water Walk
+levels (+0x112, +0x116: i32 as `structs.toml`, −1 off), facing, worn scrolls, a raw byte, a path's
+tiles, a box's explored tiles, right-click popups; boats named by their records at the start
+(`boats = { name = [x, y(, level)] }`; `boat:<name>[:<part>]`, `boats`, `boats:beside`), a step's
+`save` from the system options and `load` through Load Game (the loaded day, player and boats
+checked). `docs/exe/map.toml`: the door's target dialog 0x63DB9C and Scuttle Boat's 0x63DBD8 (seen
+live), the book's place spells; `structs.toml`: the adventure manager's mouse cell (+0xEC), the
+window manager's +0x38. The harness check passed (23 steps) and its tests (25).
+
+**The recipes and runs:** `clients/capture/batches/E08-batch-15a.toml`, `-15b.toml`,
+`-15c.toml`; two runs each, alike in every rule-level record (15a's freed prisoner's primary
+skills drawn at load: 2/1/3/4, 2/3/2/3); the templates filled from 15a's and 15b's first runs and
+15c's second. The spec's save 1 of 15c not made (no record reads it); a load needs the harness's
+`Games/` to hold that save alone; the tree at (21, 12) in the map area's last column pointed at
+from the column before (the dialog picked it).
+
+**Scored** (survey `E08-spells.md` §18, a table of the 17 records; a fresh review's nine
+findings taken, none changing a verdict): every row the reading predicts as predicted. **D-75's last boat and owner test confirmed** (E15-9a: the last boat from the
+underground; E15-9b: Red's boat, never Blue's nearer one; Manhattan, levels and ties not told apart
+here); **D-78 the reading's** (no path over hidden water);
+**D-79**: a worn scroll's Dimension Door cast by a hero without a book, the book opened and listing
+it (VCMI 1.7.5 alike: `canCastThisSpell` counts the scroll, the cast shortcut has no book test), so
+decision 404's row settles it: no book test on the map (design §6, exit criterion 3), ADV-STUB-21
+withdrawn; A-13 (the hidden tree at 140, 420 left), A-49, A-50 (no reveal at the sunk hidden
+boat), A-52, A-53 (the hidden tree's click no cast, no reveal), A-54 seen as read; the Prison's
+class visited from the neighbour (0x63AA58). Beside the rows: Red's start list in the heroes' type
+order (a lead for T139b, a point for T141a), the Admiral's Hat's boat spells (HER-SPL-002's parts).
+
+**Docs:** decision 409 and the task's line; design note §6, §18, §19 (*Run and scored*), §20's
+criterion 3, §21; survey §0 and §18; the results files' header lines. **Versions:** none moved.
+**Next:** T139b (the prisoners' level draws' order, a reading), then T140.
+
+### Increment 15, round 3: T139b, the order of the prisoners' level draws read (2026-11-22, `adventure/e08-t139b`)
+
+A code reading (only `Heroes3.exe` staged, SHA-256 checked; the repo from GitHub, the PC's shell
+down). No code.
+
+**Read:** `placed_heroes_setup` (0x4CAE10) whole again: 156 passes over the setup records in slot
+order, slot i holding type i (`hero_setup_reset` 0x4B8450 from `game_reset`; the bodies written by
+type), so the loop goes by type; every record reaches `placed_hero_setup`, placed or not, so a
+prisoner gets its levels at its type's place before its 0x41 test (survey `E08-spells.md` §2.1). A
+placed hero joins its owner's list in the loop's order (0x4CAF25): batch E15's start list in type
+order is the loop's (for T141a). Each level reseeds the C runtime's generator from the hero's own
+seed byte (drawn per type in type order by `new_game_heroes` before the map), and nothing else on
+the path draws (the choice 0x52BBD0 and its two callees included), so the order changes no hero's
+levels; it shows only in the generator left for the setup's later draws (`set_random_seed` keeps
+no seed to restore; nothing for the build, ADR-0017 point 4). VCMI 1.7.5 levels the heroes on the
+map in object order, prisons among them, each type from its own generator (`heroSkillSeed`).
+
+**Decided:** decision 410 (the user): the levels at load keep the hero id order, a prisoner's
+record after the placed heroes in the setup's object order (design §15 as drafted, its wording
+settled; §21's risk settled).
+
+**Docs:** survey §2.1 and §18's T139b point; design §15, §21; `docs/exe/map.toml`
+(`placed_heroes_setup`, the site `placed_hero_listed`, `hero_setup_reset`, `set_random_seed`);
+decision 410 and the task's line. **Versions:** none moved. **Next:** T140 (`shared/`).
+
+### Increment 15, round 4: T140, the `shared/` task (2026-11-22, `shared/e08-t140`, `cross-lane`)
+
+**The cut** (decision 411, asked at the start with the consent to the `cross-lane` changes):
+whole, one `shared/` pull request, the docs in one commit, the flags in the next (E09 T45's form).
+Not chosen: two parts (the docs now, recommended); the flags with their readers. **Baseline:**
+`master` ff25e2f (#1126 merged). Only `Heroes3.exe` staged (not needed).
+
+- **The ADRs** (the three drafts accepted at ADV-Q63, applied with batch E15's outcome, survey
+  `E08-spells.md` §18, and T139b's order, decision 410; then deleted with their folder):
+  **ADR-0013** point 2 (the mastery also on a ground that raises it) and the new **point 17** (the
+  raise an input, BAT-TER-005's battlefields; the cost on the map without the armies' ±2; who may
+  cast: the available spells, **no book test**, D-79 by E15-15, ADV-STUB-21 withdrawn), each with
+  its rows (E15-4, E15-5); a consequence, an alternative (the draft's book test among them), the
+  history. **ADR-0016** points 1 (**Increment 15's objects**, no new block), 3 (the day spells;
+  E15-6, E15-11, E15-12), 4 (**Increment 15's kinds**, the spells' bindings, the flight's two
+  settings, the hidden-tile rule's amendment; a batch E15 paragraph citing every row), 5 (the three
+  reveals; none under `faithful`, E15-8, E15-10), 6 (the prison's view, the day spells, the failed
+  cast's reason; E15-1), a consequence, an alternative (VCMI's Summon Boat refuted by E15-9b), the
+  history. **ADR-0017** points 1 (`Cast` and its checks, no book test; the prisoners in the
+  setup's object order with the levels at load in hero id order, decision 410; E15-1, E15-2), 4
+  (the boats' chance draws), 8 (encoding v18's plan), 9 (increment 15's versions, the next at
+  merge; the flags move no version), 10 (the outcomes; E15-7, E15-9a, -9b, -10), a consequence, an
+  alternative, the history. The index's Read-when cells of ADR-0013, -0016 and -0017.
+- **The glossary** (`docs/03-domain.md`): Prison and prisoner, Market of Time, a cast on the map
+  and a charged failure, day spells, a spell's raise by a ground.
+- **`docs/06-security.md`**: increment 15's lines (design §11, §13, §14: a prison's type and never
+  its prisoner; the day spells the owner's; the cast's validation against the trusted actor and
+  the state, each refusal untouched, a charged failure the caster's; the chance draws
+  server-only; the hidden tiles by the profile).
+- **The flags** (`h3-content`, shared): `FLIGHT_READS_HIDDEN` (`ADV-QUIRK-15`, `QuirkFlag(45)`),
+  `DOOR_READS_HIDDEN` (`-51`, 46), `SCUTTLE_READS_HIDDEN` (`-52`, 47), `SUMMON_BOAT_BY_STEPS`
+  (`-53`, 48), `SPELL_RECAST_REFUSED` (`-54`, 49), `DOOR_FAILURE_CHARGED` (`-55`, 50); the
+  registry's 51 positions and its two tests. No encoding changed: `RULESET_HASH_VERSION` 53 and
+  the pack format kept. **`h3-pack`:** `the_harvested_flags_of_e08_increment_15` (on in
+  `faithful`, off in `strict-fixed`, every expansion). **The harvester's** two profile texts and
+  `packs/base/core.toml`'s two lines (battle-owned), their comments' ids. Nothing reads the flags
+  until T142 and T143 (each flag's doc names its reader). *Agent's call:* the ledger entries stay
+  the building tasks' (design §4); `ADV-QUIRK-15`'s entry notes the reclassification and the flag.
+- **Replays and records:** the base faithful ruleset hash moved `0x36b98ea152b4db95` to
+  **`0x0ee6066a4c802530`** (`strict-fixed`'s and the synthetic's kept). One replay re-recorded
+  from its commands showed only `ruleset_hash` moving; the 108 headers on it patched; all 111
+  adventure and the ten battle replays verified (`h3 adventure verify`, `h3 verify`).
+  `h3-server`'s record literal; `bots-report-v1.json` and `bots-neutral-v1.json` regenerated (only
+  `engine.core` moved); the E25 ceiling records keep theirs (the AI lane's inbox).
+- **Also:** the battle lane's HANDOFF versions line (quirk flags 50, the hash); the inboxes of the
+  battle, AI and town lanes; a stray `<<<<<<< HEAD` line in the AI lane's queue (from an earlier
+  merge) removed. The design note's header (applied), Part B's title.
+
+**Verify:** `cargo test -p h3-content -p h3-pack -p h3-harvest`, `cargo test -p h3-server
+record`, `cargo check --workspace --all-targets`, xtask's docs gates, `cargo xtask check-lane
+--cross-lane`; CI on the pull request is the record. **Versions:** none moved (the flags change the
+profiles' hashes, not a version). T141 (round 5, its cut at its start) next.

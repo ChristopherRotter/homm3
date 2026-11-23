@@ -40,7 +40,7 @@
 //! …` (the places as the management lines', `w<position>` and `b<index>`, the worn ones by
 //! position, then the backpack's from the last index down), `creatures <amount> …` (seven, by
 //! slot) and `leave`; v23 a Hill Fort's answers, E08 T134b1: `answer hill-fort upgrade <slot>`,
-//! `all` and `leave`):
+//! `all` and `leave`; v24 `town open <town>`, a town screen's opening, E09 T49a2):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -64,12 +64,13 @@
 //!     "0 town recruit 2 30",          #   `<player> town recruit <town> <building>` (format 15)
 //!     "0 town heroes 2 enter",        #   `<player> town heroes <town> enter|leave|swap` (16)
 //!     "0 town hire 2 1",              #   `<player> town hire <town> <slot>` (format 17)
+//!     "0 town open 2",                #   `<player> town open <town>` (format 24)
 //!     "0 revisit 1",                  #   `<player> revisit <hero>` (format 12)
 //! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 23
+//! format = 24
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -316,7 +317,7 @@ fn parse_hex64(s: &str) -> Result<u64> {
 /// system command (format v14, E16 M5 T14) by `for`, its player and its words; a town's
 /// recruitment (format v15, E09 T27) by its town and building; a hero's move between a town's
 /// bars (format v16, E09 T28a) by its town and move; a town's hire (format v17, E09 T38a1) by its
-/// town and slot.
+/// town and slot; a town screen's opening (format v24, E09 T49a2) by its town.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -381,6 +382,10 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         // Format v17 (E09 T38a1).
         GameCommand::Town(TownCommand::Hire { town, slot }) => {
             format!("{player} town hire {} {slot}", town.raw())
+        }
+        // Format v24 (E09 T49a2).
+        GameCommand::Town(TownCommand::Open { town }) => {
+            format!("{player} town open {}", town.raw())
         }
     }
 }
@@ -799,6 +804,14 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
             let town = town.parse().map(TownId::new).map_err(|_| bad())?;
             let slot = slot.parse().map_err(|_| bad())?;
             GameCommand::Town(TownCommand::Hire { town, slot })
+        }
+        // Format v24 (E09 T49a2): a town screen's opening.
+        Some("town") if words.clone().next() == Some("open") => {
+            let (_, Some(town)) = (words.next(), words.next()) else {
+                return Err(bad());
+            };
+            let town = town.parse().map(TownId::new).map_err(|_| bad())?;
+            GameCommand::Town(TownCommand::Open { town })
         }
         // Format v11 (E09 T18b1): a town's build, without a hero; v15 (E09 T27) its recruitment.
         Some("town") => {

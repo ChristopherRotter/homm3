@@ -2,7 +2,8 @@
 //! [`guild_keep`]'s record (level 1 `L1_A` 10, `L1_ZERO` 0, `L1_B` 30, the ability 50, `L1_C` 60;
 //! level 2 `L2_A` 40, `L2_B` 60; level 3 `L3` 100; level 4 `L4_ZERO` 0; level 5 the bolt 100,
 //! `L5_A` 50, `L5_B` 50), the part's slots 5, 4, 3, 2, 1 (six, five, four, three and two drawn).
-//! Since E09 T48a what a hero learns there ([`teaches`]), with [`guild_core`]'s [`sage`].
+//! Since E09 T48a what a hero learns there ([`teaches`]), with [`guild_core`]'s [`sage`]; since
+//! E09 T49a1 the night's refill ([`refills`]) and the Mana Vortex ([`vortex`], [`vortex_keep`]).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -12,8 +13,9 @@ use h3_kernel::{Rng, StreamId};
 use super::*;
 use crate::fixture::{
     ABILITY, AURORA, BOLT, KEEP, L1_A, L1_B, L1_C, L1_ZERO, L2_A, L2_B, L3, L4_ZERO, L5_A, L5_B,
-    LIBRARY, MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3, MAGE_GUILD_4, MAGE_GUILD_5, WILD,
-    empty_part, guild_core, guild_keep, part_with_keep, sage, town, town_of,
+    LIBRARY, MAGE_GUILD_1, MAGE_GUILD_2, MAGE_GUILD_3, MAGE_GUILD_4, MAGE_GUILD_5, VORTEX, WILD,
+    empty_part, guild_core, guild_keep, part_changed, part_with_keep, sage, set, town, town_of,
+    vortex_keep,
 };
 use crate::record::TownStatic;
 
@@ -470,4 +472,155 @@ fn the_aurora_teaches_its_set_in_spell_order_at_any_guild_level_up_to_wisdom() {
     let all = [L1_A, L1_ZERO, L1_B, L1_C, L2_B, L3, L4_ZERO, L5_A, L5_B];
     assert_eq!(learned(&faithful, set, (true, 3, &[])), all);
     assert!(!all.contains(&ABILITY) && !all.contains(&BOLT));
+}
+
+/// [`sage`] without a book in `core` with `mana` spell points, and its maximum (20: Knowledge 2).
+fn sage_at(core: &Ruleset, mana: u16) -> (HeroDetails, u16) {
+    let mut hero = sage(core, false, 0, &[]);
+    hero.mana = mana;
+    let max = h3_heroes::max_mana(&hero, core);
+    (hero, max)
+}
+
+// covers: TWN-GLD-008
+#[test]
+fn a_night_refills_in_a_town_with_a_guild_ever_built() {
+    let part = guild_part();
+    // Any guild level, even one superseded since.
+    for built in [
+        &[MAGE_GUILD_1][..],
+        &[MAGE_GUILD_1, MAGE_GUILD_3],
+        &[MAGE_GUILD_5],
+    ] {
+        assert!(refills(&town(built), &part));
+    }
+    // No guild ever built (the Library alone), no faction's record: none.
+    assert!(!refills(&town(&[LIBRARY]), &part));
+    assert!(!refills(&town_of(WILD, &[MAGE_GUILD_1]), &part));
+    assert!(!refills(&town(&[MAGE_GUILD_1]), &empty_part()));
+}
+
+// covers: TWN-GLD-009
+#[test]
+fn a_standing_mana_vortex_with_the_week_s_flag_gives_the_factor_times_the_maximum() {
+    let (core, part) = (guild_core(&[]), part_with_keep(vortex_keep));
+    let keep = town(&[MAGE_GUILD_1, VORTEX]);
+    let (empty, max) = sage_at(&core, 0);
+    assert_eq!(max, 20);
+    assert!(keep.vortex());
+    assert_eq!(vortex(&keep, &part, &core, &empty), Some(2 * max));
+    // Below twice the maximum it gives; at or above it nothing (the flag stays for the next).
+    let points = |mana| vortex(&keep, &part, &core, &sage_at(&core, mana).0);
+    assert_eq!(points(39), Some(40));
+    assert_eq!((points(40), points(55)), (None, None));
+    // The part's factor; the flag cleared, the Vortex not standing, never built: nothing.
+    let five = part_changed(|p| p.vortex_factor = 5, vortex_keep);
+    assert_eq!(vortex(&keep, &five, &core, &empty), Some(5 * max));
+    assert_eq!(vortex(&keep.with_vortex(false), &part, &core, &empty), None);
+    let superseded = part_with_keep(|keep| {
+        vortex_keep(keep);
+        keep.buildings[LIBRARY].supersedes = set(&[VORTEX]);
+    });
+    let both = town(&[MAGE_GUILD_1, VORTEX, LIBRARY]);
+    assert_eq!(vortex(&both, &superseded, &core, &empty), None);
+    assert_eq!(vortex(&town(&[MAGE_GUILD_1]), &part, &core, &empty), None);
+    // No faction's record, no parameters: nothing.
+    let wild = town_of(WILD, &[MAGE_GUILD_1, VORTEX]);
+    assert_eq!(vortex(&wild, &part, &core, &empty), None);
+    assert_eq!(vortex(&keep, &empty_part(), &core, &empty), None);
+}
+
+/// Whether an opening of `town` gives one of `heroes` anything, by [`vortex`] and [`teaches`]
+/// asked hero by hero, checked against [`opening_gives`] (E09 T49a2).
+fn gives(
+    (town, statics): (&Town, &TownStatic),
+    part: &TownRuleset,
+    core: &Ruleset,
+    heroes: &[HeroDetails],
+) -> bool {
+    let expected = heroes.iter().any(|hero| {
+        vortex(town, part, core, hero).is_some()
+            || !teaches(town, statics, part, core, hero).is_empty()
+    });
+    assert_eq!(
+        opening_gives(town, statics, part, core, heroes),
+        expected,
+        "{:?} {:?}",
+        town.built(),
+        heroes
+            .iter()
+            .map(|h| (h.mana, &h.spells))
+            .collect::<Vec<_>>()
+    );
+    expected
+}
+
+// covers: TWN-GLD-006
+#[test]
+fn an_opening_gives_exactly_where_the_vortex_or_the_guild_would() {
+    let core = guild_core(&[]);
+    let aurora = aurora_set(&core, &GuildSets::default());
+    let superseded = part_with_keep(|keep| {
+        vortex_keep(keep);
+        keep.buildings[LIBRARY].supersedes = set(&[VORTEX]);
+    });
+    let parts = [
+        guild_part(),
+        part_with_keep(vortex_keep),
+        superseded,
+        empty_part(),
+    ];
+    let builts: [&[usize]; 9] = [
+        &[],
+        &[MAGE_GUILD_1],
+        &[MAGE_GUILD_1, MAGE_GUILD_3],
+        &[MAGE_GUILD_5, LIBRARY],
+        &[MAGE_GUILD_1, AURORA],
+        &[LIBRARY, AURORA],
+        &[MAGE_GUILD_1, VORTEX],
+        &[MAGE_GUILD_1, VORTEX, LIBRARY],
+        &[VORTEX],
+    ];
+    let shown = [L1_C, L1_A, L2_B, L2_A, L3, L5_A, L5_B];
+    let mut heroes = Vec::new();
+    for (book, wisdom) in [(false, 0), (true, 0), (true, 3)] {
+        for known in [&[][..], &[L1_C, L1_A], &shown] {
+            for mana in [0, 40] {
+                let mut hero = sage(&core, book, wisdom, known);
+                hero.mana = mana;
+                heroes.push(hero);
+            }
+        }
+    }
+    let mut outcomes = [0; 2];
+    for part in &parts {
+        for built in builts {
+            for flag in [true, false] {
+                let keep = town(built).with_guild(ordered()).with_vortex(flag);
+                let statics = TownStatic {
+                    aurora,
+                    ..TownStatic::default()
+                };
+                for (at, hero) in heroes.iter().enumerate() {
+                    let one = gives((&keep, &statics), part, &core, core::slice::from_ref(hero));
+                    outcomes[usize::from(one)] += 1;
+                    // Two heroes: either's gift counts.
+                    let other = &heroes[(at + 5) % heroes.len()];
+                    gives(
+                        (&keep, &statics),
+                        part,
+                        &core,
+                        &[hero.clone(), other.clone()],
+                    );
+                }
+            }
+        }
+    }
+    assert!(outcomes[0] > 0 && outcomes[1] > 0, "{outcomes:?}");
+    // No hero, no faction's record: nothing.
+    let keep = town(&[MAGE_GUILD_5, VORTEX]).with_guild(ordered());
+    let statics = TownStatic::default();
+    assert!(!opening_gives(&keep, &statics, &parts[1], &core, &[]));
+    let wild = town_of(WILD, &[MAGE_GUILD_5, VORTEX]).with_guild(ordered());
+    assert!(!gives((&wild, &statics), &parts[1], &core, &heroes[..1]));
 }

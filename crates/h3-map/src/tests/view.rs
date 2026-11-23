@@ -1386,15 +1386,28 @@ fn check_told(
                     .iter()
                     .any(|h| h.id == hero && h.details.is_some())
                     || at.is_some();
-                if let (
-                    Some(at),
-                    GameEvent::HeroChanged {
-                        change: HeroChange::LearnSpell(spell),
-                        ..
-                    },
-                ) = (at, *event)
-                {
-                    at.2.push(HiredPart::Spell(spell));
+                // Since E09 T49a1 the hire's Mana Vortex (TWN-GLD-009) sets its spell points
+                // after them, as the details do.
+                match (at, *event) {
+                    (
+                        Some(at),
+                        GameEvent::HeroChanged {
+                            change: HeroChange::LearnSpell(spell),
+                            ..
+                        },
+                    ) => at.2.push(HiredPart::Spell(spell)),
+                    (
+                        Some(at),
+                        GameEvent::HeroChanged {
+                            change: HeroChange::SetSpellPoints(points),
+                            ..
+                        },
+                    ) => {
+                        if let Some(view) = at.1.as_mut() {
+                            view.hero.mana = points;
+                        }
+                    }
+                    _ => {}
                 }
                 prop_assert!(
                     own,

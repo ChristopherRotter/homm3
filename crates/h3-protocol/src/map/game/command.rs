@@ -83,6 +83,8 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                     town: town.raw(),
                     slot,
                 },
+                // E09 T49a2 (v79).
+                EngineTown::Open { town } => TownCommand::Open { town: town.raw() },
             },
         },
         // E16 M5 T14 (v56): the system actor's own commands, the host's.
@@ -358,6 +360,10 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                 TownCommand::Hire { town, slot } => EngineTown::Hire {
                     town: TownId::new(town),
                     slot,
+                },
+                // E09 T49a2 (v79).
+                TownCommand::Open { town } => EngineTown::Open {
+                    town: TownId::new(town),
                 },
             })
         }
