@@ -203,6 +203,39 @@ def instance_fault():
     return None
 
 
+# The game's own disk check (E24 M4 T1a, E27 M2 T7; docs/lanes/map-client/TRAPS.md and the client
+# lane's): the main menu's first pass compares the drive's free space with 0x500000 (5 MiB) and
+# below it shows GENRLTXT 708 and ends the game (main_menu_proc 0x4FB710, read); the free space
+# is read in 32 bits, signed (free_disk_space 0x50C7A0, not read: observed, a disk's free bytes
+# between 2 and 4 GiB modulo 4 GiB failed every run). So the free bytes modulo 4 GiB must lie in
+# [DISK_CHECK_LOW, DISK_CHECK_HIGH).
+DISK_CHECK_LOW, DISK_CHECK_HIGH = 0x500000, 2 ** 31
+
+
+def disk_check_fault(path=None):
+    """Why the game's disk check would end the game, or None (E24 M4 T6, the reviewer's R6-6: a
+    run failed only at `main_menu did not appear`, which said nothing of why): the free bytes of
+    `path`'s file system (the run directory, the game's drive D: and working directory; which
+    drive the game asks is not read), as `df -B1` gives them (statvfs's available blocks), modulo
+    4 GiB outside [5 MiB, 2 GiB). The message names a ballast's size that brings them to 1 GiB.
+    H3_NO_DISK_CHECK=1 leaves the check out (where the reading would be wrong)."""
+    if os.environ.get("H3_NO_DISK_CHECK") == "1":
+        return None
+    path = GAME_DIR if path is None else Path(path)
+    st = os.statvfs(path)
+    free = st.f_bavail * st.f_frsize
+    read = free % 2 ** 32
+    if DISK_CHECK_LOW <= read < DISK_CHECK_HIGH:
+        return None
+    ballast = (read - 2 ** 30) % 2 ** 32
+    fix = (f"a ballast file of {ballast} bytes (`fallocate -l {ballast} <file>` outside the run "
+           "directory) brings them to 1 GiB" if ballast < free
+           else "free some space (a ballast cannot bring them into the band)")
+    return (f"the game's disk check would end the game: {free} free bytes on {path} read as "
+            f"{read - 2 ** 32 if read >= 2 ** 31 else read} (32 bits, signed), not from 5 MiB "
+            f"to 2 GiB modulo 4 GiB: {fix} (docs/lanes/map-client/TRAPS.md)")
+
+
 def env():
     # No Wine command of a refused instance runs (E17 M5 T8b1, R7-3).
     fault = instance_fault()
@@ -424,6 +457,11 @@ class Game:
             said = os.readlink(drive) if drive.is_symlink() else "no link"
             raise RuntimeError(f"the prefix {prefix}'s drive D: is {said}, not the run directory "
                                f"{GAME_DIR}: run setup.sh with the same H3_RUN and WINEPREFIX")
+        # The game's disk check before anything runs (E24 M4 T6, the reviewer's R6-6): a run it
+        # would end fails here, saying why, not at the main menu's wait.
+        fault = disk_check_fault()
+        if fault:
+            raise RuntimeError(fault)
         # The display's own Xvfb, its number matched whole (E17 M5 T8b1, R7-4: `:9` matched
         # `:99`'s).
         xvfb = f"(^|/)Xvfb {re.escape(DISPLAY)}( |$)"

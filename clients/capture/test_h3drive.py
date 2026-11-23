@@ -30,9 +30,11 @@ class HeldInputs(unittest.TestCase):
             return mock.MagicMock()
 
         environ = {k: v for k, v in os.environ.items() if k not in ("H3_RUN", "WINEPREFIX")}
+        # The disk check reads the run directory's file system (`DiskCheck` below checks it).
         for patch in (mock.patch.object(h3drive.subprocess, "run", side_effect=ran),
                       mock.patch.object(h3drive.subprocess, "Popen", side_effect=started),
                       mock.patch.object(h3drive.time, "sleep"),
+                      mock.patch.object(h3drive, "disk_check_fault", return_value=None),
                       mock.patch.dict(os.environ, environ, clear=True)):
             patch.start()
             self.addCleanup(patch.stop)
@@ -76,6 +78,57 @@ class HeldInputs(unittest.TestCase):
         released += [["xdotool", "mouseup", "3"], ["xdotool", "mouseup", "1"]]
         self.assertEqual(self.after(["wineserver", "-k"]),
                          [*released, ["started", "wine", "Heroes3.exe"]])
+
+
+class DiskCheck(unittest.TestCase):
+    """E24 M4 T6 (the reviewer's R6-6): the game's disk check reads the free bytes in 32 bits,
+    signed, and ends the game below 5 MiB, so a run outside [5 MiB, 2 GiB) modulo 4 GiB fails
+    before the game starts, saying why."""
+
+    GIB, MIB = 2 ** 30, 2 ** 20
+
+    def fault(self, free, frsize=4096):
+        st = mock.Mock(f_bavail=free // frsize, f_frsize=frsize)
+        environ = {k: v for k, v in os.environ.items() if k != "H3_NO_DISK_CHECK"}
+        with mock.patch.object(h3drive.os, "statvfs", return_value=st), \
+                mock.patch.dict(os.environ, environ, clear=True):
+            return h3drive.disk_check_fault("/run")
+
+    def test_the_band_is_5_mib_to_2_gib_modulo_4_gib(self):
+        inside = [5 * self.MIB, self.GIB, 2 * self.GIB - 4096, 4 * self.GIB + 5 * self.MIB,
+                  20 * self.GIB + self.GIB]
+        outside = [0, 5 * self.MIB - 4096, 2 * self.GIB, 3 * self.GIB, 4 * self.GIB - 4096,
+                   4 * self.GIB, 8 * self.GIB + self.MIB]
+        self.assertEqual([self.fault(f) for f in inside], [None] * len(inside))
+        self.assertTrue(all(self.fault(f) for f in outside))
+
+    def test_the_message_says_why_and_how_large_a_ballast(self):
+        said = self.fault(23 * self.GIB + 512 * self.MIB)  # read as -512 MiB
+        self.assertIn("read as -536870912", said)
+        self.assertIn(f"ballast file of {2 * self.GIB + 512 * self.MIB} bytes", said)
+        self.assertIn("free some space", self.fault(3 * self.MIB))
+
+    def test_h3_no_disk_check_leaves_it_out(self):
+        with mock.patch.dict(os.environ, {"H3_NO_DISK_CHECK": "1"}), \
+                mock.patch.object(h3drive.os, "statvfs") as statvfs:
+            self.assertIsNone(h3drive.disk_check_fault("/run"))
+        statvfs.assert_not_called()
+
+    def test_a_game_outside_the_band_never_starts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            game_dir, prefix = Path(tmp) / "game", Path(tmp) / "prefix"
+            (prefix / "dosdevices").mkdir(parents=True)
+            (prefix / "dosdevices" / "d:").symlink_to(game_dir)
+            environ = {"WINEPREFIX": str(prefix), "HOME": tmp}
+            with mock.patch.object(h3drive, "GAME_DIR", game_dir.resolve()), \
+                    mock.patch.object(h3drive, "disk_check_fault", return_value="the check"), \
+                    mock.patch.object(h3drive.subprocess, "run") as run, \
+                    mock.patch.object(h3drive.subprocess, "Popen") as popen, \
+                    mock.patch.dict(os.environ, environ, clear=True):
+                with self.assertRaisesRegex(RuntimeError, "the check"):
+                    h3drive.Game(Path(tmp) / "out").start()
+        run.assert_not_called()
+        popen.assert_not_called()
 
 
 class WineEnvironment(unittest.TestCase):

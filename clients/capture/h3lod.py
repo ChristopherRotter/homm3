@@ -193,7 +193,10 @@ def building_names(faction):
 # of NAME_FIELDS (`[CRTRAITS:15.1]`, the row's field 1: a plural) or a record of FORMAT_TABLES
 # without conversions (`[GENRLTXT:5]`), numbers and punctuation kept, any other piece `[other: n
 # characters]`; `[the map's text]` for a text the situation gives itself. LABELLED is what a kept
-# text may hold (the client test `timeline::tests::texts` checks the kept files by it).
+# text may hold (the client test `h3-map-view`'s `tests/texts.rs` checks the kept files by the
+# same rule). KEPT is that test's own set, character for character (E24 M4 T6, the reviewer's
+# R6-11: `\s` and `\d` took any Unicode space and digit, a no-break space kept here and refused
+# there).
 FORMAT_TABLES = ("ADVEVENT.TXT", "GENRLTXT.TXT", "ARRAYTXT.TXT", "ARTEVENT.TXT", "RANDSIGN.TXT",
                  "MINEEVNT.TXT")
 NAME_FIELDS = {"ARTRAITS.TXT": (0,), "CRTRAITS.TXT": (0, 1), "SPTRAITS.TXT": (0,),
@@ -202,9 +205,9 @@ NAME_FIELDS = {"ARTRAITS.TXT": (0,), "CRTRAITS.TXT": (0, 1), "SPTRAITS.TXT": (0,
                "CRGEN1.TXT": (0,), "CRGEN4.TXT": (0,), "CRBANKS.TXT": (0,), "RESTYPES.TXT": (0,),
                "PLCOLORS.TXT": (0,), "TOWNNAME.TXT": (0,), "TERRNAME.TXT": (0,),
                "MINENAME.TXT": (0,)}
-KEPT = r"[\s\d+\-,.:;()%/'\"!?]"
+KEPT = r"[ \t\r\n0-9+\-,.:;()%/'\"!?]"
 LABELLED = re.compile(rf"(?:\[(?:[A-Z][A-Z0-9]*:\d+(?:\.\d+)?(?:\+\d+)?|other: \d+ characters"
-                      rf"|the map's text)\]|{KEPT})*")
+                      rf"|the map's text)\]|{KEPT})*", re.ASCII)  # `\d` the test's ASCII digits
 CONVERSION = r"%[-+ #0]*\d*(?:\.\d+)?[a-zA-Z]"
 
 
@@ -285,8 +288,9 @@ def by_pieces(text, fold=False):
         out += [rest[:m.start()], f"[{lab}]"]
         rest = rest[m.end():]
     out.append(rest)
+    # A piece of white space alone that KEPT does not hold (a no-break space) counts whole.
     return "".join(part if part.startswith("[") or re.fullmatch(f"{KEPT}*", part)
-                   else f"[other: {len(part.strip())} characters]" for part in out)
+                   else f"[other: {len(part.strip()) or len(part)} characters]" for part in out)
 
 
 def label(text, own=()):

@@ -4087,6 +4087,12 @@ adventure lane's). No reading of the original: the hover is M3's (§4.10 to §4.
   prints what it compared, names the choices as not compared when the capture holds no
   `[chosen]` (a situation's `choose`, by design: §5.10's "when the capture holds one") and fails
   on a capture without `[hover]` (one from before T3b2: the comparison holds the mouse-over).
+- **As built at M4 T6** (the review's R6-1, the harness): a shipped map's `bonus = "gold"` was
+  accepted and dropped (`to_shipped` took no `gold`), so `start-jared` and `start-good-witch` were
+  captured with the scenario's Random bonus; it is now set before Begin as a writer's map's
+  (`h3drive.gold_bonus` for `players` rows), and `check_situation` refuses a shipped `bonus`
+  without `players`. Both starts are to be captured again (`set --only`), their `engine` entries
+  checked again.
 
 ### 5.12 A record's own walks and turns: the reading and the scripted games (M4 T4a1)
 
