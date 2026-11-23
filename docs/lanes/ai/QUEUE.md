@@ -22,11 +22,7 @@ T45, AI-Q23).
 - **E31 T1a1 — the frame, in three parts** (AI-Q24, the user at T1a1's start: about 16 KB with
   its own helpers; `Heroes3.exe` staged, SHA-256 `aac39e8c…`, `pip install capstone pefile`, a
   cloud sandbox). **T1a1a done** (2026-11-23, `E31-log.md` T1a1a; the survey's §1.1 to §1.8).
-  - **T1a1b — the planning:** `ai_hero_plan` 0x42DE50 (its top level; `ai_army_fight_sim`
-    0x427330 is T1a2's), `ai_hero_replan` 0x42E0B0 with its own helpers (the five small ones after
-    it, and the one holding the draw `ai_replan_draw` 0x42FBE9), `ai_turn_part_b` 0x42EDD0 and `ai_turn_part_c` 0x42F570
-    named by role (their values T1a2); the destination struct 0x5267B0 passes (+0x0, +0xC, +0xD)
-    and the hero's +0x41 and +0x43. Into the survey's §1.4 and a new §1.9. About 5 KB.
+  **T1a1b done** (2026-11-23, `E31-log.md` T1a1b; the survey's §1.9).
   - **T1a1c — the walk:** `ai_hero_walk` 0x42FEE0 (its path and the two routines after it, the
     spells cast on the way), `ai_hero_step` 0x42FC50's points and its write of the record's +0x04,
     the boat marks' use and `ai_boat_create` 0x430F80. About 5 KB.

@@ -32,8 +32,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1131 (`ai/e31-t1a1`: E31 T1a1a, docs and the map). Merged: #1129 (T44's
-  valuation read, T45), #1130 (`shared/e25-pause`), #1123 (T44's tool, #2's recording).
+- **Open pull requests:** none; this branch `ai/e31-t1a1b` (E31 T1a1b, docs and the map) opens
+  one when ready. Merged: #1131 (T1a1a), #1129 (T44's valuation read, T45), #1130
+  (`shared/e25-pause`).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
@@ -41,8 +42,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, the survey
   `docs/rules/surveys/E31-computer-player.md`): T1a1 cut in three (AI-Q24); **T1a1a done** (the
-  turn's loop, the records). **Next: E31 T1a1b** (the planning) in `QUEUE.md`, `Heroes3.exe`
-  staged in a cloud sandbox. Then E13 (refined in shape,
+  turn's loop, the records); **T1a1b done** (the planning: the danger map, the candidates, the
+  score, the choice; two quirk candidates for T1b). **Next: E31 T1a1c** (the walk) in `QUEUE.md`,
+  `Heroes3.exe` staged in a cloud sandbox. Then E13 (refined in shape,
   `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -51,6 +53,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-23 — E31 T1a1b: the planning
+
+- A cloud clone, `Heroes3.exe` staged from the user's PC (its local `master` was behind GitHub's,
+  which already had #1131). Read the danger map, the destination's choice and its helpers, the
+  candidates, the claims, the score and its draw; 20 map entries, `pathfinder_node` and
+  `ai_candidate`, the survey's §1.9. Scratch scripts over `scripts/exe.py` (not committed).
 
 ### 2026-11-23 — E31 T1a1a: the turn's loop and the records
 
@@ -65,11 +74,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - The user ran the valuation (16 threads, 96 minutes) and uploaded its JSON and games file; the
   read paired with T43's records by a scratch script (not committed). T45 with the user
   (AI-Q23): increment 10 closed, E25 paused for E31 (`shared/e25-pause`). Docs only.
-
-### 2026-11-21 — E25 T44: the tool
-
-- `h3 ai ceiling --commands` and `inspect --commands` (code, tests, docs); the release build's
-  checks in the sandbox: Python recordings through the C ABI replay to their ends, T43's games
-  file reads back to its record, a timing on the fair actor's own 18 games (no original data
-  needed). The user uploaded #2's `best.pt` (`python/runs/`, ignored); the train group synced;
-  #2's games recorded here. The valuation is the user's (their choice: 16 threads).

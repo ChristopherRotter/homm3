@@ -79,8 +79,8 @@ garrison hero (and +0x43), so nothing a human would call sleeping lasts past the
    the player's selected one is selected, the turn's tile buffer cleared and step 4 taken; a hero
    already selected (it played last and is picked again) skips both, and its alone flag is
    dropped.
-4. **The plan** (`ai_hero_plan` 0x42DE50; T1a1b), except on Easy for a player whose team has no
-   human.
+4. **The danger map** (`ai_danger_map` 0x42DE50, §1.9) into the turn's tile buffer, except on
+   Easy for a player whose team has no human (that player's heroes then plan with an empty map).
 5. **The boat marks**, with at least 10 wood and 1000 gold: each of the player's towns marks its
    boat tile (map item +0xD bit 0x08) when its Shipyard is built, or can be bought now with the
    Shipyard's cost plus 10 wood and 1000 gold left over; each map Shipyard it owns marks its boat
@@ -98,9 +98,12 @@ garrison hero (and +0x43), so nothing a human would call sleeping lasts past the
   turn (+0x35), the hero's +0x41 plus its points plus 200 if that is more; 32000 for a hero alone;
   for a patrolling hero at most 200 × (its distance to the patrol's centre, in columns plus rows,
   plus the radius).
-- **The search** (`ai_hero_replan` 0x42E0B0; T1a1b) runs up to five times. While it finds no
-  destination, or a negative value without the struct's +0xD flag, and the pathfinder reports that
-  it stopped short (+0x20), the budget doubles, up to 32000 or the patrol's bound.
+- **The search** (`ai_hero_destination` 0x42E0B0, §1.9) runs up to five times, on one
+  destination (`ai_candidate`, `structs.toml`) that starts as none and carries over between the
+  runs. While it has no destination, or its best rate is negative and the destination is no
+  must-go (+0xD), and a step was refused at the bound (the pathfinder's +0x20, set by
+  `pathfinder_relax` 0x4B1D15), the budget doubles, up to 32000 or the patrol's bound: a hero
+  standing in danger searches farther for a way out.
 - **No destination:** the hero is put asleep and its destination cleared.
 - **The week's last day:** a hero on a town's entrance whose destination is worth less than 75
   stays (asleep) on day 7, to meet the new week's growth there.
@@ -165,18 +168,21 @@ Only the colour is set at a new game (`ai_player_records_init` 0x4340E0).
 | +0x60 | the weights (f64[7]; +0x90 gold, `ai_player_values` 0x6929E0) | the weights, start and middle | the values; `ai_secondary_skill_value` 0x524690 (Estates) |
 
 Fields of the game's own records that the computer uses: the hero's +0x11C (asleep: the done
-mark), +0x35 to +0x40 (the destination), +0x41 and +0x43 (written by the search, T1a1b), +0x44 to
-+0x46 (the patrol), +0x109 and +0x47A to +0x491 (H3API's AI values; T1a2), +0x11D (cleared by the
-threat fold); the player's +0x39, +0x128, +0x160, +0x164; the town's +0x3; the map item's +0xD bit
-0x08 (the boat marks, only during a walk); the pathfinder's +0x20 and +0x6C.
+mark), +0x35 to +0x40 (the destination), +0x41 (the points beyond) and +0x43 (the must-go),
+written by the destination's choice (§1.9), +0x44 to +0x46 (the patrol), +0x109 and +0x47A to
++0x491 (H3API's AI values; T1a2), +0x11D (cleared by the threat fold); the player's +0x39 (the
+puzzle target, a packed position: §1.9), +0x128, +0x160, +0x164; the town's +0x3; the map item's
++0xD bit 0x08 (the boat marks, only during a walk); the pathfinder's +0x8, +0x20, +0x28, +0x58
+and +0x6C, and its nodes' +0x10 and +0x14 (`pathfinder_node`, §1.9).
 
 **What persists between turns** (decision 5's input): nothing in the record is carried into the
 computer's own next turn, since the start recomputes every field from the game's state. But the
 record is read **during other players' turns**: the gold weight by a computer hero's level-up
 (`ai_secondary_skill_value`, ADV-STUB-8) and the Eye value by the fight estimate, so the values of
 the computer's last turn decide there. In the game's records, the hero's destination (+0x35) and
-+0x41 survive into the next turn and widen its search (§1.4); +0x43 is cleared at the start. T1a4
-completes the list.
++0x41 survive into the next turn: they widen its search (§1.4), the destination is favoured again
+(× 1.5 + 20, §1.9) and the other heroes' destinations and +0x41 shape a hero's claims (§1.9);
++0x43 is cleared at the start, so a must-go lasts the turn. T1a4 completes the list.
 
 ### 1.7 Hidden reads, draws and floats met so far
 
@@ -186,18 +192,107 @@ completes the list.
   re-read: a computer player's step into an unexplored tile is refused only when it comes from an
   unexplored tile **and the player owns a town** (+0x3E, the town count): one step into the fog
   while it has a town, the fog ignored while it has none (the map's earlier summary had the test
-  the other way round).
-- **Draws:** none in §1's functions.
+  the other way round). The planning (§1.9): the danger map reads every enemy hero's tile and
+  army; every reachable entrance is a candidate, explored or not, and while the player has no town
+  an unexplored one is valued by its object (with a town, a flat exploration value); a guard's
+  fight estimate is read for a candidate on an unexplored tile too. Without a town the computer
+  thus ignores the fog in both its search and its values.
+- **Draws:** none in §1.1 to §1.8's functions. The destination's choice draws once for every
+  candidate it scores (§1.9), up to five searches per hero and pass plus the walk's: a turn draws
+  many times from the game's generator (`crt_rand` through `random_between`). The first look's
+  "almost none" counted call sites.
 - **Floats:** x87 in `ai_resource_weights` (f64), `ai_turn_start_values` (the artifacts' mean, the
-  difficulty weights, f32), and the values T1a2 reads.
+  difficulty weights, f32), `ai_candidate_score` (× 1.5 or ÷ 1.5 in f32 for the kept destination,
+  (100.0 / r) × the score in f64 for a score not above 0, both truncated by `crt_ftol`), and the
+  values T1a2 reads. The rates and the spread are i32, not saturated.
 - **Asymmetries met** (for T1a3's table): the patrol of radius 0 that never moves; the boat marks;
   the garrison swap at a turn's end; the resources shared with allies; Easy without a human ally
-  skips the plan; the computer's sleep lasting one turn.
+  skips the danger map; the computer's sleep lasting one turn. The planning adds none: the danger
+  map, the candidates and the choice are the policy's, and the pathfinder's computer mode (the
+  tile buffer folded into its nodes) shapes only the computer's own searches.
 
 ### 1.8 Not read yet
 
-The planning (`ai_hero_plan` 0x42DE50, `ai_hero_replan` 0x42E0B0 and its helpers): T1a1b. The
-walk (`ai_hero_walk` 0x42FEE0, the step's points, the path, the spells cast on the way): T1a1c.
-The values the frame calls (`ai_vision_area_value`, the defence functor, `ai_hero_effectiveness`,
-the puzzle's target, the list inside `ai_resource_weights`): T1a2. The build loop, the artifact
-step and the allies' shares: T1a3.
+The walk (`ai_hero_walk` 0x42FEE0, the step's points, the path, the spells cast on the way):
+T1a1c. The values the frame and the planning call (`ai_vision_area_value`, the defence functor,
+`ai_hero_effectiveness`, the puzzle's target, the list inside `ai_resource_weights`,
+`ai_army_fight_sim` 0x427330, `ai_fight_estimate` 0x528040, the node's key +0x10 and the
+expansion's sixth argument behind it, the per-class value table `ai_class_tables_init` fills):
+T1a2. The build loop, the artifact step and the allies' shares: T1a3. `ai_hero_candidates`'
+other caller 0x431BD0: T1a4.
+
+### 1.9 The planning: the danger map and the destination (T1a1b)
+
+Read whole: `ai_danger_map` 0x42DE50, `ai_hero_destination` 0x42E0B0, `ai_hero_candidates`
+0x42EDD0 (but the values it calls), `ai_hero_reach_claims` 0x42F570, `ai_candidate_score`
+0x42F980 and the small helpers after 0x42E0B0 (`position_equal`, `hero_position`,
+`pathfinder_node_at`, `pathfinder_ai_tile_value`, `game_map_item`); of the pathfinder, the parts
+of `pathfinder_relax` 0x4B1A70 that read the computer's tile buffer and set +0x20. Positions are
+packed (the column in bits 0-9, the row in 16-25, the level in 26-29); costs are movement points.
+
+**The danger map** (once per hero, when it is selected; §1.3 step 4). For every hero of every
+player not defeated and not on the hero's team: a simulated fight of the hero against that hero's
+army (`ai_army_fight_sim`, T1a2). When it comes out negative, that enemy's search from its tile
+(its maximum points plus 300) marks every tile it reaches: the result is added to the tile's
+dword, or −1 000 000 000 is written when the result is below −500 000 000. The map lives in the
+turn's tile buffer, which the pathfinder reads during the hero's own searches (pathfinder +0x6C):
+a node's danger (+0x14) is the tile's value while the cost is within the day's points, and past
+them the lowest value on the path; a node past the day's points whose danger is at or below
+−500 000 000 is not entered. A hero may cross danger today, but not plan through it beyond.
+
+**The candidates** (`ai_hero_candidates`, from the hero's search with the budget of §1.4):
+
+1. `ai_hero_reach_claims` runs the hero's search (its points left as start, mode 4 from the
+   search and 5 from the walk) and returns the danger at the hero's own tile. Then for each other
+   hero of the player that this search reaches, a search from that hero's kept destination (or its
+   tile) with its day's points marks the **claims** buffer with the lowest cost at which a
+   colleague gets to each tile (inside its patrol).
+2. On a town's entrance threatened by two or more enemy heroes (town +0x3) the hero has no
+   candidate; threatened by one, its only candidates are enemy heroes it reaches with its points
+   left, each a **must-go**.
+3. Else every tile the search reached, from the reached list's end (the candidates keep that
+   order, which decides ties): an object's entrance (explored or not)
+   or, while the player owns a town, an unexplored tile; inside the hero's patrol; not its own
+   tile; for a class marked in `ai_claimed_classes`, only if no colleague claims it at less cost.
+   Its cost is the node's second cost (+0x1A). Its value: an unexplored tile, while the player owns
+   a town, 100, or 100 000 while the turn's flag F is set (before the turn's first reveal, §1.4);
+   anything else `ai_fight_estimate` (T1a2). A value above 0 is kept; 0 only while the hero stands
+   in danger (places to flee to).
+4. The Grail: the player's puzzle target (+0x39), when reached, inside the patrol and not claimed
+   more cheaply, is worth 5 000 000 under the "build the Grail" victory condition and otherwise
+   the Grail's value to the player; its cost is at least the points left plus a full day.
+
+**The value field.** Each candidate spreads its value over a dword per tile: an unexplored one
+only on its own tile; an explored one over the tiles a 500-point search from it reaches, within 5
+tiles each way: the whole value up to m, then value × 300 / (300 + cost − m). For a class the
+hero visits from a neighbouring tile, m is the cost of the dearest of the 3 × 3 tiles around it;
+otherwise 0. A candidate's field thus adds the values of the objects near it.
+
+**The score** (`ai_candidate_score`). For an explored object visited from a neighbouring tile, the
+candidate's cost becomes the cost of the tile it is visited from. The score is the field at the
+tile, plus the node's key (+0x10, T1a2), plus its danger (+0x14; a danger at or below
+−500 000 000 is softened to −2 500 000 for a score of 5 000 000 or more, so the Grail is sought
+through danger), plus, for an object entered, the fight estimate of a monster guarding it. The
+hero's kept destination gets × 1.5 + 20 (÷ 1.5 + 20 when negative) and stays a must-go if it was
+one; every other candidate is multiplied by a draw of 76 % to 100 % (a negative score divided by
+it). The **rate** is the score per 100 points of the candidate's cost (cost floored at 100), at
+least 1 when the score is positive.
+
+**The choice** (`ai_hero_destination`). The best rate starts at the danger of the hero's tile.
+A candidate is **near** when it is an entrance next to the hero, or its cost is at most 21 % of
+the day's points, but not when its node's second cost exceeds its cost, its score is negative or
+the player has no town. In order: a must-go is taken at once and ends the choice; a valued
+candidate beats a best without value; a near one beats a far one; among near ones the cheaper
+node wins (equal: the higher rate); among far ones the higher rate; a candidate without value
+counts only above the best rate and while the best has none. A hero standing on an object's
+entrance (not its own town nor a Sanctuary) that finds nothing, out of danger and with the search
+complete, steps to its cheapest free, unguarded neighbour out of danger. At the end the hero's
++0x35 holds the destination (none: −1), +0x41 the cost beyond the points left, +0x43 the must-go
+flag; the rate is returned (§1.4 doubles the budget on a negative one).
+
+**Two oddities for T1b's second look** (quirk candidates, not flagged): `ai_class_tables_init`
+0x428070 marks `ai_claimed_classes` by the list's count, not its entries, so the claims apply to
+classes 0 to 36 instead of the 37 listed (the artifact, the resources, the chests); and a
+colleague's claims are offset by its +0x41 less its points left only when +0x41 is not larger
+(16-bit), so tiles nearer its destination than that difference claim nothing. Both shape only
+which of a player's heroes takes which target.
