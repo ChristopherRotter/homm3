@@ -1937,7 +1937,7 @@ town records) and its captures (below). *Provisional* where marked.
   - **a walk's end that leaves the hero unable to move** (`hero_can_move` 0x4E5F30 clear; the
     path's 0x408193, a key's 0x40913E): `make_hero_path` with 1, 0, 0, then `hero_list_update`
     with −1, 1, 1 (0x4081B9, 0x409167): every slot, the whole screen shown (`walk-points`).
-  - Not met: `path_rebuild` 0x40EC90's update (0x40F1D5, the hero unable to move; from a key of
+  - Not met: `hero_dig` 0x40EC90's update (0x40F1D5, the hero unable to move; from a key of
     `adventure_key_down` other than the directions, 0x409318, and two more callers), the lists'
     arrows (`hero_list_scroll` 0x403220, `town_list_scroll` 0x403280: T6's clicks), the full
     update and the turn's start, a boat boarded or left (0x4A10A8, 0x49E6E0: the slot after the
@@ -2096,7 +2096,7 @@ other player's turn and the messages are M4's).
   (0x403F00 with 1, 1). Then the chooser (`this, force, draw, show`) with a panel built and `draw`
   draws the dialog's items again (0x402BC0, `show` its rectangle). The calls in M3's paths:
   `adventure_full_update` 0x4174BC (1, 0, 0), `hero_select` 0x41800B (1, 1, 0), every view redraw
-  0x40F861 (0, 1, 1: only a timed kind's end builds), `path_rebuild` 0x40F173 and a key's step
+  0x40F861 (0, 1, 1: only a timed kind's end builds), `hero_dig` 0x40F173 and a key's step
   0x4090FE (1, 1, 1: the same window built again, the same pixels). The status window's click
   (the dialog's handler 0x409A70 at 0x409FD8, items 2000 to 2200): kind 2 → 1; another kind but 0
   → 0; 0: the kingdom's (2), or the date's (1) when the kingdom's shows; the end now + 3 000; then
