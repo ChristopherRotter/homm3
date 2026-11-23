@@ -40,7 +40,7 @@ Licensed **GPL-2.0-or-later** ([LICENSE](LICENSE), [ADR-0009](docs/adr/0009-lice
 ## Status
 
 The project is developed incrementally, in parallel work lanes ([docs/BACKLOG.md](docs/BACKLOG.md)
-has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-21.
+has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-23.
 
 Progress is the share of an epic's refined increments (**I**) or milestones (**M**) that are closed;
 epics whose later increments are still sketches grow as those get refined, so their bar can step back.
@@ -64,11 +64,11 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E26](docs/epics/E26-fair-system-actor.md) | Fair system actor: the original's AI on what its side may know | battle | `█████░░░░░` 1/2 I | increment 1 built; checkpoint with you next |
 | [E09](docs/epics/E09-towns.md) | Towns and economy | town | `██████░░░░` 4/7 I | I1–I4 closed (towns on the map, construction, growth and recruitment, the Tavern); I5 (the mage guild) refined; services, travel and Grail follow |
 | [E27](docs/epics/E27-game-shell.md) | Game shell: menus, scenario setup, load/save, options, start clips | client | `████████░░` 4/5 M | M1–M4 closed (reading, start and menus, a game's setup, High Scores, Credits, the save file and Load Game); M5 (in play) after E24 M5 |
-| [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓▓░` 9 I done, open-ended | I9 closed (a richer observation: no gain, #2 stays); I10 (the ceiling of play against the system actor) next; shaped at each checkpoint |
+| [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓▓▓` 10 I done, open-ended | I10 closed (the ceiling: +0.085 possible against the fair actor, #2 holds +0.026); paused for E31; I11 (expert iteration) when it resumes |
 | [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `░░░░░░░░░░` 0/1 I | refined; increment 1 (the reading, the oracle, the survey) next |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
 | [E10](docs/epics/E10-game-orchestration.md) | Game orchestration: teams, the game's end, special victory and loss conditions, the score, the starting bonus and handicap | adventure | `░░░░░░░░░░` planned | refined; after E08 (its increments sketched) |
-| [E31](docs/epics/E31-original-computer-player.md) | The original's computer player: the adventure AI read from the executable, faithful then fair | ai | `░░░░░░░░░░` 0/1 I | refined; increment 1 (the reading, the survey) after E25 increment 10 |
+| [E31](docs/epics/E31-original-computer-player.md) | The original's computer player: the adventure AI read from the executable, faithful then fair | ai | `░░░░░░░░░░` 0/1 I | in progress: increment 1 (the reading, the survey) next |
 | [E13](docs/epics/E13-adventure-ai.md) | Adventure AI (hierarchical): macro-actions over a deterministic executor | ai | `░░░░░░░░░░` planned | refined in shape; after all of E10 and E31 |
 
 Not started yet (sketches in the backlog): map-object long tail (E12), the custom map generator (E30), web portal (E21), packaging and hosting
