@@ -181,7 +181,7 @@ or HotA's AI, but as pointers.
 - **T1a3b** (2026-11-23): the hires; 11 map entries (7 new, 1 renamed) and the player's tavern offers,
   the survey §3.2; choices, one quirk candidate (`E31-log.md` T1a3b).
 - **T1a3c** (2026-11-23, AI-Q27: in two, T1a3c2 by a sub-agent): the town visit and the army plan's
-  open pieces; 35 map entries (24 new, 11 rewritten, 2 renamed), four plan fields; the survey §3.3.
+  open pieces; 36 map entries (25 new, 11 rewritten, 2 renamed), four plan fields; the survey §3.3.
   Found: the plan's runs buy for real (no commit; 0x42D8E0 is the formation); the visit recruits,
   builds a dwelling, the guild, a visiting-bonus building, the merchants and the Blacksmith outside
   the build choice, ignoring the recruit reserve; the victory town held by a lesser hero; all
