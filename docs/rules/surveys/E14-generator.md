@@ -105,11 +105,11 @@ the archives' priority, not read here (T1b observes it, T1c records it).
 | 3 | `rmg_terrain_paint` 0x53E6A0 | once | the zones' boxes and centroids, the islands, rock and water painted, then each zone's terrain, by the game's terrain painter (§2.2) | 8, 2.8 kB, 1 |
 | 4 | `rmg_zone_first_town` 0x544A50 | per zone | at most one town, nearest the zone's centre: the first kind asked for that is placed (castle and town of its colour, neutral castle and town; §2.2) | 7, 2.8 kB, 1 |
 | 5 | `rmg_zone_towns_place` 0x544AE0 | per zone | the remaining least towns, then towns by density until none fits, each farthest from the objects placed (§2.2) | 3, 1.9 kB, 3 |
-| 6 | `rmg_phase_06` 0x544920 | once | every free land cell, then per zone, then step 9's function and two more | 35, 23.9 kB, 21 |
+| 6 | `rmg_paths_and_connections` 0x544920 | once | which cells take obstacles and which stay free (lanes, zone walls, islets in water zones, each zone's free cells joined, unconnected shores sealed), then the template's connections: land passages, shipyards, subterranean gates, monoliths, with their guards (§2.3) | 35, 23.9 kB, 21 |
 | 7 | `rmg_phase_07_junctions` 0x5446A0 | per junction zone (type 3) not on water | | 2, 1.4 kB, 1 |
 | 8 | `rmg_phase_08_mines` 0x545F60 | once (per zone inside) | each resource's minimum mines (zone +0x4C), the first wood and ore of a start zone with a town flagged | 5, 2.7 kB, 3 |
 | — | inline | once | the towns counted, in all and by type | — |
-| 9 | `rmg_phase_09` 0x5405D0 | once (also inside step 6) | cells marked impassable (cost 32000) or blocked by land and rock | (in step 6's) |
+| 9 | `rmg_zone_paths_connect` 0x5405D0 | once (also in step 6, and per monolith border guard) | the zone floods reset; per zone a flood from a free cell and a path carved to every free cell it did not reach (§2.3) | (in step 6's) |
 | 10 | `rmg_phase_10` 0x547360 | per zone | `sqrt`; the progress shared out | 21, 9.9 kB, 5 |
 | 11 | `rmg_phase_11_levels` 0x5439E0 | with two levels | game functions outside the range | 1, 0.6 kB, 0 |
 | 12 | `rmg_phase_12` 0x531310 | once, on the map | land cells not rock flagged | 1, 0.3 kB, 0 |
@@ -554,3 +554,228 @@ level 1 cells of no zone rock. A zone generator's box is +0x20..+0x2C and its ce
 centroid after step 3. Water zones (type 3, terrain 8) follow the template's zones. Placement
 tests are `rmg_map_can_place` 0x531CF0 (five later functions call it), objects start with
 `rmg_object_init` 0x5330E0, towns fill the road targets +0x14B0. Step 11 uses the terrain painter.
+
+### 2.3 Step 6: the obstacle plan and the connections (T1a2c)
+
+Path read: `rmg_paths_and_connections` 0x544920 (was `rmg_phase_06`) and everything it reaches by
+direct calls, `rmg_zone_paths_connect` 0x5405D0 (was `rmg_phase_09`, also step 9) with it; the only
+indirect calls are the generator's slot 1 (`rmg_generator_add_object`, §2.1), an object's deleting
+destructor and the progress window's. 35 functions of the range (33 named here, 2 by §2.1), one
+static initializer, one helper just past the range, six tables, 20 draw sites.
+
+**What step 6 does.** It decides, cell by cell, where obstacles go and what stays free, then
+makes the template's connections. Two bits of a cell's +0x28 carry the plan: **bit 26, to be filled
+with obstacles** (step 13 counts and fills these cells), and **bit 27, kept free**; a cell with
+neither is left to later steps. The markings of bits 26 and 27 skip a cell with +0x2C bit 0 (a
+pending border guard) unless they place the guard. H3API's names for bits 25 to 27 do not fit (`structs.toml`, `rmg_map_cell`).
+
+| Function | Called from | What it does | Conf. |
+|---|---|---|---|
+| 0x544920 `rmg_paths_and_connections` | step 6 | the order below | read |
+| 0x543E20 `rmg_free_lanes_draw` | 0x544920 | objects' cells free, empty cells obstacles; one jagged lane per level with side branches (below) | read |
+| 0x543C70 `rmg_lane_ray_cast`, 0x531AD0 `rmg_map_mark_free_3x3` | 0x543E20 | a branch's ray to the next free cell or the edge; a 3×3 made free | read |
+| 0x531BD0 `rmg_map_mark_obstacle` | 0x543E20, 0x544920 | a cell made an obstacle, its passable empty land neighbours lose bit 27 | read |
+| 0x54D0F0 `point_list_node_new` (was `rmg_range_last`, past the range), 0x54D000 `point_list_insert`, 0x54D060 `point_list_erase`, 0x54D0A0 `point_list_erase_range` | 0x543E20 | the branch queue, a linked list of points | read |
+| 0x53F880 `rmg_zone_borders_close` | 0x544920 | zone walls (below) | read |
+| 0x53F470 `rmg_water_zone_islets`, 0x53F1A0 `rmg_zone_distance_flood` | 0x544920 per zone generator; 0x53F470 | islets in water zones far from their edge (below); the distance flood | read |
+| 0x53EFA0 `rmg_islet_draw`, 0x53ED00 `rmg_islet_heightmap`, 0x53E9E0 `rmg_heightmap_quadrants_push`, 0x54C670 `entry24_vector_size` | 0x53F470 down | an islet's terrain, shape and obstacles | read; read; inferred; read |
+| 0x5405D0 `rmg_zone_paths_connect` | 0x544920, step 9, 0x542B00 | the floods reset; per zone the free cells joined (below) | read |
+| 0x531460 `rmg_zone_cost_flood` | 0x5405D0; step 7's `rmg_phase_07_junctions` | a zone's cost flood (below) | read |
+| 0x5408E0 `rmg_path_carve` | 0x5405D0, 0x541140 | a path back to the zone's free cells; pending border guards placed | read |
+| 0x5378E0 `rmg_map_item` | the connection functions, 0x5408E0, three of later steps | a cell's address (H3API's `GetMapItem`) | read |
+| 0x53FCB0 `rmg_water_shores_seal` | 0x544920 | the shores of unconnected water sealed (below) | read |
+| 0x543240 `rmg_zone_connections_make` | 0x544920 | the connections, two passes (below) | read |
+| 0x5355C0 `point3_init` | 0x543240, 0x541AD0, five of later steps | a point | read |
+| 0x541140 `rmg_connection_by_land` | 0x543240 | passages between neighbouring land zones | read |
+| 0x541AD0 `rmg_connection_by_shipyard`, 0x541960 `rmg_shipyard_site_fits`, 0x541780 `rmg_boat_reach_flood` | 0x543240; 0x541AD0; both | a shipyard toward the other zone; its site test; the cells a boat reaches (bit 24) | read |
+| 0x542080 `rmg_connection_by_gate` | 0x543240 | subterranean gates between levels | read |
+| 0x542CE0 `rmg_connection_by_monoliths`, 0x542B00 `rmg_monolith_border_guard` | 0x543240; 0x542CE0 | the last resort: monoliths; a border guard before one | read |
+| 0x540D60 `rmg_border_guard_place`, 0x540FC0 `rmg_border_guard_ring_mark`, 0x542930 `rmg_object_place_in_zone` | the connection functions | a Border Guard and its Keymaster's Tent; the ring around it; an object anywhere in a zone | read |
+| 0x540B20 `rmg_guard_monster_create` | the connection functions; two of later steps | a guard monster for a value | read |
+| 0x541910 `rmg_side_steps_init` | the C runtime's start-up | `rmg_side_steps` 0x69CE00: (-3, 0), (1, 0), (-3, 1), (1, 1), beside a 3-wide footprint | read |
+
+**The order of step 6:** (1) `rmg_free_lanes_draw`; (2) `rmg_zone_borders_close`; (3) every land
+cell of no zone, passable, empty, not rock, not yet an obstacle, made one; (4) per zone generator
+`rmg_water_zone_islets`; (5) `rmg_zone_paths_connect`; (6) `rmg_water_shores_seal`; (7)
+`rmg_zone_connections_make`.
+
+**The lanes.** Every cell holding an object is made free, every empty cell an obstacle. Per level a
+line drawn `rand() % 4`: (0,0)–(W−1,H−1), (W/2,0)–(W/2,H−1), (W−1,0)–(0,H−1), (0,H/2)–(W−1,H/2).
+A stack of segments: a segment's midpoint ((ax+bx+1)/2, (ay+by+1)/2, truncating) is moved, when
+L = trunc(|b − a|) > 1, by (r × nx / L, r × ny / L) with r = `rand() % L` − L/2 and the normal
+n = (−dy, dx); a segment whose midpoint is one of its ends marks one end's 3×3 free; one with L ≥ 8
+and its midpoint on the map queues two branches, from the midpoint toward ± the normal. When the
+stack is empty the next branch is cast (Bresenham, past its target, until it would leave the map's
+interior or, from its third step, meet a free 3×3) and drawn as a segment when 5 cells or longer.
+Water and rock are then made free, and every obstacle cell takes bit 27 from its passable empty land
+neighbours, so a 3-wide lane keeps its middle free and its sides neither.
+
+**The zone walls.** A cell of a zone, not water, becomes an obstacle (even holding an object) when
+its 3×3 holds a water cell of no zone, or a cell of another zone to which its zone has no
+connection, or a connection that is not wide, or when it lies on level 1: **zones are walled off
+except along wide connections on level 0**; the empty cells of its 3×3 lose bit 27.
+
+**The islets.** Per water zone: the distance from the zone's edge (2 orthogonal, 3 diagonal, seeds
+every cell around and inside its box not of the zone); while a cell of the box (shrunk to
+3..W−4, 3..H−4) lies 20 or more away, one is drawn, a half-size r = 3 + `rand() %` (d/3 − 5), at
+most 6, and an islet painted in [x−r, x+r) × [y−r, y+r): terrain `rand() % 6` (dirt to rough), shape
+the positive cells of a midpoint-displacement height map (corners 0, amplitude (w+h)/4 + 1 then
+(a−1)/2 + 1 per level, five displacements `rand() % a − a/2` per rectangle split while a > 1, the
+quadrants last in, first out, the low-low one first), painted by the terrain painter
+(`terrain_painter_init` 0x5B7250, `terrain_painter_add_rect` 0x5B7690, `terrain_painter_finish`
+0x5B72F0); **every land cell of the box then becomes an obstacle**; the distance flooded again
+from the islet's centre.
+
+**Joining each zone's free cells** (`rmg_zone_paths_connect`, also GenerateMap's step 9). Every
+cell's costs reset (+0x1C 32000 in both halves, the previous cell +0x10 −1, +0x20 bits 24-31 −1,
++0x28 bits 12-14 0). Per zone generator in order: the first cell of its box (row by row) in the zone,
+empty, free, passable, not rock (water only in a water zone) seeds `rmg_zone_cost_flood` (none:
+the last empty cell of the zone tried is made free and seeds it). The flood: least cost first
+(a sorted vector); 8 steps, or only E, SE, S, SW, W out of an object's cell whose type's object
+settings byte +1 is clear; into a cell of a zone, passable, not rock, an object's cell only as its
+settings bytes +0 and +2 allow and not by SE, S, SW when +1 is clear. Inside the seed's zone +1 per
+step, +10 onto water, and **0 from a 0-cost cell onto a free cell** (water only for a water zone):
+cost 0 marks the free cells joined to the seed. Into a neighbouring zone +10 per step, in +0x1C bits
+16-31, with +0x20 bits 24-31 = the seed's zone and the direction back in +0x28 bits 12-14 (from the
+seed's zone or inside that zone only). Then every free, passable cell of the zone, not rock or water, whose
+cost is not 0 gets `rmg_path_carve`: back along the previous cells while the cost is above 0 (none below
+30000 at the start), each made free, the obstacles of its 3×3 in the zone cleared (without the
+border-guard flag), a pending Border Guard placed where one is marked; then a new flood from that
+cell.
+
+**Sealing water shores** (`rmg_water_shores_seal`). A water cell of a water zone reached by a
+land zone's flood, with a passable non-obstacle land cell in its 3×3, when the water zone has no
+connection to that land zone: its 3×3 becomes obstacles, its 5×5 empties lose bit 27, and its water
+cells are painted to that land's terrain: water cannot be used to reach a zone it is not connected
+to.
+
+**The connections** (`rmg_zone_connections_make`). The crossing cells: every land cell, passable,
+entered by another zone's flood, whose cell back is land of another zone. **Pass 1**, per land zone
+generator in order (the boat reach, bit 24, cleared on its level first), per connection of its zone in order not yet made (+0xA): by land, else by a
+shipyard (only this end marked), else, the other zone being land, by gates. **Pass 2**, per land
+zone with one left: the boat reach (bit 24) cleared on its level and flooded from the water beside
+each of its shipyards; per connection left: by a shipyard, else, the other zone being land, by
+monoliths, **both ends marked made whatever was placed**. The ways:
+
+- **By land** (same level, both land): the crossing cells P of this zone entered by the other's
+  flood, P and its cell back Q empty, n of them; the candidates are those of least entering cost
+  (at most 100); none: refused. k = min(candidates, (n + 39) / 40) passages, each a candidate drawn:
+  paths carved from P and from Q, P and Q into the zones' +0x404, the candidate removed.
+- **By a shipyard** (same level): a shipyard prototype drawn first; this zone's cells entered by
+  the other's flood: one already reached by boat ends it (made); else per land cell the positions
+  x..x+2 of its row where the shipyard fits (`rmg_map_can_place` 0x531CF0 and the site test: a
+  3 × 2 land block, a free water cell beside it by `rmg_side_steps`, land on the other side), one
+  drawn; the shipyard placed (`rmg_object_init` 0x5330E0, `rmg_dwelling_object_vtable` 0x640AA4),
+  its entrance a road target (+0x14B0), the row below it free, the boat reach flooded.
+- **By gates** (different levels, this zone land, their boxes overlapping): a gate prototype
+  drawn first; the (x, y) of the overlap in this zone on its level and in the other on its, both
+  fitting, of greatest sum of the two cells' object distances (§2.1's flood); one drawn; a gate on
+  each level, the cells below the entrances free.
+- **By monoliths** (both land): an index cycling over the two-way monolith prototypes (type 45),
+  then the one-way entrance and exit pairs (types 43, 44); an entrance placed at random in each zone
+  (`rmg_object_place_in_zone`), for one-way also an exit in each; listed in +0x14D0 or +0x14C0.
+
+**The guards.** Value g = 0 for a wide connection, else from the connection's value v and the
+generator's monster strength s (+0x10BC): g = (v − `rmg_guard_threshold_low`[s]) ×
+`rmg_guard_factor_low`[s] / 4 when v is above that threshold, plus (v −
+`rmg_guard_threshold_high`[s]) × `rmg_guard_factor_high`[s] / 4 when above that one, and 0 when
+under 2000 (tables 0x6823F0, 0x682408, 0x682420, 0x682438 by s = 0..5: thresholds 50000, 2500,
+1500, 1000, 500, 0 and 50000, 7500, 7500, 7500, 5000, 5000; factors 0, 2, 3, 4, 6, 6 and 0, 2, 3, 4,
+4, 6; T1c compares them with VCMI's). With the connection's border guard flag: `rmg_border_guard_place`
+on this zone's side with the tent in the other zone, then on the other side with the tent in this
+one (a land passage: at P then at Q; gates: below each; a shipyard: three guards before its
+entrance, the tent in the water zone; a monolith: before it, after `rmg_zone_paths_connect` runs
+again); a guard takes the next Keymaster colour (+0xF5C, marked in +0x1100), its tent is placed at
+random in the given zone, its 3×3 (gates: the two cells beside; monoliths: five cells) becomes
+obstacles marked with the colour, and once one is placed g = 0. Else, when g > 0, a guard monster
+(`rmg_guard_monster_create`): a land passage one, at P or Q by `rand() & 1`; a shipyard one, below
+its entrance; gates one below each; monoliths one below each entrance. The monster: the creatures
+of an allowed town (the zone's town type when its monsters match it, else its neutral and town bytes
++0x95..+0x9E), level 0 or more, with AI value × (map low + high) / 2 ≤ g ≤ AI value × 100, one
+drawn; count n = (g + AI/2) / AI, then n + `rand() % s` − `rand() % s` with s = n/4 + 1 when s > 1;
+the object takes the serial +0xF44.
+
+**Draw sites** (20 here and one of §2.1; in the order they run):
+
+| Site | Function | Drawn | Per | Condition |
+|---|---|---|---|---|
+| 0x543EB8 `rmg_lane_orientation_draw` | `rmg_free_lanes_draw` | `rand() % 4` (signed form) | level | always |
+| 0x54403E `rmg_lane_jitter_draw` | `rmg_free_lanes_draw` | `rand() % L` | segment split | L > 1 |
+| 0x53F745 `rmg_islet_centre_draw` | `rmg_water_zone_islets` | `rand() %` cells at distance ≥ 20 (unsigned) | islet | water zone, one such cell |
+| 0x53F794 `rmg_islet_radius_draw` | `rmg_water_zone_islets` | `rand() % (d/3 − 5)` | islet | always after it |
+| 0x53EFE4 `rmg_islet_terrain_draw` | `rmg_islet_draw` | `rand() % 6` | islet | always |
+| 0x53EEFF, 0x53EF0C, 0x53EF19, 0x53EF2E, 0x53EF43 `rmg_islet_height_draw_1` to `_5` | `rmg_islet_heightmap` | `rand() % a` each: edge midpoints 0-1, 0-2, 2-3, 1-3, the centre | rectangle split | a > 1 |
+| 0x546154 `rmg_prototype_choice_draw` (§2.1) | `rmg_prototype_draw` from `rmg_path_carve` | a Border Guard prototype of the colour | pending guard crossed | a path through a marked cell |
+| 0x54146B `rmg_passage_cell_draw` | `rmg_connection_by_land` | `rand() %` least-cost crossings (unsigned) | passage | always |
+| 0x542A8F `rmg_zone_object_cell_draw` | `rmg_object_place_in_zone` | `rand() %` fitting positions (unsigned) | tent or monolith | one fits |
+| 0x541673 `rmg_passage_guard_side_draw` | `rmg_connection_by_land` | `rand() & 1` | passage | g > 0, no border guard |
+| 0x540C61 `rmg_guard_creature_draw` | `rmg_guard_monster_create` | `rand() %` fitting creatures (signed), the r-th from the top | monster | one fits |
+| 0x540CCE, 0x540CD8 `rmg_guard_count_plus_draw`, `_minus_draw` | `rmg_guard_monster_create` | `rand() % s` twice | monster | s > 1 |
+| 0x541B78 `rmg_shipyard_prototype_draw` | `rmg_connection_by_shipyard` | `rand() %` shipyard prototypes (unsigned) | call | same level, before any test |
+| 0x541D6C `rmg_shipyard_site_draw` | `rmg_connection_by_shipyard` | `rand() %` sites (unsigned, duplicates counted) | shipyard | a site, no boat reach yet |
+| 0x5421BC `rmg_gate_prototype_draw` | `rmg_connection_by_gate` | `rand() %` gate prototypes (unsigned) | call | boxes overlap, before any site |
+| 0x542387 `rmg_gate_site_draw` | `rmg_connection_by_gate` | `rand() %` best gate positions (unsigned) | gate pair | a position |
+
+Within a connection the order is: the way's draws (prototype, site, or per passage the cell), then
+per guard the tent's position, or the side and the monster's three draws.
+
+**Float sites:** none in the 35 functions (no x87 or SSE instruction); the lanes' length is
+`vector_length_int` 0x5FCEB0 (§2.2's float table, trunc(sqrt)) once per segment split.
+
+**Clocks, retries, limits, failures:** no clock. No retry, no cap: the lanes run until the stack and
+the branch queue are empty (segments shrink, branches stop at free cells); the islets until no
+cell is 20 away (each islet's flood zeroes its centre); `rmg_zone_paths_connect` one pass per zone,
+one carve and flood per free cell not joined; a land connection makes ceil(n/40) passages at most;
+each connection is tried once per pass. **Give-ups:** a connection with no way is left silently (a
+water connection without a shipyard site; a land one whose monoliths find no room is still marked
+made); a border guard that cannot be placed falls back to the monster; a guard under 2000 is none.
+Faults reachable only with other data: `rand() % 0` with no shipyard or gate prototype, a modulus
+0 in the monolith index without monolith prototypes, `rmg_border_guard_place` returning 0 (colour
+0) when a tent exists but no Border Guard of its colour, `rmg_path_carve` using a null prototype,
+`rmg_monolith_border_guard` marking five cells without a bounds check (a monolith on the map's edge
+wraps to the next row or level), `rmg_connection_by_monoliths` reading the exit list at the
+entrance's index unchecked, `rmg_zone_paths_connect`'s fallback seed keeping the previous zone's
+coordinates when a zone has no empty cell. Progress: +1600 (the walls), +1000 per islet, +20 per
+row (the shores), +6400 (the connections).
+
+**Outside callees** (23): mapped already 10 (`crt_rand` 0x617E5C, `vector_length_int`, the terrain
+painter's four with `terrain_painter_flush` 0x5B7520, `entry12_vector_insert` 0x4347A0,
+`pointer_vector_insert` 0x54D120, `vector_insert_u32` 0x404200, `empty_ret_8` 0x404140); named here
+1 (`point_list_node_new`); the C runtime 3 (operator new, free, the array destructor); the C++
+library 9 by their callers (a u32 vector's insert and erase, a 12-byte vector's range erase,
+destructor and copy, an 8-byte point vector's insert, a 0x24-byte vector's insert and two helpers;
+not read). UI: the progress window's +8 only. No file. Tables read in place:
+`object_settings_pointer` 0x660428 (the flood), `creature_table_pointer` 0x6747B0 (the monster).
+
+**Quirk candidates (as read, unclassified):**
+
+- Border guards are tried on both sides: at P with the tent in the other zone, then at Q with the
+  tent in this one (gates likewise); when both succeed the passage holds two guards in a row, the key
+  of the guard on this side lying in the other zone and the other's key in this one, so neither side
+  passes. Once one guard is placed, g = 0 for the connection's later
+  passages too.
+- A shipyard's border guards seek their tent in the water zone.
+- Level 1 zones are walled from each other even along wide connections.
+- RoE guard monsters: creatures 0-116 are filtered and counted, but the draw walks down from 144,
+  so creature 117 (when it has a prototype) can be drawn without being counted, shifting the choice;
+  a creature that passes the tests without a monster prototype is counted but cannot be walked to.
+- The guard counts per way differ: one monster per land passage, one per shipyard, two for gates and
+  for monoliths, each of the full value.
+- The shipyard and gate prototypes are drawn before any site is sought, so a refused way still
+  draws; shipyard sites found from neighbouring cells are counted more than once.
+- `rmg_connection_by_land`'s shortcut for a least cost of 1 is dead (entering costs are 10 or more).
+- The islet candidates are not restricted to the zone's cells (harmless: the others are seeds at 0).
+
+**Not read:** `rmg_heightmap_quadrants_push`'s growth code and which corner each record field is
+(the draw order above follows the code); the 9 library helpers; whether `rmg_map_can_place` refuses
+a tent on water; what reads the zones' +0x404 and how one-way monoliths pair at write time; what
+later steps do with cells that are neither obstacles nor free; the monster object's +0x24 = 3
+(H3API unknown; §2.5's writer).
+
+**For the next parts:** +0x28 bit 26 = obstacles to place (step 13), 27 = kept free, 24 = boat
+reach, +0x2C bit 0 a pending Border Guard of colour bits 1-4; the floods' costs (+0x1C halves,
++0x10, +0x20 bits 24-31) are reset and recomputed by `rmg_zone_paths_connect` (step 9 runs it
+again); `rmg_guard_monster_create` 0x540B20 and the four guard tables are also used by three
+functions of steps 10 and on; `rmg_zone_cost_flood` by step 7; shipyards join the road targets
+(+0x14B0); the Keymaster colour +0xF5C advances with each border guard; monoliths are in +0x14C0
+and +0x14D0.
