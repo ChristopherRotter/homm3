@@ -100,11 +100,11 @@ the archives' priority, not read here (T1b observes it, T1c records it).
 
 | # | Function | Called | What T1a1 saw | Closure (functions, bytes, draw sites) |
 |---|---|---|---|---|
-| 1 | `rmg_phase_01_zones` 0x53BCB0 | once (the template) | a zone generator (0x414 bytes) per template zone; a start zone with towns gets its colour's town choice; a layout scaled to the map; each zone's size; a zone without a town type draws one of its terrain's towns from `rmg_terrain_towns` 0x682450 (as read the count is 4 whatever the entries: the test after an entry of -1 goes on counting, so -1 and the padding 0 can be drawn; a quirk candidate to re-read in T1a2 and check in T1b) | 10, 5.5 kB, 4 |
-| 2 | `rmg_phase_02_level` 0x53E050 | per level (template, z) | x87 on the zones' positions with two f64 tables; new zone generators | 12, 8.6 kB, 1 |
-| 3 | `rmg_phase_03` 0x53E6A0 | once | a temporary map record; game functions outside the range over the cells | 8, 2.8 kB, 1 |
-| 4 | `rmg_phase_04_towns` 0x544A50 | per zone | one town of each kind the zone asks for, while each succeeds: castle and town of its colour, neutral castle and town | 7, 2.8 kB, 1 |
-| 5 | `rmg_phase_05` 0x544AE0 | per zone | one helper eight times, `sqrt` | 3, 1.9 kB, 3 |
+| 1 | `rmg_zones_lay_out` 0x53BCB0 | once (the template) | a zone generator (0x414 bytes) per template zone; a layout of three passes scaled to the map; each zone's terrain and town types (the count of `rmg_terrain_towns` 0x682450 is always 4, so -1 and the padding can be drawn: settled in §2.2) | 10, 5.5 kB, 4 |
+| 2 | `rmg_level_zones_partition` 0x53E050 | per level (template, z) | a triangulation of the level's zone centres, water zones (level 0 with water) and empty points (level 1), the borders drawn and the zones filled (§2.2) | 12, 8.6 kB, 1 |
+| 3 | `rmg_terrain_paint` 0x53E6A0 | once | the zones' boxes and centroids, the islands, rock and water painted, then each zone's terrain, by the game's terrain painter (§2.2) | 8, 2.8 kB, 1 |
+| 4 | `rmg_zone_first_town` 0x544A50 | per zone | at most one town, nearest the zone's centre: the first kind asked for that is placed (castle and town of its colour, neutral castle and town; §2.2) | 7, 2.8 kB, 1 |
+| 5 | `rmg_zone_towns_place` 0x544AE0 | per zone | the remaining least towns, then towns by density until none fits, each farthest from the objects placed (§2.2) | 3, 1.9 kB, 3 |
 | 6 | `rmg_phase_06` 0x544920 | once | every free land cell, then per zone, then step 9's function and two more | 35, 23.9 kB, 21 |
 | 7 | `rmg_phase_07_junctions` 0x5446A0 | per junction zone (type 3) not on water | | 2, 1.4 kB, 1 |
 | 8 | `rmg_phase_08_mines` 0x545F60 | once (per zone inside) | each resource's minimum mines (zone +0x4C), the first wood and ore of a start zone with a town flagged | 5, 2.7 kB, 3 |
@@ -161,7 +161,7 @@ with it as 9 dwords; the code indexes position + 1); the object generators go to
   water's Random; the template; the 15 steps (44 sites in their closures, §1.5); the teams in the
   header. One generator, one thread, one stream.
 - **Floats:** x87 in steps 1, 2, 5, 8, 10 (`crt_sqrt`, `crt_ftol`); T1a2 lists each site.
-- **Not read:** the 15 steps' bodies (but steps 4, 8 and 15's own code, step 1's in part), the header before
+- **Not read:** the 15 steps' bodies (but steps 4, 8 and 15's own code, step 1's in part; steps 1 to 5: §2.2), the header before
   its end, the cell and template writers, the per-object writers (the setup's readers and the
   destructor: §2.1). The limits by
   type are set but where they are read was not found.
@@ -361,3 +361,196 @@ through `[vtable + 4]` with the object and x, y, z); a generator's value of -1 r
 zone; the steps set +0xF58 (the seer hut prototype allowed), +0xF5C (the Keymaster colour) and
 +0x10B4 (seer huts blocked); `rmg_prototype_draw` 0x546040 and `rmg_map_cell_reset` 0x530F10 are
 also called from steps' functions; `rmg_neighbours` 0x69CDC0 is read by 18 functions.
+
+### 2.2 Steps 1 to 5: the zones and the towns (T1a2b)
+
+Path read: `rmg_generate_map` 0x549930's calls of steps 1 to 5 and everything they reach by direct
+calls; the only indirect calls are the generator's slot 1 (`rmg_generator_add_object`, §2.1) and
+the progress window's. 42 functions of the range (37 named here: 32 new, the 5 steps renamed; 5
+by §2.1) and 10 outside it.
+
+| Function | Called from | What it does | Conf. |
+|---|---|---|---|
+| 0x53BCB0 `rmg_zones_lay_out` | step 1 | the zone generators, the layout, the scale, terrains, town types (below) | read |
+| 0x5329E0 `rmg_zone_generator_init` | steps 1 and 2 | a zone generator; its town type +4 drawn among the zone's (0x532A5B) | read |
+| 0x53B970 `rmg_zone_place` | 0x53BCB0 | one placement: candidates, filter, draw (0x53BB5F) | read |
+| 0x53AD60 `rmg_zone_position_fits` | 0x53B970, 0x53AE80, step 2 | the start zones' level and the spacing | read |
+| 0x53AE80 `rmg_zone_candidates_around` | 0x53B970 | the points around a placed zone | read |
+| 0x53B2F0 `rmg_zone_candidates_filter` | 0x53B970 | a free level first, the most touching, the least span | read |
+| 0x532BD0 `rmg_zones_touch`, 0x53B1F0 `rmg_zones_bounds` | 0x53B2F0; 0x53BCB0 | touching; the layout's box | read |
+| 0x532AB0 `rmg_zone_terrain_draw` | 0x53BCB0 | a zone's terrain (0x532B00) | read |
+| 0x53E050 `rmg_level_zones_partition` | step 2, per level | the triangulation, water zones, borders, fills (below) | read |
+| 0x53C390 `rmg_zone_borders_draw` | 0x53E050 | a zone's polygon clipped, its borders | inferred |
+| 0x53CAC0 `rmg_segment_clip` | 0x53C390, 0x53D380, 0x53DAD0 | a segment's first point on the map | inferred |
+| 0x53C220 `rmg_line_draw`, 0x53BFF0 `rmg_jagged_line_draw` | 0x53C390 | straight and randomly displaced borders (0x53C0F2) | read |
+| 0x53D380 `rmg_zone_flood_fill` (tail 0x53D640) | 0x53E050 | a zone's cells from its centre | inferred |
+| 0x53DAD0 `rmg_water_zones_connect`, 0x53D8E0 `rmg_zone_graph_distances` | 0x53E050; 0x53DAD0 | the new zones' connections; the zone graph's distances | inferred |
+| 0x54CBA0 `point_pair_vector_insert`, 0x54CD70 `point_pair_vector_erase`, 0x54C1E0 `u16_vector_insert`, 0x54C3D0 `u16_vector_size` | the line and distance code | the library's vectors | inferred; read; inferred; read |
+| 0x53E6A0 `rmg_terrain_paint` | step 3 | boxes, centroids, islands, the painting (below) | read |
+| 0x53BBB0 `rmg_zone_bounds_compute`, 0x53D0D0 `rmg_zone_centre_to_centroid` | 0x53E6A0 | the zones' boxes; their centres moved to their cells' centroid | read |
+| 0x53D1C0 `rmg_island_shape`, 0x53CD30 `rmg_coast_line_draw`, 0x53CF50 `rmg_island_fill` | 0x53E6A0 (islands) | an island: polygon shrunk, coast (0x53CE1D), inside | read; read; inferred |
+| 0x544A50 `rmg_zone_first_town` | step 4 | at most one town (below) | read |
+| 0x545250 `rmg_town_place_central` | 0x544A50, 0x544D90 | a zone's first town, nearest its centre (0x545492) | read |
+| 0x531CF0 `rmg_map_can_place` | 0x545250, 0x544D90; five functions of later steps | whether a prototype fits at a cell in a zone | read |
+| 0x5318B0 `rmg_map_footprint_blocked`, 0x532C80 `rmg_prototype_outline`, 0x531170 `rmg_map_outline_clear` | 0x531CF0 (and functions of later steps) | its footprint, outline and ring tests | inferred |
+| 0x5330E0 `rmg_object_init` | 0x545250; two functions of later steps | a placed object's base | read |
+| 0x544AE0 `rmg_zone_towns_place` | step 5 | least towns, then by density (below) | read |
+| 0x544D90 `rmg_town_place_far`, 0x533150 `rmg_object_clear_flags` | 0x544AE0; 0x544D90 | one more town, farthest from the objects (0x544DEC, 0x544E22, 0x545174) | read |
+
+**Step 1, `rmg_zones_lay_out`.** d = the least base size × min(width, height) / 5, 6 or 7 (water
+none, normal, islands). Per template zone in order a zone generator: +4 drawn among the zone's
+town types (none: -1); a start zone with colour towns or castles whose position's colour has a
+town choice takes that choice; placed by `rmg_zone_place` and appended. Then two more passes of
+`rmg_zone_place` over all zones, in order. **The layout is an iteration of exactly three passes**
+(the creation and two re-placements), no convergence threshold; positions are integers in
+template units (base sizes). A placement: no zone yet, (0,0,0) or, with two levels and if it
+fits, (0,0,1); else the candidates around each connected zone already created (none: around
+every created zone): 32 points (trunc(r × cos k·11.25° + ox), trunc(r × sin + oy), oz) with
+r = the two bases' sum, and with two levels also (ox, oy, 1 − oz) and 32 points of radius
+max(the two bases) on the other level, each kept if it fits: a start zone (type 0 or 1) on level
+1 needs town type +4 Inferno, Necropolis or Dungeon, and every other zone on that level must have
+10 × trunc(dist) ≥ 8 × (the two bases). The filter: with two levels and a level holding no other
+zone, the candidates on it alone (when one exists at an index above 0); then those touching the
+most connected created zones (same level: 11 s ≥ 10 t; across levels s ≥ t and s − t > the smaller
+base / 2, t = trunc(dist), s = the bases' sum); then those giving the least max(d, the layout box's
+width, height) (the box: x ± base, the far edges + 1, from 0). The zone takes `rand() % count`
+of the rest. **Scaling:** the box over all zones, span = its larger side, m = max(width, height),
+origin = (min + max − span) / 2 per axis; x, y = (p − origin) × m / span and the size
++0x1C = base × m / span, integer and truncating; z kept. **Terrain per zone:** terrain matches
+town with a type +4 → `rmg_town_native_terrain` 0x6408C8 (grass, grass, snow, lava, dirt, dirt,
+rough, swamp, grass for Castle to Conflux); else `rand() %` its allowed terrains (subterranean
+counted only on level 1; none: dirt); on level 1 every terrain but lava becomes subterranean.
+**Town type +8:** +4 when set; else `rmg_terrain_towns`[terrain][`rand() % n`] and **n is always 4**
+(re-read: the counting loop stops only at an entry that is -1 and 8 at once, with a version test
+`version ≥ 0` that every version passes), so the terminator -1 and the padding 0 (Castle) are
+drawn: dirt Castle, Rampart, Necropolis, -1; sand Stronghold, -1, Castle, Castle; grass Castle,
+Rampart, -1, Castle; snow Tower, -1, Castle, Castle; swamp Fortress, Necropolis, -1, Castle;
+rough Stronghold, Conflux (also in RoE), -1, Castle; subterranean Dungeon, Inferno, Necropolis,
+-1; lava Inferno, -1, Castle, Castle; water -1, Castle, Castle, Castle. It applies only to zones
+whose +4 is -1 (no town type set and no colour choice), and steps 4 and 5 place towns of +4, not +8.
+
+**Step 2, `rmg_level_zones_partition`, per level z.** The level's zone centres go into a
+triangulation (`triangulation_init` 0x5FD010: integer, a frame with corners at -200 and 400;
+`triangulation_insert` 0x5FD790 with the zone generator as data). On level 1 always, on level 0
+only with water: for each zone present at the start, 8 directions (every fourth entry of the
+tables): p = (trunc(2 × (s × cos) + x), trunc(2 × (s × sin) + y)), s its scaled size; p off the
+map is refused when x + s cos (y + s sin) is off it too; p must fit (`rmg_zone_position_fits` on
+a temporary zone of base s); on level 0 a **water zone** at p (a new template zone: type 3,
+terrain 8, base s, treasure bands 100-1000 density 5 and 2000-6000 density 1, no towns, mines or
+monster settings, position -1), appended to the template's zones and the zone generators; on level
+1 a point without a zone. Each p goes into the triangulation. Then `triangulation_finish`
+0x5FDB40; per zone of the level its borders (`rmg_zone_borders_draw`: the sides of its cell in the
+triangulation, clipped to the map, drawn in the lower zone id's index: jagged for the zones present
+at the start, limit the smaller of the two sizes, unless islands on level 0; straight otherwise;
+its clipped corners kept in +0x3F4) and its fill (`rmg_zone_flood_fill` from its centre over
+cells of no zone). Cells get the zone index in +0x20 bits 16-23 and +0x28 bit 28 (land), except
+on the islands' level 0. Then `rmg_water_zones_connect`: the new zones that are neighbours with
+a shared side on the map are connected (value 0), the zones' graph distances computed, and each new
+zone connected to its neighbouring earlier zones unless a distance test refuses (read in part).
+On level 1, the points without a zone leave cells of no zone: rock in step 3.
+
+**Step 3, `rmg_terrain_paint`.** The zones' boxes (+0x20..+0x2C) from the cells; each zone's centre
+moved to its cells' centroid; with islands each level-0 zone's polygon shrunk toward the centre
+by min(L/2, max(L/4, 4)), its coast drawn jagged (limit size / 2) and its inside filled (bit 28).
+Then the game's terrain painter (`terrain_painter_init` 0x5B7250 with a map interface, a terrain
+and 4; `terrain_painter_add_rect` 0x5B7690; `terrain_painter_finish` 0x5B72F0, its destructor,
+does the work): level 1 all rock (9), level 0 all water (8), then per zone not of water a
+painter of its terrain over each of its cells with bit 28. The painter reads cells through the map
+vtable's slot 4: the map vtable's slots (§2.1) are its interface. Step 11 calls the
+same painter and `terrain_painter_flush` 0x5B7520.
+
+**Steps 4 and 5, the towns.** Step 4 tries, in this order and only if asked for, a castle of the
+zone's colour, a town of it, a neutral castle, a neutral town, with town type +4, and **stops at
+the first placed: at most one town per zone** (T1a1 read "one of each"). `rmg_town_place_central`
+refuses type -1; it takes the type's town prototype (type 98) and, among the zone's cells where
+`rmg_map_can_place` allows it, those nearest the zone's centre (squared distance), `rand() %` them;
+the town's entrance goes into the zone generator's +0x30 and the road targets +0x14B0, +0x3C is
+set. Step 5 places the least counts not yet placed (no spacing) in the same kind order, the first
+of the first kind asked for skipped as step 4's; then the densities d (colour castle +0x2C, colour
+town +0x28, neutral castle +0x3C, neutral town +0x38): S and P the sum and product of the positive
+ones, spacing r = trunc(sqrt(82944 / S)), each kind's step P / d and key step × its least count;
+repeatedly the kind not exhausted with the least key (the first on ties) adds its step and places
+one more town at spacing r; a kind is exhausted at its first failure; the step ends when all are.
+`rmg_town_place_far` redraws the type for a neutral town without the zone's same-type byte or when
++4 is -1 (among the zone's types, else among 8 in RoE, 9 otherwise); a zone without a town yet
+goes to `rmg_town_place_central`; else the positions whose entrance cell is in the zone with an
+object distance (+0x20 bits 0-15, §2.1's flood) of at least r, the 3 × 3 cells around the entrance
+in the zone and `rmg_map_can_place` true, and of those the farthest, `rand() %` them.
+
+**Draw sites** (10; steps 1 and 2's constructor site is one):
+
+| Site | Function | Drawn | Per | Condition |
+|---|---|---|---|---|
+| 0x532A5B `rmg_zone_town_type_draw` | `rmg_zone_generator_init` | `rand() %` the zone's set town types, the r-th | zone generator (step 1's, step 2's temporary, each water zone) | one set or more |
+| 0x53BB5F `rmg_zone_position_draw` | `rmg_zone_place` | `rand() %` candidates (unsigned) | zone per pass (3 per zone) | always (0 divides by zero) |
+| 0x532B00 `rmg_zone_terrain_choice_draw` | `rmg_zone_terrain_draw` | `rand() %` allowed terrains | zone | not following its town; one allowed or more |
+| 0x53BFC0 `rmg_zone_terrain_town_draw` | `rmg_zones_lay_out` | `rand() % 4` of the terrain's row | zone | +4 is -1 |
+| 0x53C0F2 `rmg_border_jitter_draw` | `rmg_jagged_line_draw` | `rand() % min(limit, L)`, less half | segment split, L > 1 | step 2's jagged borders |
+| 0x53CE1D `rmg_coast_jitter_draw` | `rmg_coast_line_draw` | `rand() % min(size/2, L/2)`, less half | segment split, L > 1 | islands, level 0 |
+| 0x545492 `rmg_town_central_cell_draw` | `rmg_town_place_central` | `rand() %` nearest fitting cells | first town of a zone | one fits |
+| 0x544DEC `rmg_town_type_zone_draw` | `rmg_town_place_far` | `rand() %` the zone's set town types | step 5's town | type redrawn, one set |
+| 0x544E22 `rmg_town_type_any_draw` | `rmg_town_place_far` | `rand() % 8` (RoE) or 9 | step 5's town | type redrawn, none set |
+| 0x545174 `rmg_town_far_cell_draw` | `rmg_town_place_far` | `rand() %` farthest fitting cells | further town | one fits |
+
+**Float sites** (x87 only; no SSE, no `fistp`; every conversion is `crt_ftol`, truncating toward
+zero):
+
+| Function | Computed | Constants |
+|---|---|---|
+| `rmg_zone_position_fits` (2), `rmg_zones_touch` (2), `vector_length_int` 0x5FCEB0 | trunc(sqrt(f64(dx² + dy²))), the integer fild exact | none |
+| `rmg_zone_candidates_around` (20) | trunc(f64(r) × T[k] + f64(o)) in the x87 stack at the control word's precision | `rmg_layout_cos` 0x682500, `rmg_layout_sin` 0x682600: 32 f64 each, cos and sin of k × 11.25° written to four decimals (0.9807 where rounding gives 0.9808) |
+| `rmg_level_zones_partition` (44) | s × T[k] stored as f64, doubled, + f64(x), trunc; the bounds f64(p) < s × T and W + s × T ≤ f64(p) by `fcomp` | every fourth entry of the same tables |
+| `rmg_zone_towns_place` (2) | trunc(sqrt(f64(82944 / S))), the division integer | none |
+
+The triangulation's functions have no float instruction; the borders and fills are
+integer.
+
+**Clocks, retries, limits, failures:** no clock. No retry and no convergence test: the layout's
+three passes, 32 (65 with two levels) candidates per placed zone, 8 directions per zone in step 2,
+jagged lines split until segments of length 1, step 5's loop until every kind has failed once. A
+town that does not fit is skipped without a retry (step 4 moves to the next kind). Failure paths:
+an empty candidate list in `rmg_zone_place` and a jitter limit of 0 (a zone of scaled size 0 on a
+jagged border, an island zone of size 1) divide by zero (whether `rmg_run`'s catch-all takes that
+was not checked); the terrain painter throws on a failed allocation.
+
+**Outside callees** (41): mapped already 7 (`crt_rand`, `crt_sqrt` 0x617B94, `crt_ftol` 0x6179D4,
+`pointer_vector_insert`, `entry12_vector_insert`, `vector_insert_u32`, `empty_ret_8`); the
+triangulation 6 (0x5FD010, 0x5FD790, 0x5FDB40, 0x5FD6B0 `triangulation_find`, 0x5FD330
+`triangulation_destroy`, 0x5FCEB0; only the generator calls them); the terrain painter 3 (0x5B7250,
+0x5B7690, 0x5B72F0; with 0x5B7520 for step 11); the C runtime 3 (operator new, free, the array
+destructor); the C++ library 22 by their callers (vector inserts,
+erases, sizes and copies, the 0x1C-byte connection insert, the bitset's range error;
+not read). UI: the progress window's +8 twice in step 3 (12500, then 15800 / zones per
+zone). No file and no object table besides `object_settings_pointer`.
+
+**Quirk candidates (as read, unclassified):**
+
+- `rmg_terrain_towns`' count is always 4: a zone with no town type gets -1 or Castle often
+  (sand, snow, lava half Castle; water three quarters), Conflux on rough also in RoE.
+- Uninitialised memory: step 2's temporary zone (on the stack) and each water zone (operator new,
+  0xD4 bytes) have town type bytes +0x41..+0x49 that nothing writes before
+  `rmg_zone_generator_init` counts them, so its draw 0x532A5B happens or not by what memory
+  holds, and the stream after it shifts; a water zone's +0x40, +0x84, +0x94 and +0xC..+0x18 and
+  its zone generator's +8 (town type) are not written either.
+- Step 2 compares map distances with the existing zones' base sizes in template units
+  (`rmg_zone_position_fits`), the temporary zone carrying a scaled size: mixed units.
+- Step 4 places at most one town; step 5 skips the first of the first kind asked for even when
+  step 4 failed, so a zone without a town type set (+4 -1, refused by `rmg_town_place_central`)
+  ends one least town short.
+- `rmg_zone_candidates_filter`'s free-level test ignores a candidate at index 0 (no effect found:
+  index 0 always lies on an occupied level).
+- The divisions by zero above.
+
+**Not read:** the triangulation's insertion and finish (whether it is Delaunay; what +0x1C, +0x20
+hold); `rmg_zone_flood_fill`'s second half (0x53D640); `rmg_water_zones_connect`'s distance test
+and `rmg_zone_graph_distances`' order; the corner cases of `rmg_zone_borders_draw` and
+`rmg_segment_clip`; the water branch of `rmg_map_footprint_blocked`; `rmg_prototype_outline` and
+`rmg_map_outline_clear` in detail; the painter's algorithm (its constructor, its rectangle code, the tests inside
+`terrain_painter_finish`) and its third value 4; the 22 library helpers.
+
+**For the next parts:** a cell's zone is +0x20 bits 16-23 (the zone generator's index, also its
+zone id; -1 none) and +0x28 bit 28 marks the zone's land; level 0 cells without it are water,
+level 1 cells of no zone rock. A zone generator's box is +0x20..+0x2C and its centre the
+centroid after step 3. Water zones (type 3, terrain 8) follow the template's zones. Placement
+tests are `rmg_map_can_place` 0x531CF0 (five later functions call it), objects start with
+`rmg_object_init` 0x5330E0, towns fill the road targets +0x14B0. Step 11 uses the terrain painter.

@@ -1226,7 +1226,7 @@ fields = [
   { offset = 0x10BC, name = "monster_strength", type = "i32", summary = "1 to 5 (the dialog's weak, normal, strong are 2, 3, 4)", confidence = "read" },
   { offset = 0x10C0, name = "template_name", type = "string", summary = "the drawn template's name", confidence = "read" },
   { offset = 0x10D0, name = "templates", type = "vector<rmg_template*>", summary = "the templates that fit the map's size and the players (rmg_templates_read)", confidence = "read" },
-  { offset = 0x10E0, name = "zones", type = "vector<rmg_zone_generator*>", summary = "one per template zone (rmg_phase_01_zones), more from rmg_phase_02_level", confidence = "read" },
+  { offset = 0x10E0, name = "zones", type = "vector<rmg_zone_generator*>", summary = "one per template zone (rmg_zones_lay_out), the water zones appended by rmg_level_zones_partition", confidence = "read" },
   { offset = 0x10F0, name = "object_generators", type = "vector<rmg_object_generator*>", summary = "the object generators in their fixed order (rmg_object_generators_create; H3API's objectGenerators; T1a1's +0x1100 was wrong); freed one by one by the destructor", confidence = "read" },
   { offset = 0x1100, name = "keymaster_colours", type = "vector<u8>", summary = "one byte per prototype of type 10 (the Keymaster's Tents' colours), cleared by rmg_object_generators_create; its use not read", confidence = "read" },
   { offset = 0x1110, name = "count_by_type", type = "i32[232]", summary = "cleared by the constructor; H3API's objectCountByType", confidence = "guess" },
@@ -1262,7 +1262,7 @@ fields = [
   { offset = 0x1C, name = "movement", type = "u32", summary = "0x7FBC7FBC after rmg_map_cell_reset (32700 in both halves); bits 0-15 the movement cost (32000 marks impassable, by rmg_phase_09's stores)", confidence = "inferred" },
   { offset = 0x20, name = "zone", type = "u32", summary = "bits 0-15 the distance to the nearest object entrance (32700 after rmg_map_cell_reset; rmg_generator_add_object's flood, 2 per orthogonal and 3 per diagonal step), bits 16-23 the zone index as a signed byte (-1 none), bits 24-31 -1 after reset (H3API: a second zone id); rmg_phase_06 tests bit 23", confidence = "read" },
   { offset = 0x24, name = "tile", type = "u32", summary = "0x548 after rmg_map_cell_reset (land 8, picture 21; bits 30-31 kept); bits 0-5 the land type (8 water, 9 rock), 6-13 its picture (the map vtable's slots), then the river and the road (H3API's H3RmgGroundTile)", confidence = "read" },
-  { offset = 0x28, name = "tile_data", type = "u32", summary = "bits 25 and 27 set (bit 24 kept) by rmg_map_cell_reset; bits 15-16 two flags of the map vtable's tile record; rmg_map_place_object sets bit 22 and, unless +0x2C bit 0, clears 26 and sets 27 on a cell of the template's +0xC mask, clears 25 on a cell outside its +0x4 mask; H3API names 21 shore, 22 has object, 25 must be blocked, 26 entrance, 27 blocked; rmg_phase_06 tests 22, 25, 26", confidence = "read" },
+  { offset = 0x28, name = "tile_data", type = "u32", summary = "bits 25 and 27 set (bit 24 kept) by rmg_map_cell_reset; bits 15-16 two flags of the map vtable's tile record; rmg_map_place_object sets bit 22 and, unless +0x2C bit 0, clears 26 and sets 27 on a cell of the template's +0xC mask, clears 25 on a cell outside its +0x4 mask; H3API names 21 shore, 22 has object, 25 must be blocked, 26 entrance, 27 blocked; rmg_phase_06 tests 22, 25, 26; bit 28 marks a zone's land (step 2's borders and fills, the islands of step 3), painted with the zone's terrain by rmg_terrain_paint", confidence = "read" },
   { offset = 0x2C, name = "f2c", type = "u32", summary = "bit 0 cleared by rmg_map_cell_reset; when set, rmg_map_place_object leaves bits 26 and 27 of +0x28 alone", confidence = "read" },
 ]
 
@@ -1288,7 +1288,7 @@ h3api = "H3RmgZone"
 fields = [
   { offset = 0x0, name = "id", type = "i32", summary = "column 3; looked up by the connections (rmg_template_zone_find), then the zone's index once the template is kept", confidence = "read" },
   { offset = 0x4, name = "type", type = "i32", summary = "0 human start (column 4 set), 1 computer start (5), 2 treasure (6), 3 junction (7); the last set column wins; 2 when none", confidence = "read" },
-  { offset = 0x8, name = "base_size", type = "i32", summary = "column 8; rmg_phase_01_zones scales by the smallest", confidence = "read" },
+  { offset = 0x8, name = "base_size", type = "i32", summary = "column 8 (template units): rmg_zones_lay_out scales the layout by the smallest; rmg_zone_position_fits and rmg_zones_touch compare distances with it; a water zone of step 2 gets its source zone's scaled size", confidence = "read" },
   { offset = 0xC, name = "min_human_positions", type = "i32", summary = "column 9: the zone is dropped when the players are fewer", confidence = "read" },
   { offset = 0x10, name = "max_human_positions", type = "i32", summary = "column 10: dropped when the players are more", confidence = "read" },
   { offset = 0x14, name = "min_total_positions", type = "i32", summary = "column 11: dropped when players + computers are fewer", confidence = "read" },
@@ -1337,22 +1337,28 @@ fields = [
 [[struct]]
 name = "rmg_zone_generator"
 size = 0x414
-summary = "A zone being generated (0x414 bytes from operator new in rmg_phase_01_zones; H3API's H3RmgZoneGenerator)."
+summary = "A zone being generated (0x414 bytes from operator new in rmg_zones_lay_out and rmg_level_zones_partition, built by rmg_zone_generator_init; H3API's H3RmgZoneGenerator)."
 refs = ["rules/surveys/E14-generator.md §1.7"]
 h3api = "H3RmgZoneGenerator"
 fields = [
   { offset = 0x0, name = "zone", type = "rmg_zone*", summary = "its template zone", confidence = "read" },
-  { offset = 0x4, name = "town_type", type = "i32", summary = "its colour's town choice, else -1", confidence = "read" },
-  { offset = 0x8, name = "town_type_2", type = "i32", summary = "the town type used: +0x4 when set, else drawn from rmg_terrain_towns", confidence = "read" },
-  { offset = 0xC, name = "terrain", type = "i32", summary = "0..8 (8 water)", confidence = "read" },
-  { offset = 0x10, name = "x", type = "i32", summary = "the layout's position scaled to the map", confidence = "read" },
+  { offset = 0x4, name = "town_type", type = "i32", summary = "drawn among the zone's town types (rmg_zone_generator_init, -1 with none), replaced in a start zone with colour towns by its colour's town choice when set; steps 4 and 5 place towns of it", confidence = "read" },
+  { offset = 0x8, name = "town_type_2", type = "i32", summary = "rmg_zones_lay_out: +0x4 when set, else drawn from rmg_terrain_towns (four candidates always); not written for step 2's water zones", confidence = "read" },
+  { offset = 0xC, name = "terrain", type = "i32", summary = "0..8 (8 water): rmg_zone_terrain_draw; 8 for step 2's water zones", confidence = "read" },
+  { offset = 0x10, name = "x", type = "i32", summary = "the layout's position (template units), then scaled to the map by rmg_zones_lay_out, then the centroid of its cells (rmg_zone_centre_to_centroid)", confidence = "read" },
   { offset = 0x14, name = "y", type = "i32", summary = "as x", confidence = "read" },
-  { offset = 0x18, name = "z", type = "i32", summary = "kept from the layout", confidence = "read" },
-  { offset = 0x1C, name = "size", type = "i32", summary = "base size x the scale / the layout's span", confidence = "read" },
-  { offset = 0x28, name = "width", type = "i32", summary = "H3API's", confidence = "guess" },
-  { offset = 0x2C, name = "height", type = "i32", summary = "H3API's", confidence = "guess" },
-  { offset = 0x3C, name = "has_town", type = "u8", summary = "counted with the towns after the mines", confidence = "read" },
+  { offset = 0x18, name = "z", type = "i32", summary = "the level from the layout", confidence = "read" },
+  { offset = 0x1C, name = "size", type = "i32", summary = "base size x the scale / the layout's span (rmg_zones_lay_out); a water zone's: its source zone's", confidence = "read" },
+  { offset = 0x20, name = "min_x", type = "i32", summary = "its cells' box: least x (32000 from the constructor; rmg_zone_bounds_compute)", confidence = "read" },
+  { offset = 0x24, name = "min_y", type = "i32", summary = "least y", confidence = "read" },
+  { offset = 0x28, name = "max_x", type = "i32", summary = "greatest x + 1 (-32000 from the constructor; H3API's width)", confidence = "read" },
+  { offset = 0x2C, name = "max_y", type = "i32", summary = "greatest y + 1 (H3API's height)", confidence = "read" },
+  { offset = 0x30, name = "town_entrance", type = "i32[3]", summary = "the first town's entrance x, y, z (rmg_town_place_central)", confidence = "read" },
+  { offset = 0x3C, name = "has_town", type = "u8", summary = "set by rmg_town_place_central; then rmg_town_place_far places further towns away from the others; counted with the towns after the mines", confidence = "read" },
   { offset = 0x44, name = "count_by_type", type = "i32[232]", summary = "H3API's objectCount", confidence = "guess" },
+  { offset = 0x3E4, name = "zone_distances", type = "vector<u16>", summary = "per zone the number of connections to it, 32000 unreached (rmg_water_zones_connect, rmg_zone_graph_distances)", confidence = "inferred" },
+  { offset = 0x3F4, name = "polygon", type = "vector<point>", summary = "its cell's corners clipped to the map (rmg_zone_borders_draw); rmg_island_shape shrinks them into an island", confidence = "inferred" },
+  { offset = 0x404, name = "f404", type = "vector", summary = "a third vector, emptied by the constructor; its use not read", confidence = "read" },
 ]
 
 [[struct]]
