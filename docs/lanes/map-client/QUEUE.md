@@ -4,51 +4,27 @@ Pre-refined tasks of the map client lane, in order, then the inbox of discovered
 
 ## Tasks
 
-Epic: E24, the adventure map client. **M1 (stills of the map view) closed 2026-10-24**; **M2
-(the map moving) closed 2026-10-28**; **M3 (the adventure screen) closed 2026-10-31** (their
-scope, decisions, tasks and review lists: `docs/epics/E24-archive.md`; their cuts' history:
-`QUEUE-ARCHIVE.md`). **M4 (the engine's games shown) refined 2026-10-31** (M4 T0, with the user:
-`docs/epics/E24-map-client.md`, M4's scope, decisions and exit): Part A (T1a, T1b, T2) the original's
-reactions to a game's events, its memory the live part (**done** 2026-11-19 with T2d3: their
-entries in `QUEUE-ARCHIVE.md`); Part B (T3, T4) the engine's games
-through `h3-protocol`'s whole-game record (ADR-0020 point 8), after the server lane builds it;
-Part C (T5) the battles handed to the battle client's viewer. Tasks in order, each about half a
-context; a task that grows is cut at a seam agreed with the user. Code readings in the sandbox
-(`docs/exe/README.md`; every address cited needs a map entry), their detail in
-`docs/epics/E24-design.md` (§5 from T1: the game's events); captures by the harness
-(`clients/capture/README.md`), never in git. Every oddity of the original a reading or a capture
-finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
+Epic: E24, the adventure map client. **M1** (stills of the map view, closed 2026-10-24), **M2**
+(the map moving, closed 2026-10-28), **M3** (the adventure screen, closed 2026-10-31) and **M4**
+(the engine's games shown, closed 2026-11-23 at T6) are archived with their review lists in
+`docs/epics/E24-archive.md`; their queue history in `QUEUE-ARCHIVE.md`.
 
-T3b, the rest of a record's start through T3a's adapter, was cut in two by the user at its start
-(2026-11-19): the panels first (T3b1, **done**: design §5.10; MCL-Q36 asked), then T3b2 (**done**
-2026-11-19, kept whole by the user: the log's "M4 T3b2", design §5.11; MCL-Q37, MCL-Q38 asked;
-their entries in `QUEUE-ARCHIVE.md`). A fact the record lacks becomes an `MCL-Q<n>` with a note in
-the engine lane's inbox, its gap shown in the comparison, never a rule copied into the client (the
-user, the same day).
+### E24 M5 T0 — M5 refined with the user
 
-### E24 M4 T4 — a record played (cut in three by the user at its start, 2026-11-19)
-
-T4 cut by event family, as Part A was: **T4a** the viewer's own turns (its walks along the
-engine's paths, End Turn and the turn's change), **T4b** the visits, **T4c** the other players,
-the viewer's controls and a golden replay. T4a cut again at its start (the agreed fallback):
-**T4a1** the reading and the recordings (**done** 2026-11-19: the log's "M4 T4a1", design §5.12;
-MCL-Q39, MCL-Q40), then T4a2 (**done** 2026-11-20, kept whole by the user: the log's "M4
-T4a2", design §5.13; its entry in `QUEUE-ARCHIVE.md`). T4b (**done** 2026-11-20, in two by
-family: the log's "M4 T4b1" and "M4 T4b2", design §5.14 and §5.15; its entry in
-`QUEUE-ARCHIVE.md`). T4c (**done** 2026-11-20, kept whole: the log's "M4 T4c", design §5.16,
-§5.17) and its remainder T4c2 (**done** 2026-11-21, whole: the log's "M4 T4c2", design §5.18;
-its entry in `QUEUE-ARCHIVE.md`). A fact the record lacks becomes an `MCL-Q<n>` with a note in
-the engine lanes' inboxes, its gap shown in the comparison, never a rule copied into the client.
-
-### E24 M4 T6 — M4's closure
-
-- **Scope:** fresh reviewers (one per area) and their findings fixed or listed; M4's review list
-  and its questions for the user; a hand test on the user's machine (`clients/out/win/`: a
-  golden replay viewed with its battles; the map's sound by ear on a whole map, the user at M2
-  T4b2: the transitions sounded unclean; MCL-Q11's `HORSE20` to `HORSE29` listened to for its
-  (c)); M4 archived.
-- **Acceptance:** M4's exit (the epic) met; the review list accepted by the user.
-- **Depends on:** T1a to T5 (done with T5b2, 2026-11-21). **Status:** next.
+- **Scope:** M5 (the epic's "Later": hot seat, whole games played in-process: the handover screen
+  when the player who must act changes, the level-up dialog, the hero and town screens as play
+  needs them; then live play against the server) refined with the user: its scope, decisions,
+  exit and tasks. Its inputs: the inbox's notes for E24 M5 (the client lane's hand-over of E27's
+  Begin and Load: `begin::Game`, `save::Loaded`, CLT-Q160 (a), CLT-Q170 (a); the system options
+  and Save from play, E27 M5; the hot seat's clock; the town lane's builds, the adventure lane's
+  casts, Prison and Market of Time), M4's leftovers for M5 (`MCL-STUB-3`, a defended battle; the
+  screens a record's commands pass over, design §5.17), and M4's open questions (MCL-Q29 to
+  MCL-Q56, none blocking). First read the user's notes of M4's hand test
+  (`clients/out/win/map-m4-notes.txt` on the user's machine, beside `map-m4.cmd`): a finding goes
+  into a question or an M5 task.
+- **Acceptance:** M5's tasks queued; the epic's M5 section written.
+- **Depends on:** M4 T6 (done). **Status:** the user's checkpoint (M4's review list and questions
+  presented at T6; their answers, if not given then, first).
 
 ## Inbox
 

@@ -3327,3 +3327,64 @@ first minutes.
   `h3map.py drawn` over every situation and sequence; `check.sh`; the coverage of `h3-map-view`.
 - **Questions:** MCL-Q48 (an abandoned mine's resource; the adventure lane's inbox), MCL-Q49 (a
   map battle's obstacles; the battle lane's inbox).
+
+### M4 T6 — M4's closure (2026-11-23; the user: no cut, the work spread over sub-agents)
+
+On `map-client/e24-m4-t6`, `master` at f1c4a53 (#1106 merged; CI and Clients green). Original data
+staged from the user's repo folder (the PC's shell up this time): the 64 files, the manuals and
+help files, the LODs and executables SHA-256 checked; the setup's baseline stopped at its coverage
+step (fmt, clippy, doc tests, deny clean); the harness set up beside it.
+
+- **Asked at the start:** the cut (three parts as M3's T7; or the reviewers and fixes apart from
+  the checkpoint). The user: no cut, one session, the work spread over sub-agents.
+- **Reviewed:** six fresh reviewers, three at a time, reading only (R1 the turns, R2 the message
+  boxes, R3 the map changed by a visit, R4 a record's start, R5 the window as a record's host and
+  its battles, R6 the harness, the data and the rest): 64 findings, about 20 bugs, most only on
+  engine records no golden replay had reached (the branch `map-client/e24-m4-t6-review`,
+  `docs/lanes/map-client/review-m4/`, not merged).
+- **Fixed** by seven fixers, one at a time in the clone (the harness's beside one), each finding
+  with a test or a reason (their reports' tables: the review branch's notes, and the commits):
+  F4 (32787c1, a record's start: the game's classes for the hover, the file's art for `render
+  --record`, a cut record refused, `--check`'s options and verdict); F6 (f7ab3fe, the harness: a
+  shipped start's Gold bonus, the disk check's pre-flight, the staging's refusals, kept live parts
+  with their run, the engine's binaries checked up front, the labels' alphabet); F5 (132f657, a
+  record's battles: a monster fought from beside, the switch waited through and closed, a mine's
+  battle handed over once, the outcome's result, the battle's commands taking no map time, the
+  window's focus and settings across a battle); F1 (ec9be90, the other players' turns: a viewer
+  not first to act, a move per command, the record's own sight, the day's lists, a computer's
+  flags, removals and losses); F2 (577b953, a record's visits each its own find, its own
+  level-ups, Pandora's Box's rewards, the record player's choices; our own words in the tests,
+  ADR-0009, the inbox's labels item done); F3 (2c4b2e8, a record's flags in their owners' colours
+  and raised alone, its boats told after its start, a landing with no facing refused, Summon
+  Boat's dissolves' status window, the gate's M4 names); F7 (3cb6d6f, the golden records to their
+  end: a walk short of its path, its own path, an object taken alone, no days without a town on a
+  record `MCL-STUB-4`, an unseen hero's landing boat; the library's coverage at 100 %).
+- **Found on the way:** two "viewed to its end" verdicts were false (the mine records stuck in
+  the switch, 11 inputs never given); the record player walked onto a monster instead of fighting
+  it from beside, so T5b2's switch never ran on a record; a viewer not first to act saw every turn
+  one late; 20 of the 66 golden player records were refused (the client's own seven days without
+  a town, walks the engine stopped short, a path taken from an earlier walk). All 66 now play to
+  their end headless.
+- **Asked:** MCL-Q50 (the date's parts), MCL-Q51 (a mine's guards' battle not won), MCL-Q52 (the
+  ambient loops after a battle), MCL-Q53 (a hero coming into sight), MCL-Q54 (Pandora's Box's
+  untold rewards), MCL-Q55 (a flagged mine's production), MCL-Q56 (`resour82.def`'s frames); none
+  blocks. Other lanes' inboxes: the client lane's (the hosted battle's `BUTTON.WAV` not found: the
+  layout's name with its extension; the harness's disk check), the adventure lane's (the disk
+  check; MCL-Q53, Q55 and `MCL-STUB-4`'s facts for the record).
+- **The review list:** M4's items and T6's additions (by fixer, in the archive), presented to the
+  user with the questions.
+- **The hand test kit** (the user's `clients/out/win/`: `map-m4.cmd`, `map-m4-notes.txt`, `m4/`
+  with the Windows build, its map data, two golden records and their maps): an interim build at
+  132f657 put there mid-session, then the final one; five parts (two golden replays with their
+  battles; Hoard's sound against the original; the original's music after a battle won, MCL-Q47;
+  the HORSE pairs, MCL-Q11 (c)). The user's notes are read at M5 T0.
+- **Checked** (after the last fix): `h3map.py drawn` over every situation and sequence (56 and
+  all, the same; `battle-retreat`'s three frames recorded again: `frames --only battle-retreat`
+  against the original gives 0 differing where 16 were listed, F1's retreated hero off the
+  minimap); `start-jared` and `start-good-witch` captured again with the Gold bonus (0 differing),
+  their `engine` expectations moved (the bonus the engine lacks, Jared's mana from the level-ups'
+  draw); every golden replay's player record (66) headless to its end; `dwellings-guards-s1` in
+  the window under Xvfb (`--check 40`: both battles closed, 116 of 116 frames read back exact);
+  `clients/scripts/check.sh --no-coverage` (all gates); `h3-map-view`'s coverage at 100 % (F7);
+  `cargo xtask verify --scope map-client --summary --with-original-data` (no failing step after
+  a trap's size written in bytes, not as a hex address).

@@ -434,6 +434,92 @@ battle lane's: the obstacle draw under the tile's seed); (b) leave the gap (the 
 comparisons start from its own situations). **Recommended (a)**; the battle lane's inbox told.
 Blocks nothing.
 
+#### MCL-Q50 — The date's month and week are the client's arithmetic (E24 M4 T6, a record; the reviewer's R4-5)
+
+The panels' date is `[month, week of the month, day of the week]` (design §5.10). A record's
+observation carries `day` and the month's and week's kinds (`GameObservation::month`, `week`);
+`WeekStarted` and `MonthStarted` give numbers only when they happen, never in the start's
+snapshot. So `engine/panels.rs` computes the month as `(day − 1) / (week_days × month_weeks) + 1`
+and the week as `(day − 1) / week_days mod month_weeks + 1` from the engine's `CalendarParams`:
+the numbers the engine's, the formula the client's. Options: (a) the record tells the date's
+parts (the adventure lane's `CalendarParams`, then a `date` in the server lane's view); (b) kept,
+the calendar being the same in every profile and its numbers read from the ruleset.
+**Recommended (b)**, revisited if a profile ever changes the calendar or the protocol gains a
+date for another reason. Built as (b). Blocks nothing.
+
+#### MCL-Q51 — What the original shows after a mine's guards' battle the hero does not win (E24 M4 T6, a record; the reviewers' R5-4, R3-2)
+
+After a win `visit_mine` 0x4A39A0 shows ADVEVENT 85's box, MINEEVNT's and the flag (`battle-mine`,
+design §5.19, §5.21). After a loss, a retreat or a draw the record tells only the outcome and the
+hero's removal, no flag; what `visit_mine` shows then (a box, the order with
+`battle_aftermath`'s hero loss) was not read. Built (*provisional*): no box, the record's flag
+alone (none), the hero gone as a retreat's where the record removes it. Options: (a) read
+`visit_mine`'s path after a lost battle and build it; (b) record it (a sequence like `battle-mine`
+with `battle = "retreat"`); (c) keep the built one. **Recommended (b)**, then (a) for what a
+recording cannot settle (a draw). Blocks nothing.
+
+#### MCL-Q52 — Whether the map's ambient loops start again after a battle (E24 M4 T6, the reviewer's R5-8)
+
+The window lends its sound to a hosted battle with the map's effects stopped (design §5.20: the
+binary's `Player::lend` clears every lane's clip, the ambient slots' too) and takes it back with
+the gains only, while the timeline's sound model still holds its four ambient slots: a windmill's
+or a river's loop near the hero stays silent after the battle until it leaves the slots and is
+found again. The original's return (`manager_run` 0x4B0C70, `mobilize_hero`: does it run
+`ambient_sounds_at` 0x4183D0 with its slots cleared?) was not read for the ambient slots. Options:
+(a) read it and build its pass at the map's return; (b) the model forgets its slots at the
+hand-over, so the next step's pass starts them; (c) the host keeps the loops' clips and restarts
+them at the hand-back; (d) as now. **Recommended (a)**, (b) meanwhile if the reading is far off.
+Not heard in any check; blocks nothing.
+
+#### MCL-Q53 — A record does not tell the look of another player's hero coming into sight (E24 M4 T6, a record)
+
+The original draws a hero walking out of the fog with its class's picture and its owner's flag. A
+record gives the heroes in sight at its start; one that comes into sight later arrives only as
+`HeroStepped { hero, from: None, to }`, without owner, type or boat (SRV-Q26 (c), `SRV-STUB-3`):
+`economy-guards-s1`'s Red record (Blue's hero 3, day 2), `sea-landing-guards-s1`'s Blue record.
+Options: (a) the engine tells a hero coming into sight (its owner, type and boat: SRV-STUB-3's
+lift, in the adventure lane's inbox since 2026-11-09); (b) the client draws a placeholder in the
+turn player's colour (an invented fact); (c) its walk left out, its commands' results applied as
+a stepless command's at the next turn's start. **Recommended (a)**; (c) built meanwhile (`stub:
+MCL-Q53` in `engine::played`). Blocks nothing.
+
+#### MCL-Q54 — What a record does not tell of Pandora's Box's rewards (E24 M4 T6, the reviewer's R2-4)
+
+The original's Box (`visit_pandora_box` 0x4A0C50, `grant_rewards` 0x49FA90; design §5.3, §5.4)
+shows the parts of the map's reward record in boxes of up to eight pictures. A record tells only
+what the hero got (experience, primary and secondary skills, spell points and bonuses as after the
+change, resources, an artifact it can take, a spell it learns, creatures joined and the army
+dialog's group), and the client builds the Box from those (*provisional*). Not told: a part the
+hero does not get (an artifact with no room, a spell it cannot learn, a ninth skill, a capped
+bonus), the creatures' order between those that joined and those without room, an empty Box
+(ADVEVENT 15). Options: (a) the engine tells the reward record a Box gives (the adventure lane's);
+(b) the client reads the Box's rewards from the map file at run time, as it reads the Box's text;
+(c) as built. **Recommended:** read `grant_rewards`' human path first, then (b) wherever it shows
+the map's parts whatever the hero gets, else (c). Blocks nothing.
+
+#### MCL-Q55 — A record's mine's box shows the tables' income, not the engine's production (E24 M4 T6, a record; the reviewer's R3-7)
+
+Part A's mine box (`Find::Mine`, design §5.6) captions its picture with GENRLTXT 4's per day,
+its number from `[map.finds] mine_income` (`mine_daily_income` 0x678288). On a record the number
+should be the engine's production for that mine, which the record does not carry after a flag
+(`ObjectFlagged` holds the owner only; the new owner's view of the mine is unfolded,
+`SRV-STUB-10`), so it stays the tables' (a `stub: MCL-Q55` marker in `engine::visits`). The two
+agree while the engine's profile keeps the original's incomes. Options: (a) the record tells a
+flagged mine's production (the adventure lane's event, then the server lane's wire: lifts
+SRV-STUB-10); (b) keep the tables' number, the same in every shipped profile; (c) no caption on
+a record. **Recommended (a)**, (b) meanwhile (built). Blocks nothing.
+
+#### MCL-Q56 — `message_box_picture`'s types 7, 18 and 19 name frames `resour82.def` does not hold (E24 M4 T6, the gate's first M4 run)
+
+The reading of `message_box_picture` 0x4F4EB0 (design §5.3) gives types 7, 18 and 19 as
+`resour82.def`'s frame of the type, as types 0 to 6, and `finds::picture` builds them so; the
+user's `resour82.def` holds 7 frames, so such a box would draw past the file's end. No recording
+or record has used one; the gate now requires frames 0 to 6 only (two other DEFs likewise:
+`twcrport.def` 151 frames, `avwattak.def` 290, against the highest frame the view could ask).
+Options: (a) read the callers that pass types 7, 18 and 19 (a clamp, or another DEF meant) and
+build that; (b) leave the gap; (c) refuse such a box. **Recommended (a)** when one is met, (b)
+meanwhile. Blocks nothing.
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)

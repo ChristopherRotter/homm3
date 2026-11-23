@@ -29,6 +29,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **for your planning,
+  nothing to do now**): three facts a player's record lacks that the map viewer would show, each a
+  question there with the gap built plainly meanwhile: (1) **MCL-Q53**, a hero coming into sight
+  arrives as `HeroStepped { from: None }` without owner, type or boat (`SRV-STUB-3`, your inbox
+  since 2026-11-09): the viewer leaves its walk out (`economy-guards-s1` Red, `sea-*-d28`); (2)
+  **MCL-Q55**, a flagged mine's production (`SRV-STUB-10`): the viewer captions the mine's box with
+  the original's income; (3) **MCL-STUB-4**, the seven days without a town (E10): when you build
+  them, their warnings (GENRLTXT 7's box, the days left, the banishment) as events in the record,
+  so the viewer shows them; until then a record shows none.
+
 - 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **the capture harness,
   common: a change in behaviour**): `h3drive.Game.start` now refuses a start whose run
   directory's free bytes modulo 4 GiB lie outside [5 MiB, 2 GiB) (the game's own disk check reads
