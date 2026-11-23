@@ -293,3 +293,38 @@ blocked state; the kill preview (C ABI v33, E06 T6d) only the MLP reads.
 | T39 | The bench probe: the control, v23 and v23 with the preview at 4 M (`configs/distill/e25-reach.toml`): no arm passed (0.457, 0.460, 0.459 ± 0.018 against the fair actor) | done 2026-11-20 |
 | T40 | The long run from the v23 clone, on T39's gain, with the early stop | not run (T39: no gain) |
 | T41 | Increment 9's checkpoint: increment 10, the ceiling (AI-Q20) | done 2026-11-20 |
+
+## Increment 10 (closed 2026-11-23)
+
+**Increment 10: the ceiling** (the user at T41, 2026-11-20, AI-Q20). Increments 8 and 9 ended
+at #2's level whatever the lever (size, PPO's settings, the search at play, a KL anchor, the
+outcome's weight, a taught regime, the reach, the kill preview). Before another lever: how much
+better play against the fair system actor exists at all, what hidden information costs, and
+where #2's choices lose value, so that the next lever aims at them.
+
+*Decisions* (the user, 2026-11-20, AI-Q20; the agent's details, change at a checkpoint):
+
+1. **The aim:** a lower bound on the ceiling against the fair actor (the result of a policy that
+   provably does at least as well as the fair actor, up to sampling noise), the cost of hidden
+   information, and the value #2's choices leave by category. No training in the increment.
+2. **The method: rollout policy improvement** (one step of policy iteration against the fixed
+   fair actor): at each of the agent's decisions every legal command, N rollouts of each to the
+   battle's end, **the fair actor on both sides** (the user: first; rollouts with #2 inside them
+   later, if their cost is worth it), the stream re-seeded per rollout and shared by the commands
+   (common random numbers); the command of the best mean reward v1 is played. Randomness is
+   averaged over, so the ceiling is in expectation.
+3. **Both worlds** (the user): the true battle (`true_world`, a trusted diagnostic: the other
+   hero's spells and the hidden obstacles seen) and the side's worlds (`determinize`: only what
+   the side may know; a legitimate agent's); their gap the information's cost.
+4. **A measurement, not a run with a rule:** the budget and the episodes fixed by a check on a
+   subset before the full measurement; the report set v1 and the neutral set v1 beside it. The
+   budget is spent by sequential halving (T42, the agent's call), the rollouts full-length.
+5. **Unchanged:** #2 the current best; reward v1 and the evaluation sets; no engine or C ABI change
+   (a new `h3 ai` tool in this lane's `h3-cli/src/ai/`, its rollouts in `h3-sim` where pure).
+
+| Task | Scope | Status |
+|---|---|---|
+| T42 | The rollout tool: `h3 ai ceiling` (the improved fair actor against the system actors, both worlds, sequential halving with common random numbers, a resumable games file, a JSON record), its tests and timing (about 190 thread-seconds a game at budget 8) | done 2026-11-20 |
+| T43 | The ceiling measured (the user's CPU): a budget check (4, 8, 16), then the report set v1 and the neutral set v1, both worlds | done 2026-11-21 (budget 4; the report set over the fair actor's play, paired: +0.085 on the side's worlds, +0.115 on the true battle, the information +0.030; the neutral set +0.047; one stalled game of 600 left out, the fair actor's, BAT-STUB-19's family) |
+| T44 | Where #2 diverges: #2's decisions against the fair actor replayed, every command valued by the same rollouts; the value its choice leaves by category, beside the fair actor's own | done 2026-11-23 (the tool: `h3 ai ceiling --commands`, `inspect --commands`, a confirmation on fresh rollouts; #2's 598 games: +0.026 over the fair actor, the rollouts +0.059 over #2; its regret 0.28 a game, casts 0.024 a decision, the missed moves 38 %, its edge melee and waiting) |
+| T45 | Increment 10's checkpoint: the headroom, the information's cost, the divergence; the next lever | done 2026-11-23 (AI-Q23: increment 11 is expert iteration; E25 paused after increment 10 for E31) |
