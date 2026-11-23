@@ -3,7 +3,7 @@
 The reading behind E31 (`docs/epics/E31-original-computer-player.md`): what the original's
 computer does in its adventure turns, as read from `Heroes3.exe` (GOG Complete, SoD's code,
 SHA-256 `aac39e8c…`; `docs/exe/README.md`). Built up by increment 1's tasks: §1 the turn (T1a1a
-the loop and the records, T1a1b the planning, T1a1c the walk), §2 the values (T1a2), §3 the towns
+the loop and the records, T1a1b the planning, T1a1c the walk), §2 the values (T1a2a to T1a2d), §3 the towns
 and the answers (T1a3), §4 the rest of the code (T1a4); T1b adds the wiki's and VCMI's
 positions, the hidden reads in one list, the asymmetries and the engine's gaps. The detail of each
 routine is in its map entry (`scripts/exe.py lookup <address>`); this file says what the turn
@@ -124,8 +124,10 @@ garrison hero (and +0x43), so nothing a human would call sleeping lasts past the
 - **the threats:** `ai_enemy_reach_fold` 0x4280E0 runs the pathfinder from every hero of every
   player not on its team and not defeated, with the hero's maximum points plus 800, and hands
   each search to a functor: one counts in each town's +0x3 the enemy heroes that reach it
-  (`ai_town_threat_vtable` 0x63B670), the other values a reached town's defence
-  (`ai_town_defence_vtable` 0x63B67C; T1a2);
+  (`ai_town_threat_vtable` 0x63B670); the other (`ai_town_defence_vtable` 0x63B67C), for each of
+  its towns the enemy could take, sets that hero's threat (+0x11D) and **buys** the town's available
+  creatures into its garrison with the player's resources (`ai_town_defence_recruit` 0x428580: a
+  rule, not a value; §2.4);
 - **the recruit reserve** (+0x08, `ai_recruit_reserve` 0x429AD0): per resource the most that one
   town's two most valuable available stacks (count × AI value) cost;
 - **the resource weights** (`ai_resource_weights` 0x428740, below);
@@ -162,7 +164,7 @@ Only the colour is set at a new game (`ai_player_records_init` 0x4340E0).
 | Offset | What | Written | Read |
 |---|---|---|---|
 | +0x00 | the colour (i16) | game_init | every routine that takes the record |
-| +0x04 | the Eye value (i32) | the start; a reveal (§1.4); `ai_hero_step` (T1a1c) | `ai_fight_estimate` 0x528040 returns it (T1a2) |
+| +0x04 | the Eye value (i32) | the start; a reveal (§1.4); `ai_hero_step` (T1a1c) | `ai_object_value` 0x528040 returns it (T1a2) |
 | +0x08 | the recruit reserve (i32[7]) | the start; the middle subtracts the income | the towns (T1a3) |
 | +0x24 | the means (i32[7]) | the weights | the weights; probably `ai_town_visit`'s callees (T1a3) |
 | +0x40 | the demand (i32[7]) | the weights | the weights; probably `ai_town_visit`'s callees (T1a3) |
@@ -171,7 +173,7 @@ Only the colour is set at a new game (`ai_player_records_init` 0x4340E0).
 Fields of the game's own records that the computer uses: the hero's +0x11C (asleep: the done
 mark), +0x35 to +0x40 (the destination), +0x41 (the points beyond) and +0x43 (the must-go),
 written by the destination's choice (§1.9), +0x44 to +0x46 (the patrol), +0x109 and +0x47A to
-+0x491 (H3API's AI values; T1a2), +0x11D (cleared by the threat fold); the player's +0x39 (the
++0x491 (H3API's AI values; §2.2, §2.4), +0x11D (the threat, §2.4); the player's +0x39 (the
 puzzle target, a packed position: §1.9), +0x128, +0x160, +0x164; the town's +0x3; the map item's
 +0xD bit 0x08 (the boat marks, only during a walk); the pathfinder's +0x8, +0x20, +0x28, +0x58
 and +0x6C, and its nodes' +0x10 and +0x14 (`pathfinder_node`, §1.9).
@@ -222,11 +224,8 @@ the computer's last turn decide there. In the game's records, the hero's destina
 The walk's leftovers (§1.10): `ai_walk_path`'s branch for a Fly node not next to its from-tile,
 the flag of `hero_move_step` that zeroes the points, how the pathfinder makes the walk's marks
 (0x200, 0x400, 0x800, the Castle Gate's and Town Portal's nodes: `pathfinder_gate_exit` 0x56A730
-among them) and reads the boat marks: T1a3 and T1a4. The values the frame and the planning call (`ai_vision_area_value`, the defence functor,
-`ai_hero_effectiveness`, the puzzle's target, the list inside `ai_resource_weights`,
-`ai_army_fight_sim` 0x427330, `ai_fight_estimate` 0x528040, the node's key +0x10 and the
-expansion's sixth argument behind it, the per-class value table `ai_class_tables_init` fills):
-T1a2. The build loop, the artifact step and the allies' shares: T1a3. `ai_hero_candidates`'
+among them) and reads the boat marks: T1a3 and T1a4. The values the frame and the planning call:
+§2 (T1a2). The build loop, the artifact step and the allies' shares: T1a3. `ai_hero_candidates`'
 other caller, `ai_town_hero_prospects` 0x431BD0 (inferred): T1a3, T1a4.
 
 ### 1.9 The planning: the danger map and the destination (T1a1b)
@@ -264,7 +263,7 @@ them the lowest value on the path; a node past the day's points whose danger is 
    tile; for a class marked in `ai_claimed_classes`, only if no colleague claims it at less cost.
    Its cost is the node's second cost (+0x1A). Its value: an unexplored tile, while the player owns
    a town, 100, or 100 000 while the turn's flag F is set (before the turn's first reveal, §1.4);
-   anything else `ai_fight_estimate` (T1a2). A value above 0 is kept; 0 only while the hero stands
+   anything else `ai_object_value` (T1a2). A value above 0 is kept; 0 only while the hero stands
    in danger (places to flee to).
 4. The Grail: the player's puzzle target (+0x39), when reached, inside the patrol and not claimed
    more cheaply, is worth 5 000 000 under the "build the Grail" victory condition and otherwise
@@ -345,3 +344,430 @@ between steps; the node's flags carry the walk's marks (`pathfinder_node` +0x4).
   path. The destination's cost (+8) is lowered by each step's cost.
 
 No draw, hidden read or float of its own in the walk (the replans draw, §1.9).
+
+## 2. The values (T1a2)
+
+What a hero's plan weighs (§1.9): the value of every candidate, the fight estimates of the danger
+map and of a candidate's guard, and the hero's and player's values behind them. Read in four parts
+(AI-Q25): §2.1 the object value and its per-class helpers (T1a2a), §2.2 the simulated combat
+(T1a2b), §2.3 the army values (T1a2c), §2.4 the towns, heroes, artifacts and the frame's leftovers
+(T1a2d); §2.5 gathers what T1b needs from all four. The details of each routine are in its map
+entry.
+
+**One currency.** Every value is an i32 in the creature AI value's units (creature record +0x40
+times the count, `army_value`'s scale): resources through the player's weights (§1.5),
+experience through the hero's +0x109, spell power, knowledge and mana through the hero's own
+values (§2.4), artifacts through `ai_hero_artifact_value` or the player's mean, fights as army
+value won or lost (§2.2). 5 000 000 marks a must (a victory condition's target, the Grail); at or
+below −500 000 000 a never.
+
+### 2.1 The object value (`ai_object_value` 0x528040; T1a2a)
+
+What a hero's planning calls a candidate's value (§1.9) and a guard's fight estimate is one
+function, read whole with its per-class helpers: the value to a hero of the object whose entrance
+is a tile (formerly `ai_object_value`; `ai_fight_answer` 0x52BD10 returns it too, the computer's
+answer to a monster's flee offer and a guarded pile). Its arguments are the hero, the tile and the
+candidate's cost, an in-out i32 that several cases change (below). A tile that is not an entrance
+(map item +0xD bit 0x10) is worth 0; otherwise a switch on the class (+0x1E): 67 handlers for 73
+classes, the other 37 classes of 4 to 113 worth 0 (among them the Boat, the Border Guard, the
+Cartographer, the Eye of the Magi, events, monoliths and gates, the Whirlpool, signs and bottles,
+the Sanctuary, the Tavern, the Den of Thieves, the Trading Post and the random classes).
+
+**Units.** Everything is an i32 in one currency, the computer's "value", with these exchange rates:
+
+- **resources**: an amount times the player's resource weight (§1.5: its +0x128, f64), truncated;
+  gold piles store hundreds; the player's +0x160 (the mean of the first six weights) stands for
+  an unknown non-gold resource, the gold weight (+0x158) for gold;
+- **experience**: points times the hero's experience weight (+0x109, f32, from
+  `ai_hero_effectiveness`, T1a2d); **a primary or secondary skill point** as one level's
+  experience (`experience_to_next_level` of the hero's level) times that weight; the Arena twice
+  that; a Learning Stone 1 000 experience;
+- **spell power, knowledge and mana**: the hero's own values +0x47E (power), +0x486 (knowledge),
+  +0x48A (double mana) and +0x48E (extra mana) (T1a2d);
+- **an artifact**: `ai_artifact_value_to_player` 0x433AA0 for a known one; an unknown one the
+  player's mean artifact value (+0x164, f32), or a share of it for a chance (a Corpse a fifth, a Sea
+  Chest a tenth, a Treasure Chest a twentieth, a Wagon two fifths);
+- **creatures**: their AI value (creature record +0x40) times the count, only for those the army
+  can take (`army_can_take`);
+- **the army's strength**: `army_value` × (40 + `hero_primary_sum`) / 40, integer
+  division: each primary point is 2.5 % of the army (power and knowledge count at least 1);
+- **morale and luck**: E23's `ai_morale_change_value` 0x435850 (a fraction: 0.0173 a point above
+  0, 0.0833 or 0.0122 below) of the change from the hero's current morale or luck, times the
+  army's strength (`ai_morale_gain_value` 0x527CF0, 0 for an undead army; `ai_luck_gain_value`
+  0x527D80);
+- **a fight**: `ai_army_fight_sim` 0x427330 (T1a2b), negative when it is lost; a value at or below
+  −500 000 000 is returned alone by the banks, mines and crypts (the candidate's "never").
+
+**The table** (by class; "visited" is the hero's or the player's bit for that object, the hero's
++0x57 to +0x7B or the word's bits 5 + colour, `object_word_player_bit` 0x529690; such an object
+is worth 0 once visited):
+
+| Class | Value |
+|---|---|
+| 4 Arena | 2 levels' experience |
+| 5 Artifact | its value, at least 10, by its pickup condition: free; guards (their fight + the value); 2 000 gold, 2 500 gold + 3 or 3 000 + 5 of a resource (`ai_paid_reward_value` 0x529810: 0 if unaffordable, else the value less the price); Wisdom or Leadership (0 without it). 0 with 64 artifacts in the backpack |
+| 6 Pandora's Box | the guards' fight + experience + resources + primary and secondary skill points (a new skill only below eight) + artifacts × the mean + spells (with a Spell Book, `ai_learnable_spell_value` 0x5298D0: level ≤ Wisdom + 2, not known) + creatures; mana, morale and luck ignored |
+| 7 Black Market | the sum over its seven artifacts of the value less its price in the cheapest weighted resource the player can pay (`ai_artifact_market_price` 0x524550), at least 0 |
+| 10 Keymaster's Tent | 5 000 unvisited by the current player |
+| 11 Buoy, 28 Faerie Ring, 14 Swan Pond | +1, +1, +2 morale or luck × the strength; reachable today only; the Swan Pond only when at most 200 points would be left, and it raises the cost to the day's points |
+| 12 Campfire | its amount of its resource + 100 × that in gold |
+| 16, 24, 25 Creature Bank, Derelict Ship, Dragon Utopia; 84, 85 Crypt, Shipwreck | the fight + resources + creatures + artifacts × the mean; 0 once emptied |
+| 17, 20 dwellings | T1a2c (`0x529A30`) |
+| 22 Corpse | a fifth of the mean artifact value (200 gold when the backpack is full) |
+| 23 Marletto Tower, 51 Mercenary Camp, 81 Scholar | one level's experience |
+| 29 Flotsam | 175 gold + 5 wood |
+| 30 Fountain of Fortune, 38 Idol of Fortune | the bare morale or luck fraction, truncated: **always 0** (below) |
+| 31 Fountain of Youth, 56 Oasis, 110 Watering Hole, 64 Rally Flag | the cost lowered by 200, 400, 200 or 200 points and +1 morale × the strength (the Rally Flag adds the bare luck fraction); 10 000 with the cost set to 0 when the bonus covers the path |
+| 32 Garden of Revelation, 61 Star Axis | the knowledge or the spell power value |
+| 33 Garrison | the team's own with removable units: an army exchange (0x42C4A0, T1a2c; 0 in a campaign whose id is below 7); an enemy's: its fight |
+| 34 Hero | an enemy: the fight, plus when reached today `ai_difficulty_blend` × (its +0x11D + 10 000), plus, standing in a town, the town's value (0x529CB0, T1a2d; a hopeless fight becomes −1 250 000 when the player has no town); one's own: an army exchange, half when the visitor is the stronger (0 on Easy) |
+| 35 Hill Fort | the AI value gained by the upgrades the player can afford slot by slot (the gold at `hill_fort_gold_factors` by level; no elemental upgrade in an RoE game); 0 when more than 500 points away and worth less than a third of the army |
+| 37 Hut of the Magi | the player record's Eye value (§1.5) |
+| 39 Lean-To | 3 × the mean resource weight |
+| 41 Library of Enlightenment | 2 × (power + knowledge values) + the army's value / 10; needs level + 2 × Diplomacy ≥ 10 |
+| 42 Lighthouse, 87 Shipyard | 1 000 when not the team's |
+| 47 School of Magic, 107 School of War | the better of power and knowledge, or one level's experience, less 1 000 gold (0 without it) |
+| 48 Magic Spring, 49 Magic Well | the double or extra mana value; farther than 300 points only while the hero is already headed to one |
+| 52 Mermaid, 96 Temple | +1 luck, +2 morale × the strength |
+| 53 Mine | its guards' fight + (`ai_difficulty_blend` of its owner + 1) × two days' income; under "flag all mines" + 5 000 000 / the mines' list count (which also holds the Lighthouses); 0 when the team's |
+| 54 Monster | its fight (the exact count); + 5 000 000 if it is the "defeat a monster" target |
+| 55 Mystical Garden | half of 500 gold + 5 gems while it holds its gift |
+| 57 Obelisk | the Grail's value / the obelisks' count; 0 once the puzzle target is the Grail's true tile |
+| 58, 60 Redwood Observatory, Pillar of Fire | `ai_vision_area_value` radius 20 (T1a2d) |
+| 62 Prison | 2 500 gold + the prisoner's army value; 0 with eight heroes |
+| 63 Pyramid | the fight against 40 Gold and 20 Diamond Golems + with Expert Wisdom the mean gain of the level-5 spells (not its own spell) |
+| 78 Refugee Camp | buying its creatures (T1a2c's 0x42D780) |
+| 79 Resource | the amount at its weight + its guards' fight |
+| 82 Sea Chest | 1 200 gold + a tenth of the mean artifact |
+| 83 Seer's Hut | unvisited: its reward's value, at least 20; visited: the reward less the quest's price if the hero can complete it before its deadline |
+| 86 Shipwreck Survivor, 108 Warrior's Tomb | the mean artifact value (the Survivor's case reads the backpack only) |
+| 88 to 90 Shrines | the spell to the hero (`ai_learnable_spell_value`) |
+| 92 Sirens | the experience of the 30 % lost at (2 500 + the army left) / (40 × a level's experience) a point, less the strength lost |
+| 93 Spell Scroll | 10 + guards + its spell's gain (as an artifact, 0x4336C0) unless the hero can cast it |
+| 94 Stables | half the week's remaining movement bonus off the cost (base 50, or 10 000) + the Cavaliers' upgrade |
+| 98 Town | T1a2d (`0x52AB80`) |
+| 100 Learning Stone | 1 000 experience |
+| 101 Treasure Chest | per tier the better of experience and gold at 32, 32, 31 % + a twentieth of the mean |
+| 102 Tree of Knowledge | a level less its known price, or less the expected price capped at ⅔ |
+| 104 University | T1a2d (`0x525BF0`) |
+| 105 Wagon | 1¾ × the mean resource weight + ⅖ of the mean artifact |
+| 106 War Machine Factory | the three machines' values less their prices (0 on Easy) |
+| 109 Water Wheel | 500 gold a week stored once visited, else 1 000 |
+| 112 Windmill | 4½ × the mean resource weight |
+| 113 Witch Hut | its skill once known (`ai_secondary_skill_value`), else one level's experience |
+
+**The cost.** The planning's rate divides a candidate's score by its cost (§1.9). Objects whose gift
+is movement lower that cost by about half their bonus (the Fountain of Youth, the Oasis and
+Watering Hole, the Rally Flag, the Stables), and set it to 0 with a value of 10 000 when the
+bonus covers the path; the Swan Pond raises it to the day's points (it ends the day).
+
+**Hidden reads:**
+
+- the exact counts of every army it fights: monsters (word bits 0-11, 0x52A140), banks' and
+  crypts' guards, Pandora's guards and creatures, mines', piles' and scrolls' guards, garrisons,
+  enemy heroes' armies (0x528C5D), and an enemy hero's +0x11D (§1.6's scratch, T1a2d);
+- a Pandora's Box's and an event's whole contents, a bank's rewards, a prisoner's army
+  (0x52A3A0) and an unvisited Seer's Hut's reward (0x5735C6);
+- the Grail's true tile, against the puzzle target, at an Obelisk (0x52A30B);
+- not hidden: a Fountain of Fortune's luck, a Tree of Knowledge's price and a Witch Hut's skill
+  are read only once the player's bit says it has seen them; the Pyramid's spell is never read.
+
+**Draws:** none. **Floats:** x87 throughout, f32 and f64 mixed by case (the experience weight and
+the mean artifact value f32, the resource weights f64; the Sirens' and the Hero's in f32), each
+result truncated by `crt_ftol`; `ai_resources_value` 0x526C70 truncates after each resource.
+**Asymmetries:** none: every case only reads.
+
+**Quirk candidates** (for T1b's second look; each only shapes the computer's choices):
+
+1. The Fountain of Fortune and the Idol of Fortune are worth 0: their morale and luck fraction
+   (below 1) is truncated without the army's strength that every other source multiplies by.
+2. The luck clamp moves the wrong argument (the Swan Pond, the Faerie Ring, `ai_luck_gain_value`
+   for the Mermaid): above 3 the current luck is replaced by 3 − luck instead of capping the
+   change, so a hero at luck 3 values +1 or +2 as a rise from 0 (`ai_morale_change_value` caps the
+   change itself).
+3. The War Machine Factory ignores a machine's price within 500 points.
+4. Under "flag all mines" the bonus divides by the mines' list, Lighthouses included.
+
+**Not read here:** the dwellings, the army exchanges and the Refugee Camp's purchase (T1a2c), the
+fight (T1a2b), the town, the enemy hero's town, the University, the artifact, spell and vision
+values (T1a2d), `seer_reward_value` 0x573A70 and the quests' own checks (T1a3, E12), how
+`ai_fight_answer`'s 17 callers use the value (T1a3).
+
+### 2.2 The simulated combat (T1a2b)
+
+Read whole: 0x423EE0 to 0x427330 but the spell values and the container code, and the users
+0x428410, 0x428710, 0x527710, 0x529890, 0x476200 (names in `map.toml`). Values are army-value units (fight value scaled), not hit points.
+
+**A side** (`sim_combat`, 0x34 bytes; `sim_combat_stack`, 0x48, in `structs.toml`) holds its hero,
+army, the opposing hero, spell points, whether it may cast (a spellbook, no Orb of Inhibition on
+either hero, no anti-magic garrison), the special ground of the battle tile, Tactics (own less the
+opponent's) and the walls it faces (Fort 4, Citadel 5, Castle 6, less Ballistics, at least 2, at
+most 4; none if the hero has Earthquake). The side's **factor** is the caller's factor times
+sqrt(1 + 0.05 a) × sqrt(1 + 0.05 d), a and d the hero's Attack over the enemy's Defense and its
+Defense over the enemy's Attack (each at least 0). Per stack: **unit value** = fight value ×
+sqrt(health with the hero's bonus / health) × factor, truncated; **stack value** = that × count;
+the side's **strength** is their sum. Rounds to contact: 0 for a shooter, else
+(speed + 2 × (7 − Tactics)) / speed, at most 4, raised to the wall level for a walker. Shares of
+the value dealt per round: melee 0.2 (a shooter with the melee penalty 0.1), shot 0.2 × Archery
+(× 2 striking twice, ÷ 2 against walls except creature 35). Stacks are sorted weakest first.
+Morale, luck, war machines, retaliation and other abilities are not modelled.
+
+**The fight** (`sim_combat_run` 0x426BC0): at most three rounds. Each round each side decides
+whether to engage now (`sim_engage_now` 0x4267C0: a lookahead on copies over every engagement
+round up to 4, scored by its strength left). The faster side casts first: one spell per side and
+round, the best of spells 10 to 69 it can afford, by the spell's AI category (damage, mass damage
+in which its own stacks count, other effects valued like the adventure AI's spell value with a
+÷ 500, Resurrection and Animate Dead); Cursed Ground allows level 1 only, Recanter's Cloak level 2
+at most; Familiars return a fifth of the cost. Then both deal damage at once: shots only while
+neither engages, the engaging side's arrived stacks and shooters against the other's whole army
+in melee. Losses spread over the stacks in proportion to their values; a count is the ceiling of
+the value left over the unit value. After three rounds a stand-off: the larger hold value wins,
+the other is wiped, the winner loses (loser/winner + 0.05) × loser. Equal values: the first side
+(the attacker) loses.
+
+**`ai_army_fight_sim`** 0x427330 (the estimate; no state changes): own factor the hero's +0x47A
+(an f32, H3API's aiAggressiveness), halved for the victory condition's hero; the enemy's 1.25, or
+with any human owner involved `ai_human_enemy_factor` 0x6604D0 (0.5, 0.5, 1.0, 1.25, 1.25 by
+difficulty: the computer underestimates humans below Expert). A loss returns −1 000 000 000. A win:
+the experience (enemy army's health total × Learning) converted by `ai_experience_value`
+((2 500 + surviving army value) / (40 × experience to the next level)), plus Necromancy, less the
+army value lost; a net loss under a quarter of the army's value counts 0. With an enemy hero or
+town, plus the enemy army's value × `ai_difficulty_blend` (weight_a for a computer owner, weight_b
+for a human, 0 for neutrals); plus 5 000 000 each for the victory condition's or the loss
+condition's hero. **Negative**: the fight costs more army value than it brings; the danger map adds
+it to the enemy's reach. 0x529890 adds it for an object's guards; `ai_town_capture_sim` asks
+whether an enemy hero would take a town (1.25 against the garrison's 0.75, no garrison hero).
+
+**`ai_quick_battle` is a rule.** When neither side is human, `adventure_battle` never runs a battle:
+two draws `random_between(75, 125)` / 100 give the factors, the simulation decides the winner (the
+attacker while its strength stays above 0), and `sim_battle_result` writes real outcomes: both
+armies' survivors, a beaten side's hero leaving the game (`battle_aftermath`), spell points,
+experience to the winner (the loser's whole army's health + 500 for a hero, × Learning), a third
+draw `random_between(0, 99)` < 60 making a beaten hero a retreat (it keeps its artifacts, no 500),
+else its artifacts to the winner, the loser's Grail removed, the town captured, Necromancy, and
+Eagle Eye learning the loser's lowest-id spell (no chance draw).
+
+**A second rule:** with Quick Combat (`battle_is_hidden`) a battle past round 30 is ended by
+0x476200: `sim_battle_finish` 0x427210 re-fights the armies as they stood at the battle's start
+(two more draws) and overwrites every army stack's count; the rounds fought do not enter.
+
+1. **Hidden reads**: the enemy army's exact counts (0x427395; a hero's anywhere, neutrals, an
+   object's guards 0x529890, a town's garrison 0x428410); the enemy hero's primary skills,
+   Tactics, spell points, available spells, artifacts (0x423EE0, 0x424120, 0x425BD0); the town's
+   fort level (0x424790).
+2. **Draws**: 0x4270EC and 0x427110 (each `ai_quick_battle`), 0x426F3A (its result, both sides with
+   heroes and the winner alive), 0x42723C and 0x427260 (each hidden battle past round 30). The
+   estimate draws nothing.
+3. **Floats**: f64 x87 throughout the stacks (factors, shares, sqrt, spread shares), each sum
+   truncated by `crt_ftol` per stack; f32 in the stand-offs (0x4264D0, 0x4267C0), the factors'
+   ÷ 100, Necromancy (+0.02 f32), experience × Learning, `ai_experience_value`, the blend.
+4. **Asymmetries**: `ai_quick_battle` (computer against computer or neutrals) and the hidden
+   battle's round-30 end decide casualties, winners, experience, artifacts and spells by the
+   simulation and its draws, not by battle rules.
+5. **Quirk candidates**: only the defender engaging fights both sides fully in melee (0x426D17);
+   the mass-damage running total is carried from stack to stack (0x425FF6); Necromancy in the quick
+   battle counts the loser's army after it was cleared, so it raises 1 (0x427003); a mutual wipe
+   and an equal stand-off go to the defender; Eagle Eye takes a spell from the loser's available
+   spells, not its cast ones.
+6. **Not read**: the spell value leaves 0x4249D0 to 0x425B10, 0x423C80 and 0x423DE0, and the spell
+   record's helpers (T1a4); 0x4E23D0, 0x4E5AA0, 0x4E5B80 (T1a4); the container code 0x4276C0, 0x427780,
+   0x427A90, 0x427C30.
+
+### 2.3 The army values (T1a2c)
+
+**The army plan** (`ai_army_plan`, 0x3C bytes on the stack; structs.toml): an army and a spare, the
+Angelic Alliance flag, the hero's own morale, the army's alignment counts, the AI value gained
+(+0x18), a primary-skill advantage, the owner, a resources pointer and a list of 12-byte offers
+(creature, count, free). Every value works on copies; none changes the game. Units throughout: the
+creature's **AI value** (creature +0x40) x count, the scale of `army_value`.
+
+**A stack's worth to the army** (`ai_stack_marginal_value` 0x42C830): v = AI value x count, then:
+- *morale:* a creature of a new alignment, joining an army whose morale (the army's base morale
+  plus the hero's) is below 1 (below 2 for a Necropolis creature), is **morale-bad** when the
+  morale-feeling stacks (not flag 0x20000, not the Minotaurs) are worth at least 10 v;
+- *speed:* slower than the army's slowest (capped at 20), v + (V x b / a - V) with V = the army's
+  value + 500 and a, b the day's land movement at the old and new slowest speeds (f64, truncated);
+- *the slot (the seven slots):* its type's stack if present; else the first empty slot, but with a
+  spare army and six stacks the seventh stays free; morale-bad (or a forced swap) or no room: it
+  **replaces** the least valuable stack (first on ties), less that stack's value; under morale-bad
+  only a stack alone in its alignment; a new shooter with more than three shooting stacks only a
+  shooter; a non-shooter never the army's only shooter (`ai_stack_to_replace` 0x42C690).
+The Angelic Alliance counts Castle, Rampart, Tower, Stronghold and Fortress as one alignment
+(Conflux and neutrals apart; `ai_army_plan_alignments` 0x42C060). With a spare army the plan first
+**sheds** each stack whose own worth is not above 0 (`ai_army_plan_shed` 0x42C5B0).
+
+**A dwelling's value** (`ai_dwelling_value` 0x529A30, the object value's classes 17 and 20): an ally's
+dwelling is worth 0. Not its own and guarded: the simulated fight against the guards (T1a2b's
+`ai_army_fight_sim`), returned at once when at most -500 000 000. Plus **the purchase**
+(`ai_army_purchase_value` 0x42D780): same-type stacks merged, then greedy steps while one gains:
+each step takes, over the dwelling's four creatures, the **affordable count** (the dwelling's count,
+at most the current player's resources / cost per resource; level-1 creatures free and whole,
+the visit flags the dwelling first), its marginal worth, less the cost weighed by the player's
+**resource weights** (`ai_weighted_cost` 0x526CC0: cost x weight, truncated per resource) but
+never by more than three quarters of the worth; the best step is bought into its slot and the
+resources copy pays. So a payable purchase keeps at least a quarter of its worth. On its own
+dwelling, with the candidate's cost at least 400 points, the purchase counts only when it adds at
+least a third of the army's value. Under the victory "flag all dwellings" a dwelling not on its
+team (its first creature of a faction) adds 5 000 000 / the map's number of dwellings.
+
+**An army exchange's value** (`ai_army_exchange_value` 0x42C4A0, the object value's garrison and
+hero cases): the other army is the spare; greedy transfers while one gains, each the best of the other
+army's stacks (the whole stack; the other army's last stack only by a swap, or all but one
+creature), its marginal worth x the **primary advantage** / 40: the hero's four primary skills
+summed (each 0 to 99, Spell Power and Knowledge at least 1) less the other hero's (a garrison: 0),
+at least 0. Equal or weaker heroes value an exchange at 0.
+
+**Units.** The fight result (T1a2b's) and the purchase add as they are; the cost term is in the
+weights' units (base value x demand factor, §1.5); the victory bonus a flat share of 5 000 000.
+
+**The resource weights' demand, the part left** (0x4288A3 to 0x428C06): a list of the 145
+creatures, each the count of its towns' available recruits (from the week's fifth day plus the
+next week's growth) x its AI value, sorted highest first; the full costs of the first three join
+the demand.
+
+**Paying with trades** (`ai_pay_with_trades` 0x42A470; only with a flag the value path never
+sets): a surplus above the larger of the recruit reserve and 20 (at most the means less the
+demand) is traded at the market rate for the short resources, Marketplaces bought first.
+
+1. **Hidden reads**: 0x529A9A the dwelling's whole record, the guards' exact army and the counts,
+   of any dwelling reached, seen or not; 0x529C58 the map's number of dwellings; 0x42C4A0 the other
+   army's exact counts and the other hero's primaries (as the object value passes them: a colleague's
+   or a garrison's).
+2. **Draws**: none in this part (the fight simulation's are T1a2b's).
+3. **Floats**: 0x42CA78 to 0x42CA96 the speed loss, f64 from integers, `crt_ftol` (toward zero);
+   0x526CEA to 0x526CFD the weighted cost, f64 weights, truncated after each resource; 0x42A66D
+   and 0x42ACC0 the market rate f32 widened to f64; 0x42A900 to 0x42A915 the surplus' worth, f64,
+   truncated per resource; 0x42AD13 to 0x42AD84 the trades: the factor (0x5ECD20, f64), the units
+   given trunc(0.99999 + shortage x factor) (0.99999 f64 at 0x63B688), trunc(trunc(surplus /
+   factor) x factor), the units got trunc(given / factor).
+4. **Asymmetries**: 0x42AC20 (0x42AD82, 0x42AD96) the computer trades by writing its treasury
+   directly at its market rate, then recomputes the weights; 0x42AB40 buys Marketplaces
+   (`town_buy`) to trade. Both only on the hire path with trades (0x42D690's flag), not in a value.
+5. **Quirk candidates**: (a) 0x42C8B6, 0x42C781: with the Angelic Alliance worn by any of the
+   player's heroes, a creature of no faction (a neutral; RoE's elementals) indexes the nine-town
+   set at -1 and the library's range check throws `std::out_of_range`; reached by a neutral
+   dwelling's value or an exchange with neutrals; whether anything catches it: not read.
+   (b) `ai_army_plan_put` 0x42C130: a displaced stack that finds the spare full overwrites the
+   spare's least valuable stack, lost (harmless in a value; matters if 0x42C3B0 or 0x42D690
+   commits a plan). (c) `ai_dwelling_value` mixes the current player's treasury and team with
+   the hero's owner's artifact and weights (the same on its own turn). (d) `ai_buy_marketplaces`
+   tests the current player's resources, not the town owner's.
+6. **Not read**: `ai_army_exchange_apply` 0x42C3B0 and 0x42D8E0 (T1a4), `ai_army_offers_add`
+   0x42CE30, `ai_army_plan_init_creature` 0x42CF50, `ai_army_plan_run` 0x42D690's town callers (T1a3),
+   `ai_army_plan_init_town` 0x42D1B0 and `ai_army_plan_setup` 0x42D870 (T1a3),
+   `market_trade_factor` 0x5ECD20, `stack_base_morale`'s middle.
+
+### 2.4 The towns, heroes, artifacts and the frame's leftovers (T1a2d)
+
+Units: everything is in the fight estimates' units (creature AI value × count); resources enter
+through the resource weights (player +0x128, f64, §1.5); 5 000 000 marks a must.
+
+**A town** (class 98, `ai_town_value` 0x52AB80). Another team's or a neutral town: the capture
+value (below); a visiting hero's army is simulated first and the result dropped. An ally's: the
+visit value. Its own: `ai_own_town_army_value` 0x52B090 (A/2 + B of T1a2c's army plan with the
+garrison and the owner's resources; 0 when the cost is 400 or more and the plan's +0x18 is below a
+third of the hero's army) plus the visit value, plus 5 000 000 each for: the Grail carried to a
+town that may build its structure (type 4 victory there; else the Grail's artifact value), the
+transport victory's artifact carried there, a threatened town that is the capture victory's
+target (else 5 000 000 / all towns on the map); plus the garrison hero's value of each Statue of
+Legion part (118-122) the hero carries; and (above Easy, more than one hero, the hero 25 % above
+a garrison hero's primary sum) 5 000 000 for the capture target when the hero is not the
+player's strongest. Capped at 5 000 000.
+
+**The capture value** (`ai_town_capture_value` 0x529CB0; also the hero case of an enemy hero
+in a town): r = the simulated fight against the garrison (and its hero); r ≤ −500 000 000 is
+returned when the player owns a town, else r becomes −2 500 000. V = 3 × the daily gold ×
+the gold weight, + 3 × the Silo's weighted resources, + over the 14 recruit slots the count
+(plus a week's growth when day of week + days to arrive ≥ 7) × (AI value − weighted cost, if
+positive); V × (1 + the owner's difficulty weight: 0 neutral, weight b human, a computer, f32);
++ 5 000 000 when the player has no town, else 5 000 000 / the map's towns; + 5 000 000 for the
+loss condition's town. Returns r + V.
+
+**The visit value** (`ai_town_building_value` 0x52B1E0): the Conflux University's four schools
+(`ai_university_value` 0x525BF0: 0 with 8 skills or under 2 000 gold, else the sum of the four
+skills' values the class allows); a Mage Guild: no book 1 000 (with 500 gold), else the gain of
+each unknown guild spell up to level 2 + Wisdom; the faction's +1 building once per hero and
+town: Tower +0x486, Inferno +0x47E, Dungeon 1 000 × +0x109, Stronghold and Fortress the
+experience to the next level × +0x109.
+
+**The hero's values** (`ai_hero_effectiveness` 0x527760, H3API's fields): +0x109 = (2 500 +
+army value) / (40 × experience to next level), per experience point (f32); +0x47E one Spell
+Power, +0x486 a tenth of 30 mana (both at least 10), +0x482 one duration, +0x48E mana refilled,
++0x48A mana doubled, all as gains of the best spell value. A spell's gain
+(`ai_hero_spell_gain` 0x527640) is its value less the best of the same AI kind (at least 1); a
+school's (`ai_school_value` 0x524D20) the best-value gain with the level raised (Expert at once).
+
+**Artifacts** (`ai_hero_artifact_value` 0x4336C0): the scroll its spell's gain; the Ballista
+q·s/(q+s) with s = 500 √(Attack+1) × (1 + Artillery/2), q = army value × (primary sum + 40)/40;
+the Ammo Cart a fortieth of the shooters' value; the Tent the largest stack value it can heal
+(25 × First Aid hit points); any other 5 000 000 if the victory's artifact, plus its effect
+objects' values (24 kinds, not read) and, for a combination, its parts'.
+
+**The frame's leftovers.** `ai_vision_area_value` 0x432220: in a circle (dx² + dy² ≤ r² + r) of
+one level, 1 per tile the colour has not explored plus `ai_class_scout_values` 0x6925AC (1 to
+1 000, by class) for each object entrance on such a tile. The table is filled at start-up by
+`ai_class_tables_init` 0x428070 from 75 pairs; only this function reads it. The defence functor
+(0x428580, now `ai_town_defence_recruit`) is no value: for each of the computer's towns an enemy
+hero reaches it merges the garrison's stacks and **buys** the town's recruits with the player's
+resources (`ai_army_plan_run` 0x42D690, §2.3); the fold step also sets the enemy hero's +0x11D to
+5 000 000 / own towns. `player_puzzle_target` 0x4BAE50: the puzzle grid is placed from the
+Grail's true place; a target only when the uncovered share reaches 1.1 / 0.5 / 0.25 / 0 / 0
+(Easy never, Expert and Impossible from the first piece); the pick (0x52CF10) not read. The node
+key +0x10: 0 at the start, copied along each step; lowered by a teleport's lowest exit guard
+answer, 500 for a Whirlpool, and a Castle Gate's unbuilt cost value.
+
+1. **Hidden reads**: another's town's exact garrison and hero (0x529CF7), its recruits,
+   Silo and buildings (0x529E0B), a visiting enemy hero's army (0x52ACDA); objects under the fog
+   (0x4323CB); the Grail's true place for the puzzle grid (0x52CAF9; Expert/Impossible from one
+   piece); every enemy hero's reach of the computer's towns (0x4282B0).
+2. **Draws**: none in these functions (the black boxes 0x427330, 0x42C4A0, 0x42D780 aside).
+3. **Floats**: 0x529CB0 f64 products truncated each step, the weight f32 with V rounded to f32;
+   0x52B1E0 f32 (+0x109 × 1 000.0, the sum to f32, truncated); 0x4336C0 √ f64 × 500.0, Tent
+   × 25.0 f32; 0x432220 √ f64 vs r + 0.5 (exact); 0x527760 f32 division stored; 0x52C9B0 share
+   / 48.0 vs an f64 table; 0x428710 f32 constants.
+4. **Asymmetries**: 0x428580 recruits into threatened towns at the turn's start and middle
+   (its rules for T1a3); 0x524D20 writes and restores a skill level.
+5. **Quirk candidates**: the visiting hero's fight dropped (0x52ACDA); a new school valued at
+   Expert (0x524D20); the Ballista's q × s overflows 32 bits for large armies (0x4337C3); the
+   week-roll test counts day 7 itself (0x529DEF); the University test needs 2 000 gold once but
+   sums four skills (0x525BF0); the guild loop reads one level beyond the built one (harmless).
+6. **Not read**: the 24 artifact effect methods (vtables 0x63B6B8..0x63B778, built by
+   0x434100; T1a4); 0x52CF10, the puzzle's pick (T1a4).
+
+### 2.5 What the values read, draw and change (for T1b)
+
+- **Hidden reads: nearly everything.** The values and the fights read the true state wherever
+  they look: the exact counts of every army they price (monsters, guards, garrisons, an enemy
+  hero's army anywhere on the map, with its skills, spells and artifacts), the contents of
+  Pandora's Boxes, banks, Prisons, dwellings and an unvisited Seer's Hut, an enemy town's
+  garrison, recruits and buildings, the objects under the fog (`ai_vision_area_value`), the
+  Grail's true tile (the Obelisk's test, the puzzle grid's placement), and the map's counts of
+  dwellings, towns and mines. Each is listed in its section with its address. The fair variant
+  (increment 6) must replace every one of them by what the projection shows; the few reads that
+  wait for the player's own knowledge (a Fountain of Fortune's luck, a Tree of Knowledge's price, a
+  Witch Hut's skill, the Pyramid's spell never) show the original's own line.
+- **Draws:** the values draw nothing. The only draws met in T1a2 are rules: `ai_quick_battle`'s
+  two factors and the beaten hero's retreat (§2.2), and the hidden battle's round-30 end (two
+  more). With §1.9's draw per candidate scored, a computer turn's draws are the planning's and
+  its battles'.
+- **Floats:** x87 everywhere, f32 and f64 mixed by function, results truncated toward zero by
+  `crt_ftol` (often after every step of a sum); square roots in the simulated combat, the
+  Ballista's value and the vision circle. The port needs them under `kernel::num` (T1b's ADR
+  draft): each site's width and rounding is in its section.
+- **Asymmetries** (for T1a3's table; the owning lanes decide): (1) **`ai_quick_battle`**: a battle
+  in which neither side is human is not fought; the simulated combat and its three draws decide
+  the winner, the survivors, the experience, the artifacts, the Grail, the town, Necromancy and
+  Eagle Eye (battle and adventure lanes; the epic's "battles through the system actor's seat"
+  needs revisiting at T1b); (2) the hidden battle's end after round 30 re-fought by the
+  simulation from the battle's start (the battle lane; it rests on this reading alone); (3)
+  `ai_town_defence_recruit`: a computer buys recruits into every town an enemy could take, at its
+  turn's start and middle (T1a3: where they go); (4) the trades written straight into the
+  treasury on the hiring path (§2.3; T1a3).
+- **Quirk candidates** (not flagged; T1b's second look): §2.1's four, §2.2's five, §2.3's four,
+  §2.4's six. One may matter beyond the computer's choices: §2.3 (a), the Angelic Alliance's
+  faction set indexed at −1 for a creature without a faction, which throws `std::out_of_range`
+  (a crash in the original if nothing catches it). The rest only shape what the computer picks.
+- **Units to keep apart in the port:** the experience weight +0x109 is the same expression as the
+  fight's `ai_experience_value` (§2.2) and the Sirens' (§2.1); the army's strength
+  (`army_value` × (40 + `hero_primary_sum`) / 40) recurs in the morale and luck values, the
+  Ballista and the exchange's advantage.

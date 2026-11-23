@@ -88,3 +88,38 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   that zeroes the points, how the pathfinder makes the walk's marks and reads the boat marks
   (`pathfinder_gate_exit` 0x56A730 among them): T1a3, T1a4.
 
+
+## T1a2 — the values (2026-11-23, increment 1)
+
+- **Cut** at its start (AI-Q25): as queued about 45 KB with its helpers (39 KB unread), so four
+  parts by the code's seams; the user: the main session reads one and three sub-agents the
+  others, each in its own worktree, the main session merging. T1a2a the object value (main
+  session, about 12.6 KB), T1a2b the simulated combat (about 14 KB), T1a2c the army values (about
+  7 KB), T1a2d the towns', heroes' and artifacts' values and the frame's leftovers (about 6 KB).
+- **Read** (the survey §2): `ai_object_value` 0x528040 whole (renamed from `ai_fight_estimate`:
+  the value of any map object, a switch on its class; `ai_fight_answer` returns it) with its 40
+  per-class helpers; the simulated combat 0x423EE0 to 0x427330 but its spell values,
+  `ai_army_fight_sim`, `ai_quick_battle`, `sim_battle_finish`, `ai_town_capture_sim`; the army plan
+  (the seven slots, morale, speed, shooters), the dwelling's purchase, the army exchange, the
+  resource weights' demand list; the town's three values (capture, visit, own), the hero's values
+  (`ai_hero_effectiveness`: H3API's AI fields agree), `ai_hero_artifact_value`, the vision area
+  and its per-class table, the defence functor, the puzzle target, the node's key +0x10.
+- **Mapped:** 150 new entries and 23 rewritten (overlaps between parts merged into one line each,
+  the fuller reading kept); `structs.toml`: `sim_combat`, `sim_combat_stack`, `sim_spell`,
+  `ai_army_plan`, `ai_army_offer`, `pathfinder_node` +0x10, the hero's AI fields +0x109, +0x11D
+  (now `ai_threat_value`), +0x47A to +0x48E. Renamed: 0x528040 `ai_object_value`, 0x428580
+  `ai_town_defence_recruit` (was `ai_town_defence_value`: an action, not a value).
+- **Found:** `ai_quick_battle` decides every battle without a human side by the simulation and
+  three draws, with real casualties, experience, artifacts and captures (a rule for the battle and
+  adventure lanes; the epic's battle seat to revisit at T1b); a Quick Combat battle past round 30
+  is re-fought by the simulation (the battle lane's; this reading alone); the defence functor buys
+  recruits into threatened towns (a rule, T1a3); the values read the true state nearly everywhere
+  (§2.5); no draw in any value; 19 quirk candidates for T1b, one a possible crash (the Angelic
+  Alliance's faction set at −1, §2.3).
+- **Process:** a scratch merge script over the four worktrees' `map.toml` lines by address; the
+  main session's compact listings hid `push esi`/`edi`/`ebx` once and so misread two call sites'
+  arguments (caught against T1a2d's signature, corrected before the merge): filter only the
+  prologue and epilogue. Scratch scripts not committed.
+- **Not read** (each section's last list): the spell values inside the simulation, the 24
+  artifact effect methods, the puzzle's pick, the quests' checks and the Seer's reward value, the
+  army plan's commit (0x42C3B0, 0x42D8E0), the town builders: T1a3, T1a4.
