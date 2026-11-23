@@ -4,7 +4,7 @@ The reading behind E31 (`docs/epics/E31-original-computer-player.md`): what the 
 computer does in its adventure turns, as read from `Heroes3.exe` (GOG Complete, SoD's code,
 SHA-256 `aac39e8c…`; `docs/exe/README.md`). Built up by increment 1's tasks: §1 the turn (T1a1a
 the loop and the records, T1a1b the planning, T1a1c the walk), §2 the values (T1a2a to T1a2d), §3 the towns
-and the answers (T1a3), §4 the rest of the code (T1a4); T1b adds the wiki's and VCMI's
+and the answers (T1a3a to T1a3d), §4 the rest of the code (T1a4); T1b adds the wiki's and VCMI's
 positions, the hidden reads in one list, the asymmetries and the engine's gaps. The detail of each
 routine is in its map entry (`scripts/exe.py lookup <address>`); this file says what the turn
 does with them.
@@ -21,7 +21,7 @@ The first look (the epic file) found two ranges, 0x42A000–0x434620 and 0x52437
 call trees show more: **0x423EE0–0x42A000** is the computer's too, about 24 KB: a simulated combat
 of about 13 KB (0x423EE0 to 0x427330; H3API's guesses call it `H3SimulatedCombat`), used by
 `ai_quick_battle` 0x4270C0 and by the computer's fight estimates through 0x427330, and about 8 KB of
-the turn's start and middle (`ai_enemy_reach_fold` 0x4280E0 to `ai_build_candidates` 0x429D50,
+the turn's start and middle (`ai_enemy_reach_fold` 0x4280E0 to `ai_build_excluded_creatures` 0x429D50,
 `ai_ally_resource_share` 0x429110 among them). The second range runs past 0x52BD50 too
 (`puzzle_map_compute` 0x52C9B0 is the puzzle's, not the computer's). The total is about 95 KB
 rather than 72 KB; T1a4 maps the third range.
@@ -140,8 +140,8 @@ garrison hero (and +0x43), so nothing a human would call sleeping lasts past the
 
 **The middle** (`ai_turn_middle` 0x428DD0): the income again, and the recruit reserve less the
 day's income (at least 0); both threat folds again (the heroes have moved); the candidate list
-(`ai_build_candidates` 0x429D50) and `ai_town_build_choice` 0x42AE00 again and again while it
-builds (T1a3); an artifact step (`ai_turn_artifacts` 0x431360; T1a3); the weights again; and, when
+(`ai_build_excluded_creatures` 0x429D50) and `ai_town_build_choice` 0x42AE00 again and again while it
+builds (§3.1); the hire (`ai_hero_hire_choice` 0x431360; §3.2); the weights again; and, when
 one of its towns has a Marketplace, `ai_ally_resource_share` 0x429110 with each living ally,
 computers first and humans after (a human ally gets a message box; the amounts T1a3). Last, a
 debugging check shows a warning box for every resource below 0.
@@ -224,9 +224,10 @@ the computer's last turn decide there. In the game's records, the hero's destina
 The walk's leftovers (§1.10): `ai_walk_path`'s branch for a Fly node not next to its from-tile,
 the flag of `hero_move_step` that zeroes the points, how the pathfinder makes the walk's marks
 (0x200, 0x400, 0x800, the Castle Gate's and Town Portal's nodes: `pathfinder_gate_exit` 0x56A730
-among them) and reads the boat marks: T1a3 and T1a4. The values the frame and the planning call:
-§2 (T1a2). The build loop, the artifact step and the allies' shares: T1a3. `ai_hero_candidates`'
-other caller, `ai_town_hero_prospects` 0x431BD0 (inferred): T1a3, T1a4.
+among them) and reads the boat marks: T1a4. The values the frame and the planning call:
+§2 (T1a2). The build loop and the hire (the step once called the artifact step): §3.1, §3.2
+(T1a3a, T1a3b); `ai_hero_candidates`' other caller, `ai_town_hero_prospects` 0x431BD0: §3.2. The
+allies' shares: T1a3d.
 
 ### 1.9 The planning: the danger map and the destination (T1a1b)
 
@@ -771,3 +772,139 @@ answer, 500 for a Whirlpool, and a Castle Gate's unbuilt cost value.
   fight's `ai_experience_value` (§2.2) and the Sirens' (§2.1); the army's strength
   (`army_value` × (40 + `hero_primary_sum`) / 40) recurs in the morale and luck values, the
   Ballista and the exchange's advantage.
+
+## 3. The towns and the answers (T1a3)
+
+What the computer does with its towns, and how it answers what the game's visits ask. Read in
+four parts (AI-Q26): §3.1 the build choice (T1a3a) and §3.2 the hires (T1a3b), both in the
+turn's middle (§1.5); §3.3 the town visit with the army plan's open pieces (T1a3c); §3.4 the
+answers the game's visits ask, the market visits and the table of asymmetries for the owning
+lanes (T1a3d). Units are §2's; the detail of each routine is in its map entry.
+
+### 3.1 The build choice (T1a3a)
+
+**When.** In the turn's middle, after the threat folds: `ai_build_excluded_creatures` 0x429D50
+once, then `ai_town_build_choice` 0x42AE00 again while it builds. Each call scores every building
+of every town not marked built today (+0x2) and buys the single best one, so a town gets at most
+one building a day and the towns compete for the treasury in score order. The mark is the town
+lane's rule (`E09-construction.md` §3: a computer-only team on Easy or Normal builds in a town
+every second day).
+
+**The excluded creatures** (a u8 per creature 0–144). A week's net per resource is seven days of
+income less what a week's growth of all its towns' dwellings would cost. A creature is excluded
+when it needs a resource other than gold whose net is 0 or less. **On Easy only**, and only for a
+player with no human on its team, also every level-7 creature and every creature whose weekly
+growth value (growth × AI value) would lift the player's own weekly growth value above the
+strongest living human's: a handicap that reads the humans' towns.
+
+**A building's value** (−1 drops it; 0 gives it no score of its own):
+
+- −1: not allowed in the town, already built (the every-built set), or the Grail's building 26;
+- **Citadel, Castle** (`ai_build_castle_value`): from the week's fifth day one creature's AI
+  value per dwelling index with a growth (the Citadel and the Castle alike); 5 000 000 when the
+  victory condition is to upgrade this town and its fort level is not built;
+- **the halls 10–13** (`ai_build_hall_value`): the gold weight × 3 500, 3 500, 7 000, 14 000 (a
+  week of each step's added income); 5 000 000 from the hall level the upgrade victory asks;
+- **the Resource Silo**: seven days of its income at the resource weights;
+- **a dwelling** (`ai_build_dwelling_value`): its growth × AI value, from the fifth day twice the
+  growth plus the castle's share; **an upgrade** (`ai_build_upgrade_value`): the AI value
+  difference × the base level's available creatures (plus a week's growth from the fifth day);
+  **a horde building** and its upgrade: the horde's growth × AI value. Each of these adds the
+  creatures' cost to the building's, so the score prices the army it would buy;
+- **under threat** (an enemy hero reaches the town, +0x3; §1.5) the halls, the Silo, the
+  dwellings and the hordes are −1; only the Citadel and the Castle stay, and three specials gain
+  a value: the Escape Tunnel 5 000 with a garrison hero, the Glyphs of Fear and the Blood Obelisk
+  the garrison's `army_value` / 20;
+- **the faction specials**: the Treasury on day 7 only, the gold × the gold weight / 10; the
+  Mystic Pond twice the mean weight; the Lookout Tower 100; the Necromancy Amplifier 1 000 per
+  Necromancer (class 9) the player has; the Cover of Darkness 10;
+- **everything else 0**: the Mage Guilds, the Tavern, the Shipyard, the Fort, the Marketplace, the
+  Blacksmith and the other specials are built only as another building's requirement (and the
+  Marketplace through the trades, §2.3; the Tavern through a hire, §3.2; the Grail's building
+  through the visit, §3.3).
+
+**The score.** Each building of value above 0 is taken with its unbuilt requirements, transitively
+(`building_requirements` by faction; one not allowed drops it). Its cost is the creatures' cost
+plus every one of those buildings'. `ai_build_score` 0x42A150 turns value and cost into value ×
+1 000 / W, W the cost's worth at the record's weights (+0x60, f64, truncated at each resource).
+When a resource it lacks has no income it also asks the market (`ai_trade_balance`,
+`ai_trade_affordable_count`, T1a2c, neither trades) and gives −1 when trades cannot pay. The score
+is added to every building of the chain, so a requirement scores the sum of what it opens.
+
+**The purchase.** The best score above 0 among the buildings buildable now (`town_buildable_now`),
+over all towns, the first town and the lowest id on ties. Then `ai_pay_with_trades` for its own
+cost (it may buy Marketplaces and trade, §2.3); a town marked meanwhile gives up; the halls, the
+Marketplace and the Silo need only the current player's resources to cover it, every other
+building leaves the recruit reserve (record +0x8, §1.5) intact; `town_buy` (its computer branch,
+`ai_town_buy_hook` 0x526D20, asks the market once more); the weights recomputed.
+
+**Reads, draws, floats.** Its own towns and treasury; the threat count (§1.5's folds over the
+enemy heroes' true positions); on Easy every human's towns' dwellings and growth (hidden); the
+victory condition (public). No draws. Floats: f64 in `ai_build_score`, the halls, the Treasury and
+the Silo (`ai_resources_value`), truncated toward zero.
+
+**Choice or rule.** All choices: the purchase is `town_buy`, which tests what a human's build
+does (`town_can_buy`, the cost), so the port issues the town lane's build command; its trades are
+§2.3's (market commands before the build). The day's mark is the town lane's rule (above).
+
+**Quirk candidates** (not flagged; T1b's second look): (a) value × 1 000 is computed in 32 bits,
+so the victory's 5 000 000 wraps to about 7 × 10⁸ (still the largest score); (b) the Citadel and
+the Castle are valued alike, one creature per dwelling index, not the growth they add; (c) the
+Necromancy Amplifier counts Necromancers only, not Death Knights. Not quirks, but to keep in the
+port: the halls, the Marketplace and the Silo ignore the recruit reserve; W is 0 only for a free
+chain (none in the shipped data), which would divide by zero.
+
+### 3.2 The hires (T1a3b)
+
+**When.** Once a turn, in the middle after the builds (`ai_hero_hire_choice` 0x431360, its result
+unused): at most one hero a day, always in one of its own towns' Taverns (`town_tavern_hire`, the
+human's town hire without the dialog; the computer never hires at a map Tavern, whose visit is a
+human's, `E09-tavern.md` §3).
+
+**The limits.** No hire with 8 heroes, less than 2 500 gold, as many heroes as
+`ai_hero_limits` 0x660518 allows (Easy 2, Normal 3, Hard 4, Expert 5, Impossible 6), or, once it
+has a hero, while all living computer players' heroes together reach `ai_computer_hero_limits`
+0x66052C (8, 11, 14, 17, 20): a cap shared by every computer.
+
+**The offer.** Each of the two offers (player +0x28, +0x2C) is valued by its artifacts, worn and
+carried: each artifact's best `ai_artifact_value_to_hero` among the player's heroes, at least 10.
+The first offer is taken unless the second is worth more; equal, the larger primary-skill sum
+(the first on ties). With no second offer the code compares against a stale stack slot holding
+the player record's address (0x431745), so it never hires the first (a quirk candidate, rare:
+only when no hero type is free).
+
+**The town and the bar** (`ai_hero_hire` 0x431800). The hero's worth V: its carried artifacts as
+above, its worn ones at `ai_artifact_value_to_player`, its army's cost at the weights. The bar T =
+heroes owned × the gold weight × 2 500: with T above V and less gold than heroes owned × 2 500 no
+hire. Each own town whose entrance is free (no visitor, as the human's tavern asks) scores V,
+less the Tavern's weighted cost when it has none (then it must be buildable and payable now),
+plus the hero's prospects there; the best town must score above T. A missing Tavern is bought
+first (`town_buy`), the gold checked again, then the hire.
+
+**The prospects** (`ai_town_hero_prospects` 0x431BD0): the hire played out on the real state and
+undone. The hero is given the town's owner and 2 500 gold is taken; an army plan (§2.3) exchanges
+its army with a copy of the town's garrison and buys from the town's recruits with the treasury;
+the hero is put on the town's entrance and its candidates listed from there (§1.9's
+`ai_hero_candidates`, a budget of 32 767). The sum of the candidates' values: those reached past
+no guard count whole; those behind a guard (the node's +0xC) count through that guard, whose key
+(its strength, below 0) gains their values and counts once it ends above 0. Then n = 1 plus the
+own heroes on the town's level that the search reached, M the best of their nodes' keys (with the
+guard on the way when negative); the prospects are (sum + M) / n, so a town that own heroes
+already reach is worth less. The army, owner, resources and recruits are restored; the hero's tile
+and its +0x109 are not (harmless for an offer that has no tile).
+
+**Reads, draws, floats.** Every computer player's hero count; the offers' artifacts, skills and
+armies; through the candidates, the true map (§2.5). No draws. Floats: f64 for V and T, truncated.
+
+**Choice or rule.** Choices: the hire is the human's town hire with the human's tests (gold, 8
+heroes, a free entrance), so the port issues the town lane's hire command (and a build command for
+a missing Tavern). The hero limits are the computer's own choices, not rules of the game.
+
+### 3.3 Not read yet (T1a3c, T1a3d)
+
+The town visit (`ai_town_visit` 0x5253D0 and its helpers) with the army plan's open pieces
+(`ai_army_exchange_apply` 0x42C3B0, `ai_army_plan_init_town` 0x42D1B0, `ai_army_plan_setup`
+0x42D870, `ai_army_plan_commit` 0x42D8E0; the prospects above call three of them, read only at
+their calls): T1a3c. The answers to the game's visits (about 25 `ai_*` entry points), the 17
+callers of `ai_fight_answer`, the Seer's reward (0x573A70), the market visits, the allies' shares
+(`ai_ally_resource_share` 0x429110) and the table of asymmetries: T1a3d.
