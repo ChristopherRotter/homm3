@@ -41,3 +41,41 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
 - **Agent decisions** (change freely): the steps' names are neutral until read; the structs take
   our names with `h3api` tags; the closures' sizes count a function for the first step that
   reaches it.
+
+## T1a2 — every function placed (2026-11-23, increment 1)
+
+- **The cut** (the user, 2026-11-23): "4 or 5 parts of roughly equal size if sensible", worker
+  sub-agents in the same session, then the session finishes up. Five parts of about 22 kB each
+  (the range's 255 function starts: 154 in the direct-call closure, 101 reached only through
+  vtables, the C runtime's initializer table, the array constructor or unwind funclets):
+  T1a2a the setup (§2.1), T1a2b steps 1 to 5 (§2.2), T1a2c step 6 (§2.3), T1a2d steps 7, 8 and
+  10 to 13 (§2.4), T1a2e steps 14 and 15 and the writer, then the stream (§2.5, §2.6). One worker
+  each, in order, each reading the earlier parts' sections; a common brief (the rules of
+  `docs/exe/README.md`, an entries helper applied by script, a site entry per draw, a short
+  report). Commits 9ff8d12, 361b758, 06e07c8, ad8f2e4, 826b036.
+- **Result:** 254 of the 255 starts with a function entry (237 read, 17 inferred; the last a
+  false start inside `rmg_zone_flood_fill`, a site entry); about 340 entries in all with the
+  sites and tables (the object generators' 18 and the objects' 13 vtables, the guard tables,
+  the layout's cosine and sine tables, the obstacle types); the records read and two added
+  (`rmg_obstacle`, `rmg_treasure_pile`); the steps renamed from their reading (survey §1.5):
+  `rmg_zones_lay_out`, `rmg_level_zones_partition`, `rmg_terrain_paint`, `rmg_zone_first_town`,
+  `rmg_zone_towns_place`, `rmg_paths_and_connections`, `rmg_junction_zone_paths`,
+  `rmg_mines_place`, `rmg_zone_paths_connect`, `rmg_zone_treasures_place`,
+  `rmg_underground_rock_paint`, `rmg_map_shores_mark`, `rmg_obstacles_fill`, `rmg_roads_lay`,
+  `rmg_rivers_lay`.
+- **Corrections to T1a1:** the object generators are at +0x10F0 (H3API was right; +0x1100 holds
+  the Keymaster's Tents); step 4 places one town per zone, not one of each kind; step 15 lays
+  rivers (type 109 is the Water Wheel, not a shipyard); the 17-byte artifact block is AB's (SoD
+  writes 18, as the reader expects); the writer writes no 124-byte padding.
+- **What T1b and T1c must know** (survey §2.6): one stream, no clock but the seed; x87 only,
+  every conversion truncating, with two f64 tables; one retry loop (step 10: six tries per pick,
+  three per object), fixed iterations elsewhere, every other give-up silent; **two draws depend
+  on memory** (step 2's uninitialised town-type bytes decide whether a zone generator's draw
+  happens; step 15 reads one cell past the array at the map's last column); `Untitled.h3m`
+  differs from the plain executable's writer in three points (a main town's type byte, 124
+  trailing zero bytes, no colour named human in the description), likely the user's HD mod
+  patching the game at run time: the oracle generates with the plain executable. Quirk
+  candidates (unclassified) are listed per part (§2.1 to §2.5).
+- **Agent decisions** (change freely): five equal parts rather than three by theme; each worker
+  wrote its own section and entries and committed on the lane branch; the runner kept only the
+  reports.

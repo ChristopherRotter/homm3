@@ -160,13 +160,14 @@ with it as 9 dwords; the code indexes position + 1); the object generators go to
   water's Random; the template; the 15 steps (44 sites in their closures, §1.5); the teams in the
   header. One generator, one thread, one stream.
 - **Floats:** x87 in steps 1, 2, 5, 8, 10 (`crt_sqrt`, `crt_ftol`); T1a2 lists each site.
-- **Not read:** the 15 steps' bodies (but steps 4, 8 and 15's own code, step 1's in part; steps 1 to 5: §2.2), the header before
-  its end, the cell and template writers, the per-object writers (the setup's readers and the
-  destructor: §2.1). The limits by
-  type are read only by step 10's object choice: one per map, one per zone (§2.4).
+- **Not read in T1a1, read in T1a2:** every function of the range now has an entry (§2.1 to §2.5);
+  §2.6 gives the stream's draws in order, the floats and the limits.
 - **For T1b:** a generated map names its template and seed in its description, and the
   original's choices are reproducible only without Random ones (§1.1); the oracle can read the
-  seed back from the file to check a fixed clock.
+  seed back from the file to check a fixed clock. Two risks found by T1a2: draws that depend on
+  uninitialised memory (§2.2, §2.5), and `Untitled.h3m` differing from the plain executable's
+  writer in three points (§2.5; the user's HD mod, presumably), so the oracle generates with the
+  plain executable.
 
 ## 2 Every function placed (T1a2)
 
