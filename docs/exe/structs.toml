@@ -383,7 +383,7 @@ fields = [
   { offset = 0xE5, name = "secondary_skill_slots", type = "u8[28]", summary = "per secondary skill id its slot in the hero's list, 1-8 in the order learned (0x4E22D0)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.5"] },
   { offset = 0x101, name = "secondary_skill_count", type = "i32", summary = "the number of secondary skills known, at most 8 (0x4E22D0, 0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
   { offset = 0x105, name = "status_flags", type = "u32", summary = "bit 21 a Warrior's Tomb's penalty taken until the battle's end (0x4A7DA8, cleared by 0x4DA510); bit 1 the Stables' +400 land points (0x4E4990); bit 18 in a boat (set by hero_boards_boat 0x4A1010; no flying or water walking then); bit 24 1 000 000 points a day (not set by any rule read); bit 12 a looted Pyramid's -2 luck taken until the battle's end (visit_pyramid 0x4A4309, cleared by 0x4DA510); the map hint's visited mark (0x40B150; E24 M3 T6a2a, design §4.11) by bit 0 a Magic Well, 1 the Stables, 2 a Buoy, 3 a Swan Pond, 4 or 25 an Idol of Fortune, 5, 27, 28 or 29 a Fountain of Fortune, 6 a Watering Hole, 7 an Oasis, 8 or 26 a Temple, 13 a Faerie Ring, 14 a Fountain of Youth, 15 a Mermaid, 16 a Rally Flag, 20 the Sirens", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §1.1", "rules/surveys/E08-hero-movement.md §2.1", "rules/surveys/E08-rewards.md §7.5", "epics/E24-design.md §4.11"] },
-  { offset = 0x109, name = "ai_experience_effectiveness", type = "f32", summary = "written by ai_hero_effectiveness 0x527760 (H3API AI_experienceEffectiveness); its readers E31 T1a2", confidence = "inferred", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
+  { offset = 0x109, name = "ai_experience_effectiveness", type = "f32", summary = "the computer's value of one experience point, (2 500 + the army value) / (40 x experience_to_next_level), written by ai_hero_effectiveness 0x527760 (H3API AI_experienceEffectiveness); ai_object_value 0x528040 values experience by it and a primary or secondary skill point as one level's experience times it", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6", "rules/surveys/E31-computer-player.md §2"] },
   { offset = 0x10D, name = "door_casts_today", type = "i8", summary = "Dimension Door's casts this day, against the spell's effect column at the mastery (adventure_spell_cast 0x41D090); 0 at the new day (0x4C80F3)", confidence = "read", refs = ["rules/surveys/E08-spells.md §8.1"] },
   { offset = 0x10E, name = "disguise_level", type = "i32", summary = "the Disguise spell's level, -1 none (adventure_spell 0x41C646); read by hero_displayed_army 0x52EAD0; -1 at the new day", confidence = "read", refs = ["rules/surveys/E08-spells.md §9"] },
   { offset = 0x112, name = "fly_power", type = "i32", summary = "the Fly spell's level, -1 none (H3API flyPower); Angel Wings count as 3 for the price and the pathfinder (0x4B18C0, 0x56B440) but not here, nor in the move's drop to 0 (A-12); with Angel Wings a guard attacks only at the move's destination", confidence = "read", refs = ["rules/surveys/E08-battles.md §2.2", "rules/surveys/E08-hero-movement.md §2.1"] },
@@ -391,7 +391,7 @@ fields = [
   { offset = 0x11A, name = "morale_bonus", type = "i8", summary = "the morale bonus until the end of the hero's next battle: the Warrior's Tomb's -3 (0x4A7DC2); cleared by hero_battle_bonuses_clear 0x4DA510 (H3API moraleBonus)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.9"] },
   { offset = 0x11B, name = "luck_bonus", type = "i8", summary = "the luck bonus until the end of the hero's next battle; cleared with the morale bonus (0x4DA510; H3API luckBonus)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §6.9"] },
   { offset = 0x11C, name = "asleep", type = "u8", summary = "H3API isSleeping; a computer's turn clears it for every hero and garrison hero at its start (ai_turn_start 0x4297C0) and uses it as the hero's done mark: set by 0x5267B0 when no destination is found or the hero waits in a town on the week's day 7; ai_next_hero 0x526A90 skips a hero with it set", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
-  { offset = 0x11D, name = "ai_reach_scratch", type = "i32", summary = "cleared by ai_enemy_reach_fold 0x4280E0 before each enemy hero's search; its readers not read", confidence = "inferred", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
+  { offset = 0x11D, name = "ai_threat_value", type = "i32", summary = "the threat this hero poses to the computer player whose turn folds the enemies' reach: cleared by ai_enemy_reach_fold 0x4280E0 before each enemy hero's search, set to 5 000 000 / the player's town count by ai_reach_fold_towns 0x4282B0 when the search reaches one of its towns that ai_town_capture_sim 0x428410 says it would take; ai_object_value 0x528040 adds ai_difficulty_blend x (it + 10 000) for an enemy hero reached today", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6", "rules/surveys/E31-computer-player.md §2"] },
   { offset = 0x129, name = "visions_level", type = "i32", summary = "the Visions spell's level, -1 none (adventure_spell 0x41C551); read by hero_visions_level 0x4E5DE0; -1 at the new day", confidence = "read", refs = ["rules/surveys/E08-spells.md §9"] },
   { offset = 0x12D, name = "worn_artifacts", type = "artifact[19]", summary = "the worn artifacts by slot, 8 bytes each (id, -1 for none; then a subtype, a scroll's spell); 0x4D91F0 walks them", confidence = "read", refs = ["installation.md §7.26"] },
   { offset = 0x1D4, name = "backpack", type = "artifact[64]", summary = "the backpack's artifacts, 8 bytes each as worn_artifacts (-1 for an empty place; hero_give_backpack_artifact 0x4E2F90 refuses a war machine and a 65th)", confidence = "read", refs = ["epics/E08-log.md T32b1"] },
@@ -399,8 +399,12 @@ fields = [
   { offset = 0x3EA, name = "learned_spells", type = "u8[70]", summary = "the spells the hero has learned (hero_learn_spell 0x4D9330); the adventure AI values no scroll of a learned spell (0x4336FC)", confidence = "read", refs = ["installation.md §7.55"] },
   { offset = 0x430, name = "available_spells", type = "u8[70]", summary = "the spells the hero may cast: the learned ones and the worn artifacts' (hero_available_spells 0x4D95D0); the computer's cast choice loops over them (0x43C90E)", confidence = "read", refs = ["installation.md §7.55"] },
   { offset = 0x476, name = "primary_skills", type = "i8[4]", summary = "Attack, Defense, Spell Power, Knowledge with the worn artifacts' bonuses: equipping adds them, taking off subtracts them (0x4E2A00, 0x4E2BD0; E08 T20a1), unclamped; readers clamp (0x4E5400: 0-99)", confidence = "read", refs = ["rules/surveys/E08-battles.md §3.1", "rules/catalog/heroes.toml HER-ADV-001"] },
-  { offset = 0x47E, name = "ai_spell_power_effectiveness", type = "u32", summary = "H3API's aiSpellPowerEffectiveness: the computer's Wisdom, Eagle Eye, Scholar and Sorcery values scale by it with ai_secondary_skill_value's flag set (0x524690); written after battles (0x4ADCEC) and elsewhere, not read", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §10"] },
-  { offset = 0x486, name = "ai_knowledge_effectiveness", type = "u32", summary = "H3API's aiKnowledgeEffectiveness: the computer's Mysticism and Intelligence values scale by it with ai_secondary_skill_value's flag set (0x524690); written after battles (0x4ADD04) and elsewhere, not read", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §10"] },
+  { offset = 0x47A, name = "ai_aggressiveness", type = "f32", summary = "H3API's aiAggressiveness: the computer's own side's factor in ai_army_fight_sim 0x427330, halved for the victory condition's hero; its writer not read", confidence = "inferred", refs = ["rules/surveys/E31-computer-player.md §2.2"] },
+  { offset = 0x47E, name = "ai_spell_power_effectiveness", type = "u32", summary = "H3API's aiSpellPowerEffectiveness: the gain of one Spell Power in the hero's best spell value, at least 10 (ai_hero_effectiveness 0x527760; also written after battles, 0x4ADCEC); the computer's Wisdom, Eagle Eye, Scholar and Sorcery values scale by it with ai_secondary_skill_value's flag set (0x524690); the Star Axis, the School of Magic and the Library are valued by it (ai_object_value 0x528040)", confidence = "read", refs = ["rules/surveys/E08-progression.md §10", "rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x482, name = "ai_spell_length_effectiveness", type = "u32", summary = "H3API's aiSpellLengthEffectiveness: the gain of one round more duration in the hero's best spell value (ai_hero_effectiveness 0x527760)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x486, name = "ai_knowledge_effectiveness", type = "u32", summary = "H3API's aiKnowledgeEffectiveness: the gain of 30 more maximum mana / 3, at least 10, in the hero's best spell value (ai_hero_effectiveness 0x527760; also written after battles, 0x4ADD04); the computer's Mysticism and Intelligence values scale by it with ai_secondary_skill_value's flag set (0x524690); the Garden of Revelation, the School of Magic and the Library are valued by it (ai_object_value 0x528040)", confidence = "read", refs = ["rules/surveys/E08-progression.md §10", "rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x48A, name = "ai_double_mana_effectiveness", type = "u32", summary = "H3API's aiDoubleSpellPointsEffectiveness: the gain of the mana raised to twice the maximum, 0 when already there (ai_hero_effectiveness 0x527760); a Magic Spring's value (ai_magic_spring_value 0x52B810)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x48E, name = "ai_extra_mana_effectiveness", type = "u32", summary = "H3API's aiExtraSpellPointsEffectiveness: the gain of the mana refilled to the maximum, 0 when already full (ai_hero_effectiveness 0x527760); a Magic Well's value (ai_magic_well_value 0x52A510)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
 ]
 
 [[struct]]
@@ -768,7 +772,7 @@ fields = [
   { offset = 0x4, name = "flags", type = "u32", summary = "bit 0 reached (a node not reached is all zero after pathfinder_reset 0x4B1530), bit 1 a stop (pathfinder_relax's stop flag); bits 12-15 the step's direction (pathfinder_relax 0x4B1EC4; ai_hero_step)", confidence = "read" },
   { offset = 0x8, name = "from", type = "u32", summary = "the tile it was entered from, packed (pathfinder_relax 0x4B1B0C; with flag bit 7 a jump's start instead, 0x4B1B21 to 0x4B1BAF, not read further)", confidence = "read" },
   { offset = 0xC, name = "guard_met", type = "u32", summary = "a packed position: ai_candidate_score 0x42F980 adds no guard's fight estimate for a guard on it (the guard met on the path, inferred; its writer not read)", confidence = "inferred" },
-  { offset = 0x10, name = "key", type = "i32", summary = "pathfinder_relax's first comparison key, the larger kept (0x4B1CC5, with +0x14 added past the day's points; written at 0x4B1EEE from its sixth argument; the relax's summary calls it the turn); ai_candidate_score adds it to a score; not read further (T1a2)", confidence = "inferred" },
+  { offset = 0x10, name = "key", type = "i32", summary = "the path's value so far, at most 0: the start node 0 (pathfinder_run 0x56B8F9), copied unchanged from the expanded node (pathfinder_expand's node copy, sixth argument of pathfinder_relax, written at 0x4B1EEE) and through a Subterranean Gate; lowered by the lowest guard answer of a monolith's or Whirlpool's exits (ai_fight_answer 0x52BD10) and 500 more for a Whirlpool (pathfinder_teleport_exits 0x56A400), and by the cost's value of a Castle Gate not built (pathfinder_castle_gate 0x56A850). The relax keeps the larger key (with +0x14 added past the day's points), then the smaller +0x1A; ai_candidate_score adds it to a score (E31 T1a2d)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
   { offset = 0x14, name = "danger", type = "i32", summary = "the computer's tile buffer (pathfinder +0x6C) at the tile while the cost is within the day's points (pathfinder +0x8), past them the lowest on the path (pathfinder_relax 0x4B1BBC to 0x4B1C32, written at 0x4B1EF4); 0 without a buffer", confidence = "read" },
   { offset = 0x18, name = "cost", type = "u16", summary = "the movement points to the tile (H3API movementCost)", confidence = "read" },
   { offset = 0x1A, name = "cost_2", type = "u16", summary = "a second cost (H3API movementCost2): pathfinder_relax sets it to the new cost plus the expanded node's +0x1A less its +0x18 (0x4B1A90 to 0x4B1AA9, 0x4B1EE7) and breaks its ties by it; a candidate's cost (ai_hero_candidates 0x42EDD0)", confidence = "inferred" },
@@ -781,7 +785,7 @@ summary = "A computer hero's candidate destination (ai_hero_candidates 0x42EDD0'
 refs = ["rules/surveys/E31-computer-player.md §1.9"]
 fields = [
   { offset = 0x0, name = "position", type = "u32", summary = "the tile, packed; none a column of -1", confidence = "read" },
-  { offset = 0x4, name = "value", type = "i32", summary = "its value: ai_fight_estimate's, an unexplored tile's 100 or 100 000, the Grail's; of the kept destination with nothing found 0 (the danger at the hero's tile negative) or 1", confidence = "read" },
+  { offset = 0x4, name = "value", type = "i32", summary = "its value: ai_object_value's, an unexplored tile's 100 or 100 000, the Grail's; of the kept destination with nothing found 0 (the danger at the hero's tile negative) or 1", confidence = "read" },
   { offset = 0x8, name = "cost", type = "i32", summary = "its cost: the node's +0x1A (the Grail's the node's cost, at least a day); ai_candidate_score moves it to the node a class visited from the neighbouring tile is entered from", confidence = "read" },
   { offset = 0xC, name = "near", type = "u8", summary = "the destination is near (ai_hero_destination; within 21 % of the day's points)", confidence = "read" },
   { offset = 0xD, name = "must_go", type = "u8", summary = "taken at once and kept: an enemy hero from a threatened town, the kept destination of a must-go; 0x5267B0 doubles no budget for a negative rate with it", confidence = "read" },
@@ -816,11 +820,43 @@ summary = "A computer player's record (ai_player_records 0x692950 + 0x98 x colou
 refs = ["rules/surveys/E31-computer-player.md §1.6"]
 fields = [
   { offset = 0x0, name = "colour", type = "i16", summary = "the colour, set once at game_init (ai_player_records_init 0x4340E0)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
-  { offset = 0x4, name = "eyes_value", type = "i32", summary = "ai_eyes_value 0x429910 at the turn's start (ai_turn_start 0x4297C0), refreshed when a hero's walk reveals its destination (ai_eyes_value_refresh 0x429AB0); also written by ai_hero_step 0x42FEA9 and returned by ai_fight_estimate 0x528F38 (E31 T1a1c, T1a2)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
+  { offset = 0x4, name = "eyes_value", type = "i32", summary = "ai_eyes_value 0x429910 at the turn's start (ai_turn_start 0x4297C0), refreshed when a hero's walk reveals its destination (ai_eyes_value_refresh 0x429AB0); also written by ai_hero_step 0x42FEA9 and returned by ai_object_value 0x528F38 (E31 T1a1c, T1a2)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
   { offset = 0x8, name = "recruit_reserve", type = "i32[7]", summary = "per resource the largest cost of one town's two most valuable available recruits (ai_recruit_reserve 0x429AD0 at the start), less the day's income at the middle, at least 0 (ai_turn_middle 0x428DD0)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
   { offset = 0x24, name = "means", type = "i32[7]", summary = "the resources plus twice the day's income (ai_resource_weights 0x428740)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
   { offset = 0x40, name = "demand", type = "i32[7]", summary = "the largest cost of a building buildable now in any of its towns plus the costs of three most valuable stacks (ai_resource_weights 0x428740)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
   { offset = 0x60, name = "resource_weights", type = "f64[7]", summary = "per resource a factor of its demand and means times resource_value 0x5ECD10 (ai_resource_weights 0x428740); +0x90, gold's, is ai_player_values 0x6929E0; read by the values (E31 T1a2)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
+]
+
+[[struct]]
+name = "ai_army_plan"
+size = 0x3C
+summary = "A computer player's working plan of an army (E31 T1a2c): an army and a spare, the alignments for the morale, and offers to buy; built on the stack by ai_army_plan_init_dwelling 0x42CB70 or ai_army_plan_clear 0x42C040, valued by ai_army_purchase_value 0x42D780 and ai_army_exchange_value 0x42C4A0."
+refs = ["rules/surveys/E31-computer-player.md §2"]
+fields = [
+  { offset = 0x0, name = "army", type = "army*", summary = "the army planned (a copy in the value functions)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x4, name = "spare", type = "army*", summary = "where shed or displaced stacks go (ai_army_plan_shed 0x42C5B0, ai_army_plan_put 0x42C130); the other army in an exchange; 0 for a dwelling's value", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x8, name = "angelic_alliance", type = "u8", summary = "the Angelic Alliance flag: towns 0, 1, 2, 6, 7 count as one alignment (alignment_join_towns_get 0x44A460)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0xA, name = "hero_morale", type = "i16", summary = "the hero's own morale (hero_morale 0x4E39B0, clamped), added to the army's base morale", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0xC, name = "alignments", type = "i16", summary = "the army's alignment count (ai_army_plan_alignments 0x42C060)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0xE, name = "alignment_counts", type = "u8[10]", summary = "stacks per alignment: neutral, then towns 0 to 8", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x18, name = "value_gained", type = "i32", summary = "the AI value (creature +0x40 x count) put in less that displaced (ai_army_plan_put 0x42C130)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x1C, name = "primary_advantage", type = "i16", summary = "the hero's hero_primary_sum less the other hero's, at least 0 (ai_army_exchange_value 0x42C4A0); weighs each transfer by it / 40", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x20, name = "owner", type = "i32", summary = "the owner colour: its ai_player_record for the trades, its weights (player +0x128) for the costs", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x24, name = "resources", type = "i32*", summary = "the resources the purchases spend (i32[7]; a copy in ai_army_purchase_value 0x42D780)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x28, name = "weigh_costs", type = "u8", summary = "1 from ai_army_plan_init_dwelling: a bought offer's gain less its weighted cost (ai_army_purchase_step 0x42D420)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x2C, name = "offers", type = "vector", summary = "the offers: an allocator byte, then begin +0x30, end +0x34, capacity +0x38; 12-byte ai_army_offer entries", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+]
+
+[[struct]]
+name = "ai_army_offer"
+size = 0xC
+summary = "One offer of an ai_army_plan: creatures that may be bought (E31 T1a2c; ai_army_plan_init_dwelling 0x42CB70)."
+refs = ["rules/surveys/E31-computer-player.md §2"]
+fields = [
+  { offset = 0x0, name = "creature", type = "i32", summary = "the creature", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x4, name = "count_source", type = "i16*", summary = "the dwelling's count it came from (dwelling_record +0x14)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x8, name = "count", type = "i16", summary = "how many are left to buy (ai_army_purchase_step 0x42D420 lowers it)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0xA, name = "free", type = "u8", summary = "a level-1 creature (level +4 = 0): taken without cost", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
 ]
 
 [[struct]]
@@ -1230,4 +1266,59 @@ fields = [
   { offset = 0x8, name = "limit", type = "u32", summary = "the turn's limit in ms (0: unlimited): the duration's minutes x 60 000 (turn_timer_set_limit)", confidence = "read" },
   { offset = 0xC, name = "next_warning", type = "u32", summary = "the time from the last warning to the next (0: no more): a quarter of the limit at the start (half up to 60 s), then by the time left", confidence = "read" },
   { offset = 0x10, name = "paused_at", type = "u32", summary = "the clock time a pause began (0: not paused): a battle, a town screen's build", confidence = "read" },
+]
+
+[[struct]]
+name = "sim_combat"
+size = 0x34
+summary = "One side of the computer's simulated combat (sim_combat_start 0x423EE0; ai_army_fight_sim, ai_quick_battle, sim_battle_finish, ai_town_capture_sim; E31 T1a2b). H3API's H3SimulatedCombat; its names agree where they overlap."
+refs = ["rules/surveys/E31-computer-player.md §2"]
+h3api = "H3SimulatedCombat"
+fields = [
+  { offset = 0x0, name = "stacks", type = "vector<sim_combat_stack>", summary = "the stacks (begin +0x4, end +0x8, capacity +0xC; +0x0 the allocator's byte), sorted by unit value ascending", confidence = "read" },
+  { offset = 0x10, name = "special_ground", type = "i32", summary = "from the map tile: -1 none, 1 Magic Plains, 2 Cursed Ground (spells of level 1 only), 6 Lucid Pools, 7 Fiery Fields, 8 Rocklands, 9 Magic Clouds; hero_spell_mastery and hero_spell_cost read it", confidence = "read" },
+  { offset = 0x14, name = "spell_points", type = "i32", summary = "the hero's spell points at the start, less each cast's cost, plus a fifth of the enemy's cost with Familiars; written back to the hero by sim_battle_result and sim_battle_finish", confidence = "read" },
+  { offset = 0x18, name = "can_cast", type = "u8", summary = "a hero with a spellbook, no Orb of Inhibition on either hero, no anti-magic garrison, no Cursed Ground before version 2", confidence = "read" },
+  { offset = 0x1C, name = "strength", type = "i32", summary = "the sum of the stacks' values, less every loss taken; 0 the side is beaten", confidence = "read" },
+  { offset = 0x20, name = "tactics", type = "i32", summary = "the hero's Tactics level less the opponent's, at least 0", confidence = "read" },
+  { offset = 0x24, name = "hero", type = "hero*", summary = "the side's hero, null without one", confidence = "read" },
+  { offset = 0x28, name = "army", type = "army*", summary = "the army simulated (ai_army_fight_sim's copy, or the real army)", confidence = "read" },
+  { offset = 0x2C, name = "opponent", type = "hero*", summary = "the other side's hero, null without one", confidence = "read" },
+  { offset = 0x30, name = "walls", type = "u8", summary = "the side faces a town's walls", confidence = "read" },
+  { offset = 0x32, name = "wall_level", type = "i16", summary = "Fort 4, Citadel 5, Castle 6, less the hero's Ballistics (at least 2), at most 4; a walker's rounds to contact are raised to it", confidence = "read" },
+]
+
+[[struct]]
+name = "sim_combat_stack"
+size = 0x48
+summary = "A stack of a simulated combat side (sim_side_build 0x424120; E31 T1a2b). Values are army-value units (the creature's fight value scaled)."
+refs = ["rules/surveys/E31-computer-player.md §2"]
+fields = [
+  { offset = 0x0, name = "slot", type = "i32", summary = "the army slot (sim_apply_losses writes the count back into it)", confidence = "read" },
+  { offset = 0x4, name = "creature", type = "i32", summary = "the creature type", confidence = "read" },
+  { offset = 0x8, name = "count", type = "i32", summary = "creatures alive: the ceiling of the value over the unit value after each loss", confidence = "read" },
+  { offset = 0xC, name = "start_count", type = "i32", summary = "the count at the start (not read again in what was read)", confidence = "read" },
+  { offset = 0x10, name = "speed", type = "i32", summary = "the creature's speed plus the hero's bonus 0x4E5AA0", confidence = "read" },
+  { offset = 0x18, name = "melee_share", type = "f64", summary = "the share of the stack's value dealt per round in melee: 0.2, a shooter with the melee penalty 0.1", confidence = "read" },
+  { offset = 0x20, name = "hold_share", type = "f64", summary = "the share of the stack's value in the stand-off: 1.0, a shooter with the melee penalty 0.7", confidence = "read" },
+  { offset = 0x28, name = "shot_share", type = "f64", summary = "a shooter's share per round of shots: hero_archery / 5 (0.2 without a hero), x 2 striking twice, / 2 facing walls (not creature 35); 0 for a walker or flyer", confidence = "read" },
+  { offset = 0x30, name = "value_per_health", type = "f64", summary = "the unit value over the creature's health (with the hero's bonus): damage spells' hit points into value", confidence = "read" },
+  { offset = 0x38, name = "rounds_to_contact", type = "i32", summary = "0 a shooter; else (speed + 2 x (7 - tactics)) / speed, at most 4, raised to the wall level for a walker facing walls", confidence = "read" },
+  { offset = 0x3C, name = "unit_value", type = "i32", summary = "ftol(fight value x sqrt(health with the hero's bonus / health) x the side's factor)", confidence = "read" },
+  { offset = 0x40, name = "value", type = "i32", summary = "the stack's value: unit value x count at the start, less its losses", confidence = "read" },
+]
+
+[[struct]]
+name = "sim_spell"
+size = 0x24
+summary = "A spell considered by sim_cast_spell 0x425BD0 (filled by 0x436980; E31 T1a2b). H3API's H3SimulatedSpell; its names agree."
+refs = ["rules/surveys/E31-computer-player.md §2"]
+h3api = "H3SimulatedSpell"
+fields = [
+  { offset = 0x0, name = "spell", type = "i32", summary = "the spell id; -1 none chosen", confidence = "read" },
+  { offset = 0x4, name = "mastery", type = "i32", summary = "hero_spell_mastery's level (Dispel at 2 or more also counts the enemy's stacks)", confidence = "read" },
+  { offset = 0x8, name = "power", type = "i32", summary = "the hero's Spell Power clamped to 1..99", confidence = "read" },
+  { offset = 0xC, name = "duration", type = "i32", summary = "the power plus hero_duration_bonus (other spells count at most 5 of it)", confidence = "read" },
+  { offset = 0x14, name = "target", type = "i32", summary = "the chosen stack's index (a single-target spell, a raise)", confidence = "read" },
+  { offset = 0x1C, name = "value", type = "i32", summary = "the cast's value; the highest wins", confidence = "read" },
 ]
