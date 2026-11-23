@@ -42,13 +42,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   stalled game of 600 left out (the user), the fair actor's refused cast (the battle lane's
   inbox). **T44's tool done** (`E25-log.md` T44): `inspect --commands` records #2's games, `h3
   ai ceiling --commands` replays them and values each decision (T43's halving, both commands
-  kept, `--confirm` fresh rollouts), `--leave-out`; 121 thread-seconds a game. #2's games
-  recorded (599; 0.509, +0.026). **Next: T44's valuation** (the user's machine, the command in
-  `QUEUE.md`), then T45 (the checkpoint).
-- **Open pull requests:** #1123 (this branch, `claude/gifted-goodall-is3bgu`: T44's tool and
-  #2's recording). Merged:
-  #1121 (`shared/ci-exe-map`: CI's docs-only path runs `check-exe-map`), #1119 (T43's
-  measurement read, E31's cited addresses), #1117 and #1116 (E31's refinement).
+  kept, `--confirm` fresh rollouts), `--leave-out`. **T44 done** (`E25-log.md` T44, the
+  valuation): #2's 598 games, +0.026 over the fair actor (the confirmed one-step values account
+  for it: +0.025), the rollouts +0.059 over #2; #2's regret 0.28 a game, casts 0.024 a decision
+  (about 0.015 without the side worlds' refusals), the missed moves 38 % of it, its edge melee
+  and waiting. **Next: T45** (the checkpoint, the user: the next lever).
+- **Open pull requests:** this branch's (`claude/gifted-goodall-is3bgu`: T44's valuation read).
+  Merged: #1123 (T44's tool, #2's recording), #1121 (`shared/ci-exe-map`), #1119 (T43's
+  measurement read, E31's cited addresses).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
@@ -64,6 +65,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-23 — E25 T44: the valuation read
+
+- The user ran the valuation (16 threads, 96 minutes) and uploaded its JSON and games file; the
+  read paired with T43's records by a scratch script (not committed). Docs only.
 
 ### 2026-11-21 — E25 T44: the tool
 
@@ -82,10 +88,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   temporary instrumented build (not committed) to the fair actor; the user chose to leave it
   out. `check-exe-map` failed on `master` (E31's citations): `Heroes3.exe` staged (the user's
   upload, SHA-256 checked) for the map's entries.
-
-### 2026-11-21 — E31 refined (AI-Q22)
-
-- A refinement session with the user, docs only (the PC's shell down, a cloud clone;
-  `Heroes3.exe` staged alone, SHA-256 checked, for the first look's size by a scratch script
-  over `scripts/exe.py`'s `Code`, not committed). E31's epic file, AI-Q22, the queue's E31 T1a1;
-  the backlog's and README's rows in `shared/e31-refinement`.

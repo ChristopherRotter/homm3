@@ -15,24 +15,9 @@ the fair and the all-seeing system actor, the neutral set +0.302). **A long run 
 budget, the check named in its rule (`TRAPS.md`, Python). **Increment 10: the ceiling** (the
 user at T41, AI-Q20; its decisions in the epic file). **T43 done** (2026-11-21, `E25-log.md`
 T43: budget 4; +0.085 over the fair actor's play on the side's worlds, +0.115 on the true
-battle; the records in `python/records/ceiling/`).
-
-- **T44 — where #2 diverges** (the tool done 2026-11-21, `E25-log.md` T44: `inspect
-  --commands` records #2's games, `h3 ai ceiling --commands` replays and values them). **#2's
-  games recorded** (2026-11-21, the sandbox: `python/records/ceiling/e25-structure-1-commands.toml`,
-  599 games). **The valuation** (the user's machine, 16 threads, the build of this branch: T43's
-  identity holds; about 75 minutes; Ctrl-C keeps the finished games, the same command
-  continues), from the repository's root:
-  1. `cargo run --release -p h3-cli -- ai ceiling --commands
-     python/records/ceiling/e25-structure-1-commands.toml --budget 4 --confirm 32 --worlds side
-     --threads 16 --leave-out siege_hero:54:attacker --out
-     target/ceiling/e25-structure-1-side-4.toml --json
-     python/records/ceiling/e25-structure-1-side-4.json`;
-  2. optional: the same with `--worlds true` (`e25-structure-1-true-4`).
-
-  Uploaded: the JSON records and the games files. The read: by category #2's regret against the
-  fair actor's at the same decisions, its value paired with `report-0` and `report-side-4` by
-  (kind, env, seat).
+battle; the records in `python/records/ceiling/`). **T44 done** (2026-11-23, `E25-log.md` T44:
+#2's 598 games valued; +0.026 over the fair actor, the rollouts +0.059 over #2; casts the
+costliest a decision, the missed moves the largest sum, #2's edge melee and waiting).
 
 - **T45 — increment 10's checkpoint** (the user): the headroom, the information's cost, the
   divergence; the next lever.
