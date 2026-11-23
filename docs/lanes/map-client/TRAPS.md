@@ -190,6 +190,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   and Blue id 1, so the two agree there. Turn it into the colour where the observation is at hand
   (`engine::played`: `Visit::flag`, `OtherOpen`'s colour); a test with ids and colours apart
   (`tests/engine.rs::a_record_s_flags_in_their_owners_colours`) catches a raw id drawn.
+- **A record's walk need not take its whole path** (M4 T6, design §5.13): `MoveHero`'s path is
+  what was clicked; the record's `HeroStepped` are what was walked (a visit from beside stops one
+  short, an event or a guard's battle earlier). Read a walk's end from its steps (`Move::stops`,
+  `Played::ends`), never from its path's last tile; the paths' search must start at the record's
+  next walk (two walks can end on one tile). A golden record that stops on "no path given" or
+  "a step ... the record's walks do not take" has usually lost a hero's place this way earlier.
 - **A scripted game draws at random in both games** (M4 T4b1, design §5.14): the original's
   draws under the sequence's `seed` and the engine's under its own differ (a level-up's primary
   skill and offers): record the original first, read its draws from the live part (`[[level_up]]`),

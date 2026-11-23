@@ -212,6 +212,21 @@ fn a_turn_without_a_town_warns_then_tells_the_days_left() {
 }
 
 #[test]
+fn a_record_s_turn_without_a_town_tells_nothing() {
+    // E24 M4 T6 (MCL-STUB-4): a record's rules are the engine's, which have no days without a
+    // town yet (E10): End Turn's release changes the turn at once, no warning, no days counted.
+    let (mut start, actions, _, _) = started(&TOWNLESS);
+    start.moves = Some(Vec::new());
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..=160 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert!(l.boxed.is_none());
+    assert_eq!((l.days, l.state(160).date.day), (-1, 2));
+}
+
+#[test]
 fn the_days_left_then_the_weeks_message_one_after_the_other() {
     // A week's first day without a town: the days left's box, then at its close the week's.
     let (mut start, ..) = started(&TOWNLESS);
@@ -698,6 +713,7 @@ fn a_record_s_visit_from_beside_takes_its_move() {
         sea: None,
         battle: None,
         boats: Vec::new(),
+        stops: None,
     };
     start.moves = Some(vec![onto(ENTRANCE, Some(1234))]);
     let run = |start: &Start, until: u32| {

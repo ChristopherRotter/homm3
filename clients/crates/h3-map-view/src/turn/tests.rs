@@ -326,4 +326,12 @@ fn a_record_s_moves_ends_by_the_steps_kept() {
         ]
     );
     assert_eq!(map_heroes(&[9, 7], &ids), [0]);
+    // An end before any step (none from a record's events, the type allows it): seen as the
+    // walk's choice is.
+    let mut first = other;
+    first.walks[0].ends = vec![OtherEnd::default()];
+    let [walk] = &record_walks(&first, &ids, &map, &index).unwrap()[..] else {
+        panic!("one walk");
+    };
+    assert_eq!((walk.ends[0].after, walk.ends[0].seen), (0, true));
 }

@@ -94,6 +94,8 @@ const LIGHTHOUSE: u32 = 42;
 const DWELLING: u32 = 17;
 /// A dwelling's of several creatures.
 const DWELLINGS: u32 = 20;
+/// An event's (none drawn: its removal shows nothing).
+const EVENT: u32 = 26;
 /// Gold's place among the resources.
 const GOLD: usize = 6;
 
@@ -162,6 +164,10 @@ pub enum Told {
         /// The flag's colour.
         flag: u8,
     },
+    /// An object the visit takes off the map and nothing else built (E24 M4 T6, *provisional*):
+    /// one visited from beside whose visit Part A does not build (a Scholar, a Spell Scroll),
+    /// taken as a pickup is, no box.
+    Taken,
 }
 
 /// Which of a question's answers the record's takes: its OK or a choice's first picture, a
@@ -180,9 +186,26 @@ pub enum Answered {
 /// hero named `hero` in Pandora's Box's boxes; none for another class or events that tell none.
 /// Since E24 M4 T6 (the reviewers' R3-1, R3-4) a visit whose flag the record raises shows at
 /// least that ([`Told::Flagged`]), in its owner's colour ([`Visit::flag`]).
+///
+/// Since E24 M4 T6 (*provisional*) a visit that takes an object off the map (an event's aside) and
+/// tells nothing else takes it alone ([`Told::Taken`]), so that the map does not keep it.
 #[must_use]
 pub fn told(visit: &Visit, class: [u32; 2], hero: &str) -> Option<Told> {
-    shown(visit, class, hero).or_else(|| visit.flag.map(|flag| Told::Flagged { flag }))
+    shown(visit, class, hero)
+        .or_else(|| visit.flag.map(|flag| Told::Flagged { flag }))
+        .or_else(|| (class[0] != EVENT && removes(&visit.events)).then_some(Told::Taken))
+}
+
+/// Whether `events` take an object off the map (`ObjectRemoved`).
+fn removes(events: &[GameEvent]) -> bool {
+    events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure {
+                event: AdventureEvent::ObjectRemoved { .. }
+            }
+        )
+    })
 }
 
 /// What [`told`] builds of `visit` beyond its flag alone.
@@ -237,14 +260,7 @@ fn shown(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told>
     }
     let flag = visit.flag;
     let gained = gain(events);
-    let taken = events.iter().any(|e| {
-        matches!(
-            e,
-            GameEvent::Adventure {
-                event: AdventureEvent::ObjectRemoved { .. }
-            }
-        )
-    });
+    let taken = removes(events);
     let visited = events.iter().any(|e| {
         matches!(
             e,
@@ -599,7 +615,7 @@ impl Kept {
                 ..
             } => Self { no: true, ..none },
             Told::Guarded { .. } => Self { yes: true, ..none },
-            Told::Find { .. } | Told::Fight { .. } | Told::Flagged { .. } => none,
+            Told::Find { .. } | Told::Fight { .. } | Told::Flagged { .. } | Told::Taken => none,
         }
     }
 }
@@ -632,7 +648,7 @@ pub fn lay(
                 }
             }
             let blocks = match &told {
-                Told::Fight { .. } => true,
+                Told::Fight { .. } | Told::Taken => true,
                 Told::Guarded { .. } | Told::Flagged { .. } => false,
                 Told::Find { taken, .. } => *taken,
                 Told::Ask { ask, .. } => ask.beside(),

@@ -378,6 +378,7 @@ fn on_record(x: u8, sea: Option<Sea>) -> impl FnOnce(&mut Start) {
             sea,
             battle: None,
             boats: Vec::new(),
+            stops: None,
         }]);
     }
 }

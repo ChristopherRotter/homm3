@@ -39,6 +39,7 @@ fn west() -> (Vec<Arrow>, Move) {
         sea: None,
         battle: None,
         boats: Vec::new(),
+        stops: None,
     };
     (arrows, walk)
 }
@@ -145,6 +146,7 @@ fn a_box_declined_from_beside_then_opened() {
         sea: None,
         battle: None,
         boats: Vec::new(),
+        stops: None,
     };
     start.moves = Some(vec![east_walk(), onto]);
     let asked = laid("Open it?", Style::OkCancel);

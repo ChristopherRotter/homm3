@@ -256,6 +256,20 @@ fn end_turn_without_its_question_starts_the_next_day_at_once() {
 }
 
 #[test]
+fn a_first_turn_the_loop_cannot_play_refuses_the_start() {
+    // E24 M4 T6 (R1-1, R1-4): a record's first turn, played at the start, whose selected hero the
+    // day's list does not hold, or holds with no map hero: the start refused.
+    let (mut start, ..) = turning("turn-day");
+    start.turns[0].first = true;
+    start.turns[0].turn.kingdom.selected = Selected::Hero(0);
+    start.turns[0].list = Some(Vec::new());
+    let refused = Some(Unplayable::Command(12));
+    assert_eq!(Loop::start(rules(Bugs::Original), &start).err(), refused);
+    start.turns[0].list = Some(vec![None]);
+    assert_eq!(Loop::start(rules(Bugs::Original), &start).err(), refused);
+}
+
+#[test]
 fn a_record_s_boats_told_are_on_the_map_as_the_turn_starts() {
     // E24 M4 T6 (the reviewer's R3-3): a boat the record tells between two tables, with no walk
     // of the viewer's after it (one built), on the map from the next table's start, which draws

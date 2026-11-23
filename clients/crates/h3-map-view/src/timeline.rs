@@ -961,7 +961,7 @@ pub struct Start {
 /// reveal at its first (MCL-Q39 (c)).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Move {
-    /// The tiles stepped onto, in order.
+    /// The path's tiles, in order: those stepped onto (up to [`Move::stops`]).
     pub tiles: Vec<Pos>,
     /// The points after each step (none: unchanged).
     pub points: Vec<Option<i32>>,
@@ -979,6 +979,11 @@ pub struct Move {
     /// put on the map at its first step with its reveal, before a boarding there; one on a tile
     /// with an empty boat replaces it.
     pub boats: Vec<LiveBoat>,
+    /// The steps the record's walk takes when fewer than its tiles (E24 M4 T6, *provisional*: the
+    /// record's `HeroStepped`): all but the last, a visit from beside (a find's, else one the map
+    /// does not show: [`Loop::pass_by`]); fewer, a walk stopped on the way (an event, a guard's
+    /// battle) after that many, the rest of its path left shown. None: every tile stepped onto.
+    pub stops: Option<usize>,
 }
 
 /// A record's walk's last step with a boat (E24 M4 T4b2, design §5.15, *provisional*): the
@@ -1975,6 +1980,15 @@ enum Aboard {
     Land,
 }
 
+/// What a path's last node takes in place of a step (E24 M4 T6, [`Loop::last_node`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Beside {
+    /// The find's visit from beside, by its place among the finds.
+    Find(usize),
+    /// A record's visit from beside the map does not show ([`Loop::pass_by`]).
+    Unshown,
+}
+
 /// A dissolve's steps (`screen_dissolve` 0x602DC0: eight, the blend's eighths).
 const DISSOLVE_STEPS: u32 = 8;
 
@@ -2611,9 +2625,13 @@ impl Loop {
                 })
                 .collect()
         };
+        // The record's next walk's path first (E24 M4 T6: an earlier walk's to the same tile may
+        // start beside the hero too).
+        let (earlier, later) = self.paths.split_at(self.next_move.min(self.paths.len()));
         let path = self.hero.and_then(|hero| {
-            self.paths
+            later
                 .iter()
+                .chain(earlier)
                 .filter_map(|p| in_order(hero.at, p))
                 .find(|c| c.last().is_some_and(|(_, a)| a.at == to))
         });
@@ -2977,13 +2995,15 @@ impl Loop {
     /// The scenario's test of the viewer's turn's end (`scenario_condition_met` 0x4F2CE0 from
     /// `next_player_turn`; E24 M4 T2a2, design §5.3): with heroes but no town, the days without a
     /// town not counting become the tables' count and the warning's box is given; none without
-    /// [`Start::town`].
+    /// [`Start::town`], nor on a record (E24 M4 T6, *provisional*: the engine's rules, which have no
+    /// days without a town yet, E10; MCL-STUB-4).
     ///
     /// # Errors
     /// The days down to their last (their end at the next day's start: the player's elimination,
     /// not built).
     fn town_test(&mut self) -> Result<Option<Arc<MessageBox>>, Unplayable> {
-        let Some(town) = &self.town else {
+        // stub: MCL-STUB-4 (a record's days without a town: the engine tells none, E10)
+        let Some(town) = self.town.as_ref().filter(|_| self.moves.is_none()) else {
             return Ok(None);
         };
         if !self.kingdom.towns.is_empty() || self.kingdom.heroes.is_empty() {
@@ -4324,32 +4344,8 @@ impl Loop {
     /// ([`Loop::finish`]) comes after the dissolve. Since E24 M4 T2b2 a find with a question
     /// asks it (the mouse shown over it; recorded, `ask-pile`, `ask-artifact`), its visit's end
     /// the step's ([`Loop::visited`]).
-    fn visit_beside(&mut self, t: u32, direction: Direction, i: usize) {
-        self.cursor.shown = false;
-        self.walked = true;
-        // One of the engine's walks (E24 M4 T4b1, design §5.14): a visit from beside is a move
-        // onto the object's tile with no step, its points the move's; since E24 M4 T6 (R5-1) a
-        // path's last node too, its walk under way ([`Loop::last_node`]).
-        if let Some(found) = self.finds.get(i).map(|f| f.at)
-            && self.moves.is_some()
-        {
-            if self.walking.is_none() {
-                self.take_move(found);
-            }
-            self.step_on_record(found);
-        }
-        if !self.lifted {
-            self.lift(t, true);
-            self.draw(t);
-        }
-        self.hero = self.hero.map(|hero| Hero {
-            facing: direction,
-            ..hero
-        });
-        self.stand();
-        self.spend(t);
-        self.draw_minimap();
-        self.draw_slot();
+    fn visit_beside(&mut self, t: u32, direction: Direction, at: Pos, i: usize) {
+        self.beside_start(t, direction, at);
         self.told.push(i);
         self.visiting(i);
         let finds = Arc::clone(&self.finds);
@@ -4411,9 +4407,70 @@ impl Loop {
     /// last, which takes no step): the node's arrow zeroed as a step's start does
     /// ([`Loop::mobilize`], 0x480B30), then the visit as a key's step's ([`Loop::visit_beside`]:
     /// a record's monster fought, a pile or an artifact taken).
-    fn last_node(&mut self, t: u32, direction: Direction, next: Pos, i: usize) {
+    /// Since E24 M4 T6 (*provisional*) a record's node its walk visits from beside with nothing the
+    /// map shows ([`Beside::Unshown`]: [`Loop::pass_by`]).
+    fn last_node(&mut self, t: u32, direction: Direction, next: Pos, node: Beside) {
         self.path.retain(|(_, a)| a.at != next);
-        self.visit_beside(t, direction, i);
+        match node {
+            Beside::Find(i) => self.visit_beside(t, direction, next, i),
+            Beside::Unshown => self.pass_by(t, direction, next),
+        }
+    }
+
+    /// What a path's last node onto `next` takes in place of a step (E24 M4 T6): a find's visit
+    /// from beside ([`Loop::beside`]), else on a record whose walk stops one short of its path
+    /// ([`Move::stops`]) a visit the map does not show; none: a step.
+    fn node(&self, next: Pos) -> Option<Beside> {
+        if let Some(found) = self.beside(next) {
+            return Some(Beside::Find(found));
+        }
+        self.record_walk()
+            .is_some_and(|w| w.stops.is_some_and(|n| n + 1 == w.tiles.len()))
+            .then_some(Beside::Unshown)
+    }
+
+    /// The record's walk under way, else its next (E24 M4 T6).
+    fn record_walk(&self) -> Option<&Move> {
+        let m = self.walking.map_or(self.next_move, |(m, _)| m);
+        self.moves.as_ref()?.get(m)
+    }
+
+    /// A record's path's last node its walk visits from beside with nothing the map shows (E24 M4
+    /// T6, *provisional*: a meeting, M5's screen; an object whose visit tells nothing Part A
+    /// builds): as a find's visit from beside ([`Loop::visit_beside`]) the hero turned to it, its
+    /// points spent, its slot and the minimap drawn; then the visit's end with nothing shown
+    /// ([`Loop::visited`]'s for an object that blocks its tile), its events folded.
+    fn pass_by(&mut self, t: u32, direction: Direction, next: Pos) {
+        self.beside_start(t, direction, next);
+        self.finish(t, true);
+        self.idle_message(t);
+    }
+
+    /// A visit from beside of the object on `at` begun ([`Loop::visit_beside`], [`Loop::pass_by`]):
+    /// the mouse hidden; on one of the engine's walks (E24 M4 T4b1, design §5.14) a move onto the
+    /// object's tile with no step, its points the move's (since E24 M4 T6, R5-1, a path's last
+    /// node too, its walk under way: [`Loop::last_node`]); the hero lifted (the view centred on
+    /// it and drawn) and turned `direction` but left on its tile, its points spent, its slot and
+    /// the minimap drawn.
+    fn beside_start(&mut self, t: u32, direction: Direction, at: Pos) {
+        self.cursor.shown = false;
+        self.walked = true;
+        if self.walking.is_none() {
+            self.take_move(at);
+        }
+        self.step_on_record(at);
+        if !self.lifted {
+            self.lift(t, true);
+            self.draw(t);
+        }
+        self.hero = self.hero.map(|hero| Hero {
+            facing: direction,
+            ..hero
+        });
+        self.stand();
+        self.spend(t);
+        self.draw_minimap();
+        self.draw_slot();
     }
 
     /// The object `object` taken off the map (`remove_map_object` 0x4AABB0 between the view's
@@ -4787,9 +4844,7 @@ impl Loop {
         }
         if let Some(object) = monster {
             self.take_then(t, object, Gain::default(), Fade::Killfade, Then::Resume);
-            if let Some(dissolving) = &mut self.dissolving {
-                dissolving.queued = queued;
-            }
+            self.dissolving = self.dissolving.take().map(|d| Dissolving { queued, ..d });
             return Ok(());
         }
         self.cursor.shown = true;
@@ -5638,7 +5693,7 @@ impl Loop {
         }
         // A pile or an artifact visited from beside (E24 M4 T2a2 part B).
         if let Some(found) = self.beside(next) {
-            self.visit_beside(t, direction, found);
+            self.visit_beside(t, direction, next, found);
             return;
         }
         self.walk_off(t, true, direction, next, VecDeque::new());
@@ -5709,6 +5764,14 @@ impl Loop {
             .take_while(|(_, a)| a.arrow <= GREEN)
             .map(|&(d, a)| (d, a.at))
             .collect();
+        // A record's walk stopped on the way (E24 M4 T6, [`Move::stops`]): the record's steps.
+        if let Some(n) = self
+            .record_walk()
+            .and_then(|w| w.stops)
+            .filter(|&n| n + 1 < steps.len())
+        {
+            steps.truncate(n.max(1));
+        }
         match steps.pop_front() {
             Some((direction, next)) => self.walk_off(t, false, direction, next, steps),
             None => self.finish(t, false),
@@ -5730,9 +5793,9 @@ impl Loop {
         // reviewer's R5-1; [`Loop::last_node`]).
         if !key
             && rest.is_empty()
-            && let Some(found) = self.beside(next)
+            && let Some(node) = self.node(next)
         {
-            self.last_node(t, direction, next, found);
+            self.last_node(t, direction, next, node);
             return;
         }
         self.cursor.shown = false;
@@ -5918,9 +5981,9 @@ impl Loop {
             // (`input_flush`), dropped by its switch.
             if !moving.key
                 && moving.rest.is_empty()
-                && let Some(found) = self.beside(next)
+                && let Some(node) = self.node(next)
             {
-                self.last_node(t, direction, next, found);
+                self.last_node(t, direction, next, node);
                 if let Some(dissolving) = &mut self.dissolving {
                     dissolving.queued.append(&mut moving.queued);
                     return None;
@@ -5954,7 +6017,12 @@ impl Loop {
             {
                 self.battles.push((t, n));
             }
-            if let Some(&left) = moves.get(m).and_then(|w| w.tiles.get(k)) {
+            // A walk the record stops on the way ends there (E24 M4 T6, [`Move::stops`]).
+            if let Some(&left) = moves
+                .get(m)
+                .filter(|w| w.stops != Some(k))
+                .and_then(|w| w.tiles.get(k))
+            {
                 self.off(left);
             }
         }

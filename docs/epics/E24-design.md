@@ -3238,6 +3238,9 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
   `sequences.toml`, `to-record.toml` removed; `drawn` the 50 situations and 55 earlier sequences
   the same, then `--record`; the window under Xvfb (`--check 10`) on `find-pile` (62 of 62
   frames read back exact, its dissolve's frames among them) and `find-windmill` (54 of 54).
+- **As built at M4 T6** (*provisional*, MCL-STUB-4): no scenario's test on a record
+  (`Loop::town_test`): the record's rules are the engine's, which has no days without a town yet
+  (E10), so a record shows no warning, no days left and no banishment; a recording keeps the test.
 
 ### 5.4 The questions and choices (M4 T2b1)
 
@@ -4219,6 +4222,13 @@ and the binary plays the sequence from it (`sequences <id> --record <r.jsonl> --
 - **Checked:** the three games exact but the listed gaps, again after `master`'s replay format
   v20 (#1066); `drawn` all the same; `check.sh --no-coverage` all gates, `h3-map-view`'s coverage
   at 100 %; the scoped verify.
+- **As built at M4 T6** (*provisional*): a record's walk is its path as commanded, its steps the
+  record's `HeroStepped` (`Move::stops`). One short of the path's last node is a visit from
+  beside: a find's (`Loop::beside`), else one the map does not show (a meeting, M5's; an object
+  whose visit tells nothing: `Loop::pass_by`, the hero turned to it and its points spent, no
+  step). Fewer is a walk stopped on the way (an event, a guard's battle): it ends after the
+  record's last step with the record's points there, the rest of its path left shown, its visit
+  where it stopped. The original's frames of either case are not recorded.
 
 ### 5.14 A record's visits played: the message boxes (M4 T4b1)
 
@@ -4321,6 +4331,9 @@ day: the engine casts no adventure spell (`AdventureCommand` holds `MoveHero`, `
   skills on the hero's window (the tables' `artifact_skills`, taken as worn: SRV-STUB-7). A
   School of Magic bought from tells its box (its gain and price the record's; left, nothing:
   MCL-Q41). The parts the record does not tell: MCL-Q54.
+- **As built at M4 T6** (*provisional*): a visit that takes its object off the map and tells
+  nothing else Part A builds (a Scholar, a Spell Scroll; an event's removal aside, which draws
+  nothing) takes it alone (`Told::Taken`): from beside, the pickup's dissolve and sound, no box.
 
 ### 5.15 A record's visits played: the flags and the boats (M4 T4b2)
 
@@ -4472,6 +4485,11 @@ players' turns, the viewer's controls, a golden replay).
   (`Played::lists`, `NextTurn::list`: the day's choices and selection by it, the hero's record
   index by its map hero); the record player chooses a hero by its slot in the map's list as it
   stands (`Loop::slot_of`).
+- **As built at M4 T6** (*provisional*): the boat a landing of a hero the start does not show
+  leaves in sight is one of its commands' results (MCL-Q53 (c)): on the map from the next turn
+  table's start (`sea-s2611-d28`'s Red boards it later). Such a hero's boarding still leaves the
+  empty boat drawn (`sea-s103-d28`'s and `sea-s2611-d28`'s Blue, `sea-two-boats-s1`'s Red: the
+  map has no list of boats taken off yet).
 
 ### 5.17 A record played without a recording: the record player, the controls, the golden replays (M4 T4c)
 
@@ -4517,6 +4535,13 @@ players' turns, the viewer's controls, a golden replay).
   Attack or Defense, a School's first or second skill), the pointer back where it was in that
   millisecond (MCL-Q37), then Enter; a School left Escape. The commands before an answer that the
   map does not show (an army dialog's and its close) are passed over.
+- **As built at M4 T6** (the golden records that did not play to their end, *provisional*): a
+  walk takes its own path (`Loop::walk_to` looks from the record's next walk's on: an earlier
+  walk's to the same tile can start beside the hero too, `economy-windmill-s1`); a walk the record
+  takes short of its path ends where the record's does (§5.13); an object taken with nothing else
+  built is taken alone (§5.14); a boat a hero the start does not show leaves is on the map from
+  the next table (§5.16); a record has no days without a town (§5.3, MCL-STUB-4). All 66 player
+  records of the golden replays then play headless to their end (46 before).
 
 ### 5.18 A computer's boat in sight from a record (M4 T4c2)
 

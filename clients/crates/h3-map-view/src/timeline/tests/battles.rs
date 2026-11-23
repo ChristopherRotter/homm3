@@ -390,6 +390,7 @@ fn record_walk(to: Pos, battle: Option<u32>) -> Move {
         sea: None,
         battle,
         boats: Vec::new(),
+        stops: None,
     }
 }
 
@@ -552,4 +553,10 @@ fn a_draw_takes_the_hero_then_the_monster() {
     assert!(l.drawn().gone.contains(&OBJECT));
     let l = run_start(&start, &actions, 1900);
     assert!(l.dissolving.is_none() && l.cursor().shown);
+    // An action given during the monster's dissolve waits for its end, which refuses it.
+    let mut l = run_start(&start, &actions, 1400);
+    l.run(1401, &[Action::Walk(Pos { x: 1, y: 1, z: 0 })])
+        .unwrap();
+    let refused = (1402..=1900).find_map(|t| l.run(t, &[]).err());
+    assert_eq!(refused, Some(Unplayable::NoPath([1, 1, 0])));
 }

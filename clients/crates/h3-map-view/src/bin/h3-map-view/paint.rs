@@ -1370,6 +1370,8 @@ impl<'a> Painter<'a> {
                 // A flag raised and nothing else built (E24 M4 T6, the reviewers' R3-4): no box,
                 // the flag at the walk's end.
                 Visited::Flagged { flag } => found.flag = Some((o, flag)),
+                // An object taken and nothing else built (E24 M4 T6): taken from beside, no box.
+                Visited::Taken => found.taken = Some(o),
             }
             out.push(found);
         }

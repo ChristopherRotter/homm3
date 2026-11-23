@@ -361,6 +361,8 @@ struct Open {
     points: Option<i32>,
     before: Vec<Pos>,
     end: Option<Pos>,
+    /// The hero's steps the record tells (E24 M4 T6: [`Move::stops`]).
+    steps: usize,
     sea: Option<Sea>,
     /// The record's number of its `GameEvents` whose `BattleStarted` began a battle (E24 M4 T5b1).
     battle: Option<u32>,
@@ -481,6 +483,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                             points: None,
                             before: explored(&observation, art),
                             end: None,
+                            steps: 0,
                             sea: None,
                             battle: None,
                             boats: core::mem::take(&mut told_boats),
@@ -596,6 +599,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                         } => {
                             if let Some(walk) = open.as_mut().filter(|w| w.hero == *hero) {
                                 walk.end = to.and_then(|to| tile(to.x, to.y, to.level));
+                                walk.steps += 1;
                             }
                         }
                         GameEvent::Adventure {
@@ -694,6 +698,15 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
         art,
         (&mut moves, &mut ends, &mut walkers),
     );
+    // A visit of a walk stopped on the way (E24 M4 T6: an event, a guard's battle) is where the
+    // walk stopped, not at its path's last tile.
+    for visit in &mut visits {
+        if let (Some(walk), Some(&Some(end))) = (moves.get(visit.walk), ends.get(visit.walk))
+            && walk.stops.is_some_and(|n| n + 1 < walk.tiles.len())
+        {
+            visit.at = end;
+        }
+    }
     // A turn under way at the record's end (E24 M4 T6, R1-1): its walks so far, no end.
     if let Some(o) = other {
         due.boats.append(&mut told_boats);
@@ -830,8 +843,18 @@ fn other_event(
             at,
             facing,
         } => {
-            if let Some(step) = last_step(other, *hero) {
-                step.sea = landed(*at, *boat, *facing).or(step.sea);
+            let sea = landed(*at, *boat, *facing);
+            match last_step(other, *hero) {
+                Some(step) => step.sea = sea.or(step.sea),
+                // A hero the start does not show (MCL-Q53 (c), E24 M4 T6): the boat it leaves
+                // at the next turn's start, with its commands' other results.
+                None if !seen.known.contains(hero) => {
+                    pending.boats.extend(sea.and_then(|sea| match sea {
+                        Sea::Land(boat) => Some(boat),
+                        _ => None,
+                    }));
+                }
+                None => {}
             }
         }
         AdventureEvent::ObjectRemoved {
@@ -1114,9 +1137,16 @@ fn close(
         .into_iter()
         .filter(|t| !walk.before.contains(t))
         .collect();
+    // The record's walk short of its path (E24 M4 T6): its last node visited from beside, or
+    // stopped on the way after its last step told.
+    let stops = (walk.steps < steps).then_some(walk.steps);
+    let last = match stops {
+        Some(n) if n + 1 < steps => n.saturating_sub(1),
+        _ => steps.saturating_sub(1),
+    };
     // stub: MCL-Q39 (a step's points and reveal: the walk's at its last and first)
     let mut points = vec![None; steps];
-    if let Some(last) = points.last_mut() {
+    if let Some(last) = points.get_mut(last) {
         *last = walk.points;
     }
     let mut per_step = vec![Vec::new(); steps];
@@ -1130,6 +1160,7 @@ fn close(
         sea: walk.sea,
         battle: walk.battle,
         boats: walk.boats,
+        stops,
     });
     ends.push(walk.end);
     walkers.push(walk.hero);

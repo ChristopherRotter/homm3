@@ -214,6 +214,13 @@ epic   = "E16"
 # reason = "A battle the record's viewer defends (another player's hero attacking the viewer's hero or town in that player's turn) is not handed over to the battle client in the map's window (E24 M4 T5b1, design section 5.20): only a battle begun by one of the viewer's walks or answers is; the original's switch for a defending human's battle was not read (design section 5.19). Lifted when it is read and built (M5; E24 M4 T5b2 built the switch for the viewer's own battles only)"
 # epic   = "E24"
 
+# MCL-STUB-4, a comment for the same reason; its marker `// stub: MCL-STUB-4` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-4"
+# where  = "clients/crates/h3-map-view/src/timeline.rs::Loop::town_test"
+# reason = "A record's turn without a town shows no warning and no days left, and the player is not banished after the seventh day (E24 M4 T6, design section 5.3): the record's rules are the engine's, which has no days without a town yet, so the map client no longer counts them itself on a record (a recording of the original keeps the test). Lifted by E10 increment 1 (elimination by seven days without a town with its warnings: the adventure lane's), the client then showing the warnings and the banishment from the record's events"
+# epic   = "E24"
+
 # --- town (TWN-STUB-<n>) ---
 
 [[stub]]

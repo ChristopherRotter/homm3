@@ -503,6 +503,24 @@ fn records_it_refuses() {
         engine::start(&loaded, &shifted, &[], &town_art(), records(), rules()),
         Err(Refused::Setup)
     );
+    // As many objects, a static one a hero in the art: the static ones fewer than the import's.
+    let swapped = MapArt::from_raw(&h3_map::read(&g.bytes, &Limits::default()).unwrap())
+        .map(|mut art| {
+            let class = |art: &MapArt, i: usize| art.templates[art.objects[i].template].class;
+            let hero = (0..art.objects.len())
+                .find(|&i| class(&art, i) == 34)
+                .unwrap();
+            let other = (0..art.objects.len())
+                .find(|&i| ![34, 70, 214, 8].contains(&class(&art, i)))
+                .unwrap();
+            art.objects[other] = art.objects[hero];
+            art
+        })
+        .unwrap();
+    assert_eq!(
+        engine::start(&loaded, &swapped, &[], &town_art(), records(), rules()),
+        Err(Refused::Setup)
+    );
     let changed = |change: &dyn Fn(&mut GameObservation)| {
         let mut observation = g.observation.clone();
         change(&mut observation);
@@ -1687,6 +1705,64 @@ fn events(events: Vec<h3_protocol::wire::game::GameEvent>) -> ServerMessage {
 }
 
 #[test]
+fn a_record_s_walks_short_of_their_paths() {
+    // E24 M4 T6: a walk an event stops after its first step (its points there, its visit where it
+    // stopped), then one whose last node is visited from beside (its points at its last, its
+    // visit on the node); one taken whole stops nowhere.
+    use h3_protocol::wire::game::{AdventureCommand, AdventureEvent, GameCommand, GameEvent, Pos};
+    let g = game();
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .id;
+    let p = |x, y| Pos { x, y, level: 0 };
+    let walk = |path| {
+        accepted(GameCommand::Adventure {
+            command: AdventureCommand::MoveHero { hero: red, path },
+        })
+    };
+    let step = |from, to| GameEvent::Adventure {
+        event: AdventureEvent::HeroStepped {
+            hero: red,
+            from: Some(from),
+            to: Some(to),
+        },
+    };
+    let points = |movement| GameEvent::Adventure {
+        event: AdventureEvent::MovementChanged {
+            hero: red,
+            movement,
+            max_movement: 2000,
+        },
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            walk(vec![p(10, 9), p(10, 8), p(10, 7)]),
+            events(vec![step(p(10, 10), p(10, 9)), points(1800)]),
+            walk(vec![p(10, 8), p(10, 7)]),
+            events(vec![step(p(10, 9), p(10, 8)), points(1600)]),
+            walk(vec![p(10, 7)]),
+            events(vec![step(p(10, 8), p(10, 7)), points(1500)]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let at = |x, y| h3_map::model::Pos { x, y, z: 0 };
+    let stops: Vec<_> = played.moves.iter().map(|m| m.stops).collect();
+    assert_eq!(stops, [Some(1), Some(1), None]);
+    assert_eq!(played.moves[0].points, [Some(1800), None, None]);
+    assert_eq!(played.moves[1].points, [None, Some(1600)]);
+    let visited: Vec<_> = played.visits.iter().map(|v| v.at).collect();
+    assert_eq!(visited, [at(10, 9), at(10, 7), at(10, 7)]);
+}
+
+#[test]
 fn a_record_s_visits_and_level_ups() {
     use h3_protocol::wire::game::{
         AdventureCommand, AdventureEvent, Answer, ChestChoice, GameCommand, GameEvent, HeroChange,
@@ -2158,6 +2234,11 @@ fn a_record_s_other_players_turns() {
                     object_type: 79,
                     anchor: pos(300, 12),
                 }),
+                event(AdventureEvent::ObjectFlagged {
+                    object_type: 53,
+                    anchor: pos(300, 12),
+                    owner: 2,
+                }),
                 event(AdventureEvent::Landed {
                     hero: blue,
                     boat: 1,
@@ -2409,12 +2490,13 @@ fn what_a_record_s_visits_tell() {
     assert_eq!(found(112, Vec::new()), None);
     assert_eq!(found(79, vec![emptied]), None);
     assert_eq!(found(79, vec![resource(1, 3), resource(2, 3)]), None);
-    // An artifact added and taken; none without it; another class tells nothing.
+    // An artifact added and taken; without it taken alone (E24 M4 T6); another class tells
+    // nothing.
     assert_eq!(
         find(found(5, vec![removed.clone(), artifact])).map(|f| (f.0, f.2)),
         Some((Find::Artifact { artifact: 108 }, true))
     );
-    assert_eq!(found(5, vec![removed]), None);
+    assert_eq!(found(5, vec![removed]), Some(Told::Taken));
     assert_eq!(found(91, vec![visited]), None);
     // The questions: no answer, none; the answer another class's, none.
     let asked = |class, answer, after: Vec<GameEvent>| {
@@ -2928,6 +3010,64 @@ fn a_record_s_visits_laid_out_each_on_its_own() {
 }
 
 #[test]
+fn a_record_s_object_taken_alone() {
+    // E24 M4 T6: a visit that takes its object off the map and tells nothing else Part A builds
+    // (a Scholar's, class 81) takes it alone, from beside, no box; an event's removal (class 26,
+    // not drawn) tells nothing.
+    use h3_map_view::engine::visits::{self, Kept, Laid, Told};
+    use h3_protocol::wire::game::{AdventureEvent, GameEvent, Pos};
+    let removed = GameEvent::Adventure {
+        event: AdventureEvent::ObjectRemoved {
+            object_type: 63,
+            anchor: Pos {
+                x: 5,
+                y: 4,
+                level: 0,
+            },
+        },
+    };
+    let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
+    let visit = engine::Visit {
+        at,
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
+        flag: None,
+        events: vec![removed],
+        answers: Vec::new(),
+        battle: None,
+    };
+    assert_eq!(visits::told(&visit, [81, 0], "Rion"), Some(Told::Taken));
+    assert_eq!(visits::told(&visit, [26, 0], "Rion"), None);
+    let text = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml"),
+    )
+    .unwrap();
+    let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
+    let laid = visits::lay(
+        &[visit],
+        |_| Some((3, [81, 0])),
+        &tables.map.finds,
+        |_| String::new(),
+    );
+    let [
+        Laid {
+            told: Told::Taken,
+            object: 3,
+            kept,
+            blocks: true,
+            ..
+        },
+    ] = &laid[..]
+    else {
+        panic!("taken alone: {laid:?}");
+    };
+    assert_eq!(*kept, Kept::default());
+}
+
+#[test]
 fn what_a_record_s_flags_tell() {
     use h3_map_view::asks::Ask;
     use h3_map_view::engine::visits::{self, Answered, Told};
@@ -3342,7 +3482,28 @@ fn a_record_s_boats() {
                 }),
                 built(23, 0),
             ]),
-            events(vec![built(24, 1)]),
+            // E24 M4 T6: a hero the start does not show lands in sight: its boat the next
+            // table's too (one with no facing left out).
+            events(vec![
+                built(24, 1),
+                adventure(AdventureEvent::HeroStepped {
+                    hero: 99,
+                    from: None,
+                    to: Some(pos(32, 32)),
+                }),
+                adventure(AdventureEvent::Landed {
+                    hero: 99,
+                    boat: 2,
+                    at: pos(33, 33),
+                    facing: 6,
+                }),
+                adventure(AdventureEvent::Landed {
+                    hero: 99,
+                    boat: 2,
+                    at: pos(34, 34),
+                    facing: 9,
+                }),
+            ]),
             events(vec![
                 GameEvent::TurnEnded { player: 1 },
                 GameEvent::DayStarted { day: 2 },
@@ -3398,7 +3559,13 @@ fn a_record_s_boats() {
         between,
         [
             (0, vec![empty(tile(22, 22), 2, Facing::Right)]),
-            (1, vec![empty(tile(24, 24), 1, Facing::Right)])
+            (
+                1,
+                vec![
+                    empty(tile(24, 24), 1, Facing::Right),
+                    empty(tile(33, 33), 2, Facing::Left)
+                ]
+            )
         ]
     );
     let ends: Vec<Vec<LiveBoat>> = played.others[0].walks[0]
