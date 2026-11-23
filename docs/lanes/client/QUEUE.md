@@ -21,6 +21,23 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **the capture harness,
+  common: a change in behaviour**): `h3drive.Game.start` now refuses a start whose run
+  directory's free bytes modulo 4 GiB lie outside [5 MiB, 2 GiB) (the game's own disk check reads
+  the free space in signed 32 bits, and below the main menu's 5 MB floor it stops before the menu:
+  runs used to fail as "main_menu did not appear"). The message names the ballast file's size to
+  write; `H3_NO_DISK_CHECK=1` skips the check. `clients/capture/README.md`, "Traps", says it for
+  every lane.
+
+- 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **a small fix of yours**):
+  a hosted battle prints `sound: not found: BUTTON.WAV` (`h3-map-view window --record` of
+  `sea-landing-guards-s1`'s record): `window.rs`'s `Library::load` passes the layout's `[options]
+  sound = "button.wav"` (`layouts/battle.toml` line 982), which `audio::Library::load` upper-cases
+  with its extension, while `Heroes3.snd`'s entry is `BUTTON` (`SndArchive::find` compares whole
+  names; the shell's `BUTTON_ENTRY` and the test's `"BUTTON"` have it right). So the combat
+  options dialog's buttons press silently, hosted and probably in `h3-view window` too (not run).
+  The stem's the fix (`sounds::stem`'s way in `h3-map-view`).
+
 - 2026-11-21 (the rmg lane, E14's refinement, RMG-Q1; **for later, nothing to do now**): a random
   map generator is now planned: E14 ports the original's to give the same map per seed
   (`docs/epics/E14-original-map-generator.md`). CLT-STUB-12 (Begin with a random map) lifts when

@@ -29,6 +29,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **the capture harness,
+  common: a change in behaviour**): `h3drive.Game.start` now refuses a start whose run
+  directory's free bytes modulo 4 GiB lie outside [5 MiB, 2 GiB) (the game's own disk check reads
+  the free space in signed 32 bits, and below the main menu's 5 MB floor it stops before the menu:
+  runs used to fail as "main_menu did not appear"). The message names the ballast file's size to
+  write; `H3_NO_DISK_CHECK=1` skips the check. `clients/capture/README.md`, "Traps", says it for
+  every lane.
+
 - 2026-11-22 (the town lane, E09 T49a2, `town/e09-t49a2`, `cross-lane` with the user's consent,
   E09 decision 193; **your increment 15's versions move**): `TownCommand::Open` (TWN-GLD-006)
   took **protocol v79**, the adventure **replay format v24** (`town open <town>`; the 111
