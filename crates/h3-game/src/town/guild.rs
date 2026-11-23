@@ -300,15 +300,22 @@ pub(crate) fn offers(
         return (false, false);
     }
     let towns = state.towns();
-    let Some((record, statics)) = towns.get(town).zip(towns.town_static(town)) else {
-        return (false, false);
-    };
     let core = rules.core();
     let heroes = (
         visitor.and_then(|hero| state.hero(hero)),
         garrison.and_then(|hero| state.hero(hero)),
     );
-    let offers = h3_towns::guild_offers(record, statics, rules.towns(), core, heroes);
+    // A town the store lacks offers nothing (no game holds one: every map town has a record).
+    let none = h3_towns::GuildOffers {
+        opening: false,
+        book: None,
+    };
+    let offers = towns
+        .get(town)
+        .zip(towns.town_static(town))
+        .map_or(none, |(record, statics)| {
+            h3_towns::guild_offers(record, statics, rules.towns(), core, heroes)
+        });
     // The hero's own book last: a walk over its effects, dearer than the treasury.
     let buyer = heroes.0.or(heroes.1);
     let book = offers.book.zip(buyer).is_some_and(|(price, buyer)| {
