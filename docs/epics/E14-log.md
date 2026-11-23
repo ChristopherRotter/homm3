@@ -79,3 +79,30 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
 - **Agent decisions** (change freely): five equal parts rather than three by theme; each worker
   wrote its own section and entries and committed on the lane branch; the runner kept only the
   reports.
+
+## T1b1 — the oracle (2026-11-23, increment 1)
+
+- **Cut** by the user at the start (AskUserQuestion): T1b1 the oracle, T1b2 the phase oracle (the
+  draw log and the step dumps), T1b2 later in the same chat on this sandbox's staged files.
+- **Staged** (the PC's shell worked): the client lane's set, 64 files (the four LODs each in its
+  own call, `shell-videos.vid` alone, the 19 others, the 40 non-campaign MP3s), the four manuals
+  and three help files, and Complete's two generated maps; the LODs' and the executables' SHA-256
+  as `docs/formats/installation.md` lists them. The VM restarted once (about 21:07): the setup's
+  baseline was lost, CI's green run on `master` (7ad3b1d) stands for it; Wine and the run
+  directory were kept.
+- **Built:** `xdd.c` section 9 (`H3TIME`: `Heroes3.exe`'s `GetLocalTime` and `GetSystemTime`
+  imports return a fixed date; `crt_time`'s one caller is the generator's seeding; the ack's
+  seventeenth field, `h3drive.ACK_FIELDS` 17); `clients/capture/h3rmg.py` (`one`, `corpus`,
+  `read`, `templates`) on `h3shell.Run`; `rmg/corpus.toml` (21 cases) and `rmg/kept.txt`; the
+  runbook's "The random map's oracle" and two coordinates (System Options, Main Menu).
+- **Observed** (ORACLE.md, "What it showed"): the seed printed is the date given; 2 to 3 s a
+  generation; 21 of 21 the same from fresh starts in two corpus runs, in a second generation in
+  one game and (3 of 3) after the Load Game menu first; 21 distinct digests. SoD's `rmg.txt` is
+  read (the templates predicted by the survey's rule and the first `rand()` after `srand`: 21 of
+  21 from SoD's table, 13 from AB's). One template name holds a line break ("Meeting⏎in Muzgob").
+  The plain writer as read (no padding, main town types 0xFF, red human named). `h3_map` reads
+  all 21 (the padding's absence accepted: no adventure inbox item); 20 import and validate,
+  `l2-2p-c4-islands` refused by TWN-SET-001 (a main town not its player's own town).
+- **The tab:** two levels at its first opening and again after a game (CLT's catalogue had not
+  said which).
+- **Not done (T1b2):** the draw log per site and the step dumps; whether 0x532A5B draws in step 2.

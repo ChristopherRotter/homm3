@@ -12,3 +12,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - `docs/exe/` is not scanned for citations: an address in a map summary needs no entry of its own, one in the survey or the lane's docs does (`cargo xtask check-exe-map`).
 - Two of the generator's draws depend on memory, not on the seed alone (survey §2.6): step 2's uninitialised town-type bytes and step 15's read past the cells. A port that zeroes them can differ from the original; the oracle says how often.
 - Maps the user's game generated may come from an HD-mod-patched executable (`Untitled.h3m` differs from the plain writer in three points, survey §2.5): the oracle's maps come from the plain `Heroes3.exe`.
+
+## The oracle
+
+- A run directory without `random_maps/` makes Begin fail ("Cannot create Random_Map.H3M in data directory."): `h3rmg.py` makes it afresh per case; the shell's recipes have none.
+- The seed is the date `xdd.dll` gives (`H3TIME`) only with `TZ=UTC` (the C library's `time()` converts the local date by its time zone): `h3shell.prepare` sets it; a run outside `h3rmg.py` must too. The description's seed is the check.
+- The Random Map tab shows two levels at each opening of the scenario screen (its button toggles): press the levels only to change them from two.
+- A template's name may hold a line break ("Meeting⏎in Muzgob", a quoted cell of `rmg.txt`): read the tables with a parser of quoted cells, quote names in kept lines.
+- The oracle runs under Wine, whose fresh memory is not Windows': a draw that depends on uninitialised bytes can agree with itself under Wine and still differ on Windows.

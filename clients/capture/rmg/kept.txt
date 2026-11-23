@@ -1,0 +1,22 @@
+# The oracle's maps (h3rmg.py corpus --record; ORACLE.md): digests only, never the maps.
+s1-2p seed=1000000000 template="3SB0b" format=0x1C size=36 levels=1 bytes=26057 h3m=f028e92bde096742 gz=6403fbc1e6cc01b5
+s1-2p-dry seed=1100000000 template="2SM2i" format=0x1C size=36 levels=1 bytes=24477 h3m=a0fb16e9d91068ac gz=91b01239fb49b2d6
+s1-2p-c1-islands seed=1200000000 template="5SB0b" format=0x1C size=36 levels=1 bytes=22689 h3m=cf50f19d5613c197 gz=3abc1fba5bead820
+s2-2p seed=1300000000 template="2SM4d" format=0x1C size=36 levels=2 bytes=39619 h3m=72712729d6df0073 gz=b29e6929444dcd64
+m1-4p seed=1400000000 template="4MM2h" format=0x1C size=72 levels=1 bytes=77846 h3m=dc5d281befe4bed4 gz=f6937275fe8b34b9
+m1-4p-t2 seed=1500000000 template="4SM0g" format=0x1C size=72 levels=1 bytes=82871 h3m=dbd2b8b9a4186f20 gz=882599b042cdfc1e
+m2-2p seed=1000000000 template="Dragons" format=0x1C size=72 levels=2 bytes=120192 h3m=169c1fcdccb1c480 gz=3c388dc6afbfcc94
+m2-4p seed=1600000000 template="2SM4d(2)" format=0x1C size=72 levels=2 bytes=113847 h3m=aac09b92ff177337 gz=7dce3db326897793
+m2-3p-c2-islands seed=1700000000 template="8SM0c" format=0x1C size=72 levels=2 bytes=128090 h3m=90bbf63b564bf42e gz=cbfd23f7195d5ebb
+l1-4p-a seed=1763900000 template="6LM10" format=0x1C size=108 levels=1 bytes=161739 h3m=40b2121e6ac7d7fa gz=787eaf6279fa7719
+l1-4p-b seed=1763900001 template="7SB0c" format=0x1C size=108 levels=1 bytes=129848 h3m=e1d71d2f4091cb8e gz=cccff08e5c893ac0
+l1-4p-c seed=1763900002 template="Ring" format=0x1C size=108 levels=1 bytes=135055 h3m=cdd75769040aa8ce gz=d7c723412b2757f8
+l1-6p-t3 seed=1800000000 template="Meeting \nin Muzgob" format=0x1C size=108 levels=1 bytes=147703 h3m=fcd765c099405fe5 gz=62d6a3e3bfa050b4
+l1-8p-dry seed=1900000000 template="8MM0b" format=0x1C size=108 levels=1 bytes=149253 h3m=6e42eda8598d7373 gz=75b0d35bfd67ad77
+l2-4p seed=2000000000 template="Dwarven Tunnels" format=0x1C size=108 levels=2 bytes=251431 h3m=4a951b1984619b88 gz=8f6d8794bc587e28
+l2-2p-c4-islands seed=2100000000 template="Dragons" format=0x1C size=108 levels=2 bytes=243605 h3m=ea30b2a5992aa316 gz=ddec922f564da03e
+xl1-4p-seed1 seed=1 template="Dwarven Tunnels" format=0x1C size=144 levels=1 bytes=249684 h3m=397cb339ac6304e2 gz=6d29d3895cbb5d02
+xl1-6p-c2 seed=2147483647 template="8XM8" format=0x1C size=144 levels=1 bytes=260753 h3m=7a3a1af1afaaef1d gz=7825b79a23afedd9
+xl2-4p-seed0 seed=0 template="8XM12" format=0x1C size=144 levels=2 bytes=369882 h3m=2f73196a917eae5c gz=58e4dd2a3e3320e3
+xl2-8p-t4-islands seed=123456789 template="8XM8" format=0x1C size=144 levels=2 bytes=438813 h3m=6760d906a9e5dd17 gz=7bc9455d1a6ea71b
+m1-2p-t1 seed=1400000001 template="3SB0b" format=0x1C size=72 levels=1 bytes=78189 h3m=2575966a1721518c gz=3c8b2b0e40468e1e
