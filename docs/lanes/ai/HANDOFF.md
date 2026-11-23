@@ -32,8 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** `ai/e31-t1a3` (E31 T1a3a and T1a3b, docs and the map; its number in
-  the newest session below). Merged: #1137 (T1a2), #1133 (T1a1b, T1a1c), #1131 (T1a1a).
+- **Open pull requests:** #1139 (`ai/e31-t1a3`: E31 T1a3a and T1a3b, docs and the map). Merged: #1137 (T1a2), #1133 (T1a1b, T1a1c), #1131 (T1a1a).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
@@ -60,7 +59,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - A cloud clone, `Heroes3.exe` staged from the user's repo folder. T1a3 measured about 6 000
   instructions at its start, so the cut asked (AI-Q26): four parts, this session T1a3a and T1a3b,
   read by the main session; the edits in a `git worktree` while the setup's baseline ran in the
-  main clone. The pull request: `ai/e31-t1a3` (number below once opened).
+  main clone. The pull request: #1139.
 
 ### 2026-11-23 — E31 T1a2: the values, in four parts
 
