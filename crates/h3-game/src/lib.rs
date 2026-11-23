@@ -139,7 +139,7 @@ pub use observe::{
 };
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
-    DEFAULT_DIFFICULTY, GameHeroSetup, GameSetup, GameSetupError, HeroArmy, HeroArtifactsSetup,
+    DEFAULT_DIFFICULTY, GameHeroSetup, GamePrisonerSetup, GameSetup, GameSetupError, HeroArmy, HeroArtifactsSetup,
     HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 pub use state::{GameState, MonthKind, OpenBattle};
@@ -204,5 +204,9 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// its tag 12, the owner, the hero, the Hill Fort's object index, type and anchor). v38 (E09
 /// T47a2): the store of towns' encoding v4, each town's guild slots and Mana Vortex flag and each
 /// static part's Aurora set (`h3_towns::Town::guild`, `vortex`, `TownStatic::aurora`; E09 design
-/// §86); the towns' stream's first draws the guilds' at the build (E09 decision 179).
-pub const GAME_STATE_HASH_VERSION: u32 = 38;
+/// §86); the towns' stream's first draws the guilds' at the build (E09 decision 179). v39 (E08
+/// T141a, increment 15's design note §15): the store holds each prisoner's details after the
+/// build's heroes and before the customised types' records, its type's record its own; the
+/// encoding is unchanged, the build's (and the setup stream's draws after the build's heroes')
+/// are not.
+pub const GAME_STATE_HASH_VERSION: u32 = 39;

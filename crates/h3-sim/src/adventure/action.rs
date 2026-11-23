@@ -31,9 +31,11 @@
 //! | 102 | Upgrade every stack that upgrades at the player's open Hill Fort (E08 T135a) |
 //! | 103 | Open the town screen of the town whose entrance is the tile in the tile head: its Mana Vortex, its guild's spells (E09 T49a2) |
 //!
-//! A player's hero slots are its heroes on the map in the order of their ids, the first
-//! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
-//! when a hero of a lower id joins or leaves the player (a battle's loser leaves the map). The
+//! A player's hero slots are its list of heroes' first [`HERO_SLOTS`] (since version 19, E08
+//! T141a: its heroes on the map in the order they joined it, GAM-HER-003; before, in the order of
+//! their ids; the original allows a player eight heroes on the map); a hero's slot changes when a
+//! hero before it in the list leaves it (a battle's loser leaves the map), and a hero that joins
+//! takes the slot after the last. The
 //! tile head is a tile of the map, `(level × height + row) × width + column`, the observation's
 //! order; its size is the map's tile count ([`crate::adventure::AdventureEnv::tile_count`]). After
 //! an entry that takes no tile (`EndTurn`, the answers, the hire dialog's purchases, a revisit) the
@@ -154,7 +156,10 @@
 //! building head 0; one action per listed `Open`, which `legal_commands` lists only where it
 //! would change something (the Mana Vortex taken or a spell learned). Appended after the trades'
 //! and services' entries rather than beside the taverns' (the design note's place, written
-//! before version 17), so that no entry moves.
+//! before version 17), so that no entry moves. Version 19 (E08 T141a, the adventure lane's
+//! `cross-lane` change with the user's consent, E08 decision 413) orders the hero slots by the
+//! player's list of heroes (GAM-HER-003: the original's start list by hero type, then each hero
+//! that joins the map last) in place of the heroes' ids; no entry moves.
 
 use h3_adventure::{ALTAR_SLOTS, AdventureCommand, AltarPlaces, MarketParams, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -171,7 +176,7 @@ use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 18;
+pub const ACTION_ENCODING_VERSION: u32 = 19;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -515,18 +520,11 @@ fn town_of_tile(state: &GameState, index: u32) -> Option<TownId> {
     state.adventure().map().town_at(tile_pos(state, index)?)
 }
 
-/// The hero in `slot` of `player`: its heroes in the order of their ids.
+/// The hero in `slot` of `player`: since version 19 its list of heroes' (GAM-HER-003,
+/// `h3_adventure::AdventureState::listed_hero`), before it its heroes in the order of their ids.
 pub fn hero_in_slot(state: &GameState, player: PlayerId, slot: usize) -> Option<HeroId> {
     (slot < HERO_SLOTS)
-        .then(|| {
-            state
-                .adventure()
-                .heroes()
-                .iter()
-                .filter(|hero| hero.owner == player)
-                .nth(slot)
-                .map(|hero| hero.id)
-        })
+        .then(|| state.adventure().listed_hero(player, slot))
         .flatten()
 }
 

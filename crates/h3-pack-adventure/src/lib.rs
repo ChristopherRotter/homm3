@@ -207,6 +207,9 @@
 //! # E09 T39a, the map's Tavern and the Den of Thieves (ADV-VIS-007, -008), no parameters:
 //! # tavern = {}                    # visit = "neighbour"; its visit opens the tavern decision
 //! # den_of_thieves = {}            # visit = "enter"; its visit shows the Thieves' Guild
+//! # E08 T141a, increment 15's Prison and Market of Time (ADV-PRI-001, ADV-OBJ-008), no parameters:
+//! # prison = {}                    # visit = "neighbour"; holds its prisoner, the game frees it
+//! # empty = {}                     # visit = "enter"; nothing happens (the Market of Time)
 //! # E08 T132a2, increment 14's trades and services, each visit = "enter":
 //! # market = { screens = ["trade", "transfer"], count = 5 } # ADV-MKT-001: screens from "trade",
 //! #                                # "transfer", "sell", "buy" (distinct, one at least); count
@@ -578,6 +581,8 @@ struct ObjectTypeDto {
     bank: Option<BankDto>,
     tavern: Option<EmptyDto>,
     den_of_thieves: Option<EmptyDto>,
+    prison: Option<EmptyDto>,
+    empty: Option<EmptyDto>,
     market: Option<MarketDto>,
     altar: Option<AltarDto>,
     hill_fort: Option<HillFortDto>,
@@ -1364,6 +1369,8 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
     kinds.extend(t.magic_spring.map(|_| ObjectKindDef::MagicSpring));
     kinds.extend(t.tavern.map(|_| ObjectKindDef::Tavern));
     kinds.extend(t.den_of_thieves.map(|_| ObjectKindDef::DenOfThieves));
+    kinds.extend(t.prison.map(|_| ObjectKindDef::Prison));
+    kinds.extend(t.empty.map(|_| ObjectKindDef::Empty));
     if let Some(st) = t.stables {
         kinds.push(ObjectKindDef::Stables {
             points: st.points,

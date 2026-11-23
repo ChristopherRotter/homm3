@@ -103,7 +103,7 @@ pub(crate) fn legal_moves(
 /// The town part's most heroes on the map (TWN-ROW-003): 0 without parameters, a part that has
 /// no town, whose `Leave` is then always [`TownCommandError::TooManyHeroes`] (no garrison hero
 /// stands in such a game).
-pub(super) fn most_heroes(rules: &GameRuleset) -> u8 {
+pub(crate) fn most_heroes(rules: &GameRuleset) -> u8 {
     rules
         .towns()
         .params()

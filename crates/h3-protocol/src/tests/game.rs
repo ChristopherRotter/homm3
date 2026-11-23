@@ -1184,6 +1184,7 @@ fn inverse_game(
         events_today: g.events_today.clone(),
         decision: g.decision.as_ref().map(decision_back),
         heroes: g.heroes.iter().map(info_back).collect(),
+        hero_list: g.hero_list.iter().copied().map(HeroId::new).collect(),
         adventure: inverse(&g.adventure),
         towns: g.towns.iter().map(town_back).collect(),
         garrisons: g.garrisons.iter().map(map_garrison_back).collect(),
@@ -1646,6 +1647,7 @@ pub(super) fn every_game_part(
                 details: None,
             },
         ],
+        hero_list: vec![HeroId::new(2), HeroId::new(0)],
         adventure: every_part(),
         towns: vec![
             town(FortLevel::None, false),

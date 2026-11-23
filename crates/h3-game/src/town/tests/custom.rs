@@ -15,7 +15,7 @@ use h3_contracts::{HeroId, HeroSex, PlayerId};
 use h3_heroes::{DetailsError, max_mana};
 
 use super::{faction, hero, rules_of, start, town_pack, towns_core_pack, towns_rules, towns_setup};
-use crate::tests::key;
+use crate::tests::{held, imprison, key};
 use crate::tests::levels::oracle;
 use crate::{GameRuleset, GameSetupError, GameState, HeroDetailsSetup};
 
@@ -54,9 +54,10 @@ fn a_customised_type_still_free_has_its_record_at_the_build_and_is_offered_as_se
     let [orrin, loner, crowd, sage, c0] =
         ["t:orrin", "t:loner", "t:crowd", "t:sage", "t:c0"].map(|k| hero(&rules, k));
     let mut setup = towns_setup(&rules);
-    // The map does not allow the loner, and a prison holds the crowd: no record for either.
+    // The map does not allow the loner, and a prison holds the crowd: no customised type's record
+    // for either; since E08 T141a the crowd's record is its prisoner's, after the placed heroes.
     setup.allowed_heroes.retain(|&t| t != loner);
-    setup.prisoners = vec![crowd];
+    imprison(&rules, &mut setup, (0, 3), held(crowd));
     setup.custom_types = vec![
         (
             c0,
@@ -84,11 +85,13 @@ fn a_customised_type_still_free_has_its_record_at_the_build_and_is_offered_as_se
         assert_eq!((placed.experience, placed.level), (1000, 2));
     }
     assert_eq!(pool.record(orrin), Some(HeroId::new(0)));
-    // The free customised types' records follow the two placed heroes, in type order.
-    assert_eq!(pool.record(sage), Some(HeroId::new(2)));
-    assert_eq!(pool.record(c0), Some(HeroId::new(3)));
-    assert_eq!((pool.record(loner), pool.record(crowd)), (None, None));
-    let sage_record = game.hero(HeroId::new(2)).unwrap();
+    // The free customised types' records follow the two placed heroes and the prisoner, in type
+    // order.
+    assert_eq!(pool.record(sage), Some(HeroId::new(3)));
+    assert_eq!(pool.record(c0), Some(HeroId::new(4)));
+    let prisoner = Some(HeroId::new(2));
+    assert_eq!((pool.record(loner), pool.record(crowd)), (None, prisoner));
+    let sage_record = game.hero(HeroId::new(3)).unwrap();
     assert_eq!(
         (
             sage_record.hero_type,
@@ -100,24 +103,24 @@ fn a_customised_type_still_free_has_its_record_at_the_build_and_is_offered_as_se
     assert!((40..=90).contains(&sage_record.experience));
     // c0's at 2 000 (thresholds 1 000, 2 000: level 3), her spell points full, her sex the
     // entry's (GAM-BAT-012).
-    let offered = game.hero(HeroId::new(3)).unwrap();
+    let offered = game.hero(HeroId::new(4)).unwrap();
     assert_eq!(
         (offered.hero_type, offered.experience, offered.level),
         (c0, 2000, 3)
     );
     assert_eq!(primary_sum(offered.primary), 4 + 2);
     assert_eq!(offered.mana, max_mana(offered, core));
-    assert_eq!(game.hero_sex(HeroId::new(3)), Some(HeroSex::Female));
+    assert_eq!(game.hero_sex(HeroId::new(4)), Some(HeroSex::Female));
     // The start's fill offers c0 to red's slot 1 at that record, as the map sets it: the taverns'
     // stream and the pool's statuses are the plain setup's, so are the offers.
     let mut plain = towns_setup(&rules);
     plain.allowed_heroes.retain(|&t| t != loner);
-    plain.prisoners = vec![crowd];
+    imprison(&rules, &mut plain, (0, 3), held(crowd));
     let without = GameState::new(&rules, &plain, 3).unwrap();
     let slots = |g: &GameState| g.pool().tavern(RED).unwrap().slots;
     assert_eq!(slots(&game), slots(&without));
     assert_eq!(slots(&game)[1], Some(c0));
-    assert_eq!(game.pool().record(c0), Some(HeroId::new(3)));
+    assert_eq!(game.pool().record(c0), Some(HeroId::new(4)));
     // One hero more than the plain game's store: the sage's record, made at the build and not
     // offered (c0's took the id the plain game's fill gave it).
     assert_eq!(game.heroes().len(), without.heroes().len() + 1);

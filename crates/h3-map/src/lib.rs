@@ -95,7 +95,10 @@ pub use parse::parse;
 /// town's required and banned spells into its setup (`TownSetup::required_spells`,
 /// `banned_spells`, TWN-SET-012: the spell of each set bit 0 to 69, bits 70 and 71 dropped; an RoE
 /// map's required set empty).
-pub const MAP_IMPORT_VERSION: u32 = 28;
+/// v29 (E08 T141a, increment 15's design note §7): the Prisons (class 62) typed with their
+/// prisoners' bodies read as placed heroes' (`GameSetup::prisoners`; a Prison entered from water
+/// refused, `Unsupported::PrisonerOnWater`) and the Market of Time (class 50) typed.
+pub const MAP_IMPORT_VERSION: u32 = 29;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

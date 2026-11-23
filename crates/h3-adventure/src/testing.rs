@@ -718,6 +718,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
         seats: seats(2),
         garrisons: Vec::new(),
         town_factions: Vec::new(),
+        prisoners: Vec::new(),
     }
 }
 

@@ -14,7 +14,7 @@ use h3_kernel::Rng;
 
 use super::{AdventureState, StepVisit};
 use crate::command::{AdventureCommandError, AdventureOutcome, Sink};
-use crate::ruleset::{AdventureRuleset, Visit, Weekday};
+use crate::ruleset::{AdventureRuleset, Effect, Visit, Weekday};
 use crate::setup::Pos;
 
 type Rules<'a> = (&'a Ruleset, &'a AdventureRuleset, &'a [Arc<HeroDetails>]);
@@ -58,8 +58,10 @@ impl AdventureState {
     /// visitor; a town defended against `player` is visited from the tile before, TWN-VIS-001), a
     /// border gate the player passes (ADV-VIS-005) or an object whose visit is not built. A
     /// garrison of the player's team, passed on the way, is revisited (its exchange, ADV-GAR-003,
-    /// E08 T114a2; increment 12's design note §7: `StepVisit::visited_at_end`).
-    // rule: ADV-TEL-008, ADV-GAR-004
+    /// E08 T114a2; increment 12's design note §7: `StepVisit::visited_at_end`). An object entered
+    /// and never visited (the Market of Time, ADV-OBJ-008; E08 T141a, *agent's call*) has nothing
+    /// to revisit: the original's visit of its class does nothing, so no command is listed.
+    // rule: ADV-TEL-008, ADV-GAR-004, ADV-OBJ-008
     fn revisit_at<'p>(
         &self,
         part: &'p AdventureRuleset,
@@ -69,8 +71,11 @@ impl AdventureState {
         if !self.live(at, self.map.at(at)).visitable {
             return None;
         }
-        self.visit_at(part, player, at)
-            .filter(|visit| visit.mode == Visit::Enter && visit.visited_at_end())
+        self.visit_at(part, player, at).filter(|visit| {
+            visit.mode == Visit::Enter
+                && visit.visited_at_end()
+                && !matches!(visit.effect, Effect::Empty)
+        })
     }
 
     /// `player`'s heroes whose `Revisit` [`Self::apply`] accepts now, in the order of their ids

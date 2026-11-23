@@ -354,6 +354,8 @@ impl AdventureState {
         }
         let (heroes, block) = self.rows_mut();
         let mut hero = heroes.remove(at);
+        // E08 T141a: out of its owner's list (GAM-HER-003).
+        crate::state::leave_list(heroes, &mut hero);
         hero.army = army;
         place(block, town, hero);
         sink.emit(AdventureEvent {
@@ -437,7 +439,10 @@ impl AdventureState {
     ) {
         let seen_by = self.viewers(core, player, entrance);
         let (heroes, block) = self.rows_mut();
-        let entering = heroes.remove(at);
+        let mut entering = heroes.remove(at);
+        // E08 T141a: the visitor out of its owner's list, then the garrison hero last in it
+        // (GAM-HER-003: `town_swap_heroes` 0x5BE450 in this order).
+        crate::state::leave_list(heroes, &mut entering);
         let leaving = take(block, town);
         let (visitor, held) = (entering.id, leaving.id);
         place(block, town, entering);
@@ -574,10 +579,12 @@ fn take(block: &mut Option<Arc<TownHeroes>>, town: TownId) -> HeroOnMap {
     hero
 }
 
-/// Puts `hero` onto the map at `entrance`, on land, among `heroes` in id order.
+/// Puts `hero` onto the map at `entrance`, on land, among `heroes` in id order; since E08 T141a
+/// last in its owner's list (GAM-HER-003: the original's `hero_place` 0x4D7900 appends it).
 pub(super) fn arrive(heroes: &mut Vec<HeroOnMap>, mut hero: HeroOnMap, entrance: Pos) {
     hero.pos = entrance;
     hero.boat = None;
+    hero.listed = crate::state::next_listed(heroes, hero.owner);
     let at = heroes.partition_point(|on| on.id < hero.id);
     heroes.insert(at, hero);
 }

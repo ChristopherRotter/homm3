@@ -14,9 +14,10 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ArtifactClass, ArtifactTypeId, ROE_WITCH_HUT_MASK, ResourceId, Ruleset, SkillId, SpellCategory,
-    SpellId,
+    ArtifactClass, ArtifactTypeId, Formation, ROE_WITCH_HUT_MASK, ResourceId, Ruleset, SkillId,
+    SpellCategory, SpellId,
 };
+use h3_contracts::{ArmyStack, HeroId};
 use h3_heroes::{PrimarySkill, ScholarGift};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
@@ -83,6 +84,18 @@ pub enum Resolved {
     ///
     /// [`MAX_STOCK`]: crate::MAX_STOCK
     Stock(Vec<ArtifactTypeId>),
+    /// A Prison's prisoner (ADV-PRI-001, E08 T141a; increment 15's design note §8, ADR-0016
+    /// point 1): the hero, its details the game's store, with the army (by slot) and formation
+    /// its freeing places it with ([`crate::AdventureState::free_prisoner`]); never changed after
+    /// the build. The freeing removes the Prison.
+    Prisoner {
+        /// The hero.
+        hero: HeroId,
+        /// Its army, by slot.
+        army: Vec<ArmyStack>,
+        /// Its army's formation in battle.
+        formation: Formation,
+    },
 }
 
 impl Resolved {
@@ -192,6 +205,21 @@ impl CanonicalHash for Resolved {
             Self::Stock(stock) => {
                 h.write_u8(10);
                 stock.hash_into(h);
+            }
+            Self::Prisoner {
+                hero,
+                army,
+                formation,
+            } => {
+                h.write_u8(11);
+                h.write_u16(hero.raw());
+                h.write_len(army.len());
+                for stack in army {
+                    h.write_u8(stack.slot);
+                    stack.creature.hash_into(h);
+                    h.write_u32(stack.count);
+                }
+                h.write_bool(*formation == Formation::Tight);
             }
         }
     }

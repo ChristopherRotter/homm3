@@ -2169,6 +2169,28 @@ visit = "enter"
 from_above = false
 den_of_thieves = {}
 
+# ADV-PRI-001 (E08 T141a; increment 15's design note section 1, survey E08-spells.md section 2,
+# batch E15's E15-1, E15-2): the Prison (class 62; visit_object's case 62, visit_prison 0x4A3EB0),
+# visited from a neighbour (object_classes_not_entered 0x63AA58), not from above, every time, by
+# every player: its prisoner, a hero of the game's store, freed onto its visitable tile below the
+# town part's most heroes on the map.
+[[object_type]]
+id = "prison"
+name = "Prison"
+visit = "neighbour"
+from_above = false
+prison = {}
+
+# ADV-OBJ-008 (E08 T141a; design note section 2, survey section 3, batch E15's E15-3): the Market
+# of Time (class 50), entered (on neither of the original's lists) and never visited: the step
+# onto its entrance ends the move there, and nothing happens.
+[[object_type]]
+id = "market_of_time"
+name = "Market of Time"
+visit = "enter"
+from_above = false
+empty = {}
+
 # E08 T132a2, increment 14's trades and services (design note sections 1, 3 to 5; survey
 # E08-trades.md sections 1 to 14): every one entered and none from above (none of classes 2, 7,
 # 35, 99, 106, 213, 221 is in object_classes_not_entered 0x63AA58 or object_classes_from_above

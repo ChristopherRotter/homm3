@@ -53,8 +53,33 @@ const MASK_ROWS: u16 = 6;
 impl GameObservation {
     /// Folds one of the viewer's events (`crate::map::game::events`, in their order) into this
     /// view: what the event carries, nothing the rules derive; the gaps the module names stay as
-    /// they were.
+    /// they were. Since protocol v80 the viewer's list of heroes follows its heroes on the map
+    /// ([`Self::keep_list`]).
     pub fn fold(&mut self, event: &GameEvent) {
+        self.fold_event(event);
+        self.keep_list();
+    }
+
+    /// Keeps the viewer's list of heroes ([`GameObservation::hero_list`], GAM-HER-003; E08 T141a)
+    /// in step with its heroes on the map: one that left the map leaves the list, the rest closing
+    /// up, and one that came onto it joins its end (in id order when several come in one event,
+    /// which only the start's snapshot holds).
+    fn keep_list(&mut self) {
+        let viewer = self.viewer;
+        let on_map = |id: u16, heroes: &[MapHero]| {
+            heroes.iter().any(|hero| hero.id == id && hero.owner == viewer)
+        };
+        let heroes = &self.adventure.heroes;
+        self.hero_list.retain(|&id| on_map(id, heroes));
+        for hero in heroes.iter().filter(|hero| hero.owner == viewer) {
+            if !self.hero_list.contains(&hero.id) {
+                self.hero_list.push(hero.id);
+            }
+        }
+    }
+
+    /// [`Self::fold`]'s event.
+    fn fold_event(&mut self, event: &GameEvent) {
         match *event {
             GameEvent::TurnEnded { player } => self.set_acting(player, false),
             GameEvent::DayStarted { day } => {
@@ -352,6 +377,42 @@ impl GameObservation {
                 let details = self.details_mut(hero);
                 details.into_iter().for_each(|details| details.see(part));
             }
+            // A freed prisoner (E08 T141a, ADV-PRI-002): as a hire, its owner's view the event's
+            // head with its lists following as `PrisonerPartSeen`, its other parts as
+            // `HiredPartSeen`, its points as the command's `MovementChanged`.
+            GameEvent::PrisonerFreed {
+                player,
+                hero,
+                hero_type,
+                pos,
+                view,
+            } => {
+                let view = view.map(|hero| TavernHero {
+                    hero,
+                    army: Vec::new(),
+                    skills: Vec::new(),
+                    artifacts: Vec::new(),
+                });
+                self.hire(
+                    MapHero {
+                        id: hero,
+                        owner: player,
+                        pos,
+                        boat: None,
+                        own: None,
+                    },
+                    hero_type,
+                    view,
+                );
+            }
+            GameEvent::PrisonerPartSeen {
+                player: _,
+                hero,
+                part,
+            } => self.see_freed(hero, part),
+            // What a full or an emptied Prison's visit tells is the client's message; an emptied
+            // Prison's removal came as its `ObjectRemoved`.
+            GameEvent::PrisonFull { .. } | GameEvent::PrisonEmptied { .. } => {}
             // A Den of Thieves' Thieves' Guild (E09 T39b2): a snapshot, not in the observation (a
             // client makes it with `ThievesGuild::see`).
             GameEvent::ThievesGuildSeen { .. } | GameEvent::GuildPartSeen { .. } => {}
@@ -812,15 +873,7 @@ impl GameObservation {
             // The worn ones by position (the positions after the last told by its parts), then
             // the backpack's first places in order.
             for (place, artifact) in artifacts {
-                match place {
-                    ArtifactPlace::Worn { position } => {
-                        let at = usize::from(position);
-                        let len = details.worn.len().max(at + 1);
-                        details.worn.resize(len, None);
-                        details.worn[at] = Some(artifact);
-                    }
-                    ArtifactPlace::Backpack { index: _ } => details.backpack.push(artifact),
-                }
+                put_artifact(&mut details, place, artifact);
             }
             details
         });
@@ -839,6 +892,29 @@ impl GameObservation {
     }
 
     /// The details of the viewer's hero `hero`.
+    /// Adds a part of a freed prisoner's view after the ones before it (`PrisonerPartSeen`, E08
+    /// T141a): a stack to its owner's army, a skill to its details' skills, an artifact at its
+    /// place as a hire's view's ([`Self::hire`]).
+    fn see_freed(&mut self, hero: u16, part: TavernPart) {
+        match part {
+            TavernPart::Stack { stack } => {
+                if let Some(own) = self.own_mut(hero) {
+                    own.army.push(stack);
+                }
+            }
+            TavernPart::Skill { skill } => {
+                if let Some(details) = self.details_mut(hero) {
+                    details.skills.push(skill);
+                }
+            }
+            TavernPart::Artifact { place, artifact } => {
+                if let Some(details) = self.details_mut(hero) {
+                    put_artifact(details, place, artifact);
+                }
+            }
+        }
+    }
+
     fn details_mut(&mut self, hero: u16) -> Option<&mut HeroDetails> {
         self.heroes
             .iter_mut()
@@ -967,6 +1043,21 @@ fn put_garrison(list: &mut Vec<MapGarrison>, view: MapGarrison) {
     match list.binary_search_by_key(&view.place(), MapGarrison::place) {
         Ok(at) => list[at] = view,
         Err(at) => list.insert(at, view),
+    }
+}
+
+/// Puts a view's artifact at its place in `details` (a hire's, E09 T38a1; a freed prisoner's, E08
+/// T141a): a worn one at its position (the worn list grown to it), a backpack's after the ones
+/// before it.
+fn put_artifact(details: &mut HeroDetails, place: ArtifactPlace, artifact: Artifact) {
+    match place {
+        ArtifactPlace::Worn { position } => {
+            let at = usize::from(position);
+            let len = details.worn.len().max(at + 1);
+            details.worn.resize(len, None);
+            details.worn[at] = Some(artifact);
+        }
+        ArtifactPlace::Backpack { index: _ } => details.backpack.push(artifact),
     }
 }
 

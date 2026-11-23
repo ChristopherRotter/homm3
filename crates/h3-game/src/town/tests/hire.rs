@@ -181,8 +181,11 @@ fn a_hire_places_the_slots_hero_on_the_entrance_with_its_away_record() {
         movement: away.movement,
         boat: None,
         max_movement: away.max_movement,
+        // E08 T141a: last in red's list (GAM-HER-003).
+        listed: game.adventure().hero(id).map_or(0, |hero| hero.listed),
     };
     assert_eq!(game.adventure().hero(id), Some(&placed));
+    assert_eq!(game.adventure().hero_list(RED).last(), Some(&id));
     assert_eq!(game.adventure().town_visitor(T0), Some(id));
     assert_eq!(game.hero(id), Some(&details));
     // Its type taken by red's colour, the colour's bit in its mask; its away record handed over.

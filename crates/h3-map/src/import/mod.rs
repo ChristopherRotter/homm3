@@ -21,7 +21,8 @@ use h3_adventure::{DWELLING_LEVELS, ObjectKind, Passage};
 use h3_content::{CreatureTypeId, FactionId, Formation, HeroTypeId, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, HeroSex, PlayerId, TownId};
 use h3_game::{
-    DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, HeroArtifactsSetup,
+    DEFAULT_DIFFICULTY, GameHeroSetup, GamePrisonerSetup, GameRuleset, GameSetup, HeroArmy,
+    HeroArtifactsSetup,
     HeroDetailsSetup, PlayerSetup, PlayerStart, TimedEventSetup,
 };
 
@@ -70,6 +71,10 @@ pub enum Unsupported {
     /// ADV-DWL-004: a hero in a boat visits it as on land, survey `E08-dwellings.md` §17); until
     /// then four shipped maps were refused for one.
     OwnedOnWater(usize),
+    /// The Prison at this index has its visitable tile on water (E08 T141a; increment 15's design
+    /// note §7): its prisoner would be freed onto water without a boat; none of the shipped maps'
+    /// 89 Prisons has one (survey `E08-spells.md` §1.1).
+    PrisonerOnWater(usize),
 }
 
 impl Unsupported {
@@ -84,6 +89,7 @@ impl Unsupported {
             Self::RewardArmy(_) => "a reward of more creature stacks than an army's slots",
             Self::HeroOnWater(_) => "a hero placed on water",
             Self::OwnedOnWater(_) => "an ownable object other than a dwelling entered from water",
+            Self::PrisonerOnWater(_) => "a prison entered from water",
         }
     }
 }
@@ -117,6 +123,9 @@ pub enum ImportError {
     Subclass(usize),
     /// The hero object at this index belongs to a colour nobody plays.
     HeroOwner(usize),
+    /// The Prison at this index holds no hero's body (E08 T141a: the reader reads one for every
+    /// object of class 62, so only a raw map built otherwise has none).
+    PrisonBody(usize),
     /// The hero object at this index has a template without exactly one visitable tile on the
     /// map, the tile the hero stands on.
     HeroTile(usize),
@@ -174,6 +183,7 @@ impl fmt::Display for ImportError {
             Self::HeroOwner(object) => {
                 write!(f, "hero object {object} belongs to a colour nobody plays")
             }
+            Self::PrisonBody(object) => write!(f, "prison {object} holds no hero"),
             Self::HeroTile(object) => {
                 write!(f, "hero object {object} does not name one tile to stand on")
             }
@@ -286,7 +296,19 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
                 }
                 heroes.push(hero);
             }
-            (PRISON, body) => prisoners.push(body),
+            // rule: ADV-PRI-001
+            (PRISON, Body::Hero(body)) => {
+                let custom = map
+                    .custom_heroes
+                    .iter()
+                    .find(|c| c.hero_type == body.hero_type);
+                let entrance = stands_on(&footprint(object, template));
+                if entrance.is_some_and(|pos| on_water(rules, &static_map, pos)) {
+                    return Err(Unsupported::PrisonerOnWater(index).into());
+                }
+                prisoners.push(prisoner(map.header.version, rules, index, (body, custom))?);
+            }
+            (PRISON, _) => return Err(ImportError::PrisonBody(index)),
             (HERO_PLACEHOLDER, _) => return Err(Unsupported::HeroPlaceholder(index).into()),
             _ => {}
         }
@@ -295,7 +317,7 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
     let banned_spells = spell_set(rules, &map.banned_spells)?;
     let banned_artifacts = banned_artifacts(map, rules)?;
     let events = timed_events(map, rules, &colours)?;
-    let (allowed_heroes, hero_masks, prisoners) = town::pool(map, rules, &prisoners)?;
+    let (allowed_heroes, hero_masks) = town::pool(map, rules)?;
     let custom_types = custom_types(map, rules)?;
     Ok(GameSetup {
         players,
@@ -1228,6 +1250,30 @@ fn hero(
             Formation::Tight
         },
         details,
+    })
+}
+
+/// A prisoner (ADV-PRI-001; E08 T141a, increment 15's design note §7): a Prison's body read as a
+/// placed hero's (its type, army, formation and the customisations of its details over its type's
+/// map-wide entry; [`hero`]), without an owner or a tile: the original's `placed_heroes_setup`
+/// 0x4CAE10 sets up a prisoner's record as a placed hero's (survey `E08-spells.md` §2.1). Its
+/// name and portrait are the clients'.
+fn prisoner(
+    version: Version,
+    rules: &GameRuleset,
+    index: usize,
+    (body, custom): (&HeroBody, Option<&CustomHero>),
+) -> Result<GamePrisonerSetup, ImportError> {
+    let hero_type = hero_type_of(rules, body.hero_type)?;
+    Ok(GamePrisonerSetup {
+        hero_type,
+        army: army(version, rules, index, body.army.as_ref())?,
+        formation: if body.formation == 0 {
+            Formation::Loose
+        } else {
+            Formation::Tight
+        },
+        details: details(version, rules, Some(hero_type), (body, custom))?,
     })
 }
 

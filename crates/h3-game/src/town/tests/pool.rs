@@ -12,10 +12,11 @@ use h3_contracts::{HeroId, PlayerId};
 use h3_kernel::{Rng, StreamId};
 
 use super::{faction, hero, towns_rules, towns_rules_with, towns_setup};
+use crate::tests::{held, imprison};
 use crate::tests::setup as setup_without_towns;
 use crate::town::pool::{HeroPool, HeroStatus, draw_heroes};
 use crate::town::{FactionChoice, FactionSet};
-use crate::{GameRuleset, GameSetup, GameSetupError, GameState};
+use crate::{GamePrisonerSetup, GameRuleset, GameSetup, GameSetupError, GameState};
 
 const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
@@ -68,7 +69,10 @@ fn the_pool_frees_the_allowed_types_and_takes_the_placed_the_prisoners_and_the_p
         .allowed_heroes
         .retain(|&t| t != id("t:crowd") && t != id("t:c0"));
     setup.allowed_heroes.push(unknown);
-    setup.prisoners = vec![id("t:sage"), unknown];
+    setup.prisoners = vec![id("t:sage"), unknown]
+        .into_iter()
+        .map(GamePrisonerSetup::of_type)
+        .collect();
     setup.hero_masks = vec![
         (id("t:gunner"), 0b0111),
         (id("t:gunner"), 0b1101),
@@ -93,7 +97,7 @@ fn the_pool_frees_the_allowed_types_and_takes_the_placed_the_prisoners_and_the_p
     assert_eq!(pool.mask(id("t:k0")), Some(0xFF));
     assert_eq!((pool.status(unknown), pool.mask(unknown)), (None, None));
     // A prisoner's type is taken whatever the allowed set.
-    setup.prisoners.push(id("t:c0"));
+    setup.prisoners.push(GamePrisonerSetup::of_type(id("t:c0")));
     assert_eq!(
         HeroPool::new(core, &setup).status(id("t:c0")),
         Some(HeroStatus::Prisoner)
@@ -289,7 +293,7 @@ fn twn_quirk_3_a_random_hero_draws_no_later_placed_heros_type() {
     random(&mut setup, 0);
     setup.heroes[1].hero_type = Some(id("t:k0"));
     setup.heroes[1].army = setup.heroes[0].army.clone();
-    setup.prisoners = vec![id("t:k1")];
+    imprison(&rules, &mut setup, (0, 3), held(id("t:k1")));
     setup.allowed_heroes = types(&rules, &["t:k0", "t:k1", "t:k2"]);
     for seed in 0..16 {
         assert_eq!(drawn(&rules, &setup, seed, 0), id("t:k2"));

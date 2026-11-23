@@ -29,8 +29,13 @@ use h3_towns::{
 };
 
 use super::{FactionChoice, FactionSet, MainTown, PlayerStart};
-use crate::tests::{adventure_pack, battle_part_with, core_pack, hero_type, key, manifest, setup};
-use crate::{GameEvent, GameRuleset, GameSetup, GameSetupError, GameState, PlayerSetup, TownView};
+use crate::tests::{
+    adventure_pack, battle_part_with, core_pack, held, hero_type, imprison, key, manifest, setup,
+};
+use crate::{
+    GameEvent, GamePrisonerSetup, GameRuleset, GameSetup, GameSetupError, GameState, PlayerSetup,
+    TownView,
+};
 
 #[test]
 fn a_faction_set_holds_the_factions_below_its_capacity() {
@@ -507,7 +512,8 @@ fn the_towns_and_the_pool_are_part_of_the_state() {
     let mut full = towns_setup(&rules);
     full.players[0].start.pick = Some(hero(&rules, "t:loner"));
     full.hero_masks = vec![(hero(&rules, "t:loner"), 0b01)];
-    full.prisoners = vec![hero(&rules, "t:crowd")];
+    let crowd = held(hero(&rules, "t:crowd"));
+    imprison(&rules, &mut full, (0, 3), crowd);
     full.towns[0].buildings = BuildingsSetup::Custom {
         built: SlotSet::EMPTY,
         forbidden: SlotSet::EMPTY,
@@ -537,6 +543,7 @@ fn the_towns_and_the_pool_are_part_of_the_state() {
     // The pool is part of the state (E09 T7b1).
     let mut plain = full.clone();
     plain.prisoners.clear();
+    plain.map.objects.pop();
     assert_ne!(built(&plain).state_hash(), full_game.state_hash());
 }
 
@@ -836,7 +843,10 @@ fn the_offer_is_the_first_16_free_types_of_the_factions_classes_the_colour_may_t
     assert_eq!(GameSetup::OFFERED_HEROES, 16);
     assert_eq!(setup.offer(&rules, red), first);
     // A prisoner's type is out, the next comes in; so is a type the map does not allow.
-    setup.prisoners = keys(&["t:loner"]);
+    setup.prisoners = keys(&["t:loner"])
+        .into_iter()
+        .map(GamePrisonerSetup::of_type)
+        .collect();
     setup
         .allowed_heroes
         .retain(|&t| t != hero(&rules, "t:crowd"));
@@ -888,7 +898,7 @@ fn a_pick_is_one_of_the_offer() {
     // A prisoner's type, a type the map does not allow and a type the colour may not take.
     let error = refused(&rules, text, |s| {
         s.players[0].start.pick = pick("t:loner");
-        s.prisoners = vec![hero(&rules, "t:loner")];
+        s.prisoners = vec![GamePrisonerSetup::of_type(hero(&rules, "t:loner"))];
     });
     assert_eq!(error, GameSetupError::Pick(PlayerId::new(0)));
     let error = refused(&rules, text, |s| {

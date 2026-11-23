@@ -45,6 +45,7 @@ mod hire;
 mod levels;
 mod manage;
 mod market;
+mod prison;
 mod rests;
 
 pub use battle::OpenBattle;
@@ -662,7 +663,9 @@ impl GameState {
     /// at everything, told to the player ([`town::thieves::tell_den`]), alone; since E08 T133b a
     /// market's decision ([`Self::open_market`]), alone; since E08 T134a an Altar's
     /// ([`Self::open_altar`]), alone; since E08 T134b1 a Hill Fort's
-    /// ([`Self::open_hill_fort`]), alone.
+    /// ([`Self::open_hill_fort`]), alone; since E08 T141a a Prison's visit
+    /// ([`Self::settle_prison`]: the prisoner freed, or the eight heroes, or the Prison emptied),
+    /// alone.
     // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, GAM-DEC-008, ADV-MON-006
     // rule: TWN-SIE-002, GAM-DEC-009, TWN-GRO-007, GAM-DEC-010, ADV-VIS-008, GAM-DEC-011
     // rule: GAM-DEC-012, GAM-DEC-013
@@ -765,6 +768,10 @@ impl GameState {
             }
             if outcome.thieves_guild {
                 town::thieves::tell_den(self, rules, player, sink);
+            }
+            // rule: ADV-PRI-002
+            if let Some(visit) = outcome.prison {
+                self.settle_prison(rules, player, visit, sink);
             }
             // rule: GAM-DEC-011, GAM-DEC-012, GAM-DEC-013
             match outcome.service {

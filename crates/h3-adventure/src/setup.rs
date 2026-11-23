@@ -339,6 +339,19 @@ pub struct HeroSetup {
     pub formation: Formation,
 }
 
+/// A prisoner as the setup gives it (ADV-PRI-001; E08 T141a, increment 15's design note §8, §9):
+/// a hero of the game's store held by a Prison of the static map, off the map until a visit frees
+/// it, with the army and formation it is freed with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrisonerSetup {
+    /// The hero (its index in `h3-game`'s store of heroes).
+    pub id: HeroId,
+    /// Its army: one or more stacks in distinct slots.
+    pub army: Vec<ArmyStack>,
+    /// Its army's formation in battle.
+    pub formation: Formation,
+}
+
 /// Everything the adventure context is built from (ADR-0015 point 4).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdventureSetup {
@@ -346,8 +359,14 @@ pub struct AdventureSetup {
     pub players: u8,
     /// The static map.
     pub map: MapSetup,
-    /// The heroes on the map, in any order (ids must be distinct).
+    /// The heroes on the map (ids must be distinct), in the order they join their owners' lists
+    /// (GAM-SET-004; E08 T141a, decision 413): each player's list starts with its heroes in this
+    /// order ([`crate::AdventureState::hero_list`]).
     pub heroes: Vec<HeroSetup>,
+    /// The prisoners (ADV-PRI-001; E08 T141a), one per Prison of the static map in object order:
+    /// each Prison holds its prisoner ([`crate::Resolved::Prisoner`]). Their ids are distinct
+    /// from each other and from the heroes'.
+    pub prisoners: Vec<PrisonerSetup>,
     /// The game's difficulty, from 0 (easy; E08 T20a2a): a static input the monsters' answer
     /// reads (ADV-MON-007, E08 T20b). The game checks it against its starting resources.
     pub difficulty: u8,
@@ -551,7 +570,9 @@ pub enum SetupError {
         /// Why.
         error: StandError,
     },
-    /// The hero's army is invalid.
+    /// The setup gives this many prisoners, not one per Prison of the static map (E08 T141a).
+    Prisoners(usize),
+    /// The hero's army is invalid (since E08 T141a a prisoner's too).
     Army {
         /// The hero.
         hero: HeroId,
@@ -626,6 +647,7 @@ impl fmt::Display for SetupError {
                 hero.raw()
             ),
             Self::HeroTile { hero, error } => write!(f, "hero {}: {error}", hero.raw()),
+            Self::Prisoners(n) => write!(f, "{n} prisoners do not give one per prison"),
             Self::Army { hero, error } => write!(f, "hero {}'s army: {error}", hero.raw()),
             Self::Boat(boat) => write!(f, "boat {boat} lies where no boat may"),
             Self::TeleporterSurface(object) => {

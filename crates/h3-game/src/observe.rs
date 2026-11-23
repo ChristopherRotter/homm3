@@ -71,6 +71,10 @@ pub struct GameObservation {
     /// class), and the details of its own only (GAM-HER-001, E08 T18b; survey `E08-battles.md`
     /// §9).
     pub heroes: Vec<HeroInfo>,
+    /// The viewer's list of heroes (GAM-HER-003; E08 T141a, decision 413): its heroes on the map in
+    /// the order they joined it, its towns' garrison heroes not among them
+    /// ([`h3_adventure::AdventureState::hero_list`]); empty for a viewer without heroes on the map.
+    pub hero_list: Vec<HeroId>,
     /// The adventure map as the viewer sees it.
     pub adventure: AdventureObservation,
     /// The towns the viewer sees, in `TownId` order (TWN-VEW-001 to -003, E09 T8c1): each town a
@@ -480,6 +484,8 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
                 ))
             }),
         heroes: hero_infos(state, &adventure.heroes, &adventure.garrison_heroes),
+        // rule: GAM-HER-003
+        hero_list: state.adventure().hero_list(player),
         adventure,
         towns,
         garrisons,
@@ -617,6 +623,24 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
             pos,
             seen_by: alone,
         }),
+        // rule: ADV-PRI-003
+        // E08 T141a (increment 15's design note §13): a freed prisoner as a hire, its view to its
+        // owner alone.
+        GameEvent::PrisonerFreed {
+            player: owner,
+            hero,
+            hero_type,
+            pos,
+            seen_by,
+            view,
+        } => seen_by.contains(player).then_some(GameEvent::PrisonerFreed {
+            player: owner,
+            hero,
+            hero_type,
+            pos,
+            seen_by: alone,
+            view: view.filter(|_| owner == player),
+        }),
         GameEvent::ResourceGained { player: owner, .. }
         | GameEvent::ResourceLost { player: owner, .. }
         | GameEvent::ResourcePaid { player: owner, .. }
@@ -628,6 +652,9 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::TavernOffered { player: owner, .. }
         | GameEvent::TavernPartSeen { player: owner, .. }
         | GameEvent::HiredPartSeen { player: owner, .. }
+        | GameEvent::PrisonerPartSeen { player: owner, .. }
+        | GameEvent::PrisonFull { player: owner, .. }
+        | GameEvent::PrisonEmptied { player: owner, .. }
         | GameEvent::ThievesGuildSeen { player: owner, .. }
         | GameEvent::GuildPartSeen { player: owner, .. }
         | GameEvent::GarrisonChanged { player: owner, .. }

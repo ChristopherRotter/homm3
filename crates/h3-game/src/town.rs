@@ -180,7 +180,7 @@ impl GameSetup {
             .filter(|&(id, ty)| {
                 self.allowed_heroes.contains(&id)
                     && !self.heroes.iter().any(|hero| hero.hero_type == Some(id))
-                    && !self.prisoners.contains(&id)
+                    && !self.prisoners.iter().any(|p| p.hero_type == id)
                     && core
                         .hero_class(ty.class)
                         .is_some_and(|class| class.faction == faction)
