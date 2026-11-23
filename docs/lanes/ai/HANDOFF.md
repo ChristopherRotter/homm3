@@ -25,37 +25,23 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   +0.285; 0.552 head to head against `e25-imitate-1` #2): exit criterion 1 met on its point
   estimates, the faithful actor's win rate inside its interval; 217 samples a second, 28 hours a
   20 M on the GTX 1070. The GPU's memory capped at 90 % of the card (`gpu.cap`, `TRAPS.md`).
-  **Increments 8 and 9 closed** (`E25-archive.md`; `E25-log.md` T30 to T39): no probe (size,
-  PPO's settings, the search at play, the KL anchor, the outcome's weight), the long run (0.511
-  against the faithful actor) nor v23 (the reach block, the kill preview: T39's bench, 0.457,
-  0.460, 0.459 ± 0.018) passed #2 (AI-Q18, AI-Q20). A `hexconv` run sets `accumulate = 4`,
-  `chunk_align = 32` (T31); a long run stops early (`[gate] futility`, T36); a bench A/B sets
-  `same_start` (T38b; `TRAPS.md`, Python). **Increment 10: the ceiling** (the user, AI-Q20): a
-  lower bound on the play possible against the fair actor by rollouts of the fair actor (every
-  legal command, common random numbers), on the true battle and the side's worlds, then where
-  #2's choices lose value. **T42 done** (`E25-log.md` T42): `h3 ai ceiling`, the rollout-improved
-  fair actor on `h3 ai eval`'s sets, sequential halving, a resumable games file; about 190
-  thread-seconds a game at budget 8. **T43 done** (`E25-log.md` T43; records in
-  `python/records/ceiling/`): at budget 4 the rollout-improved fair actor gains, paired over the
-  fair actor's own play on the report set, +0.085 ± 0.010 on the side's worlds (#2: +0.027) and
-  +0.115 on the true battle (the information +0.030), the neutral set +0.047 (+0.334); one
-  stalled game of 600 left out (the user), the fair actor's refused cast (the battle lane's
-  inbox). **T44's tool done** (`E25-log.md` T44): `inspect --commands` records #2's games, `h3
-  ai ceiling --commands` replays them and values each decision (T43's halving, both commands
-  kept, `--confirm` fresh rollouts), `--leave-out`; 121 thread-seconds a game. #2's games
-  recorded (599; 0.509, +0.026). **Next: T44's valuation** (the user's machine, the command in
-  `QUEUE.md`), then T45 (the checkpoint).
-- **Open pull requests:** #1123 (this branch, `claude/gifted-goodall-is3bgu`: T44's tool and
-  #2's recording). Merged:
-  #1121 (`shared/ci-exe-map`: CI's docs-only path runs `check-exe-map`), #1119 (T43's
-  measurement read, E31's cited addresses), #1117 and #1116 (E31's refinement).
+  **Increments 8 to 10 closed** (`E25-archive.md`; `E25-log.md` T30 to T44): no probe, the long
+  run nor v23 passed #2 (AI-Q18, AI-Q20); increment 10, the ceiling (`h3 ai ceiling`): against
+  the fair actor +0.085 legitimately (+0.115 seeing all), #2 +0.026 of it, its regret spread over
+  every kind of decision (casts the costliest a decision, missed moves the largest sum). A
+  `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
+  futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
+  increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
+- **Open pull requests:** #1129 (this branch, `claude/gifted-goodall-is3bgu`: T44's valuation
+  read, T45, increment 10 closed) after `shared/e25-pause` (README, BACKLOG). Merged: #1123 (T44's tool, #2's recording), #1121 (`shared/ci-exe-map`), #1119 (T43's
+  measurement read, E31's cited addresses).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q23, AI-QUIRK-1, AI-STUB-2.
-- **After E25 increment 10** (T43 to T45): **E31** (the original's computer player; refined
-  2026-11-21, AI-Q22: `docs/epics/E31-original-computer-player.md`, increment 1 the reading's
-  map and the survey; next E31 T1a1 in `QUEUE.md`), then E13 (refined in shape,
+  ids: AI-Q24, AI-QUIRK-1, AI-STUB-2.
+- **Next: E31** (the original's computer player; refined 2026-11-21, AI-Q22:
+  `docs/epics/E31-original-computer-player.md`, increment 1 the reading's map and the survey;
+  **E31 T1a1** in `QUEUE.md`, `Heroes3.exe` staged), then E13 (refined in shape,
   `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -64,6 +50,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-23 — E25 T44: the valuation read
+
+- The user ran the valuation (16 threads, 96 minutes) and uploaded its JSON and games file; the
+  read paired with T43's records by a scratch script (not committed). T45 with the user
+  (AI-Q23): increment 10 closed, E25 paused for E31 (`shared/e25-pause`). Docs only.
 
 ### 2026-11-21 — E25 T44: the tool
 
@@ -82,10 +74,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   temporary instrumented build (not committed) to the fair actor; the user chose to leave it
   out. `check-exe-map` failed on `master` (E31's citations): `Heroes3.exe` staged (the user's
   upload, SHA-256 checked) for the map's entries.
-
-### 2026-11-21 — E31 refined (AI-Q22)
-
-- A refinement session with the user, docs only (the PC's shell down, a cloud clone;
-  `Heroes3.exe` staged alone, SHA-256 checked, for the first look's size by a scratch script
-  over `scripts/exe.py`'s `Code`, not committed). E31's epic file, AI-Q22, the queue's E31 T1a1;
-  the backlog's and README's rows in `shared/e31-refinement`.
