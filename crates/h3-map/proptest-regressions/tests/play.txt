@@ -53,3 +53,4 @@ cc 6990fd1cb7b22009649478c2a15e0387746cda8e823fad7e75c63ccbb75415ea # E09 T29b: 
 cc d434f32c9613bfbd24cca09aba0b8bf902ce4a716f95bb097109382d255dcdd2 # E09 T29b: a garrison hero raises after its defence and answers its level-up (CI on #946)
 cc 927e83f83344d60c406dca3ea29fb9a601810f09228a5912e618f5408cb989d2 # E08 T129a: CI's run on master 450e47e, a won battle's 3 of resource 4
 cc 134df4289e36af2b6de41b9cf680ebbf2d47177b1d73e82cbf668960d473b0f0 # E08 T136: the scoped verify's run on master 18cf2f2, a garrison hero's formation set off the map (E09 T28a) and listed by legal_town_management, not by the map heroes' listings the oracle asked
+cc 8b2ce4c0f00b7e20c83cd877346715ea2476d8626044dc4e29caa195d9fb30a4 # E09 T49b's CI: a hire's Mana Vortex cleared the week flag, unknown to check_towns

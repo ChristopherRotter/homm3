@@ -54,6 +54,7 @@ three refusals, `check_spell_book`, `guild_offers`, the game's `buy_book` and `o
 wire, the word, `SPELL_BOOK` (104); the plans. The town map's seed 2541 lost its won siege: 277
 after a search of 3 000. `legal-towns-36` on `master`'s games +5.5 % at the first build, +1.6 %
 after the design pass (`TRAPS.md`); `day-start-builds-36` re-baselined (its games bought books).
+CI's first run met a gap of T49a1's in `h3-map`'s `check_towns` (a hire's Vortex flag): taught.
 
 ### 2026-11-22 — T49a2: the town screen's opening, `TownCommand::Open`, `cross-lane`
 

@@ -110,6 +110,14 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   owner's `TownChanged` for either, and compares the rest of the record as before. A new writer
   of them (T27's hire) is told and taught there.
 
+- **A town record's field the oracle over every command does not know** (E09 T49b's CI):
+  `check_towns` compares a town's record before and after every command, the counts and the
+  Portal set aside; T49a1's hire Vortex cleared the week flag, which only the hire's own check
+  knew, and `master`'s games never met a Vortex hire until the books changed their course. The
+  flag is now set aside there too, allowed to clear with a `SetSpellPoints` told for the town's
+  hero and to be set at a week's start, told to the owner. A new field of `Town` is taught to
+  `check_towns`, not only to its command's check.
+
 - **A silent write of a hero's details meets two oracles** (E09 T49a1, the night's refill and a
   hire's Mana Vortex): `play.rs`' conservation (`check_conservation`) folds each hero's details
   from its told changes, with the day's regain and the towns' night modelled at `DayStarted`

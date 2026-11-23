@@ -6047,3 +6047,9 @@ then the listing with the env, the seeds and the benchmarks); **the user kept T4
 - **Versions:** protocol v80, adventure replay format v25, adventure action encoding v19; the
   adventure lane's planned v80, v25 and v19 (E08 T143, T144) become v81, v26 and v20 (its
   inbox, the AI lane's and the server lane's). No hash moved.
+- **CI's first run** (#1136) failed in `every_step_keeps_the_commands_invariants` (seed `cc
+  8b2ce4c0…`, an AB plan of side 16): a town hire in a Dungeon town took the Mana Vortex (T49a1)
+  and cleared the week flag, which `check_towns` (the oracle over every command) did not know;
+  the plans' games met it once the books changed their course. `check_towns` sets the flag aside,
+  allowing it to clear with a `SetSpellPoints` told for the town's hero and to be set at a
+  week's start, told to the owner; the seed added to `proptest-regressions/tests/play.txt`.

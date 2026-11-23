@@ -9271,11 +9271,35 @@ fn check_towns(
                 town
             );
         }
+        // E09 T49a1 (T49b's CI): the Mana Vortex's week flag (TWN-GLD-009) is cleared when it
+        // gives one of the town's heroes its points (a `SetSpellPoints` told for its visitor or
+        // garrison hero: a visit's end, an opening, a build, a hire), set again at a week's
+        // start, and told to the town's owner.
+        if old.vortex() != new.vortex() {
+            let heroes = [
+                adventure.town_visitor(town),
+                adventure.town_hero(town).map(|h| h.id),
+            ];
+            let gave = events.iter().any(|e| {
+                matches!(*e, GameEvent::HeroChanged { hero, change: HeroChange::SetSpellPoints(_), .. }
+                    if heroes.contains(&Some(hero)))
+            });
+            prop_assert!(
+                if old.vortex() { gave } else { week },
+                "{:?}'s Vortex flag moved without its gift or a week",
+                town
+            );
+            if let Some(owner) = now {
+                let told = changed.iter().any(|&(p, _)| p == owner);
+                prop_assert!(told, "{:?}'s Vortex flag moved untold to its owner", town);
+            }
+        }
         let with_old_counts = (0..h3_towns::CREATURE_INDEXES)
             .fold(new.clone(), |t, index| {
                 t.with_available(index, old.available(index))
             })
-            .with_portal(old.portal());
+            .with_portal(old.portal())
+            .with_vortex(old.vortex());
         if *old != with_old_counts {
             let cleared = day_started && old.built_today();
             prop_assert!(
