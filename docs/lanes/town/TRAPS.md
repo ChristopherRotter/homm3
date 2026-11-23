@@ -80,6 +80,15 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   and `legal_builds` finds the hero on a town's entrance once for the hires, the opening and the
   moves (`AdventureState::town_entrance_hero`). Left: +5.3 %, the rule's own cost (about 470 Ir a
   listing). A new listed town command shares that lookup and reads derived roles.
+- **A listing's chain carries what it lists** (E09 T49b, the spell book): a
+  `then_some(GameCommand)` in `legal_builds`' per-town chain is part of the chain's state, copied
+  with it and growing the closure past inlining (`legal_builds` outlined, `memcpy` up): carry a
+  `TownCommand` and map once (`open.into_iter().chain(book).map(GameCommand::Town)`). A test the
+  same for every town (the book's price) is not always cheaper once a listing: asked after the
+  town's own tests (a hero there, a guild) it ran for one town in six. A hero's own book
+  (`h3_heroes::wears_spell_book`) walks all its effects (about 170 Ir): ask it last. The
+  opening's and the book's questions read the town's derived roles once (`h3_towns::guild_offers`).
+  First build +5.5 % on `master`'s games, +1.6 % after the pass.
 
 - **CI's verify job stops at 55 minutes** (`ci.yml`'s `timeout-minutes`, 40 until #1009; the
   user, 2026-11-18): `master`'s full run about 36, the runner's apt step 6 to 10 of them,
