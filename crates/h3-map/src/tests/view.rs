@@ -3200,7 +3200,11 @@ proptest! {
     /// Thieves') ends it too: its rows show the players' heroes the differences change. Since E08
     /// T136 the viewer's own visit of a Black Market shows it, in its decision, the stock the
     /// build drew from the seed (ADV-MKT-006): a market opened by its own command whose decisions
-    /// differ between the two games ends the comparison, the events it is told the same.
+    /// differ between the two games ends the comparison, the events it is told the same. Since
+    /// E09 T28b2 a garrison hero's army is its town's garrison as a viewer sees it (TWN-VEW-002):
+    /// a town told to the viewer whose upper bar differs between the two games (another player's
+    /// hero's army moved into it) ends the comparison, the events it is told the same but the
+    /// garrisons' stacks.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),
@@ -3395,6 +3399,36 @@ proptest! {
                     at.unwrap_or(events.len())
                 };
                 prop_assert_eq!(&ta[..visit(&ta)], &tb[..visit(&tb)]);
+                break;
+            }
+            // E09 T28b2: a town's garrison as a viewer sees it is the town's upper bar, its
+            // garrison hero's army while one stands there, by the viewer's level (TWN-VEW-002,
+            // -003): another player's hero's army, which the test changes where the viewer never
+            // sees it (no hero's army shows on the map, ADV-FOG-006), shows there once the hero
+            // enters a garrison the viewer sees, or a swap or the rows move its stacks into one (the
+            // town lane's inbox of 2026-11-21: another player's hero entered its town's garrison,
+            // and the viewer was told five stacks in one game and two in the other). When the
+            // upper bars of the towns the viewer is told differ between the two games, the events
+            // it is told are the same but the garrisons' stacks, and the comparison ends, as at a
+            // battle.
+            let bars = |game: &GameState, events: &[GameEvent]| -> Vec<Vec<ArmyStack>> {
+                (events.iter())
+                    .filter_map(|e| match *e {
+                        GameEvent::TownChanged { town, .. } => {
+                            Some(game.adventure().upper_bar(town).to_vec())
+                        }
+                        _ => None,
+                    })
+                    .collect()
+            };
+            if ta != tb && bars(&a, &ta) != bars(&b, &tb) {
+                let unstacked = |events: &[GameEvent]| -> Vec<GameEvent> {
+                    (events.iter())
+                        .filter(|e| !matches!(e, GameEvent::TownStackSeen { .. }))
+                        .copied()
+                        .collect()
+                };
+                prop_assert_eq!(unstacked(&ta), unstacked(&tb));
                 break;
             }
             let bought = ta
