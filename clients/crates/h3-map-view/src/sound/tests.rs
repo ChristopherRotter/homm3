@@ -366,6 +366,7 @@ pub(crate) fn map_with(
         path: Vec::new(),
         moment: Moment::default(),
         walking: Walking::default(),
+        left: Vec::new(),
         kingdom: crate::live::Kingdom::default(),
         buttons: None,
         minimap: None,

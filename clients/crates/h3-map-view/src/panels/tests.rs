@@ -40,6 +40,7 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         path,
         moment: Moment::default(),
         walking: Walking::default(),
+        left: Vec::new(),
         kingdom,
         buttons: None,
         minimap: None,

@@ -4415,6 +4415,25 @@ players' turns, the viewer's controls, a golden replay).
   to 780 pixels). `game-ai-boat` not played yet: a computer's boarding and landing in sight (the
   hero's dissolve off the land, then its step onto the boat; the boat put back at the landing)
   are not built for a computer's turn (`MCL-STUB-2`: built at T4c2, §5.18).
+- **As built at M4 T6** (the reviewer's R1-1 to R1-8, *provisional*): every player's record
+  starts at the game's start, so a viewer not acting there waits (`Played::waits`): the turn
+  under way read as another player's (its walks in sight a kind 5 table), the turn's change to
+  the first table played at 0 (`NextTurn::first`); a turn under way at the record's end a kind 5
+  table even without a walk, played to its last walk, the map then left in its screen
+  (`NextTurn::open`). Each command's steps a move of their own (`engine::OtherEnd`,
+  `timeline::End`): the hero standing and the view drawn at each move's last step, its pickups
+  dissolved there; a move's other results by the record's facts alone (a removal of anything but
+  a pile, a campfire, an artifact, a scroll, a chest or a find off at once: a monster beaten; a
+  flag raised in its owner's colour; a hero lost drawn nowhere, `Live::left`), a stepless
+  command's at the first table after its turn's end (R1-6). A record's walk is the steps the
+  engine judged seen (`Steps::seen`: each seen but those into sight, the hero's tile at its
+  choice by its first step's start, at a move's end by its last step's end); the start's
+  explored tiles decide only a recording's. A step into sight keeps the timeline hero's facing.
+  A hero the record's start does not show is left out (MCL-Q53: its owner, type and boat not
+  told, SRV-STUB-3), its commands' results a stepless command's. Each day's list is the record's
+  (`Played::lists`, `NextTurn::list`: the day's choices and selection by it, the hero's record
+  index by its map hero); the record player chooses a hero by its slot in the map's list as it
+  stands (`Loop::slot_of`).
 
 ### 5.17 A record played without a recording: the record player, the controls, the golden replays (M4 T4c)
 
@@ -4726,7 +4745,7 @@ a record's facts and compared with T5a's three sequences, recorded again.
   an answer's battle the switch hands over once (`Directed::battles` the plain cuts' only), and
   moves each later hero's place up after a hero a battle took off the map (`Loop::slots_left`);
   a battle's commands (the viewer's, the system's for it) are none of `Played::commands` (no
-  400 ms each, the user's call). The result follows the record's outcome: a mine's guards' boxes
+  400 ms each; *provisional*, the closure's choice: a review item). The result follows the record's outcome: a mine's guards' boxes
   and flag only after the hero's win, a loss or retreat the hero gone as a retreat's
   (`AfterBattle::of_guards`; the original's boxes then: MCL-Q51), a draw that takes both the
   hero's dissolve, then the monster's (`AfterBattle::Both`). The window reads the combat options

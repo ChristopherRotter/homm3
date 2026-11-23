@@ -135,7 +135,7 @@ fn the_tables_section_reads_from_toml() {
 /// (E24 M4 T4c2): a boarding kept by its step's place, one out of sight's left out, a landing.
 #[test]
 fn a_record_s_other_turn_as_walks() {
-    use crate::engine::{OtherStep, OtherTurn, OtherWalk};
+    use crate::engine::{OtherEnd, OtherStep, OtherTurn, OtherWalk};
     use crate::live::{Facing, LiveBoat};
     use crate::timeline::Sea;
     let at = |x, y| Pos { x, y, z: 0 };
@@ -154,14 +154,19 @@ fn a_record_s_other_turn_as_walks() {
         to,
         sea: None,
     };
-    let walk = |hero, steps| OtherWalk {
+    let walk = |hero, steps: Vec<OtherStep>| OtherWalk {
         hero,
+        ends: vec![OtherEnd {
+            after: steps.len(),
+            taken: vec![at(9, 4)],
+            ..OtherEnd::default()
+        }],
         steps,
-        taken: vec![at(9, 4)],
     };
     let mut other = OtherTurn {
         turn: 1,
         player: 1,
+        open: false,
         walks: vec![
             walk(
                 7,
@@ -188,6 +193,12 @@ fn a_record_s_other_turn_as_walks() {
         at: at(x, y),
         facing,
     };
+    let taken = |after| End {
+        after,
+        taken: vec![(at(9, 4), 4)],
+        seen: true,
+        ..End::default()
+    };
     assert_eq!(
         walks,
         vec![
@@ -201,7 +212,8 @@ fn a_record_s_other_turn_as_walks() {
                 ],
                 unseen: vec![2],
                 sea: vec![(1, Sea::Board(1))],
-                taken: vec![(at(9, 4), 4)],
+                ends: vec![taken(3)],
+                seen: Some(true),
             },
             Steps {
                 hero: 1,
@@ -209,7 +221,8 @@ fn a_record_s_other_turn_as_walks() {
                 steps: vec![to(9, 5, Direction::North)],
                 unseen: Vec::new(),
                 sea: vec![(0, Sea::Land(boat))],
-                taken: vec![(at(9, 4), 4)],
+                ends: vec![taken(1)],
+                seen: Some(true),
             },
         ]
     );
@@ -234,4 +247,83 @@ fn a_record_s_other_turn_as_walks() {
         record_walks(&into, &ids, &map, &|_| None).unwrap()[0].steps,
         vec![to(6, 5, facing)]
     );
+}
+
+#[test]
+fn a_record_s_moves_ends_by_the_steps_kept() {
+    // E24 M4 T6 (the reviewer's R1-2, R1-3, R1-5): each move's end by the steps kept (one out of
+    // sight left out), what it takes, removes and flags by the objects' indexes and the heroes
+    // it takes off the map by the map's (one the start does not show left out); the record's
+    // judgement of the hero's tile at its choice (its first step's start told) and at each end
+    // (its last step's end told).
+    use crate::engine::{OtherEnd, OtherStep, OtherTurn, OtherWalk};
+    use crate::live::Facing;
+    let at = |x, y| Pos { x, y, z: 0 };
+    let map = [LiveHero {
+        at: at(5, 5),
+        class: 1,
+        owner: 1,
+        facing: Facing::ALL[2],
+        boat: None,
+    }];
+    let ids = [(7, 0)];
+    let step = |from: Option<Pos>, to: Option<Pos>| OtherStep {
+        from,
+        to,
+        sea: None,
+    };
+    let other = OtherTurn {
+        turn: 0,
+        player: 1,
+        open: false,
+        walks: vec![OtherWalk {
+            hero: 7,
+            steps: vec![
+                step(Some(at(5, 5)), Some(at(6, 5))),
+                step(Some(at(6, 5)), None),
+                step(None, Some(at(8, 5))),
+                step(Some(at(8, 5)), Some(at(9, 5))),
+            ],
+            ends: vec![
+                OtherEnd {
+                    after: 2,
+                    taken: vec![at(7, 4)],
+                    ..OtherEnd::default()
+                },
+                OtherEnd {
+                    after: 4,
+                    removed: vec![at(10, 5)],
+                    flagged: vec![(at(11, 5), 3)],
+                    lost: vec![7, 9],
+                    ..OtherEnd::default()
+                },
+            ],
+        }],
+    };
+    let index = |at: Pos| Some(usize::from(at.x));
+    let [walk] = &record_walks(&other, &ids, &map, &index).unwrap()[..] else {
+        panic!("one walk");
+    };
+    assert_eq!(walk.steps.len(), 3);
+    assert_eq!((walk.unseen.clone(), walk.seen), (vec![1], Some(true)));
+    assert_eq!(
+        walk.ends,
+        [
+            End {
+                after: 1,
+                taken: vec![(at(7, 4), 7)],
+                seen: false,
+                ..End::default()
+            },
+            End {
+                after: 3,
+                removed: vec![10],
+                flags: vec![(11, 3)],
+                lost: vec![0],
+                seen: true,
+                ..End::default()
+            },
+        ]
+    );
+    assert_eq!(map_heroes(&[9, 7], &ids), [0]);
 }

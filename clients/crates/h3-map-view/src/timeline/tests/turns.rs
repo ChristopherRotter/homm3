@@ -96,6 +96,11 @@ fn next(turn: Turn) -> NextTurn {
         heroes: Vec::new(),
         walks: Vec::new(),
         taken: Vec::new(),
+        flags: Vec::new(),
+        lost: Vec::new(),
+        list: None,
+        first: false,
+        open: false,
     }
 }
 
@@ -634,4 +639,69 @@ fn the_turns_tables_read() {
         )
     );
     let _: Option<HeroStatus> = None;
+}
+
+#[test]
+fn a_record_s_first_turn_played_at_its_start() {
+    // E24 M4 T6 (the reviewer's R1-1): a record whose viewer does not act first starts in another
+    // player's turn; with nothing of it in sight the viewer's own first turn starts at once, at 0
+    // (the date's window asked, its hero chosen), and End Turn then shows the next one.
+    let day = |day| Date {
+        month: 1,
+        week: 1,
+        day,
+    };
+    let mut first = turn_on(day(1), Selected::Hero(0));
+    first.first = true;
+    let mut l = ended(
+        false,
+        vec![first, turn_on(day(2), Selected::Hero(0))],
+        false,
+    );
+    assert_eq!((l.next_turn, l.asked, l.state(0).date), (1, 1, day(1)));
+    assert!(l.idle() && l.index == Some(0));
+    l.run(
+        1,
+        &[Action::Key(Hotkey::EndTurn), Action::KeyUp(Hotkey::EndTurn)],
+    )
+    .unwrap();
+    assert_eq!((l.next_turn, l.state(1).date), (2, day(2)));
+}
+
+#[test]
+fn a_day_s_hero_and_choices_by_the_record_s_list() {
+    // E24 M4 T6 (the reviewer's R1-4): the turn's list gives each slot's map hero (the record's
+    // list at the day's start: here the two heroes' places swapped, a third hired with no map
+    // hero), so its selection is the slot's hero by it, not by the start's list; the choices
+    // follow it, the record player's slots too.
+    let day = Date {
+        month: 1,
+        week: 1,
+        day: 2,
+    };
+    let mut next = turn_on(day, Selected::Hero(0));
+    next.list = Some(vec![Some(1), Some(0), None]);
+    let mut l = ended(false, vec![next], false);
+    l.heroes = vec![l.hero.unwrap(); 2];
+    l.heroes[1].at = Pos { x: 30, y: 30, z: 0 };
+    l.chosen.heroes = vec![l.chosen.heroes[0].clone(), l.chosen.heroes[0].clone()];
+    if let Some(Some(c)) = l.chosen.heroes.get_mut(1) {
+        c.hero = 1;
+    }
+    assert_eq!((l.slot_of(0), l.slot_of(1)), (Some(0), Some(1)));
+    l.run(
+        1,
+        &[Action::Key(Hotkey::EndTurn), Action::KeyUp(Hotkey::EndTurn)],
+    )
+    .unwrap();
+    assert_eq!(l.index, Some(1));
+    assert_eq!(l.hero.map(|h| h.at), Some(Pos { x: 30, y: 30, z: 0 }));
+    let heroes: Vec<Option<usize>> = l
+        .chosen
+        .heroes
+        .iter()
+        .map(|c| c.as_ref().map(|c| c.hero))
+        .collect();
+    assert_eq!(heroes, [Some(1), Some(0), None]);
+    assert_eq!((l.slot_of(0), l.slot_of(1)), (Some(1), Some(0)));
 }

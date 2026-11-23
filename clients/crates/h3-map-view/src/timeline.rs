@@ -1238,8 +1238,27 @@ pub struct NextTurn {
     /// for a human's.
     pub walks: Vec<Steps>,
     /// The map's objects (their indexes among the map's objects) taken off as the turn starts
-    /// (E24 M4 T4c2: a record's other player's pickups without a step, MCL-Q46 (c)).
+    /// (E24 M4 T4c2: a record's other player's pickups without a step, MCL-Q46 (c); since E24 M4
+    /// T6, R1-5, any object a stepless command removed).
     pub taken: Vec<usize>,
+    /// The objects flagged as the turn starts, each by its index and its owner's colour (E24 M4
+    /// T6, the reviewer's R1-5: a record's other player's stepless command's, *provisional*:
+    /// nothing shown).
+    pub flags: Vec<(usize, u8)>,
+    /// The map's heroes taken off the map as the turn starts, by their indexes (as
+    /// [`NextTurn::flags`]).
+    pub lost: Vec<usize>,
+    /// The map's hero of each of the kingdom's heroes, slot by slot, none for one no map hero is
+    /// (E24 M4 T6, the reviewer's R1-4: a record's, its list at the turn's start, a hero lost or
+    /// hired since); none: the start's choices by their slots (a recording's).
+    pub list: Option<Vec<Option<usize>>>,
+    /// Played at the loop's start in place of after End Turn (E24 M4 T6, the reviewer's R1-1: a
+    /// record whose viewer does not act first starts in another player's turn): the first of
+    /// [`Start::turns`] only.
+    pub first: bool,
+    /// A computer's turn the record ends in (E24 M4 T6, R1-1, *provisional*): played to its last
+    /// walk, the map then left in its screen (its end is not in the record).
+    pub open: bool,
 }
 
 /// A computer player's hero's walk in its turn (E24 M4 T1b2, *provisional*): the hero (its index
@@ -1261,9 +1280,38 @@ pub struct Steps {
     /// The steps that board an empty boat or land from one (E24 M4 T4c2: a record's `Boarded`,
     /// `Landed`), each by its place among [`Steps::steps`].
     pub sea: Vec<(usize, Sea)>,
-    /// The objects taken off the map at its end, each by its anchor and its index among the
-    /// map's objects (E24 M4 T4c: a record's pile or artifact the hero picks up from beside).
+    /// Its moves' ends, in order (E24 M4 T6, the reviewer's R1-3: a record's, each command's
+    /// steps a move; since T4c the objects a record's hero picks up from beside at its end); none:
+    /// one move to its last step, nothing taken (a recording's).
+    pub ends: Vec<End>,
+    /// The record's judgement of whether the viewer sees the hero's tile as it is chosen (E24 M4
+    /// T6, the reviewer's R1-2: the walk's first step's start told), each step seen but the
+    /// [`Steps::unseen`] ones (Blackout apart) and each end by its [`End::seen`]; none: the
+    /// viewer's explored tiles decide ([`Loop::sees`], a recording's).
+    pub seen: Option<bool>,
+}
+
+/// A computer's move's end (E24 M4 T6, the reviewer's R1-3, R1-5, *provisional*: a record's, one
+/// command's steps): the hero standing, the view drawn at its last step (`hero_move_step`'s fifth
+/// argument 1, design §5.18), then what the command changes on the map.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct End {
+    /// The walk's steps up to it.
+    pub after: usize,
+    /// The objects taken from beside, each by its anchor and its index among the map's objects:
+    /// the hero turned to the first, its dissolve with the pickup's sound where the viewer sees
+    /// it ([`Loop::ai_take`]).
     pub taken: Vec<(Pos, usize)>,
+    /// The objects off the map at once, nothing dissolved (a monster beaten), by their indexes.
+    pub removed: Vec<usize>,
+    /// The objects flagged, each by its index and its owner's colour ([`Loop::raise`]).
+    pub flags: Vec<(usize, u8)>,
+    /// The map's heroes off the map, drawn nowhere from then on (a hero lost in sight), by their
+    /// indexes.
+    pub lost: Vec<usize>,
+    /// Whether the viewer sees the hero's tile there, by the record's judgement ([`Steps::seen`]:
+    /// the move's last step's end told).
+    pub seen: bool,
 }
 
 /// A status window's kind asked for a time (`status_window_set_kind` 0x415D60: the manager's
@@ -1404,9 +1452,9 @@ pub struct Draw {
     /// A battle's switch shown instead of this draw as it is (E24 M4 T5b2, design §5.21): the
     /// map's fade out and in, the battle's fade in and out.
     pub switch: Option<Switch>,
-    /// A hero gone off the map (E24 M4 T5b2: a battle lost), its index among the map's heroes:
-    /// drawn nowhere.
-    pub left: Option<usize>,
+    /// The heroes gone off the map (E24 M4 T5b2: a battle lost; since E24 M4 T6, R1-5, another
+    /// player's hero lost in sight), by their indexes among the map's heroes: drawn nowhere.
+    pub left: Vec<usize>,
 }
 
 /// What a battle's switch shows (E24 M4 T5b2, design §5.21, *provisional*: the host draws it,
@@ -1644,9 +1692,9 @@ pub struct Loop {
     /// The battles a switch handed over (their record's numbers): a walk's end lists none of
     /// them again ([`Loop::battles`]).
     switched: Vec<u32>,
-    /// The hero a battle took off the map (E24 M4 T5b2): its index among the map's heroes and
-    /// its slot in the kingdom's list.
-    left: Option<usize>,
+    /// The heroes off the map (E24 M4 T5b2: a battle lost; since E24 M4 T6, R1-5, another
+    /// player's hero lost in sight), by their indexes among the map's heroes.
+    left: Vec<usize>,
     /// The kingdom's slots of the heroes battles took off the map, in order (E24 M4 T6:
     /// [`Loop::slots_left`]).
     slots_left: Vec<usize>,
@@ -1712,10 +1760,16 @@ struct AiTurn {
     /// what it does with a boat (E24 M4 T4c2).
     slot: usize,
     steps: VecDeque<(Hero, bool, Option<Sea>)>,
-    /// The objects the walk under way takes at its end (E24 M4 T4c).
-    taken: Vec<(Pos, usize)>,
+    /// The steps of the walk under way taken so far, its moves' ends left (E24 M4 T6, R1-3: each
+    /// command's move; since T4c the objects it takes at its end) and the record's judgement of
+    /// what the viewer sees of it (R1-2, [`Steps::seen`]).
+    done: usize,
+    ends: VecDeque<End>,
+    judged: Option<bool>,
     /// Whether a hero of the turn was chosen (E24 M4 T4c2: the next one's choice puts it back).
     chosen: bool,
+    /// The record ends in this turn (E24 M4 T6, R1-1, [`NextTurn::open`]).
+    open: bool,
     /// The viewer's turn's end.
     ended: Ended,
 }
@@ -2015,7 +2069,7 @@ impl Loop {
                 boats: Arc::new(start.boats.clone()),
                 walked: Arc::new(Vec::new()),
                 switch: None,
-                left: None,
+                left: Vec::new(),
             },
             hero: start.hero,
             lifted: false,
@@ -2084,7 +2138,7 @@ impl Loop {
             switching: None,
             whole: None,
             switched: Vec::new(),
-            left: None,
+            left: Vec::new(),
             slots_left: Vec::new(),
             flush: false,
             computer_pixels,
@@ -2150,6 +2204,11 @@ impl Loop {
         l.moved();
         l.tick(0);
         l.idle_message(0);
+        // A record that starts in another player's turn (E24 M4 T6, the reviewer's R1-1): its
+        // first turn played at once, as after End Turn.
+        if start.turns.first().is_some_and(|n| n.first) {
+            l.turn_proceed(0)?;
+        }
         Ok(l)
     }
 
@@ -2521,11 +2580,12 @@ impl Loop {
 
     /// Whether the map waits for input (E24 M4 T4c: the record player's, `crate::director`): no
     /// walk, computer's turn, dissolve, battle's switch (E24 M4 T6, the reviewer's R5-3), box,
-    /// spell book or held button under way.
+    /// spell book or held button under way; a computer's turn the record ends in once its walks
+    /// are played (E24 M4 T6, R1-1) waits for nothing more.
     #[must_use]
     pub fn idle(&self) -> bool {
         self.moving.is_none()
-            && self.ai.is_none()
+            && (self.ai.is_none() || self.ai_waits())
             && self.dissolving.is_none()
             && self.switching.is_none()
             && self.boxed.is_none()
@@ -2567,10 +2627,37 @@ impl Loop {
     }
 
     /// The kingdom's slots the heroes a battle took off the map left, in order (E24 M4 T6, the
-    /// reviewer's R5-6: each later slot one less from then on; the record player's places).
+    /// reviewer's R5-6: each later slot one less from then on).
     #[must_use]
     pub fn slots_left(&self) -> &[usize] {
         &self.slots_left
+    }
+
+    /// The slot of the map's hero `index` in the kingdom's list as the map holds it now (E24 M4
+    /// T6, the reviewer's R1-4: the record player's choice; a hero a battle took off the map gone
+    /// from it, each day's list the record's): its choice's; on a map that knows no choices the
+    /// selected hero's own (unless it is another map hero); none for a hero the list does not
+    /// hold.
+    #[must_use]
+    pub fn slot_of(&self, index: usize) -> Option<usize> {
+        let bare = self.chosen.heroes.is_empty() && self.index.is_none_or(|i| i == index);
+        self.chosen
+            .heroes
+            .iter()
+            .position(|c| c.as_ref().is_some_and(|c| c.hero == index))
+            .or(match self.kingdom.selected {
+                Selected::Hero(i) if bare => Some(i),
+                _ => None,
+            })
+    }
+
+    /// Whether a computer's turn the record ends in has played its walks (E24 M4 T6, R1-1): the
+    /// map left in its screen.
+    fn ai_waits(&self) -> bool {
+        self.ai_step.is_none()
+            && self.ai.as_ref().is_some_and(|ai| {
+                ai.open && ai.walks.is_empty() && ai.steps.is_empty() && ai.ends.is_empty()
+            })
     }
 
     /// Whether a box is open (E24 M4 T4c: the record player's): a message box, a question or a
@@ -2863,7 +2950,7 @@ impl Loop {
             return self.computer_start(t, next, status, ended);
         }
         // The selection's map hero or town, known before anything changes.
-        let Some(choice) = self.turn_choice(&next.turn) else {
+        let Some(choice) = self.turn_choice(&next) else {
             return self.unbuilt(refused);
         };
         let ended = self.turn_end(t);
@@ -2875,7 +2962,8 @@ impl Loop {
     /// kept for its choice; the selection's window memory kept (none under a kind asked: the
     /// selection's next). A redraw's deadline already passed moves to the tables' step from now
     /// without a step (*provisional*: recorded, `turn-question` at 1060, not read; E24 M4 T1b2:
-    /// here, before a computer's turn in sight, whose end then redraws for each step it missed).
+    /// here, before a computer's turn in sight too, whose end then steps the objects once,
+    /// [`Loop::ai_end`]).
     fn turn_end(&mut self, t: u32) -> Ended {
         // The days without a town counted down (`next_player_turn`: +0x3D above 0; E24 M4 T2a2).
         if self.days > 0 {
@@ -2899,15 +2987,18 @@ impl Loop {
         }
     }
 
-    /// The next day's selection as `turn` gives it: a hero's map hero (by the mouse-over's facts,
-    /// else its choice's) or a town's choice, none when neither is known.
-    fn turn_choice(&self, turn: &Turn) -> Option<Choice> {
-        let town = match turn.kingdom.selected {
+    /// The next day's selection as `next` gives it: a hero's map hero (by the turn's list, E24 M4
+    /// T6, R1-4; else by the mouse-over's facts, else its choice's) or a town's choice, none when
+    /// neither is known.
+    fn turn_choice(&self, next: &NextTurn) -> Option<Choice> {
+        let selected = next.turn.kingdom.selected;
+        let town = match selected {
             Selected::Town(i) => Some((i, self.chosen.towns.get(i).cloned().flatten()?)),
             _ => None,
         };
-        let hero = match turn.kingdom.selected {
-            Selected::Hero(i) => Some((i, self.map_hero(i)?)),
+        let hero = match (selected, &next.list) {
+            (Selected::Hero(i), Some(list)) => Some((i, (*list.get(i)?)?)),
+            (Selected::Hero(i), None) => Some((i, self.map_hero(i)?)),
             _ => None,
         };
         Some(Choice { hero, town })
@@ -2933,6 +3024,9 @@ impl Loop {
             message,
             heroes,
             taken,
+            flags,
+            lost,
+            list,
             ..
         } = next;
         let Ended {
@@ -2941,7 +3035,19 @@ impl Loop {
             path,
         } = ended;
         self.place(&heroes);
-        self.take_off(&taken);
+        self.changed(&taken, &flags, &lost);
+        // The choices by the day's list (E24 M4 T6, R1-4): each hero's as it was, a hired one's
+        // none.
+        if let Some(list) = list {
+            let before = core::mem::take(&mut self.chosen.heroes);
+            self.chosen.heroes = list
+                .iter()
+                .map(|index| {
+                    let index = (*index)?;
+                    before.iter().flatten().find(|c| c.hero == index).cloned()
+                })
+                .collect();
+        }
         self.player = turn.player;
         let selected = turn.kingdom.selected;
         let mut kingdom = turn.kingdom;
@@ -2975,11 +3081,7 @@ impl Loop {
                 self.buttons.move_hero = false;
                 self.hero = self.heroes.get(index).copied();
                 self.index = Some(index);
-                self.selected_id = self
-                    .hover
-                    .as_ref()
-                    .and_then(|h| h.facts().hero_list.get(i))
-                    .map(|h| h.0);
+                self.selected_id = self.record_index(index);
                 self.walked = true;
                 self.path = if before == Selected::Hero(i) {
                     path
@@ -3037,6 +3139,31 @@ impl Loop {
         }
     }
 
+    /// What a turn's start changes at once ([`NextTurn::taken`], [`NextTurn::flags`],
+    /// [`NextTurn::lost`]; E24 M4 T4c2, MCL-Q46 (c); E24 M4 T6, R1-5), also a computer's move's
+    /// end's ([`End`]): the objects taken off, the flags raised, the heroes off the map; the next
+    /// draw shows them.
+    fn changed(&mut self, taken: &[usize], flags: &[(usize, u8)], lost: &[usize]) {
+        self.take_off(taken);
+        for &flag in flags {
+            self.raise(Some(flag));
+        }
+        for &index in lost {
+            if !self.left.contains(&index) {
+                self.left.push(index);
+            }
+        }
+    }
+
+    /// The map's hero `index`'s record index by the mouse-over's facts (E24 M4 T6, R1-4: by the map
+    /// hero, not by a list's slot that a hero lost or hired moves).
+    fn record_index(&self, index: usize) -> Option<u8> {
+        self.hover
+            .as_ref()
+            .and_then(|h| h.facts().heroes.get(index))
+            .map(|h| h.0)
+    }
+
     /// The map's objects `taken` off the map at once as a turn starts ([`NextTurn::taken`]: E24
     /// M4 T4c2, MCL-Q46 (c)): the next draw shows them gone.
     fn take_off(&mut self, taken: &[usize]) {
@@ -3077,10 +3204,13 @@ impl Loop {
             heroes,
             walks,
             taken,
+            flags,
+            lost,
+            open,
             ..
         } = next;
         self.place(&heroes);
-        self.take_off(&taken);
+        self.changed(&taken, &flags, &lost);
         self.player = turn.player;
         // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*).
         let tracks = &self.rules.turn.computer;
@@ -3107,8 +3237,11 @@ impl Loop {
             slot: walks.first().map_or(0, |w| w.slot),
             walks: walks.into(),
             steps: VecDeque::new(),
-            taken: Vec::new(),
+            done: 0,
+            ends: VecDeque::new(),
+            judged: None,
             chosen: false,
+            open,
             ended,
         });
         self.ai_on(t)?;
@@ -3117,8 +3250,9 @@ impl Loop {
 
     /// A computer player's turn from `t` (E24 M4 T1b2, design §5.2): its step's frames as their
     /// times come, each step's end (the points taken after the animation: the recording's, the
-    /// standing group at the hero's last step, the offset 0); its next step, its next hero's
-    /// turn, its end. Whether it ended; none without a computer's turn under way.
+    /// standing group at a move's last step, the offset 0); a move's end's changes (E24 M4 T6,
+    /// R1-3, R1-5: [`End`]); its next step, its next hero's turn, its end (none for a turn the
+    /// record ends in, R1-1). Whether it ended; none without a computer's turn under way.
     fn ai_on(&mut self, t: u32) -> Result<Option<bool>, Unplayable> {
         loop {
             let Some(ai) = &mut self.ai else {
@@ -3128,10 +3262,12 @@ impl Loop {
                 if t < until {
                     return Ok(Some(false));
                 }
-                let last = ai.steps.is_empty();
-                // A walk that ends taking an object from beside: the object's node is the move's
+                // A move's last step (E24 M4 T6, R1-3: each command's move ends at its own).
+                let end = ai.ends.front().filter(|e| e.after == ai.done);
+                let last = ai.steps.is_empty() || end.is_some();
+                // A move that ends taking an object from beside: the object's node is the move's
                 // last, not this step (E24 M4 T4c2: `game-ai` at 660, its draw at 1180).
-                let beside = !ai.taken.is_empty();
+                let beside = end.is_some_and(|e| !e.taken.is_empty());
                 if let Some(&pixels) = self.computer_pixels.get(frame) {
                     self.ai_step = Some((
                         direction,
@@ -3171,15 +3307,19 @@ impl Loop {
                 }
                 continue;
             }
-            if let Some((to, unseen, sea)) = ai.steps.pop_front() {
-                if self.computer_step(t, to, unseen, sea) {
+            // A move's end (E24 M4 T6, R1-3, R1-5): its command's changes, its pickup last.
+            if ai.ends.front().is_some_and(|e| e.after <= ai.done) {
+                let end = ai.ends.pop_front().unwrap_or_default();
+                let seen = ai.judged.map(|_| end.seen);
+                self.changed(&end.removed, &end.flags, &end.lost);
+                if !end.taken.is_empty() && self.ai_take(t, &end.taken, seen) {
                     return Ok(Some(false));
                 }
                 continue;
             }
-            if !ai.taken.is_empty() {
-                let taken = core::mem::take(&mut ai.taken);
-                if self.ai_take(t, &taken) {
+            if let Some((to, unseen, sea)) = ai.steps.pop_front() {
+                ai.done += 1;
+                if self.computer_step(t, to, unseen, sea) {
                     return Ok(Some(false));
                 }
                 continue;
@@ -3187,7 +3327,9 @@ impl Loop {
             if let Some(walk) = ai.walks.pop_front() {
                 let again = core::mem::replace(&mut ai.chosen, true);
                 ai.slot = walk.slot;
-                ai.taken = walk.taken;
+                ai.ends = walk.ends.into();
+                ai.done = 0;
+                ai.judged = walk.seen;
                 ai.steps = walk
                     .steps
                     .iter()
@@ -3197,8 +3339,12 @@ impl Loop {
                         (h, walk.unseen.contains(&i), sea)
                     })
                     .collect();
-                self.ai_hero(t, walk.hero, again);
+                self.ai_hero(t, walk.hero, again, walk.seen);
                 continue;
+            }
+            // A turn the record ends in (E24 M4 T6, R1-1): the map left in its screen.
+            if ai.open {
+                return Ok(Some(false));
             }
             let ended = core::mem::take(&mut ai.ended);
             self.ai = None;
@@ -3213,8 +3359,9 @@ impl Loop {
     /// `game-ai`'s second hero chosen at 1180) and this one selected (`hero_select` with 1, 0, 1:
     /// lifted, standing; the view's corner its tile less the middle, never clamped, drawn and
     /// shown when the viewer sees its tile or a neighbour, never under Blackout Computer; no list,
-    /// status window or minimap drawn).
-    fn ai_hero(&mut self, t: u32, index: usize, again: bool) {
+    /// status window or minimap drawn). `seen`: the record's judgement of that tile (E24 M4 T6,
+    /// R1-2, [`Steps::seen`]), else the viewer's explored tiles'.
+    fn ai_hero(&mut self, t: u32, index: usize, again: bool, seen: Option<bool>) {
         self.ai_status_step(t);
         self.keep_hero();
         self.hidden = false;
@@ -3225,7 +3372,8 @@ impl Loop {
         self.hero = self.heroes.get(index).copied();
         self.lifted = true;
         self.stand();
-        if self.hero.is_some_and(|h| self.sees(h.at)) {
+        let seen = seen.unwrap_or_else(|| self.hero.is_some_and(|h| self.sees(h.at)));
+        if seen {
             self.centre();
             self.draw(t);
             // `hero_select`'s sounds (0x4180A0; E24 M4 T4c): the terrain's music when it differs.
@@ -3260,9 +3408,16 @@ impl Loop {
         let from = self.next(to.at, back).or(at).unwrap_or(to.at);
         self.hero = self.hero.map(|h| Hero { at: from, ..h });
         self.ai_spend(t);
-        let seen = !unseen && !self.blackout && (self.sees(from) || self.sees(to.at));
+        // A record's step is one the viewer sees (E24 M4 T6, R1-2: the engine's `step_seen`).
+        let judged = self.ai.as_ref().is_some_and(|ai| ai.judged.is_some());
+        let seen = !unseen && !self.blackout && (judged || self.sees(from) || self.sees(to.at));
         if !seen {
-            self.hero = Some(to);
+            // One into sight faces as the hero did (E24 M4 T6, R1-8: MCL-Q44, its way not told).
+            let facing = self.hero.map_or(to.facing, |h| h.facing);
+            self.hero = Some(Hero {
+                facing: if unseen { facing } else { to.facing },
+                ..to
+            });
             self.sea_unseen(to.at, sea);
             return false;
         }
@@ -3359,12 +3514,13 @@ impl Loop {
         }
     }
 
-    /// The objects `taken` (anchors, indexes) a computer's hero takes from beside at its walk's end (E24 M4
-    /// T4c, design §5.16: `visit_resource_pile` 0x4A4BE0 as the viewer's own, §5.3): the hero
-    /// turned to the first, standing; where the viewer sees the hero's tile its removal dissolved
-    /// with the pickup's sound ([`Loop::take`]: the computer's turn going on at its end), else
-    /// taken off at once. Whether a dissolve holds the turn.
-    fn ai_take(&mut self, t: u32, taken: &[(Pos, usize)]) -> bool {
+    /// The objects `taken` (anchors, indexes) a computer's hero takes from beside at its move's
+    /// end (E24 M4 T4c, design §5.16: `visit_resource_pile` 0x4A4BE0 as the viewer's own, §5.3):
+    /// the hero turned to the first, standing; where the viewer sees the hero's tile (`seen`: the
+    /// record's judgement, E24 M4 T6, R1-2; else the explored tiles') its removal dissolved with
+    /// the pickup's sound ([`Loop::take`]: the computer's turn going on at its end), else taken
+    /// off at once. Whether a dissolve holds the turn.
+    fn ai_take(&mut self, t: u32, taken: &[(Pos, usize)], seen: Option<bool>) -> bool {
         let objects: Vec<usize> = taken.iter().map(|&(_, o)| o).collect();
         // Kind 5's step at the visit (*provisional*: recorded, `game-ai` at 660; its caller not
         // read).
@@ -3377,7 +3533,7 @@ impl Loop {
             self.turn_to(direction);
         }
         self.stand();
-        let seen = !self.blackout && at.is_some_and(|a| self.sees(a));
+        let seen = !self.blackout && seen.unwrap_or_else(|| at.is_some_and(|a| self.sees(a)));
         let Some((&object, rest)) = objects.split_first().filter(|_| seen) else {
             self.take_off(&objects);
             return false;
@@ -3389,9 +3545,10 @@ impl Loop {
 
     /// A computer player's turn's end (`ai_player_turn`'s, design §5.2): the last hero put back on
     /// its tile (`adventure_hero_stop` with 0, 1), the cursor shown again (`mouse_show` 0x50D5B0)
-    /// as the adventure cursor's arrow (*provisional*: where its type is set back is not read), the
-    /// redraws missed caught up; then the next turn: another computer's, or the next day (refused in a recording when the
-    /// facts give none or its selection is not known).
+    /// as the adventure cursor's arrow (*provisional*: where its type is set back is not read),
+    /// the objects stepped once (E24 M4 T4c2: the turn's end's redraw); then the next turn:
+    /// another computer's, or the next day (refused in a recording when the facts give none or
+    /// its selection is not known).
     fn ai_end(&mut self, t: u32, ended: Ended) -> Result<(), Unplayable> {
         self.lifted = false;
         self.keep_hero();
@@ -3417,7 +3574,7 @@ impl Loop {
             }
             return self.computer_start(t, next, status, ended);
         }
-        let Some(choice) = self.turn_choice(&next.turn) else {
+        let Some(choice) = self.turn_choice(&next) else {
             return self.unbuilt(refused);
         };
         self.day_start(t, next, choice, ended);
@@ -4476,7 +4633,7 @@ impl Loop {
                 });
                 self.draw_lists();
                 self.draw(t);
-                self.left = index;
+                self.left.extend(index);
                 // A draw's monster taken off after the hero (E24 M4 T6, R5-4).
                 let monster = object.filter(|_| fight.after == AfterBattle::Both);
                 self.lose(t, Then::Lost(monster));
@@ -5125,11 +5282,7 @@ impl Loop {
         self.kingdom.selected = Selected::Hero(i);
         self.index = Some(chosen.hero);
         self.hero = hero;
-        self.selected_id = self
-            .hover
-            .as_ref()
-            .and_then(|h| h.facts().hero_list.get(i))
-            .map(|h| h.0);
+        self.selected_id = self.record_index(chosen.hero);
         // The facts' reach and the hero's own marks were the staged hero's (design §4.13: the
         // engine's from M4).
         self.walked = true;
@@ -6208,7 +6361,7 @@ impl Loop {
             },
             walked: Arc::clone(&self.walked_tiles),
             switch: None,
-            left: self.left,
+            left: self.left.clone(),
         };
         self.choose(t, false);
     }

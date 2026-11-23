@@ -137,9 +137,12 @@ pub struct Played {
     pub commands: Vec<engine::Command>,
     pub others: Vec<engine::OtherTurn>,
     pub shown: Vec<(u16, Pos)>,
-    pub slots: Vec<(u16, usize)>,
-    /// Since E24 M4 T4c2: the objects other players took without a walk, by turn table.
-    pub taken: Vec<(usize, Vec<Pos>)>,
+    /// Since E24 M4 T4c2: what other players' stepless commands changed, by turn table (since
+    /// E24 M4 T6 a flag and a hero lost too); since E24 M4 T6 the viewer's lists at each turn
+    /// table and whether the record starts in another player's turn.
+    pub between: Vec<(usize, engine::OtherEnd)>,
+    pub lists: Vec<Vec<u16>>,
+    pub waits: bool,
 }
 
 /// The record's start (`engine::start`) with its turns' starts as the `turn` tables, and its
@@ -178,8 +181,9 @@ pub fn played(
         commands: game.commands,
         others: game.others,
         shown: game.shown,
-        slots: game.slots,
-        taken: game.taken,
+        between: game.between,
+        lists: game.lists,
+        waits: game.waits,
     })
 }
 
@@ -467,11 +471,12 @@ pub fn for_record<'a>(
         moves: Some(played.moves.clone()),
     };
     let rules = Rules::new(assets.tables, assets.layout, assets.bugs);
+    let heroes = turn::record_heroes(&played.shown, &painter.live.heroes);
     let directed = director::direct(
         rules,
         &start,
         &played.commands,
-        &played.slots,
+        &heroes,
         Pace::default(),
         limit,
     )
@@ -888,12 +893,41 @@ impl<'a> Painter<'a> {
                     },
                     _ => turn::walks(&live.turns, i, &live.heroes, lines)?,
                 };
-                // The objects taken without a walk before this turn (E24 M4 T4c2, MCL-Q46 (c)).
-                let taken = record
+                // What stepless commands changed before this turn (E24 M4 T4c2, MCL-Q46 (c); since
+                // E24 M4 T6, R1-5, every removal, a flag, a hero lost).
+                let between: Vec<&engine::OtherEnd> = record
                     .iter()
-                    .flat_map(|p| p.taken.iter().filter(|(turn, _)| *turn == i))
-                    .flat_map(|(_, at)| at.iter().filter_map(|&at| object_at(at)))
+                    .flat_map(|p| p.between.iter().filter(|(turn, _)| *turn == i))
+                    .map(|(_, end)| end)
                     .collect();
+                let taken = between
+                    .iter()
+                    .flat_map(|end| end.taken.iter().chain(&end.removed))
+                    .filter_map(|&at| object_at(at))
+                    .collect();
+                let flags = between
+                    .iter()
+                    .flat_map(|end| &end.flagged)
+                    .filter_map(|&(at, colour)| object_at(at).map(|o| (o, colour)))
+                    .collect();
+                let lost = match &ids {
+                    Some(ids) => between
+                        .iter()
+                        .flat_map(|end| turn::map_heroes(&end.lost, ids))
+                        .collect(),
+                    None => Vec::new(),
+                };
+                // The day's list by the record's (E24 M4 T6, R1-4); a computer's turn's none.
+                let list = record
+                    .zip(ids.as_ref())
+                    .filter(|_| !matches!(t.status, Status::Turn(_)))
+                    .and_then(|(p, ids)| p.lists.get(i).map(|l| (l, ids)))
+                    .map(|(list, ids)| {
+                        list.iter()
+                            .map(|id| ids.iter().find(|(i, _)| i == id).map(|&(_, x)| x))
+                            .collect()
+                    });
+                let other = record.and_then(|p| p.others.iter().find(|o| o.turn == i));
                 Ok(NextTurn {
                     turn: t.clone(),
                     message: turn::message(texts, art, (t.kingdom.date, t.week, t.month), growth)
@@ -901,6 +935,11 @@ impl<'a> Painter<'a> {
                     heroes: turn::placed(&live.heroes, &live.boats, t)?,
                     walks,
                     taken,
+                    flags,
+                    lost,
+                    list,
+                    first: i == 0 && record.is_some_and(|p| p.waits),
+                    open: other.is_some_and(|o| o.open),
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;
@@ -1816,10 +1855,8 @@ impl<'a> Painter<'a> {
             // No hero selected from the start: the live part's as it is.
             (None, None) => {}
         }
-        // A hero a battle took off the map (E24 M4 T5b2): drawn nowhere.
-        if let Some(index) = draw.left {
-            self.live.walking.hidden = Some(index);
-        }
+        // The heroes off the map (E24 M4 T5b2: a battle lost; T6, R1-5): drawn nowhere.
+        self.live.left.clone_from(&draw.left);
         // The boats as the draw has them (E24 M4 T2d2): one boarded off its tile and its hero in
         // it, one left back on the water.
         if self.boats != draw.boats {

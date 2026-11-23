@@ -6,7 +6,8 @@
 //! the headless play run the same loop on the same input.
 //!
 //! - **A walk** ([`Command::Walk`]): its hero chosen ([`Action::Choose`], its place in the
-//!   kingdom's list), then after a wait its path walked ([`Action::Walk`]).
+//!   kingdom's list as the map holds it, `Loop::slot_of`), then after a wait its path walked
+//!   ([`Action::Walk`]).
 //! - **End Turn**: its hotkey pressed and released.
 //! - **A box** (a find, a question, End Turn's question, the week's message, a level-up): its
 //!   answer when the record's next command is one (an offer's yes Enter, its no Escape, a level-up
@@ -25,7 +26,8 @@
 //!   the map's time, and that millisecond's change is its fade out's first (R5-7). A host shows
 //!   the battle before that millisecond's frame.
 //! - **A hero a battle took off the map** (E24 M4 T6, the reviewer's R5-6): each later hero's
-//!   place in the kingdom's list one less from then on (`Loop::slots_left`).
+//!   place in the kingdom's list one less from then on; since E24 M4 T6 (R1-4) the map's own
+//!   list's, which each day's start takes from the record (a hero lost or hired).
 //!
 //! The record has played to its end once its last command has been given and the map waits again.
 
@@ -72,18 +74,18 @@ pub struct Directed {
 }
 
 /// The input that plays `commands` (the viewer's, in order) on the map from `start` under
-/// `rules`, each hero's place in the kingdom's list by `slots` (its record id, its place at the
-/// start; those after a hero a battle took off the map one less from then on), at `pace`; at
-/// most until `limit` ms.
+/// `rules`, each hero's map hero by `heroes` (its record id, its index among the map's heroes:
+/// `turn::record_heroes`), chosen by its place in the kingdom's list as the map holds it then
+/// (`Loop::slot_of`, E24 M4 T6, R1-4), at `pace`; at most until `limit` ms.
 ///
 /// # Errors
-/// What the map cannot play, with its millisecond; a walk's hero `slots` does not hold, or a
-/// record not at its end by `limit` ([`Unplayable::Record`]).
+/// What the map cannot play, with its millisecond; a walk's hero `heroes` does not hold or the
+/// map's list does not, or a record not at its end by `limit` ([`Unplayable::Record`]).
 pub fn direct(
     rules: Rules,
     start: &Start,
     commands: &[Command],
-    slots: &[(u16, usize)],
+    heroes: &[(u16, usize)],
     pace: Pace,
     limit: u32,
 ) -> Result<Directed, (u32, Unplayable)> {
@@ -94,21 +96,9 @@ pub fn direct(
     // The millisecond the map last started to wait, and the last one with input to come.
     let mut waiting: Option<u32> = None;
     let mut given_until = 0;
-    // Each hero's place in the kingdom's list as it stands (R5-6), and the slots left so far.
-    let mut places = slots.to_vec();
-    let mut left = 0;
     for t in 1..=limit {
         let given = actions.get(&t).cloned().unwrap_or_default();
         map.run(t, &given).map_err(|why| (t, why))?;
-        for &slot in map.slots_left().get(left..).unwrap_or_default() {
-            places.retain(|&(_, place)| place != slot);
-            for (_, place) in &mut places {
-                if *place > slot {
-                    *place -= 1;
-                }
-            }
-        }
-        left = map.slots_left().len();
         // A battle's switch: closed where it shows the battle whole (R5-3, R5-7).
         let at = t.saturating_add(1);
         if map.battle_whole_at() == Some(at) {
@@ -175,10 +165,10 @@ pub fn direct(
         next += 1;
         match command {
             Command::Walk { hero, to } => {
-                let slot = places
+                let slot = heroes
                     .iter()
                     .find(|(id, _)| *id == hero)
-                    .map(|&(_, slot)| slot)
+                    .and_then(|&(_, index)| map.slot_of(index))
                     .ok_or((t, Unplayable::Record(at_of(to))))?;
                 give(at, Action::Choose(slot));
                 give(at.saturating_add(pace.wait), Action::Walk(to));

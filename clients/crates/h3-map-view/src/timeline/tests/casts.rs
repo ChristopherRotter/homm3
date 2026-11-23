@@ -44,6 +44,7 @@ fn live_part(text: &str) -> Live {
         path: Vec::new(),
         moment: Moment::default(),
         walking: Walking::default(),
+        left: Vec::new(),
         kingdom: Kingdom::default(),
         buttons: None,
         minimap: None,

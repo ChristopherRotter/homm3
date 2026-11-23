@@ -1404,6 +1404,11 @@ fn a_random_town_in_sight_and_a_town_out_of_it() {
 /// A game of `MAP` hosted (`GameSession`), Red's hero walking two tiles north, then every
 /// player ending its turn for `days` days; Red's record.
 fn session_record(g: &Game, days: u32) -> String {
+    session_records(g, days).swap_remove(0)
+}
+
+/// As [`session_record`], each player's record (E24 M4 T6), by the players' order.
+fn session_records(g: &Game, days: u32) -> Vec<String> {
     use h3_protocol::session::game::{Clock, CommandBounds, GameOptions, GameSession, Spectators};
     use h3_protocol::wire::game::{AdventureCommand, GameCommand, Pos};
     let rules = rules();
@@ -1447,7 +1452,62 @@ fn session_record(g: &Game, days: u32) -> String {
                 .unwrap();
         }
     }
-    session.record(PlayerId::new(0)).unwrap()
+    (0..3)
+        .map(|p| session.record(PlayerId::new(p)).unwrap())
+        .collect()
+}
+
+#[test]
+fn a_record_of_a_player_not_first() {
+    // E24 M4 T6 (the reviewers' R1-1, R4-7 (a)): a map whose second player is Green (colour 3, so
+    // its id and its colour differ); its record starts at the game's start in Red's turn: it
+    // waits, Red's walk in its sight is a computer's turn shown first, then its own first day
+    // (its colour, the date's window, day 1), every later day after the turn before it; the
+    // record ends in Red's turn (open), so that its last End Turn has a turn to show.
+    let g = game_on(map_file(&MAP.replace(
+        "{ at = [12, 10], owner = 1, class = 9 }",
+        "{ at = [12, 10], owner = 3, class = 9 }",
+    )));
+    let colours: Vec<u8> = g.observation.players.iter().map(|p| p.colour).collect();
+    let green = colours.iter().position(|&c| c == 3).unwrap();
+    assert_ne!(green, 3);
+    assert!(green > 0);
+    let records = session_records(&g, 2);
+    let loaded = engine::load(&records[green], &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    assert!(played.waits);
+    let player = |i: usize| table(&played.turns[i])["player"].as_integer();
+    let kind = |i: usize| table(&table(&played.turns[i])["status"])["kind"].as_integer();
+    let day = |i: usize| numbers(&table(&table(&played.turns[i])["kingdom"])["date"]);
+    // Red's walk (two steps north of its hero, beside Green's) shown first, as Red's turn.
+    let red = &played.others[0];
+    assert_eq!((red.turn, red.player, red.open), (0, 0, false));
+    assert_eq!(red.walks[0].steps.len(), 2);
+    assert_eq!((player(0), kind(0)), (Some(0), Some(5)));
+    // Green's first day, then its second after Red's (no walk of Red's: none shown).
+    assert_eq!((player(1), kind(1), day(1)[2]), (Some(3), Some(1), 1));
+    assert_eq!((player(2), kind(2), day(2)[2]), (Some(3), Some(1), 2));
+    // The record's end in Red's day 3: a turn of Red's, open, without a walk.
+    let last = played.others.last().unwrap();
+    assert_eq!(
+        (last.turn, last.player, last.open, last.walks.is_empty()),
+        (played.turns.len() - 1, 0, true, true)
+    );
+    assert_eq!((player(last.turn), kind(last.turn)), (Some(0), Some(5)));
+    // Green's list at each of its days: its one hero.
+    let hero = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == u8::try_from(green).unwrap())
+        .unwrap()
+        .id;
+    assert_eq!(played.lists[1], [hero]);
+    assert_eq!(
+        played.commands,
+        [engine::Command::EndTurn, engine::Command::EndTurn]
+    );
 }
 
 #[test]
@@ -1872,11 +1932,23 @@ fn a_record_s_visits_and_level_ups() {
 /// no walk.
 #[test]
 fn a_record_s_other_players_turns() {
-    use h3_map_view::engine::{Command, OtherStep};
+    use h3_map_view::engine::{Command, OtherEnd, OtherStep};
     use h3_map_view::live::{Facing, LiveBoat};
     use h3_map_view::timeline::Sea;
     use h3_protocol::wire::game::{AdventureEvent, GameCommand, GameEvent, Pos, TownCommand};
     let g = game();
+    // The pile's and the monster's types (E24 M4 T6, R1-5: a pickup dissolved, a monster not).
+    let type_at = |x, y| {
+        g.observation
+            .adventure
+            .objects
+            .iter()
+            .find(|o| (o.anchor.x, o.anchor.y) == (x, y))
+            .unwrap()
+            .object_type
+    };
+    let (pile, monster) = (type_at(13, 12), type_at(10, 13));
+    assert!(engine::pickup(rules(), pile) && !engine::pickup(rules(), monster));
     let hero = |owner| {
         g.observation
             .adventure
@@ -1931,7 +2003,7 @@ fn a_record_s_other_players_turns() {
                 step(blue, Some(pos(12, 8)), None),
                 // An object it takes, then another of its events: nothing of a walk.
                 event(AdventureEvent::ObjectRemoved {
-                    object_type: 79,
+                    object_type: pile,
                     anchor: pos(13, 12),
                 }),
                 event(AdventureEvent::MovementChanged {
@@ -1940,6 +2012,30 @@ fn a_record_s_other_players_turns() {
                     max_movement: 1500,
                 }),
             ]),
+            // E24 M4 T6 (R1-3, R1-5): Blue's next command, the same hero walking on: a move of
+            // its own; the monster it beats off the map, the sawmill flagged, Red's hero lost;
+            // then a command with no step taking an object (R1-6: off the map as the next turn
+            // table after this turn starts, not as this one's).
+            events(vec![
+                step(blue, Some(pos(12, 8)), Some(pos(12, 7))),
+                event(AdventureEvent::ObjectRemoved {
+                    object_type: monster,
+                    anchor: pos(10, 13),
+                }),
+                event(AdventureEvent::ObjectFlagged {
+                    object_type: 0,
+                    anchor: pos(6, 10),
+                    owner: 1,
+                }),
+                event(AdventureEvent::HeroRemoved {
+                    hero: red,
+                    pos: pos(10, 9),
+                }),
+            ]),
+            events(vec![event(AdventureEvent::ObjectRemoved {
+                object_type: pile,
+                anchor: pos(14, 10),
+            })]),
             events(vec![
                 GameEvent::TurnEnded { player: 1 },
                 GameEvent::TurnStarted { player: 2 },
@@ -1947,7 +2043,7 @@ fn a_record_s_other_players_turns() {
                 // the next turn table starts), one off the map's positions (nothing) and a
                 // landing with no walk (nothing).
                 event(AdventureEvent::ObjectRemoved {
-                    object_type: 79,
+                    object_type: pile,
                     anchor: pos(13, 12),
                 }),
                 event(AdventureEvent::ObjectRemoved {
@@ -1998,9 +2094,36 @@ fn a_record_s_other_players_turns() {
         ]
     );
     assert_eq!(other.walks[1].hero, red);
-    assert_eq!(other.walks[2].steps, [seen(8, None, None)]);
-    assert_eq!(other.walks[2].taken, [tile(13, 12)]);
-    assert!(other.walks[0].taken.is_empty());
+    assert_eq!(
+        other.walks[2].steps,
+        [seen(8, None, None), seen(8, Some(7), None)]
+    );
+    // Its two moves (R1-3): the pile after the first, the second's changes after it (R1-5).
+    assert_eq!(
+        other.walks[2].ends,
+        [
+            OtherEnd {
+                after: 1,
+                taken: vec![tile(13, 12)],
+                ..OtherEnd::default()
+            },
+            OtherEnd {
+                after: 2,
+                removed: vec![tile(10, 13)],
+                flagged: vec![(tile(6, 10), 1)],
+                lost: vec![red],
+                ..OtherEnd::default()
+            },
+        ]
+    );
+    assert_eq!(
+        other.walks[0].ends,
+        [OtherEnd {
+            after: 2,
+            ..OtherEnd::default()
+        }]
+    );
+    assert!(!other.open && !played.waits);
     // Blue's turn's table, then Red's day 2: kind 5 for Blue, its two walking heroes, no points.
     assert_eq!(played.turns.len(), 2);
     let t = table(&played.turns[0]);
@@ -2014,8 +2137,14 @@ fn a_record_s_other_players_turns() {
     assert_eq!(kingdom["heroes"].as_array().unwrap().len(), 2);
     assert_eq!(numbers(&kingdom["selected"]), [1, 0]);
     assert_eq!(table(&played.turns[1])["player"].as_integer(), Some(0));
-    // Purple's pickup without a step: given to Red's day 2's table.
-    assert_eq!(played.taken, [(1, vec![tile(13, 12)])]);
+    // Blue's and Purple's pickups without a step: given to Red's day 2's table, the table after
+    // Blue's own (R1-6).
+    let [(1, between)] = &played.between[..] else {
+        panic!("one table's changes: {:?}", played.between);
+    };
+    assert_eq!(between.taken, [tile(14, 10), tile(13, 12)]);
+    // Red's list at each table (R1-4): its hero lost in Blue's turn, gone from both.
+    assert_eq!(played.lists, [Vec::<u16>::new(), Vec::new()]);
 }
 
 #[test]

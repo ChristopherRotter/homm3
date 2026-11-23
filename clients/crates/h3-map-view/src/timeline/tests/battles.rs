@@ -210,7 +210,7 @@ fn a_retreat_s_hero_leaves_and_the_next_is_chosen() {
     // its slot gone at once, the second hero chosen at the dissolve's end.
     let l = run_to("battle-retreat", 810);
     assert_eq!(l.state(810).hero, None);
-    assert_eq!(l.drawn().left, Some(0));
+    assert_eq!(l.drawn().left, [0]);
     assert_eq!(l.kingdom.heroes.len(), 1);
     let l = run_to("battle-retreat", 1330);
     assert_eq!(

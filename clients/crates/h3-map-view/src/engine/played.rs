@@ -8,8 +8,9 @@
 //!   [`Move`] closed by the next `GameTurn`. A record tells neither a step's points nor a step's
 //!   tiles (MCL-Q39): the walk's points at its last step, its whole reveal at its first (MCL-Q39
 //!   (c)).
-//! - **A turn's start** (the viewer's `TurnStarted` after the first): a live part's `[[turn]]`
-//!   table as a recording's (`crate::live::Turn::read`): the kingdom by the panels
+//! - **A turn's start** (each of the viewer's `TurnStarted`: its turns after the first, and since
+//!   E24 M4 T6 its first where the record starts in another player's turn, [`Played::waits`]): a
+//!   live part's `[[turn]]` table as a recording's (`crate::live::Turn::read`): the kingdom by the panels
 //!   (`super::panels`) of the observation folded to it, the date's window at its first frame
 //!   (`player_turn_start` 0x4CC7D0 asks it, design §5.1), the week's and the month's kind as the
 //!   fold holds them, a normal one's name the client's (MCL-Q40 (b): the week's number less one
@@ -36,7 +37,12 @@
 //!   among the viewer's ([`OtherTurn::turn`]). The record tells neither the computer's heroes'
 //!   points nor kind 5's value (MCL-Q43: the value 1 000, no points left) nor a step's end the
 //!   viewer does not see (MCL-Q44: none of its tiles), nor which of its heroes take a turn
-//!   without a step in sight (MCL-Q45).
+//!   without a step in sight (MCL-Q45). Since E24 M4 T6 (the reviewer's R1-1, R1-3, R1-5): a turn
+//!   under way at the record's start or at its end is read too ([`Played::waits`],
+//!   [`OtherTurn::open`]); each command's steps a move of their own ([`OtherEnd`]), with what the
+//!   command then takes, removes or flags; a hero the record's start does not show is left out
+//!   (MCL-Q53: the record tells nothing of its look), its commands' results as a stepless
+//!   command's ([`Played::between`]).
 //! - **The viewer's commands** ([`Command`], E24 M4 T4c): each one echoed, in order, for a record
 //!   played without a recording (`crate::director`).
 
@@ -44,6 +50,7 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use h3_adventure::{ObjectKind, ObjectTypeId};
 use h3_game::GameRuleset;
 use h3_map::model::Pos;
 use h3_protocol::wire::ServerMessage;
@@ -71,8 +78,19 @@ pub struct Played {
     /// Where each walk left its hero (E24 M4 T4b1: its last step's tile), none where it took no
     /// step (a visit from beside).
     pub ends: Vec<Option<Pos>>,
-    /// The viewer's turns' starts after the first, each a `[[turn]]` table.
+    /// The viewer's turns' starts after the first (since E24 M4 T6 its first too where the record
+    /// starts in another player's turn, [`Played::waits`]) and the other players' turns in sight,
+    /// each a `[[turn]]` table.
     pub turns: Vec<Value>,
+    /// The viewer's heroes in its kingdom's list as each of [`Played::turns`] starts, by their
+    /// record ids, slot by slot (E24 M4 T6, the reviewer's R1-4: the next day's selection and
+    /// choices follow the record's lists, a hero lost or hired; a computer's turn's the viewer's
+    /// then).
+    pub lists: Vec<Vec<u16>>,
+    /// The record starts in another player's turn (E24 M4 T6, the reviewer's R1-1: its viewer not
+    /// acting at its first observation, as every player's record starts at the game's start): the
+    /// map plays the turn's change to the first of [`Played::turns`] at its start.
+    pub waits: bool,
     /// The viewer's visits (E24 M4 T4b1), one a walk, in order.
     pub visits: Vec<Visit>,
     /// The viewer's heroes' level-ups (E24 M4 T4b1), in order.
@@ -94,11 +112,12 @@ pub struct Played {
     /// The viewer's heroes' places in its kingdom's list at the start, by their ids (E24 M4 T4c:
     /// the panels' order, their types'; a hero hired later not listed).
     pub slots: Vec<(u16, usize)>,
-    /// The objects other players' heroes took without a step in a command (E24 M4 T4c2: a pickup
-    /// from beside, `ObjectRemoved` alone; MCL-Q46 (c), *provisional*: the record does not tell
-    /// the hero), by their anchors, each list with the place among [`Played::turns`] of the next
-    /// turn table: off the map as that turn starts, nothing shown.
-    pub taken: Vec<(usize, Vec<Pos>)>,
+    /// What other players' commands without a step in sight changed (E24 M4 T4c2: a pickup from
+    /// beside, `ObjectRemoved` alone; MCL-Q46 (c), *provisional*: the record does not tell the
+    /// hero; since E24 M4 T6, R1-5, an object flagged and a hero lost too, and a left-out hero's,
+    /// MCL-Q53), each with the place among [`Played::turns`] of the next turn table: changed as
+    /// that turn starts, nothing shown (its pickups off at once with the rest).
+    pub between: Vec<(usize, OtherEnd)>,
 }
 
 /// One of the viewer's commands in a record (E24 M4 T4c, *provisional*), as a record played
@@ -136,6 +155,9 @@ pub struct OtherTurn {
     pub player: u8,
     /// Its heroes' runs of steps, in order.
     pub walks: Vec<OtherWalk>,
+    /// The record ends in it (E24 M4 T6, the reviewer's R1-1, *provisional*): its walks so far,
+    /// no end; a table even without a walk, so that the End Turn before it has a turn to show.
+    pub open: bool,
 }
 
 /// A run of one of another player's heroes' steps the record shows (E24 M4 T4c).
@@ -145,9 +167,40 @@ pub struct OtherWalk {
     pub hero: u16,
     /// Its steps.
     pub steps: Vec<OtherStep>,
-    /// The objects taken off the map after them, by their anchors (`ObjectRemoved`: a pile, an
-    /// artifact picked up).
+    /// Each of its moves' ends (E24 M4 T6, the reviewer's R1-3: one command's steps a move, the
+    /// last at its last step), in order, with what the command changes after its steps.
+    pub ends: Vec<OtherEnd>,
+}
+
+/// A move's end of another player's hero (E24 M4 T6, the reviewer's R1-3, R1-5, *provisional*):
+/// its command's last step, and what the command changes on the map after its steps, each by the
+/// record's facts alone (the original's way of showing a computer's flag raised, a monster it beat
+/// or a hero lost in sight not read).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct OtherEnd {
+    /// The walk's steps up to it.
+    pub after: usize,
+    /// The pickups taken after it (`ObjectRemoved` of a pile, a campfire, an artifact, a scroll, a
+    /// chest or a find: [`pickup`]), by their anchors: the hero turned to the first, its dissolve.
     pub taken: Vec<Pos>,
+    /// The other objects off the map after it (`ObjectRemoved` of any other kind: a monster
+    /// beaten), by their anchors: off at once, nothing dissolved.
+    pub removed: Vec<Pos>,
+    /// The objects flagged after it (`ObjectFlagged`), by their anchors, each with its owner's
+    /// colour.
+    pub flagged: Vec<(Pos, u8)>,
+    /// The heroes off the map after it (`HeroRemoved`: a hero lost in sight), by their record ids.
+    pub lost: Vec<u16>,
+}
+
+impl OtherEnd {
+    /// Whether it changes nothing.
+    fn is_empty(&self) -> bool {
+        self.taken.is_empty()
+            && self.removed.is_empty()
+            && self.flagged.is_empty()
+            && self.lost.is_empty()
+    }
 }
 
 /// One step of another player's hero (`HeroStepped`): its two tiles, each none where the viewer
@@ -168,8 +221,60 @@ struct OtherOpen {
     colour: u8,
     walks: Vec<OtherWalk>,
     /// Whether the command's events under way have a step (E24 M4 T4c2: an object removed in a
-    /// command without one is taken without a walk).
+    /// command without one is taken without a walk; E24 M4 T6, R1-3: its first step a new move).
     stepped: bool,
+}
+
+impl OtherOpen {
+    /// Player `player`'s turn started, its colour by `observation`.
+    fn new(observation: &GameObservation, player: u8) -> Self {
+        Self {
+            player,
+            colour: colour(observation, player),
+            walks: Vec::new(),
+            stepped: false,
+        }
+    }
+
+    /// Its turn as the place `turn` among the tables, `open` if the record ends in it.
+    fn turn(self, turn: usize, open: bool) -> OtherTurn {
+        OtherTurn {
+            turn,
+            player: self.colour,
+            walks: self.walks,
+            open,
+        }
+    }
+}
+
+/// Player `player`'s colour in `observation` (its own number where the list has none).
+fn colour(observation: &GameObservation, player: u8) -> u8 {
+    observation
+        .players
+        .get(usize::from(player))
+        .map_or(player, |p| p.colour)
+}
+
+/// Whether an object of the record's type `object_type` is a pickup under `rules` (E24 M4 T6, the
+/// reviewer's R1-5, *provisional*: a pile, a campfire, an artifact, a scroll, a chest or a find,
+/// what a hero takes from beside with the pickup's dissolve, `visit_resource_pile` 0x4A4BE0 as the
+/// viewer's own); any other removal (a monster beaten) is not.
+#[must_use]
+pub fn pickup(rules: &GameRuleset, object_type: u16) -> bool {
+    let kind = rules
+        .adventure()
+        .object_type(ObjectTypeId::from_raw(object_type))
+        .map(|t| &t.kind);
+    matches!(
+        kind,
+        Some(
+            ObjectKind::Pickup(_)
+                | ObjectKind::Artifact { .. }
+                | ObjectKind::Scroll
+                | ObjectKind::Chest(_)
+                | ObjectKind::Find(_)
+        )
+    )
 }
 
 /// One of the viewer's visits in a record (E24 M4 T4b1, design §5.14, *provisional*): a walk's
@@ -229,6 +334,12 @@ struct Open {
 pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Played, Refused> {
     let mut observation = loaded.first()?.clone();
     let viewer = observation.adventure.viewer;
+    // A record starts at the game's start (E24 M4 T6, R1-1): a viewer not acting there waits for
+    // the player that acts, whose turn is under way.
+    let waits = !observation
+        .players
+        .get(usize::from(viewer))
+        .is_some_and(|p| p.acting);
     let mut moves = Vec::new();
     let mut ends = Vec::new();
     let mut turns = Vec::new();
@@ -245,16 +356,28 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
     let mut walkers = Vec::new();
     let mut commands = Vec::new();
     let mut others = Vec::new();
-    let mut other: Option<OtherOpen> = None;
-    // The objects taken without a walk since the last turn table, and those given to a table.
-    let mut untaken: Vec<Pos> = Vec::new();
-    let mut taken = Vec::new();
-    let shown = observation
+    let acting = observation
+        .players
+        .iter()
+        .position(|p| p.acting)
+        .and_then(|p| u8::try_from(p).ok());
+    let mut other: Option<OtherOpen> = acting
+        .filter(|_| waits)
+        .map(|p| OtherOpen::new(&observation, p));
+    // What other players' commands without a step changed in the turn under way (E24 M4 T6,
+    // R1-6: given to the first turn table after its end), what is due at the next table, and
+    // what each table was given.
+    let mut untold = OtherEnd::default();
+    let mut due = OtherEnd::default();
+    let mut between = Vec::new();
+    let mut lists = Vec::new();
+    let shown: Vec<(u16, Pos)> = observation
         .adventure
         .heroes
         .iter()
         .filter_map(|h| tile(h.pos.x, h.pos.y, h.pos.level).map(|at| (h.id, at)))
         .collect();
+    let known: Vec<u16> = shown.iter().map(|&(id, _)| id).collect();
     let slots = slots(&observation, viewer);
     // Whether the last command accepted is an answer that has begun no battle yet (E24 M4 T5b1).
     let mut answering = false;
@@ -342,10 +465,13 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                 for event in events {
                     level(&mut levels, &mut pending, &observation, event);
                     observation.fold(event);
-                    if let (Some(o), GameEvent::Adventure { event }) = (&mut other, event)
-                        && let Some(at) = other_event(o, event)
-                    {
-                        untaken.push(at);
+                    if let (Some(o), GameEvent::Adventure { event }) = (&mut other, event) {
+                        let seen = Seen {
+                            known: &known,
+                            observation: &observation,
+                            rules,
+                        };
+                        other_event(o, event, &seen, &mut untold);
                     }
                     match event {
                         // The viewer's walk began a battle (E24 M4 T5b1, design §5.20): its end
@@ -411,41 +537,28 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                         GameEvent::MonthStarted { month: n, kind } => month = (*n, *kind),
                         GameEvent::TurnStarted { player } if *player == viewer => starts = true,
                         GameEvent::TurnStarted { player } => {
-                            let colour = observation
-                                .players
-                                .get(usize::from(*player))
-                                .map_or(*player, |p| p.colour);
-                            other = Some(OtherOpen {
-                                player: *player,
-                                colour,
-                                walks: Vec::new(),
-                                stepped: false,
-                            });
+                            other = Some(OtherOpen::new(&observation, *player));
                         }
                         GameEvent::TurnEnded { player } => {
-                            if let Some(o) = other.take_if(|o| o.player == *player)
-                                && !o.walks.is_empty()
-                            {
-                                let heroes = o.walks.iter().fold(Vec::new(), |mut seen, w| {
-                                    if !seen.contains(&w.hero) {
-                                        seen.push(w.hero);
-                                    }
-                                    seen
-                                });
-                                turns.push(computer_turn(
-                                    &observation,
-                                    loaded,
-                                    art,
-                                    rules,
-                                    (week, month),
-                                    (o.colour, heroes.len()),
-                                ));
-                                table(&mut taken, &mut untaken, turns.len());
-                                others.push(OtherTurn {
-                                    turn: turns.len() - 1,
-                                    player: o.colour,
-                                    walks: o.walks,
-                                });
+                            if let Some(o) = other.take_if(|o| o.player == *player) {
+                                if o.walks.is_empty() {
+                                    extend(&mut due, core::mem::take(&mut untold));
+                                } else {
+                                    turns.push(computer_turn(
+                                        &observation,
+                                        loaded,
+                                        art,
+                                        rules,
+                                        (week, month),
+                                        (o.colour, heroes_of(&o.walks)),
+                                    ));
+                                    lists.push(list(&observation, viewer));
+                                    // What came before it at its start, its own after it
+                                    // (R1-6).
+                                    give(&mut between, &mut due, turns.len());
+                                    due = core::mem::take(&mut untold);
+                                    others.push(o.turn(turns.len() - 1, false));
+                                }
                             }
                         }
                         _ => {}
@@ -453,7 +566,9 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                 }
                 if starts {
                     turns.push(turn(&observation, loaded, art, rules, week, month));
-                    table(&mut taken, &mut untaken, turns.len());
+                    lists.push(list(&observation, viewer));
+                    extend(&mut due, core::mem::take(&mut untold));
+                    give(&mut between, &mut due, turns.len());
                 }
             }
             ServerMessage::GameReveal { reveal, .. } => observation.reveal(reveal),
@@ -476,10 +591,26 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
         art,
         (&mut moves, &mut ends, &mut walkers),
     );
+    // A turn under way at the record's end (E24 M4 T6, R1-1): its walks so far, no end.
+    if let Some(o) = other {
+        turns.push(computer_turn(
+            &observation,
+            loaded,
+            art,
+            rules,
+            (week, month),
+            (o.colour, heroes_of(&o.walks)),
+        ));
+        lists.push(list(&observation, viewer));
+        give(&mut between, &mut due, turns.len());
+        others.push(o.turn(turns.len() - 1, true));
+    }
     Ok(Played {
         moves,
         ends,
         turns,
+        lists,
+        waits,
         visits,
         levels,
         experience,
@@ -488,8 +619,21 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
         others,
         shown,
         slots,
-        taken,
+        between,
     })
+}
+
+/// How many heroes `walks` are of.
+fn heroes_of(walks: &[OtherWalk]) -> usize {
+    walks
+        .iter()
+        .fold(Vec::new(), |mut seen, w| {
+            if !seen.contains(&w.hero) {
+                seen.push(w.hero);
+            }
+            seen
+        })
+        .len()
 }
 
 /// Whether `command` is a battle's (the viewer's own or the system's for it, E24 M4 T6): none of
@@ -519,25 +663,56 @@ fn command_of(command: &GameCommand) -> Command {
     }
 }
 
+/// What [`other_event`] reads: the heroes the record's start shows (by their ids), the
+/// observation folded so far (the players' colours) and the rules (the objects' kinds).
+struct Seen<'a> {
+    known: &'a [u16],
+    observation: &'a GameObservation,
+    rules: &'a GameRuleset,
+}
+
 /// Another player's hero's event folded into its turn `other` (E24 M4 T4c): a step a new step
-/// (a new walk when another hero steps), a boarding or a landing its last step's, an object
-/// removed the walk's; one removed in a command without a step returned (E24 M4 T4c2, MCL-Q46:
-/// taken without a walk).
-fn other_event(other: &mut OtherOpen, event: &AdventureEvent) -> Option<Pos> {
+/// (a new walk when another hero steps; since E24 M4 T6, R1-3, a command's first step a new move
+/// of the walk), a boarding or a landing its last step's; an object removed or flagged and a hero
+/// removed the move's end's (E24 M4 T6, R1-5); one in a command without a step, or of a hero the
+/// start does not show (MCL-Q53: left out), `pending`'s (E24 M4 T4c2, MCL-Q46: without a walk).
+fn other_event(
+    other: &mut OtherOpen,
+    event: &AdventureEvent,
+    seen: &Seen<'_>,
+    pending: &mut OtherEnd,
+) {
     match event {
         AdventureEvent::HeroStepped { hero, from, to } => {
-            other.stepped = true;
+            // stub: MCL-Q53 (a hero coming into sight: its owner, type and boat not told)
+            if !seen.known.contains(hero) {
+                return;
+            }
+            let first = !core::mem::replace(&mut other.stepped, true);
             let step = OtherStep {
                 from: from.and_then(|p| tile(p.x, p.y, p.level)),
                 to: to.and_then(|p| tile(p.x, p.y, p.level)),
                 sea: None,
             };
             match other.walks.last_mut().filter(|w| w.hero == *hero) {
-                Some(walk) => walk.steps.push(step),
+                Some(walk) => {
+                    walk.steps.push(step);
+                    let after = walk.steps.len();
+                    match walk.ends.last_mut().filter(|_| !first) {
+                        Some(end) => end.after = after,
+                        None => walk.ends.push(OtherEnd {
+                            after,
+                            ..OtherEnd::default()
+                        }),
+                    }
+                }
                 None => other.walks.push(OtherWalk {
                     hero: *hero,
                     steps: vec![step],
-                    taken: Vec::new(),
+                    ends: vec![OtherEnd {
+                        after: 1,
+                        ..OtherEnd::default()
+                    }],
                 }),
             }
         }
@@ -561,25 +736,69 @@ fn other_event(other: &mut OtherOpen, event: &AdventureEvent) -> Option<Pos> {
                 }));
             }
         }
-        AdventureEvent::ObjectRemoved { anchor, .. } => {
-            let at = tile(anchor.x, anchor.y, anchor.level)?;
-            match other.walks.last_mut().filter(|_| other.stepped) {
-                Some(walk) => walk.taken.push(at),
+        AdventureEvent::ObjectRemoved {
+            object_type,
+            anchor,
+        } => {
+            if let Some(at) = tile(anchor.x, anchor.y, anchor.level) {
                 // stub: MCL-Q46 (the hero that takes an object without a step not told)
-                None => return Some(at),
+                let end = move_end(other).unwrap_or(pending);
+                if pickup(seen.rules, *object_type) {
+                    end.taken.push(at);
+                } else {
+                    end.removed.push(at);
+                }
             }
+        }
+        AdventureEvent::ObjectFlagged { anchor, owner, .. } => {
+            if let Some(at) = tile(anchor.x, anchor.y, anchor.level) {
+                let colour = colour(seen.observation, *owner);
+                move_end(other)
+                    .unwrap_or(pending)
+                    .flagged
+                    .push((at, colour));
+            }
+        }
+        AdventureEvent::HeroRemoved { hero, .. } => {
+            move_end(other).unwrap_or(pending).lost.push(*hero);
         }
         _ => {}
     }
-    None
 }
 
-/// The objects taken without a walk since the last turn table `untaken` given to the table just
-/// pushed (`tables` long: E24 M4 T4c2, [`Played::taken`]).
-fn table(taken: &mut Vec<(usize, Vec<Pos>)>, untaken: &mut Vec<Pos>, tables: usize) {
-    if !untaken.is_empty() {
-        taken.push((tables - 1, core::mem::take(untaken)));
+/// The end of the move under way in `other`, none outside a command with a step.
+fn move_end(other: &mut OtherOpen) -> Option<&mut OtherEnd> {
+    other
+        .walks
+        .last_mut()
+        .filter(|_| other.stepped)?
+        .ends
+        .last_mut()
+}
+
+/// `from`'s changes added to `into`'s.
+fn extend(into: &mut OtherEnd, from: OtherEnd) {
+    into.taken.extend(from.taken);
+    into.removed.extend(from.removed);
+    into.flagged.extend(from.flagged);
+    into.lost.extend(from.lost);
+}
+
+/// The changes `due` given to the turn table just pushed (`tables` long: E24 M4 T4c2, since T6
+/// [`Played::between`]), none when there are none.
+fn give(between: &mut Vec<(usize, OtherEnd)>, due: &mut OtherEnd, tables: usize) {
+    if !due.is_empty() {
+        between.push((tables - 1, core::mem::take(due)));
     }
+}
+
+/// The viewer's heroes in its kingdom's list in `observation`, slot by slot, by their ids
+/// ([`Played::lists`]).
+fn list(observation: &GameObservation, viewer: u8) -> Vec<u16> {
+    slots(observation, viewer)
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect()
 }
 
 /// The last step of `hero`'s walk under way in `other`.
@@ -784,7 +1003,9 @@ fn computer_turn(
         "heroes".to_string(),
         Value::Array(vec![row(&[0, 1, 0, 0, 0]); heroes]),
     );
-    kingdom.insert("selected".to_string(), row(&[1, 0]));
+    // None selected without a walking hero (E24 M4 T6: a turn under way at the record's end).
+    let selected = i64::from(heroes > 0);
+    kingdom.insert("selected".to_string(), row(&[selected, 0]));
     table.insert("kingdom".to_string(), Value::Table(kingdom));
     let mut status = Table::new();
     status.insert("kind".to_string(), Value::Integer(5));

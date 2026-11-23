@@ -95,6 +95,7 @@ pub(super) fn hover_of(live: &str) -> Arc<Hover> {
         path: Vec::new(),
         moment: Moment::default(),
         walking: Walking::default(),
+        left: Vec::new(),
         kingdom: Kingdom::default(),
         buttons: None,
         minimap: None,
@@ -158,6 +159,11 @@ fn computing(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str)
             heroes: turn::placed(&heroes, &boats, t).unwrap(),
             walks: turn::walks(&turns, i, &heroes, &lines).unwrap(),
             taken: Vec::new(),
+            flags: Vec::new(),
+            lost: Vec::new(),
+            list: None,
+            first: false,
+            open: false,
         })
         .collect();
     start.points = sequence.points(timeline).unwrap();
@@ -519,7 +525,8 @@ fn a_turns_heroes_and_walks_from_its_facts() {
             steps: vec![east(6), east(7)],
             unseen: Vec::new(),
             sea: Vec::new(),
-            taken: Vec::new(),
+            ends: Vec::new(),
+            seen: None,
         }])
     );
     assert_eq!(turn::walks(&turns, 1, &heroes, &lines), Ok(Vec::new()));
@@ -652,16 +659,28 @@ fn a_computers_turn_s_sounds_and_unseen_steps() {
     );
 }
 
+/// `walk`'s one move's end taking `taken` (E24 M4 T6: [`End`]).
+fn takes(walk: &mut Steps, taken: Vec<(Pos, usize)>) {
+    walk.ends = vec![End {
+        after: walk.steps.len(),
+        taken,
+        ..End::default()
+    }];
+}
+
 /// A computer's pickup in sight (E24 M4 T4c, design §5.16): at its walk's end the object taken off
 /// with the viewer's dissolve, the turn going on at its end; out of sight (Blackout) at once.
 #[test]
 fn a_computers_pickup_in_sight_and_out() {
     let (mut start, actions, _, _) = computing("ai-walk");
     // Two of the map's objects (their indexes; the first's anchor beside the walk's end).
-    start.turns[0].walks[0].taken = vec![
-        (Pos { x: 21, y: 24, z: 0 }, 0),
-        (Pos { x: 1, y: 1, z: 0 }, 1),
-    ];
+    takes(
+        &mut start.turns[0].walks[0],
+        vec![
+            (Pos { x: 21, y: 24, z: 0 }, 0),
+            (Pos { x: 1, y: 1, z: 0 }, 1),
+        ],
+    );
     let run = |start: &Start, until: u32| {
         let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
         for t in 1..=until {
@@ -680,7 +699,7 @@ fn a_computers_pickup_in_sight_and_out() {
     // Under Blackout Computer both at once, no dissolve (the first not beside the hero: it is
     // not turned to).
     start.computer.blackout = true;
-    start.turns[0].walks[0].taken.reverse();
+    start.turns[0].walks[0].ends[0].taken.reverse();
     let l = run(&start, 161);
     assert!(l.dissolving.is_none());
     assert_eq!(l.drawn.gone.len(), 2);
@@ -802,7 +821,10 @@ fn a_computers_boarding_and_landing() {
 #[test]
 fn a_computers_next_hero_steps_the_objects() {
     let (mut start, actions, _, _) = computing("ai-walk");
-    start.turns[0].walks[0].taken = vec![(Pos { x: 21, y: 24, z: 0 }, 0)];
+    takes(
+        &mut start.turns[0].walks[0],
+        vec![(Pos { x: 21, y: 24, z: 0 }, 0)],
+    );
     let steps_at = |start: &Start, until: u32| {
         let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
         for t in 1..=until {
@@ -817,9 +839,149 @@ fn a_computers_next_hero_steps_the_objects() {
         steps: Vec::new(),
         unseen: Vec::new(),
         sea: Vec::new(),
-        taken: Vec::new(),
+        ends: Vec::new(),
         ..first
     });
     assert_eq!(steps_at(&start, 2179), alone - 1);
     assert_eq!(steps_at(&start, 2180), alone + 1);
+}
+
+/// `id`'s loop from `start` run with its input to `until`.
+fn run_from(start: &Start, id: &str, until: u32) -> Loop {
+    let (_, actions, _, _) = computing(id);
+    let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
+    for t in 1..=until {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    l
+}
+
+#[test]
+fn a_record_s_steps_are_seen_by_its_judgement() {
+    // E24 M4 T6 (the reviewer's R1-2): `ai-walk-fog`'s walk with the three steps before its first
+    // put in, which lie in Red's fog as the start explored it: by the live part's explored tiles
+    // they take no time (the hero on (9, 26) at 160); a record's walk is the steps the engine
+    // judged seen, so they take their frames, the view following the hero from the first.
+    let (mut start, ..) = computing("ai-walk-fog");
+    let east = |x| Hero {
+        at: Pos { x, y: 26, z: 0 },
+        facing: Direction::East,
+    };
+    let walk = &mut start.turns[0].walks[0];
+    walk.steps.splice(0..0, [east(6), east(7), east(8)]);
+    let l = run_from(&start, "ai-walk-fog", 160);
+    assert_eq!(l.hero.map(|h| h.at), Some(Pos { x: 9, y: 26, z: 0 }));
+    start.turns[0].walks[0].seen = Some(true);
+    let l = run_from(&start, "ai-walk-fog", 160);
+    let s = l.state(160);
+    assert_eq!(s.hero.map(|h| h.at), Some(Pos { x: 6, y: 26, z: 0 }));
+    assert_eq!(s.view, ViewAt { x: -3, y: 18, z: 0 });
+    assert!(l.ai_step.is_some() && !s.cursor.shown);
+}
+
+#[test]
+fn a_computers_moves_each_end_and_take_after_their_own() {
+    // E24 M4 T6 (the reviewer's R1-3): a walk of two moves (two commands' steps), an object taken
+    // from beside after the first: the hero stands at the first move's last step and the object
+    // dissolves there, before the second move's steps; the turn goes on after the dissolve.
+    let (mut start, ..) = computing("ai-walk");
+    let walk = &mut start.turns[0].walks[0];
+    let steps = walk.steps.len();
+    let second = walk.steps[1].at;
+    walk.ends = vec![
+        End {
+            after: 2,
+            taken: vec![(Pos { x: 1, y: 1, z: 0 }, 0)],
+            ..End::default()
+        },
+        End {
+            after: steps,
+            ..End::default()
+        },
+    ];
+    // The first move's last step ends before 600 ms (two steps at speed 3 from 160).
+    let at = (161..=1600)
+        .find(|&t| run_from(&start, "ai-walk", t).dissolving.is_some())
+        .unwrap();
+    let l = run_from(&start, "ai-walk", at);
+    assert_eq!(l.hero.map(|h| h.at), Some(second));
+    let facing = l.hero.map_or(0, |h| h.facing.number());
+    assert_eq!((l.walk.group, l.walk.frame), (l.group(facing), 0));
+    assert!(at < 700, "the first move's dissolve at {at}");
+    // Its end: the second move walked to the walk's end, the turn's end after it.
+    let l = run_from(&start, "ai-walk", 3000);
+    assert!(l.ai.is_none() && l.drawn.gone.contains(&0));
+    assert_eq!(l.heroes[1].at, Pos { x: 20, y: 24, z: 0 });
+}
+
+#[test]
+fn a_computers_move_end_s_other_changes() {
+    // E24 M4 T6 (the reviewer's R1-5): at a move's end an object removed at once (a monster
+    // beaten: no dissolve), a flag raised in the computer's colour, a hero lost drawn nowhere;
+    // at a turn's start the same from a stepless command.
+    let (mut start, ..) = computing("ai-walk");
+    let steps = start.turns[0].walks[0].steps.len();
+    start.turns[0].walks[0].ends = vec![End {
+        after: steps,
+        removed: vec![1],
+        flags: vec![(0, 1)],
+        lost: vec![0],
+        ..End::default()
+    }];
+    let l = run_from(&start, "ai-walk", 3000);
+    assert!(l.dissolving.is_none() && l.ai.is_none());
+    assert!(l.drawn.gone.contains(&1));
+    assert_eq!(l.owners.to_vec(), [(0, 1)]);
+    assert_eq!(l.drawn.left, [0]);
+    let (mut start, ..) = computing("ai-walk");
+    start.turns[1].taken = vec![2];
+    start.turns[1].flags = vec![(3, 1)];
+    start.turns[1].lost = vec![1];
+    let l = run_from(&start, "ai-walk", 3000);
+    assert!(l.drawn.gone.contains(&2) && l.owners.contains(&(3, 1)));
+    assert_eq!(l.drawn.left, [1]);
+}
+
+#[test]
+fn a_computers_step_into_sight_faces_as_its_hero_did() {
+    // E24 M4 T6 (the reviewer's R1-8): a record's step into sight (MCL-Q44: its start not told),
+    // its walk's last, leaves the hero facing as the timeline's hero did, not as the facts give
+    // it (the turn the record's last, so that no next day places the hero).
+    let (mut start, ..) = computing("ai-walk");
+    start.turns.truncate(1);
+    start.turns[0].open = true;
+    let walk = &mut start.turns[0].walks[0];
+    let before = start.heroes[walk.hero].facing;
+    let other = Direction::ALL[(usize::try_from(before.number()).unwrap() + 4) % 8];
+    walk.steps.truncate(1);
+    walk.steps[0].facing = other;
+    walk.unseen = vec![0];
+    let at = walk.steps[0].at;
+    let l = run_from(&start, "ai-walk", 300);
+    assert_eq!(l.hero, Some(Hero { at, facing: before }));
+}
+
+#[test]
+fn a_computers_turn_the_record_ends_in() {
+    // E24 M4 T6 (the reviewer's R1-1): the turn under way at a record's end: its walk played, the
+    // map then left in its screen (kind 5, the shield), waiting for nothing; no next turn asked
+    // for (refused before).
+    let (mut start, ..) = computing("ai-walk");
+    start.turns.truncate(1);
+    start.turns[0].open = true;
+    let l = run_from(&start, "ai-walk", 3000);
+    assert!(l.ai.is_some() && l.idle());
+    let s = l.state(3000);
+    assert!(s.drawn.computer);
+    assert_eq!(
+        (s.player, s.hero.map(|h| h.at)),
+        (1, Some(Pos { x: 20, y: 24, z: 0 }))
+    );
+    // One under way in the record's first millisecond (its viewer not the first to act): its
+    // walk at once.
+    let (mut start, ..) = computing("ai-walk");
+    start.turns[0].first = true;
+    let l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    assert!(l.ai.is_some() && l.next_turn == 1);
 }
