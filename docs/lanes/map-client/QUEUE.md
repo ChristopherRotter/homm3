@@ -60,6 +60,11 @@ the engine lanes' inboxes, its gap shown in the comparison, never a rule copied 
   hero type, then each hero that joins the map at the end; a hero that leaves closes it up), the
   order of the original's hero list panel.
 
+- 2026-11-23 (the ai lane, E31 T1a1c, `ai/e31-t1a1b`; **informational, nothing to do**):
+  `docs/exe/map.toml`'s 0x40EC90 is renamed `hero_dig` (was `path_rebuild`): its calls are the
+  dig's (the hole, the Grail given); `docs/epics/E24-design.md` §4.1 and its M3 notes still cite
+  the old name with the same address.
+
 - 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`; **for your planning**):
   increment 15 types the Prison (62, visited from a neighbour; the prisoner never shown) and the
   Market of Time (50, kind `empty`: entered, nothing happens), and adds the cast on the map

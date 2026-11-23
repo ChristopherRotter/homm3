@@ -35,9 +35,9 @@ and middle), so about 95 KB in all. The fog test reads the other way round (the 
   61 KB. Some valuations are shared with the battle AI (`ai_caster_record` 0x526D40, the spell
   values 0x5270E0 to 0x5275B0, read by E23) and some are reached through a function table
   (0x432F90).
-- **Draws:** almost none. One `random_between` call (0x42FBE9: 76 to 100, in a callee of `ai_hero_replan`, not
-  in `ai_hero_step`; E25 T43), no direct
-  `crt_rand`. About 750 x87 instructions, most in the values.
+- **Draws:** one `random_between` call site (0x42FBE9: 76 to 100, in `ai_candidate_score`, not
+  in `ai_hero_step`; E25 T43), no direct `crt_rand`; but it draws once per candidate scored, so a
+  turn draws many times (T1a1b, the survey §1.9). About 750 x87 instructions, most in the values.
 - **Hidden state, a first case:** the adventure pathfinder lets a computer player step from an
   explored tile into an unexplored one, or anywhere while its player record's +0x3E is above 0
   (`pathfinder_fog_test` 0x4B25D4, ADV-MOV-008): the fog of war is partly ignored.
@@ -154,3 +154,10 @@ or HotA's AI, but as pointers.
 - **T1a1a** (2026-11-23): the turn's loop, the hero order, the start and middle, the records
   (`ai_player_record`); 42 map entries (35 new); the survey `docs/rules/surveys/E31-computer-player.md`
   §0, §1 (`E31-log.md` T1a1a).
+- **T1a1b** (2026-11-23): the planning: the danger map, the candidates and the colleagues' claims,
+  the value field, the score with its draw, the choice; 21 map entries (13 new, 5 rewritten, 3 renamed in),
+  `pathfinder_node` and `ai_candidate` in `structs.toml`; the survey §1.9; two quirk candidates
+  for T1b (`E31-log.md` T1a1b).
+- **T1a1c** (2026-11-23): the walk: the dig, the jumps (Castle Gate, Town Portal, Dimension
+  Door), the spells on the way, the boat bought, the step's visit, the replan; 10 map entries; the
+  survey §1.10 (`E31-log.md` T1a1c). **T1a1 done.**

@@ -353,10 +353,10 @@ fields = [
   { offset = 0x22, name = "owner", type = "i8", summary = "the owner's colour, -1 none (heroes not on the map); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x23, name = "name", type = "char[13]", summary = "the hero's name (an experiment map's custom name: D3a, Wood 1); observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x30, name = "class", type = "i32", summary = "the hero's class, 0-17: the level-up reads its record (hero_classes_pointer 0x67DCEC)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.3"] },
-  { offset = 0x35, name = "destination", type = "i32[3]", summary = "the planned destination's column, row and level (H3API's dest_x, dest_y, dest_z): a human's hero passing its team's garrison short of it takes no visit (step_garrison_pass 0x48154B)", confidence = "read", refs = ["rules/surveys/E08-garrisons-bonuses.md §7"] },
+  { offset = 0x35, name = "destination", type = "i32[3]", summary = "the planned destination's column, row and level (H3API's dest_x, dest_y, dest_z): a human's hero passing its team's garrison short of it takes no visit (step_garrison_pass 0x48154B); a computer hero's is written by ai_hero_destination 0x42E0B0 (-1 none; the level a word at +0x3D) and favoured by ai_candidate_score 0x42F980 (E31 T1a1b)", confidence = "read", refs = ["rules/surveys/E08-garrisons-bonuses.md §7"] },
   { offset = 0x3F, name = "school_offer_level", type = "i16", summary = "the level at which a magic school was last offered at a level-up, 0 at a new game: a school is due when it plus 3 or 4 is reached (0x4DAD00)", confidence = "read", refs = ["rules/surveys/E08-progression.md §2.4"] },
-  { offset = 0x41, name = "ai_plan_word", type = "u16", summary = "a word ai_hero_replan 0x42E0B0 writes with +0x43 (0x42EBE9; E31 T1a1b); with a destination 0x5267B0's search budget is it plus the points left plus 200 when that exceeds 1000", confidence = "inferred", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
-  { offset = 0x43, name = "ai_plan_flag", type = "u8", summary = "written by ai_hero_replan with +0x41 (0x42EBE6); cleared for every hero at a computer turn's start (ai_turn_start 0x4297C0) and by 0x5267B0 when the hero has no destination", confidence = "inferred", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
+  { offset = 0x41, name = "ai_points_beyond", type = "u16", summary = "the points by which the destination's node lies beyond the points left, at least 0, written by ai_hero_destination 0x42E0B0 with +0x43 (0x42EBE9; E31 T1a1b); with a destination 0x5267B0's search budget is it plus the points left plus 200 when that exceeds 1000; ai_hero_reach_claims 0x42F570 offsets the hero's claims by it", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.9"] },
+  { offset = 0x43, name = "ai_must_go", type = "u8", summary = "the destination's must-go flag (ai_candidate +0xD), written by ai_hero_destination 0x42E0B0 with +0x41 (0x42EBE6; E31 T1a1b), which ai_candidate_score 0x42F980 carries to the kept destination; cleared for every hero at a computer turn's start (ai_turn_start 0x4297C0) and by 0x5267B0 when the hero has no destination", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
   { offset = 0x44, name = "patrol_x", type = "u8", summary = "the patrol's centre, its column; 0xFF no patrol (H3API patrol_x): ai_next_hero 0x526A90 plays heroes without a patrol first; 0x5267B0 bounds a patrolling hero's search by its distance to the centre", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
   { offset = 0x45, name = "patrol_y", type = "u8", summary = "the patrol's centre, its row (H3API patrol_y)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
   { offset = 0x46, name = "patrol_radius", type = "i8", summary = "the patrol's radius (H3API patrolRadius): a computer hero with a patrol of radius 0 gets 0 points and ends its turn (ai_hero_turn 0x5261F0)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
@@ -515,7 +515,7 @@ fields = [
   { offset = 0x4, name = "selected_hero", type = "i32", summary = "the selected hero's index, -1 none; observed in the running game (h3mem.py), not read", confidence = "inferred", refs = ["epics/E17-design.md §6.3"] },
   { offset = 0x8, name = "heroes", type = "i32[8]", summary = "the heroes' indices in the hero list's order (E08 T141a, read): appended at the count's place, removed by shifting the later ones down and clearing the last to -1 (GAM-HER-003)", confidence = "read", refs = ["epics/E17-design.md §6.3", "rules/surveys/E08-spells.md §2.1"] },
   { offset = 0x34, name = "ai_type", type = "i32", summary = "3 for a human; a computer's drawn at a new game, random_between(0, 2)", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
-  { offset = 0x39, name = "puzzle_target", type = "i32", summary = "set at each computer turn's start by player_puzzle_target 0x4BAE50 from the puzzle map's computation 0x52C9B0; what it holds not read", confidence = "inferred", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
+  { offset = 0x39, name = "puzzle_target", type = "i32", summary = "set at each computer turn's start by player_puzzle_target 0x4BAE50 from the puzzle map's computation 0x52C9B0; a packed position (+0x39 the column, +0x3B the row and level; a negative column none), which ai_hero_candidates 0x42EDD0 offers as the Grail's dig (E31 T1a1b)", confidence = "inferred", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
   { offset = 0x3D, name = "days_without_town", type = "i8", summary = "-1 while the player has a town; 7 when its last town is lost (scenario_condition_met, with GENRLTXT 7 for a human here whose turn it is), at 0 the player is defeated", confidence = "read", refs = ["epics/E27-design.md §5"] },
   { offset = 0x3E, name = "town_count", type = "i8", summary = "the player's towns", confidence = "read", refs = ["installation.md §7.55"] },
   { offset = 0x40, name = "towns", type = "i8[]", summary = "the player's towns by index into game +0x21614, -1 none", confidence = "read", refs = ["installation.md §7.55"] },
@@ -730,16 +730,19 @@ summary = "The pathfinder object (H3API's H3Pathfinder): the battle pathfinder 0
 refs = ["installation.md §7.40"]
 h3api = "H3Pathfinder"
 fields = [
+  { offset = 0x8, name = "points_today", type = "i32", summary = "the points the hero has for the run's day (H3API availableMovement): pathfinder_relax 0x4B1A70 folds the danger into a node only past it (0x4B1C01); inferred from the name and that use", confidence = "inferred", refs = ["rules/surveys/E31-computer-player.md §1.9"] },
   { offset = 0xC, name = "land_maximum", type = "i32", summary = "on the adventure map the hero's land points for a new day (0x4E4990), H3API maxLandMovement", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §3.1"] },
   { offset = 0x10, name = "sea_maximum", type = "i32", summary = "the same at sea", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §3.1"] },
   { offset = 0x18, name = "water_walk_level", type = "i32", summary = "the hero's water-walk level for the search, -1 none; Boots of Levitation 3", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §3.1"] },
   { offset = 0x1C, name = "fly_level", type = "i32", summary = "the hero's fly level for the search, -1 none; Angel Wings 3", confidence = "read", refs = ["rules/surveys/E08-hero-movement.md §3.1"] },
-  { offset = 0x20, name = "ai_search_short", type = "u8", summary = "tested by 0x5267B0 to double a computer hero's search budget (the search stopped at its budget, inferred; its writer not read)", confidence = "inferred", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
+  { offset = 0x20, name = "ai_search_short", type = "u8", summary = "set by pathfinder_relax 0x4B1D15 when a step's new cost passes the run's bound (its fifth argument, when positive) and the step is refused; 0x5267B0 doubles a computer hero's search budget by it, ai_hero_destination 0x42E0B0 lets a hero without destination step off an entrance only without it", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.9"] },
   { offset = 0x24, name = "cells", type = "pathfinder_cell*", summary = "in a battle 187 cells of 30 bytes, one per hex (0x4B3B90)", confidence = "read", refs = ["installation.md §7.40"] },
+  { offset = 0x28, name = "box", type = "i32[4]", summary = "the search's box: the left column, the top row, the right and the bottom (exclusive); pathfinder_relax refuses a node outside it (0x4B1AE6 to 0x4B1B04) and pathfinder_reset 0x4B1530 clears the nodes inside it. H3API names +0x30 and +0x34 the map's width and height, the box of an ordinary run (inferred); ai_hero_destination 0x42E0B0 narrows a local search's to 5 tiles about a candidate", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.9"] },
   { offset = 0x38, name = "queue", type = "vector", summary = "the battle search's queue of 30-byte entries, sorted by cost from highest to lowest (0x4B3BB0): +0x3C begin, +0x40 end, +0x44 capacity's end", confidence = "read", refs = ["installation.md §7.40"] },
   { offset = 0x48, name = "path", type = "vector", summary = "the path's cell pointers, from the end to the first step (+0x4C begin, +0x50 end; H3API's arrowPath)", confidence = "read", refs = ["installation.md §7.38", "installation.md §7.40"] },
+  { offset = 0x58, name = "reached", type = "vector", summary = "the nodes the run reached, as pointers (+0x5C begin, +0x60 end; H3API _f_58): ai_danger_map 0x42DE50, ai_hero_candidates 0x42EDD0 and ai_hero_destination 0x42E0B0 walk it from its end", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.9"] },
   { offset = 0x68, name = "stops", type = "u8*", summary = "a byte per battle hex: the walker's stops (0x4B3290; H3API's battleHexes)", confidence = "read", refs = ["installation.md §7.38", "installation.md §7.40"] },
-  { offset = 0x6C, name = "ai_tile_buffer", type = "ptr", summary = "a computer turn's tile buffer (a dword per tile of every level), set and cleared around 0x5267B0 by ai_hero_turn 0x5261F0", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
+  { offset = 0x6C, name = "ai_tile_buffer", type = "ptr", summary = "a computer turn's tile buffer (a dword per tile of every level), set and cleared around 0x5267B0 by ai_hero_turn 0x5261F0: the danger map (ai_danger_map 0x42DE50); pathfinder_relax 0x4B1A70 reads it into a node's +0x14 (0x4B1BBC) and refuses a node past the day's points whose path's danger is at or below -500 000 000 (E31 T1a1b)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §1.6"] },
 ]
 
 [[struct]]
@@ -752,6 +755,36 @@ fields = [
   { offset = 0x4, name = "flags", type = "u32", summary = "bit 0 reached; bits 12-15 the direction of the step into the hex; bits 26-31 the hexes flown over in a row (not an end)", confidence = "read" },
   { offset = 0x8, name = "attack_from", type = "u16", summary = "on the target's cell after an attack is found: the hex to attack from (bits 0-9)", confidence = "read" },
   { offset = 0x18, name = "cost", type = "u16", summary = "the cost; an attack mark's cost on a stack's hex", confidence = "read" },
+]
+
+[[struct]]
+name = "pathfinder_node"
+size = 0x1E
+summary = "An adventure pathfinder node, one per tile and kind (pathfinder +0x24, pathfinder_node_at 0x42ECC0; E31 T1a1b): only what the computer's planning reads."
+h3api = "H3PathNode"
+refs = ["rules/surveys/E31-computer-player.md §1.9"]
+fields = [
+  { offset = 0x0, name = "position", type = "u32", summary = "the tile, packed: the column in bits 0-9, the row in 16-25, the level in 26-29", confidence = "read" },
+  { offset = 0x4, name = "flags", type = "u32", summary = "bit 0 reached (a node not reached is all zero after pathfinder_reset 0x4B1530), bit 1 a stop (pathfinder_relax's stop flag); bits 12-15 the step's direction (pathfinder_relax 0x4B1EC4; ai_hero_step)", confidence = "read" },
+  { offset = 0x8, name = "from", type = "u32", summary = "the tile it was entered from, packed (pathfinder_relax 0x4B1B0C; with flag bit 7 a jump's start instead, 0x4B1B21 to 0x4B1BAF, not read further)", confidence = "read" },
+  { offset = 0xC, name = "guard_met", type = "u32", summary = "a packed position: ai_candidate_score 0x42F980 adds no guard's fight estimate for a guard on it (the guard met on the path, inferred; its writer not read)", confidence = "inferred" },
+  { offset = 0x10, name = "key", type = "i32", summary = "pathfinder_relax's first comparison key, the larger kept (0x4B1CC5, with +0x14 added past the day's points; written at 0x4B1EEE from its sixth argument; the relax's summary calls it the turn); ai_candidate_score adds it to a score; not read further (T1a2)", confidence = "inferred" },
+  { offset = 0x14, name = "danger", type = "i32", summary = "the computer's tile buffer (pathfinder +0x6C) at the tile while the cost is within the day's points (pathfinder +0x8), past them the lowest on the path (pathfinder_relax 0x4B1BBC to 0x4B1C32, written at 0x4B1EF4); 0 without a buffer", confidence = "read" },
+  { offset = 0x18, name = "cost", type = "u16", summary = "the movement points to the tile (H3API movementCost)", confidence = "read" },
+  { offset = 0x1A, name = "cost_2", type = "u16", summary = "a second cost (H3API movementCost2): pathfinder_relax sets it to the new cost plus the expanded node's +0x1A less its +0x18 (0x4B1A90 to 0x4B1AA9, 0x4B1EE7) and breaks its ties by it; a candidate's cost (ai_hero_candidates 0x42EDD0)", confidence = "inferred" },
+]
+
+[[struct]]
+name = "ai_candidate"
+size = 0x10
+summary = "A computer hero's candidate destination (ai_hero_candidates 0x42EDD0's vector) and the destination ai_hero_destination 0x42E0B0 keeps (a local of 0x5267B0 or of the walk; E31 T1a1b)."
+refs = ["rules/surveys/E31-computer-player.md §1.9"]
+fields = [
+  { offset = 0x0, name = "position", type = "u32", summary = "the tile, packed; none a column of -1", confidence = "read" },
+  { offset = 0x4, name = "value", type = "i32", summary = "its value: ai_fight_estimate's, an unexplored tile's 100 or 100 000, the Grail's; of the kept destination with nothing found 0 (the danger at the hero's tile negative) or 1", confidence = "read" },
+  { offset = 0x8, name = "cost", type = "i32", summary = "its cost: the node's +0x1A (the Grail's the node's cost, at least a day); ai_candidate_score moves it to the node a class visited from the neighbouring tile is entered from", confidence = "read" },
+  { offset = 0xC, name = "near", type = "u8", summary = "the destination is near (ai_hero_destination; within 21 % of the day's points)", confidence = "read" },
+  { offset = 0xD, name = "must_go", type = "u8", summary = "taken at once and kept: an enemy hero from a threatened town, the kept destination of a must-go; 0x5267B0 doubles no budget for a negative rate with it", confidence = "read" },
 ]
 
 [[struct]]
