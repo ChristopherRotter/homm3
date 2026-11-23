@@ -32,19 +32,19 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1137 (`ai/e31-t1a2`: E31 T1a2, docs and the map). Merged: #1133
-  (T1a1b, T1a1c), #1131 (T1a1a), #1129, #1130.
+- **Open pull requests:** #1139 (`ai/e31-t1a3`: E31 T1a3a and T1a3b, docs and the map). Merged: #1137 (T1a2), #1133 (T1a1b, T1a1c), #1131 (T1a1a).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q26, AI-QUIRK-1, AI-STUB-2.
+  ids: AI-Q27, AI-QUIRK-1, AI-STUB-2.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, the survey
   `docs/rules/surveys/E31-computer-player.md`): T1a1 cut in three (AI-Q24); **T1a1a done** (the
   turn's loop, the records), **T1a1b** (the planning; two quirk candidates for T1b) and **T1a1c**
   (the walk) done: **T1a1 done**; **T1a2** (the values) done in four parts, three by sub-agents
-  (AI-Q25; the survey §2). **Next: E31 T1a3** (the towns and the answers) in `QUEUE.md`,
-  `Heroes3.exe` staged in a cloud sandbox. Then E13 (refined in shape,
+  (AI-Q25; the survey §2); **T1a3** cut in four (AI-Q26): **T1a3a** (the build choice) and
+  **T1a3b** (the hires) done (the survey §3.1, §3.2). **Next: E31 T1a3c** (the town visit), then
+  T1a3d (the answers and the table), in `QUEUE.md`, `Heroes3.exe` staged in a cloud sandbox. Then E13 (refined in shape,
   `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -53,6 +53,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-23 — E31 T1a3a and T1a3b: the build choice and the hires
+
+- A cloud clone, `Heroes3.exe` staged from the user's repo folder. T1a3 measured about 6 000
+  instructions at its start, so the cut asked (AI-Q26): four parts, this session T1a3a and T1a3b,
+  read by the main session; the edits in a `git worktree` while the setup's baseline ran in the
+  main clone. The pull request: #1139.
 
 ### 2026-11-23 — E31 T1a2: the values, in four parts
 
@@ -72,11 +79,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   map-client lane's inbox told). Scratch scripts over `scripts/exe.py` (not committed). The scoped
   verify with `--with-original-data` fails the harvester step without the LODs (only the
   executable was staged): run it without the flag.
-
-### 2026-11-23 — E31 T1a1a: the turn's loop and the records
-
-- A cloud clone (the user's PC for staging `Heroes3.exe` only), the branch stacked on #1129. The
-  cut asked at the start (AI-Q24: three parts). Read the turn, the hero order, a hero's turn, the
-  search's frame, the start and middle; 42 map entries, `ai_player_record` and fields in
-  `structs.toml`, the survey's §0 and §1. Scratch call-tree scripts over `scripts/exe.py` (not
-  committed). The fog test's entry corrected (the adventure lane hears with T1a3's table).
