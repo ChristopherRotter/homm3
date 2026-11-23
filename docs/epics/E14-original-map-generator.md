@@ -1,7 +1,7 @@
 # E14 — The original's random map generator
 
-Status: **refined** 2026-11-21 (RMG-Q1); increment 1 refined, increments 2 to 6 sketched; next
-T1a1 · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
+Status: **in progress** since 2026-11-23 (T1a1 done); increment 1 refined, increments 2 to 6
+sketched; next T1a2 · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
 Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -122,4 +122,9 @@ written; (5) increments 2 to 6 cut with exit criteria and confirmed at the check
 
 ## Tasks done
 
-None yet.
+The full records: `E14-log.md`.
+
+- **T1a1** (2026-11-23): the frame read (`random_map_generate`, the parameters and the run's
+  codes, the constructors and the seed, the files read, `rmg_generate_map`'s template draw,
+  positions and 15 steps, `rmg_write_map`'s outline with the teams drawn at write time); 46 map
+  entries, 12 records in `structs.toml`; the survey's §1.
