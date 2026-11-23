@@ -114,6 +114,7 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 | 7 | 2026-11-10 | T24–T29 | a network that reads the battle's structure: `hexconv` 96 × 6 with the legal mask, its clone 0.809 (the MLP's 0.574), PPO from it with the imitation loss (`e25-structure-1` #2: 0.511 and 0.507 against the system actors, the neutral set +0.302; 0.552 head to head against `e25-imitate-1` #2) at 22 times the MLP's time (AI-Q16, AI-Q17) |
 | 8 | 2026-11-18 | T30–T36 | probes, then one long run: the update's speed (98 to 67 s), no gain from size, PPO's settings, the search at play, a KL anchor to #2 or the outcome's weight; the anchor's regime to 20 M level with #2 (0.511 against the faithful actor): #2 stays, the setup's plateau; the early stop (`[gate] futility`) (AI-Q17, AI-Q18) |
 | 9 | 2026-11-20 | T37–T41 | a richer observation: v23's reach block from a viewer-safe query (C ABI v38), `[network] reach` and `preview` for the hex kinds, the bench's preview rows and `same_start`; T39's bench: neither arm passed (0.457, 0.460, 0.459 ± 0.018 against the fair actor), T40 not run (AI-Q19, AI-Q20) |
+| 10 | 2026-11-23 | T42–T45 | the ceiling: `h3 ai ceiling` (the rollout-improved fair actor, sequential halving, both worlds; `--commands` values a network's recorded decisions on fresh rollouts); against the fair actor +0.085 on the side's worlds, +0.115 on the true battle (the information +0.030); #2 +0.026, the rollouts +0.059 over it, its regret 0.28 a game (casts the costliest a decision, the missed moves the largest sum) (AI-Q20, AI-Q23) |
 
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
@@ -138,40 +139,18 @@ review** (the user, 2026-11-18, AI-Q19): v23 is the reach block (the rules' reac
 may know it, this lane's `cross-lane` query), the kill preview for `hexconv` a second bench arm,
 T39's rule the clone's ladder +0.02 (`E25-log.md` T37). **At increment 9's checkpoint** (the user, 2026-11-20,
 T41, AI-Q20): neither v23 arm passed the bench's rule; **#2 stays the current best**; increment
-10 is the ceiling (rollouts of the fair actor, both worlds).
+10 is the ceiling (rollouts of the fair actor, both worlds). **At increment 10's checkpoint**
+(the user, 2026-11-23, T45, AI-Q23): **#2 stays the current best**; increment 11 is expert
+iteration; E25 paused after increment 10 for E31.
 
-**Increment 10: the ceiling** (the user at T41, 2026-11-20, AI-Q20). Increments 8 and 9 ended
-at #2's level whatever the lever (size, PPO's settings, the search at play, a KL anchor, the
-outcome's weight, a taught regime, the reach, the kill preview). Before another lever: how much
-better play against the fair system actor exists at all, what hidden information costs, and
-where #2's choices lose value, so that the next lever aims at them.
-
-*Decisions* (the user, 2026-11-20, AI-Q20; the agent's details, change at a checkpoint):
-
-1. **The aim:** a lower bound on the ceiling against the fair actor (the result of a policy that
-   provably does at least as well as the fair actor, up to sampling noise), the cost of hidden
-   information, and the value #2's choices leave by category. No training in the increment.
-2. **The method: rollout policy improvement** (one step of policy iteration against the fixed
-   fair actor): at each of the agent's decisions every legal command, N rollouts of each to the
-   battle's end, **the fair actor on both sides** (the user: first; rollouts with #2 inside them
-   later, if their cost is worth it), the stream re-seeded per rollout and shared by the commands
-   (common random numbers); the command of the best mean reward v1 is played. Randomness is
-   averaged over, so the ceiling is in expectation.
-3. **Both worlds** (the user): the true battle (`true_world`, a trusted diagnostic: the other
-   hero's spells and the hidden obstacles seen) and the side's worlds (`determinize`: only what
-   the side may know; a legitimate agent's); their gap the information's cost.
-4. **A measurement, not a run with a rule:** the budget and the episodes fixed by a check on a
-   subset before the full measurement; the report set v1 and the neutral set v1 beside it. The
-   budget is spent by sequential halving (T42, the agent's call), the rollouts full-length.
-5. **Unchanged:** #2 the current best; reward v1 and the evaluation sets; no engine or C ABI change
-   (a new `h3 ai` tool in this lane's `h3-cli/src/ai/`, its rollouts in `h3-sim` where pure).
-
-| Task | Scope | Status |
-|---|---|---|
-| T42 | The rollout tool: `h3 ai ceiling` (the improved fair actor against the system actors, both worlds, sequential halving with common random numbers, a resumable games file, a JSON record), its tests and timing (about 190 thread-seconds a game at budget 8) | done 2026-11-20 |
-| T43 | The ceiling measured (the user's CPU): a budget check (4, 8, 16), then the report set v1 and the neutral set v1, both worlds | done 2026-11-21 (budget 4; the report set over the fair actor's play, paired: +0.085 on the side's worlds, +0.115 on the true battle, the information +0.030; the neutral set +0.047; one stalled game of 600 left out, the fair actor's, BAT-STUB-19's family) |
-| T44 | Where #2 diverges: #2's decisions against the fair actor replayed, every command valued by the same rollouts; the value its choice leaves by category, beside the fair actor's own | done 2026-11-23 (the tool: `h3 ai ceiling --commands`, `inspect --commands`, a confirmation on fresh rollouts; #2's 598 games: +0.026 over the fair actor, the rollouts +0.059 over #2; its regret 0.28 a game, casts 0.024 a decision, the missed moves 38 %, its edge melee and waiting) |
-| T45 | Increment 10's checkpoint: the headroom, the information's cost, the divergence; the next lever | after T43, T44 |
+**E25 paused after increment 10** (the user at T45, 2026-11-23, AI-Q23): the lane takes E31
+(the original's computer player) first. **Increment 11, when E25 resumes: expert iteration**
+(the user's choice of the next lever): states of #2's own play labelled with the rollout policy's
+choice and its confirmed values (T44's tool, budget 4, about 5 thread-seconds a decision, on the
+user's CPU in parts), #2 trained on them with the imitation loss (increments 6 and 7's
+pipeline); its design at its refinement. T44's read (`E25-log.md` T44): #2 holds +0.026 of the
+legitimate +0.085 against the fair actor; casts cost the most a decision, the missed moves the
+largest sum.
 
 Scope and acceptance: the AI queue's entries.
 

@@ -7,22 +7,17 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** closed 2026-10-20, **E06** closed 2026-10-27 (`t7-1` the battle AI v1 and the baseline); their tasks' history and E06's closing numbers in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`): increments 1
-to 9 closed (`E25-archive.md`; increment 8, probes and one long run, 2026-11-18; increment 9, a
-richer observation, 2026-11-20: neither v23 arm passed T39's bench, T40 not run, `E25-log.md`
-T37 to T39); **`e25-structure-1` #2 the current best** (AI-Q17, T29: 0.511 and 0.507 against
-the fair and the all-seeing system actor, the neutral set +0.302). **A long run stops early**
-(the user, 2026-11-18, T36): `[gate] futility` at least 1, gates at least every quarter of the
-budget, the check named in its rule (`TRAPS.md`, Python). **Increment 10: the ceiling** (the
-user at T41, AI-Q20; its decisions in the epic file). **T43 done** (2026-11-21, `E25-log.md`
-T43: budget 4; +0.085 over the fair actor's play on the side's worlds, +0.115 on the true
-battle; the records in `python/records/ceiling/`). **T44 done** (2026-11-23, `E25-log.md` T44:
-#2's 598 games valued; +0.026 over the fair actor, the rollouts +0.059 over #2; casts the
-costliest a decision, the missed moves the largest sum, #2's edge melee and waiting).
+to 10 closed (`E25-archive.md`; increment 10, the ceiling, 2026-11-23: against the fair actor
++0.085 on the side's worlds, +0.115 on the true battle; #2 +0.026, the rollouts +0.059 over it;
+`E25-log.md` T42 to T44); **`e25-structure-1` #2 the current best** (AI-Q17, T29: 0.511 and
+0.507 against the fair and the all-seeing system actor, the neutral set +0.302). **A long run
+stops early** (the user, 2026-11-18, T36): `[gate] futility` at least 1, gates at least every
+quarter of the budget, the check named in its rule (`TRAPS.md`, Python). **Paused after
+increment 10** (the user at T45, 2026-11-23, AI-Q23): increment 11, expert iteration, when it
+resumes (the epic file); its tasks are cut then.
 
-- **T45 — increment 10's checkpoint** (the user): the headroom, the information's cost, the
-  divergence; the next lever.
-
-**E31** (`docs/epics/E31-original-computer-player.md`, AI-Q22; refined 2026-11-21): after T45.
+**E31** (`docs/epics/E31-original-computer-player.md`, AI-Q22; refined 2026-11-21): next (since
+T45, AI-Q23).
 
 - **E31 T1a1 — the computer player's frame** (the epic's increment 1 table; needs only
   `Heroes3.exe` staged, SHA-256 `aac39e8c…`, and `pip install capstone pefile`; a cloud
