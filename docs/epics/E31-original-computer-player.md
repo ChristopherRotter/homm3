@@ -1,7 +1,7 @@
 # E31 — The original's computer player
 
-Status: **refined** 2026-11-21 (AI-Q22); increment 1 refined, increments 2 to 7 sketched; starts
-after E25's increment 10 (T43, T44) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
+Status: **in progress** since 2026-11-23 (T1a1a; refined 2026-11-21, AI-Q22); increment 1 refined,
+increments 2 to 7 sketched; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
 fair system actor) for battle · Prerequisite of E13 (its target and ladder opponent) ·
 Consumers: the env (a computer seat), the server (a computer player in a hosted game), the shell
 (a game's computer players), the adventure lane (ADV-STUB-8, ADV-STUB-9)
@@ -17,6 +17,10 @@ its player's projection (`docs/06-security.md`, "Information hiding"), as E26 di
 Every step it takes is one of the game's validated commands.
 
 ## What the first look found (2026-11-21, the refinement; `scripts/exe.py`'s `Code`)
+
+**Corrected by T1a1a** (`E31-log.md`; the survey's §0): the code starts at 0x423EE0, not
+0x42A000: a third range, 0x423EE0–0x42A000 (about 24 KB: a simulated combat and the turn's start
+and middle), so about 95 KB in all. The fog test reads the other way round (the survey's §1.7).
 
 - **Entry:** `ai_player_turn` 0x525E80 (from `adventure_manager_procedure` 0x408BD8): its heroes
   one by one through `ai_hero_turn` 0x5261F0 (the order by `ai_next_hero` 0x526A90, not read),
@@ -94,13 +98,16 @@ Every step it takes is one of the game's validated commands.
 
 | Task | What | Out |
 |---|---|---|
-| T1a1 | The frame: `ai_player_turn`, `ai_next_hero`'s order, `ai_hero_turn`, the planning 0x42DE50 and `ai_hero_replan`, the walk and its step, the turn's end; the per-player records' layout (0x692950) into `structs.toml` | `map.toml`; the survey's §1 (the turn's phases, the records) |
+| T1a1a | The turn's loop (AI-Q24): `ai_player_turn`, `ai_next_hero`'s order, `ai_hero_turn` and its dispatch 0x5267B0, the turn's end, the turn-start and middle calls at their top level; the per-player records' layout (0x692950) into `structs.toml` | `map.toml`; the survey's §1 (done) |
+| T1a1b | The planning: `ai_hero_plan` 0x42DE50 and `ai_hero_replan` 0x42E0B0 with their own helpers (the values T1a2's) | `map.toml`; the survey's §1 |
+| T1a1c | The walk: `ai_hero_walk` 0x42FEE0, its step's points, the path, the spells cast on the way, the boat marks' use | `map.toml`; the survey's §1 |
 | T1a2 | The values: what a hero's plan weighs (objects, towns, enemy heroes, monsters: the function table 0x432F90, `ai_fight_estimate` 0x528040, the artifact, skill, spell and army values), every read of another player's state or of an unexplored tile | `map.toml`; the survey's §2 (each value; the hidden reads listed) |
 | T1a3 | The towns and the answers: `ai_town_build_choice`, `ai_town_visit` (recruit, garrison), hiring at a Tavern, the markets; every `ai_*` call inside a visit, each classified a choice or a rule | `map.toml`; the survey's §3 (the table of asymmetries for the owning lanes) |
 | T1a4 | The rest of both ranges named at least `inferred` and placed in a phase; every draw and float site listed; the fields that persist between turns and their readers | `map.toml`; the survey's §4 |
 | T1b | The survey `docs/rules/surveys/E31-computer-player.md` finished (each phase's rules, the hidden reads, the asymmetries, the engine's gaps per epic); the ADR draft (the crate, the seam, the memory, the commands, the battles, the floats under `kernel::num`, the fair variant's line); the asymmetries into the owning lanes' inboxes; the trace's plan (maps, days, the harness); the cut of increments 2 to 7 with exit criteria; the checkpoint AI-Q23 | survey, ADR draft, this file |
 
-T1a's cut may change at its start, by size (E23's T1a ran in five parts).
+T1a's cut may change at its start, by size (E23's T1a ran in five parts); T1a1 ran in three
+(AI-Q24). T1a4 also maps the third range (0x423EE0–0x42A000).
 
 **Exit criteria:** (1) every function of both ranges in the map, at least `inferred`, with its
 phase; (2) every hidden read, draw and float site listed; (3) every asymmetry classified and
@@ -144,4 +151,6 @@ or HotA's AI, but as pointers.
 
 ## Tasks done
 
-None yet.
+- **T1a1a** (2026-11-23): the turn's loop, the hero order, the start and middle, the records
+  (`ai_player_record`); 42 map entries (35 new); the survey `docs/rules/surveys/E31-computer-player.md`
+  §0, §1 (`E31-log.md` T1a1a).
