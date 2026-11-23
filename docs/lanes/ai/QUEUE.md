@@ -7,44 +7,31 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** closed 2026-10-20, **E06** closed 2026-10-27 (`t7-1` the battle AI v1 and the baseline); their tasks' history and E06's closing numbers in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`): increments 1
-to 9 closed (`E25-archive.md`; increment 8, probes and one long run, 2026-11-18; increment 9, a
-richer observation, 2026-11-20: neither v23 arm passed T39's bench, T40 not run, `E25-log.md`
-T37 to T39); **`e25-structure-1` #2 the current best** (AI-Q17, T29: 0.511 and 0.507 against
-the fair and the all-seeing system actor, the neutral set +0.302). **A long run stops early**
-(the user, 2026-11-18, T36): `[gate] futility` at least 1, gates at least every quarter of the
-budget, the check named in its rule (`TRAPS.md`, Python). **Increment 10: the ceiling** (the
-user at T41, AI-Q20; its decisions in the epic file). **T43 done** (2026-11-21, `E25-log.md`
-T43: budget 4; +0.085 over the fair actor's play on the side's worlds, +0.115 on the true
-battle; the records in `python/records/ceiling/`).
+to 10 closed (`E25-archive.md`; increment 10, the ceiling, 2026-11-23: against the fair actor
++0.085 on the side's worlds, +0.115 on the true battle; #2 +0.026, the rollouts +0.059 over it;
+`E25-log.md` T42 to T44); **`e25-structure-1` #2 the current best** (AI-Q17, T29: 0.511 and
+0.507 against the fair and the all-seeing system actor, the neutral set +0.302). **A long run
+stops early** (the user, 2026-11-18, T36): `[gate] futility` at least 1, gates at least every
+quarter of the budget, the check named in its rule (`TRAPS.md`, Python). **Paused after
+increment 10** (the user at T45, 2026-11-23, AI-Q23): increment 11, expert iteration, when it
+resumes (the epic file); its tasks are cut then.
 
-- **T44 — where #2 diverges** (the tool done 2026-11-21, `E25-log.md` T44: `inspect
-  --commands` records #2's games, `h3 ai ceiling --commands` replays and values them). **#2's
-  games recorded** (2026-11-21, the sandbox: `python/records/ceiling/e25-structure-1-commands.toml`,
-  599 games). **The valuation** (the user's machine, 16 threads, the build of this branch: T43's
-  identity holds; about 75 minutes; Ctrl-C keeps the finished games, the same command
-  continues), from the repository's root:
-  1. `cargo run --release -p h3-cli -- ai ceiling --commands
-     python/records/ceiling/e25-structure-1-commands.toml --budget 4 --confirm 32 --worlds side
-     --threads 16 --leave-out siege_hero:54:attacker --out
-     target/ceiling/e25-structure-1-side-4.toml --json
-     python/records/ceiling/e25-structure-1-side-4.json`;
-  2. optional: the same with `--worlds true` (`e25-structure-1-true-4`).
+**E31** (`docs/epics/E31-original-computer-player.md`, AI-Q22; refined 2026-11-21): next (since
+T45, AI-Q23).
 
-  Uploaded: the JSON records and the games files. The read: by category #2's regret against the
-  fair actor's at the same decisions, its value paired with `report-0` and `report-side-4` by
-  (kind, env, seat).
-
-- **T45 — increment 10's checkpoint** (the user): the headroom, the information's cost, the
-  divergence; the next lever.
-
-**E31** (`docs/epics/E31-original-computer-player.md`, AI-Q22; refined 2026-11-21): after T45.
-
-- **E31 T1a1 — the computer player's frame** (the epic's increment 1 table; needs only
-  `Heroes3.exe` staged, SHA-256 `aac39e8c…`, and `pip install capstone pefile`; a cloud
-  sandbox is enough): `ai_player_turn` 0x525E80, `ai_next_hero` 0x526A90, `ai_hero_turn`
-  0x5261F0, the planning 0x42DE50 and `ai_hero_replan` 0x42E0B0, the walk, the turn's end; the
-  records at 0x692950 into `structs.toml`. Confirm T1a's cut at its start (by size). Then T1a2
-  to T1a4, T1b.
+- **E31 T1a1 — the frame, in three parts** (AI-Q24): **done** 2026-11-23 (`E31-log.md` T1a1a
+  to T1a1c; the survey's §1).
+- **E31 T1a2 — the values, in four parts** (AI-Q25: T1a2b to T1a2d read by sub-agents):
+  **done** 2026-11-23 (`E31-log.md` T1a2; the survey's §2).
+- **E31 T1a3 — the towns and the answers** (the epic's increment 1 table; `Heroes3.exe`
+  staged, `pip install capstone pefile`, a cloud sandbox): `ai_town_build_choice` 0x42AE00 and
+  the helpers after it, `ai_town_visit` 0x5253D0, the hiring, the markets; every `ai_*` call
+  inside a visit classified a choice or a rule, with T1a2's (the survey §2.5: `ai_quick_battle`,
+  the round-30 re-fight, `ai_town_defence_recruit`, the trades), into the survey's §3 table.
+  Open from T1a2: where `ai_army_plan_run`'s purchases go (0x42C3B0, 0x42D8E0), the army
+  plan's town setup (0x42D1B0, 0x42D870), how `ai_fight_answer`'s 17 callers use the object
+  value, the Seer's reward (0x573A70). Confirm its cut at its start by size.
+- Then T1a4 (it maps the rest of the third range, 0x423EE0 to 0x42A000: the survey's §0), T1b.
 
 ## Inbox
 
