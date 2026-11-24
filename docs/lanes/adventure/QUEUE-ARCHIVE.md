@@ -4,6 +4,18 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-24, E08 T141b: done whole; the record in `E08-log.md`; T142 queued.)* **E08 T141b — the map spells' derivations in `h3-heroes`** (round 5; design note `E08-design.md`
+§5, §6; `adventure/e08-t141b`)
+
+- **Scope:** `h3-heroes`' `spell_masteries_on(details, core, raise: SchoolRaise)` beside
+  `spell_masteries` (HER-SPL-003 amended, decision 405: a raised school gives Expert to its
+  spells), `map_spell_cost` (HER-SPL-008: the cost at the mastery on that ground, at least 1, no
+  army's ±2) and `can_cast_on_map` (the spell among `available_spells`, no book test: D-79,
+  decision 404, ADR-0013 point 17), with their tests; nothing casts yet (T142).
+- **Inputs:** design §5, §6, §18; survey `E08-spells.md` §4, §18; ADR-0013 point 17.
+- **Depends on:** T141a (done 2026-11-23). **Status:** ready; confirm its cut at its start. Then
+  T142 to T145.
+
 *(Moved 2026-11-22, E08 T140: done whole, decision 411; the record in `E08-log.md`; T141a queued.)* **E08 T140 — the `shared/` task** (round 4; design note `E08-design.md` §20's shared work; as
 T131 for increment 14; `shared/e08-t140`, `cross-lane`)
 

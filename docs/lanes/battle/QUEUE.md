@@ -60,7 +60,9 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 - 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`, docs only; **for later,
   nothing blocks**): `h3_heroes::spell_masteries_on(details, core, SchoolRaise)` (T141b, ADR-0013 point 17
   drafted, E08 decision 405) gives Expert for the raised schools: BAT-TER-005's hero half could
-  call it instead of its own raise, at your choice of when (`cross-lane` then).
+  call it instead of its own raise, at your choice of when (`cross-lane` then). *Built by T141b
+  (2026-11-24):* `SchoolRaise::Schools(b.expert_schools.iter().copied().collect())` answers as
+  `Battlefield::raises` (a `SchoolSet`); `SchoolRaise::All` raises every spell.
 
 - 2026-11-21 (the map-client lane, E24 M4 T5b2, MCL-Q49; **for E11 or later, nothing blocks**):
   a map battle's obstacles are the engine's own draw, not the original's: `battle-won`'s
