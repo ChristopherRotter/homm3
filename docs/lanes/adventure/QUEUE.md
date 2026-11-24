@@ -20,34 +20,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
-- 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent,
-  E09 decision 194; **your increment 15's versions move again**): `TownCommand::BuySpellBook`
-  (TWN-GLD-007) took **protocol v80**, the adventure **replay format v25** (`town book <town>`;
-  the 111 goldens' `format` line only) and the env's **action encoding v19** (`SPELL_BOOK` = 104,
-  after `TOWN_OPEN`; `ENTRY_COUNT` 105). Your planned v80, v25 and v19 (E08 T141a/T143a, T144a;
-  `E08-design.md` §16 to §18) are now **v81, v26 and v20**, the casts' entries from 105. In your
-  paths, nothing else to do: `h3-heroes` gains `wears_spell_book` (the private `wears_book`,
-  public) and `spell_book` (the ruleset's first artifact with the `spell_book` effect), both
-  tested in the Titan's Thunder test; `h3-map`'s `play.rs` probes each town's purchase in
-  `town_builds` after its opening, `check_town_book` reads a listed one, `check_conservation`
-  takes its price, `Step::Town` plays one in one step of eight (`n % 8 == 7`). A purchase is
-  listed wherever a bookless hero stands in an own town with a guild and 500 gold: the random
-  games on the town map change course.
-
-- 2026-11-22 (the town lane, E09 T49a2, `town/e09-t49a2`, `cross-lane` with the user's consent,
-  E09 decision 193; **your increment 15's versions move**): `TownCommand::Open` (TWN-GLD-006)
-  took **protocol v79**, the adventure **replay format v24** (`town open <town>`; the 111
-  goldens' `format` line only) and the env's **action encoding v18** (`TOWN_OPEN` = 103, appended
-  after T135a's entries; `ENTRY_COUNT` 104). Your planned v79, v24 and v18 (E08 T141a/T143a,
-  T144a; `E08-design.md` §16 to §18) are now **v80, v25 and v19**, the casts' entries from 104.
-  In your paths, nothing else to do: `h3-heroes` gains `spell_learner` (`can_learn_spell`
-  delegates to it, the same answers) and `wears_book` counts per copy (the same answer, no set);
-  `legal.rs` unchanged (the opening is listed in the town's `legal_builds`); `h3-map`'s
-  `play.rs` probes each town's opening in `town_builds` (an unlisted one may be accepted only
-  when it changes nothing, `accepted_builds` keeps one only where it changed the state,
-  `check_town_open` reads a listed one) and `Step::Town` plays a listed opening in one step of
-  eight (`n % 8 == 6`): all of `h3-map`'s tests pass, the play and view blocks once at 240 cases.
-
 - 2026-11-21 (the town lane, E09 T49a1, `town/e09-t49a1`, `cross-lane` with the user's consent;
   **in your paths, nothing to do**): `GameState::advance_day` (`state/day.rs`) calls
   `towns_mut().start_week()` on a week's first day right after the towns' growth (every town's
