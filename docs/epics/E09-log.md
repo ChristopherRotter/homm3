@@ -6280,3 +6280,65 @@ origin/master`; on `shared/e09-t51-readme` `check-lane` and `check-docs`. CI on 
 requests is the record.
 
 **The queue:** T51 out; T52 next, T53 queued. Ids: decisions next 200, questions `TWN-Q35`.
+
+### T52 — increment 6's survey and its checkpoint TWN-Q35 (2026-11-24)
+
+One session, the user present at the start and at the checkpoint; branch `town/e09-t52`, docs
+only. Starting point: `master` at 7782735 (#1149 and #1148 merged; the engine's code 25397e7's,
+CI green there). The user's computer was connected: five files staged (`Heroes3.exe`,
+`H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`), SHA-256 checked against the PC's.
+The setup's full baseline on `master`'s code passed every step (coverage 57 minutes beside the
+sub-agents, determinism 12, bench-check 20). **At its start** (the user, `AskUserQuestion`): T52
+whole, the narrow jobs to sub-agents (decision 200). Seven ran, at most two at a time and only a
+short one beside a reading: the market window at a town, the Artifact Merchants' stock, the
+Blacksmith and the Shipyard (with a follow-up on the ship 20), the University and the
+Transformer, VCMI 1.7.5 (with a follow-up), the wiki, the census (with a follow-up); each wrote
+its sections and map entries to a notes file outside the repository, the session merged them.
+
+**Read** (survey `docs/rules/surveys/E09-trades.md` §2 to §7; `docs/exe/map.toml`):
+`town_screen_proc` 0x5D3240's cases 6, 14 to 17 and 21 to 23 with their faction sub-switches; the
+market window's town entries, its screens' creates, redraws and procedures for screens 1, 3 and 4
+(screen 3 whole), the buttons' tests; the stock's draw in `new_game_heroes` and `new_month`,
+`random_artifact_of_level` and `artifacts_given_init` whole, the bans, `artifact_table_load`'s
+combination pass; `town_blacksmith_buy` and the Blacksmith's dialog, the Ballista Yard's case;
+the Shipyard's case, `create_boat` again, the ship's writers and the town screen's pieces and hit
+map (the masks measured in the staged `H3bitmap.lod`); `town_university_open`, the University's
+slots and learn again; `town_skeleton_transformer_open` and the Transformer's dialog with its
+target table. 46 new map entries, 35 changed (one renamed: 0x5D2DA0 `town_university_open`);
+`structs.toml`: the game's stock, given marks and bans, the artifact record's class, combination
+fields, disabled and spell bytes.
+
+**Found** (§0): the Marketplace for a human at an own town with or without a visitor, the
+merchants and the guild for the visitor only and without an owner test; the count the current
+player's Marketplaces, 0 at an ally's town without one, where artifacts are free (T-19); the
+screens a town reaches by faction; the transfer to any undefeated player; the sale's positions,
+Misc 5 never offered (T-22), the backpack's scroll pricing one place and selling another (T-20);
+the stock one for the game, drawn last at the new game and whole each month, by the random
+artifacts' picker with its marks; the combinations priced at the sum of their parts; the
+Blacksmith's machine by faction at its creature's gold cost to the visitor, the Ballista Yard a
+Castle's Blacksmith; the boat spot fixed at the new game, the occupied spot never tested (T-21, a
+few uncovered pixels in a Fortress and a Conflux), the ship refreshed only with the screen (T-27);
+the University's fixed four, a banned school taught (T-23); the Transformer's whole stacks, the
+dragons and hydras to Bone Dragons, the rest but Skeletons to Skeletons, the stacks lost at a
+timed game's expiry (T-26); the picker's endless loop when everything is banned (T-24). VCMI 1.7.5
+agrees on most; it differs on D-70's rounding, the hero (TD-28), the count at an ally's town
+(TD-29), the University's bans (TD-30) and the boat spot (TD-31). The wiki: five of eight pages
+(three unreachable); its rate table agrees with the code's D-70 rows. Batch TWN-6: eight rows
+(§11).
+
+**The census** (§1, a throwaway example over `h3_map::read` and `h3_map::import`, not committed):
+1 468 towns (592 fixed, no fixed Conflux, 876 random); the trades' buildings at the start; every
+merchants' or guild's town with its Marketplace; at most 2 Marketplaces a player; 18 + 5 + 27 boat
+spots, none occupied; 51 maps with teams; 2 maps banning the four schools.
+
+**The checkpoint** (`TWN-Q35`, survey §13; `AskUserQuestion`, a round of four, one of three, then
+the agent's calls one by one at the user's asking): D-70 the original (decision 201), TD-28
+`fix-optional` as the new T-28 (202, the user's: the rule arbitrary), TD-29 the trader's count at
+least 1 (203, the user's), TD-30 with T-23 `fix-optional` (204), T-22 fixed (205, the user's),
+TD-31 the original (206), the agent's calls each accepted (207).
+
+**Verify:** the engine's code is `master`'s. On the branch: `scripts/exe.py check --fix-sizes`,
+`check` and `cited` (every cited address covered), then VERIFY_LINE.
+
+**The queue:** T52 out; T53 next (the drafts, Part H from §101, the cut). Ids: decisions next 208;
+disputes `TD-32`; quirk candidates `T-29`; questions `TWN-Q36`.
