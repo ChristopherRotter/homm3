@@ -9,7 +9,12 @@
 //! `h3-view gate` does. The hero and town lists (E24 M3 T4a): their DEFs hold the frames the
 //! slots draw, every portrait of the tables decodes at the slot's size. The status window (E24 M3
 //! T5b1): its DEFs hold the frames its items draw, its pictures and the large portraits decode at
-//! their items' sizes.
+//! their items' sizes. M4's (E24 M4 T6, the reviewer's R6-2): the finds' pictures and a monster's
+//! attack with the frames their types draw (`Tables::defs`), the sounds played once (the week's,
+//! the month's, the pickups', a removal's, a level-up's, Summon Boat's: `Tables::sounds`), a
+//! computer's turn's tracks (`Tables::tracks`), and every name of the layout
+//! (`AdventureLayout::names`: the other player's and the resource found's status panels, the
+//! message box, the level-up's dialog among them) found and decoded by its kind.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -17,6 +22,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use h3_assets::fnt::decode_fnt;
 use h3_assets::palette::decode_pal;
 use h3_assets::pcx::{Pcx, decode_pcx};
 use h3_map::Limits;
@@ -333,6 +339,7 @@ fn gate(options: &Options) -> Result<usize, String> {
 
     portraits(&layout, &tables, &find, &mut problems)?;
     status_pictures(&layout, &tables, &find, &mut problems)?;
+    layout_names(&layout, &find, &mut problems)?;
 
     let templates = files::templates(&archives)?;
     let (pictures, shapes) = object_pictures(&archives, &templates, &shipped, &mut problems)?;
@@ -460,6 +467,46 @@ fn status_pictures(
     }
     println!("  {sizes:?} (size: pictures)");
     Ok(())
+}
+
+/// Every name the layout mentions (E24 M4 T6, the reviewer's R6-2: `AdventureLayout::names`,
+/// since M4 the other player's and the resource found's status panels, the message box and the
+/// level-up's dialog among them), each found and decoded by its kind ([`decodes`]).
+fn layout_names(
+    layout: &AdventureLayout,
+    find: &Find<'_>,
+    problems: &mut Vec<String>,
+) -> Result<(), String> {
+    println!("\nthe layout's names, found and decoded:");
+    let names = layout.names();
+    let mut decoded = 0;
+    for name in &names {
+        match find(name)? {
+            None => problems.push(format!("layout: {name} in no archive")),
+            Some((_, data)) => match decodes(name, &data) {
+                Ok(()) => decoded += 1,
+                Err(e) => problems.push(format!("layout: {name}: {e}")),
+            },
+        }
+    }
+    println!("  {decoded} of {}", names.len());
+    Ok(())
+}
+
+/// Whether the entry `name` with the bytes `data` decodes as its extension's kind says (a PCX, a
+/// DEF, a PAL, a FNT); another kind is no name the layout gives.
+fn decodes(name: &str, data: &[u8]) -> Result<(), String> {
+    let kind = name
+        .rsplit_once('.')
+        .map(|(_, ext)| ext.to_ascii_uppercase());
+    let failed = match kind.as_deref() {
+        Some("PCX") => decode_pcx(data).err().map(|e| format!("{e:?}")),
+        Some("DEF") => check::summarize(data).err().map(|e| format!("{e:?}")),
+        Some("PAL") => decode_pal(data).err().map(|e| format!("{e:?}")),
+        Some("FNT") => decode_fnt(data).err().map(|e| format!("{e:?}")),
+        _ => return Err("not a PCX, DEF, PAL or FNT name".into()),
+    };
+    failed.map_or(Ok(()), |e| Err(format!("does not decode ({e})")))
 }
 
 /// A DEF's line: frames held and drawn, encodings, run pixels by index (only those with any).
@@ -821,4 +868,30 @@ fn undrawn(
 ) -> Result<check::Undrawn, String> {
     let (_, data) = files::find(archives, name)?.ok_or_else(|| format!("{name}: in no archive"))?;
     check::undrawn(&data, shape).map_err(|e| format!("{name}: does not decode ({e:?})"))
+}
+
+#[cfg(test)]
+mod tests {
+    use h3_assets::build;
+    use h3_assets::palette::Palette;
+
+    use super::decodes;
+
+    #[test]
+    fn each_name_decodes_by_its_kind() {
+        // E24 M4 T6 (the reviewer's R6-2): the layout's names, each by its extension; a name of
+        // no kind the gate reads, or bytes of another kind, a problem that says why.
+        let palette = Palette::default();
+        let pcx = build::pcx_indexed(2, 1, &[0, 1], &palette);
+        let pal = build::pal(&palette, &[0; 256], 0, &[]);
+        assert_eq!(decodes("box64x30.pcx", &pcx), Ok(()));
+        assert_eq!(decodes("GAME.PAL", &pal), Ok(()));
+        assert!(decodes("lvlupbkg.pcx", &pal).is_err_and(|e| e.starts_with("does not decode")));
+        assert!(decodes("iokay.def", &pcx).is_err_and(|e| e.starts_with("does not decode")));
+        assert!(decodes("medfont.fnt", &[]).is_err_and(|e| e.starts_with("does not decode")));
+        assert_eq!(
+            decodes("readme", &pcx),
+            Err("not a PCX, DEF, PAL or FNT name".into())
+        );
+    }
 }

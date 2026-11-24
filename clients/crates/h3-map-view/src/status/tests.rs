@@ -48,6 +48,7 @@ fn live(kingdom: Kingdom) -> Live {
         path: Vec::new(),
         moment: Moment::default(),
         walking: Walking::default(),
+        left: Vec::new(),
         kingdom,
         buttons: None,
         minimap: None,
@@ -530,7 +531,7 @@ fn a_resource_found_s_window() {
         status: Some(Status::Found(FoundStatus {
             resource,
             amount: 70_000,
-            text: "You find a small quantity of gold.".into(),
+            text: "Some gold lies here.".into(),
         })),
         ..Kingdom::default()
     };
@@ -548,7 +549,7 @@ fn a_resource_found_s_window() {
     assert_eq!(
         texts_of(&shown),
         [
-            (id::FOUND_TEXT, "You find a small quantity of gold."),
+            (id::FOUND_TEXT, "Some gold lies here."),
             (id::FOUND_AMOUNT, "70000")
         ]
     );

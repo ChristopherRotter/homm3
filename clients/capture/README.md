@@ -30,7 +30,8 @@ adventure).
 | `mss32.c`, `mss32.def`, `mss32.rc` | Our stand-in for Miles' `MSS32.DLL` (E27 M2 T2), built into the run directory's `mss/` (the game's own stays beside `Heroes3.exe`): the probes load it before a DLL asks for Miles, and it writes the sound the DLL hands Miles to files (below, "The clips' sound"); `MssMinimum`, `MssHold` and `MssLoads` for `binkprobe start` (E27 M2 T5b2). |
 | `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond, the DLL's dequantizers (below, "The clips"), when a clip's sound starts on the stand-in Miles (E27 M2 T5b2: `start`, below, "The clips' sound on the game's run"); at the game's x87 control word 0x27F (E17 M6 T6c1). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
-| `test_h3drive.py` | Checks of the driver's parts that need no game, Wine or display, its commands recorded (E17 M7 T4: a key or button an action holds let go at the game's stop and start): `python3 -m unittest test_h3drive` from here. |
+| `test_h3drive.py` | Checks of the driver's parts that need no game, Wine or display, its commands recorded (E17 M7 T4: a key or button an action holds let go at the game's stop and start; E24 M4 T6: the game's disk check before the start): `python3 -m unittest test_h3drive` from here. |
+| `test_h3map.py` | The same for `h3map.py` and `h3lod.py` (E24 M4 T6): the staging's checks and writes, `frames`' kept live parts, the engine's binaries checked, the kept texts' alphabet against `h3-map-view`'s `tests/texts.rs`: `python3 -m unittest test_h3map` from here. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`); since E08 T90 the dwellings' records, the players' teams, the map objects' class and subclass, a tile's blocked and visitable bits, a Refugee Camp's words, the hire dialog (`dwellings`, `teams`, `objects`, `access`, `camp`, `recruit_dialog`), the status bar's text, a player's human flag. |
@@ -125,17 +126,20 @@ map view over the capture's live part). Since E24 M4 T3b1 (design §5.10) the pa
 kingdom, the status window, the kingdom's window, `[chosen]`), and `python3 capture/h3map.py
 engine [--only <id>]` runs all of it for the situations of `set.toml` with an `engine` entry
 (after `cargo build -p h3-cli -p h3-server` in the root workspace; `H3_ENGINE` names another
-directory of the two): the check against the kept live part and the whole screen against ours at
+directory of the two; since E24 M4 T6 a missing one is said up front and binaries older than the
+engine's sources are warned of, `h3map.check_engine`): the check against the kept live part and the whole screen against ours at
 the kept live part, each as the entry expects (`differs`: the check's differences, `pixels`: the
 differing count; `{}` exact). A comparison of the panels gives its heroes' armies in the map
 (`map_army`: the new game draws none), `bonus = "gold"` (no artifact from the starting bonus) and
 the engine's `resources` written, shown by a `select` and a `reselect` of the start's hero. Since
 E24 M4 T3b2 (design §5.11) the check compares the mouse-over too (every explored tile's hint and
 cursor), a situation's `pointer` (a point inside a drawn tile of the view, off the scroll zones)
-parks the mouse over the map last (its tile's cost read first, `look_over_view`), and a shipped
-map's situation may give `bonus = "gold"` with `players` (the map's rows of the advanced options),
-`resources`, `select`, `reselect` and `pointer` (`start-jared`, `start-good-witch`: the two
-shipped starts with no draw in sight).
+parks the mouse over the map last (its tile's cost read first, `look_over_view`; a still's only:
+a sequence parks it at 0, so its situation has none, E24 M4 T6), and a shipped map's situation
+may give `bonus = "gold"` with `players` (the map's rows of the advanced options; since E24 M4 T6
+set before Begin as a writer's map's, `to_shipped`: until then dropped, R6-1), `resources`,
+`select`, `reselect` (after a `select` only) and `pointer` (`start-jared`, `start-good-witch`:
+the two shipped starts with no draw in sight).
 
 **The shell's screens** (E27 M2 T4) follow them too: `python3 capture/h3shell.py drawn` (no Wine;
 seconds) plays every recipe in the viewer and compares each shot with the original's kept digest
@@ -1489,12 +1493,15 @@ glass steps towards. **A sound run** (E24 M4 T1b2, MCL-Q30): a sequence with `so
 as the Sound section's sequences do (the map's own sounds played out before the clock is frozen)
 and lists each sample started in `<out>/<id>/sounds.txt` (`<ms from 0> <channel> <length ms>
 <loops>`); its waits for samples can move the timeline, so it is a sequence of its own (an id of
-its own, run from a scratch file with `--sequences <file> --no-check --out <dir>`; delete the
-`timelines/<id>-live.toml` the run keeps), never one recorded silent.
-Sequences recorded before the viewer plays them wait in a
+its own, run from a scratch file with `--sequences <file> --no-check --out <dir>`), never one
+recorded silent. Sequences recorded before the viewer plays them wait in a
 file of their own: `frames --sequences <file> --no-check` records them (the frame check left out),
 each moved into `sequences.toml` once the viewer plays it (T1b1's in `map/to-record.toml`, moved by
-T1b2, the file removed). A run with an
+T1b2, the file removed). Since E24 M4 T6 (the reviewer's R6-7) only a run of `sequences.toml`'s
+own sequences that is not a sound run keeps its live part in `timelines/` (as recorded or new and
+exact at 0); another's stays under `<out>/<id>/live.toml`, and once its entry is in
+`sequences.toml`, `frames --only <id> --reuse` (the same `--out`) keeps it and runs the frame
+check. A run with an
 `xdd.dll` built before T1b1 fails as stale where it reads the acknowledgement whole (15 fields,
 not 16): rebuild it with `setup.sh`.
 
@@ -1538,9 +1545,11 @@ picture arguments it keeps (`offers`: the left and right `secskill.def` frames, 
 offer `chosen` (0x7DA, 0x7DB, 0 none) and the `marks` of its two frames and its OK; a choice or the
 OK's state changed appends a table. A situation's hero may carry its `secondary` skills
 (`[[skill, level], ...]`, levels 1 to 3, at most eight, `Mem.write_secondary`: every level and slot
-cleared first), so that a level-up offers one advance or none. A sequence may press the keys `1`
-and `2` (the dialog's left and right offers). T2c's sequences (`level-up*`) wait in
-`map/to-record.toml` until the viewer plays them.
+cleared first; a `diplomacy` is written after it, and refused beside a Diplomacy in the list, E24
+M4 T6), so that a level-up offers one advance or none. A sequence may press the keys `1`
+and `2` (the dialog's left and right offers). T2c's sequences (`level-up*`) waited in
+`map/to-record.toml` until the viewer played them: T2c moved them into `sequences.toml` (the file
+removed).
 
 **The kept texts as labels** (E24 M4, the labels task; ADR-0009): the live part never keeps the
 original's texts. A `[[message]]` table's `texts` and its pictures' captions, a `[[level_up]]`
@@ -1566,8 +1575,9 @@ changed): `at` the book's close, the `spell` it answered (`Mem.modal_answer`: 0 
 closed), `spent` (−1 none), the hero's `mana`, and the `boats` moved or made since the book opened,
 each `[from x, y, level, to x, y, level, type, facing]` (from −1, −1, −1 for one made). A
 situation's hero may carry `spells` (0 to 69: the writer gives it the spell book worn in slot 17
-and these spells; its artifacts are then the book alone). T2d3's sequences (`cast-boat*`) wait in
-`map/to-record.toml` until the viewer plays them.
+and these spells; its artifacts are then the book alone). T2d3's sequences (`cast-boat*`) waited
+in `map/to-record.toml` until the viewer played them: T2d3 moved them into `sequences.toml` (the
+file removed).
 
 **The scripted games** (E24 M4 T4a1, design §5.12): a sequence may carry `script`, the engine's
 commands of the same game (a list of strings, each a command as `h3 adventure run --script` reads
@@ -2173,6 +2183,12 @@ creature's cast it holds the background alone outside the caster).
 
 ## Traps
 
+- The game's own disk check (E24 M4 T1a, E27 M2 T7): the main menu's first pass reads the drive's
+  free bytes in 32 bits, signed, and ends the game below 5 MiB, so a disk whose free bytes modulo
+  4 GiB lie outside 5 MiB to 2 GiB fails every run at the main menu. Since E24 M4 T6 `Game.start`
+  checks it first and fails before the game starts, naming a ballast file's size that brings them
+  to 1 GiB (`h3drive.disk_check_fault`; `H3_NO_DISK_CHECK=1` leaves it out); the free space
+  changes with every build, so size the ballast again before a long run.
 - A battle plan that ends in auto combat hands over at a human side's turn (E08 T120, batch E13's
   third run): the key `a` pressed during the computer's turn can be lost while the turn's own
   change looks like auto combat starting, and the battle then waits at the next human turn. A

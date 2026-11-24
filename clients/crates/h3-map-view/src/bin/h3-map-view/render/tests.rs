@@ -126,3 +126,164 @@ fn the_kingdom_and_the_pointer() {
         );
     }
 }
+
+/// `render`'s options (E24 M4 T6, R4-2 and R4-7): `--check` needs `--record` and `--live`,
+/// `--packs` needs `--record`.
+#[test]
+fn a_check_needs_a_record_and_a_capture() {
+    let parse = |extra: &[&str]| {
+        let mut args: Vec<String> = ["m.h3m", "--view", "0,0"].map(String::from).to_vec();
+        args.extend(extra.iter().map(|s| (*s).to_string()));
+        Options::parse(&args)
+    };
+    assert!(parse(&[]).is_ok());
+    let no_record = "render: --check compares a record's start: it needs --record";
+    assert_eq!(parse(&["--check"]).unwrap_err(), no_record);
+    assert_eq!(
+        parse(&["--live", "l.toml", "--check"]).unwrap_err(),
+        no_record
+    );
+    assert_eq!(
+        parse(&["--packs", "p"]).unwrap_err(),
+        "render: --packs reads a record's rules: it needs --record"
+    );
+    assert_eq!(
+        parse(&["--record", "r.jsonl", "--check"]).unwrap_err(),
+        "render: --check compares the record's start with a capture's: it needs --live"
+    );
+    let options = parse(&[
+        "--record", "r.jsonl", "--packs", "p", "--live", "l.toml", "--check",
+    ])
+    .unwrap();
+    assert!(options.check);
+    assert_eq!(options.record, Some(PathBuf::from("r.jsonl")));
+    assert_eq!(options.packs, PathBuf::from("p"));
+    assert_eq!(
+        parse(&["--record", "r.jsonl"]).unwrap().packs,
+        files::default_packs()
+    );
+}
+
+/// `--check`'s verdict (E24 M4 T6, R4-6): what it compared, the choices only when the capture
+/// made them; a capture without `[hover]` fails it.
+#[test]
+fn a_check_says_what_it_compared() {
+    let mut theirs = toml::Table::new();
+    let said = verdict(Vec::new(), Some(Vec::new()), &theirs).unwrap();
+    assert!(said.contains("the mouse-over over every explored tile"));
+    assert!(said.ends_with("; not compared: the choices (the capture holds no `[chosen]`)"));
+    theirs.insert("chosen".into(), toml::Value::Table(toml::Table::new()));
+    let said = verdict(Vec::new(), Some(Vec::new()), &theirs).unwrap();
+    assert!(said.ends_with(" and the choices"));
+    assert_eq!(
+        verdict(Vec::new(), None, &theirs),
+        Err(vec![
+            "the capture has no `[hover]`: the mouse-over not compared".to_string()
+        ])
+    );
+    let found = vec!["`viewer` differs".to_string()];
+    let hover = Some(vec!["(1, 2, 0): the hint differs".to_string()]);
+    assert_eq!(verdict(found, hover, &theirs).unwrap_err().len(), 2);
+}
+
+/// A record's start is built on the map file's own art, never on one a capture changed (E24 M4
+/// T6, R4-3): a random dwelling the capture read as a dwelling keeps its random template in the
+/// engine's start (MCL-STUB-1), so the comparison names it.
+#[test]
+fn a_record_s_start_is_built_on_the_file_s_art() {
+    use h3_protocol::wire::ServerMessage;
+    use h3_protocol::wire::game::{GameRecordHeader, MapIdentity};
+
+    let masks = "001111110011111111111111111111111111111111111111 \
+                 110000000000000000000000000000000000000000000000 111111111 011111111";
+    let templates: Vec<ObjectTemplate> = [("avrcgen0.def", 216), ("dw17.def", 17)]
+        .iter()
+        .map(|(def, class)| {
+            ObjectTemplate::from_objects_txt(&format!("{def} {masks} {class} 0 0 0")).unwrap()
+        })
+        .collect();
+    let text = "size = 36\nterrain = \"grass\"\nview = [0, 0, 0]\n\
+        heroes = [{ at = [10, 10], class = 2 }, { at = [34, 34], owner = 1 }]\n\
+        [[objects]]\ndef = \"avrcgen0.def\"\nat = [8, 15]\n";
+    let (map, extras) = Situation::parse(text)
+        .unwrap()
+        .build(&BTreeMap::new(), &templates)
+        .unwrap();
+    let bytes = h3_map::writer::gzip(&h3_map::writer::write_with(&map, &extras).unwrap());
+    let raw = h3_map::read(&bytes, &Limits::default()).unwrap();
+    // The engine's game on it, Red's record of its start.
+    let packs = files::default_packs();
+    let ids = ["base", "ab", "sod"].map(String::from);
+    let rules = h3_files::adventure::load_rules(&packs, &ids, "base:faithful").unwrap();
+    let setup = h3_map::import(&raw, &rules).unwrap();
+    let state = h3_game::GameState::new(&rules, &setup, 7).unwrap();
+    let red = h3_game::Viewer::Player(h3_contracts::PlayerId::new(0));
+    let observation = h3_protocol::map::game::observe(&state, &rules, red);
+    let identity = MapIdentity {
+        content_hash: h3_protocol::wire::WireU64(engine::content_hash(&bytes)),
+        import_version: h3_map::MAP_IMPORT_VERSION,
+    };
+    let header = GameRecordHeader {
+        format: h3_protocol::RECORD_FORMAT_VERSION,
+        game: 0,
+        player: 0,
+        manifest: h3_protocol::map::game::manifest(&rules, identity),
+        first: 1,
+    };
+    let snapshot = ServerMessage::GameSnapshot { n: 1, observation };
+    let record = [
+        h3_protocol::codec::encode_text(&header),
+        h3_protocol::codec::encode_text(&snapshot),
+    ]
+    .join("\n");
+    let dir = std::env::temp_dir();
+    let record_path = dir.join(format!("h3-map-view-record-{}.jsonl", std::process::id()));
+    fs::write(&record_path, record).unwrap();
+    // A capture that read the random dwelling as the dwelling it became: the art changed.
+    let mut art = MapArt::from_raw(&raw).unwrap();
+    let tables = files::load_tables(&files::default_map()).unwrap();
+    let mut live = Live::at_start(&raw, &art, 0, &tables.map.towns);
+    let dwelling = (0..art.objects.len())
+        .find(|&i| art.templates[art.objects[i].template].def == "avrcgen0.def")
+        .unwrap();
+    let (mut defs, mut classes) = (Vec::new(), Vec::new());
+    for i in 0..art.objects.len() {
+        let t = &art.templates[art.objects[i].template];
+        let (def, class) = if i == dwelling {
+            ("dw17.def", 17)
+        } else {
+            (t.def.as_str(), t.class)
+        };
+        defs.push(format!("\"{def}\""));
+        classes.push(format!("[{class}, {}]", t.subclass));
+    }
+    let capture = format!(
+        "defs = [{}]\nclasses = [{}]\n",
+        defs.join(", "),
+        classes.join(", ")
+    );
+    let live_path = dir.join(format!("h3-map-view-capture-{}.toml", std::process::id()));
+    fs::write(&live_path, &capture).unwrap();
+    read_live(
+        &live_path,
+        ViewAt::default(),
+        &mut art,
+        &mut live,
+        &templates,
+    )
+    .unwrap();
+    assert_eq!(
+        art.templates[art.objects[dwelling].template].def,
+        "dw17.def"
+    );
+    let start = record_start(&record_path, &bytes, &templates, &tables, &packs).unwrap();
+    let theirs = read_table(&live_path).unwrap();
+    fs::remove_file(&record_path).unwrap();
+    fs::remove_file(&live_path).unwrap();
+    assert!(start.seen[dwelling]);
+    let ours = start.table["defs"].as_array().unwrap();
+    assert_eq!(ours[dwelling].as_str(), Some("avrcgen0.def"));
+    assert!(
+        engine::differences(&start, &theirs).contains(&format!("object {dwelling}: `defs` differ"))
+    );
+}

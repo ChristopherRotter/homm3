@@ -30,9 +30,9 @@ use serde::Deserialize;
 pub const BACKGROUND: u16 = 2000;
 /// The hero's large portrait's item.
 pub const PORTRAIT: u16 = 2001;
-/// The text "… has gained a level" (GENRLTXT 445).
+/// The text of the hero's new level's first line (GENRLTXT 445, with the hero's name).
 pub const GAINED: u16 = 2002;
-/// The text "… is now a level … " (GENRLTXT 446).
+/// The text of its second line (GENRLTXT 446, with the name, the level and the class).
 pub const NOW: u16 = 2003;
 /// The primary skill's text (the executable's `%s +1`).
 pub const RAISED: u16 = 2004;
