@@ -68,7 +68,7 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `░░░░░░░░░░` 0/1 I | in progress; increment 1: the reading done (T1a1, T1a2), the oracle (T1b) next |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
 | [E10](docs/epics/E10-game-orchestration.md) | Game orchestration: teams, the game's end, special victory and loss conditions, the score, the starting bonus and handicap | adventure | `░░░░░░░░░░` planned | refined; after E08 (its increments sketched) |
-| [E31](docs/epics/E31-original-computer-player.md) | The original's computer player: the adventure AI read from the executable, faithful then fair | ai | `░░░░░░░░░░` 0/1 I | in progress: increment 1 (the reading, the survey) next |
+| [E31](docs/epics/E31-original-computer-player.md) | The original's computer player: the adventure AI read from the executable, faithful then fair | ai | `█░░░░░░░░░` 1/7 I | I1 closed (the reading of 255 functions, the survey, the ADR draft: a module of `h3-game` for now); I2 (the module and the frame) next |
 | [E13](docs/epics/E13-adventure-ai.md) | Adventure AI (hierarchical): macro-actions over a deterministic executor | ai | `░░░░░░░░░░` planned | refined in shape; after all of E10 and E31 |
 
 Not started yet (sketches in the backlog): map-object long tail (E12), the custom map generator (E30), web portal (E21), packaging and hosting
