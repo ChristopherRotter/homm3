@@ -216,7 +216,7 @@ failure** is an accepted cast with `CastFailed` (the mana spent, §14).
    ADV-MOV-008 (no unexplored tile) in both settings; D-78 (row E15-14) only records the original.
    *As built (T142b):* the setting rides in the mode (`Mode::Fly(Fog)`: `Truth`, `Assumed`, and
    `Revealed` for the walk's check), so the passage's loop passes nothing more; its unexplored row
-   is a cold call (`hidden_passage`). The assumed tile is `StaticTile::HIDDEN` (a blocked tile of
+   is a cold call (`hidden_passage`); `Truth` refuses rock and, as the step up off a closed top (the original's same point 3), water an object is visited from (D-46; found by the plans' property). The assumed tile is `StaticTile::HIDDEN` (a blocked tile of
    no known terrain, no road: the fly price from it, the source's onto it); the step off a hidden
    tile skips the closed top's test, the only row that reads a step's source. `MoveHero` checks the
    whole path over what the player knows (so its acceptance never depends on a hidden tile), then

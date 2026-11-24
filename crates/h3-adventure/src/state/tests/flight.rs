@@ -280,7 +280,13 @@ fn a_hidden_rock_refuses_the_flight_or_stops_it_on_its_last_stop() {
     assert_eq!(left_on(&state, &rules, &slow_flyer(), p(10, 0)), Some(140));
     assert!(!state.is_explored(RED, p(8, 0)));
     let (outcome, events) = fly(&mut state, &rules, &slow_flyer(), &row(10)).unwrap();
-    assert_eq!(outcome, AdventureOutcome { dropped: 5, ..AdventureOutcome::default() });
+    assert_eq!(
+        outcome,
+        AdventureOutcome {
+            dropped: 5,
+            ..AdventureOutcome::default()
+        }
+    );
     assert_eq!(stepped(&events), 5);
     assert_eq!(at(&state), (p(5, 0), 800));
     assert!((6..=9).all(|x| state.is_explored(RED, p(x, 0))));

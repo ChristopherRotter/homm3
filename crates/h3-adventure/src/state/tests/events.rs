@@ -385,7 +385,10 @@ fn an_event_before_the_compromise_s_stop_ends_the_flight_first() {
                 hero_at(2, 0, Pos::new(15, 1, 0), &[PEASANT]),
             ],
         );
-        setup.map.objects.push(event(&rules, x, RED_ONLY, false, true));
+        setup
+            .map
+            .objects
+            .push(event(&rules, x, RED_ONLY, false, true));
         setup.seats[0] = Seat {
             colour: 0,
             human: true,
@@ -395,7 +398,10 @@ fn an_event_before_the_compromise_s_stop_ends_the_flight_first() {
     let mut s = state(4);
     let (outcome, events) = walk(&rules, &mut s, &flyer, &row(2..=11));
     assert_eq!((outcome.gains, outcome.dropped), (vec![(GOLD, 100)], 7));
-    assert_eq!((standing(&s).0, fired(&events).len()), (Pos::new(4, 1, 0), 1));
+    assert_eq!(
+        (standing(&s).0, fired(&events).len()),
+        (Pos::new(4, 1, 0), 1)
+    );
     let mut s = state(11);
     let (outcome, events) = walk(&rules, &mut s, &flyer, &row(2..=11));
     assert_eq!((outcome.dropped, fired(&events).len()), (5, 0));

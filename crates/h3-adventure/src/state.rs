@@ -2047,8 +2047,9 @@ impl AdventureState {
             // The compromise's stop (decision 407): on the last stop node before the step the
             // revealed tile forbids, with the points left there (the start's when it was none);
             // the passes after it are undone, free, and the rest of the path dropped.
-            let (walked, left) =
-                stand.map_or((0, self.heroes[index].movement), |(step, left)| (step + 1, left));
+            let (walked, left) = stand.map_or((0, self.heroes[index].movement), |(step, left)| {
+                (step + 1, left)
+            });
             (at, points) = (walked.checked_sub(1).map_or(start, |i| path[i]), left);
             (&path[..walked], &path[walked..cut])
         } else {

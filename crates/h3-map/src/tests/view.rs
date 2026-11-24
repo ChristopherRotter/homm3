@@ -1209,10 +1209,16 @@ enum Open {
 /// Wings) or its day's Fly (ADV-SPL-005).
 fn flies(game: &GameState, rules: &GameRuleset, viewer: PlayerId) -> bool {
     let adventure = game.adventure();
-    adventure.heroes().iter().filter(|h| h.owner == viewer).any(|h| {
-        let levels = game.hero(h.id).map(|d| h3_heroes::movement(d, rules.core()));
-        levels.is_some_and(|m| m.flying.is_some()) || adventure.day_spells(h.id).fly.is_some()
-    })
+    adventure
+        .heroes()
+        .iter()
+        .filter(|h| h.owner == viewer)
+        .any(|h| {
+            let levels = game
+                .hero(h.id)
+                .map(|d| h3_heroes::movement(d, rules.core()));
+            levels.is_some_and(|m| m.flying.is_some()) || adventure.day_spells(h.id).fly.is_some()
+        })
 }
 
 /// The owner's own view of `hero` in `view`: on the map, or (E09 T28a) in one of its towns'
@@ -3266,7 +3272,10 @@ proptest! {
     /// E09 T28b2 a garrison hero's army is its town's garrison as a viewer sees it (TWN-VEW-002):
     /// a town told to the viewer whose upper bar differs between the two games (another player's
     /// hero's army moved into it) ends the comparison, the events it is told the same but the
-    /// garrisons' stacks.
+    /// garrisons' stacks. Since E08 T142b a flight crosses the tiles its player has not explored
+    /// (`ADV-QUIRK-15`): under `strict-fixed` over what the viewer knows, so the comparison runs
+    /// on (exit criterion 8 of increment 15); under `faithful` its reach reads them (the
+    /// original's leak), so the comparison ends while one of the viewer's heroes flies.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),

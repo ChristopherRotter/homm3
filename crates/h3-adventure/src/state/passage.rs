@@ -164,7 +164,7 @@ impl AdventureState {
         let tile = *self.map.tile(pos).ok_or(blocked(StandError::Outside))?;
         // `ADV-QUIRK-15` (E08 T142b): out of line, so the explored tiles' path stays as it was.
         if !self.is_explored(player, pos) && mode != Mode::Fly(Fog::Revealed) {
-            return self.hidden_passage(part, mode, pos, tile, step);
+            return self.hidden_passage(part, (player, mode), pos, tile, step);
         }
         let dy = DIRECTIONS[direction].1;
         if dy == 1 && self.closed_above(part, pos) {
@@ -308,8 +308,10 @@ impl AdventureState {
     /// batch E15's E15-14: the original's water walk does not cross hidden water either) and a
     /// boat's step); a flight passes over it, never stops there and meets nothing on it: with
     /// [`Fog::Truth`] the tile as it stands, rock refused (the original's test before the fog's;
-    /// batch E15's E15-13: the hidden tree priced as a tree), with [`Fog::Assumed`]
-    /// [`StaticTile::HIDDEN`], whatever lies there. Out of the passage's loop: the reach meets a
+    /// batch E15's E15-13: the hidden tree priced as a tree) and water an object is visited from
+    /// (D-46: the step up off a closed top's rows, the original's same point; found by the plans'
+    /// property at E08 T142b), with [`Fog::Assumed`] [`StaticTile::HIDDEN`], whatever lies
+    /// there. Out of the passage's loop: the reach meets a
     /// hidden tile only at its window's edge of the explored.
     // rule: ADV-MOV-008, ADV-MOV-009
     #[cold]
@@ -317,25 +319,30 @@ impl AdventureState {
     fn hidden_passage<'p>(
         &self,
         part: &AdventureRuleset,
-        mode: Mode,
+        (player, mode): (PlayerId, Mode),
         pos: Pos,
         tile: StaticTile,
         step: usize,
     ) -> Result<Entry<'p>, AdventureCommandError> {
+        let blocked = |error| Err(AdventureCommandError::Blocked { step, error });
         let tile = if mode == Mode::Fly(Fog::Assumed) {
             StaticTile::HIDDEN
         } else if !mode.flies() {
             return Err(AdventureCommandError::Unexplored { step });
-        } else if matches!(
-            part.passage(tile.terrain),
-            Some(Passage::Land(_) | Passage::Water(_))
-        ) {
-            self.live(pos, tile)
         } else {
-            return Err(AdventureCommandError::Blocked {
-                step,
-                error: StandError::Terrain,
-            });
+            let tile = self.live(pos, tile);
+            match part.passage(tile.terrain) {
+                // As the step up off a closed top, the original's other tile a flight passes
+                // without stopping (`pathfinder_expand`'s point 3): water an object is visited
+                // from stays closed (D-46).
+                Some(Passage::Water(_))
+                    if tile.visitable && self.coast_visit(part, player, pos).is_none() =>
+                {
+                    return blocked(StandError::Blocked);
+                }
+                Some(Passage::Land(_) | Passage::Water(_)) => tile,
+                _ => return blocked(StandError::Terrain),
+            }
         };
         Ok(Entry {
             tile,

@@ -22275,3 +22275,65 @@ from GitHub; the VM restarted during the setup's baseline (CI's run on `master` 
 (SDL's X11 dependencies missing after the VM's restart); CI's Clients job is its record.
 **Versions:** adventure ruleset part v26, adventure state hash v29, replay format v26, protocol
 v82 (the next: protocol v83 at T143a, encoding v21 at T144a). Next: T142b.
+
+### Increment 15, round 6: T142b, the flight over unexplored tiles (2026-11-24, `adventure/e08-t142b`)
+
+**The cut:** whole (T142's second half, decision 415). **Baseline:** `master` baaf27a (#1154
+merged; its code CI-verified, the setup's light gates); the originals staged from the PC at the
+start (17 files and 40 MP3s, SHA-256 checked), the repo from GitHub.
+
+- **The passage** (`ADV-QUIRK-15`, ADV-MOV-008, -009 amended; design §11.1 as built):
+  `state/passage.rs`' `Fog` (`Truth` with the flag on, `Assumed` off, `Revealed` for the walk's
+  check) rides in `Mode::Fly(Fog)` (`Mode::of` takes it, `Mode::flies`); the unexplored row is
+  the cold `hidden_passage`: a hero that does not fly `Unexplored` (walk, water walk: D-78,
+  boat); a flight a pass, never a stop, nothing met: `Truth` the live tile, rock refused
+  (`Blocked { Terrain }`) and water an object is visited from (D-46, `Blocked`: the rows of the
+  step up off a closed top, the reading's same point 3; *agent's call* past the design's "rock",
+  found by the plans' `check_sea_move`); `Assumed` `StaticTile::HIDDEN` (`OUTSIDE`'s value: blocked, no known
+  terrain, no road, so the fly price from it, the source's onto it, the fly price's drop). The
+  step up off a closed top skips its test from a tile `Assumed` let through (the only row that
+  reads the source).
+- **The reach** (`reach.rs`): `expand_layered` prices a pass node's steps from
+  `Search::assumed` under `Assumed` (`HIDDEN` where the owner has not explored it, out of line).
+- **The walk** (`MoveHero`, decision 407): the path is checked and priced over what the player
+  knows; under `Assumed` each step onto or off a tile hidden at the command is tested by
+  `revealed_fits` (the passage with `Revealed`: a planned pass needs any entry, a planned stop a
+  stop); the first that fails cuts the move: on the last stop node before it (the start if none)
+  with its points, the passes after it undone (their reveals kept, no `HeroStepped`), the tile
+  that stopped it revealed alone, `dropped` the rest; a guard on the end node attacks (none at
+  the start), nothing visited; an event's stop before the cut first, one after it never.
+  *Agent's calls, change freely:* the guard, the radius-0 reveal, the order with events, the
+  undone passes untold.
+- **Tests:** `h3-adventure`'s `state/tests/flight.rs` (six: the pass and no stop in both
+  settings; the hidden strip priced by its truth, 260 left, or as blocked, 140; walkers and water
+  walkers refused; the hidden rock refused or the stop on (5, 0) with 800, five steps, the
+  reveals; the stop before any stop node; the closed top off a hidden chart; the guard at the
+  stop), `state/tests/sea.rs` (a hidden D-46 tile refused or stopped before) and
+  `state/tests/events.rs` (an event before the cut, one after it); the test profile
+  `t:faithful` gains the flag. `h3-map`: `view.rs`' hygiene property ends its comparison under
+  `faithful` while a viewer's hero flies (`flies`: the levels or the day's Fly; the original's
+  leak, design §4); `play.rs`' `landing` and `check_legal` know the cut (a hidden tile of the
+  rest of the path, under the flag off for the legal moves' points); `check_sea_move` checks only
+  the walked tiles and the explored ones past them (a strict path crosses hidden D-46 water,
+  the walk stopping before it); `the_plans_capture_and_besiege_towns` plays 768 cases for 512
+  (the changed games won no siege beside a garrison hero at 512: 640 the first count to).
+- **Docs:** ADV-MOV-008 (the amendment, E15-13 and E15-14 as a source), ADV-MOV-009 (the
+  passage's line, the note); the ledger's ADV-QUIRK-15 rewritten (fix-optional, both sides, the
+  tests); the design note §11.1 as built; T143 queued.
+
+- **Speed** (measured right after the first build against `master`'s worktree): the first
+  design passed the setting as a fourth element of the passage's mover and tested the hidden
+  source in the search with `search.fog`: the code alone (the faithful row patched to behave as
+  before, so the games stayed `master`'s) +1.50 % on `reach-lifted-xl-144` (`passage` +1 Ir a
+  call over 3.0 M calls, `expand_layered` +22 Ir an expansion over 378 k), +1.30 % on
+  `random-play-sea-36`, +1.08 % on `random-play-duel-36`. Settled once: the setting in the mode
+  (the passage's signature as `master`'s) and the source's test from the mode: the code alone
+  -0.31 %, +0.21 %, -0.08 %, `reach-towns-36` +0.07 %, `reach-xl-144` +0.16 % (a trap). With
+  the behaviour, a faithful flight's reach goes on over the hidden tiles (43 % more expansions a
+  flyer's query), and the games with flyers change course: six workloads out of the gate,
+  re-baselined against `master`'s counts in this sandbox: `reach-lifted-xl-144` +33.40 %,
+  `random-play-duel-36` +20.28 %, `reach-banks-xl-144` +4.96 %, `random-play-banks-36` +4.56 %,
+  `random-play-sea-36` +4.03 %, `reach-xl-144` -3.77 % (the walkers of games whose flyers moved
+  otherwise); the nine forks +0.77 to +1.82 % against their baselines count exactly `master`'s
+  (the sandbox's drift). The golden replays are command lists none of whose moves crossed a
+  hidden tile: unchanged; the bot reports unchanged.

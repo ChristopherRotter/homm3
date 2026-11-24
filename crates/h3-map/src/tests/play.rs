@@ -4862,11 +4862,16 @@ fn landing(
     );
     let on_event = steps > 0 && event(path[steps - 1]);
     prop_assert!(!fired || on_event, "{:?}", kinds);
-    let owner = adventure.heroes().iter().find(|h| h.pos == start).map(|h| h.owner);
+    let owner = adventure
+        .heroes()
+        .iter()
+        .find(|h| h.pos == start)
+        .map(|h| h.owner);
     let cut = !on_event
-        && path
-            .get(steps..)
-            .is_some_and(|rest| rest.iter().any(|&pos| owner.is_some_and(|o| !adventure.is_explored(o, pos))));
+        && path.get(steps..).is_some_and(|rest| {
+            rest.iter()
+                .any(|&pos| owner.is_some_and(|o| !adventure.is_explored(o, pos)))
+        });
     let stopped = (on_event || cut) && steps < path.len();
     let stays = steps + 1 == path.len() && !stopped;
     prop_assert!(
@@ -4997,7 +5002,24 @@ fn check_sea_move(
         .hero(hero)
         .is_some_and(|h| h.boat.is_some());
     let heroes = before.adventure().heroes();
-    for &tile in path.iter().filter(|_| !afloat) {
+    // E08 T142b: under the compromise (`ADV-QUIRK-15` off) a flight's path crosses the tiles its
+    // player had not explored whatever lies there, and its walk stops before a step the revealed
+    // tile forbids: a hidden tile past the steps it made is not the walk's.
+    let walked = events
+        .iter()
+        .filter(|e| {
+            matches!(e, GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroStepped { hero: h, .. },
+                ..
+            }) if *h == hero)
+        })
+        .count();
+    let owner = before.adventure().hero(hero).map(|h| h.owner);
+    let unwalked = |i: usize, tile: TilePos| {
+        i >= walked && owner.is_some_and(|o| !before.adventure().is_explored(o, tile))
+    };
+    for (_, &tile) in (path.iter().enumerate()).filter(|&(i, &tile)| !afloat && !unwalked(i, tile))
+    {
         // A hero in a boat on the tile is met there, whatever lies under it (ADV-SEA-005: from
         // the shore too; D-46 leaves such a tile open), and an empty boat on it is boarded
         // (ADV-SEA-002; D-46 leaves a boat's tile open too): a key holder's boat may lie on its
@@ -14913,7 +14935,9 @@ fn the_plans_capture_and_besiege_towns() {
     let towns = (plan(), vec(town(), 3..=6)).prop_map(|(plan, towns)| Plan { towns, ..plan });
     let strategy = (towns, any::<bool>(), any::<u64>(), steps());
     let mut besieged = Besieged::default();
-    for _ in 0..512 {
+    // E08 T142b: the flights over the hidden tiles changed the games; at 512 cases no siege
+    // beside a garrison hero was won any more (3 sieges, 640 cases the first to win one): 768.
+    for _ in 0..768 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start(&plan, rules, seed);
