@@ -1,8 +1,9 @@
 # E14 generator survey: the original's random map generator
 
 Date: 2026-11-23. Scope: E14 increment 1 (`docs/epics/E14-original-map-generator.md`). §1 the
-frame (T1a1); §2 every function placed, the draws and floats per phase (T1a2); §3 the template
-format, each phase's rules and the quirk candidates (T1c). Input, not rules (`README.md`): a fact
+frame (T1a1); §2 every function placed, the draws and floats per phase (T1a2), §2.7 the painters
+outside the range (T1c1); §3 the template format, each phase's rules and the quirk candidates
+(T1c2). Input, not rules (`README.md`): a fact
 becomes binding when a task writes it into the catalog with its sources and tests.
 
 **Sources:** the code reading of GOG Complete's `Heroes3.exe` (SHA-256 `aac39e8c…`,
@@ -1238,8 +1239,8 @@ One stream (`crt_rand`, Begin's thread), in execution order; the sites from §1.
 table's order and phases. The stream also holds draws of callees outside the range that this
 table leaves out, a third of the corpus's draws: the terrain painter's pictures
 (`terrain_picture_draw` 0x5B3890 and its kin, one or two per painted cell) in steps 3, 6 and 11,
-the road and river painter's (`road_river_picture_draw` 0x4F9F00) in steps 14 and 15. T1c reads
-them.
+the road and river painter's (`road_river_picture_draw` 0x4F9F00) in steps 14 and 15. §2.7 reads
+them; §2.7.5 gives their rows.
 
 **The run's floats:** x87 only, every conversion `crt_ftol` (truncation): step 1's candidates
 trunc(f64(r) × T[k] + f64(o)) with `rmg_layout_cos` 0x682500 and `rmg_layout_sin` 0x682600 (f64,
@@ -1256,3 +1257,411 @@ candidates per placement. Retries: step 10 only (six per pick, three per object)
 connection's passages ≤ ceil(n / 40) of ≤ 100 candidates; roads to costs ≤ 30000; the limits by
 type in step 10's choice. Every other give-up is silent; the run's only reported failure is no
 template (code 3), an exception anywhere code 1.
+
+### 2.7 The painters outside the range (T1c1)
+
+Cut by the user (2026-11-24) into three parts read in one session: T1c1a (the runner: the terrain
+painter's frame and its picture sets, the road and river painter; §2.7.1, §2.7.4), T1c1b (a
+worker: adding cells and the work sets; §2.7.2), T1c1c (a worker: the finishing passes; §2.7.3);
+§2.7.5 the draws they add to the stream and the oracle's check. About a third of a generation's
+draws come from here (T1b2). The painters are the game's own code outside the generator's range, reached from steps 3, 6 and 11 (terrain) and 14 and 15 (roads and rivers) through
+small interfaces: the generator's map (`rmg_map_vtable` 0x6409CC, §2.1) and its road and river
+views (§2.5).
+
+#### 2.7.1 The terrain painter's frame and the picture sets (T1c1a)
+
+Path read: `terrain_painter_init` 0x5B7250 and its constructor, `terrain_painter_add_rect`,
+`terrain_painter_finish` and `terrain_painter_flush` (their own bodies: their callees are §2.7.2
+and §2.7.3), the ten picture sets with their constructors, vtables and tables. 26 functions named
+or re-read (all read), 5 draw sites, 9 tables and globals. The C++ library helpers the frame calls
+(strings, the exception's text, vectors' copy and fill, the sets' head) are not named.
+
+| Function | Called from | What it does | Conf. |
+|---|---|---|---|
+| 0x5B7250 `terrain_painter_init` → 0x5B45F0 `terrain_painter_construct` | steps 3, 6 (`rmg_islet_draw`, `rmg_water_shores_seal`), 11 | the handle and its 0x44-byte painter (below) | read |
+| 0x5B7690 `terrain_painter_add_rect` | the same | a rectangle to `terrain_painter_paint_rect` (§2.7.2) | read |
+| 0x5B72F0 `terrain_painter_finish`, 0x5B7520 `terrain_painter_flush` | the handle's destructor (and unwinding); `rmg_water_shores_seal`, step 11 | the sets drained, the last pass (below) | read |
+| 0x5B3780 `terrain_picture_set_init`; 0x5B3840, 0x5B3850, 0x5B3860, 0x5B3880, 0x5B3890, 0x5B38F0, 0x5B3A50 | the static initializers; `terrain_picture_set_vtable` 0x642C98 | a picture set of the first kind and its slots 0 to 5 | read |
+| 0x5B3940 `rock_picture_ranges_init` (from 0x5B3A10), 0x5B3A20 `rock_picture_set_init`; 0x5B3A40, 0x5543F0 `false_ret_4`, 0x5B3A80, 0x5B3AA0, 0x5B3AE0 | `rock_picture_set_vtable` 0x642CB0 | the rock set and its slots | read |
+| 0x5B3B60 to 0x5B3D60 (nine), 0x5B3DA0 `<terrain>_picture_set_static_init` | the C runtime's initializer table | the ten sets built at start-up | read |
+
+**The painter** (0x44 bytes): +0 the map interface, +4 the terrain (0-9), +8 the *weight* (4 in
+every generator call), +0xC and +0x10 the map's width and height (the interface's slot 3), +0x14
+set 1 and +0x24 set 2 (`std::set` of points, §2.7.2), +0x34 a vector of one 16-bit cell word per
+cell. **The words' fill is memory-dependent:** the constructor keeps the fill value in a reused
+argument slot and clears only its bit 0, so every word starts with bits 1-15 equal to the high
+half of the map interface's address. T1c1b found no read of those bits before a load (§2.7.2):
+the fill never reaches a result.
+
+**The handle's use.** `terrain_painter_init(map, terrain, 4)`, then rectangles
+(`terrain_painter_add_rect`), then the handle's destructor (`terrain_painter_finish`), which runs
+until both sets are empty: set 1's cells one by one, smallest (y, x) first, through 0x5B5440
+(§2.7.3); then set 2's, each erased and, when pinched west-east or north-south or (for a set whose
+byte +5 is clear: water and rock) its ring split, made the painter's terrain
+(`terrain_painter_set_cell`, §2.7.2); repeated while either set holds a cell; then the last pass
+0x5B5A70 (§2.7.3) once. `terrain_painter_flush(terrain', weight')` does the same without freeing,
+with one difference: a set-2 cell whose word is not loaded is loaded (`terrain_painter_cell_load`)
+before its set's byte +5 is read; then the painter's +4 and +8 take the two arguments and the
+painter goes on with another terrain (`rmg_water_shores_seal`, step 11 twice).
+
+**The picture sets** (`terrain_picture_sets` 0x642BD8: one per terrain). A picture has a *shape*
+(0 the plain inside, 2-28 the transitions) and, in the first kind, a *flag* (the decorated plain
+pictures). The first kind (`terrain_picture_set_init`): bytes +4 and +5, the flagged *share* in
+percent (+8), the picture count and table (8 bytes a picture: shape u32, flag u8), and 58 (first,
+count) ranges by shape × 2 + flag, built in one pass that assumes each (shape, flag) contiguous
+(it is, in all five tables):
+
+| Terrain | Set's static init | Bytes +4, +5 | Share | Pictures (table) | Shapes |
+|---|---|---|---|---|---|
+| 0 dirt | 0x5B3B60 | 1, 1 | 50 | 46 (`dirt_picture_shapes` 0x6428A0) | 8-13, 16, 0 (8 plain, 16 flagged), 24 |
+| 1 sand | 0x5B3BA0 | 0, 1 | 70 | 24 (`sand_picture_shapes` 0x642A10) | 0 only (8 plain, 16 flagged) |
+| 2 grass, 3 snow, 4 swamp, 5 rough, 6 subterranean, 7 lava | 0x5B3BE0 to 0x5B3D20 | 1, 1 | 50, 80, 80, 80, 60, 80 | 79 (`land_picture_shapes` 0x642628) | 2-22, 0 (8 plain, 16 flagged), 23-28 |
+| 8 water | 0x5B3D60 | 0, 0 | 0 | 33 (`water_picture_shapes` 0x642AD0) | 8-13, 16, 0 (12 plain, none flagged) |
+| 9 rock | 0x5B3DA0 (second kind) | 0, 0 | — | 48 (`rock_picture_shapes` 0x6424A8) | 0 (8), 8-13 by two variant bytes a, b |
+
+The slots: 1 whether the flagged plain range is non-empty, 2 a picture's flag, 3 its shape, 4 a
+plain picture, 5 a picture of a given shape. **Slot 4** (`terrain_picture_draw`, the weight w and
+the current picture): a current picture of shape 0 is kept, no draw; else, when the flagged range
+is non-empty, `rand() % 100 < (share × w) / 8` picks the flagged range, otherwise the plain one,
+and `rand() % count + first` the picture: **two draws on land, one on water** (no flagged range);
+with w = 4 the flagged share is half the set's share. **Slot 5** (`terrain_picture_draw_kept`,
+the shape, a 16-bit word of two mirror flags, an out word, the current picture): a current
+picture of that shape is kept, no draw; else `rand() % count + first` of the shape's plain range;
+the word goes to the out pointer either way. The rock set (`rock_picture_ranges` 0x6A4158, 116
+ranges by (shape × 2 + a) × 2 + b) has no flagged pictures and no mirroring: slot 4 keeps a shape-0
+picture, else draws from the first range (one draw, the weight unused); slot 5 matches shape, a
+and b, else draws from that range, and writes a zero word.
+
+**Draws, floats, memory, limits.** Five draw sites: 0x5B38B9 (the flag roll) and 0x5B38D3 (the
+picture) in slot 4, 0x5B3912 in slot 5, 0x5B3AB6 and 0x5B3B2D in rock's slots 4 and 5; who calls
+them and how often: §2.7.2, §2.7.3. No floats; the cell words' fill (above); allocation failures
+throw ('Allocation failure.'), the sets' nodes are unchecked (§2.7.2).
+
+**Quirk candidates (as read, unclassified):**
+
+- The cell words' fill takes the map interface's address (above): harmless as far as read.
+
+**Not read:** the C++ library helpers; 0x5B76D0 and 0x5B76F0 (reached only from
+`terrain_painter_init`'s unwind funclet 0x6349D0).
+
+#### 2.7.2 Adding cells: the rectangle and the work sets (T1c1b)
+
+Path read: `terrain_painter_add_rect` 0x5B7690 → 0x5B4960 and everything it reaches by direct
+calls, down to the two point sets' library code; the map's slots 1 and 4 (`rmg_map_set_tile`,
+`rmg_map_get_tile`) and the picture set's slot 4 (`terrain_picture_draw` 0x5B3890, T1c1a's) only
+as far as their arguments and results. 29 functions named (27 read, 2 inferred: the tree's two
+rebalancing functions), 5 sites, no table of its own (it uses `0x642BD8`, the picture sets by
+terrain, and the offsets table 0x6A80A8 with 0x5BC910: T1c1a's). No `crt_rand` call site: the
+part draws through two calls of a picture set's slot 4.
+
+| Function | Called from | What it does | Conf. |
+|---|---|---|---|
+| 0x5B4960 `terrain_painter_paint_rect` | `terrain_painter_add_rect` | the rectangle, row-major: a cell of another terrain to `set_cell`; a cell already of the terrain gets a new picture only (0x5B4A4F, written 0x5B4A6F) | read |
+| 0x5B4B20 `terrain_painter_set_cell` | paint_rect; finish, flush, 0x5B5440, 0x5B76F0 | the cell made the terrain (picture 0x5B4B44, written 0x5B4B61), its neighbours' pinches re-tested, the sets updated (below) | read |
+| 0x5B6FD0 `terrain_painter_decor_weight` | paint_rect, set_cell, 0x5B5A70 | the weight given to slot 4 | read |
+| 0x5B50F0 `terrain_painter_queue_neighbours` | set_cell | foreign neighbours into set 2 | read |
+| 0x5B6320 `terrain_painter_pinched_we`, 0x5B6430 `terrain_painter_pinched_ns` | set_cell; finish, flush, 0x5B5440, 0x5B76F0 | the two strip tests | read |
+| 0x5B6810 `terrain_painter_ring_split`, 0x5B6540 `terrain_painter_ring_same` | set_cell; finish, flush, 0x5B5440 | the ring test (water, rock) | read |
+| 0x5B48D0 `terrain_painter_cell_word`, 0x5B3DD0 `terrain_painter_cell_load` | everywhere in the painter | the per-cell cache of the map's tiles | read |
+| 0x5B7CD0 `_set_insert`, 0x5B7FC0 `_set_find`, 0x5B7F60 `_set_erase_key`, 0x5B85C0 `_set_equal_range`, 0x5B85A0 `_set_lower_bound`, 0x5B8A20 `_set_upper_bound`, 0x5B8A40 `_set_lower_node`, 0x5B8B60 `_set_upper_node`, 0x5B8BC0 `_set_next`, 0x5B8AA0 `_set_prev`, 0x5B7E30 `_set_erase_range`, 0x5B85F0 `_set_free_subtree`, 0x5B8C70 `_set_distance`, 0x5B8CD0 `_set_distance_b`, 0x5B8CA0 `terrain_painter_point_less` (all `terrain_painter_`) | set_cell, queue_neighbours; finish, flush | MSVC's `std::set` of points | read |
+| 0x5B8090 `terrain_painter_set_erase`, 0x5B8720 `terrain_painter_set_insert_node` | erase_range; insert | node out, node in, with the red-black rebalancing | inferred |
+| 0x5B8CC0 `point_copy_construct`, 0x51B150 `iterator_bool_pair_init` | node insert; insert's callers (shared with other code) | library constructors | read |
+
+**The sets.** Both work sets (+0x14 and +0x24) are MSVC 6's `std::set` of 8-byte points (x, y):
+a red-black tree, nodes of 0x18 bytes (left, parent, right, the point at +0xC, colour +0x14),
+the nil node the global 0x6A52C4, the size at +0xC of the set, unique keys (+8 false). The order
+is `terrain_painter_point_less`: y first, then x, unsigned: **row-major, top to bottom, left to
+right.** A key is the whole point, so there are no ties, and **nothing is ordered by address**: the
+in-order sequence does not depend on the tree's shape or the nodes' addresses. A port can use any
+ordered set of (y, x).
+
+**The cell cache.** One u16 per cell (+0x38): bit 0 loaded, bits 1-4 terrain, bits 5-11 picture,
+bits 12 and 13 the two mirror flags (map cell +0x28 bits 15 and 16), bits 14-15 untouched. A word
+is loaded from the map (slot 4) whenever bit 0 is clear before any read of bits 1-13; the painter's
+own writes update it. So the memory-dependent initial fill (T1c1a: the high half of the map
+interface's pointer) never reaches a result in this part: bits 1-13 are always loaded or written
+first, and bits 14-15 are only kept (mask 0xC001), never read (no read found in the terrain painter's code).
+Neighbours outside the rectangle are read, from the map.
+
+**The tests.** *Pinched W-E* (0x5B6320): 0 < x < width-1 and the W and E neighbours both of
+another terrain than the cell's (they need not be equal). *Pinched N-S* (0x5B6430): the same
+vertically. *Ring split* (0x5B6810): the 8 neighbours of the cell's own terrain (0x5B6540; order
+N, NE, E, SE, S, SW, W, NW; off the map the clamped coordinate, so the edge counts as the same
+terrain; a diagonal counts only when one of its two adjacent orthogonals does) fall into two or
+more separate arcs of the ring. A cell is *pinched* when W-E or N-S holds, or, for a terrain whose
+picture set has byte +5 clear (water 8 and rock 9, T1c1a's sets), the ring is split. Set 1
+(+0x14) holds pinched cells of the painter's terrain; set 2 (+0x24) holds cells of other terrains
+to re-test (finish absorbs a pinched one into the painter's terrain through `set_cell`).
+
+**`set_cell` (0x5B4B20), in order.** (1) The weight, a picture drawn, the cell written (terrain,
+picture, mirror flags cleared) and cached; the cell erased from set 2. (2) Land terrains (set byte
++5 set): the N and S neighbours that are in set 1 and no longer pinched W-E, and the W and E
+neighbours in set 1 no longer pinched N-S, are erased from set 1 and queued (the new cell has
+broken their other pinch); nothing is added. Water and rock: each of the 8 neighbours in the map
+(0x5BC910) of the painter's terrain is re-tested in the ring order: in set 1 and no longer pinched →
+erased and queued; not in set 1 and now pinched → inserted. (3) The cell itself: pinched → into
+set 1; else queued. **`queue_neighbours`** (0x5B50F0) inserts into set 2: the first of N, S that
+is in the map and of another terrain (S only when N is not, 0x5B5159), the same for W, E, then
+each diagonal of another terrain whose set has byte +5 clear.
+
+**`paint_rect` (0x5B4960).** For y from y0 to y0+h-1, x from x0 to x0+w-1 (no clamp): another
+terrain → `set_cell`; the same terrain → a new picture with the same weight rule, written with the
+mirror flags cleared, no set change. **Every cell of the rectangle is drawn a picture, once.**
+
+**The weight (0x5B6FD0).** w = the painter's +8 (4 in the generator's calls), halved for each of
+the W, N, E, S neighbours in the map of the painter's terrain whose current picture has the
+set's flag (slot 2): 4, 2, 1 or 0, the order of the halvings irrelevant. Slot 4 is called with
+(w, -1): with -1 it always draws (T1c1a: `rand() % 100 < (share × w) >> 3` picks the flagged
+range when that range is non-empty, then `rand() % count + first`). The weight reads the
+neighbours' pictures as they are: in the rectangle's order the W and N ones are already redrawn,
+the E and S ones still hold the map's earlier pictures (a port must keep them, e.g. the water fill's).
+
+**The draws in order.** No `crt_rand` site of its own. Per `paint_rect`, one slot-4 call per cell
+in row-major order (0x5B4A4F for a cell already of the terrain, 0x5B4B44 inside `set_cell`
+otherwise), each one or two draws (two when the set has a non-empty flagged range, the share
+then decides). Later, one more slot-4 call (0x5B4B44) for every `set_cell` of finish, flush or
+0x5B5440, in their order: sets taken smallest (y, x) first. The set work itself draws nothing.
+
+**Floats, memory, limits.** No floats. Memory: none here (above). Allocation: one 0x18-byte
+node per insert through operator new, unchecked. No iteration limit in this part (the sets drain
+in finish, T1c1a); `_set_free_subtree` recurses to the tree's height. The rectangle is not
+clamped: a rectangle past the map's width would wrap into the next row, past its height would
+read past the cache (the generator's callers pass rectangles inside the map, not checked here).
+
+**Quirk candidates (as read, unclassified).**
+- `queue_neighbours` is an else-if per axis: when N is queued, S is not re-tested (likewise E
+  after W), so a foreign S (E) neighbour that the new cell has just pinched may stay a 1-wide strip.
+- `set_cell` never erases its own cell from set 1: a cell already in set 1 passed to it stays
+  there even when no longer pinched (whether reachable depends on 0x5B5440, T1c1c).
+- Repainting redraws: `paint_rect` gives every cell already of the terrain a new picture and
+  clears its mirror flags, so each painted cell costs draws even when nothing changes; a pinched
+  cell is drawn before it enters set 1 and may be drawn again when 0x5B5440 resolves it.
+
+**Not read.** The red-black rebalancing in 0x5B8090 and 0x5B8720 (it cannot change the in-order
+sequence); the picture sets' slots (T1c1a); finish, flush, 0x5B5440, 0x5B5A70, 0x5B76D0/0x5B76F0
+(a third caller of `set_cell`), 0x5B4860 (calls `_set_erase_range`, likely the destructor),
+0x5B8670 (a set's head node) beyond their calls into this part; which terrains reach the
+water/rock branch other than by the sets' byte +5 as T1c1a gives it.
+
+#### 2.7.3 The finishing passes: pinched cells and the transitions (T1c1c)
+
+Path read: `terrain_painter_finish` 0x5B72F0 and `terrain_painter_flush` 0x5B7520 (T1c1a's) →
+0x5B5440 `terrain_painter_resolve_pinch` and 0x5B5A70 `terrain_painter_transition_pass`, whole,
+and everything they reach by direct calls; the picture sets' slots 4 and 5 (T1c1a's) and
+`terrain_painter_set_cell`, `_decor_weight` and the pinch and ring tests (T1c1b's) only as far as
+their arguments and results. 15 functions named (14 read; 0x5B76F0 inferred, 0x5B76D0 read: the unwind path), 8 sites, 4 tables (one `.rdata`, three
+built on first use). No `crt_rand` call site of its own: the draws are the picture sets' (slot 4
+through `set_cell` 0x5B4B44 and in the last pass; slot 5 in the last pass).
+
+| Function | Called from | What it does | Conf. |
+|---|---|---|---|
+| 0x5B5440 `terrain_painter_resolve_pinch` | finish, flush, 0x5B76F0 | one set-1 cell: its N-S pinch, then W-E, then (water, rock) its ring mended through `set_cell` | read |
+| 0x5B76B0 `terrain_painter_point_make`, 0x47A670 `std_tree_begin` | 0x5B5440; finish, 0x5B76F0 (shared) | a point from two coordinates; a tree's smallest node | read |
+| 0x5B5A70 `terrain_painter_transition_pass` | finish, flush, 0x5B76F0 | every map cell's picture and mirror flags from its neighbours | read |
+| 0x5B68A0 `terrain_painter_border_classes`, 0x5B3E40 `terrain_painter_border_class` | 0x5B5A70 | the 8 neighbours' classes 0, 1, 2 | read |
+| 0x5B3E80 `terrain_painter_transition_shape` | 0x5B5A70 | classes → shape 0-28 and mirroring | read |
+| 0x5B6BA0 `terrain_painter_corner_arm_same`, 0x5B6E00 `terrain_painter_corner_far_differs` | 0x5B5A70 | the refinements 2/8 → 6/12 and 5/11 → 7/13 | read |
+| 0x5B8060 `terrain_painter_bytes_fill`; 0x5B45E0, 0x5B6DF0, 0x5B6FC0 (`_destroy`) | 0x5B5A70; at exit | a byte fill; three empty exit functions of the static tables | read |
+
+**Resolving a pinched cell (0x5B5440).** For cell p of the painter's terrain, in this order:
+(1) *Pinched N-S* (N and S of other terrains): one of N, S is given to `set_cell` (0x5B5687):
+N if N is itself pinched (W-E or N-S against its own terrain, or, when its own terrain's set has
+byte +5 clear, its ring split); else S if S is; else N if x = 0 or x = width-1; else N if NW or
+NE is the painter's terrain; else S if SW or SE is; else N. (2) p re-tested *pinched W-E*: the
+same with W for N, E for S, y for x, and NW/SW, NE/SE for the diagonal pairs (0x5B58C7).
+(3) Only when the painter's terrain's set has byte +5 clear (water, rock) and p's ring is split:
+p's same-terrain flags (`ring_same`) are read once; the *gaps* (maximal runs of unflagged
+neighbours) are listed in ring order starting after the first flagged one, each with a cost of 2
+per orthogonal and 1 per diagonal. While more than one gap is left, the cheapest (strictly less
+wins, so the first listed on ties) has each of its on-map cells (`neighbours_on_map`) given to
+`set_cell` in ring order from its first cell (0x5B5A15) and is struck off; the costliest gap (the
+last listed on ties) stays. Nothing is recomputed between gaps. It never touches the sets:
+p leaves set 1 through `set_cell`'s re-test of the changed cells' neighbours (T1c1b); finish
+calls it again on the smallest cell until it has. Each call converts at least one cell (a gap's
+discounted diagonal comes with its two orthogonals), so the loop ends.
+
+**The last pass (0x5B5A70).** Runs once per finish or flush, over **the whole map**, not the
+painted area. First a byte per cell (new, unchecked; filled 0) counts its on-map 8-neighbours of
+another terrain (each differing pair counted once for both). Then every cell, rows top to bottom,
+each left to right:
+- *Classes* (0x5B68A0): for each neighbour, coordinates clamped to the map (off the map the edge
+  cell, possibly p itself), class 0 when its terrain is p's or p is sand; else, when both
+  terrains' sets have **byte +4** (dirt, grass … lava: the terrains that meet through dirt), 1 if p
+  is not dirt and 0 if it is; else 2. So sand never borders, dirt borders only sand, water and rock
+  (class 2), the other lands take dirt borders (1) from dirt and other lands and sand borders (2)
+  from sand, water and rock; water and rock border everything (2).
+- *Shape* (0x5B3E80): ten groups tried in order; within a group each mirroring in the order none,
+  N-S, W-E, both (`terrain_painter_mirror_words` 0x6A52B8; a role names the neighbour that
+  `terrain_painter_mirror_roles` 0x642C00 maps to it), the conditions in the order listed; the
+  first that holds returns the shape and that mirroring (word byte 0 = W-E swap → cell bit 12,
+  byte 1 = N-S swap → bit 13):
+
+| Group | Conditions → shape |
+|---|---|
+| 1 | E=1, S=1: NE=2 and SW=2 → 28, else SE=2 → 27 |
+| 2 | N=1, W=1, SE≠0 → 23 (SE=1), 25 (SE=2); N=2, W=2, SE≠0 → 24 (SE=2), 26 (SE=1) |
+| 3 | E=2, S=1 → 8 with both mirror bytes inverted if SW=2, else 21; E=1, S=2 → 8 inverted if NE=2, else 22 |
+| 4 | E=1, S=1: SW=2 → 17, NE=2 → 18 |
+| 5 | N=1, W=1 → 2; N=2, W=2 → 8 |
+| 6 | E=1, SW=2 → 17; S=1, NE=2 → 18; E=2, SW=1 → 21; S=2, NE=1 → 22; W=1, NE=1 → 2; N=1, SW=1 → 2; W=2, NE=2 → 8; N=2, SW=2 → 8 |
+| 7 | E=1, SE=2 → 19; S=1, SE=2 → 20 |
+| 8 | N=1 → 4; N=2 → 10; W=1 → 3; W=2 → 9 |
+| 9 | NW=1, SE=1 → 14; NW=1, SE=2 → 15; NW=2, SE=2 → 16 |
+| 10 | SE=1 → 5; SE=2 → 11 |
+| — | none: shape 0, no mirroring |
+
+- *Refinements:* 2 → 6 and 8 → 12 when either cell past the corner's arms (unmirrored SW and NE;
+  `terrain_painter_corner_arm_offsets` 0x6A5260), clamped, has p's terrain; 5 → 7 and 11 → 13 when
+  the cell two steps along x or two along y toward the bordering diagonal (unmirrored (x+2, y),
+  (x, y+2); 0x6A3D68), clamped, has another terrain.
+- *Picture,* from p's own terrain's set: shape ≠ 0 → slot 5 (0x5B60B6; draw kept: the current
+  picture kept when it has that shape, for rock that shape and variants (a, b) = the mirror bytes;
+  the first kind passes the mirroring on, rock clears it). Shape 0, bordered or not → slot 4 with
+  `terrain_painter_decor_weight` of p's terrain (0x5B60D4, 0x5B6231; kept when the current picture
+  has shape 0). The count only picks one of two paths with the same
+  effect: a port may run the shape rule on every cell.
+- *Write* through the map's slot 1 (0x5B6104, 0x5B6262) only when the picture or a mirror flag
+  changes. Terrains are never changed here.
+
+The shapes each set holds cover what its classes can produce (dirt: 8-13, 16, 24; land 2-28), with
+three gaps: water lacks 24, rock 16 and 24 (rock's 9 has variants (0,0), (1,0) and 10 (0,0), (0,1),
+exactly what group 8 gives). Those patterns need a pinched or ring-split water or rock cell.
+
+**The draws in order.** Finish/flush (T1c1a): while set 1 is not empty, `resolve_pinch` on its
+smallest (y, x): its `set_cell` calls in the order N-S, W-E, gaps (cheapest first, ring order
+inside), each one slot-4 draw with weight and -1, so always drawing: 2 `crt_rand` for dirt, sand
+and grass … lava (a non-empty flagged range), 1 for water and rock. Then the last pass, row-major
+over the whole map, per cell: slot 5 → 0 draws when the current picture already has the shape
+(rock: and the variants), else 1 (`% count` of that shape's range); slot 4 → 0 when the current
+picture has shape 0, else 2 (1 for water and rock). The weight reads the orthogonal neighbours'
+current pictures: W and N already redone in this pass, E and S not yet. A port must keep this
+order; nothing in it is ordered by address.
+
+**Floats, memory, limits.** No floats; nothing memory-dependent. The count array: one unchecked
+new per pass, filled 0. The three static tables: constants built on first use. The gap records
+(at most 4) fit their stack array. No iteration limit: finish's loop ends as argued above.
+
+**Quirk candidates (as read, unclassified).**
+- Each finish or flush re-fits the whole map's pictures, far from the painted area too.
+- A ring gap can hold a diagonal of the painter's own terrain (discounted by `ring_same`): it goes
+  to `set_cell` and is redrawn without changing.
+- Group 3 gives sand-corner shape 8 with the mirroring inverted where one side is a dirt border.
+- A shape missing from a set (water 24; rock 16, 24) would make slot 5 divide by a zero count.
+
+**Not read.** The slots' internals (T1c1a); `set_cell`, the pinch, ring and weight functions
+(T1c1b); 0x5B76F0 `terrain_painter_destroy` (inferred: finish's loop and last pass, then the
+frees) past its loop, reached only through 0x5B76D0 from `terrain_painter_init`'s unwind funclet;
+the C runtime's exit registration; whether a caller can leave a pinched water or rock cell, or a
+picture outside its terrain's table, at a last pass.
+
+#### 2.7.4 The road and river painter (T1c1a)
+
+Path read: the three entries from `rmg_road_trace`, `rmg_river_to_source` and
+`rmg_river_to_mouth` (`road_painter_init` 0x55F3B0 or `river_painter_init` 0x55EE50, then
+`road_river_stroke_to` 0x4FA2B0 per step, the base destructor at a run's end) and all they reach,
+with both painters' vtables and both picture sets. 31 functions named (all read), 1 draw site,
+8 tables and globals.
+
+| Function | Called from | What it does | Conf. |
+|---|---|---|---|
+| 0x55F3B0 `road_painter_init`, 0x55EE50 `river_painter_init`; 0x55F460, 0x55EDA0 (base destroy); 0x55F430, 0x55EED0 (delete) | steps 14, 15 | a painter on a road or river view (vtables 0x64120C, 0x641190) | read |
+| 0x55F320, 0x55EDB0 (the picture set), 0x55EDC0 `road_river_painter_set_cell`, 0x55F330 `_set_type`, 0x55EE00 `_blocked`, 0x55F350 `_get_cell`, 0x55F390, 0x55EE30 (the type) | slots 0-5 | the view's slots forwarded; slot 3 is water or rock land | read |
+| 0x4FA280 `road_river_stroke_start`, 0x4FA2B0 `road_river_stroke_to`, 0x4FA3C0 `road_river_stroke_visit` | the painters' init; the three walks | the stroke (below) | read |
+| 0x4FA080 `road_river_rect_clear`, 0x4F9F00 `road_river_picture_draw`, 0x4F9CB0 `road_river_shape_choose` | the visit | another type cleared; a cell's picture; its shape | read |
+| 0x4F9BE0 `road_river_picture_set_init` (from 0x55F2F0, 0x55ED70) | the C runtime's initializer table | `road_picture_set` 0x69E650, `river_picture_set` 0x69E5D0 | read |
+| 0x5BC910 `neighbours_on_map`, 0x5BC890 `neighbour_offsets_init`; 0x4FA050, 0x4FA520, 0x4FA540 | shared with the terrain painter; helpers | which of the 8 neighbours lie on the map; `neighbour_offsets` 0x6A80A8 | read |
+
+**The neighbours.** `neighbour_offsets` 0x6A80A8 orders the 8 neighbours clockwise from north:
+N, NE, E, SE, S, SW, W, NW; both painters use that order. `neighbours_on_map` clears the row above
+on the first row (else the row below on the last) and the column left on the first column (else
+the column right on the last).
+
+**The stroke.** A painter is made at a point with a type (road 1-3, river 1-4): it visits that
+point. `road_river_stroke_to(t)` walks a line **from t back toward the current point**, one cell
+per step of the longer axis (x on a tie), the shorter axis by an error sum, a step of the shorter
+axis visiting its corner cell too (a staircase, never a diagonal move); the current point is
+visited again only when the error sum reaches the longer length at the end; t becomes the
+current point. The generator's walks pass one-cell steps (`rmg_road_trace` an orthogonal one, a
+new painter after each diagonal step or level change, §2.5; the river walks' calls not traced
+step by step), so each step visits its target alone. **A visit** (`road_river_stroke_visit`): nothing when the cell already has the type or its
+land is water or rock; a cell of another type is cleared first (`road_river_rect_clear`: type 0,
+picture 0, no flips; then the cells around it of a non-zero type redrawn: the column left from
+the row above to the row below, the column right the same but without its last row's cell when
+the cell lies on the second-last row, the row above, the row below); the type set, **the cell
+drawn**, then **each of its 8 neighbours on the map that holds the type drawn again**, in the
+neighbours' order.
+
+**A cell's picture** (`road_river_picture_draw`): the same-type flags of its 8 neighbours (on the
+map), the shape and two mirror flags by `road_river_shape_choose`, then: when the cell's stored
+picture already has that shape (by the set's table) and the same flags, nothing; else `rand() %
+count + first` of the shape's range, written with the flags. A new cell holds picture 0 (shape 4
+in both sets) without flags, so a new cell whose shape is an unmirrored 4 is not drawn. **The
+shape** (N, E, S, W the orthogonal flags): all four → 8; N and S → 6 with E, 6 mirrored
+left-right with W, else 2; E and W → 7 with S, 7 mirrored top-bottom with N, else 3; else the
+first corner of E+S, E+N, W+S, W+N (`road_river_corner_flips` 0x63FF1C, the neighbours mirrored
+by `road_river_mirror_maps` 0x63FE9C) → 5 when the set has shape-5 pictures and the mirrored NE
+or SW neighbour holds the type (a diagonal run), else 4, with the corner's flags; else, when the
+set has shape-0 pictures, 1 for a lone E or W neighbour (mirrored left-right when W), 0 otherwise
+(mirrored top-bottom unless the neighbour is S); without them 3 for E or W, else 2.
+
+**The picture sets** (`road_river_picture_set_init`: the count, the shape per picture, nine
+(first, count) ranges by shape, contiguous): roads 17 pictures (`road_picture_shapes` 0x6411AC:
+two each for shapes 2, 3, 4, 6, 7, four for 5, one each for 0, 1, 8), rivers 13
+(`river_picture_shapes` 0x641140: four for 4, one for 8, two each for 2, 3, 6, 7; no 0, 1 or 5,
+so a river has no end pieces and no diagonal corners). Every shape the choice can give has a
+range in its set (no division by zero).
+
+**Draws, floats, memory, limits.** One draw site, 0x4FA00F, at most one draw per cell drawn: per
+visit the cell (unless its picture already fits) and each same-type neighbour whose picture no
+longer fits, plus a clearing's redraws. No floats, nothing memory-dependent, no limits; the views
+bound nothing (the walks stay on the map).
+
+**Checked against the oracle** (T1b2's harness; a script over the step dumps): every road cell
+of `s1-2p`, `s2-2p` and `m1-4p` after step 14 (67, 128 and 229 cells) and every river cell of
+`m1-4p` after step 15 (111) has the shape and mirror flags the choice gives (road picture +0x28
+bits 0-7, flags 19 and 20; river picture +0x24 bits 18-25, flags +0x28 bits 17 and 18), the roads
+still so after step 15; every town's entrance cell holds road (9 towns).
+
+**Quirk candidates (as read, unclassified):**
+
+- `road_river_rect_clear`'s right column stops one row short when the cleared cell lies on the
+  map's second-last row (its bound compares with height − 1, the left column's with height): that
+  corner neighbour keeps a stale picture.
+- A cell whose computed shape is an unmirrored 4 keeps picture 0 without a draw (picture 0 is the
+  first of shape 4's range): the stream and the picture depend on the stored value, not only on
+  the shape.
+
+**Not read:** the road and river views' slots beyond what the painters call (§2.5 read them).
+
+#### 2.7.5 The painters' draws in the stream; the oracle's check (T1c1)
+
+The rows §2.6 leaves out, in the order they draw inside their steps (the painters' sites only; the
+steps' own sites stay §2.6's):
+
+| Step | Painter draws in order | Per |
+|---|---|---|
+| 3 | two levels: level 1 painted rock, one rectangle (0x5B3AB6 per cell), its finish (nothing to draw); level 0 painted water (0x5B38D3 per cell), its finish; then per zone not of water, in zone order, a painter of its terrain: its cells with bit 28, row by row over the zone's box, a one-cell rectangle each (0x5B38B9, 0x5B38D3), then its finish: the pinched cells (`set_cell`'s draws, §2.7.3) and the last pass over the whole map (0x5B3912 or 0x5B3B2D per bordered cell whose shape changed, slot 4's draws per plain cell whose current picture is not plain) | cell; painter |
+| 6 | the islets (`rmg_islet_draw`) and sealed shores (`rmg_water_shores_seal`): their rectangles' cells row-major, then finish or flush as in step 3 | islet, shore |
+| 11 | `rmg_underground_rock_paint`'s rectangles, flushes and finish, as in step 3 | painter |
+| 14 | per road cell visited: 0x4FA00F for the cell unless its picture fits, then for each same-type neighbour whose picture no longer fits (N, NE, …, NW) | cell visited |
+| 15 | as step 14 with the river set, interleaved with the floods' draws (§2.5: each course painted when its flood ends) | cell visited |
+
+A slot-4 call draws twice on land (the flag roll, then the picture), once on water and rock; a
+slot-5 call once; a call whose current picture already fits draws nothing. Every order is a
+coordinate order (the sets row-major, the passes row-major, the neighbours clockwise from north):
+nothing depends on addresses, so the stream follows from the map alone.
+
+**Checked against the phase oracle** (`s1-2p`, `s2-2p`, `m1-4p` run again with `--phases`: the
+digests as `kept.txt` and `phases.txt` keep them):
+
+- *The sites:* steps 3, 6 and 11 draw only at the five picture sites and steps 14 and 15 only at
+  0x4FA00F besides §2.6's. Step 3 of `s2-2p` begins with 1 296 draws at 0x5B3AB6 (the rock level),
+  then 1 296 at 0x5B38D3 (the water level), then alternating 0x5B38B9, 0x5B38D3 (the zones' cells);
+  in all three cases 0x5B38D3 counts exactly one draw per water cell more than 0x5B38B9 (1 296 + 1 391,
+  1 296 + 2 780, 5 184 + 5 395): every land picture rolls its flag, no water picture does.
+- *The pictures:* a script over the step dumps applied §2.7.3's transition rule and §2.7.4's shape
+  rule to every cell: after steps 3, 6, 11 and 15 every cell's terrain picture has the shape and
+  mirror flags the rule gives (rock: its variant bytes; 1 296, 2 × 1 296 and 5 184 cells a level),
+  every road cell after step 14 (67, 128, 229) and every river cell after step 15 (111 in `m1-4p`)
+  the shape and flags of its neighbours. The draw counts per cell and the stream's order beyond the
+  sites are increment 3's comparison (the port against the log).
