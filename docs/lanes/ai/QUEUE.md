@@ -73,6 +73,16 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 
 **From the town lane** (E09 T43, `town/e09-t43`, docs only; **planned, nothing to do now**):
 
+- 2026-11-24 (E09 T51, `town/e09-t51`, docs only; **for E31's planning, nothing to do now**):
+  E09's services are now two increments (`TWN-Q34`, E09 decision 197): **6, the town's trades**
+  (the Marketplace's screens with the Artifact Merchants and the Freelancer's Guild, the
+  Blacksmith, the town's Shipyard, the Magic University, the Skeleton Transformer) and **7, the
+  buildings for heroes and the map** (the buildings a hero visits once, the Stables, the
+  Treasury, the Mystic Pond, the Lighthouse, the Necromancy Amplifier, the Cover of Darkness, the
+  Lookout Tower); travel and the Grail are **8**. E31's "E09's increments 6 and 7" (its
+  decision 6) now reads 6 to 8. Increment 5 (the mage guild) closed with its env entries
+  `TOWN_OPEN` and `SPELL_BOOK` as built.
+
 - 2026-11-22 (E09 T49a2, `town/e09-t49a2`, `cross-lane` in your paths with the user's consent,
   E09 decision 193; **adventure action encoding v18 taken, for your review**): `TOWN_OPEN` = 103,
   appended after E08 T135a's entries rather than beside the taverns' (so that no entry moves;
