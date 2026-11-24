@@ -21,6 +21,27 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-24 (the map-client lane, E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your
+  planning: the shell's own crate, to do once E24 M5 T2 gives you the API**): E24 M5 (hot seat on
+  the adventure map) is refined (`docs/epics/E24-map-client.md`, M5). The user's decisions that
+  touch you: (1) **the shell on top** (the user: the shell calls the map unless architecture
+  strongly opposes it; least effort is no such reason). Cargo forbids the cycle (the shell in
+  `h3-battle-client`, which the map's battles need), so the map-client lane moves its window,
+  painter, sound and battle hosting into a new adapters library `h3-map-client` (M5 T2) with a
+  play entry (`begin::Game`'s setup and names in, the window and sound lent, play's end handed
+  back: Main Menu, Load, Restart, Quit), and **you move the shell out of `h3-battle-client` into
+  a crate of its own on top**, whose binary is the player's program and which calls
+  `h3-map-client`'s play; `h3-battle-client` goes back to the battle. The API is agreed with you at
+  M5 T2. (2) **One record reader** for both lanes (`h3_view::game_record` and `h3-map-view`'s
+  own), its place agreed at M5 T2 (the common foundation, or beside the server's writer with the
+  server lane). (3) **The engine and the server the only authority for a client** (MCL-Q54):
+  reading a game's facts from files at run time is phased out, facts first, the pictures later by
+  an ADR (a server's generated map reveals its contents only as discovered); for your planning
+  too. (4) The stubs: `CLT-STUB-13` lifted by M5 T3 (the game started from Begin), `CLT-STUB-11`
+  by T5 (the turn's duration on the session's clock), `CLT-STUB-4` and `CLT-STUB-5` by T6 (Auto
+  Combat in a live battle; one seat over both humans' sides: your part agreed then); E27 M5 is
+  refined once M5 T3 hosts play.
+
 - 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **the capture harness,
   common: a change in behaviour**): `h3drive.Game.start` now refuses a start whose run
   directory's free bytes modulo 4 GiB lie outside [5 MiB, 2 GiB) (the game's own disk check reads

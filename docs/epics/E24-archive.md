@@ -800,6 +800,15 @@ as in M1 to M3), then the engine's records as the input, through `h3-protocol` (
 ## M4's review list
 
 The M4 review list starts here (the autonomy contract's "queue for the milestone review").
+**Accepted** by the user at M5 T0, 2026-11-24: six items asked one by one, the other 39 in a
+summary, all as built (*provisional* where marked) with these answers: the record player (T4c)
+as built; the original's random picks taken in turn (T4c's music, T2a2's pickup sounds, T3b1's
+town name) stay so for recordings and records, play (M5) drawing them from the client's own
+seeded generator; speed 4's 20 ms kept (T1b2); the library's engine dependencies (T3a) kept,
+one record reader shared with the client lane at M5; the hero's pose at the attack and the
+panel's buttons after a retreat (T5b2) fixed in M5 (T1); the other players' turns (T6 F1) kept,
+the original's computer turn read once play shows one (after E31). The epic's M5 section
+carries them.
 
 - **M4 T1b2, speed 4's single draws on the window's clock** (*provisional*): a computer's steps
   at Computer Walk Speed 4 take no time on the map's clock (the original draws each once with no

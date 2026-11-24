@@ -182,3 +182,52 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   `terrain_picture_*`, `rock_picture_*`, `road_river_*`; `terrain_picture_draw_b` and `_kept_b`
   renamed `rock_picture_draw` and `_kept`; the check scripts stay out of the repo (increment 3's
   port compares with the log and dumps itself).
+
+## T1c2 — survey §3 and the quirk ledger (2026-11-24, increment 1)
+
+- **No cut** (the user, at the start: "no cut, use subagents efficiently"). The runner kept the
+  ledger with the user; three worker sub-agents wrote §3's parts as fragments the runner merged:
+  §3.1 (the tables, small) and §3.2 (the rules, large) at once, §3.3 (the objects, the reader and
+  the writer, with the oracle's corpus) after §3.1.
+- **Sandbox:** a new chat: the client lane's set staged from the PC (66 files with Complete's two
+  generated maps; SHA-256 as `installation.md` lists them); the PC's repo folder 12 commits behind
+  GitHub, so the clone is GitHub's. The standalone SoD installation (`D:\Heroes3\HoMM 3 SoD`) has
+  another `Heroes3.exe` and `H3bitmap.lod`, but its `rmg.txt`, `objects.txt` and `rand_trn.txt`
+  are Complete's byte for byte (extracted into `original-data/sod-install/`).
+- **§3.1** (the template format; AB's and SoD's tables): the row kinds and columns as the code
+  reads them (all nine connection columns: §1.4's "read in part" corrected), the space rule, what
+  a harvester keeps (row order, templates by index: two are named 6LM10); AB's file a byte prefix
+  of SoD's (SoD adds Golems Aplenty, Monk's Retreat, Rise of Phoenix; the 50 common templates
+  identical); counts (AB 50 templates, 616 zones, 833 connections; SoD 53, 646, 869); six table
+  candidates (8XM8's decimal ids, never-kept connections, a self-connection, Ownership 0 starts,
+  owned treasure zones, lesser).
+- **§3.2** (each phase's rules): 136 rules at one catalog entry each, provisional ids
+  `RMG-<AREA>-<NNN>` in 12 areas (SET 9, TPL 8, OBJ 11, ZON 14, TER 18, TWN 5, CON 22, OBS 7, MIN
+  6, TRS 12, RDR 14, WRT 10), their draws, the quirk candidates marked; the phases' dependencies,
+  the oracle's comparison points and the "not read" list for T1c3. Five stale points of §1 and §2
+  corrected (§1.6's template order, §1.8's site count and floats, §2.1's "Not read", §2.6's step 1
+  row).
+- **The ledger** `docs/rules/quirks-rmg.md` (the user, by AskUserQuestion): about 60 candidates in
+  five groups. Memory-dependent: the oracle model in `faithful`, zeroed in `fixed` (RMG-QUIRK-1,
+  -2); the cell bits and the cell-word fill not quirks. Faults: `exploit-fix`, a typed failure
+  (RMG-QUIRK-3 to -6). Map-content bugs: `fix-optional`, a flag each (RMG-QUIRK-7 to -20; the
+  crossed Border Guards' keys too, RMG-QUIRK-7). Cosmetic: one flag for all (RMG-QUIRK-21, the
+  user's own option). 8XM8's ids: a data quirk with a flag (RMG-QUIRK-22; the fix 6, 6, 7, 7, 8, 8
+  from the table's own pattern). The rest "considered, not quirks"; two open until read (a
+  self-connection, Ownership 0 starts).
+- **§3.3** (the objects placed, the reader and the writer): the classes the generator places (its
+  generators by settings group, the steps' objects, the writers' slots); Wine set up and the
+  corpus run again (20 of 21 as kept; `m2-4p` another map once, as kept run alone right after:
+  ORACLE.md); a census of the 21 maps (47 458 objects of 115 classes, 69 % obstacles; no Border
+  Guard or tent: no corpus template has a border-guard connection); the header, players and
+  bodies as written; the import's and the writer's coverage; the writer's seven gaps for
+  increment 6 (the adventure lane's inbox; the main town's two, the town lane's). TWN-SET-001's
+  refusal of `l2-2p-c4-islands`: the entrance is the format's convention (553 of 553 shipped
+  main towns), the cause Dragons' zone 32 (a neutral town as purple's main town), which the
+  original starts (observed: the town stays neutral, purple's hero on its entrance):
+  RMG-QUIRK-23, no flag (the user), and a question in the town lane's inbox.
+- **Checks:** `check-rules`, `check-exe-map` (every cited address mapped), the scoped verify.
+- **Agent decisions** (change freely): §3.2's area codes and provisional ids (the increments
+  assign the catalog's); the ledger groups the faults by kind (RMG-QUIRK-3 to -6) and the cosmetic
+  ones in one entry with the user's one flag; the scratch scripts (table parser, census) stay out
+  of the repo.

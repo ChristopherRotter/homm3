@@ -4,6 +4,27 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-24 (this lane, E24 M5 T0 done: the log's "M5 T0"): the task, verbatim.
+
+  ### E24 M5 T0 — M5 refined with the user
+
+  - **Scope:** M5 (the epic's "Later": hot seat, whole games played in-process: the handover screen
+    when the player who must act changes, the level-up dialog, the hero and town screens as play
+    needs them; then live play against the server) refined with the user: its scope, decisions,
+    exit and tasks. Its inputs: the inbox's notes for E24 M5 (the client lane's hand-over of E27's
+    Begin and Load: `begin::Game`, `save::Loaded`, CLT-Q160 (a), CLT-Q170 (a); the system options
+    and Save from play, E27 M5; the hot seat's clock; the town lane's builds, the adventure lane's
+    casts, Prison and Market of Time), M4's leftovers for M5 (`MCL-STUB-3`, a defended battle; the
+    screens a record's commands pass over, design §5.17), and M4's open questions (MCL-Q29 to
+    MCL-Q56, none blocking). First read the user's notes of M4's hand test
+    (`clients/out/win/map-m4-notes.txt` on the user's machine, beside `map-m4.cmd`): a finding goes
+    into a question or an M5 task.
+  - **Acceptance:** M5's tasks queued; the epic's M5 section written.
+  - **Depends on:** M4 T6 (done). **Status:** the user's checkpoint. First, at its start: M4's
+    review list's acceptance (the user reads it first: the archive's "M4's review list" and its
+    T6 additions), then MCL-Q50 to MCL-Q56 one by one (the user, 2026-11-24), then the hand test's
+    notes; then M5's refinement.
+
 - 2026-11-23 (this lane, E24 M4 closed at T6): the queue's M4 history and its last task, T6
   (done whole, the user declining a cut: the log's "M4 T6"), verbatim.
 

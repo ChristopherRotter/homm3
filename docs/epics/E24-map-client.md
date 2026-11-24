@@ -5,9 +5,9 @@ reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2
 user); **M2 closed** (2026-10-28, T6b2c: the user's hand test, the review list accepted at
 T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); **M3 closed** (2026-10-31, T7c2: the
 review list accepted at T7c1); **M4 refined** (2026-10-31, M4 T0, with the user); **M4 closed** (2026-11-23,
-T6: six reviewers, their findings fixed or asked; the review list read by the user first, its
-acceptance at M5 T0); next M5 T0, M5
-refined with the user (`docs/lanes/map-client/QUEUE.md`).
+T6: six reviewers, their findings fixed or asked; the review list accepted at M5 T0); **M5
+refined** (2026-11-24, M5 T0, with the user: the milestones split, M5 the hot seat on the
+adventure map, M6 to M8 sketched); next M5 T1 (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -122,13 +122,93 @@ in the engine lanes' inboxes, never a rule copied into the client; the battles h
 map's window through `h3-battle-client` (the binary's dependency), the host drawing the
 switch's fades. The 56 situations and every sequence and scripted game are as recorded
 (`drawn`); the golden replays' records play to their end headless, and in the window with
-their battles.
+their battles. Its review list was accepted at M5 T0 (the archive's end).
+
+### M5 — hot seat on the adventure map (refined 2026-11-24, M5 T0, with the user)
+
+A whole game played on one machine by its human players in turn, started from the shell's
+Begin: the engine's game hosted in-process by `h3-protocol`'s game session, each human seeing
+its own view, every command the engine's to judge; the hand-over between humans, the turn's
+clock and the battles as the original's.
+
+- **Scope:** the player's program (the shell, then play, then the battles, in one window); the
+  session in-process (a seat per human, the setup and the names by colour from `begin::Game`,
+  the turn's duration on the session's clock, each human's view folded from its own frames and
+  the map drawn from the current human's, each seat's record kept); live input through the
+  engine (its reach and paths for the cursor, a click's path and the direction keys, lifting
+  M2's input without the engine; End Turn and Move Reminder; every box M4 shows answered by the
+  player as the command); the hand-over (the covered view and GENRLTXT 14, design §5.1) and the
+  clock's boxes (GENRLTXT 202, 627 to 630); the battles in play (attacking, defending:
+  `MCL-STUB-3`; two humans: `CLT-STUB-5`; Auto Combat: `CLT-STUB-4`); M4's carry-overs.
+  **Not in M5:** the hero's screens and the visit windows (M6), the town screen (M7), live play
+  against the server (M8); a computer player's turn (E31; its colours' turns end at once); the
+  game's end (E10's increment 1); Load, until the engine changes a loaded game's humans (asked of
+  the adventure lane by the client lane, 2026-11-21); E27 M5's system menu in play, Options and
+  Save from play (the client lane's, refined once M5 hosts play).
+- **Decisions (the user, M5 T0, 2026-11-24):**
+  - **The milestones split:** M5 the hot seat on the adventure map, M6 the hero's screens and
+    the visit windows, M7 the town screen, M8 live play against the server (the one M5 sketched
+    before was all four).
+  - **The engine and the server the only authority for a client** (the user's answer to
+    MCL-Q54): reading a game's facts from files at run time is phased out. **Facts first:** in
+    play every fact comes from the engine's view and events: no rules table of the client's, no
+    map text read from the file; a fact the view lacks is an `MCL-Q<n>` and a note in the engine
+    lanes' inboxes, built plainly meanwhile. **The pictures later:** the map file stays the
+    source of the map's pictures (its hash checked, ADR-0020 point 8) until an ADR moves them to
+    the server too, because a map the server generates should reveal its contents only as the
+    player discovers them ("Later"). Recordings compared against the original keep their files
+    (test tooling).
+  - **The shell on top** (the user: the shell calls the map unless architecture strongly opposes
+    it; least effort is no such reason). Cargo forbids package cycles and `h3-map-view`'s library
+    is pure, so: the map's window, painter, sound and battle hosting move from `h3-map-view`'s
+    binary into a new adapters library, **`h3-map-client`** (this lane's, as `h3-battle-client`
+    was made from `h3-view`'s binary); the client lane moves the shell out of `h3-battle-client`
+    into a crate of its own on top, whose binary is the player's program; the shell calls
+    `h3-map-client`'s play, which hosts the battles through `h3-battle-client`, the battle again.
+    Rejected: the map viewer hosting the shell; the shell calling play through a trait of its
+    own with the program's `main` in the map's package (the shell's crate below the map's).
+  - **A computer colour's turn ends at once** until E31's computer player gives it turns
+    (`MCL-STUB-5` planned, lifted by E31's increment 2); any map plays, its computers idle.
+  - **The exit measured twice:** the recorded parts (the hand-over, the clock's boxes, the
+    battles' switches) as recorded under Wine; a whole two-human game on a shipped map from
+    Begin to a day limit, headless by script and in the window by hand, every command the
+    engine's.
+  - **From M4's review list** (accepted at T0, six items asked one by one): the original's random
+    picks (a computer turn's music, the pickup sounds, an unnamed town's name) stay in turn for
+    recordings and records, and play draws them from the client's own seeded generator (a
+    town's name the engine's where it names one); one record reader shared with the client lane
+    (the place agreed with it at T2); the hero's pose at the attack and the panel's buttons after
+    a retreat fixed (T1); the original's display of a computer's turn read where play shows one
+    (after E31: "Later").
+  - **From M4's questions** (MCL-Q50 to Q56, answered one by one at T0): MCL-Q51 recorded, then
+    read for the draw (T1); MCL-Q52 read, (b) meanwhile (T1); MCL-Q53, Q54 and Q55 asked of the
+    engine lanes (their inboxes), the built forms meanwhile; MCL-Q50 and Q56 kept as built.
+- **Recorded and compared as M4:** the hand-over and the clock's boxes recorded under Wine in
+  hot seat (the harness's `hot_seat`) and compared frame by frame; play's frames where a scripted
+  game gives both the same commands with no random draw between them.
+- **Tasks** (the queue has each in full): T0, M5 refined (**done** 2026-11-24: the log's "M5
+  T0"); T1, M4's hand test and carry-overs; T2, the layering (no behaviour changed); T3, the
+  session in-process; T4, live input through the engine; T5, the hand-over and the clock; T6, the
+  battles in play; T7, a whole game; T8, M5's closure. A task that grows is cut at a seam agreed
+  with the user.
+- **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
+  hot-seat game on a shipped map played from the shell's Begin to a day limit, headless by
+  script and in the window by hand, every command the engine's; no rules table or map text read
+  in play; M5's review list accepted; a hand test on the user's machine.
 
 ### Later (refined when they come)
 
-- **M5, hot seat:** whole games played in-process: the handover screen when the player who must
-  act changes, the level-up dialog (the inbox), the hero and town screens as play needs them;
-  then live play against the server.
+- **M6, the hero's screens:** the hero screen, the meeting, the spell book with the adventure
+  casts (E08 increment 15), the army dialogs, the visit windows (a hire, a Shipyard, a Market,
+  an Altar with its level-ups drawn over it, a Hill Fort); the inbox's notes for them.
+- **M7, the town screen:** the town lane's builds (`TownCommand::Build`, `TownOffer`), the
+  recruitment, the tavern, the Mage Guild and its book, as play needs them.
+- **M8, live play against the server.**
+- **The pictures from the server** (M5 T0's decision): an ADR amending ADR-0020 point 8, then the
+  cross-lane work (the import keeping the map's pictures, the wire revealing them as discovered);
+  placed with the user after M5.
+- **A computer's turn as the original shows it** (M4's review item 6, accepted at M5 T0):
+  `ai_hero_turn` and its callers read once E31 gives the computers turns.
 - A spectator's view of a game (M4 T0); a loaded saved game's draw lists, if a comparison needs
   one (M1 T6b); shipped maps with towns once E09 builds them.
 - HD layouts, graphics options beyond `faithful`, video.
@@ -157,6 +237,10 @@ their battles.
   frame by frame (scripted commands on maps without random objects between them); a computer
   player's moves cannot be scripted in the original, so its turn is compared by what the viewer
   sees of it, not by its choices.
+- **M5 rests on other lanes:** the shell's own crate (the client lane), a loaded game's humans
+  (the adventure lane), the facts the view lacks (the adventure and server lanes); T2 builds
+  `h3-map-client` first so the shell's move has a target, and each gap is built plainly
+  meanwhile.
 - **The writer belongs to another lane:** each addition is a `cross-lane` pull request; a
   situation waits for its merge.
 - **Wine is not Windows** (E17's risk): a difference only Wine could cause needs a check on
@@ -170,4 +254,5 @@ their battles.
 
 M1's review lists (three reviewers, T6b; the list accepted), M2's (accepted at T6b2a), M3's
 (six reviewers at T7, the list accepted at T7c1) and M4's (six reviewers at T6, the list
-presented at T6): `E24-archive.md`. Later milestones add theirs here.
+accepted at M5 T0 with the user's six answers): `E24-archive.md`. Later milestones add theirs
+here.

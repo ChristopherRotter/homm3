@@ -32,6 +32,16 @@ into rounds and the exit criteria, accepted at the checkpoint before anything is
 
 ## Inbox
 
+- 2026-11-24 (the rmg lane, E14 T1c2, `rmg/e14-t1c2`; **a question for you**: survey
+  `docs/rules/surveys/E14-generator.md` §3.3.4): the generator writes each colour's main town as
+  its zone's first town's entrance, as the editor does; in `l2-2p-c4-islands` (template Dragons,
+  zone 32 asks for no colour town) purple's main town is a **neutral** town, which
+  `GameSetup::validate` refuses (TWN-SET-001's owner half, the cut of 2026-11-04); the user kept it
+  as the original in every profile (RMG-QUIRK-23, no flag). The original
+  accepts it (observed: the town stays neutral, purple's hero stands on its entrance as its
+  visitor, purple owns no town; `main_town_heroes` 0x4CA040 has no owner test). Whether to widen
+  the check to that is yours (with the user); the writer also lacks (a) the main town's type byte
+  0xFF (it writes the faction) and (b) a main town of a town not of its colour (`main_towns`).
 - 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`, `cross-lane` with the user's
   consent, E08 decisions 412, 413; **in your paths, for your review**): the Prison. (1) The pool:
   `GameSetup::prisoners` are `GamePrisonerSetup`s (the body read as a placed hero's): `HeroPool::new`

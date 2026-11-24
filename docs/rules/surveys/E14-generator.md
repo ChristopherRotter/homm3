@@ -2,8 +2,9 @@
 
 Date: 2026-11-23. Scope: E14 increment 1 (`docs/epics/E14-original-map-generator.md`). §1 the
 frame (T1a1); §2 every function placed, the draws and floats per phase (T1a2), §2.7 the painters
-outside the range (T1c1); §3 the template format, each phase's rules and the quirk candidates
-(T1c2). Input, not rules (`README.md`): a fact
+outside the range (T1c1); §3 the template format and the two tables, each phase's rules, the
+objects against the engine's reader and writer (T1c2); the candidates' classification is the
+ledger `docs/rules/quirks-rmg.md` (T1c2). Input, not rules (`README.md`): a fact
 becomes binding when a task writes it into the catalog with its sources and tests.
 
 **Sources:** the code reading of GOG Complete's `Heroes3.exe` (SHA-256 `aac39e8c…`,
@@ -81,7 +82,7 @@ then from the pairs at 0x640718 (30 types: 32, 48, 64 or 200) and 0x640808 (24 t
 |---|---|---|
 | `objects.txt` | `rmg_objects_read` 0x536200 (`template_file_read` 0x514D80) | the templates at +0x24, 0x4C bytes each (the stride of the division here; `template_file_read`'s entry says 0x44, from its other caller); a 0xE8-byte prototype for each with type 0..231 the version allows (RoE below 165, AB below 222, before SoD types 43 to 45 only subtypes 0 to 2), in the vector of its type's object settings +8; the monsters' vector (54) sorted by subtype with an exchange sort that swaps only when greater |
 | `rand_trn.txt` | `rmg_rand_trn_read` 0x536560 | the obstacles, each prototype's row (§2.1) |
-| `rmg.txt` | `rmg_templates_read` 0x537FF0 | from row 3, a template per row of two or more columns (name, min and max size) up to the next; kept when the range holds the map's size (width × height × levels / 1296; islands: halved, at least 1) and its zones fit the players, computers and version; connections from column 76 (read in part) |
+| `rmg.txt` | `rmg_templates_read` 0x537FF0 | from row 3, a template per row of two or more columns (name, min and max size) up to the next; kept when the range holds the map's size (width × height × levels / 1296; islands: halved, at least 1) and its zones fit the players, computers and version; connections from column 76 (all nine columns read: §2.1, §3.1) |
 | — | `rmg_object_generators_create` 0x538B10 | the object generators, built in code (0x14- to 0x20-byte records into +0x10F0), no file (§2.1) |
 
 Which archive's `rmg.txt` the game loads (both `H3bitmap.lod` and `H3ab_bmp.lod` hold one) is
@@ -138,7 +139,7 @@ frame's functions does).
 3. Every cell (`rmg_write_cell` 0x532890), level by level, row by row.
 4. The templates: those prototypes in use numbered from 2, their count + 2, then the first
    prototypes of types 71 (random monster) and 124 (hole) as templates 0 and 1 (as in the
-   generated maps: `AVWmrnd0`, `AVLholg0`), then each in use in type order (`rmg_write_template`
+   generated maps: `AVWmrnd0`, `AVLholg0`), then each in use by its type's object settings group, not sorted by type (§2.5; `rmg_write_template`
    0x54AE30).
 5. The objects' count; first the objects whose type's object settings +0xC is set, then the
    others, each through its own vtable with the version.
@@ -158,9 +159,10 @@ with it as 9 dwords; the code indexes position + 1); the object generators go to
 ### 1.8 Draws and floats so far; what T1a1 did not read
 
 - **Draws, in stream order:** the dialog's Random choices (§1.1, the game's state); `srand(time)`;
-  water's Random; the template; the 15 steps (44 sites in their closures, §1.5); the teams in the
+  water's Random; the template; the 15 steps (47 sites in their closures, §1.5 and §2.2 to §2.5; T1a1 counted 44); the teams in the
   header. One generator, one thread, one stream.
-- **Floats:** x87 in steps 1, 2, 5, 8, 10 (`crt_sqrt`, `crt_ftol`); T1a2 lists each site.
+- **Floats:** x87 in steps 1, 2, 5, 8, 10 (`crt_sqrt`, `crt_ftol`), and in steps 6 and 7 through
+  `vector_length_int` outside the range (§2.6); T1a2 lists each site.
 - **Not read in T1a1, read in T1a2:** every function of the range now has an entry (§2.1 to §2.5);
   §2.6 gives the stream's draws in order, the floats and the limits.
 - **For T1b:** a generated map names its template and seed in its description, and the
@@ -337,7 +339,7 @@ progress window's vtable (T1a1) and no game object helper: the tables are read i
 (`object_settings_pointer`, `creature_table_pointer` 0x6747B0, `spell_table_pointer` 0x687F58,
 `dwelling_creatures` 0x63D570).
 
-**Quirk candidates (as read, unclassified):**
+**Quirk candidates (as read; classified in `docs/rules/quirks-rmg.md`, T1c2):**
 
 - `rmg_template_zones_read` clears for RoE the monster town byte +0x9D (column 65, Fortress)
   where the town types clear the ninth (Conflux): an off-by-one if the intent was Forge's +0x9E.
@@ -353,9 +355,10 @@ progress window's vtable (T1a1) and no game object helper: the tables are read i
 
 **Not read:** the growth code of the four `inferred` library inserts; how `template_file_read`
 fills the masks +0x4 and +0xC (H3API's passable and enterable; the flags they set fit H3API's bit
-names only loosely); who calls the map vtable's slots 1-6 and the generators' constant test; who
-sets +0xF58, +0xF5C and +0x10B4 and reads +0x1100, a prototype's +4 and +0x10, the obstacles
-and the distances; the 13 object vtables' methods (§2.5).
+names only loosely); who calls the map vtable's slots 1-6; who reads +0x1100, a prototype's +4
+and +0x10 and the distances; the 13 object vtables' methods (§2.5). Answered later (§2.4): the
+constant test is applied by the replacements, `rand_trn.txt`'s rows by step 13, +0xF58, +0xF5C
+and +0x10B4 set by steps 6 and 10.
 
 **For the next parts:** objects are placed only through the generator's vtable slot 1 (a call
 through `[vtable + 4]` with the object and x, y, z); a generator's value of -1 refuses it for the
@@ -524,7 +527,7 @@ erases, sizes and copies, the 0x1C-byte connection insert, the bitset's range er
 not read). UI: the progress window's +8 twice in step 3 (12500, then 15800 / zones per
 zone). No file and no object table besides `object_settings_pointer`.
 
-**Quirk candidates (as read, unclassified):**
+**Quirk candidates (as read; classified in `docs/rules/quirks-rmg.md`, T1c2):**
 
 - `rmg_terrain_towns`' count is always 4: a zone with no town type gets -1 or Castle often
   (sand, snow, lava half Castle; water three quarters), Conflux on rough also in RoE.
@@ -748,7 +751,7 @@ destructor and copy, an 8-byte point vector's insert, a 0x24-byte vector's inser
 not read). UI: the progress window's +8 only. No file. Tables read in place:
 `object_settings_pointer` 0x660428 (the flood), `creature_table_pointer` 0x6747B0 (the monster).
 
-**Quirk candidates (as read, unclassified):**
+**Quirk candidates (as read; classified in `docs/rules/quirks-rmg.md`, T1c2):**
 
 - Border guards are tried on both sides: at P with the tent in the other zone, then at Q with the
   tent in this one (gates likewise); when both succeed the passage holds two guards in a row, the key
@@ -1002,7 +1005,7 @@ range error; not read). UI: the progress window's +8 only. No file. Tables read 
 `object_settings_pointer` 0x660428 (bytes +0, +1, +2), `artifact_setup_pointer` 0x660B68 (+0xC
 class, +0x1C disabled), `rmg_neighbours` 0x69CDC0, the guard tables (§2.3).
 
-**Quirk candidates (as read, unclassified):**
+**Quirk candidates (as read; classified in `docs/rules/quirks-rmg.md`, T1c2):**
 
 - `rmg_mine_site_place` and `rmg_object_choose`'s density filter keep a running best and test each
   candidate against it, so the result depends on the scan order: a position with more obstacles
@@ -1187,7 +1190,7 @@ destructor); the C++ library 16 (strings, vectors, bitsets of 10, 48, 128, 129,
 144 and 156 bits and their range errors, exception objects). I/O: the stream's write (+8) only, no
 file opened here; UI: the progress window's +8.
 
-**Quirk candidates (as read, unclassified):**
+**Quirk candidates (as read; classified in `docs/rules/quirks-rmg.md`, T1c2):**
 
 - The description's town choice prints the town of the colour's index, not the choice; "humans"
   counts the computers too.
@@ -1220,7 +1223,7 @@ One stream (`crt_rand`, Begin's thread), in execution order; the sites from §1.
 | dialog | 0x586168, 0x586183, 0x5861B1, 0x5861E4, 0x58621D | Random choice, on the game's earlier state |
 | setup | `srand(time())` 0x536148; water 0x537C89 | once; water Random |
 | template | 0x549975 | once |
-| step 1 | per template zone 0x532A5B (its town types), 0x53BB5F; two more passes of 0x53BB5F; per zone 0x532B00 or none, 0x53BFC0 | zone, pass |
+| step 1 | per template zone 0x532A5B (its town types), 0x53BB5F; two more passes of 0x53BB5F; per zone 0x532B00 or none, 0x53BFC0 when +4 is -1 | zone, pass |
 | step 2 | 0x532A5B per temporary and water zone (by uninitialised bytes); 0x53C0F2 | level; segment split |
 | step 3 | 0x53CE1D | split (islands) |
 | steps 4, 5 | 0x545492; 0x544DEC or 0x544E22, 0x545174 | town |
@@ -1337,7 +1340,7 @@ picture) in slot 4, 0x5B3912 in slot 5, 0x5B3AB6 and 0x5B3B2D in rock's slots 4 
 them and how often: §2.7.2, §2.7.3. No floats; the cell words' fill (above); allocation failures
 throw ('Allocation failure.'), the sets' nodes are unchecked (§2.7.2).
 
-**Quirk candidates (as read, unclassified):**
+**Quirk candidates (as read; classified in `docs/rules/quirks-rmg.md`, T1c2):**
 
 - The cell words' fill takes the map interface's address (above): harmless as far as read.
 
@@ -1428,7 +1431,7 @@ in finish, T1c1a); `_set_free_subtree` recurses to the tree's height. The rectan
 clamped: a rectangle past the map's width would wrap into the next row, past its height would
 read past the cache (the generator's callers pass rectangles inside the map, not checked here).
 
-**Quirk candidates (as read, unclassified).**
+**Quirk candidates (as read; classified in `docs/rules/quirks-rmg.md`, T1c2).**
 - `queue_neighbours` is an else-if per axis: when N is queued, S is not re-tested (likewise E
   after W), so a foreign S (E) neighbour that the new cell has just pinched may stay a 1-wide strip.
 - `set_cell` never erases its own cell from set 1: a cell already in set 1 passed to it stays
@@ -1541,7 +1544,7 @@ order; nothing in it is ordered by address.
 new per pass, filled 0. The three static tables: constants built on first use. The gap records
 (at most 4) fit their stack array. No iteration limit: finish's loop ends as argued above.
 
-**Quirk candidates (as read, unclassified).**
+**Quirk candidates (as read; classified in `docs/rules/quirks-rmg.md`, T1c2).**
 - Each finish or flush re-fits the whole map's pictures, far from the painted area too.
 - A ring gap can hold a diagonal of the painter's own terrain (discounted by `ring_same`): it goes
   to `set_cell` and is redrawn without changing.
@@ -1622,7 +1625,7 @@ of `s1-2p`, `s2-2p` and `m1-4p` after step 14 (67, 128 and 229 cells) and every 
 bits 0-7, flags 19 and 20; river picture +0x24 bits 18-25, flags +0x28 bits 17 and 18), the roads
 still so after step 15; every town's entrance cell holds road (9 towns).
 
-**Quirk candidates (as read, unclassified):**
+**Quirk candidates (as read; classified in `docs/rules/quirks-rmg.md`, T1c2):**
 
 - `road_river_rect_clear`'s right column stops one row short when the cleared cell lies on the
   map's second-last row (its bound compares with height − 1, the left column's with height): that
@@ -1665,3 +1668,558 @@ digests as `kept.txt` and `phases.txt` keep them):
   every road cell after step 14 (67, 128, 229) and every river cell after step 15 (111 in `m1-4p`)
   the shape and flags of its neighbours. The draw counts per cell and the stream's order beyond the
   sites are increment 3's comparison (the port against the log).
+
+## 3 The template format, each phase's rules, the objects and the writer (T1c2)
+
+Three parts written by worker sub-agents from §1, §2 and the tables (§3.1), the readings (§3.2)
+and the oracle's corpus with `h3_map` (§3.3); the quirk candidates of §1 to §3 are classified in the
+ledger `docs/rules/quirks-rmg.md` (RMG-QUIRK-1 to -23, the user, 2026-11-24), which also lists the
+candidates considered and not quirks, and the two still open.
+
+### 3.1 The template format; AB's and SoD's tables
+
+**Inputs.** AB's table (`H3ab_bmp.lod`, 124 341 bytes, SHA-256 `0de02827…`, 50 templates) and
+SoD's (`H3bitmap.lod`, 129 956 bytes, `feb881da…`, 53; the one the game reads, `ORACLE.md`; SoD's
+standalone install holds the same bytes); original data, never committed. The reader as §1.4 and
+§2.1 place it: `rmg_templates_read` 0x537FF0, `rmg_template_zones_read` 0x538480,
+`rmg_template_zone_find` 0x5330A0; records `rmg_template`, `rmg_zone`, `rmg_zone_connection`.
+HotA's template-format page (h3hota.com/en/template-format) was a pointer for Wide and Border
+Guard only.
+
+**The file.** Latin-1, CRLF rows, tab-separated cells. Four cells are quoted: template names that
+hold a line break, an LF after a space (Ready⏎or Not, South⏎of Hell, Worlds⏎at War,
+Meeting⏎in Muzgob). How the game's table loader treats the quotes is inferred
+(`text_table_columns` 0x5BBE70, not read for this file); the observation agrees: a parser of
+quoted cells predicts the template of all 21 observed cases, and a generated map's description
+prints the break (`ORACLE.md`). Rows 0-2 are headers (group labels
+and column names), not read. *Set* means not empty and not beginning with a space; numbers go
+through `c_atoi` 0x617F09 (an empty or space cell gives 0, "5.9" gives 5).
+
+**Row kinds** (from row 3; a row can be all three; the tests count cells):
+
+| Kind | Test | AB / SoD |
+|---|---|---|
+| a template's first row | 2 or more cells, column 0 set; the template runs to the next such row | 50 / 53, each also a zone and a connection row |
+| zone row | 76 or more cells, column 3 set | 616 / 646 |
+| connection row | 85 or more cells, column 76 set, 77 not empty (map.toml: both set; no row of the tables tells the two apart) | 833 / 869, of which 611 / 641 are also zone rows |
+| anything else | not read | 6 blank rows (in 2SM2f, 2SM2f(2)) |
+
+Every row has 85 cells (the first 16 rows 183, columns 85-182 empty), so the thresholds never
+bite on the originals; a port applies them for other tables.
+
+**Columns** (from 0; full map and fields in §2.1 and `structs.toml`). Everything in 0-84 is read
+on a row of its kind; nothing past 84; the headers not.
+
+| Columns | Meaning | Encoding in the tables |
+|---|---|---|
+| 0-2 | name, least and greatest size index (w × h × levels / 1296, islands halved, ≥ 1: reachable 1, 2, 4, 8, 9, 16, 18, 32) | names unique but one (below); sizes 1..32, never min > max |
+| 3 | zone id; connections find zones by it before the kept zones become 0, 1, … in row order | 1..n in every template, three not in row order |
+| 4-7 | human start, computer start, treasure, junction: the last set wins, none treasure | marks always `x`; no zone has two |
+| 8 | base size | 5..50 |
+| 9-12 | least and most players, least and most players + computers: else the zone is dropped | numbers |
+| 13 | Ownership: position = value − 1 | 0..8 |
+| 14-17, 18-21 | least towns, castles, town density, castle density: colour's, neutral | numbers |
+| 22; 23-31 | same type; Castle to Conflux (header: Elemental) | marks |
+| 32-38; 39-45 | least mines; mine density (wood, mercury, ore, sulfur, crystal, gems, gold) | 0..2; 0..4 |
+| 46; 47-54 | terrain matches town; dirt to lava (none set: dirt) | marks |
+| 55 | strength by first letter: n 0, w 2, s 4, else 3 | avg, average, strong, weak, none; never empty |
+| 56; 57; 58-66 | monsters match town; neutral; Castle to the ninth (header: Forge, a label; byte +0x9E) | marks |
+| 67-75 | three bands: low, high, density | 0..40 000 (AB), 60 000 (SoD) |
+| 76-84 | zone ids, value (guard), wide, border guard, the four positions: else the connection is dropped | values 0..45 000; wide 21, border guard 8 (Gauntlet, Ready⏎or Not, Worlds⏎at War), all of value 0 |
+
+All nine connection columns are read (§2.1, `rmg_zone_connection`; §1.4's "read in part" is
+T1a1's, before T1a2a read them); +0xA `created` is not from the file. The space rule decides
+cells: SoD has 57 single-space cells (AB the same rows), in Gauntlet's zone 1 and in Worlds at
+War, where zones 16 and 17 have column 6 `x` and column 7 a space: treasure, junctions if a space
+counted.
+
+**What a harvester must keep.** Template row order (the draw is `rand() %` the kept count over the
+kept in row order, §1.5); zone row order (indices come from it, not from the ids: 2SM2b, 2SM2b(2)
+and 2SM2c list ids 1, 2, 4, 5, 3, 6); connection row order (each is appended to both ends' vectors
+in row order, which step 6 walks, §2.3); a template by its index, not its name (two are named
+6LM10); a connection per row, not per pair (51 repeats of a pair in 9 templates are separate
+connections); names with their break.
+
+**AB's against SoD's.** AB's file is a byte prefix of SoD's: SoD adds 36 rows after the last
+template (7SB0c) and changes nothing before them. The 50 common templates are byte for byte the
+same, in the same order: no difference in sizes, zones, towns, mines, terrains, monsters, bands or
+connections. SoD's three:
+
+| Template | Sizes | Zones (starts / treasure / junction) | Positions (zones) | Connections, values | Bands' top |
+|---|---|---|---|---|---|
+| Golems Aplenty | 6-18 | 7 (4 / 3 / 0) | 1-4 players, exactly 4 in all | 8, 7000-10 000 (one never kept, below) | 60 000 |
+| Monk's Retreat | 9-32 | 9 (6 / 3 / 0) | 1-6, exactly 6 | 14, 6000-18 000 | 30 000 |
+| Rise of Phoenix | 9-18 | 14 (4 / 9 / 1) | 1-4, exactly 4 | 14, 9000-24 000 | 40 000 |
+
+None has a computer start, a wide or a border-guard connection. With AB's table the game would
+keep fewer templates for some setups and draw among another count (`ORACLE.md`: AB's table mispredicts
+8 of the 21 observed cases).
+
+**Quirk candidates (as read; in both tables unless said; classified in `docs/rules/quirks-rmg.md`, T1c2: 8XM8 RMG-QUIRK-22, the self-connection and Ownership 0 open, the others not quirks):**
+
+- **8XM8's decimal ids.** Six connection rows give their first zone as 5.9, 6.3, 6.7, 7.1, 7.5,
+  7.9 (a filled series); `c_atoi` makes them 5, 6, 6, 7, 7, 7. Human start 8 then has no
+  connection, 5 and 7 three, 6 two; starts 1-4 have two each.
+- **Connections never kept:** empty columns 81-84 read 0, below every player count. Newcomers 6
+  of 20 (each the reverse of a kept one); Golems Aplenty (SoD) 5-7, the only one between them.
+- **A self-connection:** both 6LM10s join zone 13 to itself (value 6000): appended to zone 13
+  twice; what step 6 makes of it is not read here.
+- **Start zones with Ownership 0** (position −1): 2SM2i(2)'s human starts 3 and 5, 2SM0k's
+  computer starts 3-8, none asking a colour town (some a neutral one); the colour table is
+  indexed position + 1 (§1.7): slot 0.
+- **Treasure zones with Ownership** and colour towns: Newcomers 3, 4, 6, 8-11, Meeting in Muzgob
+  7 and 9; which colour steps 4 and 5 give them is not read here.
+- Lesser: Newcomers 12-14 have no terrain and no match (dirt by the reader's default); Dragons'
+  computer start 32 asks no colour town (only neutral densities); South of Hell 8-10 and Worlds
+  at War 9-11, 17 set no monster town, match or neutral (strength none); 3SM3d's junctions 11-14 have every band 0.
+
+Nothing else odd: no zone without an id, no unknown mark, no id named by a connection but
+missing, every template kept by some size and setup.
+
+**For increment 2's harvest** (`packs/ab/rmg.toml`, `packs/sod/rmg.toml`). Keep, in row order:
+per template the name, least and greatest size; per zone the id, the type as resolved (0-3), base
+size, the four positions, Ownership, the eight town counts and densities, same type, the 9 town
+types, the 7 + 7 mine numbers, terrain match, the 8 terrains, strength as resolved (0, 2, 3, 4),
+monsters' match and neutral, the 9 monster towns, the 3 × 3 bands; per connection the two ids as
+`c_atoi` reads them, value, wide, border guard, the four positions. Drop: the header rows, columns
+85 on, blank rows, the mark text and strength words (only set-ness and the first letter count).
+Keep the rows as read (8XM8's ids with RMG-QUIRK-22's override for `fixed`, the never-kept
+connections, the self-connection). Sanity counts:
+
+| Table | Templates | Zones (0 / 1 / 2 / 3) | Connections (never kept) |
+|---|---|---|---|
+| AB | 50 | 616 (222 / 30 / 308 / 56) | 833 (6) |
+| SoD | 53 | 646 (236 / 30 / 323 / 57) | 869 (7) |
+
+### 3.2 Each phase's rules
+
+The rules a port must implement, phase by phase in the run's order, each the size of one catalog
+entry (one testable behaviour: inputs → outcome, order, draws), condensed from §2. The ids
+`RMG-<AREA>-<NNN>` are proposals (CTX `RMG` is not yet in the catalog's list,
+`docs/04-rules-and-sources.md` §3); the increments that write the entries assign them. Areas:
+SET choices, settings, seed; TPL files read, template, positions; OBJ the object generators and
+placing (shared by the steps); ZON steps 1–2; TER step 3, step 11 and the terrain painter; TWN steps
+4–5; CON steps 6 and 9; OBS steps 7, 12, 13; MIN step 8; TRS step 10; RDR steps 14–15 and the road
+and river painter; WRT the writer. A draw is `site %modulus`; *(QC: …)* marks a quirk candidate of
+§2 (classified in `docs/rules/quirks-rmg.md`, T1c2).
+
+#### 3.2.1 The setup
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-SET-001 | Players Random: h + rand % (9 − h), h the human slots; their teams Random: rand % players + 1 (0 or above the players: the players). From the game's `rand` state, before the seed. | 0x586168 %(9−h); 0x586183 %players | §1.1 |
+| RMG-SET-002 | Computers Random: rand % (9 − players), none with 8 players; their teams, only with computers: rand % computers + 1 (0: the computers; above them: the players). *(QC: the fallback to the players)* | 0x5861B1 %(9−players); 0x5861E4 %computers | §1.1 |
+| RMG-SET-003 | Monster strength Random: rand % 3 − 1. Water's Random goes on as 3. | 0x58621D %3 | §1.1 |
+| RMG-SET-004 | The parameters' defaults; each colour's human flag and town from the setup; version 0 RoE, 1 AB, 2 SoD (setup 1 AB, 2–3 SoD, else RoE). | — | §1.1 |
+| RMG-SET-005 | The run: monster strength = parameters' + 3 clamped 1..5; fewer than 2 players and computers become 1 and 1; codes 0 done, 1 exception, 2 writer false, 3 no template. | — | §1.2 |
+| RMG-SET-006 | The seed: `time()` seconds at +4, `srand` with it before the objects are read; one C-runtime `rand` stream for the run. The port takes the seed as input. | — | §1.3 |
+| RMG-SET-007 | Water Random drawn after the seed: then the generation's first draw. | 0x537C89 %3 | §1.3 |
+| RMG-SET-008 | Heroes banned: table byte +0x3A set, or the version's byte clear (+0x39 AB, SoD; +0x38 RoE). | — | §1.3 |
+| RMG-SET-009 | Limits by object type, per map and per zone: 32000, then the constant pairs (map: 200 types 6, 26; 64 type 8; 48 types 57, 83; 32 for 25 others; zone: 1 for 23 types, 3 for 113). | — | §1.3, §2.4 |
+| RMG-TPL-001 | `rmg.txt`: a template at a row of ≥ 2 columns (name, least, greatest size), a zone at ≥ 76 with column 3 set, a connection at ≥ 85 with 76 set and 77 not empty (*set*: not empty, no leading space). | — | §2.1 |
+| RMG-TPL-002 | A zone's fields by §2.1's column map: type the last of columns 4–7 set (none: treasure); terrains none: dirt; monster strength by first letter n 0, w 2, s 4, else 3. | — | §2.1 |
+| RMG-TPL-003 | RoE reads 8 town types (clears Conflux) and clears monster-town byte +0x9D. *(QC: +0x9D is Fortress, Forge expected)* | — | §2.1 |
+| RMG-TPL-004 | A zone or connection whose player ranges do not fit players and players + computers is dropped; a connection naming a dropped zone too. | — | §2.1 |
+| RMG-TPL-005 | Kept: size w × h × levels / 1296 (islands halved, ≥ 1) in range, human starts ≥ players, start zones ≥ players + computers; zones renumbered 0, 1, … in row order. None kept: code 3. | — | §2.1 |
+| RMG-TPL-006 | `rand_trn.txt`: rows from 3 to the first empty column 0; type, subtype, terrain, 9 modifiers (+ a tenth, −5000), Adjacent and Overlap per obstacle (109); a prototype takes the last row of its group, first terrain, subtype (used by step 13). | — | §2.1 |
+| RMG-OBJ-001 | The object generators: 29 groups in a fixed order, type, subtype, value, density constants (§2.1's table); tents per tent prototype from the last, seer huts per seer prototype upward. | — | §2.1 |
+| RMG-OBJ-002 | A creature reward: one per creature, ids downward (118 RoE, 145 AB, SoD); count budget[level] / AI value rounded (> 50 tens, > 12 fives, > 5 up to even); density 3. | — | §2.1 |
+| RMG-OBJ-003 | A generator's value for a zone (−1 refuses): creatures and dwellings of another town than the zone's refused; AI × count (dwellings × growth) raised by their towns' share (dwellings + AI × count / 2). *(QC: town type −1 passes neutrals)* | — | §2.1 |
+| RMG-OBJ-004 | Seer huts only while +0xF58 is their prototype and +0x10B4 clear, a creature reward (2v − 4000) / 3; a tent only while +0xF5C is its colour. *(QC: another town's reward −1334, not −1)* | — | §2.1 |
+| RMG-OBJ-005 | Creating: Pandora's Box its creature and count, experience, gold or its levels' and schools' spells (level downward, no flag 0x2000); prison a hero (none when all banned), experience, serial +0xF44; scroll a spell; seer hut its reward and a quest artifact (type 65), returned as the object. | at creation: 0x54B136, 0x534F06, 0x546154 | §2.1 |
+| RMG-OBJ-006 | The prison's hero: the r-th unbanned from the top among 0–127 (RoE) or 0–144, then banned. *(QC: SoD's 145–155 never)* | 0x54B136 %unbanned | §2.1 |
+| RMG-OBJ-007 | The scroll's spell: the r-th by id of the level's spells with a school, without flag 0x2000. | 0x534F06 %spells | §2.1 |
+| RMG-OBJ-008 | `rmg_prototype_draw`: the r-th candidate prototype; none: null (callers' handling not read). | 0x546154 %candidates (unsigned) | §2.1 |
+| RMG-OBJ-009 | Placing (the only way): position; footprint up and left: enterable-mask cells bit 22 and, unless +0x2C bit 0, 26 cleared, 27 set; cells outside the passable mask bit 25 cleared; listed, type counted, the entrance's zone counts it. | — | §2.1 |
+| RMG-OBJ-010 | The entrance's distance flood: bits 0–15 of +0x20 on its level, 2 orthogonal, 3 diagonal, over every cell, nearest first, ties FIFO. *(QC: ignores contents)* | — | §2.1 |
+
+Reads: the setup's slots; `rmg.txt`, `rand_trn.txt`, `objects.txt`; hero, creature, spell, dwelling
+tables; the reward budget; the limit pairs. Floats: none. Limits: none (loops over rows and tables,
+floods to an empty queue); failures: no template (3), silent drops.
+
+#### 3.2.2 The template and the positions
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-TPL-007 | The template: the r-th kept, its name kept. | 0x549975 %kept | §1.5 |
+| RMG-TPL-008 | Positions: colours humans first, then the others, each in colour order; the first `players` take the human starts' positions in order, then the computers the remaining starts; position p's colour at +0xEE4 + 4p (−1). | — | §1.5 |
+
+Reads: the kept templates, the human flags. Floats, limits: none.
+
+#### 3.2.3 Step 1: the zones laid out
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-ZON-001 | Per template zone a zone generator: town type +4 the r-th set type (none: −1, no draw); then a start zone with colour towns takes its position's town choice. | 0x532A5B %set types | §2.2 |
+| RMG-ZON-002 | Exactly three passes of one placement per zone (creation, then two re-placements in order); integer positions in base-size units; no convergence test. | ZON-005's per zone and pass | §2.2 |
+| RMG-ZON-003 | Candidates: first zone (0,0,0), or with two levels if it fits (0,0,1); else 32 points around each connected created zone (none: every created zone), (trunc(r cos k·11.25° + ox), trunc(r sin + oy)), r the bases' sum; two levels: also (ox, oy, 1 − oz) and 32 at max(bases) on the other level. | — | §2.2 |
+| RMG-ZON-004 | Fits: a start zone on level 1 needs Inferno, Necropolis or Dungeon; every other zone on the level 10 × trunc(dist) ≥ 8 × bases' sum. | — | §2.2 |
+| RMG-ZON-005 | Filter: two levels with an empty level, its candidates (if one at index > 0); most touching connected zones (same level 11s ≥ 10t; across s ≥ t, s − t > smaller base / 2); least max(d, layout box), d = least base × min(w, h) / 5, 6, 7 (no water, normal, islands); the r-th. *(QC: index 0 skipped; empty list divides by 0)* | 0x53BB5F %candidates (unsigned) | §2.2 |
+| RMG-ZON-006 | Scaling: span the box's larger side, m = max(w, h), origin (min + max − span) / 2; x, y = (p − origin) × m / span, size = base × m / span, truncating; z kept. | — | §2.2 |
+| RMG-ZON-007 | Then per zone, its terrain: the town's native one when matching (grass, grass, snow, lava, dirt, dirt, rough, swamp, grass); else the r-th allowed (subterranean only on level 1; none: dirt); level 1 all but lava → subterranean. | 0x532B00 %allowed (when not native) | §2.2 |
+| RMG-ZON-008 | Town type +8: +4 when set, else terrain-towns[terrain][r], r of 4. *(QC: count always 4, −1 and Castle padding drawn)* | 0x53BFC0 %4 (+4 is −1) | §2.2 |
+
+Reads: zones (base, type, town types, terrains), connections, town choices, two terrain tables.
+Floats: trunc(f64(r) × T[k] + f64(o)), `rmg_layout_cos`/`_sin` (32 f64, four decimals, 0.9807);
+trunc(sqrt) of integer squares; `crt_ftol` truncation. Limits: 3 passes, 32 (65) candidates.
+
+#### 3.2.4 Step 2: each level partitioned
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-ZON-009 | The level's centres into an integer triangulation (frame −200, 400). Insertion and finish (Delaunay?) not read. | — | §2.2 |
+| RMG-ZON-010 | Level 1 always, level 0 with water: per original zone 8 directions, p = (trunc(2(s cos) + x), trunc(2(s sin) + y)); off-map refused when x + s cos (y + s sin) is off too; p must fit a temporary zone of base s; p into the triangulation. *(QC: mixed units)* | 0x532A5B of the temporary zone *(QC: uninitialised town types decide it)* | §2.2 |
+| RMG-ZON-011 | On level 0, p a water zone (type 3, terrain 8, base s, bands 100–1000/5 and 2000–6000/1, nothing else) appended; on level 1 a point without zone (rock). *(QC: fields uninitialised)* | its generator's 0x532A5B (QC as above) | §2.2 |
+| RMG-ZON-012 | Borders: each zone's triangulation cell's sides clipped, drawn in the lower id; jagged (limit the smaller size) for original zones unless islands on level 0, else straight; corners kept. Clip corner cases not read. | per split, L > 1: 0x53C0F2 %min(limit, L) − half | §2.2 |
+| RMG-ZON-013 | Fill: a flood from each centre over cells of no zone: zone index (+0x20 bits 16–23), land bit 28 (not on the islands' level 0). Second half 0x53D640 not read. | — | §2.2 |
+| RMG-ZON-014 | Water zones connected: new neighbours sharing a side (value 0); then each to its neighbouring earlier zones unless a distance test refuses. The test and the distances' order not read. | — | §2.2 |
+
+Reads: step 1's positions and sizes. Floats: 44 sites, s × T[k] as f64, doubled, + f64(x),
+truncated; `fcomp` bounds. Limits: 8 directions; lines split to length 1.
+
+#### 3.2.5 Step 3: the terrain painted
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-TER-001 | Each zone's box from its cells; its centre moved to their centroid. | — | §2.2 |
+| RMG-TER-002 | Islands: each level-0 zone's polygon shrunk by min(L/2, max(L/4, 4)), its coast jagged (limit size / 2), inside filled (bit 28; inferred). | per split 0x53CE1D %min(size/2, L/2) − half | §2.2 |
+| RMG-TER-003 | Level 1 rock (one rectangle), level 0 water, then per land zone in order a painter of its terrain, a one-cell rectangle per cell with bit 28 (box row by row), then its finish. | rock 0x5B3AB6, water 0x5B38D3 per cell; zone cells 0x5B38B9, 0x5B38D3; finish's (§3.2.14) | §2.2, §2.7.5 |
+
+Reads: zone and land bits. Floats: none. Limits: none; allocation failure throws.
+
+#### 3.2.6 Steps 4 and 5: the towns
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-OBJ-011 | `rmg_map_can_place`: a prototype fits at a cell in a zone (footprint, outline, ring). Outline, ring and water branches inferred, not read. | — | §2.2 |
+| RMG-TWN-001 | Step 4 per zone: colour castle, colour town, neutral castle, neutral town (if asked, type +4); stops at the first placed. | TWN-002's | §2.2 |
+| RMG-TWN-002 | Central town: type −1 refused; town prototype (98) at the placeable cells nearest the centre (squared); entrance into +0x30 and the road targets. | 0x545492 %nearest | §2.2 |
+| RMG-TWN-003 | Step 5: per kind the least count not yet placed, no spacing, the first of the first kind asked counted as step 4's. *(QC: even when step 4 placed none)* | TWN-005's | §2.2 |
+| RMG-TWN-004 | Densities: S, P sum and product of the positive ones; r = trunc(sqrt(82944 / S)); step P / d, key step × least; least key (first on ties) steps and places one at r; exhausted at its first failure. | TWN-005's | §2.2 |
+| RMG-TWN-005 | A further town: type redrawn (neutral without same-type byte, or +4 −1) among set types, else 8 (RoE) or 9; no town yet: TWN-002; else entrances in the zone at distance ≥ r, the 3 × 3 in the zone, placeable; the farthest, the r-th. | 0x544DEC %set or 0x544E22 %8/9; 0x545174 %farthest | §2.2 |
+
+Reads: towns, densities, same-type byte, centres, the distance flood. Floats: trunc(sqrt(f64(82944 /
+S))). Limits: until every kind has failed once; a town that does not fit is skipped.
+
+#### 3.2.7 Step 6: the obstacle plan and the connections
+
+Cell +0x28 bit 26 = obstacles to place (step 13), bit 27 = kept free; a pending border guard (+0x2C
+bit 0) is skipped by both unless placing it.
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-CON-001 | Order: lanes, zone walls, cells of no zone, islets, free cells joined, shores sealed, connections. | — | §2.3 |
+| RMG-CON-002 | Lanes: object cells free, empty cells obstacles; per level one of four lines (diagonal, vertical middle, anti-diagonal, horizontal middle). | per level 0x543EB8 %4 | §2.3 |
+| RMG-CON-003 | Segments (a stack): midpoint ((ax+bx+1)/2, (ay+by+1)/2) moved, L = trunc(length) > 1, by r × (−dy, dx) / L, r = rand % L − L/2; midpoint an end: that end's 3×3 free; L ≥ 8 on the map: two branches ± the normal queued. | per split 0x54403E %L | §2.3 |
+| RMG-CON-004 | Branches cast (Bresenham past the target, to the interior's edge or, from step 3, a free 3×3), drawn when ≥ 5 cells; then water and rock free, obstacles' passable empty land neighbours lose bit 27. | CON-003's | §2.3 |
+| RMG-CON-005 | Walls: a land zone cell is an obstacle when its 3×3 holds water of no zone, an unconnected zone, a not-wide connection, or it is on level 1; its 3×3 empties lose bit 27. *(QC: level 1 walled even along wide)* | — | §2.3 |
+| RMG-CON-006 | Land cells of no zone, passable, empty, not rock: obstacles. | — | §2.3 |
+| RMG-CON-007 | Islets per water zone: edge distance (2/3); while a box cell (3..W−4, 3..H−4) is ≥ 20 away, a centre and r = 3 + rand % (d/3 − 5) (≤ 6); after it the distance re-flooded from the centre. *(QC: candidates outside the zone)* | 0x53F745 %cells (unsigned); 0x53F794 %(d/3−5) | §2.3 |
+| RMG-CON-008 | An islet: terrain dirt..rough; shape the positive cells of a midpoint-displacement height map (amplitude (w+h)/4 + 1, then (a−1)/2 + 1; five displacements per split, edge midpoints then centre; quadrants LIFO, low-low first); painted; the box's land made obstacles. Quadrant record fields not read. | 0x53EFE4 %6; per split 0x53EEFF…0x53EF43 %a; the painter's | §2.3, §2.7.5 |
+| RMG-CON-009 | Joining (also step 9): costs reset; per zone in order the seed is the first box cell in the zone, empty, free, passable, not rock (water only in water zones); none: the last empty cell tried made free. *(QC: stale coordinates with no empty cell)* | — | §2.3 |
+| RMG-CON-010 | Cost flood: least first; 8 steps (out of an object without settings +1: E, SE, S, SW, W); objects entered as settings +0, +2 allow; +1 a step, +10 onto water, 0 from cost 0 onto free; into a neighbouring zone +10, upper half, zone and direction back recorded. | — | §2.3 |
+| RMG-CON-011 | Carve: each free passable land cell of cost ≠ 0 walks back while cost > 0, cells freed, their 3×3 cleared, a marked Border Guard placed; then re-flooded. | per guard crossed 0x546154 %guards | §2.3 |
+| RMG-CON-012 | Seal: a water-zone cell reached by an unconnected land zone's flood, beside passable land: 3×3 obstacles, 5×5 lose bit 27, its water painted that land. | the painter's | §2.3 |
+| RMG-CON-013 | Connections: pass 1 per land zone (boat reach cleared), its connections not made: land, else shipyard, else gates; pass 2 per zone with one left (boat reach from its shipyards): shipyard, else monoliths, both ends made. | — | §2.3 |
+| RMG-CON-014 | By land: crossings P (cell back Q) empty, n; candidates of least cost (≤ 100); k = min(candidates, (n + 39) / 40) passages, each drawn and carved from P and Q. | per passage 0x54146B %candidates | §2.3 |
+| RMG-CON-015 | By shipyard: a prototype drawn; a crossing already reached by boat makes it; else sites x..x+2 per land cell (3 × 2 land, free water beside, land beyond); placed, a road target, row below free, boat reach flooded. *(QC: drawn before any test; sites counted twice)* | 0x541B78 %prototypes; 0x541D6C %sites | §2.3 |
+| RMG-CON-016 | By gates (other level, boxes overlap): a prototype drawn; overlap cells fitting both, greatest distance sum; a gate per level, below each free. *(QC: drawn before any site)* | 0x5421BC %prototypes; 0x542387 %positions | §2.3 |
+| RMG-CON-017 | By monoliths: an index cycling two-way (45), then one-way pairs (43, 44); entrances (and exits) at random in each zone. One-way pairing at write not read. | per object 0x542A8F %positions | §2.3 |
+| RMG-CON-018 | Guard value: 0 when wide; (v − low[s]) × fl[s] / 4 above low plus (v − high[s]) × fh[s] / 4 above high; none under 2000; the four tables of §2.3. | — | §2.3 |
+| RMG-CON-019 | Border Guard (the flag): this side, tent in the other zone, then the other side, tent here (shipyard: three before its entrance; monolith: after CON-009 again); next Keymaster colour; 3×3 obstacles marked; one placed: g = 0. Fails: monster. *(QC: two guards in a row, keys crossed; tent in water; five cells unchecked)* | per tent 0x542A8F %positions | §2.3 |
+| RMG-CON-020 | Guard monsters (g > 0, no Border Guard): land one at P or Q; shipyard one; gates and monoliths one per side, each full value. *(QC: counts differ by way)* | land 0x541673 &1; CON-021's | §2.3 |
+| RMG-CON-021 | The monster: an allowed town's creatures, AI × (low + high) / 2 ≤ g ≤ AI × 100, the r-th from the top; n = (g + AI/2) / AI, ± rand % (n/4 + 1) when > 1; serial +0xF44. *(QC: RoE counts 0–116, walks from 144)* | 0x540C61 %fitting; 0x540CCE, 0x540CD8 %s | §2.3 |
+
+Within a connection: the way's draws, then per guard the tent's or the side and the monster's.
+Reads: connections (value, wide, guard flag), object settings +0..+2, creature table, guard
+tables, `rmg_side_steps`. Floats: none (lengths by `vector_length_int`, trunc(sqrt)). Limits: none
+capped; a connection with no way left silently; faults only with other data (modulus 0).
+
+#### 3.2.8 Step 7: the junction zones
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-OBS-001 | Per junction zone not of water: its cells' costs reset, empty ones without a pending guard get bit 26 (the zone starts full). | — | §2.4 |
+| RMG-OBS-002 | A flood from its first passage point (+0x404); per later point of cost 1..30000, back to the first cost-0 cell, a jagged path (CON-003 with m = min(L, size)) freeing cells and clearing their 3×3's bit 26; re-flooded. | per split 0x5444B4 %m | §2.4 |
+
+Reads: step 6's passage points. Floats: lengths. Limits: one pass per point.
+
+#### 3.2.9 Steps 8 and 9: the mines
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-MIN-001 | Per zone, resources 0–6: least mines at spacing 0 until a failure; a start zone's first wood and ore near its town. | MIN-003's | §2.4 |
+| RMG-MIN-002 | Then by density as TWN-004 (82944 / S). | MIN-003's | §2.4 |
+| RMG-MIN-003 | A mine: prototypes (53) of the resource allowed on the terrain, else all; one drawn; site, guard, resources. | 0x545AA8 %prototypes | §2.4 |
+| RMG-MIN-004 | Site: box row by row, placeable; near the town entrances 4..200 away (squared ≤ 144 as 144), the least; skipped below the best distance so far (first the spacing) or best obstacle-outline count (≤ 5); a better one empties the list; cell below the entrance freed. *(QC: running best)* | 0x54591A %kept | §2.4 |
+| RMG-MIN-005 | Guard: value 1500 (wood, ore), 7000 (gold), 3500, index zone + map strength − 3 (0..5); none at strength 0 or < 2000; monster below the entrance. *(QC: index differs from connections')* | CON-021's | §2.4 |
+| RMG-MIN-006 | Resources: a prototype (79) drawn; per cell of the row below, x − width..x + 1, while ≤ 2 placed, a coin: 0 places one. | 0x546154; per cell 0x545D0C &1 | §2.4 |
+| RMG-CON-022 | Then the towns counted; step 9 runs CON-009–011 once more. | CON-011's | §1.5, §2.3 |
+
+Reads: least mines, densities, strengths, town entrances. Floats: trunc(sqrt(f64(82944 / S))).
+Limits: each resource to its first failure; a mine without a site dropped.
+
+#### 3.2.10 Step 10: the treasures
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-TRS-001 | Per zone (water too): bands with high ≥ 100 and density > 0; r = trunc(sqrt(800 / S)) (1600 water); keys as TWN-004 from 0; each pick tries a pile 3× without, 3× with the density filter; built: placed, else released; a band ends when six tries fail. Draws of failed tries stand. | TRS-002–008's | §2.4 |
+| RMG-TRS-002 | Pile target t = low + rand % (high − low) (high when high ≤ low), on a 16 × 16 map. | 0x546771 %(high−low) | §2.4 |
+| RMG-TRS-003 | Fill: first object t/4..t at the centre (3 tries); while short and the rest ≥ 1500 or ≥ half, rest/4..5rest/4 beside an earlier entrance (8 neighbours, or SE, S, SW), off the edges; 3 null or 3 failed end it. | per object TRS-004, -005; then 0x535B31 %positions | §2.4 |
+| RMG-TRS-004 | Candidates in generator order: map and zone counts under the limits, value in range, a prototype for type, subtype, terrain, footprint free; density filter ≥ 3/4 of the best (> 4/3 resets). *(QC: a draw per candidate; running best)* | per candidate 0x546154 | §2.4 |
+| RMG-TRS-005 | Weighted by density; created with the drawn prototype (OBJ-005). Constant test (no huts, tents) only for TRS-009/010's replacements. | 0x546489 %densities; OBJ-005's | §2.4 |
+| RMG-TRS-006 | Guard: none at zone strength 0; value of the total (MIN-005's index) ≥ 2000: a monster at an outline cell before an entrance, neighbours freed; no monster: unguarded; no cell: refused. *(QC: unguarded)* | CON-021's; 0x5353B9 %cells | §2.4 |
+| RMG-TRS-007 | Placing: offsets keeping the box in the zone's; centre cell in the zone at distance ≥ r; the fit (§2.4); the farthest, ties drawn. *(QC: box may pass the zone's by one)* | 0x5472F0 %farthest | §2.4 |
+| RMG-TRS-008 | Commit: objects placed, obstacles under the pile's bit-26 cells (only through the guard), bit 27 off under its non-free empties; each object's placed hook in order. | the hooks' | §2.4 |
+| RMG-TRS-009 | A tent: its colour's Border Guard, next colour; a pile of 1.5 × its value behind it in a near zone; fails: tent removed, an object v..1.5v there. Chains. *(QC: removed, not deleted: template still written)* | fill, guard cell, TRS-011's, offset | §2.4 |
+| RMG-TRS-010 | A quest artifact: treasure artifacts 0–143 free (< 20 left blocks huts), one drawn; the hut alone in a near zone; +0xF58 to the next seer prototype; fails: replaced, hut deleted. *(QC: 0–143 every version)* | 0x54B511 %free; TRS-011's; offset | §2.4 |
+| RMG-TRS-011 | Near zones: keys 10 × hops + rand % 10, a neighbour 1000 + rand % 10, drawn per zone in order; not this, junctions, water; ≤ 2000; tried by key. *(QC: neighbours last)* | per zone 0x54B366 or 0x54B382 %10 | §2.4 |
+| RMG-TRS-012 | A released prison frees its hero. | — | §2.4 |
+
+Reads: bands, generators and counts, limits, artifact class and disabled, settings +0..+2. Floats:
+trunc(sqrt(f64(800 or 1600 / S))). Limits: six tries per pick, three per object; no cap on the loop;
+give-ups silent.
+
+#### 3.2.11 Steps 11 to 13: rock, shores, obstacles
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-TER-004 | Step 11 (two levels): level 1's passable empty cells not kept free painted rock; level-1 zones' rock cells kept free or holding an object get their terrain back. *(QC: obstacles become rock)* | the painter's rectangles, flushes, finish | §2.4, §2.7.5 |
+| RMG-OBS-003 | Step 12: land beside water gets bit 21. | — | §2.4 |
+| RMG-OBS-004 | Step 13: per bit-26 cell (level, row, column), passable, not rock, a fill (a stack); then every cell not kept free, not rock, passable, unguarded made free. | OBS-007's | §2.4 |
+| RMG-OBS-005 | Candidates per popped cell: 45 obstacle types in order, prototypes whose row allows the land (> −5000; ≥ 165 refused in RoE), footprints over it with a blocking cell, positive score. *(QC: SoD test refuses none)* | — | §2.4 |
+| RMG-OBS-006 | Score: −5000 for a blocking cell on a forbidden land or kept-free cell; else modifiers summed (< −1000 returned; −1 if none positive); + Overlap / Adjacent per object near (−5000 without row); −5000 when depths interleave. Depth grid values not read. | — | §2.4 |
+| RMG-OBS-007 | One by score weight, placed; bit-26 cells under its widened footprint cleared and pushed. | per cell 0x5376AA %scores | §2.4 |
+
+Reads: `rand_trn.txt`, the obstacle types. Floats: none. Limits: the stack until empty.
+
+#### 3.2.12 Steps 14 and 15: roads and rivers
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-RDR-001 | One road type, rand % 3 + 1 (dirt, gravel, cobblestone). | 0x54829B %3 | §2.5 |
+| RMG-RDR-002 | Per road target i but the last (towns, then shipyards): costs reset, a flood over the map, ties FIFO; 2 road to road else 20, ×3 diagonal; refuses water, rock, bit 25 clear, blocking objects; settings +1, +2 clear: left by five neighbours only, entered not SE, S, SW. | — | §2.5 |
+| RMG-RDR-003 | Teleports: one-way monoliths reach every one-way of their subtype at +50, two-way their own list, gates the other level at +1. *(QC: one-way used both ways)* | — | §2.5 |
+| RMG-RDR-004 | Per later target of cost ≤ 30000, traced back (its end's stretch of the type skipped) to the painter, a new stroke after each diagonal step or level change; painted: i re-flooded. | RDR-011's | §2.5 |
+| RMG-RDR-005 | Sources bit 29 on lakes (126), mountains (134), Gem Ponds (53/5): entrance, else half the footprint up-left. | — | §2.5 |
+| RMG-RDR-006 | Ends bit 30 on the border and delta sites (3 water across, 3 land beyond, 4 land in d, no objects: the fourth, d in bits 8–11). *(QC: `x > width` bound reads past the cells)* | — | §2.5 |
+| RMG-RDR-007 | Per Water Wheel (109) in order: a course up from its entrance, one down from three cells beside it. | RDR-008's | §2.5 |
+| RMG-RDR-008 | Courses: least cost over E, S, W, N; refuse water, rock, the other snowness (icy 2, clear 1); no object test; cost (rand & 31) + 1 per neighbour examined, +30 into road; stop at the first improved target-bit cell, paint back. *(QC: under objects; draws per examination)* | per neighbour 0x54876F, then 0x549153 &31; painter's | §2.5 |
+| RMG-RDR-009 | Lower course: not beside an earlier river (bit 31), deltas entered along d; a delta (143, the direction's prototype, none: none) at site + offset, one cell more; its cells get bit 30, 5×5 around cleared. | — | §2.5 |
+
+Reads: road targets, monolith lists, gates, settings, terrain, objects. Floats: none. Limits: none;
+unreachable targets and courses get nothing.
+
+#### 3.2.13 The writer
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-WRT-001 | Gzip (`wb6`); header: format by version, width, levels, "Random Map", description, difficulty 1; nothing but the seed depends on time or machine. | — | §1.2, §2.5 |
+| RMG-WRT-002 | Per colour: bools from its town zones (human start: both; computer: computer), extra human starts computer-only (pink first); allowed towns; main town at the first town's entrance, type 0xFF; else the unused bytes. *(QC: position the entrance; HD mod writes the type)* | — | §2.5 |
+| RMG-WRT-003 | Standard victory and loss; teams; allowed heroes (16 bytes of 128 RoE, 20 of 156); AB and SoD placeholders; 31 zeros; banned artifacts (combination + 127, 128; AB 17 bytes, SoD 18); SoD spell and skill zeros; 156 zeros; u32 0 (rumours). *(QC: 127, 128 banned)* | — | §2.5, §1.6 |
+| RMG-WRT-004 | Teams: counts 0 become the colours (with no computers ≥ 2); both ≥ their colours: none; else clamped, players from team 0, computers after; per flagged colour a team with room. | per colour 0x54ABA6 %teams with room | §2.5 |
+| RMG-WRT-005 | Cells level, row, column: 7 bytes (land, picture, river, picture, road, picture, mirrors + shore 0x40). | — | §2.5 |
+| RMG-WRT-006 | Templates: count + 2, groups 71, 124 first, then every prototype in use by settings group (repacked masks, terrain masks, class, bytes). | — | §2.5 |
+| RMG-WRT-007 | Objects: count; those whose settings +0xC is set first (which types: not read), then the rest, in placing order; x, y, z, template, 5 zeros, body. | — | §2.5 |
+| RMG-WRT-008 | Bodies: monster (count, disposition +0x24), town (owner, fort), dwellings, artifacts, resource, Pandora, seer hut (RoE artifact; AB quest), prison, Scholar, shrine, scroll, Witch Hut 0xEFDF; plain: header only. *(QC: Witch Hut skills)* | — | §2.5 |
+| RMG-WRT-009 | Ends with the events' u32 0; no 124 padding bytes. | — | §2.5 |
+| RMG-WRT-010 | The description: template, seed, width, levels, "humans" (+0xF48), computers, water, strength, version; per colour human and town choice by the colour's index. *(QC: wrong town name; humans counts computers)* | — | §2.5 |
+
+Reads: everything placed; the plain executable's writer (not `Untitled.h3m`'s HD mod). Floats:
+none. Limits: none; false only when a write fails (code 2).
+
+#### 3.2.14 The painters (reached from steps 3, 6, 11, 14, 15)
+
+| Id | Rule | Draws (sites, in order) | § |
+|---|---|---|---|
+| RMG-TER-005 | Painter (map, terrain, weight 4), rectangles, finish: set 1's smallest (y, x) through TER-014, then set 2's erased, pinched ones absorbed, repeated; last pass once; flush the same, then a new terrain. Sets ordered by (y, x), nothing by address. | TER-007's | §2.7.1 |
+| RMG-TER-006 | Picture sets per terrain (bytes +4, +5, flagged share, shapes; rock by variants a, b). | — | §2.7.1 |
+| RMG-TER-007 | Slot 4: shape 0 kept unless called with −1; flagged non-empty: rand % 100 < share × w / 8 picks it; then rand % count + first (two draws on land, one on water; rock one). | 0x5B38B9 %100, 0x5B38D3 %count; rock 0x5B3AB6 | §2.7.1 |
+| RMG-TER-008 | Slot 5: kept when of the shape (rock: and variants), else rand % count + first of the shape. | 0x5B3912; rock 0x5B3B2D %count | §2.7.1 |
+| RMG-TER-009 | Rectangle row-major, unclamped: other terrain set_cell, same terrain a new picture; every cell drawn once. *(QC: repainting redraws)* | per cell TER-007's | §2.7.2 |
+| RMG-TER-010 | Weight: 4 halved per W, N, E, S neighbour of the terrain with a flagged picture, as they are (W, N redone). | — | §2.7.2 |
+| RMG-TER-011 | Tests: pinched W-E, N-S (both neighbours another terrain, not at the edge); ring split (water, rock: own-terrain neighbours in two arcs). | — | §2.7.2 |
+| RMG-TER-012 | set_cell: draw, write, out of set 2; land: neighbours' broken pinches erased and queued; water/rock: 8 neighbours re-tested; itself pinched to set 1, else queued. *(QC: never leaves set 1 itself)* | TER-007's | §2.7.2 |
+| RMG-TER-013 | Queue: first of N, S of another terrain, then of W, E; diagonals for water and rock. *(QC: else-if per axis)* | — | §2.7.2 |
+| RMG-TER-014 | Resolve: N-S pinch gives N if pinched, else S if pinched, else N at the edge, else N if NW/NE, S if SW/SE, else N; then W-E alike; then the ring's gaps (2 orthogonal, 1 diagonal) cheapest first, the costliest kept. *(QC: own diagonal redrawn)* | per set_cell TER-007's | §2.7.3 |
+| RMG-TER-015 | Last pass, whole map row-major: neighbour classes (clamped): 0 same or p sand; 1 both through dirt, p not dirt; else 2. *(QC: whole map)* | — | §2.7.3 |
+| RMG-TER-016 | Shape: §2.7.3's ten groups, mirrorings none, N-S, W-E, both; first match; none 0. *(QC: group 3 inverted)* | — | §2.7.3 |
+| RMG-TER-017 | Refinements 2 → 6, 8 → 12 (arm cells same), 5 → 7, 11 → 13 (two steps differ). | — | §2.7.3 |
+| RMG-TER-018 | Picture: shape ≠ 0 slot 5, 0 slot 4; written only when changed; terrain never. *(QC: missing shape divides by 0)* | TER-007/008's | §2.7.3 |
+| RMG-RDR-010 | Stroke: visit the start; stroke_to(t) walks from t back, longer axis, staircase corners. River walks' calls not traced. | — | §2.7.4 |
+| RMG-RDR-011 | Visit: nothing on the type or water, rock; another type cleared (neighbours redrawn); set, drawn, 8 same-type neighbours redrawn N..NW. *(QC: clear's right column short)* | RDR-012's | §2.7.4 |
+| RMG-RDR-012 | Picture: shape and flags from the 8 neighbours; kept when fitting, else rand % count + first. *(QC: unmirrored 4 not drawn)* | 0x4FA00F %count | §2.7.4 |
+| RMG-RDR-013 | Shape: all four 8; N+S 6 (with E, W mirrored) else 2; E+W 7 (S, N mirrored) else 3; a corner 5 on a diagonal run, else 4; ends 1, 0 (rivers 3, 2). | — | §2.7.4 |
+| RMG-RDR-014 | Sets: roads 17 pictures, rivers 13 (no 0, 1, 5). | — | §2.7.4 |
+
+Reads: the map interface, the views, the picture tables. Floats: none. Limits: none; the cell words'
+fill is memory-dependent but never read (harmless).
+
+#### 3.2.15 Dependencies, oracle points, not read
+
+Each step reads what the earlier ones leave: step 1 the template and positions; step 2 step 1's
+scaled zones; step 3 step 2's zone and land bits; steps 4–5 step 3's centroids and the distance
+flood; step 6 the towns, zones and connections (water zones' from step 2); step 7 step 6's passage
+points and floods; step 8 the towns' entrances and bit 26; step 9 the mines; step 10 the generators'
+hooks (+0xF58, +0xF5C, +0x10B4) and connection hops; step 11 bit 27 and objects; step 13 bits 26,
+27 and the terrain; step 14 the road targets (steps 4–6), monoliths and gates; step 15 the objects
+(wheels from step 10) and roads; the writer everything, then the teams' draws. The phase oracle
+(ORACLE.md, "The phase oracle") logs every draw with its site and dumps the cells at each step's
+first call and at `rmg_generate_map`'s return: the port compares its draws and cells after every
+step (steps 7 and 11 have no dump when they do not run; steps 9 and 12 drew nothing in the corpus),
+then the file with the plain executable's. Memory-dependent: ZON-010/011's town-type draw,
+RDR-006's past-the-end read. Not read: triangulation insertion and finish (§2.2, ZON-009); fill tail
+0x53D640 (§2.2, ZON-013); water-zone distance test (§2.2, ZON-014); clip corner cases (§2.2,
+ZON-012); `rmg_map_can_place`'s branches (§2.2, OBJ-011; tents on water §2.3; pile ring §2.4);
+heightmap quadrants (§2.3, CON-008); one-way monolith pairing (§2.3, CON-017); depth grid
+(§2.4, OBS-006); settings +0xC types (§2.5, WRT-007); null prototype handling (§2.1, OBJ-008);
+objects' masks (§2.1, OBJ-009); river strokes (§2.7.4, RDR-010); whether a divide by zero reaches
+code 1 (§2.2).
+
+### 3.3 The objects placed, the reader and the writer
+
+(T1c2.) What the generator puts on a map against what `h3_map` reads, imports and writes. Sources:
+§2.1 to §2.5 (the code read); the oracle's 21 maps (`h3rmg.py corpus` and `read` in this sandbox)
+and a census of them by a scratch program over `h3_map::read` (not in the repo, no map kept); the
+160 shipped maps for the main town; one observation of the original's start (h3mem). `h3-map` as
+of 25397e78a.
+
+#### 3.3.1 What the generator can place
+
+A generator's *type* is its prototypes' object-settings group (§2.1; `object_class_values`
+0x63A6E4), so a prototype of another class in that group comes in under it: in the corpus 199
+(swamp trees, loaded as an obstacle of 143-161) and 221 (the snow Trading Post, as 99). The class
+written is the prototype's own (`rmg_write_template`). Corpus: objects / maps of 21.
+
+| Class | Subclasses | Placed by | Written by (slot 3) | Corpus |
+|---|---|---|---|---|
+| 98 Town | faction 0-8 | steps 4, 5 | `rmg_town_object_write` 0x5332F0 | 212; 87 owned, 137 with a fort |
+| 54 Monster | creature | steps 6 (passages, shipyards, gates, monoliths), 8 (mines), 10 (piles): `rmg_guard_monster_create` | `rmg_monster_object_write` 0x5331F0 | 3 156 / 21, 135 creatures |
+| 53 Mine | resource 0-6 | step 8 | `rmg_dwelling_object_write` 0x533460 | 757 / 21 |
+| 79 Resource | 0-6 | step 8 (beside a mine); generator 21 | `rmg_resource_object_write` 0x5335C0 | 3 062 / 21 |
+| 87 Shipyard | 0 | step 6 (`rmg_connection_by_shipyard`) | dwelling write | 61 / 7 |
+| 103 Subterranean Gate; 43, 44, 45 Monoliths | 0; channel | step 6 (`_by_gate`, `_by_monoliths`) | `rmg_object_write` 0x533170 (header alone) | 170 / 8; 32, 32, 124 |
+| 9 Border Guard; 10 Keymaster's Tent | colour 0-7 | step 6 (`rmg_border_guard_place`); step 10 (generator 7, the tent's placed hook) | header alone | none: no corpus template has a border-guard connection (3 of SoD's 53: Gauntlet, Ready or Not, Worlds at War) |
+| 5 Artifact (quest), 83 Seer's Hut | artifact; 0-2 | step 10: generator 23, the artifact's placed hook (`rmg_seer_hut_place`) | `rmg_artifact_object_write` 0x533500; `rmg_seer_object_write` 0x533A90 | 115 and 115 / 18 |
+| 62 Prison | 0 | generator 16 (`rmg_hero_draw`) | `rmg_prison_object_write` 0x533C80 | 77 / 17 |
+| 6 Pandora's Box | 0 | generators 3-6 | `rmg_pandora_object_write` 0x5336F0 | 221 / 19: 51 creature, 118 experience, 21 gold, 31 spells |
+| 17 Dwelling | 0-79 (RoE 0-57) | generator 14 | dwelling write | 244, 60 subclasses |
+| 66-69 Random artifacts | 0 | generator 18 | artifact write | 548 |
+| 76 Random resource | 0 | generator 19 | resource write | 1 232 / 20 |
+| 81 Scholar; 88-90 Shrines; 93 Spell Scroll | 0 | generators 22; 25; 27 (spell drawn) | `rmg_scholar_`, `rmg_shrine_`, `rmg_scroll_object_write` | 66; 516; 351 |
+| 113 Witch Hut | 0 | generator 29 | `rmg_witch_hut_object_write` 0x5340C0 | 35 / 12 |
+| The bodiless visitables: 2, 4, 7, 11-14, 16, 22-25, 28-32, 35, 38, 39, 41, 47-49, 51, 52, 55-58, 60, 61, 63, 64, 78, 80, 82, 84-86, 92, 94-97, 99-102, 104-110, 112 | 13: 0-2; 16: 0-6; else 0 | generators 1, 2, 8-13, 15, 17, 20, 22, 24, 26, 28 | header alone | 3 471; 56 classes seen (not 24, 56) |
+| 143 River delta | 0 | step 15 | header alone | 18 / 7 |
+| Obstacles (lakes 126, mountains 134 among them) | 0 | step 13 (`rmg_obstacles_fill`: `rmg_obstacle_types`, `rand_trn.txt`) | header alone | 32 843 (69 %), 37 classes |
+| 71 Random monster, 124 Hole | first prototype | none: the template table's entries 0 and 1 (`rmg_write_map`) | template only | 21 / 21, no object |
+
+**Order and identifiers** (the code read, the corpus agreeing): first the objects whose type's
+settings +0xC is set (in the corpus exactly the obstacles and deltas: 116-161, 199, 206-211, 143),
+then the rest, each pass in placing order **across both levels** (34 to 162 level changes in a
+two-level map). Towns', monsters' and prisons' identifiers are the generator's serial +0xF44
+(`s1-2p-dry`'s towns 1 to 4), never the written index + 1 (3 445 of 3 445). The template table:
+those two entries, then the prototypes in use by settings group: not in first-use order (21 of 21),
+no two equal.
+
+#### 3.3.2 The census
+
+`setup.sh`, then `corpus`: 20 cases as kept; `m2-4p` **CHANGED** in the corpus run (113 282 bytes,
+its towns elsewhere, the header differing from byte 235) and as kept run alone right after: a first
+map of a fresh start still varies here (RMG-QUIRK-1's stack bytes the likely cause; not followed).
+`read`: 21 of 21 read, 20 import and validate, `l2-2p-c4-islands` refused (§3.3.4). **Headline:**
+47 458 objects of 115 classes (389 class and subclass pairs): obstacles 69 %, resources 4 294,
+monsters 3 156, mines 757, towns 212, prisons 77; no Border Guard, Keymaster's Tent, hero, event
+or random monster object.
+
+As read (every map unless counted):
+
+- **Header:** format 0x1C, difficulty 1, level limit 0, standard victory and loss; the allowed
+  heroes the editor's default (0xEF, 0xFF … , 0x01, 0x00: 4 and 145-155 out) less each prison's
+  hero (21 of 21 exact); **banned artifacts 127-140** (bytes 15-17 `80 FF 1F`); no spell or skill
+  banned, no rumours, custom heroes or timed events, no 124 trailing bytes; gzip mtime 0, OS 0x0B.
+- **Players:** a colour in play: tactic 0, choice 0, random town 0, main town with generate-hero 1
+  and **type byte 0xFF**, no random hero, hero type 0xFF, the unknown byte 0, no heroes (88 of 88);
+  an unused colour's 13 bytes 7 × 0, 0xFF, 5 × 0 (80).
+- **Bodies:** monsters a count, disposition 3, no treasure, may flee, grow; towns no name, garrison
+  or building list, formation 0, spells zero, no events, alignment 0xFF, 125 neutral; prisons owner,
+  patrol and sex 0xFF, nothing customised, 15 without experience; seer huts SoD's one-artifact
+  quest, deadline −1, no texts, rewards experience 37, creatures 42, gold 36; one reward kind per
+  Pandora's Box; Witch Huts `DF EF 00 00`; shrines spell 0xFF, Scholars bonus −1, resources and
+  random resources amount 0, artifacts no message, mines, dwellings and shipyards owner 0xFF.
+
+#### 3.3.3 The engine's coverage
+
+`h3_map::read` reads every class (21 of 21). The import (`import/codes.rs`, `object_type`) types a
+class or leaves it a blocker (a footprint without a type, the import's default). The writer: its
+typed `MapObject`s, `PLAIN_OBJECTS`, or `Extras::objects` (`AnyObject`: any template but 34, 62,
+70, 214, with the editor's default body; SoD only).
+
+| Classes | Import | Writer |
+|---|---|---|
+| 98 | typed (main town: §3.3.4) | `AnyTown` |
+| 54 | typed | `Monster` (count, disposition, flees, growth) |
+| 53, 17, 87 | typed by subclass | `OwnedObject` (no owner: 0xFF) |
+| 79; 76 | typed | `Pile` (79 only); 76 by `Extras` (amount 0) |
+| 5, 66-69; 6 | typed | `RewardBody::Artifact`; `Pandora` (the model's `Rewards`) |
+| 62 | typed (prisoner) | `Prison` (its hero out of the allowed set, as the generator) |
+| 88-90, 93, 113 | typed | `RewardBody::Shrine`, `Scroll`, `WitchHut(Some(mask))` |
+| 81 | typed | `Extras` (its default body is the generator's) |
+| 83 | **blocker** (quests: E12) | `Extras::quests`: the mission, no reward |
+| 9, 10 | typed by colour | `Extras` |
+| 57 Obelisk, 80 Sanctuary | **blockers** (E12) | `Extras` |
+| 43-45, 103, the other bodiless visitables | typed | `Plain` or `Extras` |
+| 143, obstacles | blockers (scenery) | `Plain` for 135, 137, 155; `Extras` |
+
+Nothing of the corpus is refused or stubbed (no `Unsupported`, no `docs/stubs.toml` entry); 115
+seer huts (18 maps), 278 obelisks (20) and 5 sanctuaries play as blockers until E12.
+
+**The writer's gaps** for increment 6 (the uncompressed `.h3m` byte for byte; the gzip stream
+cannot match: the game's zlib at level 6, OS 0x0B, against `writer::gzip`'s miniz at 9, OS 0xFF):
+
+1. **One object list in the caller's order:** `write_all` writes the typed surface objects, the
+   underground's, then `Extras`; the generator interleaves levels and kinds.
+2. **Identifiers as given** (towns, monsters, prisons): the writer's are the written index + 1.
+3. **The template table as given:** the generator's order and its two unused entries (71, 124); the
+   writer's `templates` lists the objects' in first-use order.
+4. **A Seer's Hut's reward** (experience, one creature stack or gold) with its one-artifact quest;
+   `Extras::quests` writes none, and only in SoD.
+5. **The banned artifacts as a set:** the generator bans 127-140; the writer ORs
+   `Map::banned_artifacts` into the editor's 127-143.
+6. **RoE and AB layouts** (the generator writes its version's 0x0E, 0x15 or 0x1C): the writer has
+   `Format::RoE` (no towns, no `Extras`) and SoD, no AB; the corpus is SoD only, so oracle cases
+   first.
+7. **The main town** (the town lane's `writer/town.rs`): the type byte 0xFF where the writer writes
+   the faction; a main town of a town not of its colour (`main_towns` takes the colour's own only).
+
+Not gaps: the header's other fields, the unused colours' bytes, the allowed heroes, the tiles
+(`GivenTile`, flags as given), the other bodies, the description (Latin-1, a template name's line
+break), the absent padding. Each gap is one inbox line for the adventure lane (7: the town lane).
+
+#### 3.3.4 TWN-SET-001 and `l2-2p-c4-islands`
+
+- **The original writes** each colour's main town at its zone's first town's entrance (zone
+  generator +0x30, §2.5): the town's anchor less two columns, 88 of 88 in the corpus;
+  `Untitled.h3m`'s "two cells right" is exactly this. The editor's shipped maps write the same: 553
+  of 553 main towns at the anchor less two of a town of that colour (160 maps).
+- **The reader expects** the same (`docs/formats/h3m.md`, the player block; `import::town::starts`:
+  the town one of whose entrances is the position, else `ImportError::MainTown`, TWN-QUIRK-4).
+  §2.5's candidate is no quirk: the entrance is the format's convention.
+- **Why only this map:** Dragons' zone 32 is a computer start of colour 5 (purple) that asks for no
+  colour town or castle (columns 14-17 zero) and for neutral towns by density (18-21: 0, 0, 6, 6).
+  Its first town, a neutral Inferno placed by step 5 (`rmg_town_place_far` through `_central`,
+  which sets +0x30), becomes purple's main town; purple plays (its zone holds a town). The import
+  finds the town; `GameSetup::validate` refuses it (`GameSetupError::MainTown`, "not a town of its
+  own": the owner half the user's cut of 2026-11-04 added, E09 design §8, an engine decision
+  without an original source). The corpus's other 87 main towns are towns of their colour.
+- **The original accepts it** (observed after the start settled, the same bytes as kept): the town
+  (entrance (9, 39, 0)) stays neutral, purple's hero (Marius, 50, of purple's one faction, Inferno)
+  stands on its entrance as its visiting hero, purple owns no town. `main_town_heroes` 0x4CA040
+  matches the town by entrance alone, no owner test; nothing read gives the town to the colour. The
+  seven days without a town that follow (E10, MCL-STUB-4) were not played.
+
+**Decided** (the user, 2026-11-24, T1c2): the entrance convention is settled (not a quirk);
+the neutral main town is **RMG-QUIRK-23**, no flag (the original's map in every profile); the town
+lane's inbox holds the question whether `GameSetup::validate` accepts a main town of another owner
+as the original does (the hero generated on its entrance as the town's visitor, the town keeping its
+owner, the colour starting without a town). Until then a game on such a generated map is refused
+(1 of the 21).

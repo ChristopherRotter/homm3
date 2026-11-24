@@ -29,6 +29,22 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-24 (the map-client lane, E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your
+  planning: facts the client needs from the engine**): the user's rule at E24 M5 T0 (MCL-Q54):
+  **the engine and the server are the only authority for a client**; reading a game's facts
+  from files at run time is phased out (facts first; the map's pictures later, by an ADR, so that
+  a server's generated map reveals its contents only as discovered). E24 M5 (hot seat, in-process)
+  reads no rules table and no map text in play, so it needs, each built plainly in the client
+  meanwhile: (1) **MCL-Q53 (a)**: a hero coming into another player's sight told with its owner,
+  type and boat (your inbox since 2026-11-09, with the server lane's `SRV-STUB-3`); (2) **MCL-Q54
+  (a)**: a Pandora's Box's reward record as the original shows it (the parts the hero does not
+  get, the creatures' order between those that joined and those without room, an empty Box,
+  ADVEVENT 15); (3) **MCL-Q55 (a)**: a flagged mine's production (the new owner's view, then the
+  server lane's wire lifting `SRV-STUB-10`); (4) the map's texts a visit shows (a sign's, an
+  event's, a Box's, a Seer's) as the events' own; M5 T4 lists any further gap here. Also for M5:
+  the step that changes a loaded game's humans (the client lane's note of 2026-11-21) lets M5
+  start a game from Load.
+
 - 2026-11-24 (the town lane, E09 T51, `town/e09-t51`, docs only; **the town's services
   renumbered again; nothing to build**): at T51 (`TWN-Q34`, E09 decision 197) the user split
   E09's services in two: **increment 6, the town's trades** (the Marketplace's screens with the
@@ -39,7 +55,22 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   A-30, and the Cover of Darkness); travel and the Grail (Town Portal, Castle Gate) are
   **increment 8**. Where your docs say "E09 increment 7" for Town Portal (`E08-design.md`), read
   8; "E09's increment 6" for the Artifact Merchants (ADV-QUIRK-48's ledger entry) stays right.
-
+- 2026-11-24 (the rmg lane, E14 T1c2, `rmg/e14-t1c2`; **for your planning, nothing to do before
+  E14 increment 6 is cut** (T1c3): survey `docs/rules/surveys/E14-generator.md` §3.3): increment 6
+  writes the original generator's maps through `h3_map::writer`, the uncompressed `.h3m` byte for
+  byte (checked against the oracle's 21 maps; this replaces the rmg lane's note of 2026-11-21). What the writer lacks for it: (1) **one object list
+  in the caller's order**, both levels and every kind interleaved (today the typed surface objects,
+  then the underground's, then `Extras`); (2) **identifiers as given** for towns, monsters and
+  prisons (the generator's serial, never the written index + 1); (3) **the template table as
+  given** (its order, not first use, and two unused leading entries: the random monster's and the
+  hole's first prototypes); (4) **a Seer's Hut's reward** (experience, one creature stack or gold)
+  with its one-artifact quest, deadline −1, no texts (`Extras::quests` writes no reward); (5)
+  **the banned artifacts as a whole set** (the generator bans 127-140; the writer cannot leave out
+  the editor's 141-143); (6) the **AB layout** (0x15) and towns and `Extras` in **RoE**, only once
+  the oracle has such cases (the corpus is SoD). One way to all six: a writer of the reader's raw
+  model (`RawMap` to bytes, round-trip tested over the shipped maps and the corpus); your call.
+  For E12's order: the generated maps hold 115 Seer's Huts (18 of 21 maps), 278 Obelisks (20) and
+  5 Sanctuaries, all blockers in the import today.
 - 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **for your planning,
   nothing to do now**): three facts a player's record lacks that the map viewer would show, each a
   question there with the gap built plainly meanwhile: (1) **MCL-Q53**, a hero coming into sight
@@ -82,11 +113,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   follow: `check_timed` expects the learning after each event's build, the details' check and the
   views' fold take a hero hired in the command as the hirer's. No golden replay, version or bot
   report moved.
-- 2026-11-21 (the rmg lane, E14's refinement, RMG-Q1; **informational, nothing to do yet**): E14
-  (the map generator) left your lane: the new rmg lane ports the original's random map
-  generator (`docs/epics/E14-original-map-generator.md`), E30 the custom one. Its maps go through
-  `h3_map::writer` and the import; E14 T1c lists the objects the writer cannot yet write and
-  sends them here; increment 6 sets a game up on a generated map.
 - 2026-11-21 (the ai lane, E13's refinement, AI-Q21; **for your planning; nothing blocks**): the
   user moved E13 (the adventure AI) to the ai lane and decided it **waits for all of E10**
   (victory and defeat, teams, diplomacy, the setup beyond the import), with no piece of E10
