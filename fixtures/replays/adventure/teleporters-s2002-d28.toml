@@ -399,25 +399,25 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x37a49551223e88f2",
-    "0x5a805e7afd0b36a1",
-    "0x54441a66a0030d40",
-    "0xec482f58da7c99ee",
-    "0xc7a697ed13218034",
-    "0x99da3c1e700eeb09",
-    "0xc1c4df865f412f9f",
-    "0x571707c755a1a987",
-    "0x9328b41f7f0a09e8",
-    "0xf8e30c277fbd0fbb",
-    "0x8510c7425cef0346",
-    "0x67db9436aab6ebdf",
-    "0x16595a6acaf46bba",
-    "0x38169e6f13c54c56",
-    "0xb0fc39b09013261c",
+    "0xb2c5425bc95aaab4",
+    "0x8a101f49765ac961",
+    "0xd24964df1dd4e7b0",
+    "0x30dac7a2eaea164b",
+    "0xb9dbe324ca795ec3",
+    "0x54e60da7d7af24a4",
+    "0x45443b460366038f",
+    "0x6e2f0a6a3d41765d",
+    "0x4759db9cdbfdf64b",
+    "0xfea2b9d158d48065",
+    "0xe53d62244b1b2376",
+    "0xd268aa2fd92b7b87",
+    "0xb51902ff9f65e866",
+    "0x127161fb302bf249",
+    "0xf82fc0b54e387776",
 ]
 
 [replay]
-format = 24
+format = 25
 engine = "0.1.0"
 seed = "2002"
 difficulty = 1
@@ -437,24 +437,24 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x0c610f9192575256"
+adventure_ruleset_hash = "0x888a0c8963f09a43"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 38
-adventure_state_hash_version = 27
+game_state_hash_version = 39
+adventure_state_hash_version = 28
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-teleporters-36.h3m"
 hash = "0x27ac37d3c2d89975"
-import_version = 28
+import_version = 29
 
 [result]
 day = 29
-final_hash = "0xd9c61de6712ccf4f"
+final_hash = "0xbb9081263f8d64be"
 
 [[players]]
 colour = 0

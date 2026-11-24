@@ -626,35 +626,35 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x9df39f18f2098222",
-    "0x89fafc17135c786d",
-    "0xfaf4d61c8b7a6ace",
-    "0x9ac477264e937c3c",
-    "0x6dbed5c149b52be9",
-    "0x888985e5f7bf9369",
-    "0x67531b913dbf5908",
-    "0x59b7ace37d5ad904",
-    "0xd24d66b92c9380db",
-    "0x1f62a9e3c57c4f71",
-    "0xd2d09dfc9c7f3fd3",
-    "0x9b2e51098ef85bcc",
-    "0x3a290b84473a62c6",
-    "0x18c55cbc5e3cb54d",
-    "0x65b69830de9e4078",
-    "0x7c7c7ca30d8dfca0",
-    "0x83c14e51c6fadf91",
-    "0x90dd9286d70eca89",
-    "0x08202e9c6641a825",
-    "0x312561511776e0e9",
-    "0xfb7231885e39ed1b",
-    "0x32139315e290aa9b",
-    "0x8465a214b30cafe0",
-    "0xc951efa7ba96e756",
-    "0x59ee966cc7cfa598",
+    "0x0351f64196550d19",
+    "0xbcde7188f74322fe",
+    "0xd2cbb4f7fffbaa41",
+    "0x3fc0ef0328c8f37b",
+    "0xd7c964e54b170aa2",
+    "0x558807b0085780ae",
+    "0x2fb8eaf7c2bffb03",
+    "0x3a414575f162982b",
+    "0x53dc9c216d930454",
+    "0xdcce8e3e812b3642",
+    "0x46f91edf9907dc7b",
+    "0x9d8be651dfebdffc",
+    "0x8e54b5f6976cb576",
+    "0x400adcf3fed5c4fd",
+    "0x0fae1f6436be5334",
+    "0xf65f7c5e9e4fe040",
+    "0xac276e5fefe56d21",
+    "0x0cfa61e85f793301",
+    "0x4b3a1c81099b26a3",
+    "0x9249c13a045ed03d",
+    "0x5b51658b2407db8d",
+    "0x1646a8cdb2e77f01",
+    "0x363f1d4b3f7aaa97",
+    "0xe4688b561cb1d4dd",
+    "0x5432b9dff113963b",
 ]
 
 [replay]
-format = 24
+format = 25
 engine = "0.1.0"
 seed = "4893"
 difficulty = 1
@@ -674,24 +674,24 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x0c610f9192575256"
+adventure_ruleset_hash = "0x888a0c8963f09a43"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 38
-adventure_state_hash_version = 27
+game_state_hash_version = 39
+adventure_state_hash_version = 28
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x5918efa3271a85e0"
-import_version = 28
+import_version = 29
 
 [result]
 day = 29
-final_hash = "0x59ee966cc7cfa598"
+final_hash = "0x5432b9dff113963b"
 
 [[players]]
 colour = 0

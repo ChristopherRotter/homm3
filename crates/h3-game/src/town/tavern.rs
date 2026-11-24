@@ -94,8 +94,9 @@ pub struct TavernHeroView {
 
 impl TavernHeroView {
     /// The view of a tavern hero of `id` with `details` and the army, formation and tactics flag
-    /// the pool keeps (`army`, `formation`, `tactics`).
-    fn new(
+    /// the pool keeps (`army`, `formation`, `tactics`); since E08 T141a also a freed prisoner's
+    /// view for its owner (`GameEvent::PrisonerFreed`).
+    pub(crate) fn new(
         id: HeroId,
         details: &HeroDetails,
         (army, formation, tactics): (&[ArmyStack], Formation, bool),

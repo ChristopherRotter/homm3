@@ -40,7 +40,8 @@
 //! …` (the places as the management lines', `w<position>` and `b<index>`, the worn ones by
 //! position, then the backpack's from the last index down), `creatures <amount> …` (seven, by
 //! slot) and `leave`; v23 a Hill Fort's answers, E08 T134b1: `answer hill-fort upgrade <slot>`,
-//! `all` and `leave`; v24 `town open <town>`, a town screen's opening, E09 T49a2):
+//! `all` and `leave`; v24 `town open <town>`, a town screen's opening, E09 T49a2; v25 `town book
+//! <town>`, a spell book's purchase at its Mage Guild, E09 T49b):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -65,12 +66,13 @@
 //!     "0 town heroes 2 enter",        #   `<player> town heroes <town> enter|leave|swap` (16)
 //!     "0 town hire 2 1",              #   `<player> town hire <town> <slot>` (format 17)
 //!     "0 town open 2",                #   `<player> town open <town>` (format 24)
+//!     "0 town book 2",                #   `<player> town book <town>` (format 25)
 //!     "0 revisit 1",                  #   `<player> revisit <hero>` (format 12)
 //! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 24
+//! format = 25
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -386,6 +388,10 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         // Format v24 (E09 T49a2).
         GameCommand::Town(TownCommand::Open { town }) => {
             format!("{player} town open {}", town.raw())
+        }
+        // Format v25 (E09 T49b).
+        GameCommand::Town(TownCommand::BuySpellBook { town }) => {
+            format!("{player} town book {}", town.raw())
         }
     }
 }
@@ -805,13 +811,18 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
             let slot = slot.parse().map_err(|_| bad())?;
             GameCommand::Town(TownCommand::Hire { town, slot })
         }
-        // Format v24 (E09 T49a2): a town screen's opening.
-        Some("town") if words.clone().next() == Some("open") => {
-            let (_, Some(town)) = (words.next(), words.next()) else {
+        // Format v24 (E09 T49a2): a town screen's opening; v25 (E09 T49b) a spell book's
+        // purchase at its Mage Guild.
+        Some("town") if matches!(words.clone().next(), Some("open" | "book")) => {
+            let (Some(kind), Some(town)) = (words.next(), words.next()) else {
                 return Err(bad());
             };
             let town = town.parse().map(TownId::new).map_err(|_| bad())?;
-            GameCommand::Town(TownCommand::Open { town })
+            GameCommand::Town(if kind == "open" {
+                TownCommand::Open { town }
+            } else {
+                TownCommand::BuySpellBook { town }
+            })
         }
         // Format v11 (E09 T18b1): a town's build, without a hero; v15 (E09 T27) its recruitment.
         Some("town") => {

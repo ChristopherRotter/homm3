@@ -350,6 +350,26 @@ pub struct AdventureOutcome {
     /// [`crate::AdventureState::check_upgrade`] and [`crate::AdventureState::check_upgrade_all`]
     /// check.
     pub service: Option<ServiceVisit>,
+    /// The Prison the visit reached and its prisoner (ADV-PRI-002; E08 T141a, increment 15's
+    /// design note §9, ADR-0017 point 10): the game decides, no decision opened (`h3_game`'s
+    /// prisoner freed: the town part's most heroes, the store), then frees it with
+    /// [`crate::AdventureState::free_prisoner`] or removes an emptied Prison with
+    /// [`crate::AdventureState::empty_prison`]. The visitor stays on its tile, untouched.
+    pub prison: Option<PrisonVisit>,
+}
+
+/// A Prison's visit ([`AdventureOutcome::prison`]; ADV-PRI-002, E08 T141a): the visiting hero, the
+/// Prison and its prisoner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PrisonVisit {
+    /// The visiting hero, on a tile beside the Prison's visitable tile.
+    pub hero: HeroId,
+    /// The Prison's index.
+    pub index: usize,
+    /// The Prison's visitable tile, where its prisoner is freed onto.
+    pub entrance: Pos,
+    /// Its prisoner ([`crate::Resolved::Prisoner`]).
+    pub prisoner: HeroId,
 }
 
 /// What a Sirens' visit took from its hero's army ([`AdventureOutcome::drowned`]; E08 T115b).

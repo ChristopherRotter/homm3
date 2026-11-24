@@ -8,7 +8,8 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_adventure::{
-    AdventureParams, AdventureSetup, Bans, HeroSetup, MapSetup, Pos, Seat, SetupError,
+    AdventureParams, AdventureSetup, Bans, HeroSetup, MapSetup, Pos, PrisonerSetup, Seat,
+    SetupError,
 };
 use h3_content::{
     ArtifactTypeId, CreatureTypeId, Formation, HeroEffect, HeroType, HeroTypeId, ResourceId,
@@ -66,6 +67,35 @@ pub struct GameHeroSetup {
     pub formation: Formation,
     /// What the setup customises of its details (GAM-HER-001).
     pub details: HeroDetailsSetup,
+}
+
+/// A prisoner as the game's setup gives it (ADV-PRI-001, GAM-SET-001; E08 T141a, increment 15's
+/// design note §7, §15): a Prison's hero (the map's class 62 with its body, read as a placed
+/// hero's), off the map until a visit frees it. The game builds it as a placed hero (its army, its
+/// details with their levels at load, its spell points) into the store, in no player's list.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GamePrisonerSetup {
+    /// The hero type: fixed (the map has no random prisoner).
+    pub hero_type: HeroTypeId,
+    /// Its army, as a placed hero's ([`HeroArmy::Starting`] drawn when the game is built).
+    pub army: HeroArmy,
+    /// Its army's formation in battle (the map's flag).
+    pub formation: Formation,
+    /// What the setup customises of its details (GAM-HER-001), as a placed hero's.
+    pub details: HeroDetailsSetup,
+}
+
+impl GamePrisonerSetup {
+    /// A prisoner of `hero_type` with nothing customised: its type's starting army, the loose
+    /// formation, every default detail.
+    pub fn of_type(hero_type: HeroTypeId) -> Self {
+        Self {
+            hero_type,
+            army: HeroArmy::Starting,
+            formation: Formation::Loose,
+            details: HeroDetailsSetup::default(),
+        }
+    }
 }
 
 /// What a setup customises of a hero's details (GAM-HER-001, E08 T18b): each field the map's, or
@@ -165,8 +195,12 @@ pub struct GameSetup {
     /// The hero types the map restricts to some colours, each with its colour mask (bit `c` for
     /// colour `c`; SoD's disposed heroes; E09 T7a1): the pool's masks (TWN-SET-005).
     pub hero_masks: Vec<(HeroTypeId, u8)>,
-    /// The prisoners' hero types (the map's class 62; E09 T7a1): taken in the pool (TWN-SET-005).
-    pub prisoners: Vec<HeroTypeId>,
+    /// The prisoners (the map's class 62; E09 T7a1 their types, since E08 T141a their bodies,
+    /// map import v29), one per Prison of the static map in object order: each type taken in the
+    /// pool as a prisoner's (TWN-SET-005), each hero built into the store after the build's
+    /// heroes (GAM-SET-001) and held by its Prison (ADV-PRI-001). A type is no placed hero's and
+    /// no other prisoner's ([`GameSetupError::PrisonerType`]).
+    pub prisoners: Vec<GamePrisonerSetup>,
     /// The hero types the map customises map-wide, each with its entry (SoD's customised types,
     /// `map_custom_heroes_read` 0x4C2CE0; E09 T37b, design note `E09-design.md` §70, decisions
     /// 137, 138): every hero the build makes of such a type takes the entry under its own
@@ -343,6 +377,10 @@ pub enum GameSetupError {
     /// A customised type ([`GameSetup::custom_types`]) is not the ruleset's, or the setup names
     /// it twice (E09 T37b); the first such entry's type.
     CustomType(HeroTypeId),
+    /// The prisoner at this index ([`GameSetup::prisoners`]) is of a type the ruleset does not
+    /// have, a placed hero's or an earlier prisoner's (E08 T141a: each type has one hero; none
+    /// of the shipped maps has such a prisoner, survey `E08-spells.md` §1.1).
+    PrisonerType(usize),
     /// The adventure context rejects its part.
     Adventure(SetupError),
 }
@@ -422,6 +460,9 @@ impl fmt::Display for GameSetupError {
                 "customised hero type {} is unknown or named twice",
                 hero_type.raw()
             ),
+            Self::PrisonerType(index) => {
+                write!(f, "prisoner {index}'s hero type is unknown or taken")
+            }
             Self::Adventure(error) => write!(f, "adventure: {error}"),
         }
     }
@@ -567,14 +608,28 @@ impl GameSetup {
         {
             return Err(GameSetupError::Event(index));
         }
+        // E08 T141a: each prisoner's type the ruleset's and no placed hero's or earlier
+        // prisoner's, before any draw.
+        let mut prisoner_types = Vec::with_capacity(self.prisoners.len());
+        for (index, prisoner) in self.prisoners.iter().enumerate() {
+            let t = prisoner.hero_type;
+            let hero_type = rules.core().hero_type(t).filter(|_| {
+                !self.heroes.iter().any(|hero| hero.hero_type == Some(t))
+                    && !self.prisoners[..index].iter().any(|p| p.hero_type == t)
+            });
+            let Some(hero_type) = hero_type else {
+                return Err(GameSetupError::PrisonerType(index));
+            };
+            prisoner_types.push((t, hero_type));
+        }
         // E09 T7b2b: one hero more per main town that generates one (TWN-SET-009); E09 T37b: at
-        // most one record per customised type.
+        // most one record per customised type; E08 T141a: one per prisoner.
         let generating = self
             .players
             .iter()
             .filter(|player| player.start.main_town.is_some_and(|t| t.generates_hero))
             .count();
-        let count = self.heroes.len() + generating + self.custom_types.len();
+        let count = self.heroes.len() + generating + self.prisoners.len() + self.custom_types.len();
         if count > usize::from(u16::MAX) + 1 {
             return Err(GameSetupError::Heroes(count));
         }
@@ -611,20 +666,58 @@ impl GameSetup {
             });
             machines.push(((type_id, hero_type), given));
         }
+        // rule: GAM-SET-001
+        // E08 T141a (increment 15's design note §15): the prisoners after the build's heroes, each
+        // built as a placed hero (its army now, its details below), in no player's list.
+        let first_prisoner = heroes.len();
+        let mut prisoners = Vec::with_capacity(self.prisoners.len());
+        let held = self.prisoners.iter().zip(prisoner_types);
+        for ((prisoner, (type_id, hero_type)), index) in held.zip(first_prisoner..) {
+            let id = HeroId::new(u16::try_from(index).unwrap_or(u16::MAX));
+            let (army, given) = match &prisoner.army {
+                HeroArmy::Custom(stacks) => (stacks.clone(), Vec::new()),
+                HeroArmy::Starting => starting_army(hero_type, params, draws)
+                    .ok_or(GameSetupError::StartingArmy(id))?,
+            };
+            prisoners.push(PrisonerSetup {
+                id,
+                army,
+                formation: prisoner.formation,
+            });
+            machines.push(((type_id, hero_type), given));
+        }
         let mut details = Vec::with_capacity(count);
         let mut customs = Vec::with_capacity(count);
-        for ((hero, (hero_type, given)), index) in all().zip(machines).zip(0..=u16::MAX) {
+        // E08 T141a: the prisoners' details after the build's heroes', as a placed hero's.
+        let own = all()
+            .map(|hero| &hero.details)
+            .chain(self.prisoners.iter().map(|prisoner| &prisoner.details));
+        for ((own, (hero_type, given)), index) in own.zip(machines).zip(0..=u16::MAX) {
             // rule: GAM-HER-001
             // E09 T37b: its own customisations over its type's map-wide entry (decision 137).
             let custom = self
                 .custom_type(hero_type.0)
-                .map_or_else(|| hero.details.clone(), |entry| hero.details.over(entry));
+                .map_or_else(|| own.clone(), |entry| own.over(entry));
             let built = hero_details(rules.core(), &custom, hero_type, &given, draws);
             h3_heroes::validate(&built, rules.core())
                 .map_err(|error| GameSetupError::Hero(HeroId::new(index), error))?;
             details.push(built);
             customs.push(custom);
         }
+        // E08 T141a: each prisoner its type's record (TWN-SET-005: the type stays a prisoner's).
+        for (prisoner, setup) in prisoners.iter().zip(&self.prisoners) {
+            drawn.pool.set_record(setup.hero_type, prisoner.id);
+        }
+        // rule: GAM-SET-004
+        // E08 T141a (decision 413): the heroes in the order they join their owners' lists, as the
+        // original's start (`placed_heroes_setup` 0x4CAE10 by type, its placed heroes appended at
+        // 0x4CAF25; then `main_town_heroes` 0x4CA040 in player order): the placed heroes by hero
+        // type (a random one by its drawn type; the id breaks a tie no import makes), then the main
+        // towns' heroes.
+        let types: Vec<HeroTypeId> = drawn.types.iter().map(|&(id, _)| id).collect();
+        let _ = h3_kernel::order::sort_by_unique_key(&mut heroes[..self.heroes.len()], |hero| {
+            (types.get(usize::from(hero.id.raw())).copied(), hero.id)
+        });
         // E09 T37b: the customised types' records after them, each its entry (checked above) with
         // a drawn default experience when it has none, so valid; no army (a fill gives it).
         for ((type_id, hero_type), entry) in records {
@@ -643,6 +736,7 @@ impl GameSetup {
             players,
             map: self.map.clone(),
             heroes,
+            prisoners,
             difficulty: self.difficulty,
             bans: Bans {
                 skills: self.banned_skills.clone(),

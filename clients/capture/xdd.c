@@ -117,7 +117,14 @@
       the harness may seed it again:
         <seq> seed <value>   the main thread's seed becomes <value> at its next clock read
       The ack's sixteenth field counts the seeds set so. The DLL's load runs on the main thread
-      (DllMain, the process's first), whose id it keeps for this. */
+      (DllMain, the process's first), whose id it keeps for this.
+   9. The random map's clock (E14 T1b1, *provisional*; docs/lanes/rmg/ORACLE.md): the random map
+      generator seeds the C library's generator with time() in seconds (0x536148), and the C
+      library's time() (0x6198E0, its one caller the generator's) reads KERNEL32's GetLocalTime
+      and GetSystemTime. With H3TIME set to a number of seconds since 1970-01-01 00:00 UTC (and
+      H3CLOCK, as for everything here), Heroes3.exe's imports of both return that time, fixed,
+      to every caller: with TZ=UTC (the shell's runs) time() returns H3TIME, the map's seed.
+      The ack's seventeenth field counts the two imports hooked (2). */
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -256,6 +263,7 @@ static DWORD now(void)
 static DWORD main_thread;  /* 6.: with sound only the main thread's reads count */
 static DWORD game_thread;  /* 8.: the main thread, whatever the sound */
 static volatile LONG seed_pending, seeds_set;
+static int date_hooks; /* 9.: the ack's seventeenth field, the date imports hooked */
 static DWORD seed_value;
 
 static DWORD WINAPI virtual_time(void)
@@ -1193,11 +1201,11 @@ static DWORD WINAPI control(LPVOID unused)
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld %d %ld %d %d %ld %ld\n", applied,
+            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld %d %ld %d %d %ld %ld %d\n", applied,
                     (unsigned long)t, (long)reads, (long)forced_draws, waiting, redirected,
                     (long)refused, bink_clock, sound_hooks, (long)unfollowed, smack_clock,
                     (long)clip_reads, summary_hooked, smack_sound, (long)bink_sound,
-                    (long)seeds_set);
+                    (long)seeds_set, date_hooks);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
@@ -1277,6 +1285,38 @@ static FARPROC hook_by_name(HMODULE module, const char *dll, const char *name,
     return NULL;
 }
 
+/* 9.: the fixed date both imports return. */
+static SYSTEMTIME fixed_date;
+
+static void WINAPI fixed_local_time(SYSTEMTIME *t)
+{
+    *t = fixed_date;
+}
+
+static void WINAPI fixed_system_time(SYSTEMTIME *t)
+{
+    *t = fixed_date;
+}
+
+/* `s` seconds since 1970-01-01 00:00 UTC as a SYSTEMTIME (the proleptic Gregorian calendar's
+   date from the day count, H. Hinnant's days_from_civil inverted). */
+static void date_of(unsigned long s, SYSTEMTIME *t)
+{
+    long days = (long)(s / 86400), secs = (long)(s % 86400);
+    long z = days + 719468, era = z / 146097, doe = z - era * 146097;
+    long yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    long doy = doe - (365 * yoe + yoe / 4 - yoe / 100), mp = (5 * doy + 2) / 153;
+    long m = mp < 10 ? mp + 3 : mp - 9;
+    t->wYear = (WORD)(yoe + era * 400 + (m <= 2));
+    t->wMonth = (WORD)m;
+    t->wDay = (WORD)(doy - (153 * mp + 2) / 5 + 1);
+    t->wDayOfWeek = (WORD)((days + 4) % 7); /* 1970-01-01 was a Thursday */
+    t->wHour = (WORD)(secs / 3600);
+    t->wMinute = (WORD)(secs / 60 % 60);
+    t->wSecond = (WORD)(secs % 60);
+    t->wMilliseconds = 0;
+}
+
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
     char dir[MAX_PATH - 8];
@@ -1304,6 +1344,18 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
     }
     InitializeCriticalSection(&lock);
     game_thread = GetCurrentThreadId(); /* 8.: DllMain runs on the main thread */
+    {
+        char at[16];
+        DWORD m = GetEnvironmentVariableA("H3TIME", at, sizeof at);
+        if (m > 0 && m < sizeof at) {
+            HMODULE exe = GetModuleHandleA(NULL);
+            date_of(strtoul(at, NULL, 10), &fixed_date);
+            date_hooks = (hook_by_name(exe, "kernel32.dll", "GetLocalTime",
+                                       (FARPROC)fixed_local_time) != NULL)
+                         + (hook_by_name(exe, "kernel32.dll", "GetSystemTime",
+                                         (FARPROC)fixed_system_time) != NULL);
+        }
+    }
     {
         char at[16];
         DWORD m = GetEnvironmentVariableA("H3FROZEN", at, sizeof at);

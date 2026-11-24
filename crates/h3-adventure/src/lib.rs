@@ -69,8 +69,8 @@ pub use command::{
     AdventureEvent, AdventureEventKind, AdventureOutcome, AltarError, AltarPlaces, AltarVisit,
     BattleStart, Choice, ChoiceKind, Combatant, Defender, Drowned, Exchange, Garrison, HeroGains,
     HillFortError, HillFortVisit, HireDialog, HireError, HireSource, HireTarget, MarketError,
-    MarketVisit, Meeting, NoRoom, NothingWhy, Offer, OfferKind, OwnHeroes, Pick, ServiceVisit,
-    ShipyardBlock, Sink, UniversityVisit, Viewers,
+    MarketVisit, Meeting, NoRoom, NothingWhy, Offer, OfferKind, OwnHeroes, Pick, PrisonVisit,
+    ServiceVisit, ShipyardBlock, Sink, UniversityVisit, Viewers,
 };
 pub use market::{Lot, MarketParams, MarketParamsError};
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
@@ -97,8 +97,8 @@ pub use ruleset::{
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
-    MonsterSetup, ObjectSetup, Pos, RewardRecord, Scenery, Seat, SetupError, StandError, TileMask,
-    TileSetup,
+    MonsterSetup, ObjectSetup, Pos, PrisonerSetup, RewardRecord, Scenery, Seat, SetupError,
+    StandError, TileMask, TileSetup,
 };
 pub use split::{TileRand, split, split_with_second};
 
@@ -145,8 +145,10 @@ pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 /// the map ([`AdventureState::town_heroes`]). v26 (E08 T124b1): the creature banks' draws in the
 /// static map, their guards as drawn and [`Resolved::Bank`] (tag 9). v27 (E08 T133a1): the Black
 /// Markets' stocks in the static map ([`Resolved::Stock`], tag 10) and their sold entries in the
-/// visits' block.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 27;
+/// visits' block. v28 (E08 T141a, decision 413): each hero on the map's key in its owner's list
+/// ([`HeroOnMap::listed`]); the Prisons' prisoners in the static map ([`Resolved::Prisoner`],
+/// tag 11).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 28;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
@@ -172,5 +174,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 27;
 /// T39a): the map's Tavern's and the Den of Thieves' kinds (tags 45 and 46, no parameter). v23
 /// (E08 T132a2): increment 14's four kinds (the market, the Altar of Sacrifice, the Hill Fort, the
 /// War Machine Factory: tags 47 to 50), the market's parameters and the Altar's factions. v24
-/// (E08 T133b, ADV-Q60 (a)): the market parameters' cost resource.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 24;
+/// (E08 T133b, ADV-Q60 (a)): the market parameters' cost resource. v25 (E08 T141a, increment
+/// 15's design note §1, §2): the Prison's and the empty kind's tags 51 and 52, no parameter.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 25;

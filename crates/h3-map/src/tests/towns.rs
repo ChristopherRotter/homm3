@@ -597,7 +597,8 @@ fn a_hero_right_of_a_towns_entrance_moves_onto_it() {
             .hero_type_by_key(codes::HERO_TYPES[code])
             .unwrap()
     };
-    assert_eq!(setup.prisoners, [hero_type(7)]);
+    let prisoners: Vec<HeroTypeId> = setup.prisoners.iter().map(|p| p.hero_type).collect();
+    assert_eq!(prisoners, [hero_type(7)]);
 }
 
 #[test]
@@ -746,25 +747,27 @@ fn the_pools_inputs_are_the_maps_allowed_heroes_masks_and_prisoners() {
         code: 200,
     });
     assert_eq!(import(&m, &SOD).map(|s| s.hero_masks), unknown);
-    // The prisoners' types in the map's order (a prison without a hero's body has none); a type
-    // the rules lack left out, an unknown code refused.
+    // The prisoners in the map's order, each of its body's type (E08 T141a: its body a placed
+    // hero's); a type the rules lack, an unknown code and a Prison without a hero's body refused.
     let mut m = town_map(Version::Sod);
     m.objects.push(object(2, 1, 4, hero_body(0xFF, 140)));
-    m.objects.push(object(2, 3, 4, Body::None));
     m.objects.push(object(2, 6, 4, hero_body(0xFF, 3)));
+    let of = |setup: GameSetup| -> Vec<HeroTypeId> {
+        setup.prisoners.iter().map(|p| p.hero_type).collect()
+    };
+    assert_eq!(of(imported(&m)), types(&SOD, &mut [140, 3].into_iter()));
     assert_eq!(
-        imported(&m).prisoners,
-        types(&SOD, &mut [140, 3].into_iter())
+        import(&m, &ROE).map(of),
+        Err(ImportError::MissingContent(codes::HERO_TYPES[140]))
     );
+    let mut bodiless = m.clone();
+    bodiless.objects.push(object(2, 3, 4, Body::None));
     assert_eq!(
-        import(&m, &ROE).unwrap().prisoners,
-        types(&ROE, &mut [3].into_iter())
+        import(&bodiless, &SOD).map(of),
+        Err(ImportError::PrisonBody(bodiless.objects.len() - 1))
     );
     m.objects.push(object(4, 1, 4, hero_body(0xFF, 200)));
-    assert_eq!(
-        import(&m, &SOD).map(|s| s.prisoners),
-        unknown.map(|_: Vec<_>| vec![])
-    );
+    assert_eq!(import(&m, &SOD).map(of), unknown.map(|_: Vec<_>| vec![]));
 }
 
 /// The experiment writer's town (E04c T5b), read back: its faction, buildings and garrison, and a

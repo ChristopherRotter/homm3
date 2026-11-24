@@ -560,6 +560,12 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         // rule: ADV-VIS-007, ADV-VIS-008
         95 => Some("base:tavern"),
         97 => Some("base:den_of_thieves"),
+        // E08 T141a (increment 15's design note §1, §2, §7): the Prison with its prisoner (the body
+        // the import reads as a placed hero's, `import::prisoner`) and the Market of Time, each of
+        // subclass 0 alone.
+        // rule: ADV-PRI-001, ADV-OBJ-008
+        62 => by_subclass(&["base:prison"]),
+        50 => by_subclass(&["base:market_of_time"]),
         // E08 T93b (increment 10's design note §4): the dwellings by subclass, the Refugee Camp
         // and the random dwellings (216 to 218, a faction set and a level range the import
         // reads from the object's body; since E09 T11 one tied to a town holds its town).

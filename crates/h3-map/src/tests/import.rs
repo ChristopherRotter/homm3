@@ -481,9 +481,18 @@ fn the_typed_classes_import_as_their_object_types() {
     ] {
         cases.push((class, 0, key.into()));
     }
+    // E08 T141a: the Prison (its prisoner a hero's body) and the Market of Time.
+    cases.push((62, 0, "base:prison".into()));
+    cases.push((50, 0, "base:market_of_time".into()));
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
         let body = match class {
+            62 => Body::Hero(Box::new(HeroBody {
+                owner: 0xFF,
+                hero_type: 0,
+                sex: 0xFF,
+                ..HeroBody::default()
+            })),
             76 | 79 => pile_body(0, None),
             54 | 71..=75 | 162..=164 => Body::Monster(MonsterBody::default()),
             5 | 65..=69 => Body::Artifact(None),
@@ -521,8 +530,8 @@ fn the_typed_classes_import_as_their_object_types() {
     // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b
     // (`dwellings.rs`; since E08 T103b increment 11's teleporters, since E08 T113b increment 12's
     // garrisons and bonus visitables, since E08 T123b increment 13's creature banks, since E09
-    // T39a the map's Tavern and the Den of Thieves and since E08 T132b increment 14's six trade
-    // types are among the cases).
+    // T39a the map's Tavern and the Den of Thieves, since E08 T132b increment 14's six trade
+    // types and since E08 T141a the Prison and the Market of Time are among the cases).
     let typed = part
         .object_types()
         .iter()

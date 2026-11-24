@@ -494,7 +494,7 @@ fn core_edited(quirks: &[&str], edit: impl FnOnce(&mut ContentPack)) -> Ruleset 
     Ruleset::compile(&[pack], "t:faithful").unwrap()
 }
 
-fn building(key: &str, supersedes: &[usize], roles: BuildingRoles) -> Building {
+pub(crate) fn building(key: &str, supersedes: &[usize], roles: BuildingRoles) -> Building {
     Building {
         key: key.into(),
         name: key.into(),
@@ -508,7 +508,7 @@ fn building(key: &str, supersedes: &[usize], roles: BuildingRoles) -> Building {
     }
 }
 
-fn roles(change: impl FnOnce(&mut BuildingRoles)) -> BuildingRoles {
+pub(crate) fn roles(change: impl FnOnce(&mut BuildingRoles)) -> BuildingRoles {
     let mut roles = BuildingRoles::default();
     change(&mut roles);
     roles

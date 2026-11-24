@@ -16,13 +16,13 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xec4f834393f2946a",
-    "0x0f6f9fc77ef9fd54",
-    "0x893f70fea7c265f5",
+    "0x13a4e0346b7835ec",
+    "0xdd9aefc7553e5c26",
+    "0xfe3d93eb47f51a43",
 ]
 
 [replay]
-format = 24
+format = 25
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -42,24 +42,24 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x0c610f9192575256"
+adventure_ruleset_hash = "0x888a0c8963f09a43"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 38
-adventure_state_hash_version = 27
+game_state_hash_version = 39
+adventure_state_hash_version = 28
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-garrisons-36.h3m"
 hash = "0xa3cbaec168902eb6"
-import_version = 28
+import_version = 29
 
 [result]
 day = 2
-final_hash = "0x893f70fea7c265f5"
+final_hash = "0xfe3d93eb47f51a43"
 
 [[players]]
 colour = 0

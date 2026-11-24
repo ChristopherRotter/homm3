@@ -80,6 +80,15 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   and `legal_builds` finds the hero on a town's entrance once for the hires, the opening and the
   moves (`AdventureState::town_entrance_hero`). Left: +5.3 %, the rule's own cost (about 470 Ir a
   listing). A new listed town command shares that lookup and reads derived roles.
+- **A listing's chain carries what it lists** (E09 T49b, the spell book): a
+  `then_some(GameCommand)` in `legal_builds`' per-town chain is part of the chain's state, copied
+  with it and growing the closure past inlining (`legal_builds` outlined, `memcpy` up): carry a
+  `TownCommand` and map once (`open.into_iter().chain(book).map(GameCommand::Town)`). A test the
+  same for every town (the book's price) is not always cheaper once a listing: asked after the
+  town's own tests (a hero there, a guild) it ran for one town in six. A hero's own book
+  (`h3_heroes::wears_spell_book`) walks all its effects (about 170 Ir): ask it last. The
+  opening's and the book's questions read the town's derived roles once (`h3_towns::guild_offers`).
+  First build +5.5 % on `master`'s games, +1.6 % after the pass.
 
 - **CI's verify job stops at 55 minutes** (`ci.yml`'s `timeout-minutes`, 40 until #1009; the
   user, 2026-11-18): `master`'s full run about 36, the runner's apt step 6 to 10 of them,
@@ -100,6 +109,14 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   with a week's start, a build, a capture or a dwelling's flag for its owner, requires the
   owner's `TownChanged` for either, and compares the rest of the record as before. A new writer
   of them (T27's hire) is told and taught there.
+
+- **A town record's field the oracle over every command does not know** (E09 T49b's CI):
+  `check_towns` compares a town's record before and after every command, the counts and the
+  Portal set aside; T49a1's hire Vortex cleared the week flag, which only the hire's own check
+  knew, and `master`'s games never met a Vortex hire until the books changed their course. The
+  flag is now set aside there too, allowed to clear with a `SetSpellPoints` told for the town's
+  hero and to be set at a week's start, told to the owner. A new field of `Town` is taught to
+  `check_towns`, not only to its command's check.
 
 - **A silent write of a hero's details meets two oracles** (E09 T49a1, the night's refill and a
   hire's Mana Vortex): `play.rs`' conservation (`check_conservation`) folds each hero's details

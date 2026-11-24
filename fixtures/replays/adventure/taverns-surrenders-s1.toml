@@ -10,19 +10,19 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x1903bb63d9d1a458",
-    "0x5567378a63c9ab7b",
-    "0xc350b99ece1617e1",
-    "0x4f27e116b657e435",
-    "0x337725087da885e7",
-    "0xebfeff6bd323c3eb",
-    "0x58a61cfe395d5921",
-    "0x13d3e20ba8aa71f5",
-    "0x98969abd663ff22d",
+    "0xd4e121fc3d2314f9",
+    "0xceef3188e8b4c36d",
+    "0x5262d0c76d309a43",
+    "0xa644c6385b16978e",
+    "0xeb2ecd6bdb25eb90",
+    "0x034abbe020fc5378",
+    "0x8ab702659da11211",
+    "0x9433cbd5d4951911",
+    "0x596c8abfa8817a51",
 ]
 
 [replay]
-format = 24
+format = 25
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -42,24 +42,24 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x0c610f9192575256"
+adventure_ruleset_hash = "0x888a0c8963f09a43"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 38
-adventure_state_hash_version = 27
+game_state_hash_version = 39
+adventure_state_hash_version = 28
 checkpoint_every = 1
 
 [map]
 path = "fixtures/maps/e09-taverns-36.h3m"
 hash = "0x5857a6118d8c8733"
-import_version = 28
+import_version = 29
 
 [result]
 day = 3
-final_hash = "0x98969abd663ff22d"
+final_hash = "0x596c8abfa8817a51"
 
 [[players]]
 colour = 0

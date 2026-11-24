@@ -123,6 +123,7 @@ fn setup() -> AdventureSetup {
         seats: crate::testing::seats(2),
         garrisons: Vec::new(),
         town_factions: Vec::new(),
+        prisoners: Vec::new(),
     }
 }
 
@@ -917,6 +918,7 @@ mod markets;
 mod mines;
 mod monsters;
 mod piles;
+mod prisons;
 mod records;
 mod revisits;
 mod rewards;

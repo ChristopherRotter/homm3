@@ -8,13 +8,13 @@ Epic: `docs/epics/E09-towns.md` (increment 5: the mage guild, refined at T41, `T
 161 to 164; its survey T42a and T42b with the checkpoint `TWN-Q31`, decisions 165 to 171; its
 drafts, cut and exit criteria by T43, `TWN-Q32`, `TWN-Q33`, decisions 172 to 181; batch TWN-5 by
 T44, decision 182; the drafts in the ADRs by T45, decision 183; the part v9 by T46, decisions 184,
-185; T47a cut in two, T47a1's module, decisions 186, 187; T47a2 whole, decision 188; T47b whole with the inbox's guild fix, decision 189; T48a whole, decision 190; T48b whole, decision 191; T49a cut in two, decision 192; T49a2 whole, decision 193; the services are increment 6, travel and
+185; T47a cut in two, T47a1's module, decisions 186, 187; T47a2 whole, decision 188; T47b whole with the inbox's guild fix, decision 189; T48a whole, decision 190; T48b whole, decision 191; T49a cut in two, decision 192; T49a2 whole, decision 193; T49b whole, decision 194; the services are increment 6, travel and
 the Grail 7, decision 162); done tasks
 in `E09-log.md`; increments 1 to 4 (closed by T10, T20, T30 and T41) in `E09-archive.md`. Each
 task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start; **T49b**
+**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start; **T50**
 next): T47 the guild drawn and shown (§84 to §87, §94; T47a cut in two, decision 186: T47a1
 `h3-towns`' guild module and T47a2 the map's town spell sets with import v28, the store v4, the
 game's draw at the build, game state hash v38, every golden re-recorded, both done; **T47b** the
@@ -23,14 +23,34 @@ with the Aurora and T-18, the town's own triggers, `TWN-STUB-6` and `-15` lifted
 190); T48b the visit's end, a capture, a siege's end, `cross-lane`, done (decision 191)); T49 the spell points and the commands (§90
 to §93, §95: T49a cut in two (decision 192): T49a1 the night's refill and the Mana Vortex at the
 visit's end, the builds and the hire, done; T49a2 `TownCommand::Open` whole (decision 193:
-protocol v79, replay format v24, encoding v18), done; **T49b** `BuySpellBook` (§91: its rule and
-refusals `NoGuild`, `NoHero`, `HasSpellBook`, its listing sharing `legal_builds`' entrance lookup
-and the part's derived roles, the protocol, the replay word `town book`, the env's `SPELL_BOOK`,
-each the next version at merge, the plans; `cross-lane`)); T50 the guild map, its replays, the census, the properties,
-the benchmarks (§97); T51 the audit against §99's criteria, increment 5 closed, increment 6
+protocol v79, replay format v24, encoding v18), done; T49b `BuySpellBook` whole (decision 194:
+protocol v80, replay format v25, encoding v19), done); **T50** the guild map, its replays, the
+census, the properties, the benchmarks (§97); T51 the audit against §99's criteria, increment 5 closed, increment 6
 refined.
 
 ## Inbox
+
+- 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`, `cross-lane` with the user's
+  consent, E08 decisions 412, 413; **in your paths, for your review**): the Prison. (1) The pool:
+  `GameSetup::prisoners` are `GamePrisonerSetup`s (the body read as a placed hero's): `HeroPool::new`
+  takes each `hero_type` as a prisoner's (TWN-SET-005 kept), `GameSetup::validate` refuses a
+  prisoner's type the ruleset lacks, a placed hero's or an earlier prisoner's
+  (`GameSetupError::PrisonerType`), each prisoner is a hero of the store after the build's heroes
+  with its type's record (`set_record`), and the freeing calls the new `HeroPool::free_prisoner`
+  (taken, the colour's bit added); `import::town::pool` no longer reads the bodies (its third
+  output gone). `town::rows::most_heroes` and `TavernHeroView::new` are `pub(crate)`. (2) **Each
+  player's list of heroes** (GAM-HER-003): `HeroOnMap::listed`, kept by the adventure in your
+  `town::rows` (`arrive` puts a hero last, `enter` and `swap` take the visitor out first, as the
+  original's `town_garrison_to_visitor`, `town_visitor_to_garrison` and `town_swap_heroes`) and in
+  `place_hired` through `arrive`; a hired hero's literal in `h3-game`'s `town/hire.rs` gives
+  `listed: 0` (replaced). The Thieves' Guild's best hero row takes the first strictly greater in
+  the original's list order (survey `E09-tavern.md` §3): `AdventureState::hero_list` now gives
+  that order, if you want the row's tie-break to follow it (today by id). (3) Your tests:
+  `town::tests` is `pub(crate)` with `towns_rules` and `towns_setup` (the game's prison tests use
+  them); the tests with prisoners put a Prison on their maps (`crate::tests::imprison`, `held`);
+  `custom.rs`' records moved one id up (the prisoner's record first). (4) `h3-map`'s
+  `play.rs`: the town check now expects the week's start to fill every town's Vortex flag (T49a2's
+  `Towns::start_week`, found by this branch's property run: the "rebuilt" check failed on it).
 
 - 2026-11-22 (the adventure lane, E08 T140, `shared/e08-t140`, `cross-lane` with the user's
   consent; **mechanical at a merge**): the base faithful ruleset hash moved

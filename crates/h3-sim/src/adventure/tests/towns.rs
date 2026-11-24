@@ -62,6 +62,9 @@ struct Played {
     bought: u32,
     /// Tavern heroes hired at a town (E09 T38a2, TWN-TAV-003: a `HeroHired` of a slot).
     hired: u32,
+    /// Spell books bought at a town's Mage Guild (E09 T49b, TWN-GLD-007: an accepted
+    /// [`SPELL_BOOK`] action).
+    books: u32,
 }
 
 /// Plays the town map with the env's random agent (as `random_rollout` and `h3 adventure run
@@ -115,6 +118,7 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
         assert!(legal_by_masks(&env, seat, action), "{seat:?} {action:?}");
         let mut events = Vec::new();
         let result = env.step_with(seat, action, &mut events).unwrap();
+        played.books += u32::from(matches!(action, Action::Adventure(a) if a.entry == SPELL_BOOK));
         // Only the day limit ends an episode: the step that starts the day after it.
         assert_eq!(
             (result.done, result.truncated),
@@ -197,10 +201,15 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
     (env, played)
 }
 
-/// Random play on the town map (E09 T38b1: a search over the seeds 1 to 3 000 after a hero that
-/// leaves the game came back, TWN-TAV-006, its returns drawing from its owner's stream and its
-/// freed type drawn again: seed 2541 the shortest of the ten meeting every feature, 543 steps,
-/// 28 builds, 58 dialogs and 13 hires; E09 T38a2's seed 2369, the shortest of ten over the seeds
+/// Random play on the town map (E08 T141a after #1136: a search over the seeds 1 to 3 000, cut
+/// short by a restart with five found, after the env's hero slots followed each player's list of
+/// heroes, GAM-HER-003, encoding v20: seed 264 the shortest, 765 steps, 26 builds, 53 dialogs, 13
+/// hires and 3 books; E09 T49b's seed 277: a search over the seeds 1 to 3 000 after the spell
+/// books' purchases joined the agent's draw, encoding v19: seed 277 the shortest of the four
+/// meeting every feature, 657 steps, 30 builds, 29 dialogs, 9 hires and a book; E09 T38b1's seed
+/// 2541, the shortest of ten after a hero that leaves the game came back, TWN-TAV-006, its
+/// returns drawing from its owner's stream and its freed type drawn again, 543 steps, 28 builds,
+/// 58 dialogs and 13 hires; E09 T38a2's seed 2369, the shortest of ten over the seeds
 /// 1 to 2 400 after the hires joined the agent's draw (encoding v12), E09 T27's seed 70, E09 T19c1's 142 and 244, E08 T105b2's 36 and 330 and E09 T9a's, the golden
 /// replays' three, changed course with the hires, the recruitments, the builds and the revisits)
 /// plays through the env to its day limit: the masks agree with the game before each
@@ -209,11 +218,12 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
 /// and one against a visitor with the garrison merged, a siege won (the town captured after it)
 /// and one lost, builds by the towns' owners, each town's the only one of its day, town hire
 /// dialogs with purchases into a garrison (TWN-REC-001; [`play`]) and tavern heroes hired
-/// (TWN-TAV-003, E09 T38a2). The game ends on the day after
+/// (TWN-TAV-003, E09 T38a2) and spell books bought at a town's Mage Guild (TWN-GLD-007, E09
+/// T49b). The game ends on the day after
 /// the limit with no seat to move.
 #[test]
 fn the_env_plays_the_town_map_to_its_end_of_days() {
-    let (env, all) = play(2541, 21);
+    let (env, all) = play(264, 21);
     assert!(env.is_done());
     assert_eq!((env.day(), env.to_move().count()), (22, 0));
     assert_eq!(
@@ -227,6 +237,7 @@ fn the_env_plays_the_town_map_to_its_end_of_days() {
     assert!(all.built > 0, "{all:?}");
     assert!(all.recruited > 0 && all.bought > 0, "{all:?}");
     assert!(all.hired > 0, "{all:?}");
+    assert!(all.books > 0, "{all:?}");
 }
 
 /// The town map's rollouts are deterministic, and a fork taken while a siege is open (seed 6: a

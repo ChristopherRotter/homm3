@@ -44,7 +44,7 @@ use h3_battle::{
     CastTargets, Command, Event, EventKind, Field, cast_targets, castable_spells, second_targets,
 };
 use h3_content::{
-    ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, HeroTypeId, ResourceId,
+    ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, HeroEffect, HeroTypeId, ResourceId,
     SIRENS_AGAIN_AFTER_BATTLE,
 };
 use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId, TownId};
@@ -3814,7 +3814,7 @@ fn hire(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
 /// siege's too, either side's); an open decision settled as [`seek`] settles it; (E09 T29b) a
 /// listed hero move between an own town's bars in five steps of eight (`Enter` in three, `Leave`
 /// and `Swap` in one each), (E09 T38a2) a listed hire in one of eight, (E09 T49a2) a listed
-/// opening in another; on the map the
+/// opening in another, (E09 T49b) a listed spell book's purchase in the last; on the map the
 /// `n`-th of its options that end on a town's entrance (its own entered, TWN-VIS-001; another
 /// player's or a neutral one captured or besieged, TWN-CAP-001, TWN-SIE-001; another team's
 /// visitor besieged with the garrison merged, TWN-SIE-002), in three steps of four of a town not
@@ -3862,6 +3862,14 @@ fn visit_town(
         .find(|c| matches!(c, GameCommand::Town(TownCommand::Open { .. })));
     if let Some(open) = open.filter(|_| n % 8 == 6) {
         return open.clone();
+    }
+    // E09 T49b: a listed spell book's purchase (TWN-GLD-007) in one step of eight, so that heroes
+    // without a book learn the guild's spells.
+    let book = legal
+        .iter()
+        .find(|c| matches!(c, GameCommand::Town(TownCommand::BuySpellBook { .. })));
+    if let Some(book) = book.filter(|_| n % 8 == 7) {
+        return book.clone();
     }
     let row = legal.iter().find(|c| {
         matches!(c, GameCommand::Town(TownCommand::Heroes { change, .. }) if Some(*change) == wanted)
@@ -6765,8 +6773,8 @@ fn check_build_boat(
 /// Every town command to probe in `state` (E09 T18b2b): for each town of the store and one past it,
 /// in `TownId` order, a build of each building of its faction's record and one past it, in index
 /// order, then (E09 T27) a recruitment at each of them, in the same order, then (E09 T38a2) a hire
-/// of each tavern slot and one past them, then (E09 T49a2) its opening, then (E09 T28a) the three
-/// hero moves.
+/// of each tavern slot and one past them, then (E09 T49a2) its opening, then (E09 T49b) a spell
+/// book's purchase, then (E09 T28a) the three hero moves.
 fn town_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -6785,6 +6793,8 @@ fn town_builds<'a>(
         let hires = (0..=2).map(move |slot| TownCommand::Hire { town, slot });
         // E09 T49a2: its opening (TWN-GLD-006).
         let open = core::iter::once(TownCommand::Open { town });
+        // E09 T49b: a spell book's purchase at its Mage Guild (TWN-GLD-007).
+        let book = core::iter::once(TownCommand::BuySpellBook { town });
         // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
         let rows = [
             TownHeroChange::Enter,
@@ -6796,6 +6806,7 @@ fn town_builds<'a>(
             .chain(recruits)
             .chain(hires)
             .chain(open)
+            .chain(book)
             .chain(rows)
             .map(move |command| (town, GameCommand::Town(command)))
     })
@@ -7085,6 +7096,71 @@ fn check_town_open(
     Ok(())
 }
 
+/// A listed spell book's purchase at `actor`'s `town` (E09 T49b; TWN-GLD-007, design note §91),
+/// from `state` to `after`, by an independent reading: the town is the actor's and a Mage Guild
+/// stands there (its guild level above 0); its visitor, else its garrison hero, wore no spell
+/// book (no worn artifact with the `spell_book` effect) and wears the ruleset's first one after,
+/// its other artifacts unchanged; each of the town's heroes' spells grown by
+/// [`h3_towns::teaches`]' in their order, read after the book; the part's price paid; the town's
+/// record and every hero's spell points unchanged.
+fn check_town_book(
+    (state, after): (&GameState, &GameState),
+    rules: &GameRuleset,
+    actor: PlayerId,
+    town: TownId,
+) -> Result<(), TestCaseError> {
+    let was = state.adventure();
+    let index = was.map().town_object(town).unwrap();
+    prop_assert_eq!(was.owner(index), Some(actor));
+    let (core, part) = (rules.core(), rules.towns());
+    let record = state.towns().get(town).unwrap();
+    let statics = state.towns().town_static(town).unwrap();
+    prop_assert!(
+        h3_towns::guild_level(record, part) > 0,
+        "no guild in {:?}",
+        town
+    );
+    let is_book = |item: &Option<h3_heroes::ArtifactInstance>| {
+        item.and_then(|item| core.artifact(item.artifact))
+            .is_some_and(|a| a.effects.contains(&HeroEffect::SpellBook))
+    };
+    let book = (0_u16..)
+        .zip(core.artifacts())
+        .find(|(_, a)| a.effects.contains(&HeroEffect::SpellBook))
+        .map(|(raw, _)| ArtifactTypeId::from_raw(raw))
+        .unwrap();
+    let garrison = was.town_hero(town).map(|h| h.id);
+    let visitor = was.town_visitor(town);
+    let buyer = visitor.or(garrison).unwrap();
+    for hero in visitor.into_iter().chain(garrison) {
+        let mut details = state.hero(hero).unwrap().clone();
+        if hero == buyer {
+            prop_assert!(!details.worn.iter().any(is_book), "{:?} had a book", hero);
+            let add = HeroChange::AddArtifact(book.into());
+            h3_heroes::apply_change(&mut details, core, add);
+            prop_assert!(
+                details.worn.iter().any(is_book),
+                "{:?}'s book not worn",
+                hero
+            );
+        }
+        let mut spells = details.spells.clone();
+        spells.extend(h3_towns::teaches(record, statics, part, core, &details));
+        let now = after.hero(hero).unwrap();
+        prop_assert_eq!(&now.worn, &details.worn, "{:?}", hero);
+        prop_assert_eq!(&now.backpack, &details.backpack, "{:?}", hero);
+        prop_assert_eq!(&now.spells, &spells, "{:?}", hero);
+        prop_assert_eq!(now.mana, details.mana, "{:?}", hero);
+    }
+    prop_assert_eq!(after.towns().get(town), Some(record));
+    let mut treasury = state.treasury(actor).unwrap().to_vec();
+    for &(r, amount) in &part.params().unwrap().spell_book_price {
+        treasury[r.index()] -= amount;
+    }
+    prop_assert_eq!(after.treasury(actor).unwrap(), &treasury[..]);
+    Ok(())
+}
+
 /// A listed hire of `actor`'s tavern slot `slot` at `town` (E09 T38a2; TWN-TAV-003), from
 /// `state` to `after`, by an independent reading: the slot's hero in the actor's tavern view
 /// before stands on the town's entrance after as its visitor, the actor's, with the view's army,
@@ -7212,6 +7288,12 @@ fn check_town_builds(
             // E09 T49a2: a listed opening, by an independent reading of the town's heroes.
             GameCommand::Town(TownCommand::Open { .. }) => {
                 check_town_open((state, &probe), rules, actor, town)?;
+                continue;
+            }
+            // E09 T49b: a listed spell book's purchase, by an independent reading of the town's
+            // heroes and the treasury.
+            GameCommand::Town(TownCommand::BuySpellBook { .. }) => {
+                check_town_book((state, &probe), rules, actor, town)?;
                 continue;
             }
             _ => return Err(fail(format!("{command:?}"))),
@@ -8139,12 +8221,16 @@ fn check_conservation(
         _ => None,
     };
     // E09 T38a2: a town's hire pays the part's price (TWN-TAV-003); (E09 T40b) a map Tavern's too
-    // (GAM-DEC-010).
+    // (GAM-DEC-010); (E09 T49b) a spell book's purchase its own (TWN-GLD-007).
     let hire = match *command {
         GameCommand::Town(TownCommand::Hire { .. })
         | GameCommand::Answer(Answer::Tavern(TavernAnswer::Hire { .. })) => {
             rules.towns().params().map(|params| &params.hire_price)
         }
+        GameCommand::Town(TownCommand::BuySpellBook { .. }) => rules
+            .towns()
+            .params()
+            .map(|params| &params.spell_book_price),
         _ => None,
     };
     let accepted = events.iter().find_map(|e| match *e {
@@ -9185,13 +9271,38 @@ fn check_towns(
                 town
             );
         }
+        // E09 T49a1 (T49b's CI): the Mana Vortex's week flag (TWN-GLD-009) is cleared when it
+        // gives one of the town's heroes its points (a `SetSpellPoints` told for its visitor or
+        // garrison hero: a visit's end, an opening, a build, a hire), set again at a week's
+        // start, and told to the town's owner.
+        if old.vortex() != new.vortex() {
+            let heroes = [
+                adventure.town_visitor(town),
+                adventure.town_hero(town).map(|h| h.id),
+            ];
+            let gave = events.iter().any(|e| {
+                matches!(*e, GameEvent::HeroChanged { hero, change: HeroChange::SetSpellPoints(_), .. }
+                    if heroes.contains(&Some(hero)))
+            });
+            prop_assert!(
+                if old.vortex() { gave } else { week },
+                "{:?}'s Vortex flag moved without its gift or a week",
+                town
+            );
+            if let Some(owner) = now {
+                let told = changed.iter().any(|&(p, _)| p == owner);
+                prop_assert!(told, "{:?}'s Vortex flag moved untold to its owner", town);
+            }
+        }
         let with_old_counts = (0..h3_towns::CREATURE_INDEXES)
             .fold(new.clone(), |t, index| {
                 t.with_available(index, old.available(index))
             })
-            .with_portal(old.portal());
+            .with_portal(old.portal())
+            .with_vortex(old.vortex());
         if *old != with_old_counts {
             let cleared = day_started && old.built_today();
+
             prop_assert!(
                 !captured.is_empty() || !built.is_empty() || cleared,
                 "{:?} rebuilt without a capture, a build or the day's start",

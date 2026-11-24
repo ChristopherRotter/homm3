@@ -24,7 +24,7 @@ adventure).
 | File | What it does |
 |---|---|
 | `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b) and `original-data/shell-videos.vid` (the shell's 13 clips, E27 M1 T2) joined into one archive (either alone when only it is staged; an empty archive without both, and it says which); builds `xdd.dll`, `binkprobe.exe`, `smackprobe.exe` and the stand-in Miles (`mss/MSS32.DLL`, E27 M2 T2); writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
-| `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below); with sound the samples and (E27 M2 T5b2) the clips' sound on the clock (below, "The clips' sound on the game's run"). |
+| `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below); with sound the samples and (E27 M2 T5b2) the clips' sound on the clock (below, "The clips' sound on the game's run"); (E14 T1b1) with `H3TIME` the **random map's date** (below, "The random map's oracle"). |
 | `smackprobe.c` | Our `smackprobe.exe` (E27 M2 T1): the game's `SMACKW32.DLL` run on a video archive's Smacker clips as a black box: every frame as the DLL leaves it in the buffer (8 bits, 5-5-5 or 5-6-5) and its palette, the sound it hands Miles (T2), every frame's `SmackToBufferRect` rectangles (T5a2; below, "The clips") and the frames' times with the sound on (T5b1: `wait`, below, "The clips' sound clock"). |
 | `vsound.h` | A stand-in DirectSound on a given clock (E27 M2 T5b1), included by `smackprobe.c` and (T5b2) `xdd.c`: below, "The clips' sound clock". |
 | `mss32.c`, `mss32.def`, `mss32.rc` | Our stand-in for Miles' `MSS32.DLL` (E27 M2 T2), built into the run directory's `mss/` (the game's own stays beside `Heroes3.exe`): the probes load it before a DLL asks for Miles, and it writes the sound the DLL hands Miles to files (below, "The clips' sound"); `MssMinimum`, `MssHold` and `MssLoads` for `binkprobe start` (E27 M2 T5b2). |
@@ -38,6 +38,8 @@ adventure).
 | `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a), since E09 T3b the map started anew within a batch (`new_game`), a battle won by a list of targets, the towns' records read and the town screen noted and closed, since E08 T100a Replay Opponent Turn played on the frozen clock and a step played only on a tile; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
 | `h3shell.py` | The game shell's screens (E27 M1 T2): recipes from the game's start to each screen outside play on a clock frozen from the first read, each recorded twice and compared, their digests kept; `run`, `play`, `learn`, `list`; `drawn`, the viewer's frames of each recipe against the kept digests, without Wine (E27 M2 T4). Below, "The shell's screens". |
+| `h3rmg.py` | The random map generator's oracle (E14 T1b1, the rmg lane): a case's choices on the scenario screen's Random Map tab, its seed as the fixed date, Begin, the generated map kept and checked; `one`, `corpus`, `read`, `templates`. Below, "The random map's oracle". |
+| `rmg/` | The oracle's corpus (`corpus.toml`: each case's choices and seed) and its kept digests (`kept.txt`, numbers and template names only; the maps never). |
 | `shell/` | The shell's recipes by group (`<group>.toml`), each group's probes (`<group>.screens.toml`) and kept digests (`kept/<group>.txt`, numbers only); the viewer's record (`drawn.txt`, E27 M2 T4). |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
@@ -1754,6 +1756,28 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
   in memory. TCP/IP's stage 2 shows the machine's address, masked in its digests (`mask`).
   The recorded groups and what they cover: `docs/epics/E27-design.md` §6.
 
+## The random map's oracle
+
+E14 T1b1 (*provisional*; the rmg lane's `docs/lanes/rmg/ORACLE.md` has the method and what it
+showed). `h3rmg.py` runs as `h3shell.py`'s recipes run (a fresh start, the clock frozen) with
+`H3TIME` set to the case's seed: `xdd.dll` (`xdd.c` section 9) points `Heroes3.exe`'s
+`GetLocalTime` and `GetSystemTime` imports at that date, fixed (the C library's `time()`, whose
+one caller is the generator's seeding, reads both; the runs' `TZ=UTC` makes `time()` the date's
+seconds), and the ack's seventeenth field counts the two imports hooked. The driver makes the run
+directory's `random_maps/` afresh (the shell's runs have none: Begin then fails with GENRLTXT 750),
+presses the tab's choices (none Random; `adv-random`'s points), Begin, waits for a whole gzip
+file there (2 to 3 s), checks the seed and choices its description names, and keeps it in
+`clients/out/rmg/<case>/` (never in git). `--again` makes a second map in the same game (the
+adventure map's System Options at (727, 309), Main Menu at (565, 437), the question's OK); the
+tab shows two levels at each opening of the scenario screen.
+
+```
+python3 h3rmg.py one --seed <s> [--size M] [--levels 2] [--players 2] [--teams 0] [--computers 0] [--computer-teams 0] [--water normal] [--monsters normal] [--again] [--before "<step>;..."]
+python3 h3rmg.py corpus [--only <id>,...] [--twice] [--again] [--record]   # rmg/corpus.toml against rmg/kept.txt
+python3 h3rmg.py read                                                        # h3_map's reader over the corpus's maps
+python3 h3rmg.py templates                                                   # each case's template from either rmg.txt
+```
+
 ## The recipes' coordinates (800 × 600)
 
 | Where | Action | Point |
@@ -1791,6 +1815,8 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
 | Any question | Yes, No: found by `[button.ok]`, `[button.cancel]` | their corner + (33, 16) |
 | Battle | auto combat, retreat, surrender, defend | keys `a`, `r`, `s`, `d` |
 | Battle's result window | OK: found by `[button.battle_ok]` | its corner + (32, 16) |
+| Adventure map | System Options (E14 T1b1) | (727, 309) |
+| System Options | Main Menu (then the question's OK) | (565, 437) |
 
 ## The clock
 

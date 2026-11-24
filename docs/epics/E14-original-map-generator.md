@@ -1,7 +1,7 @@
 # E14 — The original's random map generator
 
-Status: **in progress** since 2026-11-23 (T1a1, T1a2 done); increment 1 refined, increments 2
-to 6 sketched; next T1b · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
+Status: **in progress** since 2026-11-23 (T1a1, T1a2, T1b1 done); increment 1 refined, increments 2
+to 6 sketched; next T1b2 · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
 Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -81,7 +81,8 @@ objects' values and the guards' strengths read from the original rather than gue
 |---|---|---|
 | T1a1 | The generator's frame: `random_map_generate`, 0x54BF00, 0x54C090, the constructor and its settings, `GenerateMap`'s phases in order, `WriteMap`'s outline; H3API's `H3RMG` records ported into `structs.toml` and checked against the code | `map.toml` entries; the survey's §1 (phases, records, files read) |
 | T1a2 | Every function of the closure inside 0x530EE0–0x54D0F0 named at least `inferred` and placed in a phase; the 250 outside classified (mapped already, table and object helpers, I/O); every `rand` draw site and every float site listed per phase; any clock or iteration limit found (a wall-clock limit would break the oracle) | `map.toml`; the survey's §2 (per phase: reads, draws, floats, size) |
-| T1b | The oracle: the original generating under Wine with `time()` fixed (the capture harness, `clients/capture/`; a fake clock or a breakpoint), the choices given (no Random); twice the same seed gives the same bytes, another seed other bytes; `h3_map`'s reader reads each map; if a debugger can stop at the phases' ends, a state dump per phase (an oracle for increments 3 to 5 before the file is complete); the corpus's spec (sizes, levels, players, teams, water, monsters, seeds) | `docs/lanes/rmg/ORACLE.md`; a script; the corpus's hashes |
+| T1b1 | The oracle (T1b cut by the user, 2026-11-23): the original generating under Wine with `time()` fixed (the capture harness, `clients/capture/`; a fake clock), the choices given (no Random); twice the same seed gives the same bytes, another seed other bytes; whether the memory-dependent draws vary; which archive's `rmg.txt` the game reads; `h3_map`'s reader reads each map; the corpus's spec (sizes, levels, players, teams, water, monsters, seeds) | `docs/lanes/rmg/ORACLE.md`; `clients/capture/h3rmg.py`; the corpus and its hashes (`clients/capture/rmg/`) |
+| T1b2 | The phase oracle: every draw of a generation logged with its site and value (`xdd.dll`'s logged sites over survey §2.6's), and the generator's cells dumped after each of the 15 steps (an oracle for increments 3 to 5 before the file is complete); in the same sandbox as T1b1 (its staged set) | ORACLE.md; the harness's logs and dumps |
 | T1c | The survey `docs/rules/surveys/E14-generator.md` (the template format and both tables' differences, each phase's rules, the objects placed against the engine's and the writer's coverage, the quirk candidates); the ADR draft (the crate, the seam to `h3-map`, the `rand`, the floats under `kernel::num`, the pack data, the profiles, the generator's version); the cut of increments 2 to 6 with exit criteria; the checkpoint RMG-Q2 | survey, ADR draft, this file |
 
 **Exit criteria:** (1) every function of the generator's range in the map, at least `inferred`,
@@ -134,3 +135,9 @@ The full records: `E14-log.md`.
   outside callees classified per part; every draw site entered and ordered (survey §2.6), the
   floats (x87, every conversion truncating) and the limits (no clock but the seed, one retry
   loop in step 10, two memory-dependent draws); the survey's §2.
+- **T1b1** (2026-11-23; T1b cut into T1b1 and T1b2 by the user): the oracle (`xdd.dll`'s fixed
+  date `H3TIME` for `time()`, `clients/capture/h3rmg.py`, a corpus of 21 cases); every map the
+  same from fresh starts, in a second generation in one game and after another history (no
+  memory-dependent variation under Wine); SoD's `rmg.txt` is the one read (21 of 21 templates
+  predicted, AB's 13); the plain writer as read; `h3_map` reads all 21, 20 import and validate
+  (one refused by TWN-SET-001, for T1c). `docs/lanes/rmg/ORACLE.md`.

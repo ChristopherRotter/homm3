@@ -30,6 +30,14 @@ Epic: E24, the adventure map client. **M1** (stills of the map view, closed 2026
 
 ## Inbox
 
+- 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`; **for your planning**): the
+  Prison and the Market of Time are typed (map import v29); a visit's events (protocol v81): the
+  Prison's `ObjectRemoved`, then `PrisonerFreed` (the hero on its tile, as a hire's
+  `HeroHired`), `PrisonFull` (ADVEVENT 103), `PrisonEmptied` (104). Each player's list of heroes
+  in the original's order is new (GAM-HER-003): the observation's `hero_list` (the start list by
+  hero type, then each hero that joins the map at the end; a hero that leaves closes it up), the
+  order of the original's hero list panel.
+
 - 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`; **for your planning**):
   increment 15 types the Prison (62, visited from a neighbour; the prisoner never shown) and the
   Market of Time (50, kind `empty`: entered, nothing happens), and adds the cast on the map

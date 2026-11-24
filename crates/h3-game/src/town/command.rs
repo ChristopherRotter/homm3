@@ -17,7 +17,9 @@ use crate::{GameRuleset, GameState};
 /// opens a hire dialog (TWN-REC-001, -002; E09 T27, [`recruit::open`]); a hero's move between the
 /// town's bars moves it (TWN-ROW-002 to -004; E09 T28a, [`rows::heroes`]); a hire hires its tavern
 /// hero (TWN-TAV-003; E09 T38a1, [`hire::hire`]); an opening visits the Mana Vortex and teaches
-/// the guild's spells (TWN-GLD-006; E09 T49a2, [`guild::open`]); a build (TWN-BLD-001),
+/// the guild's spells (TWN-GLD-006; E09 T49a2, [`guild::open`]); a spell book's purchase gives the
+/// town's hero a book and teaches (TWN-GLD-007; E09 T49b, [`guild::buy_book`]); a build
+/// (TWN-BLD-001),
 /// checked in this order, each refusal changing nothing:
 ///
 /// 1. the town in the store of towns, else [`TownCommandError::UnknownTown`];
@@ -59,6 +61,9 @@ pub(crate) fn command<S: Sink>(
             return hire::hire(state, rules, player, (town, slot), sink);
         }
         TownCommand::Open { town } => return guild::open(state, rules, player, town, sink),
+        TownCommand::BuySpellBook { town } => {
+            return guild::buy_book(state, rules, player, town, sink);
+        }
     };
     let part = rules.towns();
     let record = state

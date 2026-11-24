@@ -177,8 +177,8 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 18);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 104));
+    assert_eq!(ACTION_ENCODING_VERSION, 20);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 105));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
     assert_eq!((BUILD, RECRUIT, BUILDING_COUNT), (30, 31, 64));
@@ -300,6 +300,9 @@ fn tiles_and_actions_encode_as_documented() {
     // E09 T49a2 (v18): a town screen's opening, appended after the trades' and services'.
     assert_eq!(TOWN_OPEN, 103);
     assert_eq!(Action::town_open(9), Action::map(103, 9));
+    // E09 T49b (v19): a spell book's purchase, after the opening.
+    assert_eq!(SPELL_BOOK, 104);
+    assert_eq!(Action::spell_book(9), Action::map(104, 9));
     assert_eq!(
         Action::recruit(7, 19),
         Action::Adventure(MapAction {
@@ -344,6 +347,13 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(hero_in_slot(state, PlayerId::new(0), HERO_SLOTS), None);
     assert_eq!(hero_in_slot(state, PlayerId::new(1), 2), None);
     assert!(hero_in_slot(state, PlayerId::new(1), 1).is_some());
+    // Version 19 (E08 T141a, GAM-HER-003): each player's slots are its list of heroes.
+    for player in [PlayerId::new(0), PlayerId::new(1)] {
+        let slots: Vec<_> = (0..HERO_SLOTS)
+            .map_while(|slot| hero_in_slot(state, player, slot))
+            .collect();
+        assert_eq!(slots, state.adventure().hero_list(player));
+    }
     for (error, text) in [
         (StepError::InvalidAction, "invalid action"),
         (StepError::EpisodeOver, "the episode is over"),
@@ -415,7 +425,8 @@ fn is_move(entry: usize) -> bool {
 /// [`RECRUIT`]'s those of the listed recruitments (E09 T27); a [`TOWN_HEROES`] entry's the
 /// entrances of the towns of the listed hero moves of its kind, each decoding to that move
 /// ([`check_town_heroes`], E09 T28a), a [`TAVERN_HIRE`] entry's those of the listed hires of
-/// its slot (E09 T38a2), and [`TOWN_OPEN`]'s those of the listed openings (E09 T49a2); after
+/// its slot (E09 T38a2), [`TOWN_OPEN`]'s those of the listed openings (E09 T49a2) and
+/// [`SPELL_BOOK`]'s those of the listed spell books' purchases (E09 T49b); after
 /// another entry the building head allows 0 alone at its first legal tile, nothing after an
 /// illegal entry, and a building other than 0 decodes to nothing. In the battle phase (the neutral
 /// seat's only phase) every map mask is empty. The battle masks: [`check_battle_masks`].
@@ -484,7 +495,8 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
             check_build_boat(env, player, &commands, &tiles)?;
             continue;
         }
-        if (TOWN_HEROES..MARKET_TRADE).contains(&entry) || entry == TOWN_OPEN {
+        if (TOWN_HEROES..MARKET_TRADE).contains(&entry) || entry == TOWN_OPEN || entry == SPELL_BOOK
+        {
             check_town_heroes(env, (player, entry), &commands, &tiles)?;
             continue;
         }
@@ -595,7 +607,7 @@ fn check_build_boat(
 /// A [`TOWN_HEROES`] entry's tiles (E09 T28a): the entrances of the towns of the listed hero
 /// moves of its kind, each decoding to its move, which encodes back to it; a [`TAVERN_HIRE`]
 /// entry's the same with the listed hires of its slot (E09 T38a2), [`TOWN_OPEN`]'s with the listed
-/// openings (E09 T49a2).
+/// openings (E09 T49a2), [`SPELL_BOOK`]'s with the listed spell books' purchases (E09 T49b).
 fn check_town_heroes(
     env: &AdventureEnv,
     (player, entry): (PlayerId, usize),
@@ -617,6 +629,9 @@ fn check_town_heroes(
                 town_tile(state, town)
             }
             GameCommand::Town(TownCommand::Open { town }) if entry == TOWN_OPEN => {
+                town_tile(state, town)
+            }
+            GameCommand::Town(TownCommand::BuySpellBook { town }) if entry == SPELL_BOOK => {
                 town_tile(state, town)
             }
             _ => None,
