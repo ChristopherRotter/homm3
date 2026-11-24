@@ -6131,7 +6131,10 @@ once; nothing was lost (each part committed and pushed as it came).
   `manage-army-12` +1.00 %, as at T40a); the build's draws and the listing's guild commands were
   measured by T47a2 to T49b.
 - **Versions:** none moved. Ids: none new.
-- **Verify:** VERIFY-LINE
+- **Verify** (`--scope town --with-original-data`): every step passed (fmt, clippy, the checks,
+  test, coverage 1 252 s, determinism 382 s, bench-check 799 s, doc-drift, original-data 70 s) but
+  `check-lane` (`cross-lane`: `cargo xtask check-lane --cross-lane` ok, `cargo check --workspace
+  --all-targets` clean).
 
 **The queue:** T50 out; T51 next (the audit against §99's criteria, increment 5 closed, increment
 6 refined). Ids: decisions next 196.
