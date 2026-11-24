@@ -22165,8 +22165,8 @@ GitHub.
   battlefield's `expert_schools`; `spell_masteries_on(details, core, raise)`, with
   `spell_masteries` its `None`. A raised spell is at Expert: `All` every spell (the original's
   field 1 reads no school, so a schoolless spell too; the packs' Magic Plains lists the four
-  schools and needs only `Schools`), `Schools` a spell of at least one raised school. The effects'
-  masteries are read once (`Masteries`); the battle hero's stay on ordinary ground.
+  schools and needs only `Schools`), `Schools` a spell of at least one raised school. The battle
+  hero's stay on ordinary ground, its loop as on `master`; a raise is a pass over that list.
 - **The cost and the caster** (HER-SPL-008, new; points 17.2, 17.3): `map_spell_cost(details,
   core, spell, raise)`: the cost column at that mastery (the first without one), at least 1, no
   army's ±2; a spell the ruleset lacks `DetailsError::UnknownSpell`. `can_cast_on_map(details,
@@ -22178,6 +22178,14 @@ GitHub.
 - **Docs:** the catalog (HER-SPL-003 amended and `verified`, HER-SPL-008 new and `verified`: batch
   E15's rows E15-4, -5, -15); the design note §5, §6 as built; `OVERVIEW.md`; the battle lane's
   inbox note (T137b's) with the built names.
+
+- **Speed:** the first verify's bench-check failed `siege-towns-36` at +2.75 % against its
+  baseline. Measured against `master`'s worktree in this sandbox (3 057 282 Ir; the sandbox counts
+  `master` 1.02 % above the baseline): +1.71 %, all of it the masteries' loop (125 727 Ir for
+  73 500: the per-spell raise test kept the closure out of the collect; an early return in place
+  of the third `chain` element still +1.48 %). Settled once: `masteries` as on `master`, the raise
+  merged over its list (`masteries_on`), `map_spell_cost` reading that list: 3 057 651 Ir
+  (+0.01 %). No workload re-baselined; a trap in `TRAPS.md`.
 
 **Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session); CI on
 the pull request is the record. **Versions:** none moved (no state, ruleset or wire change; the

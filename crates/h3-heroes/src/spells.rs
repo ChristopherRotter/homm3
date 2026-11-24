@@ -184,7 +184,8 @@ pub fn spell_masteries(
     details: &HeroDetails,
     ruleset: &Ruleset,
 ) -> Result<Vec<(SpellId, u8)>, DetailsError> {
-    spell_masteries_on(details, ruleset, SchoolRaise::None)
+    check(details, ruleset)?;
+    Ok(masteries(details, ruleset))
 }
 
 /// A set of spell schools (E08 T141b): the schools a ground raises ([`SchoolRaise::Schools`]),
@@ -352,18 +353,14 @@ pub(crate) fn masteries(details: &HeroDetails, ruleset: &Ruleset) -> Vec<(SpellI
 }
 
 /// [`spell_masteries_on`] of validated details: the ordinary masteries ([`masteries`], the
-/// battle's loop untouched: E08 T141b's `siege-towns-36`), then a raise merged over them, both in
-/// spell order.
+/// battle's loop untouched: E08 T141b's `siege-towns-36`), then the raise merged over them, both
+/// in spell order.
 fn masteries_on(
     details: &HeroDetails,
     ruleset: &Ruleset,
     raise: SchoolRaise,
 ) -> Vec<(SpellId, u8)> {
-    let ordinary = masteries(details, ruleset);
-    if raise == SchoolRaise::None {
-        return ordinary;
-    }
-    let mut own = ordinary.into_iter().peekable();
+    let mut own = masteries(details, ruleset).into_iter().peekable();
     all_spells(ruleset)
         .zip(ruleset.spells())
         .filter_map(|(id, spell)| {
