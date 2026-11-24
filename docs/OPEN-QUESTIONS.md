@@ -436,23 +436,7 @@ Blocks nothing.
 
 ### RMG lane (`RMG-Q<n>`)
 
-#### RMG-Q2 — E14's checkpoint after increment 1: the ADR draft and the cut (T1c3)
-
-**Context.** Increment 1 read the generator, built the oracle and classified the ledger. T1c3
-drafted the decisions every later increment builds on (`docs/lanes/rmg/adr-drafts/h3-rmg-generator.md`)
-and cut increments 2 to 7 with exit criteria (`docs/epics/E14-original-map-generator.md`). Asked:
-(1) **the seam**: the generator returns its own `GeneratedMap`, an rmg-lane module of `h3-map`
-turns it into the reader's `RawMap`, a writer of `RawMap` gives the `.h3m` byte for byte and the
-usual import the `GameSetup` (**recommended**, the rmg lane building that writer at increment 7,
-`cross-lane`); or the adventure lane building it before then; or today's `writer::Map` with its
-seven gaps closed; (2) **the template lines' picture names** (`objects.txt`'s `.def` names, needed
-for the bytes only): harvested with the rest into `rmg.toml` as Q13's names (**recommended**), or
-left out and taken from the installation when a file is written; (3) **profiles**: the 18 flags in
-the game's registry, `faithful` on and `strict-fixed` off (**recommended**), or a generator profile
-chosen apart from the game's; (4) **the cut**: six increments 2 to 7 in the run's order
-(**recommended**), or five (steps 8 to 15 in one). The rest of the draft (the crates, `CrtRand` in
-the kernel, the floats as binary64 and integer square roots, the versions, the trace) as written
-unless the user objects.
+(no open questions)
 
 ### Town lane (`TWN-Q<n>`)
 

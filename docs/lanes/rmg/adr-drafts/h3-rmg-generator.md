@@ -1,12 +1,12 @@
 # ADR draft: the original's map generator in `h3-rmg` (E14)
 
-- Status: Proposed (E14 T1c3, 2026-11-24; the checkpoint RMG-Q2)
+- Status: Proposed, confirmed at the checkpoint RMG-Q2 (E14 T1c3, 2026-11-24); numbered by
+  increment 2's `shared/` pull request
 - Date: 2026-11-24
 - Deciders: the user (RMG-Q2) + the rmg lane's session
 
-<!-- About 100 lines: one record for the generator's crate, seam, stream, floats, data, profiles,
-     versions and test seam, which E14's increments 2 to 7 all build on. Numbered and moved to
-     docs/adr/ by increment 2's shared/ pull request once accepted. -->
+<!-- Longer than the usual 80 lines: one record for the generator's crate, seam, stream, floats,
+     data, profiles, versions and test seam, which E14's increments 2 to 7 all build on. -->
 
 ## Context
 
@@ -27,21 +27,26 @@ float and profile rules were written for the game, not for a port of the origina
    the 15 steps, both painters as the generator calls them, the teams' draw and `GeneratedMap`.
    `h3-pack-rmg` (adapter) parses `packs/*/rmg.toml` (as `h3-pack-towns`). `h3-map` gains
    `src/generated*` (the rmg lane's paths, as the town lane's `import/town*`) and the edge
-   `h3-map → h3-rmg`. No other crate depends on `h3-rmg` but adapters.
-2. **The seam.** One entry, `h3_rmg::generate(core, rmg part, settings, seed, trace)` →
-   `Result<GeneratedMap, GenerateError>`: pure, never panics; the seed a `u32` (the original's
-   `time()` in seconds). The settings hold every choice resolved: the original draws its Random
-   choices from the game's earlier `rand` state, which no port reproduces, so
-   `h3_rmg::resolve_random` applies the original's formulas (RMG-SET-001 to -003) to a stream the
-   caller seeds. `GeneratedMap` is what `rmg_write_map` writes, in its order: the header and the
-   description, the players and the drawn teams, the tiles as given, the template table as given
-   (the two unused entries first), the objects in the writer's order with their bodies and the
-   generator's serials. **The file and the game go through the reader's raw model:**
-   `h3_map::generated::to_raw` turns it into a `RawMap`; a writer of `RawMap`
-   (`h3_map::write_raw`, round-trip tested over the shipped maps and the corpus) gives the
-   uncompressed `.h3m` byte for byte (the gzip stream is not compared: the game's zlib at level 6
-   against miniz); `h3_map::import` gives the `GameSetup` as for any map file, with the untrusted
-   input's checks. Survey §3.3.3's seven writer gaps vanish in a writer of the raw model.
+   `h3-map → h3-rmg` at increment 7. No other crate depends on `h3-rmg` but adapters.
+2. **The seam** (RMG-Q2: the experiment writer, its gaps closed). One entry,
+   `h3_rmg::generate(core, rmg part, settings, seed, trace)` → `Result<GeneratedMap,
+   GenerateError>`: pure, never panics; the seed a `u32` (the original's `time()` in seconds).
+   The settings hold every choice resolved: the original draws its Random choices from the game's
+   earlier `rand` state, which no port reproduces, so `h3_rmg::resolve_random` applies the
+   original's formulas (RMG-SET-001 to -003) to a stream the caller seeds. `GeneratedMap` is what
+   `rmg_write_map` writes, in its order: the header and the description, the players and the drawn
+   teams, the tiles as given, the template table as given (the two unused entries first), the
+   objects in the writer's order with their bodies and the generator's serials. **The file goes
+   through `h3_map::writer`:** `h3_map::generated::to_writer` turns it into the writer's `Map` and
+   `Extras`, and `write_with` gives the uncompressed `.h3m` byte for byte (the gzip stream is not
+   compared: the game's zlib at level 6 against miniz) once survey §3.3.3's seven gaps are closed
+   (one object list in the caller's order, identifiers as given, the template table as given, a
+   Seer's Hut's reward, the banned artifacts as a whole set, the AB layout and RoE's towns and
+   `Extras`, the main town's type byte and a main town of another colour). **The game reads those
+   bytes** as any map file (`h3_map::read`, `import`), with the untrusted input's checks: no
+   generated-map path into `GameSetup`. The gaps are closed by the writer's owners from their
+   inboxes before increment 7 (1 to 6 the adventure lane's, 7 the town lane's `writer/town.rs`);
+   one still open then is the rmg lane's, `cross-lane` with the user's consent.
 3. **The stream.** The C runtime's `rand` (state × 214 013 + 2 531 011, bits 16 to 30; `srand`
    sets the state) seeded once with the seed, from `srand` through the writer's teams' draws:
    every draw in the original's order with its modulus and signedness. It lives in
@@ -106,20 +111,20 @@ float and profile rules were written for the game, not for a port of the origina
   profiles (`core.toml`, a shared file) in its increment's shared change.
 - `faithful`'s byte-for-byte claim holds for a fresh start's first map under the oracle's
   environment; Windows' memory and a second map in one game stay out of reach (RMG-QUIRK-1).
-- The writer of `RawMap` is a new piece of `h3-map` (its owner: RMG-Q2); once it exists every map
-  the reader reads can be written back, which the editor work and E30 reuse.
+- The writer's seven gaps are increment 7's prerequisite, in the adventure and town lanes'
+  inboxes with this order; a generated game parses the bytes it wrote (one map, cheap).
 - A game on a generated map plays E12's objects (Seer's Huts, Obelisks, Sanctuaries) as blockers
   until E12; Dragons' neutral main town is refused until the town lane answers (RMG-QUIRK-23).
 - The generator is benchmarked when it is whole (increment 7), the baseline for E30.
 
 ## Alternatives considered
 
-- Today's `writer::Map` with its gaps closed, the game importing the written bytes: a second object
-  order bent into the experiment writer, no round trip, the game parsing its own output.
+- A writer of the reader's raw model (`RawMap` to bytes, round-trip tested over the shipped maps),
+  the generator converting into `RawMap` and the game importing it without bytes: the session's
+  recommendation; the user kept the experiment writer (RMG-Q2), whose typed objects the other
+  lanes' experiment maps already use.
 - `h3-rmg` writing the `.h3m` itself (a port of `rmg_write_map`): a second writer and a file format
   in a logic crate, against decision 2.
-- The raw model moved into a pure crate `h3-rmg` fills directly: a shared refactor of the
-  adventure lane's reader to save a conversion of a few hundred lines.
 - `rand` local to `h3-rmg` (the epic's first agent decision): a third copy of the same generator.
 - Integers everywhere: step 1's tables are not k / 10 000 in binary; `Real` reproduces binary64
   without a proof per site.
