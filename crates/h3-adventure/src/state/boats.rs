@@ -244,8 +244,9 @@ impl AdventureState {
     /// the hero's tile being the boat's while aboard. The day's maximum becomes the sea's
     /// ([`sea_day_points`]) and the points are converted ([`Self::change_surface`]). Told as
     /// [`AdventureEventKind::Boarded`] to the players that see heroes on the tile, after the step's
-    /// own event.
-    // rule: ADV-SEA-002
+    /// own event. Since E08 T142a the boarding clears the hero's Fly and Water Walk (ADV-SPL-002,
+    /// `hero_boards_boat`'s +0x112 and +0x116), told after the command.
+    // rule: ADV-SEA-002, ADV-SPL-002
     pub(crate) fn board<S: Sink>(
         &mut self,
         (core, part, heroes): Rules<'_>,
@@ -260,6 +261,8 @@ impl AdventureState {
         let hero = &mut self.heroes[index];
         hero.boat = Some(boat);
         let (id, at) = (hero.id, hero.pos);
+        // E08 T142a (ADV-SPL-002): Fly and Water Walk go.
+        self.board_day_spells(id);
         let seen_by = self.viewers(core, player, at);
         let slot = usize::try_from(boat).unwrap_or(usize::MAX);
         let kind = self

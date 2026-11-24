@@ -4707,6 +4707,7 @@ fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
         | GameCommand::Battle(_)
         | GameCommand::Manage(_)
         | GameCommand::Town(_)
+        | GameCommand::Cast { .. }
         | GameCommand::System(_) => None,
     }
 }
@@ -4752,6 +4753,7 @@ fn landing(
                     kind,
                     AdventureEventKind::HeroRemoved { .. }
                         | AdventureEventKind::MovementChanged { .. }
+                        | AdventureEventKind::DaySpellsChanged { .. }
                         | AdventureEventKind::BonusChanged { .. }
                         | AdventureEventKind::OnceMarkChanged { .. }
                         | AdventureEventKind::TimedMarkChanged { .. }
@@ -7857,6 +7859,7 @@ fn check_timed(
                 e,
                 GameEvent::Adventure(AdventureEvent {
                     kind: AdventureEventKind::MovementChanged { .. }
+                        | AdventureEventKind::DaySpellsChanged { .. }
                         | AdventureEventKind::BonusChanged { .. }
                         | AdventureEventKind::OnceMarkChanged { .. }
                         | AdventureEventKind::TimedMarkChanged { .. },

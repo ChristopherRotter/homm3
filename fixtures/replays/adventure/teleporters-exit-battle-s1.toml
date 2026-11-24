@@ -11,12 +11,12 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xd3aecf92647678f3",
-    "0x597a53912fd8849f",
+    "0x90ccc57178d8cf14",
+    "0x52f87be61f2fdd3b",
 ]
 
 [replay]
-format = 25
+format = 26
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -36,14 +36,14 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x888a0c8963f09a43"
+adventure_ruleset_hash = "0x9fc40eb6455ae78a"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 39
-adventure_state_hash_version = 28
+adventure_state_hash_version = 29
 checkpoint_every = 5
 
 [map]
@@ -53,7 +53,7 @@ import_version = 29
 
 [result]
 day = 3
-final_hash = "0x597a53912fd8849f"
+final_hash = "0x52f87be61f2fdd3b"
 
 [[players]]
 colour = 0

@@ -3390,3 +3390,46 @@ step (fmt, clippy, doc tests, deny clean); the harness set up beside it.
   `clients/scripts/check.sh --no-coverage` (all gates); `h3-map-view`'s coverage at 100 % (F7);
   `cargo xtask verify --scope map-client --summary --with-original-data` (no failing step after
   a trap's size written in bytes, not as a hex address).
+
+### M5 T0 — M4's review list and questions, M5 refined with the user (2026-11-24)
+
+On `map-client/e24-m5-t0`, `master` at 73b4fc7 (#1141, #1140 merged). Docs only; nothing built
+or captured. From the user's machine (its bridge briefly up): `Heroes3.exe`, `extracted.tar`,
+`maps.tar` (SHA-256 as the PC's) and the manuals staged for the refinement's reading.
+
+- **The hand test was not run yet:** `map-m4-notes.txt` is the blank template, no `map-m4.txt`
+  beside `map-m4.cmd`. Its notes are read at M5 T1's start (the user's choice: all of T0 now, not
+  a seam before the refinement).
+- **M4's review list** (45 items): the user asked for the important ones one by one and a summary
+  of the rest. Asked: the record player (T4c: as built); the random picks taken in turn (in turn
+  for recordings and records, play drawing them from the client's seeded generator); speed 4's
+  20 ms (kept); the library's engine dependencies (kept; one record reader shared with the client
+  lane at M5); the battle switch's two unasked frame differences (the hero's pose at the attack,
+  the panel's buttons after a retreat: fixed in M5); the other players' turns (kept; the
+  original's computer turn read once play shows one). The other 39 accepted in a summary. The
+  archive's list carries the acceptance.
+- **MCL-Q50 to MCL-Q56**, one by one: Q50 (b); Q51 (b) then (a); Q52 (a), (b) meanwhile; Q53 (a),
+  (c) meanwhile; Q54 the user's rule, **the engine and the server the only authority for a
+  client, reading files at run time phased out**, then asked how far: facts first, the pictures
+  later, "when a server generates a random map, it may not reveal the content to the client until
+  the player discovers them"; Q55 (a), (b) meanwhile; Q56 (a) when met, (b) meanwhile.
+- **Read for the proposal:** `h3_protocol::session::game::GameSession` (seats, `play`, `query`,
+  the clock: `GameOptions::clock`, `elapse`, `deadline`; `computer` plays unowned battle sides
+  only, "computer players on the map E13's", now E31's); `h3-server`'s whole game (every seat a
+  connection's); E31's increments (increment 2, "a turn that ends"); E27's hand-over
+  (`begin::Game`, `save::Loaded`, `CLT-STUB-13`; the shell's `shell::run` owns its window);
+  `CLT-STUB-4`, `-5`; design §5.1's human start in a hot seat (the covered view, GENRLTXT 14) and
+  the map's `turn_time_expired_end` (GENRLTXT 202), GENRLTXT 627 to 630 (records counted, a
+  quoted one across lines as one; 352 "It's %s's turn." too); the harness's `hot_seat`.
+- **The user's decisions:** the milestones split (M5 hot seat on the adventure map; M6 the hero's
+  screens and visit windows; M7 the town screen; M8 live play); the player's program with **the
+  shell on top** ("unless architectural reasons oppose it strongly; least effort is no such
+  reason"): told of the package cycle (the shell in `h3-battle-client`, which the map's battles
+  need) and `h3-map-view`'s pure library, the user chose the shell's own crate on top over a
+  trait of the shell's with the program's `main` in the map's package; `h3-map-client` the map's
+  adapters library; a computer colour's turn ended at once until E31; the exit as recorded parts
+  plus a whole two-human game; M5's tasks T1 to T8 queued as proposed.
+- **Handed on:** the client lane's inbox (the shell's crate, the shared record reader, the stubs
+  M5 lifts); the adventure lane's (the user's rule; MCL-Q53, Q54, Q55; the map's texts in play);
+  the server lane's (MCL-Q53's `SRV-STUB-3`, Q55's `SRV-STUB-10`); the AI lane's (a computer
+  colour's turn ended at once until E31's increment 2).

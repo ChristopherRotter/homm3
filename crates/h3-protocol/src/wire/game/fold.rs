@@ -30,10 +30,11 @@ use alloc::vec::Vec;
 
 use super::{
     Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
-    ArtifactPlace, Boat, Bonuses, Decision, GameEvent, GameObservation, GameReveal, Garrison,
-    GarrisonHero, GarrisonStack, Guards, HeroChange, HeroDetails, HeroInfo, HiredPart, LevelUp,
-    MapGarrison, MapHero, Monster, Object, ObjectRef, OfferLevels, OwnMapHero, Pos, PrimarySkill,
-    RevealedArea, RevealedView, SkillLevel, TavernHero, TavernPart, Tile, Town, TownOwnerFacts,
+    ArtifactPlace, Boat, Bonuses, DaySpells, Decision, GameEvent, GameObservation, GameReveal,
+    Garrison, GarrisonHero, GarrisonStack, Guards, HeroChange, HeroDetails, HeroInfo, HiredPart,
+    LevelUp, MapGarrison, MapHero, Monster, Object, ObjectRef, OfferLevels, OwnMapHero, Pos,
+    PrimarySkill, RevealedArea, RevealedView, SkillLevel, TavernHero, TavernPart, Tile, Town,
+    TownOwnerFacts,
 };
 use crate::wire::WireU64;
 
@@ -415,6 +416,9 @@ impl GameObservation {
             // What a full or an emptied Prison's visit tells is the client's message; an emptied
             // Prison's removal came as its `ObjectRemoved`.
             GameEvent::PrisonFull { .. } | GameEvent::PrisonEmptied { .. } => {}
+            // A cast on the map (E08 T142a): its spell points come as the `HeroChanged` after it,
+            // its day spells as the command's `DaySpellsChanged`.
+            GameEvent::SpellCast { .. } => {}
             // A Den of Thieves' Thieves' Guild (E09 T39b2): a snapshot, not in the observation (a
             // client makes it with `ThievesGuild::see`).
             GameEvent::ThievesGuildSeen { .. } | GameEvent::GuildPartSeen { .. } => {}
@@ -701,6 +705,12 @@ impl GameObservation {
                     own.max_movement = max_movement;
                 }
             }
+            // Then its day spells (v82, E08 T142a).
+            AdventureEvent::DaySpellsChanged { hero, spells } => {
+                if let Some(own) = self.own_mut(hero) {
+                    own.spells = spells;
+                }
+            }
             // Then its battle bonuses and timed marks (v57, E08 T115a): the marks dropped, the
             // sums, the marks gained, each kept sorted.
             AdventureEvent::BonusChanged { hero, morale, luck } => {
@@ -856,6 +866,7 @@ impl GameObservation {
                     once: Vec::new(),
                 },
                 timed: Vec::new(),
+                spells: DaySpells::default(),
             });
             let mut details = HeroDetails {
                 hero_type,

@@ -36,7 +36,8 @@ use crate::persistent::BitGrid;
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId, RiverId, RoadId};
 use crate::setup::{Pos, TileMask};
 use crate::state::{
-    AdventureState, Boat, HeroBonuses, HeroOnMap, MapObject, Resolved, StaticTile, allied,
+    AdventureState, Boat, DaySpells, HeroBonuses, HeroOnMap, MapObject, Resolved, StaticTile,
+    allied,
 };
 
 mod reveal;
@@ -333,6 +334,8 @@ pub struct OwnHeroView {
     pub bonuses: HeroBonuses,
     /// Its timed marks, the object types whose day's or week's mark it holds (E08 T115a).
     pub timed: Vec<ObjectTypeId>,
+    /// Its day spells (ADV-SPL-002, E08 T142a; increment 15's design note §13: its owner's alone).
+    pub spells: DaySpells,
 }
 
 impl AdventureState {
@@ -513,6 +516,7 @@ impl AdventureState {
             marks: self.marks_of(hero.id),
             bonuses: self.visit_marks(hero.id).bonuses().clone(),
             timed: self.visit_marks(hero.id).timed().to_vec(),
+            spells: self.day_spells(hero.id),
         }
     }
 
@@ -795,6 +799,7 @@ impl AdventureEvent {
                 | AdventureEventKind::TilesRevealed { .. }
                 | AdventureEventKind::KeyGained { .. }
                 | AdventureEventKind::MovementChanged { .. }
+                | AdventureEventKind::DaySpellsChanged { .. }
                 | AdventureEventKind::BonusChanged { .. }
                 | AdventureEventKind::OnceMarkChanged { .. }
                 | AdventureEventKind::TimedMarkChanged { .. }

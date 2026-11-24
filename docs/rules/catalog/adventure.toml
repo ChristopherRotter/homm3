@@ -323,7 +323,7 @@ id       = "ADV-MOV-009"
 title    = "Flying"
 context  = "adventure"
 status   = "verified"
-summary  = "A hero with a flying level (its details' highest, HER-ADV-005: Angel Wings 3; the spells later) flies. The price (E08 T41, the original's step_cost point 5 as corrected at ADV-Q22, in every profile): from a land tile no object blocks, an object's visitable tile included, the lesser of the fly price at its level (data: 140, 140, 120, 100) and the walking price (ADV-MOV-003, ADV-MOV-004); from water and from a tile the live occupancy blocks (an obstacle flown over) the fly price; a diagonal times √2 (ADV-MOV-005) with the exception's check of ADV-MOV-006. The passage (increment 5's design note §7's table, `AdventureState::passage`): besides a walker's tiles a flight passes over blocked tiles, water (plain or holding an object), an own hero, another player's hero, an object's visitable tile (a neighbour's object, an entered one, one whose visit is not built), guarded tiles, and up off the visitable tile of an object not visited from above; never rock, never an unexplored tile (ADV-MOV-008, ADV-QUIRK-15), never down onto such a visitable tile. A move ends only where the hero may stop (D-25): a free land tile, a gate whose key its owner holds, an entered object's tile (visited from any node), or a visit from a stop to a neighbour's object or another player's hero; else `NoStop`. A flight goes on over guarded tiles and objects without visiting them: only its last step's tile is tested for a guard and only its object visited. The reachable-tiles query keeps two nodes per tile (stop, pass) and reports the stop tiles; the drop to 0 after each step follows ADV-MOV-006 (ADV-QUIRK-17). A flyer that also water-walks flies. Not yet: a hero in a boat (neither flies nor water-walks), towns (entered as a stop from a stop only, E09). E08 T41: `Pricing`, `Mode`, `Node`, `AdventureState::passage`, `MoveHero`, `Reach`. E08 T73a (increment 8, D-46 confirmed by batch E8c's E8-17a, E8-17b): a water tile an object is visited from (a pickup's, a monster's, a water Cartographer's, a blocker's) is closed to a flight, no stop and no pass; plain water, an object's blocked cell on water, an empty boat and a hero in a boat stay a flight's pass; a flight boards a boat from a stop node only (ADV-SEA-002) and visits a hero in a boat from one. A hero in a boat does not fly. Amended by E08 T125a (increment 13's design note section 9; ADV-STUB-12 lifted): a creature bank of a `coast` kind (the Shipwreck, the original's class 85) has an empty boat's rows on its water entrance: a flight visits it from a stop node (its question; the hero stays on land) and passes over it from land or from water, ending on it nowhere, up off a closed top too; the Derelict Ship's stays closed (D-46). `AdventureState::coast_visit`."
+summary  = "A hero with a flying level (the higher of its details' highest, HER-ADV-005: Angel Wings 3, and its Fly of the day, ADV-SPL-005: the mastery 0 to 3, since E08 T142a) flies. The price (E08 T41, the original's step_cost point 5 as corrected at ADV-Q22, in every profile): from a land tile no object blocks, an object's visitable tile included, the lesser of the fly price at its level (data: 140, 140, 120, 100) and the walking price (ADV-MOV-003, ADV-MOV-004); from water and from a tile the live occupancy blocks (an obstacle flown over) the fly price; a diagonal times √2 (ADV-MOV-005) with the exception's check of ADV-MOV-006. The passage (increment 5's design note §7's table, `AdventureState::passage`): besides a walker's tiles a flight passes over blocked tiles, water (plain or holding an object), an own hero, another player's hero, an object's visitable tile (a neighbour's object, an entered one, one whose visit is not built), guarded tiles, and up off the visitable tile of an object not visited from above; never rock, never an unexplored tile (ADV-MOV-008, ADV-QUIRK-15), never down onto such a visitable tile. A move ends only where the hero may stop (D-25): a free land tile, a gate whose key its owner holds, an entered object's tile (visited from any node), or a visit from a stop to a neighbour's object or another player's hero; else `NoStop`. A flight goes on over guarded tiles and objects without visiting them: only its last step's tile is tested for a guard and only its object visited. The reachable-tiles query keeps two nodes per tile (stop, pass) and reports the stop tiles; the drop to 0 after each step follows ADV-MOV-006 (ADV-QUIRK-17). A flyer that also water-walks flies. Not yet: a hero in a boat (neither flies nor water-walks), towns (entered as a stop from a stop only, E09). E08 T41: `Pricing`, `Mode`, `Node`, `AdventureState::passage`, `MoveHero`, `Reach`. E08 T73a (increment 8, D-46 confirmed by batch E8c's E8-17a, E8-17b): a water tile an object is visited from (a pickup's, a monster's, a water Cartographer's, a blocker's) is closed to a flight, no stop and no pass; plain water, an object's blocked cell on water, an empty boat and a hero in a boat stay a flight's pass; a flight boards a boat from a stop node only (ADV-SEA-002) and visits a hero in a boat from one. A hero in a boat does not fly. Amended by E08 T125a (increment 13's design note section 9; ADV-STUB-12 lifted): a creature bank of a `coast` kind (the Shipwreck, the original's class 85) has an empty boat's rows on its water entrance: a flight visits it from a stop node (its question; the hero stays on land) and passes over it from land or from water, ending on it nowhere, up off a closed top too; the Derelict Ship's stays closed (D-46). `AdventureState::coast_visit`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-15", "ADV-QUIRK-17"]
 
@@ -373,7 +373,7 @@ id       = "ADV-MOV-010"
 title    = "Water walking"
 context  = "adventure"
 status   = "verified"
-summary  = "A hero with a water-walking level and no flying level (its details' highest, HER-ADV-005: Boots of Levitation 3; the spells later) walks on water. The price (E08 T41, the original's step_cost point 4): from water the water-walk price at its level (data: 140, 140, 120, 100) replaces the walking price; from land the walking price (ADV-MOV-003, ADV-MOV-004), onto water included; a diagonal times √2 (ADV-MOV-005) with ADV-MOV-006's exception. The passage (increment 5's design note §7's table): besides a walker's tiles it passes over plain water (no object, no hero); on land, and for the guards, it is a walker (a guarded tile ends its move, on water too). A move ends only where it may stop (D-25): never on water (`NoStop`); a visit to an entered object's tile from any node, to a neighbour's object or another player's hero only from a stop. The drop to 0 follows ADV-MOV-006 (ADV-QUIRK-17). E08 T41: `Pricing`, `Mode`, `AdventureState::passage`, `MoveHero`, `Reach`. E08 T73a (increment 8): a water walk boards an empty boat from land only (ADV-SEA-002; `Boat` from water), visits a hero in a boat from a stop and never steps onto an object's water tile; a hero in a boat does not water-walk. Amended by E08 T125a (increment 13's design note section 9): a `coast` kind's water entrance (the Shipwreck's) is visited from land (a stop node) as a walker's, and a water walk never steps onto it from water (`Blocked`) nor crosses it."
+summary  = "A hero with a water-walking level and no flying level (the higher of its details' highest, HER-ADV-005: Boots of Levitation 3, and its Water Walk of the day, ADV-SPL-006, since E08 T142a) walks on water. The price (E08 T41, the original's step_cost point 4): from water the water-walk price at its level (data: 140, 140, 120, 100) replaces the walking price; from land the walking price (ADV-MOV-003, ADV-MOV-004), onto water included; a diagonal times √2 (ADV-MOV-005) with ADV-MOV-006's exception. The passage (increment 5's design note §7's table): besides a walker's tiles it passes over plain water (no object, no hero); on land, and for the guards, it is a walker (a guarded tile ends its move, on water too). A move ends only where it may stop (D-25): never on water (`NoStop`); a visit to an entered object's tile from any node, to a neighbour's object or another player's hero only from a stop. The drop to 0 follows ADV-MOV-006 (ADV-QUIRK-17). E08 T41: `Pricing`, `Mode`, `AdventureState::passage`, `MoveHero`, `Reach`. E08 T73a (increment 8): a water walk boards an empty boat from land only (ADV-SEA-002; `Boat` from water), visits a hero in a boat from a stop and never steps onto an object's water tile; a hero in a boat does not water-walk. Amended by E08 T125a (increment 13's design note section 9): a `coast` kind's water entrance (the Shipwreck's) is visited from land (a stop node) as a walker's, and a water walk never steps onto it from water (`Blocked`) nor crosses it."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-17"]
 
@@ -4666,3 +4666,124 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-15a.md E15-3 (survey section 18): the hero steps onto the Market of Time's entrance, the move ends, no message"
   retrieved  = "2026-11-22"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-SPL-001"
+title    = "The spells cast on the adventure map, their mastery and cost"
+context  = "adventure"
+status   = "verified"
+summary  = "The adventure part binds core spells of the adventure category to five closed behaviours (`AdventureSpell`: Summon Boat, Scuttle Boat, Fly, Water Walk, Dimension Door; the packs' `[[spell]]` entries, each spell and each behaviour once, ADR-0006 tier 2) and gives their parameters (`[params.spells]`: the door's points by mastery, the 9 x 8 window, the 64 boats; required when one of the three that read them is bound); a spell without a binding is not cast on the map (the four information spells until E12, ADV-STUB-19; Town Portal until E09 increment 7, ADV-STUB-20). A cast (GAM-SPL-001) takes the mastery of the hero on its tile's special ground (HER-SPL-003: a raising ground's schools at Expert, Magic Plains all four) and costs `map_spell_cost` there (HER-SPL-008: the table's column at that mastery, at least 1, no army's +-2). Cursed Ground refuses a spell above level 1 and an anti-magic garrison every spell, both free and after the cost's test (E08 decision 414: the original's book tests the points first). Several spells and several casts a day as the points allow; no day's limit but Dimension Door's (ADV-SPL-007). E08 T142a: `AdventureRuleset::spells`, `adventure_spell`, `AdventureParams::spells`; Summon Boat, Scuttle Boat and Dimension Door are refused until E08 T143 (`CastError::NotBuilt`, ADV-STUB-22)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md sections 4.1, 4.2): adventure_cast_open 0x41C2F0 and spell_book_proc 0x59D440 test hero_spell_cost against +0x18 (GENRLTXT 207); hero_special_ground 0x4E4EC0: 21 (Cursed Ground) and a spell above level 1, GENRLTXT 748; 33 (an anti-magic garrison), GENRLTXT 685; adventure_spell 0x41C490 switches on spells 0 to 9 with hero_spell_mastery(spell, tile_spell_field)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15a.md E15-4 (on Cursed Ground Fly refused, 748, 40 kept; Summon Boat cast for 7; in an anti-magic garrison both refused, 685, nothing spent) and E15-5 (Magic Plains: Dimension Door at Expert for 20 by a hero without Air Magic) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+  note       = "Regression tests: crates/h3-game/src/tests/casts.rs, cursed_ground_and_an_anti_magic_garrison_refuse_free_after_the_cost, a_raising_ground_casts_at_expert_for_its_cost."
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Spells - Heroes 3 wiki: the adventure spells (Summon Boat, Scuttle Boat, Visions, View Earth, Disguise, View Air, Fly, Water Walk, Dimension Door, Town Portal); Cursed Ground: only level 1 spells; Magic Plains: all spells at Expert"
+  url        = "https://heroes.thelazy.net/index.php/Spells"
+  retrieved  = "2026-11-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's sections 3, 5, 6, 14; ADR-0013 point 17; E08 decision 414 (the cost before the ground)"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-SPL-002"
+title    = "The day spells: until the new day, Fly and Water Walk cleared by a boarding"
+context  = "adventure"
+status   = "verified"
+summary  = "A hero's day spells (`DaySpells`: Fly's level, Water Walk's level, the day's Dimension Door casts; the original's +0x112, +0x116, +0x10D) are set only by its casts and last through the other players' turns until the day changes: the adventure's start of the day clears every hero's (the state's block by hero id, `AdventureState::day_spells`, gone: the heroes on the map, the towns' garrison heroes and those off the map alike). Boarding a boat clears Fly and Water Walk (`hero_boards_boat`'s -1s) and keeps the door's casts; a landing clears nothing, so a Water Walk cast aboard holds ashore (ADV-QUIRK-57). The flying and water-walking levels a hero's steps read are the higher of its artifacts' and its day spell's (ADV-MOV-009, ADV-MOV-010); the drop to 0 under ADV-QUIRK-17 reads the spells' levels alone (ADV-MOV-006). Its owner's alone: the own hero view's `spells`, and each change told after the command as `DaySpellsChanged` (a cast, a boarding, the new day). E08 T142a: `AdventureState::start_day`, `board`, `day_movement`, `OwnHeroes::tell`; the adventure state hash v29."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-17", "ADV-QUIRK-57"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 4.3): new_day 0x4C7FE0 (0x4C80CF to 0x4C80FD) sets +0x10E, +0x112, +0x116, +0x129 of all 156 hero records to -1 and +0x10D to 0; hero_boards_boat sets +0x112 and +0x116 to -1; cheapest_step_from 0x4B1880 reads +0x112 and +0x116"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15c.md E15-11 (boarding B5 clears Fly, level 0 to -1) and E15-12 (Water Walk cast aboard, level 0 after landing, three steps over water at 140) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+  note       = "Regression tests: crates/h3-adventure/src/state/tests/spells.rs, a_boarding_clears_fly_and_water_walk_and_the_new_day_clears_every_spell, the_drop_to_0_prices_with_the_spells_levels_under_adv_quirk_17."
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's sections 8, 12, 13, 16 (the block by hero id an agent's call of E08 T142a: a field on HeroOnMap costs every fork)"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-SPL-005"
+title    = "Fly: the day's flying level"
+context  = "adventure"
+status   = "verified"
+summary  = "Fly sets the caster's flying level for the day to its mastery (0 to 3; ADV-MOV-009 then prices and passes its steps at that level). Refused, free, in a boat (GENRLTXT 193, `CastError::InBoat`); under ADV-QUIRK-54 (faithful) also while Fly is on or the hero's artifacts give it a flying level (Angel Wings: the original's silent nothing, `AlreadyOn`), so a re-cast at a higher mastery never raises the level; with the flag off only when the mastery would not exceed the hero's flying level now, the artifacts' 3 included (`NotHigher`). The cost is GAM-SPL-001's. E08 T142a: `AdventureState::check_cast`, `apply_cast`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-54"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 7.1): adventure_spell 0x41C490 at 0x41C6B8: in a boat GENRLTXT 193; +0x112 set or Angel Wings (72) worn: nothing; else hero_cast_fly 0x4E59A0 (+0x112 the mastery, the cost taken inline)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15c.md E15-11 (Fly 40 to 20, level 0; the second free and nothing; with Angel Wings nothing; aboard GENRLTXT 193, free) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+  note       = "Regression tests: crates/h3-adventure/src/state/tests/spells.rs, fly_sets_the_flying_level_its_steps_and_reach_read, a_recast_is_refused_free_under_adv_quirk_54_and_only_a_higher_one_is_taken_off."
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Fly - Heroes 3 wiki: the hero flies for the day, a 40 % penalty (20 % at Advanced, none at Expert); re-casting at a higher level does not improve the spell (a bug, fixed in HotA)"
+  url        = "https://heroes.thelazy.net/index.php/Fly"
+  retrieved  = "2026-11-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "AdventureSpellMechanics.cpp: Fly and Water Walk add a one-day bonus at the caster's level (the higher level replaces the lower: the flag's off side)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/AdventureSpellMechanics.cpp"
+  retrieved  = "2026-11-21"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-SPL-006"
+title    = "Water Walk: the day's water-walking level"
+context  = "adventure"
+status   = "verified"
+summary  = "Water Walk sets the caster's water-walking level for the day to its mastery (0 to 3; ADV-MOV-010 then prices and passes its steps). In a boat both of its tests are skipped and it is cast (A-49 accepted, ADV-QUIRK-57): at sea the level does nothing (a boat's mode), and a landing keeps it (ADV-SPL-002). On land it is refused as Fly is (ADV-SPL-005, ADV-QUIRK-54): while on or with Boots of Levitation worn under the flag, else when the mastery would not exceed the hero's water-walking level now. E08 T142a: `AdventureState::check_cast`, `apply_cast`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-54", "ADV-QUIRK-57"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 7.1): adventure_spell at 0x41C796: in a boat (+0x105 bit 18) both tests skipped; on land +0x116 set or Boots of Levitation (90) worn: nothing; else hero_cast_water_walk 0x4E5DD0 (+0x116 the mastery) and hero_spend_mana"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15c.md E15-12 (aboard B5: no message, 20 to 8, Water Walk 0; landed, still 0; then three steps over the strait's water, 141 + 140 + 140) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+  note       = "Regression tests: crates/h3-adventure/src/state/tests/spells.rs, water_walk_sets_the_water_walking_level_its_steps_read, aboard_fly_is_refused_and_water_walk_is_cast_without_its_tests."
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Water Walk - Heroes 3 wiki: the hero walks on water for the day, a 40 % penalty (20 % at Advanced, none at Expert)"
+  url        = "https://heroes.thelazy.net/index.php/Water_Walk"
+  retrieved  = "2026-11-21"
+  confidence = "medium"

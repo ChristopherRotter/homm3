@@ -142,10 +142,24 @@ log and its cells with the dump of the same step find a divergence at its step a
   30-31 and +0x2C's to the end. No map changed by them. The dumps keep them as they are; `corpus
   --again` names them apart (`h3rmg.MEMORY_BITS`) and fails only on other differences.
 
-## Not yet (T1c2)
+## Not yet
 
-- The painters' draws are read (T1c1, survey §2.7; checked against the dumps of `s1-2p`, `s2-2p`
-  and `m1-4p`: every road and river cell's picture as read). The memory-dependent quirks
-  classified (step 2's draw, the cell bits, step 15's read past the cells): T1c2, with the user.
+- The memory-dependent draws are classified (T1c2, `docs/rules/quirks-rmg.md`): step 2's
+  unwritten town-type bytes (RMG-QUIRK-1) and step 15's read past the cells (RMG-QUIRK-2) are
+  modelled on a fresh start's first map here, `fixed` zeroing them; the cell bits
+  `rmg_map_cell_reset` leaves are not a quirk (the port zeroes them). **For step 2's port:** the
+  phase hooks log the nine bytes +0x41..+0x49 of each temporary and water zone when
+  `rmg_zone_generator_init` 0x5329E0 counts them (and step 15's cell past the array), so the model
+  is the oracle's data, not a guess.
+- **A first map varied once** (T1c2's sandbox, 2026-11-24): `corpus` gave 20 of 21 as kept, and
+  `m2-4p` another map (113 282 bytes, its towns elsewhere, the header differing from byte 235);
+  run alone right after, it was as kept. So "21 of 21 the same from fresh starts" (T1b1, T1b2) does
+  not hold in every run; the likely cause is step 2's stack bytes (RMG-QUIRK-1), not followed. The
+  measurement at step 2's port must find what moves them (the run's environment, as for second
+  maps) before the model is fixed.
+- **The corpus's objects** (T1c2, survey §3.3): 47 458 objects of 115 classes; `h3_map` reads all
+  21, 20 import and validate; `l2-2p-c4-islands` is refused because Dragons' zone 32 makes a
+  neutral town purple's main town (RMG-QUIRK-23; the original starts it), not by the entrance
+  convention, which is the editor's own.
 - The oracle covers the choices without Random, one human, the default towns; a human's town
   choice and more humans (the advanced options' seats) are not in the corpus yet.

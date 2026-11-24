@@ -39,6 +39,7 @@ use rests::{Held, Rest};
 
 mod altar;
 mod battle;
+mod cast;
 mod day;
 mod hill_fort;
 mod hire;

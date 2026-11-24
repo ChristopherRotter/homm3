@@ -6,29 +6,136 @@ Pre-refined tasks of the map client lane, in order, then the inbox of discovered
 
 Epic: E24, the adventure map client. **M1** (stills of the map view, closed 2026-10-24), **M2**
 (the map moving, closed 2026-10-28), **M3** (the adventure screen, closed 2026-10-31) and **M4**
-(the engine's games shown, closed 2026-11-23 at T6) are archived with their review lists in
-`docs/epics/E24-archive.md`; their queue history in `QUEUE-ARCHIVE.md`.
+(the engine's games shown, closed 2026-11-23 at T6, its review list accepted at M5 T0) are
+archived with their review lists in `docs/epics/E24-archive.md`; their queue history in
+`QUEUE-ARCHIVE.md`. **M5** (hot seat on the adventure map) was refined with the user at T0
+(2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
+"Later". Every task's cut is confirmed with the user at its start. Planned ids: `MCL-STUB-5` (a
+computer colour's turn ended at once, T3), `MCL-STUB-6` (a screen of M6 or M7, T4).
 
-### E24 M5 T0 — M5 refined with the user
+### E24 M5 T1 — M4's hand test and carry-overs
 
-- **Scope:** M5 (the epic's "Later": hot seat, whole games played in-process: the handover screen
-  when the player who must act changes, the level-up dialog, the hero and town screens as play
-  needs them; then live play against the server) refined with the user: its scope, decisions,
-  exit and tasks. Its inputs: the inbox's notes for E24 M5 (the client lane's hand-over of E27's
-  Begin and Load: `begin::Game`, `save::Loaded`, CLT-Q160 (a), CLT-Q170 (a); the system options
-  and Save from play, E27 M5; the hot seat's clock; the town lane's builds, the adventure lane's
-  casts, Prison and Market of Time), M4's leftovers for M5 (`MCL-STUB-3`, a defended battle; the
-  screens a record's commands pass over, design §5.17), and M4's open questions (MCL-Q29 to
-  MCL-Q56, none blocking). First read the user's notes of M4's hand test
-  (`clients/out/win/map-m4-notes.txt` on the user's machine, beside `map-m4.cmd`): a finding goes
-  into a question or an M5 task.
-- **Acceptance:** M5's tasks queued; the epic's M5 section written.
-- **Depends on:** M4 T6 (done). **Status:** the user's checkpoint. First, at its start: M4's
-  review list's acceptance (the user reads it first: the archive's "M4's review list" and its
-  T6 additions), then MCL-Q50 to MCL-Q56 one by one (the user, 2026-11-24), then the hand test's
-  notes; then M5's refinement.
+- **Scope:** first the user's notes of M4's hand test (`clients/out/win/map-m4-notes.txt` on the
+  user's machine, beside `map-m4.cmd`; not written at T0): each finding a question or a task. Then
+  M4's carry-overs: the hero's pose at the attack (the original draws its moving pose: about 590
+  pixels at the hand-over, a flag column at the map's return) and the panel's buttons after a
+  retreat, read and built, the battle sequences recorded again (`timelines/battle-*-frames.txt`
+  without them; review item 5, the user at T0); **MCL-Q51** (b) then (a): `battle-mine` recorded
+  with `battle = "retreat"`, `visit_mine` 0x4A39A0's path read for the draw, built; **MCL-Q52**
+  (a): the map's return (`manager_run` 0x4B0C70, `ambient_sounds_at` 0x4183D0) read for the
+  ambient slots and built, (b) (the slots forgotten at the hand-over) if the reading is far off.
+- **Acceptance:** the hand test's findings placed; the two frame differences gone from the
+  battle sequences' lists; the retreat's sequence as recorded; the ambient loops after a battle as
+  read; `drawn` all the same; the scoped verify.
+- **Depends on:** M5 T0 (done); the user's hand test (else its notes wait for T2). **Status:**
+  queued; original data and Wine needed.
+
+### E24 M5 T2 — the layering: `h3-map-client` and the shell's crate (no behaviour changed)
+
+- **Scope:** the map's window loop, painter, sound player and battle hosting move from
+  `h3-map-view`'s binary into a new adapters library **`h3-map-client`** (this lane's, under
+  `clients/crates/h3-map*`), with a play entry the shell can call (its input `begin::Game`'s
+  setup and names, the window and sound lent, play's end handed back: Main Menu, Load, Restart,
+  Quit, as E27 M5 will need), the `h3-map-view` binary a thin host of it; `h3-map-view`'s library
+  stays pure. With the client lane (its inbox, 2026-11-24): the shell moved out of
+  `h3-battle-client` into a crate of its own on top, whose binary is the player's program and
+  which calls `h3-map-client`'s play (the client lane's task; this lane's API agreed with it
+  first); one record reader shared by both lanes (`h3_view::game_record` and `h3-map-view`'s own:
+  the place, in the common foundation or beside the server's writer, agreed with the client lane
+  and, beside the writer, the server lane).
+- **Acceptance:** every situation, sequence and record plays as before (`drawn` all the same,
+  the 66 golden records to their end, the window under Xvfb); `check.sh`; the coverage of the
+  moved code; the client lane's move queued with the API it calls.
+- **Depends on:** T1 (or alongside it). **Status:** queued; a new crate (the user's decision at
+  T0, the decision's place in the epic).
+
+### E24 M5 T3 — the session in-process
+
+- **Scope:** `h3-map-client`'s play hosts an `h3_protocol::session::game::GameSession` with a seat
+  per human of `begin::Game` (the hot seat's names by colour, the turn's duration on
+  `GameOptions::clock`, the session's `elapse` and `deadline` on the window's clock), each human's
+  frames folded into its own `GameObservation`, the map drawn from the current human's view and
+  switched at a human's start; a computer colour's turn ended at once by the host (`MCL-STUB-5`,
+  lifted by E31's increment 2); each seat's record kept (`GameSession::record`), so that the
+  record player shows it; started from the shell's Begin (lifts `CLT-STUB-13` with the client
+  lane); Load once the engine changes a loaded game's humans (the adventure lane's inbox,
+  2026-11-21). No input yet but End Turn.
+- **Acceptance:** a two-human game on a shipped map begun from the shell, each End Turn passing to
+  the next human's view; each seat's record played by the record player as the game went; the
+  scoped verify.
+- **Depends on:** T2; the client lane's shell crate for Begin (until then a command line start).
+  **Status:** queued.
+
+### E24 M5 T4 — live input through the engine
+
+- **Scope:** the engine's reach and paths (the session's queries) for the cursor over the view,
+  a click's path and its walk, and the direction keys' steps (M2's input without the engine
+  lifted: no step through obstacles, every step's points the engine's; MCL-Q19's days); End Turn
+  and Move Reminder's question; every box M4 shows answered by the player as the command (a
+  question, a choice, a level-up, the week's and month's messages, a find); the original's random
+  picks from the client's own seeded generator (M4's review item 2); **facts first** (the user at
+  T0): no rules table of the client's and no map text read from the file in play, each fact the
+  view lacks an `MCL-Q<n>` and a note in the engine lanes' inboxes; a screen of M6 or M7 (the hero
+  and town screens, the spell book, a visit window) a notice in the client's words, its decision
+  closed (`MCL-STUB-6`).
+- **Acceptance:** a hot-seat game played by keys and mouse from Begin through several days, every
+  command accepted by the engine; scripted games compared with the original's frames where the
+  commands are the same; the list of facts the view lacks in the epic's risks; the scoped verify.
+- **Depends on:** T3. **Status:** queued.
+
+### E24 M5 T5 — the hand-over and the clock
+
+- **Scope:** the original's human start in a hot seat read whole (`next_player_turn` 0x4C6FE0's
+  human branch at 0x4C7710: the covered view 0x699538, GENRLTXT 14 "%s's turn.",
+  `turn_start_screen` 0x419E00; GENRLTXT 352 "It's %s's turn." read for its caller) and its turn
+  timer (`turn_time_expired_end` 0x4087F3: GENRLTXT 202; the warnings, GENRLTXT 627 to 630),
+  recorded under Wine in hot seat (the harness's `hot_seat`, two humans and a turn's duration),
+  built on the session's clock (the duration from `begin::Game`, CLT-STUB-11's lift with the
+  client lane).
+- **Acceptance:** the hand-over and the clock's boxes as recorded, frame by frame; the scoped
+  verify.
+- **Depends on:** T3 (T4 for the clock's input). **Status:** queued; original data and Wine
+  needed.
+
+### E24 M5 T6 — the battles in play
+
+- **Scope:** a human's attack played live in the window (the battle client's `GameSeat` on the
+  in-process session, the human's commands from the battle's screen); a defended battle (another
+  human's hero attacking: the original's switch read and recorded, `MCL-STUB-3` lifted); a battle
+  between two humans (`CLT-STUB-5`, with the client lane: one seat over both sides, each command
+  its side's player's); Auto Combat (`CLT-STUB-4`: the host plays the human's side by the battle
+  AI); the result in each human's view.
+- **Acceptance:** each kind played in a hot-seat game; the switches as recorded; the scoped
+  verify.
+- **Depends on:** T4; the client lane's part of `CLT-STUB-4` and `-5`. **Status:** queued; cut
+  likely (the defended battle's reading and recording first).
+
+### E24 M5 T7 — a whole game
+
+- **Scope:** a two-human hot-seat game on a shipped map played from the shell's Begin to a day
+  limit: headless by a script of commands (its records kept) and in the window by hand; the
+  gaps found placed (a question, a stub or a fix).
+- **Acceptance:** the game played both ways with every command the engine's; no rules table or
+  map text read in play.
+- **Depends on:** T6. **Status:** queued.
+
+### E24 M5 T8 — M5's closure
+
+- **Scope:** fresh reviewers (one per area), their findings fixed or asked, M5's review list for
+  the user, the epic's M5 archived, a hand-test kit on the user's machine (`clients/out/win/`).
+- **Acceptance:** the exit (the epic's M5); the user's checkpoint.
+- **Depends on:** T7. **Status:** queued.
 
 ## Inbox
+
+- 2026-11-24 (the adventure lane, E08 T142a; **for your planning, nothing blocks**): protocol
+  v82 carries the cast on the map: `GameCommand::Cast { hero, spell, target }`, the owner's
+  `GameEvent::SpellCast { hero, spell, mastery, cost }` and `AdventureEvent::DaySpellsChanged
+  { hero, spells }` (Fly's and Water Walk's levels, the day's Dimension Doors), and
+  `OwnMapHero::spells`; the refusals `GameReject::Cast` mirror the original's boxes (GENRLTXT 207
+  the points, 748 Cursed Ground, 685 an anti-magic garrison, 193 Fly aboard; a re-cast is the
+  original's silent nothing). Fly and Water Walk only so far (T143 the boats and the door), and
+  `legal_commands` lists no cast until T144a.
 
 - 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`; **for your planning**): the
   Prison and the Market of Time are typed (map import v29); a visit's events (protocol v81): the

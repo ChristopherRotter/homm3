@@ -1095,11 +1095,13 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
         GameCommand::Answer(answer) => answer_entry(*answer),
         // E08 T51a: the management commands have no entry (decision 99: the AI lane's call); a
         // town's build takes a tile ([`command_entry`]'s, E09 T19c1); the system's own commands
-        // (E16 M5 T14) are the host's, never listed for a seat.
+        // (E16 M5 T14) are the host's, never listed for a seat. A cast on the map (E08 T142a)
+        // has none until the encoding's entries (E08 T144a, `legal_commands` lists none before).
         GameCommand::Adventure(_)
         | GameCommand::Battle(_)
         | GameCommand::Manage(_)
         | GameCommand::Town(_)
+        | GameCommand::Cast { .. }
         | GameCommand::System(_) => None,
     }
 }

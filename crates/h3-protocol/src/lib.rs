@@ -252,7 +252,12 @@ pub mod wire;
 /// (a hire's shape, its owner's view `TavernHeroHead`), `PrisonerPartSeen` (a `TavernPart`),
 /// `PrisonFull`, `PrisonEmptied`; the observation's `hero_list` (the viewer's list of heroes,
 /// GAM-HER-003).
-pub const PROTOCOL_VERSION: u32 = 81;
+/// v82 (E08 T142a, the adventure lane's, `cross-lane`; increment 15's design note §14, §16): the
+/// cast on the map, `GameCommand::Cast` (a hero, a core spell, an optional target) and its
+/// refusals `GameReject::Cast` (`CastReject`, the spell's own as `SpellReject`); the events
+/// `GameEvent::SpellCast` and `AdventureEvent::DaySpellsChanged`; the own hero's `spells`
+/// (`DaySpells`: Fly's and Water Walk's levels, the day's Dimension Doors).
+pub const PROTOCOL_VERSION: u32 = 82;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

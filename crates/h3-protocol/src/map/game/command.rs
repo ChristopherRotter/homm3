@@ -6,7 +6,9 @@
 //! artifact's place) is the engine's own echo of a client's value or a value of the game's
 //! bounds, so it never saturates in play.
 
-use h3_adventure::{AdventureCommand as EngineAdventure, AdventureCommandError, StandError};
+use h3_adventure::{
+    AdventureCommand as EngineAdventure, AdventureCommandError, CastError, StandError,
+};
 use h3_content::{CreatureTypeId, Formation as EngineFormation};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
@@ -15,8 +17,8 @@ use h3_game::{
     ArmyRef as EngineArmyRef, ArmySlot as EngineSlot, ArtifactPlace as EnginePlace, BuildingId,
     ChestChoice as EngineChest, Consent as EngineConsent, GameCommand as EngineCommand,
     GameCommandError, HillFortAnswer as EngineHillFort, HillFortError, HireAnswer as EngineHire,
-    HireError, Manage as EngineManage, ManageError, MarketAnswer as EngineMarket, MarketError,
-    Position, SchoolChoice as EngineSchool, SkillOffer as EngineOffer,
+    HireError, Manage as EngineManage, ManageError, MapCastError, MarketAnswer as EngineMarket,
+    MarketError, Position, SchoolChoice as EngineSchool, SkillOffer as EngineOffer,
     SystemCommand as EngineSystem, TavernAnswer as EngineTavern, TavernError,
     TownCommand as EngineTown, TownCommandError, TownHeroChange as EngineHeroChange,
     UniversityAnswer as EngineUniversity,
@@ -28,11 +30,11 @@ use super::pos;
 use crate::map::{command_to_engine as battle_to_engine, from_engine};
 use crate::wire::game::{
     AdventureCommand, AdventureReject, AltarAnswer, AltarReject, Answer, ArenaChoice, ArmyCommand,
-    ArmyRef, ArmyReject, ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent,
-    Formation, GameCommand, GameReject, HillFortAnswer, HillFortReject, HireAnswer, HireReject,
-    Manage, ManageReject, MarketAnswer, MarketReject, MoveReject, Pos, SchoolChoice, SkillOffer,
-    StandReject, SystemCommand, TavernAnswer, TavernReject, TownCommand, TownHeroChange,
-    TownReject, UniversityAnswer,
+    ArmyRef, ArmyReject, ArmySlot, ArtifactAt, ArtifactPlace, CastReject, ChestChoice,
+    CombineReject, Consent, Formation, GameCommand, GameReject, HillFortAnswer, HillFortReject,
+    HireAnswer, HireReject, Manage, ManageReject, MarketAnswer, MarketReject, MoveReject, Pos,
+    SchoolChoice, SkillOffer, SpellReject, StandReject, SystemCommand, TavernAnswer, TavernReject,
+    TownCommand, TownHeroChange, TownReject, UniversityAnswer,
 };
 
 /// An engine command on the wire (a legal list's, the echo of an applied command).
@@ -88,6 +90,16 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                 // E09 T49b (v80).
                 EngineTown::BuySpellBook { town } => TownCommand::BuySpellBook { town: town.raw() },
             },
+        },
+        // E08 T142a (v82).
+        EngineCommand::Cast {
+            hero,
+            spell,
+            target,
+        } => GameCommand::Cast {
+            hero: hero.raw(),
+            spell: spell.raw(),
+            target: target.map(pos),
         },
         // E16 M5 T14 (v56): the system actor's own commands, the host's.
         EngineCommand::System(c) => GameCommand::System {
@@ -386,6 +398,15 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                 command: battle_to_engine(command),
             },
         }),
+        GameCommand::Cast {
+            hero,
+            spell,
+            target,
+        } => EngineCommand::Cast {
+            hero: HeroId::new(hero),
+            spell: Handle::from_raw(spell),
+            target: target.map(pos_to_engine),
+        },
     })
 }
 
@@ -664,6 +685,34 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 HillFortError::Visit => HillFortReject::Visit {},
                 HillFortError::NoUpgrade(slot) => HillFortReject::NoUpgrade { slot },
                 HillFortError::Nothing => HillFortReject::Nothing {},
+            },
+        },
+        // E08 T142a (v82).
+        E::Cast(error) => GameReject::Cast {
+            error: cast_reject(error),
+        },
+    }
+}
+
+/// The game's reason for refusing a cast on the map, on the wire (E08 T142a, v82).
+const fn cast_reject(error: MapCastError) -> CastReject {
+    match error {
+        MapCastError::NotYourHero(hero) => CastReject::NotYourHero { hero: hero.raw() },
+        MapCastError::Unknown(spell) => CastReject::Unknown { spell: spell.raw() },
+        MapCastError::NotOnMap(spell) => CastReject::NotOnMap { spell: spell.raw() },
+        MapCastError::Target => CastReject::Target {},
+        MapCastError::SpellPoints => CastReject::SpellPoints {},
+        MapCastError::Ground => CastReject::Ground {},
+        MapCastError::AntiMagic => CastReject::AntiMagic {},
+        MapCastError::Adventure(error) => CastReject::Adventure {
+            error: match error {
+                CastError::NotYourHero(hero) => SpellReject::NotYourHero { hero: hero.raw() },
+                CastError::InBoat => SpellReject::InBoat {},
+                CastError::AlreadyOn => SpellReject::AlreadyOn {},
+                CastError::NotHigher => SpellReject::NotHigher {},
+                CastError::NotBuilt(effect) => SpellReject::NotBuilt {
+                    effect: effect.code(),
+                },
             },
         },
     }
