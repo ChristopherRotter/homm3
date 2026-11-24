@@ -55,22 +55,27 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   A-30, and the Cover of Darkness); travel and the Grail (Town Portal, Castle Gate) are
   **increment 8**. Where your docs say "E09 increment 7" for Town Portal (`E08-design.md`), read
   8; "E09's increment 6" for the Artifact Merchants (ADV-QUIRK-48's ledger entry) stays right.
-- 2026-11-24 (the rmg lane, E14 T1c2, `rmg/e14-t1c2`; **for your planning, nothing to do before
-  E14 increment 6 is cut** (T1c3): survey `docs/rules/surveys/E14-generator.md` §3.3): increment 6
-  writes the original generator's maps through `h3_map::writer`, the uncompressed `.h3m` byte for
-  byte (checked against the oracle's 21 maps; this replaces the rmg lane's note of 2026-11-21). What the writer lacks for it: (1) **one object list
-  in the caller's order**, both levels and every kind interleaved (today the typed surface objects,
-  then the underground's, then `Extras`); (2) **identifiers as given** for towns, monsters and
-  prisons (the generator's serial, never the written index + 1); (3) **the template table as
-  given** (its order, not first use, and two unused leading entries: the random monster's and the
-  hole's first prototypes); (4) **a Seer's Hut's reward** (experience, one creature stack or gold)
-  with its one-artifact quest, deadline −1, no texts (`Extras::quests` writes no reward); (5)
-  **the banned artifacts as a whole set** (the generator bans 127-140; the writer cannot leave out
-  the editor's 141-143); (6) the **AB layout** (0x15) and towns and `Extras` in **RoE**, only once
-  the oracle has such cases (the corpus is SoD). One way to all six: a writer of the reader's raw
-  model (`RawMap` to bytes, round-trip tested over the shipped maps and the corpus); your call.
-  For E12's order: the generated maps hold 115 Seer's Huts (18 of 21 maps), 278 Obelisks (20) and
-  5 Sanctuaries, all blockers in the import today.
+- 2026-11-24 (the rmg lane, E14 T1c3, `rmg/e14-t1c3`, RMG-Q2; **for your planning: needed before
+  E14 increment 7**, which follows E14's increments 2 to 6; this replaces the rmg lane's T1c2 note):
+  the user decided that E14 writes the original generator's maps through `h3_map::writer` with
+  the gaps below closed (not a writer of `RawMap`), the uncompressed `.h3m` byte for byte against
+  the oracle's 21 maps, and that a game on a generated map reads and imports those bytes as any
+  map. What the writer lacks (survey `docs/rules/surveys/E14-generator.md` §3.3.3): (1) **one
+  object list in the caller's order**, both levels and every kind interleaved (today the typed
+  surface objects, then the underground's, then `Extras`); (2) **identifiers as given** for towns,
+  monsters and prisons (the generator's serial, never the written index + 1); (3) **the template
+  table as given** (its order, not first use, and two unused leading entries: the random
+  monster's and the hole's first prototypes); (4) **a Seer's Hut's reward** (experience, one
+  creature stack or gold) with its one-artifact quest, deadline −1, no texts (`Extras::quests`
+  writes no reward); (5) **the banned artifacts as a whole set** (the generator bans 127-140; the
+  writer cannot leave out the editor's 141-143); (6) the **AB layout** (0x15) and towns and
+  `Extras` in **RoE** (E14 increment 7's census adds such cases; the corpus is SoD). The rmg lane
+  turns its `GeneratedMap` into the writer's `Map` and `Extras` in `crates/h3-map/src/generated*`
+  (its paths from increment 7, with the edge `h3-map → h3-rmg`; ADR draft
+  `docs/lanes/rmg/adr-drafts/h3-rmg-generator.md` point 2). A gap still open when E14 increment 7
+  starts is closed by the rmg lane, `cross-lane` with the user's consent. For E12's order: the
+  generated maps hold 115 Seer's Huts (18 of 21 maps), 278 Obelisks (20) and 5 Sanctuaries, all
+  blockers in the import today.
 - 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **for your planning,
   nothing to do now**): three facts a player's record lacks that the map viewer would show, each a
   question there with the gap built plainly meanwhile: (1) **MCL-Q53**, a hero coming into sight

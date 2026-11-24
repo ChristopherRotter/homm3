@@ -434,6 +434,10 @@ battle lane's: the obstacle draw under the tile's seed); (b) leave the gap (the 
 comparisons start from its own situations). **Recommended (a)**; the battle lane's inbox told.
 Blocks nothing.
 
+### RMG lane (`RMG-Q<n>`)
+
+(no open questions)
+
 ### Town lane (`TWN-Q<n>`)
 
 (no open questions)
