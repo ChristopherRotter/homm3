@@ -227,7 +227,7 @@ the flag of `hero_move_step` that zeroes the points, how the pathfinder makes th
 among them) and reads the boat marks: T1a4. The values the frame and the planning call:
 §2 (T1a2). The build loop and the hire (the step once called the artifact step): §3.1, §3.2
 (T1a3a, T1a3b); `ai_hero_candidates`' other caller, `ai_town_hero_prospects` 0x431BD0: §3.2. The
-allies' shares: T1a3d.
+allies' shares: §3.5 (T1a3d2).
 
 ### 1.9 The planning: the danger map and the destination (T1a1b)
 
@@ -976,9 +976,9 @@ formation. `ai_town_hero_prospects` 0x431BD0 (§3.2 confirmed): the town's offer
 `ai_army_merge_types` 0x42D870 (was `ai_army_plan_setup`), shed, exchange steps, the formation, the
 run without trades but with costs weighed (+0x28 1), all undone. `ai_garrison_visit` 0x524370: the
 exchange with a map garrison (no hero). `ai_meeting` 0x525DC0: the exchange with a colleague, then
-0x433FE0 both ways. `ai_battle_army_split` 0x42DB20 (inferred, T1a3d; `adventure_battle` 0x4AE290,
-0x4AE2B8): merges, values the enemy at the heroes' `hero_attack_defense_factor` ratio, splits its
-stacks into free slots (0x42DD70), then the formation.
+0x433FE0 both ways (both §3.4). `ai_battle_army_split` 0x42DB20 (`adventure_battle` 0x4AE290,
+0x4AE2B8; §3.5): merges, values the enemy at the heroes' `hero_attack_defense_factor` ratio, splits
+its stacks into free slots (0x42DD70), then the formation.
 
 **The guild** (`ai_town_guild_buy` 0x42BEB0). The next level L (the town's guild level as the
 building id) is bought when the hero could learn it (L below its Wisdom level + 2, at most the
@@ -1083,8 +1083,10 @@ simulated battle's end (§2.2), the battle AI's spell values (`ai_caster_record`
 popup, the Thieves' Guild), `team_has_human`, `ai_map_terrain_shares` (at a new game and a load),
 `town_has_building`, `hero_position`, `game_map_item`, `game_hero`, the records' setup and
 `ai_artifact_effects_clear` 0x434590 (at the shutdown), the vector helpers, and
-`ai_army_plan_destroy` 0x4286E0 (the exception unwind's). Two callers outside the ranges, 0x56F5A0
-and 0x571560 (of `ai_artifact_value_to_player` and `ai_weighted_cost`), are left to T1a4.
+`ai_army_plan_destroy` 0x4286E0 (the exception unwind's). Outside the ranges, two quest methods
+call into them as the quest's price to a computer (each quest type's vtable +4, `quest_vtables`
+0x64174C; §3.5's Seer): `ai_quest_artifacts_price` 0x56F5A0 (type 5, the artifacts' values) and
+`ai_quest_resources_price` 0x571560 (type 7, the amounts' weighted cost); the other types' are T1a4's.
 
 **The fight answer** (`ai_fight_answer` 0x52BD10, 17 callers) is §2.1's object value for the hero,
 with no state change. Fourteen visits that ask a human yes or no go ahead when it is above 0 and
@@ -1142,8 +1144,163 @@ stack the group replaces is lost even when a garrison or another hero is at hand
 
 ### 3.5 The Seer's reward, the markets, the allies' shares and the battle's split (T1a3d2)
 
-(T1a3d2: being merged.)
+Read by a sub-agent (AI-Q28) in its own worktree; merged by the main session. Units are §2's.
+
+**The Seer's reward.** Runs twice: in the plan, `ai_seer_hut_value` 0x5735A0 values a hut through
+`seer_reward_value` 0x573A70 (an unvisited hut's reward read, hidden, §2.1), and at the visit,
+`seer_hut_visit` 0x573670 (visit_object's case 83) decides whether to complete the quest. The
+visit sets the colour's visited bit first, runs the quest's check for the hero and, for the
+computer, completes only when the reward's value less the quest's price (its vtable +4, §3.4) is
+above 0 (0x5738FF);
+a human gets the same check and a yes-or-no question. The value by the reward's kind (switch
+0x573A89; the record's +5 kind, +9 a, +0xD b), in §2's units:
+- experience: trunc(f32(a) x the hero's experience weight +0x109), without the Learning bonus
+  that `seer_reward_give` 0x573C80 applies when it pays;
+- spell points: a x the hero's knowledge value +0x486 / 20 (integer);
+- morale: `ai_morale_gain_value` 0x527CF0 of a;
+- luck: `ai_luck_gain_value` 0x527D80 of a, but its result is dropped: the case has no return and
+  runs into the resource case (0x573B02), see the quirks;
+- a resource: trunc(f64(b) x the owner's weight +0x128[a]);
+- a primary skill: Attack and Defense b x one level's experience (`experience_to_next_level`) x
+  +0x109 (x87, truncated), Spell Power b x +0x47E, Knowledge b x +0x486;
+- a secondary skill (`ai_seer_skill_value` 0x524630): 0 when the hero has it at the reward's level
+  or above, or when a new skill is not wanted (eight known, or `ai_takes_new_secondary_skill`
+  0x524DD0 declines); else `ai_secondary_skill_value` of its next level, whatever level the
+  reward gives;
+- an artifact: 0 with 64 in the backpack, else `ai_artifact_value_to_player` 0x433AA0 (at least 10);
+- a spell (`ai_seer_spell_value` 0x527AA0, a copy of `ai_learnable_spell_value` 0x5298D0):
+  Spell Book, level at most Wisdom + 2, not known, then `ai_hero_spell_gain`;
+- creatures: AI value x count, with no test of the army's room;
+- no reward: 0, so the computer never completes a quest without one (a choice).
+Hidden: nothing beyond the planning's read of an unvisited reward. Draws: none on the computer's
+path (the human's no-quest message draws one of three texts, 0x57396B). Floats: x87, f32 for
+experience and skills, f64 for resources, truncated. **A choice** (the human may accept or
+refuse the same completion); the giving (`seer_reward_give`) is shared, except that creatures
+without room go to `ai_join_without_room` 0x52BC60 (§3.4) instead of the human's `army_full_dialog`.
+
+**The markets.** The map Tavern (visit_object's case 95, 0x4AA0E7): the computer returns at
+once, no hire; it hires only in its own towns (§3.2). The Trading Post and the Freelancer's Guild
+on the map: nothing (0x4AA2CE, 0x4A8E34). The computer's town visit (`ai_town_visit` 0x5253D0)
+reaches no market but the Artifact Merchants; its resource trades are `ai_market_trades`
+0x42AC20 (§2.3); it never sells artifacts or creatures. The artifact purchases
+(`ai_buy_stock_artifacts` 0x524400, from `ai_black_market_visit` 0x5243F0 with the row 5 and from
+`ai_artifact_merchants_visit` 0x5259E0 with the own towns with a Marketplace, at most 10) use the
+same rate row as the human's screen (`black_market_trade` sets 5, `town_artifact_merchants_trade`
+the same count) and the same seven resources, but not the same price.
+`ai_artifact_market_price` 0x524550 truncates the gold price trunc(cost / rate) (0x524581) and
+takes a resource's amount as that price twice over `resource_values` 0x68C482 (250, 500, 250,
+500, 500, 500, 1), which is exactly twice `resource_values_artifacts` 0x68C492 (125, 250, 125,
+250, 250, 250, 1): floor(trunc(cost / rate) / value). The human's `market_buy_artifact_proc`
+0x5ED9E0 rounds half up: trunc(f32(cost / f32(value x rate)) + 0.5) (0x5EDCCF). So the computer
+pays the same or one unit less, never more (all costs 50 to 20 000 by 50, every row and resource:
+61 % one less). The f32 rates 0.2, 0.3, 0.4, 0.55 and 0.6 lie just above their decimals, so an
+exact quotient falls just below its integer: an artifact of cost 1 000 at a Black Market costs
+the computer 2 499 gold, 19 wood or ore or 9 of a rare resource, the human 2 500, 20 or 10. The
+payment is written into the treasury (+0x9C) as a human's Trade does. Which resource pays is the
+computer's choice (the least weighted cost among those it holds enough of). **A rule asymmetry**
+(the price); the choice of item and resource is a choice. No draws; floats x87 with f32 rates.
+
+**The allies' shares.** `ai_turn_middle` 0x428DD0 calls `ai_ally_resource_share` 0x429110 for
+each living player of the computer's team (computers first, then humans) when one of its towns
+has a Marketplace. Per resource the share is the giver's surplus (means +0x24 less demand +0x40),
+held to half the difference between its amount and the ally's (truncated toward 0) and to its
+amount less 20 (gold: less 10 000), less its recruit reserve (+0x8); dropped below 5 (gold
+1 000) and unless it is at least five times what the ally holds (0x429228). A computer ally's
+weights are recomputed (`ai_resource_weights` on its record, during the giver's turn) and each
+share is held to its demand less its means. A human ally gets every share as it stands
+(0x42933B), written from treasury to treasury, with no question: a message with the gifts'
+pictures (GENRLTXT 359) and one naming the giver's shortages (360, 361), each with the turn
+timer's 15-s timeout, no answer read. Hidden: the ally's treasury, and a computer ally's plans.
+No draws, no floats. **A choice**: a human with a Marketplace can transfer resources 1:1 to any
+player (market screen 1, `market_transfer_proc` 0x5ED550); the computer does it without the
+screen and only to allies.
+
+**The battle's split.** In `adventure_battle` 0x4AD470, after `battle_side_setup` stores the armies
+and before the battle places the stacks, `ai_battle_army_split` 0x42DB20 reshapes a computer
+side's army: a computer attacker's always (0x4AE290), a computer defending hero's only when its
+Tactics is above the attacker's (0x4AE2A0); only on the path with a human side (a battle of
+computers alone is resolved at 0x4AD5EE). It merges same-type stacks, counts the free slots,
+values each enemy stack at trunc(AI value x count x f), f = f32 of the enemy hero's attack and
+defence factor (`hero_attack_defense_factor` 0x4E5400, 1.0 without one) over its own hero's, and
+keeps M, the strongest such stack, and the enemy shooters' sum S and count n. Each own shooter is
+cut into parts of about 5M (`ai_army_split_into_free_slots` 0x42DD70: AI value x count / T parts,
+at most the free slots + 1 and the count, filling empty slots in order); when the enemy has
+shooters and its own shooters' raw value A is below S, its other stacks are cut into parts of
+about M, into at most (n - A x n / S + 1) / 2 less the number of its non-shooting stacks new
+slots. `ai_army_arrange` 0x42D8E0 then orders the army (§3.3). Hidden: the enemy's exact counts
+and hero, read before the battle. No draws; f32 factor, x87 products, truncated. The attacker's
+split is **a choice** (a human splits and merges in the hero screen before attacking); the
+defender's is **an asymmetry**: a human defender's army enters the battle as it stands.
+
+**Quirk candidates** (not flagged; T1b's second look): (a) 0x573B02: the Seer's luck reward is
+valued as a resource of index a (its luck amount, upper bytes unwritten by the loader, 0x5747B8) and
+amount b (never written, `seer_hut_record_init` 0x573580): leftover stack data (what the stack held
+there not traced), possibly an out-of-range read of the weights; with zeros there the value is 0 and
+the computer never completes such a quest; (b) 0x42DDA1: the split's threshold read as i16: above
+32 767 it wraps (no split, or the most parts), and a zero low half or an empty enemy army divides by
+zero; (c) 0x573CF9: a spell-points reward whose total falls below 0 adds the hero's mana to itself
+(unreachable with the map's unsigned amounts).
 
 ### 3.6 Choice or rule: the table (T1a3d)
 
-(Being written.)
+Every `ai_*` call read in §1 to §3.5, sorted into two kinds. A **choice** is a move a human player
+could make with the same command, tests and prices: the port issues it as that command, and the
+owning lane's rule decides it. A **rule** is something the original gives or does to a computer
+player (or for a computer's side) that a human's command cannot: the owning lane decides whether
+the engine copies it (decision 2 of the epic: the computer's rules are built by their lanes), and
+the port cannot reach it through a command. A third kind, **reads and memory**, changes no rule but
+matters to the port and the fair variant. The rows go into the owning lanes' inboxes at T1b.
+
+**Rules** (asymmetries):
+
+| # | The original (address, §) | What a human gets instead | Lane |
+|---|---|---|---|
+| 1 | `ai_quick_battle` 0x4270C0 (§2.2): a battle with no human side is not fought; the simulated combat and three draws decide the winner, the survivors, experience, artifacts, the Grail, the town, Necromancy and Eagle Eye | every battle with a human side is fought by the battle rules (Quick Combat too) | battle, adventure (and ai: "battles through the system actor's seat" revisited at T1b) |
+| 2 | `sim_battle_finish` 0x427210 from 0x476200 (§2.2): a hidden (Quick Combat) battle past round 30 is re-fought by the simulation from its start, its two draws overwriting the counts | the same for a human's Quick Combat: a rule of hidden battles, not of the computer, met in its code | battle |
+| 3 | `ai_boat_create` 0x430F80 (§1.10): a marked tile's boat bought from afar, at a map Shipyard without its visit | a map Shipyard's boat is bought at the Shipyard's dialog by a visiting hero (a town's Shipyard: the town screen, a choice) | adventure |
+| 4 | `ai_walk_dimension_door` 0x430AB0 (§1.10): Dimension Door applied directly, the mana spent and no movement points | the cast (`adventure_spell_cast` 0x41D090) takes 300 points, 200 at Expert | adventure |
+| 5 | The Castle Gate's jump (§1.10): made even when a purchase of building 22 fails (the result not tested); whether the pathfinder offers it with a gate unbuyable is T1a4's | the jump needs the Gate built in both towns | town, adventure |
+| 6 | The patrol (§1.2, §1.3): a placed computer hero with a patrol radius stays inside it, radius 0 never moves | a human's heroes have no patrol | adventure (the map's field kept), ai (the policy honours it) |
+| 7 | `ai_artifact_market_price` 0x524550 (0x524581, §3.5): an artifact at the Black Market or the Artifact Merchants costs trunc(cost / rate) gold, a resource's amount that floored over twice its value | the human's price is rounded half up (`market_buy_artifact_proc` 0x5ED9E0, 0x5EDCCF): the computer pays the same or one unit less (61 % of costs one less), never more | adventure (the Black Market), town (the Merchants) |
+| 8 | `ai_battle_army_split` 0x42DB20 (0x4AE2A0, §3.5): a computer defending hero with the better Tactics merges and splits its army after the battle's sides are set, before the stacks are placed (only in a battle with a human side) | a human defender's army enters as it stands (the attacker's split is a choice: a human splits in the hero screen before attacking) | battle, adventure (`adventure_battle`'s setup) |
+
+**Choices** (each a human's command; the port issues the command, the lane's tests decide):
+
+| The original (§) | The human's command | Lane |
+|---|---|---|
+| The heroes' order, the danger map (none on Easy without a human ally), the candidates, the destination and its draws, the walk's steps and visits (§1.2 to §1.10) | moves and visits | adventure |
+| Fly, Water Walk, Summon Boat on the way, Town Portal (300 points, 200 at Expert; the human's cast `hero_relocate_spell` 0x41D360 holds the same two, 0x41D39E, not read further), the dig (§1.10) | the casts, the dig | adventure |
+| The garrison at a turn's end, the swap (§1.3) | the town's visitor and garrison hero exchanged | town |
+| The build choice, the halls, the Marketplaces bought for trades (§3.1, §2.3) | `town_buy` (the town's build) | town |
+| The hires (§3.2) | the town's Tavern hire | town |
+| The town visit: the exchanges and the formation, the recruits and the dwelling built, the guild, the upgrades, the visiting-bonus building, the merchants and their stock, the Blacksmith, the University, the book, the Grail (§3.3) | the town screen's commands | town |
+| The defence recruit into threatened towns at the turn's start and middle, a replaced stack dropped (§2.4, §3.3) | the town's recruit into its garrison and a dismissal | town |
+| The trades at the market rate written into the treasury (§2.3) | the Marketplace's trade; **the amounts' rounding to compare** with the human's screen (`market_resources_proc` 0x5ECFE0) before the port relies on it | town |
+| The answers to the visits (§3.4): the garrison and hero exchanges, the dwelling's, camp's, Factory's and Fort's purchases, the School's pick, the joins, the guarded visits' yes or no, the pursued monster | the dialogs' commands with the human's prices | adventure |
+| The Seer's quest completed when the reward's value less the quest's price is above 0 (§3.5) | the hut's yes | adventure |
+| The allies' shares: surplus resources given to the team's players with a Marketplace, a human ally's written into its treasury without a question (§3.5) | the Marketplace's transfer to a player (`market_transfer_proc` 0x5ED550), which the receiver is not asked either | town |
+| The stock purchases' artifact and paying resource (§3.3, §3.5; the price is row 7) | the market's buy | adventure, town |
+| A computer attacker's split before a battle with a human side (§3.5) | the hero screen's splits and merges | adventure |
+
+Fewer moves than a human's, by the policy (no lane acts): no exchange at a team-mate's garrison or
+in RoE's campaigns, no hire at an ally's dwelling, no troops exchanged between heroes of equal
+primary sums, the Conflux's merchants unused, no recruits, upgrades or buys with 0 points left, no
+hire at a map Tavern, nothing at a Trading Post or a Freelancer's Guild, no artifact or creature
+ever sold. One rule the human shares and the engine must allow: at a meeting of two heroes of one
+team the visitor moves both heroes' troops and artifacts, an ally's (a human's) included
+(`visit_hero` 0x4A2800; the adventure lane to check its meeting command). The quirk candidates of
+§1 to §3.5 (T1b's second look) are not repeated here; rows 4, 5 and 7 may also be classified as
+quirks by their lanes.
+
+**Reads and memory** (the ai lane's, for the port and the fair variant):
+
+- Hidden reads: §1.7, §2.5, §3.3 and §3.4 (the threats, the true armies and contents everywhere,
+  the fog ignored without a town, guards under the fog on the path), and §3.5's (an unvisited
+  Seer's reward, the allies' treasuries and a computer ally's plans, the enemy's exact counts at the
+  split). The fair variant (increment 6) replaces each by the projection.
+- State written and undone inside a value: `ai_town_hero_prospects`' hire (§3.2), 0x524D20's skill
+  level (§2.4); written by the walk into the map's tiles: the boat marks (map item +0xD bit 0x08,
+  §1.3). The port computes them on its own copies (T1b's ADR draft).
+- The computer's own flags in the game's records: the heroes' sleep as a done mark cleared at each
+  turn's start (+0x11C, §1.2), the destination (+0x35), the values +0x109 and +0x47A to +0x48E, the
+  records of §1.6.

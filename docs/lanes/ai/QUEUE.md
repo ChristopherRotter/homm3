@@ -23,33 +23,20 @@ T45, AI-Q23).
   to T1a1c; the survey's §1).
 - **E31 T1a2 — the values, in four parts** (AI-Q25: T1a2b to T1a2d read by sub-agents):
   **done** 2026-11-23 (`E31-log.md` T1a2; the survey's §2).
-- **E31 T1a3 — the towns and the answers, in four parts** (AI-Q26): **T1a3a** (the build choice),
-  **T1a3b** (the hires) and **T1a3c** (the town visit, in two, AI-Q27) **done** 2026-11-23
-  (`E31-log.md` T1a3a to T1a3c; the survey §3.1 to §3.3).
-- **E31 T1a3d — the answers**: the 43 functions of the computer's ranges that the game's code
-  calls (about 25 of them answers to visits: `ai_garrison_visit`, `ai_dwelling_visit`,
-  `ai_join_without_room`, `ai_meeting`, …; `ai_artifact_received` read at T1a3c), how `ai_fight_answer`'s 17
-  callers use the object value, the Seer's reward (0x573A70), the market visits (a map Tavern
-  included), the allies' shares (`ai_ally_resource_share` 0x429110); every `ai_*` call classified
-  a choice or a rule, with T1a2's (the survey §2.5) and §3.1 to §3.3's, into the survey's §3.4
-  table. Open from T1a3c: `ai_battle_army_split` 0x42DB20 past its frame with 0x42DD70, and
-  whether `ai_artifact_market_price`'s prices (the merchants', the Black Market's) are the human's.
-  Measure it at its start and confirm a cut by size (the user, 2026-11-23: a couple of small
-  tasks or one bigger one a session).
-- Then T1a4 (it maps the rest of the third range, 0x423EE0 to 0x42A000: the survey's §0), T1b.
+- **E31 T1a3 — the towns and the answers, in four parts** (AI-Q26): **done** 2026-11-24 (T1a3c
+  and T1a3d each in two, one half read by a sub-agent, AI-Q27, AI-Q28; `E31-log.md` T1a3a to
+  T1a3d; the survey §3, the table of choices and rules §3.6).
+- **E31 T1a4 — the rest of the code**: the third range 0x423EE0 to 0x42A000 and what is left of
+  the other two named at least `inferred` and placed in a phase; every draw and float site listed;
+  the fields that persist between turns and their readers (the survey's §4). Open from T1a3d: the
+  other quest types' price (their vtable +4, §3.4) and the slot's callers, the rest of
+  `seer_hut_load`, the luck reward's unwritten fields; from T1a1c the walk's leftovers (§1.8).
+  Measure it at its start and confirm a cut by size (the user, 2026-11-23: a couple of small tasks
+  or one bigger one a session).
+- Then T1b (the survey finished, the ADR draft, §3.6's rows into the lanes' inboxes, the trace's
+  plan, increments 2 to 7 cut; the checkpoint).
 
 ## Inbox
-
-- 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent,
-  E09 decision 194; **in your paths, nothing to do**): the adventure env's **action encoding v19**
-  appends `SPELL_BOOK` (104) after `TOWN_OPEN` (`ENTRY_COUNT` 105): a spell book's purchase at a
-  town's Mage Guild (`TownCommand::BuySpellBook`, TWN-GLD-007) by its town's entrance in the tile
-  head, building 0, one action per listed purchase (a standing guild, a bookless visitor else
-  garrison hero, 500 gold). `tileless`, `tile_mask` (with `TOWN_OPEN` through `guild_command`),
-  `decode`, `encode`, `Action::spell_book`, the layout test and the mask property's
-  `check_town_heroes`. The random games on the town map buy books, so `tests/towns.rs`' seeds
-  moved (its `Played` counts the purchases) and the `*-towns-36` workloads were re-baselined.
-  The adventure lane's v19 (E08 T144a) becomes **v20**, its entries from 105.
 
 Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10-19); the
 origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: the notices of
@@ -161,12 +148,6 @@ information and one choice):
   bots-report-v1.json`, `bots-neutral-v1.json`) regenerated. Random games now open a market's
   decision on the maps with one and answer it with its `Leave`.
 
-- 2026-11-20 (the client lane, E27 M4 T3a, `client/e27-m4-t3a`, `cross-lane` with the user's
-  consent; **your tests touched, nothing to do**): the adventure replay format v20
-  (`Replay::players`, the players' choices) gave four `Replay` literals of `h3-sim`'s
-  `adventure/tests` `players: Vec::new()`, `tests/hiring.rs`' version assertion 20, and
-  `tests/towns.rs` a test of the choices on the town map
-  (`a_replay_keeps_the_players_choices_over_the_import`).
 - 2026-11-07 (the adventure lane, E08 T103b, `adventure/e08-t103b`; **for when you regenerate
   `census-v1.toml`**): `h3 ai census original-data/install/Maps` counts 1 of the 159 maps on
   `master` and on this branch: every other map stops at `GameState::new` with "object N has an
