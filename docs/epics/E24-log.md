@@ -3467,5 +3467,7 @@ check in range (TRAPS).
   frame lists now M4's known differences only (MCL-Q36's morale icon, MCL-Q49's battle fade in,
   MCL-Q48's MINEEVNT box), `battle-retreat`'s dissolve exact.
 - **Checked:** the crate's tests (two new: the hero on its tile through a battle, the kept
-  buttons); `h3map.py drawn` over every situation and sequence, `drawn --record` for the three;
-  `check.sh`; the scoped verify.
+  buttons); `h3map.py drawn` over every situation and sequence (the three alone changed),
+  `drawn --record`; `check.sh` (fmt, clippy, deny passed; its coverage found one region, the
+  lift's test of a hero, made unconditional: the crate's coverage then 100 %); the scoped
+  verify.
