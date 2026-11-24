@@ -24,7 +24,7 @@ of about 13 KB (0x423EE0 to 0x427330; H3API's guesses call it `H3SimulatedCombat
 the turn's start and middle (`ai_enemy_reach_fold` 0x4280E0 to `ai_build_excluded_creatures` 0x429D50,
 `ai_ally_resource_share` 0x429110 among them). The second range runs past 0x52BD50 too
 (`puzzle_map_compute` 0x52C9B0 is the puzzle's, not the computer's). The total is about 95 KB
-rather than 72 KB; T1a4 maps the third range.
+rather than 72 KB; T1a4 mapped the third range (§4.3).
 
 ## 1. The turn
 
@@ -85,8 +85,8 @@ garrison hero (and +0x43), so nothing a human would call sleeping lasts past the
    boat tile (map item +0xD bit 0x08) when its Shipyard is built, or can be bought now with the
    Shipyard's cost plus 10 wood and 1000 gold left over; each map Shipyard it owns marks its boat
    tile without a test. The marks are cleared once the walk is over. A step onto a marked tile buys
-   the boat (`ai_boat_create` 0x430F80, §1.10); where the search reads the mark is not found yet
-   (T1a4).
+   the boat (`ai_boat_create` 0x430F80, §1.10); the search reads the mark at
+   `pathfinder_boat_mark_read` 0x4B2B01 (§4.2).
 6. **The search and the walk** (0x5267B0, §1.4).
 7. **The garrison:** a hero still on the map, without points or asleep, standing on its own town's
    entrance, goes into an empty garrison; with a garrison hero there, the two swap when the
@@ -159,7 +159,8 @@ running integer sum divided by 5 (six summed, five divided: as read).
 ### 1.6 The records (the computer's memory)
 
 `ai_player_records` 0x692950: one `ai_player_record` (0x98 bytes, `structs.toml`) per colour.
-Only the colour is set at a new game (`ai_player_records_init` 0x4340E0).
+Only the colour is set, once when the program starts (`ai_player_records_init` 0x4340E0 from
+`game_init`): neither a new game nor a load writes the records (§4.6).
 
 | Offset | What | Written | Read |
 |---|---|---|---|
@@ -185,7 +186,7 @@ record is read **during other players' turns**: the gold weight by a computer he
 the computer's last turn decide there. In the game's records, the hero's destination (+0x35) and
 +0x41 survive into the next turn: they widen its search (§1.4), the destination is favoured again
 (× 1.5 + 20, §1.9) and the other heroes' destinations and +0x41 shape a hero's claims (§1.9);
-+0x43 is cleared at the start, so a must-go lasts the turn. T1a4 completes the list.
++0x43 is cleared at the start, so a must-go lasts the turn. §4.6 completes the list.
 
 ### 1.7 Hidden reads, draws and floats met so far
 
@@ -224,7 +225,7 @@ the computer's last turn decide there. In the game's records, the hero's destina
 The walk's leftovers (§1.10): `ai_walk_path`'s branch for a Fly node not next to its from-tile,
 the flag of `hero_move_step` that zeroes the points, how the pathfinder makes the walk's marks
 (0x200, 0x400, 0x800, the Castle Gate's and Town Portal's nodes: `pathfinder_gate_exit` 0x56A730
-among them) and reads the boat marks: T1a4. The values the frame and the planning call:
+among them) and reads the boat marks: read in §4.2 (T1a4b). The values the frame and the planning call:
 §2 (T1a2). The build loop and the hire (the step once called the artifact step): §3.1, §3.2
 (T1a3a, T1a3b); `ai_hero_candidates`' other caller, `ai_town_hero_prospects` 0x431BD0: §3.2. The
 allies' shares: §3.5 (T1a3d2).
@@ -571,7 +572,7 @@ Eagle Eye learning the loser's lowest-id spell (no chance draw).
    and an equal stand-off go to the defender; Eagle Eye takes a spell from the loser's available
    spells, not its cast ones.
 6. **Not read**: the spell value leaves 0x4249D0 to 0x425B10, 0x423C80 and 0x423DE0, and the spell
-   record's helpers (T1a4); 0x4E23D0, 0x4E5AA0, 0x4E5B80 (T1a4); the container code 0x4276C0, 0x427780,
+   record's helpers (placed in a phase by T1a4, §4.3, not read); 0x4E23D0, 0x4E5AA0, 0x4E5B80; the container code 0x4276C0, 0x427780,
    0x427A90, 0x427C30.
 
 ### 2.3 The army values (T1a2c)
@@ -732,8 +733,8 @@ answer, 500 for a Whirlpool, and a Castle Gate's unbuilt cost value.
    Expert (0x524D20); the Ballista's q × s overflows 32 bits for large armies (0x4337C3); the
    week-roll test counts day 7 itself (0x529DEF); the University test needs 2 000 gold once but
    sums four skills (0x525BF0); the guild loop reads one level beyond the built one (harmless).
-6. **Not read**: the 24 artifact effect methods (vtables 0x63B6B8..0x63B778, built by
-   0x434100; T1a4); 0x52CF10, the puzzle's pick (T1a4).
+6. **Not read**: 0x52CF10, the puzzle's pick (the 24 artifact effect methods and their build:
+   §4.1).
 
 ### 2.5 What the values read, draw and change (for T1b)
 
@@ -1086,7 +1087,7 @@ popup, the Thieves' Guild), `team_has_human`, `ai_map_terrain_shares` (at a new 
 `ai_army_plan_destroy` 0x4286E0 (the exception unwind's). Outside the ranges, two quest methods
 call into them as the quest's price to a computer (each quest type's vtable +4, `quest_vtables`
 0x64174C; §3.5's Seer): `ai_quest_artifacts_price` 0x56F5A0 (type 5, the artifacts' values) and
-`ai_quest_resources_price` 0x571560 (type 7, the amounts' weighted cost); the other types' are T1a4's.
+`ai_quest_resources_price` 0x571560 (type 7, the amounts' weighted cost); the others' in §4.2 (type 6 the creatures' values, the rest 0).
 
 **The fight answer** (`ai_fight_answer` 0x52BD10, 17 callers) is §2.1's object value for the hero,
 with no state change. Fourteen visits that ask a human yes or no go ahead when it is above 0 and
@@ -1259,7 +1260,7 @@ matters to the port and the fair variant. The rows go into the owning lanes' inb
 | 2 | `sim_battle_finish` 0x427210 from 0x476200 (§2.2): a hidden (Quick Combat) battle past round 30 is re-fought by the simulation from its start, its two draws overwriting the counts | the same for a human's Quick Combat: a rule of hidden battles, not of the computer, met in its code | battle |
 | 3 | `ai_boat_create` 0x430F80 (§1.10): a marked tile's boat bought from afar, at a map Shipyard without its visit | a map Shipyard's boat is bought at the Shipyard's dialog by a visiting hero (a town's Shipyard: the town screen, a choice) | adventure |
 | 4 | `ai_walk_dimension_door` 0x430AB0 (§1.10): Dimension Door applied directly, the mana spent and no movement points | the cast (`adventure_spell_cast` 0x41D090) takes 300 points, 200 at Expert | adventure |
-| 5 | The Castle Gate's jump (§1.10): made even when a purchase of building 22 fails (the result not tested); whether the pathfinder offers it with a gate unbuyable is T1a4's | the jump needs the Gate built in both towns | town, adventure |
+| 5 | The Castle Gate's jump (§1.10): made even when a purchase of building 22 fails (the result not tested); the pathfinder offers it only when the owner's resources cover the gates' cost and `town_can_buy` allows a missing one, an ally's Inferno town included (§4.2), so a failure needs the treasury to change between the plan and the walk | the jump needs the Gate built in both towns | town, adventure |
 | 6 | The patrol (§1.2, §1.3): a placed computer hero with a patrol radius stays inside it, radius 0 never moves | a human's heroes have no patrol | adventure (the map's field kept), ai (the policy honours it) |
 | 7 | `ai_artifact_market_price` 0x524550 (0x524581, §3.5): an artifact at the Black Market or the Artifact Merchants costs trunc(cost / rate) gold, a resource's amount that floored over twice its value | the human's price is rounded half up (`market_buy_artifact_proc` 0x5ED9E0, 0x5EDCCF): the computer pays the same or one unit less (61 % of costs one less), never more | adventure (the Black Market), town (the Merchants) |
 | 8 | `ai_battle_army_split` 0x42DB20 (0x4AE2A0, §3.5): a computer defending hero with the better Tactics merges and splits its army after the battle's sides are set, before the stacks are placed (only in a battle with a human side) | a human defender's army enters as it stands (the attacker's split is a choice: a human splits in the hero screen before attacking) | battle, adventure (`adventure_battle`'s setup) |
@@ -1304,3 +1305,412 @@ quirks by their lanes.
 - The computer's own flags in the game's records: the heroes' sleep as a done mark cleared at each
   turn's start (+0x11C, §1.2), the destination (+0x35), the values +0x109 and +0x47A to +0x48E, the
   records of §1.6.
+
+## 4. The rest of the code (T1a4)
+
+T1a4 mapped what was left of the three ranges and made the lists T1b needs (AI-Q29: in three
+parts; T1a4a and T1a4b read by sub-agents, T1a4c by the main session): §4.1 the artifact effects,
+§4.2 the start-up initialisers and the leftovers of T1a1c and T1a3d, §4.3 every function's phase,
+§4.4 the draws, §4.5 the floats, §4.6 what persists between turns. The lists come from scratch
+scripts over `scripts/exe.py` (not committed); the readings behind them are the map's entries.
+
+### 4.1 The artifact effects (T1a4a)
+
+Read by a sub-agent in its own worktree.
+
+**The build.** `ai_artifact_effects_build` 0x434100 (read whole) runs at game_init (a tail jump from
+`ai_player_records_init` 0x4340E0) over `ai_artifact_effect_list` 0x63AC7C (i32, 0x9F4 bytes): per
+artifact its number, then each effect's code (0-23) and its parameters (none for 14, 15, 20-23; two
+for 11, 16, 17; else one), then -1; a negative artifact (-100 at 0x63B66C) ends it. Per artifact the
+entry of `ai_artifact_effects` 0x692E18 (144 vectors of 16 bytes: the static initialiser 0x432460 and
+the exit's 0x432490) is emptied, then each code makes one object by operator new (4, 8 or 12 bytes:
+`ai_artifact_effect` in structs.toml, +0 the vtable, +4 p, +8 q) and appends it. Codes 6, 10, 11 and
+21 are subclasses of code 7's class (its constructor 0x432540, then their own vtable); code 20's p
+(8) and code 21's p (30) are fixed in the build, not in the list. The vtables (0x63B6B0, 0xD0 bytes):
+the abstract base's (0x4324D0, purecall), then the 24 codes' (slot 0 `ai_artifact_effect_delete`
+0x433080, slot 1 the value), with two shared f32 constants among them (1.0 at 0x63B6E0, 25.0 at
+0x63B76C). 135 artifacts are listed, each once, grouped by effect (98 before 70, 69 after 97, 128
+before 127: the ids are right). No entry: 0 Spell Book, 1 Scroll, 3 Catapult, 4-6 (Ballista, Ammo
+Cart, First Aid Tent: `ai_hero_artifact_value` 0x4336C0 values 1, 4, 5 and 6 itself), 141-143.
+
+**The path.** Only `ai_hero_artifact_value` 0x4336C0 reads the vectors and calls slot 1 (the generic
+path, for any artifact but 1, 4, 5, 6): the sum of the artifact's own effects and, for a
+combination, of every part's (§2.4), each called as (the hero, *worn*, *counted*): *worn* is its dl,
+clear for a candidate and set for the worn one it would replace (`ai_artifact_value_to_hero`
+0x4339E0) and for every worn slot (`ai_hero_equipped_value` 0x433C60); *counted* is its third
+argument, set by 0x433C60 (whose own value already counts the primary skills, the best spell, morale
+and luck) and 0x4339E0's own dl. A = `army_value` of the hero's army (+0x91); all integer divisions
+truncate toward zero.
+
+| Code | Method | The value | Artifacts (id p [q]) |
+|---|---|---|---|
+| 0 | `…_attack_defense` 0x4325A0 | counted: 0; else A × p / 40 | 7-11 1-5, 13-17 1-5, 12 9, 18 9; 31 2, 32 4, 33 6, 34 8, 35 10, 36 12; 37 2, 38 4, 39 6, 40 8; 127 10, 128 6, 132 6, 134 12 |
+| 1 | `…_spell_power` 0x4325E0 | counted: 0; else +0x47E (power effectiveness) × p | 25-29 1-5, 30 12, 24 −3; 31-36 1-6; 41-44 1-4; 128 3, 134 6 |
+| 2 | `…_knowledge` 0x432610 | counted: 0; else +0x486 (knowledge effectiveness) × p | 19-23 1-5, 24 12, 30 −3; 31-36 1-6; 41-44 1-4; 128 6, 134 6 |
+| 3 | `…_morale` 0x432780 | counted: 0; m = `hero_morale` unclamped, − p when worn; trunc(`ai_morale_change`(m, p) × A) | 45, 49, 50, 51 (1) |
+| 4 | `…_luck` 0x4327F0 | as 3 with `hero_luck`, `ai_luck_change` | 45, 46, 47, 48 (1) |
+| 5 | `…_scouting` 0x432510 | the day points (+0x49) × p / 100 | 52, 53 (1) |
+| 6 | `…_necromancy` 0x432640 | no Necromancy: 0; h = trunc((1.0 − share uncapped) × 100.0); n = p + min(h, 0) worn, min(p, h) else; n ≤ 0: 0, else A × n / 250 | 54 5, 55 10, 56 15 |
+| 7 | `…_army_share` 0x432560 | A × p / 100 | 57 1, 58 3, 59 5; 63 1, 64 2, 65 3; 66 1, 67 2, 68 3; 90 5, 92 2, 93 10; 94 1, 95 1, 96 2; 97 5, 69 5, 99 10; 100 1, 101 10, 102 1, 103 5, 104 5, 105 1, 106 10, 107 1, 108 10; 125 5, 132 15, 134 10 |
+| 8 | `…_movement` 0x4326E0 | (A + 2 500) × p / 100; no land or sea test | 98 25, 70 12, 71 25, 72 50, 123 5, 136 12 |
+| 9 | `…_mana` 0x432720 | power effectiveness 0 or no Wisdom (+0xD0): 0; else A × p / 100 | 73 2, 74 4, 75 6, 124 20, 138 10 |
+| 10 | `…_duration` 0x432860 | counted: 0; else +0x482 (duration effectiveness) × p | 76 1, 77 2, 78 3, 139 50 |
+| 11 | `…_school_power` 0x432890 | counted or caster power 0 (no book, Orb of Inhibition): 0; s = Spell Power held 1-99; powers (100 s / (100 + p), s) worn, (s, s (100 + p) / 100) else; the largest gain of `ai_spell_value` over the available (+0x430) damage spells (0x200) of school q, from 0 | 79 100 [1], 80 100 [8], 81 100 [2], 82 100 [4] |
+| 12 | `…_school_spells` 0x432C20 | counted or caster power 0: 0; else the largest `ai_spell_value`, from 0, over school q's spells not learned (+0x3EA) nor, when not worn, available; bans not read | 86 [2], 87 [1], 88 [4], 89 [8] (p 0) |
+| 13 | `…_spell_block` 0x432A50 | v = A / 5 (p 0) or A / 8; counted clear and worn: v − 50 (p 0) or 25 per Spell Power point (held 1-99) | 83 3, 126 0 |
+| 14 | `…_enemy_morale` 0x432B20 | v = trunc(`ai_morale_change`(0, 2) × A); counted clear, clamped morale m > 0: trunc(v + `ai_morale_change`(m, −m) × A) | 84 |
+| 15 | `…_enemy_luck` 0x432BA0 | as 14 with luck | 85 |
+| 16 | `…_resource` 0x432D20 | trunc(p × the owner's resource weight q (`ai_player_records` +0x60) × 3.0) | 109 1 [4], 110 1 [5], 111 1 [1], 112 1 [2], 113 1 [3], 114 1 [0], 115 1000 [6], 116 750 [6], 117 500 [6]; 140 4 [4, 5, 1, 3]; 2 5000 [6] |
+| 17 | `…_growth` 0x432D70 | counted: on a town's gate with level p's dwelling, the dwelling's creature's AI value (the upgrade when built) × q if the hero is its garrison hero (+0xC), else 1; elsewhere 0. Not counted: the largest such over the owner's towns, from 0 | 118-122 levels 1-5 [5-1]; 2 levels 0-6 [5, 4, 3, 2, 1, 1, 1] |
+| 18 | `…_spell` 0x432F90 | counted, spell p learned, (not worn) available, or caster power 0: 0; else `ai_spell_value`(p) | 135 57 |
+| 19 | `…_shooters` 0x4330B0 | Σ AI value × count of the shooters (flag 4) × p / 100 | 60 2, 61 5, 62 7, 91 5, 137 7, 132 10 |
+| 20 | `…_alliance` 0x433130 | 5 / 100 of Σ AI value × count of the owner's creatures (heroes and towns' shown armies) whose faction is in the alliance set (RoE: not 112-115; none without a faction); plus, counted clear, A × 8 / 40 | 129 (p 8) |
+| 21 | `…_undead_king` 0x4333A0 | no Necromancy: code 6 with p 30; else that value w × r, r = (AI 58/60/64 by level 1/2/3 − AI 56) / AI 56, f32 | 130 (p 30) |
+| 22 | `…_living` 0x433520 | Σ AI value × count of the living (flag 0x10) / 8 | 131 |
+| 23 | `…_town_growth` 0x433580 | Σ over the owner's towns and built dwellings of the creature's (upgraded when built) AI value × (growth + `town_castle_growth`) / 2 | 133 |
+
+The combinations (129-140) add their own effects to their parts' (§2.4); Power of the Dragon
+Father's own 12/6/6 matches its +6 to all four.
+
+1. **Floats**: x87. 0x432640 and 0x4333A0 (twice): trunc((1.0 − `hero_necromancy_power`) × 100.0),
+   both constants f32 (0x63B6E0, 0x63AC68), the share an f32 result. 0x4333A0: r from three f32
+   AI values, stored f32; trunc(f32(w) × r). 0x432780, 0x4327F0: trunc(f64 factor × f64(A)).
+   0x432B20, 0x432BA0: two truncations, trunc(f64 × A), then trunc(f64 × A + v). 0x432D20:
+   trunc(f64(p) × f64 weight × 3.0 f64 (0x63AC28)). The rest integer: products in 32 bits, the
+   divisions by multiplication (/100, /40, /250, /5, /8, /2 per term) or idiv (code 11).
+2. **Draws**: none in the 24 methods or the build (their callees as read elsewhere).
+3. **Hidden reads**: none. They read the hero, its army, its owner's heroes, towns and AI weights,
+   the town on the hero's tile, the creature, spell and town tables and the map kind; codes 14 and
+   15 assume an enemy's +2 and read no enemy.
+4. **Quirk candidates** (for T1b):
+   (a) the single-stat weapons and shields 7-11, 13-17 carry one point below their bonus (1-5 for
+   +2…+6), the rest the full Attack plus Defense;
+   (b) Thunder Helmet 24 and Titan's Cuirass 30 carry 12 and −3 (the Gladius's numbers) for their
+   +10 and −2;
+   (c) Spellbinder's Hat 124 is valued by the mana code (9, 20 % of A, needs Wisdom), not by its
+   level-5 spells; code 9 tests Wisdom, not Mysticism;
+   (d) Armor of the Damned's opening spells are valued as codes 7 (15), 0 (6) and 19 (10 % of the
+   shooters);
+   (e) Titan's Thunder's bolt is 0 to a hero without a spell book although the artifact gives one
+   (code 18 tests the caster record's power);
+   (f) the Spell Book 0 and the Catapult 3 have no effect: 0 (unless the victory artifact);
+   (g) code 11 models an orb as +100 % Spell Power on its school's damage spells, and a worn orb
+   gains from s/2 to s, a candidate from s to 2s (the worn one valued lower);
+   (h) code 13 subtracts the hero's own magic loss only for a worn cloak or orb, never a candidate;
+   (i) code 15: `hero_luck` reads 0 for the Hourglass's wearer, so a worn one loses no own luck,
+   a candidate does;
+   (j) code 17 counted: 1, not 0, on a town's gate when the hero is not its garrison hero, 0
+   elsewhere: a Legion part's equipped value depends on where the hero stands;
+   (k) code 8 ignores land and sea (Necklace of Ocean Guidance and the hats count on land, Boots of
+   Speed at sea), and Angel Wings count as movement only;
+   (l) code 21 with a Necromancy level outside 1-3 would read the second argument as a creature
+   (unreachable);
+   (m) A × p in 32 bits overflows for huge armies (Angel Wings' 50 past about 43 million);
+   (n) every build empties the vectors without deleting the objects (a leak at each game_init, no
+   gameplay effect).
+5. **Not read**: the callees' insides beyond their entries (`ai_spell_value` 0x5273D0,
+   `ai_caster_record` 0x526D40, `ai_morale_change_value` 0x435850, `hero_morale`, `hero_luck`,
+   `hero_necromancy_power`, `town_castle_growth`); the C runtime's array iterators, purecall and
+   exit registration; which callers of 0x4339E0 pass its dl set (the counted flag there).
+
+### 4.2 The start-up initialisers and the leftovers (T1a4b)
+
+Read by a sub-agent in its own worktree. Read whole: the eleven start-up initialisers below and
+`start_up_init_427a70` 0x427A70 again, `ai_army_offer_init` 0x4286B0, the quests' price slot of
+every type (`ai_quest_creatures_price` 0x570480, `message_ignored` 0x4EC560), `quest_init`
+0x56CB80, `quest_deadline_passed` 0x56CCB0, `seer_hut_load` 0x574610, `ai_walk_path` 0x430610,
+`pathfinder_town_portal` 0x56B050, `pathfinder_castle_gate` 0x56A850, `pathfinder_gate_exit`
+0x56A730; in part: `pathfinder_pass_through`'s Quest Guard case (`pathfinder_quest_guard_case`
+0x56ABD3), `quest_guard_visit` 0x572B60 (to 0x572CB0), `pathfinder_relax` 0x4B1A70 (the from-tile
+and marks, 0x4B1B0A to 0x4B1BB9; 0x4B1DBD), `pathfinder_expand` 0x4B2300 (0x4B2401 to 0x4B2560,
+0x4B2950 to 0x4B29E0, 0x4B2A60 to 0x4B2BD8), `pathfinder_run` 0x56B440 (the start, 0x56B840 to
+0x56BA06), `pathfinder_teleport_exits` 0x56A400 (its copy and costs), `hero_move_step` 0x4805E0 (the
+points test and its four callers' arguments).
+
+**The initialisers.** None is game state; none draws or uses a float.
+
+| Slot | Function | Writes | Read by |
+|---|---|---|---|
+| 0x65E114 | `start_up_init_427a70` 0x427A70 | the low bit (value 1) of `start_up_guard_byte` 0x6ABAA0, when clear; then registers `empty_ret_404df0` 0x404DF0 (a lone ret) through `crt_atexit` 0x617943, either way | 151 functions test and set the same bit (302 references): a header's static object with an empty destructor, once per module |
+| 0x65EA4C | `start_up_init_52bd30` 0x52BD30 | the same | the same |
+| 0x65E118 to 0x65E13C | `bitset10_bit0_init` 0x427CA0 to `bitset10_bit9_init` 0x428010 | a `std::bitset<10>` built from 1 (its range check `bitset_position_error` 0x404410 never reached), shifted left by the slot's index and trimmed to ten bits: 0x692598 = 1, 0x693804 = 2, 0x693800 = 4, 0x69259C = 8, 0x6925A8 = 0x10, 0x6925A4 = 0x20, 0x692E10 = 0x40, 0x692590 = 0x80, 0x692E14 = 0x100, 0x692594 = 0x200 | nothing: each global has its writer as its only reference (the masks folded where they are used); constants, never changed in play |
+
+**The helper 0x4286B0** is `ai_army_offer`'s
+constructor: the creature, the count's address, the count read through it (i16), the free flag (0
+from `ai_town_defence_recruit`); no draw, no float.
+
+**The quests' price.** The quest vtable's +4 (H3API's "AI value"), thiscall with the player, in
+§2's units:
+- type 5 (artifacts): the sum of `ai_artifact_value_to_player` (§3.4);
+- type 6 (creatures, `ai_quest_creatures_price` 0x570480): the sum over the quest's creature types
+  (+0x54) of AI value (creature +0x40) x the count at the same index (+0x44, that vector's length not
+  tested); the player unused;
+- type 7 (resources): `ai_weighted_cost` of the seven amounts (§3.4);
+- the base and types 1 to 4, 8 and 9 (level, primary skills, defeat a hero, defeat a monster, be a
+  hero, be a player): `message_ignored`, 0.
+The slot's callers (every `[vtable + 4]` call in the quest code and in the users of the Seer and
+Quest Guard lists, game +0x1FBD4 and +0x1FBE4; the other `+4` calls there are the map stream's
+reads): `ai_seer_hut_value` 0x573648 (the plan), `seer_hut_visit` 0x5738FC (the computer's answer,
+§3.5) and the pathfinder's Quest Guard, `pathfinder_quest_guard_case` 0x56ABD3 (its call at
+0x56AC49): in the modes from 4 only; no quest, or a deadline passed (`quest_deadline_passed`:
+(month x 4 + week - 5) x 7 + day above the deadline +0x3C), stops the path; a guard the hero's
+colour has not visited (record +4) lets it on with no check and no cost; else the quest's check
+(vtable +8, the hero) must pass and the price is taken from the node's key (+0x10). The Quest
+Guard's visit (`quest_guard_visit` 0x572B60) weighs no price: the computer completes whenever the
+check passes (its completion 0x572D2A not read), a human gets the question. So a price of 0 for six
+of the nine types: a Seer's such quest is completed for any reward worth more than 0, and such a
+guard, once visited and its check met, costs the path nothing.
+
+**The Seer's loader and the luck reward.** `seer_hut_load` fills `seer_hut_record` (19 bytes,
+H3API's `H3SeerHut`, whose layout this agrees with) on `load_object_body`'s stack after
+`seer_hut_record_init` (which clears +0, +4, +5, +0x11, +0x12 only). RoE: a draw `crt_rand() % 3`
+first (`seer_roe_variant_draw` 0x574647, also for a hut without a quest), then the artifact byte
+(-1 no quest), the quest built by `quest_init` (another draw, overwritten by the first as the text
+variant +0x38) and the artifact marked in game +0x4E2B4; later versions the type byte and
+`quest_create`. Then the reward's kind (read with or without a quest) into +5, and by kind:
+
+| Kind | +9 (a) | +0xD (b) |
+|---|---|---|
+| 1 experience, 2 spell points | u32 | unwritten |
+| 3 morale (0x574792), 4 luck (`seer_load_luck_byte` 0x5747B8) | the low byte only | unwritten |
+| 5 resource | i8 (all four bytes) | u32 |
+| 6 primary skill | i8 | the low byte only |
+| 7 secondary skill | i8 | i8 (all four bytes) |
+| 8 artifact | i16 (RoE u8) | unwritten |
+| 9 spell | u8 | unwritten |
+| 10 creatures | i16 (RoE u8) | the low half only |
+| 0 or another | unwritten | unwritten |
+
+Every reader but one reads only what is written (`seer_reward_value` and `seer_reward_give` take
+morale, luck and a primary skill as i8, creatures' count as i16); the luck case of the value falls
+into the resource case (§3.5), which reads +9 whole as the resource's index and +0xD whole as its
+amount: both partly or wholly what `load_object_body`'s local (ebp-0x28) held, which other classes'
+cases write (0x502FC5 to 0x50343A) and a previous Seer's load leaves. Then two bytes dropped and
+the seer's name: the r-th of the 48 names (`seer_names_pointer` 0x69FAB8) no hut loaded before
+holds, r = `crt_rand() % (names - huts loaded)`, unsigned (`seer_name_draw` 0x574A1D).
+
+**The walk's marks** (`pathfinder_node` +4; the modes are `pathfinder_run`'s, 4 the computer's
+walk):
+
+| Bit | Mark | Set | Read |
+|---|---|---|---|
+| 3 (0x08) | Cursed Ground or an anti-magic garrison's tile | `pathfinder_no_magic_mark` 0x4B1DBD | `pathfinder_expand`: no Dimension Door, Fly or Summon Boat from it (0x4B2973, 0x4B29D0, 0x4B2AFC) |
+| 4 (0x10) | flying | the start (`pathfinder_start_flags` 0x56B864, the hero's level), mode 4's Fly stretch (0x4B2A73; 0x4B2C97 not read); copied by every jump | `ai_hero_walk`'s cast; `ai_walk_path`'s jump test |
+| 6 (0x40) | Town Portal | `pathfinder_town_portal_mark` 0x56B363 | `ai_hero_walk` 0x4301BA |
+| 7 (0x80) | a Dimension Door leg | `pathfinder_door_start` 0x4B2984 (0x4B29FC, 0x4B2C03 not read); dropped after a node with bit 10 (0x4B2485) | `pathfinder_relax` 0x4B1B21; `ai_walk_dimension_door` |
+| 8 (0x100) | Castle Gate | `pathfinder_castle_gate_mark` 0x56AA7E | `ai_hero_walk` 0x4301B1 |
+| 9 (0x200) | visit the tile stood on | `pathfinder_visit_here_mark` 0x56B9CF, carried to the exits by the copies of `pathfinder_gate_exit` and `pathfinder_teleport_exits` | `ai_hero_walk` 0x430080, the first node |
+| 10 (0x400) | a place to stop | the start 0x56B864, every step `pathfinder_step_stop_place` 0x4B2453, a boat node 0x4B2B27; cleared on rock (0x4B2495), for a flyer's or water walker's bad start (0x56B8C1), at a refused hero, garrison or monster (0x4B2946) and on crossings only flight or water walking allow | `pathfinder_expand`: a new day only from it (0x4B252A); `pathfinder_relax`; `ai_hero_walk`'s replan (0x430332); a Dimension Door's targets (0x430D63, 0x430EE0) |
+| 11 (0x800) | entered from a place to stop | `pathfinder_relax_door_mark` 0x4B1B1F (the source's bit 10); every leg node 0x4B1B50 | `ai_walk_dimension_door` 0x430AD3 |
+
+So the survey's "waypoint" (0x400) is any tile the hero may stop on, and ai_hero_walk replans after
+each such step with 100 points or more left (§1.10). The jumps:
+- **Town Portal** (`pathfinder_town_portal`, mode 4, from the start only): spell 9 available
+  (+0x439), spell points at least its cost plus 20, the start not a boat node; at Advanced or
+  Expert every town of the owner without a visitor, else only the owner's nearest town on the
+  hero's level (squared distance, the first on ties), none when it has a visitor; per town a copy
+  of the start node, +0x1A plus 50 x (|dx| + |dy| + |dz| x (width + height) / 2 + 4), priced 300
+  points (200 at Expert), as the walk takes them.
+- **Castle Gate** (`pathfinder_castle_gate`, modes from 3; the start on a town's entrance, or a
+  town on the path, `pathfinder_pass_through`'s case 98 at 0x56AF17): the town of the hero's team
+  (not only its owner's) and Inferno; in mode 4 the gate's cost covered by the owner's resources up
+  to twice (else never), a missing gate needing `town_can_buy` and one of those (its value,
+  `ai_resources_value`, off the key); to every other own Inferno town without a visitor, its key
+  lowered too when it lacks the gate (the count tested, not spent); priced 0 points (the walk takes
+  100).
+- **Teleporters** (the start on a monolith or Subterranean Gate: the 0x200 copy, +0x1A plus 50):
+  the exits are copies of the entrance's node at a price of 0, +0x1A plus 100 per exit beyond the
+  first (a Whirlpool 16), a Whirlpool's key 500 lower per exit in the list's order (cumulative,
+  0x56A6AF).
+- **Dimension Door** (mode 4): a leg starts where the step meets rock (its flag at 0x4B249D; the
+  other conditions before 0x4B2953 not followed), from a node with bit 10 and without bit 3 and the
+  pathfinder's +0x15 set, +0x1A plus 500, priced 300 points (200 at Expert; the walk takes none);
+  `pathfinder_relax` keeps the jump's start in +8 and its offset in bits 16-25, holds it to 9 columns
+  and 8 rows, and refuses a landing on an entrance.
+- **The boat marks** (map item +0xD bit 0x08, the towns' at 0x5264BF, the map Shipyards' at
+  `ai_boat_mark_set` 0x526545): read by the search at `pathfinder_boat_mark_read` 0x4B2B01. A
+  boarding where no boat is (a boat node, 0x404) from a node with bit 10 onto a non-entrance tile is
+  offered when the pathfinder's +0x14 (Summon Boat) is set and the node lacks bit 3, else only onto
+  a marked tile; +0x1A plus 500, and when not summoned the key lowered by
+  `ai_boat_purchase_cost` 0x431160 (0x4B2B67). The walk buys at a marked tile (`ai_hero_step`
+  0x42FD57, §1.10).
+
+**The Fly branch** (`ai_walk_path` 0x430906): the path's nodes are appended from the hero's side
+until a node with bit 4 whose from-tile is more than one column or row away or on another level:
+a jump entered while flying (an exit, a portal, a gate, a leg). The path ends before it and the
+from-tile, the jump's start, becomes the destination (the argument and the hero's +0x35, +0x39,
++0x3D): the hero walks to the jump's start and plans again there.
+
+**The points flag** of `hero_move_step` (0x480856, its seventh argument): only the network's
+replay of a remote step (`sub_481ED0`, from `network_map_message`) passes 1; `ai_hero_step`,
+`hero_move_loop` and `adventure_key_down` pass 0, so a computer's step dearer than its points left
+stops the move with 0 points (0x480864), as a human's.
+
+**Floats, draws, hidden reads.** No float in any piece read. Draws: all of the C runtime's
+generator (`crt_rand`) at the map's load, none in play: `quest_text_variant_draw` 0x56CBC1 at every
+quest's creation, `seer_roe_variant_draw` 0x574647 per RoE hut, `seer_name_draw` 0x574A1D per hut;
+the generator's state at the first turn so depends on the map's quests and huts. Hidden reads:
+none; Town Portal and Castle Gate read only the owner's towns (the gate's start town its team's) and
+resources; the Quest Guard's price is read only once the colour has visited the guard.
+
+**Quirk candidates** (not flagged; T1b's second look): (a) 0x574A1D: a map with as many Seer's
+Huts as names (48) divides by zero at the 49th's load; (b) 0x5747B8, refining §3.5 (a): the luck
+reward's leftover bytes are `load_object_body`'s local at ebp-0x28, another class's record or the
+previous Seer's, so its value depends on the objects loaded before it; (c) 0x56A6AF: a Whirlpool's
+exits carry 500 more of a penalty each in list order, so later exits look worse to the computer;
+(d) 0x56AC22: an unvisited Quest Guard is passed at no cost and with no check, so the computer may
+plan through a guard it cannot pass; (e) 0x56AA94, 0x4B2984: the plan prices a Castle Gate at 0
+points and a Dimension Door at 300 (200), the walk takes 100 and none; (f) 0x56A8A2: a Castle Gate
+jump may start in an ally's Inferno town, where the walk then buys a missing gate (`town_buy`,
+whose treasury not read); (g) 0x5704C0: the creature quest's counts are indexed by the types'
+count without a length test.
+
+Not read: the quest texts' builder 0x5701D0 and the types' loaders (vtable +0x30);
+`quest_guard_visit` from 0x572CB0 (the completion); `pathfinder_expand`'s mode-4 conditions before
+0x4B2953, its Fly and Water Walk starts (0x4B29B7 to 0x4B2A73, 0x4B2C51, 0x4B2C97) and the other
+leg starts (0x4B29FC, 0x4B2C03); `pathfinder_build_path` 0x56A0D0; `pathfinder_teleport_exits`
+beyond its copy and costs; the pathfinder's +0x14 and +0x15 writers; 0x6178C5, 0x617955, 0x617984
+and the 149 other users of 0x6ABAA0; `seer_hut_record` +0x12's readers.
+
+### 4.3 The phases: every function's place (T1a4c)
+
+Every one of the 255 functions of the three ranges (0x423EE0–0x42A000, 0x42A000–0x434620,
+0x524370–0x52BD50) has a map entry now, 15 of them `inferred` (marked "inf." below), the rest
+`read`. Each is placed by the phases whose entry reaches it through direct calls, the two dispatch
+tables included (the artifact effects' vtables by `ai_hero_artifact_value` 0x4336C0, the threat
+fold's functors by `ai_reach_fold_towns` 0x4282B0). The entries: the start `ai_turn_start` 0x4297C0
+and `ai_turn_start_values` 0x527960; a hero's turn `ai_hero_turn` 0x5261F0 (the planning and the
+walk under it); the middle `ai_turn_middle` 0x428DD0; the battle `ai_quick_battle` 0x4270C0,
+`ai_battle_army_split` 0x42DB20 and `sim_battle_finish` 0x427210; the game `ai_player_records_init`
+0x4340E0 (with the build's tail jump), `ai_artifact_effects_clear` 0x434590 and
+`ai_map_terrain_shares` 0x52B9C0; the answers: a function that the game's code calls and no phase
+reaches (§3.4, §3.5; several run in other players' turns too, the level-up's among them). A
+function shared by several phases is a value or a helper: the port builds it once (T1b's ADR
+draft). "Shared" with the battle means the simulated combat, which the quick battle and the fight
+estimates both run (§2.2).
+
+| Phase | n | Functions |
+|---|---|---|
+| Start-up (the C runtime's initialiser table) | 16 | `start_up_init_427a70` 0x427A70, `bitset10_bit0_init` 0x427CA0, `bitset10_bit1_init` 0x427D00, `bitset10_bit2_init` 0x427D60, `bitset10_bit3_init` 0x427DD0, `bitset10_bit4_init` 0x427E30, `bitset10_bit5_init` 0x427E90, `bitset10_bit6_init` 0x427EF0, `bitset10_bit7_init` 0x427F50, `bitset10_bit8_init` 0x427FB0, `bitset10_bit9_init` 0x428010, `ai_class_tables_init` 0x428070, `ai_artifact_effects_construct` 0x432460, `ai_artifact_effects_destruct` 0x432490, `ai_artifact_effects_entry_init` 0x4324B0, `start_up_init_52bd30` 0x52BD30 |
+| Game start, load and end | 5 | `ai_artifact_effect_army_share_init` 0x432540, `ai_player_records_init` 0x4340E0, `ai_artifact_effects_build` 0x434100, `ai_artifact_effects_clear` 0x434590, `ai_map_terrain_shares` 0x52B9C0 |
+| The turn's frame | 2 | `ai_player_turn` 0x525E80, `ai_next_hero` 0x526A90 |
+| The start only | 3 | `ai_turn_start` 0x4297C0, `ai_recruit_reserve` 0x429AD0, `ai_turn_start_values` 0x527960 |
+| A hero's turn only (the planning, the walk) | 33 | `ai_eyes_value_refresh` 0x429AB0, `team_has_human` 0x42B9E0, `ai_town_visit_recruit` 0x42BA60, `ai_town_guild_buy` 0x42BEB0, `ai_army_exchange_apply` 0x42C3B0, `ai_danger_map` 0x42DE50, `ai_hero_destination` 0x42E0B0, `position_equal` 0x42EC20, `hero_position` 0x42EC70, `pathfinder_node_at` 0x42ECC0, `pathfinder_ai_tile_value` 0x42ED30, `game_map_item` 0x42ED80, `ai_candidate_score` 0x42F980, `ai_hero_step` 0x42FC50, `ai_hero_walk` 0x42FEE0, `town_has_building` 0x4305A0, `ai_walk_path` 0x430610, `ai_walk_cast` 0x4309A0, `ai_walk_dimension_door` 0x430AB0, `ai_boat_create` 0x430F80, `ai_artifact_received` 0x433B40, `ai_hero_shed_artifacts` 0x433BB0, `ai_hero_equipped_value` 0x433C60, `ai_artifact_offer` 0x433E20, `ai_heroes_artifact_exchange` 0x433FE0, `ai_buy_stock_artifacts` 0x524400, `ai_university` 0x524ED0, `ai_victory_town_hold` 0x525200, `ai_town_visit` 0x5253D0, `ai_artifact_merchants_visit` 0x5259E0, `ai_buy_war_machine` 0x525CA0, `ai_hero_turn` 0x5261F0, `ai_hero_search_and_walk` 0x5267B0 |
+| The middle only (the build, the hires) | 14 | `ai_turn_middle` 0x428DD0, `ai_ally_resource_share` 0x429110, `ai_build_excluded_creatures` 0x429D50, `ai_build_score` 0x42A150, `ai_town_build_choice` 0x42AE00, `ai_build_dwelling_value` 0x42B520, `ai_build_upgrade_value` 0x42B5B0, `ai_build_castle_value` 0x42B670, `ai_build_horde_value` 0x42B790, `ai_build_horde_upgrade_value` 0x42B800, `ai_build_hall_value` 0x42B8B0, `ai_hero_hire_choice` 0x431360, `ai_hero_hire` 0x431800, `ai_town_hero_prospects` 0x431BD0 |
+| Shared: the start, the hero's turn | 2 | `ai_eyes_value` 0x429910, `ai_hero_effectiveness` 0x527760 |
+| Shared: the start, the middle | 7 | `ai_enemy_reach_fold` 0x4280E0, `ai_town_threat_clear` 0x428260, `ai_reach_fold_towns` 0x4282B0, `ai_town_capture_sim` 0x428410, `ai_town_threat_count` 0x428570, `ai_town_defence_recruit` 0x428580, `ai_army_offer_init` 0x4286B0 |
+| Shared: the hero's turn, the middle | 64 | `ai_army_fight_sim` 0x427330, `ai_difficulty_blend` 0x428710, `game_town` 0x42BA30, `ai_army_plan_clear` 0x42C040, `ai_army_exchange_step` 0x42C280, `ai_army_exchange_value` 0x42C4A0, `ai_army_plan_init_dwelling` 0x42CB70, `ai_army_offers_add` 0x42CE30 (inf.), `ai_army_plan_init_creature` 0x42CF50, `ai_army_plan_init_town` 0x42D1B0, `ai_army_purchase_value` 0x42D780, `ai_army_merge_types` 0x42D870, `ai_hero_candidates` 0x42EDD0, `ai_hero_reach_claims` 0x42F570, `game_hero` 0x4317D0, `entry12_vector_size` 0x434600, `ai_artifact_market_price` 0x524550, `ai_secondary_skill_value` 0x524690, `ai_school_value` 0x524D20, `ai_takes_new_secondary_skill` 0x524DD0, `ai_war_machine_value` 0x525120, `ai_university_value` 0x525BF0, `ai_resources_value` 0x526C70, `ai_experience_value` 0x527710, `ai_morale_gain_value` 0x527CF0, `ai_luck_gain_value` 0x527D80, `ai_object_value` 0x528040, `object_word_player_bit` 0x529690, `players_same_team` 0x5296D0, `ai_creature_upgrade` 0x529710, `ai_black_market_artifact_value` 0x529750, `ai_war_machine_factory_value` 0x5297D0, `ai_paid_reward_value` 0x529810, `ai_guarded_object_fight` 0x529890, `ai_learnable_spell_value` 0x5298D0, `ai_crypt_value` 0x529920, `ai_dwelling_value` 0x529A30, `ai_town_capture_value` 0x529CB0, `ai_school_of_magic_value` 0x529F90, `ai_mine_value` 0x52A010, `ai_monster_value` 0x52A140, `ai_oasis_value` 0x52A1E0, `ai_obelisk_value` 0x52A2B0, `ai_star_axis_value` 0x52A380, `ai_prison_value` 0x52A3A0, `ai_pyramid_value` 0x52A410, `ai_magic_well_value` 0x52A510, `ai_rally_flag_value` 0x52A5F0, `ai_refugee_camp_value` 0x52A700, `ai_refugee_camp_purchase` 0x52A710, `ai_resource_pile_value` 0x52A7C0, `ai_sea_chest_value` 0x52A870, `ai_spell_scroll_value` 0x52A8C0, `ai_sirens_value` 0x52A960, `ai_stables_value` 0x52AAC0, `ai_town_value` 0x52AB80, `ai_own_town_army_value` 0x52B090, `ai_town_building_value` 0x52B1E0, `ai_treasure_chest_value` 0x52B4E0, `ai_tree_of_knowledge_value` 0x52B5A0, `ai_wagon_value` 0x52B710, `ai_school_of_war_value` 0x52B790, `ai_magic_spring_value` 0x52B810, `ai_witch_hut_value` 0x52B900 |
+| Shared: the start, the hero's turn, the middle | 52 | `ai_resource_weights` 0x428740, `ai_trade_balance` 0x42A2B0, `ai_pay_with_trades` 0x42A470, `ai_trade_affordable_count` 0x42A580, `ai_buy_marketplaces` 0x42AB40, `ai_market_trades` 0x42AC20, `ai_army_plan_alignments` 0x42C060, `ai_army_plan_put` 0x42C130, `ai_army_plan_shed` 0x42C5B0, `ai_stack_to_replace` 0x42C690, `ai_stack_marginal_value` 0x42C830, `ai_army_purchase_step` 0x42D420, `ai_army_plan_run` 0x42D690, `ai_vision_area_value` 0x432220, `ai_artifact_effect_base_delete` 0x4324D0, `ai_artifact_effect_base_destroy` 0x432500, `ai_artifact_effect_scouting` 0x432510, `ai_artifact_effect_army_share` 0x432560, `ai_artifact_effect_attack_defense` 0x4325A0, `ai_artifact_effect_spell_power` 0x4325E0, `ai_artifact_effect_knowledge` 0x432610, `ai_artifact_effect_necromancy` 0x432640, `ai_artifact_effect_movement` 0x4326E0, `ai_artifact_effect_mana` 0x432720, `ai_artifact_effect_morale` 0x432780, `ai_artifact_effect_luck` 0x4327F0, `ai_artifact_effect_duration` 0x432860, `ai_artifact_effect_school_power` 0x432890, `ai_artifact_effect_spell_block` 0x432A50, `ai_artifact_effect_enemy_morale` 0x432B20, `ai_artifact_effect_enemy_luck` 0x432BA0, `ai_artifact_effect_school_spells` 0x432C20, `ai_artifact_effect_resource` 0x432D20, `ai_artifact_effect_growth` 0x432D70, `ai_artifact_effect_spell` 0x432F90, `ai_artifact_effect_delete` 0x433080, `ai_artifact_effect_shooters` 0x4330B0, `ai_artifact_effect_alliance` 0x433130, `ai_artifact_effect_undead_king` 0x4333A0, `ai_artifact_effect_living` 0x433520, `ai_artifact_effect_town_growth` 0x433580, `ai_hero_artifact_value` 0x4336C0, `ai_artifact_value_to_hero` 0x4339E0, `ai_artifact_value_to_player` 0x433AA0, `ai_weighted_cost` 0x526CC0, `ai_caster_record` 0x526D40, `ai_damage_spell_value` 0x5270E0, `ai_mass_damage_spell_value` 0x5271C0, `ai_effect_spell_value` 0x527290, `ai_spell_value` 0x5273D0, `ai_best_spell_value` 0x5275B0, `ai_hero_spell_gain` 0x527640 |
+| Shared: the battle, the hero's turn, the middle | 3 | `sim_apply_losses` 0x424880, `sim_necromancy` 0x426DF0, `ai_army_arrange` 0x42D8E0 |
+| Shared: the start, the battle, the hero's turn, the middle | 28 | `sim_combat_start` 0x423EE0, `sim_side_build` 0x424120, `sim_side_walls` 0x424790, `sim_side_max_speed` 0x424960, `sim_damage_spell_area_value` 0x4249D0 (inf.), `sim_damage_spell_stack_value` 0x424BF0 (inf.), `sim_damage_spell_value` 0x424D20 (inf.), `sim_damage_spell_apply_area` 0x424FB0 (inf.), `sim_damage_spell_apply_stack` 0x425100 (inf.), `sim_damage_spell_apply` 0x425260 (inf.), `sim_mass_damage_enemy_loss` 0x4253E0 (inf.), `sim_other_spell_value` 0x425510 (inf.), `sim_other_spell_apply` 0x4258A0 (inf.), `sim_other_spell_apply_call` 0x425B10 (inf.), `sim_cast_spell` 0x425BD0, `sim_spread_losses` 0x426170, `sim_side_wipe` 0x4262B0, `sim_side_take_damage` 0x426300, `sim_side_damage` 0x426390, `sim_side_hold_value` 0x426450, `sim_combat_finish` 0x4264D0, `sim_engage_now` 0x4267C0, `sim_combat_run` 0x426BC0, `sim_stack_vector_copy` 0x4276C0 (inf.), `sim_stack_count` 0x427750, `sim_stack_vector_insert` 0x427780 (inf.), `sim_stack_sort_part` 0x427A90 (inf.), `sim_stack_partition` 0x427C30 (inf.) |
+| The battle only | 5 | `sim_battle_result` 0x426EE0, `ai_quick_battle` 0x4270C0, `sim_battle_finish` 0x427210, `ai_battle_army_split` 0x42DB20, `ai_army_split_into_free_slots` 0x42DD70 |
+| The answers (entered by the game's visits and level-ups) | 17 | `ai_garrison_visit` 0x524370, `ai_black_market_visit` 0x5243F0, `ai_seer_skill_value` 0x524630, `ai_war_machine_factory_visit` 0x524FC0, `ai_meeting` 0x525DC0, `ai_town_buy_hook` 0x526D20, `ai_seer_spell_value` 0x527AA0, `ai_dwelling_visit` 0x527B00, `ai_hill_fort_visit` 0x527BB0, `ai_magic_school_choice` 0x527CD0, `ai_refugee_camp_hire` 0x527E10, `sirens_losses` 0x527EC0, `ai_gold_offer_answer` 0x527F60, `ai_gold_or_experience` 0x527FE0, `ai_level_up_choice` 0x52BBD0, `ai_join_without_room` 0x52BC60, `ai_fight_answer` 0x52BD10 |
+| The game's pathfinder, in the computer's searches | 1 | `ai_boat_purchase_cost` 0x431160 |
+| The game's own (no computer caller) | 2 | `hero_army_power` 0x427650, `army_power` 0x427690 |
+| The exception unwind only | 1 | `ai_army_plan_destroy` 0x4286E0 |
+
+### 4.4 The draws (T1a4c)
+
+**In the three ranges:** six call sites, all `random_between` 0x50B230 (no direct `crt_rand`, no
+`set_random_seed`), all read before: the destination's noise 0x42FBE9 (76 to 100 for every
+candidate scored, §1.9), the quick battle's two factors 0x4270EC and 0x427110 (75 to 125, ÷ 100),
+its result's retreat 0x426F3A (0 to 99 below 60, both sides with heroes and the winner alive), the
+hidden battle's end past round 30, 0x42723C and 0x427260 (75 to 125 each, §2.2).
+None in the artifact effects (§4.1) nor in §4.2's code, whose three draws (`crt_rand` directly) are
+the map's load's: each quest's text variant, each RoE Seer's variant and each Seer's name, so the
+generator's state at the first turn depends on the map's huts and quests.
+
+**Through the game's code** (a scan of every function outside the ranges that the computer's code
+calls, followed three calls deep to `random_between`, `crt_rand` or `set_random_seed` 0x50C5F0;
+a scratch script, not committed):
+
+- **The turn start re-seeds the game's generator** (read here: `puzzle_map_compute` 0x52C9B0's
+  gate, `puzzle_pieces_revealed` 0x4BAF00 and `puzzle_origin` 0x4CEA70 whole). `ai_turn_start`'s
+  last step, the Grail target (`player_puzzle_target` 0x4BAE50), runs the puzzle map's
+  computation whenever the share of pieces uncovered reaches the difficulty's threshold
+  (`puzzle_ai_thresholds` 0x6822C8: 1.1, 0.5, 0.25, 0 and 0, so never on Easy and on every turn on
+  Expert and Impossible) and the map has a Grail (game +0x1F690 at or above 0, +0x1F696 set).
+  The pieces' count with flag 0 then seeds the generator with colour × 424 909 + 423 869 (unless
+  all 48 are uncovered) and draws which pieces show (`random_between` 1 to 5 for each step over a
+  piece already shown, 1 to the pieces left when the scan passes the last); with at least one
+  piece the origin seeds it again with row × 81 901 + column × 67 843 + 79 451 of the Grail's
+  tile and draws two shifts (−2 to 2). After that the generator runs on from
+  a state set by the colour (no piece) or by the Grail's place alone (one or more), so the draws
+  of the rest of that turn (the destinations' noise, the quick battles, and the game's own draws
+  the computer's moves cause) start from the same point on every such turn. The human's puzzle
+  view (`puzzle_map_show` 0x41A7F0) makes the same reseeds, but only when opened. A quirk
+  candidate for T1b (the reseeds are the puzzle's, the call at every turn start the computer's).
+- **The computer's own paths into the game's draws:** the quick battle's result
+  (`sim_battle_result` 0x426EE0) gives experience (`hero_gain_experience` 0x4E33B0, the level-up's
+  own reseed and draws) and towns (`town_change_owner` 0x4C61E0, a defeat's `hero_leave_game`);
+  `sim_apply_losses` 0x424880 calls `battle_aftermath` 0x4AC930 (its sound's draw, 1 to 7, only
+  when the view is shown).
+- **The game's draws the computer's moves make as a human's do:** the dig (`hero_dig` 0x40EC90),
+  the spells cast on the way (`adventure_spell` 0x41C490), the step and its visit
+  (`hero_move_step` 0x4805E0), the visit of the tile stood on (`hero_visit_here` 0x4ACCA0: one
+  point, the visit, a level-up, the scenario's tests), the hire (`town_tavern_hire` 0x5C12E0, the
+  tavern's next hero), the town's visit and buildings
+  (`town_visit_buildings` 0x5BD8E0, `town_build_effects` 0x5BEDE0), the artifacts given
+  (`hero_give_artifact` 0x4E3070) and the victory test (`scenario_condition_met` 0x4F2CE0): rules
+  of their lanes, the same draws in the same places.
+
+### 4.5 The floats (T1a4c)
+
+Every x87 instruction of the three ranges, by function and phase: 86 functions, 1 097 x87
+instructions, 164 truncations (a scan; the constants are the memory operands the tool shows with
+their widths, integer loads left out; "t" counts the truncations to an integer by `crt_ftol`
+0x6179D4, always toward zero). No SSE. The computer's own code holds most of the game's floats
+outside the battle: every value that weighs resources (the weights are f64, §1.5), the simulated
+combat's strengths and spells (f64 with f32 stores), the difficulty's blend (f32) and the artifact
+effects' shares (§4.1). For the port (T1b's ADR draft, ADR-0003) each needs `kernel::num`'s audited
+surface with the same widths, the same order of operations and the same truncations; the f32 stores
+of f64 results (`fstp dword`) round to f32 midway, which the port must repeat.
+
+| Phase | Function: x87 instructions, truncations (`crt_ftol`), widths, constants |
+|---|---|
+| game start (1) | `ai_map_terrain_shares` 0x52B9C0: 12, 0 t, f64; 1 f64 |
+| start (1) | `ai_turn_start_values` 0x527960: 17, 0 t, f32/f64; 1 f32, 0.25 f32, 0.75 f32 |
+| hero's turn (5) | `ai_candidate_score` 0x42F980: 14, 2 t, f32/f64; 1.5 f32, 100 f64; `ai_hero_equipped_value` 0x433C60: 13, 2 t, f32/f64; 1 f64; `ai_buy_stock_artifacts` 0x524400: 7, 1 t, f64; `ai_town_visit` 0x5253D0: 22, 0 t, f32; 1000 f32; `ai_artifact_merchants_visit` 0x5259E0: 14, 2 t, f64 |
+| middle (4) | `ai_build_score` 0x42A150: 7, 1 t, f64; `ai_town_build_choice` 0x42AE00: 5, 1 t, f64; 10 f64; `ai_build_hall_value` 0x42B8B0: 20, 4 t, f64; 3500 f64, 7000 f64, 14000 f64; `ai_hero_hire` 0x431800: 17, 2 t, f64 |
+| shared (start, hero) (1) | `ai_hero_effectiveness` 0x527760: 10, 0 t, f32 |
+| shared (hero, middle) (29) | `ai_army_fight_sim` 0x427330: 17, 3 t, f32/f64; 0.5 f64; `ai_difficulty_blend` 0x428710: 3, 0 t, f32; 0.0 f32, 0.5 f32; `ai_artifact_market_price` 0x524550: 12, 3 t, f32/f64; `ai_secondary_skill_value` 0x524690: 14, 3 t, f64; 4 f64, 1 f64, 2 f64; `ai_war_machine_value` 0x525120: 7, 1 t, f64; `ai_resources_value` 0x526C70: 7, 1 t, f64; `ai_experience_value` 0x527710: 9, 0 t, f32; `ai_morale_gain_value` 0x527CF0: 7, 1 t, f64; `ai_luck_gain_value` 0x527D80: 7, 1 t, f64; `ai_object_value` 0x528040: 114, 28 t, f32/f64; 5 f32, 200 f64, 175 f64, 5 f64, 500 f64, 2 f64, 1000 f32, 1000 f64; `ai_black_market_artifact_value` 0x529750: 7, 1 t, f64; `ai_paid_reward_value` 0x529810: 12, 1 t, f64; `ai_crypt_value` 0x529920: 14, 2 t, f32/f64; `ai_town_capture_value` 0x529CB0: 23, 4 t, f32/f64; 3 f64, 1 f32; `ai_school_of_magic_value` 0x529F90: 5, 1 t, f64; 1000 f64; `ai_mine_value` 0x52A010: 9, 2 t, f32/f64; 1 f32; `ai_oasis_value` 0x52A1E0: 7, 1 t, f64; `ai_prison_value` 0x52A3A0: 5, 1 t, f64; 2500 f64; `ai_rally_flag_value` 0x52A5F0: 12, 2 t, f64; `ai_resource_pile_value` 0x52A7C0: 7, 1 t, f64; `ai_sea_chest_value` 0x52A870: 7, 2 t, f32/f64; 10 f32, 1200 f64; `ai_sirens_value` 0x52A960: 25, 3 t, f32/f64; 0.7 f64, 0.0 f32; `ai_stables_value` 0x52AAC0: 4, 1 t, f64; 1.2 f64; `ai_town_building_value` 0x52B1E0: 19, 3 t, f32; 1000 f32; `ai_treasure_chest_value` 0x52B4E0: 17, 7 t, f32/f64; 160 f32, 320 f64, 320 f32, 480 f64, 465 f32, 620 f64, 20 f32; `ai_tree_of_knowledge_value` 0x52B5A0: 20, 4 t, f32/f64; 10 f64, 2000 f64, 3 f64; `ai_wagon_value` 0x52B710: 6, 1 t, f32; 5 f32; `ai_school_of_war_value` 0x52B790: 7, 1 t, f32/f64; 1000 f64; `ai_witch_hut_value` 0x52B900: 4, 1 t, f32 |
+| shared (start, hero, middle) (19) | `ai_resource_weights` 0x428740: 36, 1 t, f32/f64; 1 f64; `ai_trade_affordable_count` 0x42A580: 9, 1 t, f32/f64; `ai_market_trades` 0x42AC20: 20, 4 t, f32/f64; 0.99999 f64; `ai_stack_marginal_value` 0x42C830: 10, 1 t, f64; `ai_vision_area_value` 0x432220: 9, 0 t, f64; 0.5 f64; crt_sqrt; `ai_artifact_effect_necromancy` 0x432640: 2, 1 t, f32; 1 f32, 100 f32; `ai_artifact_effect_morale` 0x432780: 5, 1 t, f64; `ai_artifact_effect_luck` 0x4327F0: 5, 1 t, f64; `ai_artifact_effect_enemy_morale` 0x432B20: 7, 2 t, f64; `ai_artifact_effect_enemy_luck` 0x432BA0: 7, 2 t, f64; `ai_artifact_effect_resource` 0x432D20: 5, 1 t, f64; 3 f64; `ai_artifact_effect_undead_king` 0x4333A0: 16, 3 t, f32; 1 f32, 100 f32; `ai_hero_artifact_value` 0x4336C0: 4, 2 t, f32/f64; 500 f64, 25 f32; crt_sqrt; `ai_weighted_cost` 0x526CC0: 7, 1 t, f64; `ai_caster_record` 0x526D40: 3, 1 t, f32; `ai_damage_spell_value` 0x5270E0: 23, 2 t, f64; `ai_mass_damage_spell_value` 0x5271C0: 13, 1 t, f64; 1 f64; `ai_effect_spell_value` 0x527290: 2, 0 t, f64; 0.0 f64; `ai_spell_value` 0x5273D0: 25, 2 t, f64; 0.001 f64, 0.009 f64, 0.9 f64, 3.9 f64; crt_sqrt |
+| shared (battle, hero, middle) (1) | `sim_necromancy` 0x426DF0: 14, 1 t, f32; 0.0 f32, 0.02 f32 |
+| shared (start, battle, hero, middle) (15) | `sim_side_build` 0x424120: 45, 1 t, f64; 0.05 f64, 1 f64, 5 f64, 2 f64; crt_sqrt; `sim_damage_spell_area_value` 0x4249D0: 14, 4 t, f32/f64; `sim_damage_spell_stack_value` 0x424BF0: 7, 2 t, f32/f64; `sim_damage_spell_value` 0x424D20: 14, 4 t, f32/f64; `sim_damage_spell_apply_area` 0x424FB0: 7, 2 t, f32/f64; `sim_damage_spell_apply_stack` 0x425100: 7, 2 t, f32/f64; `sim_damage_spell_apply` 0x425260: 7, 2 t, f32/f64; `sim_mass_damage_enemy_loss` 0x4253E0: 7, 2 t, f32/f64; `sim_other_spell_value` 0x425510: 6, 1 t, f32/f64; 500 f64; `sim_other_spell_apply` 0x4258A0: 32, 2 t, f32/f64; 500 f64; `sim_spread_losses` 0x426170: 9, 1 t, f64; `sim_side_damage` 0x426390: 14, 1 t, f64; `sim_side_hold_value` 0x426450: 7, 1 t, f64; `sim_combat_finish` 0x4264D0: 39, 4 t, f32/f64; 0.0 f64, 0.05 f64; `sim_engage_now` 0x4267C0: 25, 2 t, f32/f64; 0.0 f64, 0.05 f64 |
+| battle (4) | `sim_battle_result` 0x426EE0: 3, 1 t, f32; `ai_quick_battle` 0x4270C0: 14, 0 t, f32/f64; 100 f32; `sim_battle_finish` 0x427210: 14, 0 t, f32/f64; 100 f32; `ai_battle_army_split` 0x42DB20: 7, 1 t, f32 |
+| answers (4) | `ai_hill_fort_visit` 0x527BB0: 4, 1 t, f32; `sirens_losses` 0x527EC0: 7, 2 t, f32/f64; 0.7 f64; `ai_gold_offer_answer` 0x527F60: 7, 1 t, f64; `ai_gold_or_experience` 0x527FE0: 8, 2 t, f32/f64 |
+| game's own (2) | `hero_army_power` 0x427650: 3, 1 t, f32; `army_power` 0x427690: 3, 1 t, f32 |
+
+### 4.6 What persists between turns (T1a4c)
+
+Completes §1.6. Found by a scan of every global the ranges write (absolute operands) and of the
+game's records' fields named in §1 to §3, with their readers outside the ranges.
+
+| State | Written | Read | Carried |
+|---|---|---|---|
+| `ai_player_records` 0x692950 (§1.6) | each of the computer's turn starts and middles | its own turn; **other players' turns**: the gold weight +0x90 by a computer hero's level-up (`ai_level_up_choice` 0x52BBD0), the Eye value +0x04 by the fight estimates | from one of its turns to the next player's turns; recomputed at its next start |
+| The player's weights (+0x128, f64[7]), their mean (+0x160) and the artifacts' mean (+0x164) | the start and the middle (§1.5) | only the computer's values and answers (the Seer's value `seer_reward_value` 0x573A70 among them) | as the record |
+| The player's Grail target (+0x39) | the start | the planning (§1.9) | until the next start |
+| The hero's destination (+0x35 to +0x40), the points beyond (+0x41) | the destination's choice (§1.9) | the next turn's search and score (§1.4, §1.9), the other heroes' claims; the arrow path (`pathfinder_build_path` 0x56A0D0, the human's too) | **into the next turn** (the one field set that does) |
+| The must-go (+0x43) | the destination's choice | the walk | cleared at the start: one turn |
+| The patrol (+0x44 to +0x46) | the map's loader | the planning | the map's |
+| The sleep (+0x11C) | the hero's turn (the done mark) | the hero order; the game's (the human's sleep command, the town screen, the next-hero button) | cleared at the start and by `next_player_turn` 0x4C74B4 |
+| The threat (+0x11D) of every enemy hero | cleared and set by each computer's folds (`ai_enemy_reach_fold` 0x4280E0, `ai_reach_fold_towns` 0x4282B0) at its start and middle | `ai_object_value`'s hero case | until the next computer's fold; each computer clears it before it reads |
+| The hero's values (+0x109, +0x47A to +0x48E, f32) | `ai_hero_effectiveness` 0x527760 at the start and after each visit; `hero_reset` sets the defaults | the values, the simulated combat (`ai_army_fight_sim`), the Seer's value; the game only copies them (four whole-hero copies, the battle's among them) | **into other players' turns**: a quick battle between two computers uses the defender's values of its last turn |
+| The town's +0x3 (the enemy heroes that reach it) | the threat fold (`ai_town_threat_vtable` 0x63B670) | the defence and the values | until the next fold |
+| The boat marks (map item +0xD bit 0x08) | the walk | the pathfinder | during the walk only (§1.3) |
+| Start-up constants: ten `std::bitset<10>` masks (0x692590 to 0x6925A8, 0x692E10, 0x692E14, 0x693800, 0x693804) and the guard byte's low bit (`start_up_guard_byte` 0x6ABAA0, §4.2) | the C runtime's initialisers | nothing (the masks); 151 functions' static guards (the byte) | constants |
+| Built once: `ai_artifact_effects` 0x692E18 (game start), the class tables (`ai_class_tables_init` 0x428070, start-up), the terrain shares (`ai_water_share` 0x681878 and its neighbours, `ai_map_terrain_shares` 0x52B9C0 at a new game and a load) | | the values | the game's (constant) |
+| UI only: `ai_walk_flag` 0x69CCD4, `view_shown` 0x6989C0 | the hero's turn | the adventure screen's input and drawing | not game state |
+| Vestiges: `ai_turn_counter` 0x691684 (reset by `next_player_turn`), `ai_turn_start_vestige` 0x691680 (zeroed beside it by `ai_turn_start_values`) | | nothing | none |
+
+So the computer carries three things from one of its turns into the game: the heroes'
+destinations (+0x35, +0x41) into its own next turn, and the record and the heroes' values into the
+other players' turns, where its level-ups and the quick battles of another computer read them. A
+saved game keeps the game's records (the destination, the values, the threat) but not
+`ai_player_records`: they are set once when the program starts (`game_init` 0x4ED650 calls
+`ai_player_records_init`, the colours only), and neither a new game nor a load writes them (no
+loader refers to them). Until a computer's first turn start in a game, its record holds the last
+values the process computed for that colour, in an earlier game too, or zeros after the start-up:
+a computer hero's level-up before then (defending in the first turns after a load) reads that gold
+weight. A quirk candidate for T1b (the engine's port starts the record at its first turn).

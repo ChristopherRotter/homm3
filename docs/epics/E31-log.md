@@ -260,3 +260,59 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
 - **Not read:** the other quest types' price (+4) and the slot's other callers, the rest of
   `seer_hut_load`, the luck reward's unwritten fields (T1a4); the trades' rounding against the
   human's market screen (the town lane, §3.6).
+
+## T1a4 — the rest of the code (2026-11-24, increment 1)
+
+- **The cut** (AI-Q29, the user at T1a4's start): about 3 500 instructions plus the lists, so three
+  parts; the user: the main session reads one, two sub-agents the others. T1a4a the artifact
+  effects (a general-purpose sub-agent, about 1 800), T1a4b the start-up initialisers and the
+  leftovers of T1a1c and T1a3d (a second one after it, about 1 300), each in its own worktree
+  (only `map.toml` and `structs.toml`, its survey text to a scratch file); T1a4c the lists (the
+  main session), merging both and writing §4. The 18 functions still `inferred` at the start met
+  the bar and only needed a phase.
+- **Read, T1a4a** (the survey §4.1): `ai_artifact_effects_build` 0x434100 and its list
+  `ai_artifact_effect_list` 0x63AC7C (135 artifacts), the 24 effect codes' value methods and the
+  base (`ai_artifact_effect_vtables` moved to its true start 0x63B6B0), the table's start-up and
+  exit (0x432460, 0x432490); `ai_spell_offer_value` renamed `ai_artifact_effect_spell` 0x432F90
+  (code 18; +4 is the spell). Found: no draw, no hidden read; the values in the hero's army value
+  and its effectiveness fields; fourteen quirk candidates (the single-stat weapons one point low,
+  the Thunder Helmet's and Titan's Cuirass's numbers, the Spellbinder's Hat as mana, the Spell Book
+  and the Catapult worth 0, a worn and a candidate artifact valued differently).
+- **Read, T1a4b** (§4.2): the twelve start-up initialisers (ten `std::bitset<10>` constants and
+  two guard bits: no state), `ai_army_offer_init` 0x4286B0, the quests' price slot of every type
+  (type 6 `ai_quest_creatures_price` 0x570480, the others 0) and its three callers (the Seer's plan
+  and visit, the pathfinder's Quest Guard case), `seer_hut_load` 0x574610 whole (the reward's
+  written bytes by kind, the load's three `crt_rand` draws), the walk's marks (where the pathfinder
+  sets and reads each bit of `pathfinder_node` +4, `pathfinder_town_portal` 0x56B050 new, the
+  Castle Gate's and the teleporters' nodes, the boat marks read at 0x4B2B01), `ai_walk_path`'s Fly
+  branch and `hero_move_step`'s points flag (only the network's replay passes 1). Found: 0x400 is
+  a place to stop, not a waypoint; the plan prices a Castle Gate at 0 points and a Dimension Door at
+  300 (the walk takes 100 and none); an unvisited Quest Guard is passed with no check; seven quirk
+  candidates.
+- **Lists, T1a4c** (§4.3 to §4.6): every one of the 255 functions of the three ranges by phase (240
+  `read`, 15 `inferred`, none unnamed: exit criterion 1); the draws (the six sites in the ranges,
+  the game's draws on the computer's paths, three calls deep); the floats (86 functions, 1 097 x87
+  instructions, 164 truncations, no SSE); what persists between turns. Read for it:
+  `puzzle_pieces_revealed` 0x4BAF00 and `puzzle_origin` 0x4CEA70 whole, `puzzle_map_compute`'s
+  gate, `hero_visit_here` 0x4ACCA0 (new). Found: **the computer's turn start re-seeds the game's
+  generator** through its Grail target when the puzzle's share reaches the difficulty's threshold
+  (every turn on Expert and Impossible on a map with a Grail): by the colour, then by the Grail's
+  place, so the turn's later draws start from the same point each such turn (a quirk candidate);
+  `ai_player_records` are set once at the program's start, never at a new game or a load (a
+  quirk candidate: a level-up before the computer's first turn reads stale weights); the heroes'
+  destinations carry into the computer's next turn, the record and the heroes' values into the
+  other players' turns.
+- **In all:** 90 new map entries (55 functions, 18 sites, 15 globals, 2 tables), 17 rewritten (one
+  renamed, one table moved), the structs `ai_artifact_effect` and `seer_hut_record`; the survey §4
+  and pointers in §0, §1.3, §1.6, §1.8, §2.2, §2.4, §3.4 and §3.6 brought up to date. 23 quirk
+  candidates for T1b.
+- **Process:** a cloud clone, `Heroes3.exe` staged from the user's repo folder; the setup's
+  baseline lost to a VM restart and replaced by CI's run on `master`; three `git worktree`s (one per
+  part), the sub-agents one after the other; their diffs applied with `git apply --3way` (one
+  conflict of neighbouring lines, both kept); scratch scripts over `scripts/exe.py` (the phases'
+  reach, the draws' scan, the float census, the globals), not committed. `scripts/exe.py cited`
+  caught two survey addresses without entries (0x4ACCA0, 0x691680): read and added.
+- **Not read:** the 15 `inferred` functions (the simulated combat's spell values, the container
+  code, `ai_army_offers_add`); the callees of the artifact effects beyond their entries; the quest
+  texts' builder and the Quest Guard's completion; the pathfinder's mode-4 Fly, Water Walk and leg
+  starts, `pathfinder_build_path`, the writers of its +0x14 and +0x15; 0x52CF10, the puzzle's pick.
