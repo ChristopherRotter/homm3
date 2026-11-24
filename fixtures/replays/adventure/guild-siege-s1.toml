@@ -1,0 +1,62 @@
+commands = [
+    "0 end-turn",
+    "1 move 4 8,20,0",
+    "0 battle cast 15 stack 0",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x3afce5c8e71ec124",
+    "0xa1d25d087af0eae8",
+    "0x925d8bcd1aa47070",
+    "0xd1b5110691ad8602",
+]
+
+[replay]
+format = 25
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x0ee6066a4c802530"
+adventure_ruleset_hash = "0x0c610f9192575256"
+town_ruleset_hash = "0xcf8db1aa2bb768d2"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 38
+adventure_state_hash_version = 27
+checkpoint_every = 1
+
+[map]
+path = "fixtures/maps/e09-guild-36.h3m"
+hash = "0x048045fa8ddf666a"
+import_version = 28
+
+[result]
+day = 2
+final_hash = "0xd1b5110691ad8602"
+
+[[players]]
+colour = 0
+human = true
+faction = 2
+
+[[players]]
+colour = 1
+human = true
+faction = 4

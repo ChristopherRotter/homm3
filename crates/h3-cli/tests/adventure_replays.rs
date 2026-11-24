@@ -902,6 +902,35 @@
 //!   red's tavern by week 2's fill and hired back on day 8 with the Charm (T-14).
 //! - `taverns-den-s1`: Ryland enters the Den of Thieves: the Thieves' Guild at everything
 //!   (TWN-TAV-009, `ThievesGuildSeen` and its parts).
+//!
+//! The guild map (E09 T50, the town epic's design note §97), `fixtures/maps/e09-guild-36.h3m`:
+//! red's main Tower "Athenaeum" (Mage Guild 4, a Tavern; it requires Bless, Town Portal and
+//! Shield and bans Shield and Magic Arrow) generating red's starting hero 5, red's Dungeon "Abyss"
+//! (Mage Guild 1, the Mana Vortex) with the Warlock Geon 0 on its entrance and the Overlord Lorelei
+//! 1 beside it, red's Conflux "Prism" (Mage Guild 1, the Aurora Borealis; it bans Magic Arrow and
+//! Lightning Bolt) with the Wizard Serena 2 and the Knight Valeska 3 (no spell book) beside it,
+//! blue's main Necropolis "Crypt" (Mage Guild 1) generating blue's starting hero 6, blue's Sorsha 4
+//! with one Pikeman beside the Abyss; the scenario bans Haste. Scripted, each with `h3-map`'s test
+//! of its name in `guild_map.rs` that plays its commands and checks what it shows, recorded as the
+//! taverns' (N 2 for the Vortex, else 1):
+//!
+//! - `guild-start-s1`: the starting heroes learned their main towns' guild spells at the build
+//!   (TD-10, TWN-GLD-005), Geon on the Abyss' entrance nothing; day 2's start teaches nothing.
+//! - `guild-visit-s1`: Serena's step into the Prism teaches her the Aurora set at levels 1 to 3,
+//!   Haste among them (TWN-GLD-004, TWN-QUIRK-14).
+//! - `guild-builds-s1`: the Athenaeum's Library built with red's starting hero visiting (the
+//!   spares shown and learned, TWN-GLD-003); the Abyss' Mage Guild 2 with Geon visiting (levels 1
+//!   and 2 learned, then the Vortex's points, TWN-GLD-009).
+//! - `guild-hire-s1`: red's starting hero steps off; the Athenaeum's hire of slot 0 learns the
+//!   guild's spells after the hire's events.
+//! - `guild-book-s1`: Valeska steps into the Prism (nothing learned) and is bought a spell book,
+//!   then learns the Aurora set's levels 1 and 2 (TWN-GLD-007).
+//! - `guild-vortex-s1`: Geon enters the Abyss' garrison; its opening gives him the Vortex
+//!   (TWN-GLD-006) and its spells; Lorelei's visit after it nothing; the nights to day 8 keep
+//!   Geon's points (TWN-GLD-008); day 8's flag, the opening passes over Geon to Lorelei, a second
+//!   opening changes nothing.
+//! - `guild-siege-s1`: Sorsha attacks the Abyss; Geon casts Magic Arrow and wins: the siege's end
+//!   teaches him its spells, the Vortex kept; the night refills his points (TWN-GLD-008).
 
 use std::path::PathBuf;
 

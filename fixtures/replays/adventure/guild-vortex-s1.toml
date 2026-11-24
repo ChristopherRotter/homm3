@@ -1,0 +1,84 @@
+commands = [
+    "0 town heroes 1 enter",
+    "0 town open 1",
+    "0 move 1 8,20,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 town open 1",
+    "0 town open 1",
+    "0 end-turn",
+]
+checkpoints = [
+    "0x94f618dec882c42d",
+    "0xc704ea62b172b280",
+    "0x598312a847b09b45",
+    "0xfd0d0b3872d4f545",
+    "0x540a9106908ecae9",
+    "0xf9aa3a43d1ffea8f",
+    "0xa485a20dc457b9e2",
+    "0xff3efe892de7be52",
+    "0x5090d92a2647f186",
+    "0x35f8fb4abcbdbded",
+]
+
+[replay]
+format = 25
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x0ee6066a4c802530"
+adventure_ruleset_hash = "0x0c610f9192575256"
+town_ruleset_hash = "0xcf8db1aa2bb768d2"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 38
+adventure_state_hash_version = 27
+checkpoint_every = 2
+
+[map]
+path = "fixtures/maps/e09-guild-36.h3m"
+hash = "0x048045fa8ddf666a"
+import_version = 28
+
+[result]
+day = 8
+final_hash = "0x35f8fb4abcbdbded"
+
+[[players]]
+colour = 0
+human = true
+faction = 2
+
+[[players]]
+colour = 1
+human = true
+faction = 4
