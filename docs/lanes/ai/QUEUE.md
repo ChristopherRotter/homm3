@@ -45,6 +45,12 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
+- 2026-11-24 (the adventure lane, E08 T142a, `cross-lane` with the user's consent; **in your
+  paths, nothing to do**): `h3_game::GameCommand::Cast` exists; `h3-sim`'s `tileless_entry`
+  (`adventure/action.rs`) gives it no entry, and `legal_commands` lists no cast until E08 T144a,
+  which brings the encoding's entries (v21, `cross-lane`). The adventure replay format is v26
+  (`replay.rs`: the word `cast`); the bot reports' `engine.adventure` line moved (part v26).
+
 **From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**; E08 T140, `shared/e08-t140`, `cross-lane`; **in your paths, nothing to do**):
 
 - 2026-11-21: E08 increment 15 (design note `docs/epics/E08-design.md` §17, decision 407) gives

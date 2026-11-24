@@ -111,7 +111,10 @@ impl fmt::Display for CastError {
 impl core::error::Error for CastError {}
 
 impl AdventureState {
-    /// The day spells of the hero `hero` (ADV-SPL-002): none unless it cast today.
+    /// The day spells of the hero `hero` (ADV-SPL-002): none unless it cast today. Out of line:
+    /// the reach's search asks once (E08 T142a: inlined there it moved the search's loop, +1.5 %
+    /// on `reach-towns-36`).
+    #[inline(never)]
     pub fn day_spells(&self, hero: HeroId) -> DaySpells {
         spells_in(self.day_spells.as_deref(), hero)
     }

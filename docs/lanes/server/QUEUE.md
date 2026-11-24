@@ -12,6 +12,16 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-24 (the adventure lane, E08 T142a, `adventure/e08-t142a`, `cross-lane` with the user's
+  consent; **in your paths, nothing to do; for your review**): **protocol v82** is taken: the cast
+  on the map, `wire::game::GameCommand::Cast { hero, spell, target }` (appended), its refusals
+  `GameReject::Cast { error: CastReject }` (the spell's own test nested as `SpellReject`), the
+  events `GameEvent::SpellCast` and `AdventureEvent::DaySpellsChanged`, and `OwnMapHero::spells`
+  (`DaySpells`); mapped both ways, the fold sets the own hero's spells, `CommandBounds` counts a
+  cast as a map command; the tests' lists (161 rejections, 54 kinds of event) and
+  `tests/record.rs`' `army-dialog-s1` literals (the 118 replays rehashed: adventure state v29,
+  part v26, replay format v26 with the word `cast`). The adventure lane's T143 takes v83 next.
+
 - 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent;
   **in your paths, nothing to do**): **protocol v80** is taken: `wire::game::TownCommand::BuySpellBook
   { town }` (TWN-GLD-007, a spell book bought at a town's Mage Guild) and the refusals

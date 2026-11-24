@@ -151,6 +151,7 @@ pub(crate) fn hero_movement(core: &Ruleset, details: Option<&HeroDetails>) -> Mo
 /// (survey `E08-spells.md` §7.2). The original's `hero_step_cost` (0x4B18C0) takes +0x112 and
 /// +0x116 forced to 3 by Angel Wings and Boots of Levitation.
 // rule: ADV-MOV-009, ADV-MOV-010
+#[inline(never)]
 pub(crate) fn day_movement(
     core: &Ruleset,
     details: Option<&HeroDetails>,
