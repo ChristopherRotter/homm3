@@ -803,6 +803,7 @@ pub fn apply_live(
             Some(&[move_hero, next_hero]) => Some(Buttons {
                 move_hero,
                 next_hero,
+                left: false,
             }),
             _ => return Err(failed("`buttons` is not [move, next], each 0 or 1")),
         };

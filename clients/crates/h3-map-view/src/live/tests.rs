@@ -441,6 +441,7 @@ fn a_maps_start_its_kingdom_and_buttons() {
         Buttons {
             move_hero: true,
             next_hero: true,
+            left: false,
         }
     );
     assert!(!buttons(&red, &[arrow(26)]).move_hero);
@@ -450,6 +451,7 @@ fn a_maps_start_its_kingdom_and_buttons() {
         Buttons {
             move_hero: false,
             next_hero: false,
+            left: false,
         }
     );
     let tired = Kingdom {

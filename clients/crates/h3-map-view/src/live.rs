@@ -738,13 +738,19 @@ pub enum Selected {
     Town(usize),
 }
 
-/// The two buttons a walk changes (design §4.1): move hero and next hero, enabled or not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The two buttons a walk changes (design §4.1): move hero and next hero, enabled or not; since
+/// E24 M5 T1a whether sleep and cast a spell still show a hero's selection.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Buttons {
     /// Move hero (0x4191A2, 0x407E2C).
     pub move_hero: bool,
     /// Next hero (`next_hero_button_state` 0x419450).
     pub next_hero: bool,
+    /// Sleep and cast a spell drawn enabled with no hero selected (E24 M5 T1a, design §5.22): the
+    /// selected hero left the game (`hero_leave_game` 0x4D9EC0 redraws neither) and nothing was
+    /// chosen since (recorded, `battle-retreat` 810 to 1265; the town chosen at 1330 disables
+    /// them). Never in a still or a timeline line.
+    pub left: bool,
 }
 
 impl Kingdom {
@@ -853,6 +859,7 @@ impl Buttons {
         Self {
             move_hero: selected && path.iter().any(|a| (1..=GREEN).contains(&a.arrow)),
             next_hero: kingdom.next_hero(),
+            left: false,
         }
     }
 }
