@@ -9,14 +9,18 @@
 //!   the record's packs folder, the archives from the installation). A walk's battle is the first
 //!   whose snapshot comes after the `GameEvents` whose `BattleStarted` the walk began
 //!   ([`Battles::began`]).
-//! - **The switch** is a plain cut (T5b2 draws the original's fades): the battle's frames
-//!   presented in the window as they fall due, its cursor the window's (drawn or the hardware's,
-//!   as the map's), its sound on the host's ([`crate::audio::Player::lend`]), until the result
-//!   window's OK closes its screen. An unattended run presses that OK itself (the battle's
-//!   `Presses::close_result`).
+//! - **The battle** is hosted where the map hands it over: a walk's at its end (a plain cut), a
+//!   visit's or a guards' answer's where the map's switch shows it whole (E24 M4 T5b2: the fades
+//!   are the map's, from the battle's first frame, [`first_frame`], and to its last,
+//!   [`Shown::last`]). Its frames are presented in the window as they fall due, its cursor the
+//!   window's (drawn or the hardware's, as the map's), its sound on the host's
+//!   ([`crate::audio::Player::lend`]), until the result window's OK closes its screen. An
+//!   unattended run presses that OK itself (the battle's `Presses::close_result`).
 //! - **The keys** are the battle window's (`h3_view::keys`: the user's file's `[battle]` table
 //!   over the defaults, as `h3-view window`'s), the combat options' settings a first run's or
-//!   `settings.toml`'s here (the file the options dialog writes), as `h3-view window` reads them.
+//!   `settings.toml`'s here (the file the options dialog writes), as `h3-view window` reads them:
+//!   read again before each battle (E24 M4 T6, the reviewer's R5-10: one battle's options the
+//!   next's), a failed write of them told as a line.
 //!
 //! An adapter: it reads files and drives the window.
 
@@ -45,7 +49,9 @@ pub struct Battles {
     list: Vec<GameBattle>,
     source: Source,
     keys: Keys,
+    /// The combat options' settings as last read, and their file.
     settings: Settings,
+    settings_path: PathBuf,
 }
 
 impl Battles {
@@ -74,14 +80,8 @@ impl Battles {
         };
         let known: Vec<&str> = Key::ALL.iter().map(|k| k.name()).collect();
         keys.check(&known)?;
-        let here = Path::new(SETTINGS_FILE);
-        let text = here
-            .exists()
-            .then(|| fs::read_to_string(here))
-            .transpose()
-            .map_err(|e| format!("{SETTINGS_FILE}: {e}"))?;
-        let (settings, _) =
-            Settings::read(text.as_deref()).map_err(|e| format!("{SETTINGS_FILE}: {e}"))?;
+        let settings_path = PathBuf::from(SETTINGS_FILE);
+        let settings = read_settings(&settings_path)?;
         let source = Source {
             input: record.to_path_buf(),
             seed: 0,
@@ -99,7 +99,20 @@ impl Battles {
             source,
             keys,
             settings,
+            settings_path,
         })
+    }
+
+    /// The combat options' settings read again (E24 M4 T6, R5-10: the options dialog of the
+    /// battle before may have written them); an unreadable file noted in `lines`, the settings
+    /// read last kept.
+    fn settings_now(&mut self, lines: &mut Vec<String>) -> Settings {
+        match read_settings(&self.settings_path) {
+            Ok(settings) => self.settings = settings,
+            Err(e) => lines.push(format!("{e}; the settings read before kept")),
+        }
+        self.source.speed = Speed::new(self.settings.speed);
+        self.settings
     }
 
     /// How many battles the record holds.
@@ -114,6 +127,18 @@ impl Battles {
     }
 }
 
+/// The combat options' settings of the file at `path` (a first run's where there is none).
+fn read_settings(path: &Path) -> Result<Settings, String> {
+    let shown = path.display();
+    let text = path
+        .exists()
+        .then(|| fs::read_to_string(path))
+        .transpose()
+        .map_err(|e| format!("{shown}: {e}"))?;
+    let (settings, _) = Settings::read(text.as_deref()).map_err(|e| format!("{shown}: {e}"))?;
+    Ok(settings)
+}
+
 /// How a battle was hosted.
 #[derive(Debug, Default)]
 pub struct Shown {
@@ -125,6 +150,9 @@ pub struct Shown {
     pub quit: bool,
     /// Its last frame shown (E24 M4 T5b2: the switch's fade out fades it).
     pub last: Option<Screen>,
+    /// Where the mouse stood over the battle's frame at its end (E24 M4 T6, R5-5: the map's
+    /// mouse then; none outside the window).
+    pub pointer: Option<(i32, i32)>,
 }
 
 /// What the window's run asks of a hosted battle.
@@ -139,11 +167,13 @@ pub struct Run {
 }
 
 /// Runs battle `k` of `battles` in `win` to its closed result window (or the window's quit, or an
-/// unattended run's end), its sound on `sound`; the sound handed back (its battle's streams
-/// removed) and how it went. A battle that does not load or start is noted in `lines` and skipped.
+/// unattended run's end), its sound on `sound`, the combat options' settings read again first;
+/// the sound handed back (its battle's streams removed) and how it went. A battle that does not
+/// load or start is noted in `lines` and skipped, its sound handed back; a failed write of the
+/// settings is noted there too.
 pub fn host(
     win: &mut Window,
-    battles: &Battles,
+    battles: &mut Battles,
     k: usize,
     sound: Option<HostSound>,
     run: Run,
@@ -153,6 +183,7 @@ pub fn host(
         lines.push(format!("battle {}: not in the record", k + 1));
         return Ok((sound, Shown::default()));
     };
+    let settings = battles.settings_now(lines);
     let ground = match Ground::load_battle(&battles.source, battle) {
         Ok(ground) => ground,
         Err(e) => {
@@ -160,11 +191,17 @@ pub fn host(
             return Ok((sound, Shown::default()));
         }
     };
-    let prepared = Prepared::new(&ground)?;
+    let prepared = match Prepared::new(&ground) {
+        Ok(prepared) => prepared,
+        Err(e) => {
+            lines.push(format!("battle {}: {e}; not shown", k + 1));
+            return Ok((sound, Shown::default()));
+        }
+    };
     let setup = Setup {
         keys: battles.keys.clone(),
-        settings: battles.settings,
-        settings_path: PathBuf::from(SETTINGS_FILE),
+        settings,
+        settings_path: battles.settings_path.clone(),
         from: 0,
         sound,
         install: battles.source.install.clone(),
@@ -184,9 +221,11 @@ pub fn host(
     };
     let shown = pass(win, &mut hosted, run, lines);
     let sound = hosted.take_sound();
+    lines.extend(hosted.take_unsaved());
     let mut shown = shown?;
     shown.outcome = hosted.outcome().map(|o| format!("{o:?}"));
     shown.last = hosted.shown().map(|f| f.screen.clone());
+    shown.pointer = hosted.pointer();
     Ok((sound, shown))
 }
 
@@ -208,7 +247,12 @@ fn pass(
             drawn_cursor = true;
         }
     }
+    // A focus lost before the battle (E24 M4 T6, R5-5): its effects held from their start (the
+    // shared music knows it: the map told the host's sound).
     let mut focused = win.focused();
+    if !focused {
+        hosted.focus(false);
+    }
     loop {
         let now = win.ticks_ns();
         if run.stop_ns.is_some_and(|s| now >= s) {
@@ -306,7 +350,8 @@ fn pass(
 
 /// Battle `k` of `battles`' first frame as its element draws it at its start (E24 M4 T5b2,
 /// design §5.21, *provisional*: a switch's fade in): started unattended, with no sound, on a
-/// stopped clock. None where it does not load or start (noted in `lines`).
+/// stopped clock, the settings read at the window's start. None where it does not load or start
+/// (noted in `lines`).
 pub fn first_frame(
     battles: &Battles,
     k: usize,
@@ -322,11 +367,17 @@ pub fn first_frame(
             return Ok(None);
         }
     };
-    let prepared = Prepared::new(&ground)?;
+    let prepared = match Prepared::new(&ground) {
+        Ok(prepared) => prepared,
+        Err(e) => {
+            lines.push(format!("battle {}: {e}; its first frame not drawn", k + 1));
+            return Ok(None);
+        }
+    };
     let setup = Setup {
         keys: battles.keys.clone(),
         settings: battles.settings,
-        settings_path: PathBuf::from(SETTINGS_FILE),
+        settings_path: battles.settings_path.clone(),
         from: 0,
         sound: None,
         install: battles.source.install.clone(),
@@ -368,5 +419,51 @@ fn present(
             win.present(&widened)
         }
         None => win.present(&frame.xrgb),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_settings_read_again_before_a_battle() {
+        // E24 M4 T6 (R5-10): a battle's options dialog writes the file; the next battle reads it,
+        // the speed too; an unreadable file keeps the settings read before, noted.
+        let dir = std::env::temp_dir().join(format!("h3-map-view-settings-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(SETTINGS_FILE);
+        let _ = fs::remove_file(&path);
+        let first = read_settings(&path).unwrap();
+        assert_eq!(first, Settings::FIRST_RUN);
+        let mut battles = Battles {
+            list: Vec::new(),
+            source: Source {
+                input: dir.join("r.jsonl"),
+                seed: 0,
+                speed: Speed::new(first.speed),
+                packs: dir.clone(),
+                install: dir.clone(),
+                humans: [false; 2],
+                computer: Computer::Greedy,
+                server: None,
+                battle: 0,
+            },
+            keys: Keys::original(),
+            settings: first,
+            settings_path: path.clone(),
+        };
+        let faster = Settings {
+            speed: (first.speed + 1) % 3,
+            ..first
+        };
+        fs::write(&path, faster.write()).unwrap();
+        let mut lines = Vec::new();
+        assert_eq!(battles.settings_now(&mut lines), faster);
+        assert_eq!(battles.source.speed, Speed::new(faster.speed));
+        fs::write(&path, "battle = 3").unwrap();
+        assert_eq!(battles.settings_now(&mut lines), faster);
+        assert_eq!(lines.len(), 1);
+        let _ = fs::remove_dir_all(&dir);
     }
 }

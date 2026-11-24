@@ -10,26 +10,26 @@ fn texts() -> Catalogue {
     let json = concat!(
         r#"{ "map": { "ask": { "size": { "0": "a few", "1": "several", "2": "a pack of", "#,
         r#""8": "a legion of" }, "#,
-        r#""artifact": "guarded by {{size}} {{creature}}. Fight the {{creature}}?", "#,
-        r#""guarded": "the {{dwelling}} is guarded by {{size}} {{creature}}.", "#,
-        r#""mine": "MINE", "bank": "You have found a {{bank}}.", "#,
+        r#""artifact": "{{size}} {{creature}} keep it. Attack the {{creature}}?", "#,
+        r#""guarded": "{{size}} {{creature}} keep the {{dwelling}}.", "#,
+        r#""mine": "MINE", "bank": "A {{bank}} is here.", "#,
         r#""bank-looted": "once a {{bank}}", "derelict-ship": "SHIP", "crypt": "CRYPT", "#,
         r#""shipwreck": "WRECK", "tree-gold": "2000 gold", "tree-gems": "10 gems", "#,
-        r#""tree-visited": "my student", "tree-poor-gold": "I need 2000 gold.", "#,
-        r#""tree-poor-gems": "I need 10 gems.", "pyramid": "PYRAMID", "tomb": "TOMB", "#,
-        r#""tomb-found": "finding the {{artifact}}", "tomb-empty": "finding nothing", "#,
+        r#""tree-visited": "TREE0", "tree-poor-gold": "TREE POOR: gold", "#,
+        r#""tree-poor-gems": "TREE POOR: gems", "pyramid": "PYRAMID", "tomb": "TOMB", "#,
+        r#""tomb-found": "TOMB: {{artifact}}", "tomb-empty": "TOMB0", "#,
         r#""hire": "[{{dwelling}}] recruit {{creature}}?", "#,
-        r#""joined": "{{amount}} {{creature}} join your army.", "#,
-        r#""none": "There are no {{creature}} here to recruit.", "#,
-        r#""no-room": "The {{creature}} would join your hero", "#,
-        r#""join": "{Followers} {{creature}} wish to join you.", "#,
-        r#""join-one": "The {{creature}} joins for {{price}} gold.", "#,
+        r#""joined": "{{amount}} {{creature}} come along.", "#,
+        r#""none": "No {{creature}} to hire.", "#,
+        r#""no-room": "No room for the {{creature}}", "#,
+        r#""join": "{Followers} {{creature}} ask to come.", "#,
+        r#""join-one": "One {{creature}}: {{price}} gold.", "#,
         r#""join-gold": "An offer:\n\n", "#,
-        r#""join-price": "All {{amount}} of the {{creature}} for {{price}} gold.", "#,
-        r#""flee": "The {{creature}} scatter.", "pass": "PASS", "maps-sea": "SEA", "#,
+        r#""join-price": "{{amount}} {{creature}}: {{price}} gold.", "#,
+        r#""flee": "{{creature}} run.", "pass": "PASS", "maps-sea": "SEA", "#,
         r#""maps-land": "LAND", "maps-underground": "TUNNELS", "open-box": "OPEN?", "#,
         r#""or": "or", "chest": "CHEST", "arena": "ARENA", "school": "SCHOOL" }, "#,
-        r#""find": { "reward-treasure": "{{hero}} has found treasure." } }, "#,
+        r#""find": { "reward-treasure": "{{hero}}: treasure." } }, "#,
         r#""creature": { "0_one": "Pikeman", "0_other": "Pikemen", "8_one": "Monk", "#,
         r#""8_other": "Monks", "139_one": "Peasant", "139_other": "Peasants" }, "#,
         r#""artifact": { "70": "Equestrian's Gloves" }, "#,
@@ -145,7 +145,7 @@ fn a_guarded_pile_and_artifact() {
     assert!(asked.beside() && asked.chooses());
     assert_eq!(
         asked.told(&texts()).text,
-        "guarded by a pack of Pikemen. Fight the Pikemen?"
+        "a pack of Pikemen keep it. Attack the Pikemen?"
     );
     assert_eq!(ask(&artifact(vec![pikemen(10), pikemen(5)])), None);
     assert!(asked.yes(&tables().map.finds, &art(), &texts()).is_none());
@@ -179,10 +179,7 @@ fn a_mine_a_bank_and_the_search_kinds() {
     // A bank (`ask-bank`'s Cyclops Stockpile, its word 0xFC00001F), looted (bit 25: a box).
     let bank = ask(&seen(16, 0, 0xFC00_001F)).unwrap();
     assert!(bank.asks() && bank.chooses());
-    assert_eq!(
-        bank.told(&texts()).text,
-        "You have found a Cyclops Stockpile."
-    );
+    assert_eq!(bank.told(&texts()).text, "A Cyclops Stockpile is here.");
     let looted = ask(&seen(16, 0, 1 << 25)).unwrap();
     assert!(!looted.asks());
     assert_eq!(looted.told(&texts()).text, "once a Cyclops Stockpile");
@@ -224,7 +221,7 @@ fn the_tree_of_knowledge() {
         };
         let box_ = ask(&visited).unwrap();
         assert!(!box_.asks());
-        assert_eq!(box_.told(&texts()).text, "my student");
+        assert_eq!(box_.told(&texts()).text, "TREE0");
     }
     // Too poor: a box alone (the kingdom without gold, without gems; a resource past the bar's
     // never held).
@@ -234,9 +231,9 @@ fn the_tree_of_knowledge() {
     };
     let poor_gold = Ask::of(&seen(102, 0, 1 << 13), &poor, &art()).unwrap();
     assert!(!poor_gold.asks());
-    assert_eq!(poor_gold.told(&texts()).text, "I need 2000 gold.");
+    assert_eq!(poor_gold.told(&texts()).text, "TREE POOR: gold");
     let poor_gems = Ask::of(&seen(102, 0, 2 << 13), &poor, &art()).unwrap();
-    assert_eq!(poor_gems.told(&texts()).text, "I need 10 gems.");
+    assert_eq!(poor_gems.told(&texts()).text, "TREE POOR: gems");
     let mut odd = art();
     odd.tree_prices = vec![[9, 1]];
     let never = Ask::of(&seen(102, 0, 1 << 13), &red(), &odd).unwrap();
@@ -258,7 +255,7 @@ fn the_pyramid_and_the_tomb() {
     assert_eq!(tomb.told(&texts()).text, "TOMB");
     let finds = tables().map.finds;
     let (found, gain) = said(tomb.yes(&finds, &art(), &texts()));
-    assert_eq!(found.text, "finding the Equestrian's Gloves");
+    assert_eq!(found.text, "TOMB: Equestrian's Gloves");
     assert_eq!(found.pictures, vec![(8, 70)]);
     assert_eq!((gain.morale, gain.skills), ([-3, -3], [0; 4]));
     // An artifact of primary skills gives them (the Centaur's Axe, 7: +2 Attack).
@@ -268,7 +265,7 @@ fn the_pyramid_and_the_tomb() {
     let empty = ask(&seen(108, 0, 0xFF88_C01E)).unwrap();
     assert_eq!(empty, Ask::Tomb(None));
     let (told, gain) = said(empty.yes(&finds, &art(), &texts()));
-    assert_eq!(told.text, "finding nothing");
+    assert_eq!(told.text, "TOMB0");
     assert_eq!(told.pictures, vec![(16, 0); 3]);
     assert_eq!(gain.morale, [-3, -3]);
 }
@@ -299,7 +296,7 @@ fn a_dwellings_guards() {
     assert!(guarded.asks() && guarded.chooses() && !guarded.beside());
     assert_eq!(
         guarded.told(&texts()).text,
-        "the Monastery is guarded by several Monks."
+        "several Monks keep the Monastery."
     );
     assert!(guarded.yes(&tables().map.finds, &art(), &texts()).is_none());
     // Another player's too; a creature below level 5 guards nothing (its flag, then its hire:
@@ -330,7 +327,7 @@ fn a_dwellings_hire() {
     assert_eq!(hire.told(&texts()).text, "[Guardhouse] recruit Pikemen?");
     let finds = tables().map.finds;
     let (joined, gain) = said(hire.yes(&finds, &art(), &texts()));
-    assert_eq!(joined.text, "14 Pikemen join your army.");
+    assert_eq!(joined.text, "14 Pikemen come along.");
     assert_eq!(gain.army[0], Some(pikemen(14)));
     assert_eq!(gain.army[1..], [None; 6]);
     // One joins by its singular; none to hire; no room (seven other stacks), the army as it was.
@@ -343,7 +340,7 @@ fn a_dwellings_hire() {
     };
     assert_eq!(
         said(one.yes(&finds, &art(), &texts())).0.text,
-        "1 Pikeman join your army."
+        "1 Pikeman come along."
     );
     let none = Ask::Hire {
         dwelling: 56,
@@ -353,7 +350,7 @@ fn a_dwellings_hire() {
         flag: false,
     };
     let (told, gain) = said(none.yes(&finds, &art(), &texts()));
-    assert_eq!(told.text, "There are no Pikemen here to recruit.");
+    assert_eq!(told.text, "No Pikemen to hire.");
     assert_eq!(gain, Gain::default());
     let full = Visitor {
         army: [Some(Stack {
@@ -365,7 +362,7 @@ fn a_dwellings_hire() {
     let crowded = Ask::of(&dwelling(56, 0, 14, Some(0)), &full, &art()).unwrap();
     assert!(matches!(crowded, Ask::Hire { room: false, .. }));
     let (told, gain) = said(crowded.yes(&finds, &art(), &texts()));
-    assert_eq!(told.text, "The Pikemen would join your hero");
+    assert_eq!(told.text, "No room for the Pikemen");
     assert_eq!(gain, Gain::default());
     // A stack of their kind is room.
     let mut kin = full.clone();
@@ -408,7 +405,7 @@ fn a_dwelling_of_another_team_without_guards_takes_its_flag_then_asks_its_hire()
     assert!(hire.flags() && hire.asks() && hire.chooses() && !hire.beside());
     assert_eq!(hire.told(&texts()).text, "[Guardhouse] recruit Pikemen?");
     let (joined, gain) = said(hire.yes(&tables().map.finds, &art(), &texts()));
-    assert_eq!(joined.text, "14 Pikemen join your army.");
+    assert_eq!(joined.text, "14 Pikemen come along.");
     assert_eq!(gain.army[0], Some(pikemen(14)));
     // Blue's alike; a level-2 creature's flag taken, then the recruit dialog (not built).
     assert_eq!(ask(&dwelling(56, 0, 14, Some(1))), Some(hire));
@@ -529,7 +526,7 @@ fn a_monsters_free_join() {
     assert!(join.asks() && !join.chooses() && join.beside());
     assert_eq!(join.attacker(), Some(278));
     let told = join.told(&texts());
-    assert_eq!(told.text, "{Followers} Peasants wish to join you.");
+    assert_eq!(told.text, "{Followers} Peasants ask to come.");
     assert!(told.pictures.is_empty());
     let yes = join.yes(&tables().map.finds, &art(), &texts()).unwrap();
     let mut gain = Gain::default();
@@ -555,7 +552,7 @@ fn a_monsters_free_join() {
             flees: true,
         }
     );
-    assert_eq!(flight.told(&texts()).text, "The Peasants scatter.");
+    assert_eq!(flight.told(&texts()).text, "Peasants run.");
     assert_eq!(flight.yes(&tables().map.finds, &art(), &texts()), None);
     assert_eq!(
         flight.no(),
@@ -596,7 +593,7 @@ fn a_monsters_join_for_gold() {
         }
     );
     let told = gold.told(&texts());
-    assert_eq!(told.text, "An offer:\n\nAll 5 of the Pikemen for 300 gold.");
+    assert_eq!(told.text, "An offer:\n\n5 Pikemen: 300 gold.");
     assert_eq!(told.pictures, vec![(6, 300)]);
     let yes = gold.yes(&tables().map.finds, &art(), &texts()).unwrap();
     assert_eq!(yes.gain.resources, [0, 0, 0, 0, 0, 0, -300]);
@@ -608,10 +605,7 @@ fn a_monsters_join_for_gold() {
         &diplomat,
         &art(),
     );
-    assert_eq!(
-        one.unwrap().told(&texts()).text,
-        "The Pikeman joins for 60 gold."
-    );
+    assert_eq!(one.unwrap().told(&texts()).text, "One Pikeman: 60 gold.");
     // Too poor, or no Diplomacy: no offer, the flight at once.
     let poor = Visitor {
         resources: [0; 7],
@@ -775,7 +769,7 @@ fn pandoras_box() {
     assert_eq!(open.told(&texts()).text, "OPEN?");
     let yes = open.yes(&tables().map.finds, &art(), &texts()).unwrap();
     assert_eq!(yes.boxes.len(), 1);
-    assert_eq!(yes.boxes[0].told.text, "Mephala has found treasure.");
+    assert_eq!(yes.boxes[0].told.text, "Mephala: treasure.");
     assert_eq!(yes.boxes[0].told.pictures, vec![(6, 1500)]);
     assert_eq!(yes.boxes[0].shows.resources, [0, 0, 0, 0, 0, 0, 1500]);
     assert_eq!((yes.granted, yes.taken), (true, Some(Fade::Pickup)));

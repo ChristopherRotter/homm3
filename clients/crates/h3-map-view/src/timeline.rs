@@ -127,6 +127,7 @@ use h3_map::model::Pos;
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_ui::message::{self as boxes, Key, MessageBox, Open, Outcome};
+use h3_ui::ui::Item;
 
 use crate::asks::Fade;
 use crate::finds::{FindArt, Gain, pickup};
@@ -317,9 +318,10 @@ pub enum Action {
     /// player's: the tile need not show on the view): the path among the ones the map knows that
     /// leads there shown, then walked; none, nothing.
     Walk(Pos),
-    /// The battle's result window closed by its host (E24 M4 T5b2, design §5.21: the battle
-    /// client's element run to its OK in the window): the battle's switch back to the map goes
-    /// on; elsewhere nothing.
+    /// The battle's result window closed (E24 M4 T5b2, design §5.21: the battle client's element
+    /// run to its OK in the window; since E24 M4 T6, R5-3, a record player's input, given where
+    /// the switch shows the battle whole, `crate::director`): the battle's switch back to the map
+    /// goes on; elsewhere nothing.
     BattleClosed,
 }
 
@@ -514,6 +516,9 @@ pub enum Unplayable {
     /// A walk's step the engine's record does not take (E24 M4 T4a2: a tile off the move's, or
     /// a walk past the record's last), by the tile stepped onto.
     Moved([i32; 3]),
+    /// A record's landing whose boat's facing the record gives past 7 (E24 M4 T6, the reviewer's
+    /// R3-6: [`Sea::Unfaced`]), by the tile stepped onto.
+    Landing([i32; 3]),
     /// A record played without a recording (E24 M4 T4c, `crate::director`): a walk to the tile
     /// whose hero the kingdom's list does not hold, or (the tile `[-1, -1, -1]`) the record not
     /// at its end by the limit.
@@ -550,6 +555,12 @@ impl fmt::Display for Unplayable {
                 write!(
                     f,
                     "a step onto ({x}, {y}, {z}) the record's walks do not take"
+                )
+            }
+            Self::Landing([x, y, z]) => {
+                write!(
+                    f,
+                    "a landing onto ({x}, {y}, {z}) whose boat's facing the record gives past 7"
                 )
             }
             Self::Record([-1, -1, -1]) => write!(f, "the record not at its end by the limit"),
@@ -917,11 +928,12 @@ pub struct Start {
     /// not played.
     pub town: Option<TownBoxes>,
     /// The selected hero's experience at 0 (E24 M4 T2c, design §5.5, *provisional*: a
-    /// situation's, which the map gives it; the engine's from Part B): the levels a visit's
-    /// experience reaches from it. None: not known (a new game's draw), and no level is reached.
+    /// situation's, which the map gives it): the levels a visit's experience reaches from it.
+    /// None: not known (a new game's draw; since E24 M4 T6, R2-3, a record's, whose finds carry
+    /// their own level-ups, [`Found::levels`]), and no level is reached.
     pub experience: Option<u32>,
     /// The selected hero's level-ups' dialogs, by their level (E24 M4 T2c: the adapter's, laid
-    /// out from a recording's facts).
+    /// out from a recording's facts; none for a record's, R2-3).
     pub level_ups: Vec<LevelBox>,
     /// The boats at 0 (E24 M4 T2d2, design §5.7: the live part's, [`Boats::of`]).
     pub boats: Boats,
@@ -949,7 +961,7 @@ pub struct Start {
 /// reveal at its first (MCL-Q39 (c)).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Move {
-    /// The tiles stepped onto, in order.
+    /// The path's tiles, in order: those stepped onto (up to [`Move::stops`]).
     pub tiles: Vec<Pos>,
     /// The points after each step (none: unchanged).
     pub points: Vec<Option<i32>>,
@@ -962,6 +974,16 @@ pub struct Move {
     /// of the `GameEvents` whose `BattleStarted` began it; at the walk's end the map hands the
     /// battle over ([`Loop::battles`]). None: no battle.
     pub battle: Option<u32>,
+    /// The empty boats the viewer is told of since the walk before (E24 M4 T6, the reviewer's
+    /// R3-3, *provisional*: a record's `GameReveal`'s boats, its walk's own, and a `BoatBuilt`'s),
+    /// put on the map at its first step with its reveal, before a boarding there; one on a tile
+    /// with an empty boat replaces it.
+    pub boats: Vec<LiveBoat>,
+    /// The steps the record's walk takes when fewer than its tiles (E24 M4 T6, *provisional*: the
+    /// record's `HeroStepped`): all but the last, a visit from beside (a find's, else one the map
+    /// does not show: [`Loop::pass_by`]); fewer, a walk stopped on the way (an event, a guard's
+    /// battle) after that many, the rest of its path left shown. None: every tile stepped onto.
+    pub stops: Option<usize>,
 }
 
 /// A record's walk's last step with a boat (E24 M4 T4b2, design §5.15, *provisional*): the
@@ -974,6 +996,10 @@ pub enum Sea {
     /// The hero's boat left on its water tile, of its type and facing the record's way
     /// (`Landed`).
     Land(LiveBoat),
+    /// A `Landed` whose facing the record gives past 7 (E24 M4 T6, the reviewer's R3-6): no boat
+    /// the map can leave, so the step is refused where it is played ([`Unplayable::Landing`]), as
+    /// a boarding with no boat is.
+    Unfaced(u8),
 }
 
 /// The tiles the viewer's walks explored since the sequence's 0 (E24 M4 T4a2, design §5.13: a
@@ -1041,6 +1067,16 @@ pub struct Found {
     /// The battle the visit begins at once (E24 M4 T5b2, design §5.21: a savage monster's from
     /// beside): the attack drawn, the battle's switch, then its result on the map.
     pub fight: Option<Fight>,
+    /// A record's visit (E24 M4 T6, the reviewer's R2-1): the record's walk (its place among
+    /// [`Start::moves`]) whose end visits it, told at that visit alone (each of a record's visits
+    /// to a tile is a find of its own, with its own boxes, gain, flag and level-ups); none: a
+    /// recording's, told at every visit to its tile (its first boxes, then [`Found::again`]).
+    pub walk: Option<usize>,
+    /// A record's visit's level-ups (E24 M4 T6, the reviewer's R2-3: the record's own, any
+    /// hero's), in order: due once the visit's experience is shown ([`Loop::gain`]), opened where
+    /// the visit's handler calls `hero_level_up` as [`Start::level_ups`]' are; none for a
+    /// recording's (the tables' thresholds).
+    pub levels: Vec<LevelBox>,
 }
 
 impl Found {
@@ -1085,11 +1121,45 @@ pub enum AfterBattle {
     /// with 0, after `battle_aftermath` 0x4AC930's way: the hero gone first, then dissolved), then
     /// the player's next hero or town selected (`mobilize_hero(0, 0, 1)`).
     Lost,
-    /// Nothing more (the monster stands: a defender beaten elsewhere, not built).
+    /// A draw (E24 M4 T6, the reviewer's R5-4: the record takes both off the map): the hero
+    /// leaves as [`AfterBattle::Lost`]'s (`battle_aftermath`'s way, the hero's leaving first),
+    /// then the monster is taken off as [`AfterBattle::Taken`]'s (`monster_fight`'s rest: none
+    /// left), *provisional*: not recorded.
+    Both,
+    /// Nothing more (the monster stands: a defender beaten elsewhere, not built; since E24 M4 T6,
+    /// R5-4, a mine's guards' battle lost by a hero the record keeps).
     Stays,
     /// The answer's boxes that began it, one after another (`visit_mine` 0x4A39A0: ADVEVENT 85,
     /// then MINEEVNT's), and its flag.
     Boxes,
+}
+
+impl AfterBattle {
+    /// What a wandering monster's battle leaves by what the record's end of it took off the map
+    /// (E24 M4 T5b2; since E24 M4 T6, the reviewer's R5-4, a draw's both): the monster `taken`,
+    /// the hero `lost`.
+    #[must_use]
+    pub const fn of_fight(taken: bool, lost: bool) -> Self {
+        match (taken, lost) {
+            (true, true) => Self::Both,
+            (true, false) => Self::Taken,
+            (false, true) => Self::Lost,
+            (false, false) => Self::Stays,
+        }
+    }
+
+    /// What a mine's guards' battle leaves (E24 M4 T6, the reviewers' R5-4 and R3-2): the
+    /// answer's boxes after the hero's win (`winner` 0); else the hero gone where the record
+    /// takes it off the map (`lost`: beaten, retreated or a draw), or nothing (MCL-Q51: what the
+    /// original shows then not read).
+    #[must_use]
+    pub const fn of_guards(winner: i32, lost: bool) -> Self {
+        match (winner, lost) {
+            (0, _) => Self::Boxes,
+            (_, true) => Self::Lost,
+            (_, false) => Self::Stays,
+        }
+    }
 }
 
 /// A visit's question (E24 M4 T2b2 part A1, design §5.4, *provisional*: the viewer's facts at 0,
@@ -1203,8 +1273,31 @@ pub struct NextTurn {
     /// for a human's.
     pub walks: Vec<Steps>,
     /// The map's objects (their indexes among the map's objects) taken off as the turn starts
-    /// (E24 M4 T4c2: a record's other player's pickups without a step, MCL-Q46 (c)).
+    /// (E24 M4 T4c2: a record's other player's pickups without a step, MCL-Q46 (c); since E24 M4
+    /// T6, R1-5, any object a stepless command removed).
     pub taken: Vec<usize>,
+    /// The objects flagged as the turn starts, each by its index and its owner's colour (E24 M4
+    /// T6, the reviewer's R1-5: a record's other player's stepless command's, *provisional*:
+    /// nothing shown).
+    pub flags: Vec<(usize, u8)>,
+    /// The map's heroes taken off the map as the turn starts, by their indexes (as
+    /// [`NextTurn::flags`]).
+    pub lost: Vec<usize>,
+    /// The empty boats put on the map as the turn starts (E24 M4 T6, the reviewer's R3-3,
+    /// *provisional*: a record's boats told since the table before and before any walk of the
+    /// viewer's, a boat built; as [`NextTurn::flags`], nothing shown).
+    pub boats: Vec<LiveBoat>,
+    /// The map's hero of each of the kingdom's heroes, slot by slot, none for one no map hero is
+    /// (E24 M4 T6, the reviewer's R1-4: a record's, its list at the turn's start, a hero lost or
+    /// hired since); none: the start's choices by their slots (a recording's).
+    pub list: Option<Vec<Option<usize>>>,
+    /// Played at the loop's start in place of after End Turn (E24 M4 T6, the reviewer's R1-1: a
+    /// record whose viewer does not act first starts in another player's turn): the first of
+    /// [`Start::turns`] only.
+    pub first: bool,
+    /// A computer's turn the record ends in (E24 M4 T6, R1-1, *provisional*): played to its last
+    /// walk, the map then left in its screen (its end is not in the record).
+    pub open: bool,
 }
 
 /// A computer player's hero's walk in its turn (E24 M4 T1b2, *provisional*): the hero (its index
@@ -1226,9 +1319,41 @@ pub struct Steps {
     /// The steps that board an empty boat or land from one (E24 M4 T4c2: a record's `Boarded`,
     /// `Landed`), each by its place among [`Steps::steps`].
     pub sea: Vec<(usize, Sea)>,
-    /// The objects taken off the map at its end, each by its anchor and its index among the
-    /// map's objects (E24 M4 T4c: a record's pile or artifact the hero picks up from beside).
+    /// Its moves' ends, in order (E24 M4 T6, the reviewer's R1-3: a record's, each command's
+    /// steps a move; since T4c the objects a record's hero picks up from beside at its end); none:
+    /// one move to its last step, nothing taken (a recording's).
+    pub ends: Vec<End>,
+    /// The record's judgement of whether the viewer sees the hero's tile as it is chosen (E24 M4
+    /// T6, the reviewer's R1-2: the walk's first step's start told), each step seen but the
+    /// [`Steps::unseen`] ones (Blackout apart) and each end by its [`End::seen`]; none: the
+    /// viewer's explored tiles decide ([`Loop::sees`], a recording's).
+    pub seen: Option<bool>,
+}
+
+/// A computer's move's end (E24 M4 T6, the reviewer's R1-3, R1-5, *provisional*: a record's, one
+/// command's steps): the hero standing, the view drawn at its last step (`hero_move_step`'s fifth
+/// argument 1, design §5.18), then what the command changes on the map.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct End {
+    /// The walk's steps up to it.
+    pub after: usize,
+    /// The objects taken from beside, each by its anchor and its index among the map's objects:
+    /// the hero turned to the first, its dissolve with the pickup's sound where the viewer sees
+    /// it ([`Loop::ai_take`]).
     pub taken: Vec<(Pos, usize)>,
+    /// The objects off the map at once, nothing dissolved (a monster beaten), by their indexes.
+    pub removed: Vec<usize>,
+    /// The objects flagged, each by its index and its owner's colour ([`Loop::raise`]).
+    pub flags: Vec<(usize, u8)>,
+    /// The map's heroes off the map, drawn nowhere from then on (a hero lost in sight), by their
+    /// indexes.
+    pub lost: Vec<usize>,
+    /// The empty boats put on the map (E24 M4 T6, the reviewer's R3-3: a boat the command built
+    /// in sight, `BoatBuilt`).
+    pub boats: Vec<LiveBoat>,
+    /// Whether the viewer sees the hero's tile there, by the record's judgement ([`Steps::seen`]:
+    /// the move's last step's end told).
+    pub seen: bool,
 }
 
 /// A status window's kind asked for a time (`status_window_set_kind` 0x415D60: the manager's
@@ -1369,9 +1494,9 @@ pub struct Draw {
     /// A battle's switch shown instead of this draw as it is (E24 M4 T5b2, design §5.21): the
     /// map's fade out and in, the battle's fade in and out.
     pub switch: Option<Switch>,
-    /// A hero gone off the map (E24 M4 T5b2: a battle lost), its index among the map's heroes:
-    /// drawn nowhere.
-    pub left: Option<usize>,
+    /// The heroes gone off the map (E24 M4 T5b2: a battle lost; since E24 M4 T6, R1-5, another
+    /// player's hero lost in sight), by their indexes among the map's heroes: drawn nowhere.
+    pub left: Vec<usize>,
 }
 
 /// What a battle's switch shows (E24 M4 T5b2, design §5.21, *provisional*: the host draws it,
@@ -1609,9 +1734,12 @@ pub struct Loop {
     /// The battles a switch handed over (their record's numbers): a walk's end lists none of
     /// them again ([`Loop::battles`]).
     switched: Vec<u32>,
-    /// The hero a battle took off the map (E24 M4 T5b2): its index among the map's heroes and
-    /// its slot in the kingdom's list.
-    left: Option<usize>,
+    /// The heroes off the map (E24 M4 T5b2: a battle lost; since E24 M4 T6, R1-5, another
+    /// player's hero lost in sight), by their indexes among the map's heroes.
+    left: Vec<usize>,
+    /// The kingdom's slots of the heroes battles took off the map, in order (E24 M4 T6:
+    /// [`Loop::slots_left`]).
+    slots_left: Vec<usize>,
     /// The input queue emptied (`input_flush` 0x4EC570: a box's opening, a human's turn's
     /// start): the actions after this one in its millisecond are dropped.
     flush: bool,
@@ -1633,6 +1761,10 @@ pub struct Loop {
     hero_level: u8,
     experienced: Option<usize>,
     level_ups: Arc<Vec<LevelBox>>,
+    /// A record's find whose visit is under way and whose level-ups wait for its experience, and
+    /// the level-ups due (E24 M4 T6, the reviewer's R2-3: [`Found::levels`]).
+    leveling: Option<usize>,
+    due_levels: VecDeque<LevelBox>,
     /// The boats in memory and the map's water ([`Start::boats`], [`Start::water`]), and the boat's
     /// visit the step under way ends with (E24 M4 T2d2).
     boats: Boats,
@@ -1649,10 +1781,14 @@ pub struct Loop {
     moves: Option<Arc<Vec<Move>>>,
     next_move: usize,
     walking: Option<(usize, usize)>,
+    /// The engine's walk taken last (E24 M4 T6, R2-1: a record's find is its end's,
+    /// [`Found::walk`]); none before the first or past the last.
+    last_move: Option<usize>,
     walked_tiles: Walked,
     off_record: Option<Unplayable>,
     /// The battles handed over so far (E24 M4 T5b1): each walk's end that began one, its
-    /// millisecond and [`Move::battle`].
+    /// millisecond and [`Move::battle`]; since E24 M4 T5b2 each switch's where it shows the
+    /// battle whole ([`Loop::battles`]).
     battles: Vec<(u32, u32)>,
 }
 
@@ -1673,10 +1809,16 @@ struct AiTurn {
     /// what it does with a boat (E24 M4 T4c2).
     slot: usize,
     steps: VecDeque<(Hero, bool, Option<Sea>)>,
-    /// The objects the walk under way takes at its end (E24 M4 T4c).
-    taken: Vec<(Pos, usize)>,
+    /// The steps of the walk under way taken so far, its moves' ends left (E24 M4 T6, R1-3: each
+    /// command's move; since T4c the objects it takes at its end) and the record's judgement of
+    /// what the viewer sees of it (R1-2, [`Steps::seen`]).
+    done: usize,
+    ends: VecDeque<End>,
+    judged: Option<bool>,
     /// Whether a hero of the turn was chosen (E24 M4 T4c2: the next one's choice puts it back).
     chosen: bool,
+    /// The record ends in this turn (E24 M4 T6, R1-1, [`NextTurn::open`]).
+    open: bool,
     /// The viewer's turn's end.
     ended: Ended,
 }
@@ -1731,6 +1873,9 @@ enum After {
     Answer(usize, Box<Answer>),
     /// A dissolve's end: the step's end, then the actions given meanwhile.
     Step(Vec<Action>),
+    /// A visit's end with nothing more to show (E24 M4 T6, the reviewer's R2-3: a battle whose
+    /// monster stands, [`Loop::visited`]).
+    Visited(usize),
 }
 
 /// An object's dissolve under way (E24 M4 T2a2 part B, design §5.3): its start, the draw before
@@ -1810,8 +1955,11 @@ enum Then {
     /// its animation next, then its turn going on.
     AiBoard(Hero, bool),
     /// A hero a battle took off the map (E24 M4 T5b2): its slot left out of the kingdom's list,
-    /// then the player's next hero or town.
-    Lost,
+    /// then the player's next hero or town; since E24 M4 T6 (R5-4, a draw) the monster to take
+    /// off after it, if any.
+    Lost(Option<usize>),
+    /// The actions given meanwhile, then the idle step (E24 M4 T6: a draw's monster taken).
+    Resume,
 }
 
 /// A step onto a boat held by its dissolve (E24 M4 T2d2): the walk, the boat's tile and whether
@@ -1830,6 +1978,15 @@ enum Aboard {
     Board(LiveBoat),
     /// The land stepped onto from the boat.
     Land,
+}
+
+/// What a path's last node takes in place of a step (E24 M4 T6, [`Loop::last_node`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Beside {
+    /// The find's visit from beside, by its place among the finds.
+    Find(usize),
+    /// A record's visit from beside the map does not show ([`Loop::pass_by`]).
+    Unshown,
 }
 
 /// A dissolve's steps (`screen_dissolve` 0x602DC0: eight, the blend's eighths).
@@ -1973,7 +2130,7 @@ impl Loop {
                 boats: Arc::new(start.boats.clone()),
                 walked: Arc::new(Vec::new()),
                 switch: None,
-                left: None,
+                left: Vec::new(),
             },
             hero: start.hero,
             lifted: false,
@@ -2042,7 +2199,8 @@ impl Loop {
             switching: None,
             whole: None,
             switched: Vec::new(),
-            left: None,
+            left: Vec::new(),
+            slots_left: Vec::new(),
             flush: false,
             computer_pixels,
             blackout: start.computer.blackout,
@@ -2053,6 +2211,8 @@ impl Loop {
             hero_level: start.experience.map_or(1, |e| rules.level_up.level_of(e)),
             experienced: start.index,
             level_ups: Arc::new(start.level_ups.clone()),
+            leveling: None,
+            due_levels: VecDeque::new(),
             boats: start.boats.clone(),
             water: Arc::clone(&start.water),
             aboard: None,
@@ -2062,6 +2222,7 @@ impl Loop {
             moves: start.moves.clone().map(Arc::new),
             next_move: 0,
             walking: None,
+            last_move: None,
             battles: Vec::new(),
             walked_tiles: Arc::new(Vec::new()),
             off_record: None,
@@ -2107,6 +2268,11 @@ impl Loop {
         l.moved();
         l.tick(0);
         l.idle_message(0);
+        // A record that starts in another player's turn (E24 M4 T6, the reviewer's R1-1): its
+        // first turn played at once, as after End Turn.
+        if start.turns.first().is_some_and(|n| n.first) {
+            l.turn_proceed(0)?;
+        }
         Ok(l)
     }
 
@@ -2459,9 +2625,13 @@ impl Loop {
                 })
                 .collect()
         };
+        // The record's next walk's path first (E24 M4 T6: an earlier walk's to the same tile may
+        // start beside the hero too).
+        let (earlier, later) = self.paths.split_at(self.next_move.min(self.paths.len()));
         let path = self.hero.and_then(|hero| {
-            self.paths
+            later
                 .iter()
+                .chain(earlier)
                 .filter_map(|p| in_order(hero.at, p))
                 .find(|c| c.last().is_some_and(|(_, a)| a.at == to))
         });
@@ -2477,12 +2647,15 @@ impl Loop {
     }
 
     /// Whether the map waits for input (E24 M4 T4c: the record player's, `crate::director`): no
-    /// walk, computer's turn, dissolve, box, spell book or held button under way.
+    /// walk, computer's turn, dissolve, battle's switch (E24 M4 T6, the reviewer's R5-3), box,
+    /// spell book or held button under way; a computer's turn the record ends in once its walks
+    /// are played (E24 M4 T6, R1-1) waits for nothing more.
     #[must_use]
     pub fn idle(&self) -> bool {
         self.moving.is_none()
-            && self.ai.is_none()
+            && (self.ai.is_none() || self.ai_waits())
             && self.dissolving.is_none()
+            && self.switching.is_none()
             && self.boxed.is_none()
             && self.waiting.is_empty()
             && !self.book
@@ -2500,12 +2673,59 @@ impl Loop {
     }
 
     /// The battles the map handed over so far (E24 M4 T5b1, design §5.20, *provisional*), in
-    /// order: each at the millisecond its walk ended, with the record's number of the
-    /// `GameEvents` that began it ([`Move::battle`]). The battle takes none of the map's time: a
-    /// host shows it before that millisecond's frame and goes on from there.
+    /// order: each at the millisecond its walk ended (a plain cut) or, since E24 M4 T5b2, its
+    /// switch showed it whole (a visit's fight, an answer's), with the record's number of the
+    /// `GameEvents` that began it. The battle takes none of the map's time: a host shows it before
+    /// that millisecond's frame and goes on from there.
     #[must_use]
     pub fn battles(&self) -> &[(u32, u32)] {
         &self.battles
+    }
+
+    /// The millisecond the battle's switch under way shows the battle whole and hands it over
+    /// (E24 M4 T6, the reviewer's R5-3 and R5-7: the record player closes it there, so that the
+    /// battle takes none of the map's time and that millisecond's change is its fade out's
+    /// first), once the battle's fade in has begun; none otherwise.
+    #[must_use]
+    pub fn battle_whole_at(&self) -> Option<u32> {
+        self.switching
+            .as_ref()
+            .filter(|s| s.phase == Phase::In)
+            .map(|s| s.start.saturating_add(2 * FADE_MS))
+    }
+
+    /// The kingdom's slots the heroes a battle took off the map left, in order (E24 M4 T6, the
+    /// reviewer's R5-6: each later slot one less from then on).
+    #[must_use]
+    pub fn slots_left(&self) -> &[usize] {
+        &self.slots_left
+    }
+
+    /// The slot of the map's hero `index` in the kingdom's list as the map holds it now (E24 M4
+    /// T6, the reviewer's R1-4: the record player's choice; a hero a battle took off the map gone
+    /// from it, each day's list the record's): its choice's; on a map that knows no choices the
+    /// selected hero's own (unless it is another map hero); none for a hero the list does not
+    /// hold.
+    #[must_use]
+    pub fn slot_of(&self, index: usize) -> Option<usize> {
+        let bare = self.chosen.heroes.is_empty() && self.index.is_none_or(|i| i == index);
+        self.chosen
+            .heroes
+            .iter()
+            .position(|c| c.as_ref().is_some_and(|c| c.hero == index))
+            .or(match self.kingdom.selected {
+                Selected::Hero(i) if bare => Some(i),
+                _ => None,
+            })
+    }
+
+    /// Whether a computer's turn the record ends in has played its walks (E24 M4 T6, R1-1): the
+    /// map left in its screen.
+    fn ai_waits(&self) -> bool {
+        self.ai_step.is_none()
+            && self.ai.as_ref().is_some_and(|ai| {
+                ai.open && ai.walks.is_empty() && ai.steps.is_empty() && ai.ends.is_empty()
+            })
     }
 
     /// Whether a box is open (E24 M4 T4c: the record player's): a message box, a question or a
@@ -2513,6 +2733,33 @@ impl Loop {
     #[must_use]
     pub fn boxed(&self) -> bool {
         self.boxed.is_some()
+    }
+
+    /// Whether the open box takes an answer (E24 M4 T6, the reviewer's R2-2: the record player's):
+    /// a question or a choice, a level-up's dialog, End Turn's question; not a find's box, an
+    /// answer's, the week's message (each closed by Enter, the record's next answer kept for the
+    /// box it answers: Pandora's Box's map text before its question).
+    #[must_use]
+    pub fn asks(&self) -> bool {
+        self.boxed
+            .as_ref()
+            .is_some_and(|b| matches!(b.told, Told::Asked(..) | Told::Level(_) | Told::Question))
+    }
+
+    /// The middle of the open box's choice frame `n` (E24 M4 T6, the reviewer's R2-2: where the
+    /// record player clicks the picture its answer chose, as a player's mouse would; a chest's,
+    /// the Arena's, a School's, `CHOICE + n`); none without a choice's box open.
+    #[must_use]
+    pub fn choice_at(&self, n: usize) -> Option<[i32; 2]> {
+        let dialog = &self.boxed.as_ref()?.open.message.dialog;
+        let id = boxes::CHOICE.checked_add(u16::try_from(n).ok()?)?;
+        dialog.items.iter().find_map(|item| match item {
+            Item::Area(a) if a.id == id => Some([
+                dialog.place[0] + a.at[0] + a.size[0] / 2,
+                dialog.place[1] + a.at[1] + a.size[1] / 2,
+            ]),
+            _ => None,
+        })
     }
 
     /// An action while the mouse holds a button down (`def_button_message`'s own loop from
@@ -2748,13 +2995,15 @@ impl Loop {
     /// The scenario's test of the viewer's turn's end (`scenario_condition_met` 0x4F2CE0 from
     /// `next_player_turn`; E24 M4 T2a2, design §5.3): with heroes but no town, the days without a
     /// town not counting become the tables' count and the warning's box is given; none without
-    /// [`Start::town`].
+    /// [`Start::town`], nor on a record (E24 M4 T6, *provisional*: the engine's rules, which have no
+    /// days without a town yet, E10; MCL-STUB-4).
     ///
     /// # Errors
     /// The days down to their last (their end at the next day's start: the player's elimination,
     /// not built).
     fn town_test(&mut self) -> Result<Option<Arc<MessageBox>>, Unplayable> {
-        let Some(town) = &self.town else {
+        // stub: MCL-STUB-4 (a record's days without a town: the engine tells none, E10)
+        let Some(town) = self.town.as_ref().filter(|_| self.moves.is_none()) else {
             return Ok(None);
         };
         if !self.kingdom.towns.is_empty() || self.kingdom.heroes.is_empty() {
@@ -2798,7 +3047,7 @@ impl Loop {
             return self.computer_start(t, next, status, ended);
         }
         // The selection's map hero or town, known before anything changes.
-        let Some(choice) = self.turn_choice(&next.turn) else {
+        let Some(choice) = self.turn_choice(&next) else {
             return self.unbuilt(refused);
         };
         let ended = self.turn_end(t);
@@ -2810,7 +3059,8 @@ impl Loop {
     /// kept for its choice; the selection's window memory kept (none under a kind asked: the
     /// selection's next). A redraw's deadline already passed moves to the tables' step from now
     /// without a step (*provisional*: recorded, `turn-question` at 1060, not read; E24 M4 T1b2:
-    /// here, before a computer's turn in sight, whose end then redraws for each step it missed).
+    /// here, before a computer's turn in sight too, whose end then steps the objects once,
+    /// [`Loop::ai_end`]).
     fn turn_end(&mut self, t: u32) -> Ended {
         // The days without a town counted down (`next_player_turn`: +0x3D above 0; E24 M4 T2a2).
         if self.days > 0 {
@@ -2834,15 +3084,18 @@ impl Loop {
         }
     }
 
-    /// The next day's selection as `turn` gives it: a hero's map hero (by the mouse-over's facts,
-    /// else its choice's) or a town's choice, none when neither is known.
-    fn turn_choice(&self, turn: &Turn) -> Option<Choice> {
-        let town = match turn.kingdom.selected {
+    /// The next day's selection as `next` gives it: a hero's map hero (by the turn's list, E24 M4
+    /// T6, R1-4; else by the mouse-over's facts, else its choice's) or a town's choice, none when
+    /// neither is known.
+    fn turn_choice(&self, next: &NextTurn) -> Option<Choice> {
+        let selected = next.turn.kingdom.selected;
+        let town = match selected {
             Selected::Town(i) => Some((i, self.chosen.towns.get(i).cloned().flatten()?)),
             _ => None,
         };
-        let hero = match turn.kingdom.selected {
-            Selected::Hero(i) => Some((i, self.map_hero(i)?)),
+        let hero = match (selected, &next.list) {
+            (Selected::Hero(i), Some(list)) => Some((i, (*list.get(i)?)?)),
+            (Selected::Hero(i), None) => Some((i, self.map_hero(i)?)),
             _ => None,
         };
         Some(Choice { hero, town })
@@ -2868,6 +3121,10 @@ impl Loop {
             message,
             heroes,
             taken,
+            flags,
+            lost,
+            boats,
+            list,
             ..
         } = next;
         let Ended {
@@ -2876,7 +3133,19 @@ impl Loop {
             path,
         } = ended;
         self.place(&heroes);
-        self.take_off(&taken);
+        self.changed(&taken, &flags, &lost, &boats);
+        // The choices by the day's list (E24 M4 T6, R1-4): each hero's as it was, a hired one's
+        // none.
+        if let Some(list) = list {
+            let before = core::mem::take(&mut self.chosen.heroes);
+            self.chosen.heroes = list
+                .iter()
+                .map(|index| {
+                    let index = (*index)?;
+                    before.iter().flatten().find(|c| c.hero == index).cloned()
+                })
+                .collect();
+        }
         self.player = turn.player;
         let selected = turn.kingdom.selected;
         let mut kingdom = turn.kingdom;
@@ -2910,11 +3179,7 @@ impl Loop {
                 self.buttons.move_hero = false;
                 self.hero = self.heroes.get(index).copied();
                 self.index = Some(index);
-                self.selected_id = self
-                    .hover
-                    .as_ref()
-                    .and_then(|h| h.facts().hero_list.get(i))
-                    .map(|h| h.0);
+                self.selected_id = self.record_index(index);
                 self.walked = true;
                 self.path = if before == Selected::Hero(i) {
                     path
@@ -2972,6 +3237,38 @@ impl Loop {
         }
     }
 
+    /// What a turn's start changes at once ([`NextTurn::taken`], [`NextTurn::flags`],
+    /// [`NextTurn::lost`]; E24 M4 T4c2, MCL-Q46 (c); E24 M4 T6, R1-5), also a computer's move's
+    /// end's ([`End`]): the objects taken off, the flags raised, the heroes off the map and (E24
+    /// M4 T6, R3-3) the boats told put on it; the next draw shows them.
+    fn changed(
+        &mut self,
+        taken: &[usize],
+        flags: &[(usize, u8)],
+        lost: &[usize],
+        boats: &[LiveBoat],
+    ) {
+        self.take_off(taken);
+        self.put_boats(boats);
+        for &flag in flags {
+            self.raise(Some(flag));
+        }
+        for &index in lost {
+            if !self.left.contains(&index) {
+                self.left.push(index);
+            }
+        }
+    }
+
+    /// The map's hero `index`'s record index by the mouse-over's facts (E24 M4 T6, R1-4: by the map
+    /// hero, not by a list's slot that a hero lost or hired moves).
+    fn record_index(&self, index: usize) -> Option<u8> {
+        self.hover
+            .as_ref()
+            .and_then(|h| h.facts().heroes.get(index))
+            .map(|h| h.0)
+    }
+
     /// The map's objects `taken` off the map at once as a turn starts ([`NextTurn::taken`]: E24
     /// M4 T4c2, MCL-Q46 (c)): the next draw shows them gone.
     fn take_off(&mut self, taken: &[usize]) {
@@ -3012,10 +3309,14 @@ impl Loop {
             heroes,
             walks,
             taken,
+            flags,
+            lost,
+            boats,
+            open,
             ..
         } = next;
         self.place(&heroes);
-        self.take_off(&taken);
+        self.changed(&taken, &flags, &lost, &boats);
         self.player = turn.player;
         // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*).
         let tracks = &self.rules.turn.computer;
@@ -3042,8 +3343,11 @@ impl Loop {
             slot: walks.first().map_or(0, |w| w.slot),
             walks: walks.into(),
             steps: VecDeque::new(),
-            taken: Vec::new(),
+            done: 0,
+            ends: VecDeque::new(),
+            judged: None,
             chosen: false,
+            open,
             ended,
         });
         self.ai_on(t)?;
@@ -3052,8 +3356,9 @@ impl Loop {
 
     /// A computer player's turn from `t` (E24 M4 T1b2, design §5.2): its step's frames as their
     /// times come, each step's end (the points taken after the animation: the recording's, the
-    /// standing group at the hero's last step, the offset 0); its next step, its next hero's
-    /// turn, its end. Whether it ended; none without a computer's turn under way.
+    /// standing group at a move's last step, the offset 0); a move's end's changes (E24 M4 T6,
+    /// R1-3, R1-5: [`End`]); its next step, its next hero's turn, its end (none for a turn the
+    /// record ends in, R1-1). Whether it ended; none without a computer's turn under way.
     fn ai_on(&mut self, t: u32) -> Result<Option<bool>, Unplayable> {
         loop {
             let Some(ai) = &mut self.ai else {
@@ -3063,10 +3368,12 @@ impl Loop {
                 if t < until {
                     return Ok(Some(false));
                 }
-                let last = ai.steps.is_empty();
-                // A walk that ends taking an object from beside: the object's node is the move's
+                // A move's last step (E24 M4 T6, R1-3: each command's move ends at its own).
+                let end = ai.ends.front().filter(|e| e.after == ai.done);
+                let last = ai.steps.is_empty() || end.is_some();
+                // A move that ends taking an object from beside: the object's node is the move's
                 // last, not this step (E24 M4 T4c2: `game-ai` at 660, its draw at 1180).
-                let beside = !ai.taken.is_empty();
+                let beside = end.is_some_and(|e| !e.taken.is_empty());
                 if let Some(&pixels) = self.computer_pixels.get(frame) {
                     self.ai_step = Some((
                         direction,
@@ -3106,15 +3413,19 @@ impl Loop {
                 }
                 continue;
             }
-            if let Some((to, unseen, sea)) = ai.steps.pop_front() {
-                if self.computer_step(t, to, unseen, sea) {
+            // A move's end (E24 M4 T6, R1-3, R1-5): its command's changes, its pickup last.
+            if ai.ends.front().is_some_and(|e| e.after <= ai.done) {
+                let end = ai.ends.pop_front().unwrap_or_default();
+                let seen = ai.judged.map(|_| end.seen);
+                self.changed(&end.removed, &end.flags, &end.lost, &end.boats);
+                if !end.taken.is_empty() && self.ai_take(t, &end.taken, seen) {
                     return Ok(Some(false));
                 }
                 continue;
             }
-            if !ai.taken.is_empty() {
-                let taken = core::mem::take(&mut ai.taken);
-                if self.ai_take(t, &taken) {
+            if let Some((to, unseen, sea)) = ai.steps.pop_front() {
+                ai.done += 1;
+                if self.computer_step(t, to, unseen, sea) {
                     return Ok(Some(false));
                 }
                 continue;
@@ -3122,7 +3433,9 @@ impl Loop {
             if let Some(walk) = ai.walks.pop_front() {
                 let again = core::mem::replace(&mut ai.chosen, true);
                 ai.slot = walk.slot;
-                ai.taken = walk.taken;
+                ai.ends = walk.ends.into();
+                ai.done = 0;
+                ai.judged = walk.seen;
                 ai.steps = walk
                     .steps
                     .iter()
@@ -3132,8 +3445,12 @@ impl Loop {
                         (h, walk.unseen.contains(&i), sea)
                     })
                     .collect();
-                self.ai_hero(t, walk.hero, again);
+                self.ai_hero(t, walk.hero, again, walk.seen);
                 continue;
+            }
+            // A turn the record ends in (E24 M4 T6, R1-1): the map left in its screen.
+            if ai.open {
+                return Ok(Some(false));
             }
             let ended = core::mem::take(&mut ai.ended);
             self.ai = None;
@@ -3148,8 +3465,9 @@ impl Loop {
     /// `game-ai`'s second hero chosen at 1180) and this one selected (`hero_select` with 1, 0, 1:
     /// lifted, standing; the view's corner its tile less the middle, never clamped, drawn and
     /// shown when the viewer sees its tile or a neighbour, never under Blackout Computer; no list,
-    /// status window or minimap drawn).
-    fn ai_hero(&mut self, t: u32, index: usize, again: bool) {
+    /// status window or minimap drawn). `seen`: the record's judgement of that tile (E24 M4 T6,
+    /// R1-2, [`Steps::seen`]), else the viewer's explored tiles'.
+    fn ai_hero(&mut self, t: u32, index: usize, again: bool, seen: Option<bool>) {
         self.ai_status_step(t);
         self.keep_hero();
         self.hidden = false;
@@ -3160,7 +3478,8 @@ impl Loop {
         self.hero = self.heroes.get(index).copied();
         self.lifted = true;
         self.stand();
-        if self.hero.is_some_and(|h| self.sees(h.at)) {
+        let seen = seen.unwrap_or_else(|| self.hero.is_some_and(|h| self.sees(h.at)));
+        if seen {
             self.centre();
             self.draw(t);
             // `hero_select`'s sounds (0x4180A0; E24 M4 T4c): the terrain's music when it differs.
@@ -3195,9 +3514,16 @@ impl Loop {
         let from = self.next(to.at, back).or(at).unwrap_or(to.at);
         self.hero = self.hero.map(|h| Hero { at: from, ..h });
         self.ai_spend(t);
-        let seen = !unseen && !self.blackout && (self.sees(from) || self.sees(to.at));
+        // A record's step is one the viewer sees (E24 M4 T6, R1-2: the engine's `step_seen`).
+        let judged = self.ai.as_ref().is_some_and(|ai| ai.judged.is_some());
+        let seen = !unseen && !self.blackout && (judged || self.sees(from) || self.sees(to.at));
         if !seen {
-            self.hero = Some(to);
+            // One into sight faces as the hero did (E24 M4 T6, R1-8: MCL-Q44, its way not told).
+            let facing = self.hero.map_or(to.facing, |h| h.facing);
+            self.hero = Some(Hero {
+                facing: if unseen { facing } else { to.facing },
+                ..to
+            });
             self.sea_unseen(to.at, sea);
             return false;
         }
@@ -3221,6 +3547,7 @@ impl Loop {
                 }
             }
             Some(Sea::Land(boat)) => self.land_start(t, to.facing, boat),
+            Some(Sea::Unfaced(_)) => self.refuse(to.at, Unplayable::Landing),
             None => {}
         }
         self.ai_animate(t, to, single);
@@ -3290,16 +3617,18 @@ impl Loop {
                 self.boats.empty.push(boat);
                 self.sail(None);
             }
+            Some(Sea::Unfaced(_)) => self.refuse(at, Unplayable::Landing),
             None => {}
         }
     }
 
-    /// The objects `taken` (anchors, indexes) a computer's hero takes from beside at its walk's end (E24 M4
-    /// T4c, design §5.16: `visit_resource_pile` 0x4A4BE0 as the viewer's own, §5.3): the hero
-    /// turned to the first, standing; where the viewer sees the hero's tile its removal dissolved
-    /// with the pickup's sound ([`Loop::take`]: the computer's turn going on at its end), else
-    /// taken off at once. Whether a dissolve holds the turn.
-    fn ai_take(&mut self, t: u32, taken: &[(Pos, usize)]) -> bool {
+    /// The objects `taken` (anchors, indexes) a computer's hero takes from beside at its move's
+    /// end (E24 M4 T4c, design §5.16: `visit_resource_pile` 0x4A4BE0 as the viewer's own, §5.3):
+    /// the hero turned to the first, standing; where the viewer sees the hero's tile (`seen`: the
+    /// record's judgement, E24 M4 T6, R1-2; else the explored tiles') its removal dissolved with
+    /// the pickup's sound ([`Loop::take`]: the computer's turn going on at its end), else taken
+    /// off at once. Whether a dissolve holds the turn.
+    fn ai_take(&mut self, t: u32, taken: &[(Pos, usize)], seen: Option<bool>) -> bool {
         let objects: Vec<usize> = taken.iter().map(|&(_, o)| o).collect();
         // Kind 5's step at the visit (*provisional*: recorded, `game-ai` at 660; its caller not
         // read).
@@ -3312,7 +3641,7 @@ impl Loop {
             self.turn_to(direction);
         }
         self.stand();
-        let seen = !self.blackout && at.is_some_and(|a| self.sees(a));
+        let seen = !self.blackout && seen.unwrap_or_else(|| at.is_some_and(|a| self.sees(a)));
         let Some((&object, rest)) = objects.split_first().filter(|_| seen) else {
             self.take_off(&objects);
             return false;
@@ -3324,9 +3653,10 @@ impl Loop {
 
     /// A computer player's turn's end (`ai_player_turn`'s, design §5.2): the last hero put back on
     /// its tile (`adventure_hero_stop` with 0, 1), the cursor shown again (`mouse_show` 0x50D5B0)
-    /// as the adventure cursor's arrow (*provisional*: where its type is set back is not read), the
-    /// redraws missed caught up; then the next turn: another computer's, or the next day (refused in a recording when the
-    /// facts give none or its selection is not known).
+    /// as the adventure cursor's arrow (*provisional*: where its type is set back is not read),
+    /// the objects stepped once (E24 M4 T4c2: the turn's end's redraw); then the next turn:
+    /// another computer's, or the next day (refused in a recording when the facts give none or
+    /// its selection is not known).
     fn ai_end(&mut self, t: u32, ended: Ended) -> Result<(), Unplayable> {
         self.lifted = false;
         self.keep_hero();
@@ -3352,7 +3682,7 @@ impl Loop {
             }
             return self.computer_start(t, next, status, ended);
         }
-        let Some(choice) = self.turn_choice(&next.turn) else {
+        let Some(choice) = self.turn_choice(&next) else {
             return self.unbuilt(refused);
         };
         self.day_start(t, next, choice, ended);
@@ -3658,7 +3988,8 @@ impl Loop {
     /// one at 0, *provisional*). A level whose dialog the facts lack is refused in a recording
     /// ([`Unplayable::LevelUp`]) and passed over live.
     fn levels_due(&mut self) -> Result<VecDeque<LevelBox>, Unplayable> {
-        let mut due = VecDeque::new();
+        // A record's visit's own, due since its experience was shown (E24 M4 T6, R2-3).
+        let mut due = core::mem::take(&mut self.due_levels);
         let Some(experience) = self.experience.filter(|_| self.index == self.experienced) else {
             return Ok(due);
         };
@@ -3759,6 +4090,10 @@ impl Loop {
                 self.finish(t, true);
                 self.resume(t, queued)
             }
+            After::Visited(i) => {
+                self.visited(t, i);
+                Ok(())
+            }
         }
     }
 
@@ -3771,13 +4106,14 @@ impl Loop {
         let Some(at) = self.hero.map(|h| h.at) else {
             return false;
         };
-        let Some(i) = self
-            .finds
-            .iter()
-            .position(|f| f.at == at && f.blocks.is_none())
-        else {
+        // A record's find is its walk's end's (E24 M4 T6, R2-1): the walk just ended.
+        let walk = self.last_move;
+        let Some(i) = self.finds.iter().position(|f| {
+            f.at == at && f.blocks.is_none() && f.walk.is_none_or(|w| Some(w) == walk)
+        }) else {
             return false;
         };
+        self.visiting(i);
         let found = Arc::clone(&self.finds);
         let found = &found[i];
         if self.answered.contains(&i) {
@@ -3802,7 +4138,16 @@ impl Loop {
             None => {
                 // Its flag raised before its question (E24 M4 T2d1: a dwelling's).
                 self.raise(found.flag);
-                self.ask(t, i)
+                if self.ask(t, i) {
+                    return true;
+                }
+                // A record's flag raised alone (E24 M4 T6, the reviewers' R3-4: what the visit
+                // shows besides is not built): the minimap drawn after the visit
+                // (`visit_and_update` 0x4AAAA0), the view at its next draw.
+                if found.flag.is_some() {
+                    self.draw_minimap();
+                }
+                false
             }
         }
     }
@@ -3973,10 +4318,20 @@ impl Loop {
     /// blocks its tile (since T2b2 [`Found::blocks`]: a guarded pile's too), not taken yet; its
     /// place among the finds.
     fn beside(&self, at: Pos) -> Option<usize> {
+        // A record's find is its walk's (E24 M4 T6, R2-1): the one under way, else the next.
+        let walk = self.walking.map_or(self.next_move, |(m, _)| m);
         self.finds.iter().position(|f| {
             f.blocks
                 .is_some_and(|o| f.at == at && !self.drawn.gone.contains(&o))
+                && f.walk.is_none_or(|w| w == walk)
         })
+    }
+
+    /// Find `i`'s visit begun (E24 M4 T6, the reviewer's R2-3): a record's level-ups wait for its
+    /// experience ([`Found::levels`]), none due from an earlier visit.
+    fn visiting(&mut self, i: usize) {
+        self.leveling = Some(i);
+        self.due_levels.clear();
     }
 
     /// A key's step onto a pile or an artifact (E24 M4 T2a2 part B, design §5.3; recorded,
@@ -3989,30 +4344,10 @@ impl Loop {
     /// ([`Loop::finish`]) comes after the dissolve. Since E24 M4 T2b2 a find with a question
     /// asks it (the mouse shown over it; recorded, `ask-pile`, `ask-artifact`), its visit's end
     /// the step's ([`Loop::visited`]).
-    fn visit_beside(&mut self, t: u32, direction: Direction, i: usize) {
-        self.cursor.shown = false;
-        self.walked = true;
-        // One of the engine's walks (E24 M4 T4b1, design §5.14): a visit from beside is a move
-        // onto the object's tile with no step, its points the move's.
-        if let Some(found) = self.finds.get(i).map(|f| f.at)
-            && self.moves.is_some()
-        {
-            self.take_move(found);
-            self.step_on_record(found);
-        }
-        if !self.lifted {
-            self.lift(t, true);
-            self.draw(t);
-        }
-        self.hero = self.hero.map(|hero| Hero {
-            facing: direction,
-            ..hero
-        });
-        self.stand();
-        self.spend(t);
-        self.draw_minimap();
-        self.draw_slot();
+    fn visit_beside(&mut self, t: u32, direction: Direction, at: Pos, i: usize) {
+        self.beside_start(t, direction, at);
         self.told.push(i);
+        self.visiting(i);
         let finds = Arc::clone(&self.finds);
         let found = &finds[i];
         if let Some((first, shows)) = found.first.first() {
@@ -4064,6 +4399,78 @@ impl Loop {
             Some(object) => self.take(t, object, Gain::default(), Fade::Pickup),
             None => self.visited(t, i),
         }
+    }
+
+    /// A path's last node onto find `i`'s object, which blocks its tile `next` (E24 M4 T6, the
+    /// reviewer's R5-1, *provisional*: `hero_move_step` 0x4805E0's blocked visit not read; design
+    /// §5.18, a computer's walk that ends taking an object from beside has the object's node
+    /// last, which takes no step): the node's arrow zeroed as a step's start does
+    /// ([`Loop::mobilize`], 0x480B30), then the visit as a key's step's ([`Loop::visit_beside`]:
+    /// a record's monster fought, a pile or an artifact taken).
+    /// Since E24 M4 T6 (*provisional*) a record's node its walk visits from beside with nothing the
+    /// map shows ([`Beside::Unshown`]: [`Loop::pass_by`]).
+    fn last_node(&mut self, t: u32, direction: Direction, next: Pos, node: Beside) {
+        self.path.retain(|(_, a)| a.at != next);
+        match node {
+            Beside::Find(i) => self.visit_beside(t, direction, next, i),
+            Beside::Unshown => self.pass_by(t, direction, next),
+        }
+    }
+
+    /// What a path's last node onto `next` takes in place of a step (E24 M4 T6): a find's visit
+    /// from beside ([`Loop::beside`]), else on a record whose walk stops one short of its path
+    /// ([`Move::stops`]) a visit the map does not show; none: a step.
+    fn node(&self, next: Pos) -> Option<Beside> {
+        if let Some(found) = self.beside(next) {
+            return Some(Beside::Find(found));
+        }
+        self.record_walk()
+            .is_some_and(|w| w.stops.is_some_and(|n| n + 1 == w.tiles.len()))
+            .then_some(Beside::Unshown)
+    }
+
+    /// The record's walk under way, else its next (E24 M4 T6).
+    fn record_walk(&self) -> Option<&Move> {
+        let m = self.walking.map_or(self.next_move, |(m, _)| m);
+        self.moves.as_ref()?.get(m)
+    }
+
+    /// A record's path's last node its walk visits from beside with nothing the map shows (E24 M4
+    /// T6, *provisional*: a meeting, M5's screen; an object whose visit tells nothing Part A
+    /// builds): as a find's visit from beside ([`Loop::visit_beside`]) the hero turned to it, its
+    /// points spent, its slot and the minimap drawn; then the visit's end with nothing shown
+    /// ([`Loop::visited`]'s for an object that blocks its tile), its events folded.
+    fn pass_by(&mut self, t: u32, direction: Direction, next: Pos) {
+        self.beside_start(t, direction, next);
+        self.finish(t, true);
+        self.idle_message(t);
+    }
+
+    /// A visit from beside of the object on `at` begun ([`Loop::visit_beside`], [`Loop::pass_by`]):
+    /// the mouse hidden; on one of the engine's walks (E24 M4 T4b1, design §5.14) a move onto the
+    /// object's tile with no step, its points the move's (since E24 M4 T6, R5-1, a path's last
+    /// node too, its walk under way: [`Loop::last_node`]); the hero lifted (the view centred on
+    /// it and drawn) and turned `direction` but left on its tile, its points spent, its slot and
+    /// the minimap drawn.
+    fn beside_start(&mut self, t: u32, direction: Direction, at: Pos) {
+        self.cursor.shown = false;
+        self.walked = true;
+        if self.walking.is_none() {
+            self.take_move(at);
+        }
+        self.step_on_record(at);
+        if !self.lifted {
+            self.lift(t, true);
+            self.draw(t);
+        }
+        self.hero = self.hero.map(|hero| Hero {
+            facing: direction,
+            ..hero
+        });
+        self.stand();
+        self.spend(t);
+        self.draw_minimap();
+        self.draw_slot();
     }
 
     /// The object `object` taken off the map (`remove_map_object` 0x4AABB0 between the view's
@@ -4147,7 +4554,11 @@ impl Loop {
                 self.ai_animate(t, to, single);
                 return self.ai_on(t).map(|_| ());
             }
-            Then::Lost => self.left_map(t, queued)?,
+            Then::Lost(monster) => self.left_map(t, queued, monster)?,
+            Then::Resume => {
+                self.cursor.shown = true;
+                self.resume(t, queued)?;
+            }
             Then::Taken => {
                 self.gain(gain);
                 // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,
@@ -4361,7 +4772,7 @@ impl Loop {
             (AfterBattle::Taken, Some(object)) => {
                 self.take(t, object, gain, Fade::Killfade);
             }
-            (AfterBattle::Lost, _) => {
+            (AfterBattle::Lost | AfterBattle::Both, _) => {
                 // `battle_aftermath` 0x4AC930's way: the view shown with the hero, its objects
                 // stepped (`view_show_step`: recorded, `battle-retreat`'s at 810, the flag's frame
                 // the step's), the hero leaving the game (none selected, the lists drawn so), then
@@ -4370,6 +4781,10 @@ impl Loop {
                 // Its tile and facing kept in the map's heroes (as a choice away from it does).
                 self.keep_path();
                 let (slot, index) = (self.selected_hero(), self.index);
+                // The engine's walk under way ends here (E24 M4 T6: the next visit from beside
+                // takes the next), the slot left told ([`Loop::slots_left`]).
+                self.walking = None;
+                self.slots_left.extend(slot);
                 self.lifted = false;
                 self.hero = None;
                 self.index = None;
@@ -4389,13 +4804,18 @@ impl Loop {
                 });
                 self.draw_lists();
                 self.draw(t);
-                self.left = index;
-                self.lose(t, Then::Lost);
+                self.left.extend(index);
+                // A draw's monster taken off after the hero (E24 M4 T6, R5-4).
+                let monster = object.filter(|_| fight.after == AfterBattle::Both);
+                self.lose(t, Then::Lost(monster));
             }
             _ => {
                 self.gain(gain);
                 self.draw(t);
-                self.visited(t, find);
+                // Its levels (E24 M4 T6, R2-3: a record's, none dropped), then the visit's end.
+                if let Some(After::Visited(find)) = self.level_up(t, After::Visited(find))? {
+                    self.visited(t, find);
+                }
             }
         }
         Ok(())
@@ -4404,8 +4824,15 @@ impl Loop {
     /// A hero's dissolve off the map ended at `t` (E24 M4 T5b2, design §5.19): the lists and the
     /// minimap drawn (`hero_list_update`, `minimap_redraw`), then the player's next hero or town
     /// chosen as `mobilize_hero(0, 0, 1)` does with none selected (*provisional*: the first hero,
-    /// else the first town), the actions given meanwhile, the idle step.
-    fn left_map(&mut self, t: u32, queued: Vec<Action>) -> Result<(), Unplayable> {
+    /// else the first town), the actions given meanwhile, the idle step; since E24 M4 T6 (R5-4,
+    /// a draw) `monster` taken off the map first if any (`monster_fight`'s rest after
+    /// `battle_aftermath`: `killfade.82M`, the actions given meanwhile after its dissolve).
+    fn left_map(
+        &mut self,
+        t: u32,
+        queued: Vec<Action>,
+        monster: Option<usize>,
+    ) -> Result<(), Unplayable> {
         self.draw_lists();
         self.draw_minimap();
         if self.kingdom.heroes.is_empty() {
@@ -4414,6 +4841,11 @@ impl Loop {
             }
         } else {
             self.choose_slot(t, 0)?;
+        }
+        if let Some(object) = monster {
+            self.take_then(t, object, Gain::default(), Fade::Killfade, Then::Resume);
+            self.dissolving = self.dissolving.take().map(|d| Dissolving { queued, ..d });
+            return Ok(());
         }
         self.cursor.shown = true;
         self.resume(t, queued)
@@ -4424,20 +4856,28 @@ impl Loop {
     /// into the view drawn now, the palettes cycling on; `then` at its end. The view's draw
     /// chooses the status window, shown at once (E24 M4 T4b2: the date's frame stepped).
     fn lose(&mut self, t: u32, then: Then) {
+        let before = self.drawn_over(t);
+        if let Some(sound) = &mut self.sound {
+            sound.effect(t, &self.rules.finds.killfade);
+        }
+        self.dissolve(t, before, Gain::default(), false, then);
+    }
+
+    /// The view drawn for a dissolve, and the screen it dissolves from: the screen as last shown
+    /// with the status window that draw chose. The draw (`view_draw_here` 0x40F870, as
+    /// `hero_loss_effect` 0x4ACBB0 and `summon_boat_cast` 0x41C8A0 call it) runs
+    /// `adventure_view_draw`'s `status_window_choose` 0x40F861, and `status_date_update` 0x4511A0
+    /// shows the date's step at once, outside the box dissolved (E24 M4 T4b2: `game-boats`'
+    /// landing at 4250; since E24 M4 T6, the reviewer's R3-5, Summon Boat's two dissolves too).
+    fn drawn_over(&mut self, t: u32) -> Arc<Draw> {
         let mut before = self.drawn.clone();
         self.draw(t);
-        // The status window the draw chose is shown at once (`status_date_update` 0x4511A0: the
-        // date's step; E24 M4 T4b2, `game-boats`' landing at 4250), outside the view's middle.
         if before.kingdom.status != self.drawn.kingdom.status {
             Arc::make_mut(&mut before.kingdom)
                 .status
                 .clone_from(&self.drawn.kingdom.status);
         }
-        let before = Arc::new(before);
-        if let Some(sound) = &mut self.sound {
-            sound.effect(t, &self.rules.finds.killfade);
-        }
-        self.dissolve(t, before, Gain::default(), false, then);
+        Arc::new(before)
     }
 
     /// A dissolve's turn at `t` (`screen_dissolve` 0x602DC0; E17 design §7.25): step k shown at
@@ -4473,6 +4913,14 @@ impl Loop {
     /// spell points in the kingdom's list, the window shown drawn; since E24 M4 T2c its
     /// experience, which nothing shows (its levels: [`Loop::levels_due`]).
     fn gain(&mut self, gain: Gain) {
+        // A record's visit's level-ups due with its experience (E24 M4 T6, the reviewer's R2-3:
+        // the record's, any hero's).
+        if gain.experience != 0
+            && let Some(i) = self.leveling.take()
+            && let Some(found) = self.finds.get(i)
+        {
+            self.due_levels.extend(found.levels.iter().cloned());
+        }
         // The experience (E24 M4 T2c): the selected hero's when it is the one known.
         if gain.experience != 0 && self.index == self.experienced {
             self.experience = self
@@ -4575,9 +5023,10 @@ impl Loop {
     /// Summon Boat cast (`adventure_spell` 0x41C490's case 0, `summon_boat_cast` 0x41C8A0; design
     /// §5.8, *provisional*: its boat the facts', its chance and refusals the engine's from Part B):
     /// the boat moved taken off its old tile; when that tile lies in the view on its level, its box
-    /// (the tables', [`Loop::boat_box`]) saved, the view drawn without it and dissolved into it in
-    /// eight steps, the palettes cycling on; then its arrival ([`Loop::arrive`]). Only Summon Boat
-    /// with one boat moved or made is built.
+    /// (the tables', [`Loop::boat_box`]) saved, the view drawn without it (the status window it
+    /// chooses shown at once, [`Loop::drawn_over`]) and dissolved into it in eight steps, the
+    /// palettes cycling on; then its arrival ([`Loop::arrive`]). Only Summon Boat with one boat
+    /// moved or made is built.
     fn summon(&mut self, t: u32, cast: Cast) -> Result<(), Unplayable> {
         if cast.spell != SUMMON_BOAT {
             return Err(Unplayable::Spell(cast.spell));
@@ -4589,8 +5038,7 @@ impl Loop {
         if let Some(from) = boat.from {
             self.boats.empty.retain(|b| b.at != from);
             if self.in_view(from) {
-                let before = Arc::new(self.drawn.clone());
-                self.draw(t);
+                let before = self.drawn_over(t);
                 let then = Then::Summoned(cast, boat);
                 let dissolving = self.cast_dissolve(t, before, None, from, then);
                 self.dissolve_over(t, dissolving);
@@ -4604,7 +5052,8 @@ impl Loop {
     /// Summon Boat's boat put on its new tile, its type and facing the facts' (a boat made, type
     /// 0 facing right, likewise), the spell's sound (the spell table's +0x4), the new tile's box
     /// saved (from the back buffer: `back`, the view a first dissolve drew, else the screen), the
-    /// view drawn with the boat and dissolved into it; the cast's end at the dissolve's
+    /// view drawn with the boat (as [`Loop::summon`]'s) and dissolved into it; the cast's end at
+    /// the dissolve's
     /// ([`Loop::cast_end`]), the actions `queued` and those given meanwhile after it.
     fn arrive(
         &mut self,
@@ -4618,8 +5067,7 @@ impl Loop {
         if let Some(sound) = &mut self.sound {
             sound.effect(t, &self.rules.cast.summon_boat);
         }
-        let before = Arc::new(self.drawn.clone());
-        self.draw(t);
+        let before = self.drawn_over(t);
         let mut dissolving = self.cast_dissolve(t, before, back, boat.to.at, Then::Cast(cast));
         dissolving.queued = queued;
         self.dissolve_over(t, dissolving);
@@ -5022,11 +5470,7 @@ impl Loop {
         self.kingdom.selected = Selected::Hero(i);
         self.index = Some(chosen.hero);
         self.hero = hero;
-        self.selected_id = self
-            .hover
-            .as_ref()
-            .and_then(|h| h.facts().hero_list.get(i))
-            .map(|h| h.0);
+        self.selected_id = self.record_index(chosen.hero);
         // The facts' reach and the hero's own marks were the staged hero's (design §4.13: the
         // engine's from M4).
         self.walked = true;
@@ -5249,7 +5693,7 @@ impl Loop {
         }
         // A pile or an artifact visited from beside (E24 M4 T2a2 part B).
         if let Some(found) = self.beside(next) {
-            self.visit_beside(t, direction, found);
+            self.visit_beside(t, direction, next, found);
             return;
         }
         self.walk_off(t, true, direction, next, VecDeque::new());
@@ -5320,6 +5764,14 @@ impl Loop {
             .take_while(|(_, a)| a.arrow <= GREEN)
             .map(|&(d, a)| (d, a.at))
             .collect();
+        // A record's walk stopped on the way (E24 M4 T6, [`Move::stops`]): the record's steps.
+        if let Some(n) = self
+            .record_walk()
+            .and_then(|w| w.stops)
+            .filter(|&n| n + 1 < steps.len())
+        {
+            steps.truncate(n.max(1));
+        }
         match steps.pop_front() {
             Some((direction, next)) => self.walk_off(t, false, direction, next, steps),
             None => self.finish(t, false),
@@ -5337,6 +5789,15 @@ impl Loop {
         next: Pos,
         rest: VecDeque<(Direction, Pos)>,
     ) {
+        // A path's one step onto an object visited from beside: no step (E24 M4 T6, the
+        // reviewer's R5-1; [`Loop::last_node`]).
+        if !key
+            && rest.is_empty()
+            && let Some(node) = self.node(next)
+        {
+            self.last_node(t, direction, next, node);
+            return;
+        }
         self.cursor.shown = false;
         self.walked = true;
         self.take_move(next);
@@ -5382,6 +5843,10 @@ impl Loop {
         let landing = match record {
             None => self.landing(next, direction),
             Some(Some(Sea::Land(boat))) => Some(boat),
+            Some(Some(Sea::Unfaced(_))) => {
+                self.refuse(next, Unplayable::Landing);
+                None
+            }
             Some(_) => None,
         };
         if let Some(boat) = landing {
@@ -5511,6 +5976,20 @@ impl Loop {
                 }
                 return Some(moving.queued);
             };
+            // The path's last node onto an object visited from beside: no step (E24 M4 T6, the
+            // reviewer's R5-1); the input waiting behind its dissolve, emptied by its box
+            // (`input_flush`), dropped by its switch.
+            if !moving.key
+                && moving.rest.is_empty()
+                && let Some(node) = self.node(next)
+            {
+                self.last_node(t, direction, next, node);
+                if let Some(dissolving) = &mut self.dissolving {
+                    dissolving.queued.append(&mut moving.queued);
+                    return None;
+                }
+                return self.boxed.is_some().then(Vec::new);
+            }
             moving.direction = direction;
             moving.last = moving.rest.is_empty();
             moving.frame = 0;
@@ -5538,7 +6017,12 @@ impl Loop {
             {
                 self.battles.push((t, n));
             }
-            if let Some(&left) = moves.get(m).and_then(|w| w.tiles.get(k)) {
+            // A walk the record stops on the way ends there (E24 M4 T6, [`Move::stops`]).
+            if let Some(&left) = moves
+                .get(m)
+                .filter(|w| w.stops != Some(k))
+                .and_then(|w| w.tiles.get(k))
+            {
                 self.off(left);
             }
         }
@@ -5943,9 +6427,11 @@ impl Loop {
         };
         if self.next_move < moves.len() {
             self.walking = Some((self.next_move, 0));
+            self.last_move = Some(self.next_move);
             self.next_move += 1;
         } else {
             self.walking = None;
+            self.last_move = None;
             self.off(next);
         }
     }
@@ -5969,14 +6455,37 @@ impl Loop {
             walked.extend(tiles.iter().copied());
             self.walked_tiles = Arc::new(walked);
         }
+        // The boats told since the walk before, with its first step's reveal (E24 M4 T6, R3-3).
+        if k == 0
+            && let Some(w) = walk
+        {
+            self.put_boats(&w.boats);
+        }
+    }
+
+    /// The empty boats `boats` put on the map (E24 M4 T6, the reviewer's R3-3: a record's boats
+    /// told after its start, [`Move::boats`], [`NextTurn::boats`], [`End::boats`]), each in place
+    /// of an empty one on its tile: the view's next draw shows them.
+    fn put_boats(&mut self, boats: &[LiveBoat]) {
+        for &boat in boats {
+            self.boats.empty.retain(|b| b.at != boat.at);
+            self.boats.empty.push(boat);
+        }
     }
 
     /// A step off the engine's record (E24 M4 T4a2): the first of the millisecond refuses it
     /// when the millisecond ends ([`Loop::run`]).
     fn off(&mut self, next: Pos) {
+        self.refuse(next, Unplayable::Moved);
+    }
+
+    /// A step onto `next` the record refuses (E24 M4 T4a2; since E24 M4 T6 any refusal by the
+    /// tile, `why`: R3-6's landing): the first of the millisecond refuses it when the millisecond
+    /// ends ([`Loop::run`]).
+    fn refuse(&mut self, next: Pos, why: fn([i32; 3]) -> Unplayable) {
         if self.off_record.is_none() {
             let at = [i32::from(next.x), i32::from(next.y), i32::from(next.z)];
-            self.off_record = Some(Unplayable::Moved(at));
+            self.off_record = Some(why(at));
         }
     }
 
@@ -6082,7 +6591,7 @@ impl Loop {
             },
             walked: Arc::clone(&self.walked_tiles),
             switch: None,
-            left: self.left,
+            left: self.left.clone(),
         };
         self.choose(t, false);
     }

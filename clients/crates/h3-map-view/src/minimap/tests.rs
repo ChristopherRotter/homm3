@@ -189,6 +189,10 @@ fn a_tiles_colour_by_its_terrain_its_object_and_the_live_part() {
     assert_eq!(at(&tiles, 5, 5), Colour::Black);
     assert_eq!(at(&tiles, 6, 6), Colour::Open(2));
     assert_eq!(tiles.heroes, [(36, Colour::Owner(67))]);
+    // A hero off the map (E24 M4 T6, R1-5): none.
+    let mut gone = live.clone();
+    gone.left = vec![0];
+    assert!(unexplored.tiles(&gone, &t, None).heroes.is_empty());
     // The level's colours shared, not copied, from scene to scene.
     assert!(Arc::ptr_eq(
         &tiles.colours,

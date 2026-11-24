@@ -1,6 +1,6 @@
 # The original's live part at the sequence's 0 (h3map.py frames).
 view = [0, 0, 0]
-cycles = 18
+cycles = 19
 river_cycles = 18
 frames = 0
 viewer = 0

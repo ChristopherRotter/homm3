@@ -41,6 +41,10 @@ pub struct Live {
     /// The walk's part of the draw (E24 M2 T3b, design §3.5, §3.8): the view's pixel offset and
     /// the selected hero lifted off its tile; none in a still (`Walking::default`).
     pub walking: Walking,
+    /// The heroes off the map (E24 M4 T5b2: a battle lost; since E24 M4 T6, R1-5, another
+    /// player's hero lost in sight), by their indexes in [`Live::heroes`]: drawn nowhere, on the
+    /// view or the minimap; none in a still.
+    pub left: Vec<usize>,
     /// What the adventure screen's panels show of the viewer's kingdom (E24 M3 T2a, design
     /// §4.1).
     pub kingdom: Kingdom,
@@ -1423,6 +1427,7 @@ impl Live {
             path: Vec::new(),
             moment: Moment::default(),
             walking: Walking::default(),
+            left: Vec::new(),
             kingdom,
             buttons: None,
             minimap: None,

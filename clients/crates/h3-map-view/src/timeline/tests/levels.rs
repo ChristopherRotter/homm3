@@ -110,7 +110,7 @@ fn levelling(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str)
 fn stone() -> Found {
     Found {
         at: STONE,
-        first: vec![(laid("You have learned much.", Style::Ok), Gain::default())],
+        first: vec![(laid("STONE.", Style::Ok), Gain::default())],
         again: None,
         gain: Gain {
             experience: 1000,
@@ -123,6 +123,8 @@ fn stone() -> Found {
         flag: None,
         ask: None,
         fight: None,
+        walk: None,
+        levels: Vec::new(),
     }
 }
 
@@ -164,6 +166,8 @@ fn chest(experience: i32) -> Found {
             }),
         }),
         fight: None,
+        walk: None,
+        levels: Vec::new(),
     }
 }
 

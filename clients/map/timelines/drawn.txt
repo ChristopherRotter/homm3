@@ -333,9 +333,9 @@ battle-retreat t01070 22c272b0b2e42f76
 battle-retreat t01135 17030af02f8cf961
 battle-retreat t01200 7515ed5e4e9a7f7b
 battle-retreat t01265 1150b1c20db5e888
-battle-retreat t01330 991b39f5ce40a6e5
-battle-retreat t01510 42af3f0ad1947848
-battle-retreat t01690 51248874f99c82e8
+battle-retreat t01330 d943c5b14eb2c122
+battle-retreat t01510 9d4c3b27dcfafc92
+battle-retreat t01690 d4530368f116588a
 battle-won t00000 758b38596b0a7b69
 battle-won t00100 147dd210412b612c
 battle-won t00150 e6187660ff6040ab

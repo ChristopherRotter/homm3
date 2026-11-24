@@ -17,8 +17,9 @@ use h3_map::{Limits, MAP_IMPORT_VERSION};
 use h3_map_view::art::MapArt;
 use h3_map_view::engine::{self, Refused};
 use h3_map_view::hover::Facts;
+use h3_map_view::record::Records;
 use h3_map_view::situation::Situation;
-use h3_map_view::tables::TownArt;
+use h3_map_view::tables::{self, TownArt};
 use h3_protocol::RECORD_FORMAT_VERSION;
 use h3_protocol::codec;
 use h3_protocol::map::game::{manifest, observe};
@@ -110,6 +111,18 @@ fn rules() -> &'static GameRuleset {
     })
 }
 
+/// The committed tables' records (`[map.records]`): the classes the game loads the map's as.
+fn records() -> &'static Records {
+    static RECORDS: OnceLock<Records> = OnceLock::new();
+    RECORDS.get_or_init(|| {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml");
+        let text = std::fs::read_to_string(path).unwrap();
+        tables::load(&[tables::parse(&text).unwrap()], "base")
+            .unwrap()
+            .records
+    })
+}
+
 /// A situation's map file, gzip-compressed as the engine reads it.
 fn map_file(text: &str) -> Vec<u8> {
     let (map, extras) = Situation::parse(text)
@@ -178,7 +191,14 @@ fn snapshot(observation: &GameObservation) -> ServerMessage {
 fn start(g: &Game, observation: &GameObservation) -> Result<engine::Start, Refused> {
     let record = text(&g.header, &[snapshot(observation)]);
     let loaded = engine::load(&record, &g.bytes, rules())?;
-    engine::start(&loaded, &g.art, &templates(), &town_art(), rules())
+    engine::start(
+        &loaded,
+        &g.art,
+        &templates(),
+        &town_art(),
+        records(),
+        rules(),
+    )
 }
 
 /// Every faction's town pictures, named by their list and faction.
@@ -438,8 +458,21 @@ fn records_it_refuses() {
     };
     let loaded = engine::load(&text(&g.header, &[turn]), &g.bytes, rules()).unwrap();
     assert_eq!(
-        engine::start(&loaded, &g.art, &[], &town_art(), rules()),
+        engine::start(&loaded, &g.art, &[], &town_art(), records(), rules()),
         Err(Refused::NoStart)
+    );
+    // A record its bound cut, beginning at a later snapshot (E24 M4 T6, R4-4): not a new game's
+    // start; its walks are not played either.
+    let mut cut = g.header.clone();
+    cut.first = 40;
+    let loaded = engine::load(&text(&cut, &[snapshot(&g.observation)]), &g.bytes, rules()).unwrap();
+    assert_eq!(
+        engine::start(&loaded, &g.art, &[], &town_art(), records(), rules()),
+        Err(Refused::Cut(40))
+    );
+    assert_eq!(
+        engine::played(&loaded, &g.art, rules()).map(|_| ()),
+        Err(Refused::Cut(40))
     );
     // Another map's art; an object, a hero or a player the map or the view does not hold.
     let loaded = engine::load(&good, &g.bytes, rules()).unwrap();
@@ -451,7 +484,41 @@ fn records_it_refuses() {
         })
         .unwrap();
     assert_eq!(
-        engine::start(&loaded, &other, &[], &town_art(), rules()),
+        engine::start(&loaded, &other, &[], &town_art(), records(), rules()),
+        Err(Refused::Setup)
+    );
+    // An art with a hero more before the objects: the static ones as many, their indices past the
+    // file's objects (E24 M4 T6, R4-11).
+    let shifted = MapArt::from_raw(&h3_map::read(&g.bytes, &Limits::default()).unwrap())
+        .map(|mut art| {
+            let hero = (0..art.objects.len())
+                .find(|&i| art.templates[art.objects[i].template].class == 34)
+                .unwrap();
+            let copy = art.objects[hero];
+            art.objects.insert(0, copy);
+            art
+        })
+        .unwrap();
+    assert_eq!(
+        engine::start(&loaded, &shifted, &[], &town_art(), records(), rules()),
+        Err(Refused::Setup)
+    );
+    // As many objects, a static one a hero in the art: the static ones fewer than the import's.
+    let swapped = MapArt::from_raw(&h3_map::read(&g.bytes, &Limits::default()).unwrap())
+        .map(|mut art| {
+            let class = |art: &MapArt, i: usize| art.templates[art.objects[i].template].class;
+            let hero = (0..art.objects.len())
+                .find(|&i| class(&art, i) == 34)
+                .unwrap();
+            let other = (0..art.objects.len())
+                .find(|&i| ![34, 70, 214, 8].contains(&class(&art, i)))
+                .unwrap();
+            art.objects[other] = art.objects[hero];
+            art
+        })
+        .unwrap();
+    assert_eq!(
+        engine::start(&loaded, &swapped, &[], &town_art(), records(), rules()),
         Err(Refused::Setup)
     );
     let changed = |change: &dyn Fn(&mut GameObservation)| {
@@ -494,12 +561,14 @@ fn each_refusal_says_why() {
         Refused::Object(4, [1, 2, 0]),
         Refused::Hero(5),
         Refused::Player(9),
+        Refused::Cut(40),
     ];
     let texts: Vec<String> = all.iter().map(ToString::to_string).collect();
     assert!(texts.iter().all(|t| !t.is_empty()));
     assert_eq!(texts[1], "line 3: bad");
     assert!(texts[4].contains("0x0000000000000001"));
     assert!(texts[10].contains("(1, 2, 0)"));
+    assert!(texts[13].contains("message 40, not at the game's start"));
 }
 
 /// The panels' map (E24 M4 T3b1): Red's two heroes out of their types' order (Astral named by
@@ -767,7 +836,8 @@ fn what_differs_in_the_panels() {
 
 /// E24 M4 T3b2: the map of the mouse-over's facts: Red's hero among objects of every case the
 /// facts write (each a one-tile template of its own, `HOVER_LINES`), Red's named Castle, a neutral
-/// Rampart, a random monster, Blue's hero far off and a Hill Fort out of sight.
+/// Rampart, a random monster, Blue's hero far off and a Hill Fort out of sight; since E24 M4 T6
+/// (R4-1) an abandoned mine of class 220 and a vertical garrison (219).
 const HOVER: &str = r#"
 size = 36
 terrain = "grass"
@@ -882,6 +952,14 @@ at = [14, 16]
 [[objects]]
 def = "hv92.def"
 at = [15, 16]
+
+[[objects]]
+def = "hv2207.def"
+at = [12, 16]
+
+[[objects]]
+def = "hv219.def"
+at = [12, 10]
 "#;
 
 /// The templates of `HOVER`'s objects: one tile, visited there, by class and subclass; a
@@ -913,6 +991,10 @@ fn hover_templates() -> Vec<ObjectTemplate> {
         ("hv53.def", 53, 2),
         ("hv14.def", 14, 0),
         ("hv92.def", 92, 0),
+        // The classes the game loads as others (E24 M4 T6, R4-1): the abandoned mine 220.7 as
+        // 53, the vertical garrison 219 as 33.
+        ("hv2207.def", 220, 7),
+        ("hv219.def", 219, 0),
     ]
     .iter()
     .map(|&(def, class, subclass)| one(def, class, subclass))
@@ -1021,6 +1103,21 @@ fn the_hover_s_facts_of_a_start() {
     let owned = object_at(&g, "hv53.def", [11, 16]);
     assert_eq!(mines(ore).as_array().unwrap()[1], Value::Integer(2));
     assert_eq!(mines(owned).as_array().unwrap()[1], Value::Integer(2));
+    // The abandoned mine of class 220 a mine by the class the game loads (53, E24 M4 T6, R4-1):
+    // its row as the one of class 53's, its resource the game's draw (none written).
+    let abandoned = object_at(&g, "hv2207.def", [12, 16]);
+    let abandoned53 = object_at(&g, "hv537.def", [9, 16]);
+    assert!(start.seen[abandoned]);
+    assert_eq!(
+        mines(abandoned).as_array().unwrap()[1],
+        mines(abandoned53).as_array().unwrap()[1]
+    );
+    assert_eq!(mines(abandoned).as_array().unwrap()[1], Value::Integer(0));
+    // The live part keeps the map's class (the sound reads it: 220's own entrance sound).
+    assert_eq!(
+        numbers(&start.table["classes"].as_array().unwrap()[abandoned]),
+        [220, 7]
+    );
     // The map's own town names, in its order of towns (an empty one none).
     assert_eq!(g.art.town_names, [Some("Brightmoor".to_string()), None]);
     let mut raw = h3_map::read(&g.bytes, &Limits::default()).unwrap();
@@ -1035,6 +1132,7 @@ fn the_hover_s_facts_of_a_start() {
     let facts = Facts::read(&start.table["hover"], g.art.objects.len(), heroes, 36, 1).unwrap();
     assert_eq!(facts.words[castle], Some(0));
     assert!(facts.contents.contains_key(&ore));
+    assert!(facts.contents.contains_key(&abandoned));
 }
 
 #[test]
@@ -1141,9 +1239,14 @@ fn the_hover_s_facts_of_what_the_player_learnt() {
         .unwrap();
     details.spells.push(spell);
     details.skills.push(SkillLevel { skill, level: 1 });
-    let anchor = reference(&mut o, garrison).anchor;
+    // The vertical garrison (219) a garrison by the class the game loads (33, E24 M4 T6, R4-1).
+    let vertical = index("hv219.def", [12, 10]);
+    let anchors = [
+        reference(&mut o, garrison).anchor,
+        reference(&mut o, vertical).anchor,
+    ];
     for g in &mut o.garrisons {
-        if g.anchor == anchor {
+        if anchors.contains(&g.anchor) {
             g.garrison.stacks = vec![GarrisonStack {
                 creature: 1,
                 count_word: None,
@@ -1205,7 +1308,7 @@ fn the_hover_s_facts_of_what_the_player_learnt() {
     );
     assert_eq!(visits[tent], [0, 1]);
     let armed = numbers(&hover["armed"]);
-    assert_eq!((armed[garrison], armed[castle]), (1, 1));
+    assert_eq!((armed[garrison], armed[vertical], armed[castle]), (1, 1, 1));
     // A Swan Pond's and the Sirens' once-marks the hero does not hold.
     let (pond, sirens) = (index("hv14.def", [14, 16]), index("hv92.def", [15, 16]));
     assert_eq!(
@@ -1248,9 +1351,82 @@ fn row_of_none(hover: &toml::Table, i: usize) -> Value {
         .unwrap()
 }
 
+/// E24 M4 T6 (R4-7): a random town in Red's sight and a neutral Rampart with a Capitol out of it.
+const TOWNS: &str = r#"
+size = 36
+terrain = "grass"
+heroes = [
+    { at = [12, 12], class = 2 },
+    { at = [34, 34], owner = 1, class = 6 },
+]
+towns = [{ at = [30, 24], faction = 1, buildings = "capitol" }]
+view = [0, 0, 0]
+
+[[objects]]
+def = "AVCranx0.def"
+at = [12, 7]
+"#;
+
+#[test]
+fn a_random_town_in_sight_and_a_town_out_of_it() {
+    let random = LINES[0]
+        .replace("AVCcasx0.def", "AVCranx0.def")
+        .replace(" 98 0 ", " 77 0 ");
+    let mut lines = hover_templates();
+    lines.push(ObjectTemplate::from_objects_txt(&random).unwrap());
+    let (map, extras) = Situation::parse(TOWNS)
+        .unwrap()
+        .build(&BTreeMap::new(), &lines)
+        .unwrap();
+    let g = game_on(writer::gzip(&writer::write_with(&map, &extras).unwrap()));
+    let start = start(&g, &g.observation).unwrap();
+    let defs = start.table["defs"].as_array().unwrap();
+    let classes = start.table["classes"].as_array().unwrap();
+    // The random town a town of the faction the game drew, by its view's fort and Capitol
+    // (design §5.11); its word, by the town class's rule, its index among the towns written.
+    let random = object_at(&g, "AVCranx0.def", [12, 7]);
+    assert!(start.seen[random]);
+    let view = g
+        .observation
+        .adventure
+        .objects
+        .iter()
+        .find(|o| (o.anchor.x, o.anchor.y) == (12, 7))
+        .unwrap();
+    let (at, town) = g
+        .observation
+        .towns
+        .iter()
+        .enumerate()
+        .find(|(_, t)| Some(t.town) == view.town)
+        .unwrap();
+    let list = match (town.capitol, town.fort > 0) {
+        (true, _) => "capitol",
+        (false, true) => "fort",
+        (false, false) => "village",
+    };
+    assert_eq!(
+        defs[random].as_str(),
+        Some(format!("{list}{}.def", town.faction).as_str())
+    );
+    assert_eq!(numbers(&classes[random]), [98, i64::from(town.faction)]);
+    let words = numbers(&start.table["hover"]["words"]);
+    assert_eq!(words[random], i64::try_from(at).unwrap());
+    // The Rampart out of sight: its new game's picture by the map's buildings, a Capitol's.
+    let rampart = object_at(&g, "AVCramx0.def", [30, 24]);
+    assert!(!start.seen[rampart]);
+    assert_eq!(defs[rampart].as_str(), Some("capitol1.def"));
+    assert_eq!(words[rampart], -1);
+}
+
 /// A game of `MAP` hosted (`GameSession`), Red's hero walking two tiles north, then every
 /// player ending its turn for `days` days; Red's record.
 fn session_record(g: &Game, days: u32) -> String {
+    session_records(g, days).swap_remove(0)
+}
+
+/// As [`session_record`], each player's record (E24 M4 T6), by the players' order.
+fn session_records(g: &Game, days: u32) -> Vec<String> {
     use h3_protocol::session::game::{Clock, CommandBounds, GameOptions, GameSession, Spectators};
     use h3_protocol::wire::game::{AdventureCommand, GameCommand, Pos};
     let rules = rules();
@@ -1294,7 +1470,62 @@ fn session_record(g: &Game, days: u32) -> String {
                 .unwrap();
         }
     }
-    session.record(PlayerId::new(0)).unwrap()
+    (0..3)
+        .map(|p| session.record(PlayerId::new(p)).unwrap())
+        .collect()
+}
+
+#[test]
+fn a_record_of_a_player_not_first() {
+    // E24 M4 T6 (the reviewers' R1-1, R4-7 (a)): a map whose second player is Green (colour 3, so
+    // its id and its colour differ); its record starts at the game's start in Red's turn: it
+    // waits, Red's walk in its sight is a computer's turn shown first, then its own first day
+    // (its colour, the date's window, day 1), every later day after the turn before it; the
+    // record ends in Red's turn (open), so that its last End Turn has a turn to show.
+    let g = game_on(map_file(&MAP.replace(
+        "{ at = [12, 10], owner = 1, class = 9 }",
+        "{ at = [12, 10], owner = 3, class = 9 }",
+    )));
+    let colours: Vec<u8> = g.observation.players.iter().map(|p| p.colour).collect();
+    let green = colours.iter().position(|&c| c == 3).unwrap();
+    assert_ne!(green, 3);
+    assert!(green > 0);
+    let records = session_records(&g, 2);
+    let loaded = engine::load(&records[green], &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    assert!(played.waits);
+    let player = |i: usize| table(&played.turns[i])["player"].as_integer();
+    let kind = |i: usize| table(&table(&played.turns[i])["status"])["kind"].as_integer();
+    let day = |i: usize| numbers(&table(&table(&played.turns[i])["kingdom"])["date"]);
+    // Red's walk (two steps north of its hero, beside Green's) shown first, as Red's turn.
+    let red = &played.others[0];
+    assert_eq!((red.turn, red.player, red.open), (0, 0, false));
+    assert_eq!(red.walks[0].steps.len(), 2);
+    assert_eq!((player(0), kind(0)), (Some(0), Some(5)));
+    // Green's first day, then its second after Red's (no walk of Red's: none shown).
+    assert_eq!((player(1), kind(1), day(1)[2]), (Some(3), Some(1), 1));
+    assert_eq!((player(2), kind(2), day(2)[2]), (Some(3), Some(1), 2));
+    // The record's end in Red's day 3: a turn of Red's, open, without a walk.
+    let last = played.others.last().unwrap();
+    assert_eq!(
+        (last.turn, last.player, last.open, last.walks.is_empty()),
+        (played.turns.len() - 1, 0, true, true)
+    );
+    assert_eq!((player(last.turn), kind(last.turn)), (Some(0), Some(5)));
+    // Green's list at each of its days: its one hero.
+    let hero = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == u8::try_from(green).unwrap())
+        .unwrap()
+        .id;
+    assert_eq!(played.lists[1], [hero]);
+    assert_eq!(
+        played.commands,
+        [engine::Command::EndTurn, engine::Command::EndTurn]
+    );
 }
 
 #[test]
@@ -1471,6 +1702,64 @@ fn accepted(command: h3_protocol::wire::game::GameCommand) -> ServerMessage {
 /// A message of `events`.
 fn events(events: Vec<h3_protocol::wire::game::GameEvent>) -> ServerMessage {
     ServerMessage::GameEvents { n: 51, events }
+}
+
+#[test]
+fn a_record_s_walks_short_of_their_paths() {
+    // E24 M4 T6: a walk an event stops after its first step (its points there, its visit where it
+    // stopped), then one whose last node is visited from beside (its points at its last, its
+    // visit on the node); one taken whole stops nowhere.
+    use h3_protocol::wire::game::{AdventureCommand, AdventureEvent, GameCommand, GameEvent, Pos};
+    let g = game();
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .id;
+    let p = |x, y| Pos { x, y, level: 0 };
+    let walk = |path| {
+        accepted(GameCommand::Adventure {
+            command: AdventureCommand::MoveHero { hero: red, path },
+        })
+    };
+    let step = |from, to| GameEvent::Adventure {
+        event: AdventureEvent::HeroStepped {
+            hero: red,
+            from: Some(from),
+            to: Some(to),
+        },
+    };
+    let points = |movement| GameEvent::Adventure {
+        event: AdventureEvent::MovementChanged {
+            hero: red,
+            movement,
+            max_movement: 2000,
+        },
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            walk(vec![p(10, 9), p(10, 8), p(10, 7)]),
+            events(vec![step(p(10, 10), p(10, 9)), points(1800)]),
+            walk(vec![p(10, 8), p(10, 7)]),
+            events(vec![step(p(10, 9), p(10, 8)), points(1600)]),
+            walk(vec![p(10, 7)]),
+            events(vec![step(p(10, 8), p(10, 7)), points(1500)]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let at = |x, y| h3_map::model::Pos { x, y, z: 0 };
+    let stops: Vec<_> = played.moves.iter().map(|m| m.stops).collect();
+    assert_eq!(stops, [Some(1), Some(1), None]);
+    assert_eq!(played.moves[0].points, [Some(1800), None, None]);
+    assert_eq!(played.moves[1].points, [None, Some(1600)]);
+    let visited: Vec<_> = played.visits.iter().map(|v| v.at).collect();
+    assert_eq!(visited, [at(10, 9), at(10, 7), at(10, 7)]);
 }
 
 #[test]
@@ -1701,17 +1990,125 @@ fn a_record_s_visits_and_level_ups() {
             .iter()
             .all(|l| u16::from(l.up.hero) == details.hero_type)
     );
-    // The heroes' experience at the start, by their tiles.
+    // E24 M4 T6 (the reviewer's R2-1, R2-3, R2-4): each visit's walk (the empty walk's none), its
+    // hero, what it held, its own level-ups (the walk's and its answers', none after End Turn);
+    // each level-up's class the record's rules'.
+    assert_eq!((first.walk, second.walk), (0, 1));
+    assert_eq!((first.hero, second.hero), (red.id, red.id));
+    let hero_type = u8::try_from(details.hero_type).ok();
+    assert_eq!((first.hero_type, second.hero_type), (hero_type, hero_type));
+    assert_eq!(first.held.mana, details.mana);
     assert_eq!(
-        played.experience,
-        [(
-            tile(
-                u8::try_from(red.pos.x).unwrap(),
-                u8::try_from(red.pos.y).unwrap()
-            ),
-            details.experience
-        )]
+        (first.levels.as_slice(), second.levels.as_slice()),
+        (&[0][..], &[1, 2][..])
     );
+    let class = rules()
+        .core()
+        .hero_type(h3_kernel::Handle::from_raw(details.hero_type))
+        .map(|t| u8::try_from(t.class.index()).unwrap())
+        .unwrap();
+    assert!(played.levels.iter().all(|l| l.class == class));
+}
+
+/// A visit through its army dialog (E24 M4 T6, the reviewer's R2-4: a reward's creatures with no
+/// room, GAM-DEC-004): the dialog's commands keep the visit, its close's events (the experience,
+/// the level-up) and the level-up's answer are the visit's; a command after the dialog's close
+/// ends it.
+#[test]
+fn a_record_s_visit_through_its_army_dialog() {
+    use h3_protocol::wire::game::{
+        AdventureCommand, Answer, ArmyStack, Consent, GameCommand, GameEvent, HeroChange, Manage,
+        Pos, PrimarySkill, SkillOffer,
+    };
+    let g = game();
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .clone();
+    let tactics = accepted(GameCommand::Manage {
+        manage: Manage::Tactics {
+            hero: red.id,
+            on: true,
+        },
+    });
+    let answer = |answer| accepted(GameCommand::Answer { answer });
+    let level = |level| GameEvent::LevelGained {
+        player: 0,
+        hero: red.id,
+        level,
+        primary: PrimarySkill::Attack,
+        skill: None,
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            accepted(GameCommand::Adventure {
+                command: AdventureCommand::MoveHero {
+                    hero: red.id,
+                    path: vec![Pos {
+                        x: 11,
+                        y: 10,
+                        level: 0,
+                    }],
+                },
+            }),
+            answer(Answer::Offer {
+                consent: Consent::Accept,
+            }),
+            events(vec![GameEvent::ArmyDialogOpened {
+                player: 0,
+                hero: red.id,
+                stack: ArmyStack {
+                    slot: 0,
+                    creature: 18,
+                    count: 10,
+                },
+            }]),
+            tactics.clone(),
+            answer(Answer::Close {}),
+            events(vec![
+                GameEvent::DecisionClosed { player: 0 },
+                GameEvent::HeroChanged {
+                    player: 0,
+                    hero: red.id,
+                    change: HeroChange::GainExperience { amount: 1000 },
+                },
+                level(2),
+            ]),
+            answer(Answer::LevelUp {
+                offer: SkillOffer::First,
+            }),
+            // The dialog closed: a management command ends the visit.
+            tactics,
+            events(vec![level(3)]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let [visit] = &played.visits[..] else {
+        panic!("one visit: {:?}", played.visits);
+    };
+    let answers: Vec<Answer> = visit.answers.iter().map(|(a, _)| *a).collect();
+    assert_eq!(
+        answers,
+        [
+            Answer::Offer {
+                consent: Consent::Accept
+            },
+            Answer::Close {},
+            Answer::LevelUp {
+                offer: SkillOffer::First
+            },
+        ]
+    );
+    assert_eq!(visit.answers[1].1.len(), 3);
+    assert_eq!(visit.levels, [0]);
+    assert_eq!(played.levels.len(), 2);
 }
 
 /// Another player's turn in a record (E24 M4 T4c, design §5.16): Blue's steps by hero, a boat
@@ -1719,11 +2116,23 @@ fn a_record_s_visits_and_level_ups() {
 /// no walk.
 #[test]
 fn a_record_s_other_players_turns() {
-    use h3_map_view::engine::{Command, OtherStep};
+    use h3_map_view::engine::{Command, OtherEnd, OtherStep};
     use h3_map_view::live::{Facing, LiveBoat};
     use h3_map_view::timeline::Sea;
     use h3_protocol::wire::game::{AdventureEvent, GameCommand, GameEvent, Pos, TownCommand};
     let g = game();
+    // The pile's and the monster's types (E24 M4 T6, R1-5: a pickup dissolved, a monster not).
+    let type_at = |x, y| {
+        g.observation
+            .adventure
+            .objects
+            .iter()
+            .find(|o| (o.anchor.x, o.anchor.y) == (x, y))
+            .unwrap()
+            .object_type
+    };
+    let (pile, monster) = (type_at(13, 12), type_at(10, 13));
+    assert!(engine::pickup(rules(), pile) && !engine::pickup(rules(), monster));
     let hero = |owner| {
         g.observation
             .adventure
@@ -1778,7 +2187,7 @@ fn a_record_s_other_players_turns() {
                 step(blue, Some(pos(12, 8)), None),
                 // An object it takes, then another of its events: nothing of a walk.
                 event(AdventureEvent::ObjectRemoved {
-                    object_type: 79,
+                    object_type: pile,
                     anchor: pos(13, 12),
                 }),
                 event(AdventureEvent::MovementChanged {
@@ -1787,6 +2196,30 @@ fn a_record_s_other_players_turns() {
                     max_movement: 1500,
                 }),
             ]),
+            // E24 M4 T6 (R1-3, R1-5): Blue's next command, the same hero walking on: a move of
+            // its own; the monster it beats off the map, the sawmill flagged, Red's hero lost;
+            // then a command with no step taking an object (R1-6: off the map as the next turn
+            // table after this turn starts, not as this one's).
+            events(vec![
+                step(blue, Some(pos(12, 8)), Some(pos(12, 7))),
+                event(AdventureEvent::ObjectRemoved {
+                    object_type: monster,
+                    anchor: pos(10, 13),
+                }),
+                event(AdventureEvent::ObjectFlagged {
+                    object_type: 0,
+                    anchor: pos(6, 10),
+                    owner: 1,
+                }),
+                event(AdventureEvent::HeroRemoved {
+                    hero: red,
+                    pos: pos(10, 9),
+                }),
+            ]),
+            events(vec![event(AdventureEvent::ObjectRemoved {
+                object_type: pile,
+                anchor: pos(14, 10),
+            })]),
             events(vec![
                 GameEvent::TurnEnded { player: 1 },
                 GameEvent::TurnStarted { player: 2 },
@@ -1794,12 +2227,17 @@ fn a_record_s_other_players_turns() {
                 // the next turn table starts), one off the map's positions (nothing) and a
                 // landing with no walk (nothing).
                 event(AdventureEvent::ObjectRemoved {
-                    object_type: 79,
+                    object_type: pile,
                     anchor: pos(13, 12),
                 }),
                 event(AdventureEvent::ObjectRemoved {
                     object_type: 79,
                     anchor: pos(300, 12),
+                }),
+                event(AdventureEvent::ObjectFlagged {
+                    object_type: 53,
+                    anchor: pos(300, 12),
+                    owner: 2,
                 }),
                 event(AdventureEvent::Landed {
                     hero: blue,
@@ -1845,9 +2283,36 @@ fn a_record_s_other_players_turns() {
         ]
     );
     assert_eq!(other.walks[1].hero, red);
-    assert_eq!(other.walks[2].steps, [seen(8, None, None)]);
-    assert_eq!(other.walks[2].taken, [tile(13, 12)]);
-    assert!(other.walks[0].taken.is_empty());
+    assert_eq!(
+        other.walks[2].steps,
+        [seen(8, None, None), seen(8, Some(7), None)]
+    );
+    // Its two moves (R1-3): the pile after the first, the second's changes after it (R1-5).
+    assert_eq!(
+        other.walks[2].ends,
+        [
+            OtherEnd {
+                after: 1,
+                taken: vec![tile(13, 12)],
+                ..OtherEnd::default()
+            },
+            OtherEnd {
+                after: 2,
+                removed: vec![tile(10, 13)],
+                flagged: vec![(tile(6, 10), 1)],
+                lost: vec![red],
+                ..OtherEnd::default()
+            },
+        ]
+    );
+    assert_eq!(
+        other.walks[0].ends,
+        [OtherEnd {
+            after: 2,
+            ..OtherEnd::default()
+        }]
+    );
+    assert!(!other.open && !played.waits);
     // Blue's turn's table, then Red's day 2: kind 5 for Blue, its two walking heroes, no points.
     assert_eq!(played.turns.len(), 2);
     let t = table(&played.turns[0]);
@@ -1861,8 +2326,14 @@ fn a_record_s_other_players_turns() {
     assert_eq!(kingdom["heroes"].as_array().unwrap().len(), 2);
     assert_eq!(numbers(&kingdom["selected"]), [1, 0]);
     assert_eq!(table(&played.turns[1])["player"].as_integer(), Some(0));
-    // Purple's pickup without a step: given to Red's day 2's table.
-    assert_eq!(played.taken, [(1, vec![tile(13, 12)])]);
+    // Blue's and Purple's pickups without a step: given to Red's day 2's table, the table after
+    // Blue's own (R1-6).
+    let [(1, between)] = &played.between[..] else {
+        panic!("one table's changes: {:?}", played.between);
+    };
+    assert_eq!(between.taken, [tile(14, 10), tile(13, 12)]);
+    // Red's list at each table (R1-4): its hero lost in Blue's turn, gone from both.
+    assert_eq!(played.lists, [Vec::<u16>::new(), Vec::new()]);
 }
 
 #[test]
@@ -1872,7 +2343,7 @@ fn what_a_record_s_visits_tell() {
     use h3_map_view::finds::{Find, Gain};
     use h3_protocol::wire::game::{
         AdventureEvent, Answer, ArenaChoice, ChestChoice, Consent, GameEvent, HeroChange,
-        NothingWhy, Pos,
+        NothingWhy, Pos, SchoolChoice,
     };
     let anchor = Pos {
         x: 5,
@@ -1932,9 +2403,15 @@ fn what_a_record_s_visits_tell() {
     let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
     let visit = |events: Vec<GameEvent>| engine::Visit {
         at,
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
         events,
         answers: Vec::new(),
         battle: None,
+        flag: None,
     };
     let found = |class, events| visits::told(&visit(events), [class, 0], "Rion");
     let find = |told: Option<Told>| match told {
@@ -2013,12 +2490,13 @@ fn what_a_record_s_visits_tell() {
     assert_eq!(found(112, Vec::new()), None);
     assert_eq!(found(79, vec![emptied]), None);
     assert_eq!(found(79, vec![resource(1, 3), resource(2, 3)]), None);
-    // An artifact added and taken; none without it; another class tells nothing.
+    // An artifact added and taken; without it taken alone (E24 M4 T6); another class tells
+    // nothing.
     assert_eq!(
         find(found(5, vec![removed.clone(), artifact])).map(|f| (f.0, f.2)),
         Some((Find::Artifact { artifact: 108 }, true))
     );
-    assert_eq!(found(5, vec![removed]), None);
+    assert_eq!(found(5, vec![removed]), Some(Told::Taken));
     assert_eq!(found(91, vec![visited]), None);
     // The questions: no answer, none; the answer another class's, none.
     let asked = |class, answer, after: Vec<GameEvent>| {
@@ -2111,6 +2589,39 @@ fn what_a_record_s_visits_tell() {
             Answered::Second
         ))
     );
+    // A School of Magic (E24 M4 T6, R2-2): a skill bought, its gain and price the record's; left,
+    // or no price told, nothing.
+    let school = |choice| Answer::School { choice };
+    let paid = GameEvent::ResourcePaid {
+        player: 0,
+        resource: 6,
+        amount: 1000,
+    };
+    let bought = Ask::School {
+        gain: 1,
+        price: [6, 1000],
+    };
+    assert_eq!(
+        asked(
+            47,
+            school(SchoolChoice::First),
+            vec![paid.clone(), primary([0, 0, 1, 0])]
+        ),
+        Some((bought.clone(), Answered::Yes))
+    );
+    assert_eq!(
+        asked(
+            47,
+            school(SchoolChoice::Second),
+            vec![paid, primary([0, 0, 0, 1])]
+        ),
+        Some((bought, Answered::Second))
+    );
+    assert_eq!(asked(47, school(SchoolChoice::Leave), Vec::new()), None);
+    assert_eq!(
+        asked(47, school(SchoolChoice::First), vec![primary([0, 0, 1, 0])]),
+        None
+    );
     // What the panels show: an unknown resource, another change and another event left out.
     let gain = visits::gain(&[
         resource(9, 5),
@@ -2120,6 +2631,440 @@ fn what_a_record_s_visits_tell() {
     ]);
     assert_eq!(gain.resources, [5, 0, 0, 0, 0, 0, 0]);
     assert_eq!(gain.skills, [0; 4]);
+}
+
+/// Pandora's Box as a record tells it (E24 M4 T6, the reviewer's R2-4): every part its answers'
+/// events tell (the experience given after the army dialog's close), the spell points and the
+/// battle bonuses against what the hero held, brought on by the walk's own events; its guards
+/// fought, nothing (not built).
+#[test]
+fn what_a_record_s_box_tells() {
+    use h3_map::model::{Rewards, Stack};
+    use h3_map_view::asks::Ask;
+    use h3_map_view::engine::visits::{self, Answered, Told};
+    use h3_protocol::wire::game::{
+        AdventureEvent, Answer, ArmyStack, Artifact, Consent, GameEvent, HeroChange,
+    };
+    let changed = |change| GameEvent::HeroChanged {
+        player: 0,
+        hero: 0,
+        change,
+    };
+    let bonus = |morale, luck| GameEvent::Adventure {
+        event: AdventureEvent::BonusChanged {
+            hero: 0,
+            morale,
+            luck,
+        },
+    };
+    let opened = vec![
+        GameEvent::ResourceGained {
+            player: 0,
+            resource: 6,
+            amount: 1000,
+        },
+        GameEvent::ResourceLost {
+            player: 0,
+            resource: 0,
+            amount: 5,
+        },
+        GameEvent::ResourceLost {
+            player: 0,
+            resource: 9,
+            amount: 5,
+        },
+        changed(HeroChange::GainPrimary {
+            primary: [0, 1, 0, 0],
+        }),
+        changed(HeroChange::RaiseSkill { skill: 6, level: 2 }),
+        changed(HeroChange::RaiseSkill {
+            skill: 300,
+            level: 1,
+        }),
+        changed(HeroChange::SetSpellPoints { points: 25 }),
+        changed(HeroChange::AddArtifact {
+            artifact: Artifact {
+                artifact: 7,
+                spell: None,
+            },
+        }),
+        changed(HeroChange::LearnSpell { spell: 15 }),
+        changed(HeroChange::LearnSpell { spell: 300 }),
+        GameEvent::Adventure {
+            event: AdventureEvent::CreaturesJoined {
+                hero: 0,
+                creature: 18,
+                count: 10,
+            },
+        },
+        bonus(3, -1),
+        GameEvent::ArmyDialogOpened {
+            player: 0,
+            hero: 0,
+            stack: ArmyStack {
+                slot: 0,
+                creature: 20,
+                count: 4,
+            },
+        },
+        GameEvent::DayStarted { day: 2 },
+    ];
+    let visit = engine::Visit {
+        at: h3_map::model::Pos { x: 5, y: 4, z: 0 },
+        walk: 3,
+        hero: 0,
+        hero_type: Some(1),
+        held: engine::Held {
+            mana: 10,
+            morale: 1,
+            luck: 0,
+        },
+        levels: Vec::new(),
+        // The walk's own events bring the morale on: what the Box changes is told against it.
+        events: vec![bonus(2, 0)],
+        answers: vec![
+            (
+                Answer::Offer {
+                    consent: Consent::Accept,
+                },
+                opened,
+            ),
+            // The army dialog's close: the experience, given last.
+            (
+                Answer::Close {},
+                vec![changed(HeroChange::GainExperience { amount: 2000 })],
+            ),
+        ],
+        battle: None,
+        flag: None,
+    };
+    let Some(Told::Ask {
+        ask: Ask::OpenBox { rewards, hero },
+        answered: Answered::Yes,
+        flag: None,
+    }) = visits::told(&visit, [6, 0], "Rion")
+    else {
+        panic!("Pandora's Box opened");
+    };
+    assert_eq!(
+        rewards,
+        Rewards {
+            experience: 2000,
+            mana: 15,
+            morale: 1,
+            luck: -1,
+            resources: [-5, 0, 0, 0, 0, 0, 1000],
+            primary: [0, 1, 0, 0],
+            skills: vec![(6, 2)],
+            artifacts: vec![7],
+            spells: vec![15],
+            creatures: vec![
+                Stack {
+                    creature: 18,
+                    count: 10
+                },
+                Stack {
+                    creature: 20,
+                    count: 4
+                }
+            ],
+        }
+    );
+    assert_eq!(hero, "Rion");
+    // Its guards fought: nothing (ADVEVENT 16, the battle, then its rewards: not built).
+    let mut guarded = visit;
+    guarded.battle = Some(engine::Battled {
+        started: 2,
+        ended: Vec::new(),
+    });
+    assert_eq!(visits::told(&guarded, [6, 0], "Rion"), None);
+}
+
+/// A record's visits laid out (E24 M4 T6, the reviewers' R2-1, R2-6 and R2-8): one find a visit,
+/// three of them on one Windmill, Pandora's Box declined then opened, each question's answers
+/// kept (the record's, the Arena's Cancel with its Attack, a guarded mine's OK), the objects that
+/// block their tiles, an artifact's primary skills, the level-ups; a visit on no object, or one
+/// that tells nothing, left out.
+#[test]
+fn a_record_s_visits_laid_out_each_on_its_own() {
+    use h3_map_view::engine::visits::{self, Answered, Kept, Laid, Told};
+    use h3_map_view::finds::Find;
+    use h3_protocol::wire::game::{
+        AdventureEvent, Answer, ArenaChoice, Artifact, Consent, GameEvent, HeroChange, Pos,
+    };
+    use h3_protocol::wire::{Outcome, Side};
+    let anchor = Pos {
+        x: 5,
+        y: 4,
+        level: 0,
+    };
+    let wood = GameEvent::ResourceGained {
+        player: 0,
+        resource: 0,
+        amount: 3,
+    };
+    let emptied = GameEvent::Adventure {
+        event: AdventureEvent::ObjectEmpty {
+            object_type: 1,
+            anchor,
+        },
+    };
+    let removed = GameEvent::Adventure {
+        event: AdventureEvent::ObjectRemoved {
+            object_type: 1,
+            anchor,
+        },
+    };
+    let primary = |primary| GameEvent::HeroChanged {
+        player: 0,
+        hero: 0,
+        change: HeroChange::GainPrimary { primary },
+    };
+    let offer = |consent| Answer::Offer { consent };
+    let won = GameEvent::BattleEnded {
+        heroes: [Some(0), None],
+        result: Outcome::Victory {
+            side: Side::Attacker,
+        },
+    };
+    let tile = |x| h3_map::model::Pos { x, y: 4, z: 0 };
+    let visit = |walk: usize, x, events: Vec<GameEvent>, answers: Vec<(Answer, Vec<GameEvent>)>| {
+        engine::Visit {
+            at: tile(x),
+            walk,
+            hero: 0,
+            hero_type: Some(1),
+            held: engine::Held::default(),
+            levels: Vec::new(),
+            events,
+            answers,
+            battle: None,
+            flag: None,
+        }
+    };
+    let mut visits = vec![
+        // A Windmill's three visits: its wood, its wood a week later, empty the same week.
+        visit(0, 5, vec![wood.clone()], Vec::new()),
+        visit(1, 5, vec![wood.clone()], Vec::new()),
+        visit(2, 5, vec![emptied], Vec::new()),
+        // Pandora's Box declined, then opened.
+        visit(
+            3,
+            6,
+            Vec::new(),
+            vec![(offer(Consent::Decline), Vec::new())],
+        ),
+        visit(
+            5,
+            6,
+            Vec::new(),
+            vec![(offer(Consent::Accept), vec![removed.clone()])],
+        ),
+        // The Arena: Attack (its Cancel kept, MCL-Q33), Defense.
+        visit(
+            6,
+            7,
+            Vec::new(),
+            vec![(
+                Answer::Arena {
+                    choice: ArenaChoice::Attack,
+                },
+                vec![primary([2, 0, 0, 0])],
+            )],
+        ),
+        visit(
+            7,
+            7,
+            Vec::new(),
+            vec![(
+                Answer::Arena {
+                    choice: ArenaChoice::Defense,
+                },
+                vec![primary([0, 2, 0, 0])],
+            )],
+        ),
+        // A guarded mine's battle, a monster's.
+        visit(8, 8, Vec::new(), vec![(offer(Consent::Accept), Vec::new())]),
+        visit(9, 9, Vec::new(), Vec::new()),
+        // An artifact picked up (R2-6: its primary skills, the tables').
+        visit(
+            10,
+            10,
+            vec![
+                removed,
+                GameEvent::HeroChanged {
+                    player: 0,
+                    hero: 0,
+                    change: HeroChange::AddArtifact {
+                        artifact: Artifact {
+                            artifact: 7,
+                            spell: None,
+                        },
+                    },
+                },
+            ],
+            Vec::new(),
+        ),
+        // A Temple that tells nothing; a tile with no object.
+        visit(11, 11, Vec::new(), Vec::new()),
+        visit(12, 12, vec![wood], Vec::new()),
+    ];
+    for k in [7, 8] {
+        visits[k].battle = Some(engine::Battled {
+            started: 4,
+            ended: vec![won.clone()],
+        });
+    }
+    visits[1].levels = vec![0, 1];
+    let object_at = |at: h3_map::model::Pos| match at.x {
+        5 => Some((1, [112, 0])),
+        6 => Some((2, [6, 0])),
+        7 => Some((3, [4, 0])),
+        8 => Some((4, [53, 0])),
+        9 => Some((5, [54, 139])),
+        10 => Some((6, [5, 0])),
+        11 => Some((7, [96, 0])),
+        _ => None,
+    };
+    let text = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml"),
+    )
+    .unwrap();
+    let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
+    let laid = visits::lay(&visits, object_at, &tables.map.finds, |hero| {
+        format!("hero {hero:?}")
+    });
+    let walks: Vec<usize> = laid.iter().map(|l| l.walk).collect();
+    assert_eq!(walks, [0, 1, 2, 3, 5, 6, 7, 8, 9, 10]);
+    // The Windmill: each visit its own find, its own box and gain.
+    let windmill: Vec<(Find, i32)> = laid[..3]
+        .iter()
+        .map(|l| match &l.told {
+            Told::Find { find, gain, .. } => (find.clone(), gain.resources[0]),
+            other => panic!("a find: {other:?}"),
+        })
+        .collect();
+    let mill = |amount| Find::Windmill {
+        resource: 0,
+        amount,
+    };
+    assert_eq!(windmill, [(mill(3), 3), (mill(3), 3), (mill(0), 0)]);
+    assert!(laid[..3].iter().all(|l| (l.object, l.at) == (1, tile(5))));
+    assert_eq!(
+        laid.iter().map(|l| l.levels.len()).collect::<Vec<_>>(),
+        [0, 2, 0, 0, 0, 0, 0, 0, 0, 0]
+    );
+    // The answers each question keeps, and the objects that block their tiles.
+    let kept = |yes, second, no| Kept { yes, second, no };
+    let shape: Vec<(Kept, bool)> = laid.iter().map(|l| (l.kept, l.blocks)).collect();
+    assert_eq!(
+        shape,
+        [
+            (Kept::default(), false),
+            (Kept::default(), false),
+            (Kept::default(), false),
+            (kept(false, false, true), true),
+            (kept(true, false, false), true),
+            (kept(true, false, true), false),
+            (kept(false, true, false), false),
+            (kept(true, false, false), false),
+            (Kept::default(), true),
+            (Kept::default(), true),
+        ]
+    );
+    let answered: Vec<Option<Answered>> = laid
+        .iter()
+        .map(|l| match l.told {
+            Told::Ask { answered, .. } => Some(answered),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        answered[3..7],
+        [
+            Some(Answered::No),
+            Some(Answered::Yes),
+            Some(Answered::Yes),
+            Some(Answered::Second)
+        ]
+    );
+    assert!(matches!(laid[7].told, Told::Guarded { .. }));
+    assert!(matches!(laid[8].told, Told::Fight { .. }));
+    // The Box's boxes name the visit's hero.
+    assert!(matches!(
+        &laid[4].told,
+        Told::Ask {
+            ask: h3_map_view::asks::Ask::OpenBox { hero, .. },
+            ..
+        } if hero == "hero Some(1)"
+    ));
+    // The artifact's primary skills on the window (the tables' Centaur's Axe: +2 Attack).
+    let Laid {
+        told: Told::Find { gain, taken, .. },
+        ..
+    } = &laid[9]
+    else {
+        panic!("an artifact's find");
+    };
+    assert_eq!((gain.skills, *taken), ([2, 0, 0, 0], true));
+}
+
+#[test]
+fn a_record_s_object_taken_alone() {
+    // E24 M4 T6: a visit that takes its object off the map and tells nothing else Part A builds
+    // (a Scholar's, class 81) takes it alone, from beside, no box; an event's removal (class 26,
+    // not drawn) tells nothing.
+    use h3_map_view::engine::visits::{self, Kept, Laid, Told};
+    use h3_protocol::wire::game::{AdventureEvent, GameEvent, Pos};
+    let removed = GameEvent::Adventure {
+        event: AdventureEvent::ObjectRemoved {
+            object_type: 63,
+            anchor: Pos {
+                x: 5,
+                y: 4,
+                level: 0,
+            },
+        },
+    };
+    let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
+    let visit = engine::Visit {
+        at,
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
+        flag: None,
+        events: vec![removed],
+        answers: Vec::new(),
+        battle: None,
+    };
+    assert_eq!(visits::told(&visit, [81, 0], "Rion"), Some(Told::Taken));
+    assert_eq!(visits::told(&visit, [26, 0], "Rion"), None);
+    let text = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml"),
+    )
+    .unwrap();
+    let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
+    let laid = visits::lay(
+        &[visit],
+        |_| Some((3, [81, 0])),
+        &tables.map.finds,
+        |_| String::new(),
+    );
+    let [
+        Laid {
+            told: Told::Taken,
+            object: 3,
+            kept,
+            blocks: true,
+            ..
+        },
+    ] = &laid[..]
+    else {
+        panic!("taken alone: {laid:?}");
+    };
+    assert_eq!(*kept, Kept::default());
 }
 
 #[test]
@@ -2151,6 +3096,12 @@ fn what_a_record_s_flags_tell() {
     let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
     let visit = |events: Vec<GameEvent>, answers: Vec<(Answer, Vec<GameEvent>)>| engine::Visit {
         at,
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
+        flag: events.contains(&flagged).then_some(2),
         events,
         answers,
         battle: None,
@@ -2163,7 +3114,8 @@ fn what_a_record_s_flags_tell() {
         _ => None,
     };
     // A mine of its type's resource and a Lighthouse flagged: their finds in the record's
-    // colour; unflagged (another's own visit), an abandoned mine's type: nothing.
+    // colour (the visit's, as `played` gives it: 2 here); unflagged (another's own visit):
+    // nothing; an abandoned mine's type (E24 M4 T6, the reviewers' R3-4): its flag alone.
     let flags = visit(vec![flagged.clone()], Vec::new());
     assert_eq!(
         flag(told(&flags, 53, 0)),
@@ -2174,7 +3126,7 @@ fn what_a_record_s_flags_tell() {
         Some((Find::Lighthouse, false, Some(2)))
     );
     assert_eq!(told(&visit(Vec::new(), Vec::new()), 53, 0), None);
-    assert_eq!(told(&flags, 53, 7), None);
+    assert_eq!(told(&flags, 53, 7), Some(Told::Flagged { flag: 2 }));
     // A dwelling flagged, its hire accepted: the creatures joined free; one of the visitor's own
     // not flagged; declined, or none joined: nothing.
     let accept = Answer::Offer {
@@ -2239,8 +3191,13 @@ fn what_a_record_s_flags_tell() {
         None
     );
     assert_eq!(hire(vec![flagged.clone()], Vec::new()), None);
+    // Its hire not built, the flag raised alone (E24 M4 T6, the reviewers' R3-4): none told
+    // after an accept, declined, a class-20 dwelling's; unflagged, nothing.
+    let alone = Some(Told::Flagged { flag: 2 });
+    let untold = visit(vec![flagged.clone()], vec![(accept, Vec::new())]);
+    assert_eq!(told(&untold, 17, 0), alone);
     let declined = visit(
-        vec![flagged],
+        vec![flagged.clone()],
         vec![(
             Answer::Offer {
                 consent: Consent::Decline,
@@ -2248,15 +3205,141 @@ fn what_a_record_s_flags_tell() {
             Vec::new(),
         )],
     );
-    assert_eq!(told(&declined, 20, 0), None);
+    assert_eq!(told(&declined, 20, 0), alone);
+    assert_eq!(told(&declined, 17, 0), alone);
+    // A Shipyard's (87) flag likewise.
+    assert_eq!(told(&flags, 87, 0), alone);
     assert_eq!(told(&visit(Vec::new(), Vec::new()), 17, 0), None);
+    // A class-20 dwelling's hire accepted (E24 M4 T6, the reviewer's R2-5): nothing (ADVEVENT 36
+    // and its names not built), where class 17's of the same subclass asks its hire.
+    let accepted = visit(Vec::new(), vec![(accept, vec![joined])]);
+    assert!(matches!(
+        told(&accepted, 17, 0),
+        Some(Told::Ask {
+            ask: Ask::Hire { .. },
+            ..
+        })
+    ));
+    assert_eq!(told(&accepted, 20, 0), None);
+}
+
+#[test]
+fn a_record_s_flags_in_their_owners_colours() {
+    // E24 M4 T6 (the reviewers' R3-1, R3-4): a visit's flag is its `ObjectFlagged`'s owner, a
+    // player id, drawn in that player's colour (here Red, id 0, colour 5, and Blue, id 1, colour
+    // 3): in its command's events (the first only), an answer's or its battle's end; none
+    // without one. A mine taken, then taken back by the other: each visit its own flag.
+    use h3_map_view::engine::visits::{self, Told};
+    use h3_map_view::finds::Find;
+    use h3_protocol::wire::game::{
+        AdventureCommand, AdventureEvent, Answer, Consent, GameCommand, GameEvent, Pos,
+    };
+    use h3_protocol::wire::{Command as BattleCommand, Outcome, Side};
+    let g = game();
+    let mut observation = g.observation.clone();
+    observation.players[0].colour = 5;
+    observation.players[1].colour = 3;
+    let red = observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .id;
+    let pos = |x, y| Pos { x, y, level: 0 };
+    let walk = |x, y| {
+        accepted(GameCommand::Adventure {
+            command: AdventureCommand::MoveHero {
+                hero: red,
+                path: vec![pos(x, y)],
+            },
+        })
+    };
+    let flagged = |owner| GameEvent::Adventure {
+        event: AdventureEvent::ObjectFlagged {
+            object_type: 53,
+            anchor: pos(5, 4),
+            owner,
+        },
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&observation),
+            walk(5, 4),
+            events(vec![flagged(0), flagged(1)]),
+            walk(6, 4),
+            events(Vec::new()),
+            accepted(GameCommand::Answer {
+                answer: Answer::Offer {
+                    consent: Consent::Accept,
+                },
+            }),
+            events(vec![flagged(1)]),
+            walk(7, 4),
+            events(vec![GameEvent::BattleStarted {
+                heroes: [Some(red), None],
+                tile: pos(7, 4),
+            }]),
+            accepted(GameCommand::Battle {
+                command: BattleCommand::Defend {},
+            }),
+            events(vec![
+                GameEvent::BattleEnded {
+                    heroes: [Some(red), None],
+                    result: Outcome::Victory {
+                        side: Side::Attacker,
+                    },
+                },
+                flagged(0),
+            ]),
+            walk(8, 4),
+            events(Vec::new()),
+            // The first walk's mine visited again: the flag the record raises then, Blue's.
+            walk(5, 4),
+            events(vec![flagged(1)]),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let flags: Vec<Option<u8>> = played.visits.iter().map(|v| v.flag).collect();
+    assert_eq!(flags, [Some(5), Some(3), Some(5), None, Some(3)]);
+    // Laid out on a mine (the first and the last walk's) and a Shipyard: each visit's own flag,
+    // a Shipyard's alone.
+    let object_at = |at: h3_map::model::Pos| match at.x {
+        5 => Some((0, [53, 0])),
+        6 => Some((1, [87, 0])),
+        _ => None,
+    };
+    let text = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml"),
+    )
+    .unwrap();
+    let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
+    let laid = visits::lay(&played.visits, object_at, &tables.map.finds, |_| {
+        String::new()
+    });
+    let told: Vec<(usize, Told)> = laid.into_iter().map(|l| (l.walk, l.told)).collect();
+    let mine = |flag| Told::Find {
+        find: Find::Mine { resource: 0 },
+        gain: h3_map_view::finds::Gain::default(),
+        taken: false,
+        flag: Some(flag),
+    };
+    assert_eq!(
+        told,
+        [(0, mine(5)), (1, Told::Flagged { flag: 3 }), (4, mine(3))]
+    );
 }
 
 #[test]
 fn a_record_s_boats() {
     use h3_map_view::live::{Facing, LiveBoat};
     use h3_map_view::timeline::Sea;
-    use h3_protocol::wire::game::{AdventureCommand, AdventureEvent, GameCommand, GameEvent, Pos};
+    use h3_protocol::wire::game::{
+        AdventureCommand, AdventureEvent, AdventureReveal, Answer, Boat, Consent, GameCommand,
+        GameEvent, GameReveal, Pos,
+    };
     let g = game();
     let hero = |owner| {
         g.observation
@@ -2293,6 +3376,44 @@ fn a_record_s_boats() {
             facing,
         })
     };
+    let seen = |at, facing| Boat {
+        tile: pos(at, at),
+        kind: 0,
+        facing,
+    };
+    let built = |at, boat_type| {
+        adventure(AdventureEvent::BoatBuilt {
+            tile: pos(at, at),
+            boat_type,
+        })
+    };
+    // A boat off the map's positions: left out.
+    let off = Boat {
+        tile: Pos {
+            x: 300,
+            y: 1,
+            level: 0,
+        },
+        kind: 0,
+        facing: 0,
+    };
+    let reveal = |boats| ServerMessage::GameReveal {
+        n: 52,
+        reveal: GameReveal {
+            adventure: AdventureReveal {
+                viewer: 0,
+                palette: Vec::new(),
+                areas: Vec::new(),
+                heroes: Vec::new(),
+                objects: Vec::new(),
+                boats,
+                towns: Vec::new(),
+            },
+            heroes: Vec::new(),
+            towns: Vec::new(),
+            garrisons: Vec::new(),
+        },
+    };
     let record = text(
         &g.header,
         &[
@@ -2310,34 +3431,174 @@ fn a_record_s_boats() {
             moved(12, 10),
             events(vec![stepped(12, 10), landed(red, 6), landed(blue, 2)]),
             moved(13, 10),
-            events(vec![stepped(13, 10), landed(red, 9)]),
+            events(vec![
+                stepped(13, 10),
+                landed(red, 9),
+                // One off the map's positions: none, the landing before kept.
+                adventure(AdventureEvent::Landed {
+                    hero: red,
+                    boat: 1,
+                    at: Pos {
+                        x: 300,
+                        y: 10,
+                        level: 0,
+                    },
+                    facing: 0,
+                }),
+            ]),
             // Another hero's boarding: no walk of its own open.
             events(vec![adventure(AdventureEvent::Boarded {
                 hero: blue,
                 boat: 0,
                 at: pos(30, 30),
             })]),
+            // E24 M4 T6 (the reviewer's R3-3): a walk's reveal's boats (one with no facing left
+            // out), the walk's; a boat built after it, the next walk's; one built with no walk
+            // after it, the next turn table's.
+            moved(14, 10),
+            events(vec![stepped(14, 10)]),
+            reveal(vec![seen(20, 3), seen(25, 9), off]),
+            accepted(GameCommand::Answer {
+                answer: Answer::Offer {
+                    consent: Consent::Accept,
+                },
+            }),
+            events(vec![built(21, 1)]),
+            reveal(vec![seen(26, 0)]),
+            moved(15, 10),
+            events(vec![stepped(15, 10), built(27, 0)]),
+            accepted(GameCommand::EndTurn {}),
+            events(vec![
+                built(22, 2),
+                GameEvent::TurnEnded { player: 0 },
+                GameEvent::TurnStarted { player: 1 },
+            ]),
+            // Blue's: one built at its move's end, one with no step the next table's.
+            events(vec![
+                adventure(AdventureEvent::HeroStepped {
+                    hero: blue,
+                    from: Some(pos(30, 30)),
+                    to: Some(pos(31, 30)),
+                }),
+                built(23, 0),
+            ]),
+            // E24 M4 T6: a hero the start does not show lands in sight: its boat the next
+            // table's too (one with no facing left out).
+            events(vec![
+                built(24, 1),
+                adventure(AdventureEvent::HeroStepped {
+                    hero: 99,
+                    from: None,
+                    to: Some(pos(32, 32)),
+                }),
+                adventure(AdventureEvent::Landed {
+                    hero: 99,
+                    boat: 2,
+                    at: pos(33, 33),
+                    facing: 6,
+                }),
+                adventure(AdventureEvent::Landed {
+                    hero: 99,
+                    boat: 2,
+                    at: pos(34, 34),
+                    facing: 9,
+                }),
+            ]),
+            events(vec![
+                GameEvent::TurnEnded { player: 1 },
+                GameEvent::DayStarted { day: 2 },
+                GameEvent::TurnStarted { player: 0 },
+            ]),
         ],
     );
     let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
     let played = engine::played(&loaded, &g.art, rules()).unwrap();
     let seas: Vec<_> = played.moves.iter().map(|m| m.sea).collect();
+    let tile = |x, y| h3_map::model::Pos { x, y, z: 0 };
     let boat = LiveBoat {
-        at: h3_map::model::Pos { x: 11, y: 10, z: 0 },
+        at: tile(11, 10),
         kind: 1,
         facing: Facing::Left,
     };
-    assert_eq!(seas, [Some(Sea::Board(2)), Some(Sea::Land(boat)), None]);
+    // E24 M4 T6 (the reviewer's R3-6): a landing with a facing past 7 refused where it is played.
+    assert_eq!(
+        seas,
+        [
+            Some(Sea::Board(2)),
+            Some(Sea::Land(boat)),
+            Some(Sea::Unfaced(9)),
+            None,
+            None
+        ]
+    );
+    let boats: Vec<Vec<LiveBoat>> = played.moves.iter().map(|m| m.boats.clone()).collect();
+    let empty = |at, kind, facing| LiveBoat { at, kind, facing };
+    assert_eq!(
+        boats,
+        [
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            vec![empty(tile(20, 20), 0, Facing::DownRight)],
+            // A built boat faces as the fold builds it; one revealed with no walk open, and one
+            // built during the walk, the walk's too.
+            vec![
+                empty(tile(21, 21), 1, Facing::Right),
+                empty(tile(26, 26), 0, Facing::Up),
+                empty(tile(27, 27), 0, Facing::Right),
+            ],
+        ]
+    );
+    let between: Vec<(usize, Vec<LiveBoat>)> = played
+        .between
+        .iter()
+        .map(|(turn, end)| (*turn, end.boats.clone()))
+        .collect();
+    // The viewer's before Blue's table, Blue's stepless one before the viewer's next.
+    assert_eq!(
+        between,
+        [
+            (0, vec![empty(tile(22, 22), 2, Facing::Right)]),
+            (
+                1,
+                vec![
+                    empty(tile(24, 24), 1, Facing::Right),
+                    empty(tile(33, 33), 2, Facing::Left)
+                ]
+            )
+        ]
+    );
+    let ends: Vec<Vec<LiveBoat>> = played.others[0].walks[0]
+        .ends
+        .iter()
+        .map(|e| e.boats.clone())
+        .collect();
+    assert_eq!(ends, [vec![empty(tile(23, 23), 0, Facing::Right)]]);
 }
 
 #[test]
 fn a_record_s_battles() {
     // E24 M4 T5b1 (design §5.20): a walk whose events begin a battle names their message; a
     // battle begun with no walk of the viewer's open (another player's) names none; an answer's is
-    // a command after it.
+    // a command after it. Since E24 M4 T6 (the reviewer's R5-6) a battle's commands, the viewer's
+    // and the system's for it, are none of the map's.
     use h3_map_view::engine::Command;
     use h3_protocol::wire::game::{
         AdventureCommand, AdventureEvent, Answer, Consent, GameCommand, GameEvent, Pos,
+        SystemCommand,
+    };
+    let battle_command = || {
+        accepted(GameCommand::Battle {
+            command: h3_protocol::wire::Command::Defend {},
+        })
+    };
+    let system_command = || {
+        accepted(GameCommand::System {
+            command: SystemCommand::Battle {
+                player: 1,
+                command: h3_protocol::wire::Command::Wait {},
+            },
+        })
     };
     let g = game();
     let red = g
@@ -2379,6 +3640,8 @@ fn a_record_s_battles() {
                 events: vec![stepped(11, 10), started(12, 10)],
             },
             events(vec![started(12, 10)]),
+            battle_command(),
+            system_command(),
             moved(11, 11),
             events(vec![stepped(11, 11)]),
             ServerMessage::GameTurn {
@@ -2395,6 +3658,7 @@ fn a_record_s_battles() {
                 },
             }),
             events(vec![started(13, 13)]),
+            battle_command(),
             events(vec![started(13, 13)]),
         ],
     );
@@ -2402,6 +3666,7 @@ fn a_record_s_battles() {
     let played = engine::played(&loaded, &g.art, rules()).unwrap();
     let battles: Vec<_> = played.moves.iter().map(|m| m.battle).collect();
     assert_eq!(battles, [Some(61), None]);
+    assert_eq!(played.commands.len(), 4);
     assert_eq!(
         played.commands[2..],
         [
@@ -2516,8 +3781,14 @@ fn what_a_record_s_battles_tell() {
     };
     let visit = |ended: Vec<GameEvent>, answers: Vec<(Answer, Vec<GameEvent>)>| engine::Visit {
         at,
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
         events: Vec::new(),
         answers,
+        flag: ended.contains(&flagged).then_some(0),
         battle: Some(engine::Battled { started: 4, ended }),
     };
     let fight =
@@ -2542,7 +3813,10 @@ fn what_a_record_s_battles_tell() {
     let retreated = end(Outcome::Retreat {
         side: Side::Attacker,
     });
-    assert_eq!(fight(vec![retreated, gone]), Some((4, 1, false, true, 0)));
+    assert_eq!(
+        fight(vec![retreated, gone.clone()]),
+        Some((4, 1, false, true, 0))
+    );
     // Every winner (a side's retreat or surrender the other's win; a draw none's).
     for (result, winner) in [
         (
@@ -2595,19 +3869,31 @@ fn what_a_record_s_battles_tell() {
         Some(Told::Guarded {
             battle,
             winner,
+            lost,
             flag,
             resource,
             experience,
-        }) => Some((battle, winner, flag, resource, experience)),
+        }) => Some((battle, winner, lost, flag, resource, experience)),
         _ => None,
     };
     assert_eq!(
-        guarded(vec![won.clone(), experience, flagged], vec![accept.clone()]),
-        Some((4, 0, Some(0), 7, 15))
+        guarded(
+            vec![won.clone(), experience, flagged.clone()],
+            vec![accept.clone()]
+        ),
+        Some((4, 0, false, Some(0), 7, 15))
     );
     assert_eq!(
         guarded(vec![won.clone()], vec![accept.clone()]),
-        Some((4, 0, None, 7, 0))
+        Some((4, 0, false, None, 7, 0))
+    );
+    // E24 M4 T6 (the reviewers' R5-4, R3-2): beaten by the guards, the hero gone.
+    let beaten = end(Outcome::Victory {
+        side: Side::Defender,
+    });
+    assert_eq!(
+        guarded(vec![beaten, gone.clone()], vec![accept.clone()]),
+        Some((4, 1, true, None, 7, 0))
     );
     let decline = (
         Answer::Offer {

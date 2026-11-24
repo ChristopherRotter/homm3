@@ -106,3 +106,39 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
 - **The tab:** two levels at its first opening and again after a game (CLT's catalogue had not
   said which).
 - **Not done (T1b2):** the draw log per site and the step dumps; whether 0x532A5B draws in step 2.
+
+## T1b2 — the phase oracle (2026-11-23 and 24, increment 1)
+
+- **Sandbox:** a new chat (T1b1's sandbox was gone): the client lane's set staged again from the
+  PC (60 files: the four LODs, `shell-videos.vid`, the executable and DLLs, sounds, videos,
+  `maps.tar`, `extracted.tar`, the saves, the 40 non-campaign MP3s; `Heroes3.exe`'s SHA-256
+  checked); stacked on `rmg/e14-t1b1` (#1138, open and green).
+- **Built:** `xdd.c` section 10 (`H3RMG`): `rand`'s tail (0x617E70) jumps to `rmg_rand_tail`,
+  which logs the generator thread's draws (the call site, the value) between its `srand` and
+  `rmg_write_map`'s return; 18 calls through `rmg_thunk_jmp` and `rmg_thunk_call` (the srand,
+  `rmg_generate_map`'s call, the 15 steps', `rmg_write_map`'s) mark the phases and dump the
+  cells (format 1: per cell the objects' count and first three indices, then its words +0x10 to
+  +0x2C; the objects' table: template index, type, subtype, position; the places past the
+  third); the ack's eighteenth field (19 hooks; `h3drive.ACK_FIELDS` 18). `h3rmg.py`: `one` and
+  `corpus --phases` (the log's end awaited, digests against `rmg/phases.txt`, `--again`'s cell
+  differences named and the memory bits told apart), `phases` (the logs per phase against §2.6,
+  `--runs`). Five map entries for the painters' draw functions (`inferred`).
+- **Agent decisions (change freely):** `rand` hooked at its tail, not at its call sites: every
+  draw of the stream is seen, those of callees outside the range too (the call-site table of
+  section 3 would have missed them). The hooks run on their own 256 kB stack and read the thread
+  id from `fs:0x24`: a first version ran its C code on the game's stack, where step 2 reads
+  uninitialised bytes; its first maps and `l1-4p-b`'s draw count were the same, the own stack
+  makes it hold by construction.
+  The dumps replace each cell's object vector (pointers) by indices; `--phases` is opt-in (the
+  plain oracle stays T1b1's).
+- **Observed** (ORACLE.md, "The phase oracle"): the corpus with `--phases --again --twice` in
+  about 20 minutes; 21 of 21 first maps as `kept.txt`, logs and dumps the same from fresh starts;
+  21 454 to 500 780 draws a map; 1.03 of the corpus's 3.13 million draws from the terrain painter
+  (steps 3, 6, 11) and the road and river painter (14, 15), outside §2.6; listed sites never
+  drawn (water Random, step 4's far sites, 0x546154 in steps 6 and 9); 0x532A5B in step 2 in 18
+  of 21. `l1-4p-b`'s second map in one game differs (with and without the hooks; 5 draws of
+  0x532A5B instead of 6), the same with a 40-character variable added to the environment,
+  different with 2 000. The cell bits `rmg_map_cell_reset` leaves (+0x14, +0x18, +0x24 bits
+  30-31, +0x28 bit 24, +0x2C bits 1-31) differ in S and M second maps and change no map.
+- **Checks:** the harness's own check (`harness-check.toml`); `check-exe-map`; the scoped verify.
+- **Not done (T1c):** the painters' draws read; the memory-dependent quirks classified.

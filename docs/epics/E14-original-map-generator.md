@@ -1,7 +1,7 @@
 # E14 — The original's random map generator
 
-Status: **in progress** since 2026-11-23 (T1a1, T1a2, T1b1 done); increment 1 refined, increments 2
-to 6 sketched; next T1b2 · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
+Status: **in progress** since 2026-11-23 (T1a1, T1a2, T1b1, T1b2 done); increment 1 refined,
+increments 2 to 6 sketched; next T1c · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
 Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -141,3 +141,10 @@ The full records: `E14-log.md`.
   memory-dependent variation under Wine); SoD's `rmg.txt` is the one read (21 of 21 templates
   predicted, AB's 13); the plain writer as read; `h3_map` reads all 21, 20 import and validate
   (one refused by TWN-SET-001, for T1c). `docs/lanes/rmg/ORACLE.md`.
+- **T1b2** (2026-11-24): the phase oracle (`xdd.c` section 10, `H3RMG`: every draw of the
+  generation logged with its site, the cells dumped after each step, the hooks on their own
+  stack; `h3rmg.py --phases`, `phases`; `rmg/phases.txt`); 21 of 21 reproducible, no map changed
+  by the hooks; a third of the stream is the terrain and road painters' draws outside the range
+  (not in survey §2.6); 0x532A5B draws in step 2 in 18 of 21; `l1-4p-b`'s second map in one game
+  differs by it, moved by the environment's size; cell bits the reset leaves to memory. ORACLE.md,
+  "The phase oracle".

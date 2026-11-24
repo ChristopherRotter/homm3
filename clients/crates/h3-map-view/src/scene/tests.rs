@@ -1562,6 +1562,12 @@ fn a_hidden_hero_is_drawn_nowhere() {
     let s = drawn(&art, &live, &shapes, at(11, 12));
     assert!(grouped(&s, Pass::Blend).is_empty());
     assert_eq!((heroes_of(&s, Pass::Body).len(), both), (12, 24));
+    // E24 M4 T6 (R1-5): heroes off the map (a battle lost, another player's hero lost in sight),
+    // drawn nowhere either.
+    live.walking.hidden = None;
+    live.left = vec![0, 1];
+    let s = drawn(&art, &live, &shapes, at(11, 12));
+    assert!(heroes_of(&s, Pass::Body).is_empty());
 }
 
 #[test]

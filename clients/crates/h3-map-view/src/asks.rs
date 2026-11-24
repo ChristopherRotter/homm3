@@ -265,6 +265,29 @@ pub struct Visitor {
     pub hero: String,
 }
 
+impl Visitor {
+    /// Whether the kingdom holds `amount` of `resource` (E24 M4 T6, the reviewer's R2-9: a Tree's,
+    /// a Cartographer's and a School's price); none of a resource past the bar.
+    #[must_use]
+    pub fn has(&self, [resource, amount]: [i32; 2]) -> bool {
+        let have = usize::try_from(resource)
+            .ok()
+            .and_then(|r| self.resources.get(r))
+            .copied()
+            .unwrap_or(0);
+        have >= amount
+    }
+
+    /// Whether the hero's army has room for `creature` (R2-9: a dwelling's and a monster's join):
+    /// an empty slot, or a stack of it.
+    #[must_use]
+    pub fn room(&self, creature: u16) -> bool {
+        self.army
+            .iter()
+            .any(|s| s.is_none_or(|s| s.creature == creature))
+    }
+}
+
 /// A creature's numbers a monster's offer reads (`CRTRAITS.TXT`'s, as the creature record holds
 /// them: its gold cost +0x38, its AI value +0x40).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -548,18 +571,11 @@ impl Ask {
                         visited: true,
                         poor: false,
                     },
-                    Some(&[resource, amount]) => {
-                        let have = usize::try_from(resource)
-                            .ok()
-                            .and_then(|r| visitor.resources.get(r))
-                            .copied()
-                            .unwrap_or(0);
-                        Self::Tree {
-                            gems: price == 2,
-                            visited: false,
-                            poor: have < amount,
-                        }
-                    }
+                    Some(&price_of) => Self::Tree {
+                        gems: price == 2,
+                        visited: false,
+                        poor: !visitor.has(price_of),
+                    },
                     None => return None,
                 }
             }
@@ -579,10 +595,7 @@ impl Ask {
                 // level 5) is the visitor's first (E24 M4 T2d1), then asks the same.
                 let flag = !ours && i32::from(level) < least;
                 if ours || flag {
-                    let room = visitor
-                        .army
-                        .iter()
-                        .any(|s| s.is_none_or(|s| s.creature == creature));
+                    let room = visitor.room(creature);
                     let own = flag || seen.owner == Some(visitor.colour);
                     Self::Hire {
                         dwelling: subclass,
@@ -616,14 +629,8 @@ impl Ask {
             }
             BORDER_GUARD if seen.key => Self::Pass,
             CARTOGRAPHER if !seen.visited => {
-                let [resource, amount] = art.maps_price;
-                let have = usize::try_from(resource)
-                    .ok()
-                    .and_then(|r| visitor.resources.get(r))
-                    .copied()
-                    .unwrap_or(0);
                 let known = usize::try_from(subclass).is_ok_and(|k| k < art.reveals.len());
-                if have < amount || !known {
+                if !visitor.has(art.maps_price) || !known {
                     return None;
                 }
                 Self::Maps(subclass)
@@ -639,13 +646,7 @@ impl Ask {
             }
             ARENA if !seen.visited => Self::Arena(art.arena),
             SCHOOL if !seen.visited => {
-                let [resource, amount] = art.school_price;
-                let have = usize::try_from(resource)
-                    .ok()
-                    .and_then(|r| visitor.resources.get(r))
-                    .copied()
-                    .unwrap_or(0);
-                if have < amount {
+                if !visitor.has(art.school_price) {
                     return None;
                 }
                 Self::School {
@@ -698,10 +699,7 @@ impl Ask {
         } else {
             return None;
         };
-        let room = visitor
-            .army
-            .iter()
-            .any(|s| s.is_none_or(|s| s.creature == stack.creature));
+        let room = visitor.room(stack.creature);
         Some(Self::Monster {
             stack,
             offer,

@@ -103,9 +103,10 @@ pub struct Setup<'a> {
     pub actions: BTreeMap<u32, Vec<Action>>,
     /// The recorded timeline (`timelines/<id>.txt`), if any.
     pub recorded: Option<String>,
-    /// A record's battles its answers began (E24 M4 T5b1, `director::Directed::battles`): each at
-    /// the millisecond the map hands it over, with the record's number of the `GameEvents` that
-    /// began it (a walk's are the timeline's own, `Replay::battles`).
+    /// A record's battles its answers began that the map hands over as a plain cut (E24 M4 T5b1,
+    /// `director::Directed::battles`): each at the millisecond the map hands it over, with the
+    /// record's number of the `GameEvents` that began it (a walk's and, since E24 M4 T5b2, a
+    /// switch's are the timeline's own, `Replay::battles`; E24 M4 T6, R5-2: listed once).
     pub battles: Vec<(u32, u32)>,
 }
 
@@ -129,23 +130,30 @@ pub struct Played {
     pub ends: Vec<Option<Pos>>,
     pub visits: Vec<engine::Visit>,
     pub levels: Vec<engine::Leveled>,
-    pub experience: Vec<(Pos, u32)>,
     /// Since E24 M4 T4c: each walk's hero, the viewer's commands, the other players' turns in
     /// sight and the heroes the start shows.
     pub walkers: Vec<u16>,
     pub commands: Vec<engine::Command>,
     pub others: Vec<engine::OtherTurn>,
     pub shown: Vec<(u16, Pos)>,
-    pub slots: Vec<(u16, usize)>,
-    /// Since E24 M4 T4c2: the objects other players took without a walk, by turn table.
-    pub taken: Vec<(usize, Vec<Pos>)>,
+    /// Since E24 M4 T4c2: what other players' stepless commands changed, by turn table (since
+    /// E24 M4 T6 a flag and a hero lost too); since E24 M4 T6 the viewer's lists at each turn
+    /// table and whether the record starts in another player's turn.
+    pub between: Vec<(usize, engine::OtherEnd)>,
+    pub lists: Vec<Vec<u16>>,
+    pub waits: bool,
 }
 
 /// The record's start (`engine::start`) with its turns' starts as the `turn` tables, and its
-/// walks (`engine::played`) on the map `raw`.
-pub fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<Played, String> {
-    let map = fs::read(record.map).map_err(|e| format!("{}: {e}", record.map.display()))?;
-    let (loaded, rules) = render::load_record(record.path, &map, record.packs)?;
+/// walks (`engine::played`) on the map `raw`, `map` the bytes of the map file the record names
+/// (`record.map`).
+pub fn played(
+    assets: &Assets<'_>,
+    raw: &RawMap,
+    map: &[u8],
+    record: Record<'_>,
+) -> Result<Played, String> {
+    let (loaded, rules) = render::load_record(record.path, map, record.packs)?;
     let art = MapArt::from_raw(raw).map_err(|e| e.to_string())?;
     let failed = |why: &dyn std::fmt::Display| format!("{}: {why}", record.path.display());
     let start = engine::start(
@@ -153,6 +161,7 @@ pub fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<P
         &art,
         assets.templates,
         &assets.tables.map.towns,
+        &assets.tables.records,
         &rules,
     )
     .map_err(|e| failed(&e))?;
@@ -166,13 +175,13 @@ pub fn played(assets: &Assets<'_>, raw: &RawMap, record: Record<'_>) -> Result<P
         ends: game.ends,
         visits: game.visits,
         levels: game.levels,
-        experience: game.experience,
         walkers: game.walkers,
         commands: game.commands,
         others: game.others,
         shown: game.shown,
-        slots: game.slots,
-        taken: game.taken,
+        between: game.between,
+        lists: game.lists,
+        waits: game.waits,
     })
 }
 
@@ -235,7 +244,12 @@ pub fn for_sequence<'a>(
         },
         Path::to_path_buf,
     );
-    let played = record.map(|r| played(assets, &raw, r)).transpose()?;
+    let played = record
+        .map(|r| {
+            let map = fs::read(r.map).map_err(|e| format!("{}: {e}", r.map.display()))?;
+            played(assets, &raw, &map, r)
+        })
+        .transpose()?;
     let after = played.as_ref().map(|p| (p.label.as_str(), &p.table));
     let mut painter = Painter::new(assets, &raw, Some(&live_path), after, view, &[])?;
     // The recording's facts, or none with a record (E24 M4 T4a2): its timeline only compared.
@@ -270,14 +284,11 @@ pub fn for_sequence<'a>(
         })
     });
     painter.diplomacy = spec.and_then(|spec| spec.diplomacy).unwrap_or(0);
-    // A record's hero's experience its start gives (E24 M4 T4b1).
-    let experience = match (&played, hero) {
-        (Some(p), Some(h)) => p
-            .experience
-            .iter()
-            .find(|(at, _)| *at == h.at)
-            .map(|&(_, experience)| experience),
-        _ => spec.and_then(|spec| spec.experience),
+    // A record's level-ups are its visits' own (E24 M4 T6, the reviewer's R2-3): no experience
+    // followed through the tables' thresholds.
+    let experience = match &played {
+        Some(_) => None,
+        None => spec.and_then(|spec| spec.experience),
     };
     let sound = painter.sound(hero.map(|h| h.at))?;
     // End Turn's question and the turns' messages (E24 M4 T1a); a computer's walks from the
@@ -290,25 +301,16 @@ pub fn for_sequence<'a>(
     // its visits (E24 M4 T4b1).
     let hover = painter.hover()?;
     let finds = match &played {
-        Some(p) => painter.record_finds(&p.visits, hover.as_deref())?,
+        Some(p) => painter.record_finds(&raw, (&p.visits, &p.levels), hover.as_deref())?,
         None => painter.finds(&raw, hover.as_deref())?,
     };
     let town = painter.town()?;
-    // The level-ups' dialogs (E24 M4 T2c): the recording's facts, a record's (E24 M4 T4b1) with
-    // the offer each answer took.
-    if let Some(p) = &played {
-        painter.live.level_ups = p.levels.iter().map(|l| l.up.clone()).collect();
-    }
-    let mut level_ups = painter.level_ups(hover.as_deref())?;
-    if let Some(p) = &played {
-        for level in &mut level_ups {
-            level.chosen = p
-                .levels
-                .iter()
-                .find(|l| l.up.level == level.level && l.up.offers == level.offers)
-                .and_then(|l| l.chosen);
-        }
-    }
+    // The level-ups' dialogs (E24 M4 T2c): the recording's facts; a record's (E24 M4 T4b1) on
+    // their visits' finds since E24 M4 T6 (R2-3), with the offer each answer took.
+    let level_ups = match &played {
+        Some(_) => Vec::new(),
+        None => painter.level_ups(hover.as_deref())?,
+    };
     let start = Start {
         view,
         size: i32::from(situation.size),
@@ -384,7 +386,7 @@ pub fn for_record<'a>(
         h3_map::parse(&bytes, &Limits::default())
     }
     .map_err(|e| format!("{}: {e}", file.display()))?;
-    let played = played(assets, &raw, record)?;
+    let played = played(assets, &raw, &bytes, record)?;
     let corner = ViewAt { x: 0, y: 0, z: 0 };
     let after = Some((played.label.as_str(), &played.table));
     let mut painter = Painter::new(assets, &raw, None, after, corner, &[])?;
@@ -398,27 +400,14 @@ pub fn for_record<'a>(
         z: hero.at.z,
     };
     let paths = record_paths(assets, hero.at, &played)?;
-    let experience = played
-        .experience
-        .iter()
-        .find(|(at, _)| *at == hero.at)
-        .map(|&(_, experience)| experience);
     let sound = painter.sound(Some(hero.at))?;
     let (question, turns) = painter
         .boxes(&[], Some(&played))
         .map_err(|e| format!("{label}: {e}"))?;
     let hover = painter.hover()?;
-    let finds = painter.record_finds(&played.visits, hover.as_deref())?;
+    // Its visits' finds, each with its level-ups (E24 M4 T6, R2-3: none by the thresholds).
+    let finds = painter.record_finds(&raw, (&played.visits, &played.levels), hover.as_deref())?;
     let town = painter.town()?;
-    painter.live.level_ups = played.levels.iter().map(|l| l.up.clone()).collect();
-    let mut level_ups = painter.level_ups(hover.as_deref())?;
-    for level in &mut level_ups {
-        level.chosen = played
-            .levels
-            .iter()
-            .find(|l| l.up.level == level.level && l.up.offers == level.offers)
-            .and_then(|l| l.chosen);
-    }
     let start = Start {
         view,
         size: i32::try_from(painter.art.size).unwrap_or(i32::MAX),
@@ -447,19 +436,20 @@ pub fn for_record<'a>(
         computer: Computer::default(),
         finds,
         town: Some(town),
-        experience,
-        level_ups,
+        experience: None,
+        level_ups: Vec::new(),
         casts: Vec::new(),
         boats: Boats::of(&painter.live),
         water: water(&painter.art),
         moves: Some(played.moves.clone()),
     };
     let rules = Rules::new(assets.tables, assets.layout, assets.bugs);
+    let heroes = turn::record_heroes(&played.shown, &painter.live.heroes);
     let directed = director::direct(
         rules,
         &start,
         &played.commands,
-        &played.slots,
+        &heroes,
         Pace::default(),
         limit,
     )
@@ -876,12 +866,46 @@ impl<'a> Painter<'a> {
                     },
                     _ => turn::walks(&live.turns, i, &live.heroes, lines)?,
                 };
-                // The objects taken without a walk before this turn (E24 M4 T4c2, MCL-Q46 (c)).
-                let taken = record
+                // What stepless commands changed before this turn (E24 M4 T4c2, MCL-Q46 (c); since
+                // E24 M4 T6, R1-5, every removal, a flag, a hero lost).
+                let between: Vec<&engine::OtherEnd> = record
                     .iter()
-                    .flat_map(|p| p.taken.iter().filter(|(turn, _)| *turn == i))
-                    .flat_map(|(_, at)| at.iter().filter_map(|&at| object_at(at)))
+                    .flat_map(|p| p.between.iter().filter(|(turn, _)| *turn == i))
+                    .map(|(_, end)| end)
                     .collect();
+                let taken = between
+                    .iter()
+                    .flat_map(|end| end.taken.iter().chain(&end.removed))
+                    .filter_map(|&at| object_at(at))
+                    .collect();
+                let flags = between
+                    .iter()
+                    .flat_map(|end| &end.flagged)
+                    .filter_map(|&(at, colour)| object_at(at).map(|o| (o, colour)))
+                    .collect();
+                let lost = match &ids {
+                    Some(ids) => between
+                        .iter()
+                        .flat_map(|end| turn::map_heroes(&end.lost, ids))
+                        .collect(),
+                    None => Vec::new(),
+                };
+                // The boats told since the table before (E24 M4 T6, R3-3: a boat built).
+                let boats = between
+                    .iter()
+                    .flat_map(|end| end.boats.iter().copied())
+                    .collect();
+                // The day's list by the record's (E24 M4 T6, R1-4); a computer's turn's none.
+                let list = record
+                    .zip(ids.as_ref())
+                    .filter(|_| !matches!(t.status, Status::Turn(_)))
+                    .and_then(|(p, ids)| p.lists.get(i).map(|l| (l, ids)))
+                    .map(|(list, ids)| {
+                        list.iter()
+                            .map(|id| ids.iter().find(|(i, _)| i == id).map(|&(_, x)| x))
+                            .collect()
+                    });
+                let other = record.and_then(|p| p.others.iter().find(|o| o.turn == i));
                 Ok(NextTurn {
                     turn: t.clone(),
                     message: turn::message(texts, art, (t.kingdom.date, t.week, t.month), growth)
@@ -889,6 +913,12 @@ impl<'a> Painter<'a> {
                     heroes: turn::placed(&live.heroes, &live.boats, t)?,
                     walks,
                     taken,
+                    flags,
+                    lost,
+                    boats,
+                    list,
+                    first: i == 0 && record.is_some_and(|p| p.waits),
+                    open: other.is_some_and(|o| o.open),
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;
@@ -1076,6 +1106,8 @@ impl<'a> Painter<'a> {
                                 ask: None,
                                 flag: Some((o, self.live.viewer)),
                                 fight: None,
+                                walk: None,
+                                levels: Vec::new(),
                             });
                             continue;
                         }
@@ -1121,6 +1153,8 @@ impl<'a> Painter<'a> {
                         ask: None,
                         flag: None,
                         fight: None,
+                        walk: None,
+                        levels: Vec::new(),
                     });
                 }
             }
@@ -1157,78 +1191,101 @@ impl<'a> Painter<'a> {
 
     /// The finds of a record's `visits` (E24 M4 T4b1, design §5.14): each visit on the object of
     /// its tile (the mouse-over's tiles, as [`Painter::finds`]) told by the record's events
-    /// (`engine::visits::told`) and laid out as Part A's: a find's first visit its box (a pile's
-    /// kind 6) and what the panels show, the object taken where the record says so, a later
-    /// visit's box its `again`; a question's box with only the record's answer built (another
-    /// refused; the Arena's Cancel is its Attack, MCL-Q33). Since E24 M4 T4b2 (design §5.15) a
-    /// flag raised where the record's `ObjectFlagged` says so, in its colour: a mine's and a
-    /// Lighthouse's find, a dwelling's before its hire. A visit that tells nothing is left out.
+    /// (`engine::visits::told`) and laid out as Part A's: a find's box (a pile's kind 6) and what
+    /// the panels show, the object taken where the record says so; a question's box with only the
+    /// record's answer built (another refused; the Arena's Cancel is its Attack, MCL-Q33). Since
+    /// E24 M4 T4b2 (design §5.15) a flag raised where the record's `ObjectFlagged` says so, in its
+    /// colour: a mine's and a Lighthouse's find, a dwelling's before its hire. Since E24 M4 T6 (the
+    /// reviewers' R2-1 to R2-4, R2-8; `engine::visits::lay`) each visit a find of its own, played
+    /// at its walk's end, with its own boxes, gain, flag and level-ups (the record's `levels`,
+    /// [`Painter::record_level`]); Pandora's Box's map text (`raw`'s, read at run time) in a box of
+    /// its own before its question. A visit that tells nothing is left out.
     fn record_finds(
         &mut self,
-        visits: &[engine::Visit],
+        raw: &RawMap,
+        (visits, leveled): (&[engine::Visit], &[engine::Leveled]),
         hover: Option<&Hover>,
     ) -> Result<Vec<Found>, String> {
-        use engine::visits::{Answered, Told as Visited};
+        use engine::visits::{Laid, Told as Visited};
         let Some(hover) = hover else {
             return Ok(Vec::new());
         };
         let assets = self.assets;
         let texts = &assets.tables.texts;
-        let hero = self.hero_name();
+        let laid = engine::visits::lay(
+            visits,
+            |pos| {
+                let tile = hover.base([i32::from(pos.x), i32::from(pos.y), i32::from(pos.z)])?;
+                let o = tile.object.filter(|_| tile.entrance)?;
+                Some((o, [tile.class, tile.subclass]))
+            },
+            &assets.tables.map.finds,
+            |hero| self.name_of(hero),
+        );
         let mut out: Vec<Found> = Vec::new();
-        for visit in visits {
-            let pos = visit.at;
-            let at = [i32::from(pos.x), i32::from(pos.y), i32::from(pos.z)];
-            let Some(tile) = hover.base(at) else {
-                continue;
+        for Laid {
+            at: pos,
+            object: o,
+            walk,
+            told,
+            kept,
+            blocks,
+            levels,
+        } in laid
+        {
+            let subclass = hover
+                .base([i32::from(pos.x), i32::from(pos.y), i32::from(pos.z)])
+                .map_or(0, |tile| tile.subclass);
+            let mut found = Found {
+                at: pos,
+                first: Vec::new(),
+                again: None,
+                gain: Gain::default(),
+                found: None,
+                taken: None,
+                event: false,
+                blocks: blocks.then_some(o),
+                ask: None,
+                flag: None,
+                fight: None,
+                walk: Some(walk),
+                levels: levels
+                    .iter()
+                    .filter_map(|&k| leveled.get(k))
+                    .map(|l| self.record_level(l))
+                    .collect::<Result<Vec<_>, String>>()?,
             };
-            let Some(o) = tile.object.filter(|_| tile.entrance) else {
-                continue;
-            };
-            let Some(told) = engine::visits::told(visit, [tile.class, tile.subclass], &hero) else {
-                continue;
-            };
-            let found = match told {
+            match told {
                 // A savage monster fought at once (E24 M4 T5b2, design §5.21): visited from
                 // beside, drawn as its attack (twice its creature in the attack DEF, as a
                 // monster's question's), the battle's switch, then the monster taken off the map
-                // or the hero gone.
+                // or the hero gone (since E24 M4 T6, R5-4: both after a draw that takes both).
                 Visited::Fight {
                     battle,
                     winner,
                     taken,
                     lost,
                     experience,
-                } => Found {
-                    at: pos,
-                    first: Vec::new(),
-                    again: None,
-                    gain: Gain::default(),
-                    found: None,
-                    taken: None,
-                    event: false,
-                    blocks: Some(o),
-                    ask: None,
-                    flag: None,
-                    fight: Some(Fight {
-                        attacker: tile.subclass.saturating_mul(2),
+                } => {
+                    found.fight = Some(Fight {
+                        attacker: subclass.saturating_mul(2),
                         battle,
                         winner,
-                        after: match (taken, lost) {
-                            (true, _) => AfterBattle::Taken,
-                            (false, true) => AfterBattle::Lost,
-                            (false, false) => AfterBattle::Stays,
-                        },
+                        after: AfterBattle::of_fight(taken, lost),
                         experience,
-                    }),
-                },
+                    });
+                }
                 // A neutral mine's guards fought after their question (E24 M4 T5b2, design §5.21):
                 // ADVEVENT 84's question (Part A's), its OK the battle's switch, then ADVEVENT 85's
                 // box and MINEEVNT's by the mine's resource (MCL-Q48: its subclass), the flag past
-                // them.
+                // them. Since E24 M4 T6 (the reviewers' R5-4, R3-2) the battle's outcome decides:
+                // the boxes only after the hero's win; lost, retreated or drawn none, the hero
+                // gone where the record takes it off the map (MCL-Q51: the original's boxes then
+                // not read), the flag the record's alone.
                 Visited::Guarded {
                     battle,
                     winner,
+                    lost,
                     flag,
                     resource,
                     experience,
@@ -1236,15 +1293,20 @@ impl<'a> Painter<'a> {
                     let mut question = self.question(&Ask::Mine, o)?;
                     question.no = None;
                     question.second = None;
-                    let beaten = Told {
-                        text: texts.text("map.find.mine-guards", &Args::new()),
-                        pictures: Vec::new(),
-                    };
-                    let mut boxes = vec![(self.told(&beaten)?, Gain::default())];
-                    let flagged = Find::Mine { resource };
-                    if let Some(said) = flagged.told(&assets.tables.map.finds, texts) {
-                        boxes.push((self.told(&said)?, Gain::default()));
+                    let mut boxes = Vec::new();
+                    if winner == 0 {
+                        let beaten = Told {
+                            text: texts.text("map.find.mine-guards", &Args::new()),
+                            pictures: Vec::new(),
+                        };
+                        boxes.push((self.told(&beaten)?, Gain::default()));
+                        let flagged = Find::Mine { resource };
+                        if let Some(said) = flagged.told(&assets.tables.map.finds, texts) {
+                            boxes.push((self.told(&said)?, Gain::default()));
+                        }
                     }
+                    // stub: MCL-Q51 (what the original shows after a mine's guards' battle lost)
+                    let after = AfterBattle::of_guards(winner, lost);
                     question.yes = Some(Answer {
                         boxes,
                         gain: Gain::default(),
@@ -1258,24 +1320,12 @@ impl<'a> Painter<'a> {
                             attacker: 0,
                             battle,
                             winner,
-                            after: AfterBattle::Boxes,
+                            after,
                             experience,
                         }),
                         flag: flag.map(|colour| (o, colour)),
                     });
-                    Found {
-                        at: pos,
-                        first: Vec::new(),
-                        again: None,
-                        gain: Gain::default(),
-                        found: None,
-                        taken: None,
-                        event: false,
-                        blocks: None,
-                        ask: Some(question),
-                        flag: None,
-                        fight: None,
-                    }
+                    found.ask = Some(question);
                 }
                 Visited::Find {
                     find,
@@ -1286,70 +1336,106 @@ impl<'a> Painter<'a> {
                     // A Learning Stone's picture the record's experience.
                     let mut art = assets.tables.map.finds.clone();
                     art.experience = gain.experience;
-                    let boxed = match find.told(&art, texts) {
-                        Some(told) => Some(self.told(&told)?),
-                        None => None,
-                    };
-                    if let Some(earlier) = out.iter_mut().find(|f| f.at == pos) {
-                        earlier.again = boxed;
-                        continue;
+                    if let Some(told) = find.told(&art, texts) {
+                        found.first = vec![(self.told(&told)?, Gain::default())];
                     }
-                    Found {
-                        at: pos,
-                        first: boxed
-                            .map(|b| vec![(b, Gain::default())])
-                            .unwrap_or_default(),
-                        again: None,
-                        gain,
-                        found: find.found(texts),
-                        taken: taken.then_some(o),
-                        event: false,
-                        blocks: taken.then_some(o),
-                        ask: None,
-                        flag: flag.map(|colour| (o, colour)),
-                        fight: None,
-                    }
+                    found.gain = gain;
+                    found.found = find.found(texts);
+                    found.taken = taken.then_some(o);
+                    found.flag = flag.map(|colour| (o, colour));
                 }
-                Visited::Ask {
-                    ask,
-                    answered,
-                    flag,
-                } => {
+                Visited::Ask { ask, flag, .. } => {
                     let mut question = self.question(&ask, o)?;
-                    match answered {
-                        Answered::Yes => {
-                            question.second = None;
-                            if !matches!(ask, Ask::Arena(_)) {
-                                question.no = None;
-                            }
-                        }
-                        Answered::Second => {
-                            question.yes = None;
-                            question.no = None;
-                        }
-                        Answered::No => {
-                            question.yes = None;
-                            question.second = None;
-                        }
+                    if !kept.yes {
+                        question.yes = None;
                     }
-                    Found {
-                        at: pos,
-                        first: Vec::new(),
-                        again: None,
-                        gain: Gain::default(),
-                        found: None,
-                        taken: None,
-                        event: false,
-                        blocks: ask.beside().then_some(o),
-                        ask: Some(question),
-                        flag: flag.map(|colour| (o, colour)),
-                        fight: None,
+                    if !kept.second {
+                        question.second = None;
                     }
+                    if !kept.no {
+                        question.no = None;
+                    }
+                    // Pandora's Box's own text first, a box of its own (design §5.4's table:
+                    // `visit_pandora_box` 0x4A0C50; the map's, read at run time, R2-4).
+                    if let (Ask::OpenBox { .. }, Some(text)) = (&ask, pandora_text(raw, o)) {
+                        let said = Told {
+                            text,
+                            pictures: Vec::new(),
+                        };
+                        found.first = vec![(self.told(&said)?, Gain::default())];
+                    }
+                    found.ask = Some(question);
+                    found.flag = flag.map(|colour| (o, colour));
                 }
-            };
+                // A flag raised and nothing else built (E24 M4 T6, the reviewers' R3-4): no box,
+                // the flag at the walk's end.
+                Visited::Flagged { flag } => found.flag = Some((o, flag)),
+                // An object taken and nothing else built (E24 M4 T6): taken from beside, no box.
+                Visited::Taken => found.taken = Some(o),
+            }
             out.push(found);
         }
         Ok(out)
+    }
+
+    /// The name of the viewer's hero of type `hero` (E24 M4 T6, the reviewer's R2-3, R2-4: a
+    /// record's visit's hero, in Pandora's Box's boxes and its level-ups' dialogs): its own, the
+    /// map's, when the start's choice of it says so, else its type's; none known: the status
+    /// window's hero's ([`Painter::hero_name`]).
+    fn name_of(&self, hero: Option<u8>) -> String {
+        let Some(hero) = hero else {
+            return self.hero_name();
+        };
+        let own = self
+            .live
+            .chosen
+            .heroes
+            .iter()
+            .flatten()
+            .any(|c| c.status.hero == hero && c.status.own_name);
+        match self.art.hero_names.get(&hero) {
+            Some(name) if own => name.clone(),
+            _ => self
+                .assets
+                .tables
+                .texts
+                .text(&status::hero_key(hero), &Args::new()),
+        }
+    }
+
+    /// A record's level-up `leveled` laid out (E24 M4 T6, the reviewer's R2-3: any of the
+    /// viewer's heroes'): [`Painter::lay_levels`] with the hero's name ([`Painter::name_of`]), its
+    /// class's (the record's rules') and its large portrait (its slot's in the start's list, else
+    /// its type's: a hero hired since), the offer the record took.
+    fn record_level(&mut self, leveled: &engine::Leveled) -> Result<LevelBox, String> {
+        let up = &leveled.up;
+        let live = &self.live;
+        let slot = live
+            .chosen
+            .heroes
+            .iter()
+            .position(|c| c.as_ref().is_some_and(|c| c.status.hero == up.hero));
+        let portrait = slot
+            .and_then(|s| live.kingdom.heroes.get(s))
+            .map_or(up.hero, |h| h.portrait);
+        let portrait = self
+            .assets
+            .tables
+            .map
+            .status
+            .portraits
+            .get(usize::from(portrait))
+            .ok_or("a level-up's hero's portrait is past the tables'")?
+            .clone();
+        let texts = &self.assets.tables.texts;
+        let class = texts
+            .known(&format!("hero-class.{}", leveled.class), &Args::new())
+            .unwrap_or_default();
+        let name = self.name_of(Some(up.hero));
+        let mut laid = self.lay_levels(core::slice::from_ref(up), &portrait, &name, &class)?;
+        let mut level = laid.pop().ok_or("a level-up not laid out")?;
+        level.chosen = leveled.chosen;
+        Ok(level)
     }
 
     /// An event's find (E24 M4 T2a2 part B, design §5.3: `event_fire` 0x4A0ED0 after the step onto
@@ -1386,6 +1472,8 @@ impl<'a> Painter<'a> {
             ask: None,
             flag: None,
             fight: None,
+            walk: None,
+            levels: Vec::new(),
         }))
     }
 
@@ -1513,6 +1601,8 @@ impl<'a> Painter<'a> {
                 ask: None,
                 flag: None,
                 fight: None,
+                walk: None,
+                levels: Vec::new(),
             }));
         }
         Ok(Some(Found {
@@ -1528,6 +1618,8 @@ impl<'a> Painter<'a> {
             // A dwelling of another team's flag before its hire (E24 M4 T2d1).
             flag: ask.flags().then_some((o, self.live.viewer)),
             fight: None,
+            walk: None,
+            levels: Vec::new(),
         }))
     }
 
@@ -1623,9 +1715,8 @@ impl<'a> Painter<'a> {
 
     /// The selected hero's level-ups' dialogs (E24 M4 T2c, design §5.5): each of the live part's
     /// level-ups of the status window's hero (*provisional*: the recording's facts) laid out
-    /// (`levels::dialog`) with the hero's name, its class's (the mouse-over's hero list), its
-    /// large portrait (the status window's) and its owner's colours (the viewer's), the layout's
-    /// pictures, DEFs and fonts decoded; none without a hero's window.
+    /// ([`Painter::lay_levels`]) with the hero's name, its class's (the mouse-over's hero list), its
+    /// large portrait (the status window's); none without a hero's window.
     fn level_ups(&mut self, hover: Option<&Hover>) -> Result<Vec<LevelBox>, String> {
         let assets = self.assets;
         let kingdom = &self.live.kingdom;
@@ -1664,6 +1755,21 @@ impl<'a> Painter<'a> {
             .and_then(|&(_, class, _)| texts.known(&format!("hero-class.{class}"), &Args::new()))
             .unwrap_or_default();
         let name = self.hero_name();
+        self.lay_levels(&ups, &portrait, &name, &class)
+    }
+
+    /// Level-ups' dialogs `ups` of a hero named `name` of the class named `class` with the large
+    /// portrait `portrait` (E24 M4 T2c, design §5.5; `levels::dialog`) in its owner's colours (the
+    /// viewer's), the layout's pictures, DEFs and fonts decoded.
+    fn lay_levels(
+        &mut self,
+        ups: &[levels::LevelUp],
+        portrait: &str,
+        name: &str,
+        class: &str,
+    ) -> Result<Vec<LevelBox>, String> {
+        let assets = self.assets;
+        let texts = &assets.tables.texts;
         let layout = &assets.layout.level_up;
         let names = layout
             .dialog
@@ -1678,15 +1784,15 @@ impl<'a> Painter<'a> {
                 Item::Label(l) => Some(l.font.clone()),
                 _ => None,
             })
-            .chain([portrait.clone()])
+            .chain([portrait.to_owned()])
             .map(|n| n.to_ascii_uppercase())
             .collect::<Vec<_>>();
         self.add(names)?;
         Ok(ups
             .iter()
             .map(|up| {
-                let shown = up.texts(texts, &name, &class);
-                let dialog = levels::dialog(layout, up, shown, &portrait, self.live.viewer);
+                let shown = up.texts(texts, name, class);
+                let dialog = levels::dialog(layout, up, shown, portrait, self.live.viewer);
                 LevelBox {
                     level: up.level,
                     dialog: Arc::new(dialog),
@@ -1799,10 +1905,8 @@ impl<'a> Painter<'a> {
             // No hero selected from the start: the live part's as it is.
             (None, None) => {}
         }
-        // A hero a battle took off the map (E24 M4 T5b2): drawn nowhere.
-        if let Some(index) = draw.left {
-            self.live.walking.hidden = Some(index);
-        }
+        // The heroes off the map (E24 M4 T5b2: a battle lost; T6, R1-5): drawn nowhere.
+        self.live.left.clone_from(&draw.left);
         // The boats as the draw has them (E24 M4 T2d2): one boarded off its tile and its hero in
         // it, one left back on the water.
         if self.boats != draw.boats {
@@ -2330,5 +2434,16 @@ fn cursor_in<'c>(
                 .ok_or_else(|| format!("{def}: no frame {frame}"))?;
             Ok(new.insert(sprite))
         }
+    }
+}
+
+/// Pandora's Box `o`'s own text in the map `raw` (E24 M4 T6, the reviewer's R2-4: the map file's,
+/// read at run time); none without one, or an empty one.
+fn pandora_text(raw: &RawMap, o: usize) -> Option<String> {
+    match raw.objects.get(o).map(|object| &object.body) {
+        Some(Body::Pandora {
+            message: Some(m), ..
+        }) if !m.text.as_bytes().is_empty() => Some(decode_windows_1252(m.text.as_bytes())),
+        _ => None,
     }
 }
