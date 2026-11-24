@@ -41,7 +41,9 @@
 //! position, then the backpack's from the last index down), `creatures <amount> …` (seven, by
 //! slot) and `leave`; v23 a Hill Fort's answers, E08 T134b1: `answer hill-fort upgrade <slot>`,
 //! `all` and `leave`; v24 `town open <town>`, a town screen's opening, E09 T49a2; v25 `town book
-//! <town>`, a spell book's purchase at its Mage Guild, E09 T49b):
+//! <town>`, a spell book's purchase at its Mage Guild, E09 T49b; v26 `cast <hero> <spell>
+//! [<x>,<y>,<level>]`, a cast on the adventure map by the core spell's index, the target tile for
+//! Scuttle Boat and Dimension Door, E08 T142a):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -68,11 +70,13 @@
 //!     "0 town open 2",                #   `<player> town open <town>` (format 24)
 //!     "0 town book 2",                #   `<player> town book <town>` (format 25)
 //!     "0 revisit 1",                  #   `<player> revisit <hero>` (format 12)
+//!     "0 cast 1 6",                   #   `<player> cast <hero> <spell> [<x>,<y>,<level>]`
+//!     "0 cast 1 8 12,4,0",            #   (format 26)
 //! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 25
+//! format = 26
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -113,7 +117,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, ObjectTypeId, Pos};
-use h3_content::{CreatureTypeId, FactionId, Formation, HeroTypeId, ResourceId};
+use h3_content::{CreatureTypeId, FactionId, Formation, HeroTypeId, ResourceId, SpellId};
 use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     ALTAR_SLOTS, Actor, AltarAnswer, AltarPlaces, Answer, ArenaChoice, ArmyCommand, ArmyRef,
@@ -319,7 +323,8 @@ fn parse_hex64(s: &str) -> Result<u64> {
 /// system command (format v14, E16 M5 T14) by `for`, its player and its words; a town's
 /// recruitment (format v15, E09 T27) by its town and building; a hero's move between a town's
 /// bars (format v16, E09 T28a) by its town and move; a town's hire (format v17, E09 T38a1) by its
-/// town and slot; a town screen's opening (format v24, E09 T49a2) by its town.
+/// town and slot; a town screen's opening (format v24, E09 T49a2) by its town; a cast on the
+/// map (format v26, E08 T142a) by its hero, its spell's index and its target, if any.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -392,6 +397,18 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         // Format v25 (E09 T49b).
         GameCommand::Town(TownCommand::BuySpellBook { town }) => {
             format!("{player} town book {}", town.raw())
+        }
+        // Format v26 (E08 T142a).
+        GameCommand::Cast {
+            hero,
+            spell,
+            target,
+        } => {
+            let mut text = format!("{player} cast {} {}", hero.raw(), spell.raw());
+            if let Some(pos) = target {
+                text.push_str(&format!(" {},{},{}", pos.x, pos.y, pos.level));
+            }
+            text
         }
     }
 }
@@ -778,6 +795,28 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
                 object_type,
                 anchor,
             })
+        }
+        // Format v26 (E08 T142a): a cast on the map, its target if it names one.
+        Some("cast") => {
+            let hero = words
+                .next()
+                .and_then(|w| w.parse().ok())
+                .map(HeroId::new)
+                .ok_or_else(bad)?;
+            let spell = words
+                .next()
+                .and_then(|w| w.parse().ok())
+                .map(SpellId::from_raw)
+                .ok_or_else(bad)?;
+            let target = words
+                .next()
+                .map(|w| parse_pos(w).ok_or_else(bad))
+                .transpose()?;
+            GameCommand::Cast {
+                hero,
+                spell,
+                target,
+            }
         }
         // Format v12 (E08 T105b2): the entered object under a hero visited again.
         Some("revisit") => {

@@ -21,7 +21,7 @@ use core::fmt;
 use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_content::{
-    ContentKey, CreatureTypeId, FactionId, PackManifest, ResourceId, Ruleset, TerrainId,
+    ContentKey, CreatureTypeId, FactionId, PackManifest, ResourceId, Ruleset, SpellId, TerrainId,
 };
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
@@ -32,6 +32,7 @@ use crate::market::{MarketParams, MarketParamsError};
 mod banks;
 mod objects;
 mod rewards;
+mod spells;
 mod starting;
 mod trades;
 
@@ -53,6 +54,8 @@ pub use rewards::{
     Chest, ChestDef, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef, Gives, OnceBonus,
     Pyramid, PyramidDef, Turn, TurnDef,
 };
+pub use spells::{AdventureSpell, AdventureSpellDef, SpellParams};
+use spells::{Bindings, check_spells, compile_spells, hash_spells};
 use starting::compile_starting;
 pub use starting::{MAX_DIFFICULTIES, StartingResources, StartingResourcesDef};
 pub use trades::{
@@ -207,6 +210,9 @@ pub struct AdventureParamsDef {
     /// The market's rates' parameters (E08 T132a2; ADV-MKT-002): required when the part has a
     /// type of kind [`ObjectKindDef::Market`], whose count lies within their rows.
     pub market: Option<MarketParamsDef>,
+    /// The adventure spells' parameters (E08 T142a; increment 15's design note §3): required
+    /// when the part binds Summon Boat, Scuttle Boat or Dimension Door.
+    pub spells: Option<SpellParams>,
 }
 
 /// The market's parameters in a pack (`[params.market]`; E08 T132a2, increment 14's design note
@@ -469,6 +475,9 @@ pub struct AdventurePack {
     /// What each of the pack's factions' heroes sacrifice at an Altar of Sacrifice (E08 T132a2,
     /// ADV-ALT-001).
     pub altar_factions: Vec<AltarFactionDef>,
+    /// The core spells that act on the adventure map and how (E08 T142a; increment 15's design
+    /// note §3, ADV-SPL-001).
+    pub spells: Vec<AdventureSpellDef>,
 }
 
 /// A terrain walker in a pack (E08 T40, ADV-MOV-003): an army with a stack of `creature` counts
@@ -511,6 +520,7 @@ impl AdventurePack {
             terrain_walkers: Vec::new(),
             random_dwellings: Vec::new(),
             altar_factions: Vec::new(),
+            spells: Vec::new(),
         }
     }
 }
@@ -576,6 +586,7 @@ pub struct AdventureParams {
     months: Option<MonthParams>,
     dwellings: Option<DwellingParams>,
     market: Option<MarketParams>,
+    spells: Option<SpellParams>,
 }
 
 /// The compiled [`BattleTerrainsDef`].
@@ -712,6 +723,12 @@ impl AdventureParams {
     pub const fn market(&self) -> Option<&MarketParams> {
         self.market.as_ref()
     }
+
+    /// The adventure spells' parameters, if the packs give them (E08 T142a; increment 15's
+    /// design note §3): given whenever the part binds Summon Boat, Scuttle Boat or Dimension Door.
+    pub const fn spells(&self) -> Option<&SpellParams> {
+        self.spells.as_ref()
+    }
 }
 
 /// Why the adventure packs could not be compiled into an [`AdventureRuleset`].
@@ -756,6 +773,16 @@ pub enum AdventureCompileError {
     UnknownSkill(String),
     /// A faction the core ruleset does not define (E08 T93a).
     UnknownFaction(String),
+    /// A spell the core ruleset does not define (E08 T142a).
+    UnknownSpell(String),
+    /// A spell's binding is invalid (E08 T142a, ADV-SPL-001): not of the core's adventure
+    /// category, bound twice, or its effect bound to another spell.
+    InvalidSpell {
+        /// The core spell.
+        key: String,
+        /// Why.
+        reason: &'static str,
+    },
     /// An object type no pack defines.
     UnknownObjectType(String),
     /// An object type's parameters are invalid.
@@ -844,6 +871,8 @@ impl fmt::Display for AdventureCompileError {
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
             Self::UnknownSkill(k) => write!(f, "unknown skill `{k}`"),
             Self::UnknownFaction(k) => write!(f, "unknown faction `{k}`"),
+            Self::UnknownSpell(k) => write!(f, "unknown spell `{k}`"),
+            Self::InvalidSpell { key, reason } => write!(f, "adventure spell `{key}`: {reason}"),
             Self::UnknownResource(k) => write!(f, "unknown resource `{k}`"),
             Self::UnknownObjectType(k) => write!(f, "unknown object type `{k}`"),
             Self::InvalidObjectType { key, reason } => {
@@ -912,6 +941,8 @@ pub struct AdventureRuleset {
     terrain_walkers: Vec<TerrainWalker>,
     random_dwellings: Vec<(FactionId, [ObjectTypeId; DWELLING_LEVELS])>,
     altar_factions: Vec<(FactionId, AltarScreens)>,
+    /// The adventure spells' bindings in spell order (E08 T142a).
+    spells: Vec<(SpellId, AdventureSpell)>,
     hash: u64,
 }
 
@@ -931,6 +962,7 @@ struct Tables {
     terrain_walkers: Vec<TerrainWalker>,
     random_dwellings: BTreeMap<FactionId, [ObjectTypeId; DWELLING_LEVELS]>,
     altar_factions: BTreeMap<FactionId, AltarScreens>,
+    spells: Bindings,
 }
 
 /// The parameters with the battle terrains, the monsters' price resource and (E08 T83a) the
@@ -999,6 +1031,7 @@ impl AdventureRuleset {
             params.market().map(MarketParams::counts),
             &tables.altar_factions,
         )?;
+        check_spells(&tables.spells, params.spells())?;
         let starting_resources = tables
             .starting_resources
             .ok_or(AdventureCompileError::MissingDifficulties)?;
@@ -1017,6 +1050,7 @@ impl AdventureRuleset {
             terrain_walkers: tables.terrain_walkers,
             random_dwellings: tables.random_dwellings.into_iter().collect(),
             altar_factions: tables.altar_factions.into_iter().collect(),
+            spells: tables.spells.into_iter().collect(),
             hash: 0,
         };
         part.hash = hash_of(&part);
@@ -1160,6 +1194,21 @@ impl AdventureRuleset {
     /// The terrain walkers, in load order (E08 T40, ADV-MOV-003): at most one per terrain.
     pub fn terrain_walkers(&self) -> &[TerrainWalker] {
         &self.terrain_walkers
+    }
+
+    /// The core spells that act on the adventure map and how, in spell order (E08 T142a;
+    /// increment 15's design note §3): each bound once, each behaviour once.
+    pub fn spells(&self) -> &[(SpellId, AdventureSpell)] {
+        &self.spells
+    }
+
+    /// What a cast of `spell` does on the map, if the part binds it (ADV-SPL-001; E08 T142a):
+    /// none for a spell of another category or an adventure spell without a binding.
+    pub fn adventure_spell(&self, spell: SpellId) -> Option<AdventureSpell> {
+        self.spells
+            .iter()
+            .find(|&&(id, _)| id == spell)
+            .map(|&(_, effect)| effect)
     }
 
     /// The creatures a random monster of these levels (inclusive) is drawn from (ADV-MON-003,
@@ -1346,6 +1395,8 @@ impl CanonicalHash for AdventureRuleset {
             h.write_bool(screens.artifacts);
             h.write_bool(screens.creatures);
         }
+        // v26 (E08 T142a): the adventure spells.
+        hash_spells(h, &self.spells, self.params.spells.as_ref());
     }
 }
 
@@ -1449,6 +1500,7 @@ fn compile_pack(
     for def in &pack.altar_factions {
         compile_altar_faction(&scope, def, &mut tables.altar_factions)?;
     }
+    compile_spells(&scope, &pack.spells, &mut tables.spells)?;
     for key in &pack.not_random_monsters {
         if !closure.contains(key.pack()) {
             return Err(AdventureCompileError::ReferenceOutsideDependencies {
@@ -1747,6 +1799,7 @@ fn validate_params(
     } else {
         def.dwellings
             .and_then(|dwellings| check_dwelling_params(dwellings, def.monsters.is_some()))
+            .or_else(|| def.spells.as_ref().and_then(SpellParams::check))
     };
     match reason {
         Some(reason) => Err(AdventureCompileError::InvalidParams(reason)),
@@ -1777,6 +1830,7 @@ fn validate_params(
             calendar: def.calendar,
             dwellings: def.dwellings,
             market,
+            spells: def.spells,
             months: def
                 .months
                 .zip(month_monster)

@@ -9,7 +9,9 @@ use std::string::String;
 use std::vec;
 use std::vec::Vec;
 
-use h3_adventure::{AdventureCommand, AdventureCommandError, StandError};
+use h3_adventure::{
+    AdventureCommand, AdventureCommandError, AdventureSpell, CastError, StandError,
+};
 use h3_battle::{CommandError, Hex};
 use h3_content::{CreatureTypeId, Formation as EngineFormation};
 use h3_contracts::{HeroId, PlayerId, TownId};
@@ -17,9 +19,9 @@ use h3_game::{
     Actor, AltarAnswer, AltarError, AltarPlaces, Answer, ArenaChoice, ArmyCommand,
     ArmyCommandError, ArmyRef, ArmySlot, ArtifactPlace, BuildingId, ChestChoice, Consent,
     GameCommand, GameCommandError, HillFortAnswer, HillFortError, HireAnswer, HireError, Manage,
-    ManageError, MarketAnswer, MarketError, NoopSink, Position, SchoolChoice, SkillOffer,
-    SystemCommand, TavernAnswer, TavernError, TownCommand, TownCommandError, TownHeroChange,
-    UniversityAnswer,
+    ManageError, MapCastError, MarketAnswer, MarketError, NoopSink, Position, SchoolChoice,
+    SkillOffer, SystemCommand, TavernAnswer, TavernError, TownCommand, TownCommandError,
+    TownHeroChange, UniversityAnswer,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -195,6 +197,17 @@ pub(super) fn every_command() -> Vec<GameCommand> {
     commands.push(GameCommand::Town(TownCommand::BuySpellBook {
         town: TownId::new(3),
     }));
+    // E08 T142a (v82): a cast without and with a target.
+    commands.push(GameCommand::Cast {
+        hero: HeroId::new(1),
+        spell: Handle::from_raw(6),
+        target: None,
+    });
+    commands.push(GameCommand::Cast {
+        hero: HeroId::new(2),
+        spell: Handle::from_raw(8),
+        target: Some(h3_adventure::Pos::new(12, 4, 1)),
+    });
     // E16 M5 T14 (v56): the system actor's own commands.
     let player = PlayerId::new(1);
     commands.extend(
@@ -407,6 +420,23 @@ fn every_rejection() -> Vec<GameCommandError> {
             HillFortError::Nothing,
         ]
         .map(E::HillFort),
+    );
+    errors.extend(
+        [
+            MapCastError::NotYourHero(HeroId::new(3)),
+            MapCastError::Unknown(Handle::from_raw(6)),
+            MapCastError::NotOnMap(Handle::from_raw(2)),
+            MapCastError::Target,
+            MapCastError::SpellPoints,
+            MapCastError::Ground,
+            MapCastError::AntiMagic,
+            MapCastError::Adventure(CastError::NotYourHero(HeroId::new(4))),
+            MapCastError::Adventure(CastError::InBoat),
+            MapCastError::Adventure(CastError::AlreadyOn),
+            MapCastError::Adventure(CastError::NotHigher),
+            MapCastError::Adventure(CastError::NotBuilt(AdventureSpell::DimensionDoor)),
+        ]
+        .map(E::Cast),
     );
     errors
 }
@@ -629,6 +659,24 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
             w::HillFortReject::NoUpgrade { slot } => HillFortError::NoUpgrade(slot),
             w::HillFortReject::Nothing {} => HillFortError::Nothing,
         }),
+        R::Cast { error } => E::Cast(match error {
+            w::CastReject::NotYourHero { hero } => MapCastError::NotYourHero(HeroId::new(hero)),
+            w::CastReject::Unknown { spell } => MapCastError::Unknown(Handle::from_raw(spell)),
+            w::CastReject::NotOnMap { spell } => MapCastError::NotOnMap(Handle::from_raw(spell)),
+            w::CastReject::Target {} => MapCastError::Target,
+            w::CastReject::SpellPoints {} => MapCastError::SpellPoints,
+            w::CastReject::Ground {} => MapCastError::Ground,
+            w::CastReject::AntiMagic {} => MapCastError::AntiMagic,
+            w::CastReject::Adventure { error } => MapCastError::Adventure(match error {
+                w::SpellReject::NotYourHero { hero } => CastError::NotYourHero(HeroId::new(hero)),
+                w::SpellReject::InBoat {} => CastError::InBoat,
+                w::SpellReject::AlreadyOn {} => CastError::AlreadyOn,
+                w::SpellReject::NotHigher {} => CastError::NotHigher,
+                w::SpellReject::NotBuilt { effect } => {
+                    CastError::NotBuilt(AdventureSpell::ALL[usize::from(effect)])
+                }
+            }),
+        }),
     })
 }
 
@@ -688,8 +736,9 @@ fn every_rejection_maps_back_and_round_trips() {
     // `EmptyArmy`; E09 T38a1: `NoTavern`, `UnknownSlot`, `EmptySlot`; E09 T49b: `NoGuild`,
     // `NoHero`, `HasSpellBook`), 3 of a dismissal's (E09 T38b2: `NotOnMap`, `InTown`,
     // `LastHero`), 4 of a map Tavern's hire (E09 T39a), 10 of a market's (E08 T133b), 7 of an
-    // Altar's (E08 T134a), 3 of a Hill Fort's (E08 T134b1).
-    assert_eq!(errors.len(), 149);
+    // Altar's (E08 T134a), 3 of a Hill Fort's (E08 T134b1), 12 of a cast's (E08 T142a: 7 of the
+    // game's, 5 of the spell's own).
+    assert_eq!(errors.len(), 161);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

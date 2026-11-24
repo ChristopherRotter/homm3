@@ -657,6 +657,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::PrisonerPartSeen { player: owner, .. }
         | GameEvent::PrisonFull { player: owner, .. }
         | GameEvent::PrisonEmptied { player: owner, .. }
+        | GameEvent::SpellCast { player: owner, .. }
         | GameEvent::ThievesGuildSeen { player: owner, .. }
         | GameEvent::GuildPartSeen { player: owner, .. }
         | GameEvent::GarrisonChanged { player: owner, .. }

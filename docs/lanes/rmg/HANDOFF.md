@@ -4,14 +4,20 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E14** (the original's random map generator, ported to give the same map per seed): in progress since 2026-11-23. Increment 1 (the reading's map, the oracle, the survey): **T1a1, T1a2, T1b1, T1b2, T1c1 and T1c2 done** (survey `docs/rules/surveys/E14-generator.md` §1, §2 (§2.7 the painters), §3 the tables, the rules by phase, the objects and the writer; the ledger `docs/rules/quirks-rmg.md`; the oracle and the phase oracle `ORACLE.md`; log `docs/epics/E14-log.md`). Increments 2 to 6 sketched. No engine code yet.
-- **Next:** **T1c3** (`QUEUE.md`): the ADR draft (crate, seam, `rand`, floats, pack data, the profiles and the ledger's 18 flags, version), increments 2 to 6 cut with exit criteria (survey §3.2's rules and "not read" list; RMG-QUIRK-1's measurement at step 2's port), the checkpoint RMG-Q2 with the user. Reading needs `Heroes3.exe` alone; an oracle run the client lane's set (a new chat stages it from the PC).
-- **Open pull requests:** `rmg/e14-t1c2` (T1c2). Watch it until it merges.
-- **Owns** (`lanes.toml`): `crates/h3-rmg/` (created at increment 2, a shared change), the packs' `rmg.toml`, the RMG rules and quirks, E14's epic, surveys and experiments, this folder.
-- **Ids:** questions `RMG-Q<n>` (next 2; none open), quirks `RMG-QUIRK-<n>` (next 24; two candidates open in the ledger), stubs `RMG-STUB-<n>` (next 1), decisions next 8.
-- **Working agreement:** a checkpoint with the user per increment (decision 6); tokens first; read the executable in the cloud sandbox (`docs/exe/README.md`, "Setup"); a big task cut at a seam with the user, worker sub-agents allowed for its parts (2026-11-23).
+- **E14** (the original's random map generator, ported to give the same map per seed): in progress since 2026-11-23. **Increment 1 closed** (2026-11-24, RMG-Q2; `docs/epics/E14-archive.md`): the survey `docs/rules/surveys/E14-generator.md`, the ledger `docs/rules/quirks-rmg.md`, the oracle and the phase oracle `ORACLE.md`, the ADR draft `adr-drafts/h3-rmg-generator.md` (confirmed; numbered by T2a). **Increments 2 to 7 cut** in the run's order (the epic's table, decision 8); increment 2 refined (T2a to T2c). No engine code yet.
+- **Next:** **T2a** (`QUEUE.md`): the `shared/` change: `h3-rmg` and `h3-pack-rmg` created, `h3_kernel::rng::CrtRand`, the domain context, the catalog context `RMG`, the ADR numbered. T2b (the harvest, `cross-lane`) and T2c (the settings and the template) follow. Increment 3 needs the oracle's set staged from the PC (a new chat stages it).
+- **Open pull requests:** `rmg/e14-t1c3` (T1c3) and **#1155** (`shared/e14-increment-1`, the README's E14 row). Watch them until they merge.
+- **Owns** (`lanes.toml`): `crates/h3-rmg/` (created by T2a, a shared change; `h3-pack-rmg` and `h3-map`'s `src/generated*` join it there and at increment 7), the packs' `rmg.toml`, the RMG rules and quirks, E14's epic, surveys and experiments, this folder.
+- **Versions:** none yet (`RMG_GENERATOR_VERSION`, `RMG_RULESET_HASH_VERSION` come with T2b, T2c: ADR draft point 7).
+- **Ids:** questions `RMG-Q<n>` (next 3; none open), quirks `RMG-QUIRK-<n>` (next 24; two candidates open in the ledger), stubs `RMG-STUB-<n>` (next 1), decisions next 9.
+- **Waiting on other lanes:** the writer's seven gaps (survey §3.3.3) before increment 7, in the adventure (1 to 6) and town (7) lanes' inboxes; the town lane's answer on a neutral main town (RMG-QUIRK-23).
+- **Working agreement:** a checkpoint with the user per increment (decision 6); tokens first; read the executable in the cloud sandbox (`docs/exe/README.md`, "Setup"); a big task cut at a seam with the user, worker sub-agents allowed for its parts (2026-11-23); a couple of small tasks or one bigger per session (2026-11-24).
 
 ## Recent sessions
+
+### 2026-11-24 — T1c3 the ADR draft, the cut, RMG-Q2 (increment 1 closed)
+
+A new chat; staged from the PC both `Heroes3.exe` and the six tables (no oracle run). The draft (eight points: crates, seam, `CrtRand` in the kernel, binary64 floats and integer square roots, pack data, the game's profiles, versions, the trace) and the cut (increments 2 to 7 in the run's order) written, then asked: the user chose the experiment writer with its seven gaps closed over the recommended `RawMap` writer (the draft and both inbox notes rewritten), the picture names harvested, the game's profiles, six increments. Increment 1 archived; T2a to T2c queued. The VM restarted once (the setup's baseline lost, the files kept).
 
 ### 2026-11-24 — T1c2 survey §3 and the ledger (no cut, the user)
 
@@ -20,7 +26,3 @@ A new chat: the client lane's set staged from the PC (66 files; the SoD install'
 ### 2026-11-24 — T1c1 the painters (T1c cut in three by the user)
 
 A new chat: the client lane's set staged from the PC (61 files); the PC's repo folder was behind GitHub, so the clone is GitHub's. T1c1 read in thirds (the runner one, two workers one after the other): the terrain painter (picture sets, the row-major point sets of pinched cells, the last pass's transition rule over the whole map) and the road and river painter (one-cell strokes, the shape by the neighbours); survey §2.7, 148 map entries. Checked with three corpus cases run again: every terrain, road and river cell's picture in the step dumps as the rules give. The VM restarted once (a worker's report lost, its files kept).
-
-### 2026-11-23/24 — T1b2 the phase oracle
-
-A new chat: the client lane's set staged from the PC again (60 files). `xdd.dll`'s section 10 (`H3RMG`) logs every draw of the generation from `rand`'s tail with its call site and dumps the cells after each step, its hooks on their own stack; `h3rmg.py --phases`, `phases`. The corpus reproducible, no map changed by the hooks; a third of the draws come from the terrain and road painters outside the range (survey §2.6 lacks them); 0x532A5B draws in step 2 in 18 of 21, and `l1-4p-b`'s second map in one game differs by it, moved by the environment's size (T1b1's "21 of 21" was its sandbox's).

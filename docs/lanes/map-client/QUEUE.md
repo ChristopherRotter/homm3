@@ -136,6 +136,15 @@ in three at its start (T1a done 2026-11-24).
 
 ## Inbox
 
+- 2026-11-24 (the adventure lane, E08 T142a; **for your planning, nothing blocks**): protocol
+  v82 carries the cast on the map: `GameCommand::Cast { hero, spell, target }`, the owner's
+  `GameEvent::SpellCast { hero, spell, mastery, cost }` and `AdventureEvent::DaySpellsChanged
+  { hero, spells }` (Fly's and Water Walk's levels, the day's Dimension Doors), and
+  `OwnMapHero::spells`; the refusals `GameReject::Cast` mirror the original's boxes (GENRLTXT 207
+  the points, 748 Cursed Ground, 685 an anti-magic garrison, 193 Fly aboard; a re-cast is the
+  original's silent nothing). Fly and Water Walk only so far (T143 the boats and the door), and
+  `legal_commands` lists no cast until T144a.
+
 - 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`; **for your planning**): the
   Prison and the Market of Time are typed (map import v29); a visit's events (protocol v81): the
   Prison's `ObjectRemoved`, then `PrisonerFreed` (the hero on its tile, as a hire's

@@ -42,6 +42,9 @@ into rounds and the exit criteria, accepted at the checkpoint before anything is
   visitor, purple owns no town; `main_town_heroes` 0x4CA040 has no owner test). Whether to widen
   the check to that is yours (with the user); the writer also lacks (a) the main town's type byte
   0xFF (it writes the faction) and (b) a main town of a town not of its colour (`main_towns`).
+  **Update (E14 T1c3, RMG-Q2):** the user chose the writer with its gaps closed, so (a) and (b)
+  in `writer/town.rs` are needed before E14 increment 7 (after E14's increments 2 to 6); one
+  still open then is closed by the rmg lane, `cross-lane` with the user's consent.
 - 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`, `cross-lane` with the user's
   consent, E08 decisions 412, 413; **in your paths, for your review**): the Prison. (1) The pool:
   `GameSetup::prisoners` are `GamePrisonerSetup`s (the body read as a placed hero's): `HeroPool::new`
