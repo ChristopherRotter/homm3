@@ -53,6 +53,16 @@ pub enum GameCommand {
         /// The command.
         command: SystemCommand,
     },
+    /// A cast of a spell on the adventure map by one of the actor's heroes (GAM-SPL-001; E08
+    /// T142a, v82).
+    Cast {
+        /// The casting hero.
+        hero: u16,
+        /// The core spell.
+        spell: u16,
+        /// The target tile, for Scuttle Boat and Dimension Door.
+        target: Option<Pos>,
+    },
 }
 
 /// The system actor's own command for a player (`h3_game::SystemCommand`; E16 M5 T14, v56).
@@ -652,6 +662,71 @@ pub enum GameReject {
     /// The session's (E16 M5 T22a, v66): `SetSpectators` once the game started, when its
     /// setting is fixed.
     AlreadyStarted {},
+    /// A cast on the map the game refused (`h3_game::MapCastError`, GAM-SPL-001; E08 T142a,
+    /// v82).
+    Cast {
+        /// Why.
+        error: CastReject,
+    },
+}
+
+/// Why a cast on the map was refused (`h3_game::MapCastError`, GAM-SPL-001; E08 T142a, v82), in
+/// the engine's order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum CastReject {
+    /// The hero is not one of the actor's heroes on the map.
+    NotYourHero {
+        /// The hero.
+        hero: u16,
+    },
+    /// The hero may not cast the spell.
+    Unknown {
+        /// The spell.
+        spell: u16,
+    },
+    /// The spell does not act on the map.
+    NotOnMap {
+        /// The spell.
+        spell: u16,
+    },
+    /// A target given for a spell that names none, or none for one that does.
+    Target {},
+    /// The spell points are below the cost.
+    SpellPoints {},
+    /// The ground allows no spell of that level (Cursed Ground).
+    Ground {},
+    /// The hero stands in or on an anti-magic garrison.
+    AntiMagic {},
+    /// The spell's own test refused it.
+    Adventure {
+        /// Why.
+        error: SpellReject,
+    },
+}
+
+/// Why the spell's own test refused a cast on the map (`h3_adventure::CastError`; E08 T142a,
+/// v82).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum SpellReject {
+    /// The hero is not one of the actor's heroes on the map.
+    NotYourHero {
+        /// The hero.
+        hero: u16,
+    },
+    /// Fly in a boat.
+    InBoat {},
+    /// The spell's level is on already (`ADV-QUIRK-54`).
+    AlreadyOn {},
+    /// The cast would not raise the hero's level (`ADV-QUIRK-54` off).
+    NotHigher {},
+    /// A spell the engine does not cast on the map yet (`ADV-STUB-22`), by its behaviour's code
+    /// in the original's spell order: 0 Summon Boat, 1 Scuttle Boat, 4 Dimension Door.
+    NotBuilt {
+        /// The behaviour's code.
+        effect: u8,
+    },
 }
 
 /// Why a town command was refused (`h3_towns::TownCommandError`).

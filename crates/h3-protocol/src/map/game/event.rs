@@ -22,7 +22,8 @@ use super::{
 };
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
-    AdventureEvent, Formation, GameEvent, HeroChange, NothingWhy, OfferLevels, ShipyardBlock,
+    AdventureEvent, DaySpells, Formation, GameEvent, HeroChange, NothingWhy, OfferLevels,
+    ShipyardBlock,
 };
 
 /// The events `viewer` may see, in order, on the wire (`h3_game::project`); the others are
@@ -442,6 +443,20 @@ fn event(e: &EngineEvent) -> GameEvent {
             player: player.raw(),
             hero: hero.raw(),
         },
+        // E08 T142a (v82).
+        EngineEvent::SpellCast {
+            player,
+            hero,
+            spell,
+            mastery,
+            cost,
+        } => GameEvent::SpellCast {
+            player: player.raw(),
+            hero: hero.raw(),
+            spell: spell.raw(),
+            mastery,
+            cost,
+        },
         // E09 T39b2 (v74).
         EngineEvent::ThievesGuildSeen { player, level } => GameEvent::ThievesGuildSeen {
             player: player.raw(),
@@ -797,6 +812,25 @@ fn adventure(kind: AdventureEventKind) -> AdventureEvent {
         K::KindKnown { object_type } => AdventureEvent::KindKnown {
             object_type: object_type.raw(),
         },
+        // E08 T142a (v82).
+        K::DaySpellsChanged { hero, spells } => AdventureEvent::DaySpellsChanged {
+            hero: hero.raw(),
+            spells: day_spells(spells),
+        },
+    }
+}
+
+/// A hero's day spells on the wire (E08 T142a, v82).
+pub(crate) const fn day_spells(spells: h3_adventure::DaySpells) -> DaySpells {
+    let h3_adventure::DaySpells {
+        fly,
+        water_walk,
+        doors,
+    } = spells;
+    DaySpells {
+        fly,
+        water_walk,
+        doors,
     }
 }
 

@@ -224,6 +224,7 @@ fn a_player_sees_where_other_heroes_stand_and_its_own_in_full() {
                     marks: Vec::new(),
                     bonuses: HeroBonuses::NONE,
                     timed: Vec::new(),
+                    spells: DaySpells::NONE,
                 }),
             })
         );
@@ -391,6 +392,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                     | AdventureEventKind::LeadsNowhere { .. }
                     | AdventureEventKind::WhirlpoolLoss { .. }
                     | AdventureEventKind::MovementChanged { .. }
+                    | AdventureEventKind::DaySpellsChanged { .. }
                     | AdventureEventKind::BonusChanged { .. }
                     | AdventureEventKind::OnceMarkChanged { .. }
                     | AdventureEventKind::TimedMarkChanged { .. }

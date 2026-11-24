@@ -1,0 +1,332 @@
+# Quirks ledger: rmg lane
+
+Known differences between the original's random map generator (GOG Complete's `Heroes3.exe`, SoD's code; E14) and a clean design. Classes and the decision guide are in `docs/04-rules-and-sources.md` §4; the entry template in `docs/rules/quirks-ledger.md`. Ids are `RMG-QUIRK-<n>` (`docs/08-work-process.md`, "Lanes").
+
+**Profiles** (E14 decision 4): `faithful`, the default and the one the oracle checks byte for byte, reproduces every entry; `fixed` corrects the `fix-optional` ones; `exploit-fix` entries (a crash, a hang, a corrupt map) are fixed in both. How the generator's two profiles sit in the game's profiles (`faithful`, `strict-fixed`, ADR-0007) is T1c3's ADR draft; below, "fixed" is the generator's.
+
+**Classified by the user, 2026-11-24 (E14 T1c2)**, from the quirk candidates of the survey `docs/rules/surveys/E14-generator.md` (§1, §2.1 to §2.5, §2.7, §3.1) and `docs/lanes/rmg/ORACLE.md`. **Confirmation** (`docs/04-rules-and-sources.md` §4, "Confirm before flagging"): every entry rests on one code reading; it is confirmed when the port's step reproduces the phase oracle's step dump and draw log on the corpus (the step named in the entry), `exploit-fix` entries need none. Until then the entry says "unconfirmed"; a step that does not match re-reads the entry first.
+
+## Entries
+
+### RMG-QUIRK-1 — Zones whose town-type bytes nobody writes
+- Class: fix-optional (the user, 2026-11-24, T1c2: "model the oracle")
+- Context / rules affected: step 2, `rmg_level_zones_partition` 0x53E050; `rmg_zone_generator_init` 0x5329E0 and its draw `rmg_zone_town_type_draw` 0x532A5B; survey §2.2, §3.2 (ZON)
+- Original behavior: step 2 builds a temporary zone on the stack for each level's fit tests, and a water zone through operator new (0xD4 bytes) for each water point. Neither writes the town-type bytes +0x41..+0x49 before `rmg_zone_generator_init` counts them: the count decides whether 0x532A5B draws (`rand() %` the count) and which town type the zone generator gets. A water zone's +0x40, +0x84, +0x94, +0xC..+0x18 and its zone generator's +8 are not written either. Under Wine (ORACLE.md, "The phase oracle") the temporary zone drew in every corpus case that runs step 2 (18 of 21; the other three have one level and no water); water zones drew 11 or 17 times in the water-heavy cases; `l1-4p-b`'s second map in one game drew once less and differs, moved by the environment's size.
+- Intended/expected behavior: zeroed bytes: no town type set, no draw.
+- Impact: gameplay-altering (the stream shifts from step 2 on: a different map for the same seed); the drawn town type of a water zone reaches its guards' creatures.
+- Community status: unknown
+- Sources: code reading (survey §2.2, quirk candidates); observation (ORACLE.md, the phase oracle's draw log)
+- Flag: `quirk.rmg.zone_memory_model`
+- Defaults: faithful = on (the **oracle model**: the bytes as a fresh start's first map holds them under the oracle, measured by the phase hooks when step 2 is ported and kept as the model's data), fixed = off (zeroed, no draw)
+- Limits (documented, not a defect of the port): a second map in one game and Windows' memory are out of reach; the byte-for-byte claim holds for a fresh start's first map under the oracle's environment (`docs/lanes/rmg/TRAPS.md`, "The oracle"). In T1c2's sandbox even a first map varied once (`m2-4p` in a corpus run, as kept when run alone right after; ORACLE.md): the measurement at step 2's port must say what moves the stack bytes before the model is fixed.
+- Regression test: when step 2 is ported (the corpus's step 2 dumps and draw logs, both profiles)
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-2 — A river delta's x bound reads the next cell
+- Class: fix-optional (the user, 2026-11-24, T1c2: the oracle model, as RMG-QUIRK-1)
+- Context / rules affected: step 15, `rmg_river_delta_site_mark` 0x548A40; survey §2.5, §3.2 (RDR)
+- Original behavior: the site's x is bounded by `x > width`, so x = width is accepted: the test reads the next row's first cell (deterministic) and, at the map's last cell, one cell past the cell array, whose bytes decide whether that delta site is marked.
+- Intended/expected behavior: x < width; nothing past the row.
+- Impact: gameplay-altering, rare (a delta site at a row's end)
+- Sources: code reading (survey §2.5)
+- Flag: `quirk.rmg.delta_bound`
+- Defaults: faithful = on (the next row's cell as read; the cell past the array as the oracle model gives it), fixed = off
+- Regression test: when step 15 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-3 — Divisions and moduli by zero
+- Class: exploit-fix (the user, 2026-11-24, T1c2)
+- Context / rules affected: `rmg_zone_place` 0x53B970 with no candidate (its draw 0x53BB5F); a jitter limit of 0 (`rmg_border_jitter_draw` 0x53C0F2: a zone of scaled size 0 on a jagged border, an island zone of size 1); `rmg_junction_path_draw` for a zone of size 0; `rmg_object_choose` 0x546190's density filter for a template with no blocking or enterable cell; a terrain picture set missing a shape (water 24, rock 16 and 24) reached by slot 5; `rand() % 0` without shipyard or gate prototypes and a modulus 0 without monolith prototypes (step 6); survey §2.2 to §2.4, §2.7.3
+- Original behavior: a division by zero; at best `rmg_run`'s catch-all gives code 1 (whether it takes a structured exception was not read), no map either way.
+- Intended/expected behavior: the generation fails with a typed error naming the cause; no map.
+- Impact: game-breaking (a crash) where reached; as read none is reachable with the shipped tables and objects (increment 6's census confirms it).
+- Sources: code reading (survey §2.2 "Clocks, retries, limits, failures", §2.3 and §2.4 "Faults reachable only with other data", §2.7.3)
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, fixed = fixed
+- Regression test: each case when its step is ported (a table or template that reaches it gives the typed error)
+- Decided by / date: the user, 2026-11-24 (T1c2)
+
+### RMG-QUIRK-4 — Unchecked reads, writes and nulls
+- Class: exploit-fix (the user, 2026-11-24, T1c2)
+- Context / rules affected: `rmg_border_guard_place` 0x540D60 returning colour 0 when a tent exists but no Border Guard of its colour; `rmg_path_carve` 0x5408E0 with a null prototype (`rmg_prototype_draw` 0x546040 returns null without candidates); `rmg_monolith_border_guard` 0x542B00 marking five cells without a bounds check (a monolith on the map's edge wraps to the next row or level); `rmg_connection_by_monoliths` 0x542CE0 reading the exit list at the entrance's index unchecked; `rmg_seer_hut_place` 0x54B490 reading past the artifact prototypes when none has the quest's id; survey §2.3, §2.4
+- Original behavior: memory read or written out of bounds, or a null used; reachable only with other data as read.
+- Intended/expected behavior: the generation fails with a typed error.
+- Impact: game-breaking (memory corruption or a crash) where reached
+- Sources: code reading (survey §2.3, §2.4, "Faults reachable only with other data")
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, fixed = fixed
+- Regression test: each case when its step is ported
+- Decided by / date: the user, 2026-11-24 (T1c2)
+
+### RMG-QUIRK-5 — A zone without an empty cell seeds its flood with another zone's cell
+- Class: exploit-fix (the user, 2026-11-24, T1c2)
+- Context / rules affected: `rmg_zone_paths_connect` 0x5405D0 (steps 6 and 9); survey §2.3
+- Original behavior: the fallback seed keeps the previous zone's coordinates when a zone has no empty cell, so the zone's paths are carved from a cell of another zone; reachable only with other data as read.
+- Intended/expected behavior: the generation fails with a typed error (a zone that cannot hold a path).
+- Impact: corrupt map (paths through a foreign zone) where reached
+- Sources: code reading (survey §2.3)
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, fixed = fixed
+- Regression test: when step 6 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2)
+
+### RMG-QUIRK-6 — Computer teams above the computers
+- Class: exploit-fix (the user, 2026-11-24, T1c2: input validation)
+- Context / rules affected: `random_map_generate` 0x5860E0, the dialog's computer-teams choice (survey §1.1, row 4; §3.2 RMG-SET-002)
+- Original behavior: a computer-teams count above the computers becomes the players' count (as read; whether the dialog can give it was not read).
+- Intended/expected behavior: the port takes explicit choices (a Random choice is the caller's, drawn from the game's own state) and refuses a teams count outside 0..computers with a typed error.
+- Impact: none known (the dialog's range not read)
+- Sources: code reading (survey §1.1)
+- Flag: none (validated in every profile)
+- Defaults: faithful = fixed, fixed = fixed
+- Regression test: when the parameters are ported (increment 2)
+- Decided by / date: the user, 2026-11-24 (T1c2)
+
+### RMG-QUIRK-7 — Border Guards on both sides with crossed keys
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: step 6, a connection with the border-guard flag (`rmg.txt` column 80): `rmg_border_guard_place` 0x540D60 from the connection functions; survey §2.3
+- Original behavior: the guard is tried at P with its Keymaster's Tent in the other zone, then at Q with its tent in this one (gates likewise). When both succeed the passage holds two guards in a row, each one's key lying beyond the other guard: neither side passes unless another route reaches a tent.
+- Intended/expected behavior: one guard per passage (the second try only when the first fails).
+- Impact: gameplay-altering, possibly game-breaking (a connection shut from both sides); frequency on the corpus measured when step 6 is ported
+- Sources: code reading (survey §2.3)
+- Flag: `quirk.rmg.border_guard_both_sides`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 6 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-8 — A shipyard's Border Guards seek their tent in the water zone
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: step 6, a water connection with the border-guard flag (three guards before the shipyard's entrance); `rmg_border_guard_place` 0x540D60; survey §2.3
+- Original behavior: the guards' Keymaster's Tents are placed in the water zone; what a tent on water does was not read, and a guard that cannot be placed falls back to the monster.
+- Intended/expected behavior: the tent in the land zone across the connection.
+- Impact: gameplay-altering
+- Sources: code reading (survey §2.3)
+- Flag: `quirk.rmg.shipyard_guard_tent_on_water`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 6 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-9 — Underground zones walled along wide connections
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: step 6, the zone walls (`rmg_zone_borders_close` 0x53F880); survey §2.3
+- Original behavior: on level 1 every zone is walled off from its neighbours, even along a wide connection (`rmg.txt` column 79), which on level 0 leaves the border open.
+- Intended/expected behavior: wide connections open on both levels.
+- Impact: gameplay-altering
+- Sources: code reading (survey §2.3, "The zone walls")
+- Flag: `quirk.rmg.underground_wide_walled`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 6 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-10 — RoE guards: creature 117 drawn uncounted
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: `rmg_guard_monster_create` 0x540B20 (steps 6, 8, 10); survey §2.3
+- Original behavior: for RoE the creatures 0-116 are filtered and counted, but the draw walks down from 144, so creature 117 (when it has a prototype) can be drawn without being counted, shifting the choice; a creature that passes the tests without a monster prototype is counted but cannot be walked to.
+- Intended/expected behavior: the draw walks the counted creatures only.
+- Impact: gameplay-altering (RoE maps only)
+- Sources: code reading (survey §2.3)
+- Flag: `quirk.rmg.roe_guard_walk`
+- Defaults: faithful = on, fixed = off
+- Regression test: when the guards are ported (an RoE case)
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-11 — RoE clears Fortress, not Conflux, from the monster towns
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: `rmg_template_zones_read` 0x538480; the guards' creatures (`rmg_guard_monster_create` 0x540B20); survey §2.1, §3.2 RMG-TPL-003
+- Original behavior: for RoE the town types clear the ninth (Conflux), but the monster towns clear byte +0x9D (column 65, Fortress) instead of +0x9E: an RoE zone's Fortress monster setting is lost.
+- Intended/expected behavior: clear +0x9E (Conflux, AB's town) for RoE.
+- Impact: gameplay-altering (RoE maps: no Fortress guards from a zone's monster setting)
+- Sources: code reading (survey §2.1)
+- Flag: `quirk.rmg.roe_monster_town_byte`
+- Defaults: faithful = on, fixed = off
+- Regression test: when the templates are ported (increment 2) and the guards (an RoE case)
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-12 — A zone without a town type draws among four entries
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: step 1, the town type of a zone whose +4 is -1 (no town type set, no colour choice), from `rmg_terrain_towns` 0x682450 (four entries per terrain); survey §1.5, §2.2
+- Original behavior: the count is always 4, so the padding (-1) and repeated entries are drawn: sand, snow and lava half Castle, water three quarters Castle, Conflux on rough also in RoE.
+- Intended/expected behavior: the draw among the terrain's own town types only (and none of another version).
+- Impact: gameplay-altering (Castle over-represented)
+- Sources: code reading (survey §2.2)
+- Flag: `quirk.rmg.terrain_towns_count`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 1 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-13 — Step 5 skips a least town step 4 never placed
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: steps 4 and 5, `rmg_zone_first_town` 0x544A50 and `rmg_zone_towns_place` 0x544AE0; survey §2.2
+- Original behavior: step 4 places at most one town; step 5 skips the first of the first kind asked for even when step 4 failed, so a zone (for example one without a town type set, refused by the central placement) ends one least town short.
+- Intended/expected behavior: step 5 skips only the town step 4 placed.
+- Impact: gameplay-altering
+- Sources: code reading (survey §2.2)
+- Flag: `quirk.rmg.least_town_skipped`
+- Defaults: faithful = on, fixed = off
+- Regression test: when steps 4 and 5 are ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-14 — Step 2 mixes map and template units
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: step 2, `rmg_zone_position_fits` 0x53AD60; survey §2.2
+- Original behavior: map distances are compared with the existing zones' base sizes in template units, the temporary zone carrying a scaled size.
+- Intended/expected behavior: every size scaled to the map.
+- Impact: gameplay-altering (where water zones and empty points may lie)
+- Sources: code reading (survey §2.2)
+- Flag: `quirk.rmg.partition_units`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 2 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-15 — A pile without a guard monster stays unguarded
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: step 10, `rmg_pile_build` 0x5466E0 and `rmg_guard_monster_create` 0x540B20; survey §2.4
+- Original behavior: a treasure pile whose value calls for a guard (2000 or more) but finds no monster in range is placed unguarded.
+- Intended/expected behavior: the strongest monster in range below the value, or the pile not placed.
+- Impact: gameplay-altering (valuable treasure unguarded)
+- Sources: code reading (survey §2.4)
+- Flag: `quirk.rmg.pile_unguarded`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 10 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-16 — Generated Witch Huts' 16-bit skill mask
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: the writer, `rmg_witch_hut_object_write` 0x5340C0; survey §2.5
+- Original behavior: every generated Witch Hut is written with the allowed-skills mask 0xEFDF: skills 0-4, 6-11 and 13-15 only, never Navigation (5), Necromancy (12) or any of 16-27 (`Untitled.h3m`'s eleven agree). The mask looks cut to 16 bits.
+- Intended/expected behavior: every skill but Navigation and Necromancy (0x0FFFEFDF).
+- Impact: gameplay-altering
+- Sources: code reading (survey §2.5); observation (`Untitled.h3m`, Complete's `random_maps`)
+- Flag: `quirk.rmg.witch_hut_mask`
+- Defaults: faithful = on, fixed = off
+- Regression test: when the writer is ported (increment 6)
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-17 — Roads cross one-way monoliths both ways
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: step 14, `rmg_roads_lay` 0x548290; survey §2.5
+- Original behavior: the road flood treats a one-way monolith as two-way and jumps to the far monolith's position.
+- Intended/expected behavior: one-way monoliths followed in their direction only.
+- Impact: gameplay-altering (minor: where roads run)
+- Sources: code reading (survey §2.5)
+- Flag: `quirk.rmg.roads_one_way_monoliths`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 14 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-18 — A zone of town type -1 values neutral creatures
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: `rmg_creature_generator_value` 0x534310 (the creature and dwelling rewards' value test); survey §2.1
+- Original behavior: a zone generator's town type can be -1 (step 1's draw, RMG-QUIRK-12); the neutral creatures (town -1) then pass the creature and dwelling value test as the zone's own town.
+- Intended/expected behavior: neutral creatures valued as of another town.
+- Impact: gameplay-altering
+- Sources: code reading (survey §2.1)
+- Flag: `quirk.rmg.neutral_town_value`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 10 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-19 — Shipyard sites counted more than once
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: step 6, a water connection: `rmg_shipyard_site_fits` 0x541960 and the draw `rmg_shipyard_site_draw` 0x541D6C; survey §2.3
+- Original behavior: a site found from several neighbouring cells enters the list once per cell, so it is drawn by that weight.
+- Intended/expected behavior: each site once.
+- Impact: gameplay-altering (minor)
+- Sources: code reading (survey §2.3)
+- Flag: `quirk.rmg.shipyard_sites_repeated`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 6 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-20 — A pile's box one cell past its zone
+- Class: fix-optional (the user, 2026-11-24, T1c2)
+- Context / rules affected: step 10, `rmg_pile_place_in_zone` 0x5470D0; survey §2.4
+- Original behavior: the pile's offsets run to the zone's maximum + 1 − the pile's size, so its box may end one cell past the zone's; the fit test still applies.
+- Intended/expected behavior: the box inside the zone's.
+- Impact: gameplay-altering (minor)
+- Sources: code reading (survey §2.4)
+- Flag: `quirk.rmg.pile_box_past_zone`
+- Defaults: faithful = on, fixed = off
+- Regression test: when step 10 is ported
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-21 — Cosmetic: the painters' pictures, rivers under objects, the description
+- Class: fix-optional, **one flag for all** (the user, 2026-11-24, T1c2)
+- Context / rules affected: the terrain painter (steps 3, 6, 11, 15), the road and river painter (14, 15), step 15's rivers, the writer's header; survey §2.5, §2.7.2 to §2.7.4
+- Original behavior:
+  1. `terrain_painter_queue_neighbours` 0x5B50F0 tests the axes with an else-if: when N is queued S is not re-tested (E after W likewise), so a foreign neighbour the new cell has pinched may stay a 1-wide strip.
+  2. The last pass's group 3 gives sand-corner shape 8 with the mirroring inverted where one side is a dirt border.
+  3. `road_river_rect_clear` 0x4FA080's right column stops one row short when the cleared cell lies on the map's second-last row: that corner neighbour keeps a stale picture.
+  4. Rivers test no objects or obstacles: a river can run under them.
+  5. The description prints the town of the colour's index, not the town chosen, and "humans" counts the computers too.
+- Intended/expected behavior: the pictures as the neighbours give them, rivers on free cells only, the description's town and count as chosen.
+- Impact: cosmetic
+- Sources: code reading (survey §2.5, §2.7.2, §2.7.3, §2.7.4)
+- Flag: `quirk.rmg.cosmetic`
+- Defaults: faithful = on, fixed = off
+- Regression test: when each part is ported (steps 3, 14, 15, the writer)
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+
+### RMG-QUIRK-22 — 8XM8's decimal zone ids (a data quirk)
+- Class: fix-optional, data (the user, 2026-11-24, T1c2)
+- Context / rules affected: both `rmg.txt` tables (AB's and SoD's), template 8XM8; the harvest (increment 2, `packs/ab/rmg.toml`, `packs/sod/rmg.toml`); survey §3.1
+- Original behavior: six connection rows give their first zone as 5.9, 6.3, 6.7, 7.1, 7.5 and 7.9 (a filled series); `c_atoi` reads 5, 6, 6, 7, 7, 7, so human start 8 has no connection, starts 5 and 7 three, 6 two.
+- Intended/expected behavior (a documented guess): every start zone has two rows to its own treasure zones in the table (1 to 17 and 18, 2 to 23 and 24, … 5 to 35 and 36), and the six rows continue it: 6, 6, 7, 7, 8, 8 (6 to 37 and 38, 7 to 41 and 42, 8 to 47 and 48).
+- Impact: game-breaking for one player (a start zone without any connection) on that template
+- Sources: original data (`rmg.txt`, both archives; survey §3.1)
+- Flag: `quirk.content.rmg_8xm8_zone_ids` (the pack keeps the values as read and an override gated by the flag, ADR-0007 amendment E04b T8e)
+- Defaults: faithful = on, fixed = off
+- Regression test: when the templates are harvested (increment 2)
+- Decided by / date: the user, 2026-11-24 (T1c2); original data, confirmed
+
+### RMG-QUIRK-23 — A start zone without a colour town takes a neutral main town
+- Class: no flag (the user, 2026-11-24, T1c2: as the original, in every profile)
+- Context / rules affected: steps 4 and 5 (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0) and the writer's player block (`rmg_write_header` 0x549CB0); the game's start (`main_town_heroes` 0x4CA040); TWN-SET-001 (the player's main town, the town lane); survey §3.3.4
+- Original behavior: a colour's main town is its start zone's first town placed (zone generator +0x30), written at the town's entrance as the editor writes it. When the zone asks for no town of its colour (SoD's and AB's Dragons, zone 32: purple's computer start with neutral densities only), that town is neutral: purple's main town is a neutral town. The original starts such a map (observed on `l2-2p-c4-islands`, T1c2): the town stays neutral, purple's generated hero stands on its entrance as its visitor, purple owns no town; `main_town_heroes` matches the town by its entrance without an owner test.
+- Intended/expected behavior: as the original (no fix chosen: a `fixed` variant would be a map the original never makes, and the map is playable as written).
+- Impact: gameplay-altering (that colour starts without a town, a hero at a neutral town's gate)
+- Community status: unknown
+- Sources: code reading (survey §2.5, §3.3.4); observation (the oracle's `l2-2p-c4-islands`, the game's memory after the start; T1c2)
+- Flag: none (the rule in every profile)
+- Defaults: faithful = original, fixed = original
+- Regression test: when the writer is ported (increment 6); the game's start on such a map waits for the town lane (its inbox: whether `GameSetup::validate` accepts a main town of another owner, as the original does)
+- Decided by / date: the user, 2026-11-24 (T1c2); confirmed (observation)
+
+## Considered, not quirks
+
+Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the classification, and the oracle's memory bits). A later reading that shows one changes a map's gameplay re-opens it here.
+
+| Candidate | Why not a quirk | Survey |
+|---|---|---|
+| `rmg_map_cell_reset` 0x530F10 leaves +0x14, +0x18, bits of +0x24, +0x28, +0x2C to memory | no map changed by them; the port zeroes them (a fresh start's first map holds 0) | ORACLE.md |
+| The terrain painter's cell-word fill takes the map interface's address | never read before a load | §2.7.1 |
+| `rmg_object_choose` draws a prototype per candidate generator before the choice | the stream's order, no other effect | §2.4 |
+| The river floods draw per neighbour examined, a cell popped again drawing again | the stream's order | §2.5 |
+| Shipyard and gate prototypes drawn before any site is sought | the stream's order | §2.3 |
+| An unmirrored shape 4 keeps picture 0 without a draw | the stream and the stored picture, as read | §2.7.4 |
+| Repainting redraws every painted cell; a pinched cell drawn twice; each finish re-fits the whole map; a ring gap's own-terrain diagonal redrawn | the stream's order; the pictures as the rules give | §2.7.2, §2.7.3 |
+| `terrain_painter_set_cell` 0x5B4B20 never erases its own cell from set 1 | no other effect found | §2.7.2 |
+| Mine sites' and the density filter's running best (the scan order decides) | the selection rule as it is | §2.4 |
+| `rmg_connection_by_land`'s shortcut for a least cost of 1 | dead (entering costs are 10 or more) | §2.3 |
+| `rmg_zone_candidates_filter`'s free-level test skips index 0 | no effect (index 0 lies on an occupied level) | §2.2 |
+| Islet candidates not restricted to the zone's cells | harmless (the others are seeds at 0) | §2.3 |
+| The distance flood ignores what the cells hold | the distance as defined | §2.1 |
+| A tent or quest artifact taken off without delete leaves its template written | an unused template in the file | §2.4 |
+| `rmg_obstacle_fill_from`'s SoD test refuses none of the 45 types | no effect | §2.4 |
+| A seer hut's creature reward of another town valued -1334, not -1 | equivalent: every band's minimum is 0 or more in both tables (§3.1) | §2.1 |
+| Guards per way: one per land passage and shipyard, two for gates and monoliths, each of the full value | design | §2.3 |
+| Mines and treasures index the guard tables by the zone's strength plus the map's, connections by the map's alone; strength none gives no guard | design | §2.4 |
+| Seer hut quests: treasure-class artifacts 0-143 only; under 20 left, no seer hut | design | §2.4 |
+| A Border Guard's pile and a seer hut never go to a neighbouring zone while a farther one fits | design | §2.4 |
+| Underground, every cell neither free nor holding an object becomes rock (no obstacles there) | design | §2.4 |
+| Every map bans artifacts 127 and 128 besides the combination artifacts | design | §2.5 |
+| Prisons draw heroes below 145 for AB and SoD (SoD's campaign heroes never) | design | §2.1 |
+| A main town written at the town's entrance (`Untitled.h3m`'s towns two cells right of it) | the format's convention: the editor writes the same (553 of 553 shipped main towns), the reader expects it | §2.5, §3.3.4 |
+| `rmg.txt`: connections whose four positions are empty (never kept), treasure zones with an Ownership and colour towns, zones without terrain, monster town or bands | the tables' data as the game reads them | §3.1 |
+
+## Open (classified when read)
+
+| Candidate | What decides | Survey |
+|---|---|---|
+| Both 6LM10 templates connect zone 13 to itself | what step 6 makes of a self-connection (a fault would be RMG-QUIRK-3's or -4's class) | §3.1 |
+| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8): the colour table's slot 0 | what steps 4 and 5 and the writer give such a zone | §3.1 |

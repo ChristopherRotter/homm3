@@ -182,3 +182,86 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   `terrain_picture_*`, `rock_picture_*`, `road_river_*`; `terrain_picture_draw_b` and `_kept_b`
   renamed `rock_picture_draw` and `_kept`; the check scripts stay out of the repo (increment 3's
   port compares with the log and dumps itself).
+
+## T1c2 — survey §3 and the quirk ledger (2026-11-24, increment 1)
+
+- **No cut** (the user, at the start: "no cut, use subagents efficiently"). The runner kept the
+  ledger with the user; three worker sub-agents wrote §3's parts as fragments the runner merged:
+  §3.1 (the tables, small) and §3.2 (the rules, large) at once, §3.3 (the objects, the reader and
+  the writer, with the oracle's corpus) after §3.1.
+- **Sandbox:** a new chat: the client lane's set staged from the PC (66 files with Complete's two
+  generated maps; SHA-256 as `installation.md` lists them); the PC's repo folder 12 commits behind
+  GitHub, so the clone is GitHub's. The standalone SoD installation (`D:\Heroes3\HoMM 3 SoD`) has
+  another `Heroes3.exe` and `H3bitmap.lod`, but its `rmg.txt`, `objects.txt` and `rand_trn.txt`
+  are Complete's byte for byte (extracted into `original-data/sod-install/`).
+- **§3.1** (the template format; AB's and SoD's tables): the row kinds and columns as the code
+  reads them (all nine connection columns: §1.4's "read in part" corrected), the space rule, what
+  a harvester keeps (row order, templates by index: two are named 6LM10); AB's file a byte prefix
+  of SoD's (SoD adds Golems Aplenty, Monk's Retreat, Rise of Phoenix; the 50 common templates
+  identical); counts (AB 50 templates, 616 zones, 833 connections; SoD 53, 646, 869); six table
+  candidates (8XM8's decimal ids, never-kept connections, a self-connection, Ownership 0 starts,
+  owned treasure zones, lesser).
+- **§3.2** (each phase's rules): 136 rules at one catalog entry each, provisional ids
+  `RMG-<AREA>-<NNN>` in 12 areas (SET 9, TPL 8, OBJ 11, ZON 14, TER 18, TWN 5, CON 22, OBS 7, MIN
+  6, TRS 12, RDR 14, WRT 10), their draws, the quirk candidates marked; the phases' dependencies,
+  the oracle's comparison points and the "not read" list for T1c3. Five stale points of §1 and §2
+  corrected (§1.6's template order, §1.8's site count and floats, §2.1's "Not read", §2.6's step 1
+  row).
+- **The ledger** `docs/rules/quirks-rmg.md` (the user, by AskUserQuestion): about 60 candidates in
+  five groups. Memory-dependent: the oracle model in `faithful`, zeroed in `fixed` (RMG-QUIRK-1,
+  -2); the cell bits and the cell-word fill not quirks. Faults: `exploit-fix`, a typed failure
+  (RMG-QUIRK-3 to -6). Map-content bugs: `fix-optional`, a flag each (RMG-QUIRK-7 to -20; the
+  crossed Border Guards' keys too, RMG-QUIRK-7). Cosmetic: one flag for all (RMG-QUIRK-21, the
+  user's own option). 8XM8's ids: a data quirk with a flag (RMG-QUIRK-22; the fix 6, 6, 7, 7, 8, 8
+  from the table's own pattern). The rest "considered, not quirks"; two open until read (a
+  self-connection, Ownership 0 starts).
+- **§3.3** (the objects placed, the reader and the writer): the classes the generator places (its
+  generators by settings group, the steps' objects, the writers' slots); Wine set up and the
+  corpus run again (20 of 21 as kept; `m2-4p` another map once, as kept run alone right after:
+  ORACLE.md); a census of the 21 maps (47 458 objects of 115 classes, 69 % obstacles; no Border
+  Guard or tent: no corpus template has a border-guard connection); the header, players and
+  bodies as written; the import's and the writer's coverage; the writer's seven gaps for
+  increment 6 (the adventure lane's inbox; the main town's two, the town lane's). TWN-SET-001's
+  refusal of `l2-2p-c4-islands`: the entrance is the format's convention (553 of 553 shipped
+  main towns), the cause Dragons' zone 32 (a neutral town as purple's main town), which the
+  original starts (observed: the town stays neutral, purple's hero on its entrance):
+  RMG-QUIRK-23, no flag (the user), and a question in the town lane's inbox.
+- **Checks:** `check-rules`, `check-exe-map` (every cited address mapped), the scoped verify.
+- **Agent decisions** (change freely): §3.2's area codes and provisional ids (the increments
+  assign the catalog's); the ledger groups the faults by kind (RMG-QUIRK-3 to -6) and the cosmetic
+  ones in one entry with the user's one flag; the scratch scripts (table parser, census) stay out
+  of the repo.
+
+## T1c3 — the ADR draft, the cut, the checkpoint RMG-Q2 (2026-11-24, increment 1)
+
+- **No cut** (the user: "a couple of small tasks or a bigger one at a time"; this one small, the
+  runner alone, no workers). Staged from the PC: both `Heroes3.exe` (Complete's and the standalone
+  SoD's, the latter a 345 KB launcher) and the six tables of `original-data/extracted/`
+  (`Rmg.txt`, `Objects.txt`, `Rand_trn.txt` of `H3bitmap` and `H3ab_bmp`); no oracle run.
+- **Findings for the draft:** AB's `Rand_trn.txt` equals SoD's; SoD's `Objects.txt` holds 1 326
+  template lines against AB's 1 221 (105 added, three changed); AB's `Rmg.txt` is a byte prefix of
+  SoD's (T1c2). The C runtime's `rand` is already ported twice (`h3_adventure::split::TileRand`,
+  `h3_heroes::level_up::OriginalDraws`), so the draft puts the generator's in the kernel
+  (`CrtRand`; the epic's agent decision changed). The game's control word is 0x27F (53 bits,
+  `docs/formats/installation.md`), so the generator's x87 sites are binary64: `trunc(sqrt(n))` of
+  an integer is the integer square root for every `n < 2^52` (the domain's at most 82 944), the
+  layout products go through `kernel::num::Real` with the tables as `Real(k) / Real(10 000)`.
+  `phases.txt` keeps each step's cells' digest but one digest of the whole draw log: increment 3
+  first records each step's draw count and digest.
+- **The draft** (`docs/lanes/rmg/adr-drafts/h3-rmg-generator.md`, eight points): the crates
+  (`h3-rmg` a domain logic crate on the kernel and the core content, `h3-pack-rmg`, an rmg-lane
+  module `h3_map::generated`), the seam (`generate` → `GeneratedMap` in the writer's order;
+  `resolve_random` for the dialog's Random choices), the stream, the floats, the pack data (`ab`
+  AB's three tables, `sod` SoD's additions and the executable's constants; 8XM8's gated override
+  in the rmg part's compiler; the part outside `GameRuleset`; no generator without `sod`), the
+  profiles (the 18 flags in the game's registry), the versions (`RMG_GENERATOR_VERSION`,
+  `RMG_RULESET_HASH_VERSION`, the provenance) and the trace (draws with their sites, the cells in
+  the dump format 1, CI on the digests).
+- **The cut** (the epic's table): increments 2 to 7 in the run's order, 17, 31, 31, 27, 21 and 9
+  of §3.2's 136 rules; each increment's ledger entries and "not read" items; the shared exit
+  criteria (a) to (f) and each increment's own; increment 2's tasks T2a to T2c.
+- **The checkpoint RMG-Q2** (one round of four): the seam **the experiment writer with its seven
+  gaps closed** (the session recommended a writer of `RawMap`; the draft rewritten to the user's
+  choice, the adventure and town lanes' inbox notes updated: their gaps before increment 7, the
+  rmg lane `cross-lane` for any left then); the picture names harvested; the game's profiles; six
+  increments. Increment 1 closed: its section and tasks moved to `E14-archive.md`.

@@ -1411,7 +1411,9 @@ fn check_told(
                     }
                 }
             }
-            GameEvent::PrisonFull { player, .. } | GameEvent::PrisonEmptied { player, .. } => {
+            GameEvent::PrisonFull { player, .. }
+            | GameEvent::PrisonEmptied { player, .. }
+            | GameEvent::SpellCast { player, .. } => {
                 prop_assert_eq!(player, viewer);
             }
             GameEvent::HeroChanged { player, hero, .. }
@@ -1523,6 +1525,15 @@ fn check_told(
                 prop_assert_eq!(seen_by, alone);
                 let shown = own_view(after, hero).map(|o| (o.movement, o.max_movement));
                 prop_assert_eq!(shown, Some((movement, max_movement)), "{:?}", event);
+            }
+            // E08 T142a: a hero's day spells after the command, its owner's alone.
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::DaySpellsChanged { hero, spells },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let shown = own_view(after, hero).map(|o| o.spells);
+                prop_assert_eq!(shown, Some(spells), "{:?}", event);
             }
             // E08 T115a: a hero's battle bonuses and timed marks after the command, told to its
             // owner alone, as the viewer's observation shows them after it (ADV-FOG-006).

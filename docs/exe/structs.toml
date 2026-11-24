@@ -867,6 +867,17 @@ fields = [
 ]
 
 [[struct]]
+name = "ai_artifact_effect"
+size = 0xC
+summary = "One effect of an artifact for the adventure AI's artifact value: 4, 8 or 12 bytes by its code (ai_artifact_effects_build 0x434100 from ai_artifact_effect_list 0x63AC7C), held by pointer in ai_artifact_effects 0x692E18 (E31 T1a4a)."
+refs = ["rules/surveys/E31-computer-player.md §4.1"]
+fields = [
+  { offset = 0x0, name = "vtable", type = "ptr", summary = "the code's vtable in ai_artifact_effect_vtables 0x63B6B0: slot 0 ai_artifact_effect_delete 0x433080, slot 1 the value (the hero, worn, counted)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §4.1"] },
+  { offset = 0x4, name = "p", type = "i32", summary = "the first parameter: points or a percent (codes 0-10, 13, 19, 20 fixed at 8, 21 at 30), the spell (18), the amount (16), the level (17), the orb's percent (11, 100); 0 for the tomes (12); absent in codes 14, 15, 22, 23 (4 bytes)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §4.1"] },
+  { offset = 0x8, name = "q", type = "i32", summary = "the second parameter of the 12-byte codes: the school bits (11, 12), the resource (16), the count (17)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §4.1"] },
+]
+
+[[struct]]
 name = "boat"
 size = 0x28
 summary = "A boat of the game's boats (game +0x4E3BC; at most 64 in use, create_boat 0x4BB250); only what the docs cite (E24 M1 T5a; E08 T66a1)."
@@ -1082,6 +1093,22 @@ fields = [
   { offset = 0x8C, name = "artifacts", type = "vector", summary = "artifact ids (u32), begin +0x90, end +0x94: each given while the backpack holds fewer than 64", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
   { offset = 0x9C, name = "spells", type = "vector", summary = "spell ids (u32), begin +0xA0, end +0xA4: learned with a Spell Book at level 2 + Wisdom or less", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
   { offset = 0xAC, name = "creatures", type = "army", summary = "the creatures given, slot by slot (army_add_stack; no room: army_dialog_with)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+]
+
+[[struct]]
+name = "seer_hut_record"
+size = 0x13
+summary = "A Seer's Hut's record (game +0x1FBD4, 19 bytes each, by the tile's word; H3API's H3SeerHut, whose layout this reading confirms): built on load_object_body's stack by seer_hut_record_init 0x573580 and seer_hut_load 0x574610, then copied into the list (E31 T1a3d2, T1a4b)."
+refs = ["rules/surveys/E31-computer-player.md §3.5", "rules/surveys/E31-computer-player.md §4.2"]
+h3api = "H3SeerHut"
+fields = [
+  { offset = 0x0, name = "quest", type = "ptr", summary = "the quest (its vtable quest_vtables 0x64174C + 0x3C x type), 0 none; cleared by the constructor", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §4.2"] },
+  { offset = 0x4, name = "visited", type = "u8", summary = "a bit per colour: seer_hut_visit sets the visitor's first; cleared by the constructor", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §3.5"] },
+  { offset = 0x5, name = "reward_kind", type = "u32", summary = "the reward's kind, 0 none, 1 to 10 (seer_reward_value's switch): the loader's byte, written whole", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §4.2"] },
+  { offset = 0x9, name = "reward_a", type = "i32", summary = "the reward's first value (an amount, a resource, a skill, an artifact, a spell, a creature); morale and luck write only its low byte (seer_load_luck_byte 0x5747B8), the rest unwritten by the constructor", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §4.2"] },
+  { offset = 0xD, name = "reward_b", type = "i32", summary = "the reward's second value: a resource's amount (u32), a primary skill's (low byte), a secondary skill's level (i8), creatures' count (low half); not written for the other kinds nor by the constructor", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §4.2"] },
+  { offset = 0x11, name = "seer_name", type = "u8", summary = "the seer's name, an index into the seers' names (seer_names_pointer 0x69FAB8), drawn at load (seer_name_draw 0x574A1D)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §4.2"] },
+  { offset = 0x12, name = "flag_12", type = "u8", summary = "cleared by the constructor and the loader; its readers not looked for", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §4.2"] },
 ]
 
 [[struct]]

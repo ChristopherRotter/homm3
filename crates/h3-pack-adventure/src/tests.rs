@@ -1759,6 +1759,7 @@ fn parses_every_field() {
             }),
             dwellings: None,
             market: None,
+            spells: None,
         })
     );
     assert_eq!(
@@ -2874,4 +2875,57 @@ fn the_base_pack_types_the_prison_and_the_market_of_time() {
     };
     assert_eq!(kind("neighbour", "prison = {}"), ObjectKindDef::Prison);
     assert_eq!(kind("enter", "empty = {}"), ObjectKindDef::Empty);
+}
+
+// E08 T142a (increment 15's design note §3): the base pack's five adventure spells and their
+// parameters; a binding's spell a key of the closure, its effect one of the five.
+// covers: ADV-SPL-001
+#[test]
+fn the_base_pack_binds_the_adventure_spells() {
+    let (core, part) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
+    let bound: Vec<(&str, AdventureSpell)> = part
+        .spells()
+        .iter()
+        .map(|&(spell, effect)| (core.spell(spell).unwrap().key.as_str(), effect))
+        .collect();
+    assert_eq!(
+        bound,
+        [
+            ("base:summon_boat", AdventureSpell::SummonBoat),
+            ("base:scuttle_boat", AdventureSpell::ScuttleBoat),
+            ("base:fly", AdventureSpell::Fly),
+            ("base:water_walk", AdventureSpell::WaterWalk),
+            ("base:dimension_door", AdventureSpell::DimensionDoor),
+        ]
+    );
+    assert_eq!(
+        part.params().spells(),
+        Some(&SpellParams {
+            door_points: [300, 300, 300, 200],
+            target_range: [9, 8],
+            boats_most: cost(64),
+        })
+    );
+    let pack = parse("[[spell]]\nspell = \"fly\"\neffect = \"water_walk\"\n").unwrap();
+    assert_eq!(
+        pack.spells,
+        [AdventureSpellDef {
+            spell: key_of("p:fly"),
+            effect: AdventureSpell::WaterWalk,
+        }]
+    );
+    for text in [
+        "[[spell]]\nspell = \"fly\"\neffect = \"visions\"\n",
+        "[[spell]]\nspell = \"fly\"\n",
+        "[[spell]]\nspell = \"fly\"\neffect = \"fly\"\nlevel = 2\n",
+    ] {
+        assert!(
+            matches!(parse(text), Err(AdventurePackError::Syntax(_))),
+            "{text}"
+        );
+    }
+    assert!(matches!(
+        parse("[[spell]]\nspell = \"a:b:c\"\neffect = \"fly\"\n"),
+        Err(AdventurePackError::Key(_))
+    ));
 }

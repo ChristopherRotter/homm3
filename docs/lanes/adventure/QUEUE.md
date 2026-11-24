@@ -4,25 +4,46 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a done (2026-11-24), T142b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T142 — the cast's frame with Fly and Water Walk** (round 6; design note `E08-design.md`
-§3, §8, §10.3, §10.4, §11.1, §12, §14; `adventure/e08-t142`)
+**E08 T142b — the flight's flag over unexplored tiles** (round 6, T142's second half, decision
+415; design note `E08-design.md` §11.1, §21; `adventure/e08-t142b`)
 
-- **Scope:** the adventure part's spells (§3: the five bindings, `AdventureSpell`,
-  `[params.spells]`), the day spells in the adventure state (§8, adventure state hash v29), the
-  day's end and boarding clearing them (§12, ADV-SPL-002), `GameCommand::Cast` with its checks in
-  order (§14, GAM-SPL-001: `h3_heroes::can_cast_on_map`, the ground's level limit and the
-  anti-magic garrison, `map_spell_cost` at `spell_masteries_on`'s mastery with the raise the game
-  derives from the hero tile's special ground), Fly and Water Walk (§10.3, §10.4: ADV-SPL-005,
-  -006, ADV-MOV-009, -010 amended) and the flight's flag (§11.1, ADV-QUIRK-15); the passage is a
-  hot path: measured against `master` at once (`homm3-bench-regression`).
-- **Inputs:** design §3, §8, §10 to §12, §14, §18; survey `E08-spells.md` §4, §7, §13, §18;
-  ADR-0013 point 17, ADR-0016 and ADR-0017 as amended by T140.
-- **Depends on:** T141b (done 2026-11-24). **Status:** ready; confirm its cut at its start (a
-  seam likely: the frame with the command, then the two spells and the flag). Then T143 to T145.
+- **Scope:** `ADV-QUIRK-15` (`quirk.adventure.flight_reads_hidden`, `QuirkFlag(45)`) in
+  `AdventureState::passage`'s unexplored row and `MoveHero`'s walk: **on** (faithful) an
+  unexplored tile is passable only flying, never a stop, refused when it is truly rock (the reach
+  reads the hidden truth); **off** (strict-fixed, the compromise) an unexplored tile is assumed
+  flyable, priced as a pass over a blocked tile, never a stop; a step whose tile, once revealed,
+  the hero may not pass is not made: the move ends on the last stop node it reached, charged only
+  the steps up to it (decision 407; the passes after it undone and free, their reveals kept), the
+  rest dropped (`AdventureOutcome::dropped`). A walker and a water walker keep ADV-MOV-008.
+  ADV-MOV-008 and -009 amended, ADV-QUIRK-15's ledger entry reclassified (fix-optional), `verified`
+  by E15-13, E15-14 (D-78). The hygiene property (`h3-map`'s `view.rs`: a flight's legal moves
+  under `strict-fixed` never depend on a hidden tile). **The passage is the hottest loop:**
+  measured right after the first build against `master`'s worktree (`homm3-bench-regression`;
+  the lane's traps on the reach's and the passage's loops).
+- **Inputs:** design §11.1, §21; survey `E08-spells.md` §7.3, §13, §18 (E15-13, E15-14); T142a's
+  record in `E08-log.md` (the day spells' levels already read by the paths).
+- **Depends on:** T142a (`adventure/e08-t142a`). **Status:** ready once T142a merges. Then T143 to
+  T145 (T145's `shared/` task amends ADR-0017 point 4's order, decision 414).
 
 ## Inbox
+
+- 2026-11-24 (the map-client lane, E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your
+  planning: facts the client needs from the engine**): the user's rule at E24 M5 T0 (MCL-Q54):
+  **the engine and the server are the only authority for a client**; reading a game's facts
+  from files at run time is phased out (facts first; the map's pictures later, by an ADR, so that
+  a server's generated map reveals its contents only as discovered). E24 M5 (hot seat, in-process)
+  reads no rules table and no map text in play, so it needs, each built plainly in the client
+  meanwhile: (1) **MCL-Q53 (a)**: a hero coming into another player's sight told with its owner,
+  type and boat (your inbox since 2026-11-09, with the server lane's `SRV-STUB-3`); (2) **MCL-Q54
+  (a)**: a Pandora's Box's reward record as the original shows it (the parts the hero does not
+  get, the creatures' order between those that joined and those without room, an empty Box,
+  ADVEVENT 15); (3) **MCL-Q55 (a)**: a flagged mine's production (the new owner's view, then the
+  server lane's wire lifting `SRV-STUB-10`); (4) the map's texts a visit shows (a sign's, an
+  event's, a Box's, a Seer's) as the events' own; M5 T4 lists any further gap here. Also for M5:
+  the step that changes a loaded game's humans (the client lane's note of 2026-11-21) lets M5
+  start a game from Load.
 
 - 2026-11-24 (the town lane, E09 T51, `town/e09-t51`, docs only; **the town's services
   renumbered again; nothing to build**): at T51 (`TWN-Q34`, E09 decision 197) the user split
@@ -34,7 +55,27 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   A-30, and the Cover of Darkness); travel and the Grail (Town Portal, Castle Gate) are
   **increment 8**. Where your docs say "E09 increment 7" for Town Portal (`E08-design.md`), read
   8; "E09's increment 6" for the Artifact Merchants (ADV-QUIRK-48's ledger entry) stays right.
-
+- 2026-11-24 (the rmg lane, E14 T1c3, `rmg/e14-t1c3`, RMG-Q2; **for your planning: needed before
+  E14 increment 7**, which follows E14's increments 2 to 6; this replaces the rmg lane's T1c2 note):
+  the user decided that E14 writes the original generator's maps through `h3_map::writer` with
+  the gaps below closed (not a writer of `RawMap`), the uncompressed `.h3m` byte for byte against
+  the oracle's 21 maps, and that a game on a generated map reads and imports those bytes as any
+  map. What the writer lacks (survey `docs/rules/surveys/E14-generator.md` §3.3.3): (1) **one
+  object list in the caller's order**, both levels and every kind interleaved (today the typed
+  surface objects, then the underground's, then `Extras`); (2) **identifiers as given** for towns,
+  monsters and prisons (the generator's serial, never the written index + 1); (3) **the template
+  table as given** (its order, not first use, and two unused leading entries: the random
+  monster's and the hole's first prototypes); (4) **a Seer's Hut's reward** (experience, one
+  creature stack or gold) with its one-artifact quest, deadline −1, no texts (`Extras::quests`
+  writes no reward); (5) **the banned artifacts as a whole set** (the generator bans 127-140; the
+  writer cannot leave out the editor's 141-143); (6) the **AB layout** (0x15) and towns and
+  `Extras` in **RoE** (E14 increment 7's census adds such cases; the corpus is SoD). The rmg lane
+  turns its `GeneratedMap` into the writer's `Map` and `Extras` in `crates/h3-map/src/generated*`
+  (its paths from increment 7, with the edge `h3-map → h3-rmg`; ADR draft
+  `docs/lanes/rmg/adr-drafts/h3-rmg-generator.md` point 2). A gap still open when E14 increment 7
+  starts is closed by the rmg lane, `cross-lane` with the user's consent. For E12's order: the
+  generated maps hold 115 Seer's Huts (18 of 21 maps), 278 Obelisks (20) and 5 Sanctuaries, all
+  blockers in the import today.
 - 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **for your planning,
   nothing to do now**): three facts a player's record lacks that the map viewer would show, each a
   question there with the gap built plainly meanwhile: (1) **MCL-Q53**, a hero coming into sight
@@ -77,11 +118,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   follow: `check_timed` expects the learning after each event's build, the details' check and the
   views' fold take a hero hired in the command as the hirer's. No golden replay, version or bot
   report moved.
-- 2026-11-21 (the rmg lane, E14's refinement, RMG-Q1; **informational, nothing to do yet**): E14
-  (the map generator) left your lane: the new rmg lane ports the original's random map
-  generator (`docs/epics/E14-original-map-generator.md`), E30 the custom one. Its maps go through
-  `h3_map::writer` and the import; E14 T1c lists the objects the writer cannot yet write and
-  sends them here; increment 6 sets a game up on a generated map.
 - 2026-11-21 (the ai lane, E13's refinement, AI-Q21; **for your planning; nothing blocks**): the
   user moved E13 (the adventure AI) to the ai lane and decided it **waits for all of E10**
   (victory and defeat, teams, diplomacy, the setup beyond the import), with no piece of E10
