@@ -19,8 +19,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach), `TWN-STUB-2` (the
   victory conditions), `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
   For the next `shared/` task: `docs/06-security.md`'s ADV-FOG-006 line (T50's record).
-- **Open pull requests:** T50's #1144 (`town/e09-t50`, `cross-lane`), opened at the session's end; watch
-  it until it merges (T49b's #1136 merged 2026-11-23).
+- **Open pull requests:** T50's #1144 (`town/e09-t50`, `cross-lane`; master's T141a merged in, the
+  seven guild goldens rehashed); watch it until it merges (T49b's #1136 merged 2026-11-23).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -28,8 +28,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   merged in order with its pull requests.
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v4: T47a2) and
   the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v9: T46), both in `h3-towns`; the adventure
-  lane's (with T47a2: game state hash v38, map import v28; adventure part v24, adventure state hash
-  v27; replay format v25, T49b), the env's (v19, T49b) and the protocol's (v80, T49b) are bumped
+  lane's (game state hash v39, map import v29, adventure part v25, adventure state hash v28: E08
+  T141a; replay format v25, T49b), the env's (v20) and the protocol's (v81, both T141a) are bumped
   `cross-lane` (each task's record in `E09-log.md`; increment 5's plan in design §96). Shared: core
   ruleset hash v53, pack format v53 (E08 T124a), quirk flags 51 (E08 T140; `TWN-QUIRK-14`'s at T45).
 - **Ids** (next): questions `TWN-Q34`; decisions 196; quirks `TWN-QUIRK-15` (`-14` entered by T45,

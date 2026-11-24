@@ -6135,6 +6135,13 @@ once; nothing was lost (each part committed and pushed as it came).
   test, coverage 1 252 s, determinism 382 s, bench-check 799 s, doc-drift, original-data 70 s) but
   `check-lane` (`cross-lane`: `cargo xtask check-lane --cross-lane` ok, `cargo check --workspace
   --all-targets` clean).
+- **After merging `master`** (2026-11-24; E08 T141a, #1132: the Prison, game state hash v39,
+  adventure state hash v28, import v29, protocol v81, encoding v20): one textual conflict in
+  `original_data.rs` (the census beside T141a's Prisons; both kept); the seven `guild-*-s1`
+  rehashed from their own commands (only the hash and version lines moved); `day-start-guild-36`
+  re-baselined, 1 326 586 to 1 286 173 Ir (-3.05 %: the random games changed course, as T141a's
+  three day-start re-baselines); the map's tests, the replays, `h3-protocol`, `h3-server` and the
+  census pass.
 
 **The queue:** T50 out; T51 next (the audit against §99's criteria, increment 5 closed, increment
 6 refined). Ids: decisions next 196.
