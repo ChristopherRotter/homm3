@@ -256,15 +256,17 @@ paths = [
 
 
 # The original's random map generator (E14; the user, 2026-11-21, RMG-Q1, opening the lane beside
-# the adventure lane's E08): its pure crate `h3-rmg` (made at E14 increment 2, a shared change),
-# each pack's `rmg.toml` (the template tables, harvested `cross-lane` through `h3-harvest`), the
-# RMG rules and quirks, E14's epic, surveys and experiments. The generator's output is written by
-# the adventure lane's `h3_map::writer`; a gap there goes to that lane's inbox.
+# the adventure lane's E08): its pure crate `h3-rmg` and pack adapter `h3-pack-rmg` (made at E14
+# T2a, a shared change; ADR-0029), each pack's `rmg.toml` (the template tables, harvested
+# `cross-lane` through `h3-harvest`), the RMG rules and quirks, E14's epic, surveys and
+# experiments. The generator's output is written by the adventure lane's `h3_map::writer`; a gap
+# there goes to that lane's inbox.
 [[lane]]
 name = "rmg"
 code = "RMG"
 paths = [
     "crates/h3-rmg/",
+    "crates/h3-pack-rmg/",
     "packs/ab/rmg.toml",
     "packs/sod/rmg.toml",
     "packs/synthetic/rmg.toml",

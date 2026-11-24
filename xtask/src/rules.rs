@@ -58,6 +58,7 @@ const CONTEXTS: &[(&str, &str)] = &[
     ("MAG", "magic"),
     ("GAM", "game"),
     ("KER", "kernel"),
+    ("RMG", "rmg"),
 ];
 const STATUSES: &[&str] = &["specified", "implemented", "verified", "retired"];
 const NUMERICS: &[&str] = &["integer", "float"];
@@ -215,7 +216,7 @@ pub fn check(
                 v.push(format!("{at}: duplicate rule id"));
             }
             match valid_id(&r.id) {
-                None => v.push(format!("{at}: id must look like <CTX>-<AREA>-<NNN> with CTX in BAT/ADV/TWN/HER/MAG/GAM/KER")),
+                None => v.push(format!("{at}: id must look like <CTX>-<AREA>-<NNN> with CTX in BAT/ADV/TWN/HER/MAG/GAM/KER/RMG")),
                 Some(ctx) if ctx != r.context => {
                     v.push(format!("{at}: id prefix implies context `{ctx}` but context is `{}`", r.context));
                 }
@@ -555,6 +556,7 @@ summary = "s"
     fn helpers() {
         assert_eq!(valid_id("BAT-DMG-001"), Some("battle"));
         assert_eq!(valid_id("KER-RNG-010"), Some("kernel"));
+        assert_eq!(valid_id("RMG-SET-001"), Some("rmg"));
         assert_eq!(valid_id("XYZ-DMG-001"), None);
         assert_eq!(valid_id("BAT-d-001"), None);
         assert_eq!(valid_id("BAT-DMG-001-2"), None);
