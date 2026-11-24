@@ -5,7 +5,8 @@ reviewers, the review list accepted by the user); **M2 refined** (2026-10-26, M2
 user); **M2 closed** (2026-10-28, T6b2c: the user's hand test, the review list accepted at
 T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); **M3 closed** (2026-10-31, T7c2: the
 review list accepted at T7c1); **M4 refined** (2026-10-31, M4 T0, with the user); **M4 closed** (2026-11-23,
-T6: six reviewers, their findings fixed or asked; the review list presented); next M5 T0, M5
+T6: six reviewers, their findings fixed or asked; the review list read by the user first, its
+acceptance at M5 T0); next M5 T0, M5
 refined with the user (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).

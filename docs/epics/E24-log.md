@@ -3371,8 +3371,10 @@ step (fmt, clippy, doc tests, deny clean); the harness set up beside it.
   blocks. Other lanes' inboxes: the client lane's (the hosted battle's `BUTTON.WAV` not found: the
   layout's name with its extension; the harness's disk check), the adventure lane's (the disk
   check; MCL-Q53, Q55 and `MCL-STUB-4`'s facts for the record).
-- **The review list:** M4's items and T6's additions (by fixer, in the archive), presented to the
-  user with the questions.
+- **The user at the checkpoint** (2026-11-24): the review list (M4's items and T6's additions by
+  fixer, in the archive) read first, asked again at M5 T0; MCL-Q50 to MCL-Q56 answered at M5 T0;
+  `MCL-STUB-4` kept (no days without a town on a record: the viewer shows only what the record
+  holds; the warnings come back as the engine's events with E10).
 - **The hand test kit** (the user's `clients/out/win/`: `map-m4.cmd`, `map-m4-notes.txt`, `m4/`
   with the Windows build, its map data, two golden records and their maps): an interim build at
   132f657 put there mid-session, then the final one; five parts (two golden replays with their

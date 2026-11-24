@@ -1099,7 +1099,8 @@ The M4 review list starts here (the autonomy contract's "queue for the milestone
   the rest of the path left shown; an object a visit takes with nothing else built (a Scholar, a
   Spell Scroll) taken alone with the pickup's dissolve and sound, no box; no days without a town
   on a record (no warning, no days left, no banishment: the engine has none yet, E10,
-  `MCL-STUB-4`), the original's countdown kept for recordings; an unseen hero's landing boat on
+  `MCL-STUB-4`; **kept by the user** at T6's checkpoint), the original's countdown kept for
+  recordings; an unseen hero's landing boat on
   the map at the next turn's start (MCL-Q53 (c)), its later boarding leaving the empty boat
   drawn. Passed over with nothing shown: the meeting screen (M5's), an event's and a sign's box,
   the Scholar's and the Scroll's boxes.

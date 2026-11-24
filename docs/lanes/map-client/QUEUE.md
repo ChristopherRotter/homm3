@@ -23,8 +23,10 @@ Epic: E24, the adventure map client. **M1** (stills of the map view, closed 2026
   (`clients/out/win/map-m4-notes.txt` on the user's machine, beside `map-m4.cmd`): a finding goes
   into a question or an M5 task.
 - **Acceptance:** M5's tasks queued; the epic's M5 section written.
-- **Depends on:** M4 T6 (done). **Status:** the user's checkpoint (M4's review list and questions
-  presented at T6; their answers, if not given then, first).
+- **Depends on:** M4 T6 (done). **Status:** the user's checkpoint. First, at its start: M4's
+  review list's acceptance (the user reads it first: the archive's "M4's review list" and its
+  T6 additions), then MCL-Q50 to MCL-Q56 one by one (the user, 2026-11-24), then the hand test's
+  notes; then M5's refinement.
 
 ## Inbox
 

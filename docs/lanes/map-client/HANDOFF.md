@@ -11,8 +11,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `--bugs original` the comparisons' profile). **M4 closed 2026-11-23 at T6** (the user: no cut;
   six reviewers, 64 findings, seven fixers: the log's "M4 T6"): every golden replay's player
   record (66) plays headless to its end, in the window with its battles. **The user's checkpoint
-  is open:** M4's review list (its T6 additions by fixer at the archive's end) and the questions
-  **MCL-Q50** to **MCL-Q56**, presented at T6; the hand test's kit in the user's
+  is open:** M4's review list (its T6 additions by fixer at the archive's end): the user reads it
+  first, asked again at M5 T0; the questions **MCL-Q50** to **MCL-Q56**: answered one by one at
+  M5 T0 (`MCL-STUB-4` kept by the user); the hand test's kit in the user's
   `clients/out/win/` (`map-m4.cmd`, notes in `map-m4-notes.txt`). **Next: M5 T0** (M5 refined with
   the user: QUEUE), after those answers. Open questions: MCL-Q29 to MCL-Q56 (none blocks). Stubs:
   `MCL-STUB-1` (a random artifact's picture), `MCL-STUB-3` (a defended battle, M5),
