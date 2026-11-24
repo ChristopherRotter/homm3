@@ -4779,13 +4779,12 @@ impl Loop {
         // drawn (E24 M5 T1a, design §5.22, *provisional*: recorded, every `battle-*` at the fade
         // in's end; `mobilize_hero` lifts it after a won battle, 0x4AC917, 0x4AD62E, but a
         // retreated hero shows lifted in `adventure_battle`'s draw before it leaves, 0x4AE6BB, by
-        // a lift not read).
+        // a lift not read). The battle's visitor is the selected hero ([`Loop::visit_beside`],
+        // [`Loop::answered`]).
         self.cursor.shown = true;
-        if self.hero.is_some() {
-            self.lifted = true;
-            self.stand();
-            self.draw(t);
-        }
+        self.lifted = true;
+        self.stand();
+        self.draw(t);
         let gain = Gain {
             experience: fight.experience,
             ..Gain::default()
