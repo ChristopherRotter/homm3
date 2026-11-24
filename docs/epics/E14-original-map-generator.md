@@ -1,7 +1,7 @@
 # E14 — The original's random map generator
 
-Status: **in progress** since 2026-11-23 (T1a1, T1a2, T1b1, T1b2 done); increment 1 refined,
-increments 2 to 6 sketched; next T1c · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
+Status: **in progress** since 2026-11-23 (T1a1, T1a2, T1b1, T1b2, T1c1 done); increment 1 refined,
+increments 2 to 6 sketched; next T1c2 · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
 Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -46,7 +46,7 @@ objects' values and the guards' strengths read from the original rather than gue
 2. **A lane of its own**, `rmg` (code `RMG`), in parallel with the adventure lane, owning a new
    pure crate `h3-rmg` (created at increment 2, a shared change) and the packs' `rmg.toml`. The
    generator writes no file: it returns a map the adventure lane's writer (`h3_map::writer`)
-   serialises; the exact seam is T1c's ADR draft.
+   serialises; the exact seam is T1c3's ADR draft.
 3. **Scope:** SoD's generator with both template tables harvested (`ab` from `H3ab_bmp`, `sod`
    from `H3bitmap`); what AB's executable does differently is E11's. The epic ends at a game set
    up on a generated map in the engine (the CLI too); the shell's Begin (CLT-STUB-12 lifted) and
@@ -66,7 +66,7 @@ objects' values and the guards' strengths read from the original rather than gue
 **Agent decisions** (change freely):
 
 - The generator's `rand` lives in `h3-rmg`, not in `h3-kernel`: it is the generator's own
-  stream, not the game's (if T1c finds a reason for the kernel, its ADR draft says so).
+  stream, not the game's (if T1c3 finds a reason for the kernel, its ADR draft says so).
 - The oracle's maps are never committed (original output, ADR-0009); their hashes and the
   choices that made them are.
 - Sources, in order: the code reading (primary); the oracle (observation); `rmg.txt` (original
@@ -83,7 +83,9 @@ objects' values and the guards' strengths read from the original rather than gue
 | T1a2 | Every function of the closure inside 0x530EE0–0x54D0F0 named at least `inferred` and placed in a phase; the 250 outside classified (mapped already, table and object helpers, I/O); every `rand` draw site and every float site listed per phase; any clock or iteration limit found (a wall-clock limit would break the oracle) | `map.toml`; the survey's §2 (per phase: reads, draws, floats, size) |
 | T1b1 | The oracle (T1b cut by the user, 2026-11-23): the original generating under Wine with `time()` fixed (the capture harness, `clients/capture/`; a fake clock), the choices given (no Random); twice the same seed gives the same bytes, another seed other bytes; whether the memory-dependent draws vary; which archive's `rmg.txt` the game reads; `h3_map`'s reader reads each map; the corpus's spec (sizes, levels, players, teams, water, monsters, seeds) | `docs/lanes/rmg/ORACLE.md`; `clients/capture/h3rmg.py`; the corpus and its hashes (`clients/capture/rmg/`) |
 | T1b2 | The phase oracle: every draw of a generation logged with its site and value (`xdd.dll`'s logged sites over survey §2.6's), and the generator's cells dumped after each of the 15 steps (an oracle for increments 3 to 5 before the file is complete); in the same sandbox as T1b1 (its staged set) | ORACLE.md; the harness's logs and dumps |
-| T1c | The survey `docs/rules/surveys/E14-generator.md` (the template format and both tables' differences, each phase's rules, the objects placed against the engine's and the writer's coverage, the quirk candidates); the ADR draft (the crate, the seam to `h3-map`, the `rand`, the floats under `kernel::num`, the pack data, the profiles, the generator's version); the cut of increments 2 to 6 with exit criteria; the checkpoint RMG-Q2 | survey, ADR draft, this file |
+| T1c1 | The painters outside the range (T1c cut by the user into three, 2026-11-24): the terrain painter (steps 3, 6, 11) and the road and river painter (14, 15) read, their draws in order, checked against the phase oracle; read in thirds, two by worker sub-agents | the survey's §2.7; `map.toml` |
+| T1c2 | The survey's §3 (the template format and both tables' differences, each phase's rules, the objects placed against the engine's and the writer's coverage); the quirk ledger `docs/rules/quirks-rmg.md`: every candidate of §1, §2 and ORACLE.md classified with the user, the memory-dependent ones among them | survey §3, the ledger |
+| T1c3 | The ADR draft (the crate, the seam to `h3-map`, the `rand`, the floats under `kernel::num`, the pack data, the profiles, the generator's version); the cut of increments 2 to 6 with exit criteria; the checkpoint RMG-Q2 | ADR draft, this file |
 
 **Exit criteria:** (1) every function of the generator's range in the map, at least `inferred`,
 with its phase; (2) every draw and float site listed; (3) the oracle generates a map for a given
@@ -114,12 +116,12 @@ written; (5) increments 2 to 6 cut with exit criteria and confirmed at the check
 - **The oracle:** the harness must run the original's generation (E27 M3 T5b recorded its
   failure without a `random_maps` folder) with its clock fixed; T1b finds the way or says
   what the fallback is (a debugger-set seed).
-- **Floats:** x87 with the original's precision control; T1a2 lists the sites, T1c decides
+- **Floats:** x87 with the original's precision control; T1a2 lists the sites, T1c3 decides
   their port under ADR-0003.
 - **Time limits or retries** in the generation would make the output depend on the machine;
   T1a2 looks for them.
 - **The writer's coverage:** objects the generator places that `h3_map::writer` cannot yet
-  write; T1c lists them for the adventure lane.
+  write; T1c2 lists them for the adventure lane.
 
 ## Tasks done
 
@@ -148,3 +150,11 @@ The full records: `E14-log.md`.
   (not in survey §2.6); 0x532A5B draws in step 2 in 18 of 21; `l1-4p-b`'s second map in one game
   differs by it, moved by the environment's size; cell bits the reset leaves to memory. ORACLE.md,
   "The phase oracle".
+- **T1c1** (2026-11-24; T1c cut by the user into T1c1 to T1c3, T1c1 read in thirds: the runner
+  one, two worker sub-agents one each): the painters outside the range read (survey §2.7): the
+  terrain painter (the frame, the ten picture sets, adding cells to two row-major point sets, the
+  pinched cells, the last pass's transition rule over the whole map) and the road and river
+  painter (the stroke, the shape by the neighbours, the redraws); 148 map entries (139 new); their draws'
+  rows for §2.6 (§2.7.5); checked against the phase oracle (`s1-2p`, `s2-2p`, `m1-4p`): every
+  terrain, road and river cell's picture as the rules give. Nothing memory-dependent reaches a
+  result (the cell words' fill is never read before a load); nothing ordered by address.

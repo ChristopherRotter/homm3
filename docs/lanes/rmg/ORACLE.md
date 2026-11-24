@@ -121,7 +121,8 @@ log and its cells with the dump of the same step find a divergence at its step a
   picture draws (`terrain_picture_draw` 0x5B3890 and its three kin of two picture sets: one or
   two per painted cell) in step 3 (21 of 21), step 6 (the islets and sealed shores, 12 of 21) and
   step 11 (8 of 8 two-level cases), and the road and river painter's (`road_river_picture_draw`
-  0x4F9F00) in step 14 (21 of 21) and step 15 (the 16 cases with rivers). T1c reads them.
+  0x4F9F00) in step 14 (21 of 21) and step 15 (the 16 cases with rivers). T1c1 read them
+  (survey §2.7).
   Listed and never drawn: 0x537C89 (water Random; none in the corpus), step 4's far town sites
   (0x544DEC, 0x544E22, 0x545174: only in step 5), 0x546154 in steps 6 and 9 (no monolith Border
   Guard, no guard crossed).
@@ -141,9 +142,10 @@ log and its cells with the dump of the same step find a divergence at its step a
   30-31 and +0x2C's to the end. No map changed by them. The dumps keep them as they are; `corpus
   --again` names them apart (`h3rmg.MEMORY_BITS`) and fails only on other differences.
 
-## Not yet (T1c)
+## Not yet (T1c2)
 
-- The painters' draws read (their rules and pictures), the memory-dependent quirks classified
-  (step 2's draw, the cell bits, step 15's read past the cells): T1c, with the user.
+- The painters' draws are read (T1c1, survey §2.7; checked against the dumps of `s1-2p`, `s2-2p`
+  and `m1-4p`: every road and river cell's picture as read). The memory-dependent quirks
+  classified (step 2's draw, the cell bits, step 15's read past the cells): T1c2, with the user.
 - The oracle covers the choices without Random, one human, the default towns; a human's town
   choice and more humans (the advanced options' seats) are not in the corpus yet.

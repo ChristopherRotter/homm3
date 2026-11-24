@@ -142,3 +142,43 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   30-31, +0x28 bit 24, +0x2C bits 1-31) differ in S and M second maps and change no map.
 - **Checks:** the harness's own check (`harness-check.toml`); `check-exe-map`; the scoped verify.
 - **Not done (T1c):** the painters' draws read; the memory-dependent quirks classified.
+
+## T1c1 — the painters outside the range (2026-11-24, increment 1)
+
+- **The cut** (the user, at the start; AskUserQuestion): T1c in three, T1c1 the painters, T1c2
+  survey §3 and the quirk ledger with the user, T1c3 the ADR draft, the cut of increments 2 to 6
+  and RMG-Q2; T1c1 "3 parts, 2 subagents, you read one third and finalize". Measured first: the
+  terrain painter about 8 000 instructions (21.6 kB), the road and river painter about 1 000
+  (2.5 kB). T1c1a the runner (the terrain painter's frame and picture sets, the road and river
+  painter; §2.7.1, §2.7.4), T1c1b a worker (adding cells, the point sets; §2.7.2, about 3 250
+  instructions), T1c1c a worker after it (the pinched cells and the last pass; §2.7.3, about
+  2 700); a common brief (`docs/exe/README.md`'s rules, entries as a fragment the runner merged
+  by address, a section and a short report); the runner sent the frame's facts to T1c1b while it
+  read.
+- **Sandbox:** a new chat: the client lane's set staged from the PC (61 files with Complete's two
+  generated maps; SHA-256 against the PC's); the PC's repo folder was behind GitHub (its HANDOFF
+  still at T1a1), so the clone is GitHub's. The VM restarted once (T1c1b's report lost, its files
+  kept; the Wine setup run again).
+- **Read** (survey §2.7): the painter's record and the handle's loop; ten picture sets by terrain
+  (shape and flag tables, the flagged share, rock's variants); two point sets ordered by (y, x),
+  unique keys: cells of the painter's terrain pinched west-east or north-south (water and rock:
+  a split ring) and foreign neighbours to re-test; the pinched cells resolved by a fixed priority
+  and the ring's gaps filled cheapest first; the last pass over the whole map: border classes
+  (none, a dirt border, a sand border by the sets' byte +4), ten rule groups under four
+  mirrorings, two refinements, slot 5 or 4 per cell; the road and river painter: one-cell
+  strokes, a visit draws the cell and its same-type neighbours, the shape by the four orthogonal
+  neighbours and the corners' diagonals, rivers without end pieces or diagonal corners.
+- **Checks:** three corpus cases run again with `--phases` (digests as kept); the painters' sites
+  per step; a script over the step dumps: every terrain cell after steps 3, 6, 11 and 15, every
+  road cell after 14 and every river cell after 15 as the rules give (0 exceptions);
+  `scripts/exe.py check` and `cited`; the scoped verify.
+- **For T1c2** (quirk candidates in §2.7.1 to §2.7.4, unclassified): the cell words' fill takes the
+  map's address (never read before a load); `queue_neighbours`' else-if per axis; `set_cell`
+  never erasing its own cell from set 1; every painted cell re-drawn; the last pass over the whole
+  map per finish; group 3's inverted mirroring; shapes a set lacks (water 24, rock 16 and 24: a
+  zero divisor if reached); `road_river_rect_clear`'s short right column; a new road cell of an
+  unmirrored shape 4 kept without a draw.
+- **Agent decisions** (change freely): the painters' names `terrain_painter_*`,
+  `terrain_picture_*`, `rock_picture_*`, `road_river_*`; `terrain_picture_draw_b` and `_kept_b`
+  renamed `rock_picture_draw` and `_kept`; the check scripts stay out of the repo (increment 3's
+  port compares with the log and dumps itself).

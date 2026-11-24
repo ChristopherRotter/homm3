@@ -11,7 +11,7 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - The C runtime's `rand` keeps its state per thread (`crt_rand`): the generation and the writing run on Begin's thread, one stream; the writer draws too (`rmg_teams_draw`, after every draw of the generation).
 - `docs/exe/` is not scanned for citations: an address in a map summary needs no entry of its own, one in the survey or the lane's docs does (`cargo xtask check-exe-map`).
 - Two of the generator's draws depend on memory, not on the seed alone (survey §2.6): step 2's uninitialised town-type bytes and step 15's read past the cells. A port that zeroes them can differ from the original: the phase oracle sees 0x532A5B draw in step 2 in 18 of 21 first maps, and a second map in one game differ by it (ORACLE.md, "The phase oracle").
-- Survey §2.6 lists the draw sites of the generator's range only: a third of the stream comes from the game's terrain painter (steps 3, 6, 11) and its road and river painter (steps 14, 15), outside the range (`terrain_picture_draw`, `road_river_picture_draw`). A port draws them too.
+- Survey §2.6 lists the draw sites of the generator's range only: a third of the stream comes from the game's terrain painter (steps 3, 6, 11) and its road and river painter (steps 14, 15), outside the range: §2.7 reads them and §2.7.5 gives their rows. A port draws them too, in the painters' cell order (row-major sets, the neighbours clockwise from north).
 - Maps the user's game generated may come from an HD-mod-patched executable (`Untitled.h3m` differs from the plain writer in three points, survey §2.5): the oracle's maps come from the plain `Heroes3.exe`.
 
 ## The oracle
