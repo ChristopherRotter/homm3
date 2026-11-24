@@ -6053,3 +6053,85 @@ then the listing with the env, the seeds and the benchmarks); **the user kept T4
   the plans' games met it once the books changed their course. `check_towns` sets the flag aside,
   allowing it to clear with a `SetSpellPoints` told for the town's hero and to be set at a
   week's start, told to the owner; the seed added to `proptest-regressions/tests/play.txt`.
+
+### T50 — the guild map and its replays, the census, the properties, the benchmarks; the hygiene failure (2026-11-24)
+
+One session, the user present at the start; branch `town/e09-t50` (`cross-lane`: the adventure
+lane's `h3-map` plans (`tests/play.rs`, `view.rs`), census (`examples/original_data.rs`) and test
+modules, `h3-cli`'s replay list, the adventure workloads' directory; the server lane's
+`h3-protocol` and `h3-server` golden counts; with the user's consent). Starting point: `master`
+at d202566 (#1136 merged; the setup's light gates, CI's fingerprint on `master`'s code). The
+user's computer was connected: the five files the town lane's gates read staged (`Heroes3.exe`,
+`H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`; SHA-256 checked against the PC's).
+The agent recommended a cut in two (the census and the properties first, as T40a); **the user
+kept T50 whole, folded the inbox's hygiene failure in and asked for sub-agents** (decision 195):
+four, one after another (the failure, the properties, the census, the map with its replays and
+workload), each with a narrow brief. The sandbox VM restarted twice and the session's server
+once; nothing was lost (each part committed and pushed as it came).
+
+- **The hygiene failure** (the lane's inbox, 2026-11-21; `view.rs`'
+  `a_viewer_learns_nothing_it_cannot_see`): the property's, not the engine's. Hero 4 is red's
+  (the inbox read it as blue's), entering the garrison of the town 1 red had captured; blue sees
+  the entrance (`HeroRemoved`) and owns a Tavern, so it is told the town at level 1, whose
+  garrison is the garrison hero's army (TWN-VEW-002; `docs/06-security.md`'s Towns lines). `vary`
+  changes every other player's hero army (ADV-FOG-006 shows none on the map), so the two games
+  told five stacks and two, both by the rules. The comparison now ends where the told towns'
+  upper bars differ between the games, the events the same but `TownStackSeen` (the lane's
+  `TRAPS.md`); the seed added to `proptest-regressions/tests/view.txt`. *For the next `shared/`
+  task:* `docs/06-security.md`'s "never its army (ADV-FOG-006)" may add "but a garrison hero's,
+  as its town's garrison at the viewer's level (TWN-VEW-002)".
+- **The properties** (`play.rs`): `check_guilds` from `check_invariants` (the slots: at each level
+  the filled ones first, at most the part's count and the spare, each a hero spell of that level,
+  no ability, none granted by name only, none twice, each in the town's Aurora set, where the
+  town's bans are read; what the guild shows by an independent reading of the guild level and
+  the Library, against `h3_towns::shown` and `shown_slots`); `check_guild_step` after
+  `check_towns` (every hero record of the store keeps its spells, first and in order: learning
+  never forgets; the Mana Vortex's gifts counted per town and week, a Magic Spring's entrance set
+  aside); `check_guild_refusals` (the system, a player past the last and every player who cannot
+  act, each on one town per state: the state, its hash and the events kept), and the refused
+  probes of `check_town_builds` now hash one probe per state; the forks' guild slots and Aurora
+  sets a fresh build's (the forks compared the whole state and its hash already). The plans'
+  maps ban and require no spells, so TD-25's cases stay the unit tests' and the census's.
+  `every_step_keeps_the_commands_invariants` 345 s before, 348 s after (a first draft probing
+  every town for every actor: 444 s, +29 %); the three properties at 240 cases passed (927 s).
+- **The census** (`original_data.rs`: `map_guilds`, `original_spells`, `built_guilds`,
+  `guild_drawn`, `guild_shown`, `aurora_of`, `start_learning`, `initial_spells`,
+  `guild_differences` with 25 of the survey's counts): each map's raw spell sets against the
+  import's; the draw per level (no ban of the town's or the scenario's, none never drawn:
+  abilities and id 57, none of another level, none twice; the required spells first in spell
+  order, then by weight; an empty slot only with nothing left); what each guild shows; the Aurora
+  sets; the start's learning. All 160 hold, every count as survey §1 and §10 (210 scenario bans
+  on 26 maps; required spells in 32 towns, 34 bits; banned in 396 towns, 1 779 bits; `Faeries`'
+  town requiring and banning one, never drawn; 249 guilds standing, 142 owned; 5 Libraries; one
+  Vortex; 561 heroes on an entrance, the 33 main towns' heroes with a book learning 188 spells,
+  the 8 placed ones nothing) but one: the 14 short towns are all empty, where §1 kept four spells
+  for the two neutral ones (seed 0 draws both as Strongholds, which weigh those 0): the 12 with
+  every spell excluded checked, the 14 printed. 37.6 s before, 36 to 39 s after (debug). Three
+  mutations fail it: the draw ignoring the town's bans (54 maps), the start's learning skipped
+  (20), the learning given to every town's heroes (exactly the 5 maps of the placed heroes).
+- **The guild map** (`fixtures/maps/e09-guild-36.h3m`, `h3-map`'s `guild_map.rs`; SoD, 36 × 36,
+  the scenario bans Haste): red's Tower "Athenaeum" (Mage Guilds 1 to 4, a Tavern; requires Town
+  Portal, Shield and Bless, bans Magic Arrow and Shield), red's Dungeon "Abyss" (Mage Guild 1,
+  the Mana Vortex), red's Conflux "Prism" (Mage Guild 1, the Aurora Borealis; bans Magic Arrow
+  and Lightning Bolt: an Aurora set of 67, Haste in it by `TWN-QUIRK-14`), blue's Necropolis
+  "Crypt"; red's Geon (a book), Lorelei and Valeska (none), Serena; blue's Sorsha with a Pikeman.
+- **The replays** (seed 1, each with its test): `guild-start-s1` (the start's learning, TD-10),
+  `guild-visit-s1` (the Aurora's set to level 3), `guild-builds-s1` (the Library's slot at levels
+  1 to 4, the Abyss' Mage Guild 2 and its Vortex), `guild-hire-s1` (the hired hero learns after
+  `HeroHired`), `guild-book-s1` (`NoHero`, the book for 500 gold before the learning,
+  `HasSpellBook`), `guild-vortex-s1` (20 commands: the opening's Vortex, the flag set again on day
+  8 only, a second opening changing nothing), `guild-siege-s1` (a siege's end teaches, the flag
+  kept, the night's refill past the day's regain). The goldens to 118 (`h3-protocol`'s fold and
+  session, `h3-server`'s record, the server lane's); their suites pass.
+- **The benchmarks:** `day-start-guild-36` (new: the step that starts day 4 on the guild map in
+  16 random games, seed 1; 1 326 586 Ir; the refill 8.1 %, the day's regain 34 %); the random
+  agent spends no spell points, so there the refill raises no one and the workload measures its
+  walk and the maxima (the replays show its effect). No engine code changed: every other workload
+  inside its gate (`random-play-bonuses-36` +1.65 %, `fork-economy-xl-144` +1.28 %,
+  `manage-army-12` +1.00 %, as at T40a); the build's draws and the listing's guild commands were
+  measured by T47a2 to T49b.
+- **Versions:** none moved. Ids: none new.
+- **Verify:** VERIFY-LINE
+
+**The queue:** T50 out; T51 next (the audit against §99's criteria, increment 5 closed, increment
+6 refined). Ids: decisions next 196.

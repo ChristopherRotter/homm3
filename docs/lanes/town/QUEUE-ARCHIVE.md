@@ -379,3 +379,21 @@ T7a1):
 Used by batch TWN-4's recipes (E09 T34; the gold bonus, `hint_at`).
 
 - 2026-11-12 (the adventure lane, E08 T110, `adventure/e08-t110`; the capture harness, informational, for your next batch): `h3drive.gold_bonus` now clicks each row's arrow until the memory reads Gold (a heroless town player has no Artifact in its row); `hint_at` parks the mouse and reads until two reads agree; `play_turns` gives no order once the battle is decided; a recipe's `+anything odd` is kept beside the notes. New steps and reads: `clients/capture/README.md`, "Garrisons and the bonus visitables".
+
+## 2026-11-24 — archived at E09 T50
+
+- 2026-11-21 (the town lane itself, E09 T48a's verify; **a pre-existing hygiene failure, to
+  triage**): `h3-map`'s `a_viewer_learns_nothing_it_cannot_see` (`src/tests/view.rs`, the
+  adventure lane's file) failed on a random case that fails on `master` (c0ce729's code) too, so
+  not T48a's, the seed
+  `cc cc8693ab49d6fe44669fbab37bc9a94db548674cbd75e9d3d0027203fa6895e5` (an RoE plan of side 14,
+  two levels). The two games tell the viewer (blue) different `TownStackSeen`s after its town 1 is
+  captured by red: `HeroRemoved` of blue's hero 4 (a garrison hero with an empty army,
+  `TWN-QUIRK-11`'s capture?), then the town's garrison stacks, five in one game, two in the other
+  (red's hidden armies differ). Not added to `proptest-regressions/tests/view.txt` (it would make
+  every pull request red): add that line with the fix. Likely the town lane's (a captured town's upper
+  bar, TWN-VEW-002/-003, TWN-CAP-001) or the property's (`outcome`, the end of the comparison):
+  the user's call when to take it.
+  *Done by T50* (decision 195): the property's, not the engine's: hero 4 is red's, entering the
+  garrison of the town it captured, whose garrison blue sees at its Tavern level (TWN-VEW-002);
+  the comparison ends there, the seed added (`E09-log.md`, T50).

@@ -5,22 +5,22 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 to 4 closed (T10, T20, T30, T41; `E09-archive.md`, design notes
-  Parts A to F). **Increment 5** (the mage guild; decisions 161–194, `TWN-Q30` to `TWN-Q33`;
+  Parts A to F). **Increment 5** (the mage guild; decisions 161–195, `TWN-Q30` to `TWN-Q33`;
   survey `E09-guild.md`, design Part G §82 to §100, the cut T44 to T51 and twelve exit criteria):
-  T42a to T49b done (each task's record in `E09-log.md`): the survey, the drafts, batch TWN-5, the
+  T42a to T50 done (each task's record in `E09-log.md`): the survey, the drafts, batch TWN-5, the
   part v9, the guild module, the town spell sets (import v28, store v4, game state hash v38), the
   owner's guild view (protocol v78), learning at every trigger (T48a, T48b), the night's refill
-  and the Mana Vortex (T49a1), **T49a2** `TownCommand::Open` (TWN-GLD-006; protocol v79, replay
-  format v24, encoding v18) and **T49b** `TownCommand::BuySpellBook` (decision 194, kept whole,
-  `cross-lane`: TWN-GLD-007, listed after the opening; protocol v80, replay format v25, encoding
-  v19; the town map's seed 277; `day-start-builds-36` re-baselined). **Next:** **T50**, the guild
-  map, its replays, the census, the properties, the benchmarks (design §97; `QUEUE.md`). Waiting
+  and the Mana Vortex (T49a1), `TownCommand::Open` (T49a2) and `BuySpellBook` (T49b; protocol v80,
+  replay format v25, encoding v19), and **T50** the gates (decision 195, kept whole with the
+  inbox's hygiene failure: the property's, fixed): the guild census of the 160 maps, six guild
+  properties, the guild map `e09-guild-36` with seven replays (the goldens 118), the workload
+  `day-start-guild-36`; no version moved. **Next:** **T51**, the audit against design §99's
+  twelve criteria, increment 5 closed, increment 6 (the services) refined (`QUEUE.md`). Waiting
   elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach), `TWN-STUB-2` (the
   victory conditions), `TWN-STUB-16` (E10's loss condition), `-17` (increment 7), `-18` (E13).
-  **Found, pre-existing:** a hygiene case of `h3-map`'s `a_viewer_learns_nothing_it_cannot_see`
-  that fails on `master` too (a captured town's garrison seen; the lane's inbox).
-- **Open pull requests:** T49b's #1136 (`town/e09-t49b`, `cross-lane`), opened at the session's end;
-  watch it until it merges (T49a2's #1128 merged 2026-11-22).
+  For the next `shared/` task: `docs/06-security.md`'s ADV-FOG-006 line (T50's record).
+- **Open pull requests:** T50's (`town/e09-t50`, `cross-lane`), opened at the session's end; watch
+  it until it merges (T49b's #1136 merged 2026-11-23).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -32,7 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   v27; replay format v25, T49b), the env's (v19, T49b) and the protocol's (v80, T49b) are bumped
   `cross-lane` (each task's record in `E09-log.md`; increment 5's plan in design §96). Shared: core
   ruleset hash v53, pack format v53 (E08 T124a), quirk flags 51 (E08 T140; `TWN-QUIRK-14`'s at T45).
-- **Ids** (next): questions `TWN-Q34`; decisions 195; quirks `TWN-QUIRK-15` (`-14` entered by T45,
+- **Ids** (next): questions `TWN-Q34`; decisions 196; quirks `TWN-QUIRK-15` (`-14` entered by T45,
   taught by T48a's Aurora); stubs `TWN-STUB-21`; experiment batch `TWN-6`; disputes `TD-28`;
   quirk candidates `T-19`. ADR-0028 is the lane's; no drafts open; every TWN-GLD rule and
   TWN-SET-012 built (T46 to T49b).
@@ -44,6 +44,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-24 — T50: the guild census, properties, map, replays and workload, `cross-lane`
+
+Baseline d202566 (#1136 merged; the setup's light gates, CI's fingerprint on `master`'s code).
+The user's computer was connected: 5 files staged, SHA-256 checked. The agent recommended a cut
+in two; the user kept T50 whole with the inbox's hygiene failure and asked for sub-agents
+(decision 195): four ran one after another (the failure, the properties, the census, the map).
+The failure was the property's (`TRAPS.md`). The census holds on all 160 maps with 25 survey
+counts, three mutations caught; the properties cost +1 % (a first draft +29 %). The VM restarted
+twice and the server once; each part was pushed as it came, nothing lost.
 
 ### 2026-11-23 — T49b: a spell book bought at a town's Mage Guild, `cross-lane`
 
@@ -65,13 +75,3 @@ down; SHA-256 checked. The agent recommended a cut in two; the user kept T49a2 w
 derived `GuildRoles`, one entrance lookup a town in the listing; the wire, the word, `TOWN_OPEN`
 (103); the plans. `legal-towns-36` +49 % at the first build (no opening listed), +5.3 % after
 the design pass (`TRAPS.md`), re-baselined. The 111 goldens' `format` line only.
-
-### 2026-11-21 — T49a1: the night's refill and the Mana Vortex, `cross-lane`
-
-Baseline a9d593d (#1120 merged; the setup's full baseline passed every step up to coverage,
-stopped there). The user's computer was connected at the start only: 71 files staged, its shell
-down; SHA-256 checked. The user cut T49a in two (decision 192). Built: `h3_towns::refills`,
-`vortex`; the game's `town::guild::refilled` (read by `regain_mana`: a separate pass failed the
-bench gate), `vortex_to`, `vortex`, `visit`
-(the visit's end, the builds, the hire), the week's flags; five game tests, two pure ones; three
-`h3-map` oracles taught. The 111 goldens unchanged.
