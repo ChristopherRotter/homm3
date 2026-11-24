@@ -6338,7 +6338,13 @@ least 1 (203, the user's), TD-30 with T-23 `fix-optional` (204), T-22 fixed (205
 TD-31 the original (206), the agent's calls each accepted (207).
 
 **Verify:** the engine's code is `master`'s. On the branch: `scripts/exe.py check --fix-sizes`,
-`check` and `cited` (every cited address covered), then VERIFY_LINE.
+`check` and `cited` (every cited address covered); a fresh sub-agent's second look at the
+deciding paths of seven claims (the visitor-only entries, the University's and the
+Transformer's fallbacks, the count and the free price, the University's bans, the sale's
+positions, the spot written once, the month's seven): each confirmed. After merging `master`
+(d54bdd8): `cargo xtask verify --scope town --summary --with-original-data` with no failing step
+(coverage 19.6 minutes, determinism 7.0, bench-check 11.9, original-data 0.8; `deny` and
+`ffi-smoke` skipped by the scope). CI on the pull request is the record.
 
 **The queue:** T52 out; T53 next (the drafts, Part H from §101, the cut). Ids: decisions next 208;
 disputes `TD-32`; quirk candidates `T-29`; questions `TWN-Q36`.
