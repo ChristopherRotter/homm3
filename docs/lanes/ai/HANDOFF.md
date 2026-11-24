@@ -32,7 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** the one of `ai/e31-t1a4` (E31 T1a4, docs and the map; opened this session). Merged: #1145 (T1a3d), #1142 (T1a3c), #1139 (T1a3a, T1a3b), #1137 (T1a2), #1133 (T1a1b, T1a1c), #1131 (T1a1a).
+- **Open pull requests:** #1150 (`ai/e31-t1a4`: E31 T1a4, docs and the map). Merged: #1145 (T1a3d), #1142 (T1a3c), #1139 (T1a3a, T1a3b), #1137 (T1a2), #1133 (T1a1b, T1a1c), #1131 (T1a1a).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
@@ -67,6 +67,7 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   after the other, each in its own worktree (only `map.toml` and `structs.toml`, its survey text to
   a scratch file); the main session made the lists (T1a4c) and merged. A VM restart killed the
   setup's baseline (CI's run on `master` stands for it); the scoped verify without original data.
+  The pull request: #1150.
 
 ### 2026-11-24 — E31 T1a3d: the answers and the table, in two
 
