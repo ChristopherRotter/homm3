@@ -26,15 +26,17 @@ T45, AI-Q23).
 - **E31 T1a3 — the towns and the answers, in four parts** (AI-Q26): **done** 2026-11-24 (T1a3c
   and T1a3d each in two, one half read by a sub-agent, AI-Q27, AI-Q28; `E31-log.md` T1a3a to
   T1a3d; the survey §3, the table of choices and rules §3.6).
-- **E31 T1a4 — the rest of the code**: the third range 0x423EE0 to 0x42A000 and what is left of
-  the other two named at least `inferred` and placed in a phase; every draw and float site listed;
-  the fields that persist between turns and their readers (the survey's §4). Open from T1a3d: the
-  other quest types' price (their vtable +4, §3.4) and the slot's callers, the rest of
-  `seer_hut_load`, the luck reward's unwritten fields; from T1a1c the walk's leftovers (§1.8).
-  Measure it at its start and confirm a cut by size (the user, 2026-11-23: a couple of small tasks
-  or one bigger one a session).
-- Then T1b (the survey finished, the ADR draft, §3.6's rows into the lanes' inboxes, the trace's
-  plan, increments 2 to 7 cut; the checkpoint).
+- **E31 T1a4 — the rest of the code, in three parts** (AI-Q29: T1a4a and T1a4b read by
+  sub-agents): **done** 2026-11-24 (`E31-log.md` T1a4; the survey §4: every function in a phase,
+  the draws, the floats, what persists). **T1a done.**
+- **E31 T1b — the survey finished, the ADR draft, the checkpoint** (the epic file's T1b row):
+  each phase's rules, the hidden reads in one list, the asymmetries (§3.6's rows into the lanes'
+  inboxes), the engine's gaps per epic; the ADR draft; the trace's plan; increments 2 to 7 cut
+  with exit criteria; the checkpoint AI-Q23. The second look at the quirk candidates of §1 to §4
+  (T1a4 alone 23; the turn start's reseed through the Grail target, §4.4, and the records set
+  only at the program's start, §4.6, want a confirmation experiment). Measure it at its start
+  and confirm a cut by size (the user, 2026-11-23 and 2026-11-24: a couple of small tasks or one
+  bigger one a session).
 
 ## Inbox
 
@@ -72,16 +74,6 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
   the ceiling records keep theirs). The observation's `hero_list` is new (protocol v81).
 
 **From the town lane** (E09 T43, `town/e09-t43`, docs only; **planned, nothing to do now**):
-
-- 2026-11-24 (E09 T51, `town/e09-t51`, docs only; **for E31's planning, nothing to do now**):
-  E09's services are now two increments (`TWN-Q34`, E09 decision 197): **6, the town's trades**
-  (the Marketplace's screens with the Artifact Merchants and the Freelancer's Guild, the
-  Blacksmith, the town's Shipyard, the Magic University, the Skeleton Transformer) and **7, the
-  buildings for heroes and the map** (the buildings a hero visits once, the Stables, the
-  Treasury, the Mystic Pond, the Lighthouse, the Necromancy Amplifier, the Cover of Darkness, the
-  Lookout Tower); travel and the Grail are **8**. E31's "E09's increments 6 and 7" (its
-  decision 6) now reads 6 to 8. Increment 5 (the mage guild) closed with its env entries
-  `TOWN_OPEN` and `SPELL_BOOK` as built.
 
 - 2026-11-22 (E09 T49a2, `town/e09-t49a2`, `cross-lane` in your paths with the user's consent,
   E09 decision 193; **adventure action encoding v18 taken, for your review**): `TOWN_OPEN` = 103,

@@ -73,7 +73,7 @@ and middle), so about 95 KB in all. The fog test reads the other way round (the 
    outside the game state (kept by its host beside the journal, rebuilt by replaying it), with any
    field that a rule reads moved into the state.
 6. **Port now, stub the gaps.** Everything is read; what the engine can play is ported; a part
-   whose rules are missing (E09's increments 6 and 7, E08's increment 15, E10, E12's quests)
+   whose rules are missing (E09's increments 6 to 8, E08's increment 15, E10, E12's quests)
    stays an `AI-STUB-<n>` naming the epic that lifts it, and the ai lane's inbox takes the port
    when that lane delivers. E31 does not wait for them.
 7. **Strength waits for games that end.** Before E10's increment 1, E31 checks whole games to a
@@ -111,12 +111,12 @@ and middle), so about 95 KB in all. The fog test reads the other way round (the 
 | T1a3b | The hires: `ai_hero_hire_choice` 0x431360, `ai_hero_hire` 0x431800, `ai_town_hero_prospects` 0x431BD0 | `map.toml`, `structs.toml`; the survey's §3.2 (done) |
 | T1a3c | The town visit (AI-Q27, in two): `ai_town_visit` 0x5253D0 (the garrison, the recruits, the buys, the artifacts, the University) and the army plan's open pieces (0x42C3B0, 0x42D1B0, 0x42D870, 0x42D8E0) | `map.toml`, `structs.toml`; the survey's §3.3 (done) |
 | T1a3d | The answers: every `ai_*` call the game's visits make (about 25 entry points), `ai_fight_answer`'s 17 callers, the Seer's reward (0x573A70), the market visits, the allies' shares; each classified a choice or a rule (AI-Q28, in two) | `map.toml`; the survey's §3.4 to §3.6 (the table of choices and rules for the owning lanes) (done) |
-| T1a4 | The rest of both ranges named at least `inferred` and placed in a phase; every draw and float site listed; the fields that persist between turns and their readers | `map.toml`; the survey's §4 |
+| T1a4 | The rest of both ranges named at least `inferred` and placed in a phase; every draw and float site listed; the fields that persist between turns and their readers (AI-Q29, in three) | `map.toml`, `structs.toml`; the survey's §4 (done) |
 | T1b | The survey `docs/rules/surveys/E31-computer-player.md` finished (each phase's rules, the hidden reads, the asymmetries, the engine's gaps per epic); the ADR draft (the crate, the seam, the memory, the commands, the battles, the floats under `kernel::num`, the fair variant's line); the asymmetries into the owning lanes' inboxes; the trace's plan (maps, days, the harness); the cut of increments 2 to 7 with exit criteria; the checkpoint AI-Q23 | survey, ADR draft, this file |
 
 T1a's cut may change at its start, by size (E23's T1a ran in five parts); T1a1 ran in three
 (AI-Q24), T1a2 in four, three of them read by sub-agents (AI-Q25), T1a3 in four (AI-Q26), T1a3c
-in two, one read by a sub-agent (AI-Q27), T1a3d in two, one read by a sub-agent (AI-Q28). T1a4 also maps the third range (0x423EE0–0x42A000).
+in two, one read by a sub-agent (AI-Q27), T1a3d in two, one read by a sub-agent (AI-Q28), T1a4 in three, two read by sub-agents (AI-Q29); T1a4 also mapped the third range (0x423EE0–0x42A000).
 
 **Exit criteria:** (1) every function of both ranges in the map, at least `inferred`, with its
 phase; (2) every hidden read, draw and float site listed; (3) every asymmetry classified and
@@ -193,3 +193,11 @@ or HotA's AI, but as pointers.
   hidden battle's end, the map Shipyard's boat, Dimension Door without points, the Castle Gate's
   jump, the patrol, the artifact price one unit lower, the defender's split); six quirk candidates
   (`E31-log.md` T1a3d). **T1a3 done.**
+- **T1a4** (2026-11-24, AI-Q29: in three, T1a4a and T1a4b by sub-agents): the artifact effects,
+  the start-up initialisers, the quests' price, the Seer's loader, the walk's marks; every function
+  of the three ranges in a phase (255: 240 read, 15 inferred), the draws, the floats, what persists
+  between turns; 90 new map entries, 17 rewritten (1 renamed), `ai_artifact_effect` and
+  `seer_hut_record` in `structs.toml`; the survey §4. Found: the turn start re-seeds the game's
+  generator through the Grail target (every turn on Expert and Impossible with a Grail); the
+  computer's records are set only at the program's start; 23 quirk candidates (`E31-log.md` T1a4).
+  Exit criterion 1 met. **T1a done; next T1b.**
