@@ -71,6 +71,16 @@
 //! hero its type's record with full spell points and a starting army), the pool after every
 //! `EndTurn` (TWN-SET-005: the statuses against the slots, the map and the garrisons) and the
 //! customised types' records at the build (GAM-HER-001: `Marshland Menace`'s 2 000 experience).
+//! Since E09 T50 (the town epic's increment 5, design §97) the mage guilds: the spell sets as the
+//! raw model gives them (the scenario's bans, each town's required and banned spells, the
+//! import's lists checked against them by the packs' original ids), every built game's guilds
+//! checked against the census's own walk of the draw and what it shows (TWN-GLD-002, -003, TD-25:
+//! no excluded spell in a slot, no spell twice, the required spells first, a slot empty only with
+//! nothing to draw) and each town's Aurora set (TWN-GLD-004), and every hero's spells at the start
+//! (TD-10, TWN-GLD-005: the main towns' heroes learn what their guild shows up to Wisdom + 2, a
+//! placed hero on an entrance nothing); the counts checked against the survey's census
+//! (`E09-guild.md` §1, §10: 249 guilds standing, 142 owned; 33 main towns' heroes learning, 8
+//! placed ones with a book on 5 maps; the 14 short towns of `Heroes of Might not Magic`).
 //! Since E08 T132b (increment 14's design note §7) the trades and services (2, 7, 35, 99, 106, 213,
 //! 221) by class, each checked to import at subclass 0 without a body as its class's type and
 //! kind (221 the Trading Post) with one entrance on land (221's on snow), nothing held and no
@@ -92,14 +102,16 @@ use h3_adventure::{
     DWELLING_LEVELS, Holds, MapSetup, MonolithWay, ObjectKind, ObjectTypeId, Pos, SetupError,
     land_table_points,
 };
-use h3_content::{CreatureTypeId, Formation, HeroTypeId};
+use h3_content::{
+    AURORA_IGNORES_MAP_BANS, CreatureTypeId, Formation, HeroTypeId, Spell, SpellCategory, SpellId,
+};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameCommand, GameEvent, GameRuleset,
-    GameSetup, GameSetupError, GameState, GarrisonCreature, HeroStatus, PlayerSetup, PlayerTavern,
-    TimedEventSetup, TownFaction, TownSetup, Viewer,
+    GameSetup, GameSetupError, GameState, GarrisonCreature, HeroDetailsSetup, HeroStatus,
+    PlayerSetup, PlayerTavern, TimedEventSetup, TownFaction, TownSetup, Viewer,
 };
-use h3_map::model::{Artifacts, Body, Object, Player, RawMap, SeerTask, Text, Version};
+use h3_map::model::{Artifacts, Bits, Body, Object, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 
@@ -128,6 +140,7 @@ struct Peaks(
     Increment13,
     Taverns,
     Increment14,
+    Guilds,
 );
 
 /// The census of the channels the game's build gives (E08 T104, [`built_channels`]; ADV-TEL-002,
@@ -635,6 +648,7 @@ fn main() -> ExitCode {
     failures += growth_differences(&peaks.12);
     failures += tavern_differences(&peaks.14);
     failures += increment_14_differences(&peaks.15);
+    failures += guild_differences(&peaks.16);
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -829,6 +843,11 @@ fn check(
             built_towns(&setup, &game, rules, &mut peaks.5).map_err(|e| format!("{name}: {e}"))?;
             built_linked(&setup, &game, rules, name, &mut peaks.5)?;
             built_heroes(&setup, &game, rules, map.header.size, &mut peaks.5);
+            // E09 T50: the spell sets as the map gives them, the guilds drawn and the start's
+            // learning (increment 5's design §97, "The census").
+            map_guilds(&map, &setup, (rules, name), &mut peaks.16)?;
+            built_guilds(&setup, &game, rules, name, &mut peaks.16)
+                .map_err(|e| format!("guilds: {e}"))?;
             // E08 T133a1: the stocks again under the map's bans (GAM-SET-003).
             let banned = (&setup.banned_artifacts[..], MARKETS_IMPORTED);
             built_markets(&game, rules, banned, &mut peaks.5)?;
@@ -1464,7 +1483,7 @@ fn census(
     let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
     // E08 T61b: the banned spells and artifacts, and bits past the original's codes (the
     // import's tables: 70 hero spells before the abilities, 141 artifacts).
-    let set = |bits: &h3_map::model::Bits, from: usize| {
+    let set = |bits: &Bits, from: usize| {
         (from..bits.bytes().len() * 8)
             .filter(|&code| bits.get(code))
             .count()
@@ -4831,4 +4850,601 @@ fn growth_differences(census: &Growth) -> usize {
         println!("    {what}: {n}");
     }
     0
+}
+
+/// The census of the mage guilds (E09 T50; increment 5's design §97, "The census"; survey
+/// `E09-guild.md` §1, §10): its counts, each with the maps where it counted
+/// ([`map_guilds`], [`built_guilds`]), and the spells by the original's id ([`original_spells`],
+/// read once).
+#[derive(Default)]
+struct Guilds(
+    BTreeMap<&'static str, usize>,
+    BTreeMap<&'static str, BTreeSet<String>>,
+    BTreeMap<usize, SpellId>,
+);
+
+impl Guilds {
+    /// `n` more of `what`, on `map` when `n` is above 0.
+    fn add(&mut self, what: &'static str, n: usize, map: &str) {
+        *self.0.entry(what).or_default() += n;
+        if n > 0 {
+            self.1.entry(what).or_default().insert(map.to_owned());
+        }
+    }
+}
+
+const SCENARIO_BANS: &str = "the scenario's spell bans, bits (SoD's header)";
+const TOWNS_REQUIRING: &str = "towns requiring spells";
+const REQUIRED_BITS: &str = "the towns' required spells, bits";
+const TOWNS_BANNING: &str = "towns banning spells";
+const BANNED_BITS: &str = "the towns' banned spells, bits";
+const REQUIRED_BANNED: &str = "towns requiring a spell they ban";
+const ODD_BITS: &str = "spell bits on 57 or past 69 (a town's or the scenario's)";
+const GUILDS_STANDING: &str = "guilds standing at the start";
+const GUILDS_OWNED: &str = "guilds standing at the start, owned";
+const GUILDS_GAP: &str = "guilds standing without every level below their top";
+const GUILD_TOPS: [&str; 5] = [
+    "guilds standing at the start, top level 1",
+    "guilds standing at the start, top level 2",
+    "guilds standing at the start, top level 3",
+    "guilds standing at the start, top level 4",
+    "guilds standing at the start, top level 5",
+];
+const LIBRARIES: &str = "Libraries built at the start";
+const LIBRARIES_FIVE: &str = "Libraries built at the start, neutral, a level-5 guild";
+const AURORAS: &str = "Aurora Borealis built at the start (a Conflux's Grail)";
+const AURORAS_GUILD: &str = "Aurora Borealis built at the start, with a guild";
+const VORTICES: &str = "Mana Vortices standing at the start";
+const SHORT: &str = "towns drawn short (an empty slot at a level its faction shows)";
+const SHORT_EMPTY: &str = "towns drawn short, every slot empty";
+const SHORT_BANNED: &str = "towns drawn short, every spell excluded";
+const SHORT_FIXED: &str = "fixed towns drawn short";
+const SLOTS_FILLED: &str = "guild slots drawn";
+const SLOTS_EMPTY: &str = "guild slots left empty (nothing to draw)";
+const REQUIRED_FIRST: &str = "required spells drawn first in their level, in spell order";
+const REQUIRED_PAST: &str = "required spells past their level's slots";
+const REQUIRED_SHOWN: &str = "required spells shown at the start";
+const TD_25: &str = "required spells the town bans too, never drawn (TD-25)";
+const REQUIRED_SCENARIO: &str = "required spells the scenario bans, never drawn";
+const ON_ENTRANCE: &str = "heroes on a town's entrance at the start";
+const MAIN_ON_ENTRANCE: &str = "main towns' heroes on a town's entrance";
+const PLACED_ON_ENTRANCE: &str = "placed heroes on a town's entrance";
+const GARRISON_HEROES: &str = "garrison heroes at the start";
+const GUILD_VISITED: &str = "towns with a guild and a hero on the entrance";
+const MAIN_IN_GUILD: &str = "main towns' heroes in a town with a guild";
+const MAIN_BOOK: &str =
+    "main towns' heroes with a spell book in a town with a guild (learn at the start, TD-10)";
+const MAIN_LEARNED: &str = "main towns' heroes that learned at the start";
+const SPELLS_LEARNED: &str = "spells the main towns' heroes learned at the start";
+const PLACED_IN_GUILD: &str = "placed heroes in a town with a guild";
+const PLACED_BOOK: &str =
+    "placed heroes with a spell book in a town with a guild (learn nothing at the start)";
+const PLACED_LATER: &str = "placed heroes with a book whom their first trigger would teach";
+const WISDOM_BOUND: &str = "heroes with a book in a town with a guild whom Wisdom's bound stops";
+const HEROES_CHECKED: &str = "heroes on the map whose spells were checked";
+
+/// The survey's census (`E09-guild.md` §1, §10, seed 0 for the start's heroes): each count with
+/// the maps where it counts, where the survey gives them. [`guild_differences`] checks against it.
+const SURVEY_GUILDS: [(&str, usize, Option<usize>); 25] = [
+    (SCENARIO_BANS, 210, Some(26)),
+    (TOWNS_REQUIRING, 32, Some(10)),
+    (REQUIRED_BITS, 34, None),
+    (TOWNS_BANNING, 396, Some(65)),
+    (BANNED_BITS, 1_779, None),
+    (REQUIRED_BANNED, 1, Some(1)),
+    (ODD_BITS, 0, None),
+    (GUILDS_STANDING, 249, None),
+    (GUILDS_OWNED, 142, None),
+    (GUILDS_GAP, 0, None),
+    (LIBRARIES_FIVE, 5, Some(5)),
+    (SHORT, 14, Some(2)),
+    (SHORT_BANNED, 12, Some(2)),
+    (SHORT_FIXED, 0, None),
+    (TD_25, 1, Some(1)),
+    (REQUIRED_PAST, 0, None),
+    (ON_ENTRANCE, 561, None),
+    (MAIN_ON_ENTRANCE, 538, None),
+    (PLACED_ON_ENTRANCE, 23, None),
+    (GARRISON_HEROES, 0, None),
+    (GUILD_VISITED, 74, None),
+    (MAIN_IN_GUILD, 60, None),
+    (MAIN_BOOK, 33, None),
+    (PLACED_IN_GUILD, 14, None),
+    (PLACED_BOOK, 8, Some(5)),
+];
+
+/// The original's hero spells, 0 to 69 (a town's sets hold 70 bits that count; 57 is Titan's
+/// Lightning Bolt, granted by name only).
+const HERO_SPELLS: usize = 70;
+
+/// E09 T50: the map's spell sets as its raw model gives them (survey `E09-guild.md` §1): the
+/// scenario's bans (SoD's header) and each town's required (AB, SoD) and banned spells, counted by
+/// bits, towns and maps, with the towns requiring a spell they ban and the bits on Titan's
+/// Lightning Bolt (57) or past the hero spells (69); the import's lists checked against them (bit
+/// `i` the spell of the original's id `i`, [`original_spells`]; a town's past 69 not read, as the
+/// format's: an error fails the map).
+fn map_guilds(
+    raw: &RawMap,
+    setup: &GameSetup,
+    (rules, name): (&GameRuleset, &str),
+    census: &mut Guilds,
+) -> Result<(), String> {
+    let set = |bits: &Bits| -> BTreeSet<usize> {
+        (0..bits.0.len() * 8).filter(|&i| bits.get(i)).collect()
+    };
+    if census.2.is_empty() {
+        census.2 = original_spells(rules.core());
+    }
+    let table = &census.2;
+    let spells = |codes: &BTreeSet<usize>, past: usize| -> BTreeSet<SpellId> {
+        (codes.iter().filter(|&&code| code < past))
+            .filter_map(|code| table.get(code).copied())
+            .collect()
+    };
+    let odd = |codes: &BTreeSet<usize>| {
+        (codes.iter())
+            .filter(|&&code| code == 57 || code >= HERO_SPELLS)
+            .count()
+    };
+    let listed = |list: &[SpellId]| list.iter().copied().collect::<BTreeSet<_>>();
+    let scenario = set(&raw.banned_spells);
+    if listed(&setup.banned_spells) != spells(&scenario, usize::MAX) {
+        return Err(format!(
+            "the scenario's bans {scenario:?} imported as {:?}",
+            setup.banned_spells
+        ));
+    }
+    let bodies = raw.objects.iter().filter_map(|object| match &object.body {
+        Body::Town(body) => Some(body),
+        _ => None,
+    });
+    let mut counts = vec![(SCENARIO_BANS, scenario.len()), (ODD_BITS, odd(&scenario))];
+    for ((body, town), index) in bodies.zip(&setup.towns).zip(0..) {
+        let required = body.required_spells.as_ref().map(set).unwrap_or_default();
+        let banned = set(&body.banned_spells);
+        let both = required.intersection(&banned).next().is_some();
+        counts.extend([
+            (TOWNS_REQUIRING, usize::from(!required.is_empty())),
+            (REQUIRED_BITS, required.len()),
+            (TOWNS_BANNING, usize::from(!banned.is_empty())),
+            (BANNED_BITS, banned.len()),
+            (REQUIRED_BANNED, usize::from(both)),
+            (ODD_BITS, odd(&required) + odd(&banned)),
+        ]);
+        if listed(&town.required_spells) != spells(&required, HERO_SPELLS)
+            || listed(&town.banned_spells) != spells(&banned, HERO_SPELLS)
+        {
+            return Err(format!(
+                "town {index}'s spell sets {required:?} and {banned:?} imported as {:?} and {:?}",
+                town.required_spells, town.banned_spells
+            ));
+        }
+    }
+    for (what, n) in counts {
+        census.add(what, n, name);
+    }
+    Ok(())
+}
+
+/// The spells by the original's id, each the core's handle of its key: the census's own reading of
+/// the original core packs' notes (`id = "…"  # original id N` in a `[[spell]]`, the pack's
+/// namespace its `[pack]` id; E08 T18b), the source the import's table cites.
+fn original_spells(core: &h3_content::Ruleset) -> BTreeMap<usize, SpellId> {
+    let mut table = BTreeMap::new();
+    for (source, _) in ORIGINAL_PACKS {
+        let (mut section, mut pack) = ("", "");
+        for line in source.lines() {
+            if line.starts_with('[') {
+                section = line.trim();
+                continue;
+            }
+            let Some((id, note)) =
+                (line.strip_prefix("id = \"")).and_then(|rest| rest.split_once('"'))
+            else {
+                continue;
+            };
+            match section {
+                "[pack]" => pack = id,
+                "[[spell]]" => {
+                    let code = (note.trim().strip_prefix("# original id "))
+                        .and_then(|n| n.trim().parse::<usize>().ok());
+                    let spell = core.spell_by_key(&format!("{pack}:{id}"));
+                    if let Some((code, spell)) = code.zip(spell) {
+                        table.insert(code, spell);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    table
+}
+
+/// A town's spells as its guild's draw reads them (TWN-GLD-002): its required and banned spells
+/// (its setup's) and the scenario's bans.
+struct DrawSets {
+    required: BTreeSet<SpellId>,
+    banned: BTreeSet<SpellId>,
+    scenario: BTreeSet<SpellId>,
+}
+
+/// The core's spells with their handles, in spell order.
+fn spells_of(core: &h3_content::Ruleset) -> impl Iterator<Item = (SpellId, &Spell)> {
+    (0..).map_while(SpellId::from_index).zip(core.spells())
+}
+
+/// Whether a guild never holds `spell` (survey §3.1): a creature ability, or a spell granted by
+/// name only (Titan's Lightning Bolt).
+fn never_in_guild(spell: &Spell) -> bool {
+    spell.category == SpellCategory::Ability || spell.granted_by_name_only
+}
+
+/// E09 T50 (increment 5's design §97, "The census"): every town's guild as the game's build drew
+/// it ([`guild_drawn`]), what it shows at the start ([`guild_shown`]) and its Aurora set
+/// ([`aurora_of`]), then the start's learning ([`start_learning`]); counted with the Aurora
+/// Borealis and the Mana Vortices built. Checked (an error fails the map).
+fn built_guilds(
+    setup: &GameSetup,
+    game: &GameState,
+    rules: &GameRuleset,
+    name: &str,
+    census: &mut Guilds,
+) -> Result<(), String> {
+    let part = rules.towns();
+    let params = part.params().ok_or("the town part has no parameters")?;
+    let objects = game.adventure().map().towns();
+    let scenario: BTreeSet<SpellId> = setup.banned_spells.iter().copied().collect();
+    let mut taught = Vec::with_capacity(setup.towns.len());
+    for ((town_setup, &object), index) in setup.towns.iter().zip(objects).zip(0u16..) {
+        let id = TownId::new(index);
+        let at = |e: String| format!("town {index}: {e}");
+        let towns = game.towns();
+        let (town, statics) = (towns.get(id).zip(towns.town_static(id)))
+            .ok_or_else(|| at("not in the store".to_owned()))?;
+        let record = (part.town(town.faction())).ok_or_else(|| at("no record".to_owned()))?;
+        let sets = DrawSets {
+            required: town_setup.required_spells.iter().copied().collect(),
+            banned: town_setup.banned_spells.iter().copied().collect(),
+            scenario: scenario.clone(),
+        };
+        let fixed = matches!(town_setup.faction, TownFaction::Fixed(_));
+        let mut add = |what, n| census.add(what, n, name);
+        guild_drawn(town, record, (params, rules.core()), &sets, fixed, &mut add).map_err(at)?;
+        let owned = game.adventure().owner(object).is_some();
+        let shown =
+            guild_shown(town, record, (part, params), &sets, owned, &mut add).map_err(at)?;
+        let aurora = aurora_of(rules.core(), &sets);
+        if statics.aurora.iter().collect::<Vec<_>>() != aurora {
+            return Err(at(format!(
+                "Aurora set {:?}, the census's reading {aurora:?}",
+                statics.aurora
+            )));
+        }
+        let ever = |role: fn(&h3_towns::BuildingRoles) -> bool| {
+            (town.built().iter())
+                .filter_map(|b| record.building(b))
+                .any(|b| role(&b.roles))
+        };
+        let (guild, borealis) = (ever(|r| r.guild.is_some()), ever(|r| r.aurora));
+        let standing = (town.standing(record).iter())
+            .filter_map(|b| record.building(b))
+            .any(|b| b.roles.mana_vortex);
+        add(AURORAS, usize::from(borealis));
+        add(AURORAS_GUILD, usize::from(borealis && guild));
+        add(VORTICES, usize::from(standing));
+        // What the town teaches (TWN-GLD-004): nothing without a guild ever built; with the
+        // Aurora Borealis its Aurora set; else what the guild shows.
+        taught.push(match (guild, borealis) {
+            (false, _) => None,
+            (true, true) => Some(aurora),
+            (true, false) => Some(shown),
+        });
+    }
+    start_learning(setup, game, rules, &taught, name, census)
+}
+
+/// A town's guild slots by the census's own reading of TWN-GLD-002 (design §85, TD-25): at each
+/// level 1 to 5 its candidates are the level's spells a guild may hold ([`never_in_guild`]) that
+/// neither the town nor the scenario bans; its `guild_slots + 1` slots (at most
+/// `MAX_GUILD_SLOTS`) hold first the candidates the town requires, in spell order, then distinct
+/// candidates of a positive weight in the faction's record, until both run out, and the rest stay
+/// empty; no spell twice in the guild. Counted: the slots drawn and left empty, the required
+/// spells by what became of them, a town drawn short (an empty slot among those its faction's top
+/// levels show, a Tower's Library counted: survey §1's short pools), with every slot empty and
+/// with every spell excluded (no candidate at any level: the survey's 12; the neutral town of
+/// each map keeps four, which its drawn faction may weigh 0).
+fn guild_drawn(
+    town: &h3_towns::Town,
+    record: &h3_towns::TownRecord,
+    (params, core): (&h3_towns::TownParams, &h3_content::Ruleset),
+    sets: &DrawSets,
+    fixed: bool,
+    add: &mut impl FnMut(&'static str, usize),
+) -> Result<(), String> {
+    let roles = || record.buildings.iter().map(|b| &b.roles);
+    let top = roles().filter_map(|r| r.guild).max().unwrap_or(0);
+    let library = roles().any(|r| r.library);
+    let (mut seen, mut short, mut any, mut open) = (BTreeSet::new(), false, false, false);
+    for (level, &count) in (1..).zip(&params.guild_slots) {
+        let count = usize::from(count);
+        let drawn = (count + 1).min(h3_towns::MAX_GUILD_SLOTS);
+        let candidates: Vec<SpellId> = spells_of(core)
+            .filter(|&(id, spell)| {
+                spell.level == level
+                    && !never_in_guild(spell)
+                    && !sets.banned.contains(&id)
+                    && !sets.scenario.contains(&id)
+            })
+            .map(|(id, _)| id)
+            .collect();
+        let required: Vec<SpellId> = (candidates.iter().copied())
+            .filter(|id| sets.required.contains(id))
+            .collect();
+        let weighted: BTreeSet<SpellId> = (candidates.iter().copied())
+            .filter(|&id| !sets.required.contains(&id) && record.guild_weight(id) > 0)
+            .collect();
+        let filled = drawn.min(required.len() + weighted.len());
+        let firsts = drawn.min(required.len());
+        for (slot, spell) in town.guild().level(level).enumerate() {
+            let at = || format!("level {level}'s slot {slot}");
+            let Some(spell) = spell else {
+                if slot < filled {
+                    return Err(format!("{} empty with a spell to draw", at()));
+                }
+                continue;
+            };
+            let why = match core.spell(spell) {
+                None => Some("not the core's"),
+                Some(s) if never_in_guild(s) => Some("never in a guild"),
+                Some(s) if s.level != level => Some("of another level"),
+                _ if sets.banned.contains(&spell) => Some("the town bans it"),
+                _ if sets.scenario.contains(&spell) => Some("the scenario bans it"),
+                _ if !seen.insert(spell) => Some("twice in the guild"),
+                _ if slot < firsts && required[slot] != spell => Some("not the required spell"),
+                _ if slot >= firsts && (slot >= filled || !weighted.contains(&spell)) => {
+                    Some("not drawable there")
+                }
+                _ => None,
+            };
+            if let Some(why) = why {
+                return Err(format!("{}: {spell:?}, {why}", at()));
+            }
+        }
+        add(SLOTS_FILLED, filled);
+        add(SLOTS_EMPTY, drawn - filled);
+        add(REQUIRED_FIRST, firsts);
+        add(REQUIRED_PAST, required.len() - firsts);
+        short |= level <= top && filled < count + usize::from(library);
+        any |= filled > 0;
+        open |= !candidates.is_empty();
+    }
+    let td_25 = sets.required.intersection(&sets.banned).count();
+    add(TD_25, td_25);
+    let scenario = sets.required.difference(&sets.banned);
+    add(
+        REQUIRED_SCENARIO,
+        scenario.filter(|s| sets.scenario.contains(s)).count(),
+    );
+    add(SHORT, usize::from(short));
+    add(SHORT_EMPTY, usize::from(short && !any));
+    add(SHORT_BANNED, usize::from(short && !open));
+    add(SHORT_FIXED, usize::from(short && fixed));
+    Ok(())
+}
+
+/// What a town's guild shows at the start by the census's own reading of TWN-GLD-003 (design
+/// §87): up to the highest level of a standing guild building, each level's first `guild_slots`
+/// slots, one more with a Library ever built, cut at the first empty slot; checked against
+/// `h3_towns::guild_level` and `shown`. Counted: the guilds standing (owned, by top level, one
+/// without every level below its top), the Libraries, the required spells shown. The shown
+/// spells, level after level.
+fn guild_shown(
+    town: &h3_towns::Town,
+    record: &h3_towns::TownRecord,
+    (part, params): (&h3_towns::TownRuleset, &h3_towns::TownParams),
+    sets: &DrawSets,
+    owned: bool,
+    add: &mut impl FnMut(&'static str, usize),
+) -> Result<Vec<SpellId>, String> {
+    let roles = |set: h3_towns::BuildingSet| {
+        (set.iter())
+            .filter_map(|b| record.building(b))
+            .map(|b| &b.roles)
+    };
+    let top = (roles(town.standing(record)).filter_map(|r| r.guild).max()).unwrap_or(0);
+    let library = roles(town.built()).any(|r| r.library);
+    let level_of = h3_towns::guild_level(town, part);
+    if level_of != top {
+        return Err(format!(
+            "guild level {level_of}, the census's reading {top}"
+        ));
+    }
+    let mut shown = Vec::new();
+    for (level, &count) in (1..).zip(&params.guild_slots) {
+        let count = if level <= top {
+            usize::from(count) + usize::from(library)
+        } else {
+            0
+        };
+        let mine: Vec<SpellId> = (town.guild().level(level).take(count))
+            .map_while(std::convert::identity)
+            .collect();
+        let engine: Vec<SpellId> = h3_towns::shown(town.guild(), town, part, level).collect();
+        if mine != engine {
+            return Err(format!(
+                "level {level} shows {engine:?}, the census's reading {mine:?}"
+            ));
+        }
+        shown.extend(mine);
+    }
+    if top > 0 {
+        add(GUILDS_STANDING, 1);
+        add(GUILDS_OWNED, usize::from(owned));
+        add(GUILD_TOPS[usize::from(top.min(5)) - 1], 1);
+        let levels: BTreeSet<u8> = roles(town.built()).filter_map(|r| r.guild).collect();
+        add(
+            GUILDS_GAP,
+            usize::from((1..=top).any(|l| !levels.contains(&l))),
+        );
+    }
+    add(LIBRARIES, usize::from(library));
+    add(LIBRARIES_FIVE, usize::from(library && !owned && top == 5));
+    let required = sets.required.iter().filter(|s| shown.contains(s)).count();
+    add(REQUIRED_SHOWN, required);
+    Ok(shown)
+}
+
+/// A town's Aurora set by the census's own reading of TWN-GLD-004's set (design §86,
+/// `TWN-QUIRK-14`): every spell a guild may hold ([`never_in_guild`]) that the town does not ban,
+/// less the scenario's bans when the core's `quirk.town.aurora_ignores_map_bans` is off; in spell
+/// order.
+fn aurora_of(core: &h3_content::Ruleset, sets: &DrawSets) -> Vec<SpellId> {
+    let scenario = !core.quirks().is_enabled(AURORA_IGNORES_MAP_BANS);
+    spells_of(core)
+        .filter(|&(id, spell)| {
+            !never_in_guild(spell)
+                && !sets.banned.contains(&id)
+                && !(scenario && sets.scenario.contains(&id))
+        })
+        .map(|(id, _)| id)
+        .collect()
+}
+
+/// The start's learning by the census's own reading (TD-10; TWN-GLD-005, TWN-SET-009; design
+/// §89, survey `E09-guild.md` §10, §12): the visitor and the garrison hero of each player's main
+/// town that generates its hero learn what the town teaches (`taught`, by `TownId`: its Aurora set
+/// with the Aurora Borealis, else what its guild shows, nothing without a guild), each spell a
+/// worn spell book and its learnable level (HER-SPL-005: Wisdom + 2) allow that it does not know;
+/// every other hero on the map, a placed one on a town's entrance too, keeps its spells as built
+/// ([`initial_spells`]). Each hero's spells checked as a set (and none twice). Counted: the heroes
+/// on an entrance by kind, those in a town with a guild and with a book, what the main towns'
+/// learned, those Wisdom's bound stops and the placed heroes whom their first trigger would teach.
+fn start_learning(
+    setup: &GameSetup,
+    game: &GameState,
+    rules: &GameRuleset,
+    taught: &[Option<Vec<SpellId>>],
+    name: &str,
+    census: &mut Guilds,
+) -> Result<(), String> {
+    let core = rules.core();
+    let adventure = game.adventure();
+    let mains: BTreeSet<TownId> = (setup.players.iter())
+        .filter_map(|player| player.start.main_town)
+        .filter(|main| main.generates_hero)
+        .map(|main| main.town)
+        .collect();
+    let mut stands = BTreeMap::<HeroId, TownId>::new();
+    for (index, teaches) in (0u16..).zip(taught) {
+        let town = TownId::new(index);
+        let visitor = adventure.town_visitor(town);
+        let garrison = adventure.town_hero(town).map(|hero| hero.id);
+        census.add(GARRISON_HEROES, usize::from(garrison.is_some()), name);
+        let visited = visitor.is_some() && teaches.is_some();
+        census.add(GUILD_VISITED, usize::from(visited), name);
+        for hero in [visitor, garrison].into_iter().flatten() {
+            stands.insert(hero, town);
+        }
+    }
+    let level = |spell: SpellId| core.spell(spell).map_or(u8::MAX, |s| s.level);
+    for hero in adventure.heroes() {
+        let details = (game.hero(hero.id)).ok_or_else(|| format!("{:?}: no record", hero.id))?;
+        let initial = initial_spells(setup, core, hero.id, details.hero_type);
+        let placed = hero.id.index() < setup.heroes.len();
+        let town = stands.get(&hero.id).copied();
+        let teaches = town
+            .and_then(|t| taught.get(t.index()))
+            .and_then(Option::as_ref);
+        let pick = |a, b| if placed { a } else { b };
+        census.add(ON_ENTRANCE, usize::from(town.is_some()), name);
+        let kind = pick(PLACED_ON_ENTRANCE, MAIN_ON_ENTRANCE);
+        census.add(kind, usize::from(town.is_some()), name);
+        let mut learns = Vec::new();
+        if let Some(spells) = teaches {
+            census.add(pick(PLACED_IN_GUILD, MAIN_IN_GUILD), 1, name);
+            if h3_heroes::wears_spell_book(details, core) {
+                census.add(pick(PLACED_BOOK, MAIN_BOOK), 1, name);
+                let top = h3_heroes::learn_level(details, core);
+                let fresh = || spells.iter().copied().filter(|s| !initial.contains(s));
+                let bound = fresh().any(|s| level(s) > top);
+                census.add(WISDOM_BOUND, usize::from(bound), name);
+                learns = fresh().filter(|&s| level(s) <= top).collect();
+            }
+        }
+        let mut expected: BTreeSet<SpellId> = initial.iter().copied().collect();
+        if town.is_some_and(|t| mains.contains(&t)) {
+            census.add(MAIN_LEARNED, usize::from(!learns.is_empty()), name);
+            census.add(SPELLS_LEARNED, learns.len(), name);
+            expected.extend(&learns);
+        } else if placed {
+            census.add(PLACED_LATER, usize::from(!learns.is_empty()), name);
+        }
+        let knows: BTreeSet<SpellId> = details.spells.iter().copied().collect();
+        if knows.len() != details.spells.len() || knows != expected {
+            return Err(format!(
+                "{:?} ({}) knows {:?}, the census's reading {expected:?}",
+                hero.id,
+                pick("placed", "a main town's"),
+                details.spells
+            ));
+        }
+        census.add(HEROES_CHECKED, 1, name);
+    }
+    Ok(())
+}
+
+/// A hero's spells as the build gives them before any learning (GAM-HER-001; E09 T37b): its
+/// setup's customisations (none for a main town's hero) over its type's map-wide entry, else its
+/// type's.
+fn initial_spells(
+    setup: &GameSetup,
+    core: &h3_content::Ruleset,
+    hero: HeroId,
+    hero_type: HeroTypeId,
+) -> Vec<SpellId> {
+    let own = (setup.heroes.get(hero.index()))
+        .map_or_else(HeroDetailsSetup::default, |h| h.details.clone());
+    let entry = (setup.custom_types.iter())
+        .find(|(t, _)| *t == hero_type)
+        .map(|(_, entry)| entry);
+    let custom = entry.map_or_else(|| own.clone(), |entry| own.over(entry));
+    custom.spells.unwrap_or_else(|| {
+        core.hero_type(hero_type)
+            .map_or_else(Vec::new, |ty| ty.spells.clone())
+    })
+}
+
+/// Prints the census of the guilds (E09 T50, [`map_guilds`], [`built_guilds`]) and checks it
+/// against the survey's ([`SURVEY_GUILDS`]: `E09-guild.md` §1, §10); every town's guild and every
+/// hero's spells at the start are checked as each game builds.
+fn guild_differences(census: &Guilds) -> usize {
+    println!(
+        "  the mage guilds (seed {SEED}): the spell sets as the maps give them, every town's \
+         guild checked against the census's walk of TWN-GLD-002 and -003 and its Aurora set, \
+         every hero's spells at the start against TD-10:"
+    );
+    let maps = |what: &str| census.1.get(what).map_or(0, BTreeSet::len);
+    for (what, n) in &census.0 {
+        println!("    {what}: {n} ({} maps)", maps(what));
+    }
+    for what in [SHORT, LIBRARIES, AURORAS, VORTICES, PLACED_BOOK, TD_25] {
+        if let Some(on) = census.1.get(what) {
+            let names: Vec<&str> = on.iter().map(String::as_str).collect();
+            println!("      {what}: {}", names.join(", "));
+        }
+    }
+    let mut differences = 0;
+    for (what, expected, on) in SURVEY_GUILDS {
+        let found = census.0.get(what).copied().unwrap_or(0);
+        if found != expected || on.is_some_and(|on| on != maps(what)) {
+            let survey = on.map_or_else(String::new, |on| format!(" on {on} maps"));
+            println!(
+                "h3-map: the census's {what} ({found} on {} maps) is not the survey's \
+                 ({expected}{survey})",
+                maps(what)
+            );
+            differences += 1;
+        }
+    }
+    differences
 }
