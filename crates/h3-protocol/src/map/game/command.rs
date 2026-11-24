@@ -7,8 +7,7 @@
 //! bounds, so it never saturates in play.
 
 use h3_adventure::{
-    AdventureCommand as EngineAdventure, AdventureCommandError, AdventureSpell, CastError,
-    StandError,
+    AdventureCommand as EngineAdventure, AdventureCommandError, CastError, StandError,
 };
 use h3_content::{CreatureTypeId, Formation as EngineFormation};
 use h3_contracts::{HeroId, PlayerId, TownId};
@@ -712,21 +711,10 @@ const fn cast_reject(error: MapCastError) -> CastReject {
                 CastError::AlreadyOn => SpellReject::AlreadyOn {},
                 CastError::NotHigher => SpellReject::NotHigher {},
                 CastError::NotBuilt(effect) => SpellReject::NotBuilt {
-                    effect: effect_code(effect),
+                    effect: effect.code(),
                 },
             },
         },
-    }
-}
-
-/// A spell behaviour's code on the wire, in the original's spell order (E08 T142a).
-pub(crate) const fn effect_code(effect: AdventureSpell) -> u8 {
-    match effect {
-        AdventureSpell::SummonBoat => 0,
-        AdventureSpell::ScuttleBoat => 1,
-        AdventureSpell::Fly => 2,
-        AdventureSpell::WaterWalk => 3,
-        AdventureSpell::DimensionDoor => 4,
     }
 }
 

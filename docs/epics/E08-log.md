@@ -22264,7 +22264,10 @@ from GitHub; the VM restarted during the setup's baseline (CI's run on `master` 
   against `master`, every workload inside the gate (the forks +0.1 to +0.3 % against `master`:
   the state's one pointer more), none re-baselined.
 - **Coverage:** the details' lookup of a hero on the map (never missing, GAM-HER-001) left a `?`
-  region in `check_cast`'s closure: an `Option::map` instead.
+  region in `check_cast`'s closure: an `Option::map` instead. CI's first run found the wire's
+  `effect_code` match in `h3-protocol` (the server scope's coverage, which the scoped verify
+  leaves out): only Dimension Door's arm had a sample. The wire now takes
+  `AdventureSpell::code` (made public, every arm covered by the base pack's hash).
 
 **Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session);
 `check-lane --cross-lane`, `cargo check --workspace --all-targets`; `h3-protocol`'s, `h3-server`'s,

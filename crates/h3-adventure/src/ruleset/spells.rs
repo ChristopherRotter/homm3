@@ -72,7 +72,9 @@ impl AdventureSpell {
         !matches!(self, Self::Fly | Self::WaterWalk)
     }
 
-    const fn code(self) -> u8 {
+    /// Its place in the original's spell order, 0 to 4 (the hash's and the wire's code; [`Self::ALL`]'s
+    /// index).
+    pub const fn code(self) -> u8 {
         match self {
             Self::SummonBoat => 0,
             Self::ScuttleBoat => 1,
