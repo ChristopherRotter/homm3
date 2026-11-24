@@ -363,25 +363,21 @@ pub(super) fn in_town(town: &ObjectSetup, pos: Pos) -> bool {
     blocks(town, pos) && !entrances(town).any(|entrance| entrance == pos)
 }
 
-/// The hero pool's inputs as a game's setup holds them: the allowed heroes, the colour masks, the
-/// prisoners.
-type Pool = (Vec<HeroTypeId>, Vec<(HeroTypeId, u8)>, Vec<HeroTypeId>);
+/// The hero pool's inputs as a game's setup holds them: the allowed heroes, the colour masks (the
+/// prisoners' types are the setup's prisoners', E08 T141a).
+type Pool = (Vec<HeroTypeId>, Vec<(HeroTypeId, u8)>);
 
 /// The hero pool's inputs (design note §7; survey §4.2): the hero types the map allows (an
-/// RoE-format map's 128 bits and the 16 Conflux heroes besides; from AB on the 156 bits), SoD's
-/// disposed heroes' types with their colour masks and the prisoners' types (class 62), each in
-/// the map's order. A type the ruleset lacks (a hero of an expansion it does not enable) is left
-/// out: no draw can take it.
+/// RoE-format map's 128 bits and the 16 Conflux heroes besides; from AB on the 156 bits) and SoD's
+/// disposed heroes' types with their colour masks, each in the map's order. A type the ruleset
+/// lacks (a hero of an expansion it does not enable) is left out: no draw can take it. Since E08
+/// T141a the prisoners (class 62) are the import's with their bodies, each type the setup's
+/// prisoner's (`GameSetup::prisoners`).
 ///
 /// # Errors
 ///
-/// [`ImportError::UnknownCode`]: a disposed hero's or a prisoner's type past the format's, the
-/// disposed heroes first.
-pub(super) fn pool(
-    map: &RawMap,
-    rules: &GameRuleset,
-    prisoners: &[&Body],
-) -> Result<Pool, ImportError> {
+/// [`ImportError::UnknownCode`]: a disposed hero's type past the format's.
+pub(super) fn pool(map: &RawMap, rules: &GameRuleset) -> Result<Pool, ImportError> {
     let roe = map.header.version == Version::RoE;
     let allowed = (0..HERO_TYPE_CODES)
         .filter(|&code| map.allowed_heroes.get(code) || roe && CONFLUX_HEROES.contains(&code))
@@ -393,16 +389,7 @@ pub(super) fn pool(
         .map(|hero| Ok(pool_type(rules, hero.hero_type)?.map(|t| (t, hero.players))))
         .filter_map(Result::transpose)
         .collect::<Result<_, ImportError>>()?;
-    let prisoners = prisoners
-        .iter()
-        .filter_map(|body| match body {
-            Body::Hero(hero) => Some(hero.hero_type),
-            _ => None,
-        })
-        .map(|code| pool_type(rules, code))
-        .filter_map(Result::transpose)
-        .collect::<Result<_, ImportError>>()?;
-    Ok((allowed, masks, prisoners))
+    Ok((allowed, masks))
 }
 
 /// The hero type of a format's code, `None` when the ruleset lacks it.

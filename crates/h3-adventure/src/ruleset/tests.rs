@@ -1720,6 +1720,7 @@ mod banks;
 mod dwellings;
 mod economy;
 mod garrisons;
+mod prisons;
 mod rewards;
 mod taverns;
 mod teleporters;

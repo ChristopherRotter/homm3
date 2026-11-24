@@ -23,22 +23,19 @@ T45, AI-Q23).
   to T1a1c; the survey's §1).
 - **E31 T1a2 — the values, in four parts** (AI-Q25: T1a2b to T1a2d read by sub-agents):
   **done** 2026-11-23 (`E31-log.md` T1a2; the survey's §2).
-- **E31 T1a3 — the towns and the answers, in four parts** (AI-Q26): **T1a3a** (the build choice)
-  and **T1a3b** (the hires) **done** 2026-11-23 (`E31-log.md` T1a3a, T1a3b; the survey §3.1, §3.2).
-- **E31 T1a3c — the town visit** (`Heroes3.exe` staged, `pip install capstone pefile`, a cloud
-  sandbox): `ai_town_visit` 0x5253D0 whole with the nine unnamed helpers it calls (the garrison
-  exchange, the recruits, the buys, by their calls an artifact merchant, the Blacksmith and the
-  artifacts' arrangement; `scripts/exe.py callees ai_town_visit`) and `ai_university` 0x524ED0,
-  and the army plan's open pieces (0x42C3B0, 0x42D1B0, 0x42D870, 0x42D8E0; where
-  `ai_army_plan_run`'s purchases go; `ai_town_defence_recruit`'s recruits); about 2 700
-  instructions: confirm a further cut at its start. Into the survey's §3.3.
+- **E31 T1a3 — the towns and the answers, in four parts** (AI-Q26): **T1a3a** (the build choice),
+  **T1a3b** (the hires) and **T1a3c** (the town visit, in two, AI-Q27) **done** 2026-11-23
+  (`E31-log.md` T1a3a to T1a3c; the survey §3.1 to §3.3).
 - **E31 T1a3d — the answers**: the 43 functions of the computer's ranges that the game's code
   calls (about 25 of them answers to visits: `ai_garrison_visit`, `ai_dwelling_visit`,
-  `ai_join_without_room`, `ai_artifact_received`, `ai_meeting`, …), how `ai_fight_answer`'s 17
+  `ai_join_without_room`, `ai_meeting`, …; `ai_artifact_received` read at T1a3c), how `ai_fight_answer`'s 17
   callers use the object value, the Seer's reward (0x573A70), the market visits (a map Tavern
   included), the allies' shares (`ai_ally_resource_share` 0x429110); every `ai_*` call classified
   a choice or a rule, with T1a2's (the survey §2.5) and §3.1 to §3.3's, into the survey's §3.4
-  table.
+  table. Open from T1a3c: `ai_battle_army_split` 0x42DB20 past its frame with 0x42DD70, and
+  whether `ai_artifact_market_price`'s prices (the merchants', the Black Market's) are the human's.
+  Measure it at its start and confirm a cut by size (the user, 2026-11-23: a couple of small
+  tasks or one bigger one a session).
 - Then T1a4 (it maps the rest of the third range, 0x423EE0 to 0x42A000: the survey's §0), T1b.
 
 ## Inbox
@@ -76,6 +73,16 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
   and `bots-neutral-v1.json` regenerated (only `engine.core` moved). The E25 ceiling records
   (`python/records/ceiling/*.json`) keep the old `core` as the record of their runs (no test reads
   it); nothing reads the flags until E08 T142 and T143.
+
+- 2026-11-23 (E08 T141a, `adventure/e08-t141a`, `cross-lane` in your paths with the user's
+  consent, E08 decision 413; **adventure action encoding v20 taken (v19 the town lane's E09 T49b), for your review**): a
+  player's hero slots are now its list of heroes' first eight places
+  (`AdventureState::listed_hero`; GAM-HER-003: the start list by hero type, then each hero that
+  joins the map at the end, each that leaves closing up), not its heroes by id; no entry moves
+  (`hero_in_slot`, `revisit_entry`; the test checks the slots against `hero_list`). The casts'
+  planned encoding is v21. The adventure part's hash moved (the Prison and the Market of Time):
+  `bots-report-v1.json` and `bots-neutral-v1.json` regenerated (only `engine.adventure` moved;
+  the ceiling records keep theirs). The observation's `hero_list` is new (protocol v81).
 
 **From the town lane** (E09 T43, `town/e09-t43`, docs only; **planned, nothing to do now**):
 

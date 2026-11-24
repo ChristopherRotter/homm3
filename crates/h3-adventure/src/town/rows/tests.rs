@@ -148,6 +148,11 @@ fn setup(
     setup
 }
 
+/// Red's list of heroes in `state` (GAM-HER-003).
+fn start_list(state: &AdventureState) -> Vec<HeroId> {
+    state.hero_list(RED)
+}
+
 /// Red's town with `garrison` and red's visitor with `army` on its entrance.
 fn at_town(rules: &Rules, garrison: Vec<ArmyStack>, army: Vec<ArmyStack>) -> AdventureState {
     started(rules, &setup(rules, Some(0), garrison, (ENTRANCE, army))).unwrap()
@@ -400,6 +405,12 @@ fn the_garrison_hero_leaves_onto_the_entrance_with_its_points_kept() {
     assert!(state.town_heroes().is_empty());
     let mut expected = start;
     expected.hero_mut(VISITOR).unwrap().movement = 300;
+    // E08 T141a: back on the map last in red's list, hero 2 moved up (GAM-HER-003).
+    let second = HeroId::new(2);
+    assert_eq!(start_list(&expected), [VISITOR, second]);
+    assert_eq!(state.hero_list(RED), [second, VISITOR]);
+    expected.hero_mut(VISITOR).unwrap().listed = 1;
+    expected.hero_mut(second).unwrap().listed = 0;
     assert_eq!(state, expected);
     assert_eq!(
         events,

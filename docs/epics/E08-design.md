@@ -260,6 +260,22 @@ the order of §10. A computer player's casts are E31's.
   the visitor's colour (its mask's bit added; no mask test, survey §2.2), the hero appended last to
   the player's list, `free_prisoner` with its day's land points, `PrisonerFreed { hero, player,
   tile }`. No decision, no choice: the visit's outcome (ADR-0017 point 10).
+- *As built (T141a, decisions 412, 413):* the import reads each body into a `GamePrisonerSetup`
+  (`ImportError::PrisonBody`, `Unsupported::PrisonerOnWater`; the town lane's `pool` no longer
+  reads the bodies); the game refuses a prisoner's type the ruleset lacks, a placed hero's or an
+  earlier prisoner's (`GameSetupError::PrisonerType`) and builds the prisoners after the build's
+  heroes (the main towns' included) and before the customised types' records, their armies and
+  details drawn after the heroes', each its type's record (`HeroPool::set_record`). The adventure
+  holds each Prison's prisoner, army by slot and formation as its drawn content
+  (`AdventureSetup::prisoners` in Prison object order, `Resolved::Prisoner`, `SetupError::Prisoners`).
+  The visit (`AdventureOutcome::prison`, a `PrisonVisit`) is settled by `GameState::settle_prison`;
+  `AdventureState::free_prisoner` computes the day's points itself (`day_points` over the store's
+  details) and `empty_prison` removes the Prison. **The list** (ADV-Q64, decision 413: built here,
+  the original's): `HeroOnMap::listed`, each hero's place in its owner's list from 0, dense (a join
+  takes the count, a leave moves the later ones up: `next_listed`, `leave_list`), the start list by
+  type then the main towns' heroes (the game hands the adventure its heroes in that order,
+  GAM-SET-004), `hero_list`, `listed_hero`, the observation's `hero_list`, the env's slots (action
+  encoding v20, the AI lane's). The freed prisoner joins the end.
 
 ### 16. Events and the wire (`h3-protocol` v79, the server lane's, `cross-lane` at each task)
 
@@ -270,6 +286,13 @@ reused (increment 11's), `DaySpellsChanged { hero, spells }` (the owner; also at
 and at boarding), `PrisonerFreed`, `PrisonFull`, `PrisonEmptied`. The own hero view gains the day
 spells; the wire's command `Cast`. Whether a `GameEvent` stays `Copy` (E09 T47b's 104 bytes) is the
 event's size: none of these holds a `Vec`.
+
+*As built (T141a, protocol v81):* `PrisonerFreed { player, hero, hero_type, pos, seen_by, view }`
+(a hire's shape, its owner's view `TavernHero` for the owner alone; *agent's call*: the fold needs
+the freed hero whole, so its lists follow as a new `PrisonerPartSeen { player, hero, part:
+TavernPart }` and its other parts as `HiredPartSeen`), `PrisonFull { player, hero }`,
+`PrisonEmptied { player, hero }` (the visitor); the observation's `hero_list` and the fold's
+`keep_list`. The rest of the list above is T142's to T144b's.
 
 ### 17. The env, replays, maps, properties, benchmarks
 
@@ -295,7 +318,11 @@ event's size: none of these holds a `Vec`.
 
 ### 18. Versions, rule ids, quirks, stubs
 
-- **Versions** (one per task, decision 384): adventure ruleset part v25 (§1 to §3), map import v29
+- **Versions** (one per task, decision 384; *as built:* T141a took the part's v25, import v29,
+  adventure state v28 (the list and the Prisons' contents), game state v39, protocol v81 and
+  encoding v20, so §8's day spells take adventure state v29, the casts protocol v82 and encoding
+  v21; the town lane's T49b had taken protocol v80, replay format v25 and encoding v19):
+  adventure ruleset part v25 (§1 to §3), map import v29
   (§7), adventure state hash v28 (§8), game state hash v39 (§15, §14's command needs no state),
   protocol v79, replay format v24, encoding v18; the core ruleset hash at the `shared/` task (the
   flags). The town lane's and the server lane's plans may take a number first: rebase and bump.

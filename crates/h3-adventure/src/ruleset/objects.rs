@@ -443,6 +443,16 @@ pub enum ObjectKind {
     /// original's class 106): entered, its machines. Visited from T134b2 (its hire question and
     /// dialog).
     WarMachineFactory(WarMachineFactory),
+    /// A Prison (ADV-PRI-001 to -003; E08 T141a, increment 15's design note §1; the original's
+    /// class 62): visited from a neighbour, every time, by every player; no parameter. The
+    /// object holds its prisoner's `HeroId`, drawn when the game is built
+    /// ([`crate::Resolved::Prisoner`]); its visit names the prisoner and the game decides
+    /// ([`crate::AdventureOutcome::prison`]).
+    Prison,
+    /// An object entered and never visited (ADV-OBJ-008; E08 T141a, increment 15's design note
+    /// §2; the Market of Time, the original's class 50): a step onto its entrance ends the move
+    /// there at the step's price, as every entrance's, and nothing happens: no mark, no event.
+    Empty,
 }
 
 /// How long a hero holds a timed mark (E08 T115a; increment 12's design note §12.4): the
@@ -616,6 +626,10 @@ pub(crate) enum Effect<'k> {
     /// The hire question naming its machines in order, whose yes opens the hire dialog of them
     /// (a War Machine Factory, ADV-WMF-001, ADV-HIR-002; E08 T134b2).
     Factory(&'k WarMachineFactory),
+    /// The prisoner named to the game (a Prison, ADV-PRI-002; E08 T141a).
+    Prison,
+    /// Nothing (an object entered and never visited, the Market of Time, ADV-OBJ-008; E08 T141a).
+    Empty,
 }
 
 impl ObjectKind {
@@ -632,7 +646,8 @@ impl ObjectKind {
     /// the monoliths and the Subterranean Gates, whose visit is the jump; T105a2: the Whirlpool,
     /// whose visit is its loss and the jump; T114a1: the garrisons; T115b: the fifteen bonus
     /// visitables; E09 T39a: the map's Tavern and the Den of Thieves; E08 T133a2: the markets;
-    /// T134a: the Altars; T134b1: the Hill Forts; T134b2: the War Machine Factories.
+    /// T134a: the Altars; T134b1: the Hill Forts; T134b2: the War Machine Factories; T141a: the
+    /// Prison and the Market of Time (entered, nothing happens).
     /// Who reaches a kind's visit is the passage's: on water
     /// only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
@@ -719,6 +734,9 @@ impl ObjectKind {
             Self::Altar(_) => Some(Effect::Altar),
             Self::HillFort(_) => Some(Effect::HillFort),
             Self::WarMachineFactory(factory) => Some(Effect::Factory(factory)),
+            // E08 T141a (increment 15's design note §1, §2).
+            Self::Prison => Some(Effect::Prison),
+            Self::Empty => Some(Effect::Empty),
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
@@ -1132,6 +1150,10 @@ pub enum ObjectKindDef {
     HillFort(HillFort),
     /// [`ObjectKind::WarMachineFactory`] (E08 T132a2): its type entered.
     WarMachineFactory(WarMachineFactoryDef),
+    /// [`ObjectKind::Prison`] (E08 T141a): its type visited from a neighbour.
+    Prison,
+    /// [`ObjectKind::Empty`] (E08 T141a): its type entered.
+    Empty,
 }
 
 /// An object type as a pack defines it.
@@ -1354,6 +1376,17 @@ pub(super) fn compile_object_types(
         ) && def.visit != Visit::Enter
         {
             return Err(invalid("a trade or service is not entered"));
+        }
+        // A Prison is visited from a neighbour (class 62 is on the original's
+        // `object_classes_not_entered` 0x63AA58: the prisoner stands on the entrance), the Market
+        // of Time entered (class 50 is on neither list; E08 T141a, increment 15's design note §1,
+        // §2; batch E15's E15-1, E15-3).
+        // rule: ADV-PRI-001, ADV-OBJ-008
+        if matches!(kind, ObjectKind::Prison) && def.visit != Visit::Neighbour {
+            return Err(invalid("a prison is not visited from a neighbour"));
+        }
+        if matches!(kind, ObjectKind::Empty) && def.visit != Visit::Enter {
+            return Err(invalid("an empty object is not entered"));
         }
         tables.types.push(ObjectType {
             key: def.key.clone(),
@@ -1965,6 +1998,8 @@ fn compile_kind(
         ObjectKindDef::Market(def) => compile_market(def).map(ObjectKind::Market),
         ObjectKindDef::Altar(def) => compile_altar(scope, def)?.map(ObjectKind::Altar),
         ObjectKindDef::HillFort(def) => compile_hill_fort(def).map(ObjectKind::HillFort),
+        ObjectKindDef::Prison => Ok(ObjectKind::Prison),
+        ObjectKindDef::Empty => Ok(ObjectKind::Empty),
         ObjectKindDef::WarMachineFactory(def) => {
             compile_factory(scope, def)?.map(ObjectKind::WarMachineFactory)
         }
@@ -2074,7 +2109,8 @@ impl CanonicalHash for ObjectType {
     /// part v18 34 monolith, 35 Subterranean Gate, 36 Whirlpool; since part v20 37 garrison, 38
     /// bonus, 39 Fountain of Fortune, 40 Magic Well, 41 Magic Spring, 42 Stables, 43 Sirens; since
     /// part v21 44 creature bank; since part v22 45 Tavern, 46 Den of Thieves; since part v23 47
-    /// market, 48 Altar of Sacrifice, 49 Hill Fort, 50 War Machine Factory) and parameters (a pickup's own tag, 0 resource, 1 one of, 2
+    /// market, 48 Altar of Sacrifice, 49 Hill Fort, 50 War Machine Factory; since part v25 51
+    /// Prison, 52 empty) and parameters (a pickup's own tag, 0 resource, 1 one of, 2
     /// paired, then its fields in order; a monster's levels as 0 for none, else 1, low, high; a
     /// ground's battlefield key, since part v10 whether it takes the native price away; an
     /// artifact's classes as 0 for none, else 1 and the classes; a Witch Hut's two skill lists; a
@@ -2370,6 +2406,8 @@ impl CanonicalHash for ObjectType {
                 h.write_u8(50);
                 factory.hash_into(h);
             }
+            ObjectKind::Prison => h.write_u8(51),
+            ObjectKind::Empty => h.write_u8(52),
         }
     }
 }

@@ -414,6 +414,34 @@ fn event(e: &EngineEvent) -> GameEvent {
             hero: hero.raw(),
             part: hired_part(part),
         },
+        // E08 T141a (v81).
+        EngineEvent::PrisonerFreed {
+            player,
+            hero,
+            hero_type,
+            pos: tile,
+            seen_by: _,
+            view,
+        } => GameEvent::PrisonerFreed {
+            player: player.raw(),
+            hero: hero.raw(),
+            hero_type: hero_type.raw(),
+            pos: pos(tile),
+            view: view.map(tavern_head),
+        },
+        EngineEvent::PrisonerPartSeen { player, hero, part } => GameEvent::PrisonerPartSeen {
+            player: player.raw(),
+            hero: hero.raw(),
+            part: tavern_part(part),
+        },
+        EngineEvent::PrisonFull { player, hero } => GameEvent::PrisonFull {
+            player: player.raw(),
+            hero: hero.raw(),
+        },
+        EngineEvent::PrisonEmptied { player, hero } => GameEvent::PrisonEmptied {
+            player: player.raw(),
+            hero: hero.raw(),
+        },
         // E09 T39b2 (v74).
         EngineEvent::ThievesGuildSeen { player, level } => GameEvent::ThievesGuildSeen {
             player: player.raw(),

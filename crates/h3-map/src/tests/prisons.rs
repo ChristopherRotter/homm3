@@ -2,8 +2,8 @@
 //! design note `docs/epics/E08-design.md` §7, survey `docs/rules/surveys/E08-spells.md` §1): a
 //! prison (class 62) with its prisoner's body, a placed hero's without an owner, read back as
 //! written in SoD and RoE, its type left out of the map's allowed heroes; the Market of Time
-//! (class 50) without a body, the one shipped map's template; and their import until T141a types
-//! them (a prisoner's type in the setup's prisoners, each object a blocker).
+//! (class 50) without a body, the one shipped map's template; and since E08 T141a their import:
+//! both typed, the prisoner's body read as a placed hero's into the setup's prisoners.
 
 use super::import::{ROE, SOD};
 use super::limits;
@@ -204,7 +204,7 @@ fn the_market_of_time_reads_back_without_a_body() {
 }
 
 #[test]
-fn the_import_takes_the_prisoner_s_type_and_both_objects_as_blockers_until_t141a() {
+fn the_import_types_both_objects_and_reads_the_prisoner_s_body_as_a_placed_hero_s() {
     for (format, rules, hero_type, sod) in [
         (w::Format::Sod, &*SOD, 155, true),
         (w::Format::RoE, &*ROE, 0, false),
@@ -213,17 +213,47 @@ fn the_import_takes_the_prisoner_s_type_and_both_objects_as_blockers_until_t141a
         let setup = import(&raw, rules).unwrap();
         setup.validate(rules).unwrap();
         let core = rules.core();
-        let prisoner = core.hero_type_by_key(import::codes::HERO_TYPES[usize::from(hero_type)]);
+        let prisoner = core
+            .hero_type_by_key(import::codes::HERO_TYPES[usize::from(hero_type)])
+            .unwrap();
+        // E08 T141a: one prisoner, its body's customisations as a placed hero's would be.
+        assert_eq!(setup.prisoners.len(), 1, "{format:?}");
+        let held = &setup.prisoners[0];
+        assert_eq!(held.hero_type, prisoner, "{format:?}");
+        assert_eq!(held.formation, h3_content::Formation::Tight);
+        assert_eq!(held.details.experience, Some(5000));
+        assert!(matches!(&held.army, h3_game::HeroArmy::Custom(stacks) if stacks.len() == 2));
+        assert_eq!(held.details.skills.as_ref().map(Vec::len), Some(2));
+        assert_eq!(held.details.primary.is_some(), sod, "{format:?}");
+        assert!(!setup.allowed_heroes.contains(&prisoner));
+        // Both typed: the Prison, then the Market of Time.
+        let types: Vec<_> = setup.map.objects.iter().map(|o| o.object_type).collect();
+        let part = rules.adventure();
         assert_eq!(
-            setup.prisoners,
-            prisoner.into_iter().collect::<Vec<_>>(),
+            types,
+            [
+                part.object_type_by_key("base:prison"),
+                part.object_type_by_key("base:market_of_time")
+            ],
             "{format:?}"
         );
-        assert!(!setup.allowed_heroes.contains(&prisoner.unwrap()));
-        // Both untyped (no kind yet: T141a), each blocking its two tiles.
-        assert_eq!(setup.map.objects.len(), 2);
-        for object in &setup.map.objects {
-            assert_eq!(object.object_type, None);
-        }
+        assert!(types.iter().all(Option::is_some));
+        // The game builds: the prisoner in the store, in no list, its type a prisoner's.
+        let game = h3_game::GameState::new(rules, &setup, 1).unwrap();
+        let red = h3_contracts::PlayerId::new(0);
+        let id = game
+            .adventure()
+            .map()
+            .objects()
+            .iter()
+            .find_map(|o| match o.resolved {
+                h3_adventure::Resolved::Prisoner { hero, .. } => Some(hero),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(game.hero(id).unwrap().hero_type, prisoner);
+        assert_eq!(game.hero(id).unwrap().experience, 5000);
+        assert!(game.adventure().hero(id).is_none());
+        assert!(!game.adventure().hero_list(red).contains(&id));
     }
 }

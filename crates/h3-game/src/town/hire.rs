@@ -208,6 +208,8 @@ fn place<S: Sink>(
         movement: away.movement,
         boat: None,
         max_movement: away.max_movement,
+        // E08 T141a: the adventure lists it last (`place_hired`).
+        listed: 0,
     };
     let (adventure, _) = state.adventure_with_heroes();
     let seen_by = adventure.place_hired(rules.core(), placed);

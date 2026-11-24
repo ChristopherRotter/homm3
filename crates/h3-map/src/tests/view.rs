@@ -1373,6 +1373,47 @@ fn check_told(
                 prop_assert!(at.is_some(), "{:?} without its hire", event);
                 at.unwrap().2.push(part);
             }
+            // E08 T141a (ADV-PRI-002, -003): a freed prisoner as a hire, its view the owner's
+            // alone and its lists following.
+            GameEvent::PrisonerFreed {
+                player,
+                hero,
+                pos,
+                seen_by,
+                view,
+                ..
+            } => {
+                prop_assert_eq!(view.is_some(), player == viewer, "{:?}", event);
+                prop_assert!(seen_by.contains(viewer), "{:?}", event);
+                prop_assert!(!heroes.iter().any(|&(id, _)| id == hero), "{:?}", event);
+                heroes.push((hero, pos));
+                if let Some(view) = view {
+                    let view = TavernHeroView {
+                        hero: view,
+                        army: Vec::new(),
+                        skills: Vec::new(),
+                        artifacts: Vec::new(),
+                    };
+                    hired.push((hero, Some(view), Vec::new()));
+                }
+            }
+            GameEvent::PrisonerPartSeen { player, hero, part } => {
+                prop_assert_eq!(player, viewer);
+                let at = hired.iter_mut().rev().find(|(id, ..)| *id == hero);
+                let view = at.and_then(|(_, view, _)| view.as_mut());
+                prop_assert!(view.is_some(), "{:?} without its freeing", event);
+                let view = view.unwrap();
+                match part {
+                    TavernPart::Stack(stack) => view.army.push(stack),
+                    TavernPart::Skill { skill, level } => view.skills.push((skill, level)),
+                    TavernPart::Artifact { place, artifact } => {
+                        view.artifacts.push((place, artifact));
+                    }
+                }
+            }
+            GameEvent::PrisonFull { player, .. } | GameEvent::PrisonEmptied { player, .. } => {
+                prop_assert_eq!(player, viewer);
+            }
             GameEvent::HeroChanged { player, hero, .. }
             | GameEvent::CreaturesRaised { player, hero, .. }
             | GameEvent::LevelGained { player, hero, .. } => {

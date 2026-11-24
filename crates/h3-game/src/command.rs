@@ -993,7 +993,8 @@ pub enum GameEvent {
     },
     /// A part of a hired hero's details its tavern slot's view did not show (E09 T38a1, decision
     /// 141): told after its [`Self::HeroHired`], one per part in [`HiredPart`]'s order, so that
-    /// the owner's fold of the slot's view gives the hero's details whole. Seen by `player`.
+    /// the owner's fold of the slot's view gives the hero's details whole; since E08 T141a also
+    /// after a [`Self::PrisonerFreed`]'s parts, for the freed hero. Seen by `player`.
     HiredPartSeen {
         /// The hirer: the hero's owner.
         player: PlayerId,
@@ -1001,6 +1002,58 @@ pub enum GameEvent {
         hero: HeroId,
         /// The part.
         part: HiredPart,
+    },
+    /// A Prison's prisoner freed for the visitor's owner (ADV-PRI-002, GAM-SET-001; E08 T141a,
+    /// increment 15's design note §15, §16; survey `E08-spells.md` §2.2 point 3): the hero placed
+    /// on the Prison's visitable tile, last in the owner's list, after the Prison's
+    /// `ObjectRemoved`. Seen by its owner and by every player that sees the tile (`seen_by`, as a
+    /// hire's [`Self::HeroHired`]), each projected naming the viewer alone; the hero's `view` (the
+    /// tavern hero screen's parts, decision 134's) for the owner alone, its lists following as
+    /// [`Self::PrisonerPartSeen`] and its other parts as [`Self::HiredPartSeen`], its points by
+    /// the command's `MovementChanged`. A viewer's fold adds the hero on the map (owner, tile,
+    /// type; on land); its owner's makes its view its hero's.
+    PrisonerFreed {
+        /// The visitor's owner: the hero's.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// Its type: identity and class.
+        hero_type: HeroTypeId,
+        /// Its tile.
+        pos: Pos,
+        /// The players that see it (the owner among them).
+        seen_by: Viewers,
+        /// The hero as its owner sees it first, for its owner alone.
+        view: Option<TavernHero>,
+    },
+    /// A part of a freed prisoner's view that is one of a list (E08 T141a; [`TavernPart`]'s,
+    /// in its order: the army's stacks by slot, the secondary skills, the worn artifacts by
+    /// position, the backpack's first places): told after its [`Self::PrisonerFreed`], before its
+    /// [`Self::HiredPartSeen`]. Seen by `player`.
+    PrisonerPartSeen {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The hero.
+        hero: HeroId,
+        /// The part.
+        part: TavernPart,
+    },
+    /// A Prison's visit found the visitor's owner at the town part's most heroes on the map
+    /// (ADV-PRI-002; E08 T141a, the original's ADVEVENT 103): nothing changed. Seen by `player`.
+    PrisonFull {
+        /// The visitor's owner.
+        player: PlayerId,
+        /// The visiting hero.
+        hero: HeroId,
+    },
+    /// A Prison's visit found a prisoner that is no prisoner any more (ADV-PRI-002; E08 T141a, the
+    /// original's ADVEVENT 104; unreachable without campaigns): the Prison taken off the map, its
+    /// `ObjectRemoved` before. Seen by `player`.
+    PrisonEmptied {
+        /// The visitor's owner.
+        player: PlayerId,
+        /// The visiting hero.
+        hero: HeroId,
     },
     /// A Den of Thieves' visit showed the visitor's owner the Thieves' Guild at everything
     /// (ADV-VIS-008, TWN-TAV-007; E09 T39b2, design note §74, §75): its level

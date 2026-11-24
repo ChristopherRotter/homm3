@@ -166,7 +166,7 @@ TURN_LIMIT = 30000
 # The most values `roll:<name>:<a>,<b>,...` queues (xdd.c's QUEUE).
 QUEUE = 8
 # The fields of xdd.dll's ack (xdd.c's `control`; `Game.ack`).
-ACK_FIELDS = 17
+ACK_FIELDS = 18
 
 
 class Unreadable(RuntimeError):
@@ -590,8 +590,8 @@ class Game:
         BinkGetSummary goes through xdd.dll's guard, (E27 M2 T5b2) with sound the clips' sound
         hooks (3: SmackSoundUseMSS and SMACKW32's two timers) and Bink's Miles functions answered
         (11 once the sound started), (E24 M4 T1b1) the generator's seeds set (`seed`),
-        (E14 T1b1) the date imports hooked (2 with `H3TIME`, xdd.c's 9.): ACK_FIELDS, padded with
-        0; None
+        (E14 T1b1) the date imports hooked (2 with `H3TIME`, xdd.c's 9.), (E14 T1b2) the
+        generator's hooks placed (19 with `H3RMG`, xdd.c's 10.): ACK_FIELDS, padded with 0; None
         before the first. With `need` (a check reads it once so, R7-10) an error instead of None,
         and one naming a stale xdd.dll (built before xdd.c's last field) for fewer fields."""
         try:

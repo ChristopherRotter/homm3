@@ -258,6 +258,29 @@ pub enum GameEvent {
         hero: u16,
         part: HiredPart,
     },
+    // E08 T141a (v81): a Prison's prisoner freed (as a hire; its view for its owner alone, its
+    // lists as `PrisonerPartSeen` and its other parts as `HiredPartSeen` following), the eight
+    // heroes, an emptied Prison.
+    PrisonerFreed {
+        player: u8,
+        hero: u16,
+        hero_type: u16,
+        pos: Pos,
+        view: Option<TavernHeroHead>,
+    },
+    PrisonerPartSeen {
+        player: u8,
+        hero: u16,
+        part: TavernPart,
+    },
+    PrisonFull {
+        player: u8,
+        hero: u16,
+    },
+    PrisonEmptied {
+        player: u8,
+        hero: u16,
+    },
     // E09 T39b2 (v74): a Den of Thieves' Thieves' Guild, its parts following.
     ThievesGuildSeen {
         player: u8,

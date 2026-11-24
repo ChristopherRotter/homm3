@@ -107,9 +107,10 @@ use h3_content::{
 };
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
-    Actor, BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameCommand, GameEvent, GameRuleset,
-    GameSetup, GameSetupError, GameState, GarrisonCreature, HeroDetailsSetup, HeroStatus,
-    PlayerSetup, PlayerTavern, TimedEventSetup, TownFaction, TownSetup, Viewer,
+    Actor, BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameCommand, GameEvent,
+    GamePrisonerSetup, GameRuleset, GameSetup, GameSetupError, GameState, GarrisonCreature,
+    HeroDetailsSetup, HeroStatus, PlayerSetup, PlayerTavern, TimedEventSetup, TownFaction,
+    TownSetup, Viewer,
 };
 use h3_map::model::{Artifacts, Bits, Body, Object, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
@@ -758,6 +759,9 @@ fn check(
             start: Default::default(),
         })
         .collect();
+    // E08 T141a: one prisoner per Prison (ADV-PRI-001), each of another hero type with its
+    // starting army: the layer's check, not the bodies' census (T144b's).
+    let prisons = static_map_prisons(rules, &static_map);
     let setup = GameSetup {
         players,
         difficulty: DEFAULT_DIFFICULTY,
@@ -771,7 +775,7 @@ fn check(
         towns: town_records,
         allowed_heroes: Vec::new(),
         hero_masks: Vec::new(),
-        prisoners: Vec::new(),
+        prisoners: static_prisoners(rules, prisons),
         custom_types: Vec::new(),
         roe: false,
     };
@@ -5447,4 +5451,24 @@ fn guild_differences(census: &Guilds) -> usize {
         }
     }
     differences
+}
+
+/// How many Prisons the static layer holds (E08 T141a).
+fn static_map_prisons(rules: &GameRuleset, map: &MapSetup) -> usize {
+    map.objects
+        .iter()
+        .filter_map(|o| o.object_type)
+        .filter_map(|t| rules.adventure().object_type(t))
+        .filter(|t| matches!(t.kind, ObjectKind::Prison))
+        .count()
+}
+
+/// `n` prisoners for the static layer's check (E08 T141a): the first `n` hero types in order,
+/// each with its starting army.
+fn static_prisoners(rules: &GameRuleset, n: usize) -> Vec<GamePrisonerSetup> {
+    (0..n)
+        .filter_map(HeroTypeId::from_index)
+        .filter(|&t| rules.core().hero_type(t).is_some())
+        .map(GamePrisonerSetup::of_type)
+        .collect()
 }

@@ -7,7 +7,7 @@ id       = "GAM-SET-001"
 title    = "The starting army of a hero without stacks of its own"
 context  = "game"
 status   = "verified"
-summary  = "A hero the setup gives no stacks gets its hero type's starting army when the game is built, drawn from the setup stream: the first starting slot's stack always, the second slot's when a roll of 1-100 is at most 88, the third's when a second roll is at most 25 (chances as data), each count drawn between its bounds; the given stacks take the army's slots from 0 in order. A war machine takes its starting slot (always the second in the original's hero table, between the first stack and the others) and is rolled like a stack (88 %, not guaranteed: the code reading and VCMI, batch 1b), but gives no stack; the war machine itself on the map hero comes with increment 3 (the hero details). A hero type whose stacks do not fit the army is rejected at setup. The two rolls are independent (the code reading, confirmed by batch 1b), so about 3 % of armies have the third stack without the second; VCMI's single roll refuted (ADV-Q6, E08 T10c). E08 T6b: `h3_game::GameState::new`."
+summary  = "A hero the setup gives no stacks gets its hero type's starting army when the game is built, drawn from the setup stream: the first starting slot's stack always, the second slot's when a roll of 1-100 is at most 88, the third's when a second roll is at most 25 (chances as data), each count drawn between its bounds; the given stacks take the army's slots from 0 in order. A war machine takes its starting slot (always the second in the original's hero table, between the first stack and the others) and is rolled like a stack (88 %, not guaranteed: the code reading and VCMI, batch 1b), but gives no stack; the war machine itself on the map hero comes with increment 3 (the hero details). A hero type whose stacks do not fit the army is rejected at setup. The two rolls are independent (the code reading, confirmed by batch 1b), so about 3 % of armies have the third stack without the second; VCMI's single roll refuted (ADV-Q6, E08 T10c). E08 T6b: `h3_game::GameState::new`. Since E08 T141a a prisoner without stacks of its own gets its type's starting army the same way, drawn after the build's heroes' (ADV-PRI-001)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -125,7 +125,7 @@ id       = "GAM-SET-002"
 title    = "The scenario's level limit and banned skills; a placed hero's levels at load"
 context  = "game"
 status   = "verified"
-summary  = "The setup carries the scenario's level limit (the map header's byte, AB and SoD; 0 none, as is a limit above the highest level, ADV-QUIRK-12) and its banned skills (SoD's set, the skills of the set bits' codes; each the ruleset's, a set in any order); the game keeps both, static. A hero with a custom experience gets its levels when the game is built, after its custom skills, army, spells and artifacts and its war machines' artifacts: it starts at level 1 and experience 0 and gains the custom experience under the limit (HER-EXP-003; D-21: capped at the limit's threshold, so no hero starts above it), then each pending level is drawn (GAM-HER-002) and given in hero id order: two offers chosen by the original's choice with the setup's army worth (1 000 and 500) and the map's terrain shares (HER-LVL-006, ADV-MAP-002; D-20: not the left offer), one learned, none the primary skill only; never a banned skill (HER-LVL-003); last the spell points full (HER-MAN-001). Building a game emits no events. A hero without a custom experience keeps its default 40-90 at level 1. Every level the battle's experience gives is under the limit too (GAM-BAT-002); in play a level-up is GAM-DEC-002's (E08 T30). The import passes a placed hero's custom experience as it is (MAP_IMPORT_VERSION 8): the five shipped maps that import whole give 9 heroes 41 levels at load. E08 T29: `h3_game::GameState::new`. Since E09 T37b (design note section 70) a custom experience is a hero's own or its type's map-wide entry's (GAM-HER-001): a random hero, a main town's hero and a customised type's record made at the build get their levels at load too, in hero id order (the records last, each after its level seed, GAM-HER-002); `Marshland Menace`'s 15 customised types at 2 000 experience are at level 3 when offered, and its Fortress player's main town's hero and random hero whenever they draw one of them."
+summary  = "The setup carries the scenario's level limit (the map header's byte, AB and SoD; 0 none, as is a limit above the highest level, ADV-QUIRK-12) and its banned skills (SoD's set, the skills of the set bits' codes; each the ruleset's, a set in any order); the game keeps both, static. A hero with a custom experience gets its levels when the game is built, after its custom skills, army, spells and artifacts and its war machines' artifacts: it starts at level 1 and experience 0 and gains the custom experience under the limit (HER-EXP-003; D-21: capped at the limit's threshold, so no hero starts above it), then each pending level is drawn (GAM-HER-002) and given in hero id order: two offers chosen by the original's choice with the setup's army worth (1 000 and 500) and the map's terrain shares (HER-LVL-006, ADV-MAP-002; D-20: not the left offer), one learned, none the primary skill only; never a banned skill (HER-LVL-003); last the spell points full (HER-MAN-001). Building a game emits no events. A hero without a custom experience keeps its default 40-90 at level 1. Every level the battle's experience gives is under the limit too (GAM-BAT-002); in play a level-up is GAM-DEC-002's (E08 T30). The import passes a placed hero's custom experience as it is (MAP_IMPORT_VERSION 8): the five shipped maps that import whole give 9 heroes 41 levels at load. E08 T29: `h3_game::GameState::new`. Since E09 T37b (design note section 70) a custom experience is a hero's own or its type's map-wide entry's (GAM-HER-001): a random hero, a main town's hero and a customised type's record made at the build get their levels at load too, in hero id order (the records last, each after its level seed, GAM-HER-002); `Marshland Menace`'s 15 customised types at 2 000 experience are at level 3 when offered, and its Fortress player's main town's hero and random hero whenever they draw one of them. Since E08 T141a the prisoners too, each after the build's heroes in hero id order and before the customised types' records (ADV-PRI-001)."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-9", "ADV-QUIRK-12"]
 
@@ -1444,3 +1444,46 @@ numeric  = "integer"
   kind       = "design"
   ref        = "SRV-Q31 (the user, 2026-11-13: a battle does not stop the clock; at its end the server's computer plays the player's side for the rest of the battle; a side whose chess clock runs out is played by the computer); ADR-0017 point 2 as amended by E16 M5 T14"
   confidence = "high"
+
+[[rule]]
+id       = "GAM-SET-004"
+title    = "A player's list of heroes at the start"
+context  = "game"
+status   = "implemented"
+summary  = "When the game is built each player's list of heroes (GAM-HER-003) starts with its placed heroes in hero type order (a random hero by its drawn type), then its main town's generated hero; the game hands the adventure its heroes in that order (`AdventureSetup::heroes`), each player's taking the places 0, 1, … The heroes' ids stay the setup's (the map's object order, the main towns' heroes after); the prisoners are in no list (ADV-PRI-001). E08 T141a, decision 413 (the user's, the original's order over the engine's id order)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 2.1; docs/exe/map.toml): placed_heroes_setup 0x4CAE10 walks the 156 hero records in type order and appends each placed hero to its owner's list at 0x4CAF25 (player record +0x8, the count +0x1); main_town_heroes 0x4CA040 then places each player's generated hero through town_hero_place 0x4C8D00 and hero_place 0x4D7900, which appends"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08 decision 413 (ADV-Q64: the list built inside T141a); E08-design.md increment 15's section 15 as built"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-HER-003"
+title    = "A player's list of heroes"
+context  = "game"
+status   = "implemented"
+summary  = "Each player has a list of its heroes on the map (`AdventureState::hero_list`; each hero's `HeroOnMap::listed`, its place from 0): its towns' garrison heroes are not in it. A hero that joins the map joins its end: a hire (the town's and the map's Tavern), a garrison hero stepping out (onto the entrance, and in a swap after the visitor went in), a freed prisoner (ADV-PRI-002); a hero that leaves the map leaves it and the heroes after it move up one place: a battle's loser, a retreat or surrender, a dismissal, a visitor going into a town's garrison. The viewer's observation carries its list (`GameObservation::hero_list`, protocol v80; the protocol's fold keeps it from the heroes on the map), and the env's hero slots are its first eight places (action encoding v19). No rule draws on the order. E08 T141a, decision 413."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 2.1; docs/exe/map.toml): the player record's i32 list at +0x8 with its count at +0x1; hero_place 0x4D7900 (the map's and the town's tavern hires, town_garrison_to_visitor, town_swap_heroes, town_hero_place) and visit_prison 0x4A3EB0 (0x4A40C1) append; town_visitor_to_garrison 0x4B9FC0 (0x4BA0A3) and hero_leave_game 0x4D9EC0 (0x4DA0F5) find the hero's place (hero_list_place 0x4BA9E0), shift the rest down and decrement the count; town_swap_heroes 0x5BE450 removes the visitor before it appends the garrison hero"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15a.md E15-1 (survey section 18): the freed prisoner last in Red's hero list"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08 decision 413 (ADV-Q64); ADR draft docs/lanes/adventure/adr-drafts/E08-T141a.md (ADR-0016's hero field, ADR-0017's start and observation)"
+  confidence = "high"
+

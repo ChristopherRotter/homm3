@@ -1234,6 +1234,13 @@ One stream (`crt_rand`, Begin's thread), in execution order; the sites from §1.
 | step 15 | 0x54876F, then 0x549153 | neighbour examined, per wheel |
 | writer | 0x54ABA6 | flagged colour, with teams |
 
+**Observed (T1b2's phase oracle, `docs/lanes/rmg/ORACLE.md`):** the range's sites draw in the
+table's order and phases. The stream also holds draws of callees outside the range that this
+table leaves out, a third of the corpus's draws: the terrain painter's pictures
+(`terrain_picture_draw` 0x5B3890 and its kin, one or two per painted cell) in steps 3, 6 and 11,
+the road and river painter's (`road_river_picture_draw` 0x4F9F00) in steps 14 and 15. T1c reads
+them.
+
 **The run's floats:** x87 only, every conversion `crt_ftol` (truncation): step 1's candidates
 trunc(f64(r) × T[k] + f64(o)) with `rmg_layout_cos` 0x682500 and `rmg_layout_sin` 0x682600 (f64,
 four decimals) at the control word's precision; step 2's points (s × T[k] doubled + x, trunc;
@@ -1242,8 +1249,9 @@ four decimals) at the control word's precision; step 2's points (s × T[k] doubl
 quotient: 82944 / S (steps 5, 8), 800 / S or 1600 / S (step 10). None elsewhere.
 
 **Clocks, retries, limits:** the clock: `time()` in seconds, once (the seed, printed in the file).
-Memory-dependent: step 2's uninitialised town-type bytes (whether 0x532A5B draws) and step 15's
-read past the cells (§2.5). Fixed iterations: step 1's three passes, 32 (65 with two levels)
+Memory-dependent: step 2's uninitialised town-type bytes (whether 0x532A5B draws; T1b2: it drew
+in 18 of 21 first maps, and a second map in one game drew it once less and differed) and step
+15's read past the cells (§2.5). Fixed iterations: step 1's three passes, 32 (65 with two levels)
 candidates per placement. Retries: step 10 only (six per pick, three per object). Limits: a land
 connection's passages ≤ ceil(n / 40) of ≤ 100 candidates; roads to costs ≤ 30000; the limits by
 type in step 10's choice. Every other give-up is silent; the run's only reported failure is no

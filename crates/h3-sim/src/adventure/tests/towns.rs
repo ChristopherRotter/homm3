@@ -201,7 +201,10 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
     (env, played)
 }
 
-/// Random play on the town map (E09 T49b: a search over the seeds 1 to 3 000 after the spell
+/// Random play on the town map (E08 T141a after #1136: a search over the seeds 1 to 3 000, cut
+/// short by a restart with five found, after the env's hero slots followed each player's list of
+/// heroes, GAM-HER-003, encoding v20: seed 264 the shortest, 765 steps, 26 builds, 53 dialogs, 13
+/// hires and 3 books; E09 T49b's seed 277: a search over the seeds 1 to 3 000 after the spell
 /// books' purchases joined the agent's draw, encoding v19: seed 277 the shortest of the four
 /// meeting every feature, 657 steps, 30 builds, 29 dialogs, 9 hires and a book; E09 T38b1's seed
 /// 2541, the shortest of ten after a hero that leaves the game came back, TWN-TAV-006, its
@@ -220,7 +223,7 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
 /// the limit with no seat to move.
 #[test]
 fn the_env_plays_the_town_map_to_its_end_of_days() {
-    let (env, all) = play(277, 21);
+    let (env, all) = play(264, 21);
     assert!(env.is_done());
     assert_eq!((env.day(), env.to_move().count()), (22, 0));
     assert_eq!(

@@ -92,6 +92,7 @@ fn hired(id: u16) -> HeroOnMap {
         movement: 1200,
         boat: None,
         max_movement: 1500,
+        listed: 0,
     }
 }
 
@@ -138,7 +139,13 @@ fn a_hired_hero_stands_on_the_entrance_as_the_visitor_with_its_away_record() {
     // In id order among the heroes on the map, with the record as given, on land.
     let ids: Vec<u16> = state.heroes().iter().map(|h| h.id.raw()).collect();
     assert_eq!(ids, [1, 2, 3, 4]);
-    assert_eq!(state.hero(HeroId::new(2)), Some(&hired(2)));
+    // E08 T141a: last in red's list (GAM-HER-003), after its heroes 1 and 4.
+    let listed = HeroOnMap {
+        listed: 2,
+        ..hired(2)
+    };
+    assert_eq!(state.hero(HeroId::new(2)), Some(&listed));
+    assert_eq!(state.hero_list(RED), [1, 4, 2].map(HeroId::new));
     assert_eq!(state.town_visitor(TOWN), Some(HeroId::new(2)));
     // Nothing is revealed.
     let after: Vec<u32> = [RED, BLUE]

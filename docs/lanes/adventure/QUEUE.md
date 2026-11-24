@@ -6,56 +6,19 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T141a — the Prison and the Market of Time** (round 5; design note `E08-design.md` §1, §2,
-§7, §9, §13, §15, §16; `adventure/e08-t141a`, `cross-lane` for the wire)
+**E08 T141b — the map spells' derivations in `h3-heroes`** (round 5; design note `E08-design.md`
+§5, §6; `adventure/e08-t141b`)
 
-- **Scope:** the kinds `prison` (class 62, visited from a neighbour, ADV-PRI-001 to -003) and
-  `empty` (class 50, the Market of Time: entered, never visited, ADV-OBJ-008) in the adventure
-  part (v25) and the base pack; the import's `PrisonerSetup` with the prisoner's body read as a
-  placed hero's and class 50 (map import v29); the prison's drawn `HeroId` in the static map and
-  `AdventureOutcome::prison` with the infallible `free_prisoner` (§9); the game's store of
-  prisoners as placed heroes (their levels at load in hero id order, after the placed heroes in
-  the setup's object order: decision 410), their freeing below the town part's most heroes on
-  the map, appended last to the player's list with a full day's land points (§15; game state hash
-  v39); `PrisonerFreed`, `PrisonFull`, `PrisonEmptied` and their wire (§16, protocol v79,
-  `cross-lane`); a viewer never sees the prisoner (§13). Also compare the start list's order: the
-  original lists a player's placed heroes in type order (survey `E08-spells.md` §2.1, 0x4CAF25);
-  the engine's order and what to do go to the user. The ledger entries the task builds; the
-  rules toward `verified` (survey §18: ADV-PRI-001 to -003, ADV-OBJ-008).
-- **Inputs:** design §1, §2, §7, §9, §13, §15, §16, §18; survey §1.1, §2, §18; ADR-0016 points 1, 4,
-  6, ADR-0017 points 1, 10 (as applied by T140); the town lane's T137b note (the pool's prisoners).
-- **Depends on:** T140 (done 2026-11-22). **Status:** ready; confirm its cut at its start (it may
-  split: the content and the import, then the game and the wire). Then T141b, T142 to T145.
+- **Scope:** `h3-heroes`' `spell_masteries_on(details, core, raise: SchoolRaise)` beside
+  `spell_masteries` (HER-SPL-003 amended, decision 405: a raised school gives Expert to its
+  spells), `map_spell_cost` (HER-SPL-008: the cost at the mastery on that ground, at least 1, no
+  army's ±2) and `can_cast_on_map` (the spell among `available_spells`, no book test: D-79,
+  decision 404, ADR-0013 point 17), with their tests; nothing casts yet (T142).
+- **Inputs:** design §5, §6, §18; survey `E08-spells.md` §4, §18; ADR-0013 point 17.
+- **Depends on:** T141a (done 2026-11-23). **Status:** ready; confirm its cut at its start. Then
+  T142 to T145.
 
 ## Inbox
-
-- 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent,
-  E09 decision 194; **your increment 15's versions move again**): `TownCommand::BuySpellBook`
-  (TWN-GLD-007) took **protocol v80**, the adventure **replay format v25** (`town book <town>`;
-  the 111 goldens' `format` line only) and the env's **action encoding v19** (`SPELL_BOOK` = 104,
-  after `TOWN_OPEN`; `ENTRY_COUNT` 105). Your planned v80, v25 and v19 (E08 T141a/T143a, T144a;
-  `E08-design.md` §16 to §18) are now **v81, v26 and v20**, the casts' entries from 105. In your
-  paths, nothing else to do: `h3-heroes` gains `wears_spell_book` (the private `wears_book`,
-  public) and `spell_book` (the ruleset's first artifact with the `spell_book` effect), both
-  tested in the Titan's Thunder test; `h3-map`'s `play.rs` probes each town's purchase in
-  `town_builds` after its opening, `check_town_book` reads a listed one, `check_conservation`
-  takes its price, `Step::Town` plays one in one step of eight (`n % 8 == 7`). A purchase is
-  listed wherever a bookless hero stands in an own town with a guild and 500 gold: the random
-  games on the town map change course.
-
-- 2026-11-22 (the town lane, E09 T49a2, `town/e09-t49a2`, `cross-lane` with the user's consent,
-  E09 decision 193; **your increment 15's versions move**): `TownCommand::Open` (TWN-GLD-006)
-  took **protocol v79**, the adventure **replay format v24** (`town open <town>`; the 111
-  goldens' `format` line only) and the env's **action encoding v18** (`TOWN_OPEN` = 103, appended
-  after T135a's entries; `ENTRY_COUNT` 104). Your planned v79, v24 and v18 (E08 T141a/T143a,
-  T144a; `E08-design.md` §16 to §18) are now **v80, v25 and v19**, the casts' entries from 104.
-  In your paths, nothing else to do: `h3-heroes` gains `spell_learner` (`can_learn_spell`
-  delegates to it, the same answers) and `wears_book` counts per copy (the same answer, no set);
-  `legal.rs` unchanged (the opening is listed in the town's `legal_builds`); `h3-map`'s
-  `play.rs` probes each town's opening in `town_builds` (an unlisted one may be accepted only
-  when it changes nothing, `accepted_builds` keeps one only where it changed the state,
-  `check_town_open` reads a listed one) and `Step::Town` plays a listed opening in one step of
-  eight (`n % 8 == 6`): all of `h3-map`'s tests pass, the play and view blocks once at 240 cases.
 
 - 2026-11-21 (the town lane, E09 T49a1, `town/e09-t49a1`, `cross-lane` with the user's consent;
   **in your paths, nothing to do**): `GameState::advance_day` (`state/day.rs`) calls

@@ -592,29 +592,29 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x8e1ba3fce69a7ed2",
-    "0x44425a060ca6c014",
-    "0x82b91d373c2cf08e",
-    "0xb51f8140050f2aa8",
-    "0x8ecf3b21d7ea2af1",
-    "0x5d662ad6ef5107ad",
-    "0x7cb53f85388bfa5f",
-    "0x8513aa472a942aa9",
-    "0xfe8c8e71a29b91ac",
-    "0xbfbcb9bbdeaf7e5b",
-    "0xaccdd5da9ee136c1",
-    "0xd6455a7a4d700c74",
-    "0xdc8435cd3f5c213e",
-    "0x22f60d10f7f38ee4",
-    "0x1d48c90fd3eb884e",
-    "0xb43981d2cabf74be",
-    "0x8e44b74adc4fccc7",
-    "0x16f0182df41b78cb",
-    "0x4b389c2bba828faf",
-    "0x7edd3562aefb3216",
-    "0x0c980cd01a9efeae",
-    "0x2b5258c9672309a7",
-    "0xc4ad698e308b47b8",
+    "0x95a559f76f7eb1e0",
+    "0x0cce7e1974b89b9e",
+    "0x7c5433600a2fdc7a",
+    "0x6482cfca56263b8c",
+    "0x773e8bc72685d76f",
+    "0xc1c15f067db7d5c4",
+    "0x7a5e1a6de549b03a",
+    "0xe553d4b40a804285",
+    "0xa0009783250714c3",
+    "0x2052c39cb9d58d47",
+    "0xc0bc806452a9ef6c",
+    "0xf4c605d4f843f72d",
+    "0xd1e29d758984aedb",
+    "0x8a3cde6c7d5c3391",
+    "0xc3c74a92887c9553",
+    "0x2ce423fcc82e138f",
+    "0xeec423be8a0cec66",
+    "0x9a9e70eb91157d6a",
+    "0x52478c22149b6d36",
+    "0xf096f2f0d97b1533",
+    "0x7a6da4889832f95b",
+    "0xc36882ad61b0f53d",
+    "0x61bccc6ef4e2124e",
 ]
 
 [replay]
@@ -638,24 +638,24 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x0c610f9192575256"
+adventure_ruleset_hash = "0x888a0c8963f09a43"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 38
-adventure_state_hash_version = 27
+game_state_hash_version = 39
+adventure_state_hash_version = 28
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-banks-36.h3m"
 hash = "0xda3dd80d4aa94083"
-import_version = 28
+import_version = 29
 
 [result]
 day = 29
-final_hash = "0x28337347703ada60"
+final_hash = "0x6931bdfcc0ae0644"
 
 [[players]]
 colour = 0

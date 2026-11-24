@@ -109,13 +109,14 @@ and middle), so about 95 KB in all. The fog test reads the other way round (the 
 | T1a2d | The towns', heroes' and artifacts' values and the frame's leftovers (the vision area, the defence functor, the hero's values, the puzzle target, the node's key) | `map.toml`; the survey's §2.4, §2.5 (done) |
 | T1a3a | The build choice (AI-Q26): `ai_town_build_choice` 0x42AE00, the excluded creatures, the score and the six value helpers | `map.toml`; the survey's §3.1 (done) |
 | T1a3b | The hires: `ai_hero_hire_choice` 0x431360, `ai_hero_hire` 0x431800, `ai_town_hero_prospects` 0x431BD0 | `map.toml`, `structs.toml`; the survey's §3.2 (done) |
-| T1a3c | The town visit: `ai_town_visit` 0x5253D0 (the garrison, the recruits, the buys, the artifacts, the University) and the army plan's open pieces (0x42C3B0, 0x42D1B0, 0x42D870, 0x42D8E0); may be cut again | `map.toml`; the survey's §3.3 |
+| T1a3c | The town visit (AI-Q27, in two): `ai_town_visit` 0x5253D0 (the garrison, the recruits, the buys, the artifacts, the University) and the army plan's open pieces (0x42C3B0, 0x42D1B0, 0x42D870, 0x42D8E0) | `map.toml`, `structs.toml`; the survey's §3.3 (done) |
 | T1a3d | The answers: every `ai_*` call the game's visits make (about 25 entry points), `ai_fight_answer`'s 17 callers, the Seer's reward (0x573A70), the market visits, the allies' shares; each classified a choice or a rule | `map.toml`; the survey's §3.4 (the table of asymmetries for the owning lanes) |
 | T1a4 | The rest of both ranges named at least `inferred` and placed in a phase; every draw and float site listed; the fields that persist between turns and their readers | `map.toml`; the survey's §4 |
 | T1b | The survey `docs/rules/surveys/E31-computer-player.md` finished (each phase's rules, the hidden reads, the asymmetries, the engine's gaps per epic); the ADR draft (the crate, the seam, the memory, the commands, the battles, the floats under `kernel::num`, the fair variant's line); the asymmetries into the owning lanes' inboxes; the trace's plan (maps, days, the harness); the cut of increments 2 to 7 with exit criteria; the checkpoint AI-Q23 | survey, ADR draft, this file |
 
 T1a's cut may change at its start, by size (E23's T1a ran in five parts); T1a1 ran in three
-(AI-Q24), T1a2 in four, three of them read by sub-agents (AI-Q25), T1a3 in four (AI-Q26). T1a4 also maps the third range (0x423EE0–0x42A000).
+(AI-Q24), T1a2 in four, three of them read by sub-agents (AI-Q25), T1a3 in four (AI-Q26), T1a3c
+in two, one read by a sub-agent (AI-Q27). T1a4 also maps the third range (0x423EE0–0x42A000).
 
 **Exit criteria:** (1) every function of both ranges in the map, at least `inferred`, with its
 phase; (2) every hidden read, draw and float site listed; (3) every asymmetry classified and
@@ -179,3 +180,9 @@ or HotA's AI, but as pointers.
   survey §3.1; all choices, three quirk candidates (`E31-log.md` T1a3a).
 - **T1a3b** (2026-11-23): the hires; 11 map entries (7 new, 1 renamed) and the player's tavern offers,
   the survey §3.2; choices, one quirk candidate (`E31-log.md` T1a3b).
+- **T1a3c** (2026-11-23, AI-Q27: in two, T1a3c2 by a sub-agent): the town visit and the army plan's
+  open pieces; 36 map entries (25 new, 11 rewritten, 2 renamed), four plan fields; the survey §3.3.
+  Found: the plan's runs buy for real (no commit; 0x42D8E0 is the formation); the visit recruits,
+  builds a dwelling, the guild, a visiting-bonus building, the merchants and the Blacksmith outside
+  the build choice, ignoring the recruit reserve; the victory town held by a lesser hero; all
+  choices, seven quirk candidates (`E31-log.md` T1a3c).

@@ -71,7 +71,7 @@ garrison hero (and +0x43), so nothing a human would call sleeping lasts past the
 
 ### 1.3 A hero's turn (`ai_hero_turn` 0x5261F0)
 
-1. A hero standing on a town's entrance visits the town first (`ai_town_visit` 0x5253D0; T1a3):
+1. A hero standing on a town's entrance visits the town first (`ai_town_visit` 0x5253D0; §3.3):
    at every turn it starts there.
 2. A patrolling hero of radius 0 (+0x44 set, +0x46 = 0) loses its points and ends: it never moves.
 3. With points left, the screen follows: the hero is shown when the viewer sees its tile and
@@ -165,9 +165,9 @@ Only the colour is set at a new game (`ai_player_records_init` 0x4340E0).
 |---|---|---|---|
 | +0x00 | the colour (i16) | game_init | every routine that takes the record |
 | +0x04 | the Eye value (i32) | the start; a reveal (§1.4); `ai_hero_step` (T1a1c) | `ai_object_value` 0x528040 returns it (T1a2) |
-| +0x08 | the recruit reserve (i32[7]) | the start; the middle subtracts the income | the towns (T1a3) |
-| +0x24 | the means (i32[7]) | the weights | the weights; probably `ai_town_visit`'s callees (T1a3) |
-| +0x40 | the demand (i32[7]) | the weights | the weights; probably `ai_town_visit`'s callees (T1a3) |
+| +0x08 | the recruit reserve (i32[7]) | the start; the middle subtracts the income | the build choice (§3.1); the visit ignores it (§3.3) |
+| +0x24 | the means (i32[7]) | the weights | the weights; `ai_town_guild_buy` 0x42BEB0 (wood, ore; §3.3) |
+| +0x40 | the demand (i32[7]) | the weights | the weights; `ai_town_guild_buy` 0x42BEB0 (wood, ore; §3.3) |
 | +0x60 | the weights (f64[7]; +0x90 gold, `ai_player_values` 0x6929E0) | the weights, start and middle | the values; `ai_secondary_skill_value` 0x524690 (Estates) |
 
 Fields of the game's own records that the computer uses: the hero's +0x11C (asleep: the done
@@ -649,14 +649,14 @@ demand) is traded at the market rate for the short resources, Marketplaces bough
    set at -1 and the library's range check throws `std::out_of_range`; reached by a neutral
    dwelling's value or an exchange with neutrals; whether anything catches it: not read.
    (b) `ai_army_plan_put` 0x42C130: a displaced stack that finds the spare full overwrites the
-   spare's least valuable stack, lost (harmless in a value; matters if 0x42C3B0 or 0x42D690
-   commits a plan). (c) `ai_dwelling_value` mixes the current player's treasury and team with
+   spare's least valuable stack, lost (harmless in a value; it matters: the visit's runs buy for
+   real, §3.3 (c)). (c) `ai_dwelling_value` mixes the current player's treasury and team with
    the hero's owner's artifact and weights (the same on its own turn). (d) `ai_buy_marketplaces`
    tests the current player's resources, not the town owner's.
-6. **Not read**: `ai_army_exchange_apply` 0x42C3B0 and 0x42D8E0 (T1a4), `ai_army_offers_add`
-   0x42CE30, `ai_army_plan_init_creature` 0x42CF50, `ai_army_plan_run` 0x42D690's town callers (T1a3),
-   `ai_army_plan_init_town` 0x42D1B0 and `ai_army_plan_setup` 0x42D870 (T1a3),
-   `market_trade_factor` 0x5ECD20, `stack_base_morale`'s middle.
+6. **Not read**: `ai_army_offers_add` 0x42CE30, `ai_army_plan_init_creature` 0x42CF50,
+   `market_trade_factor` 0x5ECD20, `stack_base_morale`'s middle. Read at T1a3c (§3.3):
+   `ai_army_exchange_apply` 0x42C3B0, `ai_army_arrange` 0x42D8E0, `ai_army_plan_run`'s town
+   callers, `ai_army_plan_init_town` 0x42D1B0, `ai_army_merge_types` 0x42D870.
 
 ### 2.4 The towns, heroes, artifacts and the frame's leftovers (T1a2d)
 
@@ -762,7 +762,7 @@ answer, 500 for a Whirlpool, and a Castle Gate's unbuilt cost value.
   needs revisiting at T1b); (2) the hidden battle's end after round 30 re-fought by the
   simulation from the battle's start (the battle lane; it rests on this reading alone); (3)
   `ai_town_defence_recruit`: a computer buys recruits into every town an enemy could take, at its
-  turn's start and middle (T1a3: where they go); (4) the trades written straight into the
+  turn's start and middle (§3.3: straight into the town's army, a replaced stack dropped); (4) the trades written straight into the
   treasury on the hiring path (§2.3; T1a3).
 - **Quirk candidates** (not flagged; T1b's second look): §2.1's four, §2.2's five, §2.3's four,
   §2.4's six. One may matter beyond the computer's choices: §2.3 (a), the Angelic Alliance's
@@ -900,11 +900,175 @@ armies; through the candidates, the true map (§2.5). No draws. Floats: f64 for 
 heroes, a free entrance), so the port issues the town lane's hire command (and a build command for
 a missing Tavern). The hero limits are the computer's own choices, not rules of the game.
 
-### 3.3 Not read yet (T1a3c, T1a3d)
+### 3.3 The town visit (T1a3c)
 
-The town visit (`ai_town_visit` 0x5253D0 and its helpers) with the army plan's open pieces
-(`ai_army_exchange_apply` 0x42C3B0, `ai_army_plan_init_town` 0x42D1B0, `ai_army_plan_setup`
-0x42D870, `ai_army_plan_commit` 0x42D8E0; the prospects above call three of them, read only at
-their calls): T1a3c. The answers to the game's visits (about 25 `ai_*` entry points), the 17
-callers of `ai_fight_answer`, the Seer's reward (0x573A70), the market visits, the allies' shares
-(`ai_ally_resource_share` 0x429110) and the table of asymmetries: T1a3d.
+**When.** `ai_town_visit` 0x5253D0 runs at every visit of a town by a computer hero: its own, an
+ally's or a captured one (`town_visit`, where a human gets the town screen), and at the start of
+each turn for a hero standing on an own town's entrance (§1.3). Where a human works in the town
+screen, the computer runs the steps below in a fixed order. Read in two parts (AI-Q27): T1a3c1 the
+visit and its buys (main session), T1a3c2 the army (a sub-agent).
+
+**The order** (the visiting hero H, the town T, the garrison hero G):
+
+1. **The Grail.** H carries it and 26 is not built but allowed: it is built at once (no question,
+   as the human's hall asks), then `victory_grail_test` 0x5F1EF0 (the game's: the condition's
+   kind 4, any town of the player's team with 26 at its position) and the victory. No owner test:
+   an ally's town gets the Grail, as the human's hall allows (`E09-construction.md` TD-11).
+2. **In an own town:** `ai_victory_town_hold` 0x525200 (it may end the hero's day), then **with
+   points left** (+0x4D) `ai_town_visit_recruit` 0x42BA60 (the garrison exchange, the recruits, a
+   dwelling) and `ai_town_guild_buy` 0x42BEB0.
+3. **In any town:** the spell book for 500 gold of H's owner, without a question, when T has a
+   Mage Guild; then `town_heroes_learn_spells` for H alone (both E09 T42b, `E09-guild.md` §12).
+4. **In an own town with points left:** the upgrades, the visiting-bonus building, the Artifact
+   Merchants, and above Easy the artifact exchange with G and the war machines.
+5. **In any Conflux town** with the Magic University: `ai_university` 0x524ED0.
+6. `adventure_hero_stop`, then `town_visit_buildings` for G, then H (the town's rules).
+
+**The victory town** (`ai_victory_town_hold` 0x525200). Only on Normal or above (game +0x1F6D8),
+with at least two heroes, the town not threatened (+0x3 0), the victory condition "capture a town"
+(6) naming this town (its tile, `town_at_entrance`), a garrison hero, if any, of a lower
+`hero_primary_sum` than the visitor, and the visitor not the player's hero of the highest sum (the
+last of equals). Then the visitor's points are set to 0 (0x525359: it stays, and so never recruits
+on this visit), it exchanges with the garrison (below), and without a garrison hero it also takes
+the garrison's better stacks (`garrison_merge` 0x44B820, the siege's merge by AI value x count) and
+the garrison is emptied (`army_reset`, 0x5253C4): what the merge left there is gone. A lesser hero
+parks in the town the victory names, with the garrison's best stacks.
+
+**The exchange** (`ai_army_exchange_apply` 0x42C3B0): §2.3's exchange value played on the real
+armies, no copies. The hero's same-type stacks merged; its worthless stacks shed into the other army
+(`ai_army_plan_shed`, while the other has fewer than 7); then greedy transfers while one gains, each
+weighed by the primary advantage / 40 (the hero's sum less the other hero's, the whole sum against a
+garrison without hero, at least 0: an equal or weaker hero takes nothing but still sheds); the other
+army keeps one stack; a displaced stack goes into it. Then the formation.
+
+**The recruits** (`ai_town_visit_recruit` 0x42BA60). One army plan on the real armies: the hero's
+army, the town's shown army as the spare (`town_garrison_army`: a garrison hero's, else the town's),
+the hero's owner's resources (player +0x9C). (1) The exchange with the garrison as above (advantage
+over the garrison hero, else the whole sum), the formation. (2) `ai_army_plan_run` with trades and
+**costs not weighed** (+0x28 cleared, 0x42BBC5): offers the town's 14 counts above 0
+(`ai_army_plan_init_town` 0x42D1B0; none free, unlike a dwelling's level 1), bought greedily while a
+stack adds AI value, as many as the resources pay (the trades may first buy Marketplaces and sell
+surplus, §2.3). (3) **A dwelling**, unless the town is marked built today (+0x2) and, on Easy, only
+for a player with a human on its team: of the base dwellings 30–36 buildable now
+(`town_buildable_now`) whose cost every resource covers, the one whose week's growth of its base
+creature (creature +0x44), bought after paying the building, `ai_army_purchase_value` values highest
+above 0 (the lowest id on ties) is built at once (0x42BDE0, `town_build_effects` with the mark and
+the visit; the cost taken directly, not through `town_buy`, the recruit reserve not kept); (4) the
+run once more on the town's counts, now with the new dwelling's growth. Never an upgraded dwelling
+or a horde building here.
+
+**Where the purchases go.** There is no commit: `ai_army_plan_run` works on whatever it is given, so
+with a real army and the player's resources its purchases are real. `ai_army_purchase_step` 0x42D420
+puts the stack (`ai_army_plan_put` 0x42C130: its type's slot, an empty one, or over the stack it
+replaces, which goes to the spare, over the spare's weakest when the spare is full) and takes cost x
+count from the resources; the run writes each offer's count back to the town (+0x16). No routine of
+the human's recruit is called.
+
+**The formation** (`ai_army_arrange` 0x42D8E0, was `ai_army_plan_commit`): after every exchange,
+never after a purchase. The stacks sorted by the creature's base speed (+0x50), lowest first, stable
+(`army_entries_insertion_sort_low` 0x435310); the shooters (flag 0x4) from the fastest into slots 0,
+2, 4, 6, 1, 3, 5, the others from the slowest into the first empty slots.
+
+**The other users.** `ai_town_defence_recruit` 0x428580 buys through the run alone: the town's shown
+army, morale 3 (not a mode), no spare (a replaced stack is dropped), costs not weighed, trades, no
+formation. `ai_town_hero_prospects` 0x431BD0 (§3.2 confirmed): the town's offers,
+`ai_army_merge_types` 0x42D870 (was `ai_army_plan_setup`), shed, exchange steps, the formation, the
+run without trades but with costs weighed (+0x28 1), all undone. `ai_garrison_visit` 0x524370: the
+exchange with a map garrison (no hero). `ai_meeting` 0x525DC0: the exchange with a colleague, then
+0x433FE0 both ways. `ai_battle_army_split` 0x42DB20 (inferred, T1a3d; `adventure_battle` 0x4AE290,
+0x4AE2B8): merges, values the enemy at the heroes' `hero_attack_defense_factor` ratio, splits its
+stacks into free slots (0x42DD70), then the formation.
+
+**The guild** (`ai_town_guild_buy` 0x42BEB0). The next level L (the town's guild level as the
+building id) is bought when the hero could learn it (L below its Wisdom level + 2, at most the
+fifth) and either its Spell Power and Knowledge are both 3 or more or, for the first level only, it
+has neither Dispel nor Cure available. A higher guild in another own town that the hero could still
+use and whose next level is buyable now takes precedence, except for a first level when the means
+cover the demand in wood and ore (record +0x24, +0x40; §1.6). Paid through the market
+(`ai_pay_with_trades`, §2.3), the day's mark respected.
+
+**The upgrades.** Per level whose upgraded dwelling is built, each of H's stacks of that level's
+base creature is upgraded whole when the current player's resources cover the cost difference ×
+count in every resource; never a part of a stack, never G's or the garrison's.
+
+**The visiting-bonus building** (not built today, `town_can_buy`; switch 0x5256E7): bought when its
+worth to H is above the weighted cost (`ai_resources_value`): the Tower's Wall of Knowledge (23) for
+H's Knowledge gain (+0x486), the Inferno's Order of Fire (23) for its Spell Power gain (+0x47E), the
+Dungeon's Academy (23) for 1 000 × the value of an experience point (+0x109), the Stronghold's Hall
+of Valhalla (23) and the Fortress's 17 (by its value the Cage of Warlords; the id not checked
+against the data) for a level's experience × that value (f32), the Conflux's Magic University (21)
+when `ai_university_value` (without its gold test) is above 0. Castle, Rampart and Necropolis have
+none. H gains the bonus at the visit's end (`town_visit_buildings`).
+
+**The Artifact Merchants** (`ai_artifact_merchants_visit` 0x5259E0; a Tower or Dungeon town only,
+not the Conflux's). With them built, `ai_buy_stock_artifacts` 0x524400 buys from the game's one
+stock (game +0x1F664) every artifact whose worth to the player (`ai_artifact_value_to_player`)
+exceeds its weighted price, the best first, until none is left or the backpack is full; the price
+and its resource from `ai_artifact_market_price` (§2.1) with the player's Marketplaces (at most 10)
+as the rate; then `ai_artifact_received` arranges H's artifacts. Without them, they are built when
+the stock's positive nets (for what the resources left after the building pay) sum to at least the
+building's weighted cost. The Black Market's visit buys the same way (rate 5).
+
+**The artifact exchange** (above Easy, with G; `ai_heroes_artifact_exchange` 0x433FE0, H to G then G
+to H; also `ai_meeting` 0x525DC0's). Both heroes first take off into the backpack every worn
+artifact whose removal raises their value (`ai_hero_shed_artifacts` 0x433BB0). Each of the giver's
+worn artifacts (slots 0 to 16) is then offered: the receiver tries every slot that takes it
+(`ai_artifact_offer` 0x433E20) and takes it into the slot of largest gain when that gain, plus the
+giver's gain from wearing the displaced artifact in the freed slot, is above the giver's loss; the
+displaced one goes to the giver or to the receiver's backpack. Then the giver's backpack, last place
+first, each taken when it raises the receiver's value. The value (`ai_hero_equipped_value`
+0x433C60): the army's AI value with each stack's morale and luck factors, times the attack/defense
+factor, plus the two best spells' values, plus each worn artifact's own value.
+`ai_artifact_received` 0x433B40 (after every artifact a computer hero gains) is the same arrangement
+of one hero alone.
+
+**The war machines** (above Easy; `ai_buy_war_machine` 0x525CA0): the faction's Blacksmith machine
+(`blacksmith_war_machines` 0x6AA9F8: Ballista for Castle, Dungeon and Conflux, Ammo Cart for Tower,
+Inferno and Stronghold, First Aid Tent for Rampart, Necropolis and Fortress) and in a Stronghold the
+Ballista Yard's Ballista: bought when H lacks it, values it above 0 and the resources cover its
+creature's cost; the building first when missing. The value is never weighed against the price.
+
+**The University** (`ai_university` 0x524ED0, also the map's University): while H has fewer than 8
+skills and the player 2 000 gold, the best of the four skills H may learn (its class allows it,
+`ai_takes_new_secondary_skill` accepts it), at Basic for 2 000 gold.
+
+**Reads, draws, floats.** Its own heroes, towns, garrisons and treasury; the difficulty, the victory
+condition and, on Easy, whether its team has a human (public); the merchants' stock before any
+merchant is built (a human sees it only in a merchant's window). No draws. Floats: none in the army
+routines themselves (inside the runs the trades' and `ai_stack_marginal_value`'s, §2.3); f32 in the
+experience buildings' tests; f64 in the stock's nets, the merchants' worth and
+`ai_hero_equipped_value` (truncated at each step).
+
+**Choice or rule.** All choices, each a human's command: the exchanges, merges and the formation
+(stack moves between a hero and a garrison or inside an army; the emptied garrison and a dropped or
+overwritten stack are dismissals; the victory hold's stop is the hero ending its moves); the
+purchases (the town lane's recruit per creature and count: what a human's recruit tests, a full army
+needing a move to the garrison first); the dwelling, the guild, the visiting-bonus building, the
+merchants, the Blacksmith and the University (`town_buy` or the dwelling's direct build: the town
+lane's build command, `town_can_buy`'s tests); the trades (market commands first); the book, the
+upgrades (the town's upgrade of a hero's stack), the stock purchases (the market's buy), the war
+machines (the Blacksmith's buy), the University's skills, the artifact moves between the two heroes
+and into the backpack (the hero exchange). The Grail's and the book's dialogs are the human's
+questions answered yes. Rules: the victory test, the spells learned, the buildings' visit effects.
+
+**Quirk candidates** (not flagged; T1b's second look): (a) 0x5253C4: the victory hold destroys the
+garrison stacks the visitor did not take; (b) 0x42D922: the formation keeps a count in 16 bits, so a
+stack above 32 767 comes back wrapped (40 000 → −25 536, kept negative by `army_add_stack`; 65 536 →
+0); (c) §2.3's (b) is live here: a purchase displacing a stack into a full garrison overwrites the
+garrison's weakest, and the defence recruit drops a replaced garrison stack; (d) the first guild
+level's spell test asks for neither Dispel (35) nor Cure (37), two Water spells of level 1, an odd
+pair; (e) the fifth misc slot (18, SoD's) is never shed nor filled by the exchange (slots 0 to 16
+only); (f) the University is built without the 2 000-gold test, so a skill may not be affordable
+after it; (g) a skill valued 0 is still bought (the test is at least 0). Not quirks, but to keep in
+the port: no recruits, upgrades or buys with 0 points left (0x52548D; the exchange with the victory
+town still runs, and the next turn's start visits again); the visit's purchases weigh no costs and
+ignore the recruit reserve, as does its dwelling (like the halls, §3.1); the Conflux's merchants
+unused; the Blacksmith's machine bought at any worth; a refused artifact goes back to the first slot
+that takes it.
+
+### 3.4 Not read yet (T1a3d)
+
+The answers to the game's visits (about 25 `ai_*` entry points), the 17 callers of
+`ai_fight_answer`, the Seer's reward (0x573A70), the market visits (whether `ai_artifact_market_price`'s
+prices are the human's), the allies' shares (`ai_ally_resource_share` 0x429110),
+`ai_battle_army_split` 0x42DB20 beyond its frame, and the table of asymmetries: T1a3d.
