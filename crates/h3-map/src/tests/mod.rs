@@ -24,6 +24,7 @@ mod garrisons_bonuses;
 mod garrisons_bonuses_xl_map;
 mod garrisons_map;
 mod gates_map;
+mod guild_map;
 mod import;
 mod play;
 mod prisons;

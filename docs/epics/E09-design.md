@@ -3506,6 +3506,11 @@ order (each that exists: a missing visitor or garrison hero is skipped), each sp
   `cross-lane`), a Conflux with building 26 in a custom set. The batch's games are the original's,
   so the engine's stream choice does not touch it. *As run* (T44): specs `E09-batch-5a` (rows 1 to
   4) and `-5b` (row 5), twice each; every row as the reading, T-18 confirmed (survey §21).
+- *As built* (T50, decision 195; `E09-log.md`): the census in `h3-map`'s `original_data`
+  (`guild_differences`, 25 of the survey's counts), the properties `check_guilds`,
+  `check_guild_step` and `check_guild_refusals` in the plans, the map `e09-guild-36` (a Necropolis
+  for blue; its Tower requires and bans) with the replays `guild-*-s1`, the workload
+  `day-start-guild-36`; the setup workloads and the listing measured at T47a2 to T49b.
 
 ### 98. The building tasks (the whole increment; the order with E08's increment 14)
 

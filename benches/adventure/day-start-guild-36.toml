@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "E09 T50 (the town epic's design note §97: the night's refill, TWN-GLD-008, in a workload of its own): the step that starts day 4 (the last EndTurn of day 3: the day's regain and the towns' night, the income, then red's turn start) in each of 16 random games of 3 days on the guild map (e09-guild-36.h3m, 36 x 36, two players, four towns each with a Mage Guild: the Tower with its Tavern, the Dungeon with its Mana Vortex, the Conflux with its Aurora Borealis, the Necropolis; increment 5's own map), where the random agent visits, hires, opens the towns and buys spell books; the fork that tries the step is dropped before it, as day-start-builds-36's; 3 days for the most heroes standing in the towns at a night of days 1 to 10 (43 visitors and garrison heroes over the 16 nights, 33 at day 6's): about 82 900 Ir a day start at the first recording, the night's refill 8.1 % (h3_game::town::guild::refilled 1.0 %, the refilled heroes' maxima in GameState::regain_mana, h3_heroes::max_mana, 7.1 %, in place of their regain), the regain over every other hero record 34 % (h3_heroes::day_mana), the turn start 28 % (AdventureState::start_turn), the income 20 %; no hero in a town is below its maximum at any of these nights (the random agent spends no spell points), so the refill raises nobody and costs its walk and the maxima; a new workload, no engine code changed (master's code); re-baselined after merging E08 T141a (#1132): the random games changed course, -3.05 % (about 80 400 Ir a day start; the counts and shares above measured before the merge)"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e09-guild-36.h3m",
+    "--workload",
+    "day-start",
+    "--games",
+    "16",
+    "--days",
+    "3",
+    "--seed",
+    "1",
+]
+collect = "*day_start_step*"
+instructions = 1286173
+threshold_percent = 2

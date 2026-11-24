@@ -7231,6 +7231,10 @@ fn check_town_builds(
     legal: &[GameCommand],
 ) -> Result<(), TestCaseError> {
     let part = rules.towns();
+    let hash = state.state_hash();
+    // E09 T50: the town whose unlisted openings and books' purchases are hashed (below).
+    let hashed =
+        town_id(usize::try_from(hash % u64::try_from(state.towns().len() + 1).unwrap()).unwrap());
     for (town, command) in town_builds(state, rules) {
         let mut probe = state.clone();
         let mut events = Vec::new();
@@ -7251,6 +7255,18 @@ fn check_town_builds(
             );
             prop_assert_eq!(&probe, state);
             prop_assert!(events.is_empty());
+            // E09 T50 (design note §97): and a refused or idle opening or book's purchase its
+            // hash (TWN-GLD-006, -007), those of one town a state (`hashed`, a different one at
+            // every state; the others' by the state's derived equality, which implies it: every
+            // town's hashed cost the property several per cent); the other players' and the
+            // system's are [`check_guild_refusals`]'.
+            let guild = matches!(
+                command,
+                GameCommand::Town(TownCommand::Open { .. } | TownCommand::BuySpellBook { .. })
+            );
+            if guild && town == hashed {
+                prop_assert_eq!(probe.state_hash(), hash, "{:?}", command);
+            }
             continue;
         }
         prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
@@ -9603,7 +9619,8 @@ fn check_inverse(
 /// the map has one to seven stacks, in distinct slots in order, each of at least one creature and
 /// at most a stack's most; every hero's details are valid; an army dialog's group has at most
 /// seven stacks alike (none: all taken) and holds a hero of its player on the map; a meeting holds
-/// two of the player's heroes on the map, neighbours on one level.
+/// two of the player's heroes on the map, neighbours on one level; since E09 T50 every town's
+/// guild ([`check_guilds`]).
 fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCaseError> {
     let params = rules.adventure().params();
     let (slots, most) = (params.army_slots(), params.max_stack_count());
@@ -9745,6 +9762,8 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
     }
     // E09 T40a: the pool (TWN-SET-005, TWN-TAV-002, -003, -006; increment 4's design §78).
     check_pool(state)?;
+    // E09 T50: the guilds' slots and what they show (TWN-GLD-002, -003; design note §97).
+    check_guilds(rules, state)?;
     Ok(())
 }
 
@@ -10027,6 +10046,214 @@ fn check_pool(state: &GameState) -> Result<(), TestCaseError> {
             heroes,
             state.hero_record(t)
         );
+    }
+    Ok(())
+}
+
+/// The mage guilds of every state (E09 T50, design note §97), by an independent reading of the
+/// town's record against the ruleset, never through the draw:
+/// - its slots (TWN-GLD-002): at each level from 1 to 5 the filled slots first, at most the part's
+///   count and the spare, then only empty ones; each a hero spell of the ruleset of that level, no
+///   creature ability nor a spell granted by name only (Titan's Lightning Bolt, which the draw
+///   excludes with the bans: TD-25's excluded set), none twice in the guild, and each in the town's
+///   Aurora set (TWN-GLD-004's: every such spell the town does not ban), where the town's bans are
+///   read: the plans' maps ban and require none (`add_town`'s and `sample`'s empty bits), so a ban's
+///   exclusion and a required spell's place are the unit tests' (`h3_towns`' TD-25);
+/// - what it shows (TWN-GLD-003): at each level up to the guild level (the highest `guild` role of
+///   a standing building) its first slots, the part's count of the level and one more with a
+///   building of role `library` ever built, cut at the first empty one, nothing above: never more
+///   than the count and the Library's one; `h3_towns::shown` and the owner's view's slots
+///   (`shown_slots`) alike.
+fn check_guilds(rules: &GameRuleset, state: &GameState) -> Result<(), TestCaseError> {
+    let (core, part) = (rules.core(), rules.towns());
+    let params = part.params().unwrap();
+    let guild_spell = |spell: h3_content::SpellId, level: u8| {
+        core.spell(spell).is_some_and(|s| {
+            s.level == level
+                && s.category != h3_content::SpellCategory::Ability
+                && !s.granted_by_name_only
+        })
+    };
+    for place in 0..state.towns().len() {
+        let town = town_id(place);
+        let record = state.towns().get(town).unwrap();
+        let aurora = state.towns().town_static(town).unwrap().aurora;
+        let faction = part.town(record.faction()).unwrap();
+        let buildings = |set: BuildingSet| set.iter().filter_map(|b| faction.building(b));
+        let top = buildings(record.standing(faction))
+            .filter_map(|b| b.roles.guild)
+            .max()
+            .unwrap_or(0);
+        let library = buildings(record.built()).any(|b| b.roles.library);
+        let (slots, viewed) = (
+            record.guild(),
+            h3_towns::shown_slots(record.guild(), record, part),
+        );
+        let mut seen = Vec::new();
+        for (level, &count) in (1..).zip(&params.guild_slots) {
+            let held: Vec<_> = slots.level(level).collect();
+            let filled = held.iter().take_while(|s| s.is_some()).count();
+            prop_assert!(
+                filled <= usize::from(count) + 1 && held[filled..].iter().all(Option::is_none),
+                "{:?}'s level {}: {:?}",
+                town,
+                level,
+                held
+            );
+            for &spell in held.iter().flatten() {
+                prop_assert!(
+                    guild_spell(spell, level) && aurora.contains(spell),
+                    "{:?}'s level {}: {:?}",
+                    town,
+                    level,
+                    spell
+                );
+                prop_assert!(!seen.contains(&spell), "{:?}: {:?} twice", town, spell);
+                seen.push(spell);
+            }
+            let most = if level <= top {
+                usize::from(count) + usize::from(library)
+            } else {
+                0
+            };
+            let shows: Vec<_> = held.iter().take(most).map_while(|&s| s).collect();
+            let shown: Vec<_> = h3_towns::shown(slots, record, part, level).collect();
+            prop_assert!(shown.len() <= most, "{:?}'s level {}", town, level);
+            prop_assert_eq!(&shown, &shows, "{:?}'s level {}", town, level);
+            let view: Vec<_> = viewed.level(level).collect();
+            let padded = shows
+                .iter()
+                .map(|&s| Some(s))
+                .chain(std::iter::repeat(None));
+            prop_assert!(
+                view.iter().copied().eq(padded.take(view.len())),
+                "{:?}",
+                town
+            );
+        }
+    }
+    Ok(())
+}
+
+/// The guilds across a command (E09 T50, design note §97), by an independent reading of the two
+/// states:
+/// - every town's slots as before (TWN-GLD-002: drawn at the build, never again);
+/// - learning never forgets (TWN-GLD-005; HER-CHG-001: `LearnSpell` appends): every hero record
+///   of the store before keeps its learned spells first after, in their order. The whole store,
+///   wider than the heroes on the map and in the garrisons: no change takes a spell (`HeroChange`
+///   has none), no record is replaced (a week's fill and a hire's refill write an offered record's
+///   points and backpack, TWN-TAV-002, -004), a hero leaving the map (dismissed, defeated) keeps
+///   its record whole, so one that comes back (hired again) knows what it knew;
+/// - the Mana Vortex at most once a town a week (TWN-GLD-009): `given` counts by town, since the
+///   last week's start (a command's `WeekStarted` restarts it before its own gifts: no gift comes
+///   before a week's start in one command), the commands in which a hero standing in the town after
+///   (its visitor or garrison hero) has its points raised past both its points before and its
+///   maximum, and at most one such hero a command. Only the Vortex raises a town's hero so: the
+///   night refills to the maximum (TWN-GLD-008), a siege's defender keeps at most its points before
+///   (TWN-SIE-004), a battle only spends; a Magic Spring (ADV-BON-007) visited from a town's
+///   entrance sets its visitor past it too, so a command that empties a Spring's entrance counts
+///   nothing (no town's trigger comes with a visit of another object).
+fn check_guild_step(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    given: &mut [u8],
+) -> Result<(), TestCaseError> {
+    let core = rules.core();
+    for place in 0..before.towns().len() {
+        let town = town_id(place);
+        let (old, new) = (before.towns().get(town), after.towns().get(town));
+        prop_assert_eq!(
+            old.map(h3_towns::Town::guild),
+            new.map(h3_towns::Town::guild),
+            "{:?}'s guild drawn again",
+            town
+        );
+    }
+    for (i, (b, a)) in before.heroes().iter().zip(after.heroes()).enumerate() {
+        prop_assert!(
+            Arc::ptr_eq(b, a) || a.spells.starts_with(&b.spells),
+            "hero {} forgot: {:?} became {:?}",
+            i,
+            b.spells,
+            a.spells
+        );
+    }
+    prop_assert!(after.heroes().len() >= before.heroes().len());
+    if events
+        .iter()
+        .any(|e| matches!(e, GameEvent::WeekStarted { .. }))
+    {
+        given.iter_mut().for_each(|count| *count = 0);
+    }
+    let springs = before.adventure().emptied_springs();
+    if (after.adventure().emptied_springs().iter()).any(|tile| !springs.contains(tile)) {
+        return Ok(());
+    }
+    let adventure = after.adventure();
+    for (place, count) in given.iter_mut().enumerate() {
+        let town = town_id(place);
+        let heroes = [
+            adventure.town_visitor(town),
+            adventure.town_hero(town).map(|h| h.id),
+        ];
+        let raised = heroes
+            .into_iter()
+            .flatten()
+            .filter_map(|hero| before.hero(hero).zip(after.hero(hero)))
+            .filter(|(then, now)| now.mana > then.mana && now.mana > h3_heroes::max_mana(now, core))
+            .count();
+        prop_assert!(raised <= 1, "{:?}'s Vortex to {} heroes", town, raised);
+        *count += u8::try_from(raised).unwrap();
+        prop_assert!(*count <= 1, "{:?}'s Vortex twice in a week", town);
+    }
+    Ok(())
+}
+
+/// The refused openings and spell books' purchases of the players that may give no such command
+/// now, before a step (E09 T50; TWN-GLD-006, -007, GAM-DEC-001, -002; design note §97: a refused
+/// command leaves the hash): `Open` and `BuySpellBook` by the system actor, by the player past the
+/// last and by every player whose turn is not running, that has a decision of its own open or for
+/// which the game does not wait while it waits for a level-up, each of a town picked among the
+/// store's and the one past it (by `hash`, the state's: a different one at every state; the turn's
+/// refusal comes before the town is read), refused with the state, its hash and the events as they
+/// were (one probe's hash, the others' by the state's derived equality, which implies it). The
+/// acting player's own are [`check_town_builds`]' (every town: its own, another player's, a
+/// neutral one, one without a guild, one past the store). (Every town for every such actor, each
+/// probe hashed, cost the property about a tenth.)
+fn check_guild_refusals(
+    state: &GameState,
+    rules: &GameRuleset,
+    hash: u64,
+) -> Result<(), TestCaseError> {
+    let players = u8::try_from(state.players()).unwrap();
+    let held = |p: PlayerId| {
+        !state.is_acting(p) || state.has_decision(p) || state.waiting_for().is_some_and(|w| w != p)
+    };
+    let actors = (0..=players)
+        .map(PlayerId::new)
+        .filter(|&p| p.raw() == players || held(p))
+        .map(Actor::Player)
+        .chain([Actor::System]);
+    let towns: Vec<TownId> = (0..=state.towns().len()).map(town_id).collect();
+    let mut hashed = false;
+    for (k, actor) in (0..).zip(actors) {
+        let &town = spread(&towns, 1, hash.wrapping_add(k)).next().unwrap();
+        let commands = [
+            TownCommand::Open { town },
+            TownCommand::BuySpellBook { town },
+        ];
+        for command in commands.map(GameCommand::Town) {
+            let (mut probe, mut events) = (state.clone(), Vec::new());
+            let result = apply(&mut probe, rules, actor, command.clone(), &mut events);
+            prop_assert!(result.is_err(), "{:?}'s {:?} accepted", actor, command);
+            prop_assert_eq!(&probe, state);
+            if !hashed {
+                prop_assert_eq!(probe.state_hash(), hash);
+                hashed = true;
+            }
+            prop_assert!(events.is_empty());
+        }
     }
     Ok(())
 }
@@ -12872,7 +13099,10 @@ proptest! {
     /// custom experience ([`experience`]: levels at load, and level-ups in play from the first
     /// battle); since E09 T9b1 the towns' owners, garrisons and records ([`check_towns`]); since
     /// E09 T40a the pool in every state ([`check_pool`]) and every dismissal probed before a step
-    /// ([`check_dismissals`]).
+    /// ([`check_dismissals`]); since E09 T50 the guilds in every state ([`check_guilds`]), the
+    /// openings and books' purchases no one may give now probed ([`check_guild_refusals`]), and
+    /// across each command the slots, the learned spells and the Vortex's week
+    /// ([`check_guild_step`], `given` its count by town).
     #[test]
     fn every_step_keeps_the_commands_invariants(
         plan in trade_plan(),
@@ -12889,6 +13119,7 @@ proptest! {
         // E08 T106b1: the channels as the plan laid the teleporters out, the build's for the game.
         check_channels(&m, &state)?;
         let channels = state.adventure().map().channels().clone();
+        let mut given = vec![0; state.towns().len()];
         for step in &steps {
             check_progression(rules, &state)?;
             check_invariants(rules, &state)?;
@@ -12901,6 +13132,7 @@ proptest! {
             let listed = actor == self::actor(&state) && legal.contains(&command);
             let before = state.clone();
             let hash = state.state_hash();
+            check_guild_refusals(&state, rules, hash)?;
             let mut events = Vec::new();
             let result = apply(&mut state, rules, actor, command.clone(), &mut events);
             if result.is_err() {
@@ -12947,6 +13179,8 @@ proptest! {
             check_mine_guards(rules, (&before, &state))?;
             check_week(rules, (&before, &state), &events)?;
             check_towns(rules, (&before, &state), &command, &events)?;
+            // E09 T50: the guilds' slots, the learned spells and the Vortex's week.
+            check_guild_step(rules, (&before, &state), &events, &mut given)?;
             // E08 T106b1: the teleporters' jumps and visits, the Whirlpools' losses.
             check_jumps(rules, (&before, &state), (player, &command), &events, &channels)?;
             check_whirlpool_losses(rules, (&before, &state), &command, &events)?;
@@ -13005,6 +13239,17 @@ proptest! {
             prop_assert_eq!(state.state_hash(), fork.state_hash());
         }
         prop_assert_eq!(fork.adventure().map().channels(), fresh.adventure().map().channels());
+        // E09 T50 (design note §97; TWN-GLD-002, -004): a fork's guilds are its parent's, the
+        // build's slots and Aurora sets (the whole state above compares them too, the hash since
+        // the store v4).
+        let guilds = |state: &GameState| -> Vec<(h3_towns::GuildSlots, h3_towns::SpellSet)> {
+            (0..state.towns().len())
+                .map(town_id)
+                .map(|t| (*state.towns().get(t).unwrap().guild(), state.towns().town_static(t).unwrap().aurora))
+                .collect()
+        };
+        prop_assert_eq!(guilds(&fork), guilds(&fresh));
+        prop_assert_eq!(guilds(&wild), guilds(&fresh));
     }
 
     /// A fork's week is its parent's (E09 T29b, the town epic's design note §47): from a random
