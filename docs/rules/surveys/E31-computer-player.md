@@ -777,9 +777,10 @@ answer, 500 for a Whirlpool, and a Castle Gate's unbuilt cost value.
 
 What the computer does with its towns, and how it answers what the game's visits ask. Read in
 four parts (AI-Q26): §3.1 the build choice (T1a3a) and §3.2 the hires (T1a3b), both in the
-turn's middle (§1.5); §3.3 the town visit with the army plan's open pieces (T1a3c); §3.4 the
-answers the game's visits ask, the market visits and the table of asymmetries for the owning
-lanes (T1a3d). Units are §2's; the detail of each routine is in its map entry.
+turn's middle (§1.5); §3.3 the town visit with the army plan's open pieces (T1a3c); T1a3d in two
+(AI-Q28): §3.4 the answers the game's visits ask (T1a3d1), §3.5 the Seer's reward, the markets, the
+allies' shares and the battle's split (T1a3d2), §3.6 the table of choices and rules for the owning
+lanes. Units are §2's; the detail of each routine is in its map entry.
 
 ### 3.1 The build choice (T1a3a)
 
@@ -1066,9 +1067,83 @@ ignore the recruit reserve, as does its dwelling (like the halls, §3.1); the Co
 unused; the Blacksmith's machine bought at any worth; a refused artifact goes back to the first slot
 that takes it.
 
-### 3.4 Not read yet (T1a3d)
+### 3.4 The answers to the visits (T1a3d1)
 
-The answers to the game's visits (about 25 `ai_*` entry points), the 17 callers of
-`ai_fight_answer`, the Seer's reward (0x573A70), the market visits (whether `ai_artifact_market_price`'s
-prices are the human's), the allies' shares (`ai_ally_resource_share` 0x429110),
-`ai_battle_army_split` 0x42DB20 beyond its frame, and the table of asymmetries: T1a3d.
+**Where.** Wherever a visit asks a human a question or opens a dialog or a screen, the game's code
+calls the computer's answer instead. Read in two parts (AI-Q28): T1a3d1 these answers (the main
+session), T1a3d2 the Seer's reward, the markets, the allies' shares and the battle's split (§3.5, a
+sub-agent). The game calls 43 functions of the computer's two ranges; besides the answers below
+they are the turn (`ai_player_turn`, §1), the town visit and the artifacts' arrangement (§3.3), the
+University (§3.3), the level-up (`ai_level_up_choice` 0x52BBD0, E08 T24a1), the gold or the
+experience of a chest, a Tree of Knowledge or a School of War (`ai_gold_or_experience` 0x527FE0,
+E08 T55a1: the gold when its weighted worth beats the experience's), the quick battle and the
+simulated battle's end (§2.2), the battle AI's spell values (`ai_caster_record`,
+`ai_best_spell_value`, E23), and code of the game's own that lives there: `sirens_losses`
+0x527EC0 (the Sirens' rule for every player), `hero_army_power` and `army_power` (the monster's
+popup, the Thieves' Guild), `team_has_human`, `ai_map_terrain_shares` (at a new game and a load),
+`town_has_building`, `hero_position`, `game_map_item`, `game_hero`, the records' setup and
+`ai_artifact_effects_clear` 0x434590 (at the shutdown), the vector helpers, and
+`ai_army_plan_destroy` 0x4286E0 (the exception unwind's). Two callers outside the ranges, 0x56F5A0
+and 0x571560 (of `ai_artifact_value_to_player` and `ai_weighted_cost`), are left to T1a4.
+
+**The fight answer** (`ai_fight_answer` 0x52BD10, 17 callers) is §2.1's object value for the hero,
+with no state change. Fourteen visits that ask a human yes or no go ahead when it is above 0 and
+decline at 0 or below: the guarded artifact and its two pickup conditions (fight, pay), the guarded
+resource and Spell Scroll, Pandora's Box, the creature banks, Dragon Utopia, the Derelict Ship, the
+Crypt and the Shipwreck, the Pyramid, a dwelling's and a mine's guards, the School of Magic, and a
+fleeing monster (above 0 it is pursued and fought). No other test: the value already weighs the
+fight, the reward and the price. The computer's pathfinder asks it three times, in its modes from
+4: `pathfinder_entrance_guarded` 0x56A360 for a tile in a monster's zone (the map's guard flag, not
+the fog), `pathfinder_target_weigh` 0x56AAD0 for a step onto a hero, a garrison or a monster, and
+`pathfinder_teleport_exits` 0x56A400 for a guarded exit: at or below −500 000 000 (a lost fight,
+§2.2's −1 000 000 000 plus its gains) the path stops there (a teleporter's whole channel is
+dropped); below 0 the value is added to the node's value (+0x10) and the tile kept as its target
+(+0xC), so a path through a costly fight is worth less.
+
+**The answers**, each where a human gets a dialog:
+
+| Visit | The computer's answer | What it does |
+|---|---|---|
+| Garrison (`visit_garrison` 0x4A9061; a human `garrison_exchange_dialog`) | `ai_garrison_visit` 0x524370 | only a garrison of its own colour (a team-mate's: nothing) whose troops may be taken out (+0x3C), never in RoE's campaigns (index below 7); §3.3's exchange with the garrison as the other army, no other hero |
+| Meeting (`visit_hero` 0x4A2800, same team; a human `meeting_exchange_screen`) | `ai_meeting` 0x525DC0 | after the Scholar's spells (the game's): the hero of the larger primary sum takes §3.3's exchange from the other (equal sums: no army exchange); then the artifact exchange both ways (§3.3). The other may be an ally's hero, a human's included: the visitor decides for both, as a human visitor does |
+| Dwelling (`visit_dwelling` 0x4A18B0; a human `dwelling_offer_hire`) | `ai_dwelling_visit` 0x527B00 | its own or an unflagged one only, never an ally's; the army plan on the dwelling's creatures (level 1 free, as the human's) bought for real with trades (§3.3's run), the counts written back |
+| Refugee Camp (`visit_refugee_camp`; a human the hire dialog) | `ai_refugee_camp_hire` 0x527E10 | the plan on the camp's creature (`ai_army_plan_init_creature` 0x42CF50), paid, with trades |
+| War Machine Factory (case 106; a human the question and the hire dialog) | `ai_war_machine_factory_visit` 0x524FC0 | the Ballista, the Ammo Cart, then the First Aid Tent, each bought when §2.1's `ai_war_machine_value` 0x525120 is above 0 (never on Easy): the machine's creature's cost, one of each |
+| Hill Fort (case 35; a human the upgrade dialog) | `ai_hill_fort_visit` 0x527BB0 | every stack with an upgrade (`creature_upgrade` 0x47B1A0; RoE's elementals excluded in an RoE game) upgraded whole in slot order when the resources cover it, at the human's price (`upgrade_cost` with the Fort's gold factors); the value never weighed |
+| School of Magic (`visit_school_of_magic`; a human picks) | `ai_fight_answer`, then `ai_magic_school_choice` 0x527CD0 | Knowledge when the hero's Knowledge gain (+0x486, §2.4) is above its Spell Power gain (+0x47E), else Spell Power; 1 000 gold |
+| Join for gold (`monster_join_for_gold`; a human asked) | `ai_gold_offer_answer` 0x527F60 | yes when the group's value (split over seven slots, `army_fill_split` 0x44AAA0) less the price × the gold weight is above the fight's estimate (`ai_army_fight_sim`, §2.2) |
+| Join for free (`monster_join_free`) | accepted (E08) | — |
+| A joining group, a reward's or a bank's creatures, with no free slot (a human `army_full_dialog`) | `ai_join_without_room` 0x52BC60 | the plan with the group free and no spare army: the group goes over the slot of best marginal value above 0, that stack lost; none above 0: the group lost |
+
+**Prices.** Every purchase pays what a human pays at the same object: the creatures' costs, the
+Hill Fort's `upgrade_cost` with its gold factors, the war machines' creature costs, 1 000 gold at
+the School, and a boat's 1 000 gold and 10 wood. The last is only planned here:
+`ai_boat_purchase_cost` 0x431160 prices for the pathfinder's boat node (pathfinder +0x14) a boat at
+a tile where one of the player's towns places its boats (plus the Shipyard's cost when not built,
+without `town_can_buy`) or one of its map Shipyards (player +0x8C), −200 000 elsewhere.
+
+**Reads, draws, floats.** The guards', groups' and objects' true contents through §2.1's value and
+§2.2's fight (§2.5), guards under the fog included (the pathfinder's guard flag is the map's); the
+rest is the hero's own army, the player's treasury and weights, the difficulty and the edition. No
+draws. Floats: f32 in the Hill Fort's gold (as the human's), f64 in the gold offer's test.
+
+**Choice or rule.** All choices, each a human's command with the same tests and prices: the
+exchanges (the garrison and hero exchange), the purchases (the dwelling's, the camp's, the
+Factory's and the Fort's), the School's pick, the joins (accept, refuse, dismiss a stack for room),
+the fights and refusals. Fewer moves than a human's: no exchange at a team-mate's garrison or in
+RoE's campaigns, no hire at an ally's dwelling, no army exchange between heroes of equal primary
+sums.
+
+**Quirk candidates** (not flagged; T1b's second look): (a) `ai_meeting` with equal primary sums
+exchanges no troops at all, while a sum one higher takes everything worth taking; (b)
+`ai_boat_purchase_cost` counts a town's Shipyard without asking whether it can be built, so the
+path may plan a boat the town cannot sell; (c) `ai_join_without_room` passes no spare army, so the
+stack the group replaces is lost even when a garrison or another hero is at hand.
+
+### 3.5 The Seer's reward, the markets, the allies' shares and the battle's split (T1a3d2)
+
+(T1a3d2: being merged.)
+
+### 3.6 Choice or rule: the table (T1a3d)
+
+(Being written.)
