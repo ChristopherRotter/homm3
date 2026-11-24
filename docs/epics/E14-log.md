@@ -293,3 +293,9 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   history and AGENTS.md's rmg reading list; `02-architecture.md` §3, the README's crate table, the
   work process's rmg lane, the global HANDOFF's row. The adventure lane's inbox: `TileRand` and
   `OriginalDraws` may wrap `CrtRand`.
+- **The coverage gate:** a scope whose logic crates are skeletons (no function: `h3-rmg`) has no
+  coverage data, and `llvm-cov report` failed the scoped verify; the gate and `runs_tests` skip
+  such a scope now (the test step then runs its tests; `docs/05-testing.md`), with a unit test.
+- **Checked:** the scoped verify (`--scope rmg`) passes but `check-lane` (a shared branch, by
+  design; `check-lane --cross-lane` passes); `cargo check --workspace --all-targets`, the kernel's
+  and xtask's tests and clippy, `scripts/exe.py check`.
