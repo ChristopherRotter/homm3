@@ -4,30 +4,31 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 ## Tasks
 
-Epic: `docs/epics/E09-towns.md` (increment 5: the mage guild, refined at T41, `TWN-Q30`, decisions
-161 to 164; its survey T42a and T42b with the checkpoint `TWN-Q31`, decisions 165 to 171; its
-drafts, cut and exit criteria by T43, `TWN-Q32`, `TWN-Q33`, decisions 172 to 181; batch TWN-5 by
-T44, decision 182; the drafts in the ADRs by T45, decision 183; the part v9 by T46, decisions 184,
-185; T47a cut in two, T47a1's module, decisions 186, 187; T47a2 whole, decision 188; T47b whole with the inbox's guild fix, decision 189; T48a whole, decision 190; T48b whole, decision 191; T49a cut in two, decision 192; T49a2 whole, decision 193; T49b whole, decision 194; T50 whole, decision 195; the services are increment 6, travel and
-the Grail 7, decision 162); done tasks
-in `E09-log.md`; increments 1 to 4 (closed by T10, T20, T30 and T41) in `E09-archive.md`. Each
-task's cut confirmed at its start; every entry's acceptance includes the Definition of Done
+Epic: `docs/epics/E09-towns.md` (increment 6: the town's trades, refined at T51, `TWN-Q34`,
+decisions 196 to 199: the services in two increments, 6 the trades and 7 the buildings for
+heroes and the map, travel and the Grail 8, decision 197); done tasks in `E09-log.md`;
+increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in `E09-archive.md`. Each task's cut
+confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T47 to T51** (queued, design §98's rounds 5 to 8; each cut confirmed at its start; **T51**
-next): T47 the guild drawn and shown (§84 to §87, §94; T47a cut in two, decision 186: T47a1
-`h3-towns`' guild module and T47a2 the map's town spell sets with import v28, the store v4, the
-game's draw at the build, game state hash v38, every golden re-recorded, both done; **T47b** the
-owner's view (TWN-VEW-004, the protocol v78), done (decision 189)); T48 learning (§88, §89: T48a the set
-with the Aurora and T-18, the town's own triggers, `TWN-STUB-6` and `-15` lifted, done (decision
-190); T48b the visit's end, a capture, a siege's end, `cross-lane`, done (decision 191)); T49 the spell points and the commands (§90
-to §93, §95: T49a cut in two (decision 192): T49a1 the night's refill and the Mana Vortex at the
-visit's end, the builds and the hire, done; T49a2 `TownCommand::Open` whole (decision 193:
-protocol v79, replay format v24, encoding v18), done; T49b `BuySpellBook` whole (decision 194:
-protocol v80, replay format v25, encoding v19), done); T50 the guild map, its replays, the
-census, the properties, the benchmarks (§97), done (decision 195, with the inbox's hygiene
-failure); **T51** the audit against §99's criteria, increment 5 closed, increment 6
-refined.
+**E09 T52** (queued, round 1, decision 198; **next**; its cut confirmed at its start): increment
+6's survey with its checkpoint `TWN-Q35`, docs only, `docs/rules/surveys/E09-trades.md`. The
+code reading of `Heroes3.exe` for each window a town's owner trades at: the market window's
+screens at a town (`market_window_run` 0x5EA130, survey `E08-trades.md` §3, §4, §11: resources
+for resources, resources to another player, artifacts for resources, artifacts sold (screen 3,
+`market_artifact_sale_rate` 0x5ECDC0, `market_sell_artifact_proc` 0x5EDF60), creatures sold at
+the Freelancer's Guild (screen 4, D-71); a town's count of Marketplaces, D-70), the Artifact
+Merchants' stock and its monthly draw (`new_month` 0x4C8F40, game +0x1F664; the combination
+artifacts' blank costs, the inbox's E04a T3b note), the Blacksmith's war machines with the
+Stronghold's Ballista Yard, the town's Shipyard and its boat (E08's), the Conflux's Magic
+University, the Necropolis's Skeleton Transformer; VCMI 1.7.5 and the wiki compared; a census
+of the 160 shipped maps' towns with these buildings; disputes, quirk candidates and batch
+TWN-6's rows. Acceptance: the survey's sections with their sources and addresses (`docs/exe/map.toml`),
+the census's counts, the checkpoint asked and its decisions in the epic. Needs the original data.
+
+**E09 T53** (queued, round 2, decision 198): increment 6's ADR amendment drafts
+(`docs/lanes/town/adr-drafts/*-increment-6.md`), the design note's Part H from §101, the cut
+into rounds and the exit criteria, accepted at the checkpoint before anything is built (as T43).
 
 ## Inbox
 
@@ -53,14 +54,6 @@ refined.
   `play.rs`: the town check now expects the week's start to fill every town's Vortex flag (T49a2's
   `Towns::start_week`, found by this branch's property run: the "rebuilt" check failed on it).
 
-- 2026-11-22 (the adventure lane, E08 T140, `shared/e08-t140`, `cross-lane` with the user's
-  consent; **mechanical at a merge**): the base faithful ruleset hash moved
-  `0x36b98ea152b4db95` to `0x0ee6066a4c802530` (increment 15's six flags in the profiles), so every
-  golden adventure replay's `ruleset_hash` header moved (commands and hashes kept; all 111
-  verified): a branch that adds or re-records a replay takes the new header after merging
-  `master`. ADR-0017 point 1 now holds the prisoners' build and freeing (T137b's note below), ADR-0016
-  point 4 the kinds `prison` and `empty`.
-
 - 2026-11-21 (the adventure lane, E08 T137b, `adventure/e08-t137b`; **for your planning, nothing
   to build**): from E08 T141a every prisoner is a hero in the store with details (a placed hero's:
   levels at load, army, skills, artifacts, spells), in no list, still `HeroStatus::Prisoner` in the
@@ -82,13 +75,6 @@ refined.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
-- 2026-11-19 (the adventure lane, E08 T132b, `adventure/e08-t132b`; **a version taken, nothing
-  to do now**): map import v27 is taken (the seven trade classes typed at subclass 0: 2, 7, 35,
-  99, 106, 213, 221 as 99); your next import change takes v28. Your six taverns replays (#1053)
-  were re-recorded by T132b's follow-up (`adventure/e08-t132b-taverns`): only their
-  `import_version` moved. `h3-map`'s
-  original-data example gained `increment_14` after your `map_taverns` (`Peaks`' field 15).
-
 - 2026-11-19 (the adventure lane, E08 T132a1, `adventure/e08-t132a1`; **the market's rates built,
   for your Marketplace; nothing to do now**): `h3_adventure::MarketParams` (exported with `Lot` and
   `MarketParamsError`) computes the original's rates in `X87`: `resource_lot(count, give, take)`
@@ -99,17 +85,6 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   T132a2: `AdventureRuleset::params().market()` (the base pack's values and factors). **A correction** to survey `E08-trades.md` §4: a precious resource
   for wood or ore is **2 : 1** at five Marketplaces (the first table had 1 : 2; the code read
   again). The artifact sale (screen 3) stays yours to add on the same module.
-
-- 2026-11-19 (the adventure lane, E08 T131, `shared/e08-t131`, `cross-lane`, docs only; **the ADRs'
-  new parts, for your increment 5's amendments; nothing to do now**): ADR-0016 points 1, 4 and 6
-  and ADR-0017 points 1, 6, 8, 9 and 10 now hold E08's increment 14 (the market with its rates in
-  the adventure part, the Black Market's stock, the Altar, the Hill Fort, the factory; the
-  decisions GAM-DEC-011 to -013), each placed after your increment 4's text; ADR-0017 point 9
-  names the next versions after yours (part v23, map import v27, adventure state hash v27, game
-  state hash v35, replay format v20, encoding v14), whichever lane merges first taking them.
-  Batch E14 (survey `E08-trades.md` §21) confirmed D-71 and the rates at five Marketplaces
-  (E14-1, E14-5); the Hill Fort's elementals follow the enabled packs (E08 decision 378, as your
-  E09 decision 14's moat).
 
 - 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **the market's
   rates' home and the versions both lanes plan; nothing to do now**): at T127b's checkpoint
@@ -225,18 +200,14 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
 - 2026-11-03 (the battle lane, CLT-Q40; its siege half done by T6b, `QUEUE-ARCHIVE.md`): the
   owner's Grail building that adds a hero's morale or luck (the Colossus, the Spirit Guardian)
   names itself as `EffectSource::Building { faction, index }` on that hero's `BattleEffect`, when
-  the game gives it.
-- (adventure archive, 2026-10-03, E04a T3a) Not harvested: the spells' town chances and the hero
-  classes' tavern weights (RoE lacks the Conflux column: an override kind or a per-faction table).
-  Increment 4, the Tavern (weights: only the tavern's draw reads them, survey `E09-towns.md`
-  §4.4; read by T32: `E09-tavern.md` §2.2, the Complete's file has the nine columns, harvested by T36),
-  increment 5 (chances: read by T42a, survey `E09-guild.md` §2: the nine columns at the spell
-  record's +0x44; their home in the packs is T43's call, §2.3).
+  the game gives it. Increment 8, travel and the Grail (decision 197).
 - (ADR-0013 point 13.6; E08 decision 199, A-30) The Castle's Lighthouse building (sea movement).
-  Increment 6, the services (decision 162).
+  Increment 7, the buildings for heroes and the map (decision 197).
 - (adventure archive, 2026-10-14, T19a2b) The Necropolis buildings' +10/+20 % Necromancy
-  (0x4E3CD0 with the building bits 0x66CE40, 0x66CE68). Increment 6, the services.
+  (0x4E3CD0 with the building bits 0x66CE40, 0x66CE68). Increment 7, the buildings for heroes
+  and the map (decision 197).
 - (adventure archive, 2026-10-03, E04a T3b) Combination artifacts' costs (blank in the original):
-  the Artifact Merchants. Increment 6, the services.
+  the Artifact Merchants. Increment 6, the town's trades (decision 197).
 - (adventure archive, 2026-10-11, T8a; T34b) The new day's reveal around owned objects after a
-  Cover of Darkness hid tiles (0x4C7BA0). Increment 6, the services.
+  Cover of Darkness hid tiles (0x4C7BA0). Increment 7, the buildings for heroes and the map
+  (decision 197).

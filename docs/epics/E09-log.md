@@ -6145,3 +6145,138 @@ once; nothing was lost (each part committed and pushed as it came).
 
 **The queue:** T50 out; T51 next (the audit against §99's criteria, increment 5 closed, increment
 6 refined). Ids: decisions next 196.
+
+### T51 — the audit; increment 5 closed; increment 6 refined (2026-11-24)
+
+One session, the user present at the start; branch `town/e09-t51`, docs only, with the README's
+row in `shared/e09-t51-readme`. Starting point: `master` at 25397e7 (T50's #1144 merged, then
+E08 T141b's #1147). The user's computer was connected: the five files the town lane's gates read
+staged (`Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`; SHA-256
+checked against the PC's). The sandbox VM restarted once while the setup's baseline ran (its
+coverage step lost); the scoped verify ran again (below). **At its start** (the user, asked with
+a first look at the audit, `TWN-Q34`): T51 whole (decision 196), the services in two increments,
+6 the town's trades and 7 the buildings for heroes and the map, travel and the Grail 8 (decision
+197), the first round as before (decision 198).
+
+**The audit of increment 5's exit criteria** (design note §99), on `master`'s code:
+
+1. **The part.** `h3-towns`' `the_guild_weights_are_the_cores_hero_spells_by_index`,
+   `the_guilds_parameters_are_checked`, `the_guilds_roles_are_checked`, `the_guilds_resource_
+   rows_are_the_cores_each_in_at_most_one_row`; `h3-pack-towns`' `the_original_guilds` (in
+   `the_original_packs_compile_with_every_faction`: the weights' sums, the roles, the slots, the
+   price and the factor, both editions); part v9, TWN-GLD-001 `verified` by T46. **Holds.**
+2. **The draw.** `h3-towns`' `each_level_draws_its_weighted_spells_once_then_leaves_its_slots_
+   empty`, `a_slot_takes_the_first_spell_whose_running_weight_reaches_the_roll`, `a_required_
+   spell_is_taken_first_in_spell_order_whatever_its_weight`, `td_25_a_spell_the_town_requires_
+   and_bans_is_never_in_its_guild`, `the_scenario_s_bans_and_a_spell_granted_by_name_only_are_
+   never_drawn`, `a_level_without_a_spell_left_is_empty`, `a_seed_draws_alike_and_seeds_differ`;
+   the game's `every_town_s_guild_is_drawn_at_the_build_from_the_towns_stream`, `the_scenario_s_
+   bans_leave_every_guild_and_the_aurora_set_by_the_quirk`, `a_town_spell_is_a_hero_spell_of_the_
+   ruleset`; `h3-map`'s `a_towns_required_and_banned_spells_are_the_maps` and `a_town_s_spells_
+   and_the_map_s_banned_spells_read_back_as_written` (TWN-SET-012); the plans' `check_guilds`;
+   the census (T50: no excluded spell in the 160 maps' guilds, the required spells first,
+   `Faeries`' required and banned spell never drawn). **Holds.**
+3. **What the guild shows.** `the_guild_level_is_the_highest_standing_mage_guild`,
+   `each_built_level_shows_the_part_s_slots_and_the_library_one_more`, `an_empty_slot_ends_its_
+   level`, `the_shown_slots_hold_each_level_s_shown_spells_in_order_and_nothing_else`; the guild
+   map's `a_library_and_a_guild_level_built_with_visitors` (`guild-builds-s1`); `check_guilds`'
+   independent reading of the guild level and the Library. **Holds.**
+4. **Learning.** `a_hero_with_a_book_learns_what_the_guild_shows_up_to_its_wisdom_level_then_
+   slot`, `nothing_is_taught_without_a_guild_ever_built_or_the_faction_s_record`, `the_aurora_
+   teaches_its_set_in_spell_order_at_any_guild_level_up_to_wisdom`, `twn_quirk_14_the_aurora_
+   set_holds_the_scenario_s_bans_only_with_the_flag_on`; the game's `the_aurora_teaches_past_the_
+   guild_s_level_and_a_hero_without_a_book_nothing`; `a_visit_learns_the_aurora_set`
+   (`guild-visit-s1`); `check_guild_step` (learning never forgets). **Holds.**
+5. **The triggers.** `town/tests/learn.rs`' nine (each build, a town event's build, the bars'
+   moves only with a visitor and a new day nothing, a hire, TD-10's start, a step and a
+   `Revisit`, an undefended capture, a siege's end whoever won), `open.rs`' and `book.rs`'
+   learning; the guild map's `the_starting_heroes_learn_at_the_start`, `a_hire_at_the_tower_
+   learns`, `a_siege_won_by_the_defender_teaches`; the census's start (the 33 main towns' heroes
+   with a book learn 188 spells, the 8 placed ones nothing). **Holds.**
+6. **The commands.** `an_opening_gives_the_vortex_to_the_garrison_hero_first_then_teaches_the_
+   visitor_then_it`, `an_opening_teaches_a_garrison_hero_alone_and_a_town_without_a_guild_
+   nothing`, `each_refusal_of_an_opening_changes_nothing`, `the_legal_commands_list_an_opening_
+   only_where_it_would_change_something`; `a_purchase_gives_the_visitor_the_book_for_the_price_
+   then_teaches_it_at_once`, `the_visitor_is_offered_the_book_before_the_garrison_hero`,
+   `each_refusal_of_a_purchase_changes_nothing` (`NoGuild`, `NoHero`, `HasSpellBook`),
+   `the_legal_commands_list_a_purchase_where_it_is_accepted_after_the_opening`; `h3-towns`'
+   `an_opening_gives_exactly_where_the_vortex_or_the_guild_would`, `a_spell_book_is_sold_where_a_
+   mage_guild_stands_for_the_part_s_price`; the plans' `check_town_open`, `check_town_book`,
+   `check_guild_refusals`; `guild-book-s1`. **Holds.**
+7. **The night's refill.** `a_night_raises_a_town_s_visitor_and_garrison_hero_to_their_maximum_
+   silently`, `a_town_without_a_guild_refills_nothing_and_a_hero_outside_a_town_neither`,
+   `a_night_refills_in_a_town_with_a_guild_ever_built`; `guild-siege-s1` (the refill past the
+   day's regain); GAM-CAL-002 amended. **Holds.**
+8. **The Mana Vortex.** `a_standing_mana_vortex_with_the_week_s_flag_gives_the_factor_times_the_
+   maximum`, `the_visit_s_end_gives_the_vortex_before_the_learning_once_a_week`, `a_build_gives_
+   the_vortex_after_its_learning_to_the_garrison_hero_first`, `a_hire_gives_the_vortex_to_the_
+   hired_hero_alone_a_move_between_the_bars_nothing`; `the_vortex_over_two_weeks`
+   (`guild-vortex-s1`: the flag set again on day 8 only, a second opening changing nothing);
+   `check_guild_step` (the gifts counted per town and week). **Holds.**
+9. **The views and the protocol.** `the_owner_sees_what_its_guild_shows_told_at_each_build_and_
+   another_player_nothing`, `a_town_has_the_aurora_once_its_building_was_built`; `h3-map`'s
+   `a_viewer_learns_nothing_it_cannot_see` (its garrison case the property's, fixed by T50);
+   `h3-protocol`'s `every_command_maps_to_the_wire_and_back_and_round_trips` and `every_
+   rejection_maps_back_and_round_trips` with `Open`, `BuySpellBook` and the three refusals, the
+   town view's `guild`, `aurora` and `vortex` (protocol v78 to v80); the fold gate over the 118
+   goldens without a new gap (`h3-protocol`'s; CI's full verify on `master` the record).
+   **Holds.**
+10. **The env and the replays.** Action encoding v18 and v19 (`TOWN_OPEN` 103 and `SPELL_BOOK`
+    104: `h3-sim`'s layout test, the mask property's listed openings and purchases,
+    `the_env_plays_the_town_map_to_its_end_of_days` buying books on seed 264); replay format v24
+    and v25 with the words `town open` (`guild-vortex-s1`, three) and `town book`
+    (`guild-book-s1`). **Holds.**
+11. **The census.** `h3-map`'s `original_data` (T50: the 160 maps' guilds drawn without an
+    excluded spell, 25 of the survey's counts, the main towns' heroes learning at the start),
+    run again by the original-data step here. **Holds.**
+12. **Rules, quirks, stubs, gates, batch TWN-5.** TWN-GLD-001 to -009, TWN-SET-012, TWN-VEW-004
+    and GAM-CAL-002 amended, each with its id, sources and tests (`check-rules` passes);
+    `TWN-QUIRK-14` in `quirks-town.md` with its flag `quirk.town.aurora_ignores_map_bans` and its
+    regression tests in both settings; `TWN-STUB-6` and `-15` gone from `docs/stubs.toml`. The
+    gates on `master`'s code: coverage (132 gated files in the four logic crates, no exclusion); determinism (debug,
+    release and native, the 118 golden adventure replays among them); the census of
+    `original_data` (all 160 maps import, build and play to day 29; the guilds as criterion 11
+    says, 26 775 slots drawn on 158 maps, 249 guilds standing, the 33 main towns' heroes with a
+    book learning 188 spells); the properties at their default cases in the test and coverage
+    steps (T50's three at 240 cases, its record); the benchmarks (all 41 workloads inside their
+    gates, from −0.92 % `random-play-sea-36` to +1.69 % `fork-economy-xl-144`;
+    `day-start-guild-36` baselined by T50). Batch TWN-5 run and scored (T44, survey
+    `E09-guild.md` §21: every row as the reading, in both runs). **The gap fixed** (below).
+    **Holds.**
+
+**The gap.** Criterion 12 wants batch TWN-5's consensus rows `verified`: of the rules they settle
+only TWN-GLD-001 was (T46). Each row matches its rule as built (the checkpoint chose the
+original's reading every time, decisions 167 to 170), so TWN-SET-012 (TWN-5-1), TWN-GLD-002
+(TWN-5-1), -003 (TWN-5-3), -004 (TWN-5-2, -3), -005 (TWN-4-2, TWN-5-3, -4, -5), -006 (TWN-5-5,
+-3), -008 and -009 (TWN-5-5) are now `verified`, each observation with a note naming what no row
+played. TWN-GLD-007 stays `implemented` (no row bought a book), TWN-VEW-004 too (no row read a
+view). `TWN-QUIRK-14`'s context still called its learning "planned": built by T48a. **Left open,
+by design:** `TWN-STUB-2`, `-16` (E10), `-8` (the battle lane's inbox), `-13` (Visions' reach),
+`-17` (now increment 8), `-18` (E13).
+
+**Increment 5 closed** (2026-11-24): its section (the refinement's note, decisions 161 to 195 and
+the task list with T51's line) moved verbatim to `E09-archive.md` (checked by script: every line
+of the old epic in the new epic or the archive, but the seven edited ones); its design note's
+Part G stays in `E09-design.md` (decision 40), its exit criteria in §99. The README's row (5 of
+8) in `shared/e09-t51-readme`.
+
+**Increment 6 refined** (`TWN-Q34`; decisions 196 to 199): the town's trades (decision 197; the
+epic's sketch now eight increments, with the line for older citations); the survey with its
+checkpoint, then the drafts with Part H and the cut (decision 198). The inbox's four notes that
+increment 5 acted on (E08 T140's header, T132b's import version, T131's ADR parts, E04a T3a's
+town chances) archived with where their work went (`QUEUE-ARCHIVE.md`); the market's notes and
+the combination artifacts' costs kept for increment 6, the Lighthouse's, the Necromancy's and
+the Cover of Darkness's now labelled increment 7, the Grail buildings' 8. `TWN-STUB-17`'s and
+TWN-BLD-002's, TWN-GLD-005's and -009's "increment 7" now 8; `TRAPS.md`'s hygiene trap names
+increment 6's trades. The adventure lane's and the AI lane's inboxes told the new numbers. The
+queue holds T52 and T53.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` on the branch's first
+state (the engine's code `master`'s at 25397e7, the eight rules already `verified`) with no
+failing step (coverage 22.2 minutes, determinism 9.1, bench-check 15.8, original-data 1.0;
+`deny` and `ffi-smoke` skipped by the scope). After the docs, on the branch: `check-docs`,
+`check-rules`, `check-stubs`, `doc-drift --base origin/master` and `check-lane --base
+origin/master`; on `shared/e09-t51-readme` `check-lane` and `check-docs`. CI on the pull
+requests is the record.
+
+**The queue:** T51 out; T52 next, T53 queued. Ids: decisions next 200, questions `TWN-Q35`.
