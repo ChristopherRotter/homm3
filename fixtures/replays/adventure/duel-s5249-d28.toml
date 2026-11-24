@@ -694,33 +694,33 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x27065205b0740503",
-    "0xee94991262dc838f",
-    "0xbfa75417e10a1608",
-    "0x22cd6cb309dfd1fc",
-    "0xb547a58fa5ac6947",
-    "0x9a59b0716bcf1431",
-    "0x9fe4142ccbdcd6b8",
-    "0xb5cd3287e2cae360",
-    "0xe74774ac85d66a65",
-    "0x4df526a604eea4a6",
-    "0x6b26943466b22ca5",
-    "0x2d06a48a0a295342",
-    "0x6b6f00a3c9ab32d1",
-    "0x177dd464f1f1f79e",
-    "0x4ce7b7d7787a24d4",
-    "0x699155c0a34a28f3",
-    "0x5dc33a78b6937c4b",
-    "0x36e5b8f324352412",
-    "0xc6c56de4d33b79f8",
-    "0x5f562f51cbdd1f67",
-    "0xff97302257433b16",
-    "0xfb2c692858620e04",
-    "0x19dd037ce8c16eb7",
-    "0xc7d0a98db286bfc8",
-    "0x2ad0909b8a68f33e",
-    "0x6817a2d437675358",
-    "0xf7651425bd358d15",
+    "0x6254bcd0b4a9d58c",
+    "0x7ed77f6d7a06dcc4",
+    "0x8d64cfcb6097348f",
+    "0xb06252c21231edbf",
+    "0x5ff975c378e761e0",
+    "0x91135f21a657dcb6",
+    "0xae0adb3c272d77ef",
+    "0x5ae20130617d2a6b",
+    "0x5b7b71455a0c2f86",
+    "0x672db948e11e3be5",
+    "0xe9795e141602980a",
+    "0xedc3831c0e6d945d",
+    "0x0f1bb3fcdf70ecf9",
+    "0x05dd5d6486db3a88",
+    "0xb23010349538618e",
+    "0x29e5472df730aac9",
+    "0x4f56f8d2e728e9d9",
+    "0x7535246c7eeabff8",
+    "0xea8a79e750450ac5",
+    "0xfa94266fb86b8a64",
+    "0x4ae14aef4df8ecfd",
+    "0x69407b1e58ea36d7",
+    "0x84643c277e8b5354",
+    "0xe953d75ac7c3181b",
+    "0x6ec7c83391da0acd",
+    "0xa76cec5c105398c7",
+    "0x8986071524c063a5",
 ]
 
 [replay]
@@ -744,24 +744,24 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x0ee6066a4c802530"
-adventure_ruleset_hash = "0x0c610f9192575256"
+adventure_ruleset_hash = "0x888a0c8963f09a43"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 38
-adventure_state_hash_version = 27
+game_state_hash_version = 39
+adventure_state_hash_version = 28
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x5918efa3271a85e0"
-import_version = 28
+import_version = 29
 
 [result]
 day = 29
-final_hash = "0x8477d26e478d765a"
+final_hash = "0xb0f04efee910fe15"
 
 [[players]]
 colour = 0

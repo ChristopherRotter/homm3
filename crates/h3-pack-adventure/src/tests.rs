@@ -393,10 +393,11 @@ fn the_base_pack_types_the_objects_of_increment_2() {
     // eleven (nine monoliths, the Subterranean Gate, the Whirlpool); E08 T113a: increment 12's
     // seventeen (two garrisons, the fifteen bonus visitables); E08 T123a: increment 13's eleven
     // creature banks; E09 T39a: the map's Tavern and the Den of Thieves; E08 T132a2: increment
-    // 14's five (the Trading Post, the Black Market, the Altar, the Hill Fort, the factory).
+    // 14's five (the Trading Post, the Black Market, the Altar, the Hill Fort, the factory); E08
+    // T141a: the Prison and the Market of Time.
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11 + 17 + 11 + 2 + 5
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11 + 17 + 11 + 2 + 5 + 2
     );
     // E09 T8a1: one type for the classes 77 and 98, ownable and entered, not from above; E09
     // T18a: the original's two boat offsets (town_buildings_setup 0x5C08C0).
@@ -2835,4 +2836,42 @@ fn the_base_pack_types_the_tavern_and_the_den_of_thieves() {
     };
     assert_eq!(kind("tavern = {}"), ObjectKindDef::Tavern);
     assert_eq!(kind("den_of_thieves = {}"), ObjectKindDef::DenOfThieves);
+}
+
+// covers: ADV-PRI-001, ADV-OBJ-008
+#[test]
+fn the_base_pack_types_the_prison_and_the_market_of_time() {
+    // E08 T141a (increment 15's design note §1, §2): base's two kinds without a parameter, the
+    // Prison visited from a neighbour, the Market of Time entered, neither from above nor marked;
+    // ab and sod add none; a wrong visit refused.
+    let kinds = |part: &AdventureRuleset| {
+        part.object_types()
+            .iter()
+            .filter(|t| matches!(t.kind, ObjectKind::Prison | ObjectKind::Empty))
+            .map(|t| {
+                (
+                    t.key.as_str().to_owned(),
+                    t.visit,
+                    t.from_above,
+                    t.kind_mark,
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    let (_, base) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
+    let (_, sod) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
+    let expected = vec![
+        ("base:prison".to_owned(), Visit::Neighbour, false, false),
+        ("base:market_of_time".to_owned(), Visit::Enter, false, false),
+    ];
+    assert_eq!(kinds(&base), expected);
+    assert_eq!(kinds(&sod), expected);
+    let kind = |visit: &str, table: &str| {
+        let text = format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"{visit}\"\nfrom_above = false\n{table}"
+        );
+        parse(&text).unwrap().object_types.remove(0).kind
+    };
+    assert_eq!(kind("neighbour", "prison = {}"), ObjectKindDef::Prison);
+    assert_eq!(kind("enter", "empty = {}"), ObjectKindDef::Empty);
 }

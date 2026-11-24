@@ -24,7 +24,7 @@ use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
     AltarVisit, BattleStart, Combatant, Defender, HillFortVisit, MarketVisit, Meeting, Offer,
-    OfferKind, ServiceVisit, Sink, Viewers,
+    OfferKind, PrisonVisit, ServiceVisit, Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{
@@ -38,7 +38,7 @@ use crate::ruleset::{
 };
 use crate::setup::{
     AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
-    ObjectSetup, Pos, Scenery, Seat, SetupError, StandError, TileMask,
+    ObjectSetup, Pos, PrisonerSetup, Scenery, Seat, SetupError, StandError, TileMask,
 };
 use crate::town::{TavernVisit, TownHeroes, TownReveal};
 
@@ -106,6 +106,7 @@ mod monsters;
 mod occupancy;
 mod passage;
 mod piles;
+mod prisons;
 mod records;
 mod revisits;
 mod rewards;
@@ -361,12 +362,13 @@ impl StaticMap {
     /// becomes as it is placed, in object order ([`dwellings::resolve`], ADV-DWL-005; increment
     /// 10's design note §5); since E09 T11 one tied to a town takes its town's faction of
     /// `town_factions` (by `TownId`: [`SetupError::Holds`] for a town past them or a faction
-    /// without a table, [`SetupError::TownFactions`] for a number other than the towns').
+    /// without a table, [`SetupError::TownFactions`] for a number other than the towns'). Since
+    /// E08 T141a each Prison holds its prisoner of `prisoners` ([`Self::hold_prisoners`]).
     fn new(
         core: &Ruleset,
         part: &AdventureRuleset,
         setup: &MapSetup,
-        (bans, town_factions): (&Bans, &[FactionId]),
+        (bans, town_factions, prisoners): (&Bans, &[FactionId], &[PrisonerSetup]),
         draws: &mut Rng,
     ) -> Result<Self, SetupError> {
         let params = part.params();
@@ -557,6 +559,7 @@ impl StaticMap {
         draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
         draws::resolve_mines(part, &mut map.objects, draws);
         map.fix_boat_tiles(part);
+        map.hold_prisoners(core, part, prisoners)?;
         map.list_economy(core, part);
         if u16::try_from(map.towns.len().saturating_sub(1)).is_err() {
             return Err(SetupError::Towns(map.towns.len()));
@@ -589,6 +592,47 @@ impl StaticMap {
     /// Shipyards' tiles (`new_game_heroes` 0x4BFFB9), so after every object here too. Every town
     /// gets one, whatever its faction (the original only asks for a faction with a Shipyard; no
     /// other rule reads it).
+    /// Gives each Prison its prisoner (ADV-PRI-001; E08 T141a, increment 15's design note §8):
+    /// the `prisoners` in order to the Prisons in object order, each army checked as a hero's
+    /// ([`check_army`]) and kept by slot ([`Resolved::Prisoner`]). No draw.
+    ///
+    /// # Errors
+    ///
+    /// [`SetupError::Prisoners`] for a number other than the Prisons', then [`SetupError::Army`]
+    /// for the first invalid army in order.
+    // rule: ADV-PRI-001
+    fn hold_prisoners(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        prisoners: &[PrisonerSetup],
+    ) -> Result<(), SetupError> {
+        let prisons: Vec<usize> = (0..self.objects.len())
+            .filter(|&index| {
+                self.objects[index]
+                    .object_type
+                    .and_then(|id| part.object_type(id))
+                    .is_some_and(|ty| matches!(ty.kind, ObjectKind::Prison))
+            })
+            .collect();
+        if prisons.len() != prisoners.len() {
+            return Err(SetupError::Prisoners(prisoners.len()));
+        }
+        for (index, prisoner) in prisons.into_iter().zip(prisoners) {
+            let army =
+                check_army(core, part, &prisoner.army).map_err(|error| SetupError::Army {
+                    hero: prisoner.id,
+                    error,
+                })?;
+            self.objects[index].resolved = Resolved::Prisoner {
+                hero: prisoner.id,
+                army,
+                formation: prisoner.formation,
+            };
+        }
+        Ok(())
+    }
+
     // rule: ADV-SHY-001, TWN-SET-011
     fn fix_boat_tiles(&mut self, part: &AdventureRuleset) {
         for index in 0..self.objects.len() {
@@ -1352,6 +1396,14 @@ pub struct HeroOnMap {
     /// surface, set by the start of the game and of its turn (ADV-MOV-002) and, from T73, by a
     /// boarding and a landing.
     pub max_movement: u32,
+    /// Its place in its owner's list of heroes, from 0 (GAM-SET-004, GAM-HER-003; E08 T141a,
+    /// decision 413): the owner's heroes on the map hold the places 0 to n − 1 in the order they
+    /// joined it ([`AdventureState::hero_list`]): the setup's heroes in their order, then each
+    /// hero that joins the map at the end; a hero that leaves the map (or goes into a town's
+    /// garrison) leaves it, the heroes after it moving up (the original's player record +0x8, its
+    /// count +0x1). Set by the adventure whenever the hero joins the map (a value a caller gives is
+    /// replaced); 0 for a garrison hero.
+    pub listed: u32,
 }
 
 impl HeroOnMap {
@@ -1489,7 +1541,11 @@ impl AdventureState {
         setup: &AdventureSetup,
         draws: &mut Rng,
     ) -> Result<Self, SetupError> {
-        let inputs = (&setup.bans, setup.town_factions.as_slice());
+        let inputs = (
+            &setup.bans,
+            setup.town_factions.as_slice(),
+            setup.prisoners.as_slice(),
+        );
         let map = StaticMap::new(core, part, &setup.map, inputs, draws)?;
         if !(1..=part.params().max_players()).contains(&setup.players) {
             return Err(SetupError::Players(setup.players));
@@ -1541,8 +1597,17 @@ impl AdventureState {
             fortunes,
             springs: None,
         };
+        // rule: GAM-HER-003
         for hero in &setup.heroes {
-            state.place(core, part, hero, &refused)?;
+            let listed = next_listed(&state.heroes, hero.owner);
+            state.place(core, part, (hero, listed), &refused)?;
+        }
+        // E08 T141a: a prisoner's id is no hero's and no other prisoner's.
+        for (index, prisoner) in setup.prisoners.iter().enumerate() {
+            let earlier = setup.prisoners[..index].iter().any(|p| p.id == prisoner.id);
+            if earlier || state.hero(prisoner.id).is_some() {
+                return Err(SetupError::DuplicateHero(prisoner.id));
+            }
         }
         state.boats = Boats::new(part, &state.map, &setup.map.boats, &refused)?;
         Ok(state)
@@ -1634,7 +1699,7 @@ impl AdventureState {
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
-        hero: &HeroSetup,
+        (hero, listed): (&HeroSetup, u32),
         refused: &BTreeMap<Pos, usize>,
     ) -> Result<(), SetupError> {
         let Err(at) = self.heroes.binary_search_by_key(&hero.id, |h| h.id) else {
@@ -1671,6 +1736,7 @@ impl AdventureState {
                 movement: 0,
                 boat: None,
                 max_movement: 0,
+                listed,
             },
         );
         Ok(())
@@ -2332,7 +2398,9 @@ impl AdventureState {
     /// Removes the hero at `index` of the heroes on the map: its marks gone, `HeroRemoved` told to
     /// its owner and the players that see its tile, its boat freed with it.
     fn remove_at<S: Sink>(&mut self, core: &Ruleset, index: usize, sink: &mut S) -> HeroOnMap {
-        let hero = self.heroes.remove(index);
+        let mut hero = self.heroes.remove(index);
+        // rule: GAM-HER-003
+        leave_list(&mut self.heroes, &mut hero);
         let id = hero.id;
         self.leave_marks(id);
         let seen_by = self.viewers(core, hero.owner, hero.pos);
@@ -2567,6 +2635,18 @@ impl AdventureState {
             }
             // rule: ADV-VIS-008
             Effect::DenOfThieves => outcome.thieves_guild = true,
+            // rule: ADV-PRI-002
+            Effect::Prison => {
+                let held = self.object_at(visit.object).resolved.prisoner();
+                outcome.prison = held.map(|(prisoner, ..)| PrisonVisit {
+                    hero,
+                    index: visit.object,
+                    entrance: visit.tile,
+                    prisoner,
+                });
+            }
+            // rule: ADV-OBJ-008
+            Effect::Empty => {}
             // rule: ADV-MKT-001
             Effect::Market => {
                 outcome.service = Some(ServiceVisit::Market(MarketVisit {
@@ -3089,6 +3169,34 @@ impl AdventureState {
         &self.heroes
     }
 
+    /// `player`'s list of heroes (GAM-HER-003; E08 T141a, decision 413): its heroes on the map in
+    /// the order they joined it ([`HeroOnMap::listed`]), a town's garrison heroes not in it, as
+    /// the original's player record holds them (+0x8, the count +0x1). Empty for a player
+    /// without heroes on the map or outside the game.
+    // rule: GAM-HER-003
+    pub fn hero_list(&self, player: PlayerId) -> Vec<HeroId> {
+        let mut listed: Vec<(u32, HeroId)> = self
+            .heroes
+            .iter()
+            .filter(|hero| hero.owner == player)
+            .map(|hero| (hero.listed, hero.id))
+            .collect();
+        // One owner's places are distinct ([`next_listed`], [`leave_list`]); the id makes the key
+        // unique whatever happens.
+        let _ = h3_kernel::order::sort_by_unique_key(&mut listed, |&(place, id)| (place, id));
+        listed.into_iter().map(|(_, id)| id).collect()
+    }
+
+    /// The hero at place `index` (from 0) of `player`'s list of heroes ([`Self::hero_list`]),
+    /// without building the list (GAM-HER-003; the env's hero slots, E08 T141a).
+    pub fn listed_hero(&self, player: PlayerId, index: usize) -> Option<HeroId> {
+        let index = u32::try_from(index).ok()?;
+        self.heroes
+            .iter()
+            .find(|hero| hero.owner == player && hero.listed == index)
+            .map(|hero| hero.id)
+    }
+
     /// The tiles `player` has explored, if it is a player of the game (ADR-0016 point 5).
     pub fn explored(&self, player: PlayerId) -> Option<&BitGrid> {
         self.explored.get(usize::from(player.raw()))
@@ -3337,7 +3445,9 @@ impl CanonicalHash for AdventureState {
     /// since v20 the dwellings' counts and guards as they stand, then the camps' creatures and
     /// counts (`dwellings.rs`' `hash_dwellings`); since v24 the Fountains' values and the Springs'
     /// emptied entrances (`visitables.rs`' `hash_visitables`), the kind marks in the flags; since
-    /// v25 the towns' garrison heroes after the heroes (`town.rs`' `hash_town_heroes`).
+    /// v25 the towns' garrison heroes after the heroes (`town.rs`' `hash_town_heroes`); since v28
+    /// each hero on the map's key in its owner's list after its fields
+    /// ([`HeroOnMap::listed`]; a garrison hero's is not hashed).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -3345,6 +3455,8 @@ impl CanonicalHash for AdventureState {
         h.write_len(self.heroes.len());
         for hero in &self.heroes {
             self.hash_hero(h, hero);
+            // v28 (E08 T141a): its place in its owner's list.
+            h.write_u32(hero.listed);
         }
         // v25 (E09 T28a): the towns' garrison heroes.
         self.hash_town_heroes(h);
@@ -3402,6 +3514,28 @@ impl CanonicalHash for AdventureState {
         self.hash_dwellings(h);
         self.hash_visitables(h);
     }
+}
+
+/// The place a hero of `owner` takes in its list as it joins the map (GAM-HER-003; E08 T141a): the
+/// end, the number of `owner`'s heroes on the map (the original appends: `hero_place` 0x4D7900,
+/// `visit_prison` 0x4A3EB0, survey `E08-spells.md` §2.1). With [`leave_list`] an owner's places
+/// stay 0 to n − 1, one per hero, so a state's list has one encoding.
+pub(crate) fn next_listed(heroes: &[HeroOnMap], owner: PlayerId) -> u32 {
+    let count = heroes.iter().filter(|hero| hero.owner == owner).count();
+    u32::try_from(count).unwrap_or(u32::MAX)
+}
+
+/// `left`, just taken out of `heroes` (off the map or into a town's garrison), leaves its owner's
+/// list (GAM-HER-003; E08 T141a): the owner's heroes after it move up one place, the original's
+/// list closed up (`hero_leave_game` 0x4D9EC0, `town_visitor_to_garrison` 0x4B9FC0,
+/// `town_swap_heroes` 0x5BE450), and its own place is 0 until it joins again.
+pub(crate) fn leave_list(heroes: &mut [HeroOnMap], left: &mut HeroOnMap) {
+    for hero in heroes.iter_mut() {
+        if hero.owner == left.owner && hero.listed > left.listed {
+            hero.listed -= 1;
+        }
+    }
+    left.listed = 0;
 }
 
 /// Checks an army against the ruleset (one or more stacks of known creatures with at least one

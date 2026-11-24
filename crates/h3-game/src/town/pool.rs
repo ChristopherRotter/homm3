@@ -161,8 +161,8 @@ impl HeroPool {
                 pool.set(id, HeroStatus::Taken(owner.colour));
             }
         }
-        for &id in &setup.prisoners {
-            pool.set(id, HeroStatus::Prisoner);
+        for prisoner in &setup.prisoners {
+            pool.set(prisoner.hero_type, HeroStatus::Prisoner);
         }
         // The picks reserved before any draw (T-2 fixed, `TWN-QUIRK-2`).
         for player in &setup.players {
@@ -244,6 +244,19 @@ impl HeroPool {
         entry.mask |= 1_u8.checked_shl(u32::from(colour)).unwrap_or(0);
         let away = self.records[hero_type.index()].away.take();
         away.unwrap_or(Away::new(Vec::new()))
+    }
+
+    /// `id`, a prisoner's type, is freed for the player of `colour` (ADV-PRI-002; E08 T141a,
+    /// increment 15's design note §15; the original's `visit_prison` 0x4A3EB0, survey
+    /// `E08-spells.md` §2.2 point 3): taken by `colour` with the colour's bit added to its mask, no
+    /// mask tested (as a hire's, [`Self::hire`]); its record stays, and it has no away record (its
+    /// army was the Prison's).
+    // rule: ADV-PRI-002
+    pub(crate) fn free_prisoner(&mut self, id: HeroTypeId, colour: u8) {
+        // A prisoner's type is the ruleset's (its status read before, [`Self::status`]).
+        let entry = &mut self.types[id.index()];
+        entry.status = HeroStatus::Taken(colour);
+        entry.mask |= 1_u8.checked_shl(u32::from(colour)).unwrap_or(0);
     }
 
     /// `id`, a hero that left the game without returning (TWN-TAV-006; E09 T38b1, design note

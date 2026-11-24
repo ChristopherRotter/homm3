@@ -9302,6 +9302,7 @@ fn check_towns(
             .with_vortex(old.vortex());
         if *old != with_old_counts {
             let cleared = day_started && old.built_today();
+
             prop_assert!(
                 !captured.is_empty() || !built.is_empty() || cleared,
                 "{:?} rebuilt without a capture, a build or the day's start",

@@ -177,7 +177,7 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 19);
+    assert_eq!(ACTION_ENCODING_VERSION, 20);
     assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 105));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
@@ -347,6 +347,13 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(hero_in_slot(state, PlayerId::new(0), HERO_SLOTS), None);
     assert_eq!(hero_in_slot(state, PlayerId::new(1), 2), None);
     assert!(hero_in_slot(state, PlayerId::new(1), 1).is_some());
+    // Version 19 (E08 T141a, GAM-HER-003): each player's slots are its list of heroes.
+    for player in [PlayerId::new(0), PlayerId::new(1)] {
+        let slots: Vec<_> = (0..HERO_SLOTS)
+            .map_while(|slot| hero_in_slot(state, player, slot))
+            .collect();
+        assert_eq!(slots, state.adventure().hero_list(player));
+    }
     for (error, text) in [
         (StepError::InvalidAction, "invalid action"),
         (StepError::EpisodeOver, "the episode is over"),

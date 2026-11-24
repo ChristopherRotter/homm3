@@ -500,6 +500,37 @@ fn guild_part_back(part: w::GuildPart) -> GuildPart {
     }
 }
 
+fn tavern_head_back(h: w::TavernHeroHead) -> h3_game::TavernHero {
+    h3_game::TavernHero {
+        id: HeroId::new(h.id),
+        hero_type: Handle::from_raw(h.hero_type),
+        level: h.level,
+        experience: h.experience,
+        primary: h.primary,
+        mana: h.mana,
+        carried: h.carried,
+        formation: match h.formation {
+            w::Formation::Loose => h3_content::Formation::Loose,
+            w::Formation::Tight => h3_content::Formation::Tight,
+        },
+        tactics: h.tactics,
+    }
+}
+
+fn tavern_part_back(part: w::TavernPart) -> h3_game::TavernPart {
+    match part {
+        w::TavernPart::Stack { stack } => h3_game::TavernPart::Stack(stack_back(stack)),
+        w::TavernPart::Skill { skill } => h3_game::TavernPart::Skill {
+            skill: Handle::from_raw(skill.skill),
+            level: skill.level,
+        },
+        w::TavernPart::Artifact { place, artifact } => h3_game::TavernPart::Artifact {
+            place: place_back(place),
+            artifact: artifact_back(artifact),
+        },
+    }
+}
+
 fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Event>) -> GameEvent {
     use w::GameEvent as G;
     let alone = Viewers::NONE.with(viewer);
@@ -871,35 +902,12 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
         G::TavernOffered { player, slot, hero } => GameEvent::TavernOffered {
             player: p(player),
             slot,
-            hero: hero.map(|h| h3_game::TavernHero {
-                id: HeroId::new(h.id),
-                hero_type: Handle::from_raw(h.hero_type),
-                level: h.level,
-                experience: h.experience,
-                primary: h.primary,
-                mana: h.mana,
-                carried: h.carried,
-                formation: match h.formation {
-                    w::Formation::Loose => h3_content::Formation::Loose,
-                    w::Formation::Tight => h3_content::Formation::Tight,
-                },
-                tactics: h.tactics,
-            }),
+            hero: hero.map(tavern_head_back),
         },
         G::TavernPartSeen { player, slot, part } => GameEvent::TavernPartSeen {
             player: p(player),
             slot,
-            part: match part {
-                w::TavernPart::Stack { stack } => h3_game::TavernPart::Stack(stack_back(stack)),
-                w::TavernPart::Skill { skill } => h3_game::TavernPart::Skill {
-                    skill: Handle::from_raw(skill.skill),
-                    level: skill.level,
-                },
-                w::TavernPart::Artifact { place, artifact } => h3_game::TavernPart::Artifact {
-                    place: place_back(place),
-                    artifact: artifact_back(artifact),
-                },
-            },
+            part: tavern_part_back(part),
         },
         G::HeroHired {
             player,
@@ -931,6 +939,34 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
                 }
                 w::HiredPart::Spell { spell } => h3_game::HiredPart::Spell(Handle::from_raw(spell)),
             },
+        },
+        // E08 T141a (v81).
+        G::PrisonerFreed {
+            player,
+            hero,
+            hero_type,
+            pos,
+            view,
+        } => GameEvent::PrisonerFreed {
+            player: p(player),
+            hero: id(hero),
+            hero_type: Handle::from_raw(hero_type),
+            pos: pos_back(pos),
+            seen_by: alone,
+            view: view.map(tavern_head_back),
+        },
+        G::PrisonerPartSeen { player, hero, part } => GameEvent::PrisonerPartSeen {
+            player: p(player),
+            hero: id(hero),
+            part: tavern_part_back(part),
+        },
+        G::PrisonFull { player, hero } => GameEvent::PrisonFull {
+            player: p(player),
+            hero: id(hero),
+        },
+        G::PrisonEmptied { player, hero } => GameEvent::PrisonEmptied {
+            player: p(player),
+            hero: id(hero),
         },
         G::ThievesGuildSeen { player, level } => GameEvent::ThievesGuildSeen {
             player: p(player),
@@ -1390,6 +1426,33 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             hero: HeroId::new(6),
             part: h3_game::HiredPart::Spell(Handle::from_raw(30)),
         },
+        // E08 T141a (v81): a freed prisoner both see, its view and its parts player 0's alone;
+        // a full player's and an emptied Prison's visits player 0's.
+        GameEvent::PrisonerFreed {
+            player: P0,
+            hero: HeroId::new(8),
+            hero_type: Handle::from_raw(14),
+            pos: at,
+            seen_by,
+            view: Some(h3_game::TavernHero {
+                id: HeroId::new(8),
+                hero_type: Handle::from_raw(14),
+                level: 5,
+                experience: 5000,
+                primary: [2, 1, 1, 3],
+                mana: 30,
+                carried: 0,
+                formation: h3_content::Formation::Tight,
+                tactics: true,
+            }),
+        },
+        GameEvent::PrisonerPartSeen {
+            player: P0,
+            hero: HeroId::new(8),
+            part: h3_game::TavernPart::Stack(stack),
+        },
+        GameEvent::PrisonFull { player: P0, hero },
+        GameEvent::PrisonEmptied { player: P0, hero },
         // E09 T39b2 (v74): a Den of Thieves' guild, player 0's alone, a part of each kind.
         GameEvent::ThievesGuildSeen {
             player: P0,
@@ -1805,8 +1868,9 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
     // `GarrisonChanged`, `GarrisonStackSeen`; E09 T37a: `TavernOffered`, `TavernPartSeen`; T38a1:
     // `HeroHired`, `HiredPartSeen`; T39a: `TavernOpened`; T39b2: `ThievesGuildSeen`,
     // `GuildPartSeen`; E08 T133b: `MarketOpened`; T134a: `AltarOpened`; T134b1:
-    // `HillFortOpened`).
-    assert_eq!(distinct.len(), 49, "{distinct:?}");
+    // `HillFortOpened`; T141a: `PrisonerFreed`, `PrisonerPartSeen`, `PrisonFull`,
+    // `PrisonEmptied`).
+    assert_eq!(distinct.len(), 53, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);
@@ -1829,6 +1893,7 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
         "Battle",
         "BattleEnded",
         "HeroHired",
+        "PrisonerFreed",
     ]
     .map(String::from)
     .into();

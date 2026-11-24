@@ -4581,3 +4581,88 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/objects/generic.json"
   retrieved  = "2026-11-18"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-PRI-001"
+title    = "The Prison: a hero of the store held on the map, visited from a neighbour"
+context  = "adventure"
+status   = "implemented"
+summary  = "A Prison (`ObjectKind::Prison`, the original's class 62 subclass 0; E08 T141a, increment 15's design note sections 1, 7, 8; the base pack's `base:prison`, imported from class 62 since map import v29) has no owner, no mark and no parameter. It is visited from a neighbour (`Visit::Neighbour`: class 62 is on object_classes_not_entered 0x63AA58), not from above, every time, by every player. Its body is a hero's, read as a placed hero's (`GamePrisonerSetup`: type, army or the type's starting army, formation, each customised detail over its type's map-wide entry; no owner, no tile); the import refuses a Prison without a hero's body (`ImportError::PrisonBody`) or entered from water (`Unsupported::PrisonerOnWater`; none of the 89 shipped Prisons), and the game a prisoner's type the ruleset lacks, a placed hero's or an earlier prisoner's (`GameSetupError::PrisonerType`). The game builds each prisoner into the store as a placed hero, after the build's heroes (the main towns' included) and before the customised types' records, its armies and details drawn after theirs, its levels at load in hero id order (GAM-SET-001, GAM-SET-002), its type a prisoner's in the pool with its own record (TWN-SET-005); it is in no player's list (GAM-HER-003). The adventure's build gives the Prisons in object order the setup's prisoners in order (`AdventureSetup::prisoners`, one per Prison, `SetupError::Prisoners`), each holding its hero, its army by slot (checked as a hero's) and its formation as its drawn content (`Resolved::Prisoner`, part of the static map's hash)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md sections 2.1, 2.2; docs/exe/map.toml): placed_heroes_setup 0x4CAE10 sets a prisoner's record up as a placed hero's and lists none; visit_object 0x4A84F0 case 62 calls visit_prison 0x4A3EB0; object_classes_not_entered 0x63AA58 lists class 62, object_classes_from_above 0x63AB00 does not"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "The census of the 159 shipped maps (survey E08-spells.md section 1.1): 89 Prisons on 47 maps, each subclass 0 with a hero's body, none on water, no type twice"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15a.md E15-1, E15-2 (survey section 18): the prisoner's record set up at load (its experience's levels, its army, its spell points), visited from below the entrance"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's sections 1, 7, 8, 15; ADR-0016 point 1 (drawn contents); E08 decisions 394 to 411, 412 (T141a kept whole)"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-PRI-002"
+title    = "A Prison's visit: emptied, full, or the prisoner freed last in the visitor's owner's list"
+context  = "adventure"
+status   = "implemented"
+summary  = "A Prison's visit names its prisoner to the game (`AdventureOutcome::prison`: the visitor, the Prison, its visitable tile, the prisoner); the visitor pays the step's price and stays on its tile, untouched. The game settles it in the original's order (`GameState::settle_prison`; no decision): (1) a prisoner whose type the pool no longer holds as a prisoner's (only a campaign's carried hero rewrites it) empties the Prison (`AdventureState::empty_prison`: its ObjectRemoved; `GameEvent::PrisonEmptied`, ADVEVENT 104); (2) a player at the town part's most heroes on the map, its towns' garrison heroes not counted (8; 0 for a ruleset without a town part), frees nobody (`GameEvent::PrisonFull`, ADVEVENT 103, nothing changed); (3) else the prisoner is freed: its type taken by the player's colour with the colour's bit added to its mask, no mask tested (`HeroPool::free_prisoner`); the Prison taken off the map (its ObjectRemoved first), then the hero placed on its visitable tile on land with the army and formation the build gave it, tactics on, no boat, no marks, last in the player's list (GAM-HER-003), its points and the day's maximum a full day's land points for that army (`day_points` without week marks, as a tavern hero's, TWN-TAV-005); `GameEvent::PrisonerFreed` to its owner and every player that sees the tile, then for the owner the view's lists (`PrisonerPartSeen`) and its other parts (`HiredPartSeen`), its points by the command's MovementChanged. Nothing is revealed around the freed hero."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 2.2; docs/exe/map.toml): visit_prison 0x4A3EB0: the type's hero_owner slot not 0x40 (a prisoner) gives ADVEVENT 104 and removes the object; the player's hero count at 8 gives ADVEVENT 103; else the owner and hero_masks bit set, the object removed, the hero placed on the entrance, appended to the player's list (0x4A40C1), its points set to hero_max_movement"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15a.md E15-1 (seven heroes on the map and one in a garrison: freed, last in the list, full points) and E15-2 (eight on the map: ADVEVENT 103, nothing changed) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's sections 9, 15, 16; ADR-0017 point 10 (no decision); E08 decision 413 (the list)"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-PRI-003"
+title    = "What a viewer sees of a prisoner"
+context  = "adventure"
+status   = "implemented"
+summary  = "A prisoner is the store's and no viewer's until freed: no observation holds it (it is no hero on the map and in no list), and the Prison is an object like any other. A freed prisoner is a hero arriving on a tile (`GameEvent::PrisonerFreed`, projected as a hire's: to its owner and every player that sees the tile, each naming the viewer alone; the hero's view, the tavern hero screen's parts, for the owner alone, and its parts to the owner alone); `PrisonFull` and `PrisonEmptied` are the visitor's owner's. The wire carries the four events (protocol v80) and the protocol's fold adds the freed hero to the viewer's heroes and its owner's list."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's section 13; docs/06-security.md (the projections); ADR-0013 point 17"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-OBJ-008"
+title    = "An object entered and never visited: the Market of Time"
+context  = "adventure"
+status   = "implemented"
+summary  = "The Market of Time (`ObjectKind::Empty`, the original's class 50 subclass 0; E08 T141a, increment 15's design note section 2; the base pack's `base:market_of_time`, imported from class 50 since map import v29, no body) has no owner, no mark and no parameter. It is entered (class 50 is on neither of the original's lists), not from above: a step onto its entrance ends the move there at the step's price, as every entrance's, and nothing happens: no outcome, no event beyond the step. A hero standing on it has nothing to revisit (*agent's call*: the original's visit of its class does nothing, so no `Revisit` is listed and one is refused, `NothingToRevisit`)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 3): class 50 on neither object_classes_not_entered 0x63AA58 nor object_classes_from_above 0x63AB00; visit_object 0x4A84F0 has no case for it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15a.md E15-3 (survey section 18): the hero steps onto the Market of Time's entrance, the move ends, no message"
+  retrieved  = "2026-11-22"
+  confidence = "high"

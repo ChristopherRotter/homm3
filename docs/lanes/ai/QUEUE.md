@@ -77,6 +77,16 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
   (`python/records/ceiling/*.json`) keep the old `core` as the record of their runs (no test reads
   it); nothing reads the flags until E08 T142 and T143.
 
+- 2026-11-23 (E08 T141a, `adventure/e08-t141a`, `cross-lane` in your paths with the user's
+  consent, E08 decision 413; **adventure action encoding v20 taken (v19 the town lane's E09 T49b), for your review**): a
+  player's hero slots are now its list of heroes' first eight places
+  (`AdventureState::listed_hero`; GAM-HER-003: the start list by hero type, then each hero that
+  joins the map at the end, each that leaves closing up), not its heroes by id; no entry moves
+  (`hero_in_slot`, `revisit_entry`; the test checks the slots against `hero_list`). The casts'
+  planned encoding is v21. The adventure part's hash moved (the Prison and the Market of Time):
+  `bots-report-v1.json` and `bots-neutral-v1.json` regenerated (only `engine.adventure` moved;
+  the ceiling records keep theirs). The observation's `hero_list` is new (protocol v81).
+
 **From the town lane** (E09 T43, `town/e09-t43`, docs only; **planned, nothing to do now**):
 
 - 2026-11-22 (E09 T49a2, `town/e09-t49a2`, `cross-lane` in your paths with the user's consent,

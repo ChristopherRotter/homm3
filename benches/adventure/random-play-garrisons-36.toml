@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "5 random-vs-random games of 28 days on the garrisons map (E08 T116c, increment 12's design note §16; T116a's e08-garrisons-36.h3m: four quarters, every way between two a garrison, owned, neutral, empty, non-removable and anti-magic, a hero of each player beside each); seed 7 by a search of seeds 1 to 8 for the most steps with an exchange open: 2 113 steps, an exchange open after 20 of them, 3 garrisons captured, 5 battles; about 983 000 Ir a step, 95 % inside Reach::search (the agent's legal moves of each of the eight heroes at every step, 77 %); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); baselined at its first count"
+description = "5 random-vs-random games of 28 days on the garrisons map (E08 T116c, increment 12's design note §16; T116a's e08-garrisons-36.h3m: four quarters, every way between two a garrison, owned, neutral, empty, non-removable and anti-magic, a hero of each player beside each); seed 7 by a search of seeds 1 to 8 for the most steps with an exchange open: 2 113 steps, an exchange open after 20 of them, 3 garrisons captured, 5 battles; about 983 000 Ir a step, 95 % inside Reach::search (the agent's legal moves of each of the eight heroes at every step, 77 %); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); baselined at its first count; E08 T141a re-baselined: master 2 077 689 187 in the same sandbox, the branch +7.76 % on it with the same counted code (the functions in the same shares, `HeroOnMap` 56 bytes as before): each player's list of heroes (decision 413) orders the env's hero slots (encoding v19), so the random games changed course (1 902 steps for 2 113, more reaches a step)"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "7",
 ]
 collect = "*adventure*random_rollout*"
-instructions = 2076495300
+instructions = 2238815970
 threshold_percent = 2

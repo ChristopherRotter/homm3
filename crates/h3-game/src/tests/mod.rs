@@ -696,6 +696,15 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                     way: MonolithWay::Exit,
                 },
             ),
+            // E08 T141a: a Prison and the Market of Time (`prisons.rs`).
+            ObjectTypeDef {
+                from_above: false,
+                ..reward("t:prison", ObjectKindDef::Prison)
+            },
+            ObjectTypeDef {
+                from_above: false,
+                ..entered("t:market_of_time", ObjectKindDef::Empty)
+            },
             // E08 T114a1: a garrison and an anti-magic one (`garrisons.rs`).
             entered("t:garrison", ObjectKindDef::Garrison { anti_magic: false }),
             entered(
@@ -927,6 +936,44 @@ const ORRIN: HeroTypeId = HeroTypeId::from_raw(0);
 
 /// A 4 × 4 grass map with rock at (3, 3); two players (red and blue), a hero each: red's
 /// Orrin with a custom army, blue's with its starting army.
+/// Puts a Prison of the test part's `t:prison` holding `prisoner` on `(x, y)`, its one tile
+/// blocked and visited from its neighbours (E08 T141a; the original's class 62), and `prisoner`
+/// last among the setup's prisoners, so the Prisons in object order hold them in order.
+pub(crate) fn imprison(
+    rules: &GameRuleset,
+    setup: &mut GameSetup,
+    (x, y): (u16, u16),
+    prisoner: GamePrisonerSetup,
+) {
+    setup.map.objects.push(h3_adventure::ObjectSetup {
+        anchor: Pos::new(x, y, 0),
+        blocked: h3_adventure::TileMask::from_bits(1),
+        visitable: h3_adventure::TileMask::from_bits(1),
+        object_type: rules.adventure().object_type_by_key("t:prison"),
+        amount: None,
+        drawn: h3_adventure::TileMask::default(),
+        monster: None,
+        guards: None,
+        scenery: h3_adventure::Scenery::default(),
+        holds: h3_adventure::Holds::Nothing,
+        owner: None,
+    });
+    setup.prisoners.push(prisoner);
+}
+
+/// A prisoner of `hero_type` with one Imp (E08 T141a): the test types' starting armies need not
+/// fit.
+pub(crate) fn held(hero_type: HeroTypeId) -> GamePrisonerSetup {
+    GamePrisonerSetup {
+        army: HeroArmy::Custom(vec![ArmyStack {
+            slot: 0,
+            creature: IMP,
+            count: 1,
+        }]),
+        ..GamePrisonerSetup::of_type(hero_type)
+    }
+}
+
 pub(crate) fn setup() -> GameSetup {
     let mut tiles = vec![
         TileSetup {

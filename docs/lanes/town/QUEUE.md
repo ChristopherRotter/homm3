@@ -30,6 +30,28 @@ refined.
 
 ## Inbox
 
+- 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`, `cross-lane` with the user's
+  consent, E08 decisions 412, 413; **in your paths, for your review**): the Prison. (1) The pool:
+  `GameSetup::prisoners` are `GamePrisonerSetup`s (the body read as a placed hero's): `HeroPool::new`
+  takes each `hero_type` as a prisoner's (TWN-SET-005 kept), `GameSetup::validate` refuses a
+  prisoner's type the ruleset lacks, a placed hero's or an earlier prisoner's
+  (`GameSetupError::PrisonerType`), each prisoner is a hero of the store after the build's heroes
+  with its type's record (`set_record`), and the freeing calls the new `HeroPool::free_prisoner`
+  (taken, the colour's bit added); `import::town::pool` no longer reads the bodies (its third
+  output gone). `town::rows::most_heroes` and `TavernHeroView::new` are `pub(crate)`. (2) **Each
+  player's list of heroes** (GAM-HER-003): `HeroOnMap::listed`, kept by the adventure in your
+  `town::rows` (`arrive` puts a hero last, `enter` and `swap` take the visitor out first, as the
+  original's `town_garrison_to_visitor`, `town_visitor_to_garrison` and `town_swap_heroes`) and in
+  `place_hired` through `arrive`; a hired hero's literal in `h3-game`'s `town/hire.rs` gives
+  `listed: 0` (replaced). The Thieves' Guild's best hero row takes the first strictly greater in
+  the original's list order (survey `E09-tavern.md` §3): `AdventureState::hero_list` now gives
+  that order, if you want the row's tie-break to follow it (today by id). (3) Your tests:
+  `town::tests` is `pub(crate)` with `towns_rules` and `towns_setup` (the game's prison tests use
+  them); the tests with prisoners put a Prison on their maps (`crate::tests::imprison`, `held`);
+  `custom.rs`' records moved one id up (the prisoner's record first). (4) `h3-map`'s
+  `play.rs`: the town check now expects the week's start to fill every town's Vortex flag (T49a2's
+  `Towns::start_week`, found by this branch's property run: the "rebuilt" check failed on it).
+
 - 2026-11-22 (the adventure lane, E08 T140, `shared/e08-t140`, `cross-lane` with the user's
   consent; **mechanical at a merge**): the base faithful ruleset hash moved
   `0x36b98ea152b4db95` to `0x0ee6066a4c802530` (increment 15's six flags in the profiles), so every

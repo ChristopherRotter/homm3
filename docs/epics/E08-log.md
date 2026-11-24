@@ -22064,3 +22064,89 @@ Not chosen: two parts (the docs now, recommended); the flags with their readers.
 record`, `cargo check --workspace --all-targets`, xtask's docs gates, `cargo xtask check-lane
 --cross-lane`; CI on the pull request is the record. **Versions:** none moved (the flags change the
 profiles' hashes, not a version). T141 (round 5, its cut at its start) next.
+
+### Increment 15, round 5: T141a, the Prison and the Market of Time, and each player's list of heroes (2026-11-22 to -23, `adventure/e08-t141a`, `cross-lane`)
+
+**The cut** (decision 412, asked at the start): whole, one pull request, with the `cross-lane`
+touches named (the town lane's pool, `h3-protocol`). Not chosen: T141a1 (the content, the import,
+the build) then T141a2 (the freeing, the events, the wire), recommended; T141a1 alone. **The
+comparison the task owed** (decision 413, ADV-Q64): the original's list of heroes against the
+engine's id order; the user chose the list, built here. **Baseline:** `master` f1c4a53 (#1128
+merged; the setup's light gates, CI's verify). The PC's shell down: the 23 original files, the
+manuals and help files staged (SHA-256 checked); the repo from GitHub. The VM restarted once
+(between the sessions; the work had been on disk, committed at once).
+
+- **The content** (part v25): `ObjectKind::Prison` (visited from a neighbour; its effect names the
+  prisoner) and `ObjectKind::Empty` (entered; nothing), each refused with the other visit, tags 51
+  and 52; `ObjectKindDef`'s two, `prison = {}` and `empty = {}` in `h3-pack-adventure`; the base
+  pack's `base:prison` and `base:market_of_time` (neither from above: object_classes_not_entered
+  0x63AA58 lists 62, neither list 50). The empty kind has nothing to revisit (*agent's call*:
+  `revisitable` leaves it out, a `Revisit` there `NothingToRevisit`).
+- **The import** (v29): classes 62 and 50 by subclass 0; each Prison's body read as a placed
+  hero's (`import::prisoner`, the map-wide customisation over it) into `GamePrisonerSetup`; a
+  Prison without a hero's body (`ImportError::PrisonBody`) or entered from water
+  (`Unsupported::PrisonerOnWater`) refused; a prisoner of a type the rules lack refused as a placed
+  hero's (`MissingContent`; until now left out); `import::town::pool` lost its prisoners' part.
+- **The adventure:** `PrisonerSetup` and `AdventureSetup::prisoners` (one per Prison in object
+  order: `StaticMap::hold_prisoners`, `SetupError::Prisoners`, the army checked as a hero's, an id
+  of its own: `DuplicateHero`); `Resolved::Prisoner { hero, army, formation }` (tag 11, the static
+  map's hash); the visit's `AdventureOutcome::prison` (`PrisonVisit`); `free_prisoner` (the Prison
+  removed, then the hero on its entrance with the build's army and formation, tactics on, a full
+  day's land points over the store's details, last in its owner's list; nothing for a visit that
+  names no standing Prison with that prisoner) and `empty_prison`, in `state/prisons.rs`.
+- **The list** (decision 413; adventure state hash v28): `HeroOnMap::listed`, dense per owner
+  (`next_listed` the count, `leave_list` moving the later ones up); kept in `place` (the setup's
+  order), `remove_at`, the town lane's `rows::arrive`, `enter` and `swap` (the visitor out first,
+  as `town_swap_heroes`), `free_prisoner`; hashed for the heroes on the map only;
+  `hero_list(player)`, `listed_hero(player, n)`. The game hands the adventure its heroes in the
+  start list's order (the placed heroes by drawn type, then the main towns', GAM-SET-004). A first
+  build kept raw join numbers; *corrected before any measurement:* two equivalent states then
+  compared and hashed apart, so the places are dense.
+- **The game** (game state hash v39): `GamePrisonerSetup` (`of_type`), `GameSetupError::PrisonerType`
+  (a type the ruleset lacks, a placed hero's, an earlier prisoner's); the prisoners after the
+  build's heroes and before the customised types' records (their armies and details drawn after
+  the heroes', their levels at load in hero id order, each its type's record); `settle_prison` in
+  `state/prison.rs` (emptied, then full at the town part's most heroes, else freed:
+  `HeroPool::free_prisoner`, the adventure's freeing, `PrisonerFreed` with the owner's view, then
+  for a recording sink `PrisonerPartSeen` and `HiredPartSeen`); the observation's `hero_list`; the
+  projections (`PrisonerFreed` as `HeroHired`).
+- **The wire** (protocol v81, `cross-lane`; v80 the town lane's T49b, merged first): the four events, `hero_list`; the fold's `keep_list`
+  after each event (`fold_event`), `see_freed`, `put_artifact`. **The env** (encoding v20, the AI
+  lane's, `cross-lane`): `hero_in_slot` by `listed_hero`, `revisit_entry` by the hero's place.
+- **Tests:** the adventure's `state/tests/prisons.rs` (eight: the build, the setup's refusals, the
+  visit, the freeing, the emptying, the Market of Time, the lists and their hash) and
+  `ruleset/tests/prisons.rs`; the pack's types; the game's `state/prison/tests.rs` (six: the
+  store, the type refusals, the freeing with its events and projection, the full player, the
+  emptied Prison, the start list); the protocol's freed-prisoner fold; the env's slots against
+  `hero_list`; the map's import cases (62 and 50) and `prisons.rs`' import test (both typed, the
+  body as a placed hero's, the game built). The town lane's tests with prisoners put a Prison on
+  their maps (`tests::imprison`, `held`); `town::tests` is `pub(crate)` with `towns_rules` and
+  `towns_setup`. **Found by this branch's property run, not caused by it:** `play.rs`' town check
+  refused the week's start filling every Vortex (E09 T49a2's `Towns::start_week`); now expected.
+- **Replays and records:** the 111 adventure replays re-recorded from their own commands (only
+  `adventure_ruleset_hash`, the checkpoints, `final_hash` and the version lines moved); the ten
+  battle replays verify unchanged; `bots-report-v1.json` and `bots-neutral-v1.json` regenerated
+  (only `engine.adventure`). The census example's static layer gives each Prison a prisoner of
+  another type (the bodies' census is T144b's); both `original_data` examples pass.
+- **Docs:** the catalog (ADV-PRI-001 to -003, ADV-OBJ-008, GAM-SET-004, GAM-HER-003 new;
+  GAM-SET-001, -002 amended); the survey §2.1 (the list's writers); the design note §15, §16, §18
+  as built (the versions after T141a: the day spells adventure state v29, the casts protocol v82
+  and encoding v21); the ADR draft `adr-drafts/0016-0017-hero-list.md` (for T145's `shared/`
+  task); `docs/exe/map.toml`, `structs.toml` (the player record's list read); a trap; the inboxes
+  of the town, AI, server, map-client and client lanes.
+
+- **Speed:** seven random-game workloads moved past the gate, each measured against `master`'s
+  worktree in the same sandbox with the same counted code (the functions in the same shares,
+  `HeroOnMap` 56 bytes as before): the env's slots follow the lists, so the random games changed
+  course. Re-baselined, each with its note: `reach-towns-36` +19.37 % (4 093 queries for 3 176),
+  `fork-towns-36` +26.38 % (the forked game 358 steps for 135), `legal-towns-36` +8.29 %,
+  `random-play-dwellings-36` +9.94 %, `random-play-garrisons-36` +7.76 %,
+  `random-play-teleporters-36` -3.77 %, `day-start-builds-36` -3.73 %; after CI's first run `month-start-builds-36` -1.67 % (CI -2.47 % on the old baseline; the sandbox counts it 0.6 % above CI) and `week-start-taverns-36` -1.79 % (CI -2.17 %). CI's first run also found `h3-server`'s record test literals (the re-recorded `army-dialog-s1`'s hashes, import v29): updated; the server scope's coverage then asked for the four events in `h3-protocol`'s mapping samples and the freed parts of an unknown hero in its fold test. CI's second run: `h3-sim`'s town-map play (seed 2541) met no siege any more (its random games follow the new slots); a search over the seeds 1 to 2 999 found four meeting every feature, seed 880 the shortest (603 steps). **Merged after #1136** (the town lane's E09 T49b, merged first, took protocol v80, replay format v25 and encoding v19): T141a's wire and env moved to **protocol v81, encoding v20**; the 111 replays and the bot reports matched the merged code as they were; #1136's fuller Vortex oracle in `play.rs` kept over this branch's; `h3-sim`'s town seed searched again with the books (five found before a restart cut the search short, seed 264 the shortest, 765 steps); `day-start-builds-36` +3.55 %, `day-start-towns-36` +3.44 % and `month-start-builds-36` +3.06 % re-baselined against #1136's `master` (the same shapes; the games changed course). The coverage gate's
+  unreachable branches (a Prison's draw read twice, a prisoner's type looked up again, the pool's
+  type) went into `Resolved::prisoner` and the setup's checked types; a quiet sink's freeing and
+  the two refusals' projections got their tests.
+
+**Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session);
+`cargo check --workspace --all-targets`, the clients' workspace; CI on the pull request is the
+record. **Versions:** adventure ruleset part v25, map import v29, adventure state hash v28, game
+state hash v39, protocol v81, action encoding v20 (the next: adventure state v29, replay format v26, encoding v21, protocol v82). Next: T141b.
