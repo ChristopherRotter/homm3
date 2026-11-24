@@ -12,6 +12,18 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-24 (the map-client lane, E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your
+  planning, after the adventure lane's events**): the user's rule at E24 M5 T0 (MCL-Q54): **the
+  engine and the server are the only authority for a client**; reading a game's facts from files
+  at run time is phased out (facts first; the map's pictures later, by an ADR amending ADR-0020
+  point 8, so that a generated map reveals its contents only as discovered: the wire would carry
+  them). The wire needs, once the adventure lane tells them: a hero coming into sight with its
+  owner, type and boat (MCL-Q53 (a), `SRV-STUB-3`), a flagged mine's production (MCL-Q55 (a),
+  `SRV-STUB-10`). E24 M5 hosts `h3_protocol::session::game::GameSession` in-process for the hot
+  seat (a seat per human, `GameOptions::clock` for the turn's duration, `GameSession::record`
+  per seat); a computer colour's turn is ended at once by the host until E31 (`MCL-STUB-5`). M5 T2
+  may move a record reader beside your writer (`h3_server::record`): agreed with you then.
+
 - 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent;
   **in your paths, nothing to do**): **protocol v80** is taken: `wire::game::TownCommand::BuySpellBook
   { town }` (TWN-GLD-007, a spell book bought at a town's Mage Guild) and the refusals
