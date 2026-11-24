@@ -17,7 +17,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (the battle lane's inbox), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
   `TWN-STUB-16` (E10's loss condition), `-17` (increment 8), `-18` (E13). For the next `shared/`
   task: `docs/06-security.md`'s ADV-FOG-006 line (T50's record).
-- **Open pull requests:** T51's (`town/e09-t51`, docs only) and the README's row
+- **Open pull requests:** T51's #1149 (`town/e09-t51`, docs only) and the README's row #1148
   (`shared/e09-t51-readme`); watch them until they merge (T50's #1144 merged 2026-11-24).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
