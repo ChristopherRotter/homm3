@@ -461,31 +461,34 @@ mod tests {
     // covers: KER-RNG-004
     #[test]
     fn the_c_runtimes_generator_gives_the_originals_draws() {
-        let draws = |seed: u32| {
+        // A seed, its first six draws, the state after them.
+        let cases: [(u32, [u32; 6], u32); 4] = [
+            // srand(1), also a thread's sequence before any srand (its data starts at 1,
+            // 0x61D2FB): Microsoft's well-known 41, 18467, 6334, 26500, 19169, 15724.
+            (
+                1,
+                [41, 18_467, 6_334, 26_500, 19_169, 15_724],
+                1_030_492_215,
+            ),
+            (0, [38, 7_719, 21_238, 2_437, 8_855, 11_797], 773_150_046),
+            // The state wraps in 32 bits; bit 31 never reaches a draw.
+            (
+                u32::MAX,
+                [35, 29_739, 3_374, 11_141, 31_308, 7_870],
+                515_807_877,
+            ),
+            // The oracle's first case's seed (`clients/capture/rmg/kept.txt`, `s1-2p`).
+            (
+                1_000_000_000,
+                [18_686, 28_840, 29_787, 31_391, 28_529, 1_806],
+                118_394_718,
+            ),
+        ];
+        for (seed, drawn, state) in cases {
             let mut crt = CrtRand::new(seed);
-            let drawn: Vec<u32> = (0..6).map(|_| crt.rand()).collect();
-            (drawn, crt.state())
-        };
-        // srand(1), also a thread's sequence before any srand (its data starts at 1, 0x61D2FB):
-        // Microsoft's well-known 41, 18467, 6334, 26500, 19169, 15724.
-        assert_eq!(
-            draws(1),
-            ([41, 18_467, 6_334, 26_500, 19_169, 15_724].to_vec(), 1_030_492_215)
-        );
-        assert_eq!(
-            draws(0),
-            ([38, 7_719, 21_238, 2_437, 8_855, 11_797].to_vec(), 773_150_046)
-        );
-        // The state wraps in 32 bits; bit 31 never reaches a draw.
-        assert_eq!(
-            draws(u32::MAX),
-            ([35, 29_739, 3_374, 11_141, 31_308, 7_870].to_vec(), 515_807_877)
-        );
-        // The oracle's first case's seed (`clients/capture/rmg/kept.txt`, `s1-2p`).
-        assert_eq!(
-            draws(1_000_000_000),
-            ([18_686, 28_840, 29_787, 31_391, 28_529, 1_806].to_vec(), 118_394_718)
-        );
+            assert_eq!(drawn.map(|_| crt.rand()), drawn, "{seed}");
+            assert_eq!(crt.state(), state, "{seed}");
+        }
         assert_eq!(CrtRand::new(7).state(), 7);
     }
 

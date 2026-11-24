@@ -212,9 +212,30 @@ pub fn run(_args: &[String]) -> Result<(), String> {
 }
 
 /// Whether [`gate`] runs the tests of `packages` (the whole workspace but `xtask` when `None`):
-/// it does unless a lane scope has no logic crate to measure.
+/// it does unless a lane scope has no logic crate to measure, or only skeletons.
 pub fn runs_tests(packages: Option<&[String]>) -> Result<bool, String> {
-    Ok(packages.is_none() || !logic_packages(packages)?.is_empty())
+    if packages.is_none() {
+        return Ok(true);
+    }
+    defines_functions(&logic_packages(packages)?)
+}
+
+/// Whether a non-test source file of `logic` defines a function. Logic crates that are still
+/// skeletons (declarations only, as in a lane's first increment) have nothing to cover, and a
+/// scope of skeletons alone has no coverage data at all (`llvm-cov report` fails: E14 T2a).
+fn defines_functions(logic: &[arch::Package]) -> Result<bool, String> {
+    for p in logic {
+        for (file, is_test) in crate::scan::classify_crate(&p.dir)? {
+            if is_test {
+                continue;
+            }
+            let text = fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
+            if !crate::scan::find_pattern(&crate::scan::scan(&text, false), "fn").is_empty() {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 /// The logic crates the gate measures: all of them, or those among `packages`.
@@ -250,6 +271,10 @@ pub fn gate(packages: Option<&[String]>) -> Result<(), String> {
     let logic = logic_packages(packages)?;
     if packages.is_some() && logic.is_empty() {
         println!("coverage: no logic crate in scope");
+        return Ok(());
+    }
+    if packages.is_some() && !defines_functions(&logic)? {
+        println!("coverage: the logic crates in scope are skeletons (no function yet)");
         return Ok(());
     }
     // The instrumented build of the workspace's own crates is removed before the run and again
@@ -359,6 +384,24 @@ mod tests {
             ]
         );
         assert!(parse_regions("{}", root).is_err());
+    }
+
+    #[test]
+    fn a_scope_of_skeletons_defines_no_function() {
+        let dir = crate::util::test_support::TempDir::new("coverage");
+        dir.write(
+            "crates/s/src/lib.rs",
+            "//! A skeleton: `fn` in a comment.\n#![no_std]\npub struct S;\n#[cfg(test)]\nmod tests {\n    fn t() {}\n}\n",
+        );
+        let package = |name: &str| arch::Package {
+            name: name.to_owned(),
+            dir: dir.path().join("crates").join(name),
+            deps: Vec::new(),
+        };
+        assert!(!defines_functions(&[package("s")]).unwrap());
+        dir.write("crates/c/src/lib.rs", "pub fn f() {}\n");
+        assert!(defines_functions(&[package("s"), package("c")]).unwrap());
+        assert!(!defines_functions(&[]).unwrap());
     }
 
     #[test]
