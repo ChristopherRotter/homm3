@@ -3,7 +3,7 @@
 Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short; verbatim, grouped by area. Read the group for the area your task touches; delete a trap when it stops applying, merge duplicates, add a new one under its area (a trap of every lane goes into `docs/HANDOFF.md` or the topic doc it belongs to, a `shared/` change).
 
 - **The gate and `h3map.py`** need the four LODs and the shipped maps (the harness also the runbook's DLLs and sound archives, then `clients/capture/setup.sh`): `sandbox-setup.sh` copies only the bitmap LODs, so `cp -rn` the staged `original-data/.` into the clone (untar `maps.tar` into `install/`, `extracted.tar` beside it). Since M2 T5 the gate and the window's sound need `Data/Heroes3.snd`, `H3ab_ahd.snd` and the nine terrain tracks of `install/MP3/` (`DIRT.MP3` … `Underground.mp3`: stage them too; the gate reports a missing one).
-- **The game's own disk check** (E24 M4 T1a; the client lane's trap too): the original reads the free space in signed 32 bits, so with the disk's free bytes between 2 and 4 GiB modulo 4 GiB every run stops at `until:main_menu` (`main_menu did not appear`). Size a ballast file (`fallocate -l`, `truncate -s`) so that `df -B1 /`'s free bytes modulo 4294967296 stay below 2 GiB, and check it again after a large build.
+- **The game's own disk check** (E24 M4 T1a; the client lane's trap too): the original reads the free space in signed 32 bits (observed; `free_disk_space` 0x50C7A0 not read) and ends the game below 5 MiB (`main_menu_proc`'s floor of 5 242 880 bytes, read), so the disk's free bytes modulo 4 GiB must lie from 5 MiB up to 2 GiB: outside, every run stops at the main menu. Since E24 M4 T6 (R6-6) `Game.start` checks it first (`h3drive.disk_check_fault`: `os.statvfs` of the run directory, as `df -B1` gives it) and fails before the game starts, naming a ballast's size that brings the free bytes to 1 GiB (`fallocate -l <n> <file>`, outside the run directory); `H3_NO_DISK_CHECK=1` leaves the check out. Free space changes with every build (another session's too): size the ballast again before a long run.
 - **A computer player's turn out of sight takes no virtual time** (E24 M4 T1a, design §5.1): on the harness's frozen clock everything from End Turn's command to the next day's start falls in that millisecond, so a recording never shows the status window's kind 5 there; a turn's facts come from the live part's `[[turn]]`, read in that millisecond.
 - **A computer player's turn needs a `seed`** (E24 M4 T1b1, design §5.2): the game seeds its generator once, from the running clock, so without a sequence's `seed` no two runs walk alike. A computer with a Tavern in its town hires a hero and may walk it into sight (a hero the live part at 0 does not hold): the `ai-*` situations give Blue no town. An unseen step takes no time, so speed 4 and Blackout Computer show nothing of the turn either. A
   computer's `[[turn]]` table holds the computer's `kingdom` (its selected hero, points and kind
@@ -34,7 +34,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - **The starting bonus's rows sit in two arrays** (E24 M4 T3b1): `h3mem.starting_bonuses` reads
   16 values; with three players Blue's row was the second array's, so `h3drive.gold_bonus` counts
   the Gold read, not a row's index.
-- **A template's class in memory is the game's** (T5b1): the load turns the map's 219 into 33, 220 into 53, decorations 165–205 into others (§2.9), so `live.toml`'s `classes` differ from the map's with no random draw.
+- **A template's class in memory is the game's** (T5b1): the load turns the map's 219 into 33, 220 into 53, decorations 165–205 into others (§2.9), so `live.toml`'s `classes` differ from the map's with no random draw. A class rule (the hint's, the cursor's, an engine start's `[hover]` facts: M4 T6, R4-1) reads the game's (`Records::game_class`); the engine's start's `classes` keep the map's (the sound reads 220).
 - **A situation changed since its capture** shows as `STALE` in `drawn` (T6b: the kept live part records the situation's digest): capture it again (`set --only <id>`).
 - **A recording reads the tree as it goes** (M2 T2): each `frames --only` run loads `h3map.py`
   afresh and its end draws ours with the release `h3-map-view` and the committed tables and
@@ -169,12 +169,33 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   check and `drawn` make a sequence's record from its `script` with the root workspace's
   `target/debug/h3` and `h3-server` (`H3_ENGINE` another folder): build them first (`cargo build
   --locked -p h3-cli -p h3-server`, about 2 minutes), and again after merging `master` (an
-  engine change may change the record: `frames --only <id> --reuse` the three `game-*` again).
+  engine change may change the record: `frames --only <id> --reuse` the 13 scripted sequences,
+  ten `game-*` and three `battle-*`, again). Since M4 T6 (R6-12) `engine`, `drawn` and `frames`'
+  frame check say a missing binary once, up front (`h3map.check_engine`), and warn on stderr of
+  binaries older than the newest `crates/**/*.rs` or `Cargo.toml`.
 - **A record's gaps are listed** (M4 T4a2): a scripted sequence's timeline differs from the
   original's by `timelines/<id>-gaps.txt` exactly; a gap lifted or new (MCL-Q39 or MCL-Q40
   answered, a fact the record gains) reports "a gap CHANGED": the run's `gaps.txt` under
   `clients/out/map-frames/<id>/` is the new list, copied in under the file's comments once
   reviewed, with `<id>-frames.txt` and `drawn --only <id> --record`.
+- **A record's find is its walk's** (M4 T6, the reviewer's R2-1, design §5.14): `Found::walk`
+  ties a record's visit to the walk whose end visits it (`Visit::walk`: its place among
+  `Played::moves`, not among the visits; an empty path is a walk without one); a find built for
+  a record without it is told at every visit to its tile as a recording's (its `again`). Its
+  level-ups ride on it (`Found::levels`), so a record's `Start::experience` and `level_ups` stay
+  empty (the tables' thresholds are a recording's).
+- **A record names players by id, the map draws colours** (M4 T6, the reviewer's R3-1, design
+  §5.15): an event's `owner` or `player` (`ObjectFlagged`, `TurnStarted`, a hero's owner) is an
+  index into the observation's `players`, each with its own `colour`; every M4 game has Red id 0
+  and Blue id 1, so the two agree there. Turn it into the colour where the observation is at hand
+  (`engine::played`: `Visit::flag`, `OtherOpen`'s colour); a test with ids and colours apart
+  (`tests/engine.rs::a_record_s_flags_in_their_owners_colours`) catches a raw id drawn.
+- **A record's walk need not take its whole path** (M4 T6, design §5.13): `MoveHero`'s path is
+  what was clicked; the record's `HeroStepped` are what was walked (a visit from beside stops one
+  short, an event or a guard's battle earlier). Read a walk's end from its steps (`Move::stops`,
+  `Played::ends`), never from its path's last tile; the paths' search must start at the record's
+  next walk (two walks can end on one tile). A golden record that stops on "no path given" or
+  "a step ... the record's walks do not take" has usually lost a hero's place this way earlier.
 - **A scripted game draws at random in both games** (M4 T4b1, design §5.14): the original's
   draws under the sequence's `seed` and the engine's under its own differ (a level-up's primary
   skill and offers): record the original first, read its draws from the live part (`[[level_up]]`),
@@ -202,6 +223,8 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `to-record.toml` into `sequences.toml` fails `sequence::tests::reads_the_recorded_sequences`
   (their count) and `timeline::tests::the_walks_frames_are_m2_t3bs` (the ids replayed, in order)
   until both list them; `drawn` then reports them `new` (`drawn --only <id> --record` each).
+  Since M4 T6 (R6-7) a scratch file's run keeps no live part in `timelines/` (nor a sound run):
+  once moved, `frames --only <id> --reuse` over the recording's `--out` keeps it, then `drawn`.
 - **A hero's secondary skills written show at the walk** (M4 T2c, design §5.5): a situation's
   `secondary` is written without a selection (none of another hero to make), after the status
   window at 0 was built; the walk's first step builds it again from the hero. So the skills

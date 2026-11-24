@@ -414,6 +414,7 @@ impl Base {
             .heroes
             .iter()
             .enumerate()
+            .filter(|(i, _)| !live.left.contains(i))
             .filter_map(|(i, h)| {
                 let at = hero.filter(|&(j, _)| j == i).map_or(h.at, |(_, at)| at);
                 let (x, y) = (usize::from(at.x), usize::from(at.y));

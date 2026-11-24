@@ -74,6 +74,8 @@ fn finding(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
         flag: None,
         ask: None,
         fight: None,
+        walk: None,
+        levels: Vec::new(),
     }];
     (start, actions, ms, timeline)
 }
@@ -181,10 +183,7 @@ const TOWNLESS: (&str, &str, &str, &str) = (
 fn a_turn_without_a_town_warns_then_tells_the_days_left() {
     // End Turn's release at 160: the warning, the days counted from 7.
     let l = town_to(160);
-    assert_eq!(
-        text(&l).as_deref(),
-        Some("Red, you have lost your last town.")
-    );
+    assert_eq!(text(&l).as_deref(), Some("Red: no town left."));
     assert_eq!((l.days, l.state(160).date.day), (7, 1));
     // Enter's release at 1060 closes it: the turn's end counts down, the next day's start tells
     // six days over its whole redraw.
@@ -213,6 +212,21 @@ fn a_turn_without_a_town_warns_then_tells_the_days_left() {
 }
 
 #[test]
+fn a_record_s_turn_without_a_town_tells_nothing() {
+    // E24 M4 T6 (MCL-STUB-4): a record's rules are the engine's, which have no days without a
+    // town yet (E10): End Turn's release changes the turn at once, no warning, no days counted.
+    let (mut start, actions, _, _) = started(&TOWNLESS);
+    start.moves = Some(Vec::new());
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..=160 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    assert!(l.boxed.is_none());
+    assert_eq!((l.days, l.state(160).date.day), (-1, 2));
+}
+
+#[test]
 fn the_days_left_then_the_weeks_message_one_after_the_other() {
     // A week's first day without a town: the days left's box, then at its close the week's.
     let (mut start, ..) = started(&TOWNLESS);
@@ -228,6 +242,12 @@ fn the_days_left_then_the_weeks_message_one_after_the_other() {
         heroes: Vec::new(),
         walks: Vec::new(),
         taken: Vec::new(),
+        flags: Vec::new(),
+        lost: Vec::new(),
+        boats: Vec::new(),
+        list: None,
+        first: false,
+        open: false,
     };
     let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
     l.days = 3;
@@ -340,6 +360,8 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             flag: None,
             ask: None,
             fight: None,
+            walk: None,
+            levels: Vec::new(),
         },
         "find-artifact" => Found {
             at: ENTRANCE,
@@ -356,6 +378,8 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             flag: None,
             ask: None,
             fight: None,
+            walk: None,
+            levels: Vec::new(),
         },
         _ => Found {
             at: ENTRANCE,
@@ -395,6 +419,8 @@ fn picking(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str) {
             flag: None,
             ask: None,
             fight: None,
+            walk: None,
+            levels: Vec::new(),
         },
     };
     start.finds = vec![found];
@@ -548,10 +574,7 @@ fn an_event_without_a_town_tests_the_scenario() {
         l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
             .unwrap();
     }
-    assert_eq!(
-        text(&l).as_deref(),
-        Some("Red, you have lost your last town.")
-    );
+    assert_eq!(text(&l).as_deref(), Some("Red: no town left."));
     assert_eq!(l.days, 7);
     l.run(2300, &[Action::BoxKey(Key::Ok)]).unwrap();
     l.run(2360, &[Action::BoxKeyUp(Key::Ok)]).unwrap();
@@ -689,6 +712,8 @@ fn a_record_s_visit_from_beside_takes_its_move() {
         revealed: vec![Vec::new()],
         sea: None,
         battle: None,
+        boats: Vec::new(),
+        stops: None,
     };
     start.moves = Some(vec![onto(ENTRANCE, Some(1234))]);
     let run = |start: &Start, until: u32| {

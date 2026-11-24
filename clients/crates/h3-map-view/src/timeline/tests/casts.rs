@@ -44,6 +44,7 @@ fn live_part(text: &str) -> Live {
         path: Vec::new(),
         moment: Moment::default(),
         walking: Walking::default(),
+        left: Vec::new(),
         kingdom: Kingdom::default(),
         buttons: None,
         minimap: None,
@@ -425,4 +426,37 @@ fn a_casts_end_with_no_hero_selected_spends_nothing() {
     }
     assert_eq!(l.kingdom.heroes[0].mana, 10);
     assert_eq!(l.drawn().kingdom.heroes[0].mana, 10);
+}
+
+#[test]
+fn summon_boats_dissolves_show_the_date_window_their_draws_stepped() {
+    // E24 M4 T6 (the reviewer's R3-5): `cast-boat` with the date's window asked: each of Summon
+    // Boat's two dissolves (at 300 and 564) shows the window its view's draw stepped at once,
+    // outside the boat's box, as a landing's does (`summon_boat_cast` 0x41C8A0 draws through
+    // `view_draw_here` 0x40F870, as `hero_loss_effect` 0x4ACBB0 does).
+    let (start, actions, _, _) = casting("cast-boat");
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let run = |l: &mut Loop, from: u32, to: u32| {
+        for t in from..=to {
+            l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+                .unwrap();
+        }
+    };
+    run(&mut l, 1, 299);
+    l.asked = 1;
+    l.end = 10_000;
+    l.kingdom.status = Some(Status::Date(DateStatus { frame: 0 }));
+    l.stepped = 0;
+    for (from, to) in [(300, 300), (301, 564)] {
+        let shown = l.drawn().kingdom.status.clone();
+        run(&mut l, from, to);
+        let s = l.state(to);
+        let before = s.drawn.dissolve.unwrap().before;
+        assert!(
+            matches!(s.drawn.kingdom.status, Some(Status::Date(_))),
+            "{to}"
+        );
+        assert_ne!(shown, s.drawn.kingdom.status, "{to}");
+        assert_eq!(before.kingdom.status, s.drawn.kingdom.status, "{to}");
+    }
 }

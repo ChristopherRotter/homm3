@@ -423,6 +423,20 @@ impl Shroud {
 
 /// The frames of the full piece's DEF the view draws (0–3).
 pub const FULL_FRAMES: usize = 4;
+
+/// The resources' picture's frames a find draws (E24 M4 T6, R6-2: the resources' types 0 to 6,
+/// the frame the type).
+const RESOURCE_FRAMES: usize = 7;
+
+/// The luck's and the morale's pictures' frames (frames 4, 3 and 2).
+const BONUS_FRAMES: usize = 5;
+
+/// The primary skills' picture's frames (the skills 0 to 3, the experience 4, the spell points
+/// 5).
+const SKILL_FRAMES: usize = 6;
+
+/// Type 36's gold picture's frames (frame 6).
+const GOLD_FRAMES: usize = 7;
 /// The frames of the edge's DEF the view draws (0–15 further out, 16–19 the corners, 20–35 the
 /// edges; design §1.4).
 pub const EDGE_FRAMES: usize = 36;
@@ -579,6 +593,48 @@ impl Tables {
                 walk_frames: 0,
             });
         }
+        // The finds' pictures (E24 M4 T2a2, design §5.3: `message_box_picture` 0x4F4EB0 by the
+        // picture's type) and a monster's while a hero visits it (T2b2), with the frames those
+        // types draw (E24 M4 T6, the reviewer's R6-2): a resource's type 0 to 6 its frame (types
+        // 7, 18 and 19 read as its frame too, past `resour82.def`'s seven: never met, MCL-Q56);
+        // an artifact's its own (those the tables name); a crest the colour; luck and morale 4,
+        // 3, 2; the primary skills 0 to 3, the experience 4, the spell points 5; type 36's gold
+        // frame 6; a spell's, a secondary skill's, a creature's portrait and its attack by the
+        // game's own numbers, which the tables do not hold (the asks' `levels` holds the war
+        // machines and the numbers no creature has too): one at least.
+        let finds = &map.finds;
+        let artifacts = finds
+            .artifact_skills
+            .iter()
+            .filter_map(|row| usize::try_from(row[0]).ok())
+            .max()
+            .map_or(1, |last| last + 1);
+        for (name, what, frames) in [
+            (&finds.resources, "find resources", RESOURCE_FRAMES),
+            (&finds.artifacts, "find artifacts", artifacts),
+            (&finds.spells, "find spells", 1),
+            (&finds.crests, "find crests", COLOURS),
+            (&finds.luck, "find luck", BONUS_FRAMES),
+            (&finds.morale, "find morale", BONUS_FRAMES),
+            (&finds.skills, "find skills", SKILL_FRAMES),
+            (&finds.secondary, "find secondary", 1),
+            (&finds.creatures, "find creatures", 1),
+            (&finds.gold, "find gold", GOLD_FRAMES),
+            (&map.asks.attacking, "attacking", 1),
+        ]
+        .into_iter()
+        .filter(|(name, ..)| !name.is_empty())
+        {
+            needs.push(DefNeed {
+                name: name.clone(),
+                what: what.to_string(),
+                layer: None,
+                frames,
+                groups: 1,
+                walking: 0..0,
+                walk_frames: 0,
+            });
+        }
         needs
     }
 
@@ -605,12 +661,19 @@ impl Tables {
             .collect()
     }
 
-    /// Every music track the tables name (`mp3/<name>.mp3`), each once.
+    /// Every music track the tables name (`mp3/<name>.mp3`), each once: the terrains' and (E24
+    /// M4 T6, the reviewer's R6-2) a computer player's turn's (`[map.turn] computer`), none
+    /// without the map's sounds.
     #[must_use]
     pub fn tracks(&self) -> BTreeSet<String> {
         self.sound
             .iter()
             .flat_map(|s| s.music.values().cloned())
+            .chain(
+                self.sound
+                    .iter()
+                    .flat_map(|_| self.map.turn.computer.iter().cloned()),
+            )
             .collect()
     }
 }

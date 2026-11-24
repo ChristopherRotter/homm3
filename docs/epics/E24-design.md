@@ -1937,7 +1937,7 @@ town records) and its captures (below). *Provisional* where marked.
   - **a walk's end that leaves the hero unable to move** (`hero_can_move` 0x4E5F30 clear; the
     path's 0x408193, a key's 0x40913E): `make_hero_path` with 1, 0, 0, then `hero_list_update`
     with −1, 1, 1 (0x4081B9, 0x409167): every slot, the whole screen shown (`walk-points`).
-  - Not met: `path_rebuild` 0x40EC90's update (0x40F1D5, the hero unable to move; from a key of
+  - Not met: `hero_dig` 0x40EC90's update (0x40F1D5, the hero unable to move; from a key of
     `adventure_key_down` other than the directions, 0x409318, and two more callers), the lists'
     arrows (`hero_list_scroll` 0x403220, `town_list_scroll` 0x403280: T6's clicks), the full
     update and the turn's start, a boat boarded or left (0x4A10A8, 0x49E6E0: the slot after the
@@ -2096,7 +2096,7 @@ other player's turn and the messages are M4's).
   (0x403F00 with 1, 1). Then the chooser (`this, force, draw, show`) with a panel built and `draw`
   draws the dialog's items again (0x402BC0, `show` its rectangle). The calls in M3's paths:
   `adventure_full_update` 0x4174BC (1, 0, 0), `hero_select` 0x41800B (1, 1, 0), every view redraw
-  0x40F861 (0, 1, 1: only a timed kind's end builds), `path_rebuild` 0x40F173 and a key's step
+  0x40F861 (0, 1, 1: only a timed kind's end builds), `hero_dig` 0x40F173 and a key's step
   0x4090FE (1, 1, 1: the same window built again, the same pixels). The status window's click
   (the dialog's handler 0x409A70 at 0x409FD8, items 2000 to 2200): kind 2 → 1; another kind but 0
   → 0; 0: the kingdom's (2), or the date's (1) when the kingdom's shows; the end now + 3 000; then
@@ -3238,6 +3238,9 @@ two boxes: the client lane's reading of `scenario_condition_met` 0x4F2CE0 (E27 d
   `sequences.toml`, `to-record.toml` removed; `drawn` the 50 situations and 55 earlier sequences
   the same, then `--record`; the window under Xvfb (`--check 10`) on `find-pile` (62 of 62
   frames read back exact, its dissolve's frames among them) and `find-windmill` (54 of 54).
+- **As built at M4 T6** (*provisional*, MCL-STUB-4): no scenario's test on a record
+  (`Loop::town_test`): the record's rules are the engine's, which has no days without a town yet
+  (E10), so a record shows no warning, no days left and no banishment; a recording keeps the test.
 
 ### 5.4 The questions and choices (M4 T2b1)
 
@@ -3907,6 +3910,12 @@ returned and the book closed when it costs at most the hero's mana), `screen_dis
   dissolves' boxes and steps, the boat moved and made, MCL-Q14 in both profiles, the sound's cue,
   the cursor, a second cast with the hero lifted), 430 in the library, 100 % of `h3-map-view`'s
   library (lines, regions, functions).
+- **As built at M4 T6** (the reviewer's R3-5): `summon_boat_cast`'s two view draws are
+  `view_draw_here` 0x40F870 (the exe map's reading), `adventure_view_draw` with its
+  `status_window_choose` 0x40F861, as `hero_loss_effect`'s; so each dissolve keeps the status
+  window its draw chose in the screen it dissolves from (`Loop::drawn_over`, shared with `lose`,
+  §5.15). The recordings cast with the hero's window, which an unforced draw leaves as it is: no
+  frame moved.
 
 ### 5.9 A record's start: the map's view (M4 T3a)
 
@@ -3964,6 +3973,12 @@ start is M1's (§1, §2, §2.7 to §2.10), its capture `h3map.py set` with `expl
   boats). `tests/engine.rs`: a game built on a writer's map (a random resource, monster,
   artifact and dwelling, a sawmill, a pile, three colours' heroes, a boat), every refusal, what
   `differences` finds.
+- **As built at M4 T6** (the review's R4): a record whose header's `first` is not 1 (a server's
+  bounded record cut at a later snapshot) is refused (`Refused::Cut`: a mid-game start is not
+  M4's); the start is built on the map file's own art before `--live` changes it (a random
+  dwelling the capture's: its comparison now names `MCL-STUB-1`), and an art of another map is
+  refused (`Setup`); `--check` needs `--record` and `--live`, `--packs` needs `--record`; the
+  record is decoded once (`engine::check`). `MCL-STUB-1` no longer holds a random town (§5.11).
 
 ### 5.10 A record's start: the panels (M4 T3b1)
 
@@ -4075,6 +4090,18 @@ adventure lane's). No reading of the original: the hover is M3's (§4.10 to §4.
   harness writes them); `h3map.py engine`: all six starts as expected, every explored tile's
   hint and cursor the capture's, the pixels only the panels' MCL-Q36 morale, the bonus's gold
   (`engine-start-owners`) and the two level-ups' skills.
+- **As built at M4 T6** (the review's R4): the facts' class rules read the class the game loads
+  (`Records::game_class`: 219 a garrison's 33, 220 a mine's 53, as the tiles' records the hint
+  dispatches on; the live part's `classes` keep the map's, which the sound reads); `--check`
+  prints what it compared, names the choices as not compared when the capture holds no
+  `[chosen]` (a situation's `choose`, by design: §5.10's "when the capture holds one") and fails
+  on a capture without `[hover]` (one from before T3b2: the comparison holds the mouse-over).
+- **As built at M4 T6** (the review's R6-1, the harness): a shipped map's `bonus = "gold"` was
+  accepted and dropped (`to_shipped` took no `gold`), so `start-jared` and `start-good-witch` were
+  captured with the scenario's Random bonus; it is now set before Begin as a writer's map's
+  (`h3drive.gold_bonus` for `players` rows), and `check_situation` refuses a shipped `bonus`
+  without `players`. Both starts are to be captured again (`set --only`), their `engine` entries
+  checked again.
 
 ### 5.12 A record's own walks and turns: the reading and the scripted games (M4 T4a1)
 
@@ -4195,6 +4222,13 @@ and the binary plays the sequence from it (`sequences <id> --record <r.jsonl> --
 - **Checked:** the three games exact but the listed gaps, again after `master`'s replay format
   v20 (#1066); `drawn` all the same; `check.sh --no-coverage` all gates, `h3-map-view`'s coverage
   at 100 %; the scoped verify.
+- **As built at M4 T6** (*provisional*): a record's walk is its path as commanded, its steps the
+  record's `HeroStepped` (`Move::stops`). One short of the path's last node is a visit from
+  beside: a find's (`Loop::beside`), else one the map does not show (a meeting, M5's; an object
+  whose visit tells nothing: `Loop::pass_by`, the hero turned to it and its points spent, no
+  step). Fewer is a walk stopped on the way (an event, a guard's battle): it ends after the
+  record's last step with the record's points there, the rest of its path left shown, its visit
+  where it stopped. The original's frames of either case are not recorded.
 
 ### 5.14 A record's visits played: the message boxes (M4 T4b1)
 
@@ -4277,6 +4311,29 @@ day: the engine casts no adventure spell (`AdventureCommand` holds `MoveHero`, `
   as the first); `drawn` all the same (the 102 sequences with the three new); `check.sh` all gates
   (its tests but the client lane's `save` test, red on `master` at the start and fixed there
   during the session), `h3-map-view`'s coverage at 100 %; the scoped verify.
+- **As built at M4 T6** (the reviewer's R2-1 to R2-9, *provisional*): each of a record's visits is
+  a find of its own (`engine::visits::lay`, `Laid`, `Kept`: tested in the library), told at its own
+  walk's end (`Found::walk`, the timeline's last walk taken; from beside, the walk under way or the
+  next), with its own box, gain, flag and level-ups: a Windmill taken, then found empty; a dwelling
+  hired by each hero; Pandora's Box declined, then opened. A recording's find (no walk) is told as
+  before (its first boxes, then `again`). The level-ups are the record's own (`Visit::levels`:
+  each `LevelUpOpened` or lone `LevelGained` while the visit's events are read, its battle's end's
+  too), any hero's, laid out with the hero's own name, class (the record's rules') and portrait
+  (its slot's in the start's list, else its type's), due once the visit's experience shows and
+  opened where its handler calls `hero_level_up` (a battle whose monster stands too); the tables'
+  thresholds only for a recording. Pandora's Box shows every part the record tells
+  (`visits::rewards`: the experience, the primary and secondary skills, the spell points and the
+  battle bonuses against `Visit::held`, the resources gained and lost, the artifacts, the spells,
+  the creatures joined and those of the army dialog), its map text (read from the map file at run
+  time) in a box of its own before the question; a Box whose guards the answer fights, and a
+  class-20 dwelling's hire, tell nothing (not built); the visit goes on through its army dialog
+  (GAM-DEC-004: a reward's creatures with no room). An artifact picked up shows its primary
+  skills on the hero's window (the tables' `artifact_skills`, taken as worn: SRV-STUB-7). A
+  School of Magic bought from tells its box (its gain and price the record's; left, nothing:
+  MCL-Q41). The parts the record does not tell: MCL-Q54.
+- **As built at M4 T6** (*provisional*): a visit that takes its object off the map and tells
+  nothing else Part A builds (a Scholar, a Spell Scroll; an event's removal aside, which draws
+  nothing) takes it alone (`Told::Taken`): from beside, the pickup's dissolve and sound, no box.
 
 ### 5.15 A record's visits played: the flags and the boats (M4 T4b2)
 
@@ -4286,7 +4343,7 @@ start (the same day; offered a cut by family, the flags first).
 - **A record's facts** (protocol v76, record format 5; the engine's games of `game-flags` and
   `game-boats` read first): a step onto a mine's or a Lighthouse's entrance is a `MoveHero` whose
   events are `HeroStepped`, `ObjectFlagged { object_type, anchor, owner }` (the visitor's
-  colour), `TilesRevealed` (none new here: the step's reveal covered the radius) and
+  player id, not its colour: as built at M4 T6 below), `TilesRevealed` (none new here: the step's reveal covered the radius) and
   `MovementChanged`; a dwelling's has `OfferOpened` after its flag, its answer `offer accept`
   then `OfferAnswered` and `CreaturesJoined` (the Guardhouse's 14 Pikemen; the engine tells
   `JoinRefused` without room and `NoneToRecruit` with none, not recorded here); a boarding
@@ -4336,6 +4393,18 @@ start (the same day; offered a cut by family, the flags first).
   tests (`tests/engine.rs`' flags, hires and boats, the turn's points; the timeline's record
   boarding, landing and refusal, the dissolve's date window); `check.sh` all gates,
   `h3-map-view`'s coverage at 100 %; the scoped verify.
+- **As built at M4 T6** (the reviewer's R3-1, R3-3, R3-4, R3-6, *provisional*): a visit's flag is
+  its `ObjectFlagged`'s owner, a player id, drawn in that player's colour by the observation then
+  (`Visit::flag`: the first of its command's events, its answers' or its battle's end); a visit
+  whose flag is all Part A builds of it (a dwelling's hire declined, not free or of class 20, a
+  Shipyard, an abandoned mine, a guarded dwelling) raises it alone (`Told::Flagged`: no box, the
+  minimap drawn after the visit), and another player's in sight at its move's end (R1-5). The
+  empty boats the record tells after its start (a `GameReveal`'s, a `BoatBuilt`'s) go on the map:
+  a walk's own and those told before it at its first step, with its reveal (`Move::boats`); those
+  with no walk of the viewer's after them at the next turn table's start (`NextTurn::boats`); a
+  computer's built in sight at its move's end (`End::boats`); one on a tile with an empty boat
+  replaces it. A `Landed` with a facing past 7 is refused where it is played (`Sea::Unfaced`,
+  `Unplayable::Landing`), as a boarding with no boat is.
 
 ### 5.16 The other players' turns from a record (M4 T4c)
 
@@ -4397,6 +4466,30 @@ players' turns, the viewer's controls, a golden replay).
   to 780 pixels). `game-ai-boat` not played yet: a computer's boarding and landing in sight (the
   hero's dissolve off the land, then its step onto the boat; the boat put back at the landing)
   are not built for a computer's turn (`MCL-STUB-2`: built at T4c2, §5.18).
+- **As built at M4 T6** (the reviewer's R1-1 to R1-8, *provisional*): every player's record
+  starts at the game's start, so a viewer not acting there waits (`Played::waits`): the turn
+  under way read as another player's (its walks in sight a kind 5 table), the turn's change to
+  the first table played at 0 (`NextTurn::first`); a turn under way at the record's end a kind 5
+  table even without a walk, played to its last walk, the map then left in its screen
+  (`NextTurn::open`). Each command's steps a move of their own (`engine::OtherEnd`,
+  `timeline::End`): the hero standing and the view drawn at each move's last step, its pickups
+  dissolved there; a move's other results by the record's facts alone (a removal of anything but
+  a pile, a campfire, an artifact, a scroll, a chest or a find off at once: a monster beaten; a
+  flag raised in its owner's colour; a hero lost drawn nowhere, `Live::left`), a stepless
+  command's at the first table after its turn's end (R1-6). A record's walk is the steps the
+  engine judged seen (`Steps::seen`: each seen but those into sight, the hero's tile at its
+  choice by its first step's start, at a move's end by its last step's end); the start's
+  explored tiles decide only a recording's. A step into sight keeps the timeline hero's facing.
+  A hero the record's start does not show is left out (MCL-Q53: its owner, type and boat not
+  told, SRV-STUB-3), its commands' results a stepless command's. Each day's list is the record's
+  (`Played::lists`, `NextTurn::list`: the day's choices and selection by it, the hero's record
+  index by its map hero); the record player chooses a hero by its slot in the map's list as it
+  stands (`Loop::slot_of`).
+- **As built at M4 T6** (*provisional*): the boat a landing of a hero the start does not show
+  leaves in sight is one of its commands' results (MCL-Q53 (c)): on the map from the next turn
+  table's start (`sea-s2611-d28`'s Red boards it later). Such a hero's boarding still leaves the
+  empty boat drawn (`sea-s103-d28`'s and `sea-s2611-d28`'s Blue, `sea-two-boats-s1`'s Red: the
+  map has no list of boats taken off yet).
 
 ### 5.17 A record played without a recording: the record player, the controls, the golden replays (M4 T4c)
 
@@ -4435,6 +4528,20 @@ players' turns, the viewer's controls, a golden replay).
   the headless loop's. Not playable: the duel's and the army's maps (`obj.def`, no original
   template: nothing to draw), `economy-shipyard-s1` (a boat a Shipyard builds is not on the map:
   M5's dialog).
+- **As built at M4 T6** (the reviewer's R2-2, *provisional*): only a box that takes an answer takes
+  the record's (a question, a choice, a level-up, End Turn's question: `Loop::asks`); a find's box
+  before its question takes Enter and leaves the answer for it. A choice's answer clicks the
+  picture it chose at its middle (`Loop::choice_at`: a chest's gold or experience, the Arena's
+  Attack or Defense, a School's first or second skill), the pointer back where it was in that
+  millisecond (MCL-Q37), then Enter; a School left Escape. The commands before an answer that the
+  map does not show (an army dialog's and its close) are passed over.
+- **As built at M4 T6** (the golden records that did not play to their end, *provisional*): a
+  walk takes its own path (`Loop::walk_to` looks from the record's next walk's on: an earlier
+  walk's to the same tile can start beside the hero too, `economy-windmill-s1`); a walk the record
+  takes short of its path ends where the record's does (§5.13); an object taken with nothing else
+  built is taken alone (§5.14); a boat a hero the start does not show leaves is on the map from
+  the next table (§5.16); a record has no days without a town (§5.3, MCL-STUB-4). All 66 player
+  records of the golden replays then play headless to their end (46 before).
 
 ### 5.18 A computer's boat in sight from a record (M4 T4c2)
 
@@ -4681,12 +4788,12 @@ a record's facts and compared with T5a's three sequences, recorded again.
   (`crcombat.def` frame 6, the layout's) and the battle's first frame at shift 2, 1 at 200, whole
   at 250 (the timeline's `battle <winner>`, the battle handed over then: `Loop::battles`); the
   palettes do not cycle from that black until the map is back. The result's OK (Enter's release;
-  the window's host gives `Action::BattleClosed`) starts the battle's fade out (`Switch::ended`:
-  its last frame, not kept by a sequence's run, as the harness keeps none), at 150 the map back
-  (drawn, the adventure cursor, the next cycle 20 ms on, *provisional*) at shift 2, 1 at 200, the
-  map whole at 250. The painter fades with the shell's `faded` (`screen_fade_out`'s shifts); the
-  battle's first frame is its element's at its start (`battles::first_frame`: unattended, no
-  sound, a stopped clock), its last the hosted battle's.
+  on a record the record player's `Action::BattleClosed`, since M4 T6) starts the battle's fade
+  out (`Switch::ended`: its last frame, not kept by a sequence's run, as the harness keeps none),
+  at 150 the map back (drawn, the adventure cursor, the next cycle 20 ms on, *provisional*) at
+  shift 2, 1 at 200, the map whole at 250. The painter fades with the shell's `faded`
+  (`screen_fade_out`'s shifts); the battle's first frame is its element's at its start
+  (`battles::first_frame`: unattended, no sound, a stopped clock), its last the hosted battle's.
 - **The result** (`Loop::after_battle`): the hero's path made again (none: move hero disabled);
   a monster beaten taken off the map with `killfade.82M` (the dissolve holding the cycling, the
   experience at its end); a retreated hero (`AfterBattle::Lost`) shown with its objects stepped,
@@ -4697,3 +4804,21 @@ a record's facts and compared with T5a's three sequences, recorded again.
   timeline as recorded; the frames exact but the known differences (the epic's review list):
   the morale icon (MCL-Q36), the battle's fade in (its obstacles the engine's: MCL-Q49), the
   hero's pose at the attack, the panel's buttons after a retreat, MINEEVNT's resource (MCL-Q48).
+- **As built at M4 T6** (the review's R5, R3-2): a record's walk whose path ends on an object
+  that blocks its tile (a monster, a pile, an artifact) visits it from beside at that last node
+  (`Loop::last_node`: its arrow zeroed, then `visit_beside`; no step, *provisional*, as §5.18's
+  computer's walk), so a record's monster fight takes the switch (it walked onto the monster's
+  tile, a plain cut); the record player waits through a switch (`Loop::idle`) and closes the
+  battle in the millisecond it shows whole (`Loop::battle_whole_at`, `Action::BattleClosed`: the
+  battle takes none of the map's time, that millisecond's change its fade out's first, the
+  window's frame of it made again after the battle; the window gives no close of its own), lists
+  an answer's battle the switch hands over once (`Directed::battles` the plain cuts' only), and
+  moves each later hero's place up after a hero a battle took off the map (`Loop::slots_left`);
+  a battle's commands (the viewer's, the system's for it) are none of `Played::commands` (no
+  400 ms each; *provisional*, the closure's choice: a review item). The result follows the record's outcome: a mine's guards' boxes
+  and flag only after the hero's win, a loss or retreat the hero gone as a retreat's
+  (`AfterBattle::of_guards`; the original's boxes then: MCL-Q51), a draw that takes both the
+  hero's dissolve, then the monster's (`AfterBattle::Both`). The window reads the combat options
+  again before each battle and tells a failed write, gives the map the mouse where the battle
+  left it and the focus as it stands, runs the device for a battle reached while paused, and
+  under `--check` fails unless every battle that came due closed.

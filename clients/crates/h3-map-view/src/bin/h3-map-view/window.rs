@@ -532,7 +532,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     };
     let (setup, what) = set_up(&assets, options)?;
     // A record's battles (E24 M4 T5b1, design §5.20): hosted where the map hands each over.
-    let battles = match &options.record {
+    let mut battles = match &options.record {
         Some((path, _, packs)) => {
             let here = Path::new(KEYS_FILE);
             let keys = options
@@ -544,9 +544,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         None => None,
     };
     // The battles handed over so far (their places among the replay's, the walks', and among the
-    // answers'), and a whole redraw after one.
+    // answers'), and a whole redraw after one; since E24 M4 T6 (R5-5) the mouse given again after
+    // one, and (R5-9) how many came due and how many of them closed.
     let mut handed = (0, 0);
     let mut after_battle = false;
+    let mut mouse_again = false;
+    let mut hosting = Hosting::default();
     let Setup {
         mut painter,
         mut start,
@@ -858,6 +861,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         } else if regained {
             pointer = pointer.or(mouse);
         }
+        // After a battle (E24 M4 T6, R5-5): the mouse where the battle left it, off the frame
+        // without the focus (the battle took the moves and the focus's changes).
+        if std::mem::take(&mut mouse_again) {
+            pointer = Some(if focused { mouse.unwrap_or(OFF) } else { OFF });
+        }
         input.extend(pointer.map(Action::Pointer));
         let ms = clock.ms(win.ticks_ns());
         // The player's input, after the change shown.
@@ -965,11 +973,15 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             texture.held = None;
         }
         let mut presented = false;
-        // A battle the map handed over (E24 M4 T5b1, design §5.20, *provisional*: a plain cut,
-        // T5b2 draws the original's fades): hosted before the map's frame at its millisecond, its
-        // sound on the host's; then the map's clock on from that millisecond, as if the battle
-        // took none (the harness's battle step's way, design §5.19), the cursor and the whole
-        // frame set again.
+        // A battle the map handed over (E24 M4 T5b1, design §5.20, *provisional*): a walk's end's
+        // and a plain answer's as a cut, a switch's where it shows the battle whole (T5b2, design
+        // §5.21: the map's fades). Hosted before the map's frame at its millisecond, its sound on
+        // the host's (the device running for it while the map is paused: E24 M4 T6, R5-13); then
+        // the map's clock on from that millisecond, as if the battle took none (the harness's
+        // battle step's way, design §5.19), the cursor and the whole frame set again, the next
+        // frame made again (R5-7: a switch's change at that millisecond, closed there by the
+        // record player, is its fade out's first, the battle's last frame), the focus and the
+        // mouse as the battle left them (R5-5).
         // The next of a walk's and an answer's, the walk's first in the same millisecond.
         let walk = replay.battles().get(handed.0).copied();
         let answer = answered.get(handed.1).copied();
@@ -978,7 +990,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             (Some(w), _) => Some((w, true)),
             (None, a) => a.map(|a| (a, false)),
         };
-        if let Some(list) = &battles
+        if let Some(list) = &mut battles
             && let Some(((t, n), walked)) = due_battle
             && t <= ms
             && pending.is_empty()
@@ -989,6 +1001,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             } else {
                 handed.1 += 1;
             }
+            hosting.due += 1;
             let Some(k) = list.began(n) else {
                 lines.push(format!(
                     "battle at {t} ms (the record's events {n}): none of the record's {} opens after \
@@ -997,7 +1010,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 ));
                 continue 'run;
             };
-            let sound = audio.as_mut().and_then(|(_, player)| player.lend());
+            let paused = clock.paused();
+            let sound = audio.as_mut().and_then(|(_, player)| {
+                if paused {
+                    player.pause(false);
+                }
+                player.lend()
+            });
             let run = battles::Run {
                 unattended,
                 drawn_cursor: !look.hardware,
@@ -1006,13 +1025,29 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             let (sound, shown) = battles::host(&mut win, list, k, sound, run, &mut lines)?;
             if let (Some((_, player)), Some(sound)) = (&mut audio, sound) {
                 player.take_back(sound);
+                if paused {
+                    player.pause(true);
+                }
             }
-            // A switch's battle (E24 M4 T5b2, design §5.21): its last frame faded out, its close
-            // given to the map in the next millisecond (the switch back from there).
+            hosting.closed += usize::from(shown.outcome.is_some());
+            // A switch's battle (E24 M4 T5b2, design §5.21): its last frame faded out (the
+            // record player closed it at this millisecond, R5-3), the frame made before it
+            // made again.
             if let Some(last) = &shown.last {
                 painter.battle_frame(n, true, last.clone());
             }
-            replay.give(t.saturating_add(1), Action::BattleClosed);
+            maker.recycle(next.take());
+            // The focus as it stands: the battle told its host's sound each change; the map's
+            // own lanes told the last (none plays: lent, they stopped).
+            let has_focus = win.focused();
+            if has_focus != focused
+                && let Some((library, player)) = &mut audio
+            {
+                player.focus(library, has_focus, &mut lines);
+            }
+            focused = has_focus;
+            mouse = Some(mouse_after(shown.pointer, look.frame));
+            mouse_again = true;
             lines.push(format!(
                 "battle {} at {t} ms: {} frames shown, {}",
                 k + 1,
@@ -1162,7 +1197,17 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         texture.describe()
     ));
     let mut ok = report.difference.is_none();
+    if let Some(list) = &battles {
+        lines.push(format!(
+            "battles: {} of the record's {} came due, {} of them closed",
+            hosting.due,
+            list.len(),
+            hosting.closed
+        ));
+    }
     if read {
+        // Every battle due shown and closed (E24 M4 T6, R5-9).
+        ok &= hosting.all_closed();
         lines.push(format!(
             "read back: {} of {} frames exact ({}){}",
             report.exact,
@@ -1190,6 +1235,29 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         ));
     }
     Ok((lines, ok))
+}
+
+/// The map's mouse after a hosted battle (E24 M4 T6, the reviewer's R5-5): where the battle's
+/// element last saw it over its frame (`pointer`), the frame's nearest point as a move's; off the
+/// frame where it saw none (outside the window).
+fn mouse_after(pointer: Option<(i32, i32)>, frame: [u32; 2]) -> [i32; 2] {
+    pointer.map_or(OFF, |(x, y)| [clamp(x, frame[0]), clamp(y, frame[1])])
+}
+
+/// The battles a record's window hosted (E24 M4 T6, the reviewer's R5-9): how many came due and
+/// how many of them closed at their result (one not in the record, not loaded or not started, or
+/// left open at an unattended run's end, did not).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+struct Hosting {
+    due: usize,
+    closed: usize,
+}
+
+impl Hosting {
+    /// Whether every battle that came due closed (a check's verdict).
+    fn all_closed(self) -> bool {
+        self.closed == self.due
+    }
 }
 
 /// What the window's texture holds (E24 M3 T2b2, *provisional*): the frame last uploaded, so
@@ -1498,5 +1566,21 @@ mod tests {
             summary(&mut us),
             "median 5.0, p95 9.5, max 10.0 (100 frames)"
         );
+    }
+
+    #[test]
+    fn after_a_battle_the_mouse_where_it_left_it() {
+        // E24 M4 T6 (R5-5): the battle's last point, the frame's nearest; none off the frame.
+        assert_eq!(mouse_after(Some((120, 40)), [800, 600]), [120, 40]);
+        assert_eq!(mouse_after(Some((900, -5)), [800, 600]), [799, 0]);
+        assert_eq!(mouse_after(None, [800, 600]), OFF);
+    }
+
+    #[test]
+    fn a_check_needs_every_battle_due_closed() {
+        // E24 M4 T6 (R5-9): one not shown, not started or left open fails the check.
+        assert!(Hosting::default().all_closed());
+        assert!(!Hosting { due: 2, closed: 1 }.all_closed());
+        assert!(Hosting { due: 2, closed: 2 }.all_closed());
     }
 }

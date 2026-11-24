@@ -43,9 +43,9 @@ shipped-hoard adf5713ec2eb6b8a
 shipped-tale-of-two-lands 99512dcc6620915e
 shipped-too-many-monsters c1036b370070efec
 start-dwarven-tunnels 1a68366478c9c011
-start-good-witch 4b10315feba86fc3
+start-good-witch 4cb01cdfaf2c9567
 start-hoard d4443218694f22f0
-start-jared 5931a8e4812ff776
+start-jared fc875d27468570d6
 status-date 713bf5a5dbb3ff23
 status-garrison 634d3ba415b7328b
 status-hero 929c5866a905f978

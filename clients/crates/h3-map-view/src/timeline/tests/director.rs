@@ -9,12 +9,12 @@ use h3_ui::message::Style;
 use crate::director::{self, Directed, Pace};
 use crate::engine::Command;
 
-fn at(x: u8, y: u8) -> Pos {
+pub(super) fn at(x: u8, y: u8) -> Pos {
     Pos { x, y, z: 0 }
 }
 
 /// Four tiles east of the hero in their order, the last the green cross.
-fn east_in_order() -> Vec<Arrow> {
+pub(super) fn east_in_order() -> Vec<Arrow> {
     vec![
         arrow(18, 17, 12),
         arrow(19, 17, 12),
@@ -24,18 +24,20 @@ fn east_in_order() -> Vec<Arrow> {
 }
 
 /// The walk east as a record gives it.
-fn east_walk() -> Move {
+pub(super) fn east_walk() -> Move {
     Move {
         tiles: vec![at(18, 17), at(19, 17), at(20, 17), at(21, 17)],
         points: vec![None, None, None, Some(1160)],
         revealed: vec![Vec::new(); 4],
         sea: None,
         battle: None,
+        boats: Vec::new(),
+        stops: None,
     }
 }
 
 /// `walking_start`'s start with its hero in the kingdom's list and the walk east as a record's.
-fn record_start() -> Start {
+pub(super) fn record_start() -> Start {
     let mut start = walking_start(4, vec![east_in_order()]);
     start.kingdom.heroes = vec![KingdomHero {
         points: 1560,
@@ -76,6 +78,88 @@ fn a_walk_given_by_its_last_tile() {
     assert!(Action::Choose(0).point().is_none() && !Action::Walk(at(1, 1)).ends_walk());
     let walks = Loop::start(rules(Bugs::Fixed), &walking_start(1, Vec::new())).unwrap();
     assert_eq!(walks.walks_left(), 0);
+}
+
+#[test]
+fn a_record_s_walk_short_of_its_path() {
+    // E24 M4 T6 ([`Move::stops`]): an event on the way stops the walk after its second step, the
+    // record's points there, the rest of its path left shown.
+    let mut start = record_start();
+    if let Some(moves) = &mut start.moves {
+        moves[0].stops = Some(2);
+        moves[0].points = vec![None, Some(1300), None, None];
+    }
+    let mut l = Loop::start(rules(Bugs::Fixed), &start).unwrap();
+    l.run(3, &[Action::Walk(at(21, 17))]).unwrap();
+    assert_eq!(l.hero.map(|h| h.at), Some(at(19, 17)));
+    assert_eq!((l.walks_left(), l.kingdom.heroes[0].points), (0, 1300));
+    assert!(l.idle());
+    let left: Vec<Pos> = l.path.iter().map(|(_, a)| a.at).collect();
+    assert_eq!(left, [at(20, 17), at(21, 17)]);
+    // Its last node visited from beside with nothing the map shows (a meeting, an object whose
+    // visit tells nothing): no step onto it, the hero turned to it, its points spent.
+    let mut start = record_start();
+    if let Some(moves) = &mut start.moves {
+        moves[0].stops = Some(3);
+    }
+    let mut l = Loop::start(rules(Bugs::Fixed), &start).unwrap();
+    l.run(3, &[Action::Walk(at(21, 17))]).unwrap();
+    assert_eq!(l.hero.map(|h| h.at), Some(at(20, 17)));
+    assert_eq!((l.walks_left(), l.kingdom.heroes[0].points), (0, 1160));
+    assert!(l.idle() && !l.boxed() && l.path.is_empty());
+    // A path of one node so: the hero turned on its tile.
+    let mut start = record_start();
+    start.paths = vec![vec![arrow(16, 18, 1)]];
+    start.moves = Some(vec![Move {
+        tiles: vec![at(16, 18)],
+        points: vec![Some(1400)],
+        revealed: vec![Vec::new()],
+        stops: Some(0),
+        ..east_walk()
+    }]);
+    let mut l = Loop::start(rules(Bugs::Fixed), &start).unwrap();
+    l.run(3, &[Action::Walk(at(16, 18))]).unwrap();
+    let hero = l.hero.unwrap();
+    assert_eq!((hero.at, hero.facing), (at(17, 17), Direction::SouthWest));
+    assert_eq!((l.walks_left(), l.kingdom.heroes[0].points), (0, 1400));
+}
+
+#[test]
+fn a_hero_s_slot_without_choices_and_a_hero_lost_twice() {
+    // Without choices the selected hero's own slot, for its own map hero only (E24 M4 T6, R1-4).
+    let mut l = Loop::start(rules(Bugs::Fixed), &record_start()).unwrap();
+    l.index = Some(0);
+    assert_eq!((l.slot_of(0), l.slot_of(1)), (Some(0), None));
+    // A hero a turn's start takes off the map once, whoever tells it again.
+    l.changed(&[], &[], &[0], &[]);
+    l.changed(&[], &[], &[0, 0], &[]);
+    assert_eq!(l.left, [0]);
+}
+
+#[test]
+fn a_record_s_walk_takes_its_own_path() {
+    // E24 M4 T6 (`economy-windmill-s1`): two walks to the same tile, the second from the first's
+    // end, where the first's path starts beside the hero too: each walk its own path.
+    let mut start = record_start();
+    start.paths = vec![
+        vec![arrow(17, 18, 12), arrow(18, 17, 1)],
+        vec![arrow(19, 17, 12), arrow(18, 17, 1)],
+    ];
+    let walk = |tiles: Vec<Pos>| Move {
+        points: vec![None; tiles.len()],
+        revealed: vec![Vec::new(); tiles.len()],
+        tiles,
+        ..east_walk()
+    };
+    start.moves = Some(vec![
+        walk(vec![at(17, 18), at(18, 17)]),
+        walk(vec![at(19, 17), at(18, 17)]),
+    ]);
+    let mut l = Loop::start(rules(Bugs::Fixed), &start).unwrap();
+    l.run(3, &[Action::Walk(at(18, 17))]).unwrap();
+    l.run(4, &[Action::Walk(at(18, 17))]).unwrap();
+    assert_eq!(l.hero.map(|h| h.at), Some(at(18, 17)));
+    assert_eq!(l.walks_left(), 0);
 }
 
 #[test]
@@ -210,7 +294,7 @@ fn a_records_answers_in_its_boxes() {
     start.live = true;
     start.move_reminder = true;
     start.kingdom.heroes[0].movable = true;
-    start.question = Some(turns::laid("End your turn?", Style::OkCancel));
+    start.question = Some(turns::laid("TURN?", Style::OkCancel));
     for (answer, keys) in [
         (
             Some(Answer::Offer {
@@ -257,7 +341,7 @@ fn a_battle_an_answer_began_is_handed_over_where_its_box_closes() {
     start.live = true;
     start.move_reminder = true;
     start.kingdom.heroes[0].movable = true;
-    start.question = Some(turns::laid("End your turn?", Style::OkCancel));
+    start.question = Some(turns::laid("TURN?", Style::OkCancel));
     let accept = Command::Answer(Answer::Offer {
         consent: Consent::Accept,
     });

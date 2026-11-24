@@ -77,11 +77,12 @@ const GOLD: u16 = 6;
 const GEMS: u16 = 5;
 
 /// What the view shows of the map's objects, by the map's order (none for an object it does not
-/// show), with each one's class and subclass as the live part draws it.
+/// show), with each one's class as the game loads it (`Records::game_class` of the live part's:
+/// the class the hint dispatches on, 219 a garrison's 33, 220 a mine's 53) and subclass.
 pub(super) struct Sight<'a> {
     /// The view's object of each map object.
     pub views: Vec<Option<&'a Object>>,
-    /// Each map object's class and subclass.
+    /// Each map object's class as the game loads it, and its subclass.
     pub classes: Vec<(u32, u32)>,
 }
 

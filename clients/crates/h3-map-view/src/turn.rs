@@ -19,7 +19,7 @@ use h3_map::model::Pos;
 
 use crate::engine::OtherTurn;
 use crate::live::{Calendar, Date, LiveBoat, LiveHero, Selected, Status, Turn};
-use crate::timeline::{Direction, Hero, Steps};
+use crate::timeline::{Direction, End, Hero, Steps};
 
 /// The turn's numbers and sounds (the tables' `[map.turn]`).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -277,7 +277,8 @@ pub fn walks(
         steps,
         unseen: Vec::new(),
         sea: Vec::new(),
-        taken: Vec::new(),
+        ends: Vec::new(),
+        seen: None,
     }])
 }
 
@@ -295,11 +296,15 @@ pub fn record_heroes(shown: &[(u16, Pos)], map: &[LiveHero]) -> Vec<(u16, usize)
 /// *provisional*): each walk's hero by `ids` ([`record_heroes`]), its place in the computer's
 /// kingdom the order its heroes first walk in (the turn's table's), its steps: one with both tiles
 /// facing from the one to the other; one into sight (no tile it left: MCL-Q44) taken unseen onto
-/// its tile, facing as before; one out of sight (no tile it entered: MCL-Q44) left out, the hero
-/// standing where the viewer last saw it; a step's boarding or landing (E24 M4 T4c2) kept by its
-/// place, one out of sight's left out with it (MCL-Q44: the boat a landing out of sight leaves is
-/// not shown); the objects the record takes off the map after a walk taken at its end, each by
-/// its anchor and its index `object_at` gives (none: left out).
+/// its tile, facing as the timeline's hero did (E24 M4 T6, R1-8); one out of sight (no tile it
+/// entered: MCL-Q44) left out, the hero standing where the viewer last saw it; a step's boarding
+/// or landing (E24 M4 T4c2) kept by its place, one out of sight's left out with it (MCL-Q44: the
+/// boat a landing out of sight leaves is not shown). Since E24 M4 T6 each of its moves' ends
+/// (R1-3, R1-5: [`crate::timeline::End`], by the steps kept), with the objects the record takes,
+/// removes or flags after it, each by its anchor's index `object_at` gives (none: left out), and
+/// the heroes it takes off the map; and the record's judgement of what the viewer sees (R1-2,
+/// [`Steps::seen`]: the hero's tile at its choice where its first step's start is told, at a
+/// move's end where its last step's end is).
 ///
 /// # Errors
 /// A walk's hero the record's start does not show (not built), a step between tiles that are not
@@ -339,7 +344,10 @@ pub fn record_walks(
             let mut steps = Vec::new();
             let mut unseen = Vec::new();
             let mut sea = Vec::new();
+            // The steps kept before each of the record's.
+            let mut kept = Vec::with_capacity(walk.steps.len() + 1);
             for step in &walk.steps {
+                kept.push(steps.len());
                 if let (Some(boat), Some(_)) = (step.sea, step.to) {
                     sea.push((steps.len(), boat));
                 }
@@ -359,19 +367,53 @@ pub fn record_walks(
                     _ => {}
                 }
             }
+            kept.push(steps.len());
             facings.push((hero, facing));
+            let chosen = walk.steps.first().is_some_and(|s| s.from.is_some());
+            let objects = |at: &[Pos]| at.iter().filter_map(|&at| object_at(at)).collect();
+            let ends = walk
+                .ends
+                .iter()
+                .map(|end| End {
+                    after: kept.get(end.after).copied().unwrap_or(steps.len()),
+                    taken: end
+                        .taken
+                        .iter()
+                        .filter_map(|&at| object_at(at).map(|o| (at, o)))
+                        .collect(),
+                    removed: objects(&end.removed),
+                    flags: end
+                        .flagged
+                        .iter()
+                        .filter_map(|&(at, colour)| object_at(at).map(|o| (o, colour)))
+                        .collect(),
+                    lost: map_heroes(&end.lost, ids),
+                    boats: end.boats.clone(),
+                    seen: match end.after.checked_sub(1) {
+                        Some(last) => walk.steps.get(last).is_some_and(|s| s.to.is_some()),
+                        None => chosen,
+                    },
+                })
+                .collect();
             Ok(Steps {
                 hero,
                 slot,
                 steps,
                 unseen,
                 sea,
-                taken: walk
-                    .taken
-                    .iter()
-                    .filter_map(|&at| object_at(at).map(|o| (at, o)))
-                    .collect(),
+                ends,
+                seen: Some(chosen),
             })
         })
+        .collect()
+}
+
+/// The map's heroes of the record's heroes `heroes` by `ids` ([`record_heroes`]), those it does
+/// not show left out.
+#[must_use]
+pub fn map_heroes(heroes: &[u16], ids: &[(u16, usize)]) -> Vec<usize> {
+    heroes
+        .iter()
+        .filter_map(|id| ids.iter().find(|(i, _)| i == id).map(|&(_, index)| index))
         .collect()
 }

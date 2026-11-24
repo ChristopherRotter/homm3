@@ -305,8 +305,10 @@ why = "exact: a shipped map's start with no random draw in sight (E24 M4 T3b2): 
 # The engine's start (`h3map.py engine`, E24 M4 T3b2): every explored tile's hint and cursor and
 # the pointer's the capture's; Jared starts at level 3 from the map's experience, so both games
 # draw his two level-ups' primary skills (a draw no staging writes yet), and the morale of his
-# Leadership the record lacks (MCL-Q36).
-engine = { differs = ["`status.morale` differs (MCL-Q36: the record has none)", "`status.skills` differs"], pixels = 255 }
+# Leadership the record lacks (MCL-Q36). Since M4 T6 (R6-1) the capture's starting bonus is Gold
+# (500 to 1 000, drawn anew at each capture; the engine gives none, E10), so the resources differ,
+# and the hero's mana follows the level-ups' Knowledge draw (the heroes' list).
+engine = { differs = ["`kingdom.heroes` differs", "`kingdom.resources` differs", "`status.morale` differs (MCL-Q36: the record has none)", "`status.skills` differs"], pixels = 343 }
 
 [[situation]]
 id = "start-good-witch"
@@ -316,4 +318,4 @@ why = "exact: a shipped map's start with no random draw in sight (E24 M4 T3b2): 
 # the pointer's the capture's; Glinda starts at level 3 from the map's experience, so both games
 # draw her two level-ups' primary skills (a draw no staging writes yet): her skills and her mana
 # by her Knowledge (the hero list's bar).
-engine = { differs = ["`kingdom.heroes` differs", "`status.skills` differs"], pixels = 101 }
+engine = { differs = ["`kingdom.heroes` differs", "`status.skills` differs"], pixels = 90 }
