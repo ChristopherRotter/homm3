@@ -192,6 +192,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - **The hygiene's other game keeps every ownable object's entrance land** (`view.rs`' `vary`,
   its `entrances`): the import refuses one entered from water (`OwnedOnWater`). A new ownable
   body (E08 T116b1's map garrisons, missed until T29b) joins that list.
+- **The hygiene varies armies a viewer may still see** (E09 T50, the inbox's seed of 2026-11-21):
+  `vary` changes every other player's hero army (ADV-FOG-006 shows none on the map), but a
+  garrison hero's army is its town's garrison, told at the viewer's level (TWN-VEW-002): a
+  town told whose upper bar differs between the two games ends the comparison, the events the
+  same but `TownStackSeen`. A new view of a hero's army (increment 6's services?) does the same.
 
 - **A decision kind is known to four oracles** (E09 T40b, the plans' map Tavern): `check_legal`
   (its listing's branch and its probe, else it falls to the turn's listing), `check_decisions`
