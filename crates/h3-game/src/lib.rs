@@ -63,8 +63,8 @@ mod tests;
 
 pub use command::{
     Actor, AltarAnswer, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError,
-    GameEvent, HillFortAnswer, HireAnswer, MarketAnswer, NoopSink, SchoolChoice, Sink, SkillOffer,
-    TavernAnswer, UniversityAnswer, apply,
+    GameEvent, HillFortAnswer, HireAnswer, MapCastError, MarketAnswer, NoopSink, SchoolChoice,
+    Sink, SkillOffer, TavernAnswer, UniversityAnswer, apply,
 };
 pub use garrisons::MapGarrisonView;
 /// A map Tavern's visit (E09 T39a; `h3_adventure`'s type): what [`GameState::tavern`] gives.

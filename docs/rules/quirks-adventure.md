@@ -624,3 +624,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-game/src/tests/altar.rs`, `an_altars_visit_opens_its_decision_for_its_owner_until_it_is_left`
 - Decided by / date: the user 2026-11-18 (ADV-Q57 (2), E08 decision 366); built and recorded by E08 T134a
+
+### ADV-QUIRK-54 — A re-cast of Fly or Water Walk is refused while it is on
+- Class: fix-optional (the user, 2026-11-21, ADV-Q63, E08 decision 403; A-51)
+- Context / rules affected: adventure, ADV-SPL-005, ADV-SPL-006 (the cast's own test)
+- Original behavior: Fly (`adventure_spell` 0x41C490 at 0x41C6B8) does nothing at all, free and silent, while the hero's +0x112 is set or it wears Angel Wings (72); Water Walk (0x41C796) likewise on land while +0x116 is set or it wears Boots of Levitation (90). So a re-cast at a higher mastery (Air or Water Magic learned the same day, a raising ground) never raises the level (survey `E08-spells.md` §7.1). The wiki calls it a bug, fixed in HotA.
+- Intended/expected behavior: a cast is refused only when its level would not exceed the hero's level now (the artifacts' 3 included); a higher one raises the day's level.
+- Impact: gameplay, rare: a hero whose mastery rises during the day; with the artifacts' 3 either way nothing is cast.
+- Community status: documented on the wiki's Fly page as a bug; HotA fixed it.
+- Sources: code reading (E08 T137a, survey §7.1); observation: batch E15's E15-11 (the second Fly free and nothing, Angel Wings nothing), at one mastery (its raised re-cast not played).
+- Flag: `quirk.adventure.spell_recast_refused`
+- Defaults: faithful = on (`CastError::AlreadyOn`), strict-fixed = off (`CastError::NotHigher` when the level would not rise)
+- Regression test: `crates/h3-adventure/src/state/tests/spells.rs`, `a_recast_is_refused_free_under_adv_quirk_54_and_only_a_higher_one_is_taken_off`
+- Decided by / date: the user 2026-11-21 (ADV-Q63, E08 decision 403); the flag in the profiles by E08 T140; built by E08 T142a
+
+### ADV-QUIRK-57 — Water Walk is cast in a boat and holds after landing
+- Class: harmless, accepted (the user, 2026-11-21, ADV-Q63, E08 decision 403; A-49)
+- Context / rules affected: adventure, ADV-SPL-006, ADV-SPL-002
+- Original behavior: in a boat (+0x105 bit 18) Water Walk skips both of its tests (already on, Boots of Levitation) and is cast, charged: +0x116 the mastery. At sea the price and the pathfinder take −1 for a hero in a boat, so the level does nothing there, but a landing does not clear it, so the hero water-walks ashore the same day (survey `E08-spells.md` §7.1; batch E15's E15-12: 20 → 8 points aboard, Water Walk 0, after landing three steps over a strait's water at 140 each).
+- Intended/expected behavior: as the original (accepted: a cast paid for, used later the same day).
+- Impact: gameplay, small: a cast aboard ahead of a landing.
+- Community status: not documented.
+- Sources: code reading (E08 T137a, survey §7.1); observation: batch E15's E15-12.
+- Flag: none (accepted)
+- Defaults: the original's in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/spells.rs`, `aboard_fly_is_refused_and_water_walk_is_cast_without_its_tests`
+- Decided by / date: the user 2026-11-21 (ADV-Q63, E08 decision 403); built by E08 T142a

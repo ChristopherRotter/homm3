@@ -357,6 +357,14 @@ fn adventure_back(e: w::AdventureEvent, alone: Viewers) -> K {
             movement,
             max_movement,
         },
+        A::DaySpellsChanged { hero, spells } => K::DaySpellsChanged {
+            hero: id(hero),
+            spells: h3_adventure::DaySpells {
+                fly: spells.fly,
+                water_walk: spells.water_walk,
+                doors: spells.doors,
+            },
+        },
         A::BonusChanged { hero, morale, luck } => K::BonusChanged {
             hero: id(hero),
             morale,
@@ -968,6 +976,19 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             player: p(player),
             hero: id(hero),
         },
+        G::SpellCast {
+            player,
+            hero,
+            spell,
+            mastery,
+            cost,
+        } => GameEvent::SpellCast {
+            player: p(player),
+            hero: id(hero),
+            spell: Handle::from_raw(spell),
+            mastery,
+            cost,
+        },
         G::ThievesGuildSeen { player, level } => GameEvent::ThievesGuildSeen {
             player: p(player),
             level,
@@ -1453,6 +1474,14 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         },
         GameEvent::PrisonFull { player: P0, hero },
         GameEvent::PrisonEmptied { player: P0, hero },
+        // E08 T142a (v82): a cast on the map, player 0's alone.
+        GameEvent::SpellCast {
+            player: P0,
+            hero,
+            spell: Handle::from_raw(6),
+            mastery: 2,
+            cost: 15,
+        },
         // E09 T39b2 (v74): a Den of Thieves' guild, player 0's alone, a part of each kind.
         GameEvent::ThievesGuildSeen {
             player: P0,
@@ -1804,6 +1833,14 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             movement: 1_234,
             max_movement: 2_000,
         },
+        K::DaySpellsChanged {
+            hero,
+            spells: h3_adventure::DaySpells {
+                fly: Some(2),
+                water_walk: Some(0),
+                doors: 3,
+            },
+        },
         K::BonusChanged {
             hero,
             morale: -1,
@@ -1869,8 +1906,8 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
     // `HeroHired`, `HiredPartSeen`; T39a: `TavernOpened`; T39b2: `ThievesGuildSeen`,
     // `GuildPartSeen`; E08 T133b: `MarketOpened`; T134a: `AltarOpened`; T134b1:
     // `HillFortOpened`; T141a: `PrisonerFreed`, `PrisonerPartSeen`, `PrisonFull`,
-    // `PrisonEmptied`).
-    assert_eq!(distinct.len(), 53, "{distinct:?}");
+    // `PrisonEmptied`; T142a: `SpellCast`).
+    assert_eq!(distinct.len(), 54, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);

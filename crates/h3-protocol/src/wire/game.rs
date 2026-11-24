@@ -35,11 +35,11 @@ mod query;
 pub use clock::{Duel, GameClock, OfferClock, Timer};
 pub use command::{
     AdventureCommand, AdventureReject, AltarAnswer, AltarReject, Answer, ArenaChoice, ArmyCommand,
-    ArmyRef, ArmyReject, ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent,
-    GameCommand, GameReject, HillFortAnswer, HillFortReject, HireAnswer, HireReject, Manage,
-    ManageReject, MarketAnswer, MarketReject, MoveReject, SchoolChoice, SkillOffer, StandReject,
-    SystemCommand, TavernAnswer, TavernReject, TownCommand, TownHeroChange, TownReject,
-    UniversityAnswer,
+    ArmyRef, ArmyReject, ArmySlot, ArtifactAt, ArtifactPlace, CastReject, ChestChoice,
+    CombineReject, Consent, GameCommand, GameReject, HillFortAnswer, HillFortReject, HireAnswer,
+    HireReject, Manage, ManageReject, MarketAnswer, MarketReject, MoveReject, SchoolChoice,
+    SkillOffer, SpellReject, StandReject, SystemCommand, TavernAnswer, TavernReject, TownCommand,
+    TownHeroChange, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, NothingWhy, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
@@ -253,6 +253,21 @@ pub struct OwnMapHero {
     /// Its timed marks: the object types (handles) whose day's or week's mark it holds, sorted
     /// (v57).
     pub timed: Vec<u16>,
+    /// Its day spells (ADV-SPL-002; E08 T142a, v82).
+    pub spells: DaySpells,
+}
+
+/// A hero's spells of the day (`h3_adventure::DaySpells`, ADV-SPL-002; E08 T142a, v82): its
+/// owner's alone.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DaySpells {
+    /// The flying level Fly set (the mastery 0 to 3), none when off.
+    pub fly: Option<u8>,
+    /// The water-walking level Water Walk set, none when off.
+    pub water_walk: Option<u8>,
+    /// The Dimension Door casts of the day.
+    pub doors: u8,
 }
 
 /// An object as a player sees it.

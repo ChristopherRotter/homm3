@@ -22190,3 +22190,88 @@ GitHub.
 **Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session); CI on
 the pull request is the record. **Versions:** none moved (no state, ruleset or wire change; the
 next stay adventure state v29, replay format v26, encoding v21, protocol v82). Next: T142.
+
+
+### Increment 15, round 6: T142a, the cast's frame with Fly and Water Walk (2026-11-24, `adventure/e08-t142a`, `cross-lane`)
+
+**The cut:** T142 in two (decision 415, the user at its start): T142a the frame and the two
+casts, T142b the flight's flag (§11.1, the hot path). The `cross-lane` touches consented:
+`h3-protocol` (the server lane's wire, its tests and `h3-server`'s record literals), `h3-sim`
+(the AI lane's `tileless_entry` arm; its `replay.rs`'s format is the lane's). **The order of the
+checks** (decision 414, the user): the cost before the ground, as the original; ADR-0017 point
+4's sentence for T145's `shared/` task. **Baseline:** `master` 25397e7 (#1147 merged); the
+originals staged from the PC at the start (17 files and 39 MP3s, SHA-256 checked), the repo
+from GitHub; the VM restarted during the setup's baseline (CI's run on `master` stands for it).
+
+- **The data** (ADV-SPL-001; part v26; design §3): `ruleset/spells.rs`: `AdventureSpell` (the
+  five, `key`, `targets`), `AdventureSpellDef` (`[[spell]] spell, effect`), `SpellParams`
+  (`[params.spells]`: `door_points`, `target_range`, `boats_most`), `compile_spells` (in the
+  closure, of the adventure category, each spell and each behaviour once), `check_spells`
+  (the parameters for the three that read them), `hash_spells`; `AdventureRuleset::spells`,
+  `adventure_spell`; the pack adapter's `SpellDto` (the effect a strict serde enum). The base
+  pack binds all five, with the parameters (300, 300, 300, 200; 9 × 8; 64).
+- **The day spells** (ADV-SPL-002; adventure state v29; design §8, §12): `state/spells.rs`:
+  `DaySpells` (`fly`, `water_walk`, `doors`), kept in **a block by hero id**
+  (`AdventureState::day_spells`, none while no hero has one; *agent's call, change freely*: a
+  `HeroOnMap` field costs every fork and breaks the town lane's literals; the block follows a
+  hero into a garrison as the original's record does), one encoding (an entry never empty, an
+  empty block dropped), hashed last. The new day drops the block (`start_day`), a boarding clears
+  Fly and Water Walk (`board`), a landing nothing. `day_movement` gives the reach and `MoveHero`
+  the higher of the artifacts' and the spell's levels; `Pricing::new` takes the spells for the
+  drop under `ADV-QUIRK-17` (the spells' levels alone, as `cheapest_step_from` reads them).
+  `OwnHeroes` compares the block and tells `DaySpellsChanged`; the own hero view's `spells`.
+- **The adventure's half** (ADV-SPL-005, -006; design §10.3, §10.4): `check_cast` (Fly refused
+  aboard; under `ADV-QUIRK-54` while on or with the artifacts' level, off when not higher; Water
+  Walk aboard without its tests, A-49, `ADV-QUIRK-57`; Summon Boat, Scuttle Boat and Dimension
+  Door `NotBuilt`, `ADV-STUB-22`) and the infallible `apply_cast`; `CastError`.
+- **The game's command** (GAM-SPL-001; design §14): `GameCommand::Cast { hero, spell, target }`,
+  `state/cast.rs`' `check_cast` in the original's order (`MapCastError`: the hero on the map, the
+  spell castable, the binding, the target's shape, the cost at the mastery on the ground, the
+  ground's level limit, the anti-magic garrison, the adventure's test) and `cast` (the effect,
+  `SpellCast`, the points' `HeroChanged`); the raise is `SchoolRaise::Schools` of the ground's
+  battlefield's `expert_schools` (`battlefield_by_key` over `special_ground`); `ADV-STUB-19`,
+  `-20` at the binding (the information spells, Town Portal).
+- **The wire** (protocol v82, `cross-lane`): `GameCommand::Cast`, `GameReject::Cast`
+  (`CastReject`, `SpellReject`), `GameEvent::SpellCast`, `AdventureEvent::DaySpellsChanged`,
+  `OwnMapHero::spells` (`DaySpells`); the fold; `CommandBounds` counts a cast as a map command.
+- **The replay word** (format v26, ahead of T144a's plan: a record must write a cast the server
+  accepts): `<player> cast <hero> <spell> [<x>,<y>,<level>]` in `h3-files`.
+- **Tests:** `h3-adventure`'s `state/tests/spells.rs` (eight: the levels the steps and the reach
+  read, the re-cast under both settings and with the artifacts, aboard, the boarding and the new
+  day, the unbuilt and the other heroes, the drop under `ADV-QUIRK-17`, the hash and the block's
+  one encoding, the owner's view and the told event) and `ruleset/tests/spells.rs` (three);
+  `h3-pack-adventure`'s base pack's bindings and the parse errors; `h3-game`'s `tests/casts.rs`
+  (five: the cost after the effect and the events, the raised Expert, every refusal in order
+  changing nothing, Cursed Ground and the garrison after the cost, the errors' texts);
+  `h3-files`' words; `h3-protocol`'s round trips, the fold; `h3-map`'s oracles name
+  `DaySpellsChanged` (told after the command, the owner's alone).
+- **Docs:** the catalog (ADV-SPL-001, -002, -005, -006 and GAM-SPL-001 new and `verified` by
+  E15-4, -5, -11, -12; ADV-MOV-009, -010 amended with the spells' levels); the ledger's
+  ADV-QUIRK-54 and -57; the stubs ADV-STUB-19, -20, -22; the design note as built (§3, §8, §12,
+  §14, §16); the inboxes of the server, map-client and AI lanes.
+- **Re-recorded:** the 118 adventure replays from their own commands (only `format`,
+  `adventure_ruleset_hash`, `adventure_state_hash_version`, the checkpoints and `final_hash`
+  moved); the bot reports' `engine.adventure` line; `h3-server`'s `tests/record.rs` literals
+  (`army-dialog-s1`'s checkpoint and final hash); the replay format's literal tests of `h3-cli`
+  and `h3-sim` written from the constant or moved to 26.
+
+- **Speed:** the first bench-check against the stored baselines had `random-play-bonuses-36` at
+  +2.10 % and `reach-towns-36` at +2.53 %; `master`'s worktree in this sandbox counts them +1.66 %
+  and +0.97 % (the sandbox's drift), so the code's share was +0.43 % and +1.54 %. All of
+  `reach-towns-36`'s in `Reach::search`'s own instructions (+16.7 M over 4 093 queries, every
+  callee alike): the block's lookup and `day_movement` inlined at the search's start moved its
+  loop. Settled once: both `#[inline(never)]` (one call a search): `reach-towns-36` +0.06 %
+  against `master`, every workload inside the gate (the forks +0.1 to +0.3 % against `master`:
+  the state's one pointer more), none re-baselined.
+- **Coverage:** the details' lookup of a hero on the map (never missing, GAM-HER-001) left a `?`
+  region in `check_cast`'s closure: an `Option::map` instead. CI's first run found the wire's
+  `effect_code` match in `h3-protocol` (the server scope's coverage, which the scoped verify
+  leaves out): only Dimension Door's arm had a sample. The wire now takes
+  `AdventureSpell::code` (made public, every arm covered by the base pack's hash).
+
+**Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session);
+`check-lane --cross-lane`, `cargo check --workspace --all-targets`; `h3-protocol`'s, `h3-server`'s,
+`h3-sim`'s, `h3-cli`'s and `h3-files`' tests run apart. The clients' workspace did not build here
+(SDL's X11 dependencies missing after the VM's restart); CI's Clients job is its record.
+**Versions:** adventure ruleset part v26, adventure state hash v29, replay format v26, protocol
+v82 (the next: protocol v83 at T143a, encoding v21 at T144a). Next: T142b.

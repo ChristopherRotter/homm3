@@ -59,7 +59,7 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, free_boarding};
 
 use crate::movement::{
-    DIRECTIONS, Pricing, converted_points, day_points, details_of, hero_movement, sea_day_points,
+    DIRECTIONS, Pricing, converted_points, day_movement, day_points, details_of, sea_day_points,
 };
 use crate::persistent::BitGrid;
 use crate::ruleset::AdventureRuleset;
@@ -177,9 +177,10 @@ impl Reach {
         hero: &HeroOnMap,
     ) -> Self {
         let map = state.map();
-        let movement = hero_movement(core, details_of(heroes, hero.id));
+        let spells = state.day_spells(hero.id);
+        let movement = day_movement(core, details_of(heroes, hero.id), spells);
         let mode = Mode::of(&movement, hero.boat);
-        let pricing = Pricing::new(core, part, &hero.army, &movement);
+        let pricing = Pricing::new(core, part, &hero.army, (&movement, spells));
         // No step costs less than the cheapest straight step, so none goes farther than this: a
         // boat's every step is one at sea (a landing's priced from its water tile, E08 T73b).
         let cheapest = match mode {

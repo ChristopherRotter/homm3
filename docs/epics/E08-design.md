@@ -54,6 +54,12 @@ entrance, so E12's other classes without a visit (`visit_object`'s out-of-range 
   300, 200]` (by mastery; ADV-SPL-009), `target_range = [9, 8]` (dx, dy: the door's and Scuttle
   Boat's window, D-76 and A-54, decision 401), `boats_most = 64` (Summon Boat's creation, §10.1).
   The fly and water-walk prices are increment 5's `fly_cost`, `water_walk_cost` (levels 0 to 3).
+- *As built (T142a, part v26):* `[[spell]] spell = "fly", effect = "fly"` (the core spell's key in
+  the pack's closure, of the adventure category; each spell and each behaviour once),
+  `AdventureRuleset::spells`, `adventure_spell`; `[params.spells]` required when Summon Boat,
+  Scuttle Boat or Dimension Door is bound, the window's entries from 1. The base pack binds all
+  five; the three not built are refused by the adventure until T143 (`CastError::NotBuilt`,
+  `ADV-STUB-22`).
 
 ### 4. The quirk flags (decisions 399, 400, 402, 403)
 
@@ -136,6 +142,13 @@ lacks with `DetailsError::UnknownSpell`; HER-SPL-008 holds the cost and who may 
   and the spell's: every reader of `Movement` (the passage, the price, the drop to 0) takes the
   combined level, so increment 5's paths serve the spells unchanged (survey §7.2); `ADV-QUIRK-17`
   stays the artifacts' alone (the drop prices with the spell's level when the level is the spell's).
+- *As built (T142a, adventure state v29):* the day spells are **a state block by hero id**
+  (`AdventureState::day_spells`, none while no hero has one), not a `HeroOnMap` field (*agent's
+  call*: a field there costs every fork, the lane's trap, and the town lane builds `HeroOnMap`
+  literals; a hero keeps its spells into a garrison the same day, as the original's record does).
+  `day_movement` combines the levels for the reach and `MoveHero`; `Pricing::new` takes the spells
+  for the drop under `ADV-QUIRK-17` (the spells' levels alone). The block's lookup is out of line
+  (`#[inline(never)]`: inlined into `Reach::search` it moved the loop, +1.5 % on `reach-towns-36`).
 - **A boat's last captain** already exists (increment 8's `Boat::captain`); its owner too.
 
 ### 9. The Prison's visit (ADV-PRI-002; the adventure's half)
@@ -216,7 +229,9 @@ failure** is an accepted cast with `CastFailed` (the mana spent, §14).
 The adventure's start of the day (the game's day step, ADR-0017 point 3) clears every hero's
 `DaySpells` (all heroes on the map; garrison and away heroes have none to clear). Boarding clears
 `fly` and `water_walk` (increment 8's +0x112, +0x116 −1, survey §4.3); landing keeps
-`water_walk`. Nothing else writes them but a cast.
+`water_walk`. Nothing else writes them but a cast. *As built (T142a):* the new day drops the whole
+block (heroes on the map, in garrisons and off the map alike); each change is told after the
+command by `OwnHeroes`' comparison (`DaySpellsChanged`), as the movement's.
 
 ### 13. Information (ADV-PRI-003, ADV-SPL-010; ADR-0016 point 6)
 
@@ -246,7 +261,13 @@ Ground's 1) below the spell's level, an anti-magic garrison's tile
 refusals (survey §4.1); both refuse free, so only the reported error differs; the engine follows
 the original's. Then the adventure applies, the spell points are set to the points less the cost
 (at least 0), and the events go out. The draws come from the actor's stream (ADR-0017 point 4), in
-the order of §10. A computer player's casts are E31's.
+the order of §10. A computer player's casts are E31's. *As built (T142a, decision 414):* the
+original's order, the cost before the ground (`MapCastError`: `NotYourHero`, `Unknown`,
+`NotOnMap`, `Target`, `SpellPoints`, `Ground`, `AntiMagic`, then the adventure's `CastError`);
+the raise `SchoolRaise::Schools` of the ground's battlefield's `expert_schools`; the adventure's
+half `check_cast` and the infallible `apply_cast`; `SpellCast` before the points' `HeroChanged`;
+the replay word `cast <hero> <spell> [<x>,<y>,<level>]` (format v26) came with this task, so
+the server's records can write a cast.
 
 ### 15. The prisoner freed (GAM-SET-001 amended; ADV-PRI-001, -002: the game's half)
 
@@ -298,7 +319,10 @@ event's size: none of these holds a `Vec`.
 the freed hero whole, so its lists follow as a new `PrisonerPartSeen { player, hero, part:
 TavernPart }` and its other parts as `HiredPartSeen`), `PrisonFull { player, hero }`,
 `PrisonEmptied { player, hero }` (the visitor); the observation's `hero_list` and the fold's
-`keep_list`. The rest of the list above is T142's to T144b's.
+`keep_list`. The rest of the list above is T142's to T144b's. *As built (T142a, protocol v82):*
+`GameCommand::Cast { hero, spell, target }`, `GameReject::Cast` (`CastReject`, the spell's own
+test nested as `SpellReject`), `GameEvent::SpellCast`, `AdventureEvent::DaySpellsChanged`, the
+own hero's `spells` (`DaySpells`); the fold sets the spells from `DaySpellsChanged`.
 
 ### 17. The env, replays, maps, properties, benchmarks
 

@@ -4,23 +4,28 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a done (2026-11-24), T142b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T142 — the cast's frame with Fly and Water Walk** (round 6; design note `E08-design.md`
-§3, §8, §10.3, §10.4, §11.1, §12, §14; `adventure/e08-t142`)
+**E08 T142b — the flight's flag over unexplored tiles** (round 6, T142's second half, decision
+415; design note `E08-design.md` §11.1, §21; `adventure/e08-t142b`)
 
-- **Scope:** the adventure part's spells (§3: the five bindings, `AdventureSpell`,
-  `[params.spells]`), the day spells in the adventure state (§8, adventure state hash v29), the
-  day's end and boarding clearing them (§12, ADV-SPL-002), `GameCommand::Cast` with its checks in
-  order (§14, GAM-SPL-001: `h3_heroes::can_cast_on_map`, the ground's level limit and the
-  anti-magic garrison, `map_spell_cost` at `spell_masteries_on`'s mastery with the raise the game
-  derives from the hero tile's special ground), Fly and Water Walk (§10.3, §10.4: ADV-SPL-005,
-  -006, ADV-MOV-009, -010 amended) and the flight's flag (§11.1, ADV-QUIRK-15); the passage is a
-  hot path: measured against `master` at once (`homm3-bench-regression`).
-- **Inputs:** design §3, §8, §10 to §12, §14, §18; survey `E08-spells.md` §4, §7, §13, §18;
-  ADR-0013 point 17, ADR-0016 and ADR-0017 as amended by T140.
-- **Depends on:** T141b (done 2026-11-24). **Status:** ready; confirm its cut at its start (a
-  seam likely: the frame with the command, then the two spells and the flag). Then T143 to T145.
+- **Scope:** `ADV-QUIRK-15` (`quirk.adventure.flight_reads_hidden`, `QuirkFlag(45)`) in
+  `AdventureState::passage`'s unexplored row and `MoveHero`'s walk: **on** (faithful) an
+  unexplored tile is passable only flying, never a stop, refused when it is truly rock (the reach
+  reads the hidden truth); **off** (strict-fixed, the compromise) an unexplored tile is assumed
+  flyable, priced as a pass over a blocked tile, never a stop; a step whose tile, once revealed,
+  the hero may not pass is not made: the move ends on the last stop node it reached, charged only
+  the steps up to it (decision 407; the passes after it undone and free, their reveals kept), the
+  rest dropped (`AdventureOutcome::dropped`). A walker and a water walker keep ADV-MOV-008.
+  ADV-MOV-008 and -009 amended, ADV-QUIRK-15's ledger entry reclassified (fix-optional), `verified`
+  by E15-13, E15-14 (D-78). The hygiene property (`h3-map`'s `view.rs`: a flight's legal moves
+  under `strict-fixed` never depend on a hidden tile). **The passage is the hottest loop:**
+  measured right after the first build against `master`'s worktree (`homm3-bench-regression`;
+  the lane's traps on the reach's and the passage's loops).
+- **Inputs:** design §11.1, §21; survey `E08-spells.md` §7.3, §13, §18 (E15-13, E15-14); T142a's
+  record in `E08-log.md` (the day spells' levels already read by the paths).
+- **Depends on:** T142a (`adventure/e08-t142a`). **Status:** ready once T142a merges. Then T143 to
+  T145 (T145's `shared/` task amends ADR-0017 point 4's order, decision 414).
 
 ## Inbox
 

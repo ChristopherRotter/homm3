@@ -11,9 +11,10 @@ use core::fmt;
 
 use h3_adventure::{
     ALTAR_SLOTS, AdventureCommand, AdventureCommandError, AdventureEvent, AltarError, AltarPlaces,
-    ArmySlot, HillFortError, HireError, HireTarget, MarketError, ObjectTypeId, Pick, Pos, Viewers,
+    ArmySlot, CastError, HillFortError, HireError, HireTarget, MarketError, ObjectTypeId, Pick,
+    Pos, Viewers,
 };
-use h3_content::{CreatureTypeId, Formation, HeroTypeId, ResourceId, SkillId};
+use h3_content::{CreatureTypeId, Formation, HeroTypeId, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
 use h3_heroes::{Choice, HeroChange, PrimarySkill};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
@@ -62,6 +63,19 @@ pub enum GameCommand {
     /// E09 decision 45, T18b1): checked and applied as an adventure command is, with no hero and
     /// no visit (the original's town list opens the hall).
     Town(TownCommand),
+    /// A cast of a spell on the adventure map by one of the actor's heroes on the map, in its turn
+    /// with no decision open (GAM-SPL-001, ADV-SPL-001; E08 T142a, increment 15's design note
+    /// §14): `target` names Scuttle Boat's boat and Dimension Door's arrival, and no other spell
+    /// takes one. Checked whole before anything changes ([`MapCastError`]); the spell points are
+    /// the game's to spend.
+    Cast {
+        /// The casting hero.
+        hero: HeroId,
+        /// The core spell.
+        spell: SpellId,
+        /// The target tile, for a spell that names one.
+        target: Option<Pos>,
+    },
     /// A command of the system actor for a player ([`SystemCommand`]; ADR-0017 point 2, E16 M5
     /// T14): the system's alone, refused from a player (`SystemOnly`).
     System(SystemCommand),
@@ -438,7 +452,59 @@ pub enum GameCommandError {
     /// checks (the visit, a row without an upgrade, no row that upgrades); the treasury is
     /// [`Self::CannotPay`], checked after them.
     HillFort(HillFortError),
+    /// A cast on the map refused (GAM-SPL-001; E08 T142a): [`MapCastError`]'s tests in order.
+    Cast(MapCastError),
 }
+
+/// Why the game refuses a cast on the adventure map (GAM-SPL-001, ADV-SPL-001; E08 T142a,
+/// increment 15's design note §14, ADR-0017 point 4): its tests in order, each changing nothing
+/// and drawing nothing. The cost comes before the ground's refusals as in the original (the book's
+/// click tests the points, then `hero_special_ground` 0x4E4EC0 the ground: survey
+/// `E08-spells.md` §4.1; E08 decision 414).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MapCastError {
+    /// The hero is not one of the actor's heroes on the map (a town's garrison hero casts
+    /// nothing).
+    NotYourHero(HeroId),
+    /// The hero may not cast the spell (`h3_heroes::can_cast_on_map`: not among its available
+    /// spells, learned, a worn scroll's or a worn artifact's; no book test, D-79).
+    Unknown(SpellId),
+    /// The spell does not act on the map: the adventure part binds no behaviour to it (a battle
+    /// spell, or an adventure spell not built: the four information spells, Town Portal).
+    NotOnMap(SpellId),
+    /// A target given for a spell that names none, or none for one that does.
+    Target,
+    /// The hero's spell points are below the cast's cost (`h3_heroes::map_spell_cost`; the
+    /// original's GENRLTXT 207).
+    SpellPoints,
+    /// The special ground under the hero allows no spell of the spell's level (Cursed Ground's
+    /// level 1, BAT-TER-004's data; the original's GENRLTXT 748).
+    Ground,
+    /// The hero stands in or on an anti-magic garrison (ADV-GAR-005; the original's GENRLTXT
+    /// 685).
+    AntiMagic,
+    /// The spell's own test refused it ([`CastError`]).
+    Adventure(CastError),
+}
+
+impl fmt::Display for MapCastError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotYourHero(hero) => {
+                write!(f, "hero {} is not the player's on the map", hero.raw())
+            }
+            Self::Unknown(spell) => write!(f, "the hero cannot cast spell {}", spell.raw()),
+            Self::NotOnMap(spell) => write!(f, "spell {} is not cast on the map", spell.raw()),
+            Self::Target => f.write_str("the cast's target does not fit its spell"),
+            Self::SpellPoints => f.write_str("the hero's spell points are below the cost"),
+            Self::Ground => f.write_str("the ground allows no spell of that level"),
+            Self::AntiMagic => f.write_str("no spell is cast in an anti-magic garrison"),
+            Self::Adventure(error) => write!(f, "{error}"),
+        }
+    }
+}
+
+impl core::error::Error for MapCastError {}
 
 impl fmt::Display for GameCommandError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -470,6 +536,7 @@ impl fmt::Display for GameCommandError {
             Self::Market(error) => write!(f, "{error}"),
             Self::Altar(error) => write!(f, "{error}"),
             Self::HillFort(error) => write!(f, "{error}"),
+            Self::Cast(error) => write!(f, "{error}"),
         }
     }
 }
@@ -1055,6 +1122,22 @@ pub enum GameEvent {
         /// The visiting hero.
         hero: HeroId,
     },
+    /// A spell cast on the adventure map (GAM-SPL-001, ADV-SPL-001; E08 T142a, increment 15's
+    /// design note §16): accepted, its effect made, before the spell points' `HeroChanged`; the
+    /// changed day spells follow after the command (`DaySpellsChanged`). Seen by the caster's
+    /// owner (a viewer sees the effects only, §13).
+    SpellCast {
+        /// The caster's owner.
+        player: PlayerId,
+        /// The caster.
+        hero: HeroId,
+        /// The core spell.
+        spell: SpellId,
+        /// The mastery it was cast at on the hero's ground (0 to 3).
+        mastery: u8,
+        /// The spell points it cost (`h3_heroes::map_spell_cost`).
+        cost: u16,
+    },
     /// A Den of Thieves' visit showed the visitor's owner the Thieves' Guild at everything
     /// (ADV-VIS-008, TWN-TAV-007; E09 T39b2, design note §74, §75): its level
     /// ([`crate::DEN_LEVEL`]), followed by a [`Self::GuildPartSeen`] for each part of its view
@@ -1271,6 +1354,14 @@ fn run<S: Sink>(
         GameCommand::Town(command) => {
             state.check_ready(player)?;
             crate::town::command(state, rules, player, command, sink)
+        }
+        GameCommand::Cast {
+            hero,
+            spell,
+            target,
+        } => {
+            state.check_ready(player)?;
+            state.cast(rules, player, (hero, spell, target), sink)
         }
         GameCommand::Adventure(command) => {
             state.check_ready(player)?;

@@ -82,18 +82,18 @@ pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
-    Altar, AltarDef, AltarFactionDef, AltarScreens, BANK_ARTIFACT_CLASSES, BANK_GUARDS,
-    BANK_LEVELS, BONUS_DAYS, Bank, BankDef, BankLevel, BankLevelDef, BankQuestion, BattleTerrains,
-    BattleTerrainsDef, CalendarParams, Chest, ChestDef, DWELLING_LEVELS, DwellingParams, Find,
-    FindContent, FindContentDef, FindDef, Gift, GiftDef, Gives, HillFort, KEY_COLOURS,
-    MAX_BANK_REWARD, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS, MAX_MONSTER_COUNT,
-    MAX_PICKUP_AMOUNT, MAX_PLAYERS, MAX_STOCK, MarkLifetime, Market, MarketParamsDef, MarketScreen,
-    MonolithWay, MonsterParams, MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind,
-    ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef,
-    Pyramid, PyramidDef, RandomDwellingDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId,
-    RoadKind, StartingResources, StartingResourcesDef, TerrainMovement, TerrainMovementDef,
-    TerrainWalker, TerrainWalkerDef, Turn, TurnDef, Visit, WarMachineFactory, WarMachineFactoryDef,
-    Weekday,
+    AdventureSpell, AdventureSpellDef, Altar, AltarDef, AltarFactionDef, AltarScreens,
+    BANK_ARTIFACT_CLASSES, BANK_GUARDS, BANK_LEVELS, BONUS_DAYS, Bank, BankDef, BankLevel,
+    BankLevelDef, BankQuestion, BattleTerrains, BattleTerrainsDef, CalendarParams, Chest, ChestDef,
+    DWELLING_LEVELS, DwellingParams, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef,
+    Gives, HillFort, KEY_COLOURS, MAX_BANK_REWARD, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS,
+    MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS, MAX_STOCK, MarkLifetime, Market,
+    MarketParamsDef, MarketScreen, MonolithWay, MonsterParams, MonsterParamsDef, MonthParams,
+    MonthParamsDef, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus,
+    Passage, Pickup, PickupDef, Pyramid, PyramidDef, RandomDwellingDef, RiverDef, RiverId,
+    RiverKind, RoadDef, RoadId, RoadKind, SpellParams, StartingResources, StartingResourcesDef,
+    TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef, Turn, TurnDef, Visit,
+    WarMachineFactory, WarMachineFactoryDef, Weekday,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
@@ -108,11 +108,11 @@ pub use split::{TileRand, split, split_with_second};
 /// no edge to the hero model.
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
-    AdventureState, AltarArtifact, AltarOffers, AltarStack, BACKGROUND_RADIUS, Boat, Channels,
-    GateEntry, HeroBonuses, HeroOnMap, HillFortRow, HillFortUpgrade, HirePurchase, MapObject,
-    MarketOffers, MarketPurchase, Monster, Resolved, Sacrifice, Sacrificed, Sale, SaleOffer,
-    StaticMap, StaticTile, StockEntry, TradeOffer, VisitMarks, Visits, Weekly, WhirlpoolTile,
-    allied, hire_price,
+    AdventureState, AltarArtifact, AltarOffers, AltarStack, BACKGROUND_RADIUS, Boat, CastError,
+    Channels, DaySpells, GateEntry, HeroBonuses, HeroOnMap, HillFortRow, HillFortUpgrade,
+    HirePurchase, MapObject, MarketOffers, MarketPurchase, Monster, Resolved, Sacrifice,
+    Sacrificed, Sale, SaleOffer, StaticMap, StaticTile, StockEntry, TradeOffer, VisitMarks, Visits,
+    Weekly, WhirlpoolTile, allied, hire_price,
 };
 pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 
@@ -147,8 +147,9 @@ pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 /// Markets' stocks in the static map ([`Resolved::Stock`], tag 10) and their sold entries in the
 /// visits' block. v28 (E08 T141a, decision 413): each hero on the map's key in its owner's list
 /// ([`HeroOnMap::listed`]); the Prisons' prisoners in the static map ([`Resolved::Prisoner`],
-/// tag 11).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 28;
+/// tag 11). v29 (E08 T142a, increment 15's design note §8): the heroes' day spells by hero id
+/// ([`AdventureState::day_spells`]), last.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 29;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
@@ -175,5 +176,7 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 28;
 /// (E08 T132a2): increment 14's four kinds (the market, the Altar of Sacrifice, the Hill Fort, the
 /// War Machine Factory: tags 47 to 50), the market's parameters and the Altar's factions. v24
 /// (E08 T133b, ADV-Q60 (a)): the market parameters' cost resource. v25 (E08 T141a, increment
-/// 15's design note §1, §2): the Prison's and the empty kind's tags 51 and 52, no parameter.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 25;
+/// 15's design note §1, §2): the Prison's and the empty kind's tags 51 and 52, no parameter. v26
+/// (E08 T142a, increment 15's design note §3): the adventure spells' bindings and
+/// `[params.spells]`.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 26;

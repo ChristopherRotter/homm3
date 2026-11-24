@@ -11,7 +11,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireSeen, HireTarget, Month, Week,
+    ArmySlot, ArmyStack, Artifact, ArtifactPlace, DaySpells, Formation, HireSeen, HireTarget,
+    Month, Week,
 };
 use super::{
     GarrisonStack, GuildPart, HiredPart, OfferLevels, Pos, PrimarySkill, TavernHeroHead,
@@ -317,6 +318,14 @@ pub enum GameEvent {
         town: u16,
         event: u16,
     },
+    // E08 T142a (v82): a cast on the map, before the spell points' `HeroChanged`.
+    SpellCast {
+        player: u8,
+        hero: u16,
+        spell: u16,
+        mastery: u8,
+        cost: u16,
+    },
 }
 
 /// Something that happened on the adventure map, projected for its viewer
@@ -500,6 +509,11 @@ pub enum AdventureEvent {
     },
     KindKnown {
         object_type: u16,
+    },
+    // E08 T142a (v82): a hero's day spells, told after the command.
+    DaySpellsChanged {
+        hero: u16,
+        spells: DaySpells,
     },
 }
 

@@ -176,6 +176,18 @@ resources = [10, 15, 20, 25, 30, 35, 40, 45, 50, 50]
 artifacts = [20, 25, 30, 35, 40, 45, 50, 55, 60, 60]
 creatures = [30, 45, 50, 65, 70, 85, 90, 100, 100, 100]
 
+# ADV-SPL-003 to -009 (E08 T142a; increment 15's design note section 3, survey E08-spells.md
+# sections 5, 6, 8): the adventure spells' parameters. door_points: Dimension Door's movement points
+# by mastery, 300 at None to Advanced and 200 at Expert (adventure_spell_cast 0x41D090, the
+# mastery 3 test at 0x41D28D; batch E15's E15-5, E15-6). target_range: the window of the door's
+# and Scuttle Boat's targets, 9 columns and 8 rows around the caster (door_target_create 0x4916F0;
+# D-76 and A-54, decision 401: the reading's extra row fixed). boats_most: Summon Boat makes no
+# boat with 64 in use (create_boat 0x4BB250, GENRLTXT 336).
+[params.spells]
+door_points = [300, 300, 300, 200]
+target_range = [9, 8]
+boats_most = 64
+
 # GAM-RES-002 (E08 T13a): the starting resources by the game's difficulty, from 0 (easy) to 4
 # (impossible), a human player's and a computer player's; the engine gives every player the human
 # row (E08 decision 16: no human/computer distinction yet). Code reading (survey
@@ -2341,3 +2353,28 @@ creatures = true
 faction = "fortress"
 artifacts = true
 creatures = true
+
+# ADV-SPL-001 (E08 T142a; increment 15's design note section 3, survey E08-spells.md section 4.2):
+# the core spells that act on the adventure map, by the original's adventure_spell (0x41C490)
+# cases 0, 1, 6, 7 and 8. Visions, Disguise, View Earth and View Air (cases 2 to 5) wait for E12
+# (ADV-STUB-19), Town Portal (case 9) for E09 increment 7 (ADV-STUB-20): without an entry a spell
+# is not castable on the map.
+[[spell]]
+spell = "summon_boat"
+effect = "summon_boat"
+
+[[spell]]
+spell = "scuttle_boat"
+effect = "scuttle_boat"
+
+[[spell]]
+spell = "fly"
+effect = "fly"
+
+[[spell]]
+spell = "water_walk"
+effect = "water_walk"
+
+[[spell]]
+spell = "dimension_door"
+effect = "dimension_door"

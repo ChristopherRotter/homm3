@@ -278,6 +278,25 @@ fn commands_round_trip_through_their_text() {
             }),
             "2 town book 4",
         ),
+        // Format v26 (E08 T142a): a cast on the map, by its hero and spell, its target if any.
+        (
+            PlayerId::new(0),
+            GameCommand::Cast {
+                hero: HeroId::new(1),
+                spell: SpellId::from_raw(6),
+                target: None,
+            },
+            "0 cast 1 6",
+        ),
+        (
+            PlayerId::new(1),
+            GameCommand::Cast {
+                hero: HeroId::new(2),
+                spell: SpellId::from_raw(8),
+                target: Some(Pos::new(12, 4, 1)),
+            },
+            "1 cast 2 8 12,4,1",
+        ),
         // Format v12 (E08 T105b2): a revisit, by its hero.
         (
             PlayerId::new(1),
@@ -516,6 +535,13 @@ fn commands_round_trip_through_their_text() {
         "0 town book x",
         "0 town book 70000",
         "0 town book 2 now",
+        "0 cast",
+        "0 cast 1",
+        "0 cast h1 6",
+        "0 cast 1 x",
+        "0 cast 1 70000",
+        "0 cast 1 6 12,4",
+        "0 cast 1 6 12,4,1 now",
         "0 town build x 7",
         "0 town build 70000 7",
         "0 town build 2 x",
