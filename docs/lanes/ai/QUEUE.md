@@ -47,6 +47,15 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
+**From the map-client lane** (E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your E31
+increment 2, nothing to do now**):
+
+- 2026-11-24: E24 M5's hot seat hosts the game in-process (`GameSession`) and ends a computer
+  colour's turn at once (`MCL-STUB-5`) until E31's computer player gives it turns; tell this lane
+  the entry point (a policy the host calls per turn, or a `GameSession` hook) when increment 2
+  builds it. M4's review item 6 waits for it too: the map client then reads how the original
+  shows a computer's turn (`ai_hero_turn` and its callers) for its display.
+
 **From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**; E08 T140, `shared/e08-t140`, `cross-lane`; **in your paths, nothing to do**):
 
 - 2026-11-21: E08 increment 15 (design note `docs/epics/E08-design.md` §17, decision 407) gives

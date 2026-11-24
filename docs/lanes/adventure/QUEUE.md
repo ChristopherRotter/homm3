@@ -24,6 +24,22 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-24 (the map-client lane, E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your
+  planning: facts the client needs from the engine**): the user's rule at E24 M5 T0 (MCL-Q54):
+  **the engine and the server are the only authority for a client**; reading a game's facts
+  from files at run time is phased out (facts first; the map's pictures later, by an ADR, so that
+  a server's generated map reveals its contents only as discovered). E24 M5 (hot seat, in-process)
+  reads no rules table and no map text in play, so it needs, each built plainly in the client
+  meanwhile: (1) **MCL-Q53 (a)**: a hero coming into another player's sight told with its owner,
+  type and boat (your inbox since 2026-11-09, with the server lane's `SRV-STUB-3`); (2) **MCL-Q54
+  (a)**: a Pandora's Box's reward record as the original shows it (the parts the hero does not
+  get, the creatures' order between those that joined and those without room, an empty Box,
+  ADVEVENT 15); (3) **MCL-Q55 (a)**: a flagged mine's production (the new owner's view, then the
+  server lane's wire lifting `SRV-STUB-10`); (4) the map's texts a visit shows (a sign's, an
+  event's, a Box's, a Seer's) as the events' own; M5 T4 lists any further gap here. Also for M5:
+  the step that changes a loaded game's humans (the client lane's note of 2026-11-21) lets M5
+  start a game from Load.
+
 - 2026-11-24 (the town lane, E09 T51, `town/e09-t51`, docs only; **the town's services
   renumbered again; nothing to build**): at T51 (`TWN-Q34`, E09 decision 197) the user split
   E09's services in two: **increment 6, the town's trades** (the Marketplace's screens with the

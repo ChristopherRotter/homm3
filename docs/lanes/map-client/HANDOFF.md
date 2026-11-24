@@ -5,23 +5,23 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** to
-  **M4** closed and archived with their review lists (`E24-archive.md`); the crate
-  `clients/crates/h3-map-view`; 56 situations and every sequence and scripted game as recorded (a
-  viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change needs";
-  `--bugs original` the comparisons' profile). **M4 closed 2026-11-23 at T6** (the user: no cut;
-  six reviewers, 64 findings, seven fixers: the log's "M4 T6"): every golden replay's player
-  record (66) plays headless to its end, in the window with its battles. **The user's checkpoint
-  is open:** M4's review list (its T6 additions by fixer at the archive's end): the user reads it
-  first, asked again at M5 T0; the questions **MCL-Q50** to **MCL-Q56**: answered one by one at
-  M5 T0 (`MCL-STUB-4` kept by the user); the hand test's kit in the user's
-  `clients/out/win/` (`map-m4.cmd`, notes in `map-m4-notes.txt`). **Next: M5 T0** (M5 refined with
-  the user: QUEUE), after those answers. Open questions: MCL-Q29 to MCL-Q56 (none blocks). Stubs:
-  `MCL-STUB-1` (a random artifact's picture), `MCL-STUB-3` (a defended battle, M5),
-  `MCL-STUB-4` (no days without a town on a record, E10). Next ids **MCL-Q57**, **MCL-STUB-5**.
-- **Open pull requests** (2026-11-23): T6's (`map-client/e24-m4-t6`) and the README's row
-  (`shared/e24-m4-closure`, merge first): check both first. The review branch
-  `map-client/e24-m4-t6-review` (the six reviewers' findings) is not for merging. Merged branches
-  are the user's to delete (the proxy refuses it).
+  **M4** closed and archived with their review lists (`E24-archive.md`; M4's accepted at M5 T0);
+  the crate `clients/crates/h3-map-view`; 56 situations and every sequence and scripted game as
+  recorded (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change
+  needs"; `--bugs original` the comparisons' profile); the 66 golden player records play to
+  their end. **M5 refined 2026-11-24 at T0** (hot seat on the adventure map; M6 the hero's
+  screens, M7 the town screen, M8 live play sketched): the user's rules there bind every task,
+  above all **the engine and the server the only authority** (no rules table or map text read in
+  play; the pictures from the map file until an ADR) and **the shell on top** (`h3-map-client`
+  this lane's adapters library, the shell's own crate the client lane's). **Next: M5 T1** (the
+  user's M4 hand-test notes first: `clients/out/win/map-m4-notes.txt`, not written at T0; then
+  M4's carry-overs). Open questions: MCL-Q29 to MCL-Q49 (none blocks). Stubs: `MCL-STUB-1` (a
+  random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
+  without a town on a record, E10); planned `MCL-STUB-5` (T3), `MCL-STUB-6` (T4). Next ids
+  **MCL-Q57**, **MCL-STUB-5**.
+- **Open pull requests** (2026-11-24): T0's (`map-client/e24-m5-t0`, docs only): check it first.
+  The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
+  branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -45,6 +45,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-24, E24 M5 T0** (the user: all of T0 at once, the hand test not run yet): M4's
+  review list accepted (six items asked one by one, 39 in a summary), MCL-Q50 to Q56 answered
+  (Q54: the engine and the server the only authority; facts first, the pictures later), M5
+  refined and T1 to T8 queued, the other lanes' inboxes told. Docs only; the PC's bridge came and
+  went (the executable, the text tables and the manuals staged at the start); the VM restarted
+  once.
+
 - **2026-11-23, E24 M4 T6, M4's closure** (the user: no cut, the work spread over sub-agents):
   six fresh reviewers (64 findings), seven fixers one at a time (each finding a test or a
   question), the exit checked (`drawn` all the same, the two shipped starts captured again with
@@ -59,11 +66,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   again twice the same, every timeline as recorded (the log's "M4 T5b2"). Original data staged
   (the 64 files and the manuals; the PC's shell down, so sizes checked and the LODs and
   executables against `installation.md`'s hashes); the PC not needed after the first minutes.
-
-- **2026-11-21, E24 M4 T5b1** (T5b cut in two by the user at its start, the hosting first; the
-  crate structure the user's: a dependency on `h3-battle-client`): a walk's and an answer's
-  battles handed over (`Loop::battles`, `Directed::battles`), hosted in the map's window by the
-  binary's `battles`, the map's sound on `HostSound`; 12 battles of 10 golden replay records
-  handed over, two viewed in the window under Xvfb, every map frame exact (the log's "M4 T5b1").
-  Original data staged (the 64 files and the manuals; the PC's shell was down again, so sizes
-  checked and the LODs and executables against `installation.md`'s hashes).
