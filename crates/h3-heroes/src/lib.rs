@@ -17,7 +17,9 @@
 //! (ADR-0013 points 1, 2), and since E08 T60b a reward record's hero half (`grant`), whether a hero
 //! can receive an artifact (A-25) and what a teacher may teach (ADR-0013 point 15), and since E08
 //! T82 what a hero brings to the day's start: its income and its day's spell points (ADR-0013
-//! point 16) and the Lighthouses' input to its sea points (point 13.6). No commands
+//! point 16) and the Lighthouses' input to its sea points (point 13.6), and since E08 T141b a
+//! spell's mastery on a ground that raises schools, a cast's cost on the map and who may cast
+//! there (ADR-0013 point 17). No commands
 //! and no map or battle state: who levels a hero up, when, and equipping and learning arrive with the
 //! adventure and game epics (E08–E10); the battle never depends on this crate and reads only the
 //! battle hero of the seam (`h3_contracts::BattleHero`).
@@ -86,8 +88,9 @@ pub use moves::{ArtifactMove, MoveChanges, check_move, move_changes};
 pub use positions::{Position, equip, first_position, positions, takes, wearing};
 pub use reward::{Granted, HeroReward, can_receive_artifact, grant};
 pub use spells::{
-    available_spells, can_learn_spell, learn_level, learns_spell, meeting_spells, spell_book,
-    spell_learner, spell_masteries, wears_spell_book,
+    SchoolRaise, SchoolSet, available_spells, can_cast_on_map, can_learn_spell, learn_level,
+    learns_spell, map_spell_cost, meeting_spells, spell_book, spell_learner, spell_masteries,
+    spell_masteries_on, wears_spell_book,
 };
 pub use teach::{
     ScholarGift, SlotState, hut_teaches, learning_experience, library_admits,

@@ -157,13 +157,24 @@ numeric  = "integer"
 id       = "HER-SPL-003"
 title    = "Mastery of a spell"
 context  = "heroes"
-status   = "implemented"
-summary  = "A hero's mastery of a spell (h3_heroes::spell_masteries, for every spell above none; the one derivation for the adventure map and the battle, BAT-Q19) is the best level of its `school_mastery` effects among the spell's schools (the magic school skills: 1 Basic, 2 Advanced, 3 Expert), raised by a `spell_mastery` effect for the spell (Armageddon's Blade: Armageddon at Expert), at most Expert. It is the mastery on ordinary ground; a battlefield that raises it (Magic Plains, the elemental battlefields) is the battle's (BAT-TER-005). No specialty or other artifact changes it. The list covers spells the hero does not have too: the original asks the hero for any spell's mastery (Sacrifice's test asks for Resurrection's, BAT-QUIRK-5)."
+status   = "verified"
+summary  = "A hero's mastery of a spell (h3_heroes::spell_masteries, for every spell above none; the one derivation for the adventure map and the battle, BAT-Q19) is the best level of its `school_mastery` effects among the spell's schools (the magic school skills: 1 Basic, 2 Advanced, 3 Expert), raised by a `spell_mastery` effect for the spell (Armageddon's Blade: Armageddon at Expert), at most Expert. That is the mastery on ordinary ground; on a ground that raises schools (E08 T141b, ADR-0013 point 17.1: h3_heroes::spell_masteries_on with a SchoolRaise, which the caller derives from the ground's battlefield, `expert_schools`, BAT-TER-005's data: the battle from its battlefield, the game from the special ground of the hero's tile on the map) a raised spell is at Expert: every spell with the raise All (the original's field 1, Magic Plains, reads no school), a spell of at least one raised school with Schools (Lucid Pools water, Fiery Fields fire, Rocklands earth, Magic Clouds air). Cursed Ground raises nothing and lowers nothing on the map. No specialty or other artifact changes it. The list covers spells the hero does not have too: the original asks the hero for any spell's mastery (Sacrifice's test asks for Resurrection's, BAT-QUIRK-5)."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md 7.22): 0x4E5080 returns Expert for Armageddon while the hero wears Armageddon's Blade (its positions, then a combination holding it), else 0x4E5100: Expert on battlefield 1 or a matching elemental battlefield, else the best of the Air, Fire, Earth and Water Magic levels among the spell's school bits"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E08-spells.md 4.2): the adventure's cast (adventure_spell 0x41C490) takes hero_spell_mastery with tile_spell_field of the hero's tile: Magic Plains 1, Lucid Pools 6, Fiery Fields 7, Rocklands 8, Magic Clouds 9, else -1 (Cursed Ground's too)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15b.md E15-5 (survey section 18): on Magic Plains a hero without Air Magic casts Dimension Door at Expert, four a day at 20 points each; experiments/results/E08-batch-15c.md E15-4: on Cursed Ground Summon Boat costs 7 at Expert Water Magic (the mastery not lowered)"
+  retrieved  = "2026-11-22"
   confidence = "high"
 
 [[rule]]
@@ -1303,6 +1314,25 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E08-batch-6.md E6-7 (the capture harness, SoD 4.0 Complete under Wine, E08 T47b2): with the limits 4 and 2 one hero learned Bless and Chain Lightning (not Implosion), the other Precision only (not Fireball nor Prayer); the message named them (survey E08-army.md §13)"
   retrieved  = "2026-10-23"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-SPL-008"
+title    = "A cast on the adventure map: who may cast and its cost"
+context  = "heroes"
+status   = "verified"
+summary  = "A hero may cast a spell on the adventure map when it is among its available spells (HER-SPL-002: learned, a worn scroll's, a worn artifact's), with no spell book test (D-79, ADR-0013 point 17.3: the original's path tests no book; a learned spell alike, the agent's call at E08 T141b). The cast costs the core's cost at the hero's mastery of the spell on the hero's ground (HER-SPL-003 with the ground's raise; the first column without a mastery), at least 1, without the armies' +-2 (Pegasi, Mages: battle-only); the game spends it with the spell points change (at least 0). Which spells act on the map, the points against the cost and the ground's refusals are the cast's (GAM-SPL-001, ADV-SPL-001). E08 T141b: `h3_heroes::{can_cast_on_map, map_spell_cost}`; the casts come with E08 T142."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E08-spells.md 4.1, 4.2): the spell book's click (spell_book_proc 0x59D440) tests hero_spell_cost (0x4E5240) with no army and the tile's field against the points (+0x18); the cost is the table's at the mastery, at least 1, the armies' +-2 only with an enemy army (0x4E52DA); hero_spend_mana takes it (at least 0); the cast button and adventure_cast_open (0x41C2F0) test no spell book"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15c.md E15-4 (Summon Boat 40 to 33: 7 at Expert Water Magic) and experiments/results/E08-batch-15b.md E15-5 (Dimension Door 20 a cast at the raised Expert), E15-15 (a hero without a book casts its worn scroll's Dimension Door, the book opening and listing it) (survey section 18)"
+  retrieved  = "2026-11-22"
   confidence = "high"
 
 [[rule]]

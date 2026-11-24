@@ -22150,3 +22150,43 @@ manuals and help files staged (SHA-256 checked); the repo from GitHub. The VM re
 `cargo check --workspace --all-targets`, the clients' workspace; CI on the pull request is the
 record. **Versions:** adventure ruleset part v25, map import v29, adventure state hash v28, game
 state hash v39, protocol v81, action encoding v20 (the next: adventure state v29, replay format v26, encoding v21, protocol v82). Next: T141b.
+
+
+### Increment 15, round 5: T141b, `h3-heroes`' map spell derivations (2026-11-24, `adventure/e08-t141b`)
+
+**The cut:** whole, one pull request (the agent's, under the user's standing word of 2026-11-24:
+confirm a seam only for a big task; three functions and their tests in one crate). **Baseline:**
+`master` 7706f2d (#1143 merged; its code verified by CI, so the setup ran the light gates). The
+originals staged from the PC at the start (17 files and 40 MP3s, SHA-256 checked); the repo from
+GitHub.
+
+- **The raise** (HER-SPL-003 amended; ADR-0013 point 17.1): `SchoolRaise` (`None`, `All`,
+  `Schools(SchoolSet)`), `SchoolSet` a set of the ruleset's schools (at most four) collected from a
+  battlefield's `expert_schools`; `spell_masteries_on(details, core, raise)`, with
+  `spell_masteries` its `None`. A raised spell is at Expert: `All` every spell (the original's
+  field 1 reads no school, so a schoolless spell too; the packs' Magic Plains lists the four
+  schools and needs only `Schools`), `Schools` a spell of at least one raised school. The battle
+  hero's stay on ordinary ground, its loop as on `master`; a raise is a pass over that list.
+- **The cost and the caster** (HER-SPL-008, new; points 17.2, 17.3): `map_spell_cost(details,
+  core, spell, raise)`: the cost column at that mastery (the first without one), at least 1, no
+  army's ±2; a spell the ruleset lacks `DetailsError::UnknownSpell`. `can_cast_on_map(details,
+  core, spell)`: among the available spells, no book test, a learned spell alike (design §6's
+  agent's call). Both validate the details first, as `available_spells`.
+- **Tests:** `tests/spells.rs` (three: the raises by school, by all and by none against the
+  ordinary masteries; the cost's columns, its floor of 1 and its errors; the caster with a learned
+  spell, a worn and a carried scroll, a tome, with and without a book, against the battle's book).
+- **Docs:** the catalog (HER-SPL-003 amended and `verified`, HER-SPL-008 new and `verified`: batch
+  E15's rows E15-4, -5, -15); the design note §5, §6 as built; `OVERVIEW.md`; the battle lane's
+  inbox note (T137b's) with the built names.
+
+- **Speed:** the first verify's bench-check failed `siege-towns-36` at +2.75 % against its
+  baseline. Measured against `master`'s worktree in this sandbox (3 057 282 Ir; the sandbox counts
+  `master` 1.02 % above the baseline): +1.71 %, all of it the masteries' loop (125 727 Ir for
+  73 500: the per-spell raise test kept the closure out of the collect; an early return in place
+  of the third `chain` element still +1.48 %). Settled once: `masteries` as on `master`, the raise
+  merged over its list (`masteries_on`), `map_spell_cost` reading that list: 3 057 651 Ir
+  (+0.01 %). No workload re-baselined; a trap in `TRAPS.md`.
+
+**Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session); CI on
+the pull request is the record. **Versions:** none moved (no state, ruleset or wire change; the
+next stay adventure state v29, replay format v26, encoding v21, protocol v82). Next: T142.

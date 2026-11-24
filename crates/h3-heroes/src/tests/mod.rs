@@ -746,3 +746,4 @@ mod level;
 mod movement;
 mod outcome;
 mod rewards;
+mod spells;

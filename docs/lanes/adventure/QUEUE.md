@@ -4,19 +4,23 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T141b — the map spells' derivations in `h3-heroes`** (round 5; design note `E08-design.md`
-§5, §6; `adventure/e08-t141b`)
+**E08 T142 — the cast's frame with Fly and Water Walk** (round 6; design note `E08-design.md`
+§3, §8, §10.3, §10.4, §11.1, §12, §14; `adventure/e08-t142`)
 
-- **Scope:** `h3-heroes`' `spell_masteries_on(details, core, raise: SchoolRaise)` beside
-  `spell_masteries` (HER-SPL-003 amended, decision 405: a raised school gives Expert to its
-  spells), `map_spell_cost` (HER-SPL-008: the cost at the mastery on that ground, at least 1, no
-  army's ±2) and `can_cast_on_map` (the spell among `available_spells`, no book test: D-79,
-  decision 404, ADR-0013 point 17), with their tests; nothing casts yet (T142).
-- **Inputs:** design §5, §6, §18; survey `E08-spells.md` §4, §18; ADR-0013 point 17.
-- **Depends on:** T141a (done 2026-11-23). **Status:** ready; confirm its cut at its start. Then
-  T142 to T145.
+- **Scope:** the adventure part's spells (§3: the five bindings, `AdventureSpell`,
+  `[params.spells]`), the day spells in the adventure state (§8, adventure state hash v29), the
+  day's end and boarding clearing them (§12, ADV-SPL-002), `GameCommand::Cast` with its checks in
+  order (§14, GAM-SPL-001: `h3_heroes::can_cast_on_map`, the ground's level limit and the
+  anti-magic garrison, `map_spell_cost` at `spell_masteries_on`'s mastery with the raise the game
+  derives from the hero tile's special ground), Fly and Water Walk (§10.3, §10.4: ADV-SPL-005,
+  -006, ADV-MOV-009, -010 amended) and the flight's flag (§11.1, ADV-QUIRK-15); the passage is a
+  hot path: measured against `master` at once (`homm3-bench-regression`).
+- **Inputs:** design §3, §8, §10 to §12, §14, §18; survey `E08-spells.md` §4, §7, §13, §18;
+  ADR-0013 point 17, ADR-0016 and ADR-0017 as amended by T140.
+- **Depends on:** T141b (done 2026-11-24). **Status:** ready; confirm its cut at its start (a
+  seam likely: the frame with the command, then the two spells and the flag). Then T143 to T145.
 
 ## Inbox
 

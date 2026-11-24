@@ -90,7 +90,11 @@ Rocklands earth, Magic Clouds air). On the map the **game** does it (it holds th
 ADR-0015 point 2), from `AdventureState::special_ground` of the hero's tile, and hands the mastery
 to the adventure's cast (§14), so `h3-adventure` and `h3-heroes` need no battle content. The
 battle may call the same function for its hero casts (BAT-TER-005's hero half; the battle lane's
-inbox, its choice of when: `cross-lane` only when it does), so one rule serves both.
+inbox, its choice of when: `cross-lane` only when it does), so one rule serves both. *As built
+(T141b):* `SchoolSet` is a set of the ruleset's schools (at most four), collected from
+`expert_schools` (`SchoolRaise::Schools(b.expert_schools.iter().copied().collect())` answers as
+`Battlefield::raises`); `All` gives Expert to every spell, a schoolless one too (the original's
+field 1 reads no school), which the packs' Magic Plains, listing the four schools, never needs.
 
 ### 6. The cost on the map (HER-SPL-008, new)
 
@@ -100,7 +104,9 @@ spent by the existing `HeroChange::SetSpellPoints` (at least 0). The book (D-79,
 `h3_heroes::can_cast_on_map(details, core, spell)`: the spell among `available_spells`, **no book
 test** (row E15-15, T139a: the original casts a worn scroll's adventure spell without a book, VCMI
 alike; survey §18). *Agent's call for T141b:* the same for every available spell (the original's
-path has no book test; a learned spell without a book was not played).
+path has no book test; a learned spell without a book was not played). *As built (T141b):* both
+validate the details first, as `available_spells`; `map_spell_cost` refuses a spell the ruleset
+lacks with `DetailsError::UnknownSpell`; HER-SPL-008 holds the cost and who may cast.
 
 ## Part C — the map (`h3-map`, `h3-adventure`)
 
