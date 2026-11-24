@@ -22249,3 +22249,26 @@ from GitHub; the VM restarted during the setup's baseline (CI's run on `master` 
   E15-4, -5, -11, -12; ADV-MOV-009, -010 amended with the spells' levels); the ledger's
   ADV-QUIRK-54 and -57; the stubs ADV-STUB-19, -20, -22; the design note as built (§3, §8, §12,
   §14, §16); the inboxes of the server, map-client and AI lanes.
+- **Re-recorded:** the 118 adventure replays from their own commands (only `format`,
+  `adventure_ruleset_hash`, `adventure_state_hash_version`, the checkpoints and `final_hash`
+  moved); the bot reports' `engine.adventure` line; `h3-server`'s `tests/record.rs` literals
+  (`army-dialog-s1`'s checkpoint and final hash); the replay format's literal tests of `h3-cli`
+  and `h3-sim` written from the constant or moved to 26.
+
+- **Speed:** the first bench-check against the stored baselines had `random-play-bonuses-36` at
+  +2.10 % and `reach-towns-36` at +2.53 %; `master`'s worktree in this sandbox counts them +1.66 %
+  and +0.97 % (the sandbox's drift), so the code's share was +0.43 % and +1.54 %. All of
+  `reach-towns-36`'s in `Reach::search`'s own instructions (+16.7 M over 4 093 queries, every
+  callee alike): the block's lookup and `day_movement` inlined at the search's start moved its
+  loop. Settled once: both `#[inline(never)]` (one call a search): `reach-towns-36` +0.06 %
+  against `master`, every workload inside the gate (the forks +0.1 to +0.3 % against `master`:
+  the state's one pointer more), none re-baselined.
+- **Coverage:** the details' lookup of a hero on the map (never missing, GAM-HER-001) left a `?`
+  region in `check_cast`'s closure: an `Option::map` instead.
+
+**Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session);
+`check-lane --cross-lane`, `cargo check --workspace --all-targets`; `h3-protocol`'s, `h3-server`'s,
+`h3-sim`'s, `h3-cli`'s and `h3-files`' tests run apart. The clients' workspace did not build here
+(SDL's X11 dependencies missing after the VM's restart); CI's Clients job is its record.
+**Versions:** adventure ruleset part v26, adventure state hash v29, replay format v26, protocol
+v82 (the next: protocol v83 at T143a, encoding v21 at T144a). Next: T142b.

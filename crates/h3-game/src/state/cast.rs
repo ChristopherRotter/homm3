@@ -58,7 +58,10 @@ impl GameState {
             .adventure
             .hero(hero)
             .filter(|on| on.owner == player)
-            .and_then(|on| Some((on.pos, self.heroes.get(usize::from(hero.raw()))?)))
+            .and_then(|on| {
+                let details = self.heroes.get(usize::from(hero.raw()));
+                details.map(|details| (on.pos, details))
+            })
             .ok_or(MapCastError::NotYourHero(hero))?;
         if can_cast_on_map(details, core, spell) != Ok(true) {
             return Err(MapCastError::Unknown(spell));
