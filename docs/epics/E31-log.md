@@ -311,7 +311,8 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   part), the sub-agents one after the other; their diffs applied with `git apply --3way` (one
   conflict of neighbouring lines, both kept); scratch scripts over `scripts/exe.py` (the phases'
   reach, the draws' scan, the float census, the globals), not committed. `scripts/exe.py cited`
-  caught two survey addresses without entries (0x4ACCA0, 0x691680): read and added.
+  caught two survey addresses without entries (0x4ACCA0, 0x691680): read and added. The town lane's
+  inbox note (E09 T51: its services now increments 6 to 8) applied to decision 6 and archived.
 - **Not read:** the 15 `inferred` functions (the simulated combat's spell values, the container
   code, `ai_army_offers_add`); the callees of the artifact effects beyond their entries; the quest
   texts' builder and the Quest Guard's completion; the pathfinder's mode-4 Fly, Water Walk and leg

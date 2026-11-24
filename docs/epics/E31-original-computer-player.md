@@ -73,7 +73,7 @@ and middle), so about 95 KB in all. The fog test reads the other way round (the 
    outside the game state (kept by its host beside the journal, rebuilt by replaying it), with any
    field that a rule reads moved into the state.
 6. **Port now, stub the gaps.** Everything is read; what the engine can play is ported; a part
-   whose rules are missing (E09's increments 6 and 7, E08's increment 15, E10, E12's quests)
+   whose rules are missing (E09's increments 6 to 8, E08's increment 15, E10, E12's quests)
    stays an `AI-STUB-<n>` naming the epic that lifts it, and the ai lane's inbox takes the port
    when that lane delivers. E31 does not wait for them.
 7. **Strength waits for games that end.** Before E10's increment 1, E31 checks whole games to a
