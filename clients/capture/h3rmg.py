@@ -12,15 +12,27 @@ only its digests and the choices that made it are kept (rmg/kept.txt).
 
   h3rmg.py one --seed <s> [--size S|M|L|XL] [--levels 1|2] [--players <n>] [--teams <t>]
                [--computers <c>] [--computer-teams <t>] [--water none|normal|islands]
-               [--monsters weak|normal|strong] [--before "<step>;..."] [--again] [--out <dir>]
+               [--monsters weak|normal|strong] [--before "<step>;..."] [--again] [--phases]
+               [--out <dir>]
       One case: the map's digests, its seed and template as its description names them.
       --before plays h3shell steps on the main menu first (another history before the
       generation, for the memory-dependent draws; survey §2.6); --again generates a second map
-      in the same game (the system options' Main Menu, then the same choices again).
-  h3rmg.py corpus [--only <id>,...] [--twice] [--again] [--record] [--out <dir>]
+      in the same game (the system options' Main Menu, then the same choices again); --phases
+      (E14 T1b2) runs the phase oracle as well (xdd.dll's H3RMG, xdd.c's 10.): every draw of
+      the generation logged with its site, the cells dumped after each step, in <out>/clock
+      (rmg<g>.draws, rmg<g>-<step>.cells), and their digests printed.
+  h3rmg.py corpus [--only <id>,...] [--twice] [--again] [--phases] [--record] [--out <dir>]
       Each case of rmg/corpus.toml, against rmg/kept.txt: `ok` (as kept), `CHANGED`, `new`;
       --twice runs each case again from a fresh start, --again makes a second map in the same
-      game, and either fails on a difference; --record writes the kept lines (the first map's).
+      game, and either fails on a difference; --phases runs the phase oracle and compares the
+      log's and the dumps' digests with rmg/phases.txt too; --record writes the kept lines (the
+      first map's; with --phases its phases' as well).
+  h3rmg.py phases [--only <id>,...] [--runs] [--out <dir>]
+      The phase oracle's logs (a `corpus --phases` run's first maps) against survey §2.6: per
+      phase, each site that drew, in how many cases and how often, marked `NOT IN §2.6` when
+      the survey's row for that phase does not list it (its "any object made" sites count in
+      every phase), and whether 0x532A5B draws in step 2. --runs prints each case's log per
+      phase as its sites in order, a repeat of one site as `site×n`.
   h3rmg.py read [--out <dir>]
       Each case's first map in <out> read by h3_map's reader, imported and validated in a game
       of its players (h3-map's original-data check, `cargo run -p h3-map --example
@@ -165,10 +177,11 @@ class Generation(h3shell.Run):
     """A run whose steps end on the tab set; then Begin, the generator's file awaited and kept
     (and with `again` a second generation in the same game)."""
 
-    def __init__(self, recipe, out, choices, again=False):
+    def __init__(self, recipe, out, choices, again=False, phases=False):
         super().__init__(recipe, out)
         self.choices = choices
         self.again = again
+        self.phases = phases
         self.maps = []
 
     def made(self):
@@ -193,6 +206,9 @@ class Generation(h3shell.Run):
         if hooked != 2:
             raise RuntimeError(f"xdd.dll hooked {hooked} of the 2 date imports (H3TIME, xdd.c's "
                                "9.)")
+        if self.phases and g.ack(need=True)[17] != PHASE_HOOKS:
+            raise RuntimeError(f"xdd.dll placed {g.ack(need=True)[17]} of the {PHASE_HOOKS} "
+                               "generator hooks (H3RMG, xdd.c's 10.)")
         before = {p.name for p in folder.iterdir()}
         g.click(*BEGIN, settle=0.1)
         start = time.monotonic()
@@ -222,6 +238,8 @@ class Generation(h3shell.Run):
                     continue
                 kept = self.out / f"map{count}.h3m"
                 shutil.copy(path, kept)
+                if self.phases:
+                    ended(g.clock_dir / f"rmg{count}.draws", end)
                 return kept
             last = size
         raise TimeoutError(f"no whole map in random_maps/ within {GENERATION_LIMIT} s")
@@ -233,8 +251,9 @@ def recipe_for(ident, choices, before=()):
             "steps": steps}
 
 
-def generate(ident, case, out, again=False):
-    """One case generated: a list of (path, facts) per map (with `again` two)."""
+def generate(ident, case, out, again=False, phases=False):
+    """One case generated: a list of (path, facts) per map (with `again` two); with `phases` the
+    facts hold the phase oracle's too (`phase_facts`)."""
     choices = validate(case)
     seed = int(case["seed"])
     folder = h3drive.GAME_DIR / "random_maps"
@@ -242,12 +261,22 @@ def generate(ident, case, out, again=False):
         shutil.rmtree(folder)
     folder.mkdir()
     os.environ["H3TIME"] = str(seed)
-    run = Generation(recipe_for(ident, choices, case.get("before", [])), out, choices, again)
+    if phases:
+        os.environ["H3RMG"] = "1"
+    run = Generation(recipe_for(ident, choices, case.get("before", [])), out, choices, again,
+                     phases)
     try:
         run.play()
     finally:
         os.environ.pop("H3TIME", None)
-    return [(path, facts(path, seed, choices)) for path in run.maps]
+        os.environ.pop("H3RMG", None)
+    made = []
+    for g, path in enumerate(run.maps, 1):
+        f = facts(path, seed, choices)
+        if phases:
+            f["phases"] = phase_facts(run.game.clock_dir, g)
+        made.append((path, f))
+    return made
 
 
 def facts(path, seed, choices):
@@ -279,6 +308,189 @@ def kept_line(ident, f):
             f"h3m={f['h3m']} gz={f['gz']}")
 
 
+# -- the phase oracle (E14 T1b2; ORACLE.md, "The phase oracle") ----------------------------------
+PHASES = RMG / "phases.txt"
+# xdd.dll's hooks with H3RMG (xdd.c's 10.): rand's entry and 18 of the generator's calls.
+PHASE_HOOKS = 19
+# How long after the map's file the log may take to end (rmg_write_map's return).
+LOG_LIMIT = 30.0
+# Survey §2.6's sites by phase (the C library's rand calls of the generator's range and of the
+# writer, as T1a2 placed them; a range written "0x53EEFF to 0x53EF43" holds
+# rmg_islet_heightmap's five calls). The "any object made" row's sites draw in any phase.
+SURVEY = {
+    "setup": {0x537C89},
+    "template": {0x549975},
+    1: {0x532A5B, 0x53BB5F, 0x532B00, 0x53BFC0},
+    2: {0x532A5B, 0x53C0F2},
+    3: {0x53CE1D},
+    4: {0x545492, 0x544DEC, 0x544E22, 0x545174},
+    5: {0x545492, 0x544DEC, 0x544E22, 0x545174},
+    6: {0x543EB8, 0x54403E, 0x53F745, 0x53F794, 0x53EFE4, 0x53EEFF, 0x53EF0C, 0x53EF19,
+        0x53EF2E, 0x53EF43, 0x546154, 0x541B78, 0x541D6C, 0x5421BC, 0x542387, 0x54146B,
+        0x542A8F, 0x541673, 0x540C61, 0x540CCE, 0x540CD8},
+    7: {0x5444B4},
+    8: {0x545AA8, 0x54591A, 0x540C61, 0x540CCE, 0x540CD8, 0x546154, 0x545D0C},
+    9: {0x546154},
+    10: {0x546771, 0x546154, 0x546489, 0x535B31, 0x540C61, 0x540CCE, 0x540CD8, 0x5353B9,
+         0x5472F0, 0x54B511, 0x54B366, 0x54B382},
+    11: set(),
+    12: set(),
+    13: {0x5376AA},
+    14: {0x54829B},
+    15: {0x54876F, 0x549153},
+    "write": {0x54ABA6},
+}
+ANY_OBJECT = {0x54B136, 0x534F06, 0x546154}
+PHASE_ORDER = ["setup", "template", *range(1, 16), "generated", "write"]
+
+
+def ended(path, end):
+    """Waits until the phase oracle's log `path` ends ("end ..."; xdd.c's 10.: rmg_write_map
+    returned), at most until `end` (monotonic) + LOG_LIMIT."""
+    limit = max(end, time.monotonic()) + LOG_LIMIT
+    while time.monotonic() < limit:
+        try:
+            lines = path.read_text().splitlines()
+        except OSError:
+            lines = []
+        if lines and lines[-1].startswith("end "):
+            return
+        time.sleep(0.2)
+    raise TimeoutError(f"{path}: no end line within {LOG_LIMIT} s of the map")
+
+
+def phase_log(path):
+    """A phase oracle's log: (the draws by phase in order: [(phase, [(site, value), ...])], the
+    end line's draws and other threads' draws)."""
+    phases, draws, ending = [], None, None
+    for line in path.read_text().splitlines():
+        word, *rest = line.split()
+        if word == "seed":
+            phases.append(("setup", []))
+        elif word == "generate":
+            phases.append(("template", []))
+        elif word == "step":
+            phases.append((int(rest[0]), []))
+        elif word in ("generated", "write"):
+            phases.append((word, []))
+        elif word == "end":
+            ending = (int(rest[0]), int(rest[1]))
+        else:
+            phases[-1][1].append((int(word, 16), int(rest[0])))
+    draws = sum(len(d) for _, d in phases)
+    if ending is None or ending[0] != draws:
+        raise RuntimeError(f"{path}: {draws} draws, its end line {ending}")
+    return phases, ending[1]
+
+
+def phase_facts(clock, g):
+    """Generation `g`'s log and dumps in the clock folder `clock`: the draws, the log's digest
+    and each dump's by its step."""
+    log = clock / f"rmg{g}.draws"
+    phases, elsewhere = phase_log(log)
+    if elsewhere:
+        raise RuntimeError(f"{log}: {elsewhere} draws of other threads inside the generation")
+    dumps = sorted((int(p.stem.split("-")[1]), p) for p in clock.glob(f"rmg{g}-*.cells"))
+    return {"draws": sum(len(d) for _, d in phases),
+            "log": hashlib.sha256(log.read_bytes()).hexdigest()[:16],
+            "cells": [(k, hashlib.sha256(p.read_bytes()).hexdigest()[:12]) for k, p in dumps],
+            "files": dict(dumps)}
+
+
+# The cell bits no step-0 code sets (rmg_map_cell_init, rmg_map_cell_reset 0x530F10: they keep
+# +0x14, +0x18, bits 30-31 of +0x24, bit 24 of +0x28 and bits 1-31 of +0x2C from the heap), by
+# the cell's offset: what an earlier generation in the same game can leave there.
+MEMORY_BITS = {0x14: 0xFFFFFFFF, 0x18: 0xFFFFFFFF, 0x24: 0xC0000000, 0x28: 0x01000000,
+               0x2C: 0xFFFFFFFE}
+
+
+def read_cells(path):
+    """A dump of xdd.c's 10. (format 1): (step, width, height, levels, the cells' 12 words each,
+    the objects' 6 words each, the further places' 3 words each)."""
+    raw = path.read_bytes()
+    if raw[:8] != b"H3RMGCEL" or struct.unpack_from("<i", raw, 8)[0] != 1:
+        raise RuntimeError(f"{path}: not a cell dump of format 1")
+    step, width, height, levels = struct.unpack_from("<4i", raw, 12)
+    at = 28
+    cells = [struct.unpack_from("<12I", raw, at + 48 * k) for k in range(width * height * levels)]
+    at += 48 * len(cells)
+
+    def table(width_words):
+        nonlocal at
+        (n,) = struct.unpack_from("<i", raw, at)
+        rows = [struct.unpack_from(f"<{width_words}i", raw, at + 4 + 4 * width_words * k)
+                for k in range(n)]
+        at += 4 + 4 * width_words * n
+        return rows
+    return step, width, height, levels, cells, table(6), table(3)
+
+
+def cells_differences(a, b):
+    """Two dumps of one step compared: ({what: cells}, whether every difference lies in
+    MEMORY_BITS). `what` is a cell offset (+0x14 ...; +0x0 the objects on it) or "objects"."""
+    _, wa, ha, la, ca, oa, ea = read_cells(a)
+    _, wb, hb, lb, cb, ob, eb = read_cells(b)
+    if (wa, ha, la) != (wb, hb, lb):
+        return {"size": 1}, False
+    found, memory = {}, True
+    for x, y in zip(ca, cb):
+        for j in range(12):
+            if x[j] == y[j]:
+                continue
+            offset = 0x10 + 4 * (j - 4) if j >= 4 else 0
+            found[f"+0x{offset:X}"] = found.get(f"+0x{offset:X}", 0) + 1
+            memory &= not ((x[j] ^ y[j]) & ~MEMORY_BITS.get(offset, 0))
+    if oa != ob or ea != eb:
+        found["objects"] = 1
+        memory = False
+    return found, memory
+
+
+def compared(first, other):
+    """`other` against `first` (each a `facts`): "same", or what differs; and whether the
+    difference fails the comparison (only memory bits in the cells do not)."""
+    plain = [{k: v for k, v in f.items() if k != "phases"} for f in (first, other)]
+    if plain[0] != plain[1] or ("phases" in first) != ("phases" in other):
+        return f"DIFFERS ({kept_line('map', other)})", True
+    if "phases" not in first:
+        return "same", False
+    pa, pb = first["phases"], other["phases"]
+    if (pa["draws"], pa["log"]) != (pb["draws"], pb["log"]):
+        return f"DIFFERS (log: {pb['draws']} draws, {pb['log']})", True
+    if pa["cells"] == pb["cells"]:
+        return "same", False
+    if [k for k, _ in pa["cells"]] != [k for k, _ in pb["cells"]]:
+        return "DIFFERS (other steps dumped)", True
+    groups, failing = [], False  # [steps, what differs] for runs of steps alike
+    for (k, da), (_, db) in zip(pa["cells"], pb["cells"]):
+        found, memory = ({}, True) if da == db else cells_differences(pa["files"][k],
+                                                                       pb["files"][k])
+        failing |= not memory
+        said = " ".join(f"{w} {n}" for w, n in sorted(found.items())) or "same"
+        if groups and groups[-1][1] == said:
+            groups[-1][0].append(k)
+        else:
+            groups.append([[k], said])
+    notes = "; ".join(f"{g[0][0]}" + (f"-{g[0][-1]}" if len(g[0]) > 1 else "") + f": {said}"
+                      for g, said in ((g, g[1]) for g in groups))
+    what = "only memory bits" if not failing else "DIFFERS"
+    return f"map and log same, cells {what} (steps {notes})", failing
+
+
+def phase_line(ident, p):
+    cells = ",".join(f"{k}:{d}" for k, d in p["cells"])
+    return f"{ident} draws={p['draws']} log={p['log']} cells={cells}"
+
+
+def read_phases():
+    lines = {}
+    if PHASES.exists():
+        for line in PHASES.read_text().splitlines():
+            if line and not line.startswith("#"):
+                lines[line.split()[0]] = line
+    return lines
+
+
 def read_kept():
     lines = {}
     if KEPT.exists():
@@ -294,8 +506,10 @@ def one_command(args):
     if args.before:
         case["before"] = args.before.split(";")
     out = Path(args.out or OUT / "one")
-    for k, (path, f) in enumerate(generate("one", case, out, again=args.again), 1):
+    for k, (path, f) in enumerate(generate("one", case, out, args.again, args.phases), 1):
         print(kept_line(f"one-{k}", f), path)
+        if args.phases:
+            print(phase_line(f"one-{k}", f["phases"]), out / "clock")
     return 0
 
 
@@ -304,6 +518,8 @@ def corpus_command(args):
     only = set(args.only.split(",")) if args.only else None
     kept = read_kept()
     lines = dict(kept)
+    kept_phases = read_phases()
+    phase_lines = dict(kept_phases)
     failed = 0
     for case in cases:
         ident = case["id"]
@@ -313,28 +529,112 @@ def corpus_command(args):
         try:
             # (what, facts): the first map, the same game's second, a fresh start's.
             runs = [(f"{'again' if k else 'first'}", f)
-                    for k, (_, f) in enumerate(generate(ident, case, out / "run1", args.again))]
+                    for k, (_, f) in enumerate(generate(ident, case, out / "run1", args.again,
+                                                        args.phases))]
             if args.twice:
-                runs.append(("twice", generate(ident, case, out / "run2")[0][1]))
+                runs.append(("twice", generate(ident, case, out / "run2",
+                                               phases=args.phases)[0][1]))
         except Exception as e:  # noqa: BLE001 (a case's failure is reported, the rest go on)
             print(f"{ident}: FAILED: {e}")
             failed += 1
             continue
         line = kept_line(ident, runs[0][1])
         verdict = "ok" if kept.get(ident) == line else ("CHANGED" if ident in kept else "new")
+        if args.phases:
+            # The phase oracle's digests (E14 T1b2), against phases.txt.
+            phase = phase_line(ident, runs[0][1]["phases"])
+            verdict += "; phases " + ("ok" if kept_phases.get(ident) == phase else
+                                      "CHANGED" if ident in kept_phases else "new")
+            phase_lines[ident] = phase
+        failing = "CHANGED" in verdict
         for what, f in runs[1:]:
-            verdict += f", {what} " + ("same" if f == runs[0][1] else
-                                       f"DIFFERS ({kept_line(ident, f)})")
-        if not verdict.startswith(("ok", "new")) or "DIFFERS" in verdict:
+            said, fails = compared(runs[0][1], f)
+            verdict += f", {what} {said}"
+            failing |= fails
+        if failing:
             failed += 1
         print(f"{line}  {verdict}")
+        if args.phases:
+            print(f"  {phase}")
         lines[ident] = line
     if args.record:
         order = [c["id"] for c in cases]
         body = [lines[i] for i in order if i in lines]
         KEPT.write_text("# The oracle's maps (h3rmg.py corpus --record; ORACLE.md): digests only, "
                         "never the maps.\n" + "\n".join(body) + "\n")
+        if args.phases:
+            body = [phase_lines[i] for i in order if i in phase_lines]
+            PHASES.write_text(
+                "# The phase oracle's digests (h3rmg.py corpus --phases --record; ORACLE.md, "
+                "\"The phase oracle\"):\n# the draws logged, the log's digest and each step's "
+                "cells' (step:digest; a step that never ran has none).\n"
+                + "\n".join(body) + "\n")
     return 1 if failed else 0
+
+
+def runs_of(draws):
+    """A phase's sites in order, a repeat of one site as `site×n`."""
+    out, last, n = [], None, 0
+    for site, _ in draws:
+        if site == last:
+            n += 1
+            continue
+        if last is not None:
+            out.append(f"{last:X}" + (f"×{n}" if n > 1 else ""))
+        last, n = site, 1
+    if last is not None:
+        out.append(f"{last:X}" + (f"×{n}" if n > 1 else ""))
+    return " ".join(out)
+
+
+def phases_command(args):
+    """The logs of a `corpus --phases` run's first maps against survey §2.6 (SURVEY)."""
+    only = set(args.only.split(",")) if args.only else None
+    out = Path(args.out or OUT)
+    logs = sorted(p for p in out.glob("*/run1/clock/rmg1.draws")
+                  if not only or p.parents[2].name in only)
+    if not logs:
+        print(f"no logs in {out} (run `corpus --phases` first)")
+        return 1
+    # (phase, site) -> [cases, draws]
+    seen = {}
+    step2 = []
+    for log in logs:
+        ident = log.parents[2].name
+        phases, _ = phase_log(log)
+        if args.runs:
+            print(f"{ident}:")
+        for phase, draws in phases:
+            if args.runs and draws:
+                print(f"  {phase}: {runs_of(draws)}")
+            counts = {}
+            for site, _ in draws:
+                counts[site] = counts.get(site, 0) + 1
+            for site, n in counts.items():
+                entry = seen.setdefault((phase, site), [0, 0])
+                entry[0] += 1
+                entry[1] += n
+            if phase == 2 and 0x532A5B in counts:
+                step2.append(f"{ident} ({counts[0x532A5B]})")
+    print(f"{len(logs)} logs: per phase, each site drawing (cases, draws), and whether survey "
+          "§2.6 lists it there")
+    unlisted = 0
+    for phase in PHASE_ORDER:
+        sites = sorted(site for (p, site) in seen if p == phase)
+        if not sites:
+            continue
+        row = []
+        for site in sites:
+            cases, n = seen[(phase, site)]
+            listed = site in SURVEY.get(phase, set()) or site in ANY_OBJECT
+            unlisted += not listed
+            row.append(f"{site:X} ({cases}, {n})" + ("" if listed else " NOT IN §2.6"))
+        name = f"step {phase}" if isinstance(phase, int) else phase
+        print(f"  {name}: " + ", ".join(row))
+    print(f"0x532A5B draws in step 2 in {len(step2)} of {len(logs)} cases"
+          + (f": {', '.join(step2)}" if step2 else ""))
+    print(f"{unlisted} (phase, site) pairs not in survey §2.6")
+    return 0
 
 
 def read_command(args):
@@ -450,19 +750,25 @@ def main(argv):
     one.add_argument("--monsters")
     one.add_argument("--before")
     one.add_argument("--again", action="store_true")
+    one.add_argument("--phases", action="store_true")
     one.add_argument("--out")
     corpus = sub.add_parser("corpus")
     corpus.add_argument("--only")
     corpus.add_argument("--twice", action="store_true")
     corpus.add_argument("--again", action="store_true")
+    corpus.add_argument("--phases", action="store_true")
     corpus.add_argument("--record", action="store_true")
     corpus.add_argument("--out")
+    phases = sub.add_parser("phases")
+    phases.add_argument("--only")
+    phases.add_argument("--runs", action="store_true")
+    phases.add_argument("--out")
     read = sub.add_parser("read")
     read.add_argument("--out")
     sub.add_parser("templates")
     args = p.parse_args(argv)
-    return {"one": one_command, "corpus": corpus_command, "read": read_command,
-            "templates": templates_command}[args.command](args)
+    return {"one": one_command, "corpus": corpus_command, "phases": phases_command,
+            "read": read_command, "templates": templates_command}[args.command](args)
 
 
 if __name__ == "__main__":

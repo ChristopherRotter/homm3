@@ -10,7 +10,8 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - The call closure misses the methods reached only through vtables: of the range's 255 functions, 154 are in the closure of 0x54BF00 and 0x54C090 by direct calls, 101 (about 16 kB) only in vtables (the objects' and object generators' methods). Find them from the vtables (`refs` on a vtable's address).
 - The C runtime's `rand` keeps its state per thread (`crt_rand`): the generation and the writing run on Begin's thread, one stream; the writer draws too (`rmg_teams_draw`, after every draw of the generation).
 - `docs/exe/` is not scanned for citations: an address in a map summary needs no entry of its own, one in the survey or the lane's docs does (`cargo xtask check-exe-map`).
-- Two of the generator's draws depend on memory, not on the seed alone (survey §2.6): step 2's uninitialised town-type bytes and step 15's read past the cells. A port that zeroes them can differ from the original; the oracle says how often.
+- Two of the generator's draws depend on memory, not on the seed alone (survey §2.6): step 2's uninitialised town-type bytes and step 15's read past the cells. A port that zeroes them can differ from the original: the phase oracle sees 0x532A5B draw in step 2 in 18 of 21 first maps, and a second map in one game differ by it (ORACLE.md, "The phase oracle").
+- Survey §2.6 lists the draw sites of the generator's range only: a third of the stream comes from the game's terrain painter (steps 3, 6, 11) and its road and river painter (steps 14, 15), outside the range (`terrain_picture_draw`, `road_river_picture_draw`). A port draws them too.
 - Maps the user's game generated may come from an HD-mod-patched executable (`Untitled.h3m` differs from the plain writer in three points, survey §2.5): the oracle's maps come from the plain `Heroes3.exe`.
 
 ## The oracle
@@ -20,3 +21,5 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - The Random Map tab shows two levels at each opening of the scenario screen (its button toggles): press the levels only to change them from two.
 - A template's name may hold a line break ("Meeting⏎in Muzgob", a quoted cell of `rmg.txt`): read the tables with a parser of quoted cells, quote names in kept lines.
 - The oracle runs under Wine, whose fresh memory is not Windows': a draw that depends on uninitialised bytes can agree with itself under Wine and still differ on Windows.
+- A second map in one game (`--again`) can differ from the first, by the heap's layout, which the environment's size moves (`l1-4p-b`: different in T1b2's sandbox, the same with a 40-byte variable added): compare first maps across sandboxes; a `--again` difference is the original's, not the harness's.
+- The phase hooks (`H3RMG`, `xdd.c` section 10) must not write the game's stack below a call: the generator reads uninitialised stack bytes (step 2's temporary zone). They run on their own stack and enter `rand` after its own thread-data call; keep it so when changing them.
