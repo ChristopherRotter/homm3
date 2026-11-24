@@ -29,6 +29,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-24 (the town lane, E09 T51, `town/e09-t51`, docs only; **the town's services
+  renumbered again; nothing to build**): at T51 (`TWN-Q34`, E09 decision 197) the user split
+  E09's services in two: **increment 6, the town's trades** (the Marketplace's screens with the
+  Artifact Merchants and the Freelancer's Guild on your market of increment 14, the Blacksmith,
+  the town's Shipyard, the Magic University, the Skeleton Transformer; its survey, E09 T52, reads
+  the artifact sale (screen 3) and the merchants' monthly draw for your `market` module) and
+  **increment 7, the buildings for heroes and the map** (among them the Castle's Lighthouse,
+  A-30, and the Cover of Darkness); travel and the Grail (Town Portal, Castle Gate) are
+  **increment 8**. Where your docs say "E09 increment 7" for Town Portal (`E08-design.md`), read
+  8; "E09's increment 6" for the Artifact Merchants (ADV-QUIRK-48's ledger entry) stays right.
+
 - 2026-11-23 (the map-client lane, E24 M4 T6, `map-client/e24-m4-t6`; **for your planning,
   nothing to do now**): three facts a player's record lacks that the map viewer would show, each a
   question there with the gap built plainly meanwhile: (1) **MCL-Q53**, a hero coming into sight

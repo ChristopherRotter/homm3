@@ -196,7 +196,8 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   `vary` changes every other player's hero army (ADV-FOG-006 shows none on the map), but a
   garrison hero's army is its town's garrison, told at the viewer's level (TWN-VEW-002): a
   town told whose upper bar differs between the two games ends the comparison, the events the
-  same but `TownStackSeen`. A new view of a hero's army (increment 6's services?) does the same.
+  same but `TownStackSeen`. A new view of a hero's army (increment 6's trades: the Freelancer's
+  Guild, the Skeleton Transformer?) does the same.
 
 - **A decision kind is known to four oracles** (E09 T40b, the plans' map Tavern): `check_legal`
   (its listing's branch and its probe, else it falls to the turn's listing), `check_decisions`

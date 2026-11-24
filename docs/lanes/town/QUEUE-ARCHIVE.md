@@ -3,6 +3,51 @@
 Inbox notes that left the queue, verbatim, with where their work went (`docs/08-work-process.md`,
 "Keeping the start-of-session reading small"). Read only when a doc points here.
 
+## 2026-11-24 — increment 5's inbox notes, acted on: archived at E09 T51
+
+Each note verbatim, after the line saying where its work went (E09 decision 199).
+
+*Acted on by T50 (its seven `guild-*-s1` replays recorded after the merge with the new header):*
+
+- 2026-11-22 (the adventure lane, E08 T140, `shared/e08-t140`, `cross-lane` with the user's
+  consent; **mechanical at a merge**): the base faithful ruleset hash moved
+  `0x36b98ea152b4db95` to `0x0ee6066a4c802530` (increment 15's six flags in the profiles), so every
+  golden adventure replay's `ruleset_hash` header moved (commands and hashes kept; all 111
+  verified): a branch that adds or re-records a replay takes the new header after merging
+  `master`. ADR-0017 point 1 now holds the prisoners' build and freeing (T137b's note below), ADR-0016
+  point 4 the kinds `prison` and `empty`.
+
+*Acted on by T47a2 (map import v28):*
+
+- 2026-11-19 (the adventure lane, E08 T132b, `adventure/e08-t132b`; **a version taken, nothing
+  to do now**): map import v27 is taken (the seven trade classes typed at subclass 0: 2, 7, 35,
+  99, 106, 213, 221 as 99); your next import change takes v28. Your six taverns replays (#1053)
+  were re-recorded by T132b's follow-up (`adventure/e08-t132b-taverns`): only their
+  `import_version` moved. `h3-map`'s
+  original-data example gained `increment_14` after your `map_taverns` (`Peaks`' field 15).
+
+*Acted on by T45 (increment 5's drafts placed after E08's increment 14 parts in ADR-0016 and -0017):*
+
+- 2026-11-19 (the adventure lane, E08 T131, `shared/e08-t131`, `cross-lane`, docs only; **the ADRs'
+  new parts, for your increment 5's amendments; nothing to do now**): ADR-0016 points 1, 4 and 6
+  and ADR-0017 points 1, 6, 8, 9 and 10 now hold E08's increment 14 (the market with its rates in
+  the adventure part, the Black Market's stock, the Altar, the Hill Fort, the factory; the
+  decisions GAM-DEC-011 to -013), each placed after your increment 4's text; ADR-0017 point 9
+  names the next versions after yours (part v23, map import v27, adventure state hash v27, game
+  state hash v35, replay format v20, encoding v14), whichever lane merges first taking them.
+  Batch E14 (survey `E08-trades.md` §21) confirmed D-71 and the rates at five Marketplaces
+  (E14-1, E14-5); the Hill Fort's elementals follow the enabled packs (E08 decision 378, as your
+  E09 decision 14's moat).
+
+*Acted on by T36 (the tavern weights, increment 4) and T46 (the guild weights, part v9):*
+
+- (adventure archive, 2026-10-03, E04a T3a) Not harvested: the spells' town chances and the hero
+  classes' tavern weights (RoE lacks the Conflux column: an override kind or a per-faction table).
+  Increment 4, the Tavern (weights: only the tavern's draw reads them, survey `E09-towns.md`
+  §4.4; read by T32: `E09-tavern.md` §2.2, the Complete's file has the nine columns, harvested by T36),
+  increment 5 (chances: read by T42a, survey `E09-guild.md` §2: the nine columns at the spell
+  record's +0x44; their home in the packs is T43's call, §2.3).
+
 ## 2026-11-21 — acted on by E09 T47b
 
 The oracle's fix in `h3-map`'s `src/tests/view.rs` (a Thieves' Guild the viewer is shown ends the

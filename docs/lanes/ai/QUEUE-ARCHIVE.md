@@ -490,6 +490,21 @@ leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
 
+**Moved 2026-11-24** (E31 T1a4's session; verbatim, acted on: E31 decision 6 now reads E09's
+increments 6 to 8):
+
+**From the town lane** (E09 T51):
+
+- 2026-11-24 (E09 T51, `town/e09-t51`, docs only; **for E31's planning, nothing to do now**):
+  E09's services are now two increments (`TWN-Q34`, E09 decision 197): **6, the town's trades**
+  (the Marketplace's screens with the Artifact Merchants and the Freelancer's Guild, the
+  Blacksmith, the town's Shipyard, the Magic University, the Skeleton Transformer) and **7, the
+  buildings for heroes and the map** (the buildings a hero visits once, the Stables, the
+  Treasury, the Mystic Pond, the Lighthouse, the Necromancy Amplifier, the Cover of Darkness, the
+  Lookout Tower); travel and the Grail are **8**. E31's "E09's increments 6 and 7" (its
+  decision 6) now reads 6 to 8. Increment 5 (the mage guild) closed with its env entries
+  `TOWN_OPEN` and `SPELL_BOOK` as built.
+
 **Moved 2026-11-24** (E31 T1a3d's trim of the inbox; informational, nothing to act on):
 
 - 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent,
