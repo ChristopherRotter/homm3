@@ -18,7 +18,7 @@ use h3_heroes::{ArtifactPlace, HeroChange, Position, PrimarySkill, VisitBonus};
 
 use crate::ruleset::ObjectTypeId;
 use crate::setup::{Pos, StandError};
-use crate::state::{AdventureState, HeldMarks, marks_in};
+use crate::state::{AdventureState, DaySpellBook, DaySpells, HeldMarks, marks_in, spells_in};
 
 /// A command to the adventure context, issued by a player.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1648,6 +1648,16 @@ pub enum AdventureEventKind {
         /// Its day's maximum (ADR-0016 point 3).
         max_movement: u32,
     },
+    /// A hero's day spells after a command that changed them (ADV-SPL-002, E08 T142a; increment
+    /// 15's design note §16): a cast of Fly or Water Walk, a boarding, the new day. Told once a
+    /// command, after its movement ([`OwnHeroes::tell`]). Seen by the hero's owner alone, as its
+    /// spells are (ADR-0016 point 6).
+    DaySpellsChanged {
+        /// The hero.
+        hero: HeroId,
+        /// Its day spells now.
+        spells: DaySpells,
+    },
     /// A hero's morale and luck that no once-mark names, after a command that changed either
     /// (E08 T115a; increment 12's design note §12, ADR-0016 point 6): a reward record's (a
     /// Pandora's Box's, an event's), a battle's end. Told once a command, after its other events
@@ -1761,6 +1771,8 @@ pub struct OwnHeroes {
     movements: Vec<(HeroId, u32, u32)>,
     /// The heroes' marks' block as it was (a pointer's copy: the block is shared, a write copies).
     marks: Option<Arc<HeldMarks>>,
+    /// The heroes' day spells' block as it was (E08 T142a; a pointer's copy as the marks').
+    spells: Option<Arc<DaySpellBook>>,
 }
 
 impl AdventureState {
@@ -1781,6 +1793,7 @@ impl AdventureState {
         OwnHeroes {
             movements,
             marks: self.held_marks(),
+            spells: self.day_spell_book(),
         }
     }
 }
@@ -1813,6 +1826,14 @@ impl OwnHeroes {
                     hero: hero.id,
                     movement: hero.movement,
                     max_movement: hero.max_movement,
+                });
+            }
+            // E08 T142a: a hero not on the map then had none (a hero off the map casts nothing).
+            let spells = state.day_spells(hero.id);
+            if spells_in(self.spells.as_deref(), hero.id) != spells {
+                emit(AdventureEventKind::DaySpellsChanged {
+                    hero: hero.id,
+                    spells,
                 });
             }
             // A hero not on the map then held nothing (a hero leaves the map with its marks).

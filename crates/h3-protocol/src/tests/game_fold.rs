@@ -1478,6 +1478,55 @@ fn the_fold_keeps_the_own_heroes_battle_bonuses_and_timed_marks() {
 }
 
 #[test]
+fn the_fold_keeps_the_own_heroes_day_spells() {
+    // E08 T142a (v82): hero 4's own view holds Fly at Expert and a door cast
+    // (`every_game_part`'s); a cast's own event changes nothing, the command's
+    // `DaySpellsChanged` sets them; another hero's change nothing.
+    let mut v = view();
+    let hero = 4;
+    let own = |v: &GameObservation| {
+        let seen = v.adventure.heroes.iter().find(|h| h.id == hero).unwrap();
+        seen.own.clone().unwrap().spells
+    };
+    let held = DaySpells {
+        fly: Some(3),
+        water_walk: None,
+        doors: 1,
+    };
+    assert_eq!(own(&v), held);
+    let before = v.clone();
+    fold(
+        &mut v,
+        &[
+            GameEvent::SpellCast {
+                player: 1,
+                hero,
+                spell: 7,
+                mastery: 2,
+                cost: 8,
+            },
+            adventure(AdventureEvent::DaySpellsChanged {
+                hero: 9,
+                spells: DaySpells::default(),
+            }),
+        ],
+    );
+    assert_eq!(v, before);
+    let now = DaySpells {
+        water_walk: Some(2),
+        ..held
+    };
+    fold(
+        &mut v,
+        &[adventure(AdventureEvent::DaySpellsChanged {
+            hero,
+            spells: now,
+        })],
+    );
+    assert_eq!(own(&v), now);
+}
+
+#[test]
 fn the_fold_keeps_the_own_heroes_armies_and_the_towns() {
     let mut v = view();
     let slot = |army, slot| ArmySlot { army, slot };

@@ -1130,6 +1130,7 @@ fn own_map_hero(h: &OwnHeroView) -> OwnMapHero {
         marks,
         bonuses: held,
         timed,
+        spells,
     } = h;
     OwnMapHero {
         army: army(stacks),
@@ -1143,6 +1144,7 @@ fn own_map_hero(h: &OwnHeroView) -> OwnMapHero {
         marks: marks.iter().copied().map(object_ref).collect(),
         bonuses: bonuses(held),
         timed: timed.iter().map(|ty| ty.raw()).collect(),
+        spells: event::day_spells(*spells),
     }
 }
 

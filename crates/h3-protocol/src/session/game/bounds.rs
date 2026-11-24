@@ -3,7 +3,7 @@
 //! far one player's free commands may grow the game's journal while the others wait.
 //!
 //! - **A turn's map commands**: a player's accepted commands on the map (an adventure's, a
-//!   management one, a town's) in its running turn, counted afresh at each of its turns (by its
+//!   management one, a town's, since E08 T142a a cast on the map) in its running turn, counted afresh at each of its turns (by its
 //!   day, as its turn's timer: a player acts once a day). Past [`CommandBounds::per_turn`] they are
 //!   rejected `TurnLimit`. Ending the turn, answering a decision and a battle's commands are not
 //!   counted here and never refused by it: the player can always finish its turn.
@@ -139,9 +139,10 @@ impl Counts {
             return battle.map(|battle| Counted::System(BattleKey::open(battle)));
         };
         Some(match command {
-            GameCommand::Adventure(_) | GameCommand::Manage(_) | GameCommand::Town(_) => {
-                Counted::Map(player)
-            }
+            GameCommand::Adventure(_)
+            | GameCommand::Manage(_)
+            | GameCommand::Town(_)
+            | GameCommand::Cast { .. } => Counted::Map(player),
             GameCommand::Battle(_) => {
                 Counted::Battle(player, own_battle(state, player).map(BattleKey::of)?)
             }
@@ -231,7 +232,10 @@ impl Counts {
         command: &GameCommand,
     ) -> Option<GameReject> {
         match command {
-            GameCommand::Adventure(_) | GameCommand::Manage(_) | GameCommand::Town(_) => {
+            GameCommand::Adventure(_)
+            | GameCommand::Manage(_)
+            | GameCommand::Town(_)
+            | GameCommand::Cast { .. } => {
                 // A turn's count starts afresh with it (`sync`).
                 let full = self.turns.get(player.index())?.spent >= self.bounds.per_turn;
                 (full && state.is_acting(player)).then_some(GameReject::TurnLimit {})

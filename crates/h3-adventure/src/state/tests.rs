@@ -926,6 +926,7 @@ mod sea;
 mod sea_battles;
 mod sea_pickups;
 mod shipyards;
+mod spells;
 mod teleporters;
 mod towns;
 mod visitables;
