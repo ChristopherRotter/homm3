@@ -1,8 +1,9 @@
 //! Tests of a flying or water-walking hero's passage (E08 T41; ADV-MOV-009, ADV-MOV-010; design
 //! note §7's table): what `MoveHero` lets it pass over and stop on, its visits and guards, and the
 //! reachable-tiles query's two kinds of node. Batch E5's rows as sources: E5-5 (a water walk),
-//! E5-7 (no stop on a tree or water), E5-9 (no flight over unexplored tiles, `ADV-QUIRK-15`),
-//! E5-11 (a flight over a border gate without its key).
+//! E5-7 (no stop on a tree or water), E5-9 (a flight over unexplored tiles, `ADV-QUIRK-15`; since
+//! E08 T142b by both settings, batch E15's E15-13 and E15-14), E5-11 (a flight over a border gate
+//! without its key).
 
 use alloc::sync::Arc;
 
@@ -170,31 +171,187 @@ fn a_water_walk_crosses_plain_water_and_lands_on_the_far_shore() {
     assert_eq!(at(&state).0, p(3, 0));
 }
 
+/// A level-1 flyer's store (the fly price 140: the lesser 100 from a free grass tile, 140 from a
+/// blocked one or water, so that a hidden tile's price tells what the flight read there).
+fn slow_flyer() -> Vec<Arc<HeroDetails>> {
+    store(&[(FLYING, 1)])
+}
+
+/// [`flight_world`] with red's hero 2 on (15, 0) as well, so that red has explored the columns
+/// 0 to 5 and 10 to 15 of every row and the four between are hidden (radius 5).
+fn strip_world(rules: &(Ruleset, AdventureRuleset), rows: &[&str], at: Pos) -> AdventureState {
+    flight_world(rules, rows, at, vec![hero_at(2, 0, p(15, 0), &[PEASANT])])
+}
+
+/// The `HeroStepped` events among `events`.
+fn stepped(events: &[AdventureEvent]) -> usize {
+    events
+        .iter()
+        .filter(|e| matches!(e.kind, AdventureEventKind::HeroStepped { .. }))
+        .count()
+}
+
+/// The points red's hero 1 would have left on `pos` by the reachable-tiles query with `store`.
+fn left_on(
+    state: &AdventureState,
+    rules: &(Ruleset, AdventureRuleset),
+    store: &[Arc<HeroDetails>],
+    pos: Pos,
+) -> Option<u32> {
+    let reach = state.reach(&rules.0, &rules.1, store, HeroId::new(1));
+    reach.unwrap().points_left(pos)
+}
+
 // covers: ADV-MOV-009, ADV-MOV-008
 #[test]
-fn a_flight_never_crosses_an_unexplored_tile() {
-    // ADV-QUIRK-15 (A-13 fixed for now): batch E5's E5-9 flyer flew straight through an
-    // unexplored strip; the engine's moves stay on explored tiles (ADV-MOV-008). The hero has
-    // explored up to (5, 0); the obstacles beyond are hidden.
+fn a_flight_passes_over_unexplored_tiles_but_never_stops_there() {
+    // ADV-QUIRK-15 (increment 15's design note §11.1): in both settings a flight passes over a
+    // tile its player has not explored and never stops there (batch E5's E5-9, E15's E15-13);
+    // the hero has explored up to (5, 0), the obstacles and the grass beyond are hidden. Off the
+    // map: as a walk.
+    for faithful in [true, false] {
+        let rules = hero_rules(faithful);
+        let mut state = flight_world(&rules, &["ggggBBBBBBgggggg"], p(0, 0), vec![]);
+        assert_eq!(
+            fly(&mut state, &rules, &flyer(), &row(11)),
+            Err(AdventureCommandError::NoStop { step: 10 })
+        );
+        let reach = state
+            .reach(&rules.0, &rules.1, &flyer(), HeroId::new(1))
+            .unwrap();
+        let tiles: Vec<Pos> = reach.tiles().map(|(pos, _)| pos).collect();
+        assert_eq!(tiles, vec![p(1, 0), p(2, 0), p(3, 0)]);
+        assert_eq!(
+            fly(&mut state, &rules, &flyer(), &[p(0, 1)]),
+            Err(AdventureCommandError::Blocked {
+                step: 0,
+                error: StandError::Outside
+            })
+        );
+    }
+}
+
+// covers: ADV-MOV-009, ADV-MOV-008, ADV-MOV-010
+#[test]
+fn a_flight_over_a_hidden_strip_reads_it_or_assumes_a_pass() {
+    // ADV-QUIRK-15 on (the original, batch E15's E15-13): the hidden strip priced as it is, the
+    // tree at (7, 0) at the fly price and the grass at the lesser walk's: 7 × 100 + 140 + 2 × 100.
+    // Off (the compromise): every hidden tile priced as a blocked one, 6 × 100 + 4 × 140. Neither
+    // a walk nor a water walk enters the strip (D-78, batch E15's E15-14: over hidden water
+    // neither).
+    let rows = ["gggggggBgggggggg"];
+    for (faithful, left) in [(true, 260), (false, 140)] {
+        let rules = hero_rules(faithful);
+        let mut state = strip_world(&rules, &rows, p(0, 0));
+        assert_eq!(left_on(&state, &rules, &slow_flyer(), p(10, 0)), Some(left));
+        let (outcome, events) = fly(&mut state, &rules, &slow_flyer(), &row(10)).unwrap();
+        assert_eq!((outcome.dropped, stepped(&events)), (0, 10));
+        assert_eq!(at(&state), (p(10, 0), left));
+        let mut state = strip_world(&rules, &["gggggg~~~~gggggg"], p(0, 0));
+        for store in [vec![], water_walker()] {
+            assert_eq!(
+                fly(&mut state, &rules, &store, &row(10)),
+                Err(AdventureCommandError::Unexplored { step: 5 })
+            );
+        }
+    }
+}
+
+// covers: ADV-MOV-009, ADV-MOV-008
+#[test]
+fn a_hidden_rock_refuses_the_flight_or_stops_it_on_its_last_stop() {
+    // ADV-QUIRK-15 on: the hidden rock at (8, 0) refused, so the query reaches nothing beyond it.
+    // Off: the path is offered and accepted over what red knows; the step onto the rock is not
+    // made, the move ends on (5, 0), the last stop node, charged its five steps; the passes over
+    // (6, 0) and (7, 0) are undone, free, their reveals kept (decision 407), the rest dropped.
+    let rows = ["gggggggg#ggggggg"];
     let rules = hero_rules(true);
-    let mut state = flight_world(&rules, &["ggggBBBBBBgggggg"], p(0, 0), vec![]);
+    let mut state = strip_world(&rules, &rows, p(0, 0));
+    assert_eq!(left_on(&state, &rules, &slow_flyer(), p(10, 0)), None);
     assert_eq!(
-        fly(&mut state, &rules, &flyer(), &row(11)),
-        Err(AdventureCommandError::Unexplored { step: 5 })
-    );
-    let reach = state
-        .reach(&rules.0, &rules.1, &flyer(), HeroId::new(1))
-        .unwrap();
-    let tiles: Vec<Pos> = reach.tiles().map(|(pos, _)| pos).collect();
-    assert_eq!(tiles, vec![p(1, 0), p(2, 0), p(3, 0)]);
-    // Off the map: as a walk.
-    assert_eq!(
-        fly(&mut state, &rules, &flyer(), &[p(0, 1)]),
+        fly(&mut state, &rules, &slow_flyer(), &row(10)),
         Err(AdventureCommandError::Blocked {
-            step: 0,
-            error: StandError::Outside
+            step: 7,
+            error: StandError::Terrain
         })
     );
+    let rules = hero_rules(false);
+    let mut state = strip_world(&rules, &rows, p(0, 0));
+    assert_eq!(left_on(&state, &rules, &slow_flyer(), p(10, 0)), Some(140));
+    assert!(!state.is_explored(RED, p(8, 0)));
+    let (outcome, events) = fly(&mut state, &rules, &slow_flyer(), &row(10)).unwrap();
+    assert_eq!(outcome, AdventureOutcome { dropped: 5, ..AdventureOutcome::default() });
+    assert_eq!(stepped(&events), 5);
+    assert_eq!(at(&state), (p(5, 0), 800));
+    assert!((6..=9).all(|x| state.is_explored(RED, p(x, 0))));
+    // Now known, the rock ends the flight's reach as on.
+    assert_eq!(left_on(&state, &rules, &slow_flyer(), p(10, 0)), None);
+}
+
+// covers: ADV-MOV-009, ADV-MOV-008
+#[test]
+fn a_flight_stopped_before_any_stop_stays_and_keeps_its_points() {
+    // Off: over the known obstacles (passes) and the hidden grass onto the hidden rock: no stop
+    // node before it, so the hero stays on its tile with all its points, the whole path dropped,
+    // no step told; what the passes revealed stays, the rock's tile among it.
+    let rules = hero_rules(false);
+    let mut state = strip_world(&rules, &["gBBBBBgg#ggggggg"], p(0, 0));
+    assert_eq!(left_on(&state, &rules, &flyer(), p(10, 0)), Some(300));
+    let (outcome, events) = fly(&mut state, &rules, &flyer(), &row(10)).unwrap();
+    assert_eq!((outcome.dropped, stepped(&events)), (10, 0));
+    assert_eq!(at(&state), (p(0, 0), 1300));
+    assert!((6..=8).all(|x| state.is_explored(RED, p(x, 0))));
+}
+
+// covers: ADV-MOV-009, ADV-MOV-008, ADV-OBJ-004
+#[test]
+fn a_flight_off_a_hidden_closed_top_is_checked_once_revealed() {
+    // A chart not visited from above at (9, 1), hidden: the step up off its tile onto (10, 0) is
+    // the original's pass alone (ADV-OBJ-004), so on the path ending there is refused. Off, the
+    // step reads nothing of the hidden tile: the path is accepted, and its last step, once
+    // revealed, is not made: the move ends on (5, 1), the last stop node.
+    let rows = ["gggggggggggggggg", "gggggggggCgggggg"];
+    let path = [
+        p(1, 1),
+        p(2, 1),
+        p(3, 1),
+        p(4, 1),
+        p(5, 1),
+        p(6, 1),
+        p(7, 1),
+        p(8, 1),
+        p(9, 1),
+        p(10, 0),
+    ];
+    let rules = hero_rules(true);
+    let mut state = strip_world(&rules, &rows, p(0, 1));
+    assert_eq!(
+        fly(&mut state, &rules, &slow_flyer(), &path),
+        Err(AdventureCommandError::NoStop { step: 9 })
+    );
+    let rules = hero_rules(false);
+    let mut state = strip_world(&rules, &rows, p(0, 1));
+    let (outcome, events) = fly(&mut state, &rules, &slow_flyer(), &path).unwrap();
+    assert_eq!((outcome.dropped, stepped(&events)), (5, 5));
+    assert_eq!(at(&state), (p(5, 1), 800));
+}
+
+// covers: ADV-MOV-009, ADV-MON-006
+#[test]
+fn a_flight_stopped_on_a_guarded_tile_meets_its_guard() {
+    // Off: the move ends on (5, 0), which the monster on (5, 1) guards: a flyer at its move's
+    // end there meets it (as at an event's stop, 0x48147D), though it flew on over the tile.
+    let rows = ["gggggggg#ggggggg", "gggggMgggggggggg"];
+    let rules = hero_rules(false);
+    let mut state = strip_world(&rules, &rows, p(0, 0));
+    let (outcome, _) = fly(&mut state, &rules, &slow_flyer(), &row(10)).unwrap();
+    assert_eq!(at(&state).0, p(5, 0));
+    assert_eq!(outcome.dropped, 5);
+    let met = AdventureOutcome {
+        dropped: 0,
+        ..outcome
+    };
+    assert_ne!(met, AdventureOutcome::default());
 }
 
 // covers: ADV-MOV-009, ADV-OBJ-003, ADV-VIS-005

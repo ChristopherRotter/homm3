@@ -81,6 +81,14 @@ impl StaticTile {
         winds: false,
         hole: false,
     };
+
+    /// What a flight assumes of a tile its owner has not explored under `ADV-QUIRK-15` off (the
+    /// compromise, [`Fog::Assumed`]; increment 15's design note §11.1, E08 T142b): a blocked
+    /// tile of no terrain the rules know, without a road or a ground, so that its price reads
+    /// nothing hidden: a step from it costs the hero's fly price (ADV-MOV-009, as from a tile an
+    /// object blocks), a step onto it the source's without a road, and the drop after it is the
+    /// fly price's (ADV-MOV-006).
+    pub(crate) const HIDDEN: Self = Self::OUTSIDE;
 }
 
 mod altar;
@@ -132,7 +140,7 @@ pub use hill_fort::{HillFortRow, HillFortUpgrade};
 pub use markets::{MarketOffers, MarketPurchase, Sale, SaleOffer, StockEntry, TradeOffer};
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
-pub(crate) use passage::{Mode, Node};
+pub(crate) use passage::{Fog, Mode, Node};
 pub use spells::{CastError, DaySpells};
 pub(crate) use spells::{DaySpellBook, spells_in};
 pub use visits::Visits;
@@ -1891,6 +1899,20 @@ impl AdventureState {
     /// original's move, 0x48147D to 0x4814E1). Each step, a pass included, reveals and emits its
     /// event.
     ///
+    /// The tiles the player has not explored (`ADV-QUIRK-15`, [`Fog`]; increment 15's design note
+    /// §11.1, E08 T142b): a flight passes over them, never stops there. With the flag on
+    /// (`faithful`) the passage reads what lies there (rock refused), so the walk is the path's.
+    /// Off (`strict-fixed`, the compromise) the path is checked and priced over what the player
+    /// knows, every such tile an assumed pass ([`StaticTile::HIDDEN`]), so neither its acceptance
+    /// nor its price tells of one; then the first step onto or off such a tile that the revealed
+    /// tile forbids ([`Self::revealed_fits`]: rock, a step down onto an object not visited from
+    /// above, water an object is visited from, a stop past an object's top) is not made: the move
+    /// ends on the last stop node before it with the points left there, the start if none
+    /// (decision 407), the passes after it undone and free, their reveals kept and the tile that
+    /// stopped it revealed, the rest of the path dropped ([`AdventureOutcome::dropped`]); a guard
+    /// on that node attacks, as at an event's stop, and nothing is visited. An event's stop before
+    /// that step comes first.
+    ///
     /// Events (E08 T62b2; ADV-MOV-011, ADV-OBJ-007): the path is checked and priced as if no event
     /// lay on the map, so neither its acceptance nor its price tells of one; then the first step
     /// onto a tile the hero stands on (a stop, nothing visited) that fires an event
@@ -1910,7 +1932,7 @@ impl AdventureState {
     /// visiting after the landing; an object or a hero in a boat is visited from the boat's tile.
     /// The drop after a step is [`Pricing::left_by`]'s; a boarding's and a landing's conversion
     /// follows it (D-41).
-    // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
+    // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-008, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
     // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001, ADV-MOV-011, ADV-OBJ-007
     // rule: ADV-SEA-002, ADV-SEA-003, ADV-SEA-004, ADV-SEA-005
     fn move_hero<S: Sink>(
@@ -1935,8 +1957,12 @@ impl AdventureState {
         let details = details_of(heroes, id);
         let spells = self.day_spells(id);
         let movement = day_movement(core, details, spells);
-        let mode = Mode::of(&movement, hero.boat);
+        let mode = Mode::of(&movement, hero.boat, Fog::of(core));
         let pricing = Pricing::new(core, part, &hero.army, (&movement, spells));
+        // The compromise's flight (`ADV-QUIRK-15` off; increment 15's design note §11.1): the
+        // path is checked and priced over what the player knows, then the steps onto and off
+        // the tiles it had not explored are checked against what they reveal.
+        let blind = mode == Mode::Fly(Fog::Assumed);
         let start = hero.pos;
         let (mut at, mut from, mut points) =
             (start, self.live(start, self.map.at(start)), hero.movement);
@@ -1945,6 +1971,9 @@ impl AdventureState {
         let mut fired = None;
         // A landing's water tile and direction (ADV-SEA-003).
         let mut landing = (start, 0);
+        // The compromise's: the first step the revealed tile forbids, the last stop node before
+        // it (its step and the points left there), and whether the step's source was hidden.
+        let (mut cut, mut stand, mut off_hidden) = (None, None, false);
         for (step, &next) in path.iter().enumerate() {
             if visit.is_some() || guard.is_some() {
                 return Err(AdventureCommandError::PastVisit { step });
@@ -1964,6 +1993,16 @@ impl AdventureState {
                     _ => return Err(AdventureCommandError::NoStop { step }),
                 }
             };
+            if blind && cut.is_none() {
+                let hidden = !self.is_explored(player, next);
+                let step_of = (next, direction, step);
+                if (hidden || off_hidden)
+                    && !self.revealed_fits(part, (player, id), (at, node), step_of, kind)
+                {
+                    cut = Some(step);
+                }
+                off_hidden = hidden;
+            }
             // rule: ADV-GAR-004
             // A garrison of the mover's team is crossed on the way and visited where the move
             // ends (D-59: the planned destination's, 0x48154B).
@@ -1979,12 +2018,15 @@ impl AdventureState {
                 .checked_sub(cost)
                 .ok_or(AdventureCommandError::TooFewPoints { step, cost, points })?;
             points = pricing.left_by(mode, met, &to, left);
+            if blind && cut.is_none() && kind == Node::Stop {
+                stand = Some((step, points));
+            }
             landing = (at, direction);
             if met.is_none_or(Meets::enters) {
                 (at, from, node) = (next, to, kind);
                 // A flying hero meets a guard only where its move ends (0x48147D); no guard
                 // attacks on a boat's tile (0x480108, ADV-SEA-002).
-                if (mode != Mode::Fly || last) && !matches!(met, Some(Meets::Board(_))) {
+                if (!mode.flies() || last) && !matches!(met, Some(Meets::Board(_))) {
                     guard = self.guard_at(part, next);
                 }
             }
@@ -1995,12 +2037,23 @@ impl AdventureState {
             }
             visit = met;
         }
-        let walked = if let Some((step, _, left)) = fired {
+        // An event before the cut ends the move first; one after it is never reached.
+        let fired = fired.filter(|&(step, ..)| cut.is_none_or(|cut| step < cut));
+        let cut = cut.filter(|_| fired.is_none());
+        let (walked, undone) = if let Some((step, _, left)) = fired {
             (at, points) = (path[step], left);
-            &path[..=step]
+            (&path[..=step], &path[..0])
+        } else if let Some(cut) = cut {
+            // The compromise's stop (decision 407): on the last stop node before the step the
+            // revealed tile forbids, with the points left there (the start's when it was none);
+            // the passes after it are undone, free, and the rest of the path dropped.
+            let (walked, left) =
+                stand.map_or((0, self.heroes[index].movement), |(step, left)| (step + 1, left));
+            (at, points) = (walked.checked_sub(1).map_or(start, |i| path[i]), left);
+            (&path[..walked], &path[walked..cut])
         } else {
             let stays = visit.is_some_and(|met| !met.enters());
-            &path[..path.len() - usize::from(stays)]
+            (&path[..path.len() - usize::from(stays)], &path[..0])
         };
         let hero = &mut self.heroes[index];
         hero.pos = at;
@@ -2024,6 +2077,24 @@ impl AdventureState {
                 seen_by: seen_from.union(seen_to),
             });
             from = to;
+        }
+        if let Some(cut) = cut {
+            // The undone passes' reveals stay, told by no step (decision 407), and the tile that
+            // stopped the move shows whatever the radius; the move ends on its last stop node, a
+            // guard there attacking (a flyer is at its move's end, 0x48147D), nothing visited.
+            let explored = &mut self.explored[usize::from(player.raw())];
+            for &to in undone {
+                reveal(explored, to, radius);
+            }
+            reveal(explored, path[cut], 0);
+            let outcome = match self.guard_at(part, at) {
+                Some(guard) if !walked.is_empty() => self.visit_monster(rules, id, guard),
+                _ => AdventureOutcome::default(),
+            };
+            return Ok(AdventureOutcome {
+                dropped: path.len() - walked.len(),
+                ..outcome
+            });
         }
         if let Some((step, event, _)) = fired {
             // On a guarded tile the guard visits first (a flyer stopped there is at its move's

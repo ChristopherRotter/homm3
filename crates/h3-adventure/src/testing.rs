@@ -468,6 +468,8 @@ pub(crate) fn movement_rules_with(
         "quirk.adventure.sirens_again_after_battle",
         // E08 T142a (ADV-QUIRK-54).
         "quirk.adventure.spell_recast_refused",
+        // E08 T142b (ADV-QUIRK-15).
+        "quirk.adventure.flight_reads_hidden",
     ];
     let core = ContentPack {
         terrains: ["t:grass", "t:sand", "t:swamp", "t:sea", "t:rock"]
