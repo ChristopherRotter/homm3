@@ -40,7 +40,7 @@ Licensed **GPL-2.0-or-later** ([LICENSE](LICENSE), [ADR-0009](docs/adr/0009-lice
 ## Status
 
 The project is developed incrementally, in parallel work lanes ([docs/BACKLOG.md](docs/BACKLOG.md)
-has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-23.
+has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-24.
 
 Progress is the share of an epic's refined increments (**I**) or milestones (**M**) that are closed;
 epics whose later increments are still sketches grow as those get refined, so their bar can step back.
@@ -62,7 +62,7 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E08](docs/epics/E08-adventure-map.md) | Adventure map core on real `.h3m` maps: movement, fog, objects, monsters, heroes, garrisons, creature banks, trades and services | adventure | `█████████░` 14/15 I | the Prison, the Market of Time and the adventure spells (I15) next; later increments sketched |
 | [E24](docs/epics/E24-map-client.md) | Adventure map client | map-client | `████████░░` 4/5 M | M1–M4 closed (stills, map moving, adventure screen, the engine's games shown with their battles); M5 (hot seat) to refine |
 | [E26](docs/epics/E26-fair-system-actor.md) | Fair system actor: the original's AI on what its side may know | battle | `█████░░░░░` 1/2 I | increment 1 built; checkpoint with you next |
-| [E09](docs/epics/E09-towns.md) | Towns and economy | town | `██████░░░░` 4/7 I | I1–I4 closed (towns on the map, construction, growth and recruitment, the Tavern); I5 (the mage guild) refined; services, travel and Grail follow |
+| [E09](docs/epics/E09-towns.md) | Towns and economy | town | `██████░░░░` 5/8 I | I1–I5 closed (towns on the map, construction, growth and recruitment, the Tavern, the mage guild); I6 (the town's trades) refined; the buildings for heroes and the map, travel and Grail follow |
 | [E27](docs/epics/E27-game-shell.md) | Game shell: menus, scenario setup, load/save, options, start clips | client | `████████░░` 4/5 M | M1–M4 closed (reading, start and menus, a game's setup, High Scores, Credits, the save file and Load Game); M5 (in play) after E24 M5 |
 | [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓▓▓` 10 I done, open-ended | I10 closed (the ceiling: +0.085 possible against the fair actor, #2 holds +0.026); paused for E31; I11 (expert iteration) when it resumes |
 | [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `░░░░░░░░░░` 0/1 I | in progress; increment 1: the reading done (T1a1, T1a2), the oracle (T1b) next |
