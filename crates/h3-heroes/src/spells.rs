@@ -227,6 +227,17 @@ pub enum SchoolRaise {
     Schools(SchoolSet),
 }
 
+impl SchoolRaise {
+    /// Whether the ground casts `spell` at Expert.
+    fn raises(self, spell: &Spell) -> bool {
+        match self {
+            Self::None => false,
+            Self::All => true,
+            Self::Schools(set) => spell.schools.iter().any(|&s| set.contains(s)),
+        }
+    }
+}
+
 /// The hero's mastery of every spell it would cast above none on a ground with `raise`, in spell
 /// order (HER-SPL-003 amended, E08 T141b; ADR-0013 point 17.1): a raised spell at Expert, the
 /// rest as [`spell_masteries`]. Batch E15 saw the map's raise (row E15-5: Magic Plains, a hero
@@ -266,7 +277,10 @@ pub fn map_spell_cost(
     let def = ruleset
         .spell(spell)
         .ok_or(DetailsError::UnknownSpell(spell))?;
-    let mastery = Masteries::of(details, ruleset).of_spell(spell, def, raise);
+    let mastery = masteries_on(details, ruleset, raise)
+        .into_iter()
+        .find(|&(s, _)| s == spell)
+        .map_or(0, |(_, level)| level);
     let column = usize::from(mastery).min(def.cost.len() - 1);
     Ok(def.cost[column].max(1))
 }
@@ -306,73 +320,62 @@ pub(crate) fn available(details: &HeroDetails, ruleset: &Ruleset) -> Vec<SpellId
 
 /// [`spell_masteries`] of validated details: on ordinary ground (the battle hero's, HER-BAT-001).
 pub(crate) fn masteries(details: &HeroDetails, ruleset: &Ruleset) -> Vec<(SpellId, u8)> {
-    masteries_on(details, ruleset, SchoolRaise::None)
-}
-
-/// [`spell_masteries_on`] of validated details.
-fn masteries_on(
-    details: &HeroDetails,
-    ruleset: &Ruleset,
-    raise: SchoolRaise,
-) -> Vec<(SpellId, u8)> {
-    let sources = Masteries::of(details, ruleset);
+    // rule: HER-SPL-003
+    let mut schools = [0u8; MAX_SPELL_SCHOOLS];
+    let mut raised: Vec<(SpellId, u8)> = Vec::new();
+    for effect in effects(details, ruleset, Count::OncePerType) {
+        match *effect {
+            HeroEffect::SchoolMastery { school, level } => {
+                let mastery = &mut schools[school_index(school)];
+                *mastery = (*mastery).max(level);
+            }
+            HeroEffect::SpellMastery { spell, level } => raised.push((spell, level)),
+            _ => {}
+        }
+    }
     all_spells(ruleset)
         .zip(ruleset.spells())
         .filter_map(|(id, spell)| {
-            let mastery = sources.of_spell(id, spell, raise);
+            let by_school = spell.schools.iter().map(|&l| schools[school_index(l)]);
+            let by_artifact = raised
+                .iter()
+                .filter(|&&(s, _)| s == id)
+                .map(|&(_, level)| level);
+            let mastery = by_school
+                .chain(by_artifact)
+                .max()
+                .unwrap_or(0)
+                .min(MAX_SKILL_LEVEL);
             (mastery > 0).then_some((id, mastery))
         })
         .collect()
 }
 
-/// What a hero's effects give its masteries, read once (HER-SPL-003): the best level of each
-/// school and the spells raised by name.
-struct Masteries {
-    /// The best `school_mastery` level by school.
-    schools: [u8; MAX_SPELL_SCHOOLS],
-    /// The `spell_mastery` effects: a spell and its level.
-    raised: Vec<(SpellId, u8)>,
-}
-
-impl Masteries {
-    /// The masteries of validated details.
-    fn of(details: &HeroDetails, ruleset: &Ruleset) -> Self {
-        let mut schools = [0u8; MAX_SPELL_SCHOOLS];
-        let mut raised: Vec<(SpellId, u8)> = Vec::new();
-        for effect in effects(details, ruleset, Count::OncePerType) {
-            match *effect {
-                HeroEffect::SchoolMastery { school, level } => {
-                    let mastery = &mut schools[school_index(school)];
-                    *mastery = (*mastery).max(level);
-                }
-                HeroEffect::SpellMastery { spell, level } => raised.push((spell, level)),
-                _ => {}
-            }
-        }
-        Self { schools, raised }
+/// [`spell_masteries_on`] of validated details: the ordinary masteries ([`masteries`], the
+/// battle's loop untouched: E08 T141b's `siege-towns-36`), then a raise merged over them, both in
+/// spell order.
+fn masteries_on(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    raise: SchoolRaise,
+) -> Vec<(SpellId, u8)> {
+    let ordinary = masteries(details, ruleset);
+    if raise == SchoolRaise::None {
+        return ordinary;
     }
-
-    /// The mastery of spell `id` (`spell` its definition) on a ground with `raise`, 0 for none.
-    fn of_spell(&self, id: SpellId, spell: &Spell, raise: SchoolRaise) -> u8 {
-        // rule: HER-SPL-003
-        let ground = match raise {
-            SchoolRaise::None => false,
-            SchoolRaise::All => true,
-            SchoolRaise::Schools(set) => spell.schools.iter().any(|&s| set.contains(s)),
-        };
-        let by_school = spell.schools.iter().map(|&s| self.schools[school_index(s)]);
-        let by_artifact = self
-            .raised
-            .iter()
-            .filter(|&&(s, _)| s == id)
-            .map(|&(_, level)| level);
-        by_school
-            .chain(by_artifact)
-            .chain(ground.then_some(MAX_SKILL_LEVEL))
-            .max()
-            .unwrap_or(0)
-            .min(MAX_SKILL_LEVEL)
-    }
+    let mut own = ordinary.into_iter().peekable();
+    all_spells(ruleset)
+        .zip(ruleset.spells())
+        .filter_map(|(id, spell)| {
+            let level = own.next_if(|&(s, _)| s == id).map_or(0, |(_, level)| level);
+            let mastery = if raise.raises(spell) {
+                MAX_SKILL_LEVEL
+            } else {
+                level
+            };
+            (mastery > 0).then_some((id, mastery))
+        })
+        .collect()
 }
 
 /// A school's index in a per-school array (content has at most [`MAX_SPELL_SCHOOLS`] schools).
