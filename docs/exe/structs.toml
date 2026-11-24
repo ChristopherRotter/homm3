@@ -837,14 +837,14 @@ fields = [
   { offset = 0x0, name = "army", type = "army*", summary = "the army planned (a copy in the value functions)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
   { offset = 0x4, name = "spare", type = "army*", summary = "where shed or displaced stacks go (ai_army_plan_shed 0x42C5B0, ai_army_plan_put 0x42C130); the other army in an exchange; 0 for a dwelling's value", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
   { offset = 0x8, name = "angelic_alliance", type = "u8", summary = "the Angelic Alliance flag: towns 0, 1, 2, 6, 7 count as one alignment (alignment_join_towns_get 0x44A460)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
-  { offset = 0xA, name = "hero_morale", type = "i16", summary = "the hero's own morale (hero_morale 0x4E39B0, clamped), added to the army's base morale", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0xA, name = "hero_morale", type = "i16", summary = "the hero's own morale (hero_morale 0x4E39B0, clamped), added to the army's base morale; 3 for a town's garrison (ai_town_defence_recruit 0x428580, E31 T1a3c)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2", "rules/surveys/E31-computer-player.md §3.3"] },
   { offset = 0xC, name = "alignments", type = "i16", summary = "the army's alignment count (ai_army_plan_alignments 0x42C060)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
   { offset = 0xE, name = "alignment_counts", type = "u8[10]", summary = "stacks per alignment: neutral, then towns 0 to 8", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
   { offset = 0x18, name = "value_gained", type = "i32", summary = "the AI value (creature +0x40 x count) put in less that displaced (ai_army_plan_put 0x42C130)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
   { offset = 0x1C, name = "primary_advantage", type = "i16", summary = "the hero's hero_primary_sum less the other hero's, at least 0 (ai_army_exchange_value 0x42C4A0); weighs each transfer by it / 40", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
   { offset = 0x20, name = "owner", type = "i32", summary = "the owner colour: its ai_player_record for the trades, its weights (player +0x128) for the costs", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
   { offset = 0x24, name = "resources", type = "i32*", summary = "the resources the purchases spend (i32[7]; a copy in ai_army_purchase_value 0x42D780)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
-  { offset = 0x28, name = "weigh_costs", type = "u8", summary = "1 from ai_army_plan_init_dwelling: a bought offer's gain less its weighted cost (ai_army_purchase_step 0x42D420)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x28, name = "weigh_costs", type = "u8", summary = "1 from ai_army_plan_init_dwelling: a bought offer's gain less its weighted cost (ai_army_purchase_step 0x42D420); 1 in ai_town_hero_prospects 0x431BD0, 0 in ai_town_visit_recruit 0x42BA60's runs (cleared at 0x42BBC5) and ai_town_defence_recruit 0x428580, which buy whatever gains (E31 T1a3c)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2", "rules/surveys/E31-computer-player.md §3.3"] },
   { offset = 0x2C, name = "offers", type = "vector", summary = "the offers: an allocator byte, then begin +0x30, end +0x34, capacity +0x38; 12-byte ai_army_offer entries", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
 ]
 
@@ -855,9 +855,9 @@ summary = "One offer of an ai_army_plan: creatures that may be bought (E31 T1a2c
 refs = ["rules/surveys/E31-computer-player.md §2"]
 fields = [
   { offset = 0x0, name = "creature", type = "i32", summary = "the creature", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
-  { offset = 0x4, name = "count_source", type = "i16*", summary = "the dwelling's count it came from (dwelling_record +0x14)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0x4, name = "count_source", type = "i16*", summary = "the dwelling's count it came from (dwelling_record +0x14), or the town's (+0x16, ai_army_plan_init_town 0x42D1B0, E31 T1a3c); ai_army_plan_run writes the count back through it", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2", "rules/surveys/E31-computer-player.md §3.3"] },
   { offset = 0x8, name = "count", type = "i16", summary = "how many are left to buy (ai_army_purchase_step 0x42D420 lowers it)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
-  { offset = 0xA, name = "free", type = "u8", summary = "a level-1 creature (level +4 = 0): taken without cost", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2"] },
+  { offset = 0xA, name = "free", type = "u8", summary = "a level-1 creature (level +4 = 0): taken without cost; only a dwelling's, a town's offers are never free (E31 T1a3c)", confidence = "read", refs = ["rules/surveys/E31-computer-player.md §2", "rules/surveys/E31-computer-player.md §3.3"] },
 ]
 
 [[struct]]

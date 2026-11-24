@@ -166,3 +166,38 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   ranges: 43 callees, the input of T1a3d), not committed.
 - **Not read:** the town visit and the army plan's open pieces (T1a3c); the answers, the market
   visits, the allies' shares and the table (T1a3d).
+
+## T1a3c — the town visit (2026-11-23, increment 1)
+
+- **The cut** (AI-Q27, the user at T1a3c's start): about 3 000 instructions with the nested
+  helpers, so two parts along the code's seam; the user: the main session reads one, a sub-agent
+  the other. T1a3c1 the visit and its buys (main session, about 1 650), T1a3c2 the army (a
+  general-purpose sub-agent in its own worktree, about 1 350); its `map.toml` lines merged by
+  address (no overlap), its `structs.toml` changes applied, its survey text folded into §3.3.
+- **Read** (the survey §3.3): `ai_town_visit` 0x5253D0 whole (the switch of visiting-bonus
+  buildings 0x5256E7), `ai_town_guild_buy` 0x42BEB0, `ai_artifact_merchants_visit` 0x5259E0,
+  `ai_buy_stock_artifacts` 0x524400 (also the Black Market's), `ai_buy_war_machine` 0x525CA0 with
+  `blacksmith_war_machines` 0x6AA9F8 and its initializer 0x5C2E20, the artifact arrangement
+  (`ai_heroes_artifact_exchange` 0x433FE0, `ai_hero_shed_artifacts` 0x433BB0,
+  `ai_hero_equipped_value` 0x433C60, `ai_artifact_offer` 0x433E20, `ai_artifact_received` 0x433B40,
+  its name kept: other lanes' docs cite it), `ai_university` 0x524ED0, `victory_grail_test`
+  0x5F1EF0, `hero_backpack_last` 0x4DBD90; T1a3c2: `ai_victory_town_hold` 0x525200,
+  `ai_town_visit_recruit` 0x42BA60, `ai_army_exchange_apply` 0x42C3B0, `ai_army_plan_init_town`
+  0x42D1B0, `ai_army_merge_types` 0x42D870 (was `ai_army_plan_setup`), `ai_army_arrange` 0x42D8E0
+  (was `ai_army_plan_commit`), the library's vector and sort helpers; `ai_battle_army_split`
+  0x42DB20 and `army_stack_morale`, `army_stack_luck` inferred.
+- **Found:** no commit step: `ai_army_plan_run` buys for real when handed a real army and the
+  player's resources, so the visit's and the defence functor's purchases are made there; the visit
+  recruits with costs not weighed, builds a base dwelling directly, the next guild level, the
+  faction's visiting-bonus building, the Artifact Merchants (Tower and Dungeon only) and the
+  Blacksmith's machine, outside the build choice and ignoring the recruit reserve; above Easy the
+  visitor and the garrison hero exchange artifacts by their equipped value; a lesser hero holds
+  the town a capture victory names, emptying its garrison. All choices; seven quirk candidates
+  (the garrison emptied, the formation's 16-bit count, a full garrison's stack overwritten, the
+  guild's Dispel-or-Cure test, the fifth misc slot unused, the University built without its gold
+  test, a skill of value 0 bought).
+- **Process:** a cloud clone, `Heroes3.exe` staged from the user's repo folder; the setup's
+  baseline (only the light gates: the code verified before) in the main clone, the readings in two
+  `git worktree`s; a scratch merge script over `map.toml` by address, not committed.
+- **Not read:** `ai_battle_army_split` 0x42DB20 past its frame and 0x42DD70 (T1a3d); whether
+  `ai_artifact_market_price`'s prices are the human's (T1a3d's market visits).
