@@ -14,28 +14,28 @@ fn texts() -> Catalogue {
         r#""windmill": "MILL", "windmill-empty": "MILL0", "stone": "STONE", "#,
         r#""stone-visited": "STONE0", "axis": "AXIS", "axis-visited": "AXIS0", "#,
         r#""temple": "TEMPLE", "temple-visited": "TEMPLE0", "#,
-        r#""witch-hut": "teaching you {{skill}}", "witch-hut-known": "a tome on {{skill}}", "#,
-        r#""witch-hut-full": "HA! {{skill}}", "pile": "You find a small quantity of {{resource}}.", "#,
+        r#""witch-hut": "HUT: {{skill}}", "witch-hut-known": "HUT KNOWN: {{skill}}", "#,
+        r#""witch-hut-full": "HUT FULL: {{skill}}", "pile": "Some {{resource}} lies here.", "#,
         r#""well": "WELL", "well-again": "WELL2", "well-full": "WELL0", "#,
-        r#""reward-experience": "{{hero}} learns something.", "#,
-        r#""reward-mana-lost": "{{hero}} loses magical energy.", "#,
-        r#""reward-mana": "{{hero}} gains magical energy.", "#,
-        r#""reward-morale-lost": "{{hero}}'s spirits drop.", "#,
-        r#""reward-morale": "{{hero}}'s spirits rise.", "#,
-        r#""reward-luck-lost": "{{hero}}'s luck takes a turn for the worse.", "#,
-        r#""reward-luck": "{{hero}}'s luck increases.", "#,
-        r#""reward-treasure-lost": "{{hero}} has lost treasure.", "#,
-        r#""reward-treasure": "{{hero}} has found treasure.", "#,
-        r#""reward-spell": "{{hero}} learns a spell.", "reward-spells": "{{hero}} learns spells.", "#,
-        r#""reward-creature": "A {{creature}} joins {{hero}}'s army.", "#,
-        r#""reward-creatures": "{{creatures}} join {{hero}}'s army.", "#,
-        r#""witch-hut-empty": "deserted", "shrine": "{{text}}'{{spell}}'.", "#,
-        r#""shrine-1": "a simple spell - ", "shrine-2": "a spell - ", "#,
-        r#""shrine-3": "a sophisticated spell - ", "shrine-known": " KNOWN", "#,
+        r#""reward-experience": "{{hero}}: experience.", "#,
+        r#""reward-mana-lost": "{{hero}}: mana down.", "#,
+        r#""reward-mana": "{{hero}}: mana up.", "#,
+        r#""reward-morale-lost": "{{hero}}: morale down.", "#,
+        r#""reward-morale": "{{hero}}: morale up.", "#,
+        r#""reward-luck-lost": "{{hero}}: luck down.", "#,
+        r#""reward-luck": "{{hero}}: luck up.", "#,
+        r#""reward-treasure-lost": "{{hero}}: treasure lost.", "#,
+        r#""reward-treasure": "{{hero}}: treasure.", "#,
+        r#""reward-spell": "{{hero}}: a spell.", "reward-spells": "{{hero}}: spells.", "#,
+        r#""reward-creature": "{{hero}} + one {{creature}}.", "#,
+        r#""reward-creatures": "{{hero}} + {{creatures}}.", "#,
+        r#""witch-hut-empty": "HUT0", "shrine": "{{text}}'{{spell}}'.", "#,
+        r#""shrine-1": "SHRINE 1: ", "shrine-2": "SHRINE 2: ", "#,
+        r#""shrine-3": "SHRINE 3: ", "shrine-known": " KNOWN", "#,
         r#""shrine-no-book": " NO BOOK", "shrine-wisdom": " WISDOM", "lighthouse": "LIGHT" }, "#,
-        r#""turn": { "town-lost": "{{player}}, you have lost your last town.", "#,
-        r#""days-left": "{{player}}, you only have {{days}} days left.", "#,
-        r#""last-day": "{{player}}, this is your last day." } }, "#,
+        r#""turn": { "town-lost": "{{player}}: no town left.", "#,
+        r#""days-left": "{{player}}: {{days}} days to take a town.", "#,
+        r#""last-day": "{{player}}: the last day to take a town." } }, "#,
         r#""artifact": { "7": "Centaur's Axe" }, "spell": { "53": "Haste" }, "#,
         r#""player-colour": { "0": "red", "1": "blue" }, "#,
         r#""skill-level": { "0": "Basic", "1": "Advanced", "2": "Expert" }, "#,
@@ -43,9 +43,9 @@ fn texts() -> Catalogue {
         r#""primary-skill": { "0": "Attack Skill", "2": "Spell Power" }, "#,
         r#""creature": { "4_one": "Griffin", "4_other": "Griffins", "1_one": "Halberdier", "#,
         r#""1_other": "Halberdiers" }, "resource": { "6": "Gold" }, "#,
-        r#""artifact-event": { "7": "You see a heavy axe." }, "#,
+        r#""artifact-event": { "7": "AXE." }, "#,
         r#""mine-event": { "0": "SAWMILL", "6": "GOLD MINE" }, "#,
-        r#""sign": { "5": "Proceed at Your Own Risk", "0": "Do Not Enter" } }"#,
+        r#""sign": { "5": "SIGN 5", "0": "SIGN 0" } }"#,
     );
     Catalogue {
         packs: vec![Pack::from_json("en", json).unwrap()],
@@ -315,7 +315,7 @@ fn a_pile_an_artifact_and_a_well() {
         Some(FoundStatus {
             resource: 6,
             amount: 70_000,
-            text: "You find a small quantity of gold.".to_string()
+            text: "Some gold lies here.".to_string()
         })
     );
     assert_eq!(pile.gain(&art).resources[6], 70_000);
@@ -325,14 +325,11 @@ fn a_pile_an_artifact_and_a_well() {
         resource: 3,
         amount: 2,
     };
-    assert_eq!(
-        other.found(&texts).unwrap().text,
-        "You find a small quantity of ."
-    );
+    assert_eq!(other.found(&texts).unwrap().text, "Some  lies here.");
     // `find-artifact`'s Centaurs Axe: ARTEVENT's record and the artifact's picture, +2 Attack
     // shown at the pickup's end; one outside the table gives none.
     let axe = Find::Artifact { artifact: 7 };
-    assert_eq!(told(&axe), told_text("You see a heavy axe.", &[(8, 7)]));
+    assert_eq!(told(&axe), told_text("AXE.", &[(8, 7)]));
     assert_eq!(axe.gain(&art).skills, [2, 0, 0, 0]);
     assert_eq!(art.skills_of(12), [12, -3, 0, 0]);
     assert_eq!(Find::Artifact { artifact: 9 }.gain(&art), Gain::default());
@@ -389,9 +386,9 @@ fn an_events_boxes_as_find_event_recorded() {
     assert_eq!(
         told,
         [
-            ("Mephala gains magical energy.", &[(35, 5), (11, 1)][..]),
-            ("Mephala has found treasure.", &[(6, 500)][..]),
-            ("Halberdiers join Mephala's army.", &[(21, 5 << 16 | 1)][..]),
+            ("Mephala: mana up.", &[(35, 5), (11, 1)][..]),
+            ("Mephala: treasure.", &[(6, 500)][..]),
+            ("Mephala + Halberdiers.", &[(21, 5 << 16 | 1)][..]),
         ]
     );
     assert_eq!(boxes[0].shows, Gain::default());
@@ -407,7 +404,7 @@ fn an_events_boxes_as_find_event_recorded() {
     // The map's text in the first box alone, every later box its first part's.
     let (boxes, _) = rewards(&given(), &texts(), "Mephala", "An event.");
     assert_eq!(boxes[0].told.text, "An event.");
-    assert_eq!(boxes[1].told.text, "Mephala has found treasure.");
+    assert_eq!(boxes[1].told.text, "Mephala: treasure.");
 }
 
 #[test]
@@ -429,7 +426,7 @@ fn every_part_of_an_event() {
     assert_eq!(
         boxes[0].told,
         told_text(
-            "Orrin learns something.",
+            "Orrin: experience.",
             &[
                 (17, 500),
                 (31, 1),
@@ -444,7 +441,7 @@ fn every_part_of_an_event() {
     );
     assert_eq!(
         boxes[1].told,
-        told_text("Orrin has lost treasure.", &[(0, -100_005)])
+        told_text("Orrin: treasure lost.", &[(0, -100_005)])
     );
     assert_eq!(boxes[1].shows.resources[0], -5);
     assert_eq!(
@@ -458,28 +455,28 @@ fn every_part_of_an_event() {
                 morale: 2,
                 ..Rewards::default()
             },
-            "Orrin's spirits rise.",
+            "Orrin: morale up.",
         ),
         (
             Rewards {
                 morale: -2,
                 ..Rewards::default()
             },
-            "Orrin's spirits drop.",
+            "Orrin: morale down.",
         ),
         (
             Rewards {
                 luck: -1,
                 ..Rewards::default()
             },
-            "Orrin's luck takes a turn for the worse.",
+            "Orrin: luck down.",
         ),
         (
             Rewards {
                 mana: -1,
                 ..Rewards::default()
             },
-            "Orrin loses magical energy.",
+            "Orrin: mana down.",
         ),
     ] {
         assert_eq!(rewards_of(&r, "").0[0].told.text, text);
@@ -493,24 +490,21 @@ fn every_part_of_an_event() {
     assert_eq!(boxes.len(), 2);
     assert_eq!(boxes[0].told.text, "Look.");
     assert_eq!(boxes[0].told.pictures.len(), 8);
-    assert_eq!(
-        boxes[1].told,
-        told_text("Orrin has found treasure.", &[(8, 8)])
-    );
+    assert_eq!(boxes[1].told, told_text("Orrin: treasure.", &[(8, 8)]));
     // One spell keeps the map's text; two tell 188 over it (the original's: a question).
     let one = Rewards {
         spells: vec![53],
         ..Rewards::default()
     };
     assert_eq!(rewards_of(&one, "Read.").0[0].told.text, "Read.");
-    assert_eq!(rewards_of(&one, "").0[0].told.text, "Orrin learns a spell.");
+    assert_eq!(rewards_of(&one, "").0[0].told.text, "Orrin: a spell.");
     let two = Rewards {
         spells: vec![53, 54],
         ..Rewards::default()
     };
     assert_eq!(
         rewards_of(&two, "Read.").0[0].told,
-        told_text("Orrin learns spells.", &[(9, 53), (9, 54)])
+        told_text("Orrin: spells.", &[(9, 53), (9, 54)])
     );
     // One creature (185, the singular); a creature past 150 has no name; nothing given, no box.
     let one = Rewards {
@@ -530,7 +524,7 @@ fn every_part_of_an_event() {
     assert_eq!(
         boxes[0].told,
         told_text(
-            "A Griffin joins Orrin's army.",
+            "Orrin + one Griffin.",
             &[(21, 1 << 16 | 4), (21, 2 << 16 | 151)]
         )
     );
@@ -567,35 +561,35 @@ fn each_finds_box_and_its_visited_one() {
         known: false,
         full: false,
     };
-    assert_eq!(told(&hut), told_text("teaching you Logistics", &[(20, 9)]));
-    assert_eq!(told(&hut.visited()), told_text("a tome on Logistics", &[]));
+    assert_eq!(told(&hut), told_text("HUT: Logistics", &[(20, 9)]));
+    assert_eq!(told(&hut.visited()), told_text("HUT KNOWN: Logistics", &[]));
     // Eight skills (173), the skill known first (172).
     let full = Find::WitchHut {
         skill: Some(2),
         known: false,
         full: true,
     };
-    assert_eq!(told(&full), told_text("HA! Logistics", &[]));
-    assert_eq!(told(&full.visited()), told_text("a tome on Logistics", &[]));
+    assert_eq!(told(&full), told_text("HUT FULL: Logistics", &[]));
+    assert_eq!(
+        told(&full.visited()),
+        told_text("HUT KNOWN: Logistics", &[])
+    );
     let empty = Find::WitchHut {
         skill: None,
         known: false,
         full: false,
     };
-    assert_eq!(told(&empty), told_text("deserted", &[]));
+    assert_eq!(told(&empty), told_text("HUT0", &[]));
     assert_eq!(empty.visited(), empty);
     let shrine = Find::Shrine {
         level: 1,
         spell: 53,
         refusal: None,
     };
-    assert_eq!(
-        told(&shrine),
-        told_text("a simple spell - 'Haste'.", &[(9, 53)])
-    );
+    assert_eq!(told(&shrine), told_text("SHRINE 1: 'Haste'.", &[(9, 53)]));
     assert_eq!(
         told(&shrine.visited()),
-        told_text("a simple spell - 'Haste'. KNOWN", &[])
+        told_text("SHRINE 1: 'Haste'. KNOWN", &[])
     );
     for (refusal, tail) in [(Refusal::NoBook, " NO BOOK"), (Refusal::Wisdom, " WISDOM")] {
         let refused = Find::Shrine {
@@ -603,7 +597,7 @@ fn each_finds_box_and_its_visited_one() {
             spell: 53,
             refusal: Some(refusal),
         };
-        let text = alloc::format!("a spell - 'Haste'.{tail}");
+        let text = alloc::format!("SHRINE 2: 'Haste'.{tail}");
         assert_eq!(told(&refused), told_text(&text, &[]));
         assert_eq!(refused.visited(), refused);
     }
@@ -612,7 +606,7 @@ fn each_finds_box_and_its_visited_one() {
         text: None,
         column: 30,
     };
-    assert_eq!(told(&sign), told_text("Proceed at Your Own Risk", &[]));
+    assert_eq!(told(&sign), told_text("SIGN 5", &[]));
     assert_eq!(sign.visited(), sign);
     let own = Find::Sign {
         text: Some("Hi".to_string()),
@@ -627,19 +621,19 @@ fn a_turn_without_a_town_names_the_player() {
     // (CLT-Q100 (b)); the crest in both.
     assert_eq!(
         town_lost(&texts(), 0, true),
-        told_text(", you have lost your last town.", &[(10, 0)])
+        told_text(": no town left.", &[(10, 0)])
     );
     assert_eq!(
         town_lost(&texts(), 1, false),
-        told_text("Blue, you have lost your last town.", &[(10, 1)])
+        told_text("Blue: no town left.", &[(10, 1)])
     );
     assert_eq!(
         days_left(&texts(), 0, 6, true),
-        told_text(", you only have 6 days left.", &[(10, 0)])
+        told_text(": 6 days to take a town.", &[(10, 0)])
     );
     assert_eq!(
         days_left(&texts(), 0, 1, false),
-        told_text("Red, this is your last day.", &[(10, 0)])
+        told_text("Red: the last day to take a town.", &[(10, 0)])
     );
 }
 

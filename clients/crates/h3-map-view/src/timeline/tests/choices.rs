@@ -171,6 +171,8 @@ fn choice(id: &str) -> Found {
             second: Some(second),
         }),
         fight: None,
+        walk: None,
+        levels: Vec::new(),
     }
 }
 

@@ -39,7 +39,8 @@ commands:
           in <install>/MP3, decoded. It exits 1 on a problem. <dir> defaults to
           $H3_INSTALL, then to the repository's original-data/install.
   render <map.h3m> --view <x>,<y>[,<z>] [--at <ms>] [--cycles <k>] [--live <live.toml>]
-         [--viewer <0-7>] [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original]
+         [--record <r.jsonl> [--packs <dir>] [--check]] [--viewer <0-7>]
+         [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original]
          [--install <dir>] [--map <dir>] [--out <file.png>] [--list]
           draws the adventure screen as the original does at that view (the tile x, y of level z,
           default 0, at the view's top-left) and moment: the frame's picture in the viewer's
@@ -58,6 +59,17 @@ commands:
           reproduces the original's drawing bugs (for the comparisons; MCL-Q2, MCL-Q3, MCL-Q4,
           MCL-Q7).
           --list prints the draw list.
+          --record (E24 M4 T3) takes a whole game's record of the engine's on that map file
+          (gzip-compressed, as the engine reads it; a record that does not begin at the game's
+          start is refused): its start's live part (the map's view, the panels, the mouse-over),
+          built on the map's own objects, applied over --live's; the record's rules are read
+          from --packs (default the repository's packs/). Keys the start does not write stay
+          --live's, and so does a random artifact's picture (the start's is its random
+          template's, MCL-STUB-1). --check (it needs --record and --live) draws nothing and
+          compares the record's start with --live's capture: the viewer, the explored tiles,
+          the objects in sight, the heroes and boats on explored tiles, the panels, what
+          choosing each hero and town shows (when the capture chose them) and the mouse-over
+          over every explored tile; it prints what it compared and exits 1 on a difference.
           The assets come from the installation copy's archives (<dir> as for gate).
   sequences [<id>] [--frames <dir>] [--live <live.toml>] [--record <r.jsonl> --record-map
             <map.h3m> [--packs <dir>]] [--bugs fixed|original] [--install <dir>] [--map <dir>]

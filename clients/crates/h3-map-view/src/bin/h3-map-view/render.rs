@@ -26,7 +26,7 @@ use h3_map_view::live::{
 };
 use h3_map_view::objects::{self, DrawLists};
 use h3_map_view::scene::{self, Draw, ViewAt};
-use h3_map_view::tables::{PATH_FRAMES, TownArt};
+use h3_map_view::tables::{PATH_FRAMES, Tables};
 use h3_map_view::timeline::Rules;
 use h3_render::Bugs;
 
@@ -67,7 +67,8 @@ impl Options {
     /// [--hidden <x0>,<y0>,<x1>,<y1>]... [--bugs fixed|original] [--install <dir>] [--map <dir>]
     /// [--out <file.png>] [--list]`. `--record` (E24 M4 T3a) takes the live part's map view from
     /// a whole game's record's start, after `--live`'s; `--check` compares it with `--live`'s
-    /// and draws nothing.
+    /// and draws nothing. `--check` without `--record` or `--live`, and `--packs` without
+    /// `--record`, are refused (E24 M4 T6, R4-2: a check that compares nothing must not pass).
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let mut rest = args.iter();
         let mut map_file = None;
@@ -140,6 +141,21 @@ impl Options {
                 other => return Err(format!("render: unknown option `{other}`")),
             }
         }
+        if record.is_none() {
+            if check {
+                return Err("render: --check compares a record's start: it needs --record".into());
+            }
+            if packs.is_some() {
+                return Err("render: --packs reads a record's rules: it needs --record".into());
+            }
+        }
+        if check && live.is_none() {
+            return Err(
+                "render: --check compares the record's start with a capture's: it needs \
+                        --live"
+                    .into(),
+            );
+        }
         Ok(Self {
             map_file: map_file.ok_or("render: which map?")?,
             view: view.ok_or("render: --view is required")?,
@@ -181,12 +197,8 @@ impl Options {
 
 pub fn run(options: &Options) -> ExitCode {
     match render(options) {
-        Ok(path) if options.check => {
-            println!("render: {}: its start is the capture's", path.display());
-            ExitCode::SUCCESS
-        }
-        Ok(path) => {
-            println!("render: wrote {}", path.display());
+        Ok(said) => {
+            println!("render: {said}");
             ExitCode::SUCCESS
         }
         Err(message) => {
@@ -196,7 +208,38 @@ pub fn run(options: &Options) -> ExitCode {
     }
 }
 
-fn render(options: &Options) -> Result<PathBuf, String> {
+/// What `--check` compares besides the choices (`engine::differences`, the mouse-over).
+const COMPARED: &str = "the viewer, the explored tiles, the objects in sight (pictures and \
+                        owners), the heroes and boats on explored tiles, the kingdom, the status \
+                        window, the kingdom's window, the mouse-over over every explored tile";
+
+/// The check's verdict (E24 M4 T6, R4-6): what the record's start `found` differs in from the
+/// capture `theirs`, with the mouse-overs' differences `hover` (none when the capture has no
+/// `[hover]`: a capture from before E24 M4 T3b2, which then fails, as the design's comparison
+/// holds the mouse-over, §5.11); else what it compared, the choices only when the capture made
+/// them (`[chosen]`: a situation's `choose`, by design, §5.10), named as not compared otherwise.
+fn verdict(
+    mut found: Vec<String>,
+    hover: Option<Vec<String>>,
+    theirs: &toml::Table,
+) -> Result<String, Vec<String>> {
+    match hover {
+        Some(differences) => found.extend(differences),
+        None => found.push("the capture has no `[hover]`: the mouse-over not compared".into()),
+    }
+    if !found.is_empty() {
+        return Err(found);
+    }
+    Ok(if theirs.contains_key("chosen") {
+        format!("compared {COMPARED} and the choices")
+    } else {
+        format!("compared {COMPARED}; not compared: the choices (the capture holds no `[chosen]`)")
+    })
+}
+
+/// Draws the still (or checks the record's start: `--check`); what `run` prints after
+/// `render: `.
+fn render(options: &Options) -> Result<String, String> {
     let mut tables = files::load_tables(&options.map)?;
     let layout = files::load_layout(&options.map)?;
     let path = &options.map_file;
@@ -220,26 +263,25 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     tables.texts = crate::texts::catalogue(&options.install, &options.map, &archives)?;
     let mut pointer = None;
     let templates = files::templates(&archives)?;
+    // A whole game's record's start (E24 M4 T3a), built on the map file's own art before
+    // `--live` changes it (E24 M4 T6, R4-3: a random dwelling's template the capture's).
+    let start = options
+        .record
+        .as_ref()
+        .map(|path| record_start(path, &bytes, &templates, &tables, &options.packs))
+        .transpose()?;
     if let Some(path) = &options.live {
         pointer = read_live(path, options.view, &mut art, &mut live, &templates)?;
     }
-    if let Some(path) = &options.record {
-        // A whole game's record's start (E24 M4 T3a): its map view's live part after the
-        // capture's, or compared with it.
-        let start = record_start(
-            path,
-            &bytes,
-            &art,
-            &templates,
-            &tables.map.towns,
-            &options.packs,
-        )?;
+    if let (Some(path), Some(start)) = (&options.record, &start) {
+        // Its map view's live part after the capture's, or compared with it.
         if options.check {
-            let theirs = options
+            let theirs_path = options
                 .live
                 .as_ref()
-                .ok_or("render: --check compares the record's start with --live's")?;
-            let mut found = engine::differences(&start, &read_table(theirs)?);
+                .ok_or("--check compares the record's start with --live's")?;
+            let theirs = read_table(theirs_path)?;
+            let found = engine::differences(start, &theirs);
             // The mouse-over over every explored tile (E24 M4 T3b2, design §5.11): the record's
             // start applied after the capture's, as a still draws it.
             let (mut our_art, mut ours) = (art.clone(), live.clone());
@@ -252,18 +294,19 @@ fn render(options: &Options) -> Result<PathBuf, String> {
                 &mut ours,
                 &templates,
             )?;
-            found.extend(hover_differences(
-                &archives, &tables, &our_art, &ours, &art, &live,
-            )?);
-            if !found.is_empty() {
-                return Err(format!(
-                    "{}: its start differs from {}: {}",
-                    path.display(),
-                    theirs.display(),
-                    found.join("; ")
-                ));
-            }
-            return Ok(path.clone());
+            let hover = hover_differences(&archives, &tables, &our_art, &ours, &art, &live)?;
+            return verdict(found, hover, &theirs)
+                .map(|compared| {
+                    format!("{}: its start is the capture's: {compared}", path.display())
+                })
+                .map_err(|found| {
+                    format!(
+                        "{}: its start differs from {}: {}",
+                        path.display(),
+                        theirs_path.display(),
+                        found.join("; ")
+                    )
+                });
         }
         let label = path.display().to_string();
         apply_live(
@@ -359,20 +402,20 @@ fn render(options: &Options) -> Result<PathBuf, String> {
     }
     fs::write(&out, h3_render::png::encode(&screen))
         .map_err(|e| format!("{}: {e}", out.display()))?;
-    Ok(out)
+    Ok(format!("wrote {}", out.display()))
 }
 
 /// What differs between the mouse-overs of two live parts (`ours` with its art `our_art`, and
-/// `theirs` with `art`) over every explored tile ([`Hover::differences`]); nothing when either
-/// has no facts.
+/// `theirs` with `art`) over every explored tile ([`Hover::differences`]); none when either has
+/// no facts (nothing compared).
 fn hover_differences(
     archives: &[h3_formats::lod::LodArchive<'_>],
-    tables: &h3_map_view::tables::Tables,
+    tables: &Tables,
     our_art: &MapArt,
     ours: &Live,
     art: &MapArt,
     theirs: &Live,
-) -> Result<Vec<String>, String> {
+) -> Result<Option<Vec<String>>, String> {
     let mut defs = objects::pictures(our_art, ours);
     defs.extend(objects::pictures(art, theirs));
     defs.sort_unstable();
@@ -388,35 +431,45 @@ fn hover_differences(
         Ok(Hover::new(art, live, &tables.records, &lists))
     };
     let (Some(a), Some(b)) = (hover(our_art, ours)?, hover(art, theirs)?) else {
-        return Ok(Vec::new());
+        return Ok(None);
     };
-    Ok(a.differences(
+    Ok(Some(a.differences(
         &ours.kingdom,
         &b,
         &theirs.kingdom,
         &art.hero_names,
         &tables.texts,
-    ))
+    )))
 }
 
-/// The start of the whole game's record at `path` on the map file `map` (its bytes), its art
-/// `art`, under the rules of the record's packs and profile read from `packs`
-/// (`h3_map_view::engine`).
+/// The start of the whole game's record at `path` on the map file `map` (its bytes), under the
+/// rules of the record's packs and profile read from `packs` (`h3_map_view::engine`), the
+/// tables' towns' pictures and records: built on the map file's own art (`MapArt::from_raw`),
+/// never on one a capture changed (E24 M4 T6, R4-3).
 fn record_start(
     path: &Path,
     map: &[u8],
-    art: &MapArt,
     templates: &[ObjectTemplate],
-    towns: &TownArt,
+    tables: &Tables,
     packs: &Path,
 ) -> Result<engine::Start, String> {
+    let failed = |why: &dyn std::fmt::Display| format!("{}: {why}", path.display());
     let (loaded, rules) = load_record(path, map, packs)?;
-    engine::start(&loaded, art, templates, towns, &rules)
-        .map_err(|e| format!("{}: {e}", path.display()))
+    let art = MapArt::from_raw(&loaded.raw).map_err(|e| failed(&e))?;
+    engine::start(
+        &loaded,
+        &art,
+        templates,
+        &tables.map.towns,
+        &tables.records,
+        &rules,
+    )
+    .map_err(|e| failed(&e))
 }
 
 /// The whole game's record at `path` checked against the map file `map` (its bytes), with the
 /// rules of its packs and profile read from `packs` (E24 M4 T3a; T4a2 plays its walks and turns).
+/// The record is decoded once (E24 M4 T6, R4-10).
 pub fn load_record(
     path: &Path,
     map: &[u8],
@@ -424,11 +477,12 @@ pub fn load_record(
 ) -> Result<(engine::Loaded, GameRuleset), String> {
     let failed = |why: &dyn std::fmt::Display| format!("{}: {why}", path.display());
     let text = fs::read_to_string(path).map_err(|e| failed(&e))?;
-    let header = engine::parse(&text).map_err(|e| failed(&e))?.header;
-    let ids: Vec<String> = header.manifest.packs.iter().map(|p| p.id.clone()).collect();
-    let rules = h3_files::adventure::load_rules(packs, &ids, &header.manifest.profile)
+    let record = engine::parse(&text).map_err(|e| failed(&e))?;
+    let manifest = &record.header.manifest;
+    let ids: Vec<String> = manifest.packs.iter().map(|p| p.id.clone()).collect();
+    let rules = h3_files::adventure::load_rules(packs, &ids, &manifest.profile)
         .map_err(|e| format!("{}: {e}", packs.display()))?;
-    let loaded = engine::load(&text, map, &rules).map_err(|e| failed(&e))?;
+    let loaded = engine::check(record, map, &rules).map_err(|e| failed(&e))?;
     Ok((loaded, rules))
 }
 
@@ -582,7 +636,8 @@ pub fn apply_live(
                 continue;
             };
             // A town's picture by its buildings: the start's (`Live::at_start`) must be the
-            // original's (E24 M1 T5b1, design §2.9).
+            // table's, the original's or a record's start (E24 M1 T5b1, design §2.9; the message
+            // names the table, E24 M4 T6, R4-4).
             if template.class == TOWN_CLASS {
                 let ours = live.objects[index]
                     .drawn
@@ -590,7 +645,7 @@ pub fn apply_live(
                     .map_or(template.def.as_str(), |d| d.def.as_str());
                 if !ours.eq_ignore_ascii_case(def) {
                     return Err(failed(&format!(
-                        "object {index}: the original drew the town as {def}, its buildings give {ours}"
+                        "object {index}: `defs` draws the town as {def}, its buildings give {ours}"
                     )));
                 }
             }

@@ -58,6 +58,7 @@ fn live_part(text: &str) -> Live {
         path: Vec::new(),
         moment: Moment::default(),
         walking: Walking::default(),
+        left: Vec::new(),
         kingdom: Kingdom::default(),
         buttons: None,
         minimap: None,
@@ -376,6 +377,8 @@ fn on_record(x: u8, sea: Option<Sea>) -> impl FnOnce(&mut Start) {
             revealed: vec![Vec::new()],
             sea,
             battle: None,
+            boats: Vec::new(),
+            stops: None,
         }]);
     }
 }
@@ -416,6 +419,78 @@ fn a_record_boards_and_lands_as_it_says() {
     // One that says none: no landing.
     let l = run_with("land", 100, on_record(8, None));
     assert!(l.aboard.is_none() && l.drawn().boats.empty.is_empty());
+}
+
+#[test]
+fn a_record_s_boat_told_after_its_start_is_drawn_and_boarded() {
+    // E24 M4 T6 (the reviewer's R3-3): `board` on a record whose start shows no boat, the walk
+    // telling the boat (a reveal's or a built one): on the map at the walk's first step, before
+    // its boarding there, which takes it. Without it the step is off the record.
+    let boat = LiveBoat {
+        at: at(9),
+        kind: 1,
+        facing: Facing::DownLeft,
+    };
+    let told = |boats: Vec<LiveBoat>| {
+        move |start: &mut Start| {
+            on_record(9, Some(Sea::Board(2)))(start);
+            start.boats.empty.clear();
+            if let Some(walk) = start.moves.as_mut().and_then(|m| m.first_mut()) {
+                walk.boats = boats;
+            }
+        }
+    };
+    let l = run_with("board", 99, told(vec![boat]));
+    assert!(l.boats.empty.is_empty());
+    let l = run_with("board", 100, told(vec![boat]));
+    let Some(Aboard::Board(boarded)) = l.aboard else {
+        panic!("boarding: {:?}", l.aboard);
+    };
+    assert_eq!((boarded.at, boarded.kind), (at(9), 2));
+    // The told boat on its tile while the boarding's dissolve runs, taken off at its end.
+    assert_eq!(l.boats.empty, [boat]);
+    let l = run_with("board", 770, told(vec![boat]));
+    assert!(l.drawn().boats.empty.is_empty());
+    assert_eq!(l.drawn().boats.sailed[0].map(|b| b.kind), Some(2));
+    // One told on a tile with an empty boat replaces it.
+    let mut l = run_with("board", 1, |_| {});
+    let other = LiveBoat {
+        at: at(30),
+        kind: 0,
+        facing: Facing::Right,
+    };
+    let before = l.boats.empty.clone();
+    l.put_boats(&[LiveBoat { kind: 2, ..boat }, other]);
+    assert_eq!(l.boats.empty.len(), before.len() + 1);
+    assert!(l.boats.empty.contains(&LiveBoat { kind: 2, ..boat }));
+    assert!(!l.boats.empty.contains(&boat) && l.boats.empty.contains(&other));
+    // None told: off the record.
+    let (mut start, ..) = boating("board");
+    told(Vec::new())(&mut start);
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..100 {
+        l.run(t, &[]).unwrap();
+    }
+    let step = [Action::Step(Direction::East)];
+    assert_eq!(l.run(100, &step), Err(Unplayable::Moved([9, 12, 0])));
+}
+
+#[test]
+fn a_record_s_landing_with_no_facing_is_refused() {
+    // E24 M4 T6 (the reviewer's R3-6): a `Landed` with a facing past 7 has no boat to leave: the
+    // step refused, where it was played as a plain step with the hero left in its boat.
+    let (mut start, actions, ..) = boating("land");
+    on_record(8, Some(Sea::Unfaced(9)))(&mut start);
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let given = |t: u32| actions.get(&t).map_or(&[][..], Vec::as_slice);
+    for t in 1..100 {
+        l.run(t, given(t)).unwrap();
+    }
+    assert_eq!(l.run(100, given(100)), Err(Unplayable::Landing([8, 12, 0])));
+    assert_eq!(
+        Unplayable::Landing([8, 12, 0]).to_string(),
+        "a landing onto (8, 12, 0) whose boat's facing the record gives past 7"
+    );
 }
 
 #[test]

@@ -60,8 +60,9 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       clients/map/timelines/<id>.txt (`ok`, `CHANGED`, `new`), and the viewer's frame at 0
       drawn with the live part read then against the original's; exit 1 unless each is as
       recorded and exact at 0. A run as recorded or new and exact at 0 keeps that live part
-      (timelines/<id>-live.toml). Since E24 M2 T1a2 a sequence's options (the scroll and hero
-      speeds) are written once it is staged and its inputs (keys pressed and released, the
+      (timelines/<id>-live.toml; since E24 M4 T6 a sequence of sequences.toml only, not a sound
+      run: the others' stays under <dir>/<id>/). Since E24 M2 T1a2 a sequence's options (the
+      scroll and hero speeds) are written once it is staged and its inputs (keys pressed and released, the
       pointer moved) given at their milliseconds; the timeline has the cursor too. Since E24 M2
       T2 the frame check: the viewer's frames at the times the original's screen changed
       (`h3-map-view sequences <id> --frames`), each against the original's outside the panels,
@@ -118,6 +119,8 @@ MASKS = {name: [tuple(r) for r in rects]
 OWN_TOWN_NAMES = set()
 # What `lists` writes into a situation's hero's record (E24 M3 T4a, T5b1).
 HERO_WRITES = {"points", "mana", "skills", "morale", "luck", "army", "diplomacy", "secondary"}
+# Diplomacy's index among the secondary skills (SSTRAITS.TXT's fifth: `h3mem.DIPLOMACY`'s byte).
+DIPLOMACY_SKILL = 4
 # The status window's kinds the viewer draws (E24 M3 T5b1: a hero's and a town's, design §4.8;
 # T5b2 the date's and the kingdom's, §4.9).
 STATUS_DRAWN = (1, 2, 3, 4)
@@ -237,17 +240,21 @@ def masked_for(shape=(600, 800)):
     return masked(["panels"], shape)
 
 
-def to_shipped(game, timeout=120.0):
+def to_shipped(game, timeout=120.0, gold=0):
     """From the start to a shipped map's adventure screen (a single scenario, as
     h3drive.to_scenario), closing the messages its first day shows (a timed event's: E24 M1 T4b's
     Divided Loyalties) by their OK. The screen is `adventure`: `adventure_map`'s probes hold the
     level button greyed, as a map without an underground shows it (since E24 M3 T6b2 a writer's map
-    with an underground starts this way too: no message closes then)."""
+    with an underground starts this way too: no message closes then). With `gold` (E24 M4 T6,
+    the reviewer's R6-1: it was taken and dropped) that many players' starting bonus Gold before
+    Begin, as `h3drive.to_scenario` sets it (`h3drive.gold_bonus`): no artifact."""
     game.wait("main_menu", 90)
     game.click(640, 75, 1.0)  # New Game
     game.wait("new_game_menu")
     game.click(640, 75, 1.0)  # Single Scenario
     game.wait("scenario_list")
+    if gold:
+        h3drive.gold_bonus(game, players=gold)
     game.click(497, 553, 1.0)  # Begin
     game.move(*h3adv.PARK)
     # As `Game.wait` (E24 M1 T6b, the reviewer's R3-4): a game that exits says so, a display that
@@ -278,8 +285,9 @@ def started(map_path, run_dir, shipped=False, tries=2, seed=None, sound=False, g
     whose Wine exits at once, before the main menu, writing nothing (E24 M1 T4b saw it once in a
     set run, right after the game before it stopped). With `seed` (E24 M4 T1b1, a writer's
     map only) the random generator seeded just before Begin (`h3drive.to_scenario`). With `sound`
-    (E24 M4 T1b2) the game plays its sounds (h3drive's `sound`). With `gold` (E24 M4 T3b1, a
-    writer's map) that many players' starting bonus Gold (`h3drive.gold_bonus`): no artifact."""
+    (E24 M4 T1b2) the game plays its sounds (h3drive's `sound`). With `gold` (E24 M4 T3b1; a
+    shipped map's and an underground's too since T6, the reviewer's R6-1) that many players'
+    starting bonus Gold (`h3drive.gold_bonus`): no artifact."""
     if shipped and seed is not None:
         raise ValueError(f"{map_path}: a seed for a shipped map's start")
     for attempt in range(1, tries + 1):
@@ -287,7 +295,7 @@ def started(map_path, run_dir, shipped=False, tries=2, seed=None, sound=False, g
         game.start(map_path)
         try:
             if shipped:
-                to_shipped(game)
+                to_shipped(game, gold=gold)
             else:
                 h3drive.to_scenario(game, gold=gold, seed=seed)
             return game
@@ -334,16 +342,37 @@ SHIPPED_KEYS = {"map", "view", "explored", "hidden", "bonus", "players", "resour
                 "reselect", "pointer"}
 
 
-def check_situation(situation_path, sit):
+def check_situation(situation_path, sit, sequence=False):
     """What the harness stages that the viewer's parser does not check (E24 M1 T6b, the
     reviewer's R3-3, R3-11): a shipped map's situation only its keys (no heroes or boats to
     stage), `explored` only "start"; a boat's facing only on a boat no hero ends on (a boarded
-    boat faces as its hero)."""
+    boat faces as its hero). Since E24 M4 T6 (the reviewer's R6-1, R6-4, R6-5, R6-13): a shipped
+    map's `bonus` only "gold" and with `players` (its rows of the advanced options; none without
+    it), `players` only with it; `reselect` only after a `select` (`lists` has nothing to choose
+    back from otherwise); a hero's `diplomacy` and a Diplomacy in its `secondary` not both (two
+    levels for one skill); with `sequence` no `pointer` (the sequence's 0 parks the pointer,
+    `look_over_view`, so a still's pointer would only come back after a battle)."""
     if "map" in sit:
         extra = set(sit) - SHIPPED_KEYS
         if extra:
             raise ValueError(f"{situation_path}: a shipped map's situation has no "
                              f"{', '.join(sorted(extra))}")
+        players = sit.get("players")
+        if "bonus" in sit and (sit["bonus"] != "gold" or not isinstance(players, int)
+                               or isinstance(players, bool) or not 1 <= players <= 8):
+            raise ValueError(f"{situation_path}: a shipped map's `bonus` is \"gold\" with its "
+                             f"`players` (1 to 8): {sit['bonus']!r}, {players!r}")
+        if "players" in sit and "bonus" not in sit:
+            raise ValueError(f"{situation_path}: `players` without `bonus`")
+    if "reselect" in sit and not sit.get("select"):
+        raise ValueError(f"{situation_path}: `reselect` without a `select`")
+    for hero in sit.get("heroes", []):
+        if "diplomacy" in hero and any(s[0] == DIPLOMACY_SKILL for s in hero.get("secondary", [])):
+            raise ValueError(f"{situation_path}: the hero at {hero['at']}: `diplomacy` and a "
+                             "Diplomacy in its `secondary`")
+    if sequence and "pointer" in sit:
+        raise ValueError(f"{situation_path}: a sequence's situation has no `pointer` (its 0 "
+                         "parks the pointer: an input moves it)")
     if sit.get("explored", "start") != "start":
         raise ValueError(f"{situation_path}: `explored` is \"start\" or not given")
     ends = {tuple((h.get("walk") or [h["at"]])[-1]) for h in sit.get("heroes", [])}
@@ -400,12 +429,13 @@ def lists(game, mem, sit):
             # F5-6: seven empty slots were written while the parser saw nothing written).
             if hero.get("army"):
                 mem.write_army(mem.hero_record(index) + h3mem.ARMY, hero["army"])
+            # A level-up's offers (E24 M4 T2c, design §5.5): its secondary skills as given. First:
+            # it clears every level, Diplomacy's too (E24 M4 T6, the reviewer's R6-5).
+            if "secondary" in hero:
+                mem.write_secondary(index, hero["secondary"])
             # A monster's offer to join for gold (E24 M4 T2b1, design §5.4).
             if "diplomacy" in hero:
                 mem.write_diplomacy(index, hero["diplomacy"])
-            # A level-up's offers (E24 M4 T2c, design §5.5): its secondary skills as given.
-            if "secondary" in hero:
-                mem.write_secondary(index, hero["secondary"])
     for town in sit.get("towns", []):
         if town.get("built"):
             mem.write_town_built(town_index(mem, town["at"]))
@@ -555,16 +585,17 @@ def still(situation_path, out=None, keep=False):
     return compare(situation_path, out, cap)
 
 
-def stage(situation_path, out, seed=None, sound=False):
+def stage(situation_path, out, seed=None, sound=False, sequence=False):
     """Shows one situation in the original, up to its moment (E24 M2 T1a1: `capture`'s and
     `sequence`'s common part): its map written to `out` (`map.h3m`), the game started on it, the
     heroes walked, the explored tiles written, the view set, the path shown, the facings and the
     boats' colours written; the clock still running. Returns the game (the caller stops it; a
     failure here stops it first), its memory, the situation and the facings written
-    (`arrange`). With `seed` (E24 M4 T1b1) the new game starts from that seed (`started`)."""
+    (`arrange`). With `seed` (E24 M4 T1b1) the new game starts from that seed (`started`). With
+    `sequence` (E24 M4 T6) a sequence's situation (`check_situation`'s)."""
     out.mkdir(parents=True, exist_ok=True)
     sit = tomllib.loads(situation_path.read_text())
-    check_situation(situation_path, sit)
+    check_situation(situation_path, sit, sequence=sequence)
     # The towns' own names the situation writes into its map (E24 M4 T3b1): `status_toml` keeps
     # them as text, the situation's own (never the original's: ADR-0009).
     OWN_TOWN_NAMES.clear()
@@ -1165,7 +1196,8 @@ def cast_toml(mem, casting, t):
 
 def known_key(name):
     """Whether `name` is a key a sequence may press: a direction key, `ctrl+` before it or not,
-    a hotkey's letter or Space."""
+    a hotkey's letter, or one of OTHER_KEYS (Space, a message box's Return and Escape, the
+    level-up's offers 1 and 2)."""
     return (name.removeprefix("ctrl+") in DIRECTION_KEYS or name in HOTKEYS
             or name in OTHER_KEYS)
 
@@ -1335,12 +1367,14 @@ def sequence(entry, out):
     if not isinstance(sound, bool):
         raise ValueError(f"{entry['id']}: `sound` is true or false, not `{sound!r}`")
     (out / "sounds.txt").unlink(missing_ok=True)
-    game, mem, sit, turn = stage(situation_path, out, seed=seed, sound=sound)
+    game, mem, sit, turn = stage(situation_path, out, seed=seed, sound=sound, sequence=True)
     own = own_texts(sit)
     down = set()
     # Where the sequence holds the pointer (E24 M4 T5a): `h3adv.fight` parks it over the battle's
     # panel, and the map's mouse-over is redone where it stands once the map is back (0x419570).
-    pointer = tuple(sit["pointer"]) if "pointer" in sit else h3adv.PARK
+    # At 0 parked (`look_over_view` below; a sequence's situation has no `pointer`: E24 M4 T6,
+    # the reviewer's R6-4), then the last input's.
+    pointer = h3adv.PARK
     try:
         kept.mkdir(parents=True)
         # The objects' phases fixed (T1b): the load gives each a random one (design §1.6), and
@@ -1702,8 +1736,9 @@ def run_frames(rest):
     `clients/map/timelines/<id>.txt` (`ok`, `CHANGED`, `new`), and the viewer's frame at 0 against
     the original's (the live part at 0 is a still's: exact, as the capture set). A run as recorded
     or new and exact at 0 keeps its live part at 0 as `timelines/<id>-live.toml` (for the frame
-    check, M2 T2). Exit 1 unless every sequence is as recorded, its frame at 0 exact, its frames
-    as recorded and the viewer's timeline as recorded."""
+    check, M2 T2), a sequence of `sequences.toml` only and not a sound run (E24 M4 T6, R6-7: the
+    others' stays under `<out>/<id>/`). Exit 1 unless every sequence is as recorded, its frame at
+    0 exact, its frames as recorded and the viewer's timeline as recorded."""
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT_FRAMES
     reuse = "--reuse" in rest
@@ -1711,12 +1746,20 @@ def run_frames(rest):
     # in map/to-record.toml until T1b2 moved them), their frame check left out (`--no-check`).
     listed = (Path(rest[rest.index("--sequences") + 1]) if "--sequences" in rest
               else SEQUENCES)
+    committed = listed.resolve() == SEQUENCES.resolve()
     check = "--no-check" not in rest
     entries = tomllib.loads(listed.read_text())["sequence"]
     if only:
         entries = [e for e in entries if e["id"] == only]
         if not entries:
             sys.exit(f"no sequence `{only}` in {listed.name}")
+    # The frame check of a scripted sequence plays the engine's record (E24 M4 T6, the reviewer's
+    # R6-12): the binaries checked before any recording, not after it.
+    if check and any(e.get("script") for e in entries):
+        try:
+            check_engine()
+        except RuntimeError as err:
+            sys.exit(f"frames: {err} (or `--no-check`)")
     failed = 0
     for e in entries:
         here = base / e["id"]
@@ -1739,6 +1782,11 @@ def run_frames(rest):
             # takes it as its reference.
             why = "not as recorded" if verdict == "CHANGED" else "its frame at 0 not exact"
             print(f"{e['id']}: {why}, its live part not kept ({here})", flush=True)
+        elif not committed or e.get("sound", False):
+            # A scratch file's sequence or a sound run (E24 M4 T6, the reviewer's R6-7): no
+            # `drawn` visits a kept part of either, so it stays with the run.
+            why = "a sound run" if committed else f"not of {SEQUENCES.name}"
+            print(f"{e['id']}: {why}, its live part stays at {here / 'live.toml'}", flush=True)
         else:
             TIMELINES.mkdir(exist_ok=True)
             shutil.copy(here / "live.toml", TIMELINES / f"{e['id']}-live.toml")
@@ -1879,7 +1927,7 @@ def run_drawn(rest):
         try:
             write_map(situation_path, sit, here / "map.h3m")
             draw_ours(here / "map.h3m", sit, kept, here / "ours.png")
-        except RuntimeError as err:
+        except (RuntimeError, OSError) as err:  # OSError: the viewer missing (R6-12)
             print(f"{ident}: the viewer failed ({last_lines(err)})", flush=True)
             failed += 1
             broken += 1
@@ -1927,9 +1975,23 @@ def drawn_sequences(rest, base, record):
             if line and not line.startswith("#"):
                 ident, frame, digest = line.split()
                 recorded[(ident, frame)] = digest
+    # The engine's binaries checked once for the scripted ones (E24 M4 T6, the reviewer's R6-12):
+    # without them those are not drawn, said once; the others are.
+    engine_fault = None
+    if any(e.get("script") for e in entries):
+        try:
+            check_engine()
+        except RuntimeError as err:
+            engine_fault = str(err)
+            print(f"sequences: the scripted ones not drawn: {engine_fault}", flush=True)
     got, failed, broken = {}, 0, 0
     for e in entries:
         ident = e["id"]
+        if engine_fault and e.get("script"):
+            print(f"sequences/{ident}: not drawn (no engine binaries: above)", flush=True)
+            failed += 1
+            broken += 1
+            continue
         kept = TIMELINES / f"{ident}-live.toml"
         sit = tomllib.loads((SITUATIONS / f"{e['situation']}.toml").read_text())
         if not kept.exists() or tomllib.loads(kept.read_text()).get("situation") != \
@@ -1944,7 +2006,7 @@ def drawn_sequences(rest, base, record):
         here.mkdir(parents=True)
         try:
             said = ours_frames(ident, here, kept, scripted(e, here / "engine"))
-        except RuntimeError as err:
+        except (RuntimeError, OSError) as err:  # OSError: a binary missing (R6-12)
             print(f"sequences/{ident}: the viewer failed ({last_lines(err)})", flush=True)
             failed += 1
             broken += 1
@@ -1975,20 +2037,51 @@ def drawn_sequences(rest, base, record):
     return failed, broken
 
 
+# The engine's two binaries `engine` and a scripted sequence run (E24 M4 T3b1, T4a2).
+ENGINE_BINARIES = ("h3", "h3-server")
+
+
+def engine_dir():
+    """Where the engine's binaries are: the root workspace's `target/debug`, or H3_ENGINE."""
+    return Path(os.environ.get("H3_ENGINE", CLIENTS.parent / "target/debug"))
+
+
+def check_engine(sources=None):
+    """The engine's binaries checked once, before a command needs them (E24 M4 T6, the reviewer's
+    R6-12: a missing one stopped `drawn` and `engine` at their first use, a stale one showed as a
+    gap CHANGED): a missing one raises, saying how to build them; one older than the newest
+    source of the root workspace's crates (`sources`, its `.rs` and `Cargo.toml` files: a merge
+    of `master` or an edit since the build) is said on stderr, and the run goes on."""
+    where = engine_dir()
+    missing = [n for n in ENGINE_BINARIES if not (where / n).is_file()]
+    if missing:
+        raise RuntimeError(f"the engine's {' and '.join(f'`{n}`' for n in missing)} not in "
+                           f"{where}: build them first (from the repo's root, `cargo build "
+                           "--locked -p h3-cli -p h3-server`; H3_ENGINE names another folder)")
+    sources = CLIENTS.parent / "crates" if sources is None else Path(sources)
+    built = min((where / n).stat().st_mtime for n in ENGINE_BINARIES)
+    newest = max((p for pattern in ("*.rs", "Cargo.toml") for p in sources.rglob(pattern)),
+                 key=lambda p: p.stat().st_mtime, default=None)
+    if newest is not None and newest.stat().st_mtime > built:
+        print(f"warning: the engine's binaries in {where} are older than {newest}: build them "
+              "again if the engine changed (a stale record shows as a gap or a start CHANGED)",
+              file=sys.stderr, flush=True)
+
+
 def engine_game(here, script, name, seed=1):
     """The engine's whole game of `script` (its commands, one per line as `h3 adventure run
     --script` reads them) on `here/map.h3m` under the engine's `seed` (E24 M4 T4b1; 1 the
     engine's own), recorded (`<name>.toml`) and turned into the players' records by `h3-server
-    record` (the root workspace's `target/debug`, or H3_ENGINE): returns the viewer's
-    (`<name>.player-0.jsonl`; E24 M4 T3b1, T4a2)."""
-    engine_dir = Path(os.environ.get("H3_ENGINE", CLIENTS.parent / "target/debug"))
+    record` (the root workspace's `target/debug`, or H3_ENGINE: `engine_dir`): returns the
+    viewer's (`<name>.player-0.jsonl`; E24 M4 T3b1, T4a2)."""
+    engine = engine_dir()
     packs = CLIENTS.parent / "packs"
     (here / f"{name}.txt").write_text("".join(f"{line}\n" for line in script))
     # A replay names its map relative to its root: both run in `here`.
-    for args in [[engine_dir / "h3", "adventure", "run", "--map", "map.h3m", "--packs-dir",
+    for args in [[engine / "h3", "adventure", "run", "--map", "map.h3m", "--packs-dir",
                   packs, "--script", f"{name}.txt", "--record", f"{name}.toml",
                   "--seed", str(seed)],
-                 [engine_dir / "h3-server", "record", f"{name}.toml", "--packs-dir", packs,
+                 [engine / "h3-server", "record", f"{name}.toml", "--packs-dir", packs,
                   "--root", ".", "--out", "."]]:
         done = subprocess.run([str(a) for a in args], capture_output=True, text=True, cwd=here)
         if done.returncode:
@@ -2031,12 +2124,20 @@ def run_engine(rest):
                if "engine" in e and (only is None or e["id"] == only)]
     if only and not entries:
         sys.exit(f"no situation `{only}` with an `engine` entry (set.toml)")
+    try:
+        check_engine()
+    except RuntimeError as err:
+        sys.exit(f"engine: {err}")
     failed = 0
     for e in entries:
         ident, expected = e["id"], e["engine"]
         kept = SITUATIONS / "kept" / f"{ident}.toml"
         situation_path = SITUATIONS / f"{ident}.toml"
         sit = tomllib.loads(situation_path.read_text())
+        if not kept.exists():
+            print(f"{ident}: no kept live part (`set --only {ident}`)", flush=True)
+            failed += 1
+            continue
         if tomllib.loads(kept.read_text()).get("situation") != situation_digest(sit):
             print(f"{ident}: STALE (`set --only {ident}`)", flush=True)
             failed += 1
@@ -2044,18 +2145,26 @@ def run_engine(rest):
         here = base / ident
         shutil.rmtree(here, ignore_errors=True)
         here.mkdir(parents=True)
-        engine_map(situation_path, sit, here)
-        record = engine_game(here, [], "start")
-        vx, vy, vz = sit["view"]
-        common = [MAP_VIEW, "render", here / "map.h3m", "--view", f"{vx},{vy},{vz}", "--live",
-                  kept, "--record", record]
-        check = subprocess.run([*map(str, common), "--check"], capture_output=True, text=True)
-        text = (check.stdout + check.stderr).strip()
-        differs = [] if check.returncode == 0 else text.split(f"{kept}: ", 1)[-1].split("; ")
-        hidden = [a for rect in sit.get("hidden", []) for a in ("--hidden", ",".join(map(str, rect)))]
-        run(*common, "--bugs", "original", *hidden, "--out", here / "engine.png")
-        draw_ours(here / "raw.h3m", sit, kept, here / "ours.png")
-        pixels = differing_pixels(here / "engine.png", here / "ours.png", panel_rects())
+        # A failure fails this start alone (E24 M4 T6, the reviewer's R6-12): the others run.
+        try:
+            engine_map(situation_path, sit, here)
+            record = engine_game(here, [], "start")
+            vx, vy, vz = sit["view"]
+            common = [MAP_VIEW, "render", here / "map.h3m", "--view", f"{vx},{vy},{vz}",
+                      "--live", kept, "--record", record]
+            check = subprocess.run([*map(str, common), "--check"], capture_output=True,
+                                   text=True)
+            text = (check.stdout + check.stderr).strip()
+            differs = [] if check.returncode == 0 else text.split(f"{kept}: ", 1)[-1].split("; ")
+            hidden = [a for rect in sit.get("hidden", [])
+                      for a in ("--hidden", ",".join(map(str, rect)))]
+            run(*common, "--bugs", "original", *hidden, "--out", here / "engine.png")
+            draw_ours(here / "raw.h3m", sit, kept, here / "ours.png")
+            pixels = differing_pixels(here / "engine.png", here / "ours.png", panel_rects())
+        except (RuntimeError, OSError) as err:
+            print(f"{ident}: FAILED ({type(err).__name__}: {last_lines(err)})", flush=True)
+            failed += 1
+            continue
         got = {"differs": differs, "pixels": pixels}
         want = {"differs": expected.get("differs", []), "pixels": expected.get("pixels", 0)}
         verdict = "as expected" if got == want else f"NOT as expected (want {want})"

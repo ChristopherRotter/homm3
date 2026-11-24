@@ -240,8 +240,39 @@ fn every_def_with_the_frames_the_view_draws() {
         .collect();
     // The heroes' and boats' DEFs after the rest, each drawn in the facings' five groups.
     let heroes = HERO_CLASSES + COLOURS + 2 * BOAT_TYPES + BOAT_TYPES * COLOURS;
-    // Then the towns' pictures, one frame of one group each (E24 M1 T5b1).
-    assert_eq!(needs.len(), 9 + heroes + 3 * FACTIONS);
+    // Then the towns' pictures, one frame of one group each (E24 M1 T5b1); since E24 M4 T6 (the
+    // reviewer's R6-2) the finds' ten pictures, each with the frames its types draw (no asks'
+    // here: no monster's attack).
+    let towns = 9 + heroes + 3 * FACTIONS;
+    assert_eq!(needs.len(), towns + 10);
+    assert_eq!(
+        needs[towns..],
+        [
+            ("resour82.def", "find resources", None, 7),
+            ("artifact.def", "find artifacts", None, 8),
+            ("spellscr.def", "find spells", None, 1),
+            ("crest58.def", "find crests", None, COLOURS),
+            ("ilck82.def", "find luck", None, 5),
+            ("imrl82.def", "find morale", None, 5),
+            ("pskill.def", "find skills", None, 6),
+            ("secsk82.def", "find secondary", None, 1),
+            ("twcrport.def", "find creatures", None, 1),
+            ("resource.def", "find gold", None, 7),
+        ]
+    );
+    // The shipped tables': a monster's attack too, the last artifact the tables name its own.
+    let text = include_str!("../../../../map/assets/base.toml");
+    let shipped = load(&[parse(text).unwrap()], "base").unwrap();
+    let frames = |what: &str| {
+        shipped
+            .defs()
+            .into_iter()
+            .find(|n| n.what == what)
+            .map(|n| (n.name, n.frames))
+    };
+    assert_eq!(frames("attacking"), Some(("avwattak.def".into(), 1)));
+    assert_eq!(frames("find artifacts"), Some(("artifact.def".into(), 135)));
+    let needs = &needs[..towns];
     assert!(defs[..9].iter().all(|n| n.groups == 1));
     assert!(defs[..9].iter().all(|n| n.walking.is_empty()));
     // Each also in a step's walking groups 5 to 9, 8 frames each (E24 M2 T3b).
@@ -251,9 +282,14 @@ fn every_def_with_the_frames_the_view_draws() {
             .all(|n| n.groups == 5 && n.frames == 1 && n.walking == (5..10) && n.walk_frames == 8)
     );
     assert!(
-        defs[9 + heroes..]
+        defs[9 + heroes..towns]
             .iter()
             .all(|n| n.groups == 1 && n.frames == 1 && n.walking.is_empty())
+    );
+    assert!(
+        defs[towns..]
+            .iter()
+            .all(|n| n.groups == 1 && n.walking.is_empty())
     );
     assert_eq!(
         [&needs[9 + heroes], needs.last().unwrap()],
@@ -295,9 +331,17 @@ fn every_def_with_the_frames_the_view_draws() {
         [
             "CLRRVR.DEF",
             "COBBRD.DEF",
+            "CREST58.DEF",
             "DIRTTL.DEF",
             "EDG.DEF",
+            "ILCK82.DEF",
+            "IMRL82.DEF",
+            "PSKILL.DEF",
             "RADAR.DEF",
+            "RESOUR82.DEF",
+            "RESOURCE.DEF",
+            "SECSK82.DEF",
+            "SPELLSCR.DEF",
             "WATRTL.DEF"
         ]
     );

@@ -1,6 +1,6 @@
-# E24 — archive: M1 (stills of the map view), M2 (the map moving), M3 (the adventure screen) and their review lists
+# E24 — archive: M1 (stills of the map view), M2 (the map moving), M3 (the adventure screen), M4 (the engine's games shown) and their review lists
 
-Moved out of `E24-map-client.md` on 2026-10-24, verbatim: milestone M1's task list and the review lists. M2's section and its review list moved on 2026-10-28 (M2 T6b2c), verbatim; M3's on 2026-10-31 (M3 T7c2), verbatim, at the end.
+Moved out of `E24-map-client.md` on 2026-10-24, verbatim: milestone M1's task list and the review lists. M2's section and its review list moved on 2026-10-28 (M2 T6b2c), verbatim; M3's on 2026-10-31 (M3 T7c2), verbatim; M4's on 2026-11-23 (M4 T6), verbatim with T6's additions to its review list, at the end.
 
 ### M1 — stills of the map view
 
@@ -667,3 +667,441 @@ and by the asset tables' name in the battle client, stand until a translation ne
   model without the focus. Not built: the window's wait for a music fade at the focus's loss
   (MCL-Q26), the system's cursor without the focus (the window keeps its own), the videos. Nothing
   stops the steps a held key queued, Space included: MCL-Q25.
+
+### M4 — the engine's games shown (refined 2026-10-31, M4 T0, with the user)
+
+A whole game the engine played, shown in the window as the original shows it to one player: the
+original's own reactions to a game's events read and recorded first (its memory the live part,
+as in M1 to M3), then the engine's records as the input, through `h3-protocol` (ADR-0020 point
+8); its battles handed to the battle client's viewer in the same window.
+
+- **Scope:** **Part A, the original's reactions, no engine needed:** the turn's change (T1: End
+  Turn's action and its question when a hero can still move; the turn's end and the next
+  player's start; the new day's, week's and month's steps and messages; another player's turn,
+  the status window's kind 5, `AdStatNx.pcx`, the hourglass, 0x453250, with its tile, hint and
+  cursors, 0x40DEB0; a computer player's moves where the viewer sees them); a visit's results
+  (T2: the adventure's message box, its text, pictures, buttons and sounds, for the finds and
+  questions the engine's visits make, the level-up's choice among them; a resource found, kind
+  6, 0x451220, 5 seconds; a text, kind 7, 0x451820, design §4.8; an object taken, the map, the
+  minimap and the panels redrawn; a flag raised; a boat boarded and left; a spell cast on the map
+  recorded, MCL-Q14; a monster beaten moved to T5 by the user at T2d's start). **Part B, the engine's games through the protocol's
+  whole-game record:** a record's start (T3: the static art from the map it names, the live part
+  from its first observation: each object by its identity, a random object's type, the owners,
+  the heroes, the boats, the explored tiles, the kingdom, a hero's status, the hover's facts; a
+  town's own name from the map); a record played over time (T4: each event as Part A built it,
+  the walks along the engine's paths as M2's, the record's answers in its boxes, the viewer's
+  controls). **Part C:** the battles handed over and back (T5; a monster beaten, the map after a
+  battle won, with them). The closure (T6). **Not in M4:**
+  the hero, town, meeting and kingdom-overview screens, the quest log and every dialog but the
+  message boxes (M5); play (M5); a spectator's view; shipped maps with towns (E09: of the 160,
+  the engine plays 8 whole, 128 stop at a hero generated at a main town; M4's games are on those
+  8 and the writer's maps); a loaded saved game's draw lists (the objects gone before the save:
+  not read, M1 T6b).
+- **Decisions (the user, M4 T0, 2026-10-31; every recommendation taken):**
+  - **The input through the protocol, the server lane first** (ADR-0020 point 8 kept): the
+    viewer plays `h3-protocol`'s whole-game messages, and an engine replay becomes a record by
+    running the protocol's session in-process, as `h3-view render` does for a battle. The
+    protocol has none yet (it does not depend on `h3-game`): the server lane builds the whole
+    game's wire messages, a session hosting one game in-process and its per-viewer record first,
+    as the start of E16 M5, refined with the user there (its inbox lists this lane's needs);
+    Part A, which needs no engine, runs meanwhile. Rejected: the engine read directly with
+    ADR-0020 amended (two input paths until the protocol's), this lane writing the protocol's
+    adventure part (the server lane's crate).
+  - **One player's view:** a record shows the game as the original shows it to that record's
+    player: its fog, its own turns as played (the walks along the engine's paths, its message
+    boxes with the answers the record holds), the other players' turns as the original shows a
+    computer player's (the status window's kind 5, their moves where the player sees them). A
+    spectator's view later (`h3_game::Viewer`'s spectator, the server lane's).
+  - **The message boxes only:** the adventure's message boxes and questions (a find, a guard's
+    question, the week's and month's messages, a level-up's choice), each with the answer the
+    record holds, as the original shows them to that player; the hero's, a town's, a meeting's
+    and the kingdom overview's screens stay M5's.
+  - **The battles in the same window:** the battle client's viewer draws a battle of the game in
+    the map viewer's window, as the original switches screens, and hands back with the result
+    applied on the map. The client lane turns its battle window into a library entry the map
+    viewer hosts (its inbox); built late in M4 (T5).
+  - **From M3's answers:** MCL-Q15 (b), since the engine's treasury reaches 2³¹ − 1
+    (`h3_adventure::MAX_GAIN`), past the bar's seven digits: the client writes a wider amount so
+    that it fits, its form a review item, the original's behind `--bugs original` (T3); MCL-Q21
+    (b): a map whose hints would name nothing is refused at the engine's import (the adventure
+    lane's inbox has the cases) and at the viewer's load (T3); MCL-Q14: a cast recorded in the
+    original first (T2), the fix if the stale bar shows.
+- **Recorded and compared as M1 to M3:** Part A's new situations and sequences exact on the whole
+  screen (`drawn` with them); Part B: the engine's start drawn as the original's on the maps both
+  play, and scripted games (the same commands, no random draw between them) played in the engine
+  and in the original compared frame by frame, the original's visual moment (the objects'
+  phases, the clock) taken from its recording.
+- **Tasks** (the queue has each in full): T0, M4 refined (**done** 2026-10-31); T1, the turn's
+  change, cut in two by the user at its start (2026-11-16): T1a, the turn's end and the next day
+  (End Turn and its question, the new day, week and month and their messages: the first message
+  box; **done** 2026-11-17, the log's "M4 T1a"), T1b, a computer player's moves in sight with
+  the status window's kind 5, cut in two by the user at its start (2026-11-17): T1b1, the reading
+  and the recordings (**done** 2026-11-17, the log's "M4 T1b1"), T1b2, the viewer playing them
+  (**done** 2026-11-17, whole: the user kept it uncut; the log's "M4 T1b2");
+  T2, a visit's results, cut in four by the user at its start (2026-11-17, by dialog family):
+  T2a, the finds told (the box with pictures, the status window's kinds 6 and 7, the turn's two
+  boxes T1a left), cut again at its start (the agreed fallback): T2a1, the reading and the
+  recordings (**done** 2026-11-17, the log's "M4 T2a1"), T2a2, the viewer (**done** 2026-11-18,
+  whole: the user kept it uncut; the log's "M4 T2a2"); T2b, the questions and
+  choices, cut in two by the user at its start (2026-11-18, as T2a): T2b1, the reading and the
+  recordings (**done** 2026-11-18, the log's "M4 T2b1"), T2b2, the viewer (**done** 2026-11-18,
+  whole: the user kept it uncut; the log's "M4 T2b2"); T2c, a level-up's choice (**done**
+  2026-11-18, whole: the user kept it uncut; the log's "M4 T2c"), T2d, the map changed by a
+  visit, cut in three by the user at its start (2026-11-18, by family; "a monster beaten" moved to
+  T5): T2d1, a flag raised (**done** 2026-11-18, the log's "M4 T2d1"), T2d2, a boat boarded and
+  left (**done** 2026-11-19, whole; the log's "M4 T2d2"; MCL-Q35), T2d3, a spell cast on the map
+  (**done** 2026-11-19, whole: Summon Boat, the user's choice; the log's "M4 T2d3"; MCL-Q14 seen);
+  T3, a record's start, cut in two by the user at its start (2026-11-19, the map's view first):
+  T3a, the record read and the map view's live part (**done** 2026-11-19, whole; the log's "M4
+  T3a", design §5.9; `MCL-STUB-1`), T3b, cut in two by the user at its start
+  (2026-11-19, the panels first; a fact the record lacks an `MCL-Q<n>`, never a rule copied):
+  T3b1, the panels' live part (the kingdom, the status window, a town's own name, MCL-Q15 (b))
+  on the whole screen (**done** 2026-11-19, whole; the log's "M4 T3b1", design §5.10; MCL-Q36);
+  T3b2, the hover's facts, a town's picture by its buildings and the shipped
+  maps (**done** 2026-11-19, whole: the user kept it uncut; the log's "M4 T3b2", design §5.11;
+  MCL-Q37, MCL-Q38); the object identity asked of the adventure lane withdrawn by the user (the same day,
+  the server lane's note of 2026-11-12: the view's objects in tile order, found by type and
+  anchor; an object added in play, T4's, drawn after the file's), a random artifact's drawn
+  artifact still asked (the view names none); T4, a record played, cut in three by the user at
+  its start (2026-11-19, by event family): T4a the viewer's own turns, cut again at its start (the
+  agreed fallback): T4a1, the reading and the recordings (**done** 2026-11-19; the log's "M4
+  T4a1", design §5.12; MCL-Q39, MCL-Q40), T4a2 the viewer (**done** 2026-11-20, kept whole by
+  the user: the log's "M4 T4a2", design §5.13; the three games exact but the listed gaps of
+  MCL-Q39 and MCL-Q40); T4b the visits, cut in two by the user at its start (2026-11-20, by
+  family): T4b1 the message boxes (the finds, the questions, the level-ups; **done** 2026-11-20,
+  whole: the log's "M4 T4b1", design §5.14; MCL-Q41, MCL-Q42), T4b2 the flags and the boats
+  (**done** 2026-11-20, whole: the log's "M4 T4b2", design §5.15; both games exact, no gap);
+  Summon Boat moved out of T4b (the engine casts no adventure spell yet); T4c the other
+  players' turns, the viewer's controls and a golden replay (**done** 2026-11-20, kept whole by
+  the user: the log's "M4 T4c", design §5.16, §5.17; `game-ai` exact but MCL-Q43's gaps; ten
+  golden replays viewed to their end; MCL-Q43 to MCL-Q45); T4c2 a computer's boat in sight
+  (**done** 2026-11-21, whole: the log's "M4 T4c2", design §5.18; `game-ai-boat` exact but
+  MCL-Q43's and MCL-Q46's gaps; MCL-Q46); the kept live parts' message texts
+  as labels first (ADR-0009, found at T4a1, the user: none new meanwhile; **done** 2026-11-20,
+  whole: the log's "M4, the labels"); T5, the battles handed over (the client lane's entry
+  complete), cut in two by the user at its start (2026-11-21, the reading first): T5a, the
+  reading and the recordings (**done** 2026-11-21: the log's "M4 T5a", design §5.19; the
+  harness's battle step; `battle-won`, `battle-mine`, `battle-retreat` in `to-record.toml`;
+  MCL-Q47), T5b, the viewer, cut in two by the user at its start (2026-11-21, the hosting first;
+  the crate structure: `h3-map-view`'s binary depends on `h3-battle-client`, design §5.20): T5b1,
+  the window hosting a record's battles, the map's sound on `HostSound` (**done** 2026-11-21: the
+  log's "M4 T5b1", design §5.20; `MCL-STUB-3`), T5b2, the switch and the result as the original's
+  (**done** 2026-11-21, kept whole by the user: the log's "M4 T5b2", design §5.21; T5a's three
+  in `sequences.toml` as scripted games, every timeline as recorded; MCL-Q48, MCL-Q49); T6, M4's
+  closure (**done** 2026-11-23, whole: the user declined a cut, the work spread over six
+  reviewer and six fixer sub-agents; the log's "M4 T6"). A task that grows is cut at a seam agreed with the user.
+- **Exit:** Part A's situations and sequences exact on the whole screen (or each difference an
+  `MCL-Q<n>`); the engine's starts and scripted games equal to the original's frames; a golden
+  adventure replay, as the protocol's record, viewable from start to end in the window with its
+  message boxes and its battles; M4's review list accepted; a hand test on the user's machine
+  (the map's sound by ear on a whole map, the user at M2 T4b2: the transitions sounded unclean;
+  MCL-Q11's `HORSE20` to `HORSE29` listened to for its (c)).
+
+## M4's review list
+
+The M4 review list starts here (the autonomy contract's "queue for the milestone review").
+
+- **M4 T1b2, speed 4's single draws on the window's clock** (*provisional*): a computer's steps
+  at Computer Walk Speed 4 take no time on the map's clock (the original draws each once with no
+  wait, as fast as it can); the window shows each for 20 ms of its own clock (`HOLD_MS` in the
+  binary's `window.rs`), the map's clock held at their millisecond meanwhile, then the
+  millisecond's own change. A recording gives no steps inside End Turn's millisecond, so only
+  the engine's records (Part B) or a hand-made sequence show it (the T1b2 check used `ai-walk`'s
+  walk at speed 4 in a scratch map folder).
+- **M4 T1b2, a computer's turn from a recording** (*provisional*): its walk is the recorded
+  timeline's `hero` lines in its turn (one hero; several, or a hero of another level, refused);
+  the turn tables' standing heroes matched to the map's by owner and class (two alike refused, a
+  boat's move refused); its sounds and music (`AITheme0`–`2`, the steps' sounds) not played;
+  input during it dropped, the mouse's point taken; kind 5's step at every step's start, its
+  50 ms deciding (which call steps it is not read); the busy cursor's hot spot the default
+  cursor's (never drawn: hidden from the first seen step); the cursor's type set back to the
+  adventure arrow's at the turn's end; the redraws missed caught up there before the next day's
+  whole redraw (recorded, not read).
+
+- **M4 T4c, the record player** (*provisional*; design §5.17; corrected at T6, R2-2): a record
+  without a recording played by its own commands, each after 400 ms of the map waiting (a walk's
+  hero chosen, its path walked 400 ms later; End Turn's key held 60 ms); a box that takes an
+  answer (a question, a choice, a level-up, End Turn's question) gets the record's next answer
+  when it is one, the commands before it the map does not show passed over: an offer's yes Enter
+  and no Escape, a level-up its key, a choice its picture clicked at its middle with the pointer
+  back in that millisecond then Enter, a School left Escape; any other box Enter; a town's, a
+  hero's, an army's and a battle's commands not shown (a battle's taking no map time since T6);
+  the view at the start centred on the selected hero, the original's default speeds, Move
+  Reminder on.
+- **M4 T4c, the playback keys** (new design): Ctrl+F2 twice as fast up to 8 times, Ctrl+F3 half
+  as fast, Ctrl+F4 on to the next input (`keys::Playback`, the map viewer's own; the clock's rate
+  in `h3_ui::clock`, additive); the window's own pause, a frame on and restart as for a sequence.
+- **M4 T4c, a computer's turn's music** (*provisional*): `AITheme0` to `AITheme2` taken in turn by
+  the turn's place (the original draws one at random); the queued step sound's wrap during a
+  computer's walk as the human's (pass 9 during it not read); kind 5's step at a computer's pickup
+  (recorded, its caller not read).
+- **M4 T4c2, the objects' steps in a computer's turn** (*provisional*; design §5.18): the turn's
+  end steps them once when due, then the deadline at least a step on from the clock (recorded,
+  not read: `game-ai-boat`'s next step at 2960 after one at 2780, where `view_show_step`'s rule
+  leaves the deadline at the clock); the hero before put back as the next is chosen steps them
+  (`game-ai`'s 1180); the move's last step's own step read. Replaces T1b2's catch-up of every
+  step missed.
+- **M4 T4c2, a computer's step after its boarding in its walk** (*provisional*, not recorded: the
+  Admiral's Hat's points): the hero lifted and the view drawn without a human's path.
+- **M4 T4c2, MCL-Q46 (c)** (*provisional*): another player's pickup without a step in sight taken
+  off the map as the next turn the record shows starts, nothing shown.
+
+- **M4 T2a2, a find's facts without the engine** (*provisional*; design §5.3, *Built*): a
+  sequence's finds take their facts from the map and the live part (the Windmill's, the Witch
+  Hut's and a Shrine's from the entrance words, the Stone's, the Axis's and the Temple's visits
+  from the marks, a known skill or spell from the contents, else not known); the Learning Stone's
+  1 000 from the tables (no Learning known); a Spell Book and Wisdom taken as present; the days
+  without a town −1 at 0; ArrayTxt 129 at one day left (not read); the selection's window built
+  again at the days left's close (recorded, not read); the crest's caption's first letter
+  upper-cased (PlColors' "red" shows "Red"; the loader not read). M4's Part B (T3, T4)
+  takes the facts from the engine's events instead.
+- **M4 T2a2, an object taken** (*provisional*): the pickup's sound `pickup01` to `pickup07` in
+  turn (the viewer's own draw, not the game's roll at 0x4A4D18; no frame shows it); a step onto a
+  pile or an artifact as recorded (the hero beside it, its points spent; a key's step only, a
+  path's walk onto one not built); an artifact picked up taken as worn, its primary skills from
+  the tables' `artifact_skills` (the packs' effects) for the hero's window; the event told once,
+  its scenario test after its boxes (guards and a text alone not built); kind 6's places from
+  `resour82.def`'s 82 × 93; the window uploads a dissolve's frame whole; the Magic Well from the
+  reading alone (its maximum without Intelligence, its points not on the panels).
+- **M4 T2b1, the harness's writes** (*provisional*; design §5.4): the words the map's load draws
+  written into the game after the staging (a monster's aggression, a chest's gold, a Tree's
+  price), and a hero's Diplomacy as its level alone, without a skill slot (what a monster's
+  answer reads; no screen of M4 shows the hero's skills), so that each question shows without a
+  seed's search.
+
+- **M4 T2b2, a question's facts without the engine** (*provisional*; design §5.4, *Built*): as
+  T2a2's finds, each question's facts come from the map and the live part at 0 (`asks::Ask::of`):
+  a dwelling's guards and hire a new game's (its growth from `CRTRAITS.TXT`; guards three weeks'
+  for a creature of level 5 or more, the levels the tables' `[map.asks]`, read from the
+  executable's `creature_table`); a monster's offer decided in integers (the hero's power, the
+  strength step, the sympathy pairs 2 n and 2 n + 1 below 112 without Conflux's, Normal's
+  difficulty, the Diplomacy the situation's: the game's float factor and 32-bit sum not
+  reproduced); a Border Guard's key from the Tents' marks; a chest's experience its gold less 500
+  (no Learning known); the Tomb's morale lost at its first search. M4's Part B (T3, T4) takes them
+  from the engine's offers and choices instead.
+- **M4 T2b2, the answers' ends** (*provisional*): a question answered tells nothing at a later
+  visit; a declined question from beside ends the step at its close; an answer not built is
+  refused in a recording and acts as the Cancel live; the status window built again before the
+  hire's question as before the guards'; GENRLTXT 424's singular for one creature (not recorded);
+  Pandora's reward boxes in the event's layout, the gain shown before the Box is taken;
+  `killfade.82M` a removal sound beside the pickups; a monster drawn as its attack
+  (`avwattak.def`) only when visited from beside.
+- **M4 T2b2, the choices** (*provisional*): a picture chosen at the press (the frame's own message
+  not read); the "or" an item of its own (id 0xFEFF); choice frames in styles 7 and 10 alone; a
+  visit on its entrance looks at the mouse again as a step's end does (its place in
+  `hero_move_step` not read); the tables' `chest`, `arena`, `school`, `school_price`.
+- **M4 T2b2, the cursor after a walk from the recording** (*provisional*): over the view after a
+  walk the original's cursor is the tile's (the pathfinder's reach), which the viewer has not (the
+  arrow: TRAPS, "After a walk the mouse-over has no reach"); a sequence takes that cursor's frame
+  from its recorded timeline (`Start::reached`, as `Start::points` the points since M3 T4b), so
+  four of the six choices (`choose-chest`, `-chest-gold`, `-arena`, `-school`) check only when it
+  changes. Live the arrow. The engine's reach (Part B) replaces it; the alternative, re-recording
+  them with the mouse moved off the view before the box closes.
+- **M4 T2c, a level-up's facts without the engine** (*provisional*; design §5.5, *Built*): the
+  levels a visit's experience reaches from the tables' thresholds and the situation's experience
+  (none given: no level, a new game's draw not known; the hero selected at 0 alone), each level's
+  facts (the primary skill, the offers) from the live part's `[[level_up]]` tables in order (the
+  primary skill read as the third picture from the end: the harness's item order); the dialog
+  shown after a find's boxes, an answer's gain or a chest's dissolve (`Reply::after`,
+  `Answer::after`); the offer learned shown only where the status window shows it (Leadership's
+  morale, Luck's luck: the tables' list). M4's Part B (T3, T4) takes the facts from the engine's
+  `LevelUpView` instead.
+- **M4 T2c, the dialog's input** (*provisional*): an offer chosen at the mouse's press (as the
+  choice boxes'); the keys 1 and 2 bound in the box's context alone (`offer-left`,
+  `offer-right`); a box's close (every box's) keeps the cursor where the mouse manager last drew
+  it until the next poll (recorded: `level-up-right` at 2000 and 2013). Not built: the Tree of
+  Knowledge's level (its OK), a battle's (T5), the offers' right-click popups, the deadline and the
+  computer's choice.
+- **M4 T2c, the harness's secondary skills** (*provisional*; design §5.5): a hero's eight skills
+  written after the staging (every level and slot cleared first, no selection), so that a level
+  offers one advance or none without a seed's search; they and the type's cleared must not change
+  the morale or luck the status window shows (TRAPS).
+- **M4 T2d1, a flag raised** (*provisional*; design §5.6, *Built*): the flag raised after a find's
+  first boxes and before its question, a dwelling's only without guards (its creature below level
+  5); of `visit_and_update`'s redraws the minimap alone (nothing else changes in the recordings);
+  the reveal of radius 3 and the scenario's test left out (nothing shows); the hint and cursor over
+  the object after its visit still the owners at 0; an abandoned mine without guards keeps its
+  question (its record not read); the mines' incomes as the tables' `mine_income`.
+- **M4 T2d2, a boat boarded and left** (*provisional*; design §5.7, *Built*): the hero turned to
+  the step at the boarding's start (both recorded heroes faced it already); a key's step's own
+  path drawn as one arrow (1) on its tile in the lift's whole-screen show; points 0 at either
+  visit and the hero unable to move (the Admiral's Hat not built, not recorded); MCL-Q35 as the
+  original's in both profiles; the key step's tail (`stuck`) after a boat's visit alone, its
+  second view draw taken for the list's dialog redraw (0x4033EA not read); left out: the
+  mouse-over's boats (the live part's at 0), a computer's boarding or landing, a find on the
+  tile landed on.
+- **M4 T2d3, a spell cast on the map** (*provisional*; design §5.8, *Built*): the spell book left
+  to M5 (no screen compared while it shows; its inputs dropped but the click that closes it);
+  Summon Boat alone, from the live part's `[[cast]]` table (the engine has no adventure spells
+  yet); the wait for its sound not built (with sound the original's cast ends 936 ms later); the
+  window's cast button does nothing; MCL-Q14's fix (the slot shown whole) under `Bugs::Fixed` on
+  every slot draw, not only after a cast; the harness's `[[cast]]` table and a hero's `spells`.
+
+- **M4 T3a, a record's start as a capture's live part** (*provisional*; design §5.9): the
+  engine's start turned into `live.toml`'s table (the original's memory's terms: the copy's DEF
+  names, classes, colours), applied by the binary as a capture's; T4 folds the record's events
+  into `Live` itself.
+- **M4 T3a, the library's engine dependencies** (*provisional*): `h3-map-view`'s pure library
+  names `h3-protocol`, `h3-game`, `h3-adventure` and `h3-kernel` (all `no_std`, already in the
+  workspace; its purity test's allowlist), the binary `h3-files`; its own small record reader
+  beside `h3_view::game_record`'s (no dependency on the client lane's crate).
+- **M4 T3a, the objects matched** (*provisional*): type, anchor and masks, else a random type at
+  the anchor (a random dwelling one column left too); an object the file does not hold refuses
+  the whole record; a hero faces right at the start; an object out of sight keeps the file's
+  owner.
+- **M4 T3a, `render --record` and `--check`** (*provisional*): the options' names and messages;
+  `--packs` the repository's by default; `--check` compares only what the start says.
+- **M4 T3b1, MCL-Q15 (b)'s form** (*provisional*; design §5.10): an amount of more than seven
+  characters whole in `tiny.fnt` (the layout's items 1016 to 1022, centred on the line), the
+  original's cut behind `--bugs original`; the executable's own `%dk` in thousands was the other
+  form (it passes the box from a thousand million).
+- **M4 T3b1, the panels from a record** (*provisional*): the heroes in their types' order at a
+  start (every capture's), the towns in the view's order (`shipped-hoard`'s is not: T3b2), the
+  first hero selected; an unnamed town named by its faction's first name (the original draws one);
+  a town's window's buildings only its hall and fort (all it draws); a silo the income's resources
+  but gold; morale and luck 0 and a hero able to move while it has points (MCL-Q36).
+- **M4 T3b1, the harness's staging for the engine's starts** (*provisional*): `map_army`, a
+  hero's and a town's `name` in the map; `bonus = "gold"` and the engine's `resources` written,
+  shown by `select` then `reselect`; `h3map.py engine` and `set.toml`'s `engine` entries (the
+  differences and pixels expected).
+- **M4 T3b2, the hover's facts from a record** (*provisional*; design §5.11): a monster's count
+  written as its word's first count, a mine's guards of several creatures as one stack of
+  `hover::SEVERAL` (the live part's format, the view giving words and a creature only); a town's
+  name in `[hover]` its text where the engine's view gives one, a capture's 65535 named from the
+  map (`MapArt::town_names`); the visits' marks by the view's kind marks, the selected hero's
+  marks (object, type, once-mark) and the player's learnt and weekly marks, per §4.11's class
+  rules (only a start's, nothing visited, compared); the cursor's facts left out (MCL-Q37).
+- **M4 T3b2, the comparisons** (*provisional*): a record's mouse-over compared with a capture's
+  over every explored tile (the hint's text, the cursor's frame and action; five tiles named); a
+  still's `pointer` over the view (inside a drawn tile off the scroll zones), its tile's cost read
+  first; a shipped situation's staging keys (`bonus` with `players`, `resources`, `select`,
+  `reselect`, `pointer`); the two shipped starts' level-up draws listed as differences, not
+  staged.
+- **M4, the kept texts' labels** (*provisional*; the runbook's "The kept texts as labels"):
+  `h3lod.label`'s form (`[TABLE:record]` for a text one record formats, its conversions only
+  numbers and names, the names' tables and fields of `NAME_FIELDS`; piece by piece else, numbers
+  and punctuation kept, `[other: n characters]`, `[the map's text]`); the labels take no
+  arguments (the viewer reads none; the record names the message); the guard a client test
+  (`h3-map-view`'s `tests/texts.rs`: the grammar, no original data needed, so CI runs it).
+- **M4 T4a1, the scripted games' form** (*provisional*; design §5.12): a sequence's `script`, the
+  engine's commands of the same game as `h3 adventure run --script` reads them, written by hand
+  from the original's walk (its recorded `hero` lines) and checked against the engine's record
+  (the same tiles, the same points after each command); the scripted games' situations give
+  every player a town (the original banishes one without for seven days, E10's rule) and Red a
+  second hero whose selection shows the engine's resources; recorded first in
+  `clients/map/to-record.toml`.
+- **M4 T4a2, a sequence played from a record** (*provisional*; design §5.13): `sequences <id>
+  --record <r.jsonl> --record-map <map.h3m>` (the map the engine played: the record names it by
+  its bytes' hash); the record's start and turns applied after the kept live part, the
+  recording's timeline only compared; the n-th walk the viewer starts takes the record's n-th
+  `MoveHero` (`Unplayable::Moved` for a step off it); a turn's `[[turn]]` table from the panels
+  with the date's window, `at` 0 and no heroes or boats; the client's name of a normal week
+  (the week's number less one modulo 15) and month (modulo 10) for MCL-Q40 (b); the timeline's
+  differences from the original's listed in `timelines/<id>-gaps.txt` (an LCS's complement, `- `
+  the original's line, `+ ` ours), the frames' in `<id>-frames.txt`; a step's reveal before a
+  boarding's dissolve (not read).
+- **M4 T4b1, a record's visits** (*provisional*; design §5.14): a visit is a `MoveHero` with its
+  events and the answers after it (another command ends it), told by the class of the object on
+  its last tile with Part A's `Find` and `Ask` built from the record's facts (a Learning Stone's
+  picture the record's experience; Pandora's Box's rewards the answer's gains); a later visit to
+  the same tile its `again` box; a question's answers but the record's left out (the Arena's
+  Cancel kept with its Attack); a level-up's OK with another offer refused; a visit from beside
+  takes the record's move (its points); a chest's part not taken shown without its amount
+  (MCL-Q41 (c)); `engine_seed` found by a search over the engine's seeds for draws the original
+  makes at random (the level-up's); a box the loop's turn opens no longer drops the next
+  millisecond's input after its first (a lingering `flush`, found by `game-asks`).
+- **M4 T4b2, a record's flags and boats** (*provisional*; design §5.15): a flag raised where the
+  record's `ObjectFlagged` says so, in its colour (a mine's resource its type's); a dwelling's hire
+  answered `accept` told by the record's free creatures (a declined hire not built: the record
+  does not name the creature); on a record a walk's boarding or landing is the record's
+  (`Move::sea`) and Part A's boats and water are not asked, a boarding with no empty boat on the
+  tile off the record; the viewer's turn's start built once its message is folded (the engine
+  tells the new points after `TurnStarted`); a boat's dissolve keeps the status window its draw
+  chose (the date's step, shown at once by the original).
+- **M4 T5a, the harness's battle step** (*provisional*; design §5.19; the runbook's "A battle in a
+  sequence"): a battle played on real time takes none of the sequence's time; the palette's
+  pending step carried across it; from its result window until the map is the active manager
+  again (the adventure manager's +0x34) no screen kept, no line, no box read; the pointer put
+  back before the clock stops; a battle's situation must have one outcome however long it runs (a
+  sure win without losses, a retreat). T5b compares the map's frames around the battle; the
+  battle's own are E17's.
+- **M4 T5b1, a record's battles in the window** (*provisional*; design §5.20): the crate's binary
+  depends on `h3-battle-client` (the user's choice); a walk's battle handed over at its end, an
+  answer's where its box closes, before the map's frame at that millisecond, the map's clock on
+  from there as if the battle took none; a plain cut (T5b2's fades); the battle's keys and combat
+  settings as `h3-view window`'s (`settings.toml` here, which its options dialog writes); its
+  fidgets' seed 0; the map's sound on `HostSound`, lent with the map's effects stopped; a
+  defending battle not handed over (`MCL-STUB-3`).
+- **M4 T5b2, the switch and the result** (*provisional*; design §5.21): the host (the map viewer)
+  draws all four fades, the battle's from the battle client's first frame and last frame (no
+  change to the client lane's crate); the fade in's steps as observed (`screen_fade_in` not
+  read); the palettes' next cycle 20 ms after the map comes back (as recorded: the harness's
+  written-back step); a retreated hero's next selection the first hero, else the first town; T5a's
+  situations changed to the scripted games' way (the new game's explored tiles, the gold bonus, a
+  second hero) and the mine to an abandoned mine under engine seed 5 (the engine guards no other
+  neutral mine). Known differences in the frame counts (`timelines/battle-*-frames.txt`): the
+  hero's morale icon (MCL-Q36), the battle's three fade-in frames (its obstacles, MCL-Q49), the
+  hero drawn standing at the attack where the original draws its moving pose (about 590 pixels at
+  the hand-over and a flag column at the map's return), the panel's buttons after a retreat, the
+  MINEEVNT box's resource (MCL-Q48).
+
+### M4 T6's additions (the closure: six reviewers, their findings fixed or asked)
+
+- **A record's start** (F4): `render --record`'s PNG the engine's start over the capture's live
+  part (keys the start does not write stay the capture's; `--check` names a `defs` difference);
+  `--check` passes a capture without `[chosen]` printing "not compared: the choices" and fails one
+  without `[hover]`; a record whose header's `first` is not 1 (a bounded record cut at a later
+  snapshot) refused; the date's month and week the client's arithmetic on the engine's
+  `CalendarParams` (MCL-Q50).
+- **A record's battles** (F5): a path's last node onto an object that blocks its tile (a
+  monster, a pile, an artifact) visited from beside at that node, no step; the record player
+  closes a switch's battle in the millisecond it shows whole; after a hero a battle took off the
+  map each later hero's place one less (`Loop::slots_left`); a draw that takes both at a
+  monster: the hero's dissolve, the next hero, then the monster's `killfade`; a mine's guards'
+  battle lost, retreated or drawn: no box, the record's flag alone, the hero gone as a retreat's
+  (MCL-Q51); the map's mouse after a battle where the battle's element last saw it, the focus
+  told only if it changed, a battle reached while paused run with the device unpaused.
+- **The other players' turns** (F1): a record whose viewer does not act first plays the turn
+  under way at 0 as another player's, then the viewer's day; a turn under way at the record's end
+  played to its last walk, the map left in its screen; each command of a computer's hero a move
+  of its own (no new choice of the hero between them: `ai_hero_turn` not read); a computer's
+  other results in sight from the record alone (a monster beaten off at once, a flag raised at
+  the move's end, a hero lost drawn nowhere; the original's way not read); what the viewer sees
+  of a walk the record's own judgement; the day's lists the record's at each table, the record
+  player choosing by the map's own list; a hero the record's start does not show left out, its
+  results a stepless command's (MCL-Q53).
+- **A record's visits** (F2): each visit a find of its own, tied to its walk's end; its level-ups
+  the record's events (any hero's, its name, class and portrait), the thresholds for recordings
+  only; Pandora's Box the parts the record tells, its map text in a style-1 box before the
+  question, a Box whose guards are fought telling nothing (MCL-Q54); a visit continued through its
+  army dialog's commands to the close; a School of Magic bought told from the record, one left
+  telling nothing (MCL-Q41); an artifact's primary skills from the tables, taken as worn
+  (`SRV-STUB-7`).
+- **A record's flags and boats** (F3): boats told after the start drawn at the next walk's first
+  step, else at the next turn's start, a computer's built in sight at its move's end; a flag
+  raised alone where the rest of a visit is not built (a hire declined or not free, a class-20
+  dwelling, a Shipyard, an abandoned mine, a guarded dwelling), with the minimap; a landing whose
+  facing is past 7 refused where it is played; a record's mine's box the tables' income
+  (MCL-Q55); the gate requiring of each DEF only the frames the tables vouch for (MCL-Q56).
+- **The harness** (F6): the battle step carries only the palette's pending step across a battle
+  (the mouse poll's 33-ms grid and a timed status window's end keep the battle's real-time phase;
+  no recorded battle reaches either); a sequence's options assumed never saved to the prefix's
+  registry (`settings_save`'s 18 callers' conditions not read); a shipped situation's `bonus`
+  needs `players`; the game's disk check's pre-flight on the run directory's file system, its band
+  5 MiB to 2 GiB modulo 4 GiB, `H3_NO_DISK_CHECK=1` the escape; a scratch file's live parts kept
+  with the run, not in `timelines/`; the staging's refusals (`pointer` in a sequence's situation,
+  Diplomacy twice, `reselect` without `select`) in the harness only; stale engine binaries
+  warned of, not refused.
+- **The golden records to their end** (F7): a record's walk short of its path shows the path
+  commanded and walks the record's steps (`Move::stops`), one step short a visit from beside (a
+  find's, else `Loop::pass_by`: turned to the object, its points spent, nothing shown: a meeting,
+  an object whose visit tells nothing), more than one short ending at the record's last step with
+  the rest of the path left shown; an object a visit takes with nothing else built (a Scholar, a
+  Spell Scroll) taken alone with the pickup's dissolve and sound, no box; no days without a town
+  on a record (no warning, no days left, no banishment: the engine has none yet, E10,
+  `MCL-STUB-4`; **kept by the user** at T6's checkpoint), the original's countdown kept for
+  recordings; an unseen hero's landing boat on
+  the map at the next turn's start (MCL-Q53 (c)), its later boarding leaving the empty boat
+  drawn. Passed over with nothing shown: the meeting screen (M5's), an event's and a sign's box,
+  the Scholar's and the Scroll's boxes.
+<!-- T6 additions -->
