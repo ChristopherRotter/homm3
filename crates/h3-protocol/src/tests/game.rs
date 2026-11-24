@@ -238,6 +238,11 @@ fn own_back(o: &OwnMapHero) -> OwnHeroView {
                 .collect(),
         },
         timed: o.timed.iter().copied().map(Handle::from_raw).collect(),
+        spells: h3_adventure::DaySpells {
+            fly: o.spells.fly,
+            water_walk: o.spells.water_walk,
+            doors: o.spells.doors,
+        },
     }
 }
 
@@ -417,6 +422,12 @@ fn every_part() -> AdventureObservation {
                         ],
                     },
                     timed: vec![Handle::from_raw(48), Handle::from_raw(94)],
+                    // E08 T142a (v82): Fly at Expert, a door cast.
+                    spells: h3_adventure::DaySpells {
+                        fly: Some(3),
+                        water_walk: None,
+                        doors: 1,
+                    },
                 }),
             },
             HeroView {
@@ -433,6 +444,7 @@ fn every_part() -> AdventureObservation {
                     marks: Vec::new(),
                     bonuses: h3_adventure::HeroBonuses::NONE,
                     timed: Vec::new(),
+                    spells: h3_adventure::DaySpells::NONE,
                 }),
             },
             HeroView {
@@ -501,6 +513,7 @@ fn every_part() -> AdventureObservation {
                 marks: Vec::new(),
                 bonuses: h3_adventure::HeroBonuses::NONE,
                 timed: Vec::new(),
+                spells: h3_adventure::DaySpells::NONE,
             },
         }],
     }

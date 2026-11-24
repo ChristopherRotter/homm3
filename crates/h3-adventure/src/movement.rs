@@ -17,7 +17,7 @@ use h3_heroes::{HeroDetails, Movement, land_points, movement_speed, scouting_rad
 
 use crate::ruleset::{AdventureRuleset, Passage, RoadId};
 use crate::setup::Pos;
-use crate::state::{HeroOnMap, Meets, Mode, StaticTile};
+use crate::state::{DaySpells, HeroOnMap, Meets, Mode, StaticTile};
 
 /// A hero's details in the game's store of heroes by [`HeroId`] (ADR-0016 point 3), if the store
 /// holds them. An adventure played without the game (this crate's own tests) passes an empty
@@ -142,6 +142,26 @@ pub(crate) fn hero_movement(core: &Ruleset, details: Option<&HeroDetails>) -> Mo
     details.map_or_else(Movement::default, |details| {
         h3_heroes::movement(details, core)
     })
+}
+
+/// A hero's levels for its steps today (E08 T142a; increment 15's design note §8): its own
+/// ([`hero_movement`]: the artifacts' 3) with the flying and water-walking levels each the higher
+/// of its own and its day spell's (Fly, Water Walk: ADV-SPL-005, ADV-SPL-006), so every reader of
+/// the levels (the passage, the price, the drop to 0, the mode) serves the spells unchanged
+/// (survey `E08-spells.md` §7.2). The original's `hero_step_cost` (0x4B18C0) takes +0x112 and
+/// +0x116 forced to 3 by Angel Wings and Boots of Levitation.
+// rule: ADV-MOV-009, ADV-MOV-010
+pub(crate) fn day_movement(
+    core: &Ruleset,
+    details: Option<&HeroDetails>,
+    spells: DaySpells,
+) -> Movement {
+    let own = hero_movement(core, details);
+    Movement {
+        flying: own.flying.max(spells.fly),
+        water_walking: own.water_walking.max(spells.water_walk),
+        ..own
+    }
 }
 
 /// The terrain an army is native to (ADV-MOV-004): the native terrain of its creatures' factions
@@ -273,20 +293,21 @@ pub(crate) struct Pricing<'a> {
 }
 
 impl<'a> Pricing<'a> {
-    /// The pricing of the steps of a hero with these levels (`h3_heroes::movement`) and army
+    /// The pricing of the steps of a hero with these levels ([`day_movement`]), day spells and army
     /// under `core`'s profile: each terrain counts as a terrain walker of a creature in the army
     /// makes it count (ADV-MOV-003, Nomads), then costs the step's price of that terrain at the
     /// hero's Pathfinding level (the part's [`AdventureRuleset::step_cost`]), and is native when
     /// that terrain is the army's ([`native_terrain`]). A flying level brings the part's fly
     /// price at that level, a water-walking level its water-walk price (ADV-MOV-009, ADV-MOV-010);
-    /// the drop to 0 counts them only with `ADV-QUIRK-17` off (the original's `cheapest_step_from`
-    /// 0x4B1880 reads the hero's spell levels, not the artifacts': none in increment 5).
+    /// the drop to 0 counts them with `ADV-QUIRK-17` off, and with it on only the day spells'
+    /// (E08 T142a: the original's `cheapest_step_from` 0x4B1880 reads the hero's spell levels,
+    /// not the artifacts').
     // rule: ADV-MOV-003, ADV-MOV-004, ADV-MOV-006, ADV-MOV-009, ADV-MOV-010
     pub(crate) fn new(
         core: &Ruleset,
         part: &'a AdventureRuleset,
         army: &[ArmyStack],
-        movement: &Movement,
+        (movement, spells): (&Movement, DaySpells),
     ) -> Self {
         let quirks = core.quirks();
         let native = native_terrain(core, army);
@@ -325,7 +346,11 @@ impl<'a> Pricing<'a> {
             native_cost: u32::from(params.native_cost().get()),
             lifts,
             drop_lifts: if quirks.is_enabled(DROP_IGNORES_ARTIFACTS) {
-                Lifts::default()
+                // The original's drop reads the spells' fields alone (E08 T142a).
+                Lifts {
+                    fly: spells.fly.map(|level| params.fly_cost(level)),
+                    water_walk: spells.water_walk.map(|level| params.water_walk_cost(level)),
+                }
             } else {
                 lifts
             },

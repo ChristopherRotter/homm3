@@ -122,12 +122,12 @@ fn lifted<'a>(
         water_walking,
         ..Movement::default()
     };
-    Pricing::new(core, part, army, &movement)
+    Pricing::new(core, part, army, (&movement, DaySpells::NONE))
 }
 
 /// The pricing of a walker's steps with `army` and no Pathfinding.
 fn walking<'a>(core: &Ruleset, part: &'a AdventureRuleset, army: &[ArmyStack]) -> Pricing<'a> {
-    Pricing::new(core, part, army, &Movement::default())
+    Pricing::new(core, part, army, (&Movement::default(), DaySpells::NONE))
 }
 
 /// The pricing of a walker's steps with `army` and Pathfinding at `level`.
@@ -141,7 +141,7 @@ fn pathfinder<'a>(
         pathfinding: level,
         ..Movement::default()
     };
-    Pricing::new(core, part, army, &movement)
+    Pricing::new(core, part, army, (&movement, DaySpells::NONE))
 }
 
 // covers: ADV-MOV-004
@@ -666,7 +666,12 @@ fn the_heros_flying_and_water_walking_levels_come_from_its_details() {
         (movement.flying, movement.water_walking),
         (Some(2), Some(1))
     );
-    let pricing = Pricing::new(&core, &part, &army(&[PEASANT]), &movement);
+    let pricing = Pricing::new(
+        &core,
+        &part,
+        &army(&[PEASANT]),
+        (&movement, DaySpells::NONE),
+    );
     assert_eq!(
         pricing.step(&tile(SWAMP, None), &tile(GRASS, None), false, 1500),
         120

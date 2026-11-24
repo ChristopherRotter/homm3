@@ -75,6 +75,24 @@ where  = "crates/h3-game/src/state/battle.rs::start_battle"
 reason = "A battle from the map leaves BattleSetup.retreat (ADR-0027 point 14: each hero's experience, its artifacts' worth, a Tavern town of its player to hire it again, whether the scenario's victory condition wants it defeated) at its default, which never retreats: the facts are read only for a computer player's hero, which the engine gets with E13, and the condition is built with E10 increment 2 and lifted from this stub then (E08 decision 123, T54; E10 decision 6). The Tavern fact is ready since E09 T38b1 (a retreated hero returns into its owner's tavern, TWN-TAV-006: `h3_towns::has_tavern` over the owner's towns other than the battle's)"
 epic   = "E31"
 
+[[stub]]
+id     = "ADV-STUB-19"
+where  = "crates/h3-game/src/state/cast.rs::GameState::check_cast"
+reason = "The four information spells (Visions, Disguise, View Earth, View Air: the original's adventure_spell cases 2 to 5) have no binding in the adventure part, so a cast of one is refused as not cast on the map (`MapCastError::NotOnMap`): they come with E12's information objects (E08 decision 406; increment 15's design note section 3)"
+epic   = "E12"
+
+[[stub]]
+id     = "ADV-STUB-20"
+where  = "crates/h3-game/src/state/cast.rs::GameState::check_cast"
+reason = "Town Portal (the original's adventure_spell case 9) has no binding in the adventure part, so its cast on the map is refused as not cast on the map (`MapCastError::NotOnMap`): it comes with the towns' spells, E09 increment 7 (increment 15's design note section 3)"
+epic   = "E09"
+
+[[stub]]
+id     = "ADV-STUB-22"
+where  = "crates/h3-adventure/src/state/spells.rs::AdventureState::check_cast"
+reason = "Summon Boat, Scuttle Boat and Dimension Door are bound by the base pack but not cast yet: the adventure's test refuses them (`CastError::NotBuilt`, on the wire `SpellReject::NotBuilt`) after the game's checks; E08 T143a builds the boats' (ADV-SPL-003, -004), T143b the door's (ADV-SPL-007 to -009), which lift this stub and drop the refusal"
+epic   = "E08"
+
 # --- server (SRV-STUB-<n>) ---
 
 [[stub]]

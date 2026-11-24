@@ -79,6 +79,13 @@
 //! artifacts = [20, 25, 30]         # from 1 (as binary32), one length (1 to 255), none 0
 //! creatures = [30, 45, 50]
 //!
+//! [params.spells]                  # E08 T142a (increment 15's design note §3): required when
+//! door_points = [300, 300, 300, 200] # the part binds summon_boat, scuttle_boat or
+//! target_range = [9, 8]            # dimension_door; the door's movement points by mastery
+//! boats_most = 64                  # (ADV-SPL-009), the window of the door's and Scuttle Boat's
+//!                                  # targets (dx, dy from 1; ADV-SPL-004, -008), the most boats
+//!                                  # in use at which Summon Boat makes one (ADV-SPL-003)
+//!
 //! not_random_monsters = ["azure_dragon"] # top-level, before any table (E08 T20a2a): creatures
 //!                                  # no random monster becomes (ADV-MON-003)
 //!
@@ -98,6 +105,11 @@
 //! [[river]]                        # appearance only
 //! id = "clear_river"
 //! name = "Clear river"
+//!
+//! [[spell]]                        # E08 T142a (ADV-SPL-001): a core spell of the adventure
+//! spell = "fly"                    # category acts on the map as one of the five effects
+//! effect = "fly"                   # (summon_boat, scuttle_boat, fly, water_walk,
+//!                                  # dimension_door); each spell and each effect once
 //!
 //! [[terrain_walker]]               # E08 T40 (ADV-MOV-003): an army with a stack of the creature
 //! creature = "nomad"               # counts the terrain as the other for every price of a step
@@ -257,13 +269,14 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 
 use h3_adventure::{
-    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, AltarDef,
-    AltarFactionDef, BankDef, BankLevelDef, BankQuestion, BattleTerrainsDef, CalendarParams,
-    ChestDef, DWELLING_LEVELS, DwellingParams, FindContentDef, FindDef, GiftDef, Gives, HillFort,
-    Market, MarketParamsDef, MarketScreen, MonolithWay, MonsterParamsDef, MonthParamsDef,
-    ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef, PrimarySkill, PyramidDef,
-    RandomDwellingDef, RiverDef, RoadDef, StartingResourcesDef, TerrainMovementDef,
-    TerrainWalkerDef, TurnDef, Visit, WarMachineFactoryDef,
+    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, AdventureSpell,
+    AdventureSpellDef, AltarDef, AltarFactionDef, BankDef, BankLevelDef, BankQuestion,
+    BattleTerrainsDef, CalendarParams, ChestDef, DWELLING_LEVELS, DwellingParams, FindContentDef,
+    FindDef, GiftDef, Gives, HillFort, Market, MarketParamsDef, MarketScreen, MonolithWay,
+    MonsterParamsDef, MonthParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef,
+    PrimarySkill, PyramidDef, RandomDwellingDef, RiverDef, RoadDef, SpellParams,
+    StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, TurnDef, Visit,
+    WarMachineFactoryDef,
 };
 use h3_content::{ArtifactClass, ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
@@ -359,6 +372,45 @@ struct AdventureFile {
     random_dwelling: Vec<RandomDwellingDto>,
     #[serde(default)]
     altar_faction: Vec<AltarFactionDto>,
+    #[serde(default)]
+    spell: Vec<SpellDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SpellDto {
+    spell: String,
+    effect: EffectDto,
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum EffectDto {
+    SummonBoat,
+    ScuttleBoat,
+    Fly,
+    WaterWalk,
+    DimensionDoor,
+}
+
+impl From<EffectDto> for AdventureSpell {
+    fn from(effect: EffectDto) -> Self {
+        match effect {
+            EffectDto::SummonBoat => Self::SummonBoat,
+            EffectDto::ScuttleBoat => Self::ScuttleBoat,
+            EffectDto::Fly => Self::Fly,
+            EffectDto::WaterWalk => Self::WaterWalk,
+            EffectDto::DimensionDoor => Self::DimensionDoor,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SpellParamsDto {
+    door_points: [u32; 4],
+    target_range: [u8; 2],
+    boats_most: NonZeroU16,
 }
 
 #[derive(Deserialize)]
@@ -421,6 +473,8 @@ struct ParamsDto {
     dwellings: Option<DwellingsDto>,
     #[serde(default)]
     market: Option<MarketParamsDto>,
+    #[serde(default)]
+    spells: Option<SpellParamsDto>,
 }
 
 #[derive(Deserialize)]
@@ -1566,6 +1620,16 @@ pub fn parse_adventure(
             })
         })
         .collect::<Result<_, KeyError>>()?;
+    let spells = file
+        .spell
+        .iter()
+        .map(|s| {
+            Ok(AdventureSpellDef {
+                spell: reference(pack, &s.spell)?,
+                effect: s.effect.into(),
+            })
+        })
+        .collect::<Result<_, KeyError>>()?;
     let altar_factions = file
         .altar_faction
         .iter()
@@ -1679,9 +1743,15 @@ pub fn parse_adventure(
                         free_level: d.free_level,
                     }),
                     market,
+                    spells: p.spells.map(|s| SpellParams {
+                        door_points: s.door_points,
+                        target_range: s.target_range,
+                        boats_most: s.boats_most,
+                    }),
                 })
             })
             .transpose()?,
+        spells,
         ..AdventurePack::new(manifest.clone())
     })
 }

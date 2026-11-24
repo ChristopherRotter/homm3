@@ -294,6 +294,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             months: None,
             dwellings: None,
             market: None,
+            spells: None,
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
@@ -465,6 +466,8 @@ pub(crate) fn movement_rules_with(
         "quirk.adventure.drop_ignores_artifacts",
         "quirk.adventure.radius_waits_for_a_step",
         "quirk.adventure.sirens_again_after_battle",
+        // E08 T142a (ADV-QUIRK-54).
+        "quirk.adventure.spell_recast_refused",
     ];
     let core = ContentPack {
         terrains: ["t:grass", "t:sand", "t:swamp", "t:sea", "t:rock"]
@@ -576,6 +579,7 @@ pub(crate) fn movement_rules_with(
             months: None,
             dwellings: None,
             market: None,
+            spells: None,
         }),
         starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))

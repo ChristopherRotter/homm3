@@ -28,7 +28,7 @@ use crate::command::{
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{
-    DIRECTIONS, Pricing, day_maximum, details_of, direction, hero_movement, hero_radius,
+    DIRECTIONS, Pricing, day_maximum, day_movement, details_of, direction, hero_radius,
 };
 use crate::persistent::{BitGrid, Table};
 use crate::ruleset::{
@@ -111,6 +111,7 @@ mod records;
 mod revisits;
 mod rewards;
 mod shipyards;
+mod spells;
 mod visitables;
 mod visits;
 mod weekly;
@@ -132,6 +133,8 @@ pub use markets::{MarketOffers, MarketPurchase, Sale, SaleOffer, StockEntry, Tra
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
 pub(crate) use passage::{Mode, Node};
+pub use spells::{CastError, DaySpells};
+pub(crate) use spells::{DaySpellBook, spells_in};
 pub use visits::Visits;
 
 /// An object of the static map: its position, footprint, type and contents (ADR-0016 point 4).
@@ -1515,6 +1518,10 @@ pub struct AdventureState {
     /// reach, meeting or visit (its marks stay in [`Self::visited`], by hero id). None while no
     /// town holds one, so a fork costs a pointer (`bench-check`), else one block the forks share.
     town_heroes: Option<Arc<TownHeroes>>,
+    /// The heroes' day spells by hero id (ADV-SPL-002, E08 T142a; increment 15's design note §8):
+    /// **none while no hero has one**, so a fork costs a pointer; a cast makes or copies the block,
+    /// the new day drops it ([`Self::start_day`]). Its owner's alone (the own hero view).
+    day_spells: Option<Arc<DaySpellBook>>,
 }
 
 impl AdventureState {
@@ -1596,6 +1603,7 @@ impl AdventureState {
             visited: None,
             fortunes,
             springs: None,
+            day_spells: None,
         };
         // rule: GAM-HER-003
         for hero in &setup.heroes {
@@ -1660,14 +1668,17 @@ impl AdventureState {
     /// steps' reveals have none of their own: the owner's observation shows the explored tiles.
     /// First, since E08 T115a, every hero on the map drops its timed marks of a day (the Magic
     /// Well's; increment 12's design note §12.4, §15; ADV-BON-006), told as the command's
-    /// [`crate::AdventureEventKind::TimedMarkChanged`].
-    // rule: ADV-FOG-003, ADV-BON-001, ADV-BON-006
+    /// [`crate::AdventureEventKind::TimedMarkChanged`]. Since E08 T142a every hero's day spells
+    /// go (ADV-SPL-002; increment 15's design note §12), told as the command's
+    /// [`crate::AdventureEventKind::DaySpellsChanged`].
+    // rule: ADV-FOG-003, ADV-BON-001, ADV-BON-006, ADV-SPL-002
     pub fn start_day(
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
         heroes: &[Arc<HeroDetails>],
     ) {
+        self.clear_day_spells();
         self.drop_timed_marks(part, MarkLifetime::Day);
         if !core.quirks().is_enabled(RADIUS_WAITS_FOR_A_STEP) {
             self.reveal_around_heroes(core, part, heroes);
@@ -1922,9 +1933,10 @@ impl AdventureState {
         }
         let hero = &self.heroes[index];
         let details = details_of(heroes, id);
-        let movement = hero_movement(core, details);
+        let spells = self.day_spells(id);
+        let movement = day_movement(core, details, spells);
         let mode = Mode::of(&movement, hero.boat);
-        let pricing = Pricing::new(core, part, &hero.army, &movement);
+        let pricing = Pricing::new(core, part, &hero.army, (&movement, spells));
         let start = hero.pos;
         let (mut at, mut from, mut points) =
             (start, self.live(start, self.map.at(start)), hero.movement);
@@ -3513,6 +3525,8 @@ impl CanonicalHash for AdventureState {
         }
         self.hash_dwellings(h);
         self.hash_visitables(h);
+        // v29 (E08 T142a): the heroes' day spells.
+        self.hash_day_spells(h);
     }
 }
 
