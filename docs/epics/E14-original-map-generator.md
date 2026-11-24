@@ -1,7 +1,7 @@
 # E14 — The original's random map generator
 
-Status: **in progress** since 2026-11-23 (T1a1, T1a2, T1b1, T1b2, T1c1 done); increment 1 refined,
-increments 2 to 6 sketched; next T1c2 · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
+Status: **in progress** since 2026-11-23 (T1a1, T1a2, T1b1, T1b2, T1c1, T1c2 done); increment 1 refined,
+increments 2 to 6 sketched; next T1c3 · Lane: **rmg** (opened at this refinement) · Prerequisite of E30 (the custom generator) ·
 Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -121,7 +121,7 @@ written; (5) increments 2 to 6 cut with exit criteria and confirmed at the check
 - **Time limits or retries** in the generation would make the output depend on the machine;
   T1a2 looks for them.
 - **The writer's coverage:** objects the generator places that `h3_map::writer` cannot yet
-  write; T1c2 lists them for the adventure lane.
+  write; T1c2 listed seven gaps (survey §3.3; the adventure and town lanes' inboxes).
 
 ## Tasks done
 
@@ -158,3 +158,10 @@ The full records: `E14-log.md`.
   rows for §2.6 (§2.7.5); checked against the phase oracle (`s1-2p`, `s2-2p`, `m1-4p`): every
   terrain, road and river cell's picture as the rules give. Nothing memory-dependent reaches a
   result (the cell words' fill is never read before a load); nothing ordered by address.
+- **T1c2** (2026-11-24; no cut, the user: three worker sub-agents for survey §3's parts, the
+  ledger with the user): survey §3: the template format and both tables (AB's a byte prefix of
+  SoD's, three templates added), 136 rules by phase with provisional ids, the objects placed
+  against `h3_map`'s reader and writer (a census of the corpus, seven writer gaps to the adventure
+  and town lanes); the ledger `docs/rules/quirks-rmg.md`, RMG-QUIRK-1 to -23 (the memory-dependent
+  draws modelled on the oracle, two flags; the faults fixed; 14 map-content flags and one
+  cosmetic flag; 8XM8's ids a data quirk with a flag, the neutral main town as the original); TWN-SET-001's refusal explained.
