@@ -92,22 +92,40 @@ with its phase; (2) every draw and float site listed; (3) the oracle generates a
 seed and choices, reproducibly, and the reader reads it; (4) the survey and the ADR draft
 written; (5) increments 2 to 6 cut with exit criteria and confirmed at the checkpoint.
 
-## Later increments (sketched)
+## Increments 2 to 7 (cut at T1c3, 2026-11-24; RMG-Q2)
 
-2. **Templates and the start:** both `rmg.txt` harvested into `packs/ab/rmg.toml` and
-   `packs/sod/rmg.toml` (`h3-harvest`, `cross-lane`), `h3-rmg` created, the C runtime's `rand`,
-   the settings and the template's choice: the same template as the original for each oracle
-   case.
-3. **Zones and terrain:** the zones placed and grown, their terrain; the terrain layer equal to
-   the oracle's.
-4. **Connections, roads, guards, obstacles:** the connections made (gates, monoliths,
-   subterranean gates), the roads, the border guards' strengths, the obstacles.
-5. **Objects:** towns, mines, dwellings, treasures and their guards, the monsters, by value and
-   density.
-6. **The file and the game:** the map written byte for byte (`h3_map::writer`'s gaps the
-   adventure lane's inbox), a census over many seeds and choices against the oracle, the
-   `fixed` profile, a game set up on a generated map (CLI, `GameSetup`), a benchmark; the
-   inboxes of the client and server lanes; the closure.
+Cut in the run's own order (decision 7): a missed draw shifts every later one and the phase
+oracle compares after each step, so each increment ports the next steps of the run whole (the
+sketch's "connections before objects" would port step 6 before the towns of steps 4 and 5 it
+reads). Rule ids are survey §3.2's (provisional until an increment writes them); ledger entries
+`docs/rules/quirks-rmg.md`; the design in the ADR draft `docs/lanes/rmg/adr-drafts/h3-rmg-generator.md`.
+Every increment needs the oracle's set staged from the PC (the client lane's, ORACLE.md).
+
+**Every increment's exit criteria**, beside the Definition of Done: (a) its rules in the catalog,
+implemented, each with a test; (b) on the 21 corpus cases in `faithful`, the port's draws and its
+cells after each of its steps equal the phase oracle's (`clients/capture/rmg/phases.txt`'s
+digests in CI, the whole logs and dumps beside the oracle; a divergence named by step and draw);
+(c) its ledger entries confirmed by (b) or re-read, each flag's `strict-fixed` behaviour tested,
+its `exploit-fix` cases typed errors; (d) a property test: arbitrary settings, seeds and the packs'
+tables run its steps without a panic; (e) its "not read" items (survey §3.2.15) read first, into
+the survey; (f) the checkpoint with the user.
+
+| Inc | Scope | Rules (survey §3.2) | Ledger | Not read, read first | Its own exit |
+|---|---|---|---|---|---|
+| 2 | **Templates, the stream, the start:** the crates, `CrtRand`, the three tables harvested, the rmg part, the settings, the template's choice, the positions | SET-001 to -009, TPL-001 to -008 (17) | -6; -11 (the tables' half); -22 | none | the 21 cases' kept and drawn templates (`kept.txt`'s names) and the draws before step 1 equal; the harvested tables equal the text tables (with the original data) |
+| 3 | **Zones and terrain:** steps 1 to 3, the terrain painter (§2.7.1 to §2.7.3) | ZON-001 to -014, TER-001 to -003, TER-005 to -018 (31) | -1 (the measurement, the model); -3 (its steps' cases); -12; -14; -21 (the painter's) | ZON-009's triangulation, ZON-012's clip corners, ZON-013's fill tail, ZON-014's water test; whether a divide by zero reaches code 1 | first the harness records each step's draw count and digest and RMG-QUIRK-1's bytes (`phases.txt` again); the control word read; the cells after steps 1 to 3 (the terrain layer) equal |
+| 4 | **Towns and connections:** steps 4 to 7 (the guards' creation, the gates, monoliths, shipyards and Border Guards) | TWN-001 to -005, OBJ-009 to -011, CON-001 to -021, OBS-001, -002 (31) | -3, -4, -5 (their cases); -7; -8; -9; -10; -11 (the guards' half); -13; -19; -23 (the towns' half); the ledger's two open items (6LM10's self-connection, Ownership 0 starts) | OBJ-011's `rmg_map_can_place` branches (tents on water), CON-008's heightmap quadrants, CON-017's one-way monolith pairing, OBJ-008's null prototype, OBJ-009's masks | the cells after steps 4 to 7 equal |
+| 5 | **Mines and treasures:** steps 8 to 10, the object generators | OBJ-001 to -008, MIN-001 to -006, CON-022, TRS-001 to -012 (27) | -3 (the density filter); -15; -18; -20 | the pile ring (§2.4) | the cells after steps 8 to 10 equal; the generators' constants in `packs/sod/rmg.toml` |
+| 6 | **Rock, shores, obstacles, roads, rivers:** steps 11 to 15, the road and river painter (§2.7.4), the teams' draw | TER-004, OBS-003 to -007, RDR-001 to -014, WRT-004 (21) | -2; -17; -21 (the roads' and rivers') | OBS-006's depth grid, RDR-010's river strokes | the cells after steps 11 to 15 and the whole stream (`draws=`, `log=`) equal |
+| 7 | **The file and the game:** the writer, the census, `strict-fixed`, a game on a generated map | WRT-001 to -003, WRT-005 to -010 (9) | -16; -21 (the description); -23 (the player block) | WRT-007's settings +0xC types | the uncompressed `.h3m` equal on 21 of 21 (`kept.txt`) through `RawMap` and its writer (round trip over the shipped maps and the corpus; survey §3.3.3's gaps); a census over more seeds and choices (RoE and AB formats among them); `strict-fixed` over the census without a failure; a game set up on a generated map (CLI, `GameSetup`); the benchmark; the client's and server's inboxes; the closure |
+
+**Increment 2's tasks** (refined with the cut):
+
+| Task | What | Out |
+|---|---|---|
+| T2a | `shared/`: `h3-rmg` and `h3-pack-rmg` created (`Cargo.toml`, `arch.toml`, `lanes.toml`), `h3_kernel::rng::CrtRand` with test vectors, the context in `docs/03-domain.md`, the catalog context `RMG`, the ADR numbered | the crates, the kernel's generator, the ADR in `docs/adr/` |
+| T2b | `cross-lane` (`h3-harvest`): `rmg.txt`, `objects.txt` and `rand_trn.txt` into `packs/ab/rmg.toml` and `packs/sod/rmg.toml`; `h3-pack-rmg`'s parser; the rmg part's compiler and hash; 8XM8's gated override and its flag; `packs/README.md` | the packs' `rmg.toml`, the rmg part |
+| T2c | The settings and their checks (RMG-SET-001 to -009, RMG-QUIRK-6), `resolve_random`, the templates kept and drawn and the positions (RMG-TPL-001 to -008, RMG-QUIRK-11's flag), `Trace`; checked on the 21 cases | `h3-rmg`'s start, the increment's exit |
 
 ## Risks
 
