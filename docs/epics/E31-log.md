@@ -201,3 +201,62 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   `git worktree`s; a scratch merge script over `map.toml` by address, not committed.
 - **Not read:** `ai_battle_army_split` 0x42DB20 past its frame and 0x42DD70 (T1a3d); whether
   `ai_artifact_market_price`'s prices are the human's (T1a3d's market visits).
+
+## T1a3d — the answers, the Seer, the markets, the allies and the table (2026-11-24, increment 1)
+
+- **The cut** (AI-Q28, the user at T1a3d's start): about 2 800 instructions plus the table, so two
+  parts; the user: the main session reads one, a sub-agent the other, the main session writes the
+  table. T1a3d1 the answers to the visits (main session, about 1 550), T1a3d2 the Seer's reward,
+  the markets, the allies' shares and the battle's split (a general-purpose sub-agent in its own
+  worktree, about 1 250); its `map.toml` lines merged by address, its survey text folded into §3.5.
+- **Read, T1a3d1** (the survey §3.4): `ai_garrison_visit` 0x524370, `ai_war_machine_factory_visit`
+  0x524FC0, `ai_meeting` 0x525DC0, `ai_dwelling_visit` 0x527B00, `ai_hill_fort_visit` 0x527BB0,
+  `ai_magic_school_choice` 0x527CD0, `ai_refugee_camp_hire` 0x527E10, `ai_gold_offer_answer`
+  0x527F60, `ai_join_without_room` 0x52BC60, `ai_army_plan_init_creature` 0x42CF50, the 17 call
+  sites of `ai_fight_answer` 0x52BD10 with `pathfinder_entrance_guarded` 0x56A360 and the new
+  `pathfinder_target_weigh` 0x56AAD0, `creature_upgrade` 0x47B1A0, `hero_owner_record` 0x4E56B0,
+  and new: `army_fill_split` 0x44AAA0, `ai_boat_purchase_cost` 0x431160 (the pathfinder's boat
+  price), `ai_artifact_effects_clear` 0x434590, `ai_army_plan_destroy` 0x4286E0. The game's calls
+  into the computer's ranges listed again (43 callees; a scratch script, not committed).
+- **Found, T1a3d1:** every answer is a choice at the human's prices: the fight answer goes ahead
+  above 0 (fourteen visits), the pathfinder drops a fight at or below −500 000 000 and adds a
+  smaller loss to the node's value; the garrison and the meeting run §3.3's exchange (the stronger
+  hero by primary sum takes; equal sums none; an ally's hero, a human's too, moved by the
+  visitor); the dwelling, the camp and a join without room run the army plan for real (a join's
+  replaced stack lost, no spare); the Factory buys the three machines by their value (none on Easy),
+  the Hill Fort every affordable upgrade in slot order, the School of Magic Knowledge or Spell Power
+  by the hero's two gains, the gold offer when the group's value less its weighted price beats the
+  fight. Fewer moves than a human's: no team-mate's garrison, no RoE campaign garrison, no ally's
+  dwelling. Three quirk candidates.
+- **Read, T1a3d2** (the survey §3.5; the sub-agent): `seer_reward_value` 0x573A70 with the new
+  `ai_seer_skill_value` 0x524630 and `ai_seer_spell_value` 0x527AA0, `seer_hut_visit` 0x573670,
+  `seer_hut_record_init` 0x573580, `seer_reward_give` 0x573C80 (was `reward_creatures_2`),
+  `seer_hut_load` 0x574610 in part; the map Tavern's case (0x4AA0E7); `ai_artifact_market_price`
+  0x524550 against the human's `market_buy_artifact_proc` 0x5ED9E0; `ai_ally_resource_share`
+  0x429110; `ai_battle_army_split` 0x42DB20 with `ai_army_split_into_free_slots` 0x42DD70 and
+  `army_stack_count` 0x44ACC0; nine sites. The main session added the quest prices the Seer's test
+  calls through each quest's vtable +4: `ai_quest_artifacts_price` 0x56F5A0, `ai_quest_resources_price`
+  0x571560. In all 42 map entries: 21 new, 21 rewritten (one renamed).
+- **Found, T1a3d2:** the Seer's quest completed when the reward's value less the quest's price is
+  above 0 (a choice; a skill valued at its next level whatever the reward gives); the computer
+  hires nothing at a map Tavern and never sells; its artifact price at the Black Market and the
+  Merchants is truncated where the human's is rounded half up, so it pays the same or one unit less
+  (a rule); the allies' shares give a team-mate (a human too, without a question) the giver's
+  surplus within four caps (a choice: the Marketplace's transfer); before a battle with a human side
+  a computer attacker, and a defending hero with the better Tactics, merge and split their armies
+  against the strongest enemy stack (the attacker's a choice, the defender's a rule). Three quirk
+  candidates.
+- **The table** (the survey §3.6): eight rules (the quick battle, the hidden battle's round-30 end,
+  the map Shipyard's boat without a visit, Dimension Door without points, the Castle Gate's jump
+  after a failed purchase, the patrol, the artifact price, the defender's split), every other
+  `ai_*` call a choice with its human command and lane, the policy's fewer moves, the reads and the
+  memory; the rows go to the lanes' inboxes at T1b.
+- **Process:** a cloud clone, `Heroes3.exe` staged from the user's repo folder; the setup's
+  baseline stopped (CI green on `master`), the scoped verify without original data; the sub-agent in
+  a `git worktree` (only `map.toml`), its diff applied with `git apply --3way` (one conflict of
+  neighbouring lines, both kept); scratch scripts over `scripts/exe.py`, not committed. The first
+  scoped verify caught two survey addresses without map entries (0x56F5A0, 0x571560): read and
+  added.
+- **Not read:** the other quest types' price (+4) and the slot's other callers, the rest of
+  `seer_hut_load`, the luck reward's unwritten fields (T1a4); the trades' rounding against the
+  human's market screen (the town lane, §3.6).

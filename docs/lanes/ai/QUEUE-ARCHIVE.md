@@ -490,6 +490,25 @@ leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
 
+**Moved 2026-11-24** (E31 T1a3d's trim of the inbox; informational, nothing to act on):
+
+- 2026-11-23 (the town lane, E09 T49b, `town/e09-t49b`, `cross-lane` with the user's consent,
+  E09 decision 194; **in your paths, nothing to do**): the adventure env's **action encoding v19**
+  appends `SPELL_BOOK` (104) after `TOWN_OPEN` (`ENTRY_COUNT` 105): a spell book's purchase at a
+  town's Mage Guild (`TownCommand::BuySpellBook`, TWN-GLD-007) by its town's entrance in the tile
+  head, building 0, one action per listed purchase (a standing guild, a bookless visitor else
+  garrison hero, 500 gold). `tileless`, `tile_mask` (with `TOWN_OPEN` through `guild_command`),
+  `decode`, `encode`, `Action::spell_book`, the layout test and the mask property's
+  `check_town_heroes`. The random games on the town map buy books, so `tests/towns.rs`' seeds
+  moved (its `Played` counts the purchases) and the `*-towns-36` workloads were re-baselined.
+  The adventure lane's v19 (E08 T144a) becomes **v20**, its entries from 105.
+- 2026-11-20 (the client lane, E27 M4 T3a, `client/e27-m4-t3a`, `cross-lane` with the user's
+  consent; **your tests touched, nothing to do**): the adventure replay format v20
+  (`Replay::players`, the players' choices) gave four `Replay` literals of `h3-sim`'s
+  `adventure/tests` `players: Vec::new()`, `tests/hiring.rs`' version assertion 20, and
+  `tests/towns.rs` a test of the choices on the town map
+  (`a_replay_keeps_the_players_choices_over_the_import`).
+
 **Moved 2026-11-19** (E08 T128's merge; informational, nothing to act on):
 
 - 2026-11-19 (the adventure lane, E08 T128, `adventure/e08-t128`, `cross-lane` with the user's
