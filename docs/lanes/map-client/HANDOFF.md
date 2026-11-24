@@ -13,14 +13,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   screens, M7 the town screen, M8 live play sketched): the user's rules there bind every task,
   above all **the engine and the server the only authority** (no rules table or map text read in
   play; the pictures from the map file until an ADR) and **the shell on top** (`h3-map-client`
-  this lane's adapters library, the shell's own crate the client lane's). **Next: M5 T1** (the
-  user's M4 hand-test notes first: `clients/out/win/map-m4-notes.txt`, not written at T0; then
-  M4's carry-overs). Open questions: MCL-Q29 to MCL-Q49 (none blocks). Stubs: `MCL-STUB-1` (a
+  this lane's adapters library, the shell's own crate the client lane's). **M5 T1 cut in three**
+  by the user at its start: **T1a done** 2026-11-24 (the hero on its tile through a battle, the
+  panel after a retreat: design §5.22; the battle sequences' frames now M4's known differences
+  only). **Next: M5 T1b** (the user's M4 hand-test notes first if written:
+  `clients/out/win/map-m4-notes.txt`, still blank at T1a; then MCL-Q51), then T1c (MCL-Q52).
+  Open questions: MCL-Q29 to MCL-Q49 (none blocks). Stubs: `MCL-STUB-1` (a
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10); planned `MCL-STUB-5` (T3), `MCL-STUB-6` (T4). Next ids
   **MCL-Q57**, **MCL-STUB-5**.
-- **Open pull requests** (2026-11-24): T0's **#1152** (`map-client/e24-m5-t0`, docs only) and the
-  README's row **#1153** (`shared/e24-m5-refined`, merge first): check both first.
+- **Open pull requests** (2026-11-24): T1a's (`map-client/e24-m5-t1`): check it first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
@@ -46,6 +48,14 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-24, E24 M5 T1a** (T1 cut in three by the user at its start): M4's "moving pose" was
+  the hero drawn on its tile (`adventure_hero_stop` at every battle's start: no pass 9 blend),
+  the map's return with it there and the mouse hidden, lifted again at the fade in's end; sleep
+  and cast kept after a retreat; the three battle sequences recorded again, their frame lists
+  M4's known differences only (the log's "M5 T1a"). The PC up at the start (58 files and the
+  manuals staged, SHA-256 checked); the VM restarted once (the setup's baseline lost, CI's
+  `master` standing in); a disk ballast for the game's disk check.
+
 - **2026-11-24, E24 M5 T0** (the user: all of T0 at once, the hand test not run yet): M4's
   review list accepted (six items asked one by one, 39 in a summary), MCL-Q50 to Q56 answered
   (Q54: the engine and the server the only authority; facts first, the pictures later), M5
@@ -60,10 +70,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   window under Xvfb, `check.sh`, the coverage, the scoped verify); M4 archived; the hand-test kit
   on the user's machine. The PC's shell worked this time; the session's server restarted once
   mid-fix (the fixer resumed). Disk: the coverage build is 6 GB; delete it after reading.
-
-- **2026-11-21, E24 M4 T5b2** (kept whole by the user at its start): the switch's four fades (the
-  host's, the battle's frames from its element), the result (a monster taken, a retreated hero
-  gone and the next chosen, a mine's boxes and flag); T5a's three as scripted games, recorded
-  again twice the same, every timeline as recorded (the log's "M4 T5b2"). Original data staged
-  (the 64 files and the manuals; the PC's shell down, so sizes checked and the LODs and
-  executables against `installation.md`'s hashes); the PC not needed after the first minutes.

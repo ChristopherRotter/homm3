@@ -11,24 +11,32 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 `QUEUE-ARCHIVE.md`. **M5** (hot seat on the adventure map) was refined with the user at T0
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
 "Later". Every task's cut is confirmed with the user at its start. Planned ids: `MCL-STUB-5` (a
-computer colour's turn ended at once, T3), `MCL-STUB-6` (a screen of M6 or M7, T4).
+computer colour's turn ended at once, T3), `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was cut
+in three at its start (T1a done 2026-11-24).
 
-### E24 M5 T1 — M4's hand test and carry-overs
+### E24 M5 T1b — MCL-Q51: a mine's guards' battle not won, recorded and read
 
-- **Scope:** first the user's notes of M4's hand test (`clients/out/win/map-m4-notes.txt` on the
-  user's machine, beside `map-m4.cmd`; not written at T0): each finding a question or a task. Then
-  M4's carry-overs: the hero's pose at the attack (the original draws its moving pose: about 590
-  pixels at the hand-over, a flag column at the map's return) and the panel's buttons after a
-  retreat, read and built, the battle sequences recorded again (`timelines/battle-*-frames.txt`
-  without them; review item 5, the user at T0); **MCL-Q51** (b) then (a): `battle-mine` recorded
-  with `battle = "retreat"`, `visit_mine` 0x4A39A0's path read for the draw, built; **MCL-Q52**
-  (a): the map's return (`manager_run` 0x4B0C70, `ambient_sounds_at` 0x4183D0) read for the
-  ambient slots and built, (b) (the slots forgotten at the hand-over) if the reading is far off.
-- **Acceptance:** the hand test's findings placed; the two frame differences gone from the
-  battle sequences' lists; the retreat's sequence as recorded; the ambient loops after a battle as
-  read; `drawn` all the same; the scoped verify.
-- **Depends on:** M5 T0 (done); the user's hand test (else its notes wait for T2). **Status:**
-  queued; original data and Wine needed.
+- **Scope:** T1 cut in three by the user at its start (2026-11-24; T1a done: the log's "M5
+  T1a"). First the user's notes of M4's hand test (`clients/out/win/map-m4-notes.txt` on the
+  user's machine, beside `map-m4.cmd`; still the blank template at T1a): each finding a question
+  or a task, if written by then (else they wait for T2). Then **MCL-Q51** (b) then (a):
+  `battle-mine` recorded with `battle = "retreat"` (a new sequence beside it), `visit_mine`
+  0x4A39A0's path read for a draw (its boxes, the flag, the hero), built.
+- **Acceptance:** the retreat's sequence as recorded (twice the same) and its frames compared;
+  the draw's path read and built as read (a recording if one can be set up with one outcome);
+  `drawn` all the same; the scoped verify.
+- **Depends on:** T1a (done). **Status:** queued; original data and Wine needed.
+
+### E24 M5 T1c — MCL-Q52: the ambient loops after a battle
+
+- **Scope:** **MCL-Q52** (a): the map's return (`manager_run` 0x4B0C70, `ambient_sounds_at`
+  0x4183D0) and the lift after it (`mobilize_hero`'s `hero_select` 0x4180A0 to 0x41812D: the
+  ambient sounds restarted, the terrain's music; T1a lifts the hero again without its sounds) read
+  for the ambient slots and built; (b) (the slots forgotten at the hand-over) if the reading is
+  far off.
+- **Acceptance:** the ambient loops after a battle as read (a sound run of a battle sequence if
+  the harness can log the loops there); `drawn` all the same; the scoped verify.
+- **Depends on:** T1a (done). **Status:** queued; original data needed (Wine for a sound run).
 
 ### E24 M5 T2 — the layering: `h3-map-client` and the shell's crate (no behaviour changed)
 

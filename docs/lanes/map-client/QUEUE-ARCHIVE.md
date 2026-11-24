@@ -4,6 +4,28 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-24 (this lane, E24 M5 T1 cut in three by the user at its start; T1a done: the log's
+  "M5 T1a": the hero's pose at the attack and the panel's buttons after a retreat; T1b MCL-Q51
+  and T1c MCL-Q52 queued; the hand test's notes still blank, carried into T1b): the task as it
+  stood, verbatim.
+
+  ### E24 M5 T1 — M4's hand test and carry-overs
+
+  - **Scope:** first the user's notes of M4's hand test (`clients/out/win/map-m4-notes.txt` on the
+    user's machine, beside `map-m4.cmd`; not written at T0): each finding a question or a task. Then
+    M4's carry-overs: the hero's pose at the attack (the original draws its moving pose: about 590
+    pixels at the hand-over, a flag column at the map's return) and the panel's buttons after a
+    retreat, read and built, the battle sequences recorded again (`timelines/battle-*-frames.txt`
+    without them; review item 5, the user at T0); **MCL-Q51** (b) then (a): `battle-mine` recorded
+    with `battle = "retreat"`, `visit_mine` 0x4A39A0's path read for the draw, built; **MCL-Q52**
+    (a): the map's return (`manager_run` 0x4B0C70, `ambient_sounds_at` 0x4183D0) read for the
+    ambient slots and built, (b) (the slots forgotten at the hand-over) if the reading is far off.
+  - **Acceptance:** the hand test's findings placed; the two frame differences gone from the
+    battle sequences' lists; the retreat's sequence as recorded; the ambient loops after a battle as
+    read; `drawn` all the same; the scoped verify.
+  - **Depends on:** M5 T0 (done); the user's hand test (else its notes wait for T2). **Status:**
+    queued; original data and Wine needed.
+
 - 2026-11-24 (this lane, E24 M5 T0 done: the log's "M5 T0"): the task, verbatim.
 
   ### E24 M5 T0 — M5 refined with the user

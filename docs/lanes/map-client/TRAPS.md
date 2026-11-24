@@ -219,6 +219,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   experience reaches no level (a level-up's dialog holds the map), and keep the engine's script's
   battle commands in step (a changed map or seed changes them: `system battle defend` for the
   guards, the attacker's shots read from the record's legal commands).
+- **A hero lifted and a hero on its tile differ by one unit** (M5 T1a, design §5.22): the lifted
+  hero's pass 9 blends it 50/50 over itself, which drops each channel's low bit, so a frame
+  difference that brightens a hero's whole picture by one unit (no shape changed) is where it
+  stands (+0x1EC), not its pose. And a `Draw`'s `frames` counts 0's redraw's step: one more
+  than the timeline's `objects` (`State::objects`) at the same moment.
 - **Two tests pin the recorded sequences** (M4 T2d1): moving a task's sequences from
   `to-record.toml` into `sequences.toml` fails `sequence::tests::reads_the_recorded_sequences`
   (their count) and `timeline::tests::the_walks_frames_are_m2_t3bs` (the ids replayed, in order)

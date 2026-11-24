@@ -3433,3 +3433,39 @@ or captured. From the user's machine (its bridge briefly up): `Heroes3.exe`, `ex
   M5 lifts); the adventure lane's (the user's rule; MCL-Q53, Q54, Q55; the map's texts in play);
   the server lane's (MCL-Q53's `SRV-STUB-3`, Q55's `SRV-STUB-10`); the AI lane's (a computer
   colour's turn ended at once until E31's increment 2).
+
+### M5 T1a — the hero on its tile through a battle, the panel after a retreat (2026-11-24)
+
+On `map-client/e24-m5-t1`, `master` at 150da0a (#1152, #1153 merged; CI green). Original data
+staged from the user's repo folder at the start (58 files: the four LODs, both executables, the
+five DLLs, the sound and video archives, both tars, the 40 MP3s; `games/` not; the four manuals
+and three help files too; SHA-256 checked, the MP3s as one digest of their hashes); the PC not
+needed after the first minutes. The setup's baseline stopped at its coverage step by a VM restart (fmt, clippy, the doc
+tests and deny passed), CI's green `master` standing in. A ballast file kept the game's disk
+check in range (TRAPS).
+
+- **The cut** (the user, at the start, the recommended one): T1 in three, T1a M4's two frame
+  differences, T1b MCL-Q51, T1c MCL-Q52. The user's M4 hand-test notes still the blank template
+  (`map-m4-notes.txt`, as at T0): they wait for T2 (the queue's own fallback).
+- **Found:** the "moving pose" was no pose: the original's hero at the attack is a unit brighter
+  over its whole picture, drawn on its tile without the lifted hero's pass 9 blend (the frame
+  check against the viewer with the hero on its tile: the same picture; every walking frame
+  tried first, none closer). `adventure_hero_stop` (0, 1) at every battle's start puts it there
+  (`monster_battle` 0x4AC593, `adventure_battle` 0x4AD54E); the map's return keeps it there with
+  the mouse hidden through the fade in (M4's 710 and 760 differed by the arrow too, 87 pixels,
+  counted in with "a flag column"); the fade in's end shows it lifted again (a won battle's
+  `mobilize_hero`; a retreat's lift before its draw 0x4AE6BB not read, *provisional*). After a
+  retreat `hero_leave_game` redraws neither sleep nor cast a spell: both drawn enabled until
+  the next choice (1083 pixels from 810 to 1265).
+- **Built** (design §5.22): `Loop::battle_stop` (the hero put back on its tile, the view drawn,
+  then the objects stepped when due: one step at `battle-mine`'s 1060, where M4's viewer stepped
+  at the box's close and drew after it), the mouse hidden at `map_back`, shown and the hero
+  lifted again (the view drawn) at `after_battle`'s start, a retreated hero's last view drawn
+  lifted before it leaves, `Buttons::left` (sleep and cast a spell kept until `left_map`'s
+  choice). `adventure_hero_stop`'s map entry read whole.
+- **Recorded:** `battle-won`, `battle-retreat`, `battle-mine` again, each as recorded; their
+  frame lists now M4's known differences only (MCL-Q36's morale icon, MCL-Q49's battle fade in,
+  MCL-Q48's MINEEVNT box), `battle-retreat`'s dissolve exact.
+- **Checked:** the crate's tests (two new: the hero on its tile through a battle, the kept
+  buttons); `h3map.py drawn` over every situation and sequence, `drawn --record` for the three;
+  `check.sh`; the scoped verify.
