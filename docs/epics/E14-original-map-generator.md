@@ -1,7 +1,7 @@
 # E14 — The original's random map generator
 
 Status: **in progress** since 2026-11-23; increment 1 **closed** (2026-11-24, RMG-Q2;
-`E14-archive.md`); increments 2 to 7 cut, increment 2 refined; next T2a · Lane: **rmg** (opened
+`E14-archive.md`); increments 2 to 7 cut, increment 2 refined; T2a done; next T2b · Lane: **rmg** (opened
 at this refinement) · Prerequisite of E30 (the custom generator) · Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -46,7 +46,7 @@ objects' values and the guards' strengths read from the original rather than gue
 2. **A lane of its own**, `rmg` (code `RMG`), in parallel with the adventure lane, owning a new
    pure crate `h3-rmg` (created at increment 2, a shared change) and the packs' `rmg.toml`. The
    generator writes no file: it returns a map the adventure lane's writer (`h3_map::writer`)
-   serialises; the exact seam is T1c3's ADR draft.
+   serialises; the exact seam is ADR-0029 (T1c3's draft).
 3. **Scope:** SoD's generator with both template tables harvested (`ab` from `H3ab_bmp`, `sod`
    from `H3bitmap`); what AB's executable does differently is E11's. The epic ends at a game set
    up on a generated map in the engine (the CLI too); the shell's Begin (CLT-STUB-12 lifted) and
@@ -62,8 +62,8 @@ objects' values and the guards' strengths read from the original rather than gue
    the ADR drafts confirmed at each.
 7. **The increments** as below; only increment 1 is refined. The reading may re-cut 2 to 6 to the
    original's own phase order (done: decision 8).
-8. **The checkpoint after increment 1** (the user, 2026-11-24, RMG-Q2): the ADR draft
-   `docs/lanes/rmg/adr-drafts/h3-rmg-generator.md` confirmed, with its seam the experiment writer
+8. **The checkpoint after increment 1** (the user, 2026-11-24, RMG-Q2): the ADR draft (now
+   ADR-0029, `docs/adr/0029-original-map-generator.md`) confirmed, with its seam the experiment writer
    `h3_map::writer` (its seven gaps closed by their owners before increment 7, the game reading
    the written bytes; not the session's recommended writer of `RawMap`); `objects.txt`'s picture
    names harvested with the tables (Q13's names); the 18 flags in the game's profiles
@@ -71,7 +71,7 @@ objects' values and the guards' strengths read from the original rather than gue
 
 **Agent decisions** (change freely):
 
-- The generator's `rand` lives in `h3-kernel` (`CrtRand`), not in `h3-rmg` (T1c3's ADR draft
+- The generator's `rand` lives in `h3-kernel` (`CrtRand`, KER-RNG-004), not in `h3-rmg` (ADR-0029
   point 3: the third use after `h3-adventure`'s and `h3-heroes`' copies).
 - The oracle's maps are never committed (original output, ADR-0009); their hashes and the
   choices that made them are.
@@ -87,7 +87,7 @@ Cut in the run's own order (decision 7): a missed draw shifts every later one an
 oracle compares after each step, so each increment ports the next steps of the run whole (the
 sketch's "connections before objects" would port step 6 before the towns of steps 4 and 5 it
 reads). Rule ids are survey §3.2's (provisional until an increment writes them); ledger entries
-`docs/rules/quirks-rmg.md`; the design in the ADR draft `docs/lanes/rmg/adr-drafts/h3-rmg-generator.md`.
+`docs/rules/quirks-rmg.md`; the design in ADR-0029 (`docs/adr/0029-original-map-generator.md`).
 Every increment needs the oracle's set staged from the PC (the client lane's, ORACLE.md).
 
 **Every increment's exit criteria**, beside the Definition of Done: (a) its rules in the catalog,
@@ -123,7 +123,7 @@ the survey; (f) the checkpoint with the user.
 - **The oracle:** the harness must run the original's generation (E27 M3 T5b recorded its
   failure without a `random_maps` folder) with its clock fixed; T1b finds the way or says
   what the fallback is (a debugger-set seed).
-- **Floats:** x87 at the thread's 53-bit control word, so binary64 (the ADR draft's point 4);
+- **Floats:** x87 at the thread's 53-bit control word, so binary64 (ADR-0029 point 4);
   increment 3 reads the control word in the oracle to confirm.
 - **Time limits or retries** in the generation would make the output depend on the machine;
   T1a2 looks for them.
@@ -136,3 +136,7 @@ the survey; (f) the checkpoint with the user.
 ## Tasks done
 
 The full records: `E14-log.md`. Increment 1's tasks (T1a1 to T1c3): `E14-archive.md`.
+
+- **T2a** (2026-11-24, `shared/e14-t2a`, `cross-lane`): `h3-rmg` and `h3-pack-rmg` created empty
+  (`h3-game → h3-rmg` forbidden), `h3_kernel::rng::CrtRand` (KER-RNG-004, the code reading's
+  vectors), the context *map generation*, the catalog context `RMG`, ADR-0029 numbered.

@@ -107,6 +107,11 @@ from = "h3-battle"
 to = "h3-heroes"
 reason = "the battle sees only BattleHero, never the hero model (ADR-0013 point 2)"
 
+[[policy.forbidden_edge]]
+from = "h3-game"
+to = "h3-rmg"
+reason = "a game on a generated map reads the written bytes, no generated-map path into GameSetup (ADR-0029 point 2)"
+
 [crate.h3-kernel]
 layer = "shared"
 logic = true
@@ -182,6 +187,18 @@ external = []
 dev_deps = []
 dev_external = ["proptest"]
 
+# The map generation context (ADR-0029; E14): the port of the original's random map generator, its
+# settings, rmg part, steps and painters, and the generated map. A domain context on the kernel and
+# the core content alone; only adapters depend on it (the game reads a generated map's bytes,
+# point 2). Its tests over the packs' tables live in h3-pack-rmg.
+[crate.h3-rmg]
+layer = "domain"
+logic = true
+deps = ["h3-kernel", "h3-content"]
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
 # The whole game (ADR-0015 point 1, ADR-0017; E08): the first application crate, and a logic
 # crate. It wires the adventure and the battle (increment 3), keeps the store of heroes (the hero
 # model) and bundles the battle's ruleset part (ADR-0017 points 1 and 11); E09 (ADR-0028 points 4
@@ -241,6 +258,17 @@ deps = ["h3-kernel", "h3-content", "h3-towns", "h3-pack"]
 external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
+
+# packs/*/rmg.toml -> the map generation context's tables (ADR-0029 point 5; E14), as
+# h3-pack-towns. Dev: proptest for the generator's property test over the packs' tables (E14's exit
+# criterion (d)).
+[crate.h3-pack-rmg]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-rmg", "h3-pack"]
+external = ["serde", "toml"]
+dev_deps = []
+dev_external = ["proptest"]
 
 # packs/*/core.toml -> the core's definitions (R01 decision 6).
 [crate.h3-pack]
