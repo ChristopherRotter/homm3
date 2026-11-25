@@ -45,6 +45,15 @@ In `TRAPS.md`.
 
 ## Recent sessions
 
+### 2026-11-25 — T54: batch TWN-6 (in progress)
+
+Kept whole by the user (decision 218), `cross-lane` consented (h3-experiment, its README, the
+harness). Done on `town/e09-t54`: the Conflux's two buildings in the spec; the four specs
+`E09-batch-6a` to `-6d` and their recipes; the harness's town clicks (`opens`, `pixel`), screen 3,
+the stock and the boat spot (unchecked live). Next: stage the original data (the user's computer
+was offline), compile the specs, check the harness live (screen 3's vtable 0x643AAC, the arrows,
+the University's items), two runs each, scoring.
+
 ### 2026-11-25 — T53: increment 6's drafts, Part H, the cut and the checkpoint, docs only
 
 Baseline 4f2cc71 (#1161 merged; CI green on `master`), `master`'s e2e15c7 merged in. No original
