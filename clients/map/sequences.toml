@@ -1839,3 +1839,25 @@ inputs = [
     { at = 500, keydown = "Return" }, { at = 560, keyup = "Return" },
 ]
 script = ["0 move 0 5,4,0", "0 battle retreat"]
+
+# A mine's guards' battle not won (E24 M5 T1b, MCL-Q51 (b), design §5.23): `battle-mine`'s
+# situation, the hero retreating at its first turn. `visit_mine` 0x4A39A0 then shows nothing more:
+# `monster_battle` gives back a winner that is not the hero (1, or -1 a draw), its count left
+# written back into the guards and the visit over (no box, no flag); the hero leaves as
+# `battle-retreat`'s.
+
+[[sequence]]
+id = "battle-mine-retreat"
+situation = "seq-battle-mine"
+ms = 2800
+hero_speed = 4
+seed = 7
+battle = "retreat"
+why = "an abandoned mine's Troglodytes fought after their question (Enter), the hero retreating at its first turn: the result's Enter, then the hero dissolved off the map, no box, the mine left unflagged"
+inputs = [
+    { at = 100, keydown = "Up" }, { at = 160, keyup = "Up" },
+    { at = 1000, keydown = "Return" }, { at = 1060, keyup = "Return" },
+    { at = 1500, keydown = "Return" }, { at = 1560, keyup = "Return" },
+]
+engine_seed = 5
+script = ["0 move 0 5,4,0", "0 answer offer accept", "0 battle retreat"]

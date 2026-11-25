@@ -364,6 +364,34 @@ fn a_flight_neither_ends_on_nor_passes_a_water_tile_an_object_is_visited_from() 
     }
 }
 
+// covers: ADV-MOV-009, ADV-MOV-008
+#[test]
+fn a_flight_over_a_hidden_water_tile_an_object_is_visited_from_is_refused_or_stopped() {
+    // E08 T142b (found by the plans' property, `check_sea_move`): D-46 holds under the fog. With
+    // `ADV-QUIRK-15` on, a hidden water tile an object is visited from (8, 0) is refused, as on
+    // the step up off a closed top (the original's same point); off, the path over the hidden
+    // strip is accepted and its walk stops on (5, 0), its last stop node, before that tile.
+    let rows = ["gggggg~~V~gggggg"];
+    for faithful in [true, false] {
+        let (rules, _, _) = sea_rules(faithful);
+        let flyer = store(&[(FLYING, 3)]);
+        let heroes = vec![
+            hero_at(1, 0, p(0, 0), &[PEASANT]),
+            hero_at(2, 0, p(15, 0), &[PEASANT]),
+        ];
+        let mut setup = coasted(&rows, heroes);
+        set_terrain(&mut setup, p(8, 0), SEA);
+        let mut s = started(&rules, &setup).unwrap();
+        let moved = sail(&mut s, &rules, &flyer, &row(1..=10));
+        if faithful {
+            assert_eq!(moved.map(|_| ()), Err(blocked(7, StandError::Blocked)));
+        } else {
+            assert_eq!(moved.map(|(outcome, _)| outcome.dropped), Ok(5));
+            assert_eq!(hero(&s), (p(5, 0), None, 800, hero(&s).3));
+        }
+    }
+}
+
 // covers: ADV-MOV-009, ADV-OBJ-004, ADV-PIK-018
 #[test]
 fn a_flight_up_off_a_closed_top_never_passes_a_water_tile_an_object_is_visited_from() {

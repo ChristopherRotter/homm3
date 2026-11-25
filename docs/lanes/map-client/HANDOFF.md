@@ -15,14 +15,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   play; the pictures from the map file until an ADR) and **the shell on top** (`h3-map-client`
   this lane's adapters library, the shell's own crate the client lane's). **M5 T1 cut in three**
   by the user at its start: **T1a done** 2026-11-24 (the hero on its tile through a battle, the
-  panel after a retreat: design §5.22; the battle sequences' frames now M4's known differences
-  only). **Next: M5 T1b** (the user's M4 hand-test notes first if written:
-  `clients/out/win/map-m4-notes.txt`, still blank at T1a; then MCL-Q51), then T1c (MCL-Q52).
+  panel after a retreat: design §5.22), **T1b done** 2026-11-25 (MCL-Q51: `battle-mine-retreat`
+  recorded, `visit_mine`'s path read for a draw, the built form kept: design §5.23). **Next: M5
+  T1c** (MCL-Q52), then T2 (the user's M4 hand-test notes first if written:
+  `clients/out/win/map-m4-notes.txt`, still blank at T1b).
   Open questions: MCL-Q29 to MCL-Q49 (none blocks). Stubs: `MCL-STUB-1` (a
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10); planned `MCL-STUB-5` (T3), `MCL-STUB-6` (T4). Next ids
   **MCL-Q57**, **MCL-STUB-5**.
-- **Open pull requests** (2026-11-24): T1a's **#1160** (`map-client/e24-m5-t1`): check it first.
+- **Open pull requests** (2026-11-25): T1b's (`map-client/e24-m5-t1b`): check it first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
@@ -48,6 +49,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-25, E24 M5 T1b** (MCL-Q51): `battle-mine-retreat` recorded twice the same (no box,
+  the mine unflagged, the hero gone as `battle-retreat`'s); `visit_mine`, `monster_battle`'s end
+  and `adventure_battle`'s outcomes read: a loss, a retreat and a draw show the same, so M4 T6's
+  built form stays (the log's "M5 T1b", design §5.23); a draw's zero-count guards noted in the
+  adventure lane's inbox. The PC up for the first minutes (everything staged, SHA-256 checked);
+  the setup's baseline stopped at coverage by hand, CI's `master` standing in.
+
 - **2026-11-24, E24 M5 T1a** (T1 cut in three by the user at its start): M4's "moving pose" was
   the hero drawn on its tile (`adventure_hero_stop` at every battle's start: no pass 9 blend),
   the map's return with it there and the mouse hidden, lifted again at the fade in's end; sleep
@@ -62,11 +70,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   refined and T1 to T8 queued, the other lanes' inboxes told. Docs only; the PC's bridge came and
   went (the executable, the text tables and the manuals staged at the start); the VM restarted
   once.
-
-- **2026-11-23, E24 M4 T6, M4's closure** (the user: no cut, the work spread over sub-agents):
-  six fresh reviewers (64 findings), seven fixers one at a time (each finding a test or a
-  question), the exit checked (`drawn` all the same, the two shipped starts captured again with
-  the Gold bonus, `battle-retreat`'s three frames now exact, 66 golden records to their end, the
-  window under Xvfb, `check.sh`, the coverage, the scoped verify); M4 archived; the hand-test kit
-  on the user's machine. The PC's shell worked this time; the session's server restarted once
-  mid-fix (the fixer resumed). Disk: the coverage build is 6 GB; delete it after reading.

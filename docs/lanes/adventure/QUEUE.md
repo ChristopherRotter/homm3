@@ -4,31 +4,38 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a done (2026-11-24), T142b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T142b — the flight's flag over unexplored tiles** (round 6, T142's second half, decision
-415; design note `E08-design.md` §11.1, §21; `adventure/e08-t142b`)
+**E08 T143 — the boats' spells and Dimension Door** (round 7; design note `E08-design.md`
+§10.1, §10.2, §10.5, §11.2, §11.3, §16; cut in two by the design's table: T143a, then T143b;
+confirm the cut at its start)
 
-- **Scope:** `ADV-QUIRK-15` (`quirk.adventure.flight_reads_hidden`, `QuirkFlag(45)`) in
-  `AdventureState::passage`'s unexplored row and `MoveHero`'s walk: **on** (faithful) an
-  unexplored tile is passable only flying, never a stop, refused when it is truly rock (the reach
-  reads the hidden truth); **off** (strict-fixed, the compromise) an unexplored tile is assumed
-  flyable, priced as a pass over a blocked tile, never a stop; a step whose tile, once revealed,
-  the hero may not pass is not made: the move ends on the last stop node it reached, charged only
-  the steps up to it (decision 407; the passes after it undone and free, their reveals kept), the
-  rest dropped (`AdventureOutcome::dropped`). A walker and a water walker keep ADV-MOV-008.
-  ADV-MOV-008 and -009 amended, ADV-QUIRK-15's ledger entry reclassified (fix-optional), `verified`
-  by E15-13, E15-14 (D-78). The hygiene property (`h3-map`'s `view.rs`: a flight's legal moves
-  under `strict-fixed` never depend on a hidden tile). **The passage is the hottest loop:**
-  measured right after the first build against `master`'s worktree (`homm3-bench-regression`;
-  the lane's traps on the reach's and the passage's loops).
-- **Inputs:** design §11.1, §21; survey `E08-spells.md` §7.3, §13, §18 (E15-13, E15-14); T142a's
-  record in `E08-log.md` (the day spells' levels already read by the paths).
-- **Depends on:** T142a (`adventure/e08-t142a`). **Status:** ready once T142a merges. Then T143 to
-  T145 (T145's `shared/` task amends ADR-0017 point 4's order, decision 414).
+- **T143a, Summon Boat and Scuttle Boat** (`adventure/e08-t143a`, `cross-lane` for the wire):
+  ADV-SPL-003, -004 (lifting `ADV-STUB-22` for these two); the chance draw from the actor's
+  stream (a failure charged: `CastFailed`); Summon Boat's boat by `ADV-QUIRK-53`
+  (`summon_boat_by_steps`: on the least |dx| + |dy|, levels ignored, a tie to the later index;
+  off the least dx² + dy² on the hero's level, a tie to the lower), created at Advanced and
+  Expert up to `boats_most`; Scuttle Boat's targets by `ADV-QUIRK-52` (`scuttle_reads_hidden`:
+  on a hidden empty boat a target; off every hidden tile of the window a target, revealed in
+  every outcome, decision 402); `BoatSummoned`, `BoatCreated`, `BoatScuttled`, `CastFailed`
+  (protocol v83, the server lane's, `cross-lane`); the ledger's ADV-QUIRK-52, -53; rules
+  `verified` by batch E15's rows (survey `E08-spells.md` §18).
+- **T143b, Dimension Door** (`adventure/e08-t143b`): ADV-SPL-007 to -009; the refusals, the
+  `doors` count, the 9 × 8 window (ADV-QUIRK-56 fixed), the relocation by increment 11's jump
+  (`hero_relocate`: no guard's battle, no visit, the reveal), the points; `ADV-QUIRK-51`
+  (`door_reads_hidden`) and `ADV-QUIRK-55` (`door_failure_charged`) with the hidden target's
+  reveal (decision 399); `ADV-STUB-22` withdrawn once the five spells cast.
+- **Inputs:** design §10, §11.2, §11.3, §14, §16, §21; T142a's and T142b's records in
+  `E08-log.md` (the cast's frame, `check_cast`/`apply_cast`; the flight's `Fog` in the mode: a
+  hidden target's rows follow the same split of knowledge and truth); the hygiene property's
+  faithful exception for flyers (`view.rs`, T142b) is the model for the door's and the
+  scuttle's faithful leaks.
+- **Depends on:** T142b (`adventure/e08-t142b`). **Status:** ready once T142b merges. Then T144
+  (the env, the replays, the maps) and T145 (the audit, the `shared/` task).
 
 ## Inbox
 
+<<<<<<< HEAD
 - 2026-11-25 (the town lane, E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to
   build now**): increment 6, the town's trades, is designed (design note `docs/epics/E09-design.md`
   Part H; drafts `docs/lanes/town/adr-drafts/*-increment-6.md`, accepted at `TWN-Q37`). Planned
@@ -45,6 +52,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   The month's draw is the towns' stream's at the month's start's end (GAM-CAL-002). Whichever
   merges first takes each number; the second rebases and bumps again.
 
+=======
+- 2026-11-25 (the map client lane, E24 M5 T1b, `map-client/e24-m5-t1b`; **for your decision,
+  nothing to build for us**): read while settling MCL-Q51 (`E24-design.md` §5.23): after a
+  **draw** at a neutral mine's single stack, `monster_battle` writes the count left, 0, into slot
+  0 and `visit_mine` 0x4A39A0 keeps its creature there (0x4A3AEB); `army_has_creatures` 0x4496A0
+  reads only the types, so the next visitor is asked ADVEVENT 84 again (what its battle of 0 then
+  does: not read). `end_mine_battle` (ADV-MIN-002) leaves no guards after a draw (the next visit
+  flags it); survey `E08-economy.md` §3.2 names only a loss, a retreat and a surrender. Your call
+  whether that is a deviation to record (a quirk) or as intended.
+>>>>>>> origin/master
 - 2026-11-24 (the rmg lane, E14 T2a, `shared/e14-t2a`; **for your planning, nothing to do
   now**): the kernel holds the C runtime's generator, `h3_kernel::rng::CrtRand` (KER-RNG-004,
   ADR-0029 point 3: `new(seed)` is `srand`, `rand()`, `state()`), the same formula as

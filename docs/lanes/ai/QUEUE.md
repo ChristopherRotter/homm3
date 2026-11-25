@@ -20,16 +20,24 @@ resumes (the epic file); its tasks are cut then.
 (since T45, AI-Q23); **increment 1 closed 2026-11-24** (AI-Q31; its tasks T1a1 to T1b in
 `QUEUE-ARCHIVE.md`, their records in `E31-log.md`).
 
-- **E31 increment 2 — refine and cut** (the epic file's increment 2, confirmed at AI-Q31): first
-  the `shared/` pull request of the ADR draft's points 1 and 9 (`h3-game`'s `src/computer/` the ai
-  lane's by path in `lanes.toml`, `docs/rules/catalog/computer.toml`, `docs/rules/quirks-ai.md` with
-  the five exploit-fix entries of the survey §5.5, the signed `X87` with its audit), and the ADR
-  draft numbered when the user accepts it there; then the increment's tasks cut by size (the turn's
-  loop, the planning and its values, the simulated combat, the walk; trace T-A's harness,
-  `E31-design.md` §1). Measure it at its start and confirm a cut by size (the user: a couple of
-  small tasks or one bigger one a session). `Heroes3.exe` staged for the blind re-reads. When the
-  entry point is built, tell the map-client lane (its inbox note of E24 M5 T0: `MCL-STUB-5`'s hot
-  seat): `h3_game::computer::choose`, one command a call, the battle side by the host's seat.
+- **E31 increment 2** (refined 2026-11-25, AI-Q32; the epic file's "Increment 2's tasks", its
+  record `E31-log.md` T2): the `shared/` pull request #1163 first (merged before any code: the
+  module's paths, `SignedX87`, ADR-0030). Then, one session each (T2a and T2e may pair), the leaves
+  first: **T2a** the frame (next), T2b and T2c the simulated combat, T2d the start's values, T2e the
+  spells' and skills' values, T2f the artifacts, T2g the army and town values, T2h the object value,
+  T2i the planning, T2j the walk with the exit's property tests and the gated benchmark, T2k trace
+  T-A's harness and days 1 to 3. Each with its `CPU-` ids, tests, coverage 100 %, stubs by epic.
+  - **T2a — the frame** (survey §1.1 to §1.4, §1.6; ADR-0030 points 2, 3, 5, 13; about 1 400 of the
+    original's instructions): `h3_game::computer::choose` and `Memory` (a plain value, its
+    canonical encoding and hash), `POLICY_VERSION`; the turn's loop of `ai_player_turn` 0x525E80
+    (the phases, the heroes' order of `ai_next_hero` 0x526A90, both passes, the done marks, the
+    end), each hero's turn done at once until T2i and T2j, then `EndTurn`; an open decision answered
+    by `default_answer` behind a stub until increment 4. The property tests (random maps, five
+    shipped maps, all five difficulties: every command legal, a turn ends within a bound of
+    commands, the same command for the same state, memory and stream), the benchmark's workload in
+    `benches/ai/`; the `CPU-TRN-` ids. Measure its size at the start; then tell the map-client lane
+    the entry point (its inbox: `MCL-STUB-5`'s hot seat, one command a call, the battle side by the
+    host's seat). `Heroes3.exe` staged for the blind re-reads where a step is unclear.
 
 ## Inbox
 

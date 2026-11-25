@@ -6407,6 +6407,9 @@ server lane's the protocol's additions, the battle lane's the harvest's fields; 
 notes of the lane's inbox (T127a1 to T133b), folded into Part H, archived. No version moved. Ids:
 questions next `TWN-Q38`; decisions next 218; disputes `TD-32`; quirk candidates `T-29`.
 
-**Verify:** docs only: the docs gates (`check-docs`, `check-rules`, `check-stubs`,
-`check-exe-map`, `check-lane --base origin/master`, `doc-drift --base origin/master`) and the
-scoped verify; CI on the pull request is the record.
+**Verify:** docs only. The setup's baseline was lost to a VM restart mid-run (CI's green run on
+`master` e2e15c7 stands for it). On the branch (d225af0): `check-docs`, `check-rules`,
+`check-stubs`, `check-exe-map`, `check-lane --base origin/master` and `doc-drift --base
+origin/master` ok; `cargo xtask verify --scope town --summary` with no failing step (coverage 24.9
+minutes, determinism 10.0, bench-check 16.8; `deny` and `ffi-smoke` skipped by the scope; no
+original data staged). CI on the pull request is the record.
