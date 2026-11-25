@@ -3655,7 +3655,10 @@ mod tests {
         assert_eq!(building_bit("conflux", "artifact merchants"), Ok(10));
         assert_eq!(building_bit("tower", "artifact merchants"), Ok(10));
         let err = building_bit("castle", "magic university").expect_err("the Conflux's only");
-        assert!(err.contains("unknown building `magic university` for a castle town"), "{err}");
+        assert!(
+            err.contains("unknown building `magic university` for a castle town"),
+            "{err}"
+        );
     }
 
     #[test]
