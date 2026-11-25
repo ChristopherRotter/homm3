@@ -47,11 +47,12 @@ In `TRAPS.md`.
 
 ### 2026-11-25 — T55: increment 6's ADRs, the two flags, the combinations' costs (`shared/`)
 
-Baseline 8abf1f4 (#1173 merged; the setup's full baseline passed, CI green on `master`). No
-original data staged. The user chose T55 whole over the recommended T55a alone, with sub-agents
-(decision 219): one applied the three drafts (its Consequences and Alternatives for increment 6
-kept), one re-hashed the 118 golden adventure replays (only `ruleset_hash` moved), the server's
-record literal and the bot reports (only `engine.core`). The inbox's CI note done (`TRAPS.md`).
+Baseline 8abf1f4 (#1173 merged; the setup's full baseline passed, CI green on `master`); 5 files
+staged at the end for the original-data step. The user chose T55 whole over the recommended T55a
+alone, with sub-agents (decision 219): one applied the three drafts, one re-hashed the 118 golden
+adventure replays (only `ruleset_hash`), the server's literal and the bot reports, one reviewed
+the ADRs against the drafts (five wordings fixed). E14 T2c (#1174) merged meanwhile with flags 52
+and 53: the town's moved to 54 and 55, re-hashed again. The inbox's CI note done (`TRAPS.md`).
 
 ### 2026-11-25 — T54: batch TWN-6, run and scored
 

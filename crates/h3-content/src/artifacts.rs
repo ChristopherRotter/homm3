@@ -210,14 +210,14 @@ impl HeroContent {
         }
         // A combination locks one position of every part's slot except one of its own, and one
         // without a pack cost costs its parts' sum (HER-ART-008).
-        let derived: Vec<(Vec<ArtifactSlotId>, Vec<(ResourceId, u32)>)> = self
+        let derived = self
             .artifacts
             .items
             .get(first..)
             .unwrap_or_default()
             .iter()
             .map(|a| Ok((self.locks(a)?, self.combination_cost(a)?)))
-            .collect::<Result<_, CompileError>>()?;
+            .collect::<Result<Vec<_>, CompileError>>()?;
         for (a, (l, c)) in self.artifacts.items.iter_mut().skip(first).zip(derived) {
             a.locks = l;
             a.cost = c;

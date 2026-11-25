@@ -6473,7 +6473,8 @@ glossary, `docs/06-security.md`, `h3-content` and `h3-pack` shared; the harveste
 `packs/base` the battle lane's, `heroes.toml` and the golden adventure replays the adventure
 lane's, the bot reports the AI lane's, one test literal the server lane's). Starting point:
 `master` at 8abf1f4 (#1173, T54's, merged); the setup's full baseline passed on its code
-(`verify-once: verified (sandbox) code a3676e3…`), CI green on it. No original data staged. **Kept
+(`verify-once: verified (sandbox) code a3676e3…`), CI green on it. The user's computer was
+connected: 5 files staged at the end for the original-data step, SHA-256 checked. **Kept
 whole** with the `cross-lane` consent (decision 219; the recommendation was T55a alone); edits
 made in worktrees while the baseline ran, then moved over.
 
@@ -6530,4 +6531,12 @@ made in worktrees while the baseline ran, then moved over.
 **The queue:** T55 out; T56 next (the town part v10). Ids: decisions next 220; quirks next
 `TWN-QUIRK-17`.
 
-**Verify:** VERIFY_LINE
+**Verify:** `cargo xtask verify --scope town --summary` on the branch (with `master`'s 8fa2711
+merged in): every step passes but `check-lane` (by design for a `cross-lane` branch; `cargo xtask
+check-lane --cross-lane --base origin/master` ok) and clippy (`type_complexity` on the compile's
+new tuple, fixed by inference; then `--only clippy` and `cargo clippy --workspace --all-targets --
+-D warnings` pass): coverage 24.6 minutes, determinism 7.4, bench-check 15.3; `deny` and
+`ffi-smoke` skipped by the scope; `--only original-data` with the staged data 2.5 (the harvest
+matches the hand-edited profile lines). `cargo check --workspace --all-targets`; `cargo test -p
+h3-content -p h3-pack -p h3-harvest -p h3-server`; `h3 adventure verify` and `h3 verify` on every
+golden replay. CI on the pull request is the record.
