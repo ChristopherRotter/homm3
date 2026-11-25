@@ -13,16 +13,20 @@ only its digests and the choices that made it are kept (rmg/kept.txt).
   h3rmg.py one --seed <s> [--size S|M|L|XL] [--levels 1|2] [--players <n>] [--teams <t>]
                [--computers <c>] [--computer-teams <t>] [--water none|normal|islands]
                [--monsters weak|normal|strong] [--before "<step>;..."] [--again] [--phases]
+               [--sandbox-env]
                [--out <dir>]
       One case: the map's digests, its seed and template as its description names them.
       --before plays h3shell steps on the main menu first (another history before the
       generation, for the memory-dependent draws; survey §2.6); --again generates a second map
-      in the same game (the system options' Main Menu, then the same choices again); --phases
+      in the same game (the system options' Main Menu, then the same choices again);
+      --sandbox-env gives the game the sandbox's environment, not the fixed one (h3drive's
+      H3_FIXED_ENV, E14 T3a: the generator's uninitialised bytes follow it); --phases
       (E14 T1b2) runs the phase oracle as well (xdd.dll's H3RMG, xdd.c's 10.): every draw of
       the generation logged with its site, the cells dumped after each step, the memory record
       (E14 T3a: the x87 control word, the zones as rmg_zone_generator_init finds them), in
       <out>/clock (rmg<g>.draws, rmg<g>-<step>.cells, rmg<g>.memory), and their digests printed.
-  h3rmg.py corpus [--only <id>,...] [--twice] [--again] [--phases] [--record] [--out <dir>]
+  h3rmg.py corpus [--only <id>,...] [--twice] [--again] [--phases] [--record] [--sandbox-env]
+                  [--out <dir>]
       Each case of rmg/corpus.toml, against rmg/kept.txt: `ok` (as kept), `CHANGED`, `new`;
       --twice runs each case again from a fresh start, --again makes a second map in the same
       game, and either fails on a difference; --phases runs the phase oracle and compares the
@@ -269,6 +273,8 @@ def generate(ident, case, out, again=False, phases=False):
     os.environ["H3TIME"] = str(seed)
     if phases:
         os.environ["H3RMG"] = "1"
+    if not SANDBOX_ENV:
+        os.environ["H3_FIXED_ENV"] = "1"  # the game's environment fixed (h3drive.FIXED_ENV)
     run = Generation(recipe_for(ident, choices, case.get("before", [])), out, choices, again,
                      phases)
     try:
@@ -276,6 +282,7 @@ def generate(ident, case, out, again=False, phases=False):
     finally:
         os.environ.pop("H3TIME", None)
         os.environ.pop("H3RMG", None)
+        os.environ.pop("H3_FIXED_ENV", None)
     made = []
     for g, path in enumerate(run.maps, 1):
         f = facts(path, seed, choices)
@@ -320,6 +327,8 @@ PHASES = RMG / "phases.txt"
 # three calls of rmg_zone_generator_init (E14 T3a, the memory record).
 PHASE_HOOKS = 22
 ZONES = RMG / "zones.txt"
+# The game's environment the sandbox's own (`--sandbox-env`, as before E14 T3a), not fixed.
+SANDBOX_ENV = False
 # How long after the map's file the log may take to end (rmg_write_map's return).
 LOG_LIMIT = 30.0
 # Survey §2.6's sites by phase (the C library's rand calls of the generator's range and of the
@@ -949,6 +958,7 @@ def main(argv):
     one.add_argument("--before")
     one.add_argument("--again", action="store_true")
     one.add_argument("--phases", action="store_true")
+    one.add_argument("--sandbox-env", dest="sandbox_env", action="store_true")
     one.add_argument("--out")
     memory = sub.add_parser("memory")
     memory.add_argument("--only")
@@ -960,6 +970,7 @@ def main(argv):
     corpus.add_argument("--again", action="store_true")
     corpus.add_argument("--phases", action="store_true")
     corpus.add_argument("--record", action="store_true")
+    corpus.add_argument("--sandbox-env", dest="sandbox_env", action="store_true")
     corpus.add_argument("--out")
     phases = sub.add_parser("phases")
     phases.add_argument("--only")
@@ -969,6 +980,8 @@ def main(argv):
     read.add_argument("--out")
     sub.add_parser("templates")
     args = p.parse_args(argv)
+    global SANDBOX_ENV
+    SANDBOX_ENV = getattr(args, "sandbox_env", False)
     return {"one": one_command, "corpus": corpus_command, "phases": phases_command,
             "memory": memory_command, "read": read_command,
             "templates": templates_command}[args.command](args)
