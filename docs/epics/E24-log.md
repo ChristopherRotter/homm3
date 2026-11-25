@@ -3501,3 +3501,27 @@ needed (the free space in the game's band).
 - **Checked:** the viewer's timeline from the engine's record as recorded (no gap); the frames
   M4's known differences until 1760, exact from 1810; `h3map.py drawn` over every situation and
   sequence (the new one alone `new`, recorded); the crate's tests.
+
+### M5 T1c — MCL-Q52: the ambient loops after a battle (2026-11-25)
+
+On `map-client/e24-m5-t1c`, in the same sandbox and session; begun on T1b's branch, rebased onto
+`master` at c675568 once #1165 merged (with #1162, #1164: `drawn` all the same again).
+
+- **Read** (MCL-Q52 (a), design §5.24): the hand-over's `effects_stop_all` ends the loops but
+  leaves the manager's four slots; nothing at the map's return clears them; `adventure_battle`'s
+  end (0x4AE8F3, every outcome) calls `mobilize_hero(0, 0, 1)`, whose `hero_select` scans with the
+  stop flag (0x4180FF): each slot stopped and emptied, the loops found again started anew, the
+  music only on another terrain. 0x4AD62E, which §5.22 named, is the battle without a human's.
+  (b) not needed.
+- **Recorded:** `battle-mine` as a sound run (a scratch sequence, `sound = true`): the mine's loop
+  at 100, its channel free at the hand-over (a click on it at 1500), the loop again at 1810, the
+  fade in's end.
+- **Built:** `Loop::after_battle` calls the model's `Sound::select` with the lift when the hero
+  stays on the map (*provisional*: before a level-up's dialogs, which the original shows first);
+  a hero that leaves restarts nothing there (the next choice's lift does). Two tests
+  (`a_won_battle_s_lift_restarts_the_ambient_loops`, `a_retreat_s_loops_restart_at_the_next_choice`).
+- **Checked:** the window under Xvfb with `--cues` on `battle-mine`'s engine record (its loop
+  restarted at the fade in's end, 138 of 138 frames read back exact) and on `dwellings-guards-s1`
+  (both battles closed, 117 of 117 exact; its won battle is a plain cut, no lift: its loop stays
+  silent until the next day, carried into T6's scope); `h3map.py drawn` (every situation and
+  sequence the same); the crate's tests; `check.sh`; the scoped verify.

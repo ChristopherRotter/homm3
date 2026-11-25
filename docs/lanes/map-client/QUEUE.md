@@ -12,18 +12,7 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
 "Later". Every task's cut is confirmed with the user at its start. Planned ids: `MCL-STUB-5` (a
 computer colour's turn ended at once, T3), `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was cut
-in three at its start (T1a and T1b done 2026-11-24 and 25).
-
-### E24 M5 T1c — MCL-Q52: the ambient loops after a battle
-
-- **Scope:** **MCL-Q52** (a): the map's return (`manager_run` 0x4B0C70, `ambient_sounds_at`
-  0x4183D0) and the lift after it (`mobilize_hero`'s `hero_select` 0x4180A0 to 0x41812D: the
-  ambient sounds restarted, the terrain's music; T1a lifts the hero again without its sounds) read
-  for the ambient slots and built; (b) (the slots forgotten at the hand-over) if the reading is
-  far off.
-- **Acceptance:** the ambient loops after a battle as read (a sound run of a battle sequence if
-  the harness can log the loops there); `drawn` all the same; the scoped verify.
-- **Depends on:** T1a (done). **Status:** queued; original data needed (Wine for a sound run).
+in three at its start (T1a to T1c done 2026-11-24 and 25).
 
 ### E24 M5 T2 — the layering: `h3-map-client` and the shell's crate (no behaviour changed)
 
@@ -101,7 +90,10 @@ in three at its start (T1a and T1b done 2026-11-24 and 25).
   human's hero attacking: the original's switch read and recorded, `MCL-STUB-3` lifted); a battle
   between two humans (`CLT-STUB-5`, with the client lane: one seat over both sides, each command
   its side's player's); Auto Combat (`CLT-STUB-4`: the host plays the human's side by the battle
-  AI); the result in each human's view.
+  AI); the result in each human's view. With them a plain cut's battle (a record's walk's, an
+  answer's the record player passes over: a dwelling's guards, Pandora's Box; design §5.20)
+  restarting the ambient loops at its hand-back as a switch's lift does (T1c built it for the
+  switch's battles only, design §5.24: `dwellings-guards-s1`'s loop silent after its won battle).
 - **Acceptance:** each kind played in a hot-seat game; the switches as recorded; the scoped
   verify.
 - **Depends on:** T4; the client lane's part of `CLT-STUB-4` and `-5`. **Status:** queued; cut

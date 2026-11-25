@@ -241,6 +241,64 @@ fn a_battle_puts_the_hero_on_its_tile_until_the_map_is_back() {
     assert!(l.drawn().lifted.is_some() && l.cursor().shown);
 }
 
+/// The cues a battle sequence gives up to `until`, with a loop on the mine's tile (6, 4).
+fn sounded_cues(id: &str, until: u32) -> Vec<(u32, Cue)> {
+    let tiles = crate::sound::tests::tiles(36, |_, _| 2, |x, y| (x == 6 && y == 4).then_some(3));
+    let (mut start, actions, _, _) = battling(id);
+    start.sound = Some(crate::sound::tests::sound(tiles));
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let mut cues = l.take_cues();
+    for t in 1..=until {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+        cues.extend(l.take_cues());
+    }
+    cues
+}
+
+#[test]
+fn a_won_battle_s_lift_restarts_the_ambient_loops() {
+    // E24 M5 T1c (MCL-Q52 (a), design §5.24): `battle-mine` with a loop on the mine's tile, found
+    // by the step's end at 100 (the view centred on the hero): at the map's fade in's end, 1810,
+    // `hero_select`'s scan with its stop flag, the slot stopped and its loop started again (the
+    // hand-over's `effects_stop_all` ended it), no music (the same terrain); nothing of the slots
+    // between the hand-over and then.
+    let cues = sounded_cues("battle-mine", 1810);
+    let at = |t: u32| -> Vec<&Cue> {
+        cues.iter()
+            .filter(|(c, _)| *c == t)
+            .map(|(_, c)| c)
+            .collect()
+    };
+    let loop_3 = |c: &&Cue| matches!(c, Cue::Loop { slot: 0, volume, .. } if *volume > 0);
+    assert!(at(100).iter().any(loop_3));
+    let back = at(1810);
+    assert_eq!(back.first(), Some(&&Cue::LoopStop { slot: 0 }));
+    assert!(back.iter().any(loop_3));
+    assert!(!back.iter().any(|c| matches!(c, Cue::Music(_))));
+    assert!(
+        cues.iter()
+            .filter(|(t, _)| (1061..1810).contains(t))
+            .all(|(_, c)| !matches!(c, Cue::Loop { .. } | Cue::LoopStop { .. }))
+    );
+}
+
+#[test]
+fn a_retreat_s_loops_restart_at_the_next_choice() {
+    // E24 M5 T1c (design §5.24): a hero that leaves restarts nothing at the fade in's end (810);
+    // the next hero's choice at its dissolve's end (1330) scans around it, far from the loop: the
+    // slot stopped.
+    let cues = sounded_cues("battle-retreat", 1330);
+    let slots = |t: u32| -> Vec<&Cue> {
+        cues.iter()
+            .filter(|(c, k)| *c == t && matches!(k, Cue::Loop { .. } | Cue::LoopStop { .. }))
+            .map(|(_, c)| c)
+            .collect()
+    };
+    assert!(slots(810).is_empty());
+    assert_eq!(slots(1330), [&Cue::LoopStop { slot: 0 }]);
+}
+
 #[test]
 fn a_retreat_keeps_sleep_and_cast_until_the_next_choice() {
     // E24 M5 T1a (design §5.22): `battle-retreat` at 810 the view drawn with the hero lifted, then

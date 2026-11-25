@@ -4,6 +4,21 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-25 (this lane, E24 M5 T1c done: the log's "M5 T1c", design §5.24: the loops restarted
+  at a won battle's lift as `hero_select` restarts them, a sound run of `battle-mine` as read; a
+  plain cut's battle left to T6): the task as it stood, verbatim.
+
+  ### E24 M5 T1c — MCL-Q52: the ambient loops after a battle
+
+  - **Scope:** **MCL-Q52** (a): the map's return (`manager_run` 0x4B0C70, `ambient_sounds_at`
+    0x4183D0) and the lift after it (`mobilize_hero`'s `hero_select` 0x4180A0 to 0x41812D: the
+    ambient sounds restarted, the terrain's music; T1a lifts the hero again without its sounds) read
+    for the ambient slots and built; (b) (the slots forgotten at the hand-over) if the reading is
+    far off.
+  - **Acceptance:** the ambient loops after a battle as read (a sound run of a battle sequence if
+    the harness can log the loops there); `drawn` all the same; the scoped verify.
+  - **Depends on:** T1a (done). **Status:** queued; original data needed (Wine for a sound run).
+
 - 2026-11-25 (this lane, E24 M5 T1b done: the log's "M5 T1b", design §5.23: `battle-mine-retreat`
   recorded twice the same, `visit_mine`'s path read for a draw, the built form kept; the hand
   test's notes still blank, carried into T2): the task as it stood, verbatim.
