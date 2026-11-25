@@ -139,6 +139,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.spell_recast_refused",
     "quirk.adventure.door_failure_charged",
     "quirk.content.rmg_8xm8_zone_ids",
+    "quirk.town.visitor_only_trades",
+    "quirk.town.university_ignores_map_bans",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -435,6 +437,22 @@ pub const DOOR_FAILURE_CHARGED: QuirkFlag = QuirkFlag(50);
 /// Read by the rmg part's compiler only, as every `quirk.content` flag (E14 T2b).
 pub const RMG_8XM8_ZONE_IDS: QuirkFlag = QuirkFlag(51);
 
+/// TWN-QUIRK-15 (T-28, TD-28, E09 decision 202; survey `E09-trades.md` §2, §4.2, batch TWN-6's
+/// TWN-6-5): the Artifact Merchants, the Freelancer's Guild, the Blacksmith and the Ballista Yard
+/// serve the town's visiting hero only: without one they show GENRLTXT 274 and open nothing
+/// (0x5E9D28, 0x5E9EAA, 0x5D1D4D to 0x5D1D8F), a garrison hero alone is never served, where the
+/// spell book, the University and the Transformer take it. Off: the window's hero is the visitor,
+/// else the garrison hero. Class `fix-optional`; read by the town's trades from E09 T58a.
+pub const VISITOR_ONLY_TRADES: QuirkFlag = QuirkFlag(52);
+
+/// TWN-QUIRK-16 (T-23, TD-30, E09 decision 204; survey `E09-trades.md` §6.3, batch TWN-6's
+/// TWN-6-7): the Conflux's Magic University offers and teaches its four magic schools whatever
+/// the scenario bans: neither `university_slot_state` 0x5F0790, `university_slot_click`
+/// 0x5F0AC0, `university_learn` 0x5F0F60 nor `hero_learn_secondary_skill` 0x4E22D0 reads the
+/// map's banned skills. Off: the scenario's banned skills leave the four when it opens (VCMI's).
+/// Class `fix-optional`; read by the town's University from E09 T59b.
+pub const UNIVERSITY_IGNORES_MAP_BANS: QuirkFlag = QuirkFlag(53);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -477,7 +495,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 52);
+        assert_eq!(REGISTRY.len(), 54);
         assert_eq!(
             [
                 "quirk.adventure.flight_reads_hidden",
@@ -487,6 +505,8 @@ mod tests {
                 "quirk.adventure.spell_recast_refused",
                 "quirk.adventure.door_failure_charged",
                 "quirk.content.rmg_8xm8_zone_ids",
+                "quirk.town.visitor_only_trades",
+                "quirk.town.university_ignores_map_bans",
             ]
             .map(|name| REGISTRY.lookup(name)),
             [
@@ -497,6 +517,8 @@ mod tests {
                 SPELL_RECAST_REFUSED,
                 DOOR_FAILURE_CHARGED,
                 RMG_8XM8_ZONE_IDS,
+                VISITOR_ONLY_TRADES,
+                UNIVERSITY_IGNORES_MAP_BANS,
             ]
             .map(Some)
         );
@@ -700,7 +722,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 52);
+        assert_eq!(REGISTRY.len(), 54);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -714,7 +736,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..52).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..54).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

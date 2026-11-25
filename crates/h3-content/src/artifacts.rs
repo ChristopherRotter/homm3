@@ -208,19 +208,46 @@ impl HeroContent {
             };
             self.artifacts.items.push(artifact);
         }
-        // A combination locks one position of every part's slot except one of its own.
-        let locks: Vec<Vec<ArtifactSlotId>> = self
+        // A combination locks one position of every part's slot except one of its own, and one
+        // without a pack cost costs its parts' sum (HER-ART-008).
+        let derived: Vec<(Vec<ArtifactSlotId>, Vec<(ResourceId, u32)>)> = self
             .artifacts
             .items
             .get(first..)
             .unwrap_or_default()
             .iter()
-            .map(|a| self.locks(a))
-            .collect::<Result<_, _>>()?;
-        for (a, l) in self.artifacts.items.iter_mut().skip(first).zip(locks) {
+            .map(|a| Ok((self.locks(a)?, self.combination_cost(a)?)))
+            .collect::<Result<_, CompileError>>()?;
+        for (a, (l, c)) in self.artifacts.items.iter_mut().skip(first).zip(derived) {
             a.locks = l;
+            a.cost = c;
         }
         Ok(())
+    }
+
+    /// The cost of `a` (HER-ART-008, E09 T55b): a combination whose pack names no cost costs the
+    /// resource-wise sum of its parts' costs, in resource order, as the original fills its
+    /// combinations' blank costs at start-up (`artifact_table_load` 0x44D031 to 0x44D0BB); any
+    /// other artifact keeps its own. The parts are compiled (earlier packs or this one) and are
+    /// never combinations (`validate_artifacts`), so the sum is final.
+    fn combination_cost(&self, a: &ArtifactType) -> Result<Vec<(ResourceId, u32)>, CompileError> {
+        // rule: HER-ART-008
+        if !a.is_combination() || !a.cost.is_empty() {
+            return Ok(a.cost.clone());
+        }
+        let mut sum: BTreeMap<usize, (ResourceId, u32)> = BTreeMap::new();
+        for (r, amount) in a
+            .parts
+            .iter()
+            .filter_map(|&p| self.artifacts.get(p))
+            .flat_map(|p| p.cost.iter())
+        {
+            let total = &mut sum.entry(r.index()).or_insert((*r, 0)).1;
+            *total = total
+                .checked_add(*amount)
+                .ok_or_else(|| invalid("artifact", &a.key, "its parts' costs overflow"))?;
+        }
+        Ok(sum.into_values().collect())
     }
 
     /// The slots the combination `a` locks (empty for other artifacts).
