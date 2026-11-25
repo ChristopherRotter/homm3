@@ -419,3 +419,27 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   maps' draws before step 1 are the port's (21 of 21: `549975` and the first `rand()` after
   `srand(seed)`); 20 maps as kept; `m2-4p` the other map T1c2 once saw (113 282 bytes) in the corpus
   and alone, its dumps 0 and 1 as kept and step 2's not (RMG-QUIRK-1's draw 0x532A5B; increment 3).
+
+## Increment 2's checkpoint — the exit, increment 3's cut (2026-11-25, increment 2)
+
+- **Sandbox:** a new chat; staged from the PC the client lane's set (the four LODs,
+  `shell-videos.vid`, the executable and five DLLs, both `.snd`, `H3ab_ahd.vid`,
+  `battle-videos.vid`, both tars, `games/`, the 40 MP3s: 58 files, SHA-256 equal to the PC's
+  `sync/staged-sums-2026-11-25.txt`), SoD's three tables and Complete's two generated maps; the
+  clone GitHub's (the PC's repo folder one commit behind). The setup's baseline lost to a VM
+  restart in its coverage gate, its test gate passed; CI green on `master` after #1174
+  (`529bb617b`) and after #1175 (`8fa27115f`) stood in.
+- **The exit, as checked:** (a) the catalog's 17 rules (RMG-SET-001 to -009, RMG-TPL-001 to -008)
+  `implemented`, each named by a test (`h3-rmg`'s unit tests, `h3-pack-rmg`'s `generate` tests,
+  `h3-harvest`'s `rmg` tests); (b) the 21 cases draw `kept.txt`'s templates with the original's one
+  draw before step 1 (`the_corpus_draws_the_originals_templates`, in CI; the phase oracle 21 of 21
+  in T2c); (c) RMG-QUIRK-6 a typed error in every profile, -11's and -24's flags tested in both
+  profiles and each re-read by a fresh agent, -22 the `original_data` check (run again: AB's and
+  SoD's tables equal their text tables, 1262 zones in both parts, `strict-fixed` only 8XM8's ids);
+  (d) `arbitrary_settings_never_panic`; (e) none. **Not seen by the oracle:** -11 (Complete's
+  generator writes SoD maps only: no RoE case) and -24 (no corpus case draws 2SM2i(2) or 2SM0k).
+- **The user** (decision 10): increment 2 closed; increment 3 cut into T3a (the phase oracle's
+  per-step record, RMG-QUIRK-1's bytes, the control word, the cases for -24), T3b (the items not
+  read), T3c (step 1, the cell record and the comparison seam), T3d (step 2), T3e (step 3 and the
+  terrain painter), as proposed; the increment's four flags registered at T3c in one re-hash (the
+  other choice, each with its task, three re-hashes); the session docs only.
