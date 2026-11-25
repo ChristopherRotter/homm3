@@ -23,6 +23,18 @@ use serde::Deserialize;
 
 /// The synthetic pack's generator tables (tests; invented names).
 pub const SYNTHETIC_RMG: &str = include_str!("../../../packs/synthetic/rmg.toml");
+/// The AB pack's generator tables (harvested, E14 T2b): AB's three tables as the game reads them.
+pub const AB_RMG: &str = include_str!("../../../packs/ab/rmg.toml");
+/// The SoD pack's generator tables (harvested): what SoD's tables add to AB's.
+pub const SOD_RMG: &str = include_str!("../../../packs/sod/rmg.toml");
+
+/// The original packs' `(core.toml, rmg.toml)` texts in load order (`base` has none), for
+/// [`compile`]: SoD's tables, the ones the game reads.
+pub const ORIGINAL_PACKS: [(&str, &str); 3] = [
+    (h3_pack::BASE_CORE, ""),
+    (h3_pack::AB_CORE, AB_RMG),
+    (h3_pack::SOD_CORE, SOD_RMG),
+];
 
 /// Errors of this adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]

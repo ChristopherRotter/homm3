@@ -16,6 +16,7 @@ pub mod artifacts;
 pub mod battlefields;
 pub mod gapfill;
 pub mod heroes;
+pub mod rmg;
 pub mod sieges;
 pub mod split;
 pub mod towns;
@@ -76,6 +77,8 @@ pub struct Inputs {
     pub hero_tables: heroes::Tables,
     /// Artifact text tables (E04a T3b).
     pub artifact_tables: artifacts::Tables,
+    /// The map generator's tables of both archives (E14 T2b).
+    pub rmg: rmg::Tables,
 }
 
 impl Inputs {
@@ -149,6 +152,18 @@ impl Inputs {
                 ab: table(&ab, "H3ab_bmp.lod", "ARTRAITS.TXT")?,
                 sod_slots: table(&sod, "H3bitmap.lod", "ArtSlots.txt")?,
                 ab_slots: table(&ab, "H3ab_bmp.lod", "ArtSlots.txt")?,
+            },
+            rmg: rmg::Tables {
+                ab: rmg::Files {
+                    rmg: table(&ab, "H3ab_bmp.lod", "Rmg.txt")?,
+                    objects: table(&ab, "H3ab_bmp.lod", "Objects.txt")?,
+                    rand_trn: table(&ab, "H3ab_bmp.lod", "Rand_trn.txt")?,
+                },
+                sod: rmg::Files {
+                    rmg: table(&sod, "H3bitmap.lod", "Rmg.txt")?,
+                    objects: table(&sod, "H3bitmap.lod", "Objects.txt")?,
+                    rand_trn: table(&sod, "H3bitmap.lod", "Rand_trn.txt")?,
+                },
             },
         })
     }
@@ -1007,7 +1022,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.scuttle_reads_hidden\" = true, \
          \"quirk.adventure.summon_boat_by_steps\" = true, \
          \"quirk.adventure.spell_recast_refused\" = true, \
-         \"quirk.adventure.door_failure_charged\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-14\n",
+         \"quirk.adventure.door_failure_charged\" = true, \
+         \"quirk.content.rmg_8xm8_zone_ids\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-14, RMG-QUIRK-22\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -1057,7 +1073,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.scuttle_reads_hidden\" = false, \
          \"quirk.adventure.summon_boat_by_steps\" = false, \
          \"quirk.adventure.spell_recast_refused\" = false, \
-         \"quirk.adventure.door_failure_charged\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-14\n",
+         \"quirk.adventure.door_failure_charged\" = false, \
+         \"quirk.content.rmg_8xm8_zone_ids\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-14, RMG-QUIRK-22\n",
     );
 
     // ab

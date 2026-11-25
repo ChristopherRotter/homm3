@@ -524,3 +524,91 @@ fn every_error_has_a_message() {
         assert!(!e.to_string().is_empty());
     }
 }
+
+/// The original tables' counts (survey `E14-generator.md` §3.1's sanity table): templates, zones
+/// by kind, connections and the never-kept ones (columns 81 to 84 empty), `objects.txt`'s lines,
+/// the obstacles.
+#[test]
+fn the_original_tables_are_the_surveys() {
+    let counts = |packs: &[(&str, &str)]| {
+        let part = compile(packs, "base:faithful").unwrap();
+        let zones = part.templates().iter().flat_map(|t| &t.zones);
+        let mut kinds = [0; 4];
+        zones.for_each(|z| kinds[usize::try_from(z.kind.value()).unwrap()] += 1);
+        let connections: Vec<_> = part
+            .templates()
+            .iter()
+            .flat_map(|t| &t.connections)
+            .collect();
+        let never = connections.iter().filter(|c| c.humans[1] == 0).count();
+        assert!(part.obstacles().iter().all(|o| o.adjacent.len() == 109));
+        (
+            part.templates().len(),
+            kinds,
+            connections.len(),
+            never,
+            part.object_templates().len(),
+            part.obstacles().len(),
+        )
+    };
+    assert_eq!(
+        counts(&ORIGINAL_PACKS[..2]),
+        (50, [222, 30, 308, 56], 833, 6, 1221, 109)
+    );
+    assert_eq!(
+        counts(&ORIGINAL_PACKS),
+        (53, [236, 30, 323, 57], 869, 7, 1326, 109)
+    );
+    let part = compile(&ORIGINAL_PACKS, "base:faithful").unwrap();
+    let names: Vec<_> = part.templates()[50..]
+        .iter()
+        .map(|t| t.name.as_str())
+        .collect();
+    assert_eq!(
+        names,
+        ["Golems Aplenty", "Monk's Retreat", "Rise of Phoenix"]
+    );
+    assert!(
+        part.templates()
+            .iter()
+            .any(|t| t.name == "Meeting \nin Muzgob")
+    );
+    assert_eq!(
+        part.templates()
+            .iter()
+            .filter(|t| t.name == "6LM10")
+            .count(),
+        2
+    );
+}
+
+/// RMG-QUIRK-22: 8XM8's six decimal first zones as `c_atoi` reads them in `faithful`, the series
+/// continued in `strict-fixed` (the gated override of the AB pack), in AB's table and SoD's.
+#[test]
+fn eight_xm8s_zone_ids_follow_the_flag() {
+    let first_zones = |packs: &[(&str, &str)], profile| {
+        let part = compile(packs, profile).unwrap();
+        let [t] = part
+            .templates()
+            .iter()
+            .filter(|t| t.name == "8XM8")
+            .collect::<Vec<_>>()[..]
+        else {
+            panic!("one 8XM8");
+        };
+        t.connections[10..16]
+            .iter()
+            .map(|c| c.zones)
+            .collect::<Vec<_>>()
+    };
+    for packs in [&ORIGINAL_PACKS[..2], &ORIGINAL_PACKS[..]] {
+        assert_eq!(
+            first_zones(packs, "base:faithful"),
+            [[5, 37], [6, 38], [6, 41], [7, 42], [7, 47], [7, 48]]
+        );
+        assert_eq!(
+            first_zones(packs, "base:strict-fixed"),
+            [[6, 37], [6, 38], [7, 41], [7, 42], [8, 47], [8, 48]]
+        );
+    }
+}
