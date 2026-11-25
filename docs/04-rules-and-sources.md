@@ -22,7 +22,7 @@
 
 ## 3. Rule catalog (machine-checked)
 
-Every piece of game logic is a **rule** with a stable ID. The catalog lives in `docs/rules/catalog/*.toml`, one file per context. Format:
+Every piece of game logic is a **rule** with a stable ID. The catalog lives in `docs/rules/catalog/*.toml`, one file per context, the id's prefix by the context: `battle` BAT, `adventure` ADV, `town` TWN, `heroes` HER, `magic` MAG, `game` GAM, `kernel` KER, `computer` CPU (the original's computer player, E31 increment 2). Format:
 
 ```toml
 [[rule]]

@@ -319,16 +319,24 @@ paths = [
 # action encoding is a `cross-lane` change from the battle lane (`docs/08-work-process.md`).
 # The adventure env (`crates/h3-sim/src/adventure/`: AdventureEnv, its action encoding and
 # masks, the rollout, their tests) since E08 T45 (the user, E08 decisions 99 and 103; ADR-0017
-# point 8), but its replay model (`replay.rs`, the adventure lane's above).
+# point 8), but its replay model (`replay.rs`, the adventure lane's above). The original's
+# computer player (E31; the user, 2026-11-24, AI-Q31): the module `h3_game::computer` of the
+# adventure lane's crate, refactored into a crate of its own later, with its rules (`CPU-`) and
+# quirks (`AI-QUIRK-`). `verify_with`: the scoped verify also runs the adventure lane's crates,
+# replays and workloads, `h3-game` among them (as the town lane's).
 [[lane]]
 name = "ai"
 code = "AI"
+verify_with = ["adventure"]
 paths = [
     "crates/h3-sim/",
     "crates/h3-ffi/",
     "crates/h3-cli/src/ai/",
+    "crates/h3-game/src/computer/",
     "python/",
     "benches/ai/",
+    "docs/rules/catalog/computer.toml",
+    "docs/rules/quirks-ai.md",
     "docs/epics/E05*",
     "docs/epics/E06*",
     "docs/epics/E25*",

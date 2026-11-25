@@ -59,3 +59,4 @@ Choices §7 and §11 deferred to E01, and lessons from implementing them:
 - 2026-09-30: Initial version, integer/fixed-point only.
 - 2026-09-30: Amended after user input and FFF-52: floats allowed under the `kernel::num` discipline; added sorting rule, supported-target list and CI matrix.
 - 2026-09-30: Amended by E01: PRNG and hash choices, `no_std` float consequences, release overflow checks, local determinism matrix.
+- 2026-11-25: E31 increment 2 (the computer player's ADR draft, point 9): beside the nonnegative `arith::X87`, the signed `arith::SignedX87` (sign and magnitude as the FPU keeps them, each operation rounded as `X87`'s; `_ftol`'s truncation into 64 bits with the integer indefinite, and its callers' low 32 bits), audited against IEEE doubles in `num`'s tests as `X87` is. The numeric policy is unchanged.

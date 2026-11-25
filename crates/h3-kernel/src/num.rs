@@ -202,6 +202,54 @@ mod tests {
         }
     }
 
+    /// A double as a sign and a numerator over 2^64 ([`grid`]; 0 for 0).
+    fn signed_grid(v: f64) -> (bool, u128) {
+        if v == 0.0 {
+            (false, 0)
+        } else if v < 0.0 {
+            (true, grid(-v))
+        } else {
+            (false, grid(v))
+        }
+    }
+
+    proptest::proptest! {
+        // The signed form (`arith::SignedX87`, E31's computer player) is IEEE double arithmetic
+        // at 53 bits with the signs: ratios, products, sums, differences and quotients agree bit
+        // for bit, so do the order, `_ftol`'s truncations and the f32 stores.
+        #[test]
+        fn signed_x87_at_53_bits_is_double_arithmetic(
+            n1 in 100u32..=1000, d1 in 100u32..=1000, s1: bool,
+            n2 in 100u32..=1000, d2 in 100u32..=1000, s2: bool,
+            k in 1i64..(1 << 20), sk: bool,
+        ) {
+            use crate::arith::{DOUBLE_BITS, SignedX87, X87};
+            let sign = |s: bool, v: f64| if s { -v } else { v };
+            let parts = |a: SignedX87| (a.is_negative(), a.magnitude().raw());
+            let x = sign(s1, f64::from(n1) / f64::from(d1));
+            let y = sign(s2, f64::from(n2) / f64::from(d2));
+            let a = SignedX87::new(s1, X87::ratio(n1, d1, DOUBLE_BITS).unwrap());
+            let b = SignedX87::new(s2, X87::ratio(n2, d2, DOUBLE_BITS).unwrap());
+            proptest::prop_assert_eq!(parts(a), signed_grid(x));
+            proptest::prop_assert_eq!(a.cmp(&b), x.partial_cmp(&y).unwrap());
+            proptest::prop_assert_eq!(parts(a.times(b)), signed_grid(x * y));
+            proptest::prop_assert_eq!(parts(a.plus(b)), signed_grid(x + y));
+            proptest::prop_assert_eq!(parts(a.minus(b)), signed_grid(x - y));
+            proptest::prop_assert_eq!(parts(a.over(b).unwrap()), signed_grid(x / y));
+            let kf = sign(sk, k as f64);
+            let q = SignedX87::int(if sk { -k } else { k }).times(a).over(b).unwrap();
+            proptest::prop_assert_eq!(parts(q), signed_grid(kf * x / y));
+            proptest::prop_assert_eq!(q.trunc(), (kf * x / y) as i64);
+            proptest::prop_assert_eq!(q.ftol(), (kf * x / y) as i64 as i32);
+            // An f32 store of a double result: one rounding to 24 bits, as Rust's cast.
+            let p = a.times(b);
+            let single = (x * y) as f32;
+            proptest::prop_assert_eq!(p.to_f32_bits(), single.to_bits());
+            proptest::prop_assert_eq!(parts(p.round(crate::arith::SINGLE_BITS)), signed_grid(f64::from(single)));
+            proptest::prop_assert_eq!(SignedX87::from_f32_bits(single.to_bits()), p.round(crate::arith::SINGLE_BITS));
+        }
+    }
+
     #[test]
     fn rejects_non_finite() {
         assert_eq!(Real::new(f64::NAN), Err(NumError::NonFinite));
