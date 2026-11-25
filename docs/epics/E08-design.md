@@ -181,6 +181,16 @@ failure** is an accepted cast with `CastFailed` (the mana spent, §14).
 2. **Scuttle Boat** (ADV-SPL-004): the target a tile in the window (§3) whose boat is empty
    (a boat with a hero is the hero's: refused), §11.3 for hidden tiles. Accepted: the chance draw
    (fails, charged: 338); else the boat removed (its record out of use). A cancel is no command.
+   *As built (T143a):* `Cast { spell, effect, mastery, target }` is the adventure's argument
+   (the chance the core spell's `effect[mastery]`); `check_cast` and `apply_cast` (its draws from
+   the caster's player's stream, its events to a sink, `Err(CastFailure)` for a charged failure:
+   `Chance`, `NoBoat`, `Target`) in `state/spells.rs`, the two spells in `state/boat_spells.rs`;
+   refusals `InBoat` (Fly's, reused for 334), `NoWater`, `OutOfWindow` (the window, the level,
+   the map), `NoBoat`. A summoned boat keeps its record (`Boats::shift`), a sunk one is `gone`
+   (`Boats::sink`), a made one is `launch`'s (type 0, facing 2); `boats_most` counts the records
+   not gone. *Agent's calls, change freely:* the free water tile is water with neither an
+   object's blocked nor visitable tile, no empty boat and no hero (the original's "class 0");
+   at Advanced and Expert (`MAKES_FROM` 2) a code constant.
 3. **Fly** (ADV-SPL-005): refused in a boat (193); with `ADV-QUIRK-54` on refused while `fly` is
    set or Angel Wings are worn (the original's silent "nothing"); off, refused only when the new
    level would not exceed the current one (the artifacts' 3 included). Accepted: `fly` = the
@@ -235,6 +245,10 @@ failure** is an accepted cast with `CastFailed` (the mana spent, §14).
    original's cursor). **Off:** a target is an explored tile with an empty boat **or any hidden tile
    in the window**; at the cast a hidden tile holding an empty boat takes the chance draw, any other
    hidden tile fails, charged; **the hidden target is revealed in every outcome** (decision 402).
+   *As built (T143a):* the reveal is that tile alone (radius 0) for the caster's player, before
+   the draw; `BoatScuttled` goes to the players that saw heroes on the tile before the reveal
+   (*agent's call*: a caster that did not sees it empty in the command's reveal, so no viewer is
+   told of a boat it never saw).
 
 ### 12. The day's end and boarding (ADV-SPL-002)
 
@@ -335,6 +349,13 @@ TavernPart }` and its other parts as `HiredPartSeen`), `PrisonFull { player, her
 `GameCommand::Cast { hero, spell, target }`, `GameReject::Cast` (`CastReject`, the spell's own
 test nested as `SpellReject`), `GameEvent::SpellCast`, `AdventureEvent::DaySpellsChanged`, the
 own hero's `spells` (`DaySpells`); the fold sets the spells from `DaySpellsChanged`.
+*As built (T143a, protocol v83):* `GameEvent::CastFailed { player, hero, spell, reason }` after
+`SpellCast` (which now precedes the effect's events) and before the points' `HeroChanged`;
+`AdventureEventKind::BoatSummoned { boat, from, to, facing, seen_from, seen_to }` (a jump's two
+ends: an end the viewer does not see heroes on is `None` in its projection), `BoatCreated { tile,
+boat_type }`, `BoatScuttled { tile, boat }`: by the boat's type and tiles, never its index (the
+observation's convention, *agent's call* against the list's `boat`); `SpellReject::NoWater`,
+`OutOfWindow`, `NoBoat`; the fold moves, adds and drops the empty boats.
 
 ### 17. The env, replays, maps, properties, benchmarks
 

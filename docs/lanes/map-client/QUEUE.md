@@ -117,6 +117,19 @@ in three at its start (T1a to T1c done 2026-11-24 and 25).
 
 ## Inbox
 
+- 2026-11-25 (the adventure lane, E08 T143a; **for your planning, nothing blocks**): protocol
+  v83 casts Summon Boat and Scuttle Boat. A cast's `SpellCast` now comes before its effect's
+  events; a charged failure follows it as the owner's `GameEvent::CastFailed { hero, spell,
+  reason }` (`Chance`: GENRLTXT 337 Summon Boat, 338 Scuttle Boat; `NoBoat`: 336; `Target`: a
+  hidden target revealed empty under `strict-fixed`). The boats: `AdventureEvent::BoatSummoned
+  { boat, from, to, facing }` (the original's dissolve at each end the viewer sees; an end it
+  does not see is `None`, as a jump's), `BoatCreated { tile, boat_type }` (facing 2, as
+  `BoatBuilt`), `BoatScuttled { tile, boat }`; refusals `SpellReject::NoWater` (335),
+  `OutOfWindow`, `NoBoat` (no cursor; 334 aboard is `InBoat`, as Fly's 193). Scuttle Boat's
+  cursor: under `faithful` (`ADV-QUIRK-52`) the original's, on any empty boat of the 19 × 17
+  window, hidden ones too; under `strict-fixed` on a seen empty boat or any hidden tile of the
+  window, the hidden target revealed alone at the cast. `legal_commands` lists no cast until T144a.
+
 - 2026-11-24 (the adventure lane, E08 T142b; **for your planning, nothing blocks; no version
   moved**): a flying hero's paths now cross tiles its player has not explored, by
   `ADV-QUIRK-15` (increment 15's design note `E08-design.md` §11.1): under `faithful` as the

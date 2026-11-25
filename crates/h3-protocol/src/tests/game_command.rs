@@ -434,6 +434,9 @@ fn every_rejection() -> Vec<GameCommandError> {
             MapCastError::Adventure(CastError::InBoat),
             MapCastError::Adventure(CastError::AlreadyOn),
             MapCastError::Adventure(CastError::NotHigher),
+            MapCastError::Adventure(CastError::NoWater),
+            MapCastError::Adventure(CastError::OutOfWindow),
+            MapCastError::Adventure(CastError::NoBoat),
             MapCastError::Adventure(CastError::NotBuilt(AdventureSpell::DimensionDoor)),
         ]
         .map(E::Cast),
@@ -672,6 +675,9 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
                 w::SpellReject::InBoat {} => CastError::InBoat,
                 w::SpellReject::AlreadyOn {} => CastError::AlreadyOn,
                 w::SpellReject::NotHigher {} => CastError::NotHigher,
+                w::SpellReject::NoWater {} => CastError::NoWater,
+                w::SpellReject::OutOfWindow {} => CastError::OutOfWindow,
+                w::SpellReject::NoBoat {} => CastError::NoBoat,
                 w::SpellReject::NotBuilt { effect } => {
                     CastError::NotBuilt(AdventureSpell::ALL[usize::from(effect)])
                 }
@@ -736,9 +742,9 @@ fn every_rejection_maps_back_and_round_trips() {
     // `EmptyArmy`; E09 T38a1: `NoTavern`, `UnknownSlot`, `EmptySlot`; E09 T49b: `NoGuild`,
     // `NoHero`, `HasSpellBook`), 3 of a dismissal's (E09 T38b2: `NotOnMap`, `InTown`,
     // `LastHero`), 4 of a map Tavern's hire (E09 T39a), 10 of a market's (E08 T133b), 7 of an
-    // Altar's (E08 T134a), 3 of a Hill Fort's (E08 T134b1), 12 of a cast's (E08 T142a: 7 of the
-    // game's, 5 of the spell's own).
-    assert_eq!(errors.len(), 161);
+    // Altar's (E08 T134a), 3 of a Hill Fort's (E08 T134b1), 15 of a cast's (E08 T142a: 7 of the
+    // game's, 5 of the spell's own; T143a: `NoWater`, `OutOfWindow`, `NoBoat`).
+    assert_eq!(errors.len(), 164);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

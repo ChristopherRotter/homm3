@@ -93,6 +93,7 @@ impl StaticTile {
 
 mod altar;
 mod banks;
+mod boat_spells;
 mod boats;
 mod bonuses;
 mod calendar;
@@ -141,7 +142,7 @@ pub use markets::{MarketOffers, MarketPurchase, Sale, SaleOffer, StockEntry, Tra
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
 pub(crate) use passage::{Fog, Mode, Node};
-pub use spells::{CastError, DaySpells};
+pub use spells::{Cast, CastError, CastFailure, DaySpells};
 pub(crate) use spells::{DaySpellBook, spells_in};
 pub use visits::Visits;
 

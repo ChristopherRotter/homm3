@@ -2046,6 +2046,85 @@ fn the_fold_moves_the_heroes_and_the_boats() {
 }
 
 #[test]
+fn the_fold_follows_the_boat_spells_boats() {
+    // E08 T143a (v83): a summoned boat leaves the tile the viewer saw it on and lies where it
+    // sees it now (an end it does not see `None`), its facing kept; a made one faces 2 as a
+    // built one; a sunk one goes; a charged failure changes nothing.
+    let mut v = view();
+    v.adventure.boats.clear();
+    let boat = |tile, kind, facing| Boat { tile, kind, facing };
+    fold(
+        &mut v,
+        &[
+            adventure(AdventureEvent::BoatBuilt {
+                tile: at(0, 0),
+                boat_type: 1,
+            }),
+            adventure(AdventureEvent::BoatBuilt {
+                tile: at(2, 2),
+                boat_type: 2,
+            }),
+        ],
+    );
+    let before = v.clone();
+    fold(
+        &mut v,
+        &[GameEvent::CastFailed {
+            player: 1,
+            hero: 4,
+            spell: 0,
+            reason: CastFailure::Chance,
+        }],
+    );
+    assert_eq!(v, before);
+    let summoned = |boat, from, to, facing| {
+        adventure(AdventureEvent::BoatSummoned {
+            boat,
+            from,
+            to,
+            facing,
+        })
+    };
+    fold(
+        &mut v,
+        &[
+            summoned(1, Some(at(0, 0)), Some(at(1, 0)), 6),
+            summoned(2, Some(at(2, 2)), None, 2),
+            summoned(0, None, Some(at(0, 2)), 3),
+            adventure(AdventureEvent::BoatCreated {
+                tile: at(2, 1),
+                boat_type: 0,
+            }),
+        ],
+    );
+    assert_eq!(
+        v.adventure.boats,
+        [
+            boat(at(1, 0), 1, 6),
+            boat(at(2, 1), 0, 2),
+            boat(at(0, 2), 0, 3)
+        ]
+    );
+    fold(
+        &mut v,
+        &[
+            adventure(AdventureEvent::BoatScuttled {
+                tile: at(2, 1),
+                boat: 0,
+            }),
+            adventure(AdventureEvent::BoatScuttled {
+                tile: at(2, 2),
+                boat: 2,
+            }),
+        ],
+    );
+    assert_eq!(
+        v.adventure.boats,
+        [boat(at(1, 0), 1, 6), boat(at(0, 2), 0, 3)]
+    );
+}
+
+#[test]
 fn the_fold_keeps_the_objects_and_the_tiles_they_cover() {
     let mut v = view();
     // A over (1, 1), (0, 1) and (0, 0), a bit off the map, visited from (1, 1); B over (0, 1);

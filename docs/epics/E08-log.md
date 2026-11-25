@@ -22340,3 +22340,72 @@ start (17 files and 40 MP3s, SHA-256 checked), the repo from GitHub.
 - **`cross-lane`** (decision 416, the user): `h3-protocol`'s `game_bounds` test, out of the
   scope, found by its tests run apart: the XL map's seed 13 no longer revealed a whole map (13 KiB
   for 256); of seeds 1 to 30, 3, 4, 11 and 23 do: 23 (the largest snapshot).
+
+### Increment 15, round 7: T143a, Summon Boat and Scuttle Boat (2026-11-25, `adventure/e08-t143a`, `cross-lane`)
+
+**The cut:** T143 as queued, T143a whole first (decision 417, the user at its start); the
+`cross-lane` touch of `h3-protocol` (v83, the server lane's) as queued. **Baseline:** `master`
+58c85ec (#1162 merged; its code CI-verified, the setup's light gates); the originals staged
+from the PC at the start (17 files and 40 MP3s, SHA-256 checked), the repo from GitHub.
+
+- **The adventure's half** (ADV-SPL-003, -004; design §10.1, §10.2, §11.3 as built):
+  `state/spells.rs`' `Cast { spell, effect, mastery, target }` (the game's argument; the chance
+  the core spell's `effect[mastery]`), `check_cast((core, part), heroes, (player, hero), cast)`
+  and `apply_cast(rules, (player, hero), cast, draws, sink) -> Result<(), CastFailure>`
+  (`Chance`, `NoBoat`, `Target`: charged); `CastError` gains `NoWater`, `OutOfWindow`, `NoBoat`
+  (`InBoat` also Summon Boat's 334; `NotBuilt` the door's alone, ADV-STUB-22 narrowed). The new
+  `state/boat_spells.rs`: `summon_tile` (the first of the eight clockwise from up: water, no
+  object's blocked or visitable tile as the map stands, no empty boat, no hero), `summon_boat`
+  (the draw, then `summoned_boat`: the hero's last boat, any owner and level; else the player's
+  or nobody's empty boats, `ADV-QUIRK-53` on |dx| + |dy| levels ignored, a tie to the later; off
+  dx² + dy² on the hero's level, a tie to the lower; else at Advanced and Expert a type-0 boat of
+  the player's, facing 2, while fewer than `boats_most` records are in use), `check_scuttle` (the
+  window on the hero's level and the map; an empty boat, or under `ADV-QUIRK-52` off any hidden
+  tile), `scuttle_boat` (off: the hidden target revealed alone, radius 0, before the draw; no
+  empty boat: `Target`; else the draw, then the boat `gone`), `tile_viewers`. `Boats::shift`,
+  `Boats::sink`; `Boat::gone` also a sunk boat's. No hash moved: the records already hash tile,
+  owner, captain and `gone`.
+- **Events** (design §16 as built): `AdventureEventKind::BoatSummoned { boat, from, to, facing,
+  seen_from, seen_to }` (projected as a jump's two ends), `BoatCreated { tile, boat_type }`,
+  `BoatScuttled { tile, boat }`; the game's `GameEvent::CastFailed { player, hero, spell, reason }`.
+  `GameState::cast` now tells `SpellCast` before the adventure's effect (its events, or
+  `CastFailed`), then the points' `HeroChanged` in every accepted case; the draws come from the
+  caster's player's stream (`adventure_for`). For Fly and Water Walk nothing moved (their apply
+  tells nothing).
+- **The wire** (protocol v83, `cross-lane`): the events, `wire::game::CastFailure`, the three
+  refusals; mapped both ways, the fold (a summoned boat off its seen tile and onto its seen one,
+  a made one facing 2, a sunk one gone; `CastFailed` nothing).
+- **Tests:** `h3-adventure`'s `state/tests/boat_spells.rs` (ten: the last boat from the
+  underground in both settings with each viewer's ends; the nearest own or nobody's by steps or
+  by distance, another player's never; the ties; the made boat at Advanced, none at None and
+  Basic or at `boats_most`, a map's first boat; the draw first and the first free water
+  clockwise; the refusals aboard and without water, drawing nothing; the scuttle's window and
+  empty-boat refusals under both flags; a seen boat sunk by its chance; the hidden target read
+  or revealed; the errors' texts); the test profile `t:faithful` gains both flags. `h3-game`'s
+  `tests/casts.rs` (two: Summon Boat's draws from red's stream until a pass and a failure, each
+  told and charged; Scuttle Boat's free refusal, its failure and its sinking at a seed found to
+  fail then pass). `h3-protocol`'s lists (164 rejections, 55 kinds of event), a fold test of the
+  boats. `h3-map`'s `view.rs` hygiene oracle follows the three boat events and `CastFailed` (no
+  plan casts until T144a).
+- **Docs:** ADV-SPL-003, -004 new and `verified` (E15-4, -9a, -9b, -10; ADV-SPL-001's batch
+  files corrected: E15-4 is batch 15c's, E15-5 15b's); the ledger's ADV-QUIRK-52, -53; the stub
+  ADV-STUB-22 the door's alone; the design note as built (§10.1, §11.3, §16); the inboxes of the
+  server and map-client lanes; T143b queued.
+- *Agent's calls, change freely:* the free water tile's "no object" read as neither an object's
+  blocked nor visitable tile (the original's tile class 0; a blocked water tile without a class
+  would take a boat there); `MAKES_FROM` (Advanced) a code constant; the events by the boat's
+  type and tiles, never its index (the observation's convention, against the design's list);
+  `BoatScuttled` told to those that saw heroes on the tile before the reveal (a caster of a hidden
+  target sees it empty in the command's reveal).
+- **Speed:** no hot loop touched (the casts are not in `legal_commands` until T144a; the
+  projection gains one arm). The scoped verify's bench-check against the stored baselines: every
+  workload inside the gate, the highest `random-play-bonuses-36` and `fork-economy-xl-144` at
+  +1.82 % (the sandbox's drift: T142a measured `master`'s worktree at +1.66 % on the first, T142b
+  the forks at their baselines' +0.77 to +1.82 %), `reach-towns-36` +1.11 %; none re-baselined.
+- **Coverage:** the first run found the boats' `if let` writes' implicit else (`Boats::shift` and
+  `sink` now return the type, as `take` and `leave`), the neighbours off the map's corners, and
+  `CastFailed`'s projection in `h3-game` (a test of its viewers).
+
+**Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session);
+`check-lane --cross-lane`; `h3-protocol`'s and `h3-server`'s tests run apart. **Versions:**
+protocol v83 (the server lane's); no hash, import, part or replay format moved. Next: T143b.

@@ -3,20 +3,24 @@
 //! Fly or Water Walk sets, what the new day and a boarding clear, and the cast's own tests. The
 //! game checks the rest first (GAM-SPL-001: the spell known, the part's binding, the cost, the
 //! ground) and spends the spell points; the adventure never reads or writes them (ADR-0017 point
-//! 10). Summon Boat, Scuttle Boat and Dimension Door are E08 T143's (`ADV-STUB-22`).
+//! 10). Summon Boat and Scuttle Boat since E08 T143a (`boat_spells`, ADV-SPL-003, ADV-SPL-004:
+//! the chance drawn from the caster's player's stream, a failure charged, [`CastFailure`]);
+//! Dimension Door is E08 T143b's (`ADV-STUB-22`).
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{Ruleset, SPELL_RECAST_REFUSED};
+use h3_content::{Ruleset, SPELL_RECAST_REFUSED, SpellId};
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::HeroDetails;
-use h3_kernel::StateHasher;
+use h3_kernel::{Rng, StateHasher};
 
 use super::AdventureState;
+use crate::command::Sink;
 use crate::movement::{details_of, hero_movement};
-use crate::ruleset::AdventureSpell;
+use crate::ruleset::{AdventureRuleset, AdventureSpell};
+use crate::setup::Pos;
 
 /// A hero's spells of the day (ADV-SPL-002; increment 15's design note §8): the levels its Fly and
 /// Water Walk set, cast at a mastery from 0 (none) to 3 (Expert), and the Dimension Door casts it
@@ -59,14 +63,33 @@ impl DaySpells {
     }
 }
 
-/// Why the adventure refuses a cast on the map (increment 15's design note §10; ADV-SPL-005,
-/// ADV-SPL-006). A refusal changes nothing and spends nothing (the game spends the points only
-/// after the cast is accepted).
+/// A cast on the map as the game hands it to the adventure (increment 15's design note §10, §14;
+/// E08 T143a): the game has made its own checks (GAM-SPL-001) and found the spell's behaviour, the
+/// mastery on the hero's ground and the target's shape.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Cast {
+    /// The core spell: its effect column by mastery is Summon Boat's and Scuttle Boat's chance
+    /// (the original's spell table +0x34: 50, 50, 75, 100), read through `h3_content`.
+    pub spell: SpellId,
+    /// What it does on the map (the part's binding, [`AdventureRuleset::adventure_spell`]).
+    pub effect: AdventureSpell,
+    /// The mastery on the hero's ground, 0 (none) to 3 (Expert).
+    pub mastery: u8,
+    /// The target tile: Scuttle Boat's boat and Dimension Door's arrival; none for the other three
+    /// (the game refuses a cast whose target does not fit its spell).
+    pub target: Option<Pos>,
+}
+
+/// Why the adventure refuses a cast on the map (increment 15's design note §10; ADV-SPL-003 to
+/// ADV-SPL-006). A refusal changes nothing, draws nothing and spends nothing (the game spends the
+/// points only after the cast is accepted).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CastError {
     /// The hero is not one of the player's heroes on the map.
     NotYourHero(HeroId),
-    /// Fly in a boat (ADV-SPL-005; the original's GENRLTXT 193).
+    /// Fly in a boat (ADV-SPL-005; the original's GENRLTXT 193), or Summon Boat on water, in a
+    /// boat (ADV-SPL-003; GENRLTXT 334): a hero on water is in a boat (a water walk never stops
+    /// there).
     InBoat,
     /// Under `ADV-QUIRK-54` the spell is on already, or the hero's artifacts give the level (Angel
     /// Wings for Fly, Boots of Levitation for Water Walk on land): the original's silent nothing,
@@ -75,9 +98,40 @@ pub enum CastError {
     /// With `ADV-QUIRK-54` off the cast's level would not exceed the hero's level now (the
     /// artifacts' 3 included).
     NotHigher,
-    /// A spell this build does not cast on the map yet (Summon Boat, Scuttle Boat and Dimension
-    /// Door until E08 T143: `ADV-STUB-22`).
+    /// Summon Boat without a free water tile among the eight around the hero (ADV-SPL-003; the
+    /// original's GENRLTXT 335).
+    NoWater,
+    /// A target outside the window around the hero (`[params.spells]`' `target_range`: at most 9
+    /// columns and 8 rows away, on its level), or off the map (ADV-SPL-004; the original's dialog
+    /// offers no other tile).
+    OutOfWindow,
+    /// Scuttle Boat's target holds no empty boat it sinks (ADV-SPL-004; the original's dialog
+    /// offers no cursor there, a click does nothing): an explored tile without one (a boat with a
+    /// hero aboard is the hero's tile), and with `ADV-QUIRK-52` on a hidden tile without one too;
+    /// with the flag off every hidden tile of the window is a target (increment 15's design note
+    /// §11.3).
+    NoBoat,
+    /// A spell this build does not cast on the map yet (Dimension Door until E08 T143b:
+    /// `ADV-STUB-22`).
     NotBuilt(AdventureSpell),
+}
+
+/// Why an accepted cast on the map failed (increment 15's design note §10, §14; E08 T143a): a
+/// **charged failure**, its spell points spent as for an effect, told as the game's `CastFailed`
+/// after its `SpellCast`. Nothing else changed but the target's reveal under `ADV-QUIRK-52` off.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CastFailure {
+    /// The chance draw, one of 1 to 100 from the caster's player's stream, came above the
+    /// spell's chance at the mastery (ADV-SPL-003, ADV-SPL-004; the original's GENRLTXT 337 for
+    /// Summon Boat, 338 for Scuttle Boat): drawn at a chance of 100 too.
+    Chance,
+    /// Summon Boat found no boat to bring and made none (ADV-SPL-003; GENRLTXT 336): at None or
+    /// Basic, or with `[params.spells]`' `boats_most` boats in use.
+    NoBoat,
+    /// The target, once revealed, held nothing the spell acts on (ADV-SPL-004: Scuttle Boat's
+    /// hidden target without an empty boat under `ADV-QUIRK-52` off, increment 15's design note
+    /// §11.3).
+    Target,
 }
 
 /// The heroes' day spells by hero id ([`AdventureState`]'s block): only heroes with some, in id
@@ -103,6 +157,9 @@ impl fmt::Display for CastError {
             Self::InBoat => f.write_str("Fly is not cast in a boat"),
             Self::AlreadyOn => f.write_str("the spell's level is on already"),
             Self::NotHigher => f.write_str("the cast would not raise the hero's level"),
+            Self::NoWater => f.write_str("no free water lies around the hero"),
+            Self::OutOfWindow => f.write_str("the target lies outside the spell's window"),
+            Self::NoBoat => f.write_str("no empty boat lies on the target"),
             Self::NotBuilt(spell) => write!(f, "`{}` is not cast on the map yet", spell.key()),
         }
     }
@@ -153,11 +210,16 @@ impl AdventureState {
         }
     }
 
-    /// Checks `player`'s cast of `spell` by its hero `hero` at `mastery` (0 to 3: the game's
-    /// derivation on the hero's ground, `h3_heroes::spell_masteries_on`) as [`Self::apply_cast`]
-    /// makes it (increment 15's design note §10.3, §10.4), its details in `heroes`, the game's
-    /// store. Nothing changes.
+    /// Checks `player`'s cast `cast` by its hero `hero` as [`Self::apply_cast`] makes it
+    /// (increment 15's design note §10), its mastery the game's derivation on the hero's ground
+    /// (`h3_heroes::spell_masteries_on`), its details in `heroes`, the game's store. Nothing
+    /// changes and nothing is drawn.
     ///
+    /// - **Summon Boat** (ADV-SPL-003): refused on water, in a boat, then without a free water
+    ///   tile around the hero ([`Self::summon_tile`]).
+    /// - **Scuttle Boat** (ADV-SPL-004): refused for a target outside the window or off the map,
+    ///   then for one without an empty boat, under `ADV-QUIRK-52` (§11.3: on, a hidden tile too;
+    ///   off, every hidden tile of the window a target).
     /// - **Fly** (ADV-SPL-005): refused in a boat; with `ADV-QUIRK-54` on while Fly is on or the
     ///   hero's artifacts give it a flying level (Angel Wings), off when the mastery would not
     ///   exceed its flying level now (the artifacts' and the spell's, the higher).
@@ -169,14 +231,13 @@ impl AdventureState {
     /// # Errors
     ///
     /// The [`CastError`] of the first test the cast fails.
-    // rule: ADV-SPL-005, ADV-SPL-006
+    // rule: ADV-SPL-003, ADV-SPL-004, ADV-SPL-005, ADV-SPL-006
     pub fn check_cast(
         &self,
-        core: &Ruleset,
+        (core, part): (&Ruleset, &AdventureRuleset),
         heroes: &[Arc<HeroDetails>],
         (player, hero): (PlayerId, HeroId),
-        spell: AdventureSpell,
-        mastery: u8,
+        cast: Cast,
     ) -> Result<(), CastError> {
         let index = self
             .heroes
@@ -184,52 +245,83 @@ impl AdventureState {
             .ok()
             .filter(|&index| self.heroes[index].owner == player)
             .ok_or(CastError::NotYourHero(hero))?;
-        let afloat = self.heroes[index].boat.is_some();
+        let on = &self.heroes[index];
+        let afloat = on.boat.is_some();
         let (own, day) = (
             hero_movement(core, details_of(heroes, hero)),
             self.day_spells(hero),
         );
-        let (cast, worn) = match spell {
+        let (level, worn) = match cast.effect {
+            AdventureSpell::SummonBoat if afloat => return Err(CastError::InBoat),
+            AdventureSpell::SummonBoat => {
+                return self
+                    .summon_tile(part, on.pos)
+                    .map(|_| ())
+                    .ok_or(CastError::NoWater);
+            }
+            AdventureSpell::ScuttleBoat => {
+                return self.check_scuttle(core, part, (player, on.pos), cast.target);
+            }
             AdventureSpell::Fly if afloat => return Err(CastError::InBoat),
             AdventureSpell::Fly => (day.fly, own.flying),
             AdventureSpell::WaterWalk if afloat => return Ok(()),
             AdventureSpell::WaterWalk => (day.water_walk, own.water_walking),
-            AdventureSpell::SummonBoat
-            | AdventureSpell::ScuttleBoat
-            | AdventureSpell::DimensionDoor => {
+            AdventureSpell::DimensionDoor => {
                 // stub: ADV-STUB-22
-                return Err(CastError::NotBuilt(spell));
+                return Err(CastError::NotBuilt(cast.effect));
             }
         };
         if core.quirks().is_enabled(SPELL_RECAST_REFUSED) {
-            if cast.is_some() || worn.is_some() {
+            if level.is_some() || worn.is_some() {
                 return Err(CastError::AlreadyOn);
             }
-        } else if cast.max(worn).is_some_and(|level| level >= mastery) {
+        } else if level.max(worn).is_some_and(|level| level >= cast.mastery) {
             return Err(CastError::NotHigher);
         }
         Ok(())
     }
 
-    /// The cast of `spell` by the hero `hero` at `mastery` that [`Self::check_cast`] accepted
-    /// (ADV-SPL-005, ADV-SPL-006; increment 15's design note §10.3, §10.4), infallible: Fly sets
-    /// the hero's flying level for the day to the mastery, Water Walk its water-walking level. Every
-    /// reader of the hero's levels takes the higher of its artifacts' and its spell's from then on
-    /// (the paths, the prices, the drop to 0: [`crate::movement::day_movement`]). No event of its
-    /// own: the game tells the cast, and the changed spells are told after the command
-    /// ([`crate::AdventureEventKind::DaySpellsChanged`]).
-    // rule: ADV-SPL-005, ADV-SPL-006
-    pub fn apply_cast(&mut self, hero: HeroId, spell: AdventureSpell, mastery: u8) {
+    /// The cast `cast` by `player`'s hero `hero` that [`Self::check_cast`] accepted (ADV-SPL-003
+    /// to ADV-SPL-006; increment 15's design note §10), its draws from `draws`, the caster's
+    /// player's stream (ADR-0017 point 4), its events to `sink`:
+    ///
+    /// - **Summon Boat** and **Scuttle Boat** ([`Self::summon_boat`], [`Self::scuttle_boat`]):
+    ///   the chance draw, then a boat brought, made or sunk, told as
+    ///   [`crate::AdventureEventKind::BoatSummoned`], `BoatCreated` or `BoatScuttled`.
+    /// - **Fly** sets the hero's flying level for the day to the mastery, **Water Walk** its
+    ///   water-walking level: every reader of the hero's levels takes the higher of its
+    ///   artifacts' and its spell's from then on (the paths, the prices, the drop to 0:
+    ///   [`crate::movement::day_movement`]); no event of their own (the changed spells are told
+    ///   after the command, [`crate::AdventureEventKind::DaySpellsChanged`]).
+    ///
+    /// # Errors
+    ///
+    /// A [`CastFailure`] for a charged failure: the cast stays accepted (the game spends its
+    /// points and tells `CastFailed`), nothing changed but a target's reveal.
+    // rule: ADV-SPL-003, ADV-SPL-004, ADV-SPL-005, ADV-SPL-006
+    pub fn apply_cast<S: Sink>(
+        &mut self,
+        rules: (&Ruleset, &AdventureRuleset),
+        (player, hero): (PlayerId, HeroId),
+        cast: Cast,
+        draws: &mut Rng,
+        sink: &mut S,
+    ) -> Result<(), CastFailure> {
         let mut spells = self.day_spells(hero);
-        match spell {
-            AdventureSpell::Fly => spells.fly = Some(mastery),
-            AdventureSpell::WaterWalk => spells.water_walk = Some(mastery),
-            // `check_cast` refuses the rest (`ADV-STUB-22`).
-            AdventureSpell::SummonBoat
-            | AdventureSpell::ScuttleBoat
-            | AdventureSpell::DimensionDoor => {}
+        match cast.effect {
+            AdventureSpell::SummonBoat => {
+                return self.summon_boat(rules, (player, hero), cast, draws, sink);
+            }
+            AdventureSpell::ScuttleBoat => {
+                return self.scuttle_boat(rules, player, cast, draws, sink);
+            }
+            AdventureSpell::Fly => spells.fly = Some(cast.mastery),
+            AdventureSpell::WaterWalk => spells.water_walk = Some(cast.mastery),
+            // `check_cast` refuses it (`ADV-STUB-22`).
+            AdventureSpell::DimensionDoor => {}
         }
         self.set_day_spells(hero, spells);
+        Ok(())
     }
 
     /// The new day clears every hero's day spells (ADV-SPL-002; increment 15's design note §12,

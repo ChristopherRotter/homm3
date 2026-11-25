@@ -22,8 +22,8 @@ use super::{
 };
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
-    AdventureEvent, DaySpells, Formation, GameEvent, HeroChange, NothingWhy, OfferLevels,
-    ShipyardBlock,
+    AdventureEvent, CastFailure, DaySpells, Formation, GameEvent, HeroChange, NothingWhy,
+    OfferLevels, ShipyardBlock,
 };
 
 /// The events `viewer` may see, in order, on the wire (`h3_game::project`); the others are
@@ -457,6 +457,22 @@ fn event(e: &EngineEvent) -> GameEvent {
             mastery,
             cost,
         },
+        // E08 T143a (v83).
+        EngineEvent::CastFailed {
+            player,
+            hero,
+            spell,
+            reason,
+        } => GameEvent::CastFailed {
+            player: player.raw(),
+            hero: hero.raw(),
+            spell: spell.raw(),
+            reason: match reason {
+                h3_adventure::CastFailure::Chance => CastFailure::Chance,
+                h3_adventure::CastFailure::NoBoat => CastFailure::NoBoat,
+                h3_adventure::CastFailure::Target => CastFailure::Target,
+            },
+        },
         // E09 T39b2 (v74).
         EngineEvent::ThievesGuildSeen { player, level } => GameEvent::ThievesGuildSeen {
             player: player.raw(),
@@ -816,6 +832,28 @@ fn adventure(kind: AdventureEventKind) -> AdventureEvent {
         K::DaySpellsChanged { hero, spells } => AdventureEvent::DaySpellsChanged {
             hero: hero.raw(),
             spells: day_spells(spells),
+        },
+        // E08 T143a (v83).
+        K::BoatSummoned {
+            boat,
+            from,
+            to,
+            facing,
+            seen_from: _,
+            seen_to: _,
+        } => AdventureEvent::BoatSummoned {
+            boat,
+            from: from.map(pos),
+            to: to.map(pos),
+            facing,
+        },
+        K::BoatCreated { tile, boat_type } => AdventureEvent::BoatCreated {
+            tile: pos(tile),
+            boat_type,
+        },
+        K::BoatScuttled { tile, boat } => AdventureEvent::BoatScuttled {
+            tile: pos(tile),
+            boat,
         },
     }
 }
