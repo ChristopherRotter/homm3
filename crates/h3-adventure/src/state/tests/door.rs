@@ -359,6 +359,65 @@ fn a_hidden_target_reads_the_truth_under_adv_quirk_51_or_is_revealed_without_it(
     assert_eq!(caster(&state), (p(9, 0), POINTS - 800, 4));
 }
 
+/// The targets [`AdventureState::cast_targets`] gives red's hero 1 for `cast` (E08 T144a1):
+/// exactly the window's tiles `check_cast` accepts, in row order.
+fn listed(state: &AdventureState, rules: &Rules, cast: Cast) -> Vec<Pos> {
+    let store = store();
+    let at = |target| Cast {
+        target: Some(target),
+        ..cast
+    };
+    let accepted: Vec<Pos> = state
+        .cast_window(&rules.1, state.hero(HERO).unwrap().pos)
+        .filter(|&t| {
+            let checked = state.check_cast((&rules.0, &rules.1), &store, (RED, HERO), at(t));
+            checked.is_ok()
+        })
+        .collect();
+    let unset = Cast {
+        target: None,
+        ..cast
+    };
+    let targets = state.cast_targets((&rules.0, &rules.1), (RED, HERO), unset);
+    assert_eq!(targets, accepted);
+    targets
+}
+
+// covers: ADV-SPL-004, ADV-SPL-008
+#[test]
+fn the_listed_targets_are_the_window_s_tiles_the_test_accepts() {
+    let scuttle = Cast {
+        effect: AdventureSpell::ScuttleBoat,
+        ..door(3, p(0, 0))
+    };
+    for faithful in [true, false] {
+        let rules = rules(faithful);
+        let mut state = door_world(&rules);
+        let doors = listed(&state, &rules, door(3, p(0, 0)));
+        assert!(doors.contains(&p(2, 2)) && doors.contains(&p(9, 0)));
+        for outside in [p(0, 0), p(10, 0), p(0, 9)] {
+            assert!(!doors.contains(&outside), "{outside:?}");
+        }
+        // A hidden blocked tile: read under `ADV-QUIRK-51`, a target without it.
+        assert_eq!(doors.contains(&p(8, 0)), !faithful);
+        assert!(listed(&state, &rules, scuttle).contains(&p(5, 0)));
+        // Without points: no door, the scuttle's targets as before.
+        state.heroes[0].movement = 0;
+        assert!(listed(&state, &rules, door(3, p(0, 0))).is_empty());
+        assert!(!listed(&state, &rules, scuttle).is_empty());
+    }
+    // Another player's hero, a spell without a target: none.
+    let rules = rules(true);
+    let state = door_world(&rules);
+    let parts = (&rules.0, &rules.1);
+    assert!(state.cast_targets(parts, (BLUE, HERO), scuttle).is_empty());
+    let fly = Cast {
+        effect: AdventureSpell::Fly,
+        ..scuttle
+    };
+    assert!(state.cast_targets(parts, (RED, HERO), fly).is_empty());
+}
+
 #[test]
 fn the_door_s_errors_explain_themselves() {
     let cases = [

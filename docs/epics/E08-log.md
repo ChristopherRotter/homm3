@@ -22463,3 +22463,55 @@ restart, so CI's run on `master` is the baseline (the sandbox skill's rule).
 and coverage, re-run alone after its fix: pass); `check-lane --cross-lane`; `h3-protocol`'s (216)
 and `h3-server`'s (175) tests run apart. **Versions:** protocol v84 (the server lane's); no hash,
 import, part or replay format moved. Next: the inbox's `h3-map` view property, then T144.
+
+### Increment 15, round 8: T144a1, the casts in `legal_commands` (2026-11-25, `adventure/e08-t144a1`, `cross-lane`)
+
+**The cut:** T144a in two (decision 420, the user at T144's start): T144a1 the listing, with the
+hygiene property's faithful exception moved up from T144b; T144a2 the env's encoding v21 by hero
+slot with the targets in the tile head (decision 421). The map-client lane's inbox note settled
+at the same start: `ADV-QUIRK-58`, fixed (decision 419). The `cross-lane` touch of `h3-sim`
+(two lines in `adventure/rollout.rs`) consented at the build, once `h3-cli`'s workload test showed
+the random games moving.
+**Baseline:** `master` 02ccd93 (#1176 merged; CI green); the originals staged from the PC at the
+start (17 files and 40 MP3s), the repo from GitHub; the setup's baseline lost to a VM restart
+(the VM restarted twice in the session), so CI's run on `master` is the baseline.
+
+- **The game** (`h3-game`'s `state/cast.rs`, GAM-SPL-001): `check_cast`'s tests split into
+  `caster` (the hero, the first test) and `cast_frame` (the cost against the points, the ground,
+  the anti-magic garrison; the mastery on the ground), so the listing runs the same tests;
+  `GameState::legal_casts` pushes, per hero in the player's list (`hero_list`, GAM-HER-003), each
+  spell the part binds that the hero may cast (`h3_heroes::available_spells` once per hero, so a
+  hero without one costs no ground or cost test), in the part's order: Summon Boat, Fly and Water
+  Walk once where the adventure's `check_cast` accepts them, Scuttle Boat and Dimension Door at
+  each accepted target of the window. `legal_commands` calls it last, after the town's commands.
+- **The adventure** (`state/spells.rs`): `AdventureState::cast_window`, the window's tiles on the
+  map in row order, the same bounds as `in_window` (`target_range`, the hero's level).
+- **The random agent** (`h3-sim`'s `adventure/rollout.rs`, `cross-lane`): `choose` leaves the
+  casts out of its draw until encoding v21 (decision 420; E09 decision 56's precedent). Without
+  it a drawn cast had no entry and ended the turn (`encode`'s `None`), and the heroes of the sea
+  XL map no longer boarded within the fork workload's seven days (`h3-cli`'s
+  `the_benchmark_workloads_run_and_count_what_they_say`).
+- **The plans** (`h3-map`'s `play.rs`): the listing oracle's `accepted_casts` (each known bound
+  spell probed without a target, or at each tile within `target_range` in row order, kept where
+  `apply` accepts it); `check_casts` (each listed cast applies, tells `SpellCast` first by its
+  hero and spell, the points less its cost). The hygiene property (`view.rs`): `targets_hidden`
+  beside T142b's `flies`, so under `faithful` the comparison ends while one of the viewer's
+  heroes may cast Scuttle Boat or Dimension Door (their targets read the hidden tiles); under
+  `strict-fixed` it runs on. The plans' heroes learn these spells only at shrines and guilds.
+- **Tests:** `h3-game`'s `tests/casts.rs`, `legal_commands_list_last_every_cast_the_game_accepts`
+  (the listed casts are exactly the casts `apply` accepts of every candidate, in order: Summon
+  Boat and the explored boat's scuttle on the sea map, the door's free tiles of its kind and,
+  under `t:charged`, the sea tile too; Fly once, not again at the same mastery, not below its
+  cost; blue lists none out of turn).
+- **`ADV-QUIRK-58`** (decision 419): the map-client lane's reading (E24 M5 T1b) confirmed by a
+  second one (`monster_battle`'s tail 0x4AC8FF to 0x4AC913 writes its type's count left whatever
+  the winner; `visit_mine` 0x4A3AE3 to 0x4A3AEB keeps the creature); the ledger's entry, ADV-MIN-002
+  amended (its `quirks`), survey `E08-economy.md` §3.2; no code change.
+- **Docs:** GAM-SPL-001's summary; the design note's §17 as decided; the queue's T144a2 and
+  T144b; the AI lane's inbox (the casts' weight in the random draw, its decision before T144a2).
+- *Agent's calls, change freely:* the casts last in the list (no earlier index moves); the
+  bound spells in the part's order per hero, the targets in row order; the hero's spells derived
+  once per hero.
+- **Speed:** SPEED_PLACEHOLDER
+
+**Verify:** VERIFY_PLACEHOLDER **Versions:** none moved. Next: T144a2.

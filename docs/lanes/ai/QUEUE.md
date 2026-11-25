@@ -61,6 +61,18 @@ now**):
 
 **From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**; E08 T140, `shared/e08-t140`, `cross-lane`; E08 T142a, `adventure/e08-t142a`, `cross-lane`; **in your paths, nothing to do**):
 
+- 2026-11-25 (the adventure lane, E08 T144a1, `adventure/e08-t144a1`, `cross-lane` with the
+  user's consent; **for your decision before E08 T144a2**): `h3_game::legal_commands` lists each
+  hero's casts last (GAM-SPL-001: Summon Boat, Fly and Water Walk once; Scuttle Boat's and
+  Dimension Door's every accepted target of the window, up to 323 each, in row order). Until
+  encoding v21 `adventure/rollout.rs`' `choose` leaves them out of its draw (two lines; no
+  workload's course moved). T144a2 (`cross-lane`) brings **v21** with a layout other than the
+  2026-11-21 note's (E08 decision 421): five entries per hero slot, 40, after `SPELL_BOOK`, the
+  door's and Scuttle Boat's target in the **tile head** (no window head). **Yours to choose:** the
+  casts' weight in the random draw (the adventure lane's proposal: each listed hero and spell one
+  draw among the commands and moves, its target then uniform among its listed targets, as a
+  hero's moves), and whether the step cap needs a change (a cast's charged failure spends spell
+  points, so a turn's casts end). Without an answer by T144a2 the proposal is built.
 - 2026-11-24 (the adventure lane, E08 T142a, `cross-lane` with the user's consent; **in your
   paths, nothing to do**): `h3_game::GameCommand::Cast` exists; `h3-sim`'s `tileless_entry`
   (`adventure/action.rs`) gives it no entry, and `legal_commands` lists no cast until E08 T144a,

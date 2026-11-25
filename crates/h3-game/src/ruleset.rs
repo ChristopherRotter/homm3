@@ -2,11 +2,13 @@
 //! immutable and `Arc`-shared, bundled once so every context reads the same rules.
 
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use core::fmt;
 
 use h3_adventure::{AdventureRuleset, ObjectKind};
 use h3_content::Ruleset;
 use h3_content_battle::BattleRuleset;
+use h3_heroes::SpellSources;
 use h3_towns::TownRuleset;
 
 /// The core ruleset and the contexts' parts of one game: the adventure's, since E08 T19a the
@@ -17,6 +19,9 @@ pub struct GameRuleset {
     adventure: Arc<AdventureRuleset>,
     battle: Arc<BattleRuleset>,
     towns: Arc<TownRuleset>,
+    /// What may make the adventure part's bound spells available to a hero (E08 T144a1: the
+    /// listing of the casts on the map, GAM-SPL-001), derived from the core once.
+    casts: Arc<SpellSources>,
 }
 
 /// The parts do not fit the core: one was compiled on another core ruleset, the adventure part
@@ -71,11 +76,14 @@ impl GameRuleset {
             && field
             && besieged
         {
+            let bound: Vec<_> = adventure.spells().iter().map(|&(spell, _)| spell).collect();
+            let casts = Arc::new(SpellSources::new(&core, &bound));
             Ok(Self {
                 core,
                 adventure,
                 battle,
                 towns,
+                casts,
             })
         } else {
             Err(RulesetMismatch)
@@ -100,5 +108,11 @@ impl GameRuleset {
     /// The town part (E09 T5a2).
     pub fn towns(&self) -> &TownRuleset {
         &self.towns
+    }
+
+    /// What may make the adventure part's bound spells available to a hero (E08 T144a1), in
+    /// spell order (the part's).
+    pub(crate) fn cast_sources(&self) -> &SpellSources {
+        &self.casts
     }
 }

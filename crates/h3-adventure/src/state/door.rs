@@ -47,13 +47,36 @@ impl AdventureState {
         doors: u8,
         cast: Cast,
     ) -> Result<(), CastError> {
+        Self::door_ready(core, on, doors, cast)?;
+        let target = self.in_window(part, on.pos, cast.target)?;
+        self.door_target((core, part), (player, on), target)
+    }
+
+    /// [`Self::check_door`]'s tests of the hero (E08 T144a1: shared with
+    /// [`Self::cast_targets`]): movement points left, then a cast of the day left.
+    pub(super) fn door_ready(
+        core: &Ruleset,
+        on: &HeroOnMap,
+        doors: u8,
+        cast: Cast,
+    ) -> Result<(), CastError> {
         if on.movement == 0 {
             return Err(CastError::NoPoints);
         }
         if u32::from(doors) >= casts(core, cast) {
             return Err(CastError::NoCastsLeft);
         }
-        let target = self.in_window(part, on.pos, cast.target)?;
+        Ok(())
+    }
+
+    /// [`Self::check_door`]'s tests of a target in the window (E08 T144a1: shared with
+    /// [`Self::cast_targets`]).
+    pub(super) fn door_target(
+        &self,
+        (core, part): (&Ruleset, &AdventureRuleset),
+        (player, on): (PlayerId, &HeroOnMap),
+        target: Pos,
+    ) -> Result<(), CastError> {
         let hidden = !self.explored[usize::from(player.raw())].get(target);
         if hidden && !core.quirks().is_enabled(DOOR_READS_HIDDEN) {
             return Ok(());

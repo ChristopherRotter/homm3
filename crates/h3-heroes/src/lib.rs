@@ -88,9 +88,9 @@ pub use moves::{ArtifactMove, MoveChanges, check_move, move_changes};
 pub use positions::{Position, equip, first_position, positions, takes, wearing};
 pub use reward::{Granted, HeroReward, can_receive_artifact, grant};
 pub use spells::{
-    SchoolRaise, SchoolSet, available_spells, can_cast_on_map, can_learn_spell, learn_level,
-    learns_spell, map_spell_cost, meeting_spells, spell_book, spell_learner, spell_masteries,
-    spell_masteries_on, wears_spell_book,
+    MapSpell, SchoolRaise, SchoolSet, SpellSources, available_spells, can_cast_on_map,
+    can_learn_spell, learn_level, learns_spell, map_spell_cost, map_spells, meeting_spells,
+    spell_book, spell_learner, spell_masteries, spell_masteries_on, wears_spell_book,
 };
 pub use teach::{
     ScholarGift, SlotState, hut_teaches, learning_experience, library_admits,
