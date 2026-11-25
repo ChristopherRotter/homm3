@@ -9,7 +9,7 @@
 //!   (`cargo xtask verify-step`), so that everything it prints lands in the log.
 //! - `--only <step>[,<step>…]` runs only the named gates, in the verify's order, and exits 0 when
 //!   they pass: a part of the verify. CI runs the full verify as parallel jobs of `--only` lists
-//!   that together name every gate once (`.github/workflows/ci.yml`).
+//!   that together name every gate once (`.github/workflows/ci.yml`; a test below keeps them so).
 
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom};
@@ -945,6 +945,63 @@ mod tests {
         assert!(parse(&strings(&["--only", "fmt", "--skip", "deny"])).is_err());
         assert!(parse(&strings(&["--skip", "deny", "--only", "fmt"])).is_err());
         assert!(parse(&strings(&["--only", "original-data"])).is_err());
+    }
+
+    /// CI runs the full verify as parallel jobs (`.github/workflows/ci.yml`): their
+    /// `cargo xtask verify --only <list>` lines together name every step of a full verify exactly
+    /// once. `check-lane` (scoped only; CI runs `cargo xtask check-lane` before) and
+    /// `original-data` (local only) are not steps of it.
+    #[test]
+    fn ci_jobs_run_every_step_once() {
+        let ci = fs::read_to_string(workspace_root().join(".github/workflows/ci.yml")).unwrap();
+        const COMMAND: &str = "cargo xtask verify --only ";
+        let listed: Vec<&str> = ci
+            .lines()
+            .filter(|l| !l.trim_start().starts_with('#'))
+            .filter_map(|l| l.split_once(COMMAND))
+            .flat_map(|(_, rest)| rest.split_whitespace().next().unwrap_or("").split(','))
+            .collect();
+        let full: Vec<&str> = STEPS
+            .iter()
+            .filter(|s| in_verify(s, false))
+            .map(|s| s.name)
+            .collect();
+        for name in &full {
+            let count = listed.iter().filter(|l| *l == name).count();
+            assert_eq!(
+                count, 1,
+                "ci.yml's `--only` lists name `{name}` {count} times"
+            );
+        }
+        for name in &listed {
+            assert!(
+                full.contains(name),
+                "ci.yml's `--only` lists name `{name}`, no step of a full verify"
+            );
+        }
+    }
+
+    #[test]
+    fn parses_with_original_data() {
+        let default = parse(&strings(&["--with-original-data", "--quick"])).unwrap();
+        assert_eq!(
+            default.original_data.as_deref(),
+            Some(DEFAULT_ORIGINAL_DATA)
+        );
+        assert!(default.quick);
+        let path = parse(&strings(&["--with-original-data", "D:/H3"])).unwrap();
+        assert_eq!(path.original_data.as_deref(), Some("D:/H3"));
+    }
+
+    #[test]
+    fn rejects_unknown_step_and_option() {
+        assert!(parse(&strings(&["--skip", "nope"])).is_err());
+        assert!(parse(&strings(&["--skip"])).is_err());
+        assert!(parse(&strings(&["--scope"])).is_err());
+        assert!(parse(&strings(&["--frobnicate"])).is_err());
+        assert!(run_one(&strings(&[])).is_err());
+        assert!(run_one(&strings(&["nope"])).is_err());
+        assert!(run_one(&strings(&["fmt", "--what"])).is_err());
     }
 
     #[test]

@@ -1,10 +1,33 @@
-# CI: the single quality gate `cargo xtask verify` (docs/05-testing.md, ADR-0010) on Linux, where
+# CI: the quality gate `cargo xtask verify` (docs/05-testing.md, ADR-0010) on Linux, where
 # every gate runs, and the lane check `cargo xtask check-lane` on pull requests (lanes.toml,
 # docs/08-work-process.md, "Lanes").
 #
 # CI's full verify is the record: the repository is public since 2026-10-26, so Actions run
 # free, and agents run only the scoped verify locally (user; docs/05-testing.md, "CI"). Until then
-# minutes were scarce (2 000 a month; user, 2026-10-08). CI verifies each state of the code once:
+# minutes were scarce (2 000 a month; user, 2026-10-08).
+#
+# Jobs. `plan` decides between the full verify and the light run (below). The full verify runs as
+# four parallel jobs, each one `--only` invocation of the verify, whose lists together name every
+# step once (xtask's test `ci_jobs_run_every_step_once` keeps them so):
+#
+# - `gates`: check-lane on pull requests, then fmt, clippy, deny, check-arch, check-rules,
+#   check-stubs, check-docs, check-exe-map, clients-lock, test, doc-drift;
+# - `coverage`: coverage (cargo-llvm-cov and the LLVM tools);
+# - `replays`: determinism and ffi-smoke;
+# - `bench`: bench-check (valgrind).
+#
+# A run that needs no full verify runs `light` instead: check-lane on pull requests and the gates
+# that read the left-out paths. `record` writes the fingerprint's status once every job the plan
+# chose has passed. Each job runs its own steps whole: `test` runs every test (coverage's
+# instrumented run stood in for most of them in the one verify job) and `determinism` its debug
+# leg too.
+#
+# Every job stops at 60 minutes, never raised again (user, 2026-11-25; the one verify job took
+# about 48 of its 55): a job that nears it is split or scoped instead. Planned: pull requests run
+# coverage, the replays and the benchmarks only for the lanes their changes reach (`verify
+# --scope` and the crate graph; a shared crate reaches every lane), then coverage in shards.
+#
+# CI verifies each state of the code once:
 #
 # - The code fingerprint hashes every tracked file except `docs/`, `experiments/`, `clients/` (its
 #   own workspace and job, `clients.yml`) and `*.md`: no heavy gate (fmt, clippy,
@@ -20,17 +43,19 @@
 #   own run does that; user, 2026-10-11), and records no fingerprint, since it verified none.
 # - Pushes to `master` that change only left-out paths start no run.
 # - Pull requests: check-lane, then the verify. The label `cross-lane` passes `--cross-lane`;
-#   adding or removing it re-runs the job, which skips a verify that already passed. Other labels
+#   adding or removing it re-runs the jobs, which skip a verify that already passed. Other labels
 #   do nothing. Closing or merging a pull request cancels its running CI (`master` verifies the
 #   merged result).
 # - Weekly: only `cargo deny check advisories`, so that new RustSec advisories surface without a
-#   code change. Manual dispatch and the re-run of a run always run the full verify.
+#   code change. Manual dispatch and re-running all jobs always run the full verify; re-running
+#   only the failed jobs keeps the first attempt's plan.
 #
 # Windows (the second platform of the determinism matrix, ADR-0003 §5, §11; Q3, Q7) is disabled
 # for now because it takes about twice as long (user, 2026-10-06); it stays a local run (with free
-# minutes it could come back: Q59, the user's call). To
-# re-enable it, add `windows-2025` to the matrix: `bench-check` (valgrind) and `ffi-smoke` (no `cc`
-# on MSVC) report N/A there by design, everything else passed on 2026-10-06.
+# minutes it could come back: Q59, the user's call). To re-enable it, `plan`, the four verify jobs
+# and `record` need an `os` matrix, since the plan and the status are per OS (`verified (<os>)`):
+# `bench-check` (valgrind) and `ffi-smoke` (no `cc` on MSVC) report N/A there by design,
+# everything else passed on 2026-10-06.
 #
 # Local-only parts stay local: `--with-original-data` needs the user's installation copy, which is
 # never committed (ADR-0009).
@@ -66,38 +91,36 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  verify:
-    name: verify (${{ matrix.os }})
+  # Full verify, or only the gates that read the paths left out of the code fingerprint.
+  plan:
     if: >-
       github.event_name != 'schedule'
       && github.event.action != 'closed'
       && (!contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
           || github.event.label.name == 'cross-lane')
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
-    # 55 (the user, 2026-11-18; was 40): master's full run took 36 minutes, the runner's apt step
-    # 6 to 10 of them, and E09 T38a2's run (#1006) was cancelled twice at 40.
-    timeout-minutes: 55
-    defaults:
-      run:
-        shell: bash
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      full: ${{ steps.plan.outputs.full }}
+      record: ${{ steps.plan.outputs.record }}
+      fingerprint: ${{ steps.plan.outputs.fingerprint }}
     steps:
       - uses: actions/checkout@v7
         with:
-          # `check-lane` and `doc-drift` compare with the merge base of the target branch.
+          # The plan compares with the target branch's last commits and the merge's parents.
           fetch-depth: 0
 
-      # Full verify, or only the gates that read the paths left out of the code fingerprint.
       - name: Plan
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
           FORCE: ${{ github.event_name == 'workflow_dispatch' || github.run_attempt > 1 }}
-          OS: ${{ matrix.os }}
+          OS: ubuntu-24.04
           EVENT: ${{ github.event_name }}
           HEAD: ${{ github.event.pull_request.head.sha }}
           BASE: ${{ github.event.pull_request.base.sha }}
@@ -150,40 +173,31 @@ jobs:
           echo "record=$record" >> "$GITHUB_OUTPUT"
           echo "Code fingerprint \`$fp\`: $why." | tee -a "$GITHUB_STEP_SUMMARY"
 
+  gates:
+    needs: plan
+    if: needs.plan.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # `check-lane` and `doc-drift` compare with the merge base of the target branch.
+          fetch-depth: 0
+
       # rustup reads the pinned toolchain from rust-toolchain.toml.
       - name: Toolchain
         run: |
           cargo --version
           rustc --version
 
-      # Coverage additionally needs the LLVM tools, which rust-toolchain.toml leaves out on purpose.
-      - name: LLVM tools (coverage)
-        if: steps.plan.outputs.full == 'true'
-        run: rustup component add llvm-tools-preview
-
-      - name: valgrind (bench-check)
-        if: steps.plan.outputs.full == 'true' && runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq valgrind
-
       - uses: taiki-e/install-action@v2
-        if: steps.plan.outputs.full == 'true'
         with:
-          tool: cargo-deny,cargo-llvm-cov
+          tool: cargo-deny
 
       - uses: Swatinem/rust-cache@v2
         with:
-          # Only master's full verifies write the cache; branches restore it. A run of the cheap
-          # gates alone would store a cache without the verify's builds.
-          save-if: ${{ github.ref == 'refs/heads/master' && steps.plan.outputs.full == 'true' }}
-
-      # The determinism step builds into target/native with `-C target-cpu=native`, which also
-      # compiles the proc macros for the CPU of the runner that built them. Restored from the cache
-      # on a runner with another CPU model, such a proc macro dies with SIGILL (seen 2026-10-07),
-      # so that directory is never reused.
-      - name: Drop cached native builds
-        run: rm -rf target/native
+          # Only master's full verifies write the caches (one per job); branches restore them.
+          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       # First, so that a pull request in the wrong shape fails within a minute.
       - name: cargo xtask check-lane
@@ -192,32 +206,150 @@ jobs:
           CROSS_LANE: ${{ contains(github.event.pull_request.labels.*.name, 'cross-lane') && '--cross-lane' || '' }}
         run: cargo xtask check-lane --base "origin/${{ github.base_ref }}" $CROSS_LANE
 
-      - name: cargo xtask verify
-        if: steps.plan.outputs.full == 'true'
-        run: cargo xtask verify
+      - name: cargo xtask verify (gates)
+        run: cargo xtask verify --only fmt,clippy,deny,check-arch,check-rules,check-stubs,check-docs,check-exe-map,clients-lock,test,doc-drift
+
+  coverage:
+    needs: plan
+    if: needs.plan.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Toolchain
+        run: |
+          cargo --version
+          rustc --version
+
+      # Coverage additionally needs the LLVM tools, which rust-toolchain.toml leaves out on purpose.
+      - name: LLVM tools (coverage)
+        run: rustup component add llvm-tools-preview
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: cargo xtask verify (coverage)
+        run: cargo xtask verify --only coverage
+
+  replays:
+    needs: plan
+    if: needs.plan.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Toolchain
+        run: |
+          cargo --version
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+
+      # The determinism step builds into target/native with `-C target-cpu=native`, which also
+      # compiles the proc macros for the CPU of the runner that built them. Restored from the cache
+      # on a runner with another CPU model, such a proc macro dies with SIGILL (seen 2026-10-07),
+      # so that directory is never reused.
+      - name: Drop cached native builds
+        run: rm -rf target/native
+
+      - name: cargo xtask verify (replays)
+        run: cargo xtask verify --only determinism,ffi-smoke
+
+  bench:
+    needs: plan
+    if: needs.plan.outputs.full == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Toolchain
+        run: |
+          cargo --version
+          rustc --version
+
+      - name: valgrind (bench-check)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq valgrind
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: cargo xtask verify (bench)
+        run: cargo xtask verify --only bench-check
+
+  # The light run: the code was verified already, or the pull request brings none. It builds only
+  # xtask (about a minute), so it uses no cache; the verify jobs' caches hold their own builds.
+  light:
+    needs: plan
+    if: needs.plan.outputs.full != 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # `check-lane` compares with the merge base of the target branch.
+          fetch-depth: 0
+
+      - name: Toolchain
+        run: |
+          cargo --version
+          rustc --version
+
+      - name: cargo xtask check-lane
+        if: github.event_name == 'pull_request'
+        env:
+          CROSS_LANE: ${{ contains(github.event.pull_request.labels.*.name, 'cross-lane') && '--cross-lane' || '' }}
+        run: cargo xtask check-lane --base "origin/${{ github.base_ref }}" $CROSS_LANE
 
       - name: Gates that read the left-out paths
-        if: steps.plan.outputs.full != 'true'
         run: |
           cargo xtask check-rules
           cargo xtask check-stubs
           cargo xtask check-docs
           cargo xtask check-exe-map
 
-      # Also after the cheap gates, so that the fingerprint follows the commits that carry it; not
-      # after a pull request without code of its own whose fingerprint no run has verified. Not for
-      # a pull request from a fork either: its token is read-only whatever `permissions` says, so
-      # the write would fail the job; `master`'s run after the merge records the code instead.
+  # After every job of the plan passed: the four verify jobs of a full run, `light` otherwise (a
+  # skipped, failed or cancelled one records nothing), so that the fingerprint follows the commits
+  # that carry it; not after a pull request without code of its own whose fingerprint no run has
+  # verified. Not for a pull request from a fork either: its token is read-only whatever
+  # `permissions` says, so the write would fail the job; `master`'s run after the merge records the
+  # code instead.
+  record:
+    needs: [plan, gates, coverage, replays, bench, light]
+    if: >-
+      always()
+      && needs.plan.result == 'success'
+      && needs.plan.outputs.record == 'true'
+      && (github.event_name != 'pull_request'
+          || github.event.pull_request.head.repo.full_name == github.repository)
+      && (needs.plan.outputs.full == 'true'
+          && needs.gates.result == 'success'
+          && needs.coverage.result == 'success'
+          && needs.replays.result == 'success'
+          && needs.bench.result == 'success'
+          || needs.plan.outputs.full != 'true'
+          && needs.light.result == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
       - name: Record the verified code
-        if: >-
-          steps.plan.outputs.record == 'true'
-          && (github.event_name != 'pull_request'
-              || github.event.pull_request.head.repo.full_name == github.repository)
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          OS: ${{ matrix.os }}
-          FP: ${{ steps.plan.outputs.fingerprint }}
+          OS: ubuntu-24.04
+          FP: ${{ needs.plan.outputs.fingerprint }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=success \
             -f context="verified ($OS)" -f description="code $FP" > /dev/null
