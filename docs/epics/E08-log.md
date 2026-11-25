@@ -22485,7 +22485,10 @@ start (17 files and 40 MP3s), the repo from GitHub; the setup's baseline lost to
   outside the actor's ready turn (`check_ready`, as `legal_moves`). `check_cast`'s tests split
   into `caster` and `cast_frame` (the cost, the ground, the anti-magic garrison), shared by both;
   `check_cast` validates once (`can_cast_on_map`) and takes the mastery and cost from
-  `map_spells`. `GameRuleset` holds the sources of the listed spells (`cast_sources`).
+  `map_spells`. The adventure part holds the sources of the listed spells
+  (`AdventureRuleset::cast_sources`, derived at compile, not hashed): first a field of
+  `GameRuleset`, it cost every fork of the env an `Arc` clone (CI: `fork-economy-xl-144` +900 000
+  Ir, +2.06 % on the stored baseline; moved, `master`'s count exactly).
 - **The hero** (`h3-heroes`, HER-SPL-002, -003, -008): `SpellSources` (the ruleset's artifact
   types, a combination with its parts, skills and hero types whose effects grant one of a few
   spells, as bit sets; `may_have` tests a hero's details without validating or walking their

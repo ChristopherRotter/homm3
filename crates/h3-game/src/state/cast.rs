@@ -140,7 +140,8 @@ impl GameState {
         player: PlayerId,
         listed: &mut Vec<GameCommand>,
     ) {
-        let (core, part, sources) = (rules.core(), rules.adventure(), rules.cast_sources());
+        let (core, part) = (rules.core(), rules.adventure());
+        let sources = part.cast_sources();
         // The heroes of the store are those on the map (GAM-HER-001); the key of the player's
         // list (`hero_list`'s, unique by the id).
         let mut casters: Vec<(u32, HeroId)> = self
