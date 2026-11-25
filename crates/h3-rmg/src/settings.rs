@@ -87,16 +87,13 @@ impl Monsters {
     }
 
     /// The generator's strength: the parameters' value plus 3, clamped to 1..=5
-    /// (`rmg_generate_and_write` 0x54BF8C).
+    /// (`rmg_generate_and_write` 0x54BF8C), which leaves the three choices' 2, 3 and 4.
     // rule: RMG-SET-005
     pub const fn strength(self) -> i32 {
-        let s = self.parameter() + 3;
-        if s < 1 {
-            1
-        } else if s > 5 {
-            5
-        } else {
-            s
+        match self {
+            Self::Weak => 2,
+            Self::Normal => 3,
+            Self::Strong => 4,
         }
     }
 }

@@ -89,8 +89,22 @@ fn run(
 /// The oracle's corpus (`clients/capture/rmg/corpus.toml`; `kept.txt`'s templates, the
 /// original's under Wine, `docs/lanes/rmg/ORACLE.md`): id, size, levels, players, teams,
 /// computers, computer teams (the tab's: 0 none), water, monsters, seed, the template.
+type Case = (
+    &'static str,
+    MapSize,
+    u8,
+    u8,
+    u8,
+    u8,
+    u8,
+    Water,
+    Monsters,
+    u32,
+    &'static str,
+);
+
 #[rustfmt::skip]
-const CORPUS: [(&str, MapSize, u8, u8, u8, u8, u8, Water, Monsters, u32, &str); 21] = {
+const CORPUS: [Case; 21] = {
     use MapSize::{ExtraLarge as XL, Large as L, Medium as M, Small as S};
     use Monsters::{Normal as Nm, Strong as St, Weak as Wk};
     use Water::{Islands as I, None as D, Normal as N};
