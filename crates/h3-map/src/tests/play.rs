@@ -6102,12 +6102,14 @@ fn check_legal(
     check_build_boat(state, rules, actor, legal)?;
     check_revisits(state, rules, actor, legal)?;
     check_town_builds(state, rules, actor, legal)?;
+    check_casts(state, rules, actor, legal)?;
     for command in &legal[1..] {
         if matches!(
             command,
             GameCommand::Adventure(
                 AdventureCommand::BuildBoat { .. } | AdventureCommand::Revisit { .. }
             ) | GameCommand::Town(_)
+                | GameCommand::Cast { .. }
         ) {
             continue;
         }
@@ -6253,6 +6255,49 @@ fn revisitable(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<
         .filter(|h| h.owner == player && entered(h.pos).is_some())
         .map(|h| GameCommand::Adventure(AdventureCommand::Revisit { hero: h.id }))
         .collect()
+}
+
+/// Every listed cast (E08 T144a1; GAM-SPL-001) applies and tells its owner `SpellCast` first, by
+/// its hero, of its spell, and its hero's spell points end at the points before less the cost
+/// it tells, at least 0 (the effects' oracles: the adventure's and the game's cast tests).
+fn check_casts(
+    state: &GameState,
+    rules: &GameRuleset,
+    actor: PlayerId,
+    legal: &[GameCommand],
+) -> Result<(), TestCaseError> {
+    for command in legal {
+        let GameCommand::Cast { hero, spell, .. } = *command else {
+            continue;
+        };
+        let mut probe = state.clone();
+        let mut events = Vec::new();
+        let result = apply(
+            &mut probe,
+            rules,
+            Actor::Player(actor),
+            command.clone(),
+            &mut events,
+        );
+        prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
+        let Some(&GameEvent::SpellCast {
+            player,
+            hero: caster,
+            spell: cast,
+            cost,
+            ..
+        }) = events.first()
+        else {
+            return Err(fail(format!("{command:?} told {events:?}")));
+        };
+        prop_assert_eq!((player, caster, cast), (actor, hero, spell));
+        let points = |game: &GameState| game.hero(hero).map(|d| d.mana);
+        prop_assert_eq!(
+            points(&probe),
+            points(state).map(|mana| mana.saturating_sub(cost))
+        );
+    }
+    Ok(())
 }
 
 /// Every listed `Revisit` (E08 T105b2; ADV-TEL-008, increment 11's design note §13) applies, takes
