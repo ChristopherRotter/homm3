@@ -1,7 +1,7 @@
-# ADR-NNNN: The original's computer player: a policy module of the game
+# ADR-0030: The original's computer player: a policy module of the game
 
-- Status: Proposed (E31 T1b; the user at the checkpoint, AI-Q31: point 1 a module for now, points 5,
-  7 and 10 as proposed)
+- Status: Accepted (the user, 2026-11-25, AI-Q32, at E31 increment 2's start; drafted at E31 T1b,
+  the checkpoint AI-Q31: point 1 a module for now, points 5, 7 and 10 as proposed)
 - Date: 2026-11-24
 - Deciders: the user; drafted by the ai lane's agent (E31 T1b)
 
@@ -24,9 +24,10 @@ only on strictly lower layers, so a crate beside `h3-battle-ai` could not depend
    `crates/h3-game/src/computer/`, owned by the ai lane by path (`lanes.toml`), under `h3-game`'s
    purity scan and coverage gate. It uses only `h3-game`'s public surface and the crates below it,
    so that its **later refactor into a crate of its own** (a `policy` layer above application was
-   the draft's proposal) moves files and changes no choice. The path's registration, with
-   `docs/rules/catalog/computer.toml` and `docs/rules/quirks-ai.md`, is one `shared/` pull request
-   before increment 2's code.
+   the draft's proposal) moves files and changes no choice. The path is registered with
+   `docs/rules/catalog/computer.toml` and `docs/rules/quirks-ai.md` (this ADR's `shared/` pull
+   request, before increment 2's code); the ai lane's scoped verify runs the adventure lane's
+   crates too.
 2. **The function**: `h3_game::computer::choose(&GameState, &GameRuleset, PlayerId, &mut Memory,
    &mut Rng) -> Option<GameCommand>`: the next command of a computer player when the game asks
    something of it on the map (its turn, an open decision in any player's turn), `None` otherwise.
@@ -45,7 +46,7 @@ only on strictly lower layers, so a crate beside `h3-battle-ai` could not depend
    value (the hire tried in `ai_town_hero_prospects`, a skill level set and reset, the walk's boat
    marks in the map's tiles, survey §3.6) the port computes on its own values; the pathfinder
    takes the marks as an overlay of the query (the adventure lane's API, its inbox).
-5. **The memory is the policy's, outside the state** (decision 5): `h3_game_ai::Memory`, one per
+5. **The memory is the policy's, outside the state** (decision 5): `h3_game::computer::Memory`, one per
    computer player: carried between its turns only each hero's destination and its points beyond
    (+0x35, +0x41); within a turn the phase, the heroes done, the must-go, the records and weights,
    the danger map and the threats, rebuilt at its turn start (§4.6). A plain value with a canonical
@@ -71,8 +72,9 @@ only on strictly lower layers, so a crate beside `h3-battle-ai` could not depend
    waits for its experiment.
 9. **The original's arithmetic**: every value through `h3_kernel::arith::X87` with the original's
    widths, order and truncations (`crt_ftol` toward zero, the f32 stores of f64 results). `X87`
-   is nonnegative below 2^64; the computer's values are signed: a signed form joins `h3-kernel`
-   (a `shared/` pull request with its audit, ADR-0003) before the first value is ported.
+   is nonnegative below 2^64; the computer's values are signed: `h3_kernel::arith::SignedX87`
+   (sign and magnitude, `_ftol`'s truncation and its callers' low 32 bits; audited against IEEE
+   doubles, ADR-0003's revision of 2026-11-25), joined with this ADR.
 10. **The original's slips behind one fix-optional flag**: where a value reads a wrong record,
     artifact, argument or test, or computes a slip (a 32-bit wrap, a wrong constant) and changes
     only the computer's choices (§5's `slip` rows), AI-QUIRK-1 `quirk.computer.original_ai_slips`
@@ -84,10 +86,10 @@ only on strictly lower layers, so a crate beside `h3-battle-ai` could not depend
     player as the computer whatever its `human` says.
 12. **Rule ids `CPU-<area>-nnn`** in `docs/rules/catalog/computer.toml`, one per routine of the
     reading (the frame, the planning, the walk, the values by family, the simulated combat, the
-    towns, the hires, the answers), each with its source `code` (the survey's §) and its trace.
+    towns, the hires, the answers), each with its code reading's source (`original-data`, the survey's §) and its trace.
 13. **Cost and version**: a gated benchmark counts instructions per computer turn from increment
     2 (`benches/ai/`); increment 5's checkpoint sets the budget (until then 50 ms per turn on the
-    sandbox). An optimisation never changes a choice. `h3_game_ai::POLICY_VERSION` is bumped with
+    sandbox). An optimisation never changes a choice. `h3_game::computer::POLICY_VERSION` is bumped with
     every change of a choice and joins the lane's engine identity.
 14. **The fair variant** (increment 6): this port, unchanged, on its player's world: a copy of the
     game with everything the player may not know replaced (the projection, `docs/06-security.md`;

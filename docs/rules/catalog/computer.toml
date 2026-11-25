@@ -4,6 +4,5 @@
 # walk, the values by family, the simulated combat, the towns, the hires, the answers), each with
 # its code reading's source (the survey's §) and its trace; values through `h3_kernel::arith`'s
 # `X87` and `SignedX87` (`numeric = "float"`). Format: docs/04-rules-and-sources.md §3. Survey:
-# docs/rules/surveys/E31-computer-player.md; the ADR draft
-# docs/lanes/ai/adr-drafts/original-computer-player.md (points 9, 12). Created at E31 increment 2's
-# `shared/` pull request; its rules come with increment 2's code.
+# docs/rules/surveys/E31-computer-player.md; ADR-0030 (points 9, 12). Created with ADR-0030's
+# `shared/` pull request (E31 increment 2); its rules come with increment 2's code.

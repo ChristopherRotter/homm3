@@ -8,6 +8,6 @@
 //! The ai lane's by path (`lanes.toml`; the user, AI-Q31): a module of `h3-game` for now, using
 //! only the crate's public surface and the crates below it, so that its later move into a crate of
 //! its own changes no choice. Its surface (`choose`, `Memory`) is built from E31 increment 2;
-//! the design: the ADR draft `docs/lanes/ai/adr-drafts/original-computer-player.md`.
+//! the design: ADR-0030 (`docs/adr/0030-original-computer-player.md`).
 //!
 //! [`GameCommand`]: crate::GameCommand
