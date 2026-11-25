@@ -6,3 +6,78 @@
 # `X87` and `SignedX87` (`numeric = "float"`). Format: docs/04-rules-and-sources.md §3. Survey:
 # docs/rules/surveys/E31-computer-player.md; ADR-0030 (points 9, 12). Created with ADR-0030's
 # `shared/` pull request (E31 increment 2); its rules come with increment 2's code.
+
+[[rule]]
+id       = "CPU-TRN-001"
+title    = "The computer player's command"
+context  = "computer"
+status   = "implemented"
+summary  = "The policy of a player the original's computer plays on the adventure map (ADR-0030; h3_game::computer::choose): one command a call, for the player whatever its human flag says, from the whole state, its memory (CPU-TRN-005) and the caller's stream, never the game's; the same state, memory and stream give the same command and memory. None while another player's level-up holds the game (GAM-DEC-002) and for a battle, whose side the host's battle seat plays (h3_battle_ai's choose, or choose_fair in the fair variant, as the player's Battle command; ADR-0030 point 7). An open decision of the player's, in its turn or not, is answered by default_answer (AI-STUB-6, until increment 4). In its turn without a decision, the next command of the turn's frame (CPU-TRN-002), its last EndTurn; outside its turn none. Every command is one the game accepts (the property tests on the generated maps and on five shipped maps at every difficulty)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E31-computer-player.md section 1.1; E31 T1a1a, re-read blind at T2a): adventure_manager_procedure 0x408BD8 calls ai_player_turn 0x525E80 for a player who is not human; the answers of section 3.4 and 3.5 run inside the game's visits and level-ups, in any player's turn"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0030 (accepted, AI-Q32) points 2, 3, 7, 8, 11: the function, always legal, battles by the host's seat, the caller's stream, every player played as the computer"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-TRN-002"
+title    = "The turn's frame: its start, its two passes, the middle and its end"
+context  = "computer"
+status   = "implemented"
+summary  = "A computer player's turn (ai_player_turn 0x525E80): at its start (its first call on a new day) no hero is done (the original clears every hero's and garrison hero's +0x11C and +0x43) and the turn's flag F is set: the game's difficulty above Easy and a town owned. The first pass plays the next hero (CPU-TRN-003) through its turn (CPU-TRN-004) until none is left; then the middle (ai_turn_middle 0x428DD0) and F set again as at the start (0x525FD5); then the second pass the same way; then the turn ends (EndTurn). One call gives one command: the frame goes on from its memory until a step gives one, each step after a command reading the state the command made. The frame draws nothing. The start's records and the middle's builds, hires and shares are AI-STUB-3 (T2d, increment 3)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 1.1, 1.5; E31 T1a1a, re-read blind at T2a): ai_player_turn 0x525E80 (ai_turn_start 0x4297C0 and ai_turn_start_values 0x527960 at 0x525F01; F at 0x525F65 from the game's +0x1F6D8 and the player's +0x3E; ai_next_hero 0x526A90 and ai_hero_turn 0x5261F0 at 0x525F87 to 0x525FB8; ai_turn_middle 0x428DD0 at 0x525FCA; F again at 0x525FD5; the second pass inline from 0x526000; the end at 0x5261A6)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-TRN-003"
+title    = "The order of the computer's heroes"
+context  = "computer"
+status   = "implemented"
+summary  = "The next hero of a computer player's pass (ai_next_hero 0x526A90, and its copy in the second pass): the hero a garrison just sent out, if it stands on the map, without the alone flag; else among the player's heroes on the map with movement points left and not done, a free hero before a patrolling one (the game state keeps no patrol: every hero is free, AI-STUB-5), then the least sum of the primary skills (each of the four effective values the adventure map reads, the worn artifacts included, as a signed byte: above 99 counted 99, above 0 itself, else 0 for Attack and Defense and 1 for Spell Power and Knowledge), a tie to the earlier in the player's list of heroes (GAM-HER-003); the alone flag when exactly one hero qualified. With none, and fewer than eight heroes of the player's on the map, the first of its towns (in TownId order, the engine's order of a player's towns) whose garrison hero carries a creature, has points left and is not done, with no hero on the town's entrance: that hero is sent out onto the entrance (TownHeroChange::Leave, where the engine allows it: TWN-ROW-003) and plays next; else the pass ends."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 1.2; E31 T1a1a, re-read blind at T2a): ai_next_hero 0x526A90 (the flag set to 1 at 0x526AA5 and cleared by a second hero at 0x526B06; points +0x4D above 0 and +0x11C clear; the patrol byte +0x44 against 0xFF; the skills' sum at 0x526B12 over +0x476 to +0x479, signed, clamped to 99, 0 or 1 below 1 from index 2; a strictly smaller sum replaces; none: the flag 0, the selection -1, the hero count +0x1 against 8, the town list +0x40 over +0x3E, the town's garrison hero +0xC set and its visitor +0x10 none, the hero's creatures army_creature_count 0x44ADA0, points and sleep, town_garrison_to_visitor 0x5BE390); the second pass's copy at 0x526000 to 0x526187, the same tests"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-TRN-004"
+title    = "A computer hero's turn and its garrison step"
+context  = "computer"
+status   = "implemented"
+summary  = "A computer hero's turn (ai_hero_turn 0x5261F0): a hero on a town's entrance visits the town first (AI-STUB-4, increment 3); a patrolling hero of radius 0 never moves (AI-STUB-5); with points left the selection, the danger map, the boat marks and the search and the walk (AI-STUB-2: until T2i and T2j every hero finds no destination and is done at once). Last the garrison step: a hero without points or done, standing on the entrance of a town of its owner's, goes into the garrison when no hero holds it (TownHeroChange::Enter; where the engine refuses it, the armies not merging, there is no step, as the original's town_visitor_to_garrison 0x4B9FC0 does nothing when army_absorb refuses); with a garrison hero the two change places (TownHeroChange::Swap) when the garrison hero has points left and is not done, or its army holds a creature and is worth less than the visitor's (army_value 0x44AC80: each stack's creature's AI value times its count, summed; h3_adventure::army_value). No step where the engine refuses the move."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 1.3; E31 T1a1a, re-read blind at T2a): ai_hero_turn 0x5261F0 (town_at_entrance 0x4BB870 and ai_town_visit 0x5253D0 first; the patrol at 0x526267; points at 0x5262AB; the selected hero at 0x5262F8; ai_danger_map at 0x5263B1; the boat marks from 0x5263B6; ai_hero_search_and_walk 0x5267B0 at 0x526571; the garrison step from 0x52667F: the owner +0x22 set, points not above 0 or asleep, the town at the entrance its owner's, its garrison hero +0xC none: town_visitor_to_garrison 0x4B9FC0; else points and sleep of the garrison hero, else town_garrison_army 0x5C1460's creatures and its army_value against the visitor's +0x91: town_swap_heroes 0x5BE450)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-TRN-005"
+title    = "The computer player's memory"
+context  = "computer"
+status   = "implemented"
+summary  = "What the computer player keeps outside the game state (ADR-0030 point 5; h3_game::computer::Memory), one per computer player, empty at its first turn in a game (the original's records survive from an earlier game: a quirk candidate, not reproduced): since E31 T2a the frame of the turn it plays: the turn's day, its pass, the turn's flag, the hero a garrison sent out, the heroes done (the original's sleep +0x11C, cleared at each of its turn starts). Its canonical encoding v1 (little-endian: the version; 0 without a turn, else 1, the day u32, the pass u8, the flag u8, the hero sent out as 0 or 1 and its id u16, the count u32 of heroes done and their ids u16 in ascending order) is the only one its decoder accepts; its hash is FNV-1a over the encoding. The heroes' destinations, the only fields the original carries into the next turn (+0x35, +0x41), come with the planning (T2i)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey sections 1.6 and 4.6; E31 T1a1a, T1a4c): ai_player_records 0x692950, set once at the program's start (ai_player_records_init 0x4340E0) and never by a new game or a load; the hero's +0x11C, +0x35 to +0x43 written by the computer's turn"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0030 (accepted, AI-Q32) point 5: the memory the policy's, outside the state, a plain value with a canonical encoding and a hash, kept by its host beside the journal"
+  confidence = "high"

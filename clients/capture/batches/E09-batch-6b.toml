@@ -1,0 +1,44 @@
+# E09 batch TWN-6, part b, played by the capture harness (E09 T54; h3adv.py batch): the procedure
+# of experiments/specs/E09-batch-6b.toml as steps, on Easy, hot seat, Red and Blue human and
+# allied, Tan the computer's, the starting bonus Gold. Red's day 1: TWN-6-2's visit to Blue's Tower
+# B, the Marketplace clicked (refused), the merchants' prices at Red's count 0, a purchase.
+#
+# `stock` reads the Artifact Merchants' seven (game +0x1F664: `Centaur's Axe (treasure), …`,
+# `empty` a bought entry), `stock:classes` their classes counted. The town screen's actions and
+# the trade window's items: E09-batch-6a.toml's header.
+
+spec = "experiments/specs/E09-batch-6b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+[[step]]
+encounter = "TWN-6-2"
+hero = "TWN-6-2"
+record = { "before: the teams; Red's treasury; TWN-6-2's worn artifacts and backpack; the stock" = ["text:teams: ", "teams", "text:treasury: ", "treasury:red", "text:worn: ", "hero:positions", "text:backpack: ", "hero:backpack", "text:stock: ", "stock"] }
+note = { "the game's version; the difficulty" = ["map_kind", "difficulty"] }
+
+[[step]]
+encounter = "TWN-6-2"
+hero = "TWN-6-2"
+walk = [23, 7]
+expect = { question = "none", battle = false }
+[[step.actions]]
+building = 14
+opens = "nothing"
+record = { "at B: the Marketplace clicked: what opens" = ["text:after: ", "screen", "text:messages: ", "messages"] }
+[[step.actions]]
+building = 17
+opens = "market"
+record = { "the merchants clicked: the screen; the count; the entries" = ["text:screen: ", "market:screen", "text:count: ", "market:count", "text:entries: ", "market:entries", "text:buttons: ", "market:buttons"] }
+[[step.actions]]
+click = ["entry:0", "pay:gold"]
+record = { "the first entry with gold: the price; the last entry with gold: the price" = ["text:first: ", "market:pair", "text:price: ", "market:rate", "text:most: ", "market:most", "text:amount: ", "market:amount"] }
+[[step.actions]]
+click = ["entry:6", "pay:gold"]
+record = { "+the first entry with gold: the price; the last entry with gold: the price" = ["text:last: ", "market:pair", "text:price: ", "market:rate", "text:most: ", "market:most", "text:amount: ", "market:amount", "market:buttons"] }
+[[step.actions]]
+click = ["trade"]
+record = { "after Trade: Red's treasury; TWN-6-2's worn artifacts and backpack; the entries; the stock" = ["text:treasury: ", "treasury:red", "text:gained: ", "gain", "text:worn: ", "hero:positions", "text:backpack: ", "hero:backpack", "text:entries: ", "market:entries", "text:stock: ", "stock", "text:questions: ", "questions", "text:messages: ", "messages"] }
+[step.note]
+"TWN-6-2's visit: a town screen; how it closed; the town's visitor" = ["text:town screen: ", "town_screen", "text:closed: ", "town_screen_closed", "text:visitor: ", "town:23,7:visitor"]

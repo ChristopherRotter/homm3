@@ -21,23 +21,20 @@ resumes (the epic file); its tasks are cut then.
 `QUEUE-ARCHIVE.md`, their records in `E31-log.md`).
 
 - **E31 increment 2** (refined 2026-11-25, AI-Q32; the epic file's "Increment 2's tasks", its
-  record `E31-log.md` T2): the `shared/` pull request #1163 first (merged before any code: the
-  module's paths, `SignedX87`, ADR-0030). Then, one session each (T2a and T2e may pair), the leaves
-  first: **T2a** the frame (next), T2b and T2c the simulated combat, T2d the start's values, T2e the
-  spells' and skills' values, T2f the artifacts, T2g the army and town values, T2h the object value,
-  T2i the planning, T2j the walk with the exit's property tests and the gated benchmark, T2k trace
-  T-A's harness and days 1 to 3. Each with its `CPU-` ids, tests, coverage 100 %, stubs by epic.
-  - **T2a — the frame** (survey §1.1 to §1.4, §1.6; ADR-0030 points 2, 3, 5, 13; about 1 400 of the
-    original's instructions): `h3_game::computer::choose` and `Memory` (a plain value, its
-    canonical encoding and hash), `POLICY_VERSION`; the turn's loop of `ai_player_turn` 0x525E80
-    (the phases, the heroes' order of `ai_next_hero` 0x526A90, both passes, the done marks, the
-    end), each hero's turn done at once until T2i and T2j, then `EndTurn`; an open decision answered
-    by `default_answer` behind a stub until increment 4. The property tests (random maps, five
-    shipped maps, all five difficulties: every command legal, a turn ends within a bound of
-    commands, the same command for the same state, memory and stream), the benchmark's workload in
-    `benches/ai/`; the `CPU-TRN-` ids. Measure its size at the start; then tell the map-client lane
-    the entry point (its inbox: `MCL-STUB-5`'s hot seat, one command a call, the battle side by the
-    host's seat). `Heroes3.exe` staged for the blind re-reads where a step is unclear.
+  record `E31-log.md` T2): the `shared/` pull request #1163 merged first (the module's paths,
+  `SignedX87`, ADR-0030). Then, one session each, the leaves first: T2a the frame (done
+  2026-11-25), **T2b** and T2c the simulated combat (next), T2d the start's values, T2e the
+  spells' and skills' values, T2f the artifacts, T2g the army and town values, T2h the object
+  value, T2i the planning, T2j the walk with the exit's property tests and the gated benchmark,
+  T2k trace T-A's harness and days 1 to 3. Each with its `CPU-` ids, tests, coverage 100 %, stubs
+  by epic.
+  - **T2b — the simulated combat, the sides and the melee** (next; survey §2.2; the epic file's
+    table: `sim_combat_start` 0x423EE0, `sim_side_build` 0x424120, the walls, the speed, the
+    damage taken and spread, the wipe, the hold, the finish, the engagement, the run, the stack
+    lists, `sim_apply_losses` 0x424880; about 2 700 of the original's instructions): measure its
+    size at the start and confirm a cut by size; its values through `SignedX87` / `X87`;
+    `Heroes3.exe` staged for the blind re-reads. T2a's frame (`h3_game::computer`,
+    `h3_sim::computer::play` and its property tests, `h3 ai computer`) is its harness.
 
 ## Inbox
 
@@ -59,15 +56,6 @@ now**):
   the visitor's and the upper bar's seven slots); a town's window reuses the market's 56 entries
   and the University's four, each `Leave` the closing role. Your E31 note's row 7 (the computer's
   merchants' price) stays E10's.
-
-**From the map-client lane** (E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your E31
-increment 2, nothing to do now**):
-
-- 2026-11-24: E24 M5's hot seat hosts the game in-process (`GameSession`) and ends a computer
-  colour's turn at once (`MCL-STUB-5`) until E31's computer player gives it turns; tell this lane
-  the entry point (a policy the host calls per turn, or a `GameSession` hook) when increment 2
-  builds it. M4's review item 6 waits for it too: the map client then reads how the original
-  shows a computer's turn (`ai_hero_turn` and its callers) for its display.
 
 **From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**; E08 T140, `shared/e08-t140`, `cross-lane`; E08 T142a, `adventure/e08-t142a`, `cross-lane`; **in your paths, nothing to do**):
 

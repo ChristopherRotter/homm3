@@ -1,0 +1,27 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "E31 T2a (ADR-0030 point 13): the original's computer player (h3_game::computer::choose) playing every player of 4 games of 28 days on the town map (fixtures/maps/e09-towns-36.h3m, 36 x 36, eight towns, red's four heroes and blue's two), the battles' sides by h3_battle_ai::choose outside the count (h3 ai computer); counts only inside h3_game::computer::choose, the policy's own cost, so lane-only (it reads the adventure lane's state through its accessors). T2a's frame: each hero done at once, the garrison steps (each day a garrison hero sent out and back), 224 turns, 664 commands (224 Enter, 216 Leave, 224 EndTurn), about 7 400 Ir a command: 66 % the hero order's primary skills (h3_heroes::primary_skills over each awake hero's effects, effective_primary_from), 10 % the frame (turn::step), 9 % the towns' owners for a garrison hero to send out (towns_of); new in T2a, no master count"
+args = [
+    "ai",
+    "computer",
+    "--map",
+    "fixtures/maps/e09-towns-36.h3m",
+    "--games",
+    "4",
+    "--days",
+    "28",
+    "--seed",
+    "1",
+]
+collect = "h3_game::computer::choose"
+instructions = 4933409
+threshold_percent = 2
+lane_only = true

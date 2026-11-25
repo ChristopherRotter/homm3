@@ -107,6 +107,26 @@ in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a and T2b d
 
 ## Inbox
 
+- 2026-11-25 (the ai lane, E31 T2a, `ai/e31-t2a`; **the entry point for `MCL-STUB-5`, for your
+  planning**): the original's computer player is `h3_game::computer::choose(&GameState,
+  &GameRuleset, PlayerId, &mut Memory, &mut Rng) -> Option<GameCommand>` (ADR-0030 point 2):
+  one command a call, which the host applies as `Actor::Player(player)` and then calls again,
+  for every computer colour each time the game changes (it answers that colour's open decisions
+  in any player's turn; `None` outside its turn, while another player's level-up holds the game,
+  and for a battle). A battle's computer side is the host's: `h3_battle_ai::choose(battle,
+  rules.battle(), side, rng)` as the colour's `GameCommand::Battle`, for the side it owns while
+  that side is to act (`OpenBattle::owners`, `side_to_act`). The host keeps one
+  `h3_game::computer::Memory` per computer colour (a plain value: `Memory::encode` / `decode` for
+  a saved game, ADR-0030 point 5) and a stream of its own per colour (never the game's; e.g.
+  `Rng::for_stream(seed, StreamId::seat(index))`). A turn ends with the policy's `EndTurn`.
+  `h3_sim::computer::play` is a host of every colour to read (`crates/h3-sim/src/computer.rs`).
+  As of T2a a computer hero does nothing but its town's garrison moves (each hero done at once,
+  `AI-STUB-2` until E31 T2i and T2j), and its decisions take `default_answer`; the commands are
+  legal on every shipped map. For M4's review item 6 (how the original shows a computer's turn):
+  `ai_hero_turn` 0x5261F0 selects and centres the hero when the viewer sees its tile or a
+  neighbour and neither Blackout Computer nor a network game hides it (survey
+  `E31-computer-player.md` §1.3 step 3).
+
 - 2026-11-25 (this lane, E24 M5 T2a; **for T7's whole game**): of the 236 player records the 118
   golden adventure replays now give, 205 play to their end in `h3-map-view record`, the same
   on `master`'s binary (every timeline identical): 24 are the duel's and the army's maps (no

@@ -7,6 +7,20 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - `docs/07-simulation-and-ai.md` is shared: only `--scope ai` checks it (T3a's edit slipped in).
 - `h3-cli` is the battle lane's except `src/ai/`; its golden replays (`fixtures/`) and `benches/battle/` stay with battle, and change when the encodings or the replay format change: regenerate them deliberately (`fixtures/README.md`) in the same pull request.
 
+**The computer player (E31)**
+- `h3_game::computer`'s coverage must come from `h3-game`'s own tests: the adventure and town
+  lanes' scoped verifies cover `h3-game`'s files with its tests alone, so a line only `h3-sim`'s
+  tests reach fails their verify. The crate's test cores' creatures are worth 0 (`ai_value`): an
+  army-value comparison is tested in `h3-sim` on the original packs. A step that cannot happen
+  until a later task (the selection, the walk's points test) is left out, not written: a dead
+  region fails coverage.
+- `computer-turns-towns-36` is lane-only and counts inside `h3_game::computer::choose`, which
+  reads the adventure state and `h3_heroes::primary_skills`: a `POLICY_VERSION` bump or a drift
+  from `master` moves it (re-baseline, naming the cause). `h3 ai computer --checked true` asks
+  each command twice: never in the workload.
+- A `Memory` is the host's, one per computer player, never the game's: a host that rebuilds a
+  game (a load, a replay) starts it empty (its turn restarts; ADR-0030 point 5).
+
 **Environment**
 - An agent sees the projected observation only (AI-Q1 decision 10); `fork` and `state_hash` read the full state, for tools and training (the C ABI is for trusted local consumers, ADR-0011; never forward the hash to a client).
 - `BattleSetup.human` and `.difficulty` change the computer's automatic choices (the turrets, the automatic Ballista, the moat avoidance; ADR-0023 point 7): the batch sets `human = [true, true]` for every episode (ADR-0025 point 6) and masks Retreat and Surrender out (point 7); `BattleEnv` and the single-env C functions stay as they are (replays and the battle benchmarks use escapes).
