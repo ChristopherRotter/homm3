@@ -63,7 +63,11 @@ impl Fit {
             return false;
         }
         let (mut humans, mut starts) = (0, 0);
-        for z in template.zones.iter().filter(|z| self.holds(z.humans, z.players)) {
+        for z in template
+            .zones
+            .iter()
+            .filter(|z| self.holds(z.humans, z.players))
+        {
             match z.kind {
                 ZoneKind::HumanStart => {
                     humans += 1;
@@ -235,7 +239,9 @@ pub fn positions(
         while next < COLOURS && !human_start[next] {
             next += 1;
         }
-        let p = (next < COLOURS).then_some(next).ok_or(PositionError::Exhausted)?;
+        let p = (next < COLOURS)
+            .then_some(next)
+            .ok_or(PositionError::Exhausted)?;
         taken[p] = true;
         colour_of[p] = Some(colour);
         next += 1;
@@ -245,7 +251,9 @@ pub fn positions(
         while next < COLOURS && (!start[next] || taken[next]) {
             next += 1;
         }
-        let p = (next < COLOURS).then_some(next).ok_or(PositionError::Exhausted)?;
+        let p = (next < COLOURS)
+            .then_some(next)
+            .ok_or(PositionError::Exhausted)?;
         colour_of[p] = Some(colour);
         next += 1;
     }

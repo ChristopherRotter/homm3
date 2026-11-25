@@ -217,7 +217,10 @@ impl core::fmt::Display for SettingsError {
                 write!(f, "{teams} teams of {players} players: 1 to the players")
             }
             Self::Computers { computers, players } => {
-                write!(f, "{computers} computers beside {players} players: 8 in all at most")
+                write!(
+                    f,
+                    "{computers} computers beside {players} players: 8 in all at most"
+                )
             }
             Self::ComputerTeams { teams, computers } => write!(
                 f,

@@ -38,8 +38,8 @@ mod settings;
 mod template;
 
 pub use generate::{
-    GenerateError, GeneratedMap, NoTrace, RMG_GENERATOR_VERSION, SITE_TEMPLATE, SITE_WATER,
-    Trace, generate,
+    GenerateError, GeneratedMap, NoTrace, RMG_GENERATOR_VERSION, SITE_TEMPLATE, SITE_WATER, Trace,
+    generate,
 };
 pub use part::{
     Connection, ConnectionOverride, GeneratorTables, NO_LIMIT, OBJECT_TYPES, ObjectTemplate,

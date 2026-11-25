@@ -719,7 +719,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 52);
+        assert_eq!(REGISTRY.len(), 54);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -733,7 +733,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..52).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..54).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

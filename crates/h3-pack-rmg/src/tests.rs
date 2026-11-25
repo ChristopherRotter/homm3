@@ -247,7 +247,10 @@ fn the_hash_covers_every_table() {
         ("strength = \"weak\"", "strength = \"none\""),
         ("heroes_campaign = \"0001\"", "heroes_campaign = \"0011\""),
         ("zone_limits = [[113, 3]]", "zone_limits = [[113, 4]]"),
-        ("map_limits = [[26, 200], [8, 64]]", "map_limits = [[8, 64], [26, 200]]"),
+        (
+            "map_limits = [[26, 200], [8, 64]]",
+            "map_limits = [[8, 64], [26, 200]]",
+        ),
     ] {
         assert!(SYNTHETIC_RMG.contains(from), "{from}");
         assert_ne!(base, hash(&SYNTHETIC_RMG.replacen(from, to, 1)), "{from}");

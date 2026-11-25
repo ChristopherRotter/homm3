@@ -84,7 +84,13 @@ fn settings() -> Settings {
 #[test]
 fn the_choices_have_the_originals_numbers() {
     assert_eq!(
-        [MapSize::Small, MapSize::Medium, MapSize::Large, MapSize::ExtraLarge].map(MapSize::side),
+        [
+            MapSize::Small,
+            MapSize::Medium,
+            MapSize::Large,
+            MapSize::ExtraLarge
+        ]
+        .map(MapSize::side),
         [36, 72, 108, 144]
     );
     assert_eq!(
@@ -143,10 +149,7 @@ fn settings_the_tab_cannot_give_are_refused() {
             },
         ),
         (
-            Settings {
-                computers: 7,
-                ..ok
-            },
+            Settings { computers: 7, ..ok },
             SettingsError::Computers {
                 computers: 7,
                 players: 2,
@@ -211,7 +214,13 @@ fn random_choices_are_drawn_as_the_original_draws_them() {
     let s = resolve_random(&random, &mut rand).unwrap();
     // 1 + 41 % 8; 18467 % 2 + 1; 6334 % 7 (at most 8 - 2); 26500 % 6 + 1; 19169 % 3.
     assert_eq!(
-        (s.players, s.teams, s.computers, s.computer_teams, s.monsters),
+        (
+            s.players,
+            s.teams,
+            s.computers,
+            s.computer_teams,
+            s.monsters
+        ),
         (2, 2, 6, 5, Monsters::Strong)
     );
     assert_eq!(rand.rand(), 15724, "five draws");
@@ -282,7 +291,10 @@ fn chosen_counts_are_adjusted_as_the_original_adjusts_them() {
         &mut rand,
     )
     .unwrap();
-    assert_eq!((s.players, s.teams, s.computers, s.computer_teams), (8, 4, 0, 0));
+    assert_eq!(
+        (s.players, s.teams, s.computers, s.computer_teams),
+        (8, 4, 0, 0)
+    );
     assert_eq!(rand, CrtRand::new(3));
 }
 
@@ -351,7 +363,10 @@ fn a_template_is_kept_by_its_range_and_its_zones_that_fit() {
             zone(3, ZoneKind::ComputerStart, ANY, ANY, 3),
         ]
     };
-    assert!(fit.keeps(&template([4, 4], starts(), vec![])), "4 in 4 to 4");
+    assert!(
+        fit.keeps(&template([4, 4], starts(), vec![])),
+        "4 in 4 to 4"
+    );
     assert!(!fit.keeps(&template([5, 8], starts(), vec![])));
     assert!(!fit.keeps(&template([1, 3], starts(), vec![])));
     // A zone outside its ranges is not counted: one human start fewer.
@@ -397,26 +412,39 @@ fn a_kept_templates_zones_are_renumbered_and_its_connections_filtered() {
     let t = template([1, 8], zones, connections);
     let kept = KeptTemplate::new(3, &t, fit, MapFormat::SoD, true);
     assert_eq!(kept.index, 3);
-    assert_eq!(kept.zones.iter().map(|z| z.id).collect::<Vec<_>>(), [0, 1, 2]);
+    assert_eq!(
+        kept.zones.iter().map(|z| z.id).collect::<Vec<_>>(),
+        [0, 1, 2]
+    );
     assert_eq!(
         kept.zones.iter().map(|z| z.ownership).collect::<Vec<_>>(),
         [1, 2, 0]
     );
     // Zone 8 dropped: the connections naming it go too; id 9 is its first zone.
     assert_eq!(
-        kept.connections
-            .iter()
-            .map(|c| c.zones)
-            .collect::<Vec<_>>(),
+        kept.connections.iter().map(|c| c.zones).collect::<Vec<_>>(),
         [[0, 1], [0, 0]]
     );
     assert_eq!(kept.connections[0].row, t.connections[0]);
-    assert!(kept.zones.iter().all(|z| z.town_types == 0x1FF && z.monster_towns == 0x1FF));
+    assert!(
+        kept.zones
+            .iter()
+            .all(|z| z.town_types == 0x1FF && z.monster_towns == 0x1FF)
+    );
     // RoE: Conflux's town type goes, and Fortress's monster town (RMG-QUIRK-11) or Conflux's.
     let roe = KeptTemplate::new(3, &t, fit, MapFormat::RoE, true);
-    assert!(roe.zones.iter().all(|z| z.town_types == 0xFF && z.monster_towns == 0x17F));
+    assert!(
+        roe.zones
+            .iter()
+            .all(|z| z.town_types == 0xFF && z.monster_towns == 0x17F)
+    );
     let fixed = KeptTemplate::new(3, &t, fit, MapFormat::RoE, false);
-    assert!(fixed.zones.iter().all(|z| z.town_types == 0xFF && z.monster_towns == 0xFF));
+    assert!(
+        fixed
+            .zones
+            .iter()
+            .all(|z| z.town_types == 0xFF && z.monster_towns == 0xFF)
+    );
     let ab = KeptTemplate::new(3, &t, fit, MapFormat::AB, true);
     assert_eq!(ab.zones, kept.zones);
 }
@@ -522,10 +550,7 @@ fn tables() -> GeneratorTables {
 #[test]
 fn heroes_are_banned_by_the_formats_byte_and_the_campaign_byte() {
     let t = tables();
-    assert_eq!(
-        t.banned_heroes(MapFormat::RoE),
-        [false, false, true, true]
-    );
+    assert_eq!(t.banned_heroes(MapFormat::RoE), [false, false, true, true]);
     for format in [MapFormat::AB, MapFormat::SoD] {
         assert_eq!(t.banned_heroes(format), [false, true, false, true]);
     }
@@ -536,7 +561,10 @@ fn heroes_are_banned_by_the_formats_byte_and_the_campaign_byte() {
 fn the_limits_are_set_from_the_last_pair_to_the_first() {
     let limits = tables().type_limits();
     // Type 26's first pair wins; type 240 is past the table and sets nothing.
-    assert_eq!((limits.map[26], limits.map[6], limits.map[7]), (200, 200, NO_LIMIT));
+    assert_eq!(
+        (limits.map[26], limits.map[6], limits.map[7]),
+        (200, 200, NO_LIMIT)
+    );
     assert_eq!((limits.zone[113], limits.zone[26]), (3, NO_LIMIT));
     let mut expected = [NO_LIMIT; OBJECT_TYPES];
     expected[26] = 200;

@@ -36,8 +36,12 @@ fn first_rand(seed: u32) -> u32 {
 /// The original packs' core and part in `faithful` and `strict-fixed`, compiled once.
 static ORIGINAL: LazyLock<[(Ruleset, RmgRuleset); 2]> = LazyLock::new(|| {
     let cores: Vec<&str> = ORIGINAL_PACKS.iter().map(|(core, _)| *core).collect();
-    ["base:faithful", "base:strict-fixed"]
-        .map(|profile| (core(&cores, profile), compile(&ORIGINAL_PACKS, profile).unwrap()))
+    ["base:faithful", "base:strict-fixed"].map(|profile| {
+        (
+            core(&cores, profile),
+            compile(&ORIGINAL_PACKS, profile).unwrap(),
+        )
+    })
 });
 
 fn original(profile: &str) -> &'static (Ruleset, RmgRuleset) {
@@ -227,7 +231,10 @@ fn heroes_are_banned_by_the_format() {
     assert_eq!(banned(MapFormat::AB), banned(MapFormat::SoD));
     assert_eq!(banned(MapFormat::RoE), (128..156).collect::<Vec<_>>());
     let limits = packs.1.generator().unwrap().type_limits();
-    assert_eq!((limits.map[6], limits.map[8], limits.map[0]), (200, 64, 32_000));
+    assert_eq!(
+        (limits.map[6], limits.map[8], limits.map[0]),
+        (200, 64, 32_000)
+    );
     assert_eq!((limits.zone[113], limits.zone[2]), (3, 1));
 }
 
