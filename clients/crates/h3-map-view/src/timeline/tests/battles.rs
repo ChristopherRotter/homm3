@@ -1,7 +1,8 @@
 //! A battle's switch and its result on the map (E24 M4 T5b2, design §5.21): the map's fade out,
 //! the battle's fade in from its first frame, its result's OK, the battle's fade out, the map
 //! back and faded in; then a beaten monster taken off the map, a retreated hero gone and the next
-//! chosen, or a mine's guards' boxes and its flag.
+//! chosen, or a mine's guards' boxes and its flag (none after a battle the hero did not win: E24
+//! M5 T1b).
 
 use super::*;
 
@@ -13,7 +14,7 @@ use super::turns::{laid, started_by};
 const SEQUENCES: &str = include_str!("../../../../../map/sequences.toml");
 
 /// The sequences' situations, timelines and kept live parts.
-const BATTLING: [(&str, &str, &str, &str); 3] = [
+const BATTLING: [(&str, &str, &str, &str); 4] = [
     (
         "battle-won",
         include_str!("../../../../../map/situations/seq-battle-won.toml"),
@@ -31,6 +32,12 @@ const BATTLING: [(&str, &str, &str, &str); 3] = [
         include_str!("../../../../../map/situations/seq-battle-mine.toml"),
         include_str!("../../../../../map/timelines/battle-mine.txt"),
         include_str!("../../../../../map/timelines/battle-mine-live.toml"),
+    ),
+    (
+        "battle-mine-retreat",
+        include_str!("../../../../../map/situations/seq-battle-mine.toml"),
+        include_str!("../../../../../map/timelines/battle-mine-retreat.txt"),
+        include_str!("../../../../../map/timelines/battle-mine-retreat-live.toml"),
     ),
 ];
 
@@ -56,7 +63,7 @@ fn fight(winner: i32, after: AfterBattle) -> Fight {
 
 /// A sequence's find as the binary builds it from a record (the boxes' texts here their own): the
 /// Peasants fought at once, beaten or retreated from; the mine's question, its OK the battle, its
-/// boxes after it and the flag.
+/// boxes after it and the flag (retreated from: none of them, the hero gone, E24 M5 T1b).
 fn battled(id: &str) -> Found {
     let plain = Found {
         at: AT,
@@ -80,6 +87,21 @@ fn battled(id: &str) -> Found {
         },
         "battle-retreat" => Found {
             fight: Some(fight(1, AfterBattle::Lost)),
+            ..plain
+        },
+        "battle-mine-retreat" => Found {
+            blocks: None,
+            ask: Some(Question {
+                asked: laid("Guards?", Style::OkCancel),
+                chooses: false,
+                yes: Some(Answer {
+                    fight: Some(fight(1, AfterBattle::of_guards(1, true))),
+                    ..Answer::default()
+                }),
+                no: None,
+                attacker: None,
+                second: None,
+            }),
             ..plain
         },
         _ => Found {
@@ -570,23 +592,21 @@ fn what_a_record_s_battle_leaves() {
 }
 
 #[test]
-fn a_mine_s_guards_beaten_the_hero_leaves_with_no_box_and_no_flag() {
-    // E24 M4 T6 (R5-4, R3-2): the question's OK, the battle lost: no guards' box, no mine's box,
-    // no flag; the hero gone at the map's fade in's end as a retreat's, the next one chosen.
-    let (mut start, actions, _, _) = battling("battle-mine");
-    if let Some(answer) = start.finds[0].ask.as_mut().and_then(|q| q.yes.as_mut()) {
-        answer.boxes.clear();
-        answer.flag = None;
-        if let Some(fight) = &mut answer.fight {
-            fight.winner = 1;
-            fight.after = AfterBattle::of_guards(1, true);
-        }
-    }
-    let l = run_start(&start, &actions, 1810);
+fn a_mine_s_guards_not_beaten_show_no_box_and_raise_no_flag() {
+    // E24 M5 T1b (MCL-Q51, design §5.23; since E24 M4 T6, R5-4 and R3-2, as built): the
+    // question's OK, the hero retreating (`battle-mine-retreat`, as recorded): no guards' box, no
+    // mine's box, no flag; the hero gone at the map's fade in's end, 1810, as a retreat's, the
+    // next one chosen at its dissolve's end, 2330, the mine still neutral.
+    let l = run_to("battle-mine-retreat", 1810);
     assert_eq!(l.state(1810).hero, None);
+    assert_eq!(l.drawn().left, [0]);
     assert!(l.boxed.is_none() && l.owners.is_empty());
-    let l = run_start(&start, &actions, 2400);
-    assert!(l.hero.is_some() && l.owners.is_empty() && l.boxed.is_none());
+    let l = run_to("battle-mine-retreat", 2330);
+    assert_eq!(
+        l.state(2330).hero.map(|h| h.at),
+        Some(Pos { x: 30, y: 5, z: 0 })
+    );
+    assert!(l.owners.is_empty() && l.boxed.is_none());
 }
 
 #[test]

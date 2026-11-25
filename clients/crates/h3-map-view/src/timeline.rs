@@ -1119,12 +1119,14 @@ pub enum AfterBattle {
     Taken,
     /// The hero beaten or retreated: it leaves the map (`adventure_battle`'s `hero_loss_effect`
     /// with 0, after `battle_aftermath` 0x4AC930's way: the hero gone first, then dissolved), then
-    /// the player's next hero or town selected (`mobilize_hero(0, 0, 1)`).
+    /// the player's next hero or town selected (`mobilize_hero(0, 0, 1)`). A draw's hero the same
+    /// (E24 M5 T1b, design §5.23: the draw's `battle_aftermath` with 0, 0x4AE868, runs the
+    /// beaten one's steps, 0x4AE6B4 to 0x4AE6FD, one for one).
     Lost,
     /// A draw (E24 M4 T6, the reviewer's R5-4: the record takes both off the map): the hero
-    /// leaves as [`AfterBattle::Lost`]'s (`battle_aftermath`'s way, the hero's leaving first),
-    /// then the monster is taken off as [`AfterBattle::Taken`]'s (`monster_fight`'s rest: none
-    /// left), *provisional*: not recorded.
+    /// leaves as [`AfterBattle::Lost`]'s (`battle_aftermath`'s way, the hero's leaving first:
+    /// read, E24 M5 T1b), then the monster is taken off as [`AfterBattle::Taken`]'s
+    /// (`monster_fight`'s rest: none left), *provisional*: not recorded.
     Both,
     /// Nothing more (the monster stands: a defender beaten elsewhere, not built; since E24 M4 T6,
     /// R5-4, a mine's guards' battle lost by a hero the record keeps).
@@ -1150,8 +1152,10 @@ impl AfterBattle {
 
     /// What a mine's guards' battle leaves (E24 M4 T6, the reviewers' R5-4 and R3-2): the
     /// answer's boxes after the hero's win (`winner` 0); else the hero gone where the record
-    /// takes it off the map (`lost`: beaten, retreated or a draw), or nothing (MCL-Q51: what the
-    /// original shows then not read).
+    /// takes it off the map (`lost`: beaten, retreated or a draw), or nothing. No box and no flag
+    /// either way (E24 M5 T1b, MCL-Q51, design §5.23: `visit_mine` 0x4A39A0 ends the visit at a
+    /// winner not the hero, `monster_battle`'s at 0x4A3AE5, `adventure_battle`'s at 0x4A3B59;
+    /// recorded, `battle-mine-retreat`).
     #[must_use]
     pub const fn of_guards(winner: i32, lost: bool) -> Self {
         match (winner, lost) {
