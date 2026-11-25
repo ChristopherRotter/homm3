@@ -11,8 +11,9 @@
 //!
 //! Built so far (E31 increment 2): [`choose`] and [`Memory`] (ADR-0030 points 2, 5), the turn's
 //! frame (T2a: the passes, the order of heroes, a hero's turn with its garrison step); the rest
-//! of a turn is stubbed by `AI-STUB-2` to `-6` (`docs/stubs.toml`). The simulated combat's sides
-//! and melee (T2b, `sim`), its casts `AI-STUB-7`, wait for the fight estimate (T2c) to call them.
+//! of a turn is stubbed by `AI-STUB-2` to `-6` (`docs/stubs.toml`). The fight estimate (T2c,
+//! `fight`) on the simulated combat, which lives in `h3_battle::estimate` (T2b and T2c, AI-Q34),
+//! waits for the values that ask for it (T2d, T2h, T2i).
 //!
 //! [`GameCommand`]: crate::GameCommand
 

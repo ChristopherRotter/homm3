@@ -1336,7 +1336,7 @@ fields = [
   { offset = 0x18, name = "melee_share", type = "f64", summary = "the share of the stack's value dealt per round in melee: 0.2, a shooter with the melee penalty 0.1", confidence = "read" },
   { offset = 0x20, name = "hold_share", type = "f64", summary = "the share of the stack's value in the stand-off: 1.0, a shooter with the melee penalty 0.7", confidence = "read" },
   { offset = 0x28, name = "shot_share", type = "f64", summary = "a shooter's share per round of shots: hero_archery / 5 (0.2 without a hero), x 2 striking twice, / 2 facing walls (not creature 35); 0 for a walker or flyer", confidence = "read" },
-  { offset = 0x30, name = "value_per_health", type = "f64", summary = "the unit value over the creature's health (with the hero's bonus): damage spells' hit points into value", confidence = "read" },
+  { offset = 0x30, name = "value_per_health", type = "f64", summary = "the unit value over the creature's health (with the hero's bonus): damage spells' and raises' hit points into value; an other spell sets it to the new value over the old value times it (0x4259B2, survey §5.5 #65)", confidence = "read" },
   { offset = 0x38, name = "rounds_to_contact", type = "i32", summary = "0 a shooter; else (speed + 2 x (7 - tactics)) / speed, at most 4, raised to the wall level for a walker facing walls", confidence = "read" },
   { offset = 0x3C, name = "unit_value", type = "i32", summary = "ftol(fight value x sqrt(health with the hero's bonus / health) x the side's factor)", confidence = "read" },
   { offset = 0x40, name = "value", type = "i32", summary = "the stack's value: unit value x count at the start, less its losses", confidence = "read" },
@@ -1353,8 +1353,11 @@ fields = [
   { offset = 0x4, name = "mastery", type = "i32", summary = "hero_spell_mastery's level (Dispel at 2 or more also counts the enemy's stacks)", confidence = "read" },
   { offset = 0x8, name = "power", type = "i32", summary = "the hero's Spell Power clamped to 1..99", confidence = "read" },
   { offset = 0xC, name = "duration", type = "i32", summary = "the power plus hero_duration_bonus (other spells count at most 5 of it)", confidence = "read" },
-  { offset = 0x14, name = "target", type = "i32", summary = "the chosen stack's index (a single-target spell, a raise)", confidence = "read" },
+  { offset = 0x10, name = "flag", type = "u8", summary = "set to 1 by 0x436950 and 0x436980; not read in the simulated combat (E31 T2c)", confidence = "read" },
+  { offset = 0x14, name = "target", type = "i32", summary = "the chosen stack's index (a single-target spell, a raise; -1 none): the caster's own side's or the enemy's by the spell's kind", confidence = "read" },
+  { offset = 0x18, name = "second", type = "i32", summary = "Dispel's enemy stack at Advanced when it beats the own one (sim_other_spell_value 0x425510 at 0x42573B; -1 none; E31 T2c)", confidence = "read" },
   { offset = 0x1C, name = "value", type = "i32", summary = "the cast's value; the highest wins", confidence = "read" },
+  { offset = 0x20, name = "flag2", type = "u8", summary = "cleared by 0x436950 and 0x436980; not read in the simulated combat (E31 T2c)", confidence = "read" },
 ]
 
 [[struct]]

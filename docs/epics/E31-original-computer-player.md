@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23 (T1a1a; refined 2026-11-21, AI-Q22); increment 1 closed
 2026-11-24 (AI-Q31), increments 2 to 7 cut; increment 2 refined 2026-11-25 (AI-Q32: ADR-0030
-accepted, eleven tasks), T2a done, T2b next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
+accepted, eleven tasks), T2a to T2c done, T2d next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
 fair system actor) for battle · Prerequisite of E13 (its target and ladder opponent) ·
 Consumers: the env (a computer seat), the server (a computer player in a hosted game), the shell
 (a game's computer players), the adventure lane (ADV-STUB-8, ADV-STUB-9)
@@ -180,3 +180,10 @@ Increment 2's (increment 1's: `E31-archive.md`).
   stand-off, the lookahead, the run; the casts AI-STUB-7 (T2c, which also takes
   `sim_combat_start`'s casting inputs and `sim_stack_take_value`); §5.5's #63 and #64 from the
   blind re-read. Record: `E31-log.md` T2b.
+- **T2c** (2026-11-25, not cut, AI-Q34): the simulated combat moved to a public
+  `h3_battle::estimate` (`cross-lane`; the battle lane's module, on contract inputs) with its casts
+  (CPU-SIM-006 to -010: the choice, the damage spells with their chains and areas, the mass damage,
+  the other spells, the raises, on the battle's own spell helpers); the fight estimate and
+  Necromancy in `h3_game::computer`'s `fight.rs` (CPU-SIM-011, -012); AI-STUB-7 lifted, AI-STUB-8
+  (the aggressiveness, 1.0) and AI-STUB-9 (the conditions, E10) registered; §5.5's #65 and #66.
+  Record: `E31-log.md` T2c.

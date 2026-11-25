@@ -20,6 +20,23 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-25 (the AI lane, E31 T2c, `ai/e31-t2c`, `cross-lane` with the user's consent, AI-Q34;
+  **yours from now on, nothing to do now**): a new public module **`h3_battle::estimate`**, the
+  original's computer's simulated combat (T2b's sides and melee moved from `h3_game::computer`,
+  T2c's casts; rules `CPU-SIM-001` to `-010` in `docs/rules/catalog/computer.toml`): `side`, `run`,
+  `Side::strength`, `Side::survivors` on contract inputs. The user: the battle provides the battle
+  estimate entirely (ADR-0027 point 6's pattern); `h3_game::computer::fight` calls it, the quick
+  battle will (§3.6 row 1). Its casts reuse your spell rules through four small additions in
+  `magic.rs` and `mana.rs`, no behaviour changed: `creature_factor` (0x44A4D0's creature part, no
+  aura), `creature_damage` (the target's part of `spell_damage`, extracted), `rate_value` and
+  `creature_share` (out of `effect_factor` and `share`), `Guard::of_heroes`,
+  `armies_cost_change` (out of `cost_change`), and `mastery_at` taking a hero's `HeroMagic`. A
+  change of those rules moves the estimate's numbers (its tests in `src/estimate/tests.rs`;
+  `tests/mod.rs`'s `support` is `pub(crate)` for them). Two more state rows for the quick battle,
+  survey §5.5 #65 (an other spell sets a stack's value per hit point to the new value over old
+  value × old value per hit point) and #66 (an other spell and a raise leave the side's strength),
+  beside #7, #8, #63 and #64.
+
 - 2026-11-25 (the town lane, E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to
   do now**): increment 6's T56 adds six building fields to the town records (`marketplace`,
   `artifact_merchants`, `freelancers`, `war_machine`, `university`, `transformer`) and parameters

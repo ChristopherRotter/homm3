@@ -87,7 +87,7 @@ id       = "CPU-SIM-001"
 title    = "A side of the simulated combat"
 context  = "computer"
 status   = "implemented"
-summary  = "One side of the computer's simulated combat (sim_combat_start 0x423EE0, sim_side_build 0x424120, sim_side_walls 0x424790; values in army-value units): its army's slots 0 to 6 with a creature, in slot order, with its hero, against the opponent hero, facing a town's walls, scaled by the caller's factor. The walls: a Fort 4, a Citadel 5, a Castle 6; none when the hero has Earthquake among its available spells; else less the hero's Ballistics, at least 2; at most 4. Tactics: the hero's level less the opponent's, at least 0. The factor times sqrt(1 + 0.05 a) x sqrt(1 + 0.05 d) with a hero (a its Attack over the opponent's Defense, d its Defense over the opponent's Attack, each clamped to 0..99 and each difference at least 0; its own without an opponent), in double precision. Per stack: speed the creature's plus the hero's (its speed changes for every creature: artifacts, a speed specialty; not a creature specialty's), hit points the creature's plus the hero's (its hit-point changes that select the creature, Elixir of Life's quarter of a living creature's rounded down); unit value ftol(sqrt(hit points with the bonus / hit points) x fight value x factor), value that times the count (32 bits, wrapping), summed into the strength; rounds to contact 0 for a shooter, else (speed + 2 (7 - Tactics)) / speed (4 for a creature of speed 0, where the original divides by 0), at most 4, raised to the walls' level for a walker; shares 0.2 of melee and 1 of the stand-off, a shooter's 0.1 and 0.7 without no_melee_penalty, and its shots the hero's Archery bonus (hero_archery 0x4E4160: the skill grown by its specialty and the bows, 0 without the skill) over 5, 0.2 without a hero, twice for strikes_twice, halved facing walls without the battle part's no_wall_penalty (the original names creature 35, the Arch Magi, alone). The stacks sorted by unit value, ties in slot order (the original's insertion sort; its quicksort for more than 16 stacks never runs). The casting inputs (spell points, whether it may cast, the battle tile's ground, a stack's value per hit point) come with the casts (T2c, AI-STUB-7)."
+summary  = "One side of the computer's simulated combat (sim_combat_start 0x423EE0, sim_side_build 0x424120, sim_side_walls 0x424790; values in army-value units): its army's slots 0 to 6 with a creature, in slot order, with its hero, against the opponent hero, facing a town's walls, scaled by the caller's factor. The walls: a Fort 4, a Citadel 5, a Castle 6; none when the hero has Earthquake among its available spells; else less the hero's Ballistics, at least 2; at most 4. Tactics: the hero's level less the opponent's, at least 0. The factor times sqrt(1 + 0.05 a) x sqrt(1 + 0.05 d) with a hero (a its Attack over the opponent's Defense, d its Defense over the opponent's Attack, each clamped to 0..99 and each difference at least 0; its own without an opponent), in double precision. Per stack: speed the creature's plus the hero's (its speed changes for every creature: artifacts, a speed specialty; not a creature specialty's), hit points the creature's plus the hero's (its hit-point changes that select the creature, Elixir of Life's quarter of a living creature's rounded down); unit value ftol(sqrt(hit points with the bonus / hit points) x fight value x factor), value that times the count (32 bits, wrapping), summed into the strength; rounds to contact 0 for a shooter, else (speed + 2 (7 - Tactics)) / speed (4 for a creature of speed 0, where the original divides by 0), at most 4, raised to the walls' level for a walker; shares 0.2 of melee and 1 of the stand-off, a shooter's 0.1 and 0.7 without no_melee_penalty, and its shots the hero's Archery bonus (hero_archery 0x4E4160: the skill grown by its specialty and the bows, 0 without the skill) over 5, 0.2 without a hero, twice for strikes_twice, halved facing walls without the battle part's no_wall_penalty (the original names creature 35, the Arch Magi, alone). The stacks sorted by unit value, ties in slot order (the original's insertion sort; its quicksort for more than 16 stacks never runs). Per stack also its creature, its count at the start and its value per hit point (the unit value over the hit points with the bonus); the casting inputs are CPU-SIM-006's. Since E31 T2c (AI-Q34) the simulated combat is h3_battle::estimate, on the hero's battle hero and available spells."
 numeric  = "float"
 
   [[rule.source]]
@@ -97,7 +97,7 @@ numeric  = "float"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0030 (accepted, AI-Q32) point 9: the original's x87 arithmetic through h3_kernel::arith; the hero's reads from the engine's battle hero (h3_heroes::derive_battle_hero: Tactics, Ballistics, the ranged rate, the stack statistic effects), the walls from h3_towns::fort_level (E31 T2b's agent decisions, E31-log.md T2b)"
+  ref        = "ADR-0030 (accepted, AI-Q32) point 9: the original's x87 arithmetic through h3_kernel::arith; the hero's reads from the engine's battle hero (h3_heroes::derive_battle_hero: Tactics, Ballistics, the ranged rate, the stack statistic effects), the walls from h3_towns::fort_level (E31 T2b's agent decisions, E31-log.md T2b); AI-Q34: the module h3_battle::estimate, the battle lane's, on contract inputs (E31 T2c)"
   confidence = "high"
 
 [[rule]]
@@ -131,7 +131,7 @@ id       = "CPU-SIM-004"
 title    = "The simulated combat's engagement lookahead"
 context  = "computer"
 status   = "implemented"
-summary  = "Whether a simulated side engages its enemy in round r of 1 to 3 (sim_engage_now 0x4267C0): never when none of its living stacks with rounds to contact 1 to r exists; else a lookahead on copies of both sides for each engagement round e from 4 down to r: from r until e, while both stand, both cast (the faster side first, ties to the side asking; AI-STUB-7 until T2c) and both deal their shots alone, each loss over all the stacks; from e to round 3, while both stand, both cast, the side deals (round, no) and takes its loss on its stacks in contact by the round first, the enemy deals (4, yes) and takes its loss over all; then the stand-off (CPU-SIM-003). The score is the side's strength left, or minus the enemy's when it has none; the highest score is kept, ties to the later engagement round (the first found). True when the round kept is r."
+summary  = "Whether a simulated side engages its enemy in round r of 1 to 3 (sim_engage_now 0x4267C0): never when none of its living stacks with rounds to contact 1 to r exists; else a lookahead on copies of both sides for each engagement round e from 4 down to r: from r until e, while both stand, both cast (the faster side first, ties to the side asking; CPU-SIM-006) and both deal their shots alone, each loss over all the stacks; from e to round 3, while both stand, both cast, the side deals (round, no) and takes its loss on its stacks in contact by the round first, the enemy deals (4, yes) and takes its loss over all; then the stand-off (CPU-SIM-003). The score is the side's strength left, or minus the enemy's when it has none; the highest score is kept, ties to the later engagement round (the first found). True when the round kept is r."
 numeric  = "float"
 
   [[rule.source]]
@@ -144,10 +144,101 @@ id       = "CPU-SIM-005"
 title    = "The simulated combat's run"
 context  = "computer"
 status   = "implemented"
-summary  = "A simulated combat of an attacker A against a defender B (sim_combat_run 0x426BC0): rounds 1 to 3 while both strengths are above 0: each side's choice to engage (CPU-SIM-004, A's first), the round's casts (the faster side first, equal speeds A; AI-STUB-7 until T2c), then both sides' damage at once (CPU-SIM-003): A alone engaging, A deals (round, no) and B (4, yes), A's loss first on its stacks in contact by the round; both engaging, or B alone (0x426D17, a quirk candidate of the quick battle's: B's choice makes both fight with every stack), both deal (4, yes); neither, both their shots alone (0, no); every other loss over all the stacks (CPU-SIM-002). Then the stand-off (CPU-SIM-003)."
+summary  = "A simulated combat of an attacker A against a defender B (sim_combat_run 0x426BC0): rounds 1 to 3 while both strengths are above 0: each side's choice to engage (CPU-SIM-004, A's first), the round's casts (the faster side first, equal speeds A; CPU-SIM-006), then both sides' damage at once (CPU-SIM-003): A alone engaging, A deals (round, no) and B (4, yes), A's loss first on its stacks in contact by the round; both engaging, or B alone (0x426D17, a quirk candidate of the quick battle's: B's choice makes both fight with every stack), both deal (4, yes); neither, both their shots alone (0, no); every other loss over all the stacks (CPU-SIM-002). Then the stand-off (CPU-SIM-003)."
 numeric  = "float"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (survey section 2.2; E31 T1a2b, re-read blind at T2b): sim_combat_run 0x426BC0 (the strengths at 0x426BDB, sim_engage_now at 0x426BF5 and 0x426C01, the speeds at 0x426C0D to 0x426C52, sim_cast_spell 0x425BD0 at 0x426C5B to 0x426C77, the four cases at 0x426C7F, 0x426CC7 with A's spread over 1 to the round at 0x426CF8, 0x426D17, 0x426D6E, sim_side_take_damage at 0x426DBE, sim_combat_finish at 0x426DD6)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-006"
+title    = "The simulated combat's casting inputs and a side's cast"
+context  = "computer"
+status   = "implemented"
+summary  = "A side's casting inputs (sim_combat_start 0x423EE0): its spell points the hero's (0 without one); it may cast with a hero that has a spell book while neither hero has NoCasting (the Orb of Inhibition) and no anti-magic garrison stands on the tile (the original's Cursed Ground test of a game before SoD never holds); the tile's special ground (its battlefield: Cursed Ground's highest level 1, the schools a field casts at Expert); its highest spell level the ground's and both heroes' limits (Recanter's Cloak 2). A side's cast in a round (sim_cast_spell 0x425BD0): only with a strength other than 0, spell points and casting allowed; every available battle spell (the original's 10 to 69) in handle order up to that level whose cost at the hero's mastery on the ground (hero_spell_mastery 0x4E5080, hero_spell_cost 0x4E5240: the own army's and the enemy's spell_cost creatures) its points pay, with Spell Power clamped to 1..99 and its rounds the power and the duration bonus, is valued by its one AI kind (the original's switch on the flags 0x1F8000 as one value: two kinds are worth nothing): damage (CPU-SIM-007), damage once only in round 1, damage to all (CPU-SIM-008), an effect (CPU-SIM-009), stacks only for a raise (CPU-SIM-010); the highest value above 0 wins, ties to the lower spell. Its cost leaves the points; an enemy with a hero and a living stack with mana_channel (the Familiars; from the last stack, once) gains that percent of the cost, rounded down; then the spell is applied. The round's casts: the faster side's first (its highest living speed), equal speeds the first side's."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T2c, the casts read whole): sim_combat_start 0x423EE0 (the points +0x18 at 0x423F3D, the book and the Orb of Inhibition 126 at 0x423F4F to 0x423F6E and 0x423FEA, tile_special_ground 0x4FCE20 and its switch at 0x423F96, map_kind +0x1F698 at 0x423FD8); sim_cast_spell 0x425BD0 (the tests at 0x425BDB to 0x425BF6, Recanter's Cloak 83 at 0x425C07 to 0x425C2C, the power at 0x425C30 to 0x425C50, hero_duration_bonus 0x4E4DB0, the loop 0x425C6C to 0x425EA2 with the level tests 0x425C8A to 0x425CA3, hero_spell_mastery and hero_spell_cost, sim_spell_init 0x436980, the switch on 0x1F8000 at 0x425CF5, the best at 0x425E6E; the cost and the Familiars 43 at 0x425EB4 to 0x425F2A; the applications from 0x425F2D)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-007"
+title    = "The simulated combat's damage spells"
+context  = "computer"
+status   = "implemented"
+summary  = "A damage spell's loss on a stack (the chain at 0x424DB7, sim_mass_damage_stack_loss 0x423DE0): 0 without value; else the creature's factor (creature_spell_factor 0x44A4D0 under the caster's hero and the stack's controller's: 0 for the Power of the Dragon Father's levels, Dispel's guard or an immunity, 1 for a positive spell, Dispel or a negation, else 1 less the creature's magic resistance less the controller's hero's, at least 0; BAT-MAG-005, -008, -064, -066) times f32(the damage), truncated; the target's damage factors (creature_spell_damage_factor 0x44B4B0: one spell's extra damage, the damage reduction; BAT-MAG-004); the caster's bonuses given no stack (hero_spell_damage_bonus 0x4E5760: the Orbs, Sorcery); that times the stack's value per hit point, truncated, at most its value. The damage: the spell's effect at the mastery plus its power factor times the Spell Power. Its value (sim_damage_spell_value 0x424D20): the enemy stack it takes the most from (the stacks from the last, ties to the later); with that above 0, a chain's three hops at half the damage each (toward 0) to the nearest weaker stack not yet hit that it takes something from, else the nearest stronger (0x4249D0), added; an area spell's stacks whose army slot is next to the target's that it takes something from, up to the area's radius (Inferno 2, the others 1; 0x424BF0), added. Its application (sim_damage_spell_apply 0x425260, 0x424FB0, 0x425100): the target, then the chain's hops or the area's neighbours on the stacks as they stand, each losing its loss (sim_stack_take_value 0x423EA0: above its value it dies and its value is taken, else its count the ceiling of the value left), the enemy's strength what each took. Spells are told by their data (the chain, the area) as the original tells them by their numbers."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T2c, read whole for the first time): sim_damage_spell_value 0x424D20 (the chain of factors at 0x424DB7 to 0x424E16, the switch at 0x424E62 on spells 19 to 23), sim_chain_next_target 0x4249D0, sim_damage_spell_area_value 0x424BF0, sim_damage_spell_apply 0x425260 (the switch at 0x42537B), sim_damage_spell_apply_chain 0x424FB0, sim_damage_spell_apply_area 0x425100, sim_mass_damage_stack_loss 0x423DE0, sim_stack_take_value 0x423EA0, sim_spell_base_value 0x436930; creature_spell_factor 0x44A4D0's first tests at 0x44A518 to 0x44A556 and its end at 0x44A8AE"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-008"
+title    = "The simulated combat's mass damage"
+context  = "computer"
+status   = "implemented"
+summary  = "A spell that damages every stack (sim_cast_spell 0x425D4B, sim_mass_damage_enemy_loss 0x4253E0): its value the enemy's stacks' losses (CPU-SIM-007) summed less the own stacks' (the caster's hero their controller too) while the own sum is below both the side's strength and the enemy's sum, else nothing. Its application (0x425F7A to 0x4260EA): over the caster's stacks from the last a running total of their losses never reset (0x425FF6): a stack whose value is below the total dies and the total becomes its value (0x426028), else it loses the total; the side's strength loses the total at each stack; over the enemy's stacks from the last a total of the value the stack before took plus the stack's own loss, taken from it (sim_stack_take_value, 0x4260C6), the enemy's strength losing what each took. The carried totals are survey section 5.5's candidate #8 (state: the quick battle's), ported as read."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T2c, read whole): sim_cast_spell 0x425D4B to 0x425DE5 (the value) and 0x425F7A to 0x4260EA (the application, the site sim_mass_damage_carry 0x425FF6), sim_mass_damage_enemy_loss 0x4253E0, sim_mass_damage_stack_loss 0x423DE0, sim_stack_take_value 0x423EA0"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-009"
+title    = "The simulated combat's other spells"
+context  = "computer"
+status   = "implemented"
+summary  = "Any other battle spell (sim_other_spell_value 0x425510): nothing for a spell that only counters the enemy's spells (the Protections, Anti-Magic, Dispel, Magic Mirror, Cure; the original's 30 to 37) when the enemy cannot cast. A stack's part (0x423C80): 0 without value; else ftol(f32(the AI value at the mastery x min(rounds, 5) x the stack's value, 32 bits) x f32(the creature's factor, CPU-SIM-007) / 500). Dispel: its own stacks under the caster's hero, from Advanced the enemy's too, the stacks from the last; a mass version sums, else the best stack is kept (ties to the later one valued); at Advanced an enemy stack that beats the own value is its target. A positive spell values the own stacks, any other the enemy's. Its application (0x425B10, 0x4258A0): Dispel at Expert on both sides (the own as positive, the enemy's as negative), below on its target; another spell on the own side if positive, else on the enemy's: its aimed stack, or for a mass version every stack with value whose part is above 0, changes its value and its unit value up (positive) or down by its part and by unit x part / value (64 bits, toward 0), and its value per hit point to the new value over the old value times the old value per hit point (0x4259B2, survey section 5.5 #65: a slip, the hit points would be the old value over it; the quick battle's, state, ported as read). The side's strength stays."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T2c, read whole for the first time): sim_other_spell_value 0x425510 (spells 30 to 37 at 0x42552B to 0x42556F, Dispel from 0x425575, the mastery tests at 0x42567D and 0x425723, the polarity at 0x425751), sim_stack_spell_value 0x423C80, sim_other_spell_apply_call 0x425B10, sim_other_spell_apply 0x4258A0 (the division sub_617AD0, the value per hit point at 0x4259A5 to 0x4259B5 and 0x425AD0 to 0x425AE2)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-010"
+title    = "The simulated combat's raises"
+context  = "computer"
+status   = "implemented"
+summary  = "Resurrection and Animate Dead, the stacks spells that raise (sim_cast_spell 0x425DF8, 0x42610D; 0x423D00): the own stack (from the last, ties to the later) a raise brings back the most to: nothing for a stack that lost no creatures or that the spell cannot affect (the creature's factor under the caster's hero 0); else the spell's effect at the mastery plus its power factor times the Spell Power, with the caster's spell specialty by the creature's level (hero_spell_specialty_bonus 0x4E5FF0), in hit points, times the stack's value per hit point, truncated, over its unit value (toward 0), at most the creatures it lost, times its unit value. The application gives the stack that over its unit value in creatures and that times its unit value in value; the side's strength stays (survey section 5.5 #66, the quick battle's, ported as read)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T2c, read whole): sim_raise_value 0x423D00 (the count test at 0x423D10, creature_spell_factor at 0x423D2B, the specialty at 0x423D93, the creatures at 0x423D9D to 0x423DCE), sim_cast_spell 0x425DF8 to 0x425E5B (the choice) and 0x42610D to 0x42613F (the application)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-011"
+title    = "Necromancy after a simulated win"
+context  = "computer"
+status   = "implemented"
+summary  = "The winner's Necromancy in the fight estimate (sim_necromancy 0x426DF0): nothing without a share above 0 (hero_necromancy_power: the engine's Necromancy, HER-NEC-001, its single-precision value or its basis points as an f32); else with p = f32(share + 0.02), over the loser's army as it stood (the estimate's: the enemy's whole army) ftol(f32(min(the creature's hit points, the raised creature's) x count) x p / f32(the raised creature's hit points)), at most the count; the sum, at least 1, of the raised creature (HER-NEC-002) added to the survivors' stack of it, else their first empty slot, else nowhere (army_add_stack 0x44ACE0)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T1a2b, re-read at T2c): sim_necromancy 0x426DF0 (hero_necromancy_power 0x4E3CD0 and the test at 0x426E09, the bonus 0.02 at 0x426E1D, hero_necromancy_creature 0x4E3C60, the loop 0x426E62 to 0x426EB5, the floor of 1 at 0x426EB7, army_add_stack 0x44ACE0)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-012"
+title    = "The computer's fight estimate"
+context  = "computer"
+status   = "implemented"
+summary  = "What a fight of a computer's hero is worth (ai_army_fight_sim 0x427330), in army-value units, changing nothing: a simulated combat (CPU-SIM-001 to -010) of the hero's army against the opponent's army with its hero, the hero's side facing the town's walls, both on the tile's ground; the hero's factor its aggressiveness (AI-STUB-8: 1.0) halved for the victory condition's hero (AI-STUB-9), the enemy's 1.25, or with a human owner of either hero or the town ai_human_enemy_factor 0x6604D0 by the difficulty (0.5, 0.5, 1.0, 1.25, 1.25). A loss (the hero's side without strength): -1 000 000 000. A win: the enemy army's experience points (count x hit points, no hero's 500) grown by the hero's Learning (HER-EXP-001), truncated, times ai_experience_value 0x527710 (f32(2 500) + f32(the surviving army's value)) / f32(40 x the experience to the next level), truncated (the original's indefinite integer for a gap of 0); the survivors with Necromancy's creatures (CPU-SIM-011); less the value lost (the army's value less the survivors', 32 bits); a net loss under a quarter of the army's value counts 0. With an enemy hero or a town, plus f32(the enemy army's value) x ai_difficulty_blend 0x428710 of its owner (a town's, none for a neutral one, else the hero's): 0 for none, a computer's 1.0 on Easy else 0.75 - d / 4, a human's -0.4 (f32) on Easy else (d + 1) / 4 (ai_turn_start_values 0x527960's weights), plus f32(the value), truncated. The 5 000 000 for the victory or the loss condition's hero waits for the conditions (AI-STUB-9)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T1a2b, re-read at T2c): ai_army_fight_sim 0x427330 (the factor +0x47A at 0x427353, the victory hero at 0x42739F to 0x4273BE, the human tests 0x4273C1 to 0x42742A, the two sim_combat_start and sim_combat_run, the loss at 0x42748A, sim_apply_losses, army_experience_points 0x4CA3B0, hero_learning 0x4E4840, ai_experience_value 0x527710, sim_necromancy, army_value 0x44AC80, the net at 0x427547 to 0x427566, the owner at 0x427577 to 0x427587, ai_difficulty_blend 0x428710, the conditions 0x4275BB to 0x42760C); hero_reset 0x4D8720 at 0x4D890A to 0x4D8967 (the aggressiveness draw); ai_turn_start_values 0x527960 (the weights)"
   confidence = "high"

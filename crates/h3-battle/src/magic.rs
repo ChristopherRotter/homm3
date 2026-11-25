@@ -1861,6 +1861,7 @@ pub(crate) fn spell_damage(
 /// then the spell damage reduction, rounded down. [`spell_damage`] takes it after the caster's
 /// bonuses; the computer's simulated combat before them (`crate::estimate`, E31 T2c).
 // rule: BAT-MAG-004
+#[inline]
 pub(crate) fn creature_damage(
     ruleset: &BattleRuleset,
     spell: SpellId,
@@ -2160,6 +2161,7 @@ fn share(
 /// resistance is `resistance`, at the [`scale`] ([`share`] without the negation; BAT-MAG-008,
 /// BAT-MAG-026): 1 − the creature's magic resistance minus `resistance`, at least 0, with quirk
 /// Q-0005 rounded to single precision.
+#[inline]
 fn creature_share(ruleset: &BattleRuleset, creature: CreatureTypeId, resistance: u64) -> u64 {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let own = ruleset
@@ -2280,6 +2282,7 @@ pub(crate) fn effect_factor(
 
 /// A rate at the [`scale`] as the x87 holds it: a single-precision numerator, or basis points
 /// (at most `FULL_BP`) rounded to the double.
+#[inline]
 fn rate_value(single: bool, v: u64) -> X87 {
     if single {
         X87::fixed(v)

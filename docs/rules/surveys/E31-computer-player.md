@@ -518,10 +518,19 @@ Morale, luck, war machines, retaliation and other abilities are not modelled.
 **The fight** (`sim_combat_run` 0x426BC0): at most three rounds. Each round each side decides
 whether to engage now (`sim_engage_now` 0x4267C0: a lookahead on copies over every engagement
 round up to 4, scored by its strength left). The faster side casts first: one spell per side and
-round, the best of spells 10 to 69 it can afford, by the spell's AI category (damage, mass damage
-in which its own stacks count, other effects valued like the adventure AI's spell value with a
-÷ 500, Resurrection and Animate Dead); Cursed Ground allows level 1 only, Recanter's Cloak level 2
-at most; Familiars return a fifth of the cost. Then both deal damage at once: shots only while
+round, the best of spells 10 to 69 it can afford, by the spell's AI category: damage (the stack
+it takes the most from, with Chain Lightning's three hops at half the damage to the nearest weaker
+stack, else the nearest stronger, and an area spell's stacks one army slot from the target, one,
+Inferno's two), damage once (round 1 only), mass damage (the enemy's losses less the own while
+these are below both), other effects (AI value at the mastery × min(rounds, 5) × the stack's value
+÷ 500 by the creature factor, the best stack or a mass version's sum; the Protections, Anti-Magic,
+Dispel, Magic Mirror and Cure nothing against an enemy that cannot cast; Dispel the own stacks and
+from Advanced the enemy's), Resurrection and Animate Dead (the creatures a stack lost, by its value
+per hit point); each loss through the battle's own helpers (`creature_spell_factor` 0x44A4D0,
+`creature_spell_damage_factor` 0x44B4B0, `hero_spell_damage_bonus` 0x4E5760 given no stack; T2c
+read them whole); Cursed Ground allows level 1 only, Recanter's Cloak level 2 at most; Familiars
+return a fifth of the cost. An other spell or a raise changes the stacks' values, not the side's
+strength. Then both deal damage at once: shots only while
 neither engages, the engaging side's arrived stacks and shooters against the other's whole army
 in melee. Losses spread over the stacks in proportion to their values; a count is the ceiling of
 the value left over the unit value. After three rounds a stand-off: the larger hold value wins,
@@ -571,13 +580,17 @@ Eagle Eye learning the loser's lowest-id spell (no chance draw).
    when the attacker engages alone, its losses go first to its stacks in contact, T2b's re-read);
    a hero's shooters' share is the Archery bonus alone, 0 without the skill (0x42426D, §5.5 #63);
    the wall halving spares the Arch Magi (35) alone (0x424412, #64);
-   the mass-damage running total is carried from stack to stack (0x425FF6); Necromancy in the quick
+   the mass-damage running total is carried from stack to stack (0x425FF6); an other spell's value
+   per hit point becomes the new value over old value × old value per hit point (0x4259B2, #65) and
+   neither it nor a raise changes the side's strength (#66; T2c's reading); Necromancy in the quick
    battle counts the loser's army after it was cleared, so it raises 1 (0x427003); a mutual wipe
    and an equal stand-off go to the defender; Eagle Eye takes a spell from the loser's available
    spells, not its cast ones.
-6. **Not read**: the spell value leaves 0x4249D0 to 0x425B10, 0x423C80 and 0x423DE0, and the spell
-   record's helpers (placed in a phase by T1a4, §4.3, not read); 0x4E23D0, 0x4E5AA0, 0x4E5B80; the container code 0x4276C0, 0x427780,
-   0x427A90, 0x427C30.
+6. **Not read**: 0x4E23D0; the container code 0x4276C0, 0x427780, 0x427A90, 0x427C30. The spell
+   value leaves 0x4249D0 to 0x425B10, 0x423C80, 0x423D00, 0x423DE0 and the record's helpers
+   0x436930 to 0x436980 were read whole at T2c (two earlier names swapped: 0x4249D0 is the chain's
+   next stack, 0x424BF0 the area's value), 0x4E5AA0 and 0x4E5B80 at T2b. The port: AI-Q34's
+   `h3_battle::estimate` and `h3_game::computer`'s fight estimate (CPU-SIM-001 to -012).
 
 ### 2.3 The army values (T1a2c)
 
@@ -1899,7 +1912,7 @@ No candidate is a ledger entry yet: `docs/rules/quirks-ai.md` starts with the re
 increment 2 (ADR draft point 1), the exploit-fix entries first.
 
 Counts: 36 slips, 6 state, 5 exploit-fix, 13 none, 2 fixed (one item); T2b's re-read added two
-state rows, #63 and #64 (8 state).
+state rows, #63 and #64, T2c's reading two more, #65 and #66 (10 state).
 
 | # | § | Candidate | Address | Class | Lane | Confirm | Note |
 |---|---|---|---|---|---|---|---|
@@ -1967,3 +1980,5 @@ state rows, #63 and #64 (8 state).
 | 62 | §4.6 | ai_player_records never reset by a new game or a load | 0x4ED650, 0x4340E0, 0x52BBD0 | none | ai  | experiment X2 (`E31-design.md` §2) | ported as a fresh process's first game: zeros before the first start |
 | 63 | §2.2 | a hero's shooters' share reads the Archery bonus alone (0 without the skill, against 0.2 without a hero) | 0x42426D | state | battle, adventure (§3.6 row 1) | blind at T2b (done) | quick battle's result and the estimate; ported as read (E31 T2b) |
 | 64 | §2.2 | the wall halving spares creature 35 (the Arch Magi) alone, not the Magi (34) | 0x424412 | state | battle, adventure (§3.6 row 1) | blind at T2b (done) | quick battle's result and the estimate; the port reads the battle part's `no_wall_penalty`, which the Magi have too (no data names 35 alone; E31 T2b) |
+| 65 | §2.2 | an other spell's value per hit point becomes the new value over old value × old value per hit point (the hit points would be the old value over it): damage spells and raises on that stack then misvalue | 0x4259B2, 0x425ADF | state | battle, adventure (§3.6 row 1) | read at T2c | quick battle's result and the estimate; ported as read (E31 T2c) |
+| 66 | §2.2 | an other spell and a raise change the stacks' values but not the side's strength (the stand-off reads the stacks, the beaten test the strength) | 0x4259A2, 0x42613F | state | battle, adventure (§3.6 row 1) | read at T2c | quick battle's result and the estimate; ported as read (E31 T2c) |

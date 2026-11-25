@@ -20,6 +20,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   each command twice: never in the workload.
 - A `Memory` is the host's, one per computer player, never the game's: a host that rebuilds a
   game (a load, a replay) starts it empty (its turn restarts; ADR-0030 point 5).
+- The simulated combat is `h3_battle::estimate` (AI-Q34), the battle lane's crate: a change
+  there is `cross-lane`, its coverage comes from `h3-battle`'s own tests (`src/estimate/tests.rs`,
+  on `tests::support`'s ruleset with Fight Values and AI kinds patched in), and its inputs are
+  contracts (`BattleHero` and the available spells; `h3-battle` never depends on `h3-heroes`).
+  The fight estimate's tests (`computer/fight/tests.rs`) can set Fight and AI values only on a
+  core built from `crate::tests::core_pack`; the town fixtures' cores are worth 0.
+- Coverage counts the implicit else of an `if let` and of a `let … else` as a region: a case
+  that cannot happen (a chosen spell's target) goes through `Option::into_iter().for_each` or
+  `unwrap_or`, not a branch.
 
 **Environment**
 - An agent sees the projected observation only (AI-Q1 decision 10); `fork` and `state_hash` read the full state, for tools and training (the C ABI is for trusted local consumers, ADR-0011; never forward the hash to a client).

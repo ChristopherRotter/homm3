@@ -32,13 +32,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1177 (`ai/e31-t2b`: T2b, the simulated combat's sides and
-  melee). Merged: #1172 (T2a), #1163 (the shared module PR), #1164 (increment 2's cut).
+- **Open pull requests:** T2c's (`ai/e31-t2c`, `cross-lane`: the number in the session entry
+  below). Merged: #1177 (T2b), #1172 (T2a), #1163 (the shared module PR), #1164 (increment 2's
+  cut). **Pending for the lane's next `shared/` pull request:** the `benches/README.md` row of
+  T2a's workload; ADR-0030's note that the simulated combat is `h3_battle::estimate` (AI-Q34).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
   encoding v1 (`MEMORY_ENCODING_VERSION`, E31 T2a) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q34, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-8.
+  ids: AI-Q35, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-10; CPU-SIM-013.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
@@ -53,10 +55,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   hero done at once (AI-STUB-2 to -6), `h3_sim::computer::play` (the property tests, every
   shipped map at every difficulty in the original-data check), `h3 ai computer` and the workload
   `computer-turns-towns-36`. **T2b done** (2026-11-25, not cut, AI-Q33):
-  the simulated combat's sides and melee in `computer/sim.rs` (CPU-SIM-001 to -005; the casts
-  AI-STUB-7; no caller until T2c, `expect(dead_code)` on the module); §5.5's #63 and #64.
-  **Next: T2c**, the casts, Necromancy and the fight estimate (`QUEUE.md`), `Heroes3.exe`
-  staged for the blind re-reads. Then E13 (refined in shape,
+  the simulated combat's sides and melee (CPU-SIM-001 to -005); §5.5's #63 and #64. **T2c done**
+  (2026-11-25, not cut, AI-Q34): the simulated combat moved to the battle lane's public
+  `h3_battle::estimate` (`cross-lane`) with its casts (CPU-SIM-006 to -010); the fight estimate
+  and Necromancy `computer/fight.rs` (CPU-SIM-011, -012; `expect(dead_code)` until T2d, T2h or
+  T2i calls it); AI-STUB-8 (the aggressiveness 1.0), AI-STUB-9 (the conditions, E10); §5.5's #65
+  and #66. **Next: T2d**, the start's values (`QUEUE.md`), `Heroes3.exe` staged for the
+  readings. Then E13 (refined in shape,
   `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -66,12 +71,14 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
 
 ## Recent sessions
 
-### 2026-11-25 — E31 T2c: the casts, Necromancy and the fight estimate (in progress)
+### 2026-11-25 — E31 T2c: the casts, Necromancy and the fight estimate
 
-- In progress (`ai/e31-t2c`): the reading done (every T2c function, the four unread spell
-  leaves among them); AI-Q34 decided the shape: the simulated combat moves to a public
-  `h3_battle::estimate` (`cross-lane`), the casts there, the estimate in `h3_game::computer`.
-  Next: the move, the casts, the estimate, the tests, the docs, the verify, the pull request.
+- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
+  the user's repo folder at the start (the PC was leaving). Measured 7.6 KB, 4.9 KB never read:
+  the user chose no cut, then, the casts needing four of the battle's helpers, that the battle
+  provide the estimate entirely (AI-Q34). The VM restarted once (the baseline lost; `master`'s CI
+  green at 02ccd93 stood for it). Four of my test expectations were wrong, the port right.
+  `h3-battle`, `h3-game`, `h3-sim` pass; the scoped verify with the original data.
 
 ### 2026-11-25 — E31 T2b: the simulated combat's sides and melee
 
@@ -90,12 +97,3 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   agreed with the survey. CI green on `master` stood for the setup's baseline. The scoped verify
   with the original data; the shared `benches/README.md` row for the new workload waits for the
   lane's next `shared/` pull request.
-
-### 2026-11-25 — E31 increment 2's start: the shared pull request, the measurement, the cut
-
-- A cloud clone; the user's computer reachable but not needed (no reading this session). The
-  `shared/` pull request #1163 built and checked (the kernel's and xtask's tests, clippy, the
-  workspace's check, the docs and rules gates; `arith.rs` 100 % by llvm-cov); master's ADR-0029
-  (#1159) merged into it. Increment 2 measured from the address map's sizes; the user asked once
-  (AI-Q32): ADR-0030 accepted, eleven tasks, the `lib.rs` line in the shared pull request, the
-  loader's crashes the adventure lane's.
