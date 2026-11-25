@@ -32,8 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** T2c's (`ai/e31-t2c`, `cross-lane`: the number in the session entry
-  below). Merged: #1177 (T2b), #1172 (T2a), #1163 (the shared module PR), #1164 (increment 2's
+- **Open pull requests:** #1184 (`ai/e31-t2c`, `cross-lane`: T2c). Merged: #1177 (T2b), #1172 (T2a), #1163 (the shared module PR), #1164 (increment 2's
   cut). **Pending for the lane's next `shared/` pull request:** the `benches/README.md` row of
   T2a's workload; ADR-0030's note that the simulated combat is `h3_battle::estimate` (AI-Q34).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
