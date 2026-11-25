@@ -1743,6 +1743,52 @@ pub enum AdventureEventKind {
         /// The type.
         object_type: ObjectTypeId,
     },
+    /// Summon Boat brought an empty boat beside its caster (ADV-SPL-003, E08 T143a; increment
+    /// 15's design note §10.1, §16): the boat left its tile, on any level, and lies empty on the
+    /// caster's water neighbour, its facing and owner kept. Seen by the players that see heroes on
+    /// the tile it left or on the tile it lies on now, as they see empty boats there (ADV-FOG-008;
+    /// the caster's owner sees the second); a viewer that sees one of the two only is told that
+    /// one only, the other `None` in its projection (the boat goes out of sight, or comes into
+    /// it). Named by the boat's type and tiles, never its index, owner or captain (ADR-0016 point
+    /// 6). Told after the cast's `SpellCast`.
+    BoatSummoned {
+        /// The boat's type (appearance only).
+        boat: u8,
+        /// The tile it left (always given when emitted; `None` in a projection for a viewer that
+        /// does not see heroes there).
+        from: Option<Pos>,
+        /// The water tile it lies on now (likewise).
+        to: Option<Pos>,
+        /// Its facing, kept, in the original's order of eight directions from up, clockwise.
+        facing: u8,
+        /// The players that see heroes on the tile it left (the viewer alone, or none, in a
+        /// projection).
+        seen_from: Viewers,
+        /// The players that see heroes on the tile it lies on now (likewise).
+        seen_to: Viewers,
+    },
+    /// Summon Boat found no boat to bring and made one beside its caster (ADV-SPL-003, E08 T143a;
+    /// increment 15's design note §10.1: the original's `create_boat` at Advanced or Expert): an
+    /// empty boat of type 0 of the caster's owner, facing 2 as the map's boats. Seen by the
+    /// caster's owner and the players that see heroes on the tile, as they see empty boats there
+    /// (ADV-FOG-008, as [`Self::BoatBuilt`]); never the boat's index or owner.
+    BoatCreated {
+        /// The water tile.
+        tile: Pos,
+        /// The boat's type (appearance only).
+        boat_type: u8,
+    },
+    /// Scuttle Boat sank an empty boat (ADV-SPL-004, E08 T143a; increment 15's design note §10.2,
+    /// §11.3): it left the map from its tile, its record out of use. Seen by the players that saw
+    /// heroes on the tile, as they saw the empty boat there (ADV-FOG-008), before the target's
+    /// reveal under `ADV-QUIRK-52` off: a caster that did not see the tile sees it empty in the
+    /// command's reveal. Never the boat's index, owner or captain.
+    BoatScuttled {
+        /// The tile it lay on.
+        tile: Pos,
+        /// The boat's type (appearance only).
+        boat: u8,
+    },
 }
 
 /// Why a bonus visitable's visit gave nothing ([`AdventureEventKind::NothingGained`]; E08 T115b).

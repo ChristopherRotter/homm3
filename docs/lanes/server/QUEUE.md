@@ -12,6 +12,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-25 (the adventure lane, E08 T143a, `adventure/e08-t143a`, `cross-lane` with the user's
+  consent; **in your paths, nothing to do; for your review**): **protocol v83** is taken: Summon
+  Boat and Scuttle Boat cast; the events `GameEvent::CastFailed { player, hero, spell, reason }`
+  (a charged failure, `CastFailure`: `Chance`, `NoBoat`, `Target`; after `SpellCast`, before the
+  points' `HeroChanged`), `AdventureEvent::BoatSummoned { boat, from, to, facing }` (each end
+  `None` where the viewer does not see heroes there), `BoatCreated { tile, boat_type }`,
+  `BoatScuttled { tile, boat }`; `SpellReject::NoWater`, `OutOfWindow`, `NoBoat` (`NotBuilt` now
+  Dimension Door's alone); mapped both ways, the fold moves, adds and drops the empty boats; the
+  tests' lists (164 rejections, 55 kinds of event, a fold test of the boats). No replay, hash or
+  record literal moved. T143b (Dimension Door) needs no new event (`HeroTeleported`, `CastFailed`).
+
 - 2026-11-25 (the town lane, E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to
   do now**): increment 6's protocol additions, `cross-lane` in your paths at T58a to T59b (design
   note `docs/epics/E09-design.md` §115): `MarketWindow`'s place (a map object or a town) with its

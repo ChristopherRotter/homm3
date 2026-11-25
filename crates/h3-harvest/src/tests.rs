@@ -121,6 +121,7 @@ pub(crate) fn inputs() -> Inputs {
         },
         hero_tables: hero_tables(),
         artifact_tables: artifact_tables(),
+        rmg: rmg::Tables::default(),
     }
 }
 

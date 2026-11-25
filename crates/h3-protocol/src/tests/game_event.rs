@@ -365,6 +365,27 @@ fn adventure_back(e: w::AdventureEvent, alone: Viewers) -> K {
                 doors: spells.doors,
             },
         },
+        A::BoatSummoned {
+            boat,
+            from,
+            to,
+            facing,
+        } => K::BoatSummoned {
+            boat,
+            from: from.map(pos_back),
+            to: to.map(pos_back),
+            facing,
+            seen_from: seen(from, alone),
+            seen_to: seen(to, alone),
+        },
+        A::BoatCreated { tile, boat_type } => K::BoatCreated {
+            tile: pos_back(tile),
+            boat_type,
+        },
+        A::BoatScuttled { tile, boat } => K::BoatScuttled {
+            tile: pos_back(tile),
+            boat,
+        },
         A::BonusChanged { hero, morale, luck } => K::BonusChanged {
             hero: id(hero),
             morale,
@@ -989,6 +1010,21 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             mastery,
             cost,
         },
+        G::CastFailed {
+            player,
+            hero,
+            spell,
+            reason,
+        } => GameEvent::CastFailed {
+            player: p(player),
+            hero: id(hero),
+            spell: Handle::from_raw(spell),
+            reason: match reason {
+                w::CastFailure::Chance => h3_adventure::CastFailure::Chance,
+                w::CastFailure::NoBoat => h3_adventure::CastFailure::NoBoat,
+                w::CastFailure::Target => h3_adventure::CastFailure::Target,
+            },
+        },
         G::ThievesGuildSeen { player, level } => GameEvent::ThievesGuildSeen {
             player: p(player),
             level,
@@ -1482,6 +1518,22 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             mastery: 2,
             cost: 15,
         },
+    ];
+    // E08 T143a (v83): a charged failure of each reason, player 0's alone.
+    events.extend(
+        [
+            h3_adventure::CastFailure::Chance,
+            h3_adventure::CastFailure::NoBoat,
+            h3_adventure::CastFailure::Target,
+        ]
+        .map(|reason| GameEvent::CastFailed {
+            player: P0,
+            hero,
+            spell: Handle::from_raw(0),
+            reason,
+        }),
+    );
+    events.extend([
         // E09 T39b2 (v74): a Den of Thieves' guild, player 0's alone, a part of each kind.
         GameEvent::ThievesGuildSeen {
             player: P0,
@@ -1600,7 +1652,7 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             town: TownId::new(1),
             event: 4,
         },
-    ];
+    ]);
     events.extend(
         [
             BattleResult::Victory(BattleSide::Attacker),
@@ -1681,6 +1733,14 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         hero,
         from,
         to,
+        seen_from,
+        seen_to,
+    };
+    let summon = |from, to, seen_from, seen_to| K::BoatSummoned {
+        boat: 1,
+        from,
+        to,
+        facing: 6,
         seen_from,
         seen_to,
     };
@@ -1892,6 +1952,16 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             to: Handle::from_raw(41),
         },
         K::KindKnown { object_type: ty },
+        // E08 T143a (v83): a summoned boat seen at both ends by both, by player 0 at one end
+        // only; a made boat; a sunk one.
+        summon(Some(at), Some(next), seen_by, seen_by),
+        summon(Some(at), Some(next), only_p1, seen_by),
+        summon(Some(at), Some(next), seen_by, only_p1),
+        K::BoatCreated {
+            tile: next,
+            boat_type: 0,
+        },
+        K::BoatScuttled { tile: at, boat: 1 },
     ];
     events.extend(adventure.map(|kind| GameEvent::Adventure(AdventureEvent { kind, seen_by })));
     events
@@ -1906,8 +1976,8 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
     // `HeroHired`, `HiredPartSeen`; T39a: `TavernOpened`; T39b2: `ThievesGuildSeen`,
     // `GuildPartSeen`; E08 T133b: `MarketOpened`; T134a: `AltarOpened`; T134b1:
     // `HillFortOpened`; T141a: `PrisonerFreed`, `PrisonerPartSeen`, `PrisonFull`,
-    // `PrisonEmptied`; T142a: `SpellCast`).
-    assert_eq!(distinct.len(), 54, "{distinct:?}");
+    // `PrisonEmptied`; T142a: `SpellCast`; T143a: `CastFailed`).
+    assert_eq!(distinct.len(), 55, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);

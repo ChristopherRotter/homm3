@@ -3,10 +3,13 @@
 //! each refusal changing nothing, the cost at the mastery on the hero's ground spent after the
 //! adventure's effect, and the events. Batch E15's rows as sources: E15-4 (Cursed Ground and the
 //! anti-magic garrison refuse free), E15-5 (Magic Plains casts at Expert), E15-11 (a re-cast).
+//! Since E08 T143a Summon Boat and Scuttle Boat (ADV-SPL-003, ADV-SPL-004): their chance drawn
+//! from the caster's player's stream, a charged failure told as `CastFailed`, a refusal drawing
+//! nothing.
 
 use h3_adventure::{
-    AdventureEvent, AdventureEventKind, AdventureSpell, AdventureSpellDef, CastError, DaySpells,
-    Holds, ObjectSetup, Scenery, SpellParams, TileMask, Viewers,
+    AdventureEvent, AdventureEventKind, AdventureSpell, AdventureSpellDef, BoatSetup, CastError,
+    CastFailure, DaySpells, Holds, ObjectSetup, Scenery, SpellParams, TileMask, Viewers,
 };
 use h3_content::SpellId;
 use h3_heroes::HeroChange;
@@ -20,9 +23,24 @@ const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
 const HERO: HeroId = HeroId::new(0);
 
-/// The core of [`core_pack`] with a level-5 air spell of the adventure category, `t:door`.
+/// The core of [`core_pack`] with a level-5 air spell of the adventure category, `t:door`, and
+/// since E08 T143a two of level 1 and 2 with the original's chance by mastery, `t:summon` and
+/// `t:scuttle`.
 fn cast_core() -> Ruleset {
     let mut pack = core_pack(false);
+    for (k, level) in [("t:summon", 1), ("t:scuttle", 2)] {
+        pack.spells.push(SpellDef {
+            key: key(k),
+            name: "Boat".into(),
+            category: SpellCategory::Adventure,
+            level,
+            schools: vec![key("t:air")],
+            cost: [8, 7, 7, 7],
+            power: 0,
+            effect: [50, 50, 75, 100],
+            granted_by_name_only: false,
+        });
+    }
     pack.spells.push(SpellDef {
         key: key("t:door"),
         name: "Door".into(),
@@ -38,8 +56,9 @@ fn cast_core() -> Ruleset {
 }
 
 /// The test rules with the casts' content: `t:gate` (an adventure spell of air, level 3, 5 or 4
-/// points) acts as Fly and `t:door` as Dimension Door; two grounds, `t:cursed_ground` (no spell
-/// above level 1) and `t:plains_ground` (air at Expert).
+/// points) acts as Fly, `t:door` as Dimension Door, `t:summon` as Summon Boat and `t:scuttle` as
+/// Scuttle Boat; two grounds, `t:cursed_ground` (no spell above level 1) and `t:plains_ground`
+/// (air at Expert).
 fn cast_rules() -> GameRuleset {
     let core = Arc::new(cast_core());
     let mut pack = adventure_pack(vec![88, 25], 2);
@@ -51,6 +70,14 @@ fn cast_rules() -> GameRuleset {
         AdventureSpellDef {
             spell: key("t:door"),
             effect: AdventureSpell::DimensionDoor,
+        },
+        AdventureSpellDef {
+            spell: key("t:summon"),
+            effect: AdventureSpell::SummonBoat,
+        },
+        AdventureSpellDef {
+            spell: key("t:scuttle"),
+            effect: AdventureSpell::ScuttleBoat,
         },
     ];
     pack.params.as_mut().unwrap().spells = Some(SpellParams {
@@ -140,6 +167,218 @@ fn cast(rules: &GameRuleset, k: &str, target: Option<Pos>) -> GameCommand {
 
 fn mana(state: &GameState) -> u16 {
     state.heroes()[0].mana
+}
+
+/// [`game`]'s map with the sea (terrain 2) on (1, 0), (1, 1), (0, 1) and (3, 0), a nobody's boat
+/// on (3, 0); red's hero 0 on (0, 0) knows the two boat spells (at None: a chance of 50) with 200
+/// points, in a game of `seed`. Both players explore the whole 4 × 4 map.
+fn sea_game(rules: &GameRuleset, seed: u64) -> GameState {
+    let mut setup = setup();
+    for (x, y) in [(1, 0), (1, 1), (0, 1), (3, 0)] {
+        setup.map.tiles[y * 4 + x].terrain = TerrainId::from_raw(2);
+    }
+    setup.map.boats = vec![BoatSetup {
+        tile: Pos::new(3, 0, 0),
+        kind: 0,
+    }];
+    let spells = ["t:summon", "t:scuttle"].map(|k| spell(rules, k));
+    setup.heroes[0].details.spells = Some(spells.to_vec());
+    let mut state = GameState::new(rules, &setup, seed).unwrap();
+    let points = HeroChange::SetSpellPoints(200);
+    state.change_hero(rules.core(), HERO, None, points, &mut NoopSink);
+    state
+}
+
+/// Red casts Summon Boat until one cast's draw fails and one's passes: each cast takes one draw of
+/// 1 to 100 from red's stream against the chance of 50, tells `SpellCast` for 8 points, then
+/// `effect`'s events for a pass (given the state before) or `CastFailed` for a failure, then the
+/// points; `pass` checks the state after a pass. Every cast spends its points.
+fn summon_until_both(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    effect: impl Fn(&GameState) -> Vec<GameEvent>,
+    pass: impl Fn(&GameState),
+) {
+    let spell = spell(rules, "t:summon");
+    let (mut passed, mut failed) = (false, false);
+    while !(passed && failed) {
+        let mut probe = state.stream(RED);
+        let fails = probe.range_inclusive(1, 100) > 50;
+        let points = mana(state);
+        let mut expected = vec![GameEvent::SpellCast {
+            player: RED,
+            hero: HERO,
+            spell,
+            mastery: 0,
+            cost: 8,
+        }];
+        if fails {
+            expected.push(GameEvent::CastFailed {
+                player: RED,
+                hero: HERO,
+                spell,
+                reason: CastFailure::Chance,
+            });
+        } else {
+            expected.extend(effect(state));
+        }
+        expected.push(GameEvent::HeroChanged {
+            player: RED,
+            hero: HERO,
+            change: HeroChange::SetSpellPoints(points - 8),
+        });
+        let events = play(state, rules, RED, cast(rules, "t:summon", None)).unwrap();
+        assert_eq!(events, expected);
+        assert_eq!(
+            state.stream(RED),
+            probe,
+            "one draw from the caster's stream"
+        );
+        if !fails {
+            pass(state);
+        }
+        (passed, failed) = (passed || !fails, failed || fails);
+    }
+}
+
+// covers: GAM-SPL-001, ADV-SPL-003
+#[test]
+fn summon_boat_draws_its_chance_from_the_caster_s_stream_and_a_failure_is_charged() {
+    // The nobody's boat comes beside the hero, onto the first free water from up, clockwise:
+    // (1, 0), then (1, 1) while it lies on (1, 0); a failed draw is charged (GENRLTXT 337).
+    let rules = cast_rules();
+    let mut state = sea_game(&rules, 7);
+    let both = Viewers::NONE.with(RED).with(BLUE);
+    let to = |state: &GameState| {
+        if state.adventure().boat(0).unwrap().tile == Pos::new(1, 0, 0) {
+            Pos::new(1, 1, 0)
+        } else {
+            Pos::new(1, 0, 0)
+        }
+    };
+    let effect = |state: &GameState| {
+        vec![GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::BoatSummoned {
+                boat: 0,
+                from: Some(state.adventure().boat(0).unwrap().tile),
+                to: Some(to(state)),
+                facing: 2,
+                seen_from: both,
+                seen_to: both,
+            },
+            seen_by: both,
+        })]
+    };
+    let pass = |state: &GameState| {
+        let at = state.adventure().boat(0).unwrap().tile;
+        assert!(at == Pos::new(1, 0, 0) || at == Pos::new(1, 1, 0));
+        assert!(state.adventure().is_empty_boat(at));
+    };
+    summon_until_both(&mut state, &rules, effect, pass);
+    // Seen by both players as told: a projection keeps the ends each sees.
+    let blue = Viewers::NONE.with(BLUE);
+    let summoned = effect(&state).remove(0);
+    let at = state.adventure().boat(0).unwrap().tile;
+    assert_eq!(
+        project(&summoned, Viewer::Player(BLUE)),
+        Some(GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::BoatSummoned {
+                boat: 0,
+                from: Some(at),
+                to: Some(to(&state)),
+                facing: 2,
+                seen_from: blue,
+                seen_to: blue,
+            },
+            seen_by: blue,
+        }))
+    );
+}
+
+// covers: GAM-SPL-001, ADV-SPL-004
+#[test]
+fn scuttle_boat_draws_its_chance_and_a_refusal_draws_nothing() {
+    // A target without an empty boat is refused, free, drawing nothing; the boat's tile takes
+    // the draw: failed, charged (GENRLTXT 338), the boat kept; passed, the boat sunk, told to
+    // both. The game's seed is the first whose red stream fails, then passes, a chance of 50.
+    let rules = cast_rules();
+    let tile = Pos::new(3, 0, 0);
+    let seed = (0..)
+        .find(|&seed| {
+            let mut draws = sea_game(&rules, seed).stream(RED);
+            draws.range_inclusive(1, 100) > 50 && draws.range_inclusive(1, 100) <= 50
+        })
+        .unwrap();
+    let mut state = sea_game(&rules, seed);
+    let before = (state.state_hash(), state.stream(RED));
+    assert_eq!(
+        play(
+            &mut state,
+            &rules,
+            RED,
+            cast(&rules, "t:scuttle", Some(Pos::new(1, 0, 0)))
+        ),
+        Err(GameCommandError::Cast(MapCastError::Adventure(
+            CastError::NoBoat
+        )))
+    );
+    assert_eq!((state.state_hash(), state.stream(RED)), before);
+    let scuttle = spell(&rules, "t:scuttle");
+    let cast_on = |state: &mut GameState| {
+        play(state, &rules, RED, cast(&rules, "t:scuttle", Some(tile))).unwrap()
+    };
+    let told = |middle: GameEvent, left: u16| {
+        vec![
+            GameEvent::SpellCast {
+                player: RED,
+                hero: HERO,
+                spell: scuttle,
+                mastery: 0,
+                cost: 8,
+            },
+            middle,
+            GameEvent::HeroChanged {
+                player: RED,
+                hero: HERO,
+                change: HeroChange::SetSpellPoints(left),
+            },
+        ]
+    };
+    let failed = GameEvent::CastFailed {
+        player: RED,
+        hero: HERO,
+        spell: scuttle,
+        reason: CastFailure::Chance,
+    };
+    assert_eq!(cast_on(&mut state), told(failed, 192));
+    assert!(state.adventure().is_empty_boat(tile));
+    // The caster's owner alone is told the failure.
+    assert_eq!(project(&failed, Viewer::Player(RED)), Some(failed));
+    assert_eq!(project(&failed, Viewer::Player(BLUE)), None);
+    let sunk = GameEvent::Adventure(AdventureEvent {
+        kind: AdventureEventKind::BoatScuttled { tile, boat: 0 },
+        seen_by: Viewers::NONE.with(RED).with(BLUE),
+    });
+    assert_eq!(cast_on(&mut state), told(sunk, 184));
+    assert!(state.adventure().boat(0).unwrap().gone);
+    assert!(!state.adventure().is_empty_boat(tile));
+    // Blue sees the boat go; a sunk boat is no target.
+    let seen = Some(GameEvent::Adventure(AdventureEvent {
+        kind: AdventureEventKind::BoatScuttled { tile, boat: 0 },
+        seen_by: Viewers::NONE.with(BLUE),
+    }));
+    assert_eq!(project(&sunk, Viewer::Player(BLUE)), seen);
+    assert_eq!(
+        play(
+            &mut state,
+            &rules,
+            RED,
+            cast(&rules, "t:scuttle", Some(tile))
+        ),
+        Err(GameCommandError::Cast(MapCastError::Adventure(
+            CastError::NoBoat
+        )))
+    );
 }
 
 // covers: GAM-SPL-001, ADV-SPL-001, ADV-SPL-005
@@ -378,8 +617,8 @@ fn the_cast_s_errors_explain_themselves() {
             "the cast would not raise the hero's level",
         ),
         (
-            MapCastError::Adventure(CastError::NotBuilt(AdventureSpell::SummonBoat)),
-            "`summon_boat` is not cast on the map yet",
+            MapCastError::Adventure(CastError::NotBuilt(AdventureSpell::DimensionDoor)),
+            "`dimension_door` is not cast on the map yet",
         ),
     ];
     for (error, text) in cases {

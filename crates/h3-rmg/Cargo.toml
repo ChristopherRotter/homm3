@@ -7,9 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
-# `arch.toml` allows the kernel and the core content (ADR-0029 point 1); each comes with the first
-# code that reads it (E14 increment 2's T2b and T2c).
+# `arch.toml` allows the kernel and the core content (ADR-0029 point 1).
 [dependencies]
+h3-content.workspace = true
+h3-kernel.workspace = true
 
 [lints]
 workspace = true

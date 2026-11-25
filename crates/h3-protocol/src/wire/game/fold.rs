@@ -43,7 +43,7 @@ use crate::wire::WireU64;
 const ONE_TILE: u64 = 1;
 
 /// A built boat's facing, the map's boats' (`h3_adventure::AdventureEventKind::BoatBuilt`,
-/// ADV-SHY-003).
+/// ADV-SHY-003; a made one's, `BoatCreated`, ADV-SPL-003).
 const BUILT_FACING: u8 = 2;
 
 /// The columns and rows of an object's masks ([`Object::blocked`]).
@@ -419,6 +419,8 @@ impl GameObservation {
             // A cast on the map (E08 T142a): its spell points come as the `HeroChanged` after it,
             // its day spells as the command's `DaySpellsChanged`.
             GameEvent::SpellCast { .. } => {}
+            // A charged failure (E08 T143a): the client's message; its points come as above.
+            GameEvent::CastFailed { .. } => {}
             // A Den of Thieves' Thieves' Guild (E09 T39b2): a snapshot, not in the observation (a
             // client makes it with `ThievesGuild::see`).
             GameEvent::ThievesGuildSeen { .. } | GameEvent::GuildPartSeen { .. } => {}
@@ -710,6 +712,33 @@ impl GameObservation {
                 if let Some(own) = self.own_mut(hero) {
                     own.spells = spells;
                 }
+            }
+            // The boat spells (v83, E08 T143a): a summoned boat leaves the tile the viewer saw it
+            // on and lies where it sees it now; a made one as a built one; a sunk one goes.
+            AdventureEvent::BoatSummoned {
+                boat,
+                from,
+                to,
+                facing,
+            } => {
+                if let Some(from) = from {
+                    self.adventure.boats.retain(|empty| empty.tile != from);
+                }
+                if let Some(to) = to {
+                    self.adventure.add_boat(Boat {
+                        tile: to,
+                        kind: boat,
+                        facing,
+                    });
+                }
+            }
+            AdventureEvent::BoatCreated { tile, boat_type } => self.adventure.add_boat(Boat {
+                tile,
+                kind: boat_type,
+                facing: BUILT_FACING,
+            }),
+            AdventureEvent::BoatScuttled { tile, boat: _ } => {
+                self.adventure.boats.retain(|empty| empty.tile != tile);
             }
             // Then its battle bonuses and timed marks (v57, E08 T115a): the marks dropped, the
             // sums, the marks gained, each kept sorted.

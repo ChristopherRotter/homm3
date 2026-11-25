@@ -25,7 +25,7 @@ const USAGE: &str = "\
 usage: cargo xtask <command> [options]
 
 commands:
-  verify [--quick] [--skip <step>]... [--scope <lane>] [--summary]
+  verify [--quick] [--skip <step>]... [--only <step>[,<step>...]] [--scope <lane>] [--summary]
                                         run every gate (see docs/05-testing.md)
   check-arch                            crate graph + logic-crate purity (arch.toml)
   check-rules                           rule catalog + rule:/covers: traceability
@@ -50,6 +50,10 @@ skipped, 1 when a step failed, 0 only for a complete green run).
 
 `--scope <lane>` is a lane's fast local loop: lint, test and cover the lane's crates, run its own
 gates and `check-lane`, skip shared-only gates. A scoped run never counts as green either.
+
+`--only <step>[,<step>...]` runs only the named gates, in the verify's order, and exits 0 when
+they pass: a part of the verify, green only together with the rest. CI runs the full verify as
+parallel jobs whose `--only` lists together name every gate once. Not together with `--skip`.
 
 `--summary` prints one line per gate plus the end of the first failure's output and writes the
 full output to `<target>/verify/verify.log`.

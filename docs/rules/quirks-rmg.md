@@ -276,7 +276,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Sources: original data (`rmg.txt`, both archives; survey §3.1)
 - Flag: `quirk.content.rmg_8xm8_zone_ids` (the pack keeps the values as read and an override gated by the flag, ADR-0007 amendment E04b T8e)
 - Defaults: faithful = on, fixed = off
-- Regression test: when the templates are harvested (increment 2)
+- Regression test: `h3-pack-rmg`'s `eight_xm8s_zone_ids_follow_the_flag` (the packs' rmg part in `faithful` and `strict-fixed`, AB's tables and SoD's) and its `original_data` check (`--with-original-data`: `strict-fixed` differs from the text tables by these six ids only); the override is the gap-fill's `data_quirks.rmg_zone_ids`, harvested into `packs/ab/rmg.toml` (E14 T2b, 2026-11-25)
 - Decided by / date: the user, 2026-11-24 (T1c2); original data, confirmed
 
 ### RMG-QUIRK-23 — A start zone without a colour town takes a neutral main town

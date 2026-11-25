@@ -285,6 +285,25 @@ pub struct DataQuirks {
     /// Hero classes whose level-up intervals are not their group's (E08 T26b).
     #[serde(default)]
     pub class_intervals: Vec<ClassIntervalsFix>,
+    /// Template zone ids a generator table gives as decimals (E14 T2b; RMG-QUIRK-22, 8XM8's).
+    #[serde(default)]
+    pub rmg_zone_ids: Vec<RmgZoneIdsFix>,
+}
+
+/// A template of `rmg.txt` whose connection rows give their first zone as a decimal, which
+/// `c_atoi` cuts to its integer part (RMG-QUIRK-22): the fixed first zones, one per such row in row
+/// order, for an override of the rmg part gated by the quirk's flag (`h3-harvest`'s `rmg`).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RmgZoneIdsFix {
+    /// The quirk's flag (`quirk.content.<name>`).
+    pub flag: String,
+    /// The quirk's id, for the override's comment.
+    pub quirk: String,
+    /// The template, by name (it must be in AB's table once).
+    pub template: String,
+    /// The fixed first zone of each such row.
+    pub first_zones: Vec<i32>,
 }
 
 /// A hero class the executable leaves on the other group's intervals (ADV-QUIRK-10: the

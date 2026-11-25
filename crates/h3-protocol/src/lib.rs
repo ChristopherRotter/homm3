@@ -257,7 +257,12 @@ pub mod wire;
 /// refusals `GameReject::Cast` (`CastReject`, the spell's own as `SpellReject`); the events
 /// `GameEvent::SpellCast` and `AdventureEvent::DaySpellsChanged`; the own hero's `spells`
 /// (`DaySpells`: Fly's and Water Walk's levels, the day's Dimension Doors).
-pub const PROTOCOL_VERSION: u32 = 82;
+/// v83 (E08 T143a, the adventure lane's, `cross-lane`; increment 15's design note §10.1, §10.2,
+/// §16): Summon Boat and Scuttle Boat cast; `GameEvent::CastFailed` (a charged failure, its
+/// `CastFailure`), `AdventureEvent::BoatSummoned` (a summoned boat's two tiles, each `None` where
+/// the viewer does not see heroes), `BoatCreated`, `BoatScuttled`; `SpellReject::NoWater`,
+/// `OutOfWindow`, `NoBoat` (`NotBuilt` for Dimension Door alone).
+pub const PROTOCOL_VERSION: u32 = 83;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

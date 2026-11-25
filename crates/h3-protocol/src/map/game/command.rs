@@ -710,6 +710,9 @@ const fn cast_reject(error: MapCastError) -> CastReject {
                 CastError::InBoat => SpellReject::InBoat {},
                 CastError::AlreadyOn => SpellReject::AlreadyOn {},
                 CastError::NotHigher => SpellReject::NotHigher {},
+                CastError::NoWater => SpellReject::NoWater {},
+                CastError::OutOfWindow => SpellReject::OutOfWindow {},
+                CastError::NoBoat => SpellReject::NoBoat {},
                 CastError::NotBuilt(effect) => SpellReject::NotBuilt {
                     effect: effect.code(),
                 },

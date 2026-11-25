@@ -1,11 +1,12 @@
 //! A cast on the adventure map (GAM-SPL-001, ADV-SPL-001; E08 T142a, increment 15's design note
 //! §14, ADR-0017 point 4): the game's checks in the original's order, the adventure's half
-//! ([`h3_adventure::AdventureState::cast`]), then the spell points. The game holds what the
+//! ([`h3_adventure::AdventureState::apply_cast`], its draws from the caster's player's stream
+//! since E08 T143a), then the spell points. The game holds what the
 //! adventure lacks: the hero's details (its spells, masteries and points) and the battle part's
 //! battlefields, whose special ground under the hero raises a mastery or limits a spell's level
 //! (ADR-0015 point 2, ADR-0013 point 17).
 
-use h3_adventure::{AdventureSpell, Pos};
+use h3_adventure::{Cast, Pos};
 use h3_content::SpellId;
 use h3_content_battle::Battlefield;
 use h3_contracts::{HeroId, PlayerId};
@@ -13,14 +14,13 @@ use h3_heroes::{HeroChange, SchoolRaise, can_cast_on_map, map_spell_cost, spell_
 
 use super::GameState;
 use crate::GameRuleset;
-use crate::command::{GameCommandError, GameEvent, MapCastError, Sink};
+use crate::command::{AdventureSink, GameCommandError, GameEvent, MapCastError, Sink};
 
-/// A cast the game accepted (GAM-SPL-001): the spell's behaviour, the mastery on the hero's
-/// ground and the spell points it costs.
+/// A cast the game accepted (GAM-SPL-001): the adventure's cast (the spell's behaviour, the
+/// mastery on the hero's ground, the target) and the spell points it costs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct MapCast {
-    pub(crate) effect: AdventureSpell,
-    pub(crate) mastery: u8,
+    pub(crate) cast: Cast,
     pub(crate) cost: u16,
 }
 
@@ -94,23 +94,27 @@ impl GameState {
             .ok()
             .and_then(|masteries| masteries.into_iter().find(|&(s, _)| s == spell))
             .map_or(0, |(_, mastery)| mastery);
-        self.adventure
-            .check_cast(core, &self.heroes, (player, hero), effect, mastery)
-            .map_err(MapCastError::Adventure)?;
-        Ok(MapCast {
+        let cast = Cast {
+            spell,
             effect,
             mastery,
-            cost,
-        })
+            target,
+        };
+        self.adventure
+            .check_cast((core, part), &self.heroes, (player, hero), cast)
+            .map_err(MapCastError::Adventure)?;
+        Ok(MapCast { cast, cost })
     }
 
     /// `player`'s cast of `spell` by its hero `hero` at `target` (GAM-SPL-001; increment 15's
-    /// design note §14), checked whole first ([`Self::check_cast`]): the adventure makes its
-    /// effect ([`h3_adventure::AdventureState::apply_cast`]), the game tells
-    /// [`GameEvent::SpellCast`] to the owner and sets the hero's spell points to the points less
-    /// the cost, at least 0 (`HeroChange::SetSpellPoints`, its `HeroChanged`; the original's
-    /// `hero_spend_mana`). The changed day spells are told after the command
-    /// (`DaySpellsChanged`). No draw.
+    /// design note §14), checked whole first ([`Self::check_cast`]): the game tells
+    /// [`GameEvent::SpellCast`] to the owner, the adventure makes its effect
+    /// ([`h3_adventure::AdventureState::apply_cast`]: since E08 T143a Summon Boat's and Scuttle
+    /// Boat's chance drawn from `player`'s stream, ADR-0017 point 4, and their boats' events), a
+    /// charged failure is told as [`GameEvent::CastFailed`], and the hero's spell points are set
+    /// to the points less the cost, at least 0, in every accepted case (`HeroChange::
+    /// SetSpellPoints`, its `HeroChanged`; the original's `hero_spend_mana`). The changed day
+    /// spells are told after the command (`DaySpellsChanged`).
     ///
     /// # Errors
     ///
@@ -126,19 +130,35 @@ impl GameState {
         let cast = self
             .check_cast(rules, player, (hero, spell, target))
             .map_err(GameCommandError::Cast)?;
-        let core = rules.core();
-        self.adventure.apply_cast(hero, cast.effect, cast.mastery);
+        let (core, part) = (rules.core(), rules.adventure());
+        let MapCast { cast, cost } = cast;
         sink.emit(GameEvent::SpellCast {
             player,
             hero,
             spell,
             mastery: cast.mastery,
-            cost: cast.cost,
+            cost,
         });
+        let (adventure, _, draws) = self.adventure_for(player);
+        let made = adventure.apply_cast(
+            (core, part),
+            (player, hero),
+            cast,
+            draws,
+            &mut AdventureSink(&mut *sink),
+        );
+        if let Err(reason) = made {
+            sink.emit(GameEvent::CastFailed {
+                player,
+                hero,
+                spell,
+                reason,
+            });
+        }
         let points = self
             .heroes
             .get(usize::from(hero.raw()))
-            .map_or(0, |details| details.mana.saturating_sub(cast.cost));
+            .map_or(0, |details| details.mana.saturating_sub(cost));
         self.change_hero(
             core,
             hero,
