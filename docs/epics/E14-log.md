@@ -344,7 +344,13 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   `fixes = "quirk.content.rmg_8xm8_zone_ids"` into `packs/ab/rmg.toml` (zones [6, 37], [6, 38],
   [7, 41], [7, 42], [8, 47], [8, 48]). The flag at registry position 51 (`RMG_8XM8_ZONE_IDS`), in
   the harvested profiles (`faithful` on, `strict-fixed` off): the original packs' core hash moved,
-  so the golden replays and the tests pinning it were re-hashed by the worker (only hash lines).
+  so the golden replays and the tests pinning it were re-hashed by the worker (only hash lines):
+  `base:faithful`'s core hash 0x0ee6066a4c802530 → 0x52a9516f14766fb8 (`strict-fixed`'s, the flag
+  off, unchanged; the adventure and town parts' unchanged): the 115 `base:faithful` adventure
+  replays' `ruleset_hash` headers (their checkpoints and final hashes reproduce), `h3-server`'s
+  `record.rs` expectation, the two bot reports' `engine` line (regenerated in release by the
+  runner, the same bytes). `python/records/ceiling/e25-structure-1-side-4.json` keeps the old
+  hash (an E25 run's record; no test reads it).
 - **The original-data check** (`crates/h3-pack-rmg/examples/original_data.rs`, run by
   `--with-original-data`): its own reader of the six text tables (survey §3.1's rules) against the
   compiled part, AB's (`base`, `ab`) and SoD's: equal in `faithful`; `strict-fixed` differs by
