@@ -104,7 +104,7 @@ type Case = (
 );
 
 #[rustfmt::skip]
-const CORPUS: [Case; 21] = {
+const CORPUS: [Case; 24] = {
     use MapSize::{ExtraLarge as XL, Large as L, Medium as M, Small as S};
     use Monsters::{Normal as Nm, Strong as St, Weak as Wk};
     use Water::{Islands as I, None as D, Normal as N};
@@ -130,6 +130,9 @@ const CORPUS: [Case; 21] = {
         ("xl2-4p-seed0", XL, 2, 4, 0, 0, 0, N, Nm, 0, "8XM12"),
         ("xl2-8p-t4-islands", XL, 2, 8, 4, 0, 0, I, St, 123_456_789, "8XM8"),
         ("m1-2p-t1", M, 1, 2, 1, 0, 0, N, Nm, 1_400_000_001, "3SB0b"),
+        ("s1-3p-2sm2i2", S, 1, 3, 0, 0, 0, N, Nm, 1_350_000_003, "2SM2i(2)"),
+        ("s1-2p-2sm0k", S, 1, 2, 0, 0, 0, N, Nm, 1_350_000_000, "2SM0k"),
+        ("s1-1p-c1-2sm0k", S, 1, 1, 0, 1, 0, N, Nm, 1_450_000_002, "2SM0k"),
     ]
 };
 
@@ -149,7 +152,7 @@ fn corpus_settings(case: usize) -> (&'static str, Settings, u32, &'static str) {
 }
 
 // covers: RMG-SET-006, RMG-TPL-005, RMG-TPL-007
-/// The 21 cases of the oracle's corpus draw the original's templates: the first `rand()` after
+/// The cases of the oracle's corpus draw the original's templates: the first `rand()` after
 /// `srand(seed)` (no water Random draws nothing before it) over the templates kept, in SoD's
 /// table, the only draw before step 1.
 #[test]

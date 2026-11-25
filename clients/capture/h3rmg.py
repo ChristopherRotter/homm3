@@ -19,20 +19,26 @@ only its digests and the choices that made it are kept (rmg/kept.txt).
       generation, for the memory-dependent draws; survey §2.6); --again generates a second map
       in the same game (the system options' Main Menu, then the same choices again); --phases
       (E14 T1b2) runs the phase oracle as well (xdd.dll's H3RMG, xdd.c's 10.): every draw of
-      the generation logged with its site, the cells dumped after each step, in <out>/clock
-      (rmg<g>.draws, rmg<g>-<step>.cells), and their digests printed.
+      the generation logged with its site, the cells dumped after each step, the memory record
+      (E14 T3a: the x87 control word, the zones as rmg_zone_generator_init finds them), in
+      <out>/clock (rmg<g>.draws, rmg<g>-<step>.cells, rmg<g>.memory), and their digests printed.
   h3rmg.py corpus [--only <id>,...] [--twice] [--again] [--phases] [--record] [--out <dir>]
       Each case of rmg/corpus.toml, against rmg/kept.txt: `ok` (as kept), `CHANGED`, `new`;
       --twice runs each case again from a fresh start, --again makes a second map in the same
       game, and either fails on a difference; --phases runs the phase oracle and compares the
       log's and the dumps' digests with rmg/phases.txt too; --record writes the kept lines (the
-      first map's; with --phases its phases' as well).
+      first map's; with --phases its phases' and step 2's zone bytes, rmg/zones.txt, as well).
   h3rmg.py phases [--only <id>,...] [--runs] [--out <dir>]
       The phase oracle's logs (a `corpus --phases` run's first maps) against survey §2.6: per
       phase, each site that drew, in how many cases and how often, marked `NOT IN §2.6` when
       the survey's row for that phase does not list it (its "any object made" sites count in
       every phase), and whether 0x532A5B draws in step 2. --runs prints each case's log per
       phase as its sites in order, a repeat of one site as `site×n`.
+  h3rmg.py memory [--only <id>,...] [--against <dir>] [--out <dir>]
+      The memory records of a `corpus --phases` run (E14 T3a; RMG-QUIRK-1): per case, run and
+      map the control word and step 2's zones (temporary or water, their set town types; above
+      0 the constructor draws 0x532A5B); --against another run's output names the zone fields
+      that differ there.
   h3rmg.py read [--out <dir>]
       Each case's first map in <out> read by h3_map's reader, imported and validated in a game
       of its players (h3-map's original-data check, `cargo run -p h3-map --example
@@ -310,8 +316,10 @@ def kept_line(ident, f):
 
 # -- the phase oracle (E14 T1b2; ORACLE.md, "The phase oracle") ----------------------------------
 PHASES = RMG / "phases.txt"
-# xdd.dll's hooks with H3RMG (xdd.c's 10.): rand's entry and 18 of the generator's calls.
-PHASE_HOOKS = 19
+# xdd.dll's hooks with H3RMG (xdd.c's 10.): rand's entry, 18 of the generator's calls and the
+# three calls of rmg_zone_generator_init (E14 T3a, the memory record).
+PHASE_HOOKS = 22
+ZONES = RMG / "zones.txt"
 # How long after the map's file the log may take to end (rmg_write_map's return).
 LOG_LIMIT = 30.0
 # Survey §2.6's sites by phase (the C library's rand calls of the generator's range and of the
@@ -391,10 +399,91 @@ def phase_facts(clock, g):
     if elsewhere:
         raise RuntimeError(f"{log}: {elsewhere} draws of other threads inside the generation")
     dumps = sorted((int(p.stem.split("-")[1]), p) for p in clock.glob(f"rmg{g}-*.cells"))
+    words, zones = read_memory(clock / f"rmg{g}.memory")
+    fields = [zone_fields(site, zone, generator) for site, _, zone, generator in zones
+              if site in STEP2_ZONES]
     return {"draws": sum(len(d) for _, d in phases),
             "log": hashlib.sha256(log.read_bytes()).hexdigest()[:16],
+            "steps": phase_digests(phases),
+            "cw": control_words(words),
+            "zones": fields,
+            "zones_digest": zones_digest(fields),
             "cells": [(k, hashlib.sha256(p.read_bytes()).hexdigest()[:12]) for k, p in dumps],
             "files": dict(dumps)}
+
+
+def phase_digests(phases):
+    """Per phase of the log (`phase_log`'s, in order): its name, its draws and the digest of its
+    draw lines as the log prints them ("<site> <value>\\n", the site in upper-case hex), so that
+    a port of steps 1 to k compares its draws without the later ones (E14 T3a)."""
+    out = []
+    for phase, draws in phases:
+        text = "".join(f"{site:X} {value}\n" for site, value in draws)
+        out.append((str(phase), len(draws), hashlib.sha256(text.encode()).hexdigest()[:12]))
+    return out
+
+
+def read_memory(path):
+    """A memory record (xdd.c's 10., E14 T3a): the x87 control word by phase ("seed", then each
+    step's number as text), and per call of rmg_zone_generator_init (0x5329E0) its site, the
+    step, the zone's 0xD4 bytes and the zone generator's first 0x44, as memory held them."""
+    words, zones, ending = {}, [], False
+    for line in path.read_text().splitlines():
+        word, *rest = line.split()
+        if word == "cw":
+            words[rest[0]] = int(rest[1], 16)
+        elif word == "zone":
+            zones.append((int(rest[0], 16), int(rest[1]), bytes.fromhex(rest[2]),
+                          bytes.fromhex(rest[3])))
+        elif word == "end":
+            ending = True
+    if not ending:
+        raise RuntimeError(f"{path}: no end line")
+    return words, zones
+
+
+def control_words(words):
+    """The control words as phases.txt's cw= gives them: one value when every phase saw it,
+    else each phase's."""
+    values = set(words.values())
+    if len(values) == 1:
+        return f"{values.pop():04X}"
+    return ",".join(f"{k}:{v:04X}" for k, v in words.items()) or "none"
+
+
+# Step 2's calls of rmg_zone_generator_init (rmg_level_zones_partition 0x53E050): the temporary
+# zone on the stack (per level that tests positions) and each water zone (operator new).
+STEP2_ZONES = {0x53E149: "temporary", 0x53E45C: "water"}
+
+
+def zone_fields(site, zone, generator):
+    """RMG-QUIRK-1's fields of a step 2 zone, which no code before the call writes (survey §2.2;
+    the ledger): the zone's +0x40 and the town types +0x41..+0x49 (the constructor's count:
+    `set`, the draw 0x532A5B when above 0), its position limits +0xC..+0x1B, +0x84 and +0x94,
+    and the zone generator's +8."""
+    towns = zone[0x40:0x4A]
+    return {"kind": STEP2_ZONES[site], "towns": towns.hex().upper(),
+            "set": sum(1 for b in towns[1:] if b), "limits": zone[0xC:0x1C].hex().upper(),
+            "m84": f"{zone[0x84]:02X}", "m94": f"{zone[0x94]:02X}",
+            "g8": generator[8:12].hex().upper()}
+
+
+def zone_text(f):
+    return (f"{f['kind']} set={f['set']} towns={f['towns']} limits={f['limits']} "
+            f"m84={f['m84']} m94={f['m94']} g8={f['g8']}")
+
+
+def zones_digest(fields):
+    """phases.txt's zones=: the digest of a case's zones.txt lines without their id."""
+    if not fields:
+        return "none"
+    text = "".join(f"{k} {zone_text(f)}\n" for k, f in enumerate(fields, 1))
+    return hashlib.sha256(text.encode()).hexdigest()[:12]
+
+
+def zone_lines(ident, p):
+    """A case's zones.txt lines: per step 2 zone in the call order, its number and fields."""
+    return [f"{ident} {k} {zone_text(f)}" for k, f in enumerate(p["zones"], 1)]
 
 
 # The cell bits no step-0 code sets (rmg_map_cell_init, rmg_map_cell_reset 0x530F10: they keep
@@ -446,9 +535,10 @@ def cells_differences(a, b):
     return found, memory
 
 
-def compared(first, other):
+def compared(first, other, fresh=True):
     """`other` against `first` (each a `facts`): "same", or what differs; and whether the
-    difference fails the comparison (only memory bits in the cells do not)."""
+    difference fails the comparison (only memory bits in the cells do not, nor in a second map
+    of the same game, not `fresh`, step 2's zone bytes when the log is the same)."""
     plain = [{k: v for k, v in f.items() if k != "phases"} for f in (first, other)]
     if plain[0] != plain[1] or ("phases" in first) != ("phases" in other):
         return f"DIFFERS ({kept_line('map', other)})", True
@@ -457,15 +547,24 @@ def compared(first, other):
     pa, pb = first["phases"], other["phases"]
     if (pa["draws"], pa["log"]) != (pb["draws"], pb["log"]):
         return f"DIFFERS (log: {pb['draws']} draws, {pb['log']})", True
+    note, failing = "", False
+    if pa["cw"] != pb["cw"]:
+        note, failing = f"; control word DIFFERS ({pb['cw']})", True
+    if pa["zones"] != pb["zones"]:
+        n = sum(1 for a, b in zip(pa["zones"], pb["zones"]) if a != b)
+        n += abs(len(pa["zones"]) - len(pb["zones"]))
+        note += f"; zone bytes {'DIFFER' if fresh else 'differ'} ({n} zones)"
+        failing |= fresh
     if pa["cells"] == pb["cells"]:
-        return "same", False
+        return "same" + note, failing
     if [k for k, _ in pa["cells"]] != [k for k, _ in pb["cells"]]:
         return "DIFFERS (other steps dumped)", True
-    groups, failing = [], False  # [steps, what differs] for runs of steps alike
+    groups = []  # [steps, what differs] for runs of steps alike
+    cells_fail = False
     for (k, da), (_, db) in zip(pa["cells"], pb["cells"]):
         found, memory = ({}, True) if da == db else cells_differences(pa["files"][k],
                                                                        pb["files"][k])
-        failing |= not memory
+        cells_fail |= not memory
         said = " ".join(f"{w} {n}" for w, n in sorted(found.items())) or "same"
         if groups and groups[-1][1] == said:
             groups[-1][0].append(k)
@@ -473,13 +572,15 @@ def compared(first, other):
             groups.append([[k], said])
     notes = "; ".join(f"{g[0][0]}" + (f"-{g[0][-1]}" if len(g[0]) > 1 else "") + f": {said}"
                       for g, said in ((g, g[1]) for g in groups))
-    what = "only memory bits" if not failing else "DIFFERS"
-    return f"map and log same, cells {what} (steps {notes})", failing
+    what = "only memory bits" if not cells_fail else "DIFFERS"
+    return f"map and log same, cells {what} (steps {notes}){note}", failing or cells_fail
 
 
 def phase_line(ident, p):
+    steps = ",".join(f"{k}:{n}:{d}" for k, n, d in p["steps"])
     cells = ",".join(f"{k}:{d}" for k, d in p["cells"])
-    return f"{ident} draws={p['draws']} log={p['log']} cells={cells}"
+    return (f"{ident} draws={p['draws']} log={p['log']} cw={p['cw']} zones={p['zones_digest']} "
+            f"steps={steps} cells={cells}")
 
 
 def read_phases():
@@ -488,6 +589,16 @@ def read_phases():
         for line in PHASES.read_text().splitlines():
             if line and not line.startswith("#"):
                 lines[line.split()[0]] = line
+    return lines
+
+
+def read_zones():
+    """zones.txt's lines by case."""
+    lines = {}
+    if ZONES.exists():
+        for line in ZONES.read_text().splitlines():
+            if line and not line.startswith("#"):
+                lines.setdefault(line.split()[0], []).append(line)
     return lines
 
 
@@ -520,6 +631,7 @@ def corpus_command(args):
     lines = dict(kept)
     kept_phases = read_phases()
     phase_lines = dict(kept_phases)
+    zones = read_zones()
     failed = 0
     for case in cases:
         ident = case["id"]
@@ -546,9 +658,10 @@ def corpus_command(args):
             verdict += "; phases " + ("ok" if kept_phases.get(ident) == phase else
                                       "CHANGED" if ident in kept_phases else "new")
             phase_lines[ident] = phase
+            zones[ident] = zone_lines(ident, runs[0][1]["phases"])
         failing = "CHANGED" in verdict
         for what, f in runs[1:]:
-            said, fails = compared(runs[0][1], f)
+            said, fails = compared(runs[0][1], f, fresh=what == "twice")
             verdict += f", {what} {said}"
             failing |= fails
         if failing:
@@ -566,9 +679,18 @@ def corpus_command(args):
             body = [phase_lines[i] for i in order if i in phase_lines]
             PHASES.write_text(
                 "# The phase oracle's digests (h3rmg.py corpus --phases --record; ORACLE.md, "
-                "\"The phase oracle\"):\n# the draws logged, the log's digest and each step's "
-                "cells' (step:digest; a step that never ran has none).\n"
+                "\"The phase oracle\"):\n# the draws logged, the log's digest, the x87 control "
+                "word, step 2's zone bytes' digest (zones.txt's lines),\n# per phase its draws "
+                "and their lines' digest (phase:draws:digest), each step's cells' (step:digest);\n"
+                "# a step that never ran has neither (E14 T3a).\n"
                 + "\n".join(body) + "\n")
+            body = [line for i in order for line in zones.get(i, [])]
+            ZONES.write_text(
+                "# Step 2's zone bytes as rmg_zone_generator_init 0x5329E0 finds them (h3rmg.py "
+                "corpus --phases --record; ORACLE.md,\n# \"The memory record\"; RMG-QUIRK-1): "
+                "per case and zone in the call order, the temporary zone (per level) or a\n"
+                "# water zone, its set town types, +0x40..+0x49, +0xC..+0x1B, +0x84, +0x94 and "
+                "its zone generator's +8, in hex.\n" + "\n".join(body) + "\n")
     return 1 if failed else 0
 
 
@@ -634,6 +756,71 @@ def phases_command(args):
     print(f"0x532A5B draws in step 2 in {len(step2)} of {len(logs)} cases"
           + (f": {', '.join(step2)}" if step2 else ""))
     print(f"{unlisted} (phase, site) pairs not in survey §2.6")
+    return 0
+
+
+def memory_of(out, only=None):
+    """The memory records of a `corpus --phases` run in `out`: {(case, run, generation): (the
+    control words, the step 2 zones' fields)}."""
+    found = {}
+    for path in sorted(out.glob("*/run*/clock/rmg*.memory")):
+        ident, run = path.parents[2].name, path.parents[1].name
+        if only and ident not in only:
+            continue
+        words, zones = read_memory(path)
+        found[(ident, run, int(path.stem[3:]))] = (
+            words, [zone_fields(site, z, g) for site, _, z, g in zones if site in STEP2_ZONES])
+    return found
+
+
+def zones_summary(fields):
+    """A case's step 2 zones in order, runs of alike kinds and counts as `kind set×n`."""
+    out, last, n = [], None, 0
+    for f in fields:
+        key = f"{f['kind']} set={f['set']}"
+        if key == last:
+            n += 1
+            continue
+        if last:
+            out.append(last + (f"×{n}" if n > 1 else ""))
+        last, n = key, 1
+    if last:
+        out.append(last + (f"×{n}" if n > 1 else ""))
+    return ", ".join(out) or "none"
+
+
+def memory_command(args):
+    """The memory records (E14 T3a): per case, run and generation the control word and step 2's
+    zones (their set town types: a draw of 0x532A5B when above 0); with --against another
+    `corpus --phases` output, which zone fields differ there."""
+    only = set(args.only.split(",")) if args.only else None
+    found = memory_of(Path(args.out or OUT), only)
+    if not found:
+        print(f"no memory records in {args.out or OUT} (run `corpus --phases` first)")
+        return 1
+    other = memory_of(Path(args.against), only) if args.against else {}
+    words = {}
+    drawing = 0
+    for (ident, run, g), (w, fields) in found.items():
+        for value in w.values():
+            words[value] = words.get(value, 0) + 1
+        drawing += sum(1 for f in fields if f["set"])
+        line = f"{ident} {run} map{g}: cw={control_words(w)}; {zones_summary(fields)}"
+        if args.against:
+            theirs = other.get((ident, run, g))
+            if theirs is None:
+                line += "; not in --against"
+            elif theirs[1] == fields:
+                line += "; zones same"
+            else:
+                keys = sorted({k for a, b in zip(fields, theirs[1]) for k in a if a[k] != b[k]})
+                count = "" if len(fields) == len(theirs[1]) else (
+                    f" {len(fields)} zones there {len(theirs[1])}")
+                line += f"; zones DIFFER ({', '.join(keys)}{count}): {zones_summary(theirs[1])}"
+        print(line)
+    print(f"{len(found)} records; control words " + ", ".join(
+        f"{v:04X} ({n})" for v, n in sorted(words.items())) + f"; {drawing} step 2 zones with a "
+        "set town type (0x532A5B drawn)")
     return 0
 
 
@@ -752,6 +939,10 @@ def main(argv):
     one.add_argument("--again", action="store_true")
     one.add_argument("--phases", action="store_true")
     one.add_argument("--out")
+    memory = sub.add_parser("memory")
+    memory.add_argument("--only")
+    memory.add_argument("--against")
+    memory.add_argument("--out")
     corpus = sub.add_parser("corpus")
     corpus.add_argument("--only")
     corpus.add_argument("--twice", action="store_true")
@@ -768,7 +959,8 @@ def main(argv):
     sub.add_parser("templates")
     args = p.parse_args(argv)
     return {"one": one_command, "corpus": corpus_command, "phases": phases_command,
-            "read": read_command, "templates": templates_command}[args.command](args)
+            "memory": memory_command, "read": read_command,
+            "templates": templates_command}[args.command](args)
 
 
 if __name__ == "__main__":

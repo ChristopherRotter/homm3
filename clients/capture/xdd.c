@@ -148,7 +148,15 @@
       words: its template's index in objects.txt's list (the generator's +0x24, 0x4C bytes each;
       -1 another), the template's type and subtype, x, y and z; the count of further places and
       per place three words: the cell's index, the place on it (from 3) and the object's index.
-      The ack's eighteenth field counts the hooks placed (19 with H3RMG). */
+      The generator's memory (E14 T3a; ORACLE.md, "The memory record") goes to
+      <H3CLOCK>\rmg<g>.memory, one line each: "cw seed <cw>" at that srand and "cw <k> <cw>" at
+      step k's first call, the x87 control word in hex (fnstcw; ADR-0029 point 4); and at each of
+      rmg_zone_generator_init's three calls (0x53BDA1 step 1's template zones, 0x53E149 step 2's
+      temporary zone on the stack, 0x53E45C step 2's water zones) before it runs, "zone <site>
+      <k> <zone> <generator>": the zone (its one argument) as its 0xD4 bytes and the zone
+      generator being built (this) as its first 0x44 bytes, in hex as memory holds them, the
+      bytes the constructor reads uninitialised (RMG-QUIRK-1) among them; last "end".
+      The ack's eighteenth field counts the hooks placed (22 with H3RMG). */
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1346,10 +1354,11 @@ static void date_of(unsigned long s, SYSTEMTIME *t)
 #define RMG_SEED 16
 #define RMG_GENERATE 17
 #define RMG_WRITE 18
+#define RMG_ZONE 19 /* a call of rmg_zone_generator_init: the memory record's zone line */
 struct rmg_hook {
     DWORD call;   /* the call instruction */
     DWORD target; /* what it calls */
-    int what;     /* a step 1 to 15, or RMG_SEED, RMG_GENERATE, RMG_WRITE */
+    int what;     /* a step 1 to 15, or RMG_SEED, RMG_GENERATE, RMG_WRITE, RMG_ZONE */
     int post;     /* called through rmg_thunk_call: rmg_post runs at its return */
 };
 
@@ -1372,6 +1381,9 @@ static const struct rmg_hook rmg_hooks[] = {
     {0x549C98, 0x548290u, 14, 0},             /* rmg_roads_lay */
     {0x549C9F, 0x549870u, 15, 0},             /* rmg_rivers_lay */
     {0x54C05B, 0x54ABF0u, RMG_WRITE, 1},      /* rmg_generate_and_write: rmg_write_map */
+    {0x53BDA1, 0x5329E0u, RMG_ZONE, 0},       /* rmg_zones_lay_out: a template zone's */
+    {0x53E149, 0x5329E0u, RMG_ZONE, 0},       /* rmg_level_zones_partition: the temporary */
+    {0x53E45C, 0x5329E0u, RMG_ZONE, 0},       /* rmg_level_zones_partition: a water zone's */
 };
 #define RMG_HOOKS (sizeof rmg_hooks / sizeof *rmg_hooks)
 /* rand's tail (0x617E70: the seed stored, then copied to eax), where rmg_rand_tail is entered. */
@@ -1386,6 +1398,7 @@ volatile LONG rmg_on;
 DWORD rmg_thread;
 volatile LONG rmg_elsewhere;
 static FILE *rmg_log;
+static FILE *rmg_memory; /* the memory record (E14 T3a) */
 static int rmg_generation;
 static int rmg_step = -1; /* the last step that ran: -1 none yet, 0 rmg_generate_map entered */
 static BYTE *rmg_gen;     /* the generator record (rmg_generate_map's this) */
@@ -1506,6 +1519,22 @@ static void rmg_dump(int step)
     free(index);
 }
 
+/* The thread's x87 control word (read, nothing changed). */
+static unsigned rmg_control_word(void)
+{
+    unsigned short cw;
+    __asm__ volatile("fnstcw %0" : "=m"(cw));
+    return cw;
+}
+
+/* `n` bytes at `p` in hex, as memory holds them. */
+static void rmg_hex(FILE *f, const BYTE *p, size_t n)
+{
+    size_t i;
+    for (i = 0; i < n; i++)
+        fprintf(f, "%02X", p[i]);
+}
+
 /* Before a hooked call (`back` its return address, `ecx` and `args` its this and stack
    arguments): the hook's work; returns the call's target. */
 __attribute__((used)) DWORD __cdecl rmg_pre(DWORD back, DWORD ecx, DWORD *args)
@@ -1527,6 +1556,12 @@ __attribute__((used)) DWORD __cdecl rmg_pre(DWORD back, DWORD ecx, DWORD *args)
             fclose(rmg_log);
         snprintf(path, sizeof path, "%s\\rmg%d.draws", rmg_dir, ++rmg_generation);
         rmg_log = fopen(path, "w");
+        if (rmg_memory)
+            fclose(rmg_memory);
+        snprintf(path, sizeof path, "%s\\rmg%d.memory", rmg_dir, rmg_generation);
+        rmg_memory = fopen(path, "w");
+        if (rmg_memory)
+            fprintf(rmg_memory, "cw seed %04X\n", rmg_control_word());
         if (rmg_log) {
             setvbuf(rmg_log, NULL, _IOFBF, 1 << 20);
             fprintf(rmg_log, "seed %lu\n", (unsigned long)args[0]);
@@ -1543,11 +1578,22 @@ __attribute__((used)) DWORD __cdecl rmg_pre(DWORD back, DWORD ecx, DWORD *args)
         fprintf(rmg_log, "generate\n");
     } else if (rmg_on && h->what == RMG_WRITE) {
         fprintf(rmg_log, "write\n");
+    } else if (h->what == RMG_ZONE) {
+        /* Read only: the zone may be the caller's stack (step 2's temporary zone). */
+        if (rmg_on && rmg_memory) {
+            fprintf(rmg_memory, "zone %lX %d ", (unsigned long)h->call, rmg_step);
+            rmg_hex(rmg_memory, (const BYTE *)args[0], 0xD4);
+            fputc(' ', rmg_memory);
+            rmg_hex(rmg_memory, (const BYTE *)ecx, 0x44);
+            fputc('\n', rmg_memory);
+        }
     } else if (rmg_on && rmg_gen && h->what != rmg_step) {
         rmg_dump(rmg_step);
         rmg_step = h->what;
         fprintf(rmg_log, "step %d\n", rmg_step);
         fflush(rmg_log);
+        if (rmg_memory)
+            fprintf(rmg_memory, "cw %d %04X\n", rmg_step, rmg_control_word());
     }
     return h->target;
 }
@@ -1567,6 +1613,12 @@ __attribute__((used)) DWORD __cdecl rmg_post(DWORD eax)
         fflush(rmg_log);
     } else if (rmg_on && h->what == RMG_WRITE) {
         InterlockedExchange(&rmg_on, 0);
+        /* The memory record first: the driver reads both once the log has its end. */
+        if (rmg_memory) {
+            fprintf(rmg_memory, "end\n");
+            fclose(rmg_memory);
+            rmg_memory = NULL;
+        }
         fprintf(rmg_log, "end %ld %ld\n", rmg_draws, (long)rmg_elsewhere);
         fclose(rmg_log);
         rmg_log = NULL;

@@ -1,7 +1,8 @@
 """Checks of h3rmg.py's phase oracle readers that need no game, no Wine and no display (E14
-T1b2): a log and two dumps written as xdd.c's section 10 writes them. From clients/capture/:
-`python3 -m unittest test_h3rmg`."""
+T1b2, T3a): a log, dumps and a memory record written as xdd.c's section 10 writes them. From
+clients/capture/: `python3 -m unittest test_h3rmg`."""
 
+import hashlib
 import struct
 import tempfile
 import unittest
@@ -65,6 +66,58 @@ class PhaseOracle(unittest.TestCase):
         self.assertFalse(memory)
         dump(b, 6, [CELL, CELL], objects=[(3, 5, 0, 0, 0, 0)])
         self.assertEqual(h3rmg.cells_differences(a, b), ({"objects": 1}, False))
+
+    def test_draws_by_phase_digested_as_logged(self):
+        log = self.tmp / "rmg1.draws"
+        log.write_text("seed 5\ngenerate\n549975 7\nstep 1\n532A5B 1\n53BB5F 2\nstep 9\n"
+                       "generated 1\nwrite\n54ABA6 3\nend 4 0\n")
+        phases, _ = h3rmg.phase_log(log)
+        steps = h3rmg.phase_digests(phases)
+        self.assertEqual([(k, n) for k, n, _ in steps],
+                         [("setup", 0), ("template", 1), ("1", 2), ("9", 0), ("generated", 0),
+                          ("write", 1)])
+        # A phase's digest is its lines' as the log prints them, an empty one the empty text's.
+        self.assertEqual(steps[2][2], hashlib.sha256(b"532A5B 1\n53BB5F 2\n").hexdigest()[:12])
+        self.assertEqual(steps[0][2], hashlib.sha256(b"").hexdigest()[:12])
+
+    def test_memory_record(self):
+        zone = bytearray(0xD4)
+        zone[0x41], zone[0x44], zone[0x84] = 1, 1, 0xCC
+        zone[0xC:0x10] = b"\x07\x00\x00\x00"
+        generator = bytearray(0x44)
+        generator[8:12] = b"\xFF\xFF\xFF\xFF"
+        path = self.tmp / "rmg1.memory"
+        path.write_text(f"cw seed 027F\ncw 1 027F\nzone 53BDA1 1 {bytes(0xD4).hex().upper()} "
+                        f"{bytes(0x44).hex()}\ncw 2 027F\nzone 53E149 2 {zone.hex().upper()} "
+                        f"{generator.hex().upper()}\nend\n")
+        words, zones = h3rmg.read_memory(path)
+        self.assertEqual(h3rmg.control_words(words), "027F")
+        self.assertEqual([(site, step) for site, step, _, _ in zones],
+                         [(0x53BDA1, 1), (0x53E149, 2)])
+        f = h3rmg.zone_fields(*(zones[1][k] for k in (0, 2, 3)))
+        self.assertEqual((f["kind"], f["set"], f["towns"]),
+                         ("temporary", 2, "00010000010000000000"))
+        self.assertEqual((f["limits"][:8], f["m84"], f["m94"], f["g8"]),
+                         ("07000000", "CC", "00", "FFFFFFFF"))
+        self.assertEqual(h3rmg.zone_lines("c", {"zones": [f]}),
+                         ["c 1 temporary set=2 towns=00010000010000000000 limits=07" + "0" * 30
+                          + " m84=CC m94=00 g8=FFFFFFFF"])
+        self.assertEqual(h3rmg.zones_digest([]), "none")
+        self.assertEqual(h3rmg.control_words({"seed": 0x27F, "1": 0x37F}), "seed:027F,1:037F")
+        path.write_text("cw seed 027F\n")
+        with self.assertRaises(RuntimeError):
+            h3rmg.read_memory(path)
+
+    def test_zone_bytes_fail_only_a_fresh_start(self):
+        def facts(zones):
+            return {"h3m": "x", "phases": {"draws": 1, "log": "l", "cw": "027F",
+                                           "zones": zones, "cells": [(0, "c")]}}
+        a = facts([{"kind": "temporary", "set": 0}])
+        b = facts([{"kind": "temporary", "set": 1}])
+        self.assertEqual(h3rmg.compared(a, a), ("same", False))
+        self.assertEqual(h3rmg.compared(a, b), ("same; zone bytes DIFFER (1 zones)", True))
+        self.assertEqual(h3rmg.compared(a, b, fresh=False),
+                         ("same; zone bytes differ (1 zones)", False))
 
 
 if __name__ == "__main__":
