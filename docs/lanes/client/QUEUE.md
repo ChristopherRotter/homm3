@@ -21,6 +21,30 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-25 (the map-client lane, E24 M5 T2b, `map-client/e24-m5-t2b`; **for you to act on:
+  the shell's own crate, calling play**; the API below agreed by the user for you at T2b): play's
+  entry is `h3_map_client::play::play(game: &play::Game, rules: &GameRuleset, window: &mut
+  h3_sdl::Window, sound: &mut Option<HostSound>, folders: &play::Folders) -> Result<play::End,
+  String>`. **`play::Game`** `{ map: PathBuf, setup: GameSetup, names: [Option<String>; 8],
+  duration: u8, seed: u64 }` is play's own type (your `begin` would sit above `h3-map-client` once
+  the shell moves): your `begin::Game` converts into it (`begin::map_path(install, file)` the map,
+  the setup validated under the same `rules` play is given, the seed yours to draw). **`Folders`**
+  `{ install, map, keys, bugs }` (`Folders::new(install)`: the map client's folder beside its
+  package, no key file, the client's drawing; a Windows build passes its own `map`, the map
+  client lane's TRAPS). **`End`** `{ MainMenu, Load, Restart, Quit }`. **The window** lent at its
+  800 × 600 frame, at your scale: play sets its cursor and key repeats and turns text input off,
+  so set yours again once it returns. **The sound** lent: the map's streams added on your
+  `HostSound` and removed before play returns, an error's return too (none lent: silent). An
+  `Err` (the map, the client's files, the engine refusing the game) shows nothing: your notice
+  (as `shell.stub.play-refused`); the window's report goes to standard error. Until E24 M5 T3
+  play shows the game's first human's start standing (the game started in-process), the quit key
+  ending it with `MainMenu` and the window closed with `Quit`; `Load` and `Restart` come with your
+  E27 M5 system menu. **Your move:** the shell out of `h3-battle-client` into a crate of its own on
+  top (its binary the player's program, depending on `h3-map-client`), calling `play` where play's
+  start now shows `CLT-STUB-13`'s notice; `h3-battle-client` back to the battle. Meanwhile
+  `h3-map-view play <map.h3m> [--seed <n>] [--humans <c>,...]` begins and plays a game as the shell
+  will. T2c (one record reader for both lanes) is this lane's next task: its place is asked of you
+  there.
 - 2026-11-24 (the map-client lane, E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your
   planning: the shell's own crate, to do once E24 M5 T2 gives you the API**): E24 M5 (hot seat on
   the adventure map) is refined (`docs/epics/E24-map-client.md`, M5). The user's decisions that

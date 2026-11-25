@@ -18,6 +18,7 @@ use std::sync::Arc;
 use h3_assets::fnt::Font;
 use h3_formats::lod::LodArchive;
 use h3_formats::text::decode_windows_1252;
+use h3_game::GameRuleset;
 use h3_map::Limits;
 
 use h3_map::model::{Body, EventBody, Pos, RawMap};
@@ -154,23 +155,41 @@ pub fn played(
     record: Record<'_>,
 ) -> Result<Played, String> {
     let (loaded, rules) = render::load_record(record.path, map, record.packs)?;
-    let art = MapArt::from_raw(raw).map_err(|e| e.to_string())?;
-    let failed = |why: &dyn std::fmt::Display| format!("{}: {why}", record.path.display());
-    let start = engine::start(
+    played_of(
+        assets,
+        raw,
         &loaded,
+        &rules,
+        record.path.display().to_string(),
+    )
+}
+
+/// What [`played`] takes from a record already loaded (`loaded`, its rules `rules`), named
+/// `label` in its messages (E24 M5 T2b: play's start, a record kept in memory).
+pub fn played_of(
+    assets: &Assets<'_>,
+    raw: &RawMap,
+    loaded: &engine::Loaded,
+    rules: &GameRuleset,
+    label: String,
+) -> Result<Played, String> {
+    let art = MapArt::from_raw(raw).map_err(|e| e.to_string())?;
+    let failed = |why: &dyn std::fmt::Display| format!("{label}: {why}");
+    let start = engine::start(
+        loaded,
         &art,
         assets.templates,
         &assets.tables.map.towns,
         &assets.tables.records,
-        &rules,
+        rules,
     )
     .map_err(|e| failed(&e))?;
-    let game = engine::played(&loaded, &art, &rules).map_err(|e| failed(&e))?;
+    let game = engine::played(loaded, &art, rules).map_err(|e| failed(&e))?;
     let mut table = start.table;
     table.insert("turn".to_string(), toml::Value::Array(game.turns));
     Ok(Played {
         table,
-        label: record.path.display().to_string(),
+        label,
         moves: game.moves,
         ends: game.ends,
         visits: game.visits,
@@ -378,7 +397,30 @@ pub fn for_record<'a>(
     record: Record<'_>,
     limit: u32,
 ) -> Result<(Setup<'a>, u32), String> {
-    let file = record.map;
+    let (bytes, raw) = read_map(record.map)?;
+    let played = played(assets, &raw, &bytes, record)?;
+    for_played(assets, &raw, &played, limit)
+}
+
+/// A record kept in memory set up to play as [`for_record`] sets up a record's file (E24 M5 T2b:
+/// play's start, `crate::play`): `text` the record of a game on the map file `map` under `rules`,
+/// named `label` in messages.
+pub fn for_text<'a>(
+    assets: &'a Assets<'a>,
+    map: &Path,
+    (text, rules): (&str, &GameRuleset),
+    label: String,
+    limit: u32,
+) -> Result<(Setup<'a>, u32), String> {
+    let (bytes, raw) = read_map(map)?;
+    let loaded = engine::load(text, &bytes, rules).map_err(|e| format!("{label}: {e}"))?;
+    let played = played_of(assets, &raw, &loaded, rules, label)?;
+    for_played(assets, &raw, &played, limit)
+}
+
+/// A map file's bytes and its raw map (gzip-compressed, as the game keeps it, or not: the
+/// writer's).
+pub(crate) fn read_map(file: &Path) -> Result<(Vec<u8>, RawMap), String> {
     let bytes = fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?;
     let raw = if bytes.starts_with(&[0x1F, 0x8B]) {
         h3_map::read(&bytes, &Limits::default())
@@ -386,10 +428,20 @@ pub fn for_record<'a>(
         h3_map::parse(&bytes, &Limits::default())
     }
     .map_err(|e| format!("{}: {e}", file.display()))?;
-    let played = played(assets, &raw, &bytes, record)?;
+    Ok((bytes, raw))
+}
+
+/// A record's start and walks (`played`, on the map `raw`) set up to play, its commands directed
+/// until `limit` ms.
+fn for_played<'a>(
+    assets: &'a Assets<'a>,
+    raw: &RawMap,
+    played: &Played,
+    limit: u32,
+) -> Result<(Setup<'a>, u32), String> {
     let corner = ViewAt { x: 0, y: 0, z: 0 };
     let after = Some((played.label.as_str(), &played.table));
-    let mut painter = Painter::new(assets, &raw, None, after, corner, &[])?;
+    let mut painter = Painter::new(assets, raw, None, after, corner, &[])?;
     let label = played.label.clone();
     let hero = sequence::selected_hero(&painter.live).map_err(|e| format!("{label}: {e}"))?;
     painter.selected = sequence::selected_in(&painter.live).ok();
@@ -399,14 +451,14 @@ pub fn for_record<'a>(
         y: i32::from(hero.at.y) - 8,
         z: hero.at.z,
     };
-    let paths = record_paths(assets, hero.at, &played)?;
+    let paths = record_paths(assets, hero.at, played)?;
     let sound = painter.sound(Some(hero.at))?;
     let (question, turns) = painter
-        .boxes(&[], Some(&played))
+        .boxes(&[], Some(played))
         .map_err(|e| format!("{label}: {e}"))?;
     let hover = painter.hover()?;
     // Its visits' finds, each with its level-ups (E24 M4 T6, R2-3: none by the thresholds).
-    let finds = painter.record_finds(&raw, (&played.visits, &played.levels), hover.as_deref())?;
+    let finds = painter.record_finds(raw, (&played.visits, &played.levels), hover.as_deref())?;
     let town = painter.town()?;
     let start = Start {
         view,
