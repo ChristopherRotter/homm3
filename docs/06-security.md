@@ -321,16 +321,16 @@ with guilds, learning, the Vortex and the book.
 ADR-0028 points 2, 5 and 6, ADR-0017 points 1, 3, 4, 6 and 10, ADR-0016 points 1, 4 and 6 (E09
 decisions 202, 203, 207, 209 to 214; the design note `epics/E09-design.md` §101 to §114; rules
 TWN-MKT-001 to -005, TWN-STK-001, -002, TWN-SMT-001, TWN-SHY-001, TWN-UNI-001, TWN-TRF-001,
-TWN-VEW-005). The build tasks E09 T56 to T60 implement it; the view tests and the hygiene and
-told-views properties check it with a town's windows, the sale and the stock.
+TWN-VEW-005). The build tasks E09 T56 to T60 implement it, each with its view tests; the fold
+gate checks that every change is told.
 
 - **The merchants' stock is seen only in its window:** a town's market view (GAM-DEC-011's
   `MarketView`) shows it with its prices to the window's owner alone, as a Black Market's, beside
   the artifact sale's places; never in a town view, never to another viewer, and no event tells
   anyone else that a purchase emptied an entry. Its draws (the setup stream at the build, the
   towns' stream each month) are server-only (ADR-0017 point 5), told only as the stock a window
-  shows; so are the artifact pool's marks (which artifacts the map placed or the draws took), in
-  the adventure state and never projected.
+  shows; so are the artifact pool's marks (the artifacts kept out of the draws), in the adventure
+  state and never projected.
 - **The market view is the window's owner's alone:** its place (a map object or the town), its
   hero (none possible at a town), E08's `MarketOffers` (the screens, the count, the lots, the stock
   with its prices, the sale's places and prices) and the recipients. **The University's view**

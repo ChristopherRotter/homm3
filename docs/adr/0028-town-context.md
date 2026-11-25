@@ -190,7 +190,7 @@ same record (the day's construction, the available creatures, the guild's spells
        rows are E08's `MarketParams` (wood or ore for 37, 62 and 112 gold at 2, 4 and 8; decision
        201). Batch TWN-6 confirmed both (E09 T54, survey `E09-trades.md` §14): the rows at 2, 4 and
        8 Marketplaces (TWN-6-1; VCMI's 38, 63 and 113 refuted) and the trader's count at an ally's
-       town, there 0, every price 0 and the artifact given free (TWN-6-2: T-19).
+       town, there 0, the entries priced 0 gold and the artifact given free (TWN-6-2: T-19).
      - **What a town's window offers** (TWN-MKT-002; §2.2): **trades and the transfer** whenever it
        opens; **the artifact purchase and sale** with a hero where a building of role
        `artifact_merchants` stands; **the creature sale** with a hero where one of role
@@ -330,7 +330,7 @@ same record (the day's construction, the available creatures, the guild's spells
    design note Part H §109): a combination artifact whose pack names no cost costs the
    resource-wise sum of its parts' costs (the original's `artifact_table_load` 0x44D031; SoD's
    twelve sums, from the Angelic Alliance's 84 000 down to 3 000, survey §3.4; confirmed by batch
-   TWN-6's TWN-6-4: the Ring of the Magi's 3 000 sold for 600 gold at one Marketplace), so the
+   TWN-6's TWN-6-4: 600 gold offered for the Ring of the Magi's 3 000 at one Marketplace), so the
    merchants, the Black Markets and the sale read one cost; the core ruleset hash moves.
 6. **Seams.** `h3-towns` and `h3-adventure` never import each other; `h3-game` reads both. The
    only new contract type of increment 1 is `TownId`. The siege's facts cross to the battle as
@@ -559,7 +559,7 @@ same record (the day's construction, the available creatures, the guild's spells
   the outcome's town entered, the replay format, the protocol and the env. Each town holds twenty
   slots, a flag and a static set; the night's refill reads one predicate per town a day, and
   nothing in play draws a guild.
-- Increment 6: two `shared/` pull requests after batch TWN-6 (E09 T55a and T55b): T55a this ADR's
+- Increment 6: one `shared/` pull request after batch TWN-6 (E09 T55, decision 219): T55a this ADR's
   and the two amendments' text (ADR-0016, ADR-0017), `docs/03-domain.md`'s terms,
   `docs/06-security.md`'s section; T55b the quirk flags of `TWN-QUIRK-15` and `-16` and the
   combinations' costs in the core (the core ruleset hash). `cross-lane` after them: the six
@@ -603,7 +603,7 @@ same record (the day's construction, the available creatures, the guild's spells
   a decision at the opening (the original's question) or bought when affordable (the computer's
   way; decision 176); the Aurora Borealis left to increment 7 (decision 174).
 - Increment 6 (`TWN-Q37`): the month's draw of the merchants' stock over a named stream of its own
-  (the user chose the towns' stream, decision 214); the env without the artifact sale's 22 entries
+  (the towns' stream accepted at `TWN-Q37`, decision 214); the env without the artifact sale's 22 entries
   (decision 216 kept the 42).
 
 ## Revision history

@@ -1316,13 +1316,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
       up to the whole stock, its gain told to the recipient alone; the sale at the creature factor
       of the count (a whole gold cost from 8 Marketplaces), the army keeping a creature.
     - **The merchants' purchase** (TWN-MKT-004): `MarketParams::artifact_price(count, cost, pay)`
-      (a combination's cost its parts' sum, confirmed by batch TWN-6's TWN-6-4; at one Marketplace
-      5 times the cost, TWN-6-8); paid, the artifact given (`HeroChanged`), the entry emptied for
+      (a combination's cost its parts' sum, ADR-0028 point 5; at one Marketplace 5 times the cost,
+      TWN-6-8); paid, the artifact given (`HeroChanged`), the entry emptied for
       every town and player until the next month's draw.
     - **The artifact sale** (TWN-MKT-005): `MarketParams::artifact_sale(count, cost, take)` (E08's
       module, `cross-lane`), max(1, round(f32(f32(cost × A) / v(take)))) with A the artifacts'
       factor at the count and v the trades' value table (`market_artifact_sale_rate` 0x5ECDC0,
-      `E08-trades.md` §4), the X87 steps of the other three rates; the artifact removed
+      `E08-trades.md` §4), the X87 steps of the other three rates (a combination at its parts' sum,
+      confirmed by batch TWN-6's TWN-6-4); the artifact removed
       (`HeroChange::RemoveArtifact`, its parts' locks freed, its effects gone), then the price
       gained (`ResourceGained`); the stock, the pool and the spell points untouched. **T-20 fixed
       by construction** (`TWN-QUIRK-18`): the place priced is the place removed (T-20 confirmed by
