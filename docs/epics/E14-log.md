@@ -443,3 +443,49 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   read), T3c (step 1, the cell record and the comparison seam), T3d (step 2), T3e (step 3 and the
   terrain painter), as proposed; the increment's four flags registered at T3c in one re-hash (the
   other choice, each with its task, three re-hashes); the session docs only.
+
+## T3a — the phase oracle's memory record, the fixed environment, the corpus at 24 (2026-11-25, increment 3)
+
+- **Whole** (asked with a cut, the record and hooks then the measurement; the user: "no cut, use
+  subagents efficiently"). Staged from the PC at the start: the client lane's set (58 files,
+  SHA-256 checked), `games/`, SoD's three tables, Complete's two generated maps. Baseline green
+  (`verify-once: verified (sandbox) code f4dc00b2… on ad1c91a7…`), CI on `master` green.
+- **Read** (`scripts/exe.py`): `rmg_zone_generator_init` 0x5329E0 has three callers, each with the
+  zone generator as `this` and the zone as its one argument: 0x53BDA1 (step 1, the template
+  zones), 0x53E149 (step 2, the temporary zone at the caller's ebp-0x164, whose +0, +4 and +8 alone
+  are written, its generator at ebp-0x578) and 0x53E45C (step 2, a water zone from operator new).
+  The constructor writes the generator's +4 (the drawn town type) and never its +8.
+- **Built** (agent decisions, change freely): `xdd.c` 10. the memory record `rmg<g>.memory` (the
+  control word by `fnstcw` at `srand` and each step's first call; per constructor call the zone's
+  0xD4 bytes and the generator's first 0x44, read only; 22 hooks); `h3rmg.py`: `phase_digests`
+  (per phase its draws and the digest of its lines as logged), `read_memory`, `zone_fields` (the
+  form two fresh starts agree on: the set mask of +0x41..+0x49, +0x40, +0x84, +0x94 as 0 or 1; the
+  values, the limits and the generator's +8 left in the record after the measurement showed them
+  vary), `zones.txt`, `phases.txt`'s `cw=`, `zones=`, `steps=`, the record checked against the
+  log's 0x532A5B draws per step, `memory [--against]`, zone differences failing only a fresh start;
+  `h3drive.py`'s `H3_FIXED_ENV` (an allowlist of six variables and `H3*`, `PATH` fixed, sorted, the
+  clock folder through `original-data/wine/clock`), set by `h3rmg.py` (`--sandbox-env` the old
+  way; `FIXED_PATHS` refuses another clone folder, home or prefix); `test_h3rmg.py` +3 tests;
+  `corpus.toml` +3 cases (seeds by `drawn_template`: 1 350 000 003 draws 2SM2i(2) of 12 with three
+  players, 1 350 000 000 and 1 450 000 002 2SM0k of 21); `h3-pack-rmg`'s corpus at 24 and
+  `the_corpus_starts_without_ownership_place_the_colours_as_the_original`.
+- **Found and changed course:** the first hooked run gave `m2-4p` the variant map (`45ae078f…`):
+  the game got the sandbox's whole environment (17 KB, a session folder in `PATH`) and a clock path
+  whose length differs between `one` and `corpus`. With the fixed environment it gave `kept.txt`'s
+  map and T1b2's log in both; so the environment was fixed before the record, and the measurement
+  ran on it.
+- **The record** (`corpus --phases --twice --again --record`, about 32 minutes): the 24 first maps
+  reproducible; 19 of the old 21 as kept with T1b2's logs and dumps; `l1-4p-b`'s first and second
+  maps swapped against T1b's, `xl2-4p-seed0` another map (both re-kept); the three RMG-QUIRK-24
+  cases generate; the control word 0x027F in all 72 records; 73 step 2 zones (ORACLE.md).
+  `phases.txt` and `zones.txt` were rewritten twice from the record's first maps with `h3rmg`'s own
+  functions after the zone form changed (each line's draws, log, steps and cells asserted equal).
+- **The measurement** (one agent, about 50 minutes, 31 starts and about 60 environment sizes; its
+  table in ORACLE.md): independent of variables outside `H3*`; the water zones' bytes flip at a few
+  block sizes, each at N ≡ 2 (mod 8) characters; the temporary zone never changed; a map moved only
+  where a water zone's set count crossed 0; one water zone's +8 (`l1-4p-b`) differs between fresh
+  starts about half the time. Not run: another history before the generation (no documented
+  `--before` string; T1b1 had found the bytes unmoved by the Load Game menu).
+- **RMG-QUIRK-24 confirmed:** `s1-3p-2sm2i2`'s map has two players in its player block (tan, on the
+  port's position 7, left out); the 2SM0k maps give both players their main towns. `h3_map` reads
+  24 of 24, 23 import and validate.
