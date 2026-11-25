@@ -35,6 +35,76 @@ pub struct KnownBuild {
     /// Virtual address of a creature bank's battle hexes, `i32` × [`BANK_STACKS`] per side, the
     /// attacker first (`bank_battle_hexes`, E08 T124a).
     pub bank_hexes_va: u32,
+    /// The map generator's limit tables (E14 T2c).
+    pub rmg: RmgTables,
+}
+
+/// Where a build keeps the map generator's limits by object type (`rmg_generator_create`
+/// 0x537D5A to 0x537D95; survey `docs/rules/surveys/E14-generator.md` §1.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RmgTables {
+    /// Virtual address of the per-map pairs (`rmg_type_limits_a`): object type and limit, `i32`
+    /// each.
+    pub map_limits_va: u32,
+    /// Number of those pairs.
+    pub map_limits: usize,
+    /// Virtual address of the per-zone pairs (`rmg_type_limits_b`).
+    pub zone_limits_va: u32,
+    /// Number of those pairs.
+    pub zone_limits: usize,
+}
+
+/// The map generator's limit pairs of a build, in the tables' order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RmgData {
+    /// Per map: object type and limit.
+    pub map_limits: Vec<(u8, i32)>,
+    /// Per zone.
+    pub zone_limits: Vec<(u8, i32)>,
+}
+
+/// The number of object types the generator's limit arrays hold (232).
+pub const RMG_OBJECT_TYPES: i32 = 232;
+
+/// Reads the map generator's limit pairs of a known build.
+///
+/// # Errors
+/// Unknown build, an unmapped table, an object type outside `0..232`.
+pub fn rmg_data(data: &[u8]) -> Result<RmgData, FormatError> {
+    let (build, image) = identify(data)?;
+    rmg_data_at(&image, &build.rmg)
+}
+
+/// Reads the tables described by `t` (exposed for tests with synthetic images).
+///
+/// # Errors
+/// As [`rmg_data`], without the build check.
+pub fn rmg_data_at(image: &PeImage<'_>, t: &RmgTables) -> Result<RmgData, FormatError> {
+    let pairs = |va: u32, count: usize| -> Result<Vec<(u8, i32)>, FormatError> {
+        let base = image.file_offset(va).ok_or(FormatError::OutOfRange {
+            what: "rmg limit table address",
+            value: u64::from(va),
+        })?;
+        (0..count)
+            .map(|i| {
+                let at = base + 8 * i;
+                let object_type = le::i32_at(image.data, at, "rmg limit table")?;
+                let limit = le::i32_at(image.data, at + 4, "rmg limit table")?;
+                let object_type = u8::try_from(object_type)
+                    .ok()
+                    .filter(|&k| i32::from(k) < RMG_OBJECT_TYPES)
+                    .ok_or(FormatError::OutOfRange {
+                        what: "rmg limit's object type",
+                        value: u64::from(object_type.unsigned_abs()),
+                    })?;
+                Ok((object_type, limit))
+            })
+            .collect()
+    };
+    Ok(RmgData {
+        map_limits: pairs(t.map_limits_va, t.map_limits)?,
+        zone_limits: pairs(t.zone_limits_va, t.zone_limits)?,
+    })
 }
 
 /// A one-byte immediate operand of an instruction: the instruction's address and its bytes before
@@ -391,6 +461,12 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
         },
     },
     bank_hexes_va: 0x0063_D0E0,
+    rmg: RmgTables {
+        map_limits_va: 0x0064_0718,
+        map_limits: 30,
+        zone_limits_va: 0x0064_0808,
+        zone_limits: 24,
+    },
 }];
 
 /// Size of one usual obstacle type record (§7.26).
@@ -1453,6 +1529,54 @@ mod tests {
         }
         assert!(bank_hexes_at(&pe, 0x0040_1004).is_err());
         assert!(bank_hexes_at(&pe, 0x10).is_err());
+    }
+
+    #[test]
+    fn reads_the_rmg_limits_from_a_synthetic_image() {
+        let pairs: [i32; 6] = [26, 200, 6, 200, 113, 3];
+        let p: Vec<u8> = pairs.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let img = build_test_image(1, &p);
+        let pe = PeImage::parse(&img).unwrap();
+        let t = RmgTables {
+            map_limits_va: 0x0040_1000,
+            map_limits: 2,
+            zone_limits_va: 0x0040_1010,
+            zone_limits: 1,
+        };
+        assert_eq!(
+            rmg_data_at(&pe, &t).unwrap(),
+            RmgData {
+                map_limits: vec![(26, 200), (6, 200)],
+                zone_limits: vec![(113, 3)],
+            }
+        );
+        // An object type outside 0..232, a table cut short, an unmapped table.
+        for bad in [-1i32, 232, 256] {
+            let mut q = p.clone();
+            q[16..20].copy_from_slice(&bad.to_le_bytes());
+            let img = build_test_image(1, &q);
+            assert!(rmg_data_at(&PeImage::parse(&img).unwrap(), &t).is_err());
+        }
+        assert!(
+            rmg_data_at(
+                &pe,
+                &RmgTables {
+                    zone_limits: 99,
+                    ..t
+                }
+            )
+            .is_err()
+        );
+        assert!(
+            rmg_data_at(
+                &pe,
+                &RmgTables {
+                    map_limits_va: 0x10,
+                    ..t
+                }
+            )
+            .is_err()
+        );
     }
 
     #[test]

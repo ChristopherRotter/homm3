@@ -4,7 +4,7 @@
 //! generator's tables"; parsed by `h3-pack-rmg`).
 //!
 //! The values are kept as the game reads them (survey `docs/rules/surveys/E14-generator.md`
-//! §3.1, provisional rules RMG-TPL-001, -002 and -006): `rmg.txt`'s rows from row 3, a template at
+//! §3.1, rules RMG-TPL-001, -002 and -006): `rmg.txt`'s rows from row 3, a template at
 //! a row of two or more cells whose column 0 is set, a zone at 76 or more with column 3 set, a
 //! connection at 85 or more with column 76 set and 77 not empty (a row may be all three); *set*
 //! is not empty and not beginning with a space; numbers as `c_atoi` (0x617F09) reads them;
@@ -33,13 +33,57 @@ pub struct Files {
     pub rand_trn: TextTable,
 }
 
-/// The tables of both archives.
+/// The executable's constants the generator's constructor reads (`rmg_generator_create`
+/// 0x537B10; E14 T2c): they go into SoD's pack as `[generator]`.
+#[derive(Debug, Clone, Default)]
+pub struct Constants {
+    /// Per hero id, its record's (the hero table 0x679DD0) bytes +0x38 (RoE's), +0x39 (the
+    /// expansions') and +0x3A (a campaign hero) set.
+    pub heroes: Vec<[bool; 3]>,
+    /// The per-map limit pairs (0x640718): object type and limit, in the table's order.
+    pub map_limits: Vec<(u8, i32)>,
+    /// The per-zone limit pairs (0x640808).
+    pub zone_limits: Vec<(u8, i32)>,
+}
+
+/// The tables of both archives and the executable's constants.
 #[derive(Debug, Clone, Default)]
 pub struct Tables {
     /// `H3ab_bmp.lod`'s.
     pub ab: Files,
     /// `H3bitmap.lod`'s (the ones the game reads).
     pub sod: Files,
+    /// `Heroes3.exe`'s.
+    pub constants: Constants,
+}
+
+/// SoD's pack's `[generator]`: the constants as mark strings by hero id and pairs in order.
+fn generator_section(c: &Constants) -> String {
+    let marks = |k: usize| -> String {
+        c.heroes
+            .iter()
+            .map(|h| if h[k] { '1' } else { '0' })
+            .collect()
+    };
+    let pairs = |p: &[(u8, i32)]| -> String {
+        p.iter()
+            .map(|(t, l)| format!("[{t}, {l}]"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    format!(
+        "\n# The generator's constants, read from Heroes3.exe (rmg_generator_create 0x537B10; \
+         ADR-0029 point 5):\n# the hero table 0x679DD0's bytes +0x38 (RoE's heroes), +0x39 (the \
+         expansions') and +0x3A (campaign\n# heroes) by hero id; the limit pairs by object type \
+         per map (0x640718) and per zone\n# (0x640808), object type and limit in the tables' \
+         order.\n[generator]\nheroes_roe = \"{}\"\nheroes_expansions = \"{}\"\nheroes_campaign = \
+         \"{}\"\nmap_limits = [{}]\nzone_limits = [{}]\n",
+        marks(0),
+        marks(1),
+        marks(2),
+        pairs(&c.map_limits),
+        pairs(&c.zone_limits),
+    )
 }
 
 /// The header rows of `rmg.txt` and `rand_trn.txt`, never read.
@@ -99,6 +143,7 @@ fn marks(row: &[String], first: usize, n: usize) -> String {
 }
 
 /// A zone row as an inline table (RMG-TPL-002).
+// rule: RMG-TPL-002
 fn zone(row: &[String]) -> Result<String, String> {
     let kind = (4..=7)
         .rev()
@@ -166,6 +211,7 @@ struct Template {
 }
 
 /// `rmg.txt`'s templates in row order (RMG-TPL-001, -002).
+// rule: RMG-TPL-001
 fn templates(table: &TextTable) -> Result<Vec<Template>, String> {
     struct Building {
         name: String,
@@ -290,6 +336,7 @@ fn objects(table: &TextTable) -> Result<Vec<ObjectLine>, String> {
 }
 
 /// `rand_trn.txt`'s obstacle rows (RMG-TPL-006) as `[[obstacle]]` blocks.
+// rule: RMG-TPL-006
 fn obstacles(table: &TextTable) -> Result<Vec<String>, String> {
     let rows: Vec<&Vec<String>> = table
         .records
@@ -470,6 +517,7 @@ pub fn harvest_rmg(
             sod.push_str(o);
         }
     }
+    sod.push_str(&generator_section(&tables.constants));
     report.push(format!(
         "rmg: ab {} templates, {} object templates, {} obstacles; sod {} templates more, {} object \
          templates added, {} changed{}",

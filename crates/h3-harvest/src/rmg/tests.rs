@@ -131,14 +131,26 @@ fn harvest(tables: &Tables, fixes: Vec<RmgZoneIdsFix>) -> Result<(String, String
     Ok((ab.clone(), sod.clone()))
 }
 
+// covers: RMG-TPL-001, RMG-TPL-002, RMG-TPL-006
 #[test]
 fn the_tables_are_kept_as_read() {
     let a = object("a.def", "000000001");
     let tables = Tables {
         ab: files(rmg("One"), &[&a]),
         sod: files(rmg("One"), &[&a]),
+        constants: Constants {
+            heroes: vec![[true, true, false], [false, true, true]],
+            map_limits: vec![(26, 200), (6, 200)],
+            zone_limits: vec![(113, 3)],
+        },
     };
     let (ab, sod) = harvest(&tables, Vec::new()).unwrap();
+    // The executable's constants, in SoD's pack only.
+    assert!(!ab.contains("[generator]"));
+    assert!(sod.contains(
+        "[generator]\nheroes_roe = \"10\"\nheroes_expansions = \"11\"\nheroes_campaign = \
+         \"01\"\nmap_limits = [[26, 200], [6, 200]]\nzone_limits = [[113, 3]]\n"
+    ));
     // Column 6 set after 4: the last set wins; a space is not set; strength by its first letter.
     assert!(ab.contains(
         "{ id = 1, kind = \"treasure\", base_size = 20, humans = [1, 2], players = [0, 0], \
@@ -199,6 +211,7 @@ fn sods_pack_holds_what_its_tables_add() {
             objects: objects_table(&[&new, &a, &b2, &c, &late]),
             rand_trn: sod_trn,
         },
+        ..Tables::default()
     };
     let (_, sod) = harvest(&tables, Vec::new()).unwrap();
     assert!(sod.contains("  { before = 0, picture = \"new.def\""));
@@ -218,6 +231,7 @@ fn decimal_first_zones_get_their_gated_overrides() {
     let tables = Tables {
         ab: files(text.clone(), &[&a]),
         sod: files(text, &[&a]),
+        ..Tables::default()
     };
     let fix = |first_zones: Vec<i32>, template: &str| RmgZoneIdsFix {
         flag: "quirk.content.rmg_8xm8_zone_ids".into(),
@@ -249,12 +263,14 @@ fn decimal_first_zones_get_their_gated_overrides() {
     );
 }
 
+// covers: RMG-TPL-001, RMG-TPL-006
 #[test]
 fn tables_that_do_not_read_are_refused() {
     let a = object("a.def", "000000001");
     let ok = || Tables {
         ab: files(rmg("One"), &[&a]),
         sod: files(rmg("One"), &[&a]),
+        ..Tables::default()
     };
     type Change = Box<dyn Fn(&mut Tables)>;
     let cases: Vec<(Change, &str)> = vec![
