@@ -195,7 +195,8 @@ clock and the battles as the original's.
   start: T2a the binary's adapters moved into `h3-map-client` (**done** 2026-11-25: the log's "M5
   T2a"), T2b play's entry for the shell and the client lane's move queued (**done** 2026-11-25:
   the log's "M5 T2b"; the API the user agreed for the client lane), T2c one record reader shared
-  with the client lane; T3, the session in-process; T4, live input through the engine; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game; T8, M5's
+  with the client lane (**done** 2026-11-25: the log's "M5 T2c"; `h3_protocol::record`, MCL-Q57);
+  T3, the session in-process; T4, live input through the engine; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game; T8, M5's
   closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
   hot-seat game on a shipped map played from the shell's Begin to a day limit, headless by
@@ -272,3 +273,7 @@ here.
   human's start shown standing with M2's input (the user's choice at T2b); the window's quit key
   ends play with `End::MainMenu`, the window closed with `End::Quit`, until E27 M5's system menu
   gives the four ends; play's report (the window's lines) on standard error.
+- The record reader in `h3-protocol` (M5 T2c, MCL-Q57: the user's place, beside the writer):
+  it reads the lines alone (the header's checks, the numbered messages, the refusals), each
+  client keeping its own record type and readings; the line's bound 64 MB for both kinds (the
+  live client's message bound; `h3-view` had 16 MB), *provisional*.

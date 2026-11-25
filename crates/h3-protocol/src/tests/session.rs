@@ -19,6 +19,7 @@ use super::full;
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec::{self, decode_server};
 use crate::map;
+use crate::record;
 use crate::session::{
     Bot, ConnId, Entry, GameConfig, Grace, Outbound, RestoreError, SeatKind, Session,
 };
@@ -771,6 +772,10 @@ fn the_record_is_the_viewers_numbered_messages() {
             .collect();
         assert_eq!(lines.map(str::to_string).collect::<Vec<_>>(), numbered);
         assert_eq!(*n, u32::try_from(numbered.len()).unwrap());
+        // Read back (E24 M5 T2c): the header and every numbered message; not a whole game's.
+        let messages: Vec<ServerMessage> = numbered.iter().map(|f| decode(f)).collect();
+        assert_eq!(record::read_battle(record), Ok((header, messages)));
+        assert!(!record::is_game(record));
         // The answer is not recorded itself.
         let again = send(&mut s, conn, ClientMessage::FetchRecord { seq: 4 });
         assert!(

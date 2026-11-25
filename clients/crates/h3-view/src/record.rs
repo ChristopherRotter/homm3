@@ -4,15 +4,13 @@
 //! arriving over a socket.
 
 use alloc::vec::Vec;
-use core::fmt;
 
-use h3_protocol::codec::{self, DecodeError};
+use h3_protocol::record;
 use h3_protocol::wire::{Event, Observation, RecordHeader, ServerMessage};
-use h3_protocol::{PROTOCOL_VERSION, RECORD_FORMAT_VERSION};
 
-/// The most bytes one line may hold (*provisional*): a server bounds a whole record (E16 M2
-/// T5c), the client a line, as its codec bounds a frame.
-pub const MAX_LINE: usize = 1 << 24;
+/// The record's reader's line bound and refusals (E24 M5 T2c: the reader beside the server's
+/// writer, shared with the map client lane).
+pub use h3_protocol::record::{MAX_LINE, RecordError};
 
 /// A record, read.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -132,70 +130,13 @@ pub fn commands_from(messages: &[ServerMessage], first: usize) -> impl Iterator<
     commands(messages).skip(before)
 }
 
-/// Why a record does not read.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RecordError {
-    /// The text has no header line.
-    Empty,
-    /// A line (counting from 1) is not a header or a message of this protocol version: why, in
-    /// numbers only, never the line's own text (E17 M5 T8b2, review R1's rest: a record may come
-    /// from a server).
-    Line(usize, DecodeError),
-    /// The record's format is not [`RECORD_FORMAT_VERSION`].
-    Format(u32),
-    /// The game's protocol version is not [`PROTOCOL_VERSION`]: before 1.0 a client reads only its
-    /// own (ADR-0018 point 4).
-    Protocol(u32),
-}
-
-impl fmt::Display for RecordError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Empty => write!(f, "the record is empty"),
-            Self::Line(n, DecodeError::Malformed) => {
-                write!(f, "line {n}: not a message of this protocol version")
-            }
-            Self::Line(n, DecodeError::TooLarge { len, max }) => {
-                write!(f, "line {n}: {len} bytes, at most {max}")
-            }
-            Self::Format(v) => write!(
-                f,
-                "record format {v}, this client reads {RECORD_FORMAT_VERSION}"
-            ),
-            Self::Protocol(v) => write!(f, "protocol {v}, this client reads {PROTOCOL_VERSION}"),
-        }
-    }
-}
-
-/// Reads a record's text; blank lines are skipped.
+/// Reads a record's text; blank lines are skipped (`h3_protocol::record`'s reader: E24 M5 T2c).
 ///
 /// # Errors
 /// The [`RecordError`] of the first line that does not read.
 pub fn parse(text: &str) -> Result<Record, RecordError> {
-    let mut lines = text
-        .lines()
-        .enumerate()
-        .filter(|(_, line)| !line.trim().is_empty());
-    let (_, first) = lines.next().ok_or(RecordError::Empty)?;
-    let header: RecordHeader = decode(1, first)?;
-    if header.format != RECORD_FORMAT_VERSION {
-        return Err(RecordError::Format(header.format));
-    }
-    if header.manifest.protocol != PROTOCOL_VERSION {
-        return Err(RecordError::Protocol(header.manifest.protocol));
-    }
-    let messages = lines
-        .map(|(i, line)| decode(i + 1, line))
-        .collect::<Result<_, _>>()?;
+    let (header, messages) = record::read_battle(text)?;
     Ok(Record { header, messages })
-}
-
-/// Decodes line `n` (from 1) of a record.
-pub(crate) fn decode<T: serde::de::DeserializeOwned>(
-    n: usize,
-    line: &str,
-) -> Result<T, RecordError> {
-    codec::decode(line.as_bytes(), MAX_LINE).map_err(|e| RecordError::Line(n, e))
 }
 
 #[cfg(test)]
@@ -204,9 +145,11 @@ pub(crate) mod tests {
     use alloc::format;
     use alloc::string::{String, ToString};
     use alloc::vec;
+    use h3_protocol::codec::{self, DecodeError};
     use h3_protocol::wire::{
         Algorithm, Field, KeyTables, Manifest, Observation, Outcome, Seat, Side, SideView, WireU64,
     };
+    use h3_protocol::{PROTOCOL_VERSION, RECORD_FORMAT_VERSION};
 
     /// A manifest with the given key tables.
     pub(crate) fn manifest(keys: KeyTables) -> Manifest {

@@ -4,6 +4,19 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-25 (this lane, E24 M5 T2c done: the log's "M5 T2c": `h3_protocol::record`, one
+  reader of both kinds of record beside the server's writer, MCL-Q57; `h3-view`'s and
+  `h3-map-view`'s readers moved onto it): the task as it stood, verbatim.
+
+  ### E24 M5 T2c — one record reader shared with the client lane (the layering's third part)
+
+  - **Scope:** one record reader shared by both lanes (`h3_view::game_record` and `h3-map-view`'s
+    own): the place, in the common foundation or beside the server's writer, agreed with the
+    client lane and, beside the writer, the server lane; both lanes' readers moved onto it.
+  - **Acceptance:** as T2a's and T2b's (`drawn` all the same, the golden records as before, the window under
+    Xvfb, `check.sh`), and the client lane's record tests as before.
+  - **Depends on:** T2a (done). **Status:** queued (next).
+
 - 2026-11-25 (this lane, E24 M5 T2b done: the log's "M5 T2b": `h3_map_client::play`, the API
   the user agreed for the client lane, the window's loop on a lent window and sound, the first
   human's start shown until T3; the client lane's move in its inbox): the task as it stood,

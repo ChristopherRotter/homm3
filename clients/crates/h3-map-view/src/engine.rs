@@ -51,9 +51,10 @@ use h3_map::model::Body;
 use h3_map::writer::ObjectTemplate;
 use h3_map::{Limits, MAP_IMPORT_VERSION, RawMap};
 use h3_protocol::map::game::manifest;
+use h3_protocol::record::{self, RecordError};
 use h3_protocol::wire::game::{GameObservation, GameRecordHeader, MapIdentity, Object};
 use h3_protocol::wire::{ServerMessage, WireU64};
-use h3_protocol::{PROTOCOL_VERSION, RECORD_FORMAT_VERSION, codec};
+use h3_protocol::{PROTOCOL_VERSION, RECORD_FORMAT_VERSION};
 use toml::{Table, Value};
 
 use crate::art::MapArt;
@@ -94,8 +95,6 @@ const PILES: [&str; 7] = [
     "avtgems0.def",
     "avtgold0.def",
 ];
-/// The longest line a record may hold (as `h3-view`'s `record`'s).
-const MAX_LINE: usize = 64 << 20;
 /// A hero's facing at a new game's start: right (`live::Facing::Right`).
 const RIGHT: i64 = 2;
 
@@ -180,33 +179,26 @@ impl fmt::Display for Refused {
     }
 }
 
-/// Reads a whole game's record's text; blank lines are skipped (as `h3-view`'s `game_record`).
+/// Reads a whole game's record's text; blank lines are skipped (`h3_protocol::record`'s reader,
+/// the client lane's too: E24 M5 T2c).
 ///
 /// # Errors
 /// [`Refused::Empty`], the first line that does not read, a format or protocol not this
 /// viewer's.
 pub fn parse(text: &str) -> Result<GameRecord, Refused> {
-    let mut lines = text
-        .lines()
-        .enumerate()
-        .filter(|(_, line)| !line.trim().is_empty());
-    let (_, first) = lines.next().ok_or(Refused::Empty)?;
-    let header: GameRecordHeader = decode(0, first)?;
-    if header.format != RECORD_FORMAT_VERSION {
-        return Err(Refused::Format(header.format));
-    }
-    if header.manifest.protocol != PROTOCOL_VERSION {
-        return Err(Refused::Protocol(header.manifest.protocol));
-    }
-    let messages = lines
-        .map(|(i, line)| decode(i, line))
-        .collect::<Result<_, _>>()?;
+    let (header, messages) = record::read_game(text)?;
     Ok(GameRecord { header, messages })
 }
 
-/// One line, the `index`-th from 0.
-fn decode<T: serde::de::DeserializeOwned>(index: usize, line: &str) -> Result<T, Refused> {
-    codec::decode(line.as_bytes(), MAX_LINE).map_err(|e| Refused::Line(index + 1, format!("{e:?}")))
+impl From<RecordError> for Refused {
+    fn from(error: RecordError) -> Self {
+        match error {
+            RecordError::Empty => Self::Empty,
+            RecordError::Line(line, why) => Self::Line(line, format!("{why:?}")),
+            RecordError::Format(format) => Self::Format(format),
+            RecordError::Protocol(protocol) => Self::Protocol(protocol),
+        }
+    }
 }
 
 /// A map file's content hash, as an adventure replay names its map
