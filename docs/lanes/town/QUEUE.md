@@ -41,6 +41,12 @@ benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, 
 
 ## Inbox
 
+- 2026-11-25 (`shared/ci-jobs`, CI phase 1; **a doc fix, at your next session**): `TRAPS.md`'s
+  "CI's verify job stops at 55 minutes" is out of date: CI now runs the verify as parallel jobs
+  (`gates`, `coverage`, `replays`, `bench`), each stopping at 60 minutes, never raised again
+  (user; `docs/05-testing.md`, "CI"). A growing workload now adds to the `bench` job: keep the
+  advice, name that job and its cap.
+
 - 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision and your
   planning, nothing to build now**): the original's computer player's rules in towns (survey
   `docs/rules/surveys/E31-computer-player.md` §3.6; E31 decision 2: you decide whether the engine
