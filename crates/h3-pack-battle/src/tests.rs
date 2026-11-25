@@ -1977,7 +1977,7 @@ fn the_profiles_differ_exactly_by_the_quirk_flags() {
     let registry = h3_content::REGISTRY;
     let all = registry
         .flags()
-        .fold(0u64, |bits, flag| bits | 1 << flag.index());
+        .fold(0u128, |bits, flag| bits | 1 << flag.index());
     assert_eq!(
         all,
         ((1 << registry.len()) - 1) & !(1 << 9 | 1 << 10 | 1 << 14 | 1 << 30)

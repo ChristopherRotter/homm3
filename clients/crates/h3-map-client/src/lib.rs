@@ -5,10 +5,13 @@
 //! its own window, the binary `h3-map-view` (`src/bin/h3-map-view/`) now one host of them. Nothing
 //! in them changed with the move.
 //!
+//! - **Play's entry** (E24 M5 T2b, the API agreed for the client lane): [`play::play`], the game the
+//!   shell began played in the shell's window with its sound lent, how play ended handed back.
 //! - **The commands:** [`gate`] (the map's real-asset gate), [`render`] (a still of the adventure
 //!   screen), [`sequences`] (the recorded sequences replayed), [`records`] (a whole game's record
 //!   played headless), [`situation`] (a situation's map written), [`window`] (the map in a window:
-//!   the loop, the keys, the mouse, the frames).
+//!   the loop, the keys, the mouse, the frames), [`play`] (a game begun on a map file and played
+//!   as the shell will play it).
 //! - **Their parts:** `paint` (a map set up to play and its drawing), `audio` and `sounds` (the
 //!   map's sound and its files), `battles` (a record's battles hosted through `h3-battle-client`),
 //!   `texts` (the texts the panels show), `files` (the files the commands read).
@@ -23,6 +26,7 @@ mod battles;
 mod files;
 pub mod gate;
 mod paint;
+pub mod play;
 pub mod records;
 pub mod render;
 pub mod sequences;

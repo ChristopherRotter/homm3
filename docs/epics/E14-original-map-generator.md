@@ -1,7 +1,8 @@
 # E14 — The original's random map generator
 
 Status: **in progress** since 2026-11-23; increment 1 **closed** (2026-11-24, RMG-Q2;
-`E14-archive.md`); increments 2 to 7 cut, increment 2 refined; T2a done; next T2b · Lane: **rmg** (opened
+`E14-archive.md`); increments 2 to 7 cut, increment 2 refined; T2a to T2c done; next increment 2's
+checkpoint · Lane: **rmg** (opened
 at this refinement) · Prerequisite of E30 (the custom generator) · Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -68,6 +69,10 @@ objects' values and the guards' strengths read from the original rather than gue
    the written bytes; not the session's recommended writer of `RawMap`); `objects.txt`'s picture
    names harvested with the tables (Q13's names); the 18 flags in the game's profiles
    (`faithful` on, `strict-fixed` off); six increments, 2 to 7, in the run's order (below).
+9. **T2c's start** (the user, 2026-11-25): T2c whole in one session, a sub-agent where useful; the
+   registry's set widened (64 to 128 flags) in T2c's shared change, so the replays are re-hashed
+   once for it and the flags; RMG-QUIRK-24 (a start zone without Ownership marks a phantom human
+   start 7, found by T2c's reading) `fix-optional` with a flag.
 
 **Agent decisions** (change freely):
 
@@ -132,10 +137,8 @@ the survey; (f) the checkpoint with the user.
   `cross-lane` with the user's consent.
 - **The oracle model** (RMG-QUIRK-1): a first map varied once (ORACLE.md); increment 3 measures
   what moves the stack bytes before the model is fixed.
-- **The registry's 64 flags** (`h3_content::MAX_QUIRKS`, the profiles a `u64` bitset): 52 positions
-  are taken after T2b, and the ledger's 17 `quirk.rmg.*` flags still to come (ADR-0029 point 6)
-  need 69. A shared change (a wider bitset, every ruleset's hash) before the increment that brings
-  the 13th; asked at increment 2's checkpoint.
+- **The registry's flags** (`h3_content::MAX_QUIRKS`): widened from 64 to 128 by T2c (decision 9);
+  54 positions are taken, the ledger's 16 `quirk.rmg.*` flags still to come (ADR-0029 point 6) fit.
 
 ## Tasks done
 
@@ -150,3 +153,10 @@ The full records: `E14-log.md`. Increment 1's tasks (T1a1 to T1c3): `E14-archive
   `packs/sod/rmg.toml` (`h3-harvest`'s `rmg`), `quirk.content.rmg_8xm8_zone_ids` (registry 51, the
   profiles) with 8XM8's six gated overrides (RMG-QUIRK-22), `packs/README.md`'s format, the
   `original_data` check (the harvested tables equal the text tables).
+- **T2c** (2026-11-25, `shared/e14-t2c`, `cross-lane`; whole, decision 9): the settings and
+  `resolve_random`, the templates kept and drawn, the positions, `generate`'s frame (`Trace`,
+  `GenerateError`, `RMG_GENERATOR_VERSION` 1; the steps RMG-STUB-1), the executable's constants
+  harvested (`[generator]`, `RMG_RULESET_HASH_VERSION` 2), `quirk.rmg.roe_monster_town_byte` (52) and
+  `quirk.rmg.unowned_start_seventh` (53, RMG-QUIRK-24), the registry at 128 flags
+  (`RULESET_HASH_VERSION` 54), the catalog's first 17 rules; the 21 cases' templates and draws
+  before step 1 the original's.

@@ -642,3 +642,34 @@ fn the_neutral_set_attacks_the_system_actor() {
     assert!(error.contains("neutral-v1 fixes its episodes"), "{error}");
     main(&words(&[&neutral[..], &["--episodes", "1"]].concat())).unwrap();
 }
+
+// covers: CPU-TRN-001
+#[test]
+fn the_computer_plays_the_town_maps_games_the_same_whether_checked_or_not() {
+    use super::computer::{ComputerOptions, run};
+    let options = ComputerOptions {
+        map: root().join("fixtures/maps/e09-towns-36.h3m"),
+        games: 2,
+        days: 3,
+        seed: 5,
+        difficulty: 2,
+        checked: true,
+    };
+    let checked = run(&options).unwrap();
+    let unchecked = run(&ComputerOptions {
+        checked: false,
+        ..options.clone()
+    })
+    .unwrap();
+    assert_eq!(checked.played, unchecked.played);
+    assert_eq!((checked.played.day, checked.played.turns), (4, 12));
+    let map = root().join("fixtures/maps/e09-towns-36.h3m");
+    let map = map.to_str().unwrap();
+    let words = |w: &[&str]| w.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+    main(&words(&[
+        "computer", "--map", map, "--games", "1", "--days", "1",
+    ]))
+    .unwrap();
+    assert!(main(&words(&["computer", "--map", "nowhere.h3m"])).is_err());
+    assert!(main(&words(&["computer", "--wrong", "1"])).is_err());
+}

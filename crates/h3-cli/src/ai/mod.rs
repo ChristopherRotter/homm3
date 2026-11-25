@@ -6,6 +6,8 @@
 //!             [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
 //!             [--preview false|true]
 //! h3 ai census <maps folder or file>... [--out <file>]
+//! h3 ai computer [--map fixtures/maps/e09-towns-36.h3m] [--games 4] [--days 28] [--seed 1]
+//!                [--difficulty 1] [--checked false|true]
 //! h3 ai eval [--set report-v1|neutral-v1|v0]
 //!            [--policies random,aggressor,greedy,system,system-all-seeing]
 //!            [--max-steps 2000] [--episodes <per kind, 500 | v0: 1000>] [--json <file>]
@@ -18,6 +20,7 @@
 pub mod bench;
 pub mod ceiling;
 pub mod census;
+pub mod computer;
 pub mod eval;
 pub mod rating;
 
@@ -32,6 +35,8 @@ pub const USAGE: &str = "usage:
               [--seed 1] [--max-steps 0] [--encounters default|<six weights, a,b,c,d,e,f>]
               [--preview false|true]
   h3 ai census <maps folder or file>... [--out <file>]
+  h3 ai computer [--map fixtures/maps/e09-towns-36.h3m] [--games 4] [--days 28] [--seed 1]
+                 [--difficulty 1] [--checked false|true]
   h3 ai ceiling [--set report-v1|neutral-v1] [--episodes <per kind, 100>]
                 [--opponents system,system-all-seeing] [--budget 8] [--worlds side|true]
                 [--max-steps 2000] [--seed 0] [--threads <cores>] [--out <games file>]
@@ -115,6 +120,7 @@ pub fn main(raw: &[String]) -> Result<(), String> {
         "bench" => bench(&args),
         "census" => census(&args),
         "ceiling" => ceiling(&args),
+        "computer" => computer(&args),
         "eval" => eval(&args),
         _ => Err(format!("unknown ai command `{command}`\n{USAGE}")),
     }
@@ -161,6 +167,38 @@ fn bench(args: &Args) -> Result<(), String> {
         "steps/s with the head calls and the random choice: {:.0}",
         report.steps as f64 / report.secs
     );
+    Ok(())
+}
+
+/// `h3 ai computer`: the original's computer player playing a map's games (E31 T2a; the gated
+/// workload `computer-turns-towns-36`).
+fn computer(args: &Args) -> Result<(), String> {
+    args.check(&["map", "games", "days", "seed", "difficulty", "checked"])?;
+    let options = computer::ComputerOptions {
+        map: args.path("map", "fixtures/maps/e09-towns-36.h3m"),
+        games: args.num("games", 4)?,
+        days: args.num("days", 28)?,
+        seed: args.num("seed", 1)?,
+        difficulty: args.num("difficulty", 1)?,
+        checked: args.num("checked", false)?,
+    };
+    let report = computer::run(&options)?;
+    let played = &report.played;
+    println!(
+        "games: {}, days: {}, turns: {}, commands: {} (answers {}, battle commands {}; garrison \
+         moves Enter {}, Leave {}, Swap {}), the longest turn: {} commands",
+        options.games,
+        options.days,
+        played.turns,
+        played.commands,
+        played.answers,
+        played.battle_commands,
+        played.garrison_moves[0],
+        played.garrison_moves[1],
+        played.garrison_moves[2],
+        played.longest_turn
+    );
+    println!("time: {:.3}s", report.secs);
     Ok(())
 }
 

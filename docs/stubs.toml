@@ -279,4 +279,40 @@ where  = "crates/h3-battle/src/world.rs::determinized"
 reason = "A search agent's world (E06 T8b, ADR-0025 point 12a) places the other side's hidden spell obstacles again by their rule, but keeps their number and value: the cast is public, while the number of pits or mines and a mine's value follow the caster's mastery, which is private. A world should take them from the guessed hero's mastery (the cast's rule) instead; the twin tests vary only the hexes. Also kept: a random caster's last drawn spell for stacks other than the active one (Casts::last), which only the computer's cast choice reads, never a rule or a search. Moved to E25 at E06's last checkpoint (the user, 2026-10-27): it matters only to a search trained on its own choices. Two more gaps found by E06 T9b's review (the user, 2026-10-27: E25's, with this one), each against ADR-0025 point 12a.2 (its third, the magic limits recomputed with the guess, closed 2026-10-28: a world keeps what the battle forbids every caster, BAT-MAG-061, BAT-MAG-062): a world keeps the true other hero's morale and luck modifiers (`BattleState::modifiers`, BAT-HER-003: built from its private effects at the start), so two battles that differ only in its artifacts give different worlds; and without a guess (a scenario batch, a hero type outside the distribution) `public` only removes war-machine control, so the other side's commanded Ballista, tent or Catapult acts automatically in every world"
 epic   = "E25"
 
+[[stub]]
+id     = "AI-STUB-2"
+where  = "crates/h3-game/src/computer/turn.rs::search_and_walk"
+reason = "The original's computer player (E31 T2a, ADR-0030): each hero's search and walk is not ported yet: ai_hero_search_and_walk 0x5267B0 (the budget, the destination's search up to five times with its doubling, no destination putting the hero asleep, the week's last day, the reveal clearing the turn's flag; survey section 1.4), and before it in ai_hero_turn 0x5261F0 the selection, the danger map (ai_danger_map 0x42DE50) and the boat marks (survey section 1.3). Until the planning (T2i) and the walk (T2j) every hero finds no destination and is done (asleep) at once; the garrison step after it is ported (CPU-TRN-004)"
+epic   = "E31"
+
+[[stub]]
+id     = "AI-STUB-3"
+where  = "crates/h3-game/src/computer/turn.rs::start"
+reason = "The original's computer player (E31 T2a): the turn's start and middle are frames only. The start (ai_turn_start 0x4297C0, ai_turn_start_values 0x527960; survey section 1.5) clears the done marks and sets the turn's flag; its records (the Eye value, the threat folds and the defence recruits, the recruit reserve, the resource weights, the puzzle target, the heroes' effectiveness, the artifacts' mean, the difficulty weights) come with T2d. The middle (ai_turn_middle 0x428DD0: the income, the threat folds again, the build loop, the hire, the weights again, the allies' shares) only sets the turn's flag again: increment 3 (the towns), its values T2d"
+epic   = "E31"
+
+[[stub]]
+id     = "AI-STUB-4"
+where  = "crates/h3-game/src/computer/turn.rs::hero_turn"
+reason = "The original's computer player (E31 T2a): a hero standing on a town's entrance at its turn's start visits the town first (ai_town_visit 0x5253D0, survey sections 1.3 step 1 and 3.3: the garrison and the swap, the recruits, the guild, the stock, the Blacksmith, the University, the book, the Grail); not ported until increment 3 (the towns): the hero goes on at once"
+epic   = "E31"
+
+[[stub]]
+id     = "AI-STUB-5"
+where  = "crates/h3-game/src/computer/turn.rs::next_hero"
+reason = "The original's computer player (E31 T2a): the game state keeps no patrol (the map's +0x44 to +0x46: h3-map reads the field, no rule keeps it; survey section 5.4, section 3.6 row 6 in the adventure lane's inbox), so every computer hero is free: the order's free hero before a patrolling one (ai_next_hero 0x526A90), a patrolling hero of radius 0 losing its points and never moving (ai_hero_turn 0x5261F0) and the search's patrol bound (0x5267B0) are not ported. Lifted once the adventure lane keeps the patrol in the state"
+epic   = "E31"
+
+[[stub]]
+id     = "AI-STUB-6"
+where  = "crates/h3-game/src/computer/mod.rs::choose"
+reason = "The original's computer player (E31 T2a): an open decision of the computer's, in its turn or not, is answered by h3_game::default_answer (the system actor's default: an offer declined, a dialog closed, a level-up's original choice with the setup's values, ADV-STUB-8), not by the computer's own answers (survey sections 3.4 and 3.5: the visits' dialogs, the joins and the pursued monster, the Seer, the markets, ai_level_up_choice 0x52BBD0): increment 4 (the answers and the fights)"
+epic   = "E31"
+
 # --- rmg (RMG-STUB-<n>) ---
+
+[[stub]]
+id     = "RMG-STUB-1"
+where  = "crates/h3-rmg/src/generate.rs::generate"
+reason = "generate stops after the frame before step 1 (the settings as run, the seed, water's Random, the templates kept and drawn, the banned heroes, the positions; E14 T2c): GeneratedMap holds no zones, cells, objects or teams yet. The fifteen steps come with increments 3 to 6 (each step's cells checked against the phase oracle), the writer's content (the header, players, teams' draw, tiles, objects) with increment 7"
+epic   = "E14"

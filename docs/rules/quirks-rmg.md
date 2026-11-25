@@ -36,7 +36,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 
 ### RMG-QUIRK-3 — Divisions and moduli by zero
 - Class: exploit-fix (the user, 2026-11-24, T1c2)
-- Context / rules affected: `rmg_zone_place` 0x53B970 with no candidate (its draw 0x53BB5F); a jitter limit of 0 (`rmg_border_jitter_draw` 0x53C0F2: a zone of scaled size 0 on a jagged border, an island zone of size 1); `rmg_junction_path_draw` for a zone of size 0; `rmg_object_choose` 0x546190's density filter for a template with no blocking or enterable cell; a terrain picture set missing a shape (water 24, rock 16 and 24) reached by slot 5; `rand() % 0` without shipyard or gate prototypes and a modulus 0 without monolith prototypes (step 6); survey §2.2 to §2.4, §2.7.3
+- Context / rules affected: `rmg_zone_place` 0x53B970 with no candidate (its draw 0x53BB5F); a jitter limit of 0 (`rmg_border_jitter_draw` 0x53C0F2: a zone of scaled size 0 on a jagged border, an island zone of size 1); `rmg_junction_path_draw` for a zone of size 0; `rmg_object_choose` 0x546190's density filter for a template with no blocking or enterable cell; a terrain picture set missing a shape (water 24, rock 16 and 24) reached by slot 5; `rand() % 0` without shipyard or gate prototypes and a modulus 0 without monolith prototypes (step 6); survey §2.2 to §2.4, §2.7.3; the dialog's teams draw `rand() % players` (0x586183) with no players (E14 T2c: `resolve_random` refuses them, RMG-SET-001)
 - Original behavior: a division by zero; at best `rmg_run`'s catch-all gives code 1 (whether it takes a structured exception was not read), no map either way.
 - Intended/expected behavior: the generation fails with a typed error naming the cause; no map.
 - Impact: game-breaking (a crash) where reached; as read none is reachable with the shipped tables and objects (increment 6's census confirms it).
@@ -48,14 +48,14 @@ Known differences between the original's random map generator (GOG Complete's `H
 
 ### RMG-QUIRK-4 — Unchecked reads, writes and nulls
 - Class: exploit-fix (the user, 2026-11-24, T1c2)
-- Context / rules affected: `rmg_border_guard_place` 0x540D60 returning colour 0 when a tent exists but no Border Guard of its colour; `rmg_path_carve` 0x5408E0 with a null prototype (`rmg_prototype_draw` 0x546040 returns null without candidates); `rmg_monolith_border_guard` 0x542B00 marking five cells without a bounds check (a monolith on the map's edge wraps to the next row or level); `rmg_connection_by_monoliths` 0x542CE0 reading the exit list at the entrance's index unchecked; `rmg_seer_hut_place` 0x54B490 reading past the artifact prototypes when none has the quest's id; survey §2.3, §2.4
+- Context / rules affected: `rmg_border_guard_place` 0x540D60 returning colour 0 when a tent exists but no Border Guard of its colour; `rmg_path_carve` 0x5408E0 with a null prototype (`rmg_prototype_draw` 0x546040 returns null without candidates); `rmg_monolith_border_guard` 0x542B00 marking five cells without a bounds check (a monolith on the map's edge wraps to the next row or level); `rmg_connection_by_monoliths` 0x542CE0 reading the exit list at the entrance's index unchecked; `rmg_seer_hut_place` 0x54B490 reading past the artifact prototypes when none has the quest's id; survey §2.3, §2.4; `rmg_generate_map`'s positions (0x5499BF to 0x549ACD, E14 T2c): a start zone's position below -1 or above 7 indexes its two eight-byte arrays outside the frame, and starts running out (fewer distinct starts than the players, or than the players and computers) write past them, a ninth player clearing the drawn template's index at ebp-4 and every one writing a colour past +0xF00 (AB's 2SM2i(2) with four players; `PositionError`, RMG-TPL-008)
 - Original behavior: memory read or written out of bounds, or a null used; reachable only with other data as read.
 - Intended/expected behavior: the generation fails with a typed error.
 - Impact: game-breaking (memory corruption or a crash) where reached
 - Sources: code reading (survey §2.3, §2.4, "Faults reachable only with other data")
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, fixed = fixed
-- Regression test: each case when its step is ported
+- Regression test: each case when its step is ported; the positions' cases since E14 T2c (`h3-rmg`'s `positions_outside_the_arrays_are_refused`, `h3-pack-rmg`'s `two_sm2i_2_gives_the_third_player_a_seventh_start`)
 - Decided by / date: the user, 2026-11-24 (T1c2)
 
 ### RMG-QUIRK-5 — A zone without an empty cell seeds its flood with another zone's cell
@@ -79,7 +79,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Sources: code reading (survey §1.1)
 - Flag: none (validated in every profile)
 - Defaults: faithful = fixed, fixed = fixed
-- Regression test: when the parameters are ported (increment 2)
+- Regression test: E14 T2c, `SettingsError::ComputerTeams` from `resolve_random` and `Settings::check` (`h3-rmg`'s `choices_the_original_would_go_wrong_on_are_refused`, `settings_the_tab_cannot_give_are_refused`)
 - Decided by / date: the user, 2026-11-24 (T1c2)
 
 ### RMG-QUIRK-7 — Border Guards on both sides with crossed keys
@@ -139,8 +139,8 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Sources: code reading (survey §2.1)
 - Flag: `quirk.rmg.roe_monster_town_byte`
 - Defaults: faithful = on, fixed = off
-- Regression test: when the templates are ported (increment 2) and the guards (an RoE case)
-- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+- Regression test: the templates since E14 T2c (`h3-rmg`'s `a_kept_templates_zones_are_renumbered_and_its_connections_filtered`, `h3-pack-rmg`'s `roe_zones_lose_a_monster_town_by_the_flag`, both profiles); the guards when step 6 is ported (an RoE case)
+- Decided by / date: the user, 2026-11-24 (T1c2); flag at registry position 52 since E14 T2c; the reading confirmed by a second look (E14 T2c, a fresh agent's re-read of 0x5386C4 to 0x538889); unconfirmed by the oracle (no RoE case yet)
 
 ### RMG-QUIRK-12 — A zone without a town type draws among four entries
 - Class: fix-optional (the user, 2026-11-24, T1c2)
@@ -292,6 +292,19 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Regression test: when the writer is ported (increment 6); the game's start on such a map waits for the town lane (its inbox: whether `GameSetup::validate` accepts a main town of another owner, as the original does)
 - Decided by / date: the user, 2026-11-24 (T1c2); confirmed (observation)
 
+### RMG-QUIRK-24 — A start zone without Ownership marks a phantom human start 7
+- Class: fix-optional (the user, 2026-11-25, E14 T2c)
+- Context / rules affected: `rmg_generate_map` 0x549930's positions (0x5499BF to 0x5499F9, RMG-TPL-008); AB's tables (also SoD's, which keep them): 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3 to 8, whose Ownership (column 13) is empty; survey §2.1, §3.1
+- Original behavior: a start zone's position is its Ownership less 1, -1 for these. The zones' pass marks `human[p]` and `start[p]` (two eight-byte arrays at ebp-0x14 and ebp-0xC); for -1 its `start[-1]` is `human[7]` and its `human[-1]` a byte of the colours' list, which is written over next. So any such zone, human or computer start, adds a human start at position 7, which no zone has: with 2SM2i(2) and three players the third player's colour goes to position 7 and the two zones without Ownership stay without a colour (position -1 reads +0xEE0, -1); with four the starts run out (RMG-QUIRK-4).
+- Intended/expected behavior: a zone without Ownership marks no start.
+- Impact: gameplay-altering (a player without a start zone; what steps 4 and 5 and the writer then give that colour and those zones is read with their steps)
+- Community status: unknown
+- Sources: code reading (E14 T2c, `rmg_generate_map` 0x5499A1 to 0x549ACD; a second look by a fresh agent's re-read)
+- Flag: `quirk.rmg.unowned_start_seventh` (registry position 53)
+- Defaults: faithful = on, fixed = off
+- Regression test: `h3-rmg`'s `a_start_without_ownership_marks_the_eighth_human_start`, `h3-pack-rmg`'s `two_sm2i_2_gives_the_third_player_a_seventh_start` (both profiles)
+- Decided by / date: the user, 2026-11-25 (E14 T2c); unconfirmed by the oracle (no corpus case draws 2SM2i(2) or 2SM0k)
+
 ## Considered, not quirks
 
 Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the classification, and the oracle's memory bits). A later reading that shows one changes a map's gameplay re-opens it here.
@@ -329,4 +342,4 @@ Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the
 | Candidate | What decides | Survey |
 |---|---|---|
 | Both 6LM10 templates connect zone 13 to itself | what step 6 makes of a self-connection (a fault would be RMG-QUIRK-3's or -4's class) | §3.1 |
-| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8): the colour table's slot 0 | what steps 4 and 5 and the writer give such a zone | §3.1 |
+| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0 | what steps 4 and 5 and the writer give such a zone and the colour at position 7 | §3.1 |

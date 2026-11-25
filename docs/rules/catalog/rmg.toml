@@ -1,0 +1,266 @@
+# Rule catalog: rmg (map generation, the original's random map generator ported; ADR-0029, E14).
+# Format: docs/04-rules-and-sources.md §3. The code reading of Heroes3.exe (GOG Complete, SoD's
+# code; scripts/exe.py, docs/exe/) is the primary source, the oracle (the original generating under
+# Wine, docs/lanes/rmg/ORACLE.md) the observation; the survey docs/rules/surveys/E14-generator.md
+# holds the readings (§3.2 the rules by phase). Increment 2 (E14 T2b, T2c): the settings, the
+# tables, the template and the positions.
+
+[[rule]]
+id       = "RMG-SET-001"
+title    = "The players' Random choices"
+context  = "rmg"
+status   = "implemented"
+summary  = "random_map_generate draws the tab's Random players as h + rand() % (9 - h), h the colours marked human (site 0x586168), then their Random teams as rand() % players + 1 (0x586183); teams of 0 or more than the players become the players. The original draws them from the game's rand state before the generator's seed, which no port reproduces: resolve_random applies the formulas to a stream the caller seeds (ADR-0029 point 2). No players (h 0 and a draw of 0, or a choice of 0) is refused: the teams' draw would divide by them (RMG-QUIRK-3)."
+quirks   = ["RMG-QUIRK-3"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1, T2c): random_map_generate 0x5860E0, 0x586103 to 0x58619B (the human slots counted, rmg_choice_players_draw 0x586168, rmg_choice_teams_draw 0x586183, the teams' clamp 0x586191); survey E14-generator.md §1.1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0029 point 2: the settings hold every choice resolved; resolve_random applies the original's formulas to a stream the caller seeds"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-SET-002"
+title    = "The computers' Random choices"
+context  = "rmg"
+status   = "implemented"
+summary  = "With 8 players there are no computers and no computer teams (nothing drawn). Otherwise Random computers are rand() % (9 - players) (0x5861B1), and computers above 8 less the players become 8 less the players; without computers the computer teams are 0 (nothing drawn); with computers Random computer teams are rand() % computers + 1 (0x5861E4), 0 becomes the computers. Computer teams above the computers, which the original turns into the players' count, are refused with a typed error (RMG-QUIRK-6, exploit-fix)."
+quirks   = ["RMG-QUIRK-6"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1, T2c): random_map_generate 0x58619E to 0x586205 (rmg_choice_computers_draw 0x5861B1, the clamp 0x5861C3, rmg_choice_computer_teams_draw 0x5861E4, 0 the computers 0x5861F8, above them the players 0x586205); survey E14-generator.md §1.1"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-SET-003"
+title    = "The monsters' Random choice"
+context  = "rmg"
+status   = "implemented"
+summary  = "Random monster strength is rand() % 3 (0x58621D): 0 weak, 1 normal, 2 strong, the parameters' -1, 0, 1 (the dialog's choice less 1), drawn after the computers' choices. Water's Random is not drawn here: it goes on as 3 (RMG-SET-007)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1, T2c): random_map_generate 0x586208 to 0x58622C (rmg_choice_monsters_draw 0x58621D; a chosen strength is the dialog's +0x18BC less 1); survey E14-generator.md §1.1"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-SET-004"
+title    = "The settings and their checks"
+context  = "rmg"
+status   = "implemented"
+summary  = "A map is generated with the tab's choices resolved: the size (S, M, L, XL: 36, 72, 108, 144 tiles a side, square), one or two levels, each colour's human flag and town type (0 to 8, Castle to Conflux, or Random), the players (1 to 8, the humans among them), their teams (1 to the players), the computers (at most 8 less the players), their teams (1 to the computers, 0 without), water (none 0, normal 1, islands 2, Random 3), monster strength (weak, normal, strong) and the format: the setup's 1 AB (version 1, 0x15), 2 or 3 SoD (version 2, 0x1C), else RoE (version 0, 0x0E). Settings outside those ranges are refused with a typed error before anything is drawn (an untrusted input)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1, T2c): random_map_generate 0x58622D to 0x58624A (the version), rmg_parameters_init 0x54BF00 (rmg_parameters: human flags +0, towns +8, width +0x28, height +0x2C, underground +0x30, players +0x34, teams +0x38, computers +0x3C, computer teams +0x40, water +0x44, monsters +0x48, version +0x4C); survey E14-generator.md §1.1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/06-security.md: settings are untrusted input, refused with typed errors (ADR-0029 point 2: generate never panics)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-SET-005"
+title    = "The run's adjustments"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_generate_and_write gives the generator the parameters' monster strength plus 3 clamped to 1..5 (weak 2, normal 3, strong 4) and, when the players and computers together are fewer than 2, one player and one computer (the computer teams unchanged). The run's codes: 0 done, 1 an exception, 2 the writer failed, 3 no template (GENRLTXT 750 to 752); the port returns typed errors instead."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1, T2c): rmg_generate_and_write 0x54BF60 (0x54BF8C the clamp, 0x54BFA4 to 0x54BFB4 one and one), rmg_run 0x54C090 (code 1); survey E14-generator.md §1.2"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-SET-006"
+title    = "The seed and the stream"
+context  = "rmg"
+status   = "implemented"
+summary  = "The generator seeds the C runtime's rand with time() in seconds (srand at 0x536148, before the objects are read) and draws every later number of the generation and the writing from that one stream (KER-RNG-004). The port takes the seed as input (a u32) and reports each draw with its call site to the trace (ADR-0029 point 8). With water chosen, the first draw is the template's (RMG-TPL-007)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1): rmg_generator_base_init 0x536070, crt_time 0x6198E0, rmg_seed_srand 0x536148; survey E14-generator.md §1.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T1b2, ORACLE.md): each map's log starts with its seed, the description names it; the 21 corpus cases' first draw after srand(seed) is the template's (h3rmg.py templates; E14 T2c compared the port's draws before step 1 with the logs)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-SET-007"
+title    = "Water's Random"
+context  = "rmg"
+status   = "implemented"
+summary  = "Water Random (3) is drawn in the generator's constructor after the seed, before the templates are read: rand() % 3 (0x537C89), 0 none, 1 normal, 2 islands; then it is the generation's first draw. It decides the templates' size index (islands halve it, RMG-TPL-005)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1, T2c): rmg_generator_create 0x537C57 to 0x537C96 (rmg_water_draw 0x537C89) before rmg_templates_read 0x537C9E; survey E14-generator.md §1.3"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-SET-008"
+title    = "The banned heroes"
+context  = "rmg"
+status   = "implemented"
+summary  = "The generator bans hero h (of the hero table's 156) when its record's byte +0x3A is set (a campaign hero) or its byte for the version is clear: +0x38 (RoE's heroes) for RoE, +0x39 (the expansions') for AB and SoD. SoD's executable: RoE bans 128 to 155; AB and SoD ban Lord Haart the Knight (4) and 145 to 155. The bytes are harvested into packs/sod/rmg.toml's [generator]."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T2c): rmg_generator_create 0x537CFC to 0x537D3B (the hero table pointer 0x67DCE8, the table 0x679DD0, 0x5C bytes a hero, the bans at +0xF88); h3-formats' hero_data reads the bytes (installation.md §7.1)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-SET-009"
+title    = "The limits by object type"
+context  = "rmg"
+status   = "implemented"
+summary  = "The generator's two tables of 232 limits by object type, per map (rmg_type_limit_map 0x69CE4C) and per zone (rmg_type_limit_zone 0x69D1F4), are 32000 for every type, then set from the executable's pairs (object type, limit), each table from its last pair to its first: per map 30 pairs at 0x640718 (200 for types 26 and 6, 48 for 57 and 83, 64 for 8, 32 for 25 others), per zone 24 at 0x640808 (1 for 23 types, 3 for type 113). The pairs are harvested into packs/sod/rmg.toml's [generator]; the steps that place objects read the limits."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1, T2c): rmg_generator_create 0x537D3D to 0x537D95 (rmg_type_limits_a 0x640718 to 0x640800, rmg_type_limits_b 0x640808 to 0x6408C0); survey E14-generator.md §1.3, §2.4"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TPL-001"
+title    = "rmg.txt's rows"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg.txt is read from its row 3: a template starts at a row of two or more cells and runs to the next row whose column 0 is set (name, least and greatest size in columns 0 to 2); in its rows a zone is a row of 76 or more cells with column 3 set, a connection a row of 85 or more cells with column 76 set and column 77 not empty (a row may be all three). Set: not empty and not beginning with a space. Numbers as c_atoi reads them. The harvest keeps the tables as read in packs/ab/rmg.toml and packs/sod/rmg.toml."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2a, T2c): rmg_templates_read 0x537FF0 (0x53807B to 0x538177 the template rows, 0x5381DA to 0x53821E a connection row), rmg_template_zones_read 0x538480; survey E14-generator.md §2.1, §3.1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "H3bitmap.lod's and H3ab_bmp.lod's Rmg.txt, read by h3-pack-rmg's original_data check against the harvested packs (E14 T2b)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TPL-002"
+title    = "A zone's fields"
+context  = "rmg"
+status   = "implemented"
+summary  = "A zone row's fields by column: id 3; type the last of columns 4 to 7 set (human start 0, computer start 1, treasure 2, junction 3; none set: treasure); base size 8; least and most humans 9, 10; least and most players 11, 12; Ownership 13 (the start position is it less 1); the colour's and the neutral towns 14 to 21; same type 22; town types 23 to 31; mines and their densities 32 to 45; terrain matches 46; terrains 47 to 54 (none set: dirt); monster strength by column 55's first letter (n none 0, w weak 2, s strong 4, anything else average 3); monsters match 56, neutral 57, monster towns 58 to 66; three treasure bands 67 to 75."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2a): rmg_template_zones_read 0x538480 (the rmg_zone record, docs/exe/structs.toml); survey E14-generator.md §2.1"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TPL-003"
+title    = "RoE's town types"
+context  = "rmg"
+status   = "implemented"
+summary  = "For an RoE map (version 0) a zone reads eight town types (Conflux's, the ninth, cleared) and its monster towns lose byte +0x9D, Fortress's (column 65), not Conflux's +0x9E (RMG-QUIRK-11, flag quirk.rmg.roe_monster_town_byte; off: Conflux's monster town is cleared instead). AB and SoD read all nine."
+quirks   = ["RMG-QUIRK-11"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2a, T2c): rmg_template_zones_read 0x5386C4 to 0x5386D6 (eight town types, +0x49 cleared), 0x53884D to 0x538889 (the monster towns +0x95 to +0x9E from columns 57 to 66; +0x9D cleared below version 1); survey E14-generator.md §2.1"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TPL-004"
+title    = "Zones and connections kept for the players"
+context  = "rmg"
+status   = "implemented"
+summary  = "A zone is kept when its least and most humans (columns 9, 10) hold the players and its least and most players (11, 12) hold the players and computers, inclusive; a connection likewise by columns 81 to 84, and only when both its zones (columns 76, 77 by id, the first kept zone of an id) are kept; a kept connection joins both zones in row order."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2a, T2c): rmg_template_zones_read 0x5385E8 to 0x538617 (the zone's ranges), rmg_templates_read 0x538224 to 0x538354 (rmg_template_zone_find 0x5330A0 twice, the ranges 0x53830D to 0x53832B, the connection added to both zones); survey E14-generator.md §2.1"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TPL-005"
+title    = "The templates kept"
+context  = "rmg"
+status   = "implemented"
+summary  = "The map's size index is width x height x levels / 1296 (a signed 32-bit division), halved towards zero for islands and raised to 1. A template is kept, in the table's row order, when its least and greatest size hold the index and, of its kept zones, the human starts are at least the players and the human and computer starts at least the players and computers; its zones' ids then become 0, 1, ... in row order. None kept: no map (the original's code 3)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2a, T2c): rmg_templates_read 0x53801D to 0x538076 (the index, islands halved), 0x538180 to 0x53818C (the range), 0x538374 to 0x5383FB (the starts counted), 0x53841D to 0x53843D (renumbered); rmg_generate_map 0x549939 (none kept: false); survey E14-generator.md §2.1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The oracle's corpus (E14 T1b1, clients/capture/rmg/kept.txt): h3rmg.py templates predicts all 21 kept templates from SoD's table (8 missed from AB's); h3-pack-rmg's test the_corpus_draws_the_originals_templates draws them through generate"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TPL-006"
+title    = "rand_trn.txt's rows"
+context  = "rmg"
+status   = "implemented"
+summary  = "rand_trn.txt is read from its row 3 to the first row whose column 0 is not set: each row an obstacle's object type, subtype and terrain, nine modifiers, and one Adjacent and one Overlap score per row of the table (109 in the original's). The harvest keeps the rows as read."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2a): rmg_rand_trn_read 0x536560; survey E14-generator.md §2.1, §3.1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "H3bitmap.lod's and H3ab_bmp.lod's Rand_trn.txt, read by h3-pack-rmg's original_data check against the harvested packs (E14 T2b)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TPL-007"
+title    = "The template drawn"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_generate_map draws the template as rand() % the kept templates' count (unsigned; 0x549975) among the kept ones in row order and keeps its name. With water chosen it is the generation's first draw."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1): rmg_generate_map 0x549930 (rmg_template_draw 0x549975, its name copied at 0x54999C); survey E14-generator.md §1.5"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The oracle's corpus (kept.txt's 21 templates) and the phase oracle's logs: the draw before step 1 is 0x549975's, the first after srand(seed) (E14 T1b2, T2c)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TPL-008"
+title    = "The start positions"
+context  = "rmg"
+status   = "implemented"
+summary  = "Each kept start zone marks its position (Ownership less 1): a human start as a human start and a start, a computer start as a start. The colours are listed humans first, then the others, each in colour order; the first players colours take the human starts' positions in position order, then the computers the remaining starts (human or computer) in position order; position p's colour is kept at +0xEE4 + 4p. A start zone without Ownership (position -1) marks the human starts' eighth entry, start[-1] in the frame (RMG-QUIRK-24, flag quirk.rmg.unowned_start_seventh; off: it marks nothing). A position below -1 or above 7, or the starts running out (the original then writes past its arrays, clearing the drawn template's index), is refused with a typed error (RMG-QUIRK-4)."
+quirks   = ["RMG-QUIRK-4", "RMG-QUIRK-24"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a1, T2c): rmg_generate_map 0x5499A1 to 0x549ACD (the two eight-byte arrays at ebp-0x14 and ebp-0xC zeroed, the zones' marks 0x5499BF to 0x5499F9, the colours listed 0x549A0D to 0x549A43, the players' loop 0x549A45 to 0x549A84, the computers' 0x549A86 to 0x549ACD, +0xEE0 nine entries set to -1); survey E14-generator.md §1.5, §2.1"
+  confidence = "high"

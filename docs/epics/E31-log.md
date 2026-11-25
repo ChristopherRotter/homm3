@@ -386,3 +386,55 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   `check-rules`, `check-docs`, `check-exe-map`, `check-arch`, `check-lane --cross-lane`; the scoped
   verify not run (the shared change is the kernel's arithmetic and docs; CI's full verify is the
   record).
+
+## T2a — the frame (2026-11-25, increment 2)
+
+- **The size, measured at the start** (`docs/exe/map.toml`): the nine functions of §1.1 to §1.4 and
+  §1.6, 3 793 bytes, about 1 400 instructions, as the cut said; done alone (not paired with T2e).
+- **Blind re-reads** (`Heroes3.exe` staged from the user's repo folder; nothing printed
+  committed): `ai_player_turn` 0x525E80, `ai_next_hero` 0x526A90 (and the second pass's copy at
+  0x526000), `ai_hero_turn` 0x5261F0; each agrees with the survey. Details the survey did not
+  spell out, now in the catalog: the alone flag is set to 1 first and cleared by a second
+  qualifying hero, so a garrison hero sent out plays without it; the skills' sum reads each
+  byte signed (above 99 counted 99, not above 0 counted 0 for Attack and Defense and 1 for Spell
+  Power and Knowledge); a strictly smaller sum replaces; the turn's flag is set again after the
+  middle (0x525FD5); `town_visitor_to_garrison` 0x4B9FC0 does nothing when `army_absorb` refuses
+  (the engine's refused `Enter`); the garrison step tests the town's owner against the hero's
+  (+0x1 against +0x22).
+- **Built** (`h3_game::computer`, the ai lane's module): `choose` (CPU-TRN-001; `None` while
+  another player's level-up holds the game and for a battle, the battle seat's; an open decision
+  by `default_answer`, AI-STUB-6), `Memory` (CPU-TRN-005: the turn's day, pass, flag, the hero a
+  garrison sent out, the heroes done; encoding v1 `MEMORY_ENCODING_VERSION`, a strict decoder, the
+  FNV-1a hash over the encoding), `POLICY_VERSION` 1; the turn's frame (CPU-TRN-002: the start, the
+  first pass, the middle, the second pass, `EndTurn`; one command a call, the frame going on from
+  its memory), the order of heroes (CPU-TRN-003), a hero's turn with the garrison step
+  (CPU-TRN-004: `Enter`, `Swap`, and the garrison hero sent out by `Leave`, each only where the
+  engine allows it). Stubs: AI-STUB-2 the search and the walk (every hero done at once), -3 the
+  start's records and the middle, -4 the town visit, -5 the patrol (not in the game state), -6
+  the answers.
+- **Agent decisions (change freely):** the player's town list is the engine's `TownId` order (as
+  `upper_bars` and the Thieves' Guild read it); the eight heroes' bound of `ai_next_hero` is its
+  constant 8 beside the engine's `most_heroes`; the hero picked while already selected (its alone
+  flag dropped) and the selection itself wait for T2i and T2j, since no hero is picked twice
+  while each is done at once; the walk's "no points or done" test before the garrison step
+  likewise (every hero reaching it is done).
+- **Tests:** `h3-game`'s `computer/tests.rs` on the town tests' game and the plain game (the
+  passes and a new day, the flag, an entry and a refused one, a swap, a garrison hero sent out
+  and back, eight heroes on the map, the order with its tie, the signed bytes, a battle and a
+  level-up's hold, the encoding and a property test of it): the module at 100 % lines and regions
+  by `h3-game`'s own tests (the adventure and town lanes' scoped verifies cover `h3-game` without
+  `h3-sim`'s). `h3_sim::computer::play` hosts every player as the computer (the battles by
+  `h3_battle_ai::choose`, faithful): `h3-sim`'s tests play the five generated 36-tile maps
+  (`e08-duel`, `e09-towns`, `-builds`, `-taverns`, `-guild`) at every difficulty (48 cases, up to
+  a week; each command asked twice on copies, each turn within its bound, every command applied),
+  and a swap back by the original packs' army values (the test core's creatures are worth 0).
+  `examples/original_data.rs` (`--with-original-data`): every one of the 160 shipped maps imports
+  and plays at every difficulty to day 7, five of them (Arrogance, Dead and Buried, Crimson and
+  Clover, The Gauntlet, War of the Mighty) to day 28: 800 games, 28 350 turns, 68 805 commands
+  (Enter 21 630, Leave 18 825), the longest turn 7 commands, about 30 s in debug.
+- **The benchmark:** `h3 ai computer` and the lane-only workload `computer-turns-towns-36` (4
+  games of 28 days on `e09-towns-36.h3m`, inside `h3_game::computer::choose`): 4 933 409 Ir,
+  about 7 400 a command; 66 % the order's primary skills (`h3_heroes::primary_skills` of every
+  awake hero at each pick), 10 % the frame, 9 % the towns' owners. Left as it is: a turn costs
+  about 22 000 Ir, far inside the 50 ms budget; the later tasks' values will dominate.
+- **Told:** the map-client lane the entry point (its inbox, `MCL-STUB-5`).

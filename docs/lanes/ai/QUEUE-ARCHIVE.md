@@ -4,6 +4,20 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E31 increment 2, T2a** (moved 2026-11-25, done: `E31-log.md` T2a):
+
+  - **T2a — the frame** (survey §1.1 to §1.4, §1.6; ADR-0030 points 2, 3, 5, 13; about 1 400 of the
+    original's instructions): `h3_game::computer::choose` and `Memory` (a plain value, its
+    canonical encoding and hash), `POLICY_VERSION`; the turn's loop of `ai_player_turn` 0x525E80
+    (the phases, the heroes' order of `ai_next_hero` 0x526A90, both passes, the done marks, the
+    end), each hero's turn done at once until T2i and T2j, then `EndTurn`; an open decision answered
+    by `default_answer` behind a stub until increment 4. The property tests (random maps, five
+    shipped maps, all five difficulties: every command legal, a turn ends within a bound of
+    commands, the same command for the same state, memory and stream), the benchmark's workload in
+    `benches/ai/`; the `CPU-TRN-` ids. Measure its size at the start; then tell the map-client lane
+    the entry point (its inbox: `MCL-STUB-5`'s hot seat, one command a call, the battle side by the
+    host's seat). `Heroes3.exe` staged for the blind re-reads where a step is unclear.
+
 **E31 increment 1, T1a1 to T1b** (moved 2026-11-24, done: `E31-log.md` T1a1a to T1b; increment 1 closed, AI-Q31):
 
 - **E31 T1a1 — the frame, in three parts** (AI-Q24): **done** 2026-11-23 (`E31-log.md` T1a1a
@@ -511,6 +525,17 @@ and defends (1 %) less than the system actor (7 %, 3 %), loses mostly defending;
 leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
+
+**Moved 2026-11-25** (E31 T2a, done: the entry point told in the map-client lane's inbox):
+
+**From the map-client lane** (E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your E31
+increment 2, nothing to do now**):
+
+- 2026-11-24: E24 M5's hot seat hosts the game in-process (`GameSession`) and ends a computer
+  colour's turn at once (`MCL-STUB-5`) until E31's computer player gives it turns; tell this lane
+  the entry point (a policy the host calls per turn, or a `GameSession` hook) when increment 2
+  builds it. M4's review item 6 waits for it too: the map client then reads how the original
+  shows a computer's turn (`ai_hero_turn` and its callers) for its display.
 
 **Moved 2026-11-24** (E31 T1a4's session; verbatim, acted on: E31 decision 6 now reads E09's
 increments 6 to 8):

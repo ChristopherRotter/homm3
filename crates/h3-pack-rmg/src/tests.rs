@@ -1,6 +1,6 @@
 use h3_content::{PackManifest, Ruleset};
 use h3_pack::{SYNTHETIC_CORE, SYNTHETIC_EXT_CORE};
-use h3_rmg::{RmgCompileError, RmgPack, RmgRuleset, Strength, ZoneKind};
+use h3_rmg::{GeneratorTables, RmgCompileError, RmgPack, RmgRuleset, Strength, ZoneKind};
 
 use super::*;
 
@@ -16,11 +16,11 @@ depends = []
 
 [[profile]]
 id = "on"
-quirks = { "quirk.content.rmg_8xm8_zone_ids" = true }
+quirks = { "quirk.content.rmg_8xm8_zone_ids" = true, "quirk.rmg.roe_monster_town_byte" = true, "quirk.rmg.unowned_start_seventh" = true }
 
 [[profile]]
 id = "off"
-quirks = { "quirk.content.rmg_8xm8_zone_ids" = false }
+quirks = { "quirk.content.rmg_8xm8_zone_ids" = false, "quirk.rmg.roe_monster_town_byte" = false, "quirk.rmg.unowned_start_seventh" = false }
 "#;
 
 /// An `objects.txt` line of `picture` with `extra` fields first (`before = 1, `).
@@ -172,6 +172,50 @@ fn the_synthetic_tables_compile_as_written() {
         (crater.adjacent.as_slice(), crater.overlap.as_slice()),
         (&[5, 5][..], &[-5000, 30][..])
     );
+    assert_eq!(
+        part.generator(),
+        Some(&GeneratorTables {
+            heroes_roe: vec![true, true, false, true],
+            heroes_expansions: vec![true, false, true, true],
+            heroes_campaign: vec![false, false, false, true],
+            map_limits: vec![(26, 200), (8, 64)],
+            zone_limits: vec![(113, 3)],
+        })
+    );
+}
+
+/// The generator's tables: one hero byte each per hero, limits of the 232 object types; a later
+/// pack's replace an earlier's.
+#[test]
+fn the_generators_tables_are_checked_and_replaced() {
+    for (from, to) in [
+        ("heroes_roe = \"1101\"", "heroes_roe = \"110\""),
+        ("heroes_campaign = \"0001\"", "heroes_campaign = \"00010\""),
+        ("heroes_expansions = \"1011\"", "heroes_expansions = \"\""),
+        ("[8, 64]", "[232, 64]"),
+        ("[113, 3]", "[255, 3]"),
+    ] {
+        let text = SYNTHETIC_RMG.replacen(from, to, 1);
+        assert_eq!(
+            compile_err(&[(SYNTHETIC_CORE, &text)], PROFILE),
+            RmgCompileError::GeneratorTables("synthetic".into()),
+            "{to}"
+        );
+    }
+    let ext = "[generator]\nheroes_roe = \"1\"\nheroes_expansions = \"0\"\nheroes_campaign = \
+               \"0\"\nmap_limits = []\nzone_limits = [[0, 1]]\n";
+    let part = compile(
+        &[(SYNTHETIC_CORE, SYNTHETIC_RMG), (SYNTHETIC_EXT_CORE, ext)],
+        PROFILE,
+    )
+    .unwrap();
+    assert_eq!(part.generator().unwrap().zone_limits, [(0, 1)]);
+    assert!(
+        compile(&[(SYNTHETIC_CORE, "")], PROFILE)
+            .unwrap()
+            .generator()
+            .is_none()
+    );
 }
 
 #[test]
@@ -201,6 +245,12 @@ fn the_hash_covers_every_table() {
         ("overlap = [5, 0]", "overlap = [5, 1]"),
         ("name = \"Twin Vales\"", "name = \"Twin Vale\""),
         ("strength = \"weak\"", "strength = \"none\""),
+        ("heroes_campaign = \"0001\"", "heroes_campaign = \"0011\""),
+        ("zone_limits = [[113, 3]]", "zone_limits = [[113, 4]]"),
+        (
+            "map_limits = [[26, 200], [8, 64]]",
+            "map_limits = [[8, 64], [26, 200]]",
+        ),
     ] {
         assert!(SYNTHETIC_RMG.contains(from), "{from}");
         assert_ne!(base, hash(&SYNTHETIC_RMG.replacen(from, to, 1)), "{from}");
@@ -290,6 +340,7 @@ fn malformed_files_are_refused() {
             "editor_terrains = \"00000001\"",
         ),
         ("terrains = \"100000000\"", "terrains = \"10000000\""),
+        ("heroes_roe = \"1101\"", "heroes_roe = \"11x1\""),
         (
             "actions = \"100000000000000000000000000000000000000000000000\"",
             "actions = \"10000000000000000000000000000000000000000000000\"",
@@ -511,6 +562,7 @@ fn every_error_has_a_message() {
             pack: pack(),
             obstacle: 1,
         },
+        RmgCompileError::GeneratorTables(pack()),
     ];
     for e in compile_errors.iter().cloned() {
         assert!(!e.to_string().is_empty());
@@ -612,3 +664,5 @@ fn eight_xm8s_zone_ids_follow_the_flag() {
         );
     }
 }
+
+mod generate;

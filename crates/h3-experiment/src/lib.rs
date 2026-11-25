@@ -131,8 +131,9 @@ const BUILDINGS: [(&str, u8); 36] = [
     ("upgraded dwelling 7", 40),
 ];
 /// The special buildings by faction and their bits (VCMI 1.7.5, the same file's
-/// `mapFormat.restorationOfErathia.buildings`; Conflux's are not listed there).
-const SPECIAL_BUILDINGS: [(&str, &str, u8); 27] = [
+/// `mapFormat.restorationOfErathia.buildings`; Conflux's are not listed there: its two since E09
+/// T54, batch TWN-6, the harvested AB pack's `slot`s, `packs/ab/towns.toml`).
+const SPECIAL_BUILDINGS: [(&str, &str, u8); 29] = [
     ("castle", "lighthouse", 18),
     ("castle", "brotherhood of the sword", 19),
     ("castle", "stables", 20),
@@ -160,6 +161,8 @@ const SPECIAL_BUILDINGS: [(&str, &str, u8); 27] = [
     ("fortress", "glyphs of fear", 18),
     ("fortress", "blood obelisk", 19),
     ("fortress", "cage of warlords", 20),
+    ("conflux", "artifact merchants", 10),
+    ("conflux", "magic university", 18),
 ];
 /// Skill level names, 1-based.
 const LEVELS: [&str; 3] = ["Basic", "Advanced", "Expert"];
@@ -3645,6 +3648,19 @@ mod tests {
     /// E09 T44 (batch TWN-5): a map town's required and banned spells, a main town that
     /// generates its owner's hero (the owner's allowed towns its faction alone) and the map's
     /// banned spells, read back from the bytes; the refused ones.
+    #[test]
+    fn a_conflux_town_may_have_its_merchants_and_university() {
+        // E09 T54 (batch TWN-6's TWN-6-7): the AB pack's slots, not in VCMI's table.
+        assert_eq!(building_bit("conflux", "Magic University"), Ok(18));
+        assert_eq!(building_bit("conflux", "artifact merchants"), Ok(10));
+        assert_eq!(building_bit("tower", "artifact merchants"), Ok(10));
+        let err = building_bit("castle", "magic university").expect_err("the Conflux's only");
+        assert!(
+            err.contains("unknown building `magic university` for a castle town"),
+            "{err}"
+        );
+    }
+
     #[test]
     fn a_map_town_may_have_spells_and_be_its_owner_s_main_town() {
         let town = "[[map.town]]\n        entrance = [24, 20]\n        faction = \"stronghold\"\n        \
