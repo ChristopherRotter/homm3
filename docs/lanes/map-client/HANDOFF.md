@@ -21,14 +21,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   2026-11-25 (MCL-Q52: the loops restarted at a won battle's lift, as read and sound-recorded:
   design §5.24; a plain cut's battle in T6's scope). **M5 T2 cut in three** by the user at its
   start: **T2a done** 2026-11-25 (`h3-map-client`: the binary's adapters a library, the binary a
-  thin host, nothing changed). **Next: M5 T2b** (play's entry for the shell, the API agreed with
-  the client lane first), T2c alongside (the record reader). The M4 hand-test notes
-  (`clients/out/win/map-m4-notes.txt`) still blank at T2a.
+  thin host, nothing changed), **T2b done** 2026-11-25 (`h3_map_client::play`, play's entry for
+  the shell, its API agreed by the user for the client lane and in that lane's inbox; the
+  window's loop on a lent window and sound; until T3 the first human's start shown standing;
+  `h3-map-view play` the command line start). **Next: M5 T2c** (one record reader, its place
+  agreed with the client lane), then T3. The M4 hand-test notes
+  (`clients/out/win/map-m4-notes.txt`) still blank at T2b.
   Open questions: MCL-Q29 to MCL-Q49 (none blocks). Stubs: `MCL-STUB-1` (a
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10); planned `MCL-STUB-5` (T3), `MCL-STUB-6` (T4). Next ids
   **MCL-Q57**, **MCL-STUB-5**.
-- **Open pull requests** (2026-11-25): T2a's (`map-client/e24-m5-t2a`; T1c's #1167
+- **Open pull requests** (2026-11-25): T2b's (`map-client/e24-m5-t2b`; T2a's #1171
   merged): check it first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
@@ -55,6 +58,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-25, E24 M5 T2b** (one PR, the API agreed for the client lane, the engine's start
+  until T3: the user at the start): `h3_map_client::play` (`Game`, `Folders`, `End`, `play`);
+  `window`'s loop on a lent window and sound (`Source`, `Host`; the map's streams added on the
+  host's `HostSound` and removed again); `paint::for_text` (a record kept in memory);
+  `h3-map-view play`. The PC up at the start only (58 files staged, SHA-256 checked; a stray
+  `.keep` of a `git fetch` left in the user's `.git`, harmless).
+
 - **2026-11-25, E24 M5 T2a** (T2 cut in three by the user at its start): `h3-map-view`'s binary
   moved by `git mv` into the new library `h3-map-client`, the binary a thin host in its package;
   nothing changed: the 236 golden player records' timelines those of `master`'s binary, `drawn`
@@ -66,10 +76,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   `hero_select` restarts them (design §5.24); a sound run of `battle-mine` showed the loop again at
   1810. Built in `Loop::after_battle` for a hero that stays; a plain cut's battle (no lift) left
   to T6.
-
-- **2026-11-25, E24 M5 T1b** (MCL-Q51): `battle-mine-retreat` recorded twice the same (no box,
-  the mine unflagged, the hero gone as `battle-retreat`'s); `visit_mine`, `monster_battle`'s end
-  and `adventure_battle`'s outcomes read: a loss, a retreat and a draw show the same, so M4 T6's
-  built form stays (the log's "M5 T1b", design §5.23); a draw's zero-count guards noted in the
-  adventure lane's inbox. The PC up for the first minutes (everything staged, SHA-256 checked);
-  the setup's baseline stopped at coverage by hand, CI's `master` standing in.

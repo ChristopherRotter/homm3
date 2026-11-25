@@ -12,31 +12,16 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
 "Later". Every task's cut is confirmed with the user at its start. Planned ids: `MCL-STUB-5` (a
 computer colour's turn ended at once, T3), `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was cut
-in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a done 2026-11-25).
-
-### E24 M5 T2b — play's entry for the shell (the layering's second part; no behaviour changed)
-
-- **Scope:** `h3-map-client` (T2a: the binary's adapters as a library) gains a play entry the
-  shell can call: its input `begin::Game`'s setup and names, the window and sound lent, play's
-  end handed back (Main Menu, Load, Restart, Quit, as E27 M5 will need); the `h3-map-view`
-  binary stays a thin host of the library. With the client lane (its inbox, 2026-11-24): this
-  lane's API agreed with it first; the shell moved out of `h3-battle-client` into a crate of its
-  own on top, whose binary is the player's program and which calls `h3-map-client`'s play (the
-  client lane's task, queued in its inbox with the API it calls).
-- **Acceptance:** the entry's tests; every situation, sequence and record plays as before
-  (`drawn` all the same, the golden records as T2a left them, the window under Xvfb);
-  `check.sh`; the client lane's move queued with the API it calls.
-- **Depends on:** T2a (done). **Status:** queued; T2 cut in three by the user at its start
-  (2026-11-25).
+in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a and T2b done 2026-11-25).
 
 ### E24 M5 T2c — one record reader shared with the client lane (the layering's third part)
 
 - **Scope:** one record reader shared by both lanes (`h3_view::game_record` and `h3-map-view`'s
   own): the place, in the common foundation or beside the server's writer, agreed with the
   client lane and, beside the writer, the server lane; both lanes' readers moved onto it.
-- **Acceptance:** as T2b's (`drawn` all the same, the golden records as before, the window under
+- **Acceptance:** as T2a's and T2b's (`drawn` all the same, the golden records as before, the window under
   Xvfb, `check.sh`), and the client lane's record tests as before.
-- **Depends on:** T2a (done); alongside T2b. **Status:** queued.
+- **Depends on:** T2a (done). **Status:** queued (next).
 
 ### E24 M5 T3 — the session in-process
 
@@ -52,8 +37,9 @@ in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a done 2026
 - **Acceptance:** a two-human game on a shipped map begun from the shell, each End Turn passing to
   the next human's view; each seat's record played by the record player as the game went; the
   scoped verify.
-- **Depends on:** T2b (play's entry); the client lane's shell crate for Begin (until then a
-  command line start).
+- **Depends on:** T2b (play's entry: `h3_map_client::play`, done; until T3 it shows the first
+  human's start standing); the client lane's shell crate for Begin (until then `h3-map-view
+  play`, the command line start).
   **Status:** queued.
 
 ### E24 M5 T4 — live input through the engine
