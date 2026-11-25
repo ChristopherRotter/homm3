@@ -22548,4 +22548,9 @@ start (17 files and 40 MP3s), the repo from GitHub; the setup's baseline lost to
   `random-play-*`) inside the gate, the highest `random-play-bonuses-36` +1.85 % (`master` +1.80 %:
   the drift). Tried and kept out: listing every target (decision 422).
 
-**Verify:** VERIFY_PLACEHOLDER **Versions:** none moved. Next: T144a2.
+**Verify:** the scoped verify with original data and `--skip bench-check` (the eleven workloads
+that count the listing measured above; CI runs every workload): every step passes but
+check-lane, by design (coverage 1 371 s, determinism, original-data); `check-lane --cross-lane`
+ok; `h3-sim`'s, `h3-cli`'s, `h3-protocol`'s, `h3-server`'s and `h3-files`' tests run apart, pass
+(`h3-map`'s 214 in 770 s, 520 s before: the query oracle probes every window tile of a hero who
+knows a targeted spell). **Versions:** none moved. Next: T144a2.
