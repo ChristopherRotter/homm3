@@ -3558,3 +3558,55 @@ On `map-client/e24-m5-t2a`, from `master` at 6498273 (#1167, T1c's, merged).
   `crates/h3-map-client/`) finds no `clients/map`: the default folders go through the package's
   own folder (`h3-map-client/../../map`), as they went through `h3-map-view`'s; `--map` and
   `--install` (the Windows builds' way, TRAPS) do not.
+
+### M5 T2b — play's entry for the shell (2026-11-25)
+
+On `map-client/e24-m5-t2b`, from `master` at 1dcd924 (#1171, T2a's, merged; `master` at 8abf1f4
+merged in before the pull request).
+
+- **Asked at the start** (the user): one pull request, the loop's split and the entry together
+  (recommended was two: the split alone, nothing changed, then the entry); the API as proposed,
+  agreed for the client lane (play's own `Game`, not `begin::Game`: the shell's `begin` would sit
+  above `h3-map-client` once the shell moves; rejected too: asking the client lane's own session
+  first); until T3 the engine's start shown (the game started in-process, its first human's start
+  through the record player's path; rejected: play returning at once).
+- **Built:**
+  - `h3_map_client::play` (new): `Game` (the map file, the validated setup, the hot seat's names,
+    the turn's duration, the seed), `Folders` (the installation copy, the map client's folder, the
+    key file, the drawing's bugs; `Folders::new`), `End` (`MainMenu`, `Load`, `Restart`, `Quit`)
+    and `play(game, rules, window, sound, folders) -> Result<End, String>`; `start` (the game
+    started by `GameSession::start` as `h3-server record` starts a replay's: every seat the
+    host's, the clock unlimited, the whole game one record; the map named by
+    `h3_files::adventure::read_map`'s hash; the setup's first human player and its record so
+    far); `begin` (a map file's game as the shell's Begin makes it: the import's humans or only
+    those named, validated by the engine); the command `h3-map-view play <map.h3m> [--seed <n>]
+    [--humans <c>,...]` (a window and a `HostSound` of its own lent to play as the shell will
+    lend its own, `--check` and `--measure` as `window`'s).
+  - `window`: the loop takes where its map comes from (`Source`: the options, or a record kept
+    in memory) and where it is shown (`Host`: a window and a device of its own, or a host's
+    lent); the sound in a guard (`Sound`) that hands a lent `HostSound` back at the end, or when
+    an error drops it; how play ended returned (the window closed, a hosted battle's too:
+    `Quit`; the quit key and an unattended run's end: `MainMenu`). The command's way is
+    `Source::Options` and `Host::Own`, unchanged.
+  - `audio::Player::over` (the map's streams added on a host's sound, those added removed and the
+    host handed back on a failure) and `release` (the effects stopped, the map's streams removed,
+    the device running, as the battle's `Player::close`); `open` is `over` a new `HostSound`.
+  - `paint::for_text` (a record kept in memory set up as `for_record` sets up a record's file:
+    `engine::load`, then `played_of` and `for_played`, which `for_record` now shares) and
+    `read_map`. `h3-contracts` a dependency (play's `PlayerId`), no longer a dev-dependency.
+- **Checked:** the entry's tests (four: the command's options and refusals; a writer's map begun
+  with the import's humans or those named, a colour no human may play refused; play's start the
+  first human's record, read back by the record player's reader with that viewer, the same for
+  the same setup and seed; no human refused); every golden adventure replay's player records (118 replays, 236 records) with
+  this branch's binary and `master`'s (1dcd924, a worktree): all 236 the same (exit, output and
+  timeline), 205 played to their end and 31 stopped, as T2a found; `h3map.py drawn` (56
+  situations and every sequence the same, the scripted ones with the merged engine's binaries); `h3-map-view play` under Xvfb on
+  *Good to Go* (`--check 10`: 55 of 55 frames read back exact, 59 of 59 made as afresh, every
+  change the headless loop's, the view at the first human's hero, ended `MainMenu`; with a dummy
+  audio device the sound lent, 95 clips and the Grass track decoded, and handed back); the window under Xvfb on `dwellings-guards-s1`'s record as T2a (`--check 45`: both
+  battles closed, 140 of 140 frames read back exact, every change the headless loop's; its 23 cues
+  those of `master`'s binary at the same milliseconds of the map's clock);
+  `clients/scripts/check.sh` (every gate); the scoped verify.
+- **For T3:** `start` drops the session once it took the first human's record; T3 keeps it (a
+  seat per human, each seat's frames folded, the view switched at a human's start), where play
+  now sets up the record so far.

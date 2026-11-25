@@ -156,7 +156,14 @@ log and its cells with the dump of the same step find a divergence at its step a
   run alone right after, it was as kept. So "21 of 21 the same from fresh starts" (T1b1, T1b2) does
   not hold in every run; the likely cause is step 2's stack bytes (RMG-QUIRK-1), not followed. The
   measurement at step 2's port must find what moves them (the run's environment, as for second
-  maps) before the model is fixed.
+  maps) before the model is fixed. **Again in T2c's sandbox** (2026-11-25, `corpus --phases`):
+  `m2-4p` the same other map (113 282 bytes, `h3m=45ae078f…`) in the corpus and alone; its dumps 0
+  and 1 are `phases.txt`'s, step 2's differ (0x532A5B drawn 10 times), so it is step 2's draw; the
+  other 20 as kept.
+- **The port's draws before step 1** (E14 T2c): on the 21 first maps the log's draws between `seed`
+  and `step 1` are the port's, one `549975 <the first rand() after srand(seed)>` each (21 of 21;
+  `h3-pack-rmg`'s `the_corpus_draws_the_originals_templates` asserts the port's, the template
+  `kept.txt`'s).
 - **The corpus's objects** (T1c2, survey §3.3): 47 458 objects of 115 classes; `h3_map` reads all
   21, 20 import and validate; `l2-2p-c4-islands` is refused because Dragons' zone 32 makes a
   neutral town purple's main town (RMG-QUIRK-23; the original starts it), not by the entrance

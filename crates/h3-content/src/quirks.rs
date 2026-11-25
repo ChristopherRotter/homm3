@@ -9,8 +9,9 @@
 //! registry as an entry without a name (`RETIRED`), which no profile can name, no code reads and
 //! no later flag takes.
 
-/// Maximum number of quirk flags (they are stored as a bitset).
-pub const MAX_QUIRKS: usize = 64;
+/// Maximum number of quirk flags (they are stored as a 128-bit set; 64 until E14 T2c, whose
+/// registry reached 54 positions with ADR-0029's 15 flags still to come).
+pub const MAX_QUIRKS: usize = 128;
 
 /// A registered quirk flag.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -139,6 +140,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.spell_recast_refused",
     "quirk.adventure.door_failure_charged",
     "quirk.content.rmg_8xm8_zone_ids",
+    "quirk.rmg.roe_monster_town_byte",
+    "quirk.rmg.unowned_start_seventh",
     "quirk.town.visitor_only_trades",
     "quirk.town.university_ignores_map_bans",
 ]);
@@ -437,13 +440,25 @@ pub const DOOR_FAILURE_CHARGED: QuirkFlag = QuirkFlag(50);
 /// Read by the rmg part's compiler only, as every `quirk.content` flag (E14 T2b).
 pub const RMG_8XM8_ZONE_IDS: QuirkFlag = QuirkFlag(51);
 
+/// RMG-QUIRK-11 (survey `E14-generator.md` §2.1): for an RoE map a template zone's monster towns
+/// lose Fortress (`rmg_zone` +0x9D, column 65) where the town types lose Conflux, the ninth. Off:
+/// RoE's zones lose Conflux's monster town (+0x9E) instead. Read by `h3-rmg`'s templates (E14
+/// T2c).
+pub const RMG_ROE_MONSTER_TOWN_BYTE: QuirkFlag = QuirkFlag(52);
+
+/// RMG-QUIRK-24 (survey `E14-generator.md` §2.1, E14 T2c): a start zone without Ownership
+/// (position -1) marks its start one entry before the starts' array, which is the human starts'
+/// eighth: a human start at position 7 that no zone has (AB's 2SM2i(2) and 2SM0k). Off: such a
+/// zone marks no start. Read by `h3-rmg`'s positions.
+pub const RMG_UNOWNED_START_SEVENTH: QuirkFlag = QuirkFlag(53);
+
 /// TWN-QUIRK-15 (T-28, TD-28, E09 decision 202; survey `E09-trades.md` §2, §4.2, batch TWN-6's
 /// TWN-6-5): the Artifact Merchants, the Freelancer's Guild, the Blacksmith and the Ballista Yard
 /// serve the town's visiting hero only: without one they show GENRLTXT 274 and open nothing
 /// (0x5E9D28, 0x5E9EAA, 0x5D1D4D to 0x5D1D8F), a garrison hero alone is never served, where the
 /// spell book, the University and the Transformer take it. Off: the window's hero is the visitor,
 /// else the garrison hero. Class `fix-optional`; read by the town's trades from E09 T58a.
-pub const VISITOR_ONLY_TRADES: QuirkFlag = QuirkFlag(52);
+pub const VISITOR_ONLY_TRADES: QuirkFlag = QuirkFlag(54);
 
 /// TWN-QUIRK-16 (T-23, TD-30, E09 decision 204; survey `E09-trades.md` §6.3, batch TWN-6's
 /// TWN-6-7): the Conflux's Magic University offers and teaches its four magic schools whatever
@@ -451,7 +466,7 @@ pub const VISITOR_ONLY_TRADES: QuirkFlag = QuirkFlag(52);
 /// 0x5F0AC0, `university_learn` 0x5F0F60 nor `hero_learn_secondary_skill` 0x4E22D0 reads the
 /// map's banned skills. Off: the scenario's banned skills leave the four when it opens (VCMI's).
 /// Class `fix-optional`; read by the town's University from E09 T59b.
-pub const UNIVERSITY_IGNORES_MAP_BANS: QuirkFlag = QuirkFlag(53);
+pub const UNIVERSITY_IGNORES_MAP_BANS: QuirkFlag = QuirkFlag(55);
 
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
@@ -460,18 +475,18 @@ pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Quirks {
-    bits: u64,
+    bits: u128,
 }
 
 impl Quirks {
     /// Whether `flag` is enabled.
     pub const fn is_enabled(self, flag: QuirkFlag) -> bool {
-        self.bits & (1u64 << flag.0) != 0
+        self.bits & (1u128 << flag.0) != 0
     }
 
     /// Returns the set with `flag` set to `on`.
     pub const fn with(self, flag: QuirkFlag, on: bool) -> Self {
-        let mask = 1u64 << flag.0;
+        let mask = 1u128 << flag.0;
         Self {
             bits: if on {
                 self.bits | mask
@@ -482,7 +497,7 @@ impl Quirks {
     }
 
     /// The raw bitset (for hashing and replay headers).
-    pub const fn bits(self) -> u64 {
+    pub const fn bits(self) -> u128 {
         self.bits
     }
 }
@@ -495,7 +510,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 54);
+        assert_eq!(REGISTRY.len(), 56);
         assert_eq!(
             [
                 "quirk.adventure.flight_reads_hidden",
@@ -505,6 +520,8 @@ mod tests {
                 "quirk.adventure.spell_recast_refused",
                 "quirk.adventure.door_failure_charged",
                 "quirk.content.rmg_8xm8_zone_ids",
+                "quirk.rmg.roe_monster_town_byte",
+                "quirk.rmg.unowned_start_seventh",
                 "quirk.town.visitor_only_trades",
                 "quirk.town.university_ignores_map_bans",
             ]
@@ -517,6 +534,8 @@ mod tests {
                 SPELL_RECAST_REFUSED,
                 DOOR_FAILURE_CHARGED,
                 RMG_8XM8_ZONE_IDS,
+                RMG_ROE_MONSTER_TOWN_BYTE,
+                RMG_UNOWNED_START_SEVENTH,
                 VISITOR_ONLY_TRADES,
                 UNIVERSITY_IGNORES_MAP_BANS,
             ]
@@ -722,7 +741,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 54);
+        assert_eq!(REGISTRY.len(), 56);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -736,7 +755,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..54).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..56).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

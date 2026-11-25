@@ -703,6 +703,7 @@ dependencies = [
  "h3-content",
  "h3-pack",
  "h3-rmg",
+ "proptest",
  "serde",
  "toml",
 ]

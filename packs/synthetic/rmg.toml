@@ -48,3 +48,13 @@ terrain = 0
 modifiers = [5, -5000, -5000, -5000, -5000, -5000, -5000, -5000, -5000]
 adjacent = [5, 5]
 overlap = [-5000, 30]
+
+# The generator's constants (E14 T2c; the original's in packs/sod/rmg.toml): four heroes, the
+# second RoE's only, the third the expansions' only, the fourth a campaign hero; two limits per
+# map, one per zone.
+[generator]
+heroes_roe = "1101"
+heroes_expansions = "1011"
+heroes_campaign = "0001"
+map_limits = [[26, 200], [8, 64]]
+zone_limits = [[113, 3]]
