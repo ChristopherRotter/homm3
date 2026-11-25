@@ -6457,3 +6457,11 @@ LODs, the executable, the five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos
 - **Address map:** `market_sell_artifact_vtable` 0x643AAC. No version moved; no rule's status
   changed (increment 6's rules are written from T55 on). Ids: decisions next 219; experiment batch
   next TWN-7.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` on the branch (with
+`master`'s 92fb75c merged in): every step passes but `check-lane` (by design for a `cross-lane`
+branch; `cargo xtask check-lane --cross-lane --base origin/master` ok): coverage 26.2 minutes
+(the first run, before a `rustfmt` of the new test's assertion; the second run with `--skip
+coverage`), test 17.1, determinism 10.4, bench-check 19.6, original-data 1.1; `deny` and
+`ffi-smoke` skipped by the scope. The harness's own check and its unit tests pass. CI on the pull
+request is the record.
