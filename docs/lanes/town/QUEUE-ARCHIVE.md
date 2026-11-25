@@ -3,6 +3,79 @@
 Inbox notes that left the queue, verbatim, with where their work went (`docs/08-work-process.md`,
 "Keeping the start-of-session reading small"). Read only when a doc points here.
 
+## 2026-11-25 — the E08 market notes, folded into increment 6's design: archived at E09 T53
+
+Each note verbatim; their facts are in the design note's Part H (`E09-design.md` §103 to §108,
+§115: the rates, the checks, the decision, the cost resource, A-46, D-71, the versions' order).
+
+- 2026-11-20 (the adventure lane, E08 T133a2 and T133b, `adventure/e08-t133a2`,
+  `adventure/e08-t133b`; **for your increment 6's planning, nothing to build**): the map's
+  markets are built whole: the checks (`h3_adventure::AdventureState`'s `trade_lot`,
+  `check_screen`, `check_sale`, `sell`, `check_buy`, `buy`; `MarketError`; A-46 fixed as
+  ADV-QUIRK-48: a purchase refused before paying without room) and what a window offers
+  (`market_offers`: `MarketOffers` with the rates), and the game's decision (`h3_game`'s
+  `Decision::Market`, `MarketAnswer`, `MarketView`; GAM-DEC-011). **ADV-Q60 answered (a)** (E08
+  decision 384): `[params.market]` names the cost resource (`cost = "gold"`, `MarketParams::cost`),
+  the checks read it themselves (no `value` argument); your Marketplace and Artifact Merchants
+  price on the same rates and resource.
+
+- 2026-11-19 (the adventure lane, E08 T132a1, `adventure/e08-t132a1`; **the market's rates built,
+  for your Marketplace; nothing to do now**): `h3_adventure::MarketParams` (exported with `Lot` and
+  `MarketParamsError`) computes the original's rates in `X87`: `resource_lot(count, give, take)`
+  (screen 0), `creature_lot(count, gold cost, take)` (screen 4), `artifact_price(count, cost, pay)`
+  (screen 2), each `None` where the original has no rate, `count` from 1 to the parameters' rows
+  (your D-70 mapping of a town's Marketplaces to a row is yours); D-70's rows hold as the original's
+  (wood for gold 37, 62, 112 at 2, 4, 8). The part's `[params.market]` compiles into it since E08
+  T132a2: `AdventureRuleset::params().market()` (the base pack's values and factors). **A correction** to survey `E08-trades.md` §4: a precious resource
+  for wood or ore is **2 : 1** at five Marketplaces (the first table had 1 : 2; the code read
+  again). The artifact sale (screen 3) stays yours to add on the same module.
+
+- 2026-11-18 (the adventure lane, E08 T127b, `adventure/e08-t127b`, docs only; **the market's
+  rates' home and the versions both lanes plan; nothing to do now**): at T127b's checkpoint
+  (ADV-Q58, E08 decision 370) the user put the market's rates in **the adventure part**
+  (`[market]`: two value tables by resource, three factor tables by the count 1 to 10 in
+  hundredths) with the computation in `h3-adventure`'s `market` module (lots; the original's
+  binary32 steps in `h3_kernel::arith::X87`), built by E08 T132a. Your Marketplace (in your
+  `h3-game` modules) calls it with the player's count, as you reuse the hire dialog; screen 3
+  (the artifact sale, `market_artifact_sale_rate` 0x5ECDC0) is yours to add on the same module.
+  `Decision::Market` (GAM-DEC-011, E08 T133b) holds the map's markets; a town source for it or a
+  decision of your own is yours to design (E08 design note `docs/epics/E08-design.md` §2, §13).
+  E08's increment 14 plans map import v26 (T132b), replay format v19 and env v13 (T135a) and a
+  protocol bump per wire task, as your T39a does: whichever merges first takes the number.
+
+- 2026-11-18 (the adventure lane, E08 T127a2, `adventure/e08-t127a2`, docs only; **the user's
+  answers on the shared market rules, for your increment 5; nothing to do now**): at T127a2's
+  checkpoint (ADV-Q57, E08 decisions 365, 366) the user chose **D-71 the original's** (a
+  creature's sale rounds half up after the binary32 steps, survey `E08-trades.md` §4: your
+  Freelancer's Guild too) and **A-46 fixed** (a purchase is refused before paying when the hero
+  cannot receive the artifact: your Artifact Merchants too). D-70 stays yours. Also read there:
+  `upgrade_cost` 0x54E750, the town creature dialog's upgrade price (per resource the difference
+  times the count), which the Hill Fort scales (§13).
+
+- 2026-11-18 (the adventure lane, E08 T127a1, `adventure/e08-t127a1`, docs only; **the market's
+  rates as read, for your increment 5; nothing to do now**): survey
+  `docs/rules/surveys/E08-trades.md` §3, §4 and §11 (the address map's `market_*` entries). The
+  town's Marketplace, Artifact Merchants and Freelancer's Guild and the map's Trading Posts,
+  Freelancer's Guild and Black Market share one window (`market_window_run` 0x5EA130) of five
+  screens (resources for resources, resources to a player, resources for artifacts, artifacts for
+  resources, creatures for resources). **The count:** a town trades at the current player's towns
+  with the Marketplace built (building 14, at most 10); every map object at five. **The rates:**
+  two value tables (250 wood and ore, 500 the rest, 1 gold; an artifact's price in half of them),
+  three binary32 factor tables by the count (resources 0.1 to 0.5, artifacts 0.2 to 0.6, creatures
+  0.3 to 1), each rate a binary32 quotient rounded half up in 53 bits (the reciprocal's binary32
+  rounding decides the halves: the engine reproduces the steps through `kernel::num` or holds the
+  finite tables checked against them; the decision is the adventure lane's T127b design, built
+  once by whichever lane needs it first, decision 361). **Disputes:** D-70 is yours alone (wood or
+  ore for gold at 2, 4 and 8 Marketplaces: the original's 37, 62, 112 against VCMI's 38, 63, 113;
+  none at five); D-71 (the creature sale's rounding against VCMI's ceiling) and A-46 (a purchase
+  from a hero who can hold no more artifacts takes the price and loses the artifact, the Artifact
+  Merchants too) go to the user at the adventure lane's T127a2 checkpoint; the rule built once
+  serves your guild and merchants as well. Not read
+  here: the artifact sale's screen (`market_sell_artifact_proc` 0x5EDF60) and the merchants'
+  monthly draw (`new_month` 0x4C8F40, game +0x1F664).
+
+- 2026-11-18 (the adventure lane, E08 T126, `adventure/e08-t126`; **for your increment 5's planning, nothing to do now**): E08's increment 14 is **the trades and services** on the map (E08 decision 361, ADV-Q56): the Black Market (7), the War Machine Factory (106), the Altar of Sacrifice (2), the Trading Posts (99, 221), the Hill Fort (35) and the Freelancer's Guild (213); the map Tavern (95) and the Den of Thieves (97) stay yours (E09 decision 106). The Trading Posts and the Freelancer's Guild trade at the market's rates, which your increment 5 builds with the town's Marketplace: **the rates are built once, by whichever lane needs them first, and the other reuses them** (as E09 decision 4's hire dialog). The adventure lane's survey (E08 T127a, `docs/rules/surveys/E08-trades.md`, next) reads the original's rates and how a Trading Post's relate to the Marketplaces a player owns, and tells you here what it finds before either lane builds them.
+
 ## 2026-11-24 — increment 5's inbox notes, acted on: archived at E09 T51
 
 Each note verbatim, after the line saying where its work went (E09 decision 199).

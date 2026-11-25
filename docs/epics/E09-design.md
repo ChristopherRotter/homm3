@@ -3599,9 +3599,11 @@ Increment 6's note (the town's trades, decision 197), written by T53 (2026-11-25
 sub-agents for the narrow jobs: decision 208) from the survey `docs/rules/surveys/E09-trades.md`
 (§ numbers are the survey's unless they name this note) and the answers at `TWN-Q35` (decisions
 201 to 207) and `TWN-Q36` (decisions 208 to 212), with T53's agent's calls (decision 213) as the
-checkpoint `TWN-Q37` settles them. Its ADR amendments are the drafts in
+checkpoint `TWN-Q37` settled them (decisions 214 to 217, each as recommended: the towns' stream for
+the month's draw, the combinations' costs in the core's compile, the env's 42 entries, the cut and
+the exit criteria as written). Its ADR amendments are the drafts in
 `docs/lanes/town/adr-drafts/` (`0028-`, `0017-` and `0016-increment-6.md`), accepted at `TWN-Q37`
-before anything is built, with the cut of §118 and the exit criteria of §119.
+(decisions 214 to 217) before anything is built, with the cut of §118 and the exit criteria of §119.
 
 ### 101. Scope, sources and choices (T53)
 
@@ -3628,7 +3630,8 @@ decision opened by a town command** (209); **the University as E08's University 
 a town command** (210); **the Blacksmith and the Ballista Yard as a one-shot town command** (211);
 **the stock and the artifact pool's marks in the adventure state** (212).
 
-**The agent's calls** (decision 213; change freely but where `TWN-Q37` decides):
+**The agent's calls** (decision 213; change freely but where `TWN-Q37` decided, decisions 214 to
+217):
 1. **One window for the three entries.** `TownCommand::Market { town }` names no building: the
    window offers what the town allows (§104), whichever of the Marketplace, the Artifact Merchants
    or the Freelancer's Guild the client clicked; the Conflux's missing button to screen 2 (§2.2) is
@@ -3643,8 +3646,8 @@ a town command** (210); **the Blacksmith and the Ballista Yard as a one-shot tow
    Portals' `town::portal::at_setup`, the setup stream's last today), so no earlier draw moves;
    every later month's on its first day, at the month's start's end (GAM-CAL-002's order), **from the
    towns' stream** (decision 179's choice for the guilds), whether or not any merchants stand
-   (decision 207); an entry stays empty where the pool gives none (T-24, decision 207). Asked at
-   `TWN-Q37` (a named stream of its own was the alternative).
+   (decision 207); an entry stays empty where the pool gives none (T-24, decision 207). Confirmed
+   at `TWN-Q37` (decision 214), over a named stream of its own.
 5. **The pool's marks kept whole** (the bans and the given marks of ADV-OBJ-006's picker) in the
    adventure state from the build on, in its hash; in this increment only the merchants' draws read
    them after the build.
@@ -3654,7 +3657,8 @@ a town command** (210); **the Blacksmith and the Ballista Yard as a one-shot tow
 7. **The combinations' costs in the core's compile** (`h3-content`, `shared/`): a combination
    artifact the pack gives no cost costs the sum of its parts' costs, resource by resource (the
    original's start-up, `artifact_table_load` 0x44D031; §3.4), so the merchants, the Black Markets
-   and the sale read one cost. Asked at `TWN-Q37` (the market's own read was the alternative).
+   and the sale read one cost. Confirmed at `TWN-Q37` (decision 215), over the market's own
+   read and over the sums written into the SoD pack.
 8. **The artifact sale is one answer** `MarketAnswer::SellArtifact { place, take }`, one artifact a
    sale named by its place (worn position or backpack index), priced and removed as one (T-20 fixed
    by construction, decision 207), at the sale rate added to E08's `MarketParams` (§107).
@@ -3677,7 +3681,7 @@ a town command** (210); **the Blacksmith and the Ballista Yard as a one-shot tow
 14. **The town's record gains nothing** (the stock is the adventure's, decision 212; the ship
     derived): the town state hash stays v4.
 15. **The env's entries** as §115 (42), each legal where `legal_commands` lists its command;
-    asked at `TWN-Q37` with the sale's (the sale without env entries was the alternative).
+    confirmed at `TWN-Q37` (decision 216), over the env without the sale's 22.
 16. **Batch TWN-6 before the `shared/` task**: its verdicts go into the ADRs, and TWN-6-5 and
     TWN-6-7 gate the two flags ("confirm before flagging").
 
@@ -4047,7 +4051,7 @@ market (the purchase reads it, and its re-recording moves every hash once, befor
 replays); the window before the sale (the sale is the window's answer); the services last, the
 two one-shot commands together and the two `Garrison`-or-hero choices together; the census last.
 
-### 119. Increment 6's exit criteria (accepted at `TWN-Q37`; the epic's list)
+### 119. Increment 6's exit criteria (accepted at `TWN-Q37`, decision 217; the epic's list)
 
 1. The town part's six building fields and its parameters compile from the packs (part v10;
    TWN-TRD-001); a combination without a pack cost costs its parts' sum (HER-ART-008: SoD's twelve

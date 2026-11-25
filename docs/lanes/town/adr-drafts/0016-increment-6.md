@@ -1,11 +1,11 @@
 # Draft: ADR-0016 amended for E09 increment 6 (the town's trades)
 
-- Status: **Draft**, written by E09 T53 (2026-11-25), to be accepted at its checkpoint (`TWN-Q37`)
-  before anything is built; then moved into `docs/adr/0016-adventure-state.md` by the increment's
+- Status: **Draft**, written by E09 T53 (2026-11-25), **accepted** at its checkpoint (`TWN-Q37`,
+  decisions 214 to 217, each as recommended) before anything is built; then moved into `docs/adr/0016-adventure-state.md` by the increment's
   `shared/` task (T55a) with batch TWN-6's verdicts.
 - Decisions: the epic's 206 (TD-31: the spot the original's), 207 (T-21 by ADV-SHY-003's rule,
   T-24, T-27), 209 and 210 (a town as the market's and the University's place), 212 (the stock and
-  the pool's marks in the adventure state), 213 (T53's agent's calls).
+  the pool's marks in the adventure state), 213 (T53's agent's calls), 214 to 217 (`TWN-Q37`).
 - Working detail: survey `docs/rules/surveys/E09-trades.md` §2, §3, §5, §6; design note
   `docs/epics/E09-design.md` Part H §104, §107, §108, §111, §112, §114.
 

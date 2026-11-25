@@ -65,12 +65,24 @@ Refined with the user on 2026-11-24 (T51; `TWN-Q34`, asked at T51's start with a
 211. **The Blacksmith and the Ballista Yard as a one-shot town command** (`TWN-Q36`; recommended): `TownCommand::BuyWarMachine { town, building }`, one action as `BuySpellBook` (the original's own Buy-or-Cancel dialog). Not chosen: E08's hire dialog with a town source (the War Machine Factory's way).
 212. **The stock and the artifact pool's marks in the adventure state** (`TWN-Q36`; recommended): beside the Black Markets' stocks, the picker keeping its pool after the build, the market's checks reading the stock as a Black Market's; the town lane's code in `h3-adventure`'s `src/town*`, the fields and the hash `cross-lane`. Not chosen: the stock in `h3-towns`' store with the marks in the adventure state.
 213. *Agent's calls (change freely):* the design note's Part H §101's sixteen (one window for the three entries; the window's hero the town's; the count read at each view; the stock's draws, the new game's last from the setup stream and the month's from the towns' stream; the pool's marks kept whole; the stock seen only in its window; the combinations' costs in the core's compile; the sale one answer naming its place; the Blacksmith's machine a building field; the boat a town command; the University's student the command's; one stack a transformation; no new event kind; the town's record unchanged; the env's 42 entries; the batch before the `shared/` task), as the checkpoint `TWN-Q37` settles them.
+214. **The month's draw from the towns' stream** (`TWN-Q37`, asked after the drafts and Part H were pushed; recommended): every later month's seven from `StreamId::TOWNS` at the month's start's end, as the guilds' (decision 179): no `shared/` change, every replay that passes day 28 changing its later towns' draws (re-recorded at T57); the new game's seven last from the setup stream. Not chosen: a named stream of its own (`shared/`, no existing draw moving).
+215. **The combinations' costs in the core's compile** (`TWN-Q37`; recommended): `h3-content` gives a combination without a pack cost the sum of its parts' (HER-ART-008, `shared/` at T55b; the core ruleset hash), one cost for the merchants, the Black Markets and the sale. Not chosen: the market's own read; the sums written into the SoD pack by the harvest.
+216. **The env's 42 entries** (`TWN-Q37`; recommended): the market's opening, the artifact sale by place (22), the two machines, the boat, the University's two openings and the transformation's fourteen (design note §115), the AI lane free to trim the sale's at its task. Not chosen: the env without the artifact sale (20).
+217. **The cut and the exit criteria as written** (`TWN-Q37`; recommended): the design note's §118 (T54 batch TWN-6, T55 `shared/`, T56 the town part v10, T57 the stock, T58 the market at a town, T59 the services, T60 the gates, T61 the audit) and §119's twelve criteria. Not chosen: the batch after the build; the services before the market.
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T51** the audit of increment 5's exit criteria, its closure, this refinement. Done 2026-11-24 (decisions 196–199; `E09-log.md`).
 - **T52** the survey with its checkpoint (`TWN-Q35`; decision 198). Done 2026-11-24 (decisions 200–207; `E09-log.md`; survey `E09-trades.md`).
-- **T53** the ADR amendment drafts, the design note's Part H, the cut and the exit criteria (decision 198).
+- **T53** the ADR amendment drafts, the design note's Part H, the cut and the exit criteria (decision 198). Done 2026-11-25 (decisions 208–217; `E09-log.md`; drafts `docs/lanes/town/adr-drafts/*-increment-6.md`, design note Part H §101 to §120).
+- **T54** batch TWN-6 (survey §11's eight rows; design note §117).
+- **T55** `shared/`: the drafts into the ADRs with T54's verdicts, the glossary, `docs/06-security.md`; the flags of `TWN-QUIRK-15` and `-16`, the combinations' costs (HER-ART-008).
+- **T56** the town part v10 (TWN-TRD-001).
+- **T57** the stock (TWN-STK-001, -002).
+- **T58** the market at a town (TWN-MKT-001 to -005).
+- **T59** the services (TWN-SMT-001, TWN-SHY-001, TWN-UNI-001, TWN-TRF-001).
+- **T60** the trades map, its replays, the census, the properties, the benchmarks.
+- **T61** the audit of the exit criteria (design note §119), increment 6 closed, increment 7 refined.
 
 ## Risks
 

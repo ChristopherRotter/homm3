@@ -1,15 +1,15 @@
 # Draft: ADR-0017 amended for E09 increment 6 (the town's trades)
 
-- Status: **Draft**, written by E09 T53 (2026-11-25), to be accepted at its checkpoint (`TWN-Q37`)
-  before anything is built; then moved into `docs/adr/0017-game-orchestration.md` by the
+- Status: **Draft**, written by E09 T53 (2026-11-25), **accepted** at its checkpoint (`TWN-Q37`,
+  decisions 214 to 217, each as recommended) before anything is built; then moved into `docs/adr/0017-game-orchestration.md` by the
   increment's `shared/` task (T55a) with batch TWN-6's verdicts.
 - Decisions: the epic's 197, 198, 200 to 207 (`TWN-Q35`: D-70 the original, TD-28 `fix-optional`
   as T-28, TD-29 the trader's count and at least 1, TD-30 with T-23 `fix-optional`, T-22 fixed,
   TD-31 the original, T52's agent's calls), 208 to 212 (`TWN-Q36`: T53 whole, the market and the
   University as E08's decisions opened by town commands, `BuyWarMachine` one-shot, the stock and the
-  pool's marks in the adventure state), 213 (T53's agent's calls, asked at `TWN-Q37`: **the towns'
+  pool's marks in the adventure state), 213 (T53's agent's calls), 214 to 217 (`TWN-Q37`: **the towns'
   stream** for the month's draw over a named stream of its own, the combinations' costs in the
-  core's compile, the sale's env entries).
+  core's compile, the env's 42 entries, the cut and the exit criteria as written).
 - Working detail: survey `docs/rules/surveys/E09-trades.md` §2 to §7, §11; design note
   `docs/epics/E09-design.md` Part H §101 to §120.
 
@@ -52,8 +52,8 @@ player; a sale never fills one; nothing else writes the stock.
 **the new game's seven** from the setup stream, last among the build's setup draws (after the
 Portals' `town::portal::at_setup`, the setup stream's last today), so no earlier draw moves but
 every state hash does; **every later month's** on its first day (point 3) from **the towns'
-stream** (`StreamId::TOWNS`, as decision 179's guilds; a named stream of its own was the
-alternative, asked at `TWN-Q37`), so every replay that passes day 28 changes its later towns' draws
+stream** (`StreamId::TOWNS`, as decision 179's guilds; E09 decision 214, over a named stream of
+its own), so every replay that passes day 28 changes its later towns' draws
 (the census of growth to day 29, `h3-sim`'s town-map seeds), which T57 re-records and re-seeds in
 one pull request. Entry by entry in the part's class order, equal chances among the class's
 unmarked artifacts; with none left the marks reset to the bans, then any class but `special`
@@ -104,8 +104,8 @@ two armies' seven slots), each listed as point 6 says. The trades, sales and pur
 town's window are increment 14's 56 entries, the University's purchases its four, each window's
 `Leave` the closing role; no transfer (E08 decision 372). The next version at merge per task, or
 one when tasks land together; the sale's 22 places, the largest, are a candidate to trim at its
-task if the AI lane prefers (the sale without env entries was the alternative, asked at
-`TWN-Q37`).
+task if the AI lane prefers (E09 decision 216 kept the 42, over the env without the
+sale's).
 
 ## Point 9, after E09's increment 5 sentence ("**E09's increment 5** bumps the game state hash (the store's v4 folded in) …", ending "… encoding v15 and protocol v76).")
 
@@ -121,7 +121,7 @@ action encoding (point 8, the AI lane's, `cross-lane`), the next per task at mer
 and the adventure ruleset part do not move; the town part v10 is the town lane's (ADR-0028 point
 9). Shared (T55b): the quirk flags of `TWN-QUIRK-15` and `-16` once batch TWN-6's TWN-6-5 and -7
 confirm them (no version moves: the profiles' ruleset hashes do) and the combinations' costs
-(`h3-content`, HER-ART-008: the core ruleset hash moves); no new stream (decision 213). The
+(`h3-content`, HER-ART-008: the core ruleset hash moves); no new stream (decision 214). The
 numbers are the next at merge, in merge order with the adventure lane's open work (E08 T142b,
 #1162, and its queue): the second to merge rebases and bumps again.
 

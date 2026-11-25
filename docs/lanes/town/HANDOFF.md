@@ -5,20 +5,22 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 to 5 closed (T10, T20, T30, T41, T51; `E09-archive.md`, design
-  notes Parts A to G). **Increment 6** (the town's trades: the Marketplace's window with the
-  Artifact Merchants and the Freelancer's Guild on E08's market, the Blacksmith, the town's
-  Shipyard, the Magic University, the Skeleton Transformer; decisions 196–207): **T52** the survey
-  `docs/rules/surveys/E09-trades.md` with its checkpoint `TWN-Q35` (decisions 200–207: D-70 the
-  original; TD-28 `fix-optional` as T-28; the trader's count at least 1; TD-30 with T-23
-  `fix-optional`; Misc 5 sellable; one fixed boat spot; the agent's calls each asked). **Next:**
-  **T53**, the drafts with Part H from §101, the cut with batch TWN-6's eight rows (`QUEUE.md`;
-  the survey's §10 open points). In the inbox for review: E08 T141a's note (2): the Thieves'
-  Guild's best hero row may follow the list of heroes (`AdventureState::hero_list`, today by id).
-  Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach), `TWN-STUB-2`
-  (the victory conditions), `TWN-STUB-16` (E10's loss condition), `-17` (increment 8), `-18`
-  (E13). For the next `shared/` task: `docs/06-security.md`'s ADV-FOG-006 line (T50's record).
-- **Open pull requests:** T52's #1161 (`town/e09-t52`, docs only); watch it until it merges (T51's
-  #1149 and the README's #1148 merged 2026-11-24).
+  notes Parts A to G). **Increment 6** (the town's trades; decisions 196–217): T52 the survey
+  `docs/rules/surveys/E09-trades.md` (`TWN-Q35`); **T53** the drafts
+  `docs/lanes/town/adr-drafts/{0028,0017,0016}-increment-6.md` and the design note's Part H §101 to
+  §120, accepted at `TWN-Q37` (`TWN-Q36`: the market and the University as E08's decisions opened
+  by town commands, `BuyWarMachine` one-shot, the stock and the pool's marks in the adventure
+  state; `TWN-Q37`: the towns' stream for the month's draw, the combinations' costs in the core's
+  compile, the env's 42 entries, the cut §118 and the twelve criteria §119 as written). **Next:**
+  **T54**, batch TWN-6 (needs the original data and the client lane's harness; cut at its start),
+  then T55 to T61 (`QUEUE.md`). In the inbox for review: E08 T141a's note (2) (the Thieves'
+  Guild's best hero row may follow `AdventureState::hero_list`); the AI lane's E31 note (a town's
+  creature upgrade: where planned?). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox),
+  `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions), `-16` (E10's loss condition),
+  `-17` (increment 8), `-18` (E13). For the next `shared/` task (T55): `docs/06-security.md`'s
+  ADV-FOG-006 line (T50's record) with increment 6's lines.
+- **Open pull requests:** T53's (`town/e09-t53`, docs only); watch it until it merges (T52's
+  #1161 merged 2026-11-24).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -26,14 +28,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   merged in order with its pull requests.
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v4: T47a2) and
   the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v9: T46), both in `h3-towns`; the adventure
-  lane's (game state hash v39, map import v29, adventure part v25, adventure state hash v28: E08
-  T141a; replay format v25, T49b), the env's (v20) and the protocol's (v81, both T141a) are bumped
+  lane's (on `master` e2e15c7: game state hash v39, map import v29, adventure part v26, adventure
+  state hash v29, replay format v26), the env's (v20) and the protocol's (v82) are bumped
   `cross-lane` (each task's record in `E09-log.md`). Shared: core ruleset hash v53, pack format
   v53 (E08 T124a), quirk flags 51 (E08 T140; `TWN-QUIRK-14`'s at T45).
-- **Ids** (next): questions `TWN-Q36`; decisions 208; quirks `TWN-QUIRK-15`; stubs `TWN-STUB-21`;
-  experiment batch `TWN-6` (its eight rows planned, survey §11); disputes `TD-32`; quirk
-  candidates `T-29`. ADR-0028 is the lane's; no
-  drafts open; every TWN-GLD rule `verified` but TWN-GLD-007 (no row bought a book: T51).
+- **Ids** (next): questions `TWN-Q38`; decisions 218; quirks `TWN-QUIRK-15` (planned `-15` to
+  `-23`, design §116); stubs `TWN-STUB-21` (planned for T58a); experiment batch `TWN-6` (its eight
+  rows, survey §11); disputes `TD-32`; quirk candidates `T-29`. ADR-0028 is the lane's; drafts
+  open: increment 6's three (for T55a); every TWN-GLD rule `verified` but TWN-GLD-007.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
 
@@ -42,6 +44,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-25 — T53: increment 6's drafts, Part H, the cut and the checkpoint, docs only
+
+Baseline 4f2cc71 (#1161 merged; CI green on `master`), `master`'s e2e15c7 merged in. No original
+data staged. The user kept T53 whole and asked for sub-agents where it makes sense (decision 208):
+one reported the E08 paths the trades reuse (which framed `TWN-Q36`'s four ADR-level choices, each
+as recommended), one wrote the three drafts from Part H (its four gaps folded in). `TWN-Q37`
+accepted the drafts, the month's stream, the combinations' costs, the env's 42 entries and the cut
+(decisions 214–217). The lane's E08 market notes archived, four lanes' inboxes told.
 
 ### 2026-11-24 — T52: increment 6's survey and its checkpoint TWN-Q35, docs only
 
@@ -61,13 +72,3 @@ split the services: 6 the town's trades, 7 the buildings for heroes and the map,
 the Grail (decisions 196–198). The twelve criteria hold; the gap: eight rules batch TWN-5
 settled were still `implemented`, now `verified`. The VM restarted once during the setup's
 baseline; the scoped verify ran again on the branch (the engine's code `master`'s).
-
-### 2026-11-24 — T50: the guild census, properties, map, replays and workload, `cross-lane`
-
-Baseline d202566 (#1136 merged; the setup's light gates, CI's fingerprint on `master`'s code).
-The user's computer was connected: 5 files staged, SHA-256 checked. The agent recommended a cut
-in two; the user kept T50 whole with the inbox's hygiene failure and asked for sub-agents
-(decision 195): four ran one after another (the failure, the properties, the census, the map).
-The failure was the property's (`TRAPS.md`). The census holds on all 160 maps with 25 survey
-counts, three mutations caught; the properties cost +1 % (a first draft +29 %). The VM restarted
-twice and the server once; each part was pushed as it came, nothing lost.

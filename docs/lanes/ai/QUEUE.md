@@ -40,6 +40,18 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
+**From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
+now**):
+
+- 2026-11-25: increment 6 (the town's trades) appends **42 entries** to the action encoding,
+  `cross-lane` in your paths at T58a to T59b (design note `docs/epics/E09-design.md` §115; E09
+  decision 216): the market's opening (1), the artifact sale by place for gold (22: worn positions
+  0 to 13, backpack places 0 to 7; yours to trim at its task), the Blacksmith's machine (2), the
+  boat (1), the University's opening (2: the visitor, the garrison hero), the transformation (14:
+  the visitor's and the upper bar's seven slots); a town's window reuses the market's 56 entries
+  and the University's four, each `Leave` the closing role. Your E31 note's row 7 (the computer's
+  merchants' price) stays E10's.
+
 **From the map-client lane** (E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your E31
 increment 2, nothing to do now**):
 

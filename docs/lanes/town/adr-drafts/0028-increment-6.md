@@ -1,7 +1,7 @@
 # Draft: ADR-0028 amended for E09 increment 6 (the town's trades)
 
-- Status: **Draft**, written by E09 T53 (2026-11-25), to be accepted at its checkpoint (`TWN-Q37`)
-  before anything is built; then moved into `docs/adr/0028-town-context.md` by the increment's
+- Status: **Draft**, written by E09 T53 (2026-11-25), **accepted** at its checkpoint (`TWN-Q37`,
+  decisions 214 to 217, each as recommended) before anything is built; then moved into `docs/adr/0028-town-context.md` by the increment's
   `shared/` task (T55a) with batch TWN-6's verdicts.
 - Decisions: the epic's 197 (scope), 198 (the round), 200 to 207 (T52 and its checkpoint
   `TWN-Q35`: D-70 the original, TD-28 `fix-optional` as T-28, TD-29 the trader's count and at
@@ -10,7 +10,8 @@
   decision opened by `TownCommand::Market`; the University as E08's University decision opened by
   `TownCommand::University`; the Blacksmith and the Ballista Yard as the one-shot
   `TownCommand::BuyWarMachine`; the stock and the pool's marks in the adventure state), 213 (T53's
-  agent's calls, as `TWN-Q37` settles them).
+  agent's calls), 214 to 217 (`TWN-Q37`: the towns' stream for the month's draw, the
+  combinations' costs in the core's compile, the env's 42 entries, the cut as written).
 - Working detail: the survey `docs/rules/surveys/E09-trades.md` (§2 the Marketplace's window, §3
   the merchants' stock, §4 the Blacksmith, §5 the Shipyard, §6 the University, §7 the
   Transformer, §11 batch TWN-6's rows), the design note `docs/epics/E09-design.md` Part H (§101 to
@@ -131,7 +132,7 @@ action encoding (the AI lane's: 42 entries, ADR-0017 point 8), each `cross-lane`
 six fields and parameters (the battle lane's, `cross-lane`). `shared/` (T55b): the quirk flags of
 `TWN-QUIRK-15` and `-16` once TWN-6-5 and TWN-6-7 confirm them (no version moves: the profiles'
 ruleset hashes do) and the combinations' costs (the core ruleset hash); no new stream (decision
-213). Each number is the next at merge, in merge order with the adventure lane's open work (E08
+214). Each number is the next at merge, in merge order with the adventure lane's open work (E08
 T142b, #1162): the second to merge rebases and bumps again.
 
 ## Revision history, a new item (when moved)
