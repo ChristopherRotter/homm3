@@ -299,3 +299,55 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
 - **Checked:** the scoped verify (`--scope rmg`) passes but `check-lane` (a shared branch, by
   design; `check-lane --cross-lane` passes); `cargo check --workspace --all-targets`, the kernel's
   and xtask's tests and clippy, `scripts/exe.py check`.
+
+## T2b — the three tables, the rmg part, 8XM8's flag (2026-11-25, increment 2)
+
+- **No cut** (the user, asked with the three parts T2b1 the part, T2b2 the harvest, T2b3 the flag:
+  "No cut, use a subagent for a part"): one branch `shared/e14-t2b`, `cross-lane` (`h3-content`'s
+  registry is shared; `h3-harvest`, `packs/README.md`, `packs/base/core.toml` and the fixtures are
+  the battle lane's), the golden replays' re-hash given to one worker. Staged from the PC (before
+  its link closed): `H3bitmap.lod`, `H3ab_bmp.lod`, `Heroes3.exe`, `extracted.tar` and the six
+  tables.
+- **The rmg part** (`crates/h3-rmg/src/part.rs`; agent decisions, change freely): the records
+  `Template`, `Zone`, `Connection`, `ObjectTemplate`, `Obstacle` hold the values as read (`i32` as
+  `c_atoi` gives them, the records' widths in `structs.toml`; marks as bit sets, bit k the k-th
+  column or character); `ZoneKind` and `Strength` with the original's numbers (0-3; 0, 2, 3, 4). It
+  refers to no core content (the tables index town types, terrains and classes by position, as
+  the code does). `RmgRuleset::compile(core, packs)` in the core's load order: a pack's
+  `objects.txt` lines first (inserted `before` a line of the earlier packs' table, appended, or
+  replacing a `line`; the indices are of the table the earlier packs left, so they do not shift
+  each other), then its templates appended, then its connection overrides (by template index in
+  the table as it then stands, checked in every profile, applied when `h3_content::override_applies`
+  says so), then its obstacles (a whole table, replacing). Every index must be of the pack's
+  closure. The hash (FNV over the tables, the core's hash apart, as the town part's) with
+  `RMG_RULESET_HASH_VERSION` 1. `RMG_GENERATOR_VERSION` comes with T2c's `generate`.
+- **The format** (`packs/README.md`, "The map generator's tables", as ADR-0029 point 7 says):
+  top-level `object_templates` and `object_template_overrides` (one inline table per line),
+  `[[template]]` with `zones` and `connections` arrays (one inline table per row), `[[connection_override]]`,
+  `[[obstacle]]`. `packs/synthetic/rmg.toml` (invented: two templates, three lines, two obstacles)
+  exercises every field. `h3-pack-rmg`: `parse_rmg`, `compile`, `ORIGINAL_PACKS` (`base` has no
+  file), strict like the other adapters (unknown fields, mark strings' lengths and characters).
+- **The harvest** (`crates/h3-harvest/src/rmg.rs`): renders TOML from the cells (no edge to
+  `h3-pack-rmg`: `arch.toml` unchanged). AB's pack from `H3ab_bmp.lod`'s tables; SoD's holds what
+  `H3bitmap.lod`'s add: the templates after AB's (AB's must be a prefix, block for block), the
+  `objects.txt` edits (a SoD line equal to the next AB line keeps it, one with its picture, class
+  and subclass replaces it, any other is inserted before it; every AB line kept or replaced), the
+  obstacles only if they differ (they do not). Result: AB 50 templates, 1 221 lines, 109
+  obstacles; SoD 3 templates, 105 lines added (12 before AB's line 124, 5 each before 1 141, 1 144 and
+  1 147, 7 before 1 187, 71 before 1 188, lines from 0 without the count line), 2 changed (1 186, 1 187: AVXcrsd0 and AVXplns0's editor terrains; the count line is derived). Survey §3.1's
+  sanity counts hold (zones 616 and 646 by kind, connections 833 and 869, never kept 6 and 7:
+  `the_original_tables_are_the_surveys`). `packs/ab/rmg.toml` is 854 kB (1 221 lines with two
+  48-character masks, 616 zones of 19 fields, a 109 × 109 score table), `packs/sod/rmg.toml` 49 kB.
+- **8XM8** (RMG-QUIRK-22): the gap-fill's `data_quirks.rmg_zone_ids` (template, the fixed first
+  zones 6, 6, 7, 7, 8, 8); the harvester finds the template's connection rows whose first zone is
+  a decimal (template 43, connections 10 to 15) and writes six `[[connection_override]]` with
+  `fixes = "quirk.content.rmg_8xm8_zone_ids"` into `packs/ab/rmg.toml` (zones [6, 37], [6, 38],
+  [7, 41], [7, 42], [8, 47], [8, 48]). The flag at registry position 51 (`RMG_8XM8_ZONE_IDS`), in
+  the harvested profiles (`faithful` on, `strict-fixed` off): the original packs' core hash moved,
+  so the golden replays and the tests pinning it were re-hashed by the worker (only hash lines).
+- **The original-data check** (`crates/h3-pack-rmg/examples/original_data.rs`, run by
+  `--with-original-data`): its own reader of the six text tables (survey §3.1's rules) against the
+  compiled part, AB's (`base`, `ab`) and SoD's: equal in `faithful`; `strict-fixed` differs by
+  8XM8's six ids only.
+- **The registry's capacity:** 52 of `MAX_QUIRKS` 64 positions are taken; ADR-0029's remaining 17
+  flags need 69 (the epic's risks).

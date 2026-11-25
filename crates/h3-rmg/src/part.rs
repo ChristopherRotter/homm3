@@ -586,26 +586,24 @@ impl Tables {
                 }
             }
         }
-        let mut inserts: Vec<(usize, usize, &ObjectTemplate)> = Vec::new();
-        for (i, o) in pack.object_templates.iter().enumerate() {
-            let before = o.before.unwrap_or(len);
-            if before != len && !seen(before) {
-                return Err(line_error(before));
+        // The added lines by the line they go before (`len`: appended), in the pack's order.
+        let mut before: Vec<Vec<&ObjectTemplate>> = alloc::vec![Vec::new(); len + 1];
+        for o in &pack.object_templates {
+            let at = o.before.unwrap_or(len);
+            match before.get_mut(at) {
+                Some(slot) if at == len || seen(at) => slot.push(&o.template),
+                _ => return Err(line_error(at)),
             }
-            inserts.push((before, i, &o.template));
         }
-        // By place, then the pack's order (the pair is unique).
-        inserts.sort_unstable_by_key(|&(before, i, _)| (before, i));
         let old = core::mem::take(&mut self.objects);
-        let mut lines = Vec::with_capacity(len + inserts.len());
-        let mut pending = inserts.iter().peekable();
-        for (line, ((rank, template), new)) in old.into_iter().zip(replaced).enumerate() {
-            while let Some((_, _, t)) = pending.next_if(|(before, _, _)| *before == line) {
-                lines.push((scope.rank, (*t).clone()));
-            }
+        let mut lines = Vec::with_capacity(len + pack.object_templates.len());
+        let mut added = before.into_iter();
+        for ((rank, template), new) in old.into_iter().zip(replaced) {
+            let inserted = added.next().unwrap_or_default();
+            lines.extend(inserted.into_iter().map(|t| (scope.rank, t.clone())));
             lines.push(new.map_or((rank, template), |t| (scope.rank, t.clone())));
         }
-        lines.extend(pending.map(|(_, _, t)| (scope.rank, (*t).clone())));
+        lines.extend(added.flatten().map(|t| (scope.rank, t.clone())));
         self.objects = lines;
         Ok(())
     }
