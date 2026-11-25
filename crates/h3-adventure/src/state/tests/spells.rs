@@ -288,6 +288,24 @@ fn a_boarding_clears_fly_and_water_walk_and_the_new_day_clears_every_spell() {
     assert_eq!(state.day_spell_book(), None);
 }
 
+// covers: ADV-SPL-002
+#[test]
+fn the_day_spells_block_keeps_only_heroes_with_some() {
+    // No spells set for a hero without any leave no block; a hero's last spells cleared drop it.
+    let rules = hero_rules(true);
+    let mut state = spell_world(&rules, &["ggg", "ggg"], p(0, 0));
+    state.set_day_spells(HERO, DaySpells::NONE);
+    assert_eq!(state.day_spell_book(), None);
+    let door = DaySpells {
+        doors: 1,
+        ..DaySpells::NONE
+    };
+    state.set_day_spells(HERO, door);
+    assert_eq!(state.day_spells(HERO), door);
+    state.set_day_spells(HERO, DaySpells::NONE);
+    assert_eq!(state.day_spell_book(), None);
+}
+
 // covers: ADV-SPL-001
 #[test]
 fn other_heroes_are_refused() {
