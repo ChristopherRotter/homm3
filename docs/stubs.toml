@@ -315,4 +315,10 @@ where  = "crates/h3-game/src/computer/mod.rs::choose"
 reason = "The original's computer player (E31 T2a): an open decision of the computer's, in its turn or not, is answered by h3_game::default_answer (the system actor's default: an offer declined, a dialog closed, a level-up's original choice with the setup's values, ADV-STUB-8), not by the computer's own answers (survey sections 3.4 and 3.5: the visits' dialogs, the joins and the pursued monster, the Seer, the markets, ai_level_up_choice 0x52BBD0): increment 4 (the answers and the fights)"
 epic   = "E31"
 
+[[stub]]
+id     = "AI-STUB-7"
+where  = "crates/h3-game/src/computer/sim.rs::cast"
+reason = "The original's computer player (E31 T2b): the simulated combat's casts (sim_cast_spell 0x425BD0 in sim_combat_run 0x426BC0 and sim_engage_now 0x4267C0: one spell a side and round, the best of spells 10 to 69 it can afford by its AI category, with the side's spell points, whether it may cast and the battle tile's ground of sim_combat_start 0x423EE0, and Necromancy) do nothing: E31 T2c (survey section 2.2)"
+epic   = "E31"
+
 # --- rmg (RMG-STUB-<n>) ---

@@ -23,18 +23,20 @@ resumes (the epic file); its tasks are cut then.
 - **E31 increment 2** (refined 2026-11-25, AI-Q32; the epic file's "Increment 2's tasks", its
   record `E31-log.md` T2): the `shared/` pull request #1163 merged first (the module's paths,
   `SignedX87`, ADR-0030). Then, one session each, the leaves first: T2a the frame (done
-  2026-11-25), **T2b** and T2c the simulated combat (next), T2d the start's values, T2e the
-  spells' and skills' values, T2f the artifacts, T2g the army and town values, T2h the object
-  value, T2i the planning, T2j the walk with the exit's property tests and the gated benchmark,
-  T2k trace T-A's harness and days 1 to 3. Each with its `CPU-` ids, tests, coverage 100 %, stubs
-  by epic.
-  - **T2b — the simulated combat, the sides and the melee** (next; survey §2.2; the epic file's
-    table: `sim_combat_start` 0x423EE0, `sim_side_build` 0x424120, the walls, the speed, the
-    damage taken and spread, the wipe, the hold, the finish, the engagement, the run, the stack
-    lists, `sim_apply_losses` 0x424880; about 2 700 of the original's instructions): measure its
-    size at the start and confirm a cut by size; its values through `SignedX87` / `X87`;
-    `Heroes3.exe` staged for the blind re-reads. T2a's frame (`h3_game::computer`,
-    `h3_sim::computer::play` and its property tests, `h3 ai computer`) is its harness.
+  2026-11-25), T2b the simulated combat's sides and melee (done 2026-11-25), **T2c** the casts
+  (next), T2d the start's values, T2e the spells' and skills' values, T2f the artifacts, T2g the
+  army and town values, T2h the object value, T2i the planning, T2j the walk with the exit's
+  property tests and the gated benchmark, T2k trace T-A's harness and days 1 to 3. Each with its
+  `CPU-` ids, tests, coverage 100 %, stubs by epic.
+  - **T2c — the simulated combat's spells and Necromancy, and the fight estimate** (next; survey
+    §2.2; the epic file's table: `sim_cast_spell` 0x425BD0 and the spell values 0x4249D0 to
+    0x425B10, 0x423C80, 0x423DE0, `sim_stack_take_value` 0x423EA0, `sim_necromancy` 0x426DF0,
+    `ai_army_fight_sim` 0x427330; about 2 600 of the original's instructions): measure its size
+    at the start and confirm a cut by size; `Heroes3.exe` staged for the blind re-reads. T2b's
+    `computer/sim.rs` is its base: `cast` lifts AI-STUB-7, `sim_combat_start`'s casting inputs
+    (spell points, may cast, the tile's ground, `[game]+0x1F698`) and a stack's value per hit
+    point (+0x30) and creature (+0x04) join `Side` and `Stack`, and the module's
+    `expect(dead_code)` goes once the estimate calls it.
 
 ## Inbox
 

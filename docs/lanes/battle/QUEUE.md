@@ -45,6 +45,13 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
   points 2, 6, 7: if you build (1) or (3), the simulated combat moves to a `computer` module of
   your crate, owned by the ai lane by path, and both call it). With the adventure lane (the
   trigger).
+  - 2026-11-25 (the AI lane, E31 T2b, `ai/e31-t2b`; **for the same decision, nothing to do
+    now**): the simulated combat's sides and melee are ported (`h3_game::computer`'s `sim.rs`,
+    CPU-SIM-001 to -005, the casts AI-STUB-7 until T2c). Its blind re-read found two more
+    candidates of (1), §5.5's #63 (a hero's shooters' share is the Archery bonus alone over 5,
+    so 0 without the skill, against 0.2 without a hero) and #64 (the wall halving spares the
+    Arch Magi, creature 35, alone; the port reads your part's `no_wall_penalty`, which the Magi
+    have too).
 
 - 2026-11-22 (the adventure lane, E08 T140, `shared/e08-t140`, `cross-lane` with the user's
   consent; **in your paths, nothing to do**): `h3-harvest`'s two profile texts and

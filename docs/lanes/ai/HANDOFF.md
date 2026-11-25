@@ -32,13 +32,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1172 (`ai/e31-t2a`: T2a, the frame). Merged: #1163 (the shared
-  module PR), #1164 (increment 2's cut), #1158 (T1b).
+- **Open pull requests:** the one of `ai/e31-t2b` (T2b, the simulated combat's sides and
+  melee). Merged: #1172 (T2a), #1163 (the shared module PR), #1164 (increment 2's cut).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
   encoding v1 (`MEMORY_ENCODING_VERSION`, E31 T2a) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q33, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-7.
+  ids: AI-Q34, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-8.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
@@ -52,8 +52,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **T2a done** (2026-11-25): `h3_game::computer::choose`, `Memory`, the turn's frame with each
   hero done at once (AI-STUB-2 to -6), `h3_sim::computer::play` (the property tests, every
   shipped map at every difficulty in the original-data check), `h3 ai computer` and the workload
-  `computer-turns-towns-36`. **Next: T2b**, the simulated combat's sides and melee (`QUEUE.md`),
-  `Heroes3.exe` staged for the blind re-reads. Then E13 (refined in shape,
+  `computer-turns-towns-36`. **T2b done** (2026-11-25, not cut, AI-Q33):
+  the simulated combat's sides and melee in `computer/sim.rs` (CPU-SIM-001 to -005; the casts
+  AI-STUB-7; no caller until T2c, `expect(dead_code)` on the module); §5.5's #63 and #64.
+  **Next: T2c**, the casts, Necromancy and the fight estimate (`QUEUE.md`), `Heroes3.exe`
+  staged for the blind re-reads. Then E13 (refined in shape,
   `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -62,6 +65,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **The computer player (E31)** (its coverage, its workload, the memory), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-25 — E31 T2b: the simulated combat's sides and melee
+
+- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
+  the user's repo folder at the start. Measured 7.4 KB (1.4 KB container code): the user chose no
+  cut (AI-Q33). The blind re-reads agreed with the survey but four details (`E31-log.md` T2b). The VM
+  restarted once (the setup's baseline lost); `master`'s CI had failed on a server-lane timing
+  test only (`h3-server`'s `a_spectator_watches_a_timed_game…`), its failed job re-run. The
+  scoped verify with the original data; an IEEE double model checked the port on 400 runs.
 
 ### 2026-11-25 — E31 T2a: the frame
 
@@ -80,12 +92,3 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   (#1159) merged into it. Increment 2 measured from the address map's sizes; the user asked once
   (AI-Q32): ADR-0030 accepted, eleven tasks, the `lib.rs` line in the shared pull request, the
   loader's crashes the adventure lane's.
-
-### 2026-11-24 — E31 T1b: the survey's close, the ADR draft, the checkpoint
-
-- A cloud clone; the user's computer unreachable for `Heroes3.exe` (not needed: the blind re-reads
-  stay with each slip's port task). The cut asked (AI-Q30): none, sub-agents for the narrow
-  tables (the quirk candidates, the hidden reads and gaps, the wiki's and VCMI's positions), each
-  checked by the main session. The setup's baseline stopped (CI green on `master`); the scoped
-  verify without original data. The checkpoint in two `AskUserQuestion` rounds (AI-Q31); the
-  README's row in `shared/e31-increment-1`.
