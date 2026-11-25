@@ -6492,9 +6492,9 @@ made in worktrees while the baseline ran, then moved over.
   stock seen only in its window, its draws and the pool's marks server-only, the market and
   University views their owner's, the five commands' checks, nothing priced from the payload, the
   events) and the "Another player's hero" line's garrison hero (T50's record).
-- **T55b, `h3-content`:** `quirk.town.visitor_only_trades` (`QuirkFlag(52)`,
+- **T55b, `h3-content`:** `quirk.town.visitor_only_trades` (`QuirkFlag(54)`,
   `VISITOR_ONLY_TRADES`, T-28; read from T58a) and `quirk.town.university_ignores_map_bans`
-  (`QuirkFlag(53)`, `UNIVERSITY_IGNORES_MAP_BANS`, T-23; read from T59b): the registry's 54
+  (`QuirkFlag(55)`, `UNIVERSITY_IGNORES_MAP_BANS`, T-23; read from T59b; 52 and 53 taken by E14 T2c, #1174, merged meanwhile): the registry's 56
   positions, its two tests. **HER-ART-008** (`heroes.toml`, `verified`: the code reading of
   `artifact_table_load` and TWN-6-4): a combination whose pack names no cost costs its parts'
   costs summed per resource, in resource order, derived in the artifact compile after the pack's
@@ -6508,14 +6508,19 @@ made in worktrees while the baseline ran, then moved over.
   parts' 9 500 coin).
 - **The ledger:** `TWN-QUIRK-15` and `-16` entered (`quirks-town.md`; confirmed by TWN-6-5 and
   TWN-6-7; the rules' regression tests with T58a and T59b, the profiles' now).
-- **Replays and records** (a sub-agent): the base faithful ruleset hash moved 0x52a9516f14766fb8
-  to **0x61961894eaf7f557**, `strict-fixed`'s 0xb0c378a75ff70a5b to **0xacbb9bce12032664** (the
+- **Replays and records** (a sub-agent, then the session after the merge): the base faithful
+  ruleset hash moved (on `master`'s 529bb61, #1174 merged in) 0x9078e1983efcc013 to
+  **0x3f1f68842dab4e0c**, `strict-fixed`'s 0xc67d550d834033d8 to **0x0bd901a144728cc7** (the
   combinations' costs; the synthetic's kept). The 118 golden adventure replays re-recorded from
-  their commands by a scratch script (`h3 adventure run` in release, 10 s): only `ruleset_hash`
-  moved; all 118 verified (`h3 adventure verify`), the ten battle replays unchanged and verified
+  their commands by a scratch script (`h3 adventure run` in release, 10 s), once before the merge
+  and again after it (the merge took `master`'s files): only `ruleset_hash` moved; all 118 verified (`h3 adventure verify`), the ten battle replays unchanged and verified
   (`h3 verify`). `h3-server`'s record literal; the AI lane's `bots-report-v1.json` and
   `bots-neutral-v1.json` regenerated (3.7 minutes): only `engine.core` moved.
-- **Also:** the battle lane's HANDOFF version line (quirk flags 53, the hash); the adventure lane's
+- **The merge:** E14 T2c (#1174, `shared/`) merged into `master` during the session with the rmg
+  lane's flags at registry positions 52 and 53 (and the registry at 128 bits): the town's two moved
+  to 54 and 55; the conflicts in `quirks.rs`, `lib.rs`, the harvester's profiles and
+  `packs/base/core.toml` resolved by keeping both lanes' flags, `master`'s first.
+- **Also:** the battle lane's HANDOFF version line (quirk flags 55, the hash); the adventure lane's
   inbox (the replays' header, HER-ART-008); the lane's inbox note on CI's jobs done (`TRAPS.md`:
   the `bench` job's 60 minutes).
 - *Agent's calls:* the two ledger entries made with the flags, as T45's; the sum in resource order

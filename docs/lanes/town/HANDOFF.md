@@ -9,8 +9,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `docs/rules/surveys/E09-trades.md` (`TWN-Q35`); T53 the drafts and the design note's Part H §101
   to §120 (`TWN-Q36`, `TWN-Q37`); T54 batch TWN-6 (survey §14: every row the code reading); **T55**
   `shared/`: the drafts in ADR-0028, -0017 and -0016, the glossary, `docs/06-security.md`'s "The
-  town's trades"; `TWN-QUIRK-15`'s and `-16`'s flags (`quirk.town.visitor_only_trades` 52,
-  `quirk.town.university_ignores_map_bans` 53, on in `faithful`; read from T58a and T59b); the
+  town's trades"; `TWN-QUIRK-15`'s and `-16`'s flags (`quirk.town.visitor_only_trades` 54,
+  `quirk.town.university_ignores_map_bans` 55, on in `faithful`; read from T58a and T59b); the
   combinations' costs (HER-ART-008, `h3-content`). **Next:** **T56**, the town part v10 (the six
   building fields, the parameters, the Transformer's tables; the harvest `cross-lane`), then T57
   to T61 (`QUEUE.md`). In the inbox for review: E08 T141a's note (2) (the Thieves' Guild's best
@@ -30,8 +30,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   lane's (on `master` e2e15c7: game state hash v39, map import v29, adventure part v26, adventure
   state hash v29, replay format v26), the env's (v20) and the protocol's (v83) are bumped
   `cross-lane` (each task's record in `E09-log.md`). Shared: core ruleset hash v53 (its encoding
-  kept; T55's base `faithful` hash 0x61961894eaf7f557, `strict-fixed` 0xacbb9bce12032664), pack
-  format v53 (E08 T124a), quirk flags 53 (T55b).
+  kept; T55's base `faithful` hash 0x3f1f68842dab4e0c, `strict-fixed` 0x0bd901a144728cc7), pack
+  format v53 (E08 T124a), quirk flags 55 (T55b; 52 and 53 E14 T2c's).
 - **Ids** (next): questions `TWN-Q38`; decisions 220; quirks `TWN-QUIRK-17` (planned `-17` to
   `-23`, design §116); stubs `TWN-STUB-21` (planned for T58a); experiment batch `TWN-7`; disputes
   `TD-32`; quirk candidates `T-29`. ADR-0028 is the lane's; no drafts open; every TWN-GLD rule

@@ -196,7 +196,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Impact: gameplay, small: a garrison hero must step out of the garrison to buy or sell an artifact, sell creatures or buy a war machine; no state corrupted.
 - Community status: VCMI 1.7.5's server accepts a hero of the actor's on the entrance, the garrison hero included (its client passes the visitor, else the garrison hero); the wiki says "a visiting hero" (the merchants, the Ballista Yard) (survey `docs/rules/surveys/E09-trades.md` §10 TD-28).
 - Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §2, §4.2, T-28); batch TWN-6's row TWN-6-5 (`experiments/results/E09-batch-6a.md`, `-6a-run2.md`: with a garrison hero and no visitor the merchants, the Freelancer's Guild, the Blacksmith and the Ballista Yard each showed GENRLTXT 274 and opened nothing; the Marketplace opened screen 0 with only the transfer's button; survey §14).
-- Flag: `quirk.town.visitor_only_trades` (`VISITOR_ONLY_TRADES`, registry position 52, E09 T55b)
+- Flag: `quirk.town.visitor_only_trades` (`VISITOR_ONLY_TRADES`, registry position 54, E09 T55b)
 - Defaults: faithful = on (the visitor only), strict-fixed = off (the visitor, else the garrison hero)
 - Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's with E09 T58a
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 202); confirmed by batch TWN-6 (E09 T54, TWN-6-5); the flag added and the entry made by E09 T55b, 2026-11-25
@@ -209,7 +209,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Impact: gameplay, small: a map's intent broken, no state corrupted; reachable on the shipped maps that ban a school and have a Conflux, or a random town that resolves to one (the census: `Heroes of Might not Magic` and its allied copy ban all four schools).
 - Community status: VCMI 1.7.5 refuses a banned skill (`isAllowed`); the wiki's page did not load (survey `docs/rules/surveys/E09-trades.md` §10 TD-30).
 - Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §6.3, T-23); batch TWN-6's row TWN-6-7 (`experiments/results/E09-batch-6d.md`, `-6d-run2.md`: on a map banning Fire Magic the University offered Fire as learnable and its purchase taught Fire Magic at Basic for 2 000 gold; survey §14).
-- Flag: `quirk.town.university_ignores_map_bans` (`UNIVERSITY_IGNORES_MAP_BANS`, registry position 53, E09 T55b)
+- Flag: `quirk.town.university_ignores_map_bans` (`UNIVERSITY_IGNORES_MAP_BANS`, registry position 55, E09 T55b)
 - Defaults: faithful = on (the scenario's bans not tested), strict-fixed = off (the banned schools left out)
 - Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's with E09 T59b
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 204); confirmed by batch TWN-6 (E09 T54, TWN-6-7); the flag added and the entry made by E09 T55b, 2026-11-25
