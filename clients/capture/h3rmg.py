@@ -402,6 +402,15 @@ def phase_facts(clock, g):
     words, zones = read_memory(clock / f"rmg{g}.memory")
     fields = [zone_fields(site, zone, generator) for site, _, zone, generator in zones
               if site in STEP2_ZONES]
+    # The record checked against the log: per step, as many zones with a set town type as
+    # draws of 0x532A5B (the constructor draws once for each, survey §2.6).
+    for phase, draws in phases:
+        drawn = sum(1 for site, _ in draws if site == TOWN_TYPE_DRAW)
+        made = sum(1 for _, step, zone, _ in zones
+                   if str(step) == str(phase) and any(zone[0x41:0x4A]))
+        if drawn != made:
+            raise RuntimeError(f"{log}: step {phase} draws 0x532A5B {drawn} times, its memory "
+                               f"record has {made} zones with a set town type")
     return {"draws": sum(len(d) for _, d in phases),
             "log": hashlib.sha256(log.read_bytes()).hexdigest()[:16],
             "steps": phase_digests(phases),
@@ -451,6 +460,8 @@ def control_words(words):
     return ",".join(f"{k}:{v:04X}" for k, v in words.items()) or "none"
 
 
+# rmg_zone_generator_init's draw of the zone's town type (rmg_zone_town_type_draw).
+TOWN_TYPE_DRAW = 0x532A5B
 # Step 2's calls of rmg_zone_generator_init (rmg_level_zones_partition 0x53E050): the temporary
 # zone on the stack (per level that tests positions) and each water zone (operator new).
 STEP2_ZONES = {0x53E149: "temporary", 0x53E45C: "water"}
