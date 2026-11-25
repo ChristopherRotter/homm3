@@ -1,9 +1,12 @@
-# ADR draft: the original's map generator in `h3-rmg` (E14)
+# ADR-0029: The original's map generator in `h3-rmg` (E14)
 
-- Status: Proposed, confirmed at the checkpoint RMG-Q2 (E14 T1c3, 2026-11-24); numbered by
-  increment 2's `shared/` pull request
+- Status: Accepted (user, 2026-11-24, RMG-Q2: the draft confirmed at the checkpoint after E14
+  increment 1, its seam the experiment writer; numbered and moved here by E14 T2a, 2026-11-24)
 - Date: 2026-11-24
-- Deciders: the user (RMG-Q2) + the rmg lane's session
+- Deciders: the user (RMG-Q2) + the rmg lane's session (E14 T1c3)
+- Amends with it: ADR-0003 point 7 (the original's generator beside `Rng`; its revision history)
+- Working detail: the survey `docs/rules/surveys/E14-generator.md`, the oracle
+  `docs/lanes/rmg/ORACLE.md`, the ledger `docs/rules/quirks-rmg.md`
 
 <!-- Longer than the usual 80 lines: one record for the generator's crate, seam, stream, floats,
      data, profiles, versions and test seam, which E14's increments 2 to 7 all build on. -->
@@ -52,7 +55,8 @@ float and profile rules were written for the game, not for a port of the origina
    every draw in the original's order with its modulus and signedness. It lives in
    `h3_kernel::rng::CrtRand` (a shared change at increment 2), not in `h3-rmg`: it is the third use
    after `h3_adventure::split::TileRand` and `h3_heroes::level_up::OriginalDraws` (their lanes may
-   move to it), tested once with vectors from the phase oracle's logs. It is not a named stream of
+   move to it), tested once (KER-RNG-004: the code reading's vectors; the phase oracle's logs check
+   the whole stream from increment 2's draws before step 1 on, point 8). It is not a named stream of
    the kernel's `Rng` (ADR-0003 point 7): a caller that derives a map's seed from a game's seed
    draws the `u32` from its own stream; inside the generator nothing else draws.
 4. **Floats.** The original's x87 code runs at the thread's 53-bit precision control (0x27F: the
@@ -105,10 +109,11 @@ float and profile rules were written for the game, not for a port of the origina
 
 ## Consequences
 
-- Increment 2's `shared/` pull request: the two crates and the `h3-map` edge (`Cargo.toml`,
-  `arch.toml`, `lanes.toml`), `CrtRand`, the context in `docs/03-domain.md`, the catalog context
-  `RMG` (`docs/04-rules-and-sources.md` §3), this ADR numbered. Each flag adds a line to the packs'
-  profiles (`core.toml`, a shared file) in its increment's shared change.
+- Increment 2's `shared/` pull request (T2a): the two crates (`Cargo.toml`, `arch.toml`,
+  `lanes.toml`; `check-arch` rejects the edge `h3-game → h3-rmg`), `CrtRand`, the context in
+  `docs/03-domain.md`, the catalog context `RMG` (`docs/04-rules-and-sources.md` §3), this ADR
+  numbered; the edge `h3-map → h3-rmg` with increment 7's shared change. Each flag adds a line to
+  the packs' profiles (`core.toml`, a shared file) in its increment's shared change.
 - `faithful`'s byte-for-byte claim holds for a fresh start's first map under the oracle's
   environment; Windows' memory and a second map in one game stay out of reach (RMG-QUIRK-1).
 - The writer's seven gaps are increment 7's prerequisite, in the adventure and town lanes'
@@ -132,3 +137,9 @@ float and profile rules were written for the game, not for a port of the origina
   a generator that needs the installation could not serve the server or training.
 - A generator profile apart from the game's: a third axis in every setup with no consumer yet
   (E30 may add one).
+
+## Revision history
+
+- 2026-11-24: Drafted and confirmed (E14 T1c3, RMG-Q2); numbered by E14 T2a (point 3's test vectors
+  the code reading's, the phase oracle's logs not kept; the `h3-map` edge moved to increment 7 as
+  point 1 says; the edge `h3-game → h3-rmg` forbidden in `arch.toml`).

@@ -1,0 +1,15 @@
+[package]
+name = "h3-pack-rmg"
+description = "Adapter: parses the packs' rmg.toml files into the map generation context's tables (ADR-0029)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# `arch.toml` allows the kernel, the core content, the generator and the core pack adapter, serde
+# and toml (ADR-0029 point 5); each comes with the parser (E14 T2b).
+[dependencies]
+
+[lints]
+workspace = true

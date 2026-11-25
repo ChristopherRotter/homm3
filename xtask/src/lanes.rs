@@ -675,6 +675,7 @@ paths = ["crates/h3-towns/", "crates/h3-adventure/src/town*"]
             "client",
             "map-client",
             "town",
+            "rmg",
         ] {
             assert!(c.lane(lane).is_some(), "{lane}");
             assert_eq!(
@@ -709,8 +710,8 @@ paths = ["crates/h3-towns/", "crates/h3-adventure/src/town*"]
             Owner::Lane("map-client".to_owned())
         );
         // The town lane (2026-10-31, TWN-Q1): its crate and the town modules of the adventure
-        // lane's crates; the crates' common parts stay the adventure lane's. The ai lane's
-        // computer player in `h3-game` (E31, AI-Q31).
+        // lane's crates; the crates' common parts stay the adventure lane's. The rmg lane's two
+        // crates (E14 T2a, ADR-0029); the ai lane's computer player in `h3-game` (E31, AI-Q31).
         for (path, lane) in [
             ("crates/h3-towns/src/lib.rs", "town"),
             ("crates/h3-adventure/src/town/mod.rs", "town"),
@@ -719,6 +720,9 @@ paths = ["crates/h3-towns/", "crates/h3-adventure/src/town*"]
             ("crates/h3-map/src/writer/town.rs", "town"),
             ("docs/epics/E09-towns.md", "town"),
             ("docs/rules/catalog/town.toml", "town"),
+            ("crates/h3-rmg/src/lib.rs", "rmg"),
+            ("crates/h3-pack-rmg/src/lib.rs", "rmg"),
+            ("docs/rules/catalog/rmg.toml", "rmg"),
             ("crates/h3-game/src/computer/mod.rs", "ai"),
             ("docs/rules/catalog/computer.toml", "ai"),
             ("docs/rules/quirks-ai.md", "ai"),
