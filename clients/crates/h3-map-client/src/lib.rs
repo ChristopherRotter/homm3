@@ -6,7 +6,8 @@
 //! in them changed with the move.
 //!
 //! - **Play's entry** (E24 M5 T2b, the API agreed for the client lane): [`play::play`], the game the
-//!   shell began played in the shell's window with its sound lent, how play ended handed back.
+//!   shell began played in the shell's window with its sound lent, how play ended handed back;
+//!   since T3a hosted in-process with a seat per player ([`hot_seat`]).
 //! - **The commands:** [`gate`] (the map's real-asset gate), [`render`] (a still of the adventure
 //!   screen), [`sequences`] (the recorded sequences replayed), [`records`] (a whole game's record
 //!   played headless), [`situation`] (a situation's map written), [`window`] (the map in a window:
@@ -25,6 +26,7 @@ mod audio;
 mod battles;
 mod files;
 pub mod gate;
+pub mod hot_seat;
 mod paint;
 pub mod play;
 pub mod records;

@@ -5,13 +5,13 @@
 //! ([`End`]: the main menu, the load menu, the scenario again or the program's end, as E27 M5's
 //! system menu will give them).
 //!
-//! - **What play shows until T3** (*provisional*; the user at T2b): the game started in-process by
-//!   `h3-protocol`'s game session ([`start`]: `GameSession::start`, every seat the host's, its
-//!   clock unlimited), its first human's record so far (the game's snapshot and turn) set up as
-//!   the record player sets up a record's file, the map standing at that start with M2's input
-//!   (the window's, `crate::window`): every fact the engine's (the user at M5 T0: no rules table or
-//!   map text read in play), the pictures the map file's. T3 gives every human a seat, End Turn
-//!   and the hand-over between them.
+//! - **What play shows until T3b** (*provisional*; the user at T2b and T3a): the game hosted
+//!   in-process with a seat per player (`crate::hot_seat`, E24 M5 T3a: `GameSession::start`, the
+//!   turn's duration its clock, the computers' turns ended at once), the record so far of the human
+//!   whose turn runs set up as the record player sets up a record's file, the map standing at that
+//!   start with M2's input (the window's, `crate::window`): every fact the engine's (the user at
+//!   M5 T0: no rules table or map text read in play), the pictures the map file's. T3b gives the
+//!   window End Turn through the session and the hand-over between the humans' views.
 //! - **Its ends:** the window's quit key (and an unattended run's end) [`End::MainMenu`], the
 //!   window closed [`End::Quit`]; [`End::Load`] and [`End::Restart`] wait for E27 M5's system menu.
 //! - **The window lent** (800 × 600, the map's frame, at the host's scale): play sets the cursor
@@ -20,24 +20,23 @@
 //!   play returns, an error's return too; none lent, play is silent.
 //!
 //! `h3-map-view play` ([`Options`], [`run`]) begins a game on a map file as the shell's Begin
-//! would (the import's humans, or those `--humans` names) and plays it in a window and on a sound
-//! of its own, until the shell calls [`play`] (the client lane's move, its inbox).
+//! would (the import's humans, or those `--humans` names; the turn's duration `--duration`'s) and
+//! plays it in a window and on a sound of its own, until the shell calls [`play`] (the client
+//! lane's move, its inbox); or, with `--turns`, headless: that many End Turns of the humans in turn
+//! through the hosted session (E24 M5 T3a), a line for each. `--records` writes each human's record
+//! at the end, as `h3-server record` names them, for the record player (`h3-map-view record`).
 
-use std::ffi::OsStr;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_battle_client::audio::HostSound;
-use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup};
-use h3_protocol::map::game::manifest;
-use h3_protocol::session::game::{Clock, CommandBounds, GameOptions, GameSession, Spectators};
-use h3_protocol::wire::WireU64;
-use h3_protocol::wire::game::MapIdentity;
 use h3_render::Bugs;
 use h3_sdl::{Config, Window};
 
 use crate::files;
+use crate::hot_seat::{self, HotSeat};
 use crate::window::{self, Host, Source};
 
 /// A game the shell began (its `begin::Game`, by the client lane's own type): what play needs of
@@ -51,7 +50,8 @@ pub struct Game {
     pub setup: GameSetup,
     /// Each colour's human's name, red first (the hot seat's: T3's seats, T5's hand-over).
     pub names: [Option<String>; 8],
-    /// The turn's duration (`turndur.txt`'s record: the session's clock from T3 and T5).
+    /// The turn's duration (`turndur.txt`'s record, 0 to 10, 10 unlimited: the session's clock,
+    /// [`hot_seat::clock`]).
     pub duration: u8,
     /// The game's seed: the same setup and seed begin the same game.
     pub seed: u64,
@@ -109,94 +109,42 @@ pub fn play(
     folders: &Folders,
 ) -> Result<End, String> {
     let options = window::Options::for_play(game, folders, None, false);
-    let (lines, _, end) = played(game, rules, Host::Lent { window, sound }, &options)?;
+    let hot = HotSeat::start(game, rules)?;
+    let (lines, _, end) = played(game, rules, &hot, Host::Lent { window, sound }, &options)?;
     for line in lines {
         eprintln!("h3-map-client play: {line}");
     }
     Ok(end)
 }
 
-/// `game` played as [`play`] plays it, on `host` with the window's `options`: the window's report,
-/// its check's verdict and how play ended.
+/// `game` played as [`play`] plays it, hosted by `hot`, on `host` with the window's `options`: the
+/// window's report, its check's verdict and how play ended.
 fn played(
     game: &Game,
     rules: &GameRuleset,
+    hot: &HotSeat<'_>,
     host: Host<'_>,
     options: &window::Options,
 ) -> Result<(Vec<String>, bool, End), String> {
-    let started = start(game, rules)?;
+    let (text, colour) = turn_record(hot)?;
     let source = Source::Text {
         map: &game.map,
-        text: &started.record,
+        text: &text,
         rules,
-        label: format!("play's start for colour {}", started.colour),
+        label: format!("play's start for colour {colour}"),
     };
     window::window(options, source, host)
 }
 
-/// A game started in-process: its first human (the setup's first human player: its id and its
-/// colour) and that player's record so far, its start.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Started {
-    pub player: PlayerId,
-    pub colour: u8,
-    pub record: String,
-}
-
-/// `game` started in-process under `rules` (`GameSession::start`, as `h3-server record` starts a
-/// replay's: every seat the host's, the clock unlimited, the whole game one record), the map named
-/// by its bytes' hash: its first human and that player's record so far.
+/// The record so far of the human whose turn runs, and its colour.
 ///
 /// # Errors
-/// The map file does not read; the engine starts no game of the setup; no player is human.
-pub fn start(game: &Game, rules: &GameRuleset) -> Result<Started, String> {
-    let file = &game.map;
-    let failed = |e: &dyn std::fmt::Display| format!("{}: {e}", file.display());
-    let name = file
-        .file_name()
-        .and_then(OsStr::to_str)
-        .ok_or_else(|| failed(&"not a map file's name"))?;
-    let root = file.parent().unwrap_or_else(|| Path::new("."));
-    let (_, map) = h3_files::adventure::read_map(root, name).map_err(|e| failed(&e))?;
-    let identity = MapIdentity {
-        content_hash: WireU64(map.content_hash),
-        import_version: map.import_version,
-    };
-    let options = GameOptions {
-        game: 0,
-        checkpoint_every: 0,
-        record_bytes: usize::MAX,
-        clock: Clock::UNLIMITED,
-        commands: CommandBounds::NONE,
-        spectators: Spectators::NONE,
-    };
-    let (index, human) = game
-        .setup
-        .players
-        .iter()
-        .enumerate()
-        .find(|(_, p)| p.human)
-        .ok_or_else(|| failed(&"no player is human"))?;
-    let player = PlayerId::new(u8::try_from(index).map_err(|e| failed(&e))?);
-    // Every frame stays in the session's records; play folds them from T3 on.
-    let mut out = Vec::new();
-    let session = GameSession::start(
-        rules,
-        &game.setup,
-        game.seed,
-        manifest(rules, identity),
-        options,
-        &mut out,
-    )
-    .map_err(|e| failed(&format_args!("the game does not start: {e}")))?;
-    let record = session
-        .record(player)
-        .ok_or_else(|| failed(&format_args!("no record of player {}", player.index())))?;
-    Ok(Started {
-        player,
-        colour: human.colour,
-        record,
-    })
+/// No human's turn runs.
+fn turn_record(hot: &HotSeat<'_>) -> Result<(String, u8), String> {
+    let player = hot.turn().ok_or("no human's turn runs")?;
+    let colour = hot.seat(player).map_or(0, |s| s.colour);
+    let text = hot.record(player).ok_or("no record of the human in turn")?;
+    Ok((text, colour))
 }
 
 /// The command's options.
@@ -205,16 +153,23 @@ pub struct Options {
     map: PathBuf,
     seed: u64,
     humans: Option<Vec<u8>>,
+    /// The turn's duration (`turndur.txt`'s record).
+    duration: u8,
     scale: Option<u32>,
     mute: bool,
     folders: Folders,
     /// Unattended for this many seconds; whether each frame is read back.
     run: Option<(u32, bool)>,
+    /// Headless: this many End Turns of the humans in turn, no window.
+    turns: Option<u32>,
+    /// Where each human's record is written at the end.
+    records: Option<PathBuf>,
 }
 
 impl Options {
-    /// Parses `<map.h3m> [--seed <n>] [--humans <c>,...] [--keys <file>] [--scale <n>] [--mute]
-    /// [--bugs fixed|original] [--install <dir>] [--map <dir>] [--check <s> | --measure <s>]`.
+    /// Parses `<map.h3m> [--seed <n>] [--humans <c>,...] [--duration <record>] [--keys <file>]
+    /// [--scale <n>] [--mute] [--bugs fixed|original] [--install <dir>] [--map <dir>] [--check <s>
+    /// | --measure <s> | --turns <n>] [--records <dir>]`.
     ///
     /// # Errors
     /// An unknown option, a bad value, no map file.
@@ -222,6 +177,7 @@ impl Options {
         let (mut map, mut seed, mut humans, mut scale, mut mute) = (None, 0, None, None, false);
         let (mut keys, mut bugs, mut install, mut folder, mut run) =
             (None, Bugs::Fixed, None, None, None);
+        let (mut duration, mut turns, mut records) = (hot_seat::UNLIMITED, None, None);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -240,6 +196,16 @@ impl Options {
             match arg.as_str() {
                 "--seed" => seed = number(&value()?)?,
                 "--humans" => humans = Some(colours(&value()?)?),
+                "--duration" => {
+                    let v = value()?;
+                    duration = v
+                        .parse::<u8>()
+                        .ok()
+                        .filter(|&d| d <= hot_seat::UNLIMITED)
+                        .ok_or_else(|| format!("play: bad duration `{v}` (0 to 10)"))?;
+                }
+                "--turns" => turns = Some(small(&value()?)?),
+                "--records" => records = Some(PathBuf::from(value()?)),
                 "--keys" => keys = Some(PathBuf::from(value()?)),
                 "--scale" => scale = Some(small(&value()?)?.clamp(1, 16)),
                 "--mute" => mute = true,
@@ -261,10 +227,14 @@ impl Options {
                 extra => return Err(format!("play: unexpected `{extra}`")),
             }
         }
+        if turns.is_some() && run.is_some() {
+            return Err("play: --turns runs no window (no --check or --measure)".into());
+        }
         Ok(Self {
             map: map.ok_or("play: needs a map file")?,
             seed,
             humans,
+            duration,
             scale,
             mute,
             folders: Folders {
@@ -274,6 +244,8 @@ impl Options {
                 bugs,
             },
             run,
+            turns,
+            records,
         })
     }
 }
@@ -294,7 +266,7 @@ fn colours(list: &str) -> Result<Vec<u8>, String> {
 /// The game a map file begins under `rules`, as the shell's Begin makes it
 /// (`h3_battle_client::begin`): the map read and imported, its humans the import's or, given, only
 /// those of `humans` (a colour the map gives the computer alone refused), validated by the engine;
-/// no names, no turn's limit.
+/// no names, the turn's duration `duration` (`turndur.txt`'s record).
 ///
 /// # Errors
 /// The map does not read or import; a colour of `humans` the map gives the computer alone, or none
@@ -302,7 +274,7 @@ fn colours(list: &str) -> Result<Vec<u8>, String> {
 pub fn begin(
     map: &Path,
     humans: Option<&[u8]>,
-    seed: u64,
+    (seed, duration): (u64, u8),
     rules: &GameRuleset,
 ) -> Result<Game, String> {
     let failed = |e: &dyn std::fmt::Display| format!("{}: {e}", map.display());
@@ -326,7 +298,7 @@ pub fn begin(
         map: map.to_path_buf(),
         setup,
         names: Default::default(),
-        duration: 0,
+        duration,
         seed,
     })
 }
@@ -352,16 +324,35 @@ pub fn run(options: &Options) -> ExitCode {
     }
 }
 
-/// The command: the game begun, a window and a sound of its own lent to play as the shell lends
-/// its own.
+/// The command: the game begun and hosted; played headless (`--turns`) or in a window and on a
+/// sound of its own lent to play as the shell lends its own; each human's record written where
+/// `--records` says.
 fn play_command(options: &Options) -> Result<(Vec<String>, bool, End), String> {
     let rules = h3_battle_client::maps::rules()?;
     let game = begin(
         &options.map,
         options.humans.as_deref(),
-        options.seed,
+        (options.seed, options.duration),
         &rules,
     )?;
+    let mut hot = HotSeat::start(&game, &rules)?;
+    let (mut lines, ok, end) = match options.turns {
+        Some(turns) => (headless(&mut hot, turns)?, true, End::MainMenu),
+        None => in_window(options, &game, &rules, &hot)?,
+    };
+    if let Some(dir) = &options.records {
+        lines.extend(write_records(&hot, &options.map, dir)?);
+    }
+    Ok((lines, ok, end))
+}
+
+/// `game`, hosted by `hot`, played in a window and on a sound of the command's own.
+fn in_window(
+    options: &Options,
+    game: &Game,
+    rules: &GameRuleset,
+    hot: &HotSeat<'_>,
+) -> Result<(Vec<String>, bool, End), String> {
     let [width, height] = files::load_layout(&options.folders.map)?.frame;
     let mut win = Window::open(&Config {
         title: format!("h3-map-view play — {}", options.map.display()),
@@ -379,12 +370,12 @@ fn play_command(options: &Options) -> Result<(Vec<String>, bool, End), String> {
             .ok()
     };
     let window_options =
-        window::Options::for_play(&game, &options.folders, options.run, options.mute);
+        window::Options::for_play(game, &options.folders, options.run, options.mute);
     let host = Host::Lent {
         window: &mut win,
         sound: &mut sound,
     };
-    let (mut lines, ok, end) = played(&game, &rules, host, &window_options)?;
+    let (mut lines, ok, end) = played(game, rules, hot, host, &window_options)?;
     // The sound handed back (the shell's to use again), as play promises.
     lines.push(format!(
         "the sound handed back: {}",
@@ -393,20 +384,79 @@ fn play_command(options: &Options) -> Result<(Vec<String>, bool, End), String> {
     Ok((lines, ok, end))
 }
 
-#[cfg(test)]
-mod tests {
-    use std::collections::BTreeMap;
-    use std::fs;
+/// `turns` End Turns of the humans in turn through `hot`, headless (E24 M5 T3a): a line for the
+/// start and one for each.
+///
+/// # Errors
+/// [`HotSeat::end_turn`]'s.
+pub fn headless(hot: &mut HotSeat<'_>, turns: u32) -> Result<Vec<String>, String> {
+    let mut lines = vec![format!("start: {}", in_turn(hot))];
+    for k in 1..=turns {
+        let colour = hot.turn().and_then(|p| hot.seat(p)).map(|s| s.colour);
+        hot.end_turn()?;
+        let colour = colour.map_or_else(|| "none".into(), |c| c.to_string());
+        lines.push(format!(
+            "End Turn {k}: colour {colour} ended its turn; {}",
+            in_turn(hot)
+        ));
+    }
+    Ok(lines)
+}
 
+/// Whose turn runs in `hot`, and its day, as its seat's view has it.
+fn in_turn(hot: &HotSeat<'_>) -> String {
+    let Some(seat) = hot.turn().and_then(|p| hot.seat(p)) else {
+        return "no human's turn runs".into();
+    };
+    let day = seat.view.as_ref().map_or(0, |v| v.day);
+    let name = seat
+        .name
+        .as_deref()
+        .map_or_else(String::new, |n| format!(" ({n})"));
+    format!("colour {}{name}'s turn, day {day}", seat.colour)
+}
+
+/// Each human's record so far in `hot` written into `dir` as `h3-server record` names a game's on
+/// the map file `map` (`<stem>.player-<k>.jsonl`): a line for each.
+///
+/// # Errors
+/// The folder or a file cannot be written.
+pub fn write_records(hot: &HotSeat<'_>, map: &Path, dir: &Path) -> Result<Vec<String>, String> {
+    fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let stem = map
+        .file_stem()
+        .map_or_else(|| "game".into(), |s| s.to_string_lossy().into_owned());
+    let mut lines = Vec::new();
+    for seat in hot.seats().iter().filter(|s| s.human) {
+        let k = seat.player.index();
+        let text = hot
+            .record(seat.player)
+            .ok_or_else(|| format!("no record of player {k}"))?;
+        let file = dir.join(format!("{stem}.player-{k}.jsonl"));
+        fs::write(&file, text).map_err(|e| format!("{}: {e}", file.display()))?;
+        lines.push(format!(
+            "the record of colour {}: {}",
+            seat.colour,
+            file.display()
+        ));
+    }
+    Ok(lines)
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use std::collections::BTreeMap;
+
+    use h3_contracts::PlayerId;
     use h3_map_view::situation::Situation;
 
     use super::*;
 
     /// A writer's map of the situation `text` in a file of its own (`name`), removed when dropped.
-    struct MapFile(PathBuf);
+    pub(crate) struct MapFile(pub(crate) PathBuf);
 
     impl MapFile {
-        fn new(name: &str, text: &str) -> Self {
+        pub(crate) fn new(name: &str, text: &str) -> Self {
             let (map, extras) = Situation::parse(text)
                 .unwrap()
                 .build(&BTreeMap::new(), &[])
@@ -429,7 +479,7 @@ mod tests {
     }
 
     /// Red's hero and Blue's on a small map.
-    const TWO: &str = "size = 36\nterrain = \"grass\"\n\
+    pub(crate) const TWO: &str = "size = 36\nterrain = \"grass\"\n\
         heroes = [{ at = [3, 3] }, { at = [30, 30], owner = 1 }]\nview = [0, 0, 0]\n";
 
     #[test]
@@ -444,42 +494,68 @@ mod tests {
                 .map(|p| p.colour)
                 .collect()
         };
-        let game = begin(&file.0, None, 5, &rules).unwrap();
+        let unlimited = (5, hot_seat::UNLIMITED);
+        let game = begin(&file.0, None, unlimited, &rules).unwrap();
         assert_eq!(humans(&game), [0, 1]);
-        assert_eq!((game.seed, game.duration), (5, 0));
+        assert_eq!((game.seed, game.duration), unlimited);
         assert_eq!(game.names, <[Option<String>; 8]>::default());
-        let game = begin(&file.0, Some(&[1]), 5, &rules).unwrap();
-        assert_eq!(humans(&game), [1]);
-        let e = begin(&file.0, Some(&[2]), 5, &rules).unwrap_err();
+        let game = begin(&file.0, Some(&[1]), (5, 3), &rules).unwrap();
+        assert_eq!((humans(&game), game.duration), (vec![1], 3));
+        let e = begin(&file.0, Some(&[2]), unlimited, &rules).unwrap_err();
         assert!(e.ends_with("colour 2: no player a human may play"), "{e}");
-        let e = begin(&file.0.with_extension("none"), None, 5, &rules).unwrap_err();
+        let e = begin(&file.0.with_extension("none"), None, unlimited, &rules).unwrap_err();
         assert!(e.contains("none"), "{e}");
     }
 
     #[test]
-    fn play_starts_with_the_first_human_s_record() {
+    fn play_starts_with_the_record_of_the_human_in_turn() {
         let rules = h3_battle_client::maps::rules().unwrap();
         let file = MapFile::new("start", TWO);
         let bytes = fs::read(&file.0).unwrap();
         for (humans, id) in [(None, 0), (Some(&[1][..]), 1)] {
-            let game = begin(&file.0, humans, 9, &rules).unwrap();
-            let started = start(&game, &rules).unwrap();
-            assert_eq!((started.player, started.colour), (PlayerId::new(id), id));
+            let game = begin(&file.0, humans, (9, hot_seat::UNLIMITED), &rules).unwrap();
+            let hot = HotSeat::start(&game, &rules).unwrap();
+            let (text, colour) = turn_record(&hot).unwrap();
+            assert_eq!(colour, id);
             // The record the record player reads (its map the file's by its hash), its start the
-            // first human's view.
-            let loaded = h3_map_view::engine::load(&started.record, &bytes, &rules).unwrap();
-            let first = loaded.first().unwrap();
-            assert_eq!(first.viewer, id);
+            // human's view.
+            let loaded = h3_map_view::engine::load(&text, &bytes, &rules).unwrap();
+            assert_eq!(loaded.first().unwrap().viewer, id);
             // The same setup and seed begin the same game.
-            assert_eq!(start(&game, &rules).unwrap(), started);
+            let again = HotSeat::start(&game, &rules).unwrap();
+            assert_eq!(turn_record(&again).unwrap(), (text, colour));
         }
-        // No human: no start.
-        let mut game = begin(&file.0, None, 9, &rules).unwrap();
-        for player in &mut game.setup.players {
-            player.human = false;
+    }
+
+    #[test]
+    fn headless_turns_pass_between_the_humans_and_their_records_are_written() {
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::new("headless", TWO);
+        let mut game = begin(&file.0, None, (3, hot_seat::UNLIMITED), &rules).unwrap();
+        game.names[1] = Some("Blue's".into());
+        let mut hot = HotSeat::start(&game, &rules).unwrap();
+        let lines = headless(&mut hot, 3).unwrap();
+        assert_eq!(
+            lines,
+            [
+                "start: colour 0's turn, day 1",
+                "End Turn 1: colour 0 ended its turn; colour 1 (Blue's)'s turn, day 1",
+                "End Turn 2: colour 1 ended its turn; colour 0's turn, day 2",
+                "End Turn 3: colour 0 ended its turn; colour 1 (Blue's)'s turn, day 2",
+            ]
+        );
+        let dir = file.0.with_extension("records");
+        let written = write_records(&hot, &file.0, &dir).unwrap();
+        assert_eq!(written.len(), 2);
+        let bytes = fs::read(&file.0).unwrap();
+        for k in 0..2_u8 {
+            let path = dir.join(format!("headless.player-{k}.jsonl"));
+            let text = fs::read_to_string(&path).unwrap();
+            assert_eq!(Some(text.clone()), hot.record(PlayerId::new(k)));
+            let loaded = h3_map_view::engine::load(&text, &bytes, &rules).unwrap();
+            assert_eq!(loaded.first().unwrap().viewer, k);
         }
-        let e = start(&game, &rules).unwrap_err();
-        assert!(e.ends_with("no player is human"), "{e}");
+        fs::remove_dir_all(&dir).unwrap();
     }
 
     fn args(list: &[&str]) -> Vec<String> {
@@ -494,6 +570,8 @@ mod tests {
             "7",
             "--humans",
             "0, 1",
+            "--duration",
+            "4",
             "--scale",
             "2",
             "--mute",
@@ -511,8 +589,8 @@ mod tests {
         .unwrap();
         assert_eq!(o.map, PathBuf::from("m.h3m"));
         assert_eq!(
-            (o.seed, o.humans.as_deref(), o.scale),
-            (7, Some(&[0, 1][..]), Some(2))
+            (o.seed, o.humans.as_deref(), o.duration, o.scale),
+            (7, Some(&[0, 1][..]), 4, Some(2))
         );
         assert!(o.mute);
         assert_eq!(o.run, Some((5, true)));
@@ -525,8 +603,12 @@ mod tests {
                 bugs: Bugs::Original,
             }
         );
+        assert_eq!((o.turns, o.records), (None, None));
         let o = Options::parse(&args(&["m.h3m", "--measure", "3"])).unwrap();
         assert_eq!((o.seed, o.humans, o.run), (0, None, Some((3, false))));
+        assert_eq!(o.duration, hot_seat::UNLIMITED);
+        let o = Options::parse(&args(&["m.h3m", "--turns", "6", "--records", "r"])).unwrap();
+        assert_eq!((o.turns, o.records), (Some(6), Some(PathBuf::from("r"))));
     }
 
     #[test]
@@ -538,6 +620,8 @@ mod tests {
             (&["m", "--seed"][..], "needs a value"),
             (&["m", "--seed", "x"][..], "bad number `x`"),
             (&["m", "--bugs", "some"][..], "fixed or original"),
+            (&["m", "--duration", "11"][..], "bad duration `11`"),
+            (&["m", "--turns", "2", "--check", "1"][..], "runs no window"),
             (&["m", "--fast"][..], "unknown option `--fast`"),
             (&["m", "n"][..], "unexpected `n`"),
         ] {

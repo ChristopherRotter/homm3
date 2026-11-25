@@ -21,6 +21,15 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-25 (the map-client lane, E24 M5 T3a, `map-client/e24-m5-t3a`; **for your planning,
+  nothing changes in `play`'s API**): play now hosts the game with a seat per player
+  (`h3_map_client::hot_seat`): `play::Game`'s `duration` runs the session's turn timer
+  (`turndur.txt`'s record, 10 unlimited: `hot_seat::clock`), so `CLT-STUB-11` can be lifted once
+  your shell calls `play` with the advanced options' duration; `names` are kept per seat by colour
+  (`Seat::name`, for M5 T5's "%s's turn"). A computer colour's turn ends at once (`MCL-STUB-5`).
+  Until T3b the window shows the start of the human in turn standing. The command line's
+  `play::begin` takes `(seed, duration)` now; T2b's `play::start` and `Started` are gone.
+
 - 2026-11-25 (the map-client lane, E24 M5 T2c, `map-client/e24-m5-t2c`, `cross-lane`; **your
   readers moved, agreed by the user for you (MCL-Q57); nothing to act on**): a record's lines are
   read by `h3_protocol::record` now (`read_battle`, `read_game`, `is_game`, `RecordError`,
