@@ -91,7 +91,7 @@ alter (the user, 2026-10-20):
    worktree of `master`), before the task's own change.
 
 **The map's stills** (E24 M1 T6a, the map client lane) follow the same rules with their own
-tools, from `clients/` after `cargo build --release -p h3-map-view`: 1. `python3
+tools, from `clients/` after `cargo build --release -p h3-map-client`: 1. `python3
 capture/h3map.py drawn` (no Wine; about a minute) draws each situation of
 `map/situations/set.toml` with the live part its last capture kept (`map/situations/kept/<id>.toml`,
 the still's `live.toml`: numbers and the DEFs' names) and compares the digest of its pixels
@@ -1244,7 +1244,7 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 
 **The map's stills** (E24 M1 T3b2, T4a, T4b, T5a, T5b1, T5b2, T6a, the map client lane;
 `docs/epics/E24-design.md` §1.10, §2.6 to §2.10; the lists since E24 M3 T4a, §4.5): from
-`clients/`, after `cargo build --release -p h3-map-view`,
+`clients/`, after `cargo build --release -p h3-map-client`,
 
 ```
 python3 capture/h3map.py set [--only <id>]                       # the map's capture set
@@ -1345,7 +1345,7 @@ is exact; `set.toml` records the counts. The menus run in real time, so each run
 never assumed.
 
 **The map's sequences** (E24 M2 T1a1, the map client lane; `docs/epics/E24-design.md` §3): from
-`clients/`, after `cargo build --release -p h3-map-view`,
+`clients/`, after `cargo build --release -p h3-map-client`,
 
 ```
 python3 capture/h3map.py frames [--only <id>] [--out <dir>] [--reuse]   # the recorded sequences

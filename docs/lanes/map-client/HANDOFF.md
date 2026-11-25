@@ -6,7 +6,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 - **E24** (`docs/epics/E24-map-client.md`; log `E24-log.md`, design `E24-design.md`): **M1** to
   **M4** closed and archived with their review lists (`E24-archive.md`; M4's accepted at M5 T0);
-  the crate `clients/crates/h3-map-view`; 56 situations and every sequence and scripted game as
+  the crates `clients/crates/h3-map-view` (pure) and `h3-map-client` (its adapters and the
+  `h3-map-view` binary, since M5 T2a); 56 situations and every sequence and scripted game as
   recorded (a viewer change runs `h3map.py drawn` first: the runbook, "Which captures a change
   needs"; `--bugs original` the comparisons' profile); the 66 golden player records play to
   their end. **M5 refined 2026-11-24 at T0** (hot seat on the adventure map; M6 the hero's
@@ -18,17 +19,20 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   panel after a retreat: design §5.22), **T1b done** 2026-11-25 (MCL-Q51: `battle-mine-retreat`
   recorded, `visit_mine`'s path read for a draw, the built form kept: design §5.23), **T1c done**
   2026-11-25 (MCL-Q52: the loops restarted at a won battle's lift, as read and sound-recorded:
-  design §5.24; a plain cut's battle in T6's scope). **Next: M5 T2** (the user's M4 hand-test
-  notes first if written: `clients/out/win/map-m4-notes.txt`, still blank at T1c).
+  design §5.24; a plain cut's battle in T6's scope). **M5 T2 cut in three** by the user at its
+  start: **T2a done** 2026-11-25 (`h3-map-client`: the binary's adapters a library, the binary a
+  thin host, nothing changed). **Next: M5 T2b** (play's entry for the shell, the API agreed with
+  the client lane first), T2c alongside (the record reader). The M4 hand-test notes
+  (`clients/out/win/map-m4-notes.txt`) still blank at T2a.
   Open questions: MCL-Q29 to MCL-Q49 (none blocks). Stubs: `MCL-STUB-1` (a
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10); planned `MCL-STUB-5` (T3), `MCL-STUB-6` (T4). Next ids
   **MCL-Q57**, **MCL-STUB-5**.
-- **Open pull requests** (2026-11-25): T1c's (`map-client/e24-m5-t1c`; T1b's #1165 merged):
-  check it first.
+- **Open pull requests** (2026-11-25): T2a's (`map-client/e24-m5-t2a`; T1c's #1167
+  merged): check it first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
-- **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
+- **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`, `h3-map-client`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
 - **The engine side:** `h3_map::parse` gives the raw map with every picture (`h3_map_view::art` reads it); the import keeps none; a view's objects come in tile order without an index (found in the file by type and anchor, `h3_map_view::engine`); `h3-server record` writes a whole game's record per player (protocol v76, record format 5); every shipped map imports (E09).
@@ -51,6 +55,12 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-25, E24 M5 T2a** (T2 cut in three by the user at its start): `h3-map-view`'s binary
+  moved by `git mv` into the new library `h3-map-client`, the binary a thin host in its package;
+  nothing changed: the 236 golden player records' timelines those of `master`'s binary, `drawn`
+  all the same, the window under Xvfb exact. The PC up at the start only (67 files staged,
+  SHA-256 checked); the VM restarted once (the setup's baseline lost, CI's `master` standing in).
+
 - **2026-11-25, E24 M5 T1c** (MCL-Q52, same session as T1b): the hand-over's `effects_stop_all`
   leaves the four slots; `adventure_battle`'s end lifts the hero through `mobilize_hero`, whose
   `hero_select` restarts them (design §5.24); a sound run of `battle-mine` showed the loop again at
@@ -63,11 +73,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   built form stays (the log's "M5 T1b", design §5.23); a draw's zero-count guards noted in the
   adventure lane's inbox. The PC up for the first minutes (everything staged, SHA-256 checked);
   the setup's baseline stopped at coverage by hand, CI's `master` standing in.
-
-- **2026-11-24, E24 M5 T1a** (T1 cut in three by the user at its start): M4's "moving pose" was
-  the hero drawn on its tile (`adventure_hero_stop` at every battle's start: no pass 9 blend),
-  the map's return with it there and the mouse hidden, lifted again at the fade in's end; sleep
-  and cast kept after a retreat; the three battle sequences recorded again, their frame lists
-  M4's known differences only (the log's "M5 T1a"). The PC up at the start (58 files and the
-  manuals staged, SHA-256 checked); the VM restarted once (the setup's baseline lost, CI's
-  `master` standing in); a disk ballast for the game's disk check.

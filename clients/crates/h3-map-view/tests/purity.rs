@@ -10,9 +10,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// The pure crate (its library; the binary under `src/bin/` is an adapter) with the dependencies
-/// it may have. A new dependency is added here deliberately. `h3-view`'s `tests/purity.rs` checks
-/// the client lane's crates and the foundation; this copy of it checks this lane's crate. `h3-map`
+/// The pure crate (its library; a binary under `src/bin/` would be an adapter: none since E24 M5
+/// T2a, `h3-map-view`'s binary is `h3-map-client`'s) with the dependencies it may have. A new
+/// dependency is added here deliberately. `h3-view`'s `tests/purity.rs` checks the client lane's
+/// crates and the foundation; this copy of it checks this lane's crate. `h3-map`
 /// gives the raw map's model (its parser reads bytes; the crate has no I/O); `h3-render` the
 /// compositor (pure, E17's foundation; since T3b1); `h3-ui` what both viewers share (E24 M3 T1a,
 /// pure: its own `tests/purity.rs`); the engine's pure crates `h3-protocol`, `h3-game`,
@@ -38,17 +39,10 @@ const PURE: [(&str, &[&str]); 1] = [(
 /// archives' reader `h3-formats`, the gate's; E24 M2 T4a: the window's adapter `h3-sdl`; E24 M2 T5:
 /// the music's decoder `nanomp3`; E24 M4 T3a: the packs' reader `h3-files`; E24 M4 T5b1: the
 /// battle client `h3-battle-client`, whose element the window hosts, and its scene model `h3-view`).
-const BINARY_ONLY: [(&str, &[&str]); 1] = [(
-    "h3-map-view",
-    &[
-        "h3-battle-client",
-        "h3-files",
-        "h3-formats",
-        "h3-sdl",
-        "h3-view",
-        "nanomp3",
-    ],
-)];
+/// None since E24 M5 T2a: `h3-map-view`'s binary and the adapters it held (and with them every
+/// dependency this list named for it) are `h3-map-client`'s, an adapter crate of its own; the
+/// check stays for a pure crate that gains a binary again (as `h3-view`'s copy, E17 M7 T3a1).
+const BINARY_ONLY: [(&str, &[&str]); 0] = [];
 
 /// Attributes every pure crate root carries.
 const REQUIRED: [&str; 2] = ["#![no_std]", "#![forbid(unsafe_code)]"];
