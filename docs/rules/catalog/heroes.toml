@@ -1192,6 +1192,25 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "HER-ART-008"
+title    = "A combination's cost"
+context  = "heroes"
+status   = "verified"
+summary  = "A combination artifact (one with parts) whose pack names no cost costs the resource-wise sum of its parts' costs, in resource order; one with a pack cost keeps it (no pack gives one). Derived once at the ruleset's compile, after the parts (which are never combinations), so every reader of an artifact's cost agrees: the Artifact Merchants' and the Black Markets' purchase (a combination reaches either only through the picker's fallback), the artifact sale (TWN-MKT-005). SoD's twelve, gold only: Angelic Alliance 84 000, Cloak of the Undead King 12 000, Elixir of Life 20 000, Armor of the Damned 12 000, Statue of Legion 25 000, Power of the Dragon Father 42 000, Titan's Thunder 40 000, Admiral's Hat 25 000, Bow of the Sharpshooter 12 000, Wizard's Well 3 000, Ring of the Magi 3 000, Cornucopia 20 000. A sum past u32 is refused at the compile. E09 T55b (decision 215): `h3_content`'s artifact compile."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading: artifact_table_load 0x44CD50 reads ARTRAITS.TXT's blank Cost of 129 to 143 as 0 (atoi, 0x44CEEE); for each of the twelve combination records (combination_setups 0x6938D8, built by combination_table_init 0x44C960) it sets the combination's cost to 0 and adds each part's (0x44D031 to 0x44D0BB); survey docs/rules/surveys/E09-trades.md §3.4 (E09 T52)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6a.md and -6a-run2.md TWN-6-4 (the capture harness, SoD 4.0 Complete under Wine, E09 T54): Ring of the Magi sold from the backpack at one Marketplace offered 600 gold, the sale's rate of its parts' sum 3 000, never the blank cost's 1-unit minimum (survey E09-trades.md §14)"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+
+[[rule]]
 id       = "HER-WAR-002"
 title    = "A destroyed war machine takes its artifact"
 context  = "heroes"

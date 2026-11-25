@@ -1,6 +1,7 @@
 use super::*;
 use alloc::string::{String, ToString};
 use alloc::vec;
+use h3_protocol::codec;
 
 use h3_protocol::wire::game::{AdventureCommand, GameKeyTables, MapIdentity};
 use h3_protocol::wire::{Command, KeyTables, RejectCode, WireU64};

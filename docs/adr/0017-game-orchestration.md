@@ -217,6 +217,27 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    of the build. Batch TWN-5 confirmed the draw's exclusions and the start's learning (E09 T44,
    survey `E09-guild.md` §21: TWN-5-1, a spell both required and banned in no slot, TD-25;
    TWN-5-4, the main town's generated hero knowing the guild's shown spells on day 1, TD-10).
+   **E09's increment 6** (the town's trades; E09 decisions 197, 209 to 213) adds five town commands
+   (ADR-0028 point 6), each its player's, in its turn, with no decision open (GAM-DEC-001), the town
+   the actor's (an ally's waits for E10's teams, `TWN-STUB-21`), each refusal typed and changing
+   nothing: **`TownCommand::Market { town }`** (TWN-MKT-002; decision 209) opens E08's market
+   decision with the town as its place (point 6); **`TownCommand::University { town, hero }`**
+   (TWN-UNI-001; decision 210) opens E08's University decision for the named visitor or garrison
+   hero; **`TownCommand::BuyWarMachine { town, building }`** (TWN-SMT-001; decision 211) buys the
+   building's machine for the window's hero, the Stronghold's Blacksmith and Ballista Yard each by
+   its own building; **`TownCommand::BuildBoat { town }`** (TWN-SHY-001; TWN-SET-011 amended)
+   launches the part's boat at the town's spot, no hero needed, several a day while the spot frees;
+   **`TownCommand::Transform { town, army, slot }`** (TWN-TRF-001) turns one whole stack of the
+   visitor's army or the upper bar's into its target in place, any number a turn. **The answer**
+   `MarketAnswer::SellArtifact { place, take }` (TWN-MKT-005; ADV-MKT-002 amended) is new, offered
+   only by a town's window with the merchants (point 6). Batch TWN-6 (E09 T54, survey
+   `E09-trades.md` §14) confirmed the window's hero (TWN-6-5: the visitor alone, T-28), the
+   University's banned school (TWN-6-7: T-23) and the town's one spot (TWN-6-6: TD-31, T-21).
+   **The state.** A town's record gains nothing (the town state hash stays v4); the adventure state
+   holds the merchants' stock and the artifact pool's marks (ADR-0016 point 1; decision 212).
+   **The build** draws the stock's seven (TWN-STK-001) last among its setup draws (point 4), so they
+   avoid the map's artifacts, the random ones and the Black Markets' while the pools last
+   (confirmed by batch TWN-6's TWN-6-8, D-32: the map's placed artifacts left out on day 1).
    **Increment 10** (dwellings and hiring; E08 decision 231) adds no command: a dwelling's or a
    Refugee Camp's visit is a step of `MoveHero` (both kinds are entered), and the free creatures
    and the purchases are answers (point 6). The setup gains nothing beyond ADR-0016's (the
@@ -508,6 +529,17 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    a hero that gains Wisdom or a spell book while it stands in a town learns at the next trigger
    (point 10). Batch TWN-5 confirmed both (E09 T44, TWN-5-5: the garrison hero at 20, its maximum,
    at week 2's and week 3's turn starts, refilled and not doubled; the flag set again each week).
+   **From E09 increment 6** (TWN-STK-002; GAM-CAL-002 amended) **the first day of every month from
+   the second** (days 29, 57, …) ends the month's start with **the merchants' draw**: after the
+   month's kind, the towns' month and, in a creature's month, the adventure's month step
+   (ADV-MON-014), before the towns' day, as the original's `new_month` ends with it (survey
+   `E09-trades.md` §3.2). Every entry is redrawn in order, sold or not, the old ones' marks kept (an
+   unsold artifact stays out of the pool until its class resets), whether or not any merchants
+   stand (decision 207); an entry stays empty where the pool gives none (T-24 fixed by
+   construction, `TWN-QUIRK-21`: the original loops for ever). Between two draws a purchase empties
+   its entry for every town and player; a sale never fills one; nothing else writes the stock.
+   Batch TWN-6 confirmed it (E09 T54, TWN-6-8: on day 29 all seven redrawn, the bought entry
+   refilled, sold or not; D-32, the marks reset free the placed artifacts).
    From increment 10 **the adventure's week step** first refills **every dwelling**, owned or not
    (each count its creature's growth, set; the guards the kind's full guards; no week's or month's
    kind), then draws the weekly objects' contents and **the camps' creatures** in one pass in
@@ -617,6 +649,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    engine's order is its own (E08 decision 17). Batch TWN-5 saw the guild drawn once at the start
    (E09 T44, TWN-5-3: the Library's spares as drawn at the start, shown when it is built; a
    Castle's level-5 slots empty, its weights 0 there).
+   **E09's increment 6** draws **the merchants' stock** (TWN-STK-001, -002; design note
+   `E09-design.md` Part H §101, call 4): **the new game's seven** from the setup stream, last among
+   the build's setup draws (after the Portals' `town::portal::at_setup`, the setup stream's last
+   today), so no earlier draw moves but every state hash does; **every later month's** on its first
+   day (point 3) from **the towns' stream** (`StreamId::TOWNS`, as decision 179's guilds; E09
+   decision 214, over a named stream of its own), so every replay that passes day 28 changes its
+   later towns' draws (the census of growth to day 29, `h3-sim`'s town-map seeds), which T57
+   re-records and re-seeds in one pull request. Entry by entry in the part's class order, equal
+   chances among the class's unmarked artifacts; with none left the marks reset to the bans, then
+   any class but `special` (relics and combinations through the fallback only); the drawn one
+   marked. Batch TWN-6 saw the draw so (E09 T54, survey `E09-trades.md` §14, TWN-6-8, D-32: on day 1
+   the three minors the map does not place, on day 29 the minors from all 21 once the marks reset).
    **Increment 10's setup placeholders**: in the static map's placement walk, in object order,
    each **random dwelling's faction** (uniform among its set) then **level** (uniform in its
    range), after E09's placeholders and **before every other existing one** (the drawn type's
@@ -896,6 +940,36 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    saw the windows so: each open for more trades (E14-1, E14-5, E14-8), the factory's dialog open
    after each purchase (E14-15), a refused upgrade a message with nothing paid (E14-13), the
    Altar's level-up drawn over its dialog, which then stays open with the new level read (E14-17).
+   **E09's increment 6** (GAM-DEC-011 and GAM-DEC-006 amended; E09 decisions 209, 210) adds **no
+   decision kind**: a town opens E08's market and University decisions as their **place**, a variant
+   of the visit's place (a map object as today, or the town by `TownId`), not a second decision.
+   - **The market** (GAM-DEC-011): its hero none possible at a town (the window's hero, ADR-0028
+     point 6); open until its `Leave` and blocking as E08's; its hash writes the place's tag before
+     its fields (the game state hash). E08's answers stand at the trader's count (TWN-MKT-003, -004;
+     confirmed by batch TWN-6's TWN-6-2): `Trade`, `Transfer` (to any other player still in the
+     game), `Sell` (the window's hero's army), `Buy` on the merchants' stock (`Entry`, `NoPrice`,
+     `NoRoom` with A-46 fixed as `ADV-QUIRK-48`, then `CannotPay`); a screen the town does not offer
+     is refused (`Screen`). **`SellArtifact { place, take }`** (TWN-MKT-005): one artifact of the
+     window's hero by its `h3_heroes::ArtifactPlace` (a worn position or a backpack index), refused
+     in this order: a window without the sale (`Screen`), an empty place (`Place`), a worn artifact
+     whose slot the backpack does not take (HER-ART-002's: the war machines, the Catapult, the spell
+     book; `NotTradable`), a resource the parameters do not value (`NoPrice`). SoD's fifth misc
+     position sells like the others (T-22 fixed, decision 205, `TWN-QUIRK-20`), every backpack
+     artifact too, the Grail for 1 at least, a combination whole from its own position. Its view
+     (`MarketView`, the window's owner's alone): the place, the hero, E08's `MarketOffers` (the
+     screens, the count, the lots, the stock with its prices) with the sale's places and prices,
+     the recipients.
+   - **The University** (GAM-DEC-006): its visit names the place, the hero, the skills (the part's
+     four; with `TWN-QUIRK-16`'s flag off the scenario's banned ones, `GameState::banned_skills`,
+     left out when it opens; on, a banned school offered and taught, as batch TWN-6's TWN-6-7 saw
+     the original) and the price; E08's answers (`Buy(slot)` by `h3_heroes::university_slot`
+     against the actor's treasury, several a visit; `Leave`); no mark at a town. Its view: the
+     place, the hero, the skills with their slot states, the price.
+   `legal_commands` lists each new command where it is legal (point 8): `Market` where the window
+   opens and offers a legal answer; the sale for the cost resource per place that sells;
+   `BuyWarMachine` where the purchase is legal; `BuildBoat`; `University` per hero where a slot is
+   open and the treasury holds the price; `Transform` per stack that changes. Inside a town's window
+   the answers are listed as a map market's, no transfer.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -995,6 +1069,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    spell book** (one entry, the same head; listed where the town's guild stands, its hero lacks a
    book and the treasury holds the price; the next version, or the same when both land together).
    The env reads the guild through the owner's town view; no learning is an action.
+   **E09's increment 6** appends (`cross-lane`, the AI lane's paths, E09 decision 7) **42 entries**
+   (the encoding from 105 to 147), each legal where `legal_commands` lists its command, the town by
+   its entrance in the tile head: **the market's opening** (1); **the artifact sale** for the cost
+   resource by place (22: worn positions 0 to 13, then backpack places 0 to 7); **the Blacksmith's
+   machine** (2: the town's first and second building with a `war_machine`, in building order);
+   **the boat** (1); **the University's opening** (2: the visitor, the garrison hero); **the
+   transformation** (14: the two armies' seven slots), each listed as point 6 says. The trades,
+   sales and purchases inside a town's window are increment 14's 56 entries, the University's
+   purchases its four, each window's `Leave` the closing role; no transfer (E08 decision 372). The
+   next version at merge per task, or one when tasks land together; the sale's 22 places, the
+   largest, are a candidate to trim at its task if the AI lane prefers (E09 decision 216 kept the
+   42, over the env without the sale's).
    **Increment 14's action encoding** (the next version at merge: v14 after E09's v12 and v13)
    appends 67 entries, each legal where `legal_commands` lists its answer, tile 0 alone: a market's
    trade of one lot per pair (42, given then wanted in the core's order), its sale of one lot for
@@ -1070,6 +1156,21 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    the next at merge, in merge order with E08's increment 14 (E08 T133b took game state hash v35,
    replay format v21, encoding v14 and protocol v75 after the client lane's replay format v20, E27
    M4 T3a; its T134a took game state hash v36, replay format v22, encoding v15 and protocol v76).
+   **E09's increment 6** bumps the adventure state hash (the pool's marks, the merchants' stock;
+   T57), the game state hash (the adventure's folded in, T57; the decisions' places, T58a and T59b)
+   and the adventure replay format (`town market`, `town machine`, `town boat`, `town university`,
+   `town transform`, `answer market sell-artifact`; T58a to T59b), each `cross-lane`; every golden
+   adventure replay is re-recorded at T57 (the marks and the stock; the towns' stream's draws on day
+   29 in the replays that pass it), each changed line classified; the protocol (the server lane's,
+   `cross-lane`: `MarketWindow`'s object or town with its hero optional, the University's place,
+   `SellArtifact` with its refusals, the five commands with theirs, the events' places) and the
+   env's action encoding (point 8, the AI lane's, `cross-lane`), the next per task at merge. The map
+   import and the adventure ruleset part do not move; the town part v10 is the town lane's
+   (ADR-0028 point 9). Shared (E09 T55b): the quirk flags of `TWN-QUIRK-15` and `-16`, confirmed by
+   batch TWN-6's TWN-6-5 and TWN-6-7 (no version moves: the profiles' ruleset hashes do), and the
+   combinations' costs (`h3-content`, HER-ART-008: the core ruleset hash moves); no new stream
+   (decision 214). The numbers are the next at merge, in merge order with the adventure lane's open
+   work (E08 T142b, #1162, and its queue): the second to merge rebases and bumps again.
    **Increment 12** bumps the game state hash (v28: the exchange, its rest, the battle bonuses
    leaving the details), the adventure state hash (v22), the adventure ruleset part (v20), the
    map import (v22) and the adventure replay format (v13: the map garrison's reference in a
@@ -1206,6 +1307,43 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     worn at its position), then the learning; no refusal after the checks. Batch TWN-5 confirmed
     the triggers it ran (E09 T44, survey `E09-guild.md` §21: TWN-5-3's visit, TWN-5-4's start,
     TWN-5-5's visit and opening with the garrison hero first; no turn start).
+    **E09's increment 6: the trades' gains and costs** (design note `E09-design.md` Part H §105 to
+    §113), each applied infallibly once checked, a rejection leaving everything untouched, every
+    rate and price the state's answer, never the command's:
+    - **A trade, a transfer and a creature sale at a town** are increment 14's at the trader's
+      count (TWN-MKT-003; at least 1, so never the division by zero the original's 0 makes; the
+      rows confirmed by batch TWN-6's TWN-6-1, the trader's count by TWN-6-2); the transfer 1 : 1
+      up to the whole stock, its gain told to the recipient alone; the sale at the creature factor
+      of the count (a whole gold cost from 8 Marketplaces), the army keeping a creature.
+    - **The merchants' purchase** (TWN-MKT-004): `MarketParams::artifact_price(count, cost, pay)`
+      (a combination's cost its parts' sum, ADR-0028 point 5; at one Marketplace 5 times the cost,
+      TWN-6-8); paid, the artifact given (`HeroChanged`), the entry emptied for
+      every town and player until the next month's draw.
+    - **The artifact sale** (TWN-MKT-005): `MarketParams::artifact_sale(count, cost, take)` (E08's
+      module, `cross-lane`), max(1, round(f32(f32(cost × A) / v(take)))) with A the artifacts'
+      factor at the count and v the trades' value table (`market_artifact_sale_rate` 0x5ECDC0,
+      `E08-trades.md` §4), the X87 steps of the other three rates (a combination at its parts' sum,
+      confirmed by batch TWN-6's TWN-6-4); the artifact removed
+      (`HeroChange::RemoveArtifact`, its parts' locks freed, its effects gone), then the price
+      gained (`ResourceGained`); the stock, the pool and the spell points untouched. **T-20 fixed
+      by construction** (`TWN-QUIRK-18`): the place priced is the place removed (T-20 confirmed by
+      batch TWN-6's TWN-6-3: the original prices backpack place 0 and removes the place shown).
+    - **The machine** (TWN-SMT-001): its creature's cost, each resource its own (`TWN-QUIRK-22`),
+      paid (`ResourcePaid`), then the machine given (`HeroChanged`; a war machine has its own
+      position).
+    - **The boat** (TWN-SHY-001): launched at the spot (E08's `launch`, an empty boat of the part's
+      type, its builder the actor), `BoatBuilt`, then paid (`ResourcePaid`), E08's order for a
+      Shipyard (batch TWN-6's TWN-6-6: the original's price taken after the ship is shown).
+    - **The University's purchase** is E08's (the part's price; `HeroChange::RaiseSkill` at
+      Basic); **the transformation** (TWN-TRF-001) sets the slot's creature to the target, its count
+      kept (`StackChanged`), free, the army's last stack allowed, nothing merged (T-26 fixed by
+      construction, `TWN-QUIRK-23`: one command one whole stack, no holding army to lose).
+    **No new event kind** (Part H §101, call 13): `MarketOpened` and `UniversityOpened` name their
+    place (a map object or a town); every change is an existing event (`ResourcePaid`,
+    `ResourceGained`, `StackChanged`, `HeroChanged`, `BoatBuilt`, `DecisionClosed`), told to whom
+    E08 tells it (`ResourceGained` to a transfer's recipient alone; `BoatBuilt` by the fog's rules;
+    `StackChanged` and `HeroChanged` to the owner and to the viewers who see the army or the hero);
+    the fold gate covers each.
     **Increment 12's outcomes:** the exchange is an outcome the game opens (or holds after a
     battle); a movement gain, the Sirens' losses and the Stables' upgrade, the battle bonuses and
     the timed marks are the adventure's own changes of the hero on the map and its army (E08
@@ -1782,3 +1920,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   and 10 amended for increment 15, the cast and the prisoners. Drafted in E08 T137b (design note
   `E08-design.md` §14 to §18); batch E15's outcome (T139a, survey `E08-spells.md` §18: every row as
   read; D-79, no book test) and T139b's order (survey §2.1, decision 410) folded in.
+- 2026-11-25 (E09 T55a `shared/`; E09 decisions 197, 198, 200 to 217; `TWN-Q35` to `TWN-Q37`):
+  points 1, 3, 4, 6, 8, 9 and 10 amended for E09 increment 6, the town's trades: the five town
+  commands and `SellArtifact`, the stock drawn last at the build and at every later month's start
+  from the towns' stream, the market's and the University's decisions with a town as their place,
+  the env's 42 entries, the versions, the trades' gains and costs. Drafted in E09 T53 (design note
+  `E09-design.md` Part H §101 to §120), accepted at `TWN-Q37`; batch TWN-6's outcome (T54, survey
+  `E09-trades.md` §14: every row as read) folded in.

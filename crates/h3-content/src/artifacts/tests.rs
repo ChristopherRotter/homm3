@@ -201,6 +201,36 @@ fn compiles_slots_artifacts_and_combinations() {
 }
 
 #[test]
+fn her_art_008_a_combination_without_a_cost_costs_its_parts_sum() {
+    // covers: HER-ART-008
+    // E09 T55b: `pack()`'s circle names its own cost (1 000 gold), which it keeps.
+    let gold = Handle::from_raw(0);
+    let gem = Handle::from_raw(1);
+    let r = compile(&[pack()]).unwrap();
+    let circle = r.artifact_by_key("t:circle").unwrap();
+    assert_eq!(r.artifact(circle).unwrap().cost, vec![(gold, 1000)]);
+    // Without one: the parts' costs summed per resource, in resource order (band 250 gold and
+    // 3 gems, loop 1 000 gold, helm nothing); the parts keep theirs.
+    let mut p = pack();
+    find(&mut p, "t:circle").cost = Vec::new();
+    find(&mut p, "t:band").cost = vec![(key("t:gem"), 3), (key("t:gold"), 250)];
+    find(&mut p, "t:helm").cost = Vec::new();
+    let r = compile(&[p.clone()]).unwrap();
+    assert_eq!(
+        r.artifact(circle).unwrap().cost,
+        vec![(gold, 1250), (gem, 3)]
+    );
+    let band = r.artifact_by_key("t:band").unwrap();
+    assert_eq!(r.artifact(band).unwrap().cost, vec![(gem, 3), (gold, 250)]);
+    // A sum past `u32` is refused.
+    find(&mut p, "t:loop").cost = vec![(key("t:gold"), u32::MAX)];
+    assert_eq!(
+        compile(&[p]).unwrap_err(),
+        invalid("artifact", "t:circle", "its parts' costs overflow")
+    );
+}
+
+#[test]
 fn later_packs_override_slots_and_the_hash_sees_all_artifact_content() {
     let base = compile(&[pack()]).unwrap().content_hash();
     assert_eq!(compile(&[pack()]).unwrap().content_hash(), base);
