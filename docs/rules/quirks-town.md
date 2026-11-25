@@ -187,3 +187,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = on (the scenario's bans not tested), strict-fixed = off (both bans respected)
 - Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flag_of_e09_increment_5` (the profiles, E09 T45); the rule's `crates/h3-towns/src/guild/tests.rs`, `twn_quirk_14_the_aurora_set_holds_the_scenario_s_bans_only_with_the_flag_on` (E09 T47a1: the scenario's ban in the set with the flag on, out of it with the flag off; the town's ban, the spell granted by name only and the creature ability out of it in both)
 - Decided by / date: the user, 2026-11-20 (TWN-Q31; decision 169); confirmed by batch TWN-5 (E09 T44, TWN-5-2); the flag added and the entry made by E09 T45, 2026-11-20
+
+### TWN-QUIRK-15 — The visitor-only trades
+- Class: fix-optional (the user, 2026-11-24, TWN-Q35, TD-28 as the new candidate T-28; the epic's decision 202)
+- Context / rules affected: town, the window's hero at a town (TWN-MKT-002, design §101 call 2) for the Artifact Merchants' purchase and sale (TWN-MKT-004, TWN-MKT-005), the Freelancer's Guild's creature sale (TWN-MKT-003) and the Blacksmith and the Ballista Yard (TWN-SMT-001); the rules come with E09 T58a, T58b and T59a
+- Original behavior: the Artifact Merchants (building 17), the Freelancer's Guild (the Stronghold's 21, `town_freelancers_guild_trade`), the Blacksmith (16) and the Ballista Yard (the Stronghold's 22, the Castle's Blacksmith dialog) read only the town's visiting hero (+0x10): without one each shows GENRLTXT 274 ("only a visiting hero may use" the building) in an OK box and opens nothing (0x5E9D28, 0x5E9EAA, 0x5D1D4D to 0x5D1D8F); a garrison hero (+0xC) alone is never served, where the Mage Guild's spell book, the Magic University, the Skeleton Transformer and the Grail's build take it. The Marketplace still opens its resource screens and the transfer without a visitor.
+- Intended/expected behavior: with the flag off the window's hero (and the Blacksmith's) is the visitor, else the garrison hero, as the town's other services take it.
+- Impact: gameplay, small: a garrison hero must step out of the garrison to buy or sell an artifact, sell creatures or buy a war machine; no state corrupted.
+- Community status: VCMI 1.7.5's server accepts a hero of the actor's on the entrance, the garrison hero included (its client passes the visitor, else the garrison hero); the wiki says "a visiting hero" (the merchants, the Ballista Yard) (survey `docs/rules/surveys/E09-trades.md` §10 TD-28).
+- Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §2, §4.2, T-28); batch TWN-6's row TWN-6-5 (`experiments/results/E09-batch-6a.md`, `-6a-run2.md`: with a garrison hero and no visitor the merchants, the Freelancer's Guild, the Blacksmith and the Ballista Yard each showed GENRLTXT 274 and opened nothing; the Marketplace opened screen 0 with only the transfer's button; survey §14).
+- Flag: `quirk.town.visitor_only_trades` (`VISITOR_ONLY_TRADES`, registry position 54, E09 T55b)
+- Defaults: faithful = on (the visitor only), strict-fixed = off (the visitor, else the garrison hero)
+- Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's with E09 T58a
+- Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 202); confirmed by batch TWN-6 (E09 T54, TWN-6-5); the flag added and the entry made by E09 T55b, 2026-11-25
+
+### TWN-QUIRK-16 — The Magic University teaches a school the scenario bans
+- Class: fix-optional (the user, 2026-11-24, TWN-Q35, T-23 with TD-30, as T-18; the epic's decision 204)
+- Context / rules affected: town, the Conflux's Magic University (TWN-UNI-001, with E09 T59b), GAM-SET-002 (the scenario's banned skills, read with this flag off)
+- Original behavior: the Conflux's University offers Fire, Air, Water and Earth Magic (14 to 17, constants written into the dialog's buffer, 0x5D2F0A to 0x5D2F1F) and teaches them whatever the map bans: neither `university_slot_state` 0x5F0790, `university_slot_click` 0x5F0AC0, `university_learn` 0x5F0F60 nor `hero_learn_secondary_skill` 0x4E22D0 reads the map's banned skills. The map's University object draws its four among the unbanned skills.
+- Intended/expected behavior: with the flag off the scenario's banned skills leave the four when the University opens (a banned school is neither offered nor taught).
+- Impact: gameplay, small: a map's intent broken, no state corrupted; reachable on the shipped maps that ban a school and have a Conflux, or a random town that resolves to one (the census: `Heroes of Might not Magic` and its allied copy ban all four schools).
+- Community status: VCMI 1.7.5 refuses a banned skill (`isAllowed`); the wiki's page did not load (survey `docs/rules/surveys/E09-trades.md` §10 TD-30).
+- Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §6.3, T-23); batch TWN-6's row TWN-6-7 (`experiments/results/E09-batch-6d.md`, `-6d-run2.md`: on a map banning Fire Magic the University offered Fire as learnable and its purchase taught Fire Magic at Basic for 2 000 gold; survey §14).
+- Flag: `quirk.town.university_ignores_map_bans` (`UNIVERSITY_IGNORES_MAP_BANS`, registry position 55, E09 T55b)
+- Defaults: faithful = on (the scenario's bans not tested), strict-fixed = off (the banned schools left out)
+- Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's with E09 T59b
+- Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 204); confirmed by batch TWN-6 (E09 T54, TWN-6-7); the flag added and the entry made by E09 T55b, 2026-11-25
