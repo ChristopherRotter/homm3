@@ -1,6 +1,6 @@
 # E31 — design note (working detail; not binding)
 
-The handover beside the ADR draft (`docs/lanes/ai/adr-drafts/original-computer-player.md`). Each
+The handover beside ADR-0030 (`docs/adr/0030-original-computer-player.md`, the draft until AI-Q32). Each
 task that builds a section deletes it (`docs/adr/README.md`, "Keep ADRs short"); the file goes when
 E31 closes. The reading: `docs/rules/surveys/E31-computer-player.md` (cited as §n).
 
