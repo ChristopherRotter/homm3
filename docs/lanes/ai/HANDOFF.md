@@ -66,6 +66,13 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
 
 ## Recent sessions
 
+### 2026-11-25 — E31 T2c: the casts, Necromancy and the fight estimate (in progress)
+
+- In progress (`ai/e31-t2c`): the reading done (every T2c function, the four unread spell
+  leaves among them); AI-Q34 decided the shape: the simulated combat moves to a public
+  `h3_battle::estimate` (`cross-lane`), the casts there, the estimate in `h3_game::computer`.
+  Next: the move, the casts, the estimate, the tests, the docs, the verify, the pull request.
+
 ### 2026-11-25 — E31 T2b: the simulated combat's sides and melee
 
 - A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
