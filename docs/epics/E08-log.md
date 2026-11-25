@@ -22453,4 +22453,13 @@ restart, so CI's run on `master` is the baseline (the sandbox skill's rule).
   entrance there); the kind by the target's passage; the hidden target's reveal the caster's
   player's (as T143a's; E10 brings the teams); the points and the cast spent after the arrival.
 - **Speed:** no hot loop touched (the casts are not in `legal_commands` until T144a; `check_cast`
-  gains one arm, `apply_cast` one argument).
+  gains one arm, `apply_cast` one argument). The scoped verify's bench-check against the stored
+  baselines: every workload inside the gate, the highest `fork-economy-xl-144` +1.82 % and
+  `random-play-bonuses-36` +1.81 % (the sandbox's drift, as T143a measured); none re-baselined.
+- **Coverage:** the first run found `set_day_spells`' arm for no spells on a hero without any,
+  reached before only by the door's `NotBuilt` (a test of the block's invariant now).
+
+**Verify:** the scoped verify with original data (every step passes but check-lane, by design,
+and coverage, re-run alone after its fix: pass); `check-lane --cross-lane`; `h3-protocol`'s (216)
+and `h3-server`'s (175) tests run apart. **Versions:** protocol v84 (the server lane's); no hash,
+import, part or replay format moved. Next: the inbox's `h3-map` view property, then T144.
