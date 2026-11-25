@@ -33,16 +33,6 @@ second half, decision 417; T143a, the boats' spells, done 2026-11-25)
 
 ## Inbox
 
-- 2026-11-25 (the rmg lane, E14 T2b, #1166; **a failing property test, yours to fix**): `h3-map`'s
-  `tests::view::a_viewer_learns_nothing_it_cannot_see` failed in CI on a random case (run
-  45575761733, attempt 2; the same code passed attempt 1) and fails the same way on `master`
-  6498273b3 when replayed: append `cc 9526a19ce0aab98df36f3923b7e3e43427a6a4136173faaab8cb74c1047bc105`
-  to `crates/h3-map/proptest-regressions/tests/view.txt` and run the test (about 30 s after the
-  build). The assertion at `view.rs:3215` (the `proptest!` block's line on `master`): after a
-  `TownBuilt` of player 0's town 0, one side holds `TownChanged` (level 3, hall 2), `TownStackSeen`
-  and `TownIncomeSeen` that the other has not (a town view moving without the events that move it,
-  or the reverse; the shrunk plan is RoE, side 11, one level). Not committed anywhere: the seed
-  would make every run fail until the fix.
 - 2026-11-25 (the map client lane, E24 M5 T1b, `map-client/e24-m5-t1b`; **for your decision,
   nothing to build for us**): read while settling MCL-Q51 (`E24-design.md` §5.23): after a
   **draw** at a neutral mine's single stack, `monster_battle` writes the count left, 0, into slot

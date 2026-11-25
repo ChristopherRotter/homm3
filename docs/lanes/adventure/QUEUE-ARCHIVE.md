@@ -2654,3 +2654,22 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
   when it changes nothing, `accepted_builds` keeps one only where it changed the state,
   `check_town_open` reads a listed one) and `Step::Town` plays a listed opening in one step of
   eight (`n % 8 == 6`): all of `h3-map`'s tests pass, the play and view blocks once at 240 cases.
+
+## Inbox notes settled after E08 T143b (2026-11-25: `adventure/view-property-seed`)
+
+- 2026-11-25 (the rmg lane, E14 T2b, #1166; **a failing property test, yours to fix**): `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` failed in CI on a random case (run
+  45575761733, attempt 2; the same code passed attempt 1) and fails the same way on `master`
+  6498273b3 when replayed: append `cc 9526a19ce0aab98df36f3923b7e3e43427a6a4136173faaab8cb74c1047bc105`
+  to `crates/h3-map/proptest-regressions/tests/view.txt` and run the test (about 30 s after the
+  build). The assertion at `view.rs:3215` (the `proptest!` block's line on `master`): after a
+  `TownBuilt` of player 0's town 0, one side holds `TownChanged` (level 3, hall 2), `TownStackSeen`
+  and `TownIncomeSeen` that the other has not (a town view moving without the events that move it,
+  or the reverse; the shrunk plan is RoE, side 11, one level). Not committed anywhere: the seed
+  would make every run fail until the fix.
+  **Settled:** the two games differed only in the viewer's own town's guild, shown once its Mage
+  Guild was built (TWN-VEW-004): the guild is drawn at the game's build from the towns' stream
+  (`h3_towns::draw_guild`), whose seed the other game's changes (`unseen.seed`) and whose positions
+  an unseen town's draws move. `view.rs` ends the comparison when the told events differ only in
+  the guilds shown and the spells learned (`unguilded`), as at a week's draw; the seed appended to
+  `proptest-regressions/tests/view.txt`. No engine change.
