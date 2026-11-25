@@ -44,7 +44,7 @@ The list the adventure epic owns (ADR-0016 points 5 and 6, ADR-0017 point 5); `h
 - **Its own:** its explored tiles and their fringe (the hidden tiles touching an explored one, ADV-FOG-005), and its heroes in full: tile, army and its formation, movement points left, and their details (experience, primary and secondary skills, artifacts, spells, spell points; GAM-HER-001, E08 T18b).
 - **Explored tiles** show their current content (ADV-FOG-004): terrain, road, river, what objects cover there (blocked and visitable tiles), and the heroes standing there.
 - **The fringe** shows terrain, roads and rivers. Under `ADV-QUIRK-1` (the `faithful` profile) it also shows what objects cover there and the heroes standing there: an object's appearance is public there while its contents stay hidden (increment 1's objects have none; contents come with increment 2's objects). A wandering monster shows on the fringe in either profile (E08 decision 40): it guards the explored tiles beside it, so the viewer's legal moves (the reachable tiles, the points left) would reveal it anyway.
-- **Another player's hero**, where the viewer sees its tile: its tile, owner, identity and hero type (and so its class, as the original's portrait; E08 T18b), never its army, but a garrison hero's as its town's garrison at the viewer's level (TWN-VEW-002), movement points or details (ADV-FOG-006; what the original's right-click view shows comes with the battle seam).
+- **Another player's hero**, where the viewer sees its tile: its tile, owner, identity and hero type (and so its class, as the original's portrait; E08 T18b), never its army, movement points or details (ADV-FOG-006; what the original's right-click view shows comes with the battle seam), but a garrison hero's army as its town's garrison at the viewer's level (TWN-VEW-002).
 - **Events:** a hero's step is told to its owner and to the players who see the hero on the tile it leaves or enters, so the viewer learns of a move only where it can see it; a viewer that sees the hero on one of the two tiles is told that tile only. A projected event names the viewer alone, since the full set of its viewers would tell which tiles other players explored. A move is refused onto an unexplored tile before anything else about that tile is checked (ADV-MOV-008), so a rejection says nothing about a hidden tile.
 - **Never:** any other tile, other players' explored tiles, the master seed, the streams, the state hash. A viewer that is not a player of the game sees the public facts and no tile.
 
@@ -321,7 +321,7 @@ with guilds, learning, the Vortex and the book.
 ADR-0028 points 2, 5 and 6, ADR-0017 points 1, 3, 4, 6 and 10, ADR-0016 points 1, 4 and 6 (E09
 decisions 202, 203, 207, 209 to 214; the design note `epics/E09-design.md` §101 to §114; rules
 TWN-MKT-001 to -005, TWN-STK-001, -002, TWN-SMT-001, TWN-SHY-001, TWN-UNI-001, TWN-TRF-001,
-TWN-VEW-005). The build tasks from E09 T56 implement it; the view tests and the hygiene and
+TWN-VEW-005). The build tasks E09 T56 to T60 implement it; the view tests and the hygiene and
 told-views properties check it with a town's windows, the sale and the stock.
 
 - **The merchants' stock is seen only in its window:** a town's market view (GAM-DEC-011's
@@ -329,7 +329,8 @@ told-views properties check it with a town's windows, the sale and the stock.
   the artifact sale's places; never in a town view, never to another viewer, and no event tells
   anyone else that a purchase emptied an entry. Its draws (the setup stream at the build, the
   towns' stream each month) are server-only (ADR-0017 point 5), told only as the stock a window
-  shows.
+  shows; so are the artifact pool's marks (which artifacts the map placed or the draws took), in
+  the adventure state and never projected.
 - **The market view is the window's owner's alone:** its place (a map object or the town), its
   hero (none possible at a town), E08's `MarketOffers` (the screens, the count, the lots, the stock
   with its prices, the sale's places and prices) and the recipients. **The University's view**
