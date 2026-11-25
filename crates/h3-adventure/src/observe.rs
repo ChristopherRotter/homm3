@@ -752,6 +752,23 @@ impl AdventureEvent {
                     seen_from: seen_from.intersection(alone),
                     seen_to: seen_to.intersection(alone),
                 },
+                // A summoned boat as a jump's two ends (ADV-FOG-008; E08 T143a): an end the viewer
+                // does not see is left out, so no viewer learns where a hidden boat lay.
+                AdventureEventKind::BoatSummoned {
+                    boat,
+                    from,
+                    to,
+                    facing,
+                    seen_from,
+                    seen_to,
+                } => AdventureEventKind::BoatSummoned {
+                    boat,
+                    from: from.filter(|_| seen_from.contains(viewer)),
+                    to: to.filter(|_| seen_to.contains(viewer)),
+                    facing,
+                    seen_from: seen_from.intersection(alone),
+                    seen_to: seen_to.intersection(alone),
+                },
                 // A garrison move (E09 T31, TWN-ROW-002 to -004; `docs/06-security.md`, "Towns"):
                 // by name to a viewer that sees the town's garrison hero, else as the original's
                 // map shows it, a hero leaving the map or coming into sight on the entrance.
@@ -826,7 +843,9 @@ impl AdventureEvent {
                 | AdventureEventKind::NothingGained { .. }
                 | AdventureEventKind::SirensLoss { .. }
                 | AdventureEventKind::CreaturesUpgraded { .. }
-                | AdventureEventKind::KindKnown { .. } => self.kind,
+                | AdventureEventKind::KindKnown { .. }
+                | AdventureEventKind::BoatCreated { .. }
+                | AdventureEventKind::BoatScuttled { .. } => self.kind,
             },
             seen_by: alone,
         })

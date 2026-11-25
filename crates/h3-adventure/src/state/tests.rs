@@ -898,6 +898,7 @@ mod added;
 mod altar;
 mod answers;
 mod banks;
+mod boat_spells;
 mod boats;
 mod bonuses;
 mod calendar;

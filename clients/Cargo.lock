@@ -459,24 +459,41 @@ dependencies = [
 ]
 
 [[package]]
-name = "h3-map-view"
+name = "h3-map-client"
 version = "0.1.0"
 dependencies = [
- "h3-adventure",
  "h3-assets",
  "h3-battle-client",
  "h3-contracts",
  "h3-files",
  "h3-formats",
  "h3-game",
- "h3-kernel",
  "h3-map",
+ "h3-map-view",
  "h3-protocol",
  "h3-render",
  "h3-sdl",
  "h3-ui",
  "h3-view",
  "nanomp3",
+ "serde",
+ "toml 1.1.8+spec-1.1.0",
+]
+
+[[package]]
+name = "h3-map-view"
+version = "0.1.0"
+dependencies = [
+ "h3-adventure",
+ "h3-assets",
+ "h3-contracts",
+ "h3-files",
+ "h3-game",
+ "h3-kernel",
+ "h3-map",
+ "h3-protocol",
+ "h3-render",
+ "h3-ui",
  "serde",
  "toml 1.1.8+spec-1.1.0",
 ]

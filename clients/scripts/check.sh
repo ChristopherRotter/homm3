@@ -73,7 +73,12 @@ print("deny policy: as the engine'"'"'s")
 #                     the battle client's adapters (E17 M7 T3a1: h3-view's binary until then, a
 #                     library since so that another host runs the battle; the user, 2026-11-11):
 #                     `h3-view window --check`, `drawn` and the harness exercise it
-ignore='/src/bin/|/crates/h3-sdl/|/crates/h3-battle-client/'
+#   /crates/h3-map-client/
+#                     the map client's adapters (E24 M5 T2a: h3-map-view's binary until then, a
+#                     library since so that the shell runs the map, as h3-battle-client was made;
+#                     the user, M5 T0): `h3-map-view window --check`, `drawn` and the harness
+#                     exercise it
+ignore='/src/bin/|/crates/h3-sdl/|/crates/h3-battle-client/|/crates/h3-map-client/'
 if [ "$coverage" = true ]; then
     step "coverage (excluded: $ignore)"
     run 1 cargo llvm-cov --locked --quiet --workspace --all-targets \

@@ -18,8 +18,11 @@ members = [
     # The battle client's adapters and the `h3-view` command line (E17 M7 T3a1: h3-view's binary
     # until then), a library another host runs.
     "crates/h3-battle-client",
-    # The adventure map client (the map-client lane, E24).
+    # The adventure map client (the map-client lane, E24): the viewer's pure library, and its
+    # adapters and the `h3-map-view` command line, a library another host runs (E24 M5 T2a:
+    # h3-map-view's binary until then).
     "crates/h3-map-view",
+    "crates/h3-map-client",
 ]
 
 [workspace.package]
@@ -39,8 +42,12 @@ h3-smacker = { path = "crates/h3-smacker" }
 h3-ui = { path = "crates/h3-ui" }
 h3-view = { path = "crates/h3-view" }
 # The battle client as a library a host runs (E17 M7 T3a1): the map viewer's window hosts its
-# battles (E24 M4 T5b1, the user: a dependency of the map viewer's binary).
+# battles (E24 M4 T5b1, the user: a dependency of the map viewer's binary, `h3-map-client` since
+# E24 M5 T2a).
 h3-battle-client = { path = "crates/h3-battle-client" }
+# The adventure map's viewer (pure) and its client, the adapters a host runs (E24 M5 T2a).
+h3-map-view = { path = "crates/h3-map-view" }
+h3-map-client = { path = "crates/h3-map-client" }
 # Engine crates (public crates only, ADR-0020 point 1). A change the client needs in one of them
 # goes through that crate's lane.
 h3-formats = { path = "../crates/h3-formats" }

@@ -624,6 +624,32 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-game/src/tests/altar.rs`, `an_altars_visit_opens_its_decision_for_its_owner_until_it_is_left`
 - Decided by / date: the user 2026-11-18 (ADV-Q57 (2), E08 decision 366); built and recorded by E08 T134a
 
+### ADV-QUIRK-52 — Scuttle Boat's target reads hidden tiles
+- Class: fix-optional (the user, 2026-11-21, ADV-Q63, E08 decision 402; A-50)
+- Context / rules affected: adventure, ADV-SPL-004 (Scuttle Boat's target), ADR-0016 point 4 (the legal moves never depend on a hidden tile)
+- Original behavior: Scuttle Boat's target dialog (`scuttle_target_create` 0x491AF0, `scuttle_target_proc` 0x491D00) shows its cursor over any tile of the view whose class is an empty boat's, with no fog test: a hidden empty boat is a target, and the cursor tells which hidden tiles hold one; a hidden tile without one is no target. A sunk hidden boat's tile stays unexplored (survey `E08-spells.md` §6).
+- Intended/expected behavior: the targets depend only on what the player knows: an explored tile with an empty boat, or any hidden tile in the window; at the cast a hidden target is revealed to the caster's player, that tile alone, in every outcome, and one without an empty boat fails, charged (increment 15's design note §11.3).
+- Impact: information, rare: the cursor scouts the fog for boats in a 19 × 17 window; the AI's legal moves would read hidden tiles.
+- Community status: not documented as a bug; VCMI 1.7.5 tests the fog (`ignoreFow` false), as the flag's off side.
+- Sources: code reading (E08 T137a, survey §6); observation: batch E15's E15-10 (the cursor on a hidden empty boat, none on a hidden tree; the hidden boat sunk, its tile still unexplored).
+- Flag: `quirk.adventure.scuttle_reads_hidden`
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-adventure/src/state/tests/boat_spells.rs`, `a_hidden_target_reads_the_truth_under_adv_quirk_52_or_is_revealed_without_it`, `scuttle_boat_is_refused_outside_its_window_and_without_an_empty_boat`
+- Decided by / date: the user 2026-11-21 (ADV-Q63, E08 decision 402); the flag in the profiles by E08 T140; built by E08 T143a
+
+### ADV-QUIRK-53 — Summon Boat's boat by steps, levels ignored
+- Class: fix-optional (the user, 2026-11-21, ADV-Q63, E08 decision 400; D-75)
+- Context / rules affected: adventure, ADV-SPL-003 (Summon Boat's choice)
+- Original behavior: after the hero's last boat (its captain, nobody aboard), `summon_boat_choice` (0x4E54A0) takes among the empty boats of the current player or of nobody the least |dx| + |dy| from the hero, the levels ignored (a boat underground as near as one on the surface), a tie to the later in the game's vector (`jg` at 0x4E5530) (survey `E08-spells.md` §5).
+- Intended/expected behavior: the least dx² + dy² on the hero's level, a tie to the lower index (decision 400); the hero's last boat still first, from any level.
+- Impact: gameplay, small: which boat comes when several are free, and whether one comes from another level.
+- Community status: the manual names the hero's own boats first; VCMI 1.7.5 takes the nearest by straight distance of any owner (its owner test refuted by E15-9b).
+- Sources: code reading (E24 M4 T2d3, E08 T137a, survey §5); observation: batch E15's E15-9a (the hero's last boat from the underground), E15-9b (the player's own boat over another player's nearer one; Manhattan and straight distance agreed there, levels and ties not told apart).
+- Flag: `quirk.adventure.summon_boat_by_steps`
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-adventure/src/state/tests/boat_spells.rs`, `summon_boat_brings_the_nearest_own_or_nobody_s_boat_by_steps_or_by_distance`, `a_tie_goes_to_the_later_boat_by_steps_and_to_the_lower_by_distance`
+- Decided by / date: the user 2026-11-21 (ADV-Q63, E08 decision 400); the flag in the profiles by E08 T140; built by E08 T143a
+
 ### ADV-QUIRK-54 — A re-cast of Fly or Water Walk is refused while it is on
 - Class: fix-optional (the user, 2026-11-21, ADV-Q63, E08 decision 403; A-51)
 - Context / rules affected: adventure, ADV-SPL-005, ADV-SPL-006 (the cast's own test)

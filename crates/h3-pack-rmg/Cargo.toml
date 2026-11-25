@@ -8,8 +8,13 @@ license.workspace = true
 publish.workspace = true
 
 # `arch.toml` allows the kernel, the core content, the generator and the core pack adapter, serde
-# and toml (ADR-0029 point 5); each comes with the parser (E14 T2b).
+# and toml (ADR-0029 point 5).
 [dependencies]
+h3-content.workspace = true
+h3-pack.workspace = true
+h3-rmg.workspace = true
+serde.workspace = true
+toml.workspace = true
 
 [lints]
 workspace = true

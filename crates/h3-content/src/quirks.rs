@@ -138,6 +138,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.summon_boat_by_steps",
     "quirk.adventure.spell_recast_refused",
     "quirk.adventure.door_failure_charged",
+    "quirk.content.rmg_8xm8_zone_ids",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -428,6 +429,12 @@ pub const SPELL_RECAST_REFUSED: QuirkFlag = QuirkFlag(49);
 /// Class `fix-optional`; read by the door from E08 T143b.
 pub const DOOR_FAILURE_CHARGED: QuirkFlag = QuirkFlag(50);
 
+/// RMG-QUIRK-22 (data; survey `E14-generator.md` §3.1): template 8XM8's six connection rows whose
+/// first zone is a decimal (5.9 to 7.9) keep the ids `c_atoi` reads, 5, 6, 6, 7, 7, 7, so human
+/// start 8 has no connection. Off: a gated override of the rmg part gives them 6, 6, 7, 7, 8, 8.
+/// Read by the rmg part's compiler only, as every `quirk.content` flag (E14 T2b).
+pub const RMG_8XM8_ZONE_IDS: QuirkFlag = QuirkFlag(51);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -470,7 +477,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 51);
+        assert_eq!(REGISTRY.len(), 52);
         assert_eq!(
             [
                 "quirk.adventure.flight_reads_hidden",
@@ -479,6 +486,7 @@ mod tests {
                 "quirk.adventure.summon_boat_by_steps",
                 "quirk.adventure.spell_recast_refused",
                 "quirk.adventure.door_failure_charged",
+                "quirk.content.rmg_8xm8_zone_ids",
             ]
             .map(|name| REGISTRY.lookup(name)),
             [
@@ -488,6 +496,7 @@ mod tests {
                 SUMMON_BOAT_BY_STEPS,
                 SPELL_RECAST_REFUSED,
                 DOOR_FAILURE_CHARGED,
+                RMG_8XM8_ZONE_IDS,
             ]
             .map(Some)
         );
@@ -691,7 +700,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 51);
+        assert_eq!(REGISTRY.len(), 52);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -705,7 +714,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..51).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..52).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

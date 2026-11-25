@@ -3525,3 +3525,36 @@ On `map-client/e24-m5-t1c`, in the same sandbox and session; begun on T1b's bran
   (both battles closed, 117 of 117 exact; its won battle is a plain cut, no lift: its loop stays
   silent until the next day, carried into T6's scope); `h3map.py drawn` (every situation and
   sequence the same); the crate's tests; `check.sh`; the scoped verify.
+
+### M5 T2a — `h3-map-client`: the binary's adapters as a library (2026-11-25)
+
+On `map-client/e24-m5-t2a`, from `master` at 6498273 (#1167, T1c's, merged).
+
+- **Asked at the start:** the cut (the user): T2 in three, T2a the move alone (no API, nothing
+  changed), T2b play's entry for the shell with the client lane's move queued, T2c the shared
+  record reader. The M4 hand test's notes (`clients/out/win/map-m4-notes.txt`) still blank.
+- **Built:** the new package `clients/crates/h3-map-client` (this lane's, `clients/crates/h3-map*`):
+  `h3-map-view`'s binary's twelve modules and `render/tests.rs` moved by `git mv` into its
+  library, unchanged (the six commands `gate`, `render`, `records`, `sequences`, `situation` and
+  `window` public, their parts `audio`, `battles`, `files`, `paint`, `sounds` and `texts`
+  private); the binary `h3-map-view` (`src/bin/h3-map-view/main.rs`, its usage and dispatch) one
+  host of it in the new package, as `h3-view`'s went into `h3-battle-client` (E17 M7 T3a1): Cargo
+  forbids the cycle a binary in `h3-map-view`'s package would make. `h3-map-view`'s manifest keeps
+  its pure dependencies (`h3-files` a dev-dependency for `tests/engine.rs`), its `tests/purity.rs`
+  no binary-only list (as `h3-view`'s copy); the default folders (`files.rs`, by
+  `CARGO_MANIFEST_DIR`) resolve the same from the sibling folder. `check.sh` leaves
+  `/crates/h3-map-client/` out of the coverage gate as `/crates/h3-battle-client/` (M5's review
+  list); the builds' lines `-p h3-map-client` (`clients/README.md`, the runbook, `h3map.py`).
+- **Checked:** the crates' tests (the 25 moved ones all in the library's run, 502 of the pure
+  library's); every golden adventure replay's player records (118 replays, 236 records) with this
+  branch's binary and `master`'s: the same 205 played to their end, every timeline identical,
+  the same 31 stopped (the duel's and the army's maps, and 7 records of replays added since M4 T6:
+  the record player's, the queue's inbox); `h3map.py drawn` (56 situations and every sequence the
+  same); the window under Xvfb on `dwellings-guards-s1`'s record (`--check 45`: both battles
+  closed, 142 of 142 frames read back exact, every change the headless loop's; its cues those of
+  `master`'s binary, its "not found: BUTTON.WAV" line too); `clients/scripts/check.sh`; the scoped
+  verify.
+- **Found on the way:** a run of the branch's binary while the tree held `master` (no
+  `crates/h3-map-client/`) finds no `clients/map`: the default folders go through the package's
+  own folder (`h3-map-client/../../map`), as they went through `h3-map-view`'s; `--map` and
+  `--install` (the Windows builds' way, TRAPS) do not.

@@ -4679,7 +4679,7 @@ id       = "ADV-SPL-001"
 title    = "The spells cast on the adventure map, their mastery and cost"
 context  = "adventure"
 status   = "verified"
-summary  = "The adventure part binds core spells of the adventure category to five closed behaviours (`AdventureSpell`: Summon Boat, Scuttle Boat, Fly, Water Walk, Dimension Door; the packs' `[[spell]]` entries, each spell and each behaviour once, ADR-0006 tier 2) and gives their parameters (`[params.spells]`: the door's points by mastery, the 9 x 8 window, the 64 boats; required when one of the three that read them is bound); a spell without a binding is not cast on the map (the four information spells until E12, ADV-STUB-19; Town Portal until E09 increment 7, ADV-STUB-20). A cast (GAM-SPL-001) takes the mastery of the hero on its tile's special ground (HER-SPL-003: a raising ground's schools at Expert, Magic Plains all four) and costs `map_spell_cost` there (HER-SPL-008: the table's column at that mastery, at least 1, no army's +-2). Cursed Ground refuses a spell above level 1 and an anti-magic garrison every spell, both free and after the cost's test (E08 decision 414: the original's book tests the points first). Several spells and several casts a day as the points allow; no day's limit but Dimension Door's (ADV-SPL-007). E08 T142a: `AdventureRuleset::spells`, `adventure_spell`, `AdventureParams::spells`; Summon Boat, Scuttle Boat and Dimension Door are refused until E08 T143 (`CastError::NotBuilt`, ADV-STUB-22)."
+summary  = "The adventure part binds core spells of the adventure category to five closed behaviours (`AdventureSpell`: Summon Boat, Scuttle Boat, Fly, Water Walk, Dimension Door; the packs' `[[spell]]` entries, each spell and each behaviour once, ADR-0006 tier 2) and gives their parameters (`[params.spells]`: the door's points by mastery, the 9 x 8 window, the 64 boats; required when one of the three that read them is bound); a spell without a binding is not cast on the map (the four information spells until E12, ADV-STUB-19; Town Portal until E09 increment 7, ADV-STUB-20). A cast (GAM-SPL-001) takes the mastery of the hero on its tile's special ground (HER-SPL-003: a raising ground's schools at Expert, Magic Plains all four) and costs `map_spell_cost` there (HER-SPL-008: the table's column at that mastery, at least 1, no army's +-2). Cursed Ground refuses a spell above level 1 and an anti-magic garrison every spell, both free and after the cost's test (E08 decision 414: the original's book tests the points first). Several spells and several casts a day as the points allow; no day's limit but Dimension Door's (ADV-SPL-007). E08 T142a: `AdventureRuleset::spells`, `adventure_spell`, `AdventureParams::spells`; Summon Boat and Scuttle Boat cast since E08 T143a (ADV-SPL-003, ADV-SPL-004: a chance drawn from the caster's player's stream, a charged failure told as `CastFailed`); Dimension Door is refused until E08 T143b (`CastError::NotBuilt`, ADV-STUB-22)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4689,7 +4689,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E08-batch-15a.md E15-4 (on Cursed Ground Fly refused, 748, 40 kept; Summon Boat cast for 7; in an anti-magic garrison both refused, 685, nothing spent) and E15-5 (Magic Plains: Dimension Door at Expert for 20 by a hero without Air Magic) (survey section 18)"
+  ref        = "experiments/results/E08-batch-15c.md E15-4 (on Cursed Ground Fly refused, 748, 40 kept; Summon Boat cast for 7; in an anti-magic garrison both refused, 685, nothing spent) and E08-batch-15b.md E15-5 (Magic Plains: Dimension Door at Expert for 20 by a hero without Air Magic) (survey section 18)"
   retrieved  = "2026-11-22"
   confidence = "high"
   note       = "Regression tests: crates/h3-game/src/tests/casts.rs, cursed_ground_and_an_anti_magic_garrison_refuse_free_after_the_cost, a_raising_ground_casts_at_expert_for_its_cost."
@@ -4730,6 +4730,72 @@ quirks   = ["ADV-QUIRK-17", "ADV-QUIRK-57"]
   [[rule.source]]
   kind       = "design"
   ref        = "E08-design.md increment 15's sections 8, 12, 13, 16 (the block by hero id an agent's call of E08 T142a: a field on HeroOnMap costs every fork)"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-SPL-003"
+title    = "Summon Boat: the hero's last boat, the nearest own or nobody's, or a new one"
+context  = "adventure"
+status   = "verified"
+summary  = "Refused, free and drawing nothing, on water (in a boat; GENRLTXT 334, `CastError::InBoat`) and without a free water tile among the eight around the hero (the first clockwise from up on the map, water, no object's blocked or visitable tile, no empty boat, no hero; GENRLTXT 335, `NoWater`). Accepted: one draw of 1 to 100 from the caster's player's stream above the spell's chance at the mastery (the core's effect column: 50, 50, 75, 100; drawn at 100 too) fails, charged (GENRLTXT 337, `CastFailure::Chance`, the game's `CastFailed`). Else the boat: the first empty boat whose last captain is the hero, whatever its owner and level; else among the empty boats of the player or of nobody, under ADV-QUIRK-53 (faithful) the least |dx| + |dy| with the levels ignored, a tie to the later index, off the least dx^2 + dy^2 on the hero's level, a tie to the lower index. It moves onto the water tile, its facing and owner kept (a boarding writes the owner), told as `BoatSummoned` (its two tiles, each to the players that see heroes there). None: at Advanced or Expert a boat of type 0 of the caster's player is made there, facing 2, while fewer than `[params.spells]` `boats_most` (64) boats are in use (not gone), told as `BoatCreated`; else it fails, charged (GENRLTXT 336, `CastFailure::NoBoat`). The cost is GAM-SPL-001's in every accepted case. E08 T143a: `AdventureState::check_cast`, `summon_tile`, `summon_boat`, `summoned_boat`; the game's `GameState::cast`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-32", "ADV-QUIRK-53"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 5): summon_boat_cast 0x41C8A0 (the hero's tile's terrain 8: GENRLTXT 334; the first of step_directions 0x678150's eight on the map, water, class 0: else 335; random_between(1, 100) above the spell table's +0x34 by mastery: 337, the cost spent), summon_boat_choice 0x4E54A0 (hero_boat(hero, 0) first; then the least |dx| + |dy| of the current player's or nobody's empty boats, jg keeping the later), create_boat 0x4BB250 at Advanced and Expert (the hero's owner, type 0; -1 at 64 in use: 336, charged; at None and Basic 336, charged)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15c.md E15-4 (a nobody's boat summoned, 40 to 33), E15-9a (the hero's last boat from the underground, its captain, over Blue's and Red's nearer ones), E15-9b (Red's boat 11 away over Blue's 9 away) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+  note       = "Regression tests: crates/h3-adventure/src/state/tests/boat_spells.rs, summon_boat_brings_the_hero_s_last_boat_from_any_level_in_both_settings, summon_boat_brings_the_nearest_own_or_nobody_s_boat_by_steps_or_by_distance, a_tie_goes_to_the_later_boat_by_steps_and_to_the_lower_by_distance, summon_boat_makes_a_boat_at_advanced_or_expert_up_to_the_most_in_use, summon_boat_draws_its_chance_first_and_takes_the_first_free_water_clockwise, summon_boat_is_refused_in_a_boat_and_without_free_water; crates/h3-game/src/tests/casts.rs, summon_boat_draws_its_chance_from_the_caster_s_stream_and_a_failure_is_charged."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "AdventureSpellMechanics.cpp SummonBoatMechanics: the nearest boat by dist2d of any owner, not boarded (refuted by E15-9b: the owner test, D-75); a new boat at Advanced and Expert; the chance the level's power"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/AdventureSpellMechanics.cpp"
+  retrieved  = "2026-11-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's sections 10.1 and 16 (D-75 the reading's, decision 400: the fixed side by straight distance on the hero's level; the survey's section 11 compares the manual: the hero's own boats first, the chance and the new boat as read, 64 boats); the free water tile's 'no object' read as neither an object's blocked nor its visitable tile an agent's call of E08 T143a"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-SPL-004"
+title    = "Scuttle Boat: an empty boat in the 9 x 8 window sunk by its chance"
+context  = "adventure"
+status   = "verified"
+summary  = "The target is a tile at most `[params.spells]` `target_range` (9 columns, 8 rows) from the hero on its level and on the map (else refused, `CastError::OutOfWindow`) that holds an empty boat (a boat with a hero aboard is the hero's tile: refused, `NoBoat`). A hidden tile: under ADV-QUIRK-52 (faithful) a target when it holds an empty boat and refused when not (the original's cursor reads the truth, A-50); off (strict-fixed) every hidden tile of the window is a target, so the refusals depend only on what the player knows. Refusals are free and draw nothing; a cancel is no command. Accepted: with the flag off a hidden target is revealed to the caster's player, that tile alone, in every outcome (E08 decision 402); a target then without an empty boat fails, charged (`CastFailure::Target`); else one draw of 1 to 100 from the caster's player's stream above the chance (50, 50, 75, 100) fails, charged (GENRLTXT 338, `CastFailure::Chance`); else the boat sinks: its record out of use (`gone`, its index kept), told as `BoatScuttled` to the players that saw heroes on the tile before the reveal (a caster that did not sees the tile empty in the command's reveal). With the flag on nothing is revealed. The cost is GAM-SPL-001's in every accepted case. E08 T143a: `AdventureState::check_cast`, `check_scuttle`, `scuttle_boat`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-52"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 6): scuttle_boat_cast 0x41CDF0 with scuttle_target_create 0x491AF0 and scuttle_target_proc 0x491D00 (a target where the tile's class is 8 with the entrance bit, no fog or owner test; a cancel GENRLTXT 732, free); random_between(1, 100) above the chance: GENRLTXT 338, charged; else hero_hide and the record's +0x18 cleared"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15c.md E15-10 (the cursor 42 on a seen and on a hidden empty boat, 0 on an occupied one and a hidden tree; the hidden boat sunk at Expert, 20 to 14, its tile still unexplored) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+  note       = "Regression tests: crates/h3-adventure/src/state/tests/boat_spells.rs, scuttle_boat_is_refused_outside_its_window_and_without_an_empty_boat, scuttle_boat_sinks_a_seen_empty_boat_by_its_chance, a_hidden_target_reads_the_truth_under_adv_quirk_52_or_is_revealed_without_it; crates/h3-game/src/tests/casts.rs, scuttle_boat_draws_its_chance_and_a_refusal_draws_nothing."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "AdventureSpellMechanics.cpp ScuttleBoatMechanics: a boat within 9 x 8, not boarded, ignoreFow false (the fixed side's fog test); the chance the level's power"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/AdventureSpellMechanics.cpp"
+  retrieved  = "2026-11-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's sections 10.2, 11.3, 16 (A-50 fix-optional, decision 402: every hidden tile a target off, the target revealed in every outcome; the survey's section 11 compares the manual: a boat, unless occupied); the told viewers before the reveal an agent's call of E08 T143a"
   confidence = "high"
 
 [[rule]]

@@ -1429,7 +1429,8 @@ fn check_told(
             }
             GameEvent::PrisonFull { player, .. }
             | GameEvent::PrisonEmptied { player, .. }
-            | GameEvent::SpellCast { player, .. } => {
+            | GameEvent::SpellCast { player, .. }
+            | GameEvent::CastFailed { player, .. } => {
                 prop_assert_eq!(player, viewer);
             }
             GameEvent::HeroChanged { player, hero, .. }
@@ -1890,7 +1891,9 @@ fn check_told(
             // E08 T84b2: a boat built, told where the viewer sees heroes on its tile and to its
             // builder (ADV-SHY-002, ADV-FOG-008): an empty boat facing 2, as the map's.
             GameEvent::Adventure(AdventureEvent {
-                kind: AdventureEventKind::BoatBuilt { tile, boat_type },
+                kind:
+                    AdventureEventKind::BoatBuilt { tile, boat_type }
+                    | AdventureEventKind::BoatCreated { tile, boat_type },
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
@@ -1899,6 +1902,44 @@ fn check_told(
                     kind: boat_type,
                     facing: 2,
                 });
+            }
+            // E08 T143a: Summon Boat's boat leaves the tile the viewer saw it on (an end it does
+            // not see is `None`) and lies where it sees it now, its facing kept (ADV-SPL-003);
+            // Scuttle Boat's sunk boat goes from where the viewer saw it (ADV-SPL-004).
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::BoatSummoned {
+                        boat,
+                        from,
+                        to,
+                        facing,
+                        ..
+                    },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                prop_assert!(from.is_some() || to.is_some(), "{:?}", event);
+                if let Some(from) = from {
+                    let i = boats.iter().position(|b| b.tile == from && b.kind == boat);
+                    prop_assert!(i.is_some(), "{:?} moves no boat the viewer saw", event);
+                    boats.remove(i.unwrap());
+                }
+                if let Some(to) = to {
+                    boats.push(h3_adventure::BoatView {
+                        tile: to,
+                        kind: boat,
+                        facing,
+                    });
+                }
+            }
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::BoatScuttled { tile, boat },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let i = boats.iter().position(|b| b.tile == tile && b.kind == boat);
+                prop_assert!(i.is_some(), "{:?} sinks no boat the viewer saw", event);
+                boats.remove(i.unwrap());
             }
             GameEvent::Adventure(AdventureEvent {
                 kind:

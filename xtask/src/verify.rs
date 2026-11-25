@@ -7,6 +7,9 @@
 //! - `--summary` prints one line per gate and the end of the first failure's output; the full
 //!   output goes to `<target>/verify/verify.log`. Each gate then runs in a child process
 //!   (`cargo xtask verify-step`), so that everything it prints lands in the log.
+//! - `--only <step>[,<step>…]` runs only the named gates, in the verify's order, and exits 0 when
+//!   they pass: a part of the verify. CI runs the full verify as parallel jobs of `--only` lists
+//!   that together name every gate once (`.github/workflows/ci.yml`; a test below keeps them so).
 
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom};
@@ -242,6 +245,8 @@ struct Options {
     summary: bool,
     scope: Option<String>,
     skip: Vec<String>,
+    /// `--only <step>[,<step>…]`: run only these gates (never together with `--skip`).
+    only: Vec<String>,
     /// `--with-original-data [path]`: also re-harvest from the user's installation copy and
     /// require the committed packs to match (local only, never CI; E02 T5).
     original_data: Option<String>,
@@ -354,6 +359,13 @@ fn exe_check(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
+/// The error for a step name that is not one: it lists the steps.
+fn unknown_step(step: &str) -> String {
+    let mut names: Vec<_> = STEPS.iter().map(|s| s.name).collect();
+    names.push(ORIGINAL_DATA);
+    format!("unknown step `{step}`; steps: {}", names.join(", "))
+}
+
 fn parse(args: &[String]) -> Result<Options, String> {
     let mut options = Options::default();
     let mut iter = args.iter();
@@ -377,18 +389,52 @@ fn parse(args: &[String]) -> Result<Options, String> {
             "--skip" => {
                 let step = iter.next().ok_or("--skip needs a step name")?;
                 if !STEPS.iter().any(|s| s.name == step) {
-                    let names: Vec<_> = STEPS.iter().map(|s| s.name).collect();
-                    return Err(format!(
-                        "unknown step `{step}`; steps: {}",
-                        names.join(", ")
-                    ));
+                    return Err(unknown_step(step));
                 }
                 options.skip.push(step.clone());
+            }
+            "--only" => {
+                let list = iter.next().ok_or("--only needs a list of step names")?;
+                for step in list.split(',') {
+                    if step != ORIGINAL_DATA && !STEPS.iter().any(|s| s.name == step) {
+                        return Err(unknown_step(step));
+                    }
+                    options.only.push(step.to_owned());
+                }
             }
             other => return Err(format!("unknown verify option `{other}`")),
         }
     }
+    if !options.only.is_empty() && !options.skip.is_empty() {
+        return Err("`--only` and `--skip` exclude each other".to_owned());
+    }
+    if options.original_data.is_none() && options.only.iter().any(|s| s == ORIGINAL_DATA) {
+        return Err(format!(
+            "`--only {ORIGINAL_DATA}` needs `--with-original-data [path]`"
+        ));
+    }
     Ok(options)
+}
+
+/// Whether a step of the table runs in a verify (`scoped`: under `--scope`): every step but the
+/// scoped-only `check-lane` in a full verify.
+fn in_verify(step: &Step, scoped: bool) -> bool {
+    scoped || step.in_scope != InScope::ScopedOnly
+}
+
+/// The steps a verify with `options` lists, in the table's order: those `--only` names, if given,
+/// and `original-data` last with `--with-original-data`.
+fn step_names(options: &Options, scoped: bool) -> Vec<&'static str> {
+    let named = |name: &str| options.only.is_empty() || options.only.iter().any(|s| s == name);
+    let mut names: Vec<&str> = STEPS
+        .iter()
+        .filter(|s| in_verify(s, scoped) && named(s.name))
+        .map(|s| s.name)
+        .collect();
+    if options.original_data.is_some() && named(ORIGINAL_DATA) {
+        names.push(ORIGINAL_DATA);
+    }
+    names
 }
 
 /// Error text used to signal "passed with skipped steps" (exit code 2, see main.rs).
@@ -655,15 +701,17 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
             }
         );
     }
-    let mut names: Vec<&str> = STEPS
-        .iter()
-        .filter(|s| scope.is_some() || s.in_scope != InScope::ScopedOnly)
-        .map(|s| s.name)
-        .collect();
-    if options.original_data.is_some() {
-        names.push(ORIGINAL_DATA);
+    let names = step_names(&options, scope.is_some());
+    if names.is_empty() {
+        return Err(format!(
+            "`--only` selects no step of this run (`check-lane` runs only with `--scope`): {}",
+            options.only.join(",")
+        ));
     }
-    let skip_reason = |name: &str| {
+    // Why a step of the full verify does not run, `--only` apart: the plan of `test` and
+    // `determinism` reads it, since the parts of a verify that `--only` splits into (CI's jobs)
+    // together run each test once, as one verify does ("Each code state once").
+    let planned_skip = |name: &str| {
         let step = STEPS.iter().find(|s| s.name == name);
         if options.skip.iter().any(|s| s == name) {
             Some("--skip".to_owned())
@@ -674,9 +722,16 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
                 .map(|why| format!("--scope: {why}"))
         }
     };
+    let skip_reason = |name: &str| {
+        if names.contains(&name) {
+            planned_skip(name)
+        } else {
+            Some("--only".to_owned())
+        }
+    };
     let plan = Plan::new(
-        skip_reason("test").is_none(),
-        skip_reason("coverage").is_none()
+        planned_skip("test").is_none(),
+        planned_skip("coverage").is_none()
             && crate::coverage::runs_tests(scope.as_ref().map(|s| s.packages.as_slice()))?,
         scope
             .as_ref()
@@ -684,7 +739,7 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
     );
     let mut results = Vec::new();
     let mut first_failure: Option<(&str, String)> = None;
-    for name in names {
+    for &name in &names {
         let skipped = skip_reason(name);
         let run_name = plan.variant(name);
         let start = Instant::now();
@@ -773,6 +828,14 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
         // Exit code 2: nothing failed, but the run does not count as green.
         return Err(NOT_GREEN.to_owned());
     }
+    if !options.only.is_empty() {
+        println!(
+            "\nverify passed the {} step(s) `--only` names: a part of the verify, green only \
+             together with the others (CI's jobs run them all).",
+            results.len()
+        );
+        return Ok(());
+    }
     println!("\nverify is green.");
     Ok(())
 }
@@ -848,9 +911,81 @@ mod tests {
                 summary: true,
                 scope: Some("battle".to_owned()),
                 skip: vec!["deny".to_owned()],
+                only: Vec::new(),
                 original_data: None,
             }
         );
+    }
+
+    #[test]
+    fn parses_only() {
+        let options = parse(&strings(&["--only", "test,fmt", "--only", "coverage"])).unwrap();
+        assert_eq!(options.only, strings(&["test", "fmt", "coverage"]));
+        // The verify's order, whatever the list's.
+        assert_eq!(step_names(&options, false), ["fmt", "test", "coverage"]);
+        assert_eq!(
+            step_names(&Options::default(), false).len(),
+            STEPS.len() - 1
+        );
+        // `check-lane` runs only in a scoped verify, `original-data` only with its option.
+        let lane = parse(&strings(&["--only", "check-lane,fmt"])).unwrap();
+        assert_eq!(step_names(&lane, false), ["fmt"]);
+        assert_eq!(step_names(&lane, true), ["fmt", "check-lane"]);
+        let data = parse(&strings(&[
+            "--with-original-data",
+            "--only",
+            "original-data",
+        ]))
+        .unwrap();
+        assert_eq!(step_names(&data, false), [ORIGINAL_DATA]);
+        let data_less = parse(&strings(&["--with-original-data", "--only", "fmt"])).unwrap();
+        assert_eq!(step_names(&data_less, false), ["fmt"]);
+        assert!(run_steps(&strings(&["--only", "check-lane"])).is_err());
+    }
+
+    #[test]
+    fn rejects_bad_only_lists() {
+        let unknown = parse(&strings(&["--only", "fmt,nope"])).unwrap_err();
+        assert!(unknown.contains("`nope`") && unknown.contains("bench-check"));
+        assert!(parse(&strings(&["--only", "fmt,"])).is_err());
+        assert!(parse(&strings(&["--only"])).is_err());
+        assert!(parse(&strings(&["--only", "fmt", "--skip", "deny"])).is_err());
+        assert!(parse(&strings(&["--skip", "deny", "--only", "fmt"])).is_err());
+        assert!(parse(&strings(&["--only", "original-data"])).is_err());
+    }
+
+    /// CI runs the full verify as parallel jobs (`.github/workflows/ci.yml`): their
+    /// `cargo xtask verify --only <list>` lines together name every step of a full verify exactly
+    /// once. `check-lane` (scoped only; CI runs `cargo xtask check-lane` before) and
+    /// `original-data` (local only) are not steps of it.
+    #[test]
+    fn ci_jobs_run_every_step_once() {
+        let ci = fs::read_to_string(workspace_root().join(".github/workflows/ci.yml")).unwrap();
+        const COMMAND: &str = "cargo xtask verify --only ";
+        let listed: Vec<&str> = ci
+            .lines()
+            .filter(|l| !l.trim_start().starts_with('#'))
+            .filter_map(|l| l.split_once(COMMAND))
+            .flat_map(|(_, rest)| rest.split_whitespace().next().unwrap_or("").split(','))
+            .collect();
+        let full: Vec<&str> = STEPS
+            .iter()
+            .filter(|s| in_verify(s, false))
+            .map(|s| s.name)
+            .collect();
+        for name in &full {
+            let count = listed.iter().filter(|l| *l == name).count();
+            assert_eq!(
+                count, 1,
+                "ci.yml's `--only` lists name `{name}` {count} times"
+            );
+        }
+        for name in &listed {
+            assert!(
+                full.contains(name),
+                "ci.yml's `--only` lists name `{name}`, no step of a full verify"
+            );
+        }
     }
 
     #[test]

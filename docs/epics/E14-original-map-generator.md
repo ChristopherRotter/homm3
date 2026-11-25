@@ -132,6 +132,10 @@ the survey; (f) the checkpoint with the user.
   `cross-lane` with the user's consent.
 - **The oracle model** (RMG-QUIRK-1): a first map varied once (ORACLE.md); increment 3 measures
   what moves the stack bytes before the model is fixed.
+- **The registry's 64 flags** (`h3_content::MAX_QUIRKS`, the profiles a `u64` bitset): 52 positions
+  are taken after T2b, and the ledger's 17 `quirk.rmg.*` flags still to come (ADR-0029 point 6)
+  need 69. A shared change (a wider bitset, every ruleset's hash) before the increment that brings
+  the 13th; asked at increment 2's checkpoint.
 
 ## Tasks done
 
@@ -140,3 +144,9 @@ The full records: `E14-log.md`. Increment 1's tasks (T1a1 to T1c3): `E14-archive
 - **T2a** (2026-11-24, `shared/e14-t2a`, `cross-lane`): `h3-rmg` and `h3-pack-rmg` created empty
   (`h3-game → h3-rmg` forbidden), `h3_kernel::rng::CrtRand` (KER-RNG-004, the code reading's
   vectors), the context *map generation*, the catalog context `RMG`, ADR-0029 numbered.
+- **T2b** (2026-11-25, `shared/e14-t2b`, `cross-lane`; no cut, a worker for the re-hash): the rmg
+  part (`h3_rmg::RmgRuleset`, `RMG_RULESET_HASH_VERSION` 1), `h3-pack-rmg`'s parser and
+  `packs/synthetic/rmg.toml`, the three tables harvested into `packs/ab/rmg.toml` and
+  `packs/sod/rmg.toml` (`h3-harvest`'s `rmg`), `quirk.content.rmg_8xm8_zone_ids` (registry 51, the
+  profiles) with 8XM8's six gated overrides (RMG-QUIRK-22), `packs/README.md`'s format, the
+  `original_data` check (the harvested tables equal the text tables).
