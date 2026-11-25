@@ -6539,4 +6539,7 @@ new tuple, fixed by inference; then `--only clippy` and `cargo clippy --workspac
 `ffi-smoke` skipped by the scope; `--only original-data` with the staged data 2.5 (the harvest
 matches the hand-edited profile lines). `cargo check --workspace --all-targets`; `cargo test -p
 h3-content -p h3-pack -p h3-harvest -p h3-server`; `h3 adventure verify` and `h3 verify` on every
-golden replay. CI on the pull request is the record.
+golden replay. CI on the pull request (#1181) is the record: green at the second attempt, the
+first's coverage job failing on `h3-server`'s known clock test under load
+(`a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles_void`, `clock.rs:801`;
+the server lane's inbox has it), its failed job re-run.

@@ -18,7 +18,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   upgrade: where planned?). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13`
   (Visions' reach), `TWN-STUB-2` (the victory conditions), `-16` (E10's loss condition), `-17`
   (increment 8), `-18` (E13).
-- **Open pull requests:** T55's (`shared/e09-t55`, `cross-lane`); watch it until it merges (T54's
+- **Open pull requests:** T55's **#1181** (`shared/e09-t55`, `cross-lane`; CI green, its coverage
+  job re-run once for the server's known clock flake); watch it until it merges (T54's
   #1173 merged 2026-11-25).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
