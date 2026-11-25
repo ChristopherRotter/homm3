@@ -12,6 +12,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-25 (the adventure lane, E08 T143b, `adventure/e08-t143b`, `cross-lane` with the user's
+  consent; **in your paths, nothing to do; for your review**): **protocol v84** is taken:
+  Dimension Door cast; no new event (its arrival is increment 11's `HeroTeleported`, a wrong
+  target `CastFailed`'s `Target`); `SpellReject::NoPoints`, `NoCastsLeft`, `NotFree`, `WrongKind`
+  added and `SpellReject::NotBuilt` removed (`ADV-STUB-22` withdrawn: every bound spell casts);
+  mapped both ways, the tests' list 167 rejections. No replay, hash or record literal moved.
+
 - 2026-11-25 (the adventure lane, E08 T143a, `adventure/e08-t143a`, `cross-lane` with the user's
   consent; **in your paths, nothing to do; for your review**): **protocol v83** is taken: Summon
   Boat and Scuttle Boat cast; the events `GameEvent::CastFailed { player, hero, spell, reason }`

@@ -81,3 +81,73 @@ numeric  = "integer"
   kind       = "design"
   ref        = "ADR-0030 (accepted, AI-Q32) point 5: the memory the policy's, outside the state, a plain value with a canonical encoding and a hash, kept by its host beside the journal"
   confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-001"
+title    = "A side of the simulated combat"
+context  = "computer"
+status   = "implemented"
+summary  = "One side of the computer's simulated combat (sim_combat_start 0x423EE0, sim_side_build 0x424120, sim_side_walls 0x424790; values in army-value units): its army's slots 0 to 6 with a creature, in slot order, with its hero, against the opponent hero, facing a town's walls, scaled by the caller's factor. The walls: a Fort 4, a Citadel 5, a Castle 6; none when the hero has Earthquake among its available spells; else less the hero's Ballistics, at least 2; at most 4. Tactics: the hero's level less the opponent's, at least 0. The factor times sqrt(1 + 0.05 a) x sqrt(1 + 0.05 d) with a hero (a its Attack over the opponent's Defense, d its Defense over the opponent's Attack, each clamped to 0..99 and each difference at least 0; its own without an opponent), in double precision. Per stack: speed the creature's plus the hero's (its speed changes for every creature: artifacts, a speed specialty; not a creature specialty's), hit points the creature's plus the hero's (its hit-point changes that select the creature, Elixir of Life's quarter of a living creature's rounded down); unit value ftol(sqrt(hit points with the bonus / hit points) x fight value x factor), value that times the count (32 bits, wrapping), summed into the strength; rounds to contact 0 for a shooter, else (speed + 2 (7 - Tactics)) / speed (4 for a creature of speed 0, where the original divides by 0), at most 4, raised to the walls' level for a walker; shares 0.2 of melee and 1 of the stand-off, a shooter's 0.1 and 0.7 without no_melee_penalty, and its shots the hero's Archery bonus (hero_archery 0x4E4160: the skill grown by its specialty and the bows, 0 without the skill) over 5, 0.2 without a hero, twice for strikes_twice, halved facing walls without the battle part's no_wall_penalty (the original names creature 35, the Arch Magi, alone). The stacks sorted by unit value, ties in slot order (the original's insertion sort; its quicksort for more than 16 stacks never runs). The casting inputs (spell points, whether it may cast, the battle tile's ground, a stack's value per hit point) come with the casts (T2c, AI-STUB-7)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E31-computer-player.md section 2.2; E31 T1a2b, re-read blind at T2b): sim_combat_start 0x423EE0 (the army +0x28, sim_side_walls 0x424790 with the town, sim_side_build 0x424120 with the factor and the opponent); sim_side_build: Tactics +0xDC at 0x424149, the skills +0x476 and +0x477 clamped at 0x42417C to 0x424215, the roots and the factor at 0x42421A to 0x424263, hero_archery 0x4E4160 / 5.0 or 0.2 at 0x42426D, hero_creature_speed_bonus 0x4E5AA0 (artifacts 97, 69, 99 and the speed specialty, kind 5) and hero_creature_health_bonus 0x4E5B80 (artifacts 94, 95, 96, and a quarter for a living creature with 131), the unit value at 0x424325 to 0x424348, the rounds at 0x42436E to 0x424396, the shares at 0x42439A to 0x424424 (flags 0x4, 0x1000, 0x8000, creature 35), the insertion sort from 0x424453; sim_side_walls: building_bits 7 to 9, available spell 14 (+0x43E), Ballistics +0xD3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0030 (accepted, AI-Q32) point 9: the original's x87 arithmetic through h3_kernel::arith; the hero's reads from the engine's battle hero (h3_heroes::derive_battle_hero: Tactics, Ballistics, the ranged rate, the stack statistic effects), the walls from h3_towns::fort_level (E31 T2b's agent decisions, E31-log.md T2b)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-002"
+title    = "The simulated combat's losses"
+context  = "computer"
+status   = "implemented"
+summary  = "A loss of a simulated side (sim_side_take_damage 0x426300): its strength less the loss (32 bits); at 0 or below the side is wiped (sim_side_wipe 0x4262B0: the strength and every stack's count and value 0); else the loss spread first over its stacks in contact by the round r (rounds to contact 1 to r), the rest over all its stacks (0 to 4). A spread over the stacks whose rounds to contact lie in lo..hi (sim_spread_losses 0x426170): the group's value the sum of theirs; each such stack in order (the weakest unit first) with value left takes ftol(its value x the loss left / the group's value left) (double precision; 0 for a group of 0, as the FPU's infinity truncates), the group less its value; a share above its value kills it and only its value is taken, else its value less the share and its count the ceiling of its value over its unit value; it stops when the loss or the group is used up, and the loss left is returned. The army after the fight (sim_apply_losses 0x424880): none with the strength at 0, else each stack with its simulated count, a count of 0 cleared; the original's flag that sends a beaten hero out of the game is the quick battle's (ai_quick_battle, ADR-0030 point 7)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T1a2b, re-read blind at T2b): sim_side_take_damage 0x426300 (the wipe inline at 0x42631A, sim_spread_losses with 1 and r at 0x426373, with 0 and 4 at 0x426382), sim_side_wipe 0x4262B0, sim_spread_losses 0x426170 (the group's sum at 0x42618C, the share at 0x42621B to 0x426236, the kill at 0x42624C, the ceiling at 0x426262, the stops at 0x426275 and 0x42627F), sim_apply_losses 0x424880 (army_clear_slot 0x44AB60, battle_aftermath 0x4AC930 with the flag)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-003"
+title    = "The simulated combat's damage and stand-off"
+context  = "computer"
+status   = "implemented"
+summary  = "A simulated side's damage in a round (sim_side_damage 0x426390) with the round r and a melee flag: over its stacks whose rounds to contact are at most r, the last first, count x unit value (32 bits) x share, the sum truncated after each stack: the shot share for a shooter without the flag, else the melee share; (0, no) the shots alone, (r, no) an engaging side's stacks in contact and its shots, (4, yes) every stack in melee. Its hold value (sim_side_hold_value 0x426450): over its stacks, the last first, value x hold share, truncated after each. The stand-off (sim_combat_finish 0x4264D0, and sim_engage_now's copy): each hold value stored as an f32; with either 0 nothing happens; the larger wins: the other side is wiped and the winner loses ftol(f32(loser / winner + 0.05) x loser) as a loss in round 0 (CPU-SIM-002); equal values: the first side (the attacker) is wiped and the second loses its share as well."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T1a2b, re-read blind at T2b): sim_side_damage 0x426390 (the shot share +0x28 at 0x4263F7, the melee share +0x18 at 0x426418, crt_ftol at 0x426424), sim_side_hold_value 0x426450, sim_combat_finish 0x4264D0 (the f32 stores at 0x426546 and 0x4265A9, the comparisons at 0x4265AF to 0x4265DF, the loss at 0x42662F and 0x42671F, the spreads with 1 and 0 then 0 and 4)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-004"
+title    = "The simulated combat's engagement lookahead"
+context  = "computer"
+status   = "implemented"
+summary  = "Whether a simulated side engages its enemy in round r of 1 to 3 (sim_engage_now 0x4267C0): never when none of its living stacks with rounds to contact 1 to r exists; else a lookahead on copies of both sides for each engagement round e from 4 down to r: from r until e, while both stand, both cast (the faster side first, ties to the side asking; AI-STUB-7 until T2c) and both deal their shots alone, each loss over all the stacks; from e to round 3, while both stand, both cast, the side deals (round, no) and takes its loss on its stacks in contact by the round first, the enemy deals (4, yes) and takes its loss over all; then the stand-off (CPU-SIM-003). The score is the side's strength left, or minus the enemy's when it has none; the highest score is kept, ties to the later engagement round (the first found). True when the round kept is r."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T1a2b, re-read blind at T2b): sim_engage_now 0x4267C0 (the reach test from 0x4267E3, the copies sim_stack_vector_copy 0x4276C0 at 0x42686A and 0x4268BB, the shots' loop 0x426910 to 0x4269C1, the melee loop 0x4269D5 to 0x426A7B, the stand-off 0x426A81 to 0x426B2B, the score and the best at 0x426B30 to 0x426B4C, the result at 0x426B9D)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SIM-005"
+title    = "The simulated combat's run"
+context  = "computer"
+status   = "implemented"
+summary  = "A simulated combat of an attacker A against a defender B (sim_combat_run 0x426BC0): rounds 1 to 3 while both strengths are above 0: each side's choice to engage (CPU-SIM-004, A's first), the round's casts (the faster side first, equal speeds A; AI-STUB-7 until T2c), then both sides' damage at once (CPU-SIM-003): A alone engaging, A deals (round, no) and B (4, yes), A's loss first on its stacks in contact by the round; both engaging, or B alone (0x426D17, a quirk candidate of the quick battle's: B's choice makes both fight with every stack), both deal (4, yes); neither, both their shots alone (0, no); every other loss over all the stacks (CPU-SIM-002). Then the stand-off (CPU-SIM-003)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T1a2b, re-read blind at T2b): sim_combat_run 0x426BC0 (the strengths at 0x426BDB, sim_engage_now at 0x426BF5 and 0x426C01, the speeds at 0x426C0D to 0x426C52, sim_cast_spell 0x425BD0 at 0x426C5B to 0x426C77, the four cases at 0x426C7F, 0x426CC7 with A's spread over 1 to the round at 0x426CF8, 0x426D17, 0x426D6E, sim_side_take_damage at 0x426DBE, sim_combat_finish at 0x426DD6)"
+  confidence = "high"
