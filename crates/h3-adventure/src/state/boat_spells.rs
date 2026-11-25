@@ -75,8 +75,8 @@ impl AdventureState {
     }
 
     /// Scuttle Boat's tests of `target` for `player`'s hero on `from` (ADV-SPL-004; increment 15's
-    /// design note §10.2, §11.3): in the window (`[params.spells]`' `target_range` columns and
-    /// rows away at most, on the hero's level, on the map: else [`CastError::OutOfWindow`]), then
+    /// design note §10.2, §11.3): in the window ([`Self::in_window`]: else
+    /// [`CastError::OutOfWindow`]), then
     /// an empty boat on it, or under `ADV-QUIRK-52` off a tile `player` has not explored
     /// (else [`CastError::NoBoat`]). With the flag on (faithful) a hidden empty boat is a target
     /// and a hidden tile without one is not, as the original's cursor tells (A-50); off
@@ -88,18 +88,7 @@ impl AdventureState {
         (player, from): (PlayerId, Pos),
         target: Option<Pos>,
     ) -> Result<(), CastError> {
-        let [columns, rows] = part
-            .params()
-            .spells()
-            .map_or([0, 0], |params| params.target_range);
-        let target = target
-            .filter(|target| {
-                target.level == from.level
-                    && target.x.abs_diff(from.x) <= u16::from(columns)
-                    && target.y.abs_diff(from.y) <= u16::from(rows)
-                    && self.map.tile(*target).is_some()
-            })
-            .ok_or(CastError::OutOfWindow)?;
+        let target = self.in_window(part, from, target)?;
         let hidden = !self.explored[usize::from(player.raw())].get(target);
         if self.is_empty_boat(target) || (hidden && !core.quirks().is_enabled(SCUTTLE_READS_HIDDEN))
         {

@@ -473,6 +473,9 @@ pub(crate) fn movement_rules_with(
         // E08 T143a (ADV-QUIRK-52, ADV-QUIRK-53).
         "quirk.adventure.scuttle_reads_hidden",
         "quirk.adventure.summon_boat_by_steps",
+        // E08 T143b (ADV-QUIRK-51, ADV-QUIRK-55).
+        "quirk.adventure.door_reads_hidden",
+        "quirk.adventure.door_failure_charged",
     ];
     let core = ContentPack {
         terrains: ["t:grass", "t:sand", "t:swamp", "t:sea", "t:rock"]

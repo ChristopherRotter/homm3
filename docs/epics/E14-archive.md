@@ -1,4 +1,4 @@
-# E14 — archive: closed increment 1
+# E14 — archive: closed increments 1 and 2
 
 Moved out of `E14-original-map-generator.md` on 2026-11-24 at increment 1's checkpoint (RMG-Q2,
 T1c3), verbatim, so that the epic file holds what is open and the decisions that apply to the
@@ -68,3 +68,52 @@ written; (5) increments 2 to 6 cut with exit criteria and confirmed at the check
   profiles, the versions, the trace); increments 2 to 7 cut in the run's order with exit criteria,
   increment 2's tasks refined; the checkpoint RMG-Q2 (the user: the writer's gaps closed, the
   picture names harvested, the game's profiles, six increments). Increment 1 closed.
+
+## Increment 2 — templates, the stream, the start (closed 2026-11-25)
+
+Moved out of `E14-original-map-generator.md` on 2026-11-25 at increment 2's checkpoint (decision
+10), verbatim: its row of the increments' table (which stays there, marked closed), the exit
+criteria every increment shares (they stay there too), its task table and its tasks done.
+
+| Inc | Scope | Rules (survey §3.2) | Ledger | Not read, read first | Its own exit |
+|---|---|---|---|---|---|
+| 2 | **Templates, the stream, the start:** the crates, `CrtRand`, the three tables harvested, the rmg part, the settings, the template's choice, the positions | SET-001 to -009, TPL-001 to -008 (17) | -6; -11 (the tables' half); -22 | none | the 21 cases' kept and drawn templates (`kept.txt`'s names) and the draws before step 1 equal; the harvested tables equal the text tables (with the original data) |
+
+**Every increment's exit criteria**, beside the Definition of Done: (a) its rules in the catalog,
+implemented, each with a test; (b) on the 21 corpus cases in `faithful`, the port's draws and its
+cells after each of its steps equal the phase oracle's (`clients/capture/rmg/phases.txt`'s
+digests in CI, the whole logs and dumps beside the oracle; a divergence named by step and draw);
+(c) its ledger entries confirmed by (b) or re-read, each flag's `strict-fixed` behaviour tested,
+its `exploit-fix` cases typed errors; (d) a property test: arbitrary settings, seeds and the packs'
+tables run its steps without a panic; (e) its "not read" items (survey §3.2.15) read first, into
+the survey; (f) the checkpoint with the user.
+
+**Increment 2's tasks** (refined with the cut):
+
+| Task | What | Out |
+|---|---|---|
+| T2a | `shared/`: `h3-rmg` and `h3-pack-rmg` created (`Cargo.toml`, `arch.toml`, `lanes.toml`), `h3_kernel::rng::CrtRand` with test vectors, the context in `docs/03-domain.md`, the catalog context `RMG`, the ADR numbered | the crates, the kernel's generator, the ADR in `docs/adr/` |
+| T2b | `cross-lane` (`h3-harvest`): `rmg.txt`, `objects.txt` and `rand_trn.txt` into `packs/ab/rmg.toml` and `packs/sod/rmg.toml`; `h3-pack-rmg`'s parser; the rmg part's compiler and hash; 8XM8's gated override and its flag; `packs/README.md` | the packs' `rmg.toml`, the rmg part |
+| T2c | The settings and their checks (RMG-SET-001 to -009, RMG-QUIRK-6), `resolve_random`, the templates kept and drawn and the positions (RMG-TPL-001 to -008, RMG-QUIRK-11's flag), `Trace`; checked on the 21 cases | `h3-rmg`'s start, the increment's exit |
+
+### Tasks done (increment 2)
+
+- **T2a** (2026-11-24, `shared/e14-t2a`, `cross-lane`): `h3-rmg` and `h3-pack-rmg` created empty
+  (`h3-game → h3-rmg` forbidden), `h3_kernel::rng::CrtRand` (KER-RNG-004, the code reading's
+  vectors), the context *map generation*, the catalog context `RMG`, ADR-0029 numbered.
+- **T2b** (2026-11-25, `shared/e14-t2b`, `cross-lane`; no cut, a worker for the re-hash): the rmg
+  part (`h3_rmg::RmgRuleset`, `RMG_RULESET_HASH_VERSION` 1), `h3-pack-rmg`'s parser and
+  `packs/synthetic/rmg.toml`, the three tables harvested into `packs/ab/rmg.toml` and
+  `packs/sod/rmg.toml` (`h3-harvest`'s `rmg`), `quirk.content.rmg_8xm8_zone_ids` (registry 51, the
+  profiles) with 8XM8's six gated overrides (RMG-QUIRK-22), `packs/README.md`'s format, the
+  `original_data` check (the harvested tables equal the text tables).
+- **T2c** (2026-11-25, `shared/e14-t2c`, `cross-lane`; whole, decision 9): the settings and
+  `resolve_random`, the templates kept and drawn, the positions, `generate`'s frame (`Trace`,
+  `GenerateError`, `RMG_GENERATOR_VERSION` 1; the steps RMG-STUB-1), the executable's constants
+  harvested (`[generator]`, `RMG_RULESET_HASH_VERSION` 2), `quirk.rmg.roe_monster_town_byte` (52) and
+  `quirk.rmg.unowned_start_seventh` (53, RMG-QUIRK-24), the registry at 128 flags
+  (`RULESET_HASH_VERSION` 54), the catalog's first 17 rules; the 21 cases' templates and draws
+  before step 1 the original's.
+- **The checkpoint** (2026-11-25, decision 10): the exit criteria (a) to (e) held (the record:
+  `E14-log.md`, "Increment 2's checkpoint"); RMG-QUIRK-11 and -24 confirmed by two readings, not
+  yet by the oracle; increment 3 cut into T3a to T3e. Increment 2 closed.

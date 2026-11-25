@@ -1031,6 +1031,67 @@ fn the_harvested_flag_of_e09_increment_5() {
 }
 
 #[test]
+fn the_harvested_flags_of_e09_increment_6() {
+    // E09 T55b: T-28's and T-23's flags (`TWN-QUIRK-15`, `-16`), on in `faithful` and off in
+    // `strict-fixed` with every expansion.
+    use h3_content::{UNIVERSITY_IGNORES_MAP_BANS, VISITOR_ONLY_TRADES};
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        for (profile, on) in [("base:faithful", true), ("base:strict-fixed", false)] {
+            let q = compile(packs, profile).unwrap().quirks();
+            assert_eq!(q.is_enabled(VISITOR_ONLY_TRADES), on, "{profile}");
+            assert_eq!(q.is_enabled(UNIVERSITY_IGNORES_MAP_BANS), on, "{profile}");
+        }
+    }
+}
+
+#[test]
+fn her_art_008_the_sod_combinations_cost_their_parts_sum() {
+    // covers: HER-ART-008
+    // E09 T55b (HER-ART-008; survey `E09-trades.md` §3.4): the twelve combinations name no cost in
+    // the SoD pack and cost the sum of their parts' (gold only), as the original fills them at
+    // start-up (a pack's own cost is kept: `h3-content`'s artifact tests).
+    let r = compile(&[SOD_CORE, AB_CORE, BASE_CORE], "base:faithful").unwrap();
+    let sums: Vec<(&str, u32)> = r
+        .artifacts()
+        .iter()
+        .filter(|a| a.is_combination())
+        .map(|a| {
+            assert_eq!(a.cost.len(), 1, "{}", a.key.as_str());
+            let resource = &r.resources()[a.cost[0].0.index()];
+            assert_eq!(resource.key.as_str(), "base:gold", "{}", a.key.as_str());
+            let parts: u32 = a
+                .parts
+                .iter()
+                .map(|&p| r.artifact(p).unwrap().cost.iter().map(|c| c.1).sum::<u32>())
+                .sum();
+            assert_eq!(a.cost[0].1, parts, "{}", a.key.as_str());
+            (a.name.as_str(), a.cost[0].1)
+        })
+        .collect();
+    assert_eq!(
+        sums,
+        [
+            ("Angelic Alliance", 84_000),
+            ("Cloak of the Undead King", 12_000),
+            ("Elixir of Life", 20_000),
+            ("Armor of the Damned", 12_000),
+            ("Statue of Legion", 25_000),
+            ("Power of the Dragon Father", 42_000),
+            ("Titan's Thunder", 40_000),
+            ("Admiral's Hat", 25_000),
+            ("Bow of the Sharpshooter", 12_000),
+            ("Wizard's Well", 3_000),
+            ("Ring of the Magi", 3_000),
+            ("Cornucopia", 20_000),
+        ]
+    );
+}
+
+#[test]
 fn the_harvested_flags_of_e08_increment_15() {
     // E08 T140: the six fix-optional flags of increment 15 (`ADV-QUIRK-15`, `-51` to `-55`; design
     // note `E08-design.md` §4), on in `faithful` and off in `strict-fixed` with every expansion.

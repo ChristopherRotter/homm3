@@ -4,34 +4,47 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143a done (2026-11-25), T143b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143a and T143b done (2026-11-25), T144 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T143b — Dimension Door** (round 7; design note `E08-design.md` §10.5, §11.2, §16; T143's
-second half, decision 417; T143a, the boats' spells, done 2026-11-25)
+**E08 T144 — the casts in the env, the replays and the maps** (round 8; design note
+`E08-design.md` §17, §18, §20, §21; T143b, Dimension Door, done 2026-11-25)
 
-- **T143b, Dimension Door** (`adventure/e08-t143b`): ADV-SPL-007 to -009; the refusals (points
-  not above 0, `doors` at the core's casts for the mastery, the window and the map: T143a's
-  `CastError::OutOfWindow`, an explored blocked tile or entrance; with `ADV-QUIRK-55` off an
-  explored target of the wrong kind), the `doors` count, the 9 × 8 window (ADV-QUIRK-56 fixed),
-  the relocation by increment 11's jump (`hero_relocate`: no guard's battle, no visit, the
-  reveal; its boat with it at sea), the points (`door_points`, at least 0); `ADV-QUIRK-51`
-  (`door_reads_hidden`) and `ADV-QUIRK-55` (`door_failure_charged`) with the hidden target's
-  reveal (decision 399: that tile alone, as T143a's scuttle); a failure charged as T143a's
-  (`CastFailure::Target`, the game's `CastFailed`; the door's GENRLTXT 71). `ADV-STUB-22`
-  withdrawn once it casts (`CastError::NotBuilt` and `SpellReject::NotBuilt` go: a protocol bump
-  for the refusal's removal, the server lane's, `cross-lane`, unless kept for later spells).
-- **Inputs:** design §10.5, §11.2, §14, §16, §21; T143a's record in `E08-log.md` (`Cast`,
-  `apply_cast`'s draws and sink, `CastFailure`, the scuttle's reveal before the draw, the
-  viewers before the reveal); T142b's (the flight's `Fog`: a hidden target's rows follow the same
-  split of knowledge and truth).
-- **For T144b** (noted by T143a): `view.rs`' hygiene oracle already follows the boat events
-  (`BoatSummoned`'s ends, `BoatCreated`, `BoatScuttled`); its faithful exception for the door's
-  and the scuttle's hidden targets (the original's leaks) is T144b's, modelled on T142b's for
-  flyers, once `legal_commands` lists the casts (T144a).
-- **Depends on:** T143a (`adventure/e08-t143a`). **Status:** ready once T143a merges. Then T144
-  (the env, the replays, the maps) and T145 (the audit, the `shared/` task).
+- **T144a, `legal_commands` and the env** (`adventure/e08-t144a`; `cross-lane`, the AI lane's
+  `h3-sim`): GAM-SPL-001's legal casts per own hero on the map, after its moves: each castable
+  spell without a target once (Summon Boat, Fly, Water Walk), the door's and Scuttle Boat's every
+  target `check_cast` accepts in the window in row order (up to 323 each); the env's entries
+  (encoding v21: three without a target, two windows of 19 × 17 relative to the hero, the masks
+  from `legal_commands`) and the own hero part's day spells and casts left; the random
+  workloads' weight for the casts is the bots' call (§21). Confirm the cut at its start.
+- **T144b, the maps, the replays, the plans and oracles, the benchmarks** (§17):
+  a generated map with a prison, the Market of Time, special grounds, boats and water, a hero
+  with the five spells and a book; the golden replays (each spell, the failures, the prison
+  freed and full, both flag settings of §11); the hygiene property under `strict-fixed` (the
+  flight's, the door's and Scuttle Boat's legal moves never depend on a hidden tile); the
+  census `--with-original-data` (89 prisons, one Market of Time).
+- **Inputs:** T143a's and T143b's records in `E08-log.md` (`check_cast` is the oracle of a
+  listed target: under `strict-fixed` the door's are the explored free tiles of the hero's kind
+  and every hidden tile of the window, Scuttle Boat's the explored empty boats and every hidden
+  tile; under `faithful` the hidden truth, the door's wrong kind listed and charged).
+- **For T144b** (noted by T143a, T143b): `view.rs`' hygiene oracle already follows the boat
+  events and `CastFailed`, and the door's arrival is a teleporter's `HeroTeleported` (its
+  `jumper` handling); its faithful exception for the door's and the scuttle's hidden targets
+  (the original's leaks) is T144b's, modelled on T142b's for flyers, once `legal_commands` lists
+  the casts (T144a).
+- **Depends on:** T143b (`adventure/e08-t143b`). **Status:** ready once T143b merges. Then T145
+  (the audit, the `shared/` task).
 
 ## Inbox
+
+- 2026-11-25 (the town lane, E09 T55, `shared/e09-t55`, `cross-lane`; **informational,
+  mechanical at a merge**): the base profiles gained `quirk.town.visitor_only_trades` and
+  `quirk.town.university_ignores_map_bans`, and `h3-content` gives a combination without a pack
+  cost its parts' sum (SoD's twelve), so every golden adventure replay's `ruleset_hash` moved
+  (on `master` after #1174: `base:faithful` 0x9078e1983efcc013 to 0x3f1f68842dab4e0c,
+  `base:strict-fixed` 0xc67d550d834033d8 to 0x0bd901a144728cc7; nothing else in any file): a branch of yours that re-records after it
+  merges takes the new header. `heroes.toml` gained HER-ART-008 (the combinations' costs,
+  `verified`). The market's and the Black Market's purchase and the sale read a combination's cost
+  as that sum from now on (a combination reaches the stock only through the picker's fallback).
 
 - 2026-11-25 (the map client lane, E24 M5 T1b, `map-client/e24-m5-t1b`; **for your decision,
   nothing to build for us**): read while settling MCL-Q51 (`E24-design.md` §5.23): after a

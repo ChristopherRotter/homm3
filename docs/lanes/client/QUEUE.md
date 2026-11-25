@@ -21,6 +21,18 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-25 (the map-client lane, E24 M5 T2c, `map-client/e24-m5-t2c`, `cross-lane`; **your
+  readers moved, agreed by the user for you (MCL-Q57); nothing to act on**): a record's lines are
+  read by `h3_protocol::record` now (`read_battle`, `read_game`, `is_game`, `RecordError`,
+  `MAX_LINE`), beside the server lane's writer; `h3_view::record::parse` and
+  `h3_view::game_record::parse` are thin wrappers over it and keep their types, paths and
+  refusals (`RecordError` and `MAX_LINE` re-exported from `h3_view::record`, `is_game` from
+  `game_record`), and your record tests pass as before. One change in behaviour: a line's bound
+  is 64 MB for both kinds (it was 16 MB in `h3_view::record`), the live client's `MAX_MESSAGE`. A
+  change of the record format now changes `h3_protocol::record` with it (the format's
+  `RECORD_FORMAT_VERSION`); what you read on top (a battle's opening, a whole game's battles)
+  stays yours.
+
 - 2026-11-25 (the map-client lane, E24 M5 T2b, `map-client/e24-m5-t2b`; **for you to act on:
   the shell's own crate, calling play**; the API below agreed by the user for you at T2b): play's
   entry is `h3_map_client::play::play(game: &play::Game, rules: &GameRuleset, window: &mut

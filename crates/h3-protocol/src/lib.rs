@@ -10,6 +10,8 @@
 //! - [`connection`]: a connection's own messages, the hello and the ping (M1 T2);
 //! - [`session`]: the session core, one hosted battle: seats, tokens, the authoritative loop, the
 //!   bot hook, the viewers' records and the journal (M1 T2);
+//! - [`record`]: a record read back, a battle's or a whole game's, every client's reader (E24 M5
+//!   T2c);
 //! - [`lobby`]: the server's offers and games, created within limits and listed (M2 T1);
 //! - [`account`]: login and display names, keys as hex, the bytes a login signs (M3 T1);
 //! - [`ladder`]: the ladders' queues, the matcher and a match's answers (M4 T2);
@@ -47,6 +49,7 @@ pub mod ladder;
 pub mod list;
 pub mod lobby;
 pub mod map;
+pub mod record;
 pub mod session;
 pub mod wire;
 
@@ -262,10 +265,15 @@ pub mod wire;
 /// `CastFailure`), `AdventureEvent::BoatSummoned` (a summoned boat's two tiles, each `None` where
 /// the viewer does not see heroes), `BoatCreated`, `BoatScuttled`; `SpellReject::NoWater`,
 /// `OutOfWindow`, `NoBoat` (`NotBuilt` for Dimension Door alone).
-pub const PROTOCOL_VERSION: u32 = 83;
+/// v84 (E08 T143b, the adventure lane's, `cross-lane`; increment 15's design note §10.5, §11.2):
+/// Dimension Door cast (its arrival a teleporter's `HeroTeleported`, a wrong target `CastFailed`'s
+/// `Target`); `SpellReject::NoPoints`, `NoCastsLeft`, `NotFree`, `WrongKind`; `SpellReject::NotBuilt`
+/// gone (`ADV-STUB-22` withdrawn: every bound spell casts).
+pub const PROTOCOL_VERSION: u32 = 84;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
-/// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
+/// its layout changes, with its reader ([`record`], every client's: E24 M5 T2c) in the same
+/// change. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
 /// its first command's, and the last `Snapshot` before `GameEnded`; an `Events` message is no
 /// longer always a command's. v4 (E16 M5 T5b): a whole game's record, its header
 /// `wire::game::GameRecordHeader` (the game's manifest and the player), every further line one

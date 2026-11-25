@@ -4,6 +4,16 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E31 increment 2, T2b** (moved 2026-11-25, done: `E31-log.md` T2b; not cut, AI-Q33):
+
+  - **T2b — the simulated combat, the sides and the melee** (next; survey §2.2; the epic file's
+    table: `sim_combat_start` 0x423EE0, `sim_side_build` 0x424120, the walls, the speed, the
+    damage taken and spread, the wipe, the hold, the finish, the engagement, the run, the stack
+    lists, `sim_apply_losses` 0x424880; about 2 700 of the original's instructions): measure its
+    size at the start and confirm a cut by size; its values through `SignedX87` / `X87`;
+    `Heroes3.exe` staged for the blind re-reads. T2a's frame (`h3_game::computer`,
+    `h3_sim::computer::play` and its property tests, `h3 ai computer`) is its harness.
+
 **E31 increment 2, T2a** (moved 2026-11-25, done: `E31-log.md` T2a):
 
   - **T2a — the frame** (survey §1.1 to §1.4, §1.6; ADR-0030 points 2, 3, 5, 13; about 1 400 of the

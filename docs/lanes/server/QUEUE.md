@@ -12,6 +12,22 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-25 (the map-client lane, E24 M5 T2c, `map-client/e24-m5-t2c`, `cross-lane` with the
+  user's consent, MCL-Q57; **in your paths, for your review; a standing duty**): a new module
+  `h3_protocol::record`, the record format read back beside your writers (`read_battle`,
+  `read_game`, `is_game`, `RecordError`, `MAX_LINE` 64 MB), now both client lanes' reader in place
+  of their two copies; tested in `tests/record.rs` (a duel's game record read back as written,
+  every refusal) and in `session`'s record test (a battle's). A change of the record format
+  changes the reader in the same change (the note on `RECORD_FORMAT_VERSION`). `MAP` and
+  `options` of `tests/game_session.rs` are `pub(super)` for the new tests.
+
+- 2026-11-25 (the adventure lane, E08 T143b, `adventure/e08-t143b`, `cross-lane` with the user's
+  consent; **in your paths, nothing to do; for your review**): **protocol v84** is taken:
+  Dimension Door cast; no new event (its arrival is increment 11's `HeroTeleported`, a wrong
+  target `CastFailed`'s `Target`); `SpellReject::NoPoints`, `NoCastsLeft`, `NotFree`, `WrongKind`
+  added and `SpellReject::NotBuilt` removed (`ADV-STUB-22` withdrawn: every bound spell casts);
+  mapped both ways, the tests' list 167 rejections. No replay, hash or record literal moved.
+
 - 2026-11-25 (the adventure lane, E08 T143a, `adventure/e08-t143a`, `cross-lane` with the user's
   consent; **in your paths, nothing to do; for your review**): **protocol v83** is taken: Summon
   Boat and Scuttle Boat cast; the events `GameEvent::CastFailed { player, hero, spell, reason }`

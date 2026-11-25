@@ -4679,7 +4679,7 @@ id       = "ADV-SPL-001"
 title    = "The spells cast on the adventure map, their mastery and cost"
 context  = "adventure"
 status   = "verified"
-summary  = "The adventure part binds core spells of the adventure category to five closed behaviours (`AdventureSpell`: Summon Boat, Scuttle Boat, Fly, Water Walk, Dimension Door; the packs' `[[spell]]` entries, each spell and each behaviour once, ADR-0006 tier 2) and gives their parameters (`[params.spells]`: the door's points by mastery, the 9 x 8 window, the 64 boats; required when one of the three that read them is bound); a spell without a binding is not cast on the map (the four information spells until E12, ADV-STUB-19; Town Portal until E09 increment 7, ADV-STUB-20). A cast (GAM-SPL-001) takes the mastery of the hero on its tile's special ground (HER-SPL-003: a raising ground's schools at Expert, Magic Plains all four) and costs `map_spell_cost` there (HER-SPL-008: the table's column at that mastery, at least 1, no army's +-2). Cursed Ground refuses a spell above level 1 and an anti-magic garrison every spell, both free and after the cost's test (E08 decision 414: the original's book tests the points first). Several spells and several casts a day as the points allow; no day's limit but Dimension Door's (ADV-SPL-007). E08 T142a: `AdventureRuleset::spells`, `adventure_spell`, `AdventureParams::spells`; Summon Boat and Scuttle Boat cast since E08 T143a (ADV-SPL-003, ADV-SPL-004: a chance drawn from the caster's player's stream, a charged failure told as `CastFailed`); Dimension Door is refused until E08 T143b (`CastError::NotBuilt`, ADV-STUB-22)."
+summary  = "The adventure part binds core spells of the adventure category to five closed behaviours (`AdventureSpell`: Summon Boat, Scuttle Boat, Fly, Water Walk, Dimension Door; the packs' `[[spell]]` entries, each spell and each behaviour once, ADR-0006 tier 2) and gives their parameters (`[params.spells]`: the door's points by mastery, the 9 x 8 window, the 64 boats; required when one of the three that read them is bound); a spell without a binding is not cast on the map (the four information spells until E12, ADV-STUB-19; Town Portal until E09 increment 7, ADV-STUB-20). A cast (GAM-SPL-001) takes the mastery of the hero on its tile's special ground (HER-SPL-003: a raising ground's schools at Expert, Magic Plains all four) and costs `map_spell_cost` there (HER-SPL-008: the table's column at that mastery, at least 1, no army's +-2). Cursed Ground refuses a spell above level 1 and an anti-magic garrison every spell, both free and after the cost's test (E08 decision 414: the original's book tests the points first). Several spells and several casts a day as the points allow; no day's limit but Dimension Door's (ADV-SPL-007). E08 T142a: `AdventureRuleset::spells`, `adventure_spell`, `AdventureParams::spells`; Summon Boat and Scuttle Boat cast since E08 T143a (ADV-SPL-003, ADV-SPL-004: a chance drawn from the caster's player's stream, a charged failure told as `CastFailed`); Dimension Door since E08 T143b (ADV-SPL-007 to ADV-SPL-009: its movement points and casts of the day, the relocation, a wrong target charged)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -4860,3 +4860,96 @@ quirks   = ["ADV-QUIRK-54", "ADV-QUIRK-57"]
   url        = "https://heroes.thelazy.net/index.php/Water_Walk"
   retrieved  = "2026-11-21"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-SPL-007"
+title    = "Dimension Door's limits: movement points above 0, 1 to 4 casts a day"
+context  = "adventure"
+status   = "verified"
+summary  = "Dimension Door is refused, free, with no movement points left (GENRLTXT 126, `CastError::NoPoints`: the points not above 0; a hero with 1 point casts it) and then with the day's casts at the mastery's count (GENRLTXT 339, `NoCastsLeft`: the core spell's effect column, 1, 2, 3, 4 from None to Expert), both before the target's tests. Every accepted cast, an arrival or a charged failure, counts one cast of the day (`DaySpells::doors`, cleared at the new day, ADV-SPL-002) and takes `[params.spells]` `door_points` at the mastery (300, 300, 300, 200) from the movement points, at least to 0. E08 T143b: `AdventureState::check_door`, `dimension_door`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 8.1): adventure_spell_cast 0x41D090: +0x4D (signed) not above 0: GENRLTXT 126, free; +0x10D at or above the spell table's +0x34 at the mastery: GENRLTXT 339, free; after the relocation 300, or 200 at mastery 3 (0x41D28D), at least 0, and +0x10D + 1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15b.md E15-5 (on Magic Plains at Expert: 1 360, 1 160, 960, 760 points, doors 1 to 4; the fifth GENRLTXT 339, nothing spent), E15-6 (1 point left: cast, 0 left, doors 2; at 0 GENRLTXT 126, nothing spent) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+  note       = "Regression tests: crates/h3-adventure/src/state/tests/door.rs, the_door_is_refused_without_points_casts_or_a_target_in_its_window, the_door_relocates_the_hero_without_a_battle_or_a_visit; crates/h3-game/src/tests/casts.rs, dimension_door_moves_the_hero_for_its_movement_and_spell_points."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/adventure.json dimensionDoor (1, 2, 3, 4 casts a day), AdventureSpellMechanics.cpp (the casts per day; movementPointsRequired 0, 300 taken, 200 at Expert)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/adventure.json"
+  retrieved  = "2026-11-21"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-SPL-008"
+title    = "Dimension Door's target: a free tile in the 9 x 8 window"
+context  = "adventure"
+status   = "verified"
+summary  = "The target lies in the window around the caster (`[params.spells]` `target_range`: at most 9 columns and 8 rows away, on its level, on the map; A-54's tenth row fixed, ADV-QUIRK-56), else `CastError::OutOfWindow`. It must be free: no object's blocked tile and no rock, no object's visitable tile, no hero (in a boat or not) and no empty boat, as the map stands (`NotFree`, the dialog's missing cursor); with ADV-QUIRK-55 off an explored target of the wrong kind (land from a boat, water from land) is refused too (`WrongKind`). Hidden tiles by ADV-QUIRK-51: on (faithful) a hidden tile is tested as an explored one, its truth read (A-53); off (strict-fixed) every hidden tile of the window is a target, so the refusals depend only on what the player knows (ADV-SPL-009 tests it at the cast). E08 T143b: `AdventureState::in_window`, `check_door`, `door_free`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-51", "ADV-QUIRK-55", "ADV-QUIRK-56"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 8.2): door_target_create 0x4916F0, door_target_proc 0x491900: the view centred on the hero, the tile at (x / 32, y / 32) of the pointer a target when its map item's word +0xC has neither 0x100 (blocked) nor 0x1000 (an entrance), no fog test; dx -9 to +9, dy -8 to +9 (row 17 picked by the area's last 8 pixel rows); off-map tiles refused by position_on_map"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15b.md E15-8 (cursors: an explored free tile 41, an explored tree 0, a hidden free tile 41, a hidden tree 0; the hidden tree's click nothing, nothing revealed), E15-16 (from (17, 10) the pointer at y 548 picks (17, 19), dy +9, the door's cursor) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+  note       = "Regression tests: crates/h3-adventure/src/state/tests/door.rs, the_door_is_refused_without_points_casts_or_a_target_in_its_window, the_door_is_refused_on_a_tile_that_is_not_free, a_hidden_target_reads_the_truth_under_adv_quirk_51_or_is_revealed_without_it; crates/h3-game/src/tests/casts.rs, a_cast_is_refused_in_the_original_s_order_and_changes_nothing."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "DimensionDoorEffect.cpp and config/spells/adventure.json: rangeX 9, rangeY 8 (refuting the reading's dy +9: D-76, decision 401), ignoreFow and exposeFow true (hidden tiles accepted, as ADV-QUIRK-51's on side)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/adventure/DimensionDoorEffect.cpp"
+  retrieved  = "2026-11-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's sections 10.5 and 11.2 (decisions 399, 401, 403: the hidden targets, the 9 x 8 window, the wrong kind refused on the fixed side)"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-SPL-009"
+title    = "Dimension Door's effect: the hero relocated, no guard, no visit; a wrong target charged"
+context  = "adventure"
+status   = "verified"
+summary  = "Under ADV-QUIRK-51 off a target the caster's player has not explored is revealed to it first, that tile alone (decision 399). A free target of the hero's kind (water for a hero in a boat, land for one on land) takes the hero as a teleporter's arrival (ADV-TEL-007, the original's same hero_relocate): its tile becomes the target, no guard's battle (also beside a monster), no visit, the tiles within its scouting radius explored, a hero in a boat taking it along (the boat's record keeps the boarded tile, the hero's tile is the boat's), told as `HeroTeleported` (each end to the players that see it). Any other target fails, charged (GENRLTXT 71, `CastFailure::Target`, the game's `CastFailed`): a wrong kind (explored under ADV-QUIRK-55 on, or hidden), or a hidden tile not free under ADV-QUIRK-51 off; the hero stays. In both cases ADV-SPL-007's points and cast are spent, and GAM-SPL-001's spell points. Nothing is drawn. E08 T143b: `AdventureState::dimension_door`, `door_fits`, `arrival`; the game's `GameState::cast`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-51", "ADV-QUIRK-55"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md sections 8.1, 8.3): adventure_spell_cast 0x41D090 after the dialog: a hero in a boat needs terrain 8, one on land needs land, else GENRLTXT 71 and everything below spent anyway (A-52); else hero_relocate 0x41D930 (hidden, put on the target, revealed by its scouting radius: no points, no guard, no visit; a hero at sea takes its boat along)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15b.md E15-7 (water from land: GENRLTXT 71, the hero stays, 1 260 points, 50 to 25 spell points, doors 1; the next cast 339), E15-8 (onto a hidden free tile: the hero there, 1 260, doors 1, the tiles to dx^2 + dy^2 of 30 revealed), E15-15 (a scroll's door from (4, 4) to (4, 8), 1 460 to 1 160) (survey section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+  note       = "Regression tests: crates/h3-adventure/src/state/tests/door.rs, the_door_relocates_the_hero_without_a_battle_or_a_visit, a_hero_in_a_boat_takes_it_through_the_door, a_wrong_kind_fails_charged_under_adv_quirk_55_or_is_refused_without_it, a_hidden_target_reads_the_truth_under_adv_quirk_51_or_is_revealed_without_it; crates/h3-game/src/tests/casts.rs, dimension_door_moves_the_hero_for_its_movement_and_spell_points, dimension_door_s_wrong_target_is_refused_free_or_charged_under_adv_quirk_55."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "DimensionDoorEffect.cpp (the hero moved, the guards not triggered: config/gameConfig.json dimensionDoorTriggersGuards false), AdventureSpellMechanics.cpp (waterLandFailureTakesPoints true, SoD's)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/adventure/DimensionDoorEffect.cpp"
+  retrieved  = "2026-11-21"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's sections 10.5 and 11.2 (decisions 399, 403); the reveal of a hidden target the caster's player's (as Scuttle Boat's, E08 T143a), the arrival increment 11's"
+  confidence = "high"
