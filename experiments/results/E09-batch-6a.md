@@ -1,5 +1,7 @@
 # E09 batch TWN-6a — results
 
+> Played by the capture harness on 2026-11-25 (`clients/capture/h3adv.py batch clients/capture/batches/E09-batch-6a.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
 Map file: `E09-batch-6a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `1655a41f`.** The map's description in the scenario list starts with "Stamp 1655a41f.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -23,12 +25,12 @@ Map file: `E09-batch-6a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- 2 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold): 
-- the builds in C1 and C2: each town's buildings after: 
-- 4 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold): 
-- the builds in C3 to C6: each town's buildings after: 
-- 8 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold): 
-- anything odd: 
+- 2 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold): screen: 0 (resources for resources); count: 2; wood: 1 wood for 37 gold; ore: 1 ore for 37 gold
+- the builds in C1 and C2: each town's buildings after: C1: 10, 14, 23; C2: 10, 14, 23
+- 4 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold): screen: 0 (resources for resources); count: 4; wood: 1 wood for 62 gold; ore: 1 ore for 62 gold
+- the builds in C3 to C6: each town's buildings after: C3: 10, 14, 23; C4: 10, 14, 23; C5: 10, 14, 23; C6: 10, 14, 23; Red's treasury: 20 wood, 10 mercury, 50 ore, 10 sulfur, 10 crystal, 10 gems, 47000 gold
+- 8 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold): screen: 0 (resources for resources); count: 8; wood: 1 wood for 112 gold; ore: 1 ore for 112 gold
+- anything odd: the game's version; the difficulty: SoD; easy
 
 ## TWN-6-3 — An artifact sold from the backpack after its arrow (T-20): the price shown and paid, the artifact removed (T-20, TWN-MKT-005)
 
@@ -41,11 +43,11 @@ Map file: `E09-batch-6a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: TWN-6-3's backpack; Red's treasury: 
-- screen 3 as it opened: the places shown; the count: 
-- after the right arrow: the places shown; the first place picked with gold: the offer: 
-- after Trade: the gold gained; TWN-6-3's backpack; the places shown: 
-- anything odd: 
+- before: TWN-6-3's backpack; Red's treasury: backpack: Titan's Gladius, Badge of Courage, Crest of Valor, Glyph of Gallantry, Speculum, Spyglass; treasury: 20 wood, 10 mercury, 50 ore, 10 sulfur, 10 crystal, 10 gems, 47000 gold
+- screen 3 as it opened: the places shown; the count: screen: 3 (artifacts sold); places: 18: Titan's Gladius, 19: Badge of Courage, 20: Crest of Valor, 21: Glyph of Gallantry, 22: Speculum; offset: 0; count: 8; buttons: screens 16, 17, 18; trade disabled
+- after the right arrow: the places shown; the first place picked with gold: the offer: places: 18: Badge of Courage, 19: Crest of Valor, 20: Glyph of Gallantry, 21: Speculum, 22: Spyglass; offset: 1; the pair: position 18 (Badge of Courage) for gold; the offer: 1 Badge of Courage for 5500 gold; most: 1; buttons: screens 16, 17, 18; trade enabled
+- after Trade: the gold gained; TWN-6-3's backpack; the places shown: gained: +5500 gold; treasury: 20 wood, 10 mercury, 50 ore, 10 sulfur, 10 crystal, 10 gems, 52500 gold; backpack: Titan's Gladius, Crest of Valor, Glyph of Gallantry, Speculum, Spyglass; places: 18: Titan's Gladius, 19: Crest of Valor, 20: Glyph of Gallantry, 21: Speculum, 22: Spyglass; offset: 1
+- anything odd: TWN-6-3's visit: a town screen; how it closed; the messages: town screen: yes; closed: click; messages: none
 
 ## TWN-6-5 — A garrison hero and no visitor (TD-28): the merchants, the Freelancer's Guild, the Blacksmith, the Ballista Yard and the Marketplace clicked (TD-28, T-28, TWN-MKT-002, TWN-SMT-001)
 
@@ -57,15 +59,15 @@ Map file: `E09-batch-6a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- T1: the visitor and the garrison hero after the move: 
-- T1: the Artifact Merchants clicked: the message; a window: 
-- T1: the Marketplace clicked: the screen; its buttons: 
-- S1: the visitor and the garrison hero after the move: 
-- S1: the Freelancer's Guild clicked: the message; a window: 
-- S1: the Blacksmith clicked: the message; a dialog: 
-- S1: the Ballista Yard clicked: the message; a dialog: 
-- S1: the Marketplace clicked: the screen; its buttons: 
-- anything odd: 
+- T1: the visitor and the garrison hero after the move: visitor: none; garrison hero: TWN-6-3
+- T1: the Artifact Merchants clicked: the message; a window: messages: GENRLTXT:274; after: town
+- T1: the Marketplace clicked: the screen; its buttons: screen: 0 (resources for resources); buttons: screens 17; trade disabled; count: 8
+- S1: the visitor and the garrison hero after the move: visitor: none; garrison hero: TWN-6-5
+- S1: the Freelancer's Guild clicked: the message; a window: messages: GENRLTXT:274; after: town
+- S1: the Blacksmith clicked: the message; a dialog: messages: GENRLTXT:274; after: town
+- S1: the Ballista Yard clicked: the message; a dialog: messages: GENRLTXT:274; after: town
+- S1: the Marketplace clicked: the screen; its buttons: screen: 0 (resources for resources); buttons: screens 17; trade disabled; count: 8
+- anything odd: TWN-6-5's visit: a town screen; how it closed: town screen: yes; closed: click
 
 ## TWN-6-4 — Ring of the Magi sold at 1 Marketplace (§3.4): the price of a combination artifact (HER-ART-008, TWN-MKT-005)
 
@@ -76,6 +78,6 @@ Map file: `E09-batch-6a.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: TWN-6-4's backpack; Blue's treasury: 
-- Ring of the Magi with gold: the offer; the count: 
-- anything odd: 
+- before: TWN-6-4's backpack; Blue's treasury: backpack: Ring of the Magi; treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30800 gold
+- Ring of the Magi with gold: the offer; the count: places: 18: Ring of the Magi, 19: empty, 20: empty, 21: empty, 22: empty; the pair: position 18 (Ring of the Magi) for gold; the offer: 1 Ring of the Magi for 600 gold; count: 1
+- anything odd: TWN-6-4's visit: a town screen; how it closed: town screen: yes; closed: click

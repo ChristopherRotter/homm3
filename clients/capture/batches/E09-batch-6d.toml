@@ -7,9 +7,10 @@
 # [x, y]` a click at a screen pixel with `opens` the same; the boat dialog's `build`. The reads:
 # `town:x,y:spot` the town's boat spot (+0x8, +0x9: `9,11`, `none` for 0xFF), `boat_record:x,y`
 # every boat record on a tile, `boats:used`; the University's dialog (vtable 0x643BD8):
-# `university` the four slots (`Fire Magic: learnable (GENRLTXT:608); …`), its `slot:<n>` (n 0 to 3
-# in the dialog's order) clicked opens the purchase box (`university_buy`), whose `buy` buys and
-# `university:buy` reads the button's state.
+# `university` the four slots (`Fire Magic: learnable (GENRLTXT:608; banner 1)`: each slot's
+# status line hovered), its `slot:fire` (`air`, `water`, `earth`; or `slot:<n>`, n 0 to 3 in the
+# dialog's order) clicked opens the purchase box (`university_buy`), whose `buy` buys (`cancel`
+# closes it) and `university:buy` reads the button's state.
 
 spec = "experiments/specs/E09-batch-6d.toml"
 players = ["Red", "Blue"]
@@ -21,8 +22,8 @@ gold = true
 [[step]]
 encounter = "TWN-6-6"
 hero = "TWN-6-6"
-record = { "before: F's boat spot; the boats; Red's treasury" = ["text:spot: ", "town:10,9:spot", "text:; on (9, 11): ", "boat_record:9,11", "text:; on (11, 11): ", "boat_record:11,11", "text:; in use: ", "boats:used", "text:; treasury: ", "treasury:red"] }
-note = { "the game's version; the difficulty" = ["map_kind", "text:; ", "difficulty"] }
+record = { "before: F's boat spot; the boats; Red's treasury" = ["text:spot: ", "town:10,9:spot", "text:on (9, 11): ", "boat_record:9,11", "text:on (11, 11): ", "boat_record:11,11", "text:in use: ", "boats:used", "text:treasury: ", "treasury:red"] }
+note = { "the game's version; the difficulty" = ["map_kind", "difficulty"] }
 
 [[step]]
 encounter = "TWN-6-6"
@@ -34,7 +35,7 @@ opens = "boat"
 record = { "the first boat: what the Shipyard's click opened; the boats; Red's treasury; F's buildings standing" = ["text:opened: ", "screen"] }
 [[step.actions]]
 click = ["build"]
-record = { "+the first boat: what the Shipyard's click opened; the boats; Red's treasury; F's buildings standing" = ["text:; after Build: ", "screen", "text:; on (9, 11): ", "boat_record:9,11", "text:; on (11, 11): ", "boat_record:11,11", "text:; in use: ", "boats:used", "text:; treasury: ", "treasury:red", "text:; standing: ", "town:10,9:built"] }
+record = { "+the first boat: what the Shipyard's click opened; the boats; Red's treasury; F's buildings standing" = ["text:after Build: ", "screen", "text:on (9, 11): ", "boat_record:9,11", "text:on (11, 11): ", "boat_record:11,11", "text:in use: ", "boats:used", "text:treasury: ", "treasury:red", "text:standing: ", "town:10,9:built"] }
 
 [[step]]
 encounter = "TWN-6-6"
@@ -44,21 +45,21 @@ record = { "F reopened: F's buildings standing; the ship clicked: what opens" = 
 [[step.actions]]
 building = 20
 opens = "nothing"
-record = { "+F reopened: F's buildings standing; the ship clicked: what opens" = ["text:; after the ship's click: ", "screen", "text:; messages: ", "messages"] }
+record = { "+F reopened: F's buildings standing; the ship clicked: what opens" = ["text:after the ship's click: ", "screen", "text:messages: ", "messages"] }
 [[step.actions]]
 pixel = [233, 341]
 opens = "boat"
 record = { "at (233, 341): what opens; after Build: the boats; Red's treasury; F's buildings standing" = ["text:opened: ", "screen"] }
 [[step.actions]]
 click = ["build"]
-record = { "+at (233, 341): what opens; after Build: the boats; Red's treasury; F's buildings standing" = ["text:; after Build: ", "screen", "text:; on (9, 11): ", "boat_record:9,11", "text:; on (11, 11): ", "boat_record:11,11", "text:; in use: ", "boats:used", "text:; treasury: ", "treasury:red", "text:; standing: ", "town:10,9:built"] }
+record = { "+at (233, 341): what opens; after Build: the boats; Red's treasury; F's buildings standing" = ["text:after Build: ", "screen", "text:on (9, 11): ", "boat_record:9,11", "text:on (11, 11): ", "boat_record:11,11", "text:in use: ", "boats:used", "text:treasury: ", "treasury:red", "text:standing: ", "town:10,9:built"] }
 
 # --- TWN-6-7: the Magic University with Fire Magic banned ---------------------------------------------------
 
 [[step]]
 encounter = "TWN-6-7"
 hero = "TWN-6-7"
-record = { "before: TWN-6-7's secondary skills; Red's treasury" = ["text:skills: ", "hero:skills", "text:; treasury: ", "treasury:red"] }
+record = { "before: TWN-6-7's secondary skills; Red's treasury" = ["text:skills: ", "hero:skills", "text:treasury: ", "treasury:red"] }
 
 [[step]]
 encounter = "TWN-6-7"
@@ -72,9 +73,9 @@ opens = "university"
 record = { "the University: the four slots (skill: state, text)" = "university" }
 [[step.actions]]
 click = ["slot:fire"]
-record = { "the Fire Magic slot clicked: what opens; the buy button" = ["text:opened: ", "screen", "text:; buy: ", "university:buy", "text:; messages: ", "messages"] }
+record = { "the Fire Magic slot clicked: what opens; the buy button" = ["text:opened: ", "screen", "text:buy: ", "university:buy", "text:messages: ", "messages"] }
 [[step.actions]]
 click = ["buy"]
-record = { "after the purchase: TWN-6-7's secondary skills; Red's treasury; the four slots" = ["text:skills: ", "hero:skills", "text:; treasury: ", "treasury:red", "text:; screen: ", "screen", "text:; slots: ", "university"] }
+record = { "after the purchase: TWN-6-7's secondary skills; Red's treasury; the four slots" = ["text:skills: ", "hero:skills", "text:treasury: ", "treasury:red", "text:screen: ", "screen", "text:slots: ", "university"] }
 [step.note]
-"TWN-6-7's visit: a town screen; how it closed; the messages" = ["town_screen", "text:; ", "town_screen_closed", "text:; ", "messages"]
+"TWN-6-7's visit: a town screen; how it closed; the messages" = ["text:town screen: ", "town_screen", "text:closed: ", "town_screen_closed", "text:messages: ", "messages"]

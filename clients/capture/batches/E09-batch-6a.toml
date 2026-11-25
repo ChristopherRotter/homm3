@@ -25,15 +25,15 @@ town = [7, 7]
 [[step.actions]]
 building = 14
 opens = "market"
-record = { "2 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:screen: ", "market:screen", "text:; count: ", "market:count"] }
+record = { "2 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:screen: ", "market:screen", "text:count: ", "market:count"] }
 [[step.actions]]
 click = ["give:wood", "want:gold"]
-record = { "+2 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:; wood: ", "market:rate"] }
+record = { "+2 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:wood: ", "market:rate"] }
 [[step.actions]]
 click = ["give:ore", "want:gold"]
-record = { "+2 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:; ore: ", "market:rate"] }
+record = { "+2 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:ore: ", "market:rate"] }
 [step.note]
-"the game's version; the difficulty" = ["map_kind", "text:; ", "difficulty"]
+"the game's version; the difficulty" = ["map_kind", "difficulty"]
 
 # --- the Marketplaces of C1 and C2 ----------------------------------------------------------------------
 
@@ -48,7 +48,7 @@ record = { "the builds in C1 and C2: each town's buildings after" = ["text:C1: "
 encounter = "TWN-6-1"
 town = [31, 7]
 actions = [{ hall = true }, { slot = 14 }, { click = ["build"] }]
-record = { "+the builds in C1 and C2: each town's buildings after" = ["text:; C2: ", "town:31,7:built"] }
+record = { "+the builds in C1 and C2: each town's buildings after" = ["text:C2: ", "town:31,7:built"] }
 
 [[step]]
 encounter = "TWN-6-1"
@@ -56,13 +56,13 @@ town = [7, 7]
 [[step.actions]]
 building = 14
 opens = "market"
-record = { "4 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:screen: ", "market:screen", "text:; count: ", "market:count"] }
+record = { "4 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:screen: ", "market:screen", "text:count: ", "market:count"] }
 [[step.actions]]
 click = ["give:wood", "want:gold"]
-record = { "+4 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:; wood: ", "market:rate"] }
+record = { "+4 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:wood: ", "market:rate"] }
 [[step.actions]]
 click = ["give:ore", "want:gold"]
-record = { "+4 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:; ore: ", "market:rate"] }
+record = { "+4 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:ore: ", "market:rate"] }
 
 # --- the Marketplaces of C3 to C6 -----------------------------------------------------------------------
 
@@ -76,19 +76,19 @@ record = { "the builds in C3 to C6: each town's buildings after" = ["text:C3: ",
 encounter = "TWN-6-1"
 town = [15, 15]
 actions = [{ hall = true }, { slot = 14 }, { click = ["build"] }]
-record = { "+the builds in C3 to C6: each town's buildings after" = ["text:; C4: ", "town:15,15:built"] }
+record = { "+the builds in C3 to C6: each town's buildings after" = ["text:C4: ", "town:15,15:built"] }
 
 [[step]]
 encounter = "TWN-6-1"
 town = [23, 15]
 actions = [{ hall = true }, { slot = 14 }, { click = ["build"] }]
-record = { "+the builds in C3 to C6: each town's buildings after" = ["text:; C5: ", "town:23,15:built"] }
+record = { "+the builds in C3 to C6: each town's buildings after" = ["text:C5: ", "town:23,15:built"] }
 
 [[step]]
 encounter = "TWN-6-1"
 town = [31, 15]
 actions = [{ hall = true }, { slot = 14 }, { click = ["build"] }]
-record = { "+the builds in C3 to C6: each town's buildings after" = ["text:; C6: ", "town:31,15:built", "text:; Red's treasury: ", "treasury:red"] }
+record = { "+the builds in C3 to C6: each town's buildings after" = ["text:C6: ", "town:31,15:built", "text:Red's treasury: ", "treasury:red"] }
 
 [[step]]
 encounter = "TWN-6-1"
@@ -96,20 +96,20 @@ town = [7, 7]
 [[step.actions]]
 building = 14
 opens = "market"
-record = { "8 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:screen: ", "market:screen", "text:; count: ", "market:count"] }
+record = { "8 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:screen: ", "market:screen", "text:count: ", "market:count"] }
 [[step.actions]]
 click = ["give:wood", "want:gold"]
-record = { "+8 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:; wood: ", "market:rate"] }
+record = { "+8 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:wood: ", "market:rate"] }
 [[step.actions]]
 click = ["give:ore", "want:gold"]
-record = { "+8 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:; ore: ", "market:rate"] }
+record = { "+8 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" = ["text:ore: ", "market:rate"] }
 
 # --- TWN-6-3: the sale after the backpack's arrow (T1, Red's count 8) ----------------------------------------
 
 [[step]]
 encounter = "TWN-6-3"
 hero = "TWN-6-3"
-record = { "before: TWN-6-3's backpack; Red's treasury" = ["text:backpack: ", "hero:backpack", "text:; treasury: ", "treasury:red"] }
+record = { "before: TWN-6-3's backpack; Red's treasury" = ["text:backpack: ", "hero:backpack", "text:treasury: ", "treasury:red"] }
 
 [[step]]
 encounter = "TWN-6-3"
@@ -121,18 +121,18 @@ building = 17
 opens = "market"
 [[step.actions]]
 click = ["sell"]
-record = { "screen 3 as it opened: the places shown; the count" = ["text:screen: ", "market:screen", "text:; places: ", "market:places", "text:; offset: ", "market:offset", "text:; count: ", "market:count", "text:; buttons: ", "market:buttons"] }
+record = { "screen 3 as it opened: the places shown; the count" = ["text:screen: ", "market:screen", "text:places: ", "market:places", "text:offset: ", "market:offset", "text:count: ", "market:count", "text:buttons: ", "market:buttons"] }
 [[step.actions]]
 click = ["backpack right"]
-record = { "after the right arrow: the places shown; the first place picked with gold: the offer" = ["text:places: ", "market:places", "text:; offset: ", "market:offset"] }
+record = { "after the right arrow: the places shown; the first place picked with gold: the offer" = ["text:places: ", "market:places", "text:offset: ", "market:offset"] }
 [[step.actions]]
 click = ["position:18", "want:gold"]
-record = { "+after the right arrow: the places shown; the first place picked with gold: the offer" = ["text:; the pair: ", "market:pair", "text:; the offer: ", "market:rate", "text:; most: ", "market:most", "text:; buttons: ", "market:buttons"] }
+record = { "+after the right arrow: the places shown; the first place picked with gold: the offer" = ["text:the pair: ", "market:pair", "text:the offer: ", "market:rate", "text:most: ", "market:most", "text:buttons: ", "market:buttons"] }
 [[step.actions]]
 click = ["trade"]
-record = { "after Trade: the gold gained; TWN-6-3's backpack; the places shown" = ["text:gained: ", "gain", "text:; treasury: ", "treasury:red", "text:; backpack: ", "hero:backpack", "text:; places: ", "market:places", "text:; offset: ", "market:offset"] }
+record = { "after Trade: the gold gained; TWN-6-3's backpack; the places shown" = ["text:gained: ", "gain", "text:treasury: ", "treasury:red", "text:backpack: ", "hero:backpack", "text:places: ", "market:places", "text:offset: ", "market:offset"] }
 [step.note]
-"TWN-6-3's visit: a town screen; how it closed; the messages" = ["town_screen", "text:; ", "town_screen_closed", "text:; ", "messages"]
+"TWN-6-3's visit: a town screen; how it closed; the messages" = ["text:town screen: ", "town_screen", "text:closed: ", "town_screen_closed", "text:messages: ", "messages"]
 
 # --- TWN-6-5: a garrison hero and no visitor (T1, then S1) -------------------------------------------------------
 
@@ -141,15 +141,15 @@ encounter = "TWN-6-5"
 town = [7, 7]
 [[step.actions]]
 hero_in = true
-record = { "T1: the visitor and the garrison hero after the move" = ["text:visitor: ", "town:7,7:visitor", "text:; garrison hero: ", "town:7,7:garrison_hero"] }
+record = { "T1: the visitor and the garrison hero after the move" = ["text:visitor: ", "town:7,7:visitor", "text:garrison hero: ", "town:7,7:garrison_hero"] }
 [[step.actions]]
 building = 17
 opens = "message"
-record = { "T1: the Artifact Merchants clicked: the message; a window" = ["text:messages: ", "messages", "text:; after: ", "screen"] }
+record = { "T1: the Artifact Merchants clicked: the message; a window" = ["text:messages: ", "messages", "text:after: ", "screen"] }
 [[step.actions]]
 building = 14
 opens = "market"
-record = { "T1: the Marketplace clicked: the screen; its buttons" = ["text:", "market:screen", "text:; ", "market:buttons", "text:; count: ", "market:count"] }
+record = { "T1: the Marketplace clicked: the screen; its buttons" = ["text:screen: ", "market:screen", "text:buttons: ", "market:buttons", "text:count: ", "market:count"] }
 
 [[step]]
 encounter = "TWN-6-5"
@@ -158,25 +158,25 @@ walk = [15, 7]
 expect = { question = "none", battle = false }
 [[step.actions]]
 hero_in = true
-record = { "S1: the visitor and the garrison hero after the move" = ["text:visitor: ", "town:15,7:visitor", "text:; garrison hero: ", "town:15,7:garrison_hero"] }
+record = { "S1: the visitor and the garrison hero after the move" = ["text:visitor: ", "town:15,7:visitor", "text:garrison hero: ", "town:15,7:garrison_hero"] }
 [[step.actions]]
 building = 21
 opens = "message"
-record = { "S1: the Freelancer's Guild clicked: the message; a window" = ["text:messages: ", "messages", "text:; after: ", "screen"] }
+record = { "S1: the Freelancer's Guild clicked: the message; a window" = ["text:messages: ", "messages", "text:after: ", "screen"] }
 [[step.actions]]
 building = 16
 opens = "message"
-record = { "S1: the Blacksmith clicked: the message; a dialog" = ["text:messages: ", "messages", "text:; after: ", "screen"] }
+record = { "S1: the Blacksmith clicked: the message; a dialog" = ["text:messages: ", "messages", "text:after: ", "screen"] }
 [[step.actions]]
 building = 22
 opens = "message"
-record = { "S1: the Ballista Yard clicked: the message; a dialog" = ["text:messages: ", "messages", "text:; after: ", "screen"] }
+record = { "S1: the Ballista Yard clicked: the message; a dialog" = ["text:messages: ", "messages", "text:after: ", "screen"] }
 [[step.actions]]
 building = 14
 opens = "market"
-record = { "S1: the Marketplace clicked: the screen; its buttons" = ["text:", "market:screen", "text:; ", "market:buttons", "text:; count: ", "market:count"] }
+record = { "S1: the Marketplace clicked: the screen; its buttons" = ["text:screen: ", "market:screen", "text:buttons: ", "market:buttons", "text:count: ", "market:count"] }
 [step.note]
-"TWN-6-5's visit: a town screen; how it closed" = ["town_screen", "text:; ", "town_screen_closed"]
+"TWN-6-5's visit: a town screen; how it closed" = ["text:town screen: ", "town_screen", "text:closed: ", "town_screen_closed"]
 
 [[step]]
 end_turn = true
@@ -186,7 +186,7 @@ end_turn = true
 [[step]]
 encounter = "TWN-6-4"
 hero = "TWN-6-4"
-record = { "before: TWN-6-4's backpack; Blue's treasury" = ["text:backpack: ", "hero:backpack", "text:; treasury: ", "treasury:blue"] }
+record = { "before: TWN-6-4's backpack; Blue's treasury" = ["text:backpack: ", "hero:backpack", "text:treasury: ", "treasury:blue"] }
 
 [[step]]
 encounter = "TWN-6-4"
@@ -200,6 +200,6 @@ opens = "market"
 click = ["sell"]
 [[step.actions]]
 click = ["position:18", "want:gold"]
-record = { "Ring of the Magi with gold: the offer; the count" = ["text:places: ", "market:places", "text:; the pair: ", "market:pair", "text:; the offer: ", "market:rate", "text:; count: ", "market:count"] }
+record = { "Ring of the Magi with gold: the offer; the count" = ["text:places: ", "market:places", "text:the pair: ", "market:pair", "text:the offer: ", "market:rate", "text:count: ", "market:count"] }
 [step.note]
-"TWN-6-4's visit: a town screen; how it closed" = ["town_screen", "text:; ", "town_screen_closed"]
+"TWN-6-4's visit: a town screen; how it closed" = ["text:town screen: ", "town_screen", "text:closed: ", "town_screen_closed"]

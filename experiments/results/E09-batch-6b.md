@@ -1,5 +1,7 @@
 # E09 batch TWN-6b — results
 
+> Played by the capture harness on 2026-11-25 (`clients/capture/h3adv.py batch clients/capture/batches/E09-batch-6b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
 Map file: `E09-batch-6b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `011092b2`.** The map's description in the scenario list starts with "Stamp 011092b2.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -26,9 +28,9 @@ Map file: `E09-batch-6b.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: the teams; Red's treasury; TWN-6-2's worn artifacts and backpack; the stock: 
-- at B: the Marketplace clicked: what opens: 
-- the merchants clicked: the screen; the count; the entries: 
-- the first entry with gold: the price; the last entry with gold: the price: 
-- after Trade: Red's treasury; TWN-6-2's worn artifacts and backpack; the entries; the stock: 
-- anything odd: 
+- before: the teams; Red's treasury; TWN-6-2's worn artifacts and backpack; the stock: teams: red 0, blue 0, tan 1, green 0, orange 0, purple 0, teal 0, pink 0; treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30600 gold; worn: 16: Catapult; backpack: none; stock: Badge of Courage (treasure), Bird of Perception (treasure), Bow of Elven Cherrywood (treasure), Dragon Wing Tabard (minor), Loins of Legion (minor), Buckler of the Gnoll King (minor), Orb of Silt (major)
+- at B: the Marketplace clicked: what opens: after: town; messages: none
+- the merchants clicked: the screen; the count; the entries: screen: 2 (artifacts bought); count: 0; entries: Badge of Courage, Bird of Perception, Bow of Elven Cherrywood, Dragon Wing Tabard, Loins of Legion, Buckler of the Gnoll King, Orb of Silt; buttons: screens 16, 17, 19; trade disabled
+- the first entry with gold: the price; the last entry with gold: the price: first: gold for entry 0 (Badge of Courage); price: 0 gold for 1 Badge of Courage; most: 0; amount: 1; last: gold for entry 6 (Orb of Silt); price: 0 gold for 1 Orb of Silt; most: 0; amount: 1; screens 16, 17, 19; trade enabled
+- after Trade: Red's treasury; TWN-6-2's worn artifacts and backpack; the entries; the stock: treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30600 gold; gained: none; worn: 9: Orb of Silt, 16: Catapult; backpack: none; entries: Badge of Courage, Bird of Perception, Bow of Elven Cherrywood, Dragon Wing Tabard, Loins of Legion, Buckler of the Gnoll King, empty; stock: Badge of Courage (treasure), Bird of Perception (treasure), Bow of Elven Cherrywood (treasure), Dragon Wing Tabard (minor), Loins of Legion (minor), Buckler of the Gnoll King (minor), empty; questions: none; messages: none
+- anything odd: the game's version; the difficulty: SoD; easy; TWN-6-2's visit: a town screen; how it closed; the town's visitor: town screen: yes; closed: click; visitor: none

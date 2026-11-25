@@ -1,5 +1,7 @@
 # E09 batch TWN-6c — results
 
+> Played by the capture harness on 2026-11-25 (`clients/capture/h3adv.py batch clients/capture/batches/E09-batch-6c.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
 Map file: `E09-batch-6c.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `182c5f36`.** The map's description in the scenario list starts with "Stamp 182c5f36.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -23,7 +25,7 @@ Map file: `E09-batch-6c.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- day 1: the seven (name; class): 
-- day 1: the first entry with gold: the price; after Trade: the entries; Red's treasury; TWN-6-8's artifacts: 
-- day 29: the date; the seven (name; class): 
-- anything odd: 
+- day 1: the seven (name; class): Pendant of Free Will (treasure), Dragonbone Greaves (treasure), Speculum (treasure), Ring of Life (minor), Boots of Speed (minor), Rib Cage (minor), Shackles of War (major); classes: 3 treasures, 3 minors, 1 major; the date: month 1, week 1, day 1
+- day 1: the first entry with gold: the price; after Trade: the entries; Red's treasury; TWN-6-8's artifacts: the pair: gold for entry 0 (Pendant of Free Will); price: 5000 gold for 1 Pendant of Free Will; count: 1; after Trade: entries: empty, Dragonbone Greaves, Speculum, Ring of Life, Boots of Speed, Rib Cage, Shackles of War; stock: empty, Dragonbone Greaves (treasure), Speculum (treasure), Ring of Life (minor), Boots of Speed (minor), Rib Cage (minor), Shackles of War (major); treasury: 20 wood, 10 mercury, 20 ore, 10 sulfur, 10 crystal, 10 gems, 95000 gold; worn: 2: Pendant of Free Will, 16: Catapult; backpack: none
+- day 29: the date; the seven (name; class): month 2, week 1, day 1; Cards of Prophecy (treasure), Pendant of Life (treasure), Pendant of Dispassion (treasure), Boots of Speed (minor), Armor of Wonder (minor), Ring of Life (minor), Breastplate of Brimstone (major); classes: 3 treasures, 3 minors, 1 major
+- anything odd: the game's version; the difficulty; the Black Market records: SoD; easy; 0

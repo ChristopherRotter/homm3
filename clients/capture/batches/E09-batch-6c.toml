@@ -14,8 +14,8 @@ gold = true
 [[step]]
 encounter = "TWN-6-8"
 hero = "TWN-6-8"
-record = { "day 1: the seven (name; class)" = ["stock", "text:; classes: ", "stock:classes", "text:; the date: ", "date"] }
-note = { "the game's version; the difficulty; the Black Market records" = ["map_kind", "text:; ", "difficulty", "text:; ", "black_markets"] }
+record = { "day 1: the seven (name; class)" = ["stock", "text:classes: ", "stock:classes", "text:the date: ", "date"] }
+note = { "the game's version; the difficulty; the Black Market records" = ["map_kind", "difficulty", "black_markets"] }
 
 [[step]]
 encounter = "TWN-6-8"
@@ -28,10 +28,10 @@ building = 17
 opens = "market"
 [[step.actions]]
 click = ["entry:0", "pay:gold"]
-record = { "day 1: the first entry with gold: the price; after Trade: the entries; Red's treasury; TWN-6-8's artifacts" = ["text:", "market:pair", "text:, ", "market:rate", "text:; count: ", "market:count"] }
+record = { "day 1: the first entry with gold: the price; after Trade: the entries; Red's treasury; TWN-6-8's artifacts" = ["text:the pair: ", "market:pair", "text:price: ", "market:rate", "text:count: ", "market:count"] }
 [[step.actions]]
 click = ["trade"]
-record = { "+day 1: the first entry with gold: the price; after Trade: the entries; Red's treasury; TWN-6-8's artifacts" = ["text:; after Trade: entries: ", "market:entries", "text:; stock: ", "stock", "text:; treasury: ", "treasury:red", "text:; worn: ", "hero:positions", "text:; backpack: ", "hero:backpack"] }
+record = { "+day 1: the first entry with gold: the price; after Trade: the entries; Red's treasury; TWN-6-8's artifacts" = ["text:after Trade: entries: ", "market:entries", "text:stock: ", "stock", "text:treasury: ", "treasury:red", "text:worn: ", "hero:positions", "text:backpack: ", "hero:backpack"] }
 
 [[step]]
 end_turn = true
@@ -40,4 +40,4 @@ to_day = 29
 [[step]]
 encounter = "TWN-6-8"
 hero = "TWN-6-8"
-record = { "day 29: the date; the seven (name; class)" = ["date", "text:; ", "stock", "text:; classes: ", "stock:classes"] }
+record = { "day 29: the date; the seven (name; class)" = ["date", "stock", "text:classes: ", "stock:classes"] }

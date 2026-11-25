@@ -1,5 +1,7 @@
 # E09 batch TWN-6d — results
 
+> Played by the capture harness on 2026-11-25 (`clients/capture/h3adv.py batch clients/capture/batches/E09-batch-6d.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
 Map file: `E09-batch-6d.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `d22528b3`.** The map's description in the scenario list starts with "Stamp d22528b3.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -24,11 +26,11 @@ Map file: `E09-batch-6d.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: F's boat spot; the boats; Red's treasury: 
-- the first boat: what the Shipyard's click opened; the boats; Red's treasury; F's buildings standing: 
-- F reopened: F's buildings standing; the ship clicked: what opens: 
-- at (233, 341): what opens; after Build: the boats; Red's treasury; F's buildings standing: 
-- anything odd: 
+- before: F's boat spot; the boats; Red's treasury: spot: 9,11; on (9, 11): none; on (11, 11): none; in use: 0; treasury: 30 wood, 15 mercury, 30 ore, 15 sulfur, 15 crystal, 15 gems, 30700 gold
+- the first boat: what the Shipyard's click opened; the boats; Red's treasury; F's buildings standing: opened: boat; after Build: town; on (9, 11): tile 9,11,0; in use 1; type 1; facing 2; owner red; captain none; aboard 0; on (11, 11): none; in use: 1; treasury: 40 wood, 10 mercury, 50 ore, 10 sulfur, 10 crystal, 10 gems, 49000 gold; standing: 6, 10, 20, 23
+- F reopened: F's buildings standing; the ship clicked: what opens: standing: 6, 10, 20, 23; after the ship's click: town; messages: none
+- at (233, 341): what opens; after Build: the boats; Red's treasury; F's buildings standing: opened: boat; after Build: town; on (9, 11): tile 9,11,0; in use 1; type 1; facing 2; owner red; captain none; aboard 0 | tile 9,11,0; in use 1; type 1; facing 2; owner red; captain none; aboard 0; on (11, 11): none; in use: 2; treasury: 30 wood, 10 mercury, 50 ore, 10 sulfur, 10 crystal, 10 gems, 48000 gold; standing: 6, 10, 20, 23
+- anything odd: the game's version; the difficulty: SoD; easy
 
 ## TWN-6-7 — The Conflux's Magic University on a map banning Fire Magic (TD-30, T-23): the four slots, a school bought (TD-30, T-23, TWN-UNI-001)
 
@@ -40,8 +42,8 @@ Map file: `E09-batch-6d.h3m`. Fill in the blanks below and keep this file; an ag
 
 **Record**
 
-- before: TWN-6-7's secondary skills; Red's treasury: 
-- the University: the four slots (skill: state, text): 
-- the Fire Magic slot clicked: what opens; the buy button: 
-- after the purchase: TWN-6-7's secondary skills; Red's treasury; the four slots: 
-- anything odd: 
+- before: TWN-6-7's secondary skills; Red's treasury: skills: Wisdom basic, Air Magic basic; treasury: 30 wood, 10 mercury, 50 ore, 10 sulfur, 10 crystal, 10 gems, 48000 gold
+- the University: the four slots (skill: state, text): Fire Magic: learnable (GENRLTXT:608; banner 1); Air Magic: known (GENRLTXT:605; banner 0); Water Magic: learnable (GENRLTXT:608; banner 1); Earth Magic: learnable (GENRLTXT:608; banner 1)
+- the Fire Magic slot clicked: what opens; the buy button: opened: university_buy; buy: enabled (state 0x6); messages: none
+- after the purchase: TWN-6-7's secondary skills; Red's treasury; the four slots: skills: Wisdom basic, Air Magic basic, Fire Magic basic; treasury: 50 wood, 10 mercury, 50 ore, 10 sulfur, 10 crystal, 10 gems, 3000 gold; screen: university; slots: Fire Magic: known (GENRLTXT:605; banner 0); Air Magic: known (GENRLTXT:605; banner 0); Water Magic: learnable (GENRLTXT:608; banner 1); Earth Magic: learnable (GENRLTXT:608; banner 1)
+- anything odd: TWN-6-7's visit: a town screen; how it closed; the messages: town screen: yes; closed: click; messages: none

@@ -15,8 +15,8 @@ gold = true
 [[step]]
 encounter = "TWN-6-2"
 hero = "TWN-6-2"
-record = { "before: the teams; Red's treasury; TWN-6-2's worn artifacts and backpack; the stock" = ["text:teams: ", "teams", "text:; treasury: ", "treasury:red", "text:; worn: ", "hero:positions", "text:; backpack: ", "hero:backpack", "text:; stock: ", "stock"] }
-note = { "the game's version; the difficulty" = ["map_kind", "text:; ", "difficulty"] }
+record = { "before: the teams; Red's treasury; TWN-6-2's worn artifacts and backpack; the stock" = ["text:teams: ", "teams", "text:treasury: ", "treasury:red", "text:worn: ", "hero:positions", "text:backpack: ", "hero:backpack", "text:stock: ", "stock"] }
+note = { "the game's version; the difficulty" = ["map_kind", "difficulty"] }
 
 [[step]]
 encounter = "TWN-6-2"
@@ -26,19 +26,19 @@ expect = { question = "none", battle = false }
 [[step.actions]]
 building = 14
 opens = "nothing"
-record = { "at B: the Marketplace clicked: what opens" = ["text:after: ", "screen", "text:; messages: ", "messages"] }
+record = { "at B: the Marketplace clicked: what opens" = ["text:after: ", "screen", "text:messages: ", "messages"] }
 [[step.actions]]
 building = 17
 opens = "market"
-record = { "the merchants clicked: the screen; the count; the entries" = ["text:", "market:screen", "text:; count: ", "market:count", "text:; entries: ", "market:entries", "text:; buttons: ", "market:buttons"] }
+record = { "the merchants clicked: the screen; the count; the entries" = ["text:screen: ", "market:screen", "text:count: ", "market:count", "text:entries: ", "market:entries", "text:buttons: ", "market:buttons"] }
 [[step.actions]]
 click = ["entry:0", "pay:gold"]
-record = { "the first entry with gold: the price; the last entry with gold: the price" = ["text:first: ", "market:pair", "text:, ", "market:rate", "text:, most ", "market:most", "text:, amount ", "market:amount"] }
+record = { "the first entry with gold: the price; the last entry with gold: the price" = ["text:first: ", "market:pair", "text:price: ", "market:rate", "text:most: ", "market:most", "text:amount: ", "market:amount"] }
 [[step.actions]]
 click = ["entry:6", "pay:gold"]
-record = { "+the first entry with gold: the price; the last entry with gold: the price" = ["text:; last: ", "market:pair", "text:, ", "market:rate", "text:, most ", "market:most", "text:, amount ", "market:amount", "text:; ", "market:buttons"] }
+record = { "+the first entry with gold: the price; the last entry with gold: the price" = ["text:last: ", "market:pair", "text:price: ", "market:rate", "text:most: ", "market:most", "text:amount: ", "market:amount", "market:buttons"] }
 [[step.actions]]
 click = ["trade"]
-record = { "after Trade: Red's treasury; TWN-6-2's worn artifacts and backpack; the entries; the stock" = ["text:treasury: ", "treasury:red", "text:; gained: ", "gain", "text:; worn: ", "hero:positions", "text:; backpack: ", "hero:backpack", "text:; entries: ", "market:entries", "text:; stock: ", "stock", "text:; questions: ", "questions", "text:; messages: ", "messages"] }
+record = { "after Trade: Red's treasury; TWN-6-2's worn artifacts and backpack; the entries; the stock" = ["text:treasury: ", "treasury:red", "text:gained: ", "gain", "text:worn: ", "hero:positions", "text:backpack: ", "hero:backpack", "text:entries: ", "market:entries", "text:stock: ", "stock", "text:questions: ", "questions", "text:messages: ", "messages"] }
 [step.note]
-"TWN-6-2's visit: a town screen; how it closed; the town's visitor" = ["town_screen", "text:; ", "town_screen_closed", "text:; ", "town:23,7:visitor"]
+"TWN-6-2's visit: a town screen; how it closed; the town's visitor" = ["text:town screen: ", "town_screen", "text:closed: ", "town_screen_closed", "text:visitor: ", "town:23,7:visitor"]

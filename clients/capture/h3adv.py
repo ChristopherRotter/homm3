@@ -2290,6 +2290,8 @@ MARKET_ITEMS = {"give": 28, "pay": 28, "want": 63, "entry": 63, "player": 70, "s
 # E09 T54 (batch TWN-6; survey docs/rules/surveys/E09-trades.md §2.4): screen 3, the artifacts
 # sold: `sell` its button 19 (from screen 2), `position:<n>` its place n's frame 107 + n (0 to 17
 # the worn positions, 18 to 22 the backpack's five places), the backpack's arrows 130 and 131.
+# Observed under Wine (TWN-6-3, six artifacts): 131, the right one, moves the offset 0x6AAA70
+# from 0 to 1 (the places show the backpack's entries 1 to 5), as the hero screen's right arrow.
 MARKET_ITEMS.update({"sell": 19, "position": 107, "backpack left": 130, "backpack right": 131})
 SCREEN_ITEMS["market"] = MARKET_ITEMS
 MARKET_SCREEN_BUTTONS = {"resources": 0, "transfer": 1, "artifacts": 2, "sell": 3,
@@ -2328,6 +2330,25 @@ HILL_FORT_STATES = {0: "no upgrade", 1: "affordable", 2: "not affordable"}
 # The hire dialog's creatures (E08 T129b; a War Machine Factory offers three): the n-th's
 # portrait frame 538 + n selects it (observed).
 SCREEN_ITEMS["hire"]["creature"] = 538
+# E09 T54 (batch TWN-6's TWN-6-7; survey docs/rules/surveys/E09-trades.md §6.3, §6.4): the Magic
+# University's dialog (university_dialog 0x5EF500, vtable 0x643BD8), read live under Wine at a
+# Conflux. Its slot k (0 to 3: Fire, Air, Water, Earth Magic) is the skill's picture 104 + 3k
+# (secskill.def, frame 3 x skill + 3), the banners under its name and its `Basic` 105 + 3k and
+# 106 + 3k (frame 1 green: learnable; 0 gold: disabled), close 116 (the check mark), the status
+# line 126 (a hovered slot's state: GENRLTXT 605 known, 606 cannot learn, 607 no more skills, 608
+# learnable with its 2000). A learnable slot's click shows the purchase box in the same dialog
+# (kind `university_buy`: its background 117 shown, the slots' 100 hidden): the skill's name 118,
+# picture 119, `Basic` 120, the tuition 121 (GENRLTXT 609), the gold's picture 122 and 123, buy
+# 124 (hovered GENRLTXT 610; state 0x6, 0x26 below 2000 gold: pressed, nothing happens) and
+# cancel 125 (GENRLTXT 258). A purchase or a cancel hides the box; the slots are evaluated again.
+UNIVERSITY_VTABLE, UNIVERSITY_BOX, UNIVERSITY_STATUS = 0x643BD8, 117, 126
+UNIVERSITY_SLOT, UNIVERSITY_STEP, UNIVERSITY_BANNER, UNIVERSITY_BUY = 104, 3, 105, 124
+UNIVERSITY_SCHOOLS = {"fire": 14, "air": 15, "water": 16, "earth": 17}  # h3mem.SKILLS' ids
+UNIVERSITY_STATES = {"GENRLTXT:605": "known", "GENRLTXT:606": "cannot learn",
+                     "GENRLTXT:607": "no more skills", "GENRLTXT:608": "learnable"}
+SCREEN_KINDS[UNIVERSITY_VTABLE] = "university"
+SCREEN_ITEMS["university"] = {"slot": UNIVERSITY_SLOT, "close": 116}
+SCREEN_ITEMS["university_buy"] = {"buy": UNIVERSITY_BUY, "cancel": 125}
 
 
 # A message box's pictures by their DEF (E08 T57; observed at a Treasure Chest under Wine): a
@@ -2455,9 +2476,13 @@ def choice_sides(mem):
 
 
 def screen_kind(mem):
-    """The kind of the topmost dialog (SCREEN_KINDS), `other` for an unknown one, None for none."""
+    """The kind of the topmost dialog (SCREEN_KINDS), `other` for an unknown one, None for none;
+    since E09 T54 the University's purchase box `university_buy` (its dialog's item 117 shown)."""
     shown = mem.dialog()
-    return SCREEN_KINDS.get(shown["vtable"], "other") if shown else None
+    kind = SCREEN_KINDS.get(shown["vtable"], "other") if shown else None
+    if kind == "university" and (item_state(mem, UNIVERSITY_BOX) or 0) & SHOWN:
+        return "university_buy"
+    return kind
 
 
 def hero_index(mem, pointer):
@@ -2484,6 +2509,15 @@ def item_id(mem, kind, name, heroes):
         raise ValueError(f"no item `{name}` on the {kind} screen ({', '.join(items)})")
     # E08 T129b: the Altar's parts by their steps (ALTAR_STEPS), its `all` the screen's own.
     step = ALTAR_STEPS.get(part, 1) if kind == "altar" else 1
+    step = UNIVERSITY_STEP if (kind, part) == ("university", "slot") else step  # E09 T54
+    if kind == "university" and part == "slot" and arg in UNIVERSITY_SCHOOLS:
+        # E09 T54 (batch TWN-6's TWN-6-7): `slot:fire` the slot whose picture shows the school.
+        found = [i["id"] for i in mem.dialog_items() if i["id"] in range(
+            UNIVERSITY_SLOT, UNIVERSITY_SLOT + 4 * step, step)
+            and (i["frame"] - 3) // 3 == UNIVERSITY_SCHOOLS[arg]]
+        if not found:
+            raise ValueError(f"`{name}`: no slot of the University shows {arg} magic")
+        return found[0]
     if not arg:
         if kind == "altar" and part == "all" and (mem.altar() or {}).get("screen") == "creatures":
             return ALTAR_CREATURES_ALL
@@ -2822,7 +2856,18 @@ def run_actions(game, mem, step_hero, actions, level_up="left"):
                 # not clicked (a click on it opens the creature's window, as a player's second).
                 obs.setdefault("selected_already", []).append(name)
                 continue
+            treasury = mem.player(mem.current_player())["resources"]
             click_item(game, mem, name, heroes)
+            if (was, name) == ("boat", "build") and screen_kind(mem) == "town":
+                # E09 T54 (batch TWN-6's TWN-6-6, observed under Wine: the first run read the
+                # treasury untouched): the town's Shipyard shows the ship's build before it takes
+                # the price (survey E09-trades.md §5.2), so the payment is awaited (at most
+                # BOAT_PAYMENT seconds: none comes when the game takes nothing).
+                end = time.monotonic() + BOAT_PAYMENT
+                while time.monotonic() < end and \
+                        mem.player(mem.current_player())["resources"] == treasury:
+                    time.sleep(0.1)
+                quiet_screen(game)
             if was == "market" and name in MARKET_SCREEN_BUTTONS:
                 market_screen_changed(mem, name)  # E08 T129a: another screen's dialog
             pass_dialogs(game, mem, obs, action.get("answer"), heroes, chosen)
@@ -2879,6 +2924,10 @@ def run_actions(game, mem, step_hero, actions, level_up="left"):
             if action["slider"] != "max":
                 raise ValueError(f"`slider = {action['slider']!r}`: only \"max\"")
             slider_max(game, mem)
+        reads = observations([*action.get("record", {}).values(),
+                              *action.get("note", {}).values()])
+        if "university" in reads and screen_kind(mem) == "university":
+            obs["university"] = university_slots(game, mem)  # E09 T54: hovered, so read here
         obs["screen"] = screen_kind(mem)
         obs["after"] = snapshot(mem, step_hero)
         # E08 T110 (batch E12a's E12-3): a `row:<table>` field adds a table row (record_value).
@@ -3004,6 +3053,7 @@ def item_text(mem, item):
 # screen kind it waits for (`nothing`: the town screen still shows OPENS_NOTHING seconds later).
 TOWN_OPENS = ("hire", "market", "message", "boat", "university", "nothing")
 OPENS_NOTHING = 1.5
+BOAT_PAYMENT = 8.0  # E09 T54: the longest wait for a town's boat's price (run_actions)
 
 
 def open_building(game, mem, building, opens="hire"):
@@ -3106,7 +3156,8 @@ def open_tavern(game, mem):
 
 # E09 T34: each screen's status line (its text item) for `hover`, and the tables its texts come
 # from before h3lod's (the tavern's: TvrnInfo.txt, tavern_dialog_hint's 0x6A5E40 to 0x6A5E48).
-STATUS_ITEMS = {"tavern": TAVERN_STATUS, "town": TOWN_STATUS}
+STATUS_ITEMS = {"tavern": TAVERN_STATUS, "town": TOWN_STATUS,
+                "university": UNIVERSITY_STATUS, "university_buy": UNIVERSITY_STATUS}  # E09 T54
 STATUS_TABLES = {"tavern": ("TVRNINFO.TXT",)}
 
 
@@ -3138,6 +3189,37 @@ def hover_status(game, mem, name, limit=5.0):
         if hits := h3lod.matches(name, text):
             return f"{name.split('.')[0]}:{hits[0]}"
     return h3lod.identify(text) or f"[other: {len(text)} characters]"
+
+
+def university_slots(game, mem):
+    """E09 T54 (batch TWN-6's TWN-6-7): the University's four slots as shown, each `Fire Magic:
+    learnable (GENRLTXT:608; banner 1)`: the school its picture shows (frame 3 x skill + 3), the
+    state its hovered status line gives (hover_status: the record the text was written from,
+    UNIVERSITY_STATES; ADR-0009: never the text) and its banners' frame (1 learnable, 0 not)."""
+    items = {i["id"]: i for i in mem.dialog_items()}
+    slots = []
+    for k in range(4):
+        at = UNIVERSITY_SLOT + UNIVERSITY_STEP * k
+        record = hover_status(game, mem, f"slot:{k}")
+        banners = sorted({items[at + j]["frame"] for j in (1, 2)})
+        slots.append(f"{h3mem.SKILLS[(items[at]['frame'] - 3) // 3]}: "
+                     f"{UNIVERSITY_STATES.get(record, 'other')} ({record}; banner "
+                     f"{'/'.join(map(str, banners))})")
+    return "; ".join(slots)
+
+
+def university_value(mem, what, obs):
+    """E09 T54 (batch TWN-6's TWN-6-7): `university` the four slots an action's record read
+    (university_slots, read in run_actions while the dialog shows: `no University` without one);
+    `university:buy` the purchase box's buy button (`enabled (state 0x6)`, `disabled (state
+    0x26)`; `no purchase box`). None when `what` is neither."""
+    if what == "university":
+        return obs.get("university") or "no University"
+    if what == "university:buy":
+        if screen_kind(mem) != "university_buy":
+            return "no purchase box"
+        return recruit_text(item_state(mem, UNIVERSITY_BUY))
+    return None
 
 
 def def_name(mem, item):
@@ -3299,10 +3381,11 @@ def town_step(game, mem, entrance, actions):
 
 # E09 T34: what a town screen's actions may leave open, closed in this order before the town
 # screen (a building's dialog by its Cancel, the hall by its close: nothing built; the guild
-# window, then the tavern dialog: nothing hired); since E09 T54 the trade window by its OK and the
-# boat dialog by its Cancel.
+# window, then the tavern dialog: nothing hired); since E09 T54 the trade window by its OK, the
+# boat dialog by its Cancel and the University's purchase box by its cancel, then its dialog.
 CLOSE_AFTER = (("guild", "close"), ("tavern", "close"), ("build", "cancel"), ("hall", "close"),
-               ("hire", "close"), ("market", "close"), ("boat", "cancel"))
+               ("hire", "close"), ("market", "close"), ("boat", "cancel"),
+               ("university_buy", "cancel"), ("university", "close"))
 
 
 def close_left(game, mem, index):
@@ -4838,6 +4921,8 @@ def value(obs, what, mem):
         return draws_text(obs, what)  # E09 T23 (batch TWN-3); E09 T34 the start's
     if (got := tavern_value(mem, what, obs)) is not None:
         return got  # E09 T34 (batch TWN-4)
+    if (got := university_value(mem, what, obs)) is not None:
+        return got  # E09 T54 (batch TWN-6)
     if what == "kinds":
         # E09 T23 (batch TWN-3): the week's and the month's kinds and creatures as the game holds
         # them (week_kind 0x697750, week_creature 0x6983FC, month_kind 0x698834, month_creature
