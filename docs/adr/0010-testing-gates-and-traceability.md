@@ -26,3 +26,8 @@ Testing cannot be forgotten without a failing build. Cost: more ceremony per cha
 ## Alternatives considered
 
 Coverage target without traceability (coverage can be satisfied by meaningless tests); traceability without coverage (misses untested branches); convention-only checklists (agents forget).
+
+## Revision history
+
+- 2026-09-30: Initial version.
+- 2026-11-25: Point 1 unchanged as a gate: CI runs `cargo xtask verify` as parallel jobs, each `--only <its steps>`, whose lists together name every step once (a test of xtask keeps them so); every CI job stops at 60 minutes (user; `05-testing.md`, "CI").
