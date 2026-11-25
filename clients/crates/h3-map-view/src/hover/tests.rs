@@ -686,6 +686,7 @@ fn which_items_take_the_mouse() {
     let on = Buttons {
         move_hero: false,
         next_hero: true,
+        left: false,
     };
     // Disabled on one level, enabled on two; the quest log takes it, disabled or not.
     assert!(!takes(id::UNDERGROUND, &k, on, 1));
@@ -751,6 +752,7 @@ fn a_stills_parked_hint() {
     live.buttons = Some(Buttons {
         move_hero: true,
         next_hero: true,
+        left: false,
     });
     assert_eq!(parked_hint(&l, &live, 1, [695, 276]), Hint::Panel(6));
 }

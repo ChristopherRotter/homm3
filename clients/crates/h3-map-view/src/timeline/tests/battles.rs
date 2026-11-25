@@ -190,6 +190,53 @@ fn the_switch_fades_the_map_out_the_battle_in_and_back() {
 }
 
 #[test]
+fn a_battle_puts_the_hero_on_its_tile_until_the_map_is_back() {
+    // E24 M5 T1a (design §5.22): `adventure_hero_stop` at the battle's start draws the hero on its
+    // tile (no pass 9 blend) in the screen the map's fade out starts from; the map comes back
+    // with it there and the mouse hidden, and the fade in's end lifts it again, the mouse shown.
+    let l = run_to("battle-won", 99);
+    assert!(l.drawn().lifted.is_none());
+    let l = run_to("battle-won", 100);
+    assert!(l.drawn().hero.is_some() && l.drawn().lifted.is_none());
+    let before = l.switching.as_ref().map(|s| s.before.lifted);
+    assert_eq!(before, Some(None));
+    for t in [710, 760] {
+        let l = run_to("battle-won", t);
+        assert!(l.drawn().lifted.is_none() && !l.cursor().shown, "{t}");
+    }
+    // At 810 the monster's dissolve starts from the view with the hero lifted again.
+    let l = run_to("battle-won", 810);
+    let before = l.dissolving.as_ref().map(|d| d.before.lifted.is_some());
+    assert_eq!(before, Some(true));
+    // A mine's guards: the view drawn at the question's close, then the objects stepped (the
+    // drawn steps as before, memory's one more).
+    let l = run_to("battle-mine", 1060);
+    let early = run_to("battle-mine", 1059);
+    assert!(l.drawn().lifted.is_none());
+    assert_eq!(l.drawn().frames, early.drawn().frames);
+    assert_eq!((early.state(1059).objects, l.state(1060).objects), (0, 1));
+    let l = run_to("battle-mine", 1810);
+    assert!(l.drawn().lifted.is_some() && l.cursor().shown);
+}
+
+#[test]
+fn a_retreat_keeps_sleep_and_cast_until_the_next_choice() {
+    // E24 M5 T1a (design §5.22): `battle-retreat` at 810 the view drawn with the hero lifted, then
+    // it leaves; sleep and cast a spell drawn as its selection left them until the town is
+    // chosen at 1330.
+    let l = run_to("battle-retreat", 810);
+    let before = l.dissolving.as_ref().map(|d| d.before.lifted.is_some());
+    assert_eq!(before, Some(true));
+    assert!(l.buttons().left);
+    let off = |l: &Loop| panels::disabled(&l.kingdom, l.buttons(), 1);
+    assert!(off(&l).contains(&(panels::id::SLEEP, false)));
+    assert!(off(&l).contains(&(panels::id::CAST, false)));
+    // The next hero chosen at the dissolve's end: the buttons as its selection's.
+    let l = run_to("battle-retreat", 1330);
+    assert!(!l.buttons().left && matches!(l.kingdom.selected, Selected::Hero(_)));
+}
+
+#[test]
 fn the_host_closes_the_battle_and_nothing_else_counts_meanwhile() {
     // The host's close as Enter's release does; a step during the fade and a pointer during the
     // battle do nothing but move the mouse; the close outside a battle nothing.
@@ -270,6 +317,9 @@ fn a_retreat_s_hero_leaves_and_the_next_is_chosen() {
     })];
     let l = run_start(&start, &actions, 1330);
     assert_eq!(l.kingdom.selected, Selected::Town(0));
+    // A town chosen disables sleep and cast a spell again (E24 M5 T1a).
+    let off = panels::disabled(&l.kingdom, l.buttons(), 1);
+    assert!(off.contains(&(panels::id::SLEEP, true)) && off.contains(&(panels::id::CAST, true)));
     start.chosen.towns.clear();
     let l = run_start(&start, &actions, 1330);
     assert_eq!(l.kingdom.selected, Selected::None);

@@ -68,7 +68,8 @@ pub mod id {
 
 /// What the dialog's items show for `live` on a map of `levels` levels with the view on level
 /// `z` (design §4.1): the underground disabled on one level and its DEF by `z`; the quest log
-/// disabled without a quest; sleep and cast a spell disabled without a hero selected, sleep's
+/// disabled without a quest; sleep and cast a spell disabled without a hero selected (but as
+/// [`Buttons::left`] keeps them after a hero left the game, E24 M5 T1a), sleep's
 /// DEF the asleep one while it sleeps; move hero and next hero as the live part's buttons (or as
 /// [`Buttons::of`] gives them); each list's up arrow disabled at its top, its down arrow when no
 /// more than its slots lie below the top; the buttons the layout names in the viewer's colours;
@@ -170,7 +171,8 @@ pub fn dialog(
 
 /// The dialog's items disabled for `kingdom` with `buttons` on a map of `levels` levels (design
 /// §4.1; each with whether it is): the underground on one level, the quest log without a quest,
-/// sleep and cast a spell without a hero selected, move hero and next hero as `buttons` (move hero
+/// sleep and cast a spell without a hero selected (unless `buttons` keeps them: [`Buttons::left`],
+/// E24 M5 T1a), move hero and next hero as `buttons` (move hero
 /// with a hero selected only), each list's up arrow at its top and its down arrow when no more than
 /// its slots lie below the top.
 #[must_use]
@@ -180,9 +182,9 @@ pub fn disabled(kingdom: &Kingdom, buttons: Buttons, levels: usize) -> [(u16, bo
     [
         (id::UNDERGROUND, levels < 2),
         (id::QUESTS, !kingdom.quests),
-        (id::SLEEP, !hero),
+        (id::SLEEP, !(hero || buttons.left)),
         (id::MOVE_HERO, !(hero && buttons.move_hero)),
-        (id::CAST, !hero),
+        (id::CAST, !(hero || buttons.left)),
         (id::NEXT_HERO, !buttons.next_hero),
         (id::HEROES[0], heroes_top == 0),
         (
