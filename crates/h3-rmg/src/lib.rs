@@ -6,8 +6,8 @@
 //! binary64 through `h3_kernel::num` (point 4); its tables are the rmg part, compiled from the
 //! packs' `rmg.toml` by `h3-pack-rmg` (point 5).
 //!
-//! So far: nothing (E14 T2a made the crate). The settings, the template's choice and
-//! `generate`'s frame come with T2c, the rmg part with T2b.
+//! So far: the rmg part ([`RmgRuleset`], E14 T2b): the three tables compiled from the packs.
+//! The settings, the template's choice and `generate`'s frame come with T2c.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -26,3 +26,16 @@
     clippy::exit
 )]
 #![warn(missing_docs)]
+
+extern crate alloc;
+
+mod part;
+
+pub use part::{
+    Connection, ConnectionOverride, ObjectTemplate, ObjectTemplateLine, ObjectTemplateOverride,
+    Obstacle, RmgCompileError, RmgPack, RmgRuleset, Strength, Template, Zone, ZoneKind,
+};
+
+/// Version of [`RmgRuleset`]'s canonical hash (ADR-0029 point 7): bumped whenever the bytes the
+/// part hashes change for the same tables.
+pub const RMG_RULESET_HASH_VERSION: u32 = 1;

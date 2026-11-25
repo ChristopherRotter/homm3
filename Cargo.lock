@@ -699,6 +699,13 @@ dependencies = [
 [[package]]
 name = "h3-pack-rmg"
 version = "0.1.0"
+dependencies = [
+ "h3-content",
+ "h3-pack",
+ "h3-rmg",
+ "serde",
+ "toml",
+]
 
 [[package]]
 name = "h3-pack-towns"
@@ -738,6 +745,10 @@ dependencies = [
 [[package]]
 name = "h3-rmg"
 version = "0.1.0"
+dependencies = [
+ "h3-content",
+ "h3-kernel",
+]
 
 [[package]]
 name = "h3-server"
