@@ -35,16 +35,16 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_protocol::codec;
+use h3_protocol::RECORD_FORMAT_VERSION;
+use h3_protocol::record;
 use h3_protocol::wire::game::{
     GameCommand, GameEvent, GameManifest, GameRecordHeader, GameReject, Pos,
 };
 use h3_protocol::wire::{
     Event, Manifest, Observation, Outcome, RecordHeader, Seat, ServerMessage, Side,
 };
-use h3_protocol::{PROTOCOL_VERSION, RECORD_FORMAT_VERSION};
 
-use crate::record::{MAX_LINE, Record, RecordError, decode};
+use crate::record::{Record, RecordError};
 
 /// A whole game's record, read.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,34 +81,17 @@ pub struct InGame {
 
 /// Whether `text` is a whole game's record: its first line not blank reads as a
 /// [`GameRecordHeader`] (a battle's own record's first line, a `RecordHeader`, does not: both
-/// deny unknown fields).
-#[must_use]
-pub fn is_game(text: &str) -> bool {
-    let first = text.lines().find(|line| !line.trim().is_empty());
-    first.is_some_and(|line| codec::decode::<GameRecordHeader>(line.as_bytes(), MAX_LINE).is_ok())
-}
+/// deny unknown fields). `h3_protocol::record`'s (E24 M5 T2c).
+pub use h3_protocol::record::is_game;
 
-/// Reads a whole game's record's text; blank lines are skipped.
+/// Reads a whole game's record's text; blank lines are skipped (`h3_protocol::record`'s reader:
+/// E24 M5 T2c).
 ///
 /// # Errors
 /// The [`RecordError`] of the first line that does not read; a format or protocol not this
 /// client's.
 pub fn parse(text: &str) -> Result<GameRecord, RecordError> {
-    let mut lines = text
-        .lines()
-        .enumerate()
-        .filter(|(_, line)| !line.trim().is_empty());
-    let (_, first) = lines.next().ok_or(RecordError::Empty)?;
-    let header: GameRecordHeader = decode(1, first)?;
-    if header.format != RECORD_FORMAT_VERSION {
-        return Err(RecordError::Format(header.format));
-    }
-    if header.manifest.protocol != PROTOCOL_VERSION {
-        return Err(RecordError::Protocol(header.manifest.protocol));
-    }
-    let messages = lines
-        .map(|(i, line)| decode(i + 1, line))
-        .collect::<Result<_, _>>()?;
+    let (header, messages) = record::read_game(text)?;
     Ok(GameRecord { header, messages })
 }
 

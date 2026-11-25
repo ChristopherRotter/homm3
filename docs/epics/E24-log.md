@@ -3610,3 +3610,29 @@ merged in before the pull request).
 - **For T3:** `start` drops the session once it took the first human's record; T3 keeps it (a
   seat per human, each seat's frames folded, the view switched at a human's start), where play
   now sets up the record so far.
+
+### M5 T2c — one record reader, beside the server's writer (2026-11-25)
+
+On `map-client/e24-m5-t2c` (`cross-lane`), from `master` at 8fa2711 (#1175, T2b's, merged).
+
+- **Asked at the start** (MCL-Q57, the user agreeing for the client and server lanes): the place,
+  `h3-protocol` beside the writer (rejected: the common `h3-ui`, which would gain an
+  `h3-protocol` dependency with the reader away from its writer; a new common client crate,
+  a `shared/` change to `lanes.toml` first); and both kinds of record, the battle's reader
+  (`h3_view::record::parse`) with the whole game's.
+- **Built:**
+  - `h3_protocol::record` (new, pure): `read_battle` and `read_game` (a record's lines: the
+    header, its format and protocol checked, then every numbered message; blank lines skipped, a
+    line's number counted in the text), `is_game`, `RecordError` (`Empty`, `Line(n, DecodeError)`,
+    `Format`, `Protocol`; `h3-view`'s refusals and texts, moved), `MAX_LINE` (64 MB, the live
+    client's `MAX_MESSAGE`: a line is one message; `h3-view`'s was 16 MB, `h3-map-view`'s
+    64 MB). Its tests (`tests/record.rs`): a duel's game record read back as its session wrote
+    it, every refusal by its line, the texts; `session`'s record test reads a battle's back.
+    The note on `RECORD_FORMAT_VERSION`: a format change changes the reader with it.
+  - `h3-view`: `record::parse` and `game_record::parse` thin wrappers (their `Record` and
+    `GameRecord` and every reading on top kept: a battle's opening, a whole game's battles);
+    `RecordError` and `MAX_LINE` re-exported from `record`, `is_game` from `game_record`.
+  - `h3-map-view`: `engine::parse` on `read_game`, `RecordError` into `Refused` (`From`: a line's
+    reason as before, the codec's `Debug`); its own `MAX_LINE` gone.
+  - Notes in the client lane's inbox (its readers moved, the bound's change) and the server
+    lane's (the new module in its crate, a standing duty).
