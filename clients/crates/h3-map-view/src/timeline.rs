@@ -4781,14 +4781,30 @@ impl Loop {
         self.buttons.move_hero = false;
         // The mouse shown after `manager_run` (0x4AE30F) and the hero lifted again, the view
         // drawn (E24 M5 T1a, design §5.22, *provisional*: recorded, every `battle-*` at the fade
-        // in's end; `mobilize_hero` lifts it after a won battle, 0x4AC917, 0x4AD62E, but a
-        // retreated hero shows lifted in `adventure_battle`'s draw before it leaves, 0x4AE6BB, by
-        // a lift not read). The battle's visitor is the selected hero ([`Loop::visit_beside`],
+        // in's end; `mobilize_hero` lifts it after a won battle, `adventure_battle`'s at its end
+        // 0x4AE8F3 (E24 M5 T1c: 0x4AD62E is a battle without a human's), `monster_battle`'s
+        // 0x4AC917 then finding it lifted, but a retreated hero shows lifted in
+        // `adventure_battle`'s draw before it leaves, 0x4AE6BB, by a lift not read). The battle's visitor is the selected hero ([`Loop::visit_beside`],
         // [`Loop::answered`]).
         self.cursor.shown = true;
         self.lifted = true;
         self.stand();
         self.draw(t);
+        // Its sounds when it stays on the map (E24 M5 T1c, MCL-Q52 (a), design §5.24):
+        // `adventure_battle`'s end lifts it through `mobilize_hero(0, 0, 1)` (0x4AE8F3, after
+        // every outcome), whose `hero_select` restarts the ambient sounds around the view's middle
+        // (0x4180FF: each slot stopped and emptied, then found again), so the loops the
+        // hand-over's `effects_stop_all` ended play again, and asks for the terrain's music only
+        // where it differs from the one asked for last (MCL-Q47 (a): none on the same terrain). A
+        // hero that leaves restarts none here: the next choice's lift does ([`Loop::left_map`]).
+        // *Provisional:* a level-up's dialogs come first in the original (`hero_level_up`
+        // 0x4AE324), so with one the restart waits for their close; here it comes with the lift.
+        if !matches!(fight.after, AfterBattle::Lost | AfterBattle::Both) {
+            let middle = self.middle();
+            if let (Some(sound), Some(hero)) = (&mut self.sound, self.hero) {
+                sound.select(t, middle, hero.at, true);
+            }
+        }
         let gain = Gain {
             experience: fight.experience,
             ..Gain::default()

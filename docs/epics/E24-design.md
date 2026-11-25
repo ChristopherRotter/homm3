@@ -4902,3 +4902,43 @@ situation, `battle = "retreat"`), twice the same.
   its creature, and `army_has_creatures` 0x4496A0 reads only the types, so the next visitor is
   asked ADVEVENT 84 again; the engine's `end_mine_battle` leaves no guards then (ADV-MIN-002: the
   next visit flags it). Noted in the adventure lane's inbox.
+
+### 5.24 The ambient loops after a battle (M5 T1c, MCL-Q52)
+
+MCL-Q52's (a) (the user at M5 T0): the map's return and the lift after it read for the ambient
+slots, then built. Read: `manager_run` 0x4B0C70's return (again), `adventure_battle`'s end
+(0x4AE89D to 0x4AE92B), `hero_select` 0x4180A0 to 0x41815B, `ambient_sounds_at`'s callers, the
+manager's six-second restart (0x4088F9 to 0x408996). Recorded: `battle-mine` as a sound run (a
+scratch sequence of its own, `sound = true`).
+
+- **The hand-over** ends every effect sample (`effects_stop_all`, the adventure manager's exit
+  0x4077E0 as §5.19 took it; the battle manager's exit too) but leaves the manager's four slots
+  (+0x228) as they stand: nothing at the map's return clears them (`manager_run` draws the screen,
+  `adventure_mouse_again`, the status window's kind and the fade in; none of `ambient_sounds_at`'s
+  eleven callers is on that path).
+- **The lift restarts them.** `adventure_battle`'s end calls `mobilize_hero(0, 0, 1)` after every
+  outcome of a shown battle (0x4AE8F3; 0x4AD62E is the battle without a human's, §5.22 corrected),
+  so `hero_select` runs with c set: `ambient_sounds_at` with the stop flag (0x4180FF: each slot
+  with a sound stopped and emptied, then the scan, the found sounds started anew at their
+  distances' volumes) and the terrain's music only where the hero's terrain differs from +0x58
+  (0x418115, with c: none after a battle on one terrain, MCL-Q47 (a)). `monster_battle`'s own
+  `mobilize_hero` (0x4AC917) then finds the hero lifted and does nothing. A hero that left
+  (beaten, retreated, a draw) is no longer selected: `mobilize_hero` chooses the player's next
+  hero or town, whose selection scans around it. The six-second restart (music and ambient sounds)
+  belongs to the turn's start screen (0x699544 set by `turn_start_screen` only).
+- **Recorded** (the sound run, `<ms> <channel> <length> <loops>`): the mine's loop starts at 100
+  on channel 0 (looping until ended), the battle's start sound at 1060, a click at 1500 on
+  channel 0 (the loop ended at the hand-over, its handle free), the loop again at 1810 on channel
+  0, the fade in's end, as read.
+- **Built** (`Loop::after_battle`): with the hero lifted again at the fade in's end (T1a), the
+  model's `Sound::select` (every slot stopped, then found again; the music only on another
+  terrain) when the hero stays on the map (`AfterBattle::Boxes`, `Taken`, `Stays`); a hero that
+  leaves restarts nothing there, the next choice's lift does. So the window, which ended the
+  loops when it lent its sound to the battle, plays them again (checked in the window under Xvfb,
+  `--cues`: `battle-mine`'s record restarts its loop at the fade in's end). *Provisional:* a
+  won battle's level-up dialogs come before `mobilize_hero` in the original (`hero_level_up`
+  0x4AE324), so with one the restart waits for their close; the viewer restarts with the lift.
+- **Not built:** a plain cut's battle (a record's walk's battle, an answer's the record player
+  passes over: a dwelling's guards, Pandora's Box; §5.20) has no lift in the viewer, so its loops
+  stay silent until found again (`dwellings-guards-s1` in the window: from its won battle to the
+  next day's start); M5 T6, which plays the battles, takes it up.

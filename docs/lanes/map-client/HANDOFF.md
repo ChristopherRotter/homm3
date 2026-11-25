@@ -16,14 +16,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   this lane's adapters library, the shell's own crate the client lane's). **M5 T1 cut in three**
   by the user at its start: **T1a done** 2026-11-24 (the hero on its tile through a battle, the
   panel after a retreat: design §5.22), **T1b done** 2026-11-25 (MCL-Q51: `battle-mine-retreat`
-  recorded, `visit_mine`'s path read for a draw, the built form kept: design §5.23). **Next: M5
-  T1c** (MCL-Q52), then T2 (the user's M4 hand-test notes first if written:
-  `clients/out/win/map-m4-notes.txt`, still blank at T1b).
+  recorded, `visit_mine`'s path read for a draw, the built form kept: design §5.23), **T1c done**
+  2026-11-25 (MCL-Q52: the loops restarted at a won battle's lift, as read and sound-recorded:
+  design §5.24; a plain cut's battle in T6's scope). **Next: M5 T2** (the user's M4 hand-test
+  notes first if written: `clients/out/win/map-m4-notes.txt`, still blank at T1c).
   Open questions: MCL-Q29 to MCL-Q49 (none blocks). Stubs: `MCL-STUB-1` (a
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10); planned `MCL-STUB-5` (T3), `MCL-STUB-6` (T4). Next ids
   **MCL-Q57**, **MCL-STUB-5**.
-- **Open pull requests** (2026-11-25): T1b's (`map-client/e24-m5-t1b`): check it first.
+- **Open pull requests** (2026-11-25): T1c's (`map-client/e24-m5-t1c`; T1b's #1165 merged):
+  check it first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
@@ -49,6 +51,12 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-25, E24 M5 T1c** (MCL-Q52, same session as T1b): the hand-over's `effects_stop_all`
+  leaves the four slots; `adventure_battle`'s end lifts the hero through `mobilize_hero`, whose
+  `hero_select` restarts them (design §5.24); a sound run of `battle-mine` showed the loop again at
+  1810. Built in `Loop::after_battle` for a hero that stays; a plain cut's battle (no lift) left
+  to T6.
+
 - **2026-11-25, E24 M5 T1b** (MCL-Q51): `battle-mine-retreat` recorded twice the same (no box,
   the mine unflagged, the hero gone as `battle-retreat`'s); `visit_mine`, `monster_battle`'s end
   and `adventure_battle`'s outcomes read: a loss, a retreat and a draw show the same, so M4 T6's
@@ -63,10 +71,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   M4's known differences only (the log's "M5 T1a"). The PC up at the start (58 files and the
   manuals staged, SHA-256 checked); the VM restarted once (the setup's baseline lost, CI's
   `master` standing in); a disk ballast for the game's disk check.
-
-- **2026-11-24, E24 M5 T0** (the user: all of T0 at once, the hand test not run yet): M4's
-  review list accepted (six items asked one by one, 39 in a summary), MCL-Q50 to Q56 answered
-  (Q54: the engine and the server the only authority; facts first, the pictures later), M5
-  refined and T1 to T8 queued, the other lanes' inboxes told. Docs only; the PC's bridge came and
-  went (the executable, the text tables and the manuals staged at the start); the VM restarted
-  once.
