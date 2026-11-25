@@ -20,16 +20,24 @@ resumes (the epic file); its tasks are cut then.
 (since T45, AI-Q23); **increment 1 closed 2026-11-24** (AI-Q31; its tasks T1a1 to T1b in
 `QUEUE-ARCHIVE.md`, their records in `E31-log.md`).
 
-- **E31 increment 2 — refine and cut** (the epic file's increment 2, confirmed at AI-Q31): first
-  the `shared/` pull request of the ADR draft's points 1 and 9 (`h3-game`'s `src/computer/` the ai
-  lane's by path in `lanes.toml`, `docs/rules/catalog/computer.toml`, `docs/rules/quirks-ai.md` with
-  the five exploit-fix entries of the survey §5.5, the signed `X87` with its audit), and the ADR
-  draft numbered when the user accepts it there; then the increment's tasks cut by size (the turn's
-  loop, the planning and its values, the simulated combat, the walk; trace T-A's harness,
-  `E31-design.md` §1). Measure it at its start and confirm a cut by size (the user: a couple of
-  small tasks or one bigger one a session). `Heroes3.exe` staged for the blind re-reads. When the
-  entry point is built, tell the map-client lane (its inbox note of E24 M5 T0: `MCL-STUB-5`'s hot
-  seat): `h3_game::computer::choose`, one command a call, the battle side by the host's seat.
+- **E31 increment 2** (refined 2026-11-25, AI-Q32; the epic file's "Increment 2's tasks", its
+  record `E31-log.md` T2): the `shared/` pull request #1163 first (merged before any code: the
+  module's paths, `SignedX87`, ADR-0030). Then, one session each (T2a and T2e may pair), the leaves
+  first: **T2a** the frame (next), T2b and T2c the simulated combat, T2d the start's values, T2e the
+  spells' and skills' values, T2f the artifacts, T2g the army and town values, T2h the object value,
+  T2i the planning, T2j the walk with the exit's property tests and the gated benchmark, T2k trace
+  T-A's harness and days 1 to 3. Each with its `CPU-` ids, tests, coverage 100 %, stubs by epic.
+  - **T2a — the frame** (survey §1.1 to §1.4, §1.6; ADR-0030 points 2, 3, 5, 13; about 1 400 of the
+    original's instructions): `h3_game::computer::choose` and `Memory` (a plain value, its
+    canonical encoding and hash), `POLICY_VERSION`; the turn's loop of `ai_player_turn` 0x525E80
+    (the phases, the heroes' order of `ai_next_hero` 0x526A90, both passes, the done marks, the
+    end), each hero's turn done at once until T2i and T2j, then `EndTurn`; an open decision answered
+    by `default_answer` behind a stub until increment 4. The property tests (random maps, five
+    shipped maps, all five difficulties: every command legal, a turn ends within a bound of
+    commands, the same command for the same state, memory and stream), the benchmark's workload in
+    `benches/ai/`; the `CPU-TRN-` ids. Measure its size at the start; then tell the map-client lane
+    the entry point (its inbox: `MCL-STUB-5`'s hot seat, one command a call, the battle side by the
+    host's seat). `Heroes3.exe` staged for the blind re-reads where a step is unclear.
 
 ## Inbox
 
@@ -39,6 +47,18 @@ E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last p
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
+
+**From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
+now**):
+
+- 2026-11-25: increment 6 (the town's trades) appends **42 entries** to the action encoding,
+  `cross-lane` in your paths at T58a to T59b (design note `docs/epics/E09-design.md` §115; E09
+  decision 216): the market's opening (1), the artifact sale by place for gold (22: worn positions
+  0 to 13, backpack places 0 to 7; yours to trim at its task), the Blacksmith's machine (2), the
+  boat (1), the University's opening (2: the visitor, the garrison hero), the transformation (14:
+  the visitor's and the upper bar's seven slots); a town's window reuses the market's 56 entries
+  and the University's four, each `Leave` the closing role. Your E31 note's row 7 (the computer's
+  merchants' price) stays E10's.
 
 **From the map-client lane** (E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your E31
 increment 2, nothing to do now**):

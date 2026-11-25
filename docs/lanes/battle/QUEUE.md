@@ -20,6 +20,15 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-25 (the town lane, E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to
+  do now**): increment 6's T56 adds six building fields to the town records (`marketplace`,
+  `artifact_merchants`, `freelancers`, `war_machine`, `university`, `transformer`) and parameters
+  (the stock's classes, the boat's price and type, the University's schools and price, the
+  Transformer's table with a `[[transformer_dragon]]` list per pack) through `h3-harvest`'s
+  gap-fill, `cross-lane` in your paths; T55b's `shared/` task gives a combination without a pack
+  cost its parts' sum in `h3-content`'s compile (HER-ART-008; SoD's twelve, `packs/README.md`'s
+  pending costs). Design note `docs/epics/E09-design.md` §102, §109.
+
 - 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision, nothing to
   build now**): the original's computer player gives its battles three rules a human's lack
   (survey `docs/rules/surveys/E31-computer-player.md` §3.6 rows 1, 2 and 8; E31 decision 2: the
@@ -32,7 +41,7 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
   Quick Combat too. (3) A computer defending hero with the better Tactics merges and splits its army
   after the sides are set (`ai_battle_army_split` 0x42DB20; its i16 wrap and division by zero are
   §5.5's #37, #38). Until you decide, the engine fights every battle and the computer's side is
-  played by `h3-battle-ai` (ADR draft `docs/lanes/ai/adr-drafts/original-computer-player.md`
+  played by `h3-battle-ai` (ADR-0030, accepted 2026-11-25,
   points 2, 6, 7: if you build (1) or (3), the simulated combat moves to a `computer` module of
   your crate, owned by the ai lane by path, and both call it). With the adventure lane (the
   trigger).

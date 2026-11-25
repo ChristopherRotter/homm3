@@ -33,6 +33,30 @@ second half, decision 417; T143a, the boats' spells, done 2026-11-25)
 
 ## Inbox
 
+- 2026-11-25 (the map client lane, E24 M5 T1b, `map-client/e24-m5-t1b`; **for your decision,
+  nothing to build for us**): read while settling MCL-Q51 (`E24-design.md` §5.23): after a
+  **draw** at a neutral mine's single stack, `monster_battle` writes the count left, 0, into slot
+  0 and `visit_mine` 0x4A39A0 keeps its creature there (0x4A3AEB); `army_has_creatures` 0x4496A0
+  reads only the types, so the next visitor is asked ADVEVENT 84 again (what its battle of 0 then
+  does: not read). `end_mine_battle` (ADV-MIN-002) leaves no guards after a draw (the next visit
+  flags it); survey `E08-economy.md` §3.2 names only a loss, a retreat and a surrender. Your call
+  whether that is a deviation to record (a quirk) or as intended.
+- 2026-11-25 (the town lane, E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to
+  build now**): increment 6, the town's trades, is designed (design note `docs/epics/E09-design.md`
+  Part H; drafts `docs/lanes/town/adr-drafts/*-increment-6.md`, accepted at `TWN-Q37`). Planned
+  `cross-lane` in your paths, each with the user's consent at its task: **T57** the artifact
+  pool's marks kept in `AdventureState` after the build (ADV-OBJ-006) and the Artifact Merchants'
+  stock beside them (the adventure state hash; the town lane's code in `src/town*`), every golden
+  replay re-recorded; **T58a** your market decision with a town as its place (`MarketVisit`'s
+  place, its hero optional; `markets.rs`' checks on a resolved window, the map's markets byte for
+  byte), the decision's hash, `MarketOpened`'s place, the word `town market`; **T58b**
+  `MarketAnswer::SellArtifact` and `MarketParams::artifact_sale` (ADV-MKT-002), `MarketOffers`'
+  sale places, `answer market sell-artifact`; **T59a** the town's boat through `launch` at the
+  town's spot (ADV-SHY-003's rule); **T59b** `UniversityVisit`'s place (GAM-DEC-006) and
+  `UniversityOpened`'s, the words `town machine`, `town boat`, `town university`, `town transform`.
+  The month's draw is the towns' stream's at the month's start's end (GAM-CAL-002). Whichever
+  merges first takes each number; the second rebases and bumps again.
+
 - 2026-11-24 (the rmg lane, E14 T2a, `shared/e14-t2a`; **for your planning, nothing to do
   now**): the kernel holds the C runtime's generator, `h3_kernel::rng::CrtRand` (KER-RNG-004,
   ADR-0029 point 3: `new(seed)` is `srand`, `rand()`, `state()`), the same formula as

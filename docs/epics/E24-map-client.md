@@ -7,7 +7,7 @@ T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); **M3 closed** (2026-1
 review list accepted at T7c1); **M4 refined** (2026-10-31, M4 T0, with the user); **M4 closed** (2026-11-23,
 T6: six reviewers, their findings fixed or asked; the review list accepted at M5 T0); **M5
 refined** (2026-11-24, M5 T0, with the user: the milestones split, M5 the hot seat on the
-adventure map, M6 to M8 sketched); next M5 T1b (`docs/lanes/map-client/QUEUE.md`).
+adventure map, M6 to M8 sketched); next M5 T2 (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -189,7 +189,9 @@ clock and the battles as the original's.
 - **Tasks** (the queue has each in full): T0, M5 refined (**done** 2026-11-24: the log's "M5
   T0"); T1, M4's hand test and carry-overs, cut in three at its start: T1a the hero on its tile
   through a battle and the panel after a retreat (**done** 2026-11-24: the log's "M5 T1a",
-  design §5.22), T1b MCL-Q51 (with the hand test's notes once written), T1c MCL-Q52; T2, the
+  design §5.22), T1b MCL-Q51 (**done** 2026-11-25: the log's "M5 T1b", design §5.23; the
+  hand test's notes, still blank, wait for T2), T1c MCL-Q52 (**done** 2026-11-25: the log's "M5
+  T1c", design §5.24); T2, the
   layering (no behaviour changed); T3, the session in-process; T4, live input through the
   engine; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game; T8, M5's
   closure. A task that grows is cut at a seam agreed with the user.

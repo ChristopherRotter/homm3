@@ -1280,8 +1280,9 @@ impl<'a> Painter<'a> {
                 // box and MINEEVNT's by the mine's resource (MCL-Q48: its subclass), the flag past
                 // them. Since E24 M4 T6 (the reviewers' R5-4, R3-2) the battle's outcome decides:
                 // the boxes only after the hero's win; lost, retreated or drawn none, the hero
-                // gone where the record takes it off the map (MCL-Q51: the original's boxes then
-                // not read), the flag the record's alone.
+                // gone where the record takes it off the map, the flag the record's alone (E24 M5
+                // T1b, MCL-Q51, design §5.23: `visit_mine` ends the visit at a winner not the
+                // hero, 0x4A3AE5; recorded, `battle-mine-retreat`).
                 Visited::Guarded {
                     battle,
                     winner,
@@ -1305,7 +1306,6 @@ impl<'a> Painter<'a> {
                             boxes.push((self.told(&said)?, Gain::default()));
                         }
                     }
-                    // stub: MCL-Q51 (what the original shows after a mine's guards' battle lost)
                     let after = AfterBattle::of_guards(winner, lost);
                     question.yes = Some(Answer {
                         boxes,
