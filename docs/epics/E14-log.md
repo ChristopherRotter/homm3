@@ -357,3 +357,65 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   8XM8's six ids only.
 - **The registry's capacity:** 52 of `MAX_QUIRKS` 64 positions are taken; ADR-0029's remaining 17
   flags need 69 (the epic's risks).
+
+## T2c — the settings, the template, the positions, `generate`'s frame (2026-11-25, increment 2)
+
+- **Whole** (decision 9; asked with the cut T2c1 the lane's own paths, T2c2 the hash-moving part:
+  "one session, a sub-agent if needed"): one branch `shared/e14-t2c`, `cross-lane` (`h3-content`'s
+  registry and hash, `packs/base/core.toml`, `h3-harvest`, `h3-formats`, `h3-pack-battle`'s profile
+  test, the replays' headers). Staged from the PC at the start: the client lane's set (the four
+  LODs, `shell-videos.vid`, the executable and five DLLs, both `.snd`, `H3ab_ahd.vid`,
+  `battle-videos.vid`, both tars, `games/`, SoD's three tables, Complete's two generated maps, the
+  40 MP3s), SHA-256 checked against the PC's. The VM restarted once (the setup's baseline lost).
+- **Read** (`scripts/exe.py`; survey §1.1 to §1.5, §2.1 confirmed and sharpened): the dialog's
+  draws and clamps (0x586103 to 0x58622C: teams 0 or above the players the players, computers
+  clamped to 8 less the players, computer teams 0 the computers, none drawn without computers or
+  with 8 players); the run (0x54BF60: under two players in all one and one); the constructor
+  (0x537B10: water's draw, the templates, the hero bans from the table 0x679DD0's bytes +0x38 to
+  +0x3A, the limits from the last pair to the first); the templates (0x537FF0, 0x538480: the
+  ranges inclusive, a connection's zones the first kept zone of each id, the kept count of human
+  starts then of all starts, RoE's eight town types and its monster towns' +0x9D, Fortress); the
+  draw and the positions (0x549930 to 0x549ACD). **New, RMG-QUIRK-24** (the user: fix-optional,
+  flag): a start zone without Ownership (position -1; AB's 2SM2i(2), 2SM0k) writes `start[-1]`,
+  the human starts' eighth byte, a phantom human start 7; starts running out write past the arrays
+  (a ninth player clears the drawn template's index), added to RMG-QUIRK-4 (typed error). A fresh
+  agent re-read 0x549930 to 0x549AD0 and 0x5386C4 to 0x538895 without the conclusions and found
+  the same (RMG-QUIRK-11's and -24's second look).
+- **The port** (`crates/h3-rmg`; agent decisions, change freely): `settings.rs` (`Settings` with
+  every choice resolved but water's Random, `Settings::check`'s typed `SettingsError`s, `Choices`
+  and `resolve_random` over a caller's `CrtRand`, re-exported by `h3-rmg`); `template.rs` (`Fit`,
+  `kept_templates`, `KeptTemplate` with its zones renumbered, its connections as zone indices and
+  rows, RoE's masks; `positions` with `PositionError`); `generate.rs` (`generate(core, part,
+  settings, seed, trace)`: the part's core hash checked, `NoGenerator` without the generator's
+  tables, the run's one and one, `srand`, water, the templates, the bans, the draw, the
+  positions, `step_end(0)`; `GeneratedMap` so far the settings as run, the seed, the kept
+  template and its name, the positions and the bans; RMG-STUB-1 the steps and the writer's
+  content). `Trace` takes each draw's call site and value (the phase log's line) and each step's
+  end (0 before step 1, the oracle's dump 0).
+- **The executable's constants** (ADR-0029 point 5): `h3-formats`' `RmgTables` and `rmg_data`
+  (the limit pairs, types checked below 232) and `hero_data`'s three bytes, harvested into
+  `packs/sod/rmg.toml`'s `[generator]` (marks by hero id, pairs in order; `packs/README.md`);
+  `GeneratorTables` (`banned_heroes`, `type_limits`) in the part, its hash with them
+  (`RMG_RULESET_HASH_VERSION` 2); the synthetic pack's `[generator]` invented.
+- **The registry** (`h3_content`): `MAX_QUIRKS` 128, `Quirks` a `u128`, the ruleset's hash
+  writing its low and high 64 bits (`RULESET_HASH_VERSION` 54; golden `0xa4a7d9691b62641f`);
+  `quirk.rmg.roe_monster_town_byte` (52, RMG-QUIRK-11) and `quirk.rmg.unowned_start_seventh` (53,
+  RMG-QUIRK-24) on in `faithful`, off in `strict-fixed` (`h3-harvest`'s profile text and
+  `packs/base/core.toml`). Every profile's core hash moved: `base:faithful` 0x52a9516f14766fb8 →
+  0x9078e1983efcc013, `base:strict-fixed` 0xb0c378a75ff70a5b → 0xc67d550d834033d8,
+  `synthetic:faithful` 0x876dc0d92f71fae2 → 0xa57f7ac71303fa43: the 128 replays' `ruleset_hash`
+  headers, `h3-server`'s `record.rs`, the two bot reports' `core` (only those lines; the part
+  hashes, checkpoints and final hashes unchanged: `replay_fixtures`, `adventure_replays` pass).
+- **Rules** (`docs/rules/catalog/rmg.toml`, the catalog's first): RMG-SET-001 to -009, RMG-TPL-001
+  to -008, all implemented; RMG-TPL-001, -002 and -006 marked in the harvest and its tests.
+- **Tests:** `h3-rmg`'s unit tests (the settings, the draws from `srand(1)`, the size index, the
+  kept templates, RoE's masks, the positions with and without the flag, the bans, the limits);
+  `h3-pack-rmg`'s `generate` tests: the 21 corpus cases draw `kept.txt`'s templates with the one
+  draw `(0x549975, the first rand())` and `step_end(0)`; water's Random first; one and one; the
+  original bans (SoD and AB: 4 and 145 to 155; RoE: 128 to 155); RMG-QUIRK-11 and -24 in both
+  profiles (2SM2i(2) with three players: position 7 the third colour; strict-fixed and four players
+  run out); every error; a property test over arbitrary choices, seeds and both profiles.
+- **The oracle** (`h3rmg.py corpus --phases`, a ballast for the game's disk check): the 21 first
+  maps' draws before step 1 are the port's (21 of 21: `549975` and the first `rand()` after
+  `srand(seed)`); 20 maps as kept; `m2-4p` the other map T1c2 once saw (113 282 bytes) in the corpus
+  and alone, its dumps 0 and 1 as kept and step 2's not (RMG-QUIRK-1's draw 0x532A5B; increment 3).

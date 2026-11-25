@@ -27,6 +27,7 @@ use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::RMG_RULESET_HASH_VERSION;
+use crate::settings::MapFormat;
 
 /// A zone's kind: the last of `rmg.txt`'s columns 4 to 7 set, a treasure zone when none is
 /// (RMG-TPL-002; the original's type 0 to 3, [`ZoneKind::value`]).
@@ -229,6 +230,80 @@ pub struct ConnectionOverride {
     pub zones: [i32; 2],
 }
 
+/// The number of object types the generator's limits cover (`rmg_type_limit_map` 0x69CE4C and
+/// `rmg_type_limit_zone` 0x69D1F4, 232 entries each).
+pub const OBJECT_TYPES: usize = 232;
+
+/// The limit an object type has before the pairs (`rmg_generator_create` 0x537D42).
+pub const NO_LIMIT: i32 = 32_000;
+
+/// The generator's constants read from SoD's executable (ADR-0029 point 5; `packs/sod/rmg.toml`'s
+/// `[generator]`, harvested with their addresses): what the generator's constructor
+/// (`rmg_generator_create` 0x537B10) sets up besides the three tables.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GeneratorTables {
+    /// Per hero id, the hero table's (0x679DD0, 0x5C bytes a hero) byte +0x38 set: one of RoE's.
+    pub heroes_roe: Vec<bool>,
+    /// Its byte +0x39 set: one of the expansions'.
+    pub heroes_expansions: Vec<bool>,
+    /// Its byte +0x3A set: a campaign hero.
+    pub heroes_campaign: Vec<bool>,
+    /// The per-map limits by object type (`rmg_type_limits_a` 0x640718): object type and limit,
+    /// in the table's order.
+    pub map_limits: Vec<(u8, i32)>,
+    /// The per-zone limits (`rmg_type_limits_b` 0x640808), in the table's order.
+    pub zone_limits: Vec<(u8, i32)>,
+}
+
+/// The limits by object type the generator places under, per map and per zone (RMG-SET-009).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeLimits {
+    /// Per map.
+    pub map: [i32; OBJECT_TYPES],
+    /// Per zone.
+    pub zone: [i32; OBJECT_TYPES],
+}
+
+impl GeneratorTables {
+    /// Each hero's ban for `format`, by id (RMG-SET-008, `rmg_generator_create` 0x537D0B): banned
+    /// when a campaign hero, or when not one of the format's heroes (RoE's for RoE, the
+    /// expansions' for AB and SoD).
+    // rule: RMG-SET-008
+    pub fn banned_heroes(&self, format: MapFormat) -> Vec<bool> {
+        let available = if format == MapFormat::RoE {
+            &self.heroes_roe
+        } else {
+            &self.heroes_expansions
+        };
+        self.heroes_campaign
+            .iter()
+            .zip(available)
+            .map(|(&campaign, &available)| campaign || !available)
+            .collect()
+    }
+
+    /// The limits by object type (RMG-SET-009, `rmg_generator_create` 0x537D3D to 0x537D95):
+    /// every type [`NO_LIMIT`], then each table's pairs from its last to its first (a type given
+    /// twice keeps its first pair's limit); a type past [`OBJECT_TYPES`] (which the compiler
+    /// refuses) sets nothing.
+    // rule: RMG-SET-009
+    pub fn type_limits(&self) -> TypeLimits {
+        let fill = |pairs: &[(u8, i32)]| {
+            let mut limits = [NO_LIMIT; OBJECT_TYPES];
+            for &(object_type, limit) in pairs.iter().rev() {
+                if let Some(slot) = limits.get_mut(usize::from(object_type)) {
+                    *slot = limit;
+                }
+            }
+            limits
+        };
+        TypeLimits {
+            map: fill(&self.map_limits),
+            zone: fill(&self.zone_limits),
+        }
+    }
+}
+
 /// One pack's `rmg.toml`, as `h3-pack-rmg` parses it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RmgPack {
@@ -244,6 +319,8 @@ pub struct RmgPack {
     pub object_template_overrides: Vec<ObjectTemplateOverride>,
     /// The whole obstacle table, if it gives one (it replaces an earlier pack's).
     pub obstacles: Option<Vec<Obstacle>>,
+    /// The generator's tables, if it gives them (they replace an earlier pack's).
+    pub generator: Option<GeneratorTables>,
 }
 
 impl RmgPack {
@@ -256,6 +333,7 @@ impl RmgPack {
             object_templates: Vec::new(),
             object_template_overrides: Vec::new(),
             obstacles: None,
+            generator: None,
         }
     }
 }
@@ -315,6 +393,9 @@ pub enum RmgCompileError {
         /// The obstacle row.
         obstacle: usize,
     },
+    /// The generator's hero bytes are not one each per hero, or a limit's object type is past
+    /// [`OBJECT_TYPES`].
+    GeneratorTables(String),
 }
 
 impl fmt::Display for RmgCompileError {
@@ -360,6 +441,11 @@ impl fmt::Display for RmgCompileError {
                 "pack `{pack}`: obstacle row {obstacle}'s Adjacent and Overlap need one score per \
                  obstacle row"
             ),
+            Self::GeneratorTables(pack) => write!(
+                f,
+                "pack `{pack}`: the generator's hero bytes need one each per hero and its limits \
+                 object types below {OBJECT_TYPES}"
+            ),
         }
     }
 }
@@ -372,13 +458,14 @@ pub struct RmgRuleset {
     templates: Vec<Template>,
     object_templates: Vec<ObjectTemplate>,
     obstacles: Vec<Obstacle>,
+    generator: Option<GeneratorTables>,
     hash: u64,
 }
 
 impl RmgRuleset {
     /// The part without tables on `core` (what packs without an `rmg.toml` compile to).
     pub fn empty(core: &Ruleset) -> Self {
-        Self::new(core, Vec::new(), Vec::new(), Vec::new())
+        Self::new(core, Tables::default())
     }
 
     /// Compiles one rmg pack per pack of `core`, in the core's load order, with the core's
@@ -404,26 +491,20 @@ impl RmgRuleset {
             if let Some(obstacles) = &pack.obstacles {
                 tables.obstacles(&scope, obstacles)?;
             }
+            if let Some(generator) = &pack.generator {
+                tables.generator(&scope, generator)?;
+            }
         }
-        Ok(Self::new(
-            core,
-            tables.templates.into_iter().map(|(_, t)| t).collect(),
-            tables.objects.into_iter().map(|(_, o)| o).collect(),
-            tables.obstacles,
-        ))
+        Ok(Self::new(core, tables))
     }
 
-    fn new(
-        core: &Ruleset,
-        templates: Vec<Template>,
-        object_templates: Vec<ObjectTemplate>,
-        obstacles: Vec<Obstacle>,
-    ) -> Self {
+    fn new(core: &Ruleset, tables: Tables) -> Self {
         let mut part = Self {
             core_hash: core.content_hash(),
-            templates,
-            object_templates,
-            obstacles,
+            templates: tables.templates.into_iter().map(|(_, t)| t).collect(),
+            object_templates: tables.objects.into_iter().map(|(_, o)| o).collect(),
+            obstacles: tables.obstacles,
+            generator: tables.generator,
             hash: 0,
         };
         part.hash = hash_of(&part);
@@ -456,6 +537,12 @@ impl RmgRuleset {
     pub fn obstacles(&self) -> &[Obstacle] {
         &self.obstacles
     }
+
+    /// The generator's tables; `None` without them (a ruleset without `sod` has no generator,
+    /// ADR-0029 point 5).
+    pub const fn generator(&self) -> Option<&GeneratorTables> {
+        self.generator.as_ref()
+    }
 }
 
 impl CanonicalHash for RmgRuleset {
@@ -464,7 +551,9 @@ impl CanonicalHash for RmgRuleset {
     /// and the strength as the original's numbers) and connections (their number, each its
     /// fields in [`Connection`]'s order)); the object templates (their number, each its fields
     /// in [`ObjectTemplate`]'s order); the obstacles (their number, each its fields in
-    /// [`Obstacle`]'s order, the scores with their number). The core's hash is not part of it.
+    /// [`Obstacle`]'s order, the scores with their number); the generator's tables (whether given,
+    /// then each list with its number in [`GeneratorTables`]' order, a pair its type and limit).
+    /// The core's hash is not part of it.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RMG_RULESET_HASH_VERSION);
         h.write_len(self.templates.len());
@@ -505,6 +594,20 @@ impl CanonicalHash for RmgRuleset {
             write_i32s(h, &o.adjacent);
             h.write_len(o.overlap.len());
             write_i32s(h, &o.overlap);
+        }
+        h.write_bool(self.generator.is_some());
+        if let Some(g) = &self.generator {
+            for bytes in [&g.heroes_roe, &g.heroes_expansions, &g.heroes_campaign] {
+                h.write_len(bytes.len());
+                bytes.iter().for_each(|&b| h.write_bool(b));
+            }
+            for pairs in [&g.map_limits, &g.zone_limits] {
+                h.write_len(pairs.len());
+                for &(object_type, limit) in pairs {
+                    h.write_u8(object_type);
+                    h.write_i32(limit);
+                }
+            }
         }
     }
 }
@@ -555,6 +658,7 @@ struct Tables {
     templates: Vec<(usize, Template)>,
     objects: Vec<(usize, ObjectTemplate)>,
     obstacles: Vec<Obstacle>,
+    generator: Option<GeneratorTables>,
 }
 
 impl Tables {
@@ -659,6 +763,28 @@ impl Tables {
             });
         }
         self.obstacles = obstacles.to_vec();
+        Ok(())
+    }
+
+    /// A pack's generator's tables: the three hero lists of one length, the limits' types below
+    /// [`OBJECT_TYPES`].
+    fn generator(
+        &mut self,
+        scope: &Scope<'_>,
+        generator: &GeneratorTables,
+    ) -> Result<(), RmgCompileError> {
+        let heroes = generator.heroes_roe.len();
+        let fits = generator.heroes_expansions.len() == heroes
+            && generator.heroes_campaign.len() == heroes
+            && generator
+                .map_limits
+                .iter()
+                .chain(&generator.zone_limits)
+                .all(|&(object_type, _)| usize::from(object_type) < OBJECT_TYPES);
+        if !fits {
+            return Err(RmgCompileError::GeneratorTables(String::from(scope.id)));
+        }
+        self.generator = Some(generator.clone());
         Ok(())
     }
 }

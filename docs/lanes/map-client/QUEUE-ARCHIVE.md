@@ -4,6 +4,26 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-25 (this lane, E24 M5 T2b done: the log's "M5 T2b": `h3_map_client::play`, the API
+  the user agreed for the client lane, the window's loop on a lent window and sound, the first
+  human's start shown until T3; the client lane's move in its inbox): the task as it stood,
+  verbatim.
+
+  ### E24 M5 T2b — play's entry for the shell (the layering's second part; no behaviour changed)
+
+  - **Scope:** `h3-map-client` (T2a: the binary's adapters as a library) gains a play entry the
+    shell can call: its input `begin::Game`'s setup and names, the window and sound lent, play's
+    end handed back (Main Menu, Load, Restart, Quit, as E27 M5 will need); the `h3-map-view`
+    binary stays a thin host of the library. With the client lane (its inbox, 2026-11-24): this
+    lane's API agreed with it first; the shell moved out of `h3-battle-client` into a crate of its
+    own on top, whose binary is the player's program and which calls `h3-map-client`'s play (the
+    client lane's task, queued in its inbox with the API it calls).
+  - **Acceptance:** the entry's tests; every situation, sequence and record plays as before
+    (`drawn` all the same, the golden records as T2a left them, the window under Xvfb);
+    `check.sh`; the client lane's move queued with the API it calls.
+  - **Depends on:** T2a (done). **Status:** queued; T2 cut in three by the user at its start
+    (2026-11-25).
+
 - 2026-11-25 (this lane, E24 M5 T1c done: the log's "M5 T1c", design §5.24: the loops restarted
   at a won battle's lift as `hero_select` restarts them, a sound run of `battle-mine` as read; a
   plain cut's battle left to T6): the task as it stood, verbatim.

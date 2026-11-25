@@ -322,3 +322,9 @@ reason = "The original's computer player (E31 T2b): the simulated combat's casts
 epic   = "E31"
 
 # --- rmg (RMG-STUB-<n>) ---
+
+[[stub]]
+id     = "RMG-STUB-1"
+where  = "crates/h3-rmg/src/generate.rs::generate"
+reason = "generate stops after the frame before step 1 (the settings as run, the seed, water's Random, the templates kept and drawn, the banned heroes, the positions; E14 T2c): GeneratedMap holds no zones, cells, objects or teams yet. The fifteen steps come with increments 3 to 6 (each step's cells checked against the phase oracle), the writer's content (the header, players, teams' draw, tiles, objects) with increment 7"
+epic   = "E14"

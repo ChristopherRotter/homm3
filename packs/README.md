@@ -9,7 +9,7 @@ Human-editable content packs (ADR-0006). Keys are namespaced `pack:name`. Since 
 | `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), sieges (v37), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
 | `adventure.toml` | the adventure map's data (owned by the adventure lane; format: `crates/h3-pack-adventure/src/lib.rs`) | `h3-pack-adventure` |
 | `towns.toml` | the town part's data: per faction a town record, the part's parameters (owned by the town lane, ADR-0028 point 5; format: `crates/h3-pack-towns/src/lib.rs`, from E09 T5a). The synthetic packs' are hand-written (E09 T5b2a), the original packs' harvested (E09 T5b2b2: `base` the eight RoE factions and the parameters, `ab` Conflux, `sod` the moats as SoD plays them; since E09 T36 each record's tavern weights from `HCTRAITS.TXT`, `ab`'s overrides adding its two classes to the base records, and the hire's price; since E09 T39b1 the Thieves' Guild's resource rows, `RESTYPES.TXT`'s indexes from the gap-fill; since E09 T46 each record's guild weights from `SPTRAITS.TXT`'s town columns, the roles `guild`, `library`, `aurora` and `mana_vortex` and the guild's parameters from the gap-fill) | `h3-pack-towns`; `h3-towns` into the `TownRuleset` on the core |
-| `rmg.toml` | the map generator's tables (owned by the rmg lane, ADR-0029 point 5; format below, "The map generator's tables"): `ab` AB's `rmg.txt`, `objects.txt` and `rand_trn.txt` as the game reads them, `sod` what SoD's add (three templates, `objects.txt`'s 105 added and 2 changed lines); harvested since E14 T2b; the synthetic pack's hand-written | `h3-pack-rmg`; `h3-rmg` into the `RmgRuleset` on the core (not part of the game's rulesets) |
+| `rmg.toml` | the map generator's tables (owned by the rmg lane, ADR-0029 point 5; format below, "The map generator's tables"): `ab` AB's `rmg.txt`, `objects.txt` and `rand_trn.txt` as the game reads them, `sod` what SoD's add (three templates, `objects.txt`'s 105 added and 2 changed lines) and the executable's constants (`[generator]`, E14 T2c); harvested since E14 T2b; the synthetic pack's hand-written | `h3-pack-rmg`; `h3-rmg` into the `RmgRuleset` on the core (not part of the game's rulesets) |
 
 The TOML keys are the same in either file; the sections below show each table with all its
 fields, whichever file a field lives in. Every creature and every spell of a pack has a row in
@@ -846,7 +846,7 @@ profile, quirks, resources, terrains, factions, obstacles, all creature fields i
 and upgrades, the battle parameters and the hero content (spells with their battle magic) with
 the artifacts and the hero parameters; replays record it.
 
-## The map generator's tables (`rmg.toml`, E14 T2b)
+## The map generator's tables (`rmg.toml`, E14 T2b, T2c)
 
 The rmg part (ADR-0029 point 5; `crates/h3-rmg`, parsed by `crates/h3-pack-rmg`) holds the original
 generator's three tables as the game reads them: the values as `c_atoi` reads them, a mark's
@@ -899,12 +899,22 @@ terrain = 0
 modifiers = [10, -5000, 10, 0, 0, 0, -5000, -5000, -5000] # 7-15, dirt to water
 adjacent = [100, 10, …]          # one score per obstacle row (columns 16 on)
 overlap = [5, 5, …]              # one score per obstacle row (after Adjacent)
+
+[generator]                      # the executable's constants (E14 T2c; `sod` only): a later
+                                 # pack's replace an earlier's; a part without them has no
+                                 # generator (ADR-0029 point 5)
+heroes_roe = "1111…0000"         # per hero id, the hero table 0x679DD0's byte +0x38 (RoE's)
+heroes_expansions = "1111…1111"  # +0x39 (the expansions'), one mark per hero
+heroes_campaign = "0000…1111"    # +0x3A (a campaign hero): RMG-SET-008's bans
+map_limits = [[26, 200], …]      # object type and limit per map (0x640718), the table's order
+zone_limits = [[2, 1], …]        # per zone (0x640808): RMG-SET-009
 ```
 
 The compiler refuses a line, template or connection index past its table or outside the pack's
 dependency closure, a line replaced twice by one pack, a `fixes` that is no registered
 `quirk.content` flag (checked in every profile), and an obstacle row without one Adjacent and one
-Overlap score per row. The harvested `ab` pack carries 8XM8's six overrides (RMG-QUIRK-22, from the
+Overlap score per row, and generator's tables whose three hero mark strings differ in length or
+whose limits name an object type past 231. The harvested `ab` pack carries 8XM8's six overrides (RMG-QUIRK-22, from the
 gap-fill); `cargo xtask verify --with-original-data` also compares the compiled part with the text
 tables (`crates/h3-pack-rmg/examples/original_data.rs`).
 

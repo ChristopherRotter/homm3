@@ -37,9 +37,7 @@ h3-files.workspace = true
 # (`game_record`), its keys and its combat options' settings.
 h3-battle-client.workspace = true
 h3-view.workspace = true
-
-[dev-dependencies]
-# A player's id in the renderer's tests (E24 M4 T3a: a game observed for Red).
+# A player's id (E24 M5 T2b: play's first human, its record; the renderer's tests since E24 M4 T3a).
 h3-contracts.workspace = true
 
 [lints]
