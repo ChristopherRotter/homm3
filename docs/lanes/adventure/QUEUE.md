@@ -29,6 +29,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-24 (the rmg lane, E14 T2a, `shared/e14-t2a`; **for your planning, nothing to do
+  now**): the kernel holds the C runtime's generator, `h3_kernel::rng::CrtRand` (KER-RNG-004,
+  ADR-0029 point 3: `new(seed)` is `srand`, `rand()`, `state()`), the same formula as
+  `h3_adventure::split::TileRand` (ADV-MON-009, ADV-QUIRK-6) and `h3_heroes::OriginalDraws`
+  (HER-LVL-002, ADV-QUIRK-9). Either may keep its own seeding and wrap a `CrtRand` (or become a
+  constructor over it) whenever you next touch them; the draws are bit-identical (both tests'
+  `srand(1)` vector is KER-RNG-004's), so no replay or version moves.
 - 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision and your
   planning, nothing to build now**): the original's computer player's rules on the map (survey
   `docs/rules/surveys/E31-computer-player.md` §3.6; E31 decision 2: you decide whether the engine
@@ -97,8 +104,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   writer cannot leave out the editor's 141-143); (6) the **AB layout** (0x15) and towns and
   `Extras` in **RoE** (E14 increment 7's census adds such cases; the corpus is SoD). The rmg lane
   turns its `GeneratedMap` into the writer's `Map` and `Extras` in `crates/h3-map/src/generated*`
-  (its paths from increment 7, with the edge `h3-map → h3-rmg`; ADR draft
-  `docs/lanes/rmg/adr-drafts/h3-rmg-generator.md` point 2). A gap still open when E14 increment 7
+  (its paths from increment 7, with the edge `h3-map → h3-rmg`; ADR-0029 point 2). A gap still open when E14 increment 7
   starts is closed by the rmg lane, `cross-lane` with the user's consent. For E12's order: the
   generated maps hold 115 Seer's Huts (18 of 21 maps), 278 Obelisks (20) and 5 Sanctuaries, all
   blockers in the import today.

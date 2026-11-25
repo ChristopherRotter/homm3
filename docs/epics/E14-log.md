@@ -265,3 +265,37 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   choice, the adventure and town lanes' inbox notes updated: their gaps before increment 7, the
   rmg lane `cross-lane` for any left then); the picture names harvested; the game's profiles; six
   increments. Increment 1 closed: its section and tasks moved to `E14-archive.md`.
+
+## T2a — the crates, `CrtRand`, the contexts, ADR-0029 (2026-11-24, increment 2)
+
+- **Kept whole** (a small shared change, the user's "a couple of small tasks or a bigger one").
+  Branch `shared/e14-t2a`, `cross-lane` (the rmg lane's crates and docs ride along, as E09 T4b's).
+  Staged from the PC: Complete's `Heroes3.exe` alone (the code reading). The PC's repo folder was
+  behind GitHub (its `master` at 7b4f02c); the clone is GitHub's.
+- **The crates:** `h3-rmg` (domain, logic: the lint header, `no_std`; `arch.toml` allows the kernel
+  and the core content, the manifest none yet, as `h3-towns`' skeleton) and `h3-pack-rmg`
+  (adapter: the kernel, the core content, `h3-rmg`, `h3-pack`, serde and toml; proptest for exit
+  criterion (d)'s property test over the packs' tables, which live there, not in `h3-rmg`). The
+  edge `h3-game → h3-rmg` is a `forbidden_edge` (point 2: the game reads the bytes); the edge
+  `h3-map → h3-rmg` waits for increment 7. `lanes.toml` gives the rmg lane `crates/h3-pack-rmg/`.
+- **`CrtRand`** (`h3_kernel::rng`, KER-RNG-004): `new(seed)` (`srand`), `rand()`, `state()`,
+  `MAX`. Read again: `crt_srand` 0x617E4F sets the thread data's +0x14; `crt_rand` 0x617E5C
+  multiplies it by 0x343FD, adds 0x269EC3, stores it (0x617E70) and returns bits 16 to 30; the
+  thread data (0x61D303, `_getptd`) starts at 1 (0x61D2F0, at 0x61D2FB). The three entries in
+  `docs/exe/map.toml`. **The test vectors are the code reading's** (srand of 1, 0, 2^32 − 1 and
+  `s1-2p`'s 1 000 000 000, six draws and the state each, computed from the formula): the phase
+  oracle's draw logs were never kept (`clients/out/rmg/` lived in an earlier sandbox; the PC has
+  none), so the stream is checked against the oracle from T2c on (the draws before step 1) and
+  whole at increment 6 (`log=`). ADR-0029 point 3 says so.
+- **Docs:** `docs/03-domain.md`'s row *Map generation*; the catalog context `RMG` (`rmg`, xtask's
+  `CONTEXTS`, the catalog README, `04-rules-and-sources.md` §3); ADR-0029 (the draft moved, its
+  status, the Consequences' edges, a revision history) with its index row, ADR-0003's revision
+  history and AGENTS.md's rmg reading list; `02-architecture.md` §3, the README's crate table, the
+  work process's rmg lane, the global HANDOFF's row. The adventure lane's inbox: `TileRand` and
+  `OriginalDraws` may wrap `CrtRand`.
+- **The coverage gate:** a scope whose logic crates are skeletons (no function: `h3-rmg`) has no
+  coverage data, and `llvm-cov report` failed the scoped verify; the gate and `runs_tests` skip
+  such a scope now (the test step then runs its tests; `docs/05-testing.md`), with a unit test.
+- **Checked:** the scoped verify (`--scope rmg`) passes but `check-lane` (a shared branch, by
+  design; `check-lane --cross-lane` passes); `cargo check --workspace --all-targets`, the kernel's
+  and xtask's tests and clippy, `scripts/exe.py check`.

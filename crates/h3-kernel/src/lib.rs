@@ -32,4 +32,4 @@ pub use fixed::{CapacityError, FixedVec};
 pub use handle::Handle;
 pub use hash::{CanonicalHash, StateHasher};
 pub use modifier::{Modifier, ModifierOp, ModifierPool, SourceKey};
-pub use rng::{Rng, StreamId};
+pub use rng::{CrtRand, Rng, StreamId};

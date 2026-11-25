@@ -59,3 +59,4 @@ Choices §7 and §11 deferred to E01, and lessons from implementing them:
 - 2026-09-30: Initial version, integer/fixed-point only.
 - 2026-09-30: Amended after user input and FFF-52: floats allowed under the `kernel::num` discipline; added sorting rule, supported-target list and CI matrix.
 - 2026-09-30: Amended by E01: PRNG and hash choices, `no_std` float consequences, release overflow checks, local determinism matrix.
+- 2026-11-24: ADR-0029 point 3 (E14 T2a): beside `Rng`, the kernel holds the original's own generator `CrtRand` (the C runtime's `rand`, KER-RNG-004) for the rules that reproduce the original's draws (the map generator's port); never a named stream, no version. §7 is otherwise unchanged.
