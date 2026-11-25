@@ -265,7 +265,11 @@ pub mod wire;
 /// `CastFailure`), `AdventureEvent::BoatSummoned` (a summoned boat's two tiles, each `None` where
 /// the viewer does not see heroes), `BoatCreated`, `BoatScuttled`; `SpellReject::NoWater`,
 /// `OutOfWindow`, `NoBoat` (`NotBuilt` for Dimension Door alone).
-pub const PROTOCOL_VERSION: u32 = 83;
+/// v84 (E08 T143b, the adventure lane's, `cross-lane`; increment 15's design note §10.5, §11.2):
+/// Dimension Door cast (its arrival a teleporter's `HeroTeleported`, a wrong target `CastFailed`'s
+/// `Target`); `SpellReject::NoPoints`, `NoCastsLeft`, `NotFree`, `WrongKind`; `SpellReject::NotBuilt`
+/// gone (`ADV-STUB-22` withdrawn: every bound spell casts).
+pub const PROTOCOL_VERSION: u32 = 84;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes, with its reader ([`record`], every client's: E24 M5 T2c) in the same

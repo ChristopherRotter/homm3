@@ -175,3 +175,8 @@ Increment 2's (increment 1's: `E31-archive.md`).
   (CPU-TRN-001 to -005; AI-STUB-2 to -6); `h3_sim::computer::play` and its property tests on the
   generated maps at every difficulty, every shipped map in the original-data check; `h3 ai
   computer`, the workload `computer-turns-towns-36`. Record: `E31-log.md` T2a.
+- **T2b** (2026-11-25): the simulated combat's sides and melee in `h3_game::computer`'s
+  `sim.rs` (CPU-SIM-001 to -005): a side and its hero's reads, the losses, the damage and the
+  stand-off, the lookahead, the run; the casts AI-STUB-7 (T2c, which also takes
+  `sim_combat_start`'s casting inputs and `sim_stack_take_value`); §5.5's #63 and #64 from the
+  blind re-read. Record: `E31-log.md` T2b.

@@ -11,11 +11,18 @@
 //!
 //! Built so far (E31 increment 2): [`choose`] and [`Memory`] (ADR-0030 points 2, 5), the turn's
 //! frame (T2a: the passes, the order of heroes, a hero's turn with its garrison step); the rest
-//! of a turn is stubbed by `AI-STUB-2` to `-6` (`docs/stubs.toml`).
+//! of a turn is stubbed by `AI-STUB-2` to `-6` (`docs/stubs.toml`). The simulated combat's sides
+//! and melee (T2b, `sim`), its casts `AI-STUB-7`, wait for the fight estimate (T2c) to call them.
 //!
 //! [`GameCommand`]: crate::GameCommand
 
 mod memory;
+// The fight estimate (T2c) is the first caller outside the tests.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "no caller until the fight estimate, E31 T2c")
+)]
+mod sim;
 mod turn;
 
 #[cfg(test)]

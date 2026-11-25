@@ -438,3 +438,58 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   awake hero at each pick), 10 % the frame, 9 % the towns' owners. Left as it is: a turn costs
   about 22 000 Ir, far inside the 50 ms budget; the later tasks' values will dominate.
 - **Told:** the map-client lane the entry point (its inbox, `MCL-STUB-5`).
+
+## T2b — the simulated combat's sides and melee (2026-11-25, increment 2)
+
+- **The size, measured at the start** (`docs/exe/map.toml`): 7.4 KB, about 2 700 instructions, of
+  which 1.4 KB the stack vector's container code (a `Vec` here), so about 2 200 of logic; the user
+  asked whether to cut (sides, then melee; the sides with the loss steps, then the flow; no cut):
+  **no cut** (AI-Q33), done in one session.
+- **Blind re-reads** (`Heroes3.exe` staged from the user's repo folder; nothing printed
+  committed): `sim_combat_start` 0x423EE0, `sim_side_build` 0x424120, `sim_side_walls` 0x424790,
+  `sim_apply_losses` 0x424880, `sim_side_max_speed` 0x424960, `sim_spread_losses` 0x426170,
+  `sim_side_wipe` 0x4262B0, `sim_side_take_damage` 0x426300, `sim_side_damage` 0x426390,
+  `sim_side_hold_value` 0x426450, `sim_combat_finish` 0x4264D0, `sim_engage_now` 0x4267C0,
+  `sim_combat_run` 0x426BC0, `sim_stack_take_value` 0x423EA0, and the three hero functions the
+  build calls, read whole for the first time: `hero_archery` 0x4E4160, `hero_creature_speed_bonus`
+  0x4E5AA0, `hero_creature_health_bonus` 0x4E5B80 (the map's entries now `read`). Each agrees with
+  the survey but four details: (a) when only the attacker engages, its losses go first to its
+  stacks in contact by the round (0x426CF8; the map's summary said all over round 0); (b) a hero's
+  shooters' shot share is `hero_archery` / 5, and `hero_archery` is the Archery *bonus* (0, 0.10,
+  0.25, 0.50 by level, a specialist's grown, the bows only with the skill), so 0 without the skill
+  against 0.2 without a hero (the survey's "0.2 × Archery"); (c) the wall halving spares creature 35
+  alone, the Arch Magi, not the Magi; (d) the finish's and the lookahead's stand-off losses are a
+  loss in round 0 exactly as `sim_side_take_damage` takes it. (b) and (c) are §5.5's new state
+  rows #63 and #64 (the quick battle's, as #7 and #8), told to the battle lane's inbox.
+- **Built** (`h3_game::computer`'s private `sim.rs`; CPU-SIM-001 to -005): `HeroReads` (what a
+  side reads of a hero), `side` (the start's army and walls, the build), `Side`'s `wipe`,
+  `spread`, `take_damage`, `damage`, `hold`, `survivors` (`sim_apply_losses` without the quick
+  battle's hero leaving the game), `finish`, `engages`, `run`; the round's casts call `cast`,
+  which does nothing (**AI-STUB-7**, T2c). Values through `X87` / `SignedX87`, 32-bit integers
+  wrapping as the code's `imul`, `add` and `sub` (the build's value and strength, the losses).
+  No caller outside the tests until T2c's fight estimate: the module is
+  `#[cfg_attr(not(test), expect(dead_code))]` until then. No `POLICY_VERSION` bump (no choice
+  changes), the workload untouched.
+- **Agent decisions (change freely):** the hero's reads come from the engine's battle hero
+  (`derive_battle_hero` with no visit bonuses: Tactics, the Catapult's Ballistics level, the
+  ranged rate as its single-precision value or its basis points' f32, the stack statistic
+  effects), its available spells (`available_spells`, a spell with the battle part's `Earthquake`)
+  and the town's `fort_level`, not the original's artifact and spell ids; the speed bonus counts
+  the speed changes that select every creature (the original's function takes no creature, so no
+  creature specialty), the hit-point bonus the changes that select the creature (a share rounded
+  down); the creature's hit points, speed, flags and abilities the battle part's, its fight value
+  the core's; the Arch Magi's spared shots read the battle part's `no_wall_penalty`, which the
+  Magi have too (#64: no data names creature 35 alone); a creature of speed 0 is 4 rounds away
+  (the original divides by 0), a unit value of 0 leaves a count of 0, a group of 0 takes a share of
+  0 (the FPU's infinity truncated); the casting inputs of `sim_combat_start` (spell points, may
+  cast, the tile's ground), the value per hit point (+0x30), the creature (+0x04) and
+  `sim_stack_take_value` 0x423EA0 (mass damage only) wait for T2c, their only reader.
+- **Tests** (`computer/sim/tests.rs`, 20): a content of the crate's test core with fight values,
+  hit points, flags, the skills, artifacts, specialties and an Earthquake spell; the builds (no
+  hero, a hero against an opponent, an opponent alone, the walls' table, walls and flyers and the
+  shot shares, a specialist's single-precision rate, speed 0 and a 32-bit wrap, a hero that does
+  not validate); the losses, the damage, the hold, the stand-off's four cases, the lookahead, the
+  run's four engagement cases and its stand-off, the cast order; a property test (a run is
+  repeatable and only takes). The expected numbers come from an IEEE double model of the reading,
+  which also agreed with the port on 400 random runs (not committed). `sim.rs` at 100 % lines and
+  regions by `h3-game`'s own tests.

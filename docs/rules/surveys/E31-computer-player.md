@@ -510,8 +510,9 @@ Defense over the enemy's Attack (each at least 0). Per stack: **unit value** = f
 sqrt(health with the hero's bonus / health) × factor, truncated; **stack value** = that × count;
 the side's **strength** is their sum. Rounds to contact: 0 for a shooter, else
 (speed + 2 × (7 − Tactics)) / speed, at most 4, raised to the wall level for a walker. Shares of
-the value dealt per round: melee 0.2 (a shooter with the melee penalty 0.1), shot 0.2 × Archery
-(× 2 striking twice, ÷ 2 against walls except creature 35). Stacks are sorted weakest first.
+the value dealt per round: melee 0.2 (a shooter with the melee penalty 0.1), shot the hero's
+Archery bonus / 5 (`hero_archery` 0x4E4160: 0 without the skill, the bows only with it; 0.2 without
+a hero; × 2 striking twice, ÷ 2 against walls except creature 35, the Arch Magi; T2b's re-read). Stacks are sorted weakest first.
 Morale, luck, war machines, retaliation and other abilities are not modelled.
 
 **The fight** (`sim_combat_run` 0x426BC0): at most three rounds. Each round each side decides
@@ -566,7 +567,10 @@ Eagle Eye learning the loser's lowest-id spell (no chance draw).
 4. **Asymmetries**: `ai_quick_battle` (computer against computer or neutrals) and the hidden
    battle's round-30 end decide casualties, winners, experience, artifacts and spells by the
    simulation and its draws, not by battle rules.
-5. **Quirk candidates**: only the defender engaging fights both sides fully in melee (0x426D17);
+5. **Quirk candidates**: only the defender engaging fights both sides fully in melee (0x426D17;
+   when the attacker engages alone, its losses go first to its stacks in contact, T2b's re-read);
+   a hero's shooters' share is the Archery bonus alone, 0 without the skill (0x42426D, §5.5 #63);
+   the wall halving spares the Arch Magi (35) alone (0x424412, #64);
    the mass-damage running total is carried from stack to stack (0x425FF6); Necromancy in the quick
    battle counts the loser's army after it was cleared, so it raises 1 (0x427003); a mutual wipe
    and an equal stand-off go to the defender; Eagle Eye takes a spell from the loser's available
@@ -1894,7 +1898,8 @@ its rule is built; the two experiments X1 and X2 (`E31-design.md` §2) ride on t
 No candidate is a ledger entry yet: `docs/rules/quirks-ai.md` starts with the registration of
 increment 2 (ADR draft point 1), the exploit-fix entries first.
 
-Counts: 36 slips, 6 state, 5 exploit-fix, 13 none, 2 fixed (one item).
+Counts: 36 slips, 6 state, 5 exploit-fix, 13 none, 2 fixed (one item); T2b's re-read added two
+state rows, #63 and #64 (8 state).
 
 | # | § | Candidate | Address | Class | Lane | Confirm | Note |
 |---|---|---|---|---|---|---|---|
@@ -1960,3 +1965,5 @@ Counts: 36 slips, 6 state, 5 exploit-fix, 13 none, 2 fixed (one item).
 | 60 | §4.2 (g) | creature quest's counts indexed by the types' count, no length test | 0x5704C0 | exploit-fix | adventure | none | malformed map only |
 | 61 | §4.4 | turn start's Grail target reseeds the game's generator | 0x4BAE50, 0x52C9B0, 0x4BAF00, 0x4CEA70 | state | ai (the reseeds are the puzzle's) | experiment X1 (`E31-design.md` §2) | the policy's noise only: the engine's streams are per player |
 | 62 | §4.6 | ai_player_records never reset by a new game or a load | 0x4ED650, 0x4340E0, 0x52BBD0 | none | ai  | experiment X2 (`E31-design.md` §2) | ported as a fresh process's first game: zeros before the first start |
+| 63 | §2.2 | a hero's shooters' share reads the Archery bonus alone (0 without the skill, against 0.2 without a hero) | 0x42426D | state | battle, adventure (§3.6 row 1) | blind at T2b (done) | quick battle's result and the estimate; ported as read (E31 T2b) |
+| 64 | §2.2 | the wall halving spares creature 35 (the Arch Magi) alone, not the Magi (34) | 0x424412 | state | battle, adventure (§3.6 row 1) | blind at T2b (done) | quick battle's result and the estimate; the port reads the battle part's `no_wall_penalty`, which the Magi have too (no data names 35 alone; E31 T2b) |

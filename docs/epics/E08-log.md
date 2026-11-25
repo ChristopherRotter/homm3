@@ -22409,3 +22409,57 @@ from the PC at the start (17 files and 40 MP3s, SHA-256 checked), the repo from 
 **Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session);
 `check-lane --cross-lane`; `h3-protocol`'s and `h3-server`'s tests run apart. **Versions:**
 protocol v83 (the server lane's); no hash, import, part or replay format moved. Next: T143b.
+
+### Increment 15, round 7: T143b, Dimension Door (2026-11-25, `adventure/e08-t143b`, `cross-lane`)
+
+**The cut:** T143b whole (decision 418, the user at its start); the `cross-lane` touch of
+`h3-protocol` (v84, the server lane's) for the door's four refusals, with `NotBuilt` dropped (the
+queue's "no bump unless it drops `NotBuilt`" missed that the new `CastError` variants need the
+wire).
+**Baseline:** `master` 0587db1 (#1169 merged); the originals staged from the PC at the start (17
+files and 40 MP3s, SHA-256 checked), the repo from GitHub; the setup's baseline lost to a VM
+restart, so CI's run on `master` is the baseline (the sandbox skill's rule).
+
+- **The adventure's half** (ADV-SPL-007 to -009; design §10.5, §11.2 as built): the new
+  `state/door.rs`: `check_door` (in the original's order `CastError::NoPoints`, 126;
+  `NoCastsLeft`, 339, the core spell's effect column at the mastery; `OutOfWindow` through
+  `in_window`, now shared with Scuttle Boat in `state/spells.rs`; `NotFree`; with `ADV-QUIRK-55`
+  off `WrongKind` for an explored target), `dimension_door` (under `ADV-QUIRK-51` off a hidden
+  target revealed alone first; a free target of the hero's kind is increment 11's `arrival`,
+  `HeroTeleported`, no guard, no visit, the scouting radius, the boat along; any other
+  `CastFailure::Target`; then the movement points less `door_points[mastery]`, at least 0, and
+  `doors` + 1 in both cases), `door_free`, `door_fits`. `apply_cast` takes the heroes' details
+  (the radius); `jumps.rs`' `arrival` is `pub(super)`. `CastError::NotBuilt` gone, `ADV-STUB-22`
+  withdrawn (`docs/stubs.toml`). No hash moved: `DaySpells::doors` was hashed since T142a.
+- **The game** (`h3-game`'s `state/cast.rs`): the heroes' store passed to `apply_cast`; nothing
+  else (the points are told by the command's `MovementChanged`, the cast by `DaySpellsChanged`).
+- **The wire** (protocol v84, `cross-lane`): `SpellReject::NoPoints`, `NoCastsLeft`, `NotFree`,
+  `WrongKind`; `NotBuilt` removed; mapped both ways; the list 167 rejections. No new event.
+- **Tests:** `h3-adventure`'s `state/tests/door.rs` (seven: the refusals in order with the window
+  and off the map; the tiles not free; the arrival beside a monster with its reveal, 300 and 200
+  points, the casts by mastery, 0 left at least, blue told the landing alone; a boat taken
+  along, a land target from it the wrong kind; the wrong kind charged or refused by the flag;
+  the hidden targets read or revealed by the flag, a hidden hero's tile included; the errors'
+  texts); the test profile `t:faithful` gains both flags; `spells.rs`' door test becomes
+  `other_heroes_are_refused`. `h3-game`'s `tests/casts.rs` (two: the door through the game for
+  25 spell and 300 movement points, then 339; the wrong kind refused free, and charged under a
+  `t:charged` profile, `CastFailed` after `SpellCast`); the refusal-order test's last refusal now
+  the door onto its own tile (`NotFree`).
+- **Docs:** ADV-SPL-007 to -009 new and `verified` (batch 15b's E15-5 to -8, -15, -16); ADV-SPL-001's
+  summary; the ledger's ADV-QUIRK-51, -55, -56; the design note as built (§3, §10.5, §11.2,
+  §16); the inboxes of the server and map-client lanes.
+- *Agent's calls, change freely:* "free" as the original's two bits on the live map (no object's
+  blocked or visitable tile, no rock, no hero, no empty boat: a boat is an object with an
+  entrance there); the kind by the target's passage; the hidden target's reveal the caster's
+  player's (as T143a's; E10 brings the teams); the points and the cast spent after the arrival.
+- **Speed:** no hot loop touched (the casts are not in `legal_commands` until T144a; `check_cast`
+  gains one arm, `apply_cast` one argument). The scoped verify's bench-check against the stored
+  baselines: every workload inside the gate, the highest `fork-economy-xl-144` +1.82 % and
+  `random-play-bonuses-36` +1.81 % (the sandbox's drift, as T143a measured); none re-baselined.
+- **Coverage:** the first run found `set_day_spells`' arm for no spells on a hero without any,
+  reached before only by the door's `NotBuilt` (a test of the block's invariant now).
+
+**Verify:** the scoped verify with original data (every step passes but check-lane, by design,
+and coverage, re-run alone after its fix: pass); `check-lane --cross-lane`; `h3-protocol`'s (216)
+and `h3-server`'s (175) tests run apart. **Versions:** protocol v84 (the server lane's); no hash,
+import, part or replay format moved. Next: the inbox's `h3-map` view property, then T144.

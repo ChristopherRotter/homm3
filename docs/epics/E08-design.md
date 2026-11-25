@@ -58,8 +58,8 @@ entrance, so E12's other classes without a visit (`visit_object`'s out-of-range 
   the pack's closure, of the adventure category; each spell and each behaviour once),
   `AdventureRuleset::spells`, `adventure_spell`; `[params.spells]` required when Summon Boat,
   Scuttle Boat or Dimension Door is bound, the window's entries from 1. The base pack binds all
-  five; the three not built are refused by the adventure until T143 (`CastError::NotBuilt`,
-  `ADV-STUB-22`).
+  five; the three not built were refused by the adventure until T143 (`CastError::NotBuilt`,
+  `ADV-STUB-22`: withdrawn by T143b, every bound spell casts).
 
 ### 4. The quirk flags (decisions 399, 400, 402, 403)
 
@@ -208,6 +208,16 @@ failure** is an accepted cast with `CastFailed` (the mana spent, §14).
    no guard's battle, no visit, the reveal around it by its scouting radius (increment 11's
    jump, `hero_relocate`); then in every accepted case the points less `door_points[mastery]` (at
    least 0) and `doors` + 1.
+   *As built (T143b):* `state/door.rs`' `check_door` (refusals `CastError::NoPoints`,
+   `NoCastsLeft`, T143a's `OutOfWindow` through the shared `in_window`, `NotFree`, `WrongKind`)
+   and `dimension_door` (the arrival is `jumps.rs`' `arrival`, `HeroTeleported`; a failure
+   `CastFailure::Target`); `apply_cast` takes the heroes' details (the scouting radius). The
+   casts of the day are the core spell's effect column at the mastery. *Agent's calls, change
+   freely:* "free" read as the original's two bits on the live map: no object's blocked or
+   visitable tile, no rock (a terrain without a land or water passage), no hero, no empty boat
+   (a boat is an object with an entrance in the original); the kind by the target's passage
+   (water or not); the movement and the cast spent after the arrival (the original's order; no
+   reader between).
 
 ### 11. The hidden tiles (decisions 399, 402)
 
@@ -241,6 +251,9 @@ failure** is an accepted cast with `CastFailed` (the mana spent, §14).
    tile in the window is a target**; at the cast a hidden tile that is blocked, an entrance or of
    the wrong kind fails, charged, and **the target tile is revealed** for the caster's team
    (decision 399: that tile alone); a hidden free tile of the right kind is the arrival.
+   *As built (T143b):* the reveal is that tile alone (radius 0) for the caster's player, before
+   the test, as T143a's scuttle (E10 brings the teams); on, a hidden tile's truth is read at the
+   check (`NotFree`) and its wrong kind fails at the cast, nothing revealed.
 3. **Scuttle Boat** (ADV-SPL-004). **On:** a hidden empty boat in the window is a target (the
    original's cursor). **Off:** a target is an explored tile with an empty boat **or any hidden tile
    in the window**; at the cast a hidden tile holding an empty boat takes the chance draw, any other
@@ -356,6 +369,9 @@ ends: an end the viewer does not see heroes on is `None` in its projection), `Bo
 boat_type }`, `BoatScuttled { tile, boat }`: by the boat's type and tiles, never its index (the
 observation's convention, *agent's call* against the list's `boat`); `SpellReject::NoWater`,
 `OutOfWindow`, `NoBoat`; the fold moves, adds and drops the empty boats.
+*As built (T143b, protocol v84):* the door's arrival is `HeroTeleported` (increment 11's, its
+two ends by viewer), its failure `CastFailed`'s `Target`; `SpellReject::NoPoints`,
+`NoCastsLeft`, `NotFree`, `WrongKind`; `SpellReject::NotBuilt` gone.
 
 ### 17. The env, replays, maps, properties, benchmarks
 
