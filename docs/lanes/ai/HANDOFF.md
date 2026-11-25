@@ -32,23 +32,23 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1158 (`ai/e31-t1b`: E31 T1b, docs only; the README row #1157 `shared/e31-increment-1` merges first). Merged: #1150 (T1a4), #1145 (T1a3d), #1142 (T1a3c), #1139 (T1a3a, T1a3b), #1137 (T1a2), #1133 (T1a1b, T1a1c), #1131 (T1a1a).
+- **Open pull requests:** #1163 (`shared/e31-module`, `cross-lane`: the module's paths, `SignedX87`, ADR-0030; merges first), then this session's `ai/e31-t2` (increment 2's cut, docs only). Merged: #1158 (T1b), #1150 (T1a4), #1145 (T1a3d).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q32, AI-QUIRK-1, AI-STUB-2.
+  ids: AI-Q33, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-2.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
   `E31-design.md`). **Increment 1 closed 2026-11-24** (AI-Q31): the reading (255 functions,
   T1a1a to T1a4) and the survey's close §5 (T1b: the rules by phase, the hidden reads, nine rule
   rows in the battle, adventure and town lanes' inboxes, the gaps by epic, the 61 quirk candidates
-  classified). **The ADR draft** `docs/lanes/ai/adr-drafts/original-computer-player.md` (the user
-  at AI-Q31: a module `h3_game::computer` of `h3-game` for now, refactored into a crate later; the
-  memory the policy's; every battle fought until the battle lane decides; AI-QUIRK-1 for the
-  slips), awaiting its acceptance and number. **Next: E31 increment 2** (refine and cut; first the
-  `shared/` pull request of the draft's points 1 and 9), in `QUEUE.md`, `Heroes3.exe` staged for
-  the blind re-reads. Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
+  classified). **ADR-0030** (accepted 2026-11-25, AI-Q32): a module `h3_game::computer` of
+  `h3-game` for now, refactored into a crate later; the memory the policy's; every battle fought
+  until the battle lane decides; `SignedX87`; AI-QUIRK-1 for the slips. **Increment 2 refined**
+  (AI-Q32): eleven tasks T2a to T2k (the epic file), about 26 000 of the original's instructions;
+  the `shared/` pull request #1163 first. **Next: T2a, the frame** (`QUEUE.md`), `Heroes3.exe`
+  staged for the blind re-reads. Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
   done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -57,6 +57,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-25 — E31 increment 2's start: the shared pull request, the measurement, the cut
+
+- A cloud clone; the user's computer reachable but not needed (no reading this session). The
+  `shared/` pull request #1163 built and checked (the kernel's and xtask's tests, clippy, the
+  workspace's check, the docs and rules gates; `arith.rs` 100 % by llvm-cov); master's ADR-0029
+  (#1159) merged into it. Increment 2 measured from the address map's sizes; the user asked once
+  (AI-Q32): ADR-0030 accepted, eleven tasks, the `lib.rs` line in the shared pull request, the
+  loader's crashes the adventure lane's.
 
 ### 2026-11-24 — E31 T1b: the survey's close, the ADR draft, the checkpoint
 
@@ -76,13 +85,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   a scratch file); the main session made the lists (T1a4c) and merged. A VM restart killed the
   setup's baseline (CI's run on `master` stands for it); the scoped verify without original data.
   The pull request: #1150.
-
-### 2026-11-24 — E31 T1a3d: the answers and the table, in two
-
-- A cloud clone, `Heroes3.exe` staged from the user's repo folder. T1a3d measured about 2 800
-  instructions plus the table, so the cut asked (AI-Q28): two parts; the main session read the
-  answers to the visits, one general-purpose sub-agent the Seer, the markets, the allies' shares and
-  the battle's split in its own worktree (only `map.toml`, its survey text to a scratch file); its
-  diff applied with `git apply --3way`, the main session wrote §3.4 and the table §3.6. The setup's
-  baseline stopped (CI green on `master`); the scoped verify without original data. Two
-  informational inbox notes moved to `QUEUE-ARCHIVE.md`.

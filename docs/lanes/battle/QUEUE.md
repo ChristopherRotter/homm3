@@ -32,7 +32,7 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
   Quick Combat too. (3) A computer defending hero with the better Tactics merges and splits its army
   after the sides are set (`ai_battle_army_split` 0x42DB20; its i16 wrap and division by zero are
   §5.5's #37, #38). Until you decide, the engine fights every battle and the computer's side is
-  played by `h3-battle-ai` (ADR draft `docs/lanes/ai/adr-drafts/original-computer-player.md`
+  played by `h3-battle-ai` (ADR-0030, accepted 2026-11-25,
   points 2, 6, 7: if you build (1) or (3), the simulated combat moves to a `computer` module of
   your crate, owned by the ai lane by path, and both call it). With the adventure lane (the
   trigger).
