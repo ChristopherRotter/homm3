@@ -202,7 +202,9 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   excluded; a banned one is never drawn) and `main = true` (its owner's main town, in the
   header; at most one per player, not a neutral town; the owner's allowed towns are then its
   faction alone) with `generates_hero = true` (the game generates the owner's starting hero
-  there, of the town's faction, drawn at the new game unless the player picks one).
+  there, of the town's faction, drawn at the new game unless the player picks one). Since E09
+  T54 (batch TWN-6) a Conflux's `buildings` also name its `artifact merchants` (bit 10) and
+  `magic university` (bit 18), the AB pack's slots (VCMI's table lists no Conflux building).
   `format` (E08 T56): `sod` (the default) or `roe`, the map in the RoE format (version `0x0E`,
   batch E7's row E7-7): no level limit, banned skills or artifacts, towns, hero spells or primary
   skills (its heroes take `defaults`, or since E08 T128 their own army, experience, skills and
