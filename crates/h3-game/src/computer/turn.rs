@@ -245,7 +245,7 @@ fn garrison(
     legal[index].then(|| heroes(town, change))
 }
 
-/// Whether an army holds a creature (`H3Army::GetCreaturesCount` 0x44ADA0 above 0).
+/// Whether an army holds a creature (`army_creature_count` 0x44ADA0 above 0).
 fn carries_creatures(army: &[ArmyStack]) -> bool {
     army.iter().any(|stack| stack.count > 0)
 }

@@ -48,7 +48,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (survey section 1.2; E31 T1a1a, re-read blind at T2a): ai_next_hero 0x526A90 (the flag set to 1 at 0x526AA5 and cleared by a second hero at 0x526B06; points +0x4D above 0 and +0x11C clear; the patrol byte +0x44 against 0xFF; the skills' sum at 0x526B12 over +0x476 to +0x479, signed, clamped to 99, 0 or 1 below 1 from index 2; a strictly smaller sum replaces; none: the flag 0, the selection -1, the hero count +0x1 against 8, the town list +0x40 over +0x3E, the town's garrison hero +0xC set and its visitor +0x10 none, the hero's creatures 0x44ADA0, points and sleep, town_garrison_to_visitor 0x5BE390); the second pass's copy at 0x526000 to 0x526187, the same tests"
+  ref        = "Heroes3.exe code reading (survey section 1.2; E31 T1a1a, re-read blind at T2a): ai_next_hero 0x526A90 (the flag set to 1 at 0x526AA5 and cleared by a second hero at 0x526B06; points +0x4D above 0 and +0x11C clear; the patrol byte +0x44 against 0xFF; the skills' sum at 0x526B12 over +0x476 to +0x479, signed, clamped to 99, 0 or 1 below 1 from index 2; a strictly smaller sum replaces; none: the flag 0, the selection -1, the hero count +0x1 against 8, the town list +0x40 over +0x3E, the town's garrison hero +0xC set and its visitor +0x10 none, the hero's creatures army_creature_count 0x44ADA0, points and sleep, town_garrison_to_visitor 0x5BE390); the second pass's copy at 0x526000 to 0x526187, the same tests"
   confidence = "high"
 
 [[rule]]
