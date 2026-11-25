@@ -22397,3 +22397,15 @@ from the PC at the start (17 files and 40 MP3s, SHA-256 checked), the repo from 
   type and tiles, never its index (the observation's convention, against the design's list);
   `BoatScuttled` told to those that saw heroes on the tile before the reveal (a caster of a hidden
   target sees it empty in the command's reveal).
+- **Speed:** no hot loop touched (the casts are not in `legal_commands` until T144a; the
+  projection gains one arm). The scoped verify's bench-check against the stored baselines: every
+  workload inside the gate, the highest `random-play-bonuses-36` and `fork-economy-xl-144` at
+  +1.82 % (the sandbox's drift: T142a measured `master`'s worktree at +1.66 % on the first, T142b
+  the forks at their baselines' +0.77 to +1.82 %), `reach-towns-36` +1.11 %; none re-baselined.
+- **Coverage:** the first run found the boats' `if let` writes' implicit else (`Boats::shift` and
+  `sink` now return the type, as `take` and `leave`), the neighbours off the map's corners, and
+  `CastFailed`'s projection in `h3-game` (a test of its viewers).
+
+**Verify:** the scoped verify with original data (the summary in the lane HANDOFF's session);
+`check-lane --cross-lane`; `h3-protocol`'s and `h3-server`'s tests run apart. **Versions:**
+protocol v83 (the server lane's); no hash, import, part or replay format moved. Next: T143b.
