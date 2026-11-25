@@ -41,13 +41,16 @@ python3 h3rmg.py templates   # each case's template predicted from either rmg.tx
 Setup: the client lane's staging set (`clients/capture/README.md`, "Before the first run"), then
 `env -u TMPDIR clients/capture/setup.sh`. The tab's points are `adv-random`'s (E27 design §3.16).
 
-## The corpus (21 cases)
+## The corpus (24 cases)
 
 `rmg/corpus.toml`: every size (S, M, L, XL), one and two levels (size indices 1 to 32), 2 to 8
 players with and without teams, computer-only players with and without their teams, eight players
 in all, water none, normal and islands, monsters weak, normal and strong, seeds from 0 to
 2 147 483 647 (the last second `time()` gives) with three consecutive seconds for one set of
-choices. Each `kept.txt` line: the seed and template the description names, the format, size,
+choices. Since T3a three cases for RMG-QUIRK-24, their seeds found by the port's template draw:
+`s1-3p-2sm2i2` (2SM2i(2), whose human starts 3 and 5 have no Ownership, three players),
+`s1-2p-2sm0k` and `s1-1p-c1-2sm0k` (2SM0k, whose computer starts 3 to 8 have none; two players, one
+of them computer-only in the second). Each `kept.txt` line: the seed and template the description names, the format, size,
 levels, the decompressed map's length and the first 16 hex digits of the SHA-256 of the map and
 of its gzip file.
 
@@ -103,9 +106,14 @@ runs (7 without a junction zone, 11 with one level) has no dump; steps 9 and 12 
 the corpus. About 20 minutes for the corpus with `--again --twice`; the dumps 0.06 to 2 MB each
 (about 0.7 GB for the corpus's three runs, in `clients/out/rmg/`, never in git).
 
-**Kept:** `clients/capture/rmg/phases.txt`, per case the draws, the log's digest and each step's
-dump's (`corpus --phases --record`). For increments 3 to 5: the port's draws compared with the
-log and its cells with the dump of the same step find a divergence at its step and draw.
+**Kept:** `clients/capture/rmg/phases.txt` (`corpus --phases --record`; its format since T3a),
+per case: `draws=` and `log=` (the whole log's digest), `cw=` (the x87 control word, below),
+`zones=` (the digest of the case's `zones.txt` lines, below; `none` without step 2's zones),
+`steps=` per phase of the log (`setup`, `template`, the steps that ran, `generated`, `write`) its
+draws and the digest of its draw lines as the log prints them (`<site> <value>\n`, the site in
+upper-case hex; an empty phase `e3b0c44298fc`), and `cells=` each step's dump's digest. A port of
+steps 1 to k compares its draws per phase (`h3rmg.phase_digests`) without the later ones, and its
+cells with the dump of the same step: a divergence found at its step and draw.
 
 **What it showed:**
 
@@ -141,6 +149,30 @@ log and its cells with the dump of the same step find a divergence at its step a
   cells differ there: +0x14, +0x18 and +0x28's bit 24 until step 6 writes them, +0x24's bits
   30-31 and +0x2C's to the end. No map changed by them. The dumps keep them as they are; `corpus
   --again` names them apart (`h3rmg.MEMORY_BITS`) and fails only on other differences.
+
+## The memory record and the fixed environment (T3a, 2026-11-25)
+
+**How it runs.** With `H3RMG` the hooks also write `rmg<g>.memory` beside the log (`xdd.c`'s
+header, section 10): the x87 control word (`fnstcw`) at the generator's `srand` and at each step's
+first call, and at each call of `rmg_zone_generator_init` 0x5329E0 (step 1's template zones at
+0x53BDA1, step 2's temporary zone at 0x53E149 and water zones at 0x53E45C) the zone's 0xD4 bytes
+and the zone generator's first 0x44 as memory holds them before the constructor runs (read only;
+the temporary zone is the caller's stack). `h3rmg.phase_facts` checks the record against the log:
+per step as many zones with a set town type as draws of 0x532A5B. **Kept:**
+`clients/capture/rmg/zones.txt`, per case each step 2 zone in the call order with RMG-QUIRK-1's
+fields: its kind (`temporary` per level, `water`), `set` (the town-type bytes +0x41..+0x49 not 0:
+the constructor draws `rand() % set` when above 0), `towns` (+0x40..+0x49), `limits`
+(+0xC..+0x1B), `m84`, `m94` and the zone generator's `g8`, in hex. `h3rmg.py memory [--against
+<out>]` summarises a run's records and names the fields that differ from another run's.
+
+**The game's environment is fixed.** The original's heap layout follows its environment block,
+and the sandbox's environment differs per session (17 KB; its `PATH` holds a session's folder)
+and the clock folder's path with the run (`one`'s `out/one/clock`, `corpus`'s
+`out/<id>/run1/clock`). Since T3a `h3rmg.py` sets `H3_FIXED_ENV` (`h3drive.py`'s `FIXED_ENV`):
+the game and every Wine command get only `HOME`, `TZ`, `WINEPREFIX`, `WINEDEBUG`, `DISPLAY`,
+`ALSA_CONFIG_PATH` and the harness's `H3*` variables, sorted, `PATH` fixed, and `H3CLOCK` through
+a link of one length (`original-data/wine/clock`). `--sandbox-env` gives the game the sandbox's
+own environment, as every run before T3a.
 
 ## Not yet
 

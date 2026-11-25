@@ -299,11 +299,11 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Intended/expected behavior: a zone without Ownership marks no start.
 - Impact: gameplay-altering (a player without a start zone; what steps 4 and 5 and the writer then give that colour and those zones is read with their steps)
 - Community status: unknown
-- Sources: code reading (E14 T2c, `rmg_generate_map` 0x5499A1 to 0x549ACD; a second look by a fresh agent's re-read)
+- Sources: code reading (E14 T2c, `rmg_generate_map` 0x5499A1 to 0x549ACD; a second look by a fresh agent's re-read); observation (E14 T3a, the oracle's corpus cases `s1-3p-2sm2i2`, `s1-2p-2sm0k`, `s1-1p-c1-2sm0k`, `docs/lanes/rmg/ORACLE.md`): with 2SM2i(2) and three players the original writes a map whose description says three humans and whose player block has two, red and blue with their main towns, tan (the third) neither playable nor with a town; 2SM0k with two players, and with one and a computer, gives both their main towns (the phantom start 7 unused there)
 - Flag: `quirk.rmg.unowned_start_seventh` (registry position 53)
 - Defaults: faithful = on, fixed = off
 - Regression test: `h3-rmg`'s `a_start_without_ownership_marks_the_eighth_human_start`, `h3-pack-rmg`'s `two_sm2i_2_gives_the_third_player_a_seventh_start` (both profiles)
-- Decided by / date: the user, 2026-11-25 (E14 T2c); unconfirmed by the oracle (no corpus case draws 2SM2i(2) or 2SM0k)
+- Decided by / date: the user, 2026-11-25 (E14 T2c); confirmed by the oracle (E14 T3a: the third player without a start zone is left out of the written map)
 
 ## Considered, not quirks
 
@@ -342,4 +342,4 @@ Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the
 | Candidate | What decides | Survey |
 |---|---|---|
 | Both 6LM10 templates connect zone 13 to itself | what step 6 makes of a self-connection (a fault would be RMG-QUIRK-3's or -4's class) | §3.1 |
-| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0 | what steps 4 and 5 and the writer give such a zone and the colour at position 7 | §3.1 |
+| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0 | what steps 4 and 5 give such a zone (the writer leaves the colour at position 7 out of the map: T3a's `s1-3p-2sm2i2`, RMG-QUIRK-24) | §3.1 |

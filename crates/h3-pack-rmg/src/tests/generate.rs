@@ -464,3 +464,27 @@ proptest! {
         }
     }
 }
+
+// covers: RMG-TPL-008
+/// RMG-QUIRK-24 against the oracle (E14 T3a, `docs/lanes/rmg/ORACLE.md`): the corpus's 2SM2i(2)
+/// case with three players puts the third colour on position 7, which no zone has, and the
+/// original's map leaves that colour (tan) out; its two 2SM0k cases put both colours on the two
+/// zones with Ownership, and the original's maps give both their main towns.
+#[test]
+fn the_corpus_starts_without_ownership_place_the_colours_as_the_original() {
+    let packs = original("base:faithful");
+    let two = [Some(0), Some(1), None, None, None, None, None, None];
+    for (id, positions) in [
+        (
+            "s1-3p-2sm2i2",
+            [Some(0), Some(1), None, None, None, None, None, Some(2)],
+        ),
+        ("s1-2p-2sm0k", two),
+        ("s1-1p-c1-2sm0k", two),
+    ] {
+        let case = CORPUS.iter().position(|c| c.0 == id).unwrap();
+        let (_, s, seed, _) = corpus_settings(case);
+        let map = run(packs, &s, seed).0.unwrap();
+        assert_eq!(map.positions, positions, "{id}");
+    }
+}

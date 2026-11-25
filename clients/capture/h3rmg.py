@@ -42,7 +42,7 @@ only its digests and the choices that made it are kept (rmg/kept.txt).
       The memory records of a `corpus --phases` run (E14 T3a; RMG-QUIRK-1): per case, run and
       map the control word and step 2's zones (temporary or water, their set town types; above
       0 the constructor draws 0x532A5B); --against another run's output names the zone fields
-      that differ there.
+      (zones.txt's) that differ there.
   h3rmg.py read [--out <dir>]
       Each case's first map in <out> read by h3_map's reader, imported and validated in a game
       of its players (h3-map's original-data check, `cargo run -p h3-map --example
@@ -274,6 +274,9 @@ def generate(ident, case, out, again=False, phases=False):
     if phases:
         os.environ["H3RMG"] = "1"
     if not SANDBOX_ENV:
+        fault = fixed_env_fault()
+        if fault:
+            raise RuntimeError(fault)
         os.environ["H3_FIXED_ENV"] = "1"  # the game's environment fixed (h3drive.FIXED_ENV)
     run = Generation(recipe_for(ident, choices, case.get("before", [])), out, choices, again,
                      phases)
@@ -329,6 +332,20 @@ PHASE_HOOKS = 22
 ZONES = RMG / "zones.txt"
 # The game's environment the sandbox's own (`--sandbox-env`, as before E14 T3a), not fixed.
 SANDBOX_ENV = False
+# The fixed environment's paths as the record was made (E14 T3a): its block's size moves the
+# original's heap (ORACLE.md, "The memory record and the fixed environment"), so another clone
+# folder, home or prefix would give other maps; such a run is refused.
+FIXED_PATHS = {"clock link": "/home/claude/homm3/original-data/wine/clock", "HOME": "/root",
+               "WINEPREFIX": "/root/.wine-h3"}
+
+
+def fixed_env_fault():
+    """Why the fixed environment would differ from the record's in size, or None."""
+    have = {"clock link": str(h3drive.CLOCK_LINK), "HOME": h3drive.env()["HOME"],
+            "WINEPREFIX": h3drive.env()["WINEPREFIX"]}
+    wrong = [f"{k} {have[k]} (the record's {v})" for k, v in FIXED_PATHS.items() if have[k] != v]
+    return ("the fixed environment differs from the record's in size: " + "; ".join(wrong)
+            + " (clone to /home/claude/homm3, or --sandbox-env)") if wrong else None
 # How long after the map's file the log may take to end (rmg_write_map's return).
 LOG_LIMIT = 30.0
 # Survey §2.6's sites by phase (the C library's rand calls of the generator's range and of the
@@ -478,19 +495,22 @@ STEP2_ZONES = {0x53E149: "temporary", 0x53E45C: "water"}
 
 def zone_fields(site, zone, generator):
     """RMG-QUIRK-1's fields of a step 2 zone, which no code before the call writes (survey §2.2;
-    the ledger): the zone's +0x40 and the town types +0x41..+0x49 (the constructor's count:
-    `set`, the draw 0x532A5B when above 0), its position limits +0xC..+0x1B, +0x84 and +0x94,
-    and the zone generator's +8."""
-    towns = zone[0x40:0x4A]
-    return {"kind": STEP2_ZONES[site], "towns": towns.hex().upper(),
-            "set": sum(1 for b in towns[1:] if b), "limits": zone[0xC:0x1C].hex().upper(),
-            "m84": f"{zone[0x84]:02X}", "m94": f"{zone[0x94]:02X}",
-            "g8": generator[8:12].hex().upper()}
+    the ledger), in the form two fresh starts agree on (T3a: the bytes' values differ between
+    them, whether each is 0 does not): the town types +0x41..+0x49 as a mask of those not 0
+    (bit k for +0x41 + k; `set` of them: the constructor draws 0x532A5B, `rand() % set`, when
+    above 0, and takes the r-th set one), +0x40, +0x84 and +0x94 as 0 or 1. The values, the
+    position limits +0xC..+0x1B and the zone generator's +8 (a water zone's a heap value that
+    differs between fresh starts, l1-4p-b's) stay in the record only."""
+    towns = zone[0x41:0x4A]
+    return {"kind": STEP2_ZONES[site], "set": sum(1 for b in towns if b),
+            "mask": f"{sum(1 << k for k, b in enumerate(towns) if b):03X}",
+            "same": int(bool(zone[0x40])), "m84": int(bool(zone[0x84])),
+            "m94": int(bool(zone[0x94]))}
 
 
 def zone_text(f):
-    return (f"{f['kind']} set={f['set']} towns={f['towns']} limits={f['limits']} "
-            f"m84={f['m84']} m94={f['m94']} g8={f['g8']}")
+    return (f"{f['kind']} set={f['set']} mask={f['mask']} same={f['same']} m84={f['m84']} "
+            f"m94={f['m94']}")
 
 
 def zones_digest(fields):
@@ -709,8 +729,9 @@ def corpus_command(args):
                 "# Step 2's zone bytes as rmg_zone_generator_init 0x5329E0 finds them (h3rmg.py "
                 "corpus --phases --record; ORACLE.md,\n# \"The memory record\"; RMG-QUIRK-1): "
                 "per case and zone in the call order, the temporary zone (per level) or a\n"
-                "# water zone, its set town types, +0x40..+0x49, +0xC..+0x1B, +0x84, +0x94 and "
-                "its zone generator's +8, in hex.\n" + "\n".join(body) + "\n")
+                "# water zone, its town types +0x41..+0x49 not 0 (set, mask: bit k for +0x41 + k), "
+                "+0x40, +0x84, +0x94 not 0.\n"
+                + "\n".join(body) + "\n")
     return 1 if failed else 0
 
 

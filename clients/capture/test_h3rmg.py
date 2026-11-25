@@ -95,13 +95,12 @@ class PhaseOracle(unittest.TestCase):
         self.assertEqual([(site, step) for site, step, _, _ in zones],
                          [(0x53BDA1, 1), (0x53E149, 2)])
         f = h3rmg.zone_fields(*(zones[1][k] for k in (0, 2, 3)))
-        self.assertEqual((f["kind"], f["set"], f["towns"]),
-                         ("temporary", 2, "00010000010000000000"))
-        self.assertEqual((f["limits"][:8], f["m84"], f["m94"], f["g8"]),
-                         ("07000000", "CC", "00", "FFFFFFFF"))
+        # +0x41 and +0x44 set: bits 0 and 3; +0x84's 0xCC is "not 0"; the limits are not kept.
+        self.assertEqual((f["kind"], f["set"], f["mask"]), ("temporary", 2, "009"))
+        self.assertEqual((f["same"], f["m84"], f["m94"]), (0, 1, 0))
+        self.assertNotIn("g8", f)  # a heap value two fresh starts can disagree on
         self.assertEqual(h3rmg.zone_lines("c", {"zones": [f]}),
-                         ["c 1 temporary set=2 towns=00010000010000000000 limits=07" + "0" * 30
-                          + " m84=CC m94=00 g8=FFFFFFFF"])
+                         ["c 1 temporary set=2 mask=009 same=0 m84=1 m94=0"])
         self.assertEqual(h3rmg.zones_digest([]), "none")
         self.assertEqual(h3rmg.control_words({"seed": 0x27F, "1": 0x37F}), "seed:027F,1:037F")
         path.write_text("cw seed 027F\n")
