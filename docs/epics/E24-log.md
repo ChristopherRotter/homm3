@@ -3636,3 +3636,16 @@ On `map-client/e24-m5-t2c` (`cross-lane`), from `master` at 8fa2711 (#1175, T2b'
     reason as before, the codec's `Debug`); its own `MAX_LINE` gone.
   - Notes in the client lane's inbox (its readers moved, the bound's change) and the server
     lane's (the new module in its crate, a standing duty).
+- **Checked:** `h3-protocol`'s tests (the three new, `session`'s record test with the read-back)
+  and the server scope's verify (coverage at 100 % with the new module, bench-check, the original
+  data; `check-lane` failing there by design, `check-lane --cross-lane` ok); `cargo check
+  --workspace --all-targets`; every golden adventure replay's player records (118 replays, 236
+  records) with this branch's binary and `master`'s (8fa2711, a worktree, both release): all 236
+  the same (exit, output and timeline), 205 played to their end and 31 stopped, as T2a found;
+  `h3map.py drawn` (56 situations and every sequence the same, the scripted ones with the
+  engine's binaries); `h3drive.py drawn` (270 sequences and situations the same: the battle
+  record's reader moved too); the window under Xvfb on `dwellings-guards-s1`'s record as T2a
+  (`--check 45`: both battles closed, 145 of 145 frames read back exact, 150 of 150 made as
+  afresh, every change the headless loop's, its "not found: BUTTON.WAV" line as T2a's);
+  `clients/scripts/check.sh` (every gate; the client lane's record tests as before); the
+  map-client scope's verify.
