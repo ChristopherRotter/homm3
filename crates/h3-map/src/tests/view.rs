@@ -1221,6 +1221,25 @@ fn flies(game: &GameState, rules: &GameRuleset, viewer: PlayerId) -> bool {
         })
 }
 
+/// Whether one of `viewer`'s heroes on the map may cast a spell with a target, Scuttle Boat or
+/// Dimension Door (E08 T144a1; `h3_heroes::available_spells` among the adventure part's bound
+/// spells): with `ADV-QUIRK-51` and `ADV-QUIRK-52` on (`faithful`) their listed targets read the
+/// window's hidden tiles (the original's cursor; increment 15's design note §11.2, §11.3).
+fn targets_hidden(game: &GameState, rules: &GameRuleset, viewer: PlayerId) -> bool {
+    let part = rules.adventure();
+    game.adventure()
+        .heroes()
+        .iter()
+        .filter(|h| h.owner == viewer)
+        .filter_map(|h| game.hero(h.id))
+        .any(|d| {
+            let known = h3_heroes::available_spells(d, rules.core()).unwrap_or_default();
+            part.spells()
+                .iter()
+                .any(|&(spell, effect)| effect.targets() && known.contains(&spell))
+        })
+}
+
 /// The owner's own view of `hero` in `view`: on the map, or (E09 T28a) in one of its towns'
 /// garrisons, whose points (E09 T28b1: refilled at the owner's turn start, TWN-ROW-005) and marks
 /// (the day's and the week's drops) change too.
@@ -3316,7 +3335,11 @@ proptest! {
     /// garrisons' stacks. Since E08 T142b a flight crosses the tiles its player has not explored
     /// (`ADV-QUIRK-15`): under `strict-fixed` over what the viewer knows, so the comparison runs
     /// on (exit criterion 8 of increment 15); under `faithful` its reach reads them (the
-    /// original's leak), so the comparison ends while one of the viewer's heroes flies.
+    /// original's leak), so the comparison ends while one of the viewer's heroes flies. Since
+    /// E08 T144a1 `legal_commands` lists the casts: under `faithful` Scuttle Boat's and Dimension
+    /// Door's targets read the hidden tiles of their window (`ADV-QUIRK-52`, `ADV-QUIRK-51`), so
+    /// the comparison ends while one of the viewer's heroes may cast either; under `strict-fixed`
+    /// it runs on (exit criterion 8).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),
@@ -3377,8 +3400,11 @@ proptest! {
         // tiles it has not explored (the original's leak, increment 15's design note §4), so the
         // comparison holds there only while none of the viewer's heroes flies; off, throughout
         // (the compromise, §11.1: the reach and its moves over what the viewer knows, exit
-        // criterion 8).
-        let leaks = |game: &GameState| !strict && flies(game, rules, viewer);
+        // criterion 8). E08 T144a1: so too while one of them may cast Scuttle Boat or Dimension
+        // Door, whose listed targets read the hidden tiles under `faithful` (§11.2, §11.3).
+        let leaks = |game: &GameState| {
+            !strict && (flies(game, rules, viewer) || targets_hidden(game, rules, viewer))
+        };
         if leaks(&a) {
             return Ok(());
         }

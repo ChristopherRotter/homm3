@@ -258,6 +258,32 @@ impl AdventureState {
             .ok_or(CastError::OutOfWindow)
     }
 
+    /// The tiles of the window around a hero on `from` that lie on the map, in row order (row by
+    /// row, column by column, the observation's order; E08 T144a1, increment 15's design note
+    /// §17): every target [`Self::in_window`] passes for Scuttle Boat and Dimension Door, at most
+    /// 19 × 17 with the original's `target_range`; none for a hero off the map's levels.
+    pub fn cast_window(&self, part: &AdventureRuleset, from: Pos) -> impl Iterator<Item = Pos> {
+        let [columns, rows] = part
+            .params()
+            .spells()
+            .map_or([0, 0], |params| params.target_range);
+        let span = |at: u16, range: u8, size: u16| {
+            let low = at.saturating_sub(u16::from(range));
+            let high = at
+                .saturating_add(u16::from(range))
+                .min(size.saturating_sub(1));
+            low..=high
+        };
+        let map = &self.map;
+        let on = from.level < map.levels() && map.width() > 0 && map.height() > 0;
+        let (xs, ys) = (
+            span(from.x, columns, map.width()),
+            span(from.y, rows, map.height()),
+        );
+        ys.filter(move |_| on)
+            .flat_map(move |y| xs.clone().map(move |x| Pos::new(x, y, from.level)))
+    }
+
     /// Checks `player`'s cast `cast` by its hero `hero` as [`Self::apply_cast`] makes it
     /// (increment 15's design note §10), its mastery the game's derivation on the hero's ground
     /// (`h3_heroes::spell_masteries_on`), its details in `heroes`, the game's store. Nothing

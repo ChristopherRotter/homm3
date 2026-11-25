@@ -5923,11 +5923,13 @@ fn check_legal(
             } else {
                 // E08 T86b1: then the Shipyards' boats it may build (ADV-SHY-003); E08 T105b2:
                 // then its heroes' revisits (ADV-TEL-008); E09 T18b2b: then its towns' builds
-                // `apply` accepts (TWN-BLD-001).
+                // `apply` accepts (TWN-BLD-001); E08 T144a1: then its heroes' casts `apply`
+                // accepts (GAM-SPL-001).
                 core::iter::once(GameCommand::EndTurn)
                     .chain(buildable(state, rules, player))
                     .chain(revisitable(state, rules, player))
                     .chain(accepted_builds(state, rules, player))
+                    .chain(accepted_casts(state, rules, player))
                     .collect()
             };
             prop_assert_eq!(listed, expected);
@@ -6866,6 +6868,60 @@ fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> 
                 && (!opening || probe != *state)
         })
         .collect()
+}
+
+/// The casts `player` may make in `state` by `apply`'s checks alone (GAM-SPL-001; E08 T144a1):
+/// for each of its heroes in its list (GAM-HER-003), each spell the adventure part binds that the
+/// hero knows (`h3_heroes::available_spells`), in the part's order, a probe of the cast without a
+/// target, or of each tile of its level within the parameters' `target_range` in row order for
+/// Scuttle Boat and Dimension Door, kept where `apply` accepts it, as `legal_commands` must list
+/// them. A spell the hero lacks is refused before any target is read (`h3-game`'s tests).
+fn accepted_casts(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
+    let (adventure, part) = (state.adventure(), rules.adventure());
+    let map = adventure.map();
+    let [columns, rows] = part
+        .params()
+        .spells()
+        .map_or([0, 0], |params| params.target_range);
+    let mut accepted = Vec::new();
+    for hero in adventure.hero_list(player) {
+        let (Some(on), Some(details)) = (adventure.hero(hero), state.hero(hero)) else {
+            continue;
+        };
+        let known = h3_heroes::available_spells(details, rules.core()).unwrap_or_default();
+        for &(spell, effect) in part.spells() {
+            if !known.contains(&spell) {
+                continue;
+            }
+            let targets: Vec<Option<TilePos>> = if effect.targets() {
+                (0..map.height())
+                    .flat_map(|y| (0..map.width()).map(move |x| TilePos::new(x, y, on.pos.level)))
+                    .filter(|t| {
+                        t.x.abs_diff(on.pos.x) <= u16::from(columns)
+                            && t.y.abs_diff(on.pos.y) <= u16::from(rows)
+                    })
+                    .map(Some)
+                    .collect()
+            } else {
+                vec![None]
+            };
+            accepted.extend(
+                targets
+                    .into_iter()
+                    .map(|target| GameCommand::Cast {
+                        hero,
+                        spell,
+                        target,
+                    })
+                    .filter(|command| {
+                        let mut probe = state.clone();
+                        let actor = Actor::Player(player);
+                        apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
+                    }),
+            );
+        }
+    }
+    accepted
 }
 
 /// What a town's recruitment at `building` opens by an independent reading of the town's record

@@ -378,7 +378,8 @@ fn a_mine_battle_s_end_keeps_the_survivors_or_flags_the_mine_after_the_levels() 
     );
     assert_eq!(s.mine_guards(&rules.1, 0), [stack(2, PEASANT, 55)]);
     assert!(events.is_empty());
-    // None left without a win (a draw): no guards, no flag; the next visit flags it.
+    // None left without a win (a draw): no guards, no flag; the next visit flags it
+    // (`ADV-QUIRK-58` fixed: the original keeps the creature at a count of 0).
     let mut draw = s.clone();
     let ended = draw.end_unowned_battle(parts, (HERO, ENTRANCE), (&[], false), &mut events);
     assert_eq!(ended, AdventureOutcome::default());

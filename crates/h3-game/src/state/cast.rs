@@ -6,15 +6,20 @@
 //! battlefields, whose special ground under the hero raises a mastery or limits a spell's level
 //! (ADR-0015 point 2, ADR-0013 point 17).
 
+use alloc::vec::Vec;
+
 use h3_adventure::{Cast, Pos};
 use h3_content::SpellId;
 use h3_content_battle::Battlefield;
 use h3_contracts::{HeroId, PlayerId};
-use h3_heroes::{HeroChange, SchoolRaise, can_cast_on_map, map_spell_cost, spell_masteries_on};
+use h3_heroes::{
+    HeroChange, HeroDetails, SchoolRaise, available_spells, can_cast_on_map, map_spell_cost,
+    spell_masteries_on,
+};
 
 use super::GameState;
 use crate::GameRuleset;
-use crate::command::{AdventureSink, GameCommandError, GameEvent, MapCastError, Sink};
+use crate::command::{AdventureSink, GameCommand, GameCommandError, GameEvent, MapCastError, Sink};
 
 /// A cast the game accepted (GAM-SPL-001): the adventure's cast (the spell's behaviour, the
 /// mastery on the hero's ground, the target) and the spell points it costs.
@@ -53,16 +58,7 @@ impl GameState {
         (hero, spell, target): (HeroId, SpellId, Option<Pos>),
     ) -> Result<MapCast, MapCastError> {
         let (core, part) = (rules.core(), rules.adventure());
-        // Every hero on the map is in the store (GAM-HER-001).
-        let (pos, details) = self
-            .adventure
-            .hero(hero)
-            .filter(|on| on.owner == player)
-            .and_then(|on| {
-                let details = self.heroes.get(usize::from(hero.raw()));
-                details.map(|details| (on.pos, details))
-            })
-            .ok_or(MapCastError::NotYourHero(hero))?;
+        let (pos, details) = self.caster(player, hero)?;
         if can_cast_on_map(details, core, spell) != Ok(true) {
             return Err(MapCastError::Unknown(spell));
         }
@@ -74,6 +70,43 @@ impl GameState {
         if effect.targets() != target.is_some() {
             return Err(MapCastError::Target);
         }
+        let (mastery, cost) = self.cast_frame(rules, (pos, details), spell)?;
+        let cast = Cast {
+            spell,
+            effect,
+            mastery,
+            target,
+        };
+        self.adventure
+            .check_cast((core, part), &self.heroes, (player, hero), cast)
+            .map_err(MapCastError::Adventure)?;
+        Ok(MapCast { cast, cost })
+    }
+
+    /// The first test of [`Self::check_cast`]: `hero` one of `player`'s heroes on the map, with
+    /// its tile and details.
+    fn caster(&self, player: PlayerId, hero: HeroId) -> Result<(Pos, &HeroDetails), MapCastError> {
+        // Every hero on the map is in the store (GAM-HER-001).
+        self.adventure
+            .hero(hero)
+            .filter(|on| on.owner == player)
+            .and_then(|on| {
+                let details = self.heroes.get(usize::from(hero.raw()));
+                details.map(|details| (on.pos, &**details))
+            })
+            .ok_or(MapCastError::NotYourHero(hero))
+    }
+
+    /// The tests 5 and 6 of [`Self::check_cast`] for the hero on `pos` with `details`, which
+    /// know `spell`: the cost against the spell points, then the ground; the mastery on the
+    /// hero's ground and the cost.
+    fn cast_frame(
+        &self,
+        rules: &GameRuleset,
+        (pos, details): (Pos, &HeroDetails),
+        spell: SpellId,
+    ) -> Result<(u8, u16), MapCastError> {
+        let core = rules.core();
         let ground = self.ground_of(rules, pos);
         let raise = ground.map_or(SchoolRaise::None, |field| {
             SchoolRaise::Schools(field.expert_schools.iter().copied().collect())
@@ -87,23 +120,82 @@ impl GameState {
         if ground.is_some_and(|field| level > field.max_spell_level) {
             return Err(MapCastError::Ground);
         }
-        if self.adventure.anti_magic(part, pos) {
+        if self.adventure.anti_magic(rules.adventure(), pos) {
             return Err(MapCastError::AntiMagic);
         }
         let mastery = spell_masteries_on(details, core, raise)
             .ok()
             .and_then(|masteries| masteries.into_iter().find(|&(s, _)| s == spell))
             .map_or(0, |(_, mastery)| mastery);
-        let cast = Cast {
-            spell,
-            effect,
-            mastery,
-            target,
-        };
-        self.adventure
-            .check_cast((core, part), &self.heroes, (player, hero), cast)
-            .map_err(MapCastError::Adventure)?;
-        Ok(MapCast { cast, cost })
+        Ok((mastery, cost))
+    }
+
+    /// The casts `player` may make now, as [`Self::check_cast`] accepts them (GAM-SPL-001; E08
+    /// T144a1, increment 15's design note §17): for each of its heroes on the map in its list's
+    /// order (GAM-HER-003), each spell the adventure part binds that the hero may cast, in the
+    /// part's order (the core's spell order): Summon Boat, Fly and Water Walk once, without a
+    /// target; Scuttle Boat and Dimension Door at every target of the window
+    /// ([`h3_adventure::AdventureState::cast_window`]: up to 19 × 17, in row order) the
+    /// adventure's test accepts (a charged failure too: under `strict-fixed` the door's and the
+    /// scuttle's hidden tiles, under `faithful` the door's wrong kind, increment 15's design note
+    /// §11). The hero's spells are derived once (`h3_heroes::available_spells`), so a hero without
+    /// a bound spell costs no ground or cost test.
+    // rule: GAM-SPL-001
+    pub(crate) fn legal_casts(
+        &self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        listed: &mut Vec<GameCommand>,
+    ) {
+        let (core, part) = (rules.core(), rules.adventure());
+        if part.spells().is_empty() {
+            return;
+        }
+        // The list holds the player's heroes on the map, each with valid details in the store.
+        let casters = self
+            .adventure
+            .hero_list(player)
+            .into_iter()
+            .filter_map(|hero| {
+                let (pos, details) = self.caster(player, hero).ok()?;
+                let known = available_spells(details, core).unwrap_or_default();
+                Some((hero, pos, details, known))
+            });
+        for (hero, pos, details, known) in casters {
+            for &(spell, effect) in part.spells() {
+                if known.binary_search(&spell).is_err() {
+                    continue;
+                }
+                let Ok((mastery, _)) = self.cast_frame(rules, (pos, details), spell) else {
+                    continue;
+                };
+                let accepts = |target: Option<Pos>| {
+                    let cast = Cast {
+                        spell,
+                        effect,
+                        mastery,
+                        target,
+                    };
+                    let checked =
+                        self.adventure
+                            .check_cast((core, part), &self.heroes, (player, hero), cast);
+                    checked.is_ok().then_some(GameCommand::Cast {
+                        hero,
+                        spell,
+                        target,
+                    })
+                };
+                if effect.targets() {
+                    listed.extend(
+                        self.adventure
+                            .cast_window(part, pos)
+                            .filter_map(|target| accepts(Some(target))),
+                    );
+                } else {
+                    listed.extend(accepts(None));
+                }
+            }
+        }
     }
 
     /// `player`'s cast of `spell` by its hero `hero` at `target` (GAM-SPL-001; increment 15's

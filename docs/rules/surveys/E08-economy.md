@@ -320,7 +320,10 @@ Leave Guards dialog again) needs a visit command, which the engine does not have
   (record +0x4, +0x20): the wandering monster's battle (ADV-MON-009: its split by the army ratio
   table and a roll of 1 to 100, its seed from the tile), so 150 Troglodytes fight in several
   stacks. When creatures remain (a loss, a retreat, a surrender) slot 0's count
-  becomes the count left and the visit ends; a win clears the guards, tells a human ADVEVENT 85
+  becomes the count left and the visit ends; after a **draw** too (E24 M5 T1b's reading, confirmed
+  by E08 T144a1: `monster_battle` writes its creature's count left, 0, on any winner but the
+  hero), so slot 0 keeps its creature at a count of 0, which `army_has_creatures` 0x4496A0 counts:
+  the next visitor is asked ADVEVENT 84 again (`ADV-QUIRK-58`, fixed: the engine leaves no guards); a win clears the guards, tells a human ADVEVENT 85
   ("You beat the Troglodytes and are able to restore the mine to production."), and the mine is
   flagged. Slot 0 is read whatever slot holds the stack (A-29).
 - **Any other guards** (an owned mine's, or a neutral mine's of two stacks or more):

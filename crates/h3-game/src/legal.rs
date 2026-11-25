@@ -47,13 +47,17 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// hall offers whose price the treasury holds, in the record's order (TWN-BLD-001:
 /// `GameState::town_offer`'s payable set; none for a town built in today, TWN-BLD-004), each
 /// town's builds followed by its recruitments (E09 T27), its Tavern's hires by slot (E09 T38a2,
-/// TWN-TAV-003) and its hero moves between its bars (E09 T28a). Empty for
+/// TWN-TAV-003) and its hero moves between its bars (E09 T28a), then since E08 T144a1 its heroes'
+/// casts on the map (`GameCommand::Cast`, GAM-SPL-001: per hero in the player's list, each
+/// spell the adventure part binds that the hero may cast, in the part's order, Scuttle Boat's and
+/// Dimension Door's every accepted target of the window in row order; increment 15's design note
+/// §17). Empty for
 /// a player whose turn is not running or who is not in the game, by `apply`'s own checks
 /// (ADR-0017's consequence). The moves are [`legal_moves`]; a meeting's, an army dialog's and an
 /// exchange's management commands [`legal_management`]'s.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
 // rule: GAM-DEC-008, GAM-DEC-009, ADV-SHY-003, ADV-TEL-008, TWN-BLD-001, TWN-TAV-003
-// rule: GAM-DEC-010, GAM-DEC-011, GAM-DEC-012, GAM-DEC-013
+// rule: GAM-DEC-010, GAM-DEC-011, GAM-DEC-012, GAM-DEC-013, GAM-SPL-001
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -103,6 +107,7 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
         .chain(revisits)
         .chain(crate::town::legal_builds(state, rules, player))
         .for_each(|command| listed.push(command));
+    state.legal_casts(rules, player, &mut listed);
     listed
 }
 
