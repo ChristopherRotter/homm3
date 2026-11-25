@@ -4,8 +4,8 @@ The reading behind E31 (`docs/epics/E31-original-computer-player.md`): what the 
 computer does in its adventure turns, as read from `Heroes3.exe` (GOG Complete, SoD's code,
 SHA-256 `aac39e8c…`; `docs/exe/README.md`). Built up by increment 1's tasks: §1 the turn (T1a1a
 the loop and the records, T1a1b the planning, T1a1c the walk), §2 the values (T1a2a to T1a2d), §3 the towns
-and the answers (T1a3a to T1a3d), §4 the rest of the code (T1a4); T1b adds the wiki's and VCMI's
-positions, the hidden reads in one list, the asymmetries and the engine's gaps. The detail of each
+and the answers (T1a3a to T1a3d), §4 the rest of the code (T1a4); §5 closes it (T1b): each phase's rules, the hidden reads in one list,
+the asymmetries and their sources, the engine's gaps, the second look at the quirk candidates. The detail of each
 routine is in its map entry (`scripts/exe.py lookup <address>`); this file says what the turn
 does with them.
 
@@ -1714,3 +1714,249 @@ loader refers to them). Until a computer's first turn start in a game, its recor
 values the process computed for that colour, in an earlier game too, or zeros after the start-up:
 a computer hero's level-up before then (defending in the first turns after a load) reads that gold
 weight. A quirk candidate for T1b (the engine's port starts the record at its first turn).
+
+## 5. The survey's close (T1b)
+
+What the port, the lanes and the fair variant need from §1 to §4 in one place: each phase's rules
+(§5.1), the hidden reads (§5.2), the asymmetries and where they went (§5.3), the engine's gaps by
+epic (§5.4), the second look at the quirk candidates (§5.5). The decisions on them are the ADR
+draft's (`docs/lanes/ai/adr-drafts/original-computer-player.md`); the working detail (the traces,
+the experiments, the seam, the memory) is `docs/epics/E31-design.md`.
+
+### 5.1 Each phase's rules
+
+The phases of §4.3, each with what it decides, its rules for the port (the planned `CPU-<area>`
+ids of `docs/rules/catalog/computer.toml`, ADR draft point 12; numbered when built) and the
+rules the original gives the computer in it (§3.6's rows, the lanes'). Draws: only the
+destination's noise in the policy (§4.4); every phase but the game's start reads x87 values (§4.5).
+
+| Phase | What it decides | The port's rules | The original's own rules in it (§3.6) | § |
+|---|---|---|---|---|
+| Game start, load, end | the artifact effects' table, the terrain shares, the class tables; the records' colours | `CPU-TRN` (the tables built) | — | §4.1, §4.2, §4.6 |
+| The turn's frame | the phases' order, the flag F (above Easy with a town), the hero order, both passes, the end | `CPU-TRN` (the turn, the hero order, a hero's turn and its dispatch) | the patrol (row 6) | §1.1 to §1.4 |
+| The start | the records and the resources' weights, the reach folds and the threats, the defence recruits, the reserve, the Eye values, the Grail target | `CPU-TRN` (the start's values), `CPU-VAL` (the weights), `CPU-TWN` (the defence recruit) | — | §1.5, §1.6, §2.3, §2.4 |
+| A hero's turn: the planning | the danger map (none on Easy without a human ally), the candidates, the colleagues' claims, the score and its noise, the destination, the must-go | `CPU-PLN` | — | §1.9 |
+| A hero's turn: the walk | the path node by node, the visits on the way, Fly, Water Walk, Summon Boat, Town Portal, Dimension Door, the Castle Gate, the dig, the boats | `CPU-WLK` | the Shipyard's boat from afar (row 3), Dimension Door without points (row 4), the Castle Gate's jump (row 5) | §1.10 |
+| A hero's turn: the town visit | the garrison and the swap, the exchanges and the formation, the recruits and the dwelling built, the guild, the upgrades, the stock, the Blacksmith, the University, the book, the Grail | `CPU-TWN` | the artifact price one unit lower (row 7) | §3.3 |
+| The middle | the build choice and its six values, the trades and Marketplaces, the hires and the prospects, the allies' shares, the defence recruits | `CPU-TWN`, `CPU-HIR` | — | §1.5, §3.1, §3.2, §3.5 |
+| The values (shared) | the object value by class, the army values and plan, the towns', heroes', artifacts', skills' and spells' values, the resources' weights, the artifact effects | `CPU-VAL` by family | — | §2.1, §2.3 to §2.5, §4.1 |
+| The simulated combat (shared) | the sides, the spells, the rounds, the losses, Necromancy | `CPU-SIM` (the estimate) | the quick battle's outcome (row 1), the hidden battle's end (row 2) | §2.2 |
+| The answers | the visits' dialogs at the human's prices, the joins and the pursued monster, the Seer's yes, the markets, the level-up, the meeting | `CPU-ANS` | — | §3.4, §3.5 |
+| The battle | the quick battle without a human side, the defender's split; the attacker's split (a choice) | `CPU-ANS` (the attacker's split) | rows 1, 2, 8 | §2.2, §3.5 |
+
+### 5.2 The hidden reads
+
+Every read of something the computer's player could not see, in one list (from §1.5, §1.7, §1.9,
+§2.1 to §2.5, §3.1 to §3.5; the computer's own state and public facts left out). The faithful port
+reads them all (ADR draft point 4); the fair variant's world replaces each (point 14), so this
+list is its checklist. The last column is a first reading of what the game shows, to be checked
+against the projection's rules (`docs/06-security.md`) at increment 6.
+
+| # | What the computer reads | Where | Phase | What its player can see instead |
+|---|---|---|---|---|
+| 1 | Every enemy hero's true place and reach, counted per own town (the threat count +0x3) | `ai_enemy_reach_fold` 0x4280E0, `ai_town_threat_vtable` 0x63B670, 0x4282B0 (§1.5, §2.4) | start, middle | enemy heroes on its visible tiles only |
+| 2 | Which own towns each enemy hero could take: sets that hero's threat (+0x11D), drives the defence recruit | `ai_town_defence_vtable` 0x63B67C, `ai_town_defence_recruit` 0x428580 (§1.5, §2.4, §3.3) | start, middle | visible enemy heroes and the scouting estimate of their armies |
+| 3 | The Eye value: unexplored tiles and object entrances around every Eye of the Magi, explored or not | `ai_eyes_value` 0x429910 over `ai_vision_area_value` 0x432220 (0x4323CB) (§1.5, §2.4) | start | the Eyes on explored tiles; nothing under the fog |
+| 4 | The Grail's true tile, to place the puzzle grid and pick the puzzle target (+0x39) | `player_puzzle_target` 0x4BAE50 (0x52CAF9) (§1.5, §2.4) | start | the puzzle map's uncovered pieces |
+| 5 | The danger map: a simulated fight against every enemy hero's exact army, and that hero's search reach | `ai_danger_map` 0x42DE50 (§1.9) | hero's turn | visible enemy heroes and the scouting estimate of their armies |
+| 6 | Every reachable entrance as a candidate, explored or not; without a town an unexplored one valued by its object | `ai_hero_candidates` 0x42EDD0 (§1.7, §1.9) | hero's turn | explored tiles only |
+| 7 | The pathfinder's fog test: one step into the fog with a town, the fog ignored without one | `pathfinder_fog_test` 0x4B25D4 (§1.7) | hero's turn | explored tiles only (ADV-MOV-008) |
+| 8 | Guards under the fog on a path (the map's guard flag, not the fog) | `pathfinder_entrance_guarded` 0x56A360, `pathfinder_target_weigh` 0x56AAD0, `pathfinder_teleport_exits` 0x56A400 (§3.4) | hero's turn | guards on explored tiles only |
+| 9 | Exact counts of monsters and of every object's guards (banks, crypts, Pandora's, mines, piles, scrolls) | `ai_object_value` 0x528040 (0x52A140), 0x529890 (§2.1, §2.2) | hero's turn | the scouting estimate of a visible stack |
+| 10 | An enemy garrison's exact army | 0x428410, `ai_object_value` class 33 (§2.1, §2.2) | hero's turn | the scouting estimate of a visible garrison |
+| 11 | An enemy hero's exact army anywhere, with its primaries, Tactics, spell points, spells, artifacts and +0x11D | 0x528C5D, 0x427395, 0x423EE0, 0x424120, 0x425BD0 (§2.1, §2.2) | hero's turn | a visible hero's scouting estimate; not its spells or mana |
+| 12 | A Pandora's Box's and an event's whole contents | `ai_object_value` class 6 (§2.1) | hero's turn | nothing |
+| 13 | A creature bank's (and Utopia's, Derelict Ship's, Crypt's, Shipwreck's) rewards | `ai_object_value` classes 16, 24, 25, 84, 85 (§2.1) | hero's turn | the bank's type; its guards only after its team's mark (ADV-BNK-006) |
+| 14 | A Prison's prisoner and its army | `ai_prison_value` 0x52A3A0 (§2.1) | hero's turn | a Prison only (ADV-PRI-003) |
+| 15 | An unvisited Seer's Hut's reward | `seer_reward_value` 0x573A70 via `ai_seer_hut_value` 0x5735A0 (0x5735C6) (§2.1, §3.5) | hero's turn | nothing until visited |
+| 16 | A dwelling's whole record (creatures, counts, guards), seen or not, and the map's number of dwellings | `ai_dwelling_value` 0x529A30 (0x529A9A, 0x529C58) (§2.3) | hero's turn | the dwelling's type on explored tiles |
+| 17 | Another's town's exact garrison and hero, its recruits, Silo and buildings; a visiting enemy hero's army | `ai_town_capture_value` 0x529CB0 (0x529CF7, 0x529E0B), `ai_town_value` 0x52AB80 (0x52ACDA) (§2.4) | hero's turn | the scouting estimate of a visible town and its visitor |
+| 18 | A town's fort level in the simulated siege | 0x424790 in `ai_army_fight_sim` 0x427330 (§2.2) | hero's turn | the fort of a visible town |
+| 19 | The Grail's true tile at an Obelisk (worth 0 once the target is right) | `ai_obelisk_value` 0x52A2B0 (0x52A30B) (§2.1) | hero's turn | the puzzle map's uncovered pieces |
+| 20 | Objects under the fog in radius 20 of a Redwood Observatory or Pillar of Fire | `ai_vision_area_value` 0x432220 (classes 58, 60) (§2.1, §2.4) | hero's turn | nothing under the fog |
+| 21 | The map's counts of towns and of mines (Lighthouses included) in the victory bonuses | `ai_town_value` 0x52AB80, `ai_town_capture_value` 0x529CB0, `ai_mine_value` 0x52A010 (§2.1, §2.4) | hero's turn | explored towns and mines only |
+| 22 | The Artifact Merchants' stock before any merchant is built | `ai_artifact_merchants_visit` 0x5259E0 (§3.3) | hero's turn | nothing until a merchant's window |
+| 23 | Through a hire's prospects, the true map's candidates from a town's entrance | `ai_town_hero_prospects` 0x431BD0 (§3.2) | middle | explored tiles only |
+| 24 | On Easy, every human's towns' dwellings and growth (the level-7 and growth handicap) | `ai_build_excluded_creatures` 0x429D50 (§3.1) | middle | nothing |
+| 25 | The allies' treasuries, for the shares | `ai_ally_resource_share` 0x429110 (§3.5) | middle | nothing |
+| 26 | A computer ally's plans: its weights and demand recomputed on its record | `ai_ally_resource_share` 0x429110 into `ai_resource_weights` 0x428740 (§3.5) | middle | nothing |
+| 27 | At a guarded visit's question, the true guards and contents (Pandora's, banks, Crypt, Pyramid, guarded piles) | `ai_fight_answer` 0x52BD10 (§3.4) | answer | the question; a visible guard's scouting estimate |
+| 28 | The enemy's exact counts and its hero's attack and defence factor, before the stacks are placed | `ai_battle_army_split` 0x42DB20 (§3.5) | battle | the scouting estimate; exact counts only once the battle shows them |
+
+### 5.3 The asymmetries: where they went (T1b)
+
+§3.6's eight rule rows, each into its owning lanes' inbox on 2026-11-24 (decision 2: the lane
+decides whether the engine copies it; the policy plans as a human until then, ADR draft point 7):
+rows 1 (the quick battle), 2 (the hidden battle's end) and 8 (the defender's split) the battle
+lane's with the adventure lane; rows 3 (the Shipyard's boat from afar: the engine's `BuildBoat`
+already builds at an own or an ally's Shipyard without a visit, ADV-SHY-003, so only a Shipyard of
+no ally is left to compare), 4 (Dimension Door without points), 6 (the patrol: the map's field
+kept) the adventure lane's; rows 5 (the Castle Gate's jump, with §5.5's #59) and 7 (the artifact
+price one unit lower: the Black Market the adventure lane's, the Artifact Merchants the town
+lane's) to both. Also told: the meeting of two heroes of one team moving an ally's troops and
+artifacts (`visit_hero` 0x4A2800, the adventure lane's meeting command), the trades' rounding to
+compare with the human's screen before the port relies on it (the town lane), the loader's two
+crashes of §5.5 (#54, #60: the adventure lane's reader). The quirk candidates of the simulated
+combat (§5.5 #7 to #9) are the quick battle's too, if the battle lane builds it.
+
+**A ninth rule** (not in §3.6's table; §1.7): the pathfinder's fog test lets a computer player step
+from an explored tile into an unexplored one while it owns a town, and anywhere while it owns none
+(`pathfinder_fog_test` 0x4B25D4); ADV-MOV-008 holds every player to the human's rule (a path on
+explored tiles only). Row 9, the adventure lane's (its inbox); until it decides, the policy's
+candidates and walks keep to explored tiles, which changes a townless computer's plans most.
+
+
+**The sources beside the reading** (the wiki and VCMI, read at T1b; `docs/04-rules-and-sources.md`
+§2): the wiki's Difficulty level and AI Behavior pages agree where they speak: the computer builds
+every second day on Easy and Normal and no level-7 dwelling on Easy (§3.1, the town lane's rule),
+and it looks for the Grail from half the puzzle on Normal, a quarter on Hard and one piece on
+Expert, never on Easy (`puzzle_ai_thresholds`, §4.4); its human Dimension Door cost (300, 200 at
+Expert) and the Artifact Merchants' rounded price fit rows 4 and 7. VCMI's bug 1696 has computer
+heroes keep their patrol radius, 0 using nothing outside it (row 6). Neither describes rows 1 to
+3, 5, 8 or 9 (VCMI fights every battle and gave its own AI a map hack: its engine's choices, not
+a description of the original). So each of the nine rows rests on the reading alone, and each
+lane that builds one compares it first (an experiment where it has gameplay impact).
+(https://heroes.thelazy.net/index.php/Difficulty_level,
+https://heroes.thelazy.net/index.php/AI_Behavior, https://bugs.vcmi.eu/view.php?id=1696)
+
+**Two rules outside the computer's code**, named by the wiki's pages and not met in the three
+ranges: the computer's daily resource bonus by difficulty (Easy less gold; Expert and Impossible
+more of every resource), which GAM's day-start income rule leaves to E10 with the handicap; and an
+explorer-type computer hero's 50 more movement points a day, for which no rule or reading exists
+yet (the adventure lane's inbox, to be read in the hero's day start). The starting resources by
+difficulty are a rule already (GAM's starting resources).
+
+### 5.4 The engine's gaps by epic
+
+The computer's parts whose game rule the engine lacks or has in part (the catalog of 2026-11-24,
+by rule titles and text, not the code), by the epic that delivers them. Each becomes an `AI-STUB`
+naming its epic when the port reaches it (decision 6); "§3.6 r" is a row of §3.6's rules.
+
+| Feature | AI part (§) | Engine now | Lifted by |
+|---|---|---|---|
+| Fly cast on the walk | the walk's spells (§1.10) | partial: ADV-MOV-009 flying, HER-ADV-005 levels; `GameCommand::Cast` since E08 T142a, listed by `legal_commands` from T144a | E08 increment 15 |
+| Water Walk cast on the walk | the walk's spells (§1.10) | partial: ADV-MOV-010 water walking, HER-ADV-005; `GameCommand::Cast` since E08 T142a, listed from T144a | E08 increment 15 |
+| Summon Boat cast on a boat node | the walk's spells (§1.10) | none (HER-SPL-002 lists the spell only) | E08 increment 15 |
+| Dimension Door jump, applied without points | the walk's jumps (§1.10, §3.6 r4) | none | E08 increment 15 (the asymmetry: adventure lane) |
+| A town's Marketplace trades and the rate by Marketplaces owned | weights and trades (§1.5, §2.3, §3.6) | partial: ADV-MKT-001, -002 (Trading Posts' rates) | E09 increment 6 |
+| Resources given to an ally through a Marketplace | allies' shares (§3.5) | partial: ADV-MKT-004 (the Trading Post's transfer) | E09 increment 6 (teams: E10 increment 1) |
+| The Artifact Merchants' stock and purchase | town visit (§3.3, §3.6 r7) | partial: ADV-MKT-006, -007 (the Black Market's) | E09 increment 6 |
+| The Blacksmith (and the Ballista Yard) | town visit (§3.3) | none | E09 increment 6 |
+| The Conflux's Magic University | town visit, visit value (§2.4, §3.3) | partial: ADV-TCH-007 (the map's University) | E09 increment 6 |
+| A town's Shipyard boat bought mid-walk | the walk (§1.10), prices (§3.4) | partial: TWN-SET-011 (the build), ADV-SHY-003 (a map Shipyard's) | E09 increment 6 |
+| The faction's visit-once buildings (Wall of Knowledge, Order of Fire, Academy, Valhalla, Cage of Warlords) | visit value, town visit (§2.4, §3.3) | none | E09 increment 7 |
+| The build choice's faction specials (Treasury, Mystic Pond, Lookout Tower, Necromancy Amplifier, Cover of Darkness) | build choice (§3.1) | partial: built by TWN-BLD-*; their effects none | E09 increment 7 |
+| Town Portal applied on the walk | the walk's jumps (§1.10, §3.6) | none | E09 increment 8 |
+| Castle Gate jump with building 22 bought mid-walk | the walk's jumps (§1.10, §3.6 r5) | none | E09 increment 8 |
+| Obelisk (57) | object value (§2.1) | none | E09 increment 8 |
+| The puzzle map and its target | turn start (§1.5, §2.4) | none | E09 increment 8 |
+| The dig for the Grail | the walk (§1.10) | none | E09 increment 8 |
+| The Grail's building built at a town visit | town visit (§3.3) | partial: TWN-INC-001 (its gold), TWN-BLD-002 | E09 increment 8 |
+| Creature upgrades in a town | build choice's upgrade value, town visit (§3.1, §3.3) | none found in the catalog | not found: asked of the town lane (its inbox) |
+| Teams: players not on its team, allies' towns, garrisons and dwellings | threats, danger map, answers (§1.5, §1.9, §3.4) | partial: team marks (ADV-DWL-004, ADV-BNK-003, ADV-SHY-003); teams in the setup none | E10 increment 1 |
+| A meeting with an ally's hero (the visitor moves both) | answers (§3.4, §3.6) | partial: GAM-DEC-003 (one player's heroes) | E10 increment 1 |
+| Defeated players skipped; living allies | threats, danger map, shares (§1.5, §1.9, §3.5) | none | E10 increment 1 |
+| "Defeat a monster" target | object value class 54 (§2.1) | none | E10 increment 2 |
+| "Flag all mines" | object value class 53 (§2.1) | none | E10 increment 2 |
+| "Capture a town" target and the loss condition's town | town values, hires (§2.4, §3.2) | none | E10 increment 2 |
+| "Transport an artifact" | town value (§2.4) | none | E10 increment 2 |
+| "Build the Grail" victory (`victory_grail_test`) | Grail candidate, town visit (§1.9, §3.3) | none | E10 increment 2 (with E09 increment 8) |
+| Seer's Hut (83) | object value, Seer's reward (§2.1, §3.5) | none | E12 |
+| Quest Guard (215) in the pathfinder | the walk's plan (§4, quirk d) | none | E12 |
+| Hut of the Magi (37) | object value, the walk (§2.1, §1.10) | none | E12 |
+| Eye of the Magi (the Eye value) | turn start (§1.5) | none | E12 |
+| No garrison exchange in RoE's campaigns | answers (§3.4) | none (no campaigns) | E20 |
+| A computer-only team's build every second day on Easy and Normal | build choice (§3.1) | partial: TWN-BLD-004 (one a day for every player) | the town lane's (`E09-construction.md` §3), not placed; the policy keeps it itself until then |
+| A computer's step into the fog (one step with a town, the fog ignored without one) | pathfinder (§1.7) | none: ADV-MOV-008 holds every player to the human's rule | not placed (adventure; §5.3 row 9) |
+| A placed computer hero's patrol radius | hero order, hero's turn (§1.2, §1.3, §3.6 r6) | partial: the map's field read by `h3-map`; no rule | not placed (adventure, ai) |
+| A battle with no human side not fought (`ai_quick_battle`) | the fight (§2.2, §3.6 r1) | none | not placed (battle, adventure) |
+| A hidden battle past round 30 re-fought by the simulation | the fight (§2.2, §3.6 r2) | none | not placed (battle) |
+| A computer defender's split with the better Tactics | battle's split (§3.5, §3.6 r8) | none | not placed (battle, adventure) |
+| The computer's artifact price truncated, not rounded | markets (§3.5, §3.6 r7) | partial: ADV-MKT-007 (the human's price) | not placed (adventure, town) |
+| A map Shipyard's boat bought from afar | the walk (§1.10, §3.6 r3) | ADV-SHY-003 (an own or an ally's Shipyard, no visit) | E08 increment 9 (closed); another player's Shipyard left to compare (§5.3) |
+
+### 5.5 The second look at the quirk candidates (T1b)
+
+Every candidate of §1 to §4 (61, one split in two), classified by a fresh agent from the survey's
+text and checked by the main session (three changed: #28, #61, #62). Classes: **slip**, a value
+or a choice of the computer's own that reads a wrong record, argument or test, or computes a
+slip, and changes only the computer's choices (ADR draft point 10: one fix-optional flag,
+AI-QUIRK-1, as BAT-QUIRK-25); **state**, it changes a rule's outcome or the game's state beyond
+the computer's choice (the lane's own entry when the rule is built); **exploit-fix**, a crash or
+corrupted state, never reproduced; **none**, ported as read (orders, ties, unreachable code, a
+leak without effect, a deliberate test); **fixed**, the rule in every profile without a flag (the
+user's, AI-Q31: the original reads bytes nothing wrote). The two items asked were answered at the
+checkpoint (AI-Q31): #26 a slip, #36 and #55 fixed.
+
+**Confirmation (Q30):** a slip is confirmed by a blind re-read of its deciding addresses (a fresh
+agent, the disassembly against the port, as E23's slips were) in the task that ports it, before
+its rule is built; the two experiments X1 and X2 (`E31-design.md` §2) ride on the trace harness.
+No candidate is a ledger entry yet: `docs/rules/quirks-ai.md` starts with the registration of
+increment 2 (ADR draft point 1), the exploit-fix entries first.
+
+Counts: 36 slips, 6 state, 5 exploit-fix, 13 none, 2 fixed (one item).
+
+| # | § | Candidate | Address | Class | Lane | Confirm | Note |
+|---|---|---|---|---|---|---|---|
+| 1 | §1.9 (1) | class claims marked by the list's count: classes 0-36, not the 37 listed | 0x428070 | slip | ai | blind 0x428070 | only which hero takes which target |
+| 2 | §1.9 (2) | a colleague's claim offset (+0x41 less points left) only when not larger, 16-bit | 0x42E0B0 | slip | ai | blind 0x42E0B0 | near tiles claim nothing |
+| 3 | §2.1 (1) | Fountain and Idol of Fortune worth 0: fraction truncated without the army's strength | 0x528040 (cases 30, 38), 0x435850 | slip | ai | blind 0x528040 |  |
+| 4 | §2.1 (2) | luck clamp above 3 replaces luck by 3 − luck instead of capping the change | 0x527D80; 0x528040 (cases 14, 28) | slip | ai | blind 0x527D80 | morale's twin caps the change |
+| 5 | §2.1 (3) | War Machine Factory ignores a machine's price within 500 | 0x525120 | slip | ai | blind 0x525120 |  |
+| 6 | §2.1 (4) | "flag all mines" bonus divided by the mines' list, Lighthouses included | 0x528040 (case 53) | slip | ai | blind 0x528040 |  |
+| 7 | §2.2 (a) | only a defender's engagement fights both sides fully in melee | 0x426D17 | state | battle, adventure (§3.6 row 1) | blind 0x426D17 | quick battle's result and the estimate; may be the model's design |
+| 8 | §2.2 (b) | mass-damage running total carried from stack to stack | 0x425FF6 | state | battle, adventure (§3.6 row 1) | blind 0x425FF6 | quick battle's result and the estimate |
+| 9 | §2.2 (c) | quick battle's Necromancy counts the cleared loser army: raises 1 | 0x427003 | state | battle, adventure (§3.6 row 1) | experiment: unseen computer Necromancer beats neutrals; Skeletons gained = 1? |  |
+| 10 | §2.2 (d) | mutual wipe and equal stand-off go to the defender | 0x4270C0 | none | battle, adventure | none | a tie ported as read |
+| 11 | §2.2 (e) | quick battle's Eagle Eye: loser's lowest-id available spell, no chance | 0x426EE0 | none | battle, adventure | none | the asymmetry's own design: no cast spells exist |
+| 12 | §2.3 (a) | Angelic Alliance worn: factionless creature indexes the town set at −1, std::out_of_range | 0x42C8B6, 0x42C781 | exploit-fix | ai | none | crash if uncaught; port tests the faction |
+| 13 | §2.3 (b) | displaced stack overwrites the full spare's least valuable stack | 0x42C130 | slip | ai | blind 0x42C130 | real in visits (#28); a dismiss in command terms |
+| 14 | §2.3 (c) | dwelling value mixes current player's treasury, team with owner's artifact, weights | 0x529A30 | slip | ai | blind 0x529A30 (callers) | differs only when valued off its own turn |
+| 15 | §2.3 (d) | Marketplace purchase tests the current player's resources, not the owner's | 0x42AB40 | none | ai | none | hire path runs on the owner's own turn only |
+| 16 | §2.4 (a) | the visiting hero's fight dropped | 0x52ACDA | slip | ai | blind 0x52ACDA |  |
+| 17 | §2.4 (b) | a new magic school valued at Expert | 0x524D20 | slip | ai | blind 0x524D20 |  |
+| 18 | §2.4 (c) | Ballista's q × s overflows 32 bits for large armies | 0x4337C3 | slip | ai | blind 0x4337C3 |  |
+| 19 | §2.4 (d) | week-roll test counts day 7 itself | 0x529DEF | slip | ai | blind 0x529DEF |  |
+| 20 | §2.4 (e) | University test: 2 000 gold once, four skills summed | 0x525BF0 | slip | ai | blind 0x525BF0 |  |
+| 21 | §2.4 (f) | guild loop reads one level past the built one | Mage Guild value (no address) | none | ai | none | survey: harmless |
+| 22 | §3.1 (a) | value × 1 000 in 32 bits wraps the victory's 5 000 000 | 0x42A150 | slip | ai | blind 0x42A150 | wrapped value still the largest |
+| 23 | §3.1 (b) | Citadel and Castle valued alike, one creature per dwelling, not growth | 0x42B670 | slip | ai | blind 0x42B670 |  |
+| 24 | §3.1 (c) | Necromancy Amplifier counts Necromancers (class 9), not Death Knights | 0x42AE00 (faction specials) | slip | ai | blind 0x42AE00 |  |
+| 25 | §3.2 | no second offer: compared with a stale slot (player address), never hires | 0x431745 | slip | ai | blind 0x431745 | only when no hero type is free |
+| 26 | §3.3 (a) | victory hold destroys the garrison stacks the visitor did not take | 0x5253C4 | slip | ai | blind 0x5253C4 | the user, AI-Q31: issued as dismissals |
+| 27 | §3.3 (b) | formation keeps counts in 16 bits: >32 767 wraps (negative kept) | 0x42D922 | exploit-fix | ai | none | negative stack via army_add_stack |
+| 28 | §3.3 (c) | defence recruit drops a replaced garrison stack (#13 live in purchases) | 0x428580, 0x42C130 | slip | ai | blind 0x428580 | a choice (§3.6): issued as a recruit and a dismissal |
+| 29 | §3.3 (d) | first guild level bought when lacking Dispel (35) and Cure (37) | 0x42BEB0 | none | ai | none | odd pair, but a deliberate test |
+| 30 | §3.3 (e) | exchange covers slots 0-16: SoD's fifth misc slot 18 never shed nor filled | 0x433FE0, 0x433BB0 | slip | ai | blind 0x433FE0 |  |
+| 31 | §3.3 (f) | University bought without the 2 000-gold test | 0x524ED0 | slip | ai | blind 0x524ED0 | skill may then be unaffordable |
+| 32 | §3.3 (g) | a skill valued 0 still bought (test at least 0) | 0x524ED0 | slip | ai | blind 0x524ED0 |  |
+| 33 | §3.4 (a) | meeting: equal primary sums exchange nothing, one higher takes all | 0x525DC0 | none | ai | none | a threshold ported as read |
+| 34 | §3.4 (b) | boat cost counts a Shipyard without asking whether it can be built | 0x431160 | slip | ai | blind 0x431160 | plan only |
+| 35 | §3.4 (c) | join without room passes no spare army: replaced stack lost | 0x52BC60 | slip | ai | blind 0x52BC60 | answers the human's army_full_dialog |
+| 36 | §3.5 (a) | Seer's luck reward valued as resource a, amount b: leftover bytes | 0x573B02, 0x5747B8, 0x573580 | fixed | ai | none | the user, AI-Q31: valued as luck in every profile |
+| 37 | §3.5 (b1) | army split's threshold read as i16: wraps above 32 767 | 0x42DDA1 (0x42DB20) | state | battle, adventure (§3.6 row 8) | blind 0x42DDA1 | defender's split; attacker's only a choice |
+| 38 | §3.5 (b2) | the split divides by zero (zero low half, empty enemy army) | 0x42DDA1 | exploit-fix | ai | none |  |
+| 39 | §3.5 (c) | spell-points reward below 0 adds the hero's mana to itself | 0x573CF9 | none | ai | none | unreachable: unsigned amounts |
+| 40 | §4.1 (a) | single-stat weapons, shields 7-11, 13-17 one point below their bonus | 0x63AC7C, 0x434100 | slip | ai | blind 0x63AC7C |  |
+| 41 | §4.1 (b) | Thunder Helmet 24, Titan's Cuirass 30 carry the Gladius's 12, −3 | 0x63AC7C | slip | ai | blind 0x63AC7C |  |
+| 42 | §4.1 (c) | Spellbinder's Hat by the mana code; code 9 tests Wisdom, not Mysticism | 0x432720 | slip | ai | blind 0x432720 |  |
+| 43 | §4.1 (d) | Armor of the Damned's opening spells as codes 7, 0, 19 | 0x63AC7C | none | ai | none | a coarse model; no wrong entry seen |
+| 44 | §4.1 (e) | Titan's Thunder bolt 0 to a hero without a book | 0x432F90 | slip | ai | blind 0x432F90 |  |
+| 45 | §4.1 (f) | Spell Book 0 and Catapult 3 worth 0 | 0x434100 | none | ai | none | never map artifacts |
+| 46 | §4.1 (g) | orb as +100 % power; worn s/2 to s, candidate s to 2s | 0x432890 | slip | ai | blind 0x432890 |  |
+| 47 | §4.1 (h) | own magic loss subtracted only for a worn cloak or orb | 0x432A50 | slip | ai | blind 0x432A50 |  |
+| 48 | §4.1 (i) | hero_luck 0 for the Hourglass's wearer: worn loses no own luck | 0x432BA0 | slip | ai | blind 0x432BA0 |  |
+| 49 | §4.1 (j) | Legion part's value depends on standing on a town's gate | 0x432D70 | slip | ai | blind 0x432D70 |  |
+| 50 | §4.1 (k) | movement code ignores land and sea; Angel Wings as movement only | 0x4326E0 | slip | ai | blind 0x4326E0 |  |
+| 51 | §4.1 (l) | code 21 outside Necromancy 1-3 reads the argument as a creature | 0x4333A0 | none | ai | none | unreachable |
+| 52 | §4.1 (m) | A × p overflows 32 bits for huge armies | 0x4326E0 and the A × p codes | slip | ai | blind 0x4326E0 | Angel Wings past ~43 million |
+| 53 | §4.1 (n) | each build empties the vectors without deleting the objects | 0x434100, 0x434590 | none | ai | none | leak, no gameplay effect |
+| 54 | §4.2 (a) | 49th Seer's Hut divides by zero at load (48 names) | 0x574A1D | exploit-fix | adventure | none | original loader's crash |
+| 55 | §4.2 (b) | luck reward's leftover bytes = loader local ebp-0x28 | 0x5747B8 | fixed | ai | none | the user, AI-Q31: valued as luck in every profile |
+| 56 | §4.2 (c) | Whirlpool exits carry 500 more penalty each in list order | 0x56A6AF | slip | ai | blind 0x56A6AF |  |
+| 57 | §4.2 (d) | unvisited Quest Guard passed at no cost, no check | 0x56AC22 | none | ai | none | no hidden read before the visit |
+| 58 | §4.2 (e) | plan: Castle Gate 0, Dimension Door 300 (200); walk 100 and none | 0x56AA94, 0x4B2984 | slip | ai | blind 0x56AA94, 0x4B2984 | walk's own costs: §3.6 rows 4-5 |
+| 59 | §4.2 (f) | Castle Gate jump from an ally's Inferno: the walk buys the missing gate there | 0x56A8A2 | state | town, adventure (§3.6 row 5) | experiment: allied computer in an ally's gateless Inferno; who builds, who pays |  |
+| 60 | §4.2 (g) | creature quest's counts indexed by the types' count, no length test | 0x5704C0 | exploit-fix | adventure | none | malformed map only |
+| 61 | §4.4 | turn start's Grail target reseeds the game's generator | 0x4BAE50, 0x52C9B0, 0x4BAF00, 0x4CEA70 | state | ai (the reseeds are the puzzle's) | experiment X1 (`E31-design.md` §2) | the policy's noise only: the engine's streams are per player |
+| 62 | §4.6 | ai_player_records never reset by a new game or a load | 0x4ED650, 0x4340E0, 0x52BBD0 | none | ai  | experiment X2 (`E31-design.md` §2) | ported as a fresh process's first game: zeros before the first start |

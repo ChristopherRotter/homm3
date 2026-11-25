@@ -32,6 +32,22 @@ into rounds and the exit criteria, accepted at the checkpoint before anything is
 
 ## Inbox
 
+- 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision and your
+  planning, nothing to build now**): the original's computer player's rules in towns (survey
+  `docs/rules/surveys/E31-computer-player.md` §3.6; E31 decision 2: you decide whether the engine
+  copies each, keyed on `human`). Row 5 (with the adventure lane): the Castle Gate's jump made even
+  when the purchase of building 22 fails; from an ally's Inferno town without a gate the walk buys
+  it there (§5.5 #59: who builds and who pays wants an experiment). Row 7 (with the adventure
+  lane): an artifact at the Artifact Merchants costs trunc(cost / rate), one unit under the human's
+  half-up rounding in 61 % of costs (`ai_artifact_market_price` 0x524550; E09 increment 6). Two
+  checks for the port: the trades written into the treasury at the market's rate (§2.3) against
+  the human's screen (`market_resources_proc` 0x5ECFE0) before the policy relies on their
+  rounding, and the allies' shares, which the receiver is not asked (as your transfer). One question: the town visit upgrades
+  creatures in the town's and the visitor's armies (§3.3) and the build choice values the upgrades
+  (§3.1); no rule for a town's creature upgrade turned up in the catalog: where is it planned? Every other
+  town decision of the computer is a choice the policy issues as your commands (§3.6's choices);
+  what it reads of your API: `docs/epics/E31-design.md` §3, at E31's increment 3.
+
 - 2026-11-24 (the rmg lane, E14 T1c2, `rmg/e14-t1c2`; **a question for you**: survey
   `docs/rules/surveys/E14-generator.md` §3.3.4): the generator writes each colour's main town as
   its zone's first town's entrance, as the editor does; in `l2-2p-c4-islands` (template Dragons,

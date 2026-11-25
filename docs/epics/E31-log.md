@@ -317,3 +317,39 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   code, `ai_army_offers_add`); the callees of the artifact effects beyond their entries; the quest
   texts' builder and the Quest Guard's completion; the pathfinder's mode-4 Fly, Water Walk and leg
   starts, `pathfinder_build_path`, the writers of its +0x14 and +0x15; 0x52CF10, the puzzle's pick.
+
+## T1b — the survey's close, the ADR draft, the checkpoint (2026-11-24, increment 1)
+
+- **The cut** (AI-Q30, the user at T1b's start): no cut, sub-agents used efficiently. Three
+  general-purpose sub-agents, each with a narrow brief and a scratch file: the 61 quirk candidates
+  classified from the survey's text (by the ledger's classes and BAT-QUIRK-25's precedent), the
+  hidden reads' and the gaps' tables, the wiki's and VCMI's positions on the rule rows. The main
+  session checked their tables (three classes changed, four gap rows corrected, a ninth rule row
+  found: ADV-MOV-008 holds every player to the human's fog rule), then wrote the rest. The user's
+  computer was unreachable for `Heroes3.exe` this session; nothing needed it (the blind re-reads
+  stay with each slip's port task, Q30).
+- **The survey §5**: §5.1 each phase's rules (the planned `CPU-` areas and the original's rules in
+  each phase), §5.2 the 28 hidden reads (the fair variant's checklist), §5.3 where the nine rule
+  rows went, the sources beside the reading (the wiki agrees on the build days, Easy's level 7,
+  the Grail thresholds and the prices; VCMI on the patrol; no outside source for rows 1 to 3, 5, 8
+  and 9) and two rules outside the code (the daily bonus, E10's; the explorer's 50 points, none
+  yet), §5.4 the 40 gaps by epic (E08 increment 15: 4, E09: 15, E10: 8, E12: 4, E20: 1, the lanes'
+  undecided rows: 6), §5.5 the second look (36 slips, 6 state, 5 exploit-fix, 13 none, 2 fixed).
+- **The inboxes**: the battle lane (rows 1, 2, 8), the adventure lane (rows 3 to 9 with the town
+  lane, the meeting of one team, the loader's two crashes, the explorer's points, what the port
+  asks of its API), the town lane (rows 5 and 7, the trades' rounding, the allies' shares, where a
+  town's creature upgrade is planned).
+- **The ADR draft** (`docs/lanes/ai/adr-drafts/original-computer-player.md`, 14 points): a module
+  of `h3-game` for now, `h3_game::computer::choose` one command a call, its battle side by the
+  host's seat, always legal with stubs, the whole state read and nothing written, the memory the
+  policy's (only the destinations carried between turns), the numbers once, every battle fought
+  until the battle lane decides, the caller's stream, a signed `X87`, AI-QUIRK-1 for the slips,
+  `CPU-` rule ids, a turn's budget, `POLICY_VERSION`, the fair variant on the player's world.
+- **The design note** (`E31-design.md`): the traces T-A to T-C on compiled maps without setup draws
+  (draw-free decisions equal; a destination equal unless noise-bound), experiments X1 (the reseed)
+  and X2 (the records across games), the seam by lane, the memory's fields.
+- **The checkpoint** (AI-Q31): the layer: a module of `h3-game` for now, refactored later (the
+  draft's `policy` layer not taken now); the memory, the battles and the slips' flag as proposed;
+  #26 a slip, #36 valued as luck in every profile; increments 2 to 7 confirmed. **Increment 1
+  closed** (`E31-archive.md`).
+- **Checks:** the scoped verify without original data (docs only).

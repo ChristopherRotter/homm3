@@ -36,6 +36,32 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   (HER-LVL-002, ADV-QUIRK-9). Either may keep its own seeding and wrap a `CrtRand` (or become a
   constructor over it) whenever you next touch them; the draws are bit-identical (both tests'
   `srand(1)` vector is KER-RNG-004's), so no replay or version moves.
+- 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision and your
+  planning, nothing to build now**): the original's computer player's rules on the map (survey
+  `docs/rules/surveys/E31-computer-player.md` §3.6; E31 decision 2: you decide whether the engine
+  copies each, keyed on `human`; the policy plans as a human until then). Row 3: a marked tile's
+  boat bought from afar at a map Shipyard without its visit (`ai_boat_create` 0x430F80); your
+  `BuildBoat` already does it at an own or an ally's Shipyard (ADV-SHY-003), so only another
+  player's or an unowned Shipyard is left to compare. Row 4: Dimension Door applied without
+  movement points (`ai_walk_dimension_door` 0x430AB0; the human's cast takes 300, 200 at Expert).
+  Row 5 (with the town lane): the Castle Gate's jump made even when the gate's purchase fails, and
+  from an ally's gateless Inferno the walk buys the gate there (§5.5 #59). Row 6: a placed computer
+  hero's patrol radius (the map's field: please keep it in the state; the policy honours it).
+  Row 7 (with the town lane): the Black Market's artifact at trunc(cost / rate), one unit under
+  the human's rounding in 61 % of costs. Rows 1 and 8 (the quick battle, the defender's split) are
+  the battle lane's with your trigger. Outside the computer's code (§5.3, the wiki's AI Behavior
+  page): an explorer-type computer hero gets 50 more movement points a day; no rule or reading yet.
+  Row 9 (§5.3; not in §3.6's table): the pathfinder's fog
+  test lets a computer step one tile into the unexplored while it owns a town and ignores the fog
+  while it owns none (`pathfinder_fog_test` 0x4B25D4); ADV-MOV-008 holds every player to the
+  human's rule, so until you decide the policy plans and walks on explored tiles only. Also: at a meeting of two heroes of one team the visitor
+  moves both heroes' troops and artifacts, an ally's included (`visit_hero` 0x4A2800): please check
+  your meeting command; the map loader's two crashes (§5.5 #54: a 49th Seer's Hut divides by zero;
+  #60: a creature quest's counts read without a length test) for your reader's refusals. What the
+  port will ask of your API (the pathfinder's query with the walk's marks as an overlay, the
+  objects' contents read as the original does, the computer facts of ADV-STUB-8 and -9):
+  `docs/epics/E31-design.md` §3, at E31's increments 2 and 4.
+
 - 2026-11-24 (the map-client lane, E24 M5 T0, `map-client/e24-m5-t0`, docs only; **for your
   planning: facts the client needs from the engine**): the user's rule at E24 M5 T0 (MCL-Q54):
   **the engine and the server are the only authority for a client**; reading a game's facts
