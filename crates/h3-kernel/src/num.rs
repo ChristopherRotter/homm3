@@ -235,6 +235,8 @@ mod tests {
             proptest::prop_assert_eq!(parts(a.times(b)), signed_grid(x * y));
             proptest::prop_assert_eq!(parts(a.plus(b)), signed_grid(x + y));
             proptest::prop_assert_eq!(parts(a.minus(b)), signed_grid(x - y));
+            // An exact cancellation is +0, on both sides.
+            proptest::prop_assert_eq!(parts(a.minus(a)), signed_grid(x - x));
             proptest::prop_assert_eq!(parts(a.over(b).unwrap()), signed_grid(x / y));
             let kf = sign(sk, k as f64);
             let q = SignedX87::int(if sk { -k } else { k }).times(a).over(b).unwrap();
