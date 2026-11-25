@@ -32,7 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10); planned `MCL-STUB-5` (T3), `MCL-STUB-6` (T4). Next ids
   **MCL-Q58**, **MCL-STUB-5**.
-- **Open pull requests** (2026-11-25): T2c's (`map-client/e24-m5-t2c`, `cross-lane`: the
+- **Open pull requests** (2026-11-25): T2c's #1182 (`map-client/e24-m5-t2c`, `cross-lane`: the
   server lane's `h3-protocol` and the client lane's `h3-view`, agreed by the user; T2b's #1175
   merged): check it first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
