@@ -260,25 +260,27 @@ fn the_map_spells_are_the_castable_ones_with_their_masteries_and_costs() {
                     cost: map_spell_cost(d, &r, spell, raise).unwrap(),
                 })
                 .collect();
-            assert_eq!(map_spells(d, &r, &asked, raise), Ok(expected));
+            assert_eq!(map_spells(d, &r, &asked, raise), expected);
         }
     }
     // The scroll's flame in the asked order, after the portal it does not precede there.
-    let listed = map_spells(&heroes[2], &r, &asked, SchoolRaise::None).unwrap();
+    let listed = map_spells(&heroes[2], &r, &asked, SchoolRaise::None);
     let order: Vec<SpellId> = listed.iter().map(|m| m.spell).collect();
     assert_eq!(order, [id("t:flame"), id("t:portal")]);
-    // Nothing castable among them; invalid details first.
+    // Nothing castable among them; details no validation passes are not refused (the hot
+    // path's: the store's are valid), and nothing panics.
     assert_eq!(
         map_spells(&heroes[0], &r, &[id("t:storm")], SchoolRaise::None),
-        Ok(vec![])
+        vec![]
     );
     let wrong = HeroDetails {
         level: 0,
         ..heroes[0].clone()
     };
+    assert_eq!(validate(&wrong, &r), Err(DetailsError::LevelZero));
     assert_eq!(
         map_spells(&wrong, &r, &asked, SchoolRaise::None),
-        Err(DetailsError::LevelZero)
+        map_spells(&heroes[0], &r, &asked, SchoolRaise::None)
     );
 }
 

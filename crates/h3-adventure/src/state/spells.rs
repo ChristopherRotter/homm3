@@ -285,34 +285,56 @@ impl AdventureState {
     }
 
     /// The targets of the window ([`Self::cast_window`], in row order) at which `player`'s hero
-    /// `hero` may cast `cast`, Scuttle Boat or Dimension Door, its target unset: exactly the
-    /// tiles [`Self::check_cast`] accepts as its target, the hero's own tests made once (E08
-    /// T144a1; the game's listing, GAM-SPL-001). None for another spell, or a hero not
-    /// `player`'s on the map.
+    /// `hero` may cast `cast`, Scuttle Boat or Dimension Door, its target unset, each given to
+    /// `found`: exactly the tiles [`Self::check_cast`] accepts as its target, the hero's own tests
+    /// made once and, for the door, the heroes in the window gathered once (E08 T144a1; the
+    /// game's listing, GAM-SPL-001, on every step of a random game). None for another spell, or a
+    /// hero not `player`'s on the map.
     pub fn cast_targets(
         &self,
-        (core, part): (&Ruleset, &AdventureRuleset),
+        rules: (&Ruleset, &AdventureRuleset),
         (player, hero): (PlayerId, HeroId),
         cast: Cast,
-    ) -> Vec<Pos> {
+        mut found: impl FnMut(Pos),
+    ) {
+        let (core, part) = rules;
         let Some(on) = self.hero(hero).filter(|on| on.owner == player) else {
-            return Vec::new();
+            return;
         };
         let window = self.cast_window(part, on.pos);
         match cast.effect {
             AdventureSpell::ScuttleBoat => window
                 .filter(|&target| self.scuttle_target(core, player, target).is_ok())
-                .collect(),
+                .for_each(found),
             AdventureSpell::DimensionDoor => {
                 let doors = self.day_spells(hero).doors;
                 if Self::door_ready(core, on, doors, cast).is_err() {
-                    return Vec::new();
+                    return;
                 }
-                window
-                    .filter(|&target| self.door_target((core, part), (player, on), target).is_ok())
-                    .collect()
+                let [columns, rows] = part
+                    .params()
+                    .spells()
+                    .map_or([0, 0], |params| params.target_range);
+                let near: Vec<Pos> = self
+                    .heroes
+                    .iter()
+                    .map(|h| h.pos)
+                    .filter(|p| {
+                        p.level == on.pos.level
+                            && p.x.abs_diff(on.pos.x) <= u16::from(columns)
+                            && p.y.abs_diff(on.pos.y) <= u16::from(rows)
+                    })
+                    .collect();
+                let heroed = |pos: Pos| near.contains(&pos);
+                let afloat = on.boat.is_some();
+                for target in window {
+                    let tested = self.door_target_of(rules, (player, afloat), target, heroed);
+                    if tested.is_ok() {
+                        found(target);
+                    }
+                }
             }
-            _ => Vec::new(),
+            _ => {}
         }
     }
 

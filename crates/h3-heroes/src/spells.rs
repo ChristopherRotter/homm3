@@ -307,44 +307,60 @@ pub struct MapSpell {
 /// The spells of `spells` the hero may cast on the adventure map, in that order, each with its
 /// mastery on a ground with `raise` and its cost there (HER-SPL-003, HER-SPL-008; E08 T144a1):
 /// what [`can_cast_on_map`], [`spell_masteries_on`] and [`map_spell_cost`] give each, from one
-/// validation and one pass over the masteries (the game's cast and its listing, GAM-SPL-001).
-///
-/// # Errors
-/// The [`DetailsError`] of the first rule the details break ([`crate::validate`]).
+/// pass over the masteries. A hot path's derivation, as [`crate::movement`]: the game's listing
+/// of the casts on the map runs it on every step (GAM-SPL-001), so the details are **not
+/// validated** (the game's store holds valid details: every change is checked); details a
+/// validation refuses give an answer no rule names, never a panic.
 pub fn map_spells(
     details: &HeroDetails,
     ruleset: &Ruleset,
     spells: &[SpellId],
     raise: SchoolRaise,
-) -> Result<Vec<MapSpell>, DetailsError> {
+) -> Vec<MapSpell> {
     // rule: HER-SPL-008
-    check(details, ruleset)?;
-    let known = available(details, ruleset);
+    // [`available`]'s three sources (a learned spell, a worn scroll's, an effect's grant) for the
+    // asked spells alone, without building the set: the grants from one pass over the effects.
+    let grants: Vec<_> = effects(details, ruleset, Count::OncePerType)
+        .filter_map(|effect| match *effect {
+            HeroEffect::Spells { grant } => Some(grant),
+            _ => None,
+        })
+        .collect();
     let castable: Vec<SpellId> = spells
         .iter()
         .copied()
-        .filter(|spell| known.binary_search(spell).is_ok())
+        .filter(|&spell| {
+            details.spells.contains(&spell)
+                || details
+                    .worn
+                    .iter()
+                    .flatten()
+                    .any(|item| item.spell == Some(spell))
+                || grants.iter().any(|grant| grant.gives(ruleset, spell))
+        })
         .collect();
     if castable.is_empty() {
-        return Ok(Vec::new());
+        return Vec::new();
     }
-    let masteries = masteries_on(details, ruleset, raise);
-    // An available spell is the ruleset's (validation).
-    Ok(castable
+    // [`masteries_on`]'s answer for the castable spells alone: a raised spell at Expert.
+    let sources = MasterySources::of(details, ruleset);
+    // An available spell of valid details is the ruleset's.
+    castable
         .into_iter()
         .filter_map(|spell| ruleset.spell(spell).map(|def| (spell, def)))
         .map(|(spell, def)| {
-            let mastery = masteries
-                .iter()
-                .find(|&&(s, _)| s == spell)
-                .map_or(0, |&(_, level)| level);
+            let mastery = if raise.raises(def) {
+                MAX_SKILL_LEVEL
+            } else {
+                sources.mastery(spell, def)
+            };
             MapSpell {
                 spell,
                 mastery,
                 cost: cost_at(def, mastery),
             }
         })
-        .collect())
+        .collect()
 }
 
 /// What may make one of a few spells available to a hero beyond what its details hold
@@ -473,34 +489,55 @@ pub(crate) fn available(details: &HeroDetails, ruleset: &Ruleset) -> Vec<SpellId
 /// [`spell_masteries`] of validated details: on ordinary ground (the battle hero's, HER-BAT-001).
 pub(crate) fn masteries(details: &HeroDetails, ruleset: &Ruleset) -> Vec<(SpellId, u8)> {
     // rule: HER-SPL-003
-    let mut schools = [0u8; MAX_SPELL_SCHOOLS];
-    let mut raised: Vec<(SpellId, u8)> = Vec::new();
-    for effect in effects(details, ruleset, Count::OncePerType) {
-        match *effect {
-            HeroEffect::SchoolMastery { school, level } => {
-                let mastery = &mut schools[school_index(school)];
-                *mastery = (*mastery).max(level);
-            }
-            HeroEffect::SpellMastery { spell, level } => raised.push((spell, level)),
-            _ => {}
-        }
-    }
+    let sources = MasterySources::of(details, ruleset);
     all_spells(ruleset)
         .zip(ruleset.spells())
         .filter_map(|(id, spell)| {
-            let by_school = spell.schools.iter().map(|&l| schools[school_index(l)]);
-            let by_artifact = raised
-                .iter()
-                .filter(|&&(s, _)| s == id)
-                .map(|&(_, level)| level);
-            let mastery = by_school
-                .chain(by_artifact)
-                .max()
-                .unwrap_or(0)
-                .min(MAX_SKILL_LEVEL);
+            let mastery = sources.mastery(id, spell);
             (mastery > 0).then_some((id, mastery))
         })
         .collect()
+}
+
+/// A hero's school masteries and its spell masteries' raises (HER-SPL-003), from one pass over
+/// its effects; [`masteries`] reads every spell's, [`map_spells`] a few (E08 T144a1).
+struct MasterySources {
+    schools: [u8; MAX_SPELL_SCHOOLS],
+    raised: Vec<(SpellId, u8)>,
+}
+
+impl MasterySources {
+    fn of(details: &HeroDetails, ruleset: &Ruleset) -> Self {
+        let mut schools = [0u8; MAX_SPELL_SCHOOLS];
+        let mut raised: Vec<(SpellId, u8)> = Vec::new();
+        for effect in effects(details, ruleset, Count::OncePerType) {
+            match *effect {
+                HeroEffect::SchoolMastery { school, level } => {
+                    let mastery = &mut schools[school_index(school)];
+                    *mastery = (*mastery).max(level);
+                }
+                HeroEffect::SpellMastery { spell, level } => raised.push((spell, level)),
+                _ => {}
+            }
+        }
+        Self { schools, raised }
+    }
+
+    /// The mastery of `spell` (`id`) on ordinary ground: the best of its schools' and its
+    /// raises', at most Expert.
+    fn mastery(&self, id: SpellId, spell: &Spell) -> u8 {
+        let by_school = spell.schools.iter().map(|&l| self.schools[school_index(l)]);
+        let by_artifact = self
+            .raised
+            .iter()
+            .filter(|&&(s, _)| s == id)
+            .map(|&(_, level)| level);
+        by_school
+            .chain(by_artifact)
+            .max()
+            .unwrap_or(0)
+            .min(MAX_SKILL_LEVEL)
+    }
 }
 
 /// [`spell_masteries_on`] of validated details: the ordinary masteries ([`masteries`], the

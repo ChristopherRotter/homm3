@@ -777,9 +777,11 @@ fn candidates(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
         .collect()
 }
 
-/// Red's listed casts (GAM-SPL-001; E08 T144a1): last among its legal commands, and exactly the
-/// casts `apply` accepts, in [`candidates`]' order (the test map lies inside the window: its rows
-/// are the window's); blue, out of its turn, lists none.
+/// Red's casts by `legal_commands` and `legal_cast_targets` (GAM-SPL-001; E08 T144a1, decision
+/// 422): the listed casts last among its legal commands, exactly the casts without a target
+/// `apply` accepts of [`candidates`]; each targeted spell's queried targets exactly those `apply`
+/// accepts, in row order (the test map lies inside the window: its rows are the window's); blue,
+/// out of its turn, lists and queries none. All of them in [`candidates`]' order.
 fn listed_casts(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
     let listed = legal_commands(state, rules, Actor::Player(RED));
     let is_cast = |command: &GameCommand| matches!(command, GameCommand::Cast { .. });
@@ -793,14 +795,36 @@ fn listed_casts(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
             apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
         })
         .collect();
-    assert_eq!(listed[first..], accepted[..]);
+    let untargeted = |c: &&GameCommand| matches!(c, GameCommand::Cast { target: None, .. });
+    let without: Vec<GameCommand> = accepted.iter().filter(untargeted).cloned().collect();
+    assert_eq!(listed[first..], without[..]);
+    let mut queried = Vec::new();
+    for &(spell, effect) in rules.adventure().spells() {
+        let targets = legal_cast_targets(state, rules, Actor::Player(RED), (HERO, spell));
+        assert!(legal_cast_targets(state, rules, Actor::Player(BLUE), (HERO, spell)).is_empty());
+        if effect.targets() {
+            queried.extend(targets.into_iter().map(|target| GameCommand::Cast {
+                hero: HERO,
+                spell,
+                target: Some(target),
+            }));
+        } else {
+            assert!(targets.is_empty());
+            let of =
+                |c: &&GameCommand| matches!(c, GameCommand::Cast { spell: s, .. } if *s == spell);
+            queried.extend(without.iter().filter(of).cloned());
+        }
+    }
+    assert_eq!(queried, accepted);
     assert!(legal_commands(state, rules, Actor::Player(BLUE)).is_empty());
+    let door = (HERO, spell(rules, "t:door"));
+    assert!(legal_cast_targets(state, rules, Actor::System, door).is_empty());
     accepted
 }
 
 // covers: GAM-SPL-001
 #[test]
-fn legal_commands_list_last_every_cast_the_game_accepts() {
+fn the_casts_are_listed_last_or_queried_by_their_targets() {
     let rules = cast_rules();
     // Summon Boat once, beside the sea; Scuttle Boat at the explored empty boat alone.
     let sea = sea_game(&rules, 1);
@@ -830,4 +854,11 @@ fn legal_commands_list_last_every_cast_the_game_accepts() {
     assert!(listed_casts(&fly, &rules).is_empty());
     let poor = game(&rules, &["t:gate"], 4, vec![]);
     assert!(listed_casts(&poor, &rules).is_empty());
+    // Another player's hero is no caster; the door below its cost has no target.
+    let mut short = door_game(&rules);
+    let blue_s = (HeroId::new(1), spell(&rules, "t:door"));
+    assert!(legal_cast_targets(&short, &rules, Actor::Player(RED), blue_s).is_empty());
+    let points = HeroChange::SetSpellPoints(10);
+    short.change_hero(rules.core(), HERO, None, points, &mut NoopSink);
+    assert!(listed_casts(&short, &rules).is_empty());
 }

@@ -19,8 +19,9 @@ pub struct GameRuleset {
     adventure: Arc<AdventureRuleset>,
     battle: Arc<BattleRuleset>,
     towns: Arc<TownRuleset>,
-    /// What may make the adventure part's bound spells available to a hero (E08 T144a1: the
-    /// listing of the casts on the map, GAM-SPL-001), derived from the core once.
+    /// What may make the adventure part's bound spells without a target available to a hero
+    /// (E08 T144a1: the listing of the casts on the map, GAM-SPL-001; decision 422), derived from
+    /// the core once.
     casts: Arc<SpellSources>,
 }
 
@@ -76,8 +77,14 @@ impl GameRuleset {
             && field
             && besieged
         {
-            let bound: Vec<_> = adventure.spells().iter().map(|&(spell, _)| spell).collect();
-            let casts = Arc::new(SpellSources::new(&core, &bound));
+            // The listed ones: the bound spells without a target (E08 decision 422).
+            let listed: Vec<_> = adventure
+                .spells()
+                .iter()
+                .filter(|(_, effect)| !effect.targets())
+                .map(|&(spell, _)| spell)
+                .collect();
+            let casts = Arc::new(SpellSources::new(&core, &listed));
             Ok(Self {
                 core,
                 adventure,
@@ -110,8 +117,8 @@ impl GameRuleset {
         &self.towns
     }
 
-    /// What may make the adventure part's bound spells available to a hero (E08 T144a1), in
-    /// spell order (the part's).
+    /// What may make the adventure part's bound spells without a target available to a hero (E08
+    /// T144a1), in spell order (the part's).
     pub(crate) fn cast_sources(&self) -> &SpellSources {
         &self.casts
     }

@@ -14,9 +14,9 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::ops::RangeInclusive;
 
-use h3_adventure::{AdventureCommand, ArmyRef, ArmySlot, ChoiceKind, Reach};
+use h3_adventure::{AdventureCommand, ArmyRef, ArmySlot, ChoiceKind, Pos, Reach};
 use h3_battle::LegalCommands;
-use h3_content::{CreatureTypeId, Formation};
+use h3_content::{CreatureTypeId, Formation, SpellId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_heroes::{
     ArmyWorth, ArtifactMove, ArtifactPlace, HeroDetails, Position, SlotState, check_assemble,
@@ -48,10 +48,10 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// `GameState::town_offer`'s payable set; none for a town built in today, TWN-BLD-004), each
 /// town's builds followed by its recruitments (E09 T27), its Tavern's hires by slot (E09 T38a2,
 /// TWN-TAV-003) and its hero moves between its bars (E09 T28a), then since E08 T144a1 its heroes'
-/// casts on the map (`GameCommand::Cast`, GAM-SPL-001: per hero in the player's list, each
-/// spell the adventure part binds that the hero may cast, in the part's order, Scuttle Boat's and
-/// Dimension Door's every accepted target of the window in row order; increment 15's design note
-/// §17). Empty for
+/// casts on the map without a target (`GameCommand::Cast`, GAM-SPL-001: per hero in the
+/// player's list, Summon Boat, Fly and Water Walk where the hero may cast them, in the part's
+/// order; increment 15's design note §17, E08 decision 422). Scuttle Boat's and Dimension Door's
+/// casts are given per hero by their targets ([`legal_cast_targets`]), as the moves are. Empty for
 /// a player whose turn is not running or who is not in the game, by `apply`'s own checks
 /// (ADR-0017's consequence). The moves are [`legal_moves`]; a meeting's, an army dialog's and an
 /// exchange's management commands [`legal_management`]'s.
@@ -332,6 +332,31 @@ pub fn legal_moves(
         .hero(hero)
         .filter(|h| h.owner == player)
         .and_then(|h| adventure.reach(rules.core(), rules.adventure(), state.heroes(), h.id))
+}
+
+/// Where `actor` may cast `spell`, Scuttle Boat or Dimension Door, by its hero `hero` now
+/// (GAM-SPL-001; E08 T144a1, E08 decision 422): the targets of the spell's window, in row order,
+/// each a `GameCommand::Cast { hero, spell, target: Some(target) }` that `apply` accepts (a
+/// charged failure too: under `strict-fixed` the hidden tiles of the window, under `faithful`
+/// the door's wrong kind; increment 15's design note §11). Given per hero as its moves are
+/// ([`legal_moves`]): up to 323 targets each, which [`legal_commands`] does not list. Empty when
+/// the actor's turn is not running or it has an open decision, by `apply`'s own checks
+/// (GAM-DEC-001), for a hero not the actor's, a spell without a target, or one the hero may not
+/// cast there now.
+// rule: GAM-SPL-001
+pub fn legal_cast_targets(
+    state: &GameState,
+    rules: &GameRuleset,
+    actor: Actor,
+    (hero, spell): (HeroId, SpellId),
+) -> Vec<Pos> {
+    let Actor::Player(player) = actor else {
+        return Vec::new();
+    };
+    if state.check_ready(player).is_err() {
+        return Vec::new();
+    }
+    state.cast_targets(rules, player, (hero, spell))
 }
 
 /// The management commands `actor` may give on its hero `hero` now but the splits (GAM-MAN-002;

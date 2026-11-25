@@ -378,7 +378,10 @@ fn listed(state: &AdventureState, rules: &Rules, cast: Cast) -> Vec<Pos> {
         target: None,
         ..cast
     };
-    let targets = state.cast_targets((&rules.0, &rules.1), (RED, HERO), unset);
+    let mut targets = Vec::new();
+    state.cast_targets((&rules.0, &rules.1), (RED, HERO), unset, |t| {
+        targets.push(t)
+    });
     assert_eq!(targets, accepted);
     targets
 }
@@ -410,12 +413,15 @@ fn the_listed_targets_are_the_window_s_tiles_the_test_accepts() {
     let rules = rules(true);
     let state = door_world(&rules);
     let parts = (&rules.0, &rules.1);
-    assert!(state.cast_targets(parts, (BLUE, HERO), scuttle).is_empty());
     let fly = Cast {
         effect: AdventureSpell::Fly,
         ..scuttle
     };
-    assert!(state.cast_targets(parts, (RED, HERO), fly).is_empty());
+    for (player, cast) in [(BLUE, scuttle), (RED, fly)] {
+        let mut targets = Vec::new();
+        state.cast_targets(parts, (player, HERO), cast, |t| targets.push(t));
+        assert!(targets.is_empty(), "{player:?}");
+    }
 }
 
 #[test]

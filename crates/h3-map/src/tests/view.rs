@@ -771,7 +771,7 @@ fn vary(
 }
 
 /// The viewer sees the same of `a` and `b`: its observation, its legal commands and the legal
-/// moves of every hero it sees.
+/// moves of every hero it sees, and since E08 T144a1 their casts' targets.
 fn check_same(
     a: &GameState,
     b: &GameState,
@@ -793,6 +793,18 @@ fn check_same(
             legal_moves(a, rules, actor, hero.id),
             legal_moves(b, rules, actor, hero.id)
         );
+        // E08 T144a1: Scuttle Boat's and Dimension Door's targets, per hero (decision 422).
+        let targeted = rules
+            .adventure()
+            .spells()
+            .iter()
+            .filter(|(_, e)| e.targets());
+        for &(spell, _) in targeted {
+            prop_assert_eq!(
+                h3_game::legal_cast_targets(a, rules, actor, (hero.id, spell)),
+                h3_game::legal_cast_targets(b, rules, actor, (hero.id, spell))
+            );
+        }
     }
     Ok(())
 }
@@ -3336,10 +3348,10 @@ proptest! {
     /// (`ADV-QUIRK-15`): under `strict-fixed` over what the viewer knows, so the comparison runs
     /// on (exit criterion 8 of increment 15); under `faithful` its reach reads them (the
     /// original's leak), so the comparison ends while one of the viewer's heroes flies. Since
-    /// E08 T144a1 `legal_commands` lists the casts: under `faithful` Scuttle Boat's and Dimension
-    /// Door's targets read the hidden tiles of their window (`ADV-QUIRK-52`, `ADV-QUIRK-51`), so
-    /// the comparison ends while one of the viewer's heroes may cast either; under `strict-fixed`
-    /// it runs on (exit criterion 8).
+    /// E08 T144a1 the casts are listed and Scuttle Boat's and Dimension Door's targets queried
+    /// (`legal_cast_targets`): under `faithful` those targets read the hidden tiles of their
+    /// window (`ADV-QUIRK-52`, `ADV-QUIRK-51`), so the comparison ends while one of the viewer's
+    /// heroes may cast either; under `strict-fixed` it runs on (exit criterion 8).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),

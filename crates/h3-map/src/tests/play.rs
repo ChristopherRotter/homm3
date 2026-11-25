@@ -5934,6 +5934,17 @@ fn check_legal(
             };
             prop_assert_eq!(listed, expected);
         }
+        // E08 T144a1: the targets of Scuttle Boat and Dimension Door, per hero (decision 422).
+        let ready = me
+            && !decided
+            && !exchanging
+            && !choosing
+            && !taverning
+            && trading.is_none()
+            && hiring.is_none()
+            && !levelling
+            && !fighting;
+        check_cast_targets(state, rules, player, ready)?;
         for (hero, reach) in reaches {
             let moves = legal_moves(state, rules, Actor::Player(player), *hero);
             let own = me
@@ -6915,58 +6926,116 @@ fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> 
         .collect()
 }
 
-/// The casts `player` may make in `state` by `apply`'s checks alone (GAM-SPL-001; E08 T144a1):
-/// for each of its heroes in its list (GAM-HER-003), each spell the adventure part binds that the
-/// hero knows (`h3_heroes::available_spells`), in the part's order, a probe of the cast without a
-/// target, or of each tile of its level within the parameters' `target_range` in row order for
-/// Scuttle Boat and Dimension Door, kept where `apply` accepts it, as `legal_commands` must list
-/// them. A spell the hero lacks is refused before any target is read (`h3-game`'s tests).
+/// The casts without a target `player` may make in `state` by `apply`'s checks alone
+/// (GAM-SPL-001; E08 T144a1, decision 422): for each of its heroes in its list (GAM-HER-003), each
+/// spell the adventure part binds without a target that the hero knows
+/// (`h3_heroes::available_spells`), in the part's order, kept where a probe of the cast is
+/// accepted, as `legal_commands` must list them. A spell the hero lacks is refused before
+/// anything else is read (`h3-game`'s tests).
 fn accepted_casts(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
     let (adventure, part) = (state.adventure(), rules.adventure());
-    let map = adventure.map();
-    let [columns, rows] = part
-        .params()
-        .spells()
-        .map_or([0, 0], |params| params.target_range);
     let mut accepted = Vec::new();
     for hero in adventure.hero_list(player) {
-        let (Some(on), Some(details)) = (adventure.hero(hero), state.hero(hero)) else {
-            continue;
-        };
-        let known = h3_heroes::available_spells(details, rules.core()).unwrap_or_default();
+        let known = state
+            .hero(hero)
+            .map(|d| h3_heroes::available_spells(d, rules.core()).unwrap_or_default())
+            .unwrap_or_default();
         for &(spell, effect) in part.spells() {
-            if !known.contains(&spell) {
+            if effect.targets() || !known.contains(&spell) {
                 continue;
             }
-            let targets: Vec<Option<TilePos>> = if effect.targets() {
-                (0..map.height())
-                    .flat_map(|y| (0..map.width()).map(move |x| TilePos::new(x, y, on.pos.level)))
-                    .filter(|t| {
-                        t.x.abs_diff(on.pos.x) <= u16::from(columns)
-                            && t.y.abs_diff(on.pos.y) <= u16::from(rows)
-                    })
-                    .map(Some)
-                    .collect()
-            } else {
-                vec![None]
+            let command = GameCommand::Cast {
+                hero,
+                spell,
+                target: None,
             };
-            accepted.extend(
-                targets
-                    .into_iter()
-                    .map(|target| GameCommand::Cast {
-                        hero,
-                        spell,
-                        target,
-                    })
-                    .filter(|command| {
-                        let mut probe = state.clone();
-                        let actor = Actor::Player(player);
-                        apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
-                    }),
-            );
+            let mut probe = state.clone();
+            let actor = Actor::Player(player);
+            if apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok() {
+                accepted.push(command);
+            }
         }
     }
     accepted
+}
+
+/// The targets at which `player` may cast `spell`, a spell with a target, by its hero `hero` in
+/// `state` by `apply`'s checks alone (GAM-SPL-001; E08 T144a1, decision 422): none when the hero
+/// does not know it (`h3_heroes::available_spells`), else each tile of the hero's level within
+/// the parameters' `target_range` in row order whose probe is accepted, as `legal_cast_targets`
+/// must give them.
+fn accepted_targets(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    (hero, spell): (HeroId, h3_content::SpellId),
+) -> Vec<TilePos> {
+    let adventure = state.adventure();
+    let map = adventure.map();
+    let (Some(on), Some(details)) = (adventure.hero(hero), state.hero(hero)) else {
+        return Vec::new();
+    };
+    let known = h3_heroes::available_spells(details, rules.core()).unwrap_or_default();
+    if !known.contains(&spell) {
+        return Vec::new();
+    }
+    let [columns, rows] = rules
+        .adventure()
+        .params()
+        .spells()
+        .map_or([0, 0], |params| params.target_range);
+    (0..map.height())
+        .flat_map(|y| (0..map.width()).map(move |x| TilePos::new(x, y, on.pos.level)))
+        .filter(|t| {
+            t.x.abs_diff(on.pos.x) <= u16::from(columns)
+                && t.y.abs_diff(on.pos.y) <= u16::from(rows)
+        })
+        .filter(|&target| {
+            let command = GameCommand::Cast {
+                hero,
+                spell,
+                target: Some(target),
+            };
+            let mut probe = state.clone();
+            apply(
+                &mut probe,
+                rules,
+                Actor::Player(player),
+                command,
+                &mut NoopSink,
+            )
+            .is_ok()
+        })
+        .collect()
+}
+
+/// Every hero's targets of each spell with a target (E08 T144a1, decision 422) as
+/// [`accepted_targets`] finds them for `player` while it may act (`ready`) and owns the hero,
+/// none otherwise.
+fn check_cast_targets(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    ready: bool,
+) -> Result<(), TestCaseError> {
+    let targeted = rules
+        .adventure()
+        .spells()
+        .iter()
+        .filter(|(_, e)| e.targets());
+    for &(spell, _) in targeted {
+        for on in state.adventure().heroes() {
+            let queried =
+                h3_game::legal_cast_targets(state, rules, Actor::Player(player), (on.id, spell));
+            let expected = if ready && on.owner == player {
+                accepted_targets(state, rules, player, (on.id, spell))
+            } else {
+                Vec::new()
+            };
+            prop_assert_eq!(queried, expected, "{:?} {:?}", on.id, spell);
+        }
+    }
+    Ok(())
 }
 
 /// What a town's recruitment at `building` opens by an independent reading of the town's record

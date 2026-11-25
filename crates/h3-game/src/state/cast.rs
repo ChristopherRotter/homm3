@@ -12,7 +12,7 @@ use h3_adventure::{Cast, Pos};
 use h3_content::SpellId;
 use h3_content_battle::Battlefield;
 use h3_contracts::{HeroId, PlayerId};
-use h3_heroes::{HeroChange, HeroDetails, MapSpell, SchoolRaise, map_spells};
+use h3_heroes::{HeroChange, HeroDetails, MapSpell, SchoolRaise, can_cast_on_map, map_spells};
 
 use super::GameState;
 use crate::GameRuleset;
@@ -57,13 +57,15 @@ impl GameState {
         let (core, part) = (rules.core(), rules.adventure());
         let (pos, details) = self.caster(player, hero)?;
         let ground = self.ground_of(rules, pos);
-        // E08 T144a1: one derivation of the hero's spells for the knowledge, the mastery and the
-        // cost (`h3_heroes::map_spells`: `can_cast_on_map`'s, `spell_masteries_on`'s and
-        // `map_spell_cost`'s answers).
-        let known = map_spells(details, core, &[spell], raise_of(ground)).unwrap_or_default();
-        let Some(&MapSpell { mastery, cost, .. }) = known.first() else {
+        if can_cast_on_map(details, core, spell) != Ok(true) {
             return Err(MapCastError::Unknown(spell));
-        };
+        }
+        // E08 T144a1: the mastery and the cost as the listing derives them
+        // (`h3_heroes::map_spells`: `spell_masteries_on`'s and `map_spell_cost`'s answers).
+        let known = map_spells(details, core, &[spell], raise_of(ground));
+        let (mastery, cost) = known
+            .first()
+            .map_or((0, u16::MAX), |known| (known.mastery, known.cost));
         // stub: ADV-STUB-19
         // stub: ADV-STUB-20
         let effect = part
@@ -121,17 +123,16 @@ impl GameState {
         Ok(())
     }
 
-    /// The casts `player` may make now, as [`Self::check_cast`] accepts them (GAM-SPL-001; E08
-    /// T144a1, increment 15's design note §17): for each of its heroes on the map in its list's
-    /// order (GAM-HER-003), each spell the adventure part binds that the hero may cast, in the
-    /// part's order (the core's spell order): Summon Boat, Fly and Water Walk once, without a
-    /// target; Scuttle Boat and Dimension Door at every target of the window the adventure's test
-    /// accepts ([`h3_adventure::AdventureState::cast_targets`]: up to 19 × 17, in row order; a
-    /// charged failure too: under `strict-fixed` the door's and the scuttle's hidden tiles,
-    /// under `faithful` the door's wrong kind, increment 15's design note §11). Each call runs on
-    /// every step of a random game, so a hero is first tested by the ruleset's sources of the
-    /// bound spells, without validating its details (`h3_heroes::SpellSources::may_have`), and
-    /// only a possible caster's spells are derived, once (`h3_heroes::map_spells`).
+    /// The casts without a target `player` may make now, as [`Self::check_cast`] accepts them
+    /// (GAM-SPL-001; E08 T144a1, increment 15's design note §17, E08 decision 422): for each of
+    /// its heroes on the map in its list's order (GAM-HER-003), each spell the adventure part
+    /// binds without a target that the hero may cast (Summon Boat, Fly, Water Walk), in the
+    /// part's order (the core's spell order). Scuttle Boat and Dimension Door are given per hero
+    /// by their targets ([`Self::cast_targets`], `crate::legal_cast_targets`), as the moves are.
+    /// Each call runs on every step of a random game, so a hero is first tested by the ruleset's
+    /// sources of the bound spells, without validating its details
+    /// (`h3_heroes::SpellSources::may_have`), and only a possible caster's spells are derived,
+    /// once (`h3_heroes::map_spells`).
     // rule: GAM-SPL-001
     pub(crate) fn legal_casts(
         &self,
@@ -157,15 +158,15 @@ impl GameState {
             return;
         }
         let _ = h3_kernel::order::sort_by_unique_key(&mut casters, |&(place, id)| (place, id));
-        // Each a hero of the player's on the map (above); the sources' spells are the part's.
+        // Each a hero of the player's on the map (above).
         let casters = casters
             .into_iter()
             .filter_map(|(_, hero)| self.caster(player, hero).ok().map(|c| (hero, c)));
         for (hero, (pos, details)) in casters {
             let ground = self.ground_of(rules, pos);
             let known = map_spells(details, core, sources.spells(), raise_of(ground));
-            let bound = known
-                .unwrap_or_default()
+            // The sources' spells are the part's without a target.
+            let untargeted = known
                 .into_iter()
                 .filter_map(|known| part.adventure_spell(known.spell).map(|e| (known, e)));
             for (
@@ -175,12 +176,9 @@ impl GameState {
                     cost,
                 },
                 effect,
-            ) in bound
+            ) in untargeted
             {
                 let frame = (pos, details.mana, ground);
-                if self.cast_frame(rules, frame, (spell, cost)).is_err() {
-                    continue;
-                }
                 let cast = Cast {
                     spell,
                     effect,
@@ -188,17 +186,11 @@ impl GameState {
                     target: None,
                 };
                 let parts = (core, part);
-                if effect.targets() {
-                    let targets = self.adventure.cast_targets(parts, (player, hero), cast);
-                    listed.extend(targets.into_iter().map(|target| GameCommand::Cast {
-                        hero,
-                        spell,
-                        target: Some(target),
-                    }));
-                } else if self
-                    .adventure
-                    .check_cast(parts, &self.heroes, (player, hero), cast)
-                    .is_ok()
+                if self.cast_frame(rules, frame, (spell, cost)).is_ok()
+                    && self
+                        .adventure
+                        .check_cast(parts, &self.heroes, (player, hero), cast)
+                        .is_ok()
                 {
                     listed.push(GameCommand::Cast {
                         hero,
@@ -208,6 +200,51 @@ impl GameState {
                 }
             }
         }
+    }
+
+    /// The targets at which `player`'s hero `hero` may cast `spell` now, Scuttle Boat or
+    /// Dimension Door, in the window's row order: exactly those [`Self::check_cast`] accepts
+    /// (GAM-SPL-001; E08 T144a1, decision 422; a charged failure too: under `strict-fixed` the
+    /// door's and the scuttle's hidden tiles, under `faithful` the door's wrong kind, increment
+    /// 15's design note §11), the hero's and the cast's own tests made once
+    /// ([`h3_adventure::AdventureState::cast_targets`]). None for a spell without a target, one
+    /// the hero may not cast there, or a hero not `player`'s on the map.
+    // rule: GAM-SPL-001
+    pub(crate) fn cast_targets(
+        &self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        (hero, spell): (HeroId, SpellId),
+    ) -> Vec<Pos> {
+        let (core, part) = (rules.core(), rules.adventure());
+        let mut targets = Vec::new();
+        let Ok((pos, details)) = self.caster(player, hero) else {
+            return targets;
+        };
+        let Some(effect) = part.adventure_spell(spell).filter(|e| e.targets()) else {
+            return targets;
+        };
+        let ground = self.ground_of(rules, pos);
+        let known = map_spells(details, core, &[spell], raise_of(ground));
+        let Some(&MapSpell { mastery, cost, .. }) = known.first() else {
+            return targets;
+        };
+        if self
+            .cast_frame(rules, (pos, details.mana, ground), (spell, cost))
+            .is_err()
+        {
+            return targets;
+        }
+        let cast = Cast {
+            spell,
+            effect,
+            mastery,
+            target: None,
+        };
+        let parts = (core, part);
+        self.adventure
+            .cast_targets(parts, (player, hero), cast, |t| targets.push(t));
+        targets
     }
 
     /// `player`'s cast of `spell` by its hero `hero` at `target` (GAM-SPL-001; increment 15's
