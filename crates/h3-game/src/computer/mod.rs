@@ -16,13 +16,13 @@
 //!
 //! [`GameCommand`]: crate::GameCommand
 
-mod memory;
-// The fight estimate (T2c) is the first caller outside the tests.
+// The values that ask for a fight's worth (T2d, T2h, T2i) are its first callers outside the tests.
 #[cfg_attr(
     not(test),
-    expect(dead_code, reason = "no caller until the fight estimate, E31 T2c")
+    expect(dead_code, reason = "no caller until the values, E31 T2d, T2h, T2i")
 )]
-mod sim;
+mod fight;
+mod memory;
 mod turn;
 
 #[cfg(test)]
