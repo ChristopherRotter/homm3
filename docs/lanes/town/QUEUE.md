@@ -7,18 +7,13 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 6: the town's trades, refined at T51, `TWN-Q34`,
 decisions 196 to 199; its survey T52 with the checkpoint `TWN-Q35`, decisions 200 to 207; its
 drafts, cut and exit criteria by T53, `TWN-Q36`, `TWN-Q37`, decisions 208 to 217; batch TWN-6
-by T54, decision 218; the buildings for heroes and the map are increment 7, travel and the Grail
+by T54, decision 218; T55 `shared/`, decision 219; the buildings for heroes and the map are increment 7, travel and the Grail
 8, decision 197); done
 tasks in `E09-log.md`; increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T55 to T61** (queued, design §118's rounds 3 to 8; each cut confirmed at its start): T55
-`shared/` (T55a the three drafts `docs/lanes/town/adr-drafts/*-increment-6.md` into the ADRs with
-T54's verdicts (survey `E09-trades.md` §14: every row the code reading), the glossary,
-`docs/06-security.md`'s town lines; T55b the flags of `TWN-QUIRK-15` and `-16` (T-28 and T-23,
-both confirmed by TWN-6-5 and TWN-6-7), the combinations' costs in the core's compile,
-HER-ART-008); **Status:** T55 next. T56 the town part v10 (§102: the six building fields, the parameters, the Transformer's tables per pack, the
+**E09 T56 to T61** (queued, design §118's rounds 4 to 8; each cut confirmed at its start): **Status:** T56 next. T56 the town part v10 (§102: the six building fields, the parameters, the Transformer's tables per pack, the
 harvest `cross-lane`); T57 the stock (§108: the pool's marks kept and the stock in the adventure
 state, the new game's and the month's draws, the replays re-recorded, `cross-lane`); T58 the market
 at a town (§103 to §107: T58a the count, `Market` opening E08's decision with the town as its
@@ -30,12 +25,6 @@ protocol, `cross-lane`); T60 the trades map, its replays, the census, the proper
 benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, increment 7 refined.
 
 ## Inbox
-
-- 2026-11-25 (`shared/ci-jobs`, CI phase 1; **a doc fix, at your next session**): `TRAPS.md`'s
-  "CI's verify job stops at 55 minutes" is out of date: CI now runs the verify as parallel jobs
-  (`gates`, `coverage`, `replays`, `bench`), each stopping at 60 minutes, never raised again
-  (user; `docs/05-testing.md`, "CI"). A growing workload now adds to the `bench` job: keep the
-  advice, name that job and its cap.
 
 - 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision and your
   planning, nothing to build now**): the original's computer player's rules in towns (survey

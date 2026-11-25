@@ -90,11 +90,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   opening's and the book's questions read the town's derived roles once (`h3_towns::guild_offers`).
   First build +5.5 % on `master`'s games, +1.6 % after the pass.
 
-- **CI's verify job stops at 55 minutes** (`ci.yml`'s `timeout-minutes`, 40 until #1009; the
-  user, 2026-11-18): `master`'s full run about 36, the runner's apt step 6 to 10 of them,
-  `bench-check` about 6. A workload whose random games grow (E09 T38a2: the hires tripled
-  `reach-towns-36`'s queries, 107 s under callgrind for 17 s) adds to every pull request's run:
-  time a re-baselined workload against `master`'s and shorten its games in the same task when it
+- **CI's `bench` job stops at 60 minutes** (CI phase 1, 2026-11-25: the verify runs as the
+  parallel jobs `gates`, `coverage`, `replays` and `bench`, each capped at 60 minutes and never
+  raised again; `docs/05-testing.md`, "CI"): `bench-check` alone runs in `bench`, so a workload
+  whose random games grow (E09 T38a2: the hires tripled `reach-towns-36`'s queries, 107 s under
+  callgrind for 17 s) adds to that job in every pull request's run: time a re-baselined workload against `master`'s and shorten its games in the same task when it
   grew by more than a few seconds.
 - **The adventure benchmarks follow the heap:** a change that only adds a few small allocations
   at the build (the town part's content) moved `day-start-xl-144` by +1.6 % through glibc's

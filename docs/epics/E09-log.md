@@ -6465,3 +6465,64 @@ branch; `cargo xtask check-lane --cross-lane --base origin/master` ok): coverage
 coverage`), test 17.1, determinism 10.4, bench-check 19.6, original-data 1.1; `deny` and
 `ffi-smoke` skipped by the scope. The harness's own check and its unit tests pass. CI on the pull
 request is the record.
+
+### T55 — `shared/`: increment 6's drafts into the ADRs, the glossary, the security lines, the flags of `TWN-QUIRK-15` and `-16`, the combinations' costs (2026-11-25)
+
+One session, the user present at the start; branch `shared/e09-t55`, `cross-lane` (the ADRs, the
+glossary, `docs/06-security.md`, `h3-content` and `h3-pack` shared; the harvester and
+`packs/base` the battle lane's, `heroes.toml` and the golden adventure replays the adventure
+lane's, the bot reports the AI lane's, one test literal the server lane's). Starting point:
+`master` at 8abf1f4 (#1173, T54's, merged); the setup's full baseline passed on its code
+(`verify-once: verified (sandbox) code a3676e3…`), CI green on it. No original data staged. **Kept
+whole** with the `cross-lane` consent (decision 219; the recommendation was T55a alone); edits
+made in worktrees while the baseline ran, then moved over.
+
+- **T55a, the ADRs** (the three drafts of T53, accepted at `TWN-Q37`, deleted from
+  `adr-drafts/`; applied by a sub-agent): ADR-0028 points 2 (the count, the window's offer and
+  hero, the machine, the boat, the University, the Transformer's target), 5 (the six building
+  fields, the parameters, the core's combination costs), 6 (`Market`, `University`,
+  `BuyWarMachine`, `BuildBoat`, `Transform`), 9 (the versions), the header's amendments line,
+  **the Consequences and Alternatives for increment 6** (the drafts had none; written from the
+  drafts' facts); ADR-0017 points 1, 3, 4, 6, 8, 9, 10; ADR-0016 points 1, 4, 6; each revision
+  history, the ADR index's three rows. Each block cites batch TWN-6's rows that confirmed it
+  (survey `E09-trades.md` §14: every row as read).
+- **T55a, the docs:** `docs/03-domain.md`'s terms (the count, a town's window, the window's hero,
+  the merchants' stock, the pool's marks, the artifact sale, the town's boat, the Transformer's
+  target); `docs/06-security.md`'s section "The town's trades (E09 increment 6)" (design §114: the
+  stock seen only in its window, its draws and the pool's marks server-only, the market and
+  University views their owner's, the five commands' checks, nothing priced from the payload, the
+  events) and the "Another player's hero" line's garrison hero (T50's record).
+- **T55b, `h3-content`:** `quirk.town.visitor_only_trades` (`QuirkFlag(52)`,
+  `VISITOR_ONLY_TRADES`, T-28; read from T58a) and `quirk.town.university_ignores_map_bans`
+  (`QuirkFlag(53)`, `UNIVERSITY_IGNORES_MAP_BANS`, T-23; read from T59b): the registry's 54
+  positions, its two tests. **HER-ART-008** (`heroes.toml`, `verified`: the code reading of
+  `artifact_table_load` and TWN-6-4): a combination whose pack names no cost costs its parts'
+  costs summed per resource, in resource order, derived in the artifact compile after the pack's
+  artifacts (a sum past `u32` refused); `her_art_008_a_combination_without_a_cost_costs_its_parts_sum`
+  (the pack's cost kept, the sum, the overflow). No encoding changed: `RULESET_HASH_VERSION` 53
+  and the pack format kept. **`h3-pack`:** `the_harvested_flags_of_e09_increment_6` (on in
+  `faithful`, off in `strict-fixed`, every expansion) and
+  `her_art_008_the_sod_combinations_cost_their_parts_sum` (the twelve: 84 000 down to 3 000, the
+  survey's §3.4 table). **The harvester's** two profiles and `packs/base/core.toml`'s two profile
+  lines (the synthetic packs name no town flag; `synthetic-ext`'s Storm Regalia now costs its
+  parts' 9 500 coin).
+- **The ledger:** `TWN-QUIRK-15` and `-16` entered (`quirks-town.md`; confirmed by TWN-6-5 and
+  TWN-6-7; the rules' regression tests with T58a and T59b, the profiles' now).
+- **Replays and records** (a sub-agent): the base faithful ruleset hash moved 0x52a9516f14766fb8
+  to **0x61961894eaf7f557**, `strict-fixed`'s 0xb0c378a75ff70a5b to **0xacbb9bce12032664** (the
+  combinations' costs; the synthetic's kept). The 118 golden adventure replays re-recorded from
+  their commands by a scratch script (`h3 adventure run` in release, 10 s): only `ruleset_hash`
+  moved; all 118 verified (`h3 adventure verify`), the ten battle replays unchanged and verified
+  (`h3 verify`). `h3-server`'s record literal; the AI lane's `bots-report-v1.json` and
+  `bots-neutral-v1.json` regenerated (3.7 minutes): only `engine.core` moved.
+- **Also:** the battle lane's HANDOFF version line (quirk flags 53, the hash); the adventure lane's
+  inbox (the replays' header, HER-ART-008); the lane's inbox note on CI's jobs done (`TRAPS.md`:
+  the `bench` job's 60 minutes).
+- *Agent's calls:* the two ledger entries made with the flags, as T45's; the sum in resource order
+  with a typed refusal past `u32` (the original adds gold in an `int`); HER-ART-008's status
+  `verified` (a code reading and an observation).
+
+**The queue:** T55 out; T56 next (the town part v10). Ids: decisions next 220; quirks next
+`TWN-QUIRK-17`.
+
+**Verify:** VERIFY_LINE
