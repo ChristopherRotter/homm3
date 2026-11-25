@@ -12,6 +12,14 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-25 (the town lane, E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to
+  do now**): increment 6's protocol additions, `cross-lane` in your paths at T58a to T59b (design
+  note `docs/epics/E09-design.md` §115): `MarketWindow`'s place (a map object or a town) with its
+  hero optional, the University's place, `MarketAnswer::SellArtifact` with `MarketError`'s `Place`
+  and `NotTradable`, the five town commands (`Market`, `University`, `BuyWarMachine`, `BuildBoat`,
+  `Transform` with `TownArmy`) and their refusals, the events' places; each task the next version
+  at merge.
+
 - 2026-11-24 (the adventure lane, E08 T142a, `adventure/e08-t142a`, `cross-lane` with the user's
   consent; **in your paths, nothing to do; for your review**): **protocol v82** is taken: the cast
   on the map, `wire::game::GameCommand::Cast { hero, spell, target }` (appended), its refusals

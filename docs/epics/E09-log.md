@@ -6348,3 +6348,68 @@ positions, the spot written once, the month's seven): each confirmed. After merg
 
 **The queue:** T52 out; T53 next (the drafts, Part H from §101, the cut). Ids: decisions next 208;
 disputes `TD-32`; quirk candidates `T-29`; questions `TWN-Q36`.
+
+### T53 — increment 6's drafts, the design note's Part H, the cut, the checkpoint (2026-11-25)
+
+Decision 198's second task, kept whole at its start (the user, `TWN-Q36`'s first round, decision
+208: "no cut, use a sub-agent where it makes sense"; the agent had proposed T53a, the market and
+the stock, then T53b, the other buildings, the views, the cut and the checkpoint, as T33a and
+T33b). Branch `town/e09-t53`, docs only (the three drafts, the design note, the epic, the log, the
+answered questions, the lane's queue and HANDOFF, four lanes' inboxes). Starting point: `master` at
+4f2cc71 (#1161 merged; CI green on `master`'s run), `master`'s e2e15c7 (#1159, E14 T2a) merged in
+before the first push. No original data staged: the survey suffices.
+
+**Sub-agents** (decision 208), one at a time: (1) a report of the E08 paths the trades reuse (the
+market's decision, checks, offers and view; its env entries, wire and replay words; the map's
+University; the War Machine Factory through the hire dialog; `BuildBoat` and the town's boat spot;
+`ArtifactPool`'s lifetime and picker; `HeroChange`; the state's hash order; `Recruit`'s opening of
+the hire dialog), which framed the ADR-level round; (2) the three drafts written from Part H on
+increment 5's drafts as the model; its four gaps folded in (a Black Market's stock is static, only
+its sold entries state; a war machine is never in the backpack; `TownArmy` is `h3-towns`';
+ADR-0016 point 1's "increment 5's town boat" is increment 6's).
+
+**The ADR-level choices** (`TWN-Q36`'s second round, four; decisions 209–212, each as
+recommended): the market window as E08's market decision opened by `TownCommand::Market` with the
+town as its place; the University as E08's University decision opened by
+`TownCommand::University`; the Blacksmith and the Ballista Yard as the one-shot
+`TownCommand::BuyWarMachine`; the stock and the artifact pool's marks in the adventure state.
+
+**Written:**
+- **The drafts** (`docs/lanes/town/adr-drafts/`): `0028-increment-6.md` (point 2 nothing new in a
+  town's record and the rules: the count, the window's offer, the machine, the boat, the University,
+  the Transformer's target; point 5 the six building fields, the parameters, the core's combination
+  costs; point 6 the five commands and their refusals; point 9 the versions), `0017-increment-6.md`
+  (points 1, 3, 4, 6, 8, 9, 10: the commands and `SellArtifact`, the month's draw in the day's
+  order, the streams, the decisions with a town as their place and the listing, the env's 42
+  entries, the versions, the gains and costs), `0016-increment-6.md` (points 1, 4, 6: the stock
+  and the marks in the state, a town as the market's and the University's place with the checks
+  on a resolved window, the sale's rate, the pool kept, the town's boat; the stock seen only in its
+  window).
+- **The design note** Part H, §101 to §120: scope and choices (§101, sixteen agent's calls), the
+  part v10 (§102), the count (§103), the window (§104), the trades, the transfer and the guild
+  (§105), the merchants' purchase (§106), the sale (§107), the stock (§108), the combinations'
+  costs (§109), the Blacksmith (§110), the boat (§111), the University (§112), the Transformer
+  (§113), the views and events (§114), the env, the protocol and the replays (§115), ids, versions,
+  quirks and stubs (§116), the gates and batch TWN-6 (§117), the building tasks T54 to T61 (§118),
+  the exit criteria (§119), the risks (§120).
+- **The checkpoint** `TWN-Q37` (one round of four; decisions 214–217, each as recommended): the
+  month's draw from the towns' stream; the combinations' costs in the core's compile; the env's 42
+  entries; the cut and the exit criteria as written. The agent's calls of 213.
+- **New ids** (planned): rules TWN-TRD-001, TWN-MKT-001 to -005, TWN-STK-001, -002, TWN-SMT-001,
+  TWN-SHY-001, TWN-UNI-001, TWN-TRF-001, TWN-VEW-005, the core's HER-ART-008; quirks
+  `TWN-QUIRK-15` (T-28) and `-16` (T-23) with their flags, `-17` to `-23` the fixes (T-19, T-20,
+  T-21, T-22, T-24, T-25, T-26); `TWN-STUB-21` (an ally's town, T58a); no new dispute or quirk
+  candidate.
+
+**The queue:** T53 out; T54 next, T55 to T61 queued. The adventure lane's inbox told the planned
+`cross-lane` changes in its paths and the merge order, the AI lane's the env's 42 entries, the
+server lane's the protocol's additions, the battle lane's the harvest's fields; the E08 market
+notes of the lane's inbox (T127a1 to T133b), folded into Part H, archived. No version moved. Ids:
+questions next `TWN-Q38`; decisions next 218; disputes `TD-32`; quirk candidates `T-29`.
+
+**Verify:** docs only. The setup's baseline was lost to a VM restart mid-run (CI's green run on
+`master` e2e15c7 stands for it). On the branch (d225af0): `check-docs`, `check-rules`,
+`check-stubs`, `check-exe-map`, `check-lane --base origin/master` and `doc-drift --base
+origin/master` ok; `cargo xtask verify --scope town --summary` with no failing step (coverage 24.9
+minutes, determinism 10.0, bench-check 16.8; `deny` and `ffi-smoke` skipped by the scope; no
+original data staged). CI on the pull request is the record.
