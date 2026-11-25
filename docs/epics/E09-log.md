@@ -6519,7 +6519,7 @@ made in worktrees while the baseline ran, then moved over.
   inbox (the replays' header, HER-ART-008); the lane's inbox note on CI's jobs done (`TRAPS.md`:
   the `bench` job's 60 minutes).
 - *Agent's calls:* the two ledger entries made with the flags, as T45's; the sum in resource order
-  with a typed refusal past `u32` (the original adds gold in an `int`); HER-ART-008's status
+  with a typed refusal past `u32` (no shipped sum comes near it); HER-ART-008's status
   `verified` (a code reading and an observation).
 
 **The queue:** T55 out; T56 next (the town part v10). Ids: decisions next 220; quirks next
