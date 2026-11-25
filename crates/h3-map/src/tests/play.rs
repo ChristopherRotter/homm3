@@ -44,8 +44,8 @@ use h3_battle::{
     CastTargets, Command, Event, EventKind, Field, cast_targets, castable_spells, second_targets,
 };
 use h3_content::{
-    ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, HeroEffect, HeroTypeId, ResourceId,
-    SIRENS_AGAIN_AFTER_BATTLE,
+    ArtifactTypeId, CreatureFlag, CreatureTypeId, FLIGHT_READS_HIDDEN, Formation, HeroEffect,
+    HeroTypeId, ResourceId, SIRENS_AGAIN_AFTER_BATTLE,
 };
 use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
@@ -4736,7 +4736,10 @@ fn ended(events: &[GameEvent]) -> Vec<([Option<HeroId>; 2], BattleResult)> {
 /// visitable tile or the other hero's; the move emitted a step event per tile it stepped onto,
 /// then at most one adventure event of the visit (and the removals of a battle that ended at its
 /// start). Since E08 T64b an event stops the move on its tile (ADV-MOV-011), fired or held for
-/// the guard of its tile: the rest of the path is dropped.
+/// the guard of its tile: the rest of the path is dropped. Since E08 T142b so does the
+/// compromise's flight (`ADV-QUIRK-15` off; increment 15's design note §11.1) on the last stop
+/// node before a step its revealed tile forbids: then a tile of the rest of the path was hidden
+/// from the mover's owner.
 fn landing(
     before: &GameState,
     start: TilePos,
@@ -4859,7 +4862,17 @@ fn landing(
     );
     let on_event = steps > 0 && event(path[steps - 1]);
     prop_assert!(!fired || on_event, "{:?}", kinds);
-    let stopped = on_event && steps < path.len();
+    let owner = adventure
+        .heroes()
+        .iter()
+        .find(|h| h.pos == start)
+        .map(|h| h.owner);
+    let cut = !on_event
+        && path.get(steps..).is_some_and(|rest| {
+            rest.iter()
+                .any(|&pos| owner.is_some_and(|o| !adventure.is_explored(o, pos)))
+        });
+    let stopped = (on_event || cut) && steps < path.len();
     let stays = steps + 1 == path.len() && !stopped;
     prop_assert!(
         steps == path.len() || stays || stopped,
@@ -4989,7 +5002,24 @@ fn check_sea_move(
         .hero(hero)
         .is_some_and(|h| h.boat.is_some());
     let heroes = before.adventure().heroes();
-    for &tile in path.iter().filter(|_| !afloat) {
+    // E08 T142b: under the compromise (`ADV-QUIRK-15` off) a flight's path crosses the tiles its
+    // player had not explored whatever lies there, and its walk stops before a step the revealed
+    // tile forbids: a hidden tile past the steps it made is not the walk's.
+    let walked = events
+        .iter()
+        .filter(|e| {
+            matches!(e, GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroStepped { hero: h, .. },
+                ..
+            }) if *h == hero)
+        })
+        .count();
+    let owner = before.adventure().hero(hero).map(|h| h.owner);
+    let unwalked = |i: usize, tile: TilePos| {
+        i >= walked && owner.is_some_and(|o| !before.adventure().is_explored(o, tile))
+    };
+    for (_, &tile) in (path.iter().enumerate()).filter(|&(i, &tile)| !afloat && !unwalked(i, tile))
+    {
         // A hero in a boat on the tile is met there, whatever lies under it (ADV-SEA-005: from
         // the shore too; D-46 leaves such a tile open), and an empty boat on it is boarded
         // (ADV-SEA-002; D-46 leaves a boat's tile open too): a key holder's boat may lie on its
@@ -6096,9 +6126,16 @@ fn check_legal(
         let (at, visited) = landing(state, start, path, &events)?;
         // E08 T64b: an event on the way stops the move on its tile (fired, or held where a
         // monster guards it: `Reach` never reads events, increment 7's design note §12), with the
-        // points the query reports there (ADV-MOV-011).
+        // points the query reports there (ADV-MOV-011); (E08 T142b) so does the compromise's
+        // flight (`ADV-QUIRK-15` off, increment 15's design note §11.1) on its last stop node
+        // before a tile the player had not explored, its start included.
         let stopped = !visited && at != to;
-        prop_assert!(!stopped || !state.adventure().map().events_at(at).is_empty());
+        let walked = path.iter().position(|&pos| pos == at).map_or(0, |i| i + 1);
+        let hidden = path[walked..]
+            .iter()
+            .any(|&pos| !state.adventure().is_explored(actor, pos));
+        let cut = !rules.core().quirks().is_enabled(FLIGHT_READS_HIDDEN) && hidden;
+        prop_assert!(!stopped || cut || !state.adventure().map().events_at(at).is_empty());
         let end = if stopped { at } else { to };
         prop_assert_eq!(
             at,
@@ -14898,7 +14935,9 @@ fn the_plans_capture_and_besiege_towns() {
     let towns = (plan(), vec(town(), 3..=6)).prop_map(|(plan, towns)| Plan { towns, ..plan });
     let strategy = (towns, any::<bool>(), any::<u64>(), steps());
     let mut besieged = Besieged::default();
-    for _ in 0..512 {
+    // E08 T142b: the flights over the hidden tiles changed the games; at 512 cases no siege
+    // beside a garrison hero was won any more (3 sieges, 640 cases the first to win one): 768.
+    for _ in 0..768 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start(&plan, rules, seed);

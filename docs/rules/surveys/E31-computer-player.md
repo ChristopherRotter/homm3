@@ -1719,8 +1719,8 @@ weight. A quirk candidate for T1b (the engine's port starts the record at its fi
 
 What the port, the lanes and the fair variant need from §1 to §4 in one place: each phase's rules
 (§5.1), the hidden reads (§5.2), the asymmetries and where they went (§5.3), the engine's gaps by
-epic (§5.4), the second look at the quirk candidates (§5.5). The decisions on them are the ADR
-draft's (`docs/lanes/ai/adr-drafts/original-computer-player.md`); the working detail (the traces,
+epic (§5.4), the second look at the quirk candidates (§5.5). The decisions on them are ADR-0030's
+(`docs/adr/0030-original-computer-player.md`, the draft until AI-Q32); the working detail (the traces,
 the experiments, the seam, the memory) is `docs/epics/E31-design.md`.
 
 ### 5.1 Each phase's rules

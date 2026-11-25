@@ -12,35 +12,13 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
 "Later". Every task's cut is confirmed with the user at its start. Planned ids: `MCL-STUB-5` (a
 computer colour's turn ended at once, T3), `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was cut
-in three at its start (T1a done 2026-11-24).
-
-### E24 M5 T1b — MCL-Q51: a mine's guards' battle not won, recorded and read
-
-- **Scope:** T1 cut in three by the user at its start (2026-11-24; T1a done: the log's "M5
-  T1a"). First the user's notes of M4's hand test (`clients/out/win/map-m4-notes.txt` on the
-  user's machine, beside `map-m4.cmd`; still the blank template at T1a): each finding a question
-  or a task, if written by then (else they wait for T2). Then **MCL-Q51** (b) then (a):
-  `battle-mine` recorded with `battle = "retreat"` (a new sequence beside it), `visit_mine`
-  0x4A39A0's path read for a draw (its boxes, the flag, the hero), built.
-- **Acceptance:** the retreat's sequence as recorded (twice the same) and its frames compared;
-  the draw's path read and built as read (a recording if one can be set up with one outcome);
-  `drawn` all the same; the scoped verify.
-- **Depends on:** T1a (done). **Status:** queued; original data and Wine needed.
-
-### E24 M5 T1c — MCL-Q52: the ambient loops after a battle
-
-- **Scope:** **MCL-Q52** (a): the map's return (`manager_run` 0x4B0C70, `ambient_sounds_at`
-  0x4183D0) and the lift after it (`mobilize_hero`'s `hero_select` 0x4180A0 to 0x41812D: the
-  ambient sounds restarted, the terrain's music; T1a lifts the hero again without its sounds) read
-  for the ambient slots and built; (b) (the slots forgotten at the hand-over) if the reading is
-  far off.
-- **Acceptance:** the ambient loops after a battle as read (a sound run of a battle sequence if
-  the harness can log the loops there); `drawn` all the same; the scoped verify.
-- **Depends on:** T1a (done). **Status:** queued; original data needed (Wine for a sound run).
+in three at its start (T1a to T1c done 2026-11-24 and 25).
 
 ### E24 M5 T2 — the layering: `h3-map-client` and the shell's crate (no behaviour changed)
 
-- **Scope:** the map's window loop, painter, sound player and battle hosting move from
+- **Scope:** first the user's notes of M4's hand test, if written by then
+  (`clients/out/win/map-m4-notes.txt`, still the blank template at T1a and T1b): each finding a
+  question or a task. Then the map's window loop, painter, sound player and battle hosting move from
   `h3-map-view`'s binary into a new adapters library **`h3-map-client`** (this lane's, under
   `clients/crates/h3-map*`), with a play entry the shell can call (its input `begin::Game`'s
   setup and names, the window and sound lent, play's end handed back: Main Menu, Load, Restart,
@@ -112,7 +90,10 @@ in three at its start (T1a done 2026-11-24).
   human's hero attacking: the original's switch read and recorded, `MCL-STUB-3` lifted); a battle
   between two humans (`CLT-STUB-5`, with the client lane: one seat over both sides, each command
   its side's player's); Auto Combat (`CLT-STUB-4`: the host plays the human's side by the battle
-  AI); the result in each human's view.
+  AI); the result in each human's view. With them a plain cut's battle (a record's walk's, an
+  answer's the record player passes over: a dwelling's guards, Pandora's Box; design §5.20)
+  restarting the ambient loops at its hand-back as a switch's lift does (T1c built it for the
+  switch's battles only, design §5.24: `dwellings-guards-s1`'s loop silent after its won battle).
 - **Acceptance:** each kind played in a hot-seat game; the switches as recorded; the scoped
   verify.
 - **Depends on:** T4; the client lane's part of `CLT-STUB-4` and `-5`. **Status:** queued; cut
@@ -135,6 +116,17 @@ in three at its start (T1a done 2026-11-24).
 - **Depends on:** T7. **Status:** queued.
 
 ## Inbox
+
+- 2026-11-24 (the adventure lane, E08 T142b; **for your planning, nothing blocks; no version
+  moved**): a flying hero's paths now cross tiles its player has not explored, by
+  `ADV-QUIRK-15` (increment 15's design note `E08-design.md` §11.1): under `faithful` as the
+  original (rock refused, priced as what lies there), under `strict-fixed` every hidden tile an
+  assumed pass. A hidden tile is never a path's end in either. Under `strict-fixed` an accepted
+  flight can **end short**: on the last stop node before a step whose revealed tile forbids it
+  (or on its start), its `HeroStepped` events only up to there, with more tiles explored than
+  those steps reveal (the undone passes'), as an event's stop leaves the rest of the path
+  unwalked. The client's path drawing and its arrival need nothing but the engine's reach and
+  events; the original's cursor over hidden tiles is the faithful side's.
 
 - 2026-11-24 (the adventure lane, E08 T142a; **for your planning, nothing blocks**): protocol
   v82 carries the cast on the map: `GameCommand::Cast { hero, spell, target }`, the owner's

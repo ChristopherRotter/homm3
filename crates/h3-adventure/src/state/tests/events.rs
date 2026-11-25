@@ -367,6 +367,47 @@ fn a_flyer_stops_on_an_event_it_may_stand_on_and_passes_one_it_may_not() {
     assert_eq!(standing(&s).0, Pos::new(6, 1, 0));
 }
 
+// covers: ADV-MOV-011, ADV-MOV-009, ADV-MOV-008
+#[test]
+fn an_event_before_the_compromise_s_stop_ends_the_flight_first() {
+    // ADV-QUIRK-15 off (increment 15's design note §11.1, E08 T142b): red's flyer over the strip
+    // (7, 1) to (9, 1) it has not explored, toward the hidden rock on (9, 1). An event on (4, 1)
+    // ends the move there first; one on (11, 1), past the rock, is never reached: the move ends
+    // on (6, 1), the last stop node before the rock.
+    let rules = rules(false);
+    let flyer = store(hero_details(&[(FLYING, 3)]));
+    let state = |x| {
+        let mut setup = world(
+            &["gggggggggggggggg", "ggggggggg#gggggg"],
+            1,
+            vec![
+                hero_at(1, 0, Pos::new(1, 1, 0), &[PEASANT]),
+                hero_at(2, 0, Pos::new(15, 1, 0), &[PEASANT]),
+            ],
+        );
+        setup
+            .map
+            .objects
+            .push(event(&rules, x, RED_ONLY, false, true));
+        setup.seats[0] = Seat {
+            colour: 0,
+            human: true,
+        };
+        started(&rules, &setup).unwrap()
+    };
+    let mut s = state(4);
+    let (outcome, events) = walk(&rules, &mut s, &flyer, &row(2..=11));
+    assert_eq!((outcome.gains, outcome.dropped), (vec![(GOLD, 100)], 7));
+    assert_eq!(
+        (standing(&s).0, fired(&events).len()),
+        (Pos::new(4, 1, 0), 1)
+    );
+    let mut s = state(11);
+    let (outcome, events) = walk(&rules, &mut s, &flyer, &row(2..=11));
+    assert_eq!((outcome.dropped, fired(&events).len()), (5, 0));
+    assert_eq!(standing(&s).0, Pos::new(6, 1, 0));
+}
+
 // covers: ADV-FOG-007, ADV-MOV-011
 #[test]
 fn no_player_sees_an_event_in_its_views_its_paths_or_its_reach() {

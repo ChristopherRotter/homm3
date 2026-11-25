@@ -1205,6 +1205,22 @@ enum Open {
     HillFort(HeroId, h3_adventure::ObjectTypeId, TilePos),
 }
 
+/// Whether one of `viewer`'s heroes on the map flies (E08 T142b): by its levels (the worn Angel
+/// Wings) or its day's Fly (ADV-SPL-005).
+fn flies(game: &GameState, rules: &GameRuleset, viewer: PlayerId) -> bool {
+    let adventure = game.adventure();
+    adventure
+        .heroes()
+        .iter()
+        .filter(|h| h.owner == viewer)
+        .any(|h| {
+            let levels = game
+                .hero(h.id)
+                .map(|d| h3_heroes::movement(d, rules.core()));
+            levels.is_some_and(|m| m.flying.is_some()) || adventure.day_spells(h.id).fly.is_some()
+        })
+}
+
 /// The owner's own view of `hero` in `view`: on the map, or (E09 T28a) in one of its towns'
 /// garrisons, whose points (E09 T28b1: refilled at the owner's turn start, TWN-ROW-005) and marks
 /// (the day's and the week's drops) change too.
@@ -3256,7 +3272,10 @@ proptest! {
     /// E09 T28b2 a garrison hero's army is its town's garrison as a viewer sees it (TWN-VEW-002):
     /// a town told to the viewer whose upper bar differs between the two games (another player's
     /// hero's army moved into it) ends the comparison, the events it is told the same but the
-    /// garrisons' stacks.
+    /// garrisons' stacks. Since E08 T142b a flight crosses the tiles its player has not explored
+    /// (`ADV-QUIRK-15`): under `strict-fixed` over what the viewer knows, so the comparison runs
+    /// on (exit criterion 8 of increment 15); under `faithful` its reach reads them (the
+    /// original's leak), so the comparison ends while one of the viewer's heroes flies.
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),
@@ -3313,6 +3332,15 @@ proptest! {
         );
         let mut a = start_on(&m, rules, seed);
         let mut b = start_on(&other, rules, unseen.seed.unwrap_or(seed));
+        // E08 T142b: with `ADV-QUIRK-15` on (`faithful`) a flight's reach and prices read the
+        // tiles it has not explored (the original's leak, increment 15's design note §4), so the
+        // comparison holds there only while none of the viewer's heroes flies; off, throughout
+        // (the compromise, §11.1: the reach and its moves over what the viewer knows, exit
+        // criterion 8).
+        let leaks = |game: &GameState| !strict && flies(game, rules, viewer);
+        if leaks(&a) {
+            return Ok(());
+        }
         check_same(&a, &b, rules, viewer)?;
         // E09 T9b2b: what the viewer is shown of the towns, in both games.
         for game in [&a, &b] {
@@ -3666,6 +3694,9 @@ proptest! {
                 }
             }
             prop_assert_eq!(ta, tb);
+            if leaks(&a) || leaks(&b) {
+                break;
+            }
             check_same(&a, &b, rules, viewer)?;
         }
     }

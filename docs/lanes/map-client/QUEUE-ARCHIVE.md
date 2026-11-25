@@ -4,6 +4,38 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-25 (this lane, E24 M5 T1c done: the log's "M5 T1c", design §5.24: the loops restarted
+  at a won battle's lift as `hero_select` restarts them, a sound run of `battle-mine` as read; a
+  plain cut's battle left to T6): the task as it stood, verbatim.
+
+  ### E24 M5 T1c — MCL-Q52: the ambient loops after a battle
+
+  - **Scope:** **MCL-Q52** (a): the map's return (`manager_run` 0x4B0C70, `ambient_sounds_at`
+    0x4183D0) and the lift after it (`mobilize_hero`'s `hero_select` 0x4180A0 to 0x41812D: the
+    ambient sounds restarted, the terrain's music; T1a lifts the hero again without its sounds) read
+    for the ambient slots and built; (b) (the slots forgotten at the hand-over) if the reading is
+    far off.
+  - **Acceptance:** the ambient loops after a battle as read (a sound run of a battle sequence if
+    the harness can log the loops there); `drawn` all the same; the scoped verify.
+  - **Depends on:** T1a (done). **Status:** queued; original data needed (Wine for a sound run).
+
+- 2026-11-25 (this lane, E24 M5 T1b done: the log's "M5 T1b", design §5.23: `battle-mine-retreat`
+  recorded twice the same, `visit_mine`'s path read for a draw, the built form kept; the hand
+  test's notes still blank, carried into T2): the task as it stood, verbatim.
+
+  ### E24 M5 T1b — MCL-Q51: a mine's guards' battle not won, recorded and read
+
+  - **Scope:** T1 cut in three by the user at its start (2026-11-24; T1a done: the log's "M5
+    T1a"). First the user's notes of M4's hand test (`clients/out/win/map-m4-notes.txt` on the
+    user's machine, beside `map-m4.cmd`; still the blank template at T1a): each finding a question
+    or a task, if written by then (else they wait for T2). Then **MCL-Q51** (b) then (a):
+    `battle-mine` recorded with `battle = "retreat"` (a new sequence beside it), `visit_mine`
+    0x4A39A0's path read for a draw (its boxes, the flag, the hero), built.
+  - **Acceptance:** the retreat's sequence as recorded (twice the same) and its frames compared;
+    the draw's path read and built as read (a recording if one can be set up with one outcome);
+    `drawn` all the same; the scoped verify.
+  - **Depends on:** T1a (done). **Status:** queued; original data and Wine needed.
+
 - 2026-11-24 (this lane, E24 M5 T1 cut in three by the user at its start; T1a done: the log's
   "M5 T1a": the hero's pose at the attack and the panel's buttons after a retreat; T1b MCL-Q51
   and T1c MCL-Q52 queued; the hand test's notes still blank, carried into T1b): the task as it

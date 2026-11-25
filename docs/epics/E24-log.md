@@ -3471,3 +3471,57 @@ check in range (TRAPS).
   `drawn --record`; `check.sh` (fmt, clippy, deny passed; its coverage found one region, the
   lift's test of a hero, made unconditional: the crate's coverage then 100 %); the scoped
   verify.
+
+### M5 T1b — MCL-Q51: a mine's guards' battle not won, recorded and read (2026-11-25)
+
+On `map-client/e24-m5-t1b`, `master` at e2e15c7 (#1160 merged; CI and Clients green). Original
+data staged from the user's repo folder at the start (the four LODs, both executables, the five
+DLLs, the sound and video archives, both tars, the 40 MP3s, `games/`; SHA-256 checked against the
+PC's); the PC's bridge gone soon after. The setup's baseline stopped at its coverage step by hand
+(fmt, clippy, the doc tests and deny passed), CI's green `master` standing in; no disk ballast
+needed (the free space in the game's band).
+
+- **The hand test's notes:** `map-m4-notes.txt` still the blank template; they wait for T2 (the
+  queue's fallback, now in T2's scope).
+- **Recorded** (MCL-Q51 (b)): `battle-mine-retreat`, `battle-mine`'s situation with `battle =
+  "retreat"` and the engine's script `move`, `answer offer accept`, `battle retreat` under
+  `engine_seed` 5; twice the same (timeline, live part, frames). The battle at 1310 (winner 1, the
+  guards' two stacks 50 Troglodytes and 50 Infernal Troglodytes as `battle-mine`'s), the hero gone
+  at 1810 and dissolved to 2265, the second hero chosen at 2330; no box, the mine unflagged.
+- **Read** (MCL-Q51 (a), design §5.23): `visit_mine` ends the visit at a winner not the hero
+  (`monster_battle`'s at 0x4A3AE5, `adventure_battle`'s at 0x4A3B59): the count left written back,
+  no box, no flag; `monster_battle` selects the hero again after every outcome and returns the
+  winner unchanged; a draw's `battle_aftermath` runs the beaten hero's calls one for one, so a
+  draw at a mine shows as the retreat recorded. After a draw the original keeps slot 0's creature
+  with a count of 0, so the next visitor is asked again: the adventure lane's inbox (the engine
+  leaves none).
+- **Built:** nothing new (M4 T6's `AfterBattle::of_guards` as read and recorded): comments, the
+  binary's `MCL-Q51` stub marker removed, the sequence in the two pinning tests and the battles'
+  tests (`a_mine_s_guards_not_beaten_show_no_box_and_raise_no_flag` now on the recording).
+- **Checked:** the viewer's timeline from the engine's record as recorded (no gap); the frames
+  M4's known differences until 1760, exact from 1810; `h3map.py drawn` over every situation and
+  sequence (the new one alone `new`, recorded); the crate's tests.
+
+### M5 T1c — MCL-Q52: the ambient loops after a battle (2026-11-25)
+
+On `map-client/e24-m5-t1c`, in the same sandbox and session; begun on T1b's branch, rebased onto
+`master` at c675568 once #1165 merged (with #1162, #1164: `drawn` all the same again).
+
+- **Read** (MCL-Q52 (a), design §5.24): the hand-over's `effects_stop_all` ends the loops but
+  leaves the manager's four slots; nothing at the map's return clears them; `adventure_battle`'s
+  end (0x4AE8F3, every outcome) calls `mobilize_hero(0, 0, 1)`, whose `hero_select` scans with the
+  stop flag (0x4180FF): each slot stopped and emptied, the loops found again started anew, the
+  music only on another terrain. 0x4AD62E, which §5.22 named, is the battle without a human's.
+  (b) not needed.
+- **Recorded:** `battle-mine` as a sound run (a scratch sequence, `sound = true`): the mine's loop
+  at 100, its channel free at the hand-over (a click on it at 1500), the loop again at 1810, the
+  fade in's end.
+- **Built:** `Loop::after_battle` calls the model's `Sound::select` with the lift when the hero
+  stays on the map (*provisional*: before a level-up's dialogs, which the original shows first);
+  a hero that leaves restarts nothing there (the next choice's lift does). Two tests
+  (`a_won_battle_s_lift_restarts_the_ambient_loops`, `a_retreat_s_loops_restart_at_the_next_choice`).
+- **Checked:** the window under Xvfb with `--cues` on `battle-mine`'s engine record (its loop
+  restarted at the fade in's end, 138 of 138 frames read back exact) and on `dwellings-guards-s1`
+  (both battles closed, 117 of 117 exact; its won battle is a plain cut, no lift: its loop stays
+  silent until the next day, carried into T6's scope); `h3map.py drawn` (every situation and
+  sequence the same); the crate's tests; `check.sh`; the scoped verify.

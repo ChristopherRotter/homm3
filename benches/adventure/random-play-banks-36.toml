@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "5 random-vs-random games of 28 days on the banks map (E08 T125b2b, increment 13's design note §17; T125b1's e08-banks-36.h3m: the eleven kinds of creature bank, two Crypts, the Shipwreck beside the coast with an island beyond it, the Derelict Ship off the coast, a boat, ten heroes); seed 52 by a search of seeds 1 to 100 for the most bank battles that changed a bank's guards and banks looted (13 and 10, as seed 50's, in fewer steps): 3 718 steps, 15 bank battles started (the visit, the bank battle's setup), 10 banks looted (the rewards); about 1 540 000 Ir a step, 84 % inside h3_game::legal::legal_moves (the agent's legal moves of the ten heroes at every step), Reach::search 55 % itself, AdventureState::visit_at 0.9 %; counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); baselined at its first count"
+description = "5 random-vs-random games of 28 days on the banks map (E08 T125b2b, increment 13's design note §17; T125b1's e08-banks-36.h3m: the eleven kinds of creature bank, two Crypts, the Shipwreck beside the coast with an island beyond it, the Derelict Ship off the coast, a boat, ten heroes); seed 52 by a search of seeds 1 to 100 for the most bank battles that changed a bank's guards and banks looted (13 and 10, as seed 50's, in fewer steps): 3 718 steps, 15 bank battles started (the visit, the bank battle's setup), 10 banks looted (the rewards); about 1 540 000 Ir a step, 84 % inside h3_game::legal::legal_moves (the agent's legal moves of the ten heroes at every step), Reach::search 55 % itself, AdventureState::visit_at 0.9 %; counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); baselined at its first count; since E08 T142b re-baselined: with ADV-QUIRK-15 on (faithful) a flight's reach goes on over the tiles its owner has not explored, as the original's (increment 15's design note section 11.1), so the random games changed course, the flyers' queries over the hidden tiles: +4.56 % against master measured in the same sandbox"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "52",
 ]
 collect = "*adventure*random_rollout*"
-instructions = 5725747455
+instructions = 5988043986
 threshold_percent = 2
