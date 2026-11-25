@@ -76,7 +76,7 @@ Refined with the user on 2026-11-24 (T51; `TWN-Q34`, asked at T51's start with a
 - **T51** the audit of increment 5's exit criteria, its closure, this refinement. Done 2026-11-24 (decisions 196–199; `E09-log.md`).
 - **T52** the survey with its checkpoint (`TWN-Q35`; decision 198). Done 2026-11-24 (decisions 200–207; `E09-log.md`; survey `E09-trades.md`).
 - **T53** the ADR amendment drafts, the design note's Part H, the cut and the exit criteria (decision 198). Done 2026-11-25 (decisions 208–217; `E09-log.md`; drafts `docs/lanes/town/adr-drafts/*-increment-6.md`, design note Part H §101 to §120).
-- **T54** batch TWN-6 (survey §11's eight rows; design note §117).
+- **T54** batch TWN-6 (survey §11's eight rows; design note §117). Done 2026-11-25 (decision 218; `E09-log.md`; scored in the survey's §14).
 - **T55** `shared/`: the drafts into the ADRs with T54's verdicts, the glossary, `docs/06-security.md`; the flags of `TWN-QUIRK-15` and `-16`, the combinations' costs (HER-ART-008).
 - **T56** the town part v10 (TWN-TRD-001).
 - **T57** the stock (TWN-STK-001, -002).
