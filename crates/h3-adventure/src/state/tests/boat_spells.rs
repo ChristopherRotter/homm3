@@ -343,6 +343,16 @@ fn summon_boat_is_refused_in_a_boat_and_without_free_water() {
         cast(&mut state, &rules, summon(3), &mut stream),
         Err(CastError::NoWater)
     );
+    // At the map's corners, the neighbours off it are no water (the steps above the top and left
+    // of the edge, and those past the right and bottom).
+    let land = ["ggg", "ggg", "ggg"];
+    for (red, blue) in [(p(0, 0), p(2, 2)), (p(2, 2), p(0, 0))] {
+        let mut corner = boat_world(&rules, (&land, 1), red, blue);
+        assert_eq!(
+            cast(&mut corner, &rules, summon(3), &mut stream),
+            Err(CastError::NoWater)
+        );
+    }
     let mut afloat = boat_world(&rules, (&["g~~", "~b~", "ggg"], 1), p(0, 0), p(2, 2));
     afloat.put_aboard(HERO, 0);
     assert_eq!(

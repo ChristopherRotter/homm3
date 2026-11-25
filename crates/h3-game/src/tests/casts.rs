@@ -352,6 +352,9 @@ fn scuttle_boat_draws_its_chance_and_a_refusal_draws_nothing() {
     };
     assert_eq!(cast_on(&mut state), told(failed, 192));
     assert!(state.adventure().is_empty_boat(tile));
+    // The caster's owner alone is told the failure.
+    assert_eq!(project(&failed, Viewer::Player(RED)), Some(failed));
+    assert_eq!(project(&failed, Viewer::Player(BLUE)), None);
     let sunk = GameEvent::Adventure(AdventureEvent {
         kind: AdventureEventKind::BoatScuttled { tile, boat: 0 },
         seen_by: Viewers::NONE.with(RED).with(BLUE),

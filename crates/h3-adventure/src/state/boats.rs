@@ -167,26 +167,28 @@ impl Boats {
     }
 
     /// Moves the empty boat at `slot` to `to` (Summon Boat, ADV-SPL-003): off the empty boats'
-    /// grid at its tile, on it at `to`, its facing, owner and captain kept. The caller found the
-    /// boat empty and `to` free water.
-    pub(super) fn shift(&mut self, slot: usize, to: Pos) {
-        if let Some(mut record) = self.records.get(slot).copied() {
+    /// grid at its tile, on it at `to`, its facing, owner and captain kept; its type, if the boat
+    /// exists. The caller found the boat empty and `to` free water.
+    pub(super) fn shift(&mut self, slot: usize, to: Pos) -> Option<u8> {
+        self.records.get(slot).copied().map(|mut record| {
             self.empty.set(record.tile, false);
             self.empty.set(to, true);
             record.tile = to;
             self.records.set(slot, Some(record));
-        }
+            record.kind
+        })
     }
 
     /// Sinks the empty boat at `slot` (Scuttle Boat, ADV-SPL-004; the original's record out of
     /// use, survey `E08-spells.md` §6): off the empty boats' grid, gone, its tile, owner and
-    /// captain kept as a boat that left the map keeps them.
-    pub(super) fn sink(&mut self, slot: usize) {
-        if let Some(mut record) = self.records.get(slot).copied() {
+    /// captain kept as a boat that left the map keeps them; its type, if the boat exists.
+    pub(super) fn sink(&mut self, slot: usize) -> Option<u8> {
+        self.records.get(slot).copied().map(|mut record| {
             self.empty.set(record.tile, false);
             record.gone = true;
             self.records.set(slot, Some(record));
-        }
+            record.kind
+        })
     }
 
     /// The boat at `slot` leaves the map from `at` with its hero (ADV-SEA-006): gone, its tile

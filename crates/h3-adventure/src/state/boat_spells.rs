@@ -139,12 +139,14 @@ impl AdventureState {
         if let Some((index, boat)) = self.summoned_boat(core, (player, hero), pos) {
             let seen_from = self.tile_viewers(core, boat.tile);
             let seen_to = self.viewers(core, player, to);
-            if let Some(boats) = self.boats.as_mut() {
-                boats.shift(index, to);
-            }
+            let kind = self
+                .boats
+                .as_mut()
+                .and_then(|boats| boats.shift(index, to))
+                .unwrap_or(boat.kind);
             sink.emit(AdventureEvent {
                 kind: AdventureEventKind::BoatSummoned {
-                    boat: boat.kind,
+                    boat: kind,
                     from: Some(boat.tile),
                     to: Some(to),
                     facing: boat.facing,
@@ -240,10 +242,11 @@ impl AdventureState {
             return Err(CastFailure::Chance);
         }
         let index = usize::try_from(index).unwrap_or(usize::MAX);
-        let kind = self.boat(index).map_or(0, |boat| boat.kind);
-        if let Some(boats) = self.boats.as_mut() {
-            boats.sink(index);
-        }
+        let kind = self
+            .boats
+            .as_mut()
+            .and_then(|boats| boats.sink(index))
+            .unwrap_or(0);
         sink.emit(AdventureEvent {
             kind: AdventureEventKind::BoatScuttled {
                 tile: target,
