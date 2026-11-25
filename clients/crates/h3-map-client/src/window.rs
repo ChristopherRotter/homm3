@@ -42,6 +42,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use h3_battle_client::audio::HostSound;
+use h3_game::GameRuleset;
 use h3_map_view::damage::{Held, tidy};
 use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
 use h3_map_view::replay::{Change, Replay};
@@ -57,6 +59,7 @@ use crate::audio::{Library, Player};
 use crate::battles::{self, Battles};
 use crate::files;
 use crate::paint::{self, Assets, Painter, Setup, Widened};
+use crate::play::End;
 
 /// How far past a change the window looks for the next one before it waits for input only.
 const LOOK_AHEAD_MS: u32 = 600_000;
@@ -181,10 +184,115 @@ impl Options {
     }
 }
 
+/// Where the window's map comes from (E24 M5 T2b): the command's options (a sequence, a
+/// situation or a record's file), or a record kept in memory, set up as a record's file is (play's
+/// start, [`crate::play`]): the map file the game was begun on, the record, its rules and its
+/// name in messages.
+pub(crate) enum Source<'a> {
+    Options,
+    Text {
+        map: &'a Path,
+        text: &'a str,
+        rules: &'a GameRuleset,
+        label: String,
+    },
+}
+
+/// Where the window's map is shown (E24 M5 T2b): a window of its own and the sound's device opened
+/// by the map (the command's), or a host's window and sound lent to it (the shell's, for play:
+/// [`crate::play`]), the sound handed back as the map ends, an error's end too.
+pub(crate) enum Host<'h> {
+    Own,
+    Lent {
+        window: &'h mut Window,
+        sound: &'h mut Option<HostSound>,
+    },
+}
+
+/// The map's sound (none: none played) and, lent by a host, where its sound goes back as the map
+/// ends (E24 M5 T2b): at [`Sound::close`], or when it is dropped on an error's way out.
+struct Sound<'s> {
+    audio: Option<(Library, Player)>,
+    back: Option<&'s mut Option<HostSound>>,
+}
+
+impl Sound<'_> {
+    /// The map's player: on the host's sound if one was lent (taken from its place), else on the
+    /// device opened now.
+    fn player(&mut self, bugs: Bugs) -> Result<Player, String> {
+        let Some(back) = self.back.as_deref_mut() else {
+            return Player::open(bugs);
+        };
+        let host = back.take().ok_or("no sound lent")?;
+        Player::over(host).map_err(|failed| {
+            let (e, host) = *failed;
+            *back = Some(host);
+            e
+        })
+    }
+
+    /// The map's sound ended: the device closed, or the host's sound handed back (its map
+    /// streams removed).
+    fn close(&mut self) {
+        let player = self.audio.take().map(|(_, player)| player);
+        if let (Some(back), Some(player)) = (self.back.as_deref_mut(), player) {
+            *back = player.release();
+        }
+    }
+}
+
+impl Drop for Sound<'_> {
+    fn drop(&mut self) {
+        self.close();
+    }
+}
+
+impl std::ops::Deref for Sound<'_> {
+    type Target = Option<(Library, Player)>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.audio
+    }
+}
+
+impl std::ops::DerefMut for Sound<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.audio
+    }
+}
+
+impl Options {
+    /// Play's options (E24 M5 T2b, [`crate::play`]): `game`'s map file its name, `folders`' files
+    /// and drawing, unattended for `run` (the command's check), muted or not; the window's own
+    /// settings (its scale, vsync and fullscreen) the host's.
+    pub(crate) fn for_play(
+        game: &crate::play::Game,
+        folders: &crate::play::Folders,
+        run: Option<(u32, bool)>,
+        mute: bool,
+    ) -> Self {
+        Self {
+            id: game.map.display().to_string(),
+            keys: folders.keys.clone(),
+            scale: None,
+            vsync: false,
+            fullscreen: false,
+            drawn_cursor: false,
+            bugs: folders.bugs,
+            install: folders.install.clone(),
+            map: folders.map.clone(),
+            run,
+            mute,
+            cues: None,
+            record: None,
+        }
+    }
+}
+
 /// Runs the command.
 pub fn run(options: &Options) -> ExitCode {
-    match window(options) {
-        Ok((lines, ok)) => {
+    match window(options, Source::Options, Host::Own) {
+        Ok((lines, ok, _)) => {
             for line in lines {
                 println!("{line}");
             }
@@ -514,7 +622,11 @@ fn headless(
 
 /// Opens the window and plays the map until a quit, a close, or the unattended run's end.
 #[allow(clippy::too_many_lines)]
-fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
+pub(crate) fn window(
+    options: &Options,
+    source: Source<'_>,
+    host: Host<'_>,
+) -> Result<(Vec<String>, bool, End), String> {
     let mut lines = Vec::new();
     let (keys, keys_from) = load_keys(options.keys.as_deref())?;
     let mut tables = files::load_tables(&options.map)?;
@@ -530,7 +642,24 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         templates: &templates,
         bugs: options.bugs,
     };
-    let (setup, what) = set_up(&assets, options)?;
+    let (setup, what) = match source {
+        Source::Options => set_up(&assets, options)?,
+        // Play's start (E24 M5 T2b): a record kept in memory, set up as a record's file is.
+        Source::Text {
+            map,
+            text,
+            rules,
+            label,
+        } => {
+            let (setup, _) = paint::for_text(&assets, map, (text, rules), label, RECORD_LIMIT)?;
+            (setup, format!("play on {}", map.display()))
+        }
+    };
+    // A host's window and sound lent (E24 M5 T2b: the shell's, for play), else the window's own.
+    let (lent_window, lent_sound) = match host {
+        Host::Own => (None, None),
+        Host::Lent { window, sound } => (Some(window), Some(sound)),
+    };
     // A record's battles (E24 M4 T5b1, design §5.20): hosted where the map hands each over.
     let mut battles = match &options.record {
         Some((path, _, packs)) => {
@@ -574,9 +703,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut replay = new_replay()?;
     // The sound (E24 M2 T5): the WAVs decoded now, the device opened; none muted, without the
     // tables' sounds, or without a device (noted).
-    let mut audio = match (&tables.sound, options.mute) {
+    let mut audio = Sound {
+        audio: None,
+        back: lent_sound,
+    };
+    audio.audio = match (&tables.sound, options.mute) {
         (Some(rules), false) => match Library::load(&options.install, rules, &mut lines)
-            .and_then(|library| Ok((library, Player::open(options.bugs)?)))
+            .and_then(|library| Ok((library, audio.player(options.bugs)?)))
         {
             Ok(audio) => Some(audio),
             Err(e) => {
@@ -590,21 +723,28 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // The cues at 0 taken now, their music decoded before the window opens; played at its first
     // turn.
     let mut first_cues = Vec::new();
-    if let Some((library, player)) = &mut audio {
+    if let Some((library, player)) = &mut *audio {
         first_cues = replay.take_cues(0).map_err(unplayable)?;
         library.prepare(&first_cues, player, &mut lines);
     }
     // The map is live after a sequence's last input (from the start without one).
     let live_after = actions.keys().next_back().copied();
     let [width, height] = layout.frame;
-    let mut win = Window::open(&Config {
-        title: format!("h3-map-view — {}", options.id),
-        width,
-        height,
-        scale: options.scale,
-        vsync: options.vsync,
-        fullscreen: options.fullscreen,
-    })?;
+    let mut own_window = None;
+    let win: &mut Window = match lent_window {
+        Some(win) => {
+            win.set_text_input(false);
+            win
+        }
+        None => own_window.insert(Window::open(&Config {
+            title: format!("h3-map-view — {}", options.id),
+            width,
+            height,
+            scale: options.scale,
+            vsync: options.vsync,
+            fullscreen: options.fullscreen,
+        })?),
+    };
     win.set_key_repeats(true);
     let mut look = Look {
         live: live_after.is_none(),
@@ -628,7 +768,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         &mut painter,
         replay.at(0).map_err(unplayable)?,
         look,
-        (&win, &mut maker),
+        (&*win, &mut maker),
     )?);
     let mut held = HeldKeys::default();
     // The mouse's last point, and the changes shown (the headless check's).
@@ -650,6 +790,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         .run
         .map(|(seconds, _)| u64::from(seconds) * 1_000_000_000);
     let unattended = options.run.is_some();
+    // How play ends (E24 M5 T2b): the window closed (a hosted battle's too) quits, the quit key
+    // and an unattended run's end go back to the main menu.
+    let mut end = End::MainMenu;
     'run: loop {
         let now = win.ticks_ns();
         if stop_ns.is_some_and(|s| now.saturating_sub(started) >= s) {
@@ -681,7 +824,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         for event in win.wait(timeout) {
             let now = win.ticks_ns();
             let key = match event {
-                Event::Quit => break 'run,
+                Event::Quit => {
+                    end = End::Quit;
+                    break 'run;
+                }
                 Event::Redraw => {
                     redraw = true;
                     continue;
@@ -754,17 +900,17 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 _ if unattended => {}
                 Some(Command::Window(Own::Pause)) => {
                     clock.toggle(now);
-                    if let Some((_, player)) = &mut audio {
+                    if let Some((_, player)) = &mut *audio {
                         player.pause(clock.paused());
                     }
                 }
                 Some(Command::Window(Own::Music)) => {
-                    if let Some((_, player)) = &mut audio {
+                    if let Some((_, player)) = &mut *audio {
                         player.music_on = !player.music_on;
                     }
                 }
                 Some(Command::Window(Own::Effects)) => {
-                    if let Some((_, player)) = &mut audio {
+                    if let Some((_, player)) = &mut *audio {
                         let on = !player.effects_on;
                         player.set_effects(on);
                     }
@@ -777,7 +923,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 Some(Command::Window(Own::Restart)) => {
                     replay = new_replay()?;
                     handed = (0, 0);
-                    if let Some((_, player)) = &mut audio {
+                    if let Some((_, player)) = &mut *audio {
                         player.reset();
                     }
                     clock.seek(now, 0);
@@ -846,7 +992,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             } else {
                 input.push(Action::Pointer(OFF));
             }
-            if let Some((library, player)) = &mut audio {
+            if let Some((library, player)) = &mut *audio {
                 player.focus(library, has_focus, &mut lines);
                 lines.push(format!(
                     "{} the focus: the sound {}",
@@ -898,7 +1044,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             renew = true;
         }
         // The sound's cues up to the clock, then the streams kept going.
-        if let Some((library, player)) = &mut audio {
+        if let Some((library, player)) = &mut *audio {
             let mut cues = std::mem::take(&mut first_cues);
             cues.extend(replay.take_cues(ms).map_err(unplayable)?);
             for (t, cue) in cues {
@@ -920,7 +1066,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             // again.
             let current = shown.as_ref().map(|f| f.change.cursor);
             if !hardware(
-                &mut win,
+                &mut *win,
                 &mut painter,
                 &mut hw,
                 current.filter(|_| look.hardware()),
@@ -933,9 +1079,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     f
                 } else {
                     let again =
-                        Frame::of(&mut painter, f.change.clone(), look, (&win, &mut maker))?;
+                        Frame::of(&mut painter, f.change.clone(), look, (&*win, &mut maker))?;
                     maker.recycle(Some(f));
-                    if let Some(back) = texture.show(&mut win, &painter, &again, read)? {
+                    if let Some(back) = texture.show(&mut *win, &painter, &again, read)? {
                         compare(&back, &again, look.frame, &mut report);
                     }
                     again
@@ -956,7 +1102,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     let held = old.as_ref().and_then(|f| f.held);
                     maker.recycle(old);
                     let mut made = c
-                        .map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
+                        .map(|c| Frame::of(&mut painter, c, look, (&*win, &mut maker)))
                         .transpose()?;
                     if let Some(f) = &mut made {
                         f.held = held;
@@ -1022,8 +1168,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 drawn_cursor: !look.hardware,
                 stop_ns: stop_ns.map(|s| started.saturating_add(s)),
             };
-            let (sound, shown) = battles::host(&mut win, list, k, sound, run, &mut lines)?;
-            if let (Some((_, player)), Some(sound)) = (&mut audio, sound) {
+            let (sound, shown) = battles::host(&mut *win, list, k, sound, run, &mut lines)?;
+            if let (Some((_, player)), Some(sound)) = (&mut *audio, sound) {
                 player.take_back(sound);
                 if paused {
                     player.pause(true);
@@ -1041,7 +1187,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             // own lanes told the last (none plays: lent, they stopped).
             let has_focus = win.focused();
             if has_focus != focused
-                && let Some((library, player)) = &mut audio
+                && let Some((library, player)) = &mut *audio
             {
                 player.focus(library, has_focus, &mut lines);
             }
@@ -1057,6 +1203,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     .map_or_else(|| "not closed".to_owned(), |o| format!("closed: {o}"))
             ));
             if shown.quit {
+                end = End::Quit;
                 break 'run;
             }
             clock.seek(win.ticks_ns(), t);
@@ -1082,7 +1229,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 clock.seek(win.ticks_ns(), d.change.t);
                 if let Some((first, i)) = pending.pop_front() {
                     maker.recycle(Some(d));
-                    d = Frame::of(&mut painter, first, look, (&win, &mut maker))?;
+                    d = Frame::of(&mut painter, first, look, (&*win, &mut maker))?;
                     d.held = i;
                 }
             }
@@ -1094,7 +1241,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 report.skipped += 1;
                 latest
             };
-            if look.hardware() && !hardware(&mut win, &mut painter, &mut hw, Some(change.cursor))? {
+            if look.hardware() && !hardware(&mut *win, &mut painter, &mut hw, Some(change.cursor))?
+            {
                 lines.push("hardware cursor: SDL could not make it; drawn instead".to_owned());
                 look.hardware = false;
             }
@@ -1111,9 +1259,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         d
                     } else {
                         maker.recycle(Some(d));
-                        Frame::of(&mut painter, change, look, (&win, &mut maker))?
+                        Frame::of(&mut painter, change, look, (&*win, &mut maker))?
                     };
-                    let back = texture.show(&mut win, &painter, &due, read)?;
+                    let back = texture.show(&mut *win, &painter, &due, read)?;
                     presented = true;
                     report.held += usize::from(due.held.is_some());
                     let late = clock.late(win.ticks_ns(), due.change.t) / 1000;
@@ -1134,7 +1282,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 // ends the hold, the map's clock running on from its millisecond.
                 Some((c, i)) => {
                     hold = Some((win.ticks_ns().saturating_add(HOLD_MS * 1_000_000), t));
-                    let mut f = Frame::of(&mut painter, c, look, (&win, &mut maker))?;
+                    let mut f = Frame::of(&mut painter, c, look, (&*win, &mut maker))?;
                     f.held = i;
                     Some(f)
                 }
@@ -1143,7 +1291,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     replay
                         .after(t, LOOK_AHEAD_MS)
                         .map_err(unplayable)?
-                        .map(|c| Frame::of(&mut painter, c, look, (&win, &mut maker)))
+                        .map(|c| Frame::of(&mut painter, c, look, (&*win, &mut maker)))
                         .transpose()?
                 }
             };
@@ -1152,12 +1300,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             && !presented
             && let Some(f) = &shown
         {
-            texture.show(&mut win, &painter, f, false)?;
+            texture.show(&mut *win, &painter, f, false)?;
         }
     }
     let seconds = win.ticks_ns().saturating_sub(started) / 1_000_000;
     lines.push(win.describe());
-    if let Some((library, player)) = &audio {
+    if let Some((library, player)) = &*audio {
         lines.push(format!(
             "{}; {}; {} cues played",
             library.describe(),
@@ -1165,13 +1313,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             player.played
         ));
     }
-    drop(audio);
+    audio.close();
     if let Some(path) = &options.cues {
         let mut text = cue_lines.join("\n");
         text.push('\n');
         fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))?;
     }
-    drop(win);
+    drop(own_window);
     let [scrolls, steps, moves, clicks, hotkeys] = given;
     let view = shown
         .as_ref()
@@ -1234,7 +1382,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 .unwrap_or_default()
         ));
     }
-    Ok((lines, ok))
+    Ok((lines, ok, end))
 }
 
 /// The map's mouse after a hosted battle (E24 M4 T6, the reviewer's R5-5): where the battle's

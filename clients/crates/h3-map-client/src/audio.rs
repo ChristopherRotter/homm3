@@ -235,21 +235,42 @@ impl Player {
     /// filtered as `bugs` says) and the map's streams on its device: the step sound's and the
     /// ambient slots'.
     pub fn open(bugs: Bugs) -> Result<Self, String> {
-        let mut host = HostSound::open(bugs)?;
-        let lane = |out: &mut Audio| -> Result<Lane, String> {
-            Ok(Lane {
-                stream: out.add_stream(22_050, 1)?,
-                format: (22_050, 1),
-                clip: None,
-                volume: FULL,
-                held: false,
-            })
+        Self::over(HostSound::open(bugs)?).map_err(|back| back.0)
+    }
+
+    /// The map's streams added on a host's sound lent to the map (E24 M5 T2b: the shell's, for
+    /// play): the step sound's and the ambient slots', after the host's own; [`Player::release`]
+    /// removes them again.
+    ///
+    /// # Errors
+    /// SDL's when a stream cannot be added: the streams added so far removed, the host's sound
+    /// handed back with it.
+    pub fn over(mut host: HostSound) -> Result<Self, Box<(String, HostSound)>> {
+        // The step's, the slots' and the sound played once's, in that order (as `open` added them
+        // before E24 M5 T2b).
+        let mut lanes: Vec<Lane> = Vec::with_capacity(SLOTS + 2);
+        for _ in 0..SLOTS + 2 {
+            match host.audio().add_stream(22_050, 1) {
+                Ok(stream) => lanes.push(Lane {
+                    stream,
+                    format: (22_050, 1),
+                    clip: None,
+                    volume: FULL,
+                    held: false,
+                }),
+                Err(e) => {
+                    for lane in &lanes {
+                        host.audio().remove_stream(lane.stream);
+                    }
+                    return Err(Box::new((e, host)));
+                }
+            }
+        }
+        let effect = lanes.pop();
+        let slots = lanes.split_off(1);
+        let (Some(step), Some(effect)) = (lanes.pop(), effect) else {
+            return Err(Box::new(("no streams added".to_owned(), host)));
         };
-        let step = lane(host.audio())?;
-        let slots = (0..SLOTS)
-            .map(|_| lane(host.audio()))
-            .collect::<Result<Vec<_>, _>>()?;
-        let effect = lane(host.audio())?;
         Ok(Self {
             host: Some(host),
             step,
@@ -400,6 +421,21 @@ impl Player {
         self.host = Some(host);
         let on = self.effects_on;
         self.set_effects(on);
+    }
+
+    /// The host's sound handed back to whom lent it (E24 M5 T2b, as a battle hands it back to the
+    /// map, `h3_battle_client::audio::Player::close`): every effect stopped, the map's streams
+    /// removed, the device running; the music the host's again (the map's track plays on until
+    /// it asks for its own). None while a battle has it.
+    pub fn release(mut self) -> Option<HostSound> {
+        self.stop_effects();
+        let mut host = self.host.take()?;
+        let out = host.audio();
+        for lane in [&self.step, &self.effect].into_iter().chain(&self.slots) {
+            out.remove_stream(lane.stream);
+        }
+        out.pause(false);
+        Some(host)
     }
 
     /// The device, for the report.

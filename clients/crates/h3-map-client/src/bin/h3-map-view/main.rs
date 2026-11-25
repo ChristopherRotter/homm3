@@ -4,7 +4,7 @@
 
 use std::process::ExitCode;
 
-use h3_map_client::{gate, records, render, sequences, situation, window};
+use h3_map_client::{gate, play, records, render, sequences, situation, window};
 
 const USAGE: &str = "\
 usage: h3-map-view <command> [options]
@@ -144,6 +144,16 @@ commands:
           --check also reads every frame back and compares it with the frame composed, compares
           each frame made with the screen's own pixels widened one by one, and plays every
           action headless to check each change shown (exit 1 on a difference).
+  play <map.h3m> [--seed <n>] [--humans <c>,...] [--keys <file>] [--scale <n>] [--mute]
+       [--bugs fixed|original] [--install <dir>] [--map <dir>] [--check <s> | --measure <s>]
+          begins a game on a map file as the game shell's Begin makes it (E24 M5 T2b): the map
+          imported, its humans the import's or only the colours --humans names (0 red to 7), the
+          setup validated by the engine, the game's seed --seed (default 0); and plays it as the
+          shell will (`h3_map_client::play::play`), in a window and on a sound of its own lent to
+          play: until E24 M5 T3 the game started in-process and its first human's start shown
+          standing, with the map's keys and mouse as `window`'s. It prints the window's report
+          and how play ended (MainMenu: the quit key or the unattended run's end; Quit: the
+          window closed). --check and --measure as `window`'s.
 ";
 
 fn main() -> ExitCode {
@@ -186,6 +196,13 @@ fn main() -> ExitCode {
         },
         Some((command, rest)) if command == "window" => match window::Options::parse(rest) {
             Ok(options) => window::run(&options),
+            Err(message) => {
+                eprintln!("{message}");
+                ExitCode::from(2)
+            }
+        },
+        Some((command, rest)) if command == "play" => match play::Options::parse(rest) {
+            Ok(options) => play::run(&options),
             Err(message) => {
                 eprintln!("{message}");
                 ExitCode::from(2)
