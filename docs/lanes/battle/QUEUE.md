@@ -20,6 +20,23 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision, nothing to
+  build now**): the original's computer player gives its battles three rules a human's lack
+  (survey `docs/rules/surveys/E31-computer-player.md` §3.6 rows 1, 2 and 8; E31 decision 2: the
+  owning lane decides whether the engine copies each, keyed on the players' `human`). (1) **No
+  battle without a human side is fought**: `ai_quick_battle` 0x4270C0 decides it, a computer
+  against neutrals included, by the simulated combat (§2.2) and three draws (the winner, the
+  survivors, experience, artifacts, the Grail, the town, Necromancy, Eagle Eye); its three
+  candidate flaws are §5.5's #7 to #9. (2) A hidden (Quick Combat) battle past round 30 is re-fought
+  by the simulation from its start (`sim_battle_finish` 0x427210 from 0x476200), for a human's
+  Quick Combat too. (3) A computer defending hero with the better Tactics merges and splits its army
+  after the sides are set (`ai_battle_army_split` 0x42DB20; its i16 wrap and division by zero are
+  §5.5's #37, #38). Until you decide, the engine fights every battle and the computer's side is
+  played by `h3-battle-ai` (ADR draft `docs/lanes/ai/adr-drafts/original-computer-player.md`
+  points 2, 6, 7: if you build (1) or (3), the simulated combat moves to a `computer` module of
+  your crate, owned by the ai lane by path, and both call it). With the adventure lane (the
+  trigger).
+
 - 2026-11-22 (the adventure lane, E08 T140, `shared/e08-t140`, `cross-lane` with the user's
   consent; **in your paths, nothing to do**): `h3-harvest`'s two profile texts and
   `packs/base/core.toml`'s two profile lines gained increment 15's six fix-optional flags
