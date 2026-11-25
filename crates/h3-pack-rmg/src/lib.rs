@@ -3,8 +3,9 @@
 //! files in the core's load order; a pack folder without the file reads as an empty one.
 //! `packs/ab/rmg.toml` holds AB's three tables as the game reads them (`rmg.txt`'s templates,
 //! `objects.txt`'s template lines, `rand_trn.txt`'s rows), `packs/sod/rmg.toml` SoD's additions
-//! (three templates; `objects.txt`'s added and changed lines); both are harvested by `h3-harvest`
-//! (E14 T2b, [`ORIGINAL_PACKS`]). The format: `packs/README.md`, "The map generator's tables".
+//! (three templates; `objects.txt`'s added and changed lines) and the generator's constants read
+//! from SoD's executable (`[generator]`, E14 T2c); both are harvested by `h3-harvest` (E14 T2b,
+//! [`ORIGINAL_PACKS`]). The format: `packs/README.md`, "The map generator's tables".
 //! Parsing is strict like `h3-pack`'s (unknown fields are errors, numbers must fit their types, a
 //! mark string has its length and only `0` and `1`); the compiler checks the references.
 
@@ -16,8 +17,9 @@ use std::fmt;
 use h3_content::{PackManifest, Ruleset};
 use h3_pack::PackError;
 use h3_rmg::{
-    Connection, ConnectionOverride, ObjectTemplate, ObjectTemplateLine, ObjectTemplateOverride,
-    Obstacle, RmgCompileError, RmgPack, RmgRuleset, Strength, Template, Zone, ZoneKind,
+    Connection, ConnectionOverride, GeneratorTables, ObjectTemplate, ObjectTemplateLine,
+    ObjectTemplateOverride, Obstacle, RmgCompileError, RmgPack, RmgRuleset, Strength, Template,
+    Zone, ZoneKind,
 };
 use serde::Deserialize;
 
@@ -87,6 +89,7 @@ struct RmgFile {
     #[serde(default)]
     connection_override: Vec<ConnectionOverrideDto>,
     obstacle: Option<Vec<ObstacleDto>>,
+    generator: Option<GeneratorDto>,
 }
 
 #[derive(Deserialize)]
@@ -188,6 +191,29 @@ struct ObstacleDto {
     modifiers: [i32; 9],
     adjacent: Vec<i32>,
     overlap: Vec<i32>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GeneratorDto {
+    heroes_roe: String,
+    heroes_expansions: String,
+    heroes_campaign: String,
+    map_limits: Vec<(u8, i32)>,
+    zone_limits: Vec<(u8, i32)>,
+}
+
+/// A string of one mark per entry, each `0` or `1`, as flags.
+fn flags(text: &str, what: &str) -> Result<Vec<bool>, RmgPackError> {
+    text.chars()
+        .map(|c| match c {
+            '0' => Ok(false),
+            '1' => Ok(true),
+            _ => Err(RmgPackError::Invalid(format!(
+                "{what} `{text}` is not of 0 and 1"
+            ))),
+        })
+        .collect()
 }
 
 /// A mark string as a bit set: exactly `len` characters, each `0` or `1`; bit `k` is the `k`-th.
@@ -356,6 +382,18 @@ pub fn parse_rmg(manifest: &PackManifest, text: &str) -> Result<RmgPack, RmgPack
             })
             .collect()
     });
+    let generator = file
+        .generator
+        .map(|g| {
+            Ok::<_, RmgPackError>(GeneratorTables {
+                heroes_roe: flags(&g.heroes_roe, "generator.heroes_roe")?,
+                heroes_expansions: flags(&g.heroes_expansions, "generator.heroes_expansions")?,
+                heroes_campaign: flags(&g.heroes_campaign, "generator.heroes_campaign")?,
+                map_limits: g.map_limits,
+                zone_limits: g.zone_limits,
+            })
+        })
+        .transpose()?;
     Ok(RmgPack {
         manifest: manifest.clone(),
         templates,
@@ -363,6 +401,7 @@ pub fn parse_rmg(manifest: &PackManifest, text: &str) -> Result<RmgPack, RmgPack
         object_templates,
         object_template_overrides,
         obstacles,
+        generator,
     })
 }
 

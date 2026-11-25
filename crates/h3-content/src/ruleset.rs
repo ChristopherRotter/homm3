@@ -28,7 +28,7 @@ use crate::quirks::{DATA_QUIRK_PREFIX, QuirkRegistry, Quirks, REGISTRY};
 pub const MAX_ARMY_SLOTS: usize = 16;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 53;
+pub const RULESET_HASH_VERSION: u32 = 54;
 
 /// How an army is arranged at the start of a battle (BAT-SET-001): chosen per army in the
 /// original (hero or garrison setting) and passed in the battle setup.
@@ -807,7 +807,7 @@ fn validate_creature(
 
 impl CanonicalHash for Ruleset {
     /// Encoding v43 (R01, the content split): version, packs (id, version) in load order,
-    /// profile key, quirk bits, resources (key, name), terrains (key, name), factions (key, name,
+    /// profile key, quirk bits (since v54 128 of them, the low 64 first, E14 T2c), resources (key, name), terrains (key, name), factions (key, name,
     /// native terrain as an optional handle), creatures (key, name, plural, faction as presence
     /// flag + handle, level, cost as length + pairs, growth, horde growth, fight value, AI value,
     /// speed, flag bits, adventure count, upgrades as length + handles; since v51 the abilities
@@ -825,7 +825,9 @@ impl CanonicalHash for Ruleset {
             version.as_str().hash_into(h);
         }
         self.profile.as_str().hash_into(h);
-        h.write_u64(self.quirks.bits());
+        let bits = self.quirks.bits();
+        h.write_u64(bits as u64);
+        h.write_u64((bits >> 64) as u64);
         h.write_len(self.resources.len());
         for r in &self.resources {
             r.key.as_str().hash_into(h);

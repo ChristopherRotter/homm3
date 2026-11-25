@@ -84,9 +84,9 @@ float and profile rules were written for the game, not for a port of the origina
    generator's data). A ruleset without `sod` has no generator (decision 3; AB's code is E11's).
    The algorithm stays code (Tier 3): the steps, the painters' picture sets, the layout tables,
    the cell layout, each with its address as source.
-6. **Profiles and flags.** The ledger's 18 flags join the closed registry (`h3_content::REGISTRY`:
-   17 `quirk.rmg.<name>`, one `quirk.content.rmg_8xm8_zone_ids`), each with the increment that
-   ports its step; the game's profiles set them, `faithful` on (the oracle's maps), `strict-fixed`
+6. **Profiles and flags.** The ledger's 19 flags (18 since T1c2, RMG-QUIRK-24's from E14 T2c) join
+   the closed registry (`h3_content::REGISTRY`, a 128-bit set since E14 T2c: 18 `quirk.rmg.<name>`,
+   one `quirk.content.rmg_8xm8_zone_ids`), each with the increment that ports its step; the game's profiles set them, `faithful` on (the oracle's maps), `strict-fixed`
    off: the ledger's "fixed" is `strict-fixed`, and there is no generator profile apart from the
    game's (a generated map and the game it starts share one ruleset). The `exploit-fix` entries
    (RMG-QUIRK-3 to -6) are typed `GenerateError`s in every profile. The oracle model of RMG-QUIRK-1
@@ -143,3 +143,8 @@ float and profile rules were written for the game, not for a port of the origina
 - 2026-11-24: Drafted and confirmed (E14 T1c3, RMG-Q2); numbered by E14 T2a (point 3's test vectors
   the code reading's, the phase oracle's logs not kept; the `h3-map` edge moved to increment 7 as
   point 1 says; the edge `h3-game → h3-rmg` forbidden in `arch.toml`).
+- 2026-11-25: E14 T2c: point 6's count, 19 flags with RMG-QUIRK-24 (the user, fix-optional); the
+  registry's set widened from 64 to 128 bits (`h3_content::MAX_QUIRKS`, `RULESET_HASH_VERSION` 54;
+  the user, at T2c's start: one re-hash for the widening and the flags); point 5's executable's
+  constants begin with the hero bans' bytes and the limits by object type (`packs/sod/rmg.toml`'s
+  `[generator]`).

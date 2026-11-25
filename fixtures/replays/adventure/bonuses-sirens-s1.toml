@@ -47,7 +47,7 @@ packs = [
 ],
 ]
 profile = "base:faithful"
-ruleset_hash = "0x52a9516f14766fb8"
+ruleset_hash = "0x9078e1983efcc013"
 adventure_ruleset_hash = "0x9fc40eb6455ae78a"
 town_ruleset_hash = "0xcf8db1aa2bb768d2"
 rng = "xoshiro256starstar+splitmix64"
