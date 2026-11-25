@@ -269,9 +269,10 @@ impl AdventureState {
     /// there (a two-way exit is not entered again); the move ends. A hero in a boat (a
     /// Whirlpool's) arrives in it: the boat's record keeps the tile it was boarded on (ADR-0016
     /// point 1), the hero's tile is the boat's. Told as [`AdventureEventKind::HeroTeleported`]
-    /// (ADV-FOG-004).
+    /// (ADV-FOG-004). Dimension Door's arrival too (E08 T143b, ADV-SPL-009: the original's same
+    /// `hero_relocate`), from the caster's tile, a hero in a boat taking it along.
     // rule: ADV-TEL-007, ADV-FOG-004
-    fn arrival<S: Sink>(
+    pub(super) fn arrival<S: Sink>(
         &mut self,
         (core, part, heroes): Rules<'_>,
         (player, hero): (PlayerId, HeroId),

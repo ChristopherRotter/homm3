@@ -903,6 +903,7 @@ mod boats;
 mod bonuses;
 mod calendar;
 mod day;
+mod door;
 mod draws;
 mod dwelling_visits;
 mod dwelling_weeks;

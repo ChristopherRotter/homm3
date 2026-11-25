@@ -5,7 +5,8 @@
 //! anti-magic garrison refuse free), E15-5 (Magic Plains casts at Expert), E15-11 (a re-cast).
 //! Since E08 T143a Summon Boat and Scuttle Boat (ADV-SPL-003, ADV-SPL-004): their chance drawn
 //! from the caster's player's stream, a charged failure told as `CastFailed`, a refusal drawing
-//! nothing.
+//! nothing. Since E08 T143b Dimension Door (ADV-SPL-007 to ADV-SPL-009): the hero relocated for
+//! its movement and spell points, a wrong target refused free or, under `ADV-QUIRK-55`, charged.
 
 use h3_adventure::{
     AdventureEvent, AdventureEventKind, AdventureSpell, AdventureSpellDef, BoatSetup, CastError,
@@ -25,9 +26,13 @@ const HERO: HeroId = HeroId::new(0);
 
 /// The core of [`core_pack`] with a level-5 air spell of the adventure category, `t:door`, and
 /// since E08 T143a two of level 1 and 2 with the original's chance by mastery, `t:summon` and
-/// `t:scuttle`.
-fn cast_core() -> Ruleset {
+/// `t:scuttle`, under `profile`: the pack's, or since E08 T143b `t:charged` (`ADV-QUIRK-55` on).
+fn cast_core(profile: &str) -> Ruleset {
     let mut pack = core_pack(false);
+    pack.profiles.push(ProfileDef {
+        key: key("t:charged"),
+        quirks: vec![("quirk.adventure.door_failure_charged".to_string(), true)],
+    });
     for (k, level) in [("t:summon", 1), ("t:scuttle", 2)] {
         pack.spells.push(SpellDef {
             key: key(k),
@@ -52,7 +57,7 @@ fn cast_core() -> Ruleset {
         effect: [1, 2, 3, 4],
         granted_by_name_only: false,
     });
-    Ruleset::compile(&[pack], "t:faithful").unwrap()
+    Ruleset::compile(&[pack], profile).unwrap()
 }
 
 /// The test rules with the casts' content: `t:gate` (an adventure spell of air, level 3, 5 or 4
@@ -60,7 +65,12 @@ fn cast_core() -> Ruleset {
 /// Scuttle Boat; two grounds, `t:cursed_ground` (no spell above level 1) and `t:plains_ground`
 /// (air at Expert).
 fn cast_rules() -> GameRuleset {
-    let core = Arc::new(cast_core());
+    cast_rules_under("t:faithful")
+}
+
+/// [`cast_rules`] under the core's `profile` ([`cast_core`]).
+fn cast_rules_under(profile: &str) -> GameRuleset {
+    let core = Arc::new(cast_core(profile));
     let mut pack = adventure_pack(vec![88, 25], 2);
     pack.spells = vec![
         AdventureSpellDef {
@@ -381,6 +391,124 @@ fn scuttle_boat_draws_its_chance_and_a_refusal_draws_nothing() {
     );
 }
 
+/// [`game`]'s map with the sea (terrain 2) on (1, 0): red's hero 0 on (0, 0) knows Dimension
+/// Door with 60 spell points; both players explore the whole map.
+fn door_game(rules: &GameRuleset) -> GameState {
+    let mut state = {
+        let mut setup = setup();
+        setup.map.tiles[1].terrain = TerrainId::from_raw(2);
+        setup.heroes[0].details.spells = Some(vec![spell(rules, "t:door")]);
+        GameState::new(rules, &setup, 7).unwrap()
+    };
+    let points = HeroChange::SetSpellPoints(60);
+    state.change_hero(rules.core(), HERO, None, points, &mut NoopSink);
+    state
+}
+
+/// Red's hero 0's tile, movement points, spell points and casts of the day.
+fn door_caster(state: &GameState) -> (Pos, u32, u16, u8) {
+    let hero = state.adventure().hero(HERO).unwrap();
+    (
+        hero.pos,
+        hero.movement,
+        mana(state),
+        state.adventure().day_spells(HERO).doors,
+    )
+}
+
+// covers: GAM-SPL-001, ADV-SPL-007, ADV-SPL-009
+#[test]
+fn dimension_door_moves_the_hero_for_its_movement_and_spell_points() {
+    // At None (no Air Magic): 25 spell points and 300 movement points, the hero on the target,
+    // told as a teleporter's arrival before the points; the day's one cast, then refused (339).
+    let rules = cast_rules();
+    let mut state = door_game(&rules);
+    let (_, points, ..) = door_caster(&state);
+    let door = spell(&rules, "t:door");
+    let target = Pos::new(3, 1, 0);
+    let events = play(
+        &mut state,
+        &rules,
+        RED,
+        cast(&rules, "t:door", Some(target)),
+    )
+    .unwrap();
+    assert_eq!(
+        events[0],
+        GameEvent::SpellCast {
+            player: RED,
+            hero: HERO,
+            spell: door,
+            mastery: 0,
+            cost: 25,
+        }
+    );
+    assert!(matches!(
+        events[1],
+        GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::HeroTeleported {
+                hero: HERO,
+                from: Some(Pos { x: 0, y: 0, .. }),
+                to: Some(Pos { x: 3, y: 1, .. }),
+                ..
+            },
+            ..
+        })
+    ));
+    assert_eq!(
+        events[2],
+        GameEvent::HeroChanged {
+            player: RED,
+            hero: HERO,
+            change: HeroChange::SetSpellPoints(35),
+        }
+    );
+    assert_eq!(door_caster(&state), (target, points - 300, 35, 1));
+    assert_eq!(
+        play(
+            &mut state,
+            &rules,
+            RED,
+            cast(&rules, "t:door", Some(Pos::new(0, 0, 0)))
+        ),
+        Err(GameCommandError::Cast(MapCastError::Adventure(
+            CastError::NoCastsLeft
+        )))
+    );
+}
+
+// covers: GAM-SPL-001, ADV-SPL-009
+#[test]
+fn dimension_door_s_wrong_target_is_refused_free_or_charged_under_adv_quirk_55() {
+    // Off (the pack's profile): water from land is not offered, nothing spent. On: the cast is
+    // accepted and fails (GENRLTXT 71), told as `CastFailed` after `SpellCast`, the spell
+    // points, the movement points and the cast spent, the hero where it was.
+    let water = Some(Pos::new(1, 0, 0));
+    let rules = cast_rules();
+    let mut state = door_game(&rules);
+    let before = state.state_hash();
+    assert_eq!(
+        play(&mut state, &rules, RED, cast(&rules, "t:door", water)),
+        Err(GameCommandError::Cast(MapCastError::Adventure(
+            CastError::WrongKind
+        )))
+    );
+    assert_eq!(state.state_hash(), before);
+
+    let rules = cast_rules_under("t:charged");
+    let mut state = door_game(&rules);
+    let (start, points, ..) = door_caster(&state);
+    let events = play(&mut state, &rules, RED, cast(&rules, "t:door", water)).unwrap();
+    let failed = GameEvent::CastFailed {
+        player: RED,
+        hero: HERO,
+        spell: spell(&rules, "t:door"),
+        reason: CastFailure::Target,
+    };
+    assert_eq!(events[1], failed);
+    assert_eq!(door_caster(&state), (start, points - 300, 35, 1));
+}
+
 // covers: GAM-SPL-001, ADV-SPL-001, ADV-SPL-005
 #[test]
 fn a_cast_of_fly_spends_its_cost_after_its_effect_and_tells_its_owner() {
@@ -498,18 +626,17 @@ fn a_cast_is_refused_in_the_original_s_order_and_changes_nothing() {
             refused(MapCastError::Target)
         );
     }
-    // The points below the cost; the spell's own test last (Dimension Door not built yet,
-    // `ADV-STUB-22`).
+    // The points below the cost; the spell's own test last (Dimension Door onto the caster's own
+    // tile).
     let mut poor = game(&rules, &["t:gate"], 4, vec![]);
     assert_eq!(
         play(&mut poor, &rules, RED, cast(&rules, "t:gate", None)),
         refused(MapCastError::SpellPoints)
     );
+    let own = Some(Pos::new(0, 0, 0));
     assert_eq!(
-        play(&mut state, &rules, RED, cast(&rules, "t:door", tile)),
-        refused(MapCastError::Adventure(CastError::NotBuilt(
-            AdventureSpell::DimensionDoor
-        )))
+        play(&mut state, &rules, RED, cast(&rules, "t:door", own)),
+        refused(MapCastError::Adventure(CastError::NotFree))
     );
     // A re-cast at the same mastery (`ADV-QUIRK-54` off in the test profile).
     play(&mut state, &rules, RED, cast(&rules, "t:gate", None)).unwrap();
@@ -617,8 +744,8 @@ fn the_cast_s_errors_explain_themselves() {
             "the cast would not raise the hero's level",
         ),
         (
-            MapCastError::Adventure(CastError::NotBuilt(AdventureSpell::DimensionDoor)),
-            "`dimension_door` is not cast on the map yet",
+            MapCastError::Adventure(CastError::NotFree),
+            "the target is blocked or an entrance",
         ),
     ];
     for (error, text) in cases {
