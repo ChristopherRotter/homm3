@@ -331,6 +331,165 @@ impl X87 {
     }
 }
 
+/// A value of the original's x87 arithmetic with its sign (the computer player's values, which
+/// go below 0; E31's ADR draft point 9): a sign and an [`X87`] magnitude, as the FPU keeps them
+/// (sign and magnitude, not two's complement). Each operation is the magnitude's, rounded as
+/// [`X87`]'s are (to [`X87_PRECISION`] bits, to nearest, ties to even), with the sign IEEE 754
+/// gives: a product's and a quotient's the exclusive or of the signs, a sum's the larger
+/// magnitude's. A zero has no sign: the FPU's −0 compares, adds and truncates as +0, and only its
+/// stored bit pattern (`0x8000_0000`) differs, which no rule reads. Magnitudes saturate at
+/// [`X87::MAX`] as [`X87`]'s do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SignedX87 {
+    /// Below 0; never for 0.
+    negative: bool,
+    /// The absolute value.
+    magnitude: X87,
+}
+
+impl SignedX87 {
+    /// Zero.
+    pub const ZERO: Self = Self::new(false, X87::ZERO);
+    /// One.
+    pub const ONE: Self = Self::new(false, X87::ONE);
+    /// The largest value, `2^64 − 1`.
+    pub const MAX: Self = Self::new(false, X87::MAX);
+    /// The smallest value, `−(2^64 − 1)`.
+    pub const MIN: Self = Self::new(true, X87::MAX);
+
+    /// The value of sign `negative` and magnitude `magnitude` (a zero is never negative).
+    pub const fn new(negative: bool, magnitude: X87) -> Self {
+        Self {
+            negative: negative && magnitude.0 != 0,
+            magnitude,
+        }
+    }
+
+    /// The integer `n`, exact (as `fild` loads it).
+    pub const fn int(n: i64) -> Self {
+        Self::new(n < 0, X87::int(n.unsigned_abs()))
+    }
+
+    /// Whether the value is below 0.
+    pub const fn is_negative(self) -> bool {
+        self.negative
+    }
+
+    /// The absolute value (`fabs`).
+    pub const fn magnitude(self) -> X87 {
+        self.magnitude
+    }
+
+    /// The value as an [`X87`], `None` if it is below 0.
+    pub const fn nonnegative(self) -> Option<X87> {
+        if self.negative {
+            None
+        } else {
+            Some(self.magnitude)
+        }
+    }
+
+    /// `−self` (`fchs`), exact.
+    pub const fn negated(self) -> Self {
+        Self::new(!self.negative, self.magnitude)
+    }
+
+    /// `self · rhs` as the FPU computes it ([`X87::times`] with the signs' exclusive or).
+    pub fn times(self, rhs: Self) -> Self {
+        Self::new(
+            self.negative != rhs.negative,
+            self.magnitude.times(rhs.magnitude),
+        )
+    }
+
+    /// `self / rhs` as the FPU computes it ([`X87::over`] with the signs' exclusive or). `None`
+    /// if `rhs` is 0.
+    pub fn over(self, rhs: Self) -> Option<Self> {
+        let magnitude = self.magnitude.over(rhs.magnitude)?;
+        Some(Self::new(self.negative != rhs.negative, magnitude))
+    }
+
+    /// `self + rhs` as the FPU computes it: the exact sum rounded to [`X87_PRECISION`] bits.
+    /// Of two signs the magnitudes add ([`X87::plus`], saturating); of opposite signs the
+    /// smaller is taken from the larger ([`X87::minus`]), and the larger's sign stays (an exact
+    /// cancellation is +0, as IEEE 754 rounds to nearest).
+    pub fn plus(self, rhs: Self) -> Self {
+        if self.negative == rhs.negative {
+            return Self::new(self.negative, self.magnitude.plus(rhs.magnitude));
+        }
+        let (big, small) = if self.magnitude >= rhs.magnitude {
+            (self, rhs)
+        } else {
+            (rhs, self)
+        };
+        Self::new(big.negative, big.magnitude.minus(small.magnitude))
+    }
+
+    /// `self − rhs` as the FPU computes it: `self + (−rhs)`.
+    pub fn minus(self, rhs: Self) -> Self {
+        self.plus(rhs.negated())
+    }
+
+    /// The value rounded to `bits` significant bits, to nearest, ties to even (a store to `f32`
+    /// with [`SINGLE_BITS`] or to `f64` with [`DOUBLE_BITS`]); the sign stays.
+    pub fn round(self, bits: u32) -> Self {
+        Self::new(self.negative, self.magnitude.round(bits))
+    }
+
+    /// The value truncated toward 0 into 64 bits, as the runtime's `_ftol` (0x6179D4) stores it
+    /// (`fistp qword` under the chop rounding): an integer of magnitude 2^63 or more is the
+    /// FPU's integer indefinite, `i64::MIN` (its invalid operation is masked by the default
+    /// control word), which is also `−2^63`'s own value.
+    pub fn trunc(self) -> i64 {
+        i64::try_from(self.magnitude.trunc())
+            .map_or(i64::MIN, |t| if self.negative { -t } else { t })
+    }
+
+    /// The low 32 bits of [`SignedX87::trunc`], the part of `_ftol`'s result its callers keep in
+    /// `eax`: a value beyond `i32`'s range wraps, the integer indefinite gives 0.
+    pub fn ftol(self) -> i32 {
+        self.trunc() as i32
+    }
+
+    /// The value of the IEEE 754 binary32 bit pattern `bits` (a value the original stores),
+    /// exact; an infinite, NaN or subnormal pattern counts as 0, as [`X87::from_f32_bits`]'s.
+    pub fn from_f32_bits(bits: u32) -> Self {
+        Self::new(bits >> 31 != 0, X87::from_f32_bits(bits & 0x7FFF_FFFF))
+    }
+
+    /// The IEEE 754 binary32 bit pattern of the value rounded to single precision (to nearest,
+    /// ties to even); `0` for 0.
+    pub fn to_f32_bits(self) -> u32 {
+        let bits = self.magnitude.to_f32_bits();
+        if self.negative { bits | 1 << 31 } else { bits }
+    }
+}
+
+impl From<X87> for SignedX87 {
+    fn from(magnitude: X87) -> Self {
+        Self::new(false, magnitude)
+    }
+}
+
+impl PartialOrd for SignedX87 {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SignedX87 {
+    /// The order of the values (`fcom`): every negative value below every other, the larger
+    /// magnitude the smaller of two negative ones.
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        match (self.negative, other.negative) {
+            (false, false) => self.magnitude.cmp(&other.magnitude),
+            (true, true) => other.magnitude.cmp(&self.magnitude),
+            (false, true) => core::cmp::Ordering::Greater,
+            (true, false) => core::cmp::Ordering::Less,
+        }
+    }
+}
+
 /// Limbs of [`WideUint`].
 const WIDE_LIMBS: usize = 8;
 
@@ -665,6 +824,102 @@ mod tests {
             one + (1 << 41)
         );
         assert_eq!(X87::int(3).round(SINGLE_BITS), X87::int(3));
+    }
+
+    #[test]
+    fn signed_x87_signs_and_zeros() {
+        // A zero has no sign, whatever made it.
+        assert_eq!(SignedX87::new(true, X87::ZERO), SignedX87::ZERO);
+        assert!(!SignedX87::int(0).negated().is_negative());
+        assert_eq!(SignedX87::int(3).plus(SignedX87::int(-3)), SignedX87::ZERO);
+        assert_eq!(SignedX87::int(-3).times(SignedX87::ZERO), SignedX87::ZERO);
+        assert_eq!(SignedX87::int(-3).negated(), SignedX87::int(3));
+        assert_eq!(SignedX87::int(-3).magnitude(), X87::int(3));
+        assert_eq!(SignedX87::int(-3).nonnegative(), None);
+        assert_eq!(SignedX87::int(3).nonnegative(), Some(X87::int(3)));
+        assert_eq!(SignedX87::from(X87::ONE), SignedX87::ONE);
+        assert_eq!(SignedX87::int(i64::MIN).magnitude(), X87::int(1 << 63));
+        assert_eq!(SignedX87::MIN, SignedX87::MAX.negated());
+        // The order: negatives below zero, the larger magnitude the smaller.
+        let order = [
+            SignedX87::MIN,
+            SignedX87::int(-2),
+            SignedX87::int(-1),
+            SignedX87::ZERO,
+            SignedX87::ONE,
+            SignedX87::int(2),
+            SignedX87::MAX,
+        ];
+        for pair in order.windows(2) {
+            assert!(pair[0] < pair[1], "{pair:?}");
+        }
+        assert!(SignedX87::ONE > SignedX87::int(-1));
+        assert_eq!(
+            SignedX87::int(-2).max(SignedX87::int(-5)),
+            SignedX87::int(-2)
+        );
+    }
+
+    #[test]
+    fn signed_x87_operations() {
+        let i = SignedX87::int;
+        assert_eq!(i(-3).times(i(2)), i(-6));
+        assert_eq!(i(-3).times(i(-2)), i(6));
+        assert_eq!(i(-3).plus(i(5)), i(2));
+        assert_eq!(i(3).plus(i(-5)), i(-2));
+        assert_eq!(i(-3).plus(i(-4)), i(-7));
+        assert_eq!(i(2).minus(i(5)), i(-3));
+        assert_eq!(i(-2).minus(i(-5)), i(3));
+        let half = SignedX87::from(X87::ratio(1, 2, DOUBLE_BITS).unwrap());
+        assert_eq!(i(-1).over(i(2)), Some(half.negated()));
+        assert_eq!(i(-1).over(i(-2)), Some(half));
+        assert_eq!(i(1).over(SignedX87::ZERO), None);
+        // Rounding keeps the sign: −0.85 as an f32 store.
+        let f = SignedX87::from(X87::ratio(85, 100, DOUBLE_BITS).unwrap()).negated();
+        assert_eq!(
+            f.round(SINGLE_BITS),
+            SignedX87::from(X87::ratio(85, 100, SINGLE_BITS).unwrap()).negated()
+        );
+        // Magnitudes saturate, on either side.
+        assert_eq!(SignedX87::MAX.plus(SignedX87::ONE), SignedX87::MAX);
+        assert_eq!(SignedX87::MIN.minus(SignedX87::ONE), SignedX87::MIN);
+        assert_eq!(SignedX87::MIN.times(i(2)), SignedX87::MIN);
+        assert_eq!(SignedX87::MIN.times(i(-2)), SignedX87::MAX);
+    }
+
+    #[test]
+    fn signed_x87_truncations() {
+        let i = SignedX87::int;
+        let r = |n, d| SignedX87::from(X87::ratio(n, d, DOUBLE_BITS).unwrap());
+        // Toward 0 on both sides.
+        assert_eq!(r(7, 2).trunc(), 3);
+        assert_eq!(r(7, 2).negated().trunc(), -3);
+        assert_eq!(r(1, 3).negated().trunc(), 0);
+        assert_eq!(r(7, 2).negated().ftol(), -3);
+        // 64 bits kept by `fistp qword`, the integer indefinite from 2^63 on.
+        assert_eq!(i(i64::MAX).trunc(), i64::MAX);
+        assert_eq!(i(i64::MIN).trunc(), i64::MIN);
+        assert_eq!(SignedX87::new(false, X87::int(1 << 63)).trunc(), i64::MIN);
+        assert_eq!(SignedX87::MAX.trunc(), i64::MIN);
+        assert_eq!(SignedX87::MIN.trunc(), i64::MIN);
+        // The callers' low 32 bits: wrapped beyond i32, 0 for the indefinite.
+        assert_eq!(i(-(1 << 31) - 1).ftol(), i32::MAX);
+        assert_eq!(i((1 << 32) + 5).ftol(), 5);
+        assert_eq!(i(1 << 31).ftol(), i32::MIN);
+        assert_eq!(SignedX87::MAX.ftol(), 0);
+    }
+
+    #[test]
+    fn signed_x87_f32_patterns() {
+        assert_eq!(SignedX87::from_f32_bits(0xBF80_0000), SignedX87::int(-1));
+        assert_eq!(SignedX87::from_f32_bits(0x3F80_0000), SignedX87::ONE);
+        // −0, −∞ and a NaN with the sign bit count as 0.
+        for bits in [0x8000_0000, 0xFF80_0000, 0xFFC0_0000] {
+            assert_eq!(SignedX87::from_f32_bits(bits), SignedX87::ZERO);
+        }
+        assert_eq!(SignedX87::int(-1).to_f32_bits(), 0xBF80_0000);
+        assert_eq!(SignedX87::int(-3).to_f32_bits(), 0xC040_0000);
+        assert_eq!(SignedX87::ZERO.to_f32_bits(), 0);
     }
 
     proptest! {
