@@ -3806,7 +3806,8 @@ screen 3 is the town's alone, §2.2):
 ### 108. The merchants' stock (TWN-STK-001, -002; ADV-OBJ-006 amended; GAM-CAL-002 amended)
 
 **Where** (decision 212): the adventure state holds **the stock** (one entry per class of the part's
-`merchants_stock`, each an artifact or empty) beside the Black Markets' stocks, and **the pool's
+`merchants_stock`, each an artifact or empty; a Black Market's stock is static, only its sold
+entries state), and **the pool's
 marks** (ADV-OBJ-006's bans and given marks, by artifact) kept from the build instead of dropped
 with `resolve_rewards`' local pool; both in the adventure state hash (the town lane's code in
 `h3-adventure`'s `src/town*`; the fields and the hash the adventure lane's, `cross-lane`).
@@ -3848,8 +3849,8 @@ Decision 211 (the original's own Buy-or-Cancel dialog, §4.3, not the hire dialo
   shipped tables).
 - **The game** checks the turn, the owner, that no decision is open, the hero (§101 call 2: the
   visitor, with T-28's flag off else the garrison hero; none `NoVisitor`, GENRLTXT 274), that the
-  hero carries no such machine worn or in the backpack (`HasWarMachine`; the original's Buy
-  disabled), room (defensive: `h3_heroes::check_change` with `AddArtifact`; a war machine has its
+  hero wears no such machine (`HasWarMachine`; the original's Buy disabled; the backpack never
+  holds one, HER-ART-002), room (defensive: `h3_heroes::check_change` with `AddArtifact`; a war machine has its
   own position), then the treasury (`CannotPay`); applied: paid (`ResourcePaid`), the machine given
   (`HeroChanged`). No day mark, no stock, no movement: one machine an opening only because the hero
   then carries it.
@@ -3894,7 +3895,7 @@ Decision 210 (the original's town University runs the map's dialog functions, §
 
 ### 113. The Skeleton Transformer (TWN-TRF-001; `TownCommand::Transform { town, army, slot }`)
 
-- **The army** (`TownArmy`, decision 207): `Visitor`, the visitor's, or `Garrison`, the upper
+- **The army** (`h3_towns::TownArmy`, decision 207): `Visitor`, the visitor's, or `Garrison`, the upper
   bar's (the garrison hero's army when one stands, else the town's garrison: `HireTarget::Garrison`'s
   meaning, §7.2); the original's default (the visitor's, else the upper bar's) and its selection
   override both become the command's choice. No hero is needed for `Garrison`.
