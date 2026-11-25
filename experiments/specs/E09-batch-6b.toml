@@ -1,0 +1,95 @@
+# Experiment batch TWN-6, part b (E09 T54; design note §117, survey
+# docs/rules/surveys/E09-trades.md §11 row TWN-6-2): an ally's Artifact Merchants for a player who
+# owns no Marketplace (TD-29, T-19); in SoD on Easy, hot seat, Red's day 1 only. Parts a, c and d:
+# `E09-batch-6a.toml`, `-6c.toml`, `-6d.toml`. Build: docs/experiments/README.md. Predictions are
+# for the agent who evaluates the results; the template never shows them. "The reading" is the
+# survey's code reading of Heroes3.exe; VCMI's is VCMI 1.7.5 as the survey summarises it (§9).
+#
+# | row     | settles             | the reading                          | otherwise                   |
+# | TWN-6-2 | TD-29, T-19 (§2.1,  | at an ally's Tower the merchants     | VCMI: the town owner's      |
+# |         | §2.2)               | open for Red's visitor at Red's      | count (1): priced, Red pays |
+# |         |                     | count 0: every price 0, the artifact |                             |
+# |         |                     | given, the treasury unchanged; the   |                             |
+# |         |                     | Marketplace refused                  |                             |
+#
+# **The map** (36 x 36, grass): Red and Blue are one team (`teams`); Tan, the computer's, plays
+# alone, so the game has an enemy and does not end at a visit (`clients/capture/README.md`,
+# "The hall and the build"). Red owns R (7, 7), a Castle with nothing but the Village Hall (no
+# Marketplace: Red's count 0). Blue owns B (23, 7), a Tower with the Marketplace and the Artifact
+# Merchants. Tan owns X (23, 30), a Castle with a Fort. Every garrison empty but X's (the
+# default). No hero stands on an entrance at the start; no main town.
+
+[map]
+name = "E09 batch TWN-6b"
+description = "Engine-generated experiment map (E09, batch TWN-6, part b): an ally's Artifact Merchants for a player with no Marketplace. Hot seat, Red and Blue human and allied, Tan the computer's, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+teams = [["red", "blue"]]
+instructions = [
+    "Copy `E09-batch-6b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**, both players' starting bonus Gold; Tan is the computer's (the map lets no human play it). Red and Blue are allied. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "The records are the game's screens and memory (the capture harness, `clients/capture/batches/E09-batch-6b.toml`, E09 T54): the trade window's state (its screen, the count of Marketplaces 0x6AAA98, the pair, the price, the entries), the players' treasuries and teams, a hero's worn artifacts and backpack, the Artifact Merchants' seven (game +0x1F664). Played by hand they show on the screens.",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile its gate stands on. A step: click the target once (the path's marks show), then again (the hero goes).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- the towns ------------------------------------------------------------------------------------
+
+[[map.town]]  # R: Red's, no Marketplace
+entrance = [7, 7]
+faction = "castle"
+owner = "red"
+buildings = []
+garrison = []
+
+[[map.town]]  # B: Blue's Tower, the Marketplace and the Artifact Merchants
+entrance = [23, 7]
+faction = "tower"
+owner = "blue"
+buildings = ["marketplace", "artifact merchants"]
+garrison = []
+
+[[map.town]]  # X: Tan's, the enemy
+entrance = [23, 30]
+faction = "castle"
+owner = "tan"
+fort = true
+
+# --- TWN-6-2: an ally's merchants ---------------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-6-2"
+title = "An ally's Artifact Merchants for a player with no Marketplace (TD-29, T-19): the prices, the purchase, the treasury"
+questions = ["TD-29", "T-19", "TWN-MKT-001", "TWN-MKT-004"]
+procedure = [
+    "Red's turn, day 1. Note the teams, Red's treasury and TWN-6-2's artifacts, and the merchants' seven.",
+    "TWN-6-2 stands south of B at (23, 9): walk onto B's entrance (23, 7). The town screen opens (an ally's town). Click the Marketplace: note whether anything opens.",
+    "Click the Artifact Merchants: note the window's screen, the count it uses and the entries. Pick the first entry, then gold: note its price; the same for the last entry (the major).",
+    "Press Trade (the last entry with gold). Note Red's treasury, TWN-6-2's artifacts and the entries. Close the window and the town.",
+]
+record = [
+    { field = "before: the teams; Red's treasury; TWN-6-2's worn artifacts and backpack; the stock" },
+    { field = "at B: the Marketplace clicked: what opens" },
+    { field = "the merchants clicked: the screen; the count; the entries" },
+    { field = "the first entry with gold: the price; the last entry with gold: the price" },
+    { field = "after Trade: Red's treasury; TWN-6-2's worn artifacts and backpack; the entries; the stock" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§2.1: the merchants' entry tests no owner and reads the current player's count:
+  Red's towns with the Marketplace, 0; §2.2: at m = 0 the purchase's factor is 0, so every price
+  is 0, most 0, amount 1): B's Marketplace (14) is **refused silently** (not Red's town); the
+  merchants open on **screen 2 with count 0**; **every price 0**; the Trade **gives the artifact**
+  (worn if its position is free, else the backpack) and **Red's treasury is unchanged**; the entry
+  bought is empty (-1) in the window and in the stock.
+- **VCMI** (§9, TD-29): the town owner's count (Blue's 1): priced (2.5 times the cost in gold or
+  more), Red pays. **The wiki:** free at an ally's merchants with no Marketplace, an exploit.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [23, 9]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]

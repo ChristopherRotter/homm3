@@ -242,6 +242,20 @@ MARKET_GLOBALS = {"screen": 0x6AAAA4, "kind": 0x6AAAC4, "count": 0x6AAA98, "hero
                   "rate": 0x6AAAC0, "per_unit": 0x6AAA80, "most": 0x6AAA94, "amount": 0x6AAAB0,
                   "traded": 0x6AAAAC}
 MARKET_SLIDER, MARKET_FLAGS, MARKET_RECIPIENTS = 6, 49, 70
+# E09 T54 (batch TWN-6; survey docs/rules/surveys/E09-trades.md §2.4): screen 3, the artifacts
+# sold (market_sell_artifact_create 0x5E5730; reached at a town's Tower or Dungeon with the
+# merchants and a visitor), its dialog's vtable read live under Wine; its backpack offset
+# `market_backpack_offset` 0x6AAA70 (u8). Its places: the pictures 84 + p (the frame the artifact
+# drawn, p 0 to 17 the worn positions, 18 to 22 the backpack's five) under the frames 107 + p.
+MARKET_SCREENS[0x643AAC] = 3
+MARKET_OFFSET, MARKET_PICTURES = 0x6AAA70, 84
+# E09 T54 (batch TWN-6's TWN-6-2 and TWN-6-8; survey §3): the Artifact Merchants' seven, one stock
+# for the game (game +0x1F664, i32[7]: three treasures, three minors, one major; -1 an entry
+# bought), drawn at the new game and on the first day of each month from the second.
+STOCK = 0x1F664
+# E09 T54 (TWN-6-5 to TWN-6-7): the town screen's town, the town manager's +0x38 (a record's
+# address; `town_manager_pointer` 0x6994FC).
+TOWN_MANAGER, TOWN_MANAGER_TOWN = 0x6994FC, 0x38
 # The Black Markets' records (black_market_draw 0x4C0E31; game +0x1F680's vector, begin +0x1F684
 # and end +0x1F688): seven i32 artifact ids each (-1 a sold entry), a market's object word the
 # index of its record (observed: the two of batch E14 0 and 1 in the walk's order).
@@ -396,6 +410,7 @@ TOWN_VISITING_HERO = 0x10
 # E09-towns §8.3) and the towns' vector's end (game +0x21618, after its begin +0x21614: the
 # game's own loops over its towns run from one to the other, cover_of_darkness_hide 0x4C7BA0).
 TOWN_OWNER, TOWNS_END = 0x1, 0x21618
+TOWN_SPOT = 0x8  # E09 T54: the boat spot's column and row
 # E09 T23 (batch TWN-3; survey E09-growth.md §1, §5): a town's available creatures (i16[14] +0x16
 # by the faction's creature index, 0-6 base, 7-13 upgraded), its Portal of Summoning's creature
 # (i32 +0x3C, -1 none) and count (i16 +0x40), and its external dwellings' counts (i32[14] +0x118,
@@ -1049,6 +1064,7 @@ class Mem:
         state["artifacts"] = list(struct.unpack("<7i", self.read(pointer, 28))) if pointer else []
         items = self.dialog_items()
         state["shown"] = MARKET_SCREENS[shown["vtable"]]
+        state["offset"] = self.read(MARKET_OFFSET, 1)[0]  # E09 T54: screen 3's backpack offset
         state["items"] = {i["id"]: i["state"] for i in items}
         flags = {i["id"]: i["frame"] for i in items if i["vtable"] == PICTURE_VTABLE
                  and MARKET_FLAGS <= i["id"] < MARKET_FLAGS + 7 and i["state"] & 0x4}
@@ -1062,6 +1078,22 @@ class Mem:
         if not begin or not 0 <= index < (end - begin) // BLACK_MARKET_SIZE:
             return None
         return list(struct.unpack("<7i", self.read(begin + BLACK_MARKET_SIZE * index, 28)))
+
+    def stock(self):
+        """E09 T54 (batch TWN-6): the Artifact Merchants' seven ids in order (STOCK; -1 bought)."""
+        return list(struct.unpack("<7i", self.read(self.game() + STOCK, 28)))
+
+    def screen_town(self):
+        """E09 T54 (batch TWN-6): the index of the town the town manager shows (its +0x38), None
+        without one or past the towns' vector."""
+        manager = self.u32(TOWN_MANAGER)
+        if not manager:
+            return None
+        at = self.u32(manager + TOWN_MANAGER_TOWN)
+        begin, end = self.u32(self.game() + TOWNS), self.u32(self.game() + TOWNS_END)
+        if not begin <= at < end or (at - begin) % TOWN_SIZE:
+            return None
+        return (at - begin) // TOWN_SIZE
 
     def black_market_count(self):
         """How many Black Market records the game holds (E08 T129a)."""
@@ -2815,6 +2847,9 @@ def town_fields(index, at, raw):
             "built": [b for b in range(64) if built >> b & 1],
             "every_built": [b for b in range(64) if every >> b & 1],
             "mark": raw[TOWN_BUILT_TODAY],
+            # E09 T54 (batch TWN-6's TWN-6-6): the boat spot (u8 +0x8, +0x9; 0xFF none), fixed
+            # at the new game (survey E09-trades.md §5.1).
+            "spot": list(raw[TOWN_SPOT:TOWN_SPOT + 2]),
             "recruits": list(struct.unpack_from("<14h", raw, TOWN_RECRUITS)),
             "portal": [struct.unpack_from("<i", raw, TOWN_PORTAL_CREATURE)[0],
                        struct.unpack_from("<h", raw, TOWN_PORTAL_COUNT)[0]],

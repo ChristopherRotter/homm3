@@ -1,0 +1,141 @@
+# Experiment batch TWN-6, part d (E09 T54; design note §117, survey
+# docs/rules/surveys/E09-trades.md §11 rows TWN-6-6 and TWN-6-7): a Fortress's boat bought over the
+# docked one (TD-31, T-21) and the Conflux's Magic University on a map banning Fire Magic (TD-30,
+# T-23); in SoD on Easy, hot seat, Red's day 1 only. Parts a to c: `E09-batch-6a.toml`, `-6b.toml`,
+# `-6c.toml`. Build: docs/experiments/README.md. Predictions are for the agent who evaluates the
+# results; the template never shows them. "The reading" is the survey's code reading of
+# Heroes3.exe; VCMI's is VCMI 1.7.5 as the survey summarises it (§9).
+#
+# | row     | settles             | the reading                          | otherwise                   |
+# | TWN-6-6 | TD-31, T-21 (§5.1,  | one spot, the left tile; a click on  | VCMI: the second boat on    |
+# |         | §5.8)               | the ship does nothing; at (233, 341) | the right tile (two tried); |
+# |         |                     | the dialog, a second boat on the     | the wiki: none while a boat |
+# |         |                     | same tile, 1 000 gold and 10 wood    | waits                       |
+# | TWN-6-7 | TD-30, T-23 (§6.3)  | Fire Magic, banned by the map,       | VCMI: Fire Magic refused    |
+# |         |                     | offered and learned at Basic for     |                             |
+# |         |                     | 2 000 gold                           |                             |
+#
+# **The map** (36 x 36, grass; the map bans the secondary skill Fire Magic, `banned_skills`):
+# water from (0, 11) to (18, 16). Red owns F (10, 9), a Fortress with the Shipyard: two rows
+# below its entrance, the left tile (9, 11) and the right one (11, 11) are water, so the new
+# game fixes its spot at (9, 11) (§5.1); and C (26, 9), a Conflux with Mage Guild 1 and the
+# Magic University. Blue owns B (23, 30), a Castle with a Fort. Every garrison empty. No hero
+# stands on an entrance; no main town. Red's resources are written before the boats.
+
+[map]
+name = "E09 batch TWN-6d"
+description = "Engine-generated experiment map (E09, batch TWN-6, part d): a Fortress's boat bought over the docked one, the Conflux's Magic University with Fire Magic banned. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+banned_skills = ["Fire Magic"]
+instructions = [
+    "Copy `E09-batch-6d.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**, both players' starting bonus Gold. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "The scenario bans the secondary skill Fire Magic (the scenario's information does not show it).",
+    "The records are the game's screens and memory (the capture harness, `clients/capture/batches/E09-batch-6d.toml`, E09 T54): a town's record (game +0x21614, 0x168 bytes each, `docs/exe/structs.toml` \"town\": the boat spot +0x8, +0x9, the buildings standing +0x150), the boats (the game's boat records: tile, owner, in use), the players' treasuries, the University's four slots (their states and texts as the records they were written from), a hero's secondary skills. Played by hand they show on the screens and the map.",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile its gate stands on. A step: click the target once (the path's marks show), then again (the hero goes).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+[[map.patch]]
+terrain = "water"
+from = [0, 11]
+to = [18, 16]
+
+# --- the towns ------------------------------------------------------------------------------------
+
+[[map.town]]  # F: a Fortress with the Shipyard, its spot the left tile
+entrance = [10, 9]
+faction = "fortress"
+owner = "red"
+buildings = ["shipyard"]
+garrison = []
+
+[[map.town]]  # C: a Conflux with Mage Guild 1 and the Magic University
+entrance = [26, 9]
+faction = "conflux"
+owner = "red"
+buildings = ["mage guild 1", "magic university"]
+garrison = []
+
+[[map.town]]  # B: Blue's
+entrance = [23, 30]
+faction = "castle"
+owner = "blue"
+buildings = ["fort"]
+garrison = []
+
+# --- TWN-6-6: a boat bought over the docked one ---------------------------------------------------------
+
+[[encounter]]
+id = "TWN-6-6"
+title = "A Fortress's boat bought over the docked one (TD-31, T-21): the ship clicked, the Shipyard's uncovered pixel, the boats"
+questions = ["TD-31", "T-21", "TWN-SHY-001", "TWN-SET-011"]
+procedure = [
+    "Red's turn, day 1, before any hero moves. Note F's boat spot and the boats on the map.",
+    "Set Red's resources to 50 wood, 10 mercury, 50 ore, 10 sulfur, 10 crystal, 10 gems and 50 000 gold. Open F (10, 9) from the town list (no visitor). Click the Shipyard: the boat dialog opens; press Build. Note the boats, Red's treasury and F's buildings standing. Close the town.",
+    "Open F again: the ship (building 20) is drawn over the dock. Click the ship: note whether anything opens. Then click the screen at (233, 341) (the dock's one pixel the ship does not cover): note what opens; press Build. Note the boats, Red's treasury and F's buildings standing. Close the town.",
+]
+record = [
+    { field = "before: F's boat spot; the boats; Red's treasury" },
+    { field = "the first boat: what the Shipyard's click opened; the boats; Red's treasury; F's buildings standing" },
+    { field = "F reopened: F's buildings standing; the ship clicked: what opens" },
+    { field = "at (233, 341): what opens; after Build: the boats; Red's treasury; F's buildings standing" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§5.1: the spot fixed at the new game, two rows below the entrance and one
+  column left, (9, 11); §5.2: the Build creates a boat at the spot for 1 000 gold and 10 wood;
+  §5.8: the ship (20) is built at the screen's build when a boat stands at the spot and is drawn
+  over the dock, its click goes to no case, and the dock's pixel (233, 341) still reaches the
+  Shipyard (6), whose case tests nothing at the spot): the first Build puts **a boat at (9, 11)**,
+  1 000 gold and 10 wood taken, 20 shown at once (`town_screen_show_build`). Reopened, **the ship's
+  click opens nothing**; **at (233, 341) the boat dialog opens**; its Build puts **a second boat at
+  (9, 11)** (two boats on one tile), 1 000 gold and 10 wood more; the boats in use one more each
+  time.
+- **VCMI** (§9, TD-31): the first free of the two tiles at each build: the second boat at
+  **(11, 11)**. **The wiki:** a boat waiting on the spot blocks a new one.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [30, 20]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-6-7: the Magic University with Fire Magic banned ---------------------------------------------------
+
+[[encounter]]
+id = "TWN-6-7"
+title = "The Conflux's Magic University on a map banning Fire Magic (TD-30, T-23): the four slots, a school bought"
+questions = ["TD-30", "T-23", "TWN-UNI-001"]
+procedure = [
+    "Red's turn, day 1. Note TWN-6-7's secondary skills (Wisdom, Air Magic) and Red's treasury.",
+    "Set Red's gold to 5 000. TWN-6-7 (a Cleric) stands south of C at (26, 10): walk onto the entrance (26, 9). On the town screen click the Magic University. Note each of the four slots' state (learnable, known, cannot learn, no more skills) and the text it shows.",
+    "Click the Fire Magic slot: note what opens and whether its buy button is enabled; press it. Note TWN-6-7's secondary skills, Red's treasury and the four slots' states. Close the University and the town.",
+]
+record = [
+    { field = "before: TWN-6-7's secondary skills; Red's treasury" },
+    { field = "the University: the four slots (skill: state, text)" },
+    { field = "the Fire Magic slot clicked: what opens; the buy button" },
+    { field = "after the purchase: TWN-6-7's secondary skills; Red's treasury; the four slots" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§6.3: the four fixed, Fire, Air, Water and Earth Magic; no function of the
+  path reads the map's banned skills; §6.4: a slot's state known, class weight 0, eight skills,
+  else learnable with 2 000): Fire Magic **learnable (GENRLTXT 608, 2 000)**, Air Magic known
+  (605), Water and Earth learnable (608; the Cleric's weights 4 and 3); the Fire Magic slot opens
+  the purchase box (609, 610) with its buy button **enabled** (Red's 5 000); the purchase teaches
+  **Fire Magic at Basic** and takes **2 000 gold**; Fire Magic's slot then known (605).
+- **VCMI** (§9, TD-30): a banned school refused (`isAllowed`): Fire Magic not offered.
+"""
+[encounter.hero]
+type = "Adela"
+specialty = "spell Bless"
+at = [26, 10]
+primary = [1, 1, 1, 1]
+skills = [["Wisdom", 1], ["Air Magic", 1]]
+army = [["Pikeman", 1]]

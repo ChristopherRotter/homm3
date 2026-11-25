@@ -1,0 +1,43 @@
+# E09 batch TWN-6, part c, played by the capture harness (E09 T54; h3adv.py batch): the procedure
+# of experiments/specs/E09-batch-6c.toml as steps, on Easy, hot seat, Red and Blue human, the
+# starting bonus Gold. Red's day 1: the stock read before any move, TWN-6-8's purchase at T; then
+# both players' turns ended until Red's day 29 and the stock read again.
+#
+# `stock` reads the Artifact Merchants' seven (game +0x1F664), `stock:classes` their classes
+# counted; the trade window's items: E09-batch-6a.toml's header.
+
+spec = "experiments/specs/E09-batch-6c.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+[[step]]
+encounter = "TWN-6-8"
+hero = "TWN-6-8"
+record = { "day 1: the seven (name; class)" = ["stock", "text:classes: ", "stock:classes", "text:the date: ", "date"] }
+note = { "the game's version; the difficulty; the Black Market records" = ["map_kind", "difficulty", "black_markets"] }
+
+[[step]]
+encounter = "TWN-6-8"
+hero = "TWN-6-8"
+walk = [7, 7]
+resources = { red = [20, 10, 20, 10, 10, 10, 100000] }
+expect = { question = "none", battle = false }
+[[step.actions]]
+building = 17
+opens = "market"
+[[step.actions]]
+click = ["entry:0", "pay:gold"]
+record = { "day 1: the first entry with gold: the price; after Trade: the entries; Red's treasury; TWN-6-8's artifacts" = ["text:the pair: ", "market:pair", "text:price: ", "market:rate", "text:count: ", "market:count"] }
+[[step.actions]]
+click = ["trade"]
+record = { "+day 1: the first entry with gold: the price; after Trade: the entries; Red's treasury; TWN-6-8's artifacts" = ["text:after Trade: entries: ", "market:entries", "text:stock: ", "stock", "text:treasury: ", "treasury:red", "text:worn: ", "hero:positions", "text:backpack: ", "hero:backpack"] }
+
+[[step]]
+end_turn = true
+to_day = 29
+
+[[step]]
+encounter = "TWN-6-8"
+hero = "TWN-6-8"
+record = { "day 29: the date; the seven (name; class)" = ["date", "stock", "text:classes: ", "stock:classes"] }

@@ -1,0 +1,165 @@
+# Experiment batch TWN-6, part c (E09 T54; design note §117, survey
+# docs/rules/surveys/E09-trades.md §11 row TWN-6-8): the Artifact Merchants' stock at the new game
+# and on the first day of the second month, on a map that places 18 of the 21 minor artifacts
+# (§3.1, §3.2; E08's D-32); in SoD on Easy, hot seat, from Red's day 1 to Red's day 29. Parts a, b
+# and d: `E09-batch-6a.toml`, `-6b.toml`, `-6d.toml`. Build: docs/experiments/README.md.
+# Predictions are for the agent who evaluates the results; the template never shows them. "The
+# reading" is the survey's code reading of Heroes3.exe; VCMI's is VCMI 1.7.5 as the survey
+# summarises it (§9).
+#
+# | row     | settles             | the reading                          | otherwise                   |
+# | TWN-6-8 | §3.1, §3.2 (D-32)   | day 1: 3 treasures, the 3 minors the | VCMI: placed artifacts not  |
+# |         |                     | map does not place, 1 major; day 29: | excluded (any 3 minors);    |
+# |         |                     | seven again, the bought entry too,   | the same month's redraw     |
+# |         |                     | minors from all 21 (the pool reset)  |                             |
+#
+# **The map** (36 x 36, grass): 18 of the 21 minors (SoD's `ARTRAITS.TXT` class N) stand as
+# Artifact objects (class 5) in two rows south of the towns, (2, 20) to (18, 20) and (2, 22) to
+# (18, 22), every second column; Rib Cage, Ring of Life and Boots of Speed are not placed. Nothing
+# else draws an artifact: no random artifact, Black Market, chest, corpse, wagon, tomb, Pandora's
+# Box or event, and the starting bonus is gold. Red owns T (7, 7), a Tower with the Marketplace and
+# the Artifact Merchants (Red's count 1); Blue owns B (23, 7), a Castle with a Fort (each player
+# keeps a town over the month). No hero stands on an entrance; no main town.
+
+[map]
+name = "E09 batch TWN-6c"
+description = "Engine-generated experiment map (E09, batch TWN-6, part c): the Artifact Merchants' stock on day 1 and day 29, with 18 of the 21 minor artifacts placed on the map. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E09-batch-6c.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**, both players' starting bonus Gold. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "The records are the game's screens and memory (the capture harness, `clients/capture/batches/E09-batch-6c.toml`, E09 T54): the Artifact Merchants' seven (game +0x1F664, i32[7], -1 an entry bought), the trade window's entries and price, the players' treasuries, a hero's artifacts, the date. Played by hand the seven show at T's merchants.",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile its gate stands on. A step: click the target once (the path's marks show), then again (the hero goes).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- the towns ------------------------------------------------------------------------------------
+
+[[map.town]]  # T: Red's Tower, the Marketplace and the Artifact Merchants
+entrance = [7, 7]
+faction = "tower"
+owner = "red"
+buildings = ["marketplace", "artifact merchants"]
+garrison = []
+
+[[map.town]]  # B: Blue's
+entrance = [23, 7]
+faction = "castle"
+owner = "blue"
+buildings = ["fort"]
+garrison = []
+
+# --- the 18 minors ---------------------------------------------------------------------------------
+
+[[map.artifact]]
+artifact = "Blackshard of the Dead Knight"
+at = [2, 20]
+
+[[map.artifact]]
+artifact = "Greater Gnoll's Flail"
+at = [4, 20]
+
+[[map.artifact]]
+artifact = "Shield of the Yawning Dead"
+at = [6, 20]
+
+[[map.artifact]]
+artifact = "Buckler of the Gnoll King"
+at = [8, 20]
+
+[[map.artifact]]
+artifact = "Helm of Chaos"
+at = [10, 20]
+
+[[map.artifact]]
+artifact = "Crown of the Supreme Magi"
+at = [12, 20]
+
+[[map.artifact]]
+artifact = "Scales of the Greater Basilisk"
+at = [14, 20]
+
+[[map.artifact]]
+artifact = "Armor of Wonder"
+at = [16, 20]
+
+[[map.artifact]]
+artifact = "Red Dragon Flame Tongue"
+at = [18, 20]
+
+[[map.artifact]]
+artifact = "Dragon Wing Tabard"
+at = [2, 22]
+
+[[map.artifact]]
+artifact = "Vampire's Cowl"
+at = [4, 22]
+
+[[map.artifact]]
+artifact = "Bowstring of the Unicorn's Mane"
+at = [6, 22]
+
+[[map.artifact]]
+artifact = "Emblem of Cognizance"
+at = [8, 22]
+
+[[map.artifact]]
+artifact = "Equestrian's Gloves"
+at = [10, 22]
+
+[[map.artifact]]
+artifact = "Inexhaustible Cart of Ore"
+at = [12, 22]
+
+[[map.artifact]]
+artifact = "Inexhaustible Cart of Lumber"
+at = [14, 22]
+
+[[map.artifact]]
+artifact = "Loins of Legion"
+at = [16, 22]
+
+[[map.artifact]]
+artifact = "Torso of Legion"
+at = [18, 22]
+
+# --- TWN-6-8: the stock ------------------------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-6-8"
+title = "The Artifact Merchants' stock on day 1 and day 29, 18 of the 21 minors placed (§3.1, §3.2, D-32)"
+questions = ["D-32", "ADV-OBJ-006", "TWN-STK-001", "TWN-STK-002"]
+procedure = [
+    "Red's turn, day 1, before any hero moves. Note the merchants' seven by class (the window at T shows them).",
+    "Set Red's gold to 100 000. TWN-6-8 stands south of T at (7, 9): walk onto the entrance (7, 7). On the town screen click the Artifact Merchants; pick the first entry and gold, note its price; press Trade. Note the entries, Red's treasury and TWN-6-8's artifacts. Close the window and the town.",
+    "End both players' turns until Red's day 29 (month 2, week 1, day 1). Note the date and the merchants' seven by class.",
+]
+record = [
+    { field = "day 1: the seven (name; class)" },
+    { field = "day 1: the first entry with gold: the price; after Trade: the entries; Red's treasury; TWN-6-8's artifacts" },
+    { field = "day 29: the date; the seven (name; class)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§3.1: the given marks start as the bans, then every Artifact object marks its
+  artifact; the seven are drawn last at the new game by `random_artifact_of_level`, entries 0 to 2
+  a treasure, 3 to 5 a minor, 6 a major, each draw marked; §3.2: on the first day of every month
+  from the second, all seven redrawn, sold or not, the old marks kept): **day 1**: three distinct
+  treasures, **the three minors the map does not place (Rib Cage, Ring of Life, Boots of Speed, in
+  the draw's order)**, one major; none of the 18 placed. The purchase (Red's count 1: 2.5 times the
+  cost in gold, E08 §4) empties entry 0 (-1) and puts the treasure on TWN-6-8. **Day 29** (month
+  2): seven again, **entry 0 refilled**; three treasures none of day 1's (34 left in the pool),
+  three minors drawn from **all 21** (the minors' pool empty, so their marks reset to the bans:
+  placed ones possible, day 1's possible), one major not day 1's.
+- **VCMI** (§9, D-32): the bans and the combinations excluded, the least rolled first, **placed
+  artifacts not excluded**: day 1's minors any three of the 21; the same redraw each month.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [7, 9]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
