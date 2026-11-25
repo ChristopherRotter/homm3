@@ -1,0 +1,255 @@
+# Experiment batch TWN-6, part a (E09 T54; design note §117, survey
+# docs/rules/surveys/E09-trades.md §11 rows TWN-6-1, TWN-6-3, TWN-6-4 and TWN-6-5): the
+# Marketplaces' count at a town (D-70), the artifact sale after the backpack's arrows (T-20), a
+# combination artifact's sale price (§3.4), the town's trades with a garrison hero and no visitor
+# (TD-28); in SoD on Easy, hot seat, day 1 only. Part b (`E09-batch-6b.toml`) holds TWN-6-2 (an
+# ally's merchants), part c (`-6c.toml`) TWN-6-8 (the stock over a month), part d (`-6d.toml`)
+# TWN-6-6 and TWN-6-7 (the Shipyard's boat, the Magic University). Build:
+# docs/experiments/README.md. Predictions are for the agent who evaluates the results; the
+# template never shows them. "The reading" is the survey's code reading of Heroes3.exe; VCMI's is
+# VCMI 1.7.5 as the survey summarises it (§9).
+#
+# | row     | settles             | the reading                          | otherwise                   |
+# | TWN-6-1 | D-70 (§2.1)         | 1 wood or ore for 37, 62, 112 gold   | VCMI: 38, 63, 113 (its      |
+# |         |                     | at 2, 4, 8 Marketplaces              | rounding)                   |
+# | TWN-6-3 | T-20 (§2.4)         | after the arrow the first place's    | the shown artifact's price  |
+# |         |                     | price is backpack place 0's, the     | and removal                 |
+# |         |                     | artifact removed the one shown       |                             |
+# | TWN-6-4 | §3.4                | Ring of the Magi sells for 600 at 1  | a blank cost: 1 gold        |
+# |         |                     | Marketplace (3 000 x 0.2)            |                             |
+# | TWN-6-5 | TD-28 (§2.1, §4.2)  | GENRLTXT 274 at the merchants, the   | VCMI: the garrison hero     |
+# |         |                     | guild, the Blacksmith, the Ballista  | served                      |
+# |         |                     | Yard; the Marketplace: screens 0, 1  |                             |
+#
+# **The map** (36 x 36, grass): Red owns eight towns, two with the Marketplace at the start: T1
+# (7, 7) a Tower with the Marketplace and the Artifact Merchants, S1 (15, 7) a Stronghold with the
+# Marketplace, the Blacksmith, the Freelancer's Guild and the Ballista Yard (the Blacksmith of a
+# Stronghold sells the Ammo Cart, its Ballista Yard the Ballista), and six Castles with nothing but
+# the Village Hall: C1 (23, 7), C2 (31, 7), C3 (7, 15), C4 (15, 15), C5 (23, 15), C6 (31, 15). Red's
+# count is 2 at the start, 4 once C1 and C2 build their Marketplaces, 8 once C3 to C6 do (one build
+# a town a day; Red's resources written before the builds). Blue owns B (23, 30), a Tower with the
+# Marketplace and the Artifact Merchants: Blue's count is 1 (TWN-6-4 on Blue's turn). Every
+# garrison empty. No hero stands on an entrance at the start; no main town (no hero generated).
+
+[map]
+name = "E09 batch TWN-6a"
+description = "Engine-generated experiment map (E09, batch TWN-6, part a): the Marketplaces' count at a town, the artifact sale after the backpack's arrows, Ring of the Magi sold, a garrison hero at the merchants, the guild, the Blacksmith and the Ballista Yard. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E09-batch-6a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**, both players' starting bonus Gold. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "The records are the game's screens and memory (the capture harness, `clients/capture/batches/E09-batch-6a.toml`, E09 T54): the trade window's state (its screen, the count of Marketplaces 0x6AAA98, the pair, the rate, the buttons shown), a town's record (game +0x21614, 0x168 bytes each, `docs/exe/structs.toml` \"town\"), a hero's backpack, the players' treasuries, the message a click brings (as the record it was written from: `GENRLTXT:274`, never its text). Played by hand they show on the screens.",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile its gate stands on. A step: click the target once (the path's marks show), then again (the hero goes).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- the towns ------------------------------------------------------------------------------------
+
+[[map.town]]  # T1: the Marketplace and the Artifact Merchants
+entrance = [7, 7]
+faction = "tower"
+owner = "red"
+buildings = ["marketplace", "artifact merchants"]
+garrison = []
+
+[[map.town]]  # S1: the Marketplace, the Blacksmith, the Freelancer's Guild, the Ballista Yard
+entrance = [15, 7]
+faction = "stronghold"
+owner = "red"
+buildings = ["marketplace", "blacksmith", "freelancers guild", "ballista yard"]
+garrison = []
+
+[[map.town]]  # C1
+entrance = [23, 7]
+faction = "castle"
+owner = "red"
+buildings = []
+garrison = []
+
+[[map.town]]  # C2
+entrance = [31, 7]
+faction = "castle"
+owner = "red"
+buildings = []
+garrison = []
+
+[[map.town]]  # C3
+entrance = [7, 15]
+faction = "castle"
+owner = "red"
+buildings = []
+garrison = []
+
+[[map.town]]  # C4
+entrance = [15, 15]
+faction = "castle"
+owner = "red"
+buildings = []
+garrison = []
+
+[[map.town]]  # C5
+entrance = [23, 15]
+faction = "castle"
+owner = "red"
+buildings = []
+garrison = []
+
+[[map.town]]  # C6
+entrance = [31, 15]
+faction = "castle"
+owner = "red"
+buildings = []
+garrison = []
+
+[[map.town]]  # B: Blue's Tower, the Marketplace and the Artifact Merchants
+entrance = [23, 30]
+faction = "tower"
+owner = "blue"
+buildings = ["marketplace", "artifact merchants"]
+garrison = []
+
+# --- TWN-6-1: the count -----------------------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-6-1"
+title = "The Marketplaces' count at a town (D-70): the gold offered for 1 wood and for 1 ore at 2, 4 and 8 Marketplaces"
+questions = ["D-70", "TWN-MKT-001"]
+procedure = [
+    "Red's turn, day 1, before any hero moves. Open T1 (7, 7) from the town list (no visitor) and click its Marketplace: the trade window opens on resources for resources. Pick wood to give and gold to want: note the rate (one wood for so many gold) and the count the window uses; then ore for gold the same. Close the window and the town.",
+    "Set Red's resources to 50 wood, 10 mercury, 50 ore, 10 sulfur, 10 crystal, 10 gems and 50 000 gold. Open C1 (23, 7), its hall, the Marketplace and Build; the same in C2 (31, 7). Open T1's Marketplace again and note the two rates and the count.",
+    "Build the Marketplace in C3 (7, 15), C4 (15, 15), C5 (23, 15) and C6 (31, 15) the same way; open T1's Marketplace again and note the two rates and the count.",
+]
+record = [
+    { field = "2 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" },
+    { field = "the builds in C1 and C2: each town's buildings after" },
+    { field = "4 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" },
+    { field = "the builds in C3 to C6: each town's buildings after" },
+    { field = "8 Marketplaces: the count; 1 wood for (gold); 1 ore for (gold)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§2.1, D-70; `E08-trades.md` §4: a = f32(250 × R), q = f32(1 / a) below 1, one
+  wood for round(1 / q) gold, round(x) = trunc(x + 0.5) in 53 bits): the count is the current
+  player's towns whose every-built set holds the Marketplace, at most 10, the town traded at
+  among them. R = 0.15, 0.25, 0.45: **1 wood for 37, 62, 112 gold** at 2, 4, 8 (37.5, 62.5,
+  112.5 exactly, each reciprocal's binary32 above the half); ore the same (its value 250). The
+  window's count 2, 4, 8; each build adds the Marketplace (building 14) to its town's sets.
+- **VCMI** (§9): the same count, its own rounding of the half: 38, 63, 113. **The wiki's** table:
+  37, 62, 112.
+"""
+[encounter.hero]
+type = "Orrin"
+specialty = "skill Archery"
+at = [3, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-6-3: the sale after the backpack's arrows ----------------------------------------------------
+
+[[encounter]]
+id = "TWN-6-3"
+title = "An artifact sold from the backpack after its arrow (T-20): the price shown and paid, the artifact removed"
+questions = ["T-20", "TWN-MKT-005"]
+procedure = [
+    "Red's turn, day 1, after TWN-6-1 (Red's count 8). Note TWN-6-3's backpack (six artifacts, Titan's Gladius first).",
+    "TWN-6-3 stands south of T1 at (7, 9): walk onto the entrance (7, 7). On the town screen click the Artifact Merchants: the window opens on the artifacts bought. Press its button to the artifacts sold. Note the five backpack places shown.",
+    "Press the backpack's right arrow once. Note the five places shown. Pick the first of them, then gold: note the offer (the gold the window says it gives).",
+    "Press Trade. Note Red's gold gained, TWN-6-3's backpack and the five places shown. Close the window and the town.",
+]
+record = [
+    { field = "before: TWN-6-3's backpack; Red's treasury" },
+    { field = "screen 3 as it opened: the places shown; the count" },
+    { field = "after the right arrow: the places shown; the first place picked with gold: the offer" },
+    { field = "after Trade: the gold gained; TWN-6-3's backpack; the places shown" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§2.4, T-20): six artifacts, so the five places start at the backpack offset
+  and the arrows move it; every rate reads backpack place *p* − 18 without the offset, the removal
+  adds it. After one arrow the first place shows another artifact than Titan's Gladius (backpack
+  place 1, or 5 if that arrow moves the offset back), **the offer is Titan's Gladius's price**
+  (10 000 × A at Red's count 8: 0.55, **5 500 gold**), and the Trade pays 5 500 and **removes the
+  artifact shown** (a 1 000-gold one), Titan's Gladius stays at place 0.
+- **Otherwise** (the offset applied to both, as VCMI's one backpack index; §9 did not compare the
+  screen): the shown artifact's price (1 000 × 0.55: 550) and the shown artifact removed.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [7, 9]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+backpack = ["Titan's Gladius", "Badge of Courage", "Crest of Valor", "Glyph of Gallantry", "Speculum", "Spyglass"]
+
+# --- TWN-6-5: a garrison hero and no visitor ----------------------------------------------------------
+
+[[encounter]]
+id = "TWN-6-5"
+title = "A garrison hero and no visitor (TD-28): the merchants, the Freelancer's Guild, the Blacksmith, the Ballista Yard and the Marketplace clicked"
+questions = ["TD-28", "T-28", "TWN-MKT-002", "TWN-SMT-001"]
+procedure = [
+    "Red's turn, day 1, after TWN-6-3: TWN-6-3 is T1's visitor. Open T1 from the town list. Move TWN-6-3 into the garrison (its portrait, then the garrison's): T1 has a garrison hero and no visitor.",
+    "Click the Artifact Merchants: note the message (its text) and whether a window opens; close it. Click the Marketplace: note the window's screen and its buttons to the other screens. Close the window and the town.",
+    "TWN-6-5 stands south of S1 at (15, 9): walk onto the entrance (15, 7). On the town screen move TWN-6-5 into the garrison. Click the Freelancer's Guild, the Blacksmith and the Ballista Yard in turn: note each message and whether a window or dialog opens. Click the Marketplace: note the window's screen and its buttons. Close the window and the town.",
+]
+record = [
+    { field = "T1: the visitor and the garrison hero after the move" },
+    { field = "T1: the Artifact Merchants clicked: the message; a window" },
+    { field = "T1: the Marketplace clicked: the screen; its buttons" },
+    { field = "S1: the visitor and the garrison hero after the move" },
+    { field = "S1: the Freelancer's Guild clicked: the message; a window" },
+    { field = "S1: the Blacksmith clicked: the message; a dialog" },
+    { field = "S1: the Ballista Yard clicked: the message; a dialog" },
+    { field = "S1: the Marketplace clicked: the screen; its buttons" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§2.1, §4.2, §4.6: each entry reads only the town's visitor +0x10): the
+  merchants (17), the guild (21), the Blacksmith (16) and the Ballista Yard (22) each show
+  **GENRLTXT 274** ("only a visiting hero may use" the building) in an OK box and open nothing.
+  The Marketplace (14) opens on **screen 0 with only the transfer's button** (17): no button to
+  the artifact screens (18) at T1, none to the creature screen (20) at S1 (`market_hero` none).
+- **VCMI** (§9, TD-28): the garrison hero is served: the merchants' window opens on the
+  artifacts bought, the guild's on the creatures sold, the Blacksmith's and the Ballista Yard's
+  dialogs open; the Marketplace's window reaches the artifact or creature screen.
+"""
+[encounter.hero]
+type = "Tyris"
+specialty = "creature Cavalier"
+at = [15, 9]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-6-4: a combination artifact sold (Blue's turn) --------------------------------------------
+
+[[encounter]]
+id = "TWN-6-4"
+title = "Ring of the Magi sold at 1 Marketplace (§3.4): the price of a combination artifact"
+questions = ["HER-ART-008", "TWN-MKT-005"]
+procedure = [
+    "Blue's turn, day 1. Note TWN-6-4's backpack (Ring of the Magi alone).",
+    "TWN-6-4 stands south of B at (23, 32): walk onto the entrance (23, 30). On the town screen click the Artifact Merchants, then the window's button to the artifacts sold. Pick Ring of the Magi (the first backpack place), then gold: note the offer and the count. Close the window and the town without trading.",
+]
+record = [
+    { field = "before: TWN-6-4's backpack; Blue's treasury" },
+    { field = "Ring of the Magi with gold: the offer; the count" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The reading** (§3.4: `artifact_table_load` sets a combination's blank cost to its parts'
+  sum, Ring of the Magi 3 000; §2.4: max(1, f32(f32(cost × A) / 1)) rounded, A = 0.2 at Blue's
+  count 1): **600 gold**.
+- **Otherwise** (a blank cost read as 0): 1 gold (the rate's minimum). VCMI (§9): fixed costs
+  equal to the parts' sum, 600.
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+owner = "blue"
+at = [23, 32]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+backpack = ["Ring of the Magi"]
