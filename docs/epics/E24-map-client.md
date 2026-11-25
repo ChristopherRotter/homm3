@@ -191,8 +191,10 @@ clock and the battles as the original's.
   through a battle and the panel after a retreat (**done** 2026-11-24: the log's "M5 T1a",
   design §5.22), T1b MCL-Q51 (**done** 2026-11-25: the log's "M5 T1b", design §5.23; the
   hand test's notes, still blank, wait for T2), T1c MCL-Q52 (**done** 2026-11-25: the log's "M5
-  T1c", design §5.24); T2, the
-  layering (no behaviour changed); T3, the session in-process; T4, live input through the
+  T1c", design §5.24); T2, the layering (no behaviour changed), cut in three by the user at its
+  start: T2a the binary's adapters moved into `h3-map-client` (**done** 2026-11-25: the log's "M5
+  T2a"), T2b play's entry for the shell and the client lane's move queued, T2c one record reader
+  shared with the client lane; T3, the session in-process; T4, live input through the
   engine; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game; T8, M5's
   closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
@@ -260,3 +262,9 @@ M1's review lists (three reviewers, T6b; the list accepted), M2's (accepted at T
 (six reviewers at T7, the list accepted at T7c1) and M4's (six reviewers at T6, the list
 accepted at M5 T0 with the user's six answers): `E24-archive.md`. Later milestones add theirs
 here.
+
+**M5's** (queued for its closure, T8):
+
+- `h3-map-client` left out of the client workspace's coverage gate as `h3-battle-client` is
+  (`clients/scripts/check.sh`; M5 T2a): its code was `h3-map-view`'s binary, under `/src/bin/`,
+  out of the gate already; its own tests, `window --check`, `drawn` and the records exercise it.

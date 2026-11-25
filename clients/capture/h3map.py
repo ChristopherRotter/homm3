@@ -75,7 +75,7 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       run of an earlier `frames` (its screens, its live part) and only compares again. <dir>
       defaults to clients/out/map-frames.
 
-Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-view` (from clients/).
+Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-client` (from clients/).
 """
 
 import hashlib

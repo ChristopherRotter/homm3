@@ -1464,3 +1464,32 @@ one by one at the user's asking, a recommendation each); the epic's decisions 20
 
 **Next:** T53, the ADR amendment drafts (`docs/lanes/town/adr-drafts/*-increment-6.md`), the design
 note's Part H from §101, the cut and the exit criteria, with §10's open points for T53.
+
+## 14. Batch TWN-6's results (T54, 2026-11-25)
+
+Run by an agent on the capture harness (the same Complete 4.0 `Heroes3.exe` under Wine, without
+the HD mod; hot seat, Easy, the starting bonus Gold), each part twice in new games: specs
+`experiments/specs/E09-batch-6a.toml` (rows 1, 3, 4, 5), `-6b.toml` (row 2: Red and Blue allied,
+Tan the computer's), `-6c.toml` (row 8, day 1 to day 29), `-6d.toml` (rows 6, 7), recipes
+`clients/capture/batches/E09-batch-6a.toml` to `-6d.toml`, the filled templates
+`experiments/results/E09-batch-6a.md` to `-6d.md` and their `-run2.md`. Every row as the code
+reading, in both runs:
+
+| Row | Observed (both runs) | Verdict |
+|---|---|---|
+| TWN-6-1 | T1's Marketplace with no visitor opens on screen 0; count 2, 4, 8 (after the Marketplaces built in C1 and C2, then C3 to C6: each town's standing set gains 14): **1 wood for 37, 62, 112 gold**, 1 ore the same | **D-70 the reading** (and the wiki's table); VCMI's 38, 63, 113 refuted |
+| TWN-6-2 | at Blue's Tower (an ally's), Red's visitor: the Marketplace opens nothing, no message; the merchants open on screen 2 with **count 0**; entries 0 and 6 priced **0 gold**, most 0, amount 1, Trade enabled; the Trade gives the major (worn), **Red's treasury unchanged**, the entry empty in the window and the stock | **TD-29 the reading, T-19 confirmed** (the current player's count, free at 0); VCMI's owner's count refuted |
+| TWN-6-3 | screen 3 at Red's count 8: offset 0, the places Titan's Gladius to Speculum; the right arrow (item 131): offset 1, the places Badge of Courage to Spyglass; place 18 with gold offers **5 500 gold** (Titan's Gladius's price, 10 000 × 0.55); the Trade pays 5 500 and **removes Badge of Courage** (shown at 18), Titan's Gladius stays | **T-20 confirmed**: the price of backpack place 0, the removal of the place shown |
+| TWN-6-4 | Ring of the Magi (backpack) at Blue's count 1: **600 gold** | §3.4 the reading (the combination's cost its parts' sum, 3 000) |
+| TWN-6-5 | with a garrison hero and no visitor: the merchants (T1), the Freelancer's Guild, the Blacksmith and the Ballista Yard (S1) each **GENRLTXT 274** in an OK box, nothing opened; the Marketplace at both: screen 0 with only the transfer's button (17), count 8 | **TD-28 the reading, T-28 confirmed**; VCMI's garrison hero refuted |
+| TWN-6-6 | F's spot (9, 11) (the left tile; the right one water too); the first Build: a boat on (9, 11), 1 000 gold and 10 wood (taken after the ship's build shows), standing 6, 10, 20, 23; reopened, the ship's click opens nothing; at **(233, 341) the boat dialog**; its Build: **a second boat on (9, 11)**, two records there, (11, 11) empty, 2 in use, 1 000 gold and 10 wood more | **TD-31 the reading, T-21 confirmed** (one fixed spot, never tested); VCMI's second tile refuted |
+| TWN-6-7 | the map banning Fire Magic: the University's slots **Fire learnable (GENRLTXT 608)**, Air known (605), Water and Earth learnable (608); Fire's click opens the purchase box, buy enabled (5 000 gold); the purchase teaches **Fire Magic at Basic** for 2 000 (5 000 to 3 000), Fire's slot then known (605) | **TD-30 the reading, T-23 confirmed**; VCMI's ban refuted |
+| TWN-6-8 | day 1: three treasures, **the three unplaced minors** (Rib Cage, Ring of Life, Boots of Speed, in another order each run), one major; none of the 18 placed; entry 0 bought at count 1 (**5 times its cost**: 5 000 and 10 000 gold for costs 1 000 and 2 000), the entry empty; day 29 (month 2, day 1): all seven redrawn, entry 0 refilled, the treasures none of day 1's, the minors from all 21 (run 1: two of day 1's and a placed one; run 2: three placed ones), the major another | **§3.1, §3.2 the reading, D-32 the code's** (placed artifacts excluded while the pool lasts, the reset frees them); VCMI's refuted |
+
+**The spec's slips, not the game's:** TWN-6-8's prediction priced the purchase at 2.5 times the
+cost, the five Marketplaces' factor (`E08-trades.md` §4); the reading's formula at count 1 (cost /
+0.2) gives the 5 times observed. Its minors "in the draw's order" are a draw: the set is the
+reading's, the order the stream's. **Not predicted, nothing for the engine:** the town's boat is
+paid only after the ship's build animation (the harness waits for it); a placed hero carries a
+Catapult. **For T55:** the drafts' verdicts as decided (decisions 201 to 206); TWN-6-5 confirms
+T-28 and TWN-6-7 T-23, so `TWN-QUIRK-15`'s and `-16`'s flags may be added (T55b).

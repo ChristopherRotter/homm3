@@ -12,28 +12,31 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
 "Later". Every task's cut is confirmed with the user at its start. Planned ids: `MCL-STUB-5` (a
 computer colour's turn ended at once, T3), `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was cut
-in three at its start (T1a to T1c done 2026-11-24 and 25).
+in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a done 2026-11-25).
 
-### E24 M5 T2 — the layering: `h3-map-client` and the shell's crate (no behaviour changed)
+### E24 M5 T2b — play's entry for the shell (the layering's second part; no behaviour changed)
 
-- **Scope:** first the user's notes of M4's hand test, if written by then
-  (`clients/out/win/map-m4-notes.txt`, still the blank template at T1a and T1b): each finding a
-  question or a task. Then the map's window loop, painter, sound player and battle hosting move from
-  `h3-map-view`'s binary into a new adapters library **`h3-map-client`** (this lane's, under
-  `clients/crates/h3-map*`), with a play entry the shell can call (its input `begin::Game`'s
-  setup and names, the window and sound lent, play's end handed back: Main Menu, Load, Restart,
-  Quit, as E27 M5 will need), the `h3-map-view` binary a thin host of it; `h3-map-view`'s library
-  stays pure. With the client lane (its inbox, 2026-11-24): the shell moved out of
-  `h3-battle-client` into a crate of its own on top, whose binary is the player's program and
-  which calls `h3-map-client`'s play (the client lane's task; this lane's API agreed with it
-  first); one record reader shared by both lanes (`h3_view::game_record` and `h3-map-view`'s own:
-  the place, in the common foundation or beside the server's writer, agreed with the client lane
-  and, beside the writer, the server lane).
-- **Acceptance:** every situation, sequence and record plays as before (`drawn` all the same,
-  the 66 golden records to their end, the window under Xvfb); `check.sh`; the coverage of the
-  moved code; the client lane's move queued with the API it calls.
-- **Depends on:** T1 (or alongside it). **Status:** queued; a new crate (the user's decision at
-  T0, the decision's place in the epic).
+- **Scope:** `h3-map-client` (T2a: the binary's adapters as a library) gains a play entry the
+  shell can call: its input `begin::Game`'s setup and names, the window and sound lent, play's
+  end handed back (Main Menu, Load, Restart, Quit, as E27 M5 will need); the `h3-map-view`
+  binary stays a thin host of the library. With the client lane (its inbox, 2026-11-24): this
+  lane's API agreed with it first; the shell moved out of `h3-battle-client` into a crate of its
+  own on top, whose binary is the player's program and which calls `h3-map-client`'s play (the
+  client lane's task, queued in its inbox with the API it calls).
+- **Acceptance:** the entry's tests; every situation, sequence and record plays as before
+  (`drawn` all the same, the golden records as T2a left them, the window under Xvfb);
+  `check.sh`; the client lane's move queued with the API it calls.
+- **Depends on:** T2a (done). **Status:** queued; T2 cut in three by the user at its start
+  (2026-11-25).
+
+### E24 M5 T2c — one record reader shared with the client lane (the layering's third part)
+
+- **Scope:** one record reader shared by both lanes (`h3_view::game_record` and `h3-map-view`'s
+  own): the place, in the common foundation or beside the server's writer, agreed with the
+  client lane and, beside the writer, the server lane; both lanes' readers moved onto it.
+- **Acceptance:** as T2b's (`drawn` all the same, the golden records as before, the window under
+  Xvfb, `check.sh`), and the client lane's record tests as before.
+- **Depends on:** T2a (done); alongside T2b. **Status:** queued.
 
 ### E24 M5 T3 — the session in-process
 
@@ -49,7 +52,8 @@ in three at its start (T1a to T1c done 2026-11-24 and 25).
 - **Acceptance:** a two-human game on a shipped map begun from the shell, each End Turn passing to
   the next human's view; each seat's record played by the record player as the game went; the
   scoped verify.
-- **Depends on:** T2; the client lane's shell crate for Begin (until then a command line start).
+- **Depends on:** T2b (play's entry); the client lane's shell crate for Begin (until then a
+  command line start).
   **Status:** queued.
 
 ### E24 M5 T4 — live input through the engine
@@ -116,6 +120,34 @@ in three at its start (T1a to T1c done 2026-11-24 and 25).
 - **Depends on:** T7. **Status:** queued.
 
 ## Inbox
+
+- 2026-11-25 (the ai lane, E31 T2a, `ai/e31-t2a`; **the entry point for `MCL-STUB-5`, for your
+  planning**): the original's computer player is `h3_game::computer::choose(&GameState,
+  &GameRuleset, PlayerId, &mut Memory, &mut Rng) -> Option<GameCommand>` (ADR-0030 point 2):
+  one command a call, which the host applies as `Actor::Player(player)` and then calls again,
+  for every computer colour each time the game changes (it answers that colour's open decisions
+  in any player's turn; `None` outside its turn, while another player's level-up holds the game,
+  and for a battle). A battle's computer side is the host's: `h3_battle_ai::choose(battle,
+  rules.battle(), side, rng)` as the colour's `GameCommand::Battle`, for the side it owns while
+  that side is to act (`OpenBattle::owners`, `side_to_act`). The host keeps one
+  `h3_game::computer::Memory` per computer colour (a plain value: `Memory::encode` / `decode` for
+  a saved game, ADR-0030 point 5) and a stream of its own per colour (never the game's; e.g.
+  `Rng::for_stream(seed, StreamId::seat(index))`). A turn ends with the policy's `EndTurn`.
+  `h3_sim::computer::play` is a host of every colour to read (`crates/h3-sim/src/computer.rs`).
+  As of T2a a computer hero does nothing but its town's garrison moves (each hero done at once,
+  `AI-STUB-2` until E31 T2i and T2j), and its decisions take `default_answer`; the commands are
+  legal on every shipped map. For M4's review item 6 (how the original shows a computer's turn):
+  `ai_hero_turn` 0x5261F0 selects and centres the hero when the viewer sees its tile or a
+  neighbour and neither Blackout Computer nor a network game hides it (survey
+  `E31-computer-player.md` §1.3 step 3).
+
+- 2026-11-25 (this lane, E24 M5 T2a; **for T7's whole game**): of the 236 player records the 118
+  golden adventure replays now give, 205 play to their end in `h3-map-view record`, the same
+  on `master`'s binary (every timeline identical): 24 are the duel's and the army's maps (no
+  original template), and 7 of the replays added since M4 T6 stop in the record player: the
+  `teleporters-s1711-d28`, `-s2002-d28` and `-s2647-d28` walks (a path through a teleporter:
+  "no path"), `taverns-hires-s1` player 0 (a hired hero's walk: "no path") and `builds-rows-s1`
+  player 0 ("a record's walk … of a hero not listed"). The record player's (M4 T4c), not play's.
 
 - 2026-11-25 (the adventure lane, E08 T143a; **for your planning, nothing blocks**): protocol
   v83 casts Summon Boat and Scuttle Boat. A cast's `SpellCast` now comes before its effect's

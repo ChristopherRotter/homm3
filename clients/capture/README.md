@@ -34,7 +34,7 @@ adventure).
 | `test_h3map.py` | The same for `h3map.py` and `h3lod.py` (E24 M4 T6): the staging's checks and writes, `frames`' kept live parts, the engine's binaries checked, the kept texts' alphabet against `h3-map-view`'s `tests/texts.rs`: `python3 -m unittest test_h3map` from here. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
-| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`); since E08 T90 the dwellings' records, the players' teams, the map objects' class and subclass, a tile's blocked and visitable bits, a Refugee Camp's words, the hire dialog (`dwellings`, `teams`, `objects`, `access`, `camp`, `recruit_dialog`), the status bar's text, a player's human flag. |
+| `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`); since E08 T90 the dwellings' records, the players' teams, the map objects' class and subclass, a tile's blocked and visitable bits, a Refugee Camp's words, the hire dialog (`dwellings`, `teams`, `objects`, `access`, `camp`, `recruit_dialog`), the status bar's text, a player's human flag; since E09 T54 the Artifact Merchants' stock and the town screen's town (`stock`, `screen_town`). |
 | `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a), since E09 T3b the map started anew within a batch (`new_game`), a battle won by a list of targets, the towns' records read and the town screen noted and closed, since E08 T100a Replay Opponent Turn played on the frozen clock and a step played only on a tile; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
 | `h3shell.py` | The game shell's screens (E27 M1 T2): recipes from the game's start to each screen outside play on a clock frozen from the first read, each recorded twice and compared, their digests kept; `run`, `play`, `learn`, `list`; `drawn`, the viewer's frames of each recipe against the kept digests, without Wine (E27 M2 T4). Below, "The shell's screens". |
@@ -91,7 +91,7 @@ alter (the user, 2026-10-20):
    worktree of `master`), before the task's own change.
 
 **The map's stills** (E24 M1 T6a, the map client lane) follow the same rules with their own
-tools, from `clients/` after `cargo build --release -p h3-map-view`: 1. `python3
+tools, from `clients/` after `cargo build --release -p h3-map-client`: 1. `python3
 capture/h3map.py drawn` (no Wine; about a minute) draws each situation of
 `map/situations/set.toml` with the live part its last capture kept (`map/situations/kept/<id>.toml`,
 the still's `live.toml`: numbers and the DEFs' names) and compares the digest of its pixels
@@ -1234,6 +1234,39 @@ pool marked reserved but the named heroes' types: a map that allows no other typ
 screen's `click = ["dismiss"]` (129) asks GENRLTXT 23; `answer = "yes"` dismisses. A record's
 field `<encounter>|<field>` fills another encounter's field (one step's reads for two rows).
 
+**The town's trades** (E09 T54, batch TWN-6; survey `docs/rules/surveys/E09-trades.md` §2 to
+§6). A town screen's `building = <id>` clicks where the status line (item 151) names the
+building (its faction's names; the centre, then a grid 8 pixels apart from the middle out: the
+click goes by the screen's word map) and waits for what `opens` names: `hire` (the default),
+`market`, `message` (recorded, `messages`, its OK clicked), `boat`, `university` or `nothing` (the
+town screen still there 1.5 s later); another screen stops the batch. `pixel = [x, y]` clicks one
+pixel once the status line changed over it (the Fortress's dock at (233, 341), the one pixel of
+the Shipyard the ship leaves), the same `opens`. **The trade window's screen 3** (the artifacts
+sold, vtable 0x643AAC): `sell` its button 19, `position:<n>` its place n (the frame 107 + n over
+the picture 84 + n, its frame the artifact drawn: 0 to 17 the worn positions, 18 to 22 the
+backpack's five places), `backpack left` 130 and `backpack right` 131; `market:places` the five
+places as drawn (`18: Titan's Gladius, …`, `empty`), `market:offset` the backpack offset 0x6AAA70
+(u8); a place's pair and rate name the artifact drawn there. `stock` the Artifact Merchants'
+seven (game +0x1F664: `Badge of Courage (treasure), …`, `empty` a bought entry), `stock:classes`
+their classes counted, `town:x,y:spot` the boat spot (+0x8, +0x9: `9,11`; `none` for 0xFF). **The
+Magic University** (vtable 0x643BD8, `university_dialog` 0x5EF500; its purchase box the same
+dialog, kind `university_buy` while the box's background, item 117, shows): slot k (0 to 3: Fire,
+Air, Water, Earth Magic) is the skill's picture 104 + 3k (secskill.def, frame 3 x skill + 3), the
+banners under its name and its `Basic` 105 + 3k, 106 + 3k (frame 1 green, learnable; 0 gold),
+close 116, the status line 126; the box: the name 118, the picture 119, `Basic` 120, the tuition
+121 (GENRLTXT 609), the gold 122, 123, buy 124 (hovered GENRLTXT 610), cancel 125 (258).
+`click = ["slot:fire"]` (`air`, `water`, `earth`: the slot whose picture shows it; `slot:<n>`),
+`["buy"]`, `["cancel"]`, `["close"]`; `university` reads the four in an action's record, each
+slot's status line hovered (`Fire Magic: learnable (GENRLTXT:608; banner 1)`: 605 known, 606
+cannot learn, 607 no more skills, 608 learnable), `university:buy` the buy button (`enabled
+(state 0x6)`, `disabled (state 0x26)`), `hover = "slot:air"` one slot's record. The walk and a
+`town` step close a trade window by its OK, a boat dialog by its Cancel, the purchase box by its
+cancel, the University by its close. Observed under Wine (batch TWN-6): the right arrow 131 moves
+the offset from 0 to 1, as the hero screen's; below 2 000 gold buy reads 0x26 and a press does
+nothing; a purchase or a cancel hides the box and the slots read again; the town's Shipyard
+shows the ship's build before it takes the price, so a `build` in its boat dialog waits for the
+treasury to change (at most 8 s, `BOAT_PAYMENT`) before the reads.
+
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
 records its probes from the part of the screen that tells it apart (`--also`: the same screen in
@@ -1244,7 +1277,7 @@ button that shows in more than one place (a dialog's OK): `python3 capture/h3adv
 
 **The map's stills** (E24 M1 T3b2, T4a, T4b, T5a, T5b1, T5b2, T6a, the map client lane;
 `docs/epics/E24-design.md` §1.10, §2.6 to §2.10; the lists since E24 M3 T4a, §4.5): from
-`clients/`, after `cargo build --release -p h3-map-view`,
+`clients/`, after `cargo build --release -p h3-map-client`,
 
 ```
 python3 capture/h3map.py set [--only <id>]                       # the map's capture set
@@ -1345,7 +1378,7 @@ is exact; `set.toml` records the counts. The menus run in real time, so each run
 never assumed.
 
 **The map's sequences** (E24 M2 T1a1, the map client lane; `docs/epics/E24-design.md` §3): from
-`clients/`, after `cargo build --release -p h3-map-view`,
+`clients/`, after `cargo build --release -p h3-map-client`,
 
 ```
 python3 capture/h3map.py frames [--only <id>] [--out <dir>] [--reuse]   # the recorded sequences

@@ -1,20 +1,10 @@
 //! `h3-map-view`: the adventure map client's command line (E24). An adapter: it reads files and
-//! prints; what it computes comes from the pure library.
-
-mod audio;
-mod battles;
-mod files;
-mod gate;
-mod paint;
-mod records;
-mod render;
-mod sequences;
-mod situation;
-mod sounds;
-mod texts;
-mod window;
+//! prints; what it computes comes from the pure library. Its commands are `h3-map-client`'s (this
+//! binary's modules until E24 M5 T2a), this binary one host of them.
 
 use std::process::ExitCode;
+
+use h3_map_client::{gate, records, render, sequences, situation, window};
 
 const USAGE: &str = "\
 usage: h3-map-view <command> [options]

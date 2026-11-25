@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23 (T1a1a; refined 2026-11-21, AI-Q22); increment 1 closed
 2026-11-24 (AI-Q31), increments 2 to 7 cut; increment 2 refined 2026-11-25 (AI-Q32: ADR-0030
-accepted, eleven tasks), T2a next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
+accepted, eleven tasks), T2a done, T2b next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
 fair system actor) for battle · Prerequisite of E13 (its target and ladder opponent) ·
 Consumers: the env (a computer seat), the server (a computer player in a hosted game), the shell
 (a game's computer players), the adventure lane (ADV-STUB-8, ADV-STUB-9)
@@ -169,3 +169,9 @@ are the original's, from `docs/exe/map.toml`'s sizes.
 ## Tasks done
 
 Increment 2's (increment 1's: `E31-archive.md`).
+
+- **T2a** (2026-11-25): the frame: `h3_game::computer::choose`, `Memory` (encoding v1),
+  `POLICY_VERSION` 1, the turn's passes, the order of heroes, a hero's turn with its garrison step
+  (CPU-TRN-001 to -005; AI-STUB-2 to -6); `h3_sim::computer::play` and its property tests on the
+  generated maps at every difficulty, every shipped map in the original-data check; `h3 ai
+  computer`, the workload `computer-turns-towns-36`. Record: `E31-log.md` T2a.

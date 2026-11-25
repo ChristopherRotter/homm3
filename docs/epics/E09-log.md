@@ -6413,3 +6413,55 @@ questions next `TWN-Q38`; decisions next 218; disputes `TD-32`; quirk candidates
 origin/master` ok; `cargo xtask verify --scope town --summary` with no failing step (coverage 24.9
 minutes, determinism 10.0, bench-check 16.8; `deny` and `ffi-smoke` skipped by the scope; no
 original data staged). CI on the pull request is the record.
+
+### T54 — batch TWN-6: the specs, the harness's reads, the runs, the scoring (2026-11-25)
+
+Decision 198's third round (§118 round 2), kept whole at its start (the user, decision 218: "no
+cut, use subagents efficiently as needed"; the agent had proposed T54a the Marketplace and the
+merchants, rows 1 to 5 and 8, then T54b the Shipyard and the University, rows 6 and 7); `cross-lane`
+consented (`h3-experiment` and `docs/experiments/README.md`, the battle lane's; the harness is
+common). Branch `town/e09-t54`. Starting point: `master` at 6498273 (#1168 merged; CI green on
+`master`'s run there); the setup's full baseline was lost to a VM restart mid-run, CI's run stands
+for it. The user's computer was offline for the first hour (the specs, the recipes and the
+harness code written meanwhile), then connected: 17 files of `original-data/` staged (the four
+LODs, the executable, the five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, `maps.tar`,
+`extracted.tar`), the sizes checked.
+
+- **The spec** (`h3-experiment`, `cross-lane`): a Conflux's `artifact merchants` (bit 10) and
+  `magic university` (bit 18), the AB pack's slots (VCMI's table has none); test
+  `a_conflux_town_may_have_its_merchants_and_university`; the format in
+  `docs/experiments/README.md`.
+- **The specs** `E09-batch-6a.toml` (stamp `1655a41f`: rows 1, 3, 4, 5; Red's eight towns, Blue's
+  Tower), `-6b.toml` (`011092b2`: row 2; Red and Blue one team, Tan the computer's), `-6c.toml`
+  (`182c5f36`: row 8; 18 of the 21 minors placed, day 1 to day 29), `-6d.toml` (`d22528b3`: rows 6
+  and 7; Fire Magic banned, a Fortress's coast); their templates and recipes
+  (`clients/capture/batches/E09-batch-6a.toml` to `-6d.toml`).
+- **The harness** (common; `clients/capture/README.md`, "The town's trades"): the town screen's
+  `building = <id>` with `opens` (`hire`, `market`, `message`, `boat`, `university`, `nothing`;
+  clicked where the status line names the building) and `pixel = [x, y]`; the trade window's
+  screen 3 (vtable 0x643AAC, read in `market_sell_artifact_create`; `sell`, `position:<n>`, the
+  arrows 130 and 131, 131 moving the offset +1; `market:places`, `market:offset`); `stock` and
+  `stock:classes` (game +0x1F664); `town:x,y:spot`; the University's dialog (0x643BD8: the slots'
+  pictures 104 + 3k, the purchase box 117 to 125 in the same dialog, kind `university_buy`;
+  `university`, `university:buy`); the town's boat paid after the ship's build shows (awaited).
+  The live work, the University's items and the runs by one sub-agent (decision 218); the harness
+  check and its unit tests pass.
+- **Run** twice each, the filled templates in `experiments/results/` (`E09-batch-6a.md` to `-6d.md`,
+  `-run2.md`). **Scored** (survey `E09-trades.md` §14): every row as the code reading in both
+  runs: D-70 (37, 62, 112), TD-28 (GENRLTXT 274 at the four buildings), TD-29 (count 0, free),
+  TD-30 (Fire Magic taught), TD-31 (a second boat on the one spot), §3.4 (600), §3.1 and §3.2 (the
+  unplaced minors, all seven redrawn), D-32 the code's; **T-19, T-20, T-21, T-23 and T-28
+  confirmed**, so T55b may add `TWN-QUIRK-15`'s and `-16`'s flags. Two slips of the agent's own
+  predictions, not of the game: TWN-6-8's purchase at 2.5 times the cost (the five Marketplaces'
+  factor; count 1 gives the observed 5 times) and its minors' order (a draw).
+- **Address map:** `market_sell_artifact_vtable` 0x643AAC. No version moved; no rule's status
+  changed (increment 6's rules are written from T55 on). Ids: decisions next 219; experiment batch
+  next TWN-7.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` on the branch (with
+`master`'s 92fb75c merged in): every step passes but `check-lane` (by design for a `cross-lane`
+branch; `cargo xtask check-lane --cross-lane --base origin/master` ok): coverage 26.2 minutes
+(the first run, before a `rustfmt` of the new test's assertion; the second run with `--skip
+coverage`), test 17.1, determinism 10.4, bench-check 19.6, original-data 1.1; `deny` and
+`ffi-smoke` skipped by the scope. The harness's own check and its unit tests pass. CI on the pull
+request is the record.

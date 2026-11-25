@@ -4,7 +4,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **Opened 2026-10-18** (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` too since E08 T45, but `replay.rs`), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05, E06 and E25 (`lanes.toml`).
+- **Opened 2026-10-18** (AI-Q1): the lane owns `h3-sim` (its `src/adventure/` too since E08 T45, but `replay.rs`), `h3-ffi`, `h3-cli`'s `src/ai/`, `python/`, `benches/ai/`, E05, E06 and E25; since AI-Q31 `h3-game`'s `src/computer/` and E31 (`lanes.toml`).
 - **E05 closed 2026-10-20**: its record and design in `E05-log.md` (cited as §n), the
   environment as built in `docs/07-simulation-and-ai.md` §1.1.
 - **E06 closed 2026-10-27** (AI-Q8; `docs/epics/E06-battle-ai.md`, record and design note
@@ -32,11 +32,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1163 (`shared/e31-module`, `cross-lane`: the module's paths, `SignedX87`, ADR-0030; merges first), then #1164 (`ai/e31-t2`: increment 2's cut, docs only). Merged: #1158 (T1b), #1150 (T1a4), #1145 (T1a3d).
+- **Open pull requests:** #1172 (`ai/e31-t2a`: T2a, the frame). Merged: #1163 (the shared
+  module PR), #1164 (increment 2's cut), #1158 (T1b).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
-  v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q33, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-2.
+  v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
+  encoding v1 (`MEMORY_ENCODING_VERSION`, E31 T2a) (`docs/08-work-process.md`, "Versions"). Next
+  ids: AI-Q33, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-7.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
@@ -46,17 +48,29 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   classified). **ADR-0030** (accepted 2026-11-25, AI-Q32): a module `h3_game::computer` of
   `h3-game` for now, refactored into a crate later; the memory the policy's; every battle fought
   until the battle lane decides; `SignedX87`; AI-QUIRK-1 for the slips. **Increment 2 refined**
-  (AI-Q32): eleven tasks T2a to T2k (the epic file), about 26 000 of the original's instructions;
-  the `shared/` pull request #1163 first. **Next: T2a, the frame** (`QUEUE.md`), `Heroes3.exe`
-  staged for the blind re-reads. Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
-  done whole.
+  (AI-Q32): eleven tasks T2a to T2k (the epic file), about 26 000 of the original's instructions.
+  **T2a done** (2026-11-25): `h3_game::computer::choose`, `Memory`, the turn's frame with each
+  hero done at once (AI-STUB-2 to -6), `h3_sim::computer::play` (the property tests, every
+  shipped map at every difficulty in the original-data check), `h3 ai computer` and the workload
+  `computer-turns-towns-36`. **Next: T2b**, the simulated combat's sides and melee (`QUEUE.md`),
+  `Heroes3.exe` staged for the blind re-reads. Then E13 (refined in shape,
+  `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
 
-Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
+Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **The computer player (E31)** (its coverage, its workload, the memory), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-25 — E31 T2a: the frame
+
+- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
+  the user's repo folder before the bridge dropped (enough for the task and its verify). Measured
+  3.8 KB, about 1 400 instructions: done alone. The blind re-reads of the three frame functions
+  agreed with the survey. CI green on `master` stood for the setup's baseline. The scoped verify
+  with the original data; the shared `benches/README.md` row for the new workload waits for the
+  lane's next `shared/` pull request.
 
 ### 2026-11-25 — E31 increment 2's start: the shared pull request, the measurement, the cut
 
@@ -75,13 +89,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   checked by the main session. The setup's baseline stopped (CI green on `master`); the scoped
   verify without original data. The checkpoint in two `AskUserQuestion` rounds (AI-Q31); the
   README's row in `shared/e31-increment-1`.
-
-### 2026-11-24 — E31 T1a4: the rest of the code, in three
-
-- A cloud clone, `Heroes3.exe` staged from the user's repo folder. T1a4 measured about 3 500
-  instructions plus the lists, so the cut asked (AI-Q29): three parts; two general-purpose
-  sub-agents read T1a4a (the artifact effects) and T1a4b (the initialisers, the leftovers) one
-  after the other, each in its own worktree (only `map.toml` and `structs.toml`, its survey text to
-  a scratch file); the main session made the lists (T1a4c) and merged. A VM restart killed the
-  setup's baseline (CI's run on `master` stands for it); the scoped verify without original data.
-  The pull request: #1150.
