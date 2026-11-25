@@ -1,0 +1,8 @@
+# Computer rules (context `computer`, the module `h3_game::computer`; E31): the original's
+# computer player on the adventure map, ported from Heroes3.exe (SoD's code) as a policy outside
+# the game state. One id `CPU-<area>-nnn` per routine of the reading (the frame, the planning, the
+# walk, the values by family, the simulated combat, the towns, the hires, the answers), each with
+# its code reading's source (the survey's §) and its trace; values through `h3_kernel::arith`'s
+# `X87` and `SignedX87` (`numeric = "float"`). Format: docs/04-rules-and-sources.md §3. Survey:
+# docs/rules/surveys/E31-computer-player.md; ADR-0030 (points 9, 12). Created with ADR-0030's
+# `shared/` pull request (E31 increment 2); its rules come with increment 2's code.
