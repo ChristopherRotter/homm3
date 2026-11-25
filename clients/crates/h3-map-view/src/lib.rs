@@ -27,7 +27,8 @@
 //! thread (`h3_ui::music`, M2 T6a2). What both viewers share is the common crate `h3-ui`'s (E24
 //! M3 T1a: the clock, the cursor, the dialog items, the string catalogue, the key table, the
 //! music). The adapters (the gate,
-//! `render`, `situation`, `sequences`, `window`) are the binary's modules, not this library.
+//! `render`, `situation`, `sequences`, `records`, `window`) are `h3-map-client`'s, the
+//! `h3-map-view` binary's library since E24 M5 T2a, not this library.
 //!
 //! Pure: no I/O, clock, threads or globals, `no_std` + `alloc`; time is an input. The header below
 //! is checked by `tests/purity.rs`.

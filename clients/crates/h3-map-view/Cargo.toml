@@ -1,6 +1,6 @@
 [package]
 name = "h3-map-view"
-description = "The adventure map's viewer (E24): the map's static art, its live part, the asset tables and the screen's layout (pure, the library) and its adapters (the binary: the real-asset gate)."
+description = "The adventure map's viewer (E24): the map's static art, its live part, the asset tables and the screen's layout, pure (its adapters and the `h3-map-view` command line: `h3-map-client`, E24 M5 T2a)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -26,26 +26,13 @@ toml.workspace = true
 # What both viewers share (E24 M3 T1a): the clock, the cursor and its `Sprite`, the key table, the
 # music thread's model.
 h3-ui.workspace = true
-# The binary's adapters only (`tests/purity.rs`: the library never names them): the archives.
-h3-formats.workspace = true
-# The window (E24 M2 T4a): the platform adapter, the binary's only.
-h3-sdl.workspace = true
-# The music (E24 M2 T5): the terrain tracks' MP3s, decoded by the binary only (`h3-view`'s
-# decoder).
-nanomp3.workspace = true
-# The packs a record's rules are read from (E24 M4 T3a): the binary only (`render --record`).
-h3-files.workspace = true
-# A record's battles in the window (E24 M4 T5b1, the user's choice at its start: a dependency on the
-# client lane's crate, not a binary over both): the battle client's hosted element
-# (`window::Hosted`), its ground from a whole game's battle (`battle::Ground::load_battle`) and the
-# host's sound (`audio::HostSound`), the map's sound on it too; `h3-view` for the battle's record
-# (`game_record`), its keys and its combat options' settings. The binary only.
-h3-battle-client.workspace = true
-h3-view.workspace = true
 
 [dev-dependencies]
 # A player's id in the engine's tests (E24 M4 T3a: a game observed for Red).
 h3-contracts.workspace = true
+# The packs a record's rules are read from in the engine's tests (E24 M4 T3a; a dependency of the
+# binary until it moved to `h3-map-client`, E24 M5 T2a).
+h3-files.workspace = true
 
 [lints]
 workspace = true
