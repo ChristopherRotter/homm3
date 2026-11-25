@@ -82,7 +82,7 @@ fn cast(
     check(state, rules, store, (spell, mastery))?;
     let cast = untargeted(spell, mastery);
     let made = state.apply_cast(
-        (&rules.0, &rules.1),
+        (&rules.0, &rules.1, store),
         (RED, HERO),
         cast,
         &mut stream(),
@@ -290,17 +290,11 @@ fn a_boarding_clears_fly_and_water_walk_and_the_new_day_clears_every_spell() {
 
 // covers: ADV-SPL-001
 #[test]
-fn the_door_and_other_heroes_are_refused() {
-    // Dimension Door waits for E08 T143b (`ADV-STUB-22`); another player's hero or one off the
-    // map is not the caster's.
+fn other_heroes_are_refused() {
+    // Another player's hero or one off the map is not the caster's.
     let rules = hero_rules(true);
     let none = store(&[]);
     let state = spell_world(&rules, &["ggg", "ggg"], p(0, 0));
-    let door = AdventureSpell::DimensionDoor;
-    assert_eq!(
-        check(&state, &rules, &none, (door, 3)),
-        Err(CastError::NotBuilt(door))
-    );
     for (player, hero) in [(BLUE, HERO), (RED, HeroId::new(2)), (RED, HeroId::new(9))] {
         assert_eq!(
             state.check_cast(
@@ -312,18 +306,6 @@ fn the_door_and_other_heroes_are_refused() {
             Err(CastError::NotYourHero(hero))
         );
     }
-    let mut changed = state.clone();
-    let mut events = Vec::new();
-    let made = changed.apply_cast(
-        (&rules.0, &rules.1),
-        (RED, HERO),
-        untargeted(door, 3),
-        &mut stream(),
-        &mut events,
-    );
-    assert_eq!(made, Ok(()));
-    assert_eq!(changed, state, "an unbuilt spell's cast changes nothing");
-    assert!(events.is_empty());
 }
 
 // covers: ADV-SPL-002, ADV-MOV-006

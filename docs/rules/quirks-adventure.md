@@ -624,6 +624,19 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-game/src/tests/altar.rs`, `an_altars_visit_opens_its_decision_for_its_owner_until_it_is_left`
 - Decided by / date: the user 2026-11-18 (ADV-Q57 (2), E08 decision 366); built and recorded by E08 T134a
 
+### ADV-QUIRK-51 — Dimension Door's target reads hidden tiles
+- Class: fix-optional (the user, 2026-11-21, ADV-Q63, E08 decision 399; A-53)
+- Context / rules affected: adventure, ADV-SPL-008 (the door's target), ADV-SPL-009, ADR-0016 point 4 (the legal moves never depend on a hidden tile)
+- Original behavior: the door's target dialog (`door_target_create` 0x4916F0, `door_target_proc` 0x491900) shows its cursor over any tile of the view whose map item has neither bit 0x100 (blocked: an object's blocked tile, rock) nor 0x1000 (an entrance, a hero's tile), with no fog test: a hidden free tile is a target, a hidden blocked one is not, and the cursor tells which hidden tiles are free; a click on a hidden blocked tile is no cast and reveals nothing (survey `E08-spells.md` §8.2).
+- Intended/expected behavior: the targets depend only on what the player knows: an explored free tile, or any hidden tile in the window; at the cast a hidden target is revealed to the caster's player, that tile alone, and one that is blocked, an entrance or of the wrong kind fails, charged (the points, the spell points, the cast); a hidden free one of the hero's kind is the arrival (increment 15's design note §11.2).
+- Impact: information, rare: the cursor scouts the fog in a 19 × 17 window; the AI's legal moves would read hidden tiles.
+- Community status: not documented as a bug; VCMI 1.7.5 accepts hidden tiles (`ignoreFow`, `exposeFow` true), as the flag's on side.
+- Sources: code reading (E08 T137a, survey §8.2); observation: batch E15's E15-8 (the cursor on a hidden free tile, none on a hidden tree; the tree's click nothing; the door onto the hidden free tile and its reveal).
+- Flag: `quirk.adventure.door_reads_hidden`
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-adventure/src/state/tests/door.rs`, `a_hidden_target_reads_the_truth_under_adv_quirk_51_or_is_revealed_without_it`
+- Decided by / date: the user 2026-11-21 (ADV-Q63, E08 decision 399); the flag in the profiles by E08 T140; built by E08 T143b
+
 ### ADV-QUIRK-52 — Scuttle Boat's target reads hidden tiles
 - Class: fix-optional (the user, 2026-11-21, ADV-Q63, E08 decision 402; A-50)
 - Context / rules affected: adventure, ADV-SPL-004 (Scuttle Boat's target), ADR-0016 point 4 (the legal moves never depend on a hidden tile)
@@ -662,6 +675,32 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = on (`CastError::AlreadyOn`), strict-fixed = off (`CastError::NotHigher` when the level would not rise)
 - Regression test: `crates/h3-adventure/src/state/tests/spells.rs`, `a_recast_is_refused_free_under_adv_quirk_54_and_only_a_higher_one_is_taken_off`
 - Decided by / date: the user 2026-11-21 (ADV-Q63, E08 decision 403); the flag in the profiles by E08 T140; built by E08 T142a
+
+### ADV-QUIRK-55 — Dimension Door's wrong water or land target fails, charged
+- Class: fix-optional (the user, 2026-11-21, ADV-Q63, E08 decision 403; A-52)
+- Context / rules affected: adventure, ADV-SPL-009 (the door's effect), ADV-SPL-008
+- Original behavior: the dialog offers water and land alike; after it `adventure_spell_cast` (0x41D090) tests the kind (a hero in a boat needs water, terrain 8, one on land needs land) and on the wrong one shows GENRLTXT 71 ("failed"), then spends everything anyway: the movement points (300, 200 at Expert), the spell points and one of the day's casts (survey `E08-spells.md` §8.1 step 5).
+- Intended/expected behavior: an explored target of the wrong kind is not offered (`CastError::WrongKind`, free); a hidden one, whose kind the player cannot know, stays a target and fails, charged, as the original's (increment 15's design note §10.5).
+- Impact: gameplay, small: a misclick on visible water costs a cast and 300 points.
+- Community status: VCMI 1.7.5 keeps the original's with `waterLandFailureTakesPoints` true (SoD's).
+- Sources: code reading (E08 T137a, survey §8.1); observation: batch E15's E15-7 (the cursor over water accepted; GENRLTXT 71, the hero stays, 300 points and 25 spell points spent, the cast used; the next refused, 339).
+- Flag: `quirk.adventure.door_failure_charged`
+- Defaults: faithful = on (`CastFailure::Target`, the game's `CastFailed`), strict-fixed = off (`CastError::WrongKind` for an explored target)
+- Regression test: `crates/h3-adventure/src/state/tests/door.rs`, `a_wrong_kind_fails_charged_under_adv_quirk_55_or_is_refused_without_it`, `a_hero_in_a_boat_takes_it_through_the_door`; `crates/h3-game/src/tests/casts.rs`, `dimension_door_s_wrong_target_is_refused_free_or_charged_under_adv_quirk_55`
+- Decided by / date: the user 2026-11-21 (ADV-Q63, E08 decision 403); the flag in the profiles by E08 T140; built by E08 T143b
+
+### ADV-QUIRK-56 — Dimension Door's pick reaches a tenth row
+- Class: bug-fix (the user, 2026-11-21, ADV-Q63, E08 decision 401; A-54, D-76)
+- Context / rules affected: adventure, ADV-SPL-008 (the door's window), ADV-SPL-004 (Scuttle Boat's, the same window)
+- Original behavior: the dialog's view is centred on the hero (its corner the hero's tile less (9, 8)) and picks the tile at (x / 32, y / 32) of the pointer, while tiles are drawn at y 8 + 32 j: the lower 8 pixels of each drawn row pick the row below, and the area's last 8 pixel rows pick row 17, drawn nowhere, so the door reaches dy −8 to +9 (survey `E08-spells.md` §8.2).
+- Intended/expected behavior: the window 9 columns and 8 rows around the caster on its level (`[params.spells]`' `target_range`, VCMI's `rangeX` 9, `rangeY` 8): no tenth row.
+- Impact: gameplay, tiny: one row more below the hero, reached by a pointer in the view's last 8 pixel rows.
+- Community status: not documented; VCMI 1.7.5 uses 9 × 8.
+- Sources: code reading (E08 T137a, survey §8.2); observation: batch E15's E15-16 (from (17, 10) the pointer at y 548 picks (17, 19), the door's cursor, the hero there).
+- Flag: none (fixed in every profile)
+- Defaults: the window 9 × 8 in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/door.rs`, `the_door_is_refused_without_points_casts_or_a_target_in_its_window`
+- Decided by / date: the user 2026-11-21 (ADV-Q63, E08 decision 401); built by E08 T143b (the window since E08 T143a, Scuttle Boat's)
 
 ### ADV-QUIRK-57 — Water Walk is cast in a boat and holds after landing
 - Class: harmless, accepted (the user, 2026-11-21, ADV-Q63, E08 decision 403; A-49)

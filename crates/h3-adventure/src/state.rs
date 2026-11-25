@@ -98,6 +98,7 @@ mod boats;
 mod bonuses;
 mod calendar;
 mod channels;
+mod door;
 mod draws;
 mod dwellings;
 mod economy;

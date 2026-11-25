@@ -110,8 +110,9 @@ impl GameState {
     /// design note §14), checked whole first ([`Self::check_cast`]): the game tells
     /// [`GameEvent::SpellCast`] to the owner, the adventure makes its effect
     /// ([`h3_adventure::AdventureState::apply_cast`]: since E08 T143a Summon Boat's and Scuttle
-    /// Boat's chance drawn from `player`'s stream, ADR-0017 point 4, and their boats' events), a
-    /// charged failure is told as [`GameEvent::CastFailed`], and the hero's spell points are set
+    /// Boat's chance drawn from `player`'s stream, ADR-0017 point 4, and their boats' events;
+    /// since E08 T143b Dimension Door's arrival with its movement points), a charged failure is
+    /// told as [`GameEvent::CastFailed`], and the hero's spell points are set
     /// to the points less the cost, at least 0, in every accepted case (`HeroChange::
     /// SetSpellPoints`, its `HeroChanged`; the original's `hero_spend_mana`). The changed day
     /// spells are told after the command (`DaySpellsChanged`).
@@ -139,9 +140,9 @@ impl GameState {
             mastery: cast.mastery,
             cost,
         });
-        let (adventure, _, draws) = self.adventure_for(player);
+        let (adventure, heroes, draws) = self.adventure_for(player);
         let made = adventure.apply_cast(
-            (core, part),
+            (core, part, heroes),
             (player, hero),
             cast,
             draws,

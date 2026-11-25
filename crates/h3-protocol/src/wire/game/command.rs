@@ -727,13 +727,15 @@ pub enum SpellReject {
     OutOfWindow {},
     /// Scuttle Boat's target holds no empty boat it sinks (E08 T143a, v83).
     NoBoat {},
-    /// A spell the engine does not cast on the map yet (`ADV-STUB-22`), by its behaviour's code
-    /// in the original's spell order: 4 Dimension Door since v83 (0 Summon Boat and 1 Scuttle
-    /// Boat until v82).
-    NotBuilt {
-        /// The behaviour's code.
-        effect: u8,
-    },
+    /// Dimension Door with no movement points left (E08 T143b, v84).
+    NoPoints {},
+    /// Dimension Door cast today as often as the mastery allows (E08 T143b, v84).
+    NoCastsLeft {},
+    /// Dimension Door's target is blocked or an entrance (E08 T143b, v84).
+    NotFree {},
+    /// Dimension Door's explored target is land from a boat or water from land
+    /// (`ADV-QUIRK-55` off; E08 T143b, v84).
+    WrongKind {},
 }
 
 /// Why a town command was refused (`h3_towns::TownCommandError`).

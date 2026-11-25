@@ -121,6 +121,19 @@ in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a done 2026
 
 ## Inbox
 
+- 2026-11-25 (the adventure lane, E08 T143b; **for your planning, nothing blocks**): protocol
+  v84 casts Dimension Door. Its arrival is `AdventureEvent::HeroTeleported` (a teleporter's: each
+  end `None` where the viewer does not see it; a hero in a boat takes the boat), after the
+  owner's `SpellCast`; a wrong target is the owner's `CastFailed { reason: Target }` (GENRLTXT 71,
+  the hero stays, its points and the cast spent). Refusals: `SpellReject::NoPoints` (126),
+  `NoCastsLeft` (339), `OutOfWindow` and `NotFree` (no cursor), `WrongKind` (an explored water or
+  land target of the wrong kind under `strict-fixed`: no cursor there; under `faithful`,
+  `ADV-QUIRK-55`, the original's cursor and 71). The door's cursor: under `faithful`
+  (`ADV-QUIRK-51`) the original's on any free tile of the 19 × 17 window, hidden ones too; under
+  `strict-fixed` on a seen free tile of the hero's kind or any hidden tile, the hidden target
+  revealed alone when it fails. `SpellReject::NotBuilt` is gone. `legal_commands` lists no cast
+  until T144a.
+
 - 2026-11-25 (this lane, E24 M5 T2a; **for T7's whole game**): of the 236 player records the 118
   golden adventure replays now give, 205 play to their end in `h3-map-view record`, the same
   on `master`'s binary (every timeline identical): 24 are the duel's and the army's maps (no

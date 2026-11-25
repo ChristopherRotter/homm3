@@ -124,7 +124,13 @@ fn cast(
     let rules = (&rules.0, &rules.1);
     state.check_cast(rules, &store, (RED, HERO), cast)?;
     let mut events = Vec::new();
-    let made = state.apply_cast(rules, (RED, HERO), cast, draws, &mut events);
+    let made = state.apply_cast(
+        (rules.0, rules.1, &store),
+        (RED, HERO),
+        cast,
+        draws,
+        &mut events,
+    );
     Ok((made, events))
 }
 
