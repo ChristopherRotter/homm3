@@ -214,6 +214,18 @@ failure** is an accepted cast with `CastFailed` (the mana spent, §14).
    event's stop). The user's call at the checkpoint (decision 407: not the agent's proposal to
    charge every step made). A walker and a water-walker keep
    ADV-MOV-008 (no unexplored tile) in both settings; D-78 (row E15-14) only records the original.
+   *As built (T142b):* the setting rides in the mode (`Mode::Fly(Fog)`: `Truth`, `Assumed`, and
+   `Revealed` for the walk's check), so the passage's loop passes nothing more; its unexplored row
+   is a cold call (`hidden_passage`); `Truth` refuses rock and, as the step up off a closed top (the original's same point 3), water an object is visited from (D-46; found by the plans' property). The assumed tile is `StaticTile::HIDDEN` (a blocked tile of
+   no known terrain, no road: the fly price from it, the source's onto it); the step off a hidden
+   tile skips the closed top's test, the only row that reads a step's source. `MoveHero` checks the
+   whole path over what the player knows (so its acceptance never depends on a hidden tile), then
+   tests each step onto or off a tile hidden at the command against the passage as if explored
+   (`revealed_fits`: a planned pass needs any entry, a planned stop a stop). *Agent's calls, change
+   freely:* the stop's node is attacked by a guard there (a flyer at its move's end, as at an
+   event's stop; a stop at the start meets none), the tile that stopped the move is revealed alone
+   whatever the radius, an event's stop before the cut comes first; the undone passes are told by
+   no `HeroStepped`.
 2. **The door** (ADV-SPL-008). **On** (faithful): a hidden tile is a target when free (neither
    blocked nor an entrance), so the legal targets read the hidden truth. **Off:** **every hidden
    tile in the window is a target**; at the cast a hidden tile that is blocked, an entrance or of

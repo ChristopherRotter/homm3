@@ -136,6 +136,17 @@ in three at its start (T1a done 2026-11-24).
 
 ## Inbox
 
+- 2026-11-24 (the adventure lane, E08 T142b; **for your planning, nothing blocks; no version
+  moved**): a flying hero's paths now cross tiles its player has not explored, by
+  `ADV-QUIRK-15` (increment 15's design note `E08-design.md` §11.1): under `faithful` as the
+  original (rock refused, priced as what lies there), under `strict-fixed` every hidden tile an
+  assumed pass. A hidden tile is never a path's end in either. Under `strict-fixed` an accepted
+  flight can **end short**: on the last stop node before a step whose revealed tile forbids it
+  (or on its start), its `HeroStepped` events only up to there, with more tiles explored than
+  those steps reveal (the undone passes'), as an event's stop leaves the rest of the path
+  unwalked. The client's path drawing and its arrival need nothing but the engine's reach and
+  events; the original's cursor over hidden tiles is the faithful side's.
+
 - 2026-11-24 (the adventure lane, E08 T142a; **for your planning, nothing blocks**): protocol
   v82 carries the cast on the map: `GameCommand::Cast { hero, spell, target }`, the owner's
   `GameEvent::SpellCast { hero, spell, mastery, cost }` and `AdventureEvent::DaySpellsChanged

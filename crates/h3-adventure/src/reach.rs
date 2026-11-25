@@ -65,7 +65,7 @@ use crate::persistent::BitGrid;
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
 use crate::state::{
-    AdventureState, HeroOnMap, Meets, Mode, Node, StaticMap, StaticTile, VisitMarks,
+    AdventureState, Fog, HeroOnMap, Meets, Mode, Node, StaticMap, StaticTile, VisitMarks,
     enterable_terrain,
 };
 
@@ -103,6 +103,18 @@ struct Search<'s> {
 }
 
 impl Search<'_> {
+    /// The tile a pass node on `at` is priced from under the compromise (`ADV-QUIRK-15` off;
+    /// increment 15's design note §11.1, E08 T142b): [`StaticTile::HIDDEN`] where the owner has
+    /// not explored it, else the tile as it stands now. Out of the layered search's loop.
+    #[inline(never)]
+    fn assumed(&self, at: Pos) -> StaticTile {
+        if self.state.is_explored(self.owner, at) {
+            self.state.live(at, self.map.at(at))
+        } else {
+            StaticTile::HIDDEN
+        }
+    }
+
     /// The points a boarding keeps of `left` on the boat's tile `tile` (E08 T73; ADV-SEA-002):
     /// the boat's drop, then the conversion to the sea's maximum (`converted_points`), as the
     /// move leaves them. Out of the search's hot loop: boats are rare.
@@ -179,7 +191,7 @@ impl Reach {
         let map = state.map();
         let spells = state.day_spells(hero.id);
         let movement = day_movement(core, details_of(heroes, hero.id), spells);
-        let mode = Mode::of(&movement, hero.boat);
+        let mode = Mode::of(&movement, hero.boat, Fog::of(core));
         let pricing = Pricing::new(core, part, &hero.army, (&movement, spells));
         // No step costs less than the cheapest straight step, so none goes farther than this: a
         // boat's every step is one at sea (a landing's priced from its water tile, E08 T73b).
@@ -557,7 +569,13 @@ impl Reach {
     ) {
         let (state, part, pricing) = (search.state, search.part, &search.pricing);
         let at = self.pos(slot);
-        let from = state.live(at, search.map.at(at));
+        // A pass over a tile the owner has not explored, under the compromise (`ADV-QUIRK-15`
+        // off, E08 T142b): its steps are priced from the tile assumed, never the one there.
+        let from = if kind == Node::Pass && mode == Mode::Fly(Fog::Assumed) {
+            search.assumed(at)
+        } else {
+            state.live(at, search.map.at(at))
+        };
         let mover = (search.owner, search.hero, mode);
         for (dir, &(dx, dy)) in DIRECTIONS.iter().enumerate() {
             let Some(next) = self.neighbour(slot, dx, dy) else {
@@ -573,7 +591,7 @@ impl Reach {
             };
             let left = pricing.left_after(&entry.tile, price_left);
             let via = dir as u8 | if kind == Node::Pass { FROM_PASS } else { 0 };
-            let guarded = || mode != Mode::Fly && search.guards && search.guarded(pos);
+            let guarded = || !mode.flies() && search.guards && search.guarded(pos);
             // A boarding keeps the points a boat's drop and the conversion leave (E08 T73,
             // ADV-SEA-002; the move's `Pricing::left_by` and `converted_points`).
             let stop = match entry.stop {

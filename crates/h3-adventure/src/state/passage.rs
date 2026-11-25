@@ -9,8 +9,10 @@
 //! empty boat, a hero in a boat, a landing onto a free coastal tile, and a water tile an object is
 //! visited from closed to a flight (D-46). Since E08 T125a (increment 13's design note §9) a
 //! `coast` kind's water entrance, the Shipwreck's, has the empty boat's rows: a visit from a stop
-//! node and a flight's pass.
+//! node and a flight's pass. Since E08 T142b (increment 15's design note §11.1) the unexplored
+//! row is `ADV-QUIRK-15`'s ([`Fog`]).
 
+use h3_content::{FLIGHT_READS_HIDDEN, Ruleset};
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::Movement;
 
@@ -28,8 +30,9 @@ use crate::state::StaticTile;
 pub(crate) enum Mode {
     /// Neither level.
     Walk,
-    /// A flying level.
-    Fly,
+    /// A flying level, its flight treating the tiles the owner has not explored by the profile's
+    /// setting (E08 T142b: carried here, so that the passage's loop passes nothing more).
+    Fly(Fog),
     /// A water-walking level and no flying level.
     WaterWalk,
     /// In the boat of this index (ADV-SEA-004): neither flying nor water walking (the original
@@ -38,13 +41,48 @@ pub(crate) enum Mode {
 }
 
 impl Mode {
-    /// How a hero with these levels moves (`h3_heroes::movement`), in `boat` if it is in one.
-    pub(crate) const fn of(movement: &Movement, boat: Option<u32>) -> Self {
+    /// How a hero with these levels moves (`h3_heroes::movement`), in `boat` if it is in one, a
+    /// flight by `fog`.
+    pub(crate) const fn of(movement: &Movement, boat: Option<u32>, fog: Fog) -> Self {
         match (boat, movement.flying, movement.water_walking) {
             (Some(boat), _, _) => Self::Sail(boat),
-            (None, Some(_), _) => Self::Fly,
+            (None, Some(_), _) => Self::Fly(fog),
             (None, None, Some(_)) => Self::WaterWalk,
             (None, None, None) => Self::Walk,
+        }
+    }
+
+    /// Whether the hero flies.
+    pub(crate) const fn flies(self) -> bool {
+        matches!(self, Self::Fly(_))
+    }
+}
+
+/// How a flight treats a tile its owner has not explored (`ADV-QUIRK-15`; ADV-MOV-008,
+/// ADV-MOV-009; increment 15's design note §11.1, E08 T142b). A hero that does not fly never
+/// enters one, whatever the setting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Fog {
+    /// `ADV-QUIRK-15` on (`faithful`, the original's `pathfinder_expand` 0x4B2300): the hidden
+    /// truth. Rock is refused (the original tests it before the fog), any other tile is a pass,
+    /// never a stop, priced as it is and nothing on it met or visited.
+    Truth,
+    /// Off (`strict-fixed`, the compromise): assumed flyable whatever lies there, a pass priced as
+    /// over a blocked tile ([`StaticTile::HIDDEN`]), never a stop; the step off it never reads its
+    /// object either. What the hidden tile is decides only `MoveHero`'s walk, once revealed.
+    Assumed,
+    /// Every tile as if explored: `MoveHero`'s check of a step [`Self::Assumed`] let through
+    /// against what it reveals.
+    Revealed,
+}
+
+impl Fog {
+    /// The setting of `core`'s profile.
+    pub(crate) fn of(core: &Ruleset) -> Self {
+        if core.quirks().is_enabled(FLIGHT_READS_HIDDEN) {
+            Self::Truth
+        } else {
+            Self::Assumed
         }
     }
 }
@@ -81,10 +119,12 @@ impl AdventureState {
     /// `direction` (§7's table; ADV-MOV-007, ADV-MOV-009, ADV-MOV-010), or why it may not be made
     /// (`step` names the step in the error). In order:
     ///
-    /// - off the map, then an unexplored tile (`ADV-QUIRK-15`: never, a flight included; nothing
-    ///   about a hidden tile leaks), then a step down onto the visitable tile of an object not
-    ///   visited from above (never): rejected; a step up off such a tile is a flight's pass only
-    ///   (ADV-OBJ-004);
+    /// - off the map: rejected; an unexplored tile by `fog` ([`Self::hidden_passage`],
+    ///   `ADV-QUIRK-15`, E08 T142b): never but for a flight, which passes over it, its rock
+    ///   refused with [`Fog::Truth`], whatever lies there with [`Fog::Assumed`]; then a step down
+    ///   onto the visitable tile of an object not visited from above (never): rejected; a step up
+    ///   off such a tile is a flight's pass only (ADV-OBJ-004), but off a tile [`Fog::Assumed`]
+    ///   let through, whose object the step does not read;
     /// - another team's hero on a town's entrance (E09 T8a2, TWN-VIS-002): the town's siege
     ///   against it from a stop node (E09 T8b2b, as a neighbour's object), and a flight passes it;
     /// - a hero in a boat ([`Mode::Sail`]): [`Self::sail_entry`]'s rows;
@@ -122,15 +162,15 @@ impl AdventureState {
     ) -> Result<Entry<'p>, AdventureCommandError> {
         let blocked = |error| AdventureCommandError::Blocked { step, error };
         let tile = *self.map.tile(pos).ok_or(blocked(StandError::Outside))?;
-        // `ADV-QUIRK-15` (A-13 fixed for now): a flight never crosses an unexplored tile.
-        if !self.is_explored(player, pos) {
-            return Err(AdventureCommandError::Unexplored { step });
+        // `ADV-QUIRK-15` (E08 T142b): out of line, so the explored tiles' path stays as it was.
+        if !self.is_explored(player, pos) && mode != Mode::Fly(Fog::Revealed) {
+            return self.hidden_passage(part, (player, mode), pos, tile, step);
         }
         let dy = DIRECTIONS[direction].1;
         if dy == 1 && self.closed_above(part, pos) {
             return Err(AdventureCommandError::FromAbove { step });
         }
-        let fly = mode == Mode::Fly;
+        let fly = mode.flies();
         let tile = self.live(pos, tile);
         let pass = Entry {
             tile,
@@ -141,7 +181,10 @@ impl AdventureState {
         // nowhere (§3.1 point 3); nothing else steps there. A water tile an object is visited
         // from stays closed to the flight as below (D-46; E08 T75b, found by the plans'
         // property).
-        if dy == -1 && self.closed_above(part, from) {
+        if dy == -1
+            && self.closed_above(part, from)
+            && (mode != Mode::Fly(Fog::Assumed) || self.is_explored(player, from))
+        {
             return match part.passage(tile.terrain) {
                 Some(Passage::Water(_))
                     if fly && tile.visitable && self.coast_visit(part, player, pos).is_none() =>
@@ -257,6 +300,78 @@ impl AdventureState {
                     .then_some(Meets::Object(object)),
             ),
         }
+    }
+
+    /// What a step by `mode` allows onto the tile `pos`, unexplored by its owner, whose tile is
+    /// `tile` (`ADV-QUIRK-15`; increment 15's design note §11.1, E08 T142b): a hero that does not
+    /// fly never enters it ([`AdventureCommandError::Unexplored`]: a walk's, a water walk's (D-78,
+    /// batch E15's E15-14: the original's water walk does not cross hidden water either) and a
+    /// boat's step); a flight passes over it, never stops there and meets nothing on it: with
+    /// [`Fog::Truth`] the tile as it stands, rock refused (the original's test before the fog's;
+    /// batch E15's E15-13: the hidden tree priced as a tree) and water an object is visited from
+    /// (D-46: the step up off a closed top's rows, the original's same point; found by the plans'
+    /// property at E08 T142b), with [`Fog::Assumed`] [`StaticTile::HIDDEN`], whatever lies
+    /// there. Out of the passage's loop: the reach meets a
+    /// hidden tile only at its window's edge of the explored.
+    // rule: ADV-MOV-008, ADV-MOV-009
+    #[cold]
+    #[inline(never)]
+    fn hidden_passage<'p>(
+        &self,
+        part: &AdventureRuleset,
+        (player, mode): (PlayerId, Mode),
+        pos: Pos,
+        tile: StaticTile,
+        step: usize,
+    ) -> Result<Entry<'p>, AdventureCommandError> {
+        let blocked = |error| Err(AdventureCommandError::Blocked { step, error });
+        let tile = if mode == Mode::Fly(Fog::Assumed) {
+            StaticTile::HIDDEN
+        } else if !mode.flies() {
+            return Err(AdventureCommandError::Unexplored { step });
+        } else {
+            let tile = self.live(pos, tile);
+            match part.passage(tile.terrain) {
+                // As the step up off a closed top, the original's other tile a flight passes
+                // without stopping (`pathfinder_expand`'s point 3): water an object is visited
+                // from stays closed (D-46).
+                Some(Passage::Water(_))
+                    if tile.visitable && self.coast_visit(part, player, pos).is_none() =>
+                {
+                    return blocked(StandError::Blocked);
+                }
+                Some(Passage::Land(_) | Passage::Water(_)) => tile,
+                _ => return blocked(StandError::Terrain),
+            }
+        };
+        Ok(Entry {
+            tile,
+            stop: None,
+            pass: true,
+        })
+    }
+
+    /// Whether a flight's step that the compromise let through, onto or off a tile `player` had
+    /// not explored ([`Fog::Assumed`]), may be made as `MoveHero` planned it once revealed
+    /// (increment 15's design note §11.1, E08 T142b): the step's passage as if every tile were
+    /// explored ([`Fog::Revealed`]) allows it, as a pass if it planned one (any entry: a flight
+    /// crosses a free tile as it does a stop node), as a stop if it planned one (the only row
+    /// that reads a step's source, the step up off an object not visited from above, then gives
+    /// a pass alone).
+    // rule: ADV-MOV-008, ADV-MOV-009
+    #[cold]
+    #[inline(never)]
+    pub(crate) fn revealed_fits(
+        &self,
+        part: &AdventureRuleset,
+        (player, mover): (PlayerId, HeroId),
+        (from, node): (Pos, Node),
+        (pos, direction, step): (Pos, usize, usize),
+        kind: Node,
+    ) -> bool {
+        let mover = (player, mover, Mode::Fly(Fog::Revealed));
+        self.passage(part, mover, (from, node), pos, direction, step)
+            .is_ok_and(|entry| kind == Node::Pass || entry.stop.is_some())
     }
 
     /// What a step of `player`'s hero in the boat `boat` allows from the water tile `from` onto
