@@ -12,6 +12,16 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-25 (the adventure lane, E08 T144a1, `adventure/e08-t144a1`; **for your planning, no
+  change in your paths**): `h3_game::legal_commands` now lists each hero's casts on the map
+  without a target (`GameCommand::Cast { target: None }`: Summon Boat, Fly, Water Walk), so a
+  `GameTurn`'s legal list carries them; Scuttle Boat's and Dimension Door's targets are **not
+  listed** (up to 323 each per hero; E08 decision 422) but given per hero by
+  `h3_game::legal_cast_targets(state, rules, actor, (hero, spell))`, as `legal_moves` gives the
+  moves. A client that wants the door's and the scuttle's cursors needs a query on the wire, as
+  the battle's `Query::CastTargets` (the map client lane's cursors, E24): yours to plan. No
+  protocol, event or error changed.
+
 - 2026-11-25 (the adventure lane, E08 T143b, `adventure/e08-t143b`, `cross-lane` with the user's
   consent; **in your paths, nothing to do; for your review**): **protocol v84** is taken:
   Dimension Door cast; no new event (its arrival is increment 11's `HeroTeleported`, a wrong

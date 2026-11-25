@@ -13,11 +13,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `h3-sim`; T144a cut in two at its start, decisions 420, 421; T144a1, `legal_commands`' casts,
   done 2026-11-25): five entries per hero slot (Summon Boat, Scuttle Boat, Fly, Water Walk,
   Dimension Door: 40, appended after `SPELL_BOOK`), the door's and Scuttle Boat's target in the
-  existing tile head (decision 421, not design §17's windows), the masks from `legal_commands`;
+  existing tile head (decision 421, not design §17's windows), the masks from `legal_commands`
+  and, for the door and Scuttle Boat, from `legal_cast_targets` (decision 422: their targets are
+  a per-hero query, as the moves are; an entry is legal when its query is not empty);
   `decode`, `encode`, `legal_mask`, `tile_mask`, the masks' property routing the new block
   (`TRAPS.md`: bound every open-ended read of an earlier block); the random agent's draw takes
-  the casts again (remove T144a1's filter in `adventure/rollout.rs`) with the weight the AI
-  lane's inbox note asks it to choose; every moved `random-play-*` workload compared per function
+  the casts again (remove T144a1's filter in `adventure/rollout.rs`; the targeted ones by the
+  query, drawn as a hero's moves are) with the weight the AI lane's inbox note asks it to choose; every moved `random-play-*` workload compared per function
   with `master` and re-baselined with the reason, the seed-chosen env tests and `h3-cli`'s
   workload test (the sea XL fork's boarding) re-checked. The own hero part's day spells are in
   the observation since T142a (the own hero view's `spells`, the door's casts made among them);
@@ -36,7 +38,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   boat events and `CastFailed`, and the door's arrival is a teleporter's `HeroTeleported` (its
   `jumper` handling); its faithful exception for the door's and the scuttle's hidden targets came
   with T144a1 (`targets_hidden`, beside T142b's `flies`); the plans' oracles probe and check the
-  listed casts (`play.rs`' `accepted_casts`, `check_casts`). The plans' heroes meet the casts only
+  listed casts and the queried targets (`play.rs`' `accepted_casts`, `check_casts`,
+  `accepted_targets`; `view.rs`' `check_same` compares the queries). The plans' heroes meet the casts only
   through the shrines' and guilds' spells (no plan gives Summon Boat, Fly, Water Walk or the door):
   the generated map is where they are played.
 - **Depends on:** T144a1 (`adventure/e08-t144a1`). **Status:** T144a2 ready once T144a1 merges,
