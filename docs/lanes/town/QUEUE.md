@@ -11,24 +11,13 @@ increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in `E09-archive.md`. Ea
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T52** (queued, round 1, decision 198; **next**; its cut confirmed at its start): increment
-6's survey with its checkpoint `TWN-Q35`, docs only, `docs/rules/surveys/E09-trades.md`. The
-code reading of `Heroes3.exe` for each window a town's owner trades at: the market window's
-screens at a town (`market_window_run` 0x5EA130, survey `E08-trades.md` §3, §4, §11: resources
-for resources, resources to another player, artifacts for resources, artifacts sold (screen 3,
-`market_artifact_sale_rate` 0x5ECDC0, `market_sell_artifact_proc` 0x5EDF60), creatures sold at
-the Freelancer's Guild (screen 4, D-71); a town's count of Marketplaces, D-70), the Artifact
-Merchants' stock and its monthly draw (`new_month` 0x4C8F40, game +0x1F664; the combination
-artifacts' blank costs, the inbox's E04a T3b note), the Blacksmith's war machines with the
-Stronghold's Ballista Yard, the town's Shipyard and its boat (E08's), the Conflux's Magic
-University, the Necropolis's Skeleton Transformer; VCMI 1.7.5 and the wiki compared; a census
-of the 160 shipped maps' towns with these buildings; disputes, quirk candidates and batch
-TWN-6's rows. Acceptance: the survey's sections with their sources and addresses (`docs/exe/map.toml`),
-the census's counts, the checkpoint asked and its decisions in the epic. Needs the original data.
-
-**E09 T53** (queued, round 2, decision 198): increment 6's ADR amendment drafts
-(`docs/lanes/town/adr-drafts/*-increment-6.md`), the design note's Part H from §101, the cut
-into rounds and the exit criteria, accepted at the checkpoint before anything is built (as T43).
+**E09 T53** (queued, round 2, decision 198; **next**; its cut confirmed at its start): increment
+6's ADR amendment drafts (`docs/lanes/town/adr-drafts/*-increment-6.md`), the design note's Part H
+from §101, the cut into rounds with batch TWN-6's eight rows and the exit criteria, accepted at
+the checkpoint before anything is built (as T43). Input: survey `docs/rules/surveys/E09-trades.md`
+(§10's open points for T53, §11's rows, §13's decisions 201 to 207: D-70 the original, T-28 and
+T-23 `fix-optional`, the trader's count at least 1, Misc 5 sellable, one fixed boat spot, the
+stock and the pool's marks in the game state).
 
 ## Inbox
 
