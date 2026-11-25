@@ -47,6 +47,7 @@
 extern crate alloc;
 
 mod command;
+pub mod computer;
 mod garrisons;
 mod legal;
 mod manage;
