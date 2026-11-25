@@ -4861,3 +4861,84 @@ the user at its start: T1a these, T1b MCL-Q51, T1c MCL-Q52). Read: `adventure_he
   differences only: the morale icon (MCL-Q36: 157 pixels, 151 and 124 under the fades' shifts
   1 and 2), the battle's fade in (MCL-Q49), MINEEVNT's resource (MCL-Q48); `battle-retreat`'s
   dissolve exact (810 to 1265).
+
+### 5.23 A mine's guards' battle not won (M5 T1b, MCL-Q51)
+
+MCL-Q51's (b), then (a) (the user at M5 T0): the battle recorded, then read for what a recording
+cannot settle (a draw). Read: `visit_mine` 0x4A39A0 whole again, `monster_battle` 0x4AC580's end
+(0x4AC8FA to 0x4AC924), `adventure_battle` from `manager_run`'s return to its outcomes (0x4AE2F3
+to 0x4AE898: the beaten attacker's 0x4AE6AC to 0x4AE716, the draw's 0x4AE860), `battle_aftermath`
+0x4AC930 and `hero_loss_effect` 0x4ACBB0 whole. Recorded: `battle-mine-retreat` (`battle-mine`'s
+situation, `battle = "retreat"`), twice the same.
+
+- **The visit after the battle.** A neutral mine's one stack fights through `monster_battle`,
+  which writes the guards' count left of their own type back (`army_count_of_type`), selects the
+  player's hero again (`mobilize_hero(0, 0, 1)`, 0x4AC917, after every outcome) and gives back
+  `adventure_battle`'s winner unchanged. `visit_mine` then ends at once unless the hero won
+  (0x4A3AE5): the count written into slot 0 (0x4A3AEB), no box, no `hero_hide`, no MINEEVNT, no
+  flag. Any other guards (`adventure_battle` at 0x4A3B52, an owned mine's or several stacks) end
+  the same at a winner not 0 (0x4A3B59); won, they skip ADVEVENT 85 (the box only after
+  `monster_battle`'s win, 0x4A3B2B) and flag after MINEEVNT. So a loss, a retreat (both winner 1)
+  and a draw (−1) show the same: the hero's leaving, nothing of the mine.
+- **The hero's leaving.** Winner 1 with an attacking hero (0x4AE6AC): the view drawn and shown
+  (`view_draw_here`, `view_show_step`), `hero_leave_game` (1, 0), `hero_loss_effect` (0:
+  `killfade.82M`, the mouse hidden, the 224 × 224 rectangle at (192, 160) saved, the view drawn
+  without the hero, `screen_dissolve` 65, the mouse shown), `minimap_redraw`, `hero_list_update`,
+  the defeat test. A draw (0x4AE868): `battle_aftermath` (the hero, 0) runs the same calls with the
+  same arguments, one for one, then the defender's (a town's garrison hero with −1, another hero
+  with 0, none for monsters or guards: it returns at once). The code before the outcomes is common
+  to all three, so a draw's hero shows as the retreat's recorded one: lifted, then dissolved.
+- **Recorded** (`timelines/battle-mine-retreat*`): the question's Enter at 1000, the switch from
+  1060, the battle at 1310 (winner 1, the result's Enter at 1500), the map back at 1710, its fade
+  in's end at 1810 the hero gone and its dissolve to 2265, the second hero chosen at 2330; the
+  mine unflagged. The viewer's timeline from the engine's record as recorded (no gap); the frames
+  M4's known differences until 1760 (MCL-Q36's 157 pixels, MCL-Q49's battle fade in), exact from
+  1810.
+- **Built:** as M4 T6 had it (`AfterBattle::of_guards`: no box, no flag, the hero gone as a
+  retreat's), now read and recorded; the binary's `MCL-Q51` stub marker removed. The draw's hero
+  in `AfterBattle::Both` (a wandering monster's) is the same reading; the monster's part after
+  it stays *provisional*.
+- **Not the viewer's:** after a draw the original writes a count of 0 back into slot 0 and keeps
+  its creature, and `army_has_creatures` 0x4496A0 reads only the types, so the next visitor is
+  asked ADVEVENT 84 again; the engine's `end_mine_battle` leaves no guards then (ADV-MIN-002: the
+  next visit flags it). Noted in the adventure lane's inbox.
+
+### 5.24 The ambient loops after a battle (M5 T1c, MCL-Q52)
+
+MCL-Q52's (a) (the user at M5 T0): the map's return and the lift after it read for the ambient
+slots, then built. Read: `manager_run` 0x4B0C70's return (again), `adventure_battle`'s end
+(0x4AE89D to 0x4AE92B), `hero_select` 0x4180A0 to 0x41815B, `ambient_sounds_at`'s callers, the
+manager's six-second restart (0x4088F9 to 0x408996). Recorded: `battle-mine` as a sound run (a
+scratch sequence of its own, `sound = true`).
+
+- **The hand-over** ends every effect sample (`effects_stop_all`, the adventure manager's exit
+  0x4077E0 as §5.19 took it; the battle manager's exit too) but leaves the manager's four slots
+  (+0x228) as they stand: nothing at the map's return clears them (`manager_run` draws the screen,
+  `adventure_mouse_again`, the status window's kind and the fade in; none of `ambient_sounds_at`'s
+  eleven callers is on that path).
+- **The lift restarts them.** `adventure_battle`'s end calls `mobilize_hero(0, 0, 1)` after every
+  outcome of a shown battle (0x4AE8F3; 0x4AD62E is the battle without a human's, §5.22 corrected),
+  so `hero_select` runs with c set: `ambient_sounds_at` with the stop flag (0x4180FF: each slot
+  with a sound stopped and emptied, then the scan, the found sounds started anew at their
+  distances' volumes) and the terrain's music only where the hero's terrain differs from +0x58
+  (0x418115, with c: none after a battle on one terrain, MCL-Q47 (a)). `monster_battle`'s own
+  `mobilize_hero` (0x4AC917) then finds the hero lifted and does nothing. A hero that left
+  (beaten, retreated, a draw) is no longer selected: `mobilize_hero` chooses the player's next
+  hero or town, whose selection scans around it. The six-second restart (music and ambient sounds)
+  belongs to the turn's start screen (0x699544 set by `turn_start_screen` only).
+- **Recorded** (the sound run, `<ms> <channel> <length> <loops>`): the mine's loop starts at 100
+  on channel 0 (looping until ended), the battle's start sound at 1060, a click at 1500 on
+  channel 0 (the loop ended at the hand-over, its handle free), the loop again at 1810 on channel
+  0, the fade in's end, as read.
+- **Built** (`Loop::after_battle`): with the hero lifted again at the fade in's end (T1a), the
+  model's `Sound::select` (every slot stopped, then found again; the music only on another
+  terrain) when the hero stays on the map (`AfterBattle::Boxes`, `Taken`, `Stays`); a hero that
+  leaves restarts nothing there, the next choice's lift does. So the window, which ended the
+  loops when it lent its sound to the battle, plays them again (checked in the window under Xvfb,
+  `--cues`: `battle-mine`'s record restarts its loop at the fade in's end). *Provisional:* a
+  won battle's level-up dialogs come before `mobilize_hero` in the original (`hero_level_up`
+  0x4AE324), so with one the restart waits for their close; the viewer restarts with the lift.
+- **Not built:** a plain cut's battle (a record's walk's battle, an answer's the record player
+  passes over: a dwelling's guards, Pandora's Box; §5.20) has no lift in the viewer, so its loops
+  stay silent until found again (`dwellings-guards-s1` in the window: from its won battle to the
+  next day's start); M5 T6, which plays the battles, takes it up.

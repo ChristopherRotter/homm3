@@ -353,3 +353,36 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   #26 a slip, #36 valued as luck in every profile; increments 2 to 7 confirmed. **Increment 1
   closed** (`E31-archive.md`).
 - **Checks:** the scoped verify without original data (docs only).
+
+## T2 — increment 2's refinement: the shared pull request, the measurement, the cut (2026-11-25, increment 2)
+
+- **The shared pull request** #1163 (`shared/e31-module`, `cross-lane`; ADR-0030 points 1 and 9):
+  `h3-game`'s `src/computer/`, `computer.toml` and `quirks-ai.md` the ai lane's (`lanes.toml`), its
+  scoped verify with the adventure lane's crates (`verify_with`, as the town lane's: the module's
+  tests are `h3-game`'s); `pub mod computer;` in `h3-game`'s `lib.rs` (a module of docs only, so that
+  later ai pull requests stay in the lane's paths); `check-rules`' context `computer` (`CPU-`).
+  **The ledger** `docs/rules/quirks-ai.md`: AI-QUIRK-1 reserved for the slips (written with the first
+  slip built, increment 4), the three exploit-fix entries of the computer's own code (§5.5 #12 the
+  Angelic Alliance's alignment of a creature without a faction, #27 the formation's 16-bit counts,
+  #38 the split's division by zero: AI-QUIRK-2 to -4, each with its planned regression test); the
+  loader's two (#54, #60) the adventure lane's reader's. **`SignedX87`** in `h3_kernel::arith`: sign
+  and magnitude, each operation `X87`'s with IEEE 754's signs (a zero has none), `trunc` the
+  `fistp qword` of `_ftol` (the integer indefinite `i64::MIN` from 2^63 on, as `h3_battle`'s
+  `aim::ftol` reads it), `ftol` the callers' low 32 bits, the f32 patterns; audited by a property
+  test against IEEE doubles in `num.rs` (products, sums, differences, quotients, the order, the
+  truncations, the f32 stores and patterns, bit for bit; 20 000 cases passed locally) and unit tests
+  for the zeros, the order, saturation and the indefinite; `arith.rs` at 100 % (llvm-cov).
+  **ADR-0030** numbered (AI-Q32): the stale `h3_game_ai::` names now `h3_game::computer::`'s.
+- **The measurement**: the sizes in `docs/exe/map.toml` of the functions each part ports (§4.3's
+  phases), at about 2.7 bytes an instruction (T1a4's: 9.5 KB, about 3 500 instructions): the frame
+  3.7 KB, the start's values 6.2, the simulated combat 14.3 (sides and melee 7.3, spells 7.0), the
+  values 33.3 (the object value 11.6, the armies and towns 9.1, the artifacts 7.9, the spells and
+  skills 4.7), the planning 7.7, the walk 5.8: about 71 KB, 26 000 instructions, 63 % of the 110 KB
+  read; the x87 instructions mostly in the object value (331) and the simulated combat (271).
+- **The cut** (AI-Q32): T2a to T2k in the epic file, by dependency (the frame, the simulated
+  combat, the start's values, the values from the leaves up, the planning, the walk, trace T-A),
+  about one session each.
+- **Checks:** `h3-kernel`'s and `xtask`'s tests, clippy, `cargo check --workspace --all-targets`,
+  `check-rules`, `check-docs`, `check-exe-map`, `check-arch`, `check-lane --cross-lane`; the scoped
+  verify not run (the shared change is the kernel's arithmetic and docs; CI's full verify is the
+  record).
