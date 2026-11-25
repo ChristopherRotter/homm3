@@ -715,14 +715,21 @@ pub enum SpellReject {
         /// The hero.
         hero: u16,
     },
-    /// Fly in a boat.
+    /// Fly, or Summon Boat, in a boat.
     InBoat {},
     /// The spell's level is on already (`ADV-QUIRK-54`).
     AlreadyOn {},
     /// The cast would not raise the hero's level (`ADV-QUIRK-54` off).
     NotHigher {},
+    /// Summon Boat without a free water tile around the hero (E08 T143a, v83).
+    NoWater {},
+    /// A target outside the spell's window or off the map (E08 T143a, v83).
+    OutOfWindow {},
+    /// Scuttle Boat's target holds no empty boat it sinks (E08 T143a, v83).
+    NoBoat {},
     /// A spell the engine does not cast on the map yet (`ADV-STUB-22`), by its behaviour's code
-    /// in the original's spell order: 0 Summon Boat, 1 Scuttle Boat, 4 Dimension Door.
+    /// in the original's spell order: 4 Dimension Door since v83 (0 Summon Boat and 1 Scuttle
+    /// Boat until v82).
     NotBuilt {
         /// The behaviour's code.
         effect: u8,

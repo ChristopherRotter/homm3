@@ -41,7 +41,7 @@ pub use command::{
     SkillOffer, SpellReject, StandReject, SystemCommand, TavernAnswer, TavernReject, TownCommand,
     TownHeroChange, TownReject, UniversityAnswer,
 };
-pub use event::{AdventureEvent, GameEvent, HeroChange, NothingWhy, ShipyardBlock};
+pub use event::{AdventureEvent, CastFailure, GameEvent, HeroChange, NothingWhy, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
 pub use manifest::{GameKeyTables, GameManifest, GameRecordHeader, MapIdentity};
 pub use query::{DIRECTIONS, GameAnswer, GameQuery, Moves, TownOffer};

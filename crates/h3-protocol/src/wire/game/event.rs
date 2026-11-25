@@ -326,6 +326,13 @@ pub enum GameEvent {
         mastery: u8,
         cost: u16,
     },
+    // E08 T143a (v83): an accepted cast's charged failure, after its `SpellCast`.
+    CastFailed {
+        player: u8,
+        hero: u16,
+        spell: u16,
+        reason: CastFailure,
+    },
 }
 
 /// Something that happened on the adventure map, projected for its viewer
@@ -515,6 +522,22 @@ pub enum AdventureEvent {
         hero: u16,
         spells: DaySpells,
     },
+    // E08 T143a (v83): Summon Boat's and Scuttle Boat's boats. A summoned boat's tile left and
+    // tile now, each `None` where the viewer does not see heroes there.
+    BoatSummoned {
+        boat: u8,
+        from: Option<Pos>,
+        to: Option<Pos>,
+        facing: u8,
+    },
+    BoatCreated {
+        tile: Pos,
+        boat_type: u8,
+    },
+    BoatScuttled {
+        tile: Pos,
+        boat: u8,
+    },
 }
 
 /// Why a bonus visitable's visit gave nothing (`h3_adventure::NothingWhy`).
@@ -526,6 +549,18 @@ pub enum NothingWhy {
     Full,
     /// The Magic Spring's entrance is emptied this week.
     Emptied,
+}
+
+/// Why an accepted cast on the map failed, its spell points spent (`h3_adventure::CastFailure`;
+/// E08 T143a, v83).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CastFailure {
+    /// The chance draw came above the spell's chance.
+    Chance,
+    /// Summon Boat found no boat to bring and made none.
+    NoBoat,
+    /// The target, once revealed, held nothing the spell acts on.
+    Target,
 }
 
 /// Why a Shipyard builds no boat (`h3_adventure::ShipyardBlock`).

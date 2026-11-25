@@ -11,8 +11,8 @@ use core::fmt;
 
 use h3_adventure::{
     ALTAR_SLOTS, AdventureCommand, AdventureCommandError, AdventureEvent, AltarError, AltarPlaces,
-    ArmySlot, CastError, HillFortError, HireError, HireTarget, MarketError, ObjectTypeId, Pick,
-    Pos, Viewers,
+    ArmySlot, CastError, CastFailure, HillFortError, HireError, HireTarget, MarketError,
+    ObjectTypeId, Pick, Pos, Viewers,
 };
 use h3_content::{CreatureTypeId, Formation, HeroTypeId, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
@@ -1137,6 +1137,20 @@ pub enum GameEvent {
         mastery: u8,
         /// The spell points it cost (`h3_heroes::map_spell_cost`).
         cost: u16,
+    },
+    /// An accepted cast on the adventure map failed, its spell points spent (GAM-SPL-001,
+    /// ADV-SPL-003, ADV-SPL-004; E08 T143a, increment 15's design note §14, §16): a charged
+    /// failure, told after its [`Self::SpellCast`] and before the points' `HeroChanged` (the
+    /// original's GENRLTXT 336 to 338). Seen by the caster's owner.
+    CastFailed {
+        /// The caster's owner.
+        player: PlayerId,
+        /// The caster.
+        hero: HeroId,
+        /// The core spell.
+        spell: SpellId,
+        /// Why it failed.
+        reason: CastFailure,
     },
     /// A Den of Thieves' visit showed the visitor's owner the Thieves' Guild at everything
     /// (ADV-VIS-008, TWN-TAV-007; E09 T39b2, design note §74, §75): its level

@@ -50,8 +50,8 @@ pub struct Boat {
     pub captain: Option<HeroId>,
     /// Whether its captain is aboard.
     pub aboard: bool,
-    /// Whether it left the map with its hero (ADV-SEA-006, T74b): the record stays, so indexes
-    /// never move.
+    /// Whether it left the map with its hero (ADV-SEA-006, T74b) or sank, empty, by Scuttle Boat
+    /// (ADV-SPL-004, E08 T143a): the record stays, out of use, so indexes never move.
     pub gone: bool,
 }
 
@@ -164,6 +164,29 @@ impl Boats {
             self.records.set(slot, Some(record));
             record.kind
         })
+    }
+
+    /// Moves the empty boat at `slot` to `to` (Summon Boat, ADV-SPL-003): off the empty boats'
+    /// grid at its tile, on it at `to`, its facing, owner and captain kept. The caller found the
+    /// boat empty and `to` free water.
+    pub(super) fn shift(&mut self, slot: usize, to: Pos) {
+        if let Some(mut record) = self.records.get(slot).copied() {
+            self.empty.set(record.tile, false);
+            self.empty.set(to, true);
+            record.tile = to;
+            self.records.set(slot, Some(record));
+        }
+    }
+
+    /// Sinks the empty boat at `slot` (Scuttle Boat, ADV-SPL-004; the original's record out of
+    /// use, survey `E08-spells.md` §6): off the empty boats' grid, gone, its tile, owner and
+    /// captain kept as a boat that left the map keeps them.
+    pub(super) fn sink(&mut self, slot: usize) {
+        if let Some(mut record) = self.records.get(slot).copied() {
+            self.empty.set(record.tile, false);
+            record.gone = true;
+            self.records.set(slot, Some(record));
+        }
     }
 
     /// The boat at `slot` leaves the map from `at` with its hero (ADV-SEA-006): gone, its tile
@@ -473,5 +496,19 @@ impl AdventureState {
         boats.records.set(index, Some(boat));
         self.heroes[at].pos = boat.tile;
         self.heroes[at].boat = Some(u32::try_from(index).expect("an index"));
+    }
+
+    /// Writes the empty boat `index`'s owner and captain, as a boarding by `captain` of `owner`
+    /// and its landing leave them (E08 T143a: the tests of Summon Boat's choice).
+    pub(crate) fn mark_boat(
+        &mut self,
+        index: usize,
+        (owner, captain): (Option<PlayerId>, Option<HeroId>),
+    ) {
+        let boats = self.boats.as_mut().expect("a map with boats");
+        let mut boat = *boats.records.get(index).expect("the boat");
+        boat.owner = owner;
+        boat.captain = captain;
+        boats.records.set(index, Some(boat));
     }
 }

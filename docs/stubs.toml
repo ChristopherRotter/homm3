@@ -90,7 +90,7 @@ epic   = "E09"
 [[stub]]
 id     = "ADV-STUB-22"
 where  = "crates/h3-adventure/src/state/spells.rs::AdventureState::check_cast"
-reason = "Summon Boat, Scuttle Boat and Dimension Door are bound by the base pack but not cast yet: the adventure's test refuses them (`CastError::NotBuilt`, on the wire `SpellReject::NotBuilt`) after the game's checks; E08 T143a builds the boats' (ADV-SPL-003, -004), T143b the door's (ADV-SPL-007 to -009), which lift this stub and drop the refusal"
+reason = "Dimension Door is bound by the base pack but not cast yet: the adventure's test refuses it (`CastError::NotBuilt`, on the wire `SpellReject::NotBuilt`) after the game's checks; E08 T143b builds it (ADV-SPL-007 to -009), which lifts this stub and drops the refusal (Summon Boat and Scuttle Boat cast since E08 T143a)"
 epic   = "E08"
 
 # --- server (SRV-STUB-<n>) ---

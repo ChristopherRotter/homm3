@@ -399,7 +399,10 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                     | AdventureEventKind::NothingGained { .. }
                     | AdventureEventKind::SirensLoss { .. }
                     | AdventureEventKind::CreaturesUpgraded { .. }
-                    | AdventureEventKind::KindKnown { .. } => (None, None),
+                    | AdventureEventKind::KindKnown { .. }
+                    | AdventureEventKind::BoatSummoned { .. }
+                    | AdventureEventKind::BoatCreated { .. }
+                    | AdventureEventKind::BoatScuttled { .. } => (None, None),
                 })
             })
             .collect();
