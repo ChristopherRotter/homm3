@@ -32,7 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1163 (`shared/e31-module`, `cross-lane`: the module's paths, `SignedX87`, ADR-0030; merges first), then this session's `ai/e31-t2` (increment 2's cut, docs only). Merged: #1158 (T1b), #1150 (T1a4), #1145 (T1a3d).
+- **Open pull requests:** #1163 (`shared/e31-module`, `cross-lane`: the module's paths, `SignedX87`, ADR-0030; merges first), then #1164 (`ai/e31-t2`: increment 2's cut, docs only). Merged: #1158 (T1b), #1150 (T1a4), #1145 (T1a3d).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`) (`docs/08-work-process.md`, "Versions"). Next
