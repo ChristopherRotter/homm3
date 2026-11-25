@@ -422,7 +422,8 @@ fn the_walks_frames_are_m2_t3bs() {
             "game-boats",
             "battle-won",
             "battle-mine",
-            "battle-retreat"
+            "battle-retreat",
+            "battle-mine-retreat"
         ]
     );
 }
