@@ -4216,11 +4216,11 @@ impl Loop {
         k: usize,
         mut answer: Answer,
     ) -> Result<(), Unplayable> {
-        // Its battle first (E24 M4 T5b2, design §5.21: a mine's guards'; the objects stepped
-        // once at the box's close, recorded, `battle-mine` at 1060), its boxes after it.
+        // Its battle first (E24 M4 T5b2, design §5.21: a mine's guards'), the hero put back on
+        // its tile before it (E24 M5 T1a, design §5.22: the view drawn, then the objects stepped
+        // when due, recorded, `battle-mine` at 1060), its boxes after it.
         if let Some(fight) = answer.fight.take() {
-            self.step_objects(t);
-            self.draw(t);
+            self.battle_stop(t);
             self.switch_out(t, i, fight, Some(Box::new(answer)));
             return Ok(());
         }
@@ -4358,7 +4358,8 @@ impl Loop {
         }
         if let (Some(fight), Some(object), Some(hero)) = (&found.fight, found.blocks, self.hero) {
             // A savage monster fought at once (E24 M4 T5b2, design §5.21): drawn as its attack,
-            // the view drawn and shown (as a question's), then the battle's switch.
+            // the view drawn and shown (as a question's), the hero put back on its tile (E24 M5
+            // T1a, design §5.22), then the battle's switch.
             let left = u32::from(hero.at.x < found.at.x);
             self.drawn.attacking = Some(Attacking {
                 object,
@@ -4366,6 +4367,7 @@ impl Loop {
             });
             self.draw(t);
             self.step_objects(t);
+            self.battle_stop(t);
             self.switch_out(t, i, fight.clone(), None);
             return;
         }
@@ -4608,6 +4610,21 @@ impl Loop {
         Ok(())
     }
 
+    /// A battle's start at `t` (E24 M5 T1a, design §5.22): `adventure_hero_stop` with 0, 1
+    /// (`monster_battle` 0x4AC593, `adventure_battle` 0x4AD54E): a lifted hero put back on its
+    /// tile (its standing group, frame 0), the view drawn and shown at once, then the objects
+    /// stepped when due (0x4177D3). The original does nothing for a hero not lifted; here every
+    /// battle comes from a visit from beside, which lifted it ([`Loop::beside_start`]). The hero
+    /// stands on its tile, drawn without pass 9's blend, until the map's return lifts it
+    /// ([`Loop::after_battle`]).
+    fn battle_stop(&mut self, t: u32) {
+        self.lifted = false;
+        self.stand();
+        self.keep_hero();
+        self.draw(t);
+        self.step_objects(t);
+    }
+
     /// A battle's switch begun at `t` by find `i`'s visit (E24 M4 T5b2, design §5.19, §5.21,
     /// *provisional*): the busy cursor, the screen as it shows faded out from now
     /// ([`Loop::switch_step`]), the battle listed as handed over by the switch.
@@ -4731,10 +4748,13 @@ impl Loop {
     /// The map back at the black after the battle (`manager_run` 0x4B0C70, design §5.19): its
     /// palettes' cycling and objects' steps on again (*provisional*: the next cycle 20 ms on, as
     /// recorded), the whole screen drawn with the attack's picture cleared, the adventure cursor
-    /// over it, the fade in's first step at once.
+    /// set but the mouse hidden until the fade in's end (E24 M5 T1a, design §5.22: shown after
+    /// `manager_run`, 0x4AE30F), the hero on its tile as the battle's start left it, the fade
+    /// in's first step at once.
     fn map_back(&mut self, t: u32) {
         self.palette_at = t.saturating_add(BACK_CYCLE_MS);
         self.set_cursor(CURSOR_TYPE, self.rules.arrow);
+        self.cursor.shown = false;
         self.draw(t);
         self.drawn.switch = Some(Switch {
             battle: None,
@@ -4755,6 +4775,16 @@ impl Loop {
         // the tile it fought for, so move hero is disabled (recorded, `battle-won` at 810).
         self.path.clear();
         self.buttons.move_hero = false;
+        // The mouse shown after `manager_run` (0x4AE30F) and the hero lifted again, the view
+        // drawn (E24 M5 T1a, design §5.22, *provisional*: recorded, every `battle-*` at the fade
+        // in's end; `mobilize_hero` lifts it after a won battle, 0x4AC917, 0x4AD62E, but a
+        // retreated hero shows lifted in `adventure_battle`'s draw before it leaves, 0x4AE6BB, by
+        // a lift not read). The battle's visitor is the selected hero ([`Loop::visit_beside`],
+        // [`Loop::answered`]).
+        self.cursor.shown = true;
+        self.lifted = true;
+        self.stand();
+        self.draw(t);
         let gain = Gain {
             experience: fight.experience,
             ..Gain::default()
@@ -4777,6 +4807,9 @@ impl Loop {
                 // stepped (`view_show_step`: recorded, `battle-retreat`'s at 810, the flag's frame
                 // the step's), the hero leaving the game (none selected, the lists drawn so), then
                 // its dissolve (`killfade.82M`, the palettes cycling on) into the view without it.
+                // The view's draw shows the hero lifted, the panel's sleep and cast a spell as its
+                // selection left them until the next choice (E24 M5 T1a, design §5.22: recorded,
+                // `battle-retreat` 810 to 1265).
                 self.step_objects(t);
                 // Its tile and facing kept in the map's heroes (as a choice away from it does).
                 self.keep_path();
@@ -4785,11 +4818,8 @@ impl Loop {
                 // takes the next), the slot left told ([`Loop::slots_left`]).
                 self.walking = None;
                 self.slots_left.extend(slot);
-                self.lifted = false;
-                self.hero = None;
-                self.index = None;
-                self.selected_id = None;
                 self.kingdom.selected = Selected::None;
+                self.buttons.left = true;
                 // Its slot out of the kingdom's list at once (`hero_leave_game` 0x4D9EC0:
                 // recorded, `battle-retreat`'s list at 810).
                 let mut i = 0;
@@ -4804,6 +4834,10 @@ impl Loop {
                 });
                 self.draw_lists();
                 self.draw(t);
+                self.lifted = false;
+                self.hero = None;
+                self.index = None;
+                self.selected_id = None;
                 self.left.extend(index);
                 // A draw's monster taken off after the hero (E24 M4 T6, R5-4).
                 let monster = object.filter(|_| fight.after == AfterBattle::Both);
@@ -4835,6 +4869,8 @@ impl Loop {
     ) -> Result<(), Unplayable> {
         self.draw_lists();
         self.draw_minimap();
+        // The next choice draws sleep and cast a spell again ([`Buttons::left`]).
+        self.buttons.left = false;
         if self.kingdom.heroes.is_empty() {
             if let Some(chosen) = self.chosen.towns.first().cloned().flatten() {
                 self.choose_town(t, 0, chosen);

@@ -1,0 +1,15 @@
+[package]
+name = "h3-rmg"
+description = "The map generation context: a port of the original's random map generator, the same map per seed (ADR-0029)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# `arch.toml` allows the kernel and the core content (ADR-0029 point 1); each comes with the first
+# code that reads it (E14 increment 2's T2b and T2c).
+[dependencies]
+
+[lints]
+workspace = true

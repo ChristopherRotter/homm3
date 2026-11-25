@@ -182,7 +182,8 @@ fn the_boat_boarded_is_lifted_as_the_heros() {
         s.buttons,
         Buttons {
             move_hero: false,
-            next_hero: false
+            next_hero: false,
+            left: false,
         }
     );
     assert!(s.cursor.shown && l.aboard.is_none() && l.dissolving.is_none());
@@ -236,7 +237,8 @@ fn the_landing_puts_the_boat_back_and_dissolves_the_hero_in() {
         s.buttons,
         Buttons {
             move_hero: true,
-            next_hero: false
+            next_hero: false,
+            left: false,
         }
     );
     // Its end at 770: the redraws, Move Hero off, the mouse shown.

@@ -109,6 +109,7 @@ fn move_hero_needs_a_green_arrow_or_the_timeline_s_word() {
     let off = Buttons {
         move_hero: false,
         next_hero: true,
+        left: false,
     };
     assert!(!moved(vec![arrow(1)], Some(off)));
     assert!(moved(

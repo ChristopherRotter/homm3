@@ -11,26 +11,31 @@ increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in `E09-archive.md`. Ea
 confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T52** (queued, round 1, decision 198; **next**; its cut confirmed at its start): increment
-6's survey with its checkpoint `TWN-Q35`, docs only, `docs/rules/surveys/E09-trades.md`. The
-code reading of `Heroes3.exe` for each window a town's owner trades at: the market window's
-screens at a town (`market_window_run` 0x5EA130, survey `E08-trades.md` §3, §4, §11: resources
-for resources, resources to another player, artifacts for resources, artifacts sold (screen 3,
-`market_artifact_sale_rate` 0x5ECDC0, `market_sell_artifact_proc` 0x5EDF60), creatures sold at
-the Freelancer's Guild (screen 4, D-71); a town's count of Marketplaces, D-70), the Artifact
-Merchants' stock and its monthly draw (`new_month` 0x4C8F40, game +0x1F664; the combination
-artifacts' blank costs, the inbox's E04a T3b note), the Blacksmith's war machines with the
-Stronghold's Ballista Yard, the town's Shipyard and its boat (E08's), the Conflux's Magic
-University, the Necropolis's Skeleton Transformer; VCMI 1.7.5 and the wiki compared; a census
-of the 160 shipped maps' towns with these buildings; disputes, quirk candidates and batch
-TWN-6's rows. Acceptance: the survey's sections with their sources and addresses (`docs/exe/map.toml`),
-the census's counts, the checkpoint asked and its decisions in the epic. Needs the original data.
-
-**E09 T53** (queued, round 2, decision 198): increment 6's ADR amendment drafts
-(`docs/lanes/town/adr-drafts/*-increment-6.md`), the design note's Part H from §101, the cut
-into rounds and the exit criteria, accepted at the checkpoint before anything is built (as T43).
+**E09 T53** (queued, round 2, decision 198; **next**; its cut confirmed at its start): increment
+6's ADR amendment drafts (`docs/lanes/town/adr-drafts/*-increment-6.md`), the design note's Part H
+from §101, the cut into rounds with batch TWN-6's eight rows and the exit criteria, accepted at
+the checkpoint before anything is built (as T43). Input: survey `docs/rules/surveys/E09-trades.md`
+(§10's open points for T53, §11's rows, §13's decisions 201 to 207: D-70 the original, T-28 and
+T-23 `fix-optional`, the trader's count at least 1, Misc 5 sellable, one fixed boat spot, the
+stock and the pool's marks in the game state).
 
 ## Inbox
+
+- 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision and your
+  planning, nothing to build now**): the original's computer player's rules in towns (survey
+  `docs/rules/surveys/E31-computer-player.md` §3.6; E31 decision 2: you decide whether the engine
+  copies each, keyed on `human`). Row 5 (with the adventure lane): the Castle Gate's jump made even
+  when the purchase of building 22 fails; from an ally's Inferno town without a gate the walk buys
+  it there (§5.5 #59: who builds and who pays wants an experiment). Row 7 (with the adventure
+  lane): an artifact at the Artifact Merchants costs trunc(cost / rate), one unit under the human's
+  half-up rounding in 61 % of costs (`ai_artifact_market_price` 0x524550; E09 increment 6). Two
+  checks for the port: the trades written into the treasury at the market's rate (§2.3) against
+  the human's screen (`market_resources_proc` 0x5ECFE0) before the policy relies on their
+  rounding, and the allies' shares, which the receiver is not asked (as your transfer). One question: the town visit upgrades
+  creatures in the town's and the visitor's armies (§3.3) and the build choice values the upgrades
+  (§3.1); no rule for a town's creature upgrade turned up in the catalog: where is it planned? Every other
+  town decision of the computer is a choice the policy issues as your commands (§3.6's choices);
+  what it reads of your API: `docs/epics/E31-design.md` §3, at E31's increment 3.
 
 - 2026-11-24 (the rmg lane, E14 T1c2, `rmg/e14-t1c2`; **a question for you**: survey
   `docs/rules/surveys/E14-generator.md` §3.3.4): the generator writes each colour's main town as
@@ -42,6 +47,9 @@ into rounds and the exit criteria, accepted at the checkpoint before anything is
   visitor, purple owns no town; `main_town_heroes` 0x4CA040 has no owner test). Whether to widen
   the check to that is yours (with the user); the writer also lacks (a) the main town's type byte
   0xFF (it writes the faction) and (b) a main town of a town not of its colour (`main_towns`).
+  **Update (E14 T1c3, RMG-Q2):** the user chose the writer with its gaps closed, so (a) and (b)
+  in `writer/town.rs` are needed before E14 increment 7 (after E14's increments 2 to 6); one
+  still open then is closed by the rmg lane, `cross-lane` with the user's consent.
 - 2026-11-23 (the adventure lane, E08 T141a, `adventure/e08-t141a`, `cross-lane` with the user's
   consent, E08 decisions 412, 413; **in your paths, for your review**): the Prison. (1) The pool:
   `GameSetup::prisoners` are `GamePrisonerSetup`s (the body read as a placed hero's): `HeroPool::new`

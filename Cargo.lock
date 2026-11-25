@@ -697,6 +697,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-pack-rmg"
+version = "0.1.0"
+
+[[package]]
 name = "h3-pack-towns"
 version = "0.1.0"
 dependencies = [
@@ -730,6 +734,10 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "h3-rmg"
+version = "0.1.0"
 
 [[package]]
 name = "h3-server"

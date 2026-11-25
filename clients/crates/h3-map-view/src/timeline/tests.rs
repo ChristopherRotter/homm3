@@ -186,6 +186,7 @@ fn live_kingdom(text: &str) -> (Kingdom, Option<Buttons>) {
     let buttons = Buttons {
         move_hero: flags[0] == 1,
         next_hero: flags[1] == 1,
+        left: false,
     };
     (kingdom, Some(buttons))
 }
@@ -1600,6 +1601,7 @@ fn move_hero_and_next_hero_through_a_walk() {
     let buttons = |move_hero, next_hero| Buttons {
         move_hero,
         next_hero,
+        left: false,
     };
     let walk = |l: &mut Loop| {
         l.run(1, &[Action::Click(tile(21, 17))]).unwrap();

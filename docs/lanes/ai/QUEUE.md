@@ -16,27 +16,20 @@ quarter of the budget, the check named in its rule (`TRAPS.md`, Python). **Pause
 increment 10** (the user at T45, 2026-11-23, AI-Q23): increment 11, expert iteration, when it
 resumes (the epic file); its tasks are cut then.
 
-**E31** (`docs/epics/E31-original-computer-player.md`, AI-Q22; refined 2026-11-21): next (since
-T45, AI-Q23).
+**E31** (`docs/epics/E31-original-computer-player.md`, AI-Q22; refined 2026-11-21): in progress
+(since T45, AI-Q23); **increment 1 closed 2026-11-24** (AI-Q31; its tasks T1a1 to T1b in
+`QUEUE-ARCHIVE.md`, their records in `E31-log.md`).
 
-- **E31 T1a1 — the frame, in three parts** (AI-Q24): **done** 2026-11-23 (`E31-log.md` T1a1a
-  to T1a1c; the survey's §1).
-- **E31 T1a2 — the values, in four parts** (AI-Q25: T1a2b to T1a2d read by sub-agents):
-  **done** 2026-11-23 (`E31-log.md` T1a2; the survey's §2).
-- **E31 T1a3 — the towns and the answers, in four parts** (AI-Q26): **done** 2026-11-24 (T1a3c
-  and T1a3d each in two, one half read by a sub-agent, AI-Q27, AI-Q28; `E31-log.md` T1a3a to
-  T1a3d; the survey §3, the table of choices and rules §3.6).
-- **E31 T1a4 — the rest of the code, in three parts** (AI-Q29: T1a4a and T1a4b read by
-  sub-agents): **done** 2026-11-24 (`E31-log.md` T1a4; the survey §4: every function in a phase,
-  the draws, the floats, what persists). **T1a done.**
-- **E31 T1b — the survey finished, the ADR draft, the checkpoint** (the epic file's T1b row):
-  each phase's rules, the hidden reads in one list, the asymmetries (§3.6's rows into the lanes'
-  inboxes), the engine's gaps per epic; the ADR draft; the trace's plan; increments 2 to 7 cut
-  with exit criteria; the checkpoint AI-Q23. The second look at the quirk candidates of §1 to §4
-  (T1a4 alone 23; the turn start's reseed through the Grail target, §4.4, and the records set
-  only at the program's start, §4.6, want a confirmation experiment). Measure it at its start
-  and confirm a cut by size (the user, 2026-11-23 and 2026-11-24: a couple of small tasks or one
-  bigger one a session).
+- **E31 increment 2 — refine and cut** (the epic file's increment 2, confirmed at AI-Q31): first
+  the `shared/` pull request of the ADR draft's points 1 and 9 (`h3-game`'s `src/computer/` the ai
+  lane's by path in `lanes.toml`, `docs/rules/catalog/computer.toml`, `docs/rules/quirks-ai.md` with
+  the five exploit-fix entries of the survey §5.5, the signed `X87` with its audit), and the ADR
+  draft numbered when the user accepts it there; then the increment's tasks cut by size (the turn's
+  loop, the planning and its values, the simulated combat, the walk; trace T-A's harness,
+  `E31-design.md` §1). Measure it at its start and confirm a cut by size (the user: a couple of
+  small tasks or one bigger one a session). `Heroes3.exe` staged for the blind re-reads. When the
+  entry point is built, tell the map-client lane (its inbox note of E24 M5 T0: `MCL-STUB-5`'s hot
+  seat): `h3_game::computer::choose`, one command a call, the battle side by the host's seat.
 
 ## Inbox
 

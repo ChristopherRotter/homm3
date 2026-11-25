@@ -4,6 +4,28 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E31 increment 1, T1a1 to T1b** (moved 2026-11-24, done: `E31-log.md` T1a1a to T1b; increment 1 closed, AI-Q31):
+
+- **E31 T1a1 — the frame, in three parts** (AI-Q24): **done** 2026-11-23 (`E31-log.md` T1a1a
+  to T1a1c; the survey's §1).
+- **E31 T1a2 — the values, in four parts** (AI-Q25: T1a2b to T1a2d read by sub-agents):
+  **done** 2026-11-23 (`E31-log.md` T1a2; the survey's §2).
+- **E31 T1a3 — the towns and the answers, in four parts** (AI-Q26): **done** 2026-11-24 (T1a3c
+  and T1a3d each in two, one half read by a sub-agent, AI-Q27, AI-Q28; `E31-log.md` T1a3a to
+  T1a3d; the survey §3, the table of choices and rules §3.6).
+- **E31 T1a4 — the rest of the code, in three parts** (AI-Q29: T1a4a and T1a4b read by
+  sub-agents): **done** 2026-11-24 (`E31-log.md` T1a4; the survey §4: every function in a phase,
+  the draws, the floats, what persists). **T1a done.**
+- **E31 T1b — the survey finished, the ADR draft, the checkpoint** (the epic file's T1b row):
+  each phase's rules, the hidden reads in one list, the asymmetries (§3.6's rows into the lanes'
+  inboxes), the engine's gaps per epic; the ADR draft; the trace's plan; increments 2 to 7 cut
+  with exit criteria; the checkpoint AI-Q23. The second look at the quirk candidates of §1 to §4
+  (T1a4 alone 23; the turn start's reseed through the Grail target, §4.4, and the records set
+  only at the program's start, §4.6, want a confirmation experiment). Measure it at its start
+  and confirm a cut by size (the user, 2026-11-23 and 2026-11-24: a couple of small tasks or one
+  bigger one a session).
+- **E31 T1b** done 2026-11-24 (AI-Q30, AI-Q31; `E31-log.md` T1b).
+
 **E25 increment 8, T36** (moved 2026-11-18, done: `E25-log.md` T36; T36 and increment 8 closed):
 
 - **T36 — The long run and its checkpoint** (refined 2026-11-16, decision 4; the user's choice

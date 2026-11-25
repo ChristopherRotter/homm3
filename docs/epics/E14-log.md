@@ -231,3 +231,71 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   assign the catalog's); the ledger groups the faults by kind (RMG-QUIRK-3 to -6) and the cosmetic
   ones in one entry with the user's one flag; the scratch scripts (table parser, census) stay out
   of the repo.
+
+## T1c3 — the ADR draft, the cut, the checkpoint RMG-Q2 (2026-11-24, increment 1)
+
+- **No cut** (the user: "a couple of small tasks or a bigger one at a time"; this one small, the
+  runner alone, no workers). Staged from the PC: both `Heroes3.exe` (Complete's and the standalone
+  SoD's, the latter a 345 KB launcher) and the six tables of `original-data/extracted/`
+  (`Rmg.txt`, `Objects.txt`, `Rand_trn.txt` of `H3bitmap` and `H3ab_bmp`); no oracle run.
+- **Findings for the draft:** AB's `Rand_trn.txt` equals SoD's; SoD's `Objects.txt` holds 1 326
+  template lines against AB's 1 221 (105 added, three changed); AB's `Rmg.txt` is a byte prefix of
+  SoD's (T1c2). The C runtime's `rand` is already ported twice (`h3_adventure::split::TileRand`,
+  `h3_heroes::level_up::OriginalDraws`), so the draft puts the generator's in the kernel
+  (`CrtRand`; the epic's agent decision changed). The game's control word is 0x27F (53 bits,
+  `docs/formats/installation.md`), so the generator's x87 sites are binary64: `trunc(sqrt(n))` of
+  an integer is the integer square root for every `n < 2^52` (the domain's at most 82 944), the
+  layout products go through `kernel::num::Real` with the tables as `Real(k) / Real(10 000)`.
+  `phases.txt` keeps each step's cells' digest but one digest of the whole draw log: increment 3
+  first records each step's draw count and digest.
+- **The draft** (`docs/lanes/rmg/adr-drafts/h3-rmg-generator.md`, eight points): the crates
+  (`h3-rmg` a domain logic crate on the kernel and the core content, `h3-pack-rmg`, an rmg-lane
+  module `h3_map::generated`), the seam (`generate` → `GeneratedMap` in the writer's order;
+  `resolve_random` for the dialog's Random choices), the stream, the floats, the pack data (`ab`
+  AB's three tables, `sod` SoD's additions and the executable's constants; 8XM8's gated override
+  in the rmg part's compiler; the part outside `GameRuleset`; no generator without `sod`), the
+  profiles (the 18 flags in the game's registry), the versions (`RMG_GENERATOR_VERSION`,
+  `RMG_RULESET_HASH_VERSION`, the provenance) and the trace (draws with their sites, the cells in
+  the dump format 1, CI on the digests).
+- **The cut** (the epic's table): increments 2 to 7 in the run's order, 17, 31, 31, 27, 21 and 9
+  of §3.2's 136 rules; each increment's ledger entries and "not read" items; the shared exit
+  criteria (a) to (f) and each increment's own; increment 2's tasks T2a to T2c.
+- **The checkpoint RMG-Q2** (one round of four): the seam **the experiment writer with its seven
+  gaps closed** (the session recommended a writer of `RawMap`; the draft rewritten to the user's
+  choice, the adventure and town lanes' inbox notes updated: their gaps before increment 7, the
+  rmg lane `cross-lane` for any left then); the picture names harvested; the game's profiles; six
+  increments. Increment 1 closed: its section and tasks moved to `E14-archive.md`.
+
+## T2a — the crates, `CrtRand`, the contexts, ADR-0029 (2026-11-24, increment 2)
+
+- **Kept whole** (a small shared change, the user's "a couple of small tasks or a bigger one").
+  Branch `shared/e14-t2a`, `cross-lane` (the rmg lane's crates and docs ride along, as E09 T4b's).
+  Staged from the PC: Complete's `Heroes3.exe` alone (the code reading). The PC's repo folder was
+  behind GitHub (its `master` at 7b4f02c); the clone is GitHub's.
+- **The crates:** `h3-rmg` (domain, logic: the lint header, `no_std`; `arch.toml` allows the kernel
+  and the core content, the manifest none yet, as `h3-towns`' skeleton) and `h3-pack-rmg`
+  (adapter: the kernel, the core content, `h3-rmg`, `h3-pack`, serde and toml; proptest for exit
+  criterion (d)'s property test over the packs' tables, which live there, not in `h3-rmg`). The
+  edge `h3-game → h3-rmg` is a `forbidden_edge` (point 2: the game reads the bytes); the edge
+  `h3-map → h3-rmg` waits for increment 7. `lanes.toml` gives the rmg lane `crates/h3-pack-rmg/`.
+- **`CrtRand`** (`h3_kernel::rng`, KER-RNG-004): `new(seed)` (`srand`), `rand()`, `state()`,
+  `MAX`. Read again: `crt_srand` 0x617E4F sets the thread data's +0x14; `crt_rand` 0x617E5C
+  multiplies it by 0x343FD, adds 0x269EC3, stores it (0x617E70) and returns bits 16 to 30; the
+  thread data (0x61D303, `_getptd`) starts at 1 (0x61D2F0, at 0x61D2FB). The three entries in
+  `docs/exe/map.toml`. **The test vectors are the code reading's** (srand of 1, 0, 2^32 − 1 and
+  `s1-2p`'s 1 000 000 000, six draws and the state each, computed from the formula): the phase
+  oracle's draw logs were never kept (`clients/out/rmg/` lived in an earlier sandbox; the PC has
+  none), so the stream is checked against the oracle from T2c on (the draws before step 1) and
+  whole at increment 6 (`log=`). ADR-0029 point 3 says so.
+- **Docs:** `docs/03-domain.md`'s row *Map generation*; the catalog context `RMG` (`rmg`, xtask's
+  `CONTEXTS`, the catalog README, `04-rules-and-sources.md` §3); ADR-0029 (the draft moved, its
+  status, the Consequences' edges, a revision history) with its index row, ADR-0003's revision
+  history and AGENTS.md's rmg reading list; `02-architecture.md` §3, the README's crate table, the
+  work process's rmg lane, the global HANDOFF's row. The adventure lane's inbox: `TileRand` and
+  `OriginalDraws` may wrap `CrtRand`.
+- **The coverage gate:** a scope whose logic crates are skeletons (no function: `h3-rmg`) has no
+  coverage data, and `llvm-cov report` failed the scoped verify; the gate and `runs_tests` skip
+  such a scope now (the test step then runs its tests; `docs/05-testing.md`), with a unit test.
+- **Checked:** the scoped verify (`--scope rmg`) passes but `check-lane` (a shared branch, by
+  design; `check-lane --cross-lane` passes); `cargo check --workspace --all-targets`, the kernel's
+  and xtask's tests and clippy, `scripts/exe.py check`.

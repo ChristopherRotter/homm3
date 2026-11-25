@@ -5,20 +5,20 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 to 5 closed (T10, T20, T30, T41, T51; `E09-archive.md`, design
-  notes Parts A to G). **Increment 6** (the town's trades: the Marketplace's screens with the
+  notes Parts A to G). **Increment 6** (the town's trades: the Marketplace's window with the
   Artifact Merchants and the Freelancer's Guild on E08's market, the Blacksmith, the town's
-  Shipyard, the Magic University, the Skeleton Transformer) refined at T51 (`TWN-Q34`, decisions
-  196–199: the services split, 7 the buildings for heroes and the map, travel and the Grail 8;
-  T51's audit and the closure in `E09-log.md`). **Next:** **T52**, the survey with its
-  checkpoint `TWN-Q35` (`docs/rules/surveys/E09-trades.md`, docs only, needs the original data;
-  its cut confirmed at its start), then **T53** the drafts with Part H from §101 (`QUEUE.md`).
-  In the inbox for review: E08 T141a's note (2): the Thieves' Guild's best hero row may follow
-  the list of heroes (`AdventureState::hero_list`, today by id). Waiting elsewhere: `TWN-STUB-8`
-  (the battle lane's inbox), `-13` (Visions' reach), `TWN-STUB-2` (the victory conditions),
-  `TWN-STUB-16` (E10's loss condition), `-17` (increment 8), `-18` (E13). For the next `shared/`
-  task: `docs/06-security.md`'s ADV-FOG-006 line (T50's record).
-- **Open pull requests:** T51's #1149 (`town/e09-t51`, docs only) and the README's row #1148
-  (`shared/e09-t51-readme`); watch them until they merge (T50's #1144 merged 2026-11-24).
+  Shipyard, the Magic University, the Skeleton Transformer; decisions 196–207): **T52** the survey
+  `docs/rules/surveys/E09-trades.md` with its checkpoint `TWN-Q35` (decisions 200–207: D-70 the
+  original; TD-28 `fix-optional` as T-28; the trader's count at least 1; TD-30 with T-23
+  `fix-optional`; Misc 5 sellable; one fixed boat spot; the agent's calls each asked). **Next:**
+  **T53**, the drafts with Part H from §101, the cut with batch TWN-6's eight rows (`QUEUE.md`;
+  the survey's §10 open points). In the inbox for review: E08 T141a's note (2): the Thieves'
+  Guild's best hero row may follow the list of heroes (`AdventureState::hero_list`, today by id).
+  Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach), `TWN-STUB-2`
+  (the victory conditions), `TWN-STUB-16` (E10's loss condition), `-17` (increment 8), `-18`
+  (E13). For the next `shared/` task: `docs/06-security.md`'s ADV-FOG-006 line (T50's record).
+- **Open pull requests:** T52's #1161 (`town/e09-t52`, docs only); watch it until it merges (T51's
+  #1149 and the README's #1148 merged 2026-11-24).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -30,8 +30,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   T141a; replay format v25, T49b), the env's (v20) and the protocol's (v81, both T141a) are bumped
   `cross-lane` (each task's record in `E09-log.md`). Shared: core ruleset hash v53, pack format
   v53 (E08 T124a), quirk flags 51 (E08 T140; `TWN-QUIRK-14`'s at T45).
-- **Ids** (next): questions `TWN-Q35`; decisions 200; quirks `TWN-QUIRK-15`; stubs `TWN-STUB-21`;
-  experiment batch `TWN-6`; disputes `TD-28`; quirk candidates `T-19`. ADR-0028 is the lane's; no
+- **Ids** (next): questions `TWN-Q36`; decisions 208; quirks `TWN-QUIRK-15`; stubs `TWN-STUB-21`;
+  experiment batch `TWN-6` (its eight rows planned, survey §11); disputes `TD-32`; quirk
+  candidates `T-29`. ADR-0028 is the lane's; no
   drafts open; every TWN-GLD rule `verified` but TWN-GLD-007 (no row bought a book: T51).
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
@@ -41,6 +42,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-24 — T52: increment 6's survey and its checkpoint TWN-Q35, docs only
+
+Baseline 7782735 (#1149, #1148 merged; the setup's full baseline on `master`'s code passed). The
+user's computer was connected: 5 files staged, SHA-256 checked. The user kept T52 whole and asked
+for sub-agents (decision 200): seven narrow jobs (four code readings, VCMI, the wiki, the census),
+at most two at a time, each writing a notes file the session merged (46 new map entries, 35
+changed). The wiki's Freelancer's Guild, Ballista Yard and Magic University pages did not load.
+At the checkpoint the user chose three answers of their own (TD-28 `fix-optional`, the count
+at least 1, Misc 5 sellable) and had the agent's calls asked one by one.
 
 ### 2026-11-24 — T51: the audit, increment 5 closed, increment 6 refined, docs only
 
@@ -60,14 +71,3 @@ in two; the user kept T50 whole with the inbox's hygiene failure and asked for s
 The failure was the property's (`TRAPS.md`). The census holds on all 160 maps with 25 survey
 counts, three mutations caught; the properties cost +1 % (a first draft +29 %). The VM restarted
 twice and the server once; each part was pushed as it came, nothing lost.
-
-### 2026-11-23 — T49b: a spell book bought at a town's Mage Guild, `cross-lane`
-
-Baseline f1c4a53 (#1128 merged; the setup's light gates, CI's fingerprint on `master`'s code).
-The user's computer was connected and its shell worked: 71 files staged, SHA-256 checked. The
-agent recommended a cut in two; the user kept T49b whole (decision 194). Built: the command, its
-three refusals, `check_spell_book`, `guild_offers`, the game's `buy_book` and `offers`; the
-wire, the word, `SPELL_BOOK` (104); the plans. The town map's seed 2541 lost its won siege: 277
-after a search of 3 000. `legal-towns-36` on `master`'s games +5.5 % at the first build, +1.6 %
-after the design pass (`TRAPS.md`); `day-start-builds-36` re-baselined (its games bought books).
-CI's first run met a gap of T49a1's in `h3-map`'s `check_towns` (a hire's Vortex flag): taught.

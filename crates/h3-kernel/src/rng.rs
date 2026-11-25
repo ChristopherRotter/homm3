@@ -11,6 +11,11 @@
 //!
 //! Replays record [`RNG_ALGORITHM`] and [`RNG_VERSION`]; changing anything here that alters the
 //! produced sequence requires bumping the version.
+//!
+//! Apart from the engine's streams, [`CrtRand`] is the original's own generator, the C runtime's
+//! `rand` (KER-RNG-004): for the draws a rule reproduces as the original makes them (the map
+//! generator's port, ADR-0029 point 3). It is never a named stream and has no version: its
+//! sequence is the original's.
 
 use crate::hash::{CanonicalHash, StateHasher};
 
@@ -224,6 +229,39 @@ impl CanonicalHash for Rng {
     }
 }
 
+/// The C runtime's generator as `Heroes3.exe` links it (Microsoft's `srand` and `rand`, the
+/// executable's `crt_srand` 0x617E4F and `crt_rand` 0x617E5C; KER-RNG-004): a 32-bit state that
+/// `srand` sets and each `rand()` steps. The original's draws where a rule reproduces them: the map
+/// generator's whole stream (ADR-0029 point 3); `h3_adventure::TileRand` and
+/// `h3_heroes::OriginalDraws` are its twins. A caller that derives its seed from a game draws it
+/// from its own [`Rng`] stream; nothing else draws from a `CrtRand` (ADR-0003 point 7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CrtRand(u32);
+
+impl CrtRand {
+    /// The largest number `rand()` returns (the runtime's `RAND_MAX`).
+    pub const MAX: u32 = 0x7FFF;
+
+    /// `srand(seed)`: the generator with its state set to the seed (0x617E58).
+    // rule: KER-RNG-004
+    pub const fn new(seed: u32) -> Self {
+        Self(seed)
+    }
+
+    /// The state: the seed until the first draw, then the last draw's whole 32 bits.
+    pub const fn state(self) -> u32 {
+        self.0
+    }
+
+    /// The next `rand()`, 0 to [`CrtRand::MAX`]: the state times 214 013 plus 2 531 011 in 32
+    /// bits (0x617E64 to 0x617E70), its bits 16 to 30.
+    // rule: KER-RNG-004
+    pub const fn rand(&mut self) -> u32 {
+        self.0 = self.0.wrapping_mul(214_013).wrapping_add(2_531_011);
+        (self.0 >> 16) & Self::MAX
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate std;
@@ -420,7 +458,53 @@ mod tests {
         assert_eq!(h.finish(), g.finish());
     }
 
+    // covers: KER-RNG-004
+    #[test]
+    fn the_c_runtimes_generator_gives_the_originals_draws() {
+        // A seed, its first six draws, the state after them.
+        let cases: [(u32, [u32; 6], u32); 4] = [
+            // srand(1), also a thread's sequence before any srand (its data starts at 1,
+            // 0x61D2FB): Microsoft's well-known 41, 18467, 6334, 26500, 19169, 15724.
+            (
+                1,
+                [41, 18_467, 6_334, 26_500, 19_169, 15_724],
+                1_030_492_215,
+            ),
+            (0, [38, 7_719, 21_238, 2_437, 8_855, 11_797], 773_150_046),
+            // The state wraps in 32 bits; bit 31 never reaches a draw.
+            (
+                u32::MAX,
+                [35, 29_739, 3_374, 11_141, 31_308, 7_870],
+                515_807_877,
+            ),
+            // The oracle's first case's seed (`clients/capture/rmg/kept.txt`, `s1-2p`).
+            (
+                1_000_000_000,
+                [18_686, 28_840, 29_787, 31_391, 28_529, 1_806],
+                118_394_718,
+            ),
+        ];
+        for (seed, drawn, state) in cases {
+            let mut crt = CrtRand::new(seed);
+            assert_eq!(drawn.map(|_| crt.rand()), drawn, "{seed}");
+            assert_eq!(crt.state(), state, "{seed}");
+        }
+        assert_eq!(CrtRand::new(7).state(), 7);
+    }
+
     proptest! {
+        // covers: KER-RNG-004
+        #[test]
+        fn a_crt_draw_is_the_new_states_bits_16_to_30(seed: u32) {
+            let mut crt = CrtRand::new(seed);
+            let first = crt.rand();
+            prop_assert!(first <= CrtRand::MAX);
+            prop_assert_eq!(crt.state(), seed.wrapping_mul(214_013).wrapping_add(2_531_011));
+            prop_assert_eq!(first, (crt.state() >> 16) & 0x7FFF);
+            let mut again = CrtRand::new(seed);
+            prop_assert_eq!(again.rand(), first);
+        }
+
         // covers: KER-RNG-002
         #[test]
         fn bounded_draws_stay_in_range(seed: u64, n in 1u32.., lo: u32, hi: u32) {

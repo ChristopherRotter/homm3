@@ -1,12 +1,14 @@
 # Rule catalog: kernel (engine-level rules shared by all contexts). Format: docs/04-rules-and-sources.md §3.
-# Kernel rules are engine design decisions, not facts about the original game (source kind `design`).
+# Kernel rules are engine design decisions, not facts about the original game (source kind `design`);
+# KER-RNG-004, the original's C runtime generator the kernel holds for the rules that reproduce its
+# draws (ADR-0029 point 3), is the exception and cites the code reading.
 
 [[rule]]
 id       = "KER-RNG-001"
 title    = "Pseudo-random generator, seeding and named streams"
 context  = "kernel"
 status   = "implemented"
-summary  = "Randomness uses xoshiro256** seeded by expanding a 64-bit seed with SplitMix64 into four words. The generator for named stream S of master seed M is from_seed(M xor splitmix64_first_output(S)). next_u32 is the high half of next_u64. Stream ids are a closed list: BATTLE 1, AGENT 2, OBSTACLES 3, GAME 4, SETUP 5, ENCOUNTER 6 (ADR-0025 point 4), TOWNS 7 and TAVERNS 8 (ADR-0017 point 4; E09 T24, T35b), player i's stream 0x100 + i (ADR-0017 point 4), battle seat s's stream 0x200 + s and batch environment i's stream 2^32 + i (ADR-0025 points 4 and 5). Algorithm id and version are recorded in replays. The original game's RNG is intentionally not reproduced (01-vision: fidelity is logic equivalence, not replay equivalence)."
+summary  = "Randomness uses xoshiro256** seeded by expanding a 64-bit seed with SplitMix64 into four words. The generator for named stream S of master seed M is from_seed(M xor splitmix64_first_output(S)). next_u32 is the high half of next_u64. Stream ids are a closed list: BATTLE 1, AGENT 2, OBSTACLES 3, GAME 4, SETUP 5, ENCOUNTER 6 (ADR-0025 point 4), TOWNS 7 and TAVERNS 8 (ADR-0017 point 4; E09 T24, T35b), player i's stream 0x100 + i (ADR-0017 point 4), battle seat s's stream 0x200 + s and batch environment i's stream 2^32 + i (ADR-0025 points 4 and 5). Algorithm id and version are recorded in replays. The original game's RNG is intentionally not reproduced in play (01-vision: fidelity is logic equivalence, not replay equivalence); the original's own generator, where a rule reproduces its draws, is KER-RNG-004."
 numeric  = "integer"
 
   [[rule.source]]
@@ -46,6 +48,24 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "OPEN-QUESTIONS Q39 (user, 2026-10-04): exact rolls below a cutoff, a bounded-cost approximation above; Irwin-Hall sum of twelve uniforms as the normal variate (standard technique)"
+  confidence = "high"
+
+[[rule]]
+id       = "KER-RNG-004"
+title    = "The original's generator: the C runtime's rand"
+context  = "kernel"
+status   = "implemented"
+summary  = "CrtRand is the C runtime's generator as Heroes3.exe links it (Microsoft's srand and rand): a 32-bit state; srand(seed) sets it to the seed; each rand() sets it to state * 214013 + 2531011 modulo 2^32 and returns its bits 16 to 30 (state >> 16 & 0x7FFF), 0 to 32767 (RAND_MAX). The runtime keeps the state per thread, 1 on a thread that never called srand. It is not a named stream of the engine's generator (KER-RNG-001) and has no version: it serves the rules that reproduce the original's draws in their order, the map generator's whole stream from its srand on (ADR-0029 point 3); a caller deriving its seed from a game draws it from its own stream."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T2a): crt_srand 0x617E4F (the thread's data, 0x61D303, its +0x14 set to the argument, 0x617E58), crt_rand 0x617E5C (+0x14 times 0x343FD plus 0x269EC3 stored back at 0x617E70, shifted right 16 and masked with 0x7FFF), the thread data's initialisation 0x61D2F0 (+0x14 = 1 at 0x61D2FB); the generator's seed rmg_seed_srand 0x536148 (srand(time()))"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0029 point 3: the original's stream in h3_kernel::rng::CrtRand, the third use after h3_adventure::TileRand (ADV-MON-009) and h3_heroes::OriginalDraws (HER-LVL-002)"
   confidence = "high"
 
 [[rule]]

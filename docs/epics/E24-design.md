@@ -4803,7 +4803,8 @@ a record's facts and compared with T5a's three sequences, recorded again.
 - **Compared** (`timelines/battle-*-frames.txt`, the original's frames under Wine): every
   timeline as recorded; the frames exact but the known differences (the epic's review list):
   the morale icon (MCL-Q36), the battle's fade in (its obstacles the engine's: MCL-Q49), the
-  hero's pose at the attack, the panel's buttons after a retreat, MINEEVNT's resource (MCL-Q48).
+  hero's pose at the attack, the panel's buttons after a retreat (both fixed at M5 T1a: §5.22),
+  MINEEVNT's resource (MCL-Q48).
 - **As built at M4 T6** (the review's R5, R3-2): a record's walk whose path ends on an object
   that blocks its tile (a monster, a pile, an artifact) visits it from beside at that last node
   (`Loop::last_node`: its arrow zeroed, then `visit_beside`; no step, *provisional*, as §5.18's
@@ -4822,3 +4823,41 @@ a record's facts and compared with T5a's three sequences, recorded again.
   again before each battle and tells a failed write, gives the map the mouse where the battle
   left it and the focus as it stands, runs the device for a battle reached while paused, and
   under `--check` fails unless every battle that came due closed.
+
+### 5.22 The hero on its tile through a battle; the panel after a retreat (M5 T1a)
+
+M4's two unexplained frame differences of the battle sequences (§5.21's "the hero's pose at the
+attack", "the panel's buttons after a retreat"), read and recorded again (M5 T1 cut in three by
+the user at its start: T1a these, T1b MCL-Q51, T1c MCL-Q52). Read: `adventure_hero_stop`
+0x417680 whole, its calls at a battle's start (`monster_battle` 0x4AC593, `adventure_battle`
+0x4AD54E, both with 0, 1), `visit_from_neighbour` 0x480240 whole, `view_moving_hero_step`
+0x47FC80's conditions, `manager_run`'s return and `adventure_battle` after it (0x4AE2F3 to
+0x4AE30F, the retreated hero's draw and leave 0x4AE6BB to 0x4AE6FD, its end's `mobilize_hero`
+0x4AD62E). Recorded: `battle-won`, `battle-retreat`, `battle-mine` again, each as recorded.
+
+- **Not a pose.** The "moving pose" was the hero drawn **on its tile**: no lifted hero's pass 9,
+  whose 50/50 blend (`def_draw_group_blend`) drops each channel's low bit, so the original's
+  hero showed a unit brighter over its whole picture (the frames' differences, checked against
+  the viewer with the hero on its tile: the same picture). `adventure_hero_stop` with 0, 1, at
+  every battle's start: a hero lifted off its tile (+0x20C) put back (`hero_walk_end`: its
+  standing group, frame 0; `hero_show`; its facing from +0x1F4; +0x1EC 0), the view drawn
+  (`adventure_view_draw`) and (0, 8) to (608, 552) shown at once, then the objects stepped when
+  due (0x4177D3: the draw before the step, so `battle-mine`'s 1060 shows the step before it,
+  the hero's flag at frame 0, memory's step 1). A hero not lifted: nothing (the viewer's
+  battles all come from a visit from beside, which lifts it first, so `Loop::battle_stop` does
+  not test it).
+- **The map's return** (`manager_run`): the whole screen drawn with the hero still on its tile,
+  the mouse hidden through the fade in (the screen's fade hides it; `adventure_battle` shows it
+  after `manager_run` returns, 0x4AE30F: at 710 and 760 the original has no pointer, M4's
+  viewer drew the arrow). At the fade in's end the hero shows lifted again in every recording
+  (*provisional*: `monster_battle`'s `mobilize_hero` after the battle, 0x4AC917, and
+  `adventure_battle`'s at its end, 0x4AD62E, lift it after a won battle; a retreated hero shows
+  lifted in `adventure_battle`'s draw before it leaves, 0x4AE6BB, by a lift not read).
+- **The panel after a retreat:** `hero_leave_game` 0x4D9EC0 takes the hero's slot out of the
+  list (redrawn) but not sleep's and cast a spell's states, so both stay drawn enabled from 810
+  until the next choice (the town at 1330) disables them (`Buttons::left`, set where the hero
+  leaves, cleared at `Loop::left_map`'s choice).
+- **Compared:** every timeline as recorded; the three frame lists left with M4's known
+  differences only: the morale icon (MCL-Q36: 157 pixels, 151 and 124 under the fades' shifts
+  1 and 2), the battle's fade in (MCL-Q49), MINEEVNT's resource (MCL-Q48); `battle-retreat`'s
+  dissolve exact (810 to 1265).

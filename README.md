@@ -65,10 +65,10 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E09](docs/epics/E09-towns.md) | Towns and economy | town | `██████░░░░` 5/8 I | I1–I5 closed (towns on the map, construction, growth and recruitment, the Tavern, the mage guild); I6 (the town's trades) refined; the buildings for heroes and the map, travel and Grail follow |
 | [E27](docs/epics/E27-game-shell.md) | Game shell: menus, scenario setup, load/save, options, start clips | client | `████████░░` 4/5 M | M1–M4 closed (reading, start and menus, a game's setup, High Scores, Credits, the save file and Load Game); M5 (in play) after E24 M5 |
 | [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓▓▓` 10 I done, open-ended | I10 closed (the ceiling: +0.085 possible against the fair actor, #2 holds +0.026); paused for E31; I11 (expert iteration) when it resumes |
-| [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `░░░░░░░░░░` 0/1 I | in progress; increment 1: the reading done (T1a1, T1a2), the oracle (T1b) next |
+| [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `█░░░░░░░░░` 1/7 I | I1 closed (the reading, the oracle, the survey, the quirk ledger, the ADR draft); I2 (templates, the stream, the start) refined, I3–I7 cut in the generator's run order |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
 | [E10](docs/epics/E10-game-orchestration.md) | Game orchestration: teams, the game's end, special victory and loss conditions, the score, the starting bonus and handicap | adventure | `░░░░░░░░░░` planned | refined; after E08 (its increments sketched) |
-| [E31](docs/epics/E31-original-computer-player.md) | The original's computer player: the adventure AI read from the executable, faithful then fair | ai | `░░░░░░░░░░` 0/1 I | in progress: increment 1 (the reading, the survey) next |
+| [E31](docs/epics/E31-original-computer-player.md) | The original's computer player: the adventure AI read from the executable, faithful then fair | ai | `█░░░░░░░░░` 1/7 I | I1 closed (the reading of 255 functions, the survey, the ADR draft: a module of `h3-game` for now); I2 (the module and the frame) next |
 | [E13](docs/epics/E13-adventure-ai.md) | Adventure AI (hierarchical): macro-actions over a deterministic executor | ai | `░░░░░░░░░░` planned | refined in shape; after all of E10 and E31 |
 
 Not started yet (sketches in the backlog): map-object long tail (E12), the custom map generator (E30), web portal (E21), packaging and hosting
@@ -107,7 +107,8 @@ the capture harness) read your installation from a copy in `original-data/`
 | `crates/h3-heroes` | the hero model beneath the contexts (levels, skills, artifacts, derived battle heroes) |
 | `crates/h3-adventure`, `h3-game` | the adventure map context; game orchestration (players, turn groups, pending decisions, battles on the map) |
 | `crates/h3-towns` | the town context: every town's record, the store of towns, the town part (E09; a skeleton so far) |
-| `crates/h3-map`, `h3-pack`, `h3-pack-battle`, `h3-pack-adventure`, `h3-pack-towns` | the `.h3m` reader, writer and import; pack adapters |
+| `crates/h3-rmg` | the map generation context: the original's random map generator, the same map per seed (E14; a skeleton so far) |
+| `crates/h3-map`, `h3-pack`, `h3-pack-battle`, `h3-pack-adventure`, `h3-pack-towns`, `h3-pack-rmg` | the `.h3m` reader, writer and import; pack adapters |
 | `crates/h3-sim`, `h3-ffi` | RL environments, action/observation encodings, replays; the C ABI (`include/h3.h`) |
 | `crates/h3-protocol`, `h3-server` | the wire protocol (sans-I/O core) and the WebSocket game server |
 | `crates/h3-formats`, `h3-harvest`, `h3-experiment` | readers for the original's files; the pack harvester; experiment compiler (staged battles to confirm rules in the original) |
