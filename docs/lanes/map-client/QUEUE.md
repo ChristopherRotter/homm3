@@ -12,16 +12,7 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
 "Later". Every task's cut is confirmed with the user at its start. Planned ids: `MCL-STUB-5` (a
 computer colour's turn ended at once, T3), `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was cut
-in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a and T2b done 2026-11-25).
-
-### E24 M5 T2c — one record reader shared with the client lane (the layering's third part)
-
-- **Scope:** one record reader shared by both lanes (`h3_view::game_record` and `h3-map-view`'s
-  own): the place, in the common foundation or beside the server's writer, agreed with the
-  client lane and, beside the writer, the server lane; both lanes' readers moved onto it.
-- **Acceptance:** as T2a's and T2b's (`drawn` all the same, the golden records as before, the window under
-  Xvfb, `check.sh`), and the client lane's record tests as before.
-- **Depends on:** T2a (done). **Status:** queued (next).
+in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done 2026-11-25).
 
 ### E24 M5 T3 — the session in-process
 
@@ -38,9 +29,9 @@ in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a and T2b d
   the next human's view; each seat's record played by the record player as the game went; the
   scoped verify.
 - **Depends on:** T2b (play's entry: `h3_map_client::play`, done; until T3 it shows the first
-  human's start standing); the client lane's shell crate for Begin (until then `h3-map-view
-  play`, the command line start).
-  **Status:** queued.
+  human's start standing); T2c (done: one record reader, `h3_protocol::record`); the client
+  lane's shell crate for Begin (until then `h3-map-view play`, the command line start).
+  **Status:** queued (next).
 
 ### E24 M5 T4 — live input through the engine
 

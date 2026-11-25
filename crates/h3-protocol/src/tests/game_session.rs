@@ -29,13 +29,13 @@ use crate::wire::game::*;
 use crate::wire::{ServerMessage, WireU64};
 
 /// A map's identity for the manifest (the session only carries it).
-const MAP: MapIdentity = MapIdentity {
+pub(super) const MAP: MapIdentity = MapIdentity {
     content_hash: WireU64(7),
     import_version: 1,
 };
 
 /// The options of a test's game: every record unbounded.
-const fn options(checkpoint_every: u32) -> GameOptions {
+pub(super) const fn options(checkpoint_every: u32) -> GameOptions {
     GameOptions {
         game: 9,
         checkpoint_every,

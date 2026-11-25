@@ -5,21 +5,22 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 to 5 closed (T10, T20, T30, T41, T51; `E09-archive.md`, design
-  notes Parts A to G). **Increment 6** (the town's trades; decisions 196–218): T52 the survey
-  `docs/rules/surveys/E09-trades.md` (`TWN-Q35`); T53 the drafts
-  `docs/lanes/town/adr-drafts/{0028,0017,0016}-increment-6.md` and the design note's Part H §101 to
-  §120 (`TWN-Q36`, `TWN-Q37`); **T54** batch TWN-6, run twice by an agent and scored (survey §14:
-  every row the code reading; T-19, T-20, T-21, T-23, T-28 confirmed; decision 218). **Next:**
-  **T55** `shared/` (T55a the drafts into the ADRs with T54's verdicts, the glossary,
-  `docs/06-security.md`'s ADV-FOG-006 line (T50's record) with increment 6's; T55b the flags of
-  `TWN-QUIRK-15` and `-16`, the combinations' costs, HER-ART-008), then T56 to T61 (`QUEUE.md`).
-  In the inbox for review: E08 T141a's note (2) (the Thieves' Guild's best hero row may follow
-  `AdventureState::hero_list`); the AI lane's E31 note (a town's creature upgrade: where
-  planned?). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach),
-  `TWN-STUB-2` (the victory conditions), `-16` (E10's loss condition), `-17` (increment 8), `-18`
-  (E13).
-- **Open pull requests:** T54's **#1173** (`town/e09-t54`, `cross-lane`); watch it until it merges (T53's
-  #1168 merged 2026-11-25).
+  notes Parts A to G). **Increment 6** (the town's trades; decisions 196–219): T52 the survey
+  `docs/rules/surveys/E09-trades.md` (`TWN-Q35`); T53 the drafts and the design note's Part H §101
+  to §120 (`TWN-Q36`, `TWN-Q37`); T54 batch TWN-6 (survey §14: every row the code reading); **T55**
+  `shared/`: the drafts in ADR-0028, -0017 and -0016, the glossary, `docs/06-security.md`'s "The
+  town's trades"; `TWN-QUIRK-15`'s and `-16`'s flags (`quirk.town.visitor_only_trades` 54,
+  `quirk.town.university_ignores_map_bans` 55, on in `faithful`; read from T58a and T59b); the
+  combinations' costs (HER-ART-008, `h3-content`). **Next:** **T56**, the town part v10 (the six
+  building fields, the parameters, the Transformer's tables; the harvest `cross-lane`), then T57
+  to T61 (`QUEUE.md`). In the inbox for review: E08 T141a's note (2) (the Thieves' Guild's best
+  hero row may follow `AdventureState::hero_list`); the AI lane's E31 note (a town's creature
+  upgrade: where planned?). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13`
+  (Visions' reach), `TWN-STUB-2` (the victory conditions), `-16` (E10's loss condition), `-17`
+  (increment 8), `-18` (E13).
+- **Open pull requests:** T55's **#1181** (`shared/e09-t55`, `cross-lane`; CI green, its coverage
+  job re-run once for the server's known clock flake); watch it until it merges (T54's
+  #1173 merged 2026-11-25).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -28,13 +29,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v4: T47a2) and
   the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v9: T46), both in `h3-towns`; the adventure
   lane's (on `master` e2e15c7: game state hash v39, map import v29, adventure part v26, adventure
-  state hash v29, replay format v26), the env's (v20) and the protocol's (v82) are bumped
-  `cross-lane` (each task's record in `E09-log.md`). Shared: core ruleset hash v53, pack format
-  v53 (E08 T124a), quirk flags 51 (E08 T140; `TWN-QUIRK-14`'s at T45).
-- **Ids** (next): questions `TWN-Q38`; decisions 219; quirks `TWN-QUIRK-15` (planned `-15` to
+  state hash v29, replay format v26), the env's (v20) and the protocol's (v83) are bumped
+  `cross-lane` (each task's record in `E09-log.md`). Shared: core ruleset hash v53 (its encoding
+  kept; T55's base `faithful` hash 0x3f1f68842dab4e0c, `strict-fixed` 0x0bd901a144728cc7), pack
+  format v53 (E08 T124a), quirk flags 55 (T55b; 52 and 53 E14 T2c's).
+- **Ids** (next): questions `TWN-Q38`; decisions 220; quirks `TWN-QUIRK-17` (planned `-17` to
   `-23`, design §116); stubs `TWN-STUB-21` (planned for T58a); experiment batch `TWN-7`; disputes
-  `TD-32`; quirk candidates `T-29`. ADR-0028 is the lane's; drafts
-  open: increment 6's three (for T55a); every TWN-GLD rule `verified` but TWN-GLD-007.
+  `TD-32`; quirk candidates `T-29`. ADR-0028 is the lane's; no drafts open; every TWN-GLD rule
+  `verified` but TWN-GLD-007.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
 
@@ -43,6 +45,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-25 — T55: increment 6's ADRs, the two flags, the combinations' costs (`shared/`)
+
+Baseline 8abf1f4 (#1173 merged; the setup's full baseline passed, CI green on `master`); 5 files
+staged at the end for the original-data step. The user chose T55 whole over the recommended T55a
+alone, with sub-agents (decision 219): one applied the three drafts, one re-hashed the 118 golden
+adventure replays (only `ruleset_hash`), the server's literal and the bot reports, one reviewed
+the ADRs against the drafts (five wordings fixed). E14 T2c (#1174) merged meanwhile with flags 52
+and 53: the town's moved to 54 and 55, re-hashed again. The inbox's CI note done (`TRAPS.md`).
 
 ### 2026-11-25 — T54: batch TWN-6, run and scored
 
@@ -62,13 +73,3 @@ one reported the E08 paths the trades reuse (which framed `TWN-Q36`'s four ADR-l
 as recommended), one wrote the three drafts from Part H (its four gaps folded in). `TWN-Q37`
 accepted the drafts, the month's stream, the combinations' costs, the env's 42 entries and the cut
 (decisions 214–217). The lane's E08 market notes archived, four lanes' inboxes told.
-
-### 2026-11-24 — T52: increment 6's survey and its checkpoint TWN-Q35, docs only
-
-Baseline 7782735 (#1149, #1148 merged; the setup's full baseline on `master`'s code passed). The
-user's computer was connected: 5 files staged, SHA-256 checked. The user kept T52 whole and asked
-for sub-agents (decision 200): seven narrow jobs (four code readings, VCMI, the wiki, the census),
-at most two at a time, each writing a notes file the session merged (46 new map entries, 35
-changed). The wiki's Freelancer's Guild, Ballista Yard and Magic University pages did not load.
-At the checkpoint the user chose three answers of their own (TD-28 `fix-optional`, the count
-at least 1, Misc 5 sellable) and had the agent's calls asked one by one.

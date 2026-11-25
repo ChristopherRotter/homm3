@@ -47,6 +47,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-25 (the town lane, E09 T55, `shared/e09-t55`, `cross-lane`; **informational,
+  mechanical at a merge**): the base profiles gained `quirk.town.visitor_only_trades` and
+  `quirk.town.university_ignores_map_bans`, and `h3-content` gives a combination without a pack
+  cost its parts' sum (SoD's twelve), so every golden adventure replay's `ruleset_hash` moved
+  (on `master` after #1174: `base:faithful` 0x9078e1983efcc013 to 0x3f1f68842dab4e0c,
+  `base:strict-fixed` 0xc67d550d834033d8 to 0x0bd901a144728cc7; nothing else in any file): a branch of yours that re-records after it
+  merges takes the new header. `heroes.toml` gained HER-ART-008 (the combinations' costs,
+  `verified`). The market's and the Black Market's purchase and the sale read a combination's cost
+  as that sum from now on (a combination reaches the stock only through the picker's fallback).
+
 - 2026-11-25 (the rmg lane, E14 T2b, #1166; **a failing property test, yours to fix**): `h3-map`'s
   `tests::view::a_viewer_learns_nothing_it_cannot_see` failed in CI on a random case (run
   45575761733, attempt 2; the same code passed attempt 1) and fails the same way on `master`
