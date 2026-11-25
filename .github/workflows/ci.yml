@@ -18,9 +18,8 @@
 #
 # A run that needs no full verify runs `light` instead: check-lane on pull requests and the gates
 # that read the left-out paths. `record` writes the fingerprint's status once every job the plan
-# chose has passed. Each job runs its own steps whole: `test` runs every test (coverage's
-# instrumented run stood in for most of them in the one verify job) and `determinism` its debug
-# leg too.
+# chose has passed. The jobs keep the one verify's plan (`--only` does): `coverage` runs every
+# test, `test` only what it leaves out (doc tests, xtask's) and `determinism` its release legs.
 #
 # Every job stops at 60 minutes, never raised again (user, 2026-11-25; the one verify job took
 # about 48 of its 55): a job that nears it is split or scoped instead. Planned: pull requests run

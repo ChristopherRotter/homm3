@@ -708,12 +708,12 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
             options.only.join(",")
         ));
     }
-    let skip_reason = |name: &str| {
+    // Why a step of the full verify does not run, `--only` apart: the plan of `test` and
+    // `determinism` reads it, since the parts of a verify that `--only` splits into (CI's jobs)
+    // together run each test once, as one verify does ("Each code state once").
+    let planned_skip = |name: &str| {
         let step = STEPS.iter().find(|s| s.name == name);
-        if !names.contains(&name) {
-            // Not in this run (`--only`); the plan of `test` and `determinism` asks.
-            Some("--only".to_owned())
-        } else if options.skip.iter().any(|s| s == name) {
+        if options.skip.iter().any(|s| s == name) {
             Some("--skip".to_owned())
         } else if options.quick && step.is_some_and(|s| s.slow) {
             Some("--quick".to_owned())
@@ -722,9 +722,16 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
                 .map(|why| format!("--scope: {why}"))
         }
     };
+    let skip_reason = |name: &str| {
+        if names.contains(&name) {
+            planned_skip(name)
+        } else {
+            Some("--only".to_owned())
+        }
+    };
     let plan = Plan::new(
-        skip_reason("test").is_none(),
-        skip_reason("coverage").is_none()
+        planned_skip("test").is_none(),
+        planned_skip("coverage").is_none()
             && crate::coverage::runs_tests(scope.as_ref().map(|s| s.packages.as_slice()))?,
         scope
             .as_ref()
