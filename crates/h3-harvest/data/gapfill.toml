@@ -3868,6 +3868,18 @@ hero = "Roland"
 creature = "Swordsman"
 sources = ["wiki-swordsman-specialty"]
 
+# RMG-QUIRK-22 (E14 T2b; survey docs/rules/surveys/E14-generator.md §3.1, ledger
+# docs/rules/quirks-rmg.md): template 8XM8's six connection rows whose first zone is a decimal
+# (5.9, 6.3, 6.7, 7.1, 7.5, 7.9, a filled series) read 5, 6, 6, 7, 7, 7, leaving human start 8 with
+# no connection. The fix continues the table's own series (every start zone's two rows to its own
+# treasure zones): 6, 6, 7, 7, 8, 8 (the ledger's documented guess), in AB's pack (the template is
+# AB's; SoD's table holds it unchanged).
+[[data_quirks.rmg_zone_ids]]
+flag = "quirk.content.rmg_8xm8_zone_ids"
+quirk = "RMG-QUIRK-22"
+template = "8XM8"
+first_zones = [6, 6, 7, 7, 8, 8]
+
 # ADV-QUIRK-10 (A-10, E08 T26b): the Elementalist, a magic class, levels on the might classes'
 # intervals (the executable's list stops at the RoE classes); the fix gives it the magic ones.
 [[data_quirks.class_intervals]]

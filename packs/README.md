@@ -9,6 +9,7 @@ Human-editable content packs (ADR-0006). Keys are namespaced `pack:name`. Since 
 | `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), sieges (v37), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
 | `adventure.toml` | the adventure map's data (owned by the adventure lane; format: `crates/h3-pack-adventure/src/lib.rs`) | `h3-pack-adventure` |
 | `towns.toml` | the town part's data: per faction a town record, the part's parameters (owned by the town lane, ADR-0028 point 5; format: `crates/h3-pack-towns/src/lib.rs`, from E09 T5a). The synthetic packs' are hand-written (E09 T5b2a), the original packs' harvested (E09 T5b2b2: `base` the eight RoE factions and the parameters, `ab` Conflux, `sod` the moats as SoD plays them; since E09 T36 each record's tavern weights from `HCTRAITS.TXT`, `ab`'s overrides adding its two classes to the base records, and the hire's price; since E09 T39b1 the Thieves' Guild's resource rows, `RESTYPES.TXT`'s indexes from the gap-fill; since E09 T46 each record's guild weights from `SPTRAITS.TXT`'s town columns, the roles `guild`, `library`, `aurora` and `mana_vortex` and the guild's parameters from the gap-fill) | `h3-pack-towns`; `h3-towns` into the `TownRuleset` on the core |
+| `rmg.toml` | the map generator's tables (owned by the rmg lane, ADR-0029 point 5; format below, "The map generator's tables"): `ab` AB's `rmg.txt`, `objects.txt` and `rand_trn.txt` as the game reads them, `sod` what SoD's add (three templates, `objects.txt`'s 105 added and 2 changed lines); harvested since E14 T2b; the synthetic pack's hand-written | `h3-pack-rmg`; `h3-rmg` into the `RmgRuleset` on the core (not part of the game's rulesets) |
 
 The TOML keys are the same in either file; the sections below show each table with all its
 fields, whichever file a field lives in. Every creature and every spell of a pack has a row in
@@ -28,7 +29,7 @@ The harvested packs `base` (RoE), `ab` and `sod` are generated from the user's i
 `crates/h3-harvest` and committed (E02 T4; OPEN-QUESTIONS Q13: gameplay data and names only, no
 flavor text). Do not edit them by hand: change the harvester or its gap-fill file and re-run
 `cargo run -p h3-harvest -- --install original-data/install --out packs` (it writes `core.toml`,
-`battle.toml` and `towns.toml`); `cargo xtask verify --with-original-data` checks that they match
+`battle.toml`, `towns.toml` and `ab`'s and `sod`'s `rmg.toml`); `cargo xtask verify --with-original-data` checks that they match
 the installation. Original files stay in the gitignored `original-data/`; the installation itself is
 never written to. A pack folder's `adventure.toml` is the adventure context's file (ADR-0006, E08
 amendment): hand-written source owned by the adventure lane, which the harvester never writes and
@@ -844,6 +845,68 @@ The compiled ruleset's canonical hash (encoding v15, `RULESET_HASH_VERSION`) cov
 profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities
 and upgrades, the battle parameters and the hero content (spells with their battle magic) with
 the artifacts and the hero parameters; replays record it.
+
+## The map generator's tables (`rmg.toml`, E14 T2b)
+
+The rmg part (ADR-0029 point 5; `crates/h3-rmg`, parsed by `crates/h3-pack-rmg`) holds the original
+generator's three tables as the game reads them: the values as `c_atoi` reads them, a mark's
+set-ness as `0` or `1` (survey `docs/rules/surveys/E14-generator.md` §3.1). It compiles from the
+enabled packs' files in load order onto the compiled core, whose profile gates the overrides;
+nothing is sorted or keyed: the generator draws over the templates in row order and numbers the
+zones by row. A pack folder without the file reads as an empty one.
+
+```toml
+object_templates = [             # objects.txt's template lines, in file order (its count line is
+                                 # their number); a later pack's lines are inserted `before` a line
+                                 # (from 0) of the table the earlier packs left, else appended
+  { before = 124, picture = "AVA0130.def", passability = "0111…", actions = "1000…", # 48 marks
+    terrains = "111111111", editor_terrains = "011111111", class = 5, subclass = 129,  # 9 marks
+    group = 4, overlay = 0 },    # (TOML wants an inline table on one line)
+]
+object_template_overrides = [    # replaces `line` of the earlier packs' table, once per line
+  { line = 1186, picture = "AVXcrsd0.def", … },
+]
+
+[[template]]                     # rmg.txt's templates in row order; a pack appends its own
+name = "Meeting \nin Muzgob"     # column 0, a line break as read
+sizes = [4, 32]                  # columns 1 and 2: least and greatest map size
+zones = [                        # its zone rows in order, every field as read:
+  { id = 1, kind = "human_start",  # 3; 4-7: human_start | computer_start | treasure | junction
+    base_size = 20, humans = [1, 8], players = [2, 8], ownership = 1, # 8; 9-10; 11-12; 13
+    player_towns = [1, 0, 0, 0], neutral_towns = [0, 0, 0, 0],       # 14-17, 18-21
+    same_type = false, town_types = "111111111",                       # 22; 23-31 marks
+    mines = [1, 0, 1, 0, 0, 0, 0], mine_density = [0, 0, 0, 0, 0, 0, 0], # 32-38; 39-45
+    terrain_match = true, terrains = "10000000",                       # 46; 47-54 marks
+    strength = "average",        # 55 by its first letter: none | weak | average | strong
+    monster_match = false, neutral_monsters = true, monster_towns = "000000000", # 56; 57; 58-66
+    treasure = [[500, 3000, 9], [3000, 6000, 6], [0, 0, 0]] },        # 67-75: low, high, density
+]
+connections = [                  # its connection rows in order, one per row
+  { zones = [1, 3], value = 3000, wide = false, border_guard = false, # 76-77; 78; 79; 80
+    humans = [0, 0], players = [0, 0] },                                # 81-82; 83-84
+]
+
+[[connection_override]]          # changes a connection of the closure's templates
+template = 43                    # its index in the table as it stands after the pack's templates
+connection = 10                  # its index among the template's connections
+fixes = "quirk.content.rmg_8xm8_zone_ids" # optional: a data quirk, applied only with its flag off
+zones = [6, 37]
+
+[[obstacle]]                     # rand_trn.txt's rows; a pack that gives them gives the whole table
+type = 135                       # columns 3, 4 and 6
+subtype = 0
+terrain = 0
+modifiers = [10, -5000, 10, 0, 0, 0, -5000, -5000, -5000] # 7-15, dirt to water
+adjacent = [100, 10, …]          # one score per obstacle row (columns 16 on)
+overlap = [5, 5, …]              # one score per obstacle row (after Adjacent)
+```
+
+The compiler refuses a line, template or connection index past its table or outside the pack's
+dependency closure, a line replaced twice by one pack, a `fixes` that is no registered
+`quirk.content` flag (checked in every profile), and an obstacle row without one Adjacent and one
+Overlap score per row. The harvested `ab` pack carries 8XM8's six overrides (RMG-QUIRK-22, from the
+gap-fill); `cargo xtask verify --with-original-data` also compares the compiled part with the text
+tables (`crates/h3-pack-rmg/examples/original_data.rs`).
 
 ## Scenarios
 

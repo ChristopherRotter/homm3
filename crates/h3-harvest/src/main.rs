@@ -1,8 +1,9 @@
 //! `h3-harvest --install <dir> --out <packs dir> [--check]`
 //!
 //! Reads the installation (or a copy, e.g. `original-data/install`), writes
-//! `<out>/{base,ab,sod}/core.toml` and `battle.toml` (pack format v35) and `towns.toml` (the town
-//! part's files, `h3-pack-towns`' format; E09 T5b2b2). With `--check` nothing
+//! `<out>/{base,ab,sod}/core.toml` and `battle.toml` (pack format v35), `towns.toml` (the town
+//! part's files, `h3-pack-towns`' format; E09 T5b2b2) and `<out>/{ab,sod}/rmg.toml` (the map
+//! generator's tables, `h3-pack-rmg`'s format; E14 T2b). With `--check` nothing
 //! is written; the command fails if the files under `<out>` differ from a fresh harvest (used by
 //! `cargo xtask verify --with-original-data`). The installation is only ever read: an `--out`
 //! inside `--install` is refused.
@@ -11,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_harvest::gapfill::{GAPFILL, GapFill};
+use h3_harvest::rmg::harvest_rmg;
 use h3_harvest::towns::harvest_towns;
 use h3_harvest::{Inputs, harvest};
 
@@ -62,6 +64,7 @@ fn run() -> Result<bool, String> {
     let gap = GapFill::parse(GAPFILL)?;
     let mut result = harvest(&inputs, &gap)?;
     let towns = harvest_towns(&inputs, &gap, &result.packs, &mut result.report)?;
+    let rmg = harvest_rmg(&inputs.rmg, &gap, &mut result.report)?;
     for line in &result.report {
         eprintln!("note: {line}");
     }
@@ -70,7 +73,8 @@ fn run() -> Result<bool, String> {
         .packs
         .iter()
         .flat_map(|(id, (core, battle))| [(id, "core.toml", core), (id, "battle.toml", battle)])
-        .chain(towns.iter().map(|(id, text)| (id, "towns.toml", text)));
+        .chain(towns.iter().map(|(id, text)| (id, "towns.toml", text)))
+        .chain(rmg.iter().map(|(id, text)| (id, "rmg.toml", text)));
     for (id, file, text) in files {
         let path = args.out.join(id).join(file);
         if args.check {
