@@ -22276,7 +22276,7 @@ from GitHub; the VM restarted during the setup's baseline (CI's run on `master` 
 **Versions:** adventure ruleset part v26, adventure state hash v29, replay format v26, protocol
 v82 (the next: protocol v83 at T143a, encoding v21 at T144a). Next: T142b.
 
-### Increment 15, round 6: T142b, the flight over unexplored tiles (2026-11-24, `adventure/e08-t142b`)
+### Increment 15, round 6: T142b, the flight over unexplored tiles (2026-11-24/25, `adventure/e08-t142b`, `cross-lane`)
 
 **The cut:** whole (T142's second half, decision 415). **Baseline:** `master` baaf27a (#1154
 merged; its code CI-verified, the setup's light gates); the originals staged from the PC at the
@@ -22337,3 +22337,6 @@ start (17 files and 40 MP3s, SHA-256 checked), the repo from GitHub.
   otherwise); the nine forks +0.77 to +1.82 % against their baselines count exactly `master`'s
   (the sandbox's drift). The golden replays are command lists none of whose moves crossed a
   hidden tile: unchanged; the bot reports unchanged.
+- **`cross-lane`** (decision 416, the user): `h3-protocol`'s `game_bounds` test, out of the
+  scope, found by its tests run apart: the XL map's seed 13 no longer revealed a whole map (13 KiB
+  for 256); of seeds 1 to 30, 3, 4, 11 and 23 do: 23 (the largest snapshot).
