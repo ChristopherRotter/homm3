@@ -44,7 +44,7 @@ The list the adventure epic owns (ADR-0016 points 5 and 6, ADR-0017 point 5); `h
 - **Its own:** its explored tiles and their fringe (the hidden tiles touching an explored one, ADV-FOG-005), and its heroes in full: tile, army and its formation, movement points left, and their details (experience, primary and secondary skills, artifacts, spells, spell points; GAM-HER-001, E08 T18b).
 - **Explored tiles** show their current content (ADV-FOG-004): terrain, road, river, what objects cover there (blocked and visitable tiles), and the heroes standing there.
 - **The fringe** shows terrain, roads and rivers. Under `ADV-QUIRK-1` (the `faithful` profile) it also shows what objects cover there and the heroes standing there: an object's appearance is public there while its contents stay hidden (increment 1's objects have none; contents come with increment 2's objects). A wandering monster shows on the fringe in either profile (E08 decision 40): it guards the explored tiles beside it, so the viewer's legal moves (the reachable tiles, the points left) would reveal it anyway.
-- **Another player's hero**, where the viewer sees its tile: its tile, owner, identity and hero type (and so its class, as the original's portrait; E08 T18b), never its army, movement points or details (ADV-FOG-006; what the original's right-click view shows comes with the battle seam).
+- **Another player's hero**, where the viewer sees its tile: its tile, owner, identity and hero type (and so its class, as the original's portrait; E08 T18b), never its army, but a garrison hero's as its town's garrison at the viewer's level (TWN-VEW-002), movement points or details (ADV-FOG-006; what the original's right-click view shows comes with the battle seam).
 - **Events:** a hero's step is told to its owner and to the players who see the hero on the tile it leaves or enters, so the viewer learns of a move only where it can see it; a viewer that sees the hero on one of the two tiles is told that tile only. A projected event names the viewer alone, since the full set of its viewers would tell which tiles other players explored. A move is refused onto an unexplored tile before anything else about that tile is checked (ADV-MOV-008), so a rejection says nothing about a hidden tile.
 - **Never:** any other tile, other players' explored tiles, the master seed, the streams, the state hash. A viewer that is not a player of the game sees the public facts and no tile.
 
@@ -315,6 +315,56 @@ with guilds, learning, the Vortex and the book.
   `HeroChanged { change: AddArtifact(book) }` to the owner, then the learning's; a week's set
   flags in the week's views; the night's refill tells nothing (the points in the owner's
   observation, as the day's regain).
+
+### The town's trades (E09 increment 6)
+
+ADR-0028 points 2, 5 and 6, ADR-0017 points 1, 3, 4, 6 and 10, ADR-0016 points 1, 4 and 6 (E09
+decisions 202, 203, 207, 209 to 214; the design note `epics/E09-design.md` §101 to §114; rules
+TWN-MKT-001 to -005, TWN-STK-001, -002, TWN-SMT-001, TWN-SHY-001, TWN-UNI-001, TWN-TRF-001,
+TWN-VEW-005). The build tasks from E09 T56 implement it; the view tests and the hygiene and
+told-views properties check it with a town's windows, the sale and the stock.
+
+- **The merchants' stock is seen only in its window:** a town's market view (GAM-DEC-011's
+  `MarketView`) shows it with its prices to the window's owner alone, as a Black Market's, beside
+  the artifact sale's places; never in a town view, never to another viewer, and no event tells
+  anyone else that a purchase emptied an entry. Its draws (the setup stream at the build, the
+  towns' stream each month) are server-only (ADR-0017 point 5), told only as the stock a window
+  shows.
+- **The market view is the window's owner's alone:** its place (a map object or the town), its
+  hero (none possible at a town), E08's `MarketOffers` (the screens, the count, the lots, the stock
+  with its prices, the sale's places and prices) and the recipients. **The University's view**
+  (GAM-DEC-006's, its owner's): the place, the hero, the skills with their slot states, the price.
+  The town view is unchanged; the boat at a town's spot is the map's view (fog as ever).
+- **Every town command of the trades is the town owner's** (`GameCommand::Town(..)`): the actor's
+  own town (an ally's waits for E10's teams, `TWN-STUB-21`), in its turn, with no open decision;
+  `h3-towns` checks the town's part, the game the rest. No command names a price, a rate, a count
+  or a stock: each is the part's, the core's or the state's at the moment it applies; each refusal
+  is typed (`TownCommandError`) and changes nothing.
+- **`Market { town }`** names no building and no hero: the game names the window's hero (the
+  visitor; the garrison hero only with `TWN-QUIRK-15`'s flag off) and refuses a town without the
+  buildings (`NoMarket`) or without the hero they need (`NoVisitor`). The count is the actor's own
+  Marketplaces, read from the store at each view and answer. The window's answers are checked as a
+  map market's (`Screen` for a screen the town does not offer; `Entry`, `NoPrice`, `NoRoom`,
+  `CannotPay`); **`SellArtifact { place, take }`** sells the window's hero's own artifact (`Screen`,
+  `Place`, `NotTradable`, `NoPrice`), the place priced being the place removed (T-20 fixed); a
+  transfer goes to another player still in the game.
+- **`University { town, hero }`**: the named hero the town's visitor or garrison hero and the
+  actor's (`NotTownHero`), a standing University (`NoUniversity`); each purchase at the part's
+  price from the actor's treasury.
+- **`BuyWarMachine { town, building }`**: the named building of the town's record, standing, with
+  a `war_machine` (`UnknownBuilding`, `NotStanding`, `NoWarMachine`); the window's hero
+  (`NoVisitor`) wearing no such machine (`HasWarMachine`); the machine's creature's cost from the
+  actor's treasury.
+- **`BuildBoat { town }`**: a standing Shipyard (`NotStanding`), the town's spot free of an empty
+  boat and of a hero (`BoatSpotTaken`), the part's price from the actor's treasury; no hero needed.
+- **`Transform { town, army, slot }`**: a standing Transformer (`NoTransformer`), the visitor's
+  army (`NoVisitor`) or the upper bar's, a stack in the slot (`UnknownSlot`, `EmptySlot`) that
+  changes (`NothingToTransform`); free, the count kept.
+- **Events:** `MarketOpened` and `UniversityOpened` name their place (a map object or a town);
+  every change is an existing event (`ResourcePaid`, `ResourceGained`, `StackChanged`,
+  `HeroChanged`, `BoatBuilt`, `DecisionClosed`), told to whom E08 tells it: `ResourceGained` to a
+  transfer's recipient alone, `BoatBuilt` by the fog's rules, `StackChanged` and `HeroChanged` to
+  the owner and to the viewers who see the army or the hero. The fold gate covers each.
 
 ## Denial of service and resource limits
 
