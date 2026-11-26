@@ -340,7 +340,7 @@ pub struct AdventureOutcome {
     /// The window a service's visit opens for the visitor's owner (E08 T133a2; increment 14's
     /// design note §10): a market's at every visit of any player's hero (ADV-MKT-001). The game
     /// opens it as the player's decision (GAM-DEC-011, E08 T133b), whose answers
-    /// [`crate::AdventureState::trade_lot`], [`crate::AdventureState::check_screen`],
+    /// [`crate::AdventureState::trade_lot`], [`crate::MarketWindow::check_screen`],
     /// [`crate::AdventureState::check_sale`] and [`crate::AdventureState::check_buy`] check; since
     /// E08 T134a an Altar of Sacrifice's, for a hero whose class's faction has its screens
     /// (ADV-ALT-001; GAM-DEC-012), whose sacrifices
@@ -742,32 +742,53 @@ impl fmt::Display for AltarError {
 impl core::error::Error for AltarError {}
 
 /// A market's window a visit opened (ADV-MKT-001; E08 T133a2, increment 14's design note §10): the
-/// visiting hero and the object. Its screens and count are its kind's and a Black Market's stock
-/// and sold entries the state's, read at each answer, never copied.
+/// window's hero and its place. Its screens and count are its place's (a map object's kind's; since
+/// E09 T58a1 a town's, which the game resolves) and the stock and sold entries the state's (a Black
+/// Market's own, the Artifact Merchants' for a town), read at each answer
+/// ([`crate::MarketWindow`]), never copied.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MarketVisit {
-    /// The visiting hero.
-    pub hero: HeroId,
-    /// The object's index.
-    pub index: usize,
-    /// The object's type.
-    pub object_type: ObjectTypeId,
-    /// The object's anchor.
-    pub anchor: Pos,
+    /// The window's hero: a map market's visitor; at a town the game's (the visitor, with
+    /// `TWN-QUIRK-15`'s flag off the garrison hero too), none possible (E09 T58a1, GAM-DEC-011
+    /// amended: a Marketplace opens without a hero).
+    pub hero: Option<HeroId>,
+    /// Where the window opened.
+    pub place: MarketPlace,
+}
+
+/// Where a market's window opened (GAM-DEC-011 amended; E09 T58a1, the town epic's design note
+/// §104, decision 209): a market on the map, or a town's Marketplace, Artifact Merchants or
+/// Freelancer's Guild (one window for the three, by `TownId`: this crate imports no town type).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarketPlace {
+    /// A market on the map (a Trading Post, a Freelancer's Guild, a Black Market).
+    Object {
+        /// The object's index.
+        index: usize,
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// The object's anchor.
+        anchor: Pos,
+    },
+    /// A town (E09 T58a1).
+    Town(TownId),
 }
 
 /// Why a market's answer is refused (E08 T133a2; increment 14's design note §11, §13): the
 /// adventure's checks of a sale ([`crate::AdventureState::check_sale`]), a purchase
 /// ([`crate::AdventureState::check_buy`]) and since E08 T133b a trade's lot
 /// ([`crate::AdventureState::trade_lot`]) and a transfer's screen
-/// ([`crate::AdventureState::check_screen`]); a trade's and a transfer's amounts and a transfer's
+/// ([`crate::MarketWindow::check_screen`]); a trade's and a transfer's amounts and a transfer's
 /// recipient are the game's, which wraps these in its command error. A refused answer changes
 /// nothing (ADR-0004).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MarketError {
     /// The visit's hero is not on the map, or its object is not a market (defensive: the game
     /// holds the visit its outcome gave, and its hero cannot move while the window is open).
-    /// *Agent's call* (T133a2), beside the design's list, as the hire's `NoSource`.
+    /// *Agent's call* (T133a2), beside the design's list, as the hire's `NoSource`. Since E09
+    /// T58a1 also a town's place asked of the map's markets (the game resolves a town's window)
+    /// and a sale or a purchase in a window without a hero (defensive: a town's window shows
+    /// neither screen without one).
     Visit,
     /// The market's window has no screen for the answer.
     Screen,

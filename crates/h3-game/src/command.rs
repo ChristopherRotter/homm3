@@ -20,7 +20,7 @@ use h3_heroes::{Choice, HeroChange, PrimarySkill};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use crate::manage::{Manage, ManageError};
-use crate::observe::HireSeen;
+use crate::observe::{HireSeen, MarketSeen};
 use crate::system::SystemCommand;
 use crate::town::hire::{HiredPart, TavernError};
 use crate::town::tavern::{TavernHero, TavernPart};
@@ -885,17 +885,17 @@ pub enum GameEvent {
         anchor: Pos,
     },
     /// A market's decision opened for the visitor's owner (GAM-DEC-011, ADV-MKT-001; E08 T133b,
-    /// increment 14's design note §13, §17): what its window offers is its view
-    /// ([`crate::DecisionView::Market`]), its answers [`MarketAnswer`]'s. Seen by the owner.
+    /// increment 14's design note §13, §17; since E09 T58a1 a town's window for its owner,
+    /// TWN-MKT-002): what its window offers is its view ([`crate::DecisionView::Market`]), its
+    /// answers [`MarketAnswer`]'s. Seen by the owner.
     MarketOpened {
-        /// The visitor's owner.
+        /// The window's owner.
         player: PlayerId,
-        /// The visiting hero.
-        hero: HeroId,
-        /// The market's type.
-        object_type: ObjectTypeId,
-        /// The market's anchor.
-        anchor: Pos,
+        /// The window's hero: a map market's visitor, a town's visitor or garrison hero, none
+        /// possible at a town.
+        hero: Option<HeroId>,
+        /// The market's place, never by an object's index ([`MarketSeen`]).
+        place: MarketSeen,
     },
     /// An Altar of Sacrifice's decision opened for the visitor's owner (GAM-DEC-012, ADV-ALT-001;
     /// E08 T134a, increment 14's design note §14, §17), at the visit and again after the

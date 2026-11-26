@@ -5,7 +5,7 @@
 //! the build left (ADV-OBJ-006, the original's game +0x4E224), which it keeps: at the new game
 //! after every other setup draw and on each month's first day from the second, every entry anew
 //! whether sold or not. The game calls the draws (`h3_game`'s `town/merchants.rs`); the market
-//! at a town reads and empties the entries (E09 T58).
+//! at a town reads and empties the entries (E09 T58a1, `state/markets.rs`' checks).
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -63,6 +63,19 @@ impl AdventureState {
         let stock = classes.iter().map(|&class| pool.draw(&[class], draws));
         merchants.stock.extend(stock);
         merchants.marks = pool.into_marks();
+    }
+
+    /// Empties the stock's entry `entry` (TWN-MKT-004; E09 T58a1): a purchase at any town's
+    /// Artifact Merchants, the entry empty for every town and player until the next month's draw
+    /// (survey `E09-trades.md` §3.3). An entry past the stock changes nothing (the purchase's
+    /// check found it).
+    // rule: TWN-MKT-004
+    pub(crate) fn empty_merchants_entry(&mut self, entry: u8) {
+        // A fork's shared block is copied first; the game's own is changed in place.
+        let merchants = Arc::make_mut(self.merchants_mut());
+        if let Some(slot) = merchants.stock.get_mut(usize::from(entry)) {
+            *slot = None;
+        }
     }
 
     /// Hashes the merchants' block (the adventure state hash v30, E09 T57): the stock as its

@@ -1210,7 +1210,7 @@ enum Open {
     // E09 T39a: a map Tavern, named by the hero and the object.
     Tavern(HeroId, h3_adventure::ObjectTypeId, TilePos),
     // E08 T133b: a market, named by the hero and the object.
-    Market(HeroId, h3_adventure::ObjectTypeId, TilePos),
+    Market(Option<HeroId>, h3_game::MarketSeen),
     // E08 T134a: an Altar of Sacrifice, named by the hero and the object.
     Altar(HeroId, h3_adventure::ObjectTypeId, TilePos),
     // E08 T134b1: a Hill Fort, named by the hero and the object.
@@ -1319,7 +1319,7 @@ fn check_told(
             object_type,
             anchor,
         } => Open::Tavern(*hero, *object_type, *anchor),
-        DecisionView::Market(view) => Open::Market(view.hero, view.object_type, view.anchor),
+        DecisionView::Market(view) => Open::Market(view.hero, view.place),
         DecisionView::Altar(view) => Open::Altar(view.hero, view.object_type, view.anchor),
         DecisionView::HillFort(view) => Open::HillFort(view.hero, view.object_type, view.anchor),
     };
@@ -2186,12 +2186,11 @@ fn check_told(
             GameEvent::MarketOpened {
                 player,
                 hero,
-                object_type,
-                anchor,
+                place,
             } => {
                 prop_assert_eq!(player, viewer);
                 prop_assert!(decision.is_none());
-                decision = Some(Open::Market(hero, object_type, anchor));
+                decision = Some(Open::Market(hero, place));
             }
             GameEvent::AltarOpened {
                 player,

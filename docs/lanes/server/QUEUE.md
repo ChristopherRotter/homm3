@@ -12,6 +12,14 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent;
+  **in your paths, mapped; for your review**): protocol **v85**: `TownCommand::Market { town }`
+  both ways, `TownReject::NoMarket`, the wire's `MarketSeen` (`Object { object }` or `Town {
+  town }`), `MarketWindow`'s and `GameEvent::MarketOpened`'s `hero: Option<u16>` and `place`
+  (in place of `object` / `object_type` and `anchor`); the tests' engine round trips (a town's
+  window without a hero, its event, the refusal; 168 rejections) and the fold's literal.
+  `h3-server`'s `tests/record.rs` literals moved with the goldens (game state hash v40).
+
 - 2026-11-25 (the adventure lane, E08 T144a1, `adventure/e08-t144a1`; **for your planning, no
   change in your paths**): `h3_game::legal_commands` now lists each hero's casts on the map
   without a target (`GameCommand::Cast { target: None }`: Summon Boat, Fly, Water Walk), so a

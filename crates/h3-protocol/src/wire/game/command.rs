@@ -137,6 +137,13 @@ pub enum TownCommand {
         /// The town.
         town: u16,
     },
+    /// Opens the market window of a town of the actor's, with the town as its place: E08's
+    /// market decision at the actor's count of Marketplaces, its hero the town's (TWN-MKT-002;
+    /// E09 T58a1, v85).
+    Market {
+        /// The town.
+        town: u16,
+    },
 }
 
 /// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v64).
@@ -799,6 +806,9 @@ pub enum TownReject {
     NoHero {},
     /// The town's hero wears a spell book (TWN-GLD-007; v80).
     HasSpellBook {},
+    /// No Marketplace, Artifact Merchants or Freelancer's Guild stands in the town (TWN-MKT-002;
+    /// v85).
+    NoMarket {},
 }
 
 /// Why the adventure map refused a command (`h3_adventure::AdventureCommandError`); a step is

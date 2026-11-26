@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     ArmySlot, ArmyStack, Artifact, ArtifactPlace, DaySpells, Formation, HireSeen, HireTarget,
-    Month, Week,
+    MarketSeen, Month, Week,
 };
 use super::{
     GarrisonStack, GuildPart, HiredPart, OfferLevels, Pos, PrimarySkill, TavernHeroHead,
@@ -182,12 +182,11 @@ pub enum GameEvent {
         object_type: u16,
         anchor: Pos,
     },
-    /// E08 T133b (v75).
+    /// E08 T133b (v75); the hero optional and the place a town's too since E09 T58a1 (v85).
     MarketOpened {
         player: u8,
-        hero: u16,
-        object_type: u16,
-        anchor: Pos,
+        hero: Option<u16>,
+        place: MarketSeen,
     },
     /// E08 T134a (v76).
     AltarOpened {

@@ -8,7 +8,10 @@
 
 use super::*;
 use h3_adventure::MarketScreen;
-use h3_game::{ALTAR_SLOTS, AltarAnswer, AltarPlaces, HillFortAnswer, HillFortState, MarketAnswer};
+use h3_game::{
+    ALTAR_SLOTS, AltarAnswer, AltarPlaces, HillFortAnswer, HillFortState, MarketAnswer,
+    MarketPlace, MarketVisit,
+};
 
 /// A plan's trades and services (E08 T135b2), drawn as [`trades`] draws them; [`trade_plan`]
 /// places them.
@@ -126,9 +129,18 @@ pub(super) fn trade_open(
     state: &GameState,
     player: PlayerId,
 ) -> Option<(HeroId, ObjectTypeId, TilePos)> {
-    let market = state
-        .market(player)
-        .map(|v| (v.hero, v.object_type, v.anchor));
+    // A map market's (the plans open no town's window yet: E09 T58a2 lists it).
+    let market = state.market(player).and_then(|v| match (v.hero, v.place) {
+        (
+            Some(hero),
+            MarketPlace::Object {
+                object_type,
+                anchor,
+                ..
+            },
+        ) => Some((hero, object_type, anchor)),
+        _ => None,
+    });
     let altar = || {
         state
             .altar(player)
@@ -379,7 +391,7 @@ pub(super) fn trade_answers(
     let accepted = |answer: &Answer| accepts(state, rules, player, *answer);
     let cost = cost_resource(rules);
     let (answers, leave): (Vec<Answer>, Answer) = if let Some(visit) = state.market(player) {
-        let hero = state.adventure().hero(visit.hero)?;
+        let hero = state.adventure().hero(visit.hero?)?;
         let trades = resources(rules).flat_map(|give| {
             resources(rules).map(move |take| MarketAnswer::Trade {
                 give,
@@ -392,7 +404,10 @@ pub(super) fn trade_answers(
             take: cost,
             lots: 1,
         });
-        let object = state.adventure().object(visit.index)?;
+        let MarketPlace::Object { index, .. } = visit.place else {
+            return None;
+        };
+        let object = state.adventure().object(index)?;
         let stock = object.resolved.stock().len();
         let purchases = (0..=u8::MAX)
             .take(stock)
@@ -942,9 +957,13 @@ pub(super) fn check_trades(
 ) -> Result<(), TestCaseError> {
     let (b, a) = (before.adventure(), after.adventure());
     let bought = match (command, before.market(actor)) {
-        (GameCommand::Answer(Answer::Market(MarketAnswer::Buy { entry, .. })), Some(visit)) => {
-            Some((visit.index, *entry))
-        }
+        (
+            GameCommand::Answer(Answer::Market(MarketAnswer::Buy { entry, .. })),
+            Some(MarketVisit {
+                place: MarketPlace::Object { index, .. },
+                ..
+            }),
+        ) => Some((*index, *entry)),
         _ => None,
     };
     for index in 0..b.map().objects().len() {

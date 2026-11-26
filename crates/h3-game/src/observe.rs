@@ -14,8 +14,8 @@ use alloc::vec::Vec;
 
 use h3_adventure::{
     AdventureObservation, AdventureReveal, AltarOffers, BitGrid, Choice, GarrisonHeroView,
-    HeroView, HillFortRow, HireSource, HireTarget, MarketOffers, ObjectTypeId, Offer, Pos,
-    UniversityVisit, Viewers,
+    HeroView, HillFortRow, HireSource, HireTarget, MarketOffers, MarketPlace, ObjectTypeId, Offer,
+    Pos, UniversityVisit, Viewers,
 };
 use h3_content::{CreatureTypeId, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
@@ -242,19 +242,20 @@ pub struct AltarView {
 }
 
 /// A market's decision as its owner sees it (ADV-MKT-008, GAM-DEC-011; E08 T133b, increment 14's
-/// design note §12, §13): the hero, the market by type and anchor (never by index, ADR-0016 point
-/// 6), what its window offers with the rates the state's answers use (so a client and the env need
-/// no copy of the computation; the answers are checked against the state, never against this)
-/// and the transfer's recipients. A Black Market's stock shows here alone, to its visitor's owner
-/// while the decision is open; nothing of it is kept after (design note §12).
+/// design note §12, §13; E09 T58a1 at a town, TWN-VEW-005): the hero, the place (a market by type
+/// and anchor, never by index, ADR-0016 point 6; a town by its id), what its window offers with
+/// the rates the state's answers use (so a client and the env need no copy of the computation;
+/// the answers are checked against the state, never against this) and the transfer's recipients.
+/// A Black Market's stock and the Artifact Merchants' show here alone, to the window's owner while
+/// the decision is open; nothing of them is kept after (design note §12; the town epic's §101
+/// call 6).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarketView {
-    /// The visiting hero.
-    pub hero: HeroId,
-    /// The market's type.
-    pub object_type: ObjectTypeId,
-    /// The market's anchor.
-    pub anchor: Pos,
+    /// The window's hero: a map market's visitor; a town's visitor or garrison hero, none
+    /// possible at a town (E09 T58a1).
+    pub hero: Option<HeroId>,
+    /// The market's place.
+    pub place: MarketSeen,
     /// What the window offers (`h3_adventure::AdventureState::market_offers`).
     pub offers: MarketOffers,
     /// With the transfer's screen, every other player of the game in order (ADV-MKT-004); none
@@ -320,6 +321,39 @@ pub enum HireSeen {
         /// The town.
         town: TownId,
     },
+}
+
+/// A market's place as its owner sees it ([`MarketView`], [`crate::GameEvent::MarketOpened`]; E09
+/// T58a1, the town epic's design note §104): a market on the map by type and anchor, never by
+/// index (ADR-0016 point 6), or a town by its id (ADR-0028 point 3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarketSeen {
+    /// A market on the map.
+    Object {
+        /// The market's type.
+        object_type: ObjectTypeId,
+        /// The market's anchor.
+        anchor: Pos,
+    },
+    /// A town's Marketplace, Artifact Merchants or Freelancer's Guild.
+    Town(TownId),
+}
+
+impl MarketSeen {
+    /// `place` as its owner sees it.
+    pub(crate) const fn of(place: &MarketPlace) -> Self {
+        match *place {
+            MarketPlace::Object {
+                object_type,
+                anchor,
+                ..
+            } => Self::Object {
+                object_type,
+                anchor,
+            },
+            MarketPlace::Town(town) => Self::Town(town),
+        }
+    }
 }
 
 impl HireSeen {

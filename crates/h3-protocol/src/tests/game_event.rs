@@ -790,13 +790,17 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
         G::MarketOpened {
             player,
             hero,
-            object_type,
-            anchor,
+            place,
         } => GameEvent::MarketOpened {
             player: p(player),
-            hero: id(hero),
-            object_type: ty(object_type),
-            anchor: pos_back(anchor),
+            hero: hero.map(id),
+            place: match place {
+                w::MarketSeen::Object { object } => h3_game::MarketSeen::Object {
+                    object_type: ty(object.object_type),
+                    anchor: pos_back(object.anchor),
+                },
+                w::MarketSeen::Town { town } => h3_game::MarketSeen::Town(TownId::new(town)),
+            },
         },
         G::AltarOpened {
             player,
@@ -1294,12 +1298,19 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             object_type: ty,
             anchor: at,
         },
-        // E08 T133b (v75).
+        // E08 T133b (v75); a town's window without a hero since E09 T58a1 (v85).
         GameEvent::MarketOpened {
             player: P0,
-            hero,
-            object_type: ty,
-            anchor: at,
+            hero: Some(hero),
+            place: h3_game::MarketSeen::Object {
+                object_type: ty,
+                anchor: at,
+            },
+        },
+        GameEvent::MarketOpened {
+            player: P0,
+            hero: None,
+            place: h3_game::MarketSeen::Town(TownId::new(2)),
         },
         // E08 T134a (v76).
         GameEvent::AltarOpened {
