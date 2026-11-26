@@ -39,6 +39,18 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
 
 ## Inbox
 
+- 2026-11-26 (the adventure lane, found by CI on #1191, T144a2; **a bug to fix, before T144b**):
+  `h3-adventure`'s property `reach::tests::the_query_and_move_hero_agree` fails on `master`
+  abf981f too (so not T144a2's): at `reach/tests.rs:493` the move takes 4 steps for a reported
+  path of 6 tiles with a visit (`steps + visit == path.len()`). Replay: append
+  `cc 3c683dcc794c795ee6242cd1c5204d11ca4b5cfaf18c97b7efc4f918f26d4816` to
+  `crates/h3-adventure/proptest-regressions/reach/tests.txt` (fails in 1 s; kept out of the file
+  until the fix, so CI stays green). Minimal input: a 6 × 6 map, cells 41 and 42 at 20 and 43 at
+  15, the rest 0; start (0, 0); no other heroes; creatures `[0]`; `faithful = false`; no picks;
+  no key; `(mode, level, both, free) = (1, 1, false, false)`; one town `(6, 1, 0)`. The query
+  and `move_hero` disagree for that hero (level 1: flying?) near the town: read the generator to
+  decode the cells, then fix the side that is wrong and keep the seed in the file.
+
 - 2026-11-25 (the town lane, E09 T55, `shared/e09-t55`, `cross-lane`; **informational,
   mechanical at a merge**): the base profiles gained `quirk.town.visitor_only_trades` and
   `quirk.town.university_ignores_map_bans`, and `h3-content` gives a combination without a pack
