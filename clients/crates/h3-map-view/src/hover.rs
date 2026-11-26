@@ -1032,6 +1032,19 @@ impl Hover {
     /// after it walked: the engine's from M4), else no tile is reached.
     #[must_use]
     pub fn cursor(&self, at: [i32; 3], selected: Option<Selection>, reach: bool) -> Cursor {
+        self.cursor_by(at, selected, reach.then_some(&self.facts.reach))
+    }
+
+    /// [`Hover::cursor`] with the selected hero's reach `costs` (the points each path costs, by
+    /// column and row on its level; none: no tile is reached): in play the host's where it
+    /// stands (E24 M5 T4a, `crate::reach`), else the facts'.
+    #[must_use]
+    pub fn cursor_by(
+        &self,
+        at: [i32; 3],
+        selected: Option<Selection>,
+        costs: Option<&BTreeMap<(i32, i32), u32>>,
+    ) -> Cursor {
         let arrow = Cursor {
             frame: frame::ARROW,
             action: -1,
@@ -1102,7 +1115,7 @@ impl Hover {
             return arrow;
         }
         // 0x40E91B: the pathfinder's node of the tile; the days by the points left.
-        let Some(&cost) = self.facts.reach.get(&(at[0], at[1])).filter(|_| reach) else {
+        let Some(&cost) = costs.and_then(|c| c.get(&(at[0], at[1]))) else {
             return arrow;
         };
         let days = days(cost, hero.points, self.facts.day_points);

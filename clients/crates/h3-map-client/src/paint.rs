@@ -46,8 +46,8 @@ use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
     Action, AfterBattle, Answer, BATTLE_CURSOR, Boats, Computer, Cursor, DEFAULT_CURSOR, Direction,
-    Dissolve, Draw, FADE_BLACK, Fight, Found, Hero, LevelBox, NextTurn, Owners, Question, Rules,
-    Start, Switch, TownBoxes, Walked,
+    Dissolve, Draw, FADE_BLACK, Fight, Found, Hero, LevelBox, Move, NextTurn, Owners, Question,
+    Rules, Start, Switch, TownBoxes, Walked,
 };
 use h3_map_view::{engine, status, timeline, turn};
 use h3_render::Bugs;
@@ -128,7 +128,7 @@ pub struct Record<'p> {
 pub struct Played {
     pub table: toml::Table,
     pub label: String,
-    pub moves: Vec<timeline::Move>,
+    pub moves: Vec<Move>,
     pub ends: Vec<Option<Pos>>,
     pub visits: Vec<engine::Visit>,
     pub levels: Vec<engine::Leveled>,
@@ -377,6 +377,7 @@ pub fn for_sequence<'a>(
         water: water(&painter.art),
         // The engine's walks (E24 M4 T4a2): a record's.
         moves: played.map(|p| p.moves),
+        host: None,
     };
     Ok(Setup {
         painter,
@@ -455,6 +456,29 @@ pub fn live_turns(
     Ok(turns)
 }
 
+/// The engine's walks of a live start's record grown since and the finds their ends tell (E24 M5
+/// T4a: the hot seat's host played a walk the view asked): `record` read as [`for_live`] reads it,
+/// its walks as a record's (`engine::played`), each visit's find laid out by `painter` over the
+/// view's mouse-over `hover` as [`for_record`] lays a record's out; every one of them, the caller
+/// takes those after the ones it knows.
+///
+/// # Errors
+/// As [`for_live`]'s; a find that does not lay out.
+pub fn live_walks(
+    painter: &mut Painter<'_>,
+    map: &Path,
+    (record, rules, live): (engine::GameRecord, &GameRuleset, engine::Live),
+    hover: Option<&Hover>,
+    label: String,
+) -> Result<(Vec<Move>, Vec<Found>), String> {
+    let assets = painter.assets;
+    let (bytes, raw) = read_map(map)?;
+    let loaded = engine::live(record, &bytes, rules, live).map_err(|e| format!("{label}: {e}"))?;
+    let played = played_of(assets, &raw, &loaded, rules, label)?;
+    let finds = painter.record_finds(&raw, (&played.visits, &played.levels), hover)?;
+    Ok((played.moves, finds))
+}
+
 /// A map file's bytes and its raw map (gzip-compressed, as the game keeps it, or not: the
 /// writer's).
 pub(crate) fn read_map(file: &Path) -> Result<(Vec<u8>, RawMap), String> {
@@ -531,6 +555,7 @@ fn for_played<'a>(
         boats: Boats::of(&painter.live),
         water: water(&painter.art),
         moves: Some(played.moves.clone()),
+        host: None,
     };
     let rules = Rules::new(assets.tables, assets.layout, assets.bugs);
     let heroes = turn::record_heroes(&played.shown, &painter.live.heroes);
@@ -641,6 +666,7 @@ pub fn for_situation<'a>(
         boats: Boats::of(&painter.live),
         water: water(&painter.art),
         moves: None,
+        host: None,
     };
     Ok(Setup {
         painter,

@@ -23,12 +23,18 @@
 //! own clock before it.
 
 use alloc::collections::{BTreeMap, VecDeque};
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::iter;
 
+use h3_map::model::Pos;
+
 use crate::live::Buttons;
+use crate::reach::{Reach, Stand, WalkAsked};
 use crate::sound::Cue;
-use crate::timeline::{Action, Cursor, Draw, Hero, Loop, NextTurn, Rules, Start, Unplayable};
+use crate::timeline::{
+    Action, Cursor, Draw, Found, Hero, Loop, Move, NextTurn, Rules, Start, Unplayable,
+};
 
 /// What the screen shows from a millisecond on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -237,13 +243,53 @@ impl Replay {
     /// played the End Turn asked at `t`), known to the loop from 0 on: it runs again from the
     /// latest change kept before `t` (from 0 when none is), as an action given at `t` makes it.
     pub fn add_turns(&mut self, t: u32, turns: &[NextTurn]) {
-        self.first.add_turns(turns);
-        for (_, l) in &mut self.kept {
-            l.add_turns(turns);
-        }
-        self.now.1.add_turns(turns);
-        self.l.add_turns(turns);
+        self.each(|l| l.add_turns(turns));
         self.again_from(t.max(1));
+    }
+
+    /// The walk asked of the host as far as the loop ran (E24 M5 T4a, [`Loop::walk_asked`]).
+    #[must_use]
+    pub fn walk_asked(&self) -> Option<&WalkAsked> {
+        self.l.walk_asked()
+    }
+
+    /// The engine's walks and their finds the host gives for the walk asked at `t` (E24 M5 T4a:
+    /// it played its `MoveHero`), known to the loop from 0 on: it runs again from the latest
+    /// change kept before `t`, as [`Replay::add_turns`] makes it.
+    pub fn add_walks(&mut self, t: u32, moves: &[Move], finds: &[Found]) {
+        self.each(|l| l.add_walks(moves, finds));
+        self.again_from(t.max(1));
+    }
+
+    /// The walk asked at `t` along `tiles` refused by the engine (E24 M5 T4a), the loop run again
+    /// from before it.
+    pub fn refuse_walk(&mut self, t: u32, tiles: &[Pos]) {
+        self.each(|l| l.refuse_walk(t, tiles));
+        self.again_from(t.max(1));
+    }
+
+    /// The millisecond and the stand whose reach is asked of the host as far as the loop ran (E24
+    /// M5 T4a, [`Loop::reach_asked`]).
+    #[must_use]
+    pub fn reach_asked(&self) -> Option<(u32, Stand)> {
+        self.l.reach_asked()
+    }
+
+    /// The reach of `stand` the host gives for the question asked at `t` (E24 M5 T4a), the loop
+    /// run again from before it.
+    pub fn add_reach(&mut self, t: u32, stand: Stand, reach: &Arc<Reach>) {
+        self.each(|l| l.add_reach(stand, reach));
+        self.again_from(t.max(1));
+    }
+
+    /// `f` done to every loop kept: the first, the changes', the running one.
+    fn each(&mut self, mut f: impl FnMut(&mut Loop)) {
+        f(&mut self.first);
+        for (_, l) in &mut self.kept {
+            f(l);
+        }
+        f(&mut self.now.1);
+        f(&mut self.l);
     }
 
     /// The map's heroes where they stand and face as far as the loop ran (E24 M5 T3b,

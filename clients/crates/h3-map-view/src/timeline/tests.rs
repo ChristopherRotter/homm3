@@ -261,6 +261,7 @@ fn start(situation: &str, speed: usize) -> Start {
         boats: Boats::default(),
         water: Arc::default(),
         moves: None,
+        host: None,
     }
 }
 
@@ -464,6 +465,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         boats: Boats::default(),
         water: Arc::default(),
         moves: None,
+        host: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -681,6 +683,7 @@ fn what_it_cannot_play_yet() {
         boats: Boats::default(),
         water: Arc::default(),
         moves: None,
+        host: None,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -797,7 +800,7 @@ fn walking(speed: usize, paths: Vec<Vec<Arrow>>) -> Loop {
 }
 
 /// [`walking`]'s start (E24 M4 T4c: the record player's tests).
-fn walking_start(speed: usize, paths: Vec<Vec<Arrow>>) -> Start {
+pub(crate) fn walking_start(speed: usize, paths: Vec<Vec<Arrow>>) -> Start {
     Start {
         view: ViewAt { x: 8, y: 9, z: 0 },
         size: 36,
@@ -835,6 +838,7 @@ fn walking_start(speed: usize, paths: Vec<Vec<Arrow>>) -> Start {
         boats: Boats::default(),
         water: Arc::default(),
         moves: None,
+        host: None,
     }
 }
 
@@ -846,12 +850,12 @@ fn arrow(x: u8, y: u8, arrow: u16) -> Arrow {
 }
 
 /// The middle of tile (x, y) while the view's corner is (8, 9).
-fn tile(x: i32, y: i32) -> [i32; 2] {
+pub(crate) fn tile(x: i32, y: i32) -> [i32; 2] {
     [(x - 8) * 32 + 16, (y - 9) * 32 + 16]
 }
 
 /// Four tiles east of the hero, all green, the last the green cross.
-fn east() -> Vec<Arrow> {
+pub(crate) fn east() -> Vec<Arrow> {
     vec![
         arrow(21, 17, 1),
         arrow(18, 17, 12),
@@ -1488,6 +1492,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         boats: Boats::default(),
         water: Arc::default(),
         moves: None,
+        host: None,
     }
 }
 
@@ -2109,6 +2114,7 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         boats: Boats::default(),
         water: Arc::default(),
         moves: None,
+        host: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -3135,6 +3141,7 @@ mod computers;
 mod director;
 mod finds;
 mod flags;
+mod hosted;
 mod levels;
 mod moves;
 mod replies;

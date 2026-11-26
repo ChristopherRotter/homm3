@@ -41,7 +41,9 @@ use h3_protocol::record::MAX_LINE;
 use h3_protocol::session::game::{
     Allowance, Clock, CommandBounds, GameOptions, GameOutbound, GameSession, Spectators,
 };
-use h3_protocol::wire::game::{GameClock, GameCommand, GameObservation, MapIdentity};
+use h3_protocol::wire::game::{
+    GameAnswer, GameClock, GameCommand, GameObservation, GameQuery, MapIdentity,
+};
 use h3_protocol::wire::{ServerMessage, WireU64};
 
 use crate::play::Game;
@@ -299,6 +301,27 @@ impl<'r> HotSeat<'r> {
         self.command(player, GameCommand::EndTurn {})?;
         self.computers()?;
         Ok(self.turn())
+    }
+
+    /// The human in turn's `command` (E24 M5 T4a: a walk), as the host vouches for it: whether the
+    /// game took it, its frames folded either way (a rejection is told to the player too).
+    ///
+    /// # Errors
+    /// No human's turn runs; a frame does not read or fold.
+    pub fn play(&mut self, command: GameCommand) -> Result<bool, String> {
+        let player = self.turn().ok_or("no human's turn runs")?;
+        self.seq += 1;
+        let mut out = Vec::new();
+        let played = self.session.play(player, self.seq, command, &mut out);
+        self.deliver(out)?;
+        Ok(played.is_ok())
+    }
+
+    /// `player`'s `query` of the running game (`GameSession::query`, E24 M5 T4a: a hero's moves);
+    /// none while the game does not answer (not started, paused).
+    #[must_use]
+    pub fn query(&self, player: PlayerId, query: GameQuery) -> Option<GameAnswer> {
+        self.session.query(player, query).ok()
     }
 
     /// The host's clock reads `now`, in milliseconds (`GameSession::elapse`): a turn whose time
