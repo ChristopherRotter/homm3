@@ -38,8 +38,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10), `MCL-STUB-5` (a computer's turn ended at once, E31's
   increment 2); planned `MCL-STUB-6` (T4). Next ids **MCL-Q59**, **MCL-STUB-6**.
-- **Open pull requests** (2026-11-26): T3b's (`map-client/e24-m5-t3b`; T3a's #1183 merged):
-  check it first.
+- **Open pull requests** (2026-11-26): T3b's **#1188** (`map-client/e24-m5-t3b`; T3a's #1183
+  merged): check it first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`, `h3-map-client`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
