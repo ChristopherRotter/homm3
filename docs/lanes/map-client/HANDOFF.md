@@ -29,7 +29,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   without a town on a record, E10), `MCL-STUB-5` (a computer's turn ended at once, E31's
   increment 2), `MCL-STUB-6` (a battle in play ends play, M5 T6); planned `MCL-STUB-7` (T4c).
   Next ids **MCL-Q59**, **MCL-STUB-7**.
-- **Open pull requests** (2026-11-26): T4a's (`map-client/e24-m5-t4a`; T3b's #1188 merged):
+- **Open pull requests** (2026-11-26): T4a's **#1194** (`map-client/e24-m5-t4a`; T3b's #1188 merged):
   check it first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
