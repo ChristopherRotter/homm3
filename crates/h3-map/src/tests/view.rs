@@ -3590,6 +3590,40 @@ proptest! {
                 prop_assert_eq!(unstacked(&ta), unstacked(&tb));
                 break;
             }
+            // The rmg lane's inbox of 2026-11-25 (E14 T2b's CI seed, failing on `master` too): a
+            // town's guild is drawn once, at the game's build, from the towns' stream
+            // (`h3_towns::draw_guild`, E09 decision 179), whose seed the other game's changes and
+            // whose positions an unseen town's draws move; the viewer sees its own town's spells
+            // once the town has a Mage Guild (TWN-VEW-004), and its heroes there learn them
+            // (TWN-GLD-005). When the events it is told differ only in the guilds shown and the
+            // spells learned, the comparison ends, as at a week's draw.
+            let unguilded = |events: &[GameEvent]| -> Vec<GameEvent> {
+                (events.iter())
+                    .filter(|e| {
+                        !matches!(
+                            e,
+                            GameEvent::HeroChanged {
+                                change: HeroChange::LearnSpell(_),
+                                ..
+                            }
+                        )
+                    })
+                    .map(|&e| {
+                        let mut e = e;
+                        if let GameEvent::TownChanged {
+                            buildings: Some(view),
+                            ..
+                        } = &mut e
+                        {
+                            view.guild = h3_towns::GuildSlots::EMPTY;
+                        }
+                        e
+                    })
+                    .collect()
+            };
+            if ta != tb && unguilded(&ta) == unguilded(&tb) {
+                break;
+            }
             let bought = ta
                 .iter()
                 .any(|e| matches!(e, GameEvent::OfferAnswered { accepted: true, .. }));

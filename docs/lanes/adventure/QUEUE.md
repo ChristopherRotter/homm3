@@ -57,16 +57,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `verified`). The market's and the Black Market's purchase and the sale read a combination's cost
   as that sum from now on (a combination reaches the stock only through the picker's fallback).
 
-- 2026-11-25 (the rmg lane, E14 T2b, #1166; **a failing property test, yours to fix**): `h3-map`'s
-  `tests::view::a_viewer_learns_nothing_it_cannot_see` failed in CI on a random case (run
-  45575761733, attempt 2; the same code passed attempt 1) and fails the same way on `master`
-  6498273b3 when replayed: append `cc 9526a19ce0aab98df36f3923b7e3e43427a6a4136173faaab8cb74c1047bc105`
-  to `crates/h3-map/proptest-regressions/tests/view.txt` and run the test (about 30 s after the
-  build). The assertion at `view.rs:3215` (the `proptest!` block's line on `master`): after a
-  `TownBuilt` of player 0's town 0, one side holds `TownChanged` (level 3, hall 2), `TownStackSeen`
-  and `TownIncomeSeen` that the other has not (a town view moving without the events that move it,
-  or the reverse; the shrunk plan is RoE, side 11, one level). Not committed anywhere: the seed
-  would make every run fail until the fix.
 - 2026-11-25 (the town lane, E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to
   build now**): increment 6, the town's trades, is designed (design note `docs/epics/E09-design.md`
   Part H; drafts `docs/lanes/town/adr-drafts/*-increment-6.md`, accepted at `TWN-Q37`). Planned

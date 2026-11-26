@@ -90,6 +90,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   explored tiles grow in a command not its own (`check_isolation`'s captors, `view.rs`' `jumper`);
   an empty boat a hero left on a Whirlpool's tile is boarded, no visit; an enemy hero on another
   tile of the entrance's own Whirlpool is a candidate (survey §4.1).
+- The hygiene property and the seeded draws (`view.rs`): the other game may run on another seed
+  (`unseen.seed`) and its unseen objects move the streams' positions, so every public draw the
+  viewer is shown ends the comparison (a month's, a week's, a hire's, a Den of Thieves', since the
+  rmg lane's seed of 2026-11-25 a town's guild once built, `unguilded`): a new view of a drawn fact
+  needs its own exception there, or the property fails on a random case.
 - The hygiene property and the teleporters (E08 T106b2, `view.rs`): an object `vary` adds needs
   its template in the map's table, which `lay_out` writes for the typed objects up to the last one
   the plan uses, the towns' after them (else the read fails: `InvalidValue { field: "object
