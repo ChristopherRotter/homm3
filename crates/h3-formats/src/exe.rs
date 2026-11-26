@@ -1637,8 +1637,8 @@ mod tests {
 
     #[test]
     fn reads_the_rmg_limits_from_a_synthetic_image() {
-        // At 0x401000: two map pairs and one zone pair; then two cosines, two sines (f64), one
-        // terrain's four town types and two native terrains.
+        // At the image's start two map pairs and one zone pair; then two cosines, two sines
+        // (f64), one terrain's four town types and two native terrains.
         let pairs: [i32; 6] = [26, 200, 6, 200, 113, 3];
         let mut p: Vec<u8> = pairs.iter().flat_map(|v| v.to_le_bytes()).collect();
         for v in [1.0f64, 0.9807, 0.0, -0.1951] {

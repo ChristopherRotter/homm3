@@ -1812,7 +1812,10 @@ generator's calls through two thunks that mark the steps in the log and dump the
 cells after each step, into the run's clock folder (`rmg<g>.draws`, `rmg<g>-<step>.cells`; the
 formats in `xdd.c`); the ack's eighteenth field counts the hooks placed (19). The driver waits for
 the log's `end` line after the map, keeps the log's and the dumps' digests in `rmg/phases.txt`, and
-`phases` sets the logs against survey §2.6's sites per step.
+`phases` sets the logs against survey §2.6's sites per step. The memory record `rmg<g>.memory`
+(E14 T3a, T3c) adds the x87 control word, step 2's zone bytes (`rmg/zones.txt`) and the zone
+generators after each step (`rmg/layout.txt` keeps step 1's); `h3-pack-rmg`'s tests compare the
+port with `phases.txt` and `layout.txt`.
 
 ```
 python3 h3rmg.py one --seed <s> [--size M] [--levels 2] [--players 2] [--teams 0] [--computers 0] [--computer-teams 0] [--water normal] [--monsters normal] [--again] [--before "<step>;..."] [--phases]

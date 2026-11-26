@@ -423,31 +423,32 @@ pub(crate) fn lay_out<T: Trace>(
             Water::Islands => 7,
             Water::Normal | Water::Random => 6,
         };
-    for (index, zone) in input.zones.iter().enumerate() {
-        let mut town_type = town_type_drawn(stream, zone.town_types);
-        let choice = (zone.player_towns[0].wrapping_add(zone.player_towns[1]) > 0)
-            .then(|| usize::try_from(zone.ownership.wrapping_sub(1)).ok())
-            .flatten()
-            .and_then(|position| input.positions.get(position).copied().flatten())
-            .and_then(|colour| input.towns.get(usize::from(colour)).copied().flatten());
-        if let Some(town) = choice {
-            town_type = i32::from(town);
+    // Pass 1 makes each zone generator before its placement (its town type drawn first), passes 2
+    // and 3 place every one again in order.
+    let n = input.zones.len();
+    for k in 0..3 * n {
+        let me = k % n;
+        if k < n {
+            let zone = &input.zones[me];
+            let mut town_type = town_type_drawn(stream, zone.town_types);
+            let choice = (zone.player_towns[0].wrapping_add(zone.player_towns[1]) > 0)
+                .then(|| usize::try_from(zone.ownership.wrapping_sub(1)).ok())
+                .flatten()
+                .and_then(|position| input.positions.get(position).copied().flatten())
+                .and_then(|colour| input.towns.get(usize::from(colour)).copied().flatten());
+            if let Some(town) = choice {
+                town_type = i32::from(town);
+            }
+            layout.gens.push(ZoneGenerator {
+                zone: me,
+                town_type,
+                town_type_2: -1,
+                terrain: 0,
+                position: [0, 0, 0],
+                size: zone.base_size,
+            });
         }
-        layout.gens.push(ZoneGenerator {
-            zone: index,
-            town_type,
-            town_type_2: -1,
-            terrain: 0,
-            position: [0, 0, 0],
-            size: zone.base_size,
-        });
-        layout.place(stream, index, index, d)?;
-    }
-    let n = layout.gens.len();
-    for _ in 0..2 {
-        for me in 0..n {
-            layout.place(stream, me, n, d)?;
-        }
+        layout.place(stream, me, if k < n { me } else { n }, d)?;
     }
     // The scaling (RMG-ZON-006): the box over every zone from 0, its larger side the span.
     let mut lo = [0i32; 2];

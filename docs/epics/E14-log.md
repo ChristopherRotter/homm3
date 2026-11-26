@@ -520,3 +520,39 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   `triangulation`, `triangulation_edge`, the zone generator's +0x3E4 and +0x3F4; the ledger's
   RMG-QUIRK-3 corrected and five open candidates (classified when T3d's cells compare); T3d's scope
   names them.
+
+## T3c — step 1, the generator's map, the comparison seam (2026-11-26, increment 3)
+
+- **Whole** (the user, asked with the cut T3c1 flags and seam, T3c2 step 1: "T3c whole", and "yes"
+  to an oracle hook recording the zone generators after step 1, since dumps 0 and 1 are only the
+  reset cells). One branch `shared/e14-t3c`, `cross-lane` (`h3-content`'s registry, `core.toml`,
+  `h3-harvest`, `h3-formats`, the replays' and bot reports' core hashes). Staged from the PC at the
+  start: the oracle's set (58 files, SHA-256 checked), SoD's three tables, Complete's two maps; #1187
+  had merged.
+- **The flags** (one agent, its own worktree): `quirk.rmg.zone_memory_model` 56,
+  `terrain_towns_count` 57, `partition_units` 58, `cosmetic` 59, on in `faithful`, off in
+  `strict-fixed`; only `faithful`'s core hash moved (`0x3f1f68842dab4e0c` → `0x7d6081fbb0552a2f`;
+  a flag off leaves the bits as they were): 115 adventure replays' `ruleset_hash`, `h3-server`'s
+  `record.rs`, the two bot reports' `core`; checkpoints and final hashes unchanged.
+- **Read** (`scripts/exe.py`): `rmg_zones_lay_out` 0x53BCB0, `rmg_zone_generator_init`,
+  `rmg_zone_place`, `rmg_zone_position_fits`, `rmg_zone_candidates_around`,
+  `rmg_zone_candidates_filter`, `rmg_zones_touch`, `rmg_zones_bounds`, `rmg_zone_terrain_draw`,
+  `rmg_map_cell_reset`, the connection lists in `rmg_templates_read`; survey §2.2's step 1
+  confirmed and sharpened (the tested points written to the zone, the box filter from 32000, the
+  32-bit squares).
+- **The port** (agent decisions, change freely): `cells.rs` (`Cell` the record's words +0x10 to
+  +0x2C, `Cell::RESET`, `Cells::dump` the oracle's format 1); `layout.rs` (`ZoneGenerator`, the
+  three passes, `trunc_sqrt` the integer root binary64's gives, the points through `Real` with the
+  tables' ten-thousandths as the nearest doubles); `Trace::step_end` takes a `StepState` (the
+  cells, the zone generators); `GeneratedMap` holds both; `GenerateError::NoPosition` and
+  `LayoutSpan` (RMG-QUIRK-3). The tables (`layout_cos`, `layout_sin`, `terrain_towns`,
+  `native_terrains`) read by `h3-formats`' `rmg_data` (a double kept only when its shortest
+  decimal has at most four places) into SoD's `[generator]`; the synthetic pack's invented rows.
+- **The oracle** (`xdd.c` section 10: the `generators` lines; `h3rmg.py`: `read_generators`,
+  `layout.txt`): `corpus --phases --record`, 24 of 24 maps, logs and dumps as kept, `layout.txt`
+  new (388 zone generators). The disk ballast set to 1.5 GiB modulo 4 GiB for the game's check.
+- **Tests:** the corpus's draws (setup, template, step 1) and dumps 0 and 1 against `phases.txt`
+  (a test SHA-256), its layout against `layout.txt`, both 24 of 24 at the first run; RMG-QUIRK-12 in
+  both profiles and RoE; the colour's town choice; RMG-QUIRK-3's two cases; the property test's
+  layout invariants; the root, the dump's bytes. `RMG_GENERATOR_VERSION` stays 1: no map is
+  written before increment 7.

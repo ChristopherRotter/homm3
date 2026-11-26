@@ -436,6 +436,20 @@ rough Stronghold, Conflux (also in RoE), -1, Castle; subterranean Dungeon, Infer
 -1; lava Inferno, -1, Castle, Castle; water -1, Castle, Castle, Castle. It applies only to zones
 whose +4 is -1 (no town type set and no colour choice), and steps 4 and 5 place towns of +4, not +8.
 
+**Step 1 re-read for the port (T3c; the oracle's `layout.txt` agrees on the corpus).** The zone
+generator's constructor draws its town type before the colour's choice replaces it (the draw
+happens either way); it writes +0x1C (the base), the box (32000, -32000), +0x3C and the counts,
+and leaves +8, +0xC, +0x10..+0x18, +0x30..+0x38 and +0x40 for its callers. A placement writes each
+point it tests into the zone's +0x10..+0x18 before `rmg_zone_position_fits` (and each candidate
+before its touch count), so the all-zones fallback of passes 2 and 3 starts the points around the
+zone itself from the last point tested; `fits` skips the zone itself by its id, the filter's box
+and free levels by the pointer. The box filter keeps the least of max(d, h, w) from 32000: a
+value above it everywhere (d past 32000) would drop every candidate. The distances are 32-bit
+(`imul`): a square past 2^31 wraps, its root is NaN and `crt_ftol` leaves 0 in the low word, so
+nothing fits around a zone of base 50 000 (RMG-QUIRK-3's step 1 case without other data). The
+second town type's row is the terrain's after the level-1 change: subterranean's or lava's on
+level 1.
+
 **Step 2, `rmg_level_zones_partition`, per level z.** The level's zone centres go into a
 triangulation (`triangulation_init` 0x5FD010: integer, a frame with corners at -200 and 400;
 `triangulation_insert` 0x5FD790 with the zone generator as data; Delaunay, below). On level 1 always, on level 0
@@ -1964,6 +1978,8 @@ floods to an empty queue); failures: no template (3), silent drops.
 Reads: the kept templates, the human flags. Floats, limits: none.
 
 #### 3.2.3 Step 1: the zones laid out
+
+Implemented (E14 T3c; `crates/h3-rmg/src/layout.rs`, the catalog's rows).
 
 | Id | Rule | Draws (sites, in order) | § |
 |---|---|---|---|
