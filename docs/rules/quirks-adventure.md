@@ -714,3 +714,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: the original's in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/spells.rs`, `aboard_fly_is_refused_and_water_walk_is_cast_without_its_tests`
 - Decided by / date: the user 2026-11-21 (ADV-Q63, E08 decision 403); built by E08 T142a
+
+### ADV-QUIRK-58 — A neutral mine's guards kept at a count of 0 after a draw
+- Class: bug-fix (no flag: always fixed; the user, 2026-11-25, at E08 T144a1's start, E08 decision 419)
+- Context / rules affected: adventure, ADV-MIN-002 (the guards' battle)
+- Original behavior: after a **draw** at a neutral mine's single stack, `monster_battle` 0x4AC580 returns −1 and writes the count left of its creature, 0, to its count argument whatever the winner (0x4AC905 to 0x4AC913); `visit_mine` 0x4A39A0 writes it into slot 0's count and keeps the creature there (0x4A3AEB). `army_has_creatures` 0x4496A0 reads only the types, so the mine still holds guards: the next visitor is asked ADVEVENT 84 again and, accepting, fights a battle of 0 creatures (what that battle does: not read).
+- Intended/expected behavior: every survivor counted, so a draw leaves no guards and the next visit flags the mine at once (`end_mine_battle`); a loss, a retreat or a surrender keeps the survivors as before.
+- Impact: gameplay, tiny: only after a drawn battle at a neutral mine's single stack; the original asks once more and fights an empty battle.
+- Community status: not documented.
+- Sources: code reading (the map-client lane, E24 M5 T1b, `docs/epics/E24-design.md` §5.23: 0x4A3AEB, 0x4496A0), confirmed by a second reading (E08 T144a1: `monster_battle`'s tail, the count of its type written after `adventure_battle` returns; `visit_mine`'s write on any winner but the hero, 0x4A3AE3 to 0x4A3AEB); survey `E08-economy.md` §3.2.
+- Flag: none (fixed in every profile)
+- Defaults: no guards after a draw in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/mines.rs`, `a_mine_battle_s_end_keeps_the_survivors_or_flags_the_mine_after_the_levels` (since E08 T84a)
+- Decided by / date: the user 2026-11-25 (E08 decision 419; the map-client lane's inbox note); recorded by E08 T144a1, no code change

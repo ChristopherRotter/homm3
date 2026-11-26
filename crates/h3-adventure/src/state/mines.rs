@@ -221,7 +221,7 @@ impl AdventureState {
     /// flag comes after the winner's levels ([`AdventureOutcome::reward_after`], GAM-DEC-007: the
     /// original's `visit_mine` flags once its battle, levels included, returns;
     /// [`Self::give_won`]); else the guards' `survivors` stay on the mine (none after a draw:
-    /// the next visit flags it), a neutral single stack's summed into its own slot as its own
+    /// the next visit flags it, `ADV-QUIRK-58` fixed), a neutral single stack's summed into its own slot as its own
     /// creature (the original writes the count left into slot 0, A-29 fixed: the stack's slot;
     /// every survivor counted, as a wandering monster's, A-6 fixed), others by slot as they
     /// stand; its owner is unchanged. A change of their hint is told ([`Self::write_guards`]).

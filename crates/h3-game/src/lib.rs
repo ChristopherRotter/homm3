@@ -129,7 +129,7 @@ pub use h3_towns::{
 /// its `guild`'s slots.
 pub use h3_towns::{CREATURE_INDEXES, GuildSlots, Summoned};
 pub use legal::{
-    default_answer, hire_range, legal_commands, legal_management, legal_moves,
+    default_answer, hire_range, legal_cast_targets, legal_commands, legal_management, legal_moves,
     legal_town_management, split_range,
 };
 pub use manage::{Manage, ManageError};

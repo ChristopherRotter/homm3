@@ -10,8 +10,8 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ArtifactTypeId, HeroEffect, MAX_SKILL_LEVEL, MAX_SPELL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset,
-    SchoolId, Spell, SpellId,
+    ArtifactTypeId, CompiledHeroEffect, HeroEffect, MAX_SKILL_LEVEL, MAX_SPELL_LEVEL,
+    MAX_SPELL_SCHOOLS, Ruleset, SchoolId, Spell, SpellId,
 };
 
 use crate::derive::{Count, effects};
@@ -282,8 +282,175 @@ pub fn map_spell_cost(
         .into_iter()
         .find(|&(s, _)| s == spell)
         .map_or(0, |(_, level)| level);
+    Ok(cost_at(def, mastery))
+}
+
+/// The map cost of `def` at `mastery` (HER-SPL-008): the core's column, the first without a
+/// mastery, at least 1.
+fn cost_at(def: &Spell, mastery: u8) -> u16 {
     let column = usize::from(mastery).min(def.cost.len() - 1);
-    Ok(def.cost[column].max(1))
+    def.cost[column].max(1)
+}
+
+/// A spell the hero may cast on the adventure map with its mastery on a ground and its cost
+/// there ([`map_spells`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MapSpell {
+    /// The core spell.
+    pub spell: SpellId,
+    /// Its mastery on the ground, 0 (none) to 3 (Expert): [`spell_masteries_on`]'s.
+    pub mastery: u8,
+    /// Its spell points there: [`map_spell_cost`]'s.
+    pub cost: u16,
+}
+
+/// The spells of `spells` the hero may cast on the adventure map, in that order, each with its
+/// mastery on a ground with `raise` and its cost there (HER-SPL-003, HER-SPL-008; E08 T144a1):
+/// what [`can_cast_on_map`], [`spell_masteries_on`] and [`map_spell_cost`] give each, from one
+/// pass over the masteries. A hot path's derivation, as [`crate::movement`]: the game's listing
+/// of the casts on the map runs it on every step (GAM-SPL-001), so the details are **not
+/// validated** (the game's store holds valid details: every change is checked); details a
+/// validation refuses give an answer no rule names, never a panic.
+pub fn map_spells(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    spells: &[SpellId],
+    raise: SchoolRaise,
+) -> Vec<MapSpell> {
+    // rule: HER-SPL-008
+    // [`available`]'s three sources (a learned spell, a worn scroll's, an effect's grant) for the
+    // asked spells alone, without building the set: the grants from one pass over the effects.
+    let grants: Vec<_> = effects(details, ruleset, Count::OncePerType)
+        .filter_map(|effect| match *effect {
+            HeroEffect::Spells { grant } => Some(grant),
+            _ => None,
+        })
+        .collect();
+    let castable: Vec<SpellId> = spells
+        .iter()
+        .copied()
+        .filter(|&spell| {
+            details.spells.contains(&spell)
+                || details
+                    .worn
+                    .iter()
+                    .flatten()
+                    .any(|item| item.spell == Some(spell))
+                || grants.iter().any(|grant| grant.gives(ruleset, spell))
+        })
+        .collect();
+    if castable.is_empty() {
+        return Vec::new();
+    }
+    // [`masteries_on`]'s answer for the castable spells alone: a raised spell at Expert.
+    let sources = MasterySources::of(details, ruleset);
+    // An available spell of valid details is the ruleset's.
+    castable
+        .into_iter()
+        .filter_map(|spell| ruleset.spell(spell).map(|def| (spell, def)))
+        .map(|(spell, def)| {
+            let mastery = if raise.raises(def) {
+                MAX_SKILL_LEVEL
+            } else {
+                sources.mastery(spell, def)
+            };
+            MapSpell {
+                spell,
+                mastery,
+                cost: cost_at(def, mastery),
+            }
+        })
+        .collect()
+}
+
+/// What may make one of a few spells available to a hero beyond what its details hold
+/// themselves (HER-SPL-002; E08 T144a1): the ruleset's artifact types (a combination with its
+/// parts' effects), skills (at any level) and hero types (their specialty) whose effects grant
+/// one, read from the ruleset once. [`Self::may_have`] then tests a hero's details without
+/// validating them or walking their effects, as the game's listing of the casts on the map
+/// needs on every call (GAM-SPL-001): it never says no for a hero whose [`available_spells`]
+/// hold one of the spells.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SpellSources {
+    spells: Vec<SpellId>,
+    spell_bits: Vec<u64>,
+    artifacts: Vec<u64>,
+    skills: Vec<u64>,
+    hero_types: Vec<u64>,
+}
+
+impl SpellSources {
+    /// The sources of `spells` in `ruleset`.
+    pub fn new(ruleset: &Ruleset, spells: &[SpellId]) -> Self {
+        let grants = |effects: &[CompiledHeroEffect]| {
+            effects.iter().any(|effect| match *effect {
+                HeroEffect::Spells { grant } => spells.iter().any(|&s| grant.gives(ruleset, s)),
+                _ => false,
+            })
+        };
+        let artifact = |id: ArtifactTypeId| ruleset.artifact(id).map(|a| grants(&a.effects));
+        let artifacts = ruleset.artifacts().iter().map(|a| {
+            grants(&a.effects) || a.parts.iter().any(|&part| artifact(part) == Some(true))
+        });
+        let skills = ruleset
+            .skills()
+            .iter()
+            .map(|skill| skill.levels.iter().any(|level| grants(level)));
+        let hero_types = ruleset.hero_types().iter().map(|t| grants(&t.specialty));
+        let sorted: Vec<SpellId> = spells
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        let spell_bits = bits_of(sorted.iter().map(|s| s.index()));
+        Self {
+            spells: sorted,
+            spell_bits,
+            artifacts: bits_of(artifacts.enumerate().filter(|&(_, g)| g).map(|(i, _)| i)),
+            skills: bits_of(skills.enumerate().filter(|&(_, g)| g).map(|(i, _)| i)),
+            hero_types: bits_of(hero_types.enumerate().filter(|&(_, g)| g).map(|(i, _)| i)),
+        }
+    }
+
+    /// The spells, in spell order.
+    pub fn spells(&self) -> &[SpellId] {
+        &self.spells
+    }
+
+    /// Whether one of the spells may be among the hero's available spells: a learned one, a worn
+    /// scroll's, or a worn artifact type's, a skill's or its type's specialty that grants one.
+    pub fn may_have(&self, details: &HeroDetails) -> bool {
+        let spell = |s: SpellId| has_bit(&self.spell_bits, s.index());
+        details.spells.iter().any(|&s| spell(s))
+            || details.worn.iter().flatten().any(|item| {
+                item.spell.is_some_and(spell) || has_bit(&self.artifacts, item.artifact.index())
+            })
+            || details
+                .skills
+                .iter()
+                .any(|&(skill, _)| has_bit(&self.skills, skill.index()))
+            || has_bit(&self.hero_types, details.hero_type.index())
+    }
+}
+
+/// A bit set holding `indices`.
+fn bits_of(indices: impl Iterator<Item = usize>) -> Vec<u64> {
+    let mut bits = Vec::new();
+    for index in indices {
+        let word = index / 64;
+        if bits.len() <= word {
+            bits.resize(word + 1, 0);
+        }
+        bits[word] |= 1 << (index % 64);
+    }
+    bits
+}
+
+/// Whether `bits` holds `index`.
+fn has_bit(bits: &[u64], index: usize) -> bool {
+    bits.get(index / 64)
+        .is_some_and(|word| word & (1 << (index % 64)) != 0)
 }
 
 /// Whether the hero may cast `spell` on the adventure map (HER-SPL-008, E08 T141b; ADR-0013 point
@@ -322,34 +489,55 @@ pub(crate) fn available(details: &HeroDetails, ruleset: &Ruleset) -> Vec<SpellId
 /// [`spell_masteries`] of validated details: on ordinary ground (the battle hero's, HER-BAT-001).
 pub(crate) fn masteries(details: &HeroDetails, ruleset: &Ruleset) -> Vec<(SpellId, u8)> {
     // rule: HER-SPL-003
-    let mut schools = [0u8; MAX_SPELL_SCHOOLS];
-    let mut raised: Vec<(SpellId, u8)> = Vec::new();
-    for effect in effects(details, ruleset, Count::OncePerType) {
-        match *effect {
-            HeroEffect::SchoolMastery { school, level } => {
-                let mastery = &mut schools[school_index(school)];
-                *mastery = (*mastery).max(level);
-            }
-            HeroEffect::SpellMastery { spell, level } => raised.push((spell, level)),
-            _ => {}
-        }
-    }
+    let sources = MasterySources::of(details, ruleset);
     all_spells(ruleset)
         .zip(ruleset.spells())
         .filter_map(|(id, spell)| {
-            let by_school = spell.schools.iter().map(|&l| schools[school_index(l)]);
-            let by_artifact = raised
-                .iter()
-                .filter(|&&(s, _)| s == id)
-                .map(|&(_, level)| level);
-            let mastery = by_school
-                .chain(by_artifact)
-                .max()
-                .unwrap_or(0)
-                .min(MAX_SKILL_LEVEL);
+            let mastery = sources.mastery(id, spell);
             (mastery > 0).then_some((id, mastery))
         })
         .collect()
+}
+
+/// A hero's school masteries and its spell masteries' raises (HER-SPL-003), from one pass over
+/// its effects; [`masteries`] reads every spell's, [`map_spells`] a few (E08 T144a1).
+struct MasterySources {
+    schools: [u8; MAX_SPELL_SCHOOLS],
+    raised: Vec<(SpellId, u8)>,
+}
+
+impl MasterySources {
+    fn of(details: &HeroDetails, ruleset: &Ruleset) -> Self {
+        let mut schools = [0u8; MAX_SPELL_SCHOOLS];
+        let mut raised: Vec<(SpellId, u8)> = Vec::new();
+        for effect in effects(details, ruleset, Count::OncePerType) {
+            match *effect {
+                HeroEffect::SchoolMastery { school, level } => {
+                    let mastery = &mut schools[school_index(school)];
+                    *mastery = (*mastery).max(level);
+                }
+                HeroEffect::SpellMastery { spell, level } => raised.push((spell, level)),
+                _ => {}
+            }
+        }
+        Self { schools, raised }
+    }
+
+    /// The mastery of `spell` (`id`) on ordinary ground: the best of its schools' and its
+    /// raises', at most Expert.
+    fn mastery(&self, id: SpellId, spell: &Spell) -> u8 {
+        let by_school = spell.schools.iter().map(|&l| self.schools[school_index(l)]);
+        let by_artifact = self
+            .raised
+            .iter()
+            .filter(|&&(s, _)| s == id)
+            .map(|&(_, level)| level);
+        by_school
+            .chain(by_artifact)
+            .max()
+            .unwrap_or(0)
+            .min(MAX_SKILL_LEVEL)
+    }
 }
 
 /// [`spell_masteries_on`] of validated details: the ordinary masteries ([`masteries`], the
