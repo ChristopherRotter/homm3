@@ -1038,8 +1038,12 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.content.rmg_8xm8_zone_ids\" = true, \
          \"quirk.rmg.roe_monster_town_byte\" = true, \
          \"quirk.rmg.unowned_start_seventh\" = true, \
+         \"quirk.rmg.zone_memory_model\" = true, \
+         \"quirk.rmg.terrain_towns_count\" = true, \
+         \"quirk.rmg.partition_units\" = true, \
+         \"quirk.rmg.cosmetic\" = true, \
          \"quirk.town.visitor_only_trades\" = true, \
-         \"quirk.town.university_ignores_map_bans\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-16, RMG-QUIRK-11, RMG-QUIRK-22, RMG-QUIRK-24\n",
+         \"quirk.town.university_ignores_map_bans\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-16, RMG-QUIRK-1, RMG-QUIRK-11, RMG-QUIRK-12, RMG-QUIRK-14, RMG-QUIRK-21, RMG-QUIRK-22, RMG-QUIRK-24\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -1093,8 +1097,12 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.content.rmg_8xm8_zone_ids\" = false, \
          \"quirk.rmg.roe_monster_town_byte\" = false, \
          \"quirk.rmg.unowned_start_seventh\" = false, \
+         \"quirk.rmg.zone_memory_model\" = false, \
+         \"quirk.rmg.terrain_towns_count\" = false, \
+         \"quirk.rmg.partition_units\" = false, \
+         \"quirk.rmg.cosmetic\" = false, \
          \"quirk.town.visitor_only_trades\" = false, \
-         \"quirk.town.university_ignores_map_bans\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-16, RMG-QUIRK-11, RMG-QUIRK-22, RMG-QUIRK-24\n",
+         \"quirk.town.university_ignores_map_bans\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-15, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, ADV-QUIRK-46, ADV-QUIRK-51 to ADV-QUIRK-55, TWN-QUIRK-9, TWN-QUIRK-10, TWN-QUIRK-12 to TWN-QUIRK-16, RMG-QUIRK-1, RMG-QUIRK-11, RMG-QUIRK-12, RMG-QUIRK-14, RMG-QUIRK-21, RMG-QUIRK-22, RMG-QUIRK-24\n",
     );
 
     // ab

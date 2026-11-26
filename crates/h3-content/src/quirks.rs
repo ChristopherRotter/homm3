@@ -144,6 +144,10 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.rmg.unowned_start_seventh",
     "quirk.town.visitor_only_trades",
     "quirk.town.university_ignores_map_bans",
+    "quirk.rmg.zone_memory_model",
+    "quirk.rmg.terrain_towns_count",
+    "quirk.rmg.partition_units",
+    "quirk.rmg.cosmetic",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -468,6 +472,34 @@ pub const VISITOR_ONLY_TRADES: QuirkFlag = QuirkFlag(54);
 /// Class `fix-optional`; read by the town's University from E09 T59b.
 pub const UNIVERSITY_IGNORES_MAP_BANS: QuirkFlag = QuirkFlag(55);
 
+/// RMG-QUIRK-1 (survey `E14-generator.md` §2.2, §3.2; registered at E14 T3c with increment 3's
+/// flags, decision 10): step 2's zone generators whose town-type bytes nobody writes (the
+/// temporary zone of each level's fit tests, the water zones) count and draw their town type from
+/// the oracle's model of the bytes a fresh start's first map holds (E14 T3a's memory record). Off:
+/// the bytes zeroed, no town type set, no draw. Read by step 2 (E14 T3d).
+pub const RMG_ZONE_MEMORY_MODEL: QuirkFlag = QuirkFlag(56);
+
+/// RMG-QUIRK-12 (survey `E14-generator.md` §1.5, §2.2; registered at E14 T3c with increment 3's
+/// flags, decision 10): step 1's town type (+8) of a zone without one draws among all four entries
+/// of its terrain's row of `rmg_terrain_towns` 0x682450, the -1 terminator and the Castle padding
+/// included. Off: among the terrain's own town types before the -1, without Conflux for RoE. Read
+/// by step 1 (E14 T3c).
+pub const RMG_TERRAIN_TOWNS_COUNT: QuirkFlag = QuirkFlag(57);
+
+/// RMG-QUIRK-14 (survey `E14-generator.md` §2.2; registered at E14 T3c with increment 3's flags,
+/// decision 10): step 2's `rmg_zone_position_fits` 0x53AD60 compares map distances with the
+/// existing zones' base sizes in template units, the temporary zone carrying a scaled size. Off:
+/// every size scaled to the map. Read by step 2 (E14 T3d).
+pub const RMG_PARTITION_UNITS: QuirkFlag = QuirkFlag(58);
+
+/// RMG-QUIRK-21 (survey `E14-generator.md` §2.5, §2.7.2 to §2.7.4; registered at E14 T3c with
+/// increment 3's flags, decision 10), one flag for all: the painters' pictures (the neighbours'
+/// else-if, the inverted sand corner, the clear's short right column), rivers under objects and
+/// obstacles, the description's town of the colour's index and its humans counting the computers.
+/// Off: the pictures as the neighbours give them, rivers on free cells only, the description as
+/// chosen. Read by the painters and the writer from E14 T3e.
+pub const RMG_COSMETIC: QuirkFlag = QuirkFlag(59);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -510,7 +542,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 56);
+        assert_eq!(REGISTRY.len(), 60);
         assert_eq!(
             [
                 "quirk.adventure.flight_reads_hidden",
@@ -524,6 +556,10 @@ mod tests {
                 "quirk.rmg.unowned_start_seventh",
                 "quirk.town.visitor_only_trades",
                 "quirk.town.university_ignores_map_bans",
+                "quirk.rmg.zone_memory_model",
+                "quirk.rmg.terrain_towns_count",
+                "quirk.rmg.partition_units",
+                "quirk.rmg.cosmetic",
             ]
             .map(|name| REGISTRY.lookup(name)),
             [
@@ -538,6 +574,10 @@ mod tests {
                 RMG_UNOWNED_START_SEVENTH,
                 VISITOR_ONLY_TRADES,
                 UNIVERSITY_IGNORES_MAP_BANS,
+                RMG_ZONE_MEMORY_MODEL,
+                RMG_TERRAIN_TOWNS_COUNT,
+                RMG_PARTITION_UNITS,
+                RMG_COSMETIC,
             ]
             .map(Some)
         );
@@ -741,7 +781,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 56);
+        assert_eq!(REGISTRY.len(), 60);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -755,7 +795,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..56).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..60).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

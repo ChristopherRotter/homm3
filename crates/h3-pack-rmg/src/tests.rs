@@ -16,11 +16,11 @@ depends = []
 
 [[profile]]
 id = "on"
-quirks = { "quirk.content.rmg_8xm8_zone_ids" = true, "quirk.rmg.roe_monster_town_byte" = true, "quirk.rmg.unowned_start_seventh" = true }
+quirks = { "quirk.content.rmg_8xm8_zone_ids" = true, "quirk.rmg.roe_monster_town_byte" = true, "quirk.rmg.unowned_start_seventh" = true, "quirk.rmg.zone_memory_model" = true, "quirk.rmg.terrain_towns_count" = true, "quirk.rmg.partition_units" = true, "quirk.rmg.cosmetic" = true }
 
 [[profile]]
 id = "off"
-quirks = { "quirk.content.rmg_8xm8_zone_ids" = false, "quirk.rmg.roe_monster_town_byte" = false, "quirk.rmg.unowned_start_seventh" = false }
+quirks = { "quirk.content.rmg_8xm8_zone_ids" = false, "quirk.rmg.roe_monster_town_byte" = false, "quirk.rmg.unowned_start_seventh" = false, "quirk.rmg.zone_memory_model" = false, "quirk.rmg.terrain_towns_count" = false, "quirk.rmg.partition_units" = false, "quirk.rmg.cosmetic" = false }
 "#;
 
 /// An `objects.txt` line of `picture` with `extra` fields first (`before = 1, `).
