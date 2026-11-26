@@ -9,13 +9,17 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_content::{
-    RMG_ROE_MONSTER_TOWN_BYTE, RMG_TERRAIN_TOWNS_COUNT, RMG_UNOWNED_START_SEVENTH, Ruleset,
+    RMG_PARTITION_UNITS, RMG_ROE_MONSTER_TOWN_BYTE, RMG_TERRAIN_TOWNS_COUNT,
+    RMG_UNOWNED_START_SEVENTH, RMG_ZONE_MEMORY_MODEL, Ruleset,
 };
 use h3_kernel::rng::CrtRand;
 
 use crate::cells::Cells;
 use crate::layout::{LayoutInput, ZoneGenerator, lay_out};
 use crate::part::RmgRuleset;
+use crate::partition::{
+    MemoryZone, Partition, PartitionFault, PartitionInput, ZoneMemory, partition,
+};
 use crate::settings::{COLOURS, Settings, SettingsError, Water};
 use crate::template::{Fit, KeptTemplate, PositionError, kept_templates, positions};
 
@@ -49,6 +53,13 @@ pub trait Trace {
     /// The end of `step` and what it left: 0 the frame before step 1 (the setup, the template,
     /// the positions; the oracle's dump 0), 1 to 15 the steps.
     fn step_end(&mut self, step: u8, state: StepState<'_>);
+    /// The bytes step 2's `index`-th zone (in the call order, from 0: each level's temporary
+    /// zone, then its water zones) holds unwritten (RMG-QUIRK-1, in `faithful` only): none, the
+    /// oracle model's own ([`ZoneMemory::TEMPORARY`], [`ZoneMemory::WATER`]). The comparison
+    /// with the phase oracle gives the measured ones (`zones.txt`).
+    fn zone_memory(&mut self, _kind: MemoryZone, _index: usize) -> Option<ZoneMemory> {
+        None
+    }
 }
 
 /// The trace that keeps nothing.
@@ -92,6 +103,14 @@ pub enum GenerateError {
     },
     /// Step 1's layout spans nothing (RMG-QUIRK-3: the original's scaling divides by zero).
     LayoutSpan,
+    /// Step 2 met on `level` what the original divides by zero at (RMG-QUIRK-3) or reads or
+    /// writes outside its arrays or never ends at (RMG-QUIRK-4).
+    Partition {
+        /// The level.
+        level: i32,
+        /// What went wrong.
+        fault: PartitionFault,
+    },
 }
 
 impl From<SettingsError> for GenerateError {
@@ -122,6 +141,7 @@ impl fmt::Display for GenerateError {
             },
             Self::NoPosition { zone } => write!(f, "step 1: no position for zone {zone}"),
             Self::LayoutSpan => f.write_str("step 1: the layout spans nothing"),
+            Self::Partition { level, fault } => write!(f, "step 2, level {level}: {fault:?}"),
         }
     }
 }
@@ -145,8 +165,10 @@ pub struct GeneratedMap {
     pub banned_heroes: Vec<bool>,
     /// The generator's map after the last step ported.
     pub cells: Cells,
-    /// The zone generators after the last step ported (step 1's layout).
+    /// The zone generators after the last step ported (step 2's water zones appended).
     pub zones: Vec<ZoneGenerator>,
+    /// Step 2's polygons and distances.
+    pub partition: Partition,
 }
 
 /// The stream: `CrtRand` seeded once, each draw reported with its call site.
@@ -155,11 +177,24 @@ pub(crate) struct Stream<'t, T: Trace> {
     trace: &'t mut T,
 }
 
-impl<T: Trace> Stream<'_, T> {
+impl<'t, T: Trace> Stream<'t, T> {
     pub(crate) fn draw(&mut self, site: u32) -> u32 {
         let value = self.rand.rand();
         self.trace.draw(site, value);
         value
+    }
+
+    pub(crate) fn zone_memory(&mut self, kind: MemoryZone, index: usize) -> Option<ZoneMemory> {
+        self.trace.zone_memory(kind, index)
+    }
+
+    /// A stream seeded with `seed` reporting to `trace` (the steps' unit tests).
+    #[cfg(test)]
+    pub(crate) fn new(seed: u32, trace: &'t mut T) -> Self {
+        Self {
+            rand: CrtRand::new(seed),
+            trace,
+        }
     }
 }
 
@@ -247,7 +282,7 @@ pub fn generate<T: Trace>(
     })?;
     let side = run.size.side();
     let levels = 1 + i32::from(run.two_levels);
-    let cells = Cells::new(side, levels);
+    let mut cells = Cells::new(side, levels);
     stream.trace.step_end(
         0,
         StepState {
@@ -255,7 +290,7 @@ pub fn generate<T: Trace>(
             zones: &[],
         },
     );
-    let zones = lay_out(
+    let mut zones = lay_out(
         &mut stream,
         &LayoutInput {
             zones: &template.zones,
@@ -277,6 +312,28 @@ pub fn generate<T: Trace>(
             zones: &zones,
         },
     );
+    let mut template = template;
+    let partition = partition(
+        &mut stream,
+        &PartitionInput {
+            levels,
+            water: run.water,
+            tables,
+            memory_model: quirks.is_enabled(RMG_ZONE_MEMORY_MODEL),
+            partition_units: quirks.is_enabled(RMG_PARTITION_UNITS),
+        },
+        &mut template.zones,
+        &mut template.connections,
+        &mut zones,
+        &mut cells,
+    )?;
+    stream.trace.step_end(
+        2,
+        StepState {
+            cells: &cells,
+            zones: &zones,
+        },
+    );
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
         settings: run,
@@ -287,5 +344,6 @@ pub fn generate<T: Trace>(
         banned_heroes,
         cells,
         zones,
+        partition,
     })
 }

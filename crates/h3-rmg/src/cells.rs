@@ -6,6 +6,9 @@
 
 use alloc::vec::Vec;
 
+/// +0x28 bit 28, the land bit.
+const LAND: u32 = 1 << 28;
+
 /// One cell of the generator's map: its words +0x10 to +0x2C (`rmg_map_cell`); the objects on it
 /// (+0x0) come with the steps that place them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +29,24 @@ pub struct Cell {
 }
 
 impl Cell {
+    /// The zone byte, +0x20 bits 16-23 (0xFF none).
+    pub const fn zone_byte(&self) -> u8 {
+        (self.zone >> 16) as u8
+    }
+
+    /// +0x28 bit 28: the cell is land of its zone (step 2's fill and lines; step 3 paints it).
+    pub const fn is_land(&self) -> bool {
+        self.tile_data & LAND != 0
+    }
+
+    /// Step 2's marks: the zone byte `index` and, with `land`, +0x28 bit 28.
+    pub(crate) const fn mark(&mut self, index: u8, land: bool) {
+        self.zone = (self.zone & 0xFF00_FFFF) | ((index as u32) << 16);
+        if land {
+            self.tile_data |= LAND;
+        }
+    }
+
     /// A cell as `rmg_map_cell_init` 0x530E90 leaves it: `rmg_map_cell_reset` 0x530F10 on the
     /// heap's bytes, which a fresh start's first map holds as 0 (the phase oracle's dumps;
     /// ORACLE.md, "Cell bits from memory"): +0x10 -1, +0x14 and +0x18 kept, both costs 32700, the
@@ -72,6 +93,26 @@ impl Cells {
     /// The cells in the map's order.
     pub fn cells(&self) -> &[Cell] {
         &self.cells
+    }
+
+    /// The cell at (x, y) on level z, none outside the map.
+    pub fn get(&self, x: i32, y: i32, z: i32) -> Option<&Cell> {
+        self.index(x, y, z).map(|i| &self.cells[i])
+    }
+
+    pub(crate) fn get_mut(&mut self, x: i32, y: i32, z: i32) -> Option<&mut Cell> {
+        self.index(x, y, z).map(|i| &mut self.cells[i])
+    }
+
+    /// `((height × z + y) × width + x)`, the original's index, for a cell on the map.
+    fn index(&self, x: i32, y: i32, z: i32) -> Option<usize> {
+        if !(0..self.width).contains(&x)
+            || !(0..self.height).contains(&y)
+            || !(0..self.levels).contains(&z)
+        {
+            return None;
+        }
+        usize::try_from((self.height * z + y) * self.width + x).ok()
     }
 
     /// The phase oracle's dump of the cells after `step` (format 1, `xdd.c` section 10):

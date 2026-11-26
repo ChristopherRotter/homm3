@@ -38,8 +38,10 @@ mod cells;
 mod generate;
 mod layout;
 mod part;
+mod partition;
 mod settings;
 mod template;
+mod triangulation;
 
 pub use cells::{Cell, Cells};
 pub use generate::{
@@ -54,6 +56,9 @@ pub use part::{
     Connection, ConnectionOverride, GeneratorTables, LAYOUT_POINTS, NO_LIMIT, OBJECT_TYPES,
     ObjectTemplate, ObjectTemplateLine, ObjectTemplateOverride, Obstacle, RmgCompileError, RmgPack,
     RmgRuleset, Strength, TERRAIN_TOWNS, TERRAINS, Template, TypeLimits, Zone, ZoneKind,
+};
+pub use partition::{
+    MemoryZone, Partition, PartitionFault, SITE_BORDER_JITTER, UNREACHED, ZoneMemory,
 };
 pub use settings::{
     COLOURS, Choices, MapFormat, MapSize, Monsters, Settings, SettingsError, TOWN_TYPES, Water,
