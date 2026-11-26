@@ -22557,3 +22557,76 @@ check-lane, by design (coverage 1 371 s, determinism, original-data); `check-lan
 ok; `h3-sim`'s, `h3-cli`'s, `h3-protocol`'s, `h3-server`'s and `h3-files`' tests run apart, pass
 (`h3-map`'s 214 in 770 s, 520 s before: the query oracle probes every window tile of a hero who
 knows a targeted spell). **Versions:** none moved. Next: T144a2.
+
+### Increment 15, round 8: T144a2, the env's encoding v21 (2026-11-26, `adventure/e08-t144a2`, `cross-lane`)
+
+**Baseline:** `master` abf981f (#1186, T144a1, merged; CI's run on it the baseline: the setup's
+own full run was stopped, its incremental coverage build at 12 GB with 13 GB of the disk left);
+the originals staged from the PC at the start (17 files and 40 MP3s), the repo from GitHub. No
+cut (the task as queued, decisions 421, 422). The AI lane gave no answer on the draw's weight
+(its inbox, T144a1's note), so the adventure lane's proposal is built.
+
+- **The encoding** (`h3-sim`'s `adventure/action.rs`, the AI lane's, `cross-lane`; version
+  **21**): `CAST_SPELLS` (5) entries per hero slot from `CAST_BASE` (105, after `SPELL_BOOK`):
+  slot `s`'s cast of behaviour `c` (`h3_adventure::AdventureSpell::code`, the original's order
+  Summon Boat, Scuttle Boat, Fly, Water Walk, Dimension Door) at `105 + 5s + c`, `ENTRY_COUNT`
+  145, `Action::cast`; each names the core spell the part binds to the behaviour (`bound_spell`;
+  an unbound behaviour decodes to nothing). `tileless` takes the three without a target (tile 0
+  alone, legal where `legal_commands` lists the hero's cast: `command_entry`'s `Cast` arm by
+  `cast_command_entry`, the slot by `hero_slot`, shared with `revisit_entry`). Scuttle Boat's
+  and the door's tile is the target (decision 421): `tile_mask` by `cast_targets` (one hero's
+  query, `h3_game::legal_cast_targets`), `legal_mask` by `targeted_casts` (every occupied slot's
+  bound targeted spells with a target; decision 422). `decode` gives a targeted cast's tile to
+  `apply` whatever it is (its checks refuse with the reason), the three only with tile 0, none
+  with a building; `encode` none for a target with the three, none without one for the two, a
+  target off the map, an unbound spell, another player's hero. The module's table gained 104
+  (`SPELL_BOOK`, missing) and the casts' row; `mod.rs`' version line.
+- **The random agent** (`rollout.rs`, `cross-lane`): T144a1's filter gone; each listed cast is
+  one draw among the commands, each hero's targeted cast with a target one draw after the moves
+  (a game without one draws as before), its target uniform among the queried ones, as a move's
+  tile (the proposal; the AI lane's to change). The step cap unchanged.
+- **The game** (`h3-game`'s `GameState::cast_targets`) and the part (`h3-adventure`): the query
+  tests the part's new `target_sources` (`AdventureRuleset::target_sources`, the
+  `SpellSources` of the bound spells with a target, derived at compile, not hashed, beside
+  `cast_sources`) and the hero's spells (`map_spells` without a raise) before its ground, then
+  takes the raised mastery only on a ground (a ground raises a mastery, never makes a spell
+  castable, HER-SPL-003). Behaviour unchanged.
+- **Tests:** `h3-sim`'s `adventure/tests/casts.rs`: `caster_setup` (the Shipyards' duel, every
+  hero with a book, the five spells, Knowledge 20), `check_cast` (a cast entry's tiles against
+  `legal_commands` and `legal_cast_targets`, each decoding and encoding back),
+  `each_hero_slot_has_five_cast_entries_masked_by_the_game` (both profiles),
+  `a_cast_names_its_hero_spell_and_target_alone`, `the_casts_step_through_the_env`,
+  `the_random_agent_draws_both_kinds_of_cast`; the layout test (v21, 145, 105, the last slot's
+  five); the mask property routes `CAST_BASE..ENTRY_COUNT` to `check_cast` and gains kind 5
+  (`caster_setup`). `h3-game`'s `the_casts_are_listed_last_or_queried_by_their_targets`: the
+  door's targets on Magic Plains at Expert's 20 points, none for them off it. The seed-chosen
+  env tests (`tests/towns.rs`), `h3-cli`'s workload test (the sea XL fork's boarding), and
+  `h3-protocol`'s and `h3-server`'s tests that play the random agent pass unchanged.
+- **Docs:** the ADR-0017 point 8 draft `adr-drafts/0017-casts-encoding.md` (decisions 421, 422,
+  for T145); the AI lane's inbox (v21 for its review, the weight its to change); the queue's
+  T144b; `TRAPS.md`'s listing trap (the targets query on every step).
+- *Agent's calls, change freely:* slot-major entries (a hero's five together); no field for the
+  casts left (design §17: the masks tell whether a cast is legal, the own hero's day spells hold
+  the door's casts made); `decode` leaves a target's check to `apply`; the targeted casts drawn
+  after the moves, by slot then the part's order.
+- **Speed** (callgrind, every adventure workload against `master` abf981f in
+  `target/wt-master`, the same sandbox): the first build cost +0.34 to +0.69 % on the
+  random-play workloads whose games did not change (the query's ground, `special_ground` 4.05 M
+  Ir on the duel, before the spell's test; the rollout's iterator over the empty slots and every
+  behaviour); the spell before the ground and the occupied slots alone +0.26 to +0.42 %; the
+  part's `target_sources` pre-test **+0.05 to +0.12 %** (banks +0.09, bonuses +0.11, duel +0.05,
+  dwellings +0.08, economy +0.09, garrisons +0.12, rewards +0.11). The casts drawn changed four
+  workloads' games, **re-baselined** with that reason: `random-play-sea-36` +6.37 % (1 244 steps
+  for 1 159), `random-play-teleporters-36` +7.43 % (2 001 for 2 614), `random-play-trades-36`
+  +3.49 % (1 519 for 2 719), `reach-sea-xl-144` +29.04 % (1 096 steps and 4 384 queries for
+  1 081 and 4 324; `passage` and `expand_sail` +30 % each, the same functions), with
+  `scuttle_target` the rule's own cost where heroes know Scuttle Boat (7.0 M Ir on the sea map).
+  The rest within ±0.8 % of `master` (the day-start workloads' heap, as before); against the
+  stored baselines the highest `random-play-bonuses-36` +1.96 % (`master` +1.85 %: the drift).
+
+**Verify:** the scoped verify with original data and `--skip bench-check` (every workload measured
+above against `master`): every step passes but check-lane, by design (coverage 1 586 s,
+determinism, original-data); `check-lane --cross-lane` ok; the AI lane's scope `--only
+clippy,coverage` for `h3-sim` passes (coverage 1 863 s); `h3-sim`'s, `h3-cli`'s, `h3-protocol`'s
+and `h3-server`'s tests run apart, pass. **Versions:** the env's action encoding v21 (the AI
+lane's). Next: T144b.

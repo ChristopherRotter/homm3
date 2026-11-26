@@ -29,6 +29,7 @@ use super::*;
 use crate::action as battle;
 
 mod battles;
+mod casts;
 mod decisions;
 mod hiring;
 mod monsters;
@@ -177,8 +178,17 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 20);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 105));
+    assert_eq!(ACTION_ENCODING_VERSION, 21);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 145));
+    // E08 T144a2 (v21): five casts per hero slot after the spell book's purchase.
+    assert_eq!(
+        (TOWN_OPEN, SPELL_BOOK, CAST_BASE, CAST_SPELLS),
+        (103, 104, 105, 5)
+    );
+    assert_eq!(
+        h3_adventure::AdventureSpell::ALL.map(|spell| Action::cast(7, spell, 9)),
+        [140, 141, 142, 143, 144].map(|entry| Action::map(entry, 9))
+    );
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
     assert_eq!((BUILD, RECRUIT, BUILDING_COUNT), (30, 31, 64));
@@ -426,7 +436,9 @@ fn is_move(entry: usize) -> bool {
 /// entrances of the towns of the listed hero moves of its kind, each decoding to that move
 /// ([`check_town_heroes`], E09 T28a), a [`TAVERN_HIRE`] entry's those of the listed hires of
 /// its slot (E09 T38a2), [`TOWN_OPEN`]'s those of the listed openings (E09 T49a2) and
-/// [`SPELL_BOOK`]'s those of the listed spell books' purchases (E09 T49b); after
+/// [`SPELL_BOOK`]'s those of the listed spell books' purchases (E09 T49b); a cast entry's 0 alone
+/// for its hero's listed cast without a target, the targets of its hero's query for Scuttle Boat
+/// and Dimension Door, each decoding to that cast ([`casts::check_cast`], E08 T144a2); after
 /// another entry the building head allows 0 alone at its first legal tile, nothing after an
 /// illegal entry, and a building other than 0 decodes to nothing. In the battle phase (the neutral
 /// seat's only phase) every map mask is empty. The battle masks: [`check_battle_masks`].
@@ -498,6 +510,10 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
         if (TOWN_HEROES..MARKET_TRADE).contains(&entry) || entry == TOWN_OPEN || entry == SPELL_BOOK
         {
             check_town_heroes(env, (player, entry), &commands, &tiles)?;
+            continue;
+        }
+        if (CAST_BASE..ENTRY_COUNT).contains(&entry) {
+            casts::check_cast(env, (player, entry), &commands, &tiles)?;
             continue;
         }
         if !is_move(entry) {
@@ -853,7 +869,9 @@ proptest! {
     /// (E08 T20b3a) with a monster beside red's hero ([`monsters::monster_setup`], aimed at by
     /// `Chart`), or (E08 T85b2b) with a Shipyard of each player's beside its hero
     /// ([`shipyards::shipyard_setup`], aimed at by `Chart`), or (E09 T9c) on the town map
-    /// ([`towns::town_setup`], `Chart` aimed at the towns' entrances: captures and sieges), at any
+    /// ([`towns::town_setup`], `Chart` aimed at the towns' entrances: captures and sieges), or (E08
+    /// T144a2) with those Shipyards and every hero a caster of the five adventure spells
+    /// ([`casts::caster_setup`], `Chart` aimed at the Shipyards), at any
     /// difficulty (4, impossible, cannot pay an offer): the masks of both phases
     /// agree with the game for every seat, the neutral one included; a legal action is accepted
     /// and does what `apply` does with its command under the seat's actor; an action outside the
@@ -862,7 +880,7 @@ proptest! {
     fn steps_agree_with_the_masks_and_the_game(
         seed in any::<u64>(),
         strict in any::<bool>(),
-        kind in 0u8..5,
+        kind in 0u8..6,
         difficulty in 0u8..5,
         picks in proptest::collection::vec(pick(), 1..60),
     ) {
@@ -877,6 +895,11 @@ proptest! {
             1 => (battles::battle_setup(rules, difficulty).0, Vec::new()),
             3 => {
                 let setup = shipyards::shipyard_setup(rules, difficulty);
+                let anchors = shipyards::shipyards(&setup);
+                (setup, anchors)
+            }
+            5 => {
+                let setup = casts::caster_setup(rules, difficulty);
                 let anchors = shipyards::shipyards(&setup);
                 (setup, anchors)
             }

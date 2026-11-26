@@ -4,26 +4,12 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143a and T143b done (2026-11-25), T144a1 done (2026-11-25), T144a2 and T144b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143a and T143b done (2026-11-25), T144a1 done (2026-11-25), T144a2 done (2026-11-26), T144b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T144 — the casts in the env, the replays and the maps** (round 8; design note
-`E08-design.md` §17, §18, §20, §21; T143b, Dimension Door, done 2026-11-25)
+`E08-design.md` §17, §18, §20, §21; T143b, Dimension Door, done 2026-11-25; T144a1, the
+casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done 2026-11-26)
 
-- **T144a2, the env's encoding v21** (`adventure/e08-t144a2`; `cross-lane`, the AI lane's
-  `h3-sim`; T144a cut in two at its start, decisions 420, 421; T144a1, `legal_commands`' casts,
-  done 2026-11-25): five entries per hero slot (Summon Boat, Scuttle Boat, Fly, Water Walk,
-  Dimension Door: 40, appended after `SPELL_BOOK`), the door's and Scuttle Boat's target in the
-  existing tile head (decision 421, not design §17's windows), the masks from `legal_commands`
-  and, for the door and Scuttle Boat, from `legal_cast_targets` (decision 422: their targets are
-  a per-hero query, as the moves are; an entry is legal when its query is not empty);
-  `decode`, `encode`, `legal_mask`, `tile_mask`, the masks' property routing the new block
-  (`TRAPS.md`: bound every open-ended read of an earlier block); the random agent's draw takes
-  the casts again (remove T144a1's filter in `adventure/rollout.rs`; the targeted ones by the
-  query, drawn as a hero's moves are) with the weight the AI lane's inbox note asks it to choose; every moved `random-play-*` workload compared per function
-  with `master` and re-baselined with the reason, the seed-chosen env tests and `h3-cli`'s
-  workload test (the sea XL fork's boarding) re-checked. The own hero part's day spells are in
-  the observation since T142a (the own hero view's `spells`, the door's casts made among them);
-  whether the casts left need a field of their own (design §17) is this task's call.
 - **T144b, the maps, the replays, the plans and oracles, the benchmarks** (§17):
   a generated map with a prison, the Market of Time, special grounds, boats and water, a hero
   with the five spells and a book; the golden replays (each spell, the failures, the prison
@@ -42,10 +28,28 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `accepted_targets`; `view.rs`' `check_same` compares the queries). The plans' heroes meet the casts only
   through the shrines' and guilds' spells (no plan gives Summon Boat, Fly, Water Walk or the door):
   the generated map is where they are played.
-- **Depends on:** T144a1 (`adventure/e08-t144a1`). **Status:** T144a2 ready once T144a1 merges,
-  then T144b. Then T145 (the audit, the `shared/` task).
+- **For T144b** (noted by T144a2): the env plays the casts (encoding v21: `CAST_BASE` + 5 × slot
+  + the behaviour's code, the targets in the tile head) and the random agent draws them, so the
+  generated map's random games and `h3-cli`'s workloads on it cast without help; `h3-sim`'s
+  `tests/casts.rs` has a caster setup on the duel (`caster_setup`: a book, the five spells,
+  Knowledge 20), the mask property's kind 5.
+- **Depends on:** T144a2 (`adventure/e08-t144a2`). **Status:** T144b next, once T144a2 merges.
+  Then T145 (the audit, the `shared/` task; it applies `adr-drafts/0016-0017-hero-list.md` and
+  `adr-drafts/0017-casts-encoding.md`).
 
 ## Inbox
+
+- 2026-11-26 (the adventure lane, found by CI on #1191, T144a2; **a bug to fix, before T144b**):
+  `h3-adventure`'s property `reach::tests::the_query_and_move_hero_agree` fails on `master`
+  abf981f too (so not T144a2's): at `reach/tests.rs:493` the move takes 4 steps for a reported
+  path of 6 tiles with a visit (`steps + visit == path.len()`). Replay: append
+  `cc 3c683dcc794c795ee6242cd1c5204d11ca4b5cfaf18c97b7efc4f918f26d4816` to
+  `crates/h3-adventure/proptest-regressions/reach/tests.txt` (fails in 1 s; kept out of the file
+  until the fix, so CI stays green). Minimal input: a 6 × 6 map, cells 41 and 42 at 20 and 43 at
+  15, the rest 0; start (0, 0); no other heroes; creatures `[0]`; `faithful = false`; no picks;
+  no key; `(mode, level, both, free) = (1, 1, false, false)`; one town `(6, 1, 0)`. The query
+  and `move_hero` disagree for that hero (level 1: flying?) near the town: read the generator to
+  decode the cells, then fix the side that is wrong and keep the seed in the file.
 
 - 2026-11-26 (the map-client lane, E24 M5 T3b, `map-client/e24-m5-t3b`; **a fact the view lacks,
   MCL-Q58, nothing blocks**): the hot seat sets each human's view up again at its turn from a
