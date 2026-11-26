@@ -227,9 +227,11 @@ fn a_class_banned_whole_widens_and_nothing_left_leaves_the_entry_empty() {
         ..Bans::default()
     };
     let mut state = built(&rules, vec![], &all, 0);
+    let before = hash_of(&state);
     let classes = [ArtifactClass::Treasure, ArtifactClass::Major];
     state.draw_merchants(&rules.0, &classes, &mut towns(0));
     assert_eq!(stock(&state), [None, None]);
+    assert_ne!(hash_of(&state), before, "empty entries are hashed");
 }
 
 // covers: TWN-STK-001, TWN-STK-002, ADV-OBJ-006

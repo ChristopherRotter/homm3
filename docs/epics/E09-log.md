@@ -6609,3 +6609,61 @@ harvest matches the packs). `cargo check --workspace --all-targets`, `cargo clip
 --all-targets -- -D warnings`, `cargo test --release -p h3-cli -p h3-sim -p h3-protocol -p
 h3-server -p h3-game -p h3-map -p h3-towns -p h3-pack-towns -p h3-files` (every golden replay
 replayed), `cargo test -p h3-harvest -p h3-formats`. CI on the pull request is the record.
+
+### T57 — the Artifact Merchants' stock: the pool's marks kept, the new game's and the month's draws (2026-11-26)
+
+One session, the user present; branch `town/e09-t57`, `cross-lane` (the adventure lane's
+`h3-adventure` `state.rs`, `state/draws.rs`, `state/tests/draws.rs`, `lib.rs`, `h3-game`'s
+`state.rs` and `state/day.rs`, the golden replays, the catalog's ADV-OBJ-006 and GAM-CAL-002;
+the server lane's `h3-server` record test). Starting point: `master` at 6035ed8 (#1190), **red**:
+E09 T56's `BuildingDef::war_machine` (#1189) met E31 T2d's new literal without it in the AI
+lane's `h3-game/src/computer/start/tests.rs` (#1190), so CI's clippy and coverage failed to
+compile `h3-game`'s tests. Fixed first in #1193 (`town/e09-war-machine-literal`, one line,
+`cross-lane`, the AI lane's inbox told; decision 222); T57's branch stacks on it. The user's
+computer went offline at the start, so no original data were staged (the scoped verify without
+`--with-original-data`); the setup's baseline died with a VM restart, CI's run on #1193 served.
+**Kept whole** with the `cross-lane` consent (decision 221).
+
+- **`h3-adventure`** (design §108): `state::ArtifactMarks` (the bans and the given marks, a
+  `bool` per artifact; its hash packs them 64 a word), held by `ArtifactPool` (`resume`,
+  `into_marks`); `resolve_rewards` returns the marks, `StaticMap::new` gives them beside the map.
+  The town lane's `town/merchants.rs`: `Merchants` (the marks and the stock, a
+  `Vec<Option<ArtifactTypeId>>`, empty until the game's first draw) as `AdventureState::merchants`
+  (an `Arc`, the state's last field; a fork shares it), `merchants_stock()`, `draw_merchants(core,
+  classes, draws)` (each class in order by ADV-OBJ-006's picker on a copy of the marks, the block
+  replaced; `TWN-QUIRK-21` an empty entry where nothing can be drawn), `hash_merchants`.
+  **Adventure state hash v30** (the block last: the stock, then the marks).
+- **ADV-OBJ-006's restart by class** (decision 223, found writing the stock's tests): the
+  picker restarted every artifact's marks when one class ran out; now `ArtifactPool::restart`
+  resets the drawn classes' records alone, and the widening to the four classes resets theirs when
+  none of them is left (the original's `random_artifact_of_level` 0x4C94D0: the reset 0x4C950E
+  covers the level's records, E09 T52's reading). The catalog entry amended (E09 T52's reading a
+  source of its own); the adventure lane's test asserts the first three widened draws distinct.
+- **`h3-game`:** `town/merchants.rs`' `at_setup` (from `GameState::new` after the Portals of
+  Summoning: the setup stream's last draws) and `monthly` (from `advance_day` after a creature
+  month's step, before the towns' day: the towns' stream, decision 214); the classes the town
+  part's `merchants_stock`, none without its parameters. GAM-CAL-002's summary amended.
+- **Rules:** TWN-STK-001 and TWN-STK-002 `verified` (the code reading, batch TWN-6's row TWN-6-8
+  on day 1 and day 29, VCMI and the wiki on the shape and the timing; D-32's exclusions the code's).
+  `TWN-QUIRK-21` (T-24, state-corrupting: an empty entry for the hang; no flag).
+- **Tests:** `h3-adventure`'s `town/merchants/tests.rs` (the draws on the build's marks, every
+  entry anew with the old ones marked, the widening and an empty entry, the hash and a fork:
+  the same stock on other marks hashes otherwise); `h3-game`'s `town/tests/merchants.rs` (the new
+  game's stock against a game without one: the towns, the heroes, the towns' stream and every
+  earlier draw alike; the month's draws on days 29 and 57, the stock unchanged between, three
+  months giving the three minors, the towns' stream one draw ahead after day 29). Two tests of
+  the setup stream's and the game stream's order (`portal.rs`' Portals last, `growth.rs`' week
+  leaving the game's stream) now run without a stock.
+- **Replays:** the 118 golden adventure replays re-recorded from their commands (a scratch script
+  over `h3 adventure run --script`): only `adventure_state_hash_version`, 1 182 checkpoint
+  entries (in 19 lists) and the 118 final hashes moved; every replay replayed its commands
+  (the three of 60 days too). `h3-server`'s `tests/record.rs` literals (`army-dialog-s1`'s
+  checkpoint and final hash). The bot reports record the adventure part's hash only: unchanged.
+- *Agent's calls* (change freely): the game state hash's version kept at 39 (its encoding
+  unchanged; E08 T142a's adventure v29 the precedent; design §116's table had a bump at T57); the
+  block never `None` (the marks exist in every game); the marks as `bool`s, packed only in the
+  hash; the stock's length the last draw's classes'; the no-parameters case drawing nothing
+  through an empty class list (no branch).
+
+**The queue:** T57 out; T58 next (the market at a town). Ids: decisions next 224; quirks
+`TWN-QUIRK-17` (planned `-17` to `-20`, `-22`, `-23`; `-21` entered).

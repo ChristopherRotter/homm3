@@ -8,19 +8,21 @@
 //! a banned skill, spell or artifact (GAM-SET-003), nor a spell granted by name only (the
 //! original's game bans the spells with the flag 0x2000 beside the map's). Since E08 T124b1 the
 //! creature banks' draws in the second walk (ADV-BNK-002; increment 13's design note §5), since
-//! T133a1 the Black Markets' stocks (ADV-MKT-006; increment 14's design note §9).
+//! T133a1 the Black Markets' stocks (ADV-MKT-006; increment 14's design note §9). The random
+//! artifacts' pool and its marks are `pool.rs`' (since E09 T57; returned by [`resolve_rewards`]).
 
 use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ArtifactClass, ArtifactTypeId, Formation, ROE_WITCH_HUT_MASK, ResourceId, Ruleset, SkillId,
-    SpellCategory, SpellId,
+    ArtifactTypeId, Formation, ROE_WITCH_HUT_MASK, ResourceId, Ruleset, SkillId, SpellCategory,
+    SpellId,
 };
 use h3_contracts::{ArmyStack, HeroId};
 use h3_heroes::{PrimarySkill, ScholarGift};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
+use super::pool::{ArtifactMarks, ArtifactPool};
 use super::{MapObject, banks, markets, pick};
 use crate::ruleset::{AdventureRuleset, Chest, Find, FindContent, ObjectKind, Turn};
 use crate::setup::{Bans, Holds, Pos};
@@ -234,142 +236,6 @@ impl CanonicalHash for Resolved {
                 h.write_bool(*formation == Formation::Tight);
             }
         }
-    }
-}
-
-/// The classes a random artifact widens to when its own classes have nothing left (the
-/// original's level bits 0x1E): every class but Special.
-const ANY_CLASS: [ArtifactClass; 4] = [
-    ArtifactClass::Treasure,
-    ArtifactClass::Minor,
-    ArtifactClass::Major,
-    ArtifactClass::Relic,
-];
-
-/// The random artifacts' pool's marks (ADV-OBJ-006; survey `E08-rewards.md` §3.1, D-31, D-32): a
-/// ban and a "given" mark per artifact by index, the original's game +0x4E2B4 and +0x4E224. Since
-/// E09 T57 kept in the adventure state after the build (TWN-STK-001, -002; the town epic's design
-/// note §108, decision 212), so the Artifact Merchants' draws go on from the marks the build left:
-/// `AdventureState::merchants`, the town lane's `town/merchants.rs`.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct ArtifactMarks {
-    /// The banned artifacts, by index.
-    banned: Vec<bool>,
-    /// The marked ones, by index.
-    given: Vec<bool>,
-}
-
-impl ArtifactMarks {
-    /// Hashes the bans, then the given marks, each as its length and its bits packed 64 a word
-    /// from the lowest index (E09 T57: the adventure state hash v30).
-    pub(crate) fn hash_into(&self, h: &mut StateHasher) {
-        for marks in [&self.banned, &self.given] {
-            h.write_len(marks.len());
-            for word in marks.chunks(64) {
-                let bits = word
-                    .iter()
-                    .enumerate()
-                    .fold(0u64, |bits, (bit, &mark)| bits | (u64::from(mark) << bit));
-                h.write_u64(bits);
-            }
-        }
-    }
-}
-
-/// The random artifacts' pool (ADV-OBJ-006; survey `E08-rewards.md` §3.1, D-31, D-32): the
-/// original's "given" marks, a mark per artifact, starting as the bans and the map's placed
-/// artifacts (`artifacts_given_init` 0x4C0AA0); each draw marks the artifact it gives, so no
-/// artifact repeats until the pool is used up (`random_artifact_of_level` 0x4C94D0). Since E09 T57
-/// its marks outlive the build ([`ArtifactMarks`]: [`Self::into_marks`], [`Self::resume`]).
-pub(crate) struct ArtifactPool<'c> {
-    core: &'c Ruleset,
-    marks: ArtifactMarks,
-}
-
-impl<'c> ArtifactPool<'c> {
-    /// The pool with the bans marked, then each of `placed`.
-    pub(super) fn new(
-        core: &'c Ruleset,
-        bans: &[ArtifactTypeId],
-        placed: &[ArtifactTypeId],
-    ) -> Self {
-        let among = |list: &[ArtifactTypeId], index| list.iter().any(|a| a.index() == index);
-        let banned: Vec<bool> = (0..core.artifacts().len())
-            .map(|index| among(bans, index))
-            .collect();
-        let given = banned
-            .iter()
-            .enumerate()
-            .map(|(index, &ban)| ban || among(placed, index))
-            .collect();
-        Self {
-            core,
-            marks: ArtifactMarks { banned, given },
-        }
-    }
-
-    /// The pool on `marks`, kept since an earlier pool's [`Self::into_marks`] (E09 T57), of the
-    /// same core.
-    pub(crate) const fn resume(core: &'c Ruleset, marks: ArtifactMarks) -> Self {
-        Self { core, marks }
-    }
-
-    /// The pool's marks as its draws left them (E09 T57).
-    pub(crate) fn into_marks(self) -> ArtifactMarks {
-        self.marks
-    }
-
-    /// The unmarked artifacts of `classes`, in id order.
-    fn left(&self, classes: &[ArtifactClass]) -> Vec<ArtifactTypeId> {
-        self.core
-            .artifacts()
-            .iter()
-            .zip(&self.marks.given)
-            .enumerate()
-            .filter(|&(_, (artifact, marked))| !marked && classes.contains(&artifact.class))
-            .filter_map(|(index, _)| ArtifactTypeId::from_index(index))
-            .collect()
-    }
-
-    /// The marks of `classes`' artifacts restarted from their bans, the other classes' kept (the
-    /// original's reset of the level's records, `random_artifact_of_level` 0x4C94D0; E09 T57).
-    fn restart(&mut self, classes: &[ArtifactClass]) {
-        let ArtifactMarks { banned, given } = &mut self.marks;
-        let artifacts = self.core.artifacts().iter().zip(banned.iter());
-        for ((artifact, &ban), mark) in artifacts.zip(given.iter_mut()) {
-            if classes.contains(&artifact.class) {
-                *mark = ban;
-            }
-        }
-    }
-
-    /// An artifact of `classes` with equal chances among the unmarked ones, then marked; none
-    /// left: the marks of `classes`' artifacts restart from the bans (since E09 T57 those alone,
-    /// as the original's level, survey `E09-trades.md` §3.1; before, every class's); with still
-    /// none, any class but Special among the unmarked, and with none of those either, their marks
-    /// restart from the bans too. None at all (every artifact of the four classes banned): none
-    /// (the original loops for ever).
-    // rule: ADV-OBJ-006
-    pub(crate) fn draw(
-        &mut self,
-        classes: &[ArtifactClass],
-        draws: &mut Rng,
-    ) -> Option<ArtifactTypeId> {
-        let mut left = self.left(classes);
-        if left.is_empty() {
-            self.restart(classes);
-            left = self.left(classes);
-        }
-        if left.is_empty() {
-            left = self.left(&ANY_CLASS);
-        }
-        if left.is_empty() {
-            self.restart(&ANY_CLASS);
-            left = self.left(&ANY_CLASS);
-        }
-        let drawn = *pick(&left, draws)?;
-        self.marks.given[drawn.index()] = true;
-        Some(drawn)
     }
 }
 

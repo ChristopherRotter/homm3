@@ -9,6 +9,7 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::mem;
 
 use h3_content::{ArtifactClass, ArtifactTypeId, Ruleset};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -55,16 +56,13 @@ impl AdventureState {
     /// no class nothing is drawn and the stock is empty.
     // rule: TWN-STK-001, TWN-STK-002
     pub fn draw_merchants(&mut self, core: &Ruleset, classes: &[ArtifactClass], draws: &mut Rng) {
-        let merchants = self.merchants();
-        let mut pool = ArtifactPool::resume(core, merchants.marks.clone());
-        let stock = classes
-            .iter()
-            .map(|&class| pool.draw(&[class], draws))
-            .collect();
-        *self.merchants_mut() = Arc::new(Merchants {
-            marks: pool.into_marks(),
-            stock,
-        });
+        // A fork's shared block is copied first; the game's own is drawn in place.
+        let merchants = Arc::make_mut(self.merchants_mut());
+        let mut pool = ArtifactPool::resume(core, mem::take(&mut merchants.marks));
+        merchants.stock.clear();
+        let stock = classes.iter().map(|&class| pool.draw(&[class], draws));
+        merchants.stock.extend(stock);
+        merchants.marks = pool.into_marks();
     }
 
     /// Hashes the merchants' block (the adventure state hash v30, E09 T57): the stock as its
