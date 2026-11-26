@@ -25,4 +25,10 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - Two fresh starts agree on whether each of step 2's zone bytes is 0, not on their values (the temporary zone's stack bytes from +0x14, the zone generator's outside +8, water zones' heap bytes): compare `zones.txt`'s form (`h3rmg.zone_fields`), never the memory record's raw hex.
 - The phase hooks (`H3RMG`, `xdd.c` section 10) must not write the game's stack below a call: the generator reads uninitialised stack bytes (step 2's temporary zone). They run on their own stack and enter `rand` after its own thread-data call; keep it so when changing them.
 - `h3-pack-rmg`'s corpus tests read `phases.txt` and `layout.txt` (`include_str!`): `corpus --phases --record` rewrites both, so a re-record changes what CI checks; diff them before committing. A port's frame splits its draws before step 1 into the log's `setup` (water's Random, by its site) and `template` phases (E14 T3c).
+- `water.txt` keeps no `town2`: a water zone's +0x8 is the heap's and differs between fresh starts (T3d); compare only what fresh starts agree on.
 - The game ends at its start when the run folder's free bytes modulo 4 GiB are outside 5 MiB to 2 GiB (its 32-bit disk check; `h3rmg.py` refuses the case and names a ballast's size): `fallocate` a ballast outside the run folder for about 1 GiB, and start no build while the corpus runs (a build moves the free bytes by gigabytes; E14 T2c).
+
+## The port's code
+
+- `h3-rmg`'s gate is 100 % lines and regions: every `?` and every `if` needs both outcomes in a test. A fault the original would not survive and the corpus never reaches goes into the step's per-level record (`Level::fail`, checked once per level) or a documented fallback (the triangulation's), not a `?` at each call (T3d).
+- A step's corpus test reads its own snapshot (`StepState` at its `step_end`): later steps append to `GeneratedMap`'s zone generators (step 2's water zones) and draw at step 1's sites (0x532A5B), so tests of step 1 slice the log at `ends[1]`.

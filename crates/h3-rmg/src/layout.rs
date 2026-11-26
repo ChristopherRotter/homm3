@@ -103,7 +103,7 @@ fn point(r: i32, t: Real, o: i32) -> i32 {
 
 /// A table entry in ten-thousandths as the double nearest it (exact: a correctly rounded
 /// quotient of two exact integers).
-fn decimal(ten_thousandths: i32) -> Real {
+pub(crate) fn decimal(ten_thousandths: i32) -> Real {
     Real::from_i32(ten_thousandths)
         .checked_div(Real::from_i32(10_000))
         .unwrap_or(Real::ZERO)
@@ -317,7 +317,7 @@ impl Layout<'_> {
 /// `rmg_zone_generator_init` 0x5329E0's town type: `rand() %` the set town types, the r-th set
 /// one (none set: -1, no draw).
 // rule: RMG-ZON-001
-fn town_type_drawn<T: Trace>(stream: &mut Stream<'_, T>, mask: u16) -> i32 {
+pub(crate) fn town_type_drawn<T: Trace>(stream: &mut Stream<'_, T>, mask: u16) -> i32 {
     let set: Vec<i32> = (0..9).filter(|&k| mask >> k & 1 != 0).collect();
     if set.is_empty() {
         return -1;
