@@ -45,6 +45,11 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
   integers; the setup's values unchanged, HER-LVL-006's tests pass): `ComputerReads`,
   `counted_worth`, `computer_skill_value`, `computer_takes_new_skill` (CPU-SKL-001), which the
   computer player feeds with its own values; `tests/choice.rs` has three more tests.
+  Another case of the reach property's bug below (its own inbox item) came up here, kept out of
+  the regressions file: `cc d6c9b6e4d4b310888bd91ef7938e53df90c9b9fc9d2ac15176c57b56e7f751c2`
+  (5 × 8, cells 48 to 51 at 15, 20, 15, 15 and 59 at 20, start (0, 0), one other hero on it,
+  picks `[602]`, `(mode, level, both, free) = (1, 1, false, false)`; `reach/tests.rs:512`: 4
+  against 7).
 
 - 2026-11-26 (the adventure lane, found by CI on #1191, T144a2; **a bug to fix, before T144b**):
   `h3-adventure`'s property `reach::tests::the_query_and_move_hero_agree` fails on `master`

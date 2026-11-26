@@ -5,6 +5,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 **Ownership**
 - The battle lane still writes rules the encodings show: a new observation feature or action entry comes as a `cross-lane` pull request from the battle lane with this lane's version bumps (`docs/08-work-process.md`, "Lanes"). This lane's own changes to `h3-battle` (an engine query the env needs) are `cross-lane` the other way. A new encoding also changes `python/h3env/train/layout.py` (the entity network's; `h3-sim`'s `the_python_layout_is_the_encodings` tests fail otherwise).
 - `docs/07-simulation-and-ai.md` is shared: only `--scope ai` checks it (T3a's edit slipped in).
+- A failing property test writes its case into the crate's `proptest-regressions/` file: never
+  commit one of another lane's crate (`git add -A` took h3-adventure's reach case at E31 T2e and
+  made every CI run fail); its seed goes into that lane's inbox.
 - `h3-cli` is the battle lane's except `src/ai/`; its golden replays (`fixtures/`) and `benches/battle/` stay with battle, and change when the encodings or the replay format change: regenerate them deliberately (`fixtures/README.md`) in the same pull request.
 
 **The computer player (E31)**
