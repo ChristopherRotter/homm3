@@ -28,10 +28,11 @@ use alloc::vec::Vec;
 use core::iter;
 
 use crate::live::Buttons;
-use crate::reach::{Reach, Stand, WalkAsked};
+use crate::reach::{AnswerAsked, LevelAsked, Reach, Stand, WalkAsked};
 use crate::sound::Cue;
 use crate::timeline::{
-    Action, Cursor, Draw, Found, Hero, Loop, Move, NextTurn, Rules, Start, Unplayable,
+    Action, Answer, Cursor, Draw, Found, Hero, LevelBox, Loop, Move, NextTurn, Rules, Start,
+    Unplayable,
 };
 
 /// What the screen shows from a millisecond on.
@@ -277,6 +278,34 @@ impl Replay {
     pub fn add_reach(&mut self, t: u32, stand: Stand, reach: &Arc<Reach>) {
         self.each(|l| l.add_reach(stand, reach));
         self.again_from(t.max(1));
+    }
+
+    /// The question's answer asked of the host as far as the loop ran (E24 M5 T4b,
+    /// [`Loop::answer_asked`]).
+    #[must_use]
+    pub fn answer_asked(&self) -> Option<AnswerAsked> {
+        self.l.answer_asked()
+    }
+
+    /// What the answer `asked` (its click at `asked.at`) shows, given by the host with its
+    /// find's levels (E24 M5 T4b, [`Loop::add_answer`]), the loop run again from before it.
+    pub fn add_answer(&mut self, asked: AnswerAsked, answer: &Answer, levels: &[LevelBox]) {
+        self.each(|l| l.add_answer(asked.asked, answer, levels));
+        self.again_from(asked.at.max(1));
+    }
+
+    /// The level-up's offer asked of the host as far as the loop ran (E24 M5 T4b,
+    /// [`Loop::level_asked`]).
+    #[must_use]
+    pub fn level_asked(&self) -> Option<LevelAsked> {
+        self.l.level_asked()
+    }
+
+    /// The levels the engine opened after the level-up `asked`, given by the host (E24 M5 T4b,
+    /// [`Loop::add_level`]), the loop run again from before it.
+    pub fn add_level(&mut self, asked: &LevelAsked, next: &[LevelBox]) {
+        self.each(|l| l.add_level(asked, next));
+        self.again_from(asked.at.max(1));
     }
 
     /// `f` done to every loop kept: the first, the changes', the running one.

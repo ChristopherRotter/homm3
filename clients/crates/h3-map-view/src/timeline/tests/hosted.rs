@@ -1,13 +1,19 @@
 //! The hot seat's host in play (E24 M5 T4a, design §5.26): a live view asks it the selected
 //! hero's reach where it stands (a click's path, the cursor over the view) and each walk past the
 //! engine's known ones (a path's, a key's step); until it answers the action changes nothing, and
-//! the loop run again from before it plays it with the answer.
+//! the loop run again from before it plays it with the answer. Since E24 M5 T4b (design §5.27) a
+//! hosted question's answer and a hosted level-up's offer the same way.
 
 use super::*;
 
+use h3_ui::message::Style;
+
+use super::turns::laid;
 use crate::hover::frame;
+use crate::levels::{self, LevelUp, Offer};
 use crate::live::KingdomHero;
-use crate::reach::{Hosted, Reach, Stand, WalkAsked};
+use crate::reach::{AnswerAsked, AnswerKey, Hosted, LevelAsked, Pick, Reach, Stand, WalkAsked};
+use crate::replay::Replay;
 
 fn at(x: u8, y: u8) -> Pos {
     Pos { x, y, z: 0 }
@@ -192,4 +198,152 @@ fn a_loop_without_a_host_keeps_no_answer() {
     l.add_reach(stand(0), &east_reach());
     assert_eq!((l.moves.as_ref(), l.host.as_ref()), (None, None));
     assert_eq!((l.walk_asked(), l.reach_asked()), (None, None));
+    // E24 M5 T4b: an answer and a level-up's next given to it keep nothing either (no find 7).
+    let key = AnswerKey {
+        find: 7,
+        nth: 0,
+        pick: Pick::No,
+    };
+    l.add_answer(key, &Answer::default(), &[]);
+    let level = LevelAsked {
+        at: 1,
+        hero: 0,
+        level: 2,
+        offer: 0,
+    };
+    l.add_level(&level, &[]);
+    assert_eq!(
+        (l.answer_asked(), l.level_asked(), l.host.as_ref()),
+        (None, None, None)
+    );
+}
+
+/// A level-up to level 2 with one offer (chosen at once), its dialog laid out with the test
+/// layout, the host's to answer.
+fn hosted_level() -> LevelBox {
+    let layout =
+        AdventureLayout::parse(include_str!("../../../../../map/layouts/adventure.toml")).unwrap();
+    let up = LevelUp {
+        hero: 16,
+        level: 2,
+        primary: 1,
+        offers: vec![Offer { skill: 9, level: 1 }],
+    };
+    LevelBox {
+        hosted: true,
+        level: 2,
+        dialog: Arc::new(levels::dialog(
+            &layout.level_up,
+            &up,
+            BTreeMap::new(),
+            "hpl016rn.pcx",
+            0,
+        )),
+        offers: up.offers.clone(),
+        primary: 1,
+        chosen: None,
+    }
+}
+
+#[test]
+fn a_replay_asks_the_host_its_answers_and_plays_them_again_from_before() {
+    // E24 M5 T4b (design §5.27): the engine's walk to (21, 17) known, its end's visit asking a
+    // question whose answers are the host's; the answer's experience opens a level-up the host
+    // answers too.
+    let mut start = walking_start(3, Vec::new());
+    start.live = true;
+    start.heroes = start.hero.into_iter().collect();
+    start.index = Some(0);
+    start.moves = Some(vec![east_walk()]);
+    start.host = Some(Hosted {
+        reaches: vec![(stand(0), east_reach()), (stand(1), Arc::default())],
+        ..Hosted::default()
+    });
+    start.kingdom.heroes = vec![KingdomHero {
+        points: 1560,
+        ..KingdomHero::default()
+    }];
+    start.kingdom.selected = Selected::Hero(0);
+    start.finds = vec![Found {
+        at: at(21, 17),
+        first: Vec::new(),
+        again: None,
+        gain: Gain::default(),
+        found: None,
+        taken: None,
+        event: false,
+        blocks: None,
+        ask: Some(Question {
+            hosted: Some(0),
+            asked: laid("OPEN?", Style::OkCancel),
+            chooses: false,
+            yes: None,
+            no: None,
+            attacker: None,
+            second: None,
+        }),
+        flag: None,
+        fight: None,
+        walk: Some(0),
+        levels: Vec::new(),
+    }];
+    let mut r = Replay::new(rules(Bugs::Fixed), &start, BTreeMap::new()).unwrap();
+    let click = Action::Click(tile(21, 17));
+    r.give(1, click);
+    r.give(2, click);
+    assert!(r.at(900).unwrap().drawn.message.is_some());
+    // Its OK at 1000: asked, the box closed and nothing shown of the answer.
+    let enter = [Action::BoxKey(Key::Ok), Action::BoxKeyUp(Key::Ok)];
+    for action in enter {
+        r.give(1000, action);
+    }
+    assert!(r.at(1000).unwrap().drawn.message.is_none());
+    let key = AnswerKey {
+        find: 0,
+        nth: 0,
+        pick: Pick::Yes,
+    };
+    let asked = r.answer_asked().unwrap();
+    assert_eq!(
+        asked,
+        AnswerAsked {
+            at: 1000,
+            asked: key
+        }
+    );
+    // Given with the level its experience opens: the answer's box at once.
+    let shows = Gain {
+        experience: 1000,
+        ..Gain::default()
+    };
+    let answer = Answer {
+        boxes: vec![(laid("FOUND.", Style::Ok), Gain::default())],
+        gain: shows,
+        ..Answer::default()
+    };
+    r.add_answer(asked, &answer, &[hosted_level()]);
+    assert_eq!(r.answer_asked(), None);
+    assert!(r.at(1000).unwrap().drawn.message.is_some());
+    // Its close at 1100: the level-up's dialog (one offer, chosen at once); its OK at 1200 asked.
+    for action in enter {
+        r.give(1100, action);
+    }
+    assert!(r.at(1100).unwrap().drawn.message.is_some());
+    for action in enter {
+        r.give(1200, action);
+    }
+    r.at(1200).unwrap();
+    let level = r.level_asked().unwrap();
+    let want = LevelAsked {
+        at: 1200,
+        hero: 0,
+        level: 2,
+        offer: 0,
+    };
+    assert_eq!(level, want);
+    // Given no level after it: closed, the visit over.
+    r.add_level(&level, &[]);
+    assert_eq!(r.level_asked(), None);
+    assert!(r.at(1300).unwrap().drawn.message.is_none());
+    assert_eq!(r.answer_asked(), None);
 }

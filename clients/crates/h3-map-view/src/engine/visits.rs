@@ -54,8 +54,8 @@ use alloc::vec::Vec;
 
 use h3_map::model::{Pos, Rewards};
 use h3_protocol::wire::game::{
-    AdventureEvent, Answer, ArenaChoice, ChestChoice, Consent, GameEvent, HeroChange, NothingWhy,
-    SchoolChoice,
+    AdventureEvent, Answer, ArenaChoice, ChestChoice, ChoiceKind, Consent, Decision, GameEvent,
+    HeroChange, NothingWhy, OfferKind, SchoolChoice,
 };
 use h3_protocol::wire::{Outcome, Side};
 
@@ -98,6 +98,8 @@ const DWELLINGS: u32 = 20;
 const EVENT: u32 = 26;
 /// Gold's place among the resources.
 const GOLD: usize = 6;
+/// Gold's handle (as a price's `[resource, amount]`).
+const GOLD_HANDLE: i32 = 6;
 
 /// What a visit shows (the module's documentation).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -180,6 +182,9 @@ pub enum Answered {
     Second,
     /// The Cancel.
     No,
+    /// None yet: live, the host holds the engine's decision open (E24 M5 T4b, design §5.27),
+    /// every answer the host's ([`opened`]).
+    Open,
 }
 
 /// What `visit` of an object of `class` and `subclass` shows (the module's documentation), the
@@ -194,6 +199,46 @@ pub fn told(visit: &Visit, class: [u32; 2], hero: &str) -> Option<Told> {
     shown(visit, class, hero)
         .or_else(|| visit.flag.map(|flag| Told::Flagged { flag }))
         .or_else(|| (class[0] != EVENT && removes(&visit.events)).then_some(Told::Taken))
+}
+
+/// The question a live visit of an object of `class` asks while the host holds `decision` open (E24
+/// M5 T4b, design §5.27, *provisional*): its facts the engine's (the viewer's open decision as the
+/// engine projects it), its hero named `hero` (Pandora's Box's boxes); its answers the host's. A
+/// treasure chest's gold and experience, the Arena's gain, a School's gain and price, Pandora's
+/// Box (its rewards told by the answer); none for another decision or class (the questions of
+/// E24 M5 T4b's next part, the screens of M6 and M7).
+#[must_use]
+pub fn opened(decision: &Decision, class: u32, hero: &str) -> Option<Ask> {
+    let clamp = |n: u32| i32::try_from(n).unwrap_or(i32::MAX);
+    match decision {
+        Decision::Choice { choice } => match (&choice.kind, class) {
+            (ChoiceKind::Chest { gold, experience }, CHEST) => Some(Ask::Chest {
+                gold: clamp(gold.amount),
+                experience: clamp(*experience),
+            }),
+            (ChoiceKind::Primary { amount, .. }, ARENA) => {
+                Some(Ask::Arena(i8::try_from(*amount).unwrap_or(i8::MAX)))
+            }
+            (ChoiceKind::Primary { amount, price, .. }, SCHOOL) => {
+                let price = price.first().map_or([GOLD_HANDLE, 0], |p| {
+                    [i32::from(p.resource), clamp(p.amount)]
+                });
+                Some(Ask::School {
+                    gain: i8::try_from(*amount).unwrap_or(i8::MAX),
+                    price,
+                })
+            }
+            _ => None,
+        },
+        Decision::Offer { offer } => match (&offer.kind, class) {
+            (OfferKind::OpenBox {}, PANDORA) => Some(Ask::OpenBox {
+                rewards: Rewards::default(),
+                hero: String::from(hero),
+            }),
+            _ => None,
+        },
+        _ => None,
+    }
 }
 
 /// Whether `events` take an object off the map (`ObjectRemoved`).
@@ -614,6 +659,10 @@ impl Kept {
                 answered: Answered::No,
                 ..
             } => Self { no: true, ..none },
+            Told::Ask {
+                answered: Answered::Open,
+                ..
+            } => none,
             Told::Guarded { .. } => Self { yes: true, ..none },
             Told::Find { .. } | Told::Fight { .. } | Told::Flagged { .. } | Told::Taken => none,
         }
@@ -624,10 +673,13 @@ impl Kept {
 /// entrance `object_at` finds on its tile (its index and its class and subclass), told
 /// ([`told`]) with its hero named by `name` (by its type), in the record's order, one a visit; an
 /// artifact's pickup with the artifact's primary skills (`art`'s `artifact_skills`, taken as
-/// worn: SRV-STUB-7); a visit on no object, or that tells nothing, left out.
+/// worn: SRV-STUB-7); a visit on no object, or that tells nothing, left out. Since E24 M5 T4b
+/// (live, design §5.27) a visit whose walk `open` names, with no answer yet, asks the question of
+/// the decision the host holds open ([`opened`]; every answer the host's: [`Answered::Open`]).
 #[must_use]
 pub fn lay(
     visits: &[Visit],
+    open: &[(usize, Decision)],
     object_at: impl Fn(Pos) -> Option<(usize, [u32; 2])>,
     art: &FindArt,
     name: impl Fn(Option<u8>) -> String,
@@ -636,7 +688,20 @@ pub fn lay(
         .iter()
         .filter_map(|visit| {
             let (object, class) = object_at(visit.at)?;
-            let mut told = told(visit, class, &name(visit.hero_type))?;
+            let hero = name(visit.hero_type);
+            let asked = open
+                .iter()
+                .find(|(walk, _)| *walk == visit.walk && visit.answers.is_empty())
+                .and_then(|(_, decision)| opened(decision, class[0], &hero))
+                .map(|ask| Told::Ask {
+                    ask,
+                    answered: Answered::Open,
+                    flag: visit.flag,
+                });
+            let mut told = match asked {
+                Some(asked) => asked,
+                None => told(visit, class, &hero)?,
+            };
             if let Told::Find {
                 find: Find::Artifact { artifact },
                 gain,

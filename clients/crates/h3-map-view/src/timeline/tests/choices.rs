@@ -13,6 +13,7 @@ use h3_ui::ui::State as Marked;
 
 use super::computers::hover_of;
 use super::turns::started;
+use crate::reach::{Hosted, Pick, Reach};
 
 /// E24 M4 T2b1's sequences this part plays: their situations, timelines and kept live parts.
 const CHOOSING: [(&str, &str, &str, &str); 6] = [
@@ -163,6 +164,7 @@ fn choice(id: &str) -> Found {
         blocks: chest.then_some(OBJECT),
         flag: None,
         ask: Some(Question {
+            hosted: None,
             asked: chosen(style, chest.then_some("or")),
             chooses: true,
             yes: Some(yes),
@@ -356,4 +358,70 @@ fn a_box_a_walk_s_end_opens_drops_no_later_input() {
     }
     assert!(l.boxed.is_some());
     assert_eq!(l.pointer, [700, 300]);
+}
+
+/// `start` played to `until` with `actions` as [`play`] does, the host `host` given to the loop
+/// once its question is asked (E24 M5 T4b: a live view's walk is the engine's, here the
+/// recording's, the stand's reach none), the loop at the end or once it asks the host.
+fn play_hosted(
+    start: &Start,
+    actions: &BTreeMap<u32, Vec<Action>>,
+    until: u32,
+    host: &Hosted,
+) -> (Vec<State>, Loop) {
+    let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
+    let mut states = vec![l.state(0)];
+    for t in 1..=until {
+        if l.host.is_none() && l.asks() {
+            // The stand's reach the engine's: none after the walk, as the recording's facts.
+            let mut host = host.clone();
+            let stand = l.stand_of(l.index.unwrap_or_default());
+            host.reaches.push((stand, Arc::new(Reach::default())));
+            l.host = Some(Arc::new(host));
+        }
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+        states.push(l.state(t));
+        // Asked, the click changed nothing: the rest is the answer's.
+        if l.answer_asked().is_some() || l.level_asked().is_some() {
+            break;
+        }
+    }
+    (states, l)
+}
+
+#[test]
+fn a_hosted_choice_asks_the_host_its_answer_then_shows_it() {
+    // E24 M5 T4b (design §5.27): the question's answers the host's, none built.
+    let mut picks = Vec::new();
+    for (id, ..) in CHOOSING {
+        let (mut start, actions, ms, timeline) = choosing(id);
+        let ask = start.finds[0].ask.as_mut().unwrap();
+        let built = ask.clone();
+        (ask.hosted, ask.yes, ask.second, ask.no) = (Some(0), None, None, None);
+        // Asked at the button's click, nothing shown of it: the box closed, the visit not ended.
+        let (_, l) = play_hosted(&start, &actions, ms, &Hosted::default());
+        let asked = l.answer_asked().expect(id);
+        assert_eq!((asked.asked.find, asked.asked.nth), (0, 0), "{id}");
+        assert!(!l.boxed(), "{id}");
+        picks.push(asked.asked.pick);
+        // Given, played again from the start: the recording's timeline.
+        let given = match asked.asked.pick {
+            Pick::Yes => built.yes,
+            Pick::Second => built.second,
+            Pick::No => built.no,
+        };
+        let host = Hosted {
+            answers: vec![(asked.asked, given.unwrap())],
+            ..Hosted::default()
+        };
+        let (states, l) = play_hosted(&start, &actions, ms, &host);
+        assert_eq!(l.answer_asked(), None, "{id}");
+        let got = lines(&states, &BTreeMap::new());
+        assert_eq!(got, without_screens(timeline), "{id}");
+    }
+    // Every button among them: the first picture, the second, the Cancel.
+    for pick in [Pick::Yes, Pick::Second, Pick::No] {
+        assert!(picks.contains(&pick), "{pick:?}");
+    }
 }

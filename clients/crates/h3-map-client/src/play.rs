@@ -36,7 +36,7 @@ use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup};
 use h3_map_view::engine::{GameRecord, Live};
 use h3_protocol::wire::game::{
-    AdventureCommand, GameAnswer, GameCommand, GameQuery, Moves, Pos as WirePos,
+    AdventureCommand, Answer, Decision, GameAnswer, GameCommand, GameQuery, Moves, Pos as WirePos,
 };
 use h3_render::Bugs;
 use h3_sdl::{Config, Window};
@@ -245,6 +245,15 @@ impl window::Session for Viewed<'_, '_> {
     fn walk(&mut self, hero: u16, path: Vec<WirePos>) -> Result<Option<String>, String> {
         let command = AdventureCommand::MoveHero { hero, path };
         let refused = self.hot.play(GameCommand::Adventure { command })?;
+        Ok(refused.map(|why| format!("{why:?}")))
+    }
+
+    fn decision(&self) -> Option<Decision> {
+        self.hot.decision(self.player)
+    }
+
+    fn answer(&mut self, answer: Answer) -> Result<Option<String>, String> {
+        let refused = self.hot.play(GameCommand::Answer { answer })?;
         Ok(refused.map(|why| format!("{why:?}")))
     }
 }

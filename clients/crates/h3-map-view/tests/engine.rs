@@ -2931,7 +2931,7 @@ fn a_record_s_visits_laid_out_each_on_its_own() {
     )
     .unwrap();
     let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
-    let laid = visits::lay(&visits, object_at, &tables.map.finds, |hero| {
+    let laid = visits::lay(&visits, &[], object_at, &tables.map.finds, |hero| {
         format!("hero {hero:?}")
     });
     let walks: Vec<usize> = laid.iter().map(|l| l.walk).collect();
@@ -3048,6 +3048,7 @@ fn a_record_s_object_taken_alone() {
     let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
     let laid = visits::lay(
         &[visit],
+        &[],
         |_| Some((3, [81, 0])),
         &tables.map.finds,
         |_| String::new(),
@@ -3316,7 +3317,7 @@ fn a_record_s_flags_in_their_owners_colours() {
     )
     .unwrap();
     let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
-    let laid = visits::lay(&played.visits, object_at, &tables.map.finds, |_| {
+    let laid = visits::lay(&played.visits, &[], object_at, &tables.map.finds, |_| {
         String::new()
     });
     let told: Vec<(usize, Told)> = laid.into_iter().map(|l| (l.walk, l.told)).collect();
@@ -4059,4 +4060,151 @@ fn the_kingdom_s_heroes_in_the_hero_list_s_order() {
     // A hero the list lacks comes after the listed ones.
     o.hero_list.retain(|&id| id == mine[1]);
     assert_eq!(rows(&o).len(), 2);
+}
+
+#[test]
+fn a_live_visit_asks_the_question_of_the_decision_held_open() {
+    // E24 M5 T4b (design §5.27): the question's facts the engine's decision's, its answers the
+    // host's.
+    use h3_map::model::Rewards;
+    use h3_map_view::asks::Ask;
+    use h3_map_view::engine::visits::{self, Answered, Kept, Laid, Told};
+    use h3_protocol::wire::game::{
+        Choice, ChoiceKind, Decision, LevelUp, Offer, OfferKind, Pos as WirePos, PrimarySkill,
+    };
+    let anchor = WirePos {
+        x: 5,
+        y: 4,
+        level: 0,
+    };
+    let choice = |kind| Decision::Choice {
+        choice: Choice {
+            hero: 0,
+            object_type: 1,
+            anchor,
+            kind,
+        },
+    };
+    let offer = |kind| Decision::Offer {
+        offer: Offer {
+            hero: 0,
+            object_type: 1,
+            anchor,
+            kind,
+        },
+    };
+    let gold = |amount| Amount {
+        resource: 6,
+        amount,
+    };
+    let chest = choice(ChoiceKind::Chest {
+        gold: gold(1500),
+        experience: 1000,
+    });
+    let primary = |amount, price: Vec<Amount>, leave| {
+        choice(ChoiceKind::Primary {
+            skills: [PrimarySkill::Attack, PrimarySkill::Defense],
+            amount,
+            price,
+            leave,
+        })
+    };
+    let pandora = offer(OfferKind::OpenBox {});
+    // A chest's gold and experience, the Arena's gain, a School's gain and price (none: free),
+    // Pandora's Box before its rewards.
+    assert_eq!(
+        visits::opened(&chest, 101, "Rion"),
+        Some(Ask::Chest {
+            gold: 1500,
+            experience: 1000
+        })
+    );
+    assert_eq!(
+        visits::opened(&primary(2, Vec::new(), false), 4, ""),
+        Some(Ask::Arena(2))
+    );
+    assert_eq!(
+        visits::opened(&primary(1, vec![gold(1000)], true), 47, ""),
+        Some(Ask::School {
+            gain: 1,
+            price: [6, 1000]
+        })
+    );
+    assert_eq!(
+        visits::opened(&primary(1, Vec::new(), true), 47, ""),
+        Some(Ask::School {
+            gain: 1,
+            price: [6, 0]
+        })
+    );
+    assert_eq!(
+        visits::opened(&pandora, 6, "Rion"),
+        Some(Ask::OpenBox {
+            rewards: Rewards::default(),
+            hero: "Rion".into()
+        })
+    );
+    // Another object's class, another offer or decision: none.
+    assert_eq!(visits::opened(&chest, 4, ""), None);
+    assert_eq!(
+        visits::opened(&primary(2, Vec::new(), false), 101, ""),
+        None
+    );
+    assert_eq!(visits::opened(&pandora, 101, ""), None);
+    assert_eq!(visits::opened(&offer(OfferKind::Pass {}), 6, ""), None);
+    let level = Decision::LevelUp {
+        level_up: LevelUp {
+            hero: 0,
+            level: 2,
+            primary: PrimarySkill::Attack,
+            offers: [0, 1],
+        },
+    };
+    assert_eq!(visits::opened(&level, 101, ""), None);
+    // Laid out: the walk's visit with no answer asks it, nothing kept (every answer the host's);
+    // another walk's visit, unanswered, tells nothing (the record's: no answer).
+    let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
+    let visit = |walk| engine::Visit {
+        at,
+        walk,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
+        flag: None,
+        events: Vec::new(),
+        answers: Vec::new(),
+        battle: None,
+    };
+    let text = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml"),
+    )
+    .unwrap();
+    let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
+    let open = [(0, chest)];
+    let laid = visits::lay(
+        &[visit(0), visit(1)],
+        &open,
+        |_| Some((3, [101, 0])),
+        &tables.map.finds,
+        |_| "Rion".into(),
+    );
+    let [
+        Laid {
+            told:
+                Told::Ask {
+                    ask: Ask::Chest { gold: 1500, .. },
+                    answered: Answered::Open,
+                    flag: None,
+                },
+            object: 3,
+            walk: 0,
+            kept,
+            ..
+        },
+    ] = &laid[..]
+    else {
+        panic!("the open question alone: {laid:?}");
+    };
+    assert_eq!(*kept, Kept::default());
 }

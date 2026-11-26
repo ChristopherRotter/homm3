@@ -34,15 +34,18 @@ use std::path::Path;
 
 use h3_contracts::PlayerId;
 use h3_game::GameRuleset;
+use h3_game::Viewer;
 use h3_map_view::engine::{self, GameRecord, Live};
 use h3_protocol::codec;
 use h3_protocol::map::game::manifest;
+use h3_protocol::map::game::observe;
 use h3_protocol::record::MAX_LINE;
 use h3_protocol::session::game::{
     Allowance, Clock, CommandBounds, GameOptions, GameOutbound, GameSession, Spectators,
 };
 use h3_protocol::wire::game::{
-    GameAnswer, GameClock, GameCommand, GameObservation, GameQuery, GameReject, MapIdentity,
+    Decision, GameAnswer, GameClock, GameCommand, GameObservation, GameQuery, GameReject,
+    MapIdentity,
 };
 use h3_protocol::wire::{ServerMessage, WireU64};
 
@@ -181,6 +184,7 @@ fn number(message: &ServerMessage) -> Option<u32> {
 /// The game hosted in-process, a seat per player.
 pub struct HotSeat<'r> {
     session: GameSession<'r>,
+    rules: &'r GameRuleset,
     seats: Vec<Seat>,
     /// The host's last command's number (the in-process host's are only echoed).
     seq: u32,
@@ -259,6 +263,7 @@ impl<'r> HotSeat<'r> {
         .map_err(|e| failed(&format_args!("the game does not start: {e}")))?;
         let mut hot = Self {
             session,
+            rules,
             seats,
             seq: 0,
         };
@@ -316,6 +321,15 @@ impl<'r> HotSeat<'r> {
         let played = self.session.play(player, self.seq, command, &mut out);
         self.deliver(out)?;
         Ok(played.err())
+    }
+
+    /// `player`'s first open decision but a battle as the engine projects it now (E24 M5 T4b,
+    /// design §5.27: a visit's question's facts, a chest's gold and experience, a price), none
+    /// without one. *Provisional*: the in-process host reads the engine's projection (`observe`),
+    /// since the fold of the seat's frames keeps no offer's or choice's view (`SRV-STUB-5`).
+    #[must_use]
+    pub fn decision(&self, player: PlayerId) -> Option<Decision> {
+        observe(self.session.state(), self.rules, Viewer::Player(player)).decision
     }
 
     /// `player`'s `query` of the running game (`GameSession::query`, E24 M5 T4a: a hero's moves);
@@ -460,8 +474,6 @@ impl<'r> HotSeat<'r> {
 
 #[cfg(test)]
 mod tests {
-    use h3_game::Viewer;
-    use h3_protocol::map::game::observe;
     use h3_protocol::wire::game::GameEvent;
 
     use super::*;

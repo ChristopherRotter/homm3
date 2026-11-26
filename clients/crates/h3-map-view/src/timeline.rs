@@ -142,7 +142,7 @@ use crate::live::{
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
-use crate::reach::{Hosted, Reach, Stand, WalkAsked};
+use crate::reach::{AnswerAsked, AnswerKey, Hosted, LevelAsked, Pick, Reach, Stand, WalkAsked};
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_COMPUTER_SPEED, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
@@ -1029,6 +1029,10 @@ pub struct LevelBox {
     /// The offer a record's answer took (E24 M4 T4b1, design §5.14): the OK closing it with
     /// another is refused ([`Unplayable::LevelUp`]); none: any (a recording's).
     pub chosen: Option<usize>,
+    /// The offer is the host's to answer (E24 M5 T4b, design §5.27: live, the engine's level-up
+    /// open): its OK with an offer chosen is asked of the host ([`Loop::level_asked`]), which
+    /// gives the levels the engine opens after it.
+    pub hosted: bool,
 }
 
 /// A find's boxes (E24 M4 T2a2, design §5.3, *provisional*: the viewer's facts at 0,
@@ -1194,6 +1198,10 @@ pub struct Question {
     /// what its second picture shows (0x780A); its first's is [`Question::yes`], its Cancel's
     /// [`Question::no`].
     pub second: Option<Answer>,
+    /// Its answers are the host's (E24 M5 T4b, design §5.27: live, the engine's decision open):
+    /// its place among its visit's questions (0 the first). A button whose answer is not built
+    /// asks the host ([`Loop::answer_asked`]); none: a record's or a recording's.
+    pub hosted: Option<u8>,
 }
 
 /// What a question's answer shows (E24 M4 T2b2 part A1): its boxes one after another, each with
@@ -1796,6 +1804,10 @@ pub struct Loop {
     /// reach is asked (E24 M5 T4a): each kept until the host answers.
     host: Option<Arc<Hosted>>,
     walk_asked: Option<WalkAsked>,
+    /// The question's answer asked of the host (E24 M5 T4b, [`Loop::answer_asked`]).
+    answer_asked: Option<AnswerAsked>,
+    /// The level-up's offer asked of the host (E24 M5 T4b, [`Loop::level_asked`]).
+    level_asked: Option<LevelAsked>,
     reach_asked: Option<(u32, Stand)>,
     next_move: usize,
     walking: Option<(usize, usize)>,
@@ -2252,6 +2264,8 @@ impl Loop {
             moves: start.moves.clone().map(Arc::new),
             host: start.host.clone().map(Arc::new),
             walk_asked: None,
+            answer_asked: None,
+            level_asked: None,
             reach_asked: None,
             next_move: 0,
             walking: None,
@@ -2406,6 +2420,45 @@ impl Loop {
             Arc::make_mut(host).reaches.push((stand, Arc::clone(reach)));
         }
         self.reach_asked = None;
+    }
+
+    /// The question's answer asked of the host (E24 M5 T4b, design §5.27): a hosted question
+    /// ([`Question::hosted`]) closed by a button whose answer is not given yet; the click changes
+    /// nothing until the host answers. None since [`Loop::add_answer`].
+    #[must_use]
+    pub fn answer_asked(&self) -> Option<AnswerAsked> {
+        self.answer_asked
+    }
+
+    /// What the answer `asked` shows, given by the host (E24 M5 T4b: it played the session's
+    /// `Answer`), with the levels its find's visit opens as far as the engine told them (its
+    /// [`Found::levels`], due with the answer's experience); the question cleared.
+    pub fn add_answer(&mut self, asked: AnswerKey, answer: &Answer, levels: &[LevelBox]) {
+        if let Some(host) = &mut self.host {
+            Arc::make_mut(host).answers.push((asked, answer.clone()));
+        }
+        if let Some(found) = Arc::make_mut(&mut self.finds).get_mut(asked.find) {
+            found.levels = levels.to_vec();
+        }
+        self.answer_asked = None;
+    }
+
+    /// The level-up's offer asked of the host (E24 M5 T4b, design §5.27): a hosted level-up's
+    /// dialog ([`LevelBox::hosted`]) closed by its OK with an offer chosen; the click changes
+    /// nothing until the host answers. None since [`Loop::add_level`].
+    #[must_use]
+    pub fn level_asked(&self) -> Option<LevelAsked> {
+        self.level_asked
+    }
+
+    /// The levels the engine opened after the level-up `asked` (E24 M5 T4b: the host played its
+    /// offer), shown after it; the question cleared.
+    pub fn add_level(&mut self, asked: &LevelAsked, next: &[LevelBox]) {
+        if let Some(host) = &mut self.host {
+            let key = (asked.hero, asked.level);
+            Arc::make_mut(host).levels.push((key, next.to_vec()));
+        }
+        self.level_asked = None;
     }
 
     /// The map's heroes ([`Start::heroes`]' order) where they stand and face now, the selected
@@ -4168,6 +4221,24 @@ impl Loop {
         {
             self.unbuilt(Unplayable::LevelUp(leveling.open.level))?;
         }
+        // Live, a hosted level-up's offer is the host's (E24 M5 T4b, design §5.27): the levels
+        // the engine opens after it shown after it; asked first, the click changing nothing.
+        if let (true, Some(host), Some(offer)) = (leveling.open.hosted, &self.host, chosen) {
+            let hero = self.index.unwrap_or_default();
+            let level = leveling.open.level;
+            match host.leveled(hero, level) {
+                Some(next) => leveling.rest.extend(next.iter().cloned()),
+                None => {
+                    self.level_asked.get_or_insert(LevelAsked {
+                        at: t,
+                        hero,
+                        level,
+                        offer,
+                    });
+                    return Ok(());
+                }
+            }
+        }
         let raised = &mut leveling.raised;
         if let Some(skill) = raised.skills.get_mut(usize::from(leveling.open.primary)) {
             *skill = skill.saturating_add(1);
@@ -4289,10 +4360,25 @@ impl Loop {
     /// [`Question::second`], its Cancel's [`Question::no`] (marking the find where it
     /// [`Answer::marks`]: the Arena's).
     fn answer(&mut self, t: u32, i: usize, question: Question, id: u16) -> Result<(), Unplayable> {
-        let reply = match id {
-            boxes::YES | boxes::OK | boxes::CHOICE => question.yes,
-            _ if id == boxes::CHOICE + 1 => question.second,
-            _ => question.no,
+        let (pick, reply) = match id {
+            boxes::YES | boxes::OK | boxes::CHOICE => (Pick::Yes, question.yes),
+            _ if id == boxes::CHOICE + 1 => (Pick::Second, question.second),
+            _ => (Pick::No, question.no),
+        };
+        // Live, a hosted question's answer is the host's (E24 M5 T4b, design §5.27): given, it
+        // shows; else it is asked, and the click changes nothing until it is given.
+        let reply = match (reply, question.hosted, &self.host) {
+            (None, Some(nth), Some(host)) => {
+                let asked = AnswerKey { find: i, nth, pick };
+                if let Some(given) = host.answer(asked) {
+                    Some(given.clone())
+                } else {
+                    self.answer_asked
+                        .get_or_insert(AnswerAsked { at: t, asked });
+                    return Ok(());
+                }
+            }
+            (reply, ..) => reply,
         };
         if let Some(reply) = reply {
             if !matches!(id, boxes::NO | boxes::CANCEL) || reply.marks {
