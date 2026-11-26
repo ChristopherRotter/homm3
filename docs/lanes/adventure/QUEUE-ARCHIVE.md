@@ -2684,3 +2684,47 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
   does: not read). `end_mine_battle` (ADV-MIN-002) leaves no guards after a draw (the next visit
   flags it); survey `E08-economy.md` §3.2 names only a loss, a retreat and a surrender. Your call
   whether that is a deviation to record (a quirk) or as intended.
+
+## Inbox notes settled before E08 T144b (2026-11-26: `adventure/reach-property-seed`)
+
+- 2026-11-26 (the adventure lane, found by CI on #1191, T144a2; **a bug to fix, before T144b**):
+  `h3-adventure`'s property `reach::tests::the_query_and_move_hero_agree` fails on `master`
+  abf981f too (so not T144a2's): at `reach/tests.rs:493` the move takes 4 steps for a reported
+  path of 6 tiles with a visit (`steps + visit == path.len()`). Replay: append
+  `cc 3c683dcc794c795ee6242cd1c5204d11ca4b5cfaf18c97b7efc4f918f26d4816` to
+  `crates/h3-adventure/proptest-regressions/reach/tests.txt` (fails in 1 s; kept out of the file
+  until the fix, so CI stays green). Minimal input: a 6 × 6 map, cells 41 and 42 at 20 and 43 at
+  15, the rest 0; start (0, 0); no other heroes; creatures `[0]`; `faithful = false`; no picks;
+  no key; `(mode, level, both, free) = (1, 1, false, false)`; one town `(6, 1, 0)`. The query
+  and `move_hero` disagree for that hero (level 1: flying?) near the town: read the generator to
+  decode the cells, then fix the side that is wrong and keep the seed in the file.
+  **Settled:** not the engine's: since E08 T142b a flight under `strict-fixed` (`ADV-QUIRK-15`
+  off, increment 15's design note §11.1) is planned over the tiles red has not explored as
+  assumed passes, and the move stops on its last stop node before a step its revealed tile
+  forbids, charged only up to that node. In the seed's first case a path from (2, 4) passes a hidden
+  Cartographer at (3, 5) to reach a tower beside it; revealed, the step down onto the chart
+  from above is refused (ADV-OBJ-004), so the hero stays on (2, 4) after four steps. `h3-map`'s
+  plans knew the cut (`play.rs`' `landing`); this property did not. It now accepts a short walk
+  only under `strict-fixed` with a hidden tile in the rest of the path, the hero on its last
+  stepped tile (or its start) with the points the query reports there, a node of the chosen
+  path. The seed is in the file, with the AI lane's two (E31 T2d's `e480b42b…`, T2e's
+  `d6c9b6e4…`: the same cut). The test passes 50 000 random cases.
+
+- 2026-11-26 (the town lane, E09 T56, `town/e09-t56`, `cross-lane`; **for you: a failing case of
+  your property, on `master` too**): `h3-map`'s `tests::view::views_move_as_the_events_say` failed
+  in the town scope's coverage run on a random case and fails the same way on `master` abf981f
+  (#1186 merged) when replayed: `cc 46f90d6608d36cb7b0f20d08ecbdd17c6b19c238e813d1c7a6cf3dcaee593307`
+  (an RoE plan of side 10, two players, one hero each with a kit; `view.rs:2683`: another player's
+  command on the same day, no capture, grows the viewer's explored row 0 from 511 to 1023). Not
+  committed to `proptest-regressions/tests/view.txt` (it would fail every pull request's CI until
+  fixed); append it there to replay. Also: T56 replaced the 118 goldens' `town_ruleset_hash`
+  (0xc830faa47b612bfc, the town part v10; nothing else moved) and added `war_machine: None` and the
+  trades' parameters to `h3-game`'s `tests/mod.rs`' town literals (`a_town_needs_its_siege`).
+  **Settled:** not the engine's: the command was the system's (the neutral stack's turn in red's
+  battle with a monster guarding a Redwood Observatory), whose retaliation ended the battle; the
+  visit held after it (GAM-DEC-007) showed red the observatory's disk (`TilesRevealed`, ADV-VIS-002),
+  in a command not its own. `view.rs`' `check_told` now lets another's command on the same day
+  grow the viewer's explored tiles by the told reveal's count and no more (a flag's after its
+  guards' battle, ADV-OWN-001, likewise), and `play.rs`' `check_isolation` lets them grow for a
+  player told a `TilesRevealed`, beside its captors. The seed is in the file; both view
+  properties pass 400 random cases.
