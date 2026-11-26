@@ -27,8 +27,6 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::iter;
 
-use h3_map::model::Pos;
-
 use crate::live::Buttons;
 use crate::reach::{Reach, Stand, WalkAsked};
 use crate::sound::Cue;
@@ -261,11 +259,10 @@ impl Replay {
         self.again_from(t.max(1));
     }
 
-    /// The walk asked at `t` along `tiles` refused by the engine (E24 M5 T4a), the loop run again
-    /// from before it.
-    pub fn refuse_walk(&mut self, t: u32, tiles: &[Pos]) {
-        self.each(|l| l.refuse_walk(t, tiles));
-        self.again_from(t.max(1));
+    /// The walk `asked` refused by the engine (E24 M5 T4a), the loop run again from before it.
+    pub fn refuse_walk(&mut self, asked: &WalkAsked) {
+        self.each(|l| l.refuse_walk(asked));
+        self.again_from(asked.at.max(1));
     }
 
     /// The millisecond and the stand whose reach is asked of the host as far as the loop ran (E24

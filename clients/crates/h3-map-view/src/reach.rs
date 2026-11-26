@@ -14,6 +14,8 @@
 //! - **The host's facts** ([`Hosted`]): the reaches given so far and the walks the engine refused
 //!   (a direction key's step into an obstacle: nothing happens, as the original's
 //!   `hero_step_allowed` refuses it), so that a loop run again from before them plays them alike.
+//!   A refusal holds for its stand: the same walk asked again there (a held key's repeats against
+//!   a wall) is refused at once, not asked again.
 //! - **A walk asked** ([`WalkAsked`]): a path's walk or a key's step whose facts the loop lacks:
 //!   the host plays its `MoveHero` and gives its facts (`Loop::add_walks`) or its refusal
 //!   (`Loop::refuse_walk`).
@@ -75,13 +77,13 @@ impl Reach {
 }
 
 /// What the host gave a live view so far (E24 M5 T4a): each stand's reach and the walks the engine
-/// refused, by the millisecond asked and the tiles.
+/// refused, by their stands and tiles.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Hosted {
     /// The reaches given, by their stands.
     pub reaches: Vec<(Stand, Arc<Reach>)>,
-    /// The walks refused: the millisecond each was asked at and its tiles.
-    pub refused: Vec<(u32, Vec<Pos>)>,
+    /// The walks refused: each one's stand and tiles.
+    pub refused: Vec<(Stand, Vec<Pos>)>,
 }
 
 impl Hosted {
@@ -94,21 +96,22 @@ impl Hosted {
             .map(|(_, r)| r)
     }
 
-    /// Whether the walk along `tiles` asked at `t` was refused.
+    /// Whether the walk along `tiles` from `stand` was refused.
     #[must_use]
-    pub fn refuses(&self, t: u32, tiles: &[Pos]) -> bool {
-        self.refused.iter().any(|(at, p)| *at == t && p == tiles)
+    pub fn refuses(&self, stand: Stand, tiles: &[Pos]) -> bool {
+        self.refused.iter().any(|(s, p)| *s == stand && p == tiles)
     }
 }
 
 /// A walk whose facts the loop lacks, asked of the host (E24 M5 T4a): the millisecond it starts
-/// at, the hero's place among the map's heroes and the tiles it steps onto (a key's step's one).
+/// at, the stand it starts from (its hero's place among the map's heroes) and the tiles it steps
+/// onto (a key's step's one).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WalkAsked {
     /// The walk's millisecond.
     pub at: u32,
-    /// The hero's place among the map's heroes.
-    pub hero: usize,
+    /// The stand it starts from.
+    pub stand: Stand,
     /// The tiles, in order, as `MoveHero` takes them.
     pub tiles: Vec<Pos>,
 }

@@ -3,6 +3,8 @@ use alloc::vec;
 
 use h3_render::Bugs;
 
+use h3_map::model::Pos;
+
 use super::*;
 use crate::scene::ViewAt;
 use crate::timeline::tests::{recorded, rules};
@@ -376,23 +378,30 @@ fn the_host_s_answers_play_the_actions_again_from_before_them() {
     // Its destination clicked at 20: the walk asked, then refused, then asked at 30 and given.
     r.give(20, click);
     r.at(20).unwrap();
-    let tiles = r.walk_asked().unwrap().tiles.clone();
-    r.refuse_walk(20, &tiles);
+    let asked = r.walk_asked().unwrap().clone();
+    let tiles = asked.tiles.clone();
+    r.refuse_walk(&asked);
     assert_eq!(r.walk_asked(), None);
     assert_eq!(r.at(25).unwrap().drawn.hero.unwrap().at, at(17, 17));
+    // Clicked again at 30 from the same stand: refused at once, nothing asked.
     r.give(30, click);
     r.at(30).unwrap();
-    assert_eq!(r.walk_asked().map(|w| w.at), Some(30));
-    let walk = Move {
-        tiles: tiles.clone(),
-        points: vec![None; 4],
-        revealed: vec![Vec::new(); 4],
+    assert_eq!(r.walk_asked(), None);
+    // A step taken first (a new stand), then the path clicked: asked.
+    r.give(40, Action::Step(Direction::South));
+    r.at(40).unwrap();
+    let step = r.walk_asked().unwrap().clone();
+    assert_eq!(step.tiles, [at(17, 18)]);
+    let south = Move {
+        tiles: step.tiles.clone(),
+        points: vec![None],
+        revealed: vec![Vec::new()],
         sea: None,
         battle: None,
         boats: Vec::new(),
         stops: None,
     };
-    r.add_walks(30, &[walk], &[]);
-    assert_eq!(r.walk_asked(), None);
-    assert_eq!(r.at(700).unwrap().drawn.hero.unwrap().at, at(21, 17));
+    r.add_walks(40, &[south], &[]);
+    assert_eq!(r.at(400).unwrap().drawn.hero.unwrap().at, at(17, 18));
+    assert_eq!(tiles.len(), 4);
 }

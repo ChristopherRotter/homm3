@@ -2382,11 +2382,12 @@ impl Loop {
         self.walk_asked = None;
     }
 
-    /// The walk asked at `t` along `tiles` refused by the engine (E24 M5 T4a): played again it
-    /// changes nothing; the question cleared.
-    pub fn refuse_walk(&mut self, t: u32, tiles: &[Pos]) {
+    /// The walk `asked` refused by the engine (E24 M5 T4a): played again from its stand it changes
+    /// nothing; the question cleared.
+    pub fn refuse_walk(&mut self, asked: &WalkAsked) {
         if let Some(host) = &mut self.host {
-            Arc::make_mut(host).refused.push((t, tiles.to_vec()));
+            let refused = (asked.stand, asked.tiles.clone());
+            Arc::make_mut(host).refused.push(refused);
         }
         self.walk_asked = None;
     }
@@ -5921,11 +5922,7 @@ impl Loop {
         let (Some(host), Some(hero)) = (&self.host, self.index) else {
             return Reached::Unhosted;
         };
-        let stand = Stand {
-            hero,
-            walks: self.next_move,
-            turns: self.next_turn,
-        };
+        let stand = self.stand_of(hero);
         if let Some(reach) = host.reach(stand) {
             return Reached::Given(Arc::clone(reach));
         }
@@ -5933,14 +5930,25 @@ impl Loop {
         Reached::Asked
     }
 
+    /// The selected hero `hero`'s stand now (E24 M5 T4a): the walks and turns taken so far.
+    fn stand_of(&self, hero: usize) -> Stand {
+        Stand {
+            hero,
+            walks: self.next_move,
+            turns: self.next_turn,
+        }
+    }
+
     /// Whether the walk along `tiles` at `t` is the host's to answer (E24 M5 T4a): with one, a
-    /// walk it refused is nothing (played again, before a later walk it gave too), one past the
-    /// engine's known walks is asked of it; the action changes nothing until it answers.
+    /// walk it refused from the same stand is nothing (played again, before a later walk it gave
+    /// too; a held key's repeats against a wall), one past the engine's known walks is asked of
+    /// it; the action changes nothing until it answers.
     fn hosted_walk(&mut self, t: u32, tiles: Vec<Pos>) -> bool {
         let Some(host) = self.host.as_ref().filter(|_| !tiles.is_empty()) else {
             return false;
         };
-        if host.refuses(t, &tiles) {
+        let stand = self.stand_of(self.index.unwrap_or_default());
+        if host.refuses(stand, &tiles) {
             return true;
         }
         if self
@@ -5950,9 +5958,11 @@ impl Loop {
         {
             return false;
         }
-        let hero = self.index.unwrap_or_default();
-        self.walk_asked
-            .get_or_insert(WalkAsked { at: t, hero, tiles });
+        self.walk_asked.get_or_insert(WalkAsked {
+            at: t,
+            stand,
+            tiles,
+        });
         true
     }
 

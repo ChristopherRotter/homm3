@@ -242,9 +242,10 @@ impl window::Session for Viewed<'_, '_> {
         }
     }
 
-    fn walk(&mut self, hero: u16, path: Vec<WirePos>) -> Result<bool, String> {
+    fn walk(&mut self, hero: u16, path: Vec<WirePos>) -> Result<Option<String>, String> {
         let command = AdventureCommand::MoveHero { hero, path };
-        self.hot.play(GameCommand::Adventure { command })
+        let refused = self.hot.play(GameCommand::Adventure { command })?;
+        Ok(refused.map(|why| format!("{why:?}")))
     }
 }
 

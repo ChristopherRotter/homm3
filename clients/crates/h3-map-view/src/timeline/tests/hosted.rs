@@ -93,7 +93,7 @@ fn a_path_s_walk_asks_the_host_then_plays_its_facts() {
     l.run(2, &[click]).unwrap();
     let asked = WalkAsked {
         at: 2,
-        hero: 0,
+        stand: stand(0),
         tiles: vec![at(18, 17), at(19, 17), at(20, 17), at(21, 17)],
     };
     assert_eq!(l.walk_asked(), Some(&asked));
@@ -121,16 +121,20 @@ fn a_key_s_step_the_engine_refuses_is_nothing() {
     let before = l.clone();
     l.run(1, &[step]).unwrap();
     let tiles = vec![at(17, 16)];
-    assert_eq!(l.walk_asked().map(|w| w.tiles.clone()), Some(tiles.clone()));
-    // Refused: played again, nothing is asked and nothing changes.
+    let asked = l.walk_asked().unwrap().clone();
+    assert_eq!(asked.tiles, tiles);
+    // Refused: played again, nothing is asked and nothing changes; again later from the same
+    // stand, refused at once.
     let mut l = before.clone();
-    l.refuse_walk(1, &tiles);
+    l.refuse_walk(&asked);
     assert_eq!(l.walk_asked(), None);
     l.run(1, &[step]).unwrap();
     let mut quiet = before.clone();
     quiet.run(1, &[]).unwrap();
     assert_eq!(l.walk_asked(), None);
     assert_eq!(l.state(1), quiet.state(1));
+    l.run(2, &[step]).unwrap();
+    assert_eq!(l.walk_asked(), None);
     // Taken: a step as a record's.
     let mut l = before;
     let north = Move {

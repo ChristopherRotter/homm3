@@ -315,7 +315,7 @@ pub fn for_sequence<'a>(
     // recorded `hero` lines (E24 M4 T1b2).
     let lines = sequence.heroes(facts)?;
     let (question, turns) = painter
-        .boxes(&lines, played.as_ref())
+        .boxes(&lines, played.as_ref(), None)
         .map_err(|e| format!("{}: {e}", live_path.display()))?;
     // The finds a walk tells and the turn without a town's boxes (E24 M4 T2a2); a record's from
     // its visits (E24 M4 T4b1).
@@ -432,7 +432,8 @@ pub fn for_live<'a>(
 /// The turns' starts of a live start's record grown since (E24 M5 T3b: the same human's view
 /// kept through its End Turn, the day's change in place): `record` read as [`for_live`] reads it,
 /// each turn's start laid out by `painter` (the view's: its live part's turns set to the record's)
-/// as a record's are.
+/// as a record's are, the record's heroes the view's start's map heroes `heroes` (by id; since
+/// E24 M5 T4a the live part's are where the view's walks left them).
 ///
 /// # Errors
 /// As [`for_live`]'s; a turn's table that does not read.
@@ -440,6 +441,7 @@ pub fn live_turns(
     painter: &mut Painter<'_>,
     map: &Path,
     (record, rules, live): (engine::GameRecord, &GameRuleset, engine::Live),
+    heroes: &[(u16, usize)],
     label: String,
 ) -> Result<Vec<NextTurn>, String> {
     let assets = painter.assets;
@@ -452,7 +454,7 @@ pub fn live_turns(
         .and_then(toml::Value::as_array)
         .and_then(|a| a.iter().map(Turn::read).collect());
     painter.live.turns = turns.ok_or_else(|| format!("{label}: a turn's table does not read"))?;
-    let (_, turns) = painter.boxes(&[], Some(&played))?;
+    let (_, turns) = painter.boxes(&[], Some(&played), Some(heroes))?;
     Ok(turns)
 }
 
@@ -515,7 +517,7 @@ fn for_played<'a>(
     let paths = record_paths(assets, hero.at, played)?;
     let sound = painter.sound(Some(hero.at))?;
     let (question, turns) = painter
-        .boxes(&[], Some(played))
+        .boxes(&[], Some(played), None)
         .map_err(|e| format!("{label}: {e}"))?;
     let hover = painter.hover()?;
     // Its visits' finds, each with its level-ups (E24 M4 T6, R2-3: none by the thresholds).
@@ -626,7 +628,7 @@ pub fn for_situation<'a>(
     let hero = sequence::selected_hero(&painter.live).ok();
     painter.selected = sequence::selected_in(&painter.live).ok();
     let sound = painter.sound(hero.map(|h| h.at))?;
-    let (question, turns) = painter.boxes(&[], None)?;
+    let (question, turns) = painter.boxes(&[], None, None)?;
     let hover = painter.hover()?;
     let finds = painter.finds(&raw, hover.as_deref())?;
     let town = painter.town()?;
@@ -941,6 +943,7 @@ impl<'a> Painter<'a> {
         &self,
         lines: &[(u32, Hero)],
         record: Option<&Played>,
+        heroes: Option<&[(u16, usize)]>,
     ) -> Result<(Arc<MessageBox>, Vec<NextTurn>), String> {
         let assets = self.assets;
         let layout = &assets.layout.message;
@@ -963,7 +966,14 @@ impl<'a> Painter<'a> {
         let live = &self.live;
         // A record's other players' turns in sight (E24 M4 T4c): its heroes by the start's tiles,
         // the objects they take by their anchors' tiles.
-        let ids = record.map(|p| turn::record_heroes(&p.shown, &live.heroes));
+        // A live view's heroes by its start (E24 M5 T4a: the live part's heroes are where the
+        // view last drew them, its walks since).
+        let ids = record.map(|p| {
+            heroes.map_or_else(
+                || turn::record_heroes(&p.shown, &live.heroes),
+                <[_]>::to_vec,
+            )
+        });
         let hover = self.hover()?;
         let object_at = |at: Pos| {
             let tile = [i32::from(at.x), i32::from(at.y), i32::from(at.z)];

@@ -786,3 +786,38 @@ fn live_end_turn_asks_the_host_and_plays_the_turns_it_gives() {
     let l = Loop::start(rules(), &none).unwrap();
     assert_eq!(l.heroes(), none.heroes);
 }
+
+#[test]
+fn a_live_walk_before_end_turn_leaves_the_turn_to_play() {
+    // E24 M5 T4a: with the hot seat's host, a key's step at 20 asked and given, then End Turn's
+    // turn asked and given: the turn plays as without the walk.
+    let (start, mut actions, ms, _) = turning("turn-day");
+    let hero = start.hero.unwrap();
+    let asking = Start {
+        live: true,
+        turns: Vec::new(),
+        moves: Some(Vec::new()),
+        host: Some(Hosted::default()),
+        ..start.clone()
+    };
+    actions
+        .entry(20)
+        .or_default()
+        .push(Action::Step(Direction::South));
+    let mut replay = crate::replay::Replay::new(rules(Bugs::Original), &asking, actions).unwrap();
+    replay.at(30).unwrap();
+    let asked = replay.walk_asked().unwrap().clone();
+    let walk = Move {
+        tiles: asked.tiles.clone(),
+        points: vec![Some(1000)],
+        revealed: vec![Vec::new()],
+        ..Move::default()
+    };
+    replay.add_walks(20, &[walk], &[]);
+    replay.at(170).unwrap();
+    let t = replay.turns_asked().unwrap();
+    replay.add_turns(t, &start.turns);
+    let after = replay.at(ms).unwrap();
+    assert_ne!(after.drawn.kingdom.date, start.kingdom.date);
+    assert_ne!(after.drawn.hero.map(|h| h.at), Some(hero.at));
+}

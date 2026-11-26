@@ -94,18 +94,19 @@ fn the_host_s_facts_by_stand_and_walk() {
         turns: 0,
     };
     let reach = Arc::new(Reach::default());
+    let later = Stand { walks: 3, ..stand };
     let hosted = Hosted {
         reaches: vec![(stand, Arc::clone(&reach))],
-        refused: vec![(40, vec![at(6, 5)])],
+        refused: vec![(stand, vec![at(6, 5)])],
     };
     assert_eq!(hosted.reach(stand), Some(&reach));
-    assert_eq!(hosted.reach(Stand { walks: 3, ..stand }), None);
-    assert!(hosted.refuses(40, &[at(6, 5)]));
-    assert!(!hosted.refuses(41, &[at(6, 5)]));
-    assert!(!hosted.refuses(40, &[at(4, 5)]));
+    assert_eq!(hosted.reach(later), None);
+    assert!(hosted.refuses(stand, &[at(6, 5)]));
+    assert!(!hosted.refuses(later, &[at(6, 5)]));
+    assert!(!hosted.refuses(stand, &[at(4, 5)]));
     let asked = WalkAsked {
         at: 40,
-        hero: 1,
+        stand,
         tiles: vec![at(6, 5), at(7, 255)],
     };
     assert_eq!(asked.path(), [wire(6, 5), wire(7, 255)]);

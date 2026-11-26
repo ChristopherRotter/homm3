@@ -230,12 +230,12 @@ pub(crate) trait Session {
     /// The viewer's hero `hero`'s moves now (`GameQuery::Moves`, E24 M5 T4a): none outside its
     /// turn, with a decision of its open, or for a hero not its own on the map.
     fn moves(&self, hero: u16) -> Option<Moves>;
-    /// The viewer's hero `hero` walked along `path` (`MoveHero`, E24 M5 T4a): whether the game
-    /// took it.
+    /// The viewer's hero `hero` walked along `path` (`MoveHero`, E24 M5 T4a): why the game refused
+    /// it, none when it took it.
     ///
     /// # Errors
     /// The session's (no turn of a human's, a frame that does not read).
-    fn walk(&mut self, hero: u16, path: Vec<WirePos>) -> Result<bool, String>;
+    fn walk(&mut self, hero: u16, path: Vec<WirePos>) -> Result<Option<String>, String>;
 }
 
 /// The host's facts a live start keeps (E24 M5 T4a): the headless check plays them as the loop did.
@@ -1219,7 +1219,13 @@ pub(crate) fn window(
             }
             let label = format!("play: colour {}'s view", s.colour());
             let (record, live) = s.record()?;
-            let turns = paint::live_turns(&mut painter, s.map(), (record, s.rules(), live), label)?;
+            let turns = paint::live_turns(
+                &mut painter,
+                s.map(),
+                (record, s.rules(), live),
+                &ids,
+                label,
+            )?;
             let added = turns.get(start.turns.len()..).unwrap_or_default();
             if added.is_empty() {
                 return Err(format!(
@@ -1241,16 +1247,19 @@ pub(crate) fn window(
             let t = asked.at;
             let id = ids
                 .iter()
-                .find(|&&(_, i)| i == asked.hero)
+                .find(|&&(_, i)| i == asked.stand.hero)
                 .map(|&(id, _)| id);
-            let taken = match id {
+            let refused = match id {
                 Some(id) => s.walk(id, asked.path())?,
-                None => false,
+                None => Some("no hero of the view's there".to_owned()),
             };
-            if !taken {
-                lines.push(format!("{t} ms: a walk the game refused"));
-                hosted(&mut start).refused.push((t, asked.tiles.clone()));
-                replay.refuse_walk(t, &asked.tiles);
+            if let Some(why) = refused {
+                let to = asked.tiles.last().map(|p| (p.x, p.y, p.z));
+                lines.push(format!("{t} ms: a walk onto {to:?} refused: {why}"));
+                hosted(&mut start)
+                    .refused
+                    .push((asked.stand, asked.tiles.clone()));
+                replay.refuse_walk(&asked);
                 renew = true;
                 continue;
             }
@@ -1307,6 +1316,10 @@ pub(crate) fn window(
             let reach = moves
                 .and_then(|m| Reach::of(&m, &tables.map.walk.arrows))
                 .unwrap_or_default();
+            lines.push(format!(
+                "{t} ms: the selected hero's reach: {} tiles",
+                reach.paths.len()
+            ));
             let reach = Arc::new(reach);
             hosted(&mut start).reaches.push((stand, Arc::clone(&reach)));
             replay.add_reach(t, stand, &reach);
@@ -1416,6 +1429,15 @@ pub(crate) fn window(
         // A later change may be due already: the latest is shown instead; if it shows what shows,
         // nothing new is presented (a redraw still is).
         let held_due = hold.is_none_or(|(due, _)| win.ticks_ns() >= due);
+        // A question the loop's run to the clock asks the host (E24 M5 T4a: a walk, a reach) is
+        // answered before a change at or after it is shown.
+        if session.is_some() && next.as_ref().is_some_and(|f| f.change.t <= ms) {
+            replay.at(ms).map_err(unplayable)?;
+            if replay.walk_asked().is_some() || replay.reach_asked().is_some() {
+                renew = true;
+                continue;
+            }
+        }
         if let Some(mut d) = next.take_if(|f| f.change.t <= ms && held_due) {
             // A change holding draws (E24 M4 T1b2): each shown first, the map's clock held at its
             // millisecond, the change itself last.
