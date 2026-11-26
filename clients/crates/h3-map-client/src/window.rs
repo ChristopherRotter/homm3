@@ -1279,10 +1279,10 @@ pub(crate) fn window(
                     "{t} ms: the session told no walk after the one taken"
                 ));
             }
-            // stub: MCL-STUB-3 (a battle in play: M5 T6)
+            // stub: MCL-STUB-6 (a battle in play ends play: M5 T6)
             if added.iter().any(|m| m.battle.is_some()) {
                 return Err(format!(
-                    "{t} ms: a walk began a battle (play's battles: M5 T6)"
+                    "{t} ms: a walk began a battle (MCL-STUB-6: play's battles, M5 T6)"
                 ));
             }
             let found: Vec<Found> = finds

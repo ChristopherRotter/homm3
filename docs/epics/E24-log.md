@@ -3745,3 +3745,53 @@ Clients run on `master` standing in.
   crate calls `play`, whose API is unchanged: nothing more of this lane's) and Load (the engine's
   loaded humans, the adventure lane's inbox of 2026-11-21); T4's and T7's acceptance begin from
   the shell's Begin once it is there.
+
+### M5 T4a — the walks through the engine (2026-11-26)
+
+On `map-client/e24-m5-t4a`, from `master` at 6035ed8 (#1190; T3b's #1188 merged). Original data
+staged from the user's repo folder at the start (the four LODs, both executables, the five DLLs,
+the sound and video archives, `shell-videos.vid`, both tars, `games/`, the SoD tables, the 40
+MP3s; SHA-256 checked against the PC's) and the four manuals and three help files; the PC not
+needed after that. The VM restarted once early: the setup's baseline lost at coverage, CI's green
+Clients run on `master` (6035ed8) standing in (CI's engine run there failed in `h3-game`'s
+`computer/start/tests.rs`, a `BuildingDef` without `war_machine`: #1189 and #1190 crossing, the
+ai lane's, not this lane's).
+
+- **Asked at the start** (the user): T4 cut in three, T4a the walks through the engine (the
+  cursor's reach, a click's path and walk, the direction keys' steps, Move Reminder), T4b every
+  box answered as its command with the seeded random picks, T4c the M6/M7 notices, the facts
+  audit and the acceptance game; rejected: two parts, T4 whole.
+- **Built** (design §5.26):
+  - `h3_map_view::reach` (new): `Stand`, `Reach` (`Reach::of` a `Moves` answer: each tile's
+    path's arrows and cost), `Hosted` (the reaches given, the walks refused by stand and tiles),
+    `WalkAsked`.
+  - `timeline`: `Start::host`; `Loop::walk_asked`, `add_walks`, `refuse_walk`, `reach_asked`,
+    `add_reach`; a click's paths and the cursor's costs the stand's reach with a host; a path's
+    walk and a key's step asked of the host past the known walks; a key's step onto a visit from
+    beside by `Loop::node` (a record's unshown one too). `Hover::cursor_by` (the costs given).
+    `Replay::walk_asked`, `add_walks`, `refuse_walk`, `reach_asked`, `add_reach` (and `each`).
+  - `h3-map-client`: `HotSeat::play` (the human in turn's command, its rejection) and `query`;
+    `window::Session::moves` and `walk`, play's `Viewed` answering them; the window's answers
+    (a walk played and its facts laid out by `paint::live_walks`, its refusal; the reach by
+    `Reach::of`), each kept in the start for the headless check; a question the run to the clock
+    raises answered before a frame is shown; `paint::live_turns` mapping the record's heroes by
+    the view's start's (`boxes`' `heroes`); `MCL-STUB-6` (a battle in play ends play).
+- **Found and fixed on the way:** T3b's End Turn in place lost its turn after a live walk (the
+  painter's heroes follow the draws, so the turn's hero list mapped the walked hero to none and
+  the change did nothing); a refused walk played again after a later walk was given took that
+  walk (the refusal now checked first); a change shown before its question's answer (the
+  headless check's difference at the first reach).
+- **Checked:** the tests (`reach`'s three, `hosted`'s four, the replay's answers, a live walk
+  before End Turn, the hot seat's walk and query); clippy and the map crates' tests; under Xvfb
+  (`play --check`, `xdotool`) on `Good to Go`: two humans (Red's click walk of six steps round
+  the castle to the Redwood Observatory, End Turn through Move Reminder's OK, Blue's five key
+  steps, two refused Blocked, Red's day 2's three, one refused), one human through four days in
+  place (a click walk, held keys: three steps then the refusal asked once), every view's frames
+  read back exact, as afresh and as the headless loop's; both seats' records of the two-human run
+  played to their end by `h3-map-view record` (10 inputs each); `Knee Deep in the Dead`'s first
+  step (four skeletons' zones round the hero) ending play with `MCL-STUB-6`'s line; the
+  map-client scope's verify.
+- **Seen for T4b and T4c:** the Redwood Observatory's visit shows no box (the original's tells
+  what the tower shows: a find the record's visit does not lay out); at one human's start on
+  `Good to Go` (seed 5) random objects drawn as their random templates (`RES`, `MON 3`), not
+  looked into.

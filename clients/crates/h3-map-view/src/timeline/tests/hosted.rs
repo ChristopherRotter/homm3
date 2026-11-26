@@ -176,3 +176,20 @@ fn the_cursor_over_the_view_by_the_host_s_reach() {
     // Not reached today: the arrow (MCL-Q37: no later day's cost).
     assert_eq!(cursor(Reach::default()), rules(Bugs::Fixed).arrow);
 }
+
+#[test]
+fn a_loop_without_a_host_keeps_no_answer() {
+    // A recording's (no engine walks, no host): a walk's facts keep only the finds, a refusal
+    // and a reach nothing.
+    let mut l = walking(3, vec![east()]);
+    let asked = WalkAsked {
+        at: 1,
+        stand: stand(0),
+        tiles: vec![at(18, 17)],
+    };
+    l.add_walks(&[east_walk()], &[]);
+    l.refuse_walk(&asked);
+    l.add_reach(stand(0), &east_reach());
+    assert_eq!((l.moves.as_ref(), l.host.as_ref()), (None, None));
+    assert_eq!((l.walk_asked(), l.reach_asked()), (None, None));
+}

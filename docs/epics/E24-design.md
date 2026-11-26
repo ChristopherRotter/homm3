@@ -4991,3 +4991,58 @@ another's plainly.
 - *Provisional:* the unattended run's seconds count for the whole of play; a view's music and
   loops start again at each view (the next view's cues at 0); the record since read again at each
   End Turn in place (its length grows with the turn); the facings kept per seat (MCL-Q58).
+
+### 5.26 The walks through the engine (M5 T4a)
+
+T4 cut in three by the user at its start (2026-11-26): T4a the walks through the engine (this), T4b
+every box M4 shows answered by the player as the command with the client's own seeded random
+picks, T4c the screens of M6 and M7 as a notice (the stub planned for T4), the facts audit and
+T4's acceptance game. No reading: the original's walk and its keys are M2's and M3's (§3.5,
+§3.10, §4.15), the engine's rules the engine's.
+
+- **The host's questions** (`h3_map_view::reach`, *provisional*): live in play
+  (`Start::host`, set by the window for a session's view) the loop asks the hot seat's host two
+  things, each as End Turn asks its turns (§5.25: the action marks its millisecond and changes
+  nothing; given, the loop runs again from the latest change kept before it, so a headless play
+  of the start with every answer in it is the same):
+  - **the selected hero's reach where it stands** (`Loop::reach_asked`, `Stand`: its place among
+    the map's heroes, the engine's walks and the turns' starts taken so far), at a click on the
+    view and the mouse over it; the window answers with the session's `GameQuery::Moves` as a
+    `Reach`: each reachable tile's path as a click shows it (`timeline::arrows`, every arrow green)
+    and the points the path costs (the cursor's, `Hover::cursor_by`; the day group 0). A click's
+    paths and the cursor's costs are the stand's reach, not the start's `paths` and facts.
+  - **a walk past the engine's known ones** (`Loop::walk_asked`, `WalkAsked`): a path's walk
+    (its green steps) or a key's step (its one tile); the window plays the session's `MoveHero`;
+    taken, it reads the seat's record since again and gives the new walks and their ends' finds
+    (`paint::live_walks`, `Loop::add_walks`), which the loop plays as a record's (§5.13 to §5.15:
+    the points at the last step, the reveal at the first, MCL-Q39); refused, nothing happens
+    (`Loop::refuse_walk`: the original's `hero_step_allowed` refusing a key's step does nothing,
+    §3.5), and the same walk from the same stand is refused again at once (a held key's repeats
+    against a wall ask once; the same state gives the same answer).
+- **A key's step onto an object visited from beside** takes `Loop::node`'s visit as a path's last
+  node does (a record's walk stopping one short shown as a visit the map does not show), since
+  a live step is the engine's walk too.
+- **The window answers before it shows** a change at or after a question's millisecond: the
+  loop's run to the clock that raises one is answered first (a change shown before the answer
+  was the loop's without it: the headless check's first difference).
+- **A live view's turns** (§5.25) map the record's heroes by the view's start's map heroes (the
+  painter's live part follows the draws: after a walk the selected hero's tile is no longer the
+  record's start's, so a turn's hero list lost it and End Turn's change did nothing).
+- **Not in T4a:** a visit's question or choice answered (the box closes, the engine's decision
+  stays open: T4b); a walk that begins a battle ends play with an error (`MCL-STUB-6`, M5 T6);
+  the cursor over a tile the hero reaches only on a later day is the arrow and a click there
+  only moves the pointer (the engine's query answers today's reach: MCL-Q37); a hero's ability
+  to move still shown as points left (MCL-Q36).
+- **Checked:** the tests (the reach of a moves tree and its refusals; the loop's questions at a
+  click, a walk, a key's step refused and taken, the cursor by the stand's reach; the replay's
+  answers run again from before them; a hot seat's walk and query; a live walk before End Turn);
+  under Xvfb with `xdotool` on `Good to Go` (`play --check`): two humans, Red's click walk to the
+  Redwood Observatory (six steps on the engine's path round the castle), End Turn through Move
+  Reminder's question, Blue's key steps (some refused: Blocked, FromAbove), Red's day 2's; one
+  human through four days in place, click and held keys between the End Turns; every view's
+  frames read back exact, as afresh and as the headless loop's; each seat's record of the
+  two-human run played to its end by `h3-map-view record`; `Knee Deep in the Dead`'s first step
+  into a guard's zone ending play as `MCL-STUB-6` says.
+- *Provisional:* the record since read again and its walks laid out again at each walk taken (its
+  length grows with the turn); a refusal kept by its stand and tiles; the line of each walk and
+  reach in play's report.
