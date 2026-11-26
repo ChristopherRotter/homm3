@@ -196,7 +196,9 @@ clock and the battles as the original's.
   T2a"), T2b play's entry for the shell and the client lane's move queued (**done** 2026-11-25:
   the log's "M5 T2b"; the API the user agreed for the client lane), T2c one record reader shared
   with the client lane (**done** 2026-11-25: the log's "M5 T2c"; `h3_protocol::record`, MCL-Q57);
-  T3, the session in-process; T4, live input through the engine; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game; T8, M5's
+  T3, the session in-process, cut in two by the user at its start: T3a the session hosted
+  headless (**done** 2026-11-25: the log's "M5 T3a"; `h3_map_client::hot_seat`), T3b the session
+  in the window; T4, live input through the engine; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game; T8, M5's
   closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
   hot-seat game on a shipped map played from the shell's Begin to a day limit, headless by
@@ -269,11 +271,20 @@ here.
 - `h3-map-client` left out of the client workspace's coverage gate as `h3-battle-client` is
   (`clients/scripts/check.sh`; M5 T2a): its code was `h3-map-view`'s binary, under `/src/bin/`,
   out of the gate already; its own tests, `window --check`, `drawn` and the records exercise it.
-- Play's entry until T3 (M5 T2b, *provisional*): the game started in-process and its first
-  human's start shown standing with M2's input (the user's choice at T2b); the window's quit key
+- Play's entry until T3b (M5 T2b, *provisional*): the game started in-process and its first
+  human's start shown standing with M2's input (the user's choice at T2b; since T3a the start of
+  the human in turn, a computer's turn ended before it); the window's quit key
   ends play with `End::MainMenu`, the window closed with `End::Quit`, until E27 M5's system menu
   gives the four ends; play's report (the window's lines) on standard error.
 - The record reader in `h3-protocol` (M5 T2c, MCL-Q57: the user's place, beside the writer):
   it reads the lines alone (the header's checks, the numbered messages, the refusals), each
   client keeping its own record type and readings; the line's bound 64 MB for both kinds (the
   live client's message bound; `h3-view` had 16 MB), *provisional*.
+- The hot seat's session (M5 T3a, *provisional*): each seat's view folded from the frames read
+  back from their text (as a client of the wire would), a gap in a seat's numbers an error; the
+  turn's duration's minutes the original's table (`turn_duration_minutes` 0x641AE8) kept in
+  `hot_seat::TURN_MINUTES` beside `h3-server`'s own; no level-up time and the session's default
+  battle allowance under a limited duration until T5 reads the original's; a computer that may act
+  but not end its turn an error (`MCL-STUB-5`); the command line's begin unlimited by default
+  (`--duration`; T2b's left the record 0, a minute, unused until T3a); `--turns` headless and
+  `--records` (the humans' records as `h3-server record` names them).

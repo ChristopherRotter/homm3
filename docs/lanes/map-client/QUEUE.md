@@ -10,28 +10,29 @@ Epic: E24, the adventure map client. **M1** (stills of the map view, closed 2026
 archived with their review lists in `docs/epics/E24-archive.md`; their queue history in
 `QUEUE-ARCHIVE.md`. **M5** (hot seat on the adventure map) was refined with the user at T0
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
-"Later". Every task's cut is confirmed with the user at its start. Planned ids: `MCL-STUB-5` (a
-computer colour's turn ended at once, T3), `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was cut
-in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done 2026-11-25).
+"Later". Every task's cut is confirmed with the user at its start. `MCL-STUB-5` (a computer
+colour's turn ended at once) since T3a; planned `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was
+cut in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done
+2026-11-25), T3 in two (T3a done 2026-11-25).
 
-### E24 M5 T3 — the session in-process
+### E24 M5 T3b — the session in the window
 
-- **Scope:** `h3-map-client`'s play hosts an `h3_protocol::session::game::GameSession` with a seat
-  per human of `begin::Game` (the hot seat's names by colour, the turn's duration on
-  `GameOptions::clock`, the session's `elapse` and `deadline` on the window's clock), each human's
-  frames folded into its own `GameObservation`, the map drawn from the current human's view and
-  switched at a human's start; a computer colour's turn ended at once by the host (`MCL-STUB-5`,
-  lifted by E31's increment 2); each seat's record kept (`GameSession::record`), so that the
-  record player shows it; started from the shell's Begin (lifts `CLT-STUB-13` with the client
-  lane); Load once the engine changes a loaded game's humans (the adventure lane's inbox,
-  2026-11-21). No input yet but End Turn.
-- **Acceptance:** a two-human game on a shipped map begun from the shell, each End Turn passing to
-  the next human's view; each seat's record played by the record player as the game went; the
-  scoped verify.
-- **Depends on:** T2b (play's entry: `h3_map_client::play`, done; until T3 it shows the first
-  human's start standing); T2c (done: one record reader, `h3_protocol::record`); the client
-  lane's shell crate for Begin (until then `h3-map-view play`, the command line start).
-  **Status:** queued (next).
+- **Scope** (T3 cut in two by the user at its start, 2026-11-25; T3a done: `h3_map_client::hot_seat`,
+  the session hosted headless): the window's End Turn through the session (`HotSeat::end_turn`:
+  the timeline's End Turn with no next turn known asks the host), the map drawn from the current
+  human's view and switched at each human's start (set up from that human's current
+  `GameObservation`, not only the game's first snapshot: `engine::start`'s `Cut` for a live
+  start), the session's `elapse` and `deadline` on the window's clock (a turn whose time ran out
+  switching the view too); each seat's record kept as the game goes (`--records` at play's end,
+  as T3a's headless run). Started from the shell's Begin once the client lane's shell crate
+  calls `play` (lifts `CLT-STUB-13` with it, its inbox told at T2b); Load once the engine changes
+  a loaded game's humans (the adventure lane's inbox, 2026-11-21). No input yet but End Turn.
+- **Acceptance:** a two-human game on a shipped map begun by `h3-map-view play` (the shell's Begin
+  when its crate is there), each End Turn passing to the next human's view, under Xvfb with
+  `--check`; each seat's record played by the record player (`h3-map-view record`) as the game
+  went; the scoped verify.
+- **Depends on:** T3a (done); the client lane's shell crate for Begin (until then `h3-map-view
+  play`). **Status:** queued (next).
 
 ### E24 M5 T4 — live input through the engine
 
@@ -48,7 +49,7 @@ in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c do
 - **Acceptance:** a hot-seat game played by keys and mouse from Begin through several days, every
   command accepted by the engine; scripted games compared with the original's frames where the
   commands are the same; the list of facts the view lacks in the epic's risks; the scoped verify.
-- **Depends on:** T3. **Status:** queued.
+- **Depends on:** T3b. **Status:** queued.
 
 ### E24 M5 T5 — the hand-over and the clock
 
@@ -61,7 +62,7 @@ in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c do
   client lane).
 - **Acceptance:** the hand-over and the clock's boxes as recorded, frame by frame; the scoped
   verify.
-- **Depends on:** T3 (T4 for the clock's input). **Status:** queued; original data and Wine
+- **Depends on:** T3b (T4 for the clock's input). **Status:** queued; original data and Wine
   needed.
 
 ### E24 M5 T6 — the battles in play

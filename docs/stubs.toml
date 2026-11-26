@@ -233,6 +233,13 @@ epic   = "E16"
 # reason = "A record's turn without a town shows no warning and no days left, and the player is not banished after the seventh day (E24 M4 T6, design section 5.3): the record's rules are the engine's, which has no days without a town yet, so the map client no longer counts them itself on a record (a recording of the original keeps the test). Lifted by E10 increment 1 (elimination by seven days without a town with its warnings: the adventure lane's), the client then showing the warnings and the banishment from the record's events"
 # epic   = "E24"
 
+# MCL-STUB-5, a comment for the same reason; its marker `// stub: MCL-STUB-5` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-5"
+# where  = "clients/crates/h3-map-client/src/hot_seat.rs::HotSeat::computers"
+# reason = "A computer colour of a hot-seat game takes no turn (E24 M5 T3a; the user at M5 T0): whenever a computer may act, the host ends its turn at once with its End Turn, so any map plays with its computers idle (one that may act but not end its turn, an open decision of its, stops play with an error). Lifted by E31's increment 2 (a computer turn that ends: the host calls `h3_game::computer::choose` for each computer colour, the ai lane's entry point, its battles' sides by `h3_battle_ai::choose`)"
+# epic   = "E24"
+
 # --- town (TWN-STUB-<n>) ---
 
 [[stub]]
