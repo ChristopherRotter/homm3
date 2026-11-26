@@ -509,6 +509,19 @@ proptest! {
                     || state
                         .visit_at(&rules.1, RED, pos)
                         .is_some_and(|v| !v.pass && v.mode == Visit::Neighbour);
+                // E08 T142b: under the compromise (`ADV-QUIRK-15` off, increment 15's design note
+                // §11.1) a flight planned over a tile red had not explored stops on its last stop
+                // node before a step the revealed tile forbids (the start if none), visiting
+                // nothing and charged only the steps up to that node: the points the query reports
+                // there, a node of the chosen path.
+                let short = steps + usize::from(visit) < path.len();
+                if short && !faithful && path[steps..].iter().any(|&tile| !state.is_explored(RED, tile)) {
+                    let at = steps.checked_sub(1).map_or(origin, |last| path[last]);
+                    let hero = moved.hero(HeroId::new(1)).unwrap();
+                    prop_assert_eq!((hero.pos, Some(hero.movement)), (at, reach.points_left(at)));
+                    prop_assert!(events.len() <= steps + 1);
+                    continue;
+                }
                 prop_assert_eq!(steps + usize::from(visit), path.len());
                 prop_assert!(events.len() <= steps + 1);
                 let at = match path.len().checked_sub(2) {

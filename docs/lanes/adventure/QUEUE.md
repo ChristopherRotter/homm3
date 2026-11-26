@@ -33,8 +33,14 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
   generated map's random games and `h3-cli`'s workloads on it cast without help; `h3-sim`'s
   `tests/casts.rs` has a caster setup on the duel (`caster_setup`: a book, the five spells,
   Knowledge 20), the mask property's kind 5.
-- **Depends on:** T144a2 (`adventure/e08-t144a2`). **Status:** T144b next, once T144a2 merges.
-  Then T145 (the audit, the `shared/` task; it applies `adr-drafts/0016-0017-hero-list.md` and
+- **The cut:** **whole, one pull request** (decision 423, the user, 2026-11-26; not the
+  recommendation, two parts as T135b): the map (`e08-spells-36.h3m` with its `h3-map` test), the
+  golden replays with the server lane's counts bumped (`cross-lane`, as T135b1), the plans and
+  oracles (the plans' heroes given the five spells and a book), the properties of §17, the
+  workload on the new map and the census `--with-original-data` (89 prisons, one Market of Time).
+- **Depends on:** nothing open (T144a2's #1191 merged 2026-11-26; the inbox's two property seeds
+  settled first, `adventure/reach-property-seed`). **Status:** T144b next. Then T145 (the
+  audit, the `shared/` task; it applies `adr-drafts/0016-0017-hero-list.md` and
   `adr-drafts/0017-casts-encoding.md`).
 
 ## Inbox
@@ -94,18 +100,6 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
   picks `[602]`, `(mode, level, both, free) = (1, 1, false, false)`; `reach/tests.rs:512`: 4
   against 7).
 
-- 2026-11-26 (the adventure lane, found by CI on #1191, T144a2; **a bug to fix, before T144b**):
-  `h3-adventure`'s property `reach::tests::the_query_and_move_hero_agree` fails on `master`
-  abf981f too (so not T144a2's): at `reach/tests.rs:493` the move takes 4 steps for a reported
-  path of 6 tiles with a visit (`steps + visit == path.len()`). Replay: append
-  `cc 3c683dcc794c795ee6242cd1c5204d11ca4b5cfaf18c97b7efc4f918f26d4816` to
-  `crates/h3-adventure/proptest-regressions/reach/tests.txt` (fails in 1 s; kept out of the file
-  until the fix, so CI stays green). Minimal input: a 6 × 6 map, cells 41 and 42 at 20 and 43 at
-  15, the rest 0; start (0, 0); no other heroes; creatures `[0]`; `faithful = false`; no picks;
-  no key; `(mode, level, both, free) = (1, 1, false, false)`; one town `(6, 1, 0)`. The query
-  and `move_hero` disagree for that hero (level 1: flying?) near the town: read the generator to
-  decode the cells, then fix the side that is wrong and keep the seed in the file.
-
 - 2026-11-26 (the map-client lane, E24 M5 T3b, `map-client/e24-m5-t3b`; **a fact the view lacks,
   MCL-Q58, nothing blocks**): the hot seat sets each human's view up again at its turn from a
   snapshot of its `GameObservation`, and `MapHero` names no facing (the original's hero +0x47),
@@ -127,17 +121,6 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
   `master`). Not committed (it fails every lane's run); its line for
   `crates/h3-adventure/proptest-regressions/reach/tests.txt`:
   `cc e480b42be147825b9fb4ae4b88c9da8b6be90c3eda90aa07202bec75b213dd99 # shrinks to cells = [0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 20, 20, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], width = 4, height = 7, start = (0, 7), others = [(2, 0)], creatures = [0], faithful = false, picks = [], key = false, (mode, level, both, free) = (1, 1, false, false), towns = []`
-
-- 2026-11-26 (the town lane, E09 T56, `town/e09-t56`, `cross-lane`; **for you: a failing case of
-  your property, on `master` too**): `h3-map`'s `tests::view::views_move_as_the_events_say` failed
-  in the town scope's coverage run on a random case and fails the same way on `master` abf981f
-  (#1186 merged) when replayed: `cc 46f90d6608d36cb7b0f20d08ecbdd17c6b19c238e813d1c7a6cf3dcaee593307`
-  (an RoE plan of side 10, two players, one hero each with a kit; `view.rs:2683`: another player's
-  command on the same day, no capture, grows the viewer's explored row 0 from 511 to 1023). Not
-  committed to `proptest-regressions/tests/view.txt` (it would fail every pull request's CI until
-  fixed); append it there to replay. Also: T56 replaced the 118 goldens' `town_ruleset_hash`
-  (0xc830faa47b612bfc, the town part v10; nothing else moved) and added `war_machine: None` and the
-  trades' parameters to `h3-game`'s `tests/mod.rs`' town literals (`a_town_needs_its_siege`).
 
 - 2026-11-25 (the town lane, E09 T55, `shared/e09-t55`, `cross-lane`; **informational,
   mechanical at a merge**): the base profiles gained `quirk.town.visitor_only_trades` and
