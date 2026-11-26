@@ -137,7 +137,11 @@ pub(super) fn university_value(
     if gold_test {
         let gold = rules.adventure().params().market().map(|m| m.cost());
         let stock = gold
-            .and_then(|g| state.treasury(hero.on_map.owner)?.get(g.index()).copied())
+            .and_then(|g| {
+                state
+                    .treasury(hero.on_map.owner)
+                    .and_then(|t| t.get(g.index()).copied())
+            })
             .map_or(0, |amount| i32::from_ne_bytes(amount.to_ne_bytes()));
         if stock < UNIVERSITY_GOLD {
             return 0;

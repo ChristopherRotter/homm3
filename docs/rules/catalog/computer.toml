@@ -357,7 +357,7 @@ numeric  = "float"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (installation.md section 7.39, E23 T1a3d; re-read at E31 T2e): ai_spell_value 0x5273D0 (hero_tile_spell_field 0x4E4FA0, hero_spell_mastery 0x4E5080, hero_spell_cost 0x4E5240 with 0 and -1 at 0x527405, the casts at 0x527425, the switch on the flags and 0x1F8000 at 0x52743E; the raise at 0x527519 to 0x5275A4 with 0.9 at 0x63B7E0 and 3.9 at 0x640578; the map's spells at 0x5274D2 to 0x52750B with crt_sqrt 0x617B94, 0.001 at 0x63A6A0 and 0.009 at 0x640580); hero_spell_cost 0x4E5240 (the armies only with an enemy army, 0x4E52DA)"
+  ref        = "Heroes3.exe code reading (installation.md section 7.39, E23 T1a3d; re-read at E31 T2e): ai_spell_value 0x5273D0 (hero_tile_spell_field 0x4E4FA0, hero_spell_mastery 0x4E5080, hero_spell_cost 0x4E5240 with 0 and -1 at 0x527405, the casts at 0x527425, the switch on the flags and 0x1F8000 at 0x52743E; the raise at 0x527519 to 0x5275A4 with 0.9 at 0x527545 and 3.9 at 0x52757E; the map's spells at 0x5274D2 to 0x52750B with crt_sqrt 0x617B94, 0.001 at 0x5274EB and 0.009 at 0x5274F9); hero_spell_cost 0x4E5240 (the armies only with an enemy army, 0x4E52DA)"
   confidence = "high"
 
 [[rule]]
