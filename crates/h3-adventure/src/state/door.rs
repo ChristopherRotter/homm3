@@ -47,22 +47,59 @@ impl AdventureState {
         doors: u8,
         cast: Cast,
     ) -> Result<(), CastError> {
+        Self::door_ready(core, on, doors, cast)?;
+        let target = self.in_window(part, on.pos, cast.target)?;
+        self.door_target((core, part), (player, on), target)
+    }
+
+    /// [`Self::check_door`]'s tests of the hero (E08 T144a1: shared with
+    /// [`Self::cast_targets`]): movement points left, then a cast of the day left.
+    pub(super) fn door_ready(
+        core: &Ruleset,
+        on: &HeroOnMap,
+        doors: u8,
+        cast: Cast,
+    ) -> Result<(), CastError> {
         if on.movement == 0 {
             return Err(CastError::NoPoints);
         }
         if u32::from(doors) >= casts(core, cast) {
             return Err(CastError::NoCastsLeft);
         }
-        let target = self.in_window(part, on.pos, cast.target)?;
+        Ok(())
+    }
+
+    /// [`Self::check_door`]'s tests of a target in the window (E08 T144a1: shared with
+    /// [`Self::cast_targets`]).
+    pub(super) fn door_target(
+        &self,
+        rules: (&Ruleset, &AdventureRuleset),
+        (player, on): (PlayerId, &HeroOnMap),
+        target: Pos,
+    ) -> Result<(), CastError> {
+        let heroed = |pos| self.heroes.iter().any(|hero| hero.pos == pos);
+        self.door_target_of(rules, (player, on.boat.is_some()), target, heroed)
+    }
+
+    /// [`Self::door_target`] for a hero in a boat or not (`afloat`), with `heroed` telling the
+    /// tiles a hero stands on (E08 T144a1: [`Self::cast_targets`] gathers the window's heroes
+    /// once).
+    pub(super) fn door_target_of(
+        &self,
+        (core, part): (&Ruleset, &AdventureRuleset),
+        (player, afloat): (PlayerId, bool),
+        target: Pos,
+        heroed: impl Fn(Pos) -> bool,
+    ) -> Result<(), CastError> {
         let hidden = !self.explored[usize::from(player.raw())].get(target);
         if hidden && !core.quirks().is_enabled(DOOR_READS_HIDDEN) {
             return Ok(());
         }
-        if !self.door_free(part, target) {
+        if !self.door_free_of(part, target, heroed) {
             return Err(CastError::NotFree);
         }
         let charged = hidden || core.quirks().is_enabled(DOOR_FAILURE_CHARGED);
-        if !charged && !self.door_fits(part, on.boat.is_some(), target) {
+        if !charged && !self.door_fits(part, afloat, target) {
             return Err(CastError::WrongKind);
         }
         Ok(())
@@ -121,17 +158,25 @@ impl AdventureState {
     /// blocked tile and no rock, no object's visitable tile, no hero (in a boat or not) and no
     /// empty boat there.
     fn door_free(&self, part: &AdventureRuleset, pos: Pos) -> bool {
+        self.door_free_of(part, pos, |at| {
+            self.heroes.iter().any(|hero| hero.pos == at)
+        })
+    }
+
+    /// [`Self::door_free`] with `heroed` telling the tiles a hero stands on.
+    fn door_free_of(
+        &self,
+        part: &AdventureRuleset,
+        pos: Pos,
+        heroed: impl Fn(Pos) -> bool,
+    ) -> bool {
         self.map.tile(pos).is_some_and(|&tile| {
             let tile = self.live(pos, tile);
             let ground = matches!(
                 part.passage(tile.terrain),
                 Some(Passage::Land(_) | Passage::Water(_))
             );
-            ground
-                && !tile.blocked
-                && !tile.visitable
-                && !self.is_empty_boat(pos)
-                && !self.heroes.iter().any(|hero| hero.pos == pos)
+            ground && !tile.blocked && !tile.visitable && !self.is_empty_boat(pos) && !heroed(pos)
         })
     }
 

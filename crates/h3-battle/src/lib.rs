@@ -34,6 +34,7 @@ mod created;
 mod damage;
 mod effects;
 mod error;
+pub mod estimate;
 mod event;
 mod flee;
 mod geometry;

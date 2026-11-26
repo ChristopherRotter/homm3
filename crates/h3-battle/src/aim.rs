@@ -1563,7 +1563,7 @@ fn spell_value(
     (id, spell): (SpellId, &BattleSpell),
     c: Caster,
 ) -> i32 {
-    let m = magic::mastery_at(ruleset, ground, hero, id);
+    let m = magic::mastery_at(ruleset, ground, &hero.magic, id);
     let cost = i32::from(crate::mana::cost(spell, hero.magic.masteries.get(id), 0));
     if cost > c.mana {
         return 0;

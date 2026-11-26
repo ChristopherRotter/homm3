@@ -104,7 +104,7 @@ type Case = (
 );
 
 #[rustfmt::skip]
-const CORPUS: [Case; 21] = {
+const CORPUS: [Case; 24] = {
     use MapSize::{ExtraLarge as XL, Large as L, Medium as M, Small as S};
     use Monsters::{Normal as Nm, Strong as St, Weak as Wk};
     use Water::{Islands as I, None as D, Normal as N};
@@ -130,6 +130,9 @@ const CORPUS: [Case; 21] = {
         ("xl2-4p-seed0", XL, 2, 4, 0, 0, 0, N, Nm, 0, "8XM12"),
         ("xl2-8p-t4-islands", XL, 2, 8, 4, 0, 0, I, St, 123_456_789, "8XM8"),
         ("m1-2p-t1", M, 1, 2, 1, 0, 0, N, Nm, 1_400_000_001, "3SB0b"),
+        ("s1-3p-2sm2i2", S, 1, 3, 0, 0, 0, N, Nm, 1_350_000_003, "2SM2i(2)"),
+        ("s1-2p-2sm0k", S, 1, 2, 0, 0, 0, N, Nm, 1_350_000_000, "2SM0k"),
+        ("s1-1p-c1-2sm0k", S, 1, 1, 0, 1, 0, N, Nm, 1_450_000_002, "2SM0k"),
     ]
 };
 
@@ -149,7 +152,7 @@ fn corpus_settings(case: usize) -> (&'static str, Settings, u32, &'static str) {
 }
 
 // covers: RMG-SET-006, RMG-TPL-005, RMG-TPL-007
-/// The 21 cases of the oracle's corpus draw the original's templates: the first `rand()` after
+/// The cases of the oracle's corpus draw the original's templates: the first `rand()` after
 /// `srand(seed)` (no water Random draws nothing before it) over the templates kept, in SoD's
 /// table, the only draw before step 1.
 #[test]
@@ -459,5 +462,29 @@ proptest! {
             prop_assert_eq!(log.steps, vec![0]);
             prop_assert!(map.settings.water != Water::Random);
         }
+    }
+}
+
+// covers: RMG-TPL-008
+/// RMG-QUIRK-24 against the oracle (E14 T3a, `docs/lanes/rmg/ORACLE.md`): the corpus's 2SM2i(2)
+/// case with three players puts the third colour on position 7, which no zone has, and the
+/// original's map leaves that colour (tan) out; its two 2SM0k cases put both colours on the two
+/// zones with Ownership, and the original's maps give both their main towns.
+#[test]
+fn the_corpus_starts_without_ownership_place_the_colours_as_the_original() {
+    let packs = original("base:faithful");
+    let two = [Some(0), Some(1), None, None, None, None, None, None];
+    for (id, positions) in [
+        (
+            "s1-3p-2sm2i2",
+            [Some(0), Some(1), None, None, None, None, None, Some(2)],
+        ),
+        ("s1-2p-2sm0k", two),
+        ("s1-1p-c1-2sm0k", two),
+    ] {
+        let case = CORPUS.iter().position(|c| c.0 == id).unwrap();
+        let (_, s, seed, _) = corpus_settings(case);
+        let map = run(packs, &s, seed).0.unwrap();
+        assert_eq!(map.positions, positions, "{id}");
     }
 }

@@ -23,6 +23,7 @@ use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 use h3_content::{
     ContentKey, CreatureTypeId, FactionId, PackManifest, ResourceId, Ruleset, SpellId, TerrainId,
 };
+use h3_heroes::SpellSources;
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
@@ -943,6 +944,10 @@ pub struct AdventureRuleset {
     altar_factions: Vec<(FactionId, AltarScreens)>,
     /// The adventure spells' bindings in spell order (E08 T142a).
     spells: Vec<(SpellId, AdventureSpell)>,
+    /// What may make the bound spells without a target available to a hero (E08 T144a1, E08
+    /// decision 422: the game's listing of the casts on the map), derived from the core and the
+    /// bindings at compile; not hashed (it follows from both).
+    cast_sources: SpellSources,
     hash: u64,
 }
 
@@ -1051,8 +1056,16 @@ impl AdventureRuleset {
             random_dwellings: tables.random_dwellings.into_iter().collect(),
             altar_factions: tables.altar_factions.into_iter().collect(),
             spells: tables.spells.into_iter().collect(),
+            cast_sources: SpellSources::default(),
             hash: 0,
         };
+        let listed: Vec<SpellId> = part
+            .spells
+            .iter()
+            .filter(|(_, effect)| !effect.targets())
+            .map(|&(spell, _)| spell)
+            .collect();
+        part.cast_sources = SpellSources::new(core, &listed);
         part.hash = hash_of(&part);
         Ok(part)
     }
@@ -1200,6 +1213,12 @@ impl AdventureRuleset {
     /// increment 15's design note §3): each bound once, each behaviour once.
     pub fn spells(&self) -> &[(SpellId, AdventureSpell)] {
         &self.spells
+    }
+
+    /// What may make the bound spells without a target available to a hero, in spell order (E08
+    /// T144a1: `h3_heroes::SpellSources`, the game's listing of the casts, decision 422).
+    pub fn cast_sources(&self) -> &SpellSources {
+        &self.cast_sources
     }
 
     /// What a cast of `spell` does on the map, if the part binds it (ADV-SPL-001; E08 T142a):

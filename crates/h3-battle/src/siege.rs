@@ -296,7 +296,7 @@ pub(crate) fn setup(
         .and_then(|id| ruleset.spell(id).map(|spell| (id, spell)))
         .map(|(id, spell)| {
             let heros = heroes[BattleSide::Defender.index()].as_ref().map(|h| {
-                let mastery = crate::magic::mastery_at(ruleset, battlefield, h, id);
+                let mastery = crate::magic::mastery_at(ruleset, battlefield, &h.magic, id);
                 crate::magic::base_value(h, spell, mastery)
             });
             let least = u64::from(record.moat_damage);

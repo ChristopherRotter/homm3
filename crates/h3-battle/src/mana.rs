@@ -7,7 +7,7 @@
 
 use h3_content_battle::BattleSpell;
 use h3_content_battle::{Ability, AuraTarget, BattleRuleset};
-use h3_contracts::{BattleSetup, BattleSide};
+use h3_contracts::{ArmyStack, BattleSetup, BattleSide};
 
 use crate::event::{Event, EventKind, Sink};
 use crate::state::{BattleState, StackId, StackTraits};
@@ -20,13 +20,27 @@ use crate::state::{BattleState, StackId, StackTraits};
 /// the battle never does (BAT-QUIRK-15, the rule).
 // rule: BAT-MAG-054
 pub(crate) fn cost_change(ruleset: &BattleRuleset, setup: &BattleSetup, side: BattleSide) -> i8 {
+    armies_cost_change(
+        ruleset,
+        &setup.army(side).stacks,
+        &setup.army(side.opponent()).stacks,
+    )
+}
+
+/// [`cost_change`] of a hero whose own army is `own` and whose enemy's is `other` (also with no
+/// battle: the computer's simulated combat, `crate::estimate`, E31 T2c).
+// rule: BAT-MAG-054
+pub(crate) fn armies_cost_change(
+    ruleset: &BattleRuleset,
+    own: &[ArmyStack],
+    other: &[ArmyStack],
+) -> i8 {
     let (mut up, mut down) = (0i8, 0i8);
-    for army in BattleSide::BOTH {
-        let own = army == side;
-        for stack in &setup.army(army).stacks {
+    for (stacks, mine) in [(own, true), (other, false)] {
+        for stack in stacks {
             for ability in ruleset.abilities(stack.creature) {
                 if let Ability::SpellCost { amount, affects } = *ability
-                    && (affects == AuraTarget::Allies) == own
+                    && (affects == AuraTarget::Allies) == mine
                 {
                     up = up.max(amount);
                     down = down.min(amount);

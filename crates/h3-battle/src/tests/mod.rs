@@ -45,7 +45,7 @@ mod sieges;
 mod specialist;
 mod spells;
 mod strike;
-mod support;
+pub(crate) mod support;
 mod tactics;
 mod terrain;
 mod timed;

@@ -23,20 +23,22 @@ resumes (the epic file); its tasks are cut then.
 - **E31 increment 2** (refined 2026-11-25, AI-Q32; the epic file's "Increment 2's tasks", its
   record `E31-log.md` T2): the `shared/` pull request #1163 merged first (the module's paths,
   `SignedX87`, ADR-0030). Then, one session each, the leaves first: T2a the frame (done
-  2026-11-25), T2b the simulated combat's sides and melee (done 2026-11-25), **T2c** the casts
-  (next), T2d the start's values, T2e the spells' and skills' values, T2f the artifacts, T2g the
-  army and town values, T2h the object value, T2i the planning, T2j the walk with the exit's
-  property tests and the gated benchmark, T2k trace T-A's harness and days 1 to 3. Each with its
-  `CPU-` ids, tests, coverage 100 %, stubs by epic.
-  - **T2c — the simulated combat's spells and Necromancy, and the fight estimate** (next; survey
-    §2.2; the epic file's table: `sim_cast_spell` 0x425BD0 and the spell values 0x4249D0 to
-    0x425B10, 0x423C80, 0x423DE0, `sim_stack_take_value` 0x423EA0, `sim_necromancy` 0x426DF0,
-    `ai_army_fight_sim` 0x427330; about 2 600 of the original's instructions): measure its size
-    at the start and confirm a cut by size; `Heroes3.exe` staged for the blind re-reads. T2b's
-    `computer/sim.rs` is its base: `cast` lifts AI-STUB-7, `sim_combat_start`'s casting inputs
-    (spell points, may cast, the tile's ground, `[game]+0x1F698`) and a stack's value per hit
-    point (+0x30) and creature (+0x04) join `Side` and `Stack`, and the module's
-    `expect(dead_code)` goes once the estimate calls it.
+  2026-11-25), T2b the simulated combat's sides and melee (done 2026-11-25), T2c the casts,
+  Necromancy and the fight estimate (done 2026-11-25; the simulated combat now
+  `h3_battle::estimate`, AI-Q34), **T2d** the start's values (next), T2e the spells' and skills'
+  values, T2f the artifacts, T2g the army and town values, T2h the object value, T2i the
+  planning, T2j the walk with the exit's property tests and the gated benchmark, T2k trace T-A's
+  harness and days 1 to 3. Each with its `CPU-` ids, tests, coverage 100 %, stubs by epic.
+  - **T2d — the start's values** (next; survey §1.5, §1.6, §2.5; the epic file's table:
+    `ai_turn_start` 0x4297C0, `ai_turn_start_values` 0x527960, `ai_resource_weights` 0x428740, the
+    recruit reserve, the eyes, the heroes' effectiveness, the vision's value, the threat fold
+    `ai_enemy_reach_fold` 0x4280E0 and `ai_town_capture_sim` 0x428410, the difficulty's blend, the
+    terrain shares; about 2 300 of the original's instructions): measure its size at the start
+    and confirm a cut by size; `Heroes3.exe` staged for the readings. `ai_town_capture_sim` is the
+    first caller of `h3_battle::estimate` outside `computer::fight` (1.25 against the garrison's
+    0.75, no garrison hero); the blend's weights are `computer::fight::blend`'s (they move to the
+    turn's start with this task if the turn keeps them); `fight`'s `expect(dead_code)` goes when
+    its first caller lands.
 
 ## Inbox
 
@@ -61,6 +63,19 @@ now**):
 
 **From the adventure lane** (E08 T137b, `adventure/e08-t137b`, docs only; **planned, nothing to do now**; E08 T140, `shared/e08-t140`, `cross-lane`; E08 T142a, `adventure/e08-t142a`, `cross-lane`; **in your paths, nothing to do**):
 
+- 2026-11-25 (the adventure lane, E08 T144a1, `adventure/e08-t144a1`, `cross-lane` with the
+  user's consent; **for your decision before E08 T144a2**): `h3_game::legal_commands` lists each
+  hero's casts without a target last (GAM-SPL-001: Summon Boat, Fly and Water Walk); Scuttle
+  Boat's and Dimension Door's targets come per hero from `h3_game::legal_cast_targets` (up to
+  323 each, in row order; E08 decision 422, as `legal_moves` gives the moves). Until
+  encoding v21 `adventure/rollout.rs`' `choose` leaves them out of its draw (two lines; no
+  workload's course moved). T144a2 (`cross-lane`) brings **v21** with a layout other than the
+  2026-11-21 note's (E08 decision 421): five entries per hero slot, 40, after `SPELL_BOOK`, the
+  door's and Scuttle Boat's target in the **tile head** (no window head). **Yours to choose:** the
+  casts' weight in the random draw (the adventure lane's proposal: each castable hero and spell
+  one draw among the commands and moves, a targeted one's target then uniform among its queried
+  targets, as a hero's moves), and whether the step cap needs a change (a cast's charged failure spends spell
+  points, so a turn's casts end). Without an answer by T144a2 the proposal is built.
 - 2026-11-24 (the adventure lane, E08 T142a, `cross-lane` with the user's consent; **in your
   paths, nothing to do**): `h3_game::GameCommand::Cast` exists; `h3-sim`'s `tileless_entry`
   (`adventure/action.rs`) gives it no entry, and `legal_commands` lists no cast until E08 T144a,

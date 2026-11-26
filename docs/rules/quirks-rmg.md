@@ -11,16 +11,16 @@ Known differences between the original's random map generator (GOG Complete's `H
 ### RMG-QUIRK-1 — Zones whose town-type bytes nobody writes
 - Class: fix-optional (the user, 2026-11-24, T1c2: "model the oracle")
 - Context / rules affected: step 2, `rmg_level_zones_partition` 0x53E050; `rmg_zone_generator_init` 0x5329E0 and its draw `rmg_zone_town_type_draw` 0x532A5B; survey §2.2, §3.2 (ZON)
-- Original behavior: step 2 builds a temporary zone on the stack for each level's fit tests, and a water zone through operator new (0xD4 bytes) for each water point. Neither writes the town-type bytes +0x41..+0x49 before `rmg_zone_generator_init` counts them: the count decides whether 0x532A5B draws (`rand() %` the count) and which town type the zone generator gets. A water zone's +0x40, +0x84, +0x94, +0xC..+0x18 and its zone generator's +8 are not written either. Under Wine (ORACLE.md, "The phase oracle") the temporary zone drew in every corpus case that runs step 2 (18 of 21; the other three have one level and no water); water zones drew 11 or 17 times in the water-heavy cases; `l1-4p-b`'s second map in one game drew once less and differs, moved by the environment's size.
+- Original behavior: step 2 builds a temporary zone on the stack for each level's fit tests, and a water zone through operator new (0xD4 bytes) for each water point. Neither writes the town-type bytes +0x41..+0x49 before `rmg_zone_generator_init` counts them: the count decides whether 0x532A5B draws (`rand() %` the count) and which town type the zone generator gets. A water zone's +0x40, +0x84, +0x94, +0xC..+0x18 and its zone generator's +8 are not written either. Under Wine (ORACLE.md, "The phase oracle") the temporary zone drew in every corpus case that runs step 2 (18 of 21; the other three have one level and no water); water zones drew 11 or 17 times in the water-heavy cases; `l1-4p-b`'s second map in one game drew once less and differs, moved by the environment's size. **Measured** (E14 T3a, the memory record, `clients/capture/rmg/zones.txt`; ORACLE.md, "The memory record and the fixed environment"): the temporary zone's bytes are the stack's, the same in every start and environment tried, 5 to 7 town types set in each of the corpus's 29 (it draws every time); a water zone's are the heap's (pointer-like values), set in 42 of 44; the water zones' follow the size of the game's environment block in 16-byte steps, and a map moves only where a water zone's set count crosses 0 (one draw fewer); the bytes' values (not whether each is 0) and the zone generator's +8 differ between fresh starts.
 - Intended/expected behavior: zeroed bytes: no town type set, no draw.
 - Impact: gameplay-altering (the stream shifts from step 2 on: a different map for the same seed); the drawn town type of a water zone reaches its guards' creatures.
 - Community status: unknown
-- Sources: code reading (survey §2.2, quirk candidates); observation (ORACLE.md, the phase oracle's draw log)
+- Sources: code reading (survey §2.2, quirk candidates); observation (ORACLE.md, the phase oracle's draw log; E14 T3a, the memory record)
 - Flag: `quirk.rmg.zone_memory_model`
-- Defaults: faithful = on (the **oracle model**: the bytes as a fresh start's first map holds them under the oracle, measured by the phase hooks when step 2 is ported and kept as the model's data), fixed = off (zeroed, no draw)
-- Limits (documented, not a defect of the port): a second map in one game and Windows' memory are out of reach; the byte-for-byte claim holds for a fresh start's first map under the oracle's environment (`docs/lanes/rmg/TRAPS.md`, "The oracle"). In T1c2's sandbox even a first map varied once (`m2-4p` in a corpus run, as kept when run alone right after; ORACLE.md): the measurement at step 2's port must say what moves the stack bytes before the model is fixed.
+- Defaults: faithful = on (the **oracle model**: the bytes as a fresh start's first map holds them under the oracle, measured by the phase hooks in T3a, `zones.txt`, in the form fresh starts agree on; the model's form decided at increment 3's checkpoint), fixed = off (zeroed, no draw)
+- Limits (documented, not a defect of the port): a second map in one game, another size of the game's environment and Windows' memory are out of reach; the byte-for-byte claim holds for a fresh start's first map under the oracle's fixed environment (`h3drive.py`'s `H3_FIXED_ENV` with the record's paths; `docs/lanes/rmg/TRAPS.md`, "The oracle"). The variation T1c2's and T2c's sandboxes saw in `m2-4p`'s first map was their environment's size (T3a).
 - Regression test: when step 2 is ported (the corpus's step 2 dumps and draw logs, both profiles)
-- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+- Decided by / date: the user, 2026-11-24 (T1c2); measured (E14 T3a), the model's form open (increment 3's checkpoint)
 
 ### RMG-QUIRK-2 — A river delta's x bound reads the next cell
 - Class: fix-optional (the user, 2026-11-24, T1c2: the oracle model, as RMG-QUIRK-1)
@@ -299,11 +299,11 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Intended/expected behavior: a zone without Ownership marks no start.
 - Impact: gameplay-altering (a player without a start zone; what steps 4 and 5 and the writer then give that colour and those zones is read with their steps)
 - Community status: unknown
-- Sources: code reading (E14 T2c, `rmg_generate_map` 0x5499A1 to 0x549ACD; a second look by a fresh agent's re-read)
+- Sources: code reading (E14 T2c, `rmg_generate_map` 0x5499A1 to 0x549ACD; a second look by a fresh agent's re-read); observation (E14 T3a, the oracle's corpus cases `s1-3p-2sm2i2`, `s1-2p-2sm0k`, `s1-1p-c1-2sm0k`, `docs/lanes/rmg/ORACLE.md`): with 2SM2i(2) and three players the original writes a map whose description says three humans and whose player block has two, red and blue with their main towns, tan (the third) neither playable nor with a town; 2SM0k with two players, and with one and a computer, gives both their main towns (the phantom start 7 unused there)
 - Flag: `quirk.rmg.unowned_start_seventh` (registry position 53)
 - Defaults: faithful = on, fixed = off
 - Regression test: `h3-rmg`'s `a_start_without_ownership_marks_the_eighth_human_start`, `h3-pack-rmg`'s `two_sm2i_2_gives_the_third_player_a_seventh_start` (both profiles)
-- Decided by / date: the user, 2026-11-25 (E14 T2c); unconfirmed by the oracle (no corpus case draws 2SM2i(2) or 2SM0k)
+- Decided by / date: the user, 2026-11-25 (E14 T2c); confirmed by the oracle (E14 T3a: the third player without a start zone is left out of the written map)
 
 ## Considered, not quirks
 
@@ -342,4 +342,4 @@ Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the
 | Candidate | What decides | Survey |
 |---|---|---|
 | Both 6LM10 templates connect zone 13 to itself | what step 6 makes of a self-connection (a fault would be RMG-QUIRK-3's or -4's class) | §3.1 |
-| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0 | what steps 4 and 5 and the writer give such a zone and the colour at position 7 | §3.1 |
+| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0 | what steps 4 and 5 give such a zone (the writer leaves the colour at position 7 out of the map: T3a's `s1-3p-2sm2i2`, RMG-QUIRK-24) | §3.1 |

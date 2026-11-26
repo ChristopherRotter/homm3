@@ -89,6 +89,18 @@ impl AdventureState {
         target: Option<Pos>,
     ) -> Result<(), CastError> {
         let target = self.in_window(part, from, target)?;
+        self.scuttle_target(core, player, target)
+    }
+
+    /// [`Self::check_scuttle`]'s test of a target in the window (E08 T144a1: shared with
+    /// [`Self::cast_targets`]): an empty boat, or under `ADV-QUIRK-52` off a tile `player` has
+    /// not explored.
+    pub(super) fn scuttle_target(
+        &self,
+        core: &Ruleset,
+        player: PlayerId,
+        target: Pos,
+    ) -> Result<(), CastError> {
         let hidden = !self.explored[usize::from(player.raw())].get(target);
         if self.is_empty_boat(target) || (hidden && !core.quirks().is_enabled(SCUTTLE_READS_HIDDEN))
         {

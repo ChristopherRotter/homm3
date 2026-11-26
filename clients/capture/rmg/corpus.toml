@@ -177,3 +177,24 @@ why = "two players with one team chosen"
 seed = 1400000001
 players = 2
 teams = 1
+
+[[case]]
+id = "s1-3p-2sm2i2"
+why = "RMG-QUIRK-24 (E14 T3a): 2SM2i(2), whose human starts 3 and 5 have no Ownership, with three players"
+seed = 1350000003
+size = "S"
+players = 3
+
+[[case]]
+id = "s1-2p-2sm0k"
+why = "RMG-QUIRK-24 (E14 T3a): 2SM0k, whose computer starts 3 to 8 have no Ownership, two players"
+seed = 1350000000
+size = "S"
+
+[[case]]
+id = "s1-1p-c1-2sm0k"
+why = "RMG-QUIRK-24 (E14 T3a): 2SM0k with a computer-only player"
+seed = 1450000002
+size = "S"
+players = 1
+computers = 1

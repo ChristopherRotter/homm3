@@ -233,6 +233,13 @@ epic   = "E16"
 # reason = "A record's turn without a town shows no warning and no days left, and the player is not banished after the seventh day (E24 M4 T6, design section 5.3): the record's rules are the engine's, which has no days without a town yet, so the map client no longer counts them itself on a record (a recording of the original keeps the test). Lifted by E10 increment 1 (elimination by seven days without a town with its warnings: the adventure lane's), the client then showing the warnings and the banishment from the record's events"
 # epic   = "E24"
 
+# MCL-STUB-5, a comment for the same reason; its marker `// stub: MCL-STUB-5` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-5"
+# where  = "clients/crates/h3-map-client/src/hot_seat.rs::HotSeat::computers"
+# reason = "A computer colour of a hot-seat game takes no turn (E24 M5 T3a; the user at M5 T0): whenever a computer may act, the host ends its turn at once with its End Turn, so any map plays with its computers idle (one that may act but not end its turn, an open decision of its, stops play with an error). Lifted by E31's increment 2 (a computer turn that ends: the host calls `h3_game::computer::choose` for each computer colour, the ai lane's entry point, its battles' sides by `h3_battle_ai::choose`)"
+# epic   = "E24"
+
 # --- town (TWN-STUB-<n>) ---
 
 [[stub]]
@@ -310,10 +317,16 @@ reason = "The original's computer player (E31 T2a): an open decision of the comp
 epic   = "E31"
 
 [[stub]]
-id     = "AI-STUB-7"
-where  = "crates/h3-game/src/computer/sim.rs::cast"
-reason = "The original's computer player (E31 T2b): the simulated combat's casts (sim_cast_spell 0x425BD0 in sim_combat_run 0x426BC0 and sim_engage_now 0x4267C0: one spell a side and round, the best of spells 10 to 69 it can afford by its AI category, with the side's spell points, whether it may cast and the battle tile's ground of sim_combat_start 0x423EE0, and Necromancy) do nothing: E31 T2c (survey section 2.2)"
+id     = "AI-STUB-8"
+where  = "crates/h3-game/src/computer/fight.rs::fight"
+reason = "The original's computer player (E31 T2c, AI-Q34): the fight estimate's own factor (ai_army_fight_sim 0x427330) is the hero's +0x47A, which hero_reset 0x4D8720 draws once per hero (the class's Aggression of HCTRAITS.TXT, 0.8 to 1.2, times random_between(75, 100) / random_between(100, 125)); the class value is not harvested and no hero holds the draw: 1.0 until the harvest (a core field, the battle lane's harvester; their inboxes) and the policy's Memory drawing each hero's value from the caller's stream"
 epic   = "E31"
+
+[[stub]]
+id     = "AI-STUB-9"
+where  = "crates/h3-game/src/computer/fight.rs::fight"
+reason = "The original's computer player (E31 T2c): the fight estimate reads the scenario's conditions (ai_army_fight_sim 0x427330: its own factor halved for the victory condition's hero, kind 5; plus 5 000 000 for an enemy hero that is the victory condition's, counting for the player, victory_condition_applies 0x5F15A0, or the loss condition's, kind 1); the engine has no victory or loss conditions: none until E10 increment 2 (survey section 5.4)"
+epic   = "E10"
 
 # --- rmg (RMG-STUB-<n>) ---
 

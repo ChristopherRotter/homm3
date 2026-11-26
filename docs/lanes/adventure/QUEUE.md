@@ -4,35 +4,46 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143a and T143b done (2026-11-25), T144 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143a and T143b done (2026-11-25), T144a1 done (2026-11-25), T144a2 and T144b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T144 — the casts in the env, the replays and the maps** (round 8; design note
 `E08-design.md` §17, §18, §20, §21; T143b, Dimension Door, done 2026-11-25)
 
-- **T144a, `legal_commands` and the env** (`adventure/e08-t144a`; `cross-lane`, the AI lane's
-  `h3-sim`): GAM-SPL-001's legal casts per own hero on the map, after its moves: each castable
-  spell without a target once (Summon Boat, Fly, Water Walk), the door's and Scuttle Boat's every
-  target `check_cast` accepts in the window in row order (up to 323 each); the env's entries
-  (encoding v21: three without a target, two windows of 19 × 17 relative to the hero, the masks
-  from `legal_commands`) and the own hero part's day spells and casts left; the random
-  workloads' weight for the casts is the bots' call (§21). Confirm the cut at its start.
+- **T144a2, the env's encoding v21** (`adventure/e08-t144a2`; `cross-lane`, the AI lane's
+  `h3-sim`; T144a cut in two at its start, decisions 420, 421; T144a1, `legal_commands`' casts,
+  done 2026-11-25): five entries per hero slot (Summon Boat, Scuttle Boat, Fly, Water Walk,
+  Dimension Door: 40, appended after `SPELL_BOOK`), the door's and Scuttle Boat's target in the
+  existing tile head (decision 421, not design §17's windows), the masks from `legal_commands`
+  and, for the door and Scuttle Boat, from `legal_cast_targets` (decision 422: their targets are
+  a per-hero query, as the moves are; an entry is legal when its query is not empty);
+  `decode`, `encode`, `legal_mask`, `tile_mask`, the masks' property routing the new block
+  (`TRAPS.md`: bound every open-ended read of an earlier block); the random agent's draw takes
+  the casts again (remove T144a1's filter in `adventure/rollout.rs`; the targeted ones by the
+  query, drawn as a hero's moves are) with the weight the AI lane's inbox note asks it to choose; every moved `random-play-*` workload compared per function
+  with `master` and re-baselined with the reason, the seed-chosen env tests and `h3-cli`'s
+  workload test (the sea XL fork's boarding) re-checked. The own hero part's day spells are in
+  the observation since T142a (the own hero view's `spells`, the door's casts made among them);
+  whether the casts left need a field of their own (design §17) is this task's call.
 - **T144b, the maps, the replays, the plans and oracles, the benchmarks** (§17):
   a generated map with a prison, the Market of Time, special grounds, boats and water, a hero
   with the five spells and a book; the golden replays (each spell, the failures, the prison
   freed and full, both flag settings of §11); the hygiene property under `strict-fixed` (the
   flight's, the door's and Scuttle Boat's legal moves never depend on a hidden tile); the
   census `--with-original-data` (89 prisons, one Market of Time).
-- **Inputs:** T143a's and T143b's records in `E08-log.md` (`check_cast` is the oracle of a
+- **Inputs:** T143a's, T143b's and T144a1's records in `E08-log.md` (`check_cast` is the oracle of a
   listed target: under `strict-fixed` the door's are the explored free tiles of the hero's kind
   and every hidden tile of the window, Scuttle Boat's the explored empty boats and every hidden
   tile; under `faithful` the hidden truth, the door's wrong kind listed and charged).
-- **For T144b** (noted by T143a, T143b): `view.rs`' hygiene oracle already follows the boat
-  events and `CastFailed`, and the door's arrival is a teleporter's `HeroTeleported` (its
-  `jumper` handling); its faithful exception for the door's and the scuttle's hidden targets
-  (the original's leaks) is T144b's, modelled on T142b's for flyers, once `legal_commands` lists
-  the casts (T144a).
-- **Depends on:** T143b (`adventure/e08-t143b`). **Status:** ready once T143b merges. Then T145
-  (the audit, the `shared/` task).
+- **For T144b** (noted by T143a, T143b, T144a1): `view.rs`' hygiene oracle already follows the
+  boat events and `CastFailed`, and the door's arrival is a teleporter's `HeroTeleported` (its
+  `jumper` handling); its faithful exception for the door's and the scuttle's hidden targets came
+  with T144a1 (`targets_hidden`, beside T142b's `flies`); the plans' oracles probe and check the
+  listed casts and the queried targets (`play.rs`' `accepted_casts`, `check_casts`,
+  `accepted_targets`; `view.rs`' `check_same` compares the queries). The plans' heroes meet the casts only
+  through the shrines' and guilds' spells (no plan gives Summon Boat, Fly, Water Walk or the door):
+  the generated map is where they are played.
+- **Depends on:** T144a1 (`adventure/e08-t144a1`). **Status:** T144a2 ready once T144a1 merges,
+  then T144b. Then T145 (the audit, the `shared/` task).
 
 ## Inbox
 
@@ -46,24 +57,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `verified`). The market's and the Black Market's purchase and the sale read a combination's cost
   as that sum from now on (a combination reaches the stock only through the picker's fallback).
 
-- 2026-11-25 (the rmg lane, E14 T2b, #1166; **a failing property test, yours to fix**): `h3-map`'s
-  `tests::view::a_viewer_learns_nothing_it_cannot_see` failed in CI on a random case (run
-  45575761733, attempt 2; the same code passed attempt 1) and fails the same way on `master`
-  6498273b3 when replayed: append `cc 9526a19ce0aab98df36f3923b7e3e43427a6a4136173faaab8cb74c1047bc105`
-  to `crates/h3-map/proptest-regressions/tests/view.txt` and run the test (about 30 s after the
-  build). The assertion at `view.rs:3215` (the `proptest!` block's line on `master`): after a
-  `TownBuilt` of player 0's town 0, one side holds `TownChanged` (level 3, hall 2), `TownStackSeen`
-  and `TownIncomeSeen` that the other has not (a town view moving without the events that move it,
-  or the reverse; the shrunk plan is RoE, side 11, one level). Not committed anywhere: the seed
-  would make every run fail until the fix.
-- 2026-11-25 (the map client lane, E24 M5 T1b, `map-client/e24-m5-t1b`; **for your decision,
-  nothing to build for us**): read while settling MCL-Q51 (`E24-design.md` §5.23): after a
-  **draw** at a neutral mine's single stack, `monster_battle` writes the count left, 0, into slot
-  0 and `visit_mine` 0x4A39A0 keeps its creature there (0x4A3AEB); `army_has_creatures` 0x4496A0
-  reads only the types, so the next visitor is asked ADVEVENT 84 again (what its battle of 0 then
-  does: not read). `end_mine_battle` (ADV-MIN-002) leaves no guards after a draw (the next visit
-  flags it); survey `E08-economy.md` §3.2 names only a loss, a retreat and a surrender. Your call
-  whether that is a deviation to record (a quirk) or as intended.
 - 2026-11-25 (the town lane, E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to
   build now**): increment 6, the town's trades, is designed (design note `docs/epics/E09-design.md`
   Part H; drafts `docs/lanes/town/adr-drafts/*-increment-6.md`, accepted at `TWN-Q37`). Planned

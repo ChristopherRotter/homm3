@@ -3649,3 +3649,50 @@ On `map-client/e24-m5-t2c` (`cross-lane`), from `master` at 8fa2711 (#1175, T2b'
   afresh, every change the headless loop's, its "not found: BUTTON.WAV" line as T2a's);
   `clients/scripts/check.sh` (every gate; the client lane's record tests as before); the
   map-client scope's verify.
+
+### M5 T3a — the hot seat's session, headless (2026-11-25)
+
+On `map-client/e24-m5-t3a`, from `master` at b1e7a44 (#1182, T2c's, merged; CI's Clients green
+there). Original data staged from the user's repo folder at the start (the four LODs, both
+executables, the five DLLs, the sound and video archives, `shell-videos.vid`, both tars, the 40
+MP3s, `games/`, the SoD tables; SHA-256 checked against the PC's) and the four manuals and three
+help files; the PC not needed after that. The VM restarted once: the setup's baseline stopped at
+its coverage step (fmt, clippy, the doc tests and deny passed), CI's green Clients run on
+`master` standing in.
+
+- **Asked at the start** (the user): T3 cut in two, T3a the session hosted headless (this), T3b
+  the session in the window (the window's End Turn through the session, the view switched at each
+  human's start, the session's clock on the window's); rejected: T3 whole. Begin from the shell
+  waits for the client lane's shell crate (its inbox, T2b) and Load for the engine's loaded
+  humans (the adventure lane's inbox, 2026-11-21): both stay in T3b's scope.
+- **Built:**
+  - `h3_map_client::hot_seat` (new): `HotSeat` (`start`, `turn`, `end_turn`, `elapse`,
+    `deadline`, `record`, `seats`, `seat`) hosting `GameSession::start` with a `Seat` per player
+    (its colour, human or not, its hot-seat name by colour, its folded view, the commands its last
+    `GameTurn` listed, its clock); each frame read back from its text and folded into its seat
+    (`GameSnapshot`, `GameEvents` by `GameObservation::fold`, `GameReveal`, `GameTurn`,
+    `GameClock`; a gap in a seat's numbers an error; a battle's `Snapshot` left for T6); a
+    computer colour's turn ended at once whenever it may act (`MCL-STUB-5`, registered); `clock`
+    (the turn's duration's record to the session's `Clock`: `TURN_MINUTES`, the original's
+    `turn_duration_minutes` 0x641AE8; `UNLIMITED` the record 10).
+  - `play`: started through `HotSeat` (T2b's `start` and `Started` gone), the window shown at the
+    start of the human in turn (a computer's turn ended before it); `begin` takes the turn's
+    duration (T2b's left the record 0, a minute, harmless until the clock ran it); `h3-map-view
+    play` takes `--duration <record>`, `--turns <n>` (headless: that many End Turns of the
+    humans in turn, a line each; not with `--check` or `--measure`) and `--records <dir>` (each
+    human's record at the end, `<stem>.player-<k>.jsonl` as `h3-server record` names them);
+    `headless` and `write_records` public for T3b and the shell.
+- **Checked:** the module's tests (six: the durations' minutes and their refusal; two humans
+  passing the turn, each seat's folded view equal to the engine's `observe` after every End Turn
+  of the first day and both on day 2 the next; a computer's turn ended at the start and at each
+  day's; a minute's turn ended by the session's clock, the view the engine's after it; no human
+  and a bad duration refused; a seat's numbers) and play's (a map begun with its duration; play's
+  start the human in turn's record, the same for the same seed; three headless End Turns passing
+  between the humans, their records written and read back by the record player's reader); on
+  shipped maps headless: `Good to Go` and `Judgement Day` (two humans) passing the turn, `Elbow
+  Room` (six humans), `Knee Deep in the Dead` (one human, the computers ended at once); each
+  seat's record of 16 End Turns played to its end by `h3-map-view record` (`Good to Go`'s two to
+  day 9 at 8255 ms, `Knee Deep`'s to day 17 at 16 109 ms); the window under Xvfb (`play --humans
+  1 --check 3` on `Good to Go`: Blue's start after Red's turn ended at once, 17 of 17 frames read
+  back exact, 20 of 20 as afresh, every change the headless loop's); the map-client scope's
+  verify.
