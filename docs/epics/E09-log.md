@@ -6543,3 +6543,56 @@ golden replay. CI on the pull request (#1181) is the record: green at the second
 first's coverage job failing on `h3-server`'s known clock test under load
 (`a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles_void`, `clock.rs:801`;
 the server lane's inbox has it), its failed job re-run.
+
+### T56 — the town part v10: the trade roles, the war machines, the trades' parameters, the Transformer's table (2026-11-26)
+
+One session, the user present at the start; branch `town/e09-t56`, `cross-lane` (the battle
+lane's `h3-formats`, `h3-harvest`, `packs/README.md` and `docs/formats/installation.md`, the
+adventure lane's golden replays and `h3-game`'s `tests/mod.rs`). Starting point: `master` at
+b1e7a44 (#1182; T55's #1181 merged before it); the setup's light gates on `master`'s code (CI's
+fingerprint), CI green on `master`. Five files staged (both bitmap LODs, the executable,
+`maps.tar`, `extracted.tar`). **Kept whole** with the `cross-lane` consent (decision 220).
+
+- **`h3-towns`** (design §102): `BuildingRoles::marketplace`, `artifact_merchants`,
+  `freelancers`, `university`, `transformer` (each at most one building of a record);
+  `BuildingDef::war_machine` (a key) compiled to `Building::war_machine` (an `ArtifactTypeId` of
+  the core with a `war_machine` creature); `TownParamsDef`/`TownParams::merchants_stock` (at most
+  `MAX_MERCHANTS_STOCK` 8, none special), `boat_price`, `boat_type`, `university_skills` (at least
+  one, each once), `university_price`, `transformer_into`, `transformer_dragons_into`;
+  `TownPack::transformer_dragons` into `TownParams::transformer_dragons` (handle order, each named
+  once, `MissingParams` without the parameters). New refusals `TownCompileError::UnknownArtifact`
+  and `UnknownSkill`. **Town ruleset part v10** (`TOWN_RULESET_HASH_VERSION`: the seven parameters
+  and the dragons after the Vortex's factor, the five roles after the Mana Vortex, a building's war
+  machine after its roles); pins `0x08b1_fe5c_b1f7_09a6` and the empty part's
+  `0xa82b_d7e1_f29d_c67d`. TWN-TRD-001 `verified` (its catalog entry new: the code reading, batch
+  TWN-6's rows 5 to 8, VCMI and the wiki agreeing).
+- **`h3-pack-towns`:** the five role fields, `war_machine`, the seven `[town_params]` fields and
+  `[town_transformer] dragons`; the format's doc. The synthetic pack: a stock of four, a boat of
+  800 coin and 5 shards (type 2), three University skills, the Transformer's Shade and Wisp, two
+  dragons (the expansion's Lurker a third), six new buildings (one of each role, the Blacksmith and
+  the Transformer selling `bolt_thrower_kit`).
+- **The harvest** (`cross-lane`): `h3-formats`' `TownTables`/`TownData::blacksmith_machines`
+  (`blacksmith_machine_creatures` 0x642E90) and `transformer_targets`
+  (`skeleton_transformer_targets` 0x6412FC, `TRANSFORMER_CREATURES` 145), installation.md §7.61's
+  rows; `h3-harvest`'s gap-fill: the five roles (source `exe-town-trades`) and `[towns.trades]`
+  (the Blacksmith's id, the Ballista Yard `machine_of` the Castle, the stock, the boat, the
+  University); the town harvest: each Blacksmith's machine as its table creature's artifact of
+  `[[artifacts.war_machines]]`, the Transformer's two targets (its table's one fixed point, the
+  Skeleton, and the other, the Bone Dragon) and each pack's dragons (base six, ab four). Re-run on
+  the staged installation: only the three `towns.toml` changed (the header's sources line in
+  `sod`'s).
+- **Tests:** `h3-towns`' compile, refusal, message and hash tests (the test core's war machine, its
+  ring and two skills new); `h3-pack-towns`' `the_trades_parse`, the parser's strictness and keys,
+  `the_original_trades` (the roles on their buildings alone, the nine Blacksmiths' machines and the
+  Ballista Yard's, the parameters, the targets, each edition's dragons); `h3-formats`' reader and
+  refusals; `h3-harvest`'s town test (the roles, the war machines, the parameters, the dragons by
+  pack; the errors).
+- **Replays:** the 118 golden adventure replays' `town_ruleset_hash` 0xcf8db1aa2bb768d2 to
+  **0xc830faa47b612bfc** (the same in both profiles; nothing else records the town part: the bot
+  reports, the server's literal unchanged).
+- *Agent's calls* (decision 220): `[town_transformer]` over design §102's `[[transformer_dragon]]`;
+  `war_machine` beside the roles; the University at least one skill; the boat's type unbounded;
+  the Blacksmith's machine from 0x642E90 through the war machine artifacts. Design §102's *As
+  built*.
+
+**The queue:** T56 out; T57 next (the stock, `cross-lane`). Ids: decisions next 221.

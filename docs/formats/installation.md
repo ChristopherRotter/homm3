@@ -5895,6 +5895,8 @@ to Conflux 8).
 | `town_silo_resources` | 0x688EB4 | 7 a faction, `RESTYPES.TXT`'s order (gold last, 0 everywhere) |
 | The neutral garrison | 0x688E84, 0x688E94, 0x688EA4 | 4 each: the chance in 100 (33, 33, 20, 13), the least (8, 5, 3, 1) and the most count (15, 7, 5, 3) of levels 1 to 4 |
 | The level-2 dwelling | 0x5C0C60 | `cmp eax, 30` (`83 F8 1E`) after `random_between(1, 100)` in the standard set (`standard_dwelling_2_roll` 0x5C0C5B) |
+| `blacksmith_machine_creatures` | 0x642E90 | 1 a faction (E09 T56): the creature of the Blacksmith's war machine, 146, 147, 148, 148, 147, 146, 148, 147, 146 (Ballista 146, First Aid Tent 147, Ammo Cart 148); `blacksmith_war_machines` 0x6AA9F8, its artifacts, is in `.bss`, filled at start-up |
+| `skeleton_transformer_targets` | 0x6412FC | 145 (E09 T56): per creature 0 to 144 its target at the Skeleton Transformer, 68 (the Bone Dragon) for 26, 27, 82, 83, 110, 111 and 132 to 135, 56 (the Skeleton) for every other; 56 its own target, the only one |
 
 **Layout facts.** The nine faction lists and the ten supersede lists each follow the one before
 without a gap (the common supersede list right after Conflux's faction list); the reader still
@@ -5904,7 +5906,8 @@ takes each list at its own address, as the code does (factions 0 to 2 inline, 3 
 **What the reader checks** (the input is untrusted, `FormatError` for each): every building id 0
 to 43 (44 only as a map slot's none); at most 64 entries a list and 64 ids an entry (a faction's
 mask is 64 bits); an unterminated list ends at the image's end (truncated); creatures, growths,
-the silo's amounts and the garrison's values not negative, a horde's creature −1 or not negative;
+the silo's amounts and the garrison's values not negative (the Blacksmith's machines and the
+Transformer's targets too), a horde's creature −1 or not negative;
 both chances at most 100; the instruction's bytes before its operand. Nothing copied (Q29).
 
 ### 7.62 A creature bank's battle hexes (E08 T124a, 2026-11-17)

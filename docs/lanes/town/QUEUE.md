@@ -7,14 +7,13 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 6: the town's trades, refined at T51, `TWN-Q34`,
 decisions 196 to 199; its survey T52 with the checkpoint `TWN-Q35`, decisions 200 to 207; its
 drafts, cut and exit criteria by T53, `TWN-Q36`, `TWN-Q37`, decisions 208 to 217; batch TWN-6
-by T54, decision 218; T55 `shared/`, decision 219; the buildings for heroes and the map are increment 7, travel and the Grail
+by T54, decision 218; T55 `shared/`, decision 219; T56, decision 220; the buildings for heroes and the map are increment 7, travel and the Grail
 8, decision 197); done
 tasks in `E09-log.md`; increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T56 to T61** (queued, design §118's rounds 4 to 8; each cut confirmed at its start): **Status:** T56 next. T56 the town part v10 (§102: the six building fields, the parameters, the Transformer's tables per pack, the
-harvest `cross-lane`); T57 the stock (§108: the pool's marks kept and the stock in the adventure
+**E09 T57 to T61** (queued, design §118's rounds 5 to 8; each cut confirmed at its start): **Status:** T57 next (T56 done 2026-11-26, `E09-log.md`). T57 the stock (§108: the pool's marks kept and the stock in the adventure
 state, the new game's and the month's draws, the replays re-recorded, `cross-lane`); T58 the market
 at a town (§103 to §107: T58a the count, `Market` opening E08's decision with the town as its
 place, the trades, the transfer, the guild's sale, the merchants' purchase, T-28, `TWN-STUB-21`,
