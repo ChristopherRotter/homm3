@@ -41,7 +41,10 @@ resumes (the epic file); its tasks are cut then.
     for the readings. The secondary skill value reads the gold weight (`Record::weights`, +0x90)
     and the terrain shares (`h3_heroes::TerrainShares`, the engine's); `h3_heroes::choice` (E08
     T25, the level-up's choice, the adventure lane's) already ports a path of it (`ArmyWorth`, the
-    schools' values): one implementation (ADR-0030 point 6), so read it first.
+    schools' values): one implementation (ADR-0030 point 6), so read it first. Also: the town
+    part gained `BuildingRoles::marketplace` (E09 T56); `start.rs`'s weights' rate finds the
+    Marketplace by the key `marketplace` (T2d): read the role instead, and drop the request in
+    the town lane's inbox.
 
 ## Inbox
 
