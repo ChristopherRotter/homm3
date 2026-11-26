@@ -434,6 +434,20 @@ battle lane's: the obstacle draw under the tile's seed); (b) leave the gap (the 
 comparisons start from its own situations). **Recommended (a)**; the battle lane's inbox told.
 Blocks nothing.
 
+#### MCL-Q58 — The view names no hero's facing (E24 M5 T3b, the hot seat's live start)
+
+The hot seat sets each human's view up again at its turn from a snapshot of its view (design
+§5.25). `GameObservation`'s `MapHero` names a hero's tile and boat but not the way it faces (the
+original's hero +0x47, drawn by the map), so a view set up from a snapshot cannot draw a hero as
+it last faced: a record's start assumes the new game's facing right, and the record player takes
+later facings from the steps it sees. T3b keeps, per human, what its own window last drew of each
+hero (`hot_seat::Left::facings`) and faces every other hero right; a hero that turned out of the
+viewer's sight, or one first seen standing, is drawn facing right where the original draws its
+facing. Options: (a) the engine keeps each hero's facing and the view shows it where it shows the
+hero (`MapHero::facing`, the adventure lane's, protocol and import versions moved); (b) the host's
+facings as built. **Recommended (a)** (facts first, the user at M5 T0); the adventure lane's
+inbox told. Blocks nothing (no hero turns before T4's input).
+
 ### RMG lane (`RMG-Q<n>`)
 
 (no open questions)

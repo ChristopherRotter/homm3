@@ -47,6 +47,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-26 (the map-client lane, E24 M5 T3b, `map-client/e24-m5-t3b`; **a fact the view lacks,
+  MCL-Q58, nothing blocks**): the hot seat sets each human's view up again at its turn from a
+  snapshot of its `GameObservation`, and `MapHero` names no facing (the original's hero +0x47),
+  so the client draws a hero as its own window last drew it, else facing right. Asked: the
+  engine keeps each hero's facing and the view shows it where it shows the hero
+  (`MapHero::facing`; its moves set it as the original's steps do). Recommended in MCL-Q58 (a).
+
 - 2026-11-25 (the town lane, E09 T55, `shared/e09-t55`, `cross-lane`; **informational,
   mechanical at a merge**): the base profiles gained `quirk.town.visitor_only_trades` and
   `quirk.town.university_ignores_map_bans`, and `h3-content` gives a combination without a pack

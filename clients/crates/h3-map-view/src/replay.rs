@@ -28,7 +28,7 @@ use core::iter;
 
 use crate::live::Buttons;
 use crate::sound::Cue;
-use crate::timeline::{Action, Cursor, Draw, Loop, Rules, Start, Unplayable};
+use crate::timeline::{Action, Cursor, Draw, Hero, Loop, NextTurn, Rules, Start, Unplayable};
 
 /// What the screen shows from a millisecond on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -201,6 +201,12 @@ impl Replay {
     pub fn give(&mut self, t: u32, action: Action) {
         let t = t.max(1);
         self.actions.entry(t).or_default().push(action);
+        self.again_from(t);
+    }
+
+    /// The loop to run again from the latest change kept before `t` (from 0 when none is), the
+    /// changes from `t` on forgotten; nothing when it has not run `t` yet.
+    fn again_from(&mut self, t: u32) {
         if t > self.t {
             return;
         }
@@ -218,6 +224,33 @@ impl Replay {
         let from = self.t;
         self.cues.retain(|(c, _)| *c <= from);
         self.again = 0;
+    }
+
+    /// The millisecond End Turn's change asked the host for the turns after it, as far as the loop
+    /// ran (E24 M5 T3b, [`Loop::turns_asked`]).
+    #[must_use]
+    pub fn turns_asked(&self) -> Option<u32> {
+        self.l.turns_asked()
+    }
+
+    /// The turns' starts the host gives after the known ones (E24 M5 T3b: the hot seat's session
+    /// played the End Turn asked at `t`), known to the loop from 0 on: it runs again from the
+    /// latest change kept before `t` (from 0 when none is), as an action given at `t` makes it.
+    pub fn add_turns(&mut self, t: u32, turns: &[NextTurn]) {
+        self.first.add_turns(turns);
+        for (_, l) in &mut self.kept {
+            l.add_turns(turns);
+        }
+        self.now.1.add_turns(turns);
+        self.l.add_turns(turns);
+        self.again_from(t.max(1));
+    }
+
+    /// The map's heroes where they stand and face as far as the loop ran (E24 M5 T3b,
+    /// [`Loop::heroes`]).
+    #[must_use]
+    pub fn heroes(&self) -> Vec<Hero> {
+        self.l.heroes()
     }
 
     /// What the screen shows at `t`: the latest change at or before it, the loop run to `t` (the

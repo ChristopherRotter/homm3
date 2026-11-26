@@ -14,9 +14,13 @@
 //!   the viewer's load refuses a map the import refuses).
 //! - **The record is the whole game's** (its header's `first` is 1, its first message the game's
 //!   snapshot): a server's bounded record that let its oldest go begins at a later snapshot,
-//!   which the start's new-game rules (heroes facing right, the hero list by type, no object
-//!   added in play) would misread, so it is refused ([`Refused::Cut`]); showing one from there is
-//!   not M4's.
+//!   which the start's new-game rules (heroes facing right) would misread, so it is refused
+//!   ([`Refused::Cut`]); showing one from there is not M4's.
+//! - **A live start** (E24 M5 T3b, [`live`], *provisional*): the hot seat's host sets a human's
+//!   view up from its record since it last left it, its first message a snapshot of the view then
+//!   (a later one than the game's), with what the host saw of each hero's facing ([`Live`]): the
+//!   cut is let through, every hero the host did not see facing right as at a new game. The view
+//!   names no facing (MCL-Q58): the host's is the last the viewer's timeline drew.
 //! - **Each object of the view** (in tile order, without an index: `docs/06-security.md`) is
 //!   found in the map's file by its type, anchor and masks (two alike special grounds either
 //!   way), else as a random object at its anchor (a random dwelling's also one column right of
@@ -221,6 +225,27 @@ pub struct Loaded {
     pub raw: RawMap,
     /// The engine's import of it.
     pub setup: GameSetup,
+    /// A live start's facts (E24 M5 T3b, [`live`]); none for a record's file.
+    pub live: Option<Live>,
+}
+
+/// A live start's facts the view lacks (E24 M5 T3b, *provisional*): each hero's facing as the
+/// host last saw it drawn, by hero id, in the original's order of eight (0 up, 2 right); a hero
+/// not among them faces right (MCL-Q58: the view names no facing).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Live {
+    /// The facings, by hero id.
+    pub facings: Vec<(u16, u8)>,
+}
+
+impl Live {
+    /// The facing of hero `id`: the host's, else right.
+    fn facing(&self, id: u16) -> i64 {
+        self.facings
+            .iter()
+            .find(|&&(hero, _)| hero == id)
+            .map_or(RIGHT, |&(_, facing)| i64::from(facing % 8))
+    }
 }
 
 /// Reads the record `text` of a game on the map file `map` under the viewer's `rules`.
@@ -251,18 +276,42 @@ pub fn check(record: GameRecord, map: &[u8], rules: &GameRuleset) -> Result<Load
     }
     let raw = h3_map::read(map, &Limits::default()).map_err(|e| Refused::Read(e.to_string()))?;
     let setup = h3_map::import(&raw, rules).map_err(|e| Refused::Import(e.to_string()))?;
-    Ok(Loaded { record, raw, setup })
+    Ok(Loaded {
+        record,
+        raw,
+        setup,
+        live: None,
+    })
+}
+
+/// The record `record` of a live start (E24 M5 T3b: the hot seat's host's, a human's record since
+/// it last left its view, beginning at a snapshot of that view), checked as [`check`] checks it,
+/// with the facts the host saw (`live`): its first message may come after the game's start.
+///
+/// # Errors
+/// As [`check`]'s.
+pub fn live(
+    record: GameRecord,
+    map: &[u8],
+    rules: &GameRuleset,
+    live: Live,
+) -> Result<Loaded, Refused> {
+    let mut loaded = check(record, map, rules)?;
+    loaded.live = Some(live);
+    Ok(loaded)
 }
 
 impl Loaded {
-    /// The game's first observation: the record's first message, its snapshot.
+    /// The game's first observation: the record's first message, its snapshot (a live start's:
+    /// the view where its host set it up, E24 M5 T3b).
     ///
     /// # Errors
     /// [`Refused::Cut`]: the record does not begin at the game's start (its header's `first` is
-    /// not 1); [`Refused::NoStart`]: it begins with another message, or with none.
+    /// not 1) and is no live start's; [`Refused::NoStart`]: it begins with another message, or
+    /// with none.
     pub fn first(&self) -> Result<&GameObservation, Refused> {
         let first = self.record.header.first;
-        if first != 1 {
+        if first != 1 && self.live.is_none() {
             return Err(Refused::Cut(first));
         }
         match self.record.messages.first() {
@@ -394,7 +443,10 @@ pub fn start(
             i64::from(p.y),
             i64::from(p.level),
             int(class.index()),
-            RIGHT,
+            loaded
+                .live
+                .as_ref()
+                .map_or(RIGHT, |live| live.facing(hero.id)),
             owner,
             boat,
             flag,

@@ -4942,3 +4942,52 @@ scratch sequence of its own, `sound = true`).
   passes over: a dwelling's guards, Pandora's Box; §5.20) has no lift in the viewer, so its loops
   stay silent until found again (`dwellings-guards-s1` in the window: from its won battle to the
   next day's start); M5 T6, which plays the battles, takes it up.
+
+### 5.25 The hot seat's session in the window (M5 T3b)
+
+T3 cut in two at its start (T3a the session hosted headless: the log's "M5 T3a"); T3b kept whole
+by the user at its start, the same human's next day played in place (the user's choice over a
+fresh start). No reading: the hand-over's covered view and its box are T5's, so a human's view follows
+another's plainly.
+
+- **A view is a record since it was left** (`h3_map_client::play::played`): play shows each
+  human's view in turn, one window call each (`window::Source::Session`), the window and the
+  sound lent again each time. At a seat's first turn its view is set up from its whole record so
+  far, as the record player sets one up (a seat not acting at the game's start waits: its first
+  turn's start played at the loop's start, E24 M4 T6's R1-1); when the turn passes from it the
+  host keeps where it was left (`hot_seat::Left`: the seat's last message's number, its folded
+  view, its heroes' facings as its window last drew them), and at its next turn the view is set
+  up from its record since then (`HotSeat::since`: a snapshot of the left view numbered as that
+  message, then the record's later messages), so its turn's start plays at the loop's start as
+  for a record whose viewer waits.
+- **The live start** (`h3_map_view::engine::live`, `Loaded::live`): a record's file cut by its
+  bound stays refused (`Refused::Cut`); the host's record since begins at a later snapshot, and
+  the new game's rules it would misread are each the view's or the host's: the kingdom's heroes
+  in the view's hero list's order (GAM-HER-003, `hero_list`; at a new game the types' order, so
+  every record's start is as before; since T3b a hire is listed at the end, as the original
+  appends it, where the types' order put it among them), the week's and the month's numbers by
+  the start's day (MCL-Q40 (b)'s names), each hero's facing the host's (else right: MCL-Q58).
+- **End Turn asks the host** (`Loop::turns_asked`, `Replay::turns_asked`): live, End Turn's
+  change (after Move Reminder's question and the scenario's test) with no next turn known marks
+  its millisecond and changes nothing. The window plays the session's End Turn (the clock read
+  first: a turn whose time ran out is not ended twice). The viewer's turn again (one human against
+  computers, `MCL-STUB-5`): its record since is read again, its new turns' starts laid out as a
+  record's (`paint::live_turns`: the painter's live part's turns set to the record's) and given
+  to the loop (`Replay::add_turns`: known from 0 on, the loop run again from the latest change
+  kept before the millisecond), so the next day plays in the same view, the week's message and
+  the date's window as the record player shows them. Another human's turn: the view left, the
+  next one set up.
+- **The clock** (`window::Session::tick`): the session's `elapse` at each loop of the window
+  whose deadline is due (the view's first loop too: its first reading counts nothing), the
+  window's ticks the host's milliseconds; a turn whose time ran out (the session's system End
+  Turn) leaves the view as End Turn does. The setup's own time counts (about a second a view).
+- **Checked:** under Xvfb (`play --check`, End Turn and Move Reminder's OK pressed by `xdotool`,
+  each key held 0.3 s: a press and release in one millisecond never draws the button pressed, so
+  its release gives no command, as the original's): Good to Go's two humans through five views
+  (Red, Blue, Red's day 2, Blue's, Red's day 3), Knee Deep in the Dead's one human through three
+  next days in place, Good to Go with one-minute turns (each turn's time run out, the view passed
+  on); every view's frames read back exact, as afresh and as the headless loop's (its added turns
+  in its start); each seat's record played to its end by `h3-map-view record`.
+- *Provisional:* the unattended run's seconds count for the whole of play; a view's music and
+  loops start again at each view (the next view's cues at 0); the record since read again at each
+  End Turn in place (its length grows with the turn); the facings kept per seat (MCL-Q58).
