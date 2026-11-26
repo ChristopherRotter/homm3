@@ -18,6 +18,10 @@
 //! build's insertion sort a sort by unit value with the slot as its tie-breaker (it is stable,
 //! the stacks built in slot order).
 //!
+//! Beside it the computer's values of a hero's spells (`caster`, E31 T2e, AI-Q36): the adventure
+//! computer's caster record and spell values ([`CasterRecord`], CPU-SPL-001 to -006), which the
+//! battle AI's odds read too.
+//!
 //! Every value is the original's x87 arithmetic (`X87`, `SignedX87`: 53 bits, each sum truncated
 //! by `crt_ftol` where the code truncates, the f32 stores) and its 32-bit integers, wrapping where
 //! the code's `imul`, `add` and `sub` wrap. Spells are told by their data as the original tells
@@ -44,8 +48,12 @@ use crate::computer::takes_stack;
 use crate::magic::{self, Guard, HeroMagic, SpellRef, SpellSet};
 use crate::mana;
 
+mod caster;
 #[cfg(test)]
 mod tests;
+
+pub use caster::CasterRecord;
+pub(crate) use caster::{SpellCaster, best as best_spell_value};
 
 /// The rounds a simulated combat fights before its stand-off (`sim_combat_run`'s 1 to 3).
 const ROUNDS: i32 = 3;

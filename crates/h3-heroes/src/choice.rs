@@ -1,22 +1,28 @@
 //! The original's choice between a level-up's two offers (E08 T28, HER-LVL-006): the computer's
 //! evaluation, which the original uses for every hero while a new game is set up, for a hero
 //! without an owner and for a computer player's hero (`ai_level_up_choice` 0x52BBD0 with
-//! `ai_secondary_skill_value` 0x524690 and `ai_takes_new_secondary_skill` 0x524DD0). Only the path
-//! with the original's flag clear is built (the setup's and an unowned hero's): the flag-set
-//! path reads computer-player state (E10). No draws. Survey
+//! `ai_secondary_skill_value` 0x524690 and `ai_takes_new_secondary_skill` 0x524DD0). The path with
+//! the original's flag clear is the setup's and an unowned hero's; since E31 T2e (AI-Q36,
+//! `cross-lane`) the same switch has the flag-set path the original's computer player takes
+//! ([`computer_skill_value`], [`computer_takes_new_skill`], CPU-SKL-001), with what only the
+//! computer knows passed in ([`ComputerReads`]: its values per unit, its owner's gold weight, the
+//! schools' values of its caster record). No draws. Survey
 //! `docs/rules/surveys/E08-progression.md` §10, design §8 of increment 4's note (since T34b in
-//! `docs/epics/E08-log.md`, "Increment 4's design note at its closure").
+//! `docs/epics/E08-log.md`, "Increment 4's design note at its closure"); the flag-set path
+//! `docs/rules/surveys/E31-computer-player.md` §2.4.
 //!
 //! The original indexes its skills by id, Pathfinding 0 to First Aid 27 (`SSTRAITS.TXT`'s
 //! order); the evaluation reads the ruleset's skills by that position, as the offers' draws do
 //! (the base pack keeps the original's order). A skill past the 28th is worth 0, as the
-//! original's switch gives for an id past 27. The values are exact: the original's 32-bit
-//! products overflow only for an army worth more than 306 million (the flag-set path's, E10).
+//! original's switch gives for an id past 27. The values are the original's 32-bit integers
+//! (its products wrap only for an army worth more than 306 million, which the flag-set path
+//! counts).
 
 use alloc::vec::Vec;
 
-use h3_content::{HeroClass, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId};
-use h3_kernel::arith::{DOUBLE_BITS, X87};
+use h3_content::{CreatureFlag, HeroClass, MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId};
+use h3_contracts::ArmyStack;
+use h3_kernel::arith::{DOUBLE_BITS, SignedX87, X87};
 
 use crate::derive::effective_primary_from;
 use crate::details::{HeroDetails, PrimarySkill};
@@ -53,13 +59,16 @@ mod id {
 }
 
 /// Archery's factor by its level 0 to 2 (`ai_archery_values` 0x640380).
-const ARCHERY_VALUES: [u64; 3] = [16, 7, 11];
+const ARCHERY_VALUES: [i32; 3] = [16, 7, 11];
 
 /// Estates' value by its level 0 to 2 (`ai_estates_values` 0x64038C).
-const ESTATES_VALUES: [u64; 3] = [725, 725, 1550];
+const ESTATES_VALUES: [i32; 3] = [725, 725, 1550];
 
 /// The four schools' values without Wisdom, Fire to Earth (0x524690's cases 14 to 17).
-const SCHOOL_VALUES: [u64; 4] = [0, 25, 3, 30];
+const SCHOOL_VALUES: [i32; 4] = [0, 25, 3, 30];
+
+/// The counted army's worth before its stacks (0x5246C4: 1 000, and 500 for the shooters).
+const COUNTED_BASE: (i32, i32) = (1000, 500);
 
 /// The highest primary skill the evaluation counts (it holds Spell Power and Knowledge to 1–99,
 /// Attack to 0–99).
@@ -85,15 +94,15 @@ pub struct TerrainShares {
 impl TerrainShares {
     /// `army × count / tiles / divisor` rounded toward zero in the original's arithmetic: the
     /// share stored as an `f64` (0x52B9C0), the product at the FPU's 53 bits, the division by 4
-    /// or 2 exact, `_ftol`; 0 without tiles (the original's NaN, which `_ftol` turns into the
-    /// 64-bit integer indefinite, whose low half the value keeps).
-    fn part(self, count: u32, army: u32, divisor: u64) -> u64 {
+    /// or 2 exact, `_ftol`'s low 32 bits; 0 without tiles (the original's NaN, which `_ftol`
+    /// turns into the 64-bit integer indefinite, whose low half the value keeps).
+    fn part(self, count: u32, army: i32, divisor: i64) -> i32 {
         let value = X87::ratio(count, self.tiles, DOUBLE_BITS).and_then(|share| {
-            X87::int(u64::from(army))
-                .times(share)
-                .over(X87::int(divisor))
+            SignedX87::int(army.into())
+                .times(SignedX87::from(share))
+                .over(SignedX87::int(divisor))
         });
-        value.map_or(0, X87::trunc)
+        value.map_or(0, SignedX87::ftol)
     }
 }
 
@@ -113,6 +122,82 @@ impl ArmyWorth {
         army: 1000,
         shooters: 500,
     };
+}
+
+/// What the flag-set path of the evaluation reads besides the hero and the class (the original's
+/// computer player, `ai_secondary_skill_value` 0x524690 with its flag set; E31 T2e, AI-Q36):
+/// the hero's army counted ([`counted_worth`]), the computer's values per unit of the hero, its
+/// owner's gold weight and the four schools' values of its caster record, which the computer
+/// keeps (`h3_game::computer`), the war machines it wears and the map's shares.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ComputerReads {
+    /// A and B of the hero's army ([`counted_worth`]).
+    pub worth: (i32, i32),
+    /// The hero's value of one Spell Power (its +0x47E, `ai_hero_effectiveness` 0x527760).
+    pub power_gain: i32,
+    /// Its value of a Knowledge point (its +0x486).
+    pub knowledge_gain: i32,
+    /// Its owner's weight of gold (the computer's record's +0x90, a double).
+    pub gold_weight: SignedX87,
+    /// The four schools' values, Fire to Earth (`ai_school_value` 0x524D20 of each).
+    pub schools: [i32; 4],
+    /// Whether it wears a Ballista (`hero_wears_artifact` 0x4D91F0 with 4): Artillery counts.
+    pub ballista: bool,
+    /// Whether it wears a First Aid Tent (with 6): First Aid counts.
+    pub tent: bool,
+    /// The map's terrain shares (Pathfinding, Navigation).
+    pub shares: TerrainShares,
+}
+
+/// A and B of the flag-set path (0x5246D5 to 0x524722; CPU-SKL-001): 1 000 and 500, plus over
+/// `army`'s stacks each one's AI value times its count, a shooter's (the creature flag
+/// `shooter`) into B too, summed in 32 bits.
+// rule: CPU-SKL-001
+pub fn counted_worth(ruleset: &Ruleset, army: &[ArmyStack]) -> (i32, i32) {
+    army.iter().fold(COUNTED_BASE, |(a, b), stack| {
+        let info = ruleset.creature(stack.creature);
+        let worth = info
+            .map_or(0, |c| i32::from_ne_bytes(c.ai_value.to_ne_bytes()))
+            .wrapping_mul(i32::from_ne_bytes(stack.count.to_ne_bytes()));
+        let shooter = info.is_some_and(|c| c.flags.contains(CreatureFlag::Shooter));
+        (
+            a.wrapping_add(worth),
+            if shooter { b.wrapping_add(worth) } else { b },
+        )
+    })
+}
+
+/// A skill's value to a computer player's hero (`ai_secondary_skill_value` 0x524690 with its
+/// flag set; CPU-SKL-001): the flag-clear values of [`original_choice`]'s evaluation on the
+/// hero's effective primary skills, with A and B the counted army's and these cases the
+/// computer's: Wisdom `SP × power gain / 2`, Mysticism the knowledge gain / 10, Eagle Eye the
+/// power gain / 5 (0 without Wisdom), Estates `trunc(value × gold weight)`, the four schools
+/// their values whatever Wisdom, Scholar `SP × power gain / 10` (0 without Wisdom), Artillery 0
+/// without a worn Ballista, Intelligence `Kn × knowledge gain / 4`, Sorcery `SP × power gain /
+/// 20`, First Aid 0 without a worn Tent; 32-bit integers, each division toward 0.
+// rule: CPU-SKL-001
+pub fn computer_skill_value(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    reads: &ComputerReads,
+    skill: SkillId,
+) -> i32 {
+    Evaluation::of(details, ruleset, None, ArmyWorth::SETUP, reads.shares)
+        .original(skill, Some(reads))
+}
+
+/// Whether a computer player's hero takes the new skill `offered` over an advance
+/// (`ai_takes_new_secondary_skill` 0x524DD0 with the flag set; CPU-SKL-001): its ranking of
+/// [`original_choice`]'s, by [`computer_skill_value`].
+// rule: CPU-SKL-001
+pub fn computer_takes_new_skill(
+    details: &HeroDetails,
+    ruleset: &Ruleset,
+    reads: &ComputerReads,
+    offered: SkillId,
+) -> bool {
+    Evaluation::of(details, ruleset, None, ArmyWorth::SETUP, reads.shares)
+        .takes_new_with(offered, Some(reads))
 }
 
 /// The original's choice between a level-up's two offers (HER-LVL-006): with both known or
@@ -157,9 +242,9 @@ pub(crate) struct Evaluation<'a> {
     skills: u16,
     worth: ArmyWorth,
     shares: TerrainShares,
-    attack: u64,
-    power: u64,
-    knowledge: u64,
+    attack: i32,
+    power: i32,
+    knowledge: i32,
 }
 
 impl<'a> Evaluation<'a> {
@@ -173,18 +258,30 @@ impl<'a> Evaluation<'a> {
         worth: ArmyWorth,
         shares: TerrainShares,
     ) -> Self {
+        Self::of(details, ruleset, Some(level_up.primary), worth, shares)
+    }
+
+    /// The hero of `details`, its primary skill `raised` one higher if any: [`Self::new`]'s, or
+    /// the hero as it is.
+    fn of(
+        details: &'a HeroDetails,
+        ruleset: &'a Ruleset,
+        raised: Option<PrimarySkill>,
+        worth: ArmyWorth,
+        shares: TerrainShares,
+    ) -> Self {
         let params = ruleset.hero_params();
         let primary = |skill: PrimarySkill, low: u8| {
             let base = details.primary[skill.index()];
             let value = params.map_or(base, |params| {
-                let raised = if skill == level_up.primary {
+                let raised = if Some(skill) == raised {
                     base.saturating_add(1).min(params.primary_max)
                 } else {
                     base
                 };
                 effective_primary_from(details, ruleset, params, skill, raised)
             });
-            u64::from(value.clamp(low, PRIMARY_CAP))
+            i32::from(value.clamp(low, PRIMARY_CAP))
         };
         let class = ruleset
             .hero_type(details.hero_type)
@@ -219,37 +316,68 @@ impl<'a> Evaluation<'a> {
     /// for an unknown skill when the hero knows the most skills; else by the original's id, with
     /// L the skill's level (survey §10.2).
     pub(crate) fn value(&self, skill: SkillId) -> u64 {
+        u64::try_from(self.original(skill, None)).unwrap_or(0)
+    }
+
+    /// The original's switch (0x524732) with its flag clear (`reads` `None`) or set: 0 at Expert,
+    /// and for an unknown skill when the hero knows the most skills; else by the original's id,
+    /// in its 32-bit integers.
+    fn original(&self, skill: SkillId, reads: Option<&ComputerReads>) -> i32 {
         let level = self.known(skill);
         if level >= MAX_SKILL_LEVEL || level == 0 && self.details.skills.len() >= MAX_HERO_SKILLS {
             return 0;
         }
         // `level` is 0 to 2 from here.
         let l = usize::from(level);
-        let (a, b) = (u64::from(self.worth.army), u64::from(self.worth.shooters));
+        let (a, b) = reads.map_or(
+            (
+                i32::from_ne_bytes(self.worth.army.to_ne_bytes()),
+                i32::from_ne_bytes(self.worth.shooters.to_ne_bytes()),
+            ),
+            |r| r.worth,
+        );
         let wisdom = self.known(SkillId::from_raw(id::WISDOM)) > 0;
+        let (p, k) = (self.power, self.knowledge);
         let raw = skill.raw();
-        match raw {
-            id::PATHFINDING => self.shares.part(self.shares.rough[l], self.worth.army, 4),
-            id::ARCHERY => ARCHERY_VALUES[l] * b / 100,
-            id::LOGISTICS => a / 10,
-            id::SCOUTING | id::NECROMANCY | id::LEARNING => a / 20,
-            id::DIPLOMACY => a / 100,
-            id::NAVIGATION => self.shares.part(self.shares.water, self.worth.army, 2),
-            id::LEADERSHIP | id::LUCK | id::TACTICS => a / 50,
-            id::WISDOM => self.power * 25,
-            id::MYSTICISM => 1,
-            id::BALLISTICS => a / 8,
-            id::EAGLE_EYE => 2 * u64::from(wisdom),
-            id::ESTATES => ESTATES_VALUES[l],
-            id::FIRE_MAGIC..=id::EARTH_MAGIC if wisdom => self.power * 10,
-            id::FIRE_MAGIC..=id::EARTH_MAGIC => SCHOOL_VALUES[usize::from(raw - id::FIRE_MAGIC)],
-            id::SCHOLAR => self.power * 5 * u64::from(wisdom),
-            id::ARTILLERY => self.attack * 10,
-            id::OFFENSE | id::ARMORER => 7 * a / 100,
-            id::INTELLIGENCE => self.knowledge * 10,
-            id::SORCERY => self.power * 2,
-            id::RESISTANCE => a / 40,
-            id::FIRST_AID => 250,
+        match (raw, reads) {
+            (id::PATHFINDING, _) => self.shares.part(self.shares.rough[l], a, 4),
+            (id::ARCHERY, _) => ARCHERY_VALUES[l].wrapping_mul(b) / 100,
+            (id::LOGISTICS, _) => a / 10,
+            (id::SCOUTING | id::NECROMANCY | id::LEARNING, _) => a / 20,
+            (id::DIPLOMACY, _) => a / 100,
+            (id::NAVIGATION, _) => self.shares.part(self.shares.water, a, 2),
+            (id::LEADERSHIP | id::LUCK | id::TACTICS, _) => a / 50,
+            (id::WISDOM, None) => p * 25,
+            (id::WISDOM, Some(r)) => p.wrapping_mul(r.power_gain) / 2,
+            (id::MYSTICISM, None) => 1,
+            (id::MYSTICISM, Some(r)) => r.knowledge_gain / 10,
+            (id::BALLISTICS, _) => a / 8,
+            (id::EAGLE_EYE | id::SCHOLAR, _) if !wisdom => 0,
+            (id::EAGLE_EYE, None) => 2,
+            (id::EAGLE_EYE, Some(r)) => r.power_gain / 5,
+            (id::ESTATES, None) => ESTATES_VALUES[l],
+            (id::ESTATES, Some(r)) => SignedX87::int(ESTATES_VALUES[l].into())
+                .times(r.gold_weight)
+                .ftol(),
+            (id::FIRE_MAGIC..=id::EARTH_MAGIC, Some(r)) => {
+                r.schools[usize::from(raw - id::FIRE_MAGIC)]
+            }
+            (id::FIRE_MAGIC..=id::EARTH_MAGIC, None) if wisdom => p * 10,
+            (id::FIRE_MAGIC..=id::EARTH_MAGIC, None) => {
+                SCHOOL_VALUES[usize::from(raw - id::FIRE_MAGIC)]
+            }
+            (id::SCHOLAR, None) => p * 5,
+            (id::SCHOLAR, Some(r)) => p.wrapping_mul(r.power_gain) / 10,
+            (id::ARTILLERY, Some(r)) if !r.ballista => 0,
+            (id::ARTILLERY, _) => self.attack * 10,
+            (id::OFFENSE | id::ARMORER, _) => a.wrapping_mul(7) / 100,
+            (id::INTELLIGENCE, None) => k * 10,
+            (id::INTELLIGENCE, Some(r)) => k.wrapping_mul(r.knowledge_gain) / 4,
+            (id::SORCERY, None) => p * 2,
+            (id::SORCERY, Some(r)) => p.wrapping_mul(r.power_gain) / 20,
+            (id::RESISTANCE, _) => a / 40,
+            (id::FIRST_AID, Some(r)) if !r.tent => 0,
+            (id::FIRST_AID, _) => 250,
             _ => 0,
         }
     }
@@ -261,12 +389,24 @@ impl<'a> Evaluation<'a> {
     /// known skills, takes `offered` when it meets it and counts every other unknown skill
     /// against the hero's free slots, refusing when none is left. A walk that ends takes it.
     pub(crate) fn takes_new(&self, offered: SkillId) -> bool {
-        let mut ranked: Vec<(SkillId, u64)> = (0..self.skills)
+        self.takes_new_with(offered, None)
+    }
+
+    /// [`Self::takes_new`] with the flag clear (`reads` `None`) or set ([`Self::original`]).
+    fn takes_new_with(&self, offered: SkillId, reads: Option<&ComputerReads>) -> bool {
+        let mut ranked: Vec<(SkillId, i32)> = (0..self.skills)
             .map(|raw| {
                 let skill = SkillId::from_raw(raw);
                 let weighed =
                     self.known(skill) == 0 && (self.weight(skill) > 0 || skill == offered);
-                (skill, if weighed { self.value(skill) } else { 0 })
+                (
+                    skill,
+                    if weighed {
+                        self.original(skill, reads)
+                    } else {
+                        0
+                    },
+                )
             })
             .collect();
         for i in 0..ranked.len() {
