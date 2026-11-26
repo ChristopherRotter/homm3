@@ -256,7 +256,7 @@ fn its_cues_are_handed_out_once() {
         scroll_speed: 1,
         hero_speed: 3,
         pointer: [700, 300],
-        hero: Some(crate::timeline::Hero {
+        hero: Some(Hero {
             at: h3_map::model::Pos { x: 17, y: 17, z: 0 },
             facing: Direction::East,
         }),

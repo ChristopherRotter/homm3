@@ -3696,3 +3696,52 @@ its coverage step (fmt, clippy, the doc tests and deny passed), CI's green Clien
   1 --check 3` on `Good to Go`: Blue's start after Red's turn ended at once, 17 of 17 frames read
   back exact, 20 of 20 as afresh, every change the headless loop's); the map-client scope's
   verify.
+
+### M5 T3b — the session in the window (2026-11-26)
+
+On `map-client/e24-m5-t3b`, from `master` at b59c5df (#1185; T3a's #1183 merged). Original data
+staged from the user's repo folder at the start (the four LODs, both executables, the five DLLs,
+the sound and video archives, `shell-videos.vid`, both tars, `games/`, the SoD tables, the 40
+MP3s) and the four manuals and three help files, SHA-256 checked against the PC's sums of
+2026-11-25; the PC not needed after that. The VM restarted once (about 13 minutes in): the
+setup's baseline stopped at its coverage step (fmt, clippy, the doc tests and deny passed), CI's
+Clients run on `master` standing in.
+
+- **Asked at the start** (the user): T3b whole (the recommendation was two parts, the live start
+  first); with one human the next day played in place (recommended), another human's turn a new
+  view.
+- **Built** (design §5.25):
+  - `h3_map_view::engine::live` and `Loaded::live` (`Live`: the host's facings by hero id): a
+    record beginning at a later snapshot let through for a live start (a record's file cut by its
+    bound still `Refused::Cut`); a hero's facing the host's, else right (MCL-Q58).
+  - The kingdom's heroes in the view's hero list's order (`hero_list`, GAM-HER-003) in
+    `engine::panels` and `played`'s slots, the types' order at a new game (every record's start
+    as before); the week's and the month's numbers by the start's day in `played`.
+  - `Loop::turns_asked`, `add_turns`, `heroes`; `Replay::turns_asked`, `add_turns` (the loop run
+    again from before the millisecond, as a given action), `heroes`.
+  - `hot_seat`: `Seat::told`, `Left`, `HotSeat::leave`, `HotSeat::since`.
+  - `paint::for_live` (replacing T2b's `for_text`) and `paint::live_turns`.
+  - `window::Source::Session` and the `window::Session` trait: the view set up from the seat's
+    record since, End Turn asked played through the session (the viewer's next day in place, or
+    the view left), the session's clock read at its deadline (a turn run out leaves the view).
+  - `play`: each human's view in turn (`played`'s loop, `Viewed`), the window and the sound lent
+    to each; the unattended run's seconds for the whole of play; the records written at play's
+    end as T3a's (`--records`).
+- **Checked:** the tests (the live start at the game's snapshot equal to the record's start; a
+  later one: the cut refused for a file, taken live, the host's facing drawn, its next turn day
+  10's equal to the whole record's; the kingdom's heroes by the list; a live `turn-day` asking at
+  160 and, given its turn, playing as the start with it; a view left after End Turn set up again
+  from there, its next turn the whole record's last); under Xvfb, End Turn and Move Reminder's OK
+  pressed by `xdotool` (keys held 0.3 s): Good to Go's two humans through five views, Knee Deep in
+  the Dead's one human through three next days in place, Good to Go with one-minute turns (each
+  turn run out passing the view on), every view's frames read back exact, as afresh and as the
+  headless loop's; each of Good to Go's two records played to its end by `h3-map-view record`;
+  clippy and the map crates' tests in `clients/`; the map-client scope's verify; `h3map.py drawn`
+  (the 56 situations and the sequences as recorded, the scripted ones' gaps as listed); the 236
+  player records of the 118 golden adventure replays played by this branch's release binary and
+  by `master`'s (b59c5df) side by side: all 236 the same (exit, output, timeline), 205 to their
+  end as at T2a (the hero list's order changes no golden record's play).
+- **Still waiting** (T3b's scope, other lanes'): Begin from the shell (the client lane's shell
+  crate calls `play`, whose API is unchanged: nothing more of this lane's) and Load (the engine's
+  loaded humans, the adventure lane's inbox of 2026-11-21); T4's and T7's acceptance begin from
+  the shell's Begin once it is there.

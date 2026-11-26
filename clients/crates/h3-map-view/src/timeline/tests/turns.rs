@@ -741,3 +741,48 @@ fn a_day_s_hero_and_choices_by_the_record_s_list() {
     assert_eq!(heroes, [Some(1), Some(0), None]);
     assert_eq!((l.slot_of(0), l.slot_of(1)), (Some(1), Some(0)));
 }
+
+#[test]
+fn live_end_turn_asks_the_host_and_plays_the_turns_it_gives() {
+    // E24 M5 T3b: `turn-day` live with no turn known: End Turn's key up at 160 asks the host
+    // (nothing changes); given then, the turn plays from 160 as the start's own would, the loop
+    // run again from before it.
+    let (start, actions, ms, _) = turning("turn-day");
+    let known = Start {
+        live: true,
+        ..start.clone()
+    };
+    let asking = Start {
+        live: true,
+        turns: Vec::new(),
+        ..start
+    };
+    let asking = &asking;
+    let rules = || rules(Bugs::Original);
+    let want = play(rules(), &known, &actions, ms).unwrap();
+    let mut replay = crate::replay::Replay::new(rules(), asking, actions.clone()).unwrap();
+    assert_eq!(replay.at(159).unwrap().drawn.pressed, [12]);
+    assert_eq!(replay.turns_asked(), None);
+    let before = replay.at(170).unwrap();
+    assert_eq!(replay.turns_asked(), Some(160));
+    assert!(before.drawn.message.is_none());
+    assert_eq!(before.drawn.kingdom.date, want[0].drawn.kingdom.date);
+    replay.add_turns(160, &known.turns);
+    assert_eq!(replay.turns_asked(), None);
+    for t in [160, 161, 500, ms] {
+        let shown = replay.at(t).unwrap();
+        let s = want.iter().rev().find(|s| s.t <= t).unwrap();
+        assert_eq!((&shown.drawn, shown.cursor), (&s.drawn, s.cursor), "{t}");
+    }
+    // The heroes where they stand and face as far as the loop ran: the selected one's.
+    let heroes = replay.heroes();
+    let selected = want.last().unwrap().hero.unwrap();
+    assert!(heroes.contains(&selected));
+    // With no map hero selected, the start's heroes as they stand.
+    let none = Start {
+        index: None,
+        ..asking.clone()
+    };
+    let l = Loop::start(rules(), &none).unwrap();
+    assert_eq!(l.heroes(), none.heroes);
+}

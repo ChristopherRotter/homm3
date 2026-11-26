@@ -34,6 +34,7 @@ use std::path::Path;
 
 use h3_contracts::PlayerId;
 use h3_game::GameRuleset;
+use h3_map_view::engine::{self, GameRecord, Live};
 use h3_protocol::codec;
 use h3_protocol::map::game::manifest;
 use h3_protocol::record::MAX_LINE;
@@ -129,6 +130,28 @@ impl Seat {
         }
         Ok(())
     }
+}
+
+impl Seat {
+    /// The number of the last message it was told (0 before its snapshot).
+    #[must_use]
+    pub fn told(&self) -> u32 {
+        self.n
+    }
+}
+
+/// Where a human's view was left as the turn passed from it (E24 M5 T3b): its seat's last
+/// message's number then, its view then, and its heroes' facings as the window last drew them (by
+/// hero id, the original's order of eight: the view names none, MCL-Q58). At the seat's next turn
+/// its view is set up again from there ([`HotSeat::since`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Left {
+    /// The seat's last message's number.
+    pub n: u32,
+    /// Its view.
+    pub view: GameObservation,
+    /// Its heroes' facings, by hero id.
+    pub facings: Vec<(u16, u8)>,
 }
 
 /// A frame folded before the seat of `colour` got its first snapshot.
@@ -301,6 +324,56 @@ impl<'r> HotSeat<'r> {
     #[must_use]
     pub fn record(&self, player: PlayerId) -> Option<String> {
         self.session.record(player)
+    }
+
+    /// `player`'s view left now with its heroes' `facings` (E24 M5 T3b, [`Left`]); none for a
+    /// player outside the game or before its snapshot.
+    #[must_use]
+    pub fn leave(&self, player: PlayerId, facings: Vec<(u16, u8)>) -> Option<Left> {
+        let seat = self.seat(player)?;
+        Some(Left {
+            n: seat.n,
+            view: seat.view.clone()?,
+            facings,
+        })
+    }
+
+    /// `player`'s record since its view was left at `left` (E24 M5 T3b), as the map client's live
+    /// start reads it (`h3_map_view::engine::live`): its first message a snapshot of the view
+    /// then (numbered as the message it was left at, the record's `first`), then the record's
+    /// later messages; its whole record without one. With the facings the host saw (none: every
+    /// hero faces right, as at a new game).
+    ///
+    /// # Errors
+    /// No record of `player`; it does not read.
+    pub fn since(
+        &self,
+        player: PlayerId,
+        left: Option<&Left>,
+    ) -> Result<(GameRecord, Live), String> {
+        let text = self
+            .record(player)
+            .ok_or_else(|| format!("no record of player {}", player.index()))?;
+        let mut record =
+            engine::parse(&text).map_err(|e| format!("player {}: {e}", player.index()))?;
+        let Some(left) = left else {
+            return Ok((record, Live::default()));
+        };
+        record
+            .messages
+            .retain(|m| number(m).is_some_and(|n| n > left.n));
+        record.messages.insert(
+            0,
+            ServerMessage::GameSnapshot {
+                n: left.n,
+                observation: left.view.clone(),
+            },
+        );
+        record.header.first = left.n;
+        let live = Live {
+            facings: left.facings.clone(),
+        };
+        Ok((record, live))
     }
 
     /// `player`'s `command`, as the host vouches for it, played and its frames folded.
@@ -523,5 +596,48 @@ mod tests {
             reason: h3_protocol::wire::GoodbyeReason::Paused,
         };
         assert_eq!(number(&goodbye), None);
+    }
+
+    #[test]
+    fn a_view_left_is_set_up_again_from_where_it_was_left() {
+        // E24 M5 T3b: Red's view left after its End Turn (its facings kept); at its next turn its
+        // record since then begins at a snapshot of that view, numbered as the message it was
+        // left at, and its next turn's start is the live start's first turn.
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::new("left", TWO);
+        let bytes = std::fs::read(&file.0).unwrap();
+        let game = begin(&file.0, None, (4, UNLIMITED), &rules).unwrap();
+        let mut hot = HotSeat::start(&game, &rules).unwrap();
+        let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+        assert_eq!(hot.end_turn().unwrap(), Some(blue));
+        let hero = hot.seat(red).unwrap().view.as_ref().unwrap().hero_list[0];
+        let left = hot.leave(red, vec![(hero, 6)]).unwrap();
+        assert_eq!(left.n, hot.seat(red).unwrap().told());
+        assert_eq!(hot.leave(PlayerId::new(5), Vec::new()), None);
+        // Nothing told since: the record since is the snapshot alone.
+        let (since, live) = hot.since(red, Some(&left)).unwrap();
+        assert_eq!(since.header.first, left.n);
+        assert_eq!(since.messages.len(), 1);
+        assert_eq!(live.facings, [(hero, 6)]);
+        // Blue's End Turn: Red's day 2 after the snapshot, as its whole record has it.
+        assert_eq!(hot.end_turn().unwrap(), Some(red));
+        let (since, live) = hot.since(red, Some(&left)).unwrap();
+        let ServerMessage::GameSnapshot { n, observation } = &since.messages[0] else {
+            panic!("no snapshot first");
+        };
+        assert_eq!((*n, observation), (left.n, &left.view));
+        let (whole, _) = hot.since(red, None).unwrap();
+        assert_eq!(
+            whole.messages[whole.messages.len() - since.messages.len() + 1..],
+            since.messages[1..]
+        );
+        let loaded = engine::live(since, &bytes, &rules, live).unwrap();
+        let art = h3_map_view::art::MapArt::from_raw(&loaded.raw).unwrap();
+        let played = engine::played(&loaded, &art, &rules).unwrap();
+        assert!(played.waits);
+        assert_eq!(played.turns.len(), 1);
+        let whole = engine::check(whole, &bytes, &rules).unwrap();
+        let all = engine::played(&whole, &art, &rules).unwrap();
+        assert_eq!(all.turns.last(), played.turns.first());
     }
 }

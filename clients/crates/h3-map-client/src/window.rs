@@ -45,6 +45,7 @@ use std::process::ExitCode;
 use h3_battle_client::audio::HostSound;
 use h3_game::GameRuleset;
 use h3_map_view::damage::{Held, tidy};
+use h3_map_view::engine::{GameRecord, Live};
 use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
@@ -79,7 +80,7 @@ const OFF: [i32; 2] = [-1, -1];
 pub const HOLD_MS: u64 = 20;
 
 /// The command's options.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Options {
     id: String,
     keys: Option<PathBuf>,
@@ -91,7 +92,7 @@ pub struct Options {
     install: PathBuf,
     map: PathBuf,
     /// Unattended for this many seconds; whether each frame is read back.
-    run: Option<(u32, bool)>,
+    pub(crate) run: Option<(u32, bool)>,
     /// No sound (E24 M2 T5).
     mute: bool,
     /// Where each cue played is written (the cue's line and the clock's millisecond it played at).
@@ -185,17 +186,61 @@ impl Options {
 }
 
 /// Where the window's map comes from (E24 M5 T2b): the command's options (a sequence, a
-/// situation or a record's file), or a record kept in memory, set up as a record's file is (play's
-/// start, [`crate::play`]): the map file the game was begun on, the record, its rules and its
-/// name in messages.
+/// situation or a record's file), or a human's view in the hot seat's session (E24 M5 T3b, play's:
+/// [`crate::play`]), set up from its record since the view was last left as a record's file is
+/// (the live start, `paint::for_live`).
 pub(crate) enum Source<'a> {
     Options,
-    Text {
-        map: &'a Path,
-        text: &'a str,
-        rules: &'a GameRuleset,
-        label: String,
-    },
+    Session(&'a mut (dyn Session + 'a)),
+}
+
+/// The hot seat's session as a human's view in the window sees it (E24 M5 T3b, play's
+/// `crate::play::Viewed`): the view set up from the seat's record since it was last left, its End
+/// Turn played there, the session's clock read from the window's, and where the view was left
+/// once the turn passed from it.
+pub(crate) trait Session {
+    /// The map file the game was begun on.
+    fn map(&self) -> &Path;
+    /// The game's rules.
+    fn rules(&self) -> &GameRuleset;
+    /// The viewer's colour.
+    fn colour(&self) -> u8;
+    /// The viewer's record since its view was last left, and the facts the host saw.
+    ///
+    /// # Errors
+    /// No record; it does not read.
+    fn record(&self) -> Result<(GameRecord, Live), String>;
+    /// The viewer's End Turn played at the host's clock `now` (ms): whether its turn runs again
+    /// (its next day: the view kept, its turns' starts given from its record).
+    ///
+    /// # Errors
+    /// The session's.
+    fn end_turn(&mut self, now: u64) -> Result<bool, String>;
+    /// The host's clock read at `now` (ms) when the session's deadline is due (its first reading
+    /// too): whether the viewer's turn still runs.
+    ///
+    /// # Errors
+    /// The session's.
+    fn tick(&mut self, now: u64) -> Result<bool, String>;
+    /// The view left with its heroes' facings (by hero id), the turn passed from it.
+    fn leave(&mut self, facings: Vec<(u16, u8)>);
+}
+
+/// The window's clock in milliseconds (the session's host's clock, E24 M5 T3b).
+fn host_ms(win: &Window) -> u64 {
+    win.ticks_ns() / 1_000_000
+}
+
+/// The facings of the view's heroes as far as `replay` ran, by hero id (`ids`: each start hero's
+/// map hero), for the host that leaves the view (E24 M5 T3b, MCL-Q58).
+fn facings(replay: &Replay, ids: &[(u16, usize)]) -> Vec<(u16, u8)> {
+    let heroes = replay.heroes();
+    ids.iter()
+        .filter_map(|&(id, i)| {
+            let facing = heroes.get(i)?.facing.number();
+            Some((id, u8::try_from(facing).ok()?))
+        })
+        .collect()
 }
 
 /// Where the window's map is shown (E24 M5 T2b): a window of its own and the sound's device opened
@@ -642,17 +687,32 @@ pub(crate) fn window(
         templates: &templates,
         bugs: options.bugs,
     };
+    // The hot seat's session (E24 M5 T3b), and each start hero's map hero (its facing kept as
+    // the view is left).
+    let mut session: Option<&mut (dyn Session + '_)> = None;
+    let mut ids: Vec<(u16, usize)> = Vec::new();
     let (setup, what) = match source {
         Source::Options => set_up(&assets, options)?,
-        // Play's start (E24 M5 T2b): a record kept in memory, set up as a record's file is.
-        Source::Text {
-            map,
-            text,
-            rules,
-            label,
-        } => {
-            let (setup, _) = paint::for_text(&assets, map, (text, rules), label, RECORD_LIMIT)?;
-            (setup, format!("play on {}", map.display()))
+        // A human's view in play (E24 M5 T3b): its record since it was last left, set up as a
+        // record's file is.
+        Source::Session(s) => {
+            let label = format!("play: colour {}'s view", s.colour());
+            let (record, live) = s.record()?;
+            let (setup, heroes) = paint::for_live(
+                &assets,
+                s.map(),
+                (record, s.rules(), live),
+                label,
+                RECORD_LIMIT,
+            )?;
+            ids = heroes;
+            let what = format!(
+                "play on {}, colour {}'s view",
+                s.map().display(),
+                s.colour()
+            );
+            session = Some(s);
+            (setup, what)
         }
     };
     // A host's window and sound lent (E24 M5 T2b: the shell's, for play), else the window's own.
@@ -698,9 +758,12 @@ pub(crate) fn window(
         }
     }
     let rules = Rules::new(&tables, &layout, options.bugs);
-    let new_replay =
-        || Replay::new(rules.clone(), &start, actions.clone()).map_err(|why| unplayable((0, why)));
-    let mut replay = new_replay()?;
+    // Made again at a restart from the start as it stands (E24 M5 T3b: the session's turns
+    // added).
+    let new_replay = |start: &Start| {
+        Replay::new(rules.clone(), start, actions.clone()).map_err(|why| unplayable((0, why)))
+    };
+    let mut replay = new_replay(&start)?;
     // The sound (E24 M2 T5): the WAVs decoded now, the device opened; none muted, without the
     // tables' sounds, or without a device (noted).
     let mut audio = Sound {
@@ -797,6 +860,15 @@ pub(crate) fn window(
         let now = win.ticks_ns();
         if stop_ns.is_some_and(|s| now.saturating_sub(started) >= s) {
             break;
+        }
+        // The session's clock on the window's (E24 M5 T3b): a turn whose time ran out leaves the
+        // view.
+        if let Some(s) = session.as_deref_mut()
+            && !s.tick(host_ms(win))?
+        {
+            s.leave(facings(&replay, &ids));
+            lines.push(format!("{} ms: the turn's time ran out", clock.ms(now)));
+            break 'run;
         }
         // The map's clock held at a change's millisecond while its held draws show.
         if let Some((_, t)) = hold {
@@ -921,7 +993,7 @@ pub(crate) fn window(
                     }
                 }
                 Some(Command::Window(Own::Restart)) => {
-                    replay = new_replay()?;
+                    replay = new_replay(&start)?;
                     handed = (0, 0);
                     if let Some((_, player)) = &mut *audio {
                         player.reset();
@@ -1110,6 +1182,34 @@ pub(crate) fn window(
                     made
                 }
             };
+        }
+        // End Turn's change asked for the turns after it (E24 M5 T3b): the session plays the End
+        // Turn; the viewer's next turn its next day in this view (its turns' starts from its
+        // record, the change made again from before it), another's the view left.
+        if let Some(s) = session.as_deref_mut()
+            && let Some(t) = replay.turns_asked()
+        {
+            if !s.end_turn(host_ms(win))? {
+                s.leave(facings(&replay, &ids));
+                lines.push(format!(
+                    "{t} ms: End Turn, the turn passed to another human"
+                ));
+                break 'run;
+            }
+            let label = format!("play: colour {}'s view", s.colour());
+            let (record, live) = s.record()?;
+            let turns = paint::live_turns(&mut painter, s.map(), (record, s.rules(), live), label)?;
+            let added = turns.get(start.turns.len()..).unwrap_or_default();
+            if added.is_empty() {
+                return Err(format!(
+                    "{t} ms: End Turn: the session told no turn's start after it"
+                ));
+            }
+            lines.push(format!("{t} ms: End Turn, the viewer's next turn in place"));
+            start.turns.extend_from_slice(added);
+            replay.add_turns(t, added);
+            renew = true;
+            continue;
         }
         // A redraw asked for (the window's contents may be lost): whatever this turn presents is
         // uploaded whole, and the frame shown is presented again when nothing new is (E24 M3 T7's

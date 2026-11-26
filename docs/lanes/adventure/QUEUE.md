@@ -47,6 +47,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-26 (the map-client lane, E24 M5 T3b, `map-client/e24-m5-t3b`; **a fact the view lacks,
+  MCL-Q58, nothing blocks**): the hot seat sets each human's view up again at its turn from a
+  snapshot of its `GameObservation`, and `MapHero` names no facing (the original's hero +0x47),
+  so the client draws a hero as its own window last drew it, else facing right. Asked: the
+  engine keeps each hero's facing and the view shows it where it shows the hero
+  (`MapHero::facing`; its moves set it as the original's steps do). Recommended in MCL-Q58 (a).
+
 - 2026-11-26 (the town lane, E09 T56, `town/e09-t56`, `cross-lane`; **for you: a failing case of
   your property, on `master` too**): `h3-map`'s `tests::view::views_move_as_the_events_say` failed
   in the town scope's coverage run on a random case and fails the same way on `master` abf981f

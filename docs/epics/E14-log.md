@@ -489,3 +489,34 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
 - **RMG-QUIRK-24 confirmed:** `s1-3p-2sm2i2`'s map has two players in its player block (tan, on the
   port's position 7, left out); the 2SM0k maps give both players their main towns. `h3_map` reads
   24 of 24, 23 import and validate.
+
+## T3b — step 2's items not read, and code 1 (2026-11-26, increment 3)
+
+- **Code reading only** (the user: "it is code reading only"): `Heroes3.exe` staged alone from the
+  PC (SHA-256 `aac39e8c…` checked by the tool); no oracle run, no build of the lane's crates.
+  Started on `master` after #1185 (T3a) merged; CI on `master` running then.
+- **Read** (`scripts/exe.py`, about 30 functions and sites): the triangulation 0x5FCEF0 to 0x5FDB40
+  (init, find, insert, finish and their helpers), `rmg_level_zones_partition`'s calls (the data
+  passed: the zone, the water zone, none on level 1), `rmg_zone_borders_draw` 0x53C390 whole,
+  `rmg_segment_clip` 0x53CAC0 whole, `rmg_zone_flood_fill` and its tail 0x53D640,
+  `rmg_water_zones_connect` 0x53DAD0 and `rmg_zone_graph_distances` 0x53D8E0 whole, `u16_vector_resize`
+  (was `_insert`), `rmg_run`'s, `random_map_generate`'s and its two callers' exception data.
+- **Found:** the triangulation is D. Lischinski's incremental Delaunay triangulation step for step
+  (Locate, InsertSite with the on-edge case, Lawson flips), in integers (32-bit TriArea, 64-bit
+  InCircle, both strict) on half-edges that store their origin; a square frame (-200..400) split by
+  a diagonal; a point at an existing vertex is dropped. `triangulation_finish` writes each zone
+  triangle's circumcentre (two truncating divisions, from the first record with data in the
+  vector's creation order) into its three records' +0x1C, +0x20. The borders walk the zone's
+  Voronoi cell; the clip works on a side's line (both ways from its start, never testing the end);
+  the edge walk's shortcut (a shared x or y) also fires across the map, so an axis-aligned single
+  side gets a straight chord over its jagged line, and as read no fill reaches the cells between.
+  The fill is a 4-connected scanline fill (its result order-free). The water connections: new
+  neighbours whose side's clip is on the map (wide, created), then each new zone to its earlier
+  neighbours unless Z.dist[c] > W.dist[c] + 1 for another zone c (wide, not created). **Code 1 is
+  only `TGzFile::TOpenFailure`:** `rmg_run`'s one handler catches that class; no frame up to the
+  scenario dialog catches anything else, so the divisions by zero (RMG-QUIRK-3) end the game.
+- **Docs:** survey §1.2, §2.2 (four paragraphs, the table, the failures, the not-read list),
+  §3.2.4 (ZON-009, -012 to -014), §3.2.15; `map.toml` 12 entries re-read, 9 new; `structs.toml`
+  `triangulation`, `triangulation_edge`, the zone generator's +0x3E4 and +0x3F4; the ledger's
+  RMG-QUIRK-3 corrected and five open candidates (classified when T3d's cells compare); T3d's scope
+  names them.
