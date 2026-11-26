@@ -261,8 +261,8 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   bench-check), while this lane's branches change no engine code and pass in the light path. When a
   light run fails on GitHub's API ("Record the verified code": an empty answer), push a commit to
   run again instead of re-running the job.
-- **CI's coverage runs without the original data** (M5 T4b, PR #1201): `clients/scripts/check.sh`
-  on CI has no `H3_INSTALL`, so a region covered only by a test that skips without the
-  installation fails there (llvm-cov's summary rounds one region in 16 000 to 100.00 %: read
-  the missed count). Run the local coverage with `H3_INSTALL` unset before opening a PR.
+- **Read coverage's missed counts, not its percentages** (M5 T4b, PR #1201): llvm-cov's summary
+  rounds one missed region in 16 000 to 100.00 %, and the gate fails on any (`--fail-under-regions
+  100`). CI's `clients/scripts/check.sh` runs without `H3_INSTALL`: run the local coverage with it
+  unset too, so a test that skips without the installation counts as on CI.
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
