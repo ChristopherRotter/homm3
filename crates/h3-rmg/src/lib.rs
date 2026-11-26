@@ -11,8 +11,9 @@
 //! [`resolve_random`]); [`generate`]'s frame up to step 1 (E14 T2c): the seed, water's Random,
 //! the templates kept and drawn, the banned heroes, the positions, with its [`Trace`]; the
 //! generator's map ([`Cells`], dumped as the phase oracle's) and step 1, the zones laid out
-//! ([`ZoneGenerator`], E14 T3c). The other steps come with increments 3 to 6, the writer's
-//! content with 7.
+//! ([`ZoneGenerator`], E14 T3c); step 2, each level partitioned (the triangulation, the water
+//! zones, the borders, the fills, the water connections: [`Partition`], E14 T3d). The other steps
+//! come with increments 3 to 6, the writer's content with 7.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.

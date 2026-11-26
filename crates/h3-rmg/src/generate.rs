@@ -1,8 +1,8 @@
 //! `generate`'s frame (ADR-0029 points 2, 7 and 8; survey `docs/rules/surveys/E14-generator.md`
 //! §1.2 to §1.5): the run's adjustments, the seed, water's Random, the templates kept and drawn,
 //! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
-//! T3c), each draw and each step's end reported to a [`Trace`]. Steps 2 to 15 and the writer's
-//! content come with increments 3 to 7.
+//! T3c, step 2 since T3d), each draw and each step's end reported to a [`Trace`]. Steps 3 to 15
+//! and the writer's content come with increments 3 to 7.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -146,8 +146,8 @@ impl fmt::Display for GenerateError {
     }
 }
 
-/// A generated map: so far what the frame and step 1 make (stub RMG-STUB-1: steps 2 to 15 and the
-/// writer's content come with increments 3 to 7).
+/// A generated map: so far what the frame and steps 1 and 2 make (stub RMG-STUB-1: steps 3 to 15
+/// and the writer's content come with increments 3 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
     /// The settings as the generator ran them: water drawn, and under two players in all one
