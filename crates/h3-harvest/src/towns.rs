@@ -28,7 +28,14 @@
 //! the gap-fill. Since E09 T46 (design §83; survey `docs/rules/surveys/E09-guild.md` §2): each
 //! record's `[town.guild]`, `SPTRAITS.TXT`'s town column of its faction over the hero spells (a
 //! spell of the `sod` pack, outside every record's closure, must weigh 0); the roles `guild`,
-//! `library`, `aurora` and `mana_vortex` and the guild's parameters from the gap-fill.
+//! `library`, `aurora` and `mana_vortex` and the guild's parameters from the gap-fill. Since E09
+//! T56 (design §102; survey `docs/rules/surveys/E09-trades.md` §4, §7.5): the roles
+//! `marketplace`, `artifact_merchants`, `freelancers`, `university` and `transformer` from the
+//! gap-fill; each faction's Blacksmith's `war_machine` from the executable's
+//! `blacksmith_machine_creatures`, the creature's war machine artifact of the gap-fill's
+//! `[[artifacts.war_machines]]`, and the Stronghold's Ballista Yard's (the Castle's machine) from
+//! the gap-fill; the trades' parameters from the gap-fill; the Skeleton Transformer's two targets
+//! and each pack's `[town_transformer]` dragons from `skeleton_transformer_targets`.
 //!
 //! The files are compiled with `h3-pack-towns` on the harvested core files in every allowed
 //! combination before they are returned.
@@ -93,7 +100,7 @@ const LEVELS: u8 = 7;
 /// `Dwelling.txt`'s rows a faction.
 pub const DWELLING_ROWS: usize = 2 * LEVELS as usize;
 /// The role fields, in the order a building's record writes them (`h3-pack-towns`' table).
-const ROLES: [&str; 19] = [
+const ROLES: [&str; 24] = [
     "hall",
     "fort",
     "tavern",
@@ -113,6 +120,11 @@ const ROLES: [&str; 19] = [
     "library",
     "aurora",
     "mana_vortex",
+    "marketplace",
+    "artifact_merchants",
+    "freelancers",
+    "university",
+    "transformer",
 ];
 /// The packs' files, in load order, with their header's line.
 const PACKS: [(&str, &str); 3] = [
@@ -196,6 +208,10 @@ struct Ctx<'a> {
     /// The hero spells in `SPTRAITS.TXT`'s order (E09 T46): each one's key, pack and weight in each
     /// faction's guild.
     guilds: Vec<heroes::SpellGuild>,
+    /// The war machine artifacts' keys by their creature's id (E09 T56; the base pack's).
+    machines: BTreeMap<u16, String>,
+    /// The secondary skills' keys in `SSTRAITS.TXT`'s order (E09 T56).
+    skills: Vec<String>,
 }
 
 /// Runs the town harvest: `(pack id, towns.toml text)` for `base`, `ab` and `sod`, checked to
@@ -239,6 +255,20 @@ pub fn harvest_towns(
         .iter()
         .enumerate()
         .filter_map(|(id, r)| Some((u16::try_from(id).ok()?, r.horde_growth)))
+        .collect();
+    // The war machine artifacts by their creature (the artifact harvest checked each creature).
+    let machines = gap
+        .artifacts
+        .war_machines
+        .iter()
+        .filter_map(|w| {
+            let id = rows.iter().position(|r| r.name == w.creature)?;
+            Some((u16::try_from(id).ok()?, key_of(&w.artifact)))
+        })
+        .collect();
+    let skills = heroes::skill_names(&inputs.hero_tables)?
+        .iter()
+        .map(|name| key_of(name))
         .collect();
     let creatures = rows
         .iter()
@@ -313,6 +343,9 @@ pub fn harvest_towns(
     for f in &spec.moat.faction {
         faction_index(&f.faction)?;
     }
+    for m in &spec.trades.machine_of {
+        faction_index(&m.faction)?;
+    }
     let ab_factions: BTreeSet<&str> = gap.ab.factions.iter().map(String::as_str).collect();
     let pack_of = |f: usize| {
         if ab_factions.contains(factions[f].as_str()) {
@@ -355,12 +388,19 @@ pub fn harvest_towns(
         roles,
         taverns,
         guilds,
+        machines,
+        skills,
     };
     let mut texts: BTreeMap<&str, String> =
         PACKS.iter().map(|&(id, line)| (id, header(line))).collect();
+    let (targets, dragons) = transformer(&ctx)?;
     let base = texts.entry("base").or_default();
     base.push_str(&params(&ctx)?);
+    base.push_str(&trade_params(&ctx, &targets)?);
     for (pack, text) in visions(&ctx)? {
+        texts.entry(pack).or_default().push_str(&text);
+    }
+    for (pack, text) in dragons {
         texts.entry(pack).or_default().push_str(&text);
     }
     for (f, t) in data.factions.iter().enumerate() {
@@ -390,7 +430,8 @@ fn header(line: &str) -> String {
          # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).\n\
          # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md\n\
          # 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6, E09-guild.md 2\n\
-         # (the guild weights, docs/epics/E09-design.md 83); format: crates/h3-pack-towns.\n"
+         # (the guild weights, docs/epics/E09-design.md 83), E09-trades.md 4 and 7.5 (the war\n\
+         # machines and the Transformer, design 102); format: crates/h3-pack-towns.\n"
     )
 }
 
@@ -491,6 +532,105 @@ fn guild_rows(ctx: &Ctx<'_>) -> Result<String, String> {
             .map(|keys| format!("[{}]", keys.join(", ")))
     });
     Ok(rows.collect::<Result<Vec<_>, String>>()?.join(", "))
+}
+
+/// The trades' `[town_params]` (E09 T56, design §102), after the others: the merchants' stock,
+/// the boat's price (in `RESTYPES.TXT`'s order) and type, the University's skills and price (in
+/// the parameters' gold), the Transformer's two targets (`targets`, [`transformer`]'s).
+fn trade_params(ctx: &Ctx<'_>, targets: &str) -> Result<String, String> {
+    let t = &ctx.spec.trades;
+    let stock: Vec<String> = t.merchants_stock.iter().map(|c| quote(c)).collect();
+    let mut prices = t.boat_price.clone();
+    let boat: Vec<String> = ctx
+        .resources
+        .iter()
+        .filter_map(|r| {
+            let name = prices.keys().find(|n| key_of(n) == *r)?.clone();
+            Some(format!("{} = {}", toml_key(r), prices.remove(&name)?))
+        })
+        .collect();
+    if let Some(name) = prices.keys().next() {
+        return Err(format!(
+            "gapfill: towns: the boat's resource `{name}` is unknown"
+        ));
+    }
+    let skills = t
+        .university_skills
+        .iter()
+        .map(|&i| {
+            ctx.skills
+                .get(i)
+                .map(|k| quote(k))
+                .ok_or_else(|| format!("gapfill: towns: the University's skill {i} is unknown"))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let gold = key_of(&ctx.spec.params.gold);
+    Ok(format!(
+        "merchants_stock = [{}]\n\
+         boat_price = {{ {} }}\n\
+         boat_type = {}\n\
+         university_skills = [{}]\n\
+         university_price = {{ {} = {} }}\n\
+         {targets}",
+        stock.join(", "),
+        boat.join(", "),
+        t.boat_type,
+        skills.join(", "),
+        toml_key(&gold),
+        t.university_price,
+    ))
+}
+
+/// The Skeleton Transformer (E09 T56; survey `E09-trades.md` §7.5): the `[town_params]` lines of
+/// its two targets and each pack's `[town_transformer]` with its dragons. Over the harvested
+/// creatures of the table (the unused rows left out), the targets are exactly two: the one target
+/// that is its own (the Skeleton's) is `transformer_into`, the other `transformer_dragons_into`,
+/// and the creatures that become it the dragons, each in its own pack's file.
+fn transformer(ctx: &Ctx<'_>) -> Result<(String, BTreeMap<&'static str, String>), String> {
+    let table = &ctx.data.transformer_targets;
+    let target = |id: u16| table.get(usize::from(id)).copied();
+    let pairs: Vec<(u16, u16)> = ctx
+        .creatures
+        .keys()
+        .filter_map(|&id| Some((id, target(id)?)))
+        .collect();
+    let targets: BTreeSet<u16> = pairs.iter().map(|&(_, t)| t).collect();
+    let fixed: Vec<u16> = targets
+        .iter()
+        .copied()
+        .filter(|&t| target(t) == Some(t))
+        .collect();
+    let (&[into], 2) = (fixed.as_slice(), targets.len()) else {
+        return Err(format!(
+            "towns: the Transformer's targets {targets:?} are not one fixed point and one other"
+        ));
+    };
+    let dragons_into = targets.iter().copied().find(|&t| t != into).unwrap_or(into);
+    let key = |id: u16| {
+        ctx.creatures
+            .get(&id)
+            .ok_or_else(|| format!("towns: the Transformer's target {id} is not harvested"))
+    };
+    let lines = format!(
+        "transformer_into = {}\ntransformer_dragons_into = {}\n",
+        quote(&key(into)?.0),
+        quote(&key(dragons_into)?.0)
+    );
+    let mut by_pack: BTreeMap<&'static str, Vec<String>> = BTreeMap::new();
+    for &(id, t) in &pairs {
+        if t == dragons_into {
+            let (k, pack) = key(id)?;
+            by_pack.entry(pack).or_default().push(quote(k));
+        }
+    }
+    let files = by_pack
+        .into_iter()
+        .map(|(pack, keys)| {
+            let text = format!("\n[town_transformer]\ndragons = [{}]\n", keys.join(", "));
+            (pack, text)
+        })
+        .collect();
+    Ok((lines, files))
 }
 
 /// Each pack's `[town_visions]` (E09 T8c2): the gap-fill's creatures, each in its own pack's file.
@@ -802,6 +942,50 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
         .filter(|(n, _)| **n > 0)
         .map(|(n, r)| Ok(format!("{} = {n}", toml_key(&reference("base", r, pack)?))))
         .collect::<Result<Vec<_>, String>>()?;
+    // The war machines (E09 T56): the Blacksmith's of the faction's table entry, a building of
+    // `machine_of` another faction's.
+    let machine_of = |of: usize| {
+        let creature = ctx
+            .data
+            .blacksmith_machines
+            .get(of)
+            .ok_or_else(|| err(format!("no Blacksmith machine of town {of}")))?;
+        let artifact = ctx
+            .machines
+            .get(creature)
+            .ok_or_else(|| err(format!("creature {creature} is no war machine artifact's")))?;
+        Ok::<_, String>(quote(&reference("base", artifact, pack)?))
+    };
+    let mut machines: BTreeMap<u8, String> = BTreeMap::new();
+    let blacksmith = ctx.spec.trades.blacksmith;
+    if buildings.contains_key(&blacksmith) {
+        machines.insert(blacksmith, machine_of(f)?);
+    }
+    for m in ctx
+        .spec
+        .trades
+        .machine_of
+        .iter()
+        .filter(|m| m.faction == *faction)
+    {
+        let of = ctx
+            .factions
+            .iter()
+            .position(|name| *name == m.machine_of)
+            .ok_or_else(|| format!("gapfill: towns: unknown town `{}`", m.machine_of))?;
+        if !buildings.contains_key(&m.building) {
+            return Err(err(format!(
+                "the gap-fill gives a war machine to building {}, not its",
+                m.building
+            )));
+        }
+        if machines.insert(m.building, machine_of(of)?).is_some() {
+            return Err(err(format!(
+                "building {} sells two war machines",
+                m.building
+            )));
+        }
+    }
     let (siege, _) = sieges(ctx, f);
     let mut out = String::new();
     let _ = write!(
@@ -857,6 +1041,9 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
                 .map(|(r, n)| Ok(format!("{} = {n}", toml_key(&reference("base", r, pack)?))))
                 .collect::<Result<Vec<_>, String>>()?;
             let _ = writeln!(out, "  cost = {{ {} }}", cost.join(", "));
+        }
+        if let Some(machine) = machines.get(&id) {
+            let _ = writeln!(out, "  war_machine = {machine}");
         }
         let mut roles = ctx.roles.get(&(f, id)).cloned().unwrap_or_default();
         if !roles.is_empty() {

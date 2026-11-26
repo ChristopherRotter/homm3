@@ -129,7 +129,9 @@ garrison hero (and +0x43), so nothing a human would call sleeping lasts past the
   creatures into its garrison with the player's resources (`ai_town_defence_recruit` 0x428580: a
   rule, not a value; §2.4);
 - **the recruit reserve** (+0x08, `ai_recruit_reserve` 0x429AD0): per resource the most that one
-  town's two most valuable available stacks (count × AI value) cost;
+  town's two most valuable available stacks (count × AI value) cost; read whole at T2d: the value
+  is the AI value's low 16 bits times the count in 16 bits, and a town with one stack counts none
+  (§5.5 #67, #68);
 - **the resource weights** (`ai_resource_weights` 0x428740, below);
 - the player's +0x39 from the puzzle map (`player_puzzle_target` 0x4BAE50; T1a2);
 - each hero's effectiveness values (`ai_hero_effectiveness` 0x527760: H3API's AI fields of the
@@ -149,9 +151,14 @@ debugging check shows a warning box for every resource below 0.
 **The resource weights** (`ai_resource_weights` 0x428740): per resource the **means** (the stock
 plus twice the day's income, +0x24) and the **demand** (+0x40: the largest cost of any building
 buildable now in any of its towns, plus the costs of three most valuable stacks of a list built
-from its towns' dwellings, that part not read). A rate r comes from the market's table by the
-number of its towns that may build a Marketplace (1 to 10). The factor: no demand, r; a demand at
-most the means, (surplus × r + demand) / means; more than the means, demand / means, at most 1 / r.
+from its towns' dwellings; read whole at T2d: per resource the largest cost, the day's mark not
+read; the list one entry per creature, its count the towns' available ones summed, from the
+week's fifth day with the next week's growth, its value the count × the AI value, sorted by the
+library's `std::sort`, `CPU-STA-003`). A rate r comes from the market's table by the
+number of its towns that may build a Marketplace (1 to 10; T2d: the towns whose buildable mask
+holds building 14, built or not). The factor: no demand, r; a demand at
+most the means, (surplus × r + demand) / means; more than the means, demand / means, at most 1 / r
+(T2d: the demand itself when the means are 1 or less, 0x428CF1).
 The weight is the factor times the resource's base value (`resource_value` 0x5ECD10), stored as an
 f64 in the record (+0x60) and in the player (+0x128); the player's +0x160 is the first six weights'
 running integer sum divided by 5 (six summed, five divided: as read).
@@ -1912,7 +1919,8 @@ No candidate is a ledger entry yet: `docs/rules/quirks-ai.md` starts with the re
 increment 2 (ADR draft point 1), the exploit-fix entries first.
 
 Counts: 36 slips, 6 state, 5 exploit-fix, 13 none, 2 fixed (one item); T2b's re-read added two
-state rows, #63 and #64, T2c's reading two more, #65 and #66 (10 state).
+state rows, #63 and #64, T2c's reading two more, #65 and #66 (10 state), T2d's two slips, #67
+and #68 (38 slips).
 
 | # | § | Candidate | Address | Class | Lane | Confirm | Note |
 |---|---|---|---|---|---|---|---|
@@ -1982,3 +1990,5 @@ state rows, #63 and #64, T2c's reading two more, #65 and #66 (10 state).
 | 64 | §2.2 | the wall halving spares creature 35 (the Arch Magi) alone, not the Magi (34) | 0x424412 | state | battle, adventure (§3.6 row 1) | blind at T2b (done) | quick battle's result and the estimate; the port reads the battle part's `no_wall_penalty`, which the Magi have too (no data names 35 alone; E31 T2b) |
 | 65 | §2.2 | an other spell's value per hit point becomes the new value over old value × old value per hit point (the hit points would be the old value over it): damage spells and raises on that stack then misvalue | 0x4259B2, 0x425ADF | state | battle, adventure (§3.6 row 1) | read at T2c | quick battle's result and the estimate; ported as read (E31 T2c) |
 | 66 | §2.2 | an other spell and a raise change the stacks' values but not the side's strength (the stand-off reads the stacks, the beaten test the strength) | 0x4259A2, 0x42613F | state | battle, adventure (§3.6 row 1) | read at T2c | quick battle's result and the estimate; ported as read (E31 T2c) |
+| 67 | §1.5 | the recruit reserve counts nothing for a town with a single available stack: the loop's bound, the count less 2, is compared unsigned | 0x429CC6 (0x429AD0) | slip | ai | read at T2d | the build choice's reserve; ported as read (E31 T2d, CPU-STA-002) |
+| 68 | §1.5 | the recruit reserve values a stack at the low 16 bits of the AI value times the count, in 16 bits: dear stacks wrap and sort low | 0x429BD4 (0x429AD0) | slip | ai | read at T2d | the build choice's reserve; ported as read (E31 T2d, CPU-STA-002) |

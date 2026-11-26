@@ -130,6 +130,8 @@ proptest! {
                 silo: va.wrapping_add(16),
                 garrison: [va, 0x0040_1008, 0x0040_1040],
                 dwelling_2_chance: exe::Immediate { va, opcode: &[0x83] },
+                blacksmith_machines: va.wrapping_add(20),
+                transformer_targets: va,
             };
             let _ = exe::towns::town_data_at(&image, &towns);
         }

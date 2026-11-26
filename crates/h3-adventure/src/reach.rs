@@ -179,14 +179,15 @@ pub struct Reach {
 }
 
 impl Reach {
-    /// The search from `hero`'s tile with its points, its steps priced by its details in the
-    /// game's store (E08 T40).
+    /// The search from `hero`'s tile with `points` (its points left, or since E31 T2d the
+    /// caller's: [`AdventureState::reach_with`]), its steps priced by its details in the game's
+    /// store (E08 T40).
     fn search(
         state: &AdventureState,
         core: &Ruleset,
         part: &AdventureRuleset,
         heroes: &[Arc<HeroDetails>],
-        hero: &HeroOnMap,
+        (hero, points): (&HeroOnMap, u32),
     ) -> Self {
         let map = state.map();
         let spells = state.day_spells(hero.id);
@@ -199,7 +200,7 @@ impl Reach {
             Mode::Sail(_) => pricing.sail_cheapest(),
             _ => pricing.cheapest(),
         };
-        let radius = u16::try_from(hero.movement / cheapest).unwrap_or(u16::MAX);
+        let radius = u16::try_from(points / cheapest).unwrap_or(u16::MAX);
         let origin = hero.pos;
         let left = origin.x.saturating_sub(radius);
         let top = origin.y.saturating_sub(radius);
@@ -266,19 +267,19 @@ impl Reach {
                 state.visit_marks(hero.id),
             ),
         };
-        reach.points[reach.start] = Some(hero.movement);
+        reach.points[reach.start] = Some(points);
         if let Mode::Sail(boat) = mode {
-            reach.search_sail(&search, boat, hero.movement);
+            reach.search_sail(&search, boat, points);
             return reach;
         }
         if mode != Mode::Walk {
-            reach.search_layered(&search, mode, hero.movement);
+            reach.search_layered(&search, mode, points);
             return reach;
         }
         if afloat || search.added.is_some() {
-            reach.search_walking::<true>(&search, hero.movement);
+            reach.search_walking::<true>(&search, points);
         } else {
-            reach.search_walking::<false>(&search, hero.movement);
+            reach.search_walking::<false>(&search, points);
         }
         reach
     }
@@ -714,7 +715,24 @@ impl AdventureState {
         hero: HeroId,
     ) -> Option<Reach> {
         self.hero(hero)
-            .map(|hero| Reach::search(self, core, part, heroes, hero))
+            .map(|hero| Reach::search(self, core, part, heroes, (hero, hero.movement)))
+    }
+
+    /// The tiles `hero` could reach with `points` movement points in the place of the points it
+    /// has left, if it is on the map, searched as [`Self::reach`] searches (ADV-MOV-008: over the
+    /// tiles its owner has explored). Since E31 T2d (`cross-lane`, the ai lane's): the original's
+    /// computer runs the pathfinder from every enemy hero with its day's maximum plus 800
+    /// (`ai_enemy_reach_fold` 0x4280E0, [`Self::day_maximum_of`]).
+    // rule: ADV-MOV-008
+    pub fn reach_with(
+        &self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        heroes: &[Arc<HeroDetails>],
+        (hero, points): (HeroId, u32),
+    ) -> Option<Reach> {
+        self.hero(hero)
+            .map(|hero| Reach::search(self, core, part, heroes, (hero, points)))
     }
 }
 

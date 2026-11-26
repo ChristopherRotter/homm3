@@ -2,7 +2,8 @@
 //! and role `shipyard`, design §24; increment 3's roles `horde`, `portal`, `week_of`, `roe` and
 //! the growth's parameters, design §38; increment 4's tavern weights and the hire's price, design
 //! §60; increment 5's guild weights, roles `guild`, `library`, `aurora`, `mana_vortex` and the
-//! guild's parameters, design §83): the load order, each pack's parameters, records and overrides in it, then the checks
+//! guild's parameters, design §83; increment 6's trade roles, war machines and parameters,
+//! design §102): the load order, each pack's parameters, records and overrides in it, then the checks
 //! across packs.
 
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -10,14 +11,15 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ContentKey, CreatureTypeId, FactionId, HeroClassId, ResourceId, Ruleset, SpellCategory, SpellId,
+    ArtifactClass, ArtifactTypeId, ContentKey, CreatureTypeId, FactionId, HeroClassId, ResourceId,
+    Ruleset, SkillId, SpellCategory, SpellId,
 };
 use h3_contracts::{MAX_TOWN_BONUSES, Moat};
 
 use super::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, GarrisonRow,
-    MAX_CREATURE_LEVELS, TownCompileError, TownDef, TownPack, TownParams, TownParamsDef,
-    TownRecord,
+    MAX_CREATURE_LEVELS, MAX_MERCHANTS_STOCK, TownCompileError, TownDef, TownPack, TownParams,
+    TownParamsDef, TownRecord,
 };
 use crate::building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 
@@ -126,6 +128,22 @@ impl Scope<'_> {
         Ok(())
     }
 
+    fn artifact(&self, key: &ContentKey) -> Result<ArtifactTypeId> {
+        let id = self
+            .core
+            .artifact_by_key(key.as_str())
+            .ok_or_else(|| TownCompileError::UnknownArtifact(String::from(key.as_str())))?;
+        self.check(key).map(|()| id)
+    }
+
+    fn skill(&self, key: &ContentKey) -> Result<SkillId> {
+        let id = self
+            .core
+            .skill_by_key(key.as_str())
+            .ok_or_else(|| TownCompileError::UnknownSkill(String::from(key.as_str())))?;
+        self.check(key).map(|()| id)
+    }
+
     fn spell(&self, key: &ContentKey) -> Result<SpellId> {
         let id = self
             .core
@@ -204,8 +222,8 @@ fn invalid_building(
     }
 }
 
-/// Compiles the packs into the parameters (with every pack's Visions creatures) and the records
-/// in faction order.
+/// Compiles the packs into the parameters (with every pack's Visions creatures and Transformer
+/// dragons) and the records in faction order.
 pub(super) fn compile(
     core: &Ruleset,
     packs: &[TownPack],
@@ -213,6 +231,7 @@ pub(super) fn compile(
     let order = load_order(core, packs)?;
     let mut params = None;
     let mut visions = BTreeSet::new();
+    let mut dragons = BTreeSet::new();
     let mut towns: BTreeMap<FactionId, Entry> = BTreeMap::new();
     for (pack, closure) in &order {
         let scope = Scope {
@@ -230,6 +249,14 @@ pub(super) fn compile(
             if !visions.insert(scope.creature(key)?) {
                 return Err(TownCompileError::InvalidParams(
                     "a Visions creature is named twice",
+                ));
+            }
+        }
+        // rule: TWN-TRD-001
+        for key in &pack.transformer_dragons {
+            if !dragons.insert(scope.creature(key)?) {
+                return Err(TownCompileError::InvalidParams(
+                    "a Transformer dragon is named twice",
                 ));
             }
         }
@@ -264,11 +291,12 @@ pub(super) fn compile(
             entry.siege_obstacles = o.patch.siege_obstacles.unwrap_or(entry.siege_obstacles);
         }
     }
-    if params.is_none() && (!towns.is_empty() || !visions.is_empty()) {
+    if params.is_none() && (!towns.is_empty() || !visions.is_empty() || !dragons.is_empty()) {
         return Err(TownCompileError::MissingParams);
     }
     let Some(params) = params.map(|p| TownParams {
         visions_creatures: visions.into_iter().collect(),
+        transformer_dragons: dragons.into_iter().collect(),
         ..p
     }) else {
         return Ok((None, Vec::new()));
@@ -380,6 +408,7 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
             "the Mana Vortex's factor is 1 to 10",
         ));
     }
+    let trades = trade_params(scope, def)?;
     Ok(TownParams {
         gold,
         hall_gold: def.hall_gold,
@@ -399,6 +428,79 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
         guild_slots: def.guild_slots,
         spell_book_price,
         vortex_factor: def.vortex_factor,
+        merchants_stock: def.merchants_stock.clone(),
+        boat_price: trades.boat_price,
+        boat_type: def.boat_type,
+        university_skills: trades.university_skills,
+        university_price: trades.university_price,
+        transformer_into: trades.transformer_into,
+        transformer_dragons_into: trades.transformer_dragons_into,
+        transformer_dragons: Vec::new(),
+    })
+}
+
+/// The trades' parameters resolved (TWN-TRD-001; E09 design §102).
+struct TradeParams {
+    boat_price: Vec<(ResourceId, u32)>,
+    university_skills: Vec<SkillId>,
+    university_price: Vec<(ResourceId, u32)>,
+    transformer_into: CreatureTypeId,
+    transformer_dragons_into: CreatureTypeId,
+}
+
+/// The trades' parameters (TWN-TRD-001; E09 design §102): the merchants' stock at most
+/// [`MAX_MERCHANTS_STOCK`] entries, none special; the boat's and the University's prices as a
+/// building's cost; the University's skills of the core, at least one, each once; the
+/// Transformer's two targets creatures of the core.
+// rule: TWN-TRD-001
+fn trade_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TradeParams> {
+    if def.merchants_stock.len() > MAX_MERCHANTS_STOCK {
+        return Err(TownCompileError::InvalidParams(
+            "the merchants' stock holds more than 8 entries",
+        ));
+    }
+    if def.merchants_stock.contains(&ArtifactClass::Special) {
+        return Err(TownCompileError::InvalidParams(
+            "the merchants' stock names the special class",
+        ));
+    }
+    let boat_price = scope
+        .amounts(&def.boat_price)?
+        .ok_or(TownCompileError::InvalidParams(
+            "the boat's price gives each resource once, at least 1",
+        ))?;
+    let mut skills = BTreeSet::new();
+    let university_skills = def
+        .university_skills
+        .iter()
+        .map(|key| {
+            let skill = scope.skill(key)?;
+            if skills.insert(skill) {
+                Ok(skill)
+            } else {
+                Err(TownCompileError::InvalidParams(
+                    "a University's skill is given twice",
+                ))
+            }
+        })
+        .collect::<Result<Vec<_>>>()?;
+    if university_skills.is_empty() {
+        return Err(TownCompileError::InvalidParams(
+            "the University offers no skill",
+        ));
+    }
+    let university_price =
+        scope
+            .amounts(&def.university_price)?
+            .ok_or(TownCompileError::InvalidParams(
+                "the University's price gives each resource once, at least 1",
+            ))?;
+    Ok(TradeParams {
+        boat_price,
+        university_skills,
+        university_price,
+        transformer_into: scope.creature(&def.transformer_into)?,
+        transformer_dragons_into: scope.creature(&def.transformer_dragons_into)?,
     })
 }
 
@@ -603,7 +705,9 @@ fn compile_buildings(
     let mut auto = Vec::with_capacity(defs.len());
     let mut required = Vec::with_capacity(defs.len());
     let mut costs = Vec::with_capacity(defs.len());
+    let mut machines = Vec::with_capacity(defs.len());
     for (def, &id) in defs.iter().zip(&ids) {
+        machines.push(war_machine(scope, faction, def)?);
         let mut set = BuildingSet::EMPTY;
         for key in &def.supersedes {
             set = set.with(resolve(
@@ -658,7 +762,10 @@ fn compile_buildings(
     // rule: TWN-BLD-007
     let requires = close(&ids, &required);
     let mut buildings = Vec::with_capacity(defs.len());
-    for ((((((def, &id), &supersedes), &forbidden_with), &auto_with), &requires), cost) in defs
+    for (
+        ((((((def, &id), &supersedes), &forbidden_with), &auto_with), &requires), cost),
+        machine,
+    ) in defs
         .iter()
         .zip(&ids)
         .zip(&closed)
@@ -666,6 +773,7 @@ fn compile_buildings(
         .zip(&auto)
         .zip(&requires)
         .zip(costs)
+        .zip(machines)
     {
         if supersedes.contains(id) {
             return Err(invalid_building(
@@ -698,9 +806,37 @@ fn compile_buildings(
             requires,
             cost,
             roles: def.roles,
+            war_machine: machine,
         });
     }
     Ok(buildings)
+}
+
+/// A building's war machine (TWN-TRD-001; E09 design §102): an artifact of the core with a
+/// `war_machine` creature.
+// rule: TWN-TRD-001
+fn war_machine(
+    scope: &Scope<'_>,
+    faction: &str,
+    def: &BuildingDef,
+) -> Result<Option<ArtifactTypeId>> {
+    let Some(key) = &def.war_machine else {
+        return Ok(None);
+    };
+    let artifact = scope.artifact(key)?;
+    if scope
+        .core
+        .artifact(artifact)
+        .is_some_and(|a| a.war_machine.is_some())
+    {
+        Ok(Some(artifact))
+    } else {
+        Err(invalid_building(
+            faction,
+            def,
+            "its war machine's artifact names no war machine creature",
+        ))
+    }
 }
 
 /// Each building's set closed (what it supersedes, or requires): its direct set and,
@@ -743,7 +879,8 @@ fn forbidden_cycle(forbidden: &[Option<BuildingId>], start: BuildingId) -> bool 
 /// one silo, at most one Shipyard, Portal of Summoning and week's building; at most
 /// `MAX_TOWN_BONUSES` with a morale or luck change; each dwelling once, the level-1 and level-2
 /// ones present; each index's horde once; at most one building of each guild level, one Library,
-/// one Aurora Borealis and one Mana Vortex (TWN-GLD-001).
+/// one Aurora Borealis and one Mana Vortex (TWN-GLD-001); at most one Marketplace, Artifact
+/// Merchants, Freelancer's Guild, University and Transformer (TWN-TRD-001).
 fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
     let count =
         |role: &dyn Fn(&BuildingRoles) -> bool| buildings.iter().filter(|b| role(&b.roles)).count();
@@ -807,6 +944,21 @@ fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
         return Err(invalid_town(
             faction,
             "has more than one Library, Aurora Borealis or Mana Vortex",
+        ));
+    }
+    // rule: TWN-TRD-001
+    let trades: [&dyn Fn(&BuildingRoles) -> bool; 5] = [
+        &|r| r.marketplace,
+        &|r| r.artifact_merchants,
+        &|r| r.freelancers,
+        &|r| r.university,
+        &|r| r.transformer,
+    ];
+    if trades.iter().any(|role| count(role) > 1) {
+        return Err(invalid_town(
+            faction,
+            "has more than one Marketplace, Artifact Merchants, Freelancer's Guild, University or \
+             Transformer",
         ));
     }
     Ok(())

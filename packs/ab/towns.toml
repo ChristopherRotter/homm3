@@ -5,10 +5,14 @@
 # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).
 # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md
 # 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6, E09-guild.md 2
-# (the guild weights, docs/epics/E09-design.md 83); format: crates/h3-pack-towns.
+# (the guild weights, docs/epics/E09-design.md 83), E09-trades.md 4 and 7.5 (the war
+# machines and the Transformer, design 102); format: crates/h3-pack-towns.
 
 [town_visions]
 creatures = ["rogue"]
+
+[town_transformer]
+dragons = ["azure_dragon", "crystal_dragon", "faerie_dragon", "rust_dragon"]
 
 [[town_override]]
 faction = "base:castle"
@@ -264,6 +268,7 @@ roe = false
   name = "Marketplace"
   slot = 8
   cost = { "base:wood" = 5, "base:gold" = 500 }
+  marketplace = true
 
   [[town.building]]
   key = "resource_silo"
@@ -278,6 +283,7 @@ roe = false
   name = "Blacksmith"
   slot = 7
   cost = { "base:wood" = 5, "base:gold" = 1000 }
+  war_machine = "base:ballista"
 
   [[town.building]]
   key = "artifact_merchants"
@@ -285,6 +291,7 @@ roe = false
   slot = 10
   requires = ["marketplace"]
   cost = { "base:gold" = 10000 }
+  artifact_merchants = true
 
   [[town.building]]
   key = "garden_of_life"
@@ -311,6 +318,7 @@ roe = false
   slot = 18
   requires = ["mage_guild_level_1"]
   cost = { "base:wood" = 10, "base:ore" = 10, "base:gold" = 5000 }
+  university = true
 
   [[town.building]]
   key = "aurora_borealias"

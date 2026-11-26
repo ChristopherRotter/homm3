@@ -30,6 +30,8 @@
 //! | 95 + s, s < 7 | Upgrade the stack in army slot `s` at the player's open Hill Fort (E08 T135a) |
 //! | 102 | Upgrade every stack that upgrades at the player's open Hill Fort (E08 T135a) |
 //! | 103 | Open the town screen of the town whose entrance is the tile in the tile head: its Mana Vortex, its guild's spells (E09 T49a2) |
+//! | 104 | Buy a spell book at the Mage Guild of the town whose entrance is the tile in the tile head (E09 T49b) |
+//! | 105 + 5s + c, s < 8, c < 5 | The hero in slot `s` casts the adventure spell of behaviour `c` (0 Summon Boat, 1 Scuttle Boat, 2 Fly, 3 Water Walk, 4 Dimension Door): Scuttle Boat's boat and the door's arrival the tile in the tile head, the others tile 0 (E08 T144a2) |
 //!
 //! A player's hero slots are its list of heroes' first [`HERO_SLOTS`] (since version 20, E08
 //! T141a: its heroes on the map in the order they joined it, GAM-HER-003; before, in the order of
@@ -41,7 +43,7 @@
 //! an entry that takes no tile (`EndTurn`, the answers, the hire dialog's purchases, a revisit) the
 //! tile head allows exactly 0, as the
 //! battle's heads after a non-cast entry (a policy that always samples the head never meets an
-//! empty mask on a legal entry). The *building head* (E09 T19c1) is an index of a town's faction's
+//! empty mask on a legal entry); so does a cast of a spell without a target (E08 T144a2). The *building head* (E09 T19c1) is an index of a town's faction's
 //! record of buildings, [`BUILDING_COUNT`] (`h3_towns::MAX_BUILDINGS`, 64) wide: after [`BUILD`]
 //! and a town's entrance it allows the buildings of the builds [`legal_commands`] lists for that
 //! town ([`building_mask`]: the hall's offer the owner's treasury pays, one build a town a day,
@@ -57,7 +59,8 @@
 //! one town an entrance), after [`RECRUIT`] those of the listed recruitments (E09 T27), after a
 //! [`TOWN_HEROES`] entry those of the listed hero moves of its kind (E09 T28a), after a
 //! [`TAVERN_HIRE`] entry those of the listed hires of its slot (E09 T38a2), after [`TOWN_OPEN`]
-//! those of the listed openings (E09 T49a2). A move's destination is a tile the hero's reachable-tiles query
+//! those of the listed openings (E09 T49a2), after a cast entry of Scuttle Boat or Dimension Door
+//! the targets of its hero's query (E08 T144a2, [`cast_targets`]). A move's destination is a tile the hero's reachable-tiles query
 //! lists, not its own; a tile another player's hero stands on is one (the visit is a battle,
 //! GAM-BAT-004). The action carries no path: the command takes the path the query chose
 //! (`h3_game::legal_moves`). A client may send any other path the hero can pay (`apply` checks
@@ -164,24 +167,37 @@
 //! Version 20 (E08 T141a, the adventure lane's
 //! `cross-lane` change with the user's consent, E08 decision 413) orders the hero slots by the
 //! player's list of heroes (GAM-HER-003: the original's start list by hero type, then each hero
-//! that joins the map last) in place of the heroes' ids; no entry moves.
+//! that joins the map last) in place of the heroes' ids; no entry moves. Version 21 (E08 T144a2,
+//! the adventure lane's `cross-lane` change with the user's consent, E08 decisions 421, 422;
+//! increment 15's design note §17) appends the casts on the map (`GameCommand::Cast`,
+//! GAM-SPL-001): [`CAST_SPELLS`] entries per hero slot from [`CAST_BASE`], one per behaviour of
+//! `h3_adventure::AdventureSpell` in the original's spell order, each naming the core spell the
+//! adventure part binds to it (ADV-SPL-001: each behaviour bound once; an entry of a behaviour the
+//! part does not bind decodes to nothing). Summon Boat, Fly and Water Walk take no tile and are
+//! legal where `legal_commands` lists the hero's cast; Scuttle Boat's boat and Dimension Door's
+//! arrival are the tile in the tile head (not design §17's windows around the hero: the encoding
+//! has no slot head), their masks the hero's per-hero query (`h3_game::legal_cast_targets`, as
+//! the moves are `legal_moves`'), the entry legal when the query is not empty. A decoded target
+//! is any tile of the map: `apply` checks it ([`decode`]).
 
-use h3_adventure::{ALTAR_SLOTS, AdventureCommand, AltarPlaces, MarketParams, Pos, Reach};
+use h3_adventure::{
+    ALTAR_SLOTS, AdventureCommand, AdventureSpell, AltarPlaces, MarketParams, Pos, Reach,
+};
 use h3_battle::{BattleState, LegalCommands};
-use h3_content::{CreatureTypeId, ResourceId};
+use h3_content::{CreatureTypeId, ResourceId, SpellId};
 use h3_contracts::TownId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, AltarAnswer, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset,
     GameState, HillFortAnswer, HireAnswer, MarketAnswer, SchoolChoice, SkillOffer, TavernAnswer,
-    UniversityAnswer, legal_commands, legal_moves,
+    UniversityAnswer, legal_cast_targets, legal_commands, legal_moves,
 };
 use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 20;
+pub const ACTION_ENCODING_VERSION: u32 = 21;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -311,8 +327,17 @@ pub const TOWN_OPEN: usize = HILL_FORT_ALL + 1;
 /// the tile head, for its visitor, else its garrison hero (E09 T49b; TWN-GLD-007).
 pub const SPELL_BOOK: usize = TOWN_OPEN + 1;
 
+/// The cast entries of a hero slot (E08 T144a2): one per behaviour of the adventure spells
+/// (`h3_adventure::AdventureSpell::ALL`, the original's spell order: Summon Boat, Scuttle Boat,
+/// Fly, Water Walk, Dimension Door).
+pub const CAST_SPELLS: usize = AdventureSpell::ALL.len();
+
+/// The entry of the hero in slot 0's cast of Summon Boat (E08 T144a2; GAM-SPL-001): slot `s`'s
+/// cast of the behaviour of code `c` is `CAST_BASE + s × CAST_SPELLS + c` ([`Action::cast`]).
+pub const CAST_BASE: usize = SPELL_BOOK + 1;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = SPELL_BOOK + 1;
+pub const ENTRY_COUNT: usize = CAST_BASE + HERO_SLOTS * CAST_SPELLS;
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -375,7 +400,7 @@ pub struct MapAction {
     /// The entry.
     pub entry: usize,
     /// The destination tile of a move, `(level × height + row) × width + column`, a Shipyard's
-    /// anchor or a town's entrance; 0 otherwise.
+    /// anchor, a town's entrance or a cast's target (E08 T144a2); 0 otherwise.
     pub tile: u32,
     /// The building of a build or a recruitment: its index in the town's faction's record; 0
     /// otherwise.
@@ -486,6 +511,12 @@ impl Action {
         Self::map(SPELL_BOOK, tile)
     }
 
+    /// The hero in `slot` casts the adventure spell of behaviour `spell` at `tile` (E08 T144a2): its
+    /// [`CAST_BASE`] entry; `tile` the target of Scuttle Boat or Dimension Door, 0 for the others.
+    pub fn cast(slot: usize, spell: AdventureSpell, tile: u32) -> Self {
+        Self::map(cast_entry(slot, spell), tile)
+    }
+
     /// The map phase's action of `entry` with `tile` (building 0).
     pub const fn map(entry: usize, tile: u32) -> Self {
         Self::Adventure(MapAction {
@@ -581,16 +612,79 @@ pub fn moves(
     legal_moves(state, rules, Actor::Player(player), hero).filter(|r| r.tiles().next().is_some())
 }
 
+/// The targets at which the hero in `slot` of `seat`'s player may cast the adventure spell of
+/// behaviour `spell` now, in row order (E08 T144a2): the query [`legal_cast_targets`] of the core
+/// spell the adventure part binds to it, so Scuttle Boat's and Dimension Door's alone; none for
+/// the neutral seat, an empty slot or a behaviour the part does not bind.
+pub fn cast_targets(
+    state: &GameState,
+    rules: &GameRuleset,
+    seat: impl Into<Seat>,
+    (slot, spell): (usize, AdventureSpell),
+) -> Vec<Pos> {
+    let player = seat.into().player();
+    let hero = player.and_then(|player| hero_in_slot(state, player, slot).map(|h| (player, h)));
+    match (hero, bound_spell(rules, spell)) {
+        (Some((player, hero)), Some(spell)) => {
+            legal_cast_targets(state, rules, Actor::Player(player), (hero, spell))
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// Each cast of Scuttle Boat or Dimension Door that `seat`'s heroes have a target for now (E08
+/// T144a2): the hero's slot, the behaviour and its targets in row order ([`legal_cast_targets`]),
+/// by slot, then in the adventure part's order; none for the neutral seat. Built on every step of
+/// a random game, so it asks only the slots that hold a hero (a list's places are dense) and the
+/// behaviours the part binds.
+pub fn targeted_casts(
+    state: &GameState,
+    rules: &GameRuleset,
+    seat: impl Into<Seat>,
+) -> Vec<(usize, AdventureSpell, Vec<Pos>)> {
+    let mut casts = Vec::new();
+    let Some(player) = seat.into().player() else {
+        return casts;
+    };
+    let actor = Actor::Player(player);
+    let heroes =
+        (0..HERO_SLOTS).map_while(|slot| hero_in_slot(state, player, slot).map(|h| (slot, h)));
+    for (slot, hero) in heroes {
+        for &(spell, effect) in rules.adventure().spells() {
+            if effect.targets() {
+                let targets = legal_cast_targets(state, rules, actor, (hero, spell));
+                if !targets.is_empty() {
+                    casts.push((slot, effect, targets));
+                }
+            }
+        }
+    }
+    casts
+}
+
+/// The core spell the adventure part binds to the behaviour `spell` (ADV-SPL-001: each behaviour
+/// bound once), if it binds one.
+fn bound_spell(rules: &GameRuleset, spell: AdventureSpell) -> Option<SpellId> {
+    rules
+        .adventure()
+        .spells()
+        .iter()
+        .find(|&&(_, effect)| effect == spell)
+        .map(|&(id, _)| id)
+}
+
 /// Fills `mask` with the legal map entries of `seat`: the commands [`legal_commands`] lists
 /// (`EndTurn` while its turn runs, and [`BUILD_BOAT`] when it lists a `BuildBoat`, E08 T85b2b; a
 /// hero's revisit entry when it lists the hero's `Revisit`, E08 T105b2; [`BUILD`] when it lists a
 /// town's build, E09 T19c1, [`RECRUIT`] a town's recruitment, E09 T27, a [`TOWN_HEROES`] entry
 /// a hero move of its kind, E09 T28a, a [`TAVERN_HIRE`] entry a hire of its slot, E09 T38a2,
-/// [`TOWN_OPEN`] a town's opening, E09 T49a2, [`SPELL_BOOK`] a spell book's purchase, E09 T49b;
-/// or with an open decision its answers alone: `Decline`, and `Accept` while the offer stands,
+/// [`TOWN_OPEN`] a town's opening, E09 T49a2, [`SPELL_BOOK`] a spell book's purchase, E09 T49b,
+/// a hero's cast entry of Summon Boat, Fly or Water Walk its cast, E08 T144a2; or with an open
+/// decision its answers alone: `Decline`, and `Accept` while the offer stands,
 /// E08 T15a; a level-up's `First` and `Second`, E08 T30; a hire dialog's purchases by their
-/// creatures' places, E08 T95b), and each hero slot with a tile to move to ([`legal_moves`]: none
-/// with a decision open); none in the battle phase, where the listed commands are the battle's
+/// creatures' places, E08 T95b), each hero slot with a tile to move to ([`legal_moves`]: none
+/// with a decision open), and each hero's cast entry of Scuttle Boat or Dimension Door with a
+/// target ([`targeted_casts`], E08 T144a2: none with a decision open); none in the battle phase, where the listed commands are the battle's
 /// and no hero moves, so none for the neutral seat.
 pub fn legal_mask(
     state: &GameState,
@@ -603,12 +697,15 @@ pub fn legal_mask(
     let listed = legal_commands(state, rules, seat.actor());
     let hire = listed_hire(state, rules, seat, &listed);
     for command in &listed {
-        if let Some(entry) = command_entry(state, seat, command, &hire) {
+        if let Some(entry) = command_entry(state, rules, seat, command, &hire) {
             mask[entry] = true;
         }
     }
     for slot in 0..HERO_SLOTS {
         mask[MOVE_BASE + slot] = moves(state, rules, seat, slot).is_some();
+    }
+    for (slot, spell, _) in targeted_casts(state, rules, seat) {
+        mask[cast_entry(slot, spell)] = true;
     }
 }
 
@@ -620,8 +717,9 @@ pub fn legal_mask(
 /// (E09 T27), of the listed hero moves of a [`TOWN_HEROES`] entry's kind after it (E09 T28a), and
 /// of the listed hires of a [`TAVERN_HIRE`] entry's slot after it (E09 T38a2), and of the listed
 /// openings after [`TOWN_OPEN`] (E09 T49a2), and of the listed spell books' purchases after
-/// [`SPELL_BOOK`] (E09 T49b); none after an illegal entry or in the battle phase
-/// (none for the neutral seat).
+/// [`SPELL_BOOK`] (E09 T49b), the targets of its hero's query after a cast entry of Scuttle Boat
+/// or Dimension Door ([`cast_targets`], E08 T144a2; 0 alone after a legal cast entry of another
+/// spell); none after an illegal entry or in the battle phase (none for the neutral seat).
 pub fn tile_mask(
     state: &GameState,
     rules: &GameRuleset,
@@ -637,7 +735,7 @@ pub fn tile_mask(
         let hire = listed_hire(state, rules, seat, &listed);
         mask[0] = listed
             .iter()
-            .any(|command| command_entry(state, seat, command, &hire) == Some(entry));
+            .any(|command| command_entry(state, rules, seat, command, &hire) == Some(entry));
     } else if entry == BUILD_BOAT {
         for command in legal_commands(state, rules, seat.actor()) {
             if let GameCommand::Adventure(AdventureCommand::BuildBoat { anchor, .. }) = command
@@ -682,6 +780,11 @@ pub fn tile_mask(
             {
                 mask[index as usize] = true;
             }
+        }
+    } else if let Some(cast) = cast_of(entry) {
+        let targets = cast_targets(state, rules, seat, cast).into_iter();
+        for index in targets.filter_map(|pos| tile_index(state, pos)) {
+            mask[index as usize] = true;
         }
     } else if let Some(reach) = entry
         .checked_sub(MOVE_BASE)
@@ -817,13 +920,31 @@ pub fn second_mask(
 }
 
 /// Whether `entry` takes no tile: `EndTurn`, an answer (a hire dialog's purchase too; since E08
-/// T135a the trades' and services') or a revisit (E08 T105b2); not [`TOWN_OPEN`] (E09 T49a2) nor
-/// [`SPELL_BOOK`] (E09 T49b).
+/// T135a the trades' and services'), a revisit (E08 T105b2) or a cast of Summon Boat, Fly or Water
+/// Walk (E08 T144a2); not [`TOWN_OPEN`] (E09 T49a2) nor [`SPELL_BOOK`] (E09 T49b).
 const fn tileless(entry: usize) -> bool {
     entry == END_TURN
         || (entry >= ACCEPT && entry < BUILD_BOAT)
         || (entry >= HIRE_BASE && entry < BUILD)
         || (entry >= MARKET_TRADE && entry < TOWN_OPEN)
+        || (entry >= CAST_BASE
+            && entry < ENTRY_COUNT
+            && !AdventureSpell::ALL[(entry - CAST_BASE) % CAST_SPELLS].targets())
+}
+
+/// The [`CAST_BASE`] entry of the hero in `slot` casting the adventure spell of behaviour `spell`
+/// (E08 T144a2).
+fn cast_entry(slot: usize, spell: AdventureSpell) -> usize {
+    CAST_BASE + slot * CAST_SPELLS + usize::from(spell.code())
+}
+
+/// The hero slot and the behaviour of a cast entry (E08 T144a2, [`cast_entry`]'s inverse); none
+/// for another entry.
+fn cast_of(entry: usize) -> Option<(usize, AdventureSpell)> {
+    let at = entry
+        .checked_sub(CAST_BASE)
+        .filter(|&at| at < HERO_SLOTS * CAST_SPELLS)?;
+    Some((at / CAST_SPELLS, AdventureSpell::ALL[at % CAST_SPELLS]))
 }
 
 /// The [`MARKET_TRADE`] entry of the pair (`give`, `take`) (E08 T135a): `MARKET_TRADE + give ×
@@ -938,7 +1059,7 @@ const fn listed_only(answer: &Answer) -> bool {
 }
 
 /// The answer the trade's or service's entry `entry` (from [`MARKET_TRADE`], below
-/// [`ENTRY_COUNT`]) names when [`legal_commands`] lists none of its role (E08 T135a): the trade of
+/// [`TOWN_OPEN`]) names when [`legal_commands`] lists none of its role (E08 T135a): the trade of
 /// one lot of its pair, the sale of one lot of its slot's stack and the purchase of its entry in
 /// the market parameters' cost resource (resource 0 without the parameters, where no market
 /// opens), the Hill Fort's upgrade of its slot or `All`, which `apply` accepts or rejects with the
@@ -1096,7 +1217,7 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
         // E08 T51a: the management commands have no entry (decision 99: the AI lane's call); a
         // town's build takes a tile ([`command_entry`]'s, E09 T19c1); the system's own commands
         // (E16 M5 T14) are the host's, never listed for a seat. A cast on the map (E08 T142a)
-        // has none until the encoding's entries (E08 T144a, `legal_commands` lists none before).
+        // takes its hero's slot ([`command_entry`]'s, E08 T144a2).
         GameCommand::Adventure(_)
         | GameCommand::Battle(_)
         | GameCommand::Manage(_)
@@ -1111,15 +1232,20 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
 /// `BuildBoat` (E08 T85b2b), a `Revisit`'s by its hero's slot ([`revisit_entry`], E08 T105b2),
 /// [`BUILD`] for a town's build (E09 T19c1), [`RECRUIT`] for its recruitment (E09 T27), a
 /// [`TOWN_HEROES`] entry for a hero move (E09 T28a), a [`TAVERN_HIRE`] entry for a hire (E09
-/// T38a2), [`TOWN_OPEN`] for an opening (E09 T49a2), or [`SPELL_BOOK`] for a spell book's
-/// purchase (E09 T49b).
+/// T38a2), [`TOWN_OPEN`] for an opening (E09 T49a2), [`SPELL_BOOK`] for a spell book's
+/// purchase (E09 T49b), or a cast's by its hero's slot and its spell's behaviour (E08 T144a2,
+/// [`cast_command_entry`]; `legal_commands` lists those without a target).
 fn command_entry(
     state: &GameState,
+    rules: &GameRuleset,
     seat: Seat,
     command: &GameCommand,
     hire: &[CreatureTypeId],
 ) -> Option<usize> {
     match command {
+        GameCommand::Cast { hero, spell, .. } => seat
+            .player()
+            .and_then(|player| cast_command_entry(state, rules, player, *hero, *spell)),
         GameCommand::Adventure(AdventureCommand::BuildBoat { .. }) => Some(BUILD_BOAT),
         GameCommand::Adventure(AdventureCommand::Revisit { hero }) => {
             revisit_entry(state, seat.player()?, *hero)
@@ -1171,13 +1297,35 @@ fn tavern_slot(entry: usize) -> Option<u8> {
 /// list, `h3_adventure::HeroOnMap::listed`); none for a hero past the slots, off the map or
 /// another player's.
 fn revisit_entry(state: &GameState, player: PlayerId, hero: HeroId) -> Option<usize> {
+    hero_slot(state, player, hero).map(|slot| REVISIT_BASE + slot)
+}
+
+/// The slot of `player`'s hero `hero` ([`hero_in_slot`]'s inverse: its place in the player's list,
+/// `h3_adventure::HeroOnMap::listed`); none for a hero past the slots, off the map or another
+/// player's.
+fn hero_slot(state: &GameState, player: PlayerId, hero: HeroId) -> Option<usize> {
     state
         .adventure()
         .hero(hero)
         .filter(|h| h.owner == player)
         .and_then(|h| usize::try_from(h.listed).ok())
         .filter(|&slot| slot < HERO_SLOTS)
-        .map(|slot| REVISIT_BASE + slot)
+}
+
+/// The cast entry of `player`'s hero `hero` casting `spell` (E08 T144a2): its slot's entry of the
+/// behaviour the adventure part binds to the spell; none for a spell the part does not bind or a
+/// hero without a slot ([`hero_slot`]).
+fn cast_command_entry(
+    state: &GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    hero: HeroId,
+    spell: SpellId,
+) -> Option<usize> {
+    let effect = rules.adventure().adventure_spell(spell);
+    effect
+        .zip(hero_slot(state, player, hero))
+        .map(|(effect, slot)| cast_entry(slot, effect))
 }
 
 /// The `BuildBoat` of `player` at the Shipyard anchored on `anchor` (E08 T85b2b): one the
@@ -1212,8 +1360,11 @@ fn build_boat(
 /// between its bars of a [`TOWN_HEROES`] entry's kind (building 0), or since E09 T38a2 its hire of
 /// the hero in the player's tavern slot of a [`TAVERN_HIRE`] entry (building 0), or since E09
 /// T49a2 its opening with [`TOWN_OPEN`] (building 0), or since E09 T49b its spell book's purchase
-/// with [`SPELL_BOOK`] (building 0) (a building other than 0 with another entry
-/// names none); none for the neutral seat. In the battle phase: the battle command the battle's encoding decodes the
+/// with [`SPELL_BOOK`] (building 0), or since E08 T144a2 a cast of its entry's hero and
+/// behaviour's bound spell (building 0): Scuttle Boat and Dimension Door at the tile, whichever
+/// it is (their target is `apply`'s to check, as the cast's other conditions), the others with
+/// tile 0 alone (a building other than 0 with another entry names none); none for the neutral
+/// seat. In the battle phase: the battle command the battle's encoding decodes the
 /// action to ([`battle::decode`]), for the seat's battle ([`battle_of`]). Whether the command may
 /// be issued now (whose turn it is, an open decision, the price, the side to act) is `apply`'s.
 pub fn decode(
@@ -1262,6 +1413,19 @@ pub fn decode(
     if action.building != 0 {
         return None;
     }
+    if let Some((slot, effect)) = cast_of(action.entry) {
+        let hero = hero_in_slot(state, player, slot)?;
+        let target = match (effect.targets(), action.tile) {
+            (true, tile) => Some(tile_pos(state, tile)?),
+            (false, 0) => None,
+            (false, _) => return None,
+        };
+        return bound_spell(rules, effect).map(|spell| GameCommand::Cast {
+            hero,
+            spell,
+            target,
+        });
+    }
     if tileless(action.entry) {
         if action.tile != 0 {
             return None;
@@ -1300,7 +1464,9 @@ pub fn decode(
 /// same way (E09 T27), a hero's move between its bars by its kind's entry and the town's entrance
 /// (E09 T28a), a hire by its slot's entry and the town's entrance (E09 T38a2), an opening by
 /// [`TOWN_OPEN`] and the town's entrance (E09 T49a2), a spell book's purchase by [`SPELL_BOOK`]
-/// and the town's entrance (E09 T49b; none of these for the neutral seat), a
+/// and the town's entrance (E09 T49b), a cast by its hero's slot and its spell's behaviour, with
+/// its target for Scuttle Boat and Dimension Door and tile 0 for the others (E08 T144a2: none for
+/// a target with another spell, or none with these two; none of these for the neutral seat), a
 /// battle command by the
 /// battle's encoding for the seat's battle ([`battle::encode`]). [`decode`] gives the command back
 /// when a move's path is the one the hero's query chose (a move along another path decodes to the
@@ -1344,6 +1510,20 @@ pub fn encode(
         }
         GameCommand::Town(TownCommand::BuySpellBook { town }) => {
             return town_tile(state, *town).map(Action::spell_book);
+        }
+        GameCommand::Cast {
+            hero,
+            spell,
+            target,
+        } => {
+            let effect = rules.adventure().adventure_spell(*spell)?;
+            let slot = hero_slot(state, player, *hero)?;
+            let tile = match (effect.targets(), target) {
+                (true, Some(pos)) => tile_index(state, *pos)?,
+                (false, None) => 0,
+                _ => return None,
+            };
+            return Some(Action::cast(slot, effect, tile));
         }
         GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) => {
             let listed = legal_commands(state, rules, seat.actor());

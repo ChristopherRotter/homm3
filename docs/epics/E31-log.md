@@ -543,3 +543,77 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   Cure's counter-casting test, the flyer's 8 hit points, 0.7 × 60 = 42 in doubles). `estimate.rs`
   and `fight.rs` at 100 % lines and regions by their crates' own tests; `h3-battle`, `h3-game`,
   `h3-sim` all pass.
+
+## T2d — the start's values (2026-11-26, increment 2)
+
+- **The size, measured at the start** (`docs/exe/map.toml`): the 14 functions, 6 157 bytes, about
+  2 300 instructions; the terrain shares already the engine's (`h3_heroes::TerrainShares`, E08
+  T25) and the difficulty's weights `fight::blend` (T2c), so about 1 950 left. The user chose **no
+  cut**, three values moved to the tasks that build what they need, four small `cross-lane`
+  changes, and the vision circle to T2h (AI-Q35).
+- **Blind re-reads** (`Heroes3.exe` staged from the user's repo folder; nothing printed
+  committed): `ai_turn_start` 0x4297C0, `ai_turn_start_values` 0x527960, `ai_resource_weights`
+  0x428740 (whole, the creature list read for the first time), `ai_recruit_reserve` 0x429AD0
+  (whole), `ai_eyes_value` 0x429910, `ai_enemy_reach_fold` 0x4280E0, `ai_reach_fold_towns`
+  0x4282B0, `ai_town_capture_sim` 0x428410, `ai_town_threat_clear` 0x428260,
+  `ai_town_threat_count` 0x428570, the two vtables, `ai_hero_effectiveness`'s +0x109, and the
+  library sort's pieces (0x434CE0, 0x435240, 0x435290, 0x435160, 0x435310). Each agrees with the
+  survey but five details, now in the survey and the catalog: (a) the reserve values a stack at
+  the AI value's low 16 bits times the count in 16 bits, and a town with one stack counts none
+  (the bound n − 2 compared unsigned): §5.5's new slips #67 and #68; (b) a demand above means of
+  1 or less is the demand itself before the cap (0x428CF1); (c) the Marketplaces are the towns
+  whose buildable mask holds building 14, built or not; (d) the demand's building part is per
+  resource the largest cost, each resource on its own; (e) the defence fold runs first and sets
+  the same threats, each enemy hero's cleared before its search, so with its purchases stubbed
+  the threat fold's result is the start's.
+- **Built** (`h3_game::computer`'s `start.rs`, CPU-STA-001 to -006): the start's `Record` in the
+  memory (encoding **v2**: the Eye value, the reserve, the means, the demand, the rate's row, the
+  mean weight, the heroes' experience weights, the threats, the towns' counts), computed at each
+  turn start (`turn::start`); the threat fold (`threats`) with the town's capture estimate
+  (`fight::captures` on `h3_battle::estimate`, its first caller outside `fight`); the reserve
+  (`reserve`, `two_dearest`); the weights (`weights`, `three_dearest`, `factor`,
+  `Record::weights`); the experience weight (`experience_weight`, the fight's
+  `experience_value`). The library's `std::sort` (`order.rs`). **Cross-lane** (AI-Q35):
+  `AdventureState::reach_with` (a search with the caller's points; `reach` calls it with the
+  hero's) and `day_maximum_of` (`h3-adventure`); `GameState::day_income` public (the adventure
+  lane's `h3-game`); `GameState::growth_inputs` (the town lane's `h3-game`), and three of the town
+  tests' builders `pub(crate)` for the start's tests. Stubs: AI-STUB-3 now the middle alone;
+  AI-STUB-10 the Eye value (no Eye of the Magi; the vision circle with T2h), -11 the fold's search
+  the engine's reach, -12 the defence recruits (increment 3), -13 the spell gains (T2e), -14 the
+  artifacts' mean (T2f), -15 the Grail target (T2i). No `POLICY_VERSION` bump: no choice reads
+  the records yet.
+- **Agent decisions (change freely):** the weights are kept as their inputs (the means, the
+  demand, the rate's row) and computed on read exactly as the start computes them (no f64 bit
+  pattern in `X87`'s surface); the threats and the towns' counts kept only where not 0, by id; the
+  creature list in the core's order and length, not the original's 145 by number (the packs'
+  order differs after the base creatures), so only equal values at the third place could end
+  otherwise; the Marketplace found by the town record's key `marketplace` (no role yet: the town
+  lane's inbox); the buildable-now set is the hall's test of the town without its mark,
+  intersected with the hall's possible set (the held Capitol); an enemy's day's maximum is
+  recomputed now (`day_maximum_of`), as `hero_max_movement` reads it, not the one stored at its
+  turn start; the capture estimate only for towns reached, as the original, the enemy's battle
+  reads derived once per hero; the library sort copied from `h3_battle_ai`'s (`h3-game` does not
+  depend on it).
+- **Tests:** `computer/start/tests.rs` (8, on the town tests' game with values, wood, a
+  Marketplace and the market's rates: both players' whole records, the fold's cases (two towns,
+  a garrison that holds, a hero walled in by rock, a player without towns), the reserve's 16-bit
+  values and its one-stack slip, the three dearest of four creatures, the buildings read now
+  with the day's mark and with a held Capitol, the growth from the week's fifth day, the factor's
+  nine cases and the four comparisons); `computer/order/tests.rs` (4: the median's six paths,
+  the insertion sort's ties, the quicksort's ties on 35 entries both ways, a property test);
+  `computer/tests.rs`' memory tests for v2 (every field, each value out of range, the lists'
+  order, the property test); `h3-adventure`'s reach test for `reach_with` and `day_maximum_of`.
+  The doubles from an IEEE double model of the reading, the sort's orders from an independent
+  model of the library's (Python, not committed), compared exactly (doubles scaled by 2^40); all
+  agreed with the port at once. `start.rs`, `order.rs`, `memory.rs`, `fight.rs` and `turn.rs` at
+  100 % lines and regions by `h3-game`'s own tests.
+- **The benchmark** (`computer-turns-towns-36`): 4 933 409 Ir → 207 M Ir, re-baselined: 87 % the
+  threat fold's searches (one reach per enemy hero with its maximum plus 800, the original's
+  pathfinder run), about 925 000 Ir a turn (about 0.3 ms), inside the 50 ms budget. Tried and
+  dropped: the capture estimate before the search (253 M: on that map most enemy heroes would
+  take some town, so the searches stay and the estimates add up). The battle reads derived once
+  per hero change nothing measurable there (207.0 M before, 207.2 M after: an enemy reaches one
+  town there), kept for the maps where it reaches several.
+- **Found:** `h3-adventure`'s property test `reach::tests::the_query_and_move_hero_agree` fails on
+  `master` with a new case (the query and `MoveHero` disagree on the points left, 4 against 6):
+  its `cc` line in the adventure lane's inbox, not committed (it would fail every lane's CI).

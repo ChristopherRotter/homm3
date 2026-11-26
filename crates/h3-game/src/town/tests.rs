@@ -80,7 +80,7 @@ fn towns_core(elf: bool) -> Ruleset {
 }
 
 /// [`towns_core`]'s pack.
-pub(super) fn towns_core_pack(elf: bool) -> ContentPack {
+pub(crate) fn towns_core_pack(elf: bool) -> ContentPack {
     let mut pack = core_pack(elf);
     if elf {
         let ent = CreatureDef {
@@ -185,7 +185,7 @@ pub(super) const SHIPYARD: usize = 12;
 /// [`town_pack`]'s lookout's reveal radius; its part's is 5.
 pub(super) const LOOKOUT_RADIUS: u8 = 20;
 
-pub(super) fn town_pack(elf: bool) -> TownPack {
+pub(crate) fn town_pack(elf: bool) -> TownPack {
     let mut roles: Vec<BuildingRoles> = (1..=4)
         .map(|level| BuildingRoles {
             hall: Some(level),
@@ -241,6 +241,7 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
             requires: vec![],
             cost: vec![],
             roles,
+            war_machine: None,
         })
         .collect();
     let row = GarrisonRow {
@@ -308,6 +309,13 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
             guild_slots: [5, 4, 3, 2, 1],
             spell_book_price: vec![(key("t:gold"), 500)],
             vortex_factor: 2,
+            merchants_stock: vec![h3_content::ArtifactClass::Treasure; 7],
+            boat_price: vec![(key("t:gold"), 1000)],
+            boat_type: 1,
+            university_skills: vec![key("t:wits")],
+            university_price: vec![(key("t:gold"), 2000)],
+            transformer_into: key("t:imp"),
+            transformer_dragons_into: key("t:gog"),
         }),
         towns,
         ..TownPack::new(manifest())
@@ -338,7 +346,7 @@ pub(super) fn rules_of(core: Ruleset, towns: &TownPack, elf: bool, side: u16) ->
 
 /// The game's rules of [`towns_rules`] on `core`'s pack and the town part of `towns`, with
 /// `edit` made to the adventure pack before it compiles (E09 T26a1: a dwelling, the months).
-pub(super) fn rules_with_adventure(
+pub(crate) fn rules_with_adventure(
     core: ContentPack,
     towns: &TownPack,
     edit: impl FnOnce(&mut AdventurePack),

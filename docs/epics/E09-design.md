@@ -3719,6 +3719,21 @@ harvest's gap-fill where it keeps code (`h3-harvest`, `cross-lane` in the battle
   the sum of its parts' (SoD: Angelic Alliance 84 000 down to Wizard's Well and Ring of the Magi
   3 000, §3.4's table); the core ruleset hash moves. `packs/README.md`'s pending combination costs
   (E04a T3b's note) close.
+- *As built* (T56, decision 220; `E09-log.md`): `BuildingRoles`' five flags (each at most one
+  building of a record; `TownCompileError::InvalidTown` "has more than one Marketplace, …"),
+  `BuildingDef::war_machine` (a key) compiled to `Building::war_machine` (an `ArtifactTypeId`;
+  `UnknownArtifact`, or "names no war machine creature"), outside the roles (the roles are `Copy`
+  and keyless in a pack); `TownParamsDef`'s seven fields (the University's skills at least one,
+  each once, `UnknownSkill`; the stock at most `MAX_MERCHANTS_STOCK` 8, the adventure's
+  `MAX_STOCK`, none special) and `TownParams::transformer_dragons`, every pack's
+  `TownPack::transformer_dragons` in handle order as Visions' creatures. **The pack's word is
+  `[town_transformer] dragons = [...]`**, as `[town_visions]`, not the `[[transformer_dragon]]`
+  tables written above. The harvest reads `blacksmith_machine_creatures` 0x642E90 (the file's
+  table; `blacksmith_war_machines` 0x6AA9F8 is `.bss`) and maps each creature to its artifact by
+  the gap-fill's `[[artifacts.war_machines]]`; the Ballista Yard is `[towns.trades] machine_of`
+  the Castle's; the Transformer's two targets come from its table (the one fixed point the
+  Skeleton, the other the Bone Dragon). Part **v10**; the goldens' town hash
+  `0xc830faa47b612bfc`.
 
 ### 103. The count (TWN-MKT-001; D-70, TD-29)
 

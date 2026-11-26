@@ -1,7 +1,9 @@
 //! The towns' static tables of `Heroes3.exe` (`docs/formats/installation.md` §7.61; E09 T5b2b1):
 //! each faction's buildings with the buildings each requires, the supersede lists, the map's
 //! building slots, the creatures by level, the hordes, the Resource Silo, the neutral garrison and
-//! the standard set's level-2 dwelling chance. Read as the file holds them, before start-up: what
+//! the standard set's level-2 dwelling chance; since E09 T56 the Blacksmith's war machine creature
+//! by faction and the Skeleton Transformer's target by creature. Read as the file holds them,
+//! before start-up: what
 //! `building_tables_init` 0x4EB730 and `horde_table_init` 0x5BDF60 compute from them (the closed
 //! masks, the hordes' levels and upgrades) is the harvest's to derive.
 
@@ -25,6 +27,9 @@ pub const HORDE_RECORDS: usize = 4;
 pub const HORDE_RECORD_SIZE: usize = 8;
 /// Levels of a neutral town's drawn garrison.
 pub const GARRISON_LEVELS: usize = 4;
+/// Creatures the Skeleton Transformer's table holds a target for: 0 to 144 (the war machines
+/// from 145 lie beyond it).
+pub const TRANSFORMER_CREATURES: usize = 145;
 
 /// Ends an entry of a building or supersede list.
 const ENTRY_END: i32 = -1;
@@ -62,6 +67,13 @@ pub struct TownTables {
     pub garrison: [u32; 3],
     /// The standard set's level-2 dwelling chance in 100 (`cmp eax, 30`, 0x5C0C60).
     pub dwelling_2_chance: Immediate,
+    /// Virtual address of the Blacksmith's war machines (`blacksmith_machine_creatures`
+    /// 0x642E90): a creature id (`i32`) a faction (E09 T56).
+    pub blacksmith_machines: u32,
+    /// Virtual address of the Skeleton Transformer's targets (`skeleton_transformer_targets`
+    /// 0x6412FC): [`TRANSFORMER_CREATURES`] creature ids (`i32`), each creature's target (E09
+    /// T56).
+    pub transformer_targets: u32,
 }
 
 /// One entry of a building or supersede list: a building and the ids listed after it, the
@@ -126,13 +138,18 @@ pub struct TownData {
     pub garrison: Vec<GarrisonLevel>,
     /// The standard set's level-2 dwelling chance in 100.
     pub dwelling_2_chance: u8,
+    /// The creature of each faction's Blacksmith's war machine, by faction (E09 T56).
+    pub blacksmith_machines: Vec<u16>,
+    /// The Skeleton Transformer's target of each creature 0 to 144 (E09 T56).
+    pub transformer_targets: Vec<u16>,
 }
 
 /// Reads the towns' tables of a known build.
 ///
 /// # Errors
 /// Unknown build, unmapped or truncated tables, an unterminated or too long list, a building id
-/// outside 0 to 43, a negative creature, growth or amount, a chance above 100, an instruction that
+/// outside 0 to 43, a negative creature (a Blacksmith's machine and a Transformer's target too),
+/// growth or amount, a chance above 100, an instruction that
 /// is not the expected one.
 pub fn town_data(data: &[u8]) -> Result<TownData, FormatError> {
     let (build, image) = super::identify(data)?;
@@ -218,12 +235,28 @@ pub fn town_data_at(image: &PeImage<'_>, t: &TownTables) -> Result<TownData, For
         .collect::<Result<_, FormatError>>()?;
     let dwelling_2_chance = immediate(image, t.dwelling_2_chance)?;
     chance_in_100(u32::from(dwelling_2_chance), "level-2 dwelling chance")?;
+    let creatures = |va, count, what| {
+        ints(image, va, 0, count, what)?
+            .into_iter()
+            .map(|c| creature(c, what))
+            .collect::<Result<Vec<_>, _>>()
+    };
     Ok(TownData {
         factions,
         common_supersedes: list(image, t.common_supersedes, "town supersede list")?,
         horde_buildings,
         garrison,
         dwelling_2_chance,
+        blacksmith_machines: creatures(
+            t.blacksmith_machines,
+            t.building_lists.len(),
+            "blacksmith machines",
+        )?,
+        transformer_targets: creatures(
+            t.transformer_targets,
+            TRANSFORMER_CREATURES,
+            "transformer targets",
+        )?,
     })
 }
 

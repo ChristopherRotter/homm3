@@ -77,6 +77,47 @@ pub struct Towns {
     pub guild: TownGuild,
     /// The mage guild's parameters (E09 T46, design §83).
     pub mage_guild: TownMageGuild,
+    /// The trades' parameters and war machines (E09 T56, design §102).
+    pub trades: TownTrades,
+}
+
+/// The trades' facts (E09 T56, design §102; survey `E09-trades.md` §3.1, §4, §5.3, §6.3, §6.4,
+/// §7.5): the building whose war machine `blacksmith_machine_creatures` 0x642E90 gives by faction,
+/// the buildings selling another faction's Blacksmith machine, and the `[town_params]` the code
+/// holds (the Skeleton Transformer's table is the executable's, `skeleton_transformer_targets`
+/// 0x6412FC).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownTrades {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// The Blacksmith's id: each faction whose list holds it sells its table's machine there.
+    pub blacksmith: u8,
+    /// Buildings selling another faction's Blacksmith machine (the Stronghold's Ballista Yard:
+    /// `town_blacksmith_buy` with faction 0).
+    pub machine_of: Vec<TownMachineOf>,
+    /// The Artifact Merchants' stock, a class word an entry (`h3-pack-towns`' words).
+    pub merchants_stock: Vec<String>,
+    /// A boat's price at a town's Shipyard, by `RESTYPES.TXT` name.
+    pub boat_price: BTreeMap<String, u32>,
+    /// The type of the boat a town's Shipyard builds.
+    pub boat_type: u8,
+    /// The University's skills by `SSTRAITS.TXT` index, in its slots' order.
+    pub university_skills: Vec<usize>,
+    /// Each skill's price, in gold.
+    pub university_price: u32,
+}
+
+/// A building selling another faction's Blacksmith machine.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownMachineOf {
+    /// Town name (as in `TownType.txt`).
+    pub faction: String,
+    /// The building id.
+    pub building: u8,
+    /// The town whose Blacksmith machine it sells.
+    pub machine_of: String,
 }
 
 /// The mage guild's `[town_params]` (E09 T46, design §83; survey `E09-guild.md` §3.3, §13, §15):
@@ -1141,6 +1182,7 @@ impl GapFill {
                         .chain(&t.tavern.sources)
                         .chain(&t.guild.sources)
                         .chain(&t.mage_guild.sources)
+                        .chain(&t.trades.sources)
                         .chain(t.role.iter().flat_map(|r| &r.sources))
                 }));
         for r in refs {

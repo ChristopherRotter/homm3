@@ -85,6 +85,7 @@ fn siege_rules_with(edit: impl FnOnce(&mut ContentPack)) -> GameRuleset {
             },
             ..BuildingRoles::default()
         },
+        war_machine: None,
     });
     rules_of(
         Ruleset::compile(&[core], "t:faithful").unwrap(),

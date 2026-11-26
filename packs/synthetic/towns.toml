@@ -7,7 +7,8 @@
 # Summoning (the Lookout's) and a week's building (the Grail's, as the Inferno's Deity of Fire);
 # since E09 T36 the hire's price and the record's tavern weights (its two classes); since E09 T46
 # the guild's parameters, the record's guild weights, two Mage Guild levels, a Library, a Mana
-# Vortex and the Grail's Aurora.
+# Vortex and the Grail's Aurora; since E09 T56 the trades' parameters, a building of each trade
+# role and two selling the war machine `bolt_thrower_kit`.
 
 [town_params]
 gold = "coin"
@@ -31,6 +32,17 @@ guild_resources = [["coin"], ["shard"], []] # TWN-TAV-008 (E09 T39b1): the Thiev
 guild_slots = [4, 3, 3, 2, 1]      # TWN-GLD-001 (E09 T46); the original's 5, 4, 3, 2, 1
 spell_book_price = { coin = 400 }  # the original's 500 gold
 vortex_factor = 3                  # the original's 2
+merchants_stock = ["treasure", "minor", "minor", "relic"] # TWN-TRD-001 (E09 T56); the
+                                   # original's three treasures, three minors and a major
+boat_price = { coin = 800, shard = 5 } # the original's 1 000 gold and 10 wood
+boat_type = 2                      # the original's 1
+university_skills = ["warding", "stormcraft", "parley"] # the original's four magic schools
+university_price = { coin = 1500, shard = 1 } # the original's 2 000 gold
+transformer_into = "shade"         # the original's Skeleton
+transformer_dragons_into = "wisp"  # the original's Bone Dragon
+
+[town_transformer]                 # TWN-TRD-001 (E09 T56): the original's dragons and hydras
+dragons = ["drake", "brute"]
 
 [[town]]
 faction = "vale"
@@ -205,3 +217,45 @@ creatures = [["spearman"], ["synthetic:brute"]]
   requires = ["mage_guild_1"]
   cost = { coin = 1000 }
   mana_vortex = true
+
+  # The trades (E09 T56; TWN-TRD-001): a building of each role, the Blacksmith's war machine, the
+  # Transformer selling one too (as the Stronghold's Ballista Yard beside its Blacksmith).
+  [[town.building]]
+  key = "marketplace"
+  name = "Marketplace"
+  cost = { coin = 500, shard = 5 }
+  marketplace = true
+
+  [[town.building]]
+  key = "merchants"
+  name = "Artifact Merchants"
+  requires = ["marketplace"]
+  cost = { coin = 10000 }
+  artifact_merchants = true
+
+  [[town.building]]
+  key = "freelancers"
+  name = "Freelancer's Guild"
+  requires = ["marketplace"]
+  cost = { coin = 1000, shard = 2 }
+  freelancers = true
+
+  [[town.building]]
+  key = "blacksmith"
+  name = "Blacksmith"
+  cost = { coin = 1000, shard = 5 }
+  war_machine = "bolt_thrower_kit"
+
+  [[town.building]]
+  key = "university"
+  name = "Magic University"
+  requires = ["mage_guild_1"]
+  cost = { coin = 5000, shard = 10 }
+  university = true
+
+  [[town.building]]
+  key = "transformer"
+  name = "Skeleton Transformer"
+  cost = { coin = 1000 }
+  transformer = true
+  war_machine = "bolt_thrower_kit"

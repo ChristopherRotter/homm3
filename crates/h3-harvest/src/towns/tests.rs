@@ -2,7 +2,9 @@
 //! town tables, Alpha and Beta in `base`, Gamma in `ab`, each with seven levels of two creatures
 //! (Alpha ids 100 to 113, Beta 114 to 127, Gamma 128 to 141, Gamma's in `ab`).
 
-use h3_formats::exe::towns::{BuildingEntry, FactionTowns, GarrisonLevel, HordeRecord, TownData};
+use h3_formats::exe::towns::{
+    BuildingEntry, FactionTowns, GarrisonLevel, HordeRecord, TRANSFORMER_CREATURES, TownData,
+};
 
 use super::*;
 use crate::gapfill::GapFill;
@@ -39,7 +41,21 @@ role = [
   { building = 19, roles = { library = true }, sources = ["s"] },
   { faction = "Gamma", building = 21, roles = { mana_vortex = true }, sources = ["s"] },
   { faction = "Gamma", building = 26, roles = { aurora = true }, sources = ["s"] },
+  { building = 15, roles = { marketplace = true }, sources = ["s"] },
+  { faction = "Alpha", building = 21, roles = { artifact_merchants = true, transformer = true }, sources = ["s"] },
+  { faction = "Beta", building = 21, roles = { freelancers = true }, sources = ["s"] },
+  { faction = "Gamma", building = 21, roles = { university = true }, sources = ["s"] },
 ]
+
+[towns.trades]
+sources = ["s"]
+blacksmith = 16
+machine_of = [{ faction = "Beta", building = 21, machine_of = "Alpha" }]
+merchants_stock = ["treasure", "major"]
+boat_price = { Gold = 1000, Wood = 10 }
+boat_type = 1
+university_skills = [14, 2]
+university_price = 2000
 
 [towns.mage_guild]
 sources = ["s"]
@@ -327,6 +343,12 @@ fn town_inputs() -> Inputs {
             })
             .to_vec(),
         dwelling_2_chance: 30,
+        // The Blacksmith's machine (E09 T56): the fixture's war machine creature; the
+        // Transformer: 100 and 128 become 113, every other 101, 101 its own.
+        blacksmith_machines: vec![148; 3],
+        transformer_targets: (0..TRANSFORMER_CREATURES)
+            .map(|c| if c == 100 || c == 128 { 113 } else { 101 })
+            .collect(),
     };
     i.town_names = town_tables();
     i
@@ -367,8 +389,29 @@ fn harvests_the_town_files_that_compile() {
          upgrade = 5 }\nmost_heroes = 8\nhire_price = { gold = 2500 }\n\
          guild_resources = [[\"gold\"], [\"wood\", \"ore\"], [\"mercury\", \"sulfur\", \
          \"crystal\", \"gems\"]]\nguild_slots = [5, 4, 3, 2, 1]\n\
-         spell_book_price = { gold = 500 }\nvortex_factor = 2\n"
+         spell_book_price = { gold = 500 }\nvortex_factor = 2\n\
+         merchants_stock = [\"treasure\", \"major\"]\nboat_price = { wood = 10, gold = 1000 }\n\
+         boat_type = 1\nuniversity_skills = [\"skill_14\", \"skill_2\"]\n\
+         university_price = { gold = 2000 }\ntransformer_into = \"unit_101\"\n\
+         transformer_dragons_into = \"unit_113\"\n\n"
     ));
+    // The Transformer's dragons (E09 T56), each in its own pack's file, after the Visions.
+    assert!(base.contains(
+        "\n[town_visions]\ncreatures = [\"unit_100\"]\n\n[town_transformer]\ndragons = [\"unit_100\"]\n"
+    ));
+    assert!(ab.contains("\n[town_transformer]\ndragons = [\"unit_128\"]\n"));
+    assert!(!sod.contains("[town_transformer]"));
+    // The trade roles, and the war machines: each Blacksmith's, Beta's 21 Alpha's (E09 T56).
+    assert_eq!(base.matches("  marketplace = true\n").count(), 2);
+    assert!(base.contains("  luck = 2\n  artifact_merchants = true\n  transformer = true\n"));
+    assert!(base.contains("  portal = true\n  freelancers = true\n"));
+    assert!(ab.contains("  mana_vortex = true\n  university = true\n"));
+    assert!(base.contains(
+        "key = \"blacksmith\"\n  name = \"Blacksmith\"\n  slot = 7\n  \
+         cost = { wood = 16, gold = 1016 }\n  war_machine = \"kit\"\n"
+    ));
+    assert_eq!(base.matches("  war_machine = \"kit\"\n").count(), 3);
+    assert_eq!(ab.matches("  war_machine = \"base:kit\"\n").count(), 1);
     // The guild weights (E09 T46): each record's column of the hero spells in `SPTRAITS.TXT`'s
     // order, a 0 left out (Zap's in Beta's, Bolt's, SoD's own, in every one), Gamma's by prefix.
     assert!(base.contains("\n  [town.guild]\n  look = 16\n  zap = 16\n  mine = 16\n\n"));
@@ -485,7 +528,11 @@ fn harvests_the_town_files_that_compile() {
     assert_eq!(base.matches("  horde = [2, true]\n").count(), 1);
     assert_eq!(ab.matches("  horde = [2, true]\n").count(), 1);
     // The gap-fill's Portal and week's building; `roe = false` on ab's records alone.
-    assert!(base.contains("cost = { ore = 2, gold = 2104 }\n  portal = true\n"));
+    assert!(
+        base.contains(
+            "cost = { ore = 2, gold = 2104 }\n  war_machine = \"kit\"\n  portal = true\n"
+        )
+    );
     assert!(ab.contains("grail = true\n  week_of = 1\n"));
     assert!(ab.contains("[\"unit_140\", \"unit_141\"],\n]\nroe = false\n"));
     assert!(!base.contains("roe = "));
@@ -635,6 +682,28 @@ fn inconsistent_tables_are_errors() {
         e.contains("SPTRAITS.TXT: spell `Early` before a group row"),
         "{e}"
     );
+    // The trades (E09 T56): a faction without its Blacksmith's machine, a machine no war machine
+    // artifact's; the Transformer's targets not two, its dragons' target not harvested.
+    let e = error(|i| {
+        i.town_tables.blacksmith_machines.pop();
+    });
+    assert!(e.contains("Gamma: no Blacksmith machine of town 2"), "{e}");
+    let e = error(|i| i.town_tables.blacksmith_machines[0] = 100);
+    assert!(
+        e.contains("Alpha: creature 100 is no war machine artifact's"),
+        "{e}"
+    );
+    let e = error(|i| i.town_tables.transformer_targets[5] = 7);
+    assert!(e.contains("are not one fixed point and one other"), "{e}");
+    let e = error(|i| {
+        let t = &mut i.town_tables.transformer_targets;
+        t[100] = 200;
+        t[128] = 200;
+    });
+    assert!(
+        e.contains("the Transformer's target 200 is not harvested"),
+        "{e}"
+    );
     // The town compiler's checks: no level-1 dwelling.
     let e = error(|i| {
         let buildings = &mut i.town_tables.factions[0].buildings;
@@ -706,6 +775,36 @@ fn gapfill_town_errors() {
     let e = bad("creatures = [129, 100]", "creatures = [129, 129]");
     assert!(e.contains("do not compile"), "{e}");
     let e = bad("roles = { luck = 2 }", "roles = { luck = 9 }");
+    assert!(e.contains("do not compile"), "{e}");
+    // E09 T56: the war machines' buildings and towns, the boat's resources, the skills.
+    let e = bad(
+        "{ faction = \"Beta\", building = 21, machine_of",
+        "{ faction = \"Zeta\", building = 21, machine_of",
+    );
+    assert!(e.contains("unknown town `Zeta`"), "{e}");
+    let e = bad("machine_of = \"Alpha\"", "machine_of = \"Eta\"");
+    assert!(e.contains("unknown town `Eta`"), "{e}");
+    let e = bad("building = 21, machine_of", "building = 2, machine_of");
+    assert!(
+        e.contains("Beta: the gap-fill gives a war machine to building 2, not its"),
+        "{e}"
+    );
+    let e = bad("building = 21, machine_of", "building = 16, machine_of");
+    assert!(
+        e.contains("Beta: building 16 sells two war machines"),
+        "{e}"
+    );
+    let e = bad("Gold = 1000, Wood = 10", "Gold = 1000, Mithril = 10");
+    assert!(
+        e.contains("the boat's resource `Mithril` is unknown"),
+        "{e}"
+    );
+    let e = bad(
+        "university_skills = [14, 2]",
+        "university_skills = [14, 99]",
+    );
+    assert!(e.contains("the University's skill 99 is unknown"), "{e}");
+    let e = bad("[\"treasure\", \"major\"]", "[\"special\"]");
     assert!(e.contains("do not compile"), "{e}");
 }
 

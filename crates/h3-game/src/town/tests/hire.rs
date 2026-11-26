@@ -74,6 +74,7 @@ fn rules_in_core(
             tavern: true,
             ..BuildingRoles::default()
         },
+        war_machine: None,
     });
     towns.towns[0].tavern = vec![(key("t:knight"), 3), (key("t:cleric"), 2)];
     edit(&mut towns);

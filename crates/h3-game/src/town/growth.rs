@@ -151,6 +151,18 @@ pub(crate) fn inputs(state: &GameState, rules: &GameRuleset) -> Vec<GrowthInputs
         .collect()
 }
 
+impl GameState {
+    /// Every town's growth inputs as they stand now, by `TownId` ([`inputs`]: what
+    /// [`h3_towns::growth`] reads beside the town, TWN-GRO-001). Public since E31 T2d
+    /// (`cross-lane`, the ai lane's): the computer's turn start adds the next week's growth to a
+    /// town's available creatures from the week's fifth day (`ai_resource_weights` 0x428740 over
+    /// `town_dwelling_growth` 0x5BFB60).
+    // rule: TWN-GRO-001
+    pub fn growth_inputs(&self, rules: &GameRuleset) -> Vec<GrowthInputs> {
+        inputs(self, rules)
+    }
+}
+
 /// The towns' week (TWN-GRO-003; design §42, survey §2: the original's `town_week_growth` 0x5BFDD0
 /// from `new_day_week_events`), on a week's first day after [`crate::GameEvent::WeekStarted`] and
 /// before the adventure's week step: every town in `TownId` order grows its week with its

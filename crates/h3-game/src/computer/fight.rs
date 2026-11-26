@@ -2,10 +2,12 @@
 //! §2.2): `ai_army_fight_sim` 0x427330, what a fight of one of its heroes is worth in army-value
 //! units, on the simulated combat of `h3_battle::estimate` (AI-Q34), with Necromancy after a win
 //! (`sim_necromancy` 0x426DF0), the experience's value (`ai_experience_value` 0x527710) and the
-//! enemy's value by its owner (`ai_difficulty_blend` 0x428710). It changes nothing.
+//! enemy's value by its owner (`ai_difficulty_blend` 0x428710). It changes nothing. Since T2d
+//! beside it the town's capture estimate of the turn's start (`ai_town_capture_sim` 0x428410,
+//! [`captures`]), the first caller of the simulated combat outside the tests.
 //!
-//! No caller until the values that ask for it (T2d's capture estimate, T2h's object value, T2i's
-//! danger map): the module is `expect(dead_code)` outside its tests until then.
+//! The fight estimate itself has no caller until the values that ask for it (T2h's object value,
+//! T2i's danger map): the module is `expect(dead_code)` outside its tests until then.
 
 use alloc::vec::Vec;
 
@@ -36,6 +38,10 @@ const HUMAN_ENEMY: [u32; 5] = [2, 2, 4, 5, 5];
 
 /// The enemy's factor among computers and neutrals (0x42738E: 1.25, in quarters).
 const COMPUTER_ENEMY: u32 = 5;
+
+/// The capture estimate's factors, in quarters (0x4284F4: the attacker's 1.25, 0x428506: the
+/// garrison's 0.75; f64 constants pushed whole).
+const CAPTURE_FACTORS: (u32, u32) = (5, 3);
 
 /// Necromancy's bonus on its share (0x426E1D: the f32 0.02).
 const NECROMANCY_BONUS: u32 = 0x3CA3_D70A;
@@ -102,7 +108,7 @@ pub(super) fn blend(difficulty: u8, human: Option<bool>) -> SignedX87 {
 /// (f32(2 500) + f32(its army's value after the fight)) / f32(40 × the experience to its next
 /// level), in double precision; none when that is 0 (the original's infinity).
 // rule: CPU-SIM-012
-fn experience_value(value: i32, next: u32) -> Option<SignedX87> {
+pub(super) fn experience_value(value: i32, next: u32) -> Option<SignedX87> {
     let f32_of = |n: i64| SignedX87::int(n).round(SINGLE_BITS);
     let gap = i32::from_ne_bytes(next.wrapping_mul(40).to_ne_bytes());
     f32_of(HERO_PRICE)
@@ -124,7 +130,7 @@ fn experience_points(rules: &GameRuleset, army: &[ArmyStack]) -> i32 {
 }
 
 /// An army's value as the original sums it (`army_value` 0x44AC80, 32 bits).
-fn value_of(rules: &GameRuleset, army: &[ArmyStack]) -> i32 {
+pub(super) fn value_of(rules: &GameRuleset, army: &[ArmyStack]) -> i32 {
     i32::try_from(army_value(rules.core(), army)).unwrap_or(i32::MAX)
 }
 
@@ -216,12 +222,76 @@ fn raise_into(
 
 /// What a fighter's battle reads of it: its battle hero (no visit bonuses) and its available
 /// spells.
-fn battle_hero(rules: &GameRuleset, fighter: Fighter<'_>) -> (BattleHero, Vec<SpellId>) {
+pub(super) fn battle_hero(rules: &GameRuleset, fighter: Fighter<'_>) -> (BattleHero, Vec<SpellId>) {
     let core = rules.core();
     let details = fighter.details;
     let hero = derive_battle_hero(details, BattleBonuses::NONE, core)
         .unwrap_or(BattleHero::new(details.hero_type));
     (hero, available_spells(details, core).unwrap_or_default())
+}
+
+/// The battle tile `pos` as the simulated combat reads it (`sim_combat_start` 0x423EE0's
+/// `tile_special_ground` 0x4FCE20): its special ground's battlefield and an anti-magic garrison.
+fn ground(state: &GameState, rules: &GameRuleset, pos: Pos) -> Ground {
+    let adventure = state.adventure();
+    Ground {
+        battlefield: adventure
+            .special_ground(rules.adventure(), pos)
+            .and_then(|key| rules.battle().battlefield_by_key(key.as_str())),
+        no_casting: adventure.anti_magic(rules.adventure(), pos),
+    }
+}
+
+/// The walls of `town` (`sim_side_walls` 0x424790 reads the town's fort): its fort level, none
+/// for a town the store lacks.
+fn fort(state: &GameState, rules: &GameRuleset, town: TownId) -> FortLevel {
+    state.towns().get(town).map_or(FortLevel::None, |town| {
+        h3_towns::fort_level(town, rules.towns())
+    })
+}
+
+/// Whether an enemy hero would take `town` (`ai_town_capture_sim` 0x428410; CPU-STA-005), `army`
+/// its army and `reads` its hero's battle reads ([`battle_hero`]): a simulated combat
+/// ([`estimate::run`]) of the army, its factor 1.25, with its hero, facing the town's walls,
+/// against the army in the town's upper bar (`town_garrison_army` 0x5C1460: its garrison hero's,
+/// else its garrison), its factor 0.75, with no hero (a garrison hero's skills and spells do not
+/// enter), both on the town's entrance (its special ground and anti-magic garrison); true when the
+/// hero's side keeps a strength above 0. No draws.
+// rule: CPU-STA-005
+pub(super) fn captures(
+    state: &GameState,
+    rules: &GameRuleset,
+    (army, reads): (&[ArmyStack], EstimateHero<'_>),
+    town: TownId,
+) -> bool {
+    let adventure = state.adventure();
+    let ground = adventure
+        .map()
+        .town_entrance(town)
+        .map_or(Ground::default(), |pos| ground(state, rules, pos));
+    let quarters = |q| X87::ratio(q, 4, DOUBLE_BITS).unwrap_or(X87::ONE);
+    let (attacker, defender) = CAPTURE_FACTORS;
+    let battle = rules.battle();
+    let walls = fort(state, rules, town);
+    let mut a = estimate::side(
+        battle,
+        army,
+        quarters(attacker),
+        (Some(reads), None),
+        walls,
+        ground,
+    );
+    let garrison = adventure.upper_bar(town);
+    let mut b = estimate::side(
+        battle,
+        garrison,
+        quarters(defender),
+        (None, Some(reads)),
+        FortLevel::None,
+        ground,
+    );
+    estimate::run(battle, &mut a, &mut b);
+    a.strength() > 0
 }
 
 /// What a fight of `hero` against `opponent` on `tile` is worth to the computer
@@ -268,16 +338,8 @@ pub(super) fn fight(
     let enemy = enemy_factor(difficulty, any_human);
     let fort = opponent
         .town
-        .and_then(|town| state.towns().get(town))
-        .map_or(FortLevel::None, |town| {
-            h3_towns::fort_level(town, rules.towns())
-        });
-    let ground = tile.map_or(Ground::default(), |pos| Ground {
-        battlefield: adventure
-            .special_ground(rules.adventure(), pos)
-            .and_then(|key| rules.battle().battlefield_by_key(key.as_str())),
-        no_casting: adventure.anti_magic(rules.adventure(), pos),
-    });
+        .map_or(FortLevel::None, |town| fort(state, rules, town));
+    let ground = tile.map_or(Ground::default(), |pos| ground(state, rules, pos));
     let (own, own_spells) = battle_hero(rules, hero);
     let theirs = opponent.hero.map(|h| battle_hero(rules, h));
     let own = EstimateHero {

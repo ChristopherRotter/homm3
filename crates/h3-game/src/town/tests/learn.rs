@@ -71,6 +71,7 @@ pub(super) fn rules_edited(edit: impl FnOnce(&mut ContentPack)) -> GameRuleset {
         requires: vec![],
         cost: vec![],
         roles,
+        war_machine: None,
     };
     let roles = |edit: fn(&mut BuildingRoles)| {
         let mut roles = BuildingRoles::default();

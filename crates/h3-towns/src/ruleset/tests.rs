@@ -8,8 +8,9 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    ContentKey, ContentPack, CreatureDef, CreatureInfoDef, FactionDef, HeroClassDef, PackManifest,
-    ProfileDef, ResourceDef, Ruleset, SpellCategory, SpellDef, SpellSchoolDef,
+    ArtifactDef, ArtifactSlotDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
+    FactionDef, HeroClassDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SecondarySkillDef,
+    SpellCategory, SpellDef, SpellSchoolDef,
 };
 
 use super::*;
@@ -89,7 +90,8 @@ fn creature(k: &str, faction: Option<&str>, level: u8, upgrades: &[&str]) -> Cre
 /// `t:gog`; the neutral `t:wisp`; the hero classes `t:knight` of `t:keep` and `t:shaman` of
 /// `t:wild`; the spells `t:bolt` (combat, level 1), `t:fly` (adventure, level 2), the creature
 /// ability `t:howl` and `t:titan` (granted by name only, level 5), each hero spell of the school
-/// `t:air`; the profile), `u` (depends on `t`: the resource `u:gem`, the faction `u:marsh` with `u:frog` and `u:toad`, its hero class
+/// `t:air`; the war machine `t:tent` (a creature and its artifact), the artifact `t:ring` (no war
+/// machine), the skills `t:fire` and `t:earth` (E09 T56); the profile), `u` (depends on `t`: the resource `u:gem`, the faction `u:marsh` with `u:frog` and `u:toad`, its hero class
 /// `u:seer`, the spell `u:mist`), `v` (no dependencies: the faction `v:dune` with `v:a` and `v:b`)
 /// and `w` (depends on `t`, nothing defined).
 fn core() -> Ruleset {
@@ -103,7 +105,41 @@ fn core() -> Ruleset {
             creature("t:imp", Some("t:wild"), 1, &[]),
             creature("t:gog", Some("t:wild"), 2, &[]),
             creature("t:wisp", None, 1, &[]),
+            CreatureDef {
+                key: key("t:tent"),
+                speed: 0,
+                info: CreatureInfoDef {
+                    flags: vec!["war_machine".into()],
+                    ..CreatureInfoDef::default()
+                },
+            },
         ],
+        skills: ["t:fire", "t:earth"]
+            .map(|k| SecondarySkillDef {
+                key: key(k),
+                name: "Skill".into(),
+                levels: [vec![], vec![], vec![]],
+            })
+            .into(),
+        artifact_slots: vec![ArtifactSlotDef {
+            key: key("t:machine"),
+            name: "Machine".into(),
+            count: 1,
+            backpack: false,
+        }],
+        artifacts: [("t:tent", Some(key("t:tent"))), ("t:ring", None)]
+            .map(|(k, war_machine)| ArtifactDef {
+                key: key(k),
+                name: "Artifact".into(),
+                class: ArtifactClass::Treasure,
+                cost: vec![],
+                slot: Some(key("t:machine")),
+                war_machine,
+                needs_skill: None,
+                effects: vec![],
+                parts: vec![],
+            })
+            .into(),
         hero_classes: vec![class("t:knight", "t:keep"), class("t:shaman", "t:wild")],
         spell_schools: vec![SpellSchoolDef {
             key: key("t:air"),
@@ -190,6 +226,17 @@ fn params() -> TownParamsDef {
         guild_slots: [5, 4, 3, 2, 1],
         spell_book_price: vec![(key("t:gold"), 500)],
         vortex_factor: 2,
+        merchants_stock: vec![
+            ArtifactClass::Treasure,
+            ArtifactClass::Minor,
+            ArtifactClass::Major,
+        ],
+        boat_price: vec![(key("t:gold"), 1000), (key("t:wood"), 10)],
+        boat_type: 1,
+        university_skills: vec![key("t:fire"), key("t:earth")],
+        university_price: vec![(key("t:gold"), 2000)],
+        transformer_into: key("t:wisp"),
+        transformer_dragons_into: key("t:archer"),
     }
 }
 
@@ -204,6 +251,7 @@ fn building(k: &str, roles: BuildingRoles) -> BuildingDef {
         requires: vec![],
         cost: vec![],
         roles,
+        war_machine: None,
     }
 }
 
@@ -371,7 +419,10 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
 /// dwelling and horde too) and `t:wild` (absent) and the Visions creature `t:wisp`, `u` the
 /// record of `u:marsh` (harmless, not a Restoration of Erathia record, its class `u:seer` in its
 /// tavern, its spell `u:mist` in its guild), overrides of `t:keep` (damaging, `u:seer` joining its tavern) and of its own record
-/// (natural obstacles) and the Visions creatures `u:toad` and `u:frog`, `v` and `w` empty.
+/// (natural obstacles) and the Visions creatures `u:toad` and `u:frog`, `v` and `w` empty. The
+/// trades (E09 T56): the keep's `market` (the Marketplace, the Artifact Merchants, the Freelancer's
+/// Guild) and `school` (the University, the Transformer), each selling the war machine `t:tent`;
+/// the Transformer's dragons `t:gog` (pack `t`), `u:toad` and `u:frog` (pack `u`).
 fn packs() -> Vec<TownPack> {
     let mut keep = town(
         "t:keep",
@@ -381,6 +432,30 @@ fn packs() -> Vec<TownPack> {
     keep.buildings
         .push(building("dwelling_1_up", dwelling(1, true)));
     keep.buildings.push(building("horde_1_up", horde(1, true)));
+    // The trades (E09 T56): one building of each role, two selling the war machine.
+    keep.buildings.push(BuildingDef {
+        war_machine: Some(key("t:tent")),
+        ..building(
+            "market",
+            BuildingRoles {
+                marketplace: true,
+                artifact_merchants: true,
+                freelancers: true,
+                ..BuildingRoles::default()
+            },
+        )
+    });
+    keep.buildings.push(BuildingDef {
+        war_machine: Some(key("t:tent")),
+        ..building(
+            "school",
+            BuildingRoles {
+                university: true,
+                transformer: true,
+                ..BuildingRoles::default()
+            },
+        )
+    });
     let mut marsh = town(
         "u:marsh",
         &[("u:frog", None), ("u:toad", None)],
@@ -396,6 +471,7 @@ fn packs() -> Vec<TownPack> {
             town("t:wild", &[("t:imp", None), ("t:gog", None)], Moat::Absent),
         ],
         visions: vec![key("t:wisp")],
+        transformer_dragons: vec![key("t:gog")],
         ..TownPack::new(manifest("t", &[]))
     };
     let u = TownPack {
@@ -419,6 +495,7 @@ fn packs() -> Vec<TownPack> {
             },
         ],
         visions: vec![key("u:toad"), key("u:frog")],
+        transformer_dragons: vec![key("u:toad"), key("u:frog")],
         ..TownPack::new(manifest("u", &["t"]))
     };
     vec![
@@ -648,11 +725,11 @@ fn the_hash_is_pinned_and_follows_the_content() {
     let (_, again) = compiled();
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
-    // The ninth encoding (v9): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0x67ee_ef1c_7b56_fda6);
+    // The tenth encoding (v10): pinned, so a change of what it covers bumps the version.
+    assert_eq!(part.content_hash(), 0x08b1_fe5c_b1f7_09a6);
     assert_eq!(
         TownRuleset::empty(&core).content_hash(),
-        0xedec_d7c9_34cc_e444
+        0xa82b_d7e1_f29d_c67d
     );
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();
@@ -766,6 +843,178 @@ fn the_hash_is_pinned_and_follows_the_content() {
         change(&mut changed);
         let other = TownRuleset::compile(&core, &changed).unwrap();
         assert_ne!(other.content_hash(), part.content_hash());
+    }
+    // The tenth (v10, E09 T56): the trades' parameters, roles and war machines.
+    let changes: [fn(&mut Vec<TownPack>); 17] = [
+        |p| {
+            p[0].params.as_mut().unwrap().merchants_stock.pop();
+        },
+        |p| p[0].params.as_mut().unwrap().merchants_stock[0] = ArtifactClass::Relic,
+        |p| p[0].params.as_mut().unwrap().boat_price[1].1 = 11,
+        |p| p[0].params.as_mut().unwrap().boat_type = 2,
+        |p| p[0].params.as_mut().unwrap().university_skills.reverse(),
+        |p| p[0].params.as_mut().unwrap().university_price[0].1 = 1,
+        |p| p[0].params.as_mut().unwrap().transformer_into = key("t:imp"),
+        |p| p[0].params.as_mut().unwrap().transformer_dragons_into = key("t:imp"),
+        |p| drop(p[1].transformer_dragons.pop()),
+        |p| keep_building(p, "market").roles.marketplace = false,
+        |p| keep_building(p, "market").roles.artifact_merchants = false,
+        |p| keep_building(p, "market").roles.freelancers = false,
+        |p| keep_building(p, "school").roles.university = false,
+        |p| keep_building(p, "school").roles.transformer = false,
+        |p| keep_building(p, "school").war_machine = None,
+        |p| keep_building(p, "silo").war_machine = Some(key("t:tent")),
+        |p| {
+            keep_building(p, "market").roles.marketplace = false;
+            keep_building(p, "tavern").roles.marketplace = true;
+        },
+    ];
+    for change in changes {
+        let mut changed = packs();
+        change(&mut changed);
+        let other = TownRuleset::compile(&core, &changed).unwrap();
+        assert_ne!(other.content_hash(), part.content_hash());
+    }
+}
+
+// covers: TWN-TRD-001
+#[test]
+fn the_trades_compile_as_given() {
+    let (core, part) = compiled();
+    let params = part.params().unwrap();
+    let creature = |k: &str| core.creature_by_key(k).unwrap();
+    let resource = |i| ResourceId::from_index(i).unwrap();
+    assert_eq!(
+        params.merchants_stock,
+        [
+            ArtifactClass::Treasure,
+            ArtifactClass::Minor,
+            ArtifactClass::Major
+        ]
+    );
+    // Prices in the core's resource order (wood, gold), the skills in the pack's.
+    assert_eq!(params.boat_price, [(resource(0), 10), (resource(1), 1000)]);
+    assert_eq!(params.boat_type, 1);
+    let skills = ["t:fire", "t:earth"].map(|k| core.skill_by_key(k).unwrap());
+    assert_eq!(params.university_skills, skills);
+    assert_eq!(params.university_price, [(resource(1), 2000)]);
+    assert_eq!(params.transformer_into, creature("t:wisp"));
+    assert_eq!(params.transformer_dragons_into, creature("t:archer"));
+    assert_eq!(
+        params.transformer_dragons,
+        [creature("t:gog"), creature("u:frog"), creature("u:toad")]
+    );
+    let record = part.town(core.faction_by_key("t:keep").unwrap()).unwrap();
+    let id = |k: &str| record.building_by_key(k).unwrap();
+    let market = record.building(id("market")).unwrap();
+    let school = record.building(id("school")).unwrap();
+    let r = (market.roles, school.roles);
+    assert!(r.0.marketplace && r.0.artifact_merchants && r.0.freelancers);
+    assert!(!r.0.university && !r.0.transformer && r.1.university && r.1.transformer);
+    let tent = core.artifact_by_key("t:tent");
+    assert_eq!((market.war_machine, school.war_machine), (tent, tent));
+    assert_eq!(record.building(id("silo")).unwrap().war_machine, None);
+}
+
+#[test]
+fn the_trades_are_checked() {
+    use TownCompileError as E;
+    let param = |change: fn(&mut TownParamsDef)| refused(|p| change(p[0].params.as_mut().unwrap()));
+    assert_eq!(
+        param(|d| d.merchants_stock = vec![ArtifactClass::Minor; 9]),
+        E::InvalidParams("the merchants' stock holds more than 8 entries")
+    );
+    assert_eq!(
+        param(|d| d.merchants_stock.push(ArtifactClass::Special)),
+        E::InvalidParams("the merchants' stock names the special class")
+    );
+    let boat = E::InvalidParams("the boat's price gives each resource once, at least 1");
+    assert_eq!(param(|d| d.boat_price[0].1 = 0), boat);
+    assert_eq!(param(|d| d.boat_price[1].0 = key("t:gold")), boat);
+    assert_eq!(
+        param(|d| d.boat_price[0].0 = key("t:nope")),
+        E::UnknownResource("t:nope".into())
+    );
+    assert_eq!(
+        param(|d| d.university_price[0].0 = key("t:nope")),
+        E::UnknownResource("t:nope".into())
+    );
+    assert_eq!(
+        param(|d| d.university_skills.push(key("t:fire"))),
+        E::InvalidParams("a University's skill is given twice")
+    );
+    assert_eq!(
+        param(|d| d.university_skills.clear()),
+        E::InvalidParams("the University offers no skill")
+    );
+    assert_eq!(
+        param(|d| d.university_skills[0] = key("t:nope")),
+        E::UnknownSkill("t:nope".into())
+    );
+    assert_eq!(
+        param(|d| d.university_price.push((key("t:wood"), 0))),
+        E::InvalidParams("the University's price gives each resource once, at least 1")
+    );
+    assert_eq!(
+        param(|d| d.transformer_into = key("t:nope")),
+        E::UnknownCreature("t:nope".into())
+    );
+    assert_eq!(
+        param(|d| d.transformer_dragons_into = key("u:frog")),
+        E::ReferenceOutsideDependencies {
+            key: "u:frog".into(),
+            pack: "t".into(),
+        }
+    );
+    assert_eq!(
+        refused(|p| p[3].transformer_dragons.push(key("t:gog"))),
+        E::InvalidParams("a Transformer dragon is named twice")
+    );
+    assert_eq!(
+        refused(|p| p[3].transformer_dragons.push(key("t:nope"))),
+        E::UnknownCreature("t:nope".into())
+    );
+    // Dragons without the parameters (a pack set whose only content is them).
+    let core = core();
+    let mut alone: Vec<TownPack> = packs()
+        .into_iter()
+        .map(|p| TownPack::new(p.manifest))
+        .collect();
+    alone[3].transformer_dragons.push(key("t:gog"));
+    assert_eq!(
+        TownRuleset::compile(&core, &alone).unwrap_err(),
+        E::MissingParams
+    );
+    // A building's war machine: the core's, with a war machine creature.
+    assert_eq!(
+        refused(|p| keep_building(p, "silo").war_machine = Some(key("t:nope"))),
+        E::UnknownArtifact("t:nope".into())
+    );
+    assert_eq!(
+        refused(|p| keep_building(p, "silo").war_machine = Some(key("t:ring"))),
+        building_error(
+            "silo",
+            "its war machine's artifact names no war machine creature"
+        )
+    );
+    // At most one building of each trade role a record.
+    let twice = town_error(
+        "t:keep",
+        "has more than one Marketplace, Artifact Merchants, Freelancer's Guild, University or \
+         Transformer",
+    );
+    let changes: [fn(&mut BuildingRoles); 5] = [
+        |r| r.marketplace = true,
+        |r| r.artifact_merchants = true,
+        |r| r.freelancers = true,
+        |r| r.university = true,
+        |r| r.transformer = true,
+    ];
+    for change in changes {
+        assert_eq!(
+            refused(|p| change(&mut keep_building(p, "tavern").roles)),
+            twice
+        );
     }
 }
 
@@ -1603,6 +1852,8 @@ fn every_error_has_a_message() {
             "unknown hero class `p:x`",
         ),
         (E::UnknownSpell("p:x".into()), "unknown spell `p:x`"),
+        (E::UnknownArtifact("p:x".into()), "unknown artifact `p:x`"),
+        (E::UnknownSkill("p:x".into()), "unknown skill `p:x`"),
         (
             E::DuplicateTown("p:x".into()),
             "faction `p:x` has two town records",

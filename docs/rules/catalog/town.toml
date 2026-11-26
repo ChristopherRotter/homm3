@@ -2016,3 +2016,47 @@ numeric  = "integer"
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 93; E09 decisions 170, 177, 181 and 192"
   confidence = "high"
+
+[[rule]]
+id       = "TWN-TRD-001"
+title    = "The town's trades' data: the five trade roles, the war machines, the trades' parameters, the Transformer's table"
+context  = "town"
+status   = "verified"
+summary  = "Five building roles, each at most one building of a record, read standing: marketplace (the Marketplace, building 14 of every faction: the count's building and the market window's entry), artifact_merchants (the Artifact Merchants, the Tower's, the Dungeon's and the Conflux's 17), freelancers (the Freelancer's Guild, the Stronghold's 21), university (the Magic University, the Conflux's 21) and transformer (the Skeleton Transformer, the Necropolis's 22). A building's war_machine, an artifact of the core with a war_machine creature (UnknownArtifact for one the core lacks; refused when it names no creature), read standing: each faction's Blacksmith (16) sells its faction's machine (Castle, Dungeon and Conflux the Ballista, Tower, Inferno and Stronghold the Ammo Cart, Rampart, Necropolis and Fortress the First Aid Tent) and the Stronghold's Ballista Yard (22) the Ballista, beside its Blacksmith. The part's parameters: the Artifact Merchants' stock, a class an entry in entry order (three treasures, three minors, a major; at most 8, none special), a boat's price at a town's Shipyard (1 000 gold and 10 wood; each resource once and at least 1, empty for free) and its type (1), the University's skills in its slots' order (Fire, Air, Water and Earth Magic; skills of the core, UnknownSkill else, at least one, each once) and each one's price (2 000 gold), the Skeleton Transformer's two targets (the Skeleton for every creature but the packs' dragons, the Bone Dragon for those) and its dragons, each named by one pack of the creature's closure ([town_transformer]: the base pack's Green, Gold, Red and Black Dragons, Hydra and Chaos Hydra, the AB pack's Azure, Crystal, Faerie and Rust Dragons), every enabled pack's in handle order. Town ruleset part v10 (E09 T56, design note section 102): h3_towns' BuildingRoles, Building::war_machine, TownParams, TownPack::transformer_dragons, MAX_MERCHANTS_STOCK; h3-pack-towns' fields; harvested by h3-harvest (the Blacksmiths' machines from blacksmith_machine_creatures, the Transformer's targets from skeleton_transformer_targets, the rest from the gap-fill). The market at a town (TWN-MKT-001 to -005), the stock (TWN-STK-001, -002) and the services (TWN-SMT-001, TWN-SHY-001, TWN-UNI-001, TWN-TRF-001) read them."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe tables read whole (E09 T52, survey E09-trades.md sections 4.3 and 7.5; docs/formats/installation.md section 7.61): blacksmith_machine_creatures 0x642E90 (per faction 146, 147, 148, 148, 147, 146, 148, 147, 146), which blacksmith_dialog_create 0x5D1360 and town_blacksmith_buy 0x5D1D30 read; skeleton_transformer_targets 0x6412FC (145 creatures: 68 for 26, 27, 82, 83, 110, 111 and 132 to 135, 56 for every other, 56 its own), read by transformer_convert 0x566C20; harvested by h3-harvest and checked by h3-pack-towns' original-packs test"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T52; survey E09-trades.md sections 2, 3.1, 4.6, 5.3, 6.3 and 6.4): the town screen's clicks on the Marketplace (14), the Artifact Merchants (17), the Freelancer's Guild (21), the Ballista Yard (22, town_blacksmith_buy with faction 0), the University (21) and the Transformer (22) by faction (town_screen_proc 0x5D3240); new_game_heroes 0x4C0484 drawing three treasures, three minors and a major; shipyard_dialog_create 0x5D1EF0's fixed 1 000 gold and 10 wood and the type-1 boat; town_university_open 0x5D2DA0's Fire, Air, Water and Earth Magic (14 to 17) at the map University's 2 000 gold"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6a.md to E09-batch-6d.md and their run2 records, batch TWN-6 rows TWN-6-5 to TWN-6-8 (the capture harness under Wine, the Complete 4.0 executable in SoD, 2026-11-25, E09 T54; survey E09-trades.md section 14): the merchants, the Freelancer's Guild, the Blacksmith and the Ballista Yard each a building's click; a town's boat for 1 000 gold and 10 wood; the University's Fire, Air, Water and Earth Magic at 2 000 gold; the stock's three treasures, three minors and one major"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+  note       = "Marked verified by E09 T56: the parameters as observed; the war machines and the Transformer's table the executable's tables, agreeing with VCMI and the wiki."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 config/factions/*.json and config/buildingsLibrary.json (the buildings' modes, the Blacksmiths' machines, the Ballista Yard, the University's four schools and price, the Transformer's dragons by a bonus), as read by survey E09-trades.md section 9: the same"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
+  retrieved  = "2026-11-24"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, the Blacksmith and the Skeleton Transformer (survey E09-trades.md section 9): the same machines by faction and prices; every creature to Skeletons but the living dragons and hydras to Bone Dragons"
+  url        = "https://heroes.thelazy.net/index.php/Skeleton_Transformer"
+  retrieved  = "2026-11-24"
+  confidence = "low"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 102; E09 decisions 197, 207, 213 and 220"
+  confidence = "high"

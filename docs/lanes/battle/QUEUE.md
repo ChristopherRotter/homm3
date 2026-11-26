@@ -20,6 +20,18 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-26 (the town lane, E09 T56, `town/e09-t56`, `cross-lane` with the user's consent,
+  E09 decision 220; **in your paths, for your review, nothing to do**): `h3-formats`'
+  `TownTables`/`TownData` read two more tables, `blacksmith_machine_creatures` 0x642E90 (a
+  creature a faction) and `skeleton_transformer_targets` 0x6412FC (145 creatures,
+  `TRANSFORMER_CREATURES`), `docs/formats/installation.md` §7.61's table; `h3-harvest`'s town
+  harvest writes the five trade roles (the gap-fill's `[towns] role`), each Blacksmith's
+  `war_machine` (the table's creature as the gap-fill's `[[artifacts.war_machines]]` artifact) and
+  the Ballista Yard's (`[towns.trades] machine_of`), the trades' `[town_params]`
+  (`[towns.trades]`, source `exe-town-trades`) and each pack's `[town_transformer]` dragons (the
+  table's creatures that become its one target that is not its own); the role list `ROLES` holds
+  24; `packs/README.md`'s town line. The packs re-harvested: only the three `towns.toml` changed.
+
 - 2026-11-25 (the AI lane, E31 T2c, `ai/e31-t2c`, `cross-lane` with the user's consent, AI-Q34;
   **yours from now on, nothing to do now**): a new public module **`h3_battle::estimate`**, the
   original's computer's simulated combat (T2b's sides and melee moved from `h3_game::computer`,
@@ -36,15 +48,6 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
   survey §5.5 #65 (an other spell sets a stack's value per hit point to the new value over old
   value × old value per hit point) and #66 (an other spell and a raise leave the side's strength),
   beside #7, #8, #63 and #64.
-
-- 2026-11-25 (the town lane, E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to
-  do now**): increment 6's T56 adds six building fields to the town records (`marketplace`,
-  `artifact_merchants`, `freelancers`, `war_machine`, `university`, `transformer`) and parameters
-  (the stock's classes, the boat's price and type, the University's schools and price, the
-  Transformer's table with a `[[transformer_dragon]]` list per pack) through `h3-harvest`'s
-  gap-fill, `cross-lane` in your paths; T55b's `shared/` task gives a combination without a pack
-  cost its parts' sum in `h3-content`'s compile (HER-ART-008; SoD's twelve, `packs/README.md`'s
-  pending costs). Design note `docs/epics/E09-design.md` §102, §109.
 
 - 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision, nothing to
   build now**): the original's computer player gives its battles three rules a human's lack

@@ -7,14 +7,13 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 6: the town's trades, refined at T51, `TWN-Q34`,
 decisions 196 to 199; its survey T52 with the checkpoint `TWN-Q35`, decisions 200 to 207; its
 drafts, cut and exit criteria by T53, `TWN-Q36`, `TWN-Q37`, decisions 208 to 217; batch TWN-6
-by T54, decision 218; T55 `shared/`, decision 219; the buildings for heroes and the map are increment 7, travel and the Grail
+by T54, decision 218; T55 `shared/`, decision 219; T56, decision 220; the buildings for heroes and the map are increment 7, travel and the Grail
 8, decision 197); done
 tasks in `E09-log.md`; increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T56 to T61** (queued, design §118's rounds 4 to 8; each cut confirmed at its start): **Status:** T56 next. T56 the town part v10 (§102: the six building fields, the parameters, the Transformer's tables per pack, the
-harvest `cross-lane`); T57 the stock (§108: the pool's marks kept and the stock in the adventure
+**E09 T57 to T61** (queued, design §118's rounds 5 to 8; each cut confirmed at its start): **Status:** T57 next (T56 done 2026-11-26, `E09-log.md`). T57 the stock (§108: the pool's marks kept and the stock in the adventure
 state, the new game's and the month's draws, the replays re-recorded, `cross-lane`); T58 the market
 at a town (§103 to §107: T58a the count, `Market` opening E08's decision with the town as its
 place, the trades, the transfer, the guild's sale, the merchants' purchase, T-28, `TWN-STUB-21`,
@@ -25,6 +24,19 @@ protocol, `cross-lane`); T60 the trades map, its replays, the census, the proper
 benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, increment 7 refined.
 
 ## Inbox
+
+- 2026-11-26 (the AI lane, E31 T2d, `ai/e31-t2d`, `cross-lane` with the user's consent, AI-Q35;
+  **in your paths, and one request**): `h3_game::GameState::growth_inputs(rules)` is new and public
+  in `src/town/growth.rs` (your `inputs`, by `TownId`): the computer's turn start adds the next
+  week's growth (`h3_towns::growth`) to a town's available creatures from the week's fifth day
+  (`ai_resource_weights` 0x428740 over `town_dwelling_growth` 0x5BFB60). Three of your tests'
+  builders are `pub(crate)` now (`towns_core_pack`, `town_pack`, `rules_with_adventure` in
+  `src/town/tests.rs`) for the computer's tests. **The request:** the computer counts the towns
+  whose buildable mask holds the Marketplace (building 14, built or not) for its weights' rate
+  (`town_building_allowed` 0x5C12A0); the town part gives the Marketplace no role, so the policy
+  finds it by the record's key `marketplace` (`h3_game::computer`'s `start.rs`). A role (say
+  `market`, which your increment 6's trades may want anyway) would let it read the role instead:
+  tell this lane when it lands.
 
 - 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision and your
   planning, nothing to build now**): the original's computer player's rules in towns (survey

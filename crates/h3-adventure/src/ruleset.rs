@@ -948,6 +948,9 @@ pub struct AdventureRuleset {
     /// decision 422: the game's listing of the casts on the map), derived from the core and the
     /// bindings at compile; not hashed (it follows from both).
     cast_sources: SpellSources,
+    /// The same for the bound spells with a target (E08 T144a2: the targets' query asked for
+    /// every hero on every step of a random game), derived and not hashed as [`Self::cast_sources`].
+    target_sources: SpellSources,
     hash: u64,
 }
 
@@ -1057,15 +1060,19 @@ impl AdventureRuleset {
             altar_factions: tables.altar_factions.into_iter().collect(),
             spells: tables.spells.into_iter().collect(),
             cast_sources: SpellSources::default(),
+            target_sources: SpellSources::default(),
             hash: 0,
         };
-        let listed: Vec<SpellId> = part
-            .spells
-            .iter()
-            .filter(|(_, effect)| !effect.targets())
-            .map(|&(spell, _)| spell)
-            .collect();
+        let bound = |targets: bool| -> Vec<SpellId> {
+            part.spells
+                .iter()
+                .filter(|(_, effect)| effect.targets() == targets)
+                .map(|&(spell, _)| spell)
+                .collect()
+        };
+        let (listed, queried) = (bound(false), bound(true));
         part.cast_sources = SpellSources::new(core, &listed);
+        part.target_sources = SpellSources::new(core, &queried);
         part.hash = hash_of(&part);
         Ok(part)
     }
@@ -1219,6 +1226,12 @@ impl AdventureRuleset {
     /// T144a1: `h3_heroes::SpellSources`, the game's listing of the casts, decision 422).
     pub fn cast_sources(&self) -> &SpellSources {
         &self.cast_sources
+    }
+
+    /// What may make the bound spells with a target available to a hero, in spell order (E08
+    /// T144a2: Scuttle Boat's and Dimension Door's, the pre-test of the game's targets query).
+    pub fn target_sources(&self) -> &SpellSources {
+        &self.target_sources
     }
 
     /// What a cast of `spell` does on the map, if the part binds it (ADV-SPL-001; E08 T142a):

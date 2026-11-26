@@ -325,6 +325,79 @@ fn the_requirements_costs_and_the_shipyard_parse() {
     );
 }
 
+// covers: TWN-TRD-001
+#[test]
+fn the_trades_parse() {
+    // E09 T56: the trades' parameters, the packs' Transformer dragons, the roles, the war machines.
+    let part = compiled();
+    let core = core(&[h3_pack::SYNTHETIC_CORE, h3_pack::SYNTHETIC_EXT_CORE]);
+    let params = part.params().unwrap();
+    use h3_content::ArtifactClass as C;
+    assert_eq!(
+        params.merchants_stock,
+        [C::Treasure, C::Minor, C::Minor, C::Relic]
+    );
+    let resource = |k: &str| {
+        let index = core.resources().iter().position(|r| r.key.as_str() == k);
+        index.and_then(h3_content::ResourceId::from_index).unwrap()
+    };
+    let (coin, shard) = (resource("synthetic:coin"), resource("synthetic:shard"));
+    assert_eq!(params.boat_price, [(coin, 800), (shard, 5)]);
+    assert_eq!(params.boat_type, 2);
+    let skills = ["warding", "stormcraft", "parley"]
+        .map(|k| core.skill_by_key(&format!("synthetic:{k}")).unwrap());
+    assert_eq!(params.university_skills, skills);
+    assert_eq!(params.university_price, [(coin, 1500), (shard, 1)]);
+    let creature = |k: &str| core.creature_by_key(k).unwrap();
+    assert_eq!(params.transformer_into, creature("synthetic:shade"));
+    assert_eq!(params.transformer_dragons_into, creature("synthetic:wisp"));
+    let mut dragons = [
+        creature("synthetic:drake"),
+        creature("synthetic:brute"),
+        creature("synthetic-ext:lurker"),
+    ];
+    dragons.sort_unstable();
+    assert_eq!(params.transformer_dragons, dragons);
+    let record = vale(&part);
+    let roles = |k: &str| building(record, k).roles;
+    assert!(roles("marketplace").marketplace && roles("merchants").artifact_merchants);
+    assert!(roles("freelancers").freelancers && roles("university").university);
+    assert!(roles("transformer").transformer);
+    let only = |role: fn(&BuildingRoles) -> bool| {
+        record.buildings.iter().filter(|b| role(&b.roles)).count()
+    };
+    let counts = [
+        only(|r| r.marketplace),
+        only(|r| r.artifact_merchants),
+        only(|r| r.freelancers),
+        only(|r| r.university),
+        only(|r| r.transformer),
+    ];
+    assert_eq!(counts, [1; 5]);
+    let kit = core.artifact_by_key("synthetic:bolt_thrower_kit");
+    let machines: Vec<_> = record
+        .buildings
+        .iter()
+        .filter(|b| b.war_machine.is_some())
+        .map(|b| (b.key.as_str(), b.war_machine))
+        .collect();
+    assert_eq!(machines, [("blacksmith", kit), ("transformer", kit)]);
+    // A war machine's key of another pack, as a cost's.
+    let text = VALE.replace(
+        "war_machine = \"bolt_thrower_kit\"\n",
+        "war_machine = \"synthetic:bolt_thrower_kit\"\n",
+    );
+    let pack = parse(&text).unwrap();
+    let smith = pack.towns[0]
+        .buildings
+        .iter()
+        .find(|b| b.key == "blacksmith");
+    let machine = smith
+        .and_then(|b| b.war_machine.as_ref())
+        .map(ContentKey::as_str);
+    assert_eq!(machine, Some("synthetic:bolt_thrower_kit"));
+}
+
 #[test]
 fn an_upgrade_and_a_parsed_pack_keep_what_they_say() {
     let manifest = h3_pack::parse_pack(h3_pack::SYNTHETIC_CORE)
@@ -458,6 +531,38 @@ fn the_parser_is_strict() {
     assert!(syntax(
         &VALE.replace("mana_vortex = true", "mana_vortex = 1")
     ));
+    // Increment 6's fields (E09 T56).
+    assert!(syntax(&VALE.replace("\"relic\"]", "\"rare\"]")));
+    assert!(syntax(&VALE.replace("boat_type = 2", "boat_type = 256")));
+    assert!(syntax(&VALE.replace("boat_type = 2", "boat_types = 2")));
+    assert!(syntax(&VALE.replace(
+        "university_skills = [\"warding\", \"stormcraft\", \"parley\"]",
+        "university_skills = \"warding\""
+    )));
+    assert!(syntax(&VALE.replace(
+        "transformer_into = \"shade\"",
+        "transformer_into = [\"shade\"]"
+    )));
+    assert!(syntax(
+        &VALE.replace("[town_transformer]", "[town_transformer]\nbogus = 1")
+    ));
+    assert!(syntax(
+        &VALE.replace("marketplace = true", "marketplace = 1")
+    ));
+    assert!(syntax(
+        &VALE.replace("artifact_merchants = true", "artifact_merchants = 1")
+    ));
+    assert!(syntax(
+        &VALE.replace("freelancers = true", "freelancers = 1")
+    ));
+    assert!(syntax(&VALE.replace("university = true", "university = 1")));
+    assert!(syntax(
+        &VALE.replace("transformer = true", "transformer = 1")
+    ));
+    assert!(syntax(&VALE.replace(
+        "war_machine = \"bolt_thrower_kit\"\n",
+        "war_machine = [\"bolt_thrower_kit\"]\n"
+    )));
     let key = |text: &str| matches!(parse(text), Err(TownPackError::Key(_)));
     assert!(key(
         &VALE.replace("faction = \"vale\"", "faction = \"Vale\"")
@@ -475,6 +580,21 @@ fn the_parser_is_strict() {
     assert!(key(&VALE.replace(
         "spell_book_price = { coin = 400 }",
         "spell_book_price = { Coin = 400 }"
+    )));
+    assert!(key(
+        &VALE.replace("boat_price = { coin", "boat_price = { Coin")
+    ));
+    assert!(key(&VALE.replace("\"warding\"", "\"Warding\"")));
+    assert!(key(&VALE.replace(
+        "university_price = { coin",
+        "university_price = { Coin"
+    )));
+    assert!(key(&VALE.replace("\"shade\"", "\"Shade\"")));
+    assert!(key(&VALE.replace("\"wisp\"", "\"Wisp\"")));
+    assert!(key(&VALE.replace("\"drake\"", "\"Drake\"")));
+    assert!(key(&VALE.replace(
+        "war_machine = \"bolt_thrower_kit\"\n",
+        "war_machine = \"Kit\"\n"
     )));
     assert!(key(&VALE_OVERRIDE.replace("synthetic:vale", "Vale")));
     assert!(key(&VALE_OVERRIDE.replace("\"lurker\"", "\"Lurker\"")));
@@ -614,6 +734,7 @@ fn the_original_packs_compile_with_every_faction() {
     }
     the_original_taverns(&roe, &sod, &core);
     the_original_guilds(&roe, &sod, &core);
+    the_original_trades(&roe, &sod, &core);
     // The parameters.
     let params = sod.params().unwrap();
     assert_eq!(params.hall_gold, [500, 1000, 2000, 4000]);
@@ -909,6 +1030,161 @@ fn the_original_growth_roles(sod: &TownRuleset, core: &Ruleset) {
     for record in sod.towns() {
         assert_eq!(record.roe, record.faction != conflux);
     }
+}
+
+/// E09 T56's harvest in the shipped packs (design §102; survey `E09-trades.md` §3.1, §4, §5.3, §6.3,
+/// §6.4, §7.5): the trade roles on their buildings alone, the Blacksmiths' and the Ballista Yard's
+/// machines, the parameters, the Transformer's targets and each edition's dragons.
+// covers: TWN-TRD-001
+fn the_original_trades(roe: &TownRuleset, sod: &TownRuleset, core: &Ruleset) {
+    let at = |role: fn(&BuildingRoles) -> bool| -> Vec<(String, String)> {
+        let mut at: Vec<(String, String)> = sod
+            .towns()
+            .iter()
+            .flat_map(|r| {
+                let faction = core.factions()[r.faction.index()].key.as_str().to_owned();
+                r.buildings
+                    .iter()
+                    .filter(move |b| role(&b.roles))
+                    .map(move |b| (faction.clone(), b.key.clone()))
+            })
+            .collect();
+        at.sort_unstable();
+        at
+    };
+    let pairs = |list: &[(&str, &str)]| -> Vec<(String, String)> {
+        list.iter()
+            .map(|&(f, b)| (f.to_owned(), b.to_owned()))
+            .collect()
+    };
+    let markets = at(|r| r.marketplace);
+    assert_eq!(markets.len(), 9);
+    assert!(markets.iter().all(|(_, b)| b == "marketplace"));
+    assert_eq!(
+        at(|r| r.artifact_merchants),
+        pairs(&[
+            ("ab:conflux", "artifact_merchants"),
+            ("base:dungeon", "artifact_merchants"),
+            ("base:tower", "artifact_merchants"),
+        ])
+    );
+    assert_eq!(
+        at(|r| r.freelancers),
+        pairs(&[("base:stronghold", "freelancers_guild")])
+    );
+    assert_eq!(
+        at(|r| r.university),
+        pairs(&[("ab:conflux", "magic_university")])
+    );
+    assert_eq!(
+        at(|r| r.transformer),
+        pairs(&[("base:necropolis", "skeleton_transformer")])
+    );
+    // The war machines (survey §4.3, §4.6): each Blacksmith's by its faction, the Stronghold's
+    // Ballista Yard the Castle's Ballista; nothing else sells one.
+    let artifact = |k: &str| core.artifact_by_key(k);
+    let (ballista, cart, tent) = (
+        artifact("base:ballista"),
+        artifact("base:ammo_cart"),
+        artifact("base:first_aid_tent"),
+    );
+    let machines = [
+        ("base:castle", ballista),
+        ("base:rampart", tent),
+        ("base:tower", cart),
+        ("base:inferno", cart),
+        ("base:necropolis", tent),
+        ("base:dungeon", ballista),
+        ("base:stronghold", cart),
+        ("base:fortress", tent),
+        ("ab:conflux", ballista),
+    ];
+    for (key, machine) in machines {
+        let record = sod.town(core.faction_by_key(key).unwrap()).unwrap();
+        assert_eq!(building(record, "blacksmith").war_machine, machine, "{key}");
+        let others = record
+            .buildings
+            .iter()
+            .filter(|b| b.war_machine.is_some() && b.key != "blacksmith");
+        let others: Vec<_> = others.map(|b| (b.key.as_str(), b.war_machine)).collect();
+        let yard = if key == "base:stronghold" {
+            vec![("ballista_yard", ballista)]
+        } else {
+            vec![]
+        };
+        assert_eq!(others, yard, "{key}");
+    }
+    // The parameters (survey §3.1, §5.3, §6.3, §6.4), the same from RoE on.
+    use h3_content::ArtifactClass as C;
+    let resource = |k: &str| {
+        let index = core.resources().iter().position(|r| r.key.as_str() == k);
+        index.and_then(h3_content::ResourceId::from_index).unwrap()
+    };
+    let params = sod.params().unwrap();
+    assert_eq!(
+        params.merchants_stock,
+        [
+            C::Treasure,
+            C::Treasure,
+            C::Treasure,
+            C::Minor,
+            C::Minor,
+            C::Minor,
+            C::Major
+        ]
+    );
+    assert_eq!(
+        params.boat_price,
+        [(resource("base:wood"), 10), (resource("base:gold"), 1000)]
+    );
+    assert_eq!(params.boat_type, 1);
+    let skills = ["fire_magic", "air_magic", "water_magic", "earth_magic"]
+        .map(|k| core.skill_by_key(&format!("base:{k}")).unwrap());
+    assert_eq!(params.university_skills, skills);
+    assert_eq!(params.university_price, [(resource("base:gold"), 2000)]);
+    // The Transformer (survey §7.5): Skeletons of everything but the dragons and hydras, Bone
+    // Dragons of those; AB's four dragons from AB on.
+    let creature = |k: &str| core.creature_by_key(k).unwrap();
+    assert_eq!(params.transformer_into, creature("base:skeleton"));
+    assert_eq!(
+        params.transformer_dragons_into,
+        creature("base:bone_dragon")
+    );
+    let base_dragons = [
+        "green_dragon",
+        "gold_dragon",
+        "red_dragon",
+        "black_dragon",
+        "hydra",
+        "chaos_hydra",
+    ]
+    .map(|k| format!("base:{k}"));
+    let ab_dragons = [
+        "azure_dragon",
+        "crystal_dragon",
+        "faerie_dragon",
+        "rust_dragon",
+    ]
+    .map(|k| format!("ab:{k}"));
+    let mut dragons: Vec<_> = base_dragons
+        .iter()
+        .chain(&ab_dragons)
+        .map(|k| creature(k))
+        .collect();
+    dragons.sort_unstable();
+    assert_eq!(params.transformer_dragons, dragons);
+    let roe_core = original_core(&[h3_pack::BASE_CORE]);
+    let mut roe_dragons: Vec<_> = base_dragons
+        .iter()
+        .map(|k| roe_core.creature_by_key(k).unwrap())
+        .collect();
+    roe_dragons.sort_unstable();
+    assert_eq!(roe.params().unwrap().transformer_dragons, roe_dragons);
+    assert!(
+        roe.towns()
+            .iter()
+            .all(|r| r.buildings.iter().all(|b| !b.roles.university))
+    );
 }
 
 /// E09 T16b's harvest in the shipped packs (design §25): every closure inside its record, never

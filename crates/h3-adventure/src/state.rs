@@ -1788,6 +1788,26 @@ impl AdventureState {
         self.start_town_heroes(core, part, heroes, player);
     }
 
+    /// The day's maximum `hero` would start its owner's turn with as it stands now (ADV-MOV-002:
+    /// [`Self::start_turn`]'s, on its surface with its owner's Lighthouses and its week marks), if
+    /// it is on the map. Since E31 T2d (`cross-lane`, the ai lane's): the original's computer reads
+    /// every enemy hero's maximum anew at its turn's start (`hero_max_movement` 0x4E4D90 in
+    /// `ai_enemy_reach_fold` 0x4280E0), not the one stored at that hero's own start.
+    // rule: ADV-MOV-002
+    pub fn day_maximum_of(
+        &self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        heroes: &[Arc<HeroDetails>],
+        hero: HeroId,
+    ) -> Option<u32> {
+        let hero = self.hero(hero)?;
+        let lighthouses = self.lighthouse_points(part, hero.owner);
+        let week = marks_in(self.visited.as_deref(), hero.id).week_land_points(part);
+        let details = details_of(heroes, hero.id);
+        Some(day_maximum(core, part, details, hero, (lighthouses, week)))
+    }
+
     /// Whether a hero may stand on `pos` (ADV-MAP-001): a tile of the map whose terrain is
     /// walked on land, which no object blocks unless an object is visited from it, and no other
     /// hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may
