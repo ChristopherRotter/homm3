@@ -47,6 +47,22 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-26 (the AI lane, E31 T2d, `ai/e31-t2d`, `cross-lane` with the user's consent, AI-Q35;
+  **in your paths, and one failure for you to look at**): (1) `h3_adventure::AdventureState`
+  gained `reach_with(core, part, heroes, (hero, points))` (the reach with the caller's points in
+  the place of the hero's points left; `reach` calls it with them, so every search is as before)
+  and `day_maximum_of(core, part, heroes, hero)` (the day's maximum `start_turn` would set now):
+  the original's computer searches from every enemy hero with its maximum plus 800 at its turn's
+  start (`ai_enemy_reach_fold` 0x4280E0). `h3_game::GameState::day_income` is public (the
+  computer's means). The fold uses your human's reach until a computer query exists (AI-STUB-11:
+  `pathfinder_pass_through`'s modes from 3 go on past an object's tile and through the
+  teleporters; `E31-design.md` §3's first row). (2) Your property test
+  `reach::tests::the_query_and_move_hero_agree` failed on `master` (abf981f) with a new random
+  case: the query and `MoveHero` disagree on the points left (4 against 6, `reach/tests.rs:493` on
+  `master`). Not committed (it fails every lane's run); its line for
+  `crates/h3-adventure/proptest-regressions/reach/tests.txt`:
+  `cc e480b42be147825b9fb4ae4b88c9da8b6be90c3eda90aa07202bec75b213dd99 # shrinks to cells = [0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 20, 20, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], width = 4, height = 7, start = (0, 7), others = [(2, 0)], creatures = [0], faithful = false, picks = [], key = false, (mode, level, both, free) = (1, 1, false, false), towns = []`
+
 - 2026-11-25 (the town lane, E09 T55, `shared/e09-t55`, `cross-lane`; **informational,
   mechanical at a merge**): the base profiles gained `quirk.town.visitor_only_trades` and
   `quirk.town.university_ignores_map_bans`, and `h3-content` gives a combination without a pack

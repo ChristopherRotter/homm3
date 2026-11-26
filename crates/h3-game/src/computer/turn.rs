@@ -4,8 +4,9 @@
 //! One call gives one command: the frame runs on from its memory ([`Turn`]) until a step gives
 //! one, and every step after a command reads the state the command made.
 //!
-//! What the frame calls and the engine or E31 has not built yet is stubbed: the start's records
-//! and the middle (`AI-STUB-3`, T2d and increment 3), the town visit (`AI-STUB-4`, increment 3),
+//! What the frame calls and the engine or E31 has not built yet is stubbed: the middle
+//! (`AI-STUB-3`, increment 3; the start's records since T2d, `super::start`), the town visit
+//! (`AI-STUB-4`, increment 3),
 //! the patrol (`AI-STUB-5`: no patrol in the game state), and each hero's search and walk
 //! (`AI-STUB-2`, T2i and T2j): until then every hero finds no destination and is done at once.
 
@@ -34,7 +35,7 @@ pub(super) fn step(
     memory: &mut Memory,
     rng: &mut Rng,
 ) -> GameCommand {
-    let turn = memory.turn_of(state.day(), || start(state, player));
+    let turn = memory.turn_of(state.day(), || start(state, rules, player));
     loop {
         let pass = turn.pass;
         if pass == Pass::Over {
@@ -60,16 +61,16 @@ pub(super) fn step(
 }
 
 /// The turn's start (`ai_turn_start` 0x4297C0, survey §1.5; CPU-TRN-002): no hero done (every
-/// hero's and garrison hero's +0x11C cleared), the first pass, and the turn's flag
-/// ([`turn_flag`]).
-fn start(state: &GameState, player: PlayerId) -> Turn {
-    // stub: AI-STUB-3
+/// hero's and garrison hero's +0x11C cleared), the first pass, the turn's flag ([`turn_flag`])
+/// and since T2d the start's records ([`super::start::record`], CPU-STA-001).
+fn start(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Turn {
     Turn {
         day: state.day(),
         pass: Pass::First,
         flag: turn_flag(state, player),
         next: None,
         asleep: alloc::vec::Vec::new(),
+        record: super::start::record(state, rules, player),
     }
 }
 
@@ -274,7 +275,10 @@ fn owner(state: &GameState, town: TownId) -> Option<PlayerId> {
 
 /// `player`'s towns in `TownId` order: the engine's order of a player's towns (its upper bars',
 /// `AdventureState::upper_bars`), for the original's town list (player +0x40).
-fn towns_of(state: &GameState, player: PlayerId) -> impl Iterator<Item = TownId> + use<'_> {
+pub(super) fn towns_of(
+    state: &GameState,
+    player: PlayerId,
+) -> impl Iterator<Item = TownId> + use<'_> {
     let count = state.adventure().map().towns().len();
     (0..=u16::MAX)
         .take(count)

@@ -17,13 +17,19 @@
 //!
 //! [`GameCommand`]: crate::GameCommand
 
-// The values that ask for a fight's worth (T2d, T2h, T2i) are its first callers outside the tests.
+// The values that ask for a fight's worth (T2h, T2i) are the fight estimate's first callers
+// outside the tests; the turn's start calls the capture estimate beside it (T2d).
 #[cfg_attr(
     not(test),
-    expect(dead_code, reason = "no caller until the values, E31 T2d, T2h, T2i")
+    expect(
+        dead_code,
+        reason = "the fight estimate has no caller until the values, E31 T2h, T2i"
+    )
 )]
 mod fight;
 mod memory;
+mod order;
+mod start;
 mod turn;
 
 #[cfg(test)]

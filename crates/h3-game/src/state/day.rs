@@ -229,14 +229,11 @@ impl GameState {
     /// the adventure's income of its mines and, with `week_start`, its armies' weekly resources,
     /// plus each of its heroes' on the map and its garrison heroes' `h3_heroes::daily_income`,
     /// plus each of its towns' ([`crate::town::add_income`]). Since E09 T39b1 factored out of the
-    /// day's start: the Thieves' Guild's income row reads its gold (TWN-TAV-008).
+    /// day's start: the Thieves' Guild's income row reads its gold (TWN-TAV-008). Public since
+    /// E31 T2d (`cross-lane`, the ai lane's): the computer's turn start reads its income
+    /// (`ai_resource_weights` 0x428740 over `player_daily_income` 0x4B8AF0's +0x108).
     // rule: GAM-RES-003, GAM-RES-004, GAM-RES-005, TWN-INC-001, TWN-INC-002, TWN-ROW-005
-    pub(crate) fn day_income(
-        &self,
-        rules: &GameRuleset,
-        player: PlayerId,
-        week_start: bool,
-    ) -> Vec<u32> {
+    pub fn day_income(&self, rules: &GameRuleset, player: PlayerId, week_start: bool) -> Vec<u32> {
         let (core, part) = (rules.core(), rules.adventure());
         let mut income = self.adventure.income(core, part, player, week_start);
         // Its heroes on the map, then since E09 T28b1 its garrison heroes (TWN-ROW-005: the

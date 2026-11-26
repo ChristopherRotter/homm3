@@ -20,6 +20,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   each command twice: never in the workload.
 - A `Memory` is the host's, one per computer player, never the game's: a host that rebuilds a
   game (a load, a replay) starts it empty (its turn restarts; ADR-0030 point 5).
+- The turn's start runs one reach per enemy hero (the threat fold, `start.rs`, E31 T2d: 87 % of
+  `computer-turns-towns-36`): a change to `h3-adventure`'s reach moves that workload, and a start
+  that does more searches multiplies it. The capture estimate before the search costs more than
+  it saves (T2d: most enemies on a small map take some town). The start's weights are kept as
+  their inputs: read them through `Record::weights`, never recompute them from the state later.
 - The simulated combat is `h3_battle::estimate` (AI-Q34), the battle lane's crate: a change
   there is `cross-lane`, its coverage comes from `h3-battle`'s own tests (`src/estimate/tests.rs`,
   on `tests::support`'s ruleset with Fight Values and AI kinds patched in), and its inputs are

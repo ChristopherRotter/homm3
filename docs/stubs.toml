@@ -294,8 +294,8 @@ epic   = "E31"
 
 [[stub]]
 id     = "AI-STUB-3"
-where  = "crates/h3-game/src/computer/turn.rs::start"
-reason = "The original's computer player (E31 T2a): the turn's start and middle are frames only. The start (ai_turn_start 0x4297C0, ai_turn_start_values 0x527960; survey section 1.5) clears the done marks and sets the turn's flag; its records (the Eye value, the threat folds and the defence recruits, the recruit reserve, the resource weights, the puzzle target, the heroes' effectiveness, the artifacts' mean, the difficulty weights) come with T2d. The middle (ai_turn_middle 0x428DD0: the income, the threat folds again, the build loop, the hire, the weights again, the allies' shares) only sets the turn's flag again: increment 3 (the towns), its values T2d"
+where  = "crates/h3-game/src/computer/turn.rs::middle"
+reason = "The original's computer player (E31 T2a; the start's records since T2d, CPU-STA-001): the turn's middle is a frame only. ai_turn_middle 0x428DD0 (survey section 1.5: the income, the recruit reserve less the day's income, both threat folds again, the build loop, the hire, the weights again, the allies' shares) only sets the turn's flag again: increment 3 (the towns)"
 epic   = "E31"
 
 [[stub]]
@@ -327,6 +327,42 @@ id     = "AI-STUB-9"
 where  = "crates/h3-game/src/computer/fight.rs::fight"
 reason = "The original's computer player (E31 T2c): the fight estimate reads the scenario's conditions (ai_army_fight_sim 0x427330: its own factor halved for the victory condition's hero, kind 5; plus 5 000 000 for an enemy hero that is the victory condition's, counting for the player, victory_condition_applies 0x5F15A0, or the loss condition's, kind 1); the engine has no victory or loss conditions: none until E10 increment 2 (survey section 5.4)"
 epic   = "E10"
+
+[[stub]]
+id     = "AI-STUB-10"
+where  = "crates/h3-game/src/computer/start.rs::record"
+reason = "The original's computer player (E31 T2d): the turn start's Eye value (the record's +0x04, ai_eyes_value 0x429910: the scouting value ai_vision_area_value 0x432220 of radius 10 around every Eye of the Magi's entrance, explored or not; 1 000 000 with the turn's flag and a sum above 0) is 0: the engine has no Eye of the Magi (E08 left the information objects out, its decision 394). The vision circle and its 75 class values (ai_class_scout_values 0x6925AC) come with T2h, its other reader (the Redwood Observatory and the Pillar of Fire); lifted when the adventure lane builds the Eyes"
+epic   = "E08"
+
+[[stub]]
+id     = "AI-STUB-11"
+where  = "crates/h3-game/src/computer/start.rs::threats"
+reason = "The original's computer player (E31 T2d): the threat fold searches from every enemy hero with the engine's reach (AdventureState::reach_with: a human's paths, ADV-MOV-008's fog), not the original's computer mode 3 of pathfinder_run 0x56B440 (pathfinder_pass_through 0x56AB40: in the modes from 3 a path goes on past an object's tile whose class is not in its switch, and through the teleporters to their exits). Lifted with the adventure lane's computer query (E31-design.md section 3, its first row; the walk's and the planning's too, T2i, T2j)"
+epic   = "E31"
+
+[[stub]]
+id     = "AI-STUB-12"
+where  = "crates/h3-game/src/computer/start.rs::record"
+reason = "The original's computer player (E31 T2d): the defence fold of the turn's start and middle (ai_enemy_reach_fold 0x4280E0 with ai_town_defence_vtable 0x63B67C, ai_town_defence_recruit 0x428580) buys a threatened town's available creatures into its garrison with the player's resources (ai_army_plan_run 0x42D690; survey sections 2.4, 3.3, the asymmetry of section 2.5 (3)); not ported: the policy's commands for it and the army plans come with increment 3 (the towns) and T2g. Its threats are the threat fold's (CPU-STA-004)"
+epic   = "E31"
+
+[[stub]]
+id     = "AI-STUB-13"
+where  = "crates/h3-game/src/computer/start.rs::record"
+reason = "The original's computer player (E31 T2d): of a hero's values at the turn start (ai_hero_effectiveness 0x527760) only the experience weight +0x109 is ported (CPU-STA-006); the others are gains of the caster record's best spell value (ai_best_spell_value 0x5275B0: one Spell Power +0x47E, one duration +0x482, a Knowledge point +0x486, the mana refilled +0x48E and doubled +0x48A): T2e, with the spells' values (the user at T2d)"
+epic   = "E31"
+
+[[stub]]
+id     = "AI-STUB-14"
+where  = "crates/h3-game/src/computer/start.rs::record"
+reason = "The original's computer player (E31 T2d): the player's mean artifact value at the turn start (+0x164, f32: ai_turn_start_values 0x527960 over ai_artifact_value_to_player 0x433AA0 of the artifacts 7 to 143 the setup allows) waits for the artifacts' values: T2f (the user at T2d)"
+epic   = "E31"
+
+[[stub]]
+id     = "AI-STUB-15"
+where  = "crates/h3-game/src/computer/start.rs::record"
+reason = "The original's computer player (E31 T2d): the player's Grail target at the turn start (+0x39, player_puzzle_target 0x4BAE50 over puzzle_map_compute 0x52C9B0, read in part, its pick 0x52CF10 not read) waits for the planning, its only reader (T2i, the user at T2d), and for the obelisks (the engine places none, TWN-STUB-17)"
+epic   = "E31"
 
 # --- rmg (RMG-STUB-<n>) ---
 
