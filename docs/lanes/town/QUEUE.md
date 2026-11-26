@@ -7,16 +7,16 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 6: the town's trades, refined at T51, `TWN-Q34`,
 decisions 196 to 199; its survey T52 with the checkpoint `TWN-Q35`, decisions 200 to 207; its
 drafts, cut and exit criteria by T53, `TWN-Q36`, `TWN-Q37`, decisions 208 to 217; batch TWN-6
-by T54, decision 218; T55 `shared/`, decision 219; T56, decision 220; the buildings for heroes and the map are increment 7, travel and the Grail
+by T54, decision 218; T55 `shared/`, decision 219; T56, decision 220; T57, decisions 221 to 223; the buildings for heroes and the map are increment 7, travel and the Grail
 8, decision 197); done
 tasks in `E09-log.md`; increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T57 to T61** (queued, design §118's rounds 5 to 8; each cut confirmed at its start): **Status:** T57 next (T56 done 2026-11-26, `E09-log.md`). T57 the stock (§108: the pool's marks kept and the stock in the adventure
-state, the new game's and the month's draws, the replays re-recorded, `cross-lane`); T58 the market
+**E09 T58 to T61** (queued, design §118's rounds 6 to 8; each cut confirmed at its start): **Status:** T58 next (T57 done 2026-11-26, `E09-log.md`). T58 the market
 at a town (§103 to §107: T58a the count, `Market` opening E08's decision with the town as its
-place, the trades, the transfer, the guild's sale, the merchants' purchase, T-28, `TWN-STUB-21`,
+place, the trades, the transfer, the guild's sale, the merchants' purchase (an entry emptied:
+`AdventureState::merchants_mut`, a copy of the block, T57's), T-28, `TWN-STUB-21`,
 the view, the protocol, `town market`; T58b the artifact sale, `MarketParams::artifact_sale`, its
 env entries and word, `cross-lane`); T59 the services (§110 to §113: T59a `BuyWarMachine` and
 `BuildBoat`; T59b `University` with T-23 and `Transform`; each with its env entries, word and

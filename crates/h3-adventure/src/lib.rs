@@ -148,8 +148,10 @@ pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 /// visits' block. v28 (E08 T141a, decision 413): each hero on the map's key in its owner's list
 /// ([`HeroOnMap::listed`]); the Prisons' prisoners in the static map ([`Resolved::Prisoner`],
 /// tag 11). v29 (E08 T142a, increment 15's design note §8): the heroes' day spells by hero id
-/// ([`AdventureState::day_spells`]), last.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 29;
+/// ([`AdventureState::day_spells`]). v30 (E09 T57, the town lane's, `cross-lane`; the town
+/// epic's design note §108): the Artifact Merchants' stock and the random artifacts' marks kept
+/// from the build ([`AdventureState::merchants_stock`]), last.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 30;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

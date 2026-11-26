@@ -22,6 +22,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   T18b1): `h3-map`'s property tests (`play.rs`' `as_move`, `view.rs`' told views), `h3-sim`'s
   action entries, `h3-files`' replay words; the scoped verify builds `h3-map`'s tests only in its
   clippy and coverage steps. Run `cargo check --workspace --all-targets` right after adding one.
+- **A new field of a town part type meets another lane's new literal** (E09 T56's #1189 and E31
+  T2d's #1190, each green alone: `master` 6035ed8 did not compile `h3-game`'s tests): `BuildingDef`,
+  `TownParamsDef` and the other `h3-towns` definitions are built by literals in the AI lane's
+  `h3-game/src/computer/` tests too. When another lane's pull request merges after your CI run,
+  merge `master` again and run `cargo check --workspace --all-targets` before yours merges.
 - **A new command on the wire takes its replay word in the same pull request** (E09 T38a1):
   `h3-server` journals every command the wire accepts in the replay text
   (`h3_files::adventure::format_command`, `journal/whole.rs`), so the word (`h3-files`) and the

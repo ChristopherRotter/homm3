@@ -429,8 +429,10 @@ fn random_artifacts_draw_from_their_classes_without_repeats_until_the_pool_is_ou
                 .iter()
                 .all(|r| artifact(r).is_some_and(|a| [RING, CHARM].contains(&a)))
         );
-        // Every treasure banned: the draw widens to every class but Special, each time after
-        // restarting the marks from the bans (so the widened draws may repeat).
+        // Every treasure banned: the draw widens to every class but Special, the four classes'
+        // marks kept, so the first three widened draws differ; the fourth finds the four out
+        // and restarts their marks from the bans (E09 T57: the original's, a class's restart its
+        // own artifacts' alone).
         let bans = Bans {
             artifacts: vec![RING, CHARM, AMULET],
             ..Bans::default()
@@ -444,6 +446,7 @@ fn random_artifacts_draw_from_their_classes_without_repeats_until_the_pool_is_ou
         let wide: Vec<_> = drawn.iter().filter_map(artifact).collect();
         assert_eq!(wide.len(), 4);
         assert!(wide.iter().all(|a| [CLOAK, HELM, CROWN].contains(a)));
+        assert_eq!(BTreeSet::from_iter(wide[..3].iter().copied()).len(), 3);
         widened.extend(wide);
         // Two classes as one pool.
         let drawn = resolved(&built(

@@ -10,7 +10,9 @@ use alloc::vec::Vec;
 use h3_adventure::{AdventureCommand, Pos};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_kernel::{Rng, StreamId};
-use h3_towns::{BuildingId, BuildingRoles, BuildingsSetup, SlotSet, TownCommand, TownEventSetup};
+use h3_towns::{
+    BuildingId, BuildingRoles, BuildingsSetup, SlotSet, TownCommand, TownEventSetup, TownPack,
+};
 
 use super::command::{BLUE, RED};
 use super::garrison::building;
@@ -26,6 +28,11 @@ const HERO: HeroId = HeroId::new(0);
 
 /// The growth tests' rules with the Portal and the neutral garrisons' week never growing.
 fn rules_portal() -> GameRuleset {
+    rules_portal_with(|_| {})
+}
+
+/// [`rules_portal`] with the town part edited by `edit` after.
+fn rules_portal_with(edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
     rules_on([1, 0, 0], |towns| {
         let portal = BuildingRoles {
             portal: true,
@@ -34,6 +41,7 @@ fn rules_portal() -> GameRuleset {
         towns.towns[0]
             .buildings
             .push(building("b13", Some(PORTAL_SLOT), portal));
+        edit(towns);
     })
 }
 
@@ -180,7 +188,9 @@ fn a_town_event_s_portal_build_draws_it_from_the_towns_stream() {
 // covers: TWN-GRO-007
 #[test]
 fn the_setup_s_portals_are_drawn_last_from_the_setup_stream() {
-    let rules = rules_portal();
+    // E09 T57: without the Artifact Merchants' stock, the setup stream's last draws after them
+    // (TWN-STK-001).
+    let rules = rules_portal_with(|towns| towns.params.as_mut().unwrap().merchants_stock.clear());
     let plain = setup(&rules);
     let mut with = plain.clone();
     for town in [0, 1, 3] {
@@ -197,7 +207,7 @@ fn the_setup_s_portals_are_drawn_last_from_the_setup_stream() {
     assert!(of_the_hut(&rules, portal(T0)));
     assert_eq!(portal(T1), None);
     assert_eq!(portal(T3), None);
-    // The setup's other draws as without them: the Portals' are its last.
+    // The setup's other draws as without them: the Portals' are its last but the stock's.
     assert_eq!(a.adventure().state_hash(), b.adventure().state_hash());
     assert_eq!(a.hero(HERO), b.hero(HERO));
 }

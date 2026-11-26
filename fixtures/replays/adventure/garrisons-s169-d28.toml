@@ -754,36 +754,36 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xcfb634f11118a4a6",
-    "0x8b17d1144e2486d7",
-    "0x5d9b554fef4dba35",
-    "0x6bfb3c533c6a685e",
-    "0xfd82457bfc3b6555",
-    "0x8dc341ff318285cc",
-    "0x370370215b9674bb",
-    "0xc3564feaa8b64002",
-    "0xfc7f27e8e09460a4",
-    "0xe68d60ecfa95c969",
-    "0x9bd029ca55dfe51a",
-    "0xdb5f40fbb321d9be",
-    "0x89d99c4308bf8353",
-    "0xe1fe670f96ee2fd1",
-    "0x39b0dd0c76c801ed",
-    "0xa8e170862d9280c7",
-    "0x5531c15da69685b9",
-    "0x109a4d6411929958",
-    "0xe7cf635eaa04b773",
-    "0x3e1e41f692be34f3",
-    "0x4353152c2e6658f8",
-    "0xd733f4943f41214f",
-    "0x054b2e0e502d7683",
-    "0x20cf3ec1be059b24",
-    "0xee559bede5b81e48",
-    "0x56514b74f30b7ea7",
-    "0x4081a681805da633",
-    "0xd7efeb4c54f3aae5",
-    "0x3841038e8043a4ad",
-    "0xef043dde19c93636",
+    "0xfacc7f8a8b2623b2",
+    "0xbed6ac34eb2ebb3a",
+    "0x0691fda32aa69dc5",
+    "0x502c98569d9d42f1",
+    "0x912eb3ddda474149",
+    "0x558b3d7180af6ccc",
+    "0xa7ba07e2e0dbc6bf",
+    "0xabbb3acd0d1b3a5a",
+    "0xae414a792244c664",
+    "0x8690d9e510189e6d",
+    "0xd8031aa864854c92",
+    "0x2ae43039b841c446",
+    "0x284cbaf87399fef7",
+    "0x85e0b549de3fa2f5",
+    "0x1e370712abc9dd81",
+    "0xbe5efee22844f6bb",
+    "0x852ebe5edd4c3c9d",
+    "0xebd4d764a893efe8",
+    "0x577c6e600e4ba897",
+    "0x8d501f771772e917",
+    "0x88e9ff44fdbde688",
+    "0xf9893c7406198ca3",
+    "0x7d2e2b8a0dcf5487",
+    "0xb21833d1202729e4",
+    "0xa2d1ee8a1c7c802b",
+    "0xf6b5e556c807fe04",
+    "0xead037ece80b1e7c",
+    "0x0a48f431d4b8e50c",
+    "0xb85550e67ad2f34f",
+    "0x3616f83f2c529b9d",
 ]
 
 [replay]
@@ -814,7 +814,7 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 39
-adventure_state_hash_version = 29
+adventure_state_hash_version = 30
 checkpoint_every = 25
 
 [map]
@@ -824,7 +824,7 @@ import_version = 29
 
 [result]
 day = 29
-final_hash = "0x1dc0aece257eaa21"
+final_hash = "0x9136702549b37189"
 
 [[players]]
 colour = 0

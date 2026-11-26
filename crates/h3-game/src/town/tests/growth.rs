@@ -402,11 +402,16 @@ fn a_creature_s_week_is_drawn_from_the_towns_stream_told_and_grown() {
 fn a_town_s_week_leaves_the_game_s_stream_where_it_was() {
     // E09 decision 75: the week's draws are the towns' stream's, so the game's (the adventure's
     // week steps, the month's kind and its monsters) is the same whether the weeks draw a
-    // creature or not.
-    let creature = rules_creature_weeks([1, 1, 1]);
-    let normal = rules_on([1, 1, 1], |towns| {
-        towns.params.as_mut().unwrap().week.creature_chance = [1, u16::MAX];
-    });
+    // creature or not. E09 T57: without the Artifact Merchants' stock, whose month's draw on day
+    // 29 follows the towns' stream.
+    let weeks = |chance| {
+        rules_on([1, 1, 1], move |towns| {
+            let params = towns.params.as_mut().unwrap();
+            params.week.creature_chance = chance;
+            params.merchants_stock.clear();
+        })
+    };
+    let (creature, normal) = (weeks([1, 1]), weeks([1, u16::MAX]));
     let mut differ = false;
     for seed in 0..8 {
         let setup = setup(&creature);

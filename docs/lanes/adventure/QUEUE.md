@@ -47,6 +47,24 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-26 (the town lane, E09 T57, `town/e09-t57`, `cross-lane` with the user's consent, E09
+  decisions 221 and 223; **in your paths, for your review; one rule changed**): (1) **ADV-OBJ-006's
+  restart** (`state/draws.rs`): a class without an unmarked artifact now restarts its own
+  artifacts' marks from the bans alone, the other classes' kept, and the widening to the four
+  classes restarts theirs when none of them is left (`ArtifactPool::restart`), as the original's
+  `random_artifact_of_level` 0x4C94D0 (E09 T52 read it whole: the reset 0x4C950E covers the level's
+  records only); before, every class's marks restarted. It moves a build's draws only where a class
+  ran out (your `random_artifacts_draw_…` test asserts the first three widened draws distinct
+  now); the catalog entry amended. (2) **The pool's marks kept:** `ArtifactPool` holds an
+  `ArtifactMarks` (the bans and the given marks), `resolve_rewards` returns it and
+  `StaticMap::new` gives it beside the map; `AdventureState::merchants` (an `Arc<Merchants>`, the
+  town lane's `town/merchants.rs`: the marks and the Artifact Merchants' stock, TWN-STK-001, -002)
+  is the state's last field and the hash's last block: **adventure state hash v30**. A fork shares
+  it (one reference count). (3) `h3-game`: `state.rs` calls `town::merchants::at_setup` after the
+  Portals (the setup stream's last draws), `state/day.rs` `town::merchants::monthly` after a
+  creature month's step (the towns' stream; GAM-CAL-002 amended). (4) The 118 golden replays
+  re-recorded from their commands: only `adventure_state_hash_version`, the checkpoints and the
+  final hashes moved; the server's literals with them.
 - 2026-11-26 (the map-client lane, E24 M5 T3b, `map-client/e24-m5-t3b`; **a fact the view lacks,
   MCL-Q58, nothing blocks**): the hot seat sets each human's view up again at its turn from a
   snapshot of its `GameObservation`, and `MapHero` names no facing (the original's hero +0x47),

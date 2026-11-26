@@ -71,7 +71,9 @@ impl GameState {
     ///    level's base creature's, E09 T26a2), [`GameEvent::MonthStarted`], then the towns' month
     ///    (E09 T26a1, TWN-GRO-004: a creature's month doubles, the Plague halves, with the week's
     ///    inputs and kind), then in a creature's month the adventure's month step with the game's
-    ///    stream (`start_month`: its monsters added on free land tiles);
+    ///    stream (`start_month`: its monsters added on free land tiles), then since E09 T57 the
+    ///    Artifact Merchants' stock drawn anew from the towns' stream (TWN-STK-002, E09 decision
+    ///    214: `town::merchants::monthly`);
     /// 4. since E09 T37a every player's returning marks cleared (TWN-TAV-005, decision 126:
     ///    `town::tavern::clear_marks`, after the week's release reads them), then the towns' day
     ///    (E09 T18b1: [`h3_towns::Towns::start_day`], every town's day's mark
@@ -87,7 +89,7 @@ impl GameState {
     ///    ADV-FOG-003).
     // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004, TWN-GRO-002
     // rule: TWN-GRO-003, TWN-GRO-004, TWN-GRO-006, TWN-GRO-007, TWN-VEW-004, TWN-TAV-002
-    // rule: TWN-TAV-005, TWN-GLD-008, TWN-GLD-009
+    // rule: TWN-TAV-005, TWN-GLD-008, TWN-GLD-009, TWN-STK-002
     pub(super) fn advance_day<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let (core, part) = (rules.core(), rules.adventure());
         self.day = self.day.saturating_add(1);
@@ -149,6 +151,8 @@ impl GameState {
                         &mut AdventureSink(sink),
                     );
                 }
+                // E09 T57: the Artifact Merchants' stock drawn anew from the towns' stream.
+                town::merchants::monthly(self, rules);
             }
         }
         // E09 T37a: every player's returning marks (TWN-TAV-005, decision 126).
