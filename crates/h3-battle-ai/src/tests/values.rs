@@ -13,6 +13,7 @@ use super::{
     ruleset, setup, spell,
 };
 use crate::casts::balance;
+use crate::spells::boosts::{Signed, change_value};
 use crate::spells::{Candidate, SpellContext};
 use crate::walker::Walker;
 
@@ -243,4 +244,25 @@ fn the_genies_value_is_the_mean_of_the_spells_it_could_draw() {
         crate::casts::genie(&crate::casts::Scanner::of(&w), &sc, (2, 6), StackId(3)),
         0
     );
+}
+
+// covers: BAT-AI-016
+#[test]
+fn the_change_value_keeps_its_sign_through_the_adapter() {
+    // `h3_battle::estimate::change_value` (since E31 T2f) as the evaluators' `Signed`: a fall
+    // from −1 by 1 costs 0.0833, a rise from 1 by 1 gives 0.0173 (per million).
+    let values = h3_battle::estimate::morale_values();
+    let micro = |m, c| change_value(m, c, values, true).ftol_times(X87::int(1_000_000));
+    assert_eq!((micro(-1, -1), micro(1, 1)), (-83_300, 17_300));
+    // A sum of opposite signs keeps the larger magnitude's sign, either way round.
+    let signed = |negative, n| Signed {
+        negative,
+        magnitude: X87::int(n),
+    };
+    for (a, b) in [
+        (signed(false, 1), signed(true, 3)),
+        (signed(true, 3), signed(false, 1)),
+    ] {
+        assert_eq!(a.plus(b), signed(true, 2));
+    }
 }
