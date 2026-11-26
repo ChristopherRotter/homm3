@@ -3967,6 +3967,9 @@ fn a_live_start_from_a_later_snapshot() {
     };
     let record = engine::check(whole.clone(), &g.bytes, rules()).unwrap();
     let at_one = engine::live(whole.clone(), &g.bytes, rules(), engine::Live::default()).unwrap();
+    // A live start is checked as a record is: another map file's refused.
+    let other = engine::live(whole.clone(), b"junk", rules(), engine::Live::default());
+    assert!(matches!(other, Err(Refused::Map(..))));
     assert_eq!(start_of(&at_one), start_of(&record));
     // Red's view after its End Turn of day 9, its next turn day 10's (the second week's).
     let ends: Vec<u32> = whole

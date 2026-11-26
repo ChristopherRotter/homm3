@@ -757,9 +757,10 @@ fn live_end_turn_asks_the_host_and_plays_the_turns_it_gives() {
         turns: Vec::new(),
         ..start
     };
+    let asking = &asking;
     let rules = || rules(Bugs::Original);
     let want = play(rules(), &known, &actions, ms).unwrap();
-    let mut replay = crate::replay::Replay::new(rules(), &asking, actions.clone()).unwrap();
+    let mut replay = crate::replay::Replay::new(rules(), asking, actions.clone()).unwrap();
     assert_eq!(replay.at(159).unwrap().drawn.pressed, [12]);
     assert_eq!(replay.turns_asked(), None);
     let before = replay.at(170).unwrap();
@@ -777,4 +778,11 @@ fn live_end_turn_asks_the_host_and_plays_the_turns_it_gives() {
     let heroes = replay.heroes();
     let selected = want.last().unwrap().hero.unwrap();
     assert!(heroes.contains(&selected));
+    // With no map hero selected, the start's heroes as they stand.
+    let none = Start {
+        index: None,
+        ..asking.clone()
+    };
+    let l = Loop::start(rules(), &none).unwrap();
+    assert_eq!(l.heroes(), none.heroes);
 }
