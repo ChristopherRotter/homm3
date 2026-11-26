@@ -214,6 +214,24 @@ reaches the game. The corpus with `--phases --twice --again --record`: about 32 
   left out (`h3-pack-rmg`'s `the_corpus_starts_without_ownership_place_the_colours_as_the_original`);
   the 2SM0k cases give both players their main towns.
 
+## The zone generators after each step (T3c, 2026-11-26)
+
+**How it runs.** The memory record also gets, after each step k that ran (beside its dump, at the
+next step's first call or at `rmg_generate_map`'s return), `generators <k> <n>` and per zone
+generator of the generator's +0x10E0 in order its words +0x4 to +0x2C as signed numbers (town types
++4 and +8, terrain, x, y, z, size, the box; `xdd.c`'s header, section 10). Read only, after the
+step: no hooked run changed (24 of 24 maps, logs and dumps as kept). **Kept:**
+`clients/capture/rmg/layout.txt` (`corpus --phases --record`; `h3rmg.read_generators`,
+`layout_lines`), per case each zone generator after step 1, its `town`, `town2`, `terrain`, `x`,
+`y`, `z`, `size`; `corpus --phases` compares a run's with it (`layout ok`, `CHANGED`, `new`).
+
+**What it showed:** 388 zone generators in the 24 cases, every one the port's (`h3-pack-rmg`'s
+`the_corpus_lays_the_zones_out_as_the_original`), and the port's step 1 draws and dumps 0 and 1
+have `phases.txt`'s digests (`the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_1`). Dumps 0
+and 1 are the reset cells (`rmg_map_cell_reset`'s values; step 1 writes no cell), the same digest
+per size and levels with the step in the header. Of the 201 zones without a town type, 55 drew -1
+and 62 Castle as their second (RMG-QUIRK-12 confirmed).
+
 ## Not yet
 
 - The memory-dependent draws are classified (T1c2, `docs/rules/quirks-rmg.md`): step 2's
@@ -227,11 +245,9 @@ reaches the game. The corpus with `--phases --twice --again --record`: about 32 
   2's draws of 0x532A5B differing): the sandbox's environment, whose size moves the water zones'
   heap bytes (T3a, above; the clock folder's path differs between `corpus` and `one`). The fixed
   environment gives `m2-4p` `kept.txt`'s map in both.
-- **The port's draws before step 1** (E14 T2c; 24 of 24 since T3a): on the first maps the log's
-  draws between `seed` and `step 1` are the port's, one `549975 <the first rand() after
-  srand(seed)>` each (21 of 21 in T2c;
-  `h3-pack-rmg`'s `the_corpus_draws_the_originals_templates` asserts the port's, the template
-  `kept.txt`'s).
+- **The port's draws to step 1** (E14 T2c, T3c; 24 of 24): before step 1 one `549975 <the first
+  rand() after srand(seed)>` each (`h3-pack-rmg`'s `the_corpus_draws_the_originals_templates`),
+  step 1's as above; the steps after it come with T3d on.
 - **The corpus's objects** (T1c2, survey §3.3): 47 458 objects of 115 classes; `h3_map` reads all
   21, 20 import and validate; `l2-2p-c4-islands` is refused because Dragons' zone 32 makes a
   neutral town purple's main town (RMG-QUIRK-23; the original starts it), not by the entrance

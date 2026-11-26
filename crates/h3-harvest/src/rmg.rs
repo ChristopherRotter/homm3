@@ -44,6 +44,14 @@ pub struct Constants {
     pub map_limits: Vec<(u8, i32)>,
     /// The per-zone limit pairs (0x640808).
     pub zone_limits: Vec<(u8, i32)>,
+    /// Step 1's cosines and sines (0x682500, 0x682600) in ten-thousandths (E14 T3c).
+    pub layout_cos: Vec<i32>,
+    /// The sines.
+    pub layout_sin: Vec<i32>,
+    /// Per terrain its four town types (0x682450).
+    pub terrain_towns: Vec<[i32; 4]>,
+    /// Per town type its native terrain (0x6408C8).
+    pub native_terrains: Vec<i32>,
 }
 
 /// The tables of both archives and the executable's constants.
@@ -71,18 +79,35 @@ fn generator_section(c: &Constants) -> String {
             .collect::<Vec<_>>()
             .join(", ")
     };
+    let list =
+        |v: &[i32]| -> String { v.iter().map(i32::to_string).collect::<Vec<_>>().join(", ") };
+    let rows = c
+        .terrain_towns
+        .iter()
+        .map(|row| format!("[{}]", list(row)))
+        .collect::<Vec<_>>()
+        .join(", ");
     format!(
         "\n# The generator's constants, read from Heroes3.exe (rmg_generator_create 0x537B10; \
          ADR-0029 point 5):\n# the hero table 0x679DD0's bytes +0x38 (RoE's heroes), +0x39 (the \
          expansions') and +0x3A (campaign\n# heroes) by hero id; the limit pairs by object type \
          per map (0x640718) and per zone\n# (0x640808), object type and limit in the tables' \
-         order.\n[generator]\nheroes_roe = \"{}\"\nheroes_expansions = \"{}\"\nheroes_campaign = \
-         \"{}\"\nmap_limits = [{}]\nzone_limits = [{}]\n",
+         order;\n# step 1's layout points (rmg_layout_cos 0x682500, rmg_layout_sin 0x682600) in \
+         ten-thousandths, the\n# doubles nearest them; per terrain, dirt to lava and water, its \
+         four town types (rmg_terrain_towns\n# 0x682450); per town type its native terrain \
+         (rmg_town_native_terrain 0x6408C8; E14 T3c).\n[generator]\nheroes_roe = \"{}\"\n\
+         heroes_expansions = \"{}\"\nheroes_campaign = \"{}\"\nmap_limits = [{}]\n\
+         zone_limits = [{}]\nlayout_cos = [{}]\nlayout_sin = [{}]\nterrain_towns = [{}]\n\
+         native_terrains = [{}]\n",
         marks(0),
         marks(1),
         marks(2),
         pairs(&c.map_limits),
         pairs(&c.zone_limits),
+        list(&c.layout_cos),
+        list(&c.layout_sin),
+        rows,
+        list(&c.native_terrains),
     )
 }
 

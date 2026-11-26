@@ -16,7 +16,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Impact: gameplay-altering (the stream shifts from step 2 on: a different map for the same seed); the drawn town type of a water zone reaches its guards' creatures.
 - Community status: unknown
 - Sources: code reading (survey §2.2, quirk candidates); observation (ORACLE.md, the phase oracle's draw log; E14 T3a, the memory record)
-- Flag: `quirk.rmg.zone_memory_model`
+- Flag: `quirk.rmg.zone_memory_model` (registry position 56, E14 T3c)
 - Defaults: faithful = on (the **oracle model**: the bytes as a fresh start's first map holds them under the oracle, measured by the phase hooks in T3a, `zones.txt`, in the form fresh starts agree on; the model's form decided at increment 3's checkpoint), fixed = off (zeroed, no draw)
 - Limits (documented, not a defect of the port): a second map in one game, another size of the game's environment and Windows' memory are out of reach; the byte-for-byte claim holds for a fresh start's first map under the oracle's fixed environment (`h3drive.py`'s `H3_FIXED_ENV` with the record's paths; `docs/lanes/rmg/TRAPS.md`, "The oracle"). The variation T1c2's and T2c's sandboxes saw in `m2-4p`'s first map was their environment's size (T3a).
 - Regression test: when step 2 is ported (the corpus's step 2 dumps and draw logs, both profiles)
@@ -43,7 +43,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Sources: code reading (survey §2.2 "Clocks, retries, limits, failures", §2.3 and §2.4 "Faults reachable only with other data", §2.7.3)
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, fixed = fixed
-- Regression test: each case when its step is ported (a table or template that reaches it gives the typed error)
+- Regression test: each case when its step is ported (a table or template that reaches it gives the typed error); step 1's since E14 T3c (`h3-pack-rmg`'s `step_1s_divisions_by_zero_are_refused`: `GenerateError::NoPosition`, a zone of base 50 000 whose points' squared distances wrap; `GenerateError::LayoutSpan`, two zones of base -1)
 - Decided by / date: the user, 2026-11-24 (T1c2)
 
 ### RMG-QUIRK-4 — Unchecked reads, writes and nulls
@@ -149,10 +149,10 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Intended/expected behavior: the draw among the terrain's own town types only (and none of another version).
 - Impact: gameplay-altering (Castle over-represented)
 - Sources: code reading (survey §2.2)
-- Flag: `quirk.rmg.terrain_towns_count`
+- Flag: `quirk.rmg.terrain_towns_count` (registry position 57, E14 T3c)
 - Defaults: faithful = on, fixed = off
-- Regression test: when step 1 is ported
-- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+- Regression test: `h3-pack-rmg`'s `a_zone_without_a_town_type_draws_its_second_by_the_flag` (both profiles, RoE's Conflux); the corpus's `the_corpus_lays_the_zones_out_as_the_original`
+- Decided by / date: the user, 2026-11-24 (T1c2); confirmed by the phase oracle (E14 T3c, `layout.txt`: of the corpus's 201 zones without a town type, 55 drew -1 and 62 Castle)
 
 ### RMG-QUIRK-13 — Step 5 skips a least town step 4 never placed
 - Class: fix-optional (the user, 2026-11-24, T1c2)
@@ -173,7 +173,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Intended/expected behavior: every size scaled to the map.
 - Impact: gameplay-altering (where water zones and empty points may lie)
 - Sources: code reading (survey §2.2)
-- Flag: `quirk.rmg.partition_units`
+- Flag: `quirk.rmg.partition_units` (registry position 58, E14 T3c)
 - Defaults: faithful = on, fixed = off
 - Regression test: when step 2 is ported
 - Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
@@ -262,7 +262,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Intended/expected behavior: the pictures as the neighbours give them, rivers on free cells only, the description's town and count as chosen.
 - Impact: cosmetic
 - Sources: code reading (survey §2.5, §2.7.2, §2.7.3, §2.7.4)
-- Flag: `quirk.rmg.cosmetic`
+- Flag: `quirk.rmg.cosmetic` (registry position 59, E14 T3c)
 - Defaults: faithful = on, fixed = off
 - Regression test: when each part is ported (steps 3, 14, 15, the writer)
 - Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed

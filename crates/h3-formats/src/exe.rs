@@ -35,7 +35,7 @@ pub struct KnownBuild {
     /// Virtual address of a creature bank's battle hexes, `i32` × [`BANK_STACKS`] per side, the
     /// attacker first (`bank_battle_hexes`, E08 T124a).
     pub bank_hexes_va: u32,
-    /// The map generator's limit tables (E14 T2c).
+    /// The map generator's limit tables (E14 T2c) and step 1's tables (E14 T3c).
     pub rmg: RmgTables,
 }
 
@@ -52,15 +52,62 @@ pub struct RmgTables {
     pub zone_limits_va: u32,
     /// Number of those pairs.
     pub zone_limits: usize,
+    /// Virtual address of step 1's cosines (`rmg_layout_cos`, `f64` each; survey §2.2).
+    pub layout_cos_va: u32,
+    /// Virtual address of its sines (`rmg_layout_sin`).
+    pub layout_sin_va: u32,
+    /// Number of entries of each.
+    pub layout_points: usize,
+    /// Virtual address of the terrains' town types (`rmg_terrain_towns`, four `i32` a terrain).
+    pub terrain_towns_va: u32,
+    /// Number of terrains (rows).
+    pub terrains: usize,
+    /// Virtual address of the towns' native terrains (`rmg_town_native_terrain`, `i32` each).
+    pub native_terrains_va: u32,
+    /// Number of town types.
+    pub town_types: usize,
 }
 
-/// The map generator's limit pairs of a build, in the tables' order.
+/// The map generator's limit pairs of a build, in the tables' order, and step 1's tables.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RmgData {
     /// Per map: object type and limit.
     pub map_limits: Vec<(u8, i32)>,
     /// Per zone.
     pub zone_limits: Vec<(u8, i32)>,
+    /// Step 1's cosines in ten-thousandths: each double is the one nearest its decimal (the
+    /// table's are written with four decimals, 0.9807), which [`rmg_data`] checks.
+    pub layout_cos: Vec<i32>,
+    /// Its sines, likewise.
+    pub layout_sin: Vec<i32>,
+    /// Per terrain, its four town types.
+    pub terrain_towns: Vec<[i32; 4]>,
+    /// Per town type, its native terrain.
+    pub native_terrains: Vec<i32>,
+}
+
+/// A double as ten-thousandths when it is the one nearest a decimal of at most four places (its
+/// shortest decimal form, which reads back to it, has at most four).
+fn ten_thousandths(value: f64) -> Option<i32> {
+    let text = format!("{value}");
+    let (negative, digits) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text.as_str()),
+    };
+    let (whole, fraction) = digits.split_once('.').unwrap_or((digits, ""));
+    if fraction.len() > 4
+        || !whole
+            .bytes()
+            .chain(fraction.bytes())
+            .all(|b| b.is_ascii_digit())
+    {
+        return None;
+    }
+    let mut scaled: i64 = format!("{whole}{fraction:0<4}").parse().ok()?;
+    if negative {
+        scaled = -scaled;
+    }
+    i32::try_from(scaled).ok()
 }
 
 /// The number of object types the generator's limit arrays hold (232).
@@ -101,9 +148,59 @@ pub fn rmg_data_at(image: &PeImage<'_>, t: &RmgTables) -> Result<RmgData, Format
             })
             .collect()
     };
+    let words = |va: u32, count: usize, what: &'static str| -> Result<Vec<i32>, FormatError> {
+        let base = image.file_offset(va).ok_or(FormatError::OutOfRange {
+            what,
+            value: u64::from(va),
+        })?;
+        (0..count)
+            .map(|i| le::i32_at(image.data, base + 4 * i, what))
+            .collect()
+    };
+    let decimals = |va: u32| -> Result<Vec<i32>, FormatError> {
+        let halves = words(va, 2 * t.layout_points, "rmg layout table")?;
+        halves
+            .chunks(2)
+            .map(|half| {
+                let bits =
+                    u64::from(half[0].cast_unsigned()) | (u64::from(half[1].cast_unsigned()) << 32);
+                ten_thousandths(f64::from_bits(bits)).ok_or(FormatError::OutOfRange {
+                    what: "rmg layout value (not four decimals)",
+                    value: bits,
+                })
+            })
+            .collect()
+    };
+    let in_range =
+        |values: Vec<i32>, range: core::ops::RangeInclusive<i32>, what: &'static str| match values
+            .iter()
+            .find(|v| !range.contains(v))
+        {
+            Some(&bad) => Err(FormatError::OutOfRange {
+                what,
+                value: u64::from(bad.unsigned_abs()),
+            }),
+            None => Ok(values),
+        };
+    let towns = in_range(
+        words(t.terrain_towns_va, 4 * t.terrains, "rmg terrain towns")?,
+        -1..=8,
+        "rmg terrain's town type",
+    )?;
     Ok(RmgData {
         map_limits: pairs(t.map_limits_va, t.map_limits)?,
         zone_limits: pairs(t.zone_limits_va, t.zone_limits)?,
+        layout_cos: decimals(t.layout_cos_va)?,
+        layout_sin: decimals(t.layout_sin_va)?,
+        terrain_towns: towns
+            .chunks(4)
+            .map(|row| [row[0], row[1], row[2], row[3]])
+            .collect(),
+        native_terrains: in_range(
+            words(t.native_terrains_va, t.town_types, "rmg native terrains")?,
+            0..=8,
+            "rmg town's native terrain",
+        )?,
     })
 }
 
@@ -468,6 +565,13 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
         map_limits: 30,
         zone_limits_va: 0x0064_0808,
         zone_limits: 24,
+        layout_cos_va: 0x0068_2500,
+        layout_sin_va: 0x0068_2600,
+        layout_points: 32,
+        terrain_towns_va: 0x0068_2450,
+        terrains: 9,
+        native_terrains_va: 0x0064_08C8,
+        town_types: 9,
     },
 }];
 
@@ -1535,8 +1639,16 @@ mod tests {
 
     #[test]
     fn reads_the_rmg_limits_from_a_synthetic_image() {
+        // At the image's start two map pairs and one zone pair; then two cosines, two sines
+        // (f64), one terrain's four town types and two native terrains.
         let pairs: [i32; 6] = [26, 200, 6, 200, 113, 3];
-        let p: Vec<u8> = pairs.iter().flat_map(|v| v.to_le_bytes()).collect();
+        let mut p: Vec<u8> = pairs.iter().flat_map(|v| v.to_le_bytes()).collect();
+        for v in [1.0f64, 0.9807, 0.0, -0.1951] {
+            p.extend_from_slice(&v.to_bits().to_le_bytes());
+        }
+        for v in [0i32, 1, 4, -1, 2, 7] {
+            p.extend_from_slice(&v.to_le_bytes());
+        }
         let img = build_test_image(1, &p);
         let pe = PeImage::parse(&img).unwrap();
         let t = RmgTables {
@@ -1544,12 +1656,23 @@ mod tests {
             map_limits: 2,
             zone_limits_va: 0x0040_1010,
             zone_limits: 1,
+            layout_cos_va: 0x0040_1018,
+            layout_sin_va: 0x0040_1028,
+            layout_points: 2,
+            terrain_towns_va: 0x0040_1038,
+            terrains: 1,
+            native_terrains_va: 0x0040_1048,
+            town_types: 2,
         };
         assert_eq!(
             rmg_data_at(&pe, &t).unwrap(),
             RmgData {
                 map_limits: vec![(26, 200), (6, 200)],
                 zone_limits: vec![(113, 3)],
+                layout_cos: vec![10_000, 9807],
+                layout_sin: vec![0, -1951],
+                terrain_towns: vec![[0, 1, 4, -1]],
+                native_terrains: vec![2, 7],
             }
         );
         // An object type outside 0..232, a table cut short, an unmapped table.
@@ -1559,26 +1682,44 @@ mod tests {
             let img = build_test_image(1, &q);
             assert!(rmg_data_at(&PeImage::parse(&img).unwrap(), &t).is_err());
         }
-        assert!(
-            rmg_data_at(
-                &pe,
-                &RmgTables {
-                    zone_limits: 99,
-                    ..t
-                }
-            )
-            .is_err()
-        );
-        assert!(
-            rmg_data_at(
-                &pe,
-                &RmgTables {
-                    map_limits_va: 0x10,
-                    ..t
-                }
-            )
-            .is_err()
-        );
+        // A layout value of more than four decimals, out of `i32` in ten-thousandths, past
+        // `i64` or not a number; a town type or a native terrain out of range.
+        for (at, bytes) in [
+            (0x18, 0.980_71f64.to_bits().to_le_bytes().to_vec()),
+            (0x28, 1e6f64.to_bits().to_le_bytes().to_vec()),
+            (0x28, 1e300f64.to_bits().to_le_bytes().to_vec()),
+            (0x20, f64::NAN.to_bits().to_le_bytes().to_vec()),
+            (0x38, 9i32.to_le_bytes().to_vec()),
+            (0x4C, (-1i32).to_le_bytes().to_vec()),
+        ] {
+            let mut q = p.clone();
+            q[at..at + bytes.len()].copy_from_slice(&bytes);
+            let img = build_test_image(1, &q);
+            assert!(
+                rmg_data_at(&PeImage::parse(&img).unwrap(), &t).is_err(),
+                "{at:#x}"
+            );
+        }
+        for t in [
+            RmgTables {
+                zone_limits: 99,
+                ..t
+            },
+            RmgTables {
+                map_limits_va: 0x10,
+                ..t
+            },
+            RmgTables {
+                layout_sin_va: 0x10,
+                ..t
+            },
+            RmgTables {
+                town_types: 99,
+                ..t
+            },
+        ] {
+            assert!(rmg_data_at(&pe, &t).is_err());
+        }
     }
 
     #[test]

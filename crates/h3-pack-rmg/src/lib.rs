@@ -201,6 +201,10 @@ struct GeneratorDto {
     heroes_campaign: String,
     map_limits: Vec<(u8, i32)>,
     zone_limits: Vec<(u8, i32)>,
+    layout_cos: Vec<i32>,
+    layout_sin: Vec<i32>,
+    terrain_towns: Vec<[i32; 4]>,
+    native_terrains: Vec<i32>,
 }
 
 /// A string of one mark per entry, each `0` or `1`, as flags.
@@ -391,6 +395,10 @@ pub fn parse_rmg(manifest: &PackManifest, text: &str) -> Result<RmgPack, RmgPack
                 heroes_campaign: flags(&g.heroes_campaign, "generator.heroes_campaign")?,
                 map_limits: g.map_limits,
                 zone_limits: g.zone_limits,
+                layout_cos: g.layout_cos,
+                layout_sin: g.layout_sin,
+                terrain_towns: g.terrain_towns,
+                native_terrains: g.native_terrains,
             })
         })
         .transpose()?;

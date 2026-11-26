@@ -23,7 +23,8 @@ only its digests and the choices that made it are kept (rmg/kept.txt).
       H3_FIXED_ENV, E14 T3a: the generator's uninitialised bytes follow it); --phases
       (E14 T1b2) runs the phase oracle as well (xdd.dll's H3RMG, xdd.c's 10.): every draw of
       the generation logged with its site, the cells dumped after each step, the memory record
-      (E14 T3a: the x87 control word, the zones as rmg_zone_generator_init finds them), in
+      (E14 T3a: the x87 control word, the zones as rmg_zone_generator_init finds them; E14
+      T3c: the zone generators after each step), in
       <out>/clock (rmg<g>.draws, rmg<g>-<step>.cells, rmg<g>.memory), and their digests printed.
   h3rmg.py corpus [--only <id>,...] [--twice] [--again] [--phases] [--record] [--sandbox-env]
                   [--out <dir>]
@@ -31,7 +32,8 @@ only its digests and the choices that made it are kept (rmg/kept.txt).
       --twice runs each case again from a fresh start, --again makes a second map in the same
       game, and either fails on a difference; --phases runs the phase oracle and compares the
       log's and the dumps' digests with rmg/phases.txt too; --record writes the kept lines (the
-      first map's; with --phases its phases' and step 2's zone bytes, rmg/zones.txt, as well).
+      first map's; with --phases its phases', step 2's zone bytes, rmg/zones.txt, and the zone
+      generators after step 1, rmg/layout.txt, as well).
   h3rmg.py phases [--only <id>,...] [--runs] [--out <dir>]
       The phase oracle's logs (a `corpus --phases` run's first maps) against survey §2.6: per
       phase, each site that drew, in how many cases and how often, marked `NOT IN §2.6` when
@@ -330,6 +332,8 @@ PHASES = RMG / "phases.txt"
 # three calls of rmg_zone_generator_init (E14 T3a, the memory record).
 PHASE_HOOKS = 22
 ZONES = RMG / "zones.txt"
+# The zone generators after step 1 (E14 T3c): the layout, each zone's town types and terrain.
+LAYOUT = RMG / "layout.txt"
 # The game's environment the sandbox's own (`--sandbox-env`, as before E14 T3a), not fixed.
 SANDBOX_ENV = False
 # The fixed environment's paths as the record was made (E14 T3a): its block's size moves the
@@ -426,6 +430,7 @@ def phase_facts(clock, g):
         raise RuntimeError(f"{log}: {elsewhere} draws of other threads inside the generation")
     dumps = sorted((int(p.stem.split("-")[1]), p) for p in clock.glob(f"rmg{g}-*.cells"))
     words, zones = read_memory(clock / f"rmg{g}.memory")
+    generators = read_generators(clock / f"rmg{g}.memory")
     fields = [zone_fields(site, zone, generator) for site, _, zone, generator in zones
               if site in STEP2_ZONES]
     # The record checked against the log: per step, as many zones with a set town type as
@@ -443,6 +448,7 @@ def phase_facts(clock, g):
             "cw": control_words(words),
             "zones": fields,
             "zones_digest": zones_digest(fields),
+            "layout": generators.get(1, []),
             "cells": [(k, hashlib.sha256(p.read_bytes()).hexdigest()[:12]) for k, p in dumps],
             "files": dict(dumps)}
 
@@ -475,6 +481,41 @@ def read_memory(path):
     if not ending:
         raise RuntimeError(f"{path}: no end line")
     return words, zones
+
+
+def read_generators(path):
+    """A memory record's zone generators (xdd.c's 10., E14 T3c): by step, after it ran, per zone
+    generator its words +0x4 to +0x2C (11 signed numbers)."""
+    out = {}
+    for line in path.read_text().splitlines():
+        word, *rest = line.split()
+        if word == "generators":
+            values = [int(v) for v in rest[2:]]
+            if len(values) != 11 * int(rest[1]):
+                raise RuntimeError(f"{path}: step {rest[0]}'s generators are cut short")
+            out[int(rest[0])] = [tuple(values[k:k + 11]) for k in range(0, len(values), 11)]
+    return out
+
+
+# layout.txt's fields of a zone generator's words +0x4 to +0x1C (survey §2.2, step 1).
+LAYOUT_FIELDS = ("town", "town2", "terrain", "x", "y", "z", "size")
+
+
+def layout_lines(ident, p):
+    """A case's layout.txt lines: per zone generator after step 1, in order, its index and
+    fields (the box +0x20 to +0x2C is the constructor's then)."""
+    return [f"{ident} {k} " + " ".join(f"{n}={v}" for n, v in zip(LAYOUT_FIELDS, words))
+            for k, words in enumerate(p["layout"])]
+
+
+def read_layout():
+    """layout.txt's lines by case."""
+    lines = {}
+    if LAYOUT.exists():
+        for line in LAYOUT.read_text().splitlines():
+            if line and not line.startswith("#"):
+                lines.setdefault(line.split()[0], []).append(line)
+    return lines
 
 
 def control_words(words):
@@ -672,6 +713,8 @@ def corpus_command(args):
     kept_phases = read_phases()
     phase_lines = dict(kept_phases)
     zones = read_zones()
+    kept_layout = read_layout()
+    layout = dict(kept_layout)
     failed = 0
     for case in cases:
         ident = case["id"]
@@ -699,6 +742,9 @@ def corpus_command(args):
                                       "CHANGED" if ident in kept_phases else "new")
             phase_lines[ident] = phase
             zones[ident] = zone_lines(ident, runs[0][1]["phases"])
+            layout[ident] = layout_lines(ident, runs[0][1]["phases"])
+            verdict += "; layout " + ("ok" if kept_layout.get(ident) == layout[ident] else
+                                      "CHANGED" if ident in kept_layout else "new")
         failing = "CHANGED" in verdict
         for what, f in runs[1:]:
             said, fails = compared(runs[0][1], f, fresh=what == "twice")
@@ -731,6 +777,13 @@ def corpus_command(args):
                 "per case and zone in the call order, the temporary zone (per level) or a\n"
                 "# water zone, its town types +0x41..+0x49 not 0 (set, mask: bit k for +0x41 + k), "
                 "+0x40, +0x84, +0x94 not 0.\n"
+                + "\n".join(body) + "\n")
+            body = [line for i in order for line in layout.get(i, [])]
+            LAYOUT.write_text(
+                "# The zone generators after step 1, rmg_zones_lay_out 0x53BCB0 (h3rmg.py corpus "
+                "--phases --record; ORACLE.md,\n# \"The memory record\"; E14 T3c): per case and "
+                "zone generator in order, its town types +4 and +8, terrain,\n# position "
+                "(scaled to the map) and size.\n"
                 + "\n".join(body) + "\n")
     return 1 if failed else 0
 

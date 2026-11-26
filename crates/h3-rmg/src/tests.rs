@@ -543,6 +543,10 @@ fn tables() -> GeneratorTables {
         heroes_campaign: vec![false, false, false, true],
         map_limits: vec![(26, 200), (6, 200), (26, 5), (240, 1)],
         zone_limits: vec![(113, 3)],
+        layout_cos: vec![10_000; 32],
+        layout_sin: vec![0; 32],
+        terrain_towns: vec![[-1, 0, 0, 0]; 9],
+        native_terrains: vec![0; 9],
     }
 }
 
@@ -576,8 +580,65 @@ fn the_limits_are_set_from_the_last_pair_to_the_first() {
 fn no_trace_keeps_nothing() {
     let mut t = NoTrace;
     t.draw(SITE_TEMPLATE, 1);
-    t.step_end(0);
+    t.step_end(
+        0,
+        StepState {
+            cells: &Cells::new(36, 1),
+            zones: &[],
+        },
+    );
     assert_eq!(t, NoTrace);
     assert_eq!((SITE_WATER, SITE_TEMPLATE), (0x537C89, 0x549975));
     assert_eq!(RMG_GENERATOR_VERSION, 1);
+}
+
+#[test]
+fn the_root_truncates_as_binary64s() {
+    // trunc(sqrt(n)) for the squares and their neighbours, the largest `i32` too; a wrapped
+    // (negative) square is NaN, 0 in the conversion's low word.
+    for k in [0i32, 1, 2, 3, 9, 100, 46_340] {
+        assert_eq!(layout::trunc_sqrt(k * k), k);
+        if k > 1 {
+            assert_eq!(layout::trunc_sqrt(k * k - 1), k - 1);
+            assert_eq!(layout::trunc_sqrt(k * k + 1), k);
+        }
+    }
+    assert_eq!(layout::trunc_sqrt(i32::MAX), 46_340);
+    assert_eq!(layout::trunc_sqrt(-5), 0);
+}
+
+// covers: RMG-SET-010
+#[test]
+fn the_generators_map_is_reset_and_dumped_as_the_oracles() {
+    let cells = Cells::new(2, 2);
+    assert_eq!(cells.size(), (2, 2, 2));
+    assert_eq!(cells.cells(), [Cell::RESET; 8]);
+    let dump = cells.dump(1);
+    assert_eq!(dump.len(), 8 + 4 * 5 + 48 * 8 + 8);
+    assert_eq!(&dump[..8], b"H3RMGCEL");
+    let word = |k: usize| u32::from_le_bytes(dump[4 * k + 8..4 * k + 12].try_into().unwrap());
+    assert_eq!(
+        [word(0), word(1), word(2), word(3), word(4)],
+        [1, 1, 2, 2, 2]
+    );
+    // The first cell: no objects, then +0x10 to +0x2C.
+    let first: Vec<u32> = (5..17).map(word).collect();
+    assert_eq!(
+        first,
+        [
+            0,
+            u32::MAX,
+            u32::MAX,
+            u32::MAX,
+            u32::MAX,
+            0,
+            0,
+            0x7FBC_7FBC,
+            0xFFFF_7FBC,
+            0x548,
+            0x0A00_0000,
+            0
+        ]
+    );
+    assert_eq!(&dump[dump.len() - 8..], [0; 8]);
 }
