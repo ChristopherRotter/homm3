@@ -226,8 +226,12 @@ impl GameState {
             return targets;
         };
         // E08 T144a2: the env asks every hero on every step, so whether the hero may cast the
-        // spell comes before its ground (a search of its tile's objects): a ground raises a
+        // spell comes first, by the ruleset's sources (as the listing's pre-test), then its
+        // spells, and only then its ground (a search of its tile's objects): a ground raises a
         // mastery, never makes a spell castable (HER-SPL-003).
+        if !part.target_sources().may_have(details) {
+            return targets;
+        }
         let plain = map_spells(details, core, &[spell], SchoolRaise::None);
         let Some(&first) = plain.first() else {
             return targets;
