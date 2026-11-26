@@ -211,6 +211,27 @@ fn water_neighbours_enter_and_leave_the_pinched_set() {
     assert_eq!(p.finish(), Ok(()));
 }
 
+// covers: RMG-TER-014
+/// A ring's cheapest gap off the map's edge: its cells off the map are skipped (the top row's NE
+/// clamps to E), the rest made the terrain; the costliest gap stays.
+#[test]
+fn a_gap_off_the_map_is_skipped() {
+    let tables = tables();
+    let pictures = Pictures::new(&tables);
+    let mut cells = map(7, 2);
+    for (x, y) in [(3, 0), (3, 1), (4, 1)] {
+        cells.clamped_mut(x, y, 0).tile = u32::from(WATER);
+    }
+    let mut log = Log::default();
+    let mut stream = Stream::new(1, &mut log);
+    let mut p = Painter::new(&pictures, &mut cells, &mut stream, 0, WATER, true);
+    assert!(p.ring_split(3, 0));
+    assert_eq!(p.mend_ring(3, 0), 1);
+    assert_eq!(p.terrain_at(4, 0), WATER);
+    assert_eq!(p.terrain_at(2, 0), 2);
+    assert_eq!(p.finish(), Ok(()));
+}
+
 // covers: RMG-TER-013, RMG-TER-016
 /// RMG-QUIRK-21's painter's half: the original queues the first foreign neighbour per axis and
 /// gives group 3's sand corner shape 8 its mirroring inverted; off, both and as matched.

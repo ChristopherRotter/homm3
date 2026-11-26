@@ -594,3 +594,47 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   the units flag, the memory choice, the whole frame, the faults, an off-map water side); the
   property test's step 2 invariants. Coverage 100 % after the faults became a per-level record
   (the unreachable `?` paths gone). `RMG_GENERATOR_VERSION` stays 1.
+
+## T3e — step 3, the terrain painter, the picture sets (2026-11-26, increment 3)
+
+- **Whole** (the user, asked with a cut at the islands or at the painter: "Whole"; the harvest
+  `cross-lane`: yes). Branch `shared/e14-t3e`, `cross-lane` (`h3-formats`, `h3-harvest`,
+  `packs/README.md` beside the lane's paths). Staged from the PC at the start: the oracle's set
+  (58 files, SHA-256 checked), SoD's three tables, Complete's two maps; #1199 had merged.
+- **The oracle:** `corpus --phases` once (no `--record`: `phases.txt` already held step 3's draws
+  and dump digests since T3a); 24 of 24 reproduced; the step 3 dumps kept for a cell diff, never
+  needed.
+- **Read** (`scripts/exe.py`): `rmg_terrain_paint` 0x53E6A0 whole (rock only with two levels,
+  the zones' cells by their signed byte against the index, a painter finished even without
+  cells), `rmg_zone_bounds_compute`, `rmg_zone_centre_to_centroid` (the byte against the zone's
+  id), `rmg_island_shape` (the corners from the last down, each coast to the one after it),
+  `rmg_coast_line_draw` (k = min(limit, L / 2)), **`rmg_island_fill` (inferred until now): a
+  4-connected stack flood through E, S, W, N**; the map's slots 1 and 4 (`rmg_map_set_tile`,
+  `rmg_map_get_tile`: bits 0-5, 6-13, +0x28 bits 15-16); the painter's `finish` loop, `set_cell`,
+  `queue_neighbours` (the diagonals by their own set's byte +5), `ring_split`, `ring_same`'s
+  per-axis clamp, the weight, the slots 4 and 5 of both kinds, `border_class`,
+  `corner_far_differs`; the sets' static initializers (the arguments are immediates).
+- **Harvested:** the ten picture sets (`h3_formats::exe::rmg_data`: each initializer's pushes,
+  its set checked against `terrain_picture_sets`, the tables' shapes and flags; rock's 48 by
+  variants) into SoD's `[generator]` as runs (`picture_sets`, `rock_pictures`); the synthetic
+  pack's invented; `RMG_RULESET_HASH_VERSION` 4; `GeneratorTables` checks nine sets, shares up to
+  100, at most 127 pictures of shapes up to 28.
+- **Ported:** `painter.rs` (RMG-TER-005 to -018: the sets' ranges as the initializer builds them,
+  slots 4 and 5, the weight, the pinch and ring tests, `set_cell`, the queue, the resolution and
+  the ring's gaps, the finish loop, the last pass's classes, ten shape groups under four
+  mirrorings and the refinements); `terrain.rs` (RMG-TER-001 to -003: boxes, centroids, islands,
+  rock, water, each zone); `ZoneGenerator.bounds`; `Cells::clamped`; `GenerateError::Terrain`
+  (`TerrainFault::CoastLimit`, `NoPolygon`, `Paint(NoPicture | Stuck)`). The painter reads the map
+  itself, not a copy (every write goes to both; nothing else writes while it works). RMG-QUIRK-21's
+  painter's half on `quirk.rmg.cosmetic`: off, both neighbours of an axis queued and group 3's 8s
+  mirrored as matched.
+- **Against the oracle:** the step 3 draws and dump 3 equal `phases.txt`'s on **24 of 24 at the
+  first run**, the four islands cases included. The corpus never resolves a pinched water or rock
+  cell (water is painted over water, rock in one rectangle): the ring's gaps and the water branch
+  of `set_cell` are checked by unit tests until steps 6 and 11 reach them.
+- **Tests:** the corpus to step 3; step 3's coast limit 0 (a zone of base 0 with islands); the
+  property test's step 3 invariants (a terrain and one of its set's pictures per cell, rock
+  unmirrored, a zone centred in its box); `h3-rmg`'s painter units (the ranges, the slots' draws,
+  a split water ring mended, water neighbours entering and leaving set 1, the cosmetic flag's two
+  halves, the classes and refinements, a missing shape, a cell that cannot be mended) and step 3
+  units (boxes, centroids and levels, an island, the faults). `RMG_GENERATOR_VERSION` stays 1.

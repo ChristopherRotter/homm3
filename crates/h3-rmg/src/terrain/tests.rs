@@ -59,7 +59,7 @@ fn generator(zone: usize, terrain: i32, position: [i32; 3], size: i32) -> ZoneGe
 
 /// A map of `levels` levels, the cells of `x0..x1` × `y0..y1` on level 0 of zone 0 (with the land
 /// bit when `land`), the rest of none.
-fn cells(side: i32, levels: i32, [x0, y0, x1, y1]: [i32; 4], land: bool) -> Cells {
+fn zone_cells(side: i32, levels: i32, [x0, y0, x1, y1]: [i32; 4], land: bool) -> Cells {
     let mut cells = Cells::new(side, levels);
     for y in y0..y1 {
         for x in x0..x1 {
@@ -97,7 +97,7 @@ fn run(
 #[test]
 fn the_boxes_centroids_and_levels_are_painted() {
     let tables = crate::painter::tests::tables();
-    let mut cells = cells(12, 2, [2, 3, 7, 6], true);
+    let mut cells = zone_cells(12, 2, [2, 3, 7, 6], true);
     let mut gens = [
         generator(0, 2, [0, 0, 0], 10),
         generator(1, 3, [5, 5, 1], 10),
@@ -136,7 +136,7 @@ fn the_boxes_centroids_and_levels_are_painted() {
 #[test]
 fn an_island_is_shrunk_jagged_and_filled() {
     let tables = crate::painter::tests::tables();
-    let mut cells = cells(36, 1, [0, 0, 36, 36], false);
+    let mut cells = zone_cells(36, 1, [0, 0, 36, 36], false);
     let mut gens = [generator(0, 2, [17, 17, 0], 12)];
     let square = vec![[0, 0], [35, 0], [35, 35], [0, 35]];
     let (result, draws) = run(Water::Islands, &tables, &[square], &mut gens, &mut cells);
@@ -150,6 +150,13 @@ fn an_island_is_shrunk_jagged_and_filled() {
         cells.get(0, 0, 0).map(|c| c.tile & 0x3F),
         Some(u32::from(WATER))
     );
+    // A corner at the centre stays where it is.
+    let mut cells = zone_cells(36, 1, [0, 0, 36, 36], false);
+    let mut gens = [generator(0, 2, [17, 17, 0], 12)];
+    let triangle = vec![[17, 17], [35, 0], [35, 35]];
+    let (result, _) = run(Water::Islands, &tables, &[triangle], &mut gens, &mut cells);
+    assert_eq!(result, Ok(()));
+    assert!(cells.get(17, 17, 0).is_some_and(|c| c.is_land()));
 }
 
 // covers: RMG-TER-002
@@ -163,7 +170,7 @@ fn step_3s_faults_are_refused() {
         (1, vec![square], TerrainFault::CoastLimit),
         (12, Vec::new(), TerrainFault::NoPolygon),
     ] {
-        let mut cells = cells(36, 1, [0, 0, 36, 36], false);
+        let mut cells = zone_cells(36, 1, [0, 0, 36, 36], false);
         let mut gens = [generator(0, 2, [17, 17, 0], size)];
         let (result, _) = run(Water::Islands, &tables, &polygons, &mut gens, &mut cells);
         assert_eq!(result, Err(GenerateError::Terrain(fault)));
@@ -171,7 +178,7 @@ fn step_3s_faults_are_refused() {
     // A shape the zone's terrain lacks: the painter's.
     let mut tables = tables;
     tables.picture_sets[2].pictures.truncate(4);
-    let mut cells = cells(12, 1, [2, 3, 7, 6], true);
+    let mut cells = zone_cells(12, 1, [2, 3, 7, 6], true);
     let mut gens = [generator(0, 2, [4, 4, 0], 10)];
     let (result, _) = run(Water::None, &tables, &[], &mut gens, &mut cells);
     let fault = PaintFault::NoPicture {

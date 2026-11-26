@@ -128,7 +128,7 @@ about one session, the oracle's set staged from the PC for each):
 | T3b (done) | Exit (e), the items not read, into survey §2.2 and §3.2.4: the triangulation's insertion and finish (`triangulation_insert` 0x5FD790, `triangulation_finish` 0x5FDB40: whether Delaunay, what +0x1C and +0x20 hold), the fill's tail 0x53D640, the water zones' distance test and `rmg_zone_graph_distances`' order, the corner cases of `rmg_zone_borders_draw` and `rmg_segment_clip`, whether a division by zero reaches code 1 (RMG-QUIRK-3) | the survey, ZON-009 and -012 to -014 rewritten, `map.toml` |
 | T3c (done) | Step 1 (RMG-ZON-001 to -008): the zone generators, the layout tables (`rmg_layout_cos`, `_sin`, the terrain towns), the generator's cell record (the dump's 12 words), the comparison seam (ADR-0029 point 8: the port's cells in dump format 1 and its draws as the log's lines, their digests against `phases.txt` per step in CI); RMG-QUIRK-12, -3's step 1 case (an empty candidate list) a typed error; the increment's four flags registered in one re-hash (`quirk.rmg.zone_memory_model`, `terrain_towns_count`, `partition_units`, `cosmetic`; decision 10, `cross-lane`) | the cells after step 1 and the draws to it equal on the corpus |
 | T3d (done) | Step 2 (RMG-ZON-009 to -014): the triangulation, the borders, the fill, the water zones and their connections; RMG-QUIRK-1's oracle model from T3a's measurement (its form decided at the increment's checkpoint, ADR-0029 point 6), -14, -3's step 2 cases; T3b's corner cases (the ledger's open table: the edge walk's chords checked against the oracle's step 2 cells) | the cells after step 2 and the draws to it equal |
-| T3e | Step 3 and the terrain painter (RMG-TER-001 to -003, -005 to -018; survey §2.7.1 to §2.7.3): the boxes and centroids, the islands' coasts, the painter's sets, pinches and transitions; RMG-QUIRK-21's painters' half | the cells after step 3 and the draws to it equal; the increment's exit (a) to (e) |
+| T3e (done) | Step 3 and the terrain painter (RMG-TER-001 to -003, -005 to -018; survey §2.7.1 to §2.7.3): the boxes and centroids, the islands' coasts, the painter's sets, pinches and transitions; RMG-QUIRK-21's painters' half | the cells after step 3 and the draws to it equal; the increment's exit (a) to (e) |
 
 ## Risks
 
@@ -179,3 +179,8 @@ its checkpoint): `E14-archive.md`.
   (the oracle's new record, 44 in 4 cases); RMG-QUIRK-1's provisional form, -14 confirmed, -3's and
   -4's step 2 cases typed; T3b's five corner cases counted on the corpus (the ledger's open
   table); log `## T3d`.
+- T3e (2026-11-26, whole at the user's choice; the harvest `cross-lane`): step 3 and the game's
+  terrain painter ported (RMG-TER-001 to -003, -005 to -018, `painter.rs`, `terrain.rs`), the
+  picture sets harvested (`RMG_RULESET_HASH_VERSION` 4), `rmg_island_fill` read: the step's draws
+  and cells equal the oracle's on 24 of 24 at the first run; RMG-QUIRK-21's painter's half on its
+  flag, -3's and -4's step 3 cases typed; increment 3's exit (a) to (e) met; log `## T3e`.
