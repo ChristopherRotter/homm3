@@ -541,3 +541,259 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "Not yet: the water connections show in step 6's cells (increment 4); T3d's unit test covers the off-map side"
   confidence = "medium"
+
+[[rule]]
+id       = "RMG-TER-001"
+title    = "Step 3's boxes and centroids"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_zone_bounds_compute: every cell of the map (level by level, row by row) with a zone byte of 0 or more widens that zone generator's box (+0x20 least x, +0x24 least y, +0x28 greatest x + 1, +0x2C greatest y + 1; 32000 and -32000 from the constructor). Then per zone generator in order rmg_zone_centre_to_centroid: its x and y become the truncated means of its box's cells on its level whose signed zone byte is its zone's id; unchanged without any."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3e): rmg_terrain_paint 0x53E6A0, rmg_zone_bounds_compute 0x53BBB0, rmg_zone_centre_to_centroid 0x53D0D0, rmg_zone_generator_init 0x5329E0's box; survey E14-generator.md §2.2, §3.2.5"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3e): the port's draws and cells after step 3 have phases.txt's digests on the 24 corpus cases"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-002"
+title    = "Step 3's islands"
+context  = "rmg"
+status   = "implemented"
+summary  = "With islands, after its centroid each zone generator on level 0 (water zones too), rmg_island_shape: each corner p of its polygon (+0x3F4) moved toward the centre c by m = min(L/2, max(L/4, 4)), L = trunc(sqrt) of |c - p| (unmoved when L is 0), by m x (c - p) / L (32-bit, toward zero); the coast drawn from each moved corner, the last first, to the one after it (the first corner's after the last), by rmg_coast_line_draw: rmg_jagged_line_draw's walk with the jitter rand() % k - k/2, k = min(size / 2, L / 2), 0x53CE1D per split of length above 1, a cell reached clamped to the map getting +0x28 bit 28 when its zone byte is the zone's id; then rmg_island_fill: a stack from the centre, each popped cell's E, S, W and N neighbours on the map of the zone's id without bit 28 getting it and pushed. k = 0 (a zone of size below 2) and an empty polygon are typed errors (RMG-QUIRK-3, -4)."
+quirks   = ["RMG-QUIRK-3", "RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3e): rmg_island_shape 0x53D1C0, rmg_coast_line_draw 0x53CD30, rmg_island_fill 0x53CF50, vector_length_int 0x5FCEB0; survey E14-generator.md §2.2, §3.2.5"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3e): the four islands cases' draws and cells after step 3 equal phases.txt's"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-003"
+title    = "Step 3's painting"
+context  = "rmg"
+status   = "implemented"
+summary  = "After the islands, the game's terrain painter at weight 4: with two levels, level 1 painted rock (9) in one rectangle over the map, then finished; level 0 water (8) likewise; then per zone generator in order whose terrain is not water, a painter of its terrain on its level: each cell of its box, row by row, whose signed zone byte is the generator's index and that has +0x28 bit 28, a one-cell rectangle; then finished (also for a zone without cells: the last pass runs anyway)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T1c1, T3e): rmg_terrain_paint 0x53E6A0, terrain_painter_init 0x5B7250, terrain_painter_add_rect 0x5B7690, terrain_painter_finish 0x5B72F0; survey E14-generator.md §2.2, §2.7.5, §3.2.5"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T1c1, T3e): step 3's draw sites as §2.7.5 lists them; the port's draws and cells after step 3 equal phases.txt's on the 24 corpus cases"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-005"
+title    = "The terrain painter's frame"
+context  = "rmg"
+status   = "implemented"
+summary  = "A painter (one level of the map, a terrain, the weight 4) paints rectangles (RMG-TER-009) and keeps two sets of cells ordered by (y, x), nothing by address: set 1 the pinched cells of its terrain, set 2 cells of other terrains to test again. Its finish, until both sets are empty: while set 1 holds a cell, its smallest resolved (RMG-TER-014); then while set 2 holds one, its smallest taken out and, when pinched against its own terrain (RMG-TER-011), made the painter's (RMG-TER-012); then the last pass once (RMG-TER-015). A pinched cell whose resolution changes no cell (the original's loop never ending) is a typed error (RMG-QUIRK-4)."
+quirks   = ["RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1a, T3e): terrain_painter_init 0x5B7250, terrain_painter_construct 0x5B45F0, terrain_painter_finish 0x5B72F0, the sets 0x5B7CD0 to 0x5B8CD0; survey E14-generator.md §2.7.1, §2.7.2, §3.2.14"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3e): the port's draws and cells after step 3 equal phases.txt's on the 24 corpus cases"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-006"
+title    = "The picture sets"
+context  = "rmg"
+status   = "implemented"
+summary  = "Per terrain a picture set (terrain_picture_sets 0x642BD8), harvested into the rmg part: dirt to lava and water of the first kind (byte +4: meets the others through dirt; byte +5: land; the decorated plain pictures' share in percent; per picture a shape, 0 the plain inside or 2 to 28, and a flag), rock of the second (per picture a shape and two variant bytes, no flag). The sets' ranges by shape x 2 + flag (rock: (shape x 2 + a) x 2 + b) as terrain_picture_set_init builds them: a range's first the start of its last run, its count all of its pictures. At most 127 pictures a set (the painter's cell word keeps 7 bits)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1a, T3e): terrain_picture_set_init 0x5B3780, rock_picture_ranges_init 0x5B3940, the static initializers 0x5B3B60 to 0x5B3DA0, the tables 0x6424A8 to 0x642AD0; survey E14-generator.md §2.7.1"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-007"
+title    = "A plain picture"
+context  = "rmg"
+status   = "implemented"
+summary  = "Slot 4 with a weight w and the current picture (none in a rectangle and set_cell): a current picture of shape 0 kept without a draw; else, when the set's decorated plain pictures are not none, rand() % 100 (0x5B38B9) below share x w / 8 takes them, otherwise the plain ones, and rand() % their count (0x5B38D3) plus their first; rock: rand() % its plain pictures' count (0x5B3AB6). Two draws on land, one on water and rock."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1a, T3e): terrain_picture_draw 0x5B3890, rock_picture_draw 0x5B3AA0; survey E14-generator.md §2.7.1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T1c1, T3e): every land picture rolls its flag, no water picture does; the port's step 3 draws equal the oracle's"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-008"
+title    = "A transition's picture"
+context  = "rmg"
+status   = "implemented"
+summary  = "Slot 5 with a shape, a mirroring word and the current picture: the first kind keeps a current picture of that shape, else rand() % the shape's plain pictures (0x5B3912) plus their first, and keeps the word; rock keeps a current picture of that shape and variants (the word's W-E and N-S bytes), else rand() % that range (0x5B3B2D), and clears the word."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1a, T3e): terrain_picture_draw_kept 0x5B38F0, rock_picture_draw_kept 0x5B3AE0; survey E14-generator.md §2.7.1"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-009"
+title    = "A painted rectangle"
+context  = "rmg"
+status   = "implemented"
+summary  = "terrain_painter_paint_rect: the rectangle row by row, unclamped; a cell of another terrain made the painter's (RMG-TER-012), a cell of it drawn a new plain picture at its weight (RMG-TER-010) and written with its mirror flags cleared, the sets unchanged: every cell drawn once (RMG-QUIRK-21's 'repainting redraws' is the original's only behaviour)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1b): terrain_painter_paint_rect 0x5B4960; survey E14-generator.md §2.7.2"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-010"
+title    = "The picture's weight"
+context  = "rmg"
+status   = "implemented"
+summary  = "terrain_painter_decor_weight for a cell and a terrain t: the painter's weight (4) halved for each of the W, N, E and S neighbours on the map of terrain t whose current picture is decorated in t's set: 4, 2, 1 or 0. The neighbours are read as they are: in a row-major pass the W and N ones already redrawn."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1b, T3e): terrain_painter_decor_weight 0x5B6FD0; survey E14-generator.md §2.7.2"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-011"
+title    = "Pinched cells"
+context  = "rmg"
+status   = "implemented"
+summary  = "Against a terrain t: pinched W-E when 0 < x < width - 1 and the W and E neighbours are both of other terrains than t; N-S likewise vertically. Split ring: the 8 neighbours N, NE, ..., NW clamped to the map on each axis, flagged when of the cell's own terrain, a diagonal only with one of its two orthogonals flagged; split when the flagged ones form two arcs or more. A cell is pinched against its own terrain when W-E, N-S or, for a set without byte +5 (water, rock), its ring is split."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1b, T3e): terrain_painter_pinched_we 0x5B6320, terrain_painter_pinched_ns 0x5B6430, terrain_painter_ring_same 0x5B6540, terrain_painter_ring_split 0x5B6810; survey E14-generator.md §2.7.2"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-012"
+title    = "A cell made the painter's terrain"
+context  = "rmg"
+status   = "implemented"
+summary  = "terrain_painter_set_cell: a plain picture drawn at its weight, the cell written with the painter's terrain and no mirror flags, out of set 2. On land (byte +5): its N and S neighbours on the map in set 1 no longer pinched W-E, and its W and E ones no longer pinched N-S, leave set 1 and are queued (RMG-TER-013). On water and rock: each of its 8 neighbours on the map of the terrain, in ring order, in set 1 and no longer pinched leaves it and is queued, not in set 1 and pinched enters it. Then the cell itself enters set 1 when pinched, else is queued; it never leaves set 1 here."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1b, T3e): terrain_painter_set_cell 0x5B4B20, neighbours_on_map 0x5BC910, neighbour_offsets 0x6A80A8; survey E14-generator.md §2.7.2"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-013"
+title    = "Queued neighbours"
+context  = "rmg"
+status   = "implemented"
+summary  = "terrain_painter_queue_neighbours: into set 2 the first of N, S on the map of another terrain than the painter's (S only when N is not), the first of W, E likewise, and each diagonal on the map of another terrain whose set has no byte +5. RMG-QUIRK-21 off: each of N, S, W and E of another terrain."
+quirks   = ["RMG-QUIRK-21"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1b, T3e): terrain_painter_queue_neighbours 0x5B50F0; survey E14-generator.md §2.7.2"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-014"
+title    = "A pinched cell resolved"
+context  = "rmg"
+status   = "implemented"
+summary  = "terrain_painter_resolve_pinch for set 1's smallest cell p: (1) pinched N-S: N made the painter's terrain if N is pinched against its own, else S if S is, else N if x is 0 or width - 1, else N if NW or NE is of the terrain, else S if SW or SE is, else N; (2) then pinched W-E: the same with W, E, y and the pairs NW/SW, NE/SE; (3) then, for a set without byte +5, a split ring: its flags read once, its gaps (runs of unflagged neighbours from after the first flagged one, 2 an orthogonal, 1 a diagonal) and, while more than one is left, the cheapest (the first on ties) has its cells on the map made the terrain in ring order; the costliest stays."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1c): terrain_painter_resolve_pinch 0x5B5440; survey E14-generator.md §2.7.3"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-015"
+title    = "The last pass and its classes"
+context  = "rmg"
+status   = "implemented"
+summary  = "terrain_painter_transition_pass, once per finish, over the whole level row by row: per cell of terrain t each neighbour's class (clamped on each axis): 0 when of t or t is sand (1); else 1 when both sets have byte +4 and t is not dirt (0 when it is); else 2. Then its shape (RMG-TER-016, -017) and picture (RMG-TER-018). Terrains are never changed."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1c, T3e): terrain_painter_transition_pass 0x5B5A70, terrain_painter_border_classes 0x5B68A0, terrain_painter_border_class 0x5B3E40; survey E14-generator.md §2.7.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T1c1, T3e): after steps 3, 6, 11 and 15 every cell's picture has the shape and mirror flags the rule gives; the port's cells after step 3 equal the oracle's"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-016"
+title    = "A transition's shape"
+context  = "rmg"
+status   = "implemented"
+summary  = "terrain_painter_transition_shape: survey §2.7.3's ten groups in order, each under the mirrorings none, N-S, W-E, both (a role read at the neighbour terrain_painter_mirror_roles maps it to), its conditions in order; the first that holds gives the shape and the mirroring (W-E to +0x28 bit 15, N-S to bit 16); none: shape 0, no mirroring. Group 3's sand corners give shape 8 with both mirror bytes inverted (RMG-QUIRK-21; off: as matched)."
+quirks   = ["RMG-QUIRK-21"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1c): terrain_painter_transition_shape 0x5B3E80, terrain_painter_mirror_roles 0x642C00, terrain_painter_mirror_words 0x6A52B8; survey E14-generator.md §2.7.3"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-017"
+title    = "The corner refinements"
+context  = "rmg"
+status   = "implemented"
+summary  = "Shapes 2 and 8 become 6 and 12 when either cell past the corner's arms (unmirrored SW and NE, mirrored as the shape), clamped, is of the cell's terrain; 5 and 11 become 7 and 13 when the cell two columns toward the bordering diagonal (unmirrored x + 2), clamped, or else the cell two rows toward it (y + 2) is of another terrain."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1c, T3e): terrain_painter_corner_arm_same 0x5B6BA0, terrain_painter_corner_far_differs 0x5B6E00, their offsets 0x6A5260 and 0x6A3D68; survey E14-generator.md §2.7.3"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TER-018"
+title    = "The last pass's picture"
+context  = "rmg"
+status   = "implemented"
+summary  = "From the cell's own terrain's set: a shape other than 0 by slot 5 (RMG-TER-008) with the shape's mirroring; shape 0 by slot 4 (RMG-TER-007) at the cell's terrain's weight, kept when plain, no mirroring; written. A shape its set lacks (water's 24, rock's 16 and 24) draws among none: rand() % 0 in the original, a typed error (RMG-QUIRK-3)."
+quirks   = ["RMG-QUIRK-3"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1c1c, T3e): terrain_painter_transition_pass 0x5B5A70 (0x5B60B6, 0x5B60D4, 0x5B6104); survey E14-generator.md §2.7.3"
+  confidence = "high"

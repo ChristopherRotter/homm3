@@ -17,9 +17,9 @@ use std::fmt;
 use h3_content::{PackManifest, Ruleset};
 use h3_pack::PackError;
 use h3_rmg::{
-    Connection, ConnectionOverride, GeneratorTables, ObjectTemplate, ObjectTemplateLine,
-    ObjectTemplateOverride, Obstacle, RmgCompileError, RmgPack, RmgRuleset, Strength, Template,
-    Zone, ZoneKind,
+    Connection, ConnectionOverride, GeneratorTables, MAX_PICTURES, ObjectTemplate,
+    ObjectTemplateLine, ObjectTemplateOverride, Obstacle, PictureSet, RmgCompileError, RmgPack,
+    RmgRuleset, RockPicture, Strength, Template, Zone, ZoneKind,
 };
 use serde::Deserialize;
 
@@ -205,6 +205,74 @@ struct GeneratorDto {
     layout_sin: Vec<i32>,
     terrain_towns: Vec<[i32; 4]>,
     native_terrains: Vec<i32>,
+    picture_sets: Vec<PictureSetDto>,
+    rock_pictures: Vec<(u8, u8, u8, usize)>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PictureSetDto {
+    through_dirt: bool,
+    land: bool,
+    share: u8,
+    pictures: Vec<(u8, u8, usize)>,
+}
+
+/// A 0 or 1 as a flag.
+fn bit(value: u8, what: &str) -> Result<bool, RmgPackError> {
+    match value {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => Err(RmgPackError::Invalid(format!(
+            "{what} {value} is not 0 or 1"
+        ))),
+    }
+}
+
+/// Runs of an entry and its count expanded in order, at most [`MAX_PICTURES`] entries.
+fn expand<T: Copy>(runs: &[(T, usize)], what: &str) -> Result<Vec<T>, RmgPackError> {
+    let mut out = Vec::new();
+    for &(entry, count) in runs {
+        if count > MAX_PICTURES - out.len() {
+            return Err(RmgPackError::Invalid(format!(
+                "{what} hold more than {MAX_PICTURES} pictures"
+            )));
+        }
+        out.extend(core::iter::repeat_n(entry, count));
+    }
+    Ok(out)
+}
+
+/// The painter's picture sets and rock's pictures from their runs.
+fn pictures(g: &GeneratorDto) -> Result<(Vec<PictureSet>, Vec<RockPicture>), RmgPackError> {
+    let sets = g
+        .picture_sets
+        .iter()
+        .map(|set| {
+            let runs = set
+                .pictures
+                .iter()
+                .map(|&(shape, flag, n)| {
+                    Ok(((shape, bit(flag, "generator.picture_sets' flag")?), n))
+                })
+                .collect::<Result<Vec<_>, RmgPackError>>()?;
+            Ok(PictureSet {
+                through_dirt: set.through_dirt,
+                land: set.land,
+                share: set.share,
+                pictures: expand(&runs, "generator.picture_sets")?,
+            })
+        })
+        .collect::<Result<_, RmgPackError>>()?;
+    let runs = g
+        .rock_pictures
+        .iter()
+        .map(|&(shape, a, b, n)| {
+            let variant = |v| bit(v, "generator.rock_pictures' variant");
+            Ok(((shape, [variant(a)?, variant(b)?]), n))
+        })
+        .collect::<Result<Vec<_>, RmgPackError>>()?;
+    Ok((sets, expand(&runs, "generator.rock_pictures")?))
 }
 
 /// A string of one mark per entry, each `0` or `1`, as flags.
@@ -389,6 +457,7 @@ pub fn parse_rmg(manifest: &PackManifest, text: &str) -> Result<RmgPack, RmgPack
     let generator = file
         .generator
         .map(|g| {
+            let (picture_sets, rock_pictures) = pictures(&g)?;
             Ok::<_, RmgPackError>(GeneratorTables {
                 heroes_roe: flags(&g.heroes_roe, "generator.heroes_roe")?,
                 heroes_expansions: flags(&g.heroes_expansions, "generator.heroes_expansions")?,
@@ -399,6 +468,8 @@ pub fn parse_rmg(manifest: &PackManifest, text: &str) -> Result<RmgPack, RmgPack
                 layout_sin: g.layout_sin,
                 terrain_towns: g.terrain_towns,
                 native_terrains: g.native_terrains,
+                picture_sets,
+                rock_pictures,
             })
         })
         .transpose()?;
