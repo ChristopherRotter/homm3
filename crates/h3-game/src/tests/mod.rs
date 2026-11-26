@@ -1375,6 +1375,7 @@ fn a_town_needs_its_siege() {
             requires: vec![],
             cost: vec![],
             roles,
+            war_machine: None,
         })
         .collect();
     let row = GarrisonRow {
@@ -1409,6 +1410,13 @@ fn a_town_needs_its_siege() {
             guild_slots: [5, 4, 3, 2, 1],
             spell_book_price: vec![(key("t:gold"), 500)],
             vortex_factor: 2,
+            merchants_stock: vec![ArtifactClass::Treasure; 7],
+            boat_price: vec![(key("t:gold"), 1000)],
+            boat_type: 1,
+            university_skills: vec![key("t:wits")],
+            university_price: vec![(key("t:gold"), 2000)],
+            transformer_into: key("t:imp"),
+            transformer_dragons_into: key("t:gog"),
         }),
         towns: vec![TownDef {
             faction: key("t:town"),

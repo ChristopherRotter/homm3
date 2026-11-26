@@ -131,7 +131,7 @@ fn core() -> Ruleset {
             .map(|(k, war_machine)| ArtifactDef {
                 key: key(k),
                 name: "Artifact".into(),
-                class: h3_content::ArtifactClass::Treasure,
+                class: ArtifactClass::Treasure,
                 cost: vec![],
                 slot: Some(key("t:machine")),
                 war_machine,
@@ -846,7 +846,9 @@ fn the_hash_is_pinned_and_follows_the_content() {
     }
     // The tenth (v10, E09 T56): the trades' parameters, roles and war machines.
     let changes: [fn(&mut Vec<TownPack>); 17] = [
-        |p| drop(p[0].params.as_mut().unwrap().merchants_stock.pop()),
+        |p| {
+            p[0].params.as_mut().unwrap().merchants_stock.pop();
+        },
         |p| p[0].params.as_mut().unwrap().merchants_stock[0] = ArtifactClass::Relic,
         |p| p[0].params.as_mut().unwrap().boat_price[1].1 = 11,
         |p| p[0].params.as_mut().unwrap().boat_type = 2,

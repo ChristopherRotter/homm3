@@ -28,6 +28,7 @@ pub(super) fn building(key: &str, slot: Option<u8>, roles: BuildingRoles) -> Bui
         requires: vec![],
         cost: vec![],
         roles,
+        war_machine: None,
     }
 }
 
