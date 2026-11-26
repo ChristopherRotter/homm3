@@ -47,8 +47,11 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
   `random_artifact_of_level` 0x4C94D0 (E09 T52 read it whole: the reset 0x4C950E covers the level's
   records only); before, every class's marks restarted. It moves a build's draws only where a class
   ran out (your `random_artifacts_draw_…` test asserts the first three widened draws distinct
-  now); the catalog entry amended. (2) **The pool's marks kept:** `ArtifactPool` holds an
-  `ArtifactMarks` (the bans and the given marks), `resolve_rewards` returns it and
+  now); the catalog entry amended. (2) **The pool's marks kept:** `ArtifactPool` and its
+  `ArtifactMarks` (the bans, the given marks, each class's artifacts on a list) moved to a module
+  of their own, `state/pool.rs` (in `state::draws` they moved the reach loops' codegen units:
+  `Reach::search` +10 %); a draw counts and finds the drawn one without a list (the same draws);
+  `resolve_rewards` returns the marks and
   `StaticMap::new` gives it beside the map; `AdventureState::merchants` (an `Arc<Merchants>`, the
   town lane's `town/merchants.rs`: the marks and the Artifact Merchants' stock, TWN-STK-001, -002)
   is the state's last field and the hash's last block: **adventure state hash v30**. A fork shares

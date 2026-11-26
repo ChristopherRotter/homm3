@@ -3860,7 +3860,9 @@ with `resolve_rewards`' local pool; both in the adventure state hash (the town l
   precedent). **Found on the way** (the user, 2026-11-26): ADV-OBJ-006's picker restarted every
   class's marks when one class ran out; the original restarts the drawn class's alone, then the
   four's when it widens and none of them is left (survey §3.1, E09 T52's reading): fixed in
-  `ArtifactPool::draw` (`restart`), every build's draw included.
+  `ArtifactPool::draw` (`restart`), every build's draw included. The pool in its own module
+  `state/pool.rs` (the reach loops' codegen units); a draw counts, then finds the drawn one, over
+  its class's own list of artifacts (derived at the build) when one class is drawn.
 
 ### 109. The combinations' costs (the core; `shared/`)
 

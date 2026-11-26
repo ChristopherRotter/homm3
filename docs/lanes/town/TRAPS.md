@@ -22,6 +22,12 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   T18b1): `h3-map`'s property tests (`play.rs`' `as_move`, `view.rs`' told views), `h3-sim`'s
   action entries, `h3-files`' replay words; the scoped verify builds `h3-map`'s tests only in its
   clippy and coverage steps. Run `cargo check --workspace --all-targets` right after adding one.
+- **New code in `h3-adventure`'s `state::draws` slows the reach loops** (E09 T57, as E08
+  T124b1's banks; the adventure lane's `TRAPS.md`, the codegen units): the pool's marks and
+  restart there cost `Reach::search` +10 % on the same games (`reach-xl-144` +6.6 %, every
+  random-play and reach workload +3 to +9 %); the same code in `state/pool.rs` measured flat.
+  Put new adventure code in a module of its own first, then run a reach workload against
+  `master`'s worktree.
 - **A new field of a town part type meets another lane's new literal** (E09 T56's #1189 and E31
   T2d's #1190, each green alone: `master` 6035ed8 did not compile `h3-game`'s tests): `BuildingDef`,
   `TownParamsDef` and the other `h3-towns` definitions are built by literals in the AI lane's

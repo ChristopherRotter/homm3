@@ -6624,7 +6624,7 @@ computer went offline at the start, so no original data were staged (the scoped 
 `--with-original-data`); the setup's baseline died with a VM restart, CI's run on #1193 served.
 **Kept whole** with the `cross-lane` consent (decision 221).
 
-- **`h3-adventure`** (design §108): `state::ArtifactMarks` (the bans and the given marks, a
+- **`h3-adventure`** (design §108): `state::ArtifactMarks` (`state/pool.rs`: the bans and the given marks, a
   `bool` per artifact; its hash packs them 64 a word), held by `ArtifactPool` (`resume`,
   `into_marks`); `resolve_rewards` returns the marks, `StaticMap::new` gives them beside the map.
   The town lane's `town/merchants.rs`: `Merchants` (the marks and the stock, a
@@ -6659,6 +6659,18 @@ computer went offline at the start, so no original data were staged (the scoped 
   entries (in 19 lists) and the 118 final hashes moved; every replay replayed its commands
   (the three of 60 days too). `h3-server`'s `tests/record.rs` literals (`army-dialog-s1`'s
   checkpoint and final hash). The bot reports record the adventure part's hash only: unchanged.
+- **Speed** (skill `homm3-bench-regression`, `master`'s worktree in the sandbox): the first
+  build's scoped verify failed bench-check on 30 workloads, the reach and random-play ones +3 to
+  +9 %: the same games (every callee's count equal) with `Reach::search` +10 % and
+  `walking_step` +10 %, the codegen units moved by the pool's new code in `state::draws`. The
+  pool, its marks and its picker moved to their own module `state/pool.rs`: `reach-xl-144` and
+  `random-play-duel-36` flat against `master`. The month's draws first cost
+  `month-start-builds-36` +7 % on `master` (each draw collecting a list over the 144 artifacts):
+  the pick now counts the unmarked artifacts and finds the drawn one without a list, over the
+  class's own list (`ArtifactMarks`' artifacts by class, derived at the build) when one class is
+  drawn, and the block is drawn in place (`Arc::make_mut`): +2.1 % on `master` in the sandbox,
+  +1.29 % on its baseline (inside the gate); `build-trades-xl-144` -1.6 % (the build's draws by
+  class too). The forks pay one reference count more (`fork-economy-xl-144` +0.26 % on `master`).
 - *Agent's calls* (change freely): the game state hash's version kept at 39 (its encoding
   unchanged; E08 T142a's adventure v29 the precedent; design §116's table had a bump at T57); the
   block never `None` (the marks exist in every game); the marks as `bool`s, packed only in the
@@ -6667,3 +6679,14 @@ computer went offline at the start, so no original data were staged (the scoped 
 
 **The queue:** T57 out; T58 next (the market at a town). Ids: decisions next 224; quirks
 `TWN-QUIRK-17` (planned `-17` to `-20`, `-22`, `-23`; `-21` entered).
+
+**Verify:** `cargo xtask verify --scope town --summary` (no original data staged) on the branch
+with `master`'s afb3250 (#1191) merged in: every step passes but `check-lane` (by design; `cargo
+xtask check-lane --cross-lane --base origin/master` ok) and bench-check's two workloads
+re-baselined after it (`build-banks-xl-144` -2.70 %: the pool's draws; `fork-economy-xl-144`
++0.26 % on `master`'s 390 800 055, which CI counts too); the first run's coverage gap (an empty
+entry's hash) closed by a test. Coverage 23 minutes, determinism 8, bench-check 14. `cargo clippy
+--workspace --all-targets -- -D warnings`; `cargo test --release -p h3-cli -p h3-sim -p
+h3-protocol -p h3-server -p h3-files` (every golden replay replayed). **Owed:** the scoped verify
+`--with-original-data` (the user's computer offline all session); CI on the pull request is the
+record.
