@@ -3973,11 +3973,11 @@ fn a_live_start_from_a_later_snapshot() {
         .messages
         .iter()
         .filter_map(|m| match m {
-            ServerMessage::GameAccepted { n, command, .. }
-                if matches!(command, h3_protocol::wire::game::GameCommand::EndTurn {}) =>
-            {
-                Some(*n)
-            }
+            ServerMessage::GameAccepted {
+                n,
+                command: h3_protocol::wire::game::GameCommand::EndTurn {},
+                ..
+            } => Some(*n),
             _ => None,
         })
         .collect();

@@ -29,14 +29,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `h3-map-view`'s readers on it, their types and readings kept). **M5 T3 cut in two** by the
   user at its start: **T3a done** 2026-11-25 (`h3_map_client::hot_seat`: the session hosted
   headless, a seat per player, End Turn, the computers' turns ended at once, the turn's duration
-  the session's clock; `h3-map-view play --turns --records`). **Next: M5 T3b** (the session in
-  the window: End Turn through it, the view switched at each human's start). The M4 hand-test
-  notes (`clients/out/win/map-m4-notes.txt`) still blank at T3a.
-  Open questions: MCL-Q29 to MCL-Q49 (none blocks). Stubs: `MCL-STUB-1` (a
+  the session's clock; `h3-map-view play --turns --records`), **T3b done** 2026-11-26 (kept whole
+  by the user: design §5.25; each human's view in turn, set up from its record since it was left
+  by `engine::live`; End Turn asked of the host, the same human's next day in place; the clock on
+  the window's). **Next: M5 T4** (live input through the engine). The M4 hand-test notes
+  (`clients/out/win/map-m4-notes.txt`) still blank at T3b.
+  Open questions: MCL-Q29 to MCL-Q49, MCL-Q58 (none blocks). Stubs: `MCL-STUB-1` (a
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10), `MCL-STUB-5` (a computer's turn ended at once, E31's
-  increment 2); planned `MCL-STUB-6` (T4). Next ids **MCL-Q58**, **MCL-STUB-6**.
-- **Open pull requests** (2026-11-25): T3a's #1183 (`map-client/e24-m5-t3a`; T2c's #1182 merged):
+  increment 2); planned `MCL-STUB-6` (T4). Next ids **MCL-Q59**, **MCL-STUB-6**.
+- **Open pull requests** (2026-11-26): T3b's (`map-client/e24-m5-t3b`; T3a's #1183 merged):
   check it first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
@@ -63,6 +65,14 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-26, E24 M5 T3b** (kept whole by the user at its start, the same human's next day in
+  place): `engine::live` (a later snapshot let through for a live start, the host's facings),
+  the kingdom's heroes by `hero_list`, `Loop`/`Replay::turns_asked` and `add_turns`,
+  `HotSeat::leave` and `since`, `paint::for_live` and `live_turns`, `window::Session`, play's
+  views in turn; MCL-Q58 (the view names no facing) asked, the adventure lane's inbox told. The
+  PC up at the start only (58 files and the manuals staged, SHA-256 checked); the VM restarted
+  once (the setup's baseline lost at coverage, CI's Clients on `master` standing in).
+
 - **2026-11-25, E24 M5 T3a** (T3 cut in two by the user at its start): `hot_seat` (`HotSeat`,
   `Seat`, `clock`), play started through it, `play --duration --turns --records`; `MCL-STUB-5`
   registered; T3b queued with Begin and Load in its scope (both wait for other lanes). The PC up
@@ -74,10 +84,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   `MAX_LINE` 64 MB) with its tests; `h3_view::record::parse`, `game_record::parse` and
   `h3_map_view::engine::parse` thin wrappers on it; notes in the client and server lanes'
   inboxes. The PC up at the start only (58 files staged, SHA-256 checked against T2b's sums).
-
-- **2026-11-25, E24 M5 T2b** (one PR, the API agreed for the client lane, the engine's start
-  until T3: the user at the start): `h3_map_client::play` (`Game`, `Folders`, `End`, `play`);
-  `window`'s loop on a lent window and sound (`Source`, `Host`; the map's streams added on the
-  host's `HostSound` and removed again); `paint::for_text` (a record kept in memory);
-  `h3-map-view play`. The PC up at the start only (58 files staged, SHA-256 checked; a stray
-  `.keep` of a `git fetch` left in the user's `.git`, harmless).
