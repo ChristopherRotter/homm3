@@ -256,6 +256,12 @@ impl window::Session for Viewed<'_, '_> {
         let refused = self.hot.play(GameCommand::Answer { answer })?;
         Ok(refused.map(|why| format!("{why:?}")))
     }
+
+    fn revisit(&mut self, hero: u16) -> Result<Option<String>, String> {
+        let command = AdventureCommand::Revisit { hero };
+        let refused = self.hot.play(GameCommand::Adventure { command })?;
+        Ok(refused.map(|why| format!("{why:?}")))
+    }
 }
 
 /// The command's options.

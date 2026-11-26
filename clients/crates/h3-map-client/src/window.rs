@@ -46,7 +46,7 @@ use std::sync::Arc;
 use h3_battle_client::audio::HostSound;
 use h3_game::GameRuleset;
 use h3_map_view::damage::{Held, tidy};
-use h3_map_view::engine::{GameRecord, Live};
+use h3_map_view::engine::{GameRecord, Live, REVISIT};
 use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
 use h3_map_view::reach::{Hosted, Pick, Reach};
 use h3_map_view::replay::{Change, Replay};
@@ -250,6 +250,12 @@ pub(crate) trait Session {
     /// # Errors
     /// The session's (no turn of a human's, a frame that does not read).
     fn answer(&mut self, answer: WireAnswer) -> Result<Option<String>, String>;
+    /// The viewer's hero `hero` visits the entered object under it again (`Revisit`, E24 M5
+    /// T4b: Space): why the game refused it, none when it took it.
+    ///
+    /// # Errors
+    /// The session's (no turn of a human's, a frame that does not read).
+    fn revisit(&mut self, hero: u16) -> Result<Option<String>, String>;
 }
 
 /// The host's facts a live start keeps (E24 M5 T4a): the headless check plays them as the loop did.
@@ -1513,6 +1519,62 @@ pub(crate) fn window(
             renew = true;
             continue;
         }
+        // Space's revisit asked of the host (E24 M5 T4b, design §5.27): the session plays the
+        // engine's `Revisit`; taken, the find its visit tells from the record (the key's change
+        // made again from before it), refused or telling nothing, nothing.
+        if let Some(s) = session.as_deref_mut()
+            && let Some(asked) = replay.revisit_asked()
+        {
+            let t = asked.at;
+            let id = ids
+                .iter()
+                .find(|&&(_, i)| i == asked.stand.hero)
+                .map(|&(id, _)| id);
+            let refused = match id {
+                Some(id) => s.revisit(id)?,
+                None => Some("no hero of the view's there".to_owned()),
+            };
+            let found = match refused {
+                Some(why) => {
+                    lines.push(format!("{t} ms: Space's visit refused: {why}"));
+                    None
+                }
+                None => {
+                    let key = REVISIT + start.moves.as_ref().map_or(0, Vec::len);
+                    if let Some(decision) = s.decision().filter(asks) {
+                        opened.push((key, decision));
+                    }
+                    let label = format!("play: colour {}'s view", s.colour());
+                    let (record, live) = s.record()?;
+                    let (_, finds) = paint::live_walks(
+                        &mut painter,
+                        s.map(),
+                        (record, s.rules(), live),
+                        (start.hover.as_deref(), &opened),
+                        label,
+                    )?;
+                    // Its visit's find: the last of the revisits since the last walk.
+                    let found = finds.into_iter().rfind(|f| f.walk == Some(key));
+                    lines.push(format!(
+                        "{t} ms: Space's visit taken, {}",
+                        if found.is_some() {
+                            "its find told"
+                        } else {
+                            "nothing told"
+                        }
+                    ));
+                    found
+                }
+            };
+            let told = found.as_ref().map(|f| {
+                start.finds.push(f.clone());
+                start.finds.len() - 1
+            });
+            hosted(&mut start).revisits.push((asked.stand, told));
+            replay.add_revisit(&asked, found.as_ref());
+            renew = true;
+            continue;
+        }
         // The selected hero's reach asked of the host where it stands (E24 M5 T4a): the session's
         // `Moves` answer, a click's paths and the cursor's costs (none: no tile reached).
         if let Some(s) = session.as_deref_mut()
@@ -1647,6 +1709,7 @@ pub(crate) fn window(
                 || replay.reach_asked().is_some()
                 || replay.answer_asked().is_some()
                 || replay.level_asked().is_some()
+                || replay.revisit_asked().is_some()
             {
                 renew = true;
                 continue;

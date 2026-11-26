@@ -12,7 +12,9 @@ use super::turns::laid;
 use crate::hover::frame;
 use crate::levels::{self, LevelUp, Offer};
 use crate::live::KingdomHero;
-use crate::reach::{AnswerAsked, AnswerKey, Hosted, LevelAsked, Pick, Reach, Stand, WalkAsked};
+use crate::reach::{
+    AnswerAsked, AnswerKey, Hosted, LevelAsked, Pick, Reach, RevisitAsked, Stand, WalkAsked,
+};
 use crate::replay::Replay;
 
 fn at(x: u8, y: u8) -> Pos {
@@ -415,4 +417,72 @@ fn a_visit_s_level_ups_and_no_box_open_at_its_walk_s_end() {
         .unwrap();
     assert!(l.boxed.is_none());
     assert_eq!(l.level_asked(), None);
+}
+
+#[test]
+fn space_on_an_entrance_asks_the_host_its_revisit() {
+    // E24 M5 T4b (design §5.27): the hero on the monster's entrance (`hovering`'s (5, 4)), live
+    // with a host: Space asks the engine's revisit; given its find, told (its box); given none,
+    // nothing; the next Space (a new stand) asks again.
+    let mut l = hovering(true, Bugs::Fixed);
+    l.index = Some(0);
+    l.moves = Some(Arc::new(Vec::new()));
+    let reaches = (0..3).map(|answers| {
+        (
+            Stand {
+                answers,
+                ..stand(0)
+            },
+            Arc::default(),
+        )
+    });
+    l.host = Some(Arc::new(Hosted {
+        reaches: reaches.collect(),
+        ..Hosted::default()
+    }));
+    let hero = l.hero.as_mut().unwrap();
+    hero.at = at(5, 4);
+    let before = l.clone();
+    l.run(1, &[Action::Visit]).unwrap();
+    let asked = l.revisit_asked().unwrap();
+    assert_eq!(
+        asked,
+        RevisitAsked {
+            at: 1,
+            stand: stand(0)
+        }
+    );
+    assert!(l.boxed.is_none());
+    // Given a find with a box: told at once.
+    let found = Found {
+        at: at(5, 4),
+        first: vec![(laid("AGAIN.", Style::Ok), Gain::default())],
+        again: None,
+        gain: Gain::default(),
+        found: None,
+        taken: None,
+        event: false,
+        blocks: None,
+        ask: None,
+        flag: None,
+        fight: None,
+        walk: Some(crate::engine::REVISIT),
+        levels: Vec::new(),
+    };
+    let mut told = before.clone();
+    told.add_revisit(&asked, Some(&found));
+    assert_eq!(told.revisit_asked(), None);
+    told.run(1, &[Action::Visit]).unwrap();
+    assert!(told.boxed.is_some());
+    // Given none: nothing; Space again, a new stand, asked again.
+    let mut l = before;
+    l.add_revisit(&asked, None);
+    l.run(1, &[Action::Visit]).unwrap();
+    assert!((l.boxed.is_none(), l.revisit_asked()) == (true, None));
+    l.run(2, &[Action::Visit]).unwrap();
+    let again = Stand {
+        answers: 1,
+        ..stand(0)
+    };
+    assert_eq!(l.revisit_asked().map(|a| a.stand), Some(again));
 }

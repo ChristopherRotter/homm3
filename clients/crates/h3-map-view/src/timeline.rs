@@ -142,7 +142,9 @@ use crate::live::{
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
-use crate::reach::{AnswerAsked, AnswerKey, Hosted, LevelAsked, Pick, Reach, Stand, WalkAsked};
+use crate::reach::{
+    AnswerAsked, AnswerKey, Hosted, LevelAsked, Pick, Reach, RevisitAsked, Stand, WalkAsked,
+};
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_COMPUTER_SPEED, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
@@ -1808,6 +1810,8 @@ pub struct Loop {
     answer_asked: Option<AnswerAsked>,
     /// The level-up's offer asked of the host (E24 M5 T4b, [`Loop::level_asked`]).
     level_asked: Option<LevelAsked>,
+    /// Space's revisit asked of the host (E24 M5 T4b, [`Loop::revisit_asked`]).
+    revisit_asked: Option<RevisitAsked>,
     /// The host's answers and level-ups' offers taken so far (E24 M5 T4b: a stand's).
     answers_taken: usize,
     reach_asked: Option<(u32, Stand)>,
@@ -2268,6 +2272,7 @@ impl Loop {
             walk_asked: None,
             answer_asked: None,
             level_asked: None,
+            revisit_asked: None,
             answers_taken: 0,
             reach_asked: None,
             next_move: 0,
@@ -2462,6 +2467,28 @@ impl Loop {
             Arc::make_mut(host).levels.push((key, next.to_vec()));
         }
         self.level_asked = None;
+    }
+
+    /// Space's revisit asked of the host (E24 M5 T4b, design §5.27): the selected hero on an
+    /// object's entrance, with no revisit given for its stand; Space changes nothing until the host
+    /// answers. None since [`Loop::add_revisit`].
+    #[must_use]
+    pub fn revisit_asked(&self) -> Option<RevisitAsked> {
+        self.revisit_asked
+    }
+
+    /// The revisit `asked` given by the host (E24 M5 T4b: it played the engine's `Revisit`): the
+    /// find its visit tells (added to the known ones), none where the engine refused it or it
+    /// tells nothing; the question cleared.
+    pub fn add_revisit(&mut self, asked: &RevisitAsked, found: Option<&Found>) {
+        let told = found.map(|f| {
+            Arc::make_mut(&mut self.finds).push(f.clone());
+            self.finds.len() - 1
+        });
+        if let Some(host) = &mut self.host {
+            Arc::make_mut(host).revisits.push((asked.stand, told));
+        }
+        self.revisit_asked = None;
     }
 
     /// The map's heroes ([`Start::heroes`]' order) where they stand and face now, the selected
@@ -4297,6 +4324,13 @@ impl Loop {
         }) else {
             return false;
         };
+        self.tell_found(t, i)
+    }
+
+    /// Find `i` told on the selected hero's tile ([`Loop::tell_find`]'s; since E24 M5 T4b Space's
+    /// revisit's too): its first boxes, told again its later one, its question; whether a box
+    /// opened.
+    fn tell_found(&mut self, t: u32, i: usize) -> bool {
         self.visiting(i);
         let found = Arc::clone(&self.finds);
         let found = &found[i];
@@ -5673,9 +5707,39 @@ impl Loop {
             i32::from(selection.at.z),
         ];
         match hover.current(at, Some(selection)) {
-            Some(tile) if tile.entrance && tile.class != 3 => self.unbuilt(Unplayable::Visit(at)),
+            Some(tile) if tile.entrance && tile.class != 3 => {
+                // Live, the engine's revisit (E24 M5 T4b, design §5.27).
+                if self.hosted_revisit(t) {
+                    return Ok(());
+                }
+                self.unbuilt(Unplayable::Visit(at))
+            }
             _ => Ok(()),
         }
+    }
+
+    /// Whether Space's visit at `t` is the host's (E24 M5 T4b, design §5.27: the engine's
+    /// `Revisit`): with one, the revisit of the stand given (its find told, or nothing where the
+    /// engine refused it or it tells nothing; a stand's, so the next Space asks again), else
+    /// asked: nothing changes until the host answers.
+    fn hosted_revisit(&mut self, t: u32) -> bool {
+        let Some(host) = &self.host else {
+            return false;
+        };
+        let stand = self.stand_of(self.index.unwrap_or_default());
+        match host.revisit(stand) {
+            Some(told) => {
+                self.answers_taken += 1;
+                if let Some(i) = told {
+                    self.tell_found(t, i);
+                }
+            }
+            None => {
+                self.revisit_asked
+                    .get_or_insert(RevisitAsked { at: t, stand });
+            }
+        }
+        true
     }
 
     /// The selected hero chosen again (`hero_select` 0x417B20 with 0, 0, 1, as

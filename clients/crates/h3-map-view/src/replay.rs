@@ -28,7 +28,7 @@ use alloc::vec::Vec;
 use core::iter;
 
 use crate::live::Buttons;
-use crate::reach::{AnswerAsked, LevelAsked, Reach, Stand, WalkAsked};
+use crate::reach::{AnswerAsked, LevelAsked, Reach, RevisitAsked, Stand, WalkAsked};
 use crate::sound::Cue;
 use crate::timeline::{
     Action, Answer, Cursor, Draw, Found, Hero, LevelBox, Loop, Move, NextTurn, Rules, Start,
@@ -305,6 +305,20 @@ impl Replay {
     /// [`Loop::add_level`]), the loop run again from before it.
     pub fn add_level(&mut self, asked: &LevelAsked, next: &[LevelBox]) {
         self.each(|l| l.add_level(asked, next));
+        self.again_from(asked.at.max(1));
+    }
+
+    /// Space's revisit asked of the host as far as the loop ran (E24 M5 T4b,
+    /// [`Loop::revisit_asked`]).
+    #[must_use]
+    pub fn revisit_asked(&self) -> Option<RevisitAsked> {
+        self.l.revisit_asked()
+    }
+
+    /// The revisit `asked` given by the host with the find its visit tells (E24 M5 T4b,
+    /// [`Loop::add_revisit`]), the loop run again from before it.
+    pub fn add_revisit(&mut self, asked: &RevisitAsked, found: Option<&Found>) {
+        self.each(|l| l.add_revisit(asked, found));
         self.again_from(asked.at.max(1));
     }
 

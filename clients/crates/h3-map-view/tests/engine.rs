@@ -4513,3 +4513,65 @@ fn a_live_visit_s_answer_is_the_record_s() {
     assert_eq!(visits::answered_gain(&opened).resources[6], 1500);
     assert!(!visits::removes(&[]));
 }
+
+#[test]
+fn a_record_s_revisit_is_a_visit_past_the_walks() {
+    // E24 M5 T4b (design §5.27): Space's `Revisit` a visit on the hero's tile, keyed past the
+    // walks (its find never told at a walk's end), its events its own; one of a hero the record
+    // does not show, none.
+    use h3_protocol::wire::game::{AdventureCommand, GameCommand, GameEvent, Pos};
+    let g = game();
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap();
+    let (id, at) = (red.id, red.pos);
+    let revisit = |hero| {
+        accepted(GameCommand::Adventure {
+            command: AdventureCommand::Revisit { hero },
+        })
+    };
+    let gold = GameEvent::ResourceGained {
+        player: 0,
+        resource: 6,
+        amount: 100,
+    };
+    let walk = accepted(GameCommand::Adventure {
+        command: AdventureCommand::MoveHero {
+            hero: id,
+            path: vec![Pos {
+                x: at.x + 1,
+                y: at.y,
+                level: at.level,
+            }],
+        },
+    });
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            revisit(id),
+            events(vec![gold.clone()]),
+            revisit(9999),
+            events(Vec::new()),
+            walk,
+            events(Vec::new()),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let keys: Vec<usize> = played.visits.iter().map(|v| v.walk).collect();
+    assert_eq!(keys, [engine::REVISIT, 0]);
+    let first = &played.visits[0];
+    assert_eq!(
+        (first.at.x, first.at.y, first.events.as_slice()),
+        (
+            u8::try_from(at.x).unwrap(),
+            u8::try_from(at.y).unwrap(),
+            &[gold][..]
+        )
+    );
+}

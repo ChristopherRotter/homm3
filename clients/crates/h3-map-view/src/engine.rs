@@ -73,8 +73,8 @@ mod played;
 pub mod visits;
 
 pub use played::{
-    Battled, Command, Held, Leveled, OtherEnd, OtherStep, OtherTurn, OtherWalk, Played, Visit,
-    pickup, played,
+    Battled, Command, Held, Leveled, OtherEnd, OtherStep, OtherTurn, OtherWalk, Played, REVISIT,
+    Visit, pickup, played,
 };
 
 /// A random hero (class 70): the import places it as a hero, not a static object.

@@ -26,6 +26,9 @@
 //!   (`timeline::Question::hosted`: the engine's decision open) closed by one of its buttons
 //!   ([`Pick`]); the host plays the session's `Answer` and gives what it shows (`Loop::add_answer`),
 //!   kept by the visit's find, the question's place among its visit's and the button.
+//! - **A revisit asked** ([`RevisitAsked`]): Space with the selected hero on an object's
+//!   entrance; the host plays the engine's `Revisit` and gives the find its visit tells
+//!   (`Loop::add_revisit`), kept by the stand (which counts the revisits taken).
 //! - **A level-up asked** ([`LevelAsked`]): a level-up's dialog whose offer is the host's
 //!   (`timeline::LevelBox::hosted`) closed by its OK with an offer chosen; the host plays it and
 //!   gives the levels the engine opens after it (`Loop::add_level`), kept by the hero and the level.
@@ -103,6 +106,9 @@ pub struct Hosted {
     /// The level-ups answered (E24 M5 T4b): the levels the engine opened after each, by its hero
     /// (its place among the map's heroes) and level.
     pub levels: Vec<((usize, u8), Vec<LevelBox>)>,
+    /// Space's revisits given (E24 M5 T4b), by their stands: the find each tells (its place among
+    /// the loop's finds), none where the engine refused it or it tells nothing.
+    pub revisits: Vec<(Stand, Option<usize>)>,
 }
 
 impl Hosted {
@@ -128,6 +134,15 @@ impl Hosted {
             .iter()
             .find(|(a, _)| *a == asked)
             .map(|(_, answer)| answer)
+    }
+
+    /// The revisit of `stand` given: the find it tells, if any.
+    #[must_use]
+    pub fn revisit(&self, stand: Stand) -> Option<Option<usize>> {
+        self.revisits
+            .iter()
+            .find(|(s, _)| *s == stand)
+            .map(|&(_, told)| told)
     }
 
     /// The levels the engine opened after hero `hero`'s level-up to `level`, given.
@@ -188,6 +203,16 @@ pub struct LevelAsked {
     pub level: u8,
     /// The offer chosen.
     pub offer: usize,
+}
+
+/// Space's revisit the loop lacks, asked of the host (E24 M5 T4b): the millisecond of the key and
+/// the selected hero's stand (on an object's entrance).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RevisitAsked {
+    /// The key's millisecond.
+    pub at: u32,
+    /// The stand.
+    pub stand: Stand,
 }
 
 /// A walk whose facts the loop lacks, asked of the host (E24 M5 T4a): the millisecond it starts
