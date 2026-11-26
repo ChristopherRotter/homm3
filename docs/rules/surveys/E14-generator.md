@@ -547,10 +547,11 @@ wholly off the map whose line crosses the map gives a point on the map's edge (t
 side needs a ≠ b, which such a side mostly fails; the edge walk and the water connections take it).
 
 **Step 2's fill (T3b).** `rmg_zone_flood_fill` (G, r): it starts at G's centre when that lies in
-the box; else at the clip from the centre toward the destination, in r's ring (r.Onext first, r
-last), that lies in [1, W−2] × [1, H−2] with the greatest min(x, W−1−x, y, H−1−y), the first on
-ties; none, no fill (the clip's result is used untested: off the map it would index cells outside
-the level; not reached as read). A stack of 12-byte seeds (x, y, z), the start first: pop the
+the box; else among the destinations of r's ring (r.Onext first, r last), the vertices themselves,
+those in [1, W−2] × [1, H−2] scored by min(x, W−1−x, y, H−1−y), the first deepest (none, no fill),
+and from the clip from the centre toward it (T3d: T3b had each destination clipped and scored; the
+clip's result is used untested: off the map it would index cells outside the level; not reached as
+read). A stack of 12-byte seeds (x, y, z), the start first: pop the
 last; move left while the left cell is free (zone byte 0xFF); then rightwards while the cell is
 free: zone byte = G's id, bit 28 unless islands on level 0; above and below, each run of free
 cells gives one seed (its first cell), pushed when the run ends (a cell not free) or at the
@@ -559,6 +560,23 @@ whatever the order (of its left neighbour's when the start is not free and that 
 when neither is: a zone whose centre and its left cell lie on borders gets no cell). Zones fill
 in generator order after all borders, so a free region joined to two centres goes to the earlier
 zone.
+
+**Step 2 as ported (T3d).** The port's step 2 draws and cells equal the phase oracle's on the 24
+corpus cases (step 2's bytes as `zones.txt` measured them), its water zones `water.txt`'s. The
+borders as read exactly: b is never tested against the box, and a later side's a neither (only the
+first side's); "higher id" is strictly higher, signed; the edge walk's re-entry search takes the
+first side whose clip from its start lies in the box (no a ≠ b test, no end of the ring: the first
+side stops it); the corner rule is (0, 0) when q.x = 0 and q.y ≠ 0, (W−1, 0) when q.y = 0 and
+q.x ≠ W−1, (W−1, H−1) when q.x = W−1 and q.y ≠ H−1, else (0, H−1) (also a q on no edge); b and each
+corner passed are kept in the polygon, c not (it is the next side's a); q = c draws one cell. So
+straight lines can get points off the map, which `rmg_line_draw` indexes unchecked (another row's
+cell, or memory past the cells): never in the corpus, a typed error (RMG-QUIRK-4). The jagged
+drawer marks the current point clamped to the map and moves on, so a jagged line's last end is not
+marked. T3b's corner cases on the corpus (counted in the port, which equals the oracle): a clip
+from a side wholly off the map lands on the map 104 times in 19 cases; the edge walk's chord, the
+whole frame and a dropped point never occur; 20 zones in 6 cases (13 water, 7 land) fill nothing,
+their start and its left cell on borders (the ledger's open table). The temporary zone's town type
+is never read (type 3), so only whether it draws counts; a water zone's +0x8 stays the heap's.
 
 **Step 2's water connections (T3b).** `rmg_water_zones_connect` (n, the triangulation), n the
 zones before this level's step (on level 1 it counts level 0's water zones; nothing is new
@@ -2004,7 +2022,7 @@ trunc(sqrt) of integer squares; `crt_ftol` truncation. Limits: 3 passes, 32 (65)
 | RMG-ZON-010 | Level 1 always, level 0 with water: per original zone 8 directions, p = (trunc(2(s cos) + x), trunc(2(s sin) + y)); off-map refused when x + s cos (y + s sin) is off too; p must fit a temporary zone of base s; p into the triangulation. *(QC: mixed units)* | 0x532A5B of the temporary zone *(QC: uninitialised town types decide it)* | §2.2 |
 | RMG-ZON-011 | On level 0, p a water zone (type 3, terrain 8, base s, bands 100–1000/5 and 2000–6000/1, nothing else) appended; on level 1 a point without zone (rock). *(QC: fields uninitialised)* | its generator's 0x532A5B (QC as above) | §2.2 |
 | RMG-ZON-012 | Borders, per zone in order: its Voronoi cell's sides in Onext order from the first on the map, each clipped both ways (the line's first point in the box), a→b drawn in its id when the neighbour is none or higher: jagged (limit the smaller size) for the zones present at the start unless islands on level 0, else straight; leaving the map, the map's edge to the next side's entry corner by corner, straight in its id, at once when the two share x or y; no side on the map, the whole frame; the points into +0x3F4. *(QC: the line clip; the shortcut's chords)* | per split, L > 1: 0x53C0F2 %min(limit, L) − half | §2.2 |
-| RMG-ZON-013 | Fill after all borders, per zone in order: the 4-connected free region of its centre (off the map: of the clipped point toward its ring's neighbour deepest in the map; a centre not free: its left cell's region, or none): zone index (+0x20 bits 16–23), land bit 28 (not on the islands' level 0). *(QC: no cell)* | — | §2.2 |
+| RMG-ZON-013 | Fill after all borders, per zone in order: the 4-connected free region of its centre (off the map: of the clip toward its ring's destination vertex deepest in the map, T3d; a centre not free: its left cell's region, or none): zone index (+0x20 bits 16–23), land bit 28 (not on the islands' level 0). *(QC: no cell)* | — | §2.2 |
 | RMG-ZON-014 | Water zones: new triangulation neighbours whose side's clip is on the map connected (value 0, wide, created); hop counts from each earlier zone; each new zone to its earlier neighbours in order unless Z.dist[c] > W.dist[c] + 1 for some other zone c (wide, not created), the counts updated after each. | — | §2.2 |
 
 Reads: step 1's positions and sizes. Floats: 44 sites, s × T[k] as f64, doubled, + f64(x),

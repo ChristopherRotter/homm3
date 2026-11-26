@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23; increments 1 and 2 **closed** (2026-11-24, RMG-Q2;
 2026-11-25, decision 10; `E14-archive.md`); increments 3 to 7 cut, increment 3 refined (T3a to
-T3e); next T3a · Lane: **rmg** (opened
+T3e; T3a to T3d done); next T3e · Lane: **rmg** (opened
 at this refinement) · Prerequisite of E30 (the custom generator) · Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -127,7 +127,7 @@ about one session, the oracle's set staged from the PC for each):
 | T3a (done) | The phase oracle again (`clients/capture/`, Wine): per step its draw count and its log's digest in `phases.txt` (a port of steps 1 to k compares its draws without the later ones); RMG-QUIRK-1's bytes, the temporary zone's and each water zone's unwritten fields (+0x40 to +0x49, +0x84, +0x94, +0xC to +0x18, its zone generator's +8) as `rmg_zone_generator_init` 0x5329E0 finds them, per case, and what moves them (T1c2's `m2-4p`: repeated corpus runs, the environment's size); the x87 control word at the generator's start (ADR-0029 point 4); corpus cases drawing 2SM2i(2) with three players and 2SM0k (their seeds found by the port's draw) for RMG-QUIRK-24 | `phases.txt`'s new format (ORACLE.md), the measurement (ORACLE.md, the ledger's -1), the corpus with its new cases (`kept.txt`, the T2c corpus test) |
 | T3b (done) | Exit (e), the items not read, into survey §2.2 and §3.2.4: the triangulation's insertion and finish (`triangulation_insert` 0x5FD790, `triangulation_finish` 0x5FDB40: whether Delaunay, what +0x1C and +0x20 hold), the fill's tail 0x53D640, the water zones' distance test and `rmg_zone_graph_distances`' order, the corner cases of `rmg_zone_borders_draw` and `rmg_segment_clip`, whether a division by zero reaches code 1 (RMG-QUIRK-3) | the survey, ZON-009 and -012 to -014 rewritten, `map.toml` |
 | T3c (done) | Step 1 (RMG-ZON-001 to -008): the zone generators, the layout tables (`rmg_layout_cos`, `_sin`, the terrain towns), the generator's cell record (the dump's 12 words), the comparison seam (ADR-0029 point 8: the port's cells in dump format 1 and its draws as the log's lines, their digests against `phases.txt` per step in CI); RMG-QUIRK-12, -3's step 1 case (an empty candidate list) a typed error; the increment's four flags registered in one re-hash (`quirk.rmg.zone_memory_model`, `terrain_towns_count`, `partition_units`, `cosmetic`; decision 10, `cross-lane`) | the cells after step 1 and the draws to it equal on the corpus |
-| T3d | Step 2 (RMG-ZON-009 to -014): the triangulation, the borders, the fill, the water zones and their connections; RMG-QUIRK-1's oracle model from T3a's measurement (its form decided at the increment's checkpoint, ADR-0029 point 6), -14, -3's step 2 cases; T3b's corner cases (the ledger's open table: the edge walk's chords checked against the oracle's step 2 cells) | the cells after step 2 and the draws to it equal |
+| T3d (done) | Step 2 (RMG-ZON-009 to -014): the triangulation, the borders, the fill, the water zones and their connections; RMG-QUIRK-1's oracle model from T3a's measurement (its form decided at the increment's checkpoint, ADR-0029 point 6), -14, -3's step 2 cases; T3b's corner cases (the ledger's open table: the edge walk's chords checked against the oracle's step 2 cells) | the cells after step 2 and the draws to it equal |
 | T3e | Step 3 and the terrain painter (RMG-TER-001 to -003, -005 to -018; survey §2.7.1 to §2.7.3): the boxes and centroids, the islands' coasts, the painter's sets, pinches and transitions; RMG-QUIRK-21's painters' half | the cells after step 3 and the draws to it equal; the increment's exit (a) to (e) |
 
 ## Risks
@@ -173,3 +173,9 @@ its checkpoint): `E14-archive.md`.
   harvested (`RMG_RULESET_HASH_VERSION` 3); the four flags at 56 to 59 (one agent; `faithful`'s
   core hash re-pinned, `cross-lane`); RMG-QUIRK-12 confirmed, -3's step 1 cases typed; log
   `## T3c`.
+- T3d (2026-11-26, whole at the user's choice): step 2 ported (RMG-ZON-009 to -014,
+  `triangulation.rs`, `partition.rs`): the step's draws and cells equal the oracle's on 24 of 24
+  with `zones.txt`'s bytes (22 with the provisional model's own), the water zones `water.txt`'s
+  (the oracle's new record, 44 in 4 cases); RMG-QUIRK-1's provisional form, -14 confirmed, -3's and
+  -4's step 2 cases typed; T3b's five corner cases counted on the corpus (the ledger's open
+  table); log `## T3d`.

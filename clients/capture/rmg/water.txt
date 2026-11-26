@@ -1,0 +1,47 @@
+# The zone generators after step 2 that step 1 did not leave so, rmg_level_zones_partition 0x53E050 (h3rmg.py
+# corpus --phases --record; ORACLE.md, "The memory record"; E14 T3d): the water zones step 2 appends, per case
+# and zone generator, layout.txt's fields but town2 (the heap's, not the same in two fresh starts).
+m2-4p 10 town=6 terrain=8 x=25 y=4 z=0 size=10
+m2-4p 11 town=5 terrain=8 x=81 y=16 z=0 size=10
+m2-4p 12 town=0 terrain=8 x=61 y=-4 z=0 size=10
+m2-4p 13 town=4 terrain=8 x=-10 y=36 z=0 size=10
+m2-4p 14 town=2 terrain=8 x=-4 y=21 z=0 size=10
+m2-4p 15 town=2 terrain=8 x=66 y=53 z=0 size=10
+m2-4p 16 town=6 terrain=8 x=46 y=73 z=0 size=10
+m2-4p 17 town=4 terrain=8 x=25 y=73 z=0 size=10
+m2-4p 18 town=5 terrain=8 x=10 y=67 z=0 size=10
+l1-4p-b 7 town=-1 terrain=8 x=20 y=6 z=0 size=13
+l1-4p-b 8 town=4 terrain=8 x=57 y=6 z=0 size=13
+l1-4p-b 9 town=7 terrain=8 x=84 y=11 z=0 size=13
+l1-4p-b 10 town=5 terrain=8 x=99 y=55 z=0 size=13
+l1-4p-b 11 town=6 terrain=8 x=54 y=73 z=0 size=13
+l1-4p-b 12 town=3 terrain=8 x=13 y=56 z=0 size=13
+l1-4p-b 13 town=7 terrain=8 x=-13 y=30 z=0 size=13
+l1-4p-b 14 town=3 terrain=8 x=119 y=30 z=0 size=13
+l1-4p-b 15 town=6 terrain=8 x=110 y=79 z=0 size=13
+l1-4p-b 16 town=2 terrain=8 x=84 y=105 z=0 size=13
+l1-4p-c 8 town=0 terrain=8 x=14 y=93 z=0 size=14
+l1-4p-c 9 town=3 terrain=8 x=-14 y=65 z=0 size=14
+l1-4p-c 10 town=7 terrain=8 x=59 y=80 z=0 size=14
+l1-4p-c 11 town=0 terrain=8 x=54 y=107 z=0 size=14
+l1-4p-c 12 town=1 terrain=8 x=-9 y=39 z=0 size=14
+l1-4p-c 13 town=6 terrain=8 x=19 y=11 z=0 size=14
+l1-4p-c 14 town=4 terrain=8 x=86 y=63 z=0 size=14
+l1-4p-c 15 town=7 terrain=8 x=47 y=-3 z=0 size=14
+l1-4p-c 16 town=6 terrain=8 x=86 y=-3 z=0 size=14
+l1-4p-c 17 town=7 terrain=8 x=120 y=35 z=0 size=14
+xl2-4p-seed0 25 town=0 terrain=8 x=58 y=88 z=0 size=11
+xl2-4p-seed0 26 town=4 terrain=8 x=29 y=128 z=0 size=11
+xl2-4p-seed0 27 town=0 terrain=8 x=-1 y=128 z=0 size=11
+xl2-4p-seed0 28 town=7 terrain=8 x=22 y=61 z=0 size=11
+xl2-4p-seed0 29 town=1 terrain=8 x=67 y=146 z=0 size=11
+xl2-4p-seed0 30 town=1 terrain=8 x=47 y=137 z=0 size=11
+xl2-4p-seed0 31 town=4 terrain=8 x=31 y=99 z=0 size=11
+xl2-4p-seed0 32 town=7 terrain=8 x=110 y=124 z=0 size=11
+xl2-4p-seed0 33 town=7 terrain=8 x=88 y=146 z=0 size=11
+xl2-4p-seed0 34 town=4 terrain=8 x=118 y=104 z=0 size=11
+xl2-4p-seed0 35 town=4 terrain=8 x=96 y=82 z=0 size=11
+xl2-4p-seed0 36 town=7 terrain=8 x=-11 y=92 z=0 size=11
+xl2-4p-seed0 37 town=4 terrain=8 x=80 y=56 z=0 size=11
+xl2-4p-seed0 38 town=1 terrain=8 x=24 y=38 z=0 size=11
+xl2-4p-seed0 39 town=-1 terrain=8 x=46 y=16 z=0 size=11

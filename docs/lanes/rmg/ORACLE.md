@@ -232,6 +232,22 @@ and 1 are the reset cells (`rmg_map_cell_reset`'s values; step 1 writes no cell)
 per size and levels with the step in the header. Of the 201 zones without a town type, 55 drew -1
 and 62 Castle as their second (RMG-QUIRK-12 confirmed).
 
+## Step 2's water zones (T3d, 2026-11-26)
+
+**Kept:** `clients/capture/rmg/water.txt` (`corpus --phases --record`; `h3rmg.water_lines`): per
+case the zone generators after step 2 that step 1 did not leave so (the memory record's `generators
+2`): the water zones step 2 appends, layout.txt's fields but `town2` (a water zone's +0x8 is the
+heap's, its value not the same in two fresh starts); `corpus --phases` compares a run's with it
+(`water ok`). The corpus run that recorded it (24 cases, `--phases`) left `kept.txt`, `phases.txt`,
+`zones.txt` and `layout.txt` as they were.
+
+**What it showed:** 44 water zones in 4 cases (`m2-4p`, `l1-4p-b`, `l1-4p-c`, `xl2-4p-seed0`; the
+islands cases and the other water cases place none), some centred off the map (x = -13, y = 146 on
+XL); every one the port's with `zones.txt`'s bytes (`h3-pack-rmg`'s
+`the_corpus_appends_the_originals_water_zones`), and the port's step 2 draws and dumps have
+`phases.txt`'s digests on all 24 (`the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_2`). The
+dumps after step 2 are `rmg1-2.cells` in each case's clock folder (`h3rmg.read_cells`).
+
 ## Not yet
 
 - The memory-dependent draws are classified (T1c2, `docs/rules/quirks-rmg.md`): step 2's

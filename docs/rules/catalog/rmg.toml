@@ -3,7 +3,7 @@
 # code; scripts/exe.py, docs/exe/) is the primary source, the oracle (the original generating under
 # Wine, docs/lanes/rmg/ORACLE.md) the observation; the survey docs/rules/surveys/E14-generator.md
 # holds the readings (§3.2 the rules by phase). Increment 2 (E14 T2b, T2c): the settings, the
-# tables, the template and the positions.
+# tables, the template and the positions; increment 3 (E14 T3c, T3d): steps 1 and 2, the zones.
 
 [[rule]]
 id       = "RMG-SET-001"
@@ -429,3 +429,115 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "The phase oracle (E14 T3c): the port's step 1 draws (sites and values) have phases.txt's digests on the 24 corpus cases, its zone generators after step 1 are layout.txt's (xdd.c's generators record)"
   confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-009"
+title    = "Step 2's triangulation"
+context  = "rmg"
+status   = "implemented"
+summary  = "Per level, the level's zone centres (data: the zone generator) and then step 2's points into D. Lischinski's incremental Delaunay triangulation on half-edges in integers: the frame (-200, -200) to (400, 400) with the diagonal a to c, the starting edge a to b; Locate from the starting edge (a point at the origin gives the record, at the destination its twin); a point at a vertex is not inserted (its data lost), one on an edge (area 0, within both ends' squared distances of the edge's length) deletes it; the flips under the strict 32-bit RightOf and the 64-bit InCircle (the squares and areas in 32 bits). The records keep the original's vector (pairs in creation order, a deleted pair erased, a flip in place). The finish: per record in the vector's order with data and no mark, its left triangle's circumcentre from that corner A (B its destination, C its Onext's): u = B - A, v = C - B, w = A - C, r = (-u.y, u.x) x dot(v, w) / cross(u, w), A + (u + r) / 2 (32-bit products, both divisions toward zero), written to the triangle's three records; a triangle without a zone corner keeps -1."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T3b, T3d): triangulation_init 0x5FD010, triangulation_find 0x5FD6B0, triangulation_insert 0x5FD790, triangulation_finish 0x5FDB40 and its vector helpers 0x5FDCB0 to 0x5FDD40; survey E14-generator.md §2.2, §3.2.4"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3d): the port's step 2 draws and cells have phases.txt's digests on the 24 corpus cases (the borders and fills follow the circumcentres and the records' order)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-010"
+title    = "Step 2's points"
+context  = "rmg"
+status   = "implemented"
+summary  = "On level 1 always, on level 0 only with water: the temporary zone's constructor first (type 3, id -1, its town-type bytes not written: RMG-QUIRK-1), then per zone present at the step's start on the level, 8 directions (every fourth entry of rmg_layout_cos and _sin): c = f64(s) x cos, p.x = trunc(2c + f64(x)) (binary64, crt_ftol), likewise y with the sine, s the zone's scaled size; refused when p.x < 0 and f64(p.x) < c, or p.x >= W and W + c <= f64(p.x) (likewise y); then it must fit: every zone generator on the level 10 x trunc(dist) >= 8 x (its base + s), its base its template zone's (template units for step 1's zones, RMG-QUIRK-14, flag quirk.rmg.partition_units; off: its scaled size); kept, a water zone on level 0 (RMG-ZON-011), a point without zone on level 1, into the triangulation."
+quirks   = ["RMG-QUIRK-1", "RMG-QUIRK-14"]
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3d): rmg_level_zones_partition 0x53E050 to 0x53E4E9, rmg_zone_position_fits 0x53AD60; survey E14-generator.md §2.2, §3.2.4"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3d): the water zones after step 2 are water.txt's (the memory record's zone generators) on the 24 corpus cases, step 2's bytes as zones.txt measured them"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-011"
+title    = "Step 2's water zones"
+context  = "rmg"
+status   = "implemented"
+summary  = "On level 0 a point kept gets a water zone, appended to the template's zones (its id their count before it) and the zone generators: type 3 (junction), base s, Ownership 0 (position -1), treasure bands 100 to 1000 at density 5 and 2000 to 6000 at density 1, no towns, mines, terrains or monsters, strength 0; its bytes +0x40 (same type), +0x41 to +0x49 (the town types), +0x84 (terrain match), +0x94 (monster match) and +0xC to +0x18 not written (RMG-QUIRK-1, flag quirk.rmg.zone_memory_model: the oracle model's; off: zeroed); its zone generator's town type rand() % the set town types, the r-th (none set: -1, no draw; 0x532A5B), terrain 8, the point, size s; its +0x8 not written (the heap's)."
+quirks   = ["RMG-QUIRK-1"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3d): rmg_level_zones_partition 0x53E300 to 0x53E4B5, rmg_zone_generator_init 0x5329E0; survey E14-generator.md §2.2, §3.2.4"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3a, T3d): zones.txt's bytes (the memory record), water.txt's 44 water zones in 4 corpus cases (town types, positions, sizes)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-012"
+title    = "Step 2's borders"
+context  = "rmg"
+status   = "implemented"
+summary  = "Per zone generator of the level in order, rmg_zone_borders_draw on the record Locate finds at its centre (that record's zone draws, its jagged flag the caller's: a zone present at the step's start, not on the islands' level 0), the box [0, W) x [0, H). The sides of its Voronoi cell (from the left triangle's circumcentre of each record of the ring to its Onext's) in Onext order from the first whose clip from its start lies in the box and differs from its clip from its end (none: the whole frame straight, (W-1, H-1), (W-1, 0), (0, 0), (0, H-1), those four points kept). Each side's clipped start a kept in the zone's polygon; a to b drawn in the zone's id when its neighbour (the ring's next destination's zone) is none or of a strictly higher id: rmg_jagged_line_draw with the flag (its limit the smaller scaled size, the zone's without a neighbour; the midpoint split (a + b + 1) / 2, displaced by (rand() % k - k / 2) x the normal / L, k = min(limit, L), L > 1; 0x53C0F2; the current point marked clamped, the last end never), else rmg_line_draw (Bresenham from the end of lower x, the far end the zone byte only). When b is not the side's end, the map's edge from b: the next side whose clip from its start lies in the box gives c; while q shares neither x nor y with c, a straight line to the corner (0, 0) when q.x = 0 and q.y != 0, (W-1, 0) when q.y = 0 and q.x != W-1, (W-1, H-1) when q.x = W-1 and q.y != H-1, else (0, H-1), q kept; then q to c, q kept; the walk goes on from that side and ends at the first. The clip (rmg_segment_clip) moves p onto the left, top, right (W-1) and bottom (H-1) lines in that order, each when beyond it with a divisor not 0, 32-bit products divided toward zero, a move leaving the other axis' range from inside it a miss (p); it clips the line, not the side. The lines mark the zone byte and, unless on the islands' level 0, +0x28 bit 28. A straight line off the map (the original's unchecked index) and a jagged limit of 0 are typed errors (RMG-QUIRK-4, -3)."
+quirks   = ["RMG-QUIRK-3", "RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T3b, T3d): rmg_zone_borders_draw 0x53C390, rmg_segment_clip 0x53CAC0, rmg_jagged_line_draw 0x53BFF0, rmg_line_draw 0x53C220, rmg_level_zones_partition 0x53E584 to 0x53E608; survey E14-generator.md §2.2, §3.2.4"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3d): the port's step 2 draws (0x53C0F2 among them) and cells have phases.txt's digests on the 24 corpus cases"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-013"
+title    = "Step 2's fills"
+context  = "rmg"
+status   = "implemented"
+summary  = "After every zone's borders, per zone generator of the level in order, rmg_zone_flood_fill from its centre when on the map; else the ring's destination vertices of its record (Onext first) inside [1, W-2] x [1, H-2] scored by min(x, W-1-x, y, H-1-y), the first deepest one (none: no fill), and the clip from the centre toward it. A stack of seeds: each moved left while the cell left of it is free (zone byte 0xFF), then the cells free rightwards get the zone's id and, unless on the islands' level 0, +0x28 bit 28; per run of free cells above and below one seed (the one above pushed first). The cells filled are the 4-connected free region of the start, or of the cell left of it when the start is not free, none when neither is (in the corpus 20 zones, 7 of land, keep their border cells only). A clipped start off the map is a typed error (RMG-QUIRK-4)."
+quirks   = ["RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T3b, T3d): rmg_zone_flood_fill 0x53D380 and its tail 0x53D640; survey E14-generator.md §2.2, §3.2.4"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3d): the port's cells after step 2 have phases.txt's digests on the 24 corpus cases"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-014"
+title    = "Step 2's water connections"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_water_zones_connect with n the zone generators before the level's step: (1) per new zone i in order, per later zone j, when j's vertex is in i's ring (the first record from i's Onext) and the clip of that edge's side from its left triangle's centre toward its Oprev's lies in the box, a connection both ways, i's first (value 0, wide, created: step 6 makes no way); (2) every zone's distances to the n zones below n: the hop counts over the template's connections (32000 none; rmg_zone_graph_distances' values whatever its order); (3) per new zone W in order, per zone Z below n in order on the level whose vertex is in W's ring: refused when for some zone c below n other than Z, Z's distance to c exceeds W's by more than one; else a connection both ways, W's first (wide, not created: step 6 makes the way), the distances updated."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T3b, T3d): rmg_water_zones_connect 0x53DAD0, rmg_zone_graph_distances 0x53D8E0; survey E14-generator.md §2.2, §3.2.4"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "Not yet: the water connections show in step 6's cells (increment 4); T3d's unit test covers the off-map side"
+  confidence = "medium"

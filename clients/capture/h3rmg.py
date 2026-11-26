@@ -33,7 +33,8 @@ only its digests and the choices that made it are kept (rmg/kept.txt).
       game, and either fails on a difference; --phases runs the phase oracle and compares the
       log's and the dumps' digests with rmg/phases.txt too; --record writes the kept lines (the
       first map's; with --phases its phases', step 2's zone bytes, rmg/zones.txt, and the zone
-      generators after step 1, rmg/layout.txt, as well).
+      generators after step 1, rmg/layout.txt, and those step 2 appended or changed,
+      rmg/water.txt, as well).
   h3rmg.py phases [--only <id>,...] [--runs] [--out <dir>]
       The phase oracle's logs (a `corpus --phases` run's first maps) against survey §2.6: per
       phase, each site that drew, in how many cases and how often, marked `NOT IN §2.6` when
@@ -334,6 +335,8 @@ PHASE_HOOKS = 22
 ZONES = RMG / "zones.txt"
 # The zone generators after step 1 (E14 T3c): the layout, each zone's town types and terrain.
 LAYOUT = RMG / "layout.txt"
+# The zone generators after step 2 that step 1 did not leave so (E14 T3d): the water zones.
+WATER_ZONES = RMG / "water.txt"
 # The game's environment the sandbox's own (`--sandbox-env`, as before E14 T3a), not fixed.
 SANDBOX_ENV = False
 # The fixed environment's paths as the record was made (E14 T3a): its block's size moves the
@@ -449,6 +452,7 @@ def phase_facts(clock, g):
             "zones": fields,
             "zones_digest": zones_digest(fields),
             "layout": generators.get(1, []),
+            "water": generators.get(2, []),
             "cells": [(k, hashlib.sha256(p.read_bytes()).hexdigest()[:12]) for k, p in dumps],
             "files": dict(dumps)}
 
@@ -508,11 +512,23 @@ def layout_lines(ident, p):
             for k, words in enumerate(p["layout"])]
 
 
-def read_layout():
-    """layout.txt's lines by case."""
+def water_lines(ident, p):
+    """A case's water.txt lines (E14 T3d): per zone generator after step 2 that is not as step 1
+    left it (the water zones step 2 appends; none changed as read), its index and layout.txt's
+    fields but town2: a water zone's +0x8 is the heap's, its value not the same in two fresh
+    starts (RMG-QUIRK-1)."""
+    before = p["layout"]
+    return [f"{ident} {k} " + " ".join(f"{n}={v}" for n, v in zip(LAYOUT_FIELDS, words)
+                                       if n != "town2")
+            for k, words in enumerate(p["water"])
+            if k >= len(before) or before[k][:len(LAYOUT_FIELDS)] != words[:len(LAYOUT_FIELDS)]]
+
+
+def read_layout(path=LAYOUT):
+    """layout.txt's (or water.txt's) lines by case."""
     lines = {}
-    if LAYOUT.exists():
-        for line in LAYOUT.read_text().splitlines():
+    if path.exists():
+        for line in path.read_text().splitlines():
             if line and not line.startswith("#"):
                 lines.setdefault(line.split()[0], []).append(line)
     return lines
@@ -715,6 +731,8 @@ def corpus_command(args):
     zones = read_zones()
     kept_layout = read_layout()
     layout = dict(kept_layout)
+    kept_water = read_layout(WATER_ZONES)
+    water = dict(kept_water)
     failed = 0
     for case in cases:
         ident = case["id"]
@@ -745,6 +763,9 @@ def corpus_command(args):
             layout[ident] = layout_lines(ident, runs[0][1]["phases"])
             verdict += "; layout " + ("ok" if kept_layout.get(ident) == layout[ident] else
                                       "CHANGED" if ident in kept_layout else "new")
+            water[ident] = water_lines(ident, runs[0][1]["phases"])
+            verdict += "; water " + ("ok" if kept_water.get(ident, []) == water[ident] else
+                                     "CHANGED" if ident in kept_water else "new")
         failing = "CHANGED" in verdict
         for what, f in runs[1:]:
             said, fails = compared(runs[0][1], f, fresh=what == "twice")
@@ -784,6 +805,14 @@ def corpus_command(args):
                 "--phases --record; ORACLE.md,\n# \"The memory record\"; E14 T3c): per case and "
                 "zone generator in order, its town types +4 and +8, terrain,\n# position "
                 "(scaled to the map) and size.\n"
+                + "\n".join(body) + "\n")
+            body = [line for i in order for line in water.get(i, [])]
+            WATER_ZONES.write_text(
+                "# The zone generators after step 2 that step 1 did not leave so, "
+                "rmg_level_zones_partition 0x53E050 (h3rmg.py\n# corpus --phases --record; "
+                "ORACLE.md, \"The memory record\"; E14 T3d): the water zones step 2 appends, "
+                "per case\n# and zone generator, layout.txt's fields but town2 (the heap's, "
+                "not the same in two fresh starts).\n"
                 + "\n".join(body) + "\n")
     return 1 if failed else 0
 
