@@ -41,13 +41,16 @@ python3 h3rmg.py templates   # each case's template predicted from either rmg.tx
 Setup: the client lane's staging set (`clients/capture/README.md`, "Before the first run"), then
 `env -u TMPDIR clients/capture/setup.sh`. The tab's points are `adv-random`'s (E27 design §3.16).
 
-## The corpus (21 cases)
+## The corpus (24 cases)
 
 `rmg/corpus.toml`: every size (S, M, L, XL), one and two levels (size indices 1 to 32), 2 to 8
 players with and without teams, computer-only players with and without their teams, eight players
 in all, water none, normal and islands, monsters weak, normal and strong, seeds from 0 to
 2 147 483 647 (the last second `time()` gives) with three consecutive seconds for one set of
-choices. Each `kept.txt` line: the seed and template the description names, the format, size,
+choices. Since T3a three cases for RMG-QUIRK-24, their seeds found by the port's template draw:
+`s1-3p-2sm2i2` (2SM2i(2), whose human starts 3 and 5 have no Ownership, three players),
+`s1-2p-2sm0k` and `s1-1p-c1-2sm0k` (2SM0k, whose computer starts 3 to 8 have none; two players, one
+of them computer-only in the second). Each `kept.txt` line: the seed and template the description names, the format, size,
 levels, the decompressed map's length and the first 16 hex digits of the SHA-256 of the map and
 of its gzip file.
 
@@ -103,9 +106,14 @@ runs (7 without a junction zone, 11 with one level) has no dump; steps 9 and 12 
 the corpus. About 20 minutes for the corpus with `--again --twice`; the dumps 0.06 to 2 MB each
 (about 0.7 GB for the corpus's three runs, in `clients/out/rmg/`, never in git).
 
-**Kept:** `clients/capture/rmg/phases.txt`, per case the draws, the log's digest and each step's
-dump's (`corpus --phases --record`). For increments 3 to 5: the port's draws compared with the
-log and its cells with the dump of the same step find a divergence at its step and draw.
+**Kept:** `clients/capture/rmg/phases.txt` (`corpus --phases --record`; its format since T3a),
+per case: `draws=` and `log=` (the whole log's digest), `cw=` (the x87 control word, below),
+`zones=` (the digest of the case's `zones.txt` lines, below; `none` without step 2's zones),
+`steps=` per phase of the log (`setup`, `template`, the steps that ran, `generated`, `write`) its
+draws and the digest of its draw lines as the log prints them (`<site> <value>\n`, the site in
+upper-case hex; an empty phase `e3b0c44298fc`), and `cells=` each step's dump's digest. A port of
+steps 1 to k compares its draws per phase (`h3rmg.phase_digests`) without the later ones, and its
+cells with the dump of the same step: a divergence found at its step and draw.
 
 **What it showed:**
 
@@ -142,26 +150,86 @@ log and its cells with the dump of the same step find a divergence at its step a
   30-31 and +0x2C's to the end. No map changed by them. The dumps keep them as they are; `corpus
   --again` names them apart (`h3rmg.MEMORY_BITS`) and fails only on other differences.
 
+## The memory record and the fixed environment (T3a, 2026-11-25)
+
+**How it runs.** With `H3RMG` the hooks also write `rmg<g>.memory` beside the log (`xdd.c`'s
+header, section 10): the x87 control word (`fnstcw`) at the generator's `srand` and at each step's
+first call, and at each call of `rmg_zone_generator_init` 0x5329E0 (step 1's template zones at
+0x53BDA1, step 2's temporary zone at 0x53E149 and water zones at 0x53E45C) the zone's 0xD4 bytes
+and the zone generator's first 0x44 as memory holds them before the constructor runs (read only;
+the temporary zone is the caller's stack). `h3rmg.phase_facts` checks the record against the log:
+per step as many zones with a set town type as draws of 0x532A5B. **Kept:**
+`clients/capture/rmg/zones.txt`, per case each step 2 zone in the call order with RMG-QUIRK-1's
+fields: its kind (`temporary` per level, `water`), `set` (the town-type bytes +0x41..+0x49 not 0:
+the constructor draws `rand() % set` when above 0), `towns` (+0x40..+0x49), `limits`
+(+0xC..+0x1B), `m84`, `m94` and the zone generator's `g8`, in hex. `h3rmg.py memory [--against
+<out>]` summarises a run's records and names the fields that differ from another run's.
+
+**The game's environment is fixed.** The original's heap layout follows its environment block,
+and the sandbox's environment differs per session (17 KB; its `PATH` holds a session's folder)
+and the clock folder's path with the run (`one`'s `out/one/clock`, `corpus`'s
+`out/<id>/run1/clock`). Since T3a `h3rmg.py` sets `H3_FIXED_ENV` (`h3drive.py`'s `FIXED_ENV`):
+the game and every Wine command get only `HOME`, `TZ`, `WINEPREFIX`, `WINEDEBUG`, `DISPLAY`,
+`ALSA_CONFIG_PATH` and the harness's `H3*` variables, sorted, `PATH` fixed, and `H3CLOCK` through
+a link of one length (`original-data/wine/clock`). `--sandbox-env` gives the game the sandbox's
+own environment, as every run before T3a. The block's size still follows the clone's folder,
+`HOME` and the prefix: `h3rmg.py` refuses a run whose paths are not the record's
+(`FIXED_PATHS`: the clone at `/home/claude/homm3`, `/root`, `/root/.wine-h3`); any `H3*` variable
+reaches the game. The corpus with `--phases --twice --again --record`: about 32 minutes.
+
+**What it showed** (2026-11-25; the measurement: 31 more starts of `m2-4p`, `l1-4p-b` and
+`xl2-8p-t4-islands` by one agent, E14 log, T3a):
+
+- **The control word** is 0x027F (53-bit precision, round to nearest, every exception masked) at
+  the generator's `srand` and at every step's first call, in all 72 records of the corpus run (the
+  first maps, the second maps, the fresh repeats): ADR-0029 point 4's binary64 holds.
+- **Step 2's zones** (`zones.txt`): 73 in 21 cases (`s1-2p-dry`, `m1-4p-t2` and `l1-8p-dry` have
+  one level and no water). The 29 temporary zones (one per level that tests positions) all have set
+  town types (masks 0BB, 0B9, 09F, 1F9: 5 to 7 set), their zone generator's +8 0x73; of the 44
+  water zones 42 have set ones (36 all nine), two none. Every record agrees with its log.
+- **Fresh starts under the fixed environment agree:** the 24 first maps (`--twice`: maps, logs,
+  cells and `zones.txt`'s form) and the measurement's repeats, whatever the variables outside
+  `H3*` (5 000 characters of junk, a longer `PATH`). The bytes' values do not: the temporary
+  zone's from +0x14 (the limits), the zone generator's outside +8, a water zone's +8 (`l1-4p-b`'s,
+  about half the starts) and `xl2-4p-seed0`'s water town bytes differ between starts; whether a
+  town byte is 0 never did.
+- **What moves them is the environment block's size.** An `H3*` variable of N characters (`m2-4p`,
+  about 60 values of N to 8 000) moves the water zones' bytes at a few sizes only, each flip at
+  N ≡ 2 (mod 8), one 16-byte granule of the UTF-16 block: N 1-161 the record's state; 162-225
+  and 226-353 other masks, the same map; 354-1002 one water zone with none set and the variant map
+  (`45ae078f…`, 113 282 bytes, the one T1c2's and T2c's sandboxes saw); 1010 the record's state
+  again; above it the same masks, the zone generators' +8 shifted by one and then two zones.
+  `xl2-8p-t4-islands` (two temporary zones, no water zone) never moved; the temporary zone (the
+  stack) never changed in any run. A map changed only where a water zone's set count crossed 0
+  (one draw fewer): 9 against 8 or 5 set changed none. With `--sandbox-env` (17 KB) `m2-4p` gives
+  the variant and `l1-4p-b` the old first map.
+- **Against the record of T1b1 and T1b2** (the sandbox's environment then): 19 of the 21 first
+  maps are `kept.txt`'s with T1b2's logs and dumps (`m2-4p` among them); `l1-4p-b`'s first map is
+  T1b2's second (`59ff5725…`) and its second T1b1's first (`e1d71d2f…`), and `xl2-4p-seed0` gives
+  another map (`e8336740…`, 371 991 bytes, 8XM12 still). `kept.txt` and `phases.txt` hold the fixed
+  environment's maps since T3a. 23 of the 24 second maps are their first (not `l1-4p-b`'s).
+- **RMG-QUIRK-24's cases** all generate; `h3_map` reads the 24 maps, 23 import and validate
+  (`l2-2p-c4-islands` refused, as before). `s1-3p-2sm2i2`'s player block has red and blue only
+  (its description: three humans): tan, the port's colour on position 7, which no zone has, is
+  left out (`h3-pack-rmg`'s `the_corpus_starts_without_ownership_place_the_colours_as_the_original`);
+  the 2SM0k cases give both players their main towns.
+
 ## Not yet
 
 - The memory-dependent draws are classified (T1c2, `docs/rules/quirks-rmg.md`): step 2's
   unwritten town-type bytes (RMG-QUIRK-1) and step 15's read past the cells (RMG-QUIRK-2) are
   modelled on a fresh start's first map here, `fixed` zeroing them; the cell bits
-  `rmg_map_cell_reset` leaves are not a quirk (the port zeroes them). **For step 2's port:** the
-  phase hooks log the nine bytes +0x41..+0x49 of each temporary and water zone when
-  `rmg_zone_generator_init` 0x5329E0 counts them (and step 15's cell past the array), so the model
-  is the oracle's data, not a guess.
-- **A first map varied once** (T1c2's sandbox, 2026-11-24): `corpus` gave 20 of 21 as kept, and
-  `m2-4p` another map (113 282 bytes, its towns elsewhere, the header differing from byte 235);
-  run alone right after, it was as kept. So "21 of 21 the same from fresh starts" (T1b1, T1b2) does
-  not hold in every run; the likely cause is step 2's stack bytes (RMG-QUIRK-1), not followed. The
-  measurement at step 2's port must find what moves them (the run's environment, as for second
-  maps) before the model is fixed. **Again in T2c's sandbox** (2026-11-25, `corpus --phases`):
-  `m2-4p` the same other map (113 282 bytes, `h3m=45ae078f…`) in the corpus and alone; its dumps 0
-  and 1 are `phases.txt`'s, step 2's differ (0x532A5B drawn 10 times), so it is step 2's draw; the
-  other 20 as kept.
-- **The port's draws before step 1** (E14 T2c): on the 21 first maps the log's draws between `seed`
-  and `step 1` are the port's, one `549975 <the first rand() after srand(seed)>` each (21 of 21;
+  `rmg_map_cell_reset` leaves are not a quirk (the port zeroes them). Step 2's bytes are measured
+  (T3a, above; the model's form at increment 3's checkpoint, T3d); step 15's cell past the array
+  is not logged yet (increment 6).
+- **A first map varied** in T1c2's sandbox (2026-11-24: `m2-4p` another map, 113 282 bytes, in
+  the corpus, as kept alone) and in T2c's (2026-11-25: the same map in the corpus and alone, step
+  2's draws of 0x532A5B differing): the sandbox's environment, whose size moves the water zones'
+  heap bytes (T3a, above; the clock folder's path differs between `corpus` and `one`). The fixed
+  environment gives `m2-4p` `kept.txt`'s map in both.
+- **The port's draws before step 1** (E14 T2c; 24 of 24 since T3a): on the first maps the log's
+  draws between `seed` and `step 1` are the port's, one `549975 <the first rand() after
+  srand(seed)>` each (21 of 21 in T2c;
   `h3-pack-rmg`'s `the_corpus_draws_the_originals_templates` asserts the port's, the template
   `kept.txt`'s).
 - **The corpus's objects** (T1c2, survey §3.3): 47 458 objects of 115 classes; `h3_map` reads all

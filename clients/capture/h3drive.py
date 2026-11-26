@@ -105,6 +105,15 @@ ROOT = HERE.parent.parent
 GAME_DIR = (Path(os.environ.get("H3_RUN") or ROOT / "original-data" / "wine") / "game").resolve()
 SCREENS = HERE / "screens.toml"
 DISPLAY = os.environ.get("H3_DISPLAY", ":99")
+# The game's own environment (E14 T3a, *provisional*; docs/lanes/rmg/ORACLE.md, "The memory
+# record"): with H3_FIXED_ENV set, every Wine command gets only these variables and the
+# harness's own H3* ones, PATH fixed, and the game its clock folder by a link of a fixed length
+# (CLOCK_LINK). The original's heap layout follows its environment block's size, and a
+# sandbox's environment differs per session (its PATH holds a session's folder): that moved the
+# random map generator's uninitialised bytes, so the oracle (h3rmg.py) runs with it set.
+FIXED_ENV = ("HOME", "TZ", "WINEPREFIX", "WINEDEBUG", "DISPLAY", "ALSA_CONFIG_PATH")
+FIXED_PATH = "/usr/local/bin:/usr/bin:/bin"
+CLOCK_LINK = GAME_DIR.parent / "clock"
 WIDTH, HEIGHT = 800, 600
 # Where the battle's recipes park the mouse: the game draws its own cursor, so in the panel, off
 # the battlefield, beside the log's item (the layout's [log], compared since M3 T4b-2b-1) and
@@ -248,6 +257,9 @@ def env():
     e.setdefault("WINEPREFIX", str(Path.home() / ".wine-h3"))
     e["WINEDEBUG"] = "-all"
     e["DISPLAY"] = DISPLAY
+    if os.environ.get("H3_FIXED_ENV"):
+        e = {k: v for k, v in sorted(e.items()) if k in FIXED_ENV or k.startswith("H3")}
+        e["PATH"] = FIXED_PATH
     return e
 
 
@@ -488,7 +500,13 @@ class Game:
             shutil.rmtree(self.clock_dir)
         self.clock_dir.mkdir()
         e = env()
-        e["H3CLOCK"] = "Z:" + str(self.clock_dir.resolve()).replace("/", "\\")
+        clock = self.clock_dir.resolve()
+        if os.environ.get("H3_FIXED_ENV"):
+            # One length whatever the run's out folder (H3_FIXED_ENV, above).
+            CLOCK_LINK.unlink(missing_ok=True)
+            CLOCK_LINK.symlink_to(clock)
+            clock = CLOCK_LINK
+        e["H3CLOCK"] = "Z:" + str(clock).replace("/", "\\")
         if self.frozen is not None:
             e["H3FROZEN"] = str(self.frozen)
         sound_settings(self.sound)
@@ -508,6 +526,8 @@ class Game:
             e["ALSA_CONFIG_PATH"] = f"/usr/share/alsa/alsa.conf:{null.resolve()}"
             e["H3SOUND"] = "1"
         log = open(self.out / "wine.log", "w")
+        if os.environ.get("H3_FIXED_ENV"):
+            e = dict(sorted(e.items()))
         self.proc = subprocess.Popen(
             ["wine", "Heroes3.exe"], cwd=GAME_DIR, env=e, stdout=log, stderr=log
         )

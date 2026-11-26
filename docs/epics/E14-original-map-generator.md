@@ -102,7 +102,7 @@ reads). Rule ids are survey §3.2's (provisional until an increment writes them)
 Every increment needs the oracle's set staged from the PC (the client lane's, ORACLE.md).
 
 **Every increment's exit criteria**, beside the Definition of Done: (a) its rules in the catalog,
-implemented, each with a test; (b) on the 21 corpus cases in `faithful`, the port's draws and its
+implemented, each with a test; (b) on the corpus's cases (24 since T3a) in `faithful`, the port's draws and its
 cells after each of its steps equal the phase oracle's (`clients/capture/rmg/phases.txt`'s
 digests in CI, the whole logs and dumps beside the oracle; a divergence named by step and draw);
 (c) its ledger entries confirmed by (b) or re-read, each flag's `strict-fixed` behaviour tested,
@@ -124,7 +124,7 @@ about one session, the oracle's set staged from the PC for each):
 
 | Task | What | Out |
 |---|---|---|
-| T3a | The phase oracle again (`clients/capture/`, Wine): per step its draw count and its log's digest in `phases.txt` (a port of steps 1 to k compares its draws without the later ones); RMG-QUIRK-1's bytes, the temporary zone's and each water zone's unwritten fields (+0x40 to +0x49, +0x84, +0x94, +0xC to +0x18, its zone generator's +8) as `rmg_zone_generator_init` 0x5329E0 finds them, per case, and what moves them (T1c2's `m2-4p`: repeated corpus runs, the environment's size); the x87 control word at the generator's start (ADR-0029 point 4); corpus cases drawing 2SM2i(2) with three players and 2SM0k (their seeds found by the port's draw) for RMG-QUIRK-24 | `phases.txt`'s new format (ORACLE.md), the measurement (ORACLE.md, the ledger's -1), the corpus with its new cases (`kept.txt`, the T2c corpus test) |
+| T3a (done) | The phase oracle again (`clients/capture/`, Wine): per step its draw count and its log's digest in `phases.txt` (a port of steps 1 to k compares its draws without the later ones); RMG-QUIRK-1's bytes, the temporary zone's and each water zone's unwritten fields (+0x40 to +0x49, +0x84, +0x94, +0xC to +0x18, its zone generator's +8) as `rmg_zone_generator_init` 0x5329E0 finds them, per case, and what moves them (T1c2's `m2-4p`: repeated corpus runs, the environment's size); the x87 control word at the generator's start (ADR-0029 point 4); corpus cases drawing 2SM2i(2) with three players and 2SM0k (their seeds found by the port's draw) for RMG-QUIRK-24 | `phases.txt`'s new format (ORACLE.md), the measurement (ORACLE.md, the ledger's -1), the corpus with its new cases (`kept.txt`, the T2c corpus test) |
 | T3b | Exit (e), the items not read, into survey §2.2 and §3.2.4: the triangulation's insertion and finish (`triangulation_insert` 0x5FD790, `triangulation_finish` 0x5FDB40: whether Delaunay, what +0x1C and +0x20 hold), the fill's tail 0x53D640, the water zones' distance test and `rmg_zone_graph_distances`' order, the corner cases of `rmg_zone_borders_draw` and `rmg_segment_clip`, whether a division by zero reaches code 1 (RMG-QUIRK-3) | the survey, ZON-009 and -012 to -014 rewritten, `map.toml` |
 | T3c | Step 1 (RMG-ZON-001 to -008): the zone generators, the layout tables (`rmg_layout_cos`, `_sin`, the terrain towns), the generator's cell record (the dump's 12 words), the comparison seam (ADR-0029 point 8: the port's cells in dump format 1 and its draws as the log's lines, their digests against `phases.txt` per step in CI); RMG-QUIRK-12, -3's step 1 case (an empty candidate list) a typed error; the increment's four flags registered in one re-hash (`quirk.rmg.zone_memory_model`, `terrain_towns_count`, `partition_units`, `cosmetic`; decision 10, `cross-lane`) | the cells after step 1 and the draws to it equal on the corpus |
 | T3d | Step 2 (RMG-ZON-009 to -014): the triangulation, the borders, the fill, the water zones and their connections; RMG-QUIRK-1's oracle model from T3a's measurement (its form decided at the increment's checkpoint, ADR-0029 point 6), -14, -3's step 2 cases | the cells after step 2 and the draws to it equal |
@@ -138,14 +138,16 @@ about one session, the oracle's set staged from the PC for each):
   failure without a `random_maps` folder) with its clock fixed; T1b finds the way or says
   what the fallback is (a debugger-set seed).
 - **Floats:** x87 at the thread's 53-bit control word, so binary64 (ADR-0029 point 4);
-  increment 3 reads the control word in the oracle to confirm.
+  confirmed by T3a's memory record: 0x027F at the generator's start and at every step.
 - **Time limits or retries** in the generation would make the output depend on the machine;
   T1a2 looks for them.
 - **The writer's coverage:** seven gaps (survey §3.3.3) the adventure and town lanes close
   from their inboxes before increment 7 (RMG-Q2); one still open then is the rmg lane's,
   `cross-lane` with the user's consent.
-- **The oracle model** (RMG-QUIRK-1): a first map varied once (ORACLE.md); increment 3 measures
-  what moves the stack bytes before the model is fixed.
+- **The oracle model** (RMG-QUIRK-1): measured by T3a (ORACLE.md, "The memory record and the
+  fixed environment"): the temporary zone's stack bytes are stable, the water zones' heap bytes
+  follow the game's environment block's size (fixed for the oracle since); the model's form at
+  increment 3's checkpoint.
 - **The registry's flags** (`h3_content::MAX_QUIRKS`): widened from 64 to 128 by T2c (decision 9);
   54 positions are taken; of the ledger's 16 `quirk.rmg.*` flags still to come (ADR-0029 point 6),
   increment 3's four at T3c (decision 10), the other 12 with their steps.
@@ -154,3 +156,8 @@ about one session, the oracle's set staged from the PC for each):
 
 The full records: `E14-log.md`. Increment 1's tasks (T1a1 to T1c3) and increment 2's (T2a to T2c,
 its checkpoint): `E14-archive.md`.
+
+- T3a (2026-11-25): the phase oracle's memory record (the x87 control word 0x027F, step 2's zone
+  bytes at `rmg_zone_generator_init`), `phases.txt`'s per-phase draws and digests, `zones.txt`,
+  the oracle's game environment fixed (`H3_FIXED_ENV`), the corpus at 24 (RMG-QUIRK-24's three
+  cases, confirmed), what moves RMG-QUIRK-1's bytes (one agent); log `## T3a`.
