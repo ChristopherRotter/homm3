@@ -33,13 +33,11 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
   generated map's random games and `h3-cli`'s workloads on it cast without help; `h3-sim`'s
   `tests/casts.rs` has a caster setup on the duel (`caster_setup`: a book, the five spells,
   Knowledge 20), the mask property's kind 5.
-- **The cut** (proposed 2026-11-26, the user confirms at the task's start): in two, as T135b
-  (decision 391) and T125b (decision 357): **T144b1** the map (`e08-spells-36.h3m` with its
-  `h3-map` test) and the golden replays (each spell, the failures, the prison freed and full,
-  both flag settings), the server lane's counts of the golden adventure replays bumped
-  (`cross-lane`, as T135b1); **T144b2** the plans and oracles (the plans' heroes given the five
-  spells and a book), the properties of §17, the workload on the new map and the census
-  `--with-original-data` (89 prisons, one Market of Time).
+- **The cut:** **whole, one pull request** (decision 423, the user, 2026-11-26; not the
+  recommendation, two parts as T135b): the map (`e08-spells-36.h3m` with its `h3-map` test), the
+  golden replays with the server lane's counts bumped (`cross-lane`, as T135b1), the plans and
+  oracles (the plans' heroes given the five spells and a book), the properties of §17, the
+  workload on the new map and the census `--with-original-data` (89 prisons, one Market of Time).
 - **Depends on:** nothing open (T144a2's #1191 merged 2026-11-26; the inbox's two property seeds
   settled first, `adventure/reach-property-seed`). **Status:** T144b next. Then T145 (the
   audit, the `shared/` task; it applies `adr-drafts/0016-0017-hero-list.md` and
