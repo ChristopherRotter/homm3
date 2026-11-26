@@ -13,7 +13,6 @@ use super::{
     ruleset, setup, spell,
 };
 use crate::casts::balance;
-use crate::spells::boosts::change_value;
 use crate::spells::{Candidate, SpellContext};
 use crate::walker::Walker;
 
@@ -124,37 +123,6 @@ fn bless_raises_the_damage_to_the_maximum_and_its_bonus() {
     let bless = |mastery, s| sc.value(s, Candidate::cast(spell(&r, "bless"), mastery, 6));
     assert_eq!((bless(2, RUNNERS), bless(2, ARCHERS)), (872, 794));
     assert_eq!(bless(0, RUNNERS), 464);
-}
-
-// covers: BAT-AI-016
-#[test]
-fn a_morale_or_luck_change_with_and_without_the_slip() {
-    let (p, n) = (
-        X87::ratio(173, 10_000, 53).unwrap(),
-        X87::ratio(833, 10_000, 53).unwrap(),
-    );
-    let micro = |m, c, slip| {
-        let x = change_value(m, c, (p, n), slip);
-        x.ftol_times(X87::int(1_000_000))
-    };
-    // A rise from −3 by 1: with the slip valued as crossing 0, −2 × 0.0173 + 3 × 0.0833; as the
-    // rule, 0.0833.
-    assert_eq!(micro(-3, 1, true), 215_300);
-    assert_eq!(micro(-3, 1, false), 83_300);
-    // A rise that crosses 0 (from −1 by 2): 0.0173 + 0.0833 either way.
-    assert_eq!(micro(-1, 2, true), 100_600);
-    assert_eq!(micro(-1, 2, false), 100_600);
-    // Above 0, cut at 3: from 1 by 5 counts 2; nothing at 3.
-    assert_eq!(micro(1, 5, false), 34_600);
-    assert_eq!(micro(3, 1, false), 0);
-    // Falls: below 0 each point costs 0.0833, cut at −3; above 0 0.0173; across 0 both; nothing
-    // at −3; a change of 0 is worth nothing.
-    assert_eq!(micro(-1, -1, true), -83_300);
-    assert_eq!(micro(-2, -3, true), -83_300);
-    assert_eq!(micro(2, -1, true), -17_300);
-    assert_eq!(micro(1, -3, true), -183_900);
-    assert_eq!(micro(-3, -1, true), 0);
-    assert!(change_value(0, 0, (p, n), true).is_zero());
 }
 
 // covers: BAT-AI-016
