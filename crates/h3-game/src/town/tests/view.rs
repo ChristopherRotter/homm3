@@ -56,6 +56,7 @@ fn tavern_rules() -> GameRuleset {
             tavern: true,
             ..BuildingRoles::default()
         },
+        war_machine: None,
     });
     rules_of(towns_core(false), &towns, false, 4)
 }
@@ -731,6 +732,7 @@ fn guild_view_rules() -> GameRuleset {
         requires: vec![],
         cost: vec![],
         roles,
+        war_machine: None,
     };
     let guild = BuildingRoles {
         guild: Some(1),

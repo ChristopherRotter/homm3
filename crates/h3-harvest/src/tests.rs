@@ -108,6 +108,8 @@ pub(crate) fn inputs() -> Inputs {
             horde_buildings: Vec::new(),
             garrison: Vec::new(),
             dwelling_2_chance: 30,
+            blacksmith_machines: Vec::new(),
+            transformer_targets: Vec::new(),
         },
         bank_hexes: [
             [57, 61, 90, 93, 96, 125, 129],

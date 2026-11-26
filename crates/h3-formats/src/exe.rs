@@ -459,6 +459,8 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
             va: 0x005C_0C60,
             opcode: &[0x83, 0xF8],
         },
+        blacksmith_machines: 0x0064_2E90,
+        transformer_targets: 0x0064_12FC,
     },
     bank_hexes_va: 0x0063_D0E0,
     rmg: RmgTables {

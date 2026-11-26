@@ -74,6 +74,11 @@ fn fixture() -> Fixture {
         p.ints(&[8, 5, 3, 1]),
         p.ints(&[15, 7, 5, 3]),
     ];
+    let blacksmith_machines = p.ints(&[146, 148]);
+    let targets: Vec<i32> = (0..TRANSFORMER_CREATURES)
+        .map(|c| if c == 3 { 9 } else { 2 })
+        .collect();
+    let transformer_targets = p.ints(&targets);
     let code = p.va();
     p.bytes.extend_from_slice(&[0x83, 0xF8, 30]);
     Fixture {
@@ -92,6 +97,8 @@ fn fixture() -> Fixture {
                 va: code,
                 opcode: &[0x83, 0xF8],
             },
+            blacksmith_machines,
+            transformer_targets,
         },
     }
 }
@@ -190,6 +197,10 @@ fn reads_the_town_tables_from_a_synthetic_image() {
                 },
             ],
             dwelling_2_chance: 30,
+            blacksmith_machines: vec![146, 148],
+            transformer_targets: (0..TRANSFORMER_CREATURES)
+                .map(|c| if c == 3 { 9 } else { 2 })
+                .collect(),
         }
     );
     // The known build's addresses: an image of another build is refused before them.
@@ -224,6 +235,14 @@ fn malformed_values_are_refused() {
     assert_eq!(set(t.hordes, 1, 0x8000), out("horde growth", 0x8000));
     assert_eq!(set(t.horde_buildings, 3, 44), out("horde buildings", 44));
     assert_eq!(set(t.silo, 6, -1), out("town silo", 1));
+    assert_eq!(
+        set(t.blacksmith_machines, 1, -1),
+        out("blacksmith machines", 1)
+    );
+    assert_eq!(
+        set(t.transformer_targets, 144, -2),
+        out("transformer targets", 2)
+    );
     assert_eq!(set(t.garrison[1], 0, -8), out("neutral garrison", 8));
     assert_eq!(
         set(t.garrison[0], 0, 101),

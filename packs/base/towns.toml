@@ -5,7 +5,8 @@
 # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).
 # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md
 # 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6, E09-guild.md 2
-# (the guild weights, docs/epics/E09-design.md 83); format: crates/h3-pack-towns.
+# (the guild weights, docs/epics/E09-design.md 83), E09-trades.md 4 and 7.5 (the war
+# machines and the Transformer, design 102); format: crates/h3-pack-towns.
 
 [town_params]
 gold = "gold"
@@ -31,6 +32,16 @@ guild_resources = [["gold"], ["wood", "ore"], ["mercury", "sulfur", "crystal", "
 guild_slots = [5, 4, 3, 2, 1]
 spell_book_price = { gold = 500 }
 vortex_factor = 2
+merchants_stock = ["treasure", "treasure", "treasure", "minor", "minor", "minor", "major"]
+boat_price = { wood = 10, gold = 1000 }
+boat_type = 1
+university_skills = ["fire_magic", "air_magic", "water_magic", "earth_magic"]
+university_price = { gold = 2000 }
+transformer_into = "skeleton"
+transformer_dragons_into = "bone_dragon"
+
+[town_transformer]
+dragons = ["green_dragon", "gold_dragon", "red_dragon", "black_dragon", "hydra", "chaos_hydra"]
 
 [[town]]
 faction = "castle"
@@ -233,6 +244,7 @@ creatures = [
   name = "Marketplace"
   slot = 8
   cost = { wood = 5, gold = 500 }
+  marketplace = true
 
   [[town.building]]
   key = "resource_silo"
@@ -247,6 +259,7 @@ creatures = [
   name = "Blacksmith"
   slot = 7
   cost = { wood = 5, gold = 1000 }
+  war_machine = "ballista"
 
   [[town.building]]
   key = "lighthouse"
@@ -625,6 +638,7 @@ creatures = [
   name = "Marketplace"
   slot = 8
   cost = { wood = 5, gold = 500 }
+  marketplace = true
 
   [[town.building]]
   key = "resource_silo"
@@ -639,6 +653,7 @@ creatures = [
   name = "Blacksmith"
   slot = 7
   cost = { wood = 5, gold = 1000 }
+  war_machine = "first_aid_tent"
 
   [[town.building]]
   key = "mystic_pond"
@@ -1036,6 +1051,7 @@ creatures = [
   name = "Marketplace"
   slot = 8
   cost = { wood = 5, gold = 500 }
+  marketplace = true
 
   [[town.building]]
   key = "resource_silo"
@@ -1050,6 +1066,7 @@ creatures = [
   name = "Blacksmith"
   slot = 7
   cost = { wood = 5, gold = 1000 }
+  war_machine = "ammo_cart"
 
   [[town.building]]
   key = "artifact_merchants"
@@ -1057,6 +1074,7 @@ creatures = [
   slot = 10
   requires = ["marketplace"]
   cost = { gold = 10000 }
+  artifact_merchants = true
 
   [[town.building]]
   key = "sculptors_wings"
@@ -1435,6 +1453,7 @@ creatures = [
   name = "Marketplace"
   slot = 8
   cost = { wood = 5, gold = 500 }
+  marketplace = true
 
   [[town.building]]
   key = "resource_silo"
@@ -1449,6 +1468,7 @@ creatures = [
   name = "Blacksmith"
   slot = 7
   cost = { wood = 5, gold = 1000 }
+  war_machine = "ammo_cart"
 
   [[town.building]]
   key = "birthing_pools"
@@ -1852,6 +1872,7 @@ creatures = [
   name = "Marketplace"
   slot = 8
   cost = { wood = 5, gold = 500 }
+  marketplace = true
 
   [[town.building]]
   key = "resource_silo"
@@ -1866,6 +1887,7 @@ creatures = [
   name = "Blacksmith"
   slot = 7
   cost = { wood = 5, gold = 1000 }
+  war_machine = "first_aid_tent"
 
   [[town.building]]
   key = "cover_of_darkness"
@@ -1906,6 +1928,7 @@ creatures = [
   slot = 20
   requires = ["cursed_temple"]
   cost = { gold = 1000 }
+  transformer = true
 
   [[town.building]]
   key = "soul_prison"
@@ -2245,6 +2268,7 @@ creatures = [
   name = "Marketplace"
   slot = 8
   cost = { wood = 5, gold = 500 }
+  marketplace = true
 
   [[town.building]]
   key = "resource_silo"
@@ -2259,6 +2283,7 @@ creatures = [
   name = "Blacksmith"
   slot = 7
   cost = { wood = 5, gold = 1000 }
+  war_machine = "ballista"
 
   [[town.building]]
   key = "artifact_merchants"
@@ -2266,6 +2291,7 @@ creatures = [
   slot = 10
   requires = ["marketplace"]
   cost = { gold = 10000 }
+  artifact_merchants = true
 
   [[town.building]]
   key = "mushroom_rings"
@@ -2606,6 +2632,7 @@ creatures = [
   name = "Marketplace"
   slot = 8
   cost = { wood = 5, gold = 500 }
+  marketplace = true
 
   [[town.building]]
   key = "resource_silo"
@@ -2620,6 +2647,7 @@ creatures = [
   name = "Blacksmith"
   slot = 7
   cost = { wood = 5, gold = 1000 }
+  war_machine = "ammo_cart"
 
   [[town.building]]
   key = "escape_tunnel"
@@ -2654,6 +2682,7 @@ creatures = [
   slot = 19
   requires = ["marketplace"]
   cost = { gold = 1000 }
+  freelancers = true
 
   [[town.building]]
   key = "ballista_yard"
@@ -2661,6 +2690,7 @@ creatures = [
   slot = 20
   requires = ["blacksmith"]
   cost = { wood = 5, gold = 1000 }
+  war_machine = "ballista"
 
   [[town.building]]
   key = "hall_of_valhalla"
@@ -2972,6 +3002,7 @@ creatures = [
   name = "Marketplace"
   slot = 8
   cost = { wood = 5, gold = 500 }
+  marketplace = true
 
   [[town.building]]
   key = "resource_silo"
@@ -2986,6 +3017,7 @@ creatures = [
   name = "Blacksmith"
   slot = 7
   cost = { wood = 5, gold = 1000 }
+  war_machine = "first_aid_tent"
 
   [[town.building]]
   key = "cage_of_warlords"

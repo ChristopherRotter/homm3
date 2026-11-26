@@ -3933,6 +3933,13 @@ url = "docs/rules/surveys/E09-guild.md"
 retrieved = "2026-11-20"
 
 [[source]]
+id = "exe-town-trades"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-trades.md 2, 3.1, 4, 5.3, 6.3, 6.4, 7.5, scored by batch TWN-6 in 14; E09-design.md 102): the Marketplace is building 14 of every faction; the Artifact Merchants are 17 of the Tower, the Dungeon and the Conflux, the Freelancer's Guild 21 of the Stronghold, the Magic University 21 of the Conflux, the Skeleton Transformer 22 of the Necropolis; the Blacksmith (16) sells its faction's war machine of blacksmith_machine_creatures 0x642E90 and the Stronghold's Ballista Yard (22) faction 0's (town_blacksmith_buy 0x5D1D30); new_game_heroes 0x4C0484 draws the merchants' seven, three treasures, three minors and a major; a town's boat costs 1 000 gold and 10 wood and is type 1 (shipyard_dialog_create 0x5D1EF0); the Conflux's University offers Fire, Air, Water and Earth Magic (14 to 17; town_university_open 0x5D2DA0) at 2 000 gold each"
+url = "docs/rules/surveys/E09-trades.md"
+retrieved = "2026-11-24"
+
+[[source]]
 id = "exe-thieves-guild"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/rules/surveys/E09-tavern.md 6 and 13; E09-design.md 73): thieves_guild_row_value 0x5DEE70 ranks row 2 by the treasury's gold (player +0xB4, index 6), row 3 by wood and ore (+0x9C and +0xA4, indexes 0 and 2) and row 4 by mercury, sulfur, crystal and gems (+0xA0, +0xA8, +0xAC, +0xB0, indexes 1, 3, 4 and 5)"
@@ -3996,6 +4003,13 @@ role = [
   { faction = "Tower", building = 22, roles = { library = true }, sources = ["exe-mage-guild"] },
   { faction = "Dungeon", building = 21, roles = { mana_vortex = true }, sources = ["exe-mage-guild"] },
   { faction = "Conflux", building = 26, roles = { aurora = true }, sources = ["exe-mage-guild"] },
+  { building = 14, roles = { marketplace = true }, sources = ["exe-town-trades"] },
+  { faction = "Tower", building = 17, roles = { artifact_merchants = true }, sources = ["exe-town-trades"] },
+  { faction = "Dungeon", building = 17, roles = { artifact_merchants = true }, sources = ["exe-town-trades"] },
+  { faction = "Conflux", building = 17, roles = { artifact_merchants = true }, sources = ["exe-town-trades"] },
+  { faction = "Stronghold", building = 21, roles = { freelancers = true }, sources = ["exe-town-trades"] },
+  { faction = "Conflux", building = 21, roles = { university = true }, sources = ["exe-town-trades"] },
+  { faction = "Necropolis", building = 22, roles = { transformer = true }, sources = ["exe-town-trades"] },
 ]
 
 # The [town_params] beside the executable's tables (TWN-INC-001, TWN-CAP-001, TWN-CAP-002).
@@ -4036,6 +4050,20 @@ sources = ["exe-mage-guild"]
 guild_slots = [5, 4, 3, 2, 1]
 spell_book_price = 500
 vortex_factor = 2
+
+# The trades (TWN-TRD-001, E09 T56, design §102): the Blacksmith's id (each faction's machine the
+# executable's blacksmith_machine_creatures, as the creature's war machine artifact of
+# [[artifacts.war_machines]]), the Ballista Yard's machine, and the [town_params] the code holds;
+# the Skeleton Transformer's targets are the executable's table (the town harvest).
+[towns.trades]
+sources = ["exe-town-trades"]
+blacksmith = 16
+machine_of = [{ faction = "Stronghold", building = 22, machine_of = "Castle" }]
+merchants_stock = ["treasure", "treasure", "treasure", "minor", "minor", "minor", "major"]
+boat_price = { Gold = 1000, Wood = 10 }
+boat_type = 1
+university_skills = [14, 15, 16, 17]
+university_price = 2000
 
 # The Thieves' Guild's [town_params] (TWN-TAV-008, E09 T39b1, design §73, decision 152): the
 # resources its rows 2 to 4 sum, by RESTYPES.TXT's index (gold; wood and ore; the rare four),

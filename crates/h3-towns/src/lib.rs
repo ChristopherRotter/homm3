@@ -97,9 +97,9 @@ pub use recruit::{
 };
 pub use ruleset::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, CreatureLevelDef,
-    DefenderBonus, Dwelling, GarrisonRow, GarrisonWeekParams, Horde, MAX_CREATURE_LEVELS, Reveal,
-    TownCompileError, TownDef, TownOverride, TownPack, TownParams, TownParamsDef, TownPatch,
-    TownRecord, TownRuleset, WeekParams,
+    DefenderBonus, Dwelling, GarrisonRow, GarrisonWeekParams, Horde, MAX_CREATURE_LEVELS,
+    MAX_MERCHANTS_STOCK, Reveal, TownCompileError, TownDef, TownOverride, TownPack, TownParams,
+    TownParamsDef, TownPatch, TownRecord, TownRuleset, WeekParams,
 };
 pub use setup::{
     BuildingsSetup, BuiltTown, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup,
@@ -138,5 +138,9 @@ pub const TOWN_STATE_HASH_VERSION: u32 = 4;
 /// tavern weights (TWN-TAV-001, -003; design §60). v8 (E09 T39b1): the Thieves' Guild's resource
 /// rows in the parameters (TWN-TAV-008, design §73). v9 (E09 T46): the mage guild's slots, the
 /// spell book's price and the Vortex's factor in the parameters, each record's guild weights and
-/// the roles `guild`, `library`, `aurora` and `mana_vortex` (TWN-GLD-001, design §83).
-pub const TOWN_RULESET_HASH_VERSION: u32 = 9;
+/// the roles `guild`, `library`, `aurora` and `mana_vortex` (TWN-GLD-001, design §83). v10 (E09
+/// T56): the trades' parameters (the merchants' stock, the boat's price and type, the University's
+/// skills and price, the Transformer's targets and dragons), the roles `marketplace`,
+/// `artifact_merchants`, `freelancers`, `university` and `transformer` and each building's war
+/// machine (TWN-TRD-001, design §102).
+pub const TOWN_RULESET_HASH_VERSION: u32 = 10;

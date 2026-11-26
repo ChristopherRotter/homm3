@@ -273,6 +273,7 @@ mod tests {
             requires: BuildingSet::EMPTY,
             cost: Vec::new(),
             roles: BuildingRoles::default(),
+            war_machine: None,
         }
     }
 

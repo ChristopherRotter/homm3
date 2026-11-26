@@ -5,7 +5,8 @@
 # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).
 # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md
 # 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6, E09-guild.md 2
-# (the guild weights, docs/epics/E09-design.md 83); format: crates/h3-pack-towns.
+# (the guild weights, docs/epics/E09-design.md 83), E09-trades.md 4 and 7.5 (the war
+# machines and the Transformer, design 102); format: crates/h3-pack-towns.
 
 [[town_override]]
 faction = "base:castle"

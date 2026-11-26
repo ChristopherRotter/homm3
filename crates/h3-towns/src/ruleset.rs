@@ -14,7 +14,8 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_content::{
-    ContentKey, CreatureTypeId, FactionId, PackManifest, ResourceId, Ruleset, SpellId,
+    ArtifactClass, ArtifactTypeId, ContentKey, CreatureTypeId, FactionId, PackManifest, ResourceId,
+    Ruleset, SkillId, SpellId,
 };
 use h3_contracts::Moat;
 use h3_kernel::hash::hash_of;
@@ -32,6 +33,10 @@ pub const MAX_CREATURE_LEVELS: usize = 7;
 /// [`BuildingDef::slot`] is below this.
 pub const BUILDING_SLOTS: u8 = 41;
 
+/// The most entries of the Artifact Merchants' stock ([`TownParams::merchants_stock`];
+/// TWN-TRD-001): the adventure's `MAX_STOCK`, a bit each in the sold marks (E09 design §102).
+pub const MAX_MERCHANTS_STOCK: usize = 8;
+
 /// One pack's town definitions (its `towns.toml`), with the manifest of its core pack.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TownPack {
@@ -48,6 +53,12 @@ pub struct TownPack {
     /// `hero_visions_level` 0x4E5DE0): creatures of its dependency closure, each named by one
     /// pack at most.
     pub visions: Vec<ContentKey>,
+    /// The creatures this pack names as becoming the part's `transformer_dragons_into` at the
+    /// Skeleton Transformer (TWN-TRD-001; E09 design §102: the base pack's Green, Gold, Red and
+    /// Black Dragons, Hydra and Chaos Hydra, the AB pack's Azure, Crystal, Faerie and Rust
+    /// Dragons, `skeleton_transformer_targets` 0x6412FC): creatures of its dependency closure,
+    /// each named by one pack at most.
+    pub transformer_dragons: Vec<ContentKey>,
 }
 
 impl TownPack {
@@ -59,6 +70,7 @@ impl TownPack {
             towns: Vec::new(),
             overrides: Vec::new(),
             visions: Vec::new(),
+            transformer_dragons: Vec::new(),
         }
     }
 }
@@ -123,6 +135,31 @@ pub struct TownParamsDef {
     /// What a standing building of role `mana_vortex` multiplies a hero's maximum spell points by
     /// (TWN-GLD-001; E09 design §83: the original's 2, `town_visit_buildings` 0x5BD8E0), 1 to 10.
     pub vortex_factor: u8,
+    /// The classes of the Artifact Merchants' stock, one an entry in entry order (TWN-TRD-001;
+    /// E09 design §102: the original's three treasures, three minors and a major,
+    /// `new_game_heroes` 0x4C0484): at most [`MAX_MERCHANTS_STOCK`], none
+    /// [`ArtifactClass::Special`].
+    pub merchants_stock: Vec<ArtifactClass>,
+    /// A boat's price at a town's Shipyard, resources of the core as a building's cost, each once
+    /// and at least 1, empty for free (TWN-TRD-001; E09 design §102: 1 000 gold and 10 wood, code,
+    /// `shipyard_dialog_create` 0x5D1EF0).
+    pub boat_price: Vec<(ContentKey, u32)>,
+    /// The type of a boat a town's Shipyard builds, appearance only as a map Shipyard's
+    /// (TWN-TRD-001; E09 design §102: 1 from every town).
+    pub boat_type: u8,
+    /// The skills a building of role `university` offers, in its slots' order: skills of the
+    /// core, at least one, each once (TWN-TRD-001; E09 design §102: Fire, Air, Water and Earth
+    /// Magic, code, `town_university_open` 0x5D2DA0).
+    pub university_skills: Vec<ContentKey>,
+    /// The price of each of them, resources of the core as a building's cost, each once and at
+    /// least 1, empty for free (TWN-TRD-001; E09 design §102: 2 000 gold).
+    pub university_price: Vec<(ContentKey, u32)>,
+    /// The creature the Skeleton Transformer makes of every creature but the packs'
+    /// [`TownPack::transformer_dragons`] (TWN-TRD-001; E09 design §102: the Skeleton,
+    /// `skeleton_transformer_targets` 0x6412FC), a core creature.
+    pub transformer_into: ContentKey,
+    /// The creature it makes of the packs' dragons (the Bone Dragon), a core creature.
+    pub transformer_dragons_into: ContentKey,
 }
 
 /// The week's parameters (E09 design §38, §42): the chance of a creature's week and the bonus
@@ -227,10 +264,16 @@ pub struct BuildingDef {
     pub cost: Vec<(ContentKey, u32)>,
     /// What the rules read of it.
     pub roles: BuildingRoles,
+    /// The war machine it sells, an artifact of the core with a `war_machine` creature, if it
+    /// sells one (TWN-TRD-001; E09 design §102: the Blacksmith 16 of each faction by
+    /// `blacksmith_machine_creatures` 0x642E90, the Stronghold's Ballista Yard 22 the Ballista);
+    /// read standing.
+    pub war_machine: Option<ContentKey>,
 }
 
 /// What the rules read of a building, each optional (increment 1's roles, E09 increment 1's
-/// design note §2; increment 2's `shipyard`, design §24). Each is read over one of a town's two sets, the buildings standing (built
+/// design note §2; increment 2's `shipyard`, design §24; increment 6's trades, design §102). Each
+/// is read over one of a town's two sets, the buildings standing (built
 /// and not superseded) or the buildings ever built, as `h3-pack-towns`' format doc lists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BuildingRoles {
@@ -280,6 +323,21 @@ pub struct BuildingRoles {
     /// The Mana Vortex (the Dungeon's building 21): a hero's spell points to the part's factor of
     /// its maximum, once a week; at most one building of a record, read standing (TWN-GLD-001).
     pub mana_vortex: bool,
+    /// The Marketplace (building 14 of every faction): the count's building and the market
+    /// window's entry; at most one building of a record, read standing (TWN-TRD-001).
+    pub marketplace: bool,
+    /// The Artifact Merchants (the Tower's, the Dungeon's and the Conflux's 17): the stock's
+    /// purchase; at most one building of a record, read standing (TWN-TRD-001).
+    pub artifact_merchants: bool,
+    /// The Freelancer's Guild (the Stronghold's 21): the creature sale; at most one building of a
+    /// record, read standing (TWN-TRD-001).
+    pub freelancers: bool,
+    /// The Magic University (the Conflux's 21): the part's `university_skills`; at most one
+    /// building of a record, read standing (TWN-TRD-001).
+    pub university: bool,
+    /// The Skeleton Transformer (the Necropolis's 22): the part's transformation; at most one
+    /// building of a record, read standing (TWN-TRD-001).
+    pub transformer: bool,
 }
 
 /// A dwelling's level and whether it is the upgraded one.
@@ -382,12 +440,16 @@ pub enum TownCompileError {
     UnknownHeroClass(String),
     /// A spell the core ruleset does not define (a guild weight's).
     UnknownSpell(String),
+    /// An artifact the core ruleset does not define (a building's `war_machine`).
+    UnknownArtifact(String),
+    /// A secondary skill the core ruleset does not define (the University's).
+    UnknownSkill(String),
     /// Two packs define a town record for one faction.
     DuplicateTown(String),
     /// An override names a faction without a town record.
     UnknownTown(String),
-    /// A pack defines town records or Visions creatures and no enabled pack provides the
-    /// parameters.
+    /// A pack defines town records, Visions creatures or Transformer dragons and no enabled pack
+    /// provides the parameters.
     MissingParams,
     /// A second pack provides the parameters.
     DuplicateParams(String),
@@ -430,6 +492,8 @@ impl fmt::Display for TownCompileError {
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
             Self::UnknownHeroClass(k) => write!(f, "unknown hero class `{k}`"),
             Self::UnknownSpell(k) => write!(f, "unknown spell `{k}`"),
+            Self::UnknownArtifact(k) => write!(f, "unknown artifact `{k}`"),
+            Self::UnknownSkill(k) => write!(f, "unknown skill `{k}`"),
             Self::DuplicateTown(k) => write!(f, "faction `{k}` has two town records"),
             Self::UnknownTown(k) => write!(f, "faction `{k}` has no town record to override"),
             Self::MissingParams => f.write_str("no pack provides the town parameters"),
@@ -493,6 +557,24 @@ pub struct TownParams {
     pub spell_book_price: Vec<(ResourceId, u32)>,
     /// The Mana Vortex's factor of a hero's maximum spell points, 1 to 10 (TWN-GLD-001).
     pub vortex_factor: u8,
+    /// The classes of the Artifact Merchants' stock in entry order, at most
+    /// [`MAX_MERCHANTS_STOCK`], none special (TWN-TRD-001).
+    pub merchants_stock: Vec<ArtifactClass>,
+    /// A boat's price at a town's Shipyard, in the core's resource order (TWN-TRD-001).
+    pub boat_price: Vec<(ResourceId, u32)>,
+    /// The type of a boat a town's Shipyard builds (TWN-TRD-001).
+    pub boat_type: u8,
+    /// The skills a University offers, in its slots' order, distinct (TWN-TRD-001).
+    pub university_skills: Vec<SkillId>,
+    /// The price of each, in the core's resource order (TWN-TRD-001).
+    pub university_price: Vec<(ResourceId, u32)>,
+    /// What the Skeleton Transformer makes of a creature not in `transformer_dragons`
+    /// (TWN-TRD-001).
+    pub transformer_into: CreatureTypeId,
+    /// What it makes of a creature in `transformer_dragons` (TWN-TRD-001).
+    pub transformer_dragons_into: CreatureTypeId,
+    /// Every enabled pack's [`TownPack::transformer_dragons`], in handle order (TWN-TRD-001).
+    pub transformer_dragons: Vec<CreatureTypeId>,
 }
 
 /// A faction's compiled town record.
@@ -578,6 +660,8 @@ pub struct Building {
     pub cost: Vec<(ResourceId, u32)>,
     /// What the rules read of it.
     pub roles: BuildingRoles,
+    /// The war machine it sells, an artifact with a `war_machine` creature (TWN-TRD-001).
+    pub war_machine: Option<ArtifactTypeId>,
 }
 
 /// The town context's immutable compiled ruleset part: the parameters and every faction's town
@@ -817,7 +901,9 @@ fn hash_option<T>(h: &mut StateHasher, value: Option<T>, write: impl FnOnce(&mut
 }
 
 impl CanonicalHash for TownRuleset {
-    /// Encoding v9 (E09 T46; v8, T39b1's, without the mage guild's slots, the spell book's price,
+    /// Encoding v10 (E09 T56; v9, T46's, without the trades' parameters, the roles
+    /// `marketplace`, `artifact_merchants`, `freelancers`, `university` and `transformer` and a
+    /// building's war machine; v8, T39b1's, without the mage guild's slots, the spell book's price,
     /// the Vortex's factor, the records' guild weights and the roles `guild`, `library`, `aurora`
     /// and `mana_vortex`; v7, T36's, without the Thieves' Guild's resource rows; v6, T28a's,
     /// without the hire's price and the records' tavern weights; v5, T25a's, without the most heroes on the map; v4, T16a's, without the roles `horde`,
@@ -831,7 +917,11 @@ impl CanonicalHash for TownRuleset {
     /// their number and values, its weeks and its upgrade chance, the most heroes on the map, the
     /// hire's price (length, each resource handle and amount), the Thieves' Guild's three resource
     /// rows (each its length and resource handles), the guild's five slot counts, the spell
-    /// book's price (length, each resource handle and amount), the Vortex's factor); the records
+    /// book's price (length, each resource handle and amount), the Vortex's factor, the merchants'
+    /// stock (length, each class's place in [`ArtifactClass::ALL`]), the boat's price (length,
+    /// each resource handle and amount), the boat's type, the University's skills (length, each
+    /// handle), its price (length, each resource handle and amount), the Transformer's two
+    /// targets' handles and its dragons (length, each handle)); the records
     /// in faction order as
     /// their number and each one's faction handle, moat (0 absent, 1 harmless, 2 damaging),
     /// natural obstacles, the silo (length, each resource handle and amount), the creatures
@@ -843,7 +933,8 @@ impl CanonicalHash for TownRuleset {
     /// portal, `week_of` as an option, the dwelling as an option of its level and upgrade flag,
     /// morale, luck, the escape tunnel, the defender's attack, defense, power and mana, the reveal
     /// as 0 none, 1 and the radius, 2 all, the guild level as an option, the library, the aurora,
-    /// the Mana Vortex), `roe`, the demoted Capitol's building, the tavern weights (length, each
+    /// the Mana Vortex, the Marketplace, the Artifact Merchants, the Freelancer's Guild, the
+    /// University, the Transformer), the war machine as an option of its handle), `roe`, the demoted Capitol's building, the tavern weights (length, each
     /// weight by class index) and the guild weights (length, each weight by spell index). The
     /// core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
@@ -889,6 +980,25 @@ impl CanonicalHash for TownRuleset {
                 h.write_u32(amount);
             }
             h.write_u8(p.vortex_factor);
+            h.write_len(p.merchants_stock.len());
+            p.merchants_stock.iter().for_each(|&c| h.write_u8(c as u8));
+            h.write_len(p.boat_price.len());
+            for &(resource, amount) in &p.boat_price {
+                resource.hash_into(h);
+                h.write_u32(amount);
+            }
+            h.write_u8(p.boat_type);
+            h.write_len(p.university_skills.len());
+            p.university_skills.iter().for_each(|s| s.hash_into(h));
+            h.write_len(p.university_price.len());
+            for &(resource, amount) in &p.university_price {
+                resource.hash_into(h);
+                h.write_u32(amount);
+            }
+            p.transformer_into.hash_into(h);
+            p.transformer_dragons_into.hash_into(h);
+            h.write_len(p.transformer_dragons.len());
+            p.transformer_dragons.iter().for_each(|c| c.hash_into(h));
         });
         h.write_len(self.towns.len());
         for t in &self.towns {
@@ -920,6 +1030,7 @@ impl CanonicalHash for TownRuleset {
                     h.write_u32(amount);
                 }
                 hash_roles(h, &b.roles);
+                hash_option(h, b.war_machine, |h, a| a.hash_into(h));
             }
             h.write_bool(t.roe);
             h.write_u8(t.capitol_demoted_to.raw());
@@ -968,6 +1079,11 @@ fn hash_roles(h: &mut StateHasher, r: &BuildingRoles) {
     h.write_bool(r.library);
     h.write_bool(r.aurora);
     h.write_bool(r.mana_vortex);
+    h.write_bool(r.marketplace);
+    h.write_bool(r.artifact_merchants);
+    h.write_bool(r.freelancers);
+    h.write_bool(r.university);
+    h.write_bool(r.transformer);
 }
 
 #[cfg(test)]
