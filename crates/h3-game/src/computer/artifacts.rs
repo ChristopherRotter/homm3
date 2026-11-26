@@ -10,8 +10,9 @@
 //!
 //! The artifacts are told by their ids as the original tells them: the core's handles are the
 //! original's ids for the original packs' 141 artifacts (the base, AB and SoD packs in order), as
-//! `skills.rs` reads the skills'. The creatures, spells and schools the codes name are read by
-//! their keys (their handles are not the original's ids past the base pack's).
+//! `skills.rs` reads the skills' (the base pack's creatures, the cloak's undead, are the
+//! original's too; its schools are in the base pack's order). Code 18's spell, whose handle is
+//! not the original's id (SoD appends Titan's Lightning Bolt), is the one its artifact grants.
 //!
 //! Not here: `ai_hero_equipped_value` 0x433C60 (the hero's value as equipped) goes with its
 //! callers, the artifact exchange of increment 3 (the user at T2f, AI-Q37); the victory
@@ -24,9 +25,9 @@ use alloc::vec::Vec;
 use h3_battle::estimate::{CasterRecord, change_value, luck_values, morale_values};
 use h3_content::{
     Affects, ArtifactTypeId, CreatureFlag, CreatureTypeId, FULL_BP, HeroEffect, SchoolId, SkillId,
-    SpellCategory, SpellId,
+    SpellGrant, SpellId,
 };
-use h3_contracts::{BattleEffect, FortLevel, PlayerId};
+use h3_contracts::{BattleEffect, FortLevel, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, BattleBonuses, Position, derive_battle_hero};
 use h3_kernel::arith::{SINGLE_BITS, SignedX87, X87};
 use h3_towns::{Town, TownRecord, index_creature};
@@ -54,17 +55,9 @@ const WISDOM: SkillId = SkillId::from_raw(7);
 const NECROMANCY: SkillId = SkillId::from_raw(12);
 const ARTILLERY: SkillId = SkillId::from_raw(20);
 
-/// The spell code 18 names (Titan's Thunder's, the original's spell 57): its key.
-const TITANS_BOLT: &str = "sod:titans_lightning_bolt";
-
-/// The Cloak of the Undead King's creatures (0x4333A0): the Skeleton its base, the Walking Dead,
-/// the Wight and the Lich by the Necromancy level 1, 2 and 3 (the original's 56, 58, 60, 64).
-const UNDEAD: [&str; 4] = [
-    "base:skeleton",
-    "base:walking_dead",
-    "base:wight",
-    "base:lich",
-];
+/// The Cloak of the Undead King's creatures by their original ids (0x4333A0: the Skeleton 56 its
+/// base, the Walking Dead 58, the Wight 60 and the Lich 64 by the Necromancy level 1, 2 and 3).
+const UNDEAD: [u16; 4] = [56, 58, 60, 64];
 
 /// The artifacts the turn start's mean counts (0x5279C3 to 0x527A08: 7 to 143, less those the
 /// setup disables, 141 to 143 by `artifact_table_load` 0x44CD50's `artifacts_disabled` 0x63B98C).
@@ -78,7 +71,7 @@ const LEAST_TO_PLAYER: i32 = 10;
 const INDEFINITE: u32 = 0xFFC0_0000;
 
 /// A magic school as the original's masks name it (the spell table's +0x1C: 1 Air, 2 Fire,
-/// 4 Water, 8 Earth), by the base pack's key.
+/// 4 Water, 8 Earth), by its handle in the base pack's order (Earth 0, Water 1, Fire 2, Air 3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum School {
     Air,
@@ -88,24 +81,14 @@ pub(super) enum School {
 }
 
 impl School {
-    /// The school's key in the base pack.
-    const fn key(self) -> &'static str {
-        match self {
-            Self::Air => "base:air",
-            Self::Fire => "base:fire",
-            Self::Water => "base:water",
-            Self::Earth => "base:earth",
-        }
-    }
-
-    /// The school's handle in `rules`' core, none for a core without it.
-    fn id(self, rules: &GameRuleset) -> Option<SchoolId> {
-        rules
-            .core()
-            .spell_schools()
-            .iter()
-            .position(|s| s.key.as_str() == self.key())
-            .and_then(SchoolId::from_index)
+    /// The school's handle (the base pack's order).
+    const fn id(self) -> SchoolId {
+        SchoolId::from_raw(match self {
+            Self::Earth => 0,
+            Self::Water => 1,
+            Self::Fire => 2,
+            Self::Air => 3,
+        })
     }
 }
 
@@ -157,8 +140,9 @@ pub(super) enum Effect {
     Resource(i32, u8),
     /// Code 17 (`…_growth` 0x432D70): q creatures more a week of the level p (from 0).
     Growth(u8, i32),
-    /// Code 18 (`…_spell` 0x432F90): the spell of key p (Titan's Thunder's bolt).
-    Spell(&'static str),
+    /// Code 18 (`…_spell` 0x432F90): the spell p (Titan's Thunder's bolt, 57), the one its
+    /// artifact's own `spells` effect grants.
+    Spell(u16),
     /// Code 19 (`…_shooters` 0x4330B0): p hundredths of the shooters' value.
     Shooters(i32),
     /// Code 20 (`…_alliance` 0x433130): the alliance, p fixed by the build at 8.
@@ -335,7 +319,7 @@ pub(super) const TABLE: [&[Effect]; 144] = [
         Knowledge(6),
         ArmyShare(10),
     ], // 134 Power of the Dragon Father
-    &[Spell(TITANS_BOLT)], // 135 Titan's Thunder
+    &[Spell(57)], // 135 Titan's Thunder
     &[Movement(12)], // 136 Admiral's Hat
     &[Shooters(7)], // 137 Bow of the Sharpshooter
     &[Mana(10)], // 138 Wizard's Well
@@ -436,10 +420,9 @@ impl<'a> Valued<'a> {
     fn stacks_with(&self, flag: CreatureFlag) -> impl Iterator<Item = (i32, i32)> + '_ {
         let core = self.rules.core();
         self.hero.on_map.army.iter().filter_map(move |stack| {
-            let info = core.creature(stack.creature)?;
-            info.flags
-                .contains(flag)
-                .then(|| (word(info.ai_value), word(stack.count)))
+            core.creature(stack.creature)
+                .filter(|info| info.flags.contains(flag))
+                .map(|info| (word(info.ai_value), word(stack.count)))
         })
     }
 }
@@ -611,9 +594,8 @@ impl Effect {
         match self {
             SchoolPower(p, school) => school_power(v, (p, school), worn, counted),
             SchoolSpells(school) => school_spells(v, school, worn, counted),
-            Spell(key) => {
-                let spell = v.rules.core().spell_by_key(key);
-                spell.map_or(0, |spell| spell_value(v, spell, worn, counted))
+            Spell(_) => {
+                granted(v.rules, artifact).map_or(0, |spell| spell_value(v, spell, worn, counted))
             }
             Resource(p, q) => {
                 let weight = v
@@ -666,20 +648,16 @@ fn enemy(v: &Valued<'_>, (values, own): ((X87, X87), i32), counted: bool) -> i32
 /// Code 21 (`ai_artifact_effect_undead_king` 0x4333A0; CPU-ART-005): without Necromancy code 6's
 /// value with p ([`raised`], the skill not asked); with it that value `w` times
 /// `r = f32((f32(AI c) − f32(AI s)) / f32(AI s))` of the Skeleton `s` and the creature `c` of its
-/// level (the Walking Dead, the Wight, the Lich for 1, 2, 3: [`UNDEAD`]), `trunc(f32(w) × r)`;
-/// the FPU's indefinite (`i32::MIN`) when the Skeleton is worth 0.
+/// level (the Walking Dead, the Wight, the Lich for 1, 2, 3: [`UNDEAD`]; a level past 3 reads the
+/// Lich, the original's an argument, unreachable: §4.1 (l)), `trunc(f32(w) × r)`; the FPU's
+/// indefinite (`i32::MIN`) when the Skeleton is worth 0.
 fn undead_king(v: &Valued<'_>, p: i32, worn: bool) -> i32 {
     let level = usize::from(v.skill(NECROMANCY));
     if level == 0 {
         return raised(v, p, worn);
     }
-    let core = v.rules.core();
-    let ai = |key: &str| {
-        let value = core
-            .creature_by_key(key)
-            .and_then(|c| core.creature(c))
-            .map_or(0, |c| c.ai_value);
-        SignedX87::int(word(value).into()).round(SINGLE_BITS)
+    let ai = |raw| {
+        SignedX87::int(ai_value(v.rules, CreatureTypeId::from_raw(raw)).into()).round(SINGLE_BITS)
     };
     let base = ai(UNDEAD[0]);
     let creature = ai(UNDEAD[level.min(3)]);
@@ -690,21 +668,26 @@ fn undead_king(v: &Valued<'_>, p: i32, worn: bool) -> i32 {
         .map_or(i32::MIN, |r| w.times(r.round(SINGLE_BITS)).ftol())
 }
 
-/// Whether `spell` is one of the books' (the original's spells 0 to 69: not a creature's
-/// ability).
-fn in_books(rules: &GameRuleset, spell: SpellId) -> bool {
+/// Whether `spell` is of the school `school`.
+fn of_school(rules: &GameRuleset, spell: SpellId, school: SchoolId) -> bool {
     rules
         .core()
         .spell(spell)
-        .is_some_and(|s| s.category != SpellCategory::Ability)
+        .is_some_and(|s| s.schools.contains(&school))
 }
 
-/// Whether `spell` is of the school `school`.
-fn of_school(rules: &GameRuleset, spell: SpellId, school: Option<SchoolId>) -> bool {
-    let core = rules.core();
-    school.is_some_and(|school| {
-        core.spell(spell)
-            .is_some_and(|s| s.schools.contains(&school))
+/// The spell `artifact`'s own `spells` effect grants by name (Titan's Thunder's bolt: code 18's
+/// p, the original's 57, whose handle is not the original's id); none for another artifact.
+fn granted(rules: &GameRuleset, artifact: ArtifactTypeId) -> Option<SpellId> {
+    let effects = rules
+        .core()
+        .artifact(artifact)
+        .map_or(&[][..], |a| &a.effects[..]);
+    effects.iter().find_map(|e| match *e {
+        HeroEffect::Spells {
+            grant: SpellGrant::Spell(spell),
+        } => Some(spell),
+        _ => None,
     })
 }
 
@@ -726,7 +709,7 @@ fn school_power(v: &Valued<'_>, (p, school): (i32, School), worn: bool, counted:
         (s, s.wrapping_mul(bonus) / 100)
     };
     let (rules, battle) = (v.rules, v.rules.battle());
-    let school = school.id(rules);
+    let school = school.id();
     let mut record = v.caster.clone();
     v.available
         .iter()
@@ -746,23 +729,25 @@ fn school_power(v: &Valued<'_>, (p, school): (i32, School), worn: bool, counted:
 }
 
 /// Code 12 (`ai_artifact_effect_school_spells` 0x432C20; CPU-ART-006): 0 where counted or without
-/// power; else the largest, from 0, of the values (CPU-SPL-002) of the school's spells of the
-/// books the hero has not learned and, for a candidate, has not available (no ban read).
+/// power; else the largest, from 0, of the values (CPU-SPL-002) of the school's spells the hero
+/// has not learned and, for a candidate, has not available (no ban read). The original's loop
+/// stops before the creatures' abilities (70 on), which the engine's content gives no school.
 fn school_spells(v: &Valued<'_>, school: School, worn: bool, counted: bool) -> i32 {
     if counted || v.caster.power <= 0 {
         return 0;
     }
     let (rules, battle) = (v.rules, v.rules.battle());
-    let school = school.id(rules);
+    let school = school.id();
     (0..=u16::MAX)
         .take(rules.core().spells().len())
         .map(SpellId::from_raw)
-        .filter(|&spell| in_books(rules, spell) && of_school(rules, spell, school))
+        .filter(|&spell| of_school(rules, spell, school))
         .filter(|&spell| !v.learned(spell) && (worn || !v.has(spell)))
         .fold(0, |best, spell| best.max(v.caster.value(battle, spell)))
 }
 
-/// Code 18 (`ai_artifact_effect_spell` 0x432F90; CPU-ART-006): 0 where counted, for a spell it has
+/// Code 18 (`ai_artifact_effect_spell` 0x432F90; CPU-ART-006) of the spell its artifact grants
+/// ([`granted`]): 0 where counted, for a spell it has
 /// learned, a candidate's spell it has available, or without power (§4.1 (e): Titan's Thunder's
 /// bolt is 0 to a hero without a book though the artifact gives one); else the spell's value.
 fn spell_value(v: &Valued<'_>, spell: SpellId, worn: bool, counted: bool) -> i32 {
@@ -790,6 +775,19 @@ fn dwelling_creature(town: &Town, record: &TownRecord, level: u8) -> Option<Crea
 /// The creature levels of a town record's indexes (`h3_towns::CREATURE_INDEXES` is twice it).
 const MAX_LEVELS: usize = h3_towns::MAX_CREATURE_LEVELS;
 
+/// The town `town` and its faction's record, none for a town the store or the part lacks.
+fn town_and_record<'a>(
+    state: &'a GameState,
+    rules: &'a GameRuleset,
+    town: TownId,
+) -> Option<(&'a Town, &'a TownRecord)> {
+    let part = rules.towns();
+    state
+        .towns()
+        .get(town)
+        .and_then(|built| part.town(built.faction()).map(|record| (built, record)))
+}
+
 /// The AI value of `creature` (+0x40), 0 for one the core lacks.
 fn ai_value(rules: &GameRuleset, creature: CreatureTypeId) -> i32 {
     rules
@@ -805,11 +803,10 @@ fn ai_value(rules: &GameRuleset, creature: CreatureTypeId) -> i32 {
 fn growth(v: &Valued<'_>, (level, q): (u8, i32), counted: bool) -> i32 {
     let (state, rules) = (v.state, v.rules);
     let adventure = state.adventure();
-    let part = rules.towns();
     let of = |town| {
-        let built = state.towns().get(town)?;
-        let record = part.town(built.faction())?;
-        dwelling_creature(built, record, level).map(|c| ai_value(rules, c).wrapping_mul(q))
+        town_and_record(state, rules, town)
+            .and_then(|(built, record)| dwelling_creature(built, record, level))
+            .map(|c| ai_value(rules, c).wrapping_mul(q))
     };
     let hero = v.hero.on_map;
     if counted {
@@ -834,14 +831,8 @@ fn town_growth(v: &Valued<'_>) -> i32 {
     let (state, rules) = (v.state, v.rules);
     let (core, part) = (rules.core(), rules.towns());
     let mut sum = 0_i32;
-    for town in towns_of(state, v.hero.on_map.owner) {
-        let Some((built, record)) = state
-            .towns()
-            .get(town)
-            .and_then(|t| part.town(t.faction()).map(|r| (t, r)))
-        else {
-            continue;
-        };
+    let towns = towns_of(state, v.hero.on_map.owner);
+    for (built, record) in towns.filter_map(|town| town_and_record(state, rules, town)) {
         let fort = h3_towns::fort_level(built, part);
         let creatures = (0..=u8::MAX)
             .take(MAX_LEVELS)
@@ -1014,8 +1005,8 @@ pub(super) fn value_to_hero(v: &Valued<'_>, item: ArtifactInstance, counted: boo
     }
     let worn = &details.worn;
     let replaced = (0..worn.len())
-        .filter_map(|at| replaces(worn, v.rules, item.artifact, at))
-        .last()
+        .rev()
+        .find_map(|at| replaces(worn, v.rules, item.artifact, at))
         .map_or(0, |old| hero_value(v, old, true, counted));
     value.wrapping_sub(replaced).max(0)
 }
