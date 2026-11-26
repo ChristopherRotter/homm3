@@ -198,7 +198,8 @@ clock and the battles as the original's.
   with the client lane (**done** 2026-11-25: the log's "M5 T2c"; `h3_protocol::record`, MCL-Q57);
   T3, the session in-process, cut in two by the user at its start: T3a the session hosted
   headless (**done** 2026-11-25: the log's "M5 T3a"; `h3_map_client::hot_seat`), T3b the session
-  in the window; T4, live input through the engine; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game; T8, M5's
+  in the window (**done** 2026-11-26, kept whole by the user: the log's "M5 T3b", design §5.25;
+  each human's view in turn, the same human's next day in place); T4, live input through the engine; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game; T8, M5's
   closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
   hot-seat game on a shipped map played from the shell's Begin to a day limit, headless by
@@ -288,3 +289,10 @@ here.
   but not end its turn an error (`MCL-STUB-5`); the command line's begin unlimited by default
   (`--duration`; T2b's left the record 0, a minute, unused until T3a); `--turns` headless and
   `--records` (the humans' records as `h3-server record` names them).
+- The session in the window (M5 T3b, *provisional*; design §5.25): a view a window call of its
+  own, set up from the seat's record since it was left (the window and the sound lent again, the
+  music and loops started again at each view); the same human's next day in place, its record
+  since read again at each End Turn; the facings each seat's window last drew (MCL-Q58 asks the
+  engine's); the kingdom's heroes in the view's hero list's order (a hire at the end); the
+  unattended run's seconds for the whole of play; no hand-over until T5 (one view follows the
+  other).

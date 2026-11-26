@@ -389,8 +389,11 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
     let mut ends = Vec::new();
     let mut turns = Vec::new();
     let mut open: Option<Open> = None;
-    let mut week = (1, observation.week);
-    let mut month = (1, observation.month);
+    // The week's and the month's numbers by the start's day (E24 M5 T3b: a live start's; 1 at
+    // the game's), each 7 and 28 days.
+    let day = observation.day.max(1) - 1;
+    let mut week = (day / 7 + 1, observation.week);
+    let mut month = (day / 28 + 1, observation.month);
     let mut visits: Vec<Visit> = Vec::new();
     // The visit the next events belong to (the last one, from its walk to another command), and
     // whether its army dialog is open (E24 M4 T6, R2-4).
@@ -978,7 +981,8 @@ fn last_step(other: &mut OtherOpen, hero: u16) -> Option<&mut OtherStep> {
 /// The viewer's heroes' places in its kingdom's list in `observation` (`super::panels`' order:
 /// their types', then their places on the map), by their ids.
 fn slots(observation: &GameObservation, viewer: u8) -> Vec<(u16, usize)> {
-    let mut own: Vec<(u16, usize, u16)> = observation
+    // The hero list's order (GAM-HER-003; E24 M5 T3b), the types' at a new game (`panels`').
+    let mut own: Vec<(usize, u16, usize, u16)> = observation
         .adventure
         .heroes
         .iter()
@@ -986,13 +990,13 @@ fn slots(observation: &GameObservation, viewer: u8) -> Vec<(u16, usize)> {
         .filter(|(_, h)| h.owner == viewer)
         .filter_map(|(i, h)| {
             let info = observation.heroes.iter().find(|info| info.id == h.id);
-            info.map(|info| (info.hero_type, i, h.id))
+            info.map(|info| (panels::listed(observation, h.id), info.hero_type, i, h.id))
         })
         .collect();
     own.sort_unstable();
     own.iter()
         .enumerate()
-        .map(|(slot, &(_, _, id))| (id, slot))
+        .map(|(slot, &(_, _, _, id))| (id, slot))
         .collect()
 }
 
