@@ -13,26 +13,7 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 "Later". Every task's cut is confirmed with the user at its start. `MCL-STUB-5` (a computer
 colour's turn ended at once) since T3a; planned `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was
 cut in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done
-2026-11-25), T3 in two (T3a done 2026-11-25).
-
-### E24 M5 T3b — the session in the window
-
-- **Scope** (T3 cut in two by the user at its start, 2026-11-25; T3a done: `h3_map_client::hot_seat`,
-  the session hosted headless): the window's End Turn through the session (`HotSeat::end_turn`:
-  the timeline's End Turn with no next turn known asks the host), the map drawn from the current
-  human's view and switched at each human's start (set up from that human's current
-  `GameObservation`, not only the game's first snapshot: `engine::start`'s `Cut` for a live
-  start), the session's `elapse` and `deadline` on the window's clock (a turn whose time ran out
-  switching the view too); each seat's record kept as the game goes (`--records` at play's end,
-  as T3a's headless run). Started from the shell's Begin once the client lane's shell crate
-  calls `play` (lifts `CLT-STUB-13` with it, its inbox told at T2b); Load once the engine changes
-  a loaded game's humans (the adventure lane's inbox, 2026-11-21). No input yet but End Turn.
-- **Acceptance:** a two-human game on a shipped map begun by `h3-map-view play` (the shell's Begin
-  when its crate is there), each End Turn passing to the next human's view, under Xvfb with
-  `--check`; each seat's record played by the record player (`h3-map-view record`) as the game
-  went; the scoped verify.
-- **Depends on:** T3a (done); the client lane's shell crate for Begin (until then `h3-map-view
-  play`). **Status:** queued (next).
+2026-11-25), T3 in two (T3a done 2026-11-25, T3b 2026-11-26).
 
 ### E24 M5 T4 — live input through the engine
 
@@ -49,7 +30,7 @@ cut in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2
 - **Acceptance:** a hot-seat game played by keys and mouse from Begin through several days, every
   command accepted by the engine; scripted games compared with the original's frames where the
   commands are the same; the list of facts the view lacks in the epic's risks; the scoped verify.
-- **Depends on:** T3b. **Status:** queued.
+- **Depends on:** T3b (done). **Status:** queued (next).
 
 ### E24 M5 T5 — the hand-over and the clock
 

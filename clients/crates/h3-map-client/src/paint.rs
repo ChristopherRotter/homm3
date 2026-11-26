@@ -34,7 +34,8 @@ use h3_map_view::hover::{Facts, Hover, Tile};
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::levels;
 use h3_map_view::live::{
-    Buttons, Calendar, Explored, Facing, Lifted, Live, Moment, Selected, Stack, Status, Walking,
+    Buttons, Calendar, Explored, Facing, Lifted, Live, Moment, Selected, Stack, Status, Turn,
+    Walking,
 };
 use h3_map_view::minimap::Shown;
 use h3_map_view::objects::{self, DrawLists, Shapes};
@@ -402,20 +403,56 @@ pub fn for_record<'a>(
     for_played(assets, &raw, &played, limit)
 }
 
-/// A record kept in memory set up to play as [`for_record`] sets up a record's file (E24 M5 T2b:
-/// play's start, `crate::play`): `text` the record of a game on the map file `map` under `rules`,
-/// named `label` in messages.
-pub fn for_text<'a>(
+/// A live start (E24 M5 T3b, the hot seat's view of a human: `engine::live`; T2b's start a record
+/// kept in memory) set up to play as [`for_record`] sets up a record's file: the record since the
+/// view was last left (`record`, its first
+/// message a snapshot of the view then), its rules and the facts its host saw (`live`), on the map
+/// file `map`; with the map's hero each of the start's heroes is (by id: `turn::record_heroes`,
+/// what the host keeps of the facings as it leaves the view), named `label` in messages.
+///
+/// # Errors
+/// The map file does not read; the record is not of it or of `rules` (`engine::live`); its start
+/// or its walks do not set up (`engine::start`, `engine::played`).
+pub fn for_live<'a>(
     assets: &'a Assets<'a>,
     map: &Path,
-    (text, rules): (&str, &GameRuleset),
+    (record, rules, live): (engine::GameRecord, &GameRuleset, engine::Live),
     label: String,
     limit: u32,
-) -> Result<(Setup<'a>, u32), String> {
+) -> Result<(Setup<'a>, Vec<(u16, usize)>), String> {
     let (bytes, raw) = read_map(map)?;
-    let loaded = engine::load(text, &bytes, rules).map_err(|e| format!("{label}: {e}"))?;
+    let loaded = engine::live(record, &bytes, rules, live).map_err(|e| format!("{label}: {e}"))?;
     let played = played_of(assets, &raw, &loaded, rules, label)?;
-    for_played(assets, &raw, &played, limit)
+    let (setup, _) = for_played(assets, &raw, &played, limit)?;
+    let heroes = turn::record_heroes(&played.shown, &setup.painter.live.heroes);
+    Ok((setup, heroes))
+}
+
+/// The turns' starts of a live start's record grown since (E24 M5 T3b: the same human's view
+/// kept through its End Turn, the day's change in place): `record` read as [`for_live`] reads it,
+/// each turn's start laid out by `painter` (the view's: its live part's turns set to the record's)
+/// as a record's are.
+///
+/// # Errors
+/// As [`for_live`]'s; a turn's table that does not read.
+pub fn live_turns(
+    painter: &mut Painter<'_>,
+    map: &Path,
+    (record, rules, live): (engine::GameRecord, &GameRuleset, engine::Live),
+    label: String,
+) -> Result<Vec<NextTurn>, String> {
+    let assets = painter.assets;
+    let (bytes, raw) = read_map(map)?;
+    let loaded = engine::live(record, &bytes, rules, live).map_err(|e| format!("{label}: {e}"))?;
+    let played = played_of(assets, &raw, &loaded, rules, label.clone())?;
+    let turns: Option<Vec<Turn>> = played
+        .table
+        .get("turn")
+        .and_then(toml::Value::as_array)
+        .and_then(|a| a.iter().map(Turn::read).collect());
+    painter.live.turns = turns.ok_or_else(|| format!("{label}: a turn's table does not read"))?;
+    let (_, turns) = painter.boxes(&[], Some(&played))?;
+    Ok(turns)
 }
 
 /// A map file's bytes and its raw map (gzip-compressed, as the game keeps it, or not: the

@@ -1564,8 +1564,8 @@ fields = [
   { offset = 0x3C, name = "has_town", type = "u8", summary = "set by rmg_town_place_central; then rmg_town_place_far places further towns away from the others; counted with the towns after the mines", confidence = "read" },
   { offset = 0x40, name = "hop_distance", type = "i32", summary = "the number of template connections from a given zone (rmg_zone_hop_distances: 20000 unreached), then the near-zone order key 10 x hops + rand() % 10, 1000 + rand() % 10 for neighbours (rmg_pile_place_in_near_zone)", confidence = "read" },
   { offset = 0x44, name = "count_by_type", type = "i32[232]", summary = "the objects by type whose entrance lies in the zone: +1 in rmg_generator_add_object, -1 in rmg_generator_remove_object; rmg_object_choose refuses a type that reached rmg_type_limit_zone (H3API's objectCount)", confidence = "read" },
-  { offset = 0x3E4, name = "zone_distances", type = "vector<u16>", summary = "per zone the number of connections to it, 32000 unreached (rmg_water_zones_connect, rmg_zone_graph_distances)", confidence = "inferred" },
-  { offset = 0x3F4, name = "polygon", type = "vector<point>", summary = "its cell's corners clipped to the map (rmg_zone_borders_draw); rmg_island_shape shrinks them into an island", confidence = "inferred" },
+  { offset = 0x3E4, name = "zone_distances", type = "vector<u16>", summary = "per zone below step 2's n the number of connections from it, 32000 unreached, signed 16-bit (resized to n columns by rmg_water_zones_connect on each level; rmg_zone_graph_distances)", confidence = "read" },
+  { offset = 0x3F4, name = "polygon", type = "vector<point>", summary = "its Voronoi cell on the map (rmg_zone_borders_draw): each side's clipped start, and where the cell leaves the map its exit and the map corners passed; the whole map's four corners for a cell without a side on it; rmg_island_shape shrinks them into an island", confidence = "read" },
   { offset = 0x404, name = "passages", type = "vector<point>", summary = "the zone's connection points (8-byte x, y), emptied by the constructor: a land passage's P or Q (rmg_connection_by_land), the cells before a shipyard (rmg_connection_by_shipyard), a gate's entrance (rmg_connection_by_gate), a monolith's position (rmg_connection_by_monoliths); its reader not traced", confidence = "read" },
 ]
 
@@ -1652,4 +1652,31 @@ fields = [
   { offset = 0x4, name = "terrain_modifiers", type = "i32[10]", summary = "columns 7-15 (dirt to water), the tenth -5000", confidence = "read" },
   { offset = 0x2C, name = "adjacent", type = "vector<i32>", summary = "the Adjacent block: one value per obstacle (columns 16 to 15 + n)", confidence = "read" },
   { offset = 0x3C, name = "overlap", type = "vector<i32>", summary = "the Overlap block: one value per obstacle (the next n columns)", confidence = "read" },
+]
+
+[[struct]]
+name = "triangulation"
+size = 0x14
+summary = "Step 2's Delaunay triangulation (rmg_level_zones_partition's ebp-0x7C; triangulation_init to triangulation_destroy), D. Lischinski's incremental one on half-edges."
+refs = ["rules/surveys/E14-generator.md §2.2"]
+fields = [
+  { offset = 0x0, name = "starting_edge", type = "triangulation_edge*", summary = "where triangulation_find starts: the frame's first edge, then each insertion's base edge", confidence = "read" },
+  { offset = 0x4, name = "edges", type = "vector<triangulation_edge*>", summary = "every record in creation order (+8 begin, +0xC end, +0x10 capacity): each pair as made, the edge before its twin; a deleted pair erased, the order kept; triangulation_finish walks it in this order", confidence = "read" },
+]
+
+[[struct]]
+name = "triangulation_edge"
+size = 0x24
+summary = "A half-edge of step 2's triangulation, made in pairs (triangulation_edge_init, triangulation_make_edge); its origin's point is stored in it."
+refs = ["rules/surveys/E14-generator.md §2.2"]
+fields = [
+  { offset = 0x0, name = "x", type = "i32", summary = "its origin's x", confidence = "read" },
+  { offset = 0x4, name = "y", type = "i32", summary = "its origin's y", confidence = "read" },
+  { offset = 0x8, name = "data", type = "rmg_zone_generator*", summary = "its origin's zone generator; null for the frame's corners and level 1's points", confidence = "read" },
+  { offset = 0xC, name = "twin", type = "triangulation_edge*", summary = "the same edge the other way (Sym)", confidence = "read" },
+  { offset = 0x10, name = "onext", type = "triangulation_edge*", summary = "the next edge around its origin, counter-clockwise with y up", confidence = "read" },
+  { offset = 0x14, name = "oprev", type = "triangulation_edge*", summary = "the previous one (the ring is doubly linked)", confidence = "read" },
+  { offset = 0x18, name = "done", type = "u8", summary = "set by triangulation_finish once its left triangle's centre is written", confidence = "read" },
+  { offset = 0x1C, name = "centre_x", type = "i32", summary = "the circumcentre of the triangle on its left (a Voronoi vertex), -1 until triangulation_finish and for a triangle without a zone corner", confidence = "read" },
+  { offset = 0x20, name = "centre_y", type = "i32", summary = "its y", confidence = "read" },
 ]

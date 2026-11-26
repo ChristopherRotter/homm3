@@ -4,6 +4,30 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-26 (this lane, E24 M5 T3b done, kept whole by the user: the log's "M5 T3b", design
+  §5.25: each human's view in turn from its record since it was left, End Turn through the
+  session, the same human's next day in place, the clock on the window's): the task as it stood,
+  verbatim.
+
+  ### E24 M5 T3b — the session in the window
+
+  - **Scope** (T3 cut in two by the user at its start, 2026-11-25; T3a done: `h3_map_client::hot_seat`,
+    the session hosted headless): the window's End Turn through the session (`HotSeat::end_turn`:
+    the timeline's End Turn with no next turn known asks the host), the map drawn from the current
+    human's view and switched at each human's start (set up from that human's current
+    `GameObservation`, not only the game's first snapshot: `engine::start`'s `Cut` for a live
+    start), the session's `elapse` and `deadline` on the window's clock (a turn whose time ran out
+    switching the view too); each seat's record kept as the game goes (`--records` at play's end,
+    as T3a's headless run). Started from the shell's Begin once the client lane's shell crate
+    calls `play` (lifts `CLT-STUB-13` with it, its inbox told at T2b); Load once the engine changes
+    a loaded game's humans (the adventure lane's inbox, 2026-11-21). No input yet but End Turn.
+  - **Acceptance:** a two-human game on a shipped map begun by `h3-map-view play` (the shell's Begin
+    when its crate is there), each End Turn passing to the next human's view, under Xvfb with
+    `--check`; each seat's record played by the record player (`h3-map-view record`) as the game
+    went; the scoped verify.
+  - **Depends on:** T3a (done); the client lane's shell crate for Begin (until then `h3-map-view
+    play`). **Status:** queued (next).
+
 - 2026-11-25 (this lane, E24 M5 T2c done: the log's "M5 T2c": `h3_protocol::record`, one
   reader of both kinds of record beside the server's writer, MCL-Q57; `h3-view`'s and
   `h3-map-view`'s readers moved onto it): the task as it stood, verbatim.
