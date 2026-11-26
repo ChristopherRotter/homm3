@@ -4332,9 +4332,8 @@ impl Loop {
                     self.due_levels.extend(found.levels.iter().cloned());
                     self.leveling = None;
                     self.gain(found.gain);
-                    if let Ok(None) = self.level_up(t, After::Found(i)) {
-                        return true;
-                    }
+                    let after = self.level_up(t, After::Found(i));
+                    return after.is_ok_and(|after| after.is_none());
                 }
                 // A record's flag raised alone (E24 M4 T6, the reviewers' R3-4: what the visit
                 // shows besides is not built): the minimap drawn after the visit

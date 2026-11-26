@@ -4457,8 +4457,13 @@ fn a_live_visit_s_answer_is_the_record_s() {
     };
     let tomb = offer(OfferKind::Search {});
     let searched = |events| told(&visit(vec![(accept, events)]), &tomb, 108);
+    let gold = GameEvent::ResourceGained {
+        player: 0,
+        resource: 6,
+        amount: 1500,
+    };
     assert_eq!(
-        searched(vec![found]),
+        searched(vec![gold.clone(), found]),
         Some((Ask::Tomb(Some(12)), Answered::Yes))
     );
     assert_eq!(searched(Vec::new()), Some((Ask::Tomb(None), Answered::Yes)));
@@ -4474,7 +4479,7 @@ fn a_live_visit_s_answer_is_the_record_s() {
     let monster = |events| told(&visit(vec![(accept, events)]), &join, 54);
     let stack = |count| Stack { creature: 9, count };
     assert_eq!(
-        monster(vec![joined]),
+        monster(vec![gold.clone(), joined]),
         Some((
             Ask::Monster {
                 stack: stack(17),
@@ -4498,11 +4503,6 @@ fn a_live_visit_s_answer_is_the_record_s() {
         ))
     );
     // Pandora's Box's rewards the answer's; what the answers give the panels.
-    let gold = GameEvent::ResourceGained {
-        player: 0,
-        resource: 6,
-        amount: 1500,
-    };
     let opened = visit(vec![(accept, vec![gold])]);
     let Some((Ask::OpenBox { rewards, hero }, Answered::Yes)) =
         told(&opened, &offer(OfferKind::OpenBox {}), 6)

@@ -31,7 +31,17 @@ since T4a; planned `MCL-STUB-7` (a screen of M6 or M7, T4c). T1 was cut in three
   level-up, a week's start) answered in the window under Xvfb, every answer accepted by the
   engine, every view's frames read back exact and as the headless loop's; the records played by
   `h3-map-view record`; the scoped verify.
-- **Depends on:** T4a (done). **Status:** queued (next).
+- **Depends on:** T4a (done). **Status:** **in progress** (kept whole by the user at its start,
+  2026-11-26; branch `map-client/e24-m5-t4b`, no PR yet). **Done** (the log's "M5 T4b, part
+  one", design §5.27): every question and choice of a visit and every level-up answered through
+  the host, a next question (a monster's flight), a visit's level-ups alone, checked under Xvfb.
+  **Left:** Space's visit (`Unplayable::Visit` live: the engine's `Revisit`, its visit read from
+  the record: `engine::played` takes no `Revisit` yet); the week's and month's boxes (whether
+  the engine waits); the original's random picks in play from the client's seeded generator (a
+  computer turn's music, the pickup sounds, an unnamed town's name; the recorded draws kept for
+  recordings and records); the facts' questions (`MCL-Q59` on: the replies built from the
+  client's tables and the map's text, the epic's risks; the Redwood Observatory's find); the
+  acceptance's week's start; then the PR.
 
 ### E24 M5 T4c — the screens' notice, the facts audit, T4's game
 

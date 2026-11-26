@@ -251,6 +251,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   view's window is a new one (search again after End Turn passes the turn); `--check`'s seconds
   are the whole play's, so a script longer than them is cut silently; a root screenshot
   (`import -window root`) shows the window centred on the screen and no hardware cursor.
+  `play` reads a map as the game keeps it (M5 T4b): a situation's map written by
+  `h3-map-view situation` is not compressed, so `gzip -c` it first ("not a gzip-compressed map
+  file"); a record of it is played by `record --record-map` on the gzipped file (its hash).
 - The client lane's standing traps apply to the foundation and the harness (`docs/lanes/client/HANDOFF.md`): the licences (`winit`, `cpal`, Bevy are excluded: SDL 3), the purity allowlist of a pure crate, `clients/Cargo.lock` as a common path, no float arithmetic in drawing and timing, never running the original from the installation, captures never in git, a capture run alone.
 
 - **A re-run of CI forces the full verify** (M4 T2b1, PR #1007): `ci.yml`'s plan sets `FORCE` for a

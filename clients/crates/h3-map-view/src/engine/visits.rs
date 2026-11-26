@@ -852,18 +852,7 @@ pub fn lay(
         .filter_map(|visit| {
             let (object, class, word) = object_at(visit.at)?;
             let hero = name(visit.hero_type);
-            let asked = open
-                .unwrap_or_default()
-                .iter()
-                .find(|(walk, _)| *walk == visit.walk)
-                .and_then(|(_, decision)| live(visit, decision, (class, word), &hero));
-            let leveled = (open.is_some() && !visit.levels.is_empty()).then(|| Told::Levels {
-                gain: gain(&visit.events),
-            });
-            let mut told = match asked {
-                Some(asked) => asked,
-                None => told(visit, class, &hero).or(leveled)?,
-            };
+            let mut told = laid_live(visit, open, (class, word), &hero)?;
             if let Told::Find {
                 find: Find::Artifact { artifact },
                 gain,
@@ -891,6 +880,30 @@ pub fn lay(
             })
         })
         .collect()
+}
+
+/// What `visit` tells as [`lay`] lays it out (its object of `class` with its `word`, its hero
+/// named `hero`): live (`open` given), the question of the decision the host held open at its walk
+/// ([`live`]), else what it tells ([`told`]), else its level-ups alone ([`Told::Levels`]); a
+/// record's, what it tells.
+fn laid_live(
+    visit: &Visit,
+    open: Option<&[(usize, Decision)]>,
+    (class, word): ([u32; 2], Option<u32>),
+    hero: &str,
+) -> Option<Told> {
+    let Some(open) = open else {
+        return told(visit, class, hero);
+    };
+    let asked = open
+        .iter()
+        .find(|(walk, _)| *walk == visit.walk)
+        .and_then(|(_, decision)| live(visit, decision, (class, word), hero));
+    asked.or_else(|| told(visit, class, hero)).or_else(|| {
+        (!visit.levels.is_empty()).then(|| Told::Levels {
+            gain: gain(&visit.events),
+        })
+    })
 }
 
 /// The one resource `gained` holds, with its amount; none for none or several.

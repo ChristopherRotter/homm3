@@ -202,8 +202,10 @@ clock and the battles as the original's.
   each human's view in turn, the same human's next day in place); T4, live input through the
   engine, cut in three by the user at its start: T4a the walks through the engine (**done**
   2026-11-26: the log's "M5 T4a", design §5.26; `h3_map_view::reach`), T4b every box answered as
-  its command with the seeded random picks, T4c the M6/M7 notices, the facts audit and T4's
-  acceptance game; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game;
+  its command with the seeded random picks (kept whole by the user at its start; **in progress**
+  2026-11-26: the questions, the choices and the level-ups answered through the host, the log's
+  "M5 T4b, part one", design §5.27; Space's visit, the seeded picks and the facts' questions
+  next), T4c the M6/M7 notices, the facts audit and T4's acceptance game; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game;
   T8, M5's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
   hot-seat game on a shipped map played from the shell's Begin to a day limit, headless by
@@ -268,7 +270,13 @@ clock and the battles as the original's.
   selected hero's costs past today (the cursor's later days and a click's red arrows: MCL-Q37),
   whether a hero can still move (MCL-Q36), a step's own points and reveal (MCL-Q39), the tiles a
   monster guards and a town's or garrison's army (MCL-Q37); seen at T4a, not yet asked: the
-  Redwood Observatory's visit tells nothing (a find not laid out from the record).
+  Redwood Observatory's visit tells nothing (a find not laid out from the record). Seen at T4b,
+  not yet asked: an offer's and a choice's facts come from the engine's projection
+  (`HotSeat::decision`: the fold keeps none, `SRV-STUB-5`); a monster's count is its word's
+  first; replies still built from the client's tables (the Warrior's Tomb's morale lost and its
+  artifact's skills, a Cartographer's price and its terrains revealed) and the map's text
+  (Pandora's Box's); a guarded object's fight and a dwelling's hire not asked in play (M5 T6,
+  M6 and M7).
 
 ## Review lists
 
@@ -311,3 +319,9 @@ here.
   its stand and tiles, the same walk from there refused at once; the seat's record since read
   again and its walks laid out again at each walk taken; a battle in play ending play
   (`MCL-STUB-6`, until T6); each walk's and reach's line in play's report.
+- The boxes answered through the host (M5 T4b, *provisional*; design §5.27): the answers and the
+  next levels kept by the question (its find, its place among the visit's, the button) and by
+  the hero and level; a stand counting the host's answers taken; the visit laid out again from
+  the record at each answer; the engine's decision read through `observe`; a reply the client
+  does not build what the record's answer gives the panels; a live visit's level-ups alone shown
+  (the Tree's free level); each answer's line in play's report.
