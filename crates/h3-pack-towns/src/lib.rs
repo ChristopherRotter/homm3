@@ -11,7 +11,8 @@
 //! # Format (E09 T5a1; the requirements, costs and role `shipyard` since E09 T16a; the roles
 //! `horde`, `portal`, `week_of`, a record's `roe` and the growth's parameters since E09 T25a;
 //! the hire's price and the tavern weights since E09 T36; the guild weights, the roles `guild`,
-//! `library`, `aurora`, `mana_vortex` and the guild's parameters since E09 T46)
+//! `library`, `aurora`, `mana_vortex` and the guild's parameters since E09 T46; the trades' roles,
+//! a building's `war_machine`, the trades' parameters and `[town_transformer]` since E09 T56)
 //!
 //! ```toml
 //! [town_params]                    # exactly one enabled pack gives them when any pack has a
@@ -48,10 +49,29 @@
 //!                                  # resource >= 1, empty for free
 //! vortex_factor = 2                # TWN-GLD-001: the Mana Vortex's factor of a hero's maximum
 //!                                  # spell points, 1 to 10
+//! merchants_stock = ["treasure", "treasure", "treasure", "minor", "minor", "minor", "major"]
+//!                                  # TWN-TRD-001 (E09 T56): the Artifact Merchants' stock, an
+//!                                  # artifact class an entry, at most 8, none `special`
+//! boat_price = { gold = 1000, wood = 10 } # TWN-TRD-001: a boat at a town's Shipyard, each
+//!                                  # resource >= 1, empty for free
+//! boat_type = 1                    # TWN-TRD-001: its type (appearance only, as a map Shipyard's)
+//! university_skills = ["fire_magic", "air_magic", "water_magic", "earth_magic"]
+//!                                  # TWN-TRD-001: a University's core skills in its slots'
+//!                                  # order, at least one, each once
+//! university_price = { gold = 2000 } # TWN-TRD-001: each skill's price, each resource >= 1,
+//!                                  # empty for free
+//! transformer_into = "skeleton"    # TWN-TRD-001: what the Skeleton Transformer makes of a core
+//! transformer_dragons_into = "bone_dragon" # creature, and of the packs' `[town_transformer]`
+//!                                  # dragons
 //!
 //! [town_visions]                   # optional, in any pack (E09 T8c2): creatures that give
 //! creatures = ["rogue"]            # their hero Visions at its expert level for the towns
 //!                                  # (TWN-VEW-003), of the closure, each named by one pack
+//!
+//! [town_transformer]               # optional, in any pack (E09 T56): creatures that become
+//! dragons = ["green_dragon", "gold_dragon"] # `transformer_dragons_into` at the Skeleton
+//!                                  # Transformer (TWN-TRD-001), of the closure, each named by
+//!                                  # one pack
 //!
 //! [[town]]                         # one per faction with towns, a faction of the closure
 //! faction = "castle"
@@ -84,6 +104,9 @@
 //!                                  # record in the executable's list order; the compiler
 //!                                  # closes them, no cycle, not itself (E09 design §24)
 //!   cost = { gold = 2500 }         # optional: core resources, each amount >= 1; absent: free
+//!   war_machine = "ballista"       # optional (E09 T56): the war machine it sells, a core
+//!                                  # artifact with a `war_machine` creature (TWN-TRD-001), read
+//!                                  # standing
 //!   hall = 2                       # its roles, each optional (below)
 //!
 //! [[town_override]]                # ADR-0006: a record a pack of the closure defined; only the
@@ -119,16 +142,21 @@
 //! | `library = true` | at most one building: one more slot shown a level (the Tower's Library) | ever built |
 //! | `aurora = true` | at most one building: the town's Aurora set taught (the Conflux's Aurora Borealis) | ever built |
 //! | `mana_vortex = true` | at most one building: the Mana Vortex (the Dungeon's) | standing |
+//! | `marketplace = true` | at most one building: the Marketplace, the count's and the market window's (TWN-TRD-001) | standing |
+//! | `artifact_merchants = true` | at most one building: the Artifact Merchants' purchase | standing |
+//! | `freelancers = true` | at most one building: the Freelancer's Guild's creature sale | standing |
+//! | `university = true` | at most one building: the Magic University (`university_skills`) | standing |
+//! | `transformer = true` | at most one building: the Skeleton Transformer | standing |
 //!
 //! Keys without a pack prefix name an entity of the file's own pack; core references (factions,
-//! creatures, resources, hero classes, spells) must lie in the pack's dependency closure.
+//! creatures, resources, hero classes, spells, skills, artifacts) must lie in the pack's dependency closure.
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 use std::collections::BTreeMap;
 use std::fmt;
 
-use h3_content::{ContentKey, KeyError, PackManifest, Ruleset};
+use h3_content::{ArtifactClass, ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
 use h3_towns::{
     BuildingDef, BuildingRoles, CreatureLevelDef, DefenderBonus, Dwelling, GarrisonRow,
@@ -213,6 +241,7 @@ impl From<TownCompileError> for TownPackError {
 struct TownsFile {
     town_params: Option<ParamsDto>,
     town_visions: Option<VisionsDto>,
+    town_transformer: Option<TransformerDto>,
     #[serde(default)]
     town: Vec<TownDto>,
     #[serde(default)]
@@ -240,6 +269,35 @@ struct ParamsDto {
     guild_slots: [u8; 5],
     spell_book_price: BTreeMap<String, u32>,
     vortex_factor: u8,
+    merchants_stock: Vec<ClassDto>,
+    boat_price: BTreeMap<String, u32>,
+    boat_type: u8,
+    university_skills: Vec<String>,
+    university_price: BTreeMap<String, u32>,
+    transformer_into: String,
+    transformer_dragons_into: String,
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum ClassDto {
+    Treasure,
+    Minor,
+    Major,
+    Relic,
+    Special,
+}
+
+impl From<ClassDto> for ArtifactClass {
+    fn from(class: ClassDto) -> Self {
+        match class {
+            ClassDto::Treasure => Self::Treasure,
+            ClassDto::Minor => Self::Minor,
+            ClassDto::Major => Self::Major,
+            ClassDto::Relic => Self::Relic,
+            ClassDto::Special => Self::Special,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -256,6 +314,12 @@ struct GarrisonWeekDto {
 #[serde(deny_unknown_fields)]
 struct VisionsDto {
     creatures: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TransformerDto {
+    dragons: Vec<String>,
 }
 
 #[derive(Deserialize, Clone, Copy)]
@@ -354,6 +418,17 @@ struct BuildingDto {
     aurora: bool,
     #[serde(default)]
     mana_vortex: bool,
+    #[serde(default)]
+    marketplace: bool,
+    #[serde(default)]
+    artifact_merchants: bool,
+    #[serde(default)]
+    freelancers: bool,
+    #[serde(default)]
+    university: bool,
+    #[serde(default)]
+    transformer: bool,
+    war_machine: Option<String>,
 }
 
 #[derive(Deserialize, Default, Clone, Copy)]
@@ -399,6 +474,11 @@ fn reference(pack: &str, text: &str) -> Result<ContentKey, KeyError> {
     } else {
         ContentKey::new(pack, text)
     }
+}
+
+/// Keys as written (creatures, skills), resolved.
+fn references(pack: &str, keys: &[String]) -> Result<Vec<ContentKey>, KeyError> {
+    keys.iter().map(|k| reference(pack, k)).collect()
 }
 
 /// Weights as written (a tavern's class = weight, a guild's spell = weight), their keys resolved.
@@ -467,7 +547,16 @@ fn building(pack: &str, b: BuildingDto) -> Result<BuildingDef, KeyError> {
             library: b.library,
             aurora: b.aurora,
             mana_vortex: b.mana_vortex,
+            marketplace: b.marketplace,
+            artifact_merchants: b.artifact_merchants,
+            freelancers: b.freelancers,
+            university: b.university,
+            transformer: b.transformer,
         },
+        war_machine: b
+            .war_machine
+            .map(|machine| reference(pack, &machine))
+            .transpose()?,
     })
 }
 
@@ -548,15 +637,24 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
                 guild_slots: p.guild_slots,
                 spell_book_price: amounts(pack, p.spell_book_price)?,
                 vortex_factor: p.vortex_factor,
+                merchants_stock: p.merchants_stock.into_iter().map(Into::into).collect(),
+                boat_price: amounts(pack, p.boat_price)?,
+                boat_type: p.boat_type,
+                university_skills: references(pack, &p.university_skills)?,
+                university_price: amounts(pack, p.university_price)?,
+                transformer_into: reference(pack, &p.transformer_into)?,
+                transformer_dragons_into: reference(pack, &p.transformer_dragons_into)?,
             })
         })
         .transpose()?;
-    let visions = file
-        .town_visions
-        .map_or_else(Vec::new, |v| v.creatures)
-        .iter()
-        .map(|c| reference(pack, c))
-        .collect::<Result<_, _>>()?;
+    let visions = references(
+        pack,
+        &file.town_visions.map_or_else(Vec::new, |v| v.creatures),
+    )?;
+    let transformer_dragons = references(
+        pack,
+        &file.town_transformer.map_or_else(Vec::new, |t| t.dragons),
+    )?;
     let towns = file
         .town
         .into_iter()
@@ -583,6 +681,7 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
         towns,
         overrides,
         visions,
+        transformer_dragons,
     })
 }
 

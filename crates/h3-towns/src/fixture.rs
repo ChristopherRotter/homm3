@@ -505,6 +505,7 @@ pub(crate) fn building(key: &str, supersedes: &[usize], roles: BuildingRoles) ->
         requires: BuildingSet::EMPTY,
         cost: Vec::new(),
         roles,
+        war_machine: None,
     }
 }
 
@@ -712,6 +713,14 @@ fn params() -> TownParams {
         guild_slots: [5, 4, 3, 2, 1],
         spell_book_price: vec![(GOLD, 500)],
         vortex_factor: 2,
+        merchants_stock: vec![ArtifactClass::Treasure, ArtifactClass::Major],
+        boat_price: vec![(WOOD, 10), (GOLD, 1000)],
+        boat_type: 1,
+        university_skills: vec![SkillId::from_raw(0)],
+        university_price: vec![(GOLD, 2000)],
+        transformer_into: creature(50),
+        transformer_dragons_into: creature(50),
+        transformer_dragons: Vec::new(),
     }
 }
 
