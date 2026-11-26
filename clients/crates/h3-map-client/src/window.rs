@@ -770,8 +770,8 @@ pub(crate) fn window(
     // the view is left).
     let mut session: Option<&mut (dyn Session + '_)> = None;
     let mut ids: Vec<(u16, usize)> = Vec::new();
-    // The engine's decisions the view's walks left open (E24 M5 T4b, design §5.27), by the walk
-    // whose visit asks them: the first question's facts.
+    // The engine's decisions the view's walks and answers left open (E24 M5 T4b, design §5.27),
+    // by the walk whose visit asks them, in order: each question's facts.
     let mut opened: Vec<(usize, Decision)> = Vec::new();
     let (setup, what) = match source {
         Source::Options => set_up(&assets, options)?,
@@ -1384,7 +1384,8 @@ pub(crate) fn window(
             let t = asked.at;
             let key = asked.asked;
             let walk = start.finds.get(key.find).and_then(|f| f.walk);
-            let decision = walk.and_then(|w| opened.iter().find(|(o, _)| *o == w));
+            let nth = usize::from(key.nth);
+            let decision = walk.and_then(|w| opened.iter().filter(|(o, _)| *o == w).nth(nth));
             let answer = decision.and_then(|(_, d)| wire_answer(d, key.pick));
             let refused = match answer {
                 Some(answer) => s.answer(answer)?,
@@ -1410,14 +1411,43 @@ pub(crate) fn window(
                         .into_iter()
                         .find(|f| f.walk.is_some() && f.walk == walk);
                     let levels = found.as_ref().map(|f| f.levels.clone()).unwrap_or_default();
-                    let shown = found
-                        .and_then(|f| f.ask)
-                        .and_then(|q| match key.pick {
+                    let at = found.as_ref().map(|f| f.at);
+                    // The first question's answer as the visit's find lays it out; a next one's
+                    // from the record alone.
+                    let mut shown = match (nth, &start.hover, walk) {
+                        (0, ..) => found.and_then(|f| f.ask).and_then(|q| match key.pick {
                             Pick::Yes => q.yes,
                             Pick::Second => q.second,
                             Pick::No => q.no,
-                        })
-                        .unwrap_or_default();
+                        }),
+                        (_, Some(hover), Some(w)) => {
+                            let label = format!("play: colour {}'s view", s.colour());
+                            let (record, live) = s.record()?;
+                            paint::live_reply(
+                                &painter,
+                                s.map(),
+                                (record, s.rules(), live),
+                                (hover, w, nth),
+                                label,
+                            )?
+                        }
+                        _ => None,
+                    }
+                    .unwrap_or_default();
+                    // A question the engine holds open after it (a monster's flight after its
+                    // offer declined): the answer's next, its answers the host's too.
+                    if let (Some(next), Some(hover), Some(at), Some(w)) =
+                        (s.decision().filter(asks), &start.hover, at, walk)
+                        && let Some(then) = paint::live_question(
+                            &mut painter,
+                            &next,
+                            (hover, at),
+                            key.nth.saturating_add(1),
+                        )?
+                    {
+                        opened.push((w, next));
+                        shown.then = Some(Box::new(then));
+                    }
                     lines.push(format!(
                         "{t} ms: the answer {:?} taken: {} boxes, {} level-ups",
                         key.pick,

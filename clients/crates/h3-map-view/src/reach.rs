@@ -50,6 +50,9 @@ pub struct Stand {
     pub walks: usize,
     /// The turns' starts taken so far.
     pub turns: usize,
+    /// The host's answers taken so far (E24 M5 T4b: a reach asked under a decision the engine
+    /// held open is none, and an answer may change it).
+    pub answers: usize,
 }
 
 /// The selected hero's reach today, as the engine answers it (E24 M5 T4a).

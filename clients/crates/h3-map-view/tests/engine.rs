@@ -2917,13 +2917,13 @@ fn a_record_s_visits_laid_out_each_on_its_own() {
     }
     visits[1].levels = vec![0, 1];
     let object_at = |at: h3_map::model::Pos| match at.x {
-        5 => Some((1, [112, 0])),
-        6 => Some((2, [6, 0])),
-        7 => Some((3, [4, 0])),
-        8 => Some((4, [53, 0])),
-        9 => Some((5, [54, 139])),
-        10 => Some((6, [5, 0])),
-        11 => Some((7, [96, 0])),
+        5 => Some((1, [112, 0], None)),
+        6 => Some((2, [6, 0], None)),
+        7 => Some((3, [4, 0], None)),
+        8 => Some((4, [53, 0], None)),
+        9 => Some((5, [54, 139], None)),
+        10 => Some((6, [5, 0], None)),
+        11 => Some((7, [96, 0], None)),
         _ => None,
     };
     let text = std::fs::read_to_string(
@@ -2931,7 +2931,7 @@ fn a_record_s_visits_laid_out_each_on_its_own() {
     )
     .unwrap();
     let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
-    let laid = visits::lay(&visits, &[], object_at, &tables.map.finds, |hero| {
+    let laid = visits::lay(&visits, None, object_at, &tables.map.finds, |hero| {
         format!("hero {hero:?}")
     });
     let walks: Vec<usize> = laid.iter().map(|l| l.walk).collect();
@@ -3048,8 +3048,8 @@ fn a_record_s_object_taken_alone() {
     let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
     let laid = visits::lay(
         &[visit],
-        &[],
-        |_| Some((3, [81, 0])),
+        None,
+        |_| Some((3, [81, 0], None)),
         &tables.map.finds,
         |_| String::new(),
     );
@@ -3308,8 +3308,8 @@ fn a_record_s_flags_in_their_owners_colours() {
     // Laid out on a mine (the first and the last walk's) and a Shipyard: each visit's own flag,
     // a Shipyard's alone.
     let object_at = |at: h3_map::model::Pos| match at.x {
-        5 => Some((0, [53, 0])),
-        6 => Some((1, [87, 0])),
+        5 => Some((0, [53, 0], None)),
+        6 => Some((1, [87, 0], None)),
         _ => None,
     };
     let text = std::fs::read_to_string(
@@ -3317,7 +3317,7 @@ fn a_record_s_flags_in_their_owners_colours() {
     )
     .unwrap();
     let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
-    let laid = visits::lay(&played.visits, &[], object_at, &tables.map.finds, |_| {
+    let laid = visits::lay(&played.visits, None, object_at, &tables.map.finds, |_| {
         String::new()
     });
     let told: Vec<(usize, Told)> = laid.into_iter().map(|l| (l.walk, l.told)).collect();
@@ -4067,8 +4067,9 @@ fn a_live_visit_asks_the_question_of_the_decision_held_open() {
     // E24 M5 T4b (design §5.27): the question's facts the engine's decision's, its answers the
     // host's.
     use h3_map::model::Rewards;
-    use h3_map_view::asks::Ask;
+    use h3_map_view::asks::{Ask, Offer as AskOffer};
     use h3_map_view::engine::visits::{self, Answered, Kept, Laid, Told};
+    use h3_map_view::live::Stack;
     use h3_protocol::wire::game::{
         Choice, ChoiceKind, Decision, LevelUp, Offer, OfferKind, Pos as WirePos, PrimarySkill,
     };
@@ -4110,48 +4111,107 @@ fn a_live_visit_asks_the_question_of_the_decision_held_open() {
         })
     };
     let pandora = offer(OfferKind::OpenBox {});
+    let ask = |d: &Decision, class| visits::opened(d, [class, 9], Some(14), "Rion");
     // A chest's gold and experience, the Arena's gain, a School's gain and price (none: free),
     // Pandora's Box before its rewards.
     assert_eq!(
-        visits::opened(&chest, 101, "Rion"),
+        ask(&chest, 101),
         Some(Ask::Chest {
             gold: 1500,
             experience: 1000
         })
     );
+    assert_eq!(ask(&primary(2, Vec::new(), false), 4), Some(Ask::Arena(2)));
     assert_eq!(
-        visits::opened(&primary(2, Vec::new(), false), 4, ""),
-        Some(Ask::Arena(2))
-    );
-    assert_eq!(
-        visits::opened(&primary(1, vec![gold(1000)], true), 47, ""),
+        ask(&primary(1, vec![gold(1000)], true), 47),
         Some(Ask::School {
             gain: 1,
             price: [6, 1000]
         })
     );
     assert_eq!(
-        visits::opened(&primary(1, Vec::new(), true), 47, ""),
+        ask(&primary(1, Vec::new(), true), 47),
         Some(Ask::School {
             gain: 1,
             price: [6, 0]
         })
     );
     assert_eq!(
-        visits::opened(&pandora, 6, "Rion"),
+        ask(&pandora, 6),
         Some(Ask::OpenBox {
             rewards: Rewards::default(),
             hero: "Rion".into()
         })
     );
-    // Another object's class, another offer or decision: none.
-    assert_eq!(visits::opened(&chest, 4, ""), None);
+    // The yes-or-no offers: the Tomb, the Tree's price in gold or gems, a Cartographer's kind
+    // (its subclass), a Border Guard, the Pyramid; a monster's creature its subclass, its count
+    // the view's word's, no flight of the client's.
     assert_eq!(
-        visits::opened(&primary(2, Vec::new(), false), 101, ""),
-        None
+        ask(&offer(OfferKind::Search {}), 108),
+        Some(Ask::Tomb(None))
     );
-    assert_eq!(visits::opened(&pandora, 101, ""), None);
-    assert_eq!(visits::opened(&offer(OfferKind::Pass {}), 6, ""), None);
+    let gift = |resource| {
+        offer(OfferKind::Gift {
+            price: vec![Amount {
+                resource,
+                amount: 10,
+            }],
+        })
+    };
+    for (resource, gems) in [(5, true), (6, false)] {
+        assert_eq!(
+            ask(&gift(resource), 102),
+            Some(Ask::Tree {
+                gems,
+                visited: false,
+                poor: false
+            })
+        );
+    }
+    let reveal = offer(OfferKind::Reveal {
+        price: vec![gold(1000)],
+    });
+    assert_eq!(ask(&reveal, 13), Some(Ask::Maps(9)));
+    assert_eq!(ask(&offer(OfferKind::Pass {}), 9), Some(Ask::Pass));
+    assert_eq!(
+        ask(&offer(OfferKind::SearchPyramid {}), 63),
+        Some(Ask::Pyramid)
+    );
+    let monster = |offer| Ask::Monster {
+        stack: Stack {
+            creature: 9,
+            count: 14,
+        },
+        offer,
+        room: true,
+        flees: false,
+    };
+    assert_eq!(
+        ask(&offer(OfferKind::Join {}), 54),
+        Some(monster(AskOffer::Join))
+    );
+    let for_gold = offer(OfferKind::JoinForGold {
+        price: vec![gold(700)],
+    });
+    assert_eq!(ask(&for_gold, 54), Some(monster(AskOffer::Gold(700))));
+    assert_eq!(
+        ask(&offer(OfferKind::Pursue {}), 54),
+        Some(monster(AskOffer::Flee))
+    );
+    let unseen = visits::opened(&offer(OfferKind::Join {}), [54, 9], None, "");
+    assert!(matches!(
+        unseen,
+        Some(Ask::Monster {
+            stack: Stack { count: 0, .. },
+            ..
+        })
+    ));
+    // Another object's class, another offer or decision: none.
+    assert_eq!(ask(&chest, 4), None);
+    assert_eq!(ask(&primary(2, Vec::new(), false), 101), None);
+    assert_eq!(ask(&pandora, 101), None);
+    assert_eq!(ask(&offer(OfferKind::Pass {}), 6), None);
+    assert_eq!(ask(&offer(OfferKind::Fight {}), 54), None);
     let level = Decision::LevelUp {
         level_up: LevelUp {
             hero: 0,
@@ -4160,7 +4220,7 @@ fn a_live_visit_asks_the_question_of_the_decision_held_open() {
             offers: [0, 1],
         },
     };
-    assert_eq!(visits::opened(&level, 101, ""), None);
+    assert_eq!(ask(&level, 101), None);
     // Laid out: the walk's visit with no answer asks it, nothing kept (every answer the host's);
     // another walk's visit, unanswered, tells nothing (the record's: no answer).
     let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
@@ -4184,8 +4244,8 @@ fn a_live_visit_asks_the_question_of_the_decision_held_open() {
     let open = [(0, chest)];
     let laid = visits::lay(
         &[visit(0), visit(1)],
-        &open,
-        |_| Some((3, [101, 0])),
+        Some(&open),
+        |_| Some((3, [101, 0], None)),
         &tables.map.finds,
         |_| "Rion".into(),
     );
@@ -4207,4 +4267,249 @@ fn a_live_visit_asks_the_question_of_the_decision_held_open() {
         panic!("the open question alone: {laid:?}");
     };
     assert_eq!(*kept, Kept::default());
+    // A visit that tells nothing but opens level-ups (the Tree's free level): live, its levels;
+    // a record's, nothing.
+    let leveled = engine::Visit {
+        levels: vec![0],
+        ..visit(1)
+    };
+    let lay = |open| {
+        visits::lay(
+            core::slice::from_ref(&leveled),
+            open,
+            |_| Some((3, [102, 0], None)),
+            &tables.map.finds,
+            |_| String::new(),
+        )
+    };
+    let [
+        Laid {
+            told: Told::Levels { .. },
+            levels,
+            blocks: false,
+            ..
+        },
+    ] = &lay(Some(&[]))[..]
+    else {
+        panic!("its levels");
+    };
+    assert_eq!(levels, &[0]);
+    assert!(lay(None).is_empty());
+}
+
+#[test]
+fn a_live_visit_s_answer_is_the_record_s() {
+    // E24 M5 T4b (design §5.27): the button by the engine's answer, the question's facts brought
+    // up to what the answer told.
+    use h3_map_view::asks::{Ask, Offer as AskOffer};
+    use h3_map_view::engine::visits::{self, Answered, Told};
+    use h3_map_view::live::Stack;
+    use h3_protocol::wire::game::{
+        AdventureEvent, Answer, ArenaChoice, Artifact, ChestChoice, Choice, ChoiceKind, Consent,
+        Decision, GameEvent, HeroChange, Offer, OfferKind, Pos as WirePos, PrimarySkill,
+        SchoolChoice,
+    };
+    let anchor = WirePos {
+        x: 5,
+        y: 4,
+        level: 0,
+    };
+    let choice = |kind| Decision::Choice {
+        choice: Choice {
+            hero: 0,
+            object_type: 1,
+            anchor,
+            kind,
+        },
+    };
+    let offer = |kind| Decision::Offer {
+        offer: Offer {
+            hero: 0,
+            object_type: 1,
+            anchor,
+            kind,
+        },
+    };
+    let visit = |answers: Vec<(Answer, Vec<GameEvent>)>| engine::Visit {
+        at: h3_map::model::Pos { x: 5, y: 4, z: 0 },
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
+        flag: None,
+        events: Vec::new(),
+        answers,
+        battle: None,
+    };
+    let told = |v: &engine::Visit, d: &Decision, class| match visits::live(
+        v,
+        d,
+        ([class, 9], Some(14)),
+        "Rion",
+    ) {
+        Some(Told::Ask { ask, answered, .. }) => Some((ask, answered)),
+        _ => None,
+    };
+    let accept = Answer::Offer {
+        consent: Consent::Accept,
+    };
+    let decline = Answer::Offer {
+        consent: Consent::Decline,
+    };
+    // Each choice's button by its answer; an offer's accepted or declined.
+    let chest = choice(ChoiceKind::Chest {
+        gold: Amount {
+            resource: 6,
+            amount: 1000,
+        },
+        experience: 500,
+    });
+    let primary = |leave| {
+        choice(ChoiceKind::Primary {
+            skills: [PrimarySkill::Attack, PrimarySkill::Defense],
+            amount: 2,
+            price: Vec::new(),
+            leave,
+        })
+    };
+    let buttons = [
+        (
+            Answer::Chest {
+                choice: ChestChoice::Gold,
+            },
+            &chest,
+            101,
+            Answered::Yes,
+        ),
+        (
+            Answer::Chest {
+                choice: ChestChoice::Experience,
+            },
+            &chest,
+            101,
+            Answered::Second,
+        ),
+        (
+            Answer::Arena {
+                choice: ArenaChoice::Attack,
+            },
+            &primary(false),
+            4,
+            Answered::Yes,
+        ),
+        (
+            Answer::Arena {
+                choice: ArenaChoice::Defense,
+            },
+            &primary(false),
+            4,
+            Answered::Second,
+        ),
+        (
+            Answer::School {
+                choice: SchoolChoice::First,
+            },
+            &primary(true),
+            47,
+            Answered::Yes,
+        ),
+        (
+            Answer::School {
+                choice: SchoolChoice::Second,
+            },
+            &primary(true),
+            47,
+            Answered::Second,
+        ),
+        (
+            Answer::School {
+                choice: SchoolChoice::Leave,
+            },
+            &primary(true),
+            47,
+            Answered::No,
+        ),
+        (accept, &offer(OfferKind::Pass {}), 9, Answered::Yes),
+        (decline, &offer(OfferKind::Pass {}), 9, Answered::No),
+    ];
+    for (answer, decision, class, button) in buttons {
+        let got = told(&visit(vec![(answer, Vec::new())]), decision, class);
+        assert_eq!(got.map(|(_, b)| b), Some(button), "{answer:?}");
+    }
+    // Unanswered: open; a decision asking nothing there: none.
+    let open = told(&visit(Vec::new()), &offer(OfferKind::Pass {}), 9);
+    assert_eq!(open, Some((Ask::Pass, Answered::Open)));
+    assert_eq!(
+        told(&visit(Vec::new()), &offer(OfferKind::Pass {}), 6),
+        None
+    );
+    // The Tomb's artifact found, or none.
+    let found = GameEvent::HeroChanged {
+        player: 0,
+        hero: 0,
+        change: HeroChange::AddArtifact {
+            artifact: Artifact {
+                artifact: 12,
+                spell: None,
+            },
+        },
+    };
+    let tomb = offer(OfferKind::Search {});
+    let searched = |events| told(&visit(vec![(accept, events)]), &tomb, 108);
+    assert_eq!(
+        searched(vec![found]),
+        Some((Ask::Tomb(Some(12)), Answered::Yes))
+    );
+    assert_eq!(searched(Vec::new()), Some((Ask::Tomb(None), Answered::Yes)));
+    // A monster's creatures joined (their count the record's); none joined: no room.
+    let joined = GameEvent::Adventure {
+        event: AdventureEvent::CreaturesJoined {
+            hero: 0,
+            creature: 9,
+            count: 17,
+        },
+    };
+    let join = offer(OfferKind::Join {});
+    let monster = |events| told(&visit(vec![(accept, events)]), &join, 54);
+    let stack = |count| Stack { creature: 9, count };
+    assert_eq!(
+        monster(vec![joined]),
+        Some((
+            Ask::Monster {
+                stack: stack(17),
+                offer: AskOffer::Join,
+                room: true,
+                flees: false
+            },
+            Answered::Yes
+        ))
+    );
+    assert_eq!(
+        monster(Vec::new()),
+        Some((
+            Ask::Monster {
+                stack: stack(14),
+                offer: AskOffer::Join,
+                room: false,
+                flees: false
+            },
+            Answered::Yes
+        ))
+    );
+    // Pandora's Box's rewards the answer's; what the answers give the panels.
+    let gold = GameEvent::ResourceGained {
+        player: 0,
+        resource: 6,
+        amount: 1500,
+    };
+    let opened = visit(vec![(accept, vec![gold])]);
+    let Some((Ask::OpenBox { rewards, hero }, Answered::Yes)) =
+        told(&opened, &offer(OfferKind::OpenBox {}), 6)
+    else {
+        panic!("Pandora's Box opened");
+    };
+    assert_eq!((rewards.resources[6], hero.as_str()), (1500, "Rion"));
+    assert_eq!(visits::answered_gain(&opened).resources[6], 1500);
+    assert!(!visits::removes(&[]));
 }

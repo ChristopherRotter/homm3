@@ -41,6 +41,7 @@ fn stand(walks: usize) -> Stand {
         hero: 0,
         walks,
         turns: 0,
+        answers: 0,
     }
 }
 
@@ -256,7 +257,22 @@ fn a_replay_asks_the_host_its_answers_and_plays_them_again_from_before() {
     start.index = Some(0);
     start.moves = Some(vec![east_walk()]);
     start.host = Some(Hosted {
-        reaches: vec![(stand(0), east_reach()), (stand(1), Arc::default())],
+        reaches: [(0, 0), (1, 0), (1, 1), (1, 2)]
+            .map(|(walks, answers)| {
+                let reach = if walks == 0 {
+                    east_reach()
+                } else {
+                    Arc::default()
+                };
+                (
+                    Stand {
+                        answers,
+                        ..stand(walks)
+                    },
+                    reach,
+                )
+            })
+            .to_vec(),
         ..Hosted::default()
     });
     start.kingdom.heroes = vec![KingdomHero {
@@ -346,4 +362,57 @@ fn a_replay_asks_the_host_its_answers_and_plays_them_again_from_before() {
     assert_eq!(r.level_asked(), None);
     assert!(r.at(1300).unwrap().drawn.message.is_none());
     assert_eq!(r.answer_asked(), None);
+}
+
+#[test]
+fn a_visit_s_level_ups_and_no_box_open_at_its_walk_s_end() {
+    // E24 M5 T4b (design §5.27): the Tree of Knowledge's free level, live: no box, its level-up's
+    // dialog at the walk's end, the visit over at its close.
+    let mut start = walking_start(3, Vec::new());
+    start.live = true;
+    start.heroes = start.hero.into_iter().collect();
+    start.index = Some(0);
+    start.moves = Some(vec![east_walk()]);
+    start.host = Some(Hosted {
+        reaches: [0, 1].map(|walks| (stand(walks), east_reach())).to_vec(),
+        ..Hosted::default()
+    });
+    start.kingdom.heroes = vec![KingdomHero {
+        points: 1560,
+        ..KingdomHero::default()
+    }];
+    start.kingdom.selected = Selected::Hero(0);
+    start.finds = vec![Found {
+        at: at(21, 17),
+        first: Vec::new(),
+        again: None,
+        gain: Gain {
+            experience: 1000,
+            ..Gain::default()
+        },
+        found: None,
+        taken: None,
+        event: false,
+        blocks: None,
+        ask: None,
+        flag: None,
+        fight: None,
+        walk: Some(0),
+        levels: vec![LevelBox {
+            hosted: false,
+            ..hosted_level()
+        }],
+    }];
+    let mut l = Loop::start(rules(Bugs::Fixed), &start).unwrap();
+    let click = Action::Click(tile(21, 17));
+    l.run(1, &[click]).unwrap();
+    l.run(2, &[click]).unwrap();
+    for t in 3..=900 {
+        l.run(t, &[]).unwrap();
+    }
+    assert!(l.boxed.is_some());
+    l.run(901, &[Action::BoxKey(Key::Ok), Action::BoxKeyUp(Key::Ok)])
+        .unwrap();
+    assert!(l.boxed.is_none());
+    assert_eq!(l.level_asked(), None);
 }

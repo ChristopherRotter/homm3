@@ -13,7 +13,7 @@ use super::choices::chosen;
 use super::computers::hover_of;
 use super::turns::{laid, started};
 use crate::levels::{self, FRAMES, LevelUp, Offer};
-use crate::reach::{Hosted, Reach};
+use crate::reach::{Hosted, Reach, Stand};
 use crate::sound::Cue;
 
 /// E24 M4 T2c's sequences: their situations, timelines and kept live parts.
@@ -524,7 +524,10 @@ fn play_hosted(
             // The stand's reach the engine's: none after the walk, as the recording's facts.
             let mut host = host.clone();
             let stand = l.stand_of(l.index.unwrap_or_default());
-            host.reaches.push((stand, Arc::new(Reach::default())));
+            for answers in 0..3 {
+                let stand = Stand { answers, ..stand };
+                host.reaches.push((stand, Arc::new(Reach::default())));
+            }
             l.host = Some(Arc::new(host));
         }
         l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))

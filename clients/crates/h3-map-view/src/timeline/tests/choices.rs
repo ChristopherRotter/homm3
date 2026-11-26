@@ -13,7 +13,7 @@ use h3_ui::ui::State as Marked;
 
 use super::computers::hover_of;
 use super::turns::started;
-use crate::reach::{Hosted, Pick, Reach};
+use crate::reach::{Hosted, Pick, Reach, Stand};
 
 /// E24 M4 T2b1's sequences this part plays: their situations, timelines and kept live parts.
 const CHOOSING: [(&str, &str, &str, &str); 6] = [
@@ -376,7 +376,10 @@ fn play_hosted(
             // The stand's reach the engine's: none after the walk, as the recording's facts.
             let mut host = host.clone();
             let stand = l.stand_of(l.index.unwrap_or_default());
-            host.reaches.push((stand, Arc::new(Reach::default())));
+            for answers in 0..3 {
+                let stand = Stand { answers, ..stand };
+                host.reaches.push((stand, Arc::new(Reach::default())));
+            }
             l.host = Some(Arc::new(host));
         }
         l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))

@@ -60,7 +60,7 @@ use h3_protocol::wire::game::{
 use h3_protocol::wire::{Outcome, Side};
 
 use super::played::{Held, Visit};
-use crate::asks::Ask;
+use crate::asks::{Ask, Offer as AskOffer};
 use crate::finds::{Find, FindArt, Gain};
 use crate::live::Stack;
 
@@ -100,6 +100,20 @@ const EVENT: u32 = 26;
 const GOLD: usize = 6;
 /// Gold's handle (as a price's `[resource, amount]`).
 const GOLD_HANDLE: i32 = 6;
+/// Gems' handle.
+const GEMS: u16 = 5;
+/// The Tree of Knowledge's class.
+const TREE: u32 = 102;
+/// The Warrior's Tomb's.
+const TOMB: u32 = 108;
+/// The Pyramid's.
+const PYRAMID: u32 = 63;
+/// A Border Guard's.
+const BORDER_GUARD: u32 = 9;
+/// A Cartographer's.
+const CARTOGRAPHER: u32 = 13;
+/// A monster's count in the view's word (its first of the count's word).
+const COUNT: u32 = 0xFFF;
 
 /// What a visit shows (the module's documentation).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -170,6 +184,13 @@ pub enum Told {
     /// one visited from beside whose visit Part A does not build (a Scholar, a Spell Scroll),
     /// taken as a pickup is, no box.
     Taken,
+    /// Live, a visit that tells nothing built but opens level-ups (E24 M5 T4b, design §5.27: the
+    /// Tree of Knowledge's free level): no box, what the panels show, then its level-ups' dialogs
+    /// (the engine holds them open).
+    Levels {
+        /// What the panels show.
+        gain: Gain,
+    },
 }
 
 /// Which of a question's answers the record's takes: its OK or a choice's first picture, a
@@ -201,15 +222,34 @@ pub fn told(visit: &Visit, class: [u32; 2], hero: &str) -> Option<Told> {
         .or_else(|| (class[0] != EVENT && removes(&visit.events)).then_some(Told::Taken))
 }
 
-/// The question a live visit of an object of `class` asks while the host holds `decision` open (E24
-/// M5 T4b, design §5.27, *provisional*): its facts the engine's (the viewer's open decision as the
-/// engine projects it), its hero named `hero` (Pandora's Box's boxes); its answers the host's. A
-/// treasure chest's gold and experience, the Arena's gain, a School's gain and price, Pandora's
-/// Box (its rewards told by the answer); none for another decision or class (the questions of
-/// E24 M5 T4b's next part, the screens of M6 and M7).
+/// The question a live visit of an object of `class` and subclass asks while the host holds
+/// `decision` open (E24 M5 T4b, design §5.27, *provisional*): its facts the engine's (the viewer's
+/// open decision as the engine projects it; a monster's creature its subclass and its count the
+/// first of its word as the view shows it, `word`), its hero named `hero` (Pandora's Box's
+/// boxes); its answers the host's. A treasure chest's gold and experience, the Arena's gain, a
+/// School's gain and price, Pandora's Box (its rewards told by the answer), the Warrior's Tomb
+/// (its artifact told by the answer), the Tree of Knowledge's price in gold or gems, a
+/// Cartographer's map, a Border Guard's passage, the Pyramid, a wandering monster's offer to join
+/// free or for its price and its flight (each next offer the engine's next decision: no flight
+/// of the client's); none for another decision or class (a guarded object's fight and a
+/// dwelling's hire: M5 T6's battles, the hire dialog of M6 and M7).
 #[must_use]
-pub fn opened(decision: &Decision, class: u32, hero: &str) -> Option<Ask> {
+pub fn opened(
+    decision: &Decision,
+    [class, subclass]: [u32; 2],
+    word: Option<u32>,
+    hero: &str,
+) -> Option<Ask> {
     let clamp = |n: u32| i32::try_from(n).unwrap_or(i32::MAX);
+    let monster = |offer| Ask::Monster {
+        stack: Stack {
+            creature: u16::try_from(subclass).unwrap_or(u16::MAX),
+            count: word.map_or(0, |w| clamp(w & COUNT)),
+        },
+        offer,
+        room: true,
+        flees: false,
+    };
     match decision {
         Decision::Choice { choice } => match (&choice.kind, class) {
             (ChoiceKind::Chest { gold, experience }, CHEST) => Some(Ask::Chest {
@@ -235,14 +275,130 @@ pub fn opened(decision: &Decision, class: u32, hero: &str) -> Option<Ask> {
                 rewards: Rewards::default(),
                 hero: String::from(hero),
             }),
+            (OfferKind::Search {}, TOMB) => Some(Ask::Tomb(None)),
+            (OfferKind::Gift { price }, TREE) => Some(Ask::Tree {
+                gems: price.iter().any(|p| p.resource == GEMS),
+                visited: false,
+                poor: false,
+            }),
+            (OfferKind::Reveal { .. }, CARTOGRAPHER) => Some(Ask::Maps(subclass)),
+            (OfferKind::Pass {}, BORDER_GUARD) => Some(Ask::Pass),
+            (OfferKind::SearchPyramid {}, PYRAMID) => Some(Ask::Pyramid),
+            (OfferKind::Join {}, MONSTER) => Some(monster(AskOffer::Join)),
+            (OfferKind::JoinForGold { price }, MONSTER) => {
+                let gold = price.iter().map(|p| clamp(p.amount)).sum();
+                Some(monster(AskOffer::Gold(gold)))
+            }
+            (OfferKind::Pursue {}, MONSTER) => Some(monster(AskOffer::Flee)),
             _ => None,
         },
         _ => None,
     }
 }
 
-/// Whether `events` take an object off the map (`ObjectRemoved`).
-fn removes(events: &[GameEvent]) -> bool {
+/// What a live visit tells (E24 M5 T4b, design §5.27): the question of the decision the host held
+/// open there ([`opened`], `class` its object's class and subclass and its word), unanswered
+/// every answer the host's ([`Answered::Open`]); answered, the record's answer, the question's
+/// facts brought up to what it told (Pandora's Box's rewards, the Tomb's artifact, a monster's
+/// creatures joined). None where the decision asks no question here.
+#[must_use]
+pub fn live(
+    visit: &Visit,
+    decision: &Decision,
+    (class, word): ([u32; 2], Option<u32>),
+    hero: &str,
+) -> Option<Told> {
+    let ask = opened(decision, class, word, hero)?;
+    let flag = visit.flag;
+    let Some((answer, after)) = visit.answers.first() else {
+        return Some(Told::Ask {
+            ask,
+            answered: Answered::Open,
+            flag,
+        });
+    };
+    let answered = match *answer {
+        Answer::Offer {
+            consent: Consent::Accept,
+        }
+        | Answer::Chest {
+            choice: ChestChoice::Gold,
+        }
+        | Answer::Arena {
+            choice: ArenaChoice::Attack,
+        }
+        | Answer::School {
+            choice: SchoolChoice::First,
+        } => Answered::Yes,
+        Answer::Chest {
+            choice: ChestChoice::Experience,
+        }
+        | Answer::Arena {
+            choice: ArenaChoice::Defense,
+        }
+        | Answer::School {
+            choice: SchoolChoice::Second,
+        } => Answered::Second,
+        _ => Answered::No,
+    };
+    let ask = match ask {
+        Ask::OpenBox { hero, .. } => Ask::OpenBox {
+            rewards: rewards(visit),
+            hero,
+        },
+        Ask::Tomb(_) => Ask::Tomb(after.iter().find_map(|e| match e {
+            GameEvent::HeroChanged {
+                change: HeroChange::AddArtifact { artifact },
+                ..
+            } => Some(artifact.artifact),
+            _ => None,
+        })),
+        Ask::Monster {
+            stack, offer, room, ..
+        } => {
+            let joined = after.iter().find_map(|e| match e {
+                GameEvent::Adventure {
+                    event:
+                        AdventureEvent::CreaturesJoined {
+                            creature, count, ..
+                        },
+                } => Some(Stack {
+                    creature: *creature,
+                    count: i32::try_from(*count).unwrap_or(i32::MAX),
+                }),
+                _ => None,
+            });
+            Ask::Monster {
+                stack: joined.unwrap_or(stack),
+                offer,
+                room: room && joined.is_some(),
+                flees: false,
+            }
+        }
+        ask => ask,
+    };
+    Some(Told::Ask {
+        ask,
+        answered,
+        flag,
+    })
+}
+
+/// What the answers of a record's visit give, by what the panels show (E24 M5 T4b: a live
+/// answer's reply the client does not build, the Tree of Knowledge's experience and price).
+#[must_use]
+pub fn answered_gain(visit: &Visit) -> Gain {
+    let after: Vec<GameEvent> = visit
+        .answers
+        .iter()
+        .flat_map(|(_, events)| events.iter().cloned())
+        .collect();
+    gain(&after)
+}
+
+/// Whether `events` take an object off the map (`ObjectRemoved`; since E24 M5 T4b a live answer's
+/// object taken, `h3-map-client`'s).
+pub fn removes(events: &[GameEvent]) -> bool {
     events.iter().any(|e| {
         matches!(
             e,
@@ -664,7 +820,11 @@ impl Kept {
                 ..
             } => none,
             Told::Guarded { .. } => Self { yes: true, ..none },
-            Told::Find { .. } | Told::Fight { .. } | Told::Flagged { .. } | Told::Taken => none,
+            Told::Find { .. }
+            | Told::Fight { .. }
+            | Told::Flagged { .. }
+            | Told::Taken
+            | Told::Levels { .. } => none,
         }
     }
 }
@@ -674,33 +834,35 @@ impl Kept {
 /// ([`told`]) with its hero named by `name` (by its type), in the record's order, one a visit; an
 /// artifact's pickup with the artifact's primary skills (`art`'s `artifact_skills`, taken as
 /// worn: SRV-STUB-7); a visit on no object, or that tells nothing, left out. Since E24 M5 T4b
-/// (live, design §5.27) a visit whose walk `open` names, with no answer yet, asks the question of
-/// the decision the host holds open ([`opened`]; every answer the host's: [`Answered::Open`]).
+/// (live, design §5.27: `open` given, none for a record) a visit whose walk `open` names asks the
+/// question of the decision the host held open there ([`live`]): with no answer yet every answer
+/// the host's ([`Answered::Open`]), else the record's; one that tells nothing else but opens
+/// level-ups shows them ([`Told::Levels`]); `object_at` gives its object's word too (the view's:
+/// a monster's first count of its word).
 #[must_use]
 pub fn lay(
     visits: &[Visit],
-    open: &[(usize, Decision)],
-    object_at: impl Fn(Pos) -> Option<(usize, [u32; 2])>,
+    open: Option<&[(usize, Decision)]>,
+    object_at: impl Fn(Pos) -> Option<(usize, [u32; 2], Option<u32>)>,
     art: &FindArt,
     name: impl Fn(Option<u8>) -> String,
 ) -> Vec<Laid> {
     visits
         .iter()
         .filter_map(|visit| {
-            let (object, class) = object_at(visit.at)?;
+            let (object, class, word) = object_at(visit.at)?;
             let hero = name(visit.hero_type);
             let asked = open
+                .unwrap_or_default()
                 .iter()
-                .find(|(walk, _)| *walk == visit.walk && visit.answers.is_empty())
-                .and_then(|(_, decision)| opened(decision, class[0], &hero))
-                .map(|ask| Told::Ask {
-                    ask,
-                    answered: Answered::Open,
-                    flag: visit.flag,
-                });
+                .find(|(walk, _)| *walk == visit.walk)
+                .and_then(|(_, decision)| live(visit, decision, (class, word), &hero));
+            let leveled = (open.is_some() && !visit.levels.is_empty()).then(|| Told::Levels {
+                gain: gain(&visit.events),
+            });
             let mut told = match asked {
                 Some(asked) => asked,
-                None => told(visit, class, &hero)?,
+                None => told(visit, class, &hero).or(leveled)?,
             };
             if let Told::Find {
                 find: Find::Artifact { artifact },
@@ -714,7 +876,7 @@ pub fn lay(
             }
             let blocks = match &told {
                 Told::Fight { .. } | Told::Taken => true,
-                Told::Guarded { .. } | Told::Flagged { .. } => false,
+                Told::Guarded { .. } | Told::Flagged { .. } | Told::Levels { .. } => false,
                 Told::Find { taken, .. } => *taken,
                 Told::Ask { ask, .. } => ask.beside(),
             };

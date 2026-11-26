@@ -1808,6 +1808,8 @@ pub struct Loop {
     answer_asked: Option<AnswerAsked>,
     /// The level-up's offer asked of the host (E24 M5 T4b, [`Loop::level_asked`]).
     level_asked: Option<LevelAsked>,
+    /// The host's answers and level-ups' offers taken so far (E24 M5 T4b: a stand's).
+    answers_taken: usize,
     reach_asked: Option<(u32, Stand)>,
     next_move: usize,
     walking: Option<(usize, usize)>,
@@ -2266,6 +2268,7 @@ impl Loop {
             walk_asked: None,
             answer_asked: None,
             level_asked: None,
+            answers_taken: 0,
             reach_asked: None,
             next_move: 0,
             walking: None,
@@ -4227,7 +4230,10 @@ impl Loop {
             let hero = self.index.unwrap_or_default();
             let level = leveling.open.level;
             match host.leveled(hero, level) {
-                Some(next) => leveling.rest.extend(next.iter().cloned()),
+                Some(next) => {
+                    leveling.rest.extend(next.iter().cloned());
+                    self.answers_taken += 1;
+                }
                 None => {
                     self.level_asked.get_or_insert(LevelAsked {
                         at: t,
@@ -4319,6 +4325,17 @@ impl Loop {
                 if self.ask(t, i) {
                     return true;
                 }
+                // Live, level-ups and no box (E24 M5 T4b, design §5.27: the Tree of Knowledge's
+                // free level): what the panels show, then their dialogs (the engine holds them
+                // open), the visit's end after them.
+                if !found.levels.is_empty() {
+                    self.due_levels.extend(found.levels.iter().cloned());
+                    self.leveling = None;
+                    self.gain(found.gain);
+                    if let Ok(None) = self.level_up(t, After::Found(i)) {
+                        return true;
+                    }
+                }
                 // A record's flag raised alone (E24 M4 T6, the reviewers' R3-4: what the visit
                 // shows besides is not built): the minimap drawn after the visit
                 // (`visit_and_update` 0x4AAAA0), the view at its next draw.
@@ -4371,7 +4388,9 @@ impl Loop {
             (None, Some(nth), Some(host)) => {
                 let asked = AnswerKey { find: i, nth, pick };
                 if let Some(given) = host.answer(asked) {
-                    Some(given.clone())
+                    let given = given.clone();
+                    self.answers_taken += 1;
+                    Some(given)
                 } else {
                     self.answer_asked
                         .get_or_insert(AnswerAsked { at: t, asked });
@@ -6022,6 +6041,7 @@ impl Loop {
             hero,
             walks: self.next_move,
             turns: self.next_turn,
+            answers: self.answers_taken,
         }
     }
 

@@ -24,7 +24,7 @@ use h3_map::Limits;
 use h3_map::model::{Body, EventBody, Pos, RawMap};
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{MapArt, WATER};
-use h3_map_view::asks::{self, Ask, Reply, Seen, Visitor};
+use h3_map_view::asks::{self, Ask, Fade, Reply, Seen, Visitor};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
@@ -483,6 +483,82 @@ pub fn live_walks(
     let finds = painter.record_finds(&raw, (&played.visits, &played.levels), hover, Some(open))?;
     Ok((played.moves, finds))
 }
+
+/// A live visit's next question (E24 M5 T4b, design §5.27: the engine held another decision open
+/// after an answer, a monster's flight after its offer declined): `decision`'s question about the
+/// object visited from the tile `at` (the view's mouse-over `hover`), laid out by `painter` with
+/// every answer the host's, the visit's `nth`; none where the decision asks no question there.
+///
+/// # Errors
+/// Its box does not lay out.
+pub fn live_question(
+    painter: &mut Painter<'_>,
+    decision: &Decision,
+    (hover, at): (&Hover, Pos),
+    nth: u8,
+) -> Result<Option<Question>, String> {
+    let Some(tile) = hover.base([i32::from(at.x), i32::from(at.y), i32::from(at.z)]) else {
+        return Ok(None);
+    };
+    let Some(o) = tile.object.filter(|_| tile.entrance) else {
+        return Ok(None);
+    };
+    let class = [tile.class, tile.subclass];
+    let Some(ask) = engine::visits::opened(decision, class, tile.word, "") else {
+        return Ok(None);
+    };
+    let mut question = painter.question(&ask, o)?;
+    (question.yes, question.second, question.no) = (None, None, None);
+    question.hosted = Some(nth);
+    Ok(Some(question))
+}
+
+/// What a live visit's answer `nth` shows (E24 M5 T4b: a next question's, which the client lays
+/// out from the record alone): `record` read as [`for_live`] reads it, the visit at the end of
+/// walk `walk`, what its answer gives the panels and, where it takes its object off the map, that
+/// object (its index on the map file `map`, from its tile `at` on the mouse-over `hover`) with a
+/// monster's sound (`killfade.82M`) or a find's; none past its answers.
+///
+/// # Errors
+/// As [`for_live`]'s.
+pub fn live_reply(
+    painter: &Painter<'_>,
+    map: &Path,
+    (record, rules, live): (engine::GameRecord, &GameRuleset, engine::Live),
+    (hover, walk, nth): (&Hover, usize, usize),
+    label: String,
+) -> Result<Option<Answer>, String> {
+    let (bytes, raw) = read_map(map)?;
+    let loaded = engine::live(record, &bytes, rules, live).map_err(|e| format!("{label}: {e}"))?;
+    let played = played_of(painter.assets, &raw, &loaded, rules, label)?;
+    let Some(visit) = played.visits.iter().find(|v| v.walk == walk) else {
+        return Ok(None);
+    };
+    let Some((_, events)) = visit.answers.get(nth) else {
+        return Ok(None);
+    };
+    let at = visit.at;
+    let tile = hover.base([i32::from(at.x), i32::from(at.y), i32::from(at.z)]);
+    let taken = tile
+        .and_then(|t| Some((t.object.filter(|_| t.entrance)?, t.class)))
+        .filter(|_| engine::visits::removes(events))
+        .map(|(o, class)| {
+            let fade = if class == MONSTER_CLASS {
+                Fade::Killfade
+            } else {
+                Fade::Pickup
+            };
+            (o, fade)
+        });
+    Ok(Some(Answer {
+        gain: engine::visits::gain(events),
+        taken,
+        ..Answer::default()
+    }))
+}
+
+/// A wandering monster's class.
+const MONSTER_CLASS: u32 = 54;
 
 /// A map file's bytes and its raw map (gzip-compressed, as the game keeps it, or not: the
 /// writer's).
@@ -1348,11 +1424,11 @@ impl<'a> Painter<'a> {
         let texts = &assets.tables.texts;
         let laid = engine::visits::lay(
             visits,
-            open.unwrap_or_default(),
+            open,
             |pos| {
                 let tile = hover.base([i32::from(pos.x), i32::from(pos.y), i32::from(pos.z)])?;
                 let o = tile.object.filter(|_| tile.entrance)?;
-                Some((o, [tile.class, tile.subclass]))
+                Some((o, [tile.class, tile.subclass], tile.word))
             },
             &assets.tables.map.finds,
             |hero| self.name_of(hero),
@@ -1499,6 +1575,24 @@ impl<'a> Painter<'a> {
                     if !kept.no {
                         question.no = None;
                     }
+                    // Live, an answer the record gives that the client does not build (the Tree
+                    // of Knowledge's, the Pyramid's, a monster's offer declined): what the
+                    // record's answer gives the panels (E24 M5 T4b).
+                    if open.is_some() {
+                        let reply = match answered {
+                            engine::visits::Answered::Yes => Some(&mut question.yes),
+                            engine::visits::Answered::Second => Some(&mut question.second),
+                            engine::visits::Answered::No => Some(&mut question.no),
+                            engine::visits::Answered::Open => None,
+                        };
+                        if let Some(reply @ None) = reply {
+                            let visit = visits.iter().find(|v| v.walk == walk);
+                            *reply = Some(Answer {
+                                gain: visit.map(engine::visits::answered_gain).unwrap_or_default(),
+                                ..Answer::default()
+                            });
+                        }
+                    }
                     // Pandora's Box's own text first, a box of its own (design §5.4's table:
                     // `visit_pandora_box` 0x4A0C50; the map's, read at run time, R2-4).
                     if let (Ask::OpenBox { .. }, Some(text)) = (&ask, pandora_text(raw, o)) {
@@ -1516,6 +1610,9 @@ impl<'a> Painter<'a> {
                 Visited::Flagged { flag } => found.flag = Some((o, flag)),
                 // An object taken and nothing else built (E24 M4 T6): taken from beside, no box.
                 Visited::Taken => found.taken = Some(o),
+                // Live, level-ups and nothing else built (E24 M5 T4b, design §5.27: the Tree of
+                // Knowledge's free level): no box, the levels after what the panels show.
+                Visited::Levels { gain } => found.gain = gain,
             }
             out.push(found);
         }
