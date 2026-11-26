@@ -556,3 +556,41 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   both profiles and RoE; the colour's town choice; RMG-QUIRK-3's two cases; the property test's
   layout invariants; the root, the dump's bytes. `RMG_GENERATOR_VERSION` stays 1: no map is
   written before increment 7.
+
+## T3d — step 2, the triangulation, the borders, the fills, the water zones (2026-11-26, increment 3)
+
+- **Whole** (the user, asked with the cut split on water / split on code / whole: "T3d whole").
+  Branch `rmg/e14-t3d`, the lane's paths and the capture harness (`h3rmg.py`, `water.txt`).
+  Staged from the PC at the start: the oracle's set (58 files, SHA-256 checked), SoD's three
+  tables, Complete's two maps; #1196 had merged. The setup's baseline stopped early (no build ran
+  during the oracle's corpus); CI on `master` stood in.
+- **The oracle:** `corpus --phases --record` once, `water.txt` added (the memory record's zone
+  generators after step 2, `town2` left out: a water zone's +0x8 is the heap's); `kept.txt`,
+  `phases.txt`, `zones.txt`, `layout.txt` unchanged on 24 of 24.
+- **Read** (`scripts/exe.py`): `rmg_level_zones_partition` 0x53E050 whole (the points' f64
+  compares, the water zone's written fields, the borders' and fills' loops); `rmg_jagged_line_draw`
+  and `rmg_line_draw`; `triangulation_finish` and its helpers 0x5FDCB0 to 0x5FDD40 (32-bit, two
+  `idiv`). One agent read `rmg_zone_borders_draw`, `rmg_segment_clip`, `rmg_zone_flood_fill` with
+  its tail and `rmg_water_zones_connect` exactly (pseudo-code, survey §2.2 "Step 2 as ported"):
+  the fill's start scores the ring's destination vertices and clips once (T3b had each clipped),
+  the borders' b and later a are never tested, the corner rule's exclusions.
+- **Ported:** `triangulation.rs` (Lischinski's on half-edges, the original's vector order, total:
+  a point outside the frame not inserted, a walk capped, a flat triangle -1, none reachable);
+  `partition.rs` (the points, the water zones, the clip, both line drawers, the borders, the fill,
+  the connections and hop counts); `Cells::get`, the zone byte and land bit; `KeptConnection`'s
+  `created`; `GeneratedMap.partition` (polygons, distances); `Trace::zone_memory` (RMG-QUIRK-1's
+  measured bytes in place of the model's); `GenerateError::Partition` (RMG-QUIRK-3's jagged limit
+  0, -4's straight line off the map and fill start off the map, the level's first fault).
+- **Against the oracle:** with `zones.txt`'s bytes the step 2 draws (per phase) and dump 2 equal on
+  24 of 24 once the fill's start was corrected (`l1-4p-b`'s zone 14 at (119, 30)); the water zones
+  44 of 44; no straight line left the map. The model's own bytes: 22 of 24 (`l1-4p-b`,
+  `xl2-4p-seed0`). RMG-QUIRK-14 confirmed: with scaled sizes `s1-2p` would get 12 water zones.
+- **T3b's corner cases** (counted in the port, equal to the oracle): the clip of a side wholly off
+  the map on the map 104 times in 19 cases; the chord, the whole frame, a dropped point never; 20
+  zones (13 water, 7 land) in 6 cases fill nothing. Into the ledger's open table for the user.
+- **Tests:** the corpus to step 2, the water zones, the model's 22, `strict-fixed`'s zeroed bytes,
+  step 2's jagged limit 0; `h3-rmg`'s triangulation (Delaunay over seeded points, Euler, the edge
+  and vertex cases, the circumcentres, the fallbacks) and partition units (the clip, the lines,
+  the units flag, the memory choice, the whole frame, the faults, an off-map water side); the
+  property test's step 2 invariants. Coverage 100 % after the faults became a per-level record
+  (the unreachable `?` paths gone). `RMG_GENERATOR_VERSION` stays 1.

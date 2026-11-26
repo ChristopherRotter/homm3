@@ -2679,21 +2679,31 @@ fn check_told(
             _ => {}
         }
     }
-    if !own && after.day == before.day && !captor {
+    let kept = |(was, is): (&u64, &u64)| was & !is == 0;
+    let grown = before
+        .adventure
+        .explored
+        .iter()
+        .zip(&after.adventure.explored)
+        .all(kept);
+    if !own && after.day == before.day && !captor && revealed == 0 {
         prop_assert_eq!(&before.adventure.explored, &after.adventure.explored);
         prop_assert_eq!(&before.adventure.fringe, &after.adventure.fringe);
+    } else if !own && after.day == before.day && !captor {
+        // A visit held after a battle, which the battle's last command makes, another player's
+        // or the system's (GAM-DEC-007; the town lane's seed of E09 T56: a guarded observatory's
+        // disk after the monster's retaliation ended the battle): its reveal (ADV-VIS-002, a
+        // flag's ADV-OWN-001) told to the visitor's owner alone, the explored tiles grown by its
+        // count and no more, the fringe following them.
+        prop_assert!(grown);
+        prop_assert_eq!(
+            ones(&after.adventure.explored),
+            ones(&before.adventure.explored) + revealed
+        );
     } else if !own {
         // A new day's reveal (E08 T40), or (E09 T9b2a) a capture's in another's command: the
         // explored tiles only grow, the fringe follows them.
-        let kept = |(was, is): (&u64, &u64)| was & !is == 0;
-        prop_assert!(
-            before
-                .adventure
-                .explored
-                .iter()
-                .zip(&after.adventure.explored)
-                .all(kept)
-        );
+        prop_assert!(grown);
     }
     Ok(())
 }

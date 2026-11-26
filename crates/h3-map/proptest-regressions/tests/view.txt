@@ -45,3 +45,4 @@ cc 3d61bad00be5b77e23eb2b450122680504054185e015ca4999afef5e21b68e96 # shrinks to
 cc 9b8b2dc95e3ed123192aa2987368078396dc835a9e3e82de23545cf364f37d53 # E09 T47b: a Den of Thieves' guild shown (the adventure lane's report of E08 T135a)
 cc cc8693ab49d6fe44669fbab37bc9a94db548674cbd75e9d3d0027203fa6895e5 # an RoE plan of side 14, two levels: the viewer's captured town (town lane QUEUE, 2026-11-21)
 cc 9526a19ce0aab98df36f3923b7e3e43427a6a4136173faaab8cb74c1047bc105
+cc 46f90d6608d36cb7b0f20d08ecbdd17c6b19c238e813d1c7a6cf3dcaee593307

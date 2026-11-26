@@ -89,6 +89,9 @@ pub struct KeptConnection {
     pub zones: [usize; 2],
     /// The row.
     pub row: Connection,
+    /// +0xA: set when a way is made (step 6); step 2's connections between two water zones are
+    /// made set (no way to make).
+    pub created: bool,
 }
 
 /// A template as the generator keeps it (RMG-TPL-003, -004): its zones that fit, in row order,
@@ -133,6 +136,7 @@ impl KeptTemplate {
                 fit.holds(c.humans, c.players).then(|| KeptConnection {
                     zones,
                     row: c.clone(),
+                    created: false,
                 })
             })
             .collect();
