@@ -72,6 +72,7 @@ fn rules_with(edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
         requires: vec![],
         cost: vec![(key("t:wood"), 5), (key("t:gold"), 500)],
         roles: BuildingRoles::default(),
+        war_machine: None,
     });
     edit(&mut towns);
     rules_with_adventure(core, &towns, |adventure| {
