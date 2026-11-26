@@ -640,9 +640,9 @@ fn a_computers_turn_s_sounds_and_unseen_steps() {
     );
     // In play the client's own pick (E24 M5 T4b): the track its seeded generator draws.
     let mut picked = start.clone();
-    picked.host = Some(crate::reach::Hosted {
+    picked.host = Some(Hosted {
         picks: Some(11),
-        ..crate::reach::Hosted::default()
+        ..Hosted::default()
     });
     let mut l = Loop::start(rules(Bugs::Original), &picked).unwrap();
     l.take_cues();
@@ -651,7 +651,7 @@ fn a_computers_turn_s_sounds_and_unseen_steps() {
             .unwrap();
     }
     let tracks = rules(Bugs::Original).turn.computer;
-    let k = crate::picks::Picks::new(11).below(tracks.len());
+    let k = Picks::new(11).below(tracks.len());
     assert!(
         l.take_cues()
             .contains(&(160, Cue::Music(tracks[k].clone())))

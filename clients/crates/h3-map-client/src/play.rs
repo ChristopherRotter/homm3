@@ -633,7 +633,8 @@ pub(crate) mod tests {
             // Its whole record, as the record player reads it (its map the file's by its hash),
             // its start the human's view.
             let (record, live) = hot.since(player, None).unwrap();
-            assert_eq!(live, Live::default());
+            // Its facts: no facing yet, the client's picks seeded (E24 M5 T4b).
+            assert_eq!((live.facings.len(), live.picks.is_some()), (0, true));
             assert_eq!(
                 Some(&record),
                 parse(&hot.record(player).unwrap()).ok().as_ref()

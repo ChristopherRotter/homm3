@@ -20,19 +20,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   shell's entry, `h3_protocol::record` the shared reader, `hot_seat` the session in-process, each
   human's view in turn in the window. **M5 T4 cut in three** by the user at its start:
   **T4a done** 2026-11-26 (design §5.26: the walks through the engine, `h3_map_view::reach`).
-  **T4b in progress** (kept whole by the user; branch `map-client/e24-m5-t4b`, pushed, no PR
-  yet): its first part done 2026-11-26 (design §5.27: the questions, choices and level-ups
-  answered through the host); **next: the rest of T4b** (the QUEUE's "Left": Space's visit, the
-  week's and month's boxes, the seeded random picks, the facts' questions), then its PR, then
-  T4c. The M4 hand-test notes (`clients/out/win/map-m4-notes.txt`) still blank on 2026-11-26.
-  Open questions: MCL-Q29 to MCL-Q49, MCL-Q58 (none blocks). Stubs: `MCL-STUB-1` (a
+  **T4b done** 2026-11-26 in two sessions (kept whole by the user; design §5.27: a visit's
+  questions, choices and level-ups and Space's visit answered through the host, the client's own
+  random picks `h3_map_view::picks`; MCL-Q59, MCL-Q60). **Next: M5 T4c** (the M6/M7 notice, which
+  also closes a decision the view does not ask; the facts audit with MCL-Q59's client part; T4's
+  game). The M4 hand-test notes (`clients/out/win/map-m4-notes.txt`) still blank on 2026-11-26.
+  Open questions: MCL-Q29 to MCL-Q49, MCL-Q58 to MCL-Q60 (none blocks). Stubs: `MCL-STUB-1` (a
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10), `MCL-STUB-5` (a computer's turn ended at once, E31's
   increment 2), `MCL-STUB-6` (a battle in play ends play, M5 T6); planned `MCL-STUB-7` (T4c).
-  Next ids **MCL-Q59**, **MCL-STUB-7**.
-- **Open pull requests** (2026-11-26): none (T4a's #1194 merged). The branch
-  `map-client/e24-m5-t4b` holds T4b's first part, unmerged: continue on it (merge `master` in
-  first).
+  Next ids **MCL-Q61**, **MCL-STUB-7**.
+- **Open pull requests** (2026-11-26): T4b's (`map-client/e24-m5-t4b`; T4a's #1194 merged): check it
+  first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`, `h3-map-client`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
@@ -58,13 +57,15 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
-- **2026-11-26, E24 M5 T4b, part one** (kept whole by the user at its start): the boxes answered
-  through the host (`Loop::answer_asked`, `level_asked`; `engine::visits::opened`, `live`;
-  `HotSeat::decision` through `observe`, SRV-STUB-5); found and fixed: the free Tree's level-up
-  not shown (the hero held), a reach cached as none across an answer (`Stand::answers`). Checked
-  under Xvfb on `game-asks`, `seq-ask-join-no`, `seq-ask-tree` (situation maps gzipped for
-  `play`). The PC up at the start only (58 files and the manuals staged, SHA-256 checked); no VM
-  restart; the setup's baseline stopped at coverage (CI's Clients on `master` standing in).
+- **2026-11-26, E24 M5 T4b** (kept whole by the user at its start; two sessions, the user's "go
+  on" between them): part one the boxes answered through the host (`Loop::answer_asked`,
+  `level_asked`; `engine::visits::opened`, `live`; `HotSeat::decision` through `observe`); part two
+  Space's visit (`Loop::revisit_asked`, `engine::REVISIT`), the client's picks
+  (`h3_map_view::picks`), MCL-Q59 and MCL-Q60 (the adventure and server lanes' inboxes told).
+  Found and fixed: the free Tree's level-up not shown, a reach cached as none across an answer.
+  Checked under Xvfb on six situation maps (gzipped for `play`). The PC up at the start only (58
+  files and the manuals staged, SHA-256 checked); the VM restarted between the parts (files
+  kept); the setup's baseline stopped at coverage (CI's Clients on `master` standing in).
 
 - **2026-11-26, E24 M5 T4a** (T4 cut in three by the user at its start): `h3_map_view::reach`
   (`Stand`, `Reach`, `Hosted`, `WalkAsked`), the loop's and the replay's host questions (the

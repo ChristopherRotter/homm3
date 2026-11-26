@@ -2074,10 +2074,15 @@ fn on(x: i32, y: i32) -> [i32; 2] {
 /// The mouse-over's loop (E24 M3 T6a1): `hover::tests::fixture`'s 8 × 8 map from (0, 0), Red's
 /// hero A at (4, 3) selected with 100 points, the pointer parked.
 fn hovering(live: bool, bugs: Bugs) -> Loop {
+    Loop::start(rules(bugs), &hovering_start(live)).unwrap()
+}
+
+/// [`hovering`]'s start (E24 M5 T4b: a replay's).
+fn hovering_start(live: bool) -> Start {
     let (_, _, hover) = hover::tests::fixture(false);
     let mut kingdom = hover::tests::kingdom();
     kingdom.heroes[0].points = 100;
-    let start = Start {
+    Start {
         view: ViewAt { x: 0, y: 0, z: 0 },
         size: 8,
         scroll_speed: 1,
@@ -2115,8 +2120,7 @@ fn hovering(live: bool, bugs: Bugs) -> Loop {
         water: Arc::default(),
         moves: None,
         host: None,
-    };
-    Loop::start(rules(bugs), &start).unwrap()
+    }
 }
 
 #[test]

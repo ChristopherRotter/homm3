@@ -4,6 +4,38 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-26 (this lane, E24 M5 T4b done, kept whole by the user, in two sessions: the log's
+  "M5 T4b, part one" and "part two", design §5.27: a visit's questions, choices and level-ups
+  and Space's visit answered through the host, the client's own random picks, MCL-Q59 and
+  MCL-Q60): the task as it stood, verbatim.
+
+  ### E24 M5 T4b — every box answered as its command
+
+  - **Scope** (T4 cut in three by the user at its start, 2026-11-26; T4a done: the walks through
+    the engine, design §5.26): every box M4 shows answered by the player as the command through the
+    host (a question, a choice, a level-up, a find's OK where the engine waits, the week's and
+    month's messages), as T4a asks a walk (the loop marks the answer's millisecond, the host plays
+    the session's `Answer` and gives the record's facts, the loop runs again from before it); Space's
+    visit; the original's random picks (a computer turn's music, the pickup sounds, an unnamed
+    town's name) from the client's own seeded generator in play (M4's review item 2), the recorded
+    draws kept for recordings and records; **facts first**: each fact a box lacks an `MCL-Q<n>` and
+    a note in the engine lanes' inboxes. Seen at T4a: the Redwood Observatory's visit tells nothing.
+  - **Acceptance:** a hot-seat game's visits (a pile, a chest's choice, a question's yes and no, a
+    level-up, a week's start) answered in the window under Xvfb, every answer accepted by the
+    engine, every view's frames read back exact and as the headless loop's; the records played by
+    `h3-map-view record`; the scoped verify.
+  - **Depends on:** T4a (done). **Status:** **in progress** (kept whole by the user at its start,
+    2026-11-26; branch `map-client/e24-m5-t4b`, no PR yet). **Done** (the log's "M5 T4b, part
+    one", design §5.27): every question and choice of a visit and every level-up answered through
+    the host, a next question (a monster's flight), a visit's level-ups alone, checked under Xvfb.
+    **Left:** Space's visit (`Unplayable::Visit` live: the engine's `Revisit`, its visit read from
+    the record: `engine::played` takes no `Revisit` yet); the week's and month's boxes (whether
+    the engine waits); the original's random picks in play from the client's seeded generator (a
+    computer turn's music, the pickup sounds, an unnamed town's name; the recorded draws kept for
+    recordings and records); the facts' questions (`MCL-Q59` on: the replies built from the
+    client's tables and the map's text, the epic's risks; the Redwood Observatory's find); the
+    acceptance's week's start; then the PR.
+
 - 2026-11-26 (this lane, E24 M5 T3b done, kept whole by the user: the log's "M5 T3b", design
   §5.25: each human's view in turn from its record since it was left, End Turn through the
   session, the same human's next day in place, the clock on the window's): the task as it stood,

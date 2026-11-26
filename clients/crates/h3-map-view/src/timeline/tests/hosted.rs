@@ -486,3 +486,23 @@ fn space_on_an_entrance_asks_the_host_its_revisit() {
     };
     assert_eq!(l.revisit_asked().map(|a| a.stand), Some(again));
 }
+
+#[test]
+fn a_replay_passes_a_revisit_to_its_loops() {
+    // E24 M5 T4b: the replay's revisit is its loops' (the loop's own test: Space through the
+    // host), the loop run again from before it.
+    let mut start = hovering_start(true);
+    start.index = Some(0);
+    start.moves = Some(Vec::new());
+    start.host = Some(Hosted::default());
+    let mut r = Replay::new(rules(Bugs::Fixed), &start, BTreeMap::new()).unwrap();
+    r.at(5).unwrap();
+    assert_eq!(r.revisit_asked(), None);
+    let asked = RevisitAsked {
+        at: 3,
+        stand: stand(0),
+    };
+    r.add_revisit(&asked, None);
+    assert_eq!(r.revisit_asked(), None);
+    assert!(r.at(10).unwrap().drawn.message.is_none());
+}

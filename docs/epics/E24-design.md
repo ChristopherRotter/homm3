@@ -5051,9 +5051,9 @@ T4's acceptance game. No reading: the original's walk and its keys are M2's and 
 
 T4b kept whole by the user at its start (2026-11-26): every box M4 shows answered by the player as
 the command, Space's visit, the original's random picks from the client's own seeded generator,
-the facts first. Its first part (this) answers a visit's questions, choices and level-ups through
-the hot seat's host. No reading: the boxes and their answers are M4's (§5.4, §5.5, §5.14), the
-engine's rules the engine's.
+the facts first: a visit's questions, choices and level-ups answered through the hot seat's host
+(part one), Space's visit and the client's own random picks (part two). No reading: the boxes and
+their answers are M4's (§5.4, §5.5, §5.14), the engine's rules the engine's.
 
 - **The question's facts the engine's** (`engine::visits::opened`, *provisional*): a walk that
   leaves the engine's decision open (an offer or a choice) keeps it for its visit
@@ -5101,8 +5101,33 @@ engine's rules the engine's.
 - *Provisional:* the answers and the next levels kept by their questions in `Hosted`; the visit
   laid out again from the whole record since at each answer; the engine's decision read through
   `observe`; a monster's count its word's first; each answer's line in play's report.
-- **Not yet** (T4b's next part): Space's visit (`AdventureCommand::Revisit`), the week's and
-  month's boxes, the original's random picks from the client's seeded generator, the facts'
-  questions (the replies still built from the client's tables: the Tomb's morale and its
-  artifact's skills, a Cartographer's price and terrains; Pandora's Box's text from the map
-  file); a guarded object's fight and a dwelling's hire are M5 T6's and M6's.
+- **Space's visit** (part two; `Loop::revisit_asked`, `reach::RevisitAsked`): Space with the
+  selected hero on an object's entrance (M3's `Unplayable::Visit`) asks the host, which plays the
+  engine's `Revisit` (ADV-TEL-008) and gives the find its visit tells, or none where the engine
+  refused it or it tells nothing (nothing happens). The record reader takes a `Revisit` as a
+  visit on the hero's tile keyed past the walks (`engine::REVISIT` plus the walks before it), so
+  no walk's end tells its find (a visit from beside right after it ends on the same tile); a
+  stand counts the revisits taken, so the next Space asks again. A visited Learning Stone's
+  revisit tells nothing: the engine emits no event for it, as for a walk's (`SRV-STUB-4`,
+  MCL-Q59).
+- **The week's and month's boxes:** the engine waits on none (no decision): they show from the
+  record's turn as M4's and close by their OK; checked in play (a week's start in place).
+- **The original's random picks** (part two; `h3_map_view::picks`, M4's review item 2): a
+  pickup's sound and a computer turn's music drawn by the loop's own generator (`Picks`,
+  splitmix64, no float; a plain value, so a loop run again from a kept state draws the same) in
+  play (`Hosted::picks`), an unnamed town's name by `picks::town_name` in the live start's panels
+  and mouse-over (`engine::Live::picks`: the faction's sixteen names in an order drawn for the
+  faction, the town's by its id, so every view of the game names it alike). The hot seat seeds
+  them from the game's seed mixed apart from the engine's stream; recordings and records keep
+  the picks in turn.
+- **The facts' questions:** MCL-Q59 (the replies still built from the client's tables or the map
+  file, and the facts no event carries), MCL-Q60 (the decision read through `observe`); the
+  adventure and server lanes' inboxes told. A guarded object's fight and a dwelling's hire are
+  M5 T6's and M6's.
+- **Checked (part two):** the tests (a record's revisit a visit past the walks; Space asking the
+  host, told, none, asked again; the picks' draws and a town's name by the seed, in the live
+  start's tables; a pickup's sound and a computer's music by the picks); under Xvfb: Space on
+  `game-level`'s Learning Stone after its visit and level-up (taken, nothing told), a week's
+  start after seven End Turns in place (`game-asks`, one human), `seq-find-pile`'s pile (its
+  70 000 gold, as the original's recording): every frame read back exact, as afresh and as the
+  headless loop's; the records played to their end.

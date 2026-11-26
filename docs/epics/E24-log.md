@@ -3841,3 +3841,26 @@ stopped at its coverage step (its clippy and tests passed), CI's green Clients r
 - **Seen for the next part:** the replies still built from the client's tables and the map's text
   (the epic's risks); the golden records not played again (the record player's `lay` takes no
   open decision, so a record lays out as before).
+
+### M5 T4b, part two — Space's visit, the picks, the facts' questions (2026-11-26)
+
+On the same branch, the user's "go on" after part one. The VM restarted between the parts (files
+kept); nothing staged again.
+
+- **Built** (design §5.27):
+  - Space's visit: `Loop::revisit_asked`, `add_revisit` (and `Replay`'s), `Loop::tell_found`
+    (a find told by its index), `reach::RevisitAsked`, `Hosted::revisits`; `engine::played` takes
+    a `Revisit` as a visit on the hero's tile keyed past the walks (`engine::REVISIT`);
+    `window::Session::revisit`, the window's revisit (the find laid out from the record).
+  - The picks: `h3_map_view::picks` (`Picks`, `town_name`); `Hosted::picks`, `engine::Live::picks`;
+    the loop's pickup sound and computer music, the live start's unnamed towns' names; the hot
+    seat's seed (`PICKS` mixed with the game's).
+  - MCL-Q59 and MCL-Q60 asked; the adventure and server lanes' inboxes told.
+- **Seen:** a visited Learning Stone's revisit emits no event (`SRV-STUB-4`, in MCL-Q59); the
+  week's and month's boxes need no answer of the engine's.
+- **Checked:** the tests (a record's revisit, Space through the host, the picks, a town's name by
+  the seed in the live start's tables, a pickup's sound and a computer's music by the picks);
+  under Xvfb: `game-level` (the stone, its level-up's right offer, Space: taken, nothing told),
+  `game-asks` with one human (seven End Turns in place, week 2's box, closed), `seq-find-pile`
+  (its gold): every frame read back exact, as afresh and as the headless loop's; the records
+  played to their end; `h3-map-view`'s coverage, clippy, the client tests, the scoped verify.
