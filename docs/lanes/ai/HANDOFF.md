@@ -32,17 +32,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1197 (`ai/e31-t2e`, `cross-lane`: T2e). Merged: #1192 (`master`'s
-  build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b), #1172 (T2a), #1163 (the shared module
-  PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
+- **Open pull requests:** PR_T2F (`ai/e31-t2f`, `cross-lane`: T2f). Merged: #1197 (T2e), #1192
+  (`master`'s build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b), #1172 (T2a), #1163 (the
+  shared module PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
   `benches/README.md` row of T2a's workload; ADR-0030's note that the simulated combat (AI-Q34)
   and the spell values (AI-Q36) are `h3_battle::estimate`'s.
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
-  encoding v3 (`MEMORY_ENCODING_VERSION`, E31 T2e: the heroes' spell gains) (`docs/08-work-process.md`,
-  "Versions"). Next ids: AI-Q37, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-16;
-  CPU-SIM-013, CPU-STA-008, CPU-SPL-008, CPU-SKL-004.
+  encoding v4 (`MEMORY_ENCODING_VERSION`, E31 T2f: the artifacts' mean) (`docs/08-work-process.md`,
+  "Versions"). Next ids: AI-Q38, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-18;
+  CPU-SIM-013, CPU-STA-009, CPU-SPL-008, CPU-SKL-004, CPU-ART-012.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
@@ -53,28 +53,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `h3-game` for now, refactored into a crate later; the memory the policy's; every battle fought
   until the battle lane decides; `SignedX87`; AI-QUIRK-1 for the slips. **Increment 2 refined**
   (AI-Q32): eleven tasks T2a to T2k (the epic file), about 26 000 of the original's instructions.
-  **T2a done** (2026-11-25): `h3_game::computer::choose`, `Memory`, the turn's frame with each
-  hero done at once (AI-STUB-2 to -6), `h3_sim::computer::play` (the property tests, every
-  shipped map at every difficulty in the original-data check), `h3 ai computer` and the workload
-  `computer-turns-towns-36`. **T2b done** (2026-11-25, not cut, AI-Q33):
-  the simulated combat's sides and melee (CPU-SIM-001 to -005); §5.5's #63 and #64. **T2c done**
-  (2026-11-25, not cut, AI-Q34): the simulated combat moved to the battle lane's public
-  `h3_battle::estimate` (`cross-lane`) with its casts (CPU-SIM-006 to -010); the fight estimate
-  and Necromancy `computer/fight.rs` (CPU-SIM-011, -012; `expect(dead_code)` until T2h or T2i
-  calls it); AI-STUB-8 (the aggressiveness 1.0), AI-STUB-9 (the conditions, E10); §5.5's #65 and
-  #66. **T2d done** (2026-11-26, not cut, AI-Q35): the start's records `computer/start.rs`
-  (CPU-STA-001 to -006) in the memory (v2): the threat fold with the capture estimate, the
-  reserve, the weights (the library's `std::sort`, `order.rs`), the experience weight;
-  `cross-lane` `reach_with`, `day_maximum_of`, `day_income`, `growth_inputs`; AI-STUB-10 to -15
-  (the spell gains to T2e, the artifacts' mean to T2f, the vision circle to T2h, the Grail target
-  to T2i); `computer-turns-towns-36` re-baselined (207 M Ir, the fold's searches). **T2e done**
-  (2026-11-26, not cut, AI-Q36): the spell values `h3_battle::estimate`'s `caster.rs`
-  (`cross-lane`, CPU-SPL-001 to -006; the battle's odds on them), a spell's gain and the heroes'
-  spell gains (`computer/spells.rs`, CPU-SPL-007, CPU-STA-007; memory v3), the skill value's
-  flag-set path in `h3_heroes::choice` (`cross-lane`, CPU-SKL-001), the schools' and the
-  University's values (`computer/skills.rs`, CPU-SKL-002, -003); the workload re-baselined (229 M
-  Ir). **Next: T2f**, the artifacts (`QUEUE.md`): propose a cut by size (the user asked for
-  smaller sessions). Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
+  **T2a to T2f done** (2026-11-25 and -26; one line each in the epic file's "Tasks done", their
+  records in `E31-log.md`): the frame (`choose`, `Memory`, the turn's passes); the simulated
+  combat, since T2c the battle lane's public `h3_battle::estimate` (`cross-lane`, with T2e's
+  caster record and spell values and T2f's morale and luck change value); the fight estimate
+  (`computer/fight.rs`, `expect(dead_code)` until T2h or T2i calls it); the start's records
+  (`computer/start.rs`, memory v4); the spells' and skills' values (`spells.rs`, `skills.rs`);
+  the artifacts' values and the start's mean (`artifacts.rs`, CPU-ART-001 to -011, CPU-STA-008;
+  the equipped value 0x433C60 moved to increment 3, AI-Q37). `computer-turns-towns-36` at 309 M
+  Ir (the threat fold's searches, the gains, the mean). **Next: T2g**, the army and town values (`QUEUE.md`):
+  propose a cut by size (the user asked for smaller sessions). Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
   done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -83,6 +71,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **The computer player (E31)** (its coverage, its workload, the memory), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-26 — E31 T2f: the artifacts
+
+- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
+  the user's repo folder at the start. Measured 7.0 KB, about 2 600 instructions: the user chose
+  no cut, the morale value moved into `h3_battle::estimate`, the equipped value to increment 3
+  (AI-Q37); the bans reader they approved was not needed (the mean reads the setup's flag, not
+  the map's bans). The VM restarted during the setup's baseline; `master` had moved to dc70cf8
+  (T57 merged), whose CI stood for it. The test core refuses foreign keys: the content is read by
+  the original packs' handles (`TRAPS.md`). First build +64 % on the workload; two wastes removed
+  (+34.8 %, re-baselined). Four of my test expectations were wrong, the port right.
 
 ### 2026-11-26 — E31 T2e: the spells' and skills' values
 
@@ -105,12 +104,3 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   `cargo llvm-cov clean --workspace`. Found a failing case of the adventure lane's reach property
   test on `master` (its inbox). Every expectation from the models agreed with the port at once.
   The scoped verify with the original data passed (but `check-lane`, by design); PR #1190.
-
-### 2026-11-25 — E31 T2c: the casts, Necromancy and the fight estimate
-
-- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
-  the user's repo folder at the start (the PC was leaving). Measured 7.6 KB, 4.9 KB never read:
-  the user chose no cut, then, the casts needing four of the battle's helpers, that the battle
-  provide the estimate entirely (AI-Q34). The VM restarted once (the baseline lost; `master`'s CI
-  green at 02ccd93 stood for it). Four of my test expectations were wrong, the port right.
-  `h3-battle`, `h3-game`, `h3-sim` pass; the scoped verify with the original data.
