@@ -794,6 +794,71 @@
 //!   400; Tyris at the factory (ADV-WMF-001): its question accepted, the Ballista (2 500), the First
 //!   Aid Tent (750) and the Ammo Cart (1 000) bought, closed.
 //!
+//! **Spells** (E08 T144b, increment 15: the design note `docs/epics/E08-design.md` §17), on
+//! `fixtures/maps/e08-spells-36.h3m` (written by `h3_map::writer`; `fixtures/maps/README.md`):
+//! SoD, 36 × 36 of grass, the sea on columns 14 to 27 (in the south, rows 29 to 35, on columns 14
+//! to 17 only), an island on rows 9 to 13 (grass on columns 17 to 19, rock on 20 and 21); four
+//! empty boats (16, 2), (18, 5), (22, 4) and (25, 26); 3 × 3 Lucid Pools under (13, 5), Magic
+//! Clouds under (13, 11), Magic Plains under (13, 33), Cursed Ground on the coast at (11, 20) to
+//! (13, 22); two Prisons (entrances (32, 20) and (32, 24); the first's prisoner a Death Knight with
+//! 5 000 experience and twelve Pikemen) and the Market of Time (32, 28). Red's six heroes, each
+//! with five Angels, a Spell Book, the five adventure spells and knowledge 8: the boatwright (hero
+//! 0) on (13, 5), the novice (hero 1) on (13, 18), the flyer (hero 2) on (13, 11), the door's
+//! caster (hero 3, Advanced Air Magic) on (8, 26), the water walker (hero 4) on (13, 33), the
+//! watcher (hero 5) on (30, 11); blue's seven with ten Pikemen each: below the Prisons (heroes 6
+//! and 7) and the Market of Time (hero 8), and four on the east shore. Red sees the island's west
+//! two columns, not its third nor the rock.
+//!
+//! Random play, recorded with `--map fixtures/maps/e08-spells-36.h3m --seed N --agent-seed N
+//! --days 28` (`--profile base:strict-fixed` for the strict one): three of a search over the seeds
+//! 1 to 500 in each profile (a scratch probe counting each game's casts by spell and outcome, the
+//! boats' events and the prisons', not committed: every game casts each of the five spells; under
+//! `faithful` 36 games find a Prison full, 57 make a boat, 181 summon with no boat left; under
+//! `strict-fixed` 43, 0 and 0, its hidden scuttles failing):
+//!
+//! - `spells-s415-d28`: 45 casts (17 Water Walks, 10 doors, 3 of them failing on a wrong kind),
+//!   a summon with no boat left (ADV-SPL-003), a boarding, a prisoner freed and the other Prison
+//!   full, two battles.
+//! - `spells-s439-d28`: a boat made at Expert after every empty one was sunk, a summon with no boat
+//!   left, a prisoner freed and the other Prison full.
+//! - `spells-s188-strict-d28` (`strict-fixed`): 16 Scuttle Boats, 14 failing on a hidden tile
+//!   without a boat (§11.3), three boardings, a prisoner freed and the other Prison full.
+//!
+//! **Scripted** (E08 T144b: §17's paths), on the same map, recorded with `h3 adventure run --map
+//! fixtures/maps/e08-spells-36.h3m --seed 1 --checkpoint-every 5 --script <script> --record
+//! <replay>` (`--seed 2` for the chance's, `--profile base:strict-fixed` for the strict ones). A
+//! replay holds no refused command: the refusals are `h3-map`'s tests on the map
+//! (`spells_map.rs`).
+//!
+//! - `spells-boats-s1`: the boatwright on the Lucid Pools (water at Expert: the chances 100) summons
+//!   the boat (18, 5) to (14, 4) (`ADV-QUIRK-53` on: the least |dx| + |dy|), sinks the hidden boat
+//!   (22, 4) (a hidden empty boat a target, §11.3) and the summoned one, summons (16, 2) and sinks
+//!   it, summons the far (25, 26) and sinks it, then makes a boat (none left; ADV-SPL-003, -004),
+//!   boards it and casts Water Walk in it (A-49, `ADV-QUIRK-57`: accepted at sea, off the pools at
+//!   None); the novice's summon fails on its chance.
+//! - `spells-boats-strict-s1` (`strict-fixed`): the boatwright summons (16, 2) (`ADV-QUIRK-53` off:
+//!   the least dx² + dy²), sinks the boat on the hidden (22, 4) and fails, charged, on the hidden
+//!   (21, 8) without one (§11.3: every hidden tile of the window a target, revealed).
+//! - `spells-chance-s2`: the novice at None (the chances 50): a summon fails, the next brings the
+//!   boat (18, 5) to (14, 17); two scuttles of it fail, the third sinks it; on the Cursed Ground at
+//!   (13, 21) a summon (level 1) brings (25, 26) to (14, 20).
+//! - `spells-fly-s1`: the flyer on the Magic Clouds (air at Expert: Fly 3) flies to the east shore
+//!   (28, 11) around the hidden rock (`ADV-QUIRK-15` on: the reach reads the hidden truth); the new
+//!   day clears Fly (ADV-SPL-002).
+//! - `spells-fly-strict-s1` (`strict-fixed`): the same flight planned straight over the hidden rock
+//!   (assumed flyable) stops on the island's (18, 11), charged five steps (§11.1, decision 407);
+//!   flown again around the rock it revealed; the new day clears Fly.
+//! - `spells-door-s1`: the door's caster (Advanced: three casts, 300 points each) aims at the
+//!   explored water (14, 28): the wrong kind fails, charged (`ADV-QUIRK-55` on); then the hidden
+//!   free (0, 20) (§11.2: the hidden truth) and the explored (4, 23).
+//! - `spells-door-strict-s1` (`strict-fixed`): the hidden water (17, 29) fails, charged and revealed;
+//!   then the hidden (0, 20) and the explored (4, 23).
+//! - `spells-water-walk-s1`: the water walker on the Magic Plains (every school at Expert: Water
+//!   Walk 3) crosses the south's strait to (18, 33).
+//! - `spells-prison-s1`: blue's hero 6 frees the first Prison's prisoner on its entrance (blue's
+//!   eighth on the map; ADV-PRI-002), hero 7 finds the second full (nothing changes), hero 8 steps
+//!   onto the Market of Time (ADV-OBJ-008: a step's price, nothing more).
+//!
 //! **Builds** (E09 T19a, the town lane's increment 2: design note `docs/epics/E09-design.md`
 //! §32's), on `fixtures/maps/e09-builds-36.h3m` (written by `h3_map::writer`;
 //! `fixtures/maps/README.md`): red (Castle) and blue (Conflux); red's Orrin (hero 0, ten pikemen) on
