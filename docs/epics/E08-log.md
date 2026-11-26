@@ -22630,3 +22630,101 @@ determinism, original-data); `check-lane --cross-lane` ok; the AI lane's scope `
 clippy,coverage` for `h3-sim` passes (coverage 1 863 s); `h3-sim`'s, `h3-cli`'s, `h3-protocol`'s
 and `h3-server`'s tests run apart, pass. **Versions:** the env's action encoding v21 (the AI
 lane's). Next: T144b.
+
+### Increment 15, round 8: T144b, the maps, the replays, the plans and oracles, the benchmark, the census (2026-11-26/27, `adventure/e08-t144b`, `cross-lane`)
+
+**The cut** (decision 423; asked before its start, `AskUserQuestion`, with the `cross-lane`
+consent for the server lane's counts of the golden adventure replays): whole, one pull request
+(recommended was two, as T135b). **Baseline:** `master` 1f302e9 (#1200, the inbox's two property
+seeds, merged; CI green on `master` dc70cf8 before it, the setup's full run stopped for the two
+CPUs). The originals staged from the PC at the session's start (17 files, 40 MP3s, SHA-256
+checked against the PC's); the PC left during the session.
+
+- **The census** (`h3-map`'s `examples/original_data.rs`: `Increment15`, `increment_15`,
+  `built_prisoners`, `increment_15_differences`; exit criterion 1): every Prison typed as the
+  kind, its entrance on land, its body a hero's of no owner, no two prisoners of one type on a
+  map nor of a placed hero's, the formation loose; the customisations counted (experience above
+  0, the format's default before SoD); each map's import gives one prisoner per Prison and the
+  build holds each in the store as the import read it (type, experience, army, skills at least,
+  artifacts), on no tile, in no player's list, its type the pool's `Prisoner`; the Market of
+  Time typed `empty`. Against survey `E08-spells.md` §1.1, §1.2: **all equal** at the first run
+  once the experience's and the artifacts' counts read "set and not empty" (89 Prisons, 25 / 42 /
+  22 by version, 17 underground, on 41 maps, the most 30 on `Pandora's Box `; experience 61 on
+  28 maps, name 30, portrait 6, skills 12, army 45, artifacts 10 with a book on 6, patrol 1, no
+  spells or primary skills, AB's spell byte the type's own 42; **89 prisoners built as their
+  bodies**; the one Market of Time on `Titans Winter` (54, 102, 0)). Every shipped map imports.
+- **The map** (`fixtures/maps/e08-spells-36.h3m`; `h3-map`'s `tests/spells_map.rs`): SoD, 36 × 36
+  of grass, the sea on columns 14 to 27 (rows 29 to 35: 14 to 17), an island on rows 9 to 13
+  (grass 17 to 19, rock 20 and 21, red seeing the first two columns only); four empty boats
+  placed so that `ADV-QUIRK-53`'s two choices differ ((18, 5) nearer by |dx| + |dy|, (16, 2) by
+  dx² + dy²), one hidden in the boatwright's window, one far; 3 × 3 Lucid Pools, Magic Clouds,
+  SoD's Magic Plains under three casters, SoD's Cursed Ground on a coast; two Prisons and the
+  Market of Time below blue's heroes. Red's six Knights with five Angels (2 000 points), a Spell
+  Book, the five spells and knowledge 8, the door's caster with Advanced Air Magic; blue's seven
+  Rangers. Tests: the file as written and its import (heroes, boats, two prisoners, the seven
+  objects' types); `the_spells_map_s_grounds_give_their_casters_their_masteries` (Expert on each
+  ground at the table's cost, None off them, Advanced by the skill; HER-SPL-003, -008);
+  `the_spells_map_refuses_the_casts_a_replay_cannot_hold_changing_nothing` (both profiles: another
+  player's hero, an unknown spell, a target where none is named and none where one is, Summon
+  Boat inland, Scuttle Boat on water without a boat, the door out of its window, onto a hero, onto
+  explored water under `strict-fixed` (`WrongKind`), the fourth door at Advanced, Fly and Water
+  Walk again (`AlreadyOn` / `NotHigher`), Summon Boat and Fly in a boat, levels 2 and 5 on Cursed
+  Ground, the eleventh summon past the spell points; each with the state's hash unchanged).
+- **The golden replays** (`adventure_replays.rs`' list; **130** now): scripted (`--seed 1
+  --checkpoint-every 5 --script`, the paths from a scratch probe over the reach, not committed):
+  `spells-boats-s1` (summons by `ADV-QUIRK-53` on, the hidden boat sunk, every boat sunk, one made,
+  boarded, Water Walk at sea: A-49; the novice's summon failing on its chance),
+  `spells-boats-strict-s1` (the other choice, the hidden boat sunk, a hidden empty tile failing,
+  charged), `spells-chance-s2` (seed 2: at None a summon failing then succeeding, two scuttles
+  failing, the third sinking, a level 1 summon on Cursed Ground), `spells-fly-s1` (around the
+  hidden rock by the hidden truth; Fly cleared at the new day), `spells-fly-strict-s1` (the
+  straight path cut at the island's (18, 11) after five steps, flown again around; cleared),
+  `spells-door-s1` (explored water failing, charged, under `ADV-QUIRK-55` on; a hidden free tile;
+  an explored one), `spells-door-strict-s1` (hidden water failing, charged and revealed; then
+  the same two), `spells-water-walk-s1` (Expert on the Magic Plains, the strait crossed),
+  `spells-prison-s1` (blue's eighth freed, the second Prison full, the Market of Time a step).
+  Random play (`--seed N --agent-seed N --days 28`): a scratch sweep over the seeds 1 to 500 in
+  each profile counting casts by spell and outcome, boats' and prisons' events (not committed;
+  every game casts all five; faithful: 36 games with a Prison full, 57 with a boat made, 181 a
+  summon with no boat; strict: 43, 0, 0): `spells-s415-d28` (45 casts, a summon with no boat, a
+  boarding, freed and full, two battles), `spells-s439-d28` (a boat made, freed and full),
+  `spells-s188-strict-d28` (16 scuttles, 14 failing on a hidden tile, three boardings, freed and
+  full). The server lane's counts (`cross-lane`, the user's consent): `h3-protocol`'s
+  `tests::game_fold`, `tests::game_session` (`restores`) and `h3-server`'s `tests::record` at 130,
+  all passing over them; their inbox told.
+- **The plans** (`h3-map`'s `play/casts.rs`, a child of `play.rs`): `Caster` and `spell_plan`
+  (`trade_plan`'s plans, in one of two one to three casters: a Spell Book, one to five of the
+  spells of their own on SoD (`MATE_SPELLS`' bits beside them), the first as AB's one spell byte,
+  nothing on RoE, SoD's primary skills 1, 1, 1 and knowledge 2 to 12; laid out with the heroes),
+  `spell_steps` (`trade_steps`' with, in one case of three, a run of 16 to 64 `Step::Cast`s with
+  moves and ends of turn), `Step::Cast` (`seek_cast`: in a battle as `fight`, a decision settled,
+  in one step of eight a cast drawn alone (`drawn_cast`: any hero, any of the five, a target up to
+  ten columns and nine rows off), else the listed casts and every hero's queried targets).
+  `play.rs`' four properties and `view.rs`' two draw `spell_plan` and `spell_steps`, the hygiene
+  property's `hygienic` over `spell_plan`. Taught the casts: `check_unlisted` (an accepted cast
+  with a target is at a target `legal_cast_targets` gave: none are in `legal_commands`, decision
+  422), `check_jumps` (a cast's `HeroTeleported` is the door's, no teleporter's), `view.rs`'
+  `outcome` (another player's chance outcome: failed, summoned, made, sunk; its seed and streams
+  differ in the other game) and the viewer's own Summon Boat or Scuttle Boat told otherwise ending
+  the comparison (a public draw, as the guild's). The properties found each of the three on their
+  first random cases; the hygiene seed kept in `proptest-regressions/tests/view.txt`, the jump's
+  in `play.txt`.
+- **The oracles of §17** (`check_casts_step`, in the main property and the cover test): an
+  accepted door leaves its hero the points before less `door_points` at the mastery its
+  `SpellCast` tells, at least 0, on the target or (failed) its own tile (ADV-SPL-007; "never
+  negative"); a new day's start leaves no hero a day spell (ADV-SPL-002). A refused cast changes
+  nothing by the properties' atomicity (448 refusals in the cover test).
+- **The cover test** `the_plans_cast_on_the_map` (96 fixed cases, `cast_plans`: SoD plans with
+  casters, steps mostly `Step::Cast`, both profiles): 187 casters; casts 235 Summon Boat, 187
+  Scuttle Boat, 66 Fly, 65 Water Walk, 126 doors; charged failures 110 and 102 summons (chance,
+  no boat), 28 and 134 scuttles (chance, target), 24 doors (target); 448 refused; 23 boats
+  summoned, 25 sunk; 102 arrivals; 129 new days clearing day spells. None made a boat (the
+  replays do).
+- **The workload** `random-play-spells-36` (`benches/adventure/`, seed 1, 5 games of 28 days:
+  2 191 steps, **6 022 795 754 Ir**, about 2.75 M a step; baselined at its first count). No
+  engine code changed, so no other moved. Its `benches/README.md` row waits for T145's `shared/`
+  task (the README is shared).
+- *Agent's calls (change freely):* the map's layout, heroes and grounds; the replays' paths and
+  seeds and the sweep's criteria; the casters' draw and weights, `drawn_cast`'s offsets; the
+  workload's seed.
+- **Versions:** none.

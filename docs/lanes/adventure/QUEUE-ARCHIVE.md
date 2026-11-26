@@ -2728,3 +2728,42 @@ T127a for increment 14: survey file `docs/rules/surveys/E08-spells.md`)
   guards' battle, ADV-OWN-001, likewise), and `play.rs`' `check_isolation` lets them grow for a
   player told a `TilesRevealed`, beside its captors. The seed is in the file; both view
   properties pass 400 random cases.
+
+## E08 T144's queue entry, at T144b's end (2026-11-27: `adventure/e08-t144b`)
+
+**E08 T144 — the casts in the env, the replays and the maps** (round 8; design note
+`E08-design.md` §17, §18, §20, §21; T143b, Dimension Door, done 2026-11-25; T144a1, the
+casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done 2026-11-26)
+
+- **T144b, the maps, the replays, the plans and oracles, the benchmarks** (§17):
+  a generated map with a prison, the Market of Time, special grounds, boats and water, a hero
+  with the five spells and a book; the golden replays (each spell, the failures, the prison
+  freed and full, both flag settings of §11); the hygiene property under `strict-fixed` (the
+  flight's, the door's and Scuttle Boat's legal moves never depend on a hidden tile); the
+  census `--with-original-data` (89 prisons, one Market of Time).
+- **Inputs:** T143a's, T143b's and T144a1's records in `E08-log.md` (`check_cast` is the oracle of a
+  listed target: under `strict-fixed` the door's are the explored free tiles of the hero's kind
+  and every hidden tile of the window, Scuttle Boat's the explored empty boats and every hidden
+  tile; under `faithful` the hidden truth, the door's wrong kind listed and charged).
+- **For T144b** (noted by T143a, T143b, T144a1): `view.rs`' hygiene oracle already follows the
+  boat events and `CastFailed`, and the door's arrival is a teleporter's `HeroTeleported` (its
+  `jumper` handling); its faithful exception for the door's and the scuttle's hidden targets came
+  with T144a1 (`targets_hidden`, beside T142b's `flies`); the plans' oracles probe and check the
+  listed casts and the queried targets (`play.rs`' `accepted_casts`, `check_casts`,
+  `accepted_targets`; `view.rs`' `check_same` compares the queries). The plans' heroes meet the casts only
+  through the shrines' and guilds' spells (no plan gives Summon Boat, Fly, Water Walk or the door):
+  the generated map is where they are played.
+- **For T144b** (noted by T144a2): the env plays the casts (encoding v21: `CAST_BASE` + 5 × slot
+  + the behaviour's code, the targets in the tile head) and the random agent draws them, so the
+  generated map's random games and `h3-cli`'s workloads on it cast without help; `h3-sim`'s
+  `tests/casts.rs` has a caster setup on the duel (`caster_setup`: a book, the five spells,
+  Knowledge 20), the mask property's kind 5.
+- **The cut:** **whole, one pull request** (decision 423, the user, 2026-11-26; not the
+  recommendation, two parts as T135b): the map (`e08-spells-36.h3m` with its `h3-map` test), the
+  golden replays with the server lane's counts bumped (`cross-lane`, as T135b1), the plans and
+  oracles (the plans' heroes given the five spells and a book), the properties of §17, the
+  workload on the new map and the census `--with-original-data` (89 prisons, one Market of Time).
+- **Depends on:** nothing open (T144a2's #1191 merged 2026-11-26; the inbox's two property seeds
+  settled first, `adventure/reach-property-seed`). **Status:** T144b next. Then T145 (the
+  audit, the `shared/` task; it applies `adr-drafts/0016-0017-hero-list.md` and
+  `adr-drafts/0017-casts-encoding.md`).
