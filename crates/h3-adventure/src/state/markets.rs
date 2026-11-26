@@ -17,7 +17,7 @@ use h3_contracts::HeroId;
 use h3_heroes::{HeroChange, HeroDetails, check_change};
 use h3_kernel::Rng;
 
-use super::draws::ArtifactPool;
+use super::pool::ArtifactPool;
 use super::{AdventureState, HeroOnMap, MapObject, Resolved};
 use crate::army::{ArmyRef, ArmySlot};
 use crate::command::{MarketError, MarketVisit};

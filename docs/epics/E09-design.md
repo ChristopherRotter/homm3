@@ -3847,6 +3847,22 @@ with `resolve_rewards`' local pool; both in the adventure state hash (the town l
   stock. A loaded game keeps it (the state is the save).
 - **The fork:** both are shared until written (ADR-0016 point 1's storage: the marks change only at
   the build and the month's draw, the stock also at a purchase).
+- *As built* (T57; `E09-log.md`): one block `AdventureState::merchants`, an `Arc<Merchants>`
+  (`h3-adventure`'s `town/merchants.rs`: the marks, `state::ArtifactMarks`, the bans and the
+  given marks a `bool` per artifact, and the stock, `Vec<Option<ArtifactTypeId>>`, empty until the
+  game's first draw), never `None`: the build returns the pool's marks from `resolve_rewards`
+  (`StaticMap::new` gives them beside the map); `draw_merchants(core, classes, draws)` resumes the
+  pool on a copy of the marks and replaces the block; `merchants_stock()` reads it. The game's
+  draws in `h3-game`'s `town/merchants.rs` (`at_setup` after the Portals, `monthly` after a
+  creature month's step), the classes the town part's `merchants_stock`, none without its
+  parameters. The adventure state hash v30 (the block last: the stock, then the marks packed 64
+  bits a word); the game state hash's encoding unchanged, its version kept (E08 T142a's
+  precedent). **Found on the way** (the user, 2026-11-26): ADV-OBJ-006's picker restarted every
+  class's marks when one class ran out; the original restarts the drawn class's alone, then the
+  four's when it widens and none of them is left (survey §3.1, E09 T52's reading): fixed in
+  `ArtifactPool::draw` (`restart`), every build's draw included. The pool in its own module
+  `state/pool.rs` (the reach loops' codegen units); a draw counts, then finds the drawn one, over
+  its class's own list of artifacts (derived at the build) when one class is drawn.
 
 ### 109. The combinations' costs (the core; `shared/`)
 

@@ -34,7 +34,7 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 39
-adventure_state_hash_version = 29
+adventure_state_hash_version = 30
 checkpoint_every = 5
 
 [map]
@@ -44,7 +44,7 @@ import_version = 29
 
 [result]
 day = 2
-final_hash = "0x884a2018c00c0ddf"
+final_hash = "0x715dadd038069429"
 
 [[players]]
 colour = 0

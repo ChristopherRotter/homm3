@@ -409,8 +409,9 @@ impl GameState {
     /// into the adventure, the
     /// levels at load of each hero with a custom experience in hero id order (GAM-SET-002: its
     /// levels' draws from the setup stream in `strict-fixed`), then each owned town's Portal of
-    /// Summoning that the setup built, in `TownId` order (TWN-GRO-007, E09 T26b: the setup
-    /// stream's last draws), the adventure's start of the game
+    /// Summoning that the setup built, in `TownId` order (TWN-GRO-007, E09 T26b), then the
+    /// Artifact Merchants' stock (TWN-STK-001, E09 T57: the setup stream's last draws), the
+    /// adventure's start of the game
     /// after them (the heroes' day's points and reveals from their details, E08 T40; each owned
     /// town's reveal by its own radius, TWN-CAP-001), then (E09 T48a) the heroes of each main town
     /// that generates its hero learning its guild's spells (TWN-GLD-005, TD-10), a stream
@@ -466,6 +467,9 @@ impl GameState {
         // rule: TWN-GRO-007
         // E09 T26b: the Portals of Summoning the setup built, after every other placeholder.
         town::portal::at_setup(&adventure, &mut towns, rules, &mut draws);
+        // rule: TWN-STK-001
+        // E09 T57: the Artifact Merchants' stock, the setup stream's last draws.
+        town::merchants::at_setup(&mut adventure, rules, &mut draws);
         let heroes: Arc<Vec<Arc<HeroDetails>>> =
             Arc::new(heroes.into_iter().map(Arc::new).collect());
         // ADR-0017 point 1 (E08 T40): the adventure's start of the game after the levels at

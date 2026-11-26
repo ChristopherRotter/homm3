@@ -213,3 +213,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = on (the scenario's bans not tested), strict-fixed = off (the banned schools left out)
 - Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's with E09 T59b
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 204); confirmed by batch TWN-6 (E09 T54, TWN-6-7); the flag added and the entry made by E09 T55b, 2026-11-25
+
+### TWN-QUIRK-21 — The Artifact Merchants' draw with every artifact banned
+- Class: fix, no flag (state-corrupting: a hang, which AGENTS.md always fixes; quirk candidate T-24, an empty entry accepted by the user with the agent's calls, 2026-11-24, TWN-Q35; the epic's decision 207)
+- Context / rules affected: town, the Artifact Merchants' stock (TWN-STK-001 at the new game, TWN-STK-002 each month; E09 T57); ADV-OBJ-006's picker
+- Original behavior: `random_artifact_of_level` (0x4C94D0) widens a class without an artifact left to treasure, minor, major and relic (0x1E) and resets their marks; when every artifact of the four is banned the count stays 0 and the loop never ends (0x4C9549). The merchants' seven are drawn at every new game and on every month's first day whether or not any town has the merchants, so a map banning that much never starts.
+- Intended/expected behavior: where even the widening finds nothing the stock's entry stays empty (`None`), drawn as an empty entry; the other entries are drawn as ever.
+- Impact: none on the shipped maps (none bans every artifact of the four classes, survey §1.6); a map that does starts.
+- Community status: VCMI 1.7.5 gives the Grail where nothing is left (survey `docs/rules/surveys/E09-trades.md` §9); the wiki says nothing.
+- Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §3.1, §10 T-24; `docs/exe/map.toml` 0x4C94D0).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-adventure/src/town/merchants/tests.rs`, `a_class_banned_whole_widens_and_nothing_left_leaves_the_entry_empty`
+- Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 207); entered by E09 T57, 2026-11-26

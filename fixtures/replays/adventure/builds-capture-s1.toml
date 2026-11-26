@@ -9,14 +9,14 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x7cc19e56833abe3a",
-    "0x650d7d8ecc0ded49",
-    "0x221eb5ef0dd56560",
-    "0x894fcc0f02f8f27a",
-    "0xa54c60aad8e4ad25",
-    "0xcb10852332a2fd80",
-    "0x6d2805191dd14813",
-    "0x1c7f62eda1c95b17",
+    "0xcd52cf26330f043b",
+    "0xb4c2548f4ea7a974",
+    "0xcfabb6656b075eb7",
+    "0x48335565edf272fa",
+    "0x2b4780f45aad4f65",
+    "0x823962268ba32ec0",
+    "0x44d35f86fd2465db",
+    "0x3748f1f4775eb0ff",
 ]
 
 [replay]
@@ -47,7 +47,7 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 39
-adventure_state_hash_version = 29
+adventure_state_hash_version = 30
 checkpoint_every = 1
 
 [map]
@@ -57,7 +57,7 @@ import_version = 29
 
 [result]
 day = 3
-final_hash = "0x1c7f62eda1c95b17"
+final_hash = "0x3748f1f4775eb0ff"
 
 [[players]]
 colour = 0

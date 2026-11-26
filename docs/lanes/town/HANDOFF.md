@@ -13,13 +13,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `quirk.town.university_ignores_map_bans` 55, on in `faithful`; read from T58a and T59b); the
   combinations' costs (HER-ART-008, `h3-content`); **T56** the town part v10 (TWN-TRD-001: the
   five trade roles, `war_machine`, the trades' parameters, `[town_transformer]`; the harvest
-  `cross-lane`). **Next:** **T57**, the stock (`cross-lane`), then T58 to T61 (`QUEUE.md`). In the inbox for review: E08 T141a's note (2) (the Thieves' Guild's best
+  `cross-lane`); **T57** the stock (TWN-STK-001, -002: the pool's marks and the stock in the
+  adventure state, `TWN-QUIRK-21`, ADV-OBJ-006's restart by class; `cross-lane`). **Next:**
+  **T58**, the market at a town (`cross-lane`), then T59 to T61 (`QUEUE.md`). In the inbox for review: E08 T141a's note (2) (the Thieves' Guild's best
   hero row may follow `AdventureState::hero_list`); the AI lane's E31 note (a town's creature
   upgrade: where planned?). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13`
   (Visions' reach), `TWN-STUB-2` (the victory conditions), `-16` (E10's loss condition), `-17`
   (increment 8), `-18` (E13).
-- **Open pull requests:** T56's **#1189** (`town/e09-t56`, `cross-lane`); watch it until it
-  merges (T55's #1181 merged 2026-11-25).
+- **Open pull requests:** T57's **#1198** (`town/e09-t57`, `cross-lane`); watch it until it
+  merges (T56's #1189 merged 2026-11-26; #1193, `master`'s red build, closed: the AI lane's
+  #1192 fixed the same line first).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -28,13 +31,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v4: T47a2) and
   the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v10: T56; the goldens' town hash
   0xc830faa47b612bfc), both in `h3-towns`; the adventure
-  lane's (on `master` e2e15c7: game state hash v39, map import v29, adventure part v26, adventure
-  state hash v29, replay format v26), the env's (v20) and the protocol's (v83) are bumped
+  lane's (game state hash v39, map import v29, adventure part v26, adventure state hash v30 by
+  T57, replay format v26), the env's (v20) and the protocol's (v83) are bumped
   `cross-lane` (each task's record in `E09-log.md`). Shared: core ruleset hash v53 (its encoding
   kept; T55's base `faithful` hash 0x3f1f68842dab4e0c, `strict-fixed` 0x0bd901a144728cc7), pack
   format v53 (E08 T124a), quirk flags 55 (T55b; 52 and 53 E14 T2c's).
-- **Ids** (next): questions `TWN-Q38`; decisions 221; quirks `TWN-QUIRK-17` (planned `-17` to
-  `-23`, design §116); stubs `TWN-STUB-21` (planned for T58a); experiment batch `TWN-7`; disputes
+- **Ids** (next): questions `TWN-Q38`; decisions 224; quirks `TWN-QUIRK-17` (planned `-17` to
+  `-20`, `-22`, `-23`, design §116; `-21` entered by T57); stubs `TWN-STUB-21` (planned for T58a); experiment batch `TWN-7`; disputes
   `TD-32`; quirk candidates `T-29`. ADR-0028 is the lane's; no drafts open; every TWN-GLD rule
   `verified` but TWN-GLD-007.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
@@ -45,6 +48,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-26 — T57: the Artifact Merchants' stock (`cross-lane`)
+
+`master` 6035ed8 was red (T56's `war_machine` against E31 T2d's new literal): fixed first in
+#1193 (decision 222; closed when the AI lane's #1192 fixed it first). The user's computer went offline at the start: nothing staged, the scoped
+verify without original data (its `--with-original-data` run is owed). The user kept T57 whole
+(decision 221) and chose to fix ADV-OBJ-006's restart by class on the way (decision 223). The
+118 goldens re-recorded once (hash lines only). No sub-agents.
 
 ### 2026-11-26 — T56: the town part v10 (`cross-lane`)
 
@@ -62,13 +73,3 @@ alone, with sub-agents (decision 219): one applied the three drafts, one re-hash
 adventure replays (only `ruleset_hash`), the server's literal and the bot reports, one reviewed
 the ADRs against the drafts (five wordings fixed). E14 T2c (#1174) merged meanwhile with flags 52
 and 53: the town's moved to 54 and 55, re-hashed again. The inbox's CI note done (`TRAPS.md`).
-
-### 2026-11-25 — T54: batch TWN-6, run and scored
-
-Baseline 6498273 (#1168 merged; CI green on `master`; the setup's baseline lost to a VM restart).
-The user kept T54 whole, `cross-lane` consented, sub-agents where useful (decision 218). The
-user's computer was offline for the first hour (specs, recipes and harness code written meanwhile),
-then 17 files staged. One sub-agent did the live harness work (the University's dialog, the
-town's boat payment, the arrows) and the eight runs; the game's disk check needed a ballast file
-outside the repo (`clients/capture/README.md`, "Traps"). Every row the code reading; the agent's
-own TWN-6-8 prediction slipped (2.5 for 5 times the cost), noted in §14.

@@ -19,7 +19,8 @@
 //! hire dialog and makes its purchases ([`recruit`]); since E09 T38b1 a hero that leaves the game
 //! goes back to the hero pool or its owner's tavern ([`leave`]); since E09 T39b1 it answers the
 //! Thieves' Guild ([`thieves`]); since E09 T47a2 it checks the towns' spell sets and draws every
-//! town's mage guild at the build ([`guild`]).
+//! town's mage guild at the build ([`guild`]); since E09 T57 it draws the Artifact Merchants' stock
+//! at the new game and each month ([`merchants`]).
 
 use alloc::vec::Vec;
 
@@ -42,6 +43,7 @@ pub(crate) mod heroes;
 pub(crate) mod hire;
 pub(crate) mod income;
 pub(crate) mod leave;
+pub(crate) mod merchants;
 pub(crate) mod offer;
 pub(crate) mod pool;
 pub(crate) mod portal;

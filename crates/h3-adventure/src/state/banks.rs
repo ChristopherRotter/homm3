@@ -14,7 +14,7 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, HeroReward};
 use h3_kernel::Rng;
 
-use super::draws::ArtifactPool;
+use super::pool::ArtifactPool;
 use super::{AdventureState, Resolved, StepVisit, allied};
 use crate::command::{
     AdventureEvent, AdventureEventKind, AdventureOutcome, Defender, Offer, OfferKind, Sink, Viewers,

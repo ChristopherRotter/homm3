@@ -8,19 +8,21 @@
 //! a banned skill, spell or artifact (GAM-SET-003), nor a spell granted by name only (the
 //! original's game bans the spells with the flag 0x2000 beside the map's). Since E08 T124b1 the
 //! creature banks' draws in the second walk (ADV-BNK-002; increment 13's design note §5), since
-//! T133a1 the Black Markets' stocks (ADV-MKT-006; increment 14's design note §9).
+//! T133a1 the Black Markets' stocks (ADV-MKT-006; increment 14's design note §9). The random
+//! artifacts' pool and its marks are `pool.rs`' (since E09 T57; returned by [`resolve_rewards`]).
 
 use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ArtifactClass, ArtifactTypeId, Formation, ROE_WITCH_HUT_MASK, ResourceId, Ruleset, SkillId,
-    SpellCategory, SpellId,
+    ArtifactTypeId, Formation, ROE_WITCH_HUT_MASK, ResourceId, Ruleset, SkillId, SpellCategory,
+    SpellId,
 };
 use h3_contracts::{ArmyStack, HeroId};
 use h3_heroes::{PrimarySkill, ScholarGift};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
+use super::pool::{ArtifactMarks, ArtifactPool};
 use super::{MapObject, banks, markets, pick};
 use crate::ruleset::{AdventureRuleset, Chest, Find, FindContent, ObjectKind, Turn};
 use crate::setup::{Bans, Holds, Pos};
@@ -237,85 +239,6 @@ impl CanonicalHash for Resolved {
     }
 }
 
-/// The classes a random artifact widens to when its own classes have nothing left (the
-/// original's level bits 0x1E): every class but Special.
-const ANY_CLASS: [ArtifactClass; 4] = [
-    ArtifactClass::Treasure,
-    ArtifactClass::Minor,
-    ArtifactClass::Major,
-    ArtifactClass::Relic,
-];
-
-/// The random artifacts' pool (ADV-OBJ-006; survey `E08-rewards.md` §3.1, D-31, D-32): the
-/// original's "given" marks, a mark per artifact, starting as the bans and the map's placed
-/// artifacts (`artifacts_given_init` 0x4C0AA0); each draw marks the artifact it gives, so no
-/// artifact repeats until the pool is used up (`random_artifact_of_level` 0x4C94D0).
-pub(super) struct ArtifactPool<'c> {
-    core: &'c Ruleset,
-    /// The banned artifacts, by index.
-    banned: Vec<bool>,
-    /// The marked ones, by index.
-    marks: Vec<bool>,
-}
-
-impl<'c> ArtifactPool<'c> {
-    /// The pool with the bans marked, then each of `placed`.
-    pub(super) fn new(
-        core: &'c Ruleset,
-        bans: &[ArtifactTypeId],
-        placed: &[ArtifactTypeId],
-    ) -> Self {
-        let among = |list: &[ArtifactTypeId], index| list.iter().any(|a| a.index() == index);
-        let banned: Vec<bool> = (0..core.artifacts().len())
-            .map(|index| among(bans, index))
-            .collect();
-        let marks = banned
-            .iter()
-            .enumerate()
-            .map(|(index, &ban)| ban || among(placed, index))
-            .collect();
-        Self {
-            core,
-            banned,
-            marks,
-        }
-    }
-
-    /// The unmarked artifacts of `classes`, in id order.
-    fn left(&self, classes: &[ArtifactClass]) -> Vec<ArtifactTypeId> {
-        self.core
-            .artifacts()
-            .iter()
-            .zip(&self.marks)
-            .enumerate()
-            .filter(|&(_, (artifact, marked))| !marked && classes.contains(&artifact.class))
-            .filter_map(|(index, _)| ArtifactTypeId::from_index(index))
-            .collect()
-    }
-
-    /// An artifact of `classes` with equal chances among the unmarked ones, then marked; none
-    /// left: the marks restart from the bans, and with still none, from any class but Special.
-    /// None at all (every artifact banned): none.
-    // rule: ADV-OBJ-006
-    pub(super) fn draw(
-        &mut self,
-        classes: &[ArtifactClass],
-        draws: &mut Rng,
-    ) -> Option<ArtifactTypeId> {
-        let mut left = self.left(classes);
-        if left.is_empty() {
-            self.marks.clone_from(&self.banned);
-            left = self.left(classes);
-        }
-        if left.is_empty() {
-            left = self.left(&ANY_CLASS);
-        }
-        let drawn = *pick(&left, draws)?;
-        self.marks[drawn.index()] = true;
-        Some(drawn)
-    }
-}
-
 /// The spells a draw may give (the original's spells 0 to 69 with a school, not banned): each
 /// spell's level if it may, by index.
 pub(super) struct Spells(Vec<Option<u8>>);
@@ -400,14 +323,16 @@ fn kind_of<'p>(part: &'p AdventureRuleset, object: &MapObject) -> Option<&'p Obj
 /// the Pyramid (ADV-TCH-008), since E08 T124b1 a creature bank (ADV-BNK-002: [`banks::bank_draw`],
 /// its guards set as drawn) and since T133a1 a Black Market (ADV-MKT-006:
 /// [`markets::stock_draw`]; a market without a stock draws nothing). The random artifacts' marks
-/// are shared by the random artifacts, the chests, the finds, the banks and the Black Markets.
+/// are shared by the random artifacts, the chests, the finds, the banks and the Black Markets;
+/// since E09 T57 the pool's marks are returned as the walks left them, for the Artifact
+/// Merchants' draws (TWN-STK-001, -002).
 pub(super) fn resolve_rewards(
     core: &Ruleset,
     part: &AdventureRuleset,
     bans: &Bans,
     objects: &mut [MapObject],
     draws: &mut Rng,
-) {
+) -> ArtifactMarks {
     let placed = objects
         .iter()
         .filter_map(|object| match (kind_of(part, object), &object.holds) {
@@ -490,6 +415,7 @@ pub(super) fn resolve_rewards(
             _ => continue,
         };
     }
+    artifacts.into_marks()
 }
 
 /// Draws each abandoned mine's resource among the map's set, with equal chances, then its guards'

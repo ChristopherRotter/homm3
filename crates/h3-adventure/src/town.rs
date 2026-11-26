@@ -12,9 +12,11 @@
 use alloc::vec::Vec;
 
 mod hire;
+mod merchants;
 mod rows;
 
 pub use hire::TavernVisit;
+pub(crate) use merchants::Merchants;
 pub(crate) use rows::TownHeroes;
 pub use rows::{TownHeroError, TownHeroMove};
 

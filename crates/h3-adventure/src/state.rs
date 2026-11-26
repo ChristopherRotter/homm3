@@ -40,7 +40,7 @@ use crate::setup::{
     AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
     ObjectSetup, Pos, PrisonerSetup, Scenery, Seat, SetupError, StandError, TileMask,
 };
-use crate::town::{TavernVisit, TownHeroes, TownReveal};
+use crate::town::{Merchants, TavernVisit, TownHeroes, TownReveal};
 
 /// How far around a battle's tile the battlefield picture's variant counts the scenery, in tiles
 /// along each axis (GAM-BAT-011, E08 T54; the original's 0x41ADB0: x − 3 to x + 3, y − 3 to y + 3).
@@ -116,6 +116,7 @@ mod monsters;
 mod occupancy;
 mod passage;
 mod piles;
+mod pool;
 mod prisons;
 mod records;
 mod revisits;
@@ -143,6 +144,7 @@ pub use markets::{MarketOffers, MarketPurchase, Sale, SaleOffer, StockEntry, Tra
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
 pub(crate) use passage::{Fog, Mode, Node};
+pub(crate) use pool::{ArtifactMarks, ArtifactPool};
 pub use spells::{Cast, CastError, CastFailure, DaySpells};
 pub(crate) use spells::{DaySpellBook, spells_in};
 pub use visits::Visits;
@@ -376,14 +378,15 @@ impl StaticMap {
     /// 10's design note §5); since E09 T11 one tied to a town takes its town's faction of
     /// `town_factions` (by `TownId`: [`SetupError::Holds`] for a town past them or a faction
     /// without a table, [`SetupError::TownFactions`] for a number other than the towns'). Since
-    /// E08 T141a each Prison holds its prisoner of `prisoners` ([`Self::hold_prisoners`]).
+    /// E08 T141a each Prison holds its prisoner of `prisoners` ([`Self::hold_prisoners`]). Since
+    /// E09 T57 with the random artifacts' marks the draws left (TWN-STK-001, the merchants').
     fn new(
         core: &Ruleset,
         part: &AdventureRuleset,
         setup: &MapSetup,
         (bans, town_factions, prisoners): (&Bans, &[FactionId], &[PrisonerSetup]),
         draws: &mut Rng,
-    ) -> Result<Self, SetupError> {
+    ) -> Result<(Self, ArtifactMarks), SetupError> {
         let params = part.params();
         let in_bounds = |n: u16| (1..=params.max_map_size()).contains(&n);
         if !(in_bounds(setup.width)
@@ -569,7 +572,7 @@ impl StaticMap {
             );
         }
         map.resolve(core, part, &setup.objects, draws);
-        draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
+        let marks = draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
         draws::resolve_mines(part, &mut map.objects, draws);
         map.fix_boat_tiles(part);
         map.hold_prisoners(core, part, prisoners)?;
@@ -588,7 +591,7 @@ impl StaticMap {
         // After the objects, as the original counts after placing its map's objects.
         map.shares = terrain_shares(part, &map.tiles);
         map.hash = hash_of(&map);
-        Ok(map)
+        Ok((map, marks))
     }
 
     /// Fixes each Shipyard's boat tile (ADV-SHY-001, E08 T83b1; increment 9's design note §6), after
@@ -1532,6 +1535,13 @@ pub struct AdventureState {
     /// **none while no hero has one**, so a fork costs a pointer; a cast makes or copies the block,
     /// the new day drops it ([`Self::start_day`]). Its owner's alone (the own hero view).
     day_spells: Option<Arc<DaySpellBook>>,
+    /// The Artifact Merchants' stock and the random artifacts' marks (TWN-STK-001, -002, E09 T57;
+    /// the town epic's design note §108, decision 212): the marks the build's draws left
+    /// (ADV-OBJ-006), then the stock the game draws on them at the new game and each month's
+    /// first day (`h3_game`'s town lane), one stock for every town and player. One block the
+    /// forks share, which a draw replaces (a purchase will copy it, E09 T58). Never shown but in
+    /// its window (ADR-0016 point 6).
+    merchants: Arc<Merchants>,
 }
 
 impl AdventureState {
@@ -1563,7 +1573,7 @@ impl AdventureState {
             setup.town_factions.as_slice(),
             setup.prisoners.as_slice(),
         );
-        let map = StaticMap::new(core, part, &setup.map, inputs, draws)?;
+        let (map, marks) = StaticMap::new(core, part, &setup.map, inputs, draws)?;
         if !(1..=part.params().max_players()).contains(&setup.players) {
             return Err(SetupError::Players(setup.players));
         }
@@ -1614,6 +1624,7 @@ impl AdventureState {
             fortunes,
             springs: None,
             day_spells: None,
+            merchants: Arc::new(Merchants::new(marks)),
         };
         // rule: GAM-HER-003
         for hero in &setup.heroes {
@@ -3483,6 +3494,16 @@ impl AdventureState {
         self.town_heroes.as_deref().map_or(&[], |all| &all[..])
     }
 
+    /// The Artifact Merchants' block (E09 T57; [`Merchants`], `crate::town`).
+    pub(crate) fn merchants(&self) -> &Merchants {
+        &self.merchants
+    }
+
+    /// The Artifact Merchants' block, to replace or copy (E09 T57: a draw, `crate::town`).
+    pub(crate) const fn merchants_mut(&mut self) -> &mut Arc<Merchants> {
+        &mut self.merchants
+    }
+
     /// The heroes on the map and the towns' garrison heroes, to change (E09 T28a: a hero's move
     /// between a town's two bars, `crate::town`).
     pub(crate) fn rows_mut(&mut self) -> (&mut Vec<HeroOnMap>, &mut Option<Arc<TownHeroes>>) {
@@ -3553,7 +3574,9 @@ impl CanonicalHash for AdventureState {
     /// emptied entrances (`visitables.rs`' `hash_visitables`), the kind marks in the flags; since
     /// v25 the towns' garrison heroes after the heroes (`town.rs`' `hash_town_heroes`); since v28
     /// each hero on the map's key in its owner's list after its fields
-    /// ([`HeroOnMap::listed`]; a garrison hero's is not hashed).
+    /// ([`HeroOnMap::listed`]; a garrison hero's is not hashed); since v29 the heroes' day spells;
+    /// since v30 the Artifact Merchants' stock and the random artifacts' marks, last (`town`'s
+    /// `merchants.rs`' `hash_merchants`).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -3621,6 +3644,8 @@ impl CanonicalHash for AdventureState {
         self.hash_visitables(h);
         // v29 (E08 T142a): the heroes' day spells.
         self.hash_day_spells(h);
+        // v30 (E09 T57, the town lane's, `cross-lane`): the merchants' stock and the marks.
+        self.hash_merchants(h);
     }
 }
 

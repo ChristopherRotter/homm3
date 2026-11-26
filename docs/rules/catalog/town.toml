@@ -2060,3 +2060,81 @@ numeric  = "integer"
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 102; E09 decisions 197, 207, 213 and 220"
   confidence = "high"
+
+[[rule]]
+id       = "TWN-STK-001"
+title    = "The Artifact Merchants' stock at the new game"
+context  = "town"
+status   = "verified"
+summary  = "One stock for the whole game, every town's and every player's: an entry per class of the town part's merchants_stock in order (TWN-TRD-001: three treasures, three minors, a major), each an artifact or empty. Drawn when the game is built, whether or not any town has the merchants, from the setup stream after every other setup draw (after the Portals of Summoning, TWN-GRO-007: so no earlier draw moves), each entry with ADV-OBJ-006's picker on the random artifacts' marks the build's draws left (the bans, the map's placed artifacts, every random artifact's, chest's, find's, bank's and Black Market's draw): equal chances among the class's unmarked artifacts, a class without one restarting its own artifacts' marks from the bans, then any class but Special (relics and combinations only so), the drawn one marked. So at the start the seven avoid the map's artifacts and the Black Markets' while each class's pool lasts. TWN-QUIRK-21: where even the widening finds nothing (every treasure, minor, major and relic banned) the entry stays empty; the original's picker loops for ever. The marks and the stock are kept in the adventure state (the adventure state hash v30), the marks shared with nothing else after the build in increment 6. Never shown but in the merchants' window (E09 T58). E09 T57 (the town epic's design note section 108, decisions 207, 212): h3_adventure::AdventureState::merchants_stock and draw_merchants, h3-game's town/merchants.rs."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-21"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T52; survey E09-trades.md section 3.1; docs/exe/map.toml 0x4BFE70, 0x4C0477, 0x4C94D0, 0x4C0AA0): new_game_heroes ends with merchant_stock_draw, seven random_artifact_of_level calls with the levels 2, 2, 2, 4, 4, 4, 8 into game +0x1F664, after the start bonuses, refresh_guard_flags and the rumour; the picker counts the level's records not disabled and not given (+0x4E224), resets the level's records' marks to their bans when none is left, then widens to 0x1E (a hang when every artifact of the four is banned); artifacts_given_init starts the marks as the bans and the placed artifacts"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6c.md and E09-batch-6c-run2.md, row TWN-6-8 (the capture harness under Wine, the Complete 4.0 executable in SoD, 2026-11-25, E09 T54; survey E09-trades.md section 14): on a map placing 18 of the 21 minors, day 1's stock three treasures, the three unplaced minors and a major, none of the 18 placed"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 lib/callback/GameRandomizer.cpp rollMarketArtifactSet and rollArtifact (survey E09-trades.md section 9): one list for the game, three treasures, three minors and a major at the game's start; it excludes the bans and the combinations and prefers the least rolled, the placed artifacts not excluded (E08's D-32, the code's side: VCMI refuted by TWN-6-8)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/GameRandomizer.cpp"
+  retrieved  = "2026-11-24"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, the Artifact Merchants (survey E09-trades.md section 9): one stock for every town, three treasures, three minors and a major, renewed each month"
+  url        = "https://heroes.thelazy.net/index.php/Artifact_merchants"
+  retrieved  = "2026-11-24"
+  confidence = "low"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 108; E09 decisions 207, 212, 213 (call 4) and 214"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-STK-002"
+title    = "The Artifact Merchants' stock each month"
+context  = "town"
+status   = "verified"
+summary  = "On the first day of every month from the second (days 29, 57, …; GAM-CAL-002), at the month's start's end (after the month's kind, the towns' month and a creature month's adventure step, before the towns' day), the whole stock is drawn anew as at the new game (TWN-STK-001), whether or not any town has the merchants: every entry in order by its class, sold or not, from the towns' stream (E09 decision 214, as the guilds': the game's stream stays where it was); the old entries' marks are kept, so an unsold artifact stays out of its class's pool until the class restarts. Month 1's stock is the new game's. No event tells it (the stock is seen only in its window). E09 T57 (the town epic's design note section 108): h3-game's town/merchants.rs, monthly, called by GameState's day advance."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-21"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T52; survey E09-trades.md section 3.2; docs/exe/map.toml 0x4C7FE0, 0x4C8F40, 0x4C923B): new_day runs new_month when the week passes 4; new_month ends with merchant_stock_redraw, the same seven calls in the same order, each entry overwritten sold or not, nothing testing the old entries, the old marks not cleared; a creature month places its monsters first, every other kind jumps straight to the draw"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6c.md and E09-batch-6c-run2.md, row TWN-6-8 (2026-11-25, E09 T54; survey E09-trades.md section 14): on day 29 (month 2, day 1) all seven redrawn, the entry bought on day 1 filled again, three treasures, three minors and a major"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 (survey E09-trades.md section 9): the list rolled again at each new month, a bought entry empty until then"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/GameRandomizer.cpp"
+  retrieved  = "2026-11-24"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, the Artifact Merchants (survey E09-trades.md section 9): renewed each month"
+  url        = "https://heroes.thelazy.net/index.php/Artifact_merchants"
+  retrieved  = "2026-11-24"
+  confidence = "low"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 108; E09 decisions 207, 212 and 214"
+  confidence = "high"
