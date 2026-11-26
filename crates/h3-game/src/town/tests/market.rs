@@ -149,7 +149,7 @@ fn refused(rules: &GameRuleset, game: &mut GameState, player: PlayerId, error: T
     assert_eq!(result, Err(GameCommandError::Town(error)));
 }
 
-// covers: TWN-MKT-002, TWN-MKT-001, TWN-MKT-003, GAM-DEC-011, TWN-VEW-005
+// covers: TWN-MKT-002, TWN-MKT-001, TWN-MKT-003, GAM-DEC-011
 #[test]
 fn a_marketplace_opens_the_window_without_a_hero_for_trades_and_transfers() {
     let rules = rules();

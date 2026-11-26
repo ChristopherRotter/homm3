@@ -98,11 +98,9 @@ impl AdventureState {
     /// The garrison hero `hero`, to change, if it is one (E09 T58a1: a sale of its army at its
     /// town's Freelancer's Guild, TWN-MKT-003).
     pub(crate) fn garrisoned_mut(&mut self, hero: HeroId) -> Option<&mut HeroOnMap> {
-        let at = self
-            .town_heroes()
-            .iter()
-            .position(|(_, on)| on.id == hero)?;
-        self.town_hero_at_mut(at)
+        // The sale's checked hero: none only defensively, so no early return.
+        let at = self.town_heroes().iter().position(|(_, on)| on.id == hero);
+        at.and_then(|at| self.town_hero_at_mut(at))
     }
 
     /// The garrison hero at `at` among the towns' garrison heroes, to change (the block copied
