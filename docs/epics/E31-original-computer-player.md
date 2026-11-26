@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23 (T1a1a; refined 2026-11-21, AI-Q22); increment 1 closed
 2026-11-24 (AI-Q31), increments 2 to 7 cut; increment 2 refined 2026-11-25 (AI-Q32: ADR-0030
-accepted, eleven tasks), T2a to T2e done, T2f next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
+accepted, eleven tasks), T2a to T2f done, T2g next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
 fair system actor) for battle · Prerequisite of E13 (its target and ladder opponent) ·
 Consumers: the env (a computer seat), the server (a computer player in a hosted game), the shell
 (a game's computer players), the adventure lane (ADV-STUB-8, ADV-STUB-9)
@@ -93,8 +93,10 @@ Each increment is refined (its tasks cut by size) at its start.
    (5) the stubs listed in `docs/stubs.toml`.
 3. **The towns.** The middle (§1.5, §3.1, §3.2: the build choice, the trades and Marketplaces, the
    hires, the allies' shares) and the town visit (§3.3: the garrison and the swap, the recruits,
-   the guild, the stock, the Blacksmith, the University, the book, the Grail), the defence
-   recruits of the start and the middle. **Exit:** trace T-C's days 1 to 7 equal in every town
+   the guild, the stock, the Blacksmith, the University, the book, the Grail), the artifact
+   exchange with `ai_hero_equipped_value` 0x433C60 (moved from T2f, AI-Q37: it reads
+   `army_stack_morale` 0x44B100 and `army_stack_luck` 0x44B3C0, never read, and
+   `stack_base_morale` 0x44AE60's middle), the defence recruits of the start and the middle. **Exit:** trace T-C's days 1 to 7 equal in every town
    decision; the property tests over the towns; E09's increments 6 to 8 stubbed where unbuilt.
 4. **The answers and the fights.** Every answer of §3.4 and §3.5 (the visits' dialogs, the joins
    and the pursued monster, the Seer, the markets, the level-up), ADV-STUB-8 and ADV-STUB-9 lifted
@@ -159,7 +161,7 @@ are the original's, from `docs/exe/map.toml`'s sizes.
 | T2c | **The simulated combat's spells and Necromancy**, `ai_army_fight_sim` 0x427330 (the fight estimate the values call) | 13 (§2.2) | 2 600 |
 | T2d | **The start's values**: `ai_turn_start` 0x4297C0, `ai_turn_start_values` 0x527960, the resource weights (`ai_resource_weights` 0x428740), the recruit reserve, the eyes, the heroes' effectiveness, the vision's value, the threat fold over the enemies' reach (`ai_enemy_reach_fold` 0x4280E0, `ai_town_capture_sim`), the difficulty's blend, the terrain shares | 14 (§1.5, §1.6, §2.5) | 2 300 |
 | T2e | **The spells' and skills' values**: `ai_spell_value` 0x5273D0 and its kinds, the caster's record, `ai_secondary_skill_value` 0x524690, the schools, the University's; since T2d (AI-Q35) the start's spell gains of `ai_hero_effectiveness` 0x527760 (AI-STUB-13) | 11 (§2) | 1 700 |
-| T2f | **The artifacts**: the effects' table (`ai_artifact_effects_build` 0x434100, the effects of §4.1), `ai_hero_artifact_value` 0x4336C0, the values to a hero and to a player; since T2d the start's artifacts' mean (+0x164, AI-STUB-14) | 37 (§4.1, §2.4) | 2 900 |
+| T2f | **The artifacts**: the effects' table (`ai_artifact_effects_build` 0x434100, the effects of §4.1), `ai_hero_artifact_value` 0x4336C0, the values to a hero and to a player; since T2d the start's artifacts' mean (+0x164, AI-STUB-14); `ai_hero_equipped_value` 0x433C60 moved to increment 3 (AI-Q37) | 37 (§4.1, §2.4) | 2 900 |
 | T2g | **The army and town values**: the army plans (`ai_army_plan_*`, `ai_stack_marginal_value` 0x42C830, the exchange and purchase values; AI-QUIRK-2), the dwelling's, the town's and its buildings', the weighted cost | 22 (§2.3, §2.4) | 3 400 |
 | T2h | **The object value** `ai_object_value` 0x528040 over the classes the engine has (§2.1's 36 value functions, the guarded object's fight), the rest `AI-STUB`s by epic; since T2d the vision circle `ai_vision_area_value` 0x432220 with its 75 class values (the start's Eye value, AI-STUB-10) | 39 (§2.1) | 4 300 less the gaps |
 | T2i | **The planning**: the danger map `ai_danger_map` 0x42DE50, the candidates `ai_hero_candidates` 0x42EDD0, the claims, the candidate's score, the destination `ai_hero_destination` 0x42E0B0 with its noise (76 to 100, the caller's stream), the class tables; since T2d the start's Grail target (+0x39, AI-STUB-15) | 11 (§1.9) | 2 900 |
@@ -203,3 +205,11 @@ Increment 2's (increment 1's: `E31-archive.md`).
   (`cross-lane`, one switch with the setup's; CPU-SKL-001), the schools' and the University's
   values in `computer/skills.rs` (CPU-SKL-002, -003); §5.5's #17 and #20 read, #69 new.
   Record: `E31-log.md` T2e.
+- **T2f** (2026-11-26, not cut, AI-Q37): the artifacts' values in `computer/artifacts.rs`: the
+  effects' table as data (CPU-ART-001, its words checked against the executable's list), the 24
+  codes (CPU-ART-002 to -008), an artifact's value to a hero (CPU-ART-009), as it would wear it
+  (CPU-ART-010) and to a player (CPU-ART-011), the turn start's mean (CPU-STA-008; the memory's
+  encoding v4, AI-STUB-14 lifted); the morale and luck change value moved into
+  `h3_battle::estimate` (`cross-lane`, BAT-AI-016 unchanged); the equipped value 0x433C60 to
+  increment 3; AI-STUB-16 (the victory artifact, E10), AI-STUB-17 (the hero's reads of its
+  owner's towns, E09); §5.5's #70 and #71 new. Record: `E31-log.md` T2f.

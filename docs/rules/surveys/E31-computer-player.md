@@ -1432,7 +1432,12 @@ Father's own 12/6/6 matches its +6 to all four.
    (m) A × p in 32 bits overflows for huge armies (Angel Wings' 50 past about 43 million);
    (n) every build empties the vectors without deleting the objects (a leak at each game_init, no
    gameplay effect).
-5. **Not read**: the callees' insides beyond their entries (`ai_spell_value` 0x5273D0,
+5. **Read whole at T2f** (E31-log T2f): the build's parameters (code 11 the school then p, code
+   12 its school with p 0, codes 16 and 17 p then q; the list's 637 words, 135 artifacts), the
+   value to a hero 0x4339E0 (the last replaceable position's worn value, §5.5 #70), to a player
+   0x433AA0 (at least 10), the mean's artifacts (§5.5 #71) and hero_first_aid 0x4E4920 (1 plus the
+   skill's f32 bonus). The flag 0x200 and the AI damage kinds agree on spells 0 to 69.
+6. **Not read**: the callees' insides beyond their entries (`ai_spell_value` 0x5273D0,
    `ai_caster_record` 0x526D40, `ai_morale_change_value` 0x435850, `hero_morale`, `hero_luck`,
    `hero_necromancy_power`, `town_castle_growth`); the C runtime's array iterators, purecall and
    exit registration; which callers of 0x4339E0 pass its dl set (the counted flag there).
@@ -1993,3 +1998,5 @@ and #68 (38 slips), T2e's one, #69 (39 slips).
 | 67 | §1.5 | the recruit reserve counts nothing for a town with a single available stack: the loop's bound, the count less 2, is compared unsigned | 0x429CC6 (0x429AD0) | slip | ai | read at T2d | the build choice's reserve; ported as read (E31 T2d, CPU-STA-002) |
 | 68 | §1.5 | the recruit reserve values a stack at the low 16 bits of the AI value times the count, in 16 bits: dear stacks wrap and sort low | 0x429BD4 (0x429AD0) | slip | ai | read at T2d | the build choice's reserve; ported as read (E31 T2d, CPU-STA-002) |
 | 69 | §2.4 | the caster record's army list values a stack at the AI value times its count's low 16 bits as a signed word: a stack of more than 32 767 creatures sorts and counts wrong, below 0 from 32 768 | 0x526E2F (0x526D40) | slip | ai | read at T2e | the effect spells' values (CPU-SPL-005); ported as read (E31 T2e, CPU-SPL-001) |
+| 70 | §4.1 | the value to a hero with no free position subtracts the worn value at the last position the candidate would replace, not the least valuable one | 0x433A41 to 0x433A6F (0x4339E0) | slip | ai | read at T2f | the values to a hero and to a player; ported as read (E31 T2f, CPU-ART-010) |
+| 71 | §1.5 | the artifacts' mean counts every artifact 7 to 140, the map's bans not read: it tests the setup's flag +0x1C, which only artifact_table_load sets, for 141 to 143 | 0x5279D9 (0x527960), 0x44D00D | slip | ai | read at T2f | the turn start's mean; ported as read (E31 T2f, CPU-STA-008) |

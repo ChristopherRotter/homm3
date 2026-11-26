@@ -17,7 +17,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::allied;
-use h3_battle::estimate::EstimateHero;
+use h3_battle::estimate::{CasterRecord, EstimateHero};
 use h3_content::{CreatureTypeId, ResourceId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, SignedX87};
@@ -113,8 +113,9 @@ pub(super) fn record(state: &GameState, rules: &GameRuleset, player: PlayerId) -
     record.reserve = reserve;
     record.threats = threats;
     record.towns = towns;
-    record.heroes = heroes(state, rules, player);
-    record.artifacts = artifacts::mean(state, rules, &record, player);
+    let (heroes, casters) = heroes(state, rules, player);
+    record.heroes = heroes;
+    record.artifacts = artifacts::mean(state, rules, &record, (player, &casters));
     record
 }
 
@@ -507,9 +508,10 @@ fn experience_weight(rules: &GameRuleset, hero: Fighter<'_>) -> u32 {
 /// Each of `player`'s heroes on the map with its values per unit (`ai_turn_start_values`
 /// 0x527960 with `ai_hero_effectiveness` 0x527760 over the player's list of heroes, the garrison
 /// heroes not in it), by id: its experience weight ([`experience_weight`]) and its spell gains
-/// (`spells::gains` on its caster record, its spell points left as the hero's signed word).
-fn heroes(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<(HeroId, HeroValues)> {
-    let mut values: Vec<(HeroId, HeroValues)> = state
+/// (`spells::gains` on its caster record, its spell points left as the hero's signed word); beside
+/// them the caster records, for the artifacts' mean.
+fn heroes(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Casters {
+    let mut values: Vec<(HeroId, (HeroValues, CasterRecord))> = state
         .adventure()
         .heroes()
         .iter()
@@ -523,13 +525,19 @@ fn heroes(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<(Hero
                     experience: experience_weight(rules, hero),
                     spells: spells::gains(rules, &record, mana),
                 };
-                (on_map.id, values)
+                (on_map.id, (values, record))
             })
         })
         .collect();
     let _ = h3_kernel::order::sort_by_unique_key(&mut values, |&(hero, _)| hero);
     values
+        .into_iter()
+        .map(|(hero, (values, record))| ((hero, values), (hero, record)))
+        .unzip()
 }
+
+/// The heroes' values per unit and their caster records, each by hero in id order.
+type Casters = (Vec<(HeroId, HeroValues)>, Vec<(HeroId, CasterRecord)>);
 
 #[cfg(test)]
 mod tests;

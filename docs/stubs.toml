@@ -354,12 +354,6 @@ reason = "The original's computer player (E31 T2d): the defence fold of the turn
 epic   = "E31"
 
 [[stub]]
-id     = "AI-STUB-14"
-where  = "crates/h3-game/src/computer/start.rs::record"
-reason = "The original's computer player (E31 T2d): the player's mean artifact value at the turn start (+0x164, f32: ai_turn_start_values 0x527960 over ai_artifact_value_to_player 0x433AA0 of the artifacts 7 to 143 the setup allows) waits for the artifacts' values: T2f (the user at T2d)"
-epic   = "E31"
-
-[[stub]]
 id     = "AI-STUB-15"
 where  = "crates/h3-game/src/computer/start.rs::record"
 reason = "The original's computer player (E31 T2d): the player's Grail target at the turn start (+0x39, player_puzzle_target 0x4BAE50 over puzzle_map_compute 0x52C9B0, read in part, its pick 0x52CF10 not read) waits for the planning, its only reader (T2i, the user at T2d), and for the obelisks (the engine places none, TWN-STUB-17)"
@@ -372,3 +366,15 @@ id     = "RMG-STUB-1"
 where  = "crates/h3-rmg/src/generate.rs::generate"
 reason = "generate stops after step 1 (the frame, E14 T2c: the settings as run, the seed, water's Random, the templates kept and drawn, the banned heroes, the positions; E14 T3c: the generator's map reset and step 1's zone generators): GeneratedMap holds no zone cells, objects or teams yet. Steps 2 to 15 come with increments 3 to 6 (each step's cells checked against the phase oracle), the writer's content (the header, players, teams' draw, tiles, objects) with increment 7"
 epic   = "E14"
+
+[[stub]]
+id     = "AI-STUB-16"
+where  = "crates/h3-game/src/computer/artifacts.rs::hero_value"
+reason = "The original's computer player (E31 T2f): an artifact that is the victory condition's (game +0x1F89C kind 0, acquire, or 10, transport, its artifact +0x1F8A0) is worth 5 000 000 before its effects (ai_hero_artifact_value 0x4336C0 at 0x4338CA); the engine has no victory or loss conditions: none until E10 increment 2 (survey section 5.4)"
+epic   = "E10"
+
+[[stub]]
+id     = "AI-STUB-17"
+where  = "crates/h3-game/src/computer/artifacts.rs::own_morale_and_luck"
+reason = "The original's computer player (E31 T2f): the hero's reads its owner's towns change are the engine's hero model's: its own morale and luck (hero_morale 0x4E39B0, hero_luck 0x4E36C0) lack the Castle's and Rampart's Grail structures' +2 (game buildings 26 of type 0 and 1), which the engine's battles lack too; its Necromancy share (hero_necromancy_power 0x4E3CD0, read uncapped by the codes 6 and 21) is h3_heroes::necromancy's, capped at 1.0 and without the Necropolis' Amplifier and Soul Prison (HER-NEC-001: with the towns, E09)"
+epic   = "E09"

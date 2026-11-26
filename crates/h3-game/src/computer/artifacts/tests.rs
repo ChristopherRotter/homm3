@@ -665,6 +665,9 @@ fn the_machines_and_the_combinations() {
     // counted, nothing.
     assert_eq!(hero_value(&v, item(8), false, false), 1500);
     assert_eq!(hero_value(&v, item(8), true, true), 0);
+    // The combination fits the two free ring positions (its own and its parts' lock): its whole
+    // value to the hero.
+    assert_eq!(value_to_hero(&v, item(8), false), 1500);
     // No entry (the Catapult) and an id past the table: 0.
     assert_eq!(hero_value(&v, item(3), false, false), 0);
     assert_eq!(hero_value(&v, item(200), false, false), 0);
@@ -722,7 +725,10 @@ fn the_mean_of_the_artifacts_values_to_the_player() {
     let to_player = |points: i32| own.iter().fold(10, |best, &a| best.max(a * points / 40));
     let mean = (to_player(1) + to_player(2)) as f32 / 2.0;
     assert_eq!(record.artifacts, mean.to_bits());
-    assert_eq!(super::mean(&state, &rules, &record, RED), mean.to_bits());
+    assert_eq!(
+        super::mean(&state, &rules, &record, (RED, &[])),
+        mean.to_bits()
+    );
     // Fewer than eight artifacts: none counted, 0 / 0.
     let few = rules_of(5, |_| {});
     let few_state = game(&few);

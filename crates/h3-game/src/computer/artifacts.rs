@@ -24,10 +24,10 @@ use alloc::vec::Vec;
 
 use h3_battle::estimate::{CasterRecord, change_value, luck_values, morale_values};
 use h3_content::{
-    Affects, ArtifactTypeId, CreatureFlag, CreatureTypeId, FULL_BP, HeroEffect, SchoolId, SkillId,
-    SpellGrant, SpellId,
+    Affects, ArtifactSlotId, ArtifactTypeId, CreatureFlag, CreatureTypeId, FULL_BP, HeroEffect,
+    SchoolId, SkillId, SpellGrant, SpellId,
 };
-use h3_contracts::{BattleEffect, FortLevel, PlayerId, TownId};
+use h3_contracts::{BattleEffect, FortLevel, HeroId, PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, BattleBonuses, Position, derive_battle_hero};
 use h3_kernel::arith::{SINGLE_BITS, SignedX87, X87};
 use h3_towns::{Town, TownRecord, index_creature};
@@ -359,18 +359,47 @@ pub(super) struct Valued<'a> {
     morale: i32,
     /// Its own luck (`hero_luck` 0x4E36C0 without the clamp).
     luck: i32,
+    /// By artifact slot, whether a position takes an artifact of the slot that is not a
+    /// combination (`h3_heroes::first_position` of the core's first such artifact: for those its
+    /// answer reads the slot alone, a combination's its own locks too).
+    plain_fits: Vec<bool>,
 }
 
 impl<'a> Valued<'a> {
     /// The reads of `hero`, its spell gains from `record` and its owner's resource weights
     /// `weights` (`Record::weights`).
+    #[cfg(test)]
     pub(super) fn new(
         state: &'a GameState,
         rules: &'a GameRuleset,
         (record, weights): (&Record, &'a [SignedX87]),
         hero: Fighter<'a>,
     ) -> Self {
+        let caster = spells::record(state, rules, hero);
+        Self::with(state, rules, (record, weights), (hero, caster))
+    }
+
+    /// [`Self::new`] with the hero's caster record `caster` (`spells::record`) built already.
+    pub(super) fn with(
+        state: &'a GameState,
+        rules: &'a GameRuleset,
+        (record, weights): (&Record, &'a [SignedX87]),
+        (hero, caster): (Fighter<'a>, CasterRecord),
+    ) -> Self {
         let id = hero.on_map.id;
+        let core = rules.core();
+        let plain_fits = (0..core.artifact_slots().len())
+            .map(|slot| {
+                let slot = ArtifactSlotId::from_index(slot);
+                let first = core
+                    .artifacts()
+                    .iter()
+                    .position(|a| a.slot == slot && !a.is_combination());
+                first
+                    .and_then(ArtifactTypeId::from_index)
+                    .is_some_and(|a| h3_heroes::first_position(hero.details, core, a).is_some())
+            })
+            .collect();
         let gains = record
             .heroes
             .binary_search_by_key(&id, |&(h, _)| h)
@@ -383,11 +412,26 @@ impl<'a> Valued<'a> {
             army: fight::value_of(rules, &hero.on_map.army),
             gains,
             weights,
-            caster: spells::record(state, rules, hero),
+            caster,
             available: h3_heroes::available_spells(hero.details, rules.core()).unwrap_or_default(),
             morale,
             luck,
+            plain_fits,
         }
+    }
+
+    /// Whether a position takes `artifact` (`h3_heroes::first_position`; for an artifact that is
+    /// not a combination its slot's answer, [`Self::plain_fits`]).
+    fn takes(&self, artifact: ArtifactTypeId) -> bool {
+        let core = self.rules.core();
+        core.artifact(artifact).is_some_and(|a| {
+            if a.is_combination() {
+                h3_heroes::first_position(self.hero.details, core, artifact).is_some()
+            } else {
+                a.slot
+                    .is_some_and(|slot| self.plain_fits.get(slot.index()).copied().unwrap_or(false))
+            }
+        })
     }
 
     /// The level of the hero's skill `skill`, 0 without it.
@@ -1000,7 +1044,7 @@ fn replaces(
 pub(super) fn value_to_hero(v: &Valued<'_>, item: ArtifactInstance, counted: bool) -> i32 {
     let value = hero_value(v, item, false, counted).max(0);
     let details = v.hero.details;
-    if h3_heroes::first_position(details, v.rules.core(), item.artifact).is_some() {
+    if v.takes(item.artifact) {
         return value;
     }
     let worn = &details.worn;
@@ -1011,12 +1055,14 @@ pub(super) fn value_to_hero(v: &Valued<'_>, item: ArtifactInstance, counted: boo
     value.wrapping_sub(replaced).max(0)
 }
 
-/// Each hero of `player` on the map (the original's player list, +0x8) with its reads.
+/// Each hero of `player` on the map (the original's player list, +0x8) with its reads, its
+/// caster record from `casters` (by hero, in id order: the turn start's, `start::heroes`'; built
+/// for a hero the list lacks).
 fn players_heroes<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
     (record, weights): (&Record, &'a [SignedX87]),
-    player: PlayerId,
+    (player, casters): (PlayerId, &[(HeroId, CasterRecord)]),
 ) -> Vec<Valued<'a>> {
     state
         .adventure()
@@ -1025,7 +1071,14 @@ fn players_heroes<'a>(
         .filter(|hero| hero.owner == player)
         .filter_map(|on_map| {
             state.hero(on_map.id).map(|details| {
-                Valued::new(state, rules, (record, weights), Fighter { on_map, details })
+                let hero = Fighter { on_map, details };
+                let caster = casters
+                    .binary_search_by_key(&on_map.id, |&(id, _)| id)
+                    .map_or_else(
+                        |_| spells::record(state, rules, hero),
+                        |at| casters[at].1.clone(),
+                    );
+                Valued::with(state, rules, (record, weights), (hero, caster))
             })
         })
         .collect()
@@ -1043,7 +1096,8 @@ pub(super) fn value_to_player(heroes: &[Valued<'_>], item: ArtifactInstance) -> 
 }
 
 /// The player's mean artifact value at its turn start (`ai_turn_start_values` 0x527960's +0x164;
-/// CPU-STA-008), its record `record` with its heroes' spell gains: the values to the player
+/// CPU-STA-008), its record `record` with its heroes' spell gains and `casters` their caster
+/// records (by hero, in id order): the values to the player
 /// ([`value_to_player`]) of every artifact 7 to 140 the core has (no scroll's spell), summed in
 /// 32 bits, over their count, stored as an f32; the FPU's indefinite with none (0 / 0). The map's
 /// bans are not read: the setup's flag the original tests (+0x1C) disables only 141 to 143 (a
@@ -1053,10 +1107,10 @@ pub(super) fn mean(
     state: &GameState,
     rules: &GameRuleset,
     record: &Record,
-    player: PlayerId,
+    (player, casters): (PlayerId, &[(HeroId, CasterRecord)]),
 ) -> u32 {
     let weights = record.weights(rules);
-    let heroes = players_heroes(state, rules, (record, &weights), player);
+    let heroes = players_heroes(state, rules, (record, &weights), (player, casters));
     let artifacts = rules.core().artifacts().len().min(MEAN_TO + 1);
     let (sum, count) = (MEAN_FROM..artifacts)
         .filter_map(ArtifactTypeId::from_index)
