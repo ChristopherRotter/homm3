@@ -617,15 +617,16 @@ pub(crate) fn mastery(
     hero: &HeroRecord,
     spell: SpellId,
 ) -> u8 {
-    mastery_at(ruleset, state.battlefield, hero, spell)
+    mastery_at(ruleset, state.battlefield, &hero.magic, spell)
 }
 
-/// [`mastery`] on `battlefield` (also before the battle's state exists: a town's land mines,
-/// BAT-SIE-007).
+/// [`mastery`] on `battlefield` of a hero with `magic` (also before the battle's state exists: a
+/// town's land mines, BAT-SIE-007; and with no battle, the computer's simulated combat,
+/// `crate::estimate`).
 pub(crate) fn mastery_at(
     ruleset: &BattleRuleset,
     battlefield: Option<BattlefieldId>,
-    hero: &HeroRecord,
+    magic: &HeroMagic,
     spell: SpellId,
 ) -> u8 {
     let raised = battlefield
@@ -635,7 +636,7 @@ pub(crate) fn mastery_at(
     if raised {
         MAX_MASTERY
     } else {
-        hero.magic.masteries.get(spell)
+        magic.masteries.get(spell)
     }
 }
 
@@ -753,6 +754,17 @@ impl Guard {
             negated: [caster, controller]
                 .into_iter()
                 .any(|side| hero(side).is_some_and(|h| h.magic.negates)),
+        }
+    }
+
+    /// For a spell of a side whose hero's magic is `caster` at a stack whose controller's hero's
+    /// magic is `controller`, with no battle (the computer's simulated combat,
+    /// `crate::estimate`; E31 T2c): as [`Guard::of`] reads the battle's heroes.
+    pub(crate) fn of_heroes(caster: Option<&HeroMagic>, controller: Option<&HeroMagic>) -> Self {
+        let negates = |hero: Option<&HeroMagic>| hero.is_some_and(|h| h.negates);
+        Self {
+            defences: controller.map_or(Defences::default(), |h| h.defences),
+            negated: negates(caster) || negates(controller),
         }
     }
 }
@@ -1840,10 +1852,26 @@ pub(crate) fn spell_damage(
     let caster = hero.map_or(value, |b| {
         caster_stage(ruleset, (spell, b), value, creature)
     });
-    let mut damage = caster;
+    let damage = creature_damage(ruleset, spell.0, caster, creature);
+    (caster, protected(ruleset, spell.1, damage, protection))
+}
+
+/// The target's part of the damage `value` of `spell` on a stack of `creature` (BAT-MAG-004;
+/// the original's 0x44B4B0, `installation.md` §7.8): one spell's extra damage, rounded down,
+/// then the spell damage reduction, rounded down. [`spell_damage`] takes it after the caster's
+/// bonuses; the computer's simulated combat before them (`crate::estimate`, E31 T2c).
+// rule: BAT-MAG-004
+#[inline]
+pub(crate) fn creature_damage(
+    ruleset: &BattleRuleset,
+    spell: SpellId,
+    value: u64,
+    creature: CreatureTypeId,
+) -> u64 {
+    let mut damage = value;
     for ability in ruleset.abilities(creature) {
         match *ability {
-            Ability::SpellVulnerability { spell: s, percent } if s == spell.0 => {
+            Ability::SpellVulnerability { spell: s, percent } if s == spell => {
                 damage = grow(damage, u64::from(percent) * 100);
             }
             Ability::SpellDamageReduction { percent } => {
@@ -1852,7 +1880,7 @@ pub(crate) fn spell_damage(
             _ => {}
         }
     }
-    (caster, protected(ruleset, spell.1, damage, protection))
+    damage
 }
 
 /// The value `value` of a damage spell after the bonuses `b` of its caster's hero, on a stack of
@@ -2123,19 +2151,29 @@ fn share(
         return (one, one);
     }
     let stack = state.at(s);
-    let creature = ruleset
-        .abilities(stack.creature)
+    let hero = state.heroes[stack.controller().index()]
+        .as_ref()
+        .map_or(0, |h| h.magic.resistance);
+    (creature_share(ruleset, stack.creature, hero), one)
+}
+
+/// The share of a hostile spell a stack of `creature` lets through when its controller's hero's
+/// resistance is `resistance`, at the [`scale`] ([`share`] without the negation; BAT-MAG-008,
+/// BAT-MAG-026): 1 − the creature's magic resistance minus `resistance`, at least 0, with quirk
+/// Q-0005 rounded to single precision.
+#[inline]
+fn creature_share(ruleset: &BattleRuleset, creature: CreatureTypeId, resistance: u64) -> u64 {
+    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
+    let own = ruleset
+        .abilities(creature)
         .iter()
         .find_map(|a| match *a {
             Ability::MagicResistance { percent } => Some(percent_rate(single, percent)),
             _ => None,
         })
-        .unwrap_or(one);
-    let hero = state.heroes[stack.controller().index()]
-        .as_ref()
-        .map_or(0, |h| h.magic.resistance);
-    let share = creature.saturating_sub(hero);
-    (if single { round_single(share) } else { share }, one)
+        .unwrap_or(scale(single));
+    let share = own.saturating_sub(resistance);
+    if single { round_single(share) } else { share }
 }
 
 /// Whether a hostile spell of `caster`'s side has a chance above zero at stack `s` (BAT-MAG-008):
@@ -2238,17 +2276,48 @@ pub(crate) fn effect_factor(
     }
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let (share, _) = share(state, ruleset, caster, s);
-    // A rate at the scale: a single-precision numerator, or basis points (at most `FULL_BP`).
-    let value = |v: u64| {
-        if single {
-            X87::fixed(v)
-        } else {
-            let v = u32::try_from(v).unwrap_or(u32::MAX);
-            X87::ratio(v, u32::from(FULL_BP), DOUBLE_BITS).unwrap_or(X87::ZERO)
-        }
-    };
-    let f = value(share);
-    aura(state, ruleset, s).map_or(f, |p| f.times(value(percent_rate(single, p))))
+    let f = rate_value(single, share);
+    aura(state, ruleset, s).map_or(f, |p| f.times(rate_value(single, percent_rate(single, p))))
+}
+
+/// A rate at the [`scale`] as the x87 holds it: a single-precision numerator, or basis points
+/// (at most `FULL_BP`) rounded to the double.
+#[inline]
+fn rate_value(single: bool, v: u64) -> X87 {
+    if single {
+        X87::fixed(v)
+    } else {
+        let v = u32::try_from(v).unwrap_or(u32::MAX);
+        X87::ratio(v, u32::from(FULL_BP), DOUBLE_BITS).unwrap_or(X87::ZERO)
+    }
+}
+
+/// The original's creature part of a spell's effect test, 0x44A4D0, as the computer's simulated
+/// combat calls it with no battle (`crate::estimate`; E31 T2c; BAT-MAG-005, BAT-MAG-008,
+/// BAT-MAG-064, BAT-MAG-066; `installation.md` §7.8): 0 when the controlling hero's defences
+/// bound the spell's level (the original's first test, Dispel's included: the effect test
+/// 0x5A8090 spares Dispel before it, the simulation calls 0x44A4D0 itself) or the spell cannot
+/// affect a stack of `creature` under `guard` ([`affects`]); 1 for a positive spell, one that
+/// ignores immunity (Dispel, 0x44A53B) and when the immunities are negated; else
+/// [`creature_share`] with `resistance`, the controlling hero's, as [`effect_factor`] holds it.
+/// No aura: the creature part reads none.
+// rule: BAT-MAG-005, BAT-MAG-008, BAT-MAG-064, BAT-MAG-066
+pub(crate) fn creature_factor(
+    ruleset: &BattleRuleset,
+    (id, spell): SpellRef<'_>,
+    creature: CreatureTypeId,
+    guard: Guard,
+    resistance: u64,
+) -> X87 {
+    let bounded = guard.defences.up_to_level.is_some_and(|l| spell.level <= l);
+    if bounded || !affects(ruleset, (id, spell), creature, guard) {
+        return X87::ZERO;
+    }
+    if spell.polarity == SpellPolarity::Positive || spell.magic.ignores_immunity || guard.negated {
+        return X87::ONE;
+    }
+    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
+    rate_value(single, creature_share(ruleset, creature, resistance))
 }
 
 /// Rolls whether stack `s` resists `spell` (BAT-MAG-008): one draw from 1 to 100 when the chance

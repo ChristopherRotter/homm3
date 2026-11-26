@@ -493,3 +493,53 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   repeatable and only takes). The expected numbers come from an IEEE double model of the reading,
   which also agreed with the port on 400 random runs (not committed). `sim.rs` at 100 % lines and
   regions by `h3-game`'s own tests.
+
+## T2c — the casts, Necromancy and the fight estimate (2026-11-25, increment 2)
+
+- **The size, measured at the start** (`docs/exe/map.toml`): 7.6 KB, about 2 800 instructions,
+  4.9 KB of it never read before (the spell values 0x4249D0 to 0x425B10, 0x423C80, 0x423D00,
+  0x423DE0); the user chose **no cut** (AI-Q34).
+- **The reading** (`Heroes3.exe` staged from the user's repo folder; nothing printed committed):
+  `sim_cast_spell` 0x425BD0 whole, its thirteen leaves read for the first time, `sim_combat_start`'s
+  casting inputs, `sim_necromancy` 0x426DF0, `ai_army_fight_sim` 0x427330, `ai_experience_value`
+  0x527710, `ai_difficulty_blend` 0x428710, `hero_reset`'s aggressiveness draw, the first tests and
+  the end of `creature_spell_factor` 0x44A4D0 (the Dragon Father's levels first, Dispel's
+  shortcut, 1 for a positive spell). Two inferred names were swapped: 0x4249D0 is the chain's next
+  stack, 0x424BF0 the area's value (renamed in the map, with 0x424FB0 and 0x425100). Two new state
+  candidates (§5.5): #65, an other spell sets a stack's value per hit point to the new value over
+  old value × old value per hit point; #66, an other spell and a raise leave the side's strength.
+  Both the quick battle's, ported as read.
+- **The shape** (AI-Q34): the casts call four of the battle's helpers on creature types and heroes,
+  which `h3-battle` had only crate-private on a battle's stacks; the user: the battle should provide
+  the battle estimate entirely. **Built** (`cross-lane`): `h3_battle::estimate` (public: `side`,
+  `run`, `Side::strength`, `Side::survivors`, `EstimateHero`, `Ground`), T2b's `sim.rs` moved there
+  on contract inputs (each side's `BattleHero` and available spells, its `ArmyStack`s, the factor,
+  the town's `FortLevel`, the tile's battlefield and anti-magic garrison) and its casts on the
+  battle's own rules: `magic::creature_factor` (0x44A4D0's creature part: the Dragon Father first,
+  then `affects`, 1 for a positive spell, Dispel or a negation, else the creature share less the
+  controller's resistance; no aura), `magic::creature_damage` (the target's part of
+  `spell_damage`, extracted), `untargeted_bonus`, `specialist_bonus`, `mastery_at` (now on a hero's
+  `HeroMagic`), `mana::armies_cost_change` (extracted from `cost_change`), `Guard::of_heroes`.
+  `h3_game::computer::fight` (private, `expect(dead_code)` until T2d, T2h, T2i call it): the
+  estimate, Necromancy into the survivors, the experience's value, the blend.
+- **Agent decisions (change freely):** spells are told by their data as the original tells them by
+  their numbers (the AI kinds; a chain, an area's radius for Inferno's 2; `Raise` for 38 and 39; the
+  counter-casting set by `Dispel` and the Protections', Anti-Magic's and Magic Mirror's timed
+  changes; Dispel as `Dispel` without `Heal`); Familiars by `mana_channel`'s percent; the
+  aggressiveness 1.0 (AI-STUB-8); the conditions' bonuses none (AI-STUB-9, E10 increment 2); the
+  map's version SoD's (the Cursed Ground test never refuses); a division by 0 of the original (an
+  aimed stack without value, a raise's unit value 0) gives 0, and the experience's gap of 0 the
+  integer indefinite; the unreachable "no target" cases are `for_each` over an `Option` (no
+  uncovered region).
+- **Tests**: `h3-battle`'s `estimate/tests.rs` (37, on the crate's test ruleset with Fight Values
+  and AI kinds patched in): T2b's hand-built cases unchanged in their numbers, the builds redone on
+  `BattleHero`s, the casts (the order, the frame's refusals, the cost changes and Familiars, the
+  loss chain with resistance, immunity, vulnerability, reduction, the Orb, the Dragon Father,
+  Sorcery; the chain, the area, the mass damage's carried totals, the blessing's slip, the curse,
+  the ward, Dispel at each mastery, Cure, the raise, the kinds), the property test; `h3-game`'s
+  `fight/tests.rs` (7: the pieces and three whole estimates on the crate's games with enemies the
+  combat beats before round 1). The numbers from an IEEE double model of the reading (Python, not
+  committed); four of my expectations were wrong and the port right (a loss capped at the value,
+  Cure's counter-casting test, the flyer's 8 hit points, 0.7 × 60 = 42 in doubles). `estimate.rs`
+  and `fight.rs` at 100 % lines and regions by their crates' own tests; `h3-battle`, `h3-game`,
+  `h3-sim` all pass.
