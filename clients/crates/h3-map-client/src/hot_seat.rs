@@ -34,6 +34,7 @@ use std::path::Path;
 
 use h3_contracts::PlayerId;
 use h3_game::GameRuleset;
+use h3_map_view::engine::{self, GameRecord, Live};
 use h3_protocol::codec;
 use h3_protocol::map::game::manifest;
 use h3_protocol::record::MAX_LINE;
@@ -129,6 +130,28 @@ impl Seat {
         }
         Ok(())
     }
+}
+
+impl Seat {
+    /// The number of the last message it was told (0 before its snapshot).
+    #[must_use]
+    pub fn told(&self) -> u32 {
+        self.n
+    }
+}
+
+/// Where a human's view was left as the turn passed from it (E24 M5 T3b): its seat's last
+/// message's number then, its view then, and its heroes' facings as the window last drew them (by
+/// hero id, the original's order of eight: the view names none, MCL-Q58). At the seat's next turn
+/// its view is set up again from there ([`HotSeat::since`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Left {
+    /// The seat's last message's number.
+    pub n: u32,
+    /// Its view.
+    pub view: GameObservation,
+    /// Its heroes' facings, by hero id.
+    pub facings: Vec<(u16, u8)>,
 }
 
 /// A frame folded before the seat of `colour` got its first snapshot.
@@ -301,6 +324,56 @@ impl<'r> HotSeat<'r> {
     #[must_use]
     pub fn record(&self, player: PlayerId) -> Option<String> {
         self.session.record(player)
+    }
+
+    /// `player`'s view left now with its heroes' `facings` (E24 M5 T3b, [`Left`]); none for a
+    /// player outside the game or before its snapshot.
+    #[must_use]
+    pub fn leave(&self, player: PlayerId, facings: Vec<(u16, u8)>) -> Option<Left> {
+        let seat = self.seat(player)?;
+        Some(Left {
+            n: seat.n,
+            view: seat.view.clone()?,
+            facings,
+        })
+    }
+
+    /// `player`'s record since its view was left at `left` (E24 M5 T3b), as the map client's live
+    /// start reads it (`h3_map_view::engine::live`): its first message a snapshot of the view
+    /// then (numbered as the message it was left at, the record's `first`), then the record's
+    /// later messages; its whole record without one. With the facings the host saw (none: every
+    /// hero faces right, as at a new game).
+    ///
+    /// # Errors
+    /// No record of `player`; it does not read.
+    pub fn since(
+        &self,
+        player: PlayerId,
+        left: Option<&Left>,
+    ) -> Result<(GameRecord, Live), String> {
+        let text = self
+            .record(player)
+            .ok_or_else(|| format!("no record of player {}", player.index()))?;
+        let mut record =
+            engine::parse(&text).map_err(|e| format!("player {}: {e}", player.index()))?;
+        let Some(left) = left else {
+            return Ok((record, Live::default()));
+        };
+        record
+            .messages
+            .retain(|m| number(m).is_some_and(|n| n > left.n));
+        record.messages.insert(
+            0,
+            ServerMessage::GameSnapshot {
+                n: left.n,
+                observation: left.view.clone(),
+            },
+        );
+        record.header.first = left.n;
+        let live = Live {
+            facings: left.facings.clone(),
+        };
+        Ok((record, live))
     }
 
     /// `player`'s `command`, as the host vouches for it, played and its frames folded.

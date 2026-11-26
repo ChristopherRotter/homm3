@@ -26,17 +26,20 @@
 //! through the hosted session (E24 M5 T3a), a line for each. `--records` writes each human's record
 //! at the end, as `h3-server record` names them, for the record player (`h3-map-view record`).
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_battle_client::audio::HostSound;
+use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup};
+use h3_map_view::engine::{GameRecord, Live};
 use h3_render::Bugs;
 use h3_sdl::{Config, Window};
 
 use crate::files;
-use crate::hot_seat::{self, HotSeat};
+use crate::hot_seat::{self, HotSeat, Left};
 use crate::window::{self, Host, Source};
 
 /// A game the shell began (its `begin::Game`, by the client lane's own type): what play needs of
@@ -109,42 +112,113 @@ pub fn play(
     folders: &Folders,
 ) -> Result<End, String> {
     let options = window::Options::for_play(game, folders, None, false);
-    let hot = HotSeat::start(game, rules)?;
-    let (lines, _, end) = played(game, rules, &hot, Host::Lent { window, sound }, &options)?;
+    let mut hot = HotSeat::start(game, rules)?;
+    let (lines, _, end) = played(game, rules, &mut hot, (window, sound), &options)?;
     for line in lines {
         eprintln!("h3-map-client play: {line}");
     }
     Ok(end)
 }
 
-/// `game` played as [`play`] plays it, hosted by `hot`, on `host` with the window's `options`: the
-/// window's report, its check's verdict and how play ended.
+/// `game` played as [`play`] plays it, hosted by `hot`, in the host's window and on its sound
+/// with the window's `options` (E24 M5 T3b): each human's view in turn, set up from its record
+/// since it was last left, until play ends in one of them; the views' reports (each headed by its
+/// colour), whether every view's check held, and how play ended.
 fn played(
     game: &Game,
     rules: &GameRuleset,
-    hot: &HotSeat<'_>,
-    host: Host<'_>,
+    hot: &mut HotSeat<'_>,
+    (window, sound): (&mut Window, &mut Option<HostSound>),
     options: &window::Options,
 ) -> Result<(Vec<String>, bool, End), String> {
-    let (text, colour) = turn_record(hot)?;
-    let source = Source::Text {
-        map: &game.map,
-        text: &text,
-        rules,
-        label: format!("play's start for colour {colour}"),
-    };
-    window::window(options, source, host)
+    let (mut lines, mut ok) = (Vec::new(), true);
+    // Where each human's view was left, by player.
+    let mut left: BTreeMap<usize, Left> = BTreeMap::new();
+    loop {
+        let Some(player) = hot.turn() else {
+            lines.push("no human's turn runs: play ends".into());
+            return Ok((lines, ok, End::MainMenu));
+        };
+        let colour = hot.seat(player).map_or(0, |s| s.colour);
+        let mut viewed = Viewed {
+            from: left.remove(&player.index()),
+            hot: &mut *hot,
+            map: &game.map,
+            rules,
+            player,
+            colour,
+            left: None,
+            read: false,
+        };
+        let host = Host::Lent {
+            window: &mut *window,
+            sound: &mut *sound,
+        };
+        let (view, view_ok, end) = window::window(options, Source::Session(&mut viewed), host)?;
+        lines.push(format!("colour {colour}'s view:"));
+        lines.extend(view.into_iter().map(|line| format!("  {line}")));
+        ok &= view_ok;
+        match viewed.left.take() {
+            Some(at) => {
+                left.insert(player.index(), at);
+            }
+            None => return Ok((lines, ok, end)),
+        }
+    }
 }
 
-/// The record so far of the human whose turn runs, and its colour.
-///
-/// # Errors
-/// No human's turn runs.
-fn turn_record(hot: &HotSeat<'_>) -> Result<(String, u8), String> {
-    let player = hot.turn().ok_or("no human's turn runs")?;
-    let colour = hot.seat(player).map_or(0, |s| s.colour);
-    let text = hot.record(player).ok_or("no record of the human in turn")?;
-    Ok((text, colour))
+/// A human's view in the window hosted by the session (E24 M5 T3b, the window's
+/// [`window::Session`]): the seat, where its view was set up from (where it was last left; none:
+/// its whole record) and, once the turn passed from it, where it was left.
+struct Viewed<'h, 'r> {
+    hot: &'h mut HotSeat<'r>,
+    map: &'h Path,
+    rules: &'h GameRuleset,
+    player: PlayerId,
+    colour: u8,
+    from: Option<Left>,
+    left: Option<Left>,
+    /// Whether the view read the clock yet.
+    read: bool,
+}
+
+impl window::Session for Viewed<'_, '_> {
+    fn map(&self) -> &Path {
+        self.map
+    }
+
+    fn rules(&self) -> &GameRuleset {
+        self.rules
+    }
+
+    fn colour(&self) -> u8 {
+        self.colour
+    }
+
+    fn record(&self) -> Result<(GameRecord, Live), String> {
+        self.hot.since(self.player, self.from.as_ref())
+    }
+
+    fn end_turn(&mut self, now: u64) -> Result<bool, String> {
+        // The clock read first (the session's rule): a turn whose time ran out is not ended twice.
+        self.hot.elapse(now)?;
+        if self.hot.turn() == Some(self.player) {
+            self.hot.end_turn()?;
+        }
+        Ok(self.hot.turn() == Some(self.player))
+    }
+
+    fn tick(&mut self, now: u64) -> Result<bool, String> {
+        if !self.read || self.hot.deadline().is_some_and(|d| d <= now) {
+            self.read = true;
+            self.hot.elapse(now)?;
+        }
+        Ok(self.hot.turn() == Some(self.player))
+    }
+
+    fn leave(&mut self, facings: Vec<(u16, u8)>) {
+        self.left = self.hot.leave(self.player, facings);
+    }
 }
 
 /// The command's options.
@@ -338,7 +412,7 @@ fn play_command(options: &Options) -> Result<(Vec<String>, bool, End), String> {
     let mut hot = HotSeat::start(&game, &rules)?;
     let (mut lines, ok, end) = match options.turns {
         Some(turns) => (headless(&mut hot, turns)?, true, End::MainMenu),
-        None => in_window(options, &game, &rules, &hot)?,
+        None => in_window(options, &game, &rules, &mut hot)?,
     };
     if let Some(dir) = &options.records {
         lines.extend(write_records(&hot, &options.map, dir)?);
@@ -351,7 +425,7 @@ fn in_window(
     options: &Options,
     game: &Game,
     rules: &GameRuleset,
-    hot: &HotSeat<'_>,
+    hot: &mut HotSeat<'_>,
 ) -> Result<(Vec<String>, bool, End), String> {
     let [width, height] = files::load_layout(&options.folders.map)?.frame;
     let mut win = Window::open(&Config {
@@ -371,11 +445,7 @@ fn in_window(
     };
     let window_options =
         window::Options::for_play(game, &options.folders, options.run, options.mute);
-    let host = Host::Lent {
-        window: &mut win,
-        sound: &mut sound,
-    };
-    let (mut lines, ok, end) = played(game, rules, hot, host, &window_options)?;
+    let (mut lines, ok, end) = played(game, rules, hot, (&mut win, &mut sound), &window_options)?;
     // The sound handed back (the shell's to use again), as play promises.
     lines.push(format!(
         "the sound handed back: {}",
@@ -447,7 +517,7 @@ pub fn write_records(hot: &HotSeat<'_>, map: &Path, dir: &Path) -> Result<Vec<St
 pub(crate) mod tests {
     use std::collections::BTreeMap;
 
-    use h3_contracts::PlayerId;
+    use h3_map_view::engine::parse;
     use h3_map_view::situation::Situation;
 
     use super::*;
@@ -515,15 +585,18 @@ pub(crate) mod tests {
         for (humans, id) in [(None, 0), (Some(&[1][..]), 1)] {
             let game = begin(&file.0, humans, (9, hot_seat::UNLIMITED), &rules).unwrap();
             let hot = HotSeat::start(&game, &rules).unwrap();
-            let (text, colour) = turn_record(&hot).unwrap();
-            assert_eq!(colour, id);
-            // The record the record player reads (its map the file's by its hash), its start the
-            // human's view.
-            let loaded = h3_map_view::engine::load(&text, &bytes, &rules).unwrap();
+            let player = hot.turn().unwrap();
+            assert_eq!(hot.seat(player).unwrap().colour, id);
+            // Its whole record, as the record player reads it (its map the file's by its hash),
+            // its start the human's view.
+            let (record, live) = hot.since(player, None).unwrap();
+            assert_eq!(live, Live::default());
+            assert_eq!(Some(&record), parse(&hot.record(player).unwrap()).ok().as_ref());
+            let loaded = h3_map_view::engine::live(record.clone(), &bytes, &rules, live).unwrap();
             assert_eq!(loaded.first().unwrap().viewer, id);
             // The same setup and seed begin the same game.
             let again = HotSeat::start(&game, &rules).unwrap();
-            assert_eq!(turn_record(&again).unwrap(), (text, colour));
+            assert_eq!(again.since(player, None).unwrap().0, record);
         }
     }
 

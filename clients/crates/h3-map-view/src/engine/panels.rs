@@ -70,7 +70,8 @@ pub(super) fn insert(
 ) {
     let viewer = observation.adventure.viewer;
     let info = |id: u16| observation.heroes.iter().find(|h| h.id == id);
-    // The viewer's heroes on the map, in their types' order (the original's new game).
+    // The viewer's heroes on the map in its hero list's order (GAM-HER-003; E24 M5 T3b: a live
+    // start's), at a new game their types' order (the original's), a hero the list lacks after.
     let mut heroes: Vec<(usize, &MapHero, &HeroInfo)> = observation
         .adventure
         .heroes
@@ -79,7 +80,7 @@ pub(super) fn insert(
         .filter(|(_, h)| h.owner == viewer)
         .filter_map(|(i, h)| info(h.id).map(|info| (i, h, info)))
         .collect();
-    heroes.sort_by_key(|&(i, _, info)| (info.hero_type, i));
+    heroes.sort_by_key(|&(i, hero, info)| (listed(observation, hero.id), info.hero_type, i));
     let towns = viewer_towns(observation);
     let hero_status: Vec<Table> = heroes
         .iter()
@@ -191,6 +192,15 @@ pub(super) fn insert(
         ),
     );
     table.insert("chosen".into(), Value::Table(chosen));
+}
+
+/// Hero `id`'s place in the viewer's hero list (GAM-HER-003), past its end when it is not listed.
+pub(super) fn listed(observation: &GameObservation, id: u16) -> usize {
+    observation
+        .hero_list
+        .iter()
+        .position(|&h| h == id)
+        .unwrap_or(usize::MAX)
 }
 
 /// The viewer's towns in its town list's order at a new game (E24 M4 T3b2, *provisional*): the

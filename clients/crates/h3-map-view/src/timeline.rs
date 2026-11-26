@@ -1711,6 +1711,9 @@ pub struct Loop {
     /// The turns' starts ([`Start::turns`]) and the next one's place among them.
     turns: Arc<Vec<NextTurn>>,
     next_turn: usize,
+    /// The millisecond End Turn's change found no next turn while live (E24 M5 T3b): the host's
+    /// session plays the End Turn and gives the turns after it ([`Loop::add_turns`]).
+    turns_asked: Option<u32>,
     /// The message box open over the map (E24 M4 T1a), and the boxes waiting to open as it closes
     /// (E24 M4 T2a2: the days left's, then the week's).
     boxed: Option<Boxed>,
@@ -2190,6 +2193,7 @@ impl Loop {
             question: start.question.clone(),
             turns: Arc::new(start.turns.clone()),
             next_turn: 0,
+            turns_asked: None,
             boxed: None,
             waiting: VecDeque::new(),
             finds: Arc::new(start.finds.clone()),
@@ -2320,6 +2324,33 @@ impl Loop {
     /// T1b2: a computer's steps at speed 4 seen, each drawn once with no wait), in order; taken.
     pub fn take_held(&mut self) -> Vec<State> {
         core::mem::take(&mut self.within)
+    }
+
+    /// The millisecond End Turn's change asked the host for the turns after it (E24 M5 T3b): live,
+    /// with no next turn known; none since [`Loop::add_turns`] gave them.
+    #[must_use]
+    pub fn turns_asked(&self) -> Option<u32> {
+        self.turns_asked
+    }
+
+    /// The turns' starts after the known ones, given by the host (E24 M5 T3b: the hot seat's
+    /// session played End Turn); the question cleared.
+    pub fn add_turns(&mut self, turns: &[NextTurn]) {
+        Arc::make_mut(&mut self.turns).extend_from_slice(turns);
+        self.turns_asked = None;
+    }
+
+    /// The map's heroes ([`Start::heroes`]' order) where they stand and face now, the selected
+    /// one's where its walk left it (E24 M5 T3b: what the host keeps of a view it leaves).
+    #[must_use]
+    pub fn heroes(&self) -> Vec<Hero> {
+        let mut heroes = self.heroes.clone();
+        if let (Some(index), Some(hero)) = (self.index, self.hero)
+            && let Some(h) = heroes.get_mut(index)
+        {
+            *h = hero;
+        }
+        heroes
     }
 
     /// What the screen's view shows: its last draw.
@@ -3041,6 +3072,10 @@ impl Loop {
     fn turn_proceed(&mut self, t: u32) -> Result<(), Unplayable> {
         let refused = Unplayable::Command(panels::id::END_TURN);
         let Some(next) = self.turns.get(self.next_turn).cloned() else {
+            // Live, the host's session is asked (E24 M5 T3b): the change waits for its turns.
+            if self.live {
+                self.turns_asked.get_or_insert(t);
+            }
             return self.unbuilt(refused);
         };
         if let Status::Turn(status) = next.turn.status {
