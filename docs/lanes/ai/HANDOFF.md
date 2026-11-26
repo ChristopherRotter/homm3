@@ -33,7 +33,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
 - **Open pull requests:** #1195 (`ai/fix-start-tests`: `master`'s build, T2d's start test
-  without T56's `war_machine`; merge first), #1196 (`ai/e31-t2e`, `cross-lane`: T2e, on #1195).
+  without T56's `war_machine`; merge first), #1197 (`ai/e31-t2e`, `cross-lane`: T2e, on #1195).
   Merged: #1190 (T2d), #1184 (T2c), #1177 (T2b), #1172 (T2a), #1163 (the shared module PR).
   **Pending for the lane's next `shared/` pull request:** the `benches/README.md` row of T2a's
   workload; ADR-0030's note that the simulated combat (AI-Q34) and the spell values (AI-Q36) are
