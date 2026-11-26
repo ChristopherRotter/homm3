@@ -9,13 +9,13 @@
 //! in creation order (the edge before its twin), a deleted pair erased with the order kept, a
 //! flip reusing its pair in place; the starting edge is the original's too, so the walks, the
 //! circumcentres, the borders' first side and the fill's ties follow them.
+//!
+//! Three cases the original would not survive cannot arise in step 2, and each has a fallback
+//! that keeps the functions total: a point on or outside the frame (step 2's points lie within
+//! (−W, 2W) on a map of at most 144), a walk that does not end (none in a Delaunay
+//! triangulation) and a flat triangle (the insertion leaves none).
 
 use alloc::vec::Vec;
-
-/// Why the triangulation stops where the original would never end or would divide by zero
-/// (RMG-QUIRK-3, -4; none reachable with the shipped sizes as read): a point on or outside the
-/// frame, a walk that does not end, a flat triangle.
-pub(crate) use crate::partition::PartitionFault as Fault;
 
 /// A record's index in the arena.
 pub(crate) type Edge = usize;
@@ -245,17 +245,17 @@ impl Triangulation {
 
     /// `triangulation_find` 0x5FD6B0 (Locate) from the starting edge: p at e's origin gives e, at
     /// its destination e's twin; RightOf(p, e) the twin; else not RightOf(p, Onext) Onext; else
-    /// not RightOf(p, Dprev) Dprev; else e.
+    /// not RightOf(p, Dprev) Dprev; else e. A walk in a Delaunay triangulation visits no triangle
+    /// twice: one longer than the records stops where it is.
     // rule: RMG-ZON-009
-    pub(crate) fn find(&self, p: [i32; 2]) -> Result<Edge, Fault> {
+    pub(crate) fn find(&self, p: [i32; 2]) -> Edge {
         let mut e = self.start;
-        // A walk in a Delaunay triangulation visits no triangle twice.
         for _ in 0..=self.records.len() {
             if p == self.org(e) {
-                return Ok(e);
+                return e;
             }
             if p == self.dest(e) {
-                return Ok(self.sym(e));
+                return self.sym(e);
             }
             e = if self.right_of(p, e) {
                 self.sym(e)
@@ -264,31 +264,26 @@ impl Triangulation {
             } else if !self.right_of(p, self.dprev(e)) {
                 self.dprev(e)
             } else {
-                return Ok(e);
+                return e;
             };
         }
-        Err(Fault::Walk)
+        e
     }
 
     /// `triangulation_insert` 0x5FD790 (InsertSite): a point already a vertex is not inserted
     /// (false; its data is lost); a point on an edge (area 0, within both ends' squared
     /// distances of the edge's length) deletes that edge; the point is connected to the corners
     /// around it, the new base edge the starting edge; then the flips while the strict RightOf
-    /// and InCircle tests hold (four cocircular points keep their diagonal).
-    ///
-    /// # Errors
-    ///
-    /// A point on or outside the frame, or a walk that does not end ([`Fault`]).
+    /// and InCircle tests hold (four cocircular points keep their diagonal). A point on or outside
+    /// the frame is not inserted either.
     // rule: RMG-ZON-009
-    pub(crate) fn insert(&mut self, v: Vertex) -> Result<bool, Fault> {
+    pub(crate) fn insert(&mut self, v: Vertex) -> bool {
         let p = [v.x, v.y];
         let [lo, hi] = FRAME;
-        if !(lo < v.x && v.x < hi && lo < v.y && v.y < hi) {
-            return Err(Fault::Frame);
-        }
-        let mut e = self.find(p)?;
-        if p == self.org(e) || p == self.dest(e) {
-            return Ok(false);
+        let inside = lo < v.x && v.x < hi && lo < v.y && v.y < hi;
+        let mut e = self.find(p);
+        if !inside || p == self.org(e) || p == self.dest(e) {
+            return false;
         }
         let (o, d) = (self.org(e), self.dest(e));
         let length = distance2(o, d);
@@ -315,7 +310,7 @@ impl Triangulation {
                 self.swap(e);
                 e = self.oprev(e);
             } else if self.onext(e) == self.start {
-                return Ok(true);
+                return true;
             } else {
                 e = self.lprev(self.onext(e));
             }
@@ -326,13 +321,10 @@ impl Triangulation {
     /// its left triangle's circumcentre from that corner A (B its destination, C its Onext's):
     /// u = B − A, v = C − B, w = A − C, r = (−u.y, u.x) × dot(v, w) / cross(u, w),
     /// A + (u + r) / 2 (32-bit products, both divisions toward zero), written to the triangle's
-    /// three records (the record, its Onext's twin, that one's Onext's twin) and marked.
-    ///
-    /// # Errors
-    ///
-    /// [`Fault::Flat`]: a flat triangle (cross 0, which the insertion never leaves).
+    /// three records (the record, its Onext's twin, that one's Onext's twin) and marked. A flat
+    /// triangle (cross 0, which the insertion never leaves) keeps -1.
     // rule: RMG-ZON-009
-    pub(crate) fn finish(&mut self) -> Result<(), Fault> {
+    pub(crate) fn finish(&mut self) {
         for k in 0..self.order.len() {
             let e = self.order[k];
             if self.records[e].origin.data.is_none() || self.records[e].mark {
@@ -349,9 +341,10 @@ impl Triangulation {
             let cross = u[0]
                 .wrapping_mul(w[1])
                 .wrapping_add(u[1].wrapping_neg().wrapping_mul(w[0]));
+            // `checked_div`: none for a flat triangle (and for `idiv`'s overflow).
             let r = [u[1].wrapping_neg(), u[0]].map(|n| n.wrapping_mul(dot).checked_div(cross));
             let [Some(rx), Some(ry)] = r else {
-                return Err(Fault::Flat);
+                continue;
             };
             let half = |n: i32| n / 2;
             let centre = [
@@ -365,7 +358,6 @@ impl Triangulation {
                 self.records[t].mark = true;
             }
         }
-        Ok(())
     }
 }
 

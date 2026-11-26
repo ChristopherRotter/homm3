@@ -28,16 +28,10 @@ const WATER_TREASURE: [[i32; 3]; 3] = [[100, 1000, 5], [2000, 6000, 1], [0, 0, 0
 /// The distances' value for a zone not reached (`rmg_water_zones_connect`).
 pub const UNREACHED: i16 = 32_000;
 
-/// Why step 2 stops where the original divides by zero (RMG-QUIRK-3), or reads or writes outside
-/// its arrays or never ends (RMG-QUIRK-4); none reached by the corpus.
+/// Why step 2 stops where the original divides by zero (RMG-QUIRK-3) or reads or writes outside
+/// its arrays (RMG-QUIRK-4); none reached by the corpus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PartitionFault {
-    /// A point on or outside the triangulation's frame (-200 to 400).
-    Frame,
-    /// A walk through the triangulation that does not end.
-    Walk,
-    /// A flat triangle's circumcentre.
-    Flat,
     /// A jagged border's limit of 0 (`rand() % 0`): a zone of scaled size 0.
     Limit,
     /// A straight line through a cell off the map (its unchecked index: another row's or
@@ -136,6 +130,8 @@ struct Level<'s, 'a, 't, T: Trace> {
     out: &'s mut Partition,
     z: i32,
     tri: Triangulation,
+    /// The first fault met: the level's result is refused.
+    fault: Option<PartitionFault>,
 }
 
 /// `rmg_segment_clip` 0x53CAC0: the first point of the line from p toward q in
@@ -188,15 +184,9 @@ impl<T: Trace> Level<'_, '_, '_, T> {
         self.z == 1 || self.input.water != Water::Islands
     }
 
-    fn fault(&self, fault: PartitionFault) -> GenerateError {
-        GenerateError::Partition {
-            level: self.z,
-            fault,
-        }
-    }
-
-    fn tri<R>(&self, r: Result<R, PartitionFault>) -> Result<R, GenerateError> {
-        r.map_err(|f| self.fault(f))
+    /// Records the level's first fault.
+    fn fail(&mut self, fault: PartitionFault) {
+        self.fault = self.fault.or(Some(fault));
     }
 
     fn memory(&mut self, kind: MemoryZone, index: usize) -> ZoneMemory {
@@ -234,7 +224,7 @@ impl<T: Trace> Level<'_, '_, '_, T> {
     /// The points around the level's zones present at the start (8 directions each) and, on
     /// level 0, a water zone at each one kept; each into the triangulation.
     // rule: RMG-ZON-010, RMG-ZON-011
-    fn points(&mut self, n: usize, waters: &mut usize) -> Result<(), GenerateError> {
+    fn points(&mut self, n: usize, waters: &mut usize) {
         // The temporary zone's constructor draws first (its town type is never read).
         let temporary = self.memory(MemoryZone::Temporary, *waters);
         *waters += 1;
@@ -293,36 +283,35 @@ impl<T: Trace> Level<'_, '_, '_, T> {
                 } else {
                     None
                 };
-                let r = self.tri.insert(Vertex {
+                self.tri.insert(Vertex {
                     x: p[0],
                     y: p[1],
                     data,
                 });
-                self.tri(r)?;
             }
         }
-        Ok(())
     }
 
-    /// The cell a straight line writes at (x, y). The original indexes the cells unchecked:
-    /// off the map another row's or level's cell, or memory past them (RMG-QUIRK-4: refused;
-    /// never reached by the corpus).
-    fn line_cell(&mut self, x: i32, y: i32) -> Result<&mut crate::cells::Cell, GenerateError> {
-        let fault = self.fault(PartitionFault::Outside);
-        let z = self.z;
-        self.cells.get_mut(x, y, z).ok_or(fault)
+    /// Marks the cell a straight line writes at (x, y). The original indexes the cells
+    /// unchecked: off the map another row's or level's cell, or memory past them (RMG-QUIRK-4:
+    /// a fault; never reached by the corpus).
+    fn line_mark(&mut self, x: i32, y: i32, index: u8, land: bool) {
+        match self.cells.get_mut(x, y, self.z) {
+            Some(c) => c.mark(index, land),
+            None => self.fail(PartitionFault::Outside),
+        }
     }
 
     /// `rmg_line_draw` 0x53C220: a Bresenham line from its end of lower x (the first on ties),
     /// each cell marked with `index` and the land bit, the far end with the index only.
     // rule: RMG-ZON-012
-    fn line(&mut self, a: [i32; 2], b: [i32; 2], index: u8) -> Result<(), GenerateError> {
+    fn line(&mut self, a: [i32; 2], b: [i32; 2], index: u8) {
         let (mut p, e) = if a[0] > b[0] { (b, a) } else { (a, b) };
         let dx = e[0].wrapping_sub(p[0]);
         let dy = e[1].wrapping_sub(p[1]);
         let ady = dy.wrapping_abs();
         let sy = if dy > 0 { 1 } else { -1 };
-        // (major, minor, the normal step, the overflow step).
+        // (major, minor, the normal step); an overflow steps (1, sy).
         let (major, minor, step) = if dx > ady {
             (dx, ady, [1, 0])
         } else {
@@ -331,7 +320,7 @@ impl<T: Trace> Level<'_, '_, '_, T> {
         let land = self.land();
         let mut err = major / 2;
         while p != e {
-            self.line_cell(p[0], p[1])?.mark(index, land);
+            self.line_mark(p[0], p[1], index, land);
             err = err.wrapping_add(minor);
             if err < major {
                 p = [p[0].wrapping_add(step[0]), p[1].wrapping_add(step[1])];
@@ -340,23 +329,17 @@ impl<T: Trace> Level<'_, '_, '_, T> {
                 p = [p[0].wrapping_add(1), p[1].wrapping_add(sy)];
             }
         }
-        self.line_cell(p[0], p[1])?.mark(index, false);
-        Ok(())
+        self.line_mark(p[0], p[1], index, false);
     }
 
     /// `rmg_jagged_line_draw` 0x53BFF0: a stack of ends from b; per popped end its midpoint
     /// `(a + e + 1) / 2`; at an end the current point is marked (clamped to the map) and the walk
     /// moves on to the popped end; else the midpoint moves along the normal by
     /// `(rand() % k − k / 2) × normal / L` (L the truncated length above 1, k = min(limit, L))
-    /// and the end and the midpoint are pushed. The last end is not marked.
+    /// and the end and the midpoint are pushed. The last end is not marked. A limit of 0 is
+    /// `rand() % 0` (RMG-QUIRK-3: a fault).
     // rule: RMG-ZON-012
-    fn jagged(
-        &mut self,
-        a: [i32; 2],
-        b: [i32; 2],
-        index: u8,
-        limit: i32,
-    ) -> Result<(), GenerateError> {
+    fn jagged(&mut self, a: [i32; 2], b: [i32; 2], index: u8, limit: i32) {
         let (w, h, _) = self.cells.size();
         let land = self.land();
         let mut current = a;
@@ -367,9 +350,7 @@ impl<T: Trace> Level<'_, '_, '_, T> {
             if mid == current || mid == end {
                 let x = current[0].max(0).min(w.wrapping_sub(1));
                 let y = current[1].max(0).min(h.wrapping_sub(1));
-                if let Some(c) = self.cells.get_mut(x, y, self.z) {
-                    c.mark(index, land);
-                }
+                self.cells.clamped_mut(x, y, self.z).mark(index, land);
                 current = end;
                 continue;
             }
@@ -379,7 +360,8 @@ impl<T: Trace> Level<'_, '_, '_, T> {
             if l > 1 {
                 let k = limit.min(l);
                 if k == 0 {
-                    return Err(self.fault(PartitionFault::Limit));
+                    self.fail(PartitionFault::Limit);
+                    return;
                 }
                 // `rand()` is at most 0x7FFF; `idiv`'s remainder has the dividend's sign.
                 let r = (self.stream.draw(SITE_BORDER_JITTER) as i32).wrapping_rem(k);
@@ -390,7 +372,6 @@ impl<T: Trace> Level<'_, '_, '_, T> {
             stack.push(end);
             stack.push(mid);
         }
-        Ok(())
     }
 
     /// The zone byte of zone generator `g`'s zone (its template zone's id).
@@ -399,19 +380,19 @@ impl<T: Trace> Level<'_, '_, '_, T> {
     }
 
     /// `rmg_zone_borders_draw` 0x53C390 for the record `r` at a zone's centre: the record's zone
-    /// G (not the caller's), the sides of its Voronoi cell in Onext order from the first whose
-    /// clip from its start lies on the map and differs from its clip from its end; each side's
-    /// clipped start appended to G's polygon and the side drawn in G's id when its neighbour is
-    /// none or of a higher id (jagged with the flag, its limit the smaller size, G's without a
-    /// neighbour); where the cell leaves the map, straight lines along the map's edge corner by
-    /// corner to where a later side re-enters (at once when the two share x or y); no side on the
-    /// map, the whole frame.
+    /// G (not the caller's: a zone whose point was dropped draws the other vertex's cell again),
+    /// the sides of its Voronoi cell in Onext order from the first whose clip from its start lies
+    /// on the map and differs from its clip from its end; each side's clipped start appended to
+    /// G's polygon and the side drawn in G's id when its neighbour is none or of a higher id
+    /// (jagged with the flag, its limit the smaller size, G's without a neighbour); where the
+    /// cell leaves the map (b not the side's end), straight lines along the map's edge corner by
+    /// corner from b to where a later side's clip lies on the map (at once when the two share x
+    /// or y, also across the map), b and the corners appended; no side on the map, the whole
+    /// frame and its four corners.
     // rule: RMG-ZON-012
-    fn borders(&mut self, r: Edge, jagged: bool) -> Result<(), GenerateError> {
-        // The record's data: a vertex without a zone has no cell to draw (none as read).
-        let Some(g) = self.tri.origin(r).data else {
-            return Ok(());
-        };
+    fn borders(&mut self, r: Edge, caller: usize, jagged: bool) {
+        // Every zone's centre is a vertex with a zone (its own or the one it was dropped for).
+        let g = self.tri.origin(r).data.unwrap_or(caller);
         let id = self.id(g);
         let index = id as u8;
         let (w, h, _) = self.cells.size();
@@ -440,10 +421,10 @@ impl<T: Trace> Level<'_, '_, '_, T> {
         let Some(f) = first else {
             let corners = [[w - 1, h - 1], [w - 1, 0], [0, 0], [0, h - 1]];
             for k in 0..4 {
-                self.line(corners[k], corners[(k + 1) % 4], index)?;
+                self.line(corners[k], corners[(k + 1) % 4], index);
             }
             self.out.polygons[g].extend_from_slice(&corners);
-            return Ok(());
+            return;
         };
         let size = self.gens[g].size;
         let mut e = f;
@@ -455,14 +436,15 @@ impl<T: Trace> Level<'_, '_, '_, T> {
             if neighbour.is_none_or(|o| self.id(o) > id) {
                 let limit = neighbour.map_or(size, |o| self.gens[o].size.min(size));
                 if jagged {
-                    self.jagged(a, b, index, limit)?;
+                    self.jagged(a, b, index, limit);
                 } else {
-                    self.line(a, b, index)?;
+                    self.line(a, b, index);
                 }
             }
             let mut next = n;
             if b != centre(&self.tri, n) {
-                // The cell leaves the map at b: the next side re-entering it.
+                // The cell leaves the map at b: the next side whose clip re-enters it (the
+                // first side's does at the latest).
                 let mut q = b;
                 let mut t = next;
                 let c = loop {
@@ -488,36 +470,34 @@ impl<T: Trace> Level<'_, '_, '_, T> {
                     } else {
                         [0, h - 1]
                     };
-                    self.line(q, corner, index)?;
+                    self.line(q, corner, index);
                     self.out.polygons[g].push(q);
                     q = corner;
                 }
-                self.line(q, c, index)?;
+                self.line(q, c, index);
                 self.out.polygons[g].push(q);
             }
             e = next;
             if e == f {
-                return Ok(());
+                return;
             }
         }
     }
 
     /// `rmg_zone_flood_fill` 0x53D380 for zone generator `g` and the record `r` at its centre:
-    /// from the centre on the map, else the clip from it toward the destination in r's ring
-    /// (r.Onext first, r last) deepest in [1, W − 2] × [1, H − 2] (the first on ties; none, no
-    /// fill), the 4-connected free region (zone byte 0xFF) of that cell, or of its left
-    /// neighbour when it is not free: zone byte g's id, the land bit unless on the islands'
-    /// level 0.
-    ///
-    /// # Errors
-    ///
-    /// [`PartitionFault::Outside`]: a clipped start off the map.
+    /// from the centre on the map, else from the clip toward the destination of r's ring (r.Onext
+    /// first, r last) deepest in [1, W − 2] × [1, H − 2] (the first on ties; none, no fill); a
+    /// stack of seeds, each moved left while the cell left of it is free (zone byte 0xFF), then
+    /// filled rightwards while free (zone byte g's id, the land bit unless on the islands'
+    /// level 0), a seed above and below for each run of free cells there: the 4-connected free
+    /// region of the start, or of the cell left of it when the start is not free.
     // rule: RMG-ZON-013
-    fn fill(&mut self, g: usize, r: Edge) -> Result<(), GenerateError> {
+    fn fill(&mut self, g: usize, r: Edge) {
         let (w, h, _) = self.cells.size();
         let [x, y, _] = self.gens[g].position;
-        let start = if (0..w).contains(&x) && (0..h).contains(&y) {
-            Some([x, y])
+        let on_map = |p: [i32; 2]| (0..w).contains(&p[0]) && (0..h).contains(&p[1]);
+        let start = if on_map([x, y]) {
+            [x, y]
         } else {
             // The ring's destinations themselves scored, the first deepest one clipped toward.
             let mut best = (0, None);
@@ -535,58 +515,46 @@ impl<T: Trace> Level<'_, '_, '_, T> {
                     break;
                 }
             }
-            best.1.map(|v| clip([x, y], v, w, h))
-        };
-        let Some(mut start) = start else {
-            return Ok(());
+            let Some(v) = best.1 else {
+                return;
+            };
+            clip([x, y], v, w, h)
         };
         // The original uses the clip's result untested (RMG-QUIRK-4): off the level it would
         // read and write outside it.
-        if !((0..w).contains(&start[0]) && (0..h).contains(&start[1])) {
-            return Err(self.fault(PartitionFault::Outside));
+        if !on_map(start) {
+            self.fail(PartitionFault::Outside);
+            return;
         }
         let z = self.z;
-        let free =
-            |c: &Cells, x: i32, y: i32| c.get(x, y, z).is_some_and(|c| c.zone_byte() == 0xFF);
-        if !free(self.cells, start[0], start[1]) {
-            start[0] -= 1;
-            if !free(self.cells, start[0], start[1]) {
-                return Ok(());
-            }
-        }
         let index = self.id(g) as u8;
         let land = self.land();
+        let free =
+            |c: &Cells, x: i32, y: i32| c.get(x, y, z).is_some_and(|c| c.zone_byte() == 0xFF);
         let mut seeds = alloc::vec![start];
-        while let Some([sx, sy]) = seeds.pop() {
-            if !free(self.cells, sx, sy) {
-                continue;
+        while let Some([mut x, y]) = seeds.pop() {
+            while x > 0 && free(self.cells, x - 1, y) {
+                x -= 1;
             }
-            let mut x0 = sx;
-            while free(self.cells, x0 - 1, sy) {
-                x0 -= 1;
-            }
-            let mut x = x0;
-            let mut above = false;
-            let mut below = false;
-            while free(self.cells, x, sy) {
-                if let Some(c) = self.cells.get_mut(x, sy, z) {
-                    c.mark(index, land);
-                }
-                for (row, open) in [(sy - 1, &mut above), (sy + 1, &mut below)] {
-                    let f = free(self.cells, x, row);
-                    if f && !*open {
-                        seeds.push([x, row]);
+            // The seeds pending above and below (the rows off the map are never free).
+            let mut pending: [Option<[i32; 2]>; 2] = [None, None];
+            while free(self.cells, x, y) {
+                self.cells.clamped_mut(x, y, z).mark(index, land);
+                for (seed, row) in pending.iter_mut().zip([y - 1, y + 1]) {
+                    if free(self.cells, x, row) {
+                        *seed = seed.or(Some([x, row]));
+                    } else if let Some(s) = seed.take() {
+                        seeds.push(s);
                     }
-                    *open = f;
                 }
                 x += 1;
             }
+            seeds.extend(pending.into_iter().flatten());
         }
-        Ok(())
     }
 
-    /// The first record of `g`'s ring (from its centre's record's Onext) whose destination is
-    /// zone generator `o`'s vertex.
+    /// The first record of the ring at `r` (from its Onext, r last) whose destination is zone
+    /// generator `o`'s vertex.
     fn ring_to(&self, r: Edge, o: usize) -> Option<Edge> {
         let mut e = r;
         loop {
@@ -600,7 +568,8 @@ impl<T: Trace> Level<'_, '_, '_, T> {
         }
     }
 
-    /// A connection both ways, `a`'s first.
+    /// A connection both ways, `a`'s first (its player limits not written: not read after the
+    /// template is kept).
     fn connect(&mut self, a: usize, b: usize, created: bool) {
         let zones = [self.gens[a].zone, self.gens[b].zone];
         self.connections.push(KeptConnection {
@@ -621,15 +590,14 @@ impl<T: Trace> Level<'_, '_, '_, T> {
     /// connections ([`UNREACHED`] none): `rmg_zone_graph_distances` 0x53D8E0's values, which
     /// are the counts whatever its order.
     fn distances(&mut self, n: usize) {
-        // The original takes a connection's zone generator by its zone's id: one index.
+        // The original takes a connection's zone generator by its zone's id: one index (a
+        // template zone per zone generator, step 2's water zones appended to both).
         let count = self.gens.len();
         let mut links = alloc::vec![Vec::new(); count];
         for c in self.connections.iter() {
             let [a, b] = c.zones;
-            if a < count && b < count {
-                links[a].push(b);
-                links[b].push(a);
-            }
+            links[a].push(b);
+            links[b].push(a);
         }
         let mut out = alloc::vec![alloc::vec![UNREACHED; n]; count];
         for column in 0..n.min(count) {
@@ -653,23 +621,21 @@ impl<T: Trace> Level<'_, '_, '_, T> {
     }
 
     /// `rmg_water_zones_connect` 0x53DAD0 with `n` the zone generators before this level's step:
-    /// the new zones that are triangulation neighbours connected when their side's clip lies on
-    /// the map (value 0, wide, created); the distances; then each new zone to each zone below
-    /// `n` on the level among its neighbours, in order, unless that brings the zone nearer to
-    /// another (wide, not created: step 6 makes the way).
+    /// (1) each pair of new zones (all on this level) that are triangulation neighbours, when
+    /// their side's clip from its left triangle's centre toward its Oprev's lies on the map,
+    /// connected both ways (value 0, wide, created: step 6 makes no way); (2) the distances;
+    /// (3) each new zone to each zone below `n` on the level in its ring, in order, unless that
+    /// zone is more than one connection farther than the new zone from some other zone below
+    /// `n` (wide, not created: step 6 makes the way), the distances updated after each.
     // rule: RMG-ZON-014
-    fn connect_water(&mut self, n: usize) -> Result<(), GenerateError> {
+    fn connect_water(&mut self, n: usize) {
         let (w, h, _) = self.cells.size();
         let count = self.gens.len();
         let z = self.z;
         for i in n..count {
             let [x, y, _] = self.gens[i].position;
             let r = self.tri.find([x, y]);
-            let r = self.tri(r)?;
             for j in i + 1..count {
-                if self.gens[j].position[2] != z {
-                    continue;
-                }
                 let Some(e) = self.ring_to(r, j) else {
                     continue;
                 };
@@ -683,16 +649,12 @@ impl<T: Trace> Level<'_, '_, '_, T> {
         for wz in n..count {
             let [x, y, _] = self.gens[wz].position;
             let r = self.tri.find([x, y]);
-            let r = self.tri(r)?;
             for zz in 0..n {
                 if self.gens[zz].position[2] != z || self.ring_to(r, zz).is_none() {
                     continue;
                 }
-                let zid = self.id(zz);
-                let nearer = (0..n).any(|c| {
-                    usize::try_from(zid) != Ok(c)
-                        && self.out.distances[zz][c] > self.out.distances[wz][c].wrapping_add(1)
-                });
+                let d = &self.out.distances;
+                let nearer = (0..n).any(|c| c != zz && d[zz][c] > d[wz][c].wrapping_add(1));
                 if nearer {
                     continue;
                 }
@@ -700,7 +662,6 @@ impl<T: Trace> Level<'_, '_, '_, T> {
                 self.distances(n);
             }
         }
-        Ok(())
     }
 }
 
@@ -738,7 +699,7 @@ fn water_zone(id: usize, s: i32, memory: ZoneMemory) -> Zone {
 ///
 /// # Errors
 ///
-/// [`GenerateError::Partition`]: RMG-QUIRK-3's and -4's step 2 cases.
+/// [`GenerateError::Partition`]: RMG-QUIRK-3's and -4's step 2 cases, the level's first.
 // rule: RMG-ZON-009, RMG-ZON-010, RMG-ZON-012, RMG-ZON-013
 pub(crate) fn partition<T: Trace>(
     stream: &mut Stream<'_, T>,
@@ -761,45 +722,41 @@ pub(crate) fn partition<T: Trace>(
             out: &mut out,
             z,
             tri: Triangulation::new(),
+            fault: None,
         };
-        for k in 0..level.gens.len() {
-            let [x, y, gz] = level.gens[k].position;
-            if gz == z {
-                let r = level.tri.insert(Vertex {
-                    x,
-                    y,
-                    data: Some(k),
-                });
-                level.tri(r)?;
-            }
+        let on_level = |level: &Level<'_, '_, '_, T>| -> Vec<(usize, [i32; 2])> {
+            (level.gens.iter().enumerate())
+                .filter(|(_, g)| g.position[2] == z)
+                .map(|(k, g)| (k, [g.position[0], g.position[1]]))
+                .collect()
+        };
+        for (k, [x, y]) in on_level(&level) {
+            level.tri.insert(Vertex {
+                x,
+                y,
+                data: Some(k),
+            });
         }
         let n = level.gens.len();
         if z == 1 || input.water != Water::None {
-            level.points(n, &mut waters)?;
+            level.points(n, &mut waters);
         }
-        let r = level.tri.finish();
-        level.tri(r)?;
+        level.tri.finish();
         level.out.polygons.resize(level.gens.len(), Vec::new());
-        for k in 0..level.gens.len() {
-            let [x, y, gz] = level.gens[k].position;
-            if gz != z {
-                continue;
-            }
-            let r = level.tri.find([x, y]);
-            let r = level.tri(r)?;
+        let zones_here = on_level(&level);
+        for &(k, p) in &zones_here {
+            let r = level.tri.find(p);
             let jagged = k < n && (input.water != Water::Islands || z == 1);
-            level.borders(r, jagged)?;
+            level.borders(r, k, jagged);
         }
-        for k in 0..level.gens.len() {
-            let [x, y, gz] = level.gens[k].position;
-            if gz != z {
-                continue;
-            }
-            let r = level.tri.find([x, y]);
-            let r = level.tri(r)?;
-            level.fill(k, r)?;
+        for &(k, p) in &zones_here {
+            let r = level.tri.find(p);
+            level.fill(k, r);
         }
-        level.connect_water(n)?;
+        level.connect_water(n);
+        if let Some(fault) = level.fault {
+            return Err(GenerateError::Partition { level: z, fault });
+        }
     }
     Ok(out)
 }

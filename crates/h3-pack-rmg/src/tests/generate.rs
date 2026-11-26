@@ -1,14 +1,14 @@
-//! `generate` over the packs' tables (E14 T2c, T3c): the oracle's corpus against `phases.txt`
-//! and `layout.txt` (the comparison seam, ADR-0029 point 8), the run's adjustments, step 1, the
-//! flags and the errors.
+//! `generate` over the packs' tables (E14 T2c, T3c, T3d): the oracle's corpus against
+//! `phases.txt`, `layout.txt`, `zones.txt` and `water.txt` (the comparison seam, ADR-0029 point
+//! 8), the run's adjustments, steps 1 and 2, the flags and the errors.
 
 use std::collections::BTreeMap;
 
 use h3_rmg::{
     Choices, CrtRand, Fit, GenerateError, GeneratedMap, MapFormat, MapSize, MemoryZone, Monsters,
-    PositionError, SITE_TEMPLATE, SITE_WATER, SITE_ZONE_POSITION, SITE_ZONE_TERRAIN_TOWN,
-    SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, Trace, Water, ZoneGenerator,
-    ZoneMemory, generate, kept_templates, resolve_random,
+    PartitionFault, PositionError, SITE_TEMPLATE, SITE_WATER, SITE_ZONE_POSITION,
+    SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, Trace, Water,
+    ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
 };
 use proptest::prelude::*;
 use std::sync::LazyLock;
@@ -981,4 +981,27 @@ fn step_1s_divisions_by_zero_are_refused() {
     ] {
         assert!(e.to_string().starts_with("step 1: "));
     }
+}
+
+// covers: RMG-ZON-012
+/// RMG-QUIRK-3's step 2 case is a typed error: a zone of base 0 has a scaled size of 0, so its
+/// jagged borders draw `rand() % 0`.
+#[test]
+fn step_2s_jagged_limit_of_0_is_refused() {
+    let s = Settings {
+        water: Water::None,
+        ..settings(&choices(MapSize::Medium, 1, 1))
+    };
+    let small = one_template(&[
+        zone_row(1, "human_start", 0, 1, "000000000", "00000000"),
+        zone_row(2, "computer_start", 10, 2, "000000000", "00000000"),
+    ]);
+    let (map, log) = run(&lone("lone:on", &small), &s, 1);
+    let error = GenerateError::Partition {
+        level: 0,
+        fault: PartitionFault::Limit,
+    };
+    assert_eq!(map, Err(error.clone()));
+    assert_eq!(log.steps, [0, 1]);
+    assert_eq!(error.to_string(), "step 2, level 0: Limit");
 }

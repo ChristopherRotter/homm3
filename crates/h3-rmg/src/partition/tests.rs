@@ -89,6 +89,7 @@ macro_rules! level {
             out: &mut $world.out,
             z: 0,
             tri: Triangulation::new(),
+            fault: None,
         }
     };
 }
@@ -139,28 +140,25 @@ fn straight_lines_are_bresenhams_from_the_lower_x() {
     let mut w = World::new(10);
     let mut level = level!(w, stream, i);
     // From (1, 4), the end of lower x, to (5, 2): x-major, the far end the index only.
-    level.line([5, 2], [1, 4], 7).expect("on the map");
+    level.line([5, 2], [1, 4], 7);
     for p in [[1, 4], [2, 3], [3, 3], [4, 2]] {
         assert_eq!(marked(level.cells, p[0], p[1]), (7, true), "{p:?}");
     }
     assert_eq!(marked(level.cells, 5, 2), (7, false));
     assert_eq!(marked(level.cells, 2, 4), (0xFF, false));
     // y-major, straight down; a point line marks its end only.
-    level.line([7, 0], [7, 3], 3).expect("on the map");
+    level.line([7, 0], [7, 3], 3);
     assert_eq!(
         [0, 1, 2, 3].map(|y| marked(level.cells, 7, y)),
         [(3, true), (3, true), (3, true), (3, false)]
     );
-    level.line([8, 8], [8, 8], 4).expect("on the map");
+    level.line([8, 8], [8, 8], 4);
     assert_eq!(marked(level.cells, 8, 8), (4, false));
-    // Off the map the original's index is unchecked: refused.
-    assert_eq!(
-        level.line([-1, 5], [3, 5], 1),
-        Err(GenerateError::Partition {
-            level: 0,
-            fault: PartitionFault::Outside
-        })
-    );
+    assert_eq!(level.fault, None);
+    // Off the map the original's index is unchecked: a fault, the cells on the map drawn.
+    level.line([-1, 5], [3, 5], 1);
+    assert_eq!(level.fault, Some(PartitionFault::Outside));
+    assert_eq!(marked(level.cells, 0, 5), (1, true));
 }
 
 // covers: RMG-ZON-012
@@ -173,16 +171,13 @@ fn jagged_lines_split_with_the_borders_draw_and_clamp_their_cells() {
     let mut w = World::new(10);
     let mut level = level!(w, stream, i);
     // From off the map: its first cell clamped to (0, 5); on the islands' level 0 no land bit.
-    level.jagged([-3, 5], [9, 5], 2, 4).expect("a limit");
+    level.jagged([-3, 5], [9, 5], 2, 4);
     assert_eq!(marked(level.cells, 0, 5), (2, false));
-    // A limit of 0 is `rand() % 0` (RMG-QUIRK-3).
-    assert_eq!(
-        level.jagged([0, 0], [9, 9], 2, 0),
-        Err(GenerateError::Partition {
-            level: 0,
-            fault: PartitionFault::Limit
-        })
-    );
+    assert_eq!(level.fault, None);
+    // A limit of 0 is `rand() % 0` (RMG-QUIRK-3): a fault; the first one stays.
+    level.jagged([0, 0], [9, 9], 2, 0);
+    level.fail(PartitionFault::Outside);
+    assert_eq!(level.fault, Some(PartitionFault::Limit));
     drop(level);
     assert!(log.draws.iter().all(|&(s, _)| s == SITE_BORDER_JITTER));
     assert!(!log.draws.is_empty());
@@ -242,17 +237,11 @@ fn a_cell_with_no_side_on_the_map_draws_the_whole_frame() {
     let mut w = World::new(1);
     let g = w.zone(5, 5, [0, 0]);
     let mut level = level!(w, stream, i);
-    level
-        .tri
-        .insert(Vertex {
-            x: 0,
-            y: 0,
-            data: Some(g),
-        })
-        .expect("inside");
-    level.tri.finish().expect("no flat triangle");
-    let r = level.tri.find([0, 0]).expect("the vertex");
-    level.borders(r, true).expect("on the map");
+    let v = |x, y, data| Vertex { x, y, data };
+    assert!(level.tri.insert(v(0, 0, Some(g))));
+    level.tri.finish();
+    let r = level.tri.find([0, 0]);
+    level.borders(r, g, true);
     assert_eq!(level.out.polygons[g], [[0, 0]; 4]);
     assert_eq!(marked(level.cells, 0, 0), (0, false));
     drop(level);
@@ -261,7 +250,7 @@ fn a_cell_with_no_side_on_the_map_draws_the_whole_frame() {
 
 // covers: RMG-ZON-013
 #[test]
-fn a_fills_start_clipped_off_the_map_is_refused() {
+fn a_fills_start_clipped_off_the_map_is_a_fault() {
     let t = tables();
     let i = input(&t, Water::Normal, true);
     let mut log = Log::default();
@@ -270,25 +259,45 @@ fn a_fills_start_clipped_off_the_map_is_refused() {
     let g = w.zone(5, 5, [100_000, 5]);
     let o = w.zone(5, 5, [5, 5]);
     let mut level = level!(w, stream, i);
-    level
-        .tri
-        .insert(Vertex {
-            x: 5,
-            y: 5,
-            data: Some(o),
-        })
-        .expect("inside");
+    assert!(level.tri.insert(Vertex {
+        x: 5,
+        y: 5,
+        data: Some(o)
+    }));
     // The ring around (5, 5) holds no vertex inside [1, 8]: no start, no fill.
-    let r = level.tri.find([5, 5]).expect("the vertex");
-    assert_eq!(level.fill(g, r), Ok(()));
+    let r = level.tri.find([5, 5]);
+    level.fill(g, r);
+    assert_eq!(level.fault, None);
+    assert_eq!(marked(level.cells, 5, 5), (0xFF, false));
     // From a corner's record (5, 5) is the deepest destination; the clip from 100 000 toward
     // it overflows its 32-bit products and leaves the map.
-    let corner = level.tri.find([-200, -200]).expect("a corner");
-    assert_eq!(
-        level.fill(g, corner),
-        Err(GenerateError::Partition {
-            level: 0,
-            fault: PartitionFault::Outside
-        })
-    );
+    let corner = level.tri.find([-200, -200]);
+    level.fill(g, corner);
+    assert_eq!(level.fault, Some(PartitionFault::Outside));
+}
+
+// covers: RMG-ZON-014
+#[test]
+fn water_zones_whose_side_lies_off_the_map_are_not_connected() {
+    let t = tables();
+    let i = input(&t, Water::Normal, true);
+    let mut log = Log::default();
+    let mut stream = Stream::new(1, &mut log);
+    let mut w = World::new(10);
+    // Two new zones above the map: their side is the line y = -40, whose clip (dy 0) stays
+    // off it.
+    let a = w.zone(5, 5, [-50, -50]);
+    let b = w.zone(5, 5, [-50, -30]);
+    let mut level = level!(w, stream, i);
+    for (g, y) in [(a, -50), (b, -30)] {
+        assert!(level.tri.insert(Vertex {
+            x: -50,
+            y,
+            data: Some(g)
+        }));
+    }
+    level.tri.finish();
+    level.connect_water(0);
+    assert!(level.connections.is_empty());
+    assert_eq!(level.out.distances, [Vec::<i16>::new(), Vec::new()]);
 }

@@ -69,7 +69,7 @@ fn seeded_points_keep_delaunays_condition() {
             let range = if seed % 3 == 0 { 9 } else { 200 };
             let x = (rand.rand() % range) as i32 - 50;
             let y = (rand.rand() % range) as i32 - 50;
-            let new = t.insert(vertex(x, y, Some(k))).expect("inside the frame");
+            let new = t.insert(vertex(x, y, Some(k)));
             assert_eq!(new, !points.contains(&[x, y]), "seed {seed}: ({x}, {y})");
             if new {
                 points.push([x, y]);
@@ -89,7 +89,7 @@ fn seeded_points_keep_delaunays_condition() {
             }
         }
         for &p in &points {
-            let e = t.find(p).expect("found");
+            let e = t.find(p);
             assert_eq!(t.org(e), p);
         }
     }
@@ -100,16 +100,16 @@ fn seeded_points_keep_delaunays_condition() {
 fn a_point_at_a_vertex_is_dropped_and_one_on_an_edge_splits_it() {
     let mut t = Triangulation::new();
     // (0, 0) lies on the diagonal a→c: that edge is deleted, four edges made.
-    assert_eq!(t.insert(vertex(0, 0, Some(0))), Ok(true));
+    assert!(t.insert(vertex(0, 0, Some(0))));
     check_rings(&t);
     assert!(!t.records().contains(&8) && !t.records().contains(&9));
     assert_eq!(triangles(&t).len(), 4);
     // Found at a destination: the twin, whose origin it is.
-    assert_eq!(t.org(t.find([-200, -200]).expect("a corner")), [-200, -200]);
+    assert_eq!(t.org(t.find([-200, -200])), [-200, -200]);
     let before = t.records().len();
-    assert_eq!(t.insert(vertex(0, 0, Some(1))), Ok(false));
+    assert!(!t.insert(vertex(0, 0, Some(1))));
     assert_eq!(t.records().len(), before);
-    let e = t.find([0, 0]).expect("the vertex");
+    let e = t.find([0, 0]);
     assert_eq!(t.origin(e).data, Some(0));
 }
 
@@ -121,10 +121,10 @@ fn the_finish_gives_each_zone_triangle_its_circumcentre_from_its_first_corner() 
         .into_iter()
         .enumerate()
     {
-        assert_eq!(t.insert(vertex(x, y, Some(k))), Ok(true));
+        assert!(t.insert(vertex(x, y, Some(k))));
     }
-    t.finish().expect("no flat triangle");
-    let e = t.find([0, 0]).expect("a vertex");
+    t.finish();
+    let e = t.find([0, 0]);
     let mut ring = Vec::new();
     let mut r = e;
     loop {
@@ -158,22 +158,25 @@ fn the_finish_gives_each_zone_triangle_its_circumcentre_from_its_first_corner() 
 
 // covers: RMG-ZON-009
 #[test]
-fn the_faults_the_original_would_not_survive_are_typed() {
+fn the_cases_the_original_would_not_survive_fall_back() {
     let mut t = Triangulation::new();
-    assert_eq!(t.insert(vertex(400, 0, None)), Err(Fault::Frame));
-    assert_eq!(t.insert(vertex(0, -200, None)), Err(Fault::Frame));
-    assert_eq!(t.insert(vertex(-201, 0, None)), Err(Fault::Frame));
-    assert_eq!(t.insert(vertex(0, 401, None)), Err(Fault::Frame));
-    // A ring broken so that the walk turns round for ever.
+    let before = t.records().len();
+    for (x, y) in [(400, 0), (0, -200), (-201, 0), (0, 401)] {
+        assert!(!t.insert(vertex(x, y, None)), "({x}, {y})");
+    }
+    assert_eq!(t.records().len(), before);
+    // A ring broken so that the walk turns round for ever: it stops after as many steps as
+    // records.
     let mut broken = Triangulation::new();
     let start = broken.start;
     broken.records[start].twin = start;
     broken.records[start].origin = vertex(0, 0, None);
-    assert_eq!(broken.find([5, -5]), Err(Fault::Walk));
-    // A flat triangle (three corners on a line) has no circumcentre.
+    assert!(broken.find([5, -5]) < broken.records.len());
+    // A flat triangle (three corners on a line) has no circumcentre: it keeps -1.
     let mut flat = Triangulation::new();
     for r in &mut flat.records {
         r.origin = vertex(r.origin.x, r.origin.x, Some(0));
     }
-    assert_eq!(flat.finish(), Err(Fault::Flat));
+    flat.finish();
+    assert!(flat.records().iter().all(|&r| flat.centre(r) == [-1, -1]));
 }

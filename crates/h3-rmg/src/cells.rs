@@ -104,6 +104,19 @@ impl Cells {
         self.index(x, y, z).map(|i| &mut self.cells[i])
     }
 
+    /// The cell at (x, y, z) clamped to the map (a map has cells: its side is the size's).
+    pub(crate) fn clamped_mut(&mut self, x: i32, y: i32, z: i32) -> &mut Cell {
+        let clamp = |v: i32, n: i32| v.min(n - 1).max(0);
+        let (x, y, z) = (
+            clamp(x, self.width),
+            clamp(y, self.height),
+            clamp(z, self.levels),
+        );
+        let i = ((self.height * z + y) * self.width + x).cast_unsigned() as usize;
+        let last = self.cells.len().saturating_sub(1);
+        &mut self.cells[i.min(last)]
+    }
+
     /// `((height × z + y) × width + x)`, the original's index, for a cell on the map.
     fn index(&self, x: i32, y: i32, z: i32) -> Option<usize> {
         if !(0..self.width).contains(&x)
