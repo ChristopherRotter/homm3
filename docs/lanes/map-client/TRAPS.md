@@ -196,6 +196,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `Played::ends`), never from its path's last tile; the paths' search must start at the record's
   next walk (two walks can end on one tile). A golden record that stops on "no path given" or
   "a step ... the record's walks do not take" has usually lost a hero's place this way earlier.
+- **The painter's live part follows the draws** (M5 T4a, design §5.26): `Painter::scene` moves
+  its heroes to where each draw has them, so a record's heroes (`Played::shown`, by the record's
+  start's tiles) matched to `painter.live.heroes` after a live walk lose the walked hero (T3b's
+  End Turn in place then did nothing: its turn's hero list mapped to none). A live view matches
+  by its start's ids (`for_live`'s, given to `live_turns`).
 - **A scripted game draws at random in both games** (M4 T4b1, design §5.14): the original's
   draws under the sequence's `seed` and the engine's under its own differ (a level-up's primary
   skill and offers): record the original first, read its draws from the live part (`[[level_up]]`),
@@ -242,7 +247,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   event that SDL ignores; move the pointer with `mousemove --window` and click with a plain
   `xdotool click 1` (keys with `key --window` arrive). The window takes several seconds to open
   while the archives load: wait for `xdotool search --onlyvisible --name h3-map-view` before
-  sending anything, and keep the run's output out of the repository.
+  sending anything, and keep the run's output out of the repository. In play (M5 T4a) a new
+  view's window is a new one (search again after End Turn passes the turn); `--check`'s seconds
+  are the whole play's, so a script longer than them is cut silently; a root screenshot
+  (`import -window root`) shows the window centred on the screen and no hardware cursor.
 - The client lane's standing traps apply to the foundation and the harness (`docs/lanes/client/HANDOFF.md`): the licences (`winit`, `cpal`, Bevy are excluded: SDL 3), the purity allowlist of a pure crate, `clients/Cargo.lock` as a common path, no float arithmetic in drawing and timing, never running the original from the installation, captures never in git, a capture run alone.
 
 - **A re-run of CI forces the full verify** (M4 T2b1, PR #1007): `ci.yml`'s plan sets `FORCE` for a

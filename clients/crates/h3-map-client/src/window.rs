@@ -41,16 +41,19 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use h3_battle_client::audio::HostSound;
 use h3_game::GameRuleset;
 use h3_map_view::damage::{Held, tidy};
 use h3_map_view::engine::{GameRecord, Live};
 use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
+use h3_map_view::reach::{Hosted, Reach};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
 use h3_map_view::sound;
 use h3_map_view::timeline::{self, Action, CURSOR_TYPE, Cursor, Found, Rules, Start, Unplayable};
+use h3_protocol::wire::game::{Moves, Pos as WirePos};
 use h3_render::Bugs;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_ui::clock::Clock;
@@ -224,6 +227,20 @@ pub(crate) trait Session {
     fn tick(&mut self, now: u64) -> Result<bool, String>;
     /// The view left with its heroes' facings (by hero id), the turn passed from it.
     fn leave(&mut self, facings: Vec<(u16, u8)>);
+    /// The viewer's hero `hero`'s moves now (`GameQuery::Moves`, E24 M5 T4a): none outside its
+    /// turn, with a decision of its open, or for a hero not its own on the map.
+    fn moves(&self, hero: u16) -> Option<Moves>;
+    /// The viewer's hero `hero` walked along `path` (`MoveHero`, E24 M5 T4a): why the game refused
+    /// it, none when it took it.
+    ///
+    /// # Errors
+    /// The session's (no turn of a human's, a frame that does not read).
+    fn walk(&mut self, hero: u16, path: Vec<WirePos>) -> Result<Option<String>, String>;
+}
+
+/// The host's facts a live start keeps (E24 M5 T4a): the headless check plays them as the loop did.
+fn hosted(start: &mut Start) -> &mut Hosted {
+    start.host.get_or_insert_default()
 }
 
 /// The window's clock in milliseconds (the session's host's clock, E24 M5 T3b).
@@ -747,6 +764,10 @@ pub(crate) fn window(
         ..
     } = setup;
     start.live = true;
+    // In play the walks and the reach are the hot seat's host's (E24 M5 T4a).
+    if session.is_some() {
+        start.host = Some(Hosted::default());
+    }
     // The battles' first frames the switches fade in (E24 M4 T5b2, design §5.21).
     if let Some(list) = &battles {
         for n in start.finds.iter().flat_map(Found::battles) {
@@ -1198,7 +1219,13 @@ pub(crate) fn window(
             }
             let label = format!("play: colour {}'s view", s.colour());
             let (record, live) = s.record()?;
-            let turns = paint::live_turns(&mut painter, s.map(), (record, s.rules(), live), label)?;
+            let turns = paint::live_turns(
+                &mut painter,
+                s.map(),
+                (record, s.rules(), live),
+                &ids,
+                label,
+            )?;
             let added = turns.get(start.turns.len()..).unwrap_or_default();
             if added.is_empty() {
                 return Err(format!(
@@ -1208,6 +1235,94 @@ pub(crate) fn window(
             lines.push(format!("{t} ms: End Turn, the viewer's next turn in place"));
             start.turns.extend_from_slice(added);
             replay.add_turns(t, added);
+            renew = true;
+            continue;
+        }
+        // A walk asked of the host (E24 M5 T4a, design §5.26): the session plays its `MoveHero`;
+        // taken, its facts and its end's finds from the record (the walk's change made again from
+        // before it), refused, nothing.
+        if let Some(s) = session.as_deref_mut()
+            && let Some(asked) = replay.walk_asked().cloned()
+        {
+            let t = asked.at;
+            let id = ids
+                .iter()
+                .find(|&&(_, i)| i == asked.stand.hero)
+                .map(|&(id, _)| id);
+            let refused = match id {
+                Some(id) => s.walk(id, asked.path())?,
+                None => Some("no hero of the view's there".to_owned()),
+            };
+            if let Some(why) = refused {
+                let to = asked.tiles.last().map(|p| (p.x, p.y, p.z));
+                lines.push(format!("{t} ms: a walk onto {to:?} refused: {why}"));
+                hosted(&mut start)
+                    .refused
+                    .push((asked.stand, asked.tiles.clone()));
+                replay.refuse_walk(&asked);
+                renew = true;
+                continue;
+            }
+            let label = format!("play: colour {}'s view", s.colour());
+            let (record, live) = s.record()?;
+            let (moves, finds) = paint::live_walks(
+                &mut painter,
+                s.map(),
+                (record, s.rules(), live),
+                start.hover.as_deref(),
+                label,
+            )?;
+            let known = start.moves.as_ref().map_or(0, Vec::len);
+            let added = moves.get(known..).unwrap_or_default();
+            if added.is_empty() {
+                return Err(format!(
+                    "{t} ms: the session told no walk after the one taken"
+                ));
+            }
+            // stub: MCL-STUB-6 (a battle in play ends play: M5 T6)
+            if added.iter().any(|m| m.battle.is_some()) {
+                return Err(format!(
+                    "{t} ms: a walk began a battle (MCL-STUB-6: play's battles, M5 T6)"
+                ));
+            }
+            let found: Vec<Found> = finds
+                .into_iter()
+                .filter(|f| f.walk.is_some_and(|w| w >= known))
+                .collect();
+            lines.push(format!(
+                "{t} ms: a walk of {} tiles, {} steps taken",
+                asked.tiles.len(),
+                added
+                    .iter()
+                    .map(|m| m.stops.unwrap_or(m.tiles.len()))
+                    .sum::<usize>()
+            ));
+            start.moves.get_or_insert_default().extend_from_slice(added);
+            start.finds.extend_from_slice(&found);
+            replay.add_walks(t, added, &found);
+            renew = true;
+            continue;
+        }
+        // The selected hero's reach asked of the host where it stands (E24 M5 T4a): the session's
+        // `Moves` answer, a click's paths and the cursor's costs (none: no tile reached).
+        if let Some(s) = session.as_deref_mut()
+            && let Some((t, stand)) = replay.reach_asked()
+        {
+            let id = ids
+                .iter()
+                .find(|&&(_, i)| i == stand.hero)
+                .map(|&(id, _)| id);
+            let moves = id.and_then(|id| s.moves(id));
+            let reach = moves
+                .and_then(|m| Reach::of(&m, &tables.map.walk.arrows))
+                .unwrap_or_default();
+            lines.push(format!(
+                "{t} ms: the selected hero's reach: {} tiles",
+                reach.paths.len()
+            ));
+            let reach = Arc::new(reach);
+            hosted(&mut start).reaches.push((stand, Arc::clone(&reach)));
+            replay.add_reach(t, stand, &reach);
             renew = true;
             continue;
         }
@@ -1314,6 +1429,15 @@ pub(crate) fn window(
         // A later change may be due already: the latest is shown instead; if it shows what shows,
         // nothing new is presented (a redraw still is).
         let held_due = hold.is_none_or(|(due, _)| win.ticks_ns() >= due);
+        // A question the loop's run to the clock asks the host (E24 M5 T4a: a walk, a reach) is
+        // answered before a change at or after it is shown.
+        if session.is_some() && next.as_ref().is_some_and(|f| f.change.t <= ms) {
+            replay.at(ms).map_err(unplayable)?;
+            if replay.walk_asked().is_some() || replay.reach_asked().is_some() {
+                renew = true;
+                continue;
+            }
+        }
         if let Some(mut d) = next.take_if(|f| f.change.t <= ms && held_due) {
             // A change holding draws (E24 M4 T1b2): each shown first, the map's clock held at its
             // millisecond, the change itself last.

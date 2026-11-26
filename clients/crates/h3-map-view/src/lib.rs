@@ -20,7 +20,8 @@
 //! clock of milliseconds, its redraws, palette steps, scroll and cursor; [`sequence`] the recorded
 //! sequences it replays; [`turn`] the turn's end and the next day's texts (E24 M4 T1a), [`finds`]
 //! the finds told and a turn without a town's boxes (E24 M4 T2a2), [`asks`] the questions a
-//! visit asks (E24 M4 T2b2), [`levels`] a level-up's dialog and choice (E24 M4 T2c). For the
+//! visit asks (E24 M4 T2b2), [`levels`] a level-up's dialog and choice (E24 M4 T2c), [`reach`]
+//! the engine's reach and walks a live view asks of the hot seat's host (E24 M5 T4a). For the
 //! window (E24 M2 T4a): [`replay`] runs the timeline forward as its clock (`h3_ui::clock`) needs, [`keys`] are the window's commands (the table of what
 //! each key does: `h3_ui::keys`); [`sound`] the map's sound as cues (M2 T5), its music the
 //! original's music
@@ -69,6 +70,7 @@ pub mod live;
 pub mod minimap;
 pub mod objects;
 pub mod panels;
+pub mod reach;
 pub mod record;
 pub mod replay;
 pub mod scene;

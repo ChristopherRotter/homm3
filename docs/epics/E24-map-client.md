@@ -199,8 +199,12 @@ clock and the battles as the original's.
   T3, the session in-process, cut in two by the user at its start: T3a the session hosted
   headless (**done** 2026-11-25: the log's "M5 T3a"; `h3_map_client::hot_seat`), T3b the session
   in the window (**done** 2026-11-26, kept whole by the user: the log's "M5 T3b", design §5.25;
-  each human's view in turn, the same human's next day in place); T4, live input through the engine; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game; T8, M5's
-  closure. A task that grows is cut at a seam agreed with the user.
+  each human's view in turn, the same human's next day in place); T4, live input through the
+  engine, cut in three by the user at its start: T4a the walks through the engine (**done**
+  2026-11-26: the log's "M5 T4a", design §5.26; `h3_map_view::reach`), T4b every box answered as
+  its command with the seeded random picks, T4c the M6/M7 notices, the facts audit and T4's
+  acceptance game; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game;
+  T8, M5's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
   hot-seat game on a shipped map played from the shell's Begin to a day limit, headless by
   script and in the window by hand, every command the engine's; no rules table or map text read
@@ -258,7 +262,13 @@ clock and the battles as the original's.
 - **The map's input without the engine** (M2): a direction key steps the hero through obstacles
   (the original's `hero_step_allowed` is the engine's rules, M5), a click shows only a path a
   recording or a situation gave (the engine's paths: M4, M5), and no step costs points (the
-  walk on after a held key's release has no end but the queue's: MCL-Q10).
+  walk on after a held key's release has no end but the queue's: MCL-Q10). In play since M5 T4a
+  the engine's: its reach, its walks, its refusals.
+- **The facts the view lacks in play** (T4's list, begun at T4a; T4c completes it): the
+  selected hero's costs past today (the cursor's later days and a click's red arrows: MCL-Q37),
+  whether a hero can still move (MCL-Q36), a step's own points and reveal (MCL-Q39), the tiles a
+  monster guards and a town's or garrison's army (MCL-Q37); seen at T4a, not yet asked: the
+  Redwood Observatory's visit tells nothing (a find not laid out from the record).
 
 ## Review lists
 
@@ -296,3 +306,8 @@ here.
   engine's); the kingdom's heroes in the view's hero list's order (a hire at the end); the
   unattended run's seconds for the whole of play; no hand-over until T5 (one view follows the
   other).
+- The walks through the engine (M5 T4a, *provisional*; design §5.26): the reach asked once per
+  stand (the hero's place, the walks and turns taken), only today's (MCL-Q37); a refusal kept by
+  its stand and tiles, the same walk from there refused at once; the seat's record since read
+  again and its walks laid out again at each walk taken; a battle in play ending play
+  (`MCL-STUB-6`, until T6); each walk's and reach's line in play's report.

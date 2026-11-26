@@ -142,6 +142,7 @@ use crate::live::{
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
+use crate::reach::{Hosted, Reach, Stand, WalkAsked};
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_COMPUTER_SPEED, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
@@ -951,6 +952,11 @@ pub struct Start {
     /// ([`Unplayable::Moved`]), its points ([`Start::points`] not read) and the tiles each step
     /// reveals. None: a recording's walks (the points from [`Start::points`], nothing revealed).
     pub moves: Option<Vec<Move>>,
+    /// The hot seat's host (E24 M5 T4a, design §5.26, *provisional*): live, a walk past the
+    /// engine's known ones and the selected hero's reach at a stand not given are asked of it
+    /// ([`Loop::walk_asked`], [`Loop::reach_asked`]), and what it gave so far. None: neither is
+    /// asked (a recording's, a record's walks).
+    pub host: Option<Hosted>,
 }
 
 /// One of the engine's walks (E24 M4 T4a2, design §5.13, *provisional*): a `MoveHero`'s tiles
@@ -1786,6 +1792,11 @@ pub struct Loop {
     /// and its step, the tiles the walks explored and the step off the record found in this
     /// millisecond (E24 M4 T4a2).
     moves: Option<Arc<Vec<Move>>>,
+    /// The hot seat's host's facts ([`Start::host`]), the walk asked of it and the stand whose
+    /// reach is asked (E24 M5 T4a): each kept until the host answers.
+    host: Option<Arc<Hosted>>,
+    walk_asked: Option<WalkAsked>,
+    reach_asked: Option<(u32, Stand)>,
     next_move: usize,
     walking: Option<(usize, usize)>,
     /// The engine's walk taken last (E24 M4 T6, R2-1: a record's find is its end's,
@@ -1994,6 +2005,17 @@ enum Beside {
     Find(usize),
     /// A record's visit from beside the map does not show ([`Loop::pass_by`]).
     Unshown,
+}
+
+/// The selected hero's reach in play (E24 M5 T4a, [`Loop::hosted_reach`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Reached {
+    /// No host, or no hero selected: the start's facts.
+    Unhosted,
+    /// The host's for the stand.
+    Given(Arc<Reach>),
+    /// Asked of the host: the action waits.
+    Asked,
 }
 
 /// A dissolve's steps (`screen_dissolve` 0x602DC0: eight, the blend's eighths).
@@ -2228,6 +2250,9 @@ impl Loop {
             next_cast: 0,
             book: false,
             moves: start.moves.clone().map(Arc::new),
+            host: start.host.clone().map(Arc::new),
+            walk_asked: None,
+            reach_asked: None,
             next_move: 0,
             walking: None,
             last_move: None,
@@ -2338,6 +2363,49 @@ impl Loop {
     pub fn add_turns(&mut self, turns: &[NextTurn]) {
         Arc::make_mut(&mut self.turns).extend_from_slice(turns);
         self.turns_asked = None;
+    }
+
+    /// The walk asked of the host (E24 M5 T4a, [`Start::host`]): a path's walk or a key's step
+    /// past the engine's known walks; none since [`Loop::add_walks`] or [`Loop::refuse_walk`].
+    #[must_use]
+    pub fn walk_asked(&self) -> Option<&WalkAsked> {
+        self.walk_asked.as_ref()
+    }
+
+    /// The engine's walks after the known ones and the finds their ends tell, given by the host
+    /// (E24 M5 T4a: it played the walk asked); the question cleared.
+    pub fn add_walks(&mut self, moves: &[Move], finds: &[Found]) {
+        if let Some(known) = &mut self.moves {
+            Arc::make_mut(known).extend_from_slice(moves);
+        }
+        Arc::make_mut(&mut self.finds).extend_from_slice(finds);
+        self.walk_asked = None;
+    }
+
+    /// The walk `asked` refused by the engine (E24 M5 T4a): played again from its stand it changes
+    /// nothing; the question cleared.
+    pub fn refuse_walk(&mut self, asked: &WalkAsked) {
+        if let Some(host) = &mut self.host {
+            let refused = (asked.stand, asked.tiles.clone());
+            Arc::make_mut(host).refused.push(refused);
+        }
+        self.walk_asked = None;
+    }
+
+    /// The millisecond and the stand whose reach is asked of the host (E24 M5 T4a): the selected
+    /// hero's where it stands, at a click on the view or the mouse over it; none since
+    /// [`Loop::add_reach`].
+    #[must_use]
+    pub fn reach_asked(&self) -> Option<(u32, Stand)> {
+        self.reach_asked
+    }
+
+    /// The reach of `stand` given by the host (E24 M5 T4a); the question cleared.
+    pub fn add_reach(&mut self, stand: Stand, reach: &Arc<Reach>) {
+        if let Some(host) = &mut self.host {
+            Arc::make_mut(host).reaches.push((stand, Arc::clone(reach)));
+        }
+        self.reach_asked = None;
     }
 
     /// The map's heroes ([`Start::heroes`]' order) where they stand and face now, the selected
@@ -5655,10 +5723,20 @@ impl Loop {
             self.cursor.frame = self.rules.arrow;
             return;
         }
+        // With the hot seat's host the reach is the engine's where the hero stands (E24 M5 T4a),
+        // asked of it first: the move waits.
+        let costs = match self.hosted_reach(self.now) {
+            Reached::Asked => return,
+            Reached::Given(reach) => Some(reach),
+            Reached::Unhosted => None,
+        };
         let selection = self.selection();
         let middle = column == self.rules.middle;
         self.show_hint(hover.hint(tile, middle, selection));
-        let cursor = hover.cursor(tile, selection, !self.walked);
+        let cursor = match &costs {
+            Some(reach) => hover.cursor_by(tile, selection, Some(&reach.costs)),
+            None => hover.cursor(tile, selection, !self.walked),
+        };
         self.cursor.frame = cursor.frame;
         self.action = cursor.action;
         // After a walk the reach is the engine's: the recording's frame at this millisecond, if
@@ -5772,6 +5850,11 @@ impl Loop {
         let Some(next) = self.hero.and_then(|h| self.next(h.at, direction)) else {
             return;
         };
+        // Live with the hot seat's host (E24 M5 T4a): the engine's step asked first, nothing if it
+        // refuses it (`hero_step_allowed`'s place).
+        if self.hosted_walk(t, vec![next]) {
+            return;
+        }
         // Move hero (design §4.1): disabled at the step's start (0x408F0B), enabled again when the
         // step lifts a hero not lifted, whose selection makes the step's own path (`hero_select`
         // through `mobilize_hero`, `make_hero_path` with its third argument; *provisional*: as
@@ -5782,9 +5865,10 @@ impl Loop {
             self.draw(t);
             self.step_objects(t);
         }
-        // A pile or an artifact visited from beside (E24 M4 T2a2 part B).
-        if let Some(found) = self.beside(next) {
-            self.visit_beside(t, direction, next, found);
+        // A pile or an artifact visited from beside (E24 M4 T2a2 part B); since E24 M5 T4a a
+        // record's visit from beside the map does not show too ([`Loop::node`]).
+        if let Some(node) = self.node(next) {
+            self.last_node(t, direction, next, node);
             return;
         }
         self.walk_off(t, true, direction, next, VecDeque::new());
@@ -5793,7 +5877,8 @@ impl Loop {
     /// A click on the view (the press on its area, E24 M3 T6b1): on the path's destination the
     /// hero walks the path, on another tile the path there is shown (`make_hero_path` 0x418DD0,
     /// which draws the view). Live, a click on a tile no path leads to is only the pointer's
-    /// move.
+    /// move. With the hot seat's host (E24 M5 T4a) the paths are the engine's reach where the
+    /// hero stands, asked of it first.
     fn click(&mut self, t: u32, at: [i32; 2]) -> Result<(), Unplayable> {
         let tile = self.rules.tile_at(self.view, at);
         let pos = |a: &Arrow| [i32::from(a.at.x), i32::from(a.at.y), i32::from(a.at.z)];
@@ -5801,8 +5886,14 @@ impl Loop {
             self.walk_path(t);
             return Ok(());
         }
+        let reach = match self.hosted_reach(t) {
+            Reached::Asked => return Ok(()),
+            Reached::Given(reach) => Some(reach),
+            Reached::Unhosted => None,
+        };
+        let paths = reach.as_ref().map_or(&self.paths, |r| &r.paths);
         let path = self.hero.and_then(|hero| {
-            self.paths
+            paths
                 .iter()
                 .filter_map(|p| chain(hero.at, p))
                 .find(|c| c.last().is_some_and(|(_, a)| pos(a) == tile))
@@ -5825,6 +5916,56 @@ impl Loop {
             .any(|(_, a)| (1..=GREEN).contains(&a.arrow))
     }
 
+    /// The selected hero's reach where it stands now, with a host (E24 M5 T4a, `crate::reach`):
+    /// the host's, asked at `t` when it gave none for the stand yet.
+    fn hosted_reach(&mut self, t: u32) -> Reached {
+        let (Some(host), Some(hero)) = (&self.host, self.index) else {
+            return Reached::Unhosted;
+        };
+        let stand = self.stand_of(hero);
+        if let Some(reach) = host.reach(stand) {
+            return Reached::Given(Arc::clone(reach));
+        }
+        self.reach_asked.get_or_insert((t, stand));
+        Reached::Asked
+    }
+
+    /// The selected hero `hero`'s stand now (E24 M5 T4a): the walks and turns taken so far.
+    fn stand_of(&self, hero: usize) -> Stand {
+        Stand {
+            hero,
+            walks: self.next_move,
+            turns: self.next_turn,
+        }
+    }
+
+    /// Whether the walk along `tiles` at `t` is the host's to answer (E24 M5 T4a): with one, a
+    /// walk it refused from the same stand is nothing (played again, before a later walk it gave
+    /// too; a held key's repeats against a wall), one past the engine's known walks is asked of
+    /// it; the action changes nothing until it answers.
+    fn hosted_walk(&mut self, t: u32, tiles: Vec<Pos>) -> bool {
+        let Some(host) = self.host.as_ref().filter(|_| !tiles.is_empty()) else {
+            return false;
+        };
+        let stand = self.stand_of(self.index.unwrap_or_default());
+        if host.refuses(stand, &tiles) {
+            return true;
+        }
+        if self
+            .moves
+            .as_ref()
+            .is_some_and(|m| self.next_move < m.len())
+        {
+            return false;
+        }
+        self.walk_asked.get_or_insert(WalkAsked {
+            at: t,
+            stand,
+            tiles,
+        });
+        true
+    }
+
     /// A click the loop cannot play: refused, or live the pointer's move only.
     fn refused(&mut self, why: Unplayable) -> Result<(), Unplayable> {
         if !self.live {
@@ -5839,6 +5980,11 @@ impl Loop {
     /// wait between them (the first red one a step the points do not pay, which ends the walk:
     /// 0x480864; the engine's move from M4); none, and the walk ends at once.
     fn walk_path(&mut self, t: u32) {
+        // Live with the hot seat's host (E24 M5 T4a): the engine's walk asked first.
+        let tiles = self.path_steps().iter().map(|&(_, at)| at).collect();
+        if self.hosted_walk(t, tiles) {
+            return;
+        }
         // The input queue emptied after the lift (`mouse_hide`, 0x4EC570 at 0x407E87; M2 T6a, the
         // reviewer's R1-5): the messages behind the click are gone.
         self.flushed = true;
@@ -5849,12 +5995,7 @@ impl Loop {
         if !self.lifted {
             self.lift(t, false);
         }
-        let mut steps: VecDeque<(Direction, Pos)> = self
-            .path
-            .iter()
-            .take_while(|(_, a)| a.arrow <= GREEN)
-            .map(|&(d, a)| (d, a.at))
-            .collect();
+        let mut steps = self.path_steps();
         // A record's walk stopped on the way (E24 M4 T6, [`Move::stops`]): the record's steps.
         if let Some(n) = self
             .record_walk()
@@ -5867,6 +6008,15 @@ impl Loop {
             Some((direction, next)) => self.walk_off(t, false, direction, next, steps),
             None => self.finish(t, false),
         }
+    }
+
+    /// The path's steps a walk takes: onto its green arrows, in order.
+    fn path_steps(&self) -> VecDeque<(Direction, Pos)> {
+        self.path
+            .iter()
+            .take_while(|(_, a)| a.arrow <= GREEN)
+            .map(|&(d, a)| (d, a.at))
+            .collect()
     }
 
     /// A walk's start: the cursor hidden, the first step taken, its frames until the first wait (a

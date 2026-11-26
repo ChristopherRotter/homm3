@@ -3,6 +3,8 @@ use alloc::vec;
 
 use h3_render::Bugs;
 
+use h3_map::model::Pos;
+
 use super::*;
 use crate::scene::ViewAt;
 use crate::timeline::tests::{recorded, rules};
@@ -94,6 +96,7 @@ fn idle() -> Replay {
         boats: Boats::default(),
         water: Arc::default(),
         moves: None,
+        host: None,
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -246,7 +249,7 @@ fn its_cues_are_handed_out_once() {
         |x, y| ((x, y) == (16, 17)).then_some(2),
     );
     let arrow = |x, arrow| crate::live::Arrow {
-        at: h3_map::model::Pos { x, y: 17, z: 0 },
+        at: Pos { x, y: 17, z: 0 },
         arrow,
     };
     let dest = [(21 - 8) * 32 + 16, (17 - 9) * 32 + 16];
@@ -257,7 +260,7 @@ fn its_cues_are_handed_out_once() {
         hero_speed: 3,
         pointer: [700, 300],
         hero: Some(Hero {
-            at: h3_map::model::Pos { x: 17, y: 17, z: 0 },
+            at: Pos { x: 17, y: 17, z: 0 },
             facing: Direction::East,
         }),
         paths: vec![vec![
@@ -292,6 +295,7 @@ fn its_cues_are_handed_out_once() {
         boats: Boats::default(),
         water: Arc::default(),
         moves: None,
+        host: None,
     };
     let actions = BTreeMap::from([
         (1, vec![Action::Click(dest)]),
@@ -340,4 +344,64 @@ fn its_cues_are_handed_out_once() {
     let refused = BTreeMap::from([(5, vec![Action::Click([700, 300])])]);
     let mut r = Replay::new(rules(Bugs::Fixed), &start, refused).unwrap();
     assert_eq!(r.take_cues(10).unwrap_err().0, 5);
+}
+
+#[test]
+fn the_host_s_answers_play_the_actions_again_from_before_them() {
+    use crate::reach::{Hosted, Reach};
+    use crate::timeline::tests::{east, tile, walking_start};
+    let at = |x, y| Pos { x, y, z: 0 };
+    let mut start = walking_start(3, Vec::new());
+    start.live = true;
+    start.heroes = start.hero.into_iter().collect();
+    start.index = Some(0);
+    start.moves = Some(Vec::new());
+    start.host = Some(Hosted::default());
+    let mut r = Replay::new(rules(Bugs::Fixed), &start, BTreeMap::new()).unwrap();
+    // Run ahead, then a click at 10: its reach asked.
+    assert!(r.after(0, 400).unwrap().is_some());
+    let click = Action::Click(tile(21, 17));
+    r.give(10, click);
+    assert!(r.at(10).unwrap().drawn.path.is_empty());
+    let (t, stand) = r.reach_asked().unwrap();
+    assert_eq!(t, 10);
+    r.add_reach(
+        t,
+        stand,
+        &Arc::new(Reach {
+            paths: vec![east()],
+            costs: BTreeMap::new(),
+        }),
+    );
+    assert_eq!(r.reach_asked(), None);
+    assert_eq!(r.at(10).unwrap().drawn.path.len(), 4);
+    // Its destination clicked at 20: the walk asked, then refused, then asked at 30 and given.
+    r.give(20, click);
+    r.at(20).unwrap();
+    let asked = r.walk_asked().unwrap().clone();
+    let tiles = asked.tiles.clone();
+    r.refuse_walk(&asked);
+    assert_eq!(r.walk_asked(), None);
+    assert_eq!(r.at(25).unwrap().drawn.hero.unwrap().at, at(17, 17));
+    // Clicked again at 30 from the same stand: refused at once, nothing asked.
+    r.give(30, click);
+    r.at(30).unwrap();
+    assert_eq!(r.walk_asked(), None);
+    // A step taken first (a new stand), then the path clicked: asked.
+    r.give(40, Action::Step(Direction::South));
+    r.at(40).unwrap();
+    let step = r.walk_asked().unwrap().clone();
+    assert_eq!(step.tiles, [at(17, 18)]);
+    let south = Move {
+        tiles: step.tiles.clone(),
+        points: vec![None],
+        revealed: vec![Vec::new()],
+        sea: None,
+        battle: None,
+        boats: Vec::new(),
+        stops: None,
+    };
+    r.add_walks(40, &[south], &[]);
+    assert_eq!(r.at(400).unwrap().drawn.hero.unwrap().at, at(17, 18));
+    assert_eq!(tiles.len(), 4);
 }

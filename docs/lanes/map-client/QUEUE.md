@@ -11,26 +11,41 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 `QUEUE-ARCHIVE.md`. **M5** (hot seat on the adventure map) was refined with the user at T0
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
 "Later". Every task's cut is confirmed with the user at its start. `MCL-STUB-5` (a computer
-colour's turn ended at once) since T3a; planned `MCL-STUB-6` (a screen of M6 or M7, T4). T1 was
-cut in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done
-2026-11-25), T3 in two (T3a done 2026-11-25, T3b 2026-11-26).
+colour's turn ended at once) since T3a, `MCL-STUB-6` (a battle in play ends play, until T6)
+since T4a; planned `MCL-STUB-7` (a screen of M6 or M7, T4c). T1 was cut in three at its start
+(T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done 2026-11-25), T3 in two (T3a done
+2026-11-25, T3b 2026-11-26), T4 in three (T4a done 2026-11-26).
 
-### E24 M5 T4 — live input through the engine
+### E24 M5 T4b — every box answered as its command
 
-- **Scope:** the engine's reach and paths (the session's queries) for the cursor over the view,
-  a click's path and its walk, and the direction keys' steps (M2's input without the engine
-  lifted: no step through obstacles, every step's points the engine's; MCL-Q19's days); End Turn
-  and Move Reminder's question; every box M4 shows answered by the player as the command (a
-  question, a choice, a level-up, the week's and month's messages, a find); the original's random
-  picks from the client's own seeded generator (M4's review item 2); **facts first** (the user at
-  T0): no rules table of the client's and no map text read from the file in play, each fact the
-  view lacks an `MCL-Q<n>` and a note in the engine lanes' inboxes; a screen of M6 or M7 (the hero
-  and town screens, the spell book, a visit window) a notice in the client's words, its decision
-  closed (`MCL-STUB-6`).
-- **Acceptance:** a hot-seat game played by keys and mouse from Begin through several days, every
-  command accepted by the engine; scripted games compared with the original's frames where the
-  commands are the same; the list of facts the view lacks in the epic's risks; the scoped verify.
-- **Depends on:** T3b (done). **Status:** queued (next).
+- **Scope** (T4 cut in three by the user at its start, 2026-11-26; T4a done: the walks through
+  the engine, design §5.26): every box M4 shows answered by the player as the command through the
+  host (a question, a choice, a level-up, a find's OK where the engine waits, the week's and
+  month's messages), as T4a asks a walk (the loop marks the answer's millisecond, the host plays
+  the session's `Answer` and gives the record's facts, the loop runs again from before it); Space's
+  visit; the original's random picks (a computer turn's music, the pickup sounds, an unnamed
+  town's name) from the client's own seeded generator in play (M4's review item 2), the recorded
+  draws kept for recordings and records; **facts first**: each fact a box lacks an `MCL-Q<n>` and
+  a note in the engine lanes' inboxes. Seen at T4a: the Redwood Observatory's visit tells nothing.
+- **Acceptance:** a hot-seat game's visits (a pile, a chest's choice, a question's yes and no, a
+  level-up, a week's start) answered in the window under Xvfb, every answer accepted by the
+  engine, every view's frames read back exact and as the headless loop's; the records played by
+  `h3-map-view record`; the scoped verify.
+- **Depends on:** T4a (done). **Status:** queued (next).
+
+### E24 M5 T4c — the screens' notice, the facts audit, T4's game
+
+- **Scope:** a screen of M6 or M7 (the hero and town screens, the spell book, a visit window) a
+  notice in the client's words, its decision closed (`MCL-STUB-7`, planned); the facts audit
+  (**facts first**, the user at T0): no rules table of the client's and no map text read from the
+  file in play (the finds' and the hints' tables, the visit marks, the town names), each fact the
+  view lacks an `MCL-Q<n>` and a note in the engine lanes' inboxes; the list of facts the view
+  lacks completed in the epic's risks (begun at T4a).
+- **Acceptance:** a hot-seat game played by keys and mouse from Begin (until the shell's crate,
+  `h3-map-view play`) through several days, every command accepted by the engine; scripted games
+  compared with the original's frames where the commands are the same; the list in the epic's
+  risks; the scoped verify.
+- **Depends on:** T4b. **Status:** queued.
 
 ### E24 M5 T5 — the hand-over and the clock
 
@@ -43,7 +58,7 @@ cut in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2
   client lane).
 - **Acceptance:** the hand-over and the clock's boxes as recorded, frame by frame; the scoped
   verify.
-- **Depends on:** T3b (T4 for the clock's input). **Status:** queued; original data and Wine
+- **Depends on:** T3b (T4a for the clock's input). **Status:** queued; original data and Wine
   needed.
 
 ### E24 M5 T6 — the battles in play
@@ -187,22 +202,6 @@ cut in three at its start (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2
   after the level-ups `AltarOpened` again (decision 371, your note of 2026-11-18 below).
   `h3-map`'s `tests/view.rs` folds `Open::Altar` beside `Open::Market`.
 
-- 2026-11-20 (the town lane, E09 T44, `town/e09-t44`, `cross-lane`; **informational, nothing to
-  do**): `h3_map::writer::Map` gains `banned_spells: Vec<u8>` (the header's banned spells); the
-  two `Map { .. }` literals of `h3-map-view` (`situation.rs`, `art/tests.rs`) got `banned_spells:
-  Vec::new()` in T44's pull request. The capture harness's town screen (common): a walk and a
-  `town` step pass a message that comes over the screen before their actions; `hall = true`
-  hovers the hall's box until the status line names it (`clients/capture/README.md`, "Towns").
-
-- 2026-11-19 (the client lane, E27 M3 T7 (M4 T0), `client/e27-m3-t7`; **informational, nothing to
-  do**): E27's dialogs in play (the system options and the menu in play, Save from play, Restart,
-  the end of a scenario's boxes) move to a new **E27 M5**, refined once your E24 M5 hosts play
-  (decision 69, CLT-Q155 (a)); E27 M4 builds High Scores, Credits, the save file and Load Game
-  meanwhile. The note of 2026-11-16 below (the options at E27 M4's T0) reads M5 now.
-
-Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
-while the work waits.
-
 - 2026-11-19 (the client lane, E27 M3 T6, `client/e27-m3-t6`; **for E24 M5, nothing to do now**):
   the scenario screen's Begin now builds the game's setup and the engine validates it
   (`h3-battle-client`'s `begin`: the map imported again, the advanced options' records into each
@@ -310,19 +309,6 @@ while the work waits.
   import types them from T113b (map import v22: until then they import as blockers); the kind
   marks a team holds reach the observation with T115b, a garrison's owner and army with T114b.
 
-- 2026-11-12 (the server lane, E16 M5 T7a1, branch `claude/keen-tesla-q5uxid`; **for your M4
-  T3, T4; replaces (1) of the T5c note below in its form**): protocol **v44**. (1) `GameReveal`'s
-  tiles are packed as a snapshot's: `adventure.palette` (each `{ explored, view }` once) and
-  `adventure.areas` (per level that has any, by level, the smallest rectangle holding the tiles
-  whose sight changed: `corner`, `width`, `tiles` row by row, 0 an unchanged tile, `n` the
-  palette's `n`-th view from 1), no longer `tiles` (one entry per tile made an XL map's whole
-  reveal 6.5 MB, 60 times its snapshot; now 390 KB with its objects). Fold it with
-  `GameObservation::reveal` as before. (2) A player may get a **fresh `GameSnapshot`** after a
-  command's messages, before its `GameTurn`, never while a battle is open in its view: it
-  replaces the view. A bounded record (the server's, part 2) is cut only at a snapshot, so it
-  always begins with one (the header's `first` is its number); `h3-server record` writes whole
-  games unbounded, one snapshot.
-
 - 2026-11-12 (the client lane, E27 M1 T1b2, branch `client/e27-m1-t1b2`; **for your M5**,
   informational until then): the scenario screen's advanced options read (`docs/epics/E27-design.md`
   §3.12 to §3.17). Besides `GameSetup` the hot seat's hand-over will carry the players' names and
@@ -386,98 +372,6 @@ while the work waits.
   `fixtures/maps/e09-builds-36.h3m` play all of it. Nothing to act on before your town screen
   builds.
 
-- 2026-11-11 (the client lane, E17 M7 T3c, branch `client/e17-m7-t3c`; **for your M4 T5**, and
-  two additive changes in the common crates): **the battle's sound on your device, one music for
-  both**. Open an `h3_battle_client::audio::HostSound::open(bugs)` (the device and a 44.1 kHz
-  stereo music stream played by `h3_ui::music::Queue`), play your effects on its device
-  (`audio()`, your own streams) and your tracks through it (`add_track(name, decoded)` once
-  decoded: a name not added is waited for; `request(name, once)`, `service(volume)` each pass,
-  `focus(on)`, `reset()`); lend it to the battle in `Setup::sound` (it replaced `mute`; none, no
-  sound), tell the element each focus change (`Hosted::focus`), and once it closed take it back
-  with `Hosted::take_sound()` (the battle's streams removed, the device running). The combat music
-  then fades in after your track's fade-out, the end's tune follows the combat music's 900 ms
-  fade-out, and your track asked for again fades the tune out and comes back where its fade
-  began. Your window's own `Player` would move onto it (its music, decoding and focus are the
-  same model). Additive, nothing of yours changed: `h3_ui::music::Music::request_once` and
-  `Queue::request_once` (a track played once: from its start at its volume, closed at its end;
-  your callers' requests unchanged); `h3_sdl::Audio::remove_stream` (an index freed, reused by
-  the next `add_stream`; no index changes while nothing is removed). The battle's frame is
-  widened by `Widening` now. Design §13.6; names *provisional*. That ends E17's T3: the entry's
-  API is complete for your M4 T5.
-
-- 2026-11-11 (the client lane, E17 M7 T3b2, branch `client/e17-m7-t3b2` after #851, not merged
-  yet; **for your M4 T5**): **a whole game's battle played live through your game**. Make a
-  `h3_battle_client::game_seat::GameSeat::new(&header)` (your player's `GameRecordHeader`: the
-  game's manifest, its id, the player) and hand it your player's frames as they come
-  (`receive`, decoded `ServerMessage`s, from the game's start or from the `GameEvents` whose
-  `BattleStarted` begins the battle); once `opened()`, `battle::Ground::load_game(&source,
-  seat)` (`source`: `packs`, `install`, `speed`, `seed`), then `Prepared`/`Hosted` as before.
-  At each pass of your loop, after the element's: `ground.game_seat().unwrap().borrow_mut()`,
-  `take_outgoing()`: each `ToHost::Command { seq, command }` you play as the player's
-  (`GameSession::play(player, seq, command, ..)`), each `ToHost::Query { seq, query }` you answer
-  with `answer(seq, h3_protocol::map::query(battle.state(), rules.battle(), side, query))` from
-  `GameState::battle(player)`; play the other side's turns (another player's, or the system
-  actor's for a monster), then hand the new frames over. At its end the result window opens; once
-  closed, `Hosted::outcome()` and `Ground::in_game()` (now an `Option<InGame>` by value) as
-  T3b1's. No Auto Combat switch there yet (`CLT-STUB-4`). The hero's battle picture follows a
-  map's sex now (CLT-Q78). Design §13.4; the test host in `game_seat/tests.rs` is a worked
-  example; names *provisional*; still to come: T3c (the sound on your device).
-
-- 2026-11-11 (the client lane, E17 M7 T3b1, branch `client/e17-m7-t3b1` after #849, not merged
-  yet; **for your M4 T5**): **a whole game's battle from its record**, handed back. Read a
-  game record with `h3_view::game_record::parse` (`is_game` tells it from a battle's own);
-  `GameRecord::battles()` gives each battle its player saw, in the order they open, as a
-  `GameBattle { record, at }`: `record` the battle's own (what a seat's record of it holds,
-  numbered afresh), `at: InGame { heroes, tile, opened, ended }` where it stands in the game
-  (`opened` the game record's number of the battle's `Snapshot`, where you switch to it;
-  `ended` the number of the `GameEvents` holding `BattleEnded` and the result, where you switch
-  back and go on folding: that message's adventure events come after the battle's). To play it:
-  `battle::Source { input: <the game record's path>, battle: k (from 1), packs, install, .. }`,
-  `Ground::load`, then `Prepared`/`Hosted` as before; its result window opens at its end and
-  once its OK closed the screen (`Hosted::closed`) `Hosted::outcome()` gives the wire's
-  `Outcome` and `Ground::in_game()` the `InGame`. `h3-view window <record> --battle k` plays one
-  (`--check 60 --close-result` unattended). Also read now: the battlefield picture's variant
-  and each side's colour (CLT-Q4, CLT-Q6); the hero's picture by a map's sex comes with T3b2. The
-  battle lacks its own last snapshot (`SRV-STUB-14`: no Eagle Eye picks). Design §13.3; names
-  *provisional*; still to come: T3b2 (live), T3c (the sound on your device).
-
-- 2026-11-11 (the client lane, E17 M7 T3a1 and T3a2, branch `claude/ecstatic-thompson-cjowg2`,
-  not merged yet; **for your M4 T5**): the battle entry's shape, agreed by the user for both
-  lanes at T3's start (your session was not running): **the host owns the window, its loop and
-  the frame; the battle is an element of it, drawn natively as any other**, so that a later
-  layout (HD's) shows it as a dialog over the adventure screen. Built so far: the crate
-  `clients/crates/h3-battle-client` (h3-view's binary's adapters as a library, the `h3-view`
-  command line its binary; `h3-view` stays the pure scene model) and in it `window::Prepared`
-  (loaded before your window opens: `frame_size`, the first cursor), `Prepared::start(Setup,
-  ticks_ns, lines)` and `window::Hosted`, whose pass your loop runs in order: `timeout`, `before`
-  (`Flow`), each event to `event` (`Took`: quit, redraw, or fullscreen, vsync and the cursor for
-  you to do), `take_moved`, `closed`, `after`, the cursor (`cursor_at`, `cursor_image`), `sound`,
-  `due` and `showed`; everything in the battle's frame's coordinates (draw `Frame::screen` at its
-  place, move the mouse's events by it). `h3-view window` is its first host (the record:
-  `docs/epics/E17-design.md` §13.2). **Still to come**, before your T5 can start: T3b, a battle
-  started from a whole game's battle messages and its outcome handed back (the wire's
-  background, colours and sex read); T3c, its sound on your audio device and its music through
-  `h3_ui::music` (until then it opens a device of its own: do not play beside it). The names are
-  *provisional*; tell this lane's inbox what your host needs changed.
-
-- 2026-11-10 (the server lane, E16 M5 T6, branch `claude/vigilant-brown-m2nolc`; **for M4 T3
-  and T4: the whole game's record is there**): `h3-server record [--packs-dir packs] [--root .]
-  [--out .] [--game 0] <replay.toml>...`, run from the repository's root, runs an adventure replay
-  through the in-process game session (`h3_protocol::session::game`; checked to its checkpoints
-  and final hash) and writes each player's record to `<out>/<stem>.player-<k>.jsonl`
-  (`h3_server::record`). The form (record format v4): JSON lines; the first a
-  `wire::game::GameRecordHeader { format, game, player, manifest, first }` (the manifest's `map`
-  names the map by its file's content hash, `h3_sim::adventure::replay::map_content_hash`, and
-  import version, not by its path: draw it from the client's own copy when both match; its key
-  tables give each handle's content key), then one `wire::ServerMessage` per line numbered `n`
-  from `first` (1): `GameSnapshot { observation }` first, then after each command
-  `GameAccepted` (the player's own), `GameEvents { events }` (every player, also empty), a
-  battle's own `Snapshot` when one opens for the player (its events inside `GameEvents`) and
-  `GameTurn` while it may act. `wire::game::GameObservation::fold` keeps the view from the
-  events; what it cannot fold yet is stubbed (`SRV-STUB-1` the tiles a reveal shows, `-2` to
-  `-11`, `-14` a battle's last snapshot; the fold's gate, `h3-protocol`'s
-  `tests/game_fold.rs`). The 55 golden replays make 26 MB of records, the largest 1.4 MB.
-
 - 2026-11-10 (the adventure lane, E08 T105b2, branch `adventure/e08-t105b2`; **one new command,
   for the space key**): `h3_adventure::AdventureCommand::Revisit { hero }` visits the entered
   object under the hero again (the original's space key, ADV-TEL-008; no points, no step): offer
@@ -538,15 +432,6 @@ while the work waits.
 - 2026-11-02 (the battle lane, E26 T5; for a computer side in your battles, when you add one):
   call the fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as
   amended; the user, AI-Q10), the all-seeing `choose` only as a game's option.
-
-- 2026-10-31 (the adventure lane, E08 T83b2b; **for E24 M4 T3**, the "increment 9's views" it
-  waits on): `ObjectView` carries `owner` (every viewer that sees the object), `production` (a
-  mine's resource and daily amount, its owner's team only), `guards` (`GuardsView`: `creature`
-  when all stacks are of one, none for the original's generic text; `count_word` of the total
-  count, every stack counted; `army`, the stacks, for the owner's team only), `visited` (a weekly
-  object's mark, the viewer's own) and `boat_tile` (a Shipyard's); it is no longer `Copy`. The
-  object identity, the random objects' drawn types and MCL-Q21 (b) of your note stay open in the
-  adventure lane's inbox; the month's kind comes with T85.
 
 - 2026-10-23 (the client lane, E17 M3 T9c, at the split): moved here from the client lane's
   inbox, the adventure lane's entry of 2026-10-21 (E08 T30, decision 65, ADR-0017 point 6 amended

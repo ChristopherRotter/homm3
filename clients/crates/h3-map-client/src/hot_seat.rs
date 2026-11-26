@@ -41,7 +41,9 @@ use h3_protocol::record::MAX_LINE;
 use h3_protocol::session::game::{
     Allowance, Clock, CommandBounds, GameOptions, GameOutbound, GameSession, Spectators,
 };
-use h3_protocol::wire::game::{GameClock, GameCommand, GameObservation, MapIdentity};
+use h3_protocol::wire::game::{
+    GameAnswer, GameClock, GameCommand, GameObservation, GameQuery, GameReject, MapIdentity,
+};
 use h3_protocol::wire::{ServerMessage, WireU64};
 
 use crate::play::Game;
@@ -301,6 +303,28 @@ impl<'r> HotSeat<'r> {
         Ok(self.turn())
     }
 
+    /// The human in turn's `command` (E24 M5 T4a: a walk), as the host vouches for it: the game's
+    /// rejection if it refused it, its frames folded either way (a rejection is told to the
+    /// player too).
+    ///
+    /// # Errors
+    /// No human's turn runs; a frame does not read or fold.
+    pub fn play(&mut self, command: GameCommand) -> Result<Option<GameReject>, String> {
+        let player = self.turn().ok_or("no human's turn runs")?;
+        self.seq += 1;
+        let mut out = Vec::new();
+        let played = self.session.play(player, self.seq, command, &mut out);
+        self.deliver(out)?;
+        Ok(played.err())
+    }
+
+    /// `player`'s `query` of the running game (`GameSession::query`, E24 M5 T4a: a hero's moves);
+    /// none while the game does not answer (not started, paused).
+    #[must_use]
+    pub fn query(&self, player: PlayerId, query: GameQuery) -> Option<GameAnswer> {
+        self.session.query(player, query).ok()
+    }
+
     /// The host's clock reads `now`, in milliseconds (`GameSession::elapse`): a turn whose time
     /// ran out ended by the session, its frames folded; the computers' turns ended after it.
     ///
@@ -513,6 +537,56 @@ mod tests {
         assert_eq!(hot.seat(PlayerId::new(2)), None);
         // No clock runs: none is told, none to read.
         assert_eq!((hot.deadline(), hot.seat(red).unwrap().clock), (None, None));
+    }
+
+    #[test]
+    fn a_human_walks_through_the_session_and_asks_its_moves() {
+        use h3_protocol::wire::game::{AdventureCommand, Pos as WirePos};
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::new("walks", TWO);
+        let game = begin(&file.0, None, (4, UNLIMITED), &rules).unwrap();
+        let mut hot = HotSeat::start(&game, &rules).unwrap();
+        let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+        let hero = |player| {
+            let view = hot.seat(player).unwrap().view.clone().unwrap();
+            let h = view
+                .adventure
+                .heroes
+                .iter()
+                .find(|h| h.owner == player.raw());
+            h.map(|h| (h.id, h.pos)).unwrap()
+        };
+        let ((ours, at), (theirs, _)) = (hero(red), hero(blue));
+        let moves =
+            |hot: &HotSeat<'_>, player, hero| match hot.query(player, GameQuery::Moves { hero }) {
+                Some(GameAnswer::Moves { moves, .. }) => moves,
+                _ => None,
+            };
+        // Red's hero's moves; none of Blue's hero for Red.
+        let reach = moves(&hot, red, ours).unwrap();
+        assert_eq!(reach.origin, at);
+        assert!(moves(&hot, red, theirs).is_none());
+        // A step east taken: its frames folded into Red's view.
+        let east = WirePos { x: at.x + 1, ..at };
+        let walk = |path| GameCommand::Adventure {
+            command: AdventureCommand::MoveHero { hero: ours, path },
+        };
+        assert_eq!(hot.play(walk(vec![east])).unwrap(), None);
+        let view = hot.seat(red).unwrap().view.clone().unwrap();
+        assert!(
+            view.adventure
+                .heroes
+                .iter()
+                .any(|h| (h.id, h.pos) == (ours, east))
+        );
+        // A path of no neighbours refused, nothing changed but the told rejection.
+        let far = WirePos { x: at.x + 9, ..at };
+        assert!(hot.play(walk(vec![far])).unwrap().is_some());
+        assert_eq!(hot.seat(red).unwrap().view.as_ref(), Some(&view));
+        views_are_the_engine_s(&hot, &rules);
+        // Blue's turn: Red's hero has no moves now.
+        assert_eq!(hot.end_turn().unwrap(), Some(blue));
+        assert!(moves(&hot, red, ours).is_none());
     }
 
     #[test]
