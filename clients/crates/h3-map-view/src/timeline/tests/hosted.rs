@@ -215,10 +215,16 @@ fn a_loop_without_a_host_keeps_no_answer() {
         offer: 0,
     };
     l.add_level(&level, &[]);
+    let revisit = RevisitAsked {
+        at: 1,
+        stand: stand(0),
+    };
+    l.add_revisit(&revisit, None);
     assert_eq!(
         (l.answer_asked(), l.level_asked(), l.host.as_ref()),
         (None, None, None)
     );
+    assert_eq!(l.revisit_asked(), None);
 }
 
 /// A level-up to level 2 with one offer (chosen at once), its dialog laid out with the test
