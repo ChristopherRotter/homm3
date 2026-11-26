@@ -684,4 +684,7 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   re-baselined: a caster record per hero at each turn start (`derive_battle_hero`, 7.5 % of the
   count) and seven best values on it; about 1 020 000 Ir a turn.
 - **Found:** `master` did not build its tests since #1190 merged after #1189 (T2d's start test
-  without T56's `war_machine` field): fixed in #1195, which this branch sits on.
+  without T56's `war_machine` field): #1195, superseded by #1192 (the same line), closed.
+- **With `master` merged** (T56's `BuildingRoles::marketplace`): the weights' rate finds the
+  Marketplace by its role, not by the key `marketplace` (the start test's Marketplace keyed
+  otherwise to show it); the town lane's request dropped.

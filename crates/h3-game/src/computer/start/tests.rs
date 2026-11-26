@@ -63,7 +63,7 @@ fn rules_with(edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
     core.creatures[ELF].info.cost = vec![(key("t:gold"), 200), (key("t:wood"), 2)];
     let mut towns = town_pack(false);
     towns.towns[0].buildings.push(BuildingDef {
-        key: "marketplace".into(),
+        key: "trading_post".into(),
         name: "Marketplace".into(),
         slot: None,
         supersedes: vec![],
@@ -71,7 +71,10 @@ fn rules_with(edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
         auto_with: vec![],
         requires: vec![],
         cost: vec![(key("t:wood"), 5), (key("t:gold"), 500)],
-        roles: BuildingRoles::default(),
+        roles: BuildingRoles {
+            marketplace: true,
+            ..BuildingRoles::default()
+        },
         war_machine: None,
     });
     edit(&mut towns);

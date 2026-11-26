@@ -32,12 +32,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1195 (`ai/fix-start-tests`: `master`'s build, T2d's start test
-  without T56's `war_machine`; merge first), #1197 (`ai/e31-t2e`, `cross-lane`: T2e, on #1195).
-  Merged: #1190 (T2d), #1184 (T2c), #1177 (T2b), #1172 (T2a), #1163 (the shared module PR).
-  **Pending for the lane's next `shared/` pull request:** the `benches/README.md` row of T2a's
-  workload; ADR-0030's note that the simulated combat (AI-Q34) and the spell values (AI-Q36) are
-  `h3_battle::estimate`'s.
+- **Open pull requests:** #1197 (`ai/e31-t2e`, `cross-lane`: T2e). Merged: #1192 (`master`'s
+  build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b), #1172 (T2a), #1163 (the shared module
+  PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
+  `benches/README.md` row of T2a's workload; ADR-0030's note that the simulated combat (AI-Q34)
+  and the spell values (AI-Q36) are `h3_battle::estimate`'s.
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
@@ -91,7 +90,8 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   `Heroes3.exe` to the chat (readings only; no `--with-original-data` run). Measured 5.0 KB: the
   user chose no cut, the spell values in `h3_battle::estimate` and the flag-set skill path in
   `h3_heroes::choice` (both `cross-lane`, AI-Q36). Found `master` broken since #1190 met #1189
-  (a test literal without T56's field): #1195, which T2e's branch sits on. The models agreed
+  (a test literal without T56's field): #1195, superseded by #1192. Since T56 the Marketplace is
+  read by its role, not its key (the town lane's request dropped). The models agreed
   with the port once `fight::battle_hero` carried the maximum mana. The workload +10.5 %
   (the heroes' caster records), re-baselined.
 

@@ -21,7 +21,7 @@ use h3_battle::estimate::EstimateHero;
 use h3_content::{CreatureTypeId, ResourceId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, SignedX87};
-use h3_towns::{BuildingSet, CREATURE_INDEXES, Town, index_creature};
+use h3_towns::{BuildingId, BuildingSet, CREATURE_INDEXES, Town, index_creature};
 
 use super::fight::{self, Fighter};
 use super::order::library_sort;
@@ -48,10 +48,6 @@ const MARKETS: (u8, u8) = (1, 10);
 /// The weights summed into the player's mean weight (0x428D78: the first six) and its divisor
 /// (0x428D98: 5).
 const MEAN: (usize, i32) = (6, 5);
-
-/// The town record's key of the Marketplace (`town_building_allowed` 0x5C12A0 with building 14):
-/// the town part gives it no role yet (the town lane's inbox).
-const MARKETPLACE: &str = "marketplace";
 
 /// The f32 bit pattern of +∞: a hero's experience weight with no experience to its next level.
 const INFINITE: u32 = 0x7F80_0000;
@@ -357,7 +353,14 @@ fn weights(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Record {
                     .for_each(|most| *most = (*most).max(long(amount)));
             }
         }
-        let market = record.and_then(|r| r.building_by_key(MARKETPLACE));
+        // The Marketplace (`town_building_allowed` 0x5C12A0 with building 14): the record's
+        // building of the role (E09 T56), at most one.
+        let market = record.and_then(|r| {
+            r.buildings
+                .iter()
+                .position(|b| b.roles.marketplace)
+                .and_then(BuildingId::from_index)
+        });
         if market.is_some_and(|market| !town.forbidden().contains(market)) {
             markets = markets.saturating_add(1);
         }
