@@ -388,9 +388,9 @@ impl AdventureState {
     /// Freelancer's Guild, TWN-MKT-003), each creature valued at its cost in the market
     /// parameters' cost resource (`MarketParams::cost`, the original's gold; E08 T133b, ADV-Q60
     /// (a)). The lot is the market parameters' at the window's count
-    /// (`MarketParams::creature_lot`, ADV-MKT-002): `give` creatures for `take` units, one of them
-    /// 1. Refused, in this order: a window without the sale ([`MarketError::Screen`]), its hero
-    /// gone ([`MarketError::Visit`]), a slot without a stack ([`MarketError::Slot`]), no lot
+    /// (`MarketParams::creature_lot`, ADV-MKT-002): `give` creatures for `take` units, one of
+    /// them 1. Refused, in this order: a window without the sale ([`MarketError::Screen`]), its
+    /// hero gone ([`MarketError::Visit`]), a slot without a stack ([`MarketError::Slot`]), no lot
     /// ([`MarketError::NoPrice`]: a creature of no cost, a resource the market does not value),
     /// lots of 0 or more creatures than the stack's ([`MarketError::Amount`]), the army's lone
     /// stack sold whole ([`MarketError::LastCreature`]: the army keeps a creature, so the most is
