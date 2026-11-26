@@ -142,6 +142,7 @@ use crate::live::{
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
+use crate::picks::Picks;
 use crate::reach::{
     AnswerAsked, AnswerKey, Hosted, LevelAsked, Pick, Reach, RevisitAsked, Stand, WalkAsked,
 };
@@ -1812,6 +1813,8 @@ pub struct Loop {
     level_asked: Option<LevelAsked>,
     /// Space's revisit asked of the host (E24 M5 T4b, [`Loop::revisit_asked`]).
     revisit_asked: Option<RevisitAsked>,
+    /// The client's own picks in play (E24 M5 T4b, [`Hosted::picks`]); none: in turn.
+    picks: Option<Picks>,
     /// The host's answers and level-ups' offers taken so far (E24 M5 T4b: a stand's).
     answers_taken: usize,
     reach_asked: Option<(u32, Stand)>,
@@ -2273,6 +2276,7 @@ impl Loop {
             answer_asked: None,
             level_asked: None,
             revisit_asked: None,
+            picks: start.host.as_ref().and_then(|h| h.picks).map(Picks::new),
             answers_taken: 0,
             reach_asked: None,
             next_move: 0,
@@ -3508,10 +3512,15 @@ impl Loop {
         self.place(&heroes);
         self.changed(&taken, &flags, &lost, &boats);
         self.player = turn.player;
-        // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*).
+        // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*; since E24
+        // M5 T4b in play the client's own pick).
         let tracks = &self.rules.turn.computer;
         if let (Some(sound), false) = (&mut self.sound, tracks.is_empty()) {
-            sound.computer(t, &tracks[self.next_turn % tracks.len()]);
+            let k = match &mut self.picks {
+                Some(picks) => picks.below(tracks.len()),
+                None => self.next_turn % tracks.len(),
+            };
+            sound.computer(t, &tracks[k]);
         }
         self.set_cursor(DEFAULT_CURSOR, self.rules.busy);
         self.buttons.move_hero = false;
@@ -4741,8 +4750,14 @@ impl Loop {
         gone.push(object);
         gone.sort_unstable();
         gone.dedup();
+        // The pickup's sound in turn (a recording's, a record's), in play the client's own pick
+        // (E24 M5 T4b).
+        let n = match &mut self.picks {
+            Some(picks) => picks.below(self.rules.finds.pickups.len()),
+            None => taken,
+        };
         let name = match fade {
-            Fade::Pickup => pickup(&self.rules.finds, taken),
+            Fade::Pickup => pickup(&self.rules.finds, n),
             Fade::Killfade => Some(self.rules.finds.killfade.as_str()),
         };
         if let (Some(sound), Some(name)) = (&mut self.sound, name) {

@@ -17,6 +17,7 @@ use h3_map::{Limits, MAP_IMPORT_VERSION};
 use h3_map_view::art::MapArt;
 use h3_map_view::engine::{self, Refused};
 use h3_map_view::hover::Facts;
+use h3_map_view::picks;
 use h3_map_view::record::Records;
 use h3_map_view::situation::Situation;
 use h3_map_view::tables::{self, TownArt};
@@ -3999,6 +4000,7 @@ fn a_live_start_from_a_later_snapshot() {
         .id;
     let facings = engine::Live {
         facings: vec![(red, 6)],
+        picks: None,
     };
     let loaded = engine::live(since, &g.bytes, rules(), facings).unwrap();
     let start = start_of(&loaded);
@@ -4574,4 +4576,60 @@ fn a_record_s_revisit_is_a_visit_past_the_walks() {
             &[gold][..]
         )
     );
+}
+
+#[test]
+fn an_unnamed_town_named_by_the_client_s_picks_in_play() {
+    // E24 M5 T4b (design §5.27): live with the client's picks' seed, an unnamed town's name its
+    // draw (`picks::town_name`) in the mouse-over's towns and the status window; a record's its
+    // faction's first.
+    let g = panels_game(None);
+    let mut o = g.observation.clone();
+    for town in &mut o.towns {
+        town.name = None;
+    }
+    let record = text(&g.header, &[snapshot(&o)]);
+    let start_of = |loaded: &engine::Loaded| {
+        engine::start(
+            loaded,
+            &g.art,
+            &templates(),
+            &town_art(),
+            records(),
+            rules(),
+        )
+        .unwrap()
+    };
+    let names = |start: &engine::Start| -> (Vec<Value>, Vec<Value>) {
+        let hover = table(&start.table["hover"])["towns"].as_array().unwrap();
+        let chosen = table(&start.table["chosen"])["towns"].as_array().unwrap();
+        (
+            hover
+                .iter()
+                .map(|t| t.as_array().unwrap()[0].clone())
+                .collect(),
+            chosen
+                .iter()
+                .map(|t| table(&table(t)["status"])["name"].clone())
+                .collect(),
+        )
+    };
+    let picked = engine::Live {
+        facings: Vec::new(),
+        picks: Some(5),
+    };
+    let live = engine::live(engine::parse(&record).unwrap(), &g.bytes, rules(), picked).unwrap();
+    let (hover, status) = names(&start_of(&live));
+    let drawn = |picks| -> Vec<Value> {
+        o.towns
+            .iter()
+            .map(|t| Value::Integer(i64::from(picks::town_name(t.faction, t.town, picks))))
+            .collect()
+    };
+    assert!(!o.towns.is_empty());
+    assert_eq!(hover, drawn(Some(5)));
+    assert!(!status.is_empty());
+    assert!(status.iter().all(|n| drawn(Some(5)).contains(n)));
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    assert_eq!(names(&start_of(&loaded)).0, drawn(None));
 }

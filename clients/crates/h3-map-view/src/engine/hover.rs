@@ -39,8 +39,9 @@ use toml::{Table, Value};
 use super::{int, row};
 use crate::art::MapArt;
 use crate::hover::{SEVERAL, SIZES, VISITS};
-use crate::live::{TOWN_CLASS, TOWN_NAMES};
+use crate::live::TOWN_CLASS;
 use crate::objects;
+use crate::picks::town_name;
 
 /// A monster (class 54).
 const MONSTER: u32 = 54;
@@ -90,7 +91,7 @@ pub(super) struct Sight<'a> {
 /// objects as `sight` shows them.
 pub(super) fn table(
     observation: &GameObservation,
-    raw: &RawMap,
+    (raw, picks): (&RawMap, Option<u64>),
     art: &MapArt,
     rules: &GameRuleset,
     sight: &Sight<'_>,
@@ -112,7 +113,7 @@ pub(super) fn table(
         .iter()
         .map(|t| {
             let name = t.name.as_ref().map_or_else(
-                || Value::Integer(i64::from(t.faction.saturating_mul(TOWN_NAMES))),
+                || Value::Integer(i64::from(town_name(t.faction, t.town, picks))),
                 |own| Value::String(own.clone()),
             );
             Value::Array(alloc::vec![name, Value::Integer(i64::from(t.faction))])

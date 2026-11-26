@@ -616,6 +616,15 @@ fn a_taken_find_is_no_walks_and_an_army_has_room() {
         l.take_cues()
             .contains(&(20, Cue::Effect("pickup01.wav".into())))
     );
+    // In play the client's own pick (E24 M5 T4b): its seeded generator's.
+    l.picks = Some(crate::picks::Picks::new(4));
+    l.take(30, OBJECT + 1, Gain::default(), Fade::Pickup);
+    let pickups = &rules(Bugs::Original).finds.pickups;
+    let k = crate::picks::Picks::new(4).below(pickups.len());
+    assert!(
+        l.take_cues()
+            .contains(&(30, Cue::Effect(pickups[k].clone())))
+    );
     // An event told, or one with no box: nothing again.
     let (mut start, ..) = picking("find-event");
     let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();

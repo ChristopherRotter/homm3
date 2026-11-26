@@ -638,6 +638,24 @@ fn a_computers_turn_s_sounds_and_unseen_steps() {
             (1560, Cue::Music("Grass".into())),
         ]
     );
+    // In play the client's own pick (E24 M5 T4b): the track its seeded generator draws.
+    let mut picked = start.clone();
+    picked.host = Some(crate::reach::Hosted {
+        picks: Some(11),
+        ..crate::reach::Hosted::default()
+    });
+    let mut l = Loop::start(rules(Bugs::Original), &picked).unwrap();
+    l.take_cues();
+    for t in 1..=160 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    let tracks = rules(Bugs::Original).turn.computer;
+    let k = crate::picks::Picks::new(11).below(tracks.len());
+    assert!(
+        l.take_cues()
+            .contains(&(160, Cue::Music(tracks[k].clone())))
+    );
     // The unseen first step: the hero onto (6, 26) without a frame; the second drawn.
     let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
     for t in 1..=160 {

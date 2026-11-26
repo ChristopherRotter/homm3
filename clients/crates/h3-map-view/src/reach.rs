@@ -109,6 +109,9 @@ pub struct Hosted {
     /// Space's revisits given (E24 M5 T4b), by their stands: the find each tells (its place among
     /// the loop's finds), none where the engine refused it or it tells nothing.
     pub revisits: Vec<(Stand, Option<usize>)>,
+    /// The seed of the client's own picks (E24 M5 T4b, `crate::picks`: a pickup's sound, a
+    /// computer turn's music); none: the picks in turn.
+    pub picks: Option<u64>,
 }
 
 impl Hosted {

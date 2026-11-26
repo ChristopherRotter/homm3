@@ -1220,7 +1220,8 @@ fn computer_turn(
     (colour, heroes): (u8, usize),
 ) -> Value {
     let mut table = Table::new();
-    panels::insert(&mut table, observation, &loaded.raw, art, rules);
+    let picks = loaded.live.as_ref().and_then(|l| l.picks);
+    panels::insert(&mut table, observation, (&loaded.raw, picks), art, rules);
     table.remove("realm");
     table.remove("chosen");
     // stub: MCL-Q43 (the computer's heroes' points and kind 5's value: none told)
@@ -1262,7 +1263,8 @@ fn turn(
 ) -> Value {
     // The panels' kingdom; their status window, kingdom's window and choices are the start's.
     let mut table = Table::new();
-    panels::insert(&mut table, observation, &loaded.raw, art, rules);
+    let picks = loaded.live.as_ref().and_then(|l| l.picks);
+    panels::insert(&mut table, observation, (&loaded.raw, picks), art, rules);
     table.remove("realm");
     table.remove("chosen");
     let colour = observation

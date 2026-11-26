@@ -55,6 +55,10 @@ use crate::play::Game;
 /// (`turn_duration_minutes` 0x641AE8, read in E16 M5 T15: `docs/epics/E16-timer-survey.md`).
 pub const TURN_MINUTES: [u8; 11] = [1, 2, 4, 6, 8, 10, 15, 20, 25, 30, 0];
 
+/// What the game's seed is mixed with for the client's own picks in its views (E24 M5 T4b): a
+/// stream apart from the engine's, the same for every view of the game.
+const PICKS: u64 = 0x6D61_702D_7069_636B;
+
 /// The turn duration's record that is unlimited (`turndur.txt`'s last).
 pub const UNLIMITED: u8 = 10;
 
@@ -185,6 +189,8 @@ fn number(message: &ServerMessage) -> Option<u32> {
 pub struct HotSeat<'r> {
     session: GameSession<'r>,
     rules: &'r GameRuleset,
+    /// The seed of the client's own picks in its views (E24 M5 T4b, `h3_map_view::picks`).
+    picks: u64,
     seats: Vec<Seat>,
     /// The host's last command's number (the in-process host's are only echoed).
     seq: u32,
@@ -264,6 +270,7 @@ impl<'r> HotSeat<'r> {
         let mut hot = Self {
             session,
             rules,
+            picks: game.seed ^ PICKS,
             seats,
             seq: 0,
         };
@@ -394,8 +401,15 @@ impl<'r> HotSeat<'r> {
             .ok_or_else(|| format!("no record of player {}", player.index()))?;
         let mut record =
             engine::parse(&text).map_err(|e| format!("player {}: {e}", player.index()))?;
+        let picks = Some(self.picks);
         let Some(left) = left else {
-            return Ok((record, Live::default()));
+            return Ok((
+                record,
+                Live {
+                    facings: Vec::new(),
+                    picks,
+                },
+            ));
         };
         record
             .messages
@@ -410,6 +424,7 @@ impl<'r> HotSeat<'r> {
         record.header.first = left.n;
         let live = Live {
             facings: left.facings.clone(),
+            picks,
         };
         Ok((record, live))
     }

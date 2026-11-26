@@ -779,6 +779,8 @@ pub(crate) fn window(
     // The engine's decisions the view's walks and answers left open (E24 M5 T4b, design §5.27),
     // by the walk whose visit asks them, in order: each question's facts.
     let mut opened: Vec<(usize, Decision)> = Vec::new();
+    // The seed of the client's own picks in play (E24 M5 T4b, the hot seat's).
+    let mut picks = None;
     let (setup, what) = match source {
         Source::Options => set_up(&assets, options)?,
         // A human's view in play (E24 M5 T3b): its record since it was last left, set up as a
@@ -786,6 +788,7 @@ pub(crate) fn window(
         Source::Session(s) => {
             let label = format!("play: colour {}'s view", s.colour());
             let (record, live) = s.record()?;
+            picks = live.picks;
             let (setup, heroes) = paint::for_live(
                 &assets,
                 s.map(),
@@ -837,7 +840,10 @@ pub(crate) fn window(
     start.live = true;
     // In play the walks and the reach are the hot seat's host's (E24 M5 T4a).
     if session.is_some() {
-        start.host = Some(Hosted::default());
+        start.host = Some(Hosted {
+            picks,
+            ..Hosted::default()
+        });
     }
     // The battles' first frames the switches fade in (E24 M4 T5b2, design §5.21).
     if let Some(list) = &battles {
