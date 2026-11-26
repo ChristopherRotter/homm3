@@ -861,4 +861,10 @@ fn the_casts_are_listed_last_or_queried_by_their_targets() {
     let points = HeroChange::SetSpellPoints(10);
     short.change_hero(rules.core(), HERO, None, points, &mut NoopSink);
     assert!(listed_casts(&short, &rules).is_empty());
+    // E08 T144a2: on a raising ground the door's targets at the raised mastery's cost (Expert,
+    // 20 points: E15-5's Magic Plains), none for those points off it (25).
+    let plains = ground(&rules, "t:plains_ground", Pos::new(0, 0, 0));
+    let raised = game(&rules, &["t:door"], 20, vec![plains]);
+    assert!(listed_casts(&raised, &rules).contains(&at(0, 1)));
+    assert!(listed_casts(&game(&rules, &["t:door"], 20, vec![]), &rules).is_empty());
 }

@@ -225,10 +225,25 @@ impl GameState {
         let Some(effect) = part.adventure_spell(spell).filter(|e| e.targets()) else {
             return targets;
         };
-        let ground = self.ground_of(rules, pos);
-        let known = map_spells(details, core, &[spell], raise_of(ground));
-        let Some(&MapSpell { mastery, cost, .. }) = known.first() else {
+        // E08 T144a2: the env asks every hero on every step, so whether the hero may cast the
+        // spell comes first, by the ruleset's sources (as the listing's pre-test), then its
+        // spells, and only then its ground (a search of its tile's objects): a ground raises a
+        // mastery, never makes a spell castable (HER-SPL-003).
+        if !part.target_sources().may_have(details) {
             return targets;
+        }
+        let plain = map_spells(details, core, &[spell], SchoolRaise::None);
+        let Some(&first) = plain.first() else {
+            return targets;
+        };
+        let ground = self.ground_of(rules, pos);
+        let MapSpell { mastery, cost, .. } = match ground {
+            None => first,
+            // The same spell, raised.
+            Some(_) => map_spells(details, core, &[spell], raise_of(ground))
+                .first()
+                .copied()
+                .unwrap_or(first),
         };
         if self
             .cast_frame(rules, (pos, details.mana, ground), (spell, cost))

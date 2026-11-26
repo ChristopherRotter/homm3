@@ -2,11 +2,12 @@
 //! golden replays play it; it answers an open decision since T14b, plays its battles since T19b1
 //! and the neutral seat's since T20b3a; a town's build since E09 T19c1, encoding v9's entry; the
 //! listed builds skipped before it, E09 T18b2b, decision 56; a town's hire since E09 T38a2,
-//! encoding v12; the listed casts skipped until encoding v21, E08 T144a1).
+//! encoding v12; the listed casts skipped from E08 T144a1 to encoding v21, T144a2, which draws
+//! them).
 
 use h3_adventure::Reach;
 use h3_battle::LegalCommands;
-use h3_game::{GameCommand, legal_commands};
+use h3_game::legal_commands;
 use h3_kernel::{Rng, StreamId};
 
 use super::action::{self, Action, HERO_SLOTS, Seat, tile_index};
@@ -60,10 +61,14 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
 /// turn's revisits end only by the draw of another entry) and each town's build (by its town's
 /// entrance and its building, E09 T19c1, encoding v9; from E09 T18b2b to T19c1 the listed builds
 /// were left out of the draw, decision 56), its recruitments and hero moves (E09 T27, T28a) and
-/// its hires (by its entrance and the slot, E09 T38a2, encoding v12) but its heroes' casts (left
-/// out of the draw until encoding v21, E08 T144a1), or with an open decision its answers alone (`Decline`, and `Accept` while
-/// the offer stands; a level-up's `First` and `Second`, E08 T30), each at even odds
-/// with each hero's move (GAM-DEC-001, GAM-DEC-002; E08 T14b, T15a). `EndTurn` when the seat has
+/// its hires (by its entrance and the slot, E09 T38a2, encoding v12) and its heroes' casts of
+/// Summon Boat, Fly and Water Walk (encoding v21, E08 T144a2; left out of the draw from T144a1 to
+/// it), or with an open decision its answers alone (`Decline`, and `Accept` while the offer
+/// stands; a level-up's `First` and `Second`, E08 T30), each at even odds with each hero's move
+/// (GAM-DEC-001, GAM-DEC-002; E08 T14b, T15a) and each hero's cast of Scuttle Boat or Dimension
+/// Door that has a target (E08 T144a2: the hero's query, [`action::targeted_casts`]), whose target
+/// is then uniform among the queried ones, as a move's tile (the adventure lane's proposal to the
+/// AI lane, which chooses the bots' weights). `EndTurn` when the seat has
 /// no legal entry (the neutral seat while no battle waits for it). In the battle phase: the
 /// battle's random agent for
 /// the seat's side (`crate::rollout::choose`: a uniform entry among the commands that stay in the
@@ -79,21 +84,29 @@ pub fn choose(env: &AdventureEnv, seat: impl Into<Seat>, rng: &mut Rng) -> Actio
         return crate::action::encode(battle, rules.battle(), command)
             .map_or_else(Action::end_turn, Action::Battle);
     }
-    // E08 T144a1 (decision 420): the casts `legal_commands` lists have no entry before encoding
-    // v21 (T144a2), so they are left out of the draw, as the builds were before encoding v9
-    // (E09 decision 56).
-    let mut commands = legal_commands(state, rules, seat.actor());
-    commands.retain(|command| !matches!(command, GameCommand::Cast { .. }));
+    let commands = legal_commands(state, rules, seat.actor());
     let moves: Vec<(usize, Reach)> = (0..HERO_SLOTS)
         .filter_map(|slot| action::moves(state, rules, seat, slot).map(|reach| (slot, reach)))
         .collect();
-    let entries = commands.len() + moves.len();
+    // E08 T144a2: the targeted casts by their heroes' queries, after the moves (so a game
+    // without them draws as before).
+    let casts = action::targeted_casts(state, rules, seat);
+    let entries = commands.len() + moves.len() + casts.len();
     let i = rng.below(u32::try_from(entries).unwrap_or(u32::MAX)) as usize;
-    let Some((slot, reach)) = i.checked_sub(commands.len()).and_then(|m| moves.get(m)) else {
-        return commands
-            .get(i)
-            .and_then(|command| action::encode(state, rules, seat, command))
-            .unwrap_or_else(Action::end_turn);
+    if let Some(command) = commands.get(i) {
+        return action::encode(state, rules, seat, command).unwrap_or_else(Action::end_turn);
+    }
+    let m = i - commands.len();
+    let Some((slot, reach)) = moves.get(m) else {
+        return casts.get(m - moves.len()).map_or_else(
+            Action::end_turn,
+            |(slot, spell, targets)| {
+                let count = u32::try_from(targets.len()).unwrap_or(u32::MAX);
+                let target = targets[rng.below(count) as usize];
+                tile_index(state, target)
+                    .map_or_else(Action::end_turn, |tile| Action::cast(*slot, *spell, tile))
+            },
+        );
     };
     let count = u32::try_from(reach.tiles().count()).unwrap_or(u32::MAX);
     let k = rng.below(count) as usize;
