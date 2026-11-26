@@ -3839,7 +3839,8 @@ Undead or Armageddon (`0x20000`).
 field of **the hero's own map tile** (0x4E4FA0, through 0x4FCF40: Magic Plains 1, Lucid Pools 6,
 Fiery Fields 7, Rocklands 8, Magic Clouds 9 by the tile's special ground, as the battle's setup
 maps them, §7.26; else −1, and −1 for a hero off the map); its cost `c` (0x4E5240 with no enemy
-army and field −1: the skills' mastery, the army's Mages). 0 when `c` exceeds the mana; the casts
+army and field −1: the skills' mastery; with no enemy army neither the Pegasi nor the own Mages
+count, 0x4E52DA, E31 T2e). 0 when `c` exceeds the mana; the casts
 `n` = mana / `c` (1000 when `c` is 0, as for Titan's Lightning Bolt). Then by the spell's AI bits
 (flags and `0x1F8000`): `0x8000` the damage value with `n` casts against the strength R+4
 (0x5270E0); `0x10000` the same with one cast; `0x20000` 0x5271C0; `0x40000` 0x527290; `0x80000`

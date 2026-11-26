@@ -60,6 +60,18 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
   creature month's step (the towns' stream; GAM-CAL-002 amended). (4) The 118 golden replays
   re-recorded from their commands: only `adventure_state_hash_version`, the checkpoints and the
   final hashes moved; the server's literals with them.
+- 2026-11-26 (the AI lane, E31 T2e, `ai/e31-t2e`, `cross-lane` with the user's consent, AI-Q36;
+  **in your paths, for your review, nothing to do**): `h3_heroes::choice` holds the flag-set path
+  of 0x524690 beside the setup's in one switch (`Evaluation::original`, the original's 32-bit
+  integers; the setup's values unchanged, HER-LVL-006's tests pass): `ComputerReads`,
+  `counted_worth`, `computer_skill_value`, `computer_takes_new_skill` (CPU-SKL-001), which the
+  computer player feeds with its own values; `tests/choice.rs` has three more tests.
+  Another case of the reach property's bug below (its own inbox item) came up here, kept out of
+  the regressions file: `cc d6c9b6e4d4b310888bd91ef7938e53df90c9b9fc9d2ac15176c57b56e7f751c2`
+  (5 × 8, cells 48 to 51 at 15, 20, 15, 15 and 59 at 20, start (0, 0), one other hero on it,
+  picks `[602]`, `(mode, level, both, free) = (1, 1, false, false)`; `reach/tests.rs:512`: 4
+  against 7).
+
 - 2026-11-26 (the adventure lane, found by CI on #1191, T144a2; **a bug to fix, before T144b**):
   `h3-adventure`'s property `reach::tests::the_query_and_move_hero_agree` fails on `master`
   abf981f too (so not T144a2's): at `reach/tests.rs:493` the move takes 4 steps for a reported

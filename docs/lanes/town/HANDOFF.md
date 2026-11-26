@@ -20,10 +20,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   upgrade: where planned?). Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13`
   (Visions' reach), `TWN-STUB-2` (the victory conditions), `-16` (E10's loss condition), `-17`
   (increment 8), `-18` (E13).
-- **Open pull requests:** **#1193** (`town/e09-war-machine-literal`, `cross-lane`: `master`'s
-  red build, one line in the AI lane's test; CI green) and T57's (`town/e09-t57`, `cross-lane`,
-  stacked on #1193: rebase onto `master` once #1193 merges); watch both until they merge (T56's
-  #1189 merged 2026-11-26).
+- **Open pull requests:** T57's **#1198** (`town/e09-t57`, `cross-lane`); watch it until it
+  merges (T56's #1189 merged 2026-11-26; #1193, `master`'s red build, closed: the AI lane's
+  #1192 fixed the same line first).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -53,7 +52,7 @@ In `TRAPS.md`.
 ### 2026-11-26 — T57: the Artifact Merchants' stock (`cross-lane`)
 
 `master` 6035ed8 was red (T56's `war_machine` against E31 T2d's new literal): fixed first in
-#1193 (decision 222). The user's computer went offline at the start: nothing staged, the scoped
+#1193 (decision 222; closed when the AI lane's #1192 fixed it first). The user's computer went offline at the start: nothing staged, the scoped
 verify without original data (its `--with-original-data` run is owed). The user kept T57 whole
 (decision 221) and chose to fix ADV-OBJ-006's restart by class on the way (decision 223). The
 118 goldens re-recorded once (hash lines only). No sub-agents.

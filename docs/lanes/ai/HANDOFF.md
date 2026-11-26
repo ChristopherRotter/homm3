@@ -32,15 +32,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1190 (`ai/e31-t2d`, `cross-lane`: T2d). Merged: #1184 (T2c), #1177
-  (T2b), #1172 (T2a), #1163 (the shared module PR), #1164 (increment 2's cut). **Pending for the lane's next `shared/` pull request:** the `benches/README.md` row of
-  T2a's workload; ADR-0030's note that the simulated combat is `h3_battle::estimate` (AI-Q34).
+- **Open pull requests:** #1197 (`ai/e31-t2e`, `cross-lane`: T2e). Merged: #1192 (`master`'s
+  build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b), #1172 (T2a), #1163 (the shared module
+  PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
+  `benches/README.md` row of T2a's workload; ADR-0030's note that the simulated combat (AI-Q34)
+  and the spell values (AI-Q36) are `h3_battle::estimate`'s.
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
-  encoding v2 (`MEMORY_ENCODING_VERSION`, E31 T2d: the start's records) (`docs/08-work-process.md`,
-  "Versions"). Next ids: AI-Q36, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-16;
-  CPU-SIM-013, CPU-STA-007.
+  encoding v3 (`MEMORY_ENCODING_VERSION`, E31 T2e: the heroes' spell gains) (`docs/08-work-process.md`,
+  "Versions"). Next ids: AI-Q37, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-16;
+  CPU-SIM-013, CPU-STA-008, CPU-SPL-008, CPU-SKL-004.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
@@ -65,10 +67,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   reserve, the weights (the library's `std::sort`, `order.rs`), the experience weight;
   `cross-lane` `reach_with`, `day_maximum_of`, `day_income`, `growth_inputs`; AI-STUB-10 to -15
   (the spell gains to T2e, the artifacts' mean to T2f, the vision circle to T2h, the Grail target
-  to T2i); `computer-turns-towns-36` re-baselined (207 M Ir, the fold's searches). **Next: T2e**,
-  the spells' and skills' values (`QUEUE.md`), `Heroes3.exe` staged for the readings. Then E13
-  (refined in shape,
-  `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
+  to T2i); `computer-turns-towns-36` re-baselined (207 M Ir, the fold's searches). **T2e done**
+  (2026-11-26, not cut, AI-Q36): the spell values `h3_battle::estimate`'s `caster.rs`
+  (`cross-lane`, CPU-SPL-001 to -006; the battle's odds on them), a spell's gain and the heroes'
+  spell gains (`computer/spells.rs`, CPU-SPL-007, CPU-STA-007; memory v3), the skill value's
+  flag-set path in `h3_heroes::choice` (`cross-lane`, CPU-SKL-001), the schools' and the
+  University's values (`computer/skills.rs`, CPU-SKL-002, -003); the workload re-baselined (229 M
+  Ir). **Next: T2f**, the artifacts (`QUEUE.md`): propose a cut by size (the user asked for
+  smaller sessions). Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
+  done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -76,6 +83,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **The computer player (E31)** (its coverage, its workload, the memory), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-26 — E31 T2e: the spells' and skills' values
+
+- A cloud clone; the PC left before any original data was staged: the user attached
+  `Heroes3.exe` to the chat (readings only; no `--with-original-data` run). Measured 5.0 KB: the
+  user chose no cut, the spell values in `h3_battle::estimate` and the flag-set skill path in
+  `h3_heroes::choice` (both `cross-lane`, AI-Q36). Found `master` broken since #1190 met #1189
+  (a test literal without T56's field): #1195, superseded by #1192. Since T56 the Marketplace is
+  read by its role, not its key (the town lane's request dropped). The models agreed
+  with the port once `fight::battle_hero` carried the maximum mana. The workload +10.5 %
+  (the heroes' caster records), re-baselined.
 
 ### 2026-11-26 — E31 T2d: the start's values
 
@@ -96,12 +114,3 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   provide the estimate entirely (AI-Q34). The VM restarted once (the baseline lost; `master`'s CI
   green at 02ccd93 stood for it). Four of my test expectations were wrong, the port right.
   `h3-battle`, `h3-game`, `h3-sim` pass; the scoped verify with the original data.
-
-### 2026-11-25 — E31 T2b: the simulated combat's sides and melee
-
-- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
-  the user's repo folder at the start. Measured 7.4 KB (1.4 KB container code): the user chose no
-  cut (AI-Q33). The blind re-reads agreed with the survey but four details (`E31-log.md` T2b). The VM
-  restarted once (the setup's baseline lost); `master`'s CI had failed on a server-lane timing
-  test only (`h3-server`'s `a_spectator_watches_a_timed_game…`), its failed job re-run. The
-  scoped verify with the original data; an IEEE double model checked the port on 400 runs.

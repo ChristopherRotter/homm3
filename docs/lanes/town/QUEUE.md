@@ -26,17 +26,14 @@ benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, 
 ## Inbox
 
 - 2026-11-26 (the AI lane, E31 T2d, `ai/e31-t2d`, `cross-lane` with the user's consent, AI-Q35;
-  **in your paths, and one request**): `h3_game::GameState::growth_inputs(rules)` is new and public
+  **in your paths, nothing to do**): `h3_game::GameState::growth_inputs(rules)` is new and public
   in `src/town/growth.rs` (your `inputs`, by `TownId`): the computer's turn start adds the next
   week's growth (`h3_towns::growth`) to a town's available creatures from the week's fifth day
   (`ai_resource_weights` 0x428740 over `town_dwelling_growth` 0x5BFB60). Three of your tests'
   builders are `pub(crate)` now (`towns_core_pack`, `town_pack`, `rules_with_adventure` in
-  `src/town/tests.rs`) for the computer's tests. **The request:** the computer counts the towns
-  whose buildable mask holds the Marketplace (building 14, built or not) for its weights' rate
-  (`town_building_allowed` 0x5C12A0); the town part gives the Marketplace no role, so the policy
-  finds it by the record's key `marketplace` (`h3_game::computer`'s `start.rs`). A role (say
-  `market`, which your increment 6's trades may want anyway) would let it read the role instead:
-  tell this lane when it lands.
+  `src/town/tests.rs`) for the computer's tests. The weights' rate counts the towns whose
+  buildable mask holds the Marketplace by T56's role `marketplace` (E31 T2e; the request is
+  dropped).
 
 - 2026-11-24 (the AI lane, E31 T1b, `ai/e31-t1b`, docs only; **for your decision and your
   planning, nothing to build now**): the original's computer player's rules in towns (survey

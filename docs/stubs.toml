@@ -347,12 +347,6 @@ reason = "The original's computer player (E31 T2d): the defence fold of the turn
 epic   = "E31"
 
 [[stub]]
-id     = "AI-STUB-13"
-where  = "crates/h3-game/src/computer/start.rs::record"
-reason = "The original's computer player (E31 T2d): of a hero's values at the turn start (ai_hero_effectiveness 0x527760) only the experience weight +0x109 is ported (CPU-STA-006); the others are gains of the caster record's best spell value (ai_best_spell_value 0x5275B0: one Spell Power +0x47E, one duration +0x482, a Knowledge point +0x486, the mana refilled +0x48E and doubled +0x48A): T2e, with the spells' values (the user at T2d)"
-epic   = "E31"
-
-[[stub]]
 id     = "AI-STUB-14"
 where  = "crates/h3-game/src/computer/start.rs::record"
 reason = "The original's computer player (E31 T2d): the player's mean artifact value at the turn start (+0x164, f32: ai_turn_start_values 0x527960 over ai_artifact_value_to_player 0x433AA0 of the artifacts 7 to 143 the setup allows) waits for the artifacts' values: T2f (the user at T2d)"

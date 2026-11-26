@@ -718,8 +718,8 @@ experience to the next level × +0x109.
 
 **The hero's values** (`ai_hero_effectiveness` 0x527760, H3API's fields): +0x109 = (2 500 +
 army value) / (40 × experience to next level), per experience point (f32); +0x47E one Spell
-Power, +0x486 a tenth of 30 mana (both at least 10), +0x482 one duration, +0x48E mana refilled,
-+0x48A mana doubled, all as gains of the best spell value. A spell's gain
+Power, +0x486 30 more mana's gain over 3 (both at least 10), +0x482 one duration, +0x48E mana
+refilled, +0x48A mana doubled (from the points left), all as gains of the best spell value (T2e). A spell's gain
 (`ai_hero_spell_gain` 0x527640) is its value less the best of the same AI kind (at least 1); a
 school's (`ai_school_value` 0x524D20) the best-value gain with the level raised (Expert at once).
 
@@ -1920,7 +1920,7 @@ increment 2 (ADR draft point 1), the exploit-fix entries first.
 
 Counts: 36 slips, 6 state, 5 exploit-fix, 13 none, 2 fixed (one item); T2b's re-read added two
 state rows, #63 and #64, T2c's reading two more, #65 and #66 (10 state), T2d's two slips, #67
-and #68 (38 slips).
+and #68 (38 slips), T2e's one, #69 (39 slips).
 
 | # | § | Candidate | Address | Class | Lane | Confirm | Note |
 |---|---|---|---|---|---|---|---|
@@ -1940,10 +1940,10 @@ and #68 (38 slips).
 | 14 | §2.3 (c) | dwelling value mixes current player's treasury, team with owner's artifact, weights | 0x529A30 | slip | ai | blind 0x529A30 (callers) | differs only when valued off its own turn |
 | 15 | §2.3 (d) | Marketplace purchase tests the current player's resources, not the owner's | 0x42AB40 | none | ai | none | hire path runs on the owner's own turn only |
 | 16 | §2.4 (a) | the visiting hero's fight dropped | 0x52ACDA | slip | ai | blind 0x52ACDA |  |
-| 17 | §2.4 (b) | a new magic school valued at Expert | 0x524D20 | slip | ai | blind 0x524D20 |  |
+| 17 | §2.4 (b) | a new magic school valued at Expert | 0x524D20 | slip | ai | blind 0x524D20; read at T2e (0x524D73, not blind) | the schools' values; ported as read (E31 T2e, CPU-SKL-002) |
 | 18 | §2.4 (c) | Ballista's q × s overflows 32 bits for large armies | 0x4337C3 | slip | ai | blind 0x4337C3 |  |
 | 19 | §2.4 (d) | week-roll test counts day 7 itself | 0x529DEF | slip | ai | blind 0x529DEF |  |
-| 20 | §2.4 (e) | University test: 2 000 gold once, four skills summed | 0x525BF0 | slip | ai | blind 0x525BF0 |  |
+| 20 | §2.4 (e) | University test: 2 000 gold once, four skills summed | 0x525BF0 | slip | ai | blind 0x525BF0; read at T2e (0x525C17, 0x525C7B, not blind) | the University's value; ported as read (E31 T2e, CPU-SKL-003) |
 | 21 | §2.4 (f) | guild loop reads one level past the built one | Mage Guild value (no address) | none | ai | none | survey: harmless |
 | 22 | §3.1 (a) | value × 1 000 in 32 bits wraps the victory's 5 000 000 | 0x42A150 | slip | ai | blind 0x42A150 | wrapped value still the largest |
 | 23 | §3.1 (b) | Citadel and Castle valued alike, one creature per dwelling, not growth | 0x42B670 | slip | ai | blind 0x42B670 |  |
@@ -1992,3 +1992,4 @@ and #68 (38 slips).
 | 66 | §2.2 | an other spell and a raise change the stacks' values but not the side's strength (the stand-off reads the stacks, the beaten test the strength) | 0x4259A2, 0x42613F | state | battle, adventure (§3.6 row 1) | read at T2c | quick battle's result and the estimate; ported as read (E31 T2c) |
 | 67 | §1.5 | the recruit reserve counts nothing for a town with a single available stack: the loop's bound, the count less 2, is compared unsigned | 0x429CC6 (0x429AD0) | slip | ai | read at T2d | the build choice's reserve; ported as read (E31 T2d, CPU-STA-002) |
 | 68 | §1.5 | the recruit reserve values a stack at the low 16 bits of the AI value times the count, in 16 bits: dear stacks wrap and sort low | 0x429BD4 (0x429AD0) | slip | ai | read at T2d | the build choice's reserve; ported as read (E31 T2d, CPU-STA-002) |
+| 69 | §2.4 | the caster record's army list values a stack at the AI value times its count's low 16 bits as a signed word: a stack of more than 32 767 creatures sorts and counts wrong, below 0 from 32 768 | 0x526E2F (0x526D40) | slip | ai | read at T2e | the effect spells' values (CPU-SPL-005); ported as read (E31 T2e, CPU-SPL-001) |

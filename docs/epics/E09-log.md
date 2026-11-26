@@ -6619,7 +6619,9 @@ the server lane's `h3-server` record test). Starting point: `master` at 6035ed8 
 E09 T56's `BuildingDef::war_machine` (#1189) met E31 T2d's new literal without it in the AI
 lane's `h3-game/src/computer/start/tests.rs` (#1190), so CI's clippy and coverage failed to
 compile `h3-game`'s tests. Fixed first in #1193 (`town/e09-war-machine-literal`, one line,
-`cross-lane`, the AI lane's inbox told; decision 222); T57's branch stacks on it. The user's
+`cross-lane`; decision 222), T57's branch stacked on it; the AI lane's own #1192 merged the same
+line first, so #1193 was closed, its inbox note dropped and `master` (b4a466f, with E31 T2e's
+#1197) merged into T57's branch (one conflict in that test, `master`'s side kept). The user's
 computer went offline at the start, so no original data were staged (the scoped verify without
 `--with-original-data`); the setup's baseline died with a VM restart, CI's run on #1193 served.
 **Kept whole** with the `cross-lane` consent (decision 221).
