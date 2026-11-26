@@ -6596,3 +6596,16 @@ fingerprint), CI green on `master`. Five files staged (both bitmap LODs, the exe
   built*.
 
 **The queue:** T56 out; T57 next (the stock, `cross-lane`). Ids: decisions next 221.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` on the branch (with
+`master`'s abf981f merged in): every step passes but `check-lane` (by design; `cargo xtask
+check-lane --cross-lane --base origin/master` ok) and coverage, whose test run hit a random case
+of `h3-map`'s `tests::view::views_move_as_the_events_say` that fails the same way on `master`
+abf981f (the adventure lane's inbox, its `cc` line not committed); `verify-step coverage --scope
+town` again: the tests passed, two regions of the compile's trade parameters uncovered (a price's
+unknown resource), their tests added, `h3-towns`' ruleset files at 100 % (`cargo llvm-cov -p
+h3-towns`). Determinism 11.6 minutes, bench-check 17.6 (inside its gate), original-data 2.5 (the
+harvest matches the packs). `cargo check --workspace --all-targets`, `cargo clippy --workspace
+--all-targets -- -D warnings`, `cargo test --release -p h3-cli -p h3-sim -p h3-protocol -p
+h3-server -p h3-game -p h3-map -p h3-towns -p h3-pack-towns -p h3-files` (every golden replay
+replayed), `cargo test -p h3-harvest -p h3-formats`. CI on the pull request is the record.

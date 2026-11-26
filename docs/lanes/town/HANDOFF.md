@@ -51,7 +51,8 @@ In `TRAPS.md`.
 Baseline b1e7a44 (#1182; the setup's light gates, CI green on `master`); 5 files staged. The user
 kept T56 whole (decision 220). The part v10 in `h3-towns` and `h3-pack-towns`, two executable
 tables read in `h3-formats`, the harvest re-run (only the `towns.toml` changed), the 118 goldens'
-town hash replaced (0xc830faa47b612bfc; the rest unchanged). No sub-agents.
+town hash replaced (0xc830faa47b612bfc; the rest unchanged). No sub-agents. The coverage run hit
+a random case of `h3-map`'s view property failing on `master` too: the adventure lane's inbox.
 
 ### 2026-11-25 — T55: increment 6's ADRs, the two flags, the combinations' costs (`shared/`)
 

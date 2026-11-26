@@ -47,6 +47,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-26 (the town lane, E09 T56, `town/e09-t56`, `cross-lane`; **for you: a failing case of
+  your property, on `master` too**): `h3-map`'s `tests::view::views_move_as_the_events_say` failed
+  in the town scope's coverage run on a random case and fails the same way on `master` abf981f
+  (#1186 merged) when replayed: `cc 46f90d6608d36cb7b0f20d08ecbdd17c6b19c238e813d1c7a6cf3dcaee593307`
+  (an RoE plan of side 10, two players, one hero each with a kit; `view.rs:2683`: another player's
+  command on the same day, no capture, grows the viewer's explored row 0 from 511 to 1023). Not
+  committed to `proptest-regressions/tests/view.txt` (it would fail every pull request's CI until
+  fixed); append it there to replay. Also: T56 replaced the 118 goldens' `town_ruleset_hash`
+  (0xc830faa47b612bfc, the town part v10; nothing else moved) and added `war_machine: None` and the
+  trades' parameters to `h3-game`'s `tests/mod.rs`' town literals (`a_town_needs_its_siege`).
+
 - 2026-11-25 (the town lane, E09 T55, `shared/e09-t55`, `cross-lane`; **informational,
   mechanical at a merge**): the base profiles gained `quirk.town.visitor_only_trades` and
   `quirk.town.university_ignores_map_bans`, and `h3-content` gives a combination without a pack

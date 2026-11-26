@@ -932,6 +932,14 @@ fn the_trades_are_checked() {
     assert_eq!(param(|d| d.boat_price[0].1 = 0), boat);
     assert_eq!(param(|d| d.boat_price[1].0 = key("t:gold")), boat);
     assert_eq!(
+        param(|d| d.boat_price[0].0 = key("t:nope")),
+        E::UnknownResource("t:nope".into())
+    );
+    assert_eq!(
+        param(|d| d.university_price[0].0 = key("t:nope")),
+        E::UnknownResource("t:nope".into())
+    );
+    assert_eq!(
         param(|d| d.university_skills.push(key("t:fire"))),
         E::InvalidParams("a University's skill is given twice")
     );
