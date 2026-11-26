@@ -4,8 +4,8 @@
 //! it cannot see) and the observation's consistency with the events it is told.
 
 use h3_adventure::{
-    AdventureCommand, AdventureEvent, AdventureEventKind, GuardsView, ObjectKind, ObjectView,
-    OfferKind, OwnHeroView, Pos as TilePos, TileMask, TileView, Viewers, allied,
+    AdventureCommand, AdventureEvent, AdventureEventKind, CastFailure, GuardsView, ObjectKind,
+    ObjectView, OfferKind, OwnHeroView, Pos as TilePos, TileMask, TileView, Viewers, allied,
 };
 use h3_content::HeroTypeId;
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
@@ -25,8 +25,8 @@ use super::play::{
     BLOCKERS, DWELLINGS, FAITHFUL, HERO_TEMPLATE, KINDS, LEVEL_1, MONSTER_OBJECTS, SHIPYARD_OBJECT,
     STRICT, Slots, Spot, Step, TELEPORTER_OBJECTS, TOWN_BLOCKED, TOWN_BUILDINGS, TOWN_ENTRANCE,
     TownPlan, WHIRLPOOL_OBJECT, add_town, all_objects, army, at_sea, experience, experienced,
-    lay_out, masks, object_index, object_reach, options, plan, player_of, resolve, slots, start_on,
-    steps, teleporter_at, tile, trade_plan, trade_steps,
+    lay_out, masks, object_index, object_reach, options, plan, player_of, resolve, slots,
+    spell_plan, spell_steps, start_on, steps, teleporter_at, tile,
 };
 use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 
@@ -42,7 +42,7 @@ use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 /// plans' teleporters (T106b1's `TELEPORTERS`), which draw nothing at the setup: [`vary`] removes
 /// and adds those the viewer never sees, so that a jump's draw or a gate's pair may differ.
 fn hygienic() -> impl Strategy<Value = super::play::Plan> {
-    trade_plan().prop_map(|mut plan| {
+    spell_plan().prop_map(|mut plan| {
         plan.towns.iter_mut().for_each(hygienic_town);
         plan
     })
@@ -3116,6 +3116,14 @@ fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
 /// battle event, start and end, and the heroes removed, (E08 T31) whom the game waits for,
 /// (E09 T9b2a) the guards' hints it changed and (E09 T9b2b) the towns' Capitols it changed; (E08
 /// T106b2) a move none for a hero that jumped where the viewer does not see the exit.
+/// The spell a cast on the map names, by its code (E08 T144b); none for any other command.
+fn command_of(command: &GameCommand) -> Option<u16> {
+    match command {
+        GameCommand::Cast { spell, .. } => Some(spell.raw()),
+        _ => None,
+    }
+}
+
 type Outcome = (
     bool,
     Vec<(HeroId, Option<(i32, i32, i32)>)>,
@@ -3126,6 +3134,7 @@ type Outcome = (
     Vec<AdventureEventKind>,
     Vec<(TownId, bool)>,
     Vec<Hired>,
+    Vec<u8>,
 );
 
 /// A hero a command hired, as it joined the map (E09 T38a2): its id and type, its army and its
@@ -3169,7 +3178,10 @@ type Hired = (
 /// And the heroes it hired as they joined the map (their types, armies and details): a tavern hero
 /// is a draw of the taverns' stream, which the hidden differences move, and a hire the viewer does
 /// not see puts on the map a hero that may walk into its sight later (a case the plans' hires
-/// found at 240 cases: the same record another type in the other game).
+/// found at 240 cases: the same record another type in the other game). (E08 T144b) And what its
+/// casts drew: Summon Boat's and Scuttle Boat's chance is a draw of the caster's player's stream
+/// (ADV-SPL-003, -004), which the other game's seed moves, so a cast that failed on it in one game
+/// and summoned, made or sank a boat in the other ends the comparison.
 fn outcome(
     (player, viewer, accepted): (PlayerId, PlayerId, bool),
     before: &[(HeroId, TilePos)],
@@ -3281,6 +3293,23 @@ fn outcome(
             _ => None,
         })
         .collect();
+    let drawn = events
+        .iter()
+        .filter_map(|e| match e {
+            GameEvent::CastFailed { reason, .. } => Some(match reason {
+                CastFailure::Chance => 0,
+                CastFailure::NoBoat => 1,
+                CastFailure::Target => 2,
+            }),
+            GameEvent::Adventure(AdventureEvent { kind, .. }) => match kind {
+                AdventureEventKind::BoatSummoned { .. } => Some(3),
+                AdventureEventKind::BoatCreated { .. } => Some(4),
+                AdventureEventKind::BoatScuttled { .. } => Some(5),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect();
     (
         accepted,
         moved,
@@ -3291,6 +3320,7 @@ fn outcome(
         guards,
         capitols,
         hired,
+        drawn,
     )
 }
 
@@ -3367,7 +3397,7 @@ proptest! {
         plan in hygienic(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in trade_steps(),
+        steps in spell_steps(),
         viewer in any::<u8>(),
         own in own_army(),
         unseen in unseen(),
@@ -3446,6 +3476,8 @@ proptest! {
             let known_before = (known(&a, viewer), known(&b, viewer));
             // E08 T106b2: whether the viewer's own command visits a teleporter (below).
             let entering = actor == Actor::Player(viewer) && enters_teleporter(&a, rules, &command);
+            // E08 T144b: whether it is a cast with a chance (below).
+            let chance = matches!(command_of(&command), Some(0 | 1));
             let ra = apply(&mut a, rules, actor, command.clone(), &mut ea);
             let visit = !matches!(command, GameCommand::Manage(_));
             let rb = apply(&mut b, rules, actor, command, &mut eb);
@@ -3466,6 +3498,13 @@ proptest! {
                 check_hire_sources(game, rules, viewer, &seen, events)?;
                 check_town_views(game, rules, viewer, &seen)?;
                 check_jump_ends(game, viewer, &seen, raw)?;
+            }
+            // E08 T144b: Summon Boat's and Scuttle Boat's chance (ADV-SPL-003, -004) is a draw of
+            // the caster's player's stream, which the other game's seed moves (`unseen.seed`):
+            // the viewer's own cast told otherwise in the other game ends the comparison, as every
+            // public draw it is shown does; another player's must go alike ([`outcome`]).
+            if actor == Actor::Player(viewer) && chance && ta != tb {
+                break;
             }
             // A battle shows its side the other's stacks (survey `E08-battles.md` §9; E08
             // T19a): the comparison ends when the viewer's starts.
@@ -3834,10 +3873,10 @@ proptest! {
     /// ([`check_bank_views`]).
     #[test]
     fn views_move_as_the_events_say(
-        plan in trade_plan(),
+        plan in spell_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in trade_steps(),
+        steps in spell_steps(),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start_on(&lay_out(&plan), rules, seed);
@@ -4053,6 +4092,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -4157,6 +4197,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     };
     let m = lay_out(&plan);
     let random = |m: &RawMap| -> Vec<(Spot, u32)> {
@@ -4236,6 +4277,7 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -4321,6 +4363,7 @@ fn vary_changes_the_teleporters_the_viewer_never_sees_only() {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     };
     let m = lay_out(&plan);
     let objects = |m: &RawMap| -> Vec<(u8, u8, u32)> {
@@ -4445,6 +4488,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     };
     let m = lay_out(&plan);
     // Each town's anchor, owner, garrison and buildings.
@@ -4586,6 +4630,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -4663,6 +4708,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {

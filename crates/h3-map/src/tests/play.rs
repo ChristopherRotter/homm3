@@ -54,7 +54,8 @@ use h3_game::{
     GameEvent, GameRuleset, GameState, HeroChange, HeroStatus, HireAnswer, HireSeen, HireTarget,
     HireView, Manage, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer,
     SlotState, TavernAnswer, TownCommand, TownHeroChange, UniversityAnswer, Viewer, apply,
-    hire_range, legal_commands, legal_management, legal_moves, observe, split_range,
+    hire_range, legal_cast_targets, legal_commands, legal_management, legal_moves, observe,
+    split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -76,7 +77,9 @@ use crate::{Limits, import, parse};
 
 /// The trades and services in the plans (E08 T135b2, increment 14's design note §18): their
 /// layout's draw, their step, their listing's oracle, their answers' oracles and their cover test.
+mod casts;
 mod trades;
+pub(super) use casts::{spell_plan, spell_steps};
 pub(super) use trades::{trade_plan, trade_steps};
 
 fn rules(profile: &str) -> GameRuleset {
@@ -1036,6 +1039,9 @@ pub(super) struct Plan {
     /// ([`trades::trades`]): each one's anchor (modulo the map) and object ([`TRADE_OBJECTS`]),
     /// laid out after the map Taverns (with them, [`bonuses_laid_out`]).
     pub(super) trades: Vec<(Spot, usize)>,
+    /// (E08 T144b; increment 15's design note §17) The casters ([`casts::spell_plan`]): heroes
+    /// with a Spell Book and some of the five adventure spells, laid out with the heroes.
+    pub(super) casters: Vec<casts::Caster>,
 }
 
 /// A plan's map garrison (E08 T116b1; increment 12's design note §16; ADV-GAR-001): where it
@@ -1616,6 +1622,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     banks: banked,
                     taverns: Vec::new(),
                     trades: Vec::new(),
+                    casters: Vec::new(),
                 }
             },
         )
@@ -2362,7 +2369,9 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         let parts = mated
             .filter(|e| e.parts)
             .map_or(&[][..], |_| &ELIXIR_PARTS[..]);
-        let book = skills.is_some() || (index == 0 && exchange.is_some());
+        // E08 T144b: a caster wears a Spell Book with its adventure spells of its own.
+        let caster = casts::caster_of(plan, usize::from(index), heroes.len());
+        let book = skills.is_some() || (index == 0 && exchange.is_some()) || caster.is_some();
         let own = backpack.is_some() || book || !worn_kit.is_empty();
         let artifacts = own.then(|| {
             let mut worn = vec![None; v.artifact_slots()];
@@ -2382,15 +2391,24 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
                 backpack: backpack.into_iter().flatten().copied().map(Some).collect(),
             }
         });
-        let spells = mated.filter(|e| v == Version::Sod && !e.spells.is_empty());
-        let spells = spells.map(|exchange| {
+        let mate_spells = mated.map_or(&[][..], |e| &e.spells[..]);
+        let mate_spells = mate_spells.iter().map(|&i| MATE_SPELLS[i]);
+        let cast_spells = caster.map_or(&[][..], |c| &c.spells[..]);
+        let cast_spells = cast_spells.iter().map(|&i| casts::ADVENTURE_SPELLS[i]);
+        let own: Vec<u8> = mate_spells.chain(cast_spells).collect();
+        let spells = (v == Version::Sod && !own.is_empty()).then(|| {
             let mut bits = vec![0u8; 9];
-            for &i in &exchange.spells {
-                let spell = MATE_SPELLS[i];
+            for spell in own {
                 bits[usize::from(spell / 8)] |= 1 << (spell % 8);
             }
             Bits(bits)
         });
+        // AB's one spell byte: a caster's first spell beside its type's own, else none.
+        let spell = (v == Version::Ab)
+            .then(|| caster.map_or(u8::MAX, |c| casts::ADVENTURE_SPELLS[c.spells[0]]));
+        let primary_skills = caster
+            .filter(|_| v == Version::Sod)
+            .map(|c| [1, 1, 1, c.knowledge]);
         let owner = if mated.is_some() {
             0
         } else {
@@ -2404,10 +2422,11 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             army,
             patrol: u8::MAX,
             sex: u8::MAX,
-            spell: (v == Version::Ab).then_some(u8::MAX),
+            spell,
             artifacts,
             secondary_skills: skills,
             spells,
+            primary_skills,
             ..HeroBody::default()
         };
         let mut o = object(x + 1, y, HERO_TEMPLATE, Body::Hero(Box::new(body)));
@@ -3083,6 +3102,10 @@ pub(super) enum Step {
     /// map a trade's revisit, an option that ends on a trade's entrance, or one that gets nearer to
     /// one ([`trades::seek_trade`]); as `Bank(n)` on a map without trades.
     Trade(u16),
+    /// (E08 T144b; increment 15's design note §17) In a battle as `Fight(n)`; a decision settled;
+    /// else a cast of the actor's, listed or at a target its hero's query gives, or the `n`-th
+    /// option ([`casts::seek_cast`]).
+    Cast(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -5197,6 +5220,7 @@ pub(super) fn resolve(
         Step::Bonus(n) => (who, seek_bonus(state, rules, legal, *n)),
         Step::Bank(n) => (who, seek_bank(state, rules, legal, *n)),
         Step::Trade(n) => (who, trades::seek_trade(state, rules, legal, *n)),
+        Step::Cast(n) => (who, casts::seek_cast(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
             let boat = |c: &GameCommand| {
                 matches!(
@@ -6481,6 +6505,11 @@ fn check_jumps(
     channels: &h3_adventure::Channels,
 ) -> Result<Option<(ObjectKind, Jumped)>, TestCaseError> {
     prop_assert_eq!(after.adventure().map().channels(), channels);
+    // E08 T144b: a Dimension Door's arrival is a `HeroTeleported` with no teleporter
+    // ([`casts::check_casts_step`] checks it).
+    if matches!(command, GameCommand::Cast { .. }) {
+        return Ok(None);
+    }
     let stepped = as_move(command).is_some();
     let revisit = matches!(
         command,
@@ -7025,8 +7054,7 @@ fn check_cast_targets(
         .filter(|(_, e)| e.targets());
     for &(spell, _) in targeted {
         for on in state.adventure().heroes() {
-            let queried =
-                h3_game::legal_cast_targets(state, rules, Actor::Player(player), (on.id, spell));
+            let queried = legal_cast_targets(state, rules, Actor::Player(player), (on.id, spell));
             let expected = if ready && on.owner == player {
                 accepted_targets(state, rules, player, (on.id, spell))
             } else {
@@ -7611,6 +7639,18 @@ fn check_unlisted(
         let mut targets = CastTargets::new();
         cast_targets(field, ruleset, side, spell, &mut targets);
         prop_assert!(targets.iter().any(|&t| t == target), "{:?}", command);
+        return Ok(());
+    }
+    // E08 T144b: a cast with a target `apply` accepts is one at a target its hero's query gives
+    // (`legal_cast_targets`, GAM-SPL-001: `legal_commands` lists none of them, decision 422).
+    if let GameCommand::Cast {
+        hero,
+        spell,
+        target: Some(target),
+    } = *command
+    {
+        let targets = legal_cast_targets(before, rules, Actor::Player(actor), (hero, spell));
+        prop_assert!(targets.contains(&target), "unlisted {:?} accepted", command);
         return Ok(());
     }
     // E08 T52: a management command `apply` accepts is one its hero lists, or a split to a count
@@ -13329,10 +13369,10 @@ proptest! {
     /// ([`check_guild_step`], `given` its count by town).
     #[test]
     fn every_step_keeps_the_commands_invariants(
-        plan in trade_plan(),
+        plan in spell_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in trade_steps(),
+        steps in spell_steps(),
         experience in proptest::option::weighted(0.5, vec(experience(), 6)),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
@@ -13416,6 +13456,8 @@ proptest! {
             check_banks(rules, (&before, &state), (player, &command), &events)?;
             // E08 T135b2: the trades' stocks and the answers' effects, listed or not.
             trades::check_trades(rules, (&before, &state), (player, &command), &events)?;
+            // E08 T144b: the door's points and the day spells cleared at a new day.
+            casts::check_casts_step(rules, (&before, &state), &command, &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -13431,9 +13473,9 @@ proptest! {
     /// parent evolve identically under the same commands.
     #[test]
     fn forks_evolve_as_their_parent(
-        plan in trade_plan(),
+        plan in spell_plan(),
         seed in any::<u64>(),
-        steps in trade_steps().prop_filter("a step", |steps| !steps.is_empty()),
+        steps in spell_steps().prop_filter("a step", |steps| !steps.is_empty()),
         split in any::<proptest::sample::Index>(),
     ) {
         let rules = &*FAITHFUL;
@@ -13487,10 +13529,10 @@ proptest! {
     /// forked with the state).
     #[test]
     fn a_forks_week_is_its_parents(
-        plan in trade_plan(),
+        plan in spell_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in trade_steps(),
+        steps in spell_steps(),
         n in any::<u16>(),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
@@ -13546,9 +13588,9 @@ proptest! {
     /// also with the rules compiled again.
     #[test]
     fn replays_are_deterministic(
-        plan in trade_plan(),
+        plan in spell_plan(),
         seed in any::<u64>(),
-        steps in trade_steps(),
+        steps in spell_steps(),
     ) {
         let m = lay_out(&plan);
         prop_assert_eq!(parse(&encode(&m), &Limits::default()), Ok(m));
@@ -14237,6 +14279,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.

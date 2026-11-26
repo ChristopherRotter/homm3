@@ -402,6 +402,24 @@ two ends by viewer), its failure `CastFailed`'s `Target`; `SpellReject::NoPoints
   door's points never negative; the flag's off side passes the hygiene property.
 - **Benchmarks:** the passage's new row and the combined level sit on the reach loop: measured
   right after the first build (`homm3-bench-regression`); the random workload gains casts.
+- *As built (T144b, whole: decision 423):* the map `e08-spells-36.h3m` (`h3-map`'s
+  `spells_map.rs`: the strait, the island half hidden rock, four empty boats, the Lucid Pools,
+  Magic Clouds, Magic Plains and Cursed Ground, two Prisons, the Market of Time; red's six
+  casters, blue's seven) with its tests (the import; the grounds' masteries and costs; twenty
+  refused casts in each profile changing nothing, the refusals a replay cannot hold); twelve
+  golden replays (`spells-*`: the boats, the chances at None, the flights and the doors in both
+  profiles, the water walk, the prisons; three random games), the server lane's counts 130
+  (`cross-lane`); the plans' casters (`play/casts.rs`: `spell_plan` over `trade_plan`, a Spell
+  Book, one to five of the spells of their own on SoD, the one spell byte on AB, knowledge 2 to
+  12), `Step::Cast` (the listed casts and the queried targets, one step of eight a cast drawn
+  alone, accepted or refused) and `check_casts_step` (the door's points at the told mastery, the
+  arrival or the caster's tile; no day spell after a new day's start), the properties of
+  `play.rs` and `view.rs` drawing them (the hygiene property's strict side over the casts); the
+  cover test `the_plans_cast_on_the_map`; the workload `random-play-spells-36`; the original
+  data's census (`original_data.rs`' `increment_15`, `built_prisoners`: 89 Prisons, every
+  prisoner built as its body, the Market of Time `empty`). *Agent's calls, change freely:* the
+  map's layout and heroes, the replays' seeds and paths, the casters' draw and weights, the
+  workload's seed. The benches README's row waits for T145's `shared/` task.
 
 ### 18. Versions, rule ids, quirks, stubs
 
