@@ -56,6 +56,18 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-26, E24 M5 T4b, in progress** (kept whole by the user at its start; branch
+  `map-client/e24-m5-t4b`, no PR yet): **step 1 done** (commit `ad1bbe1`): a hosted question's
+  answer and a hosted level-up's offer asked of the host (`Loop::answer_asked`, `level_asked`;
+  `reach::Hosted` keeps the answers and next levels), the window plays the session's `Answer`
+  and lays the visit out again; a question's facts the engine's decision (`HotSeat::decision`,
+  `observe`: SRV-STUB-5), `engine::visits::opened` (chest, Arena, School, Pandora's Box).
+  Checked under Xvfb on `game-asks`' map (gzip it: `play` reads the game's form): every frame
+  exact, the records played. **Next:** step 2, the other offers (Tomb, Tree, Cartographer,
+  Border Guard, Pyramid, monsters, a dwelling's hire question) and a next question; then
+  Space's visit, the seeded random picks, the week's and month's boxes, the facts' questions,
+  the design note §5.27 and the log.
+
 - **2026-11-26, E24 M5 T4a** (T4 cut in three by the user at its start): `h3_map_view::reach`
   (`Stand`, `Reach`, `Hosted`, `WalkAsked`), the loop's and the replay's host questions (the
   reach per stand, a walk past the known ones, refusals by stand), `Hover::cursor_by`,
