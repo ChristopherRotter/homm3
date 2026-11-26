@@ -30,7 +30,7 @@ id       = "CPU-TRN-002"
 title    = "The turn's frame: its start, its two passes, the middle and its end"
 context  = "computer"
 status   = "implemented"
-summary  = "A computer player's turn (ai_player_turn 0x525E80): at its start (its first call on a new day) no hero is done (the original clears every hero's and garrison hero's +0x11C and +0x43) and the turn's flag F is set: the game's difficulty above Easy and a town owned. The first pass plays the next hero (CPU-TRN-003) through its turn (CPU-TRN-004) until none is left; then the middle (ai_turn_middle 0x428DD0) and F set again as at the start (0x525FD5); then the second pass the same way; then the turn ends (EndTurn). One call gives one command: the frame goes on from its memory until a step gives one, each step after a command reading the state the command made. The frame draws nothing. The start's records and the middle's builds, hires and shares are AI-STUB-3 (T2d, increment 3)."
+summary  = "A computer player's turn (ai_player_turn 0x525E80): at its start (its first call on a new day) no hero is done (the original clears every hero's and garrison hero's +0x11C and +0x43) and the turn's flag F is set: the game's difficulty above Easy and a town owned. The first pass plays the next hero (CPU-TRN-003) through its turn (CPU-TRN-004) until none is left; then the middle (ai_turn_middle 0x428DD0) and F set again as at the start (0x525FD5); then the second pass the same way; then the turn ends (EndTurn). One call gives one command: the frame goes on from its memory until a step gives one, each step after a command reading the state the command made. The frame draws nothing. Since T2d the start writes its records (CPU-STA-001); the middle's builds, hires and shares are AI-STUB-3 (increment 3)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -69,7 +69,7 @@ id       = "CPU-TRN-005"
 title    = "The computer player's memory"
 context  = "computer"
 status   = "implemented"
-summary  = "What the computer player keeps outside the game state (ADR-0030 point 5; h3_game::computer::Memory), one per computer player, empty at its first turn in a game (the original's records survive from an earlier game: a quirk candidate, not reproduced): since E31 T2a the frame of the turn it plays: the turn's day, its pass, the turn's flag, the hero a garrison sent out, the heroes done (the original's sleep +0x11C, cleared at each of its turn starts). Its canonical encoding v1 (little-endian: the version; 0 without a turn, else 1, the day u32, the pass u8, the flag u8, the hero sent out as 0 or 1 and its id u16, the count u32 of heroes done and their ids u16 in ascending order) is the only one its decoder accepts; its hash is FNV-1a over the encoding. The heroes' destinations, the only fields the original carries into the next turn (+0x35, +0x41), come with the planning (T2i)."
+summary  = "What the computer player keeps outside the game state (ADR-0030 point 5; h3_game::computer::Memory), one per computer player, empty at its first turn in a game (the original's records survive from an earlier game: a quirk candidate, not reproduced): since E31 T2a the frame of the turn it plays: the turn's day, its pass, the turn's flag, the hero a garrison sent out, the heroes done (the original's sleep +0x11C, cleared at each of its turn starts); since T2d the start's records (CPU-STA-001), kept until its next turn start, so that its answers in the other players' turns read the last start's. Its canonical encoding v2 (little-endian: the version; 0 without a turn, else 1, the day u32, the pass u8, the flag u8, the hero sent out as 0 or 1 and its id u16, the count u32 of heroes done and their ids u16 in ascending order; then the record: the Eye value i32, the number of resources u32 and per resource the reserve, the means and the demand i32, the rate's row u8 (1 to 10), the mean weight i32, and three lists each its length u32 and its entries in ascending id order: the heroes' experience weights (u16, f32 bits u32), the threats (u16, i32 not 0), the towns' counts (u16, u8 not 0)) is the only one its decoder accepts; its hash is FNV-1a over the encoding. The heroes' destinations, the only fields the original carries into the next turn (+0x35, +0x41), come with the planning (T2i)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -241,4 +241,82 @@ numeric  = "float"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (survey section 2.2; E31 T1a2b, re-read at T2c): ai_army_fight_sim 0x427330 (the factor +0x47A at 0x427353, the victory hero at 0x42739F to 0x4273BE, the human tests 0x4273C1 to 0x42742A, the two sim_combat_start and sim_combat_run, the loss at 0x42748A, sim_apply_losses, army_experience_points 0x4CA3B0, hero_learning 0x4E4840, ai_experience_value 0x527710, sim_necromancy, army_value 0x44AC80, the net at 0x427547 to 0x427566, the owner at 0x427577 to 0x427587, ai_difficulty_blend 0x428710, the conditions 0x4275BB to 0x42760C); hero_reset 0x4D8720 at 0x4D890A to 0x4D8967 (the aggressiveness draw); ai_turn_start_values 0x527960 (the weights)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-STA-001"
+title    = "The turn start's records"
+context  = "computer"
+status   = "implemented"
+summary  = "What a computer player's turn start writes before its first pass (ai_turn_start 0x4297C0, ai_turn_start_values 0x527960; h3_game::computer's start record, kept in the memory, CPU-TRN-005), in the original's order, none of it writing the game state: the done marks cleared (CPU-TRN-002); the Eye value 0 while the engine has no Eye of the Magi (AI-STUB-10); the defence fold (its recruits AI-STUB-12) and the threat fold (CPU-STA-004); the recruit reserve (CPU-STA-002); the resource weights (CPU-STA-003); the Grail target (AI-STUB-15); then each of the player's heroes on the map its experience weight (CPU-STA-006; its spell gains AI-STUB-13) and the artifacts' mean (AI-STUB-14). The difficulty's two weights are functions of the difficulty alone (CPU-SIM-012's blend). The record is read in the computer's own turn and, until its next start, by its answers in the other players' turns."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E31-computer-player.md sections 1.5, 1.6, 4.6; E31 T1a1a, re-read at T2d): ai_turn_start 0x4297C0 (the clears to 0x42988B, player_daily_income 0x4B8AF0, ai_eyes_value 0x429910 at 0x4298B8, the folds at 0x4298D0 and 0x4298E5, ai_recruit_reserve 0x429AD0, ai_resource_weights 0x428740, player_puzzle_target 0x4BAE50); ai_turn_start_values 0x527960 (ai_hero_effectiveness 0x527760 per hero of the player's list, the artifacts' mean over 0x433AA0 at 0x5279C1 to 0x527A28, the difficulty weights to 0x527A94)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-STA-002"
+title    = "The recruit reserve"
+context  = "computer"
+status   = "implemented"
+summary  = "A computer player's recruit reserve at its turn start (ai_recruit_reserve 0x429AD0; the record's +0x08): per resource the most, over its towns, of what a town's two most valuable available stacks cost. A town's stacks are its fourteen indexes with creatures available, each valued at the low 16 bits of its creature's AI value times the count in 16 bits (wrapping, then widened), sorted lowest first by the library's sort (CPU-STA-003's; at most fourteen, so by insertion: equal values keep their index order); the last two count, each its creature's cost times its count (32 bits). A town with a single stack counts none: the loop's bound, the count less 2, is compared unsigned (0x429CC6). Both are ported as read (survey section 5.5 #67, #68)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 1.5; E31 T1a1a, read whole at T2d): ai_recruit_reserve 0x429AD0 (the entries at 0x429B98 to 0x429BED: town_creatures 0x6747B4, the 16-bit product at 0x429BD4; army_entries_insertion_sort_low 0x435310; the last two at 0x429C9A to 0x429D00, creature_cost_array 0x54E7C0; the largest at 0x429D0D)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-STA-003"
+title    = "The resource weights"
+context  = "computer"
+status   = "implemented"
+summary  = "A computer player's resource weights at its turn start (ai_resource_weights 0x428740): the means (+0x24) per resource its stock plus twice the day's income (32 bits); the demand (+0x40) per resource the largest cost of a building any of its towns could build now (town_buildable_now 0x5C0F20, which does not read the day's mark: the hall's test of the town without the mark, the Capitol left out while the owner holds one), plus the full costs of the first three entries of a list of every creature with its available count summed over its towns' indexes (16 bits; from the week's fifth day each with the index's growth, TWN-GRO-001, added), valued at the count times the AI value (32 bits), sorted highest first by the library's std::sort (Visual C++ 5/6: the quicksort around the median of three down to parts of 16, then the insertion sort; equal values end where it leaves them); the rate the market's resource factor (an f32) at the count of its towns whose record lists a Marketplace not forbidden, from 1 to 10. Per resource the factor, in double precision: no demand, the rate; a demand at most the means, ((means - demand) x rate + demand) / means; more, the demand, over the means when they are above 1, at most 1 / rate; the weight (+0x60, the player's +0x128) the factor times the resource's value (resource_value 0x5ECD10, the market's). The player's mean weight (+0x160): the first six weights summed, each sum truncated, over 5."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 1.5; E31 T1a1a, T1a2c, read whole at T2d): ai_resource_weights 0x428740 (the means at 0x428797, the buildings at 0x4287F9 to 0x42886A with building_bits 0x66CD98 and building_cost 0x5C1080, the list at 0x4288A3 to 0x428996 with town_dwelling_growth 0x5BFB60 from game +0x1F63E at least 5, the values at 0x4289A2, the sort's quicksort 0x434CE0 with army_entries_median 0x435240 and army_entries_partition 0x435290, the insertions 0x435160, the first three at 0x428B89 to 0x428C06, the Marketplaces by town_building_allowed 0x5C12A0 and market_resource_rates 0x678344 at 0x428C39 to 0x428C7E, the factor at 0x428C9F to 0x428D27, the weights at 0x428D2A, the mean at 0x428D6E to 0x428DAB)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-STA-004"
+title    = "The threat fold over the enemies' reach"
+context  = "computer"
+status   = "implemented"
+summary  = "Which enemy heroes threaten a computer player's towns at its turn start (ai_enemy_reach_fold 0x4280E0 with ai_town_threat_vtable 0x63B670, through ai_reach_fold_towns 0x4282B0): every town's count (+0x3) and every enemy hero's threat (+0x11D) cleared; then from each hero on the map of a player not of its team (none is defeated before E10), a search with the hero's day's maximum now plus 800 (the engine's reach, AI-STUB-11), and for each of the computer's towns whose entrance it reaches and that it would take (CPU-STA-005), the hero's threat 5 000 000 over the computer's count of towns and the town's count one more (a byte). The defence fold before it (ai_town_defence_vtable 0x63B67C) sets the same threats and buys recruits into the town (AI-STUB-12, increment 3); with its purchases stubbed the threat fold's result is the start's. Every enemy hero's place and army is read whatever its owner has explored (a hidden read, survey section 5.2)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey sections 1.5, 2.4; E31 T1a1a, T1a2d, re-read at T2d): ai_enemy_reach_fold 0x4280E0 (the team and defeat tests at 0x428116 to 0x428138, hero_max_movement 0x4E4D90 plus 800 at 0x4281CC, mode 3, the threat cleared at 0x4281E6, pathfinder_run 0x56B440); ai_reach_fold_towns 0x4282B0 (the node's bit at 0x4283B3, ai_town_capture_sim at 0x4283BE, 5 000 000 over the town count at 0x4283CF to 0x4283DD); ai_town_threat_clear 0x428260, ai_town_threat_count 0x428570; the vtables 0x63B670, 0x63B67C"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-STA-005"
+title    = "The town's capture estimate"
+context  = "computer"
+status   = "implemented"
+summary  = "Whether an enemy hero would take a computer's town (ai_town_capture_sim 0x428410): a simulated combat (h3_battle::estimate, CPU-SIM-001 to -010) of the hero's army, its factor 1.25, with its hero, facing the town's walls, against the army the town shows (town_garrison_army 0x5C1460: its garrison hero's, else its garrison), its factor 0.75, with no hero (a garrison hero's skills and spells do not enter), both on the town's entrance (its special ground and anti-magic garrison); true when the hero's side keeps a strength above 0. No draws; it changes nothing."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.2; E31 T1a2b, re-read at T2d): ai_town_capture_sim 0x428410 (the copies at 0x428447 and 0x428462, the tile at 0x42845D to 0x4284EA, sim_combat_start 0x423EE0 with 1.25 at 0x4284F4 and 0.75 at 0x428506, sim_combat_run 0x426BC0, the test at 0x42853B)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-STA-006"
+title    = "A hero's experience weight"
+context  = "computer"
+status   = "implemented"
+summary  = "What one experience point is worth to a computer's hero (ai_hero_effectiveness 0x527760's +0x109), set at its turn start for each of its heroes on the map (not the garrison heroes, outside the player's list) and after each step (T2j): (f32(2 500) + f32(its army's value)) / f32(40 x the experience to its next level), in double precision, stored as an f32 (+infinity with no experience to the next level). The same expression as the fight estimate's ai_experience_value 0x527710 (CPU-SIM-012), here of the army as it stands. The hero's other values of the function (the gains of one Spell Power, a duration, a Knowledge point, the mana refilled and doubled) come with the spell values (AI-STUB-13, T2e)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, re-read at T2d): ai_hero_effectiveness 0x527760 (experience_to_next_level 0x4DA420 of the level +0x55, army_value 0x44AC80, hero_price 0x67814C, the stores at 0x5277BA to 0x5277D8); ai_turn_start_values 0x527960's loop over the player's list +0x8"
   confidence = "high"

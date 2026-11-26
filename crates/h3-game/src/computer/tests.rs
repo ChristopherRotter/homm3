@@ -21,6 +21,7 @@ use h3_towns::{TownCommand, TownHeroChange};
 use proptest::prelude::*;
 
 use super::memory::{Pass, Turn};
+use super::start::{self, Record};
 use super::turn::{Pick, counted, next_hero};
 use super::*;
 use crate::town::tests::{towns_rules, towns_setup};
@@ -114,6 +115,7 @@ fn frame(memory: &mut Memory, day: u32) -> Turn {
 fn a_turn_without_a_step_ends_at_once_and_a_new_day_starts_a_new_turn() {
     let (rules, mut game) = town_game(|_| {});
     let (mut red, mut blue) = (Memory::new(), Memory::new());
+    let record = start::record(&game, &rules, RED);
     // Only the acting player has a command; none for a player not in the game.
     assert_eq!(choose(&game, &rules, BLUE, &mut blue, &mut stream()), None);
     let nobody = PlayerId::new(7);
@@ -133,6 +135,7 @@ fn a_turn_without_a_step_ends_at_once_and_a_new_day_starts_a_new_turn() {
             flag: true,
             next: None,
             asleep: vec![HeroId::new(0)],
+            record,
         }
     );
     assert_eq!(choose(&game, &rules, RED, &mut red, &mut stream()), None);
@@ -145,7 +148,17 @@ fn a_turn_without_a_step_ends_at_once_and_a_new_day_starts_a_new_turn() {
         choose(&game, &rules, RED, &mut fresh, &mut rng),
         Some(GameCommand::EndTurn)
     );
-    assert_eq!(frame(&mut fresh, 2), Turn { day: 2, ..played });
+    // Its records anew too: the treasury grew by the day's income.
+    let record = start::record(&game, &rules, RED);
+    assert_ne!(record.means, played.record.means);
+    assert_eq!(
+        frame(&mut fresh, 2),
+        Turn {
+            day: 2,
+            record,
+            ..played
+        }
+    );
     assert_eq!(rng, stream(), "the frame draws nothing");
 }
 
@@ -316,6 +329,7 @@ fn the_weakest_hero_by_its_primary_skills_plays_first_a_tie_to_the_earlier_in_th
         flag: false,
         next: None,
         asleep: Vec::new(),
+        record: Record::default(),
     });
     let mut order = Vec::new();
     while let Pick::Hero(hero, alone) = next_hero(&game, &rules, RED, turn) {
@@ -441,6 +455,44 @@ fn holding(turn: Turn) -> Memory {
     memory
 }
 
+fn record_strategy() -> impl Strategy<Value = Record> {
+    let lists = (
+        proptest::collection::btree_map(any::<u16>(), any::<u32>(), 0..6),
+        proptest::collection::btree_map(
+            any::<u16>(),
+            any::<i32>().prop_filter("not 0", |t| *t != 0),
+            0..6,
+        ),
+        proptest::collection::btree_map(any::<u16>(), 1_u8.., 0..6),
+    );
+    let arrays = (0_usize..8).prop_flat_map(|n| {
+        proptest::collection::vec(any::<i32>(), 3 * n)
+            .prop_map(move |v| (v[..n].to_vec(), v[n..2 * n].to_vec(), v[2 * n..].to_vec()))
+    });
+    (any::<i32>(), arrays, 1_u8..=10, any::<i32>(), lists).prop_map(
+        |(eyes, (reserve, means, demand), markets, mean, (experience, threats, towns))| Record {
+            eyes,
+            reserve,
+            means,
+            demand,
+            markets,
+            mean,
+            experience: experience
+                .into_iter()
+                .map(|(h, b)| (HeroId::new(h), b))
+                .collect(),
+            threats: threats
+                .into_iter()
+                .map(|(h, t)| (HeroId::new(h), t))
+                .collect(),
+            towns: towns
+                .into_iter()
+                .map(|(t, c)| (TownId::new(t), c))
+                .collect(),
+        },
+    )
+}
+
 fn turn_strategy() -> impl Strategy<Value = Turn> {
     (
         any::<u32>(),
@@ -448,14 +500,31 @@ fn turn_strategy() -> impl Strategy<Value = Turn> {
         any::<bool>(),
         proptest::option::of(any::<u16>()),
         proptest::collection::btree_set(any::<u16>(), 0..12),
+        record_strategy(),
     )
-        .prop_map(|(day, pass, flag, next, asleep)| Turn {
+        .prop_map(|(day, pass, flag, next, asleep, record)| Turn {
             day,
             pass: [Pass::First, Pass::Second, Pass::Over][usize::from(pass)],
             flag,
             next: next.map(HeroId::new),
             asleep: asleep.into_iter().map(HeroId::new).collect(),
+            record,
         })
+}
+
+/// A start's record with every field set (two resources, one entry in each list).
+fn sample_record() -> Record {
+    Record {
+        eyes: -2,
+        reserve: vec![1, 2],
+        means: vec![3, -1],
+        demand: vec![0x0100, 4],
+        markets: 3,
+        mean: 7,
+        experience: vec![(HeroId::new(1), 0x3F80_0000)],
+        threats: vec![(HeroId::new(9), 2_500_000)],
+        towns: vec![(TownId::new(0), 2)],
+    }
 }
 
 // covers: CPU-TRN-005
@@ -463,22 +532,26 @@ fn turn_strategy() -> impl Strategy<Value = Turn> {
 fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let empty = Memory::new();
     assert_eq!(empty, Memory::default());
-    assert_eq!(empty.encode(), [1, 0, 0, 0, 0]);
+    assert_eq!(empty.encode(), [2, 0, 0, 0, 0]);
     let turn = Turn {
         day: 0x0102_0304,
         pass: Pass::Second,
         flag: true,
         next: Some(HeroId::new(0x0506)),
         asleep: vec![HeroId::new(1), HeroId::new(0x0203)],
+        record: sample_record(),
     };
     let full = holding(turn.clone());
     let bytes = full.encode();
-    assert_eq!(
-        bytes,
-        [
-            1, 0, 0, 0, 1, 4, 3, 2, 1, 1, 1, 1, 6, 5, 2, 0, 0, 0, 1, 0, 3, 2
-        ]
-    );
+    let frame: [u8; 22] = [
+        2, 0, 0, 0, 1, 4, 3, 2, 1, 1, 1, 1, 6, 5, 2, 0, 0, 0, 1, 0, 3, 2,
+    ];
+    let record: [u8; 64] = [
+        0xFE, 0xFF, 0xFF, 0xFF, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0xFF, 0xFF, 0xFF,
+        0xFF, 0, 1, 0, 0, 4, 0, 0, 0, 3, 7, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0x80, 0x3F, 1, 0, 0,
+        0, 9, 0, 0xA0, 0x25, 0x26, 0, 1, 0, 0, 0, 0, 0, 2,
+    ];
+    assert_eq!(bytes, [&frame[..], &record[..]].concat());
     assert_eq!(Memory::decode(&bytes), Ok(full.clone()));
     assert_eq!(Memory::decode(&empty.encode()), Ok(empty.clone()));
     // The hash is FNV-1a over the encoding.
@@ -486,7 +559,9 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     h.write_bytes(&bytes);
     assert_eq!((full.hash(), hash_of(&full)), (h.finish(), h.finish()));
     assert_ne!(full.hash(), empty.hash());
-    // Every shorter prefix, a longer one and each value out of its range are refused.
+    // Every shorter prefix, a longer one and each value out of its range are refused: the tags,
+    // the pass, the flag, the done heroes' order, the rate's row (0 and 11), a threat of 0 and a
+    // town's count of 0.
     let malformed = Err(MemoryError::Malformed);
     for end in 0..bytes.len() {
         assert_eq!(Memory::decode(&bytes[..end]), malformed, "{end}");
@@ -494,22 +569,46 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let mut longer = bytes.clone();
     longer.push(0);
     assert_eq!(Memory::decode(&longer), malformed);
-    for (at, value) in [(4, 2), (9, 3), (10, 2), (11, 2), (19, 3)] {
+    let edits: [(usize, &[u8]); 9] = [
+        (4, &[2]),
+        (9, &[3]),
+        (10, &[2]),
+        (11, &[2]),
+        (19, &[3]),
+        (54, &[0]),
+        (54, &[11]),
+        (75, &[0, 0, 0, 0]),
+        (85, &[0]),
+    ];
+    for (at, values) in edits {
         let mut edited = bytes.clone();
-        edited[at] = value;
-        assert_eq!(Memory::decode(&edited), malformed, "{at}: {value}");
+        edited[at..at + values.len()].copy_from_slice(values);
+        assert_eq!(Memory::decode(&edited), malformed, "{at}: {values:?}");
     }
     let equal = holding(Turn {
         asleep: vec![HeroId::new(3), HeroId::new(3)],
         ..turn.clone()
     });
     assert_eq!(Memory::decode(&equal.encode()), malformed);
+    let mut twice = sample_record();
+    twice.experience.push((HeroId::new(1), 0));
+    let mut threats = sample_record();
+    threats.threats.insert(0, (HeroId::new(10), 1));
+    let mut towns = sample_record();
+    towns.towns.push((TownId::new(0), 1));
+    for record in [twice, threats, towns] {
+        let unordered = holding(Turn {
+            record,
+            ..turn.clone()
+        });
+        assert_eq!(Memory::decode(&unordered.encode()), malformed);
+    }
     let none_sent = holding(Turn { next: None, ..turn });
     assert_eq!(Memory::decode(&none_sent.encode()), Ok(none_sent));
     let mut other = bytes;
-    other[0] = 2;
-    assert_eq!(Memory::decode(&other), Err(MemoryError::Version(2)));
-    assert_eq!(MEMORY_ENCODING_VERSION, 1);
+    other[0] = 1;
+    assert_eq!(Memory::decode(&other), Err(MemoryError::Version(1)));
+    assert_eq!(MEMORY_ENCODING_VERSION, 2);
 }
 
 proptest! {
@@ -517,7 +616,7 @@ proptest! {
     #[test]
     fn a_memory_decodes_from_its_encoding_and_bytes_decode_only_to_theirs(
         turn in proptest::option::of(turn_strategy()),
-        bytes in proptest::collection::vec(any::<u8>(), 0..40),
+        bytes in proptest::collection::vec(any::<u8>(), 0..120),
     ) {
         let memory = turn.map_or_else(Memory::new, holding);
         prop_assert_eq!(Memory::decode(&memory.encode()), Ok(memory.clone()));

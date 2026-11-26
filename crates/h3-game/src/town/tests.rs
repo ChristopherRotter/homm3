@@ -80,7 +80,7 @@ fn towns_core(elf: bool) -> Ruleset {
 }
 
 /// [`towns_core`]'s pack.
-pub(super) fn towns_core_pack(elf: bool) -> ContentPack {
+pub(crate) fn towns_core_pack(elf: bool) -> ContentPack {
     let mut pack = core_pack(elf);
     if elf {
         let ent = CreatureDef {
@@ -185,7 +185,7 @@ pub(super) const SHIPYARD: usize = 12;
 /// [`town_pack`]'s lookout's reveal radius; its part's is 5.
 pub(super) const LOOKOUT_RADIUS: u8 = 20;
 
-pub(super) fn town_pack(elf: bool) -> TownPack {
+pub(crate) fn town_pack(elf: bool) -> TownPack {
     let mut roles: Vec<BuildingRoles> = (1..=4)
         .map(|level| BuildingRoles {
             hall: Some(level),
@@ -346,7 +346,7 @@ pub(super) fn rules_of(core: Ruleset, towns: &TownPack, elf: bool, side: u16) ->
 
 /// The game's rules of [`towns_rules`] on `core`'s pack and the town part of `towns`, with
 /// `edit` made to the adventure pack before it compiles (E09 T26a1: a dwelling, the months).
-pub(super) fn rules_with_adventure(
+pub(crate) fn rules_with_adventure(
     core: ContentPack,
     towns: &TownPack,
     edit: impl FnOnce(&mut AdventurePack),

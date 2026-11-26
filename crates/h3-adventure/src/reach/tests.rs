@@ -177,6 +177,25 @@ fn the_query_searches_only_as_far_as_the_points_go() {
     assert_eq!(tiles.len(), 5);
     assert!(tiles.iter().all(|&(_, left)| left == 0));
     assert_eq!(reach.points_left(p(14, 0)), None);
+    // E31 T2d (`cross-lane`): the day's maximum now, as the turn's start sets it, and a search with
+    // the points a caller gives: the maximum takes the hero back to its start, which 100 do not.
+    let most = state.day_maximum_of(&rules.0, &rules.1, &[], HeroId::new(1));
+    assert_eq!(most, Some(state.hero(HeroId::new(1)).unwrap().max_movement));
+    let given = |points| {
+        state
+            .reach_with(&rules.0, &rules.1, &[], (HeroId::new(1), points))
+            .unwrap()
+    };
+    let far = given(most.unwrap());
+    assert_eq!(far.points_left(p(12, 0)), most);
+    assert!(far.points_left(p(0, 0)).is_some());
+    assert_eq!(given(100), reach);
+    let unknown = HeroId::new(9);
+    assert_eq!(state.day_maximum_of(&rules.0, &rules.1, &[], unknown), None);
+    assert_eq!(
+        state.reach_with(&rules.0, &rules.1, &[], (unknown, 100)),
+        None
+    );
 }
 
 // covers: ADV-MOV-006
