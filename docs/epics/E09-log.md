@@ -6761,6 +6761,10 @@ but `check-lane` (by design; `check-lane --cross-lane --base origin/master` ok),
 (a covers of TWN-VEW-005, not yet a rule: dropped) and coverage (one region, `garrisoned_mut`'s
 `?`: written without it, the step run again clean); bench-check inside every gate (no
 re-baseline), determinism and `original-data` (T57's owed run) passed. Coverage 26 minutes,
-determinism 10, bench-check 18. `cargo clippy --workspace --all-targets -- -D warnings`; `cargo
-test -p h3-towns -p h3-adventure -p h3-game -p h3-files -p h3-protocol -p h3-server -p h3-sim -p
-h3-cli` (every golden replayed).
+determinism 10, bench-check 18. `verify-step coverage --scope server` (the wire's mapping, the
+town trap) clean; its first run met a timing flake of `h3-server`'s
+`a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles_void` under the
+instrumentation (the test passes alone and in the plain run). `cargo clippy --workspace
+--all-targets -- -D warnings`; `cargo test -p h3-towns -p h3-adventure -p h3-game -p h3-files -p
+h3-protocol -p h3-server -p h3-sim -p h3-cli` (every golden replayed). `master`'s da69ee4 (#1199,
+rmg only) merged in.
