@@ -107,6 +107,10 @@ impl Inputs {
                 .collect(),
             map_limits: rmg_limits.map_limits,
             zone_limits: rmg_limits.zone_limits,
+            layout_cos: rmg_limits.layout_cos,
+            layout_sin: rmg_limits.layout_sin,
+            terrain_towns: rmg_limits.terrain_towns,
+            native_terrains: rmg_limits.native_terrains,
         };
         let obstacles =
             h3_formats::exe::obstacle_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;

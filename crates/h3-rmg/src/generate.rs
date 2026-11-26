@@ -1,15 +1,20 @@
 //! `generate`'s frame (ADR-0029 points 2, 7 and 8; survey `docs/rules/surveys/E14-generator.md`
 //! §1.2 to §1.5): the run's adjustments, the seed, water's Random, the templates kept and drawn,
-//! the banned heroes and the positions, each draw reported to a [`Trace`]. The fifteen steps and
-//! the writer's content come with increments 3 to 7.
+//! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
+//! T3c), each draw and each step's end reported to a [`Trace`]. Steps 2 to 15 and the writer's
+//! content come with increments 3 to 7.
 
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{RMG_ROE_MONSTER_TOWN_BYTE, RMG_UNOWNED_START_SEVENTH, Ruleset};
+use h3_content::{
+    RMG_ROE_MONSTER_TOWN_BYTE, RMG_TERRAIN_TOWNS_COUNT, RMG_UNOWNED_START_SEVENTH, Ruleset,
+};
 use h3_kernel::rng::CrtRand;
 
+use crate::cells::Cells;
+use crate::layout::{LayoutInput, ZoneGenerator, lay_out};
 use crate::part::RmgRuleset;
 use crate::settings::{COLOURS, Settings, SettingsError, Water};
 use crate::template::{Fit, KeptTemplate, PositionError, kept_templates, positions};
@@ -24,15 +29,26 @@ pub const SITE_WATER: u32 = 0x0053_7C89;
 /// The call site of the template's draw (`rmg_generate_map`, `rmg_template_draw`).
 pub const SITE_TEMPLATE: u32 = 0x0054_9975;
 
+/// What the generation holds at a step's end, as the comparison seam reads it (ADR-0029 point
+/// 8): the generator's map (the oracle's dump of that step) and the zone generators (its
+/// `layout.txt` after step 1; none before).
+#[derive(Debug, Clone, Copy)]
+pub struct StepState<'a> {
+    /// The generator's map.
+    pub cells: &'a Cells,
+    /// The zone generators.
+    pub zones: &'a [ZoneGenerator],
+}
+
 /// Where the generation reports its draws and steps (ADR-0029 point 8): the comparison seam with
 /// the phase oracle (`docs/lanes/rmg/ORACLE.md`). [`NoTrace`] in play.
 pub trait Trace {
     /// A `rand()` drawn at `site` (the call's address in `Heroes3.exe`) that returned `value`,
     /// as the phase oracle's log line `<site> <value>` gives it.
     fn draw(&mut self, site: u32, value: u32);
-    /// The end of `step`: 0 the frame before step 1 (the setup, the template, the positions; the
-    /// oracle's dump 0), 1 to 15 the steps.
-    fn step_end(&mut self, step: u8);
+    /// The end of `step` and what it left: 0 the frame before step 1 (the setup, the template,
+    /// the positions; the oracle's dump 0), 1 to 15 the steps.
+    fn step_end(&mut self, step: u8, state: StepState<'_>);
 }
 
 /// The trace that keeps nothing.
@@ -43,7 +59,7 @@ impl Trace for NoTrace {
     #[inline]
     fn draw(&mut self, _site: u32, _value: u32) {}
     #[inline]
-    fn step_end(&mut self, _step: u8) {}
+    fn step_end(&mut self, _step: u8, _state: StepState<'_>) {}
 }
 
 /// Why a map is not generated.
@@ -69,6 +85,13 @@ pub enum GenerateError {
         /// What went wrong.
         error: PositionError,
     },
+    /// Step 1 found no position for a zone (RMG-QUIRK-3: the original's draw divides by zero).
+    NoPosition {
+        /// The zone's index among the kept zones.
+        zone: usize,
+    },
+    /// Step 1's layout spans nothing (RMG-QUIRK-3: the original's scaling divides by zero).
+    LayoutSpan,
 }
 
 impl From<SettingsError> for GenerateError {
@@ -97,11 +120,13 @@ impl fmt::Display for GenerateError {
                     "template {template}: fewer start positions than the players and computers"
                 ),
             },
+            Self::NoPosition { zone } => write!(f, "step 1: no position for zone {zone}"),
+            Self::LayoutSpan => f.write_str("step 1: the layout spans nothing"),
         }
     }
 }
 
-/// A generated map: so far what the frame makes before step 1 (stub RMG-STUB-1: the steps and the
+/// A generated map: so far what the frame and step 1 make (stub RMG-STUB-1: steps 2 to 15 and the
 /// writer's content come with increments 3 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
@@ -118,16 +143,20 @@ pub struct GeneratedMap {
     pub positions: [Option<u8>; COLOURS],
     /// Each hero's ban, by id (RMG-SET-008).
     pub banned_heroes: Vec<bool>,
+    /// The generator's map after the last step ported.
+    pub cells: Cells,
+    /// The zone generators after the last step ported (step 1's layout).
+    pub zones: Vec<ZoneGenerator>,
 }
 
 /// The stream: `CrtRand` seeded once, each draw reported with its call site.
-struct Stream<'t, T: Trace> {
+pub(crate) struct Stream<'t, T: Trace> {
     rand: CrtRand,
     trace: &'t mut T,
 }
 
 impl<T: Trace> Stream<'_, T> {
-    fn draw(&mut self, site: u32) -> u32 {
+    pub(crate) fn draw(&mut self, site: u32) -> u32 {
         let value = self.rand.rand();
         self.trace.draw(site, value);
         value
@@ -142,13 +171,15 @@ impl<T: Trace> Stream<'_, T> {
 /// `rmg_generate_map` 0x549930 run it: under two players in all, one player and one computer;
 /// `srand(seed)`; water's Random `rand() % 3` (0x537C89); the templates kept for the size
 /// index and the counts; the heroes banned; the template `rand() % kept` (0x549975); the
-/// positions.
+/// positions; the generator's map (`rmg_map_init`); step 1, the zones laid out
+/// (`rmg_zones_lay_out` 0x53BCB0).
 ///
 /// # Errors
 ///
 /// A [`GenerateError`]: refused settings, a part of another core or without the generator's
-/// tables, no template kept, the drawn template's positions outside the original's arrays.
-// rule: RMG-SET-005, RMG-SET-006, RMG-SET-007, RMG-TPL-007
+/// tables, no template kept, the drawn template's positions outside the original's arrays, step
+/// 1's divisions by zero (RMG-QUIRK-3).
+// rule: RMG-SET-005, RMG-SET-006, RMG-SET-007, RMG-SET-010, RMG-TPL-007
 pub fn generate<T: Trace>(
     core: &Ruleset,
     part: &RmgRuleset,
@@ -214,7 +245,38 @@ pub fn generate<T: Trace>(
         template: index,
         error,
     })?;
-    stream.trace.step_end(0);
+    let side = run.size.side();
+    let levels = 1 + i32::from(run.two_levels);
+    let cells = Cells::new(side, levels);
+    stream.trace.step_end(
+        0,
+        StepState {
+            cells: &cells,
+            zones: &[],
+        },
+    );
+    let zones = lay_out(
+        &mut stream,
+        &LayoutInput {
+            zones: &template.zones,
+            connections: &template.connections,
+            positions: &positions,
+            towns: &run.towns,
+            side,
+            levels,
+            water: run.water,
+            format: run.format,
+            tables,
+            all_four: quirks.is_enabled(RMG_TERRAIN_TOWNS_COUNT),
+        },
+    )?;
+    stream.trace.step_end(
+        1,
+        StepState {
+            cells: &cells,
+            zones: &zones,
+        },
+    );
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
         settings: run,
@@ -223,5 +285,7 @@ pub fn generate<T: Trace>(
         template_name: source.name.clone(),
         positions,
         banned_heroes,
+        cells,
+        zones,
     })
 }

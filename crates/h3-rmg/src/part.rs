@@ -27,7 +27,7 @@ use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::RMG_RULESET_HASH_VERSION;
-use crate::settings::MapFormat;
+use crate::settings::{MapFormat, TOWN_TYPES};
 
 /// A zone's kind: the last of `rmg.txt`'s columns 4 to 7 set, a treasure zone when none is
 /// (RMG-TPL-002; the original's type 0 to 3, [`ZoneKind::value`]).
@@ -237,6 +237,16 @@ pub const OBJECT_TYPES: usize = 232;
 /// The limit an object type has before the pairs (`rmg_generator_create` 0x537D42).
 pub const NO_LIMIT: i32 = 32_000;
 
+/// The points around a zone step 1 tries (`rmg_layout_cos` 0x682500 and `rmg_layout_sin`
+/// 0x682600, 32 entries each, one per 11.25°).
+pub const LAYOUT_POINTS: usize = 32;
+
+/// The terrains the generator's tables cover (dirt to lava, then water).
+pub const TERRAINS: usize = 9;
+
+/// The town types of a terrain's row in `rmg_terrain_towns` 0x682450 (four entries a terrain).
+pub const TERRAIN_TOWNS: usize = 4;
+
 /// The generator's constants read from SoD's executable (ADR-0029 point 5; `packs/sod/rmg.toml`'s
 /// `[generator]`, harvested with their addresses): what the generator's constructor
 /// (`rmg_generator_create` 0x537B10) sets up besides the three tables.
@@ -253,6 +263,18 @@ pub struct GeneratorTables {
     pub map_limits: Vec<(u8, i32)>,
     /// The per-zone limits (`rmg_type_limits_b` 0x640808), in the table's order.
     pub zone_limits: Vec<(u8, i32)>,
+    /// Step 1's cosines (`rmg_layout_cos` 0x682500), [`LAYOUT_POINTS`] of them, in
+    /// ten-thousandths: the table's doubles are the ones nearest these decimals (0.9807 for
+    /// cos 11.25°).
+    pub layout_cos: Vec<i32>,
+    /// Its sines (`rmg_layout_sin` 0x682600), likewise.
+    pub layout_sin: Vec<i32>,
+    /// Per terrain (dirt to lava, water), the four town types step 1 draws a zone's second town
+    /// type among (`rmg_terrain_towns` 0x682450), -1 ending a row's own (RMG-QUIRK-12).
+    pub terrain_towns: Vec<[i32; TERRAIN_TOWNS]>,
+    /// Per town type (Castle to Conflux), its native terrain (`rmg_town_native_terrain`
+    /// 0x6408C8).
+    pub native_terrains: Vec<i32>,
 }
 
 /// The limits by object type the generator places under, per map and per zone (RMG-SET-009).
@@ -443,8 +465,10 @@ impl fmt::Display for RmgCompileError {
             ),
             Self::GeneratorTables(pack) => write!(
                 f,
-                "pack `{pack}`: the generator's hero bytes need one each per hero and its limits \
-                 object types below {OBJECT_TYPES}"
+                "pack `{pack}`: the generator's hero bytes need one each per hero, its limits \
+                 object types below {OBJECT_TYPES}, its layout {LAYOUT_POINTS} cosines and sines, \
+                 its terrain towns {TERRAINS} rows of town types (-1 to 8) and its native terrains \
+                 one terrain (0 to 8) per town type"
             ),
         }
     }
@@ -552,7 +576,8 @@ impl CanonicalHash for RmgRuleset {
     /// fields in [`Connection`]'s order)); the object templates (their number, each its fields
     /// in [`ObjectTemplate`]'s order); the obstacles (their number, each its fields in
     /// [`Obstacle`]'s order, the scores with their number); the generator's tables (whether given,
-    /// then each list with its number in [`GeneratorTables`]' order, a pair its type and limit).
+    /// then each list with its number in [`GeneratorTables`]' order, a pair its type and limit,
+    /// a terrain's town types without their number, E14 T3c).
     /// The core's hash is not part of it.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RMG_RULESET_HASH_VERSION);
@@ -608,6 +633,16 @@ impl CanonicalHash for RmgRuleset {
                     h.write_i32(limit);
                 }
             }
+            for values in [&g.layout_cos, &g.layout_sin] {
+                h.write_len(values.len());
+                write_i32s(h, values);
+            }
+            h.write_len(g.terrain_towns.len());
+            for row in &g.terrain_towns {
+                write_i32s(h, row);
+            }
+            h.write_len(g.native_terrains.len());
+            write_i32s(h, &g.native_terrains);
         }
     }
 }
@@ -767,7 +802,8 @@ impl Tables {
     }
 
     /// A pack's generator's tables: the three hero lists of one length, the limits' types below
-    /// [`OBJECT_TYPES`].
+    /// [`OBJECT_TYPES`], [`LAYOUT_POINTS`] cosines and sines, [`TERRAINS`] rows of town types
+    /// (-1 to 8) and a terrain (0 to 8) per town type.
     fn generator(
         &mut self,
         scope: &Scope<'_>,
@@ -780,7 +816,20 @@ impl Tables {
                 .map_limits
                 .iter()
                 .chain(&generator.zone_limits)
-                .all(|&(object_type, _)| usize::from(object_type) < OBJECT_TYPES);
+                .all(|&(object_type, _)| usize::from(object_type) < OBJECT_TYPES)
+            && generator.layout_cos.len() == LAYOUT_POINTS
+            && generator.layout_sin.len() == LAYOUT_POINTS
+            && generator.terrain_towns.len() == TERRAINS
+            && generator
+                .terrain_towns
+                .iter()
+                .flatten()
+                .all(|town| (-1..=8).contains(town))
+            && generator.native_terrains.len() == usize::from(TOWN_TYPES)
+            && generator
+                .native_terrains
+                .iter()
+                .all(|terrain| (0..=8).contains(terrain));
         if !fits {
             return Err(RmgCompileError::GeneratorTables(String::from(scope.id)));
         }

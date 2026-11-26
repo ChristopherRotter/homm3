@@ -155,7 +155,10 @@
       temporary zone on the stack, 0x53E45C step 2's water zones) before it runs, "zone <site>
       <k> <zone> <generator>": the zone (its one argument) as its 0xD4 bytes and the zone
       generator being built (this) as its first 0x44 bytes, in hex as memory holds them, the
-      bytes the constructor reads uninitialised (RMG-QUIRK-1) among them; last "end".
+      bytes the constructor reads uninitialised (RMG-QUIRK-1) among them; after each step k
+      that ran, beside its dump, "generators <k> <n>" and per zone generator of the generator's
+      +0x10E0 in order its words +0x4 to +0x2C as signed numbers (town types +4 and +8, terrain,
+      x, y, z, size, the box; E14 T3c); last "end".
       The ack's eighteenth field counts the hooks placed (22 with H3RMG). */
 #include <windows.h>
 #include <stdio.h>
@@ -1535,6 +1538,20 @@ static void rmg_hex(FILE *f, const BYTE *p, size_t n)
         fprintf(f, "%02X", p[i]);
 }
 
+/* The zone generators after step `step` (the header's 10.): their words +0x4 to +0x2C. */
+static void rmg_generators(int step)
+{
+    BYTE **first = *(BYTE ***)(rmg_gen + 0x10E4), **last = *(BYTE ***)(rmg_gen + 0x10E8);
+    long n = first ? (long)(last - first) : 0, k, j;
+    if (!rmg_memory)
+        return;
+    fprintf(rmg_memory, "generators %d %ld", step, n);
+    for (k = 0; k < n; k++)
+        for (j = 1; j <= 11; j++)
+            fprintf(rmg_memory, " %ld", *(long *)(first[k] + 4 * j));
+    fputc('\n', rmg_memory);
+}
+
 /* Before a hooked call (`back` its return address, `ecx` and `args` its this and stack
    arguments): the hook's work; returns the call's target. */
 __attribute__((used)) DWORD __cdecl rmg_pre(DWORD back, DWORD ecx, DWORD *args)
@@ -1589,6 +1606,8 @@ __attribute__((used)) DWORD __cdecl rmg_pre(DWORD back, DWORD ecx, DWORD *args)
         }
     } else if (rmg_on && rmg_gen && h->what != rmg_step) {
         rmg_dump(rmg_step);
+        if (rmg_step > 0)
+            rmg_generators(rmg_step);
         rmg_step = h->what;
         fprintf(rmg_log, "step %d\n", rmg_step);
         fflush(rmg_log);
@@ -1607,8 +1626,10 @@ __attribute__((used)) DWORD __cdecl rmg_post(DWORD eax)
         return 0; /* never: a call through rmg_thunk_call has its return address kept */
     h = &rmg_hooks[rmg_open_hook[--rmg_depth]];
     if (rmg_on && h->what == RMG_GENERATE) {
-        if (rmg_step > 0)
+        if (rmg_step > 0) {
             rmg_dump(rmg_step);
+            rmg_generators(rmg_step);
+        }
         fprintf(rmg_log, "generated %d\n", (int)(eax & 0xFF));
         fflush(rmg_log);
     } else if (rmg_on && h->what == RMG_WRITE) {

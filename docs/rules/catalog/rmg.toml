@@ -140,6 +140,24 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "RMG-SET-010"
+title    = "The generator's map"
+context  = "rmg"
+status   = "implemented"
+summary  = "The generator's map (rmg_map_init 0x530FB0) holds side x side cells per level, level by level, row by row, each reset by rmg_map_cell_reset 0x530F10 on the heap's bytes: +0x10 -1 (+0x14 and +0x18 kept), +0x1C 0x7FBC7FBC (both costs 32700), +0x20 0xFFFF7FBC (the distance 32700, both zone bytes -1), +0x24 0x548 (land 8, picture 21; bits 30-31 kept), +0x28 bits 25 and 27 set (bit 24 kept), +0x2C bit 0 cleared; a fresh start's first map holds the kept bits as 0. Step 1 writes no cell."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2a, T3c): rmg_map_init 0x530FB0, rmg_map_cell_init 0x530E90, rmg_map_cell_reset 0x530F10; survey E14-generator.md §2.1; structs.toml rmg_map_cell"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle's dumps 0 and 1 (E14 T3c): the 24 corpus cases' digests in phases.txt are the reset cells' (all eight size and level pairs), the port's dumps the same (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_1)"
+  confidence = "high"
+
+[[rule]]
 id       = "RMG-TPL-001"
 title    = "rmg.txt's rows"
 context  = "rmg"
@@ -263,4 +281,151 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E14 T1a1, T2c): rmg_generate_map 0x5499A1 to 0x549ACD (the two eight-byte arrays at ebp-0x14 and ebp-0xC zeroed, the zones' marks 0x5499BF to 0x5499F9, the colours listed 0x549A0D to 0x549A43, the players' loop 0x549A45 to 0x549A84, the computers' 0x549A86 to 0x549ACD, +0xEE0 nine entries set to -1); survey E14-generator.md §1.5, §2.1"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-001"
+title    = "The zone generators and their town type"
+context  = "rmg"
+status   = "implemented"
+summary  = "Per kept template zone in order a zone generator (rmg_zone_generator_init 0x5329E0): its town type +4 is rand() % the zone's set town types (0x532A5B), the r-th set one (none set: -1, no draw); then a start zone with colour towns or castles (columns 14 + 15 above 0) whose position (Ownership less 1, 0 to 7) has a colour with a town choice takes that choice; its size +0x1C the zone's base."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3c): rmg_zones_lay_out 0x53BCB0 to 0x53BE0B, rmg_zone_generator_init 0x5329E0; survey E14-generator.md §2.2, §3.2.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3c): the port's step 1 draws (sites and values) have phases.txt's digests on the 24 corpus cases, its zone generators after step 1 are layout.txt's (xdd.c's generators record)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-002"
+title    = "Three passes of placements"
+context  = "rmg"
+status   = "implemented"
+summary  = "Each zone generator is placed (rmg_zone_place 0x53B970) once as it is made, before it joins the list, then twice more over all zones in order: exactly three passes, no convergence test, positions integer in template units. A placement with no zone yet takes (0,0,0) or, with two levels and if it fits, (0,0,1), drawn without a filter; every placement ends with rand() % its candidates (0x53BB5F, unsigned), and none is RMG-QUIRK-3's division by zero (a typed error)."
+quirks   = ["RMG-QUIRK-3"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3c): rmg_zones_lay_out 0x53BDE2, 0x53BE39, rmg_zone_place 0x53B970; survey E14-generator.md §2.2, §3.2.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3c): the port's step 1 draws (sites and values) have phases.txt's digests on the 24 corpus cases, its zone generators after step 1 are layout.txt's (xdd.c's generators record)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-003"
+title    = "The candidates around a zone"
+context  = "rmg"
+status   = "implemented"
+summary  = "Around each connected zone already in the list (each connection in the template's order, appended to its first zone's list and then its second's; none: around every listed zone): 32 points (trunc(r cos k x 11.25 deg + ox), trunc(r sin + oy), oz), r the two bases' sum, binary64 from rmg_layout_cos 0x682500 and _sin 0x682600 (four decimals), crt_ftol truncating; with two levels also (ox, oy, 1 - oz) and 32 points at max(the two bases) on the other level; each kept if the zone fits there (RMG-ZON-004). Each point tested is written to the placed zone first, so the points around the placed zone itself start from the last one tested."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3c): rmg_zone_candidates_around 0x53AE80, rmg_zone_place 0x53BA46 to 0x53BB2B; survey E14-generator.md §2.2, §3.2.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3c): the port's step 1 draws (sites and values) have phases.txt's digests on the 24 corpus cases, its zone generators after step 1 are layout.txt's (xdd.c's generators record)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-004"
+title    = "Where a zone fits"
+context  = "rmg"
+status   = "implemented"
+summary  = "A start zone (type 0 or 1) on level 1 fits only with town type +4 Inferno, Necropolis or Dungeon; and every other listed zone on the level must have 10 x trunc(sqrt(dx^2 + dy^2)) >= 8 x (the two bases), 32-bit integers, the root truncated."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3c): rmg_zone_position_fits 0x53AD60; survey E14-generator.md §2.2, §3.2.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3c): the port's step 1 draws (sites and values) have phases.txt's digests on the 24 corpus cases, its zone generators after step 1 are layout.txt's (xdd.c's generators record)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-005"
+title    = "The candidates filtered"
+context  = "rmg"
+status   = "implemented"
+summary  = "With two levels and a level holding no other listed zone, only the candidates on such a level when the last of them stands at an index above 0 (at index 0 alone nothing is filtered); then those touching the most connected listed zones (rmg_zones_touch 0x532BD0: on one level 11 s >= 10 t, across levels s >= t and s - t above half the smaller base, s the bases' sum, t the truncated distance); then those giving the least max(d, the box's height, width), the box over the other zones and the candidate (x +- base, the far edges + 1, from 0, both levels), d the least base x the map's side / 5, 6, 7 (no water, normal, islands), the least from 32000."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3c): rmg_zone_candidates_filter 0x53B2F0, rmg_zones_touch 0x532BD0; survey E14-generator.md §2.2, §3.2.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3c): the port's step 1 draws (sites and values) have phases.txt's digests on the 24 corpus cases, its zone generators after step 1 are layout.txt's (xdd.c's generators record)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-006"
+title    = "The layout scaled"
+context  = "rmg"
+status   = "implemented"
+summary  = "After the three passes, the box over every zone (x +- base, the far edges + 1, from 0), span its larger side, m the map's side, origin (min + max - span) / 2 per axis; each zone's x, y = (p - origin) x m / span and size +0x1C = base x m / span, 32-bit and truncating; the level kept. A span of 0 is RMG-QUIRK-3's division by zero (a typed error)."
+quirks   = ["RMG-QUIRK-3"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3c): rmg_zones_lay_out 0x53BE4A to 0x53BF42, rmg_zones_bounds 0x53B1F0; survey E14-generator.md §2.2, §3.2.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3c): the port's step 1 draws (sites and values) have phases.txt's digests on the 24 corpus cases, its zone generators after step 1 are layout.txt's (xdd.c's generators record)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-007"
+title    = "A zone's terrain"
+context  = "rmg"
+status   = "implemented"
+summary  = "Then per zone in order its terrain (rmg_zone_terrain_draw 0x532AB0): the town's native one (rmg_town_native_terrain 0x6408C8: grass, grass, snow, lava, dirt, dirt, rough, swamp, grass for Castle to Conflux) when the zone's terrain matches its town and town type +4 is set; else rand() % its allowed terrains (0x532B00; subterranean counted only on level 1; none: dirt, no draw); on level 1 every terrain but lava becomes subterranean."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3c): rmg_zone_terrain_draw 0x532AB0, rmg_zones_lay_out 0x53BF4E; survey E14-generator.md §2.2, §3.2.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3c): the port's step 1 draws (sites and values) have phases.txt's digests on the 24 corpus cases, its zone generators after step 1 are layout.txt's (xdd.c's generators record)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-ZON-008"
+title    = "A zone's second town type"
+context  = "rmg"
+status   = "implemented"
+summary  = "Then its second town type +8: +4 when set; else from its terrain's row of rmg_terrain_towns 0x682450 (four entries a terrain) rand() % 4 (0x53BFC0): the count never stops at the row's -1, so the -1 and the Castle padding are drawn (RMG-QUIRK-12, flag quirk.rmg.terrain_towns_count; off: among the row's town types before its -1, Conflux not in RoE, none: -1 without a draw)."
+quirks   = ["RMG-QUIRK-12"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T3c): rmg_zones_lay_out 0x53BF53 to 0x53BFDD (rmg_terrain_towns 0x682450); survey E14-generator.md §2.2, §3.2.3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T3c): the port's step 1 draws (sites and values) have phases.txt's digests on the 24 corpus cases, its zone generators after step 1 are layout.txt's (xdd.c's generators record)"
   confidence = "high"

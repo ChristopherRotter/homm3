@@ -180,12 +180,34 @@ fn the_synthetic_tables_compile_as_written() {
             heroes_campaign: vec![false, false, false, true],
             map_limits: vec![(26, 200), (8, 64)],
             zone_limits: vec![(113, 3)],
+            layout_cos: COS.to_vec(),
+            layout_sin: (0..32).map(|k| COS[(k + 24) % 32]).collect(),
+            terrain_towns: vec![
+                [1, 4, -1, 0],
+                [6, -1, 0, 0],
+                [0, 1, 2, -1],
+                [2, -1, 0, 0],
+                [-1, 7, 4, 0],
+                [6, 8, -1, 0],
+                [5, 3, 4, -1],
+                [3, -1, 0, 0],
+                [-1, 0, 0, 0],
+            ],
+            native_terrains: vec![2, 2, 3, 7, 0, 6, 5, 4, 2],
         })
     );
 }
 
-/// The generator's tables: one hero byte each per hero, limits of the 232 object types; a later
-/// pack's replace an earlier's.
+/// Step 1's cosines in ten-thousandths (the original's, the synthetic pack's too).
+const COS: [i32; 32] = [
+    10000, 9807, 9239, 8315, 7071, 5556, 3827, 1951, 0, -1951, -3827, -5556, -7071, -8315, -9239,
+    -9807, -10000, -9807, -9239, -8315, -7071, -5556, -3827, -1951, 0, 1951, 3827, 5556, 7071,
+    8315, 9239, 9807,
+];
+
+/// The generator's tables: one hero byte each per hero, limits of the 232 object types, 32
+/// layout points, nine terrains' town types (-1 to 8) and a native terrain (0 to 8) per town
+/// type; a later pack's replace an earlier's.
 #[test]
 fn the_generators_tables_are_checked_and_replaced() {
     for (from, to) in [
@@ -194,6 +216,17 @@ fn the_generators_tables_are_checked_and_replaced() {
         ("heroes_expansions = \"1011\"", "heroes_expansions = \"\""),
         ("[8, 64]", "[232, 64]"),
         ("[113, 3]", "[255, 3]"),
+        ("layout_cos = [10000, ", "layout_cos = ["),
+        ("9239, 9807]\nlayout_sin", "9239]\nlayout_sin"),
+        ("terrain_towns = [[1, 4, -1, 0], ", "terrain_towns = ["),
+        (
+            "[3, -1, 0, 0], [-1, 0, 0, 0]]",
+            "[3, -1, 0, 0], [-2, 0, 0, 0]]",
+        ),
+        ("[1, 4, -1, 0], [6", "[1, 9, -1, 0], [6"),
+        ("native_terrains = [2, 2, ", "native_terrains = [2, "),
+        ("native_terrains = [2, 2, ", "native_terrains = [9, 2, "),
+        ("native_terrains = [2, 2, ", "native_terrains = [-1, 2, "),
     ] {
         let text = SYNTHETIC_RMG.replacen(from, to, 1);
         assert_eq!(
@@ -202,14 +235,20 @@ fn the_generators_tables_are_checked_and_replaced() {
             "{to}"
         );
     }
-    let ext = "[generator]\nheroes_roe = \"1\"\nheroes_expansions = \"0\"\nheroes_campaign = \
-               \"0\"\nmap_limits = []\nzone_limits = [[0, 1]]\n";
+    let ext = format!(
+        "[generator]\nheroes_roe = \"1\"\nheroes_expansions = \"0\"\nheroes_campaign = \"0\"\n\
+         map_limits = []\nzone_limits = [[0, 1]]\nlayout_cos = {COS:?}\nlayout_sin = {COS:?}\n\
+         terrain_towns = {:?}\nnative_terrains = {:?}\n",
+        [[8, -1, 0, 0]; 9],
+        [8; 9]
+    );
     let part = compile(
-        &[(SYNTHETIC_CORE, SYNTHETIC_RMG), (SYNTHETIC_EXT_CORE, ext)],
+        &[(SYNTHETIC_CORE, SYNTHETIC_RMG), (SYNTHETIC_EXT_CORE, &ext)],
         PROFILE,
     )
     .unwrap();
     assert_eq!(part.generator().unwrap().zone_limits, [(0, 1)]);
+    assert_eq!(part.generator().unwrap().native_terrains, [8; 9]);
     assert!(
         compile(&[(SYNTHETIC_CORE, "")], PROFILE)
             .unwrap()
@@ -251,6 +290,10 @@ fn the_hash_covers_every_table() {
             "map_limits = [[26, 200], [8, 64]]",
             "map_limits = [[8, 64], [26, 200]]",
         ),
+        ("layout_cos = [10000, 9807", "layout_cos = [10000, 9808"),
+        ("layout_sin = [0, 1951", "layout_sin = [0, 1952"),
+        ("terrain_towns = [[1, 4", "terrain_towns = [[1, 5"),
+        ("native_terrains = [2, 2", "native_terrains = [2, 3"),
     ] {
         assert!(SYNTHETIC_RMG.contains(from), "{from}");
         assert_ne!(base, hash(&SYNTHETIC_RMG.replacen(from, to, 1)), "{from}");
@@ -665,4 +708,5 @@ fn eight_xm8s_zone_ids_follow_the_flag() {
     }
 }
 
+mod digest;
 mod generate;

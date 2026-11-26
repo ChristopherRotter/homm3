@@ -908,13 +908,19 @@ heroes_expansions = "1111…1111"  # +0x39 (the expansions'), one mark per hero
 heroes_campaign = "0000…1111"    # +0x3A (a campaign hero): RMG-SET-008's bans
 map_limits = [[26, 200], …]      # object type and limit per map (0x640718), the table's order
 zone_limits = [[2, 1], …]        # per zone (0x640808): RMG-SET-009
+layout_cos = [10000, 9807, …]    # step 1's 32 cosines (0x682500) in ten-thousandths (E14 T3c): the
+layout_sin = [0, 1951, …]        # table's doubles are the ones nearest them; the sines (0x682600)
+terrain_towns = [[0, 1, 4, -1], …] # per terrain, dirt to lava and water, four town types
+                                 # (0x682450; -1 ends a row's own, RMG-ZON-008, RMG-QUIRK-12)
+native_terrains = [2, 2, 3, …]   # per town type, Castle to Conflux, its terrain (0x6408C8)
 ```
 
 The compiler refuses a line, template or connection index past its table or outside the pack's
 dependency closure, a line replaced twice by one pack, a `fixes` that is no registered
 `quirk.content` flag (checked in every profile), and an obstacle row without one Adjacent and one
-Overlap score per row, and generator's tables whose three hero mark strings differ in length or
-whose limits name an object type past 231. The harvested `ab` pack carries 8XM8's six overrides (RMG-QUIRK-22, from the
+Overlap score per row, and generator's tables whose three hero mark strings differ in length,
+whose limits name an object type past 231, or without 32 cosines and sines, nine rows of town
+types from -1 to 8 and a terrain from 0 to 8 per town type. The harvested `ab` pack carries 8XM8's six overrides (RMG-QUIRK-22, from the
 gap-fill); `cargo xtask verify --with-original-data` also compares the compiled part with the text
 tables (`crates/h3-pack-rmg/examples/original_data.rs`).
 

@@ -142,6 +142,10 @@ fn the_tables_are_kept_as_read() {
             heroes: vec![[true, true, false], [false, true, true]],
             map_limits: vec![(26, 200), (6, 200)],
             zone_limits: vec![(113, 3)],
+            layout_cos: vec![10_000, -9807],
+            layout_sin: vec![0, 1951],
+            terrain_towns: vec![[0, 1, 4, -1], [-1, 0, 0, 0]],
+            native_terrains: vec![2, 7],
         },
     };
     let (ab, sod) = harvest(&tables, Vec::new()).unwrap();
@@ -149,7 +153,9 @@ fn the_tables_are_kept_as_read() {
     assert!(!ab.contains("[generator]"));
     assert!(sod.contains(
         "[generator]\nheroes_roe = \"10\"\nheroes_expansions = \"11\"\nheroes_campaign = \
-         \"01\"\nmap_limits = [[26, 200], [6, 200]]\nzone_limits = [[113, 3]]\n"
+         \"01\"\nmap_limits = [[26, 200], [6, 200]]\nzone_limits = [[113, 3]]\nlayout_cos = \
+         [10000, -9807]\nlayout_sin = [0, 1951]\nterrain_towns = [[0, 1, 4, -1], [-1, 0, 0, 0]]\n\
+         native_terrains = [2, 7]\n"
     ));
     // Column 6 set after 4: the last set wins; a space is not set; strength by its first letter.
     assert!(ab.contains(
