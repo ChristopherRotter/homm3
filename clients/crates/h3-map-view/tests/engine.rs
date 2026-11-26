@@ -3905,3 +3905,155 @@ fn what_a_record_s_battles_tell() {
     assert_eq!(guarded(Vec::new(), vec![accept]), None);
     assert_eq!(guarded(vec![won], Vec::new()), None);
 }
+
+/// `record`'s messages up to its message `n` folded into its first observation (as a seat's view
+/// is kept: `GameObservation::fold`, `reveal`), and the record since: a snapshot of that view
+/// numbered `n`, then the later messages (E24 M5 T3b: the hot seat's host's live start).
+fn live_since(record: &engine::GameRecord, n: u32) -> engine::GameRecord {
+    let number = |m: &ServerMessage| match m {
+        ServerMessage::GameSnapshot { n, .. }
+        | ServerMessage::GameEvents { n, .. }
+        | ServerMessage::GameReveal { n, .. }
+        | ServerMessage::GameTurn { n, .. }
+        | ServerMessage::GameAccepted { n, .. }
+        | ServerMessage::GameClock { n, .. } => *n,
+        other => panic!("{other:?}"),
+    };
+    let mut view: Option<GameObservation> = None;
+    for message in record.messages.iter().take_while(|m| number(m) <= n) {
+        match message {
+            ServerMessage::GameSnapshot { observation, .. } => view = Some(observation.clone()),
+            ServerMessage::GameEvents { events, .. } => {
+                let view = view.as_mut().unwrap();
+                for event in events {
+                    view.fold(event);
+                }
+            }
+            ServerMessage::GameReveal { reveal, .. } => view.as_mut().unwrap().reveal(reveal),
+            _ => {}
+        }
+    }
+    let mut since = record.clone();
+    since.messages.retain(|m| number(m) > n);
+    since.messages.insert(
+        0,
+        ServerMessage::GameSnapshot {
+            n,
+            observation: view.unwrap(),
+        },
+    );
+    since.header.first = n;
+    since
+}
+
+#[test]
+fn a_live_start_from_a_later_snapshot() {
+    // E24 M5 T3b: the hot seat's host sets a view up from a later snapshot of it. A record's file
+    // cut so is refused; a live start takes it, the facings the host saw (else right).
+    let g = game();
+    let text = session_record(&g, 10);
+    let whole = engine::parse(&text).unwrap();
+    // At the game's snapshot a live start is the record's start.
+    let start_of = |loaded: &engine::Loaded| {
+        engine::start(
+            loaded,
+            &g.art,
+            &templates(),
+            &town_art(),
+            records(),
+            rules(),
+        )
+        .unwrap()
+    };
+    let record = engine::check(whole.clone(), &g.bytes, rules()).unwrap();
+    let at_one = engine::live(whole.clone(), &g.bytes, rules(), engine::Live::default()).unwrap();
+    assert_eq!(start_of(&at_one), start_of(&record));
+    // Red's view after its End Turn of day 9, its next turn day 10's (the second week's).
+    let ends: Vec<u32> = whole
+        .messages
+        .iter()
+        .filter_map(|m| match m {
+            ServerMessage::GameAccepted { n, command, .. }
+                if matches!(command, h3_protocol::wire::game::GameCommand::EndTurn {}) =>
+            {
+                Some(*n)
+            }
+            _ => None,
+        })
+        .collect();
+    let n = ends[8] + 1;
+    let since = live_since(&whole, n);
+    let cut = engine::check(since.clone(), &g.bytes, rules()).unwrap();
+    assert_eq!(cut.first().map(|_| ()), Err(Refused::Cut(n)));
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .id;
+    let facings = engine::Live {
+        facings: vec![(red, 6)],
+    };
+    let loaded = engine::live(since, &g.bytes, rules(), facings).unwrap();
+    let start = start_of(&loaded);
+    let first = loaded.first().unwrap();
+    assert_eq!(first.day, 9);
+    let heroes = start.table["heroes"].as_array().unwrap();
+    for (hero, row) in first.adventure.heroes.iter().zip(heroes) {
+        let facing = numbers(row)[4];
+        assert_eq!(facing, if hero.id == red { 6 } else { 2 }, "{}", hero.id);
+    }
+    // Red's walk north is in the snapshot: its hero where the walk left it.
+    assert_eq!(numbers(&heroes[0])[..2], [10, 8]);
+    // Its next turn, day 10, as the whole record's: the week's and the month's numbers by the
+    // start's day.
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    assert!(played.waits);
+    // The day from the date's month, week and weekday.
+    let day = |t: &Value| {
+        let [m, w, d] = numbers(&table(&table(t)["kingdom"])["date"])[..] else {
+            panic!("a date")
+        };
+        (m - 1) * 28 + (w - 1) * 7 + d
+    };
+    assert_eq!(day(&played.turns[0]), 10);
+    let all = engine::played(&record, &g.art, rules()).unwrap();
+    let same = all.turns.iter().find(|t| day(t) == 10).unwrap();
+    assert_eq!(&played.turns[0], same);
+    let later = all.turns.iter().filter(|t| day(t) >= 10).count();
+    assert_eq!(played.turns.len(), later);
+}
+
+#[test]
+fn the_kingdom_s_heroes_in_the_hero_list_s_order() {
+    // E24 M5 T3b: the kingdom's heroes in the view's hero list's order (GAM-HER-003; a live
+    // start's), at a new game the types' order.
+    let g = panels_game(None);
+    let mut o = g.observation.clone();
+    let mine: Vec<u16> = o
+        .adventure
+        .heroes
+        .iter()
+        .filter(|h| h.owner == 0)
+        .map(|h| h.id)
+        .collect();
+    assert_eq!(mine.len(), 2);
+    let rows = |o: &GameObservation| -> Vec<i64> {
+        let start = start(&g, o).unwrap();
+        table(&start.table["kingdom"])["heroes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| numbers(r)[2])
+            .collect()
+    };
+    // At the game's start the list is by type: Rion (8), then Astral (40).
+    assert_eq!(rows(&o), [8, 40]);
+    o.hero_list.reverse();
+    assert_eq!(rows(&o), [40, 8]);
+    // A hero the list lacks comes after the listed ones.
+    o.hero_list.retain(|&id| id == mine[1]);
+    assert_eq!(rows(&o).len(), 2);
+}

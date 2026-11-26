@@ -134,11 +134,23 @@ fn played(
     let (mut lines, mut ok) = (Vec::new(), true);
     // Where each human's view was left, by player.
     let mut left: BTreeMap<usize, Left> = BTreeMap::new();
+    // An unattended run's seconds count for the whole of play, not for each view.
+    let started = window.ticks_ns();
     loop {
         let Some(player) = hot.turn() else {
             lines.push("no human's turn runs: play ends".into());
             return Ok((lines, ok, End::MainMenu));
         };
+        let mut options = options.clone();
+        if let Some((seconds, read)) = options.run {
+            let spent = window.ticks_ns().saturating_sub(started) / 1_000_000_000;
+            let rest = u64::from(seconds).saturating_sub(spent);
+            if rest == 0 {
+                lines.push("the unattended run's time is spent: play ends".into());
+                return Ok((lines, ok, End::MainMenu));
+            }
+            options.run = Some((u32::try_from(rest).unwrap_or(seconds), read));
+        }
         let colour = hot.seat(player).map_or(0, |s| s.colour);
         let mut viewed = Viewed {
             from: left.remove(&player.index()),
@@ -154,7 +166,7 @@ fn played(
             window: &mut *window,
             sound: &mut *sound,
         };
-        let (view, view_ok, end) = window::window(options, Source::Session(&mut viewed), host)?;
+        let (view, view_ok, end) = window::window(&options, Source::Session(&mut viewed), host)?;
         lines.push(format!("colour {colour}'s view:"));
         lines.extend(view.into_iter().map(|line| format!("  {line}")));
         ok &= view_ok;
@@ -591,7 +603,10 @@ pub(crate) mod tests {
             // its start the human's view.
             let (record, live) = hot.since(player, None).unwrap();
             assert_eq!(live, Live::default());
-            assert_eq!(Some(&record), parse(&hot.record(player).unwrap()).ok().as_ref());
+            assert_eq!(
+                Some(&record),
+                parse(&hot.record(player).unwrap()).ok().as_ref()
+            );
             let loaded = h3_map_view::engine::live(record.clone(), &bytes, &rules, live).unwrap();
             assert_eq!(loaded.first().unwrap().viewer, id);
             // The same setup and seed begin the same game.

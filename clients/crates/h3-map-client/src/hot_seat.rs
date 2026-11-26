@@ -597,4 +597,47 @@ mod tests {
         };
         assert_eq!(number(&goodbye), None);
     }
+
+    #[test]
+    fn a_view_left_is_set_up_again_from_where_it_was_left() {
+        // E24 M5 T3b: Red's view left after its End Turn (its facings kept); at its next turn its
+        // record since then begins at a snapshot of that view, numbered as the message it was
+        // left at, and its next turn's start is the live start's first turn.
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::new("left", TWO);
+        let bytes = std::fs::read(&file.0).unwrap();
+        let game = begin(&file.0, None, (4, UNLIMITED), &rules).unwrap();
+        let mut hot = HotSeat::start(&game, &rules).unwrap();
+        let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+        assert_eq!(hot.end_turn().unwrap(), Some(blue));
+        let hero = hot.seat(red).unwrap().view.as_ref().unwrap().hero_list[0];
+        let left = hot.leave(red, vec![(hero, 6)]).unwrap();
+        assert_eq!(left.n, hot.seat(red).unwrap().told());
+        assert_eq!(hot.leave(PlayerId::new(5), Vec::new()), None);
+        // Nothing told since: the record since is the snapshot alone.
+        let (since, live) = hot.since(red, Some(&left)).unwrap();
+        assert_eq!(since.header.first, left.n);
+        assert_eq!(since.messages.len(), 1);
+        assert_eq!(live.facings, [(hero, 6)]);
+        // Blue's End Turn: Red's day 2 after the snapshot, as its whole record has it.
+        assert_eq!(hot.end_turn().unwrap(), Some(red));
+        let (since, live) = hot.since(red, Some(&left)).unwrap();
+        let ServerMessage::GameSnapshot { n, observation } = &since.messages[0] else {
+            panic!("no snapshot first");
+        };
+        assert_eq!((*n, observation), (left.n, &left.view));
+        let (whole, _) = hot.since(red, None).unwrap();
+        assert_eq!(
+            whole.messages[whole.messages.len() - since.messages.len() + 1..],
+            since.messages[1..]
+        );
+        let loaded = engine::live(since, &bytes, &rules, live).unwrap();
+        let art = h3_map_view::art::MapArt::from_raw(&loaded.raw).unwrap();
+        let played = engine::played(&loaded, &art, &rules).unwrap();
+        assert!(played.waits);
+        assert_eq!(played.turns.len(), 1);
+        let whole = engine::check(whole, &bytes, &rules).unwrap();
+        let all = engine::played(&whole, &art, &rules).unwrap();
+        assert_eq!(all.turns.last(), played.turns.first());
+    }
 }

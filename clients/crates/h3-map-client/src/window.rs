@@ -80,7 +80,7 @@ const OFF: [i32; 2] = [-1, -1];
 pub const HOLD_MS: u64 = 20;
 
 /// The command's options.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Options {
     id: String,
     keys: Option<PathBuf>,
@@ -92,7 +92,7 @@ pub struct Options {
     install: PathBuf,
     map: PathBuf,
     /// Unattended for this many seconds; whether each frame is read back.
-    run: Option<(u32, bool)>,
+    pub(crate) run: Option<(u32, bool)>,
     /// No sound (E24 M2 T5).
     mute: bool,
     /// Where each cue played is written (the cue's line and the clock's millisecond it played at).
