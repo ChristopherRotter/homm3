@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23 (T1a1a; refined 2026-11-21, AI-Q22); increment 1 closed
 2026-11-24 (AI-Q31), increments 2 to 7 cut; increment 2 refined 2026-11-25 (AI-Q32: ADR-0030
-accepted, eleven tasks), T2a to T2d done, T2e next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
+accepted, eleven tasks), T2a to T2e done, T2f next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
 fair system actor) for battle · Prerequisite of E13 (its target and ladder opponent) ·
 Consumers: the env (a computer seat), the server (a computer player in a hosted game), the shell
 (a game's computer players), the adventure lane (ADV-STUB-8, ADV-STUB-9)
@@ -195,3 +195,11 @@ Increment 2's (increment 1's: `E31-archive.md`).
   and `growth_inputs` public; AI-STUB-10 to -15 (the Eye value, the fold's search, the defence
   recruits, and the three values moved to T2e, T2f, T2i); §5.5's #67 and #68. Record: `E31-log.md`
   T2d.
+- **T2e** (2026-11-26, not cut, AI-Q36): the spell values in `h3_battle::estimate`'s `caster.rs`
+  (`cross-lane`; CPU-SPL-001 to -006: the caster record, a spell's value and its kinds, the best
+  value), the battle AI's odds on the same code (BAT-AI-008 unchanged); a spell's gain and the
+  heroes' spell values per unit in `computer/spells.rs` (CPU-SPL-007, CPU-STA-007; the memory's
+  encoding v3, AI-STUB-13 lifted); the skill value's flag-set path in `h3_heroes::choice`
+  (`cross-lane`, one switch with the setup's; CPU-SKL-001), the schools' and the University's
+  values in `computer/skills.rs` (CPU-SKL-002, -003); §5.5's #17 and #20 read, #69 new.
+  Record: `E31-log.md` T2e.

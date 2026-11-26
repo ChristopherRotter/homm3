@@ -2,20 +2,21 @@
 //! `ai_turn_start_values` 0x527960 write into the computer's record, its heroes and the enemy
 //! heroes before the first pass ([`Record`], CPU-STA-001): the threat fold over the enemies'
 //! reach with the towns' capture estimate (CPU-STA-004, -005), the recruit reserve (CPU-STA-002),
-//! the resource weights (CPU-STA-003) and the heroes' experience weight (CPU-STA-006). The policy
+//! the resource weights (CPU-STA-003) and the heroes' values per unit (their experience weight,
+//! CPU-STA-006, and since T2e their spell gains, CPU-STA-007, `super::spells`). The policy
 //! keeps them in its memory (ADR-0030 point 5): the values read them in its turn, and its answers
 //! read the last start's in the other players' turns.
 //!
 //! Not here: the Eye value, 0 while the engine has no Eye of the Magi (`AI-STUB-10`; the vision
 //! circle with T2h); the threat fold's search is the engine's reach (`AI-STUB-11`) and its
-//! defence recruits wait for increment 3 (`AI-STUB-12`); the heroes' spell gains (`AI-STUB-13`,
-//! T2e), the artifacts' mean (`AI-STUB-14`, T2f) and the Grail target (`AI-STUB-15`, T2i). The
+//! defence recruits wait for increment 3 (`AI-STUB-12`); the artifacts' mean (`AI-STUB-14`, T2f)
+//! and the Grail target (`AI-STUB-15`, T2i). The
 //! difficulty's weights are a function of the difficulty alone (`fight::blend`).
 
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::{HeroOnMap, allied};
+use h3_adventure::allied;
 use h3_battle::estimate::EstimateHero;
 use h3_content::{CreatureTypeId, ResourceId};
 use h3_contracts::{HeroId, PlayerId, TownId};
@@ -24,6 +25,7 @@ use h3_towns::{BuildingSet, CREATURE_INDEXES, Town, index_creature};
 
 use super::fight::{self, Fighter};
 use super::order::library_sort;
+use super::spells::{self, SpellGains};
 use super::turn::towns_of;
 use crate::{GameRuleset, GameState};
 
@@ -55,7 +57,8 @@ const MARKETPLACE: &str = "marketplace";
 const INFINITE: u32 = 0x7F80_0000;
 
 /// What the computer's turn start writes (CPU-STA-001; survey §1.6: the record's +0x04 to +0x7F,
-/// the player's +0x128 and +0x160, the heroes' +0x109 and +0x11D, the towns' +0x3), by resource in
+/// the player's +0x128 and +0x160, the heroes' +0x109, +0x11D and +0x47E to +0x48E, the towns'
+/// +0x3), by resource in
 /// the core's order where per resource. The weights (+0x60, f64) are kept as their inputs, the
 /// means, the demand and the rate's row ([`Record::weights`] computes them as the start did).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -72,9 +75,9 @@ pub(super) struct Record {
     pub(super) markets: u8,
     /// The player's mean weight (+0x160).
     pub(super) mean: i32,
-    /// Each of the player's heroes on the map with its experience weight (+0x109, an f32 bit
-    /// pattern; CPU-STA-006), in ascending id order.
-    pub(super) experience: Vec<(HeroId, u32)>,
+    /// Each of the player's heroes on the map with its values per unit (CPU-STA-006, -007), in
+    /// ascending id order.
+    pub(super) heroes: Vec<(HeroId, HeroValues)>,
     /// Each enemy hero that would take one of the player's towns, with its threat (+0x11D,
     /// CPU-STA-004; every other enemy hero's is 0), in ascending id order.
     pub(super) threats: Vec<(HeroId, i32)>,
@@ -83,12 +86,23 @@ pub(super) struct Record {
     pub(super) towns: Vec<(TownId, u8)>,
 }
 
+/// A hero's values per unit at the turn start (`ai_hero_effectiveness` 0x527760; H3API's AI
+/// fields of the hero): what one more of each is worth to it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(super) struct HeroValues {
+    /// One experience point (+0x109, an f32 bit pattern; CPU-STA-006).
+    pub(super) experience: u32,
+    /// Its spell gains (+0x47E to +0x48E; CPU-STA-007).
+    pub(super) spells: SpellGains,
+}
+
 /// The records of `player`'s turn start (`ai_turn_start` 0x4297C0, `ai_turn_start_values`
 /// 0x527960; survey §1.5; CPU-STA-001), in the original's order: the Eye value (`AI-STUB-10`), the
 /// defence fold (its recruits `AI-STUB-12`) and the threat fold ([`threats`]), the recruit reserve
 /// ([`reserve`]), the resource weights ([`weights`]), the Grail target (`AI-STUB-15`); then each
-/// hero's experience weight ([`experience`]; its spell gains `AI-STUB-13`) and the artifacts'
-/// mean (`AI-STUB-14`). Nothing in it writes the state, so each reads the start's state.
+/// hero's values per unit ([`heroes`]: its experience weight and its spell gains) and the
+/// artifacts' mean (`AI-STUB-14`). Nothing in it writes the state, so each reads the start's
+/// state.
 // rule: CPU-STA-001
 pub(super) fn record(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Record {
     // stub: AI-STUB-10
@@ -97,12 +111,11 @@ pub(super) fn record(state: &GameState, rules: &GameRuleset, player: PlayerId) -
     let reserve = reserve(state, rules, player);
     let mut record = weights(state, rules, player);
     // stub: AI-STUB-15
-    // stub: AI-STUB-13
     // stub: AI-STUB-14
     record.reserve = reserve;
     record.threats = threats;
     record.towns = towns;
-    record.experience = experience(state, rules, player);
+    record.heroes = heroes(state, rules, player);
     record
 }
 
@@ -479,26 +492,37 @@ impl Record {
 /// one experience point is worth to it, `fight::experience_value` of its army's value stored as
 /// an f32 (+∞ with no experience to its next level).
 // rule: CPU-STA-006
-fn experience_weight(state: &GameState, rules: &GameRuleset, hero: &HeroOnMap) -> u32 {
-    let next = state.hero(hero.id).map_or(0, |details| {
-        h3_heroes::next_level_experience(details, rules.core())
-    });
-    fight::experience_value(fight::value_of(rules, &hero.army), next)
+fn experience_weight(rules: &GameRuleset, hero: Fighter<'_>) -> u32 {
+    let next = h3_heroes::next_level_experience(hero.details, rules.core());
+    fight::experience_value(fight::value_of(rules, &hero.on_map.army), next)
         .map_or(INFINITE, |value| value.round(SINGLE_BITS).to_f32_bits())
 }
 
-/// Each of `player`'s heroes on the map with its experience weight (`ai_turn_start_values`
-/// 0x527960 over the player's list of heroes, the garrison heroes not in it), by id.
-fn experience(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<(HeroId, u32)> {
-    let mut weights: Vec<(HeroId, u32)> = state
+/// Each of `player`'s heroes on the map with its values per unit (`ai_turn_start_values`
+/// 0x527960 with `ai_hero_effectiveness` 0x527760 over the player's list of heroes, the garrison
+/// heroes not in it), by id: its experience weight ([`experience_weight`]) and its spell gains
+/// (`spells::gains` on its caster record, its spell points left as the hero's signed word).
+fn heroes(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<(HeroId, HeroValues)> {
+    let mut values: Vec<(HeroId, HeroValues)> = state
         .adventure()
         .heroes()
         .iter()
         .filter(|hero| hero.owner == player)
-        .map(|hero| (hero.id, experience_weight(state, rules, hero)))
+        .filter_map(|on_map| {
+            state.hero(on_map.id).map(|details| {
+                let hero = Fighter { on_map, details };
+                let record = spells::record(state, rules, hero);
+                let mana = i32::from(i16::from_ne_bytes(details.mana.to_ne_bytes()));
+                let values = HeroValues {
+                    experience: experience_weight(rules, hero),
+                    spells: spells::gains(rules, &record, mana),
+                };
+                (on_map.id, values)
+            })
+        })
         .collect();
-    let _ = h3_kernel::order::sort_by_unique_key(&mut weights, |&(hero, _)| hero);
-    weights
+    let _ = h3_kernel::order::sort_by_unique_key(&mut values, |&(hero, _)| hero);
+    values
 }
 
 #[cfg(test)]

@@ -126,6 +126,21 @@ fn scaled(value: SignedX87) -> i64 {
     value.times(SignedX87::int(1 << 40)).trunc()
 }
 
+/// A hero's values per unit without power (no spell book): `experience` and the spell gains'
+/// floors (CPU-STA-007).
+fn bookless(experience: u32) -> HeroValues {
+    HeroValues {
+        experience,
+        spells: SpellGains {
+            power: 10,
+            rounds: 0,
+            knowledge: 10,
+            doubled: 0,
+            refilled: 0,
+        },
+    }
+}
+
 /// The weights of `record` compared exactly ([`scaled`]).
 fn weights_of(record: &Record, rules: &GameRuleset) -> Vec<i64> {
     record.weights(rules).into_iter().map(scaled).collect()
@@ -150,7 +165,7 @@ fn each_players_start_records_its_reserve_weights_experience_and_threats() {
             demand: vec![1250, 5],
             markets: 1,
             mean: 250,
-            experience: vec![(RED_HERO, 1_098_711_040)],
+            heroes: vec![(RED_HERO, bookless(1_098_711_040))],
             threats: vec![(BLUE_HERO, 5_000_000)],
             towns: vec![(T0, 1)],
         }
@@ -172,7 +187,7 @@ fn each_players_start_records_its_reserve_weights_experience_and_threats() {
             demand: vec![2050, 13],
             markets: 1,
             mean: 499,
-            experience: vec![(BLUE_HERO, 1_084_898_673)],
+            heroes: vec![(BLUE_HERO, bookless(1_084_898_673))],
             threats: vec![(RED_HERO, 5_000_000)],
             towns: vec![(T1, 1)],
         }

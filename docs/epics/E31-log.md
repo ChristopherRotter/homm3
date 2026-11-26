@@ -617,3 +617,71 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
 - **Found:** `h3-adventure`'s property test `reach::tests::the_query_and_move_hero_agree` fails on
   `master` with a new case (the query and `MoveHero` disagree on the points left, 4 against 6):
   its `cc` line in the adventure lane's inbox, not committed (it would fail every lane's CI).
+
+## T2e — the spells' and skills' values (2026-11-26, increment 2)
+
+- **The size, measured at the start** (`docs/exe/map.toml`): the 11 functions, 4 958 bytes, about
+  1 840 instructions (the caster record, the five kinds, the best value and the spell's gain 2.5
+  KB, the hero's values 0.5 KB, the skill value, the school and the University 2.0 KB), of which
+  E23 had ported the caster record and the damage kind for the battle's odds (`aim.rs`,
+  BAT-AI-008) and E08 T25 the skill value's setup path (`h3_heroes::choice`, HER-LVL-006). The
+  user chose **no cut** (offered: the spells first, the skills next session), the spell values in
+  `h3_battle::estimate` with the odds calling them, and the skill value's flag-set path in
+  `h3_heroes::choice` (both `cross-lane`; AI-Q36). The PC left before the original data were
+  staged; the user attached `Heroes3.exe` to the chat for the readings.
+- **Readings** (the main session, the survey's lines known: not blind): `ai_caster_record`
+  0x526D40, `ai_damage_spell_value` 0x5270E0, `ai_mass_damage_spell_value` 0x5271C0,
+  `ai_effect_spell_value` 0x527290, `ai_spell_value` 0x5273D0, `ai_best_spell_value` 0x5275B0,
+  `ai_hero_spell_gain` 0x527640, `ai_hero_effectiveness` 0x527760, `ai_secondary_skill_value`
+  0x524690 (every flag-set case), `ai_takes_new_secondary_skill` 0x524DD0, `ai_school_value`
+  0x524D20, `ai_university_value` 0x525BF0, `hero_spell_cost` 0x4E5240 and the entry of
+  `creature_spell_factor` 0x44A4D0. Each agrees with the survey and §7.39 but four details, now
+  in the catalog, the address map and the survey: (a) the record's army list values a stack at
+  its count's low 16 bits as a signed word (§5.5's new slip #69); (b) with no enemy army the
+  cost counts neither the Pegasi nor the own Mages (§7.39 said the Mages counted; `aim.rs` had
+  it right); (c) the Knowledge point's gain is 30 more mana's over 3 (the survey's "a tenth");
+  (d) the flag-set path's schools take their values whatever Wisdom. #17 (a new school at
+  Expert) and #20 (the University's gold once, four skills) confirmed as read.
+- **Built.** `h3_battle::estimate`'s `caster.rs` (**cross-lane**; CPU-SPL-001 to -006):
+  `CasterRecord` (public: its strength, power, rounds and mana fields, `new`, `value`, `best`),
+  the kinds on the battle's own helpers (`mastery_at`, `mana::cost`, `untargeted_bonus`,
+  `creature_factor`, `takes_stack`), the curve moved from `aim.rs`; `aim.rs`'s `hero_value` now
+  builds a borrowed `SpellCaster` and asks `best_spell_value` with the damage kind (its private
+  `spell_value` and `Caster` gone; the battle's tests unchanged). `h3_heroes::choice`
+  (**cross-lane**; CPU-SKL-001): one switch `original` for both paths in the original's 32-bit
+  integers (the setup path's values unchanged), `ComputerReads`, `counted_worth`,
+  `computer_skill_value`, `computer_takes_new_skill` (signed ranking). `h3_game::computer`'s
+  `spells.rs` (the hero's record on its tile, `gain` CPU-SPL-007, `gains` CPU-STA-007) and
+  `skills.rs` (`school_value` CPU-SKL-002 on a changed copy of the details, `reads`,
+  `university_value` CPU-SKL-003); the start's `Record` keeps per hero `HeroValues` (the
+  experience weight and the five spell gains; the memory's encoding **v3**); AI-STUB-13 lifted.
+  `fight::battle_hero` now sets the hero's maximum spell points (`derive_battle_hero` leaves 0;
+  the simulated combat never read it). No `POLICY_VERSION` bump: no choice reads them yet; the
+  gain and the skills' values `expect(dead_code)` until T2f to T2h.
+- **Agent decisions (change freely):** the record holds its numbers as public fields, the
+  callers change a clone (the original raises and lowers them in place); the record's mana is the
+  battle hero's maximum (`h3_heroes::max_mana`, the same getter as the original's
+  `trunc(f32(10 K) × i)`); the schools' values are computed only where the switch reaches them
+  (below Expert, known or a free slot), 0 elsewhere (nothing reads them); the Ballista is a worn
+  war machine whose creature shoots, the Tent one with `first_aid` (the engine has no artifact
+  numbers); the gold weight and the University's gold at the market's cost resource (the base
+  pack's gold); the unreachable Titan's Lightning Bolt case of 0x5270E0 not written.
+- **Tests:** `h3-battle`'s `estimate/caster/tests.rs` (9: the record's numbers, its list's order
+  and word counts, no power without a book or with `NoCasting`, the cost and the casts, the kinds
+  none and several, the free spell, the field's mastery, the damage curve both ways and without
+  strength, every stack's spared and hurt parts, the effect's three branches and the positive
+  spell's immunes, a value below 0, the raise's two caps, the best value's kinds and level limit;
+  the estimate tests' ruleset now with AI values and a free `quake`); `h3-heroes`'
+  `tests/choice.rs` (3: every flag-set value, the counted army with its wrap, the signed
+  ranking); `h3-game`'s `computer/spells/tests.rs` (4, on the crate's core with the original's 28
+  skill places, Air's masteries, the gust of one AI kind and the market: the record and the five
+  gains, the gain's four cases, the school's next level and a new one at Expert, the reads, the
+  Estates and school values through them, the University's sum, gold test and eight skills, the
+  worn machines); the start's and the memory's tests for v3. Numbers from an IEEE double model
+  (Python, not committed); all agreed with the port once the record had its maximum mana. `h3-battle`
+  and `h3-battle-ai` pass whole (724 and 149 tests).
+- **The benchmark** (`computer-turns-towns-36`): 207 152 091 → 228 988 508 Ir (+10.5 %),
+  re-baselined: a caster record per hero at each turn start (`derive_battle_hero`, 7.5 % of the
+  count) and seven best values on it; about 1 020 000 Ir a turn.
+- **Found:** `master` did not build its tests since #1190 merged after #1189 (T2d's start test
+  without T56's `war_machine` field): fixed in #1195, which this branch sits on.

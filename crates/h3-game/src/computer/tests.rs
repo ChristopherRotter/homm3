@@ -21,7 +21,8 @@ use h3_towns::{TownCommand, TownHeroChange};
 use proptest::prelude::*;
 
 use super::memory::{Pass, Turn};
-use super::start::{self, Record};
+use super::spells::SpellGains;
+use super::start::{self, HeroValues, Record};
 use super::turn::{Pick, counted, next_hero};
 use super::*;
 use crate::town::tests::{towns_rules, towns_setup};
@@ -457,7 +458,7 @@ fn holding(turn: Turn) -> Memory {
 
 fn record_strategy() -> impl Strategy<Value = Record> {
     let lists = (
-        proptest::collection::btree_map(any::<u16>(), any::<u32>(), 0..6),
+        proptest::collection::btree_map(any::<u16>(), (any::<u32>(), any::<[i32; 5]>()), 0..6),
         proptest::collection::btree_map(
             any::<u16>(),
             any::<i32>().prop_filter("not 0", |t| *t != 0),
@@ -470,16 +471,27 @@ fn record_strategy() -> impl Strategy<Value = Record> {
             .prop_map(move |v| (v[..n].to_vec(), v[n..2 * n].to_vec(), v[2 * n..].to_vec()))
     });
     (any::<i32>(), arrays, 1_u8..=10, any::<i32>(), lists).prop_map(
-        |(eyes, (reserve, means, demand), markets, mean, (experience, threats, towns))| Record {
+        |(eyes, (reserve, means, demand), markets, mean, (heroes, threats, towns))| Record {
             eyes,
             reserve,
             means,
             demand,
             markets,
             mean,
-            experience: experience
+            heroes: heroes
                 .into_iter()
-                .map(|(h, b)| (HeroId::new(h), b))
+                .map(
+                    |(h, (experience, [power, rounds, knowledge, doubled, refilled]))| {
+                        let spells = SpellGains {
+                            power,
+                            rounds,
+                            knowledge,
+                            doubled,
+                            refilled,
+                        };
+                        (HeroId::new(h), HeroValues { experience, spells })
+                    },
+                )
                 .collect(),
             threats: threats
                 .into_iter()
@@ -521,7 +533,19 @@ fn sample_record() -> Record {
         demand: vec![0x0100, 4],
         markets: 3,
         mean: 7,
-        experience: vec![(HeroId::new(1), 0x3F80_0000)],
+        heroes: vec![(
+            HeroId::new(1),
+            HeroValues {
+                experience: 0x3F80_0000,
+                spells: SpellGains {
+                    power: 10,
+                    rounds: -1,
+                    knowledge: 12,
+                    doubled: 3,
+                    refilled: 0x0102_0304,
+                },
+            },
+        )],
         threats: vec![(HeroId::new(9), 2_500_000)],
         towns: vec![(TownId::new(0), 2)],
     }
@@ -532,7 +556,7 @@ fn sample_record() -> Record {
 fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let empty = Memory::new();
     assert_eq!(empty, Memory::default());
-    assert_eq!(empty.encode(), [2, 0, 0, 0, 0]);
+    assert_eq!(empty.encode(), [3, 0, 0, 0, 0]);
     let turn = Turn {
         day: 0x0102_0304,
         pass: Pass::Second,
@@ -544,12 +568,13 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let full = holding(turn.clone());
     let bytes = full.encode();
     let frame: [u8; 22] = [
-        2, 0, 0, 0, 1, 4, 3, 2, 1, 1, 1, 1, 6, 5, 2, 0, 0, 0, 1, 0, 3, 2,
+        3, 0, 0, 0, 1, 4, 3, 2, 1, 1, 1, 1, 6, 5, 2, 0, 0, 0, 1, 0, 3, 2,
     ];
-    let record: [u8; 64] = [
+    let record: [u8; 84] = [
         0xFE, 0xFF, 0xFF, 0xFF, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0xFF, 0xFF, 0xFF,
-        0xFF, 0, 1, 0, 0, 4, 0, 0, 0, 3, 7, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0x80, 0x3F, 1, 0, 0,
-        0, 9, 0, 0xA0, 0x25, 0x26, 0, 1, 0, 0, 0, 0, 0, 2,
+        0xFF, 0, 1, 0, 0, 4, 0, 0, 0, 3, 7, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0x80, 0x3F, 10, 0, 0,
+        0, 0xFF, 0xFF, 0xFF, 0xFF, 12, 0, 0, 0, 3, 0, 0, 0, 4, 3, 2, 1, 1, 0, 0, 0, 9, 0, 0xA0,
+        0x25, 0x26, 0, 1, 0, 0, 0, 0, 0, 2,
     ];
     assert_eq!(bytes, [&frame[..], &record[..]].concat());
     assert_eq!(Memory::decode(&bytes), Ok(full.clone()));
@@ -577,8 +602,8 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
         (19, &[3]),
         (54, &[0]),
         (54, &[11]),
-        (75, &[0, 0, 0, 0]),
-        (85, &[0]),
+        (95, &[0, 0, 0, 0]),
+        (105, &[0]),
     ];
     for (at, values) in edits {
         let mut edited = bytes.clone();
@@ -591,7 +616,7 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     });
     assert_eq!(Memory::decode(&equal.encode()), malformed);
     let mut twice = sample_record();
-    twice.experience.push((HeroId::new(1), 0));
+    twice.heroes.push((HeroId::new(1), HeroValues::default()));
     let mut threats = sample_record();
     threats.threats.insert(0, (HeroId::new(10), 1));
     let mut towns = sample_record();
@@ -608,7 +633,7 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let mut other = bytes;
     other[0] = 1;
     assert_eq!(Memory::decode(&other), Err(MemoryError::Version(1)));
-    assert_eq!(MEMORY_ENCODING_VERSION, 2);
+    assert_eq!(MEMORY_ENCODING_VERSION, 3);
 }
 
 proptest! {

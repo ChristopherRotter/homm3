@@ -17,7 +17,7 @@ use h3_content::{CreatureTypeId, FULL_BP, SpellId};
 use h3_contracts::{ArmyStack, BattleHero, FortLevel, TownId};
 use h3_heroes::{
     BattleBonuses, HeroDetails, Necromancy, available_spells, derive_battle_hero,
-    gained_experience, necromancy, next_level_experience,
+    gained_experience, max_mana, necromancy, next_level_experience,
 };
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, SignedX87, X87};
 
@@ -220,19 +220,21 @@ fn raise_into(
     });
 }
 
-/// What a fighter's battle reads of it: its battle hero (no visit bonuses) and its available
-/// spells.
+/// What a fighter's battle reads of it: its battle hero (no visit bonuses) with its maximum
+/// spell points (HER-MAN-001: the caster record's mana, E31 T2e; the simulated combat reads the
+/// points it has) and its available spells.
 pub(super) fn battle_hero(rules: &GameRuleset, fighter: Fighter<'_>) -> (BattleHero, Vec<SpellId>) {
     let core = rules.core();
     let details = fighter.details;
-    let hero = derive_battle_hero(details, BattleBonuses::NONE, core)
+    let mut hero = derive_battle_hero(details, BattleBonuses::NONE, core)
         .unwrap_or(BattleHero::new(details.hero_type));
+    hero.magic.max_mana = max_mana(details, core);
     (hero, available_spells(details, core).unwrap_or_default())
 }
 
 /// The battle tile `pos` as the simulated combat reads it (`sim_combat_start` 0x423EE0's
 /// `tile_special_ground` 0x4FCE20): its special ground's battlefield and an anti-magic garrison.
-fn ground(state: &GameState, rules: &GameRuleset, pos: Pos) -> Ground {
+pub(super) fn ground(state: &GameState, rules: &GameRuleset, pos: Pos) -> Ground {
     let adventure = state.adventure();
     Ground {
         battlefield: adventure

@@ -248,7 +248,7 @@ id       = "CPU-STA-001"
 title    = "The turn start's records"
 context  = "computer"
 status   = "implemented"
-summary  = "What a computer player's turn start writes before its first pass (ai_turn_start 0x4297C0, ai_turn_start_values 0x527960; h3_game::computer's start record, kept in the memory, CPU-TRN-005), in the original's order, none of it writing the game state: the done marks cleared (CPU-TRN-002); the Eye value 0 while the engine has no Eye of the Magi (AI-STUB-10); the defence fold (its recruits AI-STUB-12) and the threat fold (CPU-STA-004); the recruit reserve (CPU-STA-002); the resource weights (CPU-STA-003); the Grail target (AI-STUB-15); then each of the player's heroes on the map its experience weight (CPU-STA-006; its spell gains AI-STUB-13) and the artifacts' mean (AI-STUB-14). The difficulty's two weights are functions of the difficulty alone (CPU-SIM-012's blend). The record is read in the computer's own turn and, until its next start, by its answers in the other players' turns."
+summary  = "What a computer player's turn start writes before its first pass (ai_turn_start 0x4297C0, ai_turn_start_values 0x527960; h3_game::computer's start record, kept in the memory, CPU-TRN-005), in the original's order, none of it writing the game state: the done marks cleared (CPU-TRN-002); the Eye value 0 while the engine has no Eye of the Magi (AI-STUB-10); the defence fold (its recruits AI-STUB-12) and the threat fold (CPU-STA-004); the recruit reserve (CPU-STA-002); the resource weights (CPU-STA-003); the Grail target (AI-STUB-15); then each of the player's heroes on the map its values per unit (its experience weight CPU-STA-006, its spell gains CPU-STA-007) and the artifacts' mean (AI-STUB-14). The difficulty's two weights are functions of the difficulty alone (CPU-SIM-012's blend). The record is read in the computer's own turn and, until its next start, by its answers in the other players' turns."
 numeric  = "integer"
 
   [[rule.source]]
@@ -313,10 +313,153 @@ id       = "CPU-STA-006"
 title    = "A hero's experience weight"
 context  = "computer"
 status   = "implemented"
-summary  = "What one experience point is worth to a computer's hero (ai_hero_effectiveness 0x527760's +0x109), set at its turn start for each of its heroes on the map (not the garrison heroes, outside the player's list) and after each step (T2j): (f32(2 500) + f32(its army's value)) / f32(40 x the experience to its next level), in double precision, stored as an f32 (+infinity with no experience to the next level). The same expression as the fight estimate's ai_experience_value 0x527710 (CPU-SIM-012), here of the army as it stands. The hero's other values of the function (the gains of one Spell Power, a duration, a Knowledge point, the mana refilled and doubled) come with the spell values (AI-STUB-13, T2e)."
+summary  = "What one experience point is worth to a computer's hero (ai_hero_effectiveness 0x527760's +0x109), set at its turn start for each of its heroes on the map (not the garrison heroes, outside the player's list) and after each step (T2j): (f32(2 500) + f32(its army's value)) / f32(40 x the experience to its next level), in double precision, stored as an f32 (+infinity with no experience to the next level). The same expression as the fight estimate's ai_experience_value 0x527710 (CPU-SIM-012), here of the army as it stands. The hero's other values of the function (the gains of one Spell Power, a duration, a Knowledge point, the mana refilled and doubled) are CPU-STA-007 (E31 T2e)."
 numeric  = "float"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, re-read at T2d): ai_hero_effectiveness 0x527760 (experience_to_next_level 0x4DA420 of the level +0x55, army_value 0x44AC80, hero_price 0x67814C, the stores at 0x5277BA to 0x5277D8); ai_turn_start_values 0x527960's loop over the player's list +0x8"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-STA-007"
+title    = "A hero's spell values per unit"
+context  = "computer"
+status   = "implemented"
+summary  = "What one more of each of its magic's numbers is worth to a computer's hero (ai_hero_effectiveness 0x527760's +0x47E to +0x48E, H3API's AI fields of the hero), set beside its experience weight (CPU-STA-006) at its turn start and after each step (T2j), on its caster record (CPU-SPL-001): each the best value of every AI kind (CPU-SPL-006) of the record changed, less the record's own, in 32 bits. One Spell Power (+0x47E): the power and the rounds one higher, at least 10; one round (+0x482); a Knowledge point (+0x486): 30 more mana, the gain over 3 toward 0, at least 10; with the spell points the hero has left (a signed word) as the record's mana, the mana refilled to the maximum (+0x48E) and raised to twice it (+0x48A), each less the best value with the points left, 0 when the hero has that many already. A hero without power (no spell book, the Orb of Inhibition) has 10, 0, 10, 0, 0 (its one Spell Power's record has power 1 and no mana, worth nothing but a free spell). The computer's skill values read +0x47E and +0x486 (CPU-SKL-001)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E31-computer-player.md section 2.4; E31 T1a2d, read whole at T2e): ai_hero_effectiveness 0x527760 (ai_caster_record 0x526D40 at 0x527784, the seven ai_best_spell_value 0x5275B0 calls with the mask 0x1F8000 at 0x5277DE to 0x52791D, the floors of 10 at 0x52780D and 0x527885, the division by 3 at 0x52786D, the mana +0x18 tests at 0x5278B6 and 0x5278F9)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SPL-001"
+title    = "The computer's caster record of a hero"
+context  = "computer"
+status   = "implemented"
+summary  = "What the computer's spell values read of a hero (ai_caster_record 0x526D40; h3_battle::estimate's CasterRecord, AI-Q36): without a spell book or with a NoCasting effect (the Orb of Inhibition) its strength, power, rounds and mana 0 and no army list; else the strength its army's value (the AI value times the count over its slots, 32 bits), the power its Spell Power byte held to 1..99 (a signed byte above 99 as 99, at most 0 as 1), the rounds the power plus its duration bonus, the mana its maximum spell points (the adventure map's formula, HER-MAN-001: not the points it has left), and per army slot with a creature, in slot order, an entry of the creature and its value, the AI value times the low 16 bits of the count as a signed word (32 bits), sorted by value, highest first (the library's insertion sort of at most seven entries: equal values keep their slot order). Its masteries are the hero's on the special battlefield of its own map tile (hero_tile_spell_field 0x4E4FA0), its spells its available ones. The computer's callers change the power, rounds and mana and value again (CPU-STA-007)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md section 7.39, E23 T1a3d; re-read at E31 T2e): ai_caster_record 0x526D40 (hero_wears_artifact 0x4D91F0 with 0 and 126 at 0x526D7F, 0x526D90; army_value 0x44AC80; the power's hold at 0x526DB5; hero_duration_bonus 0x4E4DB0; hero_intelligence 0x4E48B0 and the mana at 0x526DFB to 0x526E16; the entries at 0x526E1D to 0x526E65, the count's word at 0x526E2F; army_entries_insertion_sort 0x435160)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SPL-002"
+title    = "A spell's value to the computer"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's value of a hero's spell (ai_spell_value 0x5273D0): its mastery m on the hero's map tile's special battlefield; its cost at the hero's own mastery with no army and no field (hero_spell_cost 0x4E5240 given none: neither the enemy's Pegasi nor the own Mages); 0 when it costs more than the record's mana; else the casts n, the mana over the cost (1000 for a free spell), and by its AI kinds taken as one value: damage CPU-SPL-003 with n casts against the strength S, damage once the same with one cast, damage to every stack CPU-SPL-004, any other battle spell CPU-SPL-005, new or raised stacks trunc(S x x) with x = 10 v_m (P + m) / S held to 0.9, times the curve's casts factor of min(n, 13), held to 3.9 (0 for S = 0), the map's spells (and Earthquake) trunc((0.001 sqrt(n) + 0.009) x (v_m x S)); no kind or several (Titan's Lightning Bolt) 1. v_m is the spell's AI value at m (SPTRAITS.TXT), P the record's power; products of integers in 32 bits, the rest in the x87's doubles."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (installation.md section 7.39, E23 T1a3d; re-read at E31 T2e): ai_spell_value 0x5273D0 (hero_tile_spell_field 0x4E4FA0, hero_spell_mastery 0x4E5080, hero_spell_cost 0x4E5240 with 0 and -1 at 0x527405, the casts at 0x527425, the switch on the flags and 0x1F8000 at 0x52743E; the raise at 0x527519 to 0x5275A4 with 0.9 at 0x63B7E0 and 3.9 at 0x640578; the map's spells at 0x5274D2 to 0x52750B with crt_sqrt 0x617B94, 0.001 at 0x63A6A0 and 0.009 at 0x640580); hero_spell_cost 0x4E5240 (the armies only with an enemy army, 0x4E52DA)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SPL-003"
+title    = "A damage spell's value to the computer"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's value of a damage spell at mastery m with n casts against a strength S (ai_damage_spell_value 0x5270E0; also the battle AI's odds, BAT-AI-008): the base b = v_m x (P + m) (32 bits), d the hero's bonuses on it without a target stack (hero_spell_damage_bonus 0x4E5760 given none: the Orbs and Sorcery), X = 10 d / S in doubles, Y = alpha_k X + beta_k for the first row k of 0 to 12 of the curve 0x640398 whose threshold X reaches (13 without one), Z = phi_min(n, 13) X; trunc(S x Z) when Y > Z, else trunc(S x Y); 0 for S = 0 (the original's NaN). The code's case of Titan's Lightning Bolt (its effect as the base) is never reached: its two AI kinds value it at 1."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (installation.md section 7.39, E23 T1a3d; re-read at E31 T2e): ai_damage_spell_value 0x5270E0 (the base at 0x527104 to 0x527110, hero_spell_damage_bonus 0x4E5760 at 0x52711C, the row's search at 0x52714B to 0x527168, the comparison at 0x527193), the table ai_damage_spell_curve 0x640398"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SPL-004"
+title    = "A spell on every stack's value to the computer"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's value of a damage spell on every stack (ai_mass_damage_spell_value 0x5271C0; Death Ripple, Destroy Undead, Armageddon): over the hero's army slots in order A = trunc(w x count x (1 - f) + A) in doubles, w the creature's AI value and f its part of the spell's effect test under the hero with no controlling hero (creature_spell_factor 0x44A4D0, an f32): the army's value the spell spares; 0 when A is 0, else the damage value (CPU-SPL-003) against A less the part it hurts, the strength less A, at least 0 (32 bits)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (installation.md section 7.39, E23 T1a3d; re-read at E31 T2e): ai_mass_damage_spell_value 0x5271C0 (the loop at 0x5271D5 to 0x527243 with creature_spell_factor 0x44A4D0 given the hero and 0, the sum's truncation at 0x527232; ai_damage_spell_value 0x5270E0 against A at 0x527266; the floor at 0x52726B)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SPL-005"
+title    = "Any other spell's value to the computer"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's value of any other battle spell (ai_effect_spell_value 0x527290): its rounds e the record's rounds times the casts n (32 bits); a spell not aimed at a stack at the mastery (spell_takes_target_stack 0x59E060 false) counts the whole army list (CPU-SPL-001) with e held to 7; one aimed at a stack one entry while e is below 7, else min(e / 7, the rounds) entries for 7 rounds each; over those first entries (for a positive spell only those whose effect test under the hero, no controlling hero, is above 0), the sum of v_m x the entry's value x e (32 bits), over 700 toward 0. An army list with a stack of more than 32 767 creatures values it at its count's low word (CPU-SPL-001), so the value may go below 0."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (installation.md section 7.39, E23 T1a3d; re-read at E31 T2e): ai_effect_spell_value 0x527290 (spell_takes_target_stack 0x59E060 at 0x5272B4, the rounds at 0x5272C3, the mass branch to 0x5272F4, the single one at 0x5272F6 to 0x527321, the loop at 0x52732E to 0x5273A5 with the polarity +0 at 0x527359 and creature_spell_factor 0x44A4D0, the division by 700 at 0x5273A7)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SPL-006"
+title    = "The best of a hero's spells to the computer"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's best value among a hero's spells of some AI kinds (ai_best_spell_value 0x5275B0; also the battle AI's odds with the damage kind, BAT-AI-008): 0 when the record's power is 0; else the largest value (CPU-SPL-002), from 0, among its available spells whose AI kinds share one with those asked, none above its own spell level limit (Recanter's Cloak on the hero: level 2). The adventure computer asks for every kind (0x1F8000) or a spell's damage kinds (0x38000)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (installation.md section 7.39, E23 T1a3d; re-read at E31 T2e): ai_best_spell_value 0x5275B0 (hero_wears_artifact 0x4D91F0 with 83 at 0x5275C7, the power test at 0x5275D4, the loop over spells 0 to 69 and +0x430 at 0x5275E6 to 0x52762C)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SPL-007"
+title    = "What a spell adds to a hero for the computer"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's gain of a spell to a hero (ai_hero_spell_gain 0x527640; the scroll's, the Mage Guild's, the Pyramid's and the Seer's values, T2f to T2h): 0 when its caster record (CPU-SPL-001) has no power; else the spell's value (CPU-SPL-002), and for a spell of a damage kind (damage, damage once, damage to every stack) its value less the best of the hero's spells sharing one of its damage kinds (CPU-SPL-006), 1 when that best is at least its value (a spell it has, or one worth nothing)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, read whole at T2e): ai_hero_spell_gain 0x527640 (ai_caster_record 0x526D40, the power test at 0x527672, ai_spell_value 0x5273D0 at 0x527698, the mask 0x38000 at 0x5276B0, ai_best_spell_value 0x5275B0 at 0x5276C1, the 1 at 0x5276D6)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SKL-001"
+title    = "A secondary skill's value to a computer player's hero"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's value of a secondary skill to a computer player's hero (ai_secondary_skill_value 0x524690 with its flag set; h3_heroes::computer_skill_value, the same switch as the level-up's setup path HER-LVL-006, AI-Q36) and its ranking of a new skill against an advance (ai_takes_new_secondary_skill 0x524DD0 with the flag set; h3_heroes::computer_takes_new_skill, HER-LVL-006's walk on these values, compared signed). As the setup path (0 at Expert or unknown with eight known; by the original's skill places) with A = 1 000 and B = 500 plus each stack's AI value times its count, a shooter's into B too (32 bits), and these cases: Wisdom SP x the power gain / 2; Mysticism the knowledge gain / 10; Eagle Eye the power gain / 5 (0 without Wisdom); Estates trunc({725, 725, 1550}[L] x the owner's gold weight); the four schools their values (CPU-SKL-002) whatever Wisdom; Scholar SP x the power gain / 10 (0 without Wisdom); Artillery Attack x 10 only with a worn Ballista; Intelligence Kn x the knowledge gain / 4; Sorcery SP x the power gain / 20; First Aid 250 only with a worn First Aid Tent. The gains are the hero's +0x47E and +0x486 (CPU-STA-007), the gold weight its owner's at the turn start (CPU-STA-003, the market's cost resource), SP and Kn held to 1..99, Attack to 0..99; each division toward 0."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E08-progression.md section 10.2, E08 T25; the flag-set cases read whole at E31 T2e): ai_secondary_skill_value 0x524690 (the counted army at 0x5246D5 to 0x524722; Wisdom 0x5247E5, Mysticism 0x524861, Eagle Eye 0x5248A6, Estates 0x5248E5 with ai_player_values 0x6929E0 of the hero's owner +0x22, the schools 0x524939 to 0x5249DD with ai_school_value 0x524D20, Scholar 0x524A10, Artillery 0x524AB1 with hero_wears_artifact 4, Intelligence 0x524B68, Sorcery 0x524BEA, First Aid 0x524C7B with 6); ai_takes_new_secondary_skill 0x524DD0 (the flag passed at 0x524E0D, the signed comparison at 0x524E57)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SKL-002"
+title    = "A magic school's value to the computer"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's value of a magic school skill to a hero (ai_school_value 0x524D20): the best value of every AI kind of its spells (CPU-SPL-006) with the school one level higher, or at Expert when the hero lacks it, less the best value now (32 bits). The original writes the level into the hero and back; the port values a changed copy (ADR-0030 point 4). A new school counts at Expert at once (survey section 5.5 #17, a slip, ported as read until AI-QUIRK-1)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, read whole at T2e): ai_school_value 0x524D20 (ai_caster_record 0x526D40, ai_best_spell_value 0x5275B0 with 0x1F8000 at 0x524D5A and 0x524D8E, the level +0xC9 set to 3 at 0x524D73 or raised at 0x524D7D, restored at 0x524DA1)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-SKL-003"
+title    = "A University's value to the computer"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's value of a University's four skills to a hero (ai_university_value 0x525BF0; the University object, the Conflux's, the town visit, T2g and T2h): 0 when the hero knows eight skills or, when asked (the object's and the visit's test), while the current player has less than 2 000 gold (the market's cost resource); else the sum (32 bits) of the flag-set skill values (CPU-SKL-001) of the offered skills its class may get (a weight above 0), it lacks and it would take (CPU-SKL-001's ranking). All four count though the gold may buy one (survey section 5.5 #20, a slip, ported as read until AI-QUIRK-1)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, read whole at T2e): ai_university_value 0x525BF0 (the eight skills at 0x525BF9, the gold +0xB4 of current_player_record 0x69CCB0 at 0x525C17, the loop over the four skills at 0x525C4C to 0x525C8E: the class record +0x18, the level +0xC9, ai_takes_new_secondary_skill 0x524DD0 and ai_secondary_skill_value 0x524690 with the flag 1)"
   confidence = "high"

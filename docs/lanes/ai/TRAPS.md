@@ -31,6 +31,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   contracts (`BattleHero` and the available spells; `h3-battle` never depends on `h3-heroes`).
   The fight estimate's tests (`computer/fight/tests.rs`) can set Fight and AI values only on a
   core built from `crate::tests::core_pack`; the town fixtures' cores are worth 0.
+- The spell values (`h3_battle::estimate`'s `caster.rs`, E31 T2e) are the battle AI's odds' too
+  (`aim.rs`, BAT-AI-008): a change there moves the battle's choices and needs `h3-battle-ai`'s
+  tests and the battle benches. The skill value's switch is one for the level-up's setup path
+  and the computer's (`h3_heroes::choice`, the adventure lane's): a change moves HER-LVL-006.
+  `h3_heroes::derive_battle_hero` leaves `max_mana` 0 (the game sets it): `fight::battle_hero`
+  sets it, which the caster record's mana is.
 - Coverage counts the implicit else of an `if let` and of a `let … else` as a region: a case
   that cannot happen (a chosen spell's target) goes through `Option::into_iter().for_each` or
   `unwrap_or`, not a branch.

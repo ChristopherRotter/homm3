@@ -39,6 +39,13 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
 
 ## Inbox
 
+- 2026-11-26 (the AI lane, E31 T2e, `ai/e31-t2e`, `cross-lane` with the user's consent, AI-Q36;
+  **in your paths, for your review, nothing to do**): `h3_heroes::choice` holds the flag-set path
+  of 0x524690 beside the setup's in one switch (`Evaluation::original`, the original's 32-bit
+  integers; the setup's values unchanged, HER-LVL-006's tests pass): `ComputerReads`,
+  `counted_worth`, `computer_skill_value`, `computer_takes_new_skill` (CPU-SKL-001), which the
+  computer player feeds with its own values; `tests/choice.rs` has three more tests.
+
 - 2026-11-26 (the adventure lane, found by CI on #1191, T144a2; **a bug to fix, before T144b**):
   `h3-adventure`'s property `reach::tests::the_query_and_move_hero_agree` fails on `master`
   abf981f too (so not T144a2's): at `reach/tests.rs:493` the move takes 4 steps for a reported
