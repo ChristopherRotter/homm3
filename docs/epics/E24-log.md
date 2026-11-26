@@ -3789,8 +3789,12 @@ ai lane's, not this lane's).
   place (a click walk, held keys: three steps then the refusal asked once), every view's frames
   read back exact, as afresh and as the headless loop's; both seats' records of the two-human run
   played to their end by `h3-map-view record` (10 inputs each); `Knee Deep in the Dead`'s first
-  step (four skeletons' zones round the hero) ending play with `MCL-STUB-6`'s line; the
-  map-client scope's verify.
+  step (four skeletons' zones round the hero) ending play with `MCL-STUB-6`'s line;
+  `h3map.py drawn` (the 56 situations and every sequence the same, the scripted ones' gaps as
+  listed); `h3-map-view`'s coverage 100 % (regions and lines) and the workspace's clippy; the
+  map-client scope's verify. The golden records not played again: the record player gives clicks
+  and walks only (`director`), and T4a changes nothing a loop without a host plays but a key's
+  step's visit from beside (`Loop::node`).
 - **Seen for T4b and T4c:** the Redwood Observatory's visit shows no box (the original's tells
   what the tower shows: a find the record's visit does not lay out); at one human's start on
   `Good to Go` (seed 5) random objects drawn as their random templates (`RES`, `MON 3`), not
