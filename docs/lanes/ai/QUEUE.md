@@ -52,6 +52,12 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 (folded into T14); at E25 T37 (2026-11-18) every other lane's informational notice of E08 T63a
 to T127b, E09 T8c to T39a and E16 M5 T14.
 
+**From the town lane** (2026-11-26, `town/e09-war-machine-literal`, `cross-lane` with the user's
+consent; **in your paths, nothing to do but archive this**): `master` at 6035ed8 did not compile
+`h3-game`'s tests: E09 T56 (#1189) gave `h3_towns::BuildingDef` the field `war_machine` and your
+E31 T2d (#1190) added a literal without it (`computer/start/tests.rs`). The fix adds
+`war_machine: None` there; a new `BuildingDef` literal of yours takes the field.
+
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
