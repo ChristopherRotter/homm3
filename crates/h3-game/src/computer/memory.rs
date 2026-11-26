@@ -23,8 +23,8 @@ use super::start::{HeroValues, Record};
 /// Version of [`Memory`]'s canonical encoding (`docs/08-work-process.md`, "Versions"; owned by
 /// the ai lane): bumped with any change to what it holds or how it is written. v1 (E31 T2a): the
 /// turn's frame; v2 (T2d): its start's records; v3 (T2e): the heroes' spell gains beside their
-/// experience weights.
-pub const MEMORY_ENCODING_VERSION: u32 = 3;
+/// experience weights; v4 (T2f): the artifacts' mean after the mean weight.
+pub const MEMORY_ENCODING_VERSION: u32 = 4;
 
 /// A computer player's memory (ADR-0030 point 5; CPU-TRN-005): empty at the player's first turn
 /// in a game (the original's records survive from an earlier game, a quirk candidate not
@@ -127,13 +127,13 @@ impl Memory {
         self.turn.insert(turn.unwrap_or_else(start))
     }
 
-    /// The canonical encoding (v3, [`MEMORY_ENCODING_VERSION`]), little-endian: the version
+    /// The canonical encoding (v4, [`MEMORY_ENCODING_VERSION`]), little-endian: the version
     /// (u32); 0 without a turn, else 1, the turn's day (u32), its pass (u8: 0 the first, 1 the
     /// second, 2 the end), its flag (u8: 0 or 1), the hero sent out (u8 0, or 1 and the hero's
     /// id as u16), the number of heroes done (u32) and each one's id (u16) in ascending order;
     /// then the start's record: the Eye value (i32), the number of resources (u32) and per
     /// resource the reserve, then the means, then the demand (i32 each), the rate's row (u8, 1 to
-    /// 10), the mean weight (i32), and three lists, each its length (u32) then its entries in
+    /// 10), the mean weight (i32), the artifacts' mean (its f32 bits, u32), and three lists, each its length (u32) then its entries in
     /// ascending id order: the heroes' values per unit (the hero's id u16, the experience weight's
     /// f32 bits u32, then the spell gains as i32: one Spell Power, one round, a Knowledge point,
     /// the mana doubled, the mana refilled),
@@ -285,6 +285,7 @@ impl Reader<'_> {
             return None;
         }
         let mean = self.int()?;
+        let artifacts = u32::from_le_bytes(self.take()?);
         let heroes = self.ascending(|reader| {
             let hero = reader.hero()?;
             let experience = u32::from_le_bytes(reader.take()?);
@@ -317,6 +318,7 @@ impl Reader<'_> {
             demand,
             markets,
             mean,
+            artifacts,
             heroes,
             threats,
             towns,
@@ -340,6 +342,7 @@ fn encode_record(out: &mut Vec<u8>, record: &Record) {
     }
     out.push(record.markets);
     out.extend_from_slice(&record.mean.to_le_bytes());
+    out.extend_from_slice(&record.artifacts.to_le_bytes());
     write_count(out, record.heroes.len());
     for (hero, values) in &record.heroes {
         out.extend_from_slice(&hero.raw().to_le_bytes());

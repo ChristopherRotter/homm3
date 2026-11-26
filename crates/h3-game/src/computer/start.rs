@@ -2,15 +2,15 @@
 //! `ai_turn_start_values` 0x527960 write into the computer's record, its heroes and the enemy
 //! heroes before the first pass ([`Record`], CPU-STA-001): the threat fold over the enemies'
 //! reach with the towns' capture estimate (CPU-STA-004, -005), the recruit reserve (CPU-STA-002),
-//! the resource weights (CPU-STA-003) and the heroes' values per unit (their experience weight,
-//! CPU-STA-006, and since T2e their spell gains, CPU-STA-007, `super::spells`). The policy
+//! the resource weights (CPU-STA-003), the heroes' values per unit (their experience weight,
+//! CPU-STA-006, and since T2e their spell gains, CPU-STA-007, `super::spells`) and since T2f the
+//! artifacts' mean (CPU-STA-008, `super::artifacts`). The policy
 //! keeps them in its memory (ADR-0030 point 5): the values read them in its turn, and its answers
 //! read the last start's in the other players' turns.
 //!
 //! Not here: the Eye value, 0 while the engine has no Eye of the Magi (`AI-STUB-10`; the vision
 //! circle with T2h); the threat fold's search is the engine's reach (`AI-STUB-11`) and its
-//! defence recruits wait for increment 3 (`AI-STUB-12`); the artifacts' mean (`AI-STUB-14`, T2f)
-//! and the Grail target (`AI-STUB-15`, T2i). The
+//! defence recruits wait for increment 3 (`AI-STUB-12`); the Grail target (`AI-STUB-15`, T2i). The
 //! difficulty's weights are a function of the difficulty alone (`fight::blend`).
 
 use alloc::vec;
@@ -23,6 +23,7 @@ use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, SignedX87};
 use h3_towns::{BuildingId, BuildingSet, CREATURE_INDEXES, Town, index_creature};
 
+use super::artifacts;
 use super::fight::{self, Fighter};
 use super::order::library_sort;
 use super::spells::{self, SpellGains};
@@ -71,6 +72,8 @@ pub(super) struct Record {
     pub(super) markets: u8,
     /// The player's mean weight (+0x160).
     pub(super) mean: i32,
+    /// The player's mean artifact value (+0x164, an f32 bit pattern; CPU-STA-008).
+    pub(super) artifacts: u32,
     /// Each of the player's heroes on the map with its values per unit (CPU-STA-006, -007), in
     /// ascending id order.
     pub(super) heroes: Vec<(HeroId, HeroValues)>,
@@ -97,8 +100,8 @@ pub(super) struct HeroValues {
 /// defence fold (its recruits `AI-STUB-12`) and the threat fold ([`threats`]), the recruit reserve
 /// ([`reserve`]), the resource weights ([`weights`]), the Grail target (`AI-STUB-15`); then each
 /// hero's values per unit ([`heroes`]: its experience weight and its spell gains) and the
-/// artifacts' mean (`AI-STUB-14`). Nothing in it writes the state, so each reads the start's
-/// state.
+/// artifacts' mean (`artifacts::mean`, CPU-STA-008: on the weights and the gains just set).
+/// Nothing in it writes the state, so each reads the start's state.
 // rule: CPU-STA-001
 pub(super) fn record(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Record {
     // stub: AI-STUB-10
@@ -107,11 +110,11 @@ pub(super) fn record(state: &GameState, rules: &GameRuleset, player: PlayerId) -
     let reserve = reserve(state, rules, player);
     let mut record = weights(state, rules, player);
     // stub: AI-STUB-15
-    // stub: AI-STUB-14
     record.reserve = reserve;
     record.threats = threats;
     record.towns = towns;
     record.heroes = heroes(state, rules, player);
+    record.artifacts = artifacts::mean(state, rules, &record, player);
     record
 }
 
