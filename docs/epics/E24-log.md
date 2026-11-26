@@ -3736,7 +3736,11 @@ Clients run on `master` standing in.
   the Dead's one human through three next days in place, Good to Go with one-minute turns (each
   turn run out passing the view on), every view's frames read back exact, as afresh and as the
   headless loop's; each of Good to Go's two records played to its end by `h3-map-view record`;
-  clippy and the map crates' tests in `clients/`; the map-client scope's verify.
+  clippy and the map crates' tests in `clients/`; the map-client scope's verify; `h3map.py drawn`
+  (the 56 situations and the sequences as recorded, the scripted ones' gaps as listed); the 236
+  player records of the 118 golden adventure replays played by this branch's release binary and
+  by `master`'s (b59c5df) side by side: all 236 the same (exit, output, timeline), 205 to their
+  end as at T2a (the hero list's order changes no golden record's play).
 - **Still waiting** (T3b's scope, other lanes'): Begin from the shell (the client lane's shell
   crate calls `play`, whose API is unchanged: nothing more of this lane's) and Load (the engine's
   loaded humans, the adventure lane's inbox of 2026-11-21); T4's and T7's acceptance begin from
