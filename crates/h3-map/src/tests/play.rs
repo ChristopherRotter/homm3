@@ -13240,6 +13240,18 @@ fn check_isolation(
             _ => None,
         })
         .collect();
+    // So does a visit held after a battle, which the battle's last command makes, another
+    // player's or the system's (GAM-DEC-007; `view.rs`' seed of the town lane's E09 T56): its
+    // reveal (an observatory's, ADV-VIS-002; a flag's, ADV-OWN-001), told to the visitor's owner
+    // alone.
+    let revealed = |player: PlayerId| {
+        events.iter().any(|e| {
+            matches!(e, GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::TilesRevealed { .. },
+                seen_by,
+            }) if seen_by.contains(player))
+        })
+    };
     let kept = |was: &h3_adventure::BitGrid, is: &h3_adventure::BitGrid| {
         (0..was.levels()).all(|z| {
             (0..was.height()).all(|y| {
@@ -13257,7 +13269,9 @@ fn check_isolation(
                 after.adventure().explored(player),
             );
             match (was, is) {
-                (Some(was), Some(is)) if new_day || captors.contains(&player) => {
+                (Some(was), Some(is))
+                    if new_day || captors.contains(&player) || revealed(player) =>
+                {
                     prop_assert!(kept(was, is));
                 }
                 _ => prop_assert!(was == is),

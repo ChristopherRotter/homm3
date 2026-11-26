@@ -88,8 +88,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   at its exit arrives in the battle's last command, which may be another player's or the system's,
   or in the answer to the winner's level-up (its defender gone): that hero moves and its owner's
   explored tiles grow in a command not its own (`check_isolation`'s captors, `view.rs`' `jumper`);
+  so do any visit's reveal held after a battle (an observatory's, a flag's: `TilesRevealed` to its
+  owner alone; `check_isolation`'s `revealed`, `view.rs`' count, the town lane's seed of E09 T56);
   an empty boat a hero left on a Whirlpool's tile is boarded, no visit; an enemy hero on another
   tile of the entrance's own Whirlpool is a candidate (survey §4.1).
+- A flight's walk under `strict-fixed` may stop short of its path (E08 T142b, `ADV-QUIRK-15` off:
+  the last stop node before a step a tile hidden at the command forbids once revealed): an
+  oracle that walks a reported path accepts the cut only then, the hero on its last stepped tile
+  with the query's points there (`play.rs`' `landing`; `reach/tests.rs`' property since the seeds
+  of 2026-11-26, which it had missed).
 - The hygiene property and the seeded draws (`view.rs`): the other game may run on another seed
   (`unseen.seed`) and its unseen objects move the streams' positions, so every public draw the
   viewer is shown ends the comparison (a month's, a week's, a hire's, a Den of Thieves', since the
