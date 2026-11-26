@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "5 random-vs-random games of 28 days on the teleporters map (E08 T106c, increment 11's design note §14; T106a's e08-teleporters-36.h3m: one-way channels of three exits and of a lone one, a two-way channel of three, two gate pairs and an unpaired gate, three Whirlpools with boats, twelve heroes); seed 3 by a search of seeds 1 to 3 for the first with a Whirlpool's loss: 2 195 steps, 19 jumps, 12 told LeadsNowhere, 3 Whirlpools' losses, 23 revisits drawn, 7 battles; about 2.74 M Ir a step, 98 % inside Reach::search (the agent's legal moves of each of the twelve heroes at every step, 86 %); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); baselined at its first count; E08 T141a re-baselined: master 6 068 259 093 in the same sandbox, the branch -3.77 % on it with the same counted code (the functions in the same shares, `HeroOnMap` 56 bytes as before): each player's list of heroes (decision 413) orders the env's hero slots (encoding v19), so the random games changed course (2 614 steps for 2 195)"
+description = "5 random-vs-random games of 28 days on the teleporters map (E08 T106c, increment 11's design note §14; T106a's e08-teleporters-36.h3m: one-way channels of three exits and of a lone one, a two-way channel of three, two gate pairs and an unpaired gate, three Whirlpools with boats, twelve heroes); seed 3 by a search of seeds 1 to 3 for the first with a Whirlpool's loss: 2 195 steps, 19 jumps, 12 told LeadsNowhere, 3 Whirlpools' losses, 23 revisits drawn, 7 battles; about 2.74 M Ir a step, 98 % inside Reach::search (the agent's legal moves of each of the twelve heroes at every step, 86 %); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); baselined at its first count; E08 T141a re-baselined: master 6 068 259 093 in the same sandbox, the branch -3.77 % on it with the same counted code (the functions in the same shares, `HeroOnMap` 56 bytes as before): each player's list of heroes (decision 413) orders the env's hero slots (encoding v19), so the random games changed course (2 614 steps for 2 195); E08 T144a2 re-baselined: master 5 855 760 624 in the same sandbox, the branch +7.43 % on it: the random agent draws the heroes' casts (encoding v21: each listed cast without a target, each hero's Scuttle Boat and Dimension Door with a target, T144a1's filter gone), so the games changed course (2 001 steps for 2 614); the code alone +0.05 to +0.12 % on the random-play workloads whose games did not change"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "3",
 ]
 collect = "*adventure*random_rollout*"
-instructions = 5839591030
+instructions = 6290974633
 threshold_percent = 2
