@@ -2,8 +2,8 @@
 //! BAT-AI-016): each values the rise of the stack's worth when its strike on its threat record's
 //! enemy grows, for the share of the battle the spell lasts.
 
-use h3_battle::{computer, estimate};
 use h3_battle::{StackFlags, StackId, StackTraits};
+use h3_battle::{computer, estimate};
 use h3_content::CreatureFlag;
 use h3_content_battle::Ability;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
@@ -206,7 +206,12 @@ impl View<'_> {
             return 0;
         }
         let m = self.morale(s).clamp(-LIMIT, LIMIT);
-        let x = change_value(m, i32::from(self.effect(c)), estimate::morale_values(), self.slips());
+        let x = change_value(
+            m,
+            i32::from(self.effect(c)),
+            estimate::morale_values(),
+            self.slips(),
+        );
         if x.is_zero() {
             return 0;
         }

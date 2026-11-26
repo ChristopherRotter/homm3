@@ -4,8 +4,8 @@
 //! the other side's half, without the resistance); a cast's candidate (the hero's, E23 T5) also
 //! weighs the stack's resistance.
 
-use h3_battle::{computer, estimate};
 use h3_battle::{BattleState, StackFlags, StackId, StackTraits, Status};
+use h3_battle::{computer, estimate};
 use h3_content::SpellCategory;
 use h3_content::SpellId;
 use h3_content_battle::{SpellEffect, TimedChange};

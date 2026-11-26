@@ -56,8 +56,8 @@ mod morale;
 mod tests;
 
 pub use caster::CasterRecord;
-pub use morale::{LIMIT as MORALE_LIMIT, change_value, luck_values, morale_values};
 pub(crate) use caster::{SpellCaster, best as best_spell_value};
+pub use morale::{LIMIT as MORALE_LIMIT, change_value, luck_values, morale_values};
 
 /// The rounds a simulated combat fights before its stand-off (`sim_combat_run`'s 1 to 3).
 const ROUNDS: i32 = 3;
