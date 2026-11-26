@@ -6,6 +6,7 @@
 //! is in `level.rs`.
 
 use h3_content::HeroEffectDef;
+use h3_contracts::ArmyStack;
 
 use super::level::{base, base_pack, hero, s};
 use super::*;
@@ -261,4 +262,139 @@ fn a_new_skill_is_taken_when_it_ranks_within_the_free_slots() {
         let expected = if taken { Choice::Second } else { Choice::First };
         assert_eq!(choose(&r, &d, "estates", new), expected, "{new}");
     }
+}
+
+/// The flag-set path's reads (E31 T2e): A 2 000, B 900, the power gain 30, the knowledge gain
+/// 45, a gold weight of 0.75, the schools 11 to 14, a Ballista and a Tent worn, [`SHARES`].
+fn reads() -> ComputerReads {
+    ComputerReads {
+        worth: (2000, 900),
+        power_gain: 30,
+        knowledge_gain: 45,
+        gold_weight: h3_kernel::arith::SignedX87::int(3)
+            .over(h3_kernel::arith::SignedX87::int(4))
+            .unwrap(),
+        schools: [11, 12, 13, 14],
+        ballista: true,
+        tent: true,
+        shares: SHARES,
+    }
+}
+
+/// Every skill's value to a computer player's hero `d` with `reads`, in the original's order.
+fn computer_values(r: &Ruleset, d: &HeroDetails, reads: &ComputerReads) -> Vec<i32> {
+    let count = u16::try_from(r.skills().len()).unwrap();
+    (0..count)
+        .map(|raw| computer_skill_value(d, r, reads, SkillId::from_raw(raw)))
+        .collect()
+}
+
+// covers: CPU-SKL-001
+#[test]
+fn a_computer_players_hero_values_its_skills_by_its_values_per_unit() {
+    // Survey §10.2's flag-set column (E31 T2e's re-read of 0x524690): Attack 3, Spell Power 5,
+    // Knowledge 7, nothing raised. Wisdom 5 × 30 / 2, Mysticism 45 / 10, Estates trunc(725 ×
+    // 0.75), the schools theirs without Wisdom, Intelligence 7 × 45 / 4, Sorcery 5 × 30 / 20;
+    // the others by A and B as with the flag clear.
+    let r = base();
+    let mut d = hero(&r, "t:orrin", 0, &[]);
+    d.primary = [3, 0, 5, 7];
+    let unknown = [
+        125, 144, 200, 100, 20, 100, 40, 75, 4, 40, 250, 0, 100, 543, 11, 12, 13, 14, 0, 40, 30,
+        100, 140, 140, 78, 7, 50, 250,
+    ];
+    assert_eq!(computer_values(&r, &d, &reads()), unknown);
+    // With Wisdom: Eagle Eye 30 / 5, Scholar 5 × 30 / 10; the schools stay theirs.
+    d.skills = vec![(s(&r, "wisdom"), 1)];
+    let wise = computer_values(&r, &d, &reads());
+    let at = |v: &[i32], name: &str| v[usize::from(s(&r, name).raw())];
+    assert_eq!(
+        ["eagle_eye", "scholar", "fire_magic"].map(|k| at(&wise, k)),
+        [6, 15, 11]
+    );
+    // Artillery and First Aid count only with their machine worn; a negative gain divides toward
+    // 0 (5 × -3 / 2).
+    let bare = ComputerReads {
+        ballista: false,
+        tent: false,
+        power_gain: -3,
+        ..reads()
+    };
+    let v = computer_values(&r, &d, &bare);
+    assert_eq!(
+        ["artillery", "first_aid", "wisdom"].map(|k| at(&v, k)),
+        [0, 0, -7]
+    );
+    // The flag-clear path keeps its values (A 1 000).
+    assert_eq!(values(&r, &d, PrimarySkill::Defense)[2], 100);
+}
+
+// covers: CPU-SKL-001
+#[test]
+fn the_counted_army_adds_every_stack_and_the_shooters_again_in_32_bits() {
+    let mut p = base_pack();
+    for def in &mut p.creatures {
+        def.info.ai_value = match def.key.name() {
+            "peasant" => 3,
+            "ballista" => 1000,
+            _ => 0,
+        };
+    }
+    let r = compile(p).unwrap();
+    let c = |k: &str| r.creature_by_key(&std::format!("t:{k}")).unwrap();
+    let army = [
+        ArmyStack {
+            slot: 0,
+            creature: c("peasant"),
+            count: 40_000,
+        },
+        ArmyStack {
+            slot: 3,
+            creature: c("ballista"),
+            count: 2,
+        },
+    ];
+    assert_eq!(counted_worth(&r, &army), (123_000, 2500));
+    // 3 × 1 000 000 000 wraps: 3 000 001 000 - 2^32.
+    let huge = [ArmyStack {
+        slot: 0,
+        creature: c("peasant"),
+        count: 1_000_000_000,
+    }];
+    assert_eq!(counted_worth(&r, &huge), (-1_294_966_296, 500));
+    assert_eq!(counted_worth(&r, &[]), (1000, 500));
+}
+
+// covers: CPU-SKL-001
+#[test]
+fn a_computer_players_hero_ranks_a_new_skill_by_its_own_signed_values() {
+    // Knowing Leadership (seven slots free), offered Tactics (40): Estates 543, Ballistics and
+    // First Aid 250, Logistics 200, Archery 144, Offense and Armorer 140 use up the slots first.
+    let r = base();
+    let d = hero(&r, "t:orrin", 0, &[("leadership", 1)]);
+    assert!(!computer_takes_new_skill(
+        &d,
+        &r,
+        &reads(),
+        s(&r, "tactics")
+    ));
+    // With nothing else worth more than 0, Fire Magic at 1 ranks first; at -1 below every skill
+    // worth 0 (a signed ranking), which use up the slots.
+    let fire = s(&r, "fire_magic");
+    let flat = ComputerReads {
+        worth: (0, 0),
+        power_gain: 0,
+        knowledge_gain: 0,
+        gold_weight: h3_kernel::arith::SignedX87::ZERO,
+        schools: [1, -1, -1, -1],
+        ballista: false,
+        tent: false,
+        ..reads()
+    };
+    assert!(computer_takes_new_skill(&d, &r, &flat, fire));
+    let below = ComputerReads {
+        schools: [-1; 4],
+        ..flat
+    };
+    assert!(!computer_takes_new_skill(&d, &r, &below, fire));
 }

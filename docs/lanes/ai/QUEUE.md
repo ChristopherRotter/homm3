@@ -26,25 +26,23 @@ resumes (the epic file); its tasks are cut then.
   2026-11-25), T2b the simulated combat's sides and melee (done 2026-11-25), T2c the casts,
   Necromancy and the fight estimate (done 2026-11-25; the simulated combat now
   `h3_battle::estimate`, AI-Q34), T2d the start's values (done 2026-11-26, not cut, AI-Q35),
-  **T2e** the spells' and skills' values (next), T2f the artifacts, T2g the army and town values,
+  T2e the spells' and skills' values (done 2026-11-26, not cut, AI-Q36; the spell values in
+  `h3_battle::estimate`'s `caster.rs`), **T2f** the artifacts (next), T2g the army and town values,
   T2h the object value, T2i the planning, T2j the walk with the exit's property tests and the
   gated benchmark, T2k trace T-A's harness and days 1 to 3. Each with its `CPU-` ids, tests,
   coverage 100 %, stubs by epic.
-  - **T2e — the spells' and skills' values** (next; survey §2, §2.4; the epic file's table:
-    `ai_spell_value` 0x5273D0 and its kinds, the caster's record `ai_caster_record` 0x526D40,
-    `ai_best_spell_value` 0x5275B0, `ai_hero_spell_gain` 0x527640, `ai_secondary_skill_value`
-    0x524690, the schools `ai_school_value` 0x524D20, the University's `ai_university_value`
-    0x525BF0; about 1 700 of the original's instructions) and, moved from T2d (AI-Q35), the
-    start's spell gains of `ai_hero_effectiveness` 0x527760 (+0x47E, +0x482, +0x486, +0x48A,
-    +0x48E into the start's `Record` beside the experience weight, AI-STUB-13 lifted; the memory's
-    encoding v3): measure its size at the start and confirm a cut by size; `Heroes3.exe` staged
-    for the readings. The secondary skill value reads the gold weight (`Record::weights`, +0x90)
-    and the terrain shares (`h3_heroes::TerrainShares`, the engine's); `h3_heroes::choice` (E08
-    T25, the level-up's choice, the adventure lane's) already ports a path of it (`ArmyWorth`, the
-    schools' values): one implementation (ADR-0030 point 6), so read it first. Also: the town
-    part gained `BuildingRoles::marketplace` (E09 T56); `start.rs`'s weights' rate finds the
-    Marketplace by the key `marketplace` (T2d): read the role instead, and drop the request in
-    the town lane's inbox.
+  - **T2f — the artifacts** (next; survey §4.1, §2.4; the epic file's table: the effects' table
+    `ai_artifact_effects_build` 0x434100 and its 24 effect methods 0x432510 to 0x433580,
+    `ai_hero_artifact_value` 0x4336C0, `ai_hero_equipped_value` 0x433C60, the values to a hero
+    `ai_artifact_value_to_hero` 0x4339E0 and to a player 0x433AA0; about 2 900 of the original's
+    instructions) and, moved from T2d (AI-Q35), the start's artifacts' mean (+0x164, AI-STUB-14):
+    measure its size at the start and propose a cut by size (the user, 2026-11-26: a couple of
+    small tasks or one bigger one a session, a seam confirmed with them); `Heroes3.exe` staged
+    (or attached to the chat) for the readings. The spell effects call T2e's values: the scroll
+    a spell's gain (`spells::gain`), the school power and school spells 0x5273D0 on the caster
+    record (`CasterRecord::value`, its power changed as 0x432890 does), the equipped value
+    0x5275B0 (`CasterRecord::best`); the Ballista's Artillery and the Tent's First Aid read the
+    hero's skills.
 
 ## Inbox
 

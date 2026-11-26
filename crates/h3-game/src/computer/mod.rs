@@ -13,7 +13,9 @@
 //! frame (T2a: the passes, the order of heroes, a hero's turn with its garrison step); the rest
 //! of a turn is stubbed by `AI-STUB-2` to `-6` (`docs/stubs.toml`). The fight estimate (T2c,
 //! `fight`) on the simulated combat, which lives in `h3_battle::estimate` (T2b and T2c, AI-Q34),
-//! waits for the values that ask for it (T2d, T2h, T2i).
+//! waits for the values that ask for it (T2h, T2i); the turn start's records (T2d, `start`); a
+//! hero's spell gains (T2e, `spells`, on `h3_battle::estimate`'s caster record, AI-Q36) and its
+//! skills' values (T2e, `skills`, the flag-set path of `h3_heroes::choice`'s switch).
 //!
 //! [`GameCommand`]: crate::GameCommand
 
@@ -29,6 +31,17 @@
 mod fight;
 mod memory;
 mod order;
+// The skills' values have no caller until the values that ask for them (T2g's town buildings,
+// T2h's object value: the University, the Witch Hut, the Seer's reward).
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the skills' values have no caller until the values, E31 T2g, T2h"
+    )
+)]
+mod skills;
+mod spells;
 mod start;
 mod turn;
 

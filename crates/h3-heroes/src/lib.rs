@@ -64,7 +64,10 @@ pub use change::{
     ArtifactPlace, HeroChange, apply_change, apply_change_limited, backpack_equipped, check_change,
     lost_war_machine, next_capture,
 };
-pub use choice::{ArmyWorth, TerrainShares, original_choice};
+pub use choice::{
+    ArmyWorth, ComputerReads, TerrainShares, computer_skill_value, computer_takes_new_skill,
+    counted_worth, original_choice,
+};
 pub use combine::{assemble_changes, check_assemble, check_disassemble, disassemble_changes};
 pub use day::{daily_income, day_mana, owner_town_growth, town_growth};
 pub use derive::{

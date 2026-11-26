@@ -20,6 +20,19 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-26 (the AI lane, E31 T2e, `ai/e31-t2e`, `cross-lane` with the user's consent, AI-Q36;
+  **yours from now on, nothing to do now**): `h3_battle::estimate` has a second part,
+  `estimate/caster.rs`: the adventure computer's caster record and spell values
+  (**`CasterRecord`**, public; CPU-SPL-001 to -006 in `docs/rules/catalog/computer.toml`), on the
+  battle's spell helpers. `aim.rs`'s `hero_value` (BAT-AI-008) now asks it (`SpellCaster`,
+  `best_spell_value` with the damage kind): its private `spell_value`, `Caster`, the curve and
+  its constants moved there, one implementation (ADR-0030 point 6); every battle test passes
+  unchanged and the odds' numbers are the same where reachable (a negative side strength, only
+  beyond 2^31, now follows the original's arithmetic). The estimate tests' helpers are
+  `pub(super)` and their ruleset has AI values and a free `quake` for `caster/tests.rs`.
+  `installation.md` §7.39: with no enemy army the cost counts the own Mages neither (0x4E52DA),
+  corrected.
+
 - 2026-11-26 (the town lane, E09 T56, `town/e09-t56`, `cross-lane` with the user's consent,
   E09 decision 220; **in your paths, for your review, nothing to do**): `h3-formats`'
   `TownTables`/`TownData` read two more tables, `blacksmith_machine_creatures` 0x642E90 (a

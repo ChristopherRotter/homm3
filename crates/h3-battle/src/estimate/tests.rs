@@ -19,7 +19,7 @@ use super::*;
 use crate::tests::support::ruleset_from;
 
 /// The kinds of `kinds` as a set.
-fn kinds(kinds: &[SpellAiKind]) -> SpellAiKinds {
+pub(super) fn kinds(kinds: &[SpellAiKind]) -> SpellAiKinds {
     kinds
         .iter()
         .fold(SpellAiKinds::default(), |set, &k| set.with(k))
@@ -28,8 +28,10 @@ fn kinds(kinds: &[SpellAiKind]) -> SpellAiKinds {
 /// The crate's test ruleset (`t:faithful`) with Fight Values (`fixed` 100, `slow` 50, `tank`
 /// 1 000, `archer` 150, `sniper` 400, `flyer` 120, `dwarf` 200, `golem` 300, `ember` 120,
 /// `troglo` 80, `ghoul` 60, `pegasus` 90, `magus` 110, `familiar` 30), `no_wall_penalty` on the
-/// sniper and the original's AI kinds on the spells the casts read.
-fn rules() -> BattleRuleset {
+/// sniper and the original's AI kinds on the spells the casts read. For the caster record's
+/// tests (`caster/tests.rs`, E31 T2e) also AI values (`fixed` 7, `slow` 3, `tank` 50, `archer`
+/// 11, `dwarf` 20, `wyrm` 10; the others 0) and `quake` free.
+pub(super) fn rules() -> BattleRuleset {
     static RULES: std::sync::OnceLock<BattleRuleset> = std::sync::OnceLock::new();
     RULES.get_or_init(build_rules).clone()
 }
@@ -56,9 +58,25 @@ fn build_rules() -> BattleRuleset {
                 ("magus", 110),
                 ("familiar", 30),
             ];
+            let ai = [
+                ("fixed", 7),
+                ("slow", 3),
+                ("tank", 50),
+                ("archer", 11),
+                ("dwarf", 20),
+                ("wyrm", 10),
+            ];
             for def in &mut core.creatures {
                 if let Some(&(_, v)) = fights.iter().find(|(n, _)| def.key.name() == *n) {
                     def.info.fight_value = v;
+                }
+                if let Some(&(_, v)) = ai.iter().find(|(n, _)| def.key.name() == *n) {
+                    def.info.ai_value = v;
+                }
+            }
+            for def in &mut core.spells {
+                if def.key.name() == "quake" {
+                    def.cost = [0; 4];
                 }
             }
             for def in &mut battle.creatures {
@@ -96,16 +114,16 @@ fn build_rules() -> BattleRuleset {
     )
 }
 
-fn creature(r: &BattleRuleset, name: &str) -> CreatureTypeId {
+pub(super) fn creature(r: &BattleRuleset, name: &str) -> CreatureTypeId {
     r.creature_by_key(&std::format!("t:{name}")).unwrap()
 }
 
-fn spell(r: &BattleRuleset, name: &str) -> SpellId {
+pub(super) fn spell(r: &BattleRuleset, name: &str) -> SpellId {
     r.spell_by_key(&std::format!("t:{name}")).unwrap()
 }
 
 /// `(slot, creature, count)` as army stacks.
-fn army(r: &BattleRuleset, spec: &[(u8, &str, u32)]) -> Vec<ArmyStack> {
+pub(super) fn army(r: &BattleRuleset, spec: &[(u8, &str, u32)]) -> Vec<ArmyStack> {
     spec.iter()
         .map(|&(slot, name, count)| ArmyStack {
             slot,
@@ -116,13 +134,13 @@ fn army(r: &BattleRuleset, spec: &[(u8, &str, u32)]) -> Vec<ArmyStack> {
 }
 
 /// A hero with no skills.
-fn bare_hero() -> BattleHero {
+pub(super) fn bare_hero() -> BattleHero {
     BattleHero::new(HeroTypeId::from_index(0).unwrap())
 }
 
 /// A hero with Spell Power `power`, `mana` spell points and a spell book of `spells` at their
 /// masteries.
-fn caster(r: &BattleRuleset, power: u8, mana: u16, spells: &[(&str, u8)]) -> BattleHero {
+pub(super) fn caster(r: &BattleRuleset, power: u8, mana: u16, spells: &[(&str, u8)]) -> BattleHero {
     let mut hero = bare_hero();
     hero.power = power;
     hero.magic = BattleMagic {
@@ -140,7 +158,7 @@ fn caster(r: &BattleRuleset, power: u8, mana: u16, spells: &[(&str, u8)]) -> Bat
 }
 
 /// The hero's book as its available spells.
-fn book(hero: &BattleHero) -> Vec<SpellId> {
+pub(super) fn book(hero: &BattleHero) -> Vec<SpellId> {
     hero.magic.spell_book.clone().unwrap_or_default()
 }
 
