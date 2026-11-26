@@ -22463,3 +22463,97 @@ restart, so CI's run on `master` is the baseline (the sandbox skill's rule).
 and coverage, re-run alone after its fix: pass); `check-lane --cross-lane`; `h3-protocol`'s (216)
 and `h3-server`'s (175) tests run apart. **Versions:** protocol v84 (the server lane's); no hash,
 import, part or replay format moved. Next: the inbox's `h3-map` view property, then T144.
+
+### Increment 15, round 8: T144a1, the casts in `legal_commands` (2026-11-25, `adventure/e08-t144a1`, `cross-lane`)
+
+**The cut:** T144a in two (decision 420, the user at T144's start): T144a1 the listing, with the
+hygiene property's faithful exception moved up from T144b; T144a2 the env's encoding v21 by hero
+slot with the targets in the tile head (decision 421). The map-client lane's inbox note settled
+at the same start: `ADV-QUIRK-58`, fixed (decision 419). The `cross-lane` touch of `h3-sim`
+(two lines in `adventure/rollout.rs`) consented at the build, once `h3-cli`'s workload test showed
+the random games moving; the targets as a query (decision 422) at the measurement.
+**Baseline:** `master` 02ccd93 (#1176 merged; CI green); the originals staged from the PC at the
+start (17 files and 40 MP3s), the repo from GitHub; the setup's baseline lost to a VM restart
+(the VM restarted twice in the session), so CI's run on `master` is the baseline.
+
+- **The game** (`h3-game`, GAM-SPL-001): `GameState::legal_casts` (called last by
+  `legal_commands`) pushes per hero in the player's list (the key of `hero_list`, built only for
+  the possible casters) each bound spell **without a target** the hero may cast (Summon Boat,
+  Fly, Water Walk) where `cast_frame` and the adventure's `check_cast` accept it; the new public
+  **`legal_cast_targets(state, rules, actor, (hero, spell))`** (decision 422) gives Scuttle
+  Boat's and Dimension Door's accepted targets in row order (`GameState::cast_targets`), empty
+  outside the actor's ready turn (`check_ready`, as `legal_moves`). `check_cast`'s tests split
+  into `caster` and `cast_frame` (the cost, the ground, the anti-magic garrison), shared by both;
+  `check_cast` validates once (`can_cast_on_map`) and takes the mastery and cost from
+  `map_spells`. The adventure part holds the sources of the listed spells
+  (`AdventureRuleset::cast_sources`, derived at compile, not hashed): first a field of
+  `GameRuleset`, it cost every fork of the env an `Arc` clone (CI: `fork-economy-xl-144` +900 000
+  Ir, +2.06 % on the stored baseline; moved, `master`'s count exactly).
+- **The hero** (`h3-heroes`, HER-SPL-002, -003, -008): `SpellSources` (the ruleset's artifact
+  types, a combination with its parts, skills and hero types whose effects grant one of a few
+  spells, as bit sets; `may_have` tests a hero's details without validating or walking their
+  effects, never no for a hero that has one); `map_spells` (the asked spells the hero may cast,
+  with their mastery on a ground and their cost, in one pass: a hot path's derivation without
+  validation, as `movement`); `MasterySources`, the masteries' effect pass shared by `masteries`
+  and `map_spells`; `cost_at`, shared with `map_spell_cost`.
+- **The adventure** (`h3-adventure`): `cast_window` (the window's tiles on the map in row order,
+  `in_window`'s bounds) and `cast_targets` (each accepted target given to a closure, the hero's
+  tests once, the window's heroes gathered once for the door); `check_scuttle` and `check_door`
+  split into `scuttle_target`, `door_ready`, `door_target`/`door_target_of`, shared with it;
+  `check_cast` derives the hero's movement levels only for Fly and Water Walk.
+- **The random agent** (`h3-sim`'s `adventure/rollout.rs`, `cross-lane`): `choose` leaves the
+  listed casts out of its draw until encoding v21 (decision 420; E09 decision 56's precedent).
+  Without it a drawn cast had no entry and ended the turn (`encode`'s `None`), and the heroes of
+  the sea XL map no longer boarded within the fork workload's seven days (`h3-cli`'s
+  `the_benchmark_workloads_run_and_count_what_they_say`).
+- **The plans** (`h3-map`'s `play.rs`): the listing oracle's `accepted_casts` (each known bound
+  spell without a target probed); `accepted_targets` and `check_cast_targets` (each hero's
+  queried targets of each targeted spell are the probe-accepted tiles within `target_range` while
+  its owner is ready, none otherwise); `check_casts` (each listed cast applies, tells `SpellCast`
+  first by its hero and spell, the points less its cost). The hygiene property (`view.rs`):
+  `targets_hidden` beside T142b's `flies`, so under `faithful` the comparison ends while one of
+  the viewer's heroes may cast Scuttle Boat or Dimension Door; `check_same` compares the queried
+  targets. The plans' heroes learn these spells only at shrines and guilds.
+- **Tests:** `h3-game`'s `tests/casts.rs`, `the_casts_are_listed_last_or_queried_by_their_targets`
+  (every candidate cast probed: the listed ones and the queried ones together exactly the
+  accepted, in order; the sea map, the door's free tiles and under `t:charged` the sea tile; Fly
+  once, not again, not below its cost; another player's hero, the door below its cost; blue and
+  the system list and query none). `h3-adventure`'s `tests/door.rs`,
+  `the_listed_targets_are_the_window_s_tiles_the_test_accepts` (both flags; no points; another
+  player's hero, Fly). `h3-heroes`' `tests/spells.rs`, `the_map_spells_are_the_castable_ones_with_their_masteries_and_costs` (against
+  `can_cast_on_map`, `spell_masteries_on`, `map_spell_cost` on three heroes and three grounds) and
+  `the_sources_of_a_few_spells_never_miss_a_hero_that_has_one` (a learned spell, a scroll, an
+  artifact, a combination's part, a skill, a specialty; three heroes without).
+- **`ADV-QUIRK-58`** (decision 419): the map-client lane's reading (E24 M5 T1b) confirmed by a
+  second one (`monster_battle`'s tail 0x4AC8FF to 0x4AC913 writes its type's count left whatever
+  the winner; `visit_mine` 0x4A3AE3 to 0x4A3AEB keeps the creature); the ledger's entry, ADV-MIN-002
+  amended (its `quirks`), survey `E08-economy.md` §3.2; no code change.
+- **Docs:** GAM-SPL-001's, HER-SPL-002's and -008's summaries; the design note's §17 as decided;
+  the queue's T144a2 and T144b; the AI lane's inbox (the casts' weight in the random draw, its
+  decision before T144a2) and the server lane's (the targets' query on the wire, its planning).
+- *Agent's calls, change freely:* the casts last in the list (no earlier index moves); the
+  bound spells in the part's order per hero, the targets in row order; the pre-test's sources
+  only for the listed spells; `map_spells` unvalidated (the store's details are valid).
+- **Speed** (callgrind, against `master` 02ccd93 in `target/wt-master`; the stored baselines
+  carry about +1.8 % of the sandbox's drift): the first build listed every target (design §17)
+  and moved `legal-towns-36` +596 %, `random-play-trades-36` +53 %, `random-play-sea-36` +20 %,
+  `random-play-teleporters-36` +9 %: every hero validated on every call (`details::check`, 31 372
+  calls of about 2 000 Ir) and each of up to 323 targets re-deriving the hero's movement (58 152
+  calls of 530 Ir). Three rounds (the sources' pre-test, one validation, movement only for Fly
+  and Water Walk; the batched targets; the window's heroes once, the list reserved,
+  `map_spells` unvalidated) left trades +2.83 % and `legal-towns-36` +43 %, the cost of writing
+  up to 646 commands per caster on every call; with the query (decision 422) and the masteries
+  of the asked spells alone: `random-play-trades-36` +0.41 %, `random-play-sea-36` +0.23 %,
+  `random-play-bonuses-36` +0.05 %, `siege-towns-36` −0.15 % (the masteries' shared pass), and
+  `legal-towns-36` +27 % (2 138 of its 5 220 calls have a hero who knows a listed spell:
+  `map_spells` 3.6 M, `may_have` 2.6 M Ir), **re-baselined** with that reason. Against the
+  stored baselines every one of the eleven workloads that count `legal_commands` (`legal-*`,
+  `random-play-*`) inside the gate, the highest `random-play-bonuses-36` +1.85 % (`master` +1.80 %:
+  the drift). Tried and kept out: listing every target (decision 422).
+
+**Verify:** the scoped verify with original data and `--skip bench-check` (the eleven workloads
+that count the listing measured above; CI runs every workload): every step passes but
+check-lane, by design (coverage 1 371 s, determinism, original-data); `check-lane --cross-lane`
+ok; `h3-sim`'s, `h3-cli`'s, `h3-protocol`'s, `h3-server`'s and `h3-files`' tests run apart, pass
+(`h3-map`'s 214 in 770 s, 520 s before: the query oracle probes every window tile of a hero who
+knows a targeted spell). **Versions:** none moved. Next: T144a2.

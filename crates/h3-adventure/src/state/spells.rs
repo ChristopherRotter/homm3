@@ -258,6 +258,86 @@ impl AdventureState {
             .ok_or(CastError::OutOfWindow)
     }
 
+    /// The tiles of the window around a hero on `from` that lie on the map, in row order (row by
+    /// row, column by column, the observation's order; E08 T144a1, increment 15's design note
+    /// §17): every target [`Self::in_window`] passes for Scuttle Boat and Dimension Door, at most
+    /// 19 × 17 with the original's `target_range`; none for a hero off the map's levels.
+    pub fn cast_window(&self, part: &AdventureRuleset, from: Pos) -> impl Iterator<Item = Pos> {
+        let [columns, rows] = part
+            .params()
+            .spells()
+            .map_or([0, 0], |params| params.target_range);
+        let span = |at: u16, range: u8, size: u16| {
+            let low = at.saturating_sub(u16::from(range));
+            let high = at
+                .saturating_add(u16::from(range))
+                .min(size.saturating_sub(1));
+            low..=high
+        };
+        let map = &self.map;
+        let on = from.level < map.levels() && map.width() > 0 && map.height() > 0;
+        let (xs, ys) = (
+            span(from.x, columns, map.width()),
+            span(from.y, rows, map.height()),
+        );
+        ys.filter(move |_| on)
+            .flat_map(move |y| xs.clone().map(move |x| Pos::new(x, y, from.level)))
+    }
+
+    /// The targets of the window ([`Self::cast_window`], in row order) at which `player`'s hero
+    /// `hero` may cast `cast`, Scuttle Boat or Dimension Door, its target unset, each given to
+    /// `found`: exactly the tiles [`Self::check_cast`] accepts as its target, the hero's own tests
+    /// made once and, for the door, the heroes in the window gathered once (E08 T144a1; the
+    /// game's listing, GAM-SPL-001, on every step of a random game). None for another spell, or a
+    /// hero not `player`'s on the map.
+    pub fn cast_targets(
+        &self,
+        rules: (&Ruleset, &AdventureRuleset),
+        (player, hero): (PlayerId, HeroId),
+        cast: Cast,
+        mut found: impl FnMut(Pos),
+    ) {
+        let (core, part) = rules;
+        let Some(on) = self.hero(hero).filter(|on| on.owner == player) else {
+            return;
+        };
+        let window = self.cast_window(part, on.pos);
+        match cast.effect {
+            AdventureSpell::ScuttleBoat => window
+                .filter(|&target| self.scuttle_target(core, player, target).is_ok())
+                .for_each(found),
+            AdventureSpell::DimensionDoor => {
+                let doors = self.day_spells(hero).doors;
+                if Self::door_ready(core, on, doors, cast).is_err() {
+                    return;
+                }
+                let [columns, rows] = part
+                    .params()
+                    .spells()
+                    .map_or([0, 0], |params| params.target_range);
+                let near: Vec<Pos> = self
+                    .heroes
+                    .iter()
+                    .map(|h| h.pos)
+                    .filter(|p| {
+                        p.level == on.pos.level
+                            && p.x.abs_diff(on.pos.x) <= u16::from(columns)
+                            && p.y.abs_diff(on.pos.y) <= u16::from(rows)
+                    })
+                    .collect();
+                let heroed = |pos: Pos| near.contains(&pos);
+                let afloat = on.boat.is_some();
+                for target in window {
+                    let tested = self.door_target_of(rules, (player, afloat), target, heroed);
+                    if tested.is_ok() {
+                        found(target);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// Checks `player`'s cast `cast` by its hero `hero` as [`Self::apply_cast`] makes it
     /// (increment 15's design note §10), its mastery the game's derivation on the hero's ground
     /// (`h3_heroes::spell_masteries_on`), its details in `heroes`, the game's store. Nothing
@@ -298,10 +378,10 @@ impl AdventureState {
             .ok_or(CastError::NotYourHero(hero))?;
         let on = &self.heroes[index];
         let afloat = on.boat.is_some();
-        let (own, day) = (
-            hero_movement(core, details_of(heroes, hero)),
-            self.day_spells(hero),
-        );
+        let day = self.day_spells(hero);
+        // The hero's levels are derived only for the two spells that read them (E08 T144a1: the
+        // listing tests the other two's targets one by one).
+        let own = || hero_movement(core, details_of(heroes, hero));
         let (level, worn) = match cast.effect {
             AdventureSpell::SummonBoat if afloat => return Err(CastError::InBoat),
             AdventureSpell::SummonBoat => {
@@ -314,9 +394,9 @@ impl AdventureState {
                 return self.check_scuttle(core, part, (player, on.pos), cast.target);
             }
             AdventureSpell::Fly if afloat => return Err(CastError::InBoat),
-            AdventureSpell::Fly => (day.fly, own.flying),
+            AdventureSpell::Fly => (day.fly, own().flying),
             AdventureSpell::WaterWalk if afloat => return Ok(()),
-            AdventureSpell::WaterWalk => (day.water_walk, own.water_walking),
+            AdventureSpell::WaterWalk => (day.water_walk, own().water_walking),
             AdventureSpell::DimensionDoor => {
                 return self.check_door((core, part), (player, on), day.doors, cast);
             }

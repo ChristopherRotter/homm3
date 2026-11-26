@@ -381,7 +381,15 @@ two ends by viewer), its failure `CastFailed`'s `Target`; `SpellReject::NoPoints
 - **The env's encoding v18** (the AI lane's, `cross-lane`, decision 372's precedent): three entries
   without a target (Summon Boat, Fly, Water Walk) and two windows of 19 × 17 (the door, Scuttle
   Boat) relative to the hero, the hero by its slot head; the masks from `legal_commands`. The
-  observation's own hero part gains the day spells and the casts left.
+  observation's own hero part gains the day spells and the casts left. *As decided at T144 (decisions 420
+  to 422):* T144a1 built the listing of the casts without a target (`GameState::legal_casts`
+  after the town's commands, per hero in the player's list, in the part's order) and **the
+  door's and Scuttle Boat's targets as a per-hero query** (`legal_cast_targets`, the window's
+  accepted tiles in row order by `AdventureState::cast_window` and `cast_targets`), not in
+  `legal_commands`: listing every target cost up to 646 commands per caster on every call
+  (decision 422); the random agent leaves the casts out of its draw until the encoding has them.
+  T144a2 builds **v21** with five entries per hero slot and the targets in the tile head (the
+  encoding has no slot head), the door's and the scuttle's masks from the query.
 - **Replays (format v24):** `cast <hero> <spell> [x y z]`.
 - **Maps:** a generated map (the writer) with a prison, the Market of Time, special grounds, boats
   and water, a hero with the five spells and a book: the golden replays (each spell cast, the
