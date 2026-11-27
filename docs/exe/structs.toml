@@ -589,7 +589,7 @@ fields = [
   { offset = 0x248, name = "ambient_sounds", type = "sound*[70]", summary = "the ambient sounds loaded on demand by ambient_sound_visit 0x418C10 (ambient_loop_names 0x65F794)", confidence = "read", refs = ["epics/E24-design.md §3.11"] },
   { offset = 0x360, name = "step_sounds", type = "sound*[10]", summary = "horse00.wav to horse09.wav (0x40747A): the walking hero's step sound by the terrain of its tile (hero_move_step 0x481344, hero_move_loop 0x407CD0), a hero in a boat's too", confidence = "read", refs = ["epics/E24-design.md §3.5", "epics/E24-design.md §3.11"] },
   { offset = 0x388, name = "step_sound_flying", type = "sound*", summary = "horse10.wav: the step sound of a hero flying (its Fly spell's +0x112 not -1, or Angel Wings); not in a boat (+0x105 bit 18 takes the terrain's)", confidence = "read", refs = ["epics/E24-design.md §3.5", "epics/E24-design.md §3.11"] },
-  { offset = 0x38C, name = "ai_shield_shown", type = "u32", summary = "set while the shield (aishield.pcx) covers the minimap in a computer's turn (ai_shield_draw 0x4CA780 sets it; adventure_full_update 0x417478 and a human's turn's minimap_draw 0x412D58 clear it): minimap_draw returns at once while a computer plays", confidence = "read", refs = ["epics/E24-design.md §5.2"] },
+  { offset = 0x38C, name = "ai_shield_shown", type = "u32", summary = "set while the shield (aishield.pcx) covers the minimap in a computer's turn (ai_shield_draw 0x4CA780 sets it; adventure_full_update 0x417478 and a human's turn's minimap_draw 0x412D58 clear it): minimap_draw returns at once while a computer plays; covered_view_new_week sets it at a hot seat's hand-over too, the next minimap draw for the human clearing it (E24 M5 T5)", confidence = "read", refs = ["epics/E24-design.md §5.2", "epics/E24-design.md §5.31"] },
   { offset = 0x390, name = "walk_animating", type = "u8", summary = "set during a step's animation (hero_walk_animation 0x4803F0 to 0x4805A4): pass 9 steps the lifted hero's frame +0x200 while it is set", confidence = "read", refs = ["epics/E24-design.md §3.5"] },
 ]
 
@@ -1300,6 +1300,43 @@ fields = [
   { offset = 0x8, name = "limit", type = "u32", summary = "the turn's limit in ms (0: unlimited): the duration's minutes x 60 000 (turn_timer_set_limit)", confidence = "read" },
   { offset = 0xC, name = "next_warning", type = "u32", summary = "the time from the last warning to the next (0: no more): a quarter of the limit at the start (half up to 60 s), then by the time left", confidence = "read" },
   { offset = 0x10, name = "paused_at", type = "u32", summary = "the clock time a pause began (0: not paused): a battle, a town screen's build", confidence = "read" },
+]
+
+[[struct]]
+name = "screen_chat"
+size = 0x44
+summary = "A screen chat (the adventure screen's screen_chat 0x69D7B0; H3API's H3ScreenChat, its layout agreeing; E24 M5 T5): 20 lines in a ring, drawn into a text item by chat_draw 0x553D00."
+refs = ["epics/E24-design.md §5.32"]
+h3api = "H3ScreenChat"
+fields = [
+  { offset = 0x0, name = "entries", type = "chat_entry*", summary = "the 20 entries (chat_construct 0x5521C0 through 0x5540D0)", confidence = "read" },
+  { offset = 0x4, name = "first", type = "i32", summary = "the oldest held entry's index", confidence = "read" },
+  { offset = 0x8, name = "count", type = "i32", summary = "the entries held; chat_add_line drops the oldest at 20", confidence = "read" },
+  { offset = 0xC, name = "text", type = "char*", summary = "the text given to the item (chat_text_build 0x553EE0: the newest lines fitting, joined by newlines)", confidence = "read" },
+  { offset = 0x10, name = "frozen_at", type = "u32", summary = "the clock time it was frozen (chat_freeze 0x554050 at a battle's start), 0 else: chat_draw neither stamps nor ages lines while set", confidence = "read" },
+  { offset = 0x14, name = "rebuild", type = "u8", summary = "the text to rebuild (set by chat_add_line, chat_expire, chat_clear; cleared by chat_draw): the global 0x69D7C4 for the adventure screen's", confidence = "read" },
+  { offset = 0x18, name = "item", type = "text_item*", summary = "the item drawn into last (another item rebuilds the text)", confidence = "read" },
+  { offset = 0x1C, name = "capacity", type = "i32", summary = "20, the ring's size (the modulus of every index)", confidence = "read" },
+  { offset = 0x20, name = "drawn_end", type = "i32", summary = "the newest line drawn (-1: the newest held); follows each new line while at the end", confidence = "read" },
+  { offset = 0x24, name = "line_removed", type = "u8", summary = "set by chat_expire when it removed a line (the global 0x69D7D4; a battle's redraw reads it)", confidence = "read" },
+  { offset = 0x28, name = "sample", type = "u32", summary = "the sample last played (a new line's sound waits while it plays: sample_query 0x59A030 with 4)", confidence = "read" },
+  { offset = 0x2C, name = "system", type = "u8", summary = "set by chat_system_message around chat_add_line: the line is a system one (no sound of its own, no 10-s stagger)", confidence = "read" },
+  { offset = 0x30, name = "chat_wav", type = "sound*", summary = "chat.wav: a player's line (chat_sounds_load 0x5537B0)", confidence = "read" },
+  { offset = 0x34, name = "playexit_wav", type = "sound*", summary = "playexit.wav (its use not read)", confidence = "read" },
+  { offset = 0x38, name = "sysmsg_wav", type = "sound*", summary = "sysmsg.wav (its use not read)", confidence = "read" },
+  { offset = 0x3C, name = "timeover_wav", type = "sound*", summary = "timeover.wav: the turn's warnings (chat_system_message)", confidence = "read" },
+  { offset = 0x40, name = "playcome_wav", type = "sound*", summary = "playcome.wav (its use not read)", confidence = "read" },
+]
+
+[[struct]]
+name = "chat_entry"
+size = 0x88
+summary = "One line of a screen chat (E24 M5 T5; screen_chat +0, 20 of them)."
+refs = ["epics/E24-design.md §5.32"]
+fields = [
+  { offset = 0x0, name = "text", type = "char[128]", summary = "the line, at most 127 characters (chat_add_line copies with strncpy 0x7F)", confidence = "read" },
+  { offset = 0x80, name = "shown_at", type = "u32", summary = "the clock time of its first draw (chat_draw), 0 until then; chat_expire removes the oldest 20 000 ms after it", confidence = "read" },
+  { offset = 0x84, name = "system", type = "u8", summary = "a system line (the chat's +0x2C at its add): a turn's warning", confidence = "read" },
 ]
 
 [[struct]]

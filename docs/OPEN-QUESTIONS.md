@@ -566,6 +566,57 @@ design §5.29). Options: (a) the engine tells the slot a join fills (`StackChang
 `CreaturesJoined`, or a slot in the event); (b) the client's rule (built). **Recommended (a)**
 (minor); the adventure lane's inbox told. Blocks nothing.
 
+#### MCL-Q70 — The last turn's warnings over the next human's cover (E24 M5 T5, a reading)
+
+The turn's warnings are screen chat lines that live 20 s from their first draw and leave one per
+view draw (`chat_expire` 0x553DF0); no view is drawn while a box is up, so the expiry box (up to
+15 s) ages none of them, and the hand-over's cover draws the view, the chat's lines with it
+(`view_draw_chat` 0x40F833): the expired player's last "<SYSTEM>:You have n seconds remaining in
+your turn." lines (up to nine) stand over the next human's covered view and its "%s's turn." box
+and into its turn (design §5.31, §5.32). Built as the original's meanwhile. Options: (a) the
+original's; (b) the client empties the chat's system lines at a hot seat's hand-over, the
+original's behind `--bugs original` for the comparisons. **Recommended (b)** (the lines tell the
+next human of a clock that is not its own; a carry-over the cover's draw makes by accident).
+Blocks nothing; T5's recordings show it (`seat-clock`, `seat-clock-ok`).
+
+#### MCL-Q71 — The start's boxes over the covered picture, on the clock (E24 M5 T5, a reading)
+
+After the hand-over's box `player_turn_start` 0x4CC7D0 runs the scenario's tests and the timed
+events (0x4CC816 to 0x4CC83F) before it redraws the screen (0x4CC899), so their boxes open over
+the covered picture still on the screen (the minimap and the buttons drawn since, the resource
+bar blank until 0x4CC87F), and with the week's box and the days-left box on the new turn's clock
+(`turn_timer_start` 0x4C78F0 comes first; the cover's box itself is outside it, survey
+`E16-timer-survey.md` §8) (design §5.31). Built as the original's meanwhile. Options: (a) the
+original's; (b) the client redraws the screen uncovered before the start's boxes, the original's
+behind `--bugs original` for the comparisons. The clock's part is the host's (`GameClock`, the
+server lane's), not asked here. **Recommended (a)** (the map stays hidden until the player has
+read its events: harmless, arguably as meant). Blocks nothing; to confirm in the recordings
+(`seat-timed-event`).
+
+#### MCL-Q72 — The hand-over's sounds (E24 M5 T5, a reading)
+
+`covered_view_new_week` 0x4CA840 fades the music and plays `NewWeek.wav` at every hand-over, on
+any day; its covered draw builds the date's window (`status_window_date`, kind 1), whose build
+starts `newday.wav` in the same millisecond (not on a week's first day), and the start builds it
+twice more (MCL-Q30); on a week's first day `NewWeek.wav` at the cover and `newweek.wav` or
+`newmonth.wav` again with the week's box; after OK `wait_for_sample` holds the start until
+`NewWeek.wav` (5 758 ms) ends or 4 s pass, cutting it (design §5.31). Built as the original's
+meanwhile. Options: (a) the original's; (b) the client plays `NewWeek.wav` alone at the cover (no
+`newday.wav` under it; the wait kept), the original's behind `--bugs original` for the
+comparisons. **Recommended (b)** (as MCL-Q30: the date's window under the cover is an accident of
+the view's draw calling the chooser). Blocks nothing; the sound runs show it (`seat-hand-over`,
+`seat-new-day`).
+
+#### MCL-Q73 — The cover with one human left (E24 M5 T5, a reading)
+
+The hand-over's test is `begin_humans` 0x699274 above 1: the humans the game was begun or loaded
+with, written at a game's begin and load only (its 18 references), never at a defeat. So a hot
+seat down to one human (the other defeated) still covers its view and asks "%s's turn." at each
+of its turns (design §5.31). Built as the original's meanwhile. Options: (a) the original's; (b)
+the client covers only while two humans or more are in the game, the original's behind `--bugs
+original` for the comparisons. **Recommended (a)** (harmless, rare, one box a turn; the host knows
+its seats either way). Blocks nothing; no recording planned (a defeat in a hot seat to stage).
+
 ### RMG lane (`RMG-Q<n>`)
 
 (no open questions)
