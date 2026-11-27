@@ -3889,3 +3889,30 @@ On `map-client/e24-m5-t4c` from `master` at 24ba0f8 (a worker; the user away: *p
   clicked: each shown, Enter, its closing answer in the record, the hero walking on; `game-asks`
   and `seq-ask-join-no` as T4b's; every frame read back exact and as the headless loop's; the
   records played to their end by `h3-map-view record`.
+
+### M5 T4c, part two: the facts audit (2026-11-27)
+
+On `map-client/e24-m5-t4c` after part one (a worker; the user away: *provisional*).
+
+- **Built** (design §5.29): `engine::visits::gain` takes `ResourcePaid` and `ResourceLost` off and
+  reads `StackChanged`'s slots (`Gain::slotted`, `Loop::gain`); `visits::removed`; `Ask::Tomb {
+  artifact, morale }`, `Ask::Maps { kind, price, reveal }`, `asks::Reveal` (a recording's terrains,
+  play's tiles), `Ask::yes` without `AskArt`; `opened` the Cartographer's price, `live` the Tomb's
+  morale and the answer's tiles (`Visit::revealed`, `engine::played`'s `explored_since`);
+  `Find::Observatory` (`map.find.observatory`, `map.find.pillar`: ADVEVENT 98, 99, read in
+  `visit_object`); `Calendar::Deity` (`week_calendar`'s `[2, creature, upgrade, bonus]`,
+  `turn::message`); `Loop::reveal`. `h3-map-client`: `paint::taken_by` and `as_recorded` (every
+  live reply's object taken and slots by the record), `render::read_live` alone names a town from
+  the map; doc comments on what test tooling alone reads (`AskArt`, `TurnArt::deity`,
+  `texts::growth`).
+- **Found and fixed:** a price paid stayed on the resource bar in play (`seq-ask-tree`, the
+  engine's seed 3: the Tree's 10 gems shown before and after; now 0).
+- **Found, not fixed:** a wire creature is the packs' handle, not the original's number past 117
+  (`seq-ask-join`'s Peasants, handle 140, drawn as Boars; TRAPS). **Left:** a mine's income
+  (`SRV-STUB-10`). **Asked:** MCL-Q61 to -Q67, -Q69 (a join's slot); MCL-Q59 corrected; the
+  adventure, server and town lanes' inboxes told.
+- **Checked:** the tests; `h3-map-view`'s coverage without `H3_INSTALL` (0 lines, 0 regions
+  missed); clippy; under Xvfb (`play --check --humans 0`): the Tree (seed 3), the Tomb, the
+  Cartographer, the Observatory and the Pillar of Fire (situations of the Tomb's with their
+  templates), a join, `game-asks`, `game-notices`: every frame exact and as the headless loop's;
+  the records played to their end by `h3-map-view record`.

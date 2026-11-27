@@ -556,6 +556,16 @@ client's test widened (one line, a `cross-lane` change with the user's consent, 
 lane's own). **Recommended (b)** at M5's review (one catalogue for translators); the client
 lane's inbox told. Blocks nothing.
 
+#### MCL-Q69 — A join names no slot (E24 M5 T4c, the facts audit)
+
+A wandering monster's or a dwelling's creatures joined are told as `CreaturesJoined { hero,
+creature, count }` with no `StackChanged`, so play puts them in the slot of their kind, else the
+first empty one, by the client's rule (`timeline::joined`), the engine's own (ADV-MON-008) told
+twice. Play takes the slots from `StackChanged` wherever the record tells it (`Gain::slotted`,
+design §5.29). Options: (a) the engine tells the slot a join fills (`StackChanged` after
+`CreaturesJoined`, or a slot in the event); (b) the client's rule (built). **Recommended (a)**
+(minor); the adventure lane's inbox told. Blocks nothing.
+
 ### RMG lane (`RMG-Q<n>`)
 
 (no open questions)

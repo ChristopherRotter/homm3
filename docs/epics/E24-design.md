@@ -5168,3 +5168,47 @@ the notice is play's alone (a recording refuses the click as before, M4 unchange
   closing answer in the record and the hero walking on; `game-asks`' and `seq-ask-join-no`'s maps
   as T4b's; every frame read back exact and as the headless loop's; the records played to their
   end.
+
+### 5.29 The facts audit (M5 T4c)
+
+T4c's second part, the user's rule at M5 T0 (facts first): in play (the hot seat's window, `paint`'s
+`for_live` and `live_*`, the view crate under them) every game fact comes from the engine's view
+and events (the record, the decision, `observe` while MCL-Q60 stands); no client rules table and no
+map text; the map file stays the pictures' source. Test tooling (sequences, situations,
+recordings, `Ask::of`) keeps its tables. An audit traced play's path and classed each fact: A the
+record or the decision carries it, B none does (asked), C presentation or not reached in play.
+
+- **A bug found and fixed:** `engine::visits::gain` counted `ResourceGained` alone, so a price
+  paid stayed on the bar (`seq-ask-tree` under seed 3, the Tree's 10 gems: 10 before and after;
+  now 0). It takes `ResourcePaid` and `ResourceLost` off.
+- **From the record and the decision now** (*provisional*): the Warrior's Tomb's morale (the
+  answer's `OnceMarkChanged`); a Cartographer's price (the offer's) and tiles (each answer's
+  `GameReveal`, `Visit::revealed`, shown with the walks', `asks::Reveal::Tiles`): facts of
+  `Ask::Tomb` and `Ask::Maps`, so `Ask::yes` takes no `AskArt` (`Ask::of`'s alone). A live reply's
+  object taken by the record's `ObjectRemoved` (`paint::taken_by`); the hero's slots by
+  `StackChanged` where told (`Gain::slotted`; a join tells none, MCL-Q69). The observatories'
+  visit a find by `TilesRevealed` (`Find::Observatory`: ADVEVENT 98, 99, read at `visit_object`
+  0x4A9992, 0x4A9A12, the box before `reveal_disk`; its tiles the walk's first step's, MCL-Q39).
+  The Deity's week the engine's creatures and growth (`[2, creature, upgrade, bonus]`,
+  `Calendar::Deity`); `[map.turn] deity` and `texts::growth` a recording's alone.
+- **No map text by construction:** `render::apply_live` (an engine's table) names no town from the
+  map; a capture's file does (`read_live`).
+- **Left, asked (B):** a hero's name and portrait (MCL-Q61), the map's texts (MCL-Q62; Pandora's
+  from the map file meanwhile), a monster's count (MCL-Q63), the teams (MCL-Q64), the derived
+  values (MCL-Q65: `artifact_skills`, `[map.level_up]`), a level-up offer's level (MCL-Q66), an
+  unnamed town's name (MCL-Q67), a join's slot (MCL-Q69); the known ones (MCL-Q36 to -Q58,
+  `SRV-STUB-4`, -7). A mine's income stays `[map.finds]`' until `SRV-STUB-10` (`observe` has it,
+  but no channel brings it from the host to the find).
+- **Kept (C):** the view's facts' presentation (the hint's and cursor's dispatch by class), facts
+  play does not reach (a dwelling's count, level thresholds, days without a town), the pictures.
+- **For the user to confirm (review list):** the view reads the engine's own `GameRuleset` (a
+  hero's class, an object's kind, a random object's shift): the engine's manifest-checked rules,
+  not a client table (the audit's row 28).
+- **Found, not fixed:** a wire creature is the packs' handle, not the original's number past 117
+  (a Peasants' join drawn as Boars; TRAPS).
+- **Checked:** the tests (a gain's prices, losses and slots; an answer's reveal kept; the Tomb's,
+  the Cartographer's and the observatories' facts; a Deity's week read and named; play's tiles and
+  slots in the loop); under Xvfb (`play --check`, one human): the Tree, the Tomb, the
+  Cartographer (its land revealed), the Observatory, the Pillar of Fire, a join, `game-asks` and
+  `game-notices`: every frame read back exact, as afresh and as the headless loop's; the records
+  played to their end. The Deity's week could not be forced in a situation (a unit test alone).

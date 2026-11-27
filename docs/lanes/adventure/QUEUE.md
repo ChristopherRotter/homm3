@@ -52,7 +52,8 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
   custom portrait in the state from the import, as a town's), **MCL-Q62** (a map text in its
   event or offer: Pandora's Box, signs, bottles, map, timed and town events, guarded messages,
   Seer's texts), **MCL-Q63** (a monster's offer naming the stack offered), **MCL-Q65** (a hero's
-  derived primary skills, morale and luck as its window shows them). Each recommends (a).
+  derived primary skills, morale and luck as its window shows them), **MCL-Q69** (the slot a join
+  fills: `CreaturesJoined` comes with no `StackChanged`). Each recommends (a).
 
 - 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
   nothing blocks**): play now answers a visit's questions and level-ups and Space's revisit

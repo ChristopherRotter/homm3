@@ -190,6 +190,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   and Blue id 1, so the two agree there. Turn it into the colour where the observation is at hand
   (`engine::played`: `Visit::flag`, `OtherOpen`'s colour); a test with ids and colours apart
   (`tests/engine.rs::a_record_s_flags_in_their_owners_colours`) catches a raw id drawn.
+- **A record's creature is a content handle, not the original's number** (M5 T4c, design
+  §5.29; found, not fixed): the packs give handles in their order (`base` the original's 0 to 117,
+  then its war machines 145 to 149 as 118 to 122; `ab` 118 on as 123 on), so past 117 a wire
+  `creature` is not the creature tables' (`creature.<n>`, portraits, the week's creature) number:
+  `seq-ask-join`'s Peasants (139) joined in play as handle 140, drawn as Boars. Every client
+  reading of a wire creature (`engine::panels`' armies, `engine::visits`' joins and rewards,
+  `engine::played`'s weeks and months) takes the handle as is; a test with an AB or SoD creature
+  catches it.
 - **A record's walk need not take its whole path** (M4 T6, design §5.13): `MoveHero`'s path is
   what was clicked; the record's `HeroStepped` are what was walked (a visit from beside stops one
   short, an event or a guard's battle earlier). Read a walk's end from its steps (`Move::stops`,
