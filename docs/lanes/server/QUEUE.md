@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
+  nothing blocks**): the facts audit of play (E24 design §5.29) asks for wire fields the view
+  lacks: **MCL-Q61** (`HeroInfo`'s name and custom portrait), **MCL-Q62** (a map text in its event
+  or offer, projected for its viewer), **MCL-Q63** (the stack a monster's offer names),
+  **MCL-Q64** (a team per player in `GameObservation.players`), **MCL-Q65** (a hero's derived
+  primary skills, morale and luck in `HeroDetails`), **MCL-Q66** (each level-up offer's level in
+  `LevelUpView` and `LevelUpOpened`). A mine's income stays the client's until `SRV-STUB-10` folds
+  `ObjectFlagged`'s production. Each recommends (a).
+
 - 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
   nothing blocks**): the map client's hot seat asks a visit's question from the engine's open
   decision, read through `observe` in-process because the fold keeps no offer's or choice's view

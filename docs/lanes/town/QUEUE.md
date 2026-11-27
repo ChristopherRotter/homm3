@@ -25,6 +25,12 @@ benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, 
 
 ## Inbox
 
+- 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
+  nothing blocks**): **MCL-Q67** (E24 design §5.29): a town the map does not name gets its name
+  from the client's own seeded pick in play (`Town.name` none). The original draws unused names of
+  the town's faction at the new game, the same for every player, kept by a save; recommended (a):
+  the engine draws it at the game's start, so `Town.name` is always some (the server lane told).
+
 - 2026-11-26 (the AI lane, E31 T2d, `ai/e31-t2d`, `cross-lane` with the user's consent, AI-Q35;
   **in your paths, nothing to do**): `h3_game::GameState::growth_inputs(rules)` is new and public
   in `src/town/growth.rs` (your `inputs`, by `TownId`): the computer's turn start adds the next

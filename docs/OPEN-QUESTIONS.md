@@ -452,18 +452,21 @@ inbox told. Blocks nothing (no hero turns before T4's input).
 
 In play (design §5.27) a visit's question and its answer come from the engine's decision and the
 record, but some replies are still built from the client's tables or the map file, as M4's
-recordings had them: the Warrior's Tomb's morale lost (−3) and its artifact's primary skills
-(`artifact_skills`), a Cartographer's price and the terrains it reveals (a mask by its kind),
+recordings had them: the Warrior's Tomb's artifact's primary skills (`artifact_skills`),
 Pandora's Box's text (read from the map file), the free creatures' count a dwelling's question
 names. Some facts no event carries: a visit that changes only a once-per-hero mark tells nothing
 (a visited Learning Stone, by a walk or by Space's revisit: no box where the original says it was
-visited, `SRV-STUB-4`), where an added artifact lands (`SRV-STUB-7`), the Redwood Observatory's
-visit (its reveal alone). Options: (a) take each from the record where an event carries it (a
-price paid, the tiles revealed, a morale or a skill changed) and ask the engine lanes for the
-rest (a visit's mark told, an object's text in its question's or find's event); (b) keep the
-client's tables and the map's text for these replies. **Recommended (a)** (facts first, the user
-at M5 T0); T4c's facts audit builds the client's part. The adventure lane's inbox told. Blocks
-nothing.
+visited, `SRV-STUB-4`), where an added artifact lands (`SRV-STUB-7`). (Corrected at T4c: the
+Tomb's morale lost is told, `OnceMarkChanged { bonus.morale: −3, held }`; the Redwood
+Observatory's visit is told, `TilesRevealed { object_type, count }` with the command's
+`GameReveal`.) Options: (a) take each from the record where an event carries it (a price paid,
+the tiles revealed, a morale or a skill changed) and ask the engine lanes for the rest (a visit's
+mark told, an object's text in its question's or find's event); (b) keep the client's tables and
+the map's text for these replies. **Recommended (a)** (facts first, the user at M5 T0); the
+adventure lane's inbox told. T4c's facts audit (design §5.29) built the client's part of (a): the
+Tomb's morale, a Cartographer's price and tiles, the prices paid and losses, the objects taken,
+the joined creatures' slots, the observatories' find and the Deity's week from the record; the
+rest asked (MCL-Q61 to MCL-Q67). Blocks nothing.
 
 #### MCL-Q60 — The hot seat reads an offer's and a choice's view through `observe` (E24 M5 T4b)
 
@@ -474,6 +477,71 @@ the in-process host reads the engine's projection (`observe(state, rules, viewer
 need the frames to carry it. Options: (a) keep `observe` in the hot seat until `SRV-STUB-5` lifts,
 then read the folded view; (b) a snapshot asked after each command that opens a decision.
 **Recommended (a)**; the server lane's inbox told. Blocks nothing.
+
+#### MCL-Q61 — The view names no hero's own name (E24 M5 T4c, the facts audit)
+
+`HeroInfo` (`id`, `hero_type`, `details`) holds no name, so in play the status window, the status
+bar's hint, the level-up dialog and Pandora's boxes name a hero by the map file's hero bodies and
+disposed heroes, keyed by its type (`MapArt::hero_names`, `own_name`), else the catalogue's
+`hero.<type>`; a custom portrait the same (design §5.29). Options: (a) the view gives each hero's
+name as it gives a town's (`Town.name`: the map's, none for the type's) with its custom portrait
+(the adventure lane's state from the import, the server lane's wire); (b) the map file's names in
+play (map text, against facts first). **Recommended (a)**; the adventure and server lanes'
+inboxes told. Blocks nothing.
+
+#### MCL-Q62 — The record carries no map text (E24 M5 T4c, the facts audit)
+
+Pandora's Box's own message, signs and bottles (`MessageRead`), map events (`EventFired`), timed
+events (`TimedEventFired`, `events_today`), town events (`TownEventFired`), a guarded pile's or
+artifact's message and a Seer's texts: each event or offer names an index or a place, not its
+text (`OfferKind::OpenBox {}` carries none). Play shows none of them but Pandora's, read from the
+map file (`paint::pandora_text`, *provisional*). Options: (a) the event or the offer carries its
+text, projected for its viewer (an unfired text stays hidden); (b) a table of the map's texts
+sent once at the start; (c) the client reads the map file. **Recommended (a)**; the adventure and
+server lanes' inboxes told. Blocks nothing.
+
+#### MCL-Q63 — A monster's offer names no count (E24 M5 T4c, the facts audit)
+
+`OfferKind::Join {}` and `JoinForGold { price }` name neither the creature nor the count the
+original's box names to the visitor ("N ... for X gold", one's singular); the view gives the
+monster's count word (ADV-FOG-006), so play's question names the word's first count
+(`engine::visits::opened`, the client's thresholds `hover::SIZES`). Options: (a) the offer's view
+carries the stack offered (creature, count), as the original tells the visitor; (b) the word's
+first count (built). **Recommended (a)**; the adventure (the offer's view) and server lanes'
+inboxes told. Blocks nothing.
+
+#### MCL-Q64 — The view names no teams (E24 M5 T4c, the facts audit)
+
+`GameObservation.players` holds each player's colour and whether it acts, so the kingdom window's
+allies and enemies and the hint's teams come from the map file (`raw.teams`) in play. Options: (a)
+a team per player in the view (`Player.team`: `h3-game` holds the teams); (b) the map file's teams
+(built). **Recommended (a)**; the server lane's inbox told. Blocks nothing.
+
+#### MCL-Q65 — The view gives a hero's base primary skills only (E24 M5 T4c, the facts audit)
+
+`HeroDetails.primary` is the base ("what artifacts add is derived", the wire), so the hero's window
+after an artifact found (a pickup, the Warrior's Tomb's) adds the client's `artifact_skills`, and a
+level-up's Leadership or Luck adds the client's morale and luck (`[map.level_up]`). Options: (a)
+the view gives the totals the hero's window shows (primary skills with artifacts, morale and luck),
+widening MCL-Q36; (b) the client's tables (built). **Recommended (a)**; the adventure (a hero's
+derived values) and server lanes' inboxes told. Blocks nothing.
+
+#### MCL-Q66 — A level-up's offers carry no level (E24 M5 T4c, the facts audit)
+
+`LevelUp.offers` and `LevelUpOpened` name each offer's skill, not the level it reaches, so the
+dialog's "Advanced Wisdom" is the hero's level of that skill plus one (`engine::played`'s
+`level_up`). Options: (a) each offer's level in the view (`LevelUpView`, `LevelUpOpened`); (b) the
+hero's skills plus one (built: exact while the view's skills are). **Recommended (a)** (minor); the
+server lane's inbox told. Blocks nothing.
+
+#### MCL-Q67 — An unnamed town's name is the client's draw (E24 M5 T4c, the facts audit)
+
+The wire leaves the name of a town the map does not name to the client (`Town.name` none), and
+play draws it from its own seed (`picks::town_name`, design §5.27). The original draws unused names
+of the town's faction at the new game; every player sees the same, a save keeps them. Options: (a)
+the engine draws the name at the game's start and `Town.name` is always some (the town lane's
+state, the server lane's wire); (b) the client's seeded pick (built). **Recommended (a)**; the
+town and server lanes' inboxes told. Blocks nothing.
 
 #### MCL-Q68 — The map client's own texts beside the common catalogue (E24 M5 T4c)
 

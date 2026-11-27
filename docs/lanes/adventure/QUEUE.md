@@ -45,6 +45,15 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
 
 ## Inbox
 
+- 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
+  nothing blocks**): the facts audit of play (E24 design §5.29) takes every fact an event carries
+  from the record (the Tomb's morale, a Cartographer's tiles, the prices paid, the slots joined,
+  the observatories' `TilesRevealed`) and asks the rest. Yours: **MCL-Q61** (a hero's own name and
+  custom portrait in the state from the import, as a town's), **MCL-Q62** (a map text in its
+  event or offer: Pandora's Box, signs, bottles, map, timed and town events, guarded messages,
+  Seer's texts), **MCL-Q63** (a monster's offer naming the stack offered), **MCL-Q65** (a hero's
+  derived primary skills, morale and luck as its window shows them). Each recommends (a).
+
 - 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
   nothing blocks**): play now answers a visit's questions and level-ups and Space's revisit
   through the engine, and some facts a box needs are still the client's (**MCL-Q59**, facts
