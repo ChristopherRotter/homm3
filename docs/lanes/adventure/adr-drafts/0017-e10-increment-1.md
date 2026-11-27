@@ -36,8 +36,9 @@ to §17.
 > the players (the day's income, the week's tavern heroes, the Thieves' Guild, the market's
 > recipients; the original's readers of its defeated byte). At **each turn's end** the game checks,
 > then lowers the outgoing player's days without a town by one when above 0 (a computer's too);
-> at a **human's** turn start it checks after the turn's steps (a computer's runs none) and tells a
-> player with days its days left. Building the state checks nothing (A-57, `ADV-QUIRK-61`).
+> at a **human's** turn start it checks before the turn's timed events (a computer's runs none), and
+> every turn start tells a player with days its days left after them. Building the state checks
+> nothing (A-57, `ADV-QUIRK-61`).
 
 ## Point 6 (pending decisions), amended
 

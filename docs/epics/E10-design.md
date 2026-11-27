@@ -144,13 +144,15 @@ requests (decision 17), the town lane's inbox told at each.
 then §12's verdict. It is idempotent and runs (survey §4.1):
 
 1. **after every command and system command** that the game accepted, except `EndTurn` (a
-   player's or the system's: its own two points stand for it): the original's 37 calls follow everything that can change a hero's or
-   a town's count or an owner, and a check that finds nothing changes nothing;
+   player's or the system's: its own two points stand for it): the original's 37 calls follow
+   everything that can change a hero's or a town's count or an owner, and a check that finds
+   nothing changes nothing;
 2. **at a turn's end**, after `TurnEnded` and before that player's count-down (`next_player_turn`
    0x4C7019, 0x4C7133);
-3. **at a human player's turn start** (`player_turn_start` 0x4CC831; `PlayerState::human`), after
-   the turn start's steps; a computer's turn start runs none; **the game's first turn runs none**
-   (A-57 accepted, `ADV-QUIRK-61`: `play_run` 0x4EFC58; building the state checks nothing).
+3. **at a human player's turn start** (`player_turn_start` 0x4CC831; `PlayerState::human`), before
+   the turn's timed events (the days' box comes after them, 0x4CC8DA); a computer's turn start runs
+   none; **the game's first turn runs none** (A-57 accepted, `ADV-QUIRK-61`: `play_run` 0x4EFC58;
+   building the state checks nothing).
 
 A days' defeat therefore lands at the first check after the seventh turn's end: the next player's
 turn end, a human's turn start, or (the engine's residual, §21) the next player's first command,
