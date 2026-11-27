@@ -906,3 +906,94 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E31 T1a2d, T2h): ai_vision_area_value 0x432220, ai_class_tables_init 0x428070, ai_class_scout_value_list 0x6605D8"
   confidence = "high"
+
+[[rule]]
+id       = "CPU-PTH-001"
+title    = "The computer's search: its set-up, start, loop and open list"
+context  = "computer"
+status   = "implemented"
+summary  = "The original's computer pathfinder (pathfinder_run 0x56B440 in its modes 1 to 5: the value field's local search, the colleagues' claims, an enemy's reach, the hero's own search and its search again during the walk; h3_adventure::search, E31 T2i0, AI-Q41): from a tile with the caller's start points (also the day's points) and bound, inside a box (the whole map, or the caller's), over two nodes per tile and level (a place to stop, bit 10, and a pass). The start node: cost, second cost and key 0, the danger the tile's, flying and water walking from the hero's levels (none in a boat), a place to stop unless a flying or water-walking hero's tile fails the flight's tile test; in the modes from 3 a start on a monolith's or a Subterranean Gate's entrance goes through it at once (a copy with the visit mark and the second cost plus 50). The open list is kept sorted by the score S (the key, plus the danger past the day's points) and, for an equal S, by the second cost from highest to lowest, a new entry before its equals; the loop takes the back (the highest S, the lowest second cost, the oldest of equals), skips it when the next one is the same node, reloads the node and expands it; a node standing on an entrance (stop) only when the passage past it allows (CPU-PTH-005), a boat node only on water. At 500 entries an insert first drops the back entry, the best (as read: a slip candidate, survey section 5.5 #74). The reached list holds each place-to-stop node once, in the order first reached; the result's nodes are their final values."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i0; survey docs/rules/surveys/E31-computer-player.md section 1.11): pathfinder_run 0x56B440 (the set-up 0x56B46F to 0x56B731, the start node 0x56B7DD to 0x56B8F9, the start's channels 0x56B9AA to 0x56B9E8, the loop 0x56BA14 to 0x56BC79), pathfinder_reset 0x4B1530, the open list's insert in pathfinder_relax 0x4B1A70 (0x4B1DE7 to 0x4B1EC2) and the reached list (0x4B2166 to 0x4B22E1)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PTH-002"
+title    = "The computer's search: a node relaxed"
+context  = "computer"
+status   = "implemented"
+summary  = "pathfinder_relax 0x4B1A70 for the computer's search: the new node's cost is the source's plus the step's price, its second cost the source's plus the extras the step added plus the price; refused off the map or outside the box. Its danger is the caller's tile buffer at the tile (the danger map; 0 without one), past the day's points the lower of that and the source's, and a node past the day's points at or below -500 000 000 is refused. Its score S is its key plus, past the day's points, its danger. Against the node stored there (if reached): a higher stored S refuses it, a lower one makes it better, an equal one keeps it only with a strictly smaller second cost. A node whose cost passes the bound (a positive bound) and is not better is refused and marks the search short. It records the source tile, whether the source was a place to stop, the direction, the guard met, the stop flag (the tile's entrance), and the no-magic mark (the stored node's, else the tile's ground: Cursed Ground or an anti-magic garrison)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i0; survey section 1.11): pathfinder_relax 0x4B1A70 (the costs 0x4B1A7E to 0x4B1AA9, the box 0x4B1AAC to 0x4B1B04, the danger 0x4B1BBC to 0x4B1C32, the comparison 0x4B1CB8 to 0x4B1CF9, the bound 0x4B1CFF to 0x4B1D15, the marks 0x4B1D21 to 0x4B1DBF, the writes 0x4B1EC4 to 0x4B1F13)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PTH-003"
+title    = "The computer's search: a step and its tile"
+context  = "computer"
+status   = "implemented"
+summary  = "pathfinder_expand 0x4B2300 for the computer's search, in the eight directions: the step priced as a human's (h3_adventure's pricing: the road, the native terrain, the hero's flying and water walking when the node has them, a boat's from water), its diagonal exception against the start points less the cost (never past the first day); the node's own points pay it, else, from a place to stop only, a new day starts with the whole land or sea maximum (the day-starting step is not taken off it: survey section 5.5 #75) and loses flying and water walking. The tile decides the node: rock and an object's blocked tile are flown or jumped over only; a tile the current player has not explored is, with the human's fog, flown over only, with the computer's (AI-Q41: the faithful policy's) only from another unexplored tile while the player owns a town, and in an enemy's reach (mode 3) read as it is; up off the entrance of an object not visited from above a flight only, down onto one never; water from land: an empty boat, a hero or a coast bank's entrance a step, another entrance a flight, plain water a sea step (flying, water walking or a boat); land from a boat a landing onto a free coastal tile only; an entrance of an object visited from the neighbouring tile, or a town's, is relaxed only from a place to stop. A flying node on an entrance is also kept as a pass node."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i0; survey section 1.11): pathfinder_expand 0x4B2300 (the price 0x4B248B to 0x4B24C9, the points and the new day 0x4B2512 to 0x4B2593, the fog 0x4B25D4 to 0x4B2630, the tiles 0x4B2693 to 0x4B2886, the relax 0x4B2CE5 to 0x4B2D38, the flying copy 0x4B2D3D), step_cost 0x4B1740"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PTH-004"
+title    = "The computer's search: the guards"
+context  = "computer"
+status   = "implemented"
+summary  = "The guards in the computer's search. Below mode 4 (find_guarding_monster 0x41A460 over the 3 x 3 block, columns from the left, each from the top, the row above left out on an entrance not visited from above, the guard met excluded): a node on a guarded tile (not the start, not flying, not a Door leg) steps only onto its guard's tile. In modes 4 and 5 every step is weighed by the caller's fight answer (ai_fight_answer 0x52BD10, h3_game::computer's): onto a hero's, a garrison's or a monster's entrance (pathfinder_target_weigh 0x56AAD0: unless it is the guard already met, an answer at or below -500 000 000 makes the tile a flight's only, a negative one lowers the key by it and makes it the guard met), then onto a guarded tile (pathfinder_entrance_guarded 0x56A360: the same with the tile's guard; at or below -500 000 000 the tile is a flight's only). An enemy's reach (mode 3) stops at every guarded entrance it would pass."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i0; survey section 1.11): pathfinder_run 0x56B440 (0x56BBCE to 0x56BC55), pathfinder_expand 0x4B2300 (0x4B2401, 0x4B2932, 0x4B2A51), pathfinder_target_weigh 0x56AAD0, pathfinder_entrance_guarded 0x56A360, find_guarding_monster 0x41A460"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PTH-005"
+title    = "The computer's search: the passage past an entrance"
+context  = "computer"
+status   = "implemented"
+summary  = "pathfinder_pass_through 0x56AB40 for the computer's search, asked of a node on an entrance before it is expanded (no: the node is a leaf). An empty boat: from mode 4 it is boarded (the cost takes the day's rest, the sea's maximum, flying and water walking cleared, a boat node); a border gate, and from mode 4 a border guard, by the current player's key (not the searching hero's owner's: survey section 5.5 #78); a garrison of the hero's team always, another from mode 4; another team's hero in modes 3 to 5; a monster from mode 4; a town from mode 3 unless its entrance is guarded (its Castle Gate AI-STUB-22); the teleporters by CPU-PTH-006; any other object when it is entered (visited from its own tile), not when visited from the neighbouring tile."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i0; survey section 1.11): pathfinder_pass_through 0x56AB40 (its cases 8 at 0x56AD01, 9 at 0x56ABA1, 212 at 0x56ABB1, 33 at 0x56ACAE, 34 at 0x56AC5F, 54 at 0x56ACF2, 98 at 0x56AEDB, the default at 0x56AF27); object_classes_not_entered 0x63AA58"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PTH-006"
+title    = "The computer's search: the teleporters"
+context  = "computer"
+status   = "implemented"
+summary  = "From mode 3 the computer's search goes through a monolith's, a Whirlpool's and a Subterranean Gate's entrance (pathfinder_teleport_exits 0x56A400, pathfinder_gate_exit 0x56A730), not when its entrance (at a cost above 0) is guarded: each exit of the channel's list (a one-way entrance's exits, the two-way monoliths of its channel but itself, the Whirlpools but itself; a tile with another team's hero accepted untested, one with a team-mate's hero skipped), in the list's order, a copy of the entrance's node with a price of 0, its second cost the entrance's plus 100 for each exit beyond the first (a Whirlpool's 16), its key the entrance's lowered in modes 4 and 5 by the lowest fight answer of the exits' guards (one at or below -500 000 000 drops the whole channel; not for two-way monoliths), a Whirlpool's k-th exit by 500 x k more; the Subterranean Gate's pair a copy at no price, its second cost and key unchanged."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i0; survey section 1.11): pathfinder_pass_through 0x56AB40 (cases 43, 45, 111 at 0x56AE14 to 0x56AE9F, 103 at 0x56ADCB), pathfinder_teleport_exits 0x56A400, pathfinder_gate_exit 0x56A730"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-PTH-007"
+title    = "The computer's search: the jumps of the hero's own search"
+context  = "computer"
+status   = "implemented"
+summary  = "In mode 4, the hero's own search, with the caller's jumps (Summon Boat, Dimension Door, Fly and Water Walk castable, the levels from the masteries; the original sets the levels even where the spell cannot be cast: survey section 5.5 #79): a Dimension Door leg starts where a step meets rock or a tile only a flight passes, from a place to stop without the no-magic mark (the second cost plus 500, priced 300 points or 200 at Expert), its steps priced 0 with the second cost plus 100, held to 9 columns and 8 rows from its start and landing on no entrance; a Fly stretch starts at such a tile (the second cost plus 500, the points the land maximum less the price); from a place to stop onto water a Fly or Water Walk by the higher level (plus 500 unless Angel Wings or the Boots of Levitation) or a boat node: summoned, or at a boat mark of the caller's walk with the purchase's value off the key (the second cost plus 500, the sea maximum, the day's rest taken). In modes 4 and 5 a landing and a boarding take the day's rest into the cost."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T2i0; survey section 1.11): pathfinder_expand 0x4B2300 (the Door 0x4B2953 to 0x4B29FC and 0x4B2C03, the Fly stretch 0x4B29B7 to 0x4B2ABD, the boat node 0x4B2AE5 to 0x4B2BB8, the sea spells 0x4B2BC3 to 0x4B2C97, the landing 0x4B2890 to 0x4B28B6), pathfinder_relax 0x4B1A70 (the Door's rules 0x4B1B21 to 0x4B1BAF), pathfinder_run 0x56B440 (the jumps' set-up 0x56B4FC to 0x56B731)"
+  confidence = "high"

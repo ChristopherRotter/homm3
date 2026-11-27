@@ -416,3 +416,14 @@ id     = "AI-STUB-21"
 where  = "crates/h3-game/src/computer/objects/fights.rs::garrison"
 reason = "The original's computer player (E31 T2h): an own garrison's exchange is worth 0 in a campaign whose id is below 7 (ai_object_value 0x528A8D: campaign_game 0x69774C and game +0x1F45C), RoE's campaigns; the engine has no campaigns until E20"
 epic   = "E20"
+[[stub]]
+id     = "AI-STUB-22"
+where  = "crates/h3-adventure/src/search.rs::Search::begin"
+reason = "The original's computer search (E31 T2i0): the Castle Gate (pathfinder_castle_gate 0x56A850: from mode 3 the start on a town's entrance, 0x56B94C, and pathfinder_pass_through's case 98, 0x56AF17, which still answers yes after it) and mode 4's Town Portal from the start (pathfinder_town_portal 0x56B050, at 0x56BA01; its nodes' mark 0x40); the engine has no town travel by spell or building until E09 increment 8"
+epic   = "E09"
+
+[[stub]]
+id     = "AI-STUB-23"
+where  = "crates/h3-adventure/src/search/expand.rs::Search::expand"
+reason = "The original's computer search (E31 T2i0): the Sanctuary (class 80: in mode 3 its entrance only flown over, 0x4B263F; another player's hero standing on one only flown over in every mode, 0x4B2842) and the Quest Guard (pathfinder_pass_through's case 215, pathfinder_quest_guard_case 0x56ABD3: from mode 4 by its quest and the hero's colour); the engine has neither until E12"
+epic   = "E12"

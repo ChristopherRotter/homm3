@@ -52,6 +52,7 @@ mod observe;
 mod persistent;
 mod reach;
 mod ruleset;
+pub mod search;
 mod setup;
 mod split;
 mod state;
@@ -94,6 +95,10 @@ pub use ruleset::{
     RiverKind, RoadDef, RoadId, RoadKind, SpellParams, StartingResources, StartingResourcesDef,
     TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef, Turn, TurnDef, Visit,
     WarMachineFactory, WarMachineFactoryDef, Weekday,
+};
+pub use search::{
+    ComputerSearch, NoAsks, SearchAsks, SearchFog, SearchJumps, SearchMode, SearchNode,
+    SearchStart, SearchWindow,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
