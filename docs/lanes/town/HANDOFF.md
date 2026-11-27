@@ -20,8 +20,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   cover test met one artifact sale in its cases (counted by hand, not asserted: thin). Waiting
   elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach), `-2` (the victory
   conditions), `-16` (E10's loss condition), `-17` (increment 8), `-18` (E13), `-21` (E10's teams).
-- **Open pull requests:** T58b's (`town/e09-t58b`, `cross-lane`; the number in the newest session
-  entry); watch it until it merges (T58a2's #1211 merged 2026-11-27).
+- **Open pull requests:** T58b's **#1216** (`town/e09-t58b`, `cross-lane`); watch it until it
+  merges (T58a2's #1211 merged 2026-11-27).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
