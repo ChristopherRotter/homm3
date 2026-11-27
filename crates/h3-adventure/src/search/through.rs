@@ -24,11 +24,13 @@ impl<A: SearchAsks> Search<'_, A> {
     /// - 54, a monster (`pathfinder_monster_case` 0x56ACF2): from mode 4;
     /// - 98, a town (`pathfinder_town_case` 0x56AEDB): from mode 3 unless a guard stops the node
     ///   (`pathfinder_entrance_guarded` 0x56A360), whatever its owner or the node's cost;
+    /// - 43, 45, 111 and 103, the teleporters (0x56AE14, 0x56AE59, 0x56AE9F,
+    ///   `pathfinder_gate_case` 0x56ADCB): no, from mode 3 after their exits are relaxed
+    ///   (CPU-PTH-006);
     /// - any other (`pathfinder_not_entered_default` 0x56AF27): a class entered, not visited from
-    ///   the neighbouring tile (the settings' byte `+0` whole, 0x56AF37).
-    ///
-    /// The teleporters' cases 43, 45, 103 and 111 answer as the default until CPU-PTH-006.
-    // rule: CPU-PTH-005
+    ///   the neighbouring tile (the settings' byte `+0` whole, 0x56AF37), a one-way exit (44)
+    ///   among them.
+    // rule: CPU-PTH-005, CPU-PTH-006
     pub(super) fn pass_through(
         &self,
         frame: &mut Frame,
@@ -63,7 +65,15 @@ impl<A: SearchAsks> Search<'_, A> {
             // 0x56AF17), and yes.
             // stub: AI-STUB-22
             Class::Town => mode >= SearchMode::Threat && !self.entrance_guarded(node),
-            Class::Coast | Class::Other => !entrance.is_some_and(|entrance| entrance.not_entered),
+            Class::Teleporter(teleporter) => {
+                if mode >= SearchMode::Threat {
+                    self.teleport(frame, node, teleporter);
+                }
+                false
+            }
+            Class::Exit | Class::Coast | Class::Other => {
+                !entrance.is_some_and(|entrance| entrance.not_entered)
+            }
         }
     }
 }

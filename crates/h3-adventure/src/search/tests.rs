@@ -12,7 +12,9 @@ use h3_content::{FactionId, Formation, SkillId};
 use h3_contracts::ArmyStack;
 
 use super::*;
-use crate::ruleset::{BankDef, BankLevelDef, BankQuestion, ObjectKindDef, ObjectTypeDef};
+use crate::ruleset::{
+    BankDef, BankLevelDef, BankQuestion, MonolithWay, ObjectKindDef, ObjectTypeDef,
+};
 use crate::setup::{HeroSetup, Holds, ObjectSetup, Scenery, TileMask};
 use crate::testing::{
     BARRENS, FLYING, PIKEMAN, WATER_WALKING, coasted, hero_at, hero_details, hero_skills, key,
@@ -89,8 +91,51 @@ fn rules() -> Rules {
                     }),
                 ),
             ]);
+            // The teleporters (CPU-PTH-006), entered and from above.
+            let monolith = |k: &str, channel, way| {
+                let kind = ObjectKindDef::Monolith { channel, way };
+                ty(k, Visit::Enter, true, kind)
+            };
+            part.object_types.extend([
+                monolith("t:entrance", 0, MonolithWay::Entrance),
+                monolith("t:entrance_1", 1, MonolithWay::Entrance),
+                monolith("t:exit", 0, MonolithWay::Exit),
+                monolith("t:two_way", 1, MonolithWay::TwoWay),
+                ty(
+                    "t:underground_gate",
+                    Visit::Enter,
+                    true,
+                    ObjectKindDef::SubterraneanGate,
+                ),
+                ty(
+                    "t:whirlpool",
+                    Visit::Enter,
+                    true,
+                    ObjectKindDef::Whirlpool { divisor: 2 },
+                ),
+            ]);
         },
     )
+}
+
+/// A teleporter of type `k` on `at`.
+fn teleporter(rules: &Rules, k: &str, at: Pos) -> ObjectSetup {
+    object(rules, k, at, None, Holds::Nothing)
+}
+
+/// The started game of `rows` on two levels of equal height with `heroes` and `objects` added,
+/// every tile explored.
+fn deep(
+    rules: &Rules,
+    rows: &[&str],
+    heroes: Vec<HeroSetup>,
+    objects: Vec<ObjectSetup>,
+) -> AdventureState {
+    let mut setup = world(rows, 2, heroes);
+    setup.map.objects.extend(objects);
+    let mut state = started(rules, &setup).unwrap();
+    state.explore_all();
+    state
 }
 
 /// An object of type `k` blocking and visited on `at`, of `owner`, holding `holds`.
@@ -215,11 +260,13 @@ const fn placed(direction: u32) -> u32 {
     REACHED | PLACE | FROM_PLACE | direction << DIRECTION_SHIFT
 }
 
-/// The caller's numbers by tile: the danger and the fight answers, 0 elsewhere.
+/// The caller's numbers by tile: the danger and the fight answers, 0 elsewhere, and the boat
+/// marks with their purchase's change of the key.
 #[derive(Default)]
 struct Asks {
     danger: Vec<(Pos, i32)>,
     answers: Vec<(Pos, i32)>,
+    boats: Vec<(Pos, i32)>,
 }
 
 /// The value of `pos` in `list`, 0 without one.
@@ -237,6 +284,47 @@ impl SearchAsks for Asks {
     fn fight_answer(&self, pos: Pos) -> i32 {
         value(&self.answers, pos)
     }
+
+    fn boat_mark(&self, pos: Pos) -> Option<i32> {
+        self.boats
+            .iter()
+            .find(|(at, _)| *at == pos)
+            .map(|&(_, change)| change)
+    }
+}
+
+/// Red's search of [`HERO`] from `from` in `mode` with `jumps` and `asks`, the store `heroes`.
+fn jumping<A: SearchAsks>(
+    rules: &Rules,
+    state: &AdventureState,
+    heroes: &[Arc<HeroDetails>],
+    (from, mode, jumps): (Pos, SearchMode, SearchJumps),
+    asks: &A,
+) -> ComputerSearch {
+    let start = SearchStart {
+        jumps,
+        ..start(from, mode)
+    };
+    search_with(rules, state, heroes, &start, asks)
+}
+
+/// The jumps of Dimension Door alone at 300 points a leg.
+fn door() -> SearchJumps {
+    SearchJumps {
+        door: true,
+        door_price: 300,
+        ..SearchJumps::default()
+    }
+}
+
+/// The marks of a node relaxed from a place in `direction` (no place itself).
+const fn passed(direction: u32) -> u32 {
+    REACHED | FROM_PLACE | direction << DIRECTION_SHIFT
+}
+
+/// A Door leg's offset `(dx, dy)` in the marks.
+const fn offset(dx: i32, dy: i32) -> u32 {
+    (((dy & 0x1F) << 5 | (dx & 0x1F)) as u32) << DOOR_OFFSET_SHIFT
 }
 
 /// A corridor of five grass tiles between rock, `middle` on its third.
@@ -1230,4 +1318,881 @@ fn mode_4_prices_by_the_jumps_levels_and_marks_the_tiles_without_magic() {
     );
     assert_eq!(marked(SearchMode::Replan, walk), [none; 4]);
     assert_eq!(marked(SearchMode::Plan, SearchJumps::default()), [none; 4]);
+}
+
+/// Five grass tiles over five more, rock between: a one-way entrance of channel 0 on (2, 0),
+/// its exits on (1, 2) and (3, 2), and `objects`.
+fn channel(rules: &Rules, heroes: Vec<HeroSetup>, objects: Vec<ObjectSetup>) -> AdventureState {
+    let rows = ["ggggg", "#####", "ggggg", "####g"];
+    let tiles = [
+        ("t:entrance", p(2, 0)),
+        ("t:exit", p(1, 2)),
+        ("t:exit", p(3, 2)),
+    ];
+    let teleporters = tiles.map(|(k, at)| teleporter(rules, k, at));
+    let heroes = [vec![hero_at(1, 0, p(0, 0), &[PIKEMAN])], heroes].concat();
+    game(
+        rules,
+        &rows,
+        heroes,
+        [teleporters.to_vec(), objects].concat(),
+    )
+}
+
+// covers: CPU-PTH-006
+#[test]
+fn from_mode_3_a_one_way_entrance_relaxes_its_channel_s_exits_in_order() {
+    let rules = rules();
+    let state = channel(&rules, vec![], vec![]);
+    // The entrance a stop at 200; its two exits a copy each at no price, the second cost 100
+    // more for the list's second tile, the entrance's direction, marks and points.
+    let exit = |x| SearchNode {
+        pos: p(x, 2),
+        marks: placed(2),
+        from: p(2, 0),
+        guard: None,
+        key: 0,
+        danger: 0,
+        cost: 200,
+        cost2: 300,
+        points: 800,
+    };
+    for mode in [SearchMode::Threat, SearchMode::Plan, SearchMode::Replan] {
+        let found = search(&rules, &state, &start(p(0, 0), mode));
+        let entrance = found.node(p(2, 0)).unwrap();
+        assert_eq!((entrance.marks, entrance.cost2), (placed(2) | STOP, 200));
+        assert_eq!(found.node(p(1, 2)), Some(exit(1)), "{mode:?}");
+        assert_eq!(found.node(p(3, 2)), Some(exit(3)), "{mode:?}");
+        let order: Vec<Pos> = found.reached().take(5).map(|node| node.pos).collect();
+        assert_eq!(order, [p(0, 0), p(1, 0), p(2, 0), p(1, 2), p(3, 2)]);
+        // The list's first exit is expanded first (an equal entry goes before the old one).
+        assert_eq!(found.node(p(2, 2)).map(|node| node.from), Some(p(1, 2)));
+    }
+    for mode in [SearchMode::Local, SearchMode::Claims] {
+        let found = search(&rules, &state, &start(p(0, 0), mode));
+        assert!(found.node(p(2, 0)).is_some());
+        assert_eq!(found.node(p(1, 2)), None, "{mode:?}");
+    }
+    // An entrance whose channel has no exit leads nowhere.
+    let lone = vec![teleporter(&rules, "t:entrance_1", p(2, 0))];
+    let state = alone(&rules, &["ggggg", "#####", "ggggg"], p(0, 0), lone);
+    let found = search(&rules, &state, &start(p(0, 0), SearchMode::Plan));
+    assert!(found.node(p(2, 0)).is_some());
+    assert_eq!(found.reached().count(), 3);
+}
+
+// covers: CPU-PTH-006
+#[test]
+fn from_mode_4_the_exits_guards_lower_every_exit_s_key_or_drop_the_channel() {
+    // A monster on (4, 3) guards the second exit, (3, 2).
+    let rules = rules();
+    let state = channel(&rules, vec![], vec![monster(p(4, 3))]);
+    let with = |mode, answer| {
+        let asks = Asks {
+            answers: vec![(p(4, 3), answer)],
+            ..Asks::default()
+        };
+        let found = search_with(&rules, &state, &[], &start(p(0, 0), mode), &asks);
+        let at = |x| {
+            found
+                .node(p(x, 2))
+                .map(|node| (node.key, node.guard, node.cost2))
+        };
+        (at(1), at(3))
+    };
+    // The lowest answer, -40, on both exits; the guard the exit's, else the entrance's (none).
+    for mode in [SearchMode::Plan, SearchMode::Replan] {
+        assert_eq!(
+            with(mode, -40),
+            (Some((-40, None, 300)), Some((-40, Some(p(4, 3)), 300)))
+        );
+        assert_eq!(
+            with(mode, 25),
+            (Some((0, None, 300)), Some((0, Some(p(4, 3)), 300)))
+        );
+        // A fight lost at -500 000 000 drops the whole channel.
+        assert_eq!(with(mode, REFUSED), (None, None));
+    }
+    // Mode 3 asks nothing: the entrance's key and guard.
+    assert_eq!(
+        with(SearchMode::Threat, REFUSED),
+        (Some((0, None, 300)), Some((0, None, 300)))
+    );
+    // Heroes on both exits, neither weighed: another team's an exit and a stop, a team-mate's
+    // none (and the guard refuses its tile to the walk).
+    let heroes = vec![
+        hero_at(2, 1, p(1, 2), &[PIKEMAN]),
+        hero_at(3, 0, p(3, 2), &[PIKEMAN]),
+    ];
+    let state = channel(&rules, heroes, vec![monster(p(4, 3))]);
+    let asks = Asks {
+        answers: vec![(p(4, 3), REFUSED)],
+        ..Asks::default()
+    };
+    let found = search_with(
+        &rules,
+        &state,
+        &[],
+        &start(p(0, 0), SearchMode::Plan),
+        &asks,
+    );
+    assert_eq!(
+        found
+            .node(p(1, 2))
+            .map(|node| (node.marks, node.key, node.cost)),
+        Some((placed(2) | STOP, 0, 200))
+    );
+    assert_eq!(found.node(p(3, 2)), None);
+}
+
+// covers: CPU-PTH-006
+#[test]
+fn a_guard_at_a_teleporter_s_entrance_stops_its_passage_in_mode_3_and_is_weighed_from_mode_4() {
+    // A monster on (3, 0) guards the entrance (2, 0), not the tile before it.
+    let rules = rules();
+    let rows = ["gggg", "####", "gggg"];
+    let objects = vec![
+        teleporter(&rules, "t:entrance", p(2, 0)),
+        teleporter(&rules, "t:exit", p(1, 2)),
+        monster(p(3, 0)),
+    ];
+    let state = alone(&rules, &rows, p(0, 0), objects);
+    let threat = search(&rules, &state, &start(p(0, 0), SearchMode::Threat));
+    assert!(threat.node(p(2, 0)).is_some());
+    assert_eq!(threat.node(p(1, 2)), None);
+    // From mode 4 the step onto the entrance weighed its guard; the passage leaves it out.
+    let asks = Asks {
+        answers: vec![(p(3, 0), -25)],
+        ..Asks::default()
+    };
+    let plan = search_with(
+        &rules,
+        &state,
+        &[],
+        &start(p(0, 0), SearchMode::Plan),
+        &asks,
+    );
+    assert_eq!(
+        plan.node(p(1, 2))
+            .map(|node| (node.key, node.guard, node.cost)),
+        Some((-25, Some(p(3, 0)), 200))
+    );
+    // On the start, at no cost, the guard is never asked.
+    let mut state = state;
+    state.hero_mut(HERO).unwrap().pos = p(2, 0);
+    let found = search(&rules, &state, &start(p(2, 0), SearchMode::Threat));
+    assert!(found.node(p(1, 2)).is_some());
+}
+
+// covers: CPU-PTH-006
+#[test]
+fn a_two_way_monolith_leads_to_its_other_members_skipping_a_team_mate_s_hero() {
+    // Channel 1's members (2, 0), (1, 2), (3, 2), (5, 2) in the walk's order; red's hero 3 on
+    // (3, 2), blue's hero 2 on (5, 2); a monster beside (1, 2).
+    let rules = rules();
+    let rows = ["ggggggg", "#######", "ggggggg", "g######"];
+    let members = [p(2, 0), p(1, 2), p(3, 2), p(5, 2)];
+    let mut objects: Vec<ObjectSetup> = members
+        .iter()
+        .map(|&at| teleporter(&rules, "t:two_way", at))
+        .collect();
+    objects.push(monster(p(0, 3)));
+    let heroes = vec![
+        hero_at(1, 0, p(0, 0), &[PIKEMAN]),
+        hero_at(2, 1, p(5, 2), &[PIKEMAN]),
+        hero_at(3, 0, p(3, 2), &[PIKEMAN]),
+    ];
+    let state = game(&rules, &rows, heroes, objects);
+    let asks = Asks {
+        answers: vec![(p(0, 3), -60)],
+        ..Asks::default()
+    };
+    for mode in [SearchMode::Threat, SearchMode::Plan] {
+        let found = search_with(&rules, &state, &[], &start(p(0, 0), mode), &asks);
+        // Four members: the second cost 300 more; no guard weighed for a two-way monolith.
+        let member = found.node(p(1, 2)).unwrap();
+        assert_eq!(
+            (
+                member.marks,
+                member.cost,
+                member.cost2,
+                member.key,
+                member.guard
+            ),
+            (placed(2), 200, 500, 0, None)
+        );
+        // The team-mate's tile only walked onto.
+        assert_eq!(found.node(p(3, 2)).map(|node| node.cost), Some(400));
+        // Another team's hero is an exit and a stop, gone past from mode 3.
+        let hero = found.node(p(5, 2)).unwrap();
+        assert_eq!((hero.marks, hero.cost2), (placed(2) | STOP, 500));
+        assert!(found.node(p(6, 2)).is_some());
+        // Never the entrance itself again: its place is the walk's.
+        assert_eq!(found.node(p(2, 0)).map(|node| node.from), Some(p(1, 0)));
+    }
+}
+
+/// A sea row with rock between its Whirlpools over a row of rock between a coast and the sea,
+/// Red's hero aboard on (0, 0): the first Whirlpool on (1, 0) and (1, 1), the others on (3, 0),
+/// (5, 0) and (7, 0), `objects` and a boat on `row`'s `b`.
+fn whirlpools(rules: &Rules, row: &str, objects: Vec<ObjectSetup>) -> AdventureState {
+    let first = ObjectSetup {
+        blocked: TileMask::from_bits(1 | 1 << 8),
+        visitable: TileMask::from_bits(1 | 1 << 8),
+        ..teleporter(rules, "t:whirlpool", p(1, 1))
+    };
+    let others = [3, 5, 7].map(|x| teleporter(rules, "t:whirlpool", p(x, 0)));
+    let objects = [vec![first], others.to_vec(), objects].concat();
+    let mut state = alone(rules, &[row, "g~#####~"], p(0, 1), objects);
+    state.put_aboard(HERO, 0);
+    state
+}
+
+// covers: CPU-PTH-006
+#[test]
+fn a_whirlpool_leads_to_the_other_whirlpools_tiles_each_exit_s_key_500_lower() {
+    let rules = rules();
+    let afloat = |mode| SearchStart {
+        boat: true,
+        ..start(p(0, 0), mode)
+    };
+    // Five tiles in the list: the second cost 64 more; the own Whirlpool's tiles excluded.
+    let state = whirlpools(&rules, "b~#~#~#~", vec![]);
+    let found = search(&rules, &state, &afloat(SearchMode::Threat));
+    let exit = |x| SearchNode {
+        pos: p(x, 0),
+        marks: placed(2) | BOAT,
+        from: p(1, 0),
+        guard: None,
+        key: 0,
+        danger: 0,
+        cost: 100,
+        cost2: 164,
+        points: 900,
+    };
+    assert_eq!(
+        found.node(p(3, 0)),
+        Some(SearchNode {
+            key: -500,
+            ..exit(3)
+        })
+    );
+    assert_eq!(
+        found.node(p(5, 0)),
+        Some(SearchNode {
+            key: -1000,
+            ..exit(5)
+        })
+    );
+    assert_eq!(
+        found.node(p(7, 0)),
+        Some(SearchNode {
+            key: -1500,
+            ..exit(7)
+        })
+    );
+    assert_eq!(found.node(p(1, 1)), None);
+    // A monster on the water beside the last guards it alone.
+    let state = whirlpools(&rules, "b~#~#~#~", vec![monster(p(7, 1))]);
+    let with = |mode, answer| {
+        let asks = Asks {
+            answers: vec![(p(7, 1), answer)],
+            ..Asks::default()
+        };
+        let found = search_with(&rules, &state, &[], &afloat(mode), &asks);
+        let at = |x| found.node(p(x, 0)).map(|node| (node.key, node.guard));
+        (at(3), at(5), at(7))
+    };
+    assert_eq!(
+        with(SearchMode::Threat, -70),
+        (Some((-500, None)), Some((-1000, None)), Some((-1500, None)))
+    );
+    assert_eq!(
+        with(SearchMode::Plan, -70),
+        (
+            Some((-570, None)),
+            Some((-1070, None)),
+            Some((-1570, Some(p(7, 1))))
+        )
+    );
+    assert_eq!(with(SearchMode::Plan, REFUSED), (None, None, None));
+    // Never from the start: a boat on a Whirlpool goes no further at once.
+    let mut state = whirlpools(&rules, "b~#~#~#~", vec![]);
+    state.hero_mut(HERO).unwrap().pos = p(3, 0);
+    let start = SearchStart {
+        from: p(3, 0),
+        ..afloat(SearchMode::Threat)
+    };
+    let found = search(&rules, &state, &start);
+    assert_eq!((found.node(p(5, 0)), found.reached().count()), (None, 1));
+}
+
+// covers: CPU-PTH-006
+#[test]
+fn a_subterranean_gate_leads_to_its_pair_its_costs_and_key_kept() {
+    // Gates on (2, 0) of both levels; a monster on (3, 1) guards the upper one.
+    let rules = rules();
+    let rows = ["gggg", "gggg", "gggg", "gggg"];
+    let gates = |others: Vec<ObjectSetup>| {
+        let pair = [Pos::new(2, 0, 0), Pos::new(2, 0, 1)];
+        let gates = pair.map(|at| teleporter(&rules, "t:underground_gate", at));
+        [gates.to_vec(), others].concat()
+    };
+    let below = |x, y| Pos::new(x, y, 1);
+    let hero = || hero_at(1, 0, p(0, 0), &[PIKEMAN]);
+    let state = deep(&rules, &rows, vec![hero()], gates(vec![]));
+    let found = search(&rules, &state, &start(p(0, 0), SearchMode::Threat));
+    let pair = SearchNode {
+        pos: below(2, 0),
+        marks: placed(2),
+        from: p(2, 0),
+        guard: None,
+        key: 0,
+        danger: 0,
+        cost: 200,
+        cost2: 200,
+        points: 800,
+    };
+    assert_eq!(found.node(below(2, 0)), Some(pair));
+    assert_eq!(
+        search(&rules, &state, &start(p(0, 0), SearchMode::Claims)).node(below(2, 0)),
+        None
+    );
+    // A hero on the pair: a stop, gone past for another team's only.
+    for (owner, past) in [(1, true), (0, false)] {
+        let heroes = vec![hero(), hero_at(2, owner, below(2, 0), &[PIKEMAN])];
+        let state = deep(&rules, &rows, heroes, gates(vec![]));
+        let found = search(&rules, &state, &start(p(0, 0), SearchMode::Threat));
+        assert_eq!(
+            found.node(below(2, 0)).map(|node| node.marks),
+            Some(placed(2) | STOP)
+        );
+        assert_eq!(found.node(below(1, 0)).is_some(), past);
+    }
+    // Guarded: mode 3 stops at the gate; from mode 4 the pair keeps the key and guard weighed.
+    let state = deep(&rules, &rows, vec![hero()], gates(vec![monster(p(3, 1))]));
+    let threat = search(&rules, &state, &start(p(0, 0), SearchMode::Threat));
+    assert!(threat.node(p(2, 0)).is_some());
+    assert_eq!(threat.node(below(2, 0)), None);
+    let asks = Asks {
+        answers: vec![(p(3, 1), -20)],
+        ..Asks::default()
+    };
+    let plan = search_with(
+        &rules,
+        &state,
+        &[],
+        &start(p(0, 0), SearchMode::Plan),
+        &asks,
+    );
+    assert_eq!(
+        plan.node(below(2, 0))
+            .map(|node| (node.key, node.guard, node.cost2)),
+        Some((-20, Some(p(3, 1)), 200))
+    );
+    // A gate without a pair leads nowhere.
+    let lone = vec![teleporter(&rules, "t:underground_gate", p(2, 0))];
+    let state = deep(&rules, &rows, vec![hero()], lone);
+    let found = search(&rules, &state, &start(p(0, 0), SearchMode::Threat));
+    assert!(found.node(p(2, 0)).is_some());
+    assert_eq!(found.node(below(2, 0)), None);
+}
+
+// covers: CPU-PTH-001, CPU-PTH-006
+#[test]
+fn from_mode_3_the_start_on_a_monolith_or_a_gate_goes_through_it_at_once() {
+    let rules = rules();
+    // The hero on the entrance (0, 0): its exits relaxed before the loop, the visit mark set,
+    // the second cost 50 more than the list's.
+    let rows = ["ggg", "###", "ggg"];
+    let objects = vec![
+        teleporter(&rules, "t:entrance", p(0, 0)),
+        teleporter(&rules, "t:exit", p(0, 2)),
+        teleporter(&rules, "t:exit", p(2, 2)),
+    ];
+    let state = alone(&rules, &rows, p(0, 0), objects);
+    let found = search(&rules, &state, &start(p(0, 0), SearchMode::Threat));
+    let exit = SearchNode {
+        pos: p(0, 2),
+        marks: placed(2) | VISIT_HERE,
+        from: p(0, 0),
+        guard: None,
+        key: 0,
+        danger: 0,
+        cost: 0,
+        cost2: 150,
+        points: 1000,
+    };
+    assert_eq!(found.node(p(0, 2)), Some(exit));
+    let order: Vec<Pos> = found.reached().take(3).map(|node| node.pos).collect();
+    assert_eq!(order, [p(0, 0), p(0, 2), p(2, 2)]);
+    // The start node itself is no stop and steps on.
+    assert_eq!(found.node(p(0, 0)).map(|node| node.marks), Some(placed(2)));
+    assert!(found.node(p(1, 0)).is_some());
+    assert_eq!(
+        search(&rules, &state, &start(p(0, 0), SearchMode::Claims)).node(p(0, 2)),
+        None
+    );
+    // A two-way monolith, the gate's pair alike.
+    let state = deep(
+        &rules,
+        &["ggg", "ggg"],
+        vec![hero_at(1, 0, p(1, 0), &[PIKEMAN])],
+        [Pos::new(1, 0, 0), Pos::new(1, 0, 1)]
+            .map(|at| teleporter(&rules, "t:underground_gate", at))
+            .to_vec(),
+    );
+    let found = search(&rules, &state, &start(p(1, 0), SearchMode::Threat));
+    assert_eq!(
+        found
+            .node(Pos::new(1, 0, 1))
+            .map(|node| (node.marks, node.cost2)),
+        Some((placed(2) | VISIT_HERE, 50))
+    );
+    let rows = ["g#g"];
+    let objects = [p(0, 0), p(2, 0)].map(|at| teleporter(&rules, "t:two_way", at));
+    let state = alone(&rules, &rows, p(0, 0), objects.to_vec());
+    let found = search(&rules, &state, &start(p(0, 0), SearchMode::Threat));
+    assert_eq!(
+        found.node(p(2, 0)).map(|node| (node.marks, node.cost2)),
+        Some((placed(2) | VISIT_HERE, 150))
+    );
+}
+
+// covers: CPU-PTH-007
+#[test]
+fn a_door_leg_starts_at_rock_crosses_it_at_no_price_and_lands_on_a_place() {
+    let rules = rules();
+    let state = alone(&rules, &["g#gg"], p(0, 0), vec![]);
+    let plan = |jumps| {
+        jumping(
+            &rules,
+            &state,
+            &[],
+            (p(0, 0), SearchMode::Plan, jumps),
+            &NoAsks,
+        )
+    };
+    let found = plan(door());
+    // The leg's start: 300 points, the second cost 100 for the rock and 500 for the jump, the
+    // points the step's (rock's: 0).
+    let leg = SearchNode {
+        pos: p(1, 0),
+        marks: passed(2) | DOOR | offset(1, 0),
+        from: p(0, 0),
+        guard: None,
+        key: 0,
+        danger: 0,
+        cost: 300,
+        cost2: 900,
+        points: 1000,
+    };
+    assert_eq!(found.pass_node(p(1, 0)), Some(leg));
+    // Its landing, a place, the leg's start its source, its offset 2.
+    let landed = SearchNode {
+        pos: p(2, 0),
+        marks: placed(2) | DOOR | offset(2, 0),
+        cost2: 1000,
+        ..leg
+    };
+    assert_eq!(found.node(p(2, 0)), Some(landed));
+    // The landing's own steps are no leg's.
+    let on = found.node(p(3, 0)).unwrap();
+    assert_eq!((on.marks, on.cost, on.from), (placed(2), 400, p(2, 0)));
+    // At Expert 200; without the spell, in mode 5 or from Cursed Ground, no leg.
+    let expert = SearchJumps {
+        door_price: 200,
+        ..door()
+    };
+    assert_eq!(plan(expert).node(p(2, 0)).map(|node| node.cost), Some(200));
+    assert_eq!(plan(SearchJumps::default()).node(p(2, 0)), None);
+    let replan = jumping(
+        &rules,
+        &state,
+        &[],
+        (p(0, 0), SearchMode::Replan, door()),
+        &NoAsks,
+    );
+    assert_eq!(replan.node(p(2, 0)), None);
+    let cursed = vec![lying(BARRENS, p(0, 0), 1)];
+    let state = alone(&rules, &["g#gg"], p(0, 0), cursed);
+    let found = jumping(
+        &rules,
+        &state,
+        &[],
+        (p(0, 0), SearchMode::Plan, door()),
+        &NoAsks,
+    );
+    assert_eq!(
+        found.node(p(0, 0)).map(|node| node.marks & NO_MAGIC),
+        Some(NO_MAGIC)
+    );
+    assert_eq!(found.pass_node(p(1, 0)), None);
+}
+
+// covers: CPU-PTH-007
+#[test]
+fn a_door_leg_goes_9_columns_and_8_rows_from_its_start_at_most() {
+    let rules = rules();
+    let reach = |rows: &[&str], from: Pos, to: Pos| {
+        let state = alone(&rules, rows, from, vec![]);
+        let found = jumping(
+            &rules,
+            &state,
+            &[],
+            (from, SearchMode::Plan, door()),
+            &NoAsks,
+        );
+        found
+            .node(to)
+            .map(|node| (node.marks & DOOR_OFFSET_MASK, node.from))
+    };
+    let row = |rock: usize| std::format!("g{}g", "#".repeat(rock));
+    assert_eq!(
+        reach(&[row(8).as_str()], p(0, 0), p(9, 0)),
+        Some((offset(9, 0), p(0, 0)))
+    );
+    assert_eq!(reach(&[row(9).as_str()], p(0, 0), p(10, 0)), None);
+    // Westwards and northwards the offsets are two's complement.
+    assert_eq!(
+        reach(&[row(8).as_str()], p(9, 0), p(0, 0)),
+        Some((offset(-9, 0), p(9, 0)))
+    );
+    let column = |rock: usize| [vec!["g"], vec!["#"; rock], vec!["g"]].concat();
+    assert_eq!(
+        reach(&column(7), p(0, 8), p(0, 0)),
+        Some((offset(0, -8), p(0, 8)))
+    );
+    assert_eq!(reach(&column(8), p(0, 9), p(0, 0)), None);
+}
+
+// covers: CPU-PTH-007
+#[test]
+fn a_door_leg_lands_on_no_entrance_and_crosses_water_as_a_jump() {
+    let rules = rules();
+    // Onto a tower's tile (entered) the leg only passes, no stop; beyond it it lands (the
+    // tower's place is walked onto from there).
+    let state = alone(&rules, &["g#Og"], p(0, 0), vec![]);
+    let found = jumping(
+        &rules,
+        &state,
+        &[],
+        (p(0, 0), SearchMode::Plan, door()),
+        &NoAsks,
+    );
+    assert_eq!(found.node(p(2, 0)).map(|node| node.from), Some(p(3, 0)));
+    let over = found.pass_node(p(2, 0)).unwrap();
+    assert_eq!(over.marks, passed(2) | DOOR | offset(2, 0));
+    assert_eq!(
+        found.node(p(3, 0)).map(|node| (node.marks, node.cost2)),
+        Some((placed(2) | DOOR | offset(3, 0), 1100))
+    );
+    // From a blocked tile, a leg rather than a flight; its points the step's (100 paid).
+    let jumps = SearchJumps {
+        fly: true,
+        fly_level: Some(1),
+        ..door()
+    };
+    let state = alone(&rules, &["gBg"], p(0, 0), vec![]);
+    let found = jumping(
+        &rules,
+        &state,
+        &[],
+        (p(0, 0), SearchMode::Plan, jumps),
+        &NoAsks,
+    );
+    let leg = found.pass_node(p(1, 0)).unwrap();
+    assert_eq!(
+        (leg.marks, leg.cost, leg.cost2, leg.points),
+        (passed(2) | DOOR | offset(1, 0), 300, 800, 900)
+    );
+    // At sea from land: a leg before the spells; over water a jump's only, landing beyond.
+    let state = alone(&rules, &["g~~g"], p(0, 0), vec![]);
+    let found = jumping(
+        &rules,
+        &state,
+        &[],
+        (p(0, 0), SearchMode::Plan, jumps),
+        &NoAsks,
+    );
+    let leg = found.pass_node(p(1, 0)).unwrap();
+    assert_eq!(
+        (leg.marks, leg.cost, leg.cost2, leg.points),
+        (passed(2) | DOOR | offset(1, 0), 300, 800, 900)
+    );
+    assert_eq!(
+        found.pass_node(p(2, 0)).map(|node| node.marks),
+        Some(passed(2) | DOOR | offset(2, 0))
+    );
+    assert_eq!(
+        found
+            .node(p(3, 0))
+            .map(|node| (node.marks, node.cost, node.cost2)),
+        Some((placed(2) | DOOR | offset(3, 0), 300, 1000))
+    );
+}
+
+// covers: CPU-PTH-007
+#[test]
+fn a_door_leg_from_a_boat_lands_on_water_only() {
+    // From the boat on (0, 0) onto (1, 0), which the human fog leaves only flown over: the leg;
+    // on the water beyond it lands in the boat; onto the coast from there only a new leg, never
+    // a landing.
+    let rules = rules();
+    let mut state = alone(&rules, &["b~~g", "###g"], p(3, 1), vec![]);
+    state.put_aboard(HERO, 0);
+    state.explored_mut(RED).0.set(p(1, 0), false);
+    let start = SearchStart {
+        boat: true,
+        fog: SearchFog::Human,
+        jumps: door(),
+        ..start(p(0, 0), SearchMode::Plan)
+    };
+    let found = search(&rules, &state, &start);
+    assert_eq!(
+        found.pass_node(p(1, 0)).map(|node| node.marks),
+        Some(passed(2) | BOAT | DOOR | offset(1, 0))
+    );
+    let landed = found.node(p(2, 0)).unwrap();
+    assert_eq!(
+        (landed.marks, landed.cost),
+        (placed(2) | BOAT | DOOR | offset(2, 0), 300)
+    );
+    assert_eq!(found.node(p(3, 0)), None);
+    assert_eq!(
+        found
+            .pass_node(p(3, 0))
+            .map(|node| (node.marks, node.from, node.cost)),
+        Some((passed(2) | BOAT | DOOR | offset(1, 0), p(2, 0), 600))
+    );
+}
+
+// covers: CPU-PTH-007
+#[test]
+fn a_fly_stretch_starts_at_a_blocked_tile_with_the_day_s_maximum_less_its_price() {
+    let rules = rules();
+    let fly = SearchJumps {
+        fly: true,
+        fly_level: Some(1),
+        ..SearchJumps::default()
+    };
+    let state = alone(&rules, &["gBgg"], p(0, 0), vec![]);
+    let found = jumping(
+        &rules,
+        &state,
+        &[],
+        (p(0, 0), SearchMode::Plan, fly),
+        &NoAsks,
+    );
+    // From grass the lesser of 100 and the fly price 140; 1 500 less it.
+    let over = found.pass_node(p(1, 0)).unwrap();
+    assert_eq!(
+        (over.marks, over.cost, over.cost2, over.points),
+        (passed(2) | FLY, 100, 600, 1400)
+    );
+    // From the blocked tile the fly price.
+    let beyond = found.node(p(2, 0)).unwrap();
+    assert_eq!(
+        (beyond.marks, beyond.cost, beyond.cost2, beyond.points),
+        (REACHED | PLACE | FLY | 2 << DIRECTION_SHIFT, 240, 740, 1260)
+    );
+    // Not in mode 5, not from Cursed Ground.
+    let replan = jumping(
+        &rules,
+        &state,
+        &[],
+        (p(0, 0), SearchMode::Replan, fly),
+        &NoAsks,
+    );
+    assert_eq!(replan.pass_node(p(1, 0)), None);
+    // From a boat no stretch (the human fog: the water ahead only flown over), but a leg.
+    let mut state = alone(&rules, &["b~~", "##g"], p(2, 1), vec![]);
+    state.put_aboard(HERO, 0);
+    state.explored_mut(RED).0.set(p(1, 0), false);
+    let afloat = |jumps| {
+        let start = SearchStart {
+            boat: true,
+            fog: SearchFog::Human,
+            jumps,
+            ..start(p(0, 0), SearchMode::Plan)
+        };
+        search(&rules, &state, &start)
+    };
+    assert_eq!(afloat(fly).pass_node(p(1, 0)), None);
+    assert_eq!(
+        afloat(door()).pass_node(p(1, 0)).map(|node| node.marks),
+        Some(passed(2) | BOAT | DOOR | offset(1, 0))
+    );
+}
+
+// covers: CPU-PTH-007
+#[test]
+fn a_sea_spell_is_fly_or_water_walk_by_the_higher_level_with_500_unless_worn() {
+    let rules = rules();
+    let state = alone(&rules, &["gg~~"], p(1, 0), vec![]);
+    let spell = |heroes: &[Arc<HeroDetails>], jumps, points| {
+        let start = SearchStart {
+            jumps,
+            points,
+            ..start(p(1, 0), SearchMode::Plan)
+        };
+        let found = search_with(&rules, &state, heroes, &start, &NoAsks);
+        found
+            .pass_node(p(2, 0))
+            .map(|node| (node.marks & (FLY | WATER_WALK), node.cost2, node.points))
+    };
+    let jumps = |fly, water_walk, levels: (Option<u8>, Option<u8>)| SearchJumps {
+        fly,
+        water_walk,
+        fly_level: levels.0,
+        water_walk_level: levels.1,
+        ..SearchJumps::default()
+    };
+    // Priced from grass at 100; the points the day's maximum less it.
+    assert_eq!(
+        spell(&[], jumps(true, false, (Some(1), None)), 1000),
+        Some((FLY, 600, 1400))
+    );
+    assert_eq!(
+        spell(&[], jumps(false, true, (None, Some(1))), 1000),
+        Some((WATER_WALK, 600, 1400))
+    );
+    // Equal levels: Water Walk; the higher fly level: Fly, though only Water Walk is castable.
+    assert_eq!(
+        spell(&[], jumps(true, false, (Some(1), Some(1))), 1000),
+        Some((WATER_WALK, 600, 1400))
+    );
+    assert_eq!(
+        spell(&[], jumps(false, true, (Some(2), Some(1))), 1000),
+        Some((FLY, 600, 1400))
+    );
+    assert_eq!(spell(&[], SearchJumps::default(), 1000), None);
+    // A hero flying or water walking on its own, its lift lost at a new day before the water:
+    // no surcharge.
+    let wings = store(&[(FLYING, 1)]);
+    assert_eq!(
+        spell(&wings, jumps(true, false, (Some(1), None)), 50),
+        Some((FLY, 100, 1400))
+    );
+    let boots = store(&[(WATER_WALKING, 1)]);
+    assert_eq!(
+        spell(&boots, jumps(false, true, (None, Some(1))), 50),
+        Some((WATER_WALK, 100, 1400))
+    );
+    // None from Cursed Ground.
+    let cursed = alone(&rules, &["gg~~"], p(1, 0), vec![lying(BARRENS, p(1, 0), 1)]);
+    let start = SearchStart {
+        jumps: jumps(true, true, (Some(1), Some(1))),
+        ..start(p(1, 0), SearchMode::Plan)
+    };
+    assert_eq!(search(&rules, &cursed, &start).pass_node(p(2, 0)), None);
+}
+
+// covers: CPU-PTH-007
+#[test]
+fn a_boat_node_is_summoned_or_bought_at_a_mark_from_mode_4_with_the_day_s_rest() {
+    let rules = rules();
+    let state = alone(&rules, &["g~~"], p(0, 0), vec![]);
+    let summon = SearchJumps {
+        summon_boat: true,
+        ..SearchJumps::default()
+    };
+    let marked = Asks {
+        boats: vec![(p(1, 0), -700)],
+        ..Asks::default()
+    };
+    let boat = |mode, jumps, asks: &Asks, points| {
+        let start = SearchStart {
+            jumps,
+            points,
+            ..start(p(0, 0), mode)
+        };
+        let found = search_with(&rules, &state, &[], &start, asks);
+        let at = |x| {
+            found
+                .node(p(x, 0))
+                .map(|n| (n.marks, n.key, n.cost, n.cost2, n.points))
+        };
+        (at(1), at(2))
+    };
+    let none = Asks::default();
+    // Summoned: the day's 1 000 points its price, the second cost 500 more, the sea's maximum.
+    let sea = placed(2) | BOAT;
+    assert_eq!(
+        boat(SearchMode::Plan, summon, &none, 1000),
+        (
+            Some((sea, 0, 1000, 1500, 1500)),
+            Some((sea, 0, 1100, 1600, 1400))
+        )
+    );
+    // Points short of the step: those and the land's maximum.
+    assert_eq!(
+        boat(SearchMode::Plan, summon, &none, 50).0,
+        Some((sea, 0, 1550, 2050, 1500))
+    );
+    // At a mark, bought: the purchase off the key; mode 5 alike, its summons ignored.
+    let bought = Some((sea, -700, 1000, 1500, 1500));
+    assert_eq!(
+        boat(SearchMode::Plan, SearchJumps::default(), &marked, 1000).0,
+        bought
+    );
+    assert_eq!(boat(SearchMode::Replan, summon, &marked, 1000).0, bought);
+    assert_eq!(boat(SearchMode::Replan, summon, &none, 1000).0, None);
+    // Below mode 4 the bare price and the step's points.
+    assert_eq!(
+        boat(SearchMode::Local, summon, &marked, 1000).0,
+        Some((sea, -700, 100, 600, 900))
+    );
+    assert_eq!(boat(SearchMode::Local, summon, &none, 1000).0, None);
+    // From Cursed Ground no summons, but a mark still.
+    let cursed = alone(&rules, &["g~~"], p(0, 0), vec![lying(BARRENS, p(0, 0), 1)]);
+    let at = |asks: &Asks| {
+        let start = SearchStart {
+            jumps: summon,
+            ..start(p(0, 0), SearchMode::Plan)
+        };
+        let found = search_with(&rules, &cursed, &[], &start, asks);
+        found.node(p(1, 0)).map(|node| node.key)
+    };
+    assert_eq!(at(&none), None);
+    assert_eq!(at(&marked), Some(-700));
+}
+
+// covers: CPU-PTH-005, CPU-PTH-007
+#[test]
+fn from_mode_4_a_landing_and_a_boarding_take_the_day_s_rest() {
+    let rules = rules();
+    let mut state = alone(&rules, &["b~g", "##g"], p(2, 1), vec![]);
+    state.put_aboard(HERO, 0);
+    let land = |mode, points| {
+        let start = SearchStart {
+            boat: true,
+            points,
+            ..start(p(0, 0), mode)
+        };
+        let found = search(&rules, &state, &start);
+        found
+            .node(p(2, 0))
+            .map(|node| (node.marks, node.cost, node.cost2, node.points))
+    };
+    // The 900 points left the landing's price; the land's maximum after it.
+    for mode in [SearchMode::Plan, SearchMode::Replan] {
+        assert_eq!(land(mode, 1000), Some((placed(2), 1000, 1000, 1500)));
+        // Short of the step: those 50 and the sea's maximum.
+        assert_eq!(land(mode, 150), Some((placed(2), 1650, 1650, 1500)));
+    }
+    // Below mode 4 a step kept in the boat.
+    assert_eq!(
+        land(SearchMode::Local, 1000),
+        Some((placed(2) | BOAT, 200, 200, 800))
+    );
+    // The boarding of an empty boat (CPU-PTH-005) in mode 5 as in mode 4.
+    let state = alone(&rules, &["gb~"], p(0, 0), vec![]);
+    let found = search(&rules, &state, &start(p(0, 0), SearchMode::Replan));
+    assert_eq!(
+        found
+            .node(p(2, 0))
+            .map(|node| (node.marks, node.cost, node.points)),
+        Some((placed(2) | BOAT, 1100, 1400))
+    );
 }

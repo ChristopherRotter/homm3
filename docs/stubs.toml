@@ -355,12 +355,6 @@ reason = "The original's computer player (E31 T2d): the turn start's Eye value (
 epic   = "E08"
 
 [[stub]]
-id     = "AI-STUB-11"
-where  = "crates/h3-game/src/computer/start.rs::threats"
-reason = "The original's computer player (E31 T2d): the threat fold searches from every enemy hero with the engine's reach (AdventureState::reach_with: a human's paths, ADV-MOV-008's fog), not the original's computer mode 3 of pathfinder_run 0x56B440 (pathfinder_pass_through 0x56AB40: in the modes from 3 a path goes on past an object's tile whose class is not in its switch, and through the teleporters to their exits). Lifted with the adventure lane's computer query (E31-design.md section 3, its first row; the walk's and the planning's too, T2i, T2j)"
-epic   = "E31"
-
-[[stub]]
 id     = "AI-STUB-12"
 where  = "crates/h3-game/src/computer/start.rs::record"
 reason = "The original's computer player (E31 T2d): the defence fold of the turn's start and middle (ai_enemy_reach_fold 0x4280E0 with ai_town_defence_vtable 0x63B67C, ai_town_defence_recruit 0x428580) buys a threatened town's available creatures into its garrison with the player's resources (ai_army_plan_run 0x42D690; survey sections 2.4, 3.3, the asymmetry of section 2.5 (3)); not ported: the policy's commands for it and the army plans come with increment 3 (the towns) and T2g. Its threats are the threat fold's (CPU-STA-004)"

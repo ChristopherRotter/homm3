@@ -15,12 +15,12 @@
 //! started anew where a node's points no longer pay the step (the node's points, `+0x1C`, become
 //! the day's maximum).
 //!
-//! Still to come in E31 T2i0: the teleporters (CPU-PTH-006: the start's channel and
-//! `pathfinder_pass_through`'s cases 43, 45, 103 and 111, which answer as its default does until
-//! then) and mode [`SearchMode::Plan`]'s jumps (CPU-PTH-007: the Door legs, the Fly stretch, the
-//! sea spells, the boat node of Summon Boat and the boat marks, the boarding and landing with the
-//! day's rest). Not in the engine: the Castle Gate and Town Portal (E09, `AI-STUB-22`), the
-//! Sanctuary and the Quest Guard (E12, `AI-STUB-23`).
+//! From mode [`SearchMode::Threat`] the search goes through the teleporters (CPU-PTH-006:
+//! `pathfinder_teleport_exits` 0x56A400, `pathfinder_gate_exit` 0x56A730, the start's own at
+//! once), and mode [`SearchMode::Plan`] has the hero's jumps (CPU-PTH-007: the Door legs, the Fly
+//! stretch, the sea spells, the boat node of Summon Boat and the boat marks; from mode 4 the
+//! boarding and landing with the day's rest). Not in the engine: the Castle Gate and Town Portal
+//! (E09, `AI-STUB-22`), the Sanctuary and the Quest Guard (E12, `AI-STUB-23`).
 
 use alloc::sync::Arc;
 use alloc::vec;
@@ -30,8 +30,10 @@ use h3_content::Ruleset;
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::{HeroDetails, Movement};
 
-use crate::movement::{Pricing, day_movement, day_points, details_of, sea_day_points};
-use crate::ruleset::{AdventureRuleset, Effect, Passage, Visit};
+use crate::movement::{
+    Pricing, day_movement, day_points, details_of, hero_movement, sea_day_points,
+};
+use crate::ruleset::{AdventureRuleset, Effect, MonolithWay, Passage, Visit};
 use crate::setup::Pos;
 use crate::state::{AdventureState, StaticMap, StaticTile, StepVisit};
 
@@ -42,6 +44,8 @@ use marks::{
 
 mod expand;
 mod guards;
+mod jumps;
+mod teleport;
 mod through;
 
 /// The search's mode, the original's sixth argument of `pathfinder_run` 0x56B440, ordered by its
@@ -78,8 +82,9 @@ pub enum SearchFog {
 /// Mode [`SearchMode::Plan`]'s jumps, which `pathfinder_run` 0x56B440 sets from the hero's spells
 /// and masteries (pathfinder `+0x14` to `+0x17` and its levels, 0x56B4FC..0x56B731): the caller
 /// computes them (the adventure never reads spell points, ADR-0017 point 10); ignored in every
-/// other mode. Since E31 T2i0 only the no-magic mark reads the four flags ([`marks::NO_MAGIC`],
-/// CPU-PTH-002) and the levels the lifted steps' prices; the jumps themselves are CPU-PTH-007's.
+/// other mode, whose search has none (mode [`SearchMode::Replan`]'s too, R2 §7). The flags give
+/// the jumps (CPU-PTH-007) and the no-magic mark ([`marks::NO_MAGIC`], CPU-PTH-002); the levels
+/// price the lifted steps and choose a sea spell (0x4B2C31).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct SearchJumps {
     /// Summon Boat is useful (`+0x14`: castable, 0x4E5550, and no boat's entrance beside the
@@ -162,7 +167,8 @@ pub trait SearchAsks {
 
     /// A boat mark on the water tile `pos` with `ai_boat_purchase_cost` 0x431160's change of the
     /// key, if the computer marked one (map item `+0xC` bit 11, `pathfinder_boat_mark_read`
-    /// 0x4B2B01; CPU-PTH-007).
+    /// 0x4B2B01; CPU-PTH-007): asked in every mode of a step from a place onto plain water where
+    /// no boat is summoned; a mark makes a boat node there.
     fn boat_mark(&self, _pos: Pos) -> Option<i32> {
         None
     }
@@ -392,8 +398,26 @@ enum Class {
     Guard(u8),
     /// 85: a coast bank's (the Shipwreck's).
     Coast,
+    /// 44: a one-way monolith's exit, which leads nowhere.
+    Exit,
+    /// 43, 45, 103 and 111: a teleporter the search goes through.
+    Teleporter(Teleporter),
     /// Any other.
     Other,
+}
+
+/// A teleporter's entrance as the search goes through it (CPU-PTH-006; the engine's channels,
+/// [`crate::state::Channels`], stand for the original's lists by the tile's word and subclass).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Teleporter {
+    /// 43: a one-way monolith's entrance of this channel: its exits the channel's exits.
+    OneWay(u8),
+    /// 45: a two-way monolith of this channel: its exits the channel's other members.
+    TwoWay(u8),
+    /// 103: a Subterranean Gate: its exit its pair.
+    Gate,
+    /// 111: a Whirlpool's tile, of this object: its exits the other Whirlpools' tiles.
+    Whirlpool(usize),
 }
 
 /// An entrance (map item `+0xC` bit 12): its class and whether that class is visited from the
@@ -463,8 +487,20 @@ struct Search<'s, A> {
     bound: i32,
     /// Whether the player owns a town (`+0x3E`, its town count, above 0).
     towns: bool,
-    /// Whether mode [`SearchMode::Plan`] has a jump (`+0x14` to `+0x17`): the no-magic mark.
+    /// The jumps the search may make (`+0x14` to `+0x17`, the door's price): the start's in mode
+    /// [`SearchMode::Plan`], none in any other.
+    cast: SearchJumps,
+    /// Whether it has a jump: the no-magic mark.
     jumps: bool,
+    /// The fly level (`+0x1C`) and the water-walk level (`+0x18`) the lifted steps are priced at,
+    /// which choose a sea spell (0x4B2C31).
+    levels: (Option<u8>, Option<u8>),
+    /// Whether the hero flies and water-walks on its own (`hero_wears_artifact` 0x4D91F0 of Angel
+    /// Wings, 72, and of the Boots of Levitation, 90, at 0x4B2C3F and 0x4B2C85: the agent's
+    /// mapping, the hero's own levels without the day's spells, which only those artifacts give
+    /// in the original's content): its sea spell takes no surcharge.
+    wings: bool,
+    boots: bool,
     /// The empty boats and the other heroes on the map, by tile in order.
     occupants: Vec<(Pos, Occupant)>,
 }
@@ -530,6 +566,13 @@ impl<A: SearchAsks> Search<'_, A> {
             Effect::Gate(key) => Class::Gate(key),
             Effect::Guard(key) => Class::Guard(key),
             Effect::Bank(bank) if bank.coast => Class::Coast,
+            Effect::Monolith { channel, way } => match way {
+                MonolithWay::Entrance => Class::Teleporter(Teleporter::OneWay(channel)),
+                MonolithWay::Exit => Class::Exit,
+                MonolithWay::TwoWay => Class::Teleporter(Teleporter::TwoWay(channel)),
+            },
+            Effect::SubterraneanGate => Class::Teleporter(Teleporter::Gate),
+            Effect::Whirlpool(_) => Class::Teleporter(Teleporter::Whirlpool(visit.object)),
             _ => Class::Other,
         };
         Entrance {
@@ -571,8 +614,12 @@ impl<A: SearchAsks> Search<'_, A> {
     /// says; flying and water walking by the hero's own levels unless in a boat; a place, but
     /// for a flyer or a water walker not in a boat whose own tile fails `hero_flight_tile_test`
     /// 0x4E5CE0; its cost and costs 0, its points the start's, its source itself, relaxed as
-    /// its own source in direction 2 with no price, key or guard.
-    // rule: CPU-PTH-001
+    /// its own source in direction 2 with no price, key or guard. From mode 3 a start on a
+    /// one-way monolith's entrance, a two-way monolith or a Subterranean Gate (not a Whirlpool)
+    /// goes through it at once (`pathfinder_visit_here_mark` 0x56B9CF..0x56B9E8): a copy of the
+    /// start node with [`VISIT_HERE`] and its second cost 50 more, handed to
+    /// `pathfinder_pass_through` 0x56AB40, whose case is the teleporter's (CPU-PTH-006).
+    // rule: CPU-PTH-001, CPU-PTH-006
     fn begin(&self, frame: &mut Frame) {
         let (start, own) = (self.start, &self.own);
         let lifted = own.flying.is_some() || own.water_walking.is_some();
@@ -602,7 +649,24 @@ impl<A: SearchAsks> Search<'_, A> {
         // The start on a town's entrance from mode 3 (`pathfinder_castle_gate` 0x56A850, at
         // 0x56B94C) and mode 4's Town Portal (`pathfinder_town_portal` 0x56B050, at 0x56BA01).
         // stub: AI-STUB-22
-        // The start on a teleporter from mode 3 (0x56B9CF..0x56B9E8): CPU-PTH-006.
+        if start.mode < SearchMode::Threat {
+            return;
+        }
+        let class = self
+            .read(start.from)
+            .entrance
+            .map(|entrance| entrance.class);
+        if let Some(Class::Teleporter(
+            teleporter @ (Teleporter::OneWay(_) | Teleporter::TwoWay(_) | Teleporter::Gate),
+        )) = class
+        {
+            let mut copy = SearchNode {
+                marks: node.marks | VISIT_HERE,
+                cost2: node.cost2.wrapping_add(50),
+                ..node
+            };
+            self.teleport(frame, &mut copy, teleporter);
+        }
     }
 
     /// The search's loop (`pathfinder_run` 0x56B440 from 0x56BA14): pops the open list's back
@@ -653,7 +717,9 @@ impl<A: SearchAsks> Search<'_, A> {
     /// original does (its callers reuse it). Its cost is the source's plus the price, its second
     /// cost its own surcharges over the source's cost plus the new cost (0x4B1A7E..0x4B1AA9).
     /// Refused outside the box (0x4B1AE6); its source the source's tile and [`FROM_PLACE`] the
-    /// source's place (0x4B1B0C), its Door offset cleared. Its danger the buffer's at the tile,
+    /// source's place (0x4B1B0C), its Door offset cleared, a Door leg's by the leg's rules
+    /// (CPU-PTH-007, 0x4B1B21..0x4B1BAF: a landing on an entrance refused, the leg's start as
+    /// its source, 9 columns and 8 rows from it at most, its offset kept). Its danger the buffer's at the tile,
     /// past the day's points the lesser of that and the source's, refused at or below −500 000 000
     /// (0x4B1BBC..0x4B1C32). Against the tile's stored node of its kind, if reached: refused
     /// when the stored S is higher, or equal with a second cost no higher (0x4B1CB8..0x4B1CF9).
@@ -680,7 +746,9 @@ impl<A: SearchAsks> Search<'_, A> {
         };
         node.from = source.pos;
         node.marks = node.marks & !(FROM_PLACE | DOOR_OFFSET_MASK) | (source.marks & PLACE) << 1;
-        // A Door leg's rules (0x4B1B21..0x4B1BAF) come with mode 4's jumps: CPU-PTH-007.
+        if node.marks & DOOR != 0 && !jumps::leap(source, node, stop) {
+            return;
+        }
         let buffer = self.asks.danger(node.pos);
         let danger = if cost > self.points {
             let danger = buffer.min(source.danger);
@@ -794,7 +862,7 @@ impl ComputerSearch {
 }
 
 impl AdventureState {
-    /// The computer's search from `start` (see [`ComputerSearch`]; CPU-PTH-001 to -005), its
+    /// The computer's search from `start` (see [`ComputerSearch`]; CPU-PTH-001 to -007), its
     /// hero's prices by its details in the game's store `heroes` (its Pathfinding, its army's
     /// native terrain and terrain walkers, its fly and water-walk levels: the hero's own, in
     /// mode [`SearchMode::Plan`] the jumps'), its maximums by its army, week marks and its
@@ -864,7 +932,12 @@ impl AdventureState {
             let at = occupants.partition_point(|&(tile, _)| tile < pos);
             occupants.insert(at, (pos, occupant));
         }
-        let jumps = start.jumps;
+        let cast = if start.mode == SearchMode::Plan {
+            start.jumps
+        } else {
+            SearchJumps::default()
+        };
+        let worn = hero_movement(core, details);
         let search = Search {
             state: self,
             part,
@@ -895,8 +968,11 @@ impl AdventureState {
                 .towns()
                 .iter()
                 .any(|&town| self.owner(town) == Some(start.player)),
-            jumps: start.mode == SearchMode::Plan
-                && (jumps.summon_boat || jumps.door || jumps.fly || jumps.water_walk),
+            cast,
+            jumps: cast.summon_boat || cast.door || cast.fly || cast.water_walk,
+            levels: (fly, walk),
+            wings: worn.flying.is_some(),
+            boots: worn.water_walking.is_some(),
             occupants,
         };
         let (width, height) = (map.width(), map.height());

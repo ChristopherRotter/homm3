@@ -1,6 +1,7 @@
 //! The step of the computer's search (CPU-PTH-003): `pathfinder_expand` 0x4B2300, a node's eight
 //! steps with their prices, the node's points and the new day, the tile cases and the fog.
 
+use super::jumps::may_cast;
 use super::marks::{BOAT, DOOR, FLY, PLACE, WATER_WALK};
 use super::{Class, Frame, Ground, Search, SearchAsks, SearchFog, SearchMode, SearchNode};
 use crate::movement::DIRECTIONS;
@@ -27,13 +28,15 @@ impl<A: SearchAsks> Search<'_, A> {
     /// Expands `source`, a node popped with `left` of the day's points after its cost, in the
     /// eight directions (`pathfinder_expand` 0x4B2300); a node a monster guards (below mode 4,
     /// `guarded`) steps only onto its guard's tile (0x4B2401). Each step's node is the source's
-    /// copy on the new tile, a place (`pathfinder_step_stop_place` 0x4B2453), priced:
+    /// copy on the new tile, a place (`pathfinder_step_stop_place` 0x4B2453), no Door leg when
+    /// the source is a place, its leg landed (0x4B247C), priced:
     ///
     /// - onto rock nothing, its second cost 100 more and no place, a Door leg's only (0x4B248B);
-    ///   from a boat node a boat's step ([`crate::movement`]'s `sail`: `step_cost` 0x4B1740
-    ///   without a road, a native terrain, flying or water walking, 0x4B24B7); else the step at
-    ///   the node's flying and water walking (0x4B24C9); the diagonal window is `left`'s, none
-    ///   when negative (0x4B2500);
+    ///   a leg's step nothing, its second cost 100 more (0x4B24A6); from a boat node a boat's
+    ///   step ([`crate::movement`]'s `sail`: `step_cost` 0x4B1740 without a road, a native
+    ///   terrain, flying or water walking, 0x4B24B7); else the step at the node's flying and
+    ///   water walking (0x4B24C9); the diagonal window is `left`'s, none when negative
+    ///   (0x4B2500);
     /// - the node's points pay the step (0x4B2512); else, from a place only, the step starts a
     ///   new day (`pathfinder_new_day` 0x4B252A): the node's points the day's whole maximum, at
     ///   sea from a boat node, the step priced again without flying or water walking (0x4B257F),
@@ -48,18 +51,25 @@ impl<A: SearchAsks> Search<'_, A> {
     /// tile not water a jump's only, its place kept (0x4B2703). Water from a node not in a boat
     /// (`pathfinder_onto_water` 0x4B27FB): another hero's, an empty boat's and a coast bank's
     /// entrances a step as on land, any other entrance only flown over, plain water a step at
-    /// sea only, both without a place. Land from a boat node: but onto a free coastal tile (the
-    /// original's class 3), a jump's only (0x4B2882); onto one a step kept in the boat, a leaf.
+    /// sea only, both without a place; from a leg's node a jump's only (0x4B2830). Land from a
+    /// boat node: from a leg or but onto a free coastal tile (the original's class 3), a jump's
+    /// only (0x4B2882); onto one a place below mode 4 a step kept in the boat, a leaf, from mode
+    /// 4 the landing with the day's rest ([`Self::landing`], `pathfinder_landing_day` 0x4B28A6).
     /// From mode 4 a step onto another hero, a garrison or a monster is weighed
     /// (`pathfinder_target_weigh_call` 0x4B2932) and refused one only flown over; then any other
     /// step's guard (`pathfinder_guard_call` 0x4B2A51), a refused one losing its place and only
-    /// flown over. A jump's step, one only flown over that does not fly and one at sea that
-    /// neither flies nor water-walks go no further. The rest is relaxed with the tile's entrance
-    /// as its stop, but from a pass node onto the entrance of a class visited from the
-    /// neighbouring tile or of a town (`pathfinder_stop_relax` 0x4B2CE5); a flying step onto an
-    /// entrance as a place is relaxed again as a pass node, no stop (`pathfinder_flying_copy`
-    /// 0x4B2D3D).
-    // rule: CPU-PTH-003
+    /// flown over. Mode 4's jumps (CPU-PTH-007), each from a place without the no-magic mark: a
+    /// jump's step goes on as a leg, else starts one with Dimension Door ([`Self::door_leg`],
+    /// `pathfinder_door_conditions` 0x4B2953); a step only flown over goes on flying or as a leg,
+    /// else starts a leg or, not from a boat, a Fly stretch ([`Self::fly_stretch`], 0x4B29B7); a
+    /// step at sea goes on flying, water walking or as a leg, else from a place makes the boat
+    /// node ([`Self::boat_node`], in every mode) and starts a leg or a sea spell
+    /// ([`Self::sea_spell`], `pathfinder_sea_step` 0x4B2AC1); any other such step goes no
+    /// further. The rest is relaxed with the tile's entrance as its stop, but from a pass node
+    /// onto the entrance of a class visited from the neighbouring tile or of a town
+    /// (`pathfinder_stop_relax` 0x4B2CE5); a flying or leaping step onto an entrance as a place is
+    /// relaxed again as a pass node, no stop (`pathfinder_flying_copy` 0x4B2D3D).
+    // rule: CPU-PTH-003, CPU-PTH-007
     pub(super) fn expand(
         &self,
         frame: &mut Frame,
@@ -85,15 +95,20 @@ impl<A: SearchAsks> Search<'_, A> {
                 marks: source.marks | PLACE,
                 ..*source
             };
-            // A Door leg's node from a place loses its leg (0x4B247C): CPU-PTH-007.
+            // A landed leg's steps are no leg's (0x4B247C).
+            if source.marks & PLACE != 0 {
+                node.marks &= !DOOR;
+            }
             let tile = self.read(pos);
             let ground = self.ground(&tile.live);
             let (mut fly_only, mut jump_only, mut sea) = (false, false, false);
-            // A Door leg's step costs nothing (0x4B24A6): CPU-PTH-007.
             let mut price = if ground == Ground::Rock {
                 node.marks &= !PLACE;
                 node.cost2 = node.cost2.wrapping_add(100);
                 jump_only = true;
+                0
+            } else if node.marks & DOOR != 0 {
+                node.cost2 = node.cost2.wrapping_add(100);
                 0
             } else if source.marks & BOAT != 0 {
                 self.pricings[0].sail(&from, diagonal, window)
@@ -155,24 +170,33 @@ impl<A: SearchAsks> Search<'_, A> {
                         jump_only = true;
                     }
                 }
-                Ground::Water => match tile.entrance.map(|entrance| entrance.class) {
-                    Some(Class::Hero(_) | Class::Boat | Class::Coast) => {}
-                    Some(_) => {
-                        fly_only = true;
+                Ground::Water => {
+                    match tile.entrance.map(|entrance| entrance.class) {
+                        Some(Class::Hero(_) | Class::Boat | Class::Coast) => {}
+                        Some(_) => {
+                            fly_only = true;
+                            node.marks &= !PLACE;
+                        }
+                        None => {
+                            sea = true;
+                            node.marks &= !PLACE;
+                        }
+                    }
+                    // A leg's step onto water is a jump's only (0x4B2830).
+                    if source.marks & DOOR != 0 {
+                        jump_only = true;
                         node.marks &= !PLACE;
                     }
-                    None => {
-                        sea = true;
+                }
+                Ground::Land if source.marks & BOAT != 0 => {
+                    if source.marks & DOOR != 0
+                        || !(tile.entrance.is_none() && state.free_coast(pos, &tile.live))
+                    {
+                        jump_only = true;
                         node.marks &= !PLACE;
+                    } else if node.marks & PLACE != 0 && mode >= SearchMode::Plan {
+                        price = self.landing(source, &mut node, price);
                     }
-                },
-                // From mode 4 a landing onto a free coastal tile (0x4B2890): CPU-PTH-007.
-                Ground::Land
-                    if source.marks & BOAT != 0
-                        && !(tile.entrance.is_none() && state.free_coast(pos, &tile.live)) =>
-                {
-                    jump_only = true;
-                    node.marks &= !PLACE;
                 }
                 _ => {}
             }
@@ -191,25 +215,48 @@ impl<A: SearchAsks> Search<'_, A> {
                 fly_only = true;
                 node.marks &= !PLACE;
             }
-            // A Door leg from here (`pathfinder_door_conditions` 0x4B2953): CPU-PTH-007.
-            if jump_only {
-                continue;
-            }
-            // The Fly stretch and a Door leg (0x4B29B7, `pathfinder_fly_stretch` 0x4B2A73):
-            // CPU-PTH-007.
-            if fly_only {
-                if node.marks & (FLY | DOOR) == 0 {
-                    continue;
-                }
-            } else if mode >= SearchMode::Plan && self.entrance_guarded(&mut node) {
+            if !fly_only
+                && !jump_only
+                && mode >= SearchMode::Plan
+                && self.entrance_guarded(&mut node)
+            {
                 node.marks &= !PLACE;
-                if node.marks & (FLY | DOOR) == 0 {
+                fly_only = true;
+            }
+            let cast = self.cast;
+            if jump_only && node.marks & DOOR == 0 {
+                if !(cast.door && may_cast(source)) {
                     continue;
                 }
+                price = self.door_leg(&mut node);
             }
-            // The boat node and the sea spells (`pathfinder_sea_step` 0x4B2AC1): CPU-PTH-007.
+            let tiles = (&from, &tile.live);
+            if fly_only && node.marks & (FLY | DOOR) == 0 {
+                if !((cast.fly || cast.door) && may_cast(source)) {
+                    continue;
+                }
+                if cast.door {
+                    price = self.door_leg(&mut node);
+                } else if source.marks & BOAT != 0 {
+                    continue;
+                } else {
+                    price = self.fly_stretch(&mut node, tiles, diagonal, window);
+                }
+            }
             if sea && node.marks & (FLY | WATER_WALK | DOOR) == 0 {
-                continue;
+                let sail = (&from, diagonal, window);
+                self.boat_node(frame, (source, &node), direction as u32, sail);
+                if !may_cast(source) {
+                    continue;
+                }
+                // A step at sea comes from no boat: the boat test holds.
+                if cast.door {
+                    price = self.door_leg(&mut node);
+                } else if (cast.fly || cast.water_walk) && source.marks & BOAT == 0 {
+                    price = self.sea_spell(&mut node, tiles, diagonal, window);
+                } else {
+                    continue;
+                }
             }
             let stop = entrance.is_some();
             let (key, guard) = (node.key, node.guard);
