@@ -37,6 +37,8 @@ fn tables() -> GeneratorTables {
         layout_sin: vec![0; 32],
         terrain_towns: vec![],
         native_terrains: vec![],
+        picture_sets: Vec::new(),
+        rock_pictures: Vec::new(),
     }
 }
 
@@ -71,6 +73,7 @@ impl World {
             terrain: 0,
             position: [p[0], p[1], 0],
             size,
+            bounds: ZoneGenerator::NO_BOUNDS,
         });
         self.out.polygons.push(Vec::new());
         id

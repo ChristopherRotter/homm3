@@ -278,6 +278,7 @@ impl<T: Trace> Level<'_, '_, '_, T> {
                         terrain: WATER_TERRAIN,
                         position: [p[0], p[1], 0],
                         size: s,
+                        bounds: ZoneGenerator::NO_BOUNDS,
                     });
                     Some(self.gens.len() - 1)
                 } else {

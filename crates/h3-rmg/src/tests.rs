@@ -547,6 +547,8 @@ fn tables() -> GeneratorTables {
         layout_sin: vec![0; 32],
         terrain_towns: vec![[-1, 0, 0, 0]; 9],
         native_terrains: vec![0; 9],
+        picture_sets: Vec::new(),
+        rock_pictures: Vec::new(),
     }
 }
 

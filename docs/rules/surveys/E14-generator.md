@@ -395,7 +395,7 @@ by §2.1) and 10 outside it.
 | 0x54CBA0 `point_pair_vector_insert`, 0x54CD70 `point_pair_vector_erase`, 0x54C1E0 `u16_vector_resize`, 0x54C3D0 `u16_vector_size` | the line and distance code | the library's vectors | inferred; read; read; read |
 | 0x53E6A0 `rmg_terrain_paint` | step 3 | boxes, centroids, islands, the painting (below) | read |
 | 0x53BBB0 `rmg_zone_bounds_compute`, 0x53D0D0 `rmg_zone_centre_to_centroid` | 0x53E6A0 | the zones' boxes; their centres moved to their cells' centroid | read |
-| 0x53D1C0 `rmg_island_shape`, 0x53CD30 `rmg_coast_line_draw`, 0x53CF50 `rmg_island_fill` | 0x53E6A0 (islands) | an island: polygon shrunk, coast (0x53CE1D), inside | read; read; inferred |
+| 0x53D1C0 `rmg_island_shape`, 0x53CD30 `rmg_coast_line_draw`, 0x53CF50 `rmg_island_fill` | 0x53E6A0 (islands) | an island: polygon shrunk, coast (0x53CE1D), inside | read (the fill since T3e) |
 | 0x544A50 `rmg_zone_first_town` | step 4 | at most one town (below) | read |
 | 0x545250 `rmg_town_place_central` | 0x544A50, 0x544D90 | a zone's first town, nearest its centre (0x545492) | read |
 | 0x531CF0 `rmg_map_can_place` | 0x545250, 0x544D90; five functions of later steps | whether a prototype fits at a cell in a zone | read |
@@ -605,6 +605,20 @@ does the work): level 1 all rock (9), level 0 all water (8), then per zone not o
 painter of its terrain over each of its cells with bit 28. The painter reads cells through the map
 vtable's slot 4: the map vtable's slots (§2.1) are its interface. Step 11 calls the
 same painter and `terrain_painter_flush` 0x5B7520.
+same painter and `terrain_painter_flush` 0x5B7520.
+
+**Step 3 as ported (T3e).** Read again for the port: the boxes start at the constructor's (32000,
+32000, -32000, -32000) and every cell of the map with a zone byte of 0 or more widens its zone
+generator's (the byte indexes the generators); the centroid compares the signed byte with the
+zone's id. An island: the first corner moved, then from the last corner down to the first each
+moved corner's coast drawn to the one after it (the first's to the last's); the coast is the
+jagged walk of step 2 with k = min(size / 2, L / 2) and a cell reached gets bit 28 only when of
+the zone; `rmg_island_fill` (read since T3e) floods from the centre over the zone's cells without
+bit 28 through E, S, W and N (`rmg_neighbours`' even entries). Water zones on level 0 get islands
+too. The painting: rock only with two levels, then water, then the zones by index (the signed byte
+against the index), each painter finished even without cells. On the 24 corpus cases the port's
+draws and cells after step 3 equal the oracle's at the first run (the four islands cases too);
+RMG-QUIRK-3's and -4's step 3 cases are typed errors (`TerrainFault`, `PaintFault`).
 
 **Steps 4 and 5, the towns.** Step 4 tries, in this order and only if asked for, a castle of the
 zone's colour, a town of it, a neutral castle, a neutral town, with town type +4, and **stops at
@@ -2033,7 +2047,7 @@ truncated; `fcomp` bounds. Limits: 8 directions; lines split to length 1.
 | Id | Rule | Draws (sites, in order) | § |
 |---|---|---|---|
 | RMG-TER-001 | Each zone's box from its cells; its centre moved to their centroid. | — | §2.2 |
-| RMG-TER-002 | Islands: each level-0 zone's polygon shrunk by min(L/2, max(L/4, 4)), its coast jagged (limit size / 2), inside filled (bit 28; inferred). | per split 0x53CE1D %min(size/2, L/2) − half | §2.2 |
+| RMG-TER-002 | Islands: each level-0 zone's polygon shrunk by min(L/2, max(L/4, 4)), its coast jagged (limit size / 2), inside filled (bit 28; read T3e). | per split 0x53CE1D %min(size/2, L/2) − half | §2.2 |
 | RMG-TER-003 | Level 1 rock (one rectangle), level 0 water, then per land zone in order a painter of its terrain, a one-cell rectangle per cell with bit 28 (box row by row), then its finish. | rock 0x5B3AB6, water 0x5B38D3 per cell; zone cells 0x5B38B9, 0x5B38D3; finish's (§3.2.14) | §2.2, §2.7.5 |
 
 Reads: zone and land bits. Floats: none. Limits: none; allocation failure throws.

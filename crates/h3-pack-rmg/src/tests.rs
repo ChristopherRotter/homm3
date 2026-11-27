@@ -194,8 +194,59 @@ fn the_synthetic_tables_compile_as_written() {
                 [-1, 0, 0, 0],
             ],
             native_terrains: vec![2, 2, 3, 7, 0, 6, 5, 4, 2],
+            picture_sets: synthetic_picture_sets(),
+            rock_pictures: synthetic_rock_pictures(),
         })
     );
+}
+
+/// The synthetic pack's picture sets, its runs expanded.
+fn synthetic_picture_sets() -> Vec<PictureSet> {
+    let expand = |runs: &[(u8, bool, usize)]| -> Vec<(u8, bool)> {
+        runs.iter()
+            .flat_map(|&(shape, flag, n)| std::iter::repeat_n((shape, flag), n))
+            .collect()
+    };
+    let plain = |shapes: &[u8]| shapes.iter().map(|&s| (s, false, 1)).collect::<Vec<_>>();
+    let set = |through_dirt, land, share, runs: Vec<(u8, bool, usize)>| PictureSet {
+        through_dirt,
+        land,
+        share,
+        pictures: expand(&runs),
+    };
+    let land = |share| {
+        let mut runs = vec![(0, false, 2), (0, true, 2)];
+        runs.extend(plain(&(2..=28).collect::<Vec<_>>()));
+        set(true, true, share, runs)
+    };
+    let mut dirt = vec![(0, false, 2), (0, true, 1)];
+    dirt.extend(plain(&[8, 9, 10, 11, 12, 13, 16, 24]));
+    let mut water = vec![(0, false, 3)];
+    water.extend(plain(&[8, 9, 10, 11, 12, 13, 16]));
+    vec![
+        set(true, true, 40, dirt),
+        set(false, true, 60, vec![(0, false, 1), (0, true, 2)]),
+        land(40),
+        land(70),
+        land(70),
+        land(70),
+        land(50),
+        land(70),
+        set(false, false, 0, water),
+    ]
+}
+
+/// The synthetic pack's rock pictures.
+fn synthetic_rock_pictures() -> Vec<RockPicture> {
+    let mut rock = vec![(0, [false, false]); 2];
+    for shape in 8..=13 {
+        for a in [false, true] {
+            for b in [false, true] {
+                rock.push((shape, [a, b]));
+            }
+        }
+    }
+    rock
 }
 
 /// Step 1's cosines in ten-thousandths (the original's, the synthetic pack's too).
@@ -227,6 +278,20 @@ fn the_generators_tables_are_checked_and_replaced() {
         ("native_terrains = [2, 2, ", "native_terrains = [2, "),
         ("native_terrains = [2, 2, ", "native_terrains = [9, 2, "),
         ("native_terrains = [2, 2, ", "native_terrains = [-1, 2, "),
+        // Eight picture sets, a share past 100, a shape past 28, rock's too, too many of rock's.
+        (
+            "  { through_dirt = false, land = true, share = 60, pictures = [[0, 0, 1], [0, 1, 2]] },\n",
+            "",
+        ),
+        ("share = 60", "share = 101"),
+        (
+            "[24, 0, 1]] },\n  { through_dirt = false",
+            "[29, 0, 1]] },\n  { through_dirt = false",
+        ),
+        (
+            "rock_pictures = [[0, 0, 0, 2]",
+            "rock_pictures = [[29, 0, 0, 2]",
+        ),
     ] {
         let text = SYNTHETIC_RMG.replacen(from, to, 1);
         assert_eq!(
@@ -238,9 +303,11 @@ fn the_generators_tables_are_checked_and_replaced() {
     let ext = format!(
         "[generator]\nheroes_roe = \"1\"\nheroes_expansions = \"0\"\nheroes_campaign = \"0\"\n\
          map_limits = []\nzone_limits = [[0, 1]]\nlayout_cos = {COS:?}\nlayout_sin = {COS:?}\n\
-         terrain_towns = {:?}\nnative_terrains = {:?}\n",
+         terrain_towns = {:?}\nnative_terrains = {:?}\npicture_sets = [{}]\n\
+         rock_pictures = []\n",
         [[8, -1, 0, 0]; 9],
-        [8; 9]
+        [8; 9],
+        "{ through_dirt = false, land = false, share = 0, pictures = [] }, ".repeat(9)
     );
     let part = compile(
         &[(SYNTHETIC_CORE, SYNTHETIC_RMG), (SYNTHETIC_EXT_CORE, &ext)],
@@ -249,6 +316,7 @@ fn the_generators_tables_are_checked_and_replaced() {
     .unwrap();
     assert_eq!(part.generator().unwrap().zone_limits, [(0, 1)]);
     assert_eq!(part.generator().unwrap().native_terrains, [8; 9]);
+    assert!(part.generator().unwrap().rock_pictures.is_empty());
     assert!(
         compile(&[(SYNTHETIC_CORE, "")], PROFILE)
             .unwrap()
@@ -294,6 +362,40 @@ fn the_hash_covers_every_table() {
         ("layout_sin = [0, 1951", "layout_sin = [0, 1952"),
         ("terrain_towns = [[1, 4", "terrain_towns = [[1, 5"),
         ("native_terrains = [2, 2", "native_terrains = [2, 3"),
+        (
+            "through_dirt = true, land = true, share = 40",
+            "through_dirt = false, land = true, share = 40",
+        ),
+        ("land = true, share = 60", "land = false, share = 60"),
+        ("share = 60", "share = 61"),
+        (
+            "pictures = [[0, 0, 1], [0, 1, 2]]",
+            "pictures = [[0, 0, 1], [0, 1, 1]]",
+        ),
+        (
+            "pictures = [[0, 0, 1], [0, 1, 2]]",
+            "pictures = [[0, 0, 1], [1, 1, 2]]",
+        ),
+        (
+            "pictures = [[0, 0, 1], [0, 1, 2]]",
+            "pictures = [[0, 0, 1], [0, 0, 2]]",
+        ),
+        (
+            "rock_pictures = [[0, 0, 0, 2]",
+            "rock_pictures = [[0, 0, 0, 3]",
+        ),
+        (
+            "rock_pictures = [[0, 0, 0, 2]",
+            "rock_pictures = [[1, 0, 0, 2]",
+        ),
+        (
+            "rock_pictures = [[0, 0, 0, 2]",
+            "rock_pictures = [[0, 1, 0, 2]",
+        ),
+        (
+            "rock_pictures = [[0, 0, 0, 2]",
+            "rock_pictures = [[0, 0, 1, 2]",
+        ),
     ] {
         assert!(SYNTHETIC_RMG.contains(from), "{from}");
         assert_ne!(base, hash(&SYNTHETIC_RMG.replacen(from, to, 1)), "{from}");
@@ -384,6 +486,27 @@ fn malformed_files_are_refused() {
         ),
         ("terrains = \"100000000\"", "terrains = \"10000000\""),
         ("heroes_roe = \"1101\"", "heroes_roe = \"11x1\""),
+        // A flag or a variant of 2, more than 127 pictures in a set or in rock's.
+        (
+            "pictures = [[0, 0, 1], [0, 1, 2]]",
+            "pictures = [[0, 0, 1], [0, 2, 2]]",
+        ),
+        (
+            "rock_pictures = [[0, 0, 0, 2]",
+            "rock_pictures = [[0, 2, 0, 2]",
+        ),
+        (
+            "rock_pictures = [[0, 0, 0, 2]",
+            "rock_pictures = [[0, 0, 2, 2]",
+        ),
+        (
+            "pictures = [[0, 0, 1], [0, 1, 2]]",
+            "pictures = [[0, 0, 100], [0, 1, 28]]",
+        ),
+        (
+            "rock_pictures = [[0, 0, 0, 2]",
+            "rock_pictures = [[0, 0, 0, 127]",
+        ),
         (
             "actions = \"100000000000000000000000000000000000000000000000\"",
             "actions = \"10000000000000000000000000000000000000000000000\"",

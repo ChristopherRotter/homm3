@@ -146,6 +146,13 @@ fn the_tables_are_kept_as_read() {
             layout_sin: vec![0, 1951],
             terrain_towns: vec![[0, 1, 4, -1], [-1, 0, 0, 0]],
             native_terrains: vec![2, 7],
+            picture_sets: vec![h3_formats::exe::PictureSetData {
+                through_dirt: false,
+                land: true,
+                share: 70,
+                pictures: vec![(0, false), (0, false), (0, true)],
+            }],
+            rock_pictures: vec![(0, [false, false]), (8, [true, false]), (8, [true, false])],
         },
     };
     let (ab, sod) = harvest(&tables, Vec::new()).unwrap();
@@ -156,6 +163,11 @@ fn the_tables_are_kept_as_read() {
          \"01\"\nmap_limits = [[26, 200], [6, 200]]\nzone_limits = [[113, 3]]\nlayout_cos = \
          [10000, -9807]\nlayout_sin = [0, 1951]\nterrain_towns = [[0, 1, 4, -1], [-1, 0, 0, 0]]\n\
          native_terrains = [2, 7]\n"
+    ));
+    // The picture sets and rock's pictures as runs.
+    assert!(sod.contains(
+        "picture_sets = [\n  { through_dirt = false, land = true, share = 70, pictures = [[0, 0, \
+         2], [0, 1, 1]] },\n]\nrock_pictures = [[0, 0, 0, 1], [8, 1, 0, 2]]\n"
     ));
     // Column 6 set after 4: the last set wins; a space is not set; strength by its first letter.
     assert!(ab.contains(
