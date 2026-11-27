@@ -36,7 +36,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   #1197 (T2e), #1192 (`master`'s build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b),
   #1172 (T2a), #1163 (the shared module PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
   `benches/README.md` row of T2a's workload; ADR-0030's note that the simulated combat (AI-Q34)
-  and the spell values (AI-Q36) are `h3_battle::estimate`'s.
+  and the spell values (AI-Q36) are `h3_battle::estimate`'s, and point 4's that the computer's
+  query is the ai lane's `h3_adventure::search` (AI-Q41).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v23 (E09 T58b), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
@@ -86,8 +87,8 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   but its searches are the original's computer pathfinder: the user chose it first and whole, in
   `h3-adventure`, the fog by the variant, T2i then whole (AI-Q41). Three fresh readers, a blind
   re-read of the five slips, two worker sub-agents in turn on a fixed design, one for the speed.
-  The human reach's workloads flat; the threat fold's search costs far more than the human reach
-  (no fog in mode 3, objects passed, two slots a tile).
+  The human reach's workloads flat; `computer-turns-towns-36` +300.6 % (re-baselined: the threat
+  fold's computer search, halved by a tuning pass with every search's result unchanged).
 
 ### 2026-11-27 — E31 T2h: the object value
 

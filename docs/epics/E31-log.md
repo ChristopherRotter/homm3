@@ -945,7 +945,7 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   (the excluded word the entrance's tile or Whirlpool); Angel Wings and the Boots are the hero's own
   levels without the day's spells; two cases the engine cannot produce left out (a gate's pair
   without a gate or hero, a boat on a Whirlpool).
-- **Tests** (`search/tests.rs`, 39 on `crate::testing`'s fixtures, hand-computed): the start node,
+- **Tests** (`search/tests.rs`, 40 on `crate::testing`'s fixtures, hand-computed): the start node,
   the reached order, the pop's skip, the open list's order and its drop at 500, the bound and its
   flag, the danger and its refusal, a higher score at a higher cost, the diagonal window, the new
   day, the pass nodes, the boat's steps, the fog both ways, closed entrances both ways, the guards
@@ -954,3 +954,22 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   heroes on exits, the gate pair, the start's teleporter, the Door's price, limit and refusal, Fly
   against Water Walk, a summoned and a marked boat, the day's rest of a landing and a boarding.
   Coverage of the seven files 100 % lines and regions.
+- **The speed** (a third worker's tuning loop, five rounds): the first build cost
+  `computer-turns-towns-36` 2 484 645 912 Ir (+705 % on `master`'s 307.6 M in the same sandbox),
+  the search's own loop, its relax and a tile read per neighbour step dominant; then each tile read
+  once a search, the step's price reused for an identical tile, the mode-3 loop compiled apart, the
+  refused relaxes cheap and plain cells: 1 236 132 835 (−50 %), every one of the workload's 564
+  searches hashed equal to the first build's at each round (a throwaway harness). Dropped: a heap
+  or a deque for the open list (the insert position is the 32-bit score's, the entries' copies
+  16-bit: only the sorted vector keeps the original's order past 65 535), helpers out of line.
+  Re-baselined (+300.6 % on the stored baseline: no fog in mode 3, objects and teleporters passed,
+  the whole map); the human reach's workloads flat (`reach-xl-144` +0.01 %, `reach-lifted-xl-144`
+  +0.70 %, `random-play-bonuses-36` +1.94 %, `reach-teleporters-xl-144` +0.11 %, each as `master`
+  measured in the same sandbox).
+
+- **The verify:** the scoped verify `--with-original-data` passed but `check-lane` (by design;
+  `check-lane --cross-lane` and `cargo check --workspace --all-targets` passed) and
+  `original-data`'s harvest check, which since E14 T4b reads `H3sprite.lod` and `H3ab_spr.lod`,
+  not staged (the PC had left); every crate's `original_data` check run by hand passed (the
+  computer on all 160 shipped maps, 800 games) and `exe.py check` agrees: coverage 23 minutes,
+  determinism 7, bench-check 19.
