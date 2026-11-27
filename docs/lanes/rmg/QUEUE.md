@@ -11,4 +11,4 @@ Epic: `docs/epics/E14-original-map-generator.md` (increments 2 to 7 cut 2026-11-
 
 ## Inbox
 
-Nothing yet.
+- **The corpus tests' time** (found in T4c, `TRAPS.md`, "The port's code"): step 6's seal makes the islands maps' generation slow in debug and coverage builds (the transition pass per flush over the whole level). Two ways, either measured on the corpus: the tests that check steps up to 5 stop there (a `Trace` hook), or the transition pass visits only the cells whose 5×5 changed since the last pass, its draws and writes unchanged (the corpus proves it). Before T4d if CI's coverage job nears its 60 minutes. Status: `ready`.
