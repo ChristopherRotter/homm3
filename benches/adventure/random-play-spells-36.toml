@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "5 random-vs-random games of 28 days on the spells map (E08 T144b, increment 15's design note §17; e08-spells-36.h3m: red's six casters with a Spell Book and the five adventure spells on the Lucid Pools, the Magic Clouds, the Magic Plains and beside the Cursed Ground, the strait with four empty boats and the island half hidden rock, blue's seven below two Prisons, the Market of Time and along the shore); seed 1: the random agent draws every listed cast and each hero's Scuttle Boat and Dimension Door targets (encoding v21), so the games cast all five spells (every one of the 500 faithful games of the replays' search did): 2 191 steps, about 2 750 000 Ir a step; counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles and the targets' queries, apply); baselined at its first count"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-spells-36.h3m",
+    "--workload",
+    "play",
+    "--games",
+    "5",
+    "--days",
+    "28",
+    "--seed",
+    "1",
+]
+collect = "*adventure*random_rollout*"
+instructions = 6022795754
+threshold_percent = 2

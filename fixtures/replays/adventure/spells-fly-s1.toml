@@ -1,0 +1,57 @@
+commands = [
+    "0 cast 2 6",
+    "0 move 2 14,11,0 15,11,0 16,11,0 17,11,0 18,10,0 19,9,0 20,8,0 21,8,0 22,8,0 23,8,0 24,8,0 25,8,0 26,9,0 27,10,0 28,11,0",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = []
+
+[replay]
+format = 27
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0x7d6081fbb0552a2f"
+adventure_ruleset_hash = "0x9fc40eb6455ae78a"
+town_ruleset_hash = "0xc830faa47b612bfc"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 40
+adventure_state_hash_version = 30
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-spells-36.h3m"
+hash = "0x438f8dcfa05d7cc7"
+import_version = 29
+
+[result]
+day = 2
+final_hash = "0x4f43daab8a66e952"
+
+[[players]]
+colour = 0
+human = true
+faction = 0
+
+[[players]]
+colour = 1
+human = true
+faction = 0

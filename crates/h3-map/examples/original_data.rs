@@ -87,6 +87,13 @@
 //! owner, against the survey's census (`E08-trades.md` §1: 1 058 on 148 maps): the objects, the
 //! maps by version, underground, the most on one map, the pictures, the War Machine Factories by
 //! entrance and the maps by their Black Markets.
+//! Since E08 T144b (increment 15's design note §17, exit criterion 1) the Prisons (62) and the
+//! Market of Time (50): each Prison's body a hero's of no owner on land, no two prisoners of one
+//! type on a map nor of a placed hero's, its customisations counted; each imported as its map's
+//! prisoner and built into the store with its type, experience, army, skills and artifacts, on no
+//! tile, in no player's list, its type the pool's prisoner's (ADV-PRI-001); the Market of Time
+//! typed `empty` (ADV-OBJ-008); against the survey's census (`E08-spells.md` §1.1, §1.2: 89 on 41
+//! maps, one Market of Time).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -142,6 +149,7 @@ struct Peaks(
     Taverns,
     Increment14,
     Guilds,
+    Increment15,
 );
 
 /// The census of the channels the game's build gives (E08 T104, [`built_channels`]; ADV-TEL-002,
@@ -329,6 +337,61 @@ const SURVEY_BANKS: [((u32, u32), &str, [usize; BANK_COUNTS]); 11] = [
 /// The survey's maps holding a bank, those holding one of class 16, and the most banks on one map
 /// (§1: *Thousand Islands* and its allied twin).
 const SURVEY_INCREMENT_13: [usize; 3] = [148, 143, 106];
+
+/// The census of increment 15's Prisons and Market of Time (E08 T144b, [`increment_15`] and
+/// [`built_prisoners`]; survey `docs/rules/surveys/E08-spells.md` §1.1, §1.2): the Prisons by the
+/// map's version (RoE, AB, SoD) and underground, the maps holding one, the most on one map with its
+/// map; what breaks the survey's facts (a Prison on water, a body not a hero's or with an owner, two
+/// prisoners of one type on a map, a prisoner of a placed hero's type); the bodies' customisations
+/// by [`PRISONER_CUSTOM`]; the prisoners imported and built as their bodies say, and those that are
+/// not; the Markets of Time by map and anchor, and those not typed `empty`.
+#[derive(Default)]
+struct Increment15 {
+    prisons: [usize; 3],
+    underground: usize,
+    maps: usize,
+    most: (usize, String),
+    broken: BTreeMap<&'static str, usize>,
+    custom: BTreeMap<&'static str, usize>,
+    built: usize,
+    unlike: Vec<String>,
+    markets: Vec<(String, Pos)>,
+}
+
+/// What [`Increment15`] counts of the prisoners' bodies (survey §1.1, "Customisations").
+const PRISONER_CUSTOM: [&str; 11] = [
+    "experience",
+    "experience maps",
+    "name",
+    "portrait",
+    "skills",
+    "army",
+    "artifacts",
+    "artifacts with a book",
+    "patrol",
+    "spells or primary skills",
+    "AB's spell byte the type's own",
+];
+/// The survey's census of the Prisons (§1.1): the objects on RoE, AB and SoD maps, underground,
+/// the maps holding one, the most on one map, and [`PRISONER_CUSTOM`]'s counts.
+const SURVEY_PRISONS: [usize; 3] = [25, 42, 22];
+const SURVEY_PRISONS_UNDERGROUND: usize = 17;
+const SURVEY_PRISON_MAPS: usize = 41;
+const SURVEY_PRISONS_MOST: (usize, &str) = (30, "Pandora's Box .h3m");
+const SURVEY_PRISONER_CUSTOM: [usize; 11] = [61, 28, 30, 6, 12, 45, 10, 6, 1, 0, 42];
+/// The survey's one Market of Time (§1.2).
+const SURVEY_MARKETS_OF_TIME: [(&str, (u16, u16, u8)); 1] = [("Titans Winter.h3m", (54, 102, 0))];
+/// Object classes of increment 15's census.
+const PRISON_CLASS: u32 = 62;
+const MARKET_OF_TIME_CLASS: u32 = 50;
+/// A Prison's body's owner: none.
+const NO_OWNER: u8 = 0xFF;
+/// AB's one spell byte for the hero type's own (`docs/formats/h3m.md`).
+const TYPE_SPELL: u8 = 0xFE;
+/// No patrol (`docs/formats/h3m.md`).
+const NO_PATROL: u8 = 0xFF;
+/// The worn position of the spell book (`ArtSlots.txt` order).
+const BOOK_POSITION: usize = 17;
 
 /// The census of increment 14's trades and services (E08 T132b, [`increment_14`]; survey
 /// `docs/rules/surveys/E08-trades.md` §1): by class the counts of [`TRADE_COUNTS`], the most on one
@@ -650,6 +713,7 @@ fn main() -> ExitCode {
     failures += tavern_differences(&peaks.14);
     failures += increment_14_differences(&peaks.15);
     failures += guild_differences(&peaks.16);
+    failures += increment_15_differences(&peaks.17);
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -820,6 +884,7 @@ fn check(
     increment_13(&map, &setup.map, rules, &mut peaks.13)?;
     map_taverns(&map, &setup.map, rules, &mut peaks.14)?;
     increment_14(&map, &setup.map, (rules, name), &mut peaks.15)?;
+    increment_15(&map, &setup.map, (rules, name), &mut peaks.17)?;
     if map.header.version == Version::RoE {
         let counts = &mut peaks.5;
         roe(&map, base, &mut |what, n| {
@@ -847,6 +912,8 @@ fn check(
             built_towns(&setup, &game, rules, &mut peaks.5).map_err(|e| format!("{name}: {e}"))?;
             built_linked(&setup, &game, rules, name, &mut peaks.5)?;
             built_heroes(&setup, &game, rules, map.header.size, &mut peaks.5);
+            // E08 T144b: the prisoners in the store as their bodies say (ADV-PRI-001).
+            built_prisoners(&map, &setup, &game, (rules, name), &mut peaks.17);
             // E09 T50: the spell sets as the map gives them, the guilds drawn and the start's
             // learning (increment 5's design §97, "The census").
             map_guilds(&map, &setup, (rules, name), &mut peaks.16)?;
@@ -2194,6 +2261,279 @@ fn increment_14_differences(census: &Increment14) -> usize {
          without a body, one entrance on land; factories by entrance {factories:?}; maps by their \
          Black Markets {markets:?}",
         census.maps
+    );
+    differences
+}
+
+/// Increment 15's census of one map (E08 T144b; survey `E08-spells.md` §1.1, §1.2): its Prisons by
+/// version and level, their entrances on land, their bodies (a hero's of no owner, no two of one
+/// type, none of a placed hero's type) and customisations, and its Markets of Time, each typed as
+/// its class's type and kind.
+fn increment_15(
+    raw: &RawMap,
+    setup: &MapSetup,
+    (rules, name): (&GameRuleset, &str),
+    census: &mut Increment15,
+) -> Result<(), String> {
+    let part = rules.adventure();
+    let version = match raw.header.version {
+        Version::RoE => 0,
+        Version::Ab => 1,
+        Version::Sod => 2,
+    };
+    let placed_types: BTreeSet<u8> = raw
+        .objects
+        .iter()
+        .filter_map(|o| match &o.body {
+            Body::Hero(h) if !matches!(class_of(raw, o), Some(PRISON_CLASS)) => Some(h.hero_type),
+            _ => None,
+        })
+        .collect();
+    let (mut prisons, mut types) = (0, BTreeSet::new());
+    let mut broken = |what| *census.broken.entry(what).or_default() += 1;
+    let mut custom = BTreeMap::<&'static str, usize>::new();
+    for ((placed, class), object) in placed(raw).zip(&setup.objects) {
+        let ty = object.object_type.and_then(|id| part.object_type(id));
+        let a = object.anchor;
+        match class {
+            MARKET_OF_TIME_CLASS => {
+                if !ty.is_some_and(|ty| {
+                    ty.key.as_str() == "base:market_of_time" && matches!(ty.kind, ObjectKind::Empty)
+                }) {
+                    return Err(format!("a Market of Time at {a:?} imports as {ty:?}"));
+                }
+                census.markets.push((name.to_owned(), a));
+            }
+            PRISON_CLASS => {
+                if !ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Prison)) {
+                    return Err(format!("a Prison at {a:?} imports as {ty:?}"));
+                }
+                prisons += 1;
+                census.prisons[version] += 1;
+                census.underground += usize::from(a.level > 0);
+                let water = object.visitable.offsets().any(|(column, row)| {
+                    let (x, y) = (a.x - u16::from(column), a.y - u16::from(row));
+                    let index = (usize::from(a.level) * usize::from(setup.height) + usize::from(y))
+                        * usize::from(setup.width)
+                        + usize::from(x);
+                    setup.tiles.get(index).is_some_and(|t| {
+                        matches!(
+                            part.passage(t.terrain),
+                            Some(h3_adventure::Passage::Water(_))
+                        )
+                    })
+                });
+                if water {
+                    broken("on water");
+                }
+                let Body::Hero(body) = &placed.body else {
+                    broken("not a hero's body");
+                    continue;
+                };
+                if body.owner != NO_OWNER {
+                    broken("an owner");
+                }
+                if !types.insert(body.hero_type) {
+                    broken("a type twice on a map");
+                }
+                if placed_types.contains(&body.hero_type) {
+                    broken("a placed hero's type");
+                }
+                let mut count =
+                    |what, yes: bool| *custom.entry(what).or_default() += usize::from(yes);
+                // Before SoD a body's experience 0 is the type's default (`h3m.md`, "Import").
+                count("experience", body.experience.is_some_and(|e| e > 0));
+                count("name", body.name.is_some());
+                count("portrait", body.portrait.is_some());
+                count("skills", body.secondary_skills.is_some());
+                count("army", body.army.is_some());
+                let carries = |a: &Artifacts| {
+                    a.worn.iter().flatten().count() + a.backpack.iter().flatten().count() > 0
+                };
+                count("artifacts", body.artifacts.as_ref().is_some_and(carries));
+                let book = body
+                    .artifacts
+                    .as_ref()
+                    .is_some_and(|a| a.worn.get(BOOK_POSITION).copied().flatten().is_some());
+                count("artifacts with a book", book);
+                count("patrol", body.patrol != NO_PATROL);
+                count(
+                    "spells or primary skills",
+                    body.spells.is_some() || body.primary_skills.is_some(),
+                );
+                count(
+                    "AB's spell byte the type's own",
+                    body.spell == Some(TYPE_SPELL),
+                );
+                if body.formation != 0 {
+                    broken("a tight formation");
+                }
+            }
+            _ => {}
+        }
+    }
+    if custom.get("experience").is_some_and(|&n| n > 0) {
+        custom.insert("experience maps", 1);
+    }
+    for (what, n) in custom {
+        *census.custom.entry(what).or_default() += n;
+    }
+    census.maps += usize::from(prisons > 0);
+    if prisons > census.most.0 {
+        census.most = (prisons, name.to_owned());
+    }
+    Ok(())
+}
+
+/// The class of an object's template.
+fn class_of(raw: &RawMap, object: &Object) -> Option<u32> {
+    let template = raw.templates.get(usize::try_from(object.template).ok()?)?;
+    Some(template.class)
+}
+
+/// The prisoners a map's import and build give (E08 T144b; ADV-PRI-001, exit criterion 1): one
+/// per Prison in the map's order; each built into the store as its Prison's prisoner with the
+/// type, the experience, the army, the skills (at least, after its levels at load) and the
+/// artifacts the import read from its body, on no tile and in no player's list, its type the
+/// pool's prisoner's.
+fn built_prisoners(
+    raw: &RawMap,
+    setup: &GameSetup,
+    game: &GameState,
+    (rules, name): (&GameRuleset, &str),
+    census: &mut Increment15,
+) {
+    let part = rules.adventure();
+    let bodies = placed(raw)
+        .filter(|&(_, class)| class == PRISON_CLASS)
+        .count();
+    let built: Vec<_> = (game.adventure().map().objects().iter())
+        .filter(|o| {
+            o.object_type
+                .and_then(|ty| part.object_type(ty))
+                .is_some_and(|ty| matches!(ty.kind, ObjectKind::Prison))
+        })
+        .map(|o| o.resolved.prisoner())
+        .collect();
+    let mut unlike = |what: String| census.unlike.push(format!("{name}: {what}"));
+    if setup.prisoners.len() != bodies || built.len() != bodies {
+        unlike(format!(
+            "{bodies} Prisons, {} prisoners imported, {} built",
+            setup.prisoners.len(),
+            built.len()
+        ));
+        return;
+    }
+    let players = u8::try_from(game.players()).unwrap_or(u8::MAX);
+    let listed: BTreeSet<HeroId> = (0..players)
+        .flat_map(|p| game.adventure().hero_list(PlayerId::new(p)))
+        .collect();
+    for (index, (prisoner, held)) in setup.prisoners.iter().zip(built).enumerate() {
+        let Some((hero, army, _)) = held else {
+            unlike(format!("Prison {index} holds no prisoner"));
+            continue;
+        };
+        let Some(details) = game.hero(hero) else {
+            unlike(format!("Prison {index}'s prisoner has no details"));
+            continue;
+        };
+        let imported = &prisoner.details;
+        let skills = imported.skills.iter().flatten().all(|&(skill, level)| {
+            details
+                .skills
+                .iter()
+                .any(|&(s, l)| s == skill && l >= level)
+        });
+        let artifacts = imported.artifacts.as_ref().is_none_or(|a| {
+            let mut worn: Vec<_> = details.worn.iter().flatten().map(|i| i.artifact).collect();
+            a.worn.iter().flatten().all(|i| {
+                let found = worn.iter().position(|&w| w == i.artifact);
+                found.map(|at| worn.swap_remove(at)).is_some()
+            }) && a.backpack == details.backpack
+        });
+        let army_fits = match &prisoner.army {
+            h3_game::HeroArmy::Custom(stacks) => army.len() == stacks.len(),
+            _ => !army.is_empty(),
+        };
+        let checks = [
+            details.hero_type == prisoner.hero_type,
+            imported.experience.is_none_or(|e| details.experience == e),
+            army_fits,
+            skills,
+            artifacts,
+            game.adventure().hero(hero).is_none(),
+            !listed.contains(&hero),
+            game.hero_status(prisoner.hero_type) == Some(HeroStatus::Prisoner),
+        ];
+        if checks.iter().all(|&c| c) {
+            census.built += 1;
+        } else {
+            unlike(format!(
+                "Prison {index}'s prisoner {hero:?} is not its body's: {checks:?}"
+            ));
+        }
+    }
+}
+
+/// Increment 15's census against the survey's (§1.1, §1.2; E08 T144b): the Prisons by version,
+/// underground, their maps, the most on one map, the bodies' customisations, nothing broken, every
+/// prisoner built as its body says; the one Market of Time. Prints each difference and the census;
+/// returns how many differ.
+fn increment_15_differences(census: &Increment15) -> usize {
+    let mut differences = 0;
+    let mut differ = |what: &str, found: &dyn core::fmt::Debug, survey: &dyn core::fmt::Debug| {
+        let (found, survey) = (format!("{found:?}"), format!("{survey:?}"));
+        if found != survey {
+            println!("h3-map: the census's {what} ({found}) is not the survey's ({survey})");
+            differences += 1;
+        }
+    };
+    differ("Prisons by version", &census.prisons, &SURVEY_PRISONS);
+    differ(
+        "Prisons underground",
+        &census.underground,
+        &SURVEY_PRISONS_UNDERGROUND,
+    );
+    differ("maps with a Prison", &census.maps, &SURVEY_PRISON_MAPS);
+    differ(
+        "most Prisons on one map",
+        &(census.most.0, census.most.1.as_str()),
+        &SURVEY_PRISONS_MOST,
+    );
+    differ(
+        "Prisons breaking the survey's facts",
+        &census.broken,
+        &BTreeMap::<&str, usize>::new(),
+    );
+    let custom: Vec<usize> = PRISONER_CUSTOM
+        .iter()
+        .map(|what| census.custom.get(what).copied().unwrap_or_default())
+        .collect();
+    differ(
+        "prisoners' customisations",
+        &custom,
+        &SURVEY_PRISONER_CUSTOM,
+    );
+    let prisons: usize = census.prisons.iter().sum();
+    differ("prisoners built as their bodies", &census.built, &prisons);
+    for unlike in &census.unlike {
+        println!("h3-map: {unlike}");
+    }
+    let markets: Vec<(&str, (u16, u16, u8))> = (census.markets.iter())
+        .map(|(map, a)| (map.as_str(), (a.x, a.y, a.level)))
+        .collect();
+    differ("Markets of Time", &markets, &SURVEY_MARKETS_OF_TIME);
+    println!(
+        "h3-map: increment 15's census: {prisons} Prisons ({:?} by version, {} underground) on {} \
+         maps, the most {} on {}; {} prisoners built as their bodies; customisations {:?}; the \
+         Markets of Time {markets:?}",
+        census.prisons,
+        census.underground,
+        census.maps,
+        census.most.0,
+        census.most.1,
+        census.built,
+        census.custom
     );
     differences
 }

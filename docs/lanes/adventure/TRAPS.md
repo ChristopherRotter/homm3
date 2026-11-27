@@ -97,11 +97,18 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   oracle that walks a reported path accepts the cut only then, the hero on its last stepped tile
   with the query's points there (`play.rs`' `landing`; `reach/tests.rs`' property since the seeds
   of 2026-11-26, which it had missed).
+- The plans' oracles and the casts (E08 T144b, `play/casts.rs`): a targeted cast (Scuttle Boat,
+  the door) is never in `legal_commands` but in `legal_cast_targets`, so `check_unlisted` takes it
+  from the query; the door's arrival is a `HeroTeleported` with no teleporter, so `check_jumps`
+  leaves a cast's out (`check_casts_step` checks it). An oracle that reads `HeroTeleported` or the
+  listing must know both before the plans' casters play it.
 - The hygiene property and the seeded draws (`view.rs`): the other game may run on another seed
   (`unseen.seed`) and its unseen objects move the streams' positions, so every public draw the
   viewer is shown ends the comparison (a month's, a week's, a hire's, a Den of Thieves', since the
-  rmg lane's seed of 2026-11-25 a town's guild once built, `unguilded`): a new view of a drawn fact
-  needs its own exception there, or the property fails on a random case.
+  rmg lane's seed of 2026-11-25 a town's guild once built, `unguilded`; since E08 T144b Summon
+  Boat's and Scuttle Boat's chance, the viewer's own told otherwise ending it, another player's in
+  `outcome`'s `drawn`): a new view of a drawn fact needs its own exception there, or the property
+  fails on a random case.
 - The hygiene property and the teleporters (E08 T106b2, `view.rs`): an object `vary` adds needs
   its template in the map's table, which `lay_out` writes for the typed objects up to the last one
   the plan uses, the towns' after them (else the read fails: `InvalidValue { field: "object
