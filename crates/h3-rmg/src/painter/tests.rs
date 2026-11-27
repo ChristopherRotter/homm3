@@ -323,3 +323,52 @@ fn a_pinched_cell_that_cannot_be_mended_is_refused() {
     p.pinched.insert((2, 2));
     assert_eq!(p.finish(), Err(PaintFault::Stuck));
 }
+
+// covers: RMG-TER-005
+/// A flush finishes the painter's terrain (its sets drained, the last pass run) and goes on
+/// with another at weight 4: the cells and draws of a painter finished and a new one made; a
+/// fault met before it is the finish's.
+#[test]
+fn a_flush_finishes_one_terrain_and_paints_on_with_another() {
+    let tables = tables();
+    let pictures = Pictures::new(&tables);
+    let run = |flush: bool| {
+        let mut cells = map(8, WATER);
+        let mut log = Log::default();
+        let mut stream = Stream::new(4, &mut log);
+        let mut p = Painter::new(&pictures, &mut cells, &mut stream, 0, 2, true);
+        p.add_rect(1, 1, 3, 2);
+        p.weight = 1;
+        if flush {
+            p.flush(3);
+            assert_eq!((p.terrain, p.weight), (3, WEIGHT));
+        } else {
+            assert_eq!(p.finish(), Ok(()));
+            p = Painter::new(&pictures, &mut cells, &mut stream, 0, 3, true);
+        }
+        p.add_rect(3, 4, 3, 2);
+        assert_eq!(p.finish(), Ok(()));
+        (cells, log.draws)
+    };
+    let (cells, draws) = run(true);
+    assert_eq!((&cells, &draws), (&run(false).0, &run(false).1));
+    assert!(cells.cells().iter().any(|c| terrain_of(c) == 2));
+    assert!(cells.cells().iter().any(|c| terrain_of(c) == 3));
+    let mut bare = tables.clone();
+    bare.picture_sets[2].pictures.clear();
+    let pictures = Pictures::new(&bare);
+    let mut cells = map(8, WATER);
+    let mut log = Log::default();
+    let mut stream = Stream::new(4, &mut log);
+    let mut p = Painter::new(&pictures, &mut cells, &mut stream, 0, 2, true);
+    p.add_rect(1, 1, 3, 2);
+    p.flush(3);
+    p.add_rect(3, 4, 3, 2);
+    assert_eq!(
+        p.finish(),
+        Err(PaintFault::NoPicture {
+            terrain: 2,
+            shape: 0
+        })
+    );
+}

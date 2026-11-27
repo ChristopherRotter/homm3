@@ -804,21 +804,20 @@ fn kept_plan() -> BTreeMap<String, KeptPlan> {
 }
 
 // covers: RMG-CON-001, RMG-CON-002, RMG-CON-003, RMG-CON-004, RMG-CON-005, RMG-CON-006
-// covers: RMG-CON-007, RMG-CON-008
-/// Step 6's lanes over the oracle's corpus (`clients/capture/rmg/plan.txt`, E14 T4c): the port's
-/// first draws after step 5's end are the original's lanes (`rmg_free_lanes_draw`'s, their
-/// count and digest), step 2's unwritten bytes as measured (`zones.txt`). In the 11 cases whose
-/// step 6 draws nothing between the lanes and the first connection (no islet), the port draws
-/// exactly the lanes' after step 5: the zone walls and the cells of no zone draw nothing. In 2
-/// more, `m2-4p` and `l1-4p-c`, whose plan draws the islets and no sealed shore, the port's draws
-/// after step 5 are the plan's whole (count and digest): 3 and 13 islets with their painters.
+// covers: RMG-CON-007, RMG-CON-008, RMG-CON-009, RMG-CON-010, RMG-CON-011, RMG-CON-012
+// covers: RMG-TER-005
+/// Step 6's plan over the oracle's corpus (`clients/capture/rmg/plan.txt`, E14 T4c), step 2's
+/// unwritten bytes as measured (`zones.txt`): the port's first draws after step 5's end are the
+/// original's lanes (`rmg_free_lanes_draw`'s, their count and digest), and its draws after step
+/// 5 are the plan's whole (count and digest) in all 24 cases: the walls, the cells of no zone
+/// and the joining draw nothing, the islets (4 cases) and the sealed shores (11 cases, their
+/// painters flushed from one land to the next) draw as the original's.
 #[test]
-fn the_corpus_draws_step_6s_lanes_as_the_original() {
+fn the_corpus_draws_step_6s_plan_as_the_original() {
     let packs = original("base:faithful");
     let kept = kept_plan();
     let memory = kept_zone_memory();
     assert_eq!(kept.len(), CORPUS.len());
-    let mut whole = Vec::new();
     for case in 0..CORPUS.len() {
         let (id, s, seed, _) = corpus_settings(case);
         let mut t = Phases {
@@ -834,15 +833,8 @@ fn the_corpus_draws_step_6s_lanes_as_the_original() {
             (*lanes, digest.clone()),
             "{id}"
         );
-        if plan.0 == *lanes {
-            assert_eq!(after.len(), *lanes, "{id}");
-        }
-        if lines_digest(after) == *plan {
-            whole.push(id);
-        }
+        assert_eq!(lines_digest(after), *plan, "{id}");
     }
-    assert_eq!(whole.len(), 13);
-    assert!(whole.contains(&"m2-4p") && whole.contains(&"l1-4p-c"));
 }
 
 // covers: RMG-ZON-010, RMG-ZON-011

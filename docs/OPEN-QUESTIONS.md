@@ -477,7 +477,22 @@ then read the folded view; (b) a snapshot asked after each command that opens a 
 
 ### RMG lane (`RMG-Q<n>`)
 
-(no open questions)
+#### RMG-Q3 — RMG-QUIRK-5 is reached by the corpus, harmlessly (E14 T4c)
+
+RMG-QUIRK-5 (exploit-fix, T1c2: "the generation fails with a typed error") was classified as
+reachable only with other data. The shipped data reach it: `l1-4p-c`'s ninth zone generator is a
+water zone of step 2 off the map (x = −14) without a cell, so `rmg_zone_paths_connect` finds no
+empty cell and keeps the coordinates last tried. As read (survey §2.3, "Step 6's plan as ported"):
+those are the seed of the last zone generator that had one, of cost 0 with its zone's floods done,
+so the fallback's mark and the flood from it change nothing, and the zone's carving reads its own
+cells (no path through another zone). Only a first zone generator without such a cell takes the
+stack's bytes. The phase oracle agrees: the port's floods equal `l1-4p-c`'s step 6 dump on every
+cell when it makes no seed there. Refusing every such zone would refuse `l1-4p-c`, an original
+map. Options: (a) refuse only when no zone generator before had a seed (the stack's bytes), make no
+seed otherwise (the original's no-op); (b) also refuse a zone generator that has cells but none
+empty (keep the typed error wherever a zone with cells cannot seed); (c) refuse every case as
+decided (`l1-4p-c` fails to generate). **Recommended (a)**, as ported provisionally in T4c
+(`h3-rmg`'s `plan/join.rs`; the ledger's entry). Blocks nothing; the answer may change one branch.
 
 ### Town lane (`TWN-Q<n>`)
 

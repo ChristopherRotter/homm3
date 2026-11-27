@@ -3,24 +3,30 @@
 //! take obstacles (+0x28 bit 26, filled by step 13) and which stay free (bit 27), in the
 //! original's order: the lanes (`rmg_free_lanes_draw` 0x543E20), the zone walls
 //! (`rmg_zone_borders_close` 0x53F880), the land cells of no zone made obstacles, the islets
-//! ([`islets`]); then (a later part of E14 T4c) the zones' free cells joined and the water shores
-//! sealed. The connections (T4d) follow and end step 6.
+//! ([`islets`]), the zones' free cells joined ([`join`]), the water shores sealed ([`seal`]). The
+//! connections (T4d) follow and end step 6.
 //!
 //! A cell with +0x2C bit 0 (a pending Border Guard) keeps its bits 26 and 27 through every mark
-//! here.
+//! here but the carve's, which places the guard first (not ported: none is pending before the
+//! connections, RMG-STUB-1).
 
 use alloc::collections::VecDeque;
 use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::cells::{Cells, ENTRANCE, FREE, KEPT, OBSTACLES};
-use crate::generate::{Stream, Trace};
+use crate::generate::{GenerateError, Stream, Trace};
 use crate::layout::{ZoneGenerator, trunc_sqrt};
-use crate::painter::{PaintFault, Pictures, ROCK, WATER};
+use crate::objects::Objects;
+use crate::painter::{Pictures, ROCK, WATER};
 use crate::part::Zone;
 use crate::template::KeptConnection;
 
 mod islets;
+/// The joining and its cost flood ([`join::cost_flood`]: step 7's junction paths and the
+/// connections flood with it).
+pub(crate) mod join;
+mod seal;
 
 pub use islets::{SITE_ISLET_CENTRE, SITE_ISLET_HEIGHTS, SITE_ISLET_RADIUS, SITE_ISLET_TERRAIN};
 
@@ -41,6 +47,8 @@ pub(crate) struct PlanInput<'a> {
     pub connections: &'a [KeptConnection],
     /// The zone generators.
     pub gens: &'a [ZoneGenerator],
+    /// The placed objects and their classes' object settings (the cost floods).
+    pub objects: &'a Objects,
     /// The terrain painter's picture sets (the islets', the shores' seal).
     pub pictures: &'a Pictures,
     /// `quirk.rmg.cosmetic` (RMG-QUIRK-21's painter's half).
@@ -291,24 +299,12 @@ fn lanes<T: Trace>(stream: &mut Stream<'_, T>, cells: &mut Cells) {
     }
 }
 
-/// `rmg_zone_borders_close` 0x53F880, cell by cell (level, row, column): a cell of a zone (its
-/// zone byte not negative) and not water is walled when its 3 × 3 clamped to the map holds a
-/// water cell of no zone, or a cell of another zone whose id is not the far end of any of the
-/// cell's zone's connections, or is that of the first such connection (in the zone's list: the
-/// template's row order, step 2's appended) when it is not wide or the level is 1 (RMG-QUIRK-9
-/// as `faithful` has it; its flag, `quirk.rmg.underground_wide_walled`, comes with T4d). A walled
-/// cell takes bit 26 and loses 27 (unless +0x2C bit 0; an object on it or not), and every cell
-/// of its 3 × 3 without an object and without +0x2C bit 0 loses bit 27. The original's second
-/// pass over [y, y + 1) × [x, x + 1) marks the cell alone again when it holds no object: no
-/// change, not ported. The original takes the zone generator by the zone byte unchecked
-/// (+0x10E4, RMG-QUIRK-4): a byte past the zone generators, which step 2 never writes (its
-/// bytes are zone generators' ids), leaves the cell unwalled.
-// rule: RMG-CON-005
-fn walls(input: &PlanInput<'_>, cells: &mut Cells) {
+/// Each template zone's list (+0xC4), by its index: per connection touching it, in order (the
+/// template's rows, step 2's appended), its far end's id and its wide flag (a connection of a
+/// zone to itself twice).
+fn connection_lists(input: &PlanInput<'_>) -> Vec<Vec<(i32, bool)>> {
     let id = |k: usize| input.zones.get(k).map_or(-1, |zone| zone.id);
-    // Each zone's list (+0xC4): per connection touching it, in order, its far end's id and its
-    // wide flag (a connection of a zone to itself twice).
-    let lists: Vec<Vec<(i32, bool)>> = (0..input.zones.len())
+    (0..input.zones.len())
         .map(|k| {
             input
                 .connections
@@ -323,7 +319,24 @@ fn walls(input: &PlanInput<'_>, cells: &mut Cells) {
                 .flatten()
                 .collect()
         })
-        .collect();
+        .collect()
+}
+
+/// `rmg_zone_borders_close` 0x53F880, cell by cell (level, row, column): a cell of a zone (its
+/// zone byte not negative) and not water is walled when its 3 × 3 clamped to the map holds a
+/// water cell of no zone, or a cell of another zone whose id is not the far end of any of the
+/// cell's zone's connections, or is that of the first such connection (in the zone's list: the
+/// template's row order, step 2's appended) when it is not wide or the level is 1 (RMG-QUIRK-9
+/// as `faithful` has it; its flag, `quirk.rmg.underground_wide_walled`, comes with T4d). A walled
+/// cell takes bit 26 and loses 27 (unless +0x2C bit 0; an object on it or not), and every cell
+/// of its 3 × 3 without an object and without +0x2C bit 0 loses bit 27. The original's second
+/// pass over [y, y + 1) × [x, x + 1) marks the cell alone again when it holds no object: no
+/// change, not ported. The original takes the zone generator by the zone byte unchecked
+/// (+0x10E4, RMG-QUIRK-4): a byte past the zone generators, which step 2 never writes (its
+/// bytes are zone generators' ids), leaves the cell unwalled.
+// rule: RMG-CON-005
+fn walls(input: &PlanInput<'_>, cells: &mut Cells) {
+    let lists = connection_lists(input);
     let (w, h, levels) = cells.size();
     for z in 0..levels {
         for y in 0..h {
@@ -398,18 +411,22 @@ fn no_zone(cells: &mut Cells) {
 }
 
 /// Step 6's plan (`rmg_paths_and_connections` 0x544920 up to its connections), in its order:
-/// the lanes, the zone walls, the land cells of no zone made obstacles, the islets. The joining
-/// and the shores' seal are to come (E14 T4c), then the connections (T4d), which end step 6.
+/// the lanes, the zone walls, the land cells of no zone made obstacles, the islets, the zones'
+/// free cells joined, the water shores sealed; then the connections (T4d), which end step 6.
 ///
 /// # Errors
 ///
-/// The first terrain painter's fault met (RMG-QUIRK-3, -4; an islet's), the plan run to its end.
+/// [`GenerateError::Paint`]: the first terrain painter's fault met (RMG-QUIRK-3, -4): an islet's
+/// ends the plan after the joining, a seal's at its end; [`GenerateError::NoEmptyCell`]: a zone
+/// generator whose box holds no empty cell of its zone before any had one (RMG-QUIRK-5), which
+/// ends it at the joining (after an islet's fault, that one).
 // rule: RMG-CON-001
 pub(crate) fn plan<T: Trace>(
     stream: &mut Stream<'_, T>,
     input: &PlanInput<'_>,
     cells: &mut Cells,
-) -> Result<(), PaintFault> {
+) -> Result<(), GenerateError> {
+    let paint = |fault| GenerateError::Paint { step: 6, fault };
     // (1) The lanes (RMG-CON-002 to -004).
     lanes(stream, cells);
     // (2) The zone walls (RMG-CON-005).
@@ -418,12 +435,13 @@ pub(crate) fn plan<T: Trace>(
     no_zone(cells);
     // (4) The islets (RMG-CON-007, -008): `rmg_water_zone_islets` 0x53F470 per zone generator,
     // in order.
-    let painted = islets::islets(stream, input, cells);
+    let painted = islets::islets(stream, input, cells).map_err(paint);
     // (5) The free cells joined (RMG-CON-009 to -011): `rmg_zone_paths_connect` 0x5405D0.
-    // stub: RMG-STUB-1
+    let joined =
+        join::join(input, cells).map_err(|zone| GenerateError::NoEmptyCell { step: 6, zone });
+    painted.and(joined)?;
     // (6) The water shores sealed (RMG-CON-012): `rmg_water_shores_seal` 0x53FCB0.
-    // stub: RMG-STUB-1
-    painted
+    seal::seal(stream, input, cells).map_err(paint)
 }
 
 #[cfg(test)]

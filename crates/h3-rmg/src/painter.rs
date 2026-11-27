@@ -615,9 +615,27 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
 
     /// `terrain_painter_finish` 0x5B72F0: until both sets are empty, set 1's smallest cell
     /// resolved while set 1 holds one, then set 2's smallest taken out and, pinched against its
-    /// own terrain, made the painter's, while set 2 holds one; then the last pass.
+    /// own terrain, made the painter's, while set 2 holds one; then the last pass. The first
+    /// fault met in the painter's life.
     // rule: RMG-TER-005
     pub(crate) fn finish(mut self) -> Result<(), PaintFault> {
+        self.settle();
+        self.fault.map_or(Ok(()), Err)
+    }
+
+    /// `terrain_painter_flush(terrain, 4)` 0x5B7520: the finish's loop and last pass, the painter
+    /// kept (its sets drained; the original's cell words kept, a set-2 cell's loaded before its
+    /// set's byte +5 is read, which the finish's word reads load too: the same); then its
+    /// terrain is `terrain` and its weight 4, and it paints on.
+    // rule: RMG-TER-005
+    pub(crate) fn flush(&mut self, terrain: u8) {
+        self.settle();
+        self.terrain = terrain;
+        self.weight = WEIGHT;
+    }
+
+    /// The finish's loop and last pass.
+    fn settle(&mut self) {
         loop {
             while let Some(&(y, x)) = self.pinched.first() {
                 if self.resolve(x, y) == 0 {
@@ -635,7 +653,6 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
             }
         }
         self.transition_pass();
-        self.fault.map_or(Ok(()), Err)
     }
 
     /// `terrain_painter_border_class` 0x5B3E40: how a cell of terrain `t` meets a neighbour of

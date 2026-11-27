@@ -10,7 +10,7 @@ use crate::layout::ZoneGenerator;
 use crate::painter::Pictures;
 use crate::painter::tests::tables;
 use crate::part::GeneratorTables;
-use crate::plan::tests::{Log, drawn, generator, land, pend, zone};
+use crate::plan::tests::{Log, drawn, generator, land, no_objects, pend, zone};
 
 /// The far costs (+0x1C bits 16-31) of level 0, row by row.
 fn far(cells: &Cells) -> Vec<Vec<u32>> {
@@ -155,6 +155,7 @@ fn an_islet_is_painted_and_its_land_made_obstacles() {
         zones: &zones,
         connections: &[],
         gens: &[],
+        objects: &no_objects(),
         pictures: &pictures,
         cosmetic: true,
     };
@@ -208,6 +209,7 @@ fn islets_of(
         zones: &zones,
         connections: &[],
         gens,
+        objects: &no_objects(),
         pictures: &pictures,
         cosmetic: true,
     };

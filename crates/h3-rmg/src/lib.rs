@@ -16,9 +16,10 @@
 //! terrain painted (the boxes, centroids and islands, and the game's terrain painter, E14 T3e);
 //! the object model the steps from 4 place with ([`Objects`]: the prototypes, the placed objects
 //! and the cells' lists, the entrances' distance flood, the placing test; E14 T4b); steps 4 and
-//! 5, the towns ([`Placed`], E14 T4b); step 6's obstacle plan in part (the lanes, the zone
-//! walls, the cells of no zone, the islets; E14 T4c). The other steps come with increments 4 to 6, the
-//! writer's content with 7.
+//! 5, the towns ([`Placed`], E14 T4b); step 6's obstacle plan (the lanes, the zone walls, the
+//! cells of no zone, the islets, the zones' free cells joined, the water shores sealed; E14 T4c).
+//! Step 6's connections and the other steps come with increments 4 to 6, the writer's content
+//! with 7.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.

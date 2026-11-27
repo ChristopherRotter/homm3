@@ -9,6 +9,7 @@ use super::*;
 use crate::objects::Shape;
 use crate::painter::tests::tables;
 use crate::part::{Connection, Strength, ZoneKind};
+use crate::settings::MapFormat;
 
 #[derive(Debug, Default)]
 pub(super) struct Log {
@@ -99,6 +100,11 @@ fn object(cells: &mut Cells, [x, y, z]: [i32; 3], entrance: bool) {
     cells.place(0, &shape, [x, y, z]).unwrap();
 }
 
+/// No object template, no object settings, nothing placed.
+pub(super) fn no_objects() -> Objects {
+    Objects::new(&[], &[], MapFormat::SoD, 0)
+}
+
 pub(super) fn pend(cells: &mut Cells, x: i32, y: i32, z: i32) {
     cells.get_mut(x, y, z).unwrap().pending_guard = 1;
 }
@@ -144,7 +150,7 @@ pub(super) fn generator(zone: usize) -> ZoneGenerator {
     }
 }
 
-fn connection(a: usize, b: usize, wide: bool) -> KeptConnection {
+pub(super) fn connection(a: usize, b: usize, wide: bool) -> KeptConnection {
     KeptConnection {
         zones: [a, b],
         row: Connection {
@@ -405,6 +411,7 @@ fn walls_of(cells: &mut Cells, zones: usize, connections: &[KeptConnection]) {
             zones: &zones,
             connections,
             gens: &gens,
+            objects: &no_objects(),
             pictures: &Pictures::new(&tables()),
             cosmetic: true,
         },
@@ -455,10 +462,10 @@ fn a_walled_cells_3x3_loses_bit_27_but_objects_and_pending_guards() {
     assert_eq!(bits(&cells, 0, KEPT), ["...#", "####", "..##", "####"]);
 }
 
-// covers: RMG-CON-001, RMG-CON-005
+// covers: RMG-CON-001, RMG-CON-005, RMG-CON-009
 /// A zone byte past the zone generators (the original's unchecked read, RMG-QUIRK-4; step 2
 /// writes none) leaves its cell unwalled; the plan runs the lanes, the walls and the cells of no
-/// zone in turn.
+/// zone in turn, then the joining, which refuses a zone generator without a box (RMG-QUIRK-5).
 #[test]
 fn a_zone_byte_past_the_generators_is_left_unwalled() {
     let mut cells = drawn(&[&["05", "~0"]]);
@@ -471,13 +478,14 @@ fn a_zone_byte_past_the_generators_is_left_unwalled() {
         zones: &zones,
         connections: &[],
         gens: &gens,
+        objects: &no_objects(),
         pictures: &Pictures::new(&tables()),
         cosmetic: true,
     };
     let mut log = Log::default();
     assert_eq!(
         plan(&mut Stream::new(0, &mut log), &input, &mut cells),
-        Ok(())
+        Err(GenerateError::NoEmptyCell { step: 6, zone: 0 })
     );
     assert_eq!(log.draws[0].0, SITE_LANE_ORIENTATION);
     // Water is kept free by the lanes; zone 0's cell beside water of no zone is walled, and that
@@ -485,6 +493,28 @@ fn a_zone_byte_past_the_generators_is_left_unwalled() {
     assert_eq!(tile_data(&cells, 3, 0, 0) & (KEPT | OBSTACLES), KEPT);
     assert_eq!(tile_data(&cells, 0, 0, 0) & (KEPT | OBSTACLES), OBSTACLES);
     assert_eq!(tile_data(&cells, 1, 0, 0) & (KEPT | OBSTACLES), 0);
+    // With its box, zone 0's one cell (walled) is its fallback seed, kept free; the plan ends
+    // with the seal (nothing to seal: no water of a zone).
+    let mut cells = drawn(&[&["0~.~", "....", "....", "...."]]);
+    let gens = [ZoneGenerator {
+        bounds: [0, 0, 1, 1],
+        ..generator(0)
+    }];
+    let input = PlanInput {
+        gens: &gens,
+        ..input
+    };
+    let mut log = Log::default();
+    assert_eq!(
+        plan(&mut Stream::new(0, &mut log), &input, &mut cells),
+        Ok(())
+    );
+    assert_eq!(tile_data(&cells, 0, 0, 0) & (KEPT | OBSTACLES), KEPT);
+    assert!(
+        log.draws
+            .iter()
+            .all(|&(site, _)| site == SITE_LANE_ORIENTATION || site == SITE_LANE_JITTER)
+    );
 }
 
 // covers: RMG-CON-006
