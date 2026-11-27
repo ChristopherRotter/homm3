@@ -19,7 +19,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Flag: `quirk.rmg.zone_memory_model` (registry position 56, E14 T3c)
 - Defaults: faithful = on (the **oracle model**: the bytes as a fresh start's first map holds them under the oracle, measured by the phase hooks in T3a, `zones.txt`, in the form fresh starts agree on; the model's form left open at increment 3's checkpoint for increment 4, E14 decision 11), fixed = off (zeroed, no draw). **Provisional form (E14 T3d):** whether each byte is 0, as constants in `h3-rmg` (`ZoneMemory::TEMPORARY`: town types 0BB, +0x40, +0x84 and +0x94 set; `ZoneMemory::WATER`: all nine, likewise), a trace's measured bytes in their place (`Trace::zone_memory`; the corpus test feeds `zones.txt`'s). The temporary zone's town type is never read (type 3): only its draw counts, and it draws in all 29 records. With the measured bytes step 2 equals the oracle's on 24 of 24; with the model's own on 22 (`l1-4p-b`'s and `xl2-4p-seed0`'s water zone with none set draws once less); the water zones' town types differ in 4 cases (masks 1FE, 187, 080), which reaches their guards in later steps. A water zone's +0x8 (its second town type) stays unmodelled (-1; the heap's value differs between fresh starts).
 - Limits (documented, not a defect of the port): a second map in one game, another size of the game's environment and Windows' memory are out of reach; the byte-for-byte claim holds for a fresh start's first map under the oracle's fixed environment (`h3drive.py`'s `H3_FIXED_ENV` with the record's paths; `docs/lanes/rmg/TRAPS.md`, "The oracle"). The variation T1c2's and T2c's sandboxes saw in `m2-4p`'s first map was their environment's size (T3a).
-- Regression test: since E14 T3d, `h3-pack-rmg`'s `the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_3` (to step 2 until T3e) and `the_corpus_appends_the_originals_water_zones` (the measured bytes), `the_oracle_models_own_bytes_give_step_2_on_all_but_two`, `strict_fixed_zeroes_step_2s_unwritten_bytes`; `h3-rmg`'s `the_unwritten_bytes_follow_the_flag_and_the_trace`
+- Regression test: since E14 T3d, `h3-pack-rmg`'s `the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5` (to step 2 until T3e, to step 3 until T4b) and `the_corpus_appends_the_originals_water_zones` (the measured bytes), `the_oracle_models_own_bytes_give_step_2_on_all_but_two`, `strict_fixed_zeroes_step_2s_unwritten_bytes`; `h3-rmg`'s `the_unwritten_bytes_follow_the_flag_and_the_trace`
 - Decided by / date: the user, 2026-11-24 (T1c2); measured (E14 T3a); ported with the provisional form (E14 T3d); the form left open at increment 3's checkpoint (the user, 2026-11-27, E14 decision 11: the constants stay provisional until increment 4, where the water zones' town types reach their guards)
 
 ### RMG-QUIRK-2 — A river delta's x bound reads the next cell
@@ -161,10 +161,10 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Intended/expected behavior: step 5 skips only the town step 4 placed.
 - Impact: gameplay-altering
 - Sources: code reading (survey §2.2)
-- Flag: `quirk.rmg.least_town_skipped`
+- Flag: `quirk.rmg.least_town_skipped` (registry position 60, E14 T4b)
 - Defaults: faithful = on, fixed = off
-- Regression test: when steps 4 and 5 are ported
-- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+- Regression test: `h3-rmg`'s `step_5_skips_the_least_town_step_4_never_placed_by_the_flag` (both sides, SoD's and RoE's type draws) and `h3-pack-rmg`'s `a_least_town_step_4_never_placed_comes_in_step_5_by_the_flag` (both profiles); the corpus's steps 4 and 5 (`the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5`) with the flag on
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed: the corpus agrees with the flag on, but no corpus zone tells the two sides apart (step 4 places at the first kind asked for or at none; the corpus's two zones whose step 4 failed, RMG-QUIRK-25's, fail step 5 either way, with the same draws; E14 T4b)
 
 ### RMG-QUIRK-14 — Step 2 mixes map and template units
 - Class: fix-optional (the user, 2026-11-24, T1c2)
@@ -289,7 +289,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Sources: code reading (survey §2.5, §3.3.4); observation (the oracle's `l2-2p-c4-islands`, the game's memory after the start; T1c2)
 - Flag: none (the rule in every profile)
 - Defaults: faithful = original, fixed = original
-- Regression test: when the writer is ported (increment 6); the game's start on such a map waits for the town lane (its inbox: whether `GameSetup::validate` accepts a main town of another owner, as the original does)
+- Regression test: steps 4 and 5 (E14 T4b): `h3-pack-rmg`'s `a_start_zone_without_colour_towns_takes_a_neutral_first_town` (`l2-2p-c4-islands`: purple's first town a neutral castle, by step 5's densities, the corpus's comparison); the writer's half when it is ported (increment 6); the game's start on such a map waits for the town lane (its inbox: whether `GameSetup::validate` accepts a main town of another owner, as the original does)
 - Decided by / date: the user, 2026-11-24 (T1c2); confirmed (observation)
 
 ### RMG-QUIRK-24 — A start zone without Ownership marks a phantom human start 7
@@ -310,12 +310,25 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Context / rules affected: step 2's fill, `rmg_zone_flood_fill` 0x53D380 and its tail 0x53D640 (RMG-ZON-013); steps 4 on, which place a zone's towns, mines and treasures in its cells; survey §2.2
 - Original behavior: the fill starts at the zone's centre (or the cell left of it when the centre is not free); when both lie on borders, the zone gets no cell from its fill, only its border cells (T3b's corner case). In the corpus 20 zones in 6 of the 24 cases (T3d's count): 13 water zones and 7 land zones (`xl1-4p-seed1`'s zone 3, `xl2-8p-t4-islands`' zone 4, five of `xl2-4p-seed0`'s).
 - Intended/expected behavior: a zone's region filled from a free cell of it, so that its objects have room.
-- Impact: gameplay-altering for a land zone (its towns, mines and treasures on its border cells only); a water zone's cells are painted water either way
-- Sources: code reading (survey §2.2, T3b); observation (the phase oracle: the port, equal to the oracle on step 2, counted the cases, T3d)
-- Flag: to be registered with its fix (`quirk.rmg.*`, increment 4's T4b, a re-hash)
-- Defaults: faithful = on (the original's border cells only), fixed = off (the fix designed in increment 4, once the towns show the effect)
-- Regression test: when the fix is ported (T4b); the faithful side is the corpus's step 2 (`the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_3`)
+- Impact: gameplay-altering for a land zone (its towns, mines and treasures on its border cells only); a water zone's cells are painted water either way. **T4b:** both corpus land zones that are start zones get no town in the original (steps 4 and 5 equal the oracle's): `xl1-4p-seed1`'s zone 3 (human start 4, 133 border cells) and `xl2-8p-t4-islands`' zone 4 (human start 5, 225), two human players without a town
+- Sources: code reading (survey §2.2, T3b); observation (the phase oracle: the port, equal to the oracle on step 2, counted the cases, T3d; on steps 4 and 5, T4b)
+- Fix (E14 T4b, survey §2.2 "Steps 4 and 5 as ported (T4b)"): with the flag off, a fill whose start and the cell left of it are not free starts at the free cell of the level nearest the zone's centre (squared distance, the first row by row) outside the free regions in which the later zones' fills start (their start, or its left cell); none, no fill. The regions of the zones filled before are no longer free, so a zone never takes another zone's region; an orphan region (no zone's fill starts in it) goes to the nearest such zone
+- Flag: `quirk.rmg.fill_start_on_border` (registry position 61, E14 T4b)
+- Defaults: faithful = on (the original's border cells only), fixed = off (the fix above)
+- Regression test: `h3-rmg`'s `a_fill_whose_start_lies_on_borders_starts_from_a_free_cell_by_the_flag` (both sides, a claimed region left alone, no free cell left), `h3-pack-rmg`'s `a_zone_whose_start_lies_on_borders_gets_its_region_by_the_flag` (both profiles: `strict-fixed` gives both start zones their region and colour's town); the faithful side is the corpus's steps 2 to 5 (`the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5`)
 - Decided by / date: the user, 2026-11-27 (increment 3's checkpoint)
+
+### RMG-QUIRK-26 — A one-way monolith connection's entrances share their channel's exits
+- Class: fix-optional (the user, 2026-11-27, E14 decision 12)
+- Context / rules affected: step 6, `rmg_connection_by_monoliths` 0x542CE0 and `rmg_zone_connections_make` 0x543240's index (RMG-CON-017); the game's channels (ADV-TEL-002, -003); survey §2.3
+- Original behavior: a one-way connection takes entrance and exit prototypes of one index, so one channel, and places an entrance and an exit in each zone: each entrance leads to either exit, its own zone's among them. The index wraps after the two-way and one-way prototypes (AB 6, SoD 16), so a later connection shares a channel's monoliths with an earlier one.
+- Intended/expected behavior: each entrance leads to the other zone.
+- Impact: gameplay-altering (a hero may come out in the zone he left; channels mixed across connections)
+- Sources: code reading (survey §2.3, E14 T4a)
+- Flag: to be registered with its port (`quirk.rmg.*`, T4d)
+- Defaults: faithful = on (as read), fixed = off (the fix designed in T4d: each direction its own channel where one is free)
+- Regression test: when RMG-CON-017 is ported (T4d)
+- Decided by / date: the user, 2026-11-27 (E14 decision 12)
 
 ## Considered, not quirks
 
@@ -354,9 +367,8 @@ Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the
 
 | Candidate | What decides | Survey |
 |---|---|---|
-| T4a: a one-way monolith connection puts its two entrances and two exits (one of each per zone) on one channel, so an entrance may lead back into its own zone (the game draws among the channel's exits); and the index wraps after the two-way and one-way counts (AB 6, SoD 16), so a later connection shares a channel's monoliths | the user's classification (harmless and accepted, or fixed under a flag); T4d ports RMG-CON-017 | §2.3 |
 | Both 6LM10 templates connect zone 13 to itself | what step 6 makes of a self-connection (a fault would be RMG-QUIRK-3's or -4's class; T4d) | §3.1 |
-| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0 | what steps 4 and 5 give such a zone (the writer leaves the colour at position 7 out of the map: T3a's `s1-3p-2sm2i2`, RMG-QUIRK-24) | §3.1 |
+| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0. **T4b (ported, equal to the oracle):** steps 4 and 5 read the colour at +0xEE0 for position −1, which `rmg_generate_map` clears to −1 and nothing writes, so a colour town there would be neutral; but none of these rows asks for a town of its colour: 2SM2i(2)'s start 3 and 2SM0k's 3 and 4 get no town, 2SM2i(2)'s start 5 and 2SM0k's 5 to 8 their one least neutral town each (a village of their drawn town type) | what steps 4 and 5 give such a zone (the writer leaves the colour at position 7 out of the map: T3a's `s1-3p-2sm2i2`, RMG-QUIRK-24): the user's classification | §3.1 |
 | T3b: the borders' edge walk draws straight to the re-entry point whenever it shares x or y with the current point, also across the map: a cell whose one side on the map is axis-aligned gets a straight chord over its jagged side, in both zones' ids; the cells between are reached by no fill (water on level 0, rock on level 1, as read). **T3d: never in the corpus** | cosmetic or a fix, once a census shows it (increment 7's census, E14 decision 11) | §2.2 |
 | T3b: a cell with no side on the map (meant for one holding the whole map) gets the whole frame drawn in its id, also a water zone's cell wholly off the map. **T3d: never in the corpus** | whether such a cell occurs (a census) (increment 7's census, E14 decision 11) | §2.2 |
 | T3b: a point inserted where a vertex already is is dropped: the second zone at one point draws the first's cell again and has none of its own. **T3d: never in the corpus** | whether two of step 2's points can coincide (a census) (increment 7's census, E14 decision 11) | §2.2 |

@@ -59,6 +59,7 @@ pub(crate) fn tables() -> GeneratorTables {
         native_terrains: Vec::new(),
         picture_sets: sets,
         rock_pictures: rock,
+        object_settings: Vec::new(),
     }
 }
 

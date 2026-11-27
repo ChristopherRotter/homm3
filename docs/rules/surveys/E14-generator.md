@@ -332,10 +332,44 @@ Placing (`rmg_map_place_object`) is one or the other per footprint cell: an entr
 22 (bit 26 cleared and 27 set unless +0x2C bit 0) and keeps bit 25; any other cell outside +0x4
 loses bit 25; both get the object in their list; passable cells are left alone. So bit 22 marks an
 object's entrance and a clear bit 25 its blocked body. For the port: the footprint's size and +0x4
-depend on each picture's `.msk`, which the rmg packs do not hold yet (the harvest takes
-`objects.txt`'s text alone; the adventure lane's table has the special grounds' sizes only); and
-`h3-rmg`'s `ObjectTemplate` calls the third column `terrains` and the fourth `editor_terrains`,
-the other way round from the generator's use.
+depend on each picture's `.msk`, which the rmg packs hold since T4b: each `objects.txt` line's
+`width`, `height` and `colour` (48 marks in the passability's order: mark k is the game's bit
+47 − k, the `.msk`'s byte (47 − k) / 8, bit (47 − k) % 8), found as `msk_load` finds it (the
+picture's name from its last `.` replaced by `.msk`, looked up by `sprite_archive_find` 0x55CF50 in
+`H3sprite.lod`, then `H3ab_spr.lod`, the first holding it winning; `default.msk`, 1 × 1 with its
+anchor coloured, without one). Every line of both tables has its own `.msk` (AB's 1 221, SoD's
+1 326), and no line's passability text blocks a cell without a body pixel, so on the shipped data
++0x4 is the passability text. `h3-rmg`'s `ObjectTemplate` names the third column `editor_terrains`
+and the fourth `terrains` (the other way round before T4b). The object settings the generator
+reads, +0x0, +0x1, +0x2 and +0x8 (`object_settings_init` 0x41B500: a class no table names keeps
+its own class as +0x8 and the flags clear), are harvested into SoD's `[generator]` too
+(`GeneratorTables::object_settings`).
+
+**The objects as ported (T4b).** `h3-rmg`'s `objects` module (`Objects`, `Prototype`, `Shape`,
+`Object`; each cell's list in `Cells`) ports `rmg_objects_read`, `rmg_map_place_object`,
+`rmg_generator_add_object`, `rmg_map_can_place`, `rmg_map_footprint_blocked`,
+`rmg_prototype_outline` and `rmg_map_outline_clear`, all read again whole. As read: the filter's
+numbers are signed (`c_atoi`'s: a subclass of 2^31 or more passes the monoliths' and gates'
+test); the monsters' exchange sort swaps the two prototypes' template pointers when the earlier
+subtype is greater, which can reverse equal subtypes (2a 2b 1 gives 1 2b 2a); the part's merged
+object table is SoD's `Objects.txt` in line order (`h3-pack-rmg`'s `original_data` example
+compares them), the index the phase oracle's dump gives. The add counts the type, then the
+entrance's zone (its zone byte an index into +0x10E0, unchecked), then floods: two vectors, the
+cells and their distances falling, the last entry taken and the cell's own distance read again
+(the queued one unused), a cell lowered strictly below its value (the d + 2 or d + 3 of its
+neighbour) inserted by a binary search before the first entry of a distance at most its own.
+Precisions: placing tests the map's columns and rows per cell, not the level; the footprint test
+reads every footprint cell once its bounds pass (no per-cell test); `rmg_map_can_place` tests only
+the row of the cell below the entrance against the height, not its column, its row's lower bound
+or its level (the column stays on the map only while the entrance lies within the footprint's
+width, true of every shipped line); the outline's four refusals never happen (the walker stands
+only on cells it may enter, its start below the footprint), and the walk stays within one cell
+around the footprint's box. A bit position past 47 (a footprint past 8 × 6) is `std::bitset`'s
+range error `bitset_range_error` 0x41B410, which the original throws (code 1). The port's faults
+(`ObjectFault`, kept until the step ends: `GenerateError::Objects`) are the empty outline's
+division (RMG-QUIRK-3), that range error, an unchecked cell off the map, an entrance zone byte
+past the zone generators and an entrance below without an object listed (RMG-QUIRK-4); none is
+reached with the shipped tables.
 
 **Draw sites** (none runs during the setup but water's; the others run when a step creates an
 object through these methods):
@@ -691,9 +725,9 @@ the zone's terrain is water.
   an object never splits the free cells around it, nor stands walled in. An empty outline divides
   by its count of 0 (the index is i mod n): a fault (RMG-QUIRK-3's class) that no template of the
   classes `rmg_map_can_place` places reaches with the shipped `objects.txt` (every town, shipyard,
-  gate, monolith, tent, mine and resource line has a blocked cell on its anchor's row in the text;
-  whether their `.msk`'s keep it blocked waits for the `.msk` harvest); the piles' own outline
-  (`rmg_pile_fits_at`, increment 5's pile ring) is not read.
+  gate, monolith, tent, mine and resource line has a blocked cell on its anchor's row in the text,
+  and its `.msk` keeps it blocked: no line blocks a cell without a body pixel, T4b); the piles' own
+  outline (`rmg_pile_fits_at`, increment 5's pile ring) is not read.
 - **Tents on water** (§2.3's shipyard guards): the Keymaster's Tents are group 0 without water in
   the fourth column, and their two blocked cells (the anchor, which is the entrance, and the cell
   left of it, as the text gives them) refuse water; in a water zone a tent fits only on land cells of that zone (an
@@ -717,6 +751,46 @@ one more town at spacing r; a kind is exhausted at its first failure; the step e
 goes to `rmg_town_place_central`; else the positions whose entrance cell is in the zone with an
 object distance (+0x20 bits 0-15, §2.1's flood) of at least r, the 3 × 3 cells around the entrance
 in the zone and `rmg_map_can_place` true, and of those the farthest, `rand() %` them.
+
+**Steps 4 and 5 as ported (T4b).** Read again whole: `rmg_zone_first_town`, `rmg_zone_towns_place`
+(its jump table's four cases), `rmg_town_place_central`, `rmg_town_place_far`, `rmg_object_init`,
+`rmg_object_clear_flags`, `rmg_zone_generator_init` (+0x3C and the counts +0x44 cleared, +0x30 to
++0x38 left), `rmg_generate_map`'s calls (every zone generator in order, step 2's water zones too)
+and its colours' clear. On the 24 corpus cases the port's draws in steps 4 and 5 and its dumps 4
+and 5 (the cells and the towns' objects) equal the phase oracle's at the first run. As read,
+sharper than above: **the town prototype is the entry at the town type's index** of class 98's
+vector (+0x658), no search by subtype (SoD's `objects.txt` files the nine lines in subtype order,
+so the index is the subtype, for RoE too: Conflux's line stays filed); the colour is +0xEE4 + 4p
+for the zone's position p, and **p = -1 reads +0xEE0**, which `rmg_generate_map` clears to -1 with
+the colours (9 dwords from 0x5499FB) and nothing writes: a zone without Ownership gets neutral
+towns; the central placement keeps only cells within a squared distance of 32000 of the centre
+(its least starts there), a strictly nearer cell clearing those kept; the far placement draws its
+redrawn type before it tests for a first town (so a zone whose first town failed draws it and then
+takes the central placement), starts at the box's least corner plus the footprint's width and
+height, compares each entrance's distance with the greatest kept so far (from the spacing; the
+zone byte first, then the distance, then `rmg_map_can_place`, then the 3 × 3 clamped to the map,
+a byte not negative and the id), and writes no +0x30; both create the town (0x28 bytes: the serial
++0xF44 taken and raised, the prototype's use count +8 raised, +0x20 owner, +0x24 castle) before
+the draw, add it through slot 1, push its entrance to the road targets and mark the cell below it
+(+0x28 bit 27 set, 26 cleared, unless +0x2C bit 0). Step 5's kinds read their counts each loop
+(constant); the densities' kinds not above 0 keep an unset step and are exhausted from the start;
+the least key is taken with `jge` (the first on ties). Step 4 places at the first kind asked for
+or at none (the castle flag and owner do not change the fit), so RMG-QUIRK-13's skip differs from
+the fix only for a zone whose first town failed: the corpus's two (below) fail step 5 either way,
+so no corpus case tells them apart. The port: `towns.rs` (`Placed`: the towns with object, zone,
+serial, owner, castle; the road targets), `ZoneGenerator.town` (+0x30 to +0x3C), `Objects::serial`;
+`ObjectFault::Prototype` (an index past class 98's vector) and `ObjectFault::Colour` (a position
+outside -1 to 7) for RMG-QUIRK-4, with `Outside` for a town line without an entrance (its offsets
+8, 6). **What the corpus shows:** RMG-QUIRK-25's two land start zones (`xl1-4p-seed1`'s zone 3,
+`xl2-8p-t4-islands`' zone 4, 133 and 225 border cells) get no town in the original: two human
+players without a town. The start zones without Ownership (2SM2i(2)'s human starts 3 and 5, 2SM0k's
+computer starts 3 to 8) ask for no town of their colour: 2SM2i(2)'s start 3 and 2SM0k's 3 and 4 get
+nothing, the others their one least neutral town each (a village of their drawn town type).
+RMG-QUIRK-25's fix (`fixed`, `quirk.rmg.fill_start_on_border` off): a fill whose start and the cell
+left of it are not free starts at the free cell of the level nearest the zone's centre (squared
+distance, the first row by row) outside the free regions in which the later zones' fills start
+(their start or its left cell); none, no fill. In `strict-fixed` both start zones then get their
+region and their colour's town.
 
 **Draw sites** (10; steps 1 and 2's constructor site is one):
 
@@ -2171,7 +2245,7 @@ Reads: zone and land bits. Floats: none. Limits: none; allocation failure throws
 |---|---|---|---|
 | RMG-OBJ-011 | `rmg_map_can_place`: the footprint on the map, its entrances and blocked cells free, not rock, without an entrance, of the zone; a blocked cell on water only for a group-0 template with water in its fourth column, on land not for one; the outline (a right-hand walk around the anchor row's blocked group) open in one unbroken arc or whole (open: on the map, free, not rock, no entrance, of the zone, water as the zone; an entrance on it refuses unless the type's settings +1 and +2); the cell below the entrance free, not rock, of the zone, without an entrance unless removable, water as the zone. *(QC: an empty outline divides by 0)* | — | §2.2 |
 | RMG-TWN-001 | Step 4 per zone: colour castle, colour town, neutral castle, neutral town (if asked, type +4); stops at the first placed. | TWN-002's | §2.2 |
-| RMG-TWN-002 | Central town: type −1 refused; town prototype (98) at the placeable cells nearest the centre (squared); entrance into +0x30 and the road targets. | 0x545492 %nearest | §2.2 |
+| RMG-TWN-002 | Central town: type −1 refused; the town prototype at the type's index of class 98's vector, at the placeable cells nearest the centre (squared, at most 32000); entrance into +0x30 and the road targets. | 0x545492 %nearest | §2.2 |
 | RMG-TWN-003 | Step 5: per kind the least count not yet placed, no spacing, the first of the first kind asked counted as step 4's. *(QC: even when step 4 placed none)* | TWN-005's | §2.2 |
 | RMG-TWN-004 | Densities: S, P sum and product of the positive ones; r = trunc(sqrt(82944 / S)); step P / d, key step × least; least key (first on ties) steps and places one at r; exhausted at its first failure. | TWN-005's | §2.2 |
 | RMG-TWN-005 | A further town: type redrawn (neutral without same-type byte, or +4 −1) among set types, else 8 (RoE) or 9; no town yet: TWN-002; else entrances in the zone at distance ≥ r, the 3 × 3 in the zone, placeable; the farthest, the r-th. | 0x544DEC %set or 0x544E22 %8/9; 0x545174 %farthest | §2.2 |

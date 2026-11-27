@@ -12,6 +12,7 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). `h3-server`'s `record.rs` pin was substituted. A branch of yours pinning the old hash needs the same substitution.
 - 2026-11-27 (the adventure lane, E08 T145's audit, `adventure/e08-t145`; **a doc comment in
   your paths, nothing else**): `wire/game/event.rs`' `CastFailure::Target` says "The target, once
   revealed, held nothing the spell acts on", but a door's explored target of the wrong kind under

@@ -682,3 +682,49 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
 - **Docs:** the survey, `map.toml` (ten entries read again or corrected, seven added),
   `structs.toml` (`rmg_object_template`'s fields, `rmg_prototype`'s outline, `rmg_heightmap_rect`),
   the ledger. No code. The gates: `exe.py check`, `cited`, `check-exe-map`, the light verify.
+
+## T4b — steps 4 and 5, the towns, with the objects' data and model (2026-11-27, increment 4)
+
+- **Whole** (the user, decision 12: "no cut, use subagents efficiently"), three worker sub-agents
+  in turn on one branch `shared/e14-t4b`, `cross-lane` (`h3-formats`, `h3-harvest`,
+  `packs/README.md`, `h3-content`'s registry and `core.toml`, the replays' and bot reports' core
+  hashes). Staged from the PC: the oracle's set, 67 files (the 58 with sums checked).
+- **The objects' data** (worker 1): each `objects.txt` line's `.msk` (width, height, colour mask)
+  into both rmg packs: all 1 221 AB and 1 326 SoD lines have their own (the sprite search list,
+  `H3sprite.lod` then `H3ab_spr.lod`, `sprite_archive_find` 0x55CF50; the 222 in the latter are
+  copies); no '0' cell lacks a colour pixel, so on the shipped data +0x4 is the passability text.
+  The 232 classes' settings (+0x0, +0x1, +0x2, +0x8) from `object_settings_init` into SoD's
+  `[generator]` (`ObjectSettings`, `GeneratorTables::object_settings_of`). The terrain columns
+  renamed (column 3 `editor_terrains`, column 4 `terrains`, the generator's). `RMG_RULESET_HASH_VERSION`
+  5. The check `h3-harvest`'s `examples/original_data.rs`. Left out: the decoration flag +0xC
+  (the writer's, increment 7).
+- **The object model** (worker 2, `objects.rs`, RMG-OBJ-009 to -011): the prototypes by class group
+  with the format filter and the monsters' exchange sort (equal subtypes can reverse); slot 1 with
+  the entrance's flood (the queue's last cell taken, +2 and +3 kept when lower, a lowered cell
+  binary-searched in before the first of distance at most its own: nearest first, ties first in,
+  first out); `can_place` with the footprint, outline and ring; `ObjectFault`; the dump with
+  objects. Read again: the format filter compares signed; the flood reads the current distance;
+  the cell below the entrance tested by its row only; the outline's four-refusal fallback
+  unreachable; a mask bit past 47 throws (the original's error 1).
+- **Steps 4 and 5** (worker 3, `towns.rs`, RMG-TWN-001 to -005). Read again: the town prototype is
+  the town type's index in class 98's vector; the first town's cells within squared distance
+  32000 of the centre; the further town's search keeps the greatest distance so far from the
+  spacing; its type redrawn before the zone's town test; position -1's colour neutral (+0xEE0, -1
+  and never written). **The draws and dumps to step 5 equal the phase oracle's on 24 of 24 at the
+  first run.**
+- **Flags:** `quirk.rmg.least_town_skipped` 60 (RMG-QUIRK-13) and `quirk.rmg.fill_start_on_border`
+  61 (RMG-QUIRK-25), on in `faithful`, off in `strict-fixed`. RMG-QUIRK-25's fix: a fill whose
+  start and the cell left of it both lie on borders starts from the free cell nearest the centre
+  outside the regions where later zones' fills start. `faithful`'s core hash `0x7d6081fbb0552a2f`
+  -> `0x810a2c4eb5a0373f`: 123 adventure replays, `h3-server`'s `record.rs`, the two bot reports'
+  `core` lines (hash lines only).
+- **Found:** the Ownership 0 starts ask for no town of their colour: 2SM2i(2)'s start 3 and
+  2SM0k's 3 and 4 get none, 2SM2i(2)'s 5 and 2SM0k's 5 to 8 one neutral village each (the user to
+  classify). In `faithful` two human start zones get no town (`xl1-4p-seed1`'s zone 3,
+  `xl2-8p-t4-islands`' zone 4): RMG-QUIRK-25's impact, as the oracle. RMG-QUIRK-13 stays
+  unconfirmed (no corpus zone tells its sides apart). Pre-existing: step 1 gives no town choice
+  for a position of 8 or more, where the original reads past the colours (RMG-QUIRK-4's class; for
+  T4e's audit). The synthetic pack gained nine town lines (its part hash moved).
+- **Gates:** the scoped verify `--with-original-data` (coverage 100 %, the original data, the exe
+  map) passed but `check-lane`, which a cross-lane branch fails by design (`--cross-lane` ok);
+  `cargo check --workspace --all-targets`; `h3-server`'s tests, `adventure_replays`, `h3-harvest`'s.

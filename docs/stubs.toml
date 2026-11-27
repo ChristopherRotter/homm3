@@ -376,7 +376,7 @@ epic   = "E31"
 [[stub]]
 id     = "RMG-STUB-1"
 where  = "crates/h3-rmg/src/generate.rs::generate"
-reason = "generate stops after step 3 (the frame, E14 T2c: the settings as run, the seed, water's Random, the templates kept and drawn, the banned heroes, the positions; E14 T3c: the generator's map reset and step 1's zone generators; E14 T3d: step 2's zone cells, water zones, polygons and water connections; E14 T3e: step 3's boxes, centroids, islands and terrain): GeneratedMap holds no objects or teams yet. Steps 4 to 15 come with increments 4 to 6 (each step's cells checked against the phase oracle), the writer's content (the header, players, teams' draw, tiles, objects) with increment 7"
+reason = "generate stops after step 5 (the frame, E14 T2c: the settings as run, the seed, water's Random, the templates kept and drawn, the banned heroes, the positions; E14 T3c: the generator's map reset and step 1's zone generators; E14 T3d: step 2's zone cells, water zones, polygons and water connections; E14 T3e: step 3's boxes, centroids, islands and terrain; E14 T4b: steps 4 and 5's towns and road targets): GeneratedMap holds no other objects and no teams yet. Steps 6 to 15 come with increments 4 to 6 (each step's cells checked against the phase oracle), the writer's content (the header, players, teams' draw, tiles, objects) with increment 7"
 epic   = "E14"
 
 [[stub]]
