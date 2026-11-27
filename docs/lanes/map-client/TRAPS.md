@@ -264,7 +264,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `h3-map-view situation` is not compressed, so `gzip -c` it first ("not a gzip-compressed map
   file"); a record of it is played by `record --record-map` on the gzipped file (its hash).
   A shipped map is gzipped already. An acceptance game's script (M5 T4c, the log's "part four")
-  avoids objects the engine does not model yet (an Obelisk, a blocker until E09 increment 6:
+  avoids objects the engine does not model yet (an Obelisk, a blocker until E09 increment 8, TWN-STUB-17:
   drawn and hinted from the file, a click shows no path, a key's step onto it is refused) and
   monsters' zones (a battle ends play, MCL-STUB-6); `tesseract` on the status bar's crop (white
   text thresholded) names what is under the pointer, which finds the tiles to click.

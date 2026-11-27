@@ -3945,7 +3945,7 @@ entrance (the town screen's notice), the week-2 Windmill; Tan: the Windmill, the
 the Marletto Tower, the Shrine, the town list twice; End Turn by E and by the button, Move
 Reminder's question by Enter and by its OK clicked. **Commands:** 48 accepted (15 End Turns, 30
 walks, a revisit, an offer declined, a notice closed), 1 refused: a key's step onto the Obelisk
-(`Visit { step: 0 }`: a blocker in the engine until E09 increment 6, drawn and hinted from the
+(`Visit { step: 0 }`: a blocker in the engine until E09 increment 8 (TWN-STUB-17), drawn and hinted from the
 file; a refused step does nothing, design §5.26). **Checked:** every view's frames read back exact,
 as afresh and as the headless loop's (16 views, about 4 600 frames; the script run again after
 `master`'s merge, protocol v85: the same 48 and 1, 2 237 frames); the records played to their end; the screenshots: heroes, armies' portraits, the resource bar's gains
