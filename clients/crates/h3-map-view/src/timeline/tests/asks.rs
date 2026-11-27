@@ -123,6 +123,7 @@ fn question(id: &str) -> Found {
         blocks: beside.then_some(OBJECT),
         flag: None,
         ask: Some(Question {
+            hosted: None,
             asked: laid("Will you?", Style::OkCancel),
             chooses: !matches!(id, "ask-crypt" | "ask-tree" | "ask-tomb"),
             yes,

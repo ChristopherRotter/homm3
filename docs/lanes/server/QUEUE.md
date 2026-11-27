@@ -19,6 +19,11 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   (in place of `object` / `object_type` and `anchor`); the tests' engine round trips (a town's
   window without a hero, its event, the refusal; 168 rejections) and the fold's literal.
   `h3-server`'s `tests/record.rs` literals moved with the goldens (game state hash v40).
+- 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
+  nothing blocks**): the map client's hot seat asks a visit's question from the engine's open
+  decision, read through `observe` in-process because the fold keeps no offer's or choice's view
+  (`SRV-STUB-5`; **MCL-Q60**). A networked client needs the frames to carry it: when `SRV-STUB-5`
+  lifts, the hot seat reads the folded view instead.
 
 - 2026-11-25 (the adventure lane, E08 T144a1, `adventure/e08-t144a1`; **for your planning, no
   change in your paths**): `h3_game::legal_commands` now lists each hero's casts on the map

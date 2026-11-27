@@ -89,6 +89,7 @@ fn joined(stack: Stack, gold: i32) -> Answer {
 /// out.
 fn flight(attacker: u32) -> Question {
     Question {
+        hosted: None,
         asked: laid("Flee?", Style::OkCancel),
         chooses: false,
         yes: None,
@@ -180,6 +181,7 @@ fn question(id: &str) -> Found {
         blocks: (id != "ask-cartographer").then_some(OBJECT),
         flag: None,
         ask: Some(Question {
+            hosted: None,
             asked: laid("Will you?", Style::OkCancel),
             chooses: false,
             yes: Some(yes),

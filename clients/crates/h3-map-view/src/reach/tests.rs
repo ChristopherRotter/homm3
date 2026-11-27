@@ -92,12 +92,14 @@ fn the_host_s_facts_by_stand_and_walk() {
         hero: 1,
         walks: 2,
         turns: 0,
+        answers: 0,
     };
     let reach = Arc::new(Reach::default());
     let later = Stand { walks: 3, ..stand };
     let hosted = Hosted {
         reaches: vec![(stand, Arc::clone(&reach))],
         refused: vec![(stand, vec![at(6, 5)])],
+        ..Hosted::default()
     };
     assert_eq!(hosted.reach(stand), Some(&reach));
     assert_eq!(hosted.reach(later), None);

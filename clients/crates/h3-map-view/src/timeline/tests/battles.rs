@@ -92,6 +92,7 @@ fn battled(id: &str) -> Found {
         "battle-mine-retreat" => Found {
             blocks: None,
             ask: Some(Question {
+                hosted: None,
                 asked: laid("Guards?", Style::OkCancel),
                 chooses: false,
                 yes: Some(Answer {
@@ -107,6 +108,7 @@ fn battled(id: &str) -> Found {
         _ => Found {
             blocks: None,
             ask: Some(Question {
+                hosted: None,
                 asked: laid("Guards?", Style::OkCancel),
                 chooses: false,
                 yes: Some(Answer {
@@ -342,6 +344,7 @@ fn a_battle_whose_monster_stands_opens_its_level_ups_then_ends_the_visit() {
     actions.retain(|&t, _| t < 810);
     start.finds[0].fight = Some(fight(0, AfterBattle::Stays));
     start.finds[0].levels = vec![LevelBox {
+        hosted: false,
         level: 2,
         dialog: laid("Level 2.", Style::Ok),
         offers: Vec::new(),

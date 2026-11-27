@@ -53,6 +53,7 @@ fn flagged(id: &str) -> Found {
             count: 14,
         };
         let question = Question {
+            hosted: None,
             asked: laid("Recruit?", Style::OkCancel),
             chooses: true,
             yes: Some(Answer {

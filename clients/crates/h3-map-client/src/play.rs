@@ -36,7 +36,7 @@ use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup};
 use h3_map_view::engine::{GameRecord, Live};
 use h3_protocol::wire::game::{
-    AdventureCommand, GameAnswer, GameCommand, GameQuery, Moves, Pos as WirePos,
+    AdventureCommand, Answer, Decision, GameAnswer, GameCommand, GameQuery, Moves, Pos as WirePos,
 };
 use h3_render::Bugs;
 use h3_sdl::{Config, Window};
@@ -244,6 +244,21 @@ impl window::Session for Viewed<'_, '_> {
 
     fn walk(&mut self, hero: u16, path: Vec<WirePos>) -> Result<Option<String>, String> {
         let command = AdventureCommand::MoveHero { hero, path };
+        let refused = self.hot.play(GameCommand::Adventure { command })?;
+        Ok(refused.map(|why| format!("{why:?}")))
+    }
+
+    fn decision(&self) -> Option<Decision> {
+        self.hot.decision(self.player)
+    }
+
+    fn answer(&mut self, answer: Answer) -> Result<Option<String>, String> {
+        let refused = self.hot.play(GameCommand::Answer { answer })?;
+        Ok(refused.map(|why| format!("{why:?}")))
+    }
+
+    fn revisit(&mut self, hero: u16) -> Result<Option<String>, String> {
+        let command = AdventureCommand::Revisit { hero };
         let refused = self.hot.play(GameCommand::Adventure { command })?;
         Ok(refused.map(|why| format!("{why:?}")))
     }
@@ -618,7 +633,8 @@ pub(crate) mod tests {
             // Its whole record, as the record player reads it (its map the file's by its hash),
             // its start the human's view.
             let (record, live) = hot.since(player, None).unwrap();
-            assert_eq!(live, Live::default());
+            // Its facts: no facing yet, the client's picks seeded (E24 M5 T4b).
+            assert_eq!((live.facings.len(), live.picks.is_some()), (0, true));
             assert_eq!(
                 Some(&record),
                 parse(&hot.record(player).unwrap()).ok().as_ref()
