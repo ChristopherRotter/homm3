@@ -1,0 +1,27 @@
+# Step 6's obstacle plan by case (h3rmg.py plan --record, E14 T4c): the lanes' draws (h3rmg.LANE_SITES) and
+# the draws of step 6 before its first draw at a site not of the plan (h3rmg.PLAN_SITES), each with its lines'
+# digest as phases.txt's, the next site (a connection's first draw, or none).
+s1-2p lanes=230:8d7009b987aa draws=230 digest=8d7009b987aa next=54146B
+s1-2p-dry lanes=162:42cd8628840c draws=162 digest=42cd8628840c next=54146B
+s1-2p-c1-islands lanes=162:338a7dc0cde6 draws=1557 digest=f7570d606474 next=541B78
+s2-2p lanes=434:1c81b019b158 draws=434 digest=1c81b019b158 next=54146B
+m1-4p lanes=978:fcf032bbd4e6 draws=986 digest=804bd1fb8b67 next=54146B
+m1-4p-t2 lanes=1190:9b733cfc984c draws=1190 digest=9b733cfc984c next=54146B
+m2-2p lanes=1881:b9e2e8685a7b draws=1881 digest=b9e2e8685a7b next=5421BC
+m2-4p lanes=2064:77a71e1c06e8 draws=2680 digest=4d2344a62d26 next=54146B
+m2-3p-c2-islands lanes=1794:89c3af80d718 draws=8734 digest=e5f9155482a8 next=5421BC
+l1-4p-a lanes=2437:7f9750f19254 draws=2437 digest=7f9750f19254 next=541B78
+l1-4p-b lanes=2713:67e05653174a draws=7099 digest=d7d039b691e2 next=54146B
+l1-4p-c lanes=2433:4d99fb0758b7 draws=4840 digest=d80226869102 next=54146B
+l1-6p-t3 lanes=2741:4d0c058f57f3 draws=2749 digest=3199506e5f72 next=54146B
+l1-8p-dry lanes=2340:906be130882c draws=2340 digest=906be130882c next=54146B
+l2-4p lanes=4722:78f96719a401 draws=4730 digest=df2cce9d8a82 next=54146B
+l2-2p-c4-islands lanes=4851:ca168670b00b draws=17062 digest=0bcbaf4cf159 next=5421BC
+xl1-4p-seed1 lanes=4758:b7a4c639b0fc draws=4768 digest=e06397eeb3f7 next=54146B
+xl1-6p-c2 lanes=4362:e06c536fea2a draws=4362 digest=e06c536fea2a next=54146B
+xl2-4p-seed0 lanes=9643:32a9d0d64f44 draws=22184 digest=f004cf2a44fe next=54146B
+xl2-8p-t4-islands lanes=9107:99a4ead0283e draws=34256 digest=b2de1b01d3c9 next=54146B
+m1-2p-t1 lanes=839:23105eca4e4d draws=839 digest=23105eca4e4d next=54146B
+s1-3p-2sm2i2 lanes=158:0a901eb976c1 draws=158 digest=0a901eb976c1 next=54146B
+s1-2p-2sm0k lanes=121:762ec70ea3c6 draws=129 digest=70825fa2bb8a next=54146B
+s1-1p-c1-2sm0k lanes=115:e33fa8634314 draws=115 digest=e33fa8634314 next=54146B

@@ -1047,6 +1047,131 @@ of an allowed town (the zone's town type when its monsters match it, else its ne
 drawn; count n = (g + AI/2) / AI, then n + `rand() % s` − `rand() % s` with s = n/4 + 1 when s > 1;
 the object takes the serial +0xF44.
 
+**Step 6's plan as ported (T4c).** `h3-rmg`'s `plan` module, parts (1) to (6) of the order (the
+lanes, the walls, the cells of no zone; the islets, `plan/islets.rs`; the joining, `plan/join.rs`;
+the shores' seal, `plan/seal.rs`): on the 24 corpus cases the port's draws after step 5 are
+`plan.txt`'s (count and digest: the lanes, 101 islets in 4 cases, the sealed shores' painters in
+11), and after the plan its floods (+0x10 to +0x18, +0x1C, +0x20 bits 24-31, +0x28 bits 12-14),
+terrain and pictures equal step 6's dump on every cell (the connections leave them). Read again,
+beyond the above:
+
+- The lanes' first pass tests a cell's object list (+0x4 to +0x8 not empty), not bit 22: an
+  object's passable cells off its list stay obstacles.
+- The segment stack holds points in pairs (p, q), q on top; a split pushes q, m, m, p, so (m, p) is
+  drawn before (q, m), and each child has its parent's end in the other place. A terminal segment
+  (m = p or m = q) marks p's 3 × 3 only, and only when p lies on the map: a lane's end whose last
+  segment starts off the map (a midpoint displaced past the edge) can stay an obstacle.
+- A segment of length 1 whose midpoint is neither end ((1, 0)–(0, 1): the midpoint (1, 1)) splits
+  without a draw (L ≤ 1); the split's tests use the displaced midpoint (on the map, for the
+  branches).
+- The branch queue is a `std::list` filled at its back and taken from its front, two points at a
+  time: the branches run in the order queued, (m, m + n) before (m, m − n), and only once the
+  segment stack is empty; a cast branch's segment is pushed as (end, from).
+- `rmg_lane_ray_cast` 0x543C70: the major axis is |dy| on ties; the diagonal step's signs are
+  + for a delta above 0, else − (on both axes); the interior is 1 ≤ x < W − 1, 1 ≤ y < H − 1 (the
+  map's +0xC, +0x10); a first step out returns the start (no segment: distance 0).
+- `rmg_map_mark_free_3x3` writes the cell, then the 3 × 3 clamped to the map with it, each unless
+  +0x2C bit 0; `rmg_map_mark_obstacle` indexes its cell unchecked (every caller passes one on the
+  map) and clamps its 3 × 3 (the cell itself among them).
+- The lanes' last pass is one sweep: per cell, water or rock made free, then a bit-26 cell marked
+  an obstacle; the two never meet (the mark skips water and rock).
+- The walls take the zone generator by the cell's zone byte (+0x10E4, unchecked: RMG-QUIRK-4;
+  step 2 writes no byte past them, the port leaves such a cell unwalled) and its template zone's
+  list +0xC4, the first connection whose far end's id (+0x0's +0x0) is the neighbour's zone byte.
+  On level 1 any other zone's cell walls, connected or not (RMG-QUIRK-9). A neighbour of no zone
+  walls only when it is water. The 3 × 3's
+  bit 27 is cleared on every cell without an object and without +0x2C bit 0, water, rock and other
+  zones' cells included (no land test, unlike `rmg_map_mark_obstacle`); a second pass over
+  [y, y + 1) × [x, x + 1) re-marks the cell alone when empty, which changes nothing (not ported).
+- The cells of no zone (0x544937 to 0x5449F7): bit 26 clear, bit 25 set, land not 9, bit 22
+  clear, no object, +0x20 bit 23 set (the zone byte negative), land not 8; marked by
+  `rmg_map_mark_obstacle`.
+- The islets' reset of the box also clears +0x28 bits 12-14 and +0x20 bits 24-31. The seeds are
+  the cells of the box widened by one and clamped to [0, W) × [0, H), row by row, whose zone byte
+  is not the zone's id (the template zone's +0x0; the kept zones are renumbered from 0 in the
+  generators' order, so it is the generator's index): one `rmg_zone_distance_flood` call each, a
+  later one entering a cell only below its cost. The candidates: columns max(x0, 3) to
+  min(x1, W − 4), rows alike, ends exclusive; rebuilt after every islet. d / 3 is unsigned, the
+  modulus (d / 3 − 5) signed; the islet's box is [max(x − r, 0), min(x + r, W)) and alike in y.
+- `rmg_zone_distance_flood` keeps two vectors (the points, their costs) sorted from the highest:
+  a binary search puts a new entry before its equals (equal costs are taken first listed first),
+  the last is taken and expands at the cell's current cost, so a cell entered twice is listed
+  twice (harmless). The seed's zone is not tested; its +0x1C high half, bits 12-14 and +0x20's
+  top byte are cleared. A step leaves the map (tested) or the level never; a cell of another zone
+  byte is skipped before its cost is read.
+- `rmg_islet_draw` draws the terrain before the height map; its painter has a view of the level
+  (one level, `rmg_map_vtable`) made before the height map (no draw), is finished, never flushed.
+  The mask is `operator new`'s, unset, but every cell is written by exactly one one-cell record;
+  the height map's bounds tests (a one-cell record inside the mask, a larger one meeting it)
+  never fail (not ported). The quadrants' corners (top-left, top-right, bottom-left,
+  bottom-right): bottom-right (centre, right, bottom, the record's), bottom-left (left, centre,
+  the record's, bottom), top-right (top, the record's, centre, right), top-left (the record's,
+  top, left, centre); a one-row record's top quadrants are empty, so its cells take its
+  displaced left and centre, not its corners. The obstacles' loop tests the land byte
+  (+0x24 & 0x3F) against 8 and +0x2C bit 0, per cell of the box.
+- The islets' painters are of land: `terrain_painter_set_cell`'s water and rock branch and the
+  split ring's mending are not reached (they are the painter's own terrain's), only the water
+  cells' ring test in the pinch and the diagonal queue; they draw as the original's (no fault in
+  `painter.rs`). A painter's fault there (a shape its set lacks) is `GenerateError::Paint` with
+  step 6 after the joining (RMG-QUIRK-3).
+- `rmg_zone_paths_connect`'s reset writes all three words +0x10 to +0x18 as -1 and +0x1C's low
+  half as 32000 too. A zone generator's cells are those of zone byte k, its index (the generator's
+  +0x10E4 order), over its box (+0x20 to +0x2C) on the level of its +0x18. The seed's loop keeps
+  the coordinates of every cell of the zone holding no object (water only for a water zone
+  generator: its +0xC), before testing bits 27 and 25 and rock: the fallback is the last of those,
+  made kept free unless +0x2C bit 0 (bits 25 and the land left), and the flood's water flag is the
+  zone generator's terrain being water. The carving loop reads the box again, row by row, at each
+  cell's current state (the carves and floods before it moved them).
+- RMG-QUIRK-5 as read: a zone generator with no such cell (a box of no row: a water zone of step 2
+  without a cell, `l1-4p-c`'s ninth of 18, at x = −14) keeps the coordinates last tried, the seed
+  of the last zone generator that had one; the fallback's mark (that cell is kept free already)
+  and its flood (a seed of cost 0 whose zone's floods are done: every cell was expanded at its last
+  cost, the conditions unchanged, so its first expansion enters nothing) change nothing; the
+  carving loop runs as for any zone. Only with none before (the first zone generator) are they the
+  stack's bytes. The port makes no seed in the first case and refuses the second
+  (`GenerateError::NoEmptyCell`); the ledger's "paths through a foreign zone" does not occur: the
+  carving reads the zone's own cells. `l1-4p-c`'s floods equal step 6's dump on every cell.
+- `rmg_zone_cost_flood` reads the seed's zone byte (signed) as Z and clears only the seed's
+  +0x1C low half and +0x10 to +0x18 (its high half, bits 12-14 and +0x20's top byte kept). Its two
+  vectors (the points, 12 bytes; the costs) are kept as `rmg_zone_distance_flood`'s; the listed
+  cost is never read. A taken cell's directions run from `rmg_neighbours`' index 7 down to 0, or
+  from 4 when it is an entrance (+0x28 bit 22: the first object of its list, its prototype's
+  template's class +0x1C, `object_settings_pointer` 0x660428's 16-byte row) with byte +1 clear;
+  a neighbour's tests in order: on the map's columns and rows (the level unchecked), +0x20 bit 23
+  clear, bit 25 set, land not 9, then for an entrance +0 set with +2 clear refused and +1 clear
+  with index 1 to 3 refused. Into another zone the cost is the taken cell's + 10, the test
+  unsigned against the high half (`jbe`), the step written ((k << 12) − 0x3001)'s bits 12-14, that
+  is (k + 4) mod 8, and +0x20's top byte Z; no previous cell. Into Z (only from Z): + 1, + 10
+  onto land 8, the test against the low half before the zero rule (a cell at 1 beside a cell of 0
+  stays 1, re-flooded or not), the zero rule's water test the land's low byte against 8 with the
+  flag. Every cost written is below the 32000 it started at.
+- `rmg_path_carve` reads its start's zone byte and cost first (none below 1 or from 30000 on: no
+  walk); per cell: a pending guard placed (not ported, RMG-STUB-1: +0x2C bit 0 is set only by
+  the connections' Border Guards, so none is pending in step 6's joining; step 9's and
+  0x542B00's need it), else the cell kept free without a +0x2C test; then with the flag clear its
+  3 × 3 clamped to [0, W) × [0, H) (the generator's +0x18, +0x1C), cells of the start's zone byte
+  without +0x2C bit 0 losing bit 26 (bit 27 not set); the next cell is the previous one, indexed
+  unchecked, the walk going on while its low half is above 0 (`ja`). Every cost along a chain of
+  previous cells is below the one before (a cell's cost and previous cell are written together,
+  from a cell then cheaper whose cost only fell since), so the walk ends at a cost of 0.
+- `rmg_water_shores_seal` walks the cells with a pointer from the first (+0x14), level by level,
+  row by row; per water cell: the zone byte, the land's low byte against 8, +0x20's top byte as a
+  signed F (any zone's flood, a water zone's too; the reset's −1 none), the 3 × 3's first land
+  (not 8 or 9, bit 26 clear, bit 25 set) row by row, its land sign-extended from 6 bits; then the
+  zone generator by the zone byte (+0x10E4, unchecked: RMG-QUIRK-4; the port leaves a byte past
+  them unsealed) and its zone's +0xC4 list, 0x1C bytes an entry, its first word the far zone,
+  whose +0x0 is compared with F. A seal marks its 3 × 3's cells (any land, objects or not) unless
+  +0x2C bit 0 and lists its water cells (pending ones too) with the land; its 5 × 5 tests the
+  object list (+0x4 to +0x8) and +0x2C bit 0. The level's painter is made after the level's last
+  row (a view of the level, `rmg_map_vtable`), with the first listed land; per listed cell a flush
+  `(land, 4)` when its land differs from the current one, then `terrain_painter_add_rect(x, y, 1,
+  1)` (its z overwrites the level counter with the same level); finished, freed, then the next
+  level. So the marks all precede the painter: its 16-bit copy (TRAPS) equals the map throughout.
+- `terrain_painter_flush` 0x5B7520 drains the sets as `terrain_painter_finish` does (set 1's
+  first, `std::set`'s leftmost; set 2's first erased by key), with the set-2 word load inlined
+  (`terrain_painter_cell_word` loads as well: the same), runs the last pass, and sets +4 and +8; the
+  sets are empty after it, the cell words kept.
+
 **Draw sites** (20 here and one of §2.1; in the order they run):
 
 | Site | Function | Drawn | Per | Condition |
@@ -1087,7 +1212,8 @@ Faults reachable only with other data: `rand() % 0` with no shipyard or gate pro
 `rmg_monolith_border_guard` marking five cells without a bounds check (a monolith on the map's edge
 wraps to the next row or level), `rmg_connection_by_monoliths` reading the exit list at the
 entrance's index unchecked, `rmg_zone_paths_connect`'s fallback seed keeping the previous zone's
-coordinates when a zone has no empty cell. Progress: +1600 (the walls), +1000 per islet, +20 per
+coordinates when a zone has no empty cell (reached with the shipped data, T4c: `l1-4p-c`, and
+harmless there; the stack's bytes only for a first zone generator without one). Progress: +1600 (the walls), +1000 per islet, +20 per
 row (the shores), +6400 (the connections).
 
 **Outside callees** (23): mapped already 10 (`crt_rand` 0x617E5C, `vector_length_int`, the terrain

@@ -604,18 +604,18 @@ id       = "RMG-TER-005"
 title    = "The terrain painter's frame"
 context  = "rmg"
 status   = "implemented"
-summary  = "A painter (one level of the map, a terrain, the weight 4) paints rectangles (RMG-TER-009) and keeps two sets of cells ordered by (y, x), nothing by address: set 1 the pinched cells of its terrain, set 2 cells of other terrains to test again. Its finish, until both sets are empty: while set 1 holds a cell, its smallest resolved (RMG-TER-014); then while set 2 holds one, its smallest taken out and, when pinched against its own terrain (RMG-TER-011), made the painter's (RMG-TER-012); then the last pass once (RMG-TER-015). A pinched cell whose resolution changes no cell (the original's loop never ending) is a typed error (RMG-QUIRK-4)."
+summary  = "A painter (one level of the map, a terrain, the weight 4) paints rectangles (RMG-TER-009) and keeps two sets of cells ordered by (y, x), nothing by address: set 1 the pinched cells of its terrain, set 2 cells of other terrains to test again. Its finish, until both sets are empty: while set 1 holds a cell, its smallest resolved (RMG-TER-014); then while set 2 holds one, its smallest taken out and, when pinched against its own terrain (RMG-TER-011), made the painter's (RMG-TER-012); then the last pass once (RMG-TER-015). A pinched cell whose resolution changes no cell (the original's loop never ending) is a typed error (RMG-QUIRK-4). A flush (terrain_painter_flush(terrain, weight), the shores' seal's and step 11's) runs the same loop and last pass without freeing the painter (a set-2 cell's word loaded before its set's byte +5 is read, as the finish's word reads load it: the same), then takes the terrain and the weight (4) given and paints on; the first fault of the painter's life is its finish's."
 quirks   = ["RMG-QUIRK-4"]
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E14 T1c1a, T3e): terrain_painter_init 0x5B7250, terrain_painter_construct 0x5B45F0, terrain_painter_finish 0x5B72F0, the sets 0x5B7CD0 to 0x5B8CD0; survey E14-generator.md §2.7.1, §2.7.2, §3.2.14"
+  ref        = "Heroes3.exe code reading (E14 T1c1a, T3e, T4c): terrain_painter_init 0x5B7250, terrain_painter_construct 0x5B45F0, terrain_painter_finish 0x5B72F0, terrain_painter_flush 0x5B7520, the sets 0x5B7CD0 to 0x5B8CD0; survey E14-generator.md §2.7.1, §2.7.2, §3.2.14"
   confidence = "high"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "The phase oracle (E14 T3e): the port's draws and cells after step 3 equal phases.txt's on the 24 corpus cases"
+  ref        = "The phase oracle (E14 T3e, T4c): the port's draws and cells after step 3 equal phases.txt's on the 24 corpus cases; the shores' seal's painters, flushed from one land to the next, draw as the original's in the 11 corpus cases that seal (plan.txt) and leave step 6's dump's terrain and pictures on every cell of the 24"
   confidence = "high"
 
 [[rule]]
@@ -934,4 +934,232 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "observation"
   ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-001"
+title    = "Step 6: the obstacle plan's order"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_paths_and_connections runs, in this order: the lanes (RMG-CON-002 to -004), the zone walls (RMG-CON-005), the land cells of no zone made obstacles (RMG-CON-006), per zone generator in order the islets (RMG-CON-007, -008), the zones' free cells joined (RMG-CON-009 to -011), the water shores sealed (RMG-CON-012), the connections (RMG-CON-013 on). Bit 26 of a cell's +0x28 marks it for obstacles (step 13), bit 27 keeps it free; a cell with +0x2C bit 0 (a pending Border Guard) keeps both through every mark. The port runs all but the connections (E14 T4c; T4d). An islet's painter fault ends the plan after the joining, a seal's at its end; RMG-QUIRK-5's refusal ends it at the joining."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_paths_and_connections 0x544920 (0x544920 to 0x544A43); survey E14-generator.md §2.3 (\"The order of step 6\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): on the 24 corpus cases the port's draws after step 5 are the original's plan, its lanes first, with plan.txt's count and digest (the walls, the cells of no zone and the joining draw nothing; h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-002"
+title    = "The lanes: marks and lines"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_free_lanes_draw first marks every cell (all levels): holding an object (its list not empty) kept free (bit 27 set, 26 cleared), else an obstacle (26 set, 27 cleared), each unless +0x2C bit 0. Then per level rand() % 4 (0x543EB8, signed form) gives its lane's line (p, q): 0 (0, 0)-(W - 1, H - 1), 1 (W / 2, 0)-(W / 2, H - 1), 2 (W - 1, 0)-(0, H - 1), 3 (0, H / 2)-(W - 1, H / 2) (the halves truncating), drawn as RMG-CON-003's segment with its branches (RMG-CON-004) until both the stack and the queue are empty."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_free_lanes_draw 0x543E20 (0x543E43 to 0x543F2A, its jump table 0x544384); survey E14-generator.md §2.3 (\"The lanes\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): the 24 corpus cases' lanes' draws (0x543EB8 and 0x54403E, their count and digest) equal the port's first draws after step 5 (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-003"
+title    = "The lanes' jagged segments"
+context  = "rmg"
+status   = "implemented"
+summary  = "A stack of segments (p, q), the line's first. Per popped segment its midpoint m = ((qx + px + 1) / 2, (qy + py + 1) / 2) (truncating toward zero). When m is p or q: p's 3 x 3 clamped to the map is kept free (rmg_map_mark_free_3x3: bit 27 set, 26 cleared, each unless +0x2C bit 0) when p lies on the map; nothing else. Else the normal n = (-(qy - py), qx - px) and L = trunc(sqrt(nx^2 + ny^2)) (vector_length_int, 32-bit squares); when L > 1, s = rand() % L (0x54403E) - L / 2 and m += (s * nx / L, ny * s / L) (each truncating); (q, m) then (m, p) are pushed, so (m, p) is drawn first; when L >= 8 and the moved m lies on the map, the branches (m, m + n) then (m, m - n) are appended to the queue (a linked list taken from its front, RMG-CON-004)."
+quirks   = []
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_free_lanes_draw 0x543E20 (0x543F91 to 0x5441A6), rmg_map_mark_free_3x3 0x531AD0, vector_length_int 0x5FCEB0, the point list 0x54D0F0, 0x54D000, 0x54D060, 0x54D0A0; survey E14-generator.md §2.3 (\"The lanes\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): the 24 corpus cases' lanes' draws (0x543EB8 and 0x54403E, their count and digest) equal the port's first draws after step 5 (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-004"
+title    = "The lanes' branches and their end"
+context  = "rmg"
+status   = "implemented"
+summary  = "With the stack empty the queue's first branch (from, to) is cast (rmg_lane_ray_cast): a Bresenham walk from `from` toward and past `to`, its major axis |dx| when |dx| > |dy|, else |dy|; the error from major / 2 plus minor per step, a diagonal step (the error less the major) when it reaches the major; each axis's sign + when its delta is above 0, else -. It returns the point before the first step that leaves the interior (columns 1 to W - 2, rows 1 to H - 2) or, from the walk's third step, before a step whose 3 x 3 holds a cell with bit 27. When that end lies 5 cells or more from `from` (squared distance >= 25) the segment (end, from) is pushed (RMG-CON-003). When both are empty the next level follows. After every level, cell by cell (level, row, column): water and rock kept free (bit 27 set, 26 cleared, unless +0x2C bit 0), then a cell with bit 26 marked an obstacle (rmg_map_mark_obstacle: unless +0x2C bit 0 bit 26 set, 27 cleared; in its 3 x 3 clamped to the map every cell not an entrance (bit 22), passable (bit 25), neither water nor rock and without +0x2C bit 0 loses bit 27), so a 3-wide lane keeps its middle free and its sides neither. No cap: the segments shrink and the casts stop at the interior's edge."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_free_lanes_draw 0x543E20 (0x5441AB to 0x544373), rmg_lane_ray_cast 0x543C70, rmg_map_mark_obstacle 0x531BD0; survey E14-generator.md §2.3 (\"The lanes\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): the 24 corpus cases' lanes' draws (0x543EB8 and 0x54403E, their count and digest) equal the port's first draws after step 5, the branches' segments drawing among them (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-005"
+title    = "The zone walls"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_zone_borders_close, cell by cell (level, row, column): a cell of a zone (its zone byte not negative) and not water is walled when its 3 x 3 clamped to the map holds a water cell of no zone, or a cell of another zone whose id is the far end of none of the cell's zone's connections (its zone generator taken by the zone byte from +0x10E4, unchecked: RMG-QUIRK-4; step 2 writes no byte past the zone generators, the port leaves such a cell unwalled; its template zone's list +0xC4 in the template's row order, step 2's appended, a connection in both its zones' lists), or of the first such connection when that is not wide or the level is 1 (RMG-QUIRK-9: on level 1 every other zone's cell walls, faithful; its flag quirk.rmg.underground_wide_walled comes with E14 T4d). Land of no zone does not wall. A walled cell takes bit 26 and loses 27 (unless +0x2C bit 0), whether it holds an object or not; every cell of its 3 x 3 without an object and without +0x2C bit 0 loses bit 27 (water, rock and other zones' cells too). The original's second pass over [y, y + 1) x [x, x + 1) marks the cell alone again when it holds no object, which changes nothing."
+quirks   = ["RMG-QUIRK-4", "RMG-QUIRK-9"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_zone_borders_close 0x53F880; survey E14-generator.md §2.3 (\"The zone walls\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): in the 11 corpus cases whose plan draws nothing after the lanes the port draws no more, the walls among them (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original); the walls' cells are checked with step 6's dump after E14 T4d"
+  confidence = "medium"
+
+[[rule]]
+id       = "RMG-CON-006"
+title    = "The land cells of no zone made obstacles"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_paths_and_connections' third part, cell by cell (level, row, column): a cell without bit 26, passable (bit 25), not rock, not an entrance (bit 22), holding no object, of no zone (its zone byte negative: +0x20 bit 23) and not water is marked an obstacle by rmg_map_mark_obstacle (RMG-CON-004's), its passable empty land neighbours losing bit 27."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_paths_and_connections 0x544920 (0x544937 to 0x5449F7), rmg_map_mark_obstacle 0x531BD0; survey E14-generator.md §2.3 (\"The order of step 6\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): in the 11 corpus cases whose plan draws nothing after the lanes the port draws no more (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original); the cells are checked with step 6's dump after E14 T4d"
+  confidence = "medium"
+
+[[rule]]
+id       = "RMG-CON-007"
+title    = "The islets: the distance from a water zone's edge and the centres"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_water_zone_islets, per zone generator in order whose terrain is water (8), with its zone's id and box [x0, x1) x [y0, y1) on its level: every cell of the box takes +0x1C bits 16-31 32000, +0x28 bits 12-14 and +0x20 bits 24-31 0; every cell of the box widened by one and clamped to the map (row by row) whose zone byte is not the id seeds rmg_zone_distance_flood: the seed entered at cost 0 (its zone unchecked), then least cost first (a vector sorted from the highest, the last taken, a new entry before its equals: equal costs first listed first; a cell entered again is listed again and expands at its current cost) each rmg_neighbours step (E, SE, S, SW, W, NW, N, NE) on the map into a cell whose zone byte is the id, 2 orthogonal and 3 diagonal, entering it (the cost into +0x1C bits 16-31, the step's index into +0x28 bits 12-14, +0x20 bits 24-31 0) when below its cost. Then while the box's cells in columns max(x0, 3)..min(x1, W - 4) and rows max(y0, 3)..min(y1, H - 4) (row by row) hold some at 20 or more: one drawn rand() % their count (0x53F745, unsigned) at (x, y) with its cost d, a half-size r = 3 + rand() % (d / 3 - 5) at most 6 (0x53F794; d >= 20 makes the modulus 1 or more), the islet (RMG-CON-008) over [max(x - r, 0), min(x + r, W)) x [max(y - r, 0), min(y + r, H)), and a flood from (x, y). The candidates are any cells of the box, the zone's or not (the others are seeds at 0: never drawn)."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_water_zone_islets 0x53F470, rmg_zone_distance_flood 0x53F1A0; survey E14-generator.md §2.3 (\"The islets\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/out/rmg/<case>/run1/clock/rmg1.draws): in the 4 corpus cases with islets (m2-4p 3, l1-4p-b 22, l1-4p-c 13, xl2-4p-seed0 63) the port's draws after step 5 equal the original's step 6 draws over their whole length, the lanes then every islet; in the other 20 the port draws no islet; the cells are checked with step 6's dump after E14 T4d"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-008"
+title    = "An islet: the terrain, the height map, the painter, the obstacles"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_islet_draw over the box of W columns and H rows: a terrain rand() % 6 (0x53EFE4: dirt, sand, grass, snow, swamp, rough); rmg_islet_heightmap's row-major byte mask: with a = (H + W) / 4 + 1 the whole box is split at once (rmg_heightmap_quadrants_push: corners and edge midpoints 0, the centre a / 2, amplitude a, no draw); then last in, first out, a record of one cell writes its top-left height clamped to 0..255, a larger one takes its edges' means top (top-left, top-right), left (top-left, bottom-left), bottom, right and the centre (all four), each displaced while a > 1 by rand() % a - a / 2 in that order (0x53EEFF, 0x53EF0C, 0x53EF19, 0x53EF2E, 0x53EF43), and is split with amplitude (a - 1) / 2 + 1: cut at the middle row (r0 + r1) / 2 and column, each quadrant given the heights at its own corners, appended bottom-right, bottom-left, top-right, top-left (a quadrant of no row or no column skipped). Divisions are C's, toward zero. A terrain painter of the terrain (terrain_painter_init, weight 4, a view of the level) is given each cell of a height above 0 row by row as a rectangle of one cell and finished (RMG-TER-005 on); then every cell of the box not water, unless +0x2C bit 0, takes bit 26 and loses 27: an islet is obstacles only (a cell the painter made land outside the box is left). Progress +1000."
+quirks   = ["RMG-QUIRK-3"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4a, T4c): rmg_islet_draw 0x53EFA0, rmg_islet_heightmap 0x53ED00, rmg_heightmap_quadrants_push 0x53E9E0, the terrain painter's init 0x5B7250, add_rect 0x5B7690, finish 0x5B72F0; survey E14-generator.md §2.3 (\"The islets\", \"The height map as read (T4a; RMG-CON-008)\", \"Step 6's plan as ported (T4c)\"), §2.7, §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/out/rmg/<case>/run1/clock/rmg1.draws and rmg1-6.cells): the 101 islets of the corpus draw as the original's, their painters' picture draws included; in m2-4p and l1-4p-c (no shore sealed after them) the port's terrain and pictures after the islets equal step 6's dump on every cell"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-009"
+title    = "Joining each zone's free cells: the reset and the seeds"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_zone_paths_connect (step 6's fifth part, step 9, rmg_monolith_border_guard's): every cell's floods reset (+0x1C 32000 in both halves, +0x10 to +0x18 -1, +0x20 bits 24-31 -1, +0x28 bits 12-14 0). Then per zone generator k in order, on its level (+0x18) over its box (+0x20 to +0x2C) row by row: a cell of zone byte k (the generator's index), not water unless the zone generator's terrain is, holding no object, is tried (its coordinates kept); the first tried that is kept free (bit 27), passable (bit 25) and not rock seeds the cost flood (RMG-CON-010; its water flag the zone generator's terrain being water); with none, the last tried is kept free (bit 27 set, 26 cleared, unless +0x2C bit 0) and seeds it. Then every cell of the box of zone byte k, kept free, passable, neither rock nor water, whose cost (+0x1C bits 0-15) is not 0, row by row as the floods leave them, gets a carve (RMG-CON-011) and a flood from it. A zone generator with no cell tried keeps the coordinates last tried: an earlier zone generator's seed, whose mark and flood change nothing (a fixed point of its zone's floods), so the port makes none; with none tried before they are the stack's bytes, which the port refuses with a typed error (RMG-QUIRK-5, exploit-fix; the corpus's l1-4p-c has a water zone generator of step 2 without a cell after others: the user, RMG-Q3, E14 decision 14)."
+quirks   = ["RMG-QUIRK-5"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_zone_paths_connect 0x5405D0; survey E14-generator.md §2.3 (\"Joining each zone's free cells\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/out/rmg/<case>/run1/clock/rmg1-6.cells): on the 24 corpus cases the port's floods after the plan (+0x10 to +0x18, +0x1C, +0x20 bits 24-31, +0x28 bits 12-14) equal step 6's dump on every cell, l1-4p-c's ninth zone generator (a water zone without a cell) seeding nothing; the joining draws nothing (h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-010"
+title    = "The zone cost flood"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_zone_cost_flood (the joining's, step 7's junction paths'; the connections read it) from a seed of zone Z (its zone byte, unchecked) with a water flag: the seed takes +0x1C bits 0-15 0 and +0x10 to +0x18 -1; least cost first (two vectors kept sorted from the highest, a binary search putting a new entry before its equals, the last taken: equal costs first listed first; a cell listed again expands at its current cost, read in +0x1C bits 0-15 when of zone Z, else bits 16-31). A taken cell steps rmg_neighbours from the last index to the first (NE, N, NW, W, SW, S, SE, E), only indices 4 down to 0 (W, SW, S, SE, E) when it is an entrance (+0x28 bit 22) whose first object's class has object settings byte +1 clear; onto a cell on the map's columns and rows (the seed's level) of a zone (its zone byte not negative), passable (bit 25), not rock, and when an entrance, not one whose first object's settings have +0 set and +2 clear, nor one with +1 clear entered by SE, S or SW. Into a zone other than Z, from a cell of Z or of that zone: cost + 10, when below its +0x1C bits 16-31, written there with +0x28 bits 12-14 the step back ((k + 4) mod 8) and +0x20 bits 24-31 Z. Into Z, from a cell of Z: cost + 1, + 10 onto water, when below its bits 0-15; then 0 when the cost is 0 and the cell kept free (bit 27), not water unless the flag; written with +0x10 to +0x18 the cell it came from. Costs stay below 32000."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_zone_cost_flood 0x531460, rmg_neighbours 0x69CDC0, object_settings_pointer 0x660428; survey E14-generator.md §2.3 (\"Joining each zone's free cells\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/out/rmg/<case>/run1/clock/rmg1-6.cells): on the 24 corpus cases the port's costs, previous cells, flooding zones and steps back after the plan equal step 6's dump on every cell; the seals they select draw as the original's (plan.txt)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-011"
+title    = "The carve"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_path_carve from a cell with its flag clear (the joining's): when its cost (+0x1C bits 0-15) is 1 to 29999, back along the cells it was entered from (+0x10 to +0x18, unchecked) while their cost is above 0: each cell kept free (bit 27 set, 26 cleared), and the cells of the start's zone in its 3 x 3 clamped to the map without +0x2C bit 0 lose bit 26; the cell of cost 0 reached is left. The walk ends: every cost on it is below the one before. A cell on the walk with +0x2C bit 0 gets its pending Border Guard (rmg_prototype_draw 0x546154 of type 9 and the colour in +0x2C bits 1-4, placed by the generator's slot 1, +0x2C bits 0-4 cleared): not ported yet (RMG-STUB-1, E14 T4d), none being pending before step 6's connections. With the flag set (rmg_connection_by_land's) the 3 x 3 is not cleared (T4d)."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_path_carve 0x5408E0, rmg_map_item 0x5378E0; survey E14-generator.md §2.3 (\"Joining each zone's free cells\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/out/rmg/<case>/run1/clock/rmg1-6.cells): on the 24 corpus cases the floods after the carves equal step 6's dump on every cell; the carves' marks are checked with step 6's dump after E14 T4d"
+  confidence = "medium"
+
+[[rule]]
+id       = "RMG-CON-012"
+title    = "Sealing water shores"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_water_shores_seal, level by level, cell by cell (row, column): a water cell of a zone (its zone byte not negative) that a cost flood entered from a zone F (+0x20 bits 24-31 not negative; any zone's, water's too), whose 3 x 3 clamped to the map holds a land cell neither water nor rock, passable (bit 25) and without bit 26 (the first row by row gives the land L, its +0x24 bits 0-5), is sealed when its zone's list (+0xC4, its zone generator's by the zone byte, unchecked: RMG-QUIRK-4; the port leaves a byte past them) names F as no connection's far end: every cell of its 3 x 3 takes bit 26 and loses 27 unless +0x2C bit 0, its water cells listed with L in that order (a cell listed again when sealed again); every cell of its 5 x 5 clamped to the map holding no object and without +0x2C bit 0 loses bit 27. A seal's marks are read by the later cells' tests. Then, when the level listed a cell, a terrain painter of the first L (a view of the level, weight 4) gets each listed cell as a rectangle of one cell in the list's order, flushed to the next L before a cell of another (RMG-TER-005), and is finished. All marks come before the painter: nothing else writes the map in its life. Progress +20 per row."
+quirks   = ["RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_water_shores_seal 0x53FCB0, terrain_painter_init 0x5B7250, terrain_painter_add_rect 0x5B7690, terrain_painter_flush 0x5B7520, terrain_painter_finish 0x5B72F0; survey E14-generator.md §2.3 (\"Sealing water shores\", \"Step 6's plan as ported (T4c)\"), §2.7.1, §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt and rmg1-6.cells): the 11 corpus cases that seal draw as the original's to the plan's end (s1-2p-c1-islands 1395 draws after the lanes; m2-3p-c2-islands, l1-4p-b, l2-2p-c4-islands, xl2-4p-seed0 and xl2-8p-t4-islands heavily; h3-pack-rmg's the_corpus_draws_step_6s_plan_as_the_original); the terrain and pictures after the plan equal step 6's dump on every cell of the 24"
   confidence = "high"
