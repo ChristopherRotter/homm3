@@ -1,4 +1,4 @@
-# A hot seat's start (E24 M5 T5, design §5.31; clients/map/to-record.toml `seat-start`): `seq-seat`'s
+# A hot seat's start (E24 M5 T5, design §5.31; clients/map/sequences.toml `seat-start`): `seq-seat`'s
 # map as the new game leaves it (nothing staged: the sequence's 0 is Red's first cover, the clock
 # frozen from Begin).
 size = 36
@@ -8,5 +8,7 @@ towns = [
     { at = [8, 3], faction = 0, owner = 0, buildings = "fort" },
     { at = [26, 31], faction = 1, owner = 1, buildings = "fort" },
 ]
-view = [0, 0, 0]
+# The first human's own view, as the start centres it on its hero (the viewer compares the live
+# part's with it; the harness stages none).
+view = [-5, -4, 0]
 explored = "start"

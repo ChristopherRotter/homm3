@@ -129,8 +129,8 @@ pub struct Covered {
     /// The resource bar drawn with these amounts (a timed event's resources at the start,
     /// MCL-Q71: recorded, `seat-timed-event`); none: blank.
     pub resources: Option<[i32; 7]>,
-    /// The start's first steps done (`minimap_redraw` 0x4C786C over the shield, sleep, move hero,
-    /// cast and End Turn enabled 0x4C787C): what a start's box shows over the cover.
+    /// The start's first steps done (`minimap_redraw` 0x4C786C over the shield, sleep, cast and
+    /// End Turn enabled 0x4C787C, move hero as it stood): what a start's box shows over the cover.
     pub started: bool,
 }
 

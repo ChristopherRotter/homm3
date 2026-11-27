@@ -1,5 +1,5 @@
 # `seq-seat` with a timed event for Blue on the first day (E24 M5 T5, design §5.31, MCL-Q71;
-# clients/map/to-record.toml `seat-timed-event`): its box opens at Blue's start, after the cover's
+# clients/map/sequences.toml `seat-timed-event`): its box opens at Blue's start, after the cover's
 # box and before the start's redraw.
 size = 36
 terrain = "grass"

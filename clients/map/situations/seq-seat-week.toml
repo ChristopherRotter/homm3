@@ -1,4 +1,4 @@
-# `seq-seat` on the first week's last day (E24 M5 T5, design §5.31; clients/map/to-record.toml
+# `seq-seat` on the first week's last day (E24 M5 T5, design §5.31; clients/map/sequences.toml
 # `seat-new-week`): a second hero of Red's selected (the date written is drawn by a selection's
 # redraw, as `seq-turn-week`'s), Blue's End Turn starting the next week.
 size = 36

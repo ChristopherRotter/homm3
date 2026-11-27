@@ -46,9 +46,9 @@ use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
-    Action, AfterBattle, Answer, BATTLE_CURSOR, Boats, Computer, Cover, Cursor, DEFAULT_CURSOR,
-    Direction, Dissolve, Draw, FADE_BLACK, Fight, Found, HandOver, Hero, LevelBox, Move, NextTurn,
-    Owners, Question, Rules, Start, Switch, TownBoxes, Walked,
+    Action, AfterBattle, Answer, BATTLE_CURSOR, Boats, Boxes, Computer, Cover, Cursor,
+    DEFAULT_CURSOR, Direction, Dissolve, Draw, Events, FADE_BLACK, Fight, Found, HandOver, Hero,
+    LevelBox, Move, NextTurn, Owners, Question, Rules, Start, Switch, TownBoxes, Walked,
 };
 use h3_map_view::{engine, status, timeline, turn};
 use h3_protocol::wire::game::{Decision, GameEvent};
@@ -1365,7 +1365,7 @@ impl<'a> Painter<'a> {
         mut turns: Vec<NextTurn>,
         raw: &RawMap,
         opening: bool,
-    ) -> Result<(Vec<NextTurn>, Vec<(u8, Arc<MessageBox>)>), String> {
+    ) -> Result<(Vec<NextTurn>, Boxes), String> {
         let live = &self.live;
         let mut colours: Vec<u8> = live.heroes.iter().map(|h| h.owner).collect();
         colours.push(live.viewer);
@@ -1547,7 +1547,7 @@ impl<'a> Painter<'a> {
         raw: &RawMap,
         colour: u8,
         date: h3_map_view::live::Date,
-    ) -> Result<Vec<(Arc<MessageBox>, [i32; 7])>, String> {
+    ) -> Result<Events, String> {
         let day = u32::from(date.month.saturating_sub(1)) * 28
             + u32::from(date.week.saturating_sub(1)) * 7
             + u32::from(date.day.saturating_sub(1));
@@ -3197,5 +3197,73 @@ fn pandora_text(raw: &RawMap, o: usize) -> Option<String> {
             message: Some(m), ..
         }) if !m.text.as_bytes().is_empty() => Some(decode_windows_1252(m.text.as_bytes())),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use h3_map_view::live::{Kingdom, TurnStatus};
+
+    /// A turn's start of `player`, a computer's with `computer`.
+    fn next(player: u8, computer: bool) -> NextTurn {
+        let status = if computer {
+            Status::Turn(TurnStatus {
+                crest: 0,
+                sand: 0,
+                glass: 0,
+                value: 0,
+            })
+        } else {
+            Status::Date(DateStatus { frame: 0 })
+        };
+        NextTurn {
+            turn: Turn {
+                at: 0,
+                player,
+                kingdom: Kingdom::default(),
+                status,
+                week: Calendar::Named(0),
+                month: Calendar::Named(0),
+                heroes: None,
+                boats: None,
+            },
+            message: None,
+            heroes: Vec::new(),
+            walks: Vec::new(),
+            taken: Vec::new(),
+            flags: Vec::new(),
+            lost: Vec::new(),
+            boats: Vec::new(),
+            list: None,
+            first: false,
+            open: false,
+            cover: None,
+        }
+    }
+
+    #[test]
+    fn a_lone_human_s_turns_in_place_are_covered() {
+        // E24 M5 T5 (MCL-Q73): each human's turn covered, a computer's before it told; a
+        // computer's turn uncovered.
+        let mut turns = vec![next(1, true), next(0, false), next(0, false)];
+        cover_turns(&mut turns);
+        assert!(turns[0].cover.is_none());
+        assert_eq!(turns[1].cover.as_ref().map(|c| c.computers), Some(true));
+        assert_eq!(turns[2].cover.as_ref().map(|c| c.computers), Some(false));
+    }
+
+    #[test]
+    fn a_sample_s_length_rounds_up() {
+        // E24 M5 T5: as the harness's clock (`xdd.c`): frames × 1 000 over the rate.
+        let pcm = |frames: usize, rate: u32| h3_assets::wav::Pcm {
+            rate,
+            channels: 1,
+            samples: vec![0; frames],
+        };
+        assert_eq!(length_of(&pcm(22_050, 22_050)), 1000);
+        assert_eq!(length_of(&pcm(22_051, 22_050)), 1001);
+        assert_eq!(length_of(&pcm(0, 0)), 0);
     }
 }

@@ -259,9 +259,10 @@ pub fn selections(layout: &AdventureLayout, lists: &ListArt, live: &Live) -> Vec
 }
 
 /// The buttons a hot seat's start enables before its full redraw (E24 M5 T5, design §5.31:
-/// items 8, 7, 6 and 12's `+0x24` with 1 at 0x4C787C to 0x4C78CF): cast, move hero, sleep, End
-/// Turn.
-pub const STARTED: [u16; 4] = [id::CAST, id::MOVE_HERO, id::SLEEP, id::END_TURN];
+/// items 8, 6 and 12's `+0x24` with 1 at 0x4C787C to 0x4C78CF): cast, sleep, End Turn. Move
+/// hero (item 7's call too) shows as it stood (recorded: `seat-timed-event`'s event box at 4 660,
+/// move hero blank, the three enabled).
+pub const STARTED: [u16; 3] = [id::CAST, id::SLEEP, id::END_TURN];
 
 /// The string catalogue's keys the panels show texts by (E24 M3 T5a; `clients/text/keys.toml`).
 pub const KEYS: [&str; 5] = [

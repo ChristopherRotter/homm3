@@ -1344,12 +1344,18 @@ pub struct Cover {
     pub selection: Option<Status>,
     /// The map's timed events' boxes at its start (`map_timed_events` 0x4CD910, MCL-Q71), each
     /// with the resources it gives (the original's seven, added as its box opens).
-    pub events: Vec<(Arc<MessageBox>, [i32; 7])>,
+    pub events: Events,
     /// The game's start (`adventure_manager_start` 0x406FD0, a [`NextTurn::first`] made of the
     /// live part): the start's kingdom and selection kept under the cover, as the first human's
     /// uncovered map drew them.
     pub opening: bool,
 }
+
+/// Boxes by colour (E24 M5 T5: [`HandOver::boxes`]).
+pub type Boxes = Vec<(u8, Arc<MessageBox>)>;
+
+/// Boxes each with the resources they give (E24 M5 T5: [`Cover::events`]).
+pub type Events = Vec<(Arc<MessageBox>, [i32; 7])>;
 
 /// A hot seat's hand-overs (E24 M5 T5, design §5.31, *provisional*): the game begun with more
 /// than one human (`begin_humans` 0x699274 above 1: every later human's turn covered, MCL-Q73).
@@ -1357,7 +1363,7 @@ pub struct Cover {
 pub struct HandOver {
     /// Each human's cover's box by its colour (GENRLTXT 14 with its hot seat's name, its crest
     /// captioned with its colour's name, framed in its colours: laid out by the adapter).
-    pub boxes: Vec<(u8, Arc<MessageBox>)>,
+    pub boxes: Boxes,
     /// The cover's sound's length, ms ([`TurnArt::cover`]): the start waits for its end after
     /// the box's OK, at most [`TurnArt::wait`]; none, no wait (a run without sound: the
     /// original's `wait_for_sample` waits for nothing without its driver).
@@ -4282,7 +4288,13 @@ impl Loop {
             Told::DaysLeft => self.choose(t, true),
             // A hot seat's cover's OK and a timed event's close (E24 M5 T5, design §5.31).
             Told::Cover => return self.covered_ok(t),
-            Told::Event => return self.hand_events(t),
+            Told::Event => {
+                // The start's redraws due since run in that millisecond (recorded:
+                // `seat-timed-event`'s objects stepped at 5 160, the box's close).
+                self.hand_events(t)?;
+                self.idle_message(t);
+                return Ok(());
+            }
             _ => {}
         }
         // A box waiting opens in this millisecond (E24 M4 T2a2).
@@ -7527,6 +7539,9 @@ pub fn play_held(
     Ok((states, held))
 }
 
+/// The cues a sequence gave, with their milliseconds, in order ([`play_heard`]).
+pub type Heard = Vec<(u32, Cue)>;
+
 /// [`play`] with the sound's cues given, with their milliseconds, in order (E24 M5 T5: a sound
 /// run's samples compared, `timelines/<id>-sounds.txt`).
 ///
@@ -7537,7 +7552,7 @@ pub fn play_heard(
     start: &Start,
     actions: &BTreeMap<u32, Vec<Action>>,
     until: u32,
-) -> Result<(Vec<State>, Vec<(u32, Cue)>), (u32, Unplayable)> {
+) -> Result<(Vec<State>, Heard), (u32, Unplayable)> {
     let mut l = Loop::start(rules, start).map_err(|why| (0, why))?;
     let mut states = Vec::with_capacity(usize::try_from(until).unwrap_or(0).saturating_add(1));
     states.push(l.state(0));

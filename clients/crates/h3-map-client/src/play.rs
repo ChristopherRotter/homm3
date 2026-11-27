@@ -169,7 +169,7 @@ fn played(
             names: humans.clone(),
             sample: None,
             timed: game.duration != hot_seat::UNLIMITED,
-            computers: computers_between(hot, last, player),
+            computers: computers_between(hot.seats(), last, player),
             framed: last.and_then(|p| hot.seat(p)).map(|s| s.colour),
         });
         last = Some(player);
@@ -221,8 +221,7 @@ struct Viewed<'h, 'r> {
 /// Whether a computer's seat plays between the human `last` (none: the game's start) and
 /// `player` in the seats' order (E24 M5 T5, design §5.31: its turn, ended at once by the host,
 /// `MCL-STUB-5`, leaves the cover's four buttons disabled).
-fn computers_between(hot: &HotSeat<'_>, last: Option<PlayerId>, player: PlayerId) -> bool {
-    let seats = hot.seats();
+fn computers_between(seats: &[hot_seat::Seat], last: Option<PlayerId>, player: PlayerId) -> bool {
     let to = player.index();
     let between = |i: usize| match last.map(PlayerId::index) {
         None => i < to,
@@ -771,6 +770,23 @@ pub(crate) mod tests {
         assert_eq!(o.duration, hot_seat::UNLIMITED);
         let o = Options::parse(&args(&["m.h3m", "--turns", "6", "--records", "r"])).unwrap();
         assert_eq!((o.turns, o.records), (Some(6), Some(PathBuf::from("r"))));
+    }
+
+    #[test]
+    fn a_computer_s_seat_between_two_humans() {
+        // E24 M5 T5 (design §5.31): a computer's seat between the human before and this one in
+        // the seats' order, round from the last; before the first human at the game's start.
+        let seat =
+            |index: u8, human: bool| hot_seat::Seat::new(PlayerId::new(index), index, human, None);
+        let seats = [seat(0, true), seat(1, true), seat(2, false)];
+        let p = PlayerId::new;
+        assert!(!computers_between(&seats, Some(p(0)), p(1)));
+        assert!(computers_between(&seats, Some(p(1)), p(0)));
+        assert!(!computers_between(&seats, None, p(0)));
+        let first = [seat(0, false), seat(1, true)];
+        assert!(computers_between(&first, None, p(1)));
+        // A lone human's next turn after the computer's.
+        assert!(computers_between(&first, Some(p(1)), p(1)));
     }
 
     #[test]

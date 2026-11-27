@@ -9,13 +9,20 @@ use h3_ui::message::Style;
 use crate::live::Turn;
 
 /// The recorded hand-overs: their situations, timelines, kept live parts and samples.
-const SEATS: [(&str, &str, &str, &str, &str); 4] = [
+const SEATS: [(&str, &str, &str, &str, &str); 9] = [
     (
         "seat-hand-over",
         include_str!("../../../../../map/situations/seq-seat.toml"),
         include_str!("../../../../../map/timelines/seat-hand-over.txt"),
         include_str!("../../../../../map/timelines/seat-hand-over-live.toml"),
         include_str!("../../../../../map/timelines/seat-hand-over-sounds.txt"),
+    ),
+    (
+        "seat-hand-over-late",
+        include_str!("../../../../../map/situations/seq-seat.toml"),
+        include_str!("../../../../../map/timelines/seat-hand-over-late.txt"),
+        include_str!("../../../../../map/timelines/seat-hand-over-late-live.toml"),
+        include_str!("../../../../../map/timelines/seat-hand-over-late-sounds.txt"),
     ),
     (
         "seat-new-day",
@@ -37,6 +44,34 @@ const SEATS: [(&str, &str, &str, &str, &str); 4] = [
         include_str!("../../../../../map/timelines/seat-new-day-ai.txt"),
         include_str!("../../../../../map/timelines/seat-new-day-ai-live.toml"),
         include_str!("../../../../../map/timelines/seat-new-day-ai-sounds.txt"),
+    ),
+    (
+        "seat-new-week",
+        include_str!("../../../../../map/situations/seq-seat-week.toml"),
+        include_str!("../../../../../map/timelines/seat-new-week.txt"),
+        include_str!("../../../../../map/timelines/seat-new-week-live.toml"),
+        include_str!("../../../../../map/timelines/seat-new-week-sounds.txt"),
+    ),
+    (
+        "seat-new-month",
+        include_str!("../../../../../map/situations/seq-seat-month.toml"),
+        include_str!("../../../../../map/timelines/seat-new-month.txt"),
+        include_str!("../../../../../map/timelines/seat-new-month-live.toml"),
+        include_str!("../../../../../map/timelines/seat-new-month-sounds.txt"),
+    ),
+    (
+        "seat-timed-event",
+        include_str!("../../../../../map/situations/seq-seat-event.toml"),
+        include_str!("../../../../../map/timelines/seat-timed-event.txt"),
+        include_str!("../../../../../map/timelines/seat-timed-event-live.toml"),
+        include_str!("../../../../../map/timelines/seat-timed-event-sounds.txt"),
+    ),
+    (
+        "seat-start",
+        include_str!("../../../../../map/situations/seq-seat-start.toml"),
+        include_str!("../../../../../map/timelines/seat-start.txt"),
+        include_str!("../../../../../map/timelines/seat-start-live.toml"),
+        include_str!("../../../../../map/timelines/seat-start-sounds.txt"),
     ),
 ];
 
@@ -102,6 +137,8 @@ fn seated(
         })];
     }
     start.player = viewer;
+    // The mouse-over's facts (the binary's): the viewer's heroes by its list.
+    start.hover = Some(super::computers::hover_of(live));
     start.question = Some(laid("End?", Style::OkCancel));
     start.sound = Some(crate::sound::tests::sound(crate::sound::tests::tiles(
         36,
@@ -462,4 +499,52 @@ fn the_game_s_start_covered_keeps_its_selection() {
     let s = l.state(2);
     assert!(s.drawn.cover.is_none() && s.drawn.message.is_none());
     assert_eq!((s.cursor.kind, s.hero), (CURSOR_TYPE, start.hero));
+}
+
+#[test]
+fn the_hand_over_s_steps_without_a_hand_over_under_way() {
+    // Each step called with none under way (an OK, a wait's end, an event's close): nothing
+    // but the idle step; a timed event without the cover drawn opens its box over the map.
+    let (start, ..) = seated("seat-hand-over");
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    assert_eq!(l.covered_ok(5), Ok(()));
+    assert!(l.handing.is_none() && l.covered.is_none() && !l.timer);
+    let (_, actions, ..) = seated("seat-hand-over");
+    for t in 1..=160 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    l.covered = None;
+    if let Some(handing) = &mut l.handing {
+        handing
+            .events
+            .push_back((laid("An event.", Style::Ok), [0; 7]));
+    }
+    l.boxed = None;
+    assert_eq!(l.hand_events(161), Ok(()));
+    assert!(l.drawn().message.is_some() && l.drawn().cover.is_none());
+}
+
+#[test]
+fn an_action_the_loop_cannot_play_given_during_the_wait_fails_at_the_start() {
+    // A pointer over the view without the mouse-over's facts (a recording's refusal), given
+    // while the start waits: refused in the start's millisecond, at the wait's end or at an
+    // event's close; `play_heard` names its millisecond, 0 for a start the loop refuses.
+    let (mut start, mut actions, ..) = seated("seat-hand-over");
+    start.hover = None;
+    actions.insert(1000, vec![Action::Pointer([100, 100])]);
+    let failed = play_heard(rules(Bugs::Original), &start, &actions, 8000);
+    assert_eq!(failed.err(), Some((4660, Unplayable::OverView([100, 100]))));
+    let mut evented = start.clone();
+    if let Some(cover) = &mut evented.turns[0].cover {
+        cover.events = vec![(laid("An event.", Style::Ok), [0; 7])];
+    }
+    actions.insert(5000, vec![Action::BoxKey(Key::Ok)]);
+    actions.insert(5060, vec![Action::BoxKeyUp(Key::Ok)]);
+    let failed = play_heard(rules(Bugs::Original), &evented, &actions, 8000);
+    assert_eq!(failed.err(), Some((5060, Unplayable::OverView([100, 100]))));
+    let mut over = start;
+    over.pointer = [100, 100];
+    let failed = play_heard(rules(Bugs::Original), &over, &BTreeMap::new(), 10);
+    assert_eq!(failed.err(), Some((0, Unplayable::OverView([100, 100]))));
 }

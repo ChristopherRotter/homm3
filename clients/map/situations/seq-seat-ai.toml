@@ -1,5 +1,5 @@
 # `seq-seat` with a computer player between Blue and Red (E24 M5 T5, design §5.31;
-# clients/map/to-record.toml `seat-new-day-ai`): Tan's hero in a corner far from both humans'
+# clients/map/sequences.toml `seat-new-day-ai`): Tan's hero in a corner far from both humans'
 # sight (Red's explored tiles stop short of it, Blue's are the start's), no town (a computer with
 # a Tavern hires a hero that may walk into sight).
 size = 36

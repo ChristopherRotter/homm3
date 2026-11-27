@@ -89,28 +89,23 @@ impl Loop {
             .as_ref()
             .and_then(|s| s.boxes.iter().find(|(c, _)| *c == self.shown))
             .map(|(_, m)| Arc::clone(m));
+        // No box laid out for the colour (*provisional*): the start at the loop's next turn.
         self.handing = Some(Handing {
             next,
             choice,
             sample_end,
-            until: None,
+            until: message.is_none().then_some(t),
             queued: alloc::vec::Vec::new(),
             events: cover.events.into_iter().collect::<VecDeque<_>>(),
         });
-        match message {
-            Some(message) => self.open_box(message, Told::Cover),
-            // No box laid out for the colour (*provisional*): the start at once.
-            None => {
-                if let Some(handing) = &mut self.handing {
-                    handing.until = Some(t);
-                }
-            }
+        if let Some(message) = message {
+            self.open_box(message, Told::Cover);
         }
     }
 
     /// The cover's box closed by its OK at `t` (0x4CA994): the start once the cover's sound ends,
     /// at most [`crate::turn::TurnArt::wait`] from now (an OK in its last part waits for its end,
-    /// one after it none); the turn's start at once without a wait.
+    /// one after it none); the turn's start at once without a wait, then the idle step.
     pub(super) fn covered_ok(&mut self, t: u32) -> Result<(), Unplayable> {
         let wait = self.rules.turn.wait;
         let until = match self.handing.as_ref().and_then(|h| h.sample_end) {
@@ -120,8 +115,11 @@ impl Loop {
         if let Some(handing) = &mut self.handing {
             handing.until = Some(until);
         }
+        // A start at once, the redraws due since run in that millisecond (recorded:
+        // `seat-hand-over-late`'s objects stepped at 6 160, the OK's release).
         if until <= t {
-            return self.hand_start(t);
+            self.hand_start(t)?;
+            self.idle_message(t);
         }
         Ok(())
     }
@@ -153,7 +151,7 @@ impl Loop {
     }
 
     /// The start after the wait (0x4C7862 to 0x4C78F0): the minimap drawn over the shield (the
-    /// view's corner as it stands), sleep, move hero, cast and End Turn enabled, the clock
+    /// view's corner as it stands), sleep, cast and End Turn enabled (move hero as it stood: `panels::STARTED`), the clock
     /// started; then the timed events and the turn's start ([`Loop::hand_events`]).
     fn hand_start(&mut self, t: u32) -> Result<(), Unplayable> {
         if let Some(handing) = &mut self.handing {

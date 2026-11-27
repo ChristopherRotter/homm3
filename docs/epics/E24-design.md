@@ -5451,9 +5451,11 @@ clock's start and the "your turn" window: survey `E16-timer-survey.md` §2, §8.
     100 ms (§5.1), the month's picture fewer times.
 - **Built (M5 T5 part three;** *provisional* names): `h3_map_view::timeline::hand` (the
   `Loop`'s hand-over: `hand_over` the steps up to the box, `covered_ok` the wait,
-  `waiting`/`wait_input` the loop held and its input kept, `hand_start` the minimap, the four
-  buttons and the clock, `hand_events` the timed events then `day_start`, its date's window built
-  once more: MCL-Q72's third `newday.wav`); `Start::seat` (`HandOver`: each human's box, the cover's
+  `waiting`/`wait_input` the loop held and its input kept, `hand_start` the minimap, the buttons
+  and the clock, `hand_events` the timed events then `day_start` (the idle step after an event's
+  box closes it), its date's window built once more: MCL-Q72's third `newday.wav`); seen, move
+  hero stays as it stood at the start's step (9) (`seat-timed-event`'s event box: blank, sleep,
+  cast and End Turn enabled: `panels::STARTED`); `Start::seat` (`HandOver`: each human's box, the cover's
   sample's length, the clock), `NextTurn::cover` (`Cover`: the seat's view, a computer's turn
   before, the seat's selection's window, the timed events, the opening), `Draw::cover`
   (`live::Covered`) and `Draw::seat`, `State::shown` and `timer` (the timeline's `shown` and

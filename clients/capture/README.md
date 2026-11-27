@@ -1678,7 +1678,8 @@ frozen on the scenario list, Begin clicked, the map loaded and covered on the fr
 situation that stages nothing after the start, `start_staged`; the samples since Begin listed,
 the cover's at −1; its frame at 0 compared by the frame check alone, the still at 0 not: since
 E24 M5 T5 part three the viewer draws the cover; its live part holds the first human's selected
-hero, lifted under the cover, on its record's tile: `Mem.lifted_standing`). The timeline
+hero, lifted under the cover, on its record's tile: `Mem.lifted_standing`, and `frames` −1:
+nothing drawn at the frozen clock since the steps were written 0). The timeline
 has, a hot seat's only, `<ms> shown <colour>` (`shown_player` 0x69778C), `<ms> covered <0|1>`
 (`covered_view` 0x699538: cleared before the cover's box, so never seen on the frozen clock)
 and `<ms> timer <started> <paused>` (the turn timer's +4 and +0x10 set) where they change; in

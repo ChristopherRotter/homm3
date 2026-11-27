@@ -609,8 +609,16 @@ pub fn apply_live(
     if let Some(cycles) = number("river_cycles")? {
         live.moment.river_cycles = cycles;
     }
-    if let Some(frames) = number("frames")? {
-        live.moment.frames = frames;
+    // The objects' frame steps the screen shows: memory's less one, so −1 where nothing was
+    // drawn at the frozen clock since they were written 0 (E24 M5 T5 part three: a hot seat's
+    // start, its cover over the map; the start's redraw then draws step 0), taken modulo 2³².
+    if let Some(value) = table.get("frames") {
+        let frames = value
+            .as_integer()
+            .and_then(|n| i32::try_from(n).ok())
+            .filter(|&n| n >= -1)
+            .ok_or_else(|| failed("`frames` is not a count (or -1)"))?;
+        live.moment.frames = frames.cast_unsigned();
     }
     if let Some(viewer) = number("viewer")? {
         live.viewer = u8::try_from(viewer)

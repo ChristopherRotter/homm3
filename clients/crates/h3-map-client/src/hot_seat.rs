@@ -101,6 +101,21 @@ pub struct Seat {
 }
 
 impl Seat {
+    /// `player`'s seat of `colour`, a human's (named so) or a computer's, told nothing yet.
+    #[must_use]
+    pub fn new(player: PlayerId, colour: u8, human: bool, name: Option<String>) -> Self {
+        Self {
+            player,
+            colour,
+            human,
+            name,
+            view: None,
+            legal: None,
+            clock: None,
+            n: 0,
+        }
+    }
+
     /// The frame `message` folded in.
     ///
     /// # Errors
@@ -246,16 +261,7 @@ impl<'r> HotSeat<'r> {
                 .cloned()
                 .flatten()
                 .filter(|_| setup.human);
-            seats.push(Seat {
-                player,
-                colour: setup.colour,
-                human: setup.human,
-                name,
-                view: None,
-                legal: None,
-                clock: None,
-                n: 0,
-            });
+            seats.push(Seat::new(player, setup.colour, setup.human, name));
         }
         let mut out = Vec::new();
         let session = GameSession::start(

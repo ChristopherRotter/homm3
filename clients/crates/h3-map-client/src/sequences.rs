@@ -385,25 +385,8 @@ impl Context<'_> {
             .join("timelines")
             .join(format!("{}-sounds.txt", sequence.id));
         let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        let mut theirs: Vec<(i64, u32, u32)> = Vec::new();
-        for line in text.lines().filter(|l| !l.is_empty()) {
-            let fields: Vec<i64> = line
-                .split_whitespace()
-                .map(str::parse)
-                .collect::<Result<_, _>>()
-                .map_err(|e| format!("{}: `{line}`: {e}", path.display()))?;
-            let [t, _, length, loops] = fields[..] else {
-                return Err(format!("{}: `{line}` is not 4 numbers", path.display()));
-            };
-            let t = match (sequence.start, t) {
-                (true, -1) => 0,
-                (_, t) if t < 0 => continue,
-                (_, t) => t,
-            };
-            let number = |v: i64| u32::try_from(v).map_err(|e| format!("{}: {e}", path.display()));
-            theirs.push((t, number(length)?, number(loops)?));
-        }
-        theirs.sort_unstable();
+        let theirs = recorded_samples(&text, sequence.start)
+            .map_err(|e| format!("{}: {e}", path.display()))?;
         let line = |s: &(i64, u32, u32)| format!("{} {} {}", s.0, s.1, s.2);
         if let Some(dir) = &self.options.frames {
             let out = dir.join("ours-sounds.txt");
@@ -422,6 +405,35 @@ impl Context<'_> {
         }
         Ok(Verdict::Heard(n, ours.len()))
     }
+}
+
+/// A recording's samples (`<id>-sounds.txt`'s `<ms> <channel> <length> <loops>` lines) as
+/// `(ms, length, loops)` in order, without their channels; a game's `start`'s cover at −1 at 0,
+/// anything before it (the shell's Begin's click) left out.
+///
+/// # Errors
+/// A line that is not four numbers, a length or loops below 0.
+fn recorded_samples(text: &str, start: bool) -> Result<Vec<(i64, u32, u32)>, String> {
+    let mut theirs: Vec<(i64, u32, u32)> = Vec::new();
+    for line in text.lines().filter(|l| !l.is_empty()) {
+        let fields: Vec<i64> = line
+            .split_whitespace()
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .map_err(|e| format!("`{line}`: {e}"))?;
+        let [t, _, length, loops] = fields[..] else {
+            return Err(format!("`{line}` is not 4 numbers"));
+        };
+        let t = match (start, t) {
+            (true, -1) => 0,
+            (_, t) if t < 0 => continue,
+            (_, t) => t,
+        };
+        let number = |v: i64| u32::try_from(v).map_err(|e| format!("`{line}`: {e}"));
+        theirs.push((t, number(length)?, number(loops)?));
+    }
+    theirs.sort_unstable();
+    Ok(theirs)
 }
 
 /// Each sample's length, ms, the map's sound tables name (E24 M5 T5: a sound run's comparison),
@@ -560,6 +572,28 @@ mod tests {
         );
         assert!(differences(&ours, &["0 a", "5 b", "9 c", "12 d"]).is_empty());
         assert_eq!(differences(&ours[..1], &[]), ["+ 0 a"]);
+    }
+
+    #[test]
+    fn a_recording_s_samples_without_their_channels() {
+        // E24 M5 T5: each millisecond's in order; a game's start's cover at −1 at 0, the
+        // shell's click before it left out (elsewhere every negative one).
+        let text = "-151 0 151 1\n-1 3 5759 1\n100 7 3739 1\n100 0 151 1\n\n";
+        assert_eq!(
+            recorded_samples(text, true),
+            Ok(vec![(0, 5759, 1), (100, 151, 1), (100, 3739, 1)])
+        );
+        assert_eq!(
+            recorded_samples(text, false),
+            Ok(vec![(100, 151, 1), (100, 3739, 1)])
+        );
+        assert!(
+            recorded_samples("1 2 3\n", false)
+                .unwrap_err()
+                .contains("not 4 numbers")
+        );
+        assert!(recorded_samples("1 2 x 4\n", false).is_err());
+        assert!(recorded_samples("1 2 -3 4\n", false).is_err());
     }
 
     #[test]

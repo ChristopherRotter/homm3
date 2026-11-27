@@ -1045,10 +1045,7 @@ fn a_hot_seat_s_human_after_a_computer_s_turn_in_sight_is_covered() {
     // (no sound: no wait) starts the day as the recording's.
     let (mut start, actions, ms, _) = computing("ai-walk");
     start.seat = Some(HandOver {
-        boxes: vec![(
-            0,
-            super::turns::laid("Red's turn.", h3_ui::message::Style::Ok),
-        )],
+        boxes: vec![(0, turns::laid("Red's turn.", h3_ui::message::Style::Ok))],
         sample: None,
         timed: false,
         framed: None,

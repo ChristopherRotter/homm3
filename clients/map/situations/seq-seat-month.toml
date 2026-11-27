@@ -1,5 +1,5 @@
 # `seq-seat-week` on the first month's last day (E24 M5 T5, design §5.31;
-# clients/map/to-record.toml `seat-new-month`): Blue's End Turn starting the next month.
+# clients/map/sequences.toml `seat-new-month`): Blue's End Turn starting the next month.
 size = 36
 terrain = "grass"
 heroes = [{ at = [4, 4], class = 2 }, { at = [6, 7], class = 5 }, { at = [30, 30], owner = 1 }]

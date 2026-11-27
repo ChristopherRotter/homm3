@@ -1,4 +1,4 @@
-# The hot seat's hand-over (E24 M5 T5, design §5.31; clients/map/to-record.toml `seat-*`): two
+# The hot seat's hand-over (E24 M5 T5, design §5.31; clients/map/sequences.toml `seat-*`): two
 # humans, Red and Blue (`hot_seat`), each with a hero and a town (a human without a town would get
 # the days-left box at its start), the view at 0 on an empty stretch of Red's explored grass (no
 # cycling terrain, nothing animated: the frames before a start are the hand-over's changes).
