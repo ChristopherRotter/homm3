@@ -1,8 +1,8 @@
 # E14 — The original's random map generator
 
-Status: **in progress** since 2026-11-23; increments 1 and 2 **closed** (2026-11-24, RMG-Q2;
-2026-11-25, decision 10; `E14-archive.md`); increments 3 to 7 cut, increment 3 refined (T3a to
-T3e; T3a to T3d done); next T3e · Lane: **rmg** (opened
+Status: **in progress** since 2026-11-23; increments 1 to 3 **closed** (2026-11-24, RMG-Q2;
+2026-11-25, decision 10; 2026-11-27, decision 11; `E14-archive.md`); increments 4 to 7 cut,
+increment 4 refined (T4a to T4e; T4a to T4c done); next T4d · Lane: **rmg** (opened
 at this refinement) · Prerequisite of E30 (the custom generator) · Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -176,4 +176,7 @@ its checkpoint) and increment 3's (T3a to T3e, its checkpoint): `E14-archive.md`
   the monoliths' pairing, the null prototype); log `## T4a`.
 - T4b (2026-11-27, whole, decision 12): steps 4 and 5, the towns, with the objects' data and
   model; RMG-QUIRK-13's and -25's flags; the corpus to step 5 equal, 24 of 24; log `## T4b`.
+- T4c (2026-11-27, whole, decision 13): step 6's obstacle plan (RMG-CON-001 to -012), the
+  painter's flush; RMG-QUIRK-5 narrowed provisionally (RMG-Q3); the plan's draws equal, 24 of 24
+  (`rmg/plan.txt`), the cells after it too; log `## T4c`.
 

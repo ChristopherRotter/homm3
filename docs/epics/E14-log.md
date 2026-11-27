@@ -728,3 +728,47 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
 - **Gates:** the scoped verify `--with-original-data` (coverage 100 %, the original data, the exe
   map) passed but `check-lane`, which a cross-lane branch fails by design (`--cross-lane` ok);
   `cargo check --workspace --all-targets`; `h3-server`'s tests, `adventure_replays`, `h3-harvest`'s.
+
+## T4c — step 6's obstacle plan (2026-11-27, increment 4)
+
+- **Whole** (the user, decision 13), three worker sub-agents in turn on `rmg/e14-t4c` (a lane
+  branch: no flag, no hash moved). Staged from the PC: the oracle's set, 67 files (58 sums checked).
+  One oracle run, `corpus --phases`: 24 of 24 as `phases.txt`.
+- **The plan's record** (the harness): `h3rmg.py plan [--record]` cuts each case's step-6 draws at
+  the first site not of the plan (`PLAN_SITES`: the lanes', the islets', the painter's five) and
+  checks that the next is a connection's first draw (all 24 are); `rmg/plan.txt` keeps the lanes'
+  prefix and the plan's, count and digest as `phases.txt`'s. Lanes draw in 24 cases (11 of them the
+  lanes alone), islets in 4 (101 islets), sealed shores in 11 (up to 25 149 painter draws).
+- **Part 1** (worker 1, `plan.rs`, RMG-CON-001 to -006): the order; the lanes (the segment stack
+  popped in pairs, the branches a queue cast once the stack is empty, a finished segment frees only
+  its first point's 3×3 on the map); the walls (the first connection of the zone's own list; on
+  level 1 any other zone's cell walls); the cells of no zone. A zone byte past the generators is
+  left unwalled (no error: unreachable from the port). RMG-QUIRK-9's flag left to T4d.
+- **Part 2** (worker 2, `plan/islets.rs`, RMG-CON-007, -008): the distance flood (two vectors
+  sorted from the highest, ties first listed first), the islet's box, terrain, height map and
+  quadrants, the painter's finish; `PlanInput` gained the pictures and `cosmetic`;
+  `GenerateError::Paint { step: 6, .. }` (a picture set without the islet's shape, RMG-QUIRK-3's
+  class, never in the corpus). The four islet cases draw as the oracle through their last islet.
+  `painter.rs` needed no fix: the islets paint land, so the water and rock branches of `set_cell`
+  and the ring's mending still never run in the corpus (TRAPS).
+- **Part 3** (worker 3, `plan/join.rs`, `plan/seal.rs`, RMG-CON-009 to -012): the joining, the cost
+  flood (`pub(crate)`, for step 7 and the connections), the carve (its pending-guard branch and
+  flag-set form left to T4d, RMG-STUB-1), the seal with the painter's flush (`Painter::flush`: the
+  finish's loop and last pass shared as `settle`, then a new terrain and weight 4; the seal writes
+  its marks before each level's painter, so the painter's map reads hold). **RMG-QUIRK-5** is
+  reached by `l1-4p-c` (its ninth zone generator, a water zone off the map, has no cell): the
+  original's stale seed is the last seeded zone's and changes nothing, so the port makes no seed
+  then and refuses (`GenerateError::NoEmptyCell`) only before any seed; RMG-Q3 asks the user.
+- **Result:** the plan's draws equal `plan.txt` on 24 of 24 (`h3-pack-rmg`'s
+  `the_corpus_draws_step_6s_plan_as_the_original`, in CI); beyond the acceptance, after the plan
+  the floods' fields (+0x10 to +0x1C, +0x20 bits 24-31, +0x28 bits 12-14), terrain and pictures
+  equal step 6's dump on every cell of all 24 (worker 3's local check). Readings beyond the survey:
+  survey §2.3, "Step 6's plan as ported (T4c)".
+- **Quirk candidates** (the ledger's "Open", for increment 4's checkpoint): seven, three of the
+  lanes and walls (a lane stopping short of the edge, the walls' second pass a no-op, bit 27 lost
+  on water of no zone beside a wall), four of the joining and seal (a water zone's flood starting a
+  seal, a third zone's land sealing water, cost-1 cells carved again on a re-flood, enclosed free
+  pockets left unjoined).
+- **Gates:** each worker's scoped verify `--with-original-data` passed every step it ran (exit 2,
+  coverage 100 %).
+
