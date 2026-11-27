@@ -15,6 +15,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Recent sessions
 
+### 2026-11-27 — T4c step 6's obstacle plan (`rmg/e14-t4c`, in progress)
+
+A new chat; staged the oracle's set from the PC (67 files, 58 sums checked); #1210 had merged. The user kept T4c whole (worker sub-agents in turn, as T4b) and classed the Ownership 0 starts accepted for now, to compare with VCMI and HotA later. One oracle run (`corpus --phases`: 24 of 24 as `phases.txt`); `h3rmg.py plan --record` wrote `rmg/plan.txt` (each case's plan prefix of step 6, ending at a connection's first draw). **In progress:** worker 1 (lanes, walls, cells of no zone), then 2 (islets), 3 (joining, carving, sealing, RMG-QUIRK-5); the logs in `clients/out/rmg/` (this sandbox only).
+
 ### 2026-11-27 — T4b steps 4 and 5, the towns (`shared/e14-t4b`, #1210, `cross-lane`)
 
 Same chat as T4a. Staged the oracle's set from the PC (67 files, 58 sums checked); the user kept T4b whole with worker sub-agents and agreed the `.msk` harvest cross-lane (decision 12; RMG-QUIRK-26 fix-optional). Three workers in turn: the objects' data (every line's `.msk`, the 232 classes' settings, `RMG_RULESET_HASH_VERSION` 5), the object model (`objects.rs`), steps 4 and 5 (`towns.rs`, two flags, `faithful`'s core hash re-pinned). The corpus equals the phase oracle to step 5 on 24 of 24 at the first run. Asked: the Ownership 0 starts' class, a look at RMG-QUIRK-25's fix.
@@ -22,7 +26,3 @@ Same chat as T4a. Staged the oracle's set from the PC (67 files, 58 sums checked
 ### 2026-11-27 — T4a the items not read (`rmg/e14-t4a`, #1206)
 
 A new chat; staged `Heroes3.exe` from the PC (SHA-256 checked); #1204 had merged, `master`'s CI green. Code reading only: the objects' masks through `objects.txt`'s reader and `msk_load`, `rmg_map_can_place`'s footprint, outline and ring, the null prototype's six callers, the islets' height map, the monoliths' pairing; VCMI 1.7.5's `ObjectTemplate` compared. Into the survey (§2.1 to §2.3, §3.2), `map.toml`, `structs.toml`, the ledger (two faults joined RMG-QUIRK-3 and -4; the one-way monoliths an open candidate). Found for T4b: the `.msk` data the packs lack.
-
-### 2026-11-26 — T3e step 3 and the terrain painter (`shared/e14-t3e`, #1204)
-
-A new chat; staged the oracle's set from the PC (58 files, SHA-256 checked), SoD's tables, Complete's two maps; #1199 had merged. Asked for a cut (at the islands, at the painter, whole); the user: whole, the picture sets' harvest `cross-lane`. Read step 3 and the painter's ambiguous parts, `rmg_island_fill` whole; one oracle run (`--phases`) for dumps, never needed: the port matched all 24 cases at the first run. The corpus never resolves a pinched water or rock cell: unit tests cover that branch until steps 6 and 11. Then increment 3's checkpoint (decision 11): increment 3 closed, increment 4 cut into T4a to T4e; its docs on #1204 too.
