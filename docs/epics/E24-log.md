@@ -3864,3 +3864,28 @@ kept); nothing staged again.
   `game-asks` with one human (seven End Turns in place, week 2's box, closed), `seq-find-pile`
   (its gold): every frame read back exact, as afresh and as the headless loop's; the records
   played to their end; `h3-map-view`'s coverage, clippy, the client tests, the scoped verify.
+
+### M5 T4c, part one — the screens' notice (2026-11-27)
+
+On `map-client/e24-m5-t4c` from `master` at 24ba0f8 (a worker; the user away: *provisional*).
+
+- **Built** (design §5.28, `MCL-STUB-7`): `h3_map_view::notice` (`Notice`, `of`, `closing`,
+  `KEYS`); `Ask::Notice`; `engine::visits`: `opened` a decision's notice, `live` its every answer
+  the OK's, `Placed` (`lay`'s `object_at` given the visit; the body moved to a plain `laid`, as a
+  generic function's closures count per instance), `NO_OBJECT`, `Told::Notice` (a town entered);
+  `reach::Hosted::notices`; `timeline`: `Loop::screen`, `notice`, `screen_at` (the panels' hero
+  and town, cast a spell, K, Q, A, the hero and a town clicked on the map); `panels::id::KINGDOM`,
+  `ADVENTURE`. `h3-map-client`: `texts::own_pack` (`clients/text/map/`, MCL-Q68), the window's
+  `asks` and `wire_answer`, `Painter::notices`, `paint::placed` and `anchor_of`, `live_question`
+  and `live_reply` by the decision's and the removed object's anchors; `game-notices`' situation.
+- **Found and fixed on the way:** a monster's zone entered (a step beside it) opened its offer on
+  a tile with no object: nothing shown, the game held (now placed on the monster, §5.28); a join
+  with no room left the monster drawn (now taken at its army dialog's close).
+- **Asked:** MCL-Q68 (the own texts' folder); the client lane's inbox told.
+- **Checked:** the tests; `h3-map-view`'s coverage without `H3_INSTALL` (0 lines, 0 regions
+  missed); clippy, the map crates' and the battle client's text tests; under Xvfb (`play --check
+  --humans 0`) on `game-notices`: every notice of hero A's, B's and D's rows (from beside: the
+  pile, the Tavern, the meeting), an End Turn, cast, K, A, the portrait, the hero and the town
+  clicked: each shown, Enter, its closing answer in the record, the hero walking on; `game-asks`
+  and `seq-ask-join-no` as T4b's; every frame read back exact and as the headless loop's; the
+  records played to their end by `h3-map-view record`.

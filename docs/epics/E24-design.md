@@ -5131,3 +5131,40 @@ their answers are M4's (§5.4, §5.5, §5.14), the engine's rules the engine's.
   start after seven End Turns in place (`game-asks`, one human), `seq-find-pile`'s pile (its
   70 000 gold, as the original's recording): every frame read back exact, as afresh and as the
   headless loop's; the records played to their end.
+
+### 5.28 The screens' notice (M5 T4c)
+
+T4c's first part: a screen of M6 or M7 a notice in the client's words, and every decision the view
+does not ask closed by its notice's OK (`MCL-STUB-7`), so play goes on. No reading: no original;
+the notice is play's alone (a recording refuses the click as before, M4 unchanged).
+
+- **A decision's notice** (`h3_map_view::notice`, *provisional*): `Notice::of` names the window of
+  a decision the view does not ask (an offer of a guarded object's, a mine's or a dwelling's
+  guards' fight, the battles of T6; a Shipyard's boat; a dwelling's or a Refugee Camp's hire; a
+  hire dialog, a University, a market, an Altar, a Hill Fort, a map Tavern, a meeting, an army
+  dialog, a garrison's exchange; not a level-up, not the questions of §5.27); `closing` its
+  answer: the offer declined (the user's choice for the fights until T6), the window left or
+  closed. `engine::visits::opened` gives it as `Ask::Notice` (a box of style 1, its OK the host's,
+  §5.27's `Loop::answer_asked` path); the window's `asks` takes every decision but a level-up and
+  `wire_answer` gives the closing answer for any button. A decision opened after an answer (an
+  army dialog after a join with no room) is the answer's next question, as a monster's flight.
+- **Placed where the engine's walk ended** (`engine::visits::Placed`, *provisional*): a live
+  visit is from beside where the record's walk stops one short of its tile (a Tavern's, a guarded
+  pile's, a meeting's), else on it; a decision opened on the way (a monster's zone entered: its
+  offer) is told where the walk ended, on the decision's object (its anchor); a meeting's on no
+  object (`NO_OBJECT`). A later answer takes the object the record removed (its anchor's), also
+  an earlier answer's (a join's monster, after its army dialog).
+- **A screen without a decision** (`Hosted::notices`, laid out at the view's start): the selected
+  hero's portrait or the hero clicked on the map (the hero screen), the selected town's picture or
+  a town of the viewer's clicked while a town is selected (the town screen), a hero's entry into a
+  town that tells nothing else (`Told::Notice`), cast a spell, the kingdom overview, the quest log,
+  the adventure options: the notice, its OK closing it. Sleep (an engine command) and the system
+  options (the client lane's, E27 M5) stay as before.
+- **The texts** (`clients/text/map/`, *provisional*, MCL-Q68): the map client's own keys
+  (`map.stub.*`, `notice::KEYS`) and their pack, apart from the common catalogue's own.
+- **Checked:** the tests (each decision's notice and closing answer, the notice's box, the
+  panels' and the map's screens in play, refused in a recording, placed visits); under Xvfb
+  (`play --check`, one human) on `game-notices`: every notice shown and closed by Enter, each
+  closing answer in the record and the hero walking on; `game-asks`' and `seq-ask-join-no`'s maps
+  as T4b's; every frame read back exact and as the headless loop's; the records played to their
+  end.

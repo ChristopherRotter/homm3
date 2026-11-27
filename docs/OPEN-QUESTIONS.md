@@ -475,6 +475,19 @@ need the frames to carry it. Options: (a) keep `observe` in the hot seat until `
 then read the folded view; (b) a snapshot asked after each command that opens a decision.
 **Recommended (a)**; the server lane's inbox told. Blocks nothing.
 
+#### MCL-Q68 — The map client's own texts beside the common catalogue (E24 M5 T4c)
+
+The screens' notices (design §5.28, `MCL-STUB-7`) are the client's own words: keys with no
+original form whose messages a pack of the client's gives. The common catalogue's own texts
+(`clients/text/keys.toml`, `en.json`) are pinned by the battle client's test
+(`h3-battle-client`'s `text::tests::the_client_s_own_pack_gives_its_keys` lists every one), so a
+`map.stub.*` key there fails it: a change to the client lane's crate. T4c put them beside it in a
+folder of their own (`clients/text/map/keys.toml`, `map/en.json`, read by the map client alone;
+*provisional*). Options: (a) keep the folder; (b) fold them into the common files, the battle
+client's test widened (one line, a `cross-lane` change with the user's consent, or the client
+lane's own). **Recommended (b)** at M5's review (one catalogue for translators); the client
+lane's inbox told. Blocks nothing.
+
 ### RMG lane (`RMG-Q<n>`)
 
 (no open questions)
