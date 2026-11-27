@@ -18,6 +18,8 @@ pub(crate) const FREE: u32 = 1 << 25;
 pub(crate) const OBSTACLES: u32 = 1 << 26;
 /// +0x28 bit 27: kept free.
 pub(crate) const KEPT: u32 = 1 << 27;
+/// +0x28 bits 12-14: the step (`rmg_neighbours`' index) a flood entered the cell by.
+pub(crate) const STEP: u32 = 7 << 12;
 
 /// One cell of the generator's map: its words +0x10 to +0x2C (`rmg_map_cell`); the objects on it
 /// (+0x0) are the map's lists ([`Cells::objects_at`]).
@@ -57,6 +59,39 @@ impl Cell {
     /// The zone byte as the signed index the placing tests compare (-1 none).
     pub(crate) const fn zone_index(&self) -> i32 {
         self.zone_byte() as i8 as i32
+    }
+
+    /// +0x1C bits 16-31: the cost of a neighbouring zone's flood (the islets' distance from
+    /// their water zone's edge, `rmg_zone_distance_flood` 0x53F1A0).
+    pub(crate) const fn far_cost(&self) -> u32 {
+        self.movement >> 16
+    }
+
+    /// A flood's entry into the cell: +0x1C bits 16-31 `cost` (bits 0-15 kept), +0x28 bits
+    /// 12-14 `step` (the `rmg_neighbours` index it came by), +0x20 bits 24-31 cleared.
+    pub(crate) const fn enter_far(&mut self, cost: u32, step: u32) {
+        self.enter_from(cost, step, 0);
+    }
+
+    /// A zone cost flood's entry from zone `zone` into the cell of another zone
+    /// (`rmg_zone_cost_flood` 0x531460): +0x1C bits 16-31 `cost` (bits 0-15 kept), +0x28 bits
+    /// 12-14 `step` (the `rmg_neighbours` index back), +0x20 bits 24-31 `zone`'s low byte.
+    pub(crate) const fn enter_from(&mut self, cost: u32, step: u32, zone: i32) {
+        self.movement = (self.movement & 0xFFFF) | (cost << 16);
+        self.tile_data = (self.tile_data & !STEP) | ((step & 7) << 12);
+        self.zone = (self.zone & 0x00FF_FFFF) | ((zone.cast_unsigned() & 0xFF) << 24);
+    }
+
+    /// +0x1C bits 0-15: the cost of its own zone's flood (`rmg_zone_cost_flood` 0x531460; 0 the
+    /// cells joined to the seed).
+    pub(crate) const fn near_cost(&self) -> u32 {
+        self.movement & 0xFFFF
+    }
+
+    /// +0x20 bits 24-31 as a signed byte: the zone whose cost flood entered the cell from
+    /// another zone (-1 none).
+    pub(crate) const fn flooded_by(&self) -> i32 {
+        (self.zone >> 24) as u8 as i8 as i32
     }
 
     /// Step 2's marks: the zone byte `index` and, with `land`, +0x28 bit 28.

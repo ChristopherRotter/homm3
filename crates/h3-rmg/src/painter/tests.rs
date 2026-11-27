@@ -118,12 +118,14 @@ fn the_slots_draw_as_the_original() {
     let mut log = Log::default();
     let mut stream = Stream::new(3, &mut log);
     let mut p = Painter::new(&pictures, &mut cells, &mut stream, 0, 2, true);
-    assert_eq!(p.draw_plain(2, 4, Some(1)), 1);
-    let drawn = p.draw_plain(2, 4, None);
+    // A plain picture is kept (the transition pass's test), a decorated one is drawn again.
+    assert!(p.pictures.set(2).fits(1, 0, None));
+    assert!(!p.pictures.set(2).fits(5, 0, None));
+    let drawn = p.draw_plain(2, 4);
     assert!(drawn < 4);
-    assert_eq!(p.draw_plain(2, 0, Some(5)) / 2, 0, "weight 0: plain only");
-    let _ = p.draw_plain(WATER, 4, None);
-    let _ = p.draw_plain(ROCK, 4, None);
+    assert_eq!(p.draw_plain(2, 0) / 2, 0, "weight 0: plain only");
+    let _ = p.draw_plain(WATER, 4);
+    let _ = p.draw_plain(ROCK, 4);
     assert_eq!(p.draw_shape(2, 5, [true, false], 7), (7, [true, false]));
     let (picture, word) = p.draw_shape(2, 6, [true, true], 7);
     assert_eq!((picture, word), (8, [true, true]));
@@ -260,6 +262,23 @@ fn the_cosmetic_flag_queues_both_and_keeps_group_3s_mirroring() {
     assert_eq!(shape(&classes, true), (8, [true, true]));
     assert_eq!(shape(&classes, false), (8, [false, false]));
     assert_eq!(shape(&[0; 8], true), (0, [false; 2]));
+    // The search skipped for every class 0 is the table's own answer: each condition asks for
+    // a class 1 or 2 of at least one role, so none holds among a cell's own terrain; and every
+    // other mix of classes 0 to 2 meets one.
+    let mut conditions = GROUPS.iter().flat_map(|group| group.iter());
+    assert!(conditions.clone().count() > 0);
+    assert!(conditions.all(|(all, _, _)| !all.is_empty() && all.iter().all(|&(_, c)| c > 0)));
+    for n in 1..3u32.pow(8) {
+        let mut classes = [0u8; 8];
+        let mut m = n;
+        for c in &mut classes {
+            *c = (m % 3) as u8;
+            m /= 3;
+        }
+        for inverting in [true, false] {
+            assert_ne!(shape(&classes, inverting), (0, [false; 2]), "{classes:?}");
+        }
+    }
 }
 
 // covers: RMG-TER-015, RMG-TER-017
@@ -322,4 +341,53 @@ fn a_pinched_cell_that_cannot_be_mended_is_refused() {
     let mut p = Painter::new(&pictures, &mut cells, &mut stream, 0, 2, true);
     p.pinched.insert((2, 2));
     assert_eq!(p.finish(), Err(PaintFault::Stuck));
+}
+
+// covers: RMG-TER-005
+/// A flush finishes the painter's terrain (its sets drained, the last pass run) and goes on
+/// with another at weight 4: the cells and draws of a painter finished and a new one made; a
+/// fault met before it is the finish's.
+#[test]
+fn a_flush_finishes_one_terrain_and_paints_on_with_another() {
+    let tables = tables();
+    let pictures = Pictures::new(&tables);
+    let run = |flush: bool| {
+        let mut cells = map(8, WATER);
+        let mut log = Log::default();
+        let mut stream = Stream::new(4, &mut log);
+        let mut p = Painter::new(&pictures, &mut cells, &mut stream, 0, 2, true);
+        p.add_rect(1, 1, 3, 2);
+        p.weight = 1;
+        if flush {
+            p.flush(3);
+            assert_eq!((p.terrain, p.weight), (3, WEIGHT));
+        } else {
+            assert_eq!(p.finish(), Ok(()));
+            p = Painter::new(&pictures, &mut cells, &mut stream, 0, 3, true);
+        }
+        p.add_rect(3, 4, 3, 2);
+        assert_eq!(p.finish(), Ok(()));
+        (cells, log.draws)
+    };
+    let (cells, draws) = run(true);
+    assert_eq!((&cells, &draws), (&run(false).0, &run(false).1));
+    assert!(cells.cells().iter().any(|c| terrain_of(c) == 2));
+    assert!(cells.cells().iter().any(|c| terrain_of(c) == 3));
+    let mut bare = tables.clone();
+    bare.picture_sets[2].pictures.clear();
+    let pictures = Pictures::new(&bare);
+    let mut cells = map(8, WATER);
+    let mut log = Log::default();
+    let mut stream = Stream::new(4, &mut log);
+    let mut p = Painter::new(&pictures, &mut cells, &mut stream, 0, 2, true);
+    p.add_rect(1, 1, 3, 2);
+    p.flush(3);
+    p.add_rect(3, 4, 3, 2);
+    assert_eq!(
+        p.finish(),
+        Err(PaintFault::NoPicture {
+            terrain: 2,
+            shape: 0
+        })
+    );
 }

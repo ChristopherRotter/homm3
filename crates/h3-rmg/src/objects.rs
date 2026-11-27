@@ -277,6 +277,21 @@ impl Objects {
         &self.placed
     }
 
+    /// The object settings (`object_settings_pointer` 0x660428) of the class of the first object
+    /// on the cell (x, y, z) (its template's +0x1C); none without one, past the placed objects
+    /// or past the table.
+    pub(crate) fn first_settings(
+        &self,
+        cells: &Cells,
+        [x, y, z]: [i32; 3],
+    ) -> Option<&ObjectSettings> {
+        cells
+            .objects_at(x, y, z)
+            .first()
+            .and_then(|&i| self.placed.get(i as usize))
+            .and_then(|o| self.settings.get(o.class as usize))
+    }
+
     /// The placed objects by type (+0x1110).
     pub fn count_by_type(&self) -> &[i32] {
         &self.count_by_type

@@ -2,8 +2,9 @@
 //! §1.2 to §1.5): the run's adjustments, the seed, water's Random, the templates kept and drawn,
 //! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
 //! T3c, step 2 since T3d, step 3 since T3e), each draw and each step's end reported to a
-//! [`Trace`]. Steps 4 and 5, the towns, since T4b; steps 6 to 15 and the writer's content come
-//! with increments 4 to 7.
+//! [`Trace`]. Steps 4 and 5, the towns, since T4b; step 6's obstacle plan (the lanes, the zone
+//! walls, the cells of no zone, the islets, the joining, the shores' seal) since T4c, step 6 not
+//! ended; its connections, steps 7 to 15 and the writer's content come with increments 4 to 7.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -19,10 +20,12 @@ use h3_kernel::rng::CrtRand;
 use crate::cells::Cells;
 use crate::layout::{LayoutInput, ZoneGenerator, lay_out};
 use crate::objects::{Object, ObjectFault, Objects};
+use crate::painter::{PaintFault, Pictures};
 use crate::part::RmgRuleset;
 use crate::partition::{
     MemoryZone, Partition, PartitionFault, PartitionInput, ZoneMemory, partition,
 };
+use crate::plan::{PlanInput, plan};
 use crate::settings::{COLOURS, Settings, SettingsError, Water};
 use crate::template::{Fit, KeptTemplate, PositionError, kept_templates, positions};
 use crate::terrain::{TerrainFault, TerrainInput, paint};
@@ -128,6 +131,23 @@ pub enum GenerateError {
     /// Step 3 met what the original divides by zero at (RMG-QUIRK-3) or reads outside its
     /// arrays or never ends at (RMG-QUIRK-4).
     Terrain(TerrainFault),
+    /// A terrain painter after step 3 met what the original divides by zero at (RMG-QUIRK-3) or
+    /// never ends at (RMG-QUIRK-4): the first met in the step.
+    Paint {
+        /// The step.
+        step: u8,
+        /// What went wrong.
+        fault: PaintFault,
+    },
+    /// A zone generator's box holds no empty cell of its zone to seed its paths from, and no
+    /// zone generator before it had one (`rmg_zone_paths_connect` 0x5405D0, steps 6 and 9;
+    /// RMG-QUIRK-5: the original seeds them from the stack's bytes).
+    NoEmptyCell {
+        /// The step.
+        step: u8,
+        /// The zone generator's index.
+        zone: usize,
+    },
     /// A step's object placing met what the original divides by zero at (RMG-QUIRK-3), throws at
     /// or reads or writes outside its arrays at (RMG-QUIRK-4): [`Objects::take_fault`] at the
     /// step's end.
@@ -169,13 +189,19 @@ impl fmt::Display for GenerateError {
             Self::LayoutSpan => f.write_str("step 1: the layout spans nothing"),
             Self::Partition { level, fault } => write!(f, "step 2, level {level}: {fault:?}"),
             Self::Terrain(fault) => write!(f, "step 3: {fault:?}"),
+            Self::Paint { step, fault } => write!(f, "step {step}, the terrain painter: {fault:?}"),
+            Self::NoEmptyCell { step, zone } => write!(
+                f,
+                "step {step}: zone generator {zone}'s box holds no empty cell of its zone"
+            ),
             Self::Objects { step, fault } => write!(f, "step {step}, an object: {fault:?}"),
         }
     }
 }
 
-/// A generated map: so far what the frame and steps 1 to 5 make (stub RMG-STUB-1: steps 6 to 15
-/// and the writer's content come with increments 4 to 7).
+/// A generated map: so far what the frame and steps 1 to 5 make, with step 6's plan (stub
+/// RMG-STUB-1: step 6's connections, steps 7 to 15 and the writer's content come with increments
+/// 4 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
     /// The settings as the generator ran them: water drawn, and under two players in all one
@@ -242,14 +268,15 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// (`rmg_zones_lay_out` 0x53BCB0); steps 2 and 3; the prototypes (`rmg_objects_read` 0x536200,
 /// read by the constructor; nothing draws there) for the steps that place objects; steps 4 and
 /// 5, the towns (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0 per zone
-/// generator).
+/// generator); step 6's plan (`rmg_paths_and_connections` 0x544920: the lanes, the zone walls,
+/// the cells of no zone, the islets, the joining, the shores' seal), step 6 not yet ended.
 ///
 /// # Errors
 ///
 /// A [`GenerateError`]: refused settings, a part of another core or without the generator's
 /// tables, no template kept, the drawn template's positions outside the original's arrays, the
-/// steps' divisions by zero (RMG-QUIRK-3) and reads and writes outside the original's arrays
-/// (RMG-QUIRK-4).
+/// steps' divisions by zero (RMG-QUIRK-3), reads and writes outside the original's arrays
+/// (RMG-QUIRK-4) and step 6's zone without an empty cell before any had one (RMG-QUIRK-5).
 // rule: RMG-SET-005, RMG-SET-006, RMG-SET-007, RMG-SET-010, RMG-TPL-007
 pub fn generate<T: Trace>(
     core: &Ruleset,
@@ -426,6 +453,19 @@ pub fn generate<T: Trace>(
             },
         );
     }
+    let pictures = Pictures::new(tables);
+    plan(
+        &mut stream,
+        &PlanInput {
+            zones: &template.zones,
+            connections: &template.connections,
+            gens: &zones,
+            objects: &objects,
+            pictures: &pictures,
+            cosmetic: quirks.is_enabled(RMG_COSMETIC),
+        },
+        &mut cells,
+    )?;
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
         settings: run,
