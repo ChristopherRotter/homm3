@@ -4,7 +4,8 @@
 # Wine, docs/lanes/rmg/ORACLE.md) the observation; the survey docs/rules/surveys/E14-generator.md
 # holds the readings (§3.2 the rules by phase). Increment 2 (E14 T2b, T2c): the settings, the
 # tables, the template and the positions; increment 3 (E14 T3c, T3d): steps 1 and 2, the zones;
-# increment 4 (E14 T4b): the object model the steps place with (RMG-OBJ-009 to -011).
+# increment 4 (E14 T4b): the object model the steps place with (RMG-OBJ-009 to -011), steps 4 and
+# 5, the towns (RMG-TWN-001 to -005).
 
 [[rule]]
 id       = "RMG-SET-001"
@@ -511,8 +512,8 @@ id       = "RMG-ZON-013"
 title    = "Step 2's fills"
 context  = "rmg"
 status   = "implemented"
-summary  = "After every zone's borders, per zone generator of the level in order, rmg_zone_flood_fill from its centre when on the map; else the ring's destination vertices of its record (Onext first) inside [1, W-2] x [1, H-2] scored by min(x, W-1-x, y, H-1-y), the first deepest one (none: no fill), and the clip from the centre toward it. A stack of seeds: each moved left while the cell left of it is free (zone byte 0xFF), then the cells free rightwards get the zone's id and, unless on the islands' level 0, +0x28 bit 28; per run of free cells above and below one seed (the one above pushed first). The cells filled are the 4-connected free region of the start, or of the cell left of it when the start is not free, none when neither is (in the corpus 20 zones, 7 of land, keep their border cells only). A clipped start off the map is a typed error (RMG-QUIRK-4)."
-quirks   = ["RMG-QUIRK-4"]
+summary  = "After every zone's borders, per zone generator of the level in order, rmg_zone_flood_fill from its centre when on the map; else the ring's destination vertices of its record (Onext first) inside [1, W-2] x [1, H-2] scored by min(x, W-1-x, y, H-1-y), the first deepest one (none: no fill), and the clip from the centre toward it. A stack of seeds: each moved left while the cell left of it is free (zone byte 0xFF), then the cells free rightwards get the zone's id and, unless on the islands' level 0, +0x28 bit 28; per run of free cells above and below one seed (the one above pushed first). The cells filled are the 4-connected free region of the start, or of the cell left of it when the start is not free, none when neither is (in the corpus 20 zones, 7 of land, keep their border cells only: RMG-QUIRK-25, flag quirk.rmg.fill_start_on_border; off, such a fill starts at the free cell of the level nearest the centre, squared distance and the first row by row, outside the free regions in which the fills of the level's later zones start, none: no fill). A clipped start off the map is a typed error (RMG-QUIRK-4)."
+quirks   = ["RMG-QUIRK-4", "RMG-QUIRK-25"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -838,4 +839,99 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E14 T4a, T4b): rmg_map_can_place 0x531CF0, rmg_map_footprint_blocked 0x5318B0, rmg_prototype_outline 0x532C80, rmg_map_outline_clear 0x531170; survey E14-generator.md §2.2 (\"The placing tests as read\") and §2.1 (\"The objects as ported (T4b)\")"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TWN-001"
+title    = "Step 4: a zone's first town"
+context  = "rmg"
+status   = "implemented"
+summary  = "Per zone generator in order (step 2's water zones too), rmg_zone_first_town tries, in this order and only those whose least count is above 0, a castle of the zone's colour (+0x24), a town of its colour (+0x20), a neutral castle (+0x34), a neutral town (+0x30), each with the zone generator's town type (+0x4) by RMG-TWN-002, and stops at the first placed: at most one town per zone. The colour is the generator's +0xEE4 + 4p for the zone's position p (Ownership less 1): -1 for a position without a colour and for p = -1 (+0xEE0, which rmg_generate_map clears to -1 with the colours and nothing writes), so a start zone without Ownership gets neutral towns only; a position past 7 or below -1 reads outside the colours, a typed error (RMG-QUIRK-4). As the castle flag and the owner do not change where a town fits, step 4 places at the first kind asked for or at none."
+quirks   = ["RMG-QUIRK-4", "RMG-QUIRK-23"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T4b): rmg_zone_first_town 0x544A50, rmg_generate_map 0x549930 (the colours cleared at 0x5499FB); survey E14-generator.md §2.2 (\"Steps 4 and 5, the towns\", \"Steps 4 and 5 as ported (T4b)\"), §3.2.6"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TWN-002"
+title    = "A zone's first town nearest its centre"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_town_place_central (zone generator, town type, owner, castle flag): refused for town type -1; the town prototype is the entry at the town type's index of class 98's vector (+0x658; SoD's objects.txt files the nine towns' lines in subtype order; past its end a typed error, RMG-QUIRK-4). Over the zone generator's box row by row, a cell of the zone (its signed zone byte the zone's id) whose squared distance to the centre (32-bit) is at most the least so far, from 32000, and where rmg_map_can_place allows the prototype (RMG-OBJ-011) is kept, the kept cells cleared first when it is strictly nearer; none: false, no draw. Else a town object (the generator's serial +0xF44 taken and raised, the prototype's use count raised, the owner, the castle flag), rand() % the kept cells (unsigned, 0x545492), the object added there through the generator's slot 1 (RMG-OBJ-009, -010); its entrance (the cell less the template's entrance offsets) into the zone generator's +0x30 and the road targets (+0x14B0), +0x3C set; the cell below the entrance gets +0x28 bit 27 and loses bit 26 unless +0x2C bit 0 (a pending Border Guard)."
+quirks   = ["RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T4b): rmg_town_place_central 0x545250, rmg_object_init 0x5330E0; survey E14-generator.md §2.2 (\"Steps 4 and 5, the towns\", \"Steps 4 and 5 as ported (T4b)\"), §3.2.6"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TWN-003"
+title    = "Step 5: a zone's least towns"
+context  = "rmg"
+status   = "implemented"
+summary  = "Per zone generator in order, rmg_zone_towns_place first places, per kind in step 4's order whose least count is above 0, that many towns by RMG-TWN-005 with spacing 0, the first of the first such kind skipped as step 4's town: whether step 4 placed it or not (RMG-QUIRK-13, flag quirk.rmg.least_town_skipped; off, only when step 4 placed the zone's town), so a zone whose first town failed (its town type -1, no fitting cell) ends one least town short. The colour kinds take the zone's colour (RMG-TWN-001), the neutral ones -1."
+quirks   = ["RMG-QUIRK-13"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T4b): rmg_zone_towns_place 0x544AE0 (0x544AF6 to 0x544BD3); survey E14-generator.md §2.2 (\"Steps 4 and 5, the towns\", \"Steps 4 and 5 as ported (T4b)\"), §3.2.6"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TWN-004"
+title    = "Step 5: the towns by density"
+context  = "rmg"
+status   = "implemented"
+summary  = "Then the densities d of the four kinds (colour castles +0x2C, colour towns +0x28, neutral castles +0x3C, neutral towns +0x38): S and P the sum and product of those above 0 (32-bit; the others exhausted from the start), none above 0: done; the spacing r = trunc(sqrt(82944 / S)) (the division integer, the root a binary64 one, as trunc_sqrt); per kind of d above 0 its step P / d and key step x its least count. Repeatedly the kind not exhausted with the least key (the first on ties) adds its step to its key and places one more town by RMG-TWN-005 at spacing r; a failure exhausts that kind; the step ends when every kind is exhausted (each town placed takes a free cell, so every kind fails within the map's cells). No retry and no cap."
+quirks   = []
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T4b): rmg_zone_towns_place 0x544AE0 (0x544BD5 to 0x544D76), crt_sqrt 0x617B94, crt_ftol 0x6179D4; survey E14-generator.md §2.2 (\"Steps 4 and 5, the towns\", \"Steps 4 and 5 as ported (T4b)\"), §3.2.6"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-TWN-005"
+title    = "A further town farthest from the objects"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_town_place_far (zone generator, town type, owner, castle flag, spacing): the town type is redrawn when the owner is -1 and the zone has not its same-type byte (+0x40), or when it is -1: rand() % the zone's set town types (+0x41 to +0x49), the r-th (0x544DEC), none set rand() % 8 in RoE, 9 otherwise (0x544E22); the zone generator's +0x4 is kept. A zone without a town yet (+0x3C clear) takes RMG-TWN-002 with that type. Else over the positions from the box's least corner plus the footprint's width and height (+0x34, +0x38) to its far edges, row by row: the entrance cell (the position less the entrance offsets) of the zone (its signed zone byte the id) with its object distance (+0x20 bits 0-15, RMG-OBJ-010) at least the greatest kept so far (from the spacing), rmg_map_can_place true and every cell of the 3 x 3 around the entrance clamped to the map of the zone (a zone byte not negative and the id); one of a greater distance clears the kept ones first. None: false, no draw. Else the town object as RMG-TWN-002's, rand() % the kept positions (unsigned, 0x545174), the object added there, its entrance into the road targets and the cell below it marked as RMG-TWN-002's; the zone generator's +0x30 is not written."
+quirks   = ["RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2b, T4b): rmg_town_place_far 0x544D90, rmg_object_clear_flags 0x533150; survey E14-generator.md §2.2 (\"Steps 4 and 5, the towns\", \"Steps 4 and 5 as ported (T4b)\"), §3.2.6"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4b): the 24 corpus cases' draws in steps 4 and 5 and their dumps 4 and 5 (the cells and the towns' objects) equal the port's (h3-pack-rmg's the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5)"
   confidence = "high"

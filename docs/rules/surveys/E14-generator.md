@@ -752,6 +752,46 @@ goes to `rmg_town_place_central`; else the positions whose entrance cell is in t
 object distance (+0x20 bits 0-15, §2.1's flood) of at least r, the 3 × 3 cells around the entrance
 in the zone and `rmg_map_can_place` true, and of those the farthest, `rand() %` them.
 
+**Steps 4 and 5 as ported (T4b).** Read again whole: `rmg_zone_first_town`, `rmg_zone_towns_place`
+(its jump table's four cases), `rmg_town_place_central`, `rmg_town_place_far`, `rmg_object_init`,
+`rmg_object_clear_flags`, `rmg_zone_generator_init` (+0x3C and the counts +0x44 cleared, +0x30 to
++0x38 left), `rmg_generate_map`'s calls (every zone generator in order, step 2's water zones too)
+and its colours' clear. On the 24 corpus cases the port's draws in steps 4 and 5 and its dumps 4
+and 5 (the cells and the towns' objects) equal the phase oracle's at the first run. As read,
+sharper than above: **the town prototype is the entry at the town type's index** of class 98's
+vector (+0x658), no search by subtype (SoD's `objects.txt` files the nine lines in subtype order,
+so the index is the subtype, for RoE too: Conflux's line stays filed); the colour is +0xEE4 + 4p
+for the zone's position p, and **p = -1 reads +0xEE0**, which `rmg_generate_map` clears to -1 with
+the colours (9 dwords from 0x5499FB) and nothing writes: a zone without Ownership gets neutral
+towns; the central placement keeps only cells within a squared distance of 32000 of the centre
+(its least starts there), a strictly nearer cell clearing those kept; the far placement draws its
+redrawn type before it tests for a first town (so a zone whose first town failed draws it and then
+takes the central placement), starts at the box's least corner plus the footprint's width and
+height, compares each entrance's distance with the greatest kept so far (from the spacing; the
+zone byte first, then the distance, then `rmg_map_can_place`, then the 3 × 3 clamped to the map,
+a byte not negative and the id), and writes no +0x30; both create the town (0x28 bytes: the serial
++0xF44 taken and raised, the prototype's use count +8 raised, +0x20 owner, +0x24 castle) before
+the draw, add it through slot 1, push its entrance to the road targets and mark the cell below it
+(+0x28 bit 27 set, 26 cleared, unless +0x2C bit 0). Step 5's kinds read their counts each loop
+(constant); the densities' kinds not above 0 keep an unset step and are exhausted from the start;
+the least key is taken with `jge` (the first on ties). Step 4 places at the first kind asked for
+or at none (the castle flag and owner do not change the fit), so RMG-QUIRK-13's skip differs from
+the fix only for a zone whose first town failed: the corpus's two (below) fail step 5 either way,
+so no corpus case tells them apart. The port: `towns.rs` (`Placed`: the towns with object, zone,
+serial, owner, castle; the road targets), `ZoneGenerator.town` (+0x30 to +0x3C), `Objects::serial`;
+`ObjectFault::Prototype` (an index past class 98's vector) and `ObjectFault::Colour` (a position
+outside -1 to 7) for RMG-QUIRK-4, with `Outside` for a town line without an entrance (its offsets
+8, 6). **What the corpus shows:** RMG-QUIRK-25's two land start zones (`xl1-4p-seed1`'s zone 3,
+`xl2-8p-t4-islands`' zone 4, 133 and 225 border cells) get no town in the original: two human
+players without a town. The start zones without Ownership (2SM2i(2)'s human starts 3 and 5, 2SM0k's
+computer starts 3 to 8) ask for no town of their colour: 2SM2i(2)'s start 3 and 2SM0k's 3 and 4 get
+nothing, the others their one least neutral town each (a village of their drawn town type).
+RMG-QUIRK-25's fix (`fixed`, `quirk.rmg.fill_start_on_border` off): a fill whose start and the cell
+left of it are not free starts at the free cell of the level nearest the zone's centre (squared
+distance, the first row by row) outside the free regions in which the later zones' fills start
+(their start or its left cell); none, no fill. In `strict-fixed` both start zones then get their
+region and their colour's town.
+
 **Draw sites** (10; steps 1 and 2's constructor site is one):
 
 | Site | Function | Drawn | Per | Condition |
@@ -2205,7 +2245,7 @@ Reads: zone and land bits. Floats: none. Limits: none; allocation failure throws
 |---|---|---|---|
 | RMG-OBJ-011 | `rmg_map_can_place`: the footprint on the map, its entrances and blocked cells free, not rock, without an entrance, of the zone; a blocked cell on water only for a group-0 template with water in its fourth column, on land not for one; the outline (a right-hand walk around the anchor row's blocked group) open in one unbroken arc or whole (open: on the map, free, not rock, no entrance, of the zone, water as the zone; an entrance on it refuses unless the type's settings +1 and +2); the cell below the entrance free, not rock, of the zone, without an entrance unless removable, water as the zone. *(QC: an empty outline divides by 0)* | — | §2.2 |
 | RMG-TWN-001 | Step 4 per zone: colour castle, colour town, neutral castle, neutral town (if asked, type +4); stops at the first placed. | TWN-002's | §2.2 |
-| RMG-TWN-002 | Central town: type −1 refused; town prototype (98) at the placeable cells nearest the centre (squared); entrance into +0x30 and the road targets. | 0x545492 %nearest | §2.2 |
+| RMG-TWN-002 | Central town: type −1 refused; the town prototype at the type's index of class 98's vector, at the placeable cells nearest the centre (squared, at most 32000); entrance into +0x30 and the road targets. | 0x545492 %nearest | §2.2 |
 | RMG-TWN-003 | Step 5: per kind the least count not yet placed, no spacing, the first of the first kind asked counted as step 4's. *(QC: even when step 4 placed none)* | TWN-005's | §2.2 |
 | RMG-TWN-004 | Densities: S, P sum and product of the positive ones; r = trunc(sqrt(82944 / S)); step P / d, key step × least; least key (first on ties) steps and places one at r; exhausted at its first failure. | TWN-005's | §2.2 |
 | RMG-TWN-005 | A further town: type redrawn (neutral without same-type byte, or +4 −1) among set types, else 8 (RoE) or 9; no town yet: TWN-002; else entrances in the zone at distance ≥ r, the 3 × 3 in the zone, placeable; the farthest, the r-th. | 0x544DEC %set or 0x544E22 %8/9; 0x545174 %farthest | §2.2 |
