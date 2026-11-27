@@ -619,3 +619,133 @@ numeric  = "float"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (survey section 1.5; E31 T1a2, read whole at T2f): 0x527960 (0x5279C1 to 0x527A28), artifact_table_load 0x44CD50 (artifacts_disabled 0x63B98C: 141, 142, 143)"
   confidence = "high"
+
+[[rule]]
+id       = "CPU-ARM-001"
+title    = "The army plan's alignments and the army's base morale"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's army plan counts its army's alignments as army_alignment_count does: each stack but a war machine by its faction, the neutral one alignment (the RoE game's elementals by the enabled packs, E08 decision 378). With the Angelic Alliance flag (any of the player's heroes on the map or in a town's garrison wears it) each faction of the Alliance's own alignment group is moved onto its first one, one alignment fewer for each that meets that one already counted; a creature without a faction stays the neutral alignment (AI-QUIRK-2: the original throws). The army's base morale as the plan asks it (stack_base_morale with no hero, town or enemy and no clamp): 2 less its alignments, with the Alliance one more for each of its factions present past the first; 1 less with an undead stack, 1 more with an Angel or Archangel (the original's 12, 13)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.3; E31 T1a2c, read whole again at T2g): ai_army_plan_alignments 0x42C060, army_alignment_count 0x44ABB0, alignment_join_towns_get 0x44A460, stack_base_morale 0x44AE60 (0x44AEA7 to 0x44B031), the throw at 0x42C8B6 and 0x42C781"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ARM-002"
+title    = "A stack's worth to an army and its slot"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_stack_marginal_value: v = the creature's AI value times the count (a word). A new alignment in an army with stacks whose base morale (CPU-ARM-001) plus the hero's own morale (clamped) is below 1, 2 for a Necropolis creature, is morale-bad when the stacks that feel morale (not no_morale, not the Minotaurs 78, 79; the new one too when it does) are worth at least 10 v. Slower than the army's slowest (from 20): v + trunc(V b / a - V), V the army's value plus 500, a and b the day's land points at the old and the new slowest speed, in doubles. Its creature's slot: that slot and v (a forced swap: -1). Else, unless morale-bad or forced, the first empty slot and v (none, or six stacks with a spare army: a replacement). A replacement (ai_stack_to_replace) is the stack of least AI value times count, the first on ties, among those that may go: under morale-bad only one alone in its alignment; for a new shooter with more than three shooting stacks only a shooter; for a new non-shooter never the army's only shooter; its worth is v less that stack's; none: 0."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.3; E31 T1a2c, read whole again at T2g): ai_stack_marginal_value 0x42C830 (the speed's loss 0x42CA4D to 0x42CA9B, land_movement_by_speed 0x698A98), ai_stack_to_replace 0x42C690"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ARM-003"
+title    = "A stack put into an army plan, and the shed"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_army_plan_put: the plan's gain plus the stack's AI value times its count; over another creature the gain less that one's AI value times its count's low 16 bits, which with a spare army goes there (its stack of the creature, else its first empty slot; a full spare without it: over the spare's least stack strictly below the displaced one, the first on ties, which is lost; none such, the displaced stack is lost); then the stack is added into the slot. ai_army_plan_shed (only with a spare): each slot in order, while the spare has fewer than seven stacks and the army more than one, the stack taken out, the alignments recounted and its worth (CPU-ARM-002) asked: above 0 back into its slot, else into the spare."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.3; E31 T1a2c, read whole again at T2g): ai_army_plan_put 0x42C130 (the spare's search 0x42C1D3 to 0x42C247), ai_army_plan_shed 0x42C5B0, army_add_stack 0x44ACE0, army_clear_slot 0x44AB60"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ARM-004"
+title    = "An army exchange's value"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_army_exchange_value: on copies of the hero's army and the other army (a garrison's, another hero's), with the Alliance's flag, the hero's own morale and its primary advantage (its primary sum less the other hero's, none 0; at least 0): the hero's later stacks of a slot's creature merged into it, the shed (CPU-ARM-003, the other army the spare), then transfers while one gains, summed. A transfer (ai_army_exchange_step): for each of the other army's stacks, with more than one there its whole count's worth (CPU-ARM-002), else the better of the whole count forced (a swap) and, above one, all but one; each times the advantage over 40, truncated; the best above 0 (the first on ties) is taken off the other army and put (CPU-ARM-003), the displaced stack into the other army. A hero no stronger than the other values an exchange at 0."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.3; E31 T1a2c, read whole again at T2g): ai_army_exchange_value 0x42C4A0, ai_army_exchange_step 0x42C280"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ARM-005"
+title    = "A purchase's value and the weighted cost"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_army_purchase_value: on copies of the army, the spare army and the resources, with the Alliance's flag and the hero's own morale: the army's later stacks of a slot's creature merged, the shed (CPU-ARM-003), then purchases while one gains, summed; the plan's gain and offers' counts stay the plan's. A purchase (ai_army_purchase_step, without the trades of the hires): for each offer with a count, its count when free, else as many as the resources pay (per resource with a cost, the stock over the cost, 0 without stock); its worth (CPU-ARM-002), above 0 and not free less its weighted cost times the count but never more than three quarters of the worth (truncated); the best above 0 (the first on ties) is put into its slot, its cost paid when not free and the offer's count lowered. The weighted cost (ai_weighted_cost): over the resources in order, the running total plus the cost times the owner's weight (the start's, CPU-STA-003), in doubles, truncated at each step."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.3; E31 T1a2c, read whole again at T2g): ai_army_purchase_value 0x42D780, ai_army_purchase_step 0x42D420 (the cap 0x42D564 to 0x42D57B), ai_weighted_cost 0x526CC0"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-TWN-001"
+title    = "A dwelling's value to a computer's hero"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_dwelling_value, the object value's classes 17 and 20, for a hero of the player in its turn, the candidate's cost and the tile: another's or none's with guards, the fight estimate against them (CPU-SIM-012), returned when -500 000 000 or less. Plus the purchase (CPU-ARM-005) of the dwelling's creatures with their counts (a word; the first level's free and whole, ai_army_plan_init_dwelling) into the hero's army with no spare, the player's resources and the Alliance's flag; on its own dwelling with a cost of 400 or more it counts only when the AI value it put in is a third of the army's value or more. An ally's dwelling is worth 0 and the victory to flag all dwellings adds 5 000 000 over the map's dwellings: with E10's teams and conditions (AI-STUB-18)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.3; E31 T1a2c, read whole again at T2g): ai_dwelling_value 0x529A30, ai_army_plan_init_dwelling 0x42CB70"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-TWN-002"
+title    = "The value of taking another's town"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_town_capture_value, for a hero, the candidate's cost (a word) and the tile: r, the fight estimate (CPU-SIM-012) against the town's upper bar with its garrison hero; r of -500 000 000 or less is the value while the player owns a town, else r counts -2 500 000. V = trunc(the town's gold a day without the Silo's (its hall's and a Grail's ever built) times the gold weight times 3.0), plus with a Resource Silo standing 3 times its resources weighted (CPU-ARM-005's sum); plus over its 14 indexes the available count (a word), with a week's growth when (cost - points left) / the day's maximum + the day of the week reaches 7, times the creature's AI value less its weighted cost where positive; V = trunc((1 + the owner's difficulty weight, CPU-SIM-012) times f32(V)); plus 5 000 000 when the player owns no town, else 5 000 000 over the map's towns. Returns r + V. The loss condition's town (5 000 000) waits for E10 (AI-STUB-18)."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, read whole again at T2g): ai_town_capture_value 0x529CB0, town_gold_income 0x5BF600 with its flag 0, town_silo_income 0x5C1280, town_dwelling_growth 0x5BFB60, ai_difficulty_blend 0x428710"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-TWN-003"
+title    = "The army part of a hero's own town's value"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_own_town_army_value, for a hero and the candidate's cost (a word): a plan of the town's available creatures (each index with a count, none free; ai_army_plan_init_town_value); A, the exchange's value (CPU-ARM-004) of the hero's army and the town's upper bar, its advantage over the garrison hero (none: its whole primary sum); B, the purchase's value (CPU-ARM-005) on the hero's army with the upper bar as the spare and the player's resources, the same plan; 0 when the cost is 400 or more and the AI value both put in is below a third of the hero's army's value, else A / 2 (truncated) + B."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, read whole again at T2g): ai_own_town_army_value 0x52B090, ai_army_plan_init_town_value 0x42CE30 (read first at T2g)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-TWN-004"
+title    = "A town's visit value for a hero"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_town_building_value, for a hero at one of its own towns: with a Magic University ever built, its value (CPU-SKL-003) of the part's skills with the gold test; with a mage guild ever built, without a spell book 1 000 when the player has 500 gold, with one the gain (CPU-SPL-007) of each spell the guild shows at the levels from 1 up to 2 plus the hero's Wisdom that the hero has not learned. The building of its faction a hero visits once (behind the hero's mark of the town) waits for E09 increment 7 (AI-STUB-19)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, read whole again at T2g): ai_town_building_value 0x52B1E0 (the guild loop 0x52B283 to 0x52B312, the switch 0x52B355), conflux_university_skills 0x5D2D80"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-TWN-005"
+title    = "A town's value to a computer's hero"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_town_value, the object value's class 98, for a hero, the candidate's cost and the entrance: no town, 0; another's or none's, the capture's value (CPU-TWN-002); its own, the army part (CPU-TWN-003) plus the visit value (CPU-TWN-004), plus with the Grail carried to a town that may build its building and has not, the Grail's value to the player (CPU-ART-011); while enemy heroes would take it (the start's count, CPU-STA-004), 5 000 000 over the map's towns; for each part of the Statue of Legion (118 to 122) the hero carries, its value to the town's garrison hero as it would wear it, counted (CPU-ART-010); at most 5 000 000. An ally's town (its visit value) and the victory conditions' musts (the Grail to build there, the artifact to bring, the town to capture, the strongest hero's) wait for E10 (AI-STUB-18). The fight against a hero visiting another's town, whose result the original drops, is not run."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, read whole again at T2g): ai_town_value 0x52AB80 (the dropped fight 0x52ACDA, the Legion's parts ai_legion_parts 0x640558, the cap 0x52B063)"
+  confidence = "high"

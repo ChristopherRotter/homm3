@@ -13915,6 +13915,11 @@ fn the_plans_play_battles_to_a_victory() {
 /// each of Pathfinding, Logistics and Scouting at the start; the accepted moves of a flyer over
 /// water and over a tile an object blocks, of a water walker over water, and of a hero whose army
 /// holds Nomads; the moves refused with `NoStop` (a path that ends where its hero may only pass).
+/// Under `strict-fixed` (E08 T145's audit of decision 407's free probe, `ADV-QUIRK-15` off): the
+/// accepted flights whose path holds a tile the mover's owner had not explored, the compromise's
+/// stops (a flight cut short on its last stop node, nothing visited, a hidden tile in the rest
+/// it dropped) and the Scuttle Boat and Dimension Door targets `legal_cast_targets` lists on a
+/// tile hidden from the caster's owner.
 #[derive(Debug, Default)]
 struct Moved {
     wearing: [usize; 6],
@@ -13924,6 +13929,9 @@ struct Moved {
     walked_on_water: usize,
     with_nomads: usize,
     no_stop: usize,
+    flown_over_hidden: usize,
+    compromise_stops: usize,
+    hidden_targets: usize,
 }
 
 impl Moved {
@@ -13948,12 +13956,30 @@ impl Moved {
         }
     }
 
-    /// Counts the command `command` of `before`, accepted or refused (`result`).
+    /// Counts the targeted casts' listed targets of `state` hidden from the acting player (under
+    /// `strict-fixed`: [`Moved`]).
+    fn targets(&mut self, rules: &GameRuleset, state: &GameState) {
+        let (who, player) = (actor(state), acting(state));
+        for hero in state.adventure().hero_list(player) {
+            for &(spell, effect) in rules.adventure().spells() {
+                if effect.targets() {
+                    let targets = legal_cast_targets(state, rules, who, (hero, spell));
+                    let hidden = targets
+                        .iter()
+                        .filter(|&&pos| !state.adventure().is_explored(player, pos));
+                    self.hidden_targets += hidden.count();
+                }
+            }
+        }
+    }
+
+    /// Counts the command `command` of `before`, accepted or refused (`result`) with `events`,
+    /// under `strict-fixed` or not.
     fn count(
         &mut self,
-        rules: &GameRuleset,
+        (rules, strict): (&GameRuleset, bool),
         before: &GameState,
-        command: &GameCommand,
+        (command, events): (&GameCommand, &[GameEvent]),
         result: &Result<(), GameCommandError>,
     ) {
         let Some((hero, path)) = as_move(command) else {
@@ -13970,6 +13996,28 @@ impl Moved {
         let movement = h3_heroes::movement(details, rules.core());
         let passed = &path[..path.len().saturating_sub(1)];
         let over_water = passed.iter().any(|&pos| is_water(before, rules, pos));
+        let flies = movement.flying.is_some() || before.adventure().day_spells(hero).fly.is_some();
+        if strict && flies && on_map.boat.is_none() {
+            let hidden = |pos: &TilePos| !before.adventure().is_explored(on_map.owner, *pos);
+            self.flown_over_hidden += usize::from(path.iter().any(hidden));
+            let walk_only = events.iter().all(|e| {
+                matches!(e, GameEvent::Adventure(a) if matches!(
+                    a.kind,
+                    AdventureEventKind::HeroStepped { .. }
+                        | AdventureEventKind::MovementChanged { .. }
+                        | AdventureEventKind::DaySpellsChanged { .. }
+                        | AdventureEventKind::BonusChanged { .. }
+                        | AdventureEventKind::OnceMarkChanged { .. }
+                        | AdventureEventKind::TimedMarkChanged { .. }
+                ))
+            });
+            let steps = events.iter().filter(|e| {
+                matches!(e, GameEvent::Adventure(a)
+                    if matches!(a.kind, AdventureEventKind::HeroStepped { hero: h, .. } if h == hero))
+            });
+            let rest = path.get(steps.count()..).unwrap_or_default();
+            self.compromise_stops += usize::from(walk_only && rest.iter().any(hidden));
+        }
         if movement.flying.is_some() {
             self.flown_over_water += usize::from(over_water);
             let blocked = passed.iter().any(|&pos| live_bits(before, pos).0);
@@ -13995,7 +14043,8 @@ impl Moved {
 /// walkers over water and heroes with Nomads, and refuses paths that end where their heroes may
 /// only pass (`NoStop`); every accepted move ends where its hero may stop
 /// (`every_step_keeps_the_commands_invariants`). E08 T97b2: 96 cases (64 before): the dwellings
-/// laid out on water changed the games, and no `NoStop` was left.
+/// laid out on water changed the games, and no `NoStop` was left. E08 T145: under `strict-fixed`
+/// the flights over hidden tiles, the compromise's stops and the hidden cast targets ([`Moved`]).
 // covers: ADV-MOV-007, ADV-MOV-009, ADV-MOV-010
 #[test]
 fn the_plans_fly_and_walk_on_water() {
@@ -14010,19 +14059,30 @@ fn the_plans_fly_and_walk_on_water() {
         moved.start(rules, &state);
         for step in &steps {
             let legal = options(&state, rules);
+            if strict {
+                moved.targets(rules, &state);
+            }
             let (actor, command) = resolve(&state, rules, &legal, step);
             let before = state.clone();
-            let result = apply(&mut state, rules, actor, command.clone(), &mut Vec::new());
-            moved.count(rules, &before, &command, &result);
+            let mut events = Vec::new();
+            let result = apply(&mut state, rules, actor, command.clone(), &mut events);
+            moved.count((rules, strict), &before, (&command, &events), &result);
         }
     }
     let m = &moved;
+    eprintln!("{m:?}");
     assert!(m.wearing.iter().chain(&m.skilled).all(|&n| n > 0), "{m:?}");
     assert!(m.flown_over_water > 0 && m.flown_over_blocked > 0, "{m:?}");
     assert!(
         m.walked_on_water > 0 && m.with_nomads > 0 && m.no_stop > 0,
         "{m:?}"
     );
+    // E08 T145 (96 cases: 1 flight over a hidden tile, 4 843 hidden targets): a hidden tile is a
+    // pass, never a stop, so a flight crosses one only on its way to an explored tile beyond it,
+    // which the plans' small maps, explored outward from their heroes, rarely hold; the
+    // compromise's stops, which need such a flight and a revealed tile that forbids its step,
+    // stay 0 and unasserted.
+    assert!(m.flown_over_hidden > 0 && m.hidden_targets > 0, "{m:?}");
 }
 
 /// What a set of games managed (E08 T52): the meetings opened and the spells Scholar taught at

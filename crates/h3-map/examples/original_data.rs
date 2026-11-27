@@ -90,10 +90,10 @@
 //! Since E08 T144b (increment 15's design note §17, exit criterion 1) the Prisons (62) and the
 //! Market of Time (50): each Prison's body a hero's of no owner on land, no two prisoners of one
 //! type on a map nor of a placed hero's, its customisations counted; each imported as its map's
-//! prisoner and built into the store with its type, experience, army, skills and artifacts, on no
-//! tile, in no player's list, its type the pool's prisoner's (ADV-PRI-001); the Market of Time
-//! typed `empty` (ADV-OBJ-008); against the survey's census (`E08-spells.md` §1.1, §1.2: 89 on 41
-//! maps, one Market of Time).
+//! prisoner and built into the store with its type, experience, army, skills and artifacts, its
+//! level its experience's and its spell points full, on no tile, in no player's list, its type
+//! the pool's prisoner's (ADV-PRI-001); the Market of Time typed `empty` (ADV-OBJ-008); against
+//! the survey's census (`E08-spells.md` §1.1, §1.2: 89 on 41 maps, one Market of Time).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -2394,8 +2394,8 @@ fn class_of(raw: &RawMap, object: &Object) -> Option<u32> {
 /// The prisoners a map's import and build give (E08 T144b; ADV-PRI-001, exit criterion 1): one
 /// per Prison in the map's order; each built into the store as its Prison's prisoner with the
 /// type, the experience, the army, the skills (at least, after its levels at load) and the
-/// artifacts the import read from its body, on no tile and in no player's list, its type the
-/// pool's prisoner's.
+/// artifacts the import read from its body, its level its experience's and its spell points
+/// full, on no tile and in no player's list, its type the pool's prisoner's.
 fn built_prisoners(
     raw: &RawMap,
     setup: &GameSetup,
@@ -2403,7 +2403,7 @@ fn built_prisoners(
     (rules, name): (&GameRuleset, &str),
     census: &mut Increment15,
 ) {
-    let part = rules.adventure();
+    let (core, part) = (rules.core(), rules.adventure());
     let bodies = placed(raw)
         .filter(|&(_, class)| class == PRISON_CLASS)
         .count();
@@ -2461,6 +2461,9 @@ fn built_prisoners(
             army_fits,
             skills,
             artifacts,
+            (core.hero_params())
+                .is_some_and(|p| details.level == h3_heroes::level_of(p, details.experience)),
+            details.mana == h3_heroes::max_mana(details, core),
             game.adventure().hero(hero).is_none(),
             !listed.contains(&hero),
             game.hero_status(prisoner.hero_type) == Some(HeroStatus::Prisoner),

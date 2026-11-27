@@ -128,7 +128,7 @@ pub(super) fn university_value(
     rules: &GameRuleset,
     hero: Fighter<'_>,
     reads: &ComputerReads,
-    (skills, gold_test): ([SkillId; 4], bool),
+    (skills, gold_test): (&[SkillId], bool),
 ) -> i32 {
     let (core, details) = (rules.core(), hero.details);
     if details.skills.len() >= MAX_HERO_SKILLS {
@@ -155,7 +155,8 @@ pub(super) fn university_value(
     };
     let lacks = |skill: SkillId| details.skills.iter().all(|&(s, _)| s != skill);
     skills
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|&skill| {
             weighed(skill) && lacks(skill) && computer_takes_new_skill(details, core, reads, skill)
         })

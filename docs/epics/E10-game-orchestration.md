@@ -1,6 +1,6 @@
 # E10 — Game orchestration: teams, the scenario's conditions and its end
 
-Status: **refined, not started** (2026-11-21, the user, ADV-Q62). E10 opens in the adventure lane once E08 closes with increment 15 (the Prison, the Market of Time and the adventure spells; E08 decisions 394, 396). E08 built E10's players, turns, battle integration and projections in `h3-game` (ADR-0017); what is left is listed here.
+Status: **refined, not started** (2026-11-21, the user, ADV-Q62). E10 opens in the adventure lane now that E08 closed with increment 15 (the Prison, the Market of Time and the adventure spells; E08 decisions 394, 396; E08 T145, 2026-11-27): increment 1's first round, T1a (the survey) and T1b (the drafts, the design note and the cut), is queued (`docs/lanes/adventure/QUEUE.md`). E08 built E10's players, turns, battle integration and projections in `h3-game` (ADR-0017); what is left is listed here.
 
 ## Goal
 

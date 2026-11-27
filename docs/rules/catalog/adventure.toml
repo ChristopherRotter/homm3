@@ -330,7 +330,7 @@ id       = "ADV-MOV-009"
 title    = "Flying"
 context  = "adventure"
 status   = "verified"
-summary  = "A hero with a flying level (the higher of its details' highest, HER-ADV-005: Angel Wings 3, and its Fly of the day, ADV-SPL-005: the mastery 0 to 3, since E08 T142a) flies. The price (E08 T41, the original's step_cost point 5 as corrected at ADV-Q22, in every profile): from a land tile no object blocks, an object's visitable tile included, the lesser of the fly price at its level (data: 140, 140, 120, 100) and the walking price (ADV-MOV-003, ADV-MOV-004); from water and from a tile the live occupancy blocks (an obstacle flown over) the fly price; a diagonal times √2 (ADV-MOV-005) with the exception's check of ADV-MOV-006. The passage (increment 5's design note §7's table, `AdventureState::passage`): besides a walker's tiles a flight passes over blocked tiles, water (plain or holding an object), an own hero, another player's hero, an object's visitable tile (a neighbour's object, an entered one, one whose visit is not built), guarded tiles, and up off the visitable tile of an object not visited from above; never rock, never down onto such a visitable tile; an unexplored tile only as a pass (since E08 T142b, ADV-MOV-008 amended, ADV-QUIRK-15: the hidden truth with the flag on, an assumed blocked tile off). A move ends only where the hero may stop (D-25): a free land tile, a gate whose key its owner holds, an entered object's tile (visited from any node), or a visit from a stop to a neighbour's object or another player's hero; else `NoStop`. A flight goes on over guarded tiles and objects without visiting them: only its last step's tile is tested for a guard and only its object visited. The reachable-tiles query keeps two nodes per tile (stop, pass) and reports the stop tiles; the drop to 0 after each step follows ADV-MOV-006 (ADV-QUIRK-17). A flyer that also water-walks flies. Not yet: a hero in a boat (neither flies nor water-walks), towns (entered as a stop from a stop only, E09). E08 T41: `Pricing`, `Mode`, `Node`, `AdventureState::passage`, `MoveHero`, `Reach`. E08 T73a (increment 8, D-46 confirmed by batch E8c's E8-17a, E8-17b): a water tile an object is visited from (a pickup's, a monster's, a water Cartographer's, a blocker's) is closed to a flight, no stop and no pass; plain water, an object's blocked cell on water, an empty boat and a hero in a boat stay a flight's pass; a flight boards a boat from a stop node only (ADV-SEA-002) and visits a hero in a boat from one. A hero in a boat does not fly. Amended by E08 T125a (increment 13's design note section 9; ADV-STUB-12 lifted): a creature bank of a `coast` kind (the Shipwreck, the original's class 85) has an empty boat's rows on its water entrance: a flight visits it from a stop node (its question; the hero stays on land) and passes over it from land or from water, ending on it nowhere, up off a closed top too; the Derelict Ship's stays closed (D-46). `AdventureState::coast_visit`."
+summary  = "A hero with a flying level (the higher of its details' highest, HER-ADV-005: Angel Wings 3, and its Fly of the day, ADV-SPL-005: the mastery 0 to 3, since E08 T142a) flies. The price (E08 T41, the original's step_cost point 5 as corrected at ADV-Q22, in every profile): from a land tile no object blocks, an object's visitable tile included, the lesser of the fly price at its level (data: 140, 140, 120, 100) and the walking price (ADV-MOV-003, ADV-MOV-004); from water and from a tile the live occupancy blocks (an obstacle flown over) the fly price; a diagonal times √2 (ADV-MOV-005) with the exception's check of ADV-MOV-006. The passage (increment 5's design note §7's table, `AdventureState::passage`): besides a walker's tiles a flight passes over blocked tiles, water (plain or holding an object), an own hero, another player's hero, an object's visitable tile (a neighbour's object, an entered one, one whose visit is not built), guarded tiles, and up off the visitable tile of an object not visited from above; never rock, never down onto such a visitable tile; an unexplored tile only as a pass (since E08 T142b, ADV-MOV-008 amended, ADV-QUIRK-15: the hidden truth with the flag on, an assumed blocked tile off). A move ends only where the hero may stop (D-25): a free land tile, a gate whose key its owner holds, an entered object's tile (visited from any node), or a visit from a stop to a neighbour's object or another player's hero; else `NoStop`. A flight goes on over guarded tiles and objects without visiting them: only its last step's tile is tested for a guard and only its object visited. The reachable-tiles query keeps two nodes per tile (stop, pass) and reports the stop tiles; the drop to 0 after each step follows ADV-MOV-006 (ADV-QUIRK-17). A flyer that also water-walks flies. Not yet: towns (entered as a stop from a stop only, E09). E08 T41: `Pricing`, `Mode`, `Node`, `AdventureState::passage`, `MoveHero`, `Reach`. E08 T73a (increment 8, D-46 confirmed by batch E8c's E8-17a, E8-17b): a water tile an object is visited from (a pickup's, a monster's, a water Cartographer's, a blocker's) is closed to a flight, no stop and no pass; plain water, an object's blocked cell on water, an empty boat and a hero in a boat stay a flight's pass; a flight boards a boat from a stop node only (ADV-SEA-002) and visits a hero in a boat from one. A hero in a boat does not fly. Amended by E08 T125a (increment 13's design note section 9; ADV-STUB-12 lifted): a creature bank of a `coast` kind (the Shipwreck, the original's class 85) has an empty boat's rows on its water entrance: a flight visits it from a stop node (its question; the hero stays on land) and passes over it from land or from water, ending on it nowhere, up off a closed top too; the Derelict Ship's stays closed (D-46). `AdventureState::coast_visit`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-15", "ADV-QUIRK-17"]
 
@@ -375,6 +375,12 @@ quirks   = ["ADV-QUIRK-15", "ADV-QUIRK-17"]
   retrieved  = "2026-10-29"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15c.md E15-11 (Fly cast at level 0, the flight's level), experiments/results/E08-batch-15b.md E15-13 (a flight through a hidden strip: 100 from every free tile, 140 from the hidden tree, the lesser of the walking and the fly price; survey E08-spells.md section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-MOV-010"
 title    = "Water walking"
@@ -410,6 +416,12 @@ quirks   = ["ADV-QUIRK-17"]
   retrieved  = "2026-10-22"
   confidence = "high"
   note       = "Regression tests: a_water_walk_costs_the_water_walk_price_from_water, a_water_walk_crosses_plain_water_and_lands_on_the_far_shore."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15c.md E15-12 (Water Walk cast aboard, kept after landing: three steps over the strait's water, each priced by the tile it leaves, A-49) and experiments/results/E08-batch-15b.md E15-14 (no path over hidden water, D-78 the reading's; survey E08-spells.md section 18)"
+  retrieved  = "2026-11-22"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-MOV-011"
@@ -4599,7 +4611,7 @@ numeric  = "integer"
 id       = "ADV-PRI-001"
 title    = "The Prison: a hero of the store held on the map, visited from a neighbour"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A Prison (`ObjectKind::Prison`, the original's class 62 subclass 0; E08 T141a, increment 15's design note sections 1, 7, 8; the base pack's `base:prison`, imported from class 62 since map import v29) has no owner, no mark and no parameter. It is visited from a neighbour (`Visit::Neighbour`: class 62 is on object_classes_not_entered 0x63AA58), not from above, every time, by every player. Its body is a hero's, read as a placed hero's (`GamePrisonerSetup`: type, army or the type's starting army, formation, each customised detail over its type's map-wide entry; no owner, no tile); the import refuses a Prison without a hero's body (`ImportError::PrisonBody`) or entered from water (`Unsupported::PrisonerOnWater`; none of the 89 shipped Prisons), and the game a prisoner's type the ruleset lacks, a placed hero's or an earlier prisoner's (`GameSetupError::PrisonerType`). The game builds each prisoner into the store as a placed hero, after the build's heroes (the main towns' included) and before the customised types' records, its armies and details drawn after theirs, its levels at load in hero id order (GAM-SET-001, GAM-SET-002), its type a prisoner's in the pool with its own record (TWN-SET-005); it is in no player's list (GAM-HER-003). The adventure's build gives the Prisons in object order the setup's prisoners in order (`AdventureSetup::prisoners`, one per Prison, `SetupError::Prisoners`), each holding its hero, its army by slot (checked as a hero's) and its formation as its drawn content (`Resolved::Prisoner`, part of the static map's hash)."
 numeric  = "integer"
 
@@ -4610,7 +4622,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "The census of the 159 shipped maps (survey E08-spells.md section 1.1): 89 Prisons on 47 maps, each subclass 0 with a hero's body, none on water, no type twice"
+  ref        = "The census of the 159 shipped maps (survey E08-spells.md section 1.1): 89 Prisons on 41 maps, each subclass 0 with a hero's body, none on water, no type twice"
   confidence = "high"
 
   [[rule.source]]
@@ -4628,7 +4640,7 @@ numeric  = "integer"
 id       = "ADV-PRI-002"
 title    = "A Prison's visit: emptied, full, or the prisoner freed last in the visitor's owner's list"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A Prison's visit names its prisoner to the game (`AdventureOutcome::prison`: the visitor, the Prison, its visitable tile, the prisoner); the visitor pays the step's price and stays on its tile, untouched. The game settles it in the original's order (`GameState::settle_prison`; no decision): (1) a prisoner whose type the pool no longer holds as a prisoner's (only a campaign's carried hero rewrites it) empties the Prison (`AdventureState::empty_prison`: its ObjectRemoved; `GameEvent::PrisonEmptied`, ADVEVENT 104); (2) a player at the town part's most heroes on the map, its towns' garrison heroes not counted (8; 0 for a ruleset without a town part), frees nobody (`GameEvent::PrisonFull`, ADVEVENT 103, nothing changed); (3) else the prisoner is freed: its type taken by the player's colour with the colour's bit added to its mask, no mask tested (`HeroPool::free_prisoner`); the Prison taken off the map (its ObjectRemoved first), then the hero placed on its visitable tile on land with the army and formation the build gave it, tactics on, no boat, no marks, last in the player's list (GAM-HER-003), its points and the day's maximum a full day's land points for that army (`day_points` without week marks, as a tavern hero's, TWN-TAV-005); `GameEvent::PrisonerFreed` to its owner and every player that sees the tile, then for the owner the view's lists (`PrisonerPartSeen`) and its other parts (`HiredPartSeen`), its points by the command's MovementChanged. Nothing is revealed around the freed hero."
 numeric  = "integer"
 
@@ -4652,9 +4664,15 @@ numeric  = "integer"
 id       = "ADV-PRI-003"
 title    = "What a viewer sees of a prisoner"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A prisoner is the store's and no viewer's until freed: no observation holds it (it is no hero on the map and in no list), and the Prison is an object like any other. A freed prisoner is a hero arriving on a tile (`GameEvent::PrisonerFreed`, projected as a hire's: to its owner and every player that sees the tile, each naming the viewer alone; the hero's view, the tavern hero screen's parts, for the owner alone, and its parts to the owner alone); `PrisonFull` and `PrisonEmptied` are the visitor's owner's. The wire carries the four events (protocol v80) and the protocol's fold adds the freed hero to the viewer's heroes and its owner's list."
 numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-15a.md E15-1 (survey E08-spells.md section 18): at the start the prisons' popups show the prison's name only, the prisoner hidden; the freed prisoner then a hero of the visitor's player"
+  retrieved  = "2026-11-22"
+  confidence = "high"
 
   [[rule.source]]
   kind       = "design"
@@ -4665,7 +4683,7 @@ numeric  = "integer"
 id       = "ADV-OBJ-008"
 title    = "An object entered and never visited: the Market of Time"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "The Market of Time (`ObjectKind::Empty`, the original's class 50 subclass 0; E08 T141a, increment 15's design note section 2; the base pack's `base:market_of_time`, imported from class 50 since map import v29, no body) has no owner, no mark and no parameter. It is entered (class 50 is on neither of the original's lists), not from above: a step onto its entrance ends the move there at the step's price, as every entrance's, and nothing happens: no outcome, no event beyond the step. A hero standing on it has nothing to revisit (*agent's call*: the original's visit of its class does nothing, so no `Revisit` is listed and one is refused, `NothingToRevisit`)."
 numeric  = "integer"
 
@@ -4899,7 +4917,7 @@ id       = "ADV-SPL-008"
 title    = "Dimension Door's target: a free tile in the 9 x 8 window"
 context  = "adventure"
 status   = "verified"
-summary  = "The target lies in the window around the caster (`[params.spells]` `target_range`: at most 9 columns and 8 rows away, on its level, on the map; A-54's tenth row fixed, ADV-QUIRK-56), else `CastError::OutOfWindow`. It must be free: no object's blocked tile and no rock, no object's visitable tile, no hero (in a boat or not) and no empty boat, as the map stands (`NotFree`, the dialog's missing cursor); with ADV-QUIRK-55 off an explored target of the wrong kind (land from a boat, water from land) is refused too (`WrongKind`). Hidden tiles by ADV-QUIRK-51: on (faithful) a hidden tile is tested as an explored one, its truth read (A-53); off (strict-fixed) every hidden tile of the window is a target, so the refusals depend only on what the player knows (ADV-SPL-009 tests it at the cast). E08 T143b: `AdventureState::in_window`, `check_door`, `door_free`."
+summary  = "The target lies in the window around the caster (`[params.spells]` `target_range`: at most 9 columns and 8 rows away, on its level, on the map; A-54's tenth row fixed, ADV-QUIRK-56), else `CastError::OutOfWindow`. It must be free: no object's blocked tile and no rock, no object's visitable tile, no hero (in a boat or not) and no empty boat, as the map stands (`NotFree`, the dialog's missing cursor); with ADV-QUIRK-55 off an explored target of the wrong kind (land from a boat, water from land) is refused too (`WrongKind`). Hidden tiles by ADV-QUIRK-51: on (faithful) a hidden tile's freedom is read as an explored one's, its truth read (A-53: no cursor on a hidden tree, `NotFree`), its kind only at the cast (a hidden tile of the wrong kind fails charged whatever ADV-QUIRK-55 says); off (strict-fixed) every hidden tile of the window is a target, so the refusals depend only on what the player knows (ADV-SPL-009 tests it at the cast). E08 T143b: `AdventureState::in_window`, `check_door`, `door_free`."
 numeric  = "integer"
 quirks   = ["ADV-QUIRK-51", "ADV-QUIRK-55", "ADV-QUIRK-56"]
 
@@ -4958,4 +4976,22 @@ quirks   = ["ADV-QUIRK-51", "ADV-QUIRK-55"]
   [[rule.source]]
   kind       = "design"
   ref        = "E08-design.md increment 15's sections 10.5 and 11.2 (decisions 399, 403); the reveal of a hidden target the caster's player's (as Scuttle Boat's, E08 T143a), the arrival increment 11's"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-SPL-010"
+title    = "What a viewer sees of a cast on the adventure map"
+context  = "adventure"
+status   = "implemented"
+summary  = "A hero's day spells (its Fly and Water Walk levels, its Dimension Door casts of the day; ADV-SPL-002) are its owner's alone: in the own hero view (`OwnHeroView::spells`) and told by `AdventureEventKind::DaySpellsChanged` to the owner. A cast's own events are the caster's owner's alone: `GameEvent::SpellCast` (the spell, the mastery, the cost) and `CastFailed` (the reason), as a refusal is. Another player sees only the map's changes on tiles it sees, never the spell (increment 15's design note section 13, survey E08-spells.md section 10): a door's relocation as a jump's two ends (`HeroTeleported`, ADV-FOG-004: an end the viewer does not see left out), a summoned boat's leave and arrival by tile (`BoatSummoned`, ADV-FOG-008), a created boat's arrival (`BoatCreated`) and a scuttled boat's removal (`BoatScuttled`) to the players that see heroes on its tile, as they see empty boats there; never a boat's index, owner or captain. The reveals of a door's arrival and of a hidden target (ADV-QUIRK-51, -52 off) are the caster's team's explored tiles (ADR-0016 point 5). The wire carries the events (protocol v82 to v84) and the protocol's fold keeps the own heroes' day spells (E08 T142a to T143b; written by E08 T145's audit, survey section 16's proposed id)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-spells.md section 10): the day's spell state on the hero record (+0x112, +0x116, +0x10D) read only by the owner's hero list and hero screen; another player's map redrawn from the tiles it sees (a boat moved, created or gone, a hero vanishing and appearing); the target dialogs' cursors the owner's (A-50, A-53)"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E08-design.md increment 15's sections 13, 16; docs/06-security.md, increment 15's lines (a hero's day spells, a cast, the chance draws); ADR-0016 point 6"
   confidence = "high"

@@ -183,7 +183,13 @@ fn mana(state: &GameState) -> u16 {
 /// on (3, 0); red's hero 0 on (0, 0) knows the two boat spells (at None: a chance of 50) with 200
 /// points, in a game of `seed`. Both players explore the whole 4 × 4 map.
 fn sea_game(rules: &GameRuleset, seed: u64) -> GameState {
+    sea_game_with(rules, seed, vec![])
+}
+
+/// [`sea_game`] with `objects` on the map.
+fn sea_game_with(rules: &GameRuleset, seed: u64, objects: Vec<ObjectSetup>) -> GameState {
     let mut setup = setup();
+    setup.map.objects = objects;
     for (x, y) in [(1, 0), (1, 1), (0, 1), (3, 0)] {
         setup.map.tiles[y * 4 + x].terrain = TerrainId::from_raw(2);
     }
@@ -251,7 +257,7 @@ fn summon_until_both(
     }
 }
 
-// covers: GAM-SPL-001, ADV-SPL-003
+// covers: GAM-SPL-001, ADV-SPL-003, ADV-SPL-010
 #[test]
 fn summon_boat_draws_its_chance_from_the_caster_s_stream_and_a_failure_is_charged() {
     // The nobody's boat comes beside the hero, onto the first free water from up, clockwise:
@@ -305,7 +311,43 @@ fn summon_boat_draws_its_chance_from_the_caster_s_stream_and_a_failure_is_charge
     );
 }
 
-// covers: GAM-SPL-001, ADV-SPL-004
+/// Summon Boat at Expert (a chance of 100, no failure possible) still draws one value from the
+/// caster's player's stream (ADV-SPL-003).
+// covers: GAM-SPL-001, ADV-SPL-003
+#[test]
+fn summon_boat_at_expert_still_draws_its_chance_once() {
+    // Magic Plains raise air to Expert: the last column's 7 points and a chance of 100.
+    let rules = cast_rules();
+    let plains = ground(&rules, "t:plains_ground", Pos::new(0, 0, 0));
+    let mut state = sea_game_with(&rules, 7, vec![plains]);
+    let mut probe = state.stream(RED);
+    probe.range_inclusive(1, 100);
+    let events = play(&mut state, &rules, RED, cast(&rules, "t:summon", None)).unwrap();
+    assert!(
+        matches!(
+            events[0],
+            GameEvent::SpellCast {
+                mastery: 3,
+                cost: 7,
+                ..
+            }
+        ),
+        "{events:?}"
+    );
+    assert!(
+        matches!(
+            &events[1],
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::BoatSummoned { .. },
+                ..
+            })
+        ),
+        "{events:?}"
+    );
+    assert_eq!(state.stream(RED), probe, "one draw at a chance of 100");
+}
+
+// covers: GAM-SPL-001, ADV-SPL-004, ADV-SPL-010
 #[test]
 fn scuttle_boat_draws_its_chance_and_a_refusal_draws_nothing() {
     // A target without an empty boat is refused, free, drawing nothing; the boat's tile takes
@@ -477,7 +519,7 @@ fn dimension_door_moves_the_hero_for_its_movement_and_spell_points() {
     );
 }
 
-// covers: GAM-SPL-001, ADV-SPL-009
+// covers: GAM-SPL-001, ADV-SPL-008, ADV-SPL-009
 #[test]
 fn dimension_door_s_wrong_target_is_refused_free_or_charged_under_adv_quirk_55() {
     // Off (the pack's profile): water from land is not offered, nothing spent. On: the cast is
@@ -509,7 +551,7 @@ fn dimension_door_s_wrong_target_is_refused_free_or_charged_under_adv_quirk_55()
     assert_eq!(door_caster(&state), (start, points - 300, 35, 1));
 }
 
-// covers: GAM-SPL-001, ADV-SPL-001, ADV-SPL-005
+// covers: GAM-SPL-001, ADV-SPL-001, ADV-SPL-002, ADV-SPL-005, ADV-SPL-010
 #[test]
 fn a_cast_of_fly_spends_its_cost_after_its_effect_and_tells_its_owner() {
     let rules = cast_rules();
@@ -550,8 +592,10 @@ fn a_cast_of_fly_spends_its_cost_after_its_effect_and_tells_its_owner() {
     // Seen by its owner alone.
     let blue = Viewer::Player(BLUE);
     assert!(events.iter().all(|e| project(e, blue).is_none()));
-    // The next day clears it, told to the owner.
+    // The owner's turn's end keeps it (ADV-SPL-002: it lasts the day); the next day clears it,
+    // told to the owner.
     play(&mut state, &rules, RED, GameCommand::EndTurn).unwrap();
+    assert_eq!(state.adventure().day_spells(HERO), fly);
     let events = play(&mut state, &rules, BLUE, GameCommand::EndTurn).unwrap();
     assert!(events.contains(&GameEvent::Adventure(AdventureEvent {
         kind: AdventureEventKind::DaySpellsChanged {
@@ -729,7 +773,7 @@ fn the_cast_s_errors_explain_themselves() {
         ),
         (
             MapCastError::Adventure(CastError::InBoat),
-            "Fly is not cast in a boat",
+            "the spell is not cast in a boat",
         ),
         (
             MapCastError::Adventure(CastError::NotYourHero(HeroId::new(4))),
