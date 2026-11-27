@@ -318,6 +318,18 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Regression test: `h3-rmg`'s `a_fill_whose_start_lies_on_borders_starts_from_a_free_cell_by_the_flag` (both sides, a claimed region left alone, no free cell left), `h3-pack-rmg`'s `a_zone_whose_start_lies_on_borders_gets_its_region_by_the_flag` (both profiles: `strict-fixed` gives both start zones their region and colour's town); the faithful side is the corpus's steps 2 to 5 (`the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5`)
 - Decided by / date: the user, 2026-11-27 (increment 3's checkpoint)
 
+### RMG-QUIRK-26 — A one-way monolith connection's entrances share their channel's exits
+- Class: fix-optional (the user, 2026-11-27, E14 decision 12)
+- Context / rules affected: step 6, `rmg_connection_by_monoliths` 0x542CE0 and `rmg_zone_connections_make` 0x543240's index (RMG-CON-017); the game's channels (ADV-TEL-002, -003); survey §2.3
+- Original behavior: a one-way connection takes entrance and exit prototypes of one index, so one channel, and places an entrance and an exit in each zone: each entrance leads to either exit, its own zone's among them. The index wraps after the two-way and one-way prototypes (AB 6, SoD 16), so a later connection shares a channel's monoliths with an earlier one.
+- Intended/expected behavior: each entrance leads to the other zone.
+- Impact: gameplay-altering (a hero may come out in the zone he left; channels mixed across connections)
+- Sources: code reading (survey §2.3, E14 T4a)
+- Flag: to be registered with its port (`quirk.rmg.*`, T4d)
+- Defaults: faithful = on (as read), fixed = off (the fix designed in T4d: each direction its own channel where one is free)
+- Regression test: when RMG-CON-017 is ported (T4d)
+- Decided by / date: the user, 2026-11-27 (E14 decision 12)
+
 ## Considered, not quirks
 
 Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the classification, and the oracle's memory bits). A later reading that shows one changes a map's gameplay re-opens it here.
@@ -355,7 +367,6 @@ Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the
 
 | Candidate | What decides | Survey |
 |---|---|---|
-| T4a: a one-way monolith connection puts its two entrances and two exits (one of each per zone) on one channel, so an entrance may lead back into its own zone (the game draws among the channel's exits); and the index wraps after the two-way and one-way counts (AB 6, SoD 16), so a later connection shares a channel's monoliths | the user's classification (harmless and accepted, or fixed under a flag); T4d ports RMG-CON-017 | §2.3 |
 | Both 6LM10 templates connect zone 13 to itself | what step 6 makes of a self-connection (a fault would be RMG-QUIRK-3's or -4's class; T4d) | §3.1 |
 | Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0. **T4b (ported, equal to the oracle):** steps 4 and 5 read the colour at +0xEE0 for position −1, which `rmg_generate_map` clears to −1 and nothing writes, so a colour town there would be neutral; but none of these rows asks for a town of its colour: 2SM2i(2)'s start 3 and 2SM0k's 3 and 4 get no town, 2SM2i(2)'s start 5 and 2SM0k's 5 to 8 their one least neutral town each (a village of their drawn town type) | what steps 4 and 5 give such a zone (the writer leaves the colour at position 7 out of the map: T3a's `s1-3p-2sm2i2`, RMG-QUIRK-24): the user's classification | §3.1 |
 | T3b: the borders' edge walk draws straight to the re-entry point whenever it shares x or y with the current point, also across the map: a cell whose one side on the map is axis-aligned gets a straight chord over its jagged side, in both zones' ids; the cells between are reached by no fill (water on level 0, rock on level 1, as read). **T3d: never in the corpus** | cosmetic or a fix, once a census shows it (increment 7's census, E14 decision 11) | §2.2 |

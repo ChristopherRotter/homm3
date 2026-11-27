@@ -47,6 +47,7 @@ resumes (the epic file); its tasks are cut then.
     record).
 ## Inbox
 
+- 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). The two bot reports' `core` lines were substituted by hand (no report regenerated). A branch of yours regenerating them before this merges carries the new hash.
 Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10-19); the
 origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: the notices of
 E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last part, the battle

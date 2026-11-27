@@ -31,6 +31,7 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 
 ## Inbox
 
+- 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). Your 123 golden replays' `ruleset_hash` lines were substituted (nothing else in them). A branch of yours that records new `faithful` replays before this merges needs the same substitution.
 - 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent, E09
   decision 224; **in your paths, for your review; no rule of yours changed**): a town opens E08's
   market decision (`TownCommand::Market`, TWN-MKT-002), so (1) `MarketVisit` is `{ hero:
