@@ -2196,3 +2196,46 @@ fn from_mode_4_a_landing_and_a_boarding_take_the_day_s_rest() {
         Some((placed(2) | BOAT, 1100, 1400))
     );
 }
+
+// covers: CPU-PTH-001, CPU-PTH-006
+#[test]
+fn a_start_outside_the_box_reads_its_tile_and_others_there_as_they_stand() {
+    // The hero on a one-way entrance (0, 0) outside the box of columns 6 to 8, blue's hero on
+    // (2, 0) and an exit on (1, 0) beyond the tiles read ahead (columns 4 to 8): the start's
+    // tile and those exits are read where they are asked, the exit in the box is reached.
+    let rules = rules();
+    let objects = vec![
+        teleporter(&rules, "t:entrance", p(0, 0)),
+        teleporter(&rules, "t:exit", p(1, 0)),
+        teleporter(&rules, "t:exit", p(7, 0)),
+    ];
+    let heroes = vec![
+        hero_at(1, 0, p(0, 0), &[PIKEMAN]),
+        hero_at(2, 1, p(2, 0), &[PIKEMAN]),
+    ];
+    let state = game(&rules, &["ggggggggg"], heroes, objects);
+    let start = SearchStart {
+        window: Some(SearchWindow {
+            left: 6,
+            top: 0,
+            right: 9,
+            bottom: 1,
+        }),
+        ..start(p(0, 0), SearchMode::Threat)
+    };
+    let found = search(&rules, &state, &start);
+    let reached: Vec<_> = found
+        .reached()
+        .map(|node| (node.pos, node.marks, node.from, node.cost, node.cost2))
+        .collect();
+    // The start refused outside the box before its relax marked it: the exit's direction 0.
+    assert_eq!(
+        reached,
+        [
+            (p(7, 0), placed(0) | VISIT_HERE, p(0, 0), 0, 150),
+            (p(8, 0), placed(2), p(7, 0), 100, 250),
+            (p(6, 0), placed(6), p(7, 0), 100, 250),
+        ]
+    );
+    assert_eq!(found.node(p(1, 0)), None);
+}

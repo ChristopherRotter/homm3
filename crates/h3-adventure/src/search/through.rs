@@ -49,7 +49,7 @@ impl<A: SearchAsks> Search<'_, A> {
                 node.cost = node.cost.wrapping_add(node.points);
                 node.points = self.sea as u16;
                 node.marks = node.marks & !(FLY | WATER_WALK) | BOAT;
-                frame.cells[cell][0] |= BOAT;
+                frame.cells[cell].marks |= BOAT;
                 true
             }
             Class::Guard(key) => {

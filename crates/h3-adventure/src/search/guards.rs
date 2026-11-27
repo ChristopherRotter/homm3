@@ -15,8 +15,9 @@ impl<A: SearchAsks> Search<'_, A> {
     /// engine's [`crate::AdventureState::guard_of`] scans the same, without the exclusion.
     // rule: CPU-PTH-004
     pub(super) fn guarding(&self, centre: Pos, excluded: Option<Pos>) -> Option<Pos> {
-        let water = self.ground_at(centre) == Ground::Water;
-        let first = if self.state.closed_above(self.part, centre) {
+        let spot = self.spot(centre);
+        let water = spot.ground == Ground::Water;
+        let first = if spot.closed {
             centre.y
         } else {
             centre.y.saturating_sub(1)
@@ -26,12 +27,10 @@ impl<A: SearchAsks> Search<'_, A> {
         columns
             .flat_map(|x| rows.clone().map(move |y| Pos::new(x, y, centre.level)))
             .find(|&tile| {
-                (self.ground_at(tile) == Ground::Water) == water
+                let spot = self.spot(tile);
+                (spot.ground == Ground::Water) == water
                     && excluded != Some(tile)
-                    && self
-                        .read(tile)
-                        .entrance
-                        .is_some_and(|entrance| entrance.class == Class::Monster)
+                    && (spot.tile.entrance).is_some_and(|entrance| entrance.class == Class::Monster)
             })
     }
 

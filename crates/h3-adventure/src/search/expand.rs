@@ -3,20 +3,19 @@
 
 use super::jumps::may_cast;
 use super::marks::{BOAT, DOOR, FLY, PLACE, WATER_WALK};
-use super::{Class, Frame, Ground, Search, SearchAsks, SearchFog, SearchMode, SearchNode};
+use super::{
+    Class, Frame, Ground, Search, SearchAsks, SearchFog, SearchJumps, SearchMode, SearchNode,
+};
 use crate::movement::DIRECTIONS;
 use crate::setup::Pos;
 
 impl<A: SearchAsks> Search<'_, A> {
-    /// The tile one step `dx`, `dy` from `at`, if it lies on the map (0x4B23C3..0x4B23FB).
+    /// The tile one step `dx`, `dy` from `at`, a tile of the map, if it lies on the map
+    /// (0x4B23C3..0x4B23FB): a step off the left or top edge wraps past the right or bottom.
     fn neighbour(&self, at: Pos, dx: i8, dy: i8) -> Option<Pos> {
-        let x =
-            at.x.checked_add_signed(i16::from(dx))
-                .filter(|&x| x < self.map.width())?;
-        let y =
-            at.y.checked_add_signed(i16::from(dy))
-                .filter(|&y| y < self.map.height())?;
-        Some(Pos::new(x, y, at.level))
+        let x = at.x.wrapping_add_signed(i16::from(dx));
+        let y = at.y.wrapping_add_signed(i16::from(dy));
+        (x < self.map.width() && y < self.map.height()).then_some(Pos::new(x, y, at.level))
     }
 
     /// Whether the tile at column `x`, row `y` of `level` is water (a boat's diagonal's side
@@ -70,18 +69,36 @@ impl<A: SearchAsks> Search<'_, A> {
     /// (`pathfinder_stop_relax` 0x4B2CE5); a flying or leaping step onto an entrance as a place is
     /// relaxed again as a pass node, no stop (`pathfinder_flying_copy` 0x4B2D3D).
     // rule: CPU-PTH-003, CPU-PTH-007
-    pub(super) fn expand(
+    pub(super) fn expand<const THREAT: bool>(
         &self,
         frame: &mut Frame,
         source: &SearchNode,
         left: i32,
         guarded: Option<Pos>,
     ) {
-        let (state, part, mode) = (self.state, self.part, self.start.mode);
+        let (state, mode) = (self.state, self.mode::<THREAT>());
+        // Mode 3's search has no jumps.
+        let cast = if THREAT {
+            SearchJumps::default()
+        } else {
+            self.cast
+        };
         let at = source.pos;
-        let from = state.live(at, self.map.at(at));
-        let closed = state.closed_above(part, at);
+        let spots = &self.spots;
+        let here = spots.at(at);
+        let (from, closed) = (&spots.spots[here].tile.live, spots.spots[here].closed);
         let window = u32::try_from(left).unwrap_or(0);
+        // The steps' prices by the node's flying and water walking (its steps keep the source's),
+        // and the last straight and diagonal step's price with the tile it entered, kept from
+        // the last node expanded when its prices, its tile's word and its window were the same:
+        // a step onto a tile like it costs the same.
+        let pricing = self.pricing(source.marks);
+        let by = (source.marks >> 4 & 3, spots.spots[here].key, window);
+        let mut priced = if frame.priced.0 == by {
+            frame.priced.1
+        } else {
+            [(u64::MAX, 0); 2]
+        };
         for (direction, &(dx, dy)) in DIRECTIONS.iter().enumerate() {
             let Some(pos) = self.neighbour(at, dx, dy) else {
                 continue;
@@ -90,17 +107,16 @@ impl<A: SearchAsks> Search<'_, A> {
                 continue;
             }
             let diagonal = direction % 2 == 1;
-            let mut node = SearchNode {
-                pos,
-                marks: source.marks | PLACE,
-                ..*source
-            };
+            let mut node = *source;
+            node.pos = pos;
+            node.marks |= PLACE;
             // A landed leg's steps are no leg's (0x4B247C).
             if source.marks & PLACE != 0 {
                 node.marks &= !DOOR;
             }
-            let tile = self.read(pos);
-            let ground = self.ground(&tile.live);
+            // The source lies in the box, its neighbour on the map in the spots' region.
+            let spot = &spots.spots[here.wrapping_add_signed(spots.steps[direction])];
+            let (tile, ground) = (&spot.tile, spot.ground);
             let (mut fly_only, mut jump_only, mut sea) = (false, false, false);
             let mut price = if ground == Ground::Rock {
                 node.marks &= !PLACE;
@@ -111,10 +127,13 @@ impl<A: SearchAsks> Search<'_, A> {
                 node.cost2 = node.cost2.wrapping_add(100);
                 0
             } else if source.marks & BOAT != 0 {
-                self.pricings[0].sail(&from, diagonal, window)
+                self.pricings[0].sail(from, diagonal, window)
             } else {
-                self.pricing(node.marks)
-                    .step(&from, &tile.live, diagonal, window)
+                let last = &mut priced[usize::from(diagonal)];
+                if last.0 != spot.key {
+                    *last = (spot.key, pricing.step(from, &tile.live, diagonal, window));
+                }
+                last.1
             };
             if price <= u32::from(source.points) {
                 node.points = source.points - price as u16;
@@ -128,7 +147,7 @@ impl<A: SearchAsks> Search<'_, A> {
                     self.land
                 }) as u16;
                 if node.marks & (FLY | WATER_WALK) != 0 {
-                    price = self.pricings[0].step(&from, &tile.live, diagonal, window);
+                    price = self.pricings[0].step(from, &tile.live, diagonal, window);
                 }
                 node.marks &= !(FLY | WATER_WALK);
             }
@@ -151,7 +170,7 @@ impl<A: SearchAsks> Search<'_, A> {
             if dy < 0 && closed {
                 fly_only = true;
             }
-            if dy > 0 && state.closed_above(part, pos) {
+            if dy > 0 && spot.closed {
                 continue;
             }
             match ground {
@@ -223,14 +242,13 @@ impl<A: SearchAsks> Search<'_, A> {
                 node.marks &= !PLACE;
                 fly_only = true;
             }
-            let cast = self.cast;
             if jump_only && node.marks & DOOR == 0 {
                 if !(cast.door && may_cast(source)) {
                     continue;
                 }
                 price = self.door_leg(&mut node);
             }
-            let tiles = (&from, &tile.live);
+            let tiles = (from, &tile.live);
             if fly_only && node.marks & (FLY | DOOR) == 0 {
                 if !((cast.fly || cast.door) && may_cast(source)) {
                     continue;
@@ -244,7 +262,7 @@ impl<A: SearchAsks> Search<'_, A> {
                 }
             }
             if sea && node.marks & (FLY | WATER_WALK | DOOR) == 0 {
-                let sail = (&from, diagonal, window);
+                let sail = (from, diagonal, window);
                 self.boat_node(frame, (source, &node), direction as u32, sail);
                 if !may_cast(source) {
                     continue;
@@ -261,16 +279,18 @@ impl<A: SearchAsks> Search<'_, A> {
             let stop = entrance.is_some();
             let (key, guard) = (node.key, node.guard);
             let step = (direction as u32, price);
+            let place = (spot.cell != u32::MAX).then_some(spot.cell as usize);
             if source.marks & PLACE != 0
                 || !entrance
                     .is_some_and(|entrance| entrance.not_entered || entrance.class == Class::Town)
             {
-                self.relax(frame, source, &mut node, step, (key, guard, stop));
+                self.relax_in(frame, source, (&mut node, place), step, (key, guard, stop));
             }
             if node.marks & (FLY | DOOR) != 0 && stop && node.marks & PLACE != 0 {
                 node.marks &= !PLACE;
-                self.relax(frame, source, &mut node, step, (key, guard, false));
+                self.relax_in(frame, source, (&mut node, place), step, (key, guard, false));
             }
         }
+        frame.priced = (by, priced);
     }
 }

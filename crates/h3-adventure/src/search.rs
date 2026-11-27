@@ -29,9 +29,10 @@ use alloc::vec::Vec;
 use h3_content::Ruleset;
 use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::{HeroDetails, Movement};
+use h3_kernel::handle::Handle;
 
 use crate::movement::{
-    Pricing, day_movement, day_points, details_of, hero_movement, sea_day_points,
+    DIRECTIONS, Pricing, day_movement, day_points, details_of, hero_movement, sea_day_points,
 };
 use crate::ruleset::{AdventureRuleset, Effect, MonolithWay, Passage, Visit};
 use crate::setup::Pos;
@@ -259,50 +260,64 @@ const REFUSED: i32 = -500_000_000;
 /// (0x4B1DE7).
 const OPEN_LIMIT: usize = 500;
 
-/// The packed column and row of `pos`, a cell's word.
-const fn pack(pos: Pos) -> u32 {
-    pos.x as u32 | (pos.y as u32) << 16
+/// A node as its cell holds it: a [`SearchNode`] but its tile, the cell's. A cell with no marks
+/// ([`Cell::EMPTY`]) is a node not reached.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Cell {
+    marks: u32,
+    from: Pos,
+    guard: Option<Pos>,
+    key: i32,
+    danger: i32,
+    cost: u16,
+    cost2: u16,
+    points: u16,
 }
 
-/// The tile of a packed column and row on `level`.
-const fn unpack(word: u32, level: u8) -> Pos {
-    Pos::new(word as u16, (word >> 16) as u16, level)
+impl Cell {
+    /// The cell of a node not reached.
+    const EMPTY: Self = Self {
+        marks: 0,
+        from: Pos::new(0, 0, 0),
+        guard: None,
+        key: 0,
+        danger: 0,
+        cost: 0,
+        cost2: 0,
+        points: 0,
+    };
 }
 
 impl SearchNode {
     /// The node of `pos` stored in `cell` ([`Self::store`]).
-    fn load(pos: Pos, cell: &[u32; 8]) -> Self {
-        let levels = cell[2];
+    #[inline]
+    const fn load(pos: Pos, cell: &Cell) -> Self {
         Self {
             pos,
-            marks: cell[0],
-            from: unpack(cell[1], levels as u8),
-            guard: (levels >> 16 == 1).then(|| unpack(cell[3], (levels >> 8) as u8)),
-            key: cell[4] as i32,
-            danger: cell[5] as i32,
-            cost: cell[6] as u16,
-            cost2: (cell[6] >> 16) as u16,
-            points: cell[7] as u16,
+            marks: cell.marks,
+            from: cell.from,
+            guard: cell.guard,
+            key: cell.key,
+            danger: cell.danger,
+            cost: cell.cost,
+            cost2: cell.cost2,
+            points: cell.points,
         }
     }
 
-    /// The node as a cell's eight words: the marks, the source's column and row, the levels
-    /// (the source's, the guard's, whether there is a guard), the guard's column and row, the
-    /// key, the danger, the costs, the points. A zeroed cell is a node not reached.
-    fn store(&self) -> [u32; 8] {
-        let (guard, level) = self.guard.map_or((0, 0), |guard| {
-            (pack(guard), 1 << 16 | u32::from(guard.level) << 8)
-        });
-        [
-            self.marks,
-            pack(self.from),
-            u32::from(self.from.level) | level,
-            guard,
-            self.key as u32,
-            self.danger as u32,
-            u32::from(self.cost) | u32::from(self.cost2) << 16,
-            u32::from(self.points),
-        ]
+    /// The node as its cell holds it.
+    #[inline]
+    const fn store(&self) -> Cell {
+        Cell {
+            marks: self.marks,
+            from: self.from,
+            guard: self.guard,
+            key: self.key,
+            danger: self.danger,
+            cost: self.cost,
+            cost2: self.cost2,
+            points: self.points,
+        }
     }
 }
 
@@ -329,8 +344,12 @@ impl Bounds {
     /// The cell of `pos`'s place (`place`) or pass node, if the box holds the tile (the
     /// original's slot: ((level × 2 + kind) × height + row) × width + column).
     fn index(self, pos: Pos, place: bool) -> Option<usize> {
-        let column = pos.x.checked_sub(self.left).filter(|&c| c < self.width)?;
-        let row = pos.y.checked_sub(self.top).filter(|&r| r < self.height)?;
+        // A column or row before the box's wraps past its end: the box lies on the map.
+        let column = pos.x.wrapping_sub(self.left);
+        let row = pos.y.wrapping_sub(self.top);
+        if column >= self.width || row >= self.height {
+            return None;
+        }
         let layer = usize::from(pos.level) * 2 + usize::from(!place);
         Some(
             (layer * usize::from(self.height) + usize::from(row)) * usize::from(self.width)
@@ -363,14 +382,21 @@ struct Entry {
 /// the bound.
 struct Frame {
     bounds: Bounds,
-    cells: Vec<[u32; 8]>,
+    /// The cells of a layer: the box's tiles.
+    plane: usize,
+    cells: Vec<Cell>,
     open: Vec<Entry>,
     reached: Vec<u32>,
     short: bool,
+    /// The step prices [`Search::expand`] keeps between nodes: by the prices' flying and
+    /// water-walking bits, the source tile's word and the window, the last straight and
+    /// diagonal step's tile word and price.
+    priced: ((u32, u64, u32), [(u64, u32); 2]),
 }
 
 impl Frame {
     /// The node stored in `cell`.
+    #[inline]
     fn load(&self, cell: usize) -> SearchNode {
         SearchNode::load(self.bounds.pos(cell), &self.cells[cell])
     }
@@ -458,6 +484,80 @@ struct Tile {
     entrance: Option<Entrance>,
 }
 
+/// A tile as the search reads it, read once when the search starts ([`Spots`]).
+#[derive(Debug, Clone, Copy)]
+struct Spot {
+    /// The tile as a step reads it.
+    tile: Tile,
+    /// Its tile as it stands now as one word ([`tile_key`]).
+    key: u64,
+    /// The cell of its place in the frame, [`u32::MAX`] when the box does not hold it (or the
+    /// spot was read where it is asked, outside the region).
+    cell: u32,
+    /// Its terrain.
+    ground: Ground,
+    /// Whether it is the entrance of an object not visited from above
+    /// ([`AdventureState::closed_above`]).
+    closed: bool,
+}
+
+/// The spots of the tiles a search reads, each read once when it starts: a tile's read is the
+/// same for the whole search, the searching hero hidden and nothing it reads changed by it. They
+/// cover its box grown by [`MARGIN`] each way, clipped to the map, on every level; a tile outside
+/// (a teleporter's exit, a guard beyond the margin) is read where it is asked.
+struct Spots {
+    region: Bounds,
+    /// The step from a spot to its neighbour's in each of the eight directions.
+    steps: [isize; 8],
+    spots: Vec<Spot>,
+}
+
+/// The tiles the spots cover around the box: a step's neighbour and the guards around it.
+const MARGIN: u16 = 2;
+
+/// Every field of `tile` in one word, two tiles alike exactly when their words are (a step's
+/// price is the same onto a tile alike, [`Search::expand`]'s memo): the terrain in bits 0 to 15,
+/// the road in bits 16 to 32 (whether one, then its index) and the river in bits 33 to 49 as
+/// it, the five marks in bits 50 to 54. No tile's word is [`u64::MAX`].
+#[inline(always)]
+fn tile_key(tile: &StaticTile) -> u64 {
+    let StaticTile {
+        terrain,
+        road,
+        river,
+        blocked,
+        visitable,
+        no_native,
+        winds,
+        hole,
+    } = *tile;
+    let road = u64::from(road.is_some()) | u64::from(road.map_or(0, Handle::raw)) << 1;
+    let river = u64::from(river.is_some()) | u64::from(river.map_or(0, Handle::raw)) << 1;
+    u64::from(terrain.raw())
+        | road << 16
+        | river << 33
+        | u64::from(blocked) << 50
+        | u64::from(visitable) << 51
+        | u64::from(no_native) << 52
+        | u64::from(winds) << 53
+        | u64::from(hole) << 54
+}
+
+impl Spots {
+    /// The place of `pos`'s spot, past the last when the region does not hold the tile: (level
+    /// × height + row) × width + column.
+    fn at(&self, pos: Pos) -> usize {
+        let region = self.region;
+        let column = pos.x.wrapping_sub(region.left);
+        let row = pos.y.wrapping_sub(region.top);
+        let outside = (column >= region.width) | (row >= region.height);
+        (usize::from(pos.level) * usize::from(region.height) + usize::from(row))
+            * usize::from(region.width)
+            + usize::from(column)
+            + usize::from(outside) * self.spots.len()
+    }
+}
+
 /// What a search reads: the state, the rules, its start and asks, the hero's prices and
 /// maximums, and what stands on the map.
 struct Search<'s, A> {
@@ -503,6 +603,8 @@ struct Search<'s, A> {
     boots: bool,
     /// The empty boats and the other heroes on the map, by tile in order.
     occupants: Vec<(Pos, Occupant)>,
+    /// The tiles read ahead.
+    spots: Spots,
 }
 
 impl<A: SearchAsks> Search<'_, A> {
@@ -517,7 +619,112 @@ impl<A: SearchAsks> Search<'_, A> {
 
     /// The terrain of the tile at `pos`.
     fn ground_at(&self, pos: Pos) -> Ground {
-        self.ground(&self.map.at(pos))
+        self.spot(pos).ground
+    }
+
+    /// The spot of `pos`: read ahead, or read now outside the spots' region.
+    fn spot(&self, pos: Pos) -> Spot {
+        match self.spots.spots.get(self.spots.at(pos)) {
+            Some(&spot) => spot,
+            None => self.spot_of(pos, self.occupant(pos)),
+        }
+    }
+
+    /// The spot of `pos`, a tile the spots' region holds: a node's (the box's), its neighbours'
+    /// and the guards' around them ([`MARGIN`]).
+    fn near(&self, pos: Pos) -> &Spot {
+        &self.spots.spots[self.spots.at(pos)]
+    }
+
+    /// The spots of the tiles in `region` on every level, level by level, row by row: each
+    /// tile's spot without what stands on it, then each occupied tile's again with its occupant.
+    #[inline(never)]
+    fn read_ahead(&self, region: Bounds, bounds: Bounds) -> Spots {
+        let mut spots = Vec::with_capacity(
+            usize::from(self.map.levels()) * usize::from(region.width) * usize::from(region.height),
+        );
+        let (tiles, width) = (self.map.tiles(), usize::from(self.map.width()));
+        let height = usize::from(self.map.height());
+        for level in 0..self.map.levels() {
+            for y in region.top..region.top + region.height {
+                let start = (usize::from(level) * height + usize::from(y)) * width
+                    + usize::from(region.left);
+                let row = &tiles[start..start + usize::from(region.width)];
+                spots.extend(row.iter().zip(region.left..).map(|(&tile, x)| {
+                    let pos = Pos::new(x, y, level);
+                    let cell = bounds.index(pos, true).map_or(u32::MAX, |cell| cell as u32);
+                    Spot {
+                        cell,
+                        ..self.spot_with(pos, tile, None)
+                    }
+                }));
+            }
+        }
+        for spot in &mut spots {
+            spot.key = tile_key(&spot.tile.live);
+        }
+        let width = isize::try_from(usize::from(region.width)).unwrap_or(isize::MAX);
+        let steps = DIRECTIONS.map(|(dx, dy)| isize::from(dy) * width + isize::from(dx));
+        let mut spots = Spots {
+            region,
+            steps,
+            spots,
+        };
+        for &(pos, _) in &self.occupants {
+            let at = spots.at(pos);
+            if let Some(spot) = spots.spots.get_mut(at) {
+                *spot = Spot {
+                    cell: spot.cell,
+                    ..self.spot_of(pos, self.occupant(pos))
+                };
+            }
+        }
+        spots
+    }
+
+    /// The spot of `pos` with `occupant` standing on it: the tile as [`Self::read`] reads it, its
+    /// terrain (the static map's), and the closed top, asked only where the static map or the
+    /// tile as it stands now is visitable (an object is visited from no other tile).
+    fn spot_of(&self, pos: Pos, occupant: Option<Occupant>) -> Spot {
+        let spot = self.spot_with(pos, self.map.at(pos), occupant);
+        Spot {
+            key: tile_key(&spot.tile.live),
+            ..spot
+        }
+    }
+
+    /// [`Self::spot_of`] of `tile`, the static map's tile at `pos`, but its key, 0, inlined for
+    /// the tiles read ahead (their keys after).
+    #[inline(always)]
+    fn spot_with(&self, pos: Pos, tile: StaticTile, occupant: Option<Occupant>) -> Spot {
+        let live = self.state.live(pos, tile);
+        let entrance = match occupant {
+            Some(Occupant::Hero(owner)) => Some(Entrance {
+                class: Class::Hero(owner),
+                not_entered: true,
+            }),
+            Some(Occupant::Boat) => Some(Entrance {
+                class: Class::Boat,
+                not_entered: true,
+            }),
+            None if live.visitable => self
+                .state
+                .visit_at(self.part, self.start.player, pos)
+                .map(|visit| Self::entrance_of(self.state, &visit)),
+            None => None,
+        };
+        Spot {
+            key: 0,
+            cell: u32::MAX,
+            tile: Tile {
+                live,
+                blocked: (live.blocked && !live.visitable)
+                    || (live.visitable && entrance.is_none()),
+                entrance,
+            },
+            ground: self.ground(&tile),
+            closed: (tile.visitable || live.visitable) && self.state.closed_above(self.part, pos),
+        }
     }
 
     /// What stands on `pos` besides its objects.
@@ -533,27 +740,7 @@ impl<A: SearchAsks> Search<'_, A> {
     /// boat one of class 8, a visitable tile one of its object's class if its visit is built,
     /// else blocked.
     fn read(&self, pos: Pos) -> Tile {
-        let live = self.state.live(pos, self.map.at(pos));
-        let entrance = match self.occupant(pos) {
-            Some(Occupant::Hero(owner)) => Some(Entrance {
-                class: Class::Hero(owner),
-                not_entered: true,
-            }),
-            Some(Occupant::Boat) => Some(Entrance {
-                class: Class::Boat,
-                not_entered: true,
-            }),
-            None if live.visitable => self
-                .state
-                .visit_at(self.part, self.start.player, pos)
-                .map(|visit| Self::entrance_of(self.state, &visit)),
-            None => None,
-        };
-        Tile {
-            live,
-            blocked: (live.blocked && !live.visitable) || (live.visitable && entrance.is_none()),
-            entrance,
-        }
+        self.spot(pos).tile
     }
 
     /// The entrance of an object's visit: its class by its kind, visited from the neighbouring
@@ -681,6 +868,17 @@ impl<A: SearchAsks> Search<'_, A> {
     // rule: CPU-PTH-001
     fn run(&self, frame: &mut Frame) {
         self.begin(frame);
+        if self.start.mode == SearchMode::Threat {
+            self.pops::<true>(frame);
+        } else {
+            self.pops::<false>(frame);
+        }
+    }
+
+    /// [`Self::run`]'s loop, compiled apart for mode [`SearchMode::Threat`] (`THREAT`: the
+    /// mode known, no jumps), the threat fold's at every computer turn start.
+    fn pops<const THREAT: bool>(&self, frame: &mut Frame) {
+        let mode = self.mode::<THREAT>();
         while let Some(entry) = frame.open.pop() {
             if frame
                 .open
@@ -696,11 +894,11 @@ impl<A: SearchAsks> Search<'_, A> {
             if node.marks & STOP != 0 && !self.pass_through(frame, cell, &mut node) {
                 continue;
             }
-            if node.marks & BOAT != 0 && self.ground_at(node.pos) != Ground::Water {
+            if node.marks & BOAT != 0 && self.near(node.pos).ground != Ground::Water {
                 continue;
             }
             let guarded = if node.marks & (FLY | DOOR) == 0
-                && self.start.mode < SearchMode::Plan
+                && mode < SearchMode::Plan
                 && self.state.may_guard(node.pos)
                 && node.pos != self.start.from
             {
@@ -708,7 +906,16 @@ impl<A: SearchAsks> Search<'_, A> {
             } else {
                 None
             };
-            self.expand(frame, &node, left, guarded);
+            self.expand::<THREAT>(frame, &node, left, guarded);
+        }
+    }
+
+    /// The search's mode, [`SearchMode::Threat`] when `THREAT`.
+    fn mode<const THREAT: bool>(&self) -> SearchMode {
+        if THREAT {
+            SearchMode::Threat
+        } else {
+            self.start.mode
         }
     }
 
@@ -731,23 +938,44 @@ impl<A: SearchAsks> Search<'_, A> {
     /// second cost, before the entries equal to it (0x4B1E27..0x4B1EC2); a place first reached
     /// joins the reached list (0x4B2166); the node is stored (0x4B22E5).
     // rule: CPU-PTH-002
+    #[inline(always)]
     fn relax(
         &self,
         frame: &mut Frame,
         source: &SearchNode,
         node: &mut SearchNode,
+        step: (u32, u32),
+        weigh: (i32, Option<Pos>, bool),
+    ) {
+        let place = frame.bounds.index(node.pos, true);
+        self.relax_in(frame, source, (node, place), step, weigh);
+    }
+
+    /// [`Self::relax`] of `node` whose tile's place has the cell `place`, if the box holds the
+    /// tile (its pass node's the cell a layer later).
+    #[inline(always)]
+    fn relax_in(
+        &self,
+        frame: &mut Frame,
+        source: &SearchNode,
+        (node, place): (&mut SearchNode, Option<usize>),
         (direction, price): (u32, u32),
         (key, guard, stop): (i32, Option<Pos>, bool),
     ) {
         let cost = i32::from(source.cost).wrapping_add(price as i32);
         let cost2 = i32::from(node.cost2) - i32::from(node.cost) + cost;
-        let Some(cell) = frame.bounds.index(node.pos, node.marks & PLACE != 0) else {
+        let Some(place) = place else {
             return;
         };
-        node.from = source.pos;
-        node.marks = node.marks & !(FROM_PLACE | DOOR_OFFSET_MASK) | (source.marks & PLACE) << 1;
-        if node.marks & DOOR != 0 && !jumps::leap(source, node, stop) {
-            return;
+        let cell = place + usize::from(node.marks & PLACE == 0) * frame.plane;
+        // A Door leg takes its source and marks before the leg's rules, any other node once it
+        // is kept: a refused node's are read by none (each relax sets them anew).
+        let door = node.marks & DOOR != 0;
+        if door {
+            Self::link(source, node);
+            if !jumps::leap(source, node, stop) {
+                return;
+            }
         }
         let buffer = self.asks.danger(node.pos);
         let danger = if cost > self.points {
@@ -779,8 +1007,42 @@ impl<A: SearchAsks> Search<'_, A> {
             frame.short = true;
             return;
         }
+        if !door {
+            Self::link(source, node);
+        }
+        let relaxed = (cost, cost2, danger, new);
+        self.insert(
+            frame,
+            node,
+            (cell, stored.marks),
+            relaxed,
+            (direction, key, guard, stop),
+        );
+    }
+
+    /// `node`'s source `source`'s tile, its [`FROM_PLACE`] the source's place and its Door offset
+    /// cleared (0x4B1B0C).
+    #[inline(always)]
+    fn link(source: &SearchNode, node: &mut SearchNode) {
+        node.from = source.pos;
+        node.marks = node.marks & !(FROM_PLACE | DOOR_OFFSET_MASK) | (source.marks & PLACE) << 1;
+    }
+
+    /// The rest of [`Self::relax`] for a node it keeps, in `cell` whose stored node has the
+    /// marks `stored`, with its cost, second cost, danger and S: out of line, the refusals
+    /// before it inlined into each step.
+    #[inline(never)]
+    fn insert(
+        &self,
+        frame: &mut Frame,
+        node: &mut SearchNode,
+        (cell, stored): (usize, u32),
+        (cost, cost2, danger, new): (i32, i32, i32, i32),
+        (direction, key, guard, stop): (u32, i32, Option<Pos>, bool),
+    ) {
+        let reached = stored & REACHED != 0;
         if reached {
-            node.marks = node.marks & !NO_MAGIC | stored.marks & NO_MAGIC;
+            node.marks = node.marks & !NO_MAGIC | stored & NO_MAGIC;
         } else {
             node.marks &= !NO_MAGIC;
             if self.jumps && self.no_magic(node.pos) {
@@ -821,7 +1083,7 @@ impl<A: SearchAsks> Search<'_, A> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComputerSearch {
     bounds: Bounds,
-    cells: Vec<[u32; 8]>,
+    cells: Vec<Cell>,
     reached: Vec<u32>,
     short: bool,
 }
@@ -842,7 +1104,7 @@ impl ComputerSearch {
         let cell = self.bounds.index(pos, place)?;
         self.cells
             .get(cell)
-            .filter(|cell| cell[0] & REACHED != 0)
+            .filter(|cell| cell.marks & REACHED != 0)
             .map(|cell| SearchNode::load(pos, cell))
     }
 
@@ -938,7 +1200,7 @@ impl AdventureState {
             SearchJumps::default()
         };
         let worn = hero_movement(core, details);
-        let search = Search {
+        let mut search = Search {
             state: self,
             part,
             map,
@@ -974,6 +1236,16 @@ impl AdventureState {
             wings: worn.flying.is_some(),
             boots: worn.water_walking.is_some(),
             occupants,
+            spots: Spots {
+                region: Bounds {
+                    left: 0,
+                    top: 0,
+                    width: 0,
+                    height: 0,
+                },
+                steps: [0; 8],
+                spots: Vec::new(),
+            },
         };
         let (width, height) = (map.width(), map.height());
         let window = start.window.unwrap_or(SearchWindow {
@@ -989,14 +1261,30 @@ impl AdventureState {
             width: window.right.clamp(left, width) - left,
             height: window.bottom.clamp(top, height) - top,
         };
+        let (left, top) = (left.saturating_sub(MARGIN), top.saturating_sub(MARGIN));
+        let right = (bounds.left + bounds.width)
+            .saturating_add(MARGIN)
+            .min(width);
+        let bottom = (bounds.top + bounds.height)
+            .saturating_add(MARGIN)
+            .min(height);
+        let region = Bounds {
+            left,
+            top,
+            width: right - left,
+            height: bottom - top,
+        };
+        search.spots = search.read_ahead(region, bounds);
         let size =
             usize::from(map.levels()) * 2 * usize::from(bounds.width) * usize::from(bounds.height);
         let frame = Frame {
             bounds,
-            cells: vec![[0; 8]; size],
+            plane: usize::from(bounds.width) * usize::from(bounds.height),
+            cells: vec![Cell::EMPTY; size],
             open: Vec::new(),
             reached: Vec::new(),
             short: false,
+            priced: ((0, u64::MAX, 0), [(u64::MAX, 0); 2]),
         };
         Some((search, frame))
     }
