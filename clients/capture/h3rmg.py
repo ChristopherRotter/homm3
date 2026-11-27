@@ -468,6 +468,71 @@ def phase_digests(phases):
     return out
 
 
+# -- step 6's obstacle plan (E14 T4c) -------------------------------------------------------------
+PLAN = RMG / "plan.txt"
+# The sites of step 6's obstacle plan (survey §2.3's draw table, §2.7.5): the lanes, the islets and
+# the terrain painter's five picture sites (islets and sealed shores). 0x546154 (a pending Border
+# Guard crossed by a carved path) is left out: no guard is pending before the connections.
+PLAN_SITES = frozenset({0x543EB8, 0x54403E, 0x53F745, 0x53F794, 0x53EFE4, 0x53EEFF, 0x53EF0C,
+                        0x53EF19, 0x53EF2E, 0x53EF43, 0x5B38B9, 0x5B38D3, 0x5B3912, 0x5B3AB6,
+                        0x5B3B2D})
+# The connections' first draw sites (survey §2.3): by land, by shipyard, by gates, by monoliths.
+CONNECTION_SITES = frozenset({0x54146B, 0x541B78, 0x5421BC, 0x542A8F})
+
+
+def plan_prefix(phases):
+    """Step 6's obstacle plan in a log's phases (`phase_log`'s): the draws of step 6 before its
+    first draw at a site not of the plan (PLAN_SITES), their lines' digest as `phase_digests`
+    makes it, and the next site (None when the plan is the whole step). A next site that is not a
+    connection's first draw is an error: the plan's sites or the survey's order are wrong."""
+    draws = next((d for phase, d in phases if phase == 6), None)
+    if draws is None:
+        raise RuntimeError("no step 6 in the log")
+    n = next((k for k, (site, _) in enumerate(draws) if site not in PLAN_SITES), len(draws))
+    nxt = draws[n][0] if n < len(draws) else None
+    if nxt is not None and nxt not in CONNECTION_SITES:
+        raise RuntimeError(f"step 6's plan ends at draw {n} with {nxt:X}, not a connection's")
+    (_, count, digest), = phase_digests([(6, draws[:n])])
+    return count, digest, nxt
+
+
+def plan_line(ident, phases):
+    count, digest, nxt = plan_prefix(phases)
+    return f"{ident} draws={count} digest={digest} next={'none' if nxt is None else f'{nxt:X}'}"
+
+
+def plan_command(args):
+    """Step 6's obstacle plan per case from a `corpus --phases` run's first maps (E14 T4c):
+    against plan.txt, or written to it with --record."""
+    only = set(args.only.split(",")) if args.only else None
+    out = Path(args.out or OUT)
+    cases = [c["id"] for c in tomllib.loads(CORPUS.read_text())["case"]]
+    kept = dict(line.split(" ", 1) for line in PLAN.read_text().splitlines()
+                if line and not line.startswith("#")) if PLAN.exists() else {}
+    lines, differ = [], 0
+    for ident in cases:
+        if only and ident not in only:
+            continue
+        log = out / ident / "run1" / "clock" / "rmg1.draws"
+        if not log.exists():
+            print(f"{ident}: no log (run `corpus --phases` first)")
+            return 1
+        line = plan_line(ident, phase_log(log)[0])
+        rest = line.split(" ", 1)[1]
+        verdict = "ok" if kept.get(ident) == rest else ("CHANGED" if ident in kept else "new")
+        differ += verdict != "ok"
+        print(f"{line}: {verdict}")
+        lines.append(line)
+    if args.record:
+        PLAN.write_text("# Step 6's obstacle plan by case (h3rmg.py plan --record, E14 T4c): the "
+                        "draws of step 6 before its\n# first draw at a site not of the plan "
+                        "(h3rmg.PLAN_SITES), their lines' digest as phases.txt's,\n# the next "
+                        "site (a connection's first draw, or none).\n" + "\n".join(lines) + "\n")
+        print(f"wrote {PLAN}")
+        return 0
+    return 1 if differ else 0
+
+
 def read_memory(path):
     """A memory record (xdd.c's 10., E14 T3a): the x87 control word by phase ("seed", then each
     step's number as text), and per call of rmg_zone_generator_init (0x5329E0) its site, the
@@ -1079,6 +1144,10 @@ def main(argv):
     phases.add_argument("--only")
     phases.add_argument("--runs", action="store_true")
     phases.add_argument("--out")
+    plan = sub.add_parser("plan")
+    plan.add_argument("--only")
+    plan.add_argument("--record", action="store_true")
+    plan.add_argument("--out")
     read = sub.add_parser("read")
     read.add_argument("--out")
     sub.add_parser("templates")
@@ -1086,6 +1155,7 @@ def main(argv):
     global SANDBOX_ENV
     SANDBOX_ENV = getattr(args, "sandbox_env", False)
     return {"one": one_command, "corpus": corpus_command, "phases": phases_command,
+            "plan": plan_command,
             "memory": memory_command, "read": read_command,
             "templates": templates_command}[args.command](args)
 

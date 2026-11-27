@@ -80,6 +80,25 @@ class PhaseOracle(unittest.TestCase):
         self.assertEqual(steps[2][2], hashlib.sha256(b"532A5B 1\n53BB5F 2\n").hexdigest()[:12])
         self.assertEqual(steps[0][2], hashlib.sha256(b"").hexdigest()[:12])
 
+    def test_step_6s_plan_ends_at_its_first_connection(self):
+        plan = [(0x543EB8, 2), (0x54403E, 9), (0x5B38B9, 4), (0x5B38D3, 1)]
+        phases = [(5, [(0x544DEC, 1)]), (6, plan + [(0x54146B, 0), (0x5B38D3, 3)]), (8, [])]
+        text = "".join(f"{s:X} {v}\n" for s, v in plan).encode()
+        self.assertEqual(h3rmg.plan_prefix(phases),
+                         (4, hashlib.sha256(text).hexdigest()[:12], 0x54146B))
+        self.assertEqual(h3rmg.plan_line("c", phases).split()[1:],
+                         ["draws=4", f"digest={hashlib.sha256(text).hexdigest()[:12]}",
+                          "next=54146B"])
+        # A step 6 of the plan alone (no connection draws) ends with none.
+        self.assertEqual(h3rmg.plan_prefix([(6, plan)])[2], None)
+        self.assertTrue(h3rmg.plan_line("c", [(6, [])]).endswith("draws=0 digest=e3b0c44298fc "
+                                                                 "next=none"))
+        # A plan cut by a site of neither kind, or a log without step 6, is refused.
+        with self.assertRaises(RuntimeError):
+            h3rmg.plan_prefix([(6, plan + [(0x540C61, 0)])])
+        with self.assertRaises(RuntimeError):
+            h3rmg.plan_prefix([(5, plan)])
+
     def test_memory_record(self):
         zone = bytearray(0xD4)
         zone[0x41], zone[0x44], zone[0x84] = 1, 1, 0xCC
