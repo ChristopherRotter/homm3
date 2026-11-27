@@ -2,8 +2,8 @@
 //! BAT-AI-016): each values the rise of the stack's worth when its strike on its threat record's
 //! enemy grows, for the share of the battle the spell lasts.
 
-use h3_battle::computer;
 use h3_battle::{StackFlags, StackId, StackTraits};
+use h3_battle::{computer, estimate};
 use h3_content::CreatureFlag;
 use h3_content_battle::Ability;
 use h3_kernel::arith::{DOUBLE_BITS, X87};
@@ -13,12 +13,8 @@ use super::{Candidate, View};
 /// The base damage the attack bonus's value compares (0x437800's 100).
 const BASE: u64 = 100;
 
-/// The values of a morale point above and below 0 (0x63B780, doubles: 0.0173 and −0.0833; the
-/// second's magnitude).
-const MORALE: [(u32, u32, u32); 2] = [(173, 10_000, DOUBLE_BITS), (833, 10_000, DOUBLE_BITS)];
-
 /// The highest and lowest morale or luck the values count (the callers' clamp to ±3).
-pub(crate) const LIMIT: i32 = 3;
+pub(crate) use h3_battle::estimate::MORALE_LIMIT as LIMIT;
 
 /// The dice of a luck roll (0x438490's divisor: one chance in 24 per point).
 const LUCK_DICE: i32 = 24;
@@ -32,14 +28,6 @@ pub(crate) struct Signed {
 }
 
 impl Signed {
-    /// `n × f` for an integer `n` and a positive factor `f`, rounded as the FPU does.
-    fn product(n: i32, f: X87) -> Self {
-        Self {
-            negative: n < 0,
-            magnitude: X87::int(u64::from(n.unsigned_abs())).times(f),
-        }
-    }
-
     /// `self + rhs`, rounded as the FPU does.
     pub(crate) fn plus(self, rhs: Self) -> Self {
         if self.negative == rhs.negative {
@@ -79,45 +67,16 @@ impl Signed {
     }
 }
 
-/// The value of a change of morale or luck by `c` from `m` (0x435850; BAT-AI-016), with the
-/// values `(p, n)` of a point above 0 and the magnitude of one below (each point below 0 costs
-/// `n`): the change of `V`, `V(m) = p × m` above 0 and `−n × m` below, the result clamped to ±3;
-/// 0 for a rise at 3 or a fall at −3. With BAT-QUIRK-25 a rise from below 0 is always valued as
-/// one that crosses 0 (survey slip 12: the test compares the change with `m`, not with `−m`):
-/// from −3 by 1 it gives `−2p + 3n`, not `n`.
-// rule: BAT-AI-016
-pub(crate) fn change_value(m: i32, c: i32, (p, n): (X87, X87), slip: bool) -> Signed {
-    let zero = Signed {
-        negative: false,
-        magnitude: X87::ZERO,
-    };
-    if c > 0 {
-        if m >= LIMIT {
-            return zero;
-        }
-        let c = c.min(LIMIT - m);
-        if m >= 0 {
-            return Signed::product(c, p);
-        }
-        let stays_below = if slip { c <= m } else { c <= -m };
-        if stays_below {
-            return Signed::product(c, n);
-        }
-        return Signed::product(m + c, p).plus(Signed::product(-m, n));
+/// The value of a change of morale or luck by `c` from `m` (0x435850; BAT-AI-016) as a
+/// [`Signed`]: `h3_battle::estimate::change_value` (since E31 T2f, AI-Q37, the battle lane's
+/// estimate holds it for the battle AI and the adventure's computer player), `slip` the battle's
+/// BAT-QUIRK-25.
+pub(crate) fn change_value(m: i32, c: i32, values: (X87, X87), slip: bool) -> Signed {
+    let x = estimate::change_value(m, c, values, slip);
+    Signed {
+        negative: x.is_negative(),
+        magnitude: x.magnitude(),
     }
-    if m <= -LIMIT {
-        return zero;
-    }
-    let c = c.max(-LIMIT - m);
-    if m <= 0 {
-        return Signed::product(c, n);
-    }
-    if -c <= m {
-        return Signed::product(c, p);
-    }
-    Signed::product(m, p)
-        .negated()
-        .plus(Signed::product(m + c, n))
 }
 
 impl View<'_> {
@@ -247,7 +206,12 @@ impl View<'_> {
             return 0;
         }
         let m = self.morale(s).clamp(-LIMIT, LIMIT);
-        let x = change_value(m, i32::from(self.effect(c)), values(MORALE), self.slips());
+        let x = change_value(
+            m,
+            i32::from(self.effect(c)),
+            estimate::morale_values(),
+            self.slips(),
+        );
         if x.is_zero() {
             return 0;
         }
@@ -511,13 +475,4 @@ impl View<'_> {
             .wrapping_add(self.speed_bonus(s, v, c.rounds))
             .wrapping_add(attack)
     }
-}
-
-/// A point's values as [`change_value`] takes them.
-pub(crate) fn values(table: [(u32, u32, u32); 2]) -> (X87, X87) {
-    let [(pn, pd, pb), (nn, nd, nb)] = table;
-    (
-        X87::ratio(pn, pd, pb).unwrap_or(X87::ZERO),
-        X87::ratio(nn, nd, nb).unwrap_or(X87::ZERO),
-    )
 }

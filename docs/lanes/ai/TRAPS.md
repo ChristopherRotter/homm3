@@ -43,6 +43,17 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - Coverage counts the implicit else of an `if let` and of a `let … else` as a region: a case
   that cannot happen (a chosen spell's target) goes through `Option::into_iter().for_each` or
   `unwrap_or`, not a branch.
+- The crate's test cores refuse content keys outside their pack's namespace (`KeyOutsidePack`):
+  a lookup of a `base:` or `sod:` key cannot be tested in `h3-game`. The computer reads the
+  original packs' content by handle where the handles are the original's ids (the artifacts 0 to
+  140, the base pack's creatures 0 to 117, the skills, the resources, the schools in the base
+  pack's order) and its tests pad the core to those ids (E31 T2f); a spell past 56 is not (SoD
+  appends Titan's Lightning Bolt): read it from the content that names it.
+- `h3_heroes::first_position` re-derives the worn combinations' locks at each call: asked per
+  artifact and hero it cost the turn start's mean 62 M Ir (E31 T2f); `artifacts::Valued` asks it
+  once a slot for the artifacts that are not combinations. The mean values 134 artifacts per hero
+  at every turn start: a change to an effect's value or to `Valued`'s reads moves
+  `computer-turns-towns-36`.
 
 **Environment**
 - An agent sees the projected observation only (AI-Q1 decision 10); `fork` and `state_hash` read the full state, for tools and training (the C ABI is for trusted local consumers, ADR-0011; never forward the hash to a client).

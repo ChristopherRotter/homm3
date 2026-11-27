@@ -248,7 +248,7 @@ id       = "CPU-STA-001"
 title    = "The turn start's records"
 context  = "computer"
 status   = "implemented"
-summary  = "What a computer player's turn start writes before its first pass (ai_turn_start 0x4297C0, ai_turn_start_values 0x527960; h3_game::computer's start record, kept in the memory, CPU-TRN-005), in the original's order, none of it writing the game state: the done marks cleared (CPU-TRN-002); the Eye value 0 while the engine has no Eye of the Magi (AI-STUB-10); the defence fold (its recruits AI-STUB-12) and the threat fold (CPU-STA-004); the recruit reserve (CPU-STA-002); the resource weights (CPU-STA-003); the Grail target (AI-STUB-15); then each of the player's heroes on the map its values per unit (its experience weight CPU-STA-006, its spell gains CPU-STA-007) and the artifacts' mean (AI-STUB-14). The difficulty's two weights are functions of the difficulty alone (CPU-SIM-012's blend). The record is read in the computer's own turn and, until its next start, by its answers in the other players' turns."
+summary  = "What a computer player's turn start writes before its first pass (ai_turn_start 0x4297C0, ai_turn_start_values 0x527960; h3_game::computer's start record, kept in the memory, CPU-TRN-005), in the original's order, none of it writing the game state: the done marks cleared (CPU-TRN-002); the Eye value 0 while the engine has no Eye of the Magi (AI-STUB-10); the defence fold (its recruits AI-STUB-12) and the threat fold (CPU-STA-004); the recruit reserve (CPU-STA-002); the resource weights (CPU-STA-003); the Grail target (AI-STUB-15); then each of the player's heroes on the map its values per unit (its experience weight CPU-STA-006, its spell gains CPU-STA-007) and the artifacts' mean (CPU-STA-008). The difficulty's two weights are functions of the difficulty alone (CPU-SIM-012's blend). The record is read in the computer's own turn and, until its next start, by its answers in the other players' turns."
 numeric  = "integer"
 
   [[rule.source]]
@@ -462,4 +462,160 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, read whole at T2e): ai_university_value 0x525BF0 (the eight skills at 0x525BF9, the gold +0xB4 of current_player_record 0x69CCB0 at 0x525C17, the loop over the four skills at 0x525C4C to 0x525C8E: the class record +0x18, the level +0xC9, ai_takes_new_secondary_skill 0x524DD0 and ai_secondary_skill_value 0x524690 with the flag 1)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-001"
+title    = "The computer's artifact effects table"
+context  = "computer"
+status   = "implemented"
+summary  = "The computer's effects of each artifact (ai_artifact_effects 0x692E18, built at the game's start by ai_artifact_effects_build 0x434100 from ai_artifact_effect_list 0x63AC7C), by the original's artifact id: 135 artifacts each with one to eight effects of 24 codes and their parameters (code 11 the school then p; codes 16 and 17 p then q; code 20's p fixed at 8 and code 21's at 30 by the build); none for the Spell Book, the Scroll, the Catapult, the three machines and 141 to 143. Ported as data (h3_game::computer's artifacts.rs TABLE), its canonical words checked against the list's. The survey's slips of the list (single-stat weapons one point short, the helmet's and cuirass's swapped numbers, §5.5 #40, #41) ported as read until AI-QUIRK-1."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey docs/rules/surveys/E31-computer-player.md section 4.1; E31 T1a4a, re-read at T2f): ai_artifact_effects_build 0x434100 (the jump table 0x434530, each case's operator new and vtable, 0x434316's school and p, 0x434493's 8, 0x4344B2's 30), the list ai_artifact_effect_list 0x63AC7C (0x9F4 bytes, 637 words, ending at -100), the vtables 0x63B6B0 (slot 1 of each code's)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-002"
+title    = "The primary skills' and duration's artifact values"
+context  = "computer"
+status   = "implemented"
+summary  = "Codes 0, 1, 2 and 10 (ai_artifact_effect_attack_defense 0x4325A0, _spell_power 0x4325E0, _knowledge 0x432610, _duration 0x432860): 0 where the caller counts the hero's own values; else p points of Attack and Defense A x p / 40 (A the army's value, army_value 0x44AC80, 32 bits, truncated toward 0), and p Spell Power, Knowledge or rounds p times the hero's gain of one (+0x47E, +0x486, +0x482: the turn start's CPU-STA-007; 0 for a hero the record lacks)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 4.1; E31 T1a4a, re-read at T2f): 0x4325A0, 0x4325E0, 0x432610, 0x432860"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-003"
+title    = "Morale's and luck's artifact values"
+context  = "computer"
+status   = "implemented"
+summary  = "Codes 3, 4, 14 and 15 (ai_artifact_effect_morale 0x432780, _luck 0x4327F0, _enemy_morale 0x432B20, _enemy_luck 0x432BA0) on the value of a morale or luck change (ai_morale_change_value 0x435850 with morale's or luck's factors, BAT-AI-016, its slip as read): p more from the hero's own value (hero_morale 0x4E39B0, hero_luck 0x4E36C0 without the clamp: its battle hero's morale and luck reaching its own side, its luck 0 with a cap there, the Hourglass), less p for a worn one, times A, truncated; 0 where counted. The enemy's: trunc(c(0, 2) x A), an enemy's +2 assumed; not counted and the hero's own held to 3 above 0, trunc(c(m, -m) x A + that). In doubles; the luck's factors singles widened."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 4.1; E31 T1a4a, re-read at T2f): 0x432780, 0x4327F0, 0x432B20, 0x432BA0; ai_morale_change 0x435830 and ai_luck_change 0x435960 (their factors 0x63B780, 0x63B790); hero_morale 0x4E39B0 and hero_luck 0x4E36C0 as E17 M6 T3b2 read them"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-004"
+title    = "The army's artifact values"
+context  = "computer"
+status   = "implemented"
+summary  = "Codes 5, 7, 8, 9, 13, 19 and 22 (0x432510, 0x432560, 0x4326E0, 0x432720, 0x432A50, 0x4330B0, 0x433520), none testing the counted flag but 13: the day's movement points (+0x49) x p / 100; A x p / 100; (A + 2 500) x p / 100 (land and sea alike); 0 without the Spell Power gain or Wisdom, else A x p / 100; A / 5 (p 0, the Orb of Inhibition) or A / 8, a worn one not counted less 50 or 25 per Spell Power point held 1 to 99; the shooters' AI value x count summed, x p / 100; the living ones' summed, / 8. All 32 bits, truncated toward 0."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 4.1; E31 T1a4a, re-read at T2f): 0x432510, 0x432560, 0x4326E0, 0x432720, 0x432A50, 0x4330B0, 0x433520"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-005"
+title    = "Necromancy's artifact values"
+context  = "computer"
+status   = "implemented"
+summary  = "Codes 6 and 21 (ai_artifact_effect_necromancy 0x432640, _undead_king 0x4333A0): the room h = trunc((1.0 - s) x 100.0) of the hero's Necromancy share s (hero_necromancy_power 0x4E3CD0, single precision; the engine's h3_heroes::necromancy, capped at 1.0, AI-STUB-17), n = p + min(h, 0) for a worn artifact, min(p, h) for a candidate, the value A x n / 250 when n is above 0. Code 6 needs the skill. Code 21 without the skill code 6's value of p; with it that value times r = f32((f32(AI c) - f32(AI 56)) / f32(AI 56)) of the creature c of its level (58, 60, 64), trunc(f32(w) x r)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 4.1; E31 T1a4a, re-read at T2f): 0x432640, 0x4333A0 (the creatures at 0x433440 to 0x43344E, 0x19A0 the Skeleton's record)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-006"
+title    = "The spells' artifact values"
+context  = "computer"
+status   = "implemented"
+summary  = "Codes 11, 12 and 18 (ai_artifact_effect_school_power 0x432890, _school_spells 0x432C20, _spell 0x432F90) on the hero's caster record (CPU-SPL-001) and its spell values (CPU-SPL-002), each 0 where counted or without power: an orb the largest, from 0, gain of the school's available damage spells (the AI's damage kinds, the original's flag 0x200) from the power 100 s / (100 + p) to s (worn) or s to s (100 + p) / 100 (a candidate), s its Spell Power held 1 to 99; a tome the largest value, from 0, of the school's spells not learned and, for a candidate, not available (no ban read); Titan's Thunder the value of the spell it grants, 0 when learned or, for a candidate, available."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 4.1; E31 T1a4a, re-read at T2f): 0x432890, 0x432C20, 0x432F90; the spell table's flags +0xC (0x200 and the AI kinds 0x38000 agree on spells 0 to 69, E31 T2f)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-007"
+title    = "The resources' and growth's artifact values"
+context  = "computer"
+status   = "implemented"
+summary  = "Codes 16, 17 and 23 (ai_artifact_effect_resource 0x432D20, _growth 0x432D70, _town_growth 0x433580): trunc(p x the owner's weight of resource q (CPU-STA-003) x 3.0), in doubles; for level p's dwelling, the creature's AI value (the upgrade's when its dwelling is built) x q, the largest from 0 over the owner's towns; where counted only on a town's gate, that town's, or 1 when the hero is not its garrison hero (survey section 4.1 (j)); the Statue of Legion the sum over the owner's towns and built dwellings of AI x (growth + the castle's part: the growth with a Castle, half with a Citadel) / 2."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 4.1; E31 T1a4a, re-read at T2f): 0x432D20, 0x432D70 (town_at_entrance 0x4BB870, the building bits 30 + level and 37 + level), 0x433580 (town_castle_growth 0x5BF570)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-008"
+title    = "The alliance's artifact value"
+context  = "computer"
+status   = "implemented"
+summary  = "Code 20 (ai_artifact_effect_alliance 0x433130): the AI value x count of every creature of the owner's heroes on the map and its towns' upper bars (town_garrison_army 0x5C1460) whose faction the alliance joins (alignment_join_towns 0x44A460: the artifact's own alignment group; the RoE game's elementals, factionless, none), summed; x 5 / 100, plus A x p / 40 (p 8) where not counted."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 4.1; E31 T1a4a, re-read at T2f): 0x433130, 0x44A460"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-009"
+title    = "An artifact's value to a computer's hero"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_hero_artifact_value 0x4336C0 with the worn and counted flags: the Spell Scroll its spell's gain (CPU-SPL-007), 0 for a spell learned or, for a candidate, available; the Ballista q s / (q + s), s = s0 + Artillery x s0 / 2, s0 = trunc(500 x sqrt(Attack + 1)) (Attack held 0 to 99), q = A x (primary sum + 40) / 40 (32 bits); the Ammo Cart each shooter stack's AI value x count / 40, summed; the First Aid Tent the largest, from 0, of each stack's one creature's AI value, times h / hit points where the tent heals less, h = trunc((1 + First Aid's bonus) x 25.0); any other artifact the sum of its effects' values (CPU-ART-001 to -008) and, for a combination, of each part's; the victory condition's artifact's 5 000 000 waits for the conditions (AI-STUB-16)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey sections 2.4, 4.1; E31 T1a2d, T1a4a, read whole at T2f): ai_hero_artifact_value 0x4336C0 (the switch 0x4339C8, the scroll 0x4336F9, the Ballista 0x43373E, the cart 0x4337D4, the tent 0x433837 with hero_first_aid 0x4E4920, the victory test 0x4338CA, the effects and the parts' loop to 0x4339BC)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-010"
+title    = "An artifact's value to a hero that would wear it"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_artifact_value_to_hero 0x4339E0: its value as a candidate (CPU-ART-009), at least 0, when some position takes it (hero_can_place_artifact 0x4E2550); else that value less the worn value of the artifact at the last position it would replace (hero_can_replace_artifact 0x4E2840: the worn one taken off, the candidate fits), 0 for none, at least 0."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 4.1; E31 T1a3c, read whole at T2f): 0x4339E0 (the free position's loop to 0x433A04, the replacement's to 0x433A6F, the last value kept)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-ART-011"
+title    = "An artifact's value to a computer player"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_artifact_value_to_player 0x433AA0: the largest of 10 and the artifact's values to each of the player's heroes on the map, as a candidate not counted (CPU-ART-010)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 4.1; read whole at E31 T2f): 0x433AA0 (the 10 at 0x433AC7)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-STA-008"
+title    = "The artifacts' mean at the turn start"
+context  = "computer"
+status   = "implemented"
+summary  = "The player's mean artifact value at its turn start (ai_turn_start_values 0x527960's +0x164, after the heroes' spell gains): the values to the player (CPU-ART-011) of every artifact 7 to 143 the artifact setup does not disable (only 141 to 143, by artifact_table_load 0x44CD50; the map's bans are not read), summed in 32 bits, over their count in doubles, stored as an f32 (the FPU's 0 / 0 with none). A ruleset without some of them (RoE's) counts fewer."
+numeric  = "float"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 1.5; E31 T1a2, read whole at T2f): 0x527960 (0x5279C1 to 0x527A28), artifact_table_load 0x44CD50 (artifacts_disabled 0x63B98C: 141, 142, 143)"
   confidence = "high"

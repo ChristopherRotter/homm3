@@ -247,6 +247,32 @@ pub const TERRAINS: usize = 9;
 /// The town types of a terrain's row in `rmg_terrain_towns` 0x682450 (four entries a terrain).
 pub const TERRAIN_TOWNS: usize = 4;
 
+/// The most pictures a terrain's picture set holds: the painter's cell word keeps a picture in 7
+/// bits (`terrain_painter_cell_word` 0x5B48D0; survey §2.7.2).
+pub const MAX_PICTURES: usize = 127;
+
+/// The highest shape a terrain picture has: 0 the plain inside, 2 to 28 the transitions (the
+/// sets' 58 ranges by shape and flag, rock's 116 by shape and variants; survey §2.7.1).
+pub const MAX_SHAPE: u8 = 28;
+
+/// One terrain's picture set of the game's terrain painter (`terrain_picture_set_init` 0x5B3780
+/// with its static initializer's arguments; survey §2.7.1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PictureSet {
+    /// Byte +4: the terrain meets the others through dirt (the transitions' classes).
+    pub through_dirt: bool,
+    /// Byte +5: land; clear for water, whose pinches include a split ring of neighbours.
+    pub land: bool,
+    /// The flagged plain pictures' share in percent: at the painter's weight 4, half of it.
+    pub share: u8,
+    /// Per picture in the table's order its shape and flag (the decorated plain pictures).
+    pub pictures: Vec<(u8, bool)>,
+}
+
+/// One of rock's pictures (`rock_picture_shapes` 0x6424A8): its shape and two variant bytes,
+/// which a transition's mirroring picks (rock has no mirrored pictures).
+pub type RockPicture = (u8, [bool; 2]);
+
 /// The generator's constants read from SoD's executable (ADR-0029 point 5; `packs/sod/rmg.toml`'s
 /// `[generator]`, harvested with their addresses): what the generator's constructor
 /// (`rmg_generator_create` 0x537B10) sets up besides the three tables.
@@ -275,6 +301,11 @@ pub struct GeneratorTables {
     /// Per town type (Castle to Conflux), its native terrain (`rmg_town_native_terrain`
     /// 0x6408C8).
     pub native_terrains: Vec<i32>,
+    /// The terrain painter's picture sets, dirt to lava and water (`terrain_picture_sets`
+    /// 0x642BD8), [`TERRAINS`] of them.
+    pub picture_sets: Vec<PictureSet>,
+    /// Rock's pictures (terrain 9's set, the second kind).
+    pub rock_pictures: Vec<RockPicture>,
 }
 
 /// The limits by object type the generator places under, per map and per zone (RMG-SET-009).
@@ -643,6 +674,23 @@ impl CanonicalHash for RmgRuleset {
             }
             h.write_len(g.native_terrains.len());
             write_i32s(h, &g.native_terrains);
+            h.write_len(g.picture_sets.len());
+            for set in &g.picture_sets {
+                h.write_bool(set.through_dirt);
+                h.write_bool(set.land);
+                h.write_u8(set.share);
+                h.write_len(set.pictures.len());
+                for &(shape, flag) in &set.pictures {
+                    h.write_u8(shape);
+                    h.write_bool(flag);
+                }
+            }
+            h.write_len(g.rock_pictures.len());
+            for &(shape, [a, b]) in &g.rock_pictures {
+                h.write_u8(shape);
+                h.write_bool(a);
+                h.write_bool(b);
+            }
         }
     }
 }
@@ -803,7 +851,9 @@ impl Tables {
 
     /// A pack's generator's tables: the three hero lists of one length, the limits' types below
     /// [`OBJECT_TYPES`], [`LAYOUT_POINTS`] cosines and sines, [`TERRAINS`] rows of town types
-    /// (-1 to 8) and a terrain (0 to 8) per town type.
+    /// (-1 to 8), a terrain (0 to 8) per town type, [`TERRAINS`] picture sets and rock's
+    /// pictures, at most [`MAX_PICTURES`] each, their shapes at most [`MAX_SHAPE`], the shares
+    /// at most 100.
     fn generator(
         &mut self,
         scope: &Scope<'_>,
@@ -829,7 +879,18 @@ impl Tables {
             && generator
                 .native_terrains
                 .iter()
-                .all(|terrain| (0..=8).contains(terrain));
+                .all(|terrain| (0..=8).contains(terrain))
+            && generator.picture_sets.len() == TERRAINS
+            && generator.picture_sets.iter().all(|set| {
+                set.share <= 100
+                    && set.pictures.len() <= MAX_PICTURES
+                    && set.pictures.iter().all(|&(shape, _)| shape <= MAX_SHAPE)
+            })
+            && generator.rock_pictures.len() <= MAX_PICTURES
+            && generator
+                .rock_pictures
+                .iter()
+                .all(|&(shape, _)| shape <= MAX_SHAPE);
         if !fits {
             return Err(RmgCompileError::GeneratorTables(String::from(scope.id)));
         }

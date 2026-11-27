@@ -69,8 +69,8 @@ pub use command::{
     AdventureEvent, AdventureEventKind, AdventureOutcome, AltarError, AltarPlaces, AltarVisit,
     BattleStart, Choice, ChoiceKind, Combatant, Defender, Drowned, Exchange, Garrison, HeroGains,
     HillFortError, HillFortVisit, HireDialog, HireError, HireSource, HireTarget, MarketError,
-    MarketVisit, Meeting, NoRoom, NothingWhy, Offer, OfferKind, OwnHeroes, Pick, PrisonVisit,
-    ServiceVisit, ShipyardBlock, Sink, UniversityVisit, Viewers,
+    MarketPlace, MarketVisit, Meeting, NoRoom, NothingWhy, Offer, OfferKind, OwnHeroes, Pick,
+    PrisonVisit, ServiceVisit, ShipyardBlock, Sink, UniversityVisit, Viewers,
 };
 pub use market::{Lot, MarketParams, MarketParamsError};
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
@@ -110,9 +110,9 @@ pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
     AdventureState, AltarArtifact, AltarOffers, AltarStack, BACKGROUND_RADIUS, Boat, Cast,
     CastError, CastFailure, Channels, DaySpells, GateEntry, HeroBonuses, HeroOnMap, HillFortRow,
-    HillFortUpgrade, HirePurchase, MapObject, MarketOffers, MarketPurchase, Monster, Resolved,
-    Sacrifice, Sacrificed, Sale, SaleOffer, StaticMap, StaticTile, StockEntry, TradeOffer,
-    VisitMarks, Visits, Weekly, WhirlpoolTile, allied, hire_price,
+    HillFortUpgrade, HirePurchase, MapObject, MarketOffers, MarketPurchase, MarketWindow, Monster,
+    Resolved, Sacrifice, Sacrificed, Sale, SaleOffer, StaticMap, StaticTile, StockEntry,
+    TradeOffer, VisitMarks, Visits, Weekly, WhirlpoolTile, allied, hire_price,
 };
 pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 

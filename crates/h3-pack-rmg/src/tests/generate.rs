@@ -1,14 +1,14 @@
-//! `generate` over the packs' tables (E14 T2c, T3c, T3d): the oracle's corpus against
+//! `generate` over the packs' tables (E14 T2c, T3c, T3d, T3e): the oracle's corpus against
 //! `phases.txt`, `layout.txt`, `zones.txt` and `water.txt` (the comparison seam, ADR-0029 point
-//! 8), the run's adjustments, steps 1 and 2, the flags and the errors.
+//! 8), the run's adjustments, steps 1 to 3, the flags and the errors.
 
 use std::collections::BTreeMap;
 
 use h3_rmg::{
     Choices, CrtRand, Fit, GenerateError, GeneratedMap, MapFormat, MapSize, MemoryZone, Monsters,
     PartitionFault, PositionError, SITE_TEMPLATE, SITE_WATER, SITE_ZONE_POSITION,
-    SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, Trace, Water,
-    ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
+    SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, TerrainFault,
+    Trace, Water, ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
 };
 use proptest::prelude::*;
 use std::sync::LazyLock;
@@ -45,13 +45,15 @@ impl Trace for Log {
 
 /// The phase oracle's view of a run (`phases.txt`'s `steps=` and `cells=`, `layout.txt`): per
 /// phase its draws and their lines' digest, per step end its dump's digest, the zone generators
-/// after step 1.
+/// after steps 1 and 2.
 #[derive(Debug, Default)]
 struct Phases {
     log: Log,
     phases: BTreeMap<String, (usize, String)>,
     cells: BTreeMap<u8, String>,
     layout: Vec<ZoneGenerator>,
+    /// The zone generators after step 2 (step 3 moves their centres).
+    partitioned: Vec<ZoneGenerator>,
     /// Step 2's zones' bytes as measured (`zones.txt`), in the call order.
     memory: Vec<ZoneMemory>,
 }
@@ -81,8 +83,10 @@ impl Trace for Phases {
             self.phases.insert(step.to_string(), lines_digest(draws));
         }
         self.cells.insert(step, digest12(&state.cells.dump(step)));
-        if step == 1 {
-            self.layout = state.zones.to_vec();
+        match step {
+            1 => self.layout = state.zones.to_vec(),
+            2 => self.partitioned = state.zones.to_vec(),
+            _ => {}
         }
         self.log.step_end(step, state);
     }
@@ -286,7 +290,7 @@ fn the_corpus_draws_the_originals_templates() {
         let map = map.unwrap_or_else(|e| panic!("{id}: {e}"));
         assert_eq!(map.template_name, name, "{id}");
         assert_eq!(log.frame(), [(SITE_TEMPLATE, first_rand(seed))], "{id}");
-        assert_eq!(log.steps, [0, 1, 2], "{id}");
+        assert_eq!(log.steps, [0, 1, 2, 3], "{id}");
         assert_eq!((map.seed, map.settings), (seed, s), "{id}");
         assert_eq!(packs.1.templates()[map.template.index].name, name, "{id}");
     }
@@ -344,7 +348,7 @@ fn under_two_players_in_all_the_run_takes_one_and_one() {
         [Some(0), Some(1), None, None, None, None, None, None]
     );
     assert_eq!(map.template.zones.len(), 3);
-    assert_eq!(log.steps, [0, 1, 2]);
+    assert_eq!(log.steps, [0, 1, 2, 3]);
     // Two players: Twin Vales has one human start, so nothing is kept.
     let two = settings(&choices(MapSize::Medium, 2, 0));
     assert_eq!(run(&packs, &two, 7).0, Err(GenerateError::NoTemplate));
@@ -558,9 +562,9 @@ fn any_choices() -> impl Strategy<Value = Choices> {
 proptest! {
     #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
 
-    /// Arbitrary choices, seeds and either profile run the frame over the original tables without
-    /// a panic (exit criterion (d)); a map's template is kept, its positions' colours distinct,
-    /// one per player and computer (or the error says why not).
+    /// Arbitrary choices, seeds and either profile run the frame and steps 1 to 3 over the
+    /// original tables without a panic (exit criterion (d)); a map's template is kept, its
+    /// positions' colours distinct, one per player and computer (or the error says why not).
     #[test]
     fn arbitrary_settings_never_panic(
         c in any_choices(),
@@ -581,7 +585,7 @@ proptest! {
             colours.dedup();
             let run = map.settings;
             prop_assert_eq!(colours.len(), usize::from(run.players + run.computers));
-            prop_assert_eq!(log.steps, vec![0, 1, 2]);
+            prop_assert_eq!(log.steps, vec![0, 1, 2, 3]);
             prop_assert!(map.settings.water != Water::Random);
             // Step 1: a zone generator per kept zone, on the map's levels, a land terrain on
             // level 0 and subterranean or lava on level 1, town types of the nine or none; step
@@ -600,10 +604,26 @@ proptest! {
                 prop_assert!(z == 0 || g.terrain == 6 || g.terrain == 7);
                 prop_assert!((-1..=8).contains(&g.town_type_2));
             }
-            // Step 2's cells: none, or a zone's.
+            // Step 2's cells: none, or a zone's. Step 3's: a terrain and one of its set's
+            // pictures, rock's unmirrored; a zone with cells centred in its box.
+            let tables = packs.1.generator().unwrap();
             for c in map.cells.cells() {
                 let b = c.zone_byte();
                 prop_assert!(b == 0xFF || usize::from(b) < map.zones.len());
+                let (terrain, picture) = ((c.tile & 0x3F) as usize, ((c.tile >> 6) & 0xFF) as usize);
+                let count = match tables.picture_sets.get(terrain) {
+                    Some(set) => set.pictures.len(),
+                    None => tables.rock_pictures.len(),
+                };
+                prop_assert!(terrain <= 9 && picture < count);
+                prop_assert!(terrain != 9 || c.tile_data & (3 << 15) == 0);
+            }
+            for g in &map.zones {
+                let [x0, y0, x1, y1] = g.bounds;
+                if x0 < x1 {
+                    prop_assert!((x0..x1).contains(&g.position[0]));
+                    prop_assert!((y0..y1).contains(&g.position[1]));
+                }
             }
         }
     }
@@ -635,14 +655,15 @@ fn the_corpus_starts_without_ownership_place_the_colours_as_the_original() {
 
 // covers: RMG-SET-010, RMG-ZON-001, RMG-ZON-002, RMG-ZON-003, RMG-ZON-004, RMG-ZON-005
 // covers: RMG-ZON-006, RMG-ZON-007, RMG-ZON-008, RMG-ZON-009, RMG-ZON-010, RMG-ZON-011
-// covers: RMG-ZON-012, RMG-ZON-013, RMG-ZON-014
+// covers: RMG-ZON-012, RMG-ZON-013, RMG-ZON-014, RMG-TER-001, RMG-TER-002, RMG-TER-003
+// covers: RMG-TER-005, RMG-TER-007, RMG-TER-009, RMG-TER-012, RMG-TER-014, RMG-TER-015
 /// The comparison seam (ADR-0029 point 8) over the oracle's corpus: the port's draws before step
-/// 1, in it and in step 2, and its dumps after the frame and after steps 1 and 2, have the phase
+/// 1, in it and in steps 2 and 3, and its dumps after the frame and after steps 1 to 3, have the phase
 /// oracle's digests (`clients/capture/rmg/phases.txt`), step 2's unwritten bytes as the memory
 /// record measured them (`zones.txt`, RMG-QUIRK-1). Step 2's water connections show in step 6's
 /// cells (increment 4).
 #[test]
-fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_2() {
+fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_3() {
     let packs = original("base:faithful");
     let kept = kept_phases();
     let memory = kept_zone_memory();
@@ -655,10 +676,10 @@ fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_2() {
         };
         generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap_or_else(|e| panic!("{id}: {e}"));
         let (phases, cells) = &kept[id];
-        for phase in ["setup", "template", "1", "2"] {
+        for phase in ["setup", "template", "1", "2", "3"] {
             assert_eq!(t.phases.get(phase), phases.get(phase), "{id} {phase}");
         }
-        for step in [0, 1, 2] {
+        for step in [0, 1, 2, 3] {
             assert_eq!(t.cells.get(&step), cells.get(&step), "{id} cells {step}");
         }
     }
@@ -726,7 +747,7 @@ fn the_corpus_appends_the_originals_water_zones() {
         };
         let map = generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap();
         let before = layout[id].len();
-        let water: Vec<[i32; 7]> = map.zones[before..]
+        let water: Vec<[i32; 7]> = t.partitioned[before..]
             .iter()
             .enumerate()
             .map(|(k, g)| {
@@ -735,7 +756,7 @@ fn the_corpus_appends_the_originals_water_zones() {
             })
             .collect();
         assert_eq!(water, kept.get(id).cloned().unwrap_or_default(), "{id}");
-        assert_eq!(t.layout, map.zones[..before], "{id}");
+        assert_eq!(t.layout, t.partitioned[..before], "{id}");
         assert_eq!(map.template.zones.len(), map.zones.len(), "{id}");
     }
 }
@@ -981,6 +1002,26 @@ fn step_1s_divisions_by_zero_are_refused() {
     ] {
         assert!(e.to_string().starts_with("step 1: "));
     }
+}
+
+// covers: RMG-TER-002
+/// RMG-QUIRK-3's step 3 case is a typed error: with islands a zone of base 0 has a scaled size
+/// of 0, so its coast draws `rand() % 0` (step 2's borders on the islands' level are straight).
+#[test]
+fn step_3s_coast_limit_of_0_is_refused() {
+    let s = Settings {
+        water: Water::Islands,
+        ..settings(&choices(MapSize::Medium, 1, 1))
+    };
+    let small = one_template(&[
+        zone_row(1, "human_start", 0, 1, "000000000", "00000000"),
+        zone_row(2, "computer_start", 10, 2, "000000000", "00000000"),
+    ]);
+    let (map, log) = run(&lone("lone:on", &small), &s, 1);
+    let error = GenerateError::Terrain(TerrainFault::CoastLimit);
+    assert_eq!(map, Err(error.clone()));
+    assert_eq!(log.steps, [0, 1, 2]);
+    assert_eq!(error.to_string(), "step 3: CoastLimit");
 }
 
 // covers: RMG-ZON-012

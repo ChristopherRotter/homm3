@@ -73,8 +73,8 @@ mod played;
 pub mod visits;
 
 pub use played::{
-    Battled, Command, Held, Leveled, OtherEnd, OtherStep, OtherTurn, OtherWalk, Played, Visit,
-    pickup, played,
+    Battled, Command, Held, Leveled, OtherEnd, OtherStep, OtherTurn, OtherWalk, Played, REVISIT,
+    Visit, pickup, played,
 };
 
 /// A random hero (class 70): the import places it as a hero, not a static object.
@@ -236,6 +236,9 @@ pub struct Loaded {
 pub struct Live {
     /// The facings, by hero id.
     pub facings: Vec<(u16, u8)>,
+    /// The seed of the client's own picks in play (E24 M5 T4b, `crate::picks`: an unnamed
+    /// town's name); none: the picks in turn.
+    pub picks: Option<u64>,
 }
 
 impl Live {
@@ -479,7 +482,8 @@ pub fn start(
     table.insert("boats".to_string(), Value::Array(boats));
     table.insert("explored".to_string(), explored(observation, art));
     // The panels (E24 M4 T3b1, design §5.10).
-    panels::insert(&mut table, observation, &loaded.raw, art, rules);
+    let picks = loaded.live.as_ref().and_then(|l| l.picks);
+    panels::insert(&mut table, observation, (&loaded.raw, picks), art, rules);
     // The mouse-over's facts (E24 M4 T3b2, design §5.11).
     let sight = hover::Sight {
         views,
@@ -488,7 +492,7 @@ pub fn start(
             .map(|&(c, s)| (records.game_class(c), s))
             .collect(),
     };
-    let facts = hover::table(observation, &loaded.raw, art, rules, &sight);
+    let facts = hover::table(observation, (&loaded.raw, picks), art, rules, &sight);
     table.insert("hover".to_string(), Value::Table(facts));
     Ok(Start { table, seen })
 }

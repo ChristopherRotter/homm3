@@ -52,9 +52,9 @@ use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
     GameEvent, GameRuleset, GameState, HeroChange, HeroStatus, HireAnswer, HireSeen, HireTarget,
-    HireView, Manage, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer,
-    SlotState, TavernAnswer, TownCommand, TownHeroChange, UniversityAnswer, Viewer, apply,
-    hire_range, legal_cast_targets, legal_commands, legal_management, legal_moves, observe,
+    HireView, Manage, MarketSeen, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink,
+    SkillOffer, SlotState, TavernAnswer, TownCommand, TownHeroChange, UniversityAnswer, Viewer,
+    apply, hire_range, legal_cast_targets, legal_commands, legal_management, legal_moves, observe,
     split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
@@ -13010,11 +13010,15 @@ fn check_decisions(
                 prop_assert!(matches!(kind, ObjectKind::Tavern), "{:?}", event);
                 exchange.4 = Some((hero, anchor));
             }
+            // A map market's (the plans open no town's window yet: E09 T58a2 lists it).
             GameEvent::MarketOpened {
                 player,
-                hero,
-                object_type,
-                anchor,
+                hero: Some(hero),
+                place:
+                    MarketSeen::Object {
+                        object_type,
+                        anchor,
+                    },
             }
             | GameEvent::AltarOpened {
                 player,

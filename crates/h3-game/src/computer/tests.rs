@@ -470,37 +470,41 @@ fn record_strategy() -> impl Strategy<Value = Record> {
         proptest::collection::vec(any::<i32>(), 3 * n)
             .prop_map(move |v| (v[..n].to_vec(), v[n..2 * n].to_vec(), v[2 * n..].to_vec()))
     });
-    (any::<i32>(), arrays, 1_u8..=10, any::<i32>(), lists).prop_map(
-        |(eyes, (reserve, means, demand), markets, mean, (heroes, threats, towns))| Record {
-            eyes,
-            reserve,
-            means,
-            demand,
-            markets,
-            mean,
-            heroes: heroes
-                .into_iter()
-                .map(
-                    |(h, (experience, [power, rounds, knowledge, doubled, refilled]))| {
-                        let spells = SpellGains {
-                            power,
-                            rounds,
-                            knowledge,
-                            doubled,
-                            refilled,
-                        };
-                        (HeroId::new(h), HeroValues { experience, spells })
-                    },
-                )
-                .collect(),
-            threats: threats
-                .into_iter()
-                .map(|(h, t)| (HeroId::new(h), t))
-                .collect(),
-            towns: towns
-                .into_iter()
-                .map(|(t, c)| (TownId::new(t), c))
-                .collect(),
+    let means = (any::<i32>(), any::<u32>());
+    (any::<i32>(), arrays, 1_u8..=10, means, lists).prop_map(
+        |(eyes, (reserve, means, demand), markets, (mean, artifacts), (heroes, threats, towns))| {
+            Record {
+                eyes,
+                reserve,
+                means,
+                demand,
+                markets,
+                mean,
+                artifacts,
+                heroes: heroes
+                    .into_iter()
+                    .map(
+                        |(h, (experience, [power, rounds, knowledge, doubled, refilled]))| {
+                            let spells = SpellGains {
+                                power,
+                                rounds,
+                                knowledge,
+                                doubled,
+                                refilled,
+                            };
+                            (HeroId::new(h), HeroValues { experience, spells })
+                        },
+                    )
+                    .collect(),
+                threats: threats
+                    .into_iter()
+                    .map(|(h, t)| (HeroId::new(h), t))
+                    .collect(),
+                towns: towns
+                    .into_iter()
+                    .map(|(t, c)| (TownId::new(t), c))
+                    .collect(),
+            }
         },
     )
 }
@@ -533,6 +537,7 @@ fn sample_record() -> Record {
         demand: vec![0x0100, 4],
         markets: 3,
         mean: 7,
+        artifacts: 0x4120_0000,
         heroes: vec![(
             HeroId::new(1),
             HeroValues {
@@ -556,7 +561,7 @@ fn sample_record() -> Record {
 fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let empty = Memory::new();
     assert_eq!(empty, Memory::default());
-    assert_eq!(empty.encode(), [3, 0, 0, 0, 0]);
+    assert_eq!(empty.encode(), [4, 0, 0, 0, 0]);
     let turn = Turn {
         day: 0x0102_0304,
         pass: Pass::Second,
@@ -568,13 +573,13 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let full = holding(turn.clone());
     let bytes = full.encode();
     let frame: [u8; 22] = [
-        3, 0, 0, 0, 1, 4, 3, 2, 1, 1, 1, 1, 6, 5, 2, 0, 0, 0, 1, 0, 3, 2,
+        4, 0, 0, 0, 1, 4, 3, 2, 1, 1, 1, 1, 6, 5, 2, 0, 0, 0, 1, 0, 3, 2,
     ];
-    let record: [u8; 84] = [
+    let record: [u8; 88] = [
         0xFE, 0xFF, 0xFF, 0xFF, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0xFF, 0xFF, 0xFF,
-        0xFF, 0, 1, 0, 0, 4, 0, 0, 0, 3, 7, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0x80, 0x3F, 10, 0, 0,
-        0, 0xFF, 0xFF, 0xFF, 0xFF, 12, 0, 0, 0, 3, 0, 0, 0, 4, 3, 2, 1, 1, 0, 0, 0, 9, 0, 0xA0,
-        0x25, 0x26, 0, 1, 0, 0, 0, 0, 0, 2,
+        0xFF, 0, 1, 0, 0, 4, 0, 0, 0, 3, 7, 0, 0, 0, 0, 0, 0x20, 0x41, 1, 0, 0, 0, 1, 0, 0, 0,
+        0x80, 0x3F, 10, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 12, 0, 0, 0, 3, 0, 0, 0, 4, 3, 2, 1, 1, 0,
+        0, 0, 9, 0, 0xA0, 0x25, 0x26, 0, 1, 0, 0, 0, 0, 0, 2,
     ];
     assert_eq!(bytes, [&frame[..], &record[..]].concat());
     assert_eq!(Memory::decode(&bytes), Ok(full.clone()));
@@ -602,8 +607,8 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
         (19, &[3]),
         (54, &[0]),
         (54, &[11]),
-        (95, &[0, 0, 0, 0]),
-        (105, &[0]),
+        (99, &[0, 0, 0, 0]),
+        (109, &[0]),
     ];
     for (at, values) in edits {
         let mut edited = bytes.clone();
@@ -633,7 +638,7 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let mut other = bytes;
     other[0] = 1;
     assert_eq!(Memory::decode(&other), Err(MemoryError::Version(1)));
-    assert_eq!(MEMORY_ENCODING_VERSION, 3);
+    assert_eq!(MEMORY_ENCODING_VERSION, 4);
 }
 
 proptest! {

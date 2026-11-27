@@ -448,6 +448,33 @@ hero (`MapHero::facing`, the adventure lane's, protocol and import versions move
 facings as built. **Recommended (a)** (facts first, the user at M5 T0); the adventure lane's
 inbox told. Blocks nothing (no hero turns before T4's input).
 
+#### MCL-Q59 — Play's boxes still take facts from the client (E24 M5 T4b, facts first)
+
+In play (design §5.27) a visit's question and its answer come from the engine's decision and the
+record, but some replies are still built from the client's tables or the map file, as M4's
+recordings had them: the Warrior's Tomb's morale lost (−3) and its artifact's primary skills
+(`artifact_skills`), a Cartographer's price and the terrains it reveals (a mask by its kind),
+Pandora's Box's text (read from the map file), the free creatures' count a dwelling's question
+names. Some facts no event carries: a visit that changes only a once-per-hero mark tells nothing
+(a visited Learning Stone, by a walk or by Space's revisit: no box where the original says it was
+visited, `SRV-STUB-4`), where an added artifact lands (`SRV-STUB-7`), the Redwood Observatory's
+visit (its reveal alone). Options: (a) take each from the record where an event carries it (a
+price paid, the tiles revealed, a morale or a skill changed) and ask the engine lanes for the
+rest (a visit's mark told, an object's text in its question's or find's event); (b) keep the
+client's tables and the map's text for these replies. **Recommended (a)** (facts first, the user
+at M5 T0); T4c's facts audit builds the client's part. The adventure lane's inbox told. Blocks
+nothing.
+
+#### MCL-Q60 — The hot seat reads an offer's and a choice's view through `observe` (E24 M5 T4b)
+
+A visit's question needs the decision's facts (a chest's gold and experience, a price, the
+Arena's gain); the fold of a seat's frames keeps no offer's or choice's view (`SRV-STUB-5`), so
+the in-process host reads the engine's projection (`observe(state, rules, viewer).decision`,
+`HotSeat::decision`), which is what a server's snapshot sends. A client over the network would
+need the frames to carry it. Options: (a) keep `observe` in the hot seat until `SRV-STUB-5` lifts,
+then read the folded view; (b) a snapshot asked after each command that opens a decision.
+**Recommended (a)**; the server lane's inbox told. Blocks nothing.
+
 ### RMG lane (`RMG-Q<n>`)
 
 (no open questions)

@@ -282,6 +282,10 @@ pub fn pickup(rules: &GameRuleset, object_type: u16) -> bool {
     )
 }
 
+/// The walk key of a revisit (E24 M5 T4b, Space's `Revisit`): [`Visit::walk`] is this plus the
+/// walks taken before it, past every walk's place, so that no walk's end tells its find.
+pub const REVISIT: usize = usize::MAX / 2 + 1;
+
 /// One of the viewer's visits in a record (E24 M4 T4b1, design §5.14, *provisional*): a walk's
 /// last tile, the visited object's entrance or its own tile visited from beside, the command's
 /// events and the answers the record gives after it, each with its events. Since E24 M4 T6 (the
@@ -292,7 +296,7 @@ pub struct Visit {
     /// The walk's last tile.
     pub at: Pos,
     /// The walk's place among [`Played::moves`] (R2-1: each visit to a tile played at its own
-    /// walk's end).
+    /// walk's end); a revisit's [`REVISIT`] plus the walks before it (E24 M5 T4b).
     pub walk: usize,
     /// The walk's hero (the record's id) and its type (none without details: R2-3, R2-4, its
     /// level-ups' dialog and Pandora's Box's boxes name it).
@@ -496,6 +500,36 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                         if let Some(visit) = visits.last_mut().filter(|_| visiting) {
                             visit.answers.push((*answer, Vec::new()));
                         }
+                    }
+                    // Space's visit again of the entered object under the hero (E24 M5 T4b,
+                    // ADV-TEL-008): a visit on its tile with no walk of its own, keyed past the
+                    // walks ([`REVISIT`]: its find told by the host at Space, never at a walk's
+                    // end).
+                    GameCommand::Adventure {
+                        command: AdventureCommand::Revisit { hero },
+                    } => {
+                        let at = observation
+                            .adventure
+                            .heroes
+                            .iter()
+                            .find(|h| h.id == *hero)
+                            .and_then(|h| tile(h.pos.x, h.pos.y, h.pos.level));
+                        visiting = at.is_some_and(|at| {
+                            let (hero_type, held) = held(&observation, *hero);
+                            visits.push(Visit {
+                                at,
+                                walk: REVISIT + moves.len(),
+                                hero: *hero,
+                                hero_type,
+                                held,
+                                levels: Vec::new(),
+                                events: Vec::new(),
+                                answers: Vec::new(),
+                                battle: None,
+                                flag: None,
+                            });
+                            true
+                        });
                     }
                     // The visit's army dialog's commands (E24 M4 T6, R2-4: a reward's creatures
                     // with no room, GAM-DEC-004): the visit goes on to the dialog's close and what
@@ -1186,7 +1220,8 @@ fn computer_turn(
     (colour, heroes): (u8, usize),
 ) -> Value {
     let mut table = Table::new();
-    panels::insert(&mut table, observation, &loaded.raw, art, rules);
+    let picks = loaded.live.as_ref().and_then(|l| l.picks);
+    panels::insert(&mut table, observation, (&loaded.raw, picks), art, rules);
     table.remove("realm");
     table.remove("chosen");
     // stub: MCL-Q43 (the computer's heroes' points and kind 5's value: none told)
@@ -1228,7 +1263,8 @@ fn turn(
 ) -> Value {
     // The panels' kingdom; their status window, kingdom's window and choices are the start's.
     let mut table = Table::new();
-    panels::insert(&mut table, observation, &loaded.raw, art, rules);
+    let picks = loaded.live.as_ref().and_then(|l| l.picks);
+    panels::insert(&mut table, observation, (&loaded.raw, picks), art, rules);
     table.remove("realm");
     table.remove("chosen");
     let colour = observation

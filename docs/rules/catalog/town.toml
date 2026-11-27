@@ -2062,6 +2062,120 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "TWN-MKT-001"
+title    = "The trader's count of Marketplaces"
+context  = "town"
+status   = "verified"
+summary  = "The row of the market parameters' rates (ADV-MKT-002) a town's market window trades at: the number of the trader's towns (the window's owner's, whoever owns the town traded at; today always the trader, an ally's town waiting for E10's teams, TWN-STUB-21) with a building of role marketplace ever built (a capture moves a town's Marketplace to its new owner's count at once), at most the parameters' counts (10) and at least 1 (E09 decision 203, D-70, TD-29): a trader without one trades as with one, so the merchants never give an artifact for nothing (T-19 fixed, TWN-QUIRK-17); the town traded at needs none. Read at each answer and view of the window (no build can happen while it is open). So wood or ore sells for 37, 62 and 112 gold at 2, 4 and 8 Marketplaces (E08's rows). E09 T58a1 (the town epic's design note section 103): h3_towns::marketplaces over the trader's towns, h3-game's town/market.rs count (the clamp)."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-17"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T52; survey E09-trades.md section 2.1): the market window's count is the current player's towns with building 14 built, at most 10, whichever town is traded at; at an ally's town without one of the trader's own the count is 0 and the merchants' factor 0 (T-19)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6a.md and -6a-run2.md, row TWN-6-1 (the capture harness under Wine, the Complete 4.0 executable in SoD, 2026-11-25, E09 T54; survey E09-trades.md section 14): 1 wood for 37, 62 and 112 gold at 2, 4 and 8 Marketplaces; experiments/results/E09-batch-6b.md and -6b-run2.md, row TWN-6-2: at an ally's Tower the merchants at count 0, an artifact priced 0 gold and given free"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 lib/mapObjects/CGTownInstance.cpp getMarketEfficiency and lib/mapObjects/IMarket.cpp getOffer (survey E09-trades.md section 9, TD-29): the town owner's count, at a count of 0 a factor of 0.15, so never free; its rows 38, 63 and 113 (refuted by TWN-6-1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-24"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 103; E09 decisions 201, 203"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-MKT-002"
+title    = "The market window at a town"
+context  = "town"
+status   = "verified"
+summary  = "TownCommand::Market { town } opens E08's market decision (GAM-DEC-011) with the town as its place (MarketPlace::Town), the town the actor's (UnknownTown, NotOwner), in its turn with no decision open; no building named, no visit, no movement points, any number a turn. The window's hero is the town's, never a field: the visitor when it is the actor's; with TWN-QUIRK-15's flag off (strict-fixed) the garrison hero when no visitor of the actor's stands there; none else. The window opens where a building of role marketplace stands, with or without a hero, or where one of role artifact_merchants or freelancers stands and the window has a hero; else refused, NoMarket (none of the three stands) or NoVisitor (only the merchants or the guild stand and no hero: the original's GENRLTXT 274). It offers trades and the transfer whenever it opens, the Artifact Merchants' purchase with a hero where they stand, the creature sale with a hero where the Freelancer's Guild stands (the screens in the original's order: Trade, Transfer, Buy, Sell), at the trader's count (TWN-MKT-001). MarketOpened (the actor alone) names the hero (none possible) and the place; the view (MarketView: the place, the hero, E08's MarketOffers, the recipients) is the owner's alone; open until its Leave. E09 T58a1 (the town epic's design note section 104, decision 209): h3_towns::check_market, h3-game's town/market.rs open and window, GameState::market_window."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-15"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T52; survey E09-trades.md sections 2.1, 2.2): the Marketplace (14) opens market_window_run 0x5EA130 at an own town with a visitor or without; the Artifact Merchants (17) and the Freelancer's Guild (the Stronghold's 21) read only the visitor (+0x10), else GENRLTXT 274; without a visitor the resource screens and the transfer, with one the artifact screens where the merchants stand and the creature screen where the guild stands"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6a.md and -6a-run2.md, row TWN-6-5 (2026-11-25, E09 T54; survey E09-trades.md section 14): with a garrison hero and no visitor the merchants and the Freelancer's Guild each GENRLTXT 274 and nothing opened; the Marketplace opened screen 0 with the transfer's button"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 server/NetPacksServer.cpp visitTradeOnMarketplace (survey E09-trades.md section 9, TD-28): a hero of the actor's on the entrance, the garrison hero included (refuted for the original by TWN-6-5)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/NetPacksServer.cpp"
+  retrieved  = "2026-11-24"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 104; E09 decisions 202, 209 and 213 (calls 1 to 3)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-MKT-003"
+title    = "Resources, the transfer and the creature sale at a town"
+context  = "town"
+status   = "verified"
+summary  = "A town's window answers E08's Trade (ADV-MKT-003), Transfer (ADV-MKT-004) and Sell (ADV-MKT-005) unchanged at the trader's count (TWN-MKT-001): a trade's lot the parameters' at that row (a count of 1 at least, so never the original's division by zero at 0), the transfer to any other player of the game, ally or enemy, 1 : 1, the count playing no part, the recipient's gain told to it alone; the sale of the window's hero's army (the visitor; with TWN-QUIRK-15's flag off the garrison hero) where the Freelancer's Guild stands, the creature factor at the count, the army keeping a creature. A screen the town's window does not offer is refused (Screen). E09 T58a1 (the town epic's design note section 105): the adventure's checks read the town's window (h3_adventure::MarketWindow), AdventureState::sell lowers a garrison hero's stack too."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-15"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T52; survey E09-trades.md sections 2.2, 2.3, 2.5): the town's window runs the map's market_resources_proc 0x5ECFE0, market_transfer_proc and market_sell_creatures_proc 0x5EE890 at the current player's count"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6a.md and -6a-run2.md, row TWN-6-1 (2026-11-25, E09 T54): a town's trades at 2, 4 and 8 Marketplaces as E08's rows"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 105; E09 decisions 201, 202 and 203"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-MKT-004"
+title    = "The Artifact Merchants' purchase"
+context  = "town"
+status   = "verified"
+summary  = "A town's window with the merchants answers E08's Buy { entry, pay } (ADV-MKT-007) on the Artifact Merchants' stock (TWN-STK-001, -002) at the trader's count: the price MarketParams::artifact_price(count, cost, pay), the artifact's cost in the cost resource (a combination's its parts' sum, HER-ART-008), never 0 (the count at least 1, TWN-QUIRK-17); refused for an entry past the stock or empty (Entry: bought, or a draw that found none), no price (NoPrice), a hero without room (NoRoom, A-46 fixed as ADV-QUIRK-48), then the treasury (CannotPay); applied: paid (ResourcePaid), the artifact given to the window's hero (HeroChanged), the entry emptied for every town and player until the next month's draw. The view shows the stock with its prices (none for an empty entry), to the window's owner alone. E09 T58a1 (the town epic's design note section 106): AdventureState::check_buy and buy over the merchants' stock, AdventureState::empty_merchants_entry."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-15", "TWN-QUIRK-17"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T52; survey E09-trades.md sections 2.2, 3.3): the town's purchase runs the map's market_buy_artifact_proc 0x5ED9E0 on game +0x1F664, the bought entry set to -1 for every town until new_month's redraw"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6c.md and -6c-run2.md, row TWN-6-8 (2026-11-25, E09 T54; survey E09-trades.md section 14): entry 0 bought at count 1 for 5 times its cost (5 000 and 10 000 gold for costs 1 000 and 2 000), the entry then empty; row TWN-6-2: at count 0 priced 0 and given free (T-19)"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 106; E09 decisions 203, 207 and 212"
+  confidence = "high"
+
+[[rule]]
 id       = "TWN-STK-001"
 title    = "The Artifact Merchants' stock at the new game"
 context  = "town"

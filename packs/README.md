@@ -913,6 +913,11 @@ layout_sin = [0, 1951, …]        # table's doubles are the ones nearest them; 
 terrain_towns = [[0, 1, 4, -1], …] # per terrain, dirt to lava and water, four town types
                                  # (0x682450; -1 ends a row's own, RMG-ZON-008, RMG-QUIRK-12)
 native_terrains = [2, 2, 3, …]   # per town type, Castle to Conflux, its terrain (0x6408C8)
+picture_sets = [                 # the terrain painter's sets (0x642BD8; E14 T3e), dirt to lava
+  { through_dirt = true, land = true, share = 50, pictures = [[8, 0, 4], …] }, # and water:
+  …                              # bytes +4 and +5, the decorated share in percent, the
+]                                # pictures in order as runs [shape, flag, count] (RMG-TER-006)
+rock_pictures = [[0, 0, 0, 8], …] # rock's (0x6424A8) as runs [shape, a, b, count]
 ```
 
 The compiler refuses a line, template or connection index past its table or outside the pack's
@@ -920,7 +925,9 @@ dependency closure, a line replaced twice by one pack, a `fixes` that is no regi
 `quirk.content` flag (checked in every profile), and an obstacle row without one Adjacent and one
 Overlap score per row, and generator's tables whose three hero mark strings differ in length,
 whose limits name an object type past 231, or without 32 cosines and sines, nine rows of town
-types from -1 to 8 and a terrain from 0 to 8 per town type. The harvested `ab` pack carries 8XM8's six overrides (RMG-QUIRK-22, from the
+types from -1 to 8 and a terrain from 0 to 8 per town type, or without nine picture sets of
+shares up to 100, each set and rock's of at most 127 pictures of shapes up to 28 (a flag or
+variant other than 0 and 1, and runs past 127 pictures, are refused when the pack is read). The harvested `ab` pack carries 8XM8's six overrides (RMG-QUIRK-22, from the
 gap-fill); `cargo xtask verify --with-original-data` also compares the compiled part with the text
 tables (`crates/h3-pack-rmg/examples/original_data.rs`).
 

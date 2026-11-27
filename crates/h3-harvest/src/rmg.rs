@@ -52,6 +52,55 @@ pub struct Constants {
     pub terrain_towns: Vec<[i32; 4]>,
     /// Per town type its native terrain (0x6408C8).
     pub native_terrains: Vec<i32>,
+    /// The terrain painter's picture sets, dirt to water (`terrain_picture_sets` 0x642BD8; E14
+    /// T3e).
+    pub picture_sets: Vec<h3_formats::exe::PictureSetData>,
+    /// Rock's pictures: shape and variant bytes (`rock_picture_shapes` 0x6424A8).
+    pub rock_pictures: Vec<(u8, [bool; 2])>,
+}
+
+/// A table as runs of equal entries, each with its count, in order.
+fn runs<T: PartialEq + Copy>(items: &[T]) -> Vec<(T, usize)> {
+    let mut out: Vec<(T, usize)> = Vec::new();
+    for &item in items {
+        match out.last_mut() {
+            Some((last, count)) if *last == item => *count += 1,
+            _ => out.push((item, 1)),
+        }
+    }
+    out
+}
+
+/// The painter's `picture_sets` and `rock_pictures` lines.
+fn picture_lines(c: &Constants) -> String {
+    let sets = c
+        .picture_sets
+        .iter()
+        .map(|set| {
+            let pictures = runs(&set.pictures)
+                .iter()
+                .map(|((shape, flag), n)| format!("[{shape}, {}, {n}]", u8::from(*flag)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!(
+                "  {{ through_dirt = {}, land = {}, share = {}, pictures = [{pictures}] }},\n",
+                set.through_dirt, set.land, set.share
+            )
+        })
+        .collect::<String>();
+    let rock = runs(&c.rock_pictures)
+        .iter()
+        .map(|((shape, [a, b]), n)| format!("[{shape}, {}, {}, {n}]", u8::from(*a), u8::from(*b)))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "# The terrain painter's picture sets (terrain_picture_sets 0x642BD8, their initializers' \
+         arguments\n# and tables; E14 T3e), dirt to lava and water: byte +4 (meets the others \
+         through dirt), byte +5\n# (land), the flagged pictures' share in percent, the pictures \
+         in their table's order as runs of\n# shape, flag and count; rock's pictures \
+         (rock_picture_shapes 0x6424A8) as runs of shape, its two\n# variant bytes and count.\n\
+         picture_sets = [\n{sets}]\nrock_pictures = [{rock}]\n"
+    )
 }
 
 /// The tables of both archives and the executable's constants.
@@ -98,7 +147,7 @@ fn generator_section(c: &Constants) -> String {
          (rmg_town_native_terrain 0x6408C8; E14 T3c).\n[generator]\nheroes_roe = \"{}\"\n\
          heroes_expansions = \"{}\"\nheroes_campaign = \"{}\"\nmap_limits = [{}]\n\
          zone_limits = [{}]\nlayout_cos = [{}]\nlayout_sin = [{}]\nterrain_towns = [{}]\n\
-         native_terrains = [{}]\n",
+         native_terrains = [{}]\n{}",
         marks(0),
         marks(1),
         marks(2),
@@ -108,6 +157,7 @@ fn generator_section(c: &Constants) -> String {
         list(&c.layout_sin),
         rows,
         list(&c.native_terrains),
+        picture_lines(c),
     )
 }
 

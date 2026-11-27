@@ -27,18 +27,18 @@ pub(super) fn every_kind() -> SpellAiKinds {
 }
 
 /// The damage kinds a spell's gain is measured against (the mask `0x38000`).
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "a spell's gain has no caller until E31 T2f, T2g, T2h"
-    )
-)]
 const DAMAGE_KINDS: [SpellAiKind; 3] = [
     SpellAiKind::Damage,
     SpellAiKind::DamageOnce,
     SpellAiKind::DamageAll,
 ];
+
+/// Whether `kinds` holds a damage kind (the mask `0x38000`): for the spells of the books the
+/// spell table's flag 0x200 (deals damage) exactly (E31 T2f: 15 to 26 and 57 have both, no other
+/// spell either).
+pub(super) fn damage_kinds(kinds: SpellAiKinds) -> bool {
+    DAMAGE_KINDS.into_iter().any(|k| kinds.contains(k))
+}
 
 /// The caster record of `hero` (`ai_caster_record` 0x526D40; CPU-SPL-001): its battle hero
 /// with no visit bonuses and its available spells, its army, the special battlefield of its
@@ -58,13 +58,6 @@ pub(super) fn record(state: &GameState, rules: &GameRuleset, hero: Fighter<'_>) 
 /// (`CasterRecord::value`), and for a spell of a damage kind its value less the best of the
 /// hero's spells sharing one of its damage kinds, 1 when that best is at least its value.
 // rule: CPU-SPL-007
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the scroll's, the guild's and the Pyramid's values call it, E31 T2f, T2g, T2h"
-    )
-)]
 pub(super) fn gain(rules: &GameRuleset, record: &CasterRecord, spell: SpellId) -> i32 {
     if record.power <= 0 {
         return 0;

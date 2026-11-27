@@ -7,7 +7,8 @@
 //! context's, whose records the garrison hero and the visitor are, ADR-0028 point 2); since E09
 //! T38a1 a tavern hero is hired at the town's Tavern ([`crate::check_hire`], TWN-TAV-003); since
 //! E09 T49a2 the town screen is opened, its heroes visiting the Mana Vortex and learning the
-//! guild's spells (TWN-GLD-006). A refused command changes nothing.
+//! guild's spells (TWN-GLD-006); since E09 T58a1 the market window opens with the town as its
+//! place ([`crate::check_market`], TWN-MKT-002). A refused command changes nothing.
 
 use core::fmt;
 
@@ -20,7 +21,7 @@ use crate::building::BuildingId;
 /// that the game and the wire match every variant (SRV-Q25; E09 T18b1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 // rule: TWN-BLD-001, TWN-REC-001, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004, TWN-TAV-003
-// rule: TWN-GLD-006
+// rule: TWN-GLD-006, TWN-MKT-002
 pub enum TownCommand {
     /// Builds `building` in `town`, the player's, as its hall offers it ([`crate::buildable`]),
     /// for the part's price (TWN-BLD-001): no hero, no visit, no field trusted but the two ids.
@@ -78,6 +79,17 @@ pub enum TownCommand {
         /// The town.
         town: TownId,
     },
+    /// Opens the market window of `town`, the player's, with the town as its place (TWN-MKT-002;
+    /// E09 T58a1, design §104, decision 209: the original's Marketplace, Artifact Merchants or
+    /// Freelancer's Guild clicked on the town screen, `market_window_run` 0x5EA130): E08's market
+    /// decision, offering what the town allows ([`crate::check_market`]) to the window's hero,
+    /// the game's (the visitor; with `TWN-QUIRK-15`'s flag off the garrison hero too; none at a
+    /// Marketplace without one), at the trader's count ([`crate::marketplaces`], TWN-MKT-001). No
+    /// building named, no visit, no movement points, no field trusted but the town's id.
+    Market {
+        /// The town.
+        town: TownId,
+    },
 }
 
 /// A hero's move between a town's two bars (TWN-ROW-002 to -004; E09 T28a, design §53).
@@ -104,7 +116,8 @@ pub enum TownHeroChange {
 /// [`crate::check_hire`] [`Self::NoTavern`], then the game [`Self::UnknownSlot`],
 /// [`Self::EmptySlot`] (E09 T38a1); for a spell book's purchase [`crate::check_spell_book`]
 /// [`Self::NoGuild`], then the game [`Self::NoHero`], [`Self::HasSpellBook`] (E09 T49b,
-/// TWN-GLD-007).
+/// TWN-GLD-007); for a market's window [`crate::check_market`] [`Self::NoMarket`], then
+/// [`Self::NoVisitor`] (E09 T58a1, TWN-MKT-002).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TownCommandError {
     /// The town is not in the game's store.
@@ -168,6 +181,9 @@ pub enum TownCommandError {
     NoHero,
     /// The town's hero (its visitor, else its garrison hero) wears a spell book (TWN-GLD-007).
     HasSpellBook,
+    /// No Marketplace, Artifact Merchants or Freelancer's Guild stands in the town (TWN-MKT-002: a
+    /// building of role `marketplace`, `artifact_merchants` or `freelancers`).
+    NoMarket,
 }
 
 impl fmt::Display for TownCommandError {
@@ -202,6 +218,7 @@ impl fmt::Display for TownCommandError {
             Self::NoGuild => f.write_str("no mage guild sells a spell book in the town"),
             Self::NoHero => f.write_str("no hero stands in the town"),
             Self::HasSpellBook => f.write_str("the town's hero has a spell book"),
+            Self::NoMarket => f.write_str("no market of any kind stands in the town"),
         }
     }
 }
@@ -247,6 +264,7 @@ mod tests {
             TownCommandError::NoGuild,
             TownCommandError::NoHero,
             TownCommandError::HasSpellBook,
+            TownCommandError::NoMarket,
         ];
         for error in errors {
             assert!(!error.to_string().is_empty(), "{error:?}");
@@ -293,5 +311,10 @@ mod tests {
                 town: TownId::new(2)
             }
         );
+        // covers: TWN-MKT-002
+        let market = TownCommand::Market {
+            town: TownId::new(2),
+        };
+        assert_ne!(market, book);
     }
 }

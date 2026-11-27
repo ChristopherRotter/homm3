@@ -688,3 +688,79 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
 - **With `master` merged** (T56's `BuildingRoles::marketplace`): the weights' rate finds the
   Marketplace by its role, not by the key `marketplace` (the start test's Marketplace keyed
   otherwise to show it); the town lane's request dropped.
+
+## T2f — the artifacts (2026-11-26, increment 2)
+
+- **The size, measured at the start** (`docs/exe/map.toml`): the build, the 24 codes, the four
+  values, 7 013 bytes, about 2 600 instructions, every function read at T1a4a (the epic's 2 900
+  counted the C++ constructors and the record's init too). Offered: T2f1 (the table, the 17 codes on
+  the hero and its army, `ai_hero_artifact_value`) and T2f2 (the spell and town codes, the values
+  to a hero and a player, the equipped value, the start's mean); **the user chose no cut**, the
+  morale value moved into `h3_battle::estimate` (`cross-lane`), `ai_hero_equipped_value` 0x433C60
+  moved to increment 3 with its callers (it reads `army_stack_morale` 0x44B100 and
+  `army_stack_luck` 0x44B3C0, never read), and a bans reader in the adventure state, which the
+  reading then showed unneeded (AI-Q37). A cloud clone; `Heroes3.exe`, the two bitmap LODs,
+  `maps.tar` and `extracted.tar` staged from the user's repo folder at the start. The VM restarted
+  once during the setup's baseline (master had moved meanwhile: CI's green run at dc70cf8 stood
+  for it).
+- **Readings** (the main session, the survey's table known: not blind): the build 0x434100 whole
+  (its jump table, each case's vtable: the survey's code-to-method map holds; code 11's school
+  then p into +8 and +4, code 12's school with p 0, codes 16 and 17 p then q); the list
+  0x63AC7C (637 words, 135 artifacts, parsed by a scratch script and generated as the table, its
+  artifact names from the packs); `ai_hero_artifact_value` 0x4336C0 whole (the switch 0x4339C8,
+  the scroll's learned and available tests, the Ballista's clamps and integer steps, the cart's
+  stack-by-stack fortieth, the tent with `hero_first_aid` 0x4E4920: 1 plus the skill's f32
+  bonus, the victory test of kinds 0 and 10, the parts' loop over the combination's bit set);
+  0x4339E0 (only the existence of a free position counts; the replacement loop keeps the last
+  position's worn value, §5.5's new #70), 0x433AA0 (at least 10), 0x433C60 (read, not ported), the
+  mean in 0x527960 (artifacts 7 to 143 with the setup's +0x1C clear: only `artifact_table_load`
+  0x44CD50 sets it, for 141 to 143 from `artifacts_disabled` 0x63B98C; the map's bans are
+  +0x4E2B4, not read: §5.5's new #71); every code's method (the luck pair the morale pair's shape
+  exactly); `army_stack_morale` 0x44B100 (read for the decision; its ground cases and the
+  Minotaurs' floor, the Spirit of Oppression's zero; ported with increment 3). The spell table's
+  flag 0x200 and the AI damage kinds (0x38000) agree on spells 0 to 69 (15 to 26, 57), so the orb
+  reads the kinds.
+- **Built:** `h3_game::computer`'s `artifacts.rs` (CPU-ART-001 to -011, CPU-STA-008; the module's
+  table, `Effect`, `Valued` (a hero's reads, once a hero: its army's value, the start record's
+  spell gains, its owner's weights, its caster record, its available spells, its own morale and
+  luck from its battle hero with its visit bonuses, each slot's free position for a plain
+  artifact), `hero_value`, `value_to_hero`, `value_to_player`, `mean`); the record's
+  `artifacts` field (+0x164, f32 bits) and the memory's encoding v4; `turn::primary_sum_of`
+  (`hero_primary_sum` 0x4E5960's sum); `spells::damage_kinds`. `cross-lane`: the morale and luck
+  change value 0x435850 with both factor pairs from `h3-battle-ai`'s `boosts.rs` into
+  `h3_battle::estimate`'s `estimate/morale.rs` (`change_value`, `morale_values`, `luck_values`,
+  `MORALE_LIMIT`), the battle AI through a thin adapter to its `Signed`; the battle lane told in
+  its inbox. AI-STUB-14 lifted; AI-STUB-16 (the victory artifact, E10), AI-STUB-17 (the hero's
+  reads its owner's towns would change: the Grail structures' +2, the Necromancy buildings, the
+  share's cap; E09).
+- **Agent decisions (change freely):** the artifacts by their handles as the original's ids (the
+  packs' 141 in order, checked at T2f), the cloak's undead by the base pack's creature handles
+  (56, 58, 60, 64), the schools by the base pack's school order (Earth 0, Water 1, Fire 2, Air 3),
+  Titan's Thunder's bolt by the artifact's own `spells` grant (SoD appends the spell: its handle
+  is not 57); the alliance's factions from the artifact's own `alignment_group` (the original's
+  `alignment_join_towns` 0x44A460, the same five); the hero's own morale and luck from its battle
+  hero (its effects reaching its side; the luck 0 with a luck cap there, the Hourglass); the tome's
+  loop over every spell (the engine gives the creatures' abilities no school, the original's loop
+  stops before them); the orb's least for a negative p not written (every orb's p is 100); the
+  mean's heroes' reads built once a turn start with the start's caster records.
+- **Tests** (`computer/artifacts/tests.rs`, 14, on the crate's core with AI values, 28 skill
+  places with Necromancy's three shares and First Aid, the creatures to 64, 141 artifacts, a Fire
+  school at its place and four of its spells; the town fixtures for the town codes): the table's
+  636 canonical words and their FNV-1a against the executable's list; every code by hand-set
+  reads (the counted flag, the worn one, the truncations toward 0, the slips of 0x435850 both
+  ways); the hero's own morale and luck; the room of the share at three levels and the cloak's
+  ratio, the FPU's indefinite for a worthless Skeleton; the spell codes against the caster record's
+  own values at the powers the code sets; the machines, a combination, the value with a free
+  position, with both rings worn (the last one replaced) and a combination candidate; the value to a
+  player and the mean on a nine-artifact core and with none (0 / 0); the growth, the alliance and
+  the statue on towns with a Castle, a Citadel and a Fort alone, the hero at the gate, in the
+  garrison and away. `h3-battle`'s `estimate/morale/tests.rs` (2: the moved test, the factors as
+  stored). Numbers from an IEEE double model (Python, not committed); four of my expectations were
+  wrong (a worn cloak's 1 200 × 0.5, the worn badge and clover from one point lower), the port
+  right. Coverage of `artifacts.rs` 100 % lines and regions.
+- **The benchmark** (`computer-turns-towns-36`): 228 988 508 → 308 572 724 Ir (+34.8 %; master
+  +0.02 %), re-baselined: the mean values 134 artifacts for each hero at every turn start (the
+  effects' values 13 % of the count, the heroes' reads 9 %). The first build cost +64 %: a free
+  position asked per artifact (`h3_heroes::first_position` re-derives the locks, 62 M Ir) and a
+  second caster record per hero; now one answer a slot for the artifacts that are not combinations
+  and the start's records reused, the values unchanged.

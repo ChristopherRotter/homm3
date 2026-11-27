@@ -398,6 +398,10 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         GameCommand::Town(TownCommand::BuySpellBook { town }) => {
             format!("{player} town book {}", town.raw())
         }
+        // Format v27 (E09 T58a1).
+        GameCommand::Town(TownCommand::Market { town }) => {
+            format!("{player} town market {}", town.raw())
+        }
         // Format v26 (E08 T142a).
         GameCommand::Cast {
             hero,
@@ -851,16 +855,16 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
             GameCommand::Town(TownCommand::Hire { town, slot })
         }
         // Format v24 (E09 T49a2): a town screen's opening; v25 (E09 T49b) a spell book's
-        // purchase at its Mage Guild.
-        Some("town") if matches!(words.clone().next(), Some("open" | "book")) => {
+        // purchase at its Mage Guild; v27 (E09 T58a1) a market window's opening.
+        Some("town") if matches!(words.clone().next(), Some("open" | "book" | "market")) => {
             let (Some(kind), Some(town)) = (words.next(), words.next()) else {
                 return Err(bad());
             };
             let town = town.parse().map(TownId::new).map_err(|_| bad())?;
-            GameCommand::Town(if kind == "open" {
-                TownCommand::Open { town }
-            } else {
-                TownCommand::BuySpellBook { town }
+            GameCommand::Town(match kind {
+                "open" => TownCommand::Open { town },
+                "book" => TownCommand::BuySpellBook { town },
+                _ => TownCommand::Market { town },
             })
         }
         // Format v11 (E09 T18b1): a town's build, without a hero; v15 (E09 T27) its recruitment.

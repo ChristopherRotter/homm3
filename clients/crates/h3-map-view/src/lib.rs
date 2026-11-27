@@ -70,6 +70,7 @@ pub mod live;
 pub mod minimap;
 pub mod objects;
 pub mod panels;
+pub mod picks;
 pub mod reach;
 pub mod record;
 pub mod replay;

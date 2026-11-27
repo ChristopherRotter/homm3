@@ -1072,6 +1072,7 @@ mod hire;
 mod income;
 mod learn;
 mod mana;
+mod market;
 mod merchants;
 mod offer;
 mod open;

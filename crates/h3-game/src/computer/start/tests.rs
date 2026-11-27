@@ -22,6 +22,10 @@ use crate::town::tests::{rules_with_adventure, town_pack, towns_core_pack, towns
 use crate::{Actor, GameCommand, GameEvent, GameSetup, apply};
 
 const RED: PlayerId = PlayerId::new(0);
+
+/// The artifacts' mean of a core with no artifact from 7 on (the town fixtures' cores): the FPU's
+/// 0 / 0 as an f32 (CPU-STA-008).
+const NO_ARTIFACTS: u32 = 0xFFC0_0000;
 const BLUE: PlayerId = PlayerId::new(1);
 const T0: TownId = TownId::new(0);
 const T1: TownId = TownId::new(1);
@@ -168,6 +172,7 @@ fn each_players_start_records_its_reserve_weights_experience_and_threats() {
             demand: vec![1250, 5],
             markets: 1,
             mean: 250,
+            artifacts: NO_ARTIFACTS,
             heroes: vec![(RED_HERO, bookless(1_098_711_040))],
             threats: vec![(BLUE_HERO, 5_000_000)],
             towns: vec![(T0, 1)],
@@ -190,6 +195,7 @@ fn each_players_start_records_its_reserve_weights_experience_and_threats() {
             demand: vec![2050, 13],
             markets: 1,
             mean: 499,
+            artifacts: NO_ARTIFACTS,
             heroes: vec![(BLUE_HERO, bookless(1_084_898_673))],
             threats: vec![(RED_HERO, 5_000_000)],
             towns: vec![(T1, 1)],

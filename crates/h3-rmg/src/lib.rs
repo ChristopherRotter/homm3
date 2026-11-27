@@ -12,8 +12,9 @@
 //! the templates kept and drawn, the banned heroes, the positions, with its [`Trace`]; the
 //! generator's map ([`Cells`], dumped as the phase oracle's) and step 1, the zones laid out
 //! ([`ZoneGenerator`], E14 T3c); step 2, each level partitioned (the triangulation, the water
-//! zones, the borders, the fills, the water connections: [`Partition`], E14 T3d). The other steps
-//! come with increments 3 to 6, the writer's content with 7.
+//! zones, the borders, the fills, the water connections: [`Partition`], E14 T3d); step 3, the
+//! terrain painted (the boxes, centroids and islands, and the game's terrain painter, E14 T3e).
+//! The other steps come with increments 4 to 6, the writer's content with 7.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -38,10 +39,12 @@ extern crate alloc;
 mod cells;
 mod generate;
 mod layout;
+mod painter;
 mod part;
 mod partition;
 mod settings;
 mod template;
+mod terrain;
 mod triangulation;
 
 pub use cells::{Cell, Cells};
@@ -53,10 +56,15 @@ pub use layout::{
     SITE_ZONE_POSITION, SITE_ZONE_TERRAIN, SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE,
     ZoneGenerator,
 };
+pub use painter::{
+    PaintFault, SITE_PICTURE, SITE_PICTURE_FLAG, SITE_PICTURE_SHAPE, SITE_ROCK_PICTURE,
+    SITE_ROCK_PICTURE_SHAPE,
+};
 pub use part::{
-    Connection, ConnectionOverride, GeneratorTables, LAYOUT_POINTS, NO_LIMIT, OBJECT_TYPES,
-    ObjectTemplate, ObjectTemplateLine, ObjectTemplateOverride, Obstacle, RmgCompileError, RmgPack,
-    RmgRuleset, Strength, TERRAIN_TOWNS, TERRAINS, Template, TypeLimits, Zone, ZoneKind,
+    Connection, ConnectionOverride, GeneratorTables, LAYOUT_POINTS, MAX_PICTURES, MAX_SHAPE,
+    NO_LIMIT, OBJECT_TYPES, ObjectTemplate, ObjectTemplateLine, ObjectTemplateOverride, Obstacle,
+    PictureSet, RmgCompileError, RmgPack, RmgRuleset, RockPicture, Strength, TERRAIN_TOWNS,
+    TERRAINS, Template, TypeLimits, Zone, ZoneKind,
 };
 pub use partition::{
     MemoryZone, Partition, PartitionFault, SITE_BORDER_JITTER, UNREACHED, ZoneMemory,
@@ -66,14 +74,15 @@ pub use settings::{
     resolve_random,
 };
 pub use template::{Fit, KeptConnection, KeptTemplate, PositionError, kept_templates, positions};
+pub use terrain::{SITE_COAST_JITTER, TerrainFault};
 
 /// The original's `rand` (`h3_kernel::rng::CrtRand`), the stream [`resolve_random`] draws from.
 pub use h3_kernel::rng::CrtRand;
 
 /// Version of [`RmgRuleset`]'s canonical hash (ADR-0029 point 7): bumped whenever the bytes the
 /// part hashes change for the same tables (2: the generator's tables, E14 T2c; 3: step 1's
-/// tables, E14 T3c).
-pub const RMG_RULESET_HASH_VERSION: u32 = 3;
+/// tables, E14 T3c; 4: the terrain painter's picture sets, E14 T3e).
+pub const RMG_RULESET_HASH_VERSION: u32 = 4;
 
 #[cfg(test)]
 mod tests;

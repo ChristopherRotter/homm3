@@ -20,6 +20,18 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   (`restores`) and `h3-server`'s `tests::record` moved from 118 to **130**; all three pass over
   them, the session's bounds unmet. Their random games cast often (45 casts in
   `spells-s415-d28`), no turn longer than the duel's and garrisons' battles.
+- 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent;
+  **in your paths, mapped; for your review**): protocol **v85**: `TownCommand::Market { town }`
+  both ways, `TownReject::NoMarket`, the wire's `MarketSeen` (`Object { object }` or `Town {
+  town }`), `MarketWindow`'s and `GameEvent::MarketOpened`'s `hero: Option<u16>` and `place`
+  (in place of `object` / `object_type` and `anchor`); the tests' engine round trips (a town's
+  window without a hero, its event, the refusal; 168 rejections) and the fold's literal.
+  `h3-server`'s `tests/record.rs` literals moved with the goldens (game state hash v40).
+- 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
+  nothing blocks**): the map client's hot seat asks a visit's question from the engine's open
+  decision, read through `observe` in-process because the fold keeps no offer's or choice's view
+  (`SRV-STUB-5`; **MCL-Q60**). A networked client needs the frames to carry it: when `SRV-STUB-5`
+  lifts, the hot seat reads the folded view instead.
 
 - 2026-11-25 (the adventure lane, E08 T144a1, `adventure/e08-t144a1`; **for your planning, no
   change in your paths**): `h3_game::legal_commands` now lists each hero's casts on the map

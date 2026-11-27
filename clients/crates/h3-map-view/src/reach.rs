@@ -19,6 +19,19 @@
 //! - **A walk asked** ([`WalkAsked`]): a path's walk or a key's step whose facts the loop lacks:
 //!   the host plays its `MoveHero` and gives its facts (`Loop::add_walks`) or its refusal
 //!   (`Loop::refuse_walk`).
+//!
+//! Since E24 M5 T4b (*provisional*; design §5.27) the boxes the player answers:
+//!
+//! - **An answer asked** ([`AnswerAsked`]): a visit's question whose answers are the host's
+//!   (`timeline::Question::hosted`: the engine's decision open) closed by one of its buttons
+//!   ([`Pick`]); the host plays the session's `Answer` and gives what it shows (`Loop::add_answer`),
+//!   kept by the visit's find, the question's place among its visit's and the button.
+//! - **A revisit asked** ([`RevisitAsked`]): Space with the selected hero on an object's
+//!   entrance; the host plays the engine's `Revisit` and gives the find its visit tells
+//!   (`Loop::add_revisit`), kept by the stand (which counts the revisits taken).
+//! - **A level-up asked** ([`LevelAsked`]): a level-up's dialog whose offer is the host's
+//!   (`timeline::LevelBox::hosted`) closed by its OK with an offer chosen; the host plays it and
+//!   gives the levels the engine opens after it (`Loop::add_level`), kept by the hero and the level.
 
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
@@ -28,7 +41,7 @@ use h3_map::model::Pos;
 use h3_protocol::wire::game::{Moves, Pos as WirePos};
 
 use crate::live::Arrow;
-use crate::timeline;
+use crate::timeline::{self, Answer, LevelBox};
 
 /// The selected hero standing between two of the engine's commands (E24 M5 T4a): its place among
 /// the map's heroes (`Start::heroes`), the engine's walks and the turns' starts the loop took.
@@ -40,6 +53,9 @@ pub struct Stand {
     pub walks: usize,
     /// The turns' starts taken so far.
     pub turns: usize,
+    /// The host's answers taken so far (E24 M5 T4b: a reach asked under a decision the engine
+    /// held open is none, and an answer may change it).
+    pub answers: usize,
 }
 
 /// The selected hero's reach today, as the engine answers it (E24 M5 T4a).
@@ -77,13 +93,25 @@ impl Reach {
 }
 
 /// What the host gave a live view so far (E24 M5 T4a): each stand's reach and the walks the engine
-/// refused, by their stands and tiles.
+/// refused, by their stands and tiles; since E24 M5 T4b the questions' answers and the level-ups'
+/// next levels.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Hosted {
     /// The reaches given, by their stands.
     pub reaches: Vec<(Stand, Arc<Reach>)>,
     /// The walks refused: each one's stand and tiles.
     pub refused: Vec<(Stand, Vec<Pos>)>,
+    /// The answers given (E24 M5 T4b): what each shows, by its question ([`AnswerKey`]).
+    pub answers: Vec<(AnswerKey, Answer)>,
+    /// The level-ups answered (E24 M5 T4b): the levels the engine opened after each, by its hero
+    /// (its place among the map's heroes) and level.
+    pub levels: Vec<((usize, u8), Vec<LevelBox>)>,
+    /// Space's revisits given (E24 M5 T4b), by their stands: the find each tells (its place among
+    /// the loop's finds), none where the engine refused it or it tells nothing.
+    pub revisits: Vec<(Stand, Option<usize>)>,
+    /// The seed of the client's own picks (E24 M5 T4b, `crate::picks`: a pickup's sound, a
+    /// computer turn's music); none: the picks in turn.
+    pub picks: Option<u64>,
 }
 
 impl Hosted {
@@ -101,6 +129,93 @@ impl Hosted {
     pub fn refuses(&self, stand: Stand, tiles: &[Pos]) -> bool {
         self.refused.iter().any(|(s, p)| *s == stand && p == tiles)
     }
+
+    /// What the answer `asked` shows, given.
+    #[must_use]
+    pub fn answer(&self, asked: AnswerKey) -> Option<&Answer> {
+        self.answers
+            .iter()
+            .find(|(a, _)| *a == asked)
+            .map(|(_, answer)| answer)
+    }
+
+    /// The revisit of `stand` given: the find it tells, if any.
+    #[must_use]
+    pub fn revisit(&self, stand: Stand) -> Option<Option<usize>> {
+        self.revisits
+            .iter()
+            .find(|(s, _)| *s == stand)
+            .map(|&(_, told)| told)
+    }
+
+    /// The levels the engine opened after hero `hero`'s level-up to `level`, given.
+    #[must_use]
+    pub fn leveled(&self, hero: usize, level: u8) -> Option<&[LevelBox]> {
+        self.levels
+            .iter()
+            .find(|(key, _)| *key == (hero, level))
+            .map(|(_, next)| next.as_slice())
+    }
+}
+
+/// A question's button as the engine's answer takes it (E24 M5 T4b): its OK (a choice's first
+/// picture), a choice's second picture, its Cancel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pick {
+    /// The OK, or a choice's first picture.
+    Yes,
+    /// A choice's second picture.
+    Second,
+    /// The Cancel.
+    No,
+}
+
+/// A question answered (E24 M5 T4b): its visit's find (its place among the loop's finds), its
+/// place among the questions the visit asks (0 the first; a monster's flight after its offer
+/// declined the second) and the button.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AnswerKey {
+    /// The find.
+    pub find: usize,
+    /// The question's place among its visit's.
+    pub nth: u8,
+    /// The button.
+    pub pick: Pick,
+}
+
+/// A question's answer the loop lacks, asked of the host (E24 M5 T4b): the millisecond of the
+/// button's click and the question.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AnswerAsked {
+    /// The click's millisecond.
+    pub at: u32,
+    /// The question and the button.
+    pub asked: AnswerKey,
+}
+
+/// A level-up's offer the loop lacks the next of, asked of the host (E24 M5 T4b): the millisecond
+/// of the OK's click, the hero (its place among the map's heroes), the level and the offer chosen
+/// (the dialog's left first).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LevelAsked {
+    /// The click's millisecond.
+    pub at: u32,
+    /// The hero.
+    pub hero: usize,
+    /// The level.
+    pub level: u8,
+    /// The offer chosen.
+    pub offer: usize,
+}
+
+/// Space's revisit the loop lacks, asked of the host (E24 M5 T4b): the millisecond of the key and
+/// the selected hero's stand (on an object's entrance).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RevisitAsked {
+    /// The key's millisecond.
+    pub at: u32,
+    /// The stand.
+    pub stand: Stand,
 }
 
 /// A walk whose facts the loop lacks, asked of the host (E24 M5 T4a): the millisecond it starts

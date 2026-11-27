@@ -24,7 +24,7 @@ use h3_map::Limits;
 use h3_map::model::{Body, EventBody, Pos, RawMap};
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{MapArt, WATER};
-use h3_map_view::asks::{self, Ask, Reply, Seen, Visitor};
+use h3_map_view::asks::{self, Ask, Fade, Reply, Seen, Visitor};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
@@ -50,6 +50,7 @@ use h3_map_view::timeline::{
     Rules, Start, Switch, TownBoxes, Walked,
 };
 use h3_map_view::{engine, status, timeline, turn};
+use h3_protocol::wire::game::Decision;
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
@@ -321,7 +322,7 @@ pub fn for_sequence<'a>(
     // its visits (E24 M4 T4b1).
     let hover = painter.hover()?;
     let finds = match &played {
-        Some(p) => painter.record_finds(&raw, (&p.visits, &p.levels), hover.as_deref())?,
+        Some(p) => painter.record_finds(&raw, (&p.visits, &p.levels), hover.as_deref(), None)?,
         None => painter.finds(&raw, hover.as_deref())?,
     };
     let town = painter.town()?;
@@ -462,7 +463,9 @@ pub fn live_turns(
 /// T4a: the hot seat's host played a walk the view asked): `record` read as [`for_live`] reads it,
 /// its walks as a record's (`engine::played`), each visit's find laid out by `painter` over the
 /// view's mouse-over `hover` as [`for_record`] lays a record's out; every one of them, the caller
-/// takes those after the ones it knows.
+/// takes those after the ones it knows. Since E24 M5 T4b (design §5.27) a visit whose walk `open`
+/// names with the engine's decision the host holds open there asks its question with every
+/// answer the host's, and its level-ups the engine holds open are the host's to answer.
 ///
 /// # Errors
 /// As [`for_live`]'s; a find that does not lay out.
@@ -470,16 +473,92 @@ pub fn live_walks(
     painter: &mut Painter<'_>,
     map: &Path,
     (record, rules, live): (engine::GameRecord, &GameRuleset, engine::Live),
-    hover: Option<&Hover>,
+    (hover, open): (Option<&Hover>, &[(usize, Decision)]),
     label: String,
 ) -> Result<(Vec<Move>, Vec<Found>), String> {
     let assets = painter.assets;
     let (bytes, raw) = read_map(map)?;
     let loaded = engine::live(record, &bytes, rules, live).map_err(|e| format!("{label}: {e}"))?;
     let played = played_of(assets, &raw, &loaded, rules, label)?;
-    let finds = painter.record_finds(&raw, (&played.visits, &played.levels), hover)?;
+    let finds = painter.record_finds(&raw, (&played.visits, &played.levels), hover, Some(open))?;
     Ok((played.moves, finds))
 }
+
+/// A live visit's next question (E24 M5 T4b, design §5.27: the engine held another decision open
+/// after an answer, a monster's flight after its offer declined): `decision`'s question about the
+/// object visited from the tile `at` (the view's mouse-over `hover`), laid out by `painter` with
+/// every answer the host's, the visit's `nth`; none where the decision asks no question there.
+///
+/// # Errors
+/// Its box does not lay out.
+pub fn live_question(
+    painter: &mut Painter<'_>,
+    decision: &Decision,
+    (hover, at): (&Hover, Pos),
+    nth: u8,
+) -> Result<Option<Question>, String> {
+    let Some(tile) = hover.base([i32::from(at.x), i32::from(at.y), i32::from(at.z)]) else {
+        return Ok(None);
+    };
+    let Some(o) = tile.object.filter(|_| tile.entrance) else {
+        return Ok(None);
+    };
+    let class = [tile.class, tile.subclass];
+    let Some(ask) = engine::visits::opened(decision, class, tile.word, "") else {
+        return Ok(None);
+    };
+    let mut question = painter.question(&ask, o)?;
+    (question.yes, question.second, question.no) = (None, None, None);
+    question.hosted = Some(nth);
+    Ok(Some(question))
+}
+
+/// What a live visit's answer `nth` shows (E24 M5 T4b: a next question's, which the client lays
+/// out from the record alone): `record` read as [`for_live`] reads it, the visit at the end of
+/// walk `walk`, what its answer gives the panels and, where it takes its object off the map, that
+/// object (its index on the map file `map`, from its tile `at` on the mouse-over `hover`) with a
+/// monster's sound (`killfade.82M`) or a find's; none past its answers.
+///
+/// # Errors
+/// As [`for_live`]'s.
+pub fn live_reply(
+    painter: &Painter<'_>,
+    map: &Path,
+    (record, rules, live): (engine::GameRecord, &GameRuleset, engine::Live),
+    (hover, walk, nth): (&Hover, usize, usize),
+    label: String,
+) -> Result<Option<Answer>, String> {
+    let (bytes, raw) = read_map(map)?;
+    let loaded = engine::live(record, &bytes, rules, live).map_err(|e| format!("{label}: {e}"))?;
+    let played = played_of(painter.assets, &raw, &loaded, rules, label)?;
+    let Some(visit) = played.visits.iter().find(|v| v.walk == walk) else {
+        return Ok(None);
+    };
+    let Some((_, events)) = visit.answers.get(nth) else {
+        return Ok(None);
+    };
+    let at = visit.at;
+    let tile = hover.base([i32::from(at.x), i32::from(at.y), i32::from(at.z)]);
+    let taken = tile
+        .and_then(|t| Some((t.object.filter(|_| t.entrance)?, t.class)))
+        .filter(|_| engine::visits::removes(events))
+        .map(|(o, class)| {
+            let fade = if class == MONSTER_CLASS {
+                Fade::Killfade
+            } else {
+                Fade::Pickup
+            };
+            (o, fade)
+        });
+    Ok(Some(Answer {
+        gain: engine::visits::gain(events),
+        taken,
+        ..Answer::default()
+    }))
+}
+
+/// A wandering monster's class.
+const MONSTER_CLASS: u32 = 54;
 
 /// A map file's bytes and its raw map (gzip-compressed, as the game keeps it, or not: the
 /// writer's).
@@ -521,7 +600,12 @@ fn for_played<'a>(
         .map_err(|e| format!("{label}: {e}"))?;
     let hover = painter.hover()?;
     // Its visits' finds, each with its level-ups (E24 M4 T6, R2-3: none by the thresholds).
-    let finds = painter.record_finds(raw, (&played.visits, &played.levels), hover.as_deref())?;
+    let finds = painter.record_finds(
+        raw,
+        (&played.visits, &played.levels),
+        hover.as_deref(),
+        None,
+    )?;
     let town = painter.town()?;
     let start = Start {
         view,
@@ -1330,6 +1414,7 @@ impl<'a> Painter<'a> {
         raw: &RawMap,
         (visits, leveled): (&[engine::Visit], &[engine::Leveled]),
         hover: Option<&Hover>,
+        open: Option<&[(usize, Decision)]>,
     ) -> Result<Vec<Found>, String> {
         use engine::visits::{Laid, Told as Visited};
         let Some(hover) = hover else {
@@ -1339,10 +1424,11 @@ impl<'a> Painter<'a> {
         let texts = &assets.tables.texts;
         let laid = engine::visits::lay(
             visits,
+            open,
             |pos| {
                 let tile = hover.base([i32::from(pos.x), i32::from(pos.y), i32::from(pos.z)])?;
                 let o = tile.object.filter(|_| tile.entrance)?;
-                Some((o, [tile.class, tile.subclass]))
+                Some((o, [tile.class, tile.subclass], tile.word))
             },
             &assets.tables.map.finds,
             |hero| self.name_of(hero),
@@ -1377,7 +1463,7 @@ impl<'a> Painter<'a> {
                 levels: levels
                     .iter()
                     .filter_map(|&k| leveled.get(k))
-                    .map(|l| self.record_level(l))
+                    .map(|l| self.record_level(l, open.is_some()))
                     .collect::<Result<Vec<_>, String>>()?,
             };
             match told {
@@ -1469,8 +1555,17 @@ impl<'a> Painter<'a> {
                     found.taken = taken.then_some(o);
                     found.flag = flag.map(|colour| (o, colour));
                 }
-                Visited::Ask { ask, flag, .. } => {
+                Visited::Ask {
+                    ask,
+                    flag,
+                    answered,
+                } => {
                     let mut question = self.question(&ask, o)?;
+                    // Live, the engine's decision open (E24 M5 T4b, design §5.27): every answer
+                    // the host's, this the visit's first question.
+                    if answered == engine::visits::Answered::Open {
+                        question.hosted = Some(0);
+                    }
                     if !kept.yes {
                         question.yes = None;
                     }
@@ -1479,6 +1574,24 @@ impl<'a> Painter<'a> {
                     }
                     if !kept.no {
                         question.no = None;
+                    }
+                    // Live, an answer the record gives that the client does not build (the Tree
+                    // of Knowledge's, the Pyramid's, a monster's offer declined): what the
+                    // record's answer gives the panels (E24 M5 T4b).
+                    if open.is_some() {
+                        let reply = match answered {
+                            engine::visits::Answered::Yes => Some(&mut question.yes),
+                            engine::visits::Answered::Second => Some(&mut question.second),
+                            engine::visits::Answered::No => Some(&mut question.no),
+                            engine::visits::Answered::Open => None,
+                        };
+                        if let Some(reply @ None) = reply {
+                            let visit = visits.iter().find(|v| v.walk == walk);
+                            *reply = Some(Answer {
+                                gain: visit.map(engine::visits::answered_gain).unwrap_or_default(),
+                                ..Answer::default()
+                            });
+                        }
                     }
                     // Pandora's Box's own text first, a box of its own (design §5.4's table:
                     // `visit_pandora_box` 0x4A0C50; the map's, read at run time, R2-4).
@@ -1497,6 +1610,9 @@ impl<'a> Painter<'a> {
                 Visited::Flagged { flag } => found.flag = Some((o, flag)),
                 // An object taken and nothing else built (E24 M4 T6): taken from beside, no box.
                 Visited::Taken => found.taken = Some(o),
+                // Live, level-ups and nothing else built (E24 M5 T4b, design §5.27: the Tree of
+                // Knowledge's free level): no box, the levels after what the panels show.
+                Visited::Levels { gain } => found.gain = gain,
             }
             out.push(found);
         }
@@ -1532,7 +1648,11 @@ impl<'a> Painter<'a> {
     /// viewer's heroes'): [`Painter::lay_levels`] with the hero's name ([`Painter::name_of`]), its
     /// class's (the record's rules') and its large portrait (its slot's in the start's list, else
     /// its type's: a hero hired since), the offer the record took.
-    fn record_level(&mut self, leveled: &engine::Leveled) -> Result<LevelBox, String> {
+    fn record_level(
+        &mut self,
+        leveled: &engine::Leveled,
+        hosting: bool,
+    ) -> Result<LevelBox, String> {
         let up = &leveled.up;
         let live = &self.live;
         let slot = live
@@ -1560,6 +1680,9 @@ impl<'a> Painter<'a> {
         let mut laid = self.lay_levels(core::slice::from_ref(up), &portrait, &name, &class)?;
         let mut level = laid.pop().ok_or("a level-up not laid out")?;
         level.chosen = leveled.chosen;
+        // Live, a level-up the engine holds open is the host's to answer (E24 M5 T4b, design
+        // §5.27): its two offers (a `LevelUpOpened`), none taken yet.
+        level.hosted = hosting && leveled.chosen.is_none() && level.offers.len() == 2;
         Ok(level)
     }
 
@@ -1773,6 +1896,7 @@ impl<'a> Painter<'a> {
             None => None,
         };
         Ok(Question {
+            hosted: None,
             asked,
             chooses: ask.chooses(),
             yes,
@@ -1919,6 +2043,7 @@ impl<'a> Painter<'a> {
                 let shown = up.texts(texts, name, class);
                 let dialog = levels::dialog(layout, up, shown, portrait, self.live.viewer);
                 LevelBox {
+                    hosted: false,
                     level: up.level,
                     dialog: Arc::new(dialog),
                     offers: up.offers.clone(),

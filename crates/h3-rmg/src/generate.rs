@@ -1,15 +1,15 @@
 //! `generate`'s frame (ADR-0029 points 2, 7 and 8; survey `docs/rules/surveys/E14-generator.md`
 //! §1.2 to §1.5): the run's adjustments, the seed, water's Random, the templates kept and drawn,
 //! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
-//! T3c, step 2 since T3d), each draw and each step's end reported to a [`Trace`]. Steps 3 to 15
-//! and the writer's content come with increments 3 to 7.
+//! T3c, step 2 since T3d, step 3 since T3e), each draw and each step's end reported to a
+//! [`Trace`]. Steps 4 to 15 and the writer's content come with increments 4 to 7.
 
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
 use h3_content::{
-    RMG_PARTITION_UNITS, RMG_ROE_MONSTER_TOWN_BYTE, RMG_TERRAIN_TOWNS_COUNT,
+    RMG_COSMETIC, RMG_PARTITION_UNITS, RMG_ROE_MONSTER_TOWN_BYTE, RMG_TERRAIN_TOWNS_COUNT,
     RMG_UNOWNED_START_SEVENTH, RMG_ZONE_MEMORY_MODEL, Ruleset,
 };
 use h3_kernel::rng::CrtRand;
@@ -22,6 +22,7 @@ use crate::partition::{
 };
 use crate::settings::{COLOURS, Settings, SettingsError, Water};
 use crate::template::{Fit, KeptTemplate, PositionError, kept_templates, positions};
+use crate::terrain::{TerrainFault, TerrainInput, paint};
 
 /// The generator's version (ADR-0029 point 7): bumped whenever the same rmg part, profile,
 /// settings and seed can give another map.
@@ -111,6 +112,9 @@ pub enum GenerateError {
         /// What went wrong.
         fault: PartitionFault,
     },
+    /// Step 3 met what the original divides by zero at (RMG-QUIRK-3) or reads outside its
+    /// arrays or never ends at (RMG-QUIRK-4).
+    Terrain(TerrainFault),
 }
 
 impl From<SettingsError> for GenerateError {
@@ -142,12 +146,13 @@ impl fmt::Display for GenerateError {
             Self::NoPosition { zone } => write!(f, "step 1: no position for zone {zone}"),
             Self::LayoutSpan => f.write_str("step 1: the layout spans nothing"),
             Self::Partition { level, fault } => write!(f, "step 2, level {level}: {fault:?}"),
+            Self::Terrain(fault) => write!(f, "step 3: {fault:?}"),
         }
     }
 }
 
-/// A generated map: so far what the frame and steps 1 and 2 make (stub RMG-STUB-1: steps 3 to 15
-/// and the writer's content come with increments 3 to 7).
+/// A generated map: so far what the frame and steps 1 to 3 make (stub RMG-STUB-1: steps 4 to 15
+/// and the writer's content come with increments 4 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
     /// The settings as the generator ran them: water drawn, and under two players in all one
@@ -329,6 +334,25 @@ pub fn generate<T: Trace>(
     )?;
     stream.trace.step_end(
         2,
+        StepState {
+            cells: &cells,
+            zones: &zones,
+        },
+    );
+    paint(
+        &mut stream,
+        &TerrainInput {
+            water: run.water,
+            cosmetic: quirks.is_enabled(RMG_COSMETIC),
+            tables,
+            zones: &template.zones,
+            polygons: &partition.polygons,
+        },
+        &mut zones,
+        &mut cells,
+    )?;
+    stream.trace.step_end(
+        3,
         StepState {
             cells: &cells,
             zones: &zones,
