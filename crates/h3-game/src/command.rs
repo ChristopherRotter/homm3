@@ -457,7 +457,7 @@ pub enum GameCommandError {
 }
 
 /// Why the game refuses a cast on the adventure map (GAM-SPL-001, ADV-SPL-001; E08 T142a,
-/// increment 15's design note §14, ADR-0017 point 4): its tests in order, each changing nothing
+/// increment 15's design note §14, ADR-0017 point 1): its tests in order, each changing nothing
 /// and drawing nothing. The cost comes before the ground's refusals as in the original (the book's
 /// click tests the points, then `hero_special_ground` 0x4E4EC0 the ground: survey
 /// `E08-spells.md` §4.1; E08 decision 414).

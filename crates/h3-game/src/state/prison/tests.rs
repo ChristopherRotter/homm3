@@ -10,7 +10,8 @@ use alloc::vec::Vec;
 
 use h3_adventure::{AdventureEventKind, Pos, Resolved};
 use h3_content::HeroTypeId;
-use h3_contracts::{HeroId, PlayerId};
+use h3_contracts::{HeroId, PlayerId, TownId};
+use h3_towns::{TownCommand, TownHeroChange};
 
 use crate::GameRuleset;
 use crate::command::{Actor, GameCommand, GameEvent, NoopSink, apply};
@@ -71,7 +72,7 @@ fn game_events(events: &[GameEvent]) -> Vec<&GameEvent> {
         .collect()
 }
 
-// covers: GAM-SET-001, GAM-SET-002, ADV-PRI-001
+// covers: GAM-SET-001, GAM-SET-002, ADV-PRI-001, ADV-PRI-003
 #[test]
 fn the_build_stores_each_prisoner_as_a_placed_hero_in_no_list() {
     let rules = towns_rules();
@@ -81,6 +82,9 @@ fn the_build_stores_each_prisoner_as_a_placed_hero_in_no_list() {
     let details = game.hero(PRISONER).unwrap();
     assert_eq!((details.hero_type, details.experience), (sage, 5000));
     assert!(details.level > 1, "{}", details.level);
+    // Its spell points full, as a placed hero's.
+    assert!(details.mana > 0);
+    assert_eq!(details.mana, h3_heroes::max_mana(details, rules.core()));
     // Its type a prisoner's, its record its own.
     assert_eq!(game.pool().status(sage), Some(HeroStatus::Prisoner));
     assert_eq!(game.pool().record(sage), Some(PRISONER));
@@ -245,7 +249,7 @@ fn told_only_to_red(event: &GameEvent) {
     assert_eq!(crate::observe::project(event, Viewer::Player(BLUE)), None);
 }
 
-// covers: ADV-PRI-002
+// covers: ADV-PRI-002, ADV-PRI-003
 #[test]
 fn a_player_at_the_most_heroes_frees_nobody() {
     // The shared test rules bundle no town part: their most heroes on the map is 0.
@@ -270,7 +274,7 @@ fn a_player_at_the_most_heroes_frees_nobody() {
     assert_eq!(game.adventure().hero_list(RED), [HeroId::new(0)]);
 }
 
-// covers: ADV-PRI-002
+// covers: ADV-PRI-002, ADV-PRI-003
 #[test]
 fn a_prison_whose_prisoner_is_no_prisoner_is_emptied() {
     let rules = towns_rules();
@@ -290,6 +294,75 @@ fn a_prison_whose_prisoner_is_no_prisoner_is_emptied() {
     assert!(game.adventure().is_removed(2));
     assert!(game.adventure().hero(PRISONER).is_none());
     assert_eq!(game.pool().status(sage), Some(HeroStatus::Taken(1)));
+}
+
+/// Under the towns' most heroes (8) red's heroes on the map count and its garrison hero does not:
+/// 7 on the map free the prisoner, last in red's list; 8 find red full, nothing changed but the
+/// visitor's walk (ADV-PRI-002).
+// covers: ADV-PRI-002
+#[test]
+fn the_most_heroes_counts_the_heroes_on_the_map_and_no_garrison_hero() {
+    let rules = towns_rules();
+    let mut setup = prison_setup(&rules);
+    // Seven more of red's heroes: one on its town T0's entrance (1, 1), six off the visit's path.
+    for (x, y) in [(1, 1), (1, 0), (2, 0), (2, 1), (3, 1), (1, 2), (3, 2)] {
+        let mut more = setup.heroes[0].clone();
+        more.pos = Pos::new(x, y, 0);
+        setup.heroes.push(more);
+    }
+    let prisoner = |game: &GameState| match game.adventure().map().objects()[2].resolved {
+        Resolved::Prisoner { hero, .. } => hero,
+        ref other => panic!("{other:?}"),
+    };
+    // The town's visitor enters its garrison: 7 on the map, the prisoner freed.
+    let mut game = GameState::new(&rules, &setup, 3).unwrap();
+    let held = prisoner(&game);
+    let enter = GameCommand::Town(TownCommand::Heroes {
+        town: TownId::new(0),
+        change: TownHeroChange::Enter,
+    });
+    apply(&mut game, &rules, Actor::Player(RED), enter, &mut NoopSink).unwrap();
+    assert!(game.adventure().town_hero(TownId::new(0)).is_some());
+    let on_map = |game: &GameState| {
+        let heroes = game.adventure().heroes().iter();
+        heroes.filter(|h| h.owner == RED).count()
+    };
+    assert_eq!(on_map(&game), 7);
+    let events = visit(&mut game, &rules);
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e, GameEvent::PrisonerFreed { .. }))
+    );
+    assert_eq!(game.adventure().hero_list(RED).last(), Some(&held));
+    assert_eq!(game.adventure().hero(held).map(|h| h.pos), Some(PRISON));
+    // Eight on the map: full, told to red alone, the Prison, its prisoner and the rest kept.
+    let mut game = GameState::new(&rules, &setup, 3).unwrap();
+    assert_eq!(on_map(&game), 8);
+    let before = game.clone();
+    let events = visit(&mut game, &rules);
+    let full = GameEvent::PrisonFull {
+        player: RED,
+        hero: HeroId::new(0),
+    };
+    assert_eq!(game_events(&events), [&full]);
+    told_only_to_red(&full);
+    let others = |game: &GameState| {
+        let heroes = game.adventure().heroes().iter();
+        heroes
+            .filter(|h| h.id != HeroId::new(0))
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(others(&game), others(&before));
+    assert_eq!(game.pool(), before.pool());
+    assert_eq!(game.hero(held), before.hero(held));
+    assert_eq!(
+        game.adventure().hero_list(RED),
+        before.adventure().hero_list(RED)
+    );
+    assert!(!game.adventure().is_removed(2));
+    assert_eq!(prisoner(&game), held);
 }
 
 // covers: GAM-SET-004, GAM-HER-003

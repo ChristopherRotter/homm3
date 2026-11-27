@@ -1,5 +1,5 @@
 //! A cast on the adventure map (GAM-SPL-001, ADV-SPL-001; E08 T142a, increment 15's design note
-//! §14, ADR-0017 point 4): the game's checks in the original's order, the adventure's half
+//! §14, ADR-0017 point 1): the game's checks in the original's order, the adventure's half
 //! ([`h3_adventure::AdventureState::apply_cast`], its draws from the caster's player's stream
 //! since E08 T143a), then the spell points. The game holds what the
 //! adventure lacks: the hero's details (its spells, masteries and points) and the battle part's

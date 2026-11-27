@@ -203,6 +203,7 @@ fn the_market_of_time_reads_back_without_a_body() {
     );
 }
 
+// covers: ADV-PRI-001, ADV-OBJ-008
 #[test]
 fn the_import_types_both_objects_and_reads_the_prisoner_s_body_as_a_placed_hero_s() {
     for (format, rules, hero_type, sod) in [
@@ -251,8 +252,26 @@ fn the_import_types_both_objects_and_reads_the_prisoner_s_body_as_a_placed_hero_
                 _ => None,
             })
             .unwrap();
-        assert_eq!(game.hero(id).unwrap().hero_type, prisoner);
-        assert_eq!(game.hero(id).unwrap().experience, 5000);
+        let details = game.hero(id).unwrap();
+        assert_eq!((details.hero_type, details.experience), (prisoner, 5000));
+        // The body's two skills (at least their levels, after the levels at load), its worn
+        // artifacts as imported (its spell book; the Centaur's Axe (7) on the head dropped, as the
+        // original's loader drops what a position refuses) and its backpack's one artifact (9).
+        let skill = |code: usize| core.skill_by_key(import::codes::SKILLS[code]).unwrap();
+        for (code, level) in [(1, 2), (13, 3)] {
+            let kept = details.skills.iter().find(|&&(s, _)| s == skill(code));
+            assert!(kept.is_some_and(|&(_, l)| l >= level), "{format:?}");
+        }
+        let artifact = |code: usize| {
+            core.artifact_by_key(import::codes::ARTIFACTS[code])
+                .unwrap()
+        };
+        let imported = held.details.artifacts.as_ref().unwrap();
+        assert_eq!(details.worn, imported.worn, "{format:?}");
+        let worn: Vec<_> = details.worn.iter().flatten().map(|i| i.artifact).collect();
+        assert_eq!(worn, [artifact(0)], "{format:?}");
+        let backpack: Vec<_> = details.backpack.iter().map(|i| i.artifact).collect();
+        assert_eq!(backpack, [artifact(9)], "{format:?}");
         assert!(game.adventure().hero(id).is_none());
         assert!(!game.adventure().hero_list(red).contains(&id));
     }
