@@ -907,6 +907,7 @@ fn market_back(m: &MarketWindow) -> h3_game::MarketView {
                     MarketScreen::Transfer => h3_game::MarketScreen::Transfer,
                     MarketScreen::Sell => h3_game::MarketScreen::Sell,
                     MarketScreen::Buy => h3_game::MarketScreen::Buy,
+                    MarketScreen::SellArtifact => h3_game::MarketScreen::SellArtifact,
                 })
                 .collect(),
             count: m.count,
@@ -937,6 +938,22 @@ fn market_back(m: &MarketWindow) -> h3_game::MarketView {
                 .map(|e| h3_game::StockEntry {
                     artifact: e.artifact.map(Handle::from_raw),
                     prices: amounts_back(&e.prices),
+                })
+                .collect(),
+            artifacts: m
+                .artifact_sales
+                .iter()
+                .map(|a| h3_game::ArtifactSaleOffer {
+                    place: match a.place {
+                        ArtifactPlace::Worn { position } => {
+                            h3_game::ArtifactPlace::Worn(h3_game::Position(position.into()))
+                        }
+                        ArtifactPlace::Backpack { index } => {
+                            h3_game::ArtifactPlace::Backpack(index.into())
+                        }
+                    },
+                    artifact: Handle::from_raw(a.artifact),
+                    prices: amounts_back(&a.prices),
                 })
                 .collect(),
         },
@@ -1428,6 +1445,7 @@ fn every_decision() -> Vec<DecisionView> {
                 h3_game::MarketScreen::Transfer,
                 h3_game::MarketScreen::Sell,
                 h3_game::MarketScreen::Buy,
+                h3_game::MarketScreen::SellArtifact,
             ],
             count: 5,
             trades: vec![h3_game::TradeOffer {
@@ -1446,6 +1464,19 @@ fn every_decision() -> Vec<DecisionView> {
                 },
                 h3_game::StockEntry {
                     artifact: None,
+                    prices: Vec::new(),
+                },
+            ],
+            // E09 T58b (v86): a worn place's sale and a backpack place's.
+            artifacts: vec![
+                h3_game::ArtifactSaleOffer {
+                    place: h3_game::ArtifactPlace::Worn(h3_game::Position(13)),
+                    artifact: Handle::from_raw(41),
+                    prices: price(),
+                },
+                h3_game::ArtifactSaleOffer {
+                    place: h3_game::ArtifactPlace::Backpack(7),
+                    artifact: Handle::from_raw(2),
                     prices: Vec::new(),
                 },
             ],

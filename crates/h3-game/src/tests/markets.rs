@@ -155,6 +155,7 @@ fn a_markets_visit_opens_its_decision_for_its_owner_until_it_is_left() {
             ],
             sales: vec![],
             stock: vec![],
+            artifacts: vec![],
         },
         recipients: vec![BLUE],
     };

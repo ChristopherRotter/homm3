@@ -185,6 +185,7 @@ fn decisions() -> Vec<(Decision, Option<Notice>, Option<Answer>)> {
                     trades: Vec::new(),
                     sales: Vec::new(),
                     stock: Vec::new(),
+                    artifact_sales: Vec::new(),
                     recipients: Vec::new(),
                 },
             },

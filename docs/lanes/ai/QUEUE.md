@@ -57,6 +57,17 @@ resumes (the epic file); its tasks are cut then.
 
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for your planning; the env's
+  change comes `cross-lane` at E10 T6**): E10 increment 1 (the teams and the game's end) is
+  designed (`docs/epics/E10-design.md` §12, §14, §16). The env's step will report the game's
+  result (the winning team or none, why) and each player's defeat; a defeated seat or an ended
+  game has nothing `to_move`; the action encoding stays v21. **The verdict reads
+  `PlayerSetup::human`** (decision 14): once no human is left the game ends, the team left (if
+  one) named the winner; a game built with no human plays to one team, so mark the env's seats as
+  you mean them. A removed player's colour is **handed to the computer player**
+  (`SystemCommand::HandOver`, decision 15): E31's computer player will play such a colour; until
+  then the host ends its turns. The teams become readable (`AdventureState::allied`), which
+  `AI-STUB-18`'s ally values need (stays yours).
 - 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). The two bot reports' `core` lines were substituted by hand (no report regenerated). A branch of yours regenerating them before this merges carries the new hash.
 Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10-19); the
 origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: the notices of
@@ -68,6 +79,15 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
+- 2026-11-27 (E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent, E09 decision
+  226; **in your paths, for your review; adventure action encoding v23 taken**): a town's window
+  with the Artifact Merchants sells its hero's artifacts (`MarketAnswer::SellArtifact { place,
+  take }`, TWN-MKT-005), and `legal_commands` lists one sale for the cost resource per place that
+  sells; `adventure/action.rs` appends the **22 entries from `MARKET_SELL_ARTIFACT` (146)**: worn
+  positions 0 to 13 (`SALE_WORN`), then backpack indices 0 to 7 (`SALE_BACKPACK`), tileless
+  (`ENTRY_COUNT` 168); `answer_entry`, `listed_only` (the resource the listing's) and
+  `service_answer` (the place's sale for the cost resource) know them. The town map's seeds and
+  the env's tests held; the replay format is v28 (`adventure/replay.rs`, `tests/hiring.rs`).
 - 2026-11-27 (E09 T58a2, `town/e09-t58a2`, `cross-lane` with the user's consent, E09 decision
   225; **in your paths, for your review; adventure action encoding v22 taken**): `legal_commands`
   lists `TownCommand::Market` (TWN-MKT-002) for each own town after its spell book's purchase,

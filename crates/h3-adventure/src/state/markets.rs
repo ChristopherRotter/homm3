@@ -11,14 +11,16 @@
 //! lane's, `cross-lane`; the town epic's design note §104 to §106) every check reads a resolved
 //! window ([`MarketWindow`]: a map market's from its kind, a town's from the game), so a town's
 //! window trades at the trader's count, sells its hero's creatures and sells the Artifact
-//! Merchants' stock (TWN-MKT-002 to -004).
+//! Merchants' stock (TWN-MKT-002 to -004). Since E09 T58b a town's window with the merchants buys
+//! its hero's artifacts (screen 3, TWN-MKT-005: [`AdventureState::check_artifact_sale`], the
+//! offers' [`MarketOffers::artifacts`]).
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_content::{ArtifactTypeId, ResourceId, Ruleset};
 use h3_contracts::HeroId;
-use h3_heroes::{HeroChange, HeroDetails, check_change};
+use h3_heroes::{ArtifactPlace, HeroChange, HeroDetails, Position, check_change};
 use h3_kernel::Rng;
 
 use super::pool::ArtifactPool;
@@ -98,6 +100,40 @@ impl MarketPurchase {
     }
 }
 
+/// An artifact's sale [`AdventureState::check_artifact_sale`] accepted (TWN-MKT-005; E09 T58b,
+/// the town epic's design note §107): the window's hero's artifact at a place for so much of a
+/// resource, which the game makes by removing the artifact from that place
+/// (`HeroChange::RemoveArtifact`, HER-CHG's removal) and then adding the gain to the treasury
+/// (saturating, GAM-RES-001). The place priced is the place removed (T-20 fixed by construction,
+/// `TWN-QUIRK-18`). Nothing of the adventure's state changes: the stock and the pool are
+/// untouched (survey `E09-trades.md` §3.3). Not `Clone`, so one check sells once.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ArtifactSale {
+    /// The selling hero.
+    hero: HeroId,
+    /// The artifact's place.
+    place: ArtifactPlace,
+    /// The resource gained and how much.
+    gain: (ResourceId, u32),
+}
+
+impl ArtifactSale {
+    /// The hero the artifact is taken from.
+    pub const fn hero(&self) -> HeroId {
+        self.hero
+    }
+
+    /// The place it is taken from.
+    pub const fn place(&self) -> ArtifactPlace {
+        self.place
+    }
+
+    /// The resource the sale gives and how much.
+    pub const fn gain(&self) -> (ResourceId, u32) {
+        self.gain
+    }
+}
+
 /// What a market's window offers its visitor (ADV-MKT-008; E08 T133b, increment 14's design
 /// note §12, §13): its kind's screens and count, and for each screen it shows the rates the
 /// state's answer would use, so a client and the env need no copy of the computation (ADR-0004:
@@ -119,6 +155,10 @@ pub struct MarketOffers {
     /// With [`MarketScreen::Buy`]: the Black Market's stock in its order, each entry's artifact
     /// and price per resource, none for a sold one (ADV-MKT-007). Empty without the screen.
     pub stock: Vec<StockEntry>,
+    /// With [`MarketScreen::SellArtifact`] (E09 T58b, TWN-MKT-005): each place of the window's
+    /// hero that sells, the worn ones by position, then the backpack's by index, its artifact and
+    /// its price per resource. Empty without the screen or a hero.
+    pub artifacts: Vec<ArtifactSaleOffer>,
 }
 
 /// A trade's rate in a market's window (ADV-MKT-003; E08 T133b): so many of `give` for so many of
@@ -154,6 +194,18 @@ pub struct StockEntry {
     pub prices: Vec<(ResourceId, u32)>,
 }
 
+/// An artifact's sale in a town's window (TWN-MKT-005; E09 T58b): the place of the window's
+/// hero's artifact, the artifact, and the units it sells for per resource in the core's order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArtifactSaleOffer {
+    /// The place.
+    pub place: ArtifactPlace,
+    /// The artifact there.
+    pub artifact: ArtifactTypeId,
+    /// Its price per resource.
+    pub prices: Vec<(ResourceId, u32)>,
+}
+
 /// The amount of `resource` in `cost` (0 for none): a creature's or an artifact's value for the
 /// market, its cost in the market parameters' cost resource (increment 14's design note §2: "a
 /// creature of gold cost c", "an artifact of gold cost c"; ADV-Q60 (a)).
@@ -161,6 +213,40 @@ fn cost_in(cost: &[(ResourceId, u32)], resource: ResourceId) -> u32 {
     cost.iter()
         .find(|&&(r, _)| r == resource)
         .map_or(0, |&(_, amount)| amount)
+}
+
+/// Every place of `details` in the sale's order (TWN-MKT-005): the worn positions, then the
+/// backpack's indices.
+fn places(details: &HeroDetails) -> impl Iterator<Item = ArtifactPlace> {
+    let worn = (0..details.worn.len()).map(|at| ArtifactPlace::Worn(Position(at)));
+    worn.chain((0..details.backpack.len()).map(ArtifactPlace::Backpack))
+}
+
+/// The artifact of `details` at `place` that a town's window buys (TWN-MKT-005; survey
+/// `E09-trades.md` §2.4): refused with [`MarketError::Place`] for no artifact there, with
+/// [`MarketError::NotTradable`] for a worn one whose slot's artifacts the backpack does not take
+/// (HER-ART-002, the original's positions 13 to 17). The backpack holds only artifacts it takes,
+/// the Grail among them (no slot); an artifact the core lacks is not refused (defensive).
+fn sold_at(
+    core: &Ruleset,
+    details: &HeroDetails,
+    place: ArtifactPlace,
+) -> Result<ArtifactTypeId, MarketError> {
+    let (item, worn) = match place {
+        ArtifactPlace::Worn(at) => (details.worn.get(at.0).and_then(Option::as_ref), true),
+        ArtifactPlace::Backpack(i) => (details.backpack.get(i), false),
+    };
+    let artifact = item.ok_or(MarketError::Place(place))?.artifact;
+    let carried = || {
+        core.artifact(artifact)
+            .and_then(|ty| ty.slot)
+            .and_then(|slot| core.artifact_slot(slot))
+            .is_none_or(|slot| slot.backpack)
+    };
+    if worn && !carried() {
+        return Err(MarketError::NotTradable);
+    }
+    Ok(artifact)
 }
 
 /// A Black Market's stock (ADV-MKT-006, E08 T133a1; increment 14's design note §9, survey
@@ -314,11 +400,13 @@ impl AdventureState {
     /// distinct resources the parameters value (given, then wanted, in the core's order), each
     /// stack of the window's hero's army with its lot per resource it sells for, and each entry
     /// of the stock with its price per resource (none once bought or emptied), each only for a
-    /// screen the window shows (the sales none without a hero).
-    // rule: ADV-MKT-008, ADV-MKT-002
+    /// screen the window shows (the sales none without a hero). Since E09 T58b (TWN-MKT-005) each
+    /// place of the window's hero that sells, with its price per resource
+    /// ([`MarketOffers::artifacts`]; none without a hero).
+    // rule: ADV-MKT-008, ADV-MKT-002, TWN-MKT-005
     pub fn market_offers(
         &self,
-        (core, part): (&Ruleset, &AdventureRuleset),
+        (core, part, heroes): Rules<'_>,
         window: &MarketWindow<'_>,
     ) -> MarketOffers {
         let rates = part.params().market();
@@ -373,13 +461,84 @@ impl AdventureState {
                 StockEntry { artifact, prices }
             })
             .collect();
+        let details = window
+            .visit
+            .hero
+            .filter(|_| window.shows(MarketScreen::SellArtifact))
+            .and_then(|hero| details_of(heroes, hero));
+        let sale = |details: &HeroDetails, place| {
+            let artifact = sold_at(core, details, place).ok()?;
+            let value = core
+                .artifacts()
+                .get(artifact.index())
+                .map_or(0, |ty| cost(&ty.cost));
+            let price_in = |take| rates.and_then(|r| r.artifact_sale(count, value, take));
+            let prices = resources()
+                .filter_map(|take| price_in(take).map(|price| (take, price)))
+                .collect();
+            Some(ArtifactSaleOffer {
+                place,
+                artifact,
+                prices,
+            })
+        };
+        let artifacts = details.map_or_else(Vec::new, |details| {
+            places(details)
+                .filter_map(|place| sale(details, place))
+                .collect()
+        });
         MarketOffers {
             screens: window.screens.to_vec(),
             count,
             trades,
             sales,
             stock,
+            artifacts,
         }
+    }
+
+    /// Checks a sale of the artifact at `place` of `window`'s hero for `take` (TWN-MKT-005; E09
+    /// T58b, the town epic's design note §107; survey `E09-trades.md` §2.4, the original's
+    /// `market_sell_artifact_proc` 0x5EDF60), the artifact valued at its cost in the market
+    /// parameters' cost resource (`MarketParams::cost`; a combination's its parts' sum,
+    /// HER-ART-008). The price is the market parameters' at the window's count
+    /// (`MarketParams::artifact_sale`, ADV-MKT-002: at least 1, so an artifact of no cost and the
+    /// Grail sell for one unit). Refused, in this order: a window without the sale
+    /// ([`MarketError::Screen`]), a window without a hero or one the store lacks
+    /// ([`MarketError::Visit`], defensive), no artifact at the place ([`MarketError::Place`]: an
+    /// empty position, a combination's locked part, an index past the backpack), a worn artifact
+    /// whose slot the backpack does not take ([`MarketError::NotTradable`], HER-ART-002: the war
+    /// machines, the Catapult, the Spell Book, the original's positions 13 to 17 and GENRLTXT 22),
+    /// no price ([`MarketError::NoPrice`]: a resource the market does not value). SoD's fifth
+    /// misc position sells as the others (T-22 fixed, `TWN-QUIRK-20`: the original's window never
+    /// shows it); one artifact a sale, a combination whole from its own position.
+    // rule: TWN-MKT-005
+    pub fn check_artifact_sale(
+        &self,
+        (core, part, heroes): Rules<'_>,
+        window: &MarketWindow<'_>,
+        (place, take): (ArtifactPlace, ResourceId),
+    ) -> Result<ArtifactSale, MarketError> {
+        window.check_screen(MarketScreen::SellArtifact)?;
+        let hero = window.visit.hero.ok_or(MarketError::Visit)?;
+        let details = details_of(heroes, hero).ok_or(MarketError::Visit)?;
+        let artifact = sold_at(core, details, place)?;
+        let price = part
+            .params()
+            .market()
+            .and_then(|rates| {
+                let cost = core
+                    .artifacts()
+                    .get(artifact.index())
+                    .map_or(0, |ty| cost_in(&ty.cost, rates.cost()));
+                rates.artifact_sale(window.count, cost, take)
+            })
+            .ok_or(MarketError::NoPrice)?;
+        Ok(ArtifactSale {
+            hero,
+            place,
+            gain: (take, price),
+        })
     }
 
     /// Checks a sale of `lots` lots of the creatures in slot `slot` of `window`'s hero's army for

@@ -433,6 +433,15 @@ same record (the day's construction, the available creatures, the guild's spells
    errors are `h3-towns`' types, which `h3-game` re-exports; the two places are E08's visits
    (`MarketVisit`, `UniversityVisit`, the adventure lane's) naming a town by `TownId`, and the new
    answer `MarketAnswer::SellArtifact` is E08's decision's (ADR-0017 point 6).
+   **E10's increment 1** (an ally's town, built by the adventure lane `cross-lane`, E10 decision
+   17; design note `E10-design.md` §7; `TWN-STUB-21` lifted): every town command stays the town
+   owner's but the **trades**: at a town of the visitor's team the window's hero is the visitor
+   and its player the actor for the Marketplace's window, the Artifact Merchants and the
+   Freelancer's Guild (at the current player's count, TD-29, batch TWN-6's TWN-6-2), the
+   University, the Skeleton Transformer and the Blacksmith. **Building and recruiting** stay the
+   owner's (TD-11). An ally's visitor is taught the guild's spells at its entering, as at an own
+   town. The siege of a town whose visitor is the owner's ally follows the original as E10 T3c
+   reads it (ADR-0016 point 4).
 7. **The siege's facts and the editions by the packs** (decisions 14 and 20): `h3-towns` derives
    `Siege` (ADR-0023 point 2, E09's amendment) from the town and its faction's record; no game version exists.
    The faction's record holds the moat's kind (absent, harmless, damaging) and whether a siege
@@ -655,3 +664,6 @@ same record (the day's construction, the available creatures, the guild's spells
   (design note `E09-design.md` Part H §101 to §120), accepted at `TWN-Q37`; batch TWN-6's outcome
   (T54, survey `E09-trades.md` §14: every row as read, T-19, T-20, T-21, T-23 and T-28 confirmed)
   folded in.
+- 2026-11-27 (E10 T2 `shared/`, `cross-lane`; E10 decision 17, ADV-Q65): point 6 amended for an
+  ally's town. Drafted in E10 T1b (design note `E10-design.md` §7;
+  `docs/lanes/adventure/adr-drafts/0028-e10-increment-1.md`, deleted); as built at T7.

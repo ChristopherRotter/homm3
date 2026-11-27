@@ -2824,3 +2824,14 @@ The inbox note acted upon (E10's decisions 1 and 6 now name E31):
   and the computer players' behaviour to E13: both are **E31's** now (the stubs re-pointed in
   `docs/stubs.toml` by #1110); please follow in `E10-game-orchestration.md` decisions 1 and 6
   when you next touch it. (E30 is the rmg lane's custom map generator, #1112.)
+
+## E10 T1b (moved 2026-11-27, done whole: `adventure/e10-t1b`, decisions 9 to 19, ADV-Q65; the design note `docs/epics/E10-design.md`, the drafts in `adr-drafts/`)
+
+**E10 T1b — increment 1's ADR amendment drafts, the design note and the cut** (E10 decision 5)
+
+- The drafts in `adr-drafts/` (ADR-0017, ADR-0016 where a view changes), the design note
+  `docs/epics/E10-design.md` with increment 1's exit criteria and the building tasks cut; the
+  user accepts the drafts before anything is built (the checkpoint).
+- **Inputs:** the survey `docs/rules/surveys/E10-teams.md` (T1a, done 2026-11-27: its §11
+  interfaces' sketch, §12 ids, §13 the checkpoint's nine questions; batch GAM-1's plan §10).
+- **Depends on:** T1a (done). **Status:** next.

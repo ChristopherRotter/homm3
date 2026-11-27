@@ -16,7 +16,7 @@ use h3_adventure::{
 };
 use h3_content::{CreatureTypeId, Formation, HeroTypeId, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
-use h3_heroes::{Choice, HeroChange, PrimarySkill};
+use h3_heroes::{ArtifactPlace, Choice, HeroChange, PrimarySkill};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use crate::manage::{Manage, ManageError};
@@ -293,6 +293,19 @@ pub enum MarketAnswer {
         entry: u8,
         /// The resource paid in.
         pay: ResourceId,
+    },
+    /// Sells the window's hero's artifact at `place` for `take` (screen `SellArtifact`, a town's
+    /// with the Artifact Merchants; TWN-MKT-005, E09 T58b): the adventure's check
+    /// (`h3_adventure::AdventureState::check_artifact_sale`: the place, a worn artifact the
+    /// backpack does not take refused, the price at the trader's count, at least 1), then the
+    /// artifact removed (`HeroChanged`, `HeroChange::RemoveArtifact` at that place: the place
+    /// priced is the place removed, T-20 fixed by construction) and the gain (`ResourceGained`).
+    /// One artifact a sale; the spell points stay.
+    SellArtifact {
+        /// The artifact's place in the hero's details.
+        place: ArtifactPlace,
+        /// The resource wanted.
+        take: ResourceId,
     },
     /// Leaves the market (`DecisionClosed`), losing nothing.
     Leave,

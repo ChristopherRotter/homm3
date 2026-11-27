@@ -156,6 +156,33 @@ fn an_artifact_costs_its_cost_over_the_artifacts_factor() {
     assert_eq!(market.artifact_price(10, 2_000, WOOD), Some(27));
 }
 
+// covers: ADV-MKT-002, TWN-MKT-005
+#[test]
+fn an_artifact_sells_for_its_cost_by_the_artifacts_factor_over_the_trades_value() {
+    let market = original();
+    // Batch TWN-6 (survey `E09-trades.md` §14): TWN-6-3, Titan's Gladius (10 000) at eight
+    // Marketplaces for 5 500 gold; TWN-6-4, Ring of the Magi (its parts' 3 000) at one for 600.
+    assert_eq!(market.artifact_sale(8, 10_000, GOLD), Some(5_500));
+    assert_eq!(market.artifact_sale(1, 3_000, GOLD), Some(600));
+    assert_eq!(market.artifact_sale(10, 10_000, GOLD), Some(6_000));
+    // The trades' values, not the purchase's (`resource_values` 0x68C482): 600 / 250 wood, 3 000
+    // / 500 gems; a half rounds up (375 / 250), what is below it down (374.8 / 250).
+    assert_eq!(market.artifact_sale(1, 3_000, WOOD), Some(2));
+    assert_eq!(market.artifact_sale(10, 5_000, GEMS), Some(6));
+    assert_eq!(market.artifact_sale(1, 1_875, WOOD), Some(2));
+    assert_eq!(market.artifact_sale(1, 1_874, WOOD), Some(1));
+    // At least 1: an artifact of no cost, a cheap one for a precious resource.
+    assert_eq!(market.artifact_sale(5, 0, GOLD), Some(1));
+    assert_eq!(market.artifact_sale(1, 100, GEMS), Some(1));
+    // A count outside the parameters; a resource they do not value; a price past `u32`.
+    assert_eq!(market.artifact_sale(0, 2_000, GOLD), None);
+    assert_eq!(market.artifact_sale(11, 2_000, GOLD), None);
+    assert_eq!(market.artifact_sale(5, 2_000, UNKNOWN), None);
+    let dear = MarketParams::new(WOOD, vec![1], vec![1], &[[1, 65_535, 1]]).unwrap();
+    assert_eq!(dear.artifact_sale(1, 1, WOOD), Some(655));
+    assert_eq!(dear.artifact_sale(1, u32::MAX, WOOD), None);
+}
+
 // covers: ADV-MKT-002
 #[test]
 fn the_factors_are_the_executables_binary32() {

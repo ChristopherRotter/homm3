@@ -7,16 +7,16 @@
 //! game (red's T0 on (1, 1) and blue's T1 on (3, 0), each built by its setup's slots only) with
 //! wood beside the gold, every artifact at 2 000 gold, a Marketplace (map slot 14), the Artifact
 //! Merchants (16) and the Freelancer's Guild (19) in `t:town`'s record, and E08's market tests'
-//! rates (five Marketplaces' rows).
+//! rates (five Marketplaces' rows). Since E09 T58b the merchants' artifact sale (TWN-MKT-005).
 
 use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{ArmyRef, ArmySlot, MarketParamsDef, ObjectKindDef, ObjectTypeDef, Pos, Visit};
-use h3_content::{ProfileDef, ResourceDef, ResourceId, Ruleset};
+use h3_content::{ArtifactTypeId, ProfileDef, ResourceDef, ResourceId, Ruleset};
 use h3_contracts::{PlayerId, TownId};
-use h3_heroes::HeroChange;
+use h3_heroes::{ArtifactPlace, HeroChange, Position};
 use h3_towns::{BuildingDef, BuildingRoles, TownCommand, TownCommandError, TownHeroChange};
 
 use super::command::{BLUE, RED, T0, T1, run};
@@ -25,8 +25,9 @@ use super::rules_edited;
 use super::{town_pack, towns_core_pack};
 use crate::tests::key;
 use crate::{
-    Answer, DecisionView, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState,
-    MarketAnswer, MarketError, MarketPlace, MarketScreen, MarketSeen, MarketVisit, Viewer, observe,
+    Answer, ArtifactSaleOffer, DecisionView, GameCommand, GameCommandError, GameEvent, GameRuleset,
+    GameState, HeroArtifactsSetup, MarketAnswer, MarketError, MarketPlace, MarketScreen,
+    MarketSeen, MarketVisit, Viewer, observe,
 };
 
 const GOLD: ResourceId = ResourceId::from_raw(0);
@@ -277,7 +278,8 @@ fn the_merchants_sell_the_stock_to_the_visitor_and_an_entry_empties_for_everyone
         [
             MarketScreen::Trade,
             MarketScreen::Transfer,
-            MarketScreen::Buy
+            MarketScreen::Buy,
+            MarketScreen::SellArtifact,
         ]
     );
     let shown: Vec<_> = seen.offers.stock.iter().map(|e| e.artifact).collect();
@@ -393,16 +395,38 @@ fn the_garrison_hero_trades_only_with_the_visitor_only_flag_off() {
         }]
     ));
     let screens = view(&rules, &game).offers.screens;
-    assert_eq!(screens.len(), 4);
+    assert_eq!(screens.len(), 5);
     let stack = game.adventure().town_hero(T0).unwrap().army[0];
     let sell = answer(MarketAnswer::Sell {
         slot: stack.slot,
         take: GOLD,
         lots: 1,
     });
-    run(&rules, &mut game, RED, sell).unwrap();
+    let sold = run(&rules, &mut game, RED, sell).unwrap();
     let after = game.adventure().town_hero(T0).unwrap().army[0];
     assert_eq!((after.slot, after.count), (stack.slot, stack.count - 1));
+    // E09 T58b: the garrison hero's army is the town's upper bar (TWN-VEW-002), so its owner is
+    // told the town's view after the stack and the gain, the stack as sold.
+    assert!(matches!(sold[0], GameEvent::StackChanged { .. }));
+    assert!(matches!(sold[1], GameEvent::ResourceGained { .. }));
+    assert!(matches!(
+        sold[2],
+        GameEvent::TownChanged {
+            player: RED,
+            town: T0,
+            ..
+        }
+    ));
+    let told = sold[3..].iter().find_map(|e| match e {
+        GameEvent::TownStackSeen {
+            player: RED,
+            town: T0,
+            stack,
+            slot: Some(slot),
+        } if *slot == after.slot => Some((stack.creature, stack.count)),
+        _ => None,
+    });
+    assert_eq!(told, Some((after.creature, Some(after.count))));
     // `faithful`'s (the flag on): the visitor alone, so the merchants and the guild open nothing,
     // and a Marketplace's window opens without a hero.
     let visitor = rules_in("t:visitor", vec![10, 15, 20, 25, 30]);
@@ -556,4 +580,129 @@ fn the_listing_opens_a_window_where_it_opens_and_offers_an_answer() {
     let both = GameState::new(&rules, &setup, 9).unwrap();
     assert!(listed_at(&rules, &both, T0).contains(&window));
     assert!(listed_at(&rules, &both, T1).contains(&TownCommand::Market { town: T1 }));
+}
+
+/// The core's book, cart's artifact, charm and ring (`crate::tests::core_pack`'s order: the book's
+/// and the machine's slots not carried in the backpack, the charm without a slot).
+const BOOK: ArtifactTypeId = ArtifactTypeId::from_raw(0);
+const CART: ArtifactTypeId = ArtifactTypeId::from_raw(1);
+const CHARM: ArtifactTypeId = ArtifactTypeId::from_raw(2);
+const RING: ArtifactTypeId = ArtifactTypeId::from_raw(4);
+
+// covers: TWN-MKT-005, TWN-MKT-001, GAM-DEC-011
+#[test]
+fn the_merchants_buy_the_visitors_artifact_at_the_place_it_names_for_its_price() {
+    let rules = rules();
+    let rates = rules.adventure().params().market().unwrap();
+    let core = rules.core();
+    // Red's visitor wears the book (position 0), the cart (1) and the ring (2), carries the charm.
+    let mut setup = setup(&rules, &[MERCHANTS_SLOT]);
+    setup.heroes[0].details.artifacts = Some(HeroArtifactsSetup {
+        worn: h3_heroes::wearing(core, &[BOOK.into(), CART.into(), RING.into()]),
+        backpack: vec![CHARM.into()],
+    });
+    let mut game = game(&rules, &setup);
+    run(&rules, &mut game, RED, market(T0)).unwrap();
+    // At one Marketplace (`TWN-QUIRK-17`'s floor): 2 000 × 0.2 = 400 gold, / 250 wood rounded
+    // half up (1.6: 2); the book and the cart are not offered (HER-ART-002).
+    assert_eq!(rates.artifact_sale(1, 2000, GOLD), Some(400));
+    assert_eq!(rates.artifact_sale(1, 2000, WOOD), Some(2));
+    let worn = |at| ArtifactPlace::Worn(Position(at));
+    let offer = |place, artifact| ArtifactSaleOffer {
+        place,
+        artifact,
+        prices: vec![(GOLD, 400), (WOOD, 2)],
+    };
+    assert_eq!(
+        view(&rules, &game).offers.artifacts,
+        [
+            offer(worn(2), RING),
+            offer(ArtifactPlace::Backpack(0), CHARM)
+        ]
+    );
+    let sell = |place, take| answer(MarketAnswer::SellArtifact { place, take });
+    // Listed: a sale for gold of each place that sells, after the purchases.
+    let legal = crate::legal_commands(&game, &rules, crate::Actor::Player(RED));
+    let listed: Vec<_> = legal
+        .iter()
+        .filter(|c| {
+            matches!(
+                c,
+                GameCommand::Answer(Answer::Market(MarketAnswer::SellArtifact { .. }))
+            )
+        })
+        .cloned()
+        .collect();
+    assert_eq!(
+        listed,
+        [sell(worn(2), GOLD), sell(ArtifactPlace::Backpack(0), GOLD)]
+    );
+    // The ring for wood: removed at its place, then the price gained; the window stays open.
+    let wood = held(&game, WOOD);
+    let sold = run(&rules, &mut game, RED, sell(worn(2), WOOD)).unwrap();
+    assert_eq!(
+        sold,
+        [
+            GameEvent::HeroChanged {
+                player: RED,
+                hero: RED_HERO,
+                change: HeroChange::RemoveArtifact(worn(2)),
+            },
+            GameEvent::ResourceGained {
+                player: RED,
+                resource: WOOD,
+                amount: 2,
+            },
+        ]
+    );
+    assert_eq!(held(&game, WOOD), wood + 2);
+    assert_eq!(game.hero(RED_HERO).unwrap().worn[2], None);
+    assert!(game.market(RED).is_some());
+    // Refused, nothing changed: the book and the cart, an empty place, an unvalued resource.
+    let error = |e| Err(GameCommandError::Market(e));
+    for at in [0, 1] {
+        let result = run(&rules, &mut game, RED, sell(worn(at), GOLD));
+        assert_eq!(result, error(MarketError::NotTradable));
+    }
+    for place in [worn(2), ArtifactPlace::Backpack(1)] {
+        let result = run(&rules, &mut game, RED, sell(place, GOLD));
+        assert_eq!(result, error(MarketError::Place(place)));
+    }
+    let unvalued = ResourceId::from_raw(5);
+    let result = run(
+        &rules,
+        &mut game,
+        RED,
+        sell(ArtifactPlace::Backpack(0), unvalued),
+    );
+    assert_eq!(result, error(MarketError::NoPrice));
+    // The charm (no slot) for gold: the backpack emptied, the stock untouched.
+    let (gold, stock) = (
+        held(&game, GOLD),
+        game.adventure().merchants_stock().to_vec(),
+    );
+    run(
+        &rules,
+        &mut game,
+        RED,
+        sell(ArtifactPlace::Backpack(0), GOLD),
+    )
+    .unwrap();
+    assert_eq!(held(&game, GOLD), gold + 400);
+    assert!(game.hero(RED_HERO).unwrap().backpack.is_empty());
+    assert_eq!(game.adventure().merchants_stock(), stock);
+    assert_eq!(view(&rules, &game).offers.artifacts, []);
+    // A Marketplace's or the guild's window has no artifact sale.
+    for slot in [MARKET_SLOT, GUILD_SLOT] {
+        let mut other = built(&rules, &[slot], true);
+        run(&rules, &mut other, RED, market(T0)).unwrap();
+        let result = run(
+            &rules,
+            &mut other,
+            RED,
+            sell(ArtifactPlace::Backpack(0), GOLD),
+        );
+        assert_eq!(result, error(MarketError::Screen));
+        assert_eq!(view(&rules, &other).offers.artifacts, []);
+    }
 }

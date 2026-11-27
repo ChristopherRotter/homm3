@@ -122,7 +122,7 @@ pub fn command(command: &EngineCommand) -> GameCommand {
 }
 
 /// An answer on the wire.
-const fn answer(a: EngineAnswer) -> Answer {
+fn answer(a: EngineAnswer) -> Answer {
     match a {
         EngineAnswer::Offer(consent) => Answer::Offer {
             consent: match consent {
@@ -200,6 +200,10 @@ const fn answer(a: EngineAnswer) -> Answer {
                 EngineMarket::Buy { entry, pay } => MarketAnswer::Buy {
                     entry,
                     pay: pay.raw(),
+                },
+                EngineMarket::SellArtifact { place, take } => MarketAnswer::SellArtifact {
+                    place: artifact_place(place),
+                    take: take.raw(),
                 },
                 EngineMarket::Leave => MarketAnswer::Leave {},
             },
@@ -423,7 +427,7 @@ const fn pos_to_engine(p: Pos) -> h3_adventure::Pos {
 }
 
 /// A wire answer in the engine.
-const fn answer_to_engine(a: Answer) -> EngineAnswer {
+fn answer_to_engine(a: Answer) -> EngineAnswer {
     match a {
         Answer::Offer { consent } => EngineAnswer::Offer(match consent {
             Consent::Accept => EngineConsent::Accept,
@@ -484,6 +488,10 @@ const fn answer_to_engine(a: Answer) -> EngineAnswer {
             MarketAnswer::Buy { entry, pay } => EngineMarket::Buy {
                 entry,
                 pay: Handle::from_raw(pay),
+            },
+            MarketAnswer::SellArtifact { place, take } => EngineMarket::SellArtifact {
+                place: place_to_engine(place),
+                take: Handle::from_raw(take),
             },
             MarketAnswer::Leave {} => EngineMarket::Leave,
         }),
@@ -566,13 +574,15 @@ const fn slot_to_engine(s: ArmySlot) -> EngineSlot {
 /// A wire artifact place of a hero in the engine.
 fn artifact_at_to_engine(at: ArtifactAt) -> (HeroId, EnginePlace) {
     let ArtifactAt { hero, place } = at;
-    (
-        HeroId::new(hero),
-        match place {
-            ArtifactPlace::Worn { position } => EnginePlace::Worn(Position(usize::from(position))),
-            ArtifactPlace::Backpack { index } => EnginePlace::Backpack(usize::from(index)),
-        },
-    )
+    (HeroId::new(hero), place_to_engine(place))
+}
+
+/// A wire artifact place in the engine.
+fn place_to_engine(place: ArtifactPlace) -> EnginePlace {
+    match place {
+        ArtifactPlace::Worn { position } => EnginePlace::Worn(Position(usize::from(position))),
+        ArtifactPlace::Backpack { index } => EnginePlace::Backpack(usize::from(index)),
+    }
 }
 
 /// The engine's reason for a rejection on the wire.
@@ -673,6 +683,10 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 MarketError::Entry(entry) => MarketReject::Entry { entry },
                 MarketError::NoPrice => MarketReject::NoPrice {},
                 MarketError::NoRoom => MarketReject::NoRoom {},
+                MarketError::Place(place) => MarketReject::Place {
+                    place: artifact_place(place),
+                },
+                MarketError::NotTradable => MarketReject::NotTradable {},
             },
         },
         E::Altar(error) => GameReject::Altar {
