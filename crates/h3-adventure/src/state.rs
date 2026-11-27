@@ -1301,6 +1301,7 @@ impl StaticMap {
 
     /// The index of `player`'s explored layer, its team's (GAM-TEM-002, E10 T3a): `NO_TEAM` or
     /// more for a player past the game's, so that a read by `get` finds none.
+    #[inline]
     fn layer(&self, player: PlayerId) -> usize {
         self.teams
             .get(player.index())
@@ -3390,6 +3391,7 @@ impl AdventureState {
 
     /// The tiles `player` has explored, if it is a player of the game (ADR-0016 point 5): its
     /// team's (GAM-TEM-002, E10 T3a).
+    #[inline]
     pub fn explored(&self, player: PlayerId) -> Option<&BitGrid> {
         self.explored.get(self.map.layer(player))
     }
@@ -3506,6 +3508,7 @@ impl AdventureState {
 
     /// Whether `player` has explored the tile at `pos` (a tile off the map, or a player not in
     /// the game, has none).
+    #[inline]
     pub fn is_explored(&self, player: PlayerId, pos: Pos) -> bool {
         self.explored(player).is_some_and(|grid| grid.get(pos))
     }
