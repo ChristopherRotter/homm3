@@ -61,6 +61,13 @@ pub enum ObjectFault {
     /// The cell below an entrance marked as an object's (bit 22) with none on it: the original
     /// reads its list's first from nowhere (RMG-QUIRK-4); the test refuses.
     NoObject,
+    /// A prototype taken by its index in a class group's vector past its end (steps 4 and 5's
+    /// town of a type without its line: `rmg_town_place_central`'s +0x658 vector, RMG-QUIRK-4):
+    /// nothing placed.
+    Prototype,
+    /// A town's owner read from the colours by a zone's position (Ownership less 1) outside -1 to
+    /// 7: the original reads the generator's next fields (RMG-QUIRK-4); the town is neutral.
+    Colour,
 }
 
 /// An object template as the generator's copy (`rmg_object_template`, 0x4C bytes) holds what the
@@ -183,6 +190,7 @@ pub struct Objects {
     placed: Vec<Object>,
     count_by_type: Vec<i32>,
     zone_counts: Vec<Vec<i32>>,
+    serial: i32,
     fault: Option<ObjectFault>,
 }
 
@@ -233,6 +241,7 @@ impl Objects {
             placed: Vec::new(),
             count_by_type: alloc::vec![0; OBJECT_TYPES],
             zone_counts: alloc::vec![alloc::vec![0; OBJECT_TYPES]; zones],
+            serial: 1,
             fault: None,
         };
         let mut monsters = core::mem::take(&mut objects.groups[MONSTERS]);
@@ -284,8 +293,22 @@ impl Objects {
         self.fault.take()
     }
 
-    fn fail(&mut self, fault: ObjectFault) {
+    /// Records `fault` unless one is kept already.
+    pub(crate) fn fail(&mut self, fault: ObjectFault) {
         self.fault = self.fault.or(Some(fault));
+    }
+
+    /// The generator's +0xF44, the serial the next town or prison takes (1 from the
+    /// constructor).
+    pub fn serial(&self) -> i32 {
+        self.serial
+    }
+
+    /// The serial taken by a town or prison created (+0xF44, raised by 1).
+    pub(crate) fn take_serial(&mut self) -> i32 {
+        let serial = self.serial;
+        self.serial = serial.wrapping_add(1);
+        serial
     }
 
     /// An object created from `prototype` (the object generators' create methods): its use

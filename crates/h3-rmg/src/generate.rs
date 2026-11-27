@@ -2,15 +2,17 @@
 //! §1.2 to §1.5): the run's adjustments, the seed, water's Random, the templates kept and drawn,
 //! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
 //! T3c, step 2 since T3d, step 3 since T3e), each draw and each step's end reported to a
-//! [`Trace`]. Steps 4 to 15 and the writer's content come with increments 4 to 7.
+//! [`Trace`]. Steps 4 and 5, the towns, since T4b; steps 6 to 15 and the writer's content come
+//! with increments 4 to 7.
 
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
 use h3_content::{
-    RMG_COSMETIC, RMG_PARTITION_UNITS, RMG_ROE_MONSTER_TOWN_BYTE, RMG_TERRAIN_TOWNS_COUNT,
-    RMG_UNOWNED_START_SEVENTH, RMG_ZONE_MEMORY_MODEL, Ruleset,
+    RMG_COSMETIC, RMG_FILL_START_ON_BORDER, RMG_LEAST_TOWN_SKIPPED, RMG_PARTITION_UNITS,
+    RMG_ROE_MONSTER_TOWN_BYTE, RMG_TERRAIN_TOWNS_COUNT, RMG_UNOWNED_START_SEVENTH,
+    RMG_ZONE_MEMORY_MODEL, Ruleset,
 };
 use h3_kernel::rng::CrtRand;
 
@@ -24,6 +26,7 @@ use crate::partition::{
 use crate::settings::{COLOURS, Settings, SettingsError, Water};
 use crate::template::{Fit, KeptTemplate, PositionError, kept_templates, positions};
 use crate::terrain::{TerrainFault, TerrainInput, paint};
+use crate::towns::{Placed, TownInput, towns};
 
 /// The generator's version (ADR-0029 point 7): bumped whenever the same rmg part, profile,
 /// settings and seed can give another map.
@@ -171,7 +174,7 @@ impl fmt::Display for GenerateError {
     }
 }
 
-/// A generated map: so far what the frame and steps 1 to 3 make (stub RMG-STUB-1: steps 4 to 15
+/// A generated map: so far what the frame and steps 1 to 5 make (stub RMG-STUB-1: steps 6 to 15
 /// and the writer's content come with increments 4 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
@@ -196,6 +199,8 @@ pub struct GeneratedMap {
     pub partition: Partition,
     /// The prototypes and the placed objects (none placed before step 4).
     pub objects: Objects,
+    /// Steps 4 and 5's towns and the road targets (+0x14B0).
+    pub placed: Placed,
 }
 
 /// The stream: `CrtRand` seeded once, each draw reported with its call site.
@@ -235,13 +240,16 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// index and the counts; the heroes banned; the template `rand() % kept` (0x549975); the
 /// positions; the generator's map (`rmg_map_init`); step 1, the zones laid out
 /// (`rmg_zones_lay_out` 0x53BCB0); steps 2 and 3; the prototypes (`rmg_objects_read` 0x536200,
-/// read by the constructor; nothing draws there) for the steps that place objects.
+/// read by the constructor; nothing draws there) for the steps that place objects; steps 4 and
+/// 5, the towns (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0 per zone
+/// generator).
 ///
 /// # Errors
 ///
 /// A [`GenerateError`]: refused settings, a part of another core or without the generator's
-/// tables, no template kept, the drawn template's positions outside the original's arrays, step
-/// 1's divisions by zero (RMG-QUIRK-3).
+/// tables, no template kept, the drawn template's positions outside the original's arrays, the
+/// steps' divisions by zero (RMG-QUIRK-3) and reads and writes outside the original's arrays
+/// (RMG-QUIRK-4).
 // rule: RMG-SET-005, RMG-SET-006, RMG-SET-007, RMG-SET-010, RMG-TPL-007
 pub fn generate<T: Trace>(
     core: &Ruleset,
@@ -351,6 +359,7 @@ pub fn generate<T: Trace>(
             tables,
             memory_model: quirks.is_enabled(RMG_ZONE_MEMORY_MODEL),
             partition_units: quirks.is_enabled(RMG_PARTITION_UNITS),
+            fill_start_on_border: quirks.is_enabled(RMG_FILL_START_ON_BORDER),
         },
         &mut template.zones,
         &mut template.connections,
@@ -385,12 +394,38 @@ pub fn generate<T: Trace>(
             objects: &[],
         },
     );
-    let objects = Objects::new(
+    let mut objects = Objects::new(
         part.object_templates(),
         &tables.object_settings,
         run.format,
         zones.len(),
     );
+    let mut placed = Placed::default();
+    let town_input = TownInput {
+        zones: &template.zones,
+        positions: &positions,
+        format: run.format,
+        least_town_skipped: quirks.is_enabled(RMG_LEAST_TOWN_SKIPPED),
+    };
+    for step in [4, 5] {
+        towns(
+            &mut stream,
+            &town_input,
+            step,
+            &mut zones,
+            &mut cells,
+            &mut objects,
+            &mut placed,
+        )?;
+        stream.trace.step_end(
+            step,
+            StepState {
+                cells: &cells,
+                zones: &zones,
+                objects: objects.placed(),
+            },
+        );
+    }
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
         settings: run,
@@ -403,5 +438,6 @@ pub fn generate<T: Trace>(
         zones,
         partition,
         objects,
+        placed,
     })
 }

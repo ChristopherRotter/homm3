@@ -6,9 +6,10 @@ use std::collections::BTreeMap;
 
 use h3_rmg::{
     Choices, CrtRand, Fit, GenerateError, GeneratedMap, MapFormat, MapSize, MemoryZone, Monsters,
-    Objects, PartitionFault, PositionError, SITE_TEMPLATE, SITE_WATER, SITE_ZONE_POSITION,
-    SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, TerrainFault,
-    Trace, Water, ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
+    Objects, PartitionFault, PositionError, SITE_TEMPLATE, SITE_TOWN_CENTRAL_CELL,
+    SITE_TOWN_TYPE_ANY, SITE_WATER, SITE_ZONE_POSITION, SITE_ZONE_TERRAIN_TOWN,
+    SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, TerrainFault, Trace, Water,
+    ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
 };
 use proptest::prelude::*;
 use std::sync::LazyLock;
@@ -290,7 +291,7 @@ fn the_corpus_draws_the_originals_templates() {
         let map = map.unwrap_or_else(|e| panic!("{id}: {e}"));
         assert_eq!(map.template_name, name, "{id}");
         assert_eq!(log.frame(), [(SITE_TEMPLATE, first_rand(seed))], "{id}");
-        assert_eq!(log.steps, [0, 1, 2, 3], "{id}");
+        assert_eq!(log.steps, [0, 1, 2, 3, 4, 5], "{id}");
         assert_eq!((map.seed, map.settings), (seed, s), "{id}");
         assert_eq!(packs.1.templates()[map.template.index].name, name, "{id}");
     }
@@ -348,7 +349,7 @@ fn under_two_players_in_all_the_run_takes_one_and_one() {
         [Some(0), Some(1), None, None, None, None, None, None]
     );
     assert_eq!(map.template.zones.len(), 3);
-    assert_eq!(log.steps, [0, 1, 2, 3]);
+    assert_eq!(log.steps, [0, 1, 2, 3, 4, 5]);
     // Two players: Twin Vales has one human start, so nothing is kept.
     let two = settings(&choices(MapSize::Medium, 2, 0));
     assert_eq!(run(&packs, &two, 7).0, Err(GenerateError::NoTemplate));
@@ -562,7 +563,7 @@ fn any_choices() -> impl Strategy<Value = Choices> {
 proptest! {
     #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
 
-    /// Arbitrary choices, seeds and either profile run the frame and steps 1 to 3 over the
+    /// Arbitrary choices, seeds and either profile run the frame and steps 1 to 5 over the
     /// original tables without a panic (exit criterion (d)); a map's template is kept, its
     /// positions' colours distinct, one per player and computer (or the error says why not).
     #[test]
@@ -585,7 +586,7 @@ proptest! {
             colours.dedup();
             let run = map.settings;
             prop_assert_eq!(colours.len(), usize::from(run.players + run.computers));
-            prop_assert_eq!(log.steps, vec![0, 1, 2, 3]);
+            prop_assert_eq!(log.steps, vec![0, 1, 2, 3, 4, 5]);
             prop_assert!(map.settings.water != Water::Random);
             // Step 1: a zone generator per kept zone, on the map's levels, a land terrain on
             // level 0 and subterranean or lava on level 1, town types of the nine or none; step
@@ -625,6 +626,28 @@ proptest! {
                     prop_assert!((y0..y1).contains(&g.position[1]));
                 }
             }
+            // Steps 4 and 5: each town an object of class 98 with its entrance a road target, its
+            // serial the next, its owner neutral or a position's colour, its zone with a first
+            // town whose entrance is that zone's first road target.
+            let placed = &map.placed;
+            prop_assert_eq!(placed.towns.len(), placed.road_targets.len());
+            prop_assert_eq!(map.objects.serial(), placed.towns.len() as i32 + 1);
+            for (k, t) in placed.towns.iter().enumerate() {
+                let o = &map.objects.placed()[t.object];
+                prop_assert_eq!(o.class, 98);
+                prop_assert_eq!(t.serial, k as i32 + 1);
+                prop_assert!(
+                    t.owner == -1 || map.positions.contains(&u8::try_from(t.owner).ok())
+                );
+                let first = placed.towns.iter().position(|u| u.zone == t.zone);
+                prop_assert_eq!(
+                    map.zones[t.zone].town,
+                    first.map(|f| placed.road_targets[f])
+                );
+                let [x, y, z] = placed.road_targets[k];
+                let cell = map.cells.get(x, y, z).unwrap();
+                prop_assert_eq!(i32::from(cell.zone_byte() as i8), map.template.zones[map.zones[t.zone].zone].id);
+            }
         }
     }
 }
@@ -633,8 +656,8 @@ proptest! {
 /// The original tables' prototypes (`rmg_objects_read`): SoD's table files every line of a class
 /// below 232, AB's format those below 222 but SoD's monoliths and gates past subclass 2, RoE's
 /// below 165 likewise; AB's and SoD's decorations 165 to 205 file among RoE's 114 to 161 (their
-/// class group); the monsters' prototypes rise by subclass. A generated map has them with
-/// nothing placed yet (steps 4 on place).
+/// class group); the monsters' prototypes rise by subclass. A generated map has them, its
+/// placed objects steps 4 and 5's towns.
 #[test]
 fn the_originals_prototypes_are_filed_by_the_format() {
     let (_, part) = original("base:faithful");
@@ -682,8 +705,19 @@ fn the_originals_prototypes_are_filed_by_the_format() {
     let (core, part) = original("base:faithful");
     let (_, s, seed, _) = corpus_settings(0);
     let map = generate(core, part, &s, seed, &mut Log::default()).unwrap();
-    assert!(map.objects.placed().is_empty());
-    assert_eq!(map.objects.prototypes(), sod.prototypes());
+    // Steps 4 and 5 placed towns only.
+    assert!(!map.objects.placed().is_empty());
+    assert!(map.objects.placed().iter().all(|o| o.class == 98));
+    let filed = |o: &Objects| -> Vec<_> {
+        o.prototypes()
+            .iter()
+            .map(|p| (p.template, p.shape))
+            .collect()
+    };
+    assert_eq!(filed(&map.objects), filed(&sod));
+    // The towns' prototypes are used (+0x8) once per town.
+    let used: i32 = map.objects.prototypes().iter().map(|p| p.used).sum();
+    assert_eq!(used as usize, map.placed.towns.len());
     assert_eq!(map.objects.zone_count(map.zones.len() - 1).len(), 232);
 }
 
@@ -715,13 +749,17 @@ fn the_corpus_starts_without_ownership_place_the_colours_as_the_original() {
 // covers: RMG-ZON-006, RMG-ZON-007, RMG-ZON-008, RMG-ZON-009, RMG-ZON-010, RMG-ZON-011
 // covers: RMG-ZON-012, RMG-ZON-013, RMG-ZON-014, RMG-TER-001, RMG-TER-002, RMG-TER-003
 // covers: RMG-TER-005, RMG-TER-007, RMG-TER-009, RMG-TER-012, RMG-TER-014, RMG-TER-015
+// covers: RMG-OBJ-009, RMG-OBJ-010, RMG-OBJ-011, RMG-TWN-001, RMG-TWN-002, RMG-TWN-003
+// covers: RMG-TWN-004, RMG-TWN-005
 /// The comparison seam (ADR-0029 point 8) over the oracle's corpus: the port's draws before step
-/// 1, in it and in steps 2 and 3, and its dumps after the frame and after steps 1 to 3, have the phase
-/// oracle's digests (`clients/capture/rmg/phases.txt`), step 2's unwritten bytes as the memory
-/// record measured them (`zones.txt`, RMG-QUIRK-1). Step 2's water connections show in step 6's
-/// cells (increment 4).
+/// 1, in it and in steps 2 to 5, and its dumps after the frame and after steps 1 to 5 (the
+/// towns' objects with the cells), have the phase oracle's digests
+/// (`clients/capture/rmg/phases.txt`), step 2's unwritten bytes as the memory record measured
+/// them (`zones.txt`, RMG-QUIRK-1). Step 2's water connections show in step 6's cells (increment
+/// 4). RMG-QUIRK-13 and -25 in `faithful` are among them: `xl1-4p-seed1`'s zone 3 and
+/// `xl2-8p-t4-islands`' zone 4, human starts with only their border cells, get no town.
 #[test]
-fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_3() {
+fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5() {
     let packs = original("base:faithful");
     let kept = kept_phases();
     let memory = kept_zone_memory();
@@ -734,10 +772,10 @@ fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_3() {
         };
         generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap_or_else(|e| panic!("{id}: {e}"));
         let (phases, cells) = &kept[id];
-        for phase in ["setup", "template", "1", "2", "3"] {
+        for phase in ["setup", "template", "1", "2", "3", "4", "5"] {
             assert_eq!(t.phases.get(phase), phases.get(phase), "{id} {phase}");
         }
-        for step in [0, 1, 2, 3] {
+        for step in [0, 1, 2, 3, 4, 5] {
             assert_eq!(t.cells.get(&step), cells.get(&step), "{id} cells {step}");
         }
     }
@@ -908,7 +946,7 @@ fn zone_row(id: i32, kind: &str, base: i32, ownership: i32, towns: &str, terrain
 }
 
 /// An rmg pack with one template of `zones`, its zones connected in a chain, and the synthetic
-/// pack's generator tables.
+/// pack's object templates and generator tables.
 fn one_template(zones: &[String]) -> String {
     let links: Vec<String> = (1..zones.len())
         .map(|k| {
@@ -920,7 +958,9 @@ fn one_template(zones: &[String]) -> String {
         })
         .collect();
     format!(
-        "[[template]]\nname = \"Test\"\nsizes = [1, 32]\nzones = [{}]\nconnections = [{}]\n\n{}",
+        "{}[[template]]\nname = \"Test\"\nsizes = [1, 32]\nzones = [{}]\nconnections = \
+         [{}]\n\n{}",
+        &SYNTHETIC_RMG[..SYNTHETIC_RMG.find("[[template]]").unwrap()],
         zones.join(", "),
         links.join(", "),
         &SYNTHETIC_RMG[SYNTHETIC_RMG.find("[generator]").unwrap()..]
@@ -1103,4 +1143,182 @@ fn step_2s_jagged_limit_of_0_is_refused() {
     assert_eq!(map, Err(error.clone()));
     assert_eq!(log.steps, [0, 1]);
     assert_eq!(error.to_string(), "step 2, level 0: Limit");
+}
+
+/// The towns of zone generator `zone`: owner and castle, in placing order.
+fn towns_of(map: &GeneratedMap, zone: usize) -> Vec<(i32, bool)> {
+    map.placed
+        .towns
+        .iter()
+        .filter(|t| t.zone == zone)
+        .map(|t| (t.owner, t.castle))
+        .collect()
+}
+
+// covers: RMG-TWN-001, RMG-TWN-003
+/// The corpus's start zones without Ownership (position -1; RMG-QUIRK-24's zones) get what their
+/// rows ask for, as the phase oracle's steps 4 and 5 (the corpus's comparison): their rows ask
+/// for no town of their colour, so the colours' slot -1 is never used; 2SM2i(2)'s human start 3
+/// and 2SM0k's computer starts 3 and 4 nothing, 2SM2i(2)'s human start 5 and 2SM0k's computer
+/// starts 5 to 8 one neutral town each (their least neutral town, a village of their drawn town
+/// type), no castle.
+#[test]
+fn the_corpus_starts_without_ownership_get_their_rows_neutral_towns() {
+    let packs = original("base:faithful");
+    let memory = kept_zone_memory();
+    for (id, nothing, neutral) in [
+        ("s1-3p-2sm2i2", &[2][..], &[4][..]),
+        ("s1-2p-2sm0k", &[2, 3][..], &[4, 5, 6, 7][..]),
+        ("s1-1p-c1-2sm0k", &[2, 3][..], &[4, 5, 6, 7][..]),
+    ] {
+        let case = CORPUS.iter().position(|c| c.0 == id).unwrap();
+        let (_, s, seed, _) = corpus_settings(case);
+        let mut t = Phases {
+            memory: memory.get(id).cloned().unwrap_or_default(),
+            ..Phases::default()
+        };
+        let map = generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap();
+        for &g in nothing.iter().chain(neutral) {
+            let zone = &map.template.zones[map.zones[g].zone];
+            assert_eq!(zone.ownership, 0, "{id} {g}");
+            assert_eq!(zone.player_towns, [0; 4], "{id} {g}");
+        }
+        for &g in nothing {
+            assert!(towns_of(&map, g).is_empty(), "{id} {g}");
+        }
+        for &g in neutral {
+            assert_eq!(towns_of(&map, g), [(-1, false)], "{id} {g}");
+        }
+    }
+}
+
+// covers: RMG-TWN-003, RMG-TWN-005
+/// RMG-QUIRK-13 over the packs: a zone without a town type that asks for one least neutral town
+/// gets none in step 4 (type -1 refused); with the flag step 5 skips that town as step 4's, so the
+/// zone has none; without it step 5 places it, its type drawn among all nine (no type set), at
+/// the cell nearest the centre.
+#[test]
+fn a_least_town_step_4_never_placed_comes_in_step_5_by_the_flag() {
+    let treasure = zone_row(3, "treasure", 10, 0, "000000000", "00000001").replace(
+        "neutral_towns = [0, 0, 0, 0]",
+        "neutral_towns = [1, 0, 0, 0]",
+    );
+    let rmg = one_template(&[
+        zone_row(1, "human_start", 10, 1, "111111111", "00000001"),
+        zone_row(2, "computer_start", 10, 2, "111111111", "00000001"),
+        treasure,
+    ]);
+    for (profile, skipped) in [("lone:on", true), ("lone:off", false)] {
+        let packs = lone(profile, &rmg);
+        let s = settings(&choices(MapSize::Small, 1, 1));
+        for seed in 0..8 {
+            let (map, log) = run(&packs, &s, seed);
+            let map = map.unwrap();
+            assert_eq!(map.zones[2].town_type, -1);
+            let step_5 = &log.draws[log.ends[4]..log.ends[5]];
+            if skipped {
+                assert!(towns_of(&map, 2).is_empty(), "{profile} {seed}");
+                assert!(step_5.is_empty(), "{profile} {seed}");
+            } else {
+                assert_eq!(towns_of(&map, 2), [(-1, false)], "{profile} {seed}");
+                let sites: Vec<u32> = step_5.iter().map(|d| d.0).collect();
+                assert_eq!(
+                    sites,
+                    [SITE_TOWN_TYPE_ANY, SITE_TOWN_CENTRAL_CELL],
+                    "{seed}"
+                );
+                let town = map.placed.towns.iter().find(|t| t.zone == 2).unwrap();
+                let subclass = map.objects.placed()[town.object].subclass;
+                assert_eq!(subclass, step_5[0].1 % 9, "{seed}");
+            }
+        }
+    }
+}
+
+// covers: RMG-ZON-013, RMG-TWN-002
+/// RMG-QUIRK-25 over the corpus: in `faithful` `xl1-4p-seed1`'s zone 3 and `xl2-8p-t4-islands`'
+/// zone 4 (human starts whose centre and the cell left of it lie on borders) keep only their
+/// border cells and get no town (the corpus's comparison); in `strict-fixed` their fills start
+/// from a free cell and each gets its first town, of its colour (the other flags off move the
+/// maps too: the cells are not compared).
+#[test]
+fn a_zone_whose_start_lies_on_borders_gets_its_region_by_the_flag() {
+    for (id, g, faithful_cells) in [("xl1-4p-seed1", 3, 133), ("xl2-8p-t4-islands", 4, 225)] {
+        let case = CORPUS.iter().position(|c| c.0 == id).unwrap();
+        let (_, s, seed, _) = corpus_settings(case);
+        let cells = |map: &GeneratedMap| {
+            map.cells
+                .cells()
+                .iter()
+                .filter(|c| usize::from(c.zone_byte()) == g)
+                .count()
+        };
+        let mut t = Phases {
+            memory: kept_zone_memory().get(id).cloned().unwrap_or_default(),
+            ..Phases::default()
+        };
+        let packs = original("base:faithful");
+        let map = generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap();
+        assert_eq!(cells(&map), faithful_cells, "{id}");
+        assert_eq!(map.zones[g].town, None, "{id}");
+        let (fixed, _) = run(original("base:strict-fixed"), &s, seed);
+        let fixed = fixed.unwrap();
+        assert!(fixed.zones[g].town.is_some(), "{id}");
+        let colour = fixed.positions[g].map(i32::from).unwrap();
+        assert_eq!(towns_of(&fixed, g)[0].0, colour, "{id}");
+    }
+}
+
+// covers: RMG-TWN-001
+/// RMG-QUIRK-4's step 4 case over the packs: a zone with an Ownership past the eight positions
+/// asking for a town of its colour reads its owner outside the colours, a typed error at step 4's
+/// end (no step 4 reported).
+#[test]
+fn a_towns_colour_outside_the_positions_is_refused() {
+    let treasure = zone_row(3, "treasure", 10, 10, "111111111", "00000001")
+        .replace("player_towns = [0, 0, 0, 0]", "player_towns = [1, 0, 0, 0]");
+    let rmg = one_template(&[
+        zone_row(1, "human_start", 10, 1, "111111111", "00000001"),
+        zone_row(2, "computer_start", 10, 2, "111111111", "00000001"),
+        treasure,
+    ]);
+    let (map, log) = run(
+        &lone("lone:on", &rmg),
+        &settings(&choices(MapSize::Small, 1, 1)),
+        1,
+    );
+    let error = GenerateError::Objects {
+        step: 4,
+        fault: h3_rmg::ObjectFault::Colour,
+    };
+    assert_eq!(map, Err(error.clone()));
+    assert_eq!(log.steps, [0, 1, 2, 3]);
+    assert_eq!(error.to_string(), "step 4, an object: Colour");
+}
+
+// covers: RMG-TWN-002, RMG-TWN-004
+/// RMG-QUIRK-23's towns' half, as the original (the corpus's comparison): Dragons' zone 32,
+/// purple's computer start asking only for neutral towns by density, takes a neutral castle as
+/// its first town (step 5's densities, the castle first on their tie), whose entrance is purple's
+/// main town's; the other starts' first towns are their colours'.
+#[test]
+fn a_start_zone_without_colour_towns_takes_a_neutral_first_town() {
+    let id = "l2-2p-c4-islands";
+    let case = CORPUS.iter().position(|c| c.0 == id).unwrap();
+    let (_, s, seed, _) = corpus_settings(case);
+    let mut t = Phases {
+        memory: kept_zone_memory().get(id).cloned().unwrap_or_default(),
+        ..Phases::default()
+    };
+    let packs = original("base:faithful");
+    let map = generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap();
+    let purple = &map.template.zones[31];
+    assert_eq!((purple.ownership, purple.player_towns), (6, [0; 4]));
+    assert_eq!(map.positions[5], Some(5));
+    assert_eq!(towns_of(&map, 31), [(-1, true)]);
+    let first = map.placed.towns.iter().position(|t| t.zone == 31).unwrap();
+    assert_eq!(map.zones[31].town, Some(map.placed.road_targets[first]));
+    for (g, colour) in [(0, 0), (28, 1), (27, 2), (10, 3), (3, 4)] {
+        assert_eq!(towns_of(&map, g)[0].0, colour, "{g}");
+    }
 }

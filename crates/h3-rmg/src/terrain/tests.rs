@@ -54,6 +54,7 @@ fn generator(zone: usize, terrain: i32, position: [i32; 3], size: i32) -> ZoneGe
         position,
         size,
         bounds: ZoneGenerator::NO_BOUNDS,
+        town: None,
     }
 }
 

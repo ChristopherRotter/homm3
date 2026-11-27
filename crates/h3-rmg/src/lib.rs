@@ -15,8 +15,9 @@
 //! zones, the borders, the fills, the water connections: [`Partition`], E14 T3d); step 3, the
 //! terrain painted (the boxes, centroids and islands, and the game's terrain painter, E14 T3e);
 //! the object model the steps from 4 place with ([`Objects`]: the prototypes, the placed objects
-//! and the cells' lists, the entrances' distance flood, the placing test; E14 T4b). The other
-//! steps come with increments 4 to 6, the writer's content with 7.
+//! and the cells' lists, the entrances' distance flood, the placing test; E14 T4b); steps 4 and
+//! 5, the towns ([`Placed`], E14 T4b). The other steps come with increments 4 to 6, the
+//! writer's content with 7.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -48,6 +49,7 @@ mod partition;
 mod settings;
 mod template;
 mod terrain;
+mod towns;
 mod triangulation;
 
 pub use cells::{Cell, Cells};
@@ -79,6 +81,10 @@ pub use settings::{
 };
 pub use template::{Fit, KeptConnection, KeptTemplate, PositionError, kept_templates, positions};
 pub use terrain::{SITE_COAST_JITTER, TerrainFault};
+pub use towns::{
+    Placed, SITE_TOWN_CENTRAL_CELL, SITE_TOWN_FAR_CELL, SITE_TOWN_TYPE_ANY, SITE_TOWN_TYPE_ZONE,
+    Town,
+};
 
 /// The original's `rand` (`h3_kernel::rng::CrtRand`), the stream [`resolve_random`] draws from.
 pub use h3_kernel::rng::CrtRand;

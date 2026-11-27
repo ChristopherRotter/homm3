@@ -18,11 +18,11 @@ depends = []
 
 [[profile]]
 id = "on"
-quirks = { "quirk.content.rmg_8xm8_zone_ids" = true, "quirk.rmg.roe_monster_town_byte" = true, "quirk.rmg.unowned_start_seventh" = true, "quirk.rmg.zone_memory_model" = true, "quirk.rmg.terrain_towns_count" = true, "quirk.rmg.partition_units" = true, "quirk.rmg.cosmetic" = true }
+quirks = { "quirk.content.rmg_8xm8_zone_ids" = true, "quirk.rmg.roe_monster_town_byte" = true, "quirk.rmg.unowned_start_seventh" = true, "quirk.rmg.zone_memory_model" = true, "quirk.rmg.terrain_towns_count" = true, "quirk.rmg.partition_units" = true, "quirk.rmg.cosmetic" = true, "quirk.rmg.least_town_skipped" = true, "quirk.rmg.fill_start_on_border" = true }
 
 [[profile]]
 id = "off"
-quirks = { "quirk.content.rmg_8xm8_zone_ids" = false, "quirk.rmg.roe_monster_town_byte" = false, "quirk.rmg.unowned_start_seventh" = false, "quirk.rmg.zone_memory_model" = false, "quirk.rmg.terrain_towns_count" = false, "quirk.rmg.partition_units" = false, "quirk.rmg.cosmetic" = false }
+quirks = { "quirk.content.rmg_8xm8_zone_ids" = false, "quirk.rmg.roe_monster_town_byte" = false, "quirk.rmg.unowned_start_seventh" = false, "quirk.rmg.zone_memory_model" = false, "quirk.rmg.terrain_towns_count" = false, "quirk.rmg.partition_units" = false, "quirk.rmg.cosmetic" = false, "quirk.rmg.least_town_skipped" = false, "quirk.rmg.fill_start_on_border" = false }
 "#;
 
 /// An `objects.txt` line of `picture` with `extra` fields first (`before = 1, `).
@@ -154,9 +154,15 @@ fn the_synthetic_tables_compile_as_written() {
     assert_eq!(vales.connections[2].humans, [2, 2]);
     assert_eq!(ring.connections[1].zones, [1, 1]);
     assert_eq!(
-        pictures(&part),
+        pictures(&part)[..3],
         ["synth_blank.def", "synth_mine.def", "synth_tree.def"]
     );
+    // The nine towns, subclasses 0 to 8 (steps 4 and 5 take them by the town type's index).
+    let towns: Vec<(u32, u32)> = part.object_templates()[3..]
+        .iter()
+        .map(|t| (t.class, t.subclass))
+        .collect();
+    assert_eq!(towns, (0..9).map(|t| (98, t)).collect::<Vec<_>>());
     let mine = &part.object_templates()[1];
     assert_eq!(mine.passability, (1u64 << 48) - 2);
     // The third column is the editor's terrains, the fourth the ones it stands on.
@@ -485,8 +491,17 @@ fn a_later_pack_inserts_replaces_appends_and_overrides() {
             "ext_a.def",
             "synth_mine.def",
             "ext_tree.def",
-            "ext_c.def",
-            "ext_d.def"
+            "ext_d.def",
+            "synth_town0.def",
+            "synth_town1.def",
+            "synth_town2.def",
+            "synth_town3.def",
+            "synth_town4.def",
+            "synth_town5.def",
+            "synth_town6.def",
+            "synth_town7.def",
+            "synth_town8.def",
+            "ext_c.def"
         ]
     );
     let names: Vec<_> = part.templates().iter().map(|t| t.name.as_str()).collect();
@@ -658,21 +673,21 @@ fn references_must_be_of_the_table_and_the_closure() {
     assert_eq!(
         two(&format!(
             "object_template_overrides = [{}]",
-            line("line = 3, ", "a.def")
+            line("line = 12, ", "a.def")
         )),
         RmgCompileError::ObjectLine {
             pack: pack(),
-            line: 3
+            line: 12
         }
     );
     assert_eq!(
         two(&format!(
             "object_templates = [{}]",
-            line("before = 4, ", "a.def")
+            line("before = 13, ", "a.def")
         )),
         RmgCompileError::ObjectLine {
             pack: pack(),
-            line: 4
+            line: 13
         }
     );
     assert_eq!(
