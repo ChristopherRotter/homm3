@@ -144,7 +144,7 @@ fn question(id: &str) -> Found {
                     resources: [0, 0, 0, 0, 0, 0, -1000],
                     ..Gain::default()
                 },
-                reveal: LAND,
+                reveal: Reveal::Terrains(LAND),
                 fight: None,
                 flag: None,
                 ..Answer::default()
@@ -366,6 +366,36 @@ fn a_guard_passed_and_pandoras_box() {
     let l = reply_to("ask-pandora", 1660);
     assert!(l.boxed.is_none() && l.dissolving.is_some());
     assert_eq!(*l.drawn().gone, vec![OBJECT]);
+}
+
+#[test]
+fn plays_answer_its_tiles_and_slots_the_records() {
+    // E24 M5 T4c (design §5.29): play's answer reveals the record's tiles (with the walks', the
+    // view and the minimap drawn again, no terrain) and puts each slot's stack as the record tells
+    // it, the others kept.
+    let (mut start, actions, _, _) = replying("ask-cartographer");
+    let tiles = vec![Pos { x: 30, y: 2, z: 0 }, Pos { x: 31, y: 2, z: 0 }];
+    let imps = Stack {
+        creature: 42,
+        count: 25,
+    };
+    let mut gain = Gain {
+        slotted: true,
+        ..Gain::default()
+    };
+    gain.army[3] = Some(imps);
+    let yes = start.finds[0].ask.as_mut().unwrap().yes.as_mut().unwrap();
+    yes.reveal = Reveal::Tiles(tiles.clone());
+    yes.gain = gain;
+    let before = army(&run(&start, &actions, 100));
+    let l = run(&start, &actions, 1060);
+    let s = l.state(1060);
+    assert_eq!(s.drawn.revealed, 0);
+    assert!(tiles.iter().all(|t| s.drawn.walked.contains(t)));
+    assert_eq!(l.drawn().minimap.walked, s.drawn.walked);
+    let mut want = before;
+    want[3] = Some(imps);
+    assert_eq!(army(&l), want);
 }
 
 #[test]

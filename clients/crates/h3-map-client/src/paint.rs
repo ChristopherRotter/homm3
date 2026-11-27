@@ -24,7 +24,7 @@ use h3_map::Limits;
 use h3_map::model::{Body, EventBody, Pos, RawMap};
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{MapArt, WATER};
-use h3_map_view::asks::{self, Ask, Fade, Reply, Seen, Visitor};
+use h3_map_view::asks::{self, Ask, Fade, Reply, Reveal, Seen, Visitor};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
@@ -38,6 +38,7 @@ use h3_map_view::live::{
     Walking,
 };
 use h3_map_view::minimap::Shown;
+use h3_map_view::notice::Notice;
 use h3_map_view::objects::{self, DrawLists, Shapes};
 use h3_map_view::scene::{self, Scene, TileIndex, ViewAt};
 use h3_map_view::sequence::{self, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED, Sequence};
@@ -50,7 +51,7 @@ use h3_map_view::timeline::{
     Rules, Start, Switch, TownBoxes, Walked,
 };
 use h3_map_view::{engine, status, timeline, turn};
-use h3_protocol::wire::game::Decision;
+use h3_protocol::wire::game::{Decision, GameEvent};
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
@@ -322,7 +323,12 @@ pub fn for_sequence<'a>(
     // its visits (E24 M4 T4b1).
     let hover = painter.hover()?;
     let finds = match &played {
-        Some(p) => painter.record_finds(&raw, (&p.visits, &p.levels), hover.as_deref(), None)?,
+        Some(p) => painter.record_finds(
+            &raw,
+            (&p.visits, &p.levels, &p.moves),
+            hover.as_deref(),
+            None,
+        )?,
         None => painter.finds(&raw, hover.as_deref())?,
     };
     let town = painter.town()?;
@@ -480,7 +486,12 @@ pub fn live_walks(
     let (bytes, raw) = read_map(map)?;
     let loaded = engine::live(record, &bytes, rules, live).map_err(|e| format!("{label}: {e}"))?;
     let played = played_of(assets, &raw, &loaded, rules, label)?;
-    let finds = painter.record_finds(&raw, (&played.visits, &played.levels), hover, Some(open))?;
+    let finds = painter.record_finds(
+        &raw,
+        (&played.visits, &played.levels, &played.moves),
+        hover,
+        Some(open),
+    )?;
     Ok((played.moves, finds))
 }
 
@@ -488,6 +499,7 @@ pub fn live_walks(
 /// after an answer, a monster's flight after its offer declined): `decision`'s question about the
 /// object visited from the tile `at` (the view's mouse-over `hover`), laid out by `painter` with
 /// every answer the host's, the visit's `nth`; none where the decision asks no question there.
+/// Since E24 M5 T4c (design §5.28) a decision the view does not ask its notice, on no object.
 ///
 /// # Errors
 /// Its box does not lay out.
@@ -497,16 +509,23 @@ pub fn live_question(
     (hover, at): (&Hover, Pos),
     nth: u8,
 ) -> Result<Option<Question>, String> {
-    let Some(tile) = hover.base([i32::from(at.x), i32::from(at.y), i32::from(at.z)]) else {
+    // The object of the visit's tile's entrance; since E24 M5 T4c else the decision's (by its
+    // anchor: a monster's zone entered), else none (a window's notice).
+    let tile_of = |p: Pos| hover.base([i32::from(p.x), i32::from(p.y), i32::from(p.z)]);
+    let entrance = tile_of(at).and_then(|t| Some((t.object.filter(|_| t.entrance)?, t)));
+    let placed = entrance.or_else(|| {
+        let tile = tile_of(anchor_of(decision)?)?;
+        Some((tile.object?, tile))
+    });
+    let (o, class, word) = placed.map_or((engine::visits::NO_OBJECT, [0, 0], None), |(o, t)| {
+        (o, [t.class, t.subclass], t.word)
+    });
+    let Some(ask) = engine::visits::opened(decision, class, word, "") else {
         return Ok(None);
     };
-    let Some(o) = tile.object.filter(|_| tile.entrance) else {
+    if o == engine::visits::NO_OBJECT && !matches!(ask, Ask::Notice(_)) {
         return Ok(None);
-    };
-    let class = [tile.class, tile.subclass];
-    let Some(ask) = engine::visits::opened(decision, class, tile.word, "") else {
-        return Ok(None);
-    };
+    }
     let mut question = painter.question(&ask, o)?;
     (question.yes, question.second, question.no) = (None, None, None);
     question.hosted = Some(nth);
@@ -516,8 +535,9 @@ pub fn live_question(
 /// What a live visit's answer `nth` shows (E24 M5 T4b: a next question's, which the client lays
 /// out from the record alone): `record` read as [`for_live`] reads it, the visit at the end of
 /// walk `walk`, what its answer gives the panels and, where it takes its object off the map, that
-/// object (its index on the map file `map`, from its tile `at` on the mouse-over `hover`) with a
-/// monster's sound (`killfade.82M`) or a find's; none past its answers.
+/// object (its index on the map file `map`, from its tile `at` on the mouse-over `hover`; since
+/// E24 M5 T4c the record's removed object's anchor's, also an earlier answer's) with a monster's
+/// sound (`killfade.82M`) or a find's; none past its answers.
 ///
 /// # Errors
 /// As [`for_live`]'s.
@@ -537,19 +557,17 @@ pub fn live_reply(
     let Some((_, events)) = visit.answers.get(nth) else {
         return Ok(None);
     };
-    let at = visit.at;
-    let tile = hover.base([i32::from(at.x), i32::from(at.y), i32::from(at.z)]);
-    let taken = tile
-        .and_then(|t| Some((t.object.filter(|_| t.entrance)?, t.class)))
-        .filter(|_| engine::visits::removes(events))
-        .map(|(o, class)| {
-            let fade = if class == MONSTER_CLASS {
-                Fade::Killfade
-            } else {
-                Fade::Pickup
-            };
-            (o, fade)
-        });
+    // The object taken by this answer, or by an earlier one whose next question showed first (E24
+    // M5 T4c: a monster's join with no room, taken at its army dialog's close), by the record's
+    // `ObjectRemoved` (its anchor: a monster's zone entered visits it from another tile).
+    let taken = taken_by(
+        hover,
+        visit
+            .answers
+            .iter()
+            .take(nth + 1)
+            .map(|(_, e)| e.as_slice()),
+    );
     Ok(Some(Answer {
         gain: engine::visits::gain(events),
         taken,
@@ -559,6 +577,90 @@ pub fn live_reply(
 
 /// A wandering monster's class.
 const MONSTER_CLASS: u32 = 54;
+
+/// The object the first of `answers` that takes one off the map takes, by the record's
+/// `ObjectRemoved` (`engine::visits::removed`: its anchor's object on the mouse-over `hover`),
+/// with a monster's sound (`killfade.82M`) or a pickup's (E24 M5 T4c, design §5.29: every live
+/// answer's object taken the record's); none.
+fn taken_by<'e>(
+    hover: &Hover,
+    mut answers: impl Iterator<Item = &'e [GameEvent]>,
+) -> Option<(usize, Fade)> {
+    let at = answers.find_map(engine::visits::removed)?;
+    let tile = hover.base([i32::from(at.x), i32::from(at.y), i32::from(at.z)])?;
+    let fade = if tile.class == MONSTER_CLASS {
+        Fade::Killfade
+    } else {
+        Fade::Pickup
+    };
+    Some((tile.object?, fade))
+}
+
+/// A live visit's first answer `answer` (its boxes and pictures the client's) with the record's
+/// facts (E24 M5 T4c, design §5.29, the facts audit): the hero's army's slots as the record's
+/// `StackChanged` tell them, the object taken only where the record's `ObjectRemoved` says
+/// ([`taken_by`]), on the mouse-over `hover`, `events` the answer's.
+fn as_recorded(answer: &mut Answer, events: &[GameEvent], hover: &Hover) {
+    let told = engine::visits::gain(events);
+    if told.slotted {
+        answer.gain.army = told.army;
+        answer.gain.slotted = true;
+    }
+    answer.taken = taken_by(hover, std::iter::once(events));
+}
+
+/// Where a record's `visit` is told and on what object (`engine::visits::lay`'s `object_at`; E24
+/// M5 T4c, *provisional*), by the mouse-over `hover` and the record's walks `moves`: on the object
+/// whose entrance is its walk's last tile, from beside where the engine's walk stops one short of
+/// it; live (`open` given), a decision the engine opened on the way (a monster's zone entered:
+/// its offer, the walk stopped there) where the engine's walk ended, on the decision's object
+/// (by its anchor, [`anchor_of`]).
+fn placed(
+    hover: &Hover,
+    visit: &engine::Visit,
+    moves: &[Move],
+    open: Option<&[(usize, Decision)]>,
+) -> Option<engine::visits::Placed> {
+    let tile_of = |p: Pos| hover.base([i32::from(p.x), i32::from(p.y), i32::from(p.z)]);
+    let walk = moves.get(visit.walk);
+    let beside = walk.is_some_and(|m| m.stops.is_some_and(|n| n + 1 == m.tiles.len()));
+    let on = |at: Pos, o: usize, tile: Tile, beside: bool| engine::visits::Placed {
+        at,
+        object: o,
+        class: [tile.class, tile.subclass],
+        word: tile.word,
+        beside,
+    };
+    if let Some(tile) = tile_of(visit.at)
+        && let Some(o) = tile.object.filter(|_| tile.entrance)
+    {
+        return Some(on(visit.at, o, tile, beside));
+    }
+    let (_, decision) = open?.iter().find(|(w, _)| *w == visit.walk)?;
+    let tile = tile_of(anchor_of(decision)?)?;
+    // The engine's walk's end (never its path's last tile: TRAPS): before its first step not
+    // taken.
+    let end = walk.and_then(|m| match m.stops {
+        Some(n) => n.checked_sub(1).and_then(|k| m.tiles.get(k)),
+        None => m.tiles.last(),
+    })?;
+    Some(on(*end, tile.object?, tile, false))
+}
+
+/// The anchor of the object `decision` asks about (E24 M5 T4c): an offer's or a choice's; none
+/// for another (a window's notice names no object).
+fn anchor_of(decision: &Decision) -> Option<Pos> {
+    let at = match decision {
+        Decision::Offer { offer } => offer.anchor,
+        Decision::Choice { choice } => choice.anchor,
+        _ => return None,
+    };
+    Some(Pos {
+        x: u8::try_from(at.x).ok()?,
+        y: u8::try_from(at.y).ok()?,
+        z: at.level,
+    })
+}
 
 /// A map file's bytes and its raw map (gzip-compressed, as the game keeps it, or not: the
 /// writer's).
@@ -602,7 +704,7 @@ fn for_played<'a>(
     // Its visits' finds, each with its level-ups (E24 M4 T6, R2-3: none by the thresholds).
     let finds = painter.record_finds(
         raw,
-        (&played.visits, &played.levels),
+        (&played.visits, &played.levels, &played.moves),
         hover.as_deref(),
         None,
     )?;
@@ -1040,7 +1142,8 @@ impl<'a> Painter<'a> {
         let laid = |text: &str, style| Arc::new(message::layout(layout, font, text, style, framed));
         let question = laid(&turn::question(texts), Style::OkCancel);
         let art = &assets.tables.map.turn;
-        // The week of the Deity's growth, its first creature's, read when a turn needs it.
+        // The week of the Deity's growth, its first creature's, read when a recording's turn needs
+        // it (test tooling's: a record's week names the engine's growth, E24 M5 T4c).
         let deity = self.live.turns.iter().any(|t| t.week == Calendar::Special);
         let growth = if deity {
             crate::texts::growth(assets.archives, art.deity[0])?
@@ -1408,11 +1511,12 @@ impl<'a> Painter<'a> {
     /// reviewers' R2-1 to R2-4, R2-8; `engine::visits::lay`) each visit a find of its own, played
     /// at its walk's end, with its own boxes, gain, flag and level-ups (the record's `levels`,
     /// [`Painter::record_level`]); Pandora's Box's map text (`raw`'s, read at run time) in a box of
-    /// its own before its question. A visit that tells nothing is left out.
+    /// its own before its question. A visit that tells nothing is left out. Since E24 M5 T4c the
+    /// record's walks `moves` tell a visit from beside (its walk stops one short: a notice's).
     fn record_finds(
         &mut self,
         raw: &RawMap,
-        (visits, leveled): (&[engine::Visit], &[engine::Leveled]),
+        (visits, leveled, moves): (&[engine::Visit], &[engine::Leveled], &[Move]),
         hover: Option<&Hover>,
         open: Option<&[(usize, Decision)]>,
     ) -> Result<Vec<Found>, String> {
@@ -1425,11 +1529,7 @@ impl<'a> Painter<'a> {
         let laid = engine::visits::lay(
             visits,
             open,
-            |pos| {
-                let tile = hover.base([i32::from(pos.x), i32::from(pos.y), i32::from(pos.z)])?;
-                let o = tile.object.filter(|_| tile.entrance)?;
-                Some((o, [tile.class, tile.subclass], tile.word))
-            },
+            |visit| placed(hover, visit, moves, open),
             &assets.tables.map.finds,
             |hero| self.name_of(hero),
         );
@@ -1525,7 +1625,7 @@ impl<'a> Painter<'a> {
                         then: None,
                         taken: None,
                         after: Gain::default(),
-                        reveal: 0,
+                        reveal: Reveal::None,
                         marks: false,
                         fight: Some(Fight {
                             attacker: 0,
@@ -1585,12 +1685,22 @@ impl<'a> Painter<'a> {
                             engine::visits::Answered::No => Some(&mut question.no),
                             engine::visits::Answered::Open => None,
                         };
+                        let visit = visits.iter().find(|v| v.walk == walk);
                         if let Some(reply @ None) = reply {
-                            let visit = visits.iter().find(|v| v.walk == walk);
                             *reply = Some(Answer {
                                 gain: visit.map(engine::visits::answered_gain).unwrap_or_default(),
                                 ..Answer::default()
                             });
+                        }
+                        // Every reply kept, its facts the record's answer's (E24 M5 T4c: the
+                        // slots joined, the object taken).
+                        if let Some((_, events)) = visit.and_then(|v| v.answers.first()) {
+                            for kept in [&mut question.yes, &mut question.second, &mut question.no]
+                                .into_iter()
+                                .flatten()
+                            {
+                                as_recorded(kept, events, hover);
+                            }
                         }
                     }
                     // Pandora's Box's own text first, a box of its own (design §5.4's table:
@@ -1613,6 +1723,13 @@ impl<'a> Painter<'a> {
                 // Live, level-ups and nothing else built (E24 M5 T4b, design §5.27: the Tree of
                 // Knowledge's free level): no box, the levels after what the panels show.
                 Visited::Levels { gain } => found.gain = gain,
+                // Live, a screen the visit opens with no decision (E24 M5 T4c, design §5.28: a
+                // hero's entry into a town): its notice, a box of its own.
+                // stub: MCL-STUB-7 (the screens of M6 and M7 a notice in play)
+                Visited::Notice(notice) => {
+                    let said = Ask::Notice(notice).told(texts);
+                    found.first = vec![(self.told(&said)?, Gain::default())];
+                }
             }
             out.push(found);
         }
@@ -1871,19 +1988,34 @@ impl<'a> Painter<'a> {
         }))
     }
 
+    /// The notices of the screens without a decision (E24 M5 T4c, design §5.28, `MCL-STUB-7`:
+    /// [`Notice::SCREENS`]), each laid out as a box of style 1 in the viewer's colours: a live
+    /// view's in play (`h3_map_view::reach::Hosted::notices`).
+    ///
+    /// # Errors
+    /// A box that does not lay out.
+    pub fn notices(&mut self) -> Result<Vec<(Notice, Arc<MessageBox>)>, String> {
+        let texts = &self.assets.tables.texts;
+        Notice::SCREENS
+            .into_iter()
+            .map(|notice| Ok((notice, self.told(&Ask::Notice(notice).told(texts))?)))
+            .collect()
+    }
+
     /// `ask`'s question about object `o` laid out (E24 M4 T2b2): its box of style 2, its OK's and
     /// its Cancel's answers where built ([`Painter::answer`]); since part B a choice's box of
     /// style 7 or 10 ([`Painter::choice`]) and its second picture's answer.
     fn question(&mut self, ask: &Ask, o: usize) -> Result<Question, String> {
         let tables = self.assets.tables;
         let told = ask.told(&tables.texts);
+        // A question's style 2, a notice's 1 (E24 M5 T4c: its OK alone).
         let asked = match ask.style() {
             style if style.chooses() => {
                 self.choice(&told, style, ask.or(&tables.texts).as_deref())?
             }
-            _ => self.told_in(&told, Style::OkCancel)?,
+            style => self.told_in(&told, style)?,
         };
-        let yes = match ask.yes(&tables.map.finds, &tables.map.asks, &tables.texts) {
+        let yes = match ask.yes(&tables.map.finds, &tables.texts) {
             Some(reply) => Some(self.answer(reply, o)?),
             None => None,
         };

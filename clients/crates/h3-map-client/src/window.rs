@@ -48,6 +48,7 @@ use h3_game::GameRuleset;
 use h3_map_view::damage::{Held, tidy};
 use h3_map_view::engine::{GameRecord, Live, REVISIT};
 use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
+use h3_map_view::notice;
 use h3_map_view::reach::{Hosted, Pick, Reach};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
@@ -263,18 +264,25 @@ fn hosted(start: &mut Start) -> &mut Hosted {
     start.host.get_or_insert_default()
 }
 
-/// Whether `decision` is a visit's question the view asks (E24 M5 T4b): an offer or a choice; a
-/// level-up rides on the record's `LevelUpOpened`, the screens are M6's and M7's.
+/// Whether `decision` is one the view asks at a visit (E24 M5 T4b): an offer or a choice; since
+/// E24 M5 T4c (design §5.28) every other window too, as its notice (`h3_map_view::notice`); a
+/// level-up rides on the record's `LevelUpOpened`.
+// stub: MCL-STUB-7 (the screens of M6 and M7 a notice in play)
 fn asks(decision: &Decision) -> bool {
-    matches!(decision, Decision::Offer { .. } | Decision::Choice { .. })
+    !matches!(decision, Decision::LevelUp { .. })
 }
 
 /// The engine's answer of `decision` by the button `pick` (E24 M5 T4b, design §5.27): an offer's
 /// OK its consent, any other button its refusal; a treasure chest's first picture its gold, its
 /// second its experience (no Cancel: the original's plain OK takes the gold); the Arena's first
 /// its first skill, its second the second, its Cancel the first (MCL-Q33); a School's the same,
-/// its Cancel leaving. None for another decision.
+/// its Cancel leaving. Since E24 M5 T4c (design §5.28) a notice's every button its closing
+/// answer (`notice::closing`: an offer of a fight, a boat or a hire declined, a window left or
+/// closed). None for another decision.
 fn wire_answer(decision: &Decision, pick: Pick) -> Option<WireAnswer> {
+    if let Some(closing) = notice::closing(decision) {
+        return Some(closing);
+    }
     match decision {
         Decision::Offer { .. } => {
             let consent = match pick {
@@ -838,10 +846,12 @@ pub(crate) fn window(
         ..
     } = setup;
     start.live = true;
-    // In play the walks and the reach are the hot seat's host's (E24 M5 T4a).
+    // In play the walks and the reach are the hot seat's host's (E24 M5 T4a); the screens without
+    // a decision their notices (E24 M5 T4c).
     if session.is_some() {
         start.host = Some(Hosted {
             picks,
+            notices: painter.notices()?,
             ..Hosted::default()
         });
     }
@@ -2044,7 +2054,141 @@ mod tests {
     use super::*;
 
     use h3_map_view::timeline::Direction;
+    use h3_protocol::wire::game::{
+        Amount, Choice, HireAnswer, LevelUp, Offer, OfferKind, PrimarySkill, UniversityAnswer,
+        UniversityVisit,
+    };
     use h3_ui::keys::Chord;
+
+    #[test]
+    fn a_decision_s_answer_by_its_button() {
+        // E24 M5 T4b, T4c (design §5.27, §5.28): an asked offer's OK its consent, any other button
+        // its refusal; a choice's pictures; a notice's every button its closing answer; a level-up
+        // not asked here.
+        let anchor = WirePos {
+            x: 5,
+            y: 4,
+            level: 0,
+        };
+        let offer = |kind| Decision::Offer {
+            offer: Offer {
+                hero: 0,
+                object_type: 1,
+                anchor,
+                kind,
+            },
+        };
+        let choice = |kind| Decision::Choice {
+            choice: Choice {
+                hero: 0,
+                object_type: 1,
+                anchor,
+                kind,
+            },
+        };
+        let gold = Amount {
+            resource: 6,
+            amount: 1000,
+        };
+        let primary = |leave| {
+            choice(ChoiceKind::Primary {
+                skills: [PrimarySkill::Attack, PrimarySkill::Defense],
+                amount: 2,
+                price: Vec::new(),
+                leave,
+            })
+        };
+        let accept = WireAnswer::Offer {
+            consent: Consent::Accept,
+        };
+        let decline = WireAnswer::Offer {
+            consent: Consent::Decline,
+        };
+        let university = Decision::University {
+            visit: UniversityVisit {
+                hero: 0,
+                object_type: 1,
+                anchor,
+                skills: Vec::new(),
+                price: vec![gold],
+            },
+            slots: Vec::new(),
+        };
+        let leave = WireAnswer::University {
+            answer: UniversityAnswer::Leave {},
+        };
+        let chest = |choice| WireAnswer::Chest { choice };
+        let arena = |choice| WireAnswer::Arena { choice };
+        let school = |choice| WireAnswer::School { choice };
+        let cases = [
+            (offer(OfferKind::Join {}), [accept, decline, decline]),
+            (offer(OfferKind::Fight {}), [decline; 3]),
+            (offer(OfferKind::Hire { creatures: vec![0] }), [decline; 3]),
+            (
+                choice(ChoiceKind::Chest {
+                    gold,
+                    experience: 500,
+                }),
+                [
+                    chest(ChestChoice::Gold),
+                    chest(ChestChoice::Experience),
+                    chest(ChestChoice::Gold),
+                ],
+            ),
+            (
+                primary(false),
+                [
+                    arena(ArenaChoice::Attack),
+                    arena(ArenaChoice::Defense),
+                    arena(ArenaChoice::Attack),
+                ],
+            ),
+            (
+                primary(true),
+                [
+                    school(SchoolChoice::First),
+                    school(SchoolChoice::Second),
+                    school(SchoolChoice::Leave),
+                ],
+            ),
+            (
+                Decision::Meeting { heroes: [0, 1] },
+                [WireAnswer::Close {}; 3],
+            ),
+            (university, [leave; 3]),
+            (
+                Decision::Hire {
+                    hire: h3_protocol::wire::game::Hire {
+                        target: h3_protocol::wire::game::HireTarget::Hero { hero: 0 },
+                        source: h3_protocol::wire::game::HireSeen::Object {
+                            object_type: 1,
+                            anchor,
+                        },
+                        creatures: Vec::new(),
+                    },
+                },
+                [WireAnswer::Hire {
+                    answer: HireAnswer::Close {},
+                }; 3],
+            ),
+        ];
+        for (decision, answers) in cases {
+            assert!(asks(&decision), "{decision:?}");
+            for (pick, answer) in [Pick::Yes, Pick::Second, Pick::No].into_iter().zip(answers) {
+                assert_eq!(wire_answer(&decision, pick), Some(answer), "{decision:?}");
+            }
+        }
+        let level = Decision::LevelUp {
+            level_up: LevelUp {
+                hero: 0,
+                level: 2,
+                primary: PrimarySkill::Attack,
+                offers: [0, 1],
+            },
+        };
+        assert!(!asks(&level));
+        assert_eq!(wire_answer(&level, Pick::Yes), None);
+    }
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).to_owned()).collect()

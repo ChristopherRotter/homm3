@@ -833,3 +833,71 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
 - **The benchmark and the verify:** `computer-turns-towns-36` 308 574 798 Ir (+0.00 %): the new
   values have no caller in a turn yet. The scoped verify `--with-original-data` passed (but
   `check-lane`, by design): coverage 31 minutes, determinism 11, bench-check 27, original-data 3.
+
+## T2h — the object value (2026-11-27, increment 2)
+
+- **The size, measured at the start** (`docs/exe/map.toml`): 42 functions, 12.8 KB, about
+  4 300 instructions (`ai_object_value` 0x528040 5.7 KB of it, its switch 67 handlers for 73
+  classes; `ai_army_plan_init_creature` 0x42CF50 0.6 KB, the vision circle 0x432220 0.6 KB);
+  `ai_join_without_room` 0x52BC60 calls `ai_army_plan_run` 0x42D690 and goes with it to
+  increment 3. Offered a cut along the switch's classes or none; **the user kept it whole**
+  (AI-Q39). A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar`
+  staged from the user's repo folder at the start; the PC's shell left after the staging.
+- **Readings** (the main session, the survey's §2.1 known: not blind): the frame and every case
+  of 0x528040 whole again with their helpers (the units' `hero_morale` and `hero_luck` reads, the
+  luck and morale gains 0x527CF0 and 0x527D80, the resources' running `ftol` 0x526C70,
+  `army_fill_split` 0x44AAA0, the Hill Fort's gold factors, the market price 0x524550, the Black
+  Market's 0x529750, the War Machine Factory's 0x5297D0 with 0x525120, the Sirens' copy of the
+  army, the Treasure Chest's tiers, the Tree of Knowledge's price word); `army_all_undead`
+  0x44AB20 and the double 2 500.0 at 0x6405B0 named.
+  New against the survey: the Temple values two morale whatever the day (0x5292E3), the Rally
+  Flag adds both bare fractions to the movement part (0x52A6E2), the Black Market's backpack test
+  is equality with 64 (0x528406); the Stables count the Cavaliers' stacks, not the creatures
+  (§5.5 #72), the Sirens read no mark (#73). §5.5 #3 (the Fountain and Idol of Fortune always 0),
+  #4 (the luck clamp) and #5 (the factory's price within 500) confirmed and ported as read; #6
+  (the mines' flag-all bonus) stubbed with the conditions (AI-STUB-18).
+- **Built:** `h3_game::computer`'s `objects.rs` (CPU-OBJ-001: `Class`, the original's class
+  numbers, from the engine's `ObjectKind` and its parameters: the bonus visitables by their days,
+  points and drain, the gifts by what they give and their price, the finds by what they leave;
+  `At`, the tile's hero, empty boat or object; `Asking`, the question with the hero's kept
+  destination; `value` and `fight_answer`; CPU-OBJ-002: the units), `objects/fights.rs` (the
+  creature-holding classes and the exchanges, CPU-OBJ-003 to -008) and `objects/visits.rs` (the
+  visits, pickups and markets, CPU-OBJ-009 to -011); `vision.rs` (CPU-OBJ-012, the 75 class
+  values from 0x6605D8). The Refugee Camp's plan of one creature is `armies::Plan::new` with one
+  `Offer` (the count's pointer only writes back, which the value never does). `towns::Asked`'s
+  reads, `artifacts::{has, learned, skill, caster}` and `SLIP` now `pub(super)`;
+  `h3_adventure::AdventureState::tile_index` public (`cross-lane`, AI-Q40). AI-STUB-20 (the Hut
+  of the Magi, the Obelisk, the Seer's Hut: E12, E09 increment 8), AI-STUB-21 (a campaign's
+  garrisons, E20); AI-STUB-10's and -18's reasons name their T2h sites. Every value
+  `expect(dead_code)` until T2i calls it (the planning's candidates), T2g's too.
+- **Agent decisions (change freely):** the class from the kind (a kind of one class is it; a
+  bonus visitable with a drain the Swan Pond, with points and luck the Rally Flag, with points the
+  Oasis, a changing one with luck the Idol else the Temple, a constant one by morale or luck the
+  Buoy or Faerie Ring; a gift of experience the Learning Stone, of a level the Tree, of a choice
+  the Arena without a price and the Schools with one, of primary skills the Library, Star Axis,
+  Garden or the one-level Marletto by what it admits; a find by its question and what it leaves);
+  the hero's kept destination (+0x35, the Well's and Spring's test) an input the planning sets
+  (T2i), `None` meaning off the map; the original's current player the hero's owner (as T2g); a
+  vision circle's unexplored tile valued by the class of the object whose entrance it is, a hero
+  0, an empty boat 100; the Pyramid's guards from its kind (the original's 40 Gold and 20 Diamond
+  Golems where the pack says so); the guarded mine's guards the adventure state's.
+- **Tests** (`computer/objects/tests.rs`, 22, on a hand-built core: three creatures with AI and
+  fight values, six artifacts, eight skills, five resources with gems at 5, a fifth-level spell,
+  seven hero types, a 12 × 12 map of 56 objects): the classes of every kind; the units (a level
+  500, the strength, the morale and luck gains); the tile's hero, boat and object; each class's
+  value with its marks, its points test and its prices; the luck clamp at 3; the Stables'
+  weekday and stack count, the Sirens on a stack of one; the finds and the flat values; the
+  Black Market and the factory; the guarded pickups, Pandora's Box's record, a bank until looted;
+  the monster, mine, Prison and Pyramid; the garrison and hero exchanges or fights, one's own
+  hero by the stronger side; the Hill Fort, the camp, a dwelling, a town and a hero at a town's
+  entrance; the vision circle; a class asked of another kind. Numbers from an IEEE model and by
+  hand; my wrong expectations (the port right): a free object visited is marked (the unvisited
+  value pinned before the visit), the Magic Well refuses a hero at full mana, the Black Market's
+  stock is drawn at the setup, the factory's tent needs an army it would serve, Pandora's
+  artifact term counts one artifact, the lost cases need an empty army, the town fixtures'
+  fight values are 0 (`TRAPS.md`). Coverage of the four files 100 % lines and regions (two `?`
+  and an impossible luck branch restructured, five cases added).
+- **The benchmark and the verify:** `computer-turns-towns-36` 308 574 878 Ir (+0.00 %): the object
+  value has no caller in a turn yet. The scoped verify `--with-original-data` passed (but
+  `check-lane`, by design; `check-lane --cross-lane` and `cargo check --workspace --all-targets`
+  passed): coverage 29 minutes, determinism 10, bench-check 24, original-data 3.

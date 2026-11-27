@@ -90,23 +90,23 @@ pub(super) struct Asked<'v, 'a> {
 
 impl<'a> Asked<'_, 'a> {
     /// The game.
-    fn state(&self) -> &'a GameState {
+    pub(super) fn state(&self) -> &'a GameState {
         self.hero.state
     }
 
     /// The hero.
-    fn fighter(&self) -> Fighter<'a> {
+    pub(super) fn fighter(&self) -> Fighter<'a> {
         self.hero.hero
     }
 
     /// The hero's owner, the player whose turn it is.
-    fn player(&self) -> PlayerId {
+    pub(super) fn player(&self) -> PlayerId {
         self.hero.hero.on_map.owner
     }
 
     /// The hero's own morale as the values ask it (`hero_morale` 0x4E39B0 with its clamp: −3 to
     /// 3, a word).
-    fn morale(&self) -> i16 {
+    pub(super) fn morale(&self) -> i16 {
         let (morale, _) =
             artifacts::own_morale_and_luck(self.state(), self.hero.rules, self.fighter());
         i16::try_from(morale.clamp(-3, 3)).unwrap_or(0)
@@ -115,7 +115,7 @@ impl<'a> Asked<'_, 'a> {
     /// The Alliance's factions when any of the player's heroes, on the map or in a town's
     /// garrison, wears the Angelic Alliance (`player_hero_wears_artifact` 0x4BACB0 with 129), else
     /// none.
-    fn join(&self, factions: &'a [FactionId]) -> &'a [FactionId] {
+    pub(super) fn join(&self, factions: &'a [FactionId]) -> &'a [FactionId] {
         let (state, player) = (self.state(), self.player());
         let adventure = state.adventure();
         let on_map = adventure
@@ -137,7 +137,7 @@ impl<'a> Asked<'_, 'a> {
     }
 
     /// The player's resources (+0x9C) by resource, as the original's `i32`.
-    fn treasury(&self) -> Vec<i32> {
+    pub(super) fn treasury(&self) -> Vec<i32> {
         let core = self.hero.rules.core();
         let treasury = self.state().treasury(self.player()).unwrap_or_default();
         (0..core.resources().len())
@@ -146,7 +146,7 @@ impl<'a> Asked<'_, 'a> {
     }
 
     /// The player's stock of the towns' gold.
-    fn gold(&self) -> i32 {
+    pub(super) fn gold(&self) -> i32 {
         let gold = self.hero.rules.towns().params().map(|p| p.gold);
         gold.and_then(|g| self.treasury().get(g.index()).copied())
             .unwrap_or(0)
@@ -154,7 +154,7 @@ impl<'a> Asked<'_, 'a> {
 
     /// The hero's values per unit at the turn start (its experience weight and spell gains), the
     /// default for a hero the record does not list.
-    fn values(&self) -> super::start::HeroValues {
+    pub(super) fn values(&self) -> super::start::HeroValues {
         let id = self.fighter().on_map.id;
         self.record
             .heroes

@@ -44,6 +44,16 @@ mod artifacts;
 )]
 mod fight;
 mod memory;
+// The object value has no caller until the planning's candidates (T2i) and the answers
+// (increment 4).
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the object value has no caller until the planning, E31 T2i"
+    )
+)]
+mod objects;
 mod order;
 // The skills' values have no caller until the values that ask for them (T2g's town buildings,
 // T2h's object value: the University, the Witch Hut, the Seer's reward).
@@ -67,6 +77,15 @@ mod start;
 )]
 mod towns;
 mod turn;
+// The vision circle's only caller is the object value (T2h), whose caller is the planning (T2i).
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the vision circle has no caller until the planning, E31 T2i"
+    )
+)]
+mod vision;
 
 #[cfg(test)]
 mod tests;

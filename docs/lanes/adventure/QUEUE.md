@@ -4,33 +4,51 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 7, the next 8). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E10 T1a — increment 1's survey: the teams and the game's end** (E10 decisions 4, 5; the epic's increment 1 sketch)
-
-- **The cut** confirmed with the user at its start (what the survey reads first, its size measured
-  as E08 T137a's); then the survey `docs/rules/surveys/E10-teams.md` (*agent's call* for the name):
-  the code reading of `Heroes3.exe` (what allies share: the fog, passing and visiting allied
-  heroes and towns, the mines' and objects' team marks; elimination by the standard loss and by
-  seven days without a town with its warnings; a defeated player's heroes, towns and flags; a
-  player removed; the standard victory; the game over, its events, every command after it), the
-  wiki and VCMI 1.7.5, a census of the 160 shipped maps' teams (`h3_map::Teams`); the disputes and
-  quirk candidates; the batch's plan on the client lane's harness; the interfaces' sketch and the
-  checkpoint's questions for T1b.
-- **Inputs:** the epic's "Inputs" (this inbox's client-lane notes of 2026-11-12 to -19, E27 design
-  §3, §5, §21.1, §26.3; the server lane's E16 "Later", SRV-Q29); ADR-0017 (players, turns,
-  projections); the map client's scripted game `game-week` (Blue banished on day 8).
-- **Depends on:** E08 T145's pull requests merged. **Status:** next.
+Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 8, the next 9). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E10 T1b — increment 1's ADR amendment drafts, the design note and the cut** (E10 decision 5)
 
 - The drafts in `adr-drafts/` (ADR-0017, ADR-0016 where a view changes), the design note
   `docs/epics/E10-design.md` with increment 1's exit criteria and the building tasks cut; the
   user accepts the drafts before anything is built (the checkpoint).
-- **Depends on:** T1a. **Status:** after T1a.
+- **Inputs:** the survey `docs/rules/surveys/E10-teams.md` (T1a, done 2026-11-27: its §11
+  interfaces' sketch, §12 ids, §13 the checkpoint's nine questions; batch GAM-1's plan §10).
+- **Depends on:** T1a (done). **Status:** next.
 
 ## Inbox
 
+- 2026-11-27 (the AI lane, E31 T2h, `ai/e31-t2h`, `cross-lane` with the user's consent, AI-Q40;
+  **in your paths, for your review, nothing to do**): `AdventureState::tile_index` is public
+  (`state.rs`, its doc says why): the computer's object value (`h3_game::computer::objects::at`)
+  finds the object whose entrance is a tile through it. Nothing else changed in your crates.
+
+- 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
+  nothing blocks**): the facts audit of play (E24 design §5.29) takes every fact an event carries
+  from the record (the Tomb's morale, a Cartographer's tiles, the prices paid, the slots joined,
+  the observatories' `TilesRevealed`) and asks the rest. Yours: **MCL-Q61** (a hero's own name and
+  custom portrait in the state from the import, as a town's), **MCL-Q62** (a map text in its
+  event or offer: Pandora's Box, signs, bottles, map, timed and town events, guarded messages,
+  Seer's texts), **MCL-Q63** (a monster's offer naming the stack offered), **MCL-Q65** (a hero's
+  derived primary skills, morale and luck as its window shows them), **MCL-Q69** (the slot a join
+  fills: `CreaturesJoined` comes with no `StackChanged`). Each recommends (a).
+- 2026-11-27 (the town lane, E09 T58a2, `town/e09-t58a2`, `cross-lane` with the user's consent,
+  E09 decision 225; **in your paths, for your review; no rule or hash of yours changed**): (1)
+  `MarketParams` (`market.rs`) tabulates every count's lot of every pair at its build
+  (`resource_lot` reads the table: the same arithmetic, the same values) and derives
+  `cheapest_lot(count, give)` and `cheapest_at_every_count(give)`, none hashed: a listing inside
+  a window walked 42 lots of float arithmetic; (2) `h3-game`'s `market_answers` is
+  `window_answers` on a resolved window, beside `offers_an_answer` and `pays_a_lot` (the town
+  listing's tests); (3) the plans (`play.rs`, `play/trades.rs`): `trade_open` gives `(Option<HeroId>,
+  TradeAt)` (`Object(type, anchor)` or `Town`), `trade_army` reads a garrison hero's army,
+  `trade_answers` and the answer and listing oracles take a town's window, `check_decisions` a
+  town's `MarketOpened`, `check_trades` the Artifact Merchants' stock, `town_builds` and
+  `check_town_builds` probe `Market` (`check_town_market`), `visit_town` opens a listed window in
+  one step of sixteen, `TOWN_BUILDINGS`' first custom set holds the Marketplace (bit 8), the
+  towns' cover test counts the windows; (4) the town-map workloads re-baselined (their games
+  changed course; the numbers in `E09-log.md`). **A seed of yours** (for your decision): at 240
+  cases `a_viewer_learns_nothing_it_cannot_see` met `cc 5f490c79307edc688709adbe7638cfb284e69480d6eef3bc78eafec0f9169ceb` (a plan without towns, `Exchange`
+  steps: another player's hero seen in one game and not in the other), which `master` a7b6752
+  fails too; not added to `proptest-regressions/tests/view.txt`, as it would fail CI.
 - 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). Your 123 golden replays' `ruleset_hash` lines were substituted (nothing else in them). A branch of yours that records new `faithful` replays before this merges needs the same substitution.
 - 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent, E09
   decision 224; **in your paths, for your review; no rule of yours changed**): a town opens E08's
@@ -264,17 +282,6 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
   follow: `check_timed` expects the learning after each event's build, the details' check and the
   views' fold take a hero hired in the command as the hirer's. No golden replay, version or bot
   report moved.
-- 2026-11-21 (the ai lane, E13's refinement, AI-Q21; **for your planning; nothing blocks**): the
-  user moved E13 (the adventure AI) to the ai lane and decided it **waits for all of E10**
-  (victory and defeat, teams, diplomacy, the setup beyond the import), with no piece of E10
-  pulled forward for it. E10's place in your order stays the user's. The computer players'
-  turns are now **E31** (the ai lane: the original's adventure AI ported, faithful then fair),
-  no longer E13's; E31's port plays a player's turns through `h3-game`'s commands, so its
-  refinement will ask what seat it takes (the inbox's E27 note below names E13 for them).
-  E10's refinement (ADV-Q62, #1109) pointed `ADV-STUB-8` and `-9` (the computer player's facts)
-  and the computer players' behaviour to E13: both are **E31's** now (the stubs re-pointed in
-  `docs/stubs.toml` by #1110); please follow in `E10-game-orchestration.md` decisions 1 and 6
-  when you next touch it. (E30 is the rmg lane's custom map generator, #1112.)
 - 2026-11-21 (E08 T136; **for E10's elimination**): the market's transfer (ADV-MKT-004) refuses
   only the actor and an index past the game's players (`h3-game`'s `state/market.rs`:
   `answer_market`'s `Transfer`), and its view's `recipients` lists every other player, so "another

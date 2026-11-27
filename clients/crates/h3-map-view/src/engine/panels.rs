@@ -32,7 +32,7 @@ use h3_map::model::{Body, HeroBody};
 use h3_protocol::wire::game::{ArmyStack, GameObservation, HeroInfo, MapHero, Town};
 use toml::{Table, Value};
 
-use super::{int, row};
+use super::{Creatures, int, row};
 use crate::art::MapArt;
 use crate::live::{HERO_CLASS, TOWN_CLASS};
 use crate::picks::town_name;
@@ -69,7 +69,7 @@ pub(super) fn insert(
     observation: &GameObservation,
     (raw, picks): (&RawMap, Option<u64>),
     art: &MapArt,
-    rules: &GameRuleset,
+    (rules, creatures): (&GameRuleset, &Creatures),
 ) {
     let viewer = observation.adventure.viewer;
     let info = |id: u16| observation.heroes.iter().find(|h| h.id == id);
@@ -87,9 +87,12 @@ pub(super) fn insert(
     let towns = viewer_towns(observation);
     let hero_status: Vec<Table> = heroes
         .iter()
-        .map(|&(_, hero, info)| hero_status(hero, info, art))
+        .map(|&(_, hero, info)| hero_status(hero, info, art, creatures))
         .collect();
-    let town_status: Vec<Table> = towns.iter().map(|t| town_status(t, picks)).collect();
+    let town_status: Vec<Table> = towns
+        .iter()
+        .map(|t| town_status(t, picks, creatures))
+        .collect();
     let kingdom_heroes = heroes
         .iter()
         .map(|&(_, hero, info)| {
@@ -244,8 +247,9 @@ fn portrait(raw: &RawMap, art: &MapArt, hero: &MapHero, info: &HeroInfo) -> i64 
         .map_or_else(|| i64::from(info.hero_type), i64::from)
 }
 
-/// An army by slot, as a live part's `army`: `[creature, count]` each, `[-1, 0]` an empty slot.
-fn army(stacks: &[ArmyStack]) -> Value {
+/// An army by slot, as a live part's `army`: `[creature, count]` each (the creature by the
+/// original's number, `creatures`: E24 M5 T4c), `[-1, 0]` an empty slot.
+fn army(stacks: &[ArmyStack], creatures: &Creatures) -> Value {
     Value::Array(
         (0..SLOTS)
             .map(|slot| {
@@ -254,7 +258,7 @@ fn army(stacks: &[ArmyStack]) -> Value {
                     .find(|s| usize::from(s.slot) == slot)
                     .map_or_else(
                         || row(&[-1, 0]),
-                        |s| row(&[i64::from(s.creature), i64::from(s.count)]),
+                        |s| row(&[i64::from(creatures.number(s.creature)), i64::from(s.count)]),
                     )
             })
             .collect(),
@@ -262,8 +266,8 @@ fn army(stacks: &[ArmyStack]) -> Value {
 }
 
 /// A hero's status window (`live::HeroStatus`): its type, whether the map names it, its base
-/// primary skills, its army; its morale and luck 0 (MCL-Q36).
-fn hero_status(hero: &MapHero, info: &HeroInfo, art: &MapArt) -> Table {
+/// primary skills, its army (by `creatures`' numbers); its morale and luck 0 (MCL-Q36).
+fn hero_status(hero: &MapHero, info: &HeroInfo, art: &MapArt, creatures: &Creatures) -> Table {
     let mut t = Table::new();
     t.insert("kind".into(), Value::Integer(HERO));
     t.insert("hero".into(), Value::Integer(i64::from(info.hero_type)));
@@ -278,13 +282,13 @@ fn hero_status(hero: &MapHero, info: &HeroInfo, art: &MapArt) -> Table {
     t.insert("morale".into(), Value::Integer(0));
     t.insert("luck".into(), Value::Integer(0));
     let stacks = hero.own.as_ref().map_or(&[][..], |o| &o.army);
-    t.insert("army".into(), army(stacks));
+    t.insert("army".into(), army(stacks, creatures));
     t
 }
 
 /// A town's status window (`live::TownStatus`): its name, its hall and fort, its garrison's
-/// mark and army, its silo and its gold.
-fn town_status(town: &Town, picks: Option<u64>) -> Table {
+/// mark and army (by `creatures`' numbers), its silo and its gold.
+fn town_status(town: &Town, picks: Option<u64>, creatures: &Creatures) -> Table {
     let mut t = Table::new();
     t.insert("kind".into(), Value::Integer(TOWN));
     let name = town.name.as_ref().map_or_else(
@@ -308,7 +312,7 @@ fn town_status(town: &Town, picks: Option<u64>) -> Table {
     let garrison = facts.is_some_and(|f| f.garrison_hero);
     t.insert("garrison".into(), Value::Integer(i64::from(garrison)));
     let stacks = town.garrison.army.as_deref().unwrap_or(&[]);
-    t.insert("army".into(), army(stacks));
+    t.insert("army".into(), army(stacks, creatures));
     let income = facts.map_or(&[][..], |f| &f.income);
     let mut silo: Vec<i64> = income
         .iter()

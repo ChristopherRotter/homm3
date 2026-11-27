@@ -59,6 +59,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   second core resource needs a mine of it in the adventure pack. `towns/tests.rs` (E31 T2g)
   clears the starting resources, sets the fight values and adds the mine. `h3_adventure::allied`
   is the player alone until E10: a branch for an ally is dead (left out, AI-STUB-18).
+- The object value switches on the original's class, which `objects::Class::of` reads from the
+  engine's `ObjectKind` and its parameters (CPU-OBJ-001, E31 T2h): a new kind, or a new parameter
+  that tells two classes apart (a bonus visitable's days, a gift's price), needs its arm there,
+  else the object is worth 0. In `objects/tests.rs` a visit marks a free object (pin the value
+  before it), a hero starts at full mana (the Magic Well refuses it) and the Black Market's stock
+  is drawn at the setup (set the drawn artifacts' costs).
 
 **Environment**
 - An agent sees the projected observation only (AI-Q1 decision 10); `fork` and `state_hash` read the full state, for tools and training (the C ABI is for trusted local consumers, ADR-0011; never forward the hash to a client).

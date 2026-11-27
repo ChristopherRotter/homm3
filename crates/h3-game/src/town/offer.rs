@@ -65,16 +65,14 @@ impl GameState {
 /// of each of the player's two tavern slots that passes, in slot order (TWN-TAV-003; design §64,
 /// §76: `hire::legal_hires`), then since E09 T49a2 its opening where it would change something
 /// (TWN-GLD-006; design §90), then since E09 T49b a spell book's purchase where it would be
-/// accepted (TWN-GLD-007; design §91; both `guild::offers`), then since E09 T28a the hero
-/// moves between its bars `Enter`,
-/// `Leave`, `Swap` the adventure accepts (TWN-ROW-002 to -004; `rows::legal_moves`). A town built
-/// in today offers no build (TWN-BLD-004) and costs no Capitol test; a map without towns walks
-/// nothing. A market window's opening (TWN-MKT-002, E09 T58a1) is not listed yet (`TWN-STUB-22`,
-/// E09 T58a2).
-// stub: TWN-STUB-22 (a town's market window is not listed: `apply` accepts it, the env and the
-// random plans never open it)
+/// accepted (TWN-GLD-007; design §91; both `guild::offers`), then since E09 T58a2 its market
+/// window where it opens and offers a legal answer (TWN-MKT-002; design §104, §115:
+/// `market::listed`, the player's count of Marketplaces once a listing), then since E09 T28a the
+/// hero moves between its bars `Enter`, `Leave`, `Swap` the adventure accepts (TWN-ROW-002 to
+/// -004; `rows::legal_moves`). A town built in today offers no build (TWN-BLD-004) and costs no
+/// Capitol test; a map without towns walks nothing.
 // rule: TWN-BLD-001, TWN-BLD-004, TWN-REC-001, TWN-REC-002, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004
-// rule: TWN-TAV-003, TWN-GLD-006, TWN-GLD-007
+// rule: TWN-TAV-003, TWN-GLD-006, TWN-GLD-007, TWN-MKT-002
 pub(crate) fn legal_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -85,6 +83,8 @@ pub(crate) fn legal_builds<'a>(
     let part = rules.towns();
     // E09 T38a2: the hires' player-wide tests, once a listing.
     let hiring = super::hire::hire_slots(state, rules, player);
+    // E09 T58a2: the player's count of Marketplaces, at the first window that opens.
+    let mut counted = None;
     map.towns()
         .iter()
         .filter(move |&&index| adventure.owner(index) == Some(player))
@@ -110,9 +110,10 @@ pub(crate) fn legal_builds<'a>(
             // E09 T49a2: the hero on its entrance found once, for the hires, the opening and the
             // moves (`bench-check`'s `legal-towns-36`).
             let entrance = adventure.town_entrance_hero(town);
-            let visitor = entrance
+            let on_entrance = entrance
                 .and_then(|(_, at)| at)
-                .map(|at| adventure.heroes()[at].id);
+                .map(|at| &adventure.heroes()[at]);
+            let visitor = on_entrance.map(|on| on.id);
             let free = entrance.is_some_and(|(_, at)| at.is_none());
             // E09 T38a2: the hires of its Tavern (TWN-TAV-003).
             let hires = super::hire::legal_hires(state, rules, (town, hiring), free);
@@ -120,11 +121,21 @@ pub(crate) fn legal_builds<'a>(
             // T49b: then a spell book's purchase for its hero (TWN-GLD-007). Both asked at once,
             // each carried as a town command (`bench-check`'s `legal-towns-36`: a game command
             // in the chain's state is copied with it).
-            let heroes = (visitor, adventure.town_hero(town).map(|on| on.id));
+            let garrison = adventure.town_hero(town);
+            let heroes = (visitor, garrison.map(|on| on.id));
             let (open, book) = super::guild::offers(state, rules, (town, player), heroes);
             let open = open.then_some(TownCommand::Open { town });
             let book = book.then_some(TownCommand::BuySpellBook { town });
-            let guild = open.into_iter().chain(book).map(GameCommand::Town);
+            // E09 T58a2: its market window (TWN-MKT-002), its heroes as `market::open` reads
+            // them.
+            let at = (on_entrance, garrison);
+            let market = super::market::listed(state, rules, (town, player), at, &mut counted)
+                .then_some(TownCommand::Market { town });
+            let guild = open
+                .into_iter()
+                .chain(book)
+                .chain(market)
+                .map(GameCommand::Town);
             // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
             let moves = super::rows::legal_moves(state, rules, player, (town, entrance));
             builds

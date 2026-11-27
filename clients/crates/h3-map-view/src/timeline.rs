@@ -129,7 +129,7 @@ use h3_render::screen::Screen;
 use h3_ui::message::{self as boxes, Key, MessageBox, Open, Outcome};
 use h3_ui::ui::Item;
 
-use crate::asks::Fade;
+use crate::asks::{Fade, Reveal};
 use crate::finds::{FindArt, Gain, pickup};
 use crate::hover::{self, Hint, Hover, PanelItems, Selection};
 use crate::layout::{AdventureLayout, DIRECTIONS};
@@ -141,6 +141,7 @@ use crate::live::{
     Status, Summoned, Turn, TurnStatus,
 };
 use crate::minimap::{MinimapArt, divided};
+use crate::notice::Notice;
 use crate::panels;
 use crate::picks::Picks;
 use crate::reach::{
@@ -1230,8 +1231,9 @@ pub struct Answer {
     /// What the panels show at the taken object's dissolve's end (E24 M4 T2c: a chest's
     /// experience, its levels after the chest's removal).
     pub after: Gain,
-    /// The terrains revealed (a bit per terrain, `reveal_terrain_mask` 0x4CA240).
-    pub reveal: u32,
+    /// What it reveals (a recording's terrains, `reveal_terrain_mask` 0x4CA240; since E24 M5 T4c
+    /// play's tiles, the record's: [`Reveal`]).
+    pub reveal: Reveal,
     /// A Cancel's answer marks the find answered as an OK's does (E24 M4 T2b2 part B: the
     /// Arena's, MCL-Q33).
     pub marks: bool,
@@ -2050,6 +2052,9 @@ const SUMMON_BOAT: u8 = 0;
 
 /// Kind 6, a resource found (the status window's kind a pile's visit asks).
 const KIND_FOUND: u8 = 6;
+
+/// A town's class (as the game loads it; E24 M5 T4c: a click on a town of the viewer's).
+const TOWN_CLASS: u32 = 98;
 
 /// A creature `stack` joining `army`: the slot of its kind, else the first empty one; none with
 /// no room (*provisional*: `army_dialog_with` not built).
@@ -3140,7 +3145,8 @@ impl Loop {
     /// A button's command (`adventure_command` 0x409A70, its switch 0x409AB4): the
     /// underground's (0x409F6B), next hero's (0x409D89), end turn's (0x409D12, E24 M4 T1a), cast a
     /// spell's (E24 M4 T2d3), the hero list's arrows (0x403220) and the town list's (0x403280); the
-    /// rest a dialog's or the engine's (M4, M5).
+    /// rest a dialog's or the engine's (M4, M5). Since E24 M5 T4c the kingdom overview's, the quest
+    /// log's and the adventure options' a notice in play ([`Loop::screen`]).
     fn command(&mut self, t: u32, id: u16) -> Result<(), Unplayable> {
         match id {
             panels::id::UNDERGROUND => {
@@ -3150,6 +3156,10 @@ impl Loop {
             panels::id::NEXT_HERO => self.next_hero(t),
             panels::id::END_TURN => self.end_turn(t),
             panels::id::CAST => self.cast_open(t),
+            // stub: MCL-STUB-7 (the screens of M6 and M7 a notice in play)
+            panels::id::KINGDOM => self.screen(Unplayable::Command(id), Notice::Kingdom),
+            panels::id::QUESTS => self.screen(Unplayable::Command(id), Notice::Quests),
+            panels::id::ADVENTURE => self.screen(Unplayable::Command(id), Notice::Adventure),
             id if panels::id::HEROES.contains(&id) || panels::id::TOWNS.contains(&id) => {
                 let towns = panels::id::TOWNS.contains(&id);
                 let up = id == panels::id::HEROES[0] || id == panels::id::TOWNS[0];
@@ -3164,6 +3174,26 @@ impl Loop {
     /// draw), nothing live.
     fn unbuilt(&self, why: Unplayable) -> Result<(), Unplayable> {
         if self.live { Ok(()) } else { Err(why) }
+    }
+
+    /// A screen of M6 or M7 not built (E24 M5 T4c, design §5.28): in play its notice
+    /// ([`Loop::notice`]), else as [`Loop::unbuilt`].
+    fn screen(&mut self, why: Unplayable, notice: Notice) -> Result<(), Unplayable> {
+        if self.notice(notice) {
+            return Ok(());
+        }
+        self.unbuilt(why)
+    }
+
+    /// The notice of a screen without a decision opened (E24 M5 T4c, design §5.28, `MCL-STUB-7`):
+    /// its box from the host's facts (in play alone, [`Hosted::notices`]), its OK closing it as a
+    /// plain box's; whether it opened.
+    fn notice(&mut self, notice: Notice) -> bool {
+        let Some(laid) = self.host.as_ref().and_then(|h| h.notice(notice)).cloned() else {
+            return false;
+        };
+        self.open_box(laid, Told::Plain);
+        true
     }
 
     /// End Turn's command (`adventure_command` 0x409D12 to 0x409D84; E24 M4 T1a, design §5.1):
@@ -4514,13 +4544,27 @@ impl Loop {
             self.take(t, object, answer.after, fade);
             return Ok(());
         }
-        if answer.reveal != 0 {
-            self.drawn.revealed |= answer.reveal;
+        if self.reveal(answer.reveal) {
             self.draw(t);
             self.draw_minimap();
         }
         self.visited(t, i);
         Ok(())
+    }
+
+    /// What an answer reveals shown at the view's and the minimap's next draws: a recording's
+    /// terrains, play's tiles with the walks' (E24 M5 T4c, design §5.29); whether it reveals any.
+    fn reveal(&mut self, reveal: Reveal) -> bool {
+        match reveal {
+            Reveal::Terrains(mask) if mask != 0 => self.drawn.revealed |= mask,
+            Reveal::Tiles(tiles) if !tiles.is_empty() => {
+                let mut walked = (*self.walked_tiles).clone();
+                walked.extend(tiles);
+                self.walked_tiles = Arc::new(walked);
+            }
+            _ => return false,
+        }
+        true
     }
 
     /// Find `i`'s visit ended with nothing more to show (E24 M4 T2b2 part A1): one from beside
@@ -5221,9 +5265,10 @@ impl Loop {
     /// A find's gain shown (E24 M4 T2a2, *provisional*: the engine's in time): the kingdom's
     /// resources, the resource bar drawn; the selected hero's primary skills, morale (−3 to 3; the
     /// week's seventh day's on that day) and luck (−3 to 3) in its windows and its army's new
-    /// creatures (each the slot of its kind, else the first empty one; none with no room), its
-    /// spell points in the kingdom's list, the window shown drawn; since E24 M4 T2c its
-    /// experience, which nothing shows (its levels: [`Loop::levels_due`]).
+    /// creatures (each the slot of its kind, else the first empty one; none with no room; since
+    /// E24 M5 T4c play's slots as the record tells them, [`Gain::slotted`]), its spell points in
+    /// the kingdom's list, the window shown drawn; since E24 M4 T2c its experience, which nothing
+    /// shows (its levels: [`Loop::levels_due`]).
     fn gain(&mut self, gain: Gain) {
         // A record's visit's level-ups due with its experience (E24 M4 T6, the reviewer's R2-3:
         // the record's, any hero's).
@@ -5266,8 +5311,17 @@ impl Loop {
             }
             hero.morale = hero.morale.saturating_add(morale).clamp(-3, 3);
             hero.luck = hero.luck.saturating_add(gain.luck).clamp(-3, 3);
-            for stack in gain.army.iter().flatten() {
-                joined(&mut hero.army, *stack);
+            if gain.slotted {
+                // Play's: each slot's stack as the record tells it (E24 M5 T4c).
+                for (held, now) in hero.army.iter_mut().zip(gain.army) {
+                    if now.is_some() {
+                        *held = now;
+                    }
+                }
+            } else {
+                for stack in gain.army.iter().flatten() {
+                    joined(&mut hero.army, *stack);
+                }
             }
         };
         let kingdom = &mut self.kingdom;
@@ -5292,10 +5346,11 @@ impl Loop {
     /// not (`mobilize_hero` with 0, 0, 1: its lists' redraw leaving the status bar empty,
     /// MCL-Q22), the view drawn and shown with the objects' step when due (`view_show_step`), the
     /// adventure cursor; then the spell book, modal ([`Loop::book_act`]; its screens are M5's).
-    /// Not built past the casts a recording gives ([`Start::casts`]); live (the window) nothing.
+    /// Not built past the casts a recording gives ([`Start::casts`]); live (the window) nothing,
+    /// in play since E24 M5 T4c the spell book's notice ([`Loop::screen`]).
     fn cast_open(&mut self, t: u32) -> Result<(), Unplayable> {
         if self.live || self.next_cast >= self.casts.len() {
-            return self.unbuilt(Unplayable::Command(panels::id::CAST));
+            return self.screen(Unplayable::Command(panels::id::CAST), Notice::Book);
         }
         if !self.lifted {
             self.lift(t, true);
@@ -5623,14 +5678,14 @@ impl Loop {
 
     /// A hero list's slot clicked (`adventure_click` 0x409829): the hero in it chosen, unless the
     /// slot lies past the list (the slot, not the top plus it, is tested: 0x409844) or holds the
-    /// selected hero, whose screen it opens (M4, M5: refused).
+    /// selected hero, whose screen it opens (M6: refused; in play its notice since E24 M5 T4c).
     fn hero_slot(&mut self, t: u32, slot: usize, at: [i32; 2]) -> Result<(), Unplayable> {
         let i = self.kingdom.tops[0].saturating_add(slot);
         if slot >= self.kingdom.heroes.len() || i >= self.kingdom.heroes.len() {
             return Ok(());
         }
         if self.kingdom.selected == Selected::Hero(i) {
-            return self.unbuilt(Unplayable::Panel(at));
+            return self.screen(Unplayable::Panel(at), Notice::Hero);
         }
         let Some(chosen) = self.chosen_hero(i).cloned() else {
             return self.unbuilt(Unplayable::Panel(at));
@@ -5643,11 +5698,14 @@ impl Loop {
     /// A town list's slot clicked (`adventure_click` 0x40987D, a slot holding a town: the empty
     /// ones take no click): move hero disabled and a path shown cleared, the view drawn and
     /// shown with the objects' step when due (0x4098BB to 0x40998A); then the town chosen, or its
-    /// screen opened when it is the selected one (M4, M5: refused).
+    /// screen opened when it is the selected one (M7: refused; in play its notice since E24 M5
+    /// T4c, *provisional*: before those draws).
     fn town_slot(&mut self, t: u32, slot: usize, at: [i32; 2]) -> Result<(), Unplayable> {
         let i = self.kingdom.tops[1].saturating_add(slot);
-        let chosen = self.chosen.towns.get(i).cloned().flatten();
-        let (Some(chosen), false) = (chosen, self.kingdom.selected == Selected::Town(i)) else {
+        if self.kingdom.selected == Selected::Town(i) {
+            return self.screen(Unplayable::Panel(at), Notice::Town);
+        }
+        let Some(chosen) = self.chosen.towns.get(i).cloned().flatten() else {
             return self.unbuilt(Unplayable::Panel(at));
         };
         self.buttons.move_hero = false;
@@ -6064,6 +6122,13 @@ impl Loop {
     /// hero stands, asked of it first.
     fn click(&mut self, t: u32, at: [i32; 2]) -> Result<(), Unplayable> {
         let tile = self.rules.tile_at(self.view, at);
+        // In play the selected hero's or town's screen clicked on the map: its notice (E24 M5 T4c).
+        // stub: MCL-STUB-7 (the screens of M6 and M7 a notice in play)
+        if let Some(notice) = self.screen_at(tile)
+            && self.notice(notice)
+        {
+            return Ok(());
+        }
         let pos = |a: &Arrow| [i32::from(a.at.x), i32::from(a.at.y), i32::from(a.at.z)];
         if self.path.last().is_some_and(|(_, a)| pos(a) == tile) {
             self.walk_path(t);
@@ -6090,6 +6155,22 @@ impl Loop {
         // set: 0x4191A2; design §4.1).
         self.buttons.move_hero = self.green();
         Ok(())
+    }
+
+    /// The screen a click on `tile` opens (E24 M5 T4c, *provisional*: `adventure_click` not read):
+    /// the selected hero's on its tile (M6's hero screen), a town of the viewer's while a town is
+    /// selected (M7's town screen); none else.
+    fn screen_at(&self, tile: [i32; 3]) -> Option<Notice> {
+        let here = |p: Pos| [i32::from(p.x), i32::from(p.y), i32::from(p.z)] == tile;
+        if self.hero.is_some_and(|h| here(h.at)) {
+            return Some(Notice::Hero);
+        }
+        let town = self
+            .hover
+            .as_ref()
+            .and_then(|h| h.base(tile))
+            .is_some_and(|t| t.class == TOWN_CLASS && t.owner == Some(self.player));
+        (town && matches!(self.kingdom.selected, Selected::Town(_))).then_some(Notice::Town)
     }
 
     /// Whether the path shown holds a green arrow, a step the hero pays today.

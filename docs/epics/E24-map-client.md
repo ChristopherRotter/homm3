@@ -7,7 +7,7 @@ T6b2a); **M3 refined** (2026-10-28, M3 T0, with the user); **M3 closed** (2026-1
 review list accepted at T7c1); **M4 refined** (2026-10-31, M4 T0, with the user); **M4 closed** (2026-11-23,
 T6: six reviewers, their findings fixed or asked; the review list accepted at M5 T0); **M5
 refined** (2026-11-24, M5 T0, with the user: the milestones split, M5 the hot seat on the
-adventure map, M6 to M8 sketched); next M5 T2 (`docs/lanes/map-client/QUEUE.md`).
+adventure map, M6 to M8 sketched); next M5 T5 (`docs/lanes/map-client/QUEUE.md`).
 Lane: map-client (`docs/lanes/map-client/HANDOFF.md`: the autonomy contract, the user's asset
 notes). Opened 2026-10-23 when the user split the client lane at E17 M3's closure (CLT-Q18).
 Decisions so far live here (no ADR of its own yet; ADR-0020 and ADR-0024 bind it as they bind
@@ -204,7 +204,9 @@ clock and the battles as the original's.
   2026-11-26: the log's "M5 T4a", design §5.26; `h3_map_view::reach`), T4b every box answered as
   its command with the seeded random picks (kept whole by the user at its start; **done**
   2026-11-26 in two sessions: the log's "M5 T4b, part one" and "part two", design §5.27;
-  `h3_map_view::picks`, MCL-Q59, MCL-Q60), T4c the M6/M7 notices, the facts audit and T4's acceptance game; T5, the hand-over and the clock; T6, the battles in play; T7, a whole game;
+  `h3_map_view::picks`, MCL-Q59, MCL-Q60), T4c the M6/M7 notices, the facts audit and T4's acceptance game (kept whole by the user at its
+  start; **done** 2026-11-27 in four parts: the log's "M5 T4c, part one" to "part four", design
+  §5.28 to §5.30; `h3_map_view::notice`, `MCL-STUB-7`, MCL-Q61 to Q69); T5, the hand-over and the clock; T6, the battles in play; T7, a whole game;
   T8, M5's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
   hot-seat game on a shipped map played from the shell's Begin to a day limit, headless by
@@ -265,17 +267,21 @@ clock and the battles as the original's.
   recording or a situation gave (the engine's paths: M4, M5), and no step costs points (the
   walk on after a held key's release has no end but the queue's: MCL-Q10). In play since M5 T4a
   the engine's: its reach, its walks, its refusals.
-- **The facts the view lacks in play** (T4's list, begun at T4a; T4c completes it): the
-  selected hero's costs past today (the cursor's later days and a click's red arrows: MCL-Q37),
-  whether a hero can still move (MCL-Q36), a step's own points and reveal (MCL-Q39), the tiles a
-  monster guards and a town's or garrison's army (MCL-Q37); seen at T4a, not yet asked: the
-  Redwood Observatory's visit tells nothing (a find not laid out from the record). Seen at T4b,
-  asked: an offer's and a choice's facts come from the engine's projection (`HotSeat::decision`:
-  the fold keeps none, `SRV-STUB-5`; MCL-Q60); replies still built from the client's tables (the
-  Warrior's Tomb's morale lost and its artifact's skills, a Cartographer's price and its terrains
-  revealed) and the map's text (Pandora's Box's), a visited once-per-hero object telling nothing
-  (`SRV-STUB-4`; MCL-Q59); a monster's count is its word's first; a guarded object's fight and a
-  dwelling's hire not asked in play (M5 T6, M6 and M7).
+- **The facts the view lacks in play** (T4's list, begun at T4a, completed at T4c by the facts
+  audit: design §5.29): every fact play shows comes from the record, the decision or `observe`
+  (MCL-Q60, `SRV-STUB-5`) but these, each asked of the engine lanes (their inboxes told): a
+  hero's name and portrait (MCL-Q61), the map's texts (MCL-Q62; Pandora's Box's still read from
+  the map file meanwhile), a monster's exact count (MCL-Q63), the teams (MCL-Q64), the derived
+  values (MCL-Q65, with MCL-Q36: the artifacts' skills, Leadership, Luck), a level-up offer's
+  level (MCL-Q66), an unnamed town's name (MCL-Q67, the client's seeded pick meanwhile), a
+  join's slot (MCL-Q69); the selected hero's costs past today and the tiles a monster guards
+  (MCL-Q37), a step's own points and reveal (MCL-Q39); a once-per-hero mark (`SRV-STUB-4`),
+  where an added artifact lands (`SRV-STUB-7`), a mine's income (`SRV-STUB-10`). Taken from the
+  record at T4c: the Warrior's Tomb's morale, a Cartographer's price and tiles, the
+  observatories' visit, the Deity's week, a reply's object taken, the slots where told, a
+  creature's number (the packs' handle, `engine::Creatures`). An unasked decision (a fight, a
+  hire, a Shipyard, a visit window, a meeting, an army dialog) is closed by its notice
+  (`MCL-STUB-7`) until M5 T6, M6 and M7 build it.
 
 ## Review lists
 
@@ -326,3 +332,25 @@ here.
   (the Tree's free level); each answer's line in play's report; a revisit keyed past the walks
   (`engine::REVISIT`); the client's picks (splitmix64 seeded by the game's seed, a town's name by
   its id among its faction's sixteen).
+- The screens' notice (M5 T4c, *provisional*; design §5.28): the notices' words (the map
+  client's own keys in `clients/text/map/`, MCL-Q68 asks whether to fold them into the common
+  files); every decision the view does not ask closed by its closing answer, a fight's and a
+  dwelling's guards' question declined (the user's at T4c), a Shipyard's boat and a hire question
+  declined; the screens given a notice (the hero and town screens, the spell book, the kingdom
+  overview, the quest log, the adventure options; sleep, the system options, view world, the
+  puzzle and dig left); the town notice on any own town clicked while a town is selected (the
+  original's click not read); a visit from beside told by the engine's walk, not the hover's
+  blocked bit; a monster's zone's decision placed on its object; a joined monster with no room
+  taken off after its army dialog.
+- The facts audit (M5 T4c, *provisional*; design §5.29): **for the user to confirm**, the view
+  reading the engine's own `GameRuleset` (a hero's class, an object's kind, a random object's
+  shift); the reveal's two forms (`asks::Reveal`); `Gain::slotted`; a missing upgrade named as its
+  level's creature in the Deity's text; the import's creature numbers copied into the view
+  (`engine::Creatures`, tested against the import), or the adventure lane exposing its table.
+- T4's game (M5 T4c, *provisional*; design §5.30): `Barbarian Breakout`, two humans, eight days;
+  a later start's objects missing from the view on explored tiles taken off as gone; **for the
+  user**: play's frames are not compared with the original's (play runs on the window's clock
+  with live input and writes no digests; the headless `sequences --frames` path plays the
+  scripted games through the same loop from a record and stands in; a virtual-clock driver of
+  play not built); a key step onto an Obelisk refused (a blocker in the engine until E09's
+  increment 8, `TWN-STUB-17`).

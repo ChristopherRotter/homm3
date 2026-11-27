@@ -4,6 +4,29 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-27 (this lane, E24 M5 T4c done, kept whole by the user, in four parts: the log's
+  "M5 T4c, part one" to "part four", design §5.28 to §5.30: the screens' notice closing a
+  decision the view does not ask (`MCL-STUB-7`), the facts audit (MCL-Q61 to Q69), the creatures'
+  handles, T4's game on `Barbarian Breakout`): the task as it stood, verbatim.
+
+  ### E24 M5 T4c — the screens' notice, the facts audit, T4's game
+
+  - **Scope:** a screen of M6 or M7 (the hero and town screens, the spell book, a visit window) a
+    notice in the client's words, its decision closed (`MCL-STUB-7`, planned); the facts audit
+    (**facts first**, the user at T0): no rules table of the client's and no map text read from the
+    file in play (the finds' and the hints' tables, the visit marks, the town names), each fact the
+    view lacks an `MCL-Q<n>` and a note in the engine lanes' inboxes; the list of facts the view
+    lacks completed in the epic's risks (begun at T4a). From T4b: MCL-Q59's client part (the
+    replies taken from the record's events where they carry them); a decision the view does not
+    ask (a dwelling's or a Refugee Camp's hire dialog, a Shipyard's boat, a University, a market,
+    an Altar, a Hill Fort, a map Tavern, a meeting, an army dialog) holds the game until answered:
+    the notice closes it (its `Close` or decline) so play goes on.
+  - **Acceptance:** a hot-seat game played by keys and mouse from Begin (until the shell's crate,
+    `h3-map-view play`) through several days, every command accepted by the engine; scripted games
+    compared with the original's frames where the commands are the same; the list in the epic's
+    risks; the scoped verify.
+  - **Depends on:** T4b (done). **Status:** queued (next).
+
 - 2026-11-26 (this lane, E24 M5 T4b done, kept whole by the user, in two sessions: the log's
   "M5 T4b, part one" and "part two", design §5.27: a visit's questions, choices and level-ups
   and Space's visit answered through the host, the client's own random picks, MCL-Q59 and
