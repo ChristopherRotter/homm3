@@ -292,6 +292,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    prison's visit outcome names it; the game frees it unless the visitor's player has the town
    part's most heroes on the map (garrisons not counted, as the hire): its colour takes the type,
    the hero joins the end of the player's list with its day's land points (E15-1, E15-2).
+   **The teams and the game's end** (E10 increment 1; E10 decisions 9 to 19; design note
+   `E10-design.md` §1, §2, §8 to §14): `PlayerSetup` carries the player's team (the map's, every
+   colour its own without; checked dense at the build); `GameState` holds per player its team,
+   its defeat (the day and why: no hero and no town, or the seven days out) and its days without
+   a town (none, or 7 to 0), and the game's **result** once over (the winning team or none, and
+   why: a conquest, no human left). The game **checks the end** after every accepted command and
+   system command but `EndTurn`, at each turn's end before the outgoing player's count-down and at
+   a human's turn start (never the game's first; point 3): the eliminations in colour order, then
+   the verdict. A defeat is the game's step over the contexts' infallible functions: the
+   adventure frees the player's ownables and takes its heroes off the map, the game moves them
+   into the pool (E09's leave) and frees its tavern offers. Once over, **every command is
+   refused** (`GameOver`), changing nothing, and no decision is open.
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -401,6 +413,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    From increment 13 a viewer sees a **creature bank**'s type and, by its team's visit mark, the
    original's hint, the adventure observation's object view (ADR-0016 point 6); no game-level view
    is added. A team's new mark is told with the hint after it.
+   **E10's increment 1** (design note `E10-design.md` §6, §14, §15): the system's closed set
+   gains **`HandOver { player }`** (SRV-Q29's removal, E10 decision 15): the player's `human` flag
+   cleared, told to every player, then the check; refused for a defeated player or a computer;
+   its turn and pieces stay, the host plays the colour with its system commands (and, with E31,
+   the original's computer player). No player command removes a player. **Views:** each player's
+   team, defeat and whether it is human are public, its days without a town its own, the result
+   public; a viewer sees a hero, town or garrison of its team at the popups' top level (ADR-0016
+   point 6).
 3. **Turn groups.** A day is a schedule: an ordered list of turn groups, each a set of players
    who act together. A group's turn starts with each context's start-of-turn step for its
    players and ends when each of them has ended its turn or left the game. After the last group
@@ -547,6 +567,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    kind), then draws the weekly objects' contents and **the camps' creatures** in one pass in
    object order, then grows the monsters (GAM-CAL-002 amended; ADR-0016 point 4; batch E10's E10-8
    and E10-9).
+   **E10's increment 1** (design note `E10-design.md` §9 to §11): a **defeated** player leaves
+   the schedule: its turn ends at its defeat (its group's ends when the others' have), it never
+   acts again, and it leaves every step that walks the players (the day's income, the week's
+   tavern heroes, the Thieves' Guild, the market's recipients; the original's readers of its
+   defeated byte). At **each turn's end** the game checks, then lowers the outgoing player's days
+   without a town by one when above 0 (a computer's too); at a **human's** turn start it checks
+   before the turn's timed events (a computer's runs none), and every turn start tells a player
+   with days its days left after them. Building the state checks nothing (A-57, `ADV-QUIRK-61`).
 4. **An RNG stream per player** (kernel streams, ADR-0003 point 7). Randomness caused by a
    player's command draws only from that player's stream; the day advance draws from a game
    stream, and the random placeholders of a setup are resolved from a setup stream when the
@@ -977,6 +1005,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    `BuyWarMachine` where the purchase is legal; `BuildBoat`; `University` per hero where a slot is
    open and the treasury holds the price; `Transform` per stack that changes. Inside a town's window
    the answers are listed as a map market's, no transfer.
+   **E10's increment 1** (design note `E10-design.md` §5, §13; E10 decision 16): a step toward a
+   hero of the visitor's **team** opens the meeting as the visitor's owner's decision, as for an
+   own hero; onto the ally's hero it allows **gifts only**: a stack into an empty slot, an
+   artifact into an empty place or the backpack, nothing taken, none of the ally's settings
+   changed (typed refusals; D-82 the original's); the ally is told its hero's changes. An ally's
+   dwelling's hire dialog opens read-only, `Close` alone (built). The game's end drops every open
+   decision.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -1116,6 +1151,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (`GameObservation::hero_list`); the wire's and the protocol's fold keep it from the viewer's
    heroes on the map (one that left leaves it, one that came joins its end); a player's hero slots
    are its list's first eight places.
+   **E10's increment 1** (design note `E10-design.md` §16): the env's step reports the game's
+   result and each player's defeat; a defeated player or an ended game has no seat to move. The
+   action encoding stays v23 (the hand-over is the host's). Who is human is the seat's mark
+   (`PlayerSetup::human`): the verdict's "no human left" reads it, and a game built with no human
+   plays to one team.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -1225,6 +1265,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    to v84 (one per wire task). Shared (E08 T140): the six
    quirk flags of `ADV-QUIRK-15` and `-51` to `-55` in the core's profiles (no version moves: the
    faithful profiles' ruleset hashes do); no new stream.
+   **E10's increment 1** (design note `E10-design.md` §18) bumps the map import (the teams), the
+   adventure state hash (the teams, the explored layer per team), the game state hash (the teams,
+   the defeats, the days, the result), the adventure replay format (`hand-over`, the end) and
+   `h3-protocol`'s protocol (the server lane's); the next at merge: map import v30, adventure state
+   hash v31, game state hash v41, replay format v29, protocol v87 (E09 T58b, merged after the
+   draft, took replay format v28, protocol v86 and encoding v23). The action encoding stays.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -1653,6 +1699,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 - Increment 15 (E08 T137b, T140): the cast is one command with an optional target, validated in
   the game and the adventure before anything changes; a charged failure is an accepted command,
   not a rejection, so a rejected cast still leaves the state untouched.
+- E10 increment 1 (E10 T1b, T2): every loop over players must skip a defeated one; the check
+  runs after every command, so a rule that changes a hero's or a town's count or an owner needs no
+  call of its own. A finished game is a final state: replays, the env and the server stop at its
+  `GameOver`.
 
 ## Alternatives considered
 
@@ -1767,6 +1817,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   (E12 with the information objects, decision 406); the cast's book test (the draft's, until
   batch E15's E15-15 read none); the levels at load in type order, as the original's loop (E08
   decision 410: no outcome against the original differs).
+- E10 increment 1 (ADV-Q65): VCMI's moment for the seven days (the defeat at the seventh turn's
+  end; D-80); playing on after the last human (VCMI's, D-84); a removed player defeated with its
+  towns made neutral, or kept by nobody's turn (D-83); merging gifts into an ally's stack (VCMI's,
+  D-82); a check when the game is built (A-57); the check only at the original's 37 sites (each
+  rule calling it: more code, the same verdicts but a days' defeat's moment).
 
 ## Revision history
 
@@ -1962,3 +2017,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   Door's targets by a per-hero query (point 8, replacing the paragraph written before T144); the
   versions as built (point 9). Drafted in E08 T141a and T144a2
   (`docs/lanes/adventure/adr-drafts/0016-0017-hero-list.md`, `0017-casts-encoding.md`, deleted).
+- 2026-11-27 (E10 T2 `shared/`; E10 decisions 9 to 19, ADV-Q65): points 1, 2, 3, 6, 8 and 9
+  amended for E10 increment 1, the teams and the game's end; a consequence, an alternative.
+  Drafted in E10 T1b (design note `E10-design.md`;
+  `docs/lanes/adventure/adr-drafts/0017-e10-increment-1.md`, deleted); point 8's encoding and
+  point 9's next numbers moved past E09 T58b's (encoding v23, replay format v28, protocol v86),
+  merged after the draft; as built with batch GAM-1's outcome at T7.
