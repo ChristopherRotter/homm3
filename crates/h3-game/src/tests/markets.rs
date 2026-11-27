@@ -122,25 +122,30 @@ fn a_markets_visit_opens_its_decision_for_its_owner_until_it_is_left() {
     let rules = market_rules();
     let post = rules.adventure().object_type_by_key("t:post").unwrap();
     let (mut state, events) = at_market(&rules, "t:post");
-    let opened = GameEvent::MarketOpened {
-        player: RED,
-        hero: HERO,
+    let place = MarketSeen::Object {
         object_type: post,
         anchor: AT,
+    };
+    let opened = GameEvent::MarketOpened {
+        player: RED,
+        hero: Some(HERO),
+        place,
     };
     assert_eq!(events, [opened]);
     assert_eq!(project(&opened, Viewer::Player(BLUE)), None);
     let open = state.market(RED).copied().unwrap();
-    assert_eq!((open.hero, open.object_type, open.anchor), (HERO, post, AT));
+    assert_eq!(
+        (open.hero, MarketSeen::of(&open.place)),
+        (Some(HERO), place)
+    );
     assert_eq!(state.market(BLUE), None);
     // The view: the screens, the rates of both trades (the core's order: gold, then wood) and
     // the recipient; nothing to sell or buy.
     let lot = |give, take| Lot { give, take };
     let trade = |give, take, lot| TradeOffer { give, take, lot };
     let seen = MarketView {
-        hero: HERO,
-        object_type: post,
-        anchor: AT,
+        hero: Some(HERO),
+        place,
         offers: MarketOffers {
             screens: vec![MarketScreen::Trade, MarketScreen::Transfer],
             count: 5,
@@ -324,9 +329,11 @@ fn a_sale_lowers_the_stack_then_gains_its_lots_and_keeps_a_creature() {
         events,
         [GameEvent::MarketOpened {
             player: RED,
-            hero: HERO,
-            object_type: guild,
-            anchor: AT,
+            hero: Some(HERO),
+            place: MarketSeen::Object {
+                object_type: guild,
+                anchor: AT,
+            },
         }]
     );
     // Red's nine imps of 50 gold: 35 gold each at five Marketplaces, or a wood for some.

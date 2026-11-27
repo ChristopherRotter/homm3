@@ -23,8 +23,8 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    AltarVisit, BattleStart, Combatant, Defender, HillFortVisit, MarketVisit, Meeting, Offer,
-    OfferKind, PrisonVisit, ServiceVisit, Sink, Viewers,
+    AltarVisit, BattleStart, Combatant, Defender, HillFortVisit, MarketPlace, MarketVisit, Meeting,
+    Offer, OfferKind, PrisonVisit, ServiceVisit, Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{
@@ -140,7 +140,9 @@ pub use economy::Weekly;
 pub use economy::allied;
 use flags::Flags;
 pub use hill_fort::{HillFortRow, HillFortUpgrade};
-pub use markets::{MarketOffers, MarketPurchase, Sale, SaleOffer, StockEntry, TradeOffer};
+pub use markets::{
+    MarketOffers, MarketPurchase, MarketWindow, Sale, SaleOffer, StockEntry, TradeOffer,
+};
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
 pub(crate) use passage::{Fog, Mode, Node};
@@ -2767,10 +2769,12 @@ impl AdventureState {
             // rule: ADV-MKT-001
             Effect::Market => {
                 outcome.service = Some(ServiceVisit::Market(MarketVisit {
-                    hero,
-                    index: visit.object,
-                    object_type: visit.object_type,
-                    anchor,
+                    hero: Some(hero),
+                    place: MarketPlace::Object {
+                        index: visit.object,
+                        object_type: visit.object_type,
+                        anchor,
+                    },
                 }));
             }
             // rule: ADV-ALT-001, ADV-BON-009

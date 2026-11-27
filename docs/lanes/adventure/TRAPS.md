@@ -9,7 +9,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - A shallow clone: `git fetch --depth=60 origin master` before `sandbox-setup.sh`, or its baseline runs in full.
 - The setup's baseline and `clients/capture/setup.sh` at once restarted the VM (E08 T129a, 8 GB, at the baseline's tests): start the capture setup once the baseline is stopped or done.
 - A `CARGO_TARGET_DIR` outside `target/` is not gitignored: keep extra target directories under `target/` (`target/cov`), or `git add -A` commits gigabytes.
-- A `git worktree` sharing the main clone's target directory (`CARGO_TARGET_DIR=<clone>/target`) builds the same crates under the same metadata hash: the later build is taken as fresh for the other tree (E08 T133a1: the branch's `original_data` example ran `master`'s code, its new lines missing). Give a worktree its own target directory under `target/`, or `touch` the main tree's sources after it built.
+- A `git worktree` sharing the main clone's target directory (`CARGO_TARGET_DIR=<clone>/target`) builds the same crates under the same metadata hash: the later build is taken as fresh for the other tree (E08 T133a1: the branch's `original_data` example ran `master`'s code, its new lines missing). E08 T145: `xtask` built so from a docs worktree kept that worktree as its root, and the main clone's `cargo xtask verify` checked the worktree (its `check-lane` failed on the other branch's files). Give a worktree its own target directory under `target/`, or `touch` the main tree's sources (`xtask/src/main.rs` too) after it built.
 - An experiment's map and template must come from the same compile (batch 1a's map predated the review's Q4c, T10c): after any change to a spec, compile again and copy the map to the user's folder in the same step. Since T16b a mismatch shows: the map's description starts with `Stamp <hex>.`, the template's top with its own (`docs/experiments/README.md`).
 - An experiment row that reads a path must click explored tiles: the original draws no path onto an unexplored tile (ADV-MOV-008), so a target past the hero's radius (5 without Scouting; ADV-FOG-002) reads "no path" whatever lies there (batch E7's E7-23 corridor, T58). Put the targets within the radius, or have the recipe read `explored:x,y` before the click.
 - A batch played past day 7 needs a town for each player (`[[map.town]]`, any owner since E08 T78): the original defeats a player seven days after it holds no town (player +0x3D), so a townless hot-seat run ends at day 8 (batch E9b, T78's review). Count the town's gold in the predictions.
@@ -97,11 +97,21 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   oracle that walks a reported path accepts the cut only then, the hero on its last stepped tile
   with the query's points there (`play.rs`' `landing`; `reach/tests.rs`' property since the seeds
   of 2026-11-26, which it had missed).
+- The plans' oracles and the casts (E08 T144b, `play/casts.rs`): a targeted cast (Scuttle Boat,
+  the door) is never in `legal_commands` but in `legal_cast_targets`, so `check_unlisted` takes it
+  from the query; the door's arrival is a `HeroTeleported` with no teleporter, so `check_jumps`
+  leaves a cast's out (`check_casts_step` checks it). An oracle that reads `HeroTeleported` or the
+  listing must know both before the plans' casters play it.
+- The cover test `the_plans_fly_and_walk_on_water` (E08 T145) asserts a `strict-fixed` flight over
+  a hidden tile that its 96 cases meet once: a change to the plans' draws or maps may lose it, so
+  raise the cases (not the assertion) and record the count; the compromise's stops stay 0 there.
 - The hygiene property and the seeded draws (`view.rs`): the other game may run on another seed
   (`unseen.seed`) and its unseen objects move the streams' positions, so every public draw the
   viewer is shown ends the comparison (a month's, a week's, a hire's, a Den of Thieves', since the
-  rmg lane's seed of 2026-11-25 a town's guild once built, `unguilded`): a new view of a drawn fact
-  needs its own exception there, or the property fails on a random case.
+  rmg lane's seed of 2026-11-25 a town's guild once built, `unguilded`; since E08 T144b Summon
+  Boat's and Scuttle Boat's chance, the viewer's own told otherwise ending it, another player's in
+  `outcome`'s `drawn`): a new view of a drawn fact needs its own exception there, or the property
+  fails on a random case.
 - The hygiene property and the teleporters (E08 T106b2, `view.rs`): an object `vary` adds needs
   its template in the map's table, which `lay_out` writes for the typed objects up to the last one
   the plan uses, the towns' after them (else the read fails: `InvalidValue { field: "object

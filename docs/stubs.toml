@@ -292,6 +292,12 @@ where  = "crates/h3-game/src/town/thieves.rs::thieves_guild_at"
 reason = "The Thieves' Guild shows no player's tactic from level 3 (TWN-TAV-009; E09 T39b1, design note E09-design.md section 73): the original's thieves_guild_fill 0x5DDA10 shows player +0x34, ai_type (a computer's drawn at the new game, 3 for a human), as a line of text. The computer's play is E13's; lifted there"
 epic   = "E09"
 
+[[stub]]
+id     = "TWN-STUB-21"
+where  = "crates/h3-game/src/town/market.rs::window_hero"
+reason = "An ally's town's trades wait for E10's teams (E09 T58a1, design note E09-design.md section 101, 'Not here'): every town command is the town owner's, so a player's visitor at an ally's Artifact Merchants or Freelancer's Guild (the original serves the current player's visitor there at the current player's count, TD-29, TWN-6-2) and an ally's visitor at an own town (not the window's hero) trade nothing; the University, the Transformer and the Blacksmith (E09 T59) the same. Lifted with E10's teams"
+epic   = "E09"
+
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]
@@ -371,7 +377,7 @@ epic   = "E31"
 [[stub]]
 id     = "RMG-STUB-1"
 where  = "crates/h3-rmg/src/generate.rs::generate"
-reason = "generate stops after step 2 (the frame, E14 T2c: the settings as run, the seed, water's Random, the templates kept and drawn, the banned heroes, the positions; E14 T3c: the generator's map reset and step 1's zone generators; E14 T3d: step 2's zone cells, water zones, polygons and water connections): GeneratedMap holds no terrain, objects or teams yet. Steps 3 to 15 come with increments 3 to 6 (each step's cells checked against the phase oracle), the writer's content (the header, players, teams' draw, tiles, objects) with increment 7"
+reason = "generate stops after step 5 (the frame, E14 T2c: the settings as run, the seed, water's Random, the templates kept and drawn, the banned heroes, the positions; E14 T3c: the generator's map reset and step 1's zone generators; E14 T3d: step 2's zone cells, water zones, polygons and water connections; E14 T3e: step 3's boxes, centroids, islands and terrain; E14 T4b: steps 4 and 5's towns and road targets): GeneratedMap holds no other objects and no teams yet. Steps 6 to 15 come with increments 4 to 6 (each step's cells checked against the phase oracle), the writer's content (the header, players, teams' draw, tiles, objects) with increment 7"
 epic   = "E14"
 
 [[stub]]
@@ -384,4 +390,16 @@ epic   = "E10"
 id     = "AI-STUB-17"
 where  = "crates/h3-game/src/computer/artifacts.rs::own_morale_and_luck"
 reason = "The original's computer player (E31 T2f): the hero's reads its owner's towns change are the engine's hero model's: its own morale and luck (hero_morale 0x4E39B0, hero_luck 0x4E36C0) lack the Castle's and Rampart's Grail structures' +2 (game buildings 26 of type 0 and 1), which the engine's battles lack too; its Necromancy share (hero_necromancy_power 0x4E3CD0, read uncapped by the codes 6 and 21) is h3_heroes::necromancy's, capped at 1.0 and without the Necropolis' Amplifier and Soul Prison (HER-NEC-001: with the towns, E09)"
+epic   = "E09"
+
+[[stub]]
+id     = "AI-STUB-18"
+where  = "crates/h3-game/src/computer/towns.rs::town_value"
+reason = "The original's computer player (E31 T2g): the army and town values' reads of the teams and of the victory and loss conditions: an ally's dwelling is worth 0 and an ally's town its visit value (h3_adventure::allied is the player alone until E10's teams); the dwellings to flag (ai_dwelling_value 0x529A30: 5 000 000 over the map's dwellings, victory kind 8), the loss of the capture's town (ai_town_capture_value 0x529CB0: 5 000 000, loss kind 0), and in ai_town_value 0x52AB80 the Grail to build there (kind 4), the artifact to bring there (kind 10) and the town to capture with the threat's and the strongest hero's 5 000 000 (kind 6); the engine has no victory or loss conditions until E10 increment 2 (survey section 5.4)"
+epic   = "E10"
+
+[[stub]]
+id     = "AI-STUB-19"
+where  = "crates/h3-game/src/computer/towns.rs::visit_of"
+reason = "The original's computer player (E31 T2g): the visit value's building a hero visits once (ai_town_building_value 0x52B1E0's switch 0x52B355 behind the hero's mark of the town, +0x121: the Tower's Wall of Knowledge its Knowledge gain +0x486, the Inferno's Order of Fire its Spell Power gain +0x47E, the Dungeon's Academy of Battle Scholars 1 000 experience, the Stronghold's Hall of Valhalla and the Fortress's Cage of Warlords a level's experience, each at its experience weight +0x109) waits for those buildings and their marks (E09 increment 7, decision 197)"
 epic   = "E09"

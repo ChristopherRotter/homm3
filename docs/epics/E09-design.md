@@ -3746,6 +3746,11 @@ build on (the ever-built set, `town_build_effects`); a capture moves its Marketp
 owner's count at once. D-70's rows are E08's `MarketParams` at 2, 4 and 8 (wood or ore for gold
 37, 62, 112; decision 201): nothing to compute here but the count. `h3_towns::marketplaces(store,
 part, player)` (a pure count over the owner's towns), the game clamping to the parameters' rows.
+- *As built* (T58a1, decision 224; `E09-log.md`): `h3_towns::marketplaces(store, part, towns)`
+  counts the given towns with a building of role `marketplace` ever built (the store knows no
+  owners: the game passes the trader's towns, as `holds_capitol` reads them; the ADR's `player`
+  argument is the game's); `h3-game`'s `town/market.rs` `count` clamps it to 1 ..= the market
+  parameters' `counts()` (1 without parameters), read at every answer and view of the window.
 
 ### 104. The window at a town (TWN-MKT-002; `TownCommand::Market { town }`; GAM-DEC-011 amended)
 
@@ -3776,6 +3781,32 @@ the town as its place; refusals typed (`TownCommandError`), nothing changed:
   `MarketOffers` (the screens, the count, the lots, the stock with its prices) with the artifact
   sale's (§107), the recipients; the owner's alone.
 - `MarketOpened` names the place and the hero (none possible); the `Leave` is E08's.
+- *As built* (T58a1, decision 224; `E09-log.md`): `TownCommand::Market { town }` and
+  `TownCommandError::NoMarket` (`h3-towns`); `h3_towns::check_market(record, part, hero)` gives a
+  `TownMarket { merchants, freelancers }` (the standing roles read once). The adventure's
+  `MarketVisit` is `{ hero: Option<HeroId>, place: MarketPlace }`, `MarketPlace::Object { index,
+  object_type, anchor }` or `Town(TownId)`; every check takes a resolved `MarketWindow { visit,
+  screens, count }` (`state/markets.rs`: `AdventureState::market_window` for a map market, refused
+  `Visit` for a town's place; `MarketWindow::check_screen` replaces `AdventureState::check_screen`;
+  `market_offers` is infallible, the sales none without a hero). The game's
+  `GameState::market_window` resolves a town's by `town::market::window` (the screens one of four
+  static lists in the original's order, Trade, Transfer, Buy, Sell; the trader's count), every
+  answer, the listing's answers and the view reading it once. The window's hero
+  (`town::market::window_hero`): the visitor when it is the actor's, with the flag off the garrison
+  hero when no visitor of the actor's stands (an ally's visitor is none: `TWN-STUB-21`).
+  `MarketOpened` and `MarketView` carry `hero: Option<HeroId>` and `place: MarketSeen`
+  (`Object { object_type, anchor }` or `Town(TownId)`, never an index); the decision's hash writes
+  the hero as an option and the place's tag (game state hash **v40**). Listed since T58a2
+  (decision 225; `TWN-STUB-22` lifted): `legal_builds` gives a town's `Market` after its spell
+  book's purchase and before its hero moves where `town::market::listed` holds (`check_market`
+  with the window's hero, the visitor and garrison hero with their owners found on the town's
+  entrance as for the guild; the trader's count once a listing; `GameState::offers_an_answer`: a
+  trade of a valued pair whose lot the treasury pays, asked first without a list, else
+  `market_answers`' sales and purchases with a hero); `check_market` and `marketplaces` read the
+  part's derived `MarketRoles` per record (not hashed, as `GuildRoles`). The wire (protocol **v85**): `TownCommand::Market`, `TownReject::NoMarket`,
+  `MarketSeen`, `MarketWindow`'s and `MarketOpened`'s optional hero and place; the replay word
+  `town market <town>` (format **v27**; the 118 goldens re-recorded from their commands: the
+  format and game state hash version lines and the hash lines only).
 
 ### 105. Resources, the transfer and the creature sale at a town (TWN-MKT-003)
 
@@ -3789,6 +3820,9 @@ E08's answers unchanged, at the town's count:
   T-28's flag off the garrison hero), the creature factor at the trader's count (C[*m*]: a whole
   gold cost from 8 Marketplaces), the army keeping a creature.
 - **Not offered at a town:** none of E08's; the Black Market's own stock is a map object's.
+- *As built* (T58a1): E08's answers unchanged in the game but for the window resolved first
+  (`state/market.rs`); `AdventureState::sell` lowers a garrison hero's stack too
+  (`town/rows.rs`' `garrisoned_mut`), its `ArmySlot` the hero's as for a visitor.
 
 ### 106. The Artifact Merchants' purchase (TWN-MKT-004)
 
@@ -3799,6 +3833,10 @@ resource, a combination's its parts' sum: §102); refused for an entry past the 
 decision 366), then the treasury (`CannotPay`); applied: paid, the artifact given (`HeroChanged`),
 the entry emptied **for every town and player** until the next month's draw (§3.3). The hero the
 window's (T-28). The original's price 0 at a count of 0 cannot arise (§103).
+- *As built* (T58a1): `check_buy` reads the place's stock (`market_stock`: a Black Market's with
+  its sold bits, or `merchants_stock`), `MarketPurchase` names the place, `buy` empties the
+  merchants' entry (`town/merchants.rs`' `empty_merchants_entry`, the block copied when a fork
+  shares it) or sells a Black Market's; `TWN-QUIRK-17` entered.
 
 ### 107. The artifact sale (TWN-MKT-005; `MarketAnswer::SellArtifact { place, take }`; ADV-MKT-002 amended)
 
@@ -3976,7 +4014,9 @@ Decision 210 (the original's town University runs the map's dialog functions, §
   stack that changes). The market's trades, sales and purchases inside a town's window are E08's
   56 entries; the University's purchases its four; each window's `Leave` the closing role. No
   transfer, as E08 (decision 372). The next version at merge per task, or one when tasks land
-  together.
+  together. *As built* (T58a2, decision 225): the opening `TOWN_MARKET` (145, after the casts so
+  that no entry moves; encoding **v22**), its tile mask the entrances of the towns of the listed
+  windows, building 0; the random agent draws it as every listed command.
 - **The protocol** (the server lane's paths, `cross-lane`): the decisions' places (`MarketWindow`'s
   object or town, its hero optional; the University's), `SellArtifact` with its refusals, the five
   commands with their refusals, the events' places; the next version per task at merge.

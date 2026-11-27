@@ -106,6 +106,9 @@ pub(crate) struct PartitionInput<'a> {
     /// `quirk.rmg.partition_units` (RMG-QUIRK-14): the other zones' base sizes in template units
     /// against a map distance, else their scaled sizes.
     pub partition_units: bool,
+    /// `quirk.rmg.fill_start_on_border` (RMG-QUIRK-25): a fill whose start and the cell left of
+    /// it lie on borders fills nothing, else it starts at [`Level::free_start`]'s cell.
+    pub fill_start_on_border: bool,
 }
 
 /// What step 2 leaves beside the cells, the template and the zone generators.
@@ -278,6 +281,8 @@ impl<T: Trace> Level<'_, '_, '_, T> {
                         terrain: WATER_TERRAIN,
                         position: [p[0], p[1], 0],
                         size: s,
+                        bounds: ZoneGenerator::NO_BOUNDS,
+                        town: None,
                     });
                     Some(self.gens.len() - 1)
                 } else {
@@ -484,47 +489,121 @@ impl<T: Trace> Level<'_, '_, '_, T> {
         }
     }
 
-    /// `rmg_zone_flood_fill` 0x53D380 for zone generator `g` and the record `r` at its centre:
-    /// from the centre on the map, else from the clip toward the destination of r's ring (r.Onext
-    /// first, r last) deepest in [1, W − 2] × [1, H − 2] (the first on ties; none, no fill); a
-    /// stack of seeds, each moved left while the cell left of it is free (zone byte 0xFF), then
-    /// filled rightwards while free (zone byte g's id, the land bit unless on the islands'
-    /// level 0), a seed above and below for each run of free cells there: the 4-connected free
-    /// region of the start, or of the cell left of it when the start is not free.
+    /// Whether the cell at (x, y) of the level is free (no zone byte: 0xFF); off the map, no.
+    fn free(&self, x: i32, y: i32) -> bool {
+        self.cells
+            .get(x, y, self.z)
+            .is_some_and(|c| c.zone_byte() == 0xFF)
+    }
+
+    /// The fill's start for zone generator `g` and the record `r` at its centre: the centre on
+    /// the map, else the clip from it toward the destination of r's ring (r.Onext first, r last)
+    /// deepest in [1, W − 2] × [1, H − 2] (the first on ties; none, no fill; the clip may lie off
+    /// the map).
     // rule: RMG-ZON-013
-    fn fill(&mut self, g: usize, r: Edge) {
+    fn start(&self, g: usize, r: Edge) -> Option<[i32; 2]> {
         let (w, h, _) = self.cells.size();
         let [x, y, _] = self.gens[g].position;
-        let on_map = |p: [i32; 2]| (0..w).contains(&p[0]) && (0..h).contains(&p[1]);
-        let start = if on_map([x, y]) {
-            [x, y]
-        } else {
-            // The ring's destinations themselves scored, the first deepest one clipped toward.
-            let mut best = (0, None);
-            let mut e = r;
-            loop {
-                e = self.tri.onext(e);
-                let d = self.tri.destination(e);
-                if (1..w - 1).contains(&d.x) && (1..h - 1).contains(&d.y) {
-                    let depth = d.x.min(w - 1 - d.x).min(d.y).min(h - 1 - d.y);
-                    if depth > best.0 {
-                        best = (depth, Some([d.x, d.y]));
-                    }
-                }
-                if e == r {
-                    break;
+        if (0..w).contains(&x) && (0..h).contains(&y) {
+            return Some([x, y]);
+        }
+        // The ring's destinations themselves scored, the first deepest one clipped toward.
+        let mut best = (0, None);
+        let mut e = r;
+        loop {
+            e = self.tri.onext(e);
+            let d = self.tri.destination(e);
+            if (1..w - 1).contains(&d.x) && (1..h - 1).contains(&d.y) {
+                let depth = d.x.min(w - 1 - d.x).min(d.y).min(h - 1 - d.y);
+                if depth > best.0 {
+                    best = (depth, Some([d.x, d.y]));
                 }
             }
-            let Some(v) = best.1 else {
-                return;
-            };
-            clip([x, y], v, w, h)
+            if e == r {
+                break;
+            }
+        }
+        best.1.map(|v| clip([x, y], v, w, h))
+    }
+
+    /// The cell a flood from `start` begins its region with: `start` when free, else the cell
+    /// left of it when free; none, nothing filled.
+    fn seed(&self, [x, y]: [i32; 2]) -> Option<[i32; 2]> {
+        if self.free(x, y) {
+            Some([x, y])
+        } else if x > 0 && self.free(x - 1, y) {
+            Some([x - 1, y])
+        } else {
+            None
+        }
+    }
+
+    /// RMG-QUIRK-25's fix (`quirk.rmg.fill_start_on_border` off): for zone generator `g` whose
+    /// start and the cell left of it lie on borders, the free cell of the level nearest its centre
+    /// (squared distance; the first row by row on ties) outside the free regions the fills of
+    /// `later` (the zones that fill after it, with their centres) begin in; none, no fill.
+    // rule: RMG-ZON-013
+    fn free_start(&self, g: usize, later: &[(usize, [i32; 2])]) -> Option<[i32; 2]> {
+        let (w, h, _) = self.cells.size();
+        let index = |x: i32, y: i32| (y * w + x).cast_unsigned() as usize;
+        let mut claimed = alloc::vec![false; index(0, h)];
+        let mut stack: Vec<[i32; 2]> = later
+            .iter()
+            .filter_map(|&(k, p)| self.start(k, self.tri.find(p)))
+            .filter_map(|s| self.seed(s))
+            .collect();
+        while let Some([x, y]) = stack.pop() {
+            if core::mem::replace(&mut claimed[index(x, y)], true) {
+                continue;
+            }
+            for [dx, dy] in [[1, 0], [0, 1], [-1, 0], [0, -1]] {
+                let (u, v) = (x + dx, y + dy);
+                if self.free(u, v) && !claimed[index(u, v)] {
+                    stack.push([u, v]);
+                }
+            }
+        }
+        let [cx, cy, _] = self.gens[g].position;
+        let mut best: Option<(i64, [i32; 2])> = None;
+        for y in 0..h {
+            for x in 0..w {
+                if !self.free(x, y) || claimed[index(x, y)] {
+                    continue;
+                }
+                let (dx, dy) = (i64::from(x) - i64::from(cx), i64::from(y) - i64::from(cy));
+                let d = dx * dx + dy * dy;
+                if best.is_none_or(|(b, _)| d < b) {
+                    best = Some((d, [x, y]));
+                }
+            }
+        }
+        best.map(|(_, c)| c)
+    }
+
+    /// `rmg_zone_flood_fill` 0x53D380 for zone generator `g` and the record `r` at its centre:
+    /// from [`Level::start`]'s cell, a stack of seeds, each moved left while the cell left of it
+    /// is free (zone byte 0xFF), then filled rightwards while free (zone byte g's id, the land
+    /// bit unless on the islands' level 0), a seed above and below for each run of free cells
+    /// there: the 4-connected free region of the start, or of the cell left of it when the start
+    /// is not free. When neither is (RMG-QUIRK-25), nothing with `fill_start_on_border`, else
+    /// [`Level::free_start`]'s region (`later`: the zones filling after it).
+    // rule: RMG-ZON-013
+    fn fill(&mut self, g: usize, r: Edge, later: &[(usize, [i32; 2])]) {
+        let (w, h, _) = self.cells.size();
+        let Some(mut start) = self.start(g, r) else {
+            return;
         };
         // The original uses the clip's result untested (RMG-QUIRK-4): off the level it would
         // read and write outside it.
-        if !on_map(start) {
+        if !((0..w).contains(&start[0]) && (0..h).contains(&start[1])) {
             self.fail(PartitionFault::Outside);
             return;
+        }
+        if !self.input.fill_start_on_border && self.seed(start).is_none() {
+            match self.free_start(g, later) {
+                Some(s) => start = s,
+                None => return,
+            }
         }
         let z = self.z;
         let index = self.id(g) as u8;
@@ -749,9 +828,9 @@ pub(crate) fn partition<T: Trace>(
             let jagged = k < n && (input.water != Water::Islands || z == 1);
             level.borders(r, k, jagged);
         }
-        for &(k, p) in &zones_here {
+        for (i, &(k, p)) in zones_here.iter().enumerate() {
             let r = level.tri.find(p);
-            level.fill(k, r);
+            level.fill(k, r, &zones_here[i + 1..]);
         }
         level.connect_water(n);
         if let Some(fault) = level.fault {

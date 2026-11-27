@@ -17,10 +17,10 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Community status: unknown
 - Sources: code reading (survey §2.2, quirk candidates); observation (ORACLE.md, the phase oracle's draw log; E14 T3a, the memory record)
 - Flag: `quirk.rmg.zone_memory_model` (registry position 56, E14 T3c)
-- Defaults: faithful = on (the **oracle model**: the bytes as a fresh start's first map holds them under the oracle, measured by the phase hooks in T3a, `zones.txt`, in the form fresh starts agree on; the model's form decided at increment 3's checkpoint), fixed = off (zeroed, no draw). **Provisional form (E14 T3d):** whether each byte is 0, as constants in `h3-rmg` (`ZoneMemory::TEMPORARY`: town types 0BB, +0x40, +0x84 and +0x94 set; `ZoneMemory::WATER`: all nine, likewise), a trace's measured bytes in their place (`Trace::zone_memory`; the corpus test feeds `zones.txt`'s). The temporary zone's town type is never read (type 3): only its draw counts, and it draws in all 29 records. With the measured bytes step 2 equals the oracle's on 24 of 24; with the model's own on 22 (`l1-4p-b`'s and `xl2-4p-seed0`'s water zone with none set draws once less); the water zones' town types differ in 4 cases (masks 1FE, 187, 080), which reaches their guards in later steps. A water zone's +0x8 (its second town type) stays unmodelled (-1; the heap's value differs between fresh starts).
+- Defaults: faithful = on (the **oracle model**: the bytes as a fresh start's first map holds them under the oracle, measured by the phase hooks in T3a, `zones.txt`, in the form fresh starts agree on; the model's form left open at increment 3's checkpoint for increment 4, E14 decision 11), fixed = off (zeroed, no draw). **Provisional form (E14 T3d):** whether each byte is 0, as constants in `h3-rmg` (`ZoneMemory::TEMPORARY`: town types 0BB, +0x40, +0x84 and +0x94 set; `ZoneMemory::WATER`: all nine, likewise), a trace's measured bytes in their place (`Trace::zone_memory`; the corpus test feeds `zones.txt`'s). The temporary zone's town type is never read (type 3): only its draw counts, and it draws in all 29 records. With the measured bytes step 2 equals the oracle's on 24 of 24; with the model's own on 22 (`l1-4p-b`'s and `xl2-4p-seed0`'s water zone with none set draws once less); the water zones' town types differ in 4 cases (masks 1FE, 187, 080), which reaches their guards in later steps. A water zone's +0x8 (its second town type) stays unmodelled (-1; the heap's value differs between fresh starts).
 - Limits (documented, not a defect of the port): a second map in one game, another size of the game's environment and Windows' memory are out of reach; the byte-for-byte claim holds for a fresh start's first map under the oracle's fixed environment (`h3drive.py`'s `H3_FIXED_ENV` with the record's paths; `docs/lanes/rmg/TRAPS.md`, "The oracle"). The variation T1c2's and T2c's sandboxes saw in `m2-4p`'s first map was their environment's size (T3a).
-- Regression test: since E14 T3d, `h3-pack-rmg`'s `the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_2` and `the_corpus_appends_the_originals_water_zones` (the measured bytes), `the_oracle_models_own_bytes_give_step_2_on_all_but_two`, `strict_fixed_zeroes_step_2s_unwritten_bytes`; `h3-rmg`'s `the_unwritten_bytes_follow_the_flag_and_the_trace`
-- Decided by / date: the user, 2026-11-24 (T1c2); measured (E14 T3a); ported with the provisional form (E14 T3d), the form open (increment 3's checkpoint)
+- Regression test: since E14 T3d, `h3-pack-rmg`'s `the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5` (to step 2 until T3e, to step 3 until T4b) and `the_corpus_appends_the_originals_water_zones` (the measured bytes), `the_oracle_models_own_bytes_give_step_2_on_all_but_two`, `strict_fixed_zeroes_step_2s_unwritten_bytes`; `h3-rmg`'s `the_unwritten_bytes_follow_the_flag_and_the_trace`
+- Decided by / date: the user, 2026-11-24 (T1c2); measured (E14 T3a); ported with the provisional form (E14 T3d); the form left open at increment 3's checkpoint (the user, 2026-11-27, E14 decision 11: the constants stay provisional until increment 4, where the water zones' town types reach their guards)
 
 ### RMG-QUIRK-2 — A river delta's x bound reads the next cell
 - Class: fix-optional (the user, 2026-11-24, T1c2: the oracle model, as RMG-QUIRK-1)
@@ -36,26 +36,26 @@ Known differences between the original's random map generator (GOG Complete's `H
 
 ### RMG-QUIRK-3 — Divisions and moduli by zero
 - Class: exploit-fix (the user, 2026-11-24, T1c2)
-- Context / rules affected: `rmg_zone_place` 0x53B970 with no candidate (its draw 0x53BB5F); a jitter limit of 0 (`rmg_border_jitter_draw` 0x53C0F2: a zone of scaled size 0 on a jagged border, an island zone of size 1); `rmg_junction_path_draw` for a zone of size 0; `rmg_object_choose` 0x546190's density filter for a template with no blocking or enterable cell; a terrain picture set missing a shape (water 24, rock 16 and 24) reached by slot 5; `rand() % 0` without shipyard or gate prototypes and a modulus 0 without monolith prototypes (step 6); survey §2.2 to §2.4, §2.7.3; the dialog's teams draw `rand() % players` (0x586183) with no players (E14 T2c: `resolve_random` refuses them, RMG-SET-001)
+- Context / rules affected: `rmg_zone_place` 0x53B970 with no candidate (its draw 0x53BB5F); a jitter limit of 0 (`rmg_border_jitter_draw` 0x53C0F2: a zone of scaled size 0 on a jagged border, an island zone of size 1); `rmg_junction_path_draw` for a zone of size 0; `rmg_object_choose` 0x546190's density filter for a template with no blocking or enterable cell; a terrain picture set missing a shape (water 24, rock 16 and 24) reached by slot 5; `rand() % 0` without shipyard or gate prototypes and a modulus 0 without monolith prototypes (step 6); `rmg_map_outline_clear` 0x531170 over an empty outline (a prototype whose anchor row has no blocked cell: its ring index is i mod 0; no line of the classes `rmg_map_can_place` places reaches it, E14 T4a); survey §2.2 to §2.4, §2.7.3; the dialog's teams draw `rand() % players` (0x586183) with no players (E14 T2c: `resolve_random` refuses them, RMG-SET-001)
 - Original behavior: a division by zero, which nothing catches: `rmg_run` catches only the file's open failure (code 1), `random_map_generate` and its callers nothing (E14 T3b, survey §1.2); the game fails there, no map.
 - Intended/expected behavior: the generation fails with a typed error naming the cause; no map.
 - Impact: game-breaking (a crash) where reached; as read none is reachable with the shipped tables and objects (increment 6's census confirms it).
 - Sources: code reading (survey §2.2 "Clocks, retries, limits, failures", §2.3 and §2.4 "Faults reachable only with other data", §2.7.3)
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, fixed = fixed
-- Regression test: each case when its step is ported (a table or template that reaches it gives the typed error); step 1's since E14 T3c (`h3-pack-rmg`'s `step_1s_divisions_by_zero_are_refused`: `GenerateError::NoPosition`, a zone of base 50 000 whose points' squared distances wrap; `GenerateError::LayoutSpan`, two zones of base -1); step 2's jagged limit 0 since E14 T3d (`step_2s_jagged_limit_of_0_is_refused`: a zone of base 0, `GenerateError::Partition` with `PartitionFault::Limit`). Step 2's other divisions cannot divide by zero: the clip tests its divisors, and no triangle is flat (the triangulation keeps -1 for one)
+- Regression test: each case when its step is ported (a table or template that reaches it gives the typed error); step 1's since E14 T3c (`h3-pack-rmg`'s `step_1s_divisions_by_zero_are_refused`: `GenerateError::NoPosition`, a zone of base 50 000 whose points' squared distances wrap; `GenerateError::LayoutSpan`, two zones of base -1); step 2's jagged limit 0 since E14 T3d (`step_2s_jagged_limit_of_0_is_refused`: a zone of base 0, `GenerateError::Partition` with `PartitionFault::Limit`); step 3's since E14 T3e: an island's coast of limit 0 (`rmg_coast_jitter_draw` 0x53CE1D, a zone of scaled size below 2: `step_3s_coast_limit_of_0_is_refused`, `GenerateError::Terrain` with `TerrainFault::CoastLimit`), a shape missing from a picture set (`h3-rmg`'s `a_missing_shape_is_refused`, `PaintFault::NoPicture`; never with the shipped sets in the corpus). Step 2's other divisions cannot divide by zero: the clip tests its divisors, and no triangle is flat (the triangulation keeps -1 for one)
 - Decided by / date: the user, 2026-11-24 (T1c2)
 
 ### RMG-QUIRK-4 — Unchecked reads, writes and nulls
 - Class: exploit-fix (the user, 2026-11-24, T1c2)
-- Context / rules affected: `rmg_border_guard_place` 0x540D60 returning colour 0 when a tent exists but no Border Guard of its colour; `rmg_path_carve` 0x5408E0 with a null prototype (`rmg_prototype_draw` 0x546040 returns null without candidates); `rmg_monolith_border_guard` 0x542B00 marking five cells without a bounds check (a monolith on the map's edge wraps to the next row or level); `rmg_connection_by_monoliths` 0x542CE0 reading the exit list at the entrance's index unchecked; `rmg_seer_hut_place` 0x54B490 reading past the artifact prototypes when none has the quest's id; survey §2.3, §2.4; `rmg_generate_map`'s positions (0x5499BF to 0x549ACD, E14 T2c): a start zone's position below -1 or above 7 indexes its two eight-byte arrays outside the frame, and starts running out (fewer distinct starts than the players, or than the players and computers) write past them, a ninth player clearing the drawn template's index at ebp-4 and every one writing a colour past +0xF00 (AB's 2SM2i(2) with four players; `PositionError`, RMG-TPL-008)
+- Context / rules affected: `rmg_border_guard_place` 0x540D60 returning colour 0 when a tent exists but no Border Guard of its colour; `rmg_path_carve` 0x5408E0 and the seer huts' create methods (0x534B90, 0x534CC0, 0x534DB0: a quest artifact of type 65 for dirt) with a null prototype (`rmg_prototype_draw` 0x546040 returns null without candidates; E14 T4a read its callers); `rmg_monolith_border_guard` 0x542B00 marking five cells without a bounds check (a monolith on the map's edge wraps to the next row or level); `rmg_connection_by_monoliths` 0x542CE0 reading the exit list at the entrance's index unchecked; `rmg_seer_hut_place` 0x54B490 reading past the artifact prototypes when none has the quest's id; survey §2.3, §2.4; `rmg_generate_map`'s positions (0x5499BF to 0x549ACD, E14 T2c): a start zone's position below -1 or above 7 indexes its two eight-byte arrays outside the frame, and starts running out (fewer distinct starts than the players, or than the players and computers) write past them, a ninth player clearing the drawn template's index at ebp-4 and every one writing a colour past +0xF00 (AB's 2SM2i(2) with four players; `PositionError`, RMG-TPL-008)
 - Original behavior: memory read or written out of bounds, or a null used; reachable only with other data as read.
 - Intended/expected behavior: the generation fails with a typed error.
 - Impact: game-breaking (memory corruption or a crash) where reached
 - Sources: code reading (survey §2.3, §2.4, "Faults reachable only with other data")
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, fixed = fixed
-- Regression test: each case when its step is ported; the positions' cases since E14 T2c (`h3-rmg`'s `positions_outside_the_arrays_are_refused`, `h3-pack-rmg`'s `two_sm2i_2_gives_the_third_player_a_seventh_start`); step 2's two since E14 T3d (`PartitionFault::Outside`, `h3-rmg`'s `straight_lines_are_bresenhams_from_the_lower_x` and `a_fills_start_clipped_off_the_map_is_a_fault`): `rmg_line_draw` 0x53C220 indexes the cells unchecked, and the borders can give it a point off the map (a side's clipped end b and a later side's clipped start are never tested; survey §2.2, "Step 2 as ported"); `rmg_zone_flood_fill` 0x53D380 uses its clipped start untested. Neither occurs in the corpus
+- Regression test: each case when its step is ported; the positions' cases since E14 T2c (`h3-rmg`'s `positions_outside_the_arrays_are_refused`, `h3-pack-rmg`'s `two_sm2i_2_gives_the_third_player_a_seventh_start`); step 2's two since E14 T3d (`PartitionFault::Outside`, `h3-rmg`'s `straight_lines_are_bresenhams_from_the_lower_x` and `a_fills_start_clipped_off_the_map_is_a_fault`): `rmg_line_draw` 0x53C220 indexes the cells unchecked, and the borders can give it a point off the map (a side's clipped end b and a later side's clipped start are never tested; survey §2.2, "Step 2 as ported"); `rmg_zone_flood_fill` 0x53D380 uses its clipped start untested. Neither occurs in the corpus. Step 3's two since E14 T3e (`h3-rmg`'s `step_3s_faults_are_refused`, `a_pinched_cell_that_cannot_be_mended_is_refused`): an island without a polygon (`rmg_island_shape` 0x53D1C0 reads its first corner from the vector's start: `TerrainFault::NoPolygon`), a pinched cell whose resolution changes nothing (`terrain_painter_finish` 0x5B72F0 would loop for ever: `PaintFault::Stuck`; as read every resolution changes a cell)
 - Decided by / date: the user, 2026-11-24 (T1c2)
 
 ### RMG-QUIRK-5 — A zone without an empty cell seeds its flood with another zone's cell
@@ -161,10 +161,10 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Intended/expected behavior: step 5 skips only the town step 4 placed.
 - Impact: gameplay-altering
 - Sources: code reading (survey §2.2)
-- Flag: `quirk.rmg.least_town_skipped`
+- Flag: `quirk.rmg.least_town_skipped` (registry position 60, E14 T4b)
 - Defaults: faithful = on, fixed = off
-- Regression test: when steps 4 and 5 are ported
-- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
+- Regression test: `h3-rmg`'s `step_5_skips_the_least_town_step_4_never_placed_by_the_flag` (both sides, SoD's and RoE's type draws) and `h3-pack-rmg`'s `a_least_town_step_4_never_placed_comes_in_step_5_by_the_flag` (both profiles); the corpus's steps 4 and 5 (`the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5`) with the flag on
+- Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed: the corpus agrees with the flag on, but no corpus zone tells the two sides apart (step 4 places at the first kind asked for or at none; the corpus's two zones whose step 4 failed, RMG-QUIRK-25's, fail step 5 either way, with the same draws; E14 T4b)
 
 ### RMG-QUIRK-14 — Step 2 mixes map and template units
 - Class: fix-optional (the user, 2026-11-24, T1c2)
@@ -264,7 +264,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Sources: code reading (survey §2.5, §2.7.2, §2.7.3, §2.7.4)
 - Flag: `quirk.rmg.cosmetic` (registry position 59, E14 T3c)
 - Defaults: faithful = on, fixed = off
-- Regression test: when each part is ported (steps 3, 14, 15, the writer)
+- Regression test: the painter's half (1, 2) since E14 T3e: `h3-rmg`'s `the_cosmetic_flag_queues_both_and_keeps_group_3s_mirroring` (both behaviours), the corpus's step 3 with the flag on (`faithful`); 3 to 5 when steps 14, 15 and the writer are ported
 - Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
 
 ### RMG-QUIRK-22 — 8XM8's decimal zone ids (a data quirk)
@@ -289,7 +289,7 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Sources: code reading (survey §2.5, §3.3.4); observation (the oracle's `l2-2p-c4-islands`, the game's memory after the start; T1c2)
 - Flag: none (the rule in every profile)
 - Defaults: faithful = original, fixed = original
-- Regression test: when the writer is ported (increment 6); the game's start on such a map waits for the town lane (its inbox: whether `GameSetup::validate` accepts a main town of another owner, as the original does)
+- Regression test: steps 4 and 5 (E14 T4b): `h3-pack-rmg`'s `a_start_zone_without_colour_towns_takes_a_neutral_first_town` (`l2-2p-c4-islands`: purple's first town a neutral castle, by step 5's densities, the corpus's comparison); the writer's half when it is ported (increment 6); the game's start on such a map waits for the town lane (its inbox: whether `GameSetup::validate` accepts a main town of another owner, as the original does)
 - Decided by / date: the user, 2026-11-24 (T1c2); confirmed (observation)
 
 ### RMG-QUIRK-24 — A start zone without Ownership marks a phantom human start 7
@@ -304,6 +304,31 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Defaults: faithful = on, fixed = off
 - Regression test: `h3-rmg`'s `a_start_without_ownership_marks_the_eighth_human_start`, `h3-pack-rmg`'s `two_sm2i_2_gives_the_third_player_a_seventh_start` (both profiles)
 - Decided by / date: the user, 2026-11-25 (E14 T2c); confirmed by the oracle (E14 T3a: the third player without a start zone is left out of the written map)
+
+### RMG-QUIRK-25 — A zone whose fill finds no free cell keeps only its border cells
+- Class: fix-optional (the user, 2026-11-27, increment 3's checkpoint, E14 decision 11)
+- Context / rules affected: step 2's fill, `rmg_zone_flood_fill` 0x53D380 and its tail 0x53D640 (RMG-ZON-013); steps 4 on, which place a zone's towns, mines and treasures in its cells; survey §2.2
+- Original behavior: the fill starts at the zone's centre (or the cell left of it when the centre is not free); when both lie on borders, the zone gets no cell from its fill, only its border cells (T3b's corner case). In the corpus 20 zones in 6 of the 24 cases (T3d's count): 13 water zones and 7 land zones (`xl1-4p-seed1`'s zone 3, `xl2-8p-t4-islands`' zone 4, five of `xl2-4p-seed0`'s).
+- Intended/expected behavior: a zone's region filled from a free cell of it, so that its objects have room.
+- Impact: gameplay-altering for a land zone (its towns, mines and treasures on its border cells only); a water zone's cells are painted water either way. **T4b:** both corpus land zones that are start zones get no town in the original (steps 4 and 5 equal the oracle's): `xl1-4p-seed1`'s zone 3 (human start 4, 133 border cells) and `xl2-8p-t4-islands`' zone 4 (human start 5, 225), two human players without a town
+- Sources: code reading (survey §2.2, T3b); observation (the phase oracle: the port, equal to the oracle on step 2, counted the cases, T3d; on steps 4 and 5, T4b)
+- Fix (E14 T4b, survey §2.2 "Steps 4 and 5 as ported (T4b)"): with the flag off, a fill whose start and the cell left of it are not free starts at the free cell of the level nearest the zone's centre (squared distance, the first row by row) outside the free regions in which the later zones' fills start (their start, or its left cell); none, no fill. The regions of the zones filled before are no longer free, so a zone never takes another zone's region; an orphan region (no zone's fill starts in it) goes to the nearest such zone
+- Flag: `quirk.rmg.fill_start_on_border` (registry position 61, E14 T4b)
+- Defaults: faithful = on (the original's border cells only), fixed = off (the fix above)
+- Regression test: `h3-rmg`'s `a_fill_whose_start_lies_on_borders_starts_from_a_free_cell_by_the_flag` (both sides, a claimed region left alone, no free cell left), `h3-pack-rmg`'s `a_zone_whose_start_lies_on_borders_gets_its_region_by_the_flag` (both profiles: `strict-fixed` gives both start zones their region and colour's town); the faithful side is the corpus's steps 2 to 5 (`the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5`)
+- Decided by / date: the user, 2026-11-27 (increment 3's checkpoint)
+
+### RMG-QUIRK-26 — A one-way monolith connection's entrances share their channel's exits
+- Class: fix-optional (the user, 2026-11-27, E14 decision 12)
+- Context / rules affected: step 6, `rmg_connection_by_monoliths` 0x542CE0 and `rmg_zone_connections_make` 0x543240's index (RMG-CON-017); the game's channels (ADV-TEL-002, -003); survey §2.3
+- Original behavior: a one-way connection takes entrance and exit prototypes of one index, so one channel, and places an entrance and an exit in each zone: each entrance leads to either exit, its own zone's among them. The index wraps after the two-way and one-way prototypes (AB 6, SoD 16), so a later connection shares a channel's monoliths with an earlier one.
+- Intended/expected behavior: each entrance leads to the other zone.
+- Impact: gameplay-altering (a hero may come out in the zone he left; channels mixed across connections)
+- Sources: code reading (survey §2.3, E14 T4a)
+- Flag: to be registered with its port (`quirk.rmg.*`, T4d)
+- Defaults: faithful = on (as read), fixed = off (the fix designed in T4d: each direction its own channel where one is free)
+- Regression test: when RMG-CON-017 is ported (T4d)
+- Decided by / date: the user, 2026-11-27 (E14 decision 12)
 
 ## Considered, not quirks
 
@@ -336,15 +361,14 @@ Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the
 | Prisons draw heroes below 145 for AB and SoD (SoD's campaign heroes never) | design | §2.1 |
 | A main town written at the town's entrance (`Untitled.h3m`'s towns two cells right of it) | the format's convention: the editor writes the same (553 of 553 shipped main towns), the reader expects it | §2.5, §3.3.4 |
 | `rmg.txt`: connections whose four positions are empty (never kept), treasure zones with an Ownership and colour towns, zones without terrain, monster town or bands | the tables' data as the game reads them | §3.1 |
+| T3b: `rmg_segment_clip` clips a side's line, not the side: a side wholly off the map whose line crosses it gives a point on the map's edge (the borders' first side and edge walk stop at it; step 2's water–water connection takes it); T3d: 104 times in 19 of the 24 corpus cases | the original's geometry, harmless and accepted (the user, 2026-11-27, increment 3's checkpoint, E14 decision 11): every profile follows it, no flag | §2.2 |
 
 ## Open (classified when read)
 
 | Candidate | What decides | Survey |
 |---|---|---|
-| Both 6LM10 templates connect zone 13 to itself | what step 6 makes of a self-connection (a fault would be RMG-QUIRK-3's or -4's class) | §3.1 |
-| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0 | what steps 4 and 5 give such a zone (the writer leaves the colour at position 7 out of the map: T3a's `s1-3p-2sm2i2`, RMG-QUIRK-24) | §3.1 |
-| T3b: `rmg_segment_clip` clips a side's line, not the side: a side wholly off the map whose line crosses it gives a point on the map's edge (the borders' first side and edge walk stop at it; step 2's water–water connection takes it). **T3d: 104 times in 19 of the 24 corpus cases** (the port, equal to the oracle, counted it) | cosmetic or a fix (changes cells and connections only near the map's edges); a faithful port follows it anyway | §2.2 |
-| T3b: the borders' edge walk draws straight to the re-entry point whenever it shares x or y with the current point, also across the map: a cell whose one side on the map is axis-aligned gets a straight chord over its jagged side, in both zones' ids; the cells between are reached by no fill (water on level 0, rock on level 1, as read). **T3d: never in the corpus** | cosmetic or a fix, once a census shows it | §2.2 |
-| T3b: a cell with no side on the map (meant for one holding the whole map) gets the whole frame drawn in its id, also a water zone's cell wholly off the map. **T3d: never in the corpus** | whether such a cell occurs (a census) | §2.2 |
-| T3b: a point inserted where a vertex already is is dropped: the second zone at one point draws the first's cell again and has none of its own. **T3d: never in the corpus** | whether two of step 2's points can coincide (a census) | §2.2 |
-| T3b: a zone whose centre and the cell left of it lie on borders gets no cell from its fill, only its border cells. **T3d: 20 zones in 6 of the 24 corpus cases, 13 water zones and 7 land zones** (`xl1-4p-seed1`'s zone 3, `xl2-8p-t4-islands`' zone 4, five of `xl2-4p-seed0`'s) | gameplay-altering for a land zone (its towns, mines and treasures on its border cells only); harmless-and-accepted or a fix: the user's call | §2.2 |
+| Both 6LM10 templates connect zone 13 to itself | what step 6 makes of a self-connection (a fault would be RMG-QUIRK-3's or -4's class; T4d) | §3.1 |
+| Start zones with Ownership 0 (position −1: 2SM2i(2)'s human starts 3 and 5, 2SM0k's computer starts 3-8; their positions' mark is RMG-QUIRK-24): the colour table's slot 0. **T4b (ported, equal to the oracle):** steps 4 and 5 read the colour at +0xEE0 for position −1, which `rmg_generate_map` clears to −1 and nothing writes, so a colour town there would be neutral; but none of these rows asks for a town of its colour: 2SM2i(2)'s start 3 and 2SM0k's 3 and 4 get no town, 2SM2i(2)'s start 5 and 2SM0k's 5 to 8 their one least neutral town each (a village of their drawn town type) | what steps 4 and 5 give such a zone (the writer leaves the colour at position 7 out of the map: T3a's `s1-3p-2sm2i2`, RMG-QUIRK-24): the user's classification | §3.1 |
+| T3b: the borders' edge walk draws straight to the re-entry point whenever it shares x or y with the current point, also across the map: a cell whose one side on the map is axis-aligned gets a straight chord over its jagged side, in both zones' ids; the cells between are reached by no fill (water on level 0, rock on level 1, as read). **T3d: never in the corpus** | cosmetic or a fix, once a census shows it (increment 7's census, E14 decision 11) | §2.2 |
+| T3b: a cell with no side on the map (meant for one holding the whole map) gets the whole frame drawn in its id, also a water zone's cell wholly off the map. **T3d: never in the corpus** | whether such a cell occurs (a census) (increment 7's census, E14 decision 11) | §2.2 |
+| T3b: a point inserted where a vertex already is is dropped: the second zone at one point draws the first's cell again and has none of its own. **T3d: never in the corpus** | whether two of step 2's points can coincide (a census) (increment 7's census, E14 decision 11) | §2.2 |

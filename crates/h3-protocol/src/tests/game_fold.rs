@@ -475,7 +475,7 @@ pub(super) fn golden(mut each: impl FnMut(&str, &GameRuleset, &GameSetup, &Repla
         .filter(|path| path.extension().is_some_and(|e| e == "toml"))
         .collect();
     files.sort();
-    assert_eq!(files.len(), 118, "the golden adventure replays");
+    assert_eq!(files.len(), 130, "the golden adventure replays");
     let mut rules: BTreeMap<(Vec<String>, String), GameRuleset> = BTreeMap::new();
     for file in &files {
         let name = file.file_stem().unwrap().to_string_lossy().into_owned();
@@ -807,9 +807,13 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
             },
             GameEvent::MarketOpened {
                 player: 1,
-                hero: 4,
-                object_type: ty,
-                anchor: a,
+                hero: Some(4),
+                place: MarketSeen::Object {
+                    object: ObjectRef {
+                        object_type: ty,
+                        anchor: a,
+                    },
+                },
             },
             GameEvent::AltarOpened {
                 player: 1,

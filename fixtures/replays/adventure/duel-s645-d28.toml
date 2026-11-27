@@ -836,43 +836,43 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xfb88417195715e78",
-    "0xd009d38267965063",
-    "0x234b3f9a18b2388a",
-    "0xe69323f358cbaccc",
-    "0xc12317456024da8b",
-    "0x12c1caac34640ab0",
-    "0x3259bc379618142f",
-    "0x6b3aa89b12a44797",
-    "0xd70dec15ab64b1b8",
-    "0x3b10c8a97a877a55",
-    "0x5054f387c28f5d3a",
-    "0x99618b3ac6fd2daa",
-    "0x7ced4dd1c1671afc",
-    "0x6e39b9efaee25569",
-    "0x85fb19a830a1404d",
-    "0x7a2676fe0a77fbfe",
-    "0xeb5a182969fbcb9b",
-    "0x9e87058017d48e62",
-    "0x129d7e0d56e8cf41",
-    "0x60d39aa3105d3d2a",
-    "0x24876c7a83654a67",
-    "0xb3cc92eb27fe6353",
-    "0x76023e67a187bc80",
-    "0xb8cb15eaeff04428",
-    "0x3e39c4defaaf4eb5",
-    "0xac33c2c06516e0a6",
-    "0xa88c4561510072a1",
-    "0x66db7fdb6796ec95",
-    "0xfb5d67cad9ad11b4",
-    "0x71c6ec64da8a1d5f",
-    "0x7fa6d275a2498b16",
-    "0x54d8adf623d70ae6",
-    "0x2168ce51573c5a06",
+    "0xd8fe4094bb68102d",
+    "0x8108dc125caaa568",
+    "0xfa4ca06a3dd491e9",
+    "0xdc42cbb292dfd9b3",
+    "0x54f5f9793441f3d0",
+    "0x85c33d272992a3e5",
+    "0x60e158d9a912dc2c",
+    "0xdbab248f4ca2b264",
+    "0x226c2850ea6734eb",
+    "0xc90dd7924a6460ce",
+    "0xfe2fcda34e402b7d",
+    "0xd668d4f10cda7db5",
+    "0xe299d74d8daa0729",
+    "0xec0bd231f9759ec2",
+    "0x391b5b72a03cee6e",
+    "0xaf15987eb30a047d",
+    "0x729d432547904c54",
+    "0xdd51cf34296bf23d",
+    "0xfb0be8035f4ae32e",
+    "0xe304c5275236b5c5",
+    "0x9c45b9d1d072c7ac",
+    "0xdc8853e126917fa4",
+    "0xa5376a8f96f0347f",
+    "0xefd978c8b881196b",
+    "0x13a97072991482c6",
+    "0xf20f5371d0f75e5d",
+    "0xc759ee58058aa352",
+    "0xba7185fb1ba1c75e",
+    "0xefe0520c3dd70d77",
+    "0x39815f400d5e0504",
+    "0xb95d989351346095",
+    "0x728facc137fea4a1",
+    "0xef7f66324a8a6cdd",
 ]
 
 [replay]
-format = 26
+format = 27
 engine = "0.1.0"
 seed = "645"
 difficulty = 1
@@ -891,14 +891,14 @@ packs = [
 ],
 ]
 profile = "base:faithful"
-ruleset_hash = "0x7d6081fbb0552a2f"
+ruleset_hash = "0x810a2c4eb5a0373f"
 adventure_ruleset_hash = "0x9fc40eb6455ae78a"
 town_ruleset_hash = "0xc830faa47b612bfc"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 39
+game_state_hash_version = 40
 adventure_state_hash_version = 30
 checkpoint_every = 25
 
@@ -909,7 +909,7 @@ import_version = 29
 
 [result]
 day = 29
-final_hash = "0x6d2ff98ecedd7329"
+final_hash = "0x115f65be03448a06"
 
 [[players]]
 colour = 0

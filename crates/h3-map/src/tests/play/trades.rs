@@ -4,11 +4,17 @@
 //! check the listing ([`trade_answers`], [`check_trade_listing`]), each accepted answer's effects
 //! ([`check_trade_answer`]) and what lasts between commands ([`check_trades`]): ADV-MKT-001 to
 //! -008, ADV-ALT-001 to -003, ADV-HFT-001, -002, ADV-WMF-001, GAM-DEC-008, GAM-DEC-011 to -013.
-//! The cover test [`the_plans_trade_and_use_the_services`] counts what the games meet.
+//! Since E09 T58a2 a town's market window too (TWN-MKT-002 to -004: `TownCommand::Market`, listed
+//! where it opens and offers an answer; its hero the town's, none possible; the Artifact
+//! Merchants' one stock). The cover test [`the_plans_trade_and_use_the_services`] counts what the
+//! games meet.
 
 use super::*;
 use h3_adventure::MarketScreen;
-use h3_game::{ALTAR_SLOTS, AltarAnswer, AltarPlaces, HillFortAnswer, HillFortState, MarketAnswer};
+use h3_game::{
+    ALTAR_SLOTS, AltarAnswer, AltarPlaces, HillFortAnswer, HillFortState, MarketAnswer,
+    MarketPlace, MarketVisit,
+};
 
 /// A plan's trades and services (E08 T135b2), drawn as [`trades`] draws them; [`trade_plan`]
 /// places them.
@@ -120,26 +126,57 @@ fn trade_of(state: &GameState, rules: &GameRuleset, index: usize) -> Option<Trad
     trade_kind(rules, state.adventure().object(index)?.object_type?)
 }
 
+/// Where an open trade stands (E09 T58a2): a map object by its type and anchor, or a town (its
+/// market window, TWN-MKT-002).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum TradeAt {
+    /// A market, an Altar or a Hill Fort on the map.
+    Object(ObjectTypeId, TilePos),
+    /// A town's market window.
+    Town(TownId),
+}
+
+/// An open trade: its hero (none possible at a town's Marketplace) and its place.
+pub(super) type TradeOpen = (Option<HeroId>, TradeAt);
+
 /// Whether `player`'s first open decision is a market's, an Altar's or a Hill Fort's (GAM-DEC-011
-/// to -013): its hero, type and anchor.
-pub(super) fn trade_open(
-    state: &GameState,
-    player: PlayerId,
-) -> Option<(HeroId, ObjectTypeId, TilePos)> {
-    let market = state
-        .market(player)
-        .map(|v| (v.hero, v.object_type, v.anchor));
+/// to -013): its hero and place (since E09 T58a2 a town's market window, its hero the town's or
+/// none).
+pub(super) fn trade_open(state: &GameState, player: PlayerId) -> Option<TradeOpen> {
+    let market = state.market(player).map(|v| match v.place {
+        MarketPlace::Object {
+            object_type,
+            anchor,
+            ..
+        } => (v.hero, TradeAt::Object(object_type, anchor)),
+        MarketPlace::Town(town) => (v.hero, TradeAt::Town(town)),
+    });
     let altar = || {
         state
             .altar(player)
-            .map(|v| (v.hero, v.object_type, v.anchor))
+            .map(|v| (Some(v.hero), TradeAt::Object(v.object_type, v.anchor)))
     };
     let fort = || {
         state
             .hill_fort(player)
-            .map(|v| (v.hero, v.object_type, v.anchor))
+            .map(|v| (Some(v.hero), TradeAt::Object(v.object_type, v.anchor)))
     };
     market.or_else(altar).or_else(fort)
+}
+
+/// The army of an open trade's hero `hero` (E09 T58a2): on the map, or a town's garrison hero
+/// (the window's at its town with `TWN-QUIRK-15`'s flag off, off the map, TWN-ROW-001); none
+/// without a hero.
+pub(super) fn trade_army(
+    state: &GameState,
+    hero: Option<HeroId>,
+) -> Option<Vec<h3_contracts::ArmyStack>> {
+    let adventure = state.adventure();
+    let hero = hero?;
+    adventure
+        .hero(hero)
+        .or_else(|| adventure.garrisoned(hero).map(|(_, on)| on))
+        .map(|on| on.army.clone())
 }
 
 /// The entrances of the trades and services standing on `state`'s map, in the walk's order.
@@ -379,7 +416,6 @@ pub(super) fn trade_answers(
     let accepted = |answer: &Answer| accepts(state, rules, player, *answer);
     let cost = cost_resource(rules);
     let (answers, leave): (Vec<Answer>, Answer) = if let Some(visit) = state.market(player) {
-        let hero = state.adventure().hero(visit.hero)?;
         let trades = resources(rules).flat_map(|give| {
             resources(rules).map(move |take| MarketAnswer::Trade {
                 give,
@@ -387,13 +423,21 @@ pub(super) fn trade_answers(
                 lots: 1,
             })
         });
-        let sales = hero.army.iter().map(|stack| MarketAnswer::Sell {
+        // E09 T58a2: a town's window without a hero sells nothing (its probes refused alike).
+        let army = trade_army(state, visit.hero).unwrap_or_default();
+        let sales = army.into_iter().map(|stack| MarketAnswer::Sell {
             slot: stack.slot,
             take: cost,
             lots: 1,
         });
-        let object = state.adventure().object(visit.index)?;
-        let stock = object.resolved.stock().len();
+        // A town's the Artifact Merchants' one stock (TWN-MKT-004), every town's window probing
+        // it (refused without the merchants' screen).
+        let stock = match visit.place {
+            MarketPlace::Object { index, .. } => {
+                state.adventure().object(index)?.resolved.stock().len()
+            }
+            MarketPlace::Town(_) => state.adventure().merchants_stock().len(),
+        };
         let purchases = (0..=u8::MAX)
             .take(stock)
             .map(|entry| MarketAnswer::Buy { entry, pay: cost });
@@ -616,9 +660,11 @@ pub(super) fn check_trade_answer(
         return Ok(());
     }
     let open = trade_open(before, actor).ok_or_else(|| fail(format!("{answer:?} unopened")))?;
+    // E09 T58a2: a town's window may have none, which sells and buys nothing; the others have one.
     let hero = open.0;
     let (paid, gains) = trade_moves(rules, before, actor, answer);
-    let army_of = |state: &GameState| state.adventure().hero(hero).map(|h| h.army.clone());
+    let army_of = |state: &GameState| trade_army(state, hero);
+    let hero = || hero.ok_or_else(|| fail(format!("{answer:?} without a hero")));
     match (view, *answer) {
         (Some(DecisionView::Market(view)), Answer::Market(market)) => {
             let mut expected = paid_events(&paid);
@@ -644,6 +690,7 @@ pub(super) fn check_trade_answer(
                     prop_assert_eq!(sum(after) + lost, sum(before));
                 }
                 MarketAnswer::Sell { slot, take, lots } => {
+                    let hero = hero()?;
                     let sale = view.offers.sales.iter().find(|s| s.slot == slot);
                     let lot = sale.and_then(|s| s.lots.iter().find(|&&(r, _)| r == take));
                     let &(_, lot) = lot.ok_or_else(|| fail(format!("{answer:?} unpriced")))?;
@@ -659,6 +706,7 @@ pub(super) fn check_trade_answer(
                     prop_assert_eq!(army_of(after), Some(army));
                 }
                 MarketAnswer::Buy { entry, .. } => {
+                    let hero = hero()?;
                     let shown = view.offers.stock.get(usize::from(entry));
                     let artifact = shown.and_then(|e| e.artifact);
                     let artifact = artifact.ok_or_else(|| fail(format!("{answer:?} unshown")))?;
@@ -683,6 +731,7 @@ pub(super) fn check_trade_answer(
             prop_assert_eq!(trade_open(after, actor), Some(open));
         }
         (Some(DecisionView::Altar(view)), Answer::Altar(altar)) => {
+            let hero = hero()?;
             let details = before.hero(hero).unwrap();
             let mut expected = Vec::new();
             let experience = match altar {
@@ -757,6 +806,7 @@ pub(super) fn check_trade_answer(
             }
         }
         (Some(DecisionView::HillFort(view)), Answer::HillFort(fort)) => {
+            let hero = hero()?;
             let rows: Vec<&h3_game::HillFortRowView> = match fort {
                 HillFortAnswer::Upgrade(slot) => {
                     view.rows.iter().filter(|r| r.row.slot == slot).collect()
@@ -855,8 +905,8 @@ pub(super) fn check_trade_listing(
     }
     let mut refused: Vec<Answer> = Vec::new();
     let view = trade_view(state, rules, actor);
-    let hero = trade_open(state, actor).unwrap().0;
-    let army = state.adventure().hero(hero).unwrap().army.clone();
+    // E09 T58a2: a town's window may have no hero (no army to sell).
+    let army = trade_army(state, trade_open(state, actor).unwrap().0).unwrap_or_default();
     match &view {
         Some(DecisionView::Market(view)) => {
             let gold = cost_resource(rules);
@@ -932,8 +982,11 @@ pub(super) fn check_trade_listing(
 /// What lasts between commands at the trades (E08 T135b2; increment 14's design note §18), after
 /// an accepted command of `actor` from `before` to `after`: each Black Market's stock is its
 /// build's draw, unchanged (ADV-MKT-006), and its sold entries only grow, an entry sold only by
-/// this command's purchase of it at that market (ADV-MKT-007); an accepted answer to the actor's
-/// open market, Altar or Hill Fort has [`check_trade_answer`]'s effects, listed or not.
+/// this command's purchase of it at that market (ADV-MKT-007); since E09 T58a2 an answer leaves
+/// the Artifact Merchants' one stock as it was but for the entry a purchase at a town's window
+/// empties (TWN-MKT-004; the month's draw comes at a day's start, TWN-STK-002); an accepted answer
+/// to the actor's open market, Altar or Hill Fort has [`check_trade_answer`]'s effects, listed or
+/// not.
 pub(super) fn check_trades(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -942,9 +995,13 @@ pub(super) fn check_trades(
 ) -> Result<(), TestCaseError> {
     let (b, a) = (before.adventure(), after.adventure());
     let bought = match (command, before.market(actor)) {
-        (GameCommand::Answer(Answer::Market(MarketAnswer::Buy { entry, .. })), Some(visit)) => {
-            Some((visit.index, *entry))
-        }
+        (
+            GameCommand::Answer(Answer::Market(MarketAnswer::Buy { entry, .. })),
+            Some(MarketVisit {
+                place: MarketPlace::Object { index, .. },
+                ..
+            }),
+        ) => Some((*index, *entry)),
         _ => None,
     };
     for index in 0..b.map().objects().len() {
@@ -958,6 +1015,21 @@ pub(super) fn check_trades(
             prop_assert!(!sold || sells, "{:?} unsold at {}", entry, index);
             prop_assert!(sold || !sells || bought == Some((index, entry)));
         }
+    }
+    if let GameCommand::Answer(_) = command {
+        let mut stock = b.merchants_stock().to_vec();
+        if let (
+            GameCommand::Answer(Answer::Market(MarketAnswer::Buy { entry, .. })),
+            Some(MarketVisit {
+                place: MarketPlace::Town(_),
+                ..
+            }),
+        ) = (command, before.market(actor))
+            && let Some(sold) = stock.get_mut(usize::from(*entry))
+        {
+            *sold = None;
+        }
+        prop_assert_eq!(a.merchants_stock(), &stock[..], "{:?}", command);
     }
     if let GameCommand::Answer(
         answer @ (Answer::Market(_) | Answer::Altar(_) | Answer::HillFort(_)),

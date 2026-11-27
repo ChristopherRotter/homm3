@@ -1,27 +1,32 @@
 //! `generate`'s frame (ADR-0029 points 2, 7 and 8; survey `docs/rules/surveys/E14-generator.md`
 //! §1.2 to §1.5): the run's adjustments, the seed, water's Random, the templates kept and drawn,
 //! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
-//! T3c, step 2 since T3d), each draw and each step's end reported to a [`Trace`]. Steps 3 to 15
-//! and the writer's content come with increments 3 to 7.
+//! T3c, step 2 since T3d, step 3 since T3e), each draw and each step's end reported to a
+//! [`Trace`]. Steps 4 and 5, the towns, since T4b; steps 6 to 15 and the writer's content come
+//! with increments 4 to 7.
 
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
 use h3_content::{
-    RMG_PARTITION_UNITS, RMG_ROE_MONSTER_TOWN_BYTE, RMG_TERRAIN_TOWNS_COUNT,
-    RMG_UNOWNED_START_SEVENTH, RMG_ZONE_MEMORY_MODEL, Ruleset,
+    RMG_COSMETIC, RMG_FILL_START_ON_BORDER, RMG_LEAST_TOWN_SKIPPED, RMG_PARTITION_UNITS,
+    RMG_ROE_MONSTER_TOWN_BYTE, RMG_TERRAIN_TOWNS_COUNT, RMG_UNOWNED_START_SEVENTH,
+    RMG_ZONE_MEMORY_MODEL, Ruleset,
 };
 use h3_kernel::rng::CrtRand;
 
 use crate::cells::Cells;
 use crate::layout::{LayoutInput, ZoneGenerator, lay_out};
+use crate::objects::{Object, ObjectFault, Objects};
 use crate::part::RmgRuleset;
 use crate::partition::{
     MemoryZone, Partition, PartitionFault, PartitionInput, ZoneMemory, partition,
 };
 use crate::settings::{COLOURS, Settings, SettingsError, Water};
 use crate::template::{Fit, KeptTemplate, PositionError, kept_templates, positions};
+use crate::terrain::{TerrainFault, TerrainInput, paint};
+use crate::towns::{Placed, TownInput, towns};
 
 /// The generator's version (ADR-0029 point 7): bumped whenever the same rmg part, profile,
 /// settings and seed can give another map.
@@ -34,14 +39,23 @@ pub const SITE_WATER: u32 = 0x0053_7C89;
 pub const SITE_TEMPLATE: u32 = 0x0054_9975;
 
 /// What the generation holds at a step's end, as the comparison seam reads it (ADR-0029 point
-/// 8): the generator's map (the oracle's dump of that step) and the zone generators (its
-/// `layout.txt` after step 1; none before).
+/// 8): the generator's map and its placed objects (the oracle's dump of that step,
+/// [`StepState::dump`]) and the zone generators (its `layout.txt` after step 1; none before).
 #[derive(Debug, Clone, Copy)]
 pub struct StepState<'a> {
     /// The generator's map.
     pub cells: &'a Cells,
     /// The zone generators.
     pub zones: &'a [ZoneGenerator],
+    /// The placed objects (the generator's +0xEC4; none before step 4).
+    pub objects: &'a [Object],
+}
+
+impl StepState<'_> {
+    /// The phase oracle's dump of the map and the placed objects after `step` ([`Cells::dump`]).
+    pub fn dump(&self, step: u8) -> Vec<u8> {
+        self.cells.dump(step, self.objects)
+    }
 }
 
 /// Where the generation reports its draws and steps (ADR-0029 point 8): the comparison seam with
@@ -111,6 +125,18 @@ pub enum GenerateError {
         /// What went wrong.
         fault: PartitionFault,
     },
+    /// Step 3 met what the original divides by zero at (RMG-QUIRK-3) or reads outside its
+    /// arrays or never ends at (RMG-QUIRK-4).
+    Terrain(TerrainFault),
+    /// A step's object placing met what the original divides by zero at (RMG-QUIRK-3), throws at
+    /// or reads or writes outside its arrays at (RMG-QUIRK-4): [`Objects::take_fault`] at the
+    /// step's end.
+    Objects {
+        /// The step.
+        step: u8,
+        /// What went wrong, the first met.
+        fault: ObjectFault,
+    },
 }
 
 impl From<SettingsError> for GenerateError {
@@ -142,12 +168,14 @@ impl fmt::Display for GenerateError {
             Self::NoPosition { zone } => write!(f, "step 1: no position for zone {zone}"),
             Self::LayoutSpan => f.write_str("step 1: the layout spans nothing"),
             Self::Partition { level, fault } => write!(f, "step 2, level {level}: {fault:?}"),
+            Self::Terrain(fault) => write!(f, "step 3: {fault:?}"),
+            Self::Objects { step, fault } => write!(f, "step {step}, an object: {fault:?}"),
         }
     }
 }
 
-/// A generated map: so far what the frame and steps 1 and 2 make (stub RMG-STUB-1: steps 3 to 15
-/// and the writer's content come with increments 3 to 7).
+/// A generated map: so far what the frame and steps 1 to 5 make (stub RMG-STUB-1: steps 6 to 15
+/// and the writer's content come with increments 4 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
     /// The settings as the generator ran them: water drawn, and under two players in all one
@@ -169,6 +197,10 @@ pub struct GeneratedMap {
     pub zones: Vec<ZoneGenerator>,
     /// Step 2's polygons and distances.
     pub partition: Partition,
+    /// The prototypes and the placed objects (none placed before step 4).
+    pub objects: Objects,
+    /// Steps 4 and 5's towns and the road targets (+0x14B0).
+    pub placed: Placed,
 }
 
 /// The stream: `CrtRand` seeded once, each draw reported with its call site.
@@ -207,13 +239,17 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// `srand(seed)`; water's Random `rand() % 3` (0x537C89); the templates kept for the size
 /// index and the counts; the heroes banned; the template `rand() % kept` (0x549975); the
 /// positions; the generator's map (`rmg_map_init`); step 1, the zones laid out
-/// (`rmg_zones_lay_out` 0x53BCB0).
+/// (`rmg_zones_lay_out` 0x53BCB0); steps 2 and 3; the prototypes (`rmg_objects_read` 0x536200,
+/// read by the constructor; nothing draws there) for the steps that place objects; steps 4 and
+/// 5, the towns (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0 per zone
+/// generator).
 ///
 /// # Errors
 ///
 /// A [`GenerateError`]: refused settings, a part of another core or without the generator's
-/// tables, no template kept, the drawn template's positions outside the original's arrays, step
-/// 1's divisions by zero (RMG-QUIRK-3).
+/// tables, no template kept, the drawn template's positions outside the original's arrays, the
+/// steps' divisions by zero (RMG-QUIRK-3) and reads and writes outside the original's arrays
+/// (RMG-QUIRK-4).
 // rule: RMG-SET-005, RMG-SET-006, RMG-SET-007, RMG-SET-010, RMG-TPL-007
 pub fn generate<T: Trace>(
     core: &Ruleset,
@@ -288,6 +324,7 @@ pub fn generate<T: Trace>(
         StepState {
             cells: &cells,
             zones: &[],
+            objects: &[],
         },
     );
     let mut zones = lay_out(
@@ -310,6 +347,7 @@ pub fn generate<T: Trace>(
         StepState {
             cells: &cells,
             zones: &zones,
+            objects: &[],
         },
     );
     let mut template = template;
@@ -321,6 +359,7 @@ pub fn generate<T: Trace>(
             tables,
             memory_model: quirks.is_enabled(RMG_ZONE_MEMORY_MODEL),
             partition_units: quirks.is_enabled(RMG_PARTITION_UNITS),
+            fill_start_on_border: quirks.is_enabled(RMG_FILL_START_ON_BORDER),
         },
         &mut template.zones,
         &mut template.connections,
@@ -332,8 +371,61 @@ pub fn generate<T: Trace>(
         StepState {
             cells: &cells,
             zones: &zones,
+            objects: &[],
         },
     );
+    paint(
+        &mut stream,
+        &TerrainInput {
+            water: run.water,
+            cosmetic: quirks.is_enabled(RMG_COSMETIC),
+            tables,
+            zones: &template.zones,
+            polygons: &partition.polygons,
+        },
+        &mut zones,
+        &mut cells,
+    )?;
+    stream.trace.step_end(
+        3,
+        StepState {
+            cells: &cells,
+            zones: &zones,
+            objects: &[],
+        },
+    );
+    let mut objects = Objects::new(
+        part.object_templates(),
+        &tables.object_settings,
+        run.format,
+        zones.len(),
+    );
+    let mut placed = Placed::default();
+    let town_input = TownInput {
+        zones: &template.zones,
+        positions: &positions,
+        format: run.format,
+        least_town_skipped: quirks.is_enabled(RMG_LEAST_TOWN_SKIPPED),
+    };
+    for step in [4, 5] {
+        towns(
+            &mut stream,
+            &town_input,
+            step,
+            &mut zones,
+            &mut cells,
+            &mut objects,
+            &mut placed,
+        )?;
+        stream.trace.step_end(
+            step,
+            StepState {
+                cells: &cells,
+                zones: &zones,
+                objects: objects.placed(),
+            },
+        );
+    }
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
         settings: run,
@@ -345,5 +437,7 @@ pub fn generate<T: Trace>(
         cells,
         zones,
         partition,
+        objects,
+        placed,
     })
 }

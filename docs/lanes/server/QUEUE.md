@@ -20,7 +20,28 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   primary skills, morale and luck in `HeroDetails`), **MCL-Q66** (each level-up offer's level in
   `LevelUpView` and `LevelUpOpened`). A mine's income stays the client's until `SRV-STUB-10` folds
   `ObjectFlagged`'s production. Each recommends (a).
-
+- 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). `h3-server`'s `record.rs` pin was substituted. A branch of yours pinning the old hash needs the same substitution.
+- 2026-11-27 (the adventure lane, E08 T145's audit, `adventure/e08-t145`; **a doc comment in
+  your paths, nothing else**): `wire/game/event.rs`' `CastFailure::Target` says "The target, once
+  revealed, held nothing the spell acts on", but a door's explored target of the wrong kind under
+  `faithful` (`ADV-QUIRK-55` on: charged) is never revealed; the engine's
+  `h3_adventure::CastFailure::Target` covers both. Proposed: "The target held nothing the spell
+  acts on, or could not take the hero (a door's wrong kind, GENRLTXT 71)". No wire change.
+- 2026-11-26 (the adventure lane, E08 T144b, `adventure/e08-t144b`, `cross-lane` with the
+  user's consent, E08 decision 423; **your tests changed, mechanical; for your review**): twelve
+  new golden adventure replays (`spells-*` on `fixtures/maps/e08-spells-36.h3m`: the five
+  adventure spells' casts and charged failures in both profiles, a prisoner freed and a Prison
+  full), so the counts of `h3-protocol`'s `tests::game_fold` (`golden`), `tests::game_session`
+  (`restores`) and `h3-server`'s `tests::record` moved from 118 to **130**; all three pass over
+  them, the session's bounds unmet. Their random games cast often (45 casts in
+  `spells-s415-d28`), no turn longer than the duel's and garrisons' battles.
+- 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent;
+  **in your paths, mapped; for your review**): protocol **v85**: `TownCommand::Market { town }`
+  both ways, `TownReject::NoMarket`, the wire's `MarketSeen` (`Object { object }` or `Town {
+  town }`), `MarketWindow`'s and `GameEvent::MarketOpened`'s `hero: Option<u16>` and `place`
+  (in place of `object` / `object_type` and `anchor`); the tests' engine round trips (a town's
+  window without a hero, its event, the refusal; 168 rejections) and the fold's literal.
+  `h3-server`'s `tests/record.rs` literals moved with the goldens (game state hash v40).
 - 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
   nothing blocks**): the map client's hot seat asks a visit's question from the engine's open
   decision, read through `observe` in-process because the fold keeps no offer's or choice's view

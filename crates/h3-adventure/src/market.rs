@@ -56,6 +56,16 @@ pub struct MarketParams {
     values: Vec<u16>,
     artifact_values: Vec<u16>,
     rows: Vec<Row>,
+    /// By count from 1, then by the given resource, then by the wanted one: each trade's lot
+    /// ([`Self::resource_lot`]; E09 T58a2, computed once at the build, not hashed: the listing
+    /// and the view read every pair's at every step inside a window).
+    lots: Vec<Option<Lot>>,
+    /// By count from 1, then by resource: the least of it one lot of a trade takes
+    /// ([`Self::cheapest_lot`]; E09 T58a2, derived, not hashed).
+    cheapest: Vec<Option<u32>>,
+    /// By resource: the most of [`Self::cheapest_lot`] over every count
+    /// ([`Self::cheapest_at_every_count`]; derived, not hashed).
+    worst: Vec<Option<u32>>,
 }
 
 /// One count's three factors, each the binary32 nearest its hundredths.
@@ -108,12 +118,55 @@ impl MarketParams {
                 })
             })
             .collect::<Result<_, _>>()?;
-        Ok(Self {
+        let mut params = Self {
             cost,
             values,
             artifact_values,
             rows,
-        })
+            lots: Vec::new(),
+            cheapest: Vec::new(),
+            worst: Vec::new(),
+        };
+        params.derive_lots();
+        Ok(params)
+    }
+
+    /// Fills the derived tables (E09 T58a2): each count's lot of each pair of two resources (the
+    /// arithmetic [`Self::resource_lot`] names), then for each count and resource the least of it a lot of a trade for another
+    /// resource takes, then for each resource the most of those over the counts (none where a
+    /// count has none).
+    fn derive_lots(&mut self) {
+        let resources = || (0..self.values.len()).filter_map(ResourceId::from_index);
+        let mut lots = Vec::with_capacity(self.rows.len() * self.values.len() * self.values.len());
+        for row in &self.rows {
+            for (give, &given) in self.values.iter().enumerate() {
+                let a = stored(u32::from(given))
+                    .times(row.resources)
+                    .round(SINGLE_BITS);
+                for (take, &wanted) in self.values.iter().enumerate() {
+                    lots.push((give != take).then(|| lot(a, u32::from(wanted))).flatten());
+                }
+            }
+        }
+        self.lots = lots;
+        let mut cheapest = Vec::with_capacity(self.rows.len() * self.values.len());
+        for count in 1..=self.counts() {
+            for give in resources() {
+                let least = resources()
+                    .filter_map(|take| self.resource_lot(count, give, take))
+                    .map(|lot| lot.give.max(1))
+                    .min();
+                cheapest.push(least);
+            }
+        }
+        let width = self.values.len();
+        self.worst = (0..width)
+            .map(|give| {
+                (cheapest.iter().skip(give).step_by(width))
+                    .try_fold(0, |most: u32, least| least.map(|least| most.max(least)))
+            })
+            .collect();
+        self.cheapest = cheapest;
     }
 
     /// The resource a creature's and an artifact's cost is read in for the market (E08 T133b,
@@ -127,6 +180,26 @@ impl MarketParams {
     pub fn counts(&self) -> u8 {
         // At most `u8::MAX` rows (`new`).
         u8::try_from(self.rows.len()).unwrap_or(u8::MAX)
+    }
+
+    /// The least of `give` one lot of a trade for another resource takes at `count` Marketplaces
+    /// (E09 T58a2: the legal listing's test of a town's window, `h3_game`'s, without a lot's
+    /// arithmetic): the least [`Self::resource_lot`]'s `give` (at least 1) over every other
+    /// resource the parameters value; none outside the counts, for a resource they do not value,
+    /// or with no other resource.
+    pub fn cheapest_lot(&self, count: u8, give: ResourceId) -> Option<u32> {
+        let row = usize::from(count).checked_sub(1)?;
+        (give.index() < self.values.len())
+            .then(|| self.cheapest.get(row * self.values.len() + give.index()))
+            .flatten()
+            .copied()
+            .flatten()
+    }
+
+    /// The most of [`Self::cheapest_lot`] of `give` over every count (E09 T58a2): a treasury
+    /// holding it pays a lot of `give` at any count; none where a count has none.
+    pub fn cheapest_at_every_count(&self, give: ResourceId) -> Option<u32> {
+        self.worst.get(give.index()).copied().flatten()
     }
 
     /// The value of `resource` in a trade and a creature sale, if the parameters value it.
@@ -158,15 +231,14 @@ impl MarketParams {
     /// or a lot past `u32`.
     // rule: ADV-MKT-002
     pub fn resource_lot(&self, count: u8, give: ResourceId, take: ResourceId) -> Option<Lot> {
-        if give == take {
+        // E09 T58a2: read from the table the build computed (`derive_lots`).
+        let width = self.values.len();
+        let row = usize::from(count).checked_sub(1)?;
+        if give.index() >= width || take.index() >= width {
             return None;
         }
-        let row = self.row(count)?;
-        let (given, wanted) = (value(&self.values, give)?, value(&self.values, take)?);
-        lot(
-            stored(given).times(row.resources).round(SINGLE_BITS),
-            wanted,
-        )
+        let at = (row * width + give.index()) * width + take.index();
+        self.lots.get(at).copied().flatten()
     }
 
     /// The lot of a creature of cost `cost` (in [`Self::cost`]'s resource) sold for `take` at `count` Marketplaces (screen 4,

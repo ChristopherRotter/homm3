@@ -37,6 +37,9 @@ fn tables() -> GeneratorTables {
         layout_sin: vec![0; 32],
         terrain_towns: vec![],
         native_terrains: vec![],
+        picture_sets: Vec::new(),
+        rock_pictures: Vec::new(),
+        object_settings: Vec::new(),
     }
 }
 
@@ -71,6 +74,8 @@ impl World {
             terrain: 0,
             position: [p[0], p[1], 0],
             size,
+            bounds: ZoneGenerator::NO_BOUNDS,
+            town: None,
         });
         self.out.polygons.push(Vec::new());
         id
@@ -101,6 +106,7 @@ fn input(tables: &GeneratorTables, water: Water, flags: bool) -> PartitionInput<
         tables,
         memory_model: flags,
         partition_units: flags,
+        fill_start_on_border: flags,
     }
 }
 
@@ -266,13 +272,13 @@ fn a_fills_start_clipped_off_the_map_is_a_fault() {
     }));
     // The ring around (5, 5) holds no vertex inside [1, 8]: no start, no fill.
     let r = level.tri.find([5, 5]);
-    level.fill(g, r);
+    level.fill(g, r, &[]);
     assert_eq!(level.fault, None);
     assert_eq!(marked(level.cells, 5, 5), (0xFF, false));
     // From a corner's record (5, 5) is the deepest destination; the clip from 100 000 toward
     // it overflows its 32-bit products and leaves the map.
     let corner = level.tri.find([-200, -200]);
-    level.fill(g, corner);
+    level.fill(g, corner, &[]);
     assert_eq!(level.fault, Some(PartitionFault::Outside));
 }
 
@@ -300,4 +306,51 @@ fn water_zones_whose_side_lies_off_the_map_are_not_connected() {
     level.connect_water(0);
     assert!(level.connections.is_empty());
     assert_eq!(level.out.distances, [Vec::<i16>::new(), Vec::new()]);
+}
+
+// covers: RMG-ZON-013
+/// RMG-QUIRK-25: a zone whose centre and the cell left of it lie on borders fills nothing with
+/// `quirk.rmg.fill_start_on_border`; without it its fill starts at the free cell nearest its
+/// centre outside the regions the later zones' fills start in (none: nothing).
+#[test]
+fn a_fill_whose_start_lies_on_borders_starts_from_a_free_cell_by_the_flag() {
+    let t = tables();
+    for (on_border, claim_all) in [(true, false), (false, false), (false, true)] {
+        let i = PartitionInput {
+            fill_start_on_border: on_border,
+            ..input(&t, Water::Normal, true)
+        };
+        let mut log = Log::default();
+        let mut stream = Stream::new(1, &mut log);
+        let mut w = World::new(10);
+        let g = w.zone(5, 5, [5, 5]);
+        let o = w.zone(5, 5, [2, 8]);
+        // A border of zone 1 along row 5 splits the map; with `claim_all` only the centre and
+        // the cell left of it lie on it.
+        for x in 0..10 {
+            if !claim_all || (4..=5).contains(&x) {
+                w.cells.clamped_mut(x, 5, 0).mark(1, true);
+            }
+        }
+        let mut level = level!(w, stream, i);
+        for (k, [x, y]) in [(g, [5, 5]), (o, [2, 8])] {
+            assert!(level.tri.insert(Vertex {
+                x,
+                y,
+                data: Some(k)
+            }));
+        }
+        let r = level.tri.find([5, 5]);
+        level.fill(g, r, &[(o, [2, 8])]);
+        let above = (0..5).flat_map(|y| (0..10).map(move |x| (x, y)));
+        let filled = above
+            .clone()
+            .filter(|&(x, y)| marked(level.cells, x, y).0 == 0)
+            .count();
+        let expected = if on_border || claim_all { 0 } else { 50 };
+        assert_eq!(filled, expected, "{on_border} {claim_all}");
+        // The later zone's region below stays free.
+        assert_eq!(marked(level.cells, 2, 8).0, 0xFF);
+        assert_eq!(level.fault, None);
+    }
 }

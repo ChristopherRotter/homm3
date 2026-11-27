@@ -153,7 +153,7 @@ fn summoned(from: Pos, to: Pos, (seen_from, seen_to): (Viewers, Viewers)) -> Adv
     }
 }
 
-// covers: ADV-SPL-003
+// covers: ADV-SPL-003, ADV-SPL-010
 #[test]
 fn summon_boat_brings_the_hero_s_last_boat_from_any_level_in_both_settings() {
     // E15-9a: the hero's last boat (its captain, nobody aboard) comes first, from the underground,
@@ -257,7 +257,7 @@ fn a_tie_goes_to_the_later_boat_by_steps_and_to_the_lower_by_distance() {
     }
 }
 
-// covers: ADV-SPL-003
+// covers: ADV-SPL-003, ADV-SPL-010
 #[test]
 fn summon_boat_makes_a_boat_at_advanced_or_expert_up_to_the_most_in_use() {
     // With only another player's boat on the map: at None and Basic no boat (GENRLTXT 336,

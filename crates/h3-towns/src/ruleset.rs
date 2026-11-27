@@ -679,6 +679,9 @@ pub struct TownRuleset {
     /// Each record's buildings the town screen's opening reads, in faction order beside `towns`
     /// (E09 T49a2, [`crate::opening_gives`]; derived, not hashed).
     guilds: Vec<GuildRoles>,
+    /// Each record's buildings a market window reads, in faction order beside `towns` (E09
+    /// T58a2, [`crate::check_market`], [`crate::marketplaces`]; derived, not hashed).
+    markets: Vec<MarketRoles>,
     hash: u64,
 }
 
@@ -730,6 +733,62 @@ impl GuildRoles {
             .filter(|(b, _)| b.supersedes.intersects(read))
             .fold(BuildingSet::EMPTY, |set, (_, id)| set.with(id));
         roles
+    }
+}
+
+/// A record's buildings of the roles a town's market window reads (E09 T58a2,
+/// [`crate::check_market`], [`crate::marketplaces`]; derived from the record when the part is
+/// built, so that the legal listing's test of a window walks no town's buildings: `bench-check`'s
+/// `legal-towns-36`, as [`GuildRoles`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct MarketRoles {
+    /// Of role `marketplace`.
+    pub(crate) marketplace: BuildingSet,
+    /// Of role `artifact_merchants`.
+    pub(crate) merchants: BuildingSet,
+    /// Of role `freelancers`.
+    pub(crate) freelancers: BuildingSet,
+    /// Those that supersede one of the three: of a town's buildings only these can make such a
+    /// building not stand.
+    pub(crate) superseding: BuildingSet,
+}
+
+impl MarketRoles {
+    /// The roles of `record`'s buildings.
+    fn of(record: &TownRecord) -> Self {
+        let ids = (0..).map_while(BuildingId::from_index);
+        let mut roles =
+            record
+                .buildings
+                .iter()
+                .zip(ids)
+                .fold(Self::default(), |mut roles, (b, id)| {
+                    let add = |set: &mut BuildingSet, role: bool| {
+                        if role {
+                            *set = set.with(id);
+                        }
+                    };
+                    add(&mut roles.marketplace, b.roles.marketplace);
+                    add(&mut roles.merchants, b.roles.artifact_merchants);
+                    add(&mut roles.freelancers, b.roles.freelancers);
+                    roles
+                });
+        let read = roles.any();
+        let ids = (0..).map_while(BuildingId::from_index);
+        roles.superseding = record
+            .buildings
+            .iter()
+            .zip(ids)
+            .filter(|(b, _)| b.supersedes.intersects(read))
+            .fold(BuildingSet::EMPTY, |set, (_, id)| set.with(id));
+        roles
+    }
+
+    /// The buildings of the three roles.
+    pub(crate) const fn any(&self) -> BuildingSet {
+        self.marketplace
+            .union(self.merchants)
+            .union(self.freelancers)
     }
 }
 
@@ -815,6 +874,7 @@ impl TownRuleset {
             week: WeekDraw::of(&towns),
             portals,
             guilds: towns.iter().map(GuildRoles::of).collect(),
+            markets: towns.iter().map(MarketRoles::of).collect(),
             towns,
             hash: 0,
         };
@@ -864,19 +924,36 @@ impl TownRuleset {
         &self,
         faction: FactionId,
     ) -> Option<(&TownRecord, GuildRoles)> {
-        let at = self
-            .towns
-            .binary_search_by_key(&faction, |t| t.faction)
-            .ok()?;
+        let at = self.record_index(faction)?;
         Some((&self.towns[at], self.guilds[at]))
+    }
+
+    /// The town record of `faction` with its buildings' roles a market window reads (E09
+    /// T58a2), if it has one.
+    pub(crate) fn town_with_market_roles(
+        &self,
+        faction: FactionId,
+    ) -> Option<(&TownRecord, MarketRoles)> {
+        let at = self.record_index(faction)?;
+        Some((&self.towns[at], self.markets[at]))
     }
 
     /// The town record of `faction`, if it has one.
     pub fn town(&self, faction: FactionId) -> Option<&TownRecord> {
+        self.record_index(faction).map(|at| &self.towns[at])
+    }
+
+    /// The place of `faction`'s record among the records, in faction order: its faction's index
+    /// when every faction before it has one (the original packs' nine), else by a search (E09
+    /// T58a2: the legal listing reads a record per owned town, `bench-check`'s `legal-towns-36`).
+    fn record_index(&self, faction: FactionId) -> Option<usize> {
+        let at = faction.index();
+        if self.towns.get(at).is_some_and(|t| t.faction == faction) {
+            return Some(at);
+        }
         self.towns
             .binary_search_by_key(&faction, |t| t.faction)
             .ok()
-            .and_then(|i| self.towns.get(i))
     }
 }
 

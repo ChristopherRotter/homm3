@@ -51,6 +51,17 @@ pub struct ZoneGenerator {
     pub position: [i32; 3],
     /// +0x1C: the base size, then scaled.
     pub size: i32,
+    /// +0x20 to +0x2C: its cells' box, least x and y, greatest x and y + 1 (step 3,
+    /// `rmg_zone_bounds_compute` 0x53BBB0; [`ZoneGenerator::NO_BOUNDS`] before).
+    pub bounds: [i32; 4],
+    /// +0x30 to +0x38 and +0x3C: its first town's entrance x, y, z once steps 4 and 5 placed one
+    /// (`rmg_town_place_central` 0x545250; +0x3C cleared by `rmg_zone_generator_init`).
+    pub town: Option<[i32; 3]>,
+}
+
+impl ZoneGenerator {
+    /// The box `rmg_zone_generator_init` 0x5329E0 gives: 32000 the least, -32000 the greatest.
+    pub const NO_BOUNDS: [i32; 4] = [32_000, 32_000, -32_000, -32_000];
 }
 
 /// What step 1 reads besides the stream.
@@ -446,6 +457,8 @@ pub(crate) fn lay_out<T: Trace>(
                 terrain: 0,
                 position: [0, 0, 0],
                 size: zone.base_size,
+                bounds: ZoneGenerator::NO_BOUNDS,
+                town: None,
             });
         }
         layout.place(stream, me, if k < n { me } else { n }, d)?;

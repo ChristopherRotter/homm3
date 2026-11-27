@@ -374,7 +374,7 @@ fn a_step_onto_each_trade_or_service_enters_it() {
             assert_eq!(state.adventure().heroes()[0].pos, entrance, "{index}");
             // E08 T133b: its decision opens with the original packs' rates (a Trading Post's 42
             // trades of the seven resources, at five Marketplaces).
-            assert_eq!(state.market(red).map(|visit| visit.hero), Some(hero));
+            assert_eq!(state.market(red).map(|visit| visit.hero), Some(Some(hero)));
             let seen = h3_game::observe(&state, rules, h3_game::Viewer::Player(red)).decision;
             let Some(h3_game::DecisionView::Market(view)) = seen else {
                 panic!("{index}: {seen:?}")

@@ -269,7 +269,12 @@ pub mod wire;
 /// Dimension Door cast (its arrival a teleporter's `HeroTeleported`, a wrong target `CastFailed`'s
 /// `Target`); `SpellReject::NoPoints`, `NoCastsLeft`, `NotFree`, `WrongKind`; `SpellReject::NotBuilt`
 /// gone (`ADV-STUB-22` withdrawn: every bound spell casts).
-pub const PROTOCOL_VERSION: u32 = 84;
+/// v85 (E09 T58a1, the town lane's, `cross-lane`; the town epic's design note §104, §115): a
+/// town's market window, `TownCommand::Market` (a town of the actor's) and its refusal
+/// `TownReject::NoMarket`; `MarketWindow` and `GameEvent::MarketOpened` name their place
+/// (`MarketSeen`: a map market by type and anchor, or a town) and their hero as an option (none
+/// possible at a town).
+pub const PROTOCOL_VERSION: u32 = 85;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes, with its reader ([`record`], every client's: E24 M5 T2c) in the same

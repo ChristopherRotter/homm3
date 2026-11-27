@@ -33,6 +33,7 @@ mod rewards_map;
 mod sea;
 mod sea_map;
 mod sea_xl_map;
+mod spells_map;
 mod strategy;
 mod taverns;
 mod taverns_map;

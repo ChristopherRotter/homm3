@@ -28,22 +28,26 @@ resumes (the epic file); its tasks are cut then.
   `h3_battle::estimate`, AI-Q34), T2d the start's values (done 2026-11-26, not cut, AI-Q35),
   T2e the spells' and skills' values (done 2026-11-26, not cut, AI-Q36; the spell values in
   `h3_battle::estimate`'s `caster.rs`), T2f the artifacts (done 2026-11-26, not cut, AI-Q37; the
-  equipped value moved to increment 3), **T2g** the army and town values (next),
-  T2h the object value, T2i the planning, T2j the walk with the exit's property tests and the
-  gated benchmark, T2k trace T-A's harness and days 1 to 3. Each with its `CPU-` ids, tests,
-  coverage 100 %, stubs by epic.
-  - **T2g — the army and town values** (next; survey §2.3, §2.4; the epic file's table: the army
-    plans `ai_army_plan_*`, `ai_stack_marginal_value` 0x42C830, the exchange and purchase values,
-    AI-QUIRK-2; the dwelling's, the town's and its buildings' values, the weighted cost; about
-    3 400 of the original's instructions): measure its size at the start and propose a cut by size
-    (the user, 2026-11-26: a couple of small tasks or one bigger one a session, a seam confirmed
-    with them); `Heroes3.exe` staged (or attached to the chat) for the readings. The skills'
-    values (T2e, `computer/skills.rs`) wait for its town buildings (the University's); its town
-    value (`ai_town_value` 0x52AB80) reads T2f's values to a hero and to a player
-    (`computer/artifacts.rs`, CPU-ART-010, -011: the Legion parts, the Grail's).
-
+  equipped value moved to increment 3), T2g the army and town values (done 2026-11-27, not cut,
+  AI-Q38), **T2h** the object value (next), T2i the planning, T2j the walk with the exit's
+  property tests and the gated benchmark, T2k trace T-A's harness and days 1 to 3. Each with its
+  `CPU-` ids, tests, coverage 100 %, stubs by epic.
+  - **T2h — the object value** (next; survey §2.1; the epic file's table: `ai_object_value`
+    0x528040 over the classes the engine has, its per-class helpers, the guarded object's fight,
+    the vision circle `ai_vision_area_value` 0x432220 with its 75 class values; about 4 300 of the
+    original's instructions less the gaps): measure its size at the start and propose a cut by
+    size (the user: a couple of small tasks or one bigger one a session, a seam confirmed with
+    them); `Heroes3.exe` staged (or attached) for the readings. It calls T2g's values, all
+    `expect(dead_code)` until then (`computer/towns.rs`: `dwelling_value` for classes 17 and 20,
+    `town_value` for 98, each with the candidate's cost and the tile; `armies::Plan::
+    exchange_value` for the garrison and hero cases, a plan cleared as `ai_army_plan_clear`
+    0x42C040 does); since AI-Q38 also `ai_army_plan_init_creature` 0x42CF50 with its callers (the
+    Refugee Camp's purchase value 0x52A710, the joining creatures 0x52BC60), on `armies::Plan::new`
+    and `Offer`. The values ask a `towns::Asked` (the hero's `artifacts::Valued` and the start
+    record).
 ## Inbox
 
+- 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). The two bot reports' `core` lines were substituted by hand (no report regenerated). A branch of yours regenerating them before this merges carries the new hash.
 Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10-19); the
 origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: the notices of
 E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last part, the battle
@@ -54,6 +58,23 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
+- 2026-11-27 (E09 T58a2, `town/e09-t58a2`, `cross-lane` with the user's consent, E09 decision
+  225; **in your paths, for your review; adventure action encoding v22 taken**): `legal_commands`
+  lists `TownCommand::Market` (TWN-MKT-002) for each own town after its spell book's purchase,
+  where the window opens and offers an answer; `adventure/action.rs` appends **`TOWN_MARKET`
+  (145)** after the casts, by the town's entrance in the tile head, building 0 (`ENTRY_COUNT`
+  146; `tileless` stops the casts at it); the masks, `decode`, `encode`, `Action::town_market`;
+  the window's answers are the market's 56 entries, its `Leave` `DECLINE`. The random agent draws
+  it as every listed command (`rollout.rs`' docs), so every random game with an owned
+  Marketplace changed course: the town map's end-of-days seed is **864** (`tests/towns.rs`, a
+  search over 1 to 3 000; `Played` counts the windows and their answers), the fork's 6 still
+  holds. The weight of a window in the draw (an agent inside it trades lot by lot until it draws
+  `Leave`) is yours to choose.
+- 2026-11-26 (E09 T58a1, `town/e09-t58a1`, `cross-lane`; **nothing to do**): a town's market
+  window (`TownCommand::Market`) is E08's market decision with `MarketVisit::hero` an `Option`
+  and a `place` (`MarketPlace::Object` or `Town`); your entries read neither, so the encoding did
+  not move. It is not listed yet (`TWN-STUB-22`): T58a2 lists it and appends the opening's entry
+  in your `adventure/action.rs` (`cross-lane`), the market's 56 entries serving its answers.
 - 2026-11-25: increment 6 (the town's trades) appends **42 entries** to the action encoding,
   `cross-lane` in your paths at T58a to T59b (design note `docs/epics/E09-design.md` §115; E09
   decision 216): the market's opening (1), the artifact sale by place for gold (22: worn positions

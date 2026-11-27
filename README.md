@@ -40,7 +40,7 @@ Licensed **GPL-2.0-or-later** ([LICENSE](LICENSE), [ADR-0009](docs/adr/0009-lice
 ## Status
 
 The project is developed incrementally, in parallel work lanes ([docs/BACKLOG.md](docs/BACKLOG.md)
-has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-25.
+has every epic in order, each lane's state is in `docs/lanes/<lane>/HANDOFF.md`). As of 2026-11-27.
 
 Progress is the share of an epic's refined increments (**I**) or milestones (**M**) that are closed;
 epics whose later increments are still sketches grow as those get refined, so their bar can step back.
@@ -59,15 +59,15 @@ epics whose later increments are still sketches grow as those get refined, so th
 | [E06](docs/epics/E06-battle-ai.md) | Battle AI v1: PPO self-play, league, evaluation gate, ladders | ai | `██████████` done | 2026-10-27 |
 | [E17](docs/epics/E17-clients.md) | Battle client (SDL 3, assets from your copy, frame-exact against the original) | client | `██████████` done (M0–M7) | 2026-11-12 |
 | [E16](docs/epics/E16-server.md) | Server: protocol, lobbies, accounts, ranked ladders, whole games, spectators | server | `██████████` done (M0–M6) | 2026-11-15 |
-| [E08](docs/epics/E08-adventure-map.md) | Adventure map core on real `.h3m` maps: movement, fog, objects, monsters, heroes, garrisons, creature banks, trades and services | adventure | `█████████░` 14/15 I | the Prison, the Market of Time and the adventure spells (I15) next; later increments sketched |
+| [E08](docs/epics/E08-adventure-map.md) | Adventure map core on real `.h3m` maps: movement, fog, objects, monsters, heroes, garrisons, creature banks, trades and services, the Prison and the adventure spells | adventure | `██████████` done (I1–I15) | 2026-11-27 |
 | [E24](docs/epics/E24-map-client.md) | Adventure map client | map-client | `████████░░` 4/5 M | M1–M4 closed (stills, map moving, adventure screen, the engine's games shown with their battles); M5 (hot seat on the adventure map) refined, M6–M8 sketched (the hero's screens, the town screen, live play) |
 | [E26](docs/epics/E26-fair-system-actor.md) | Fair system actor: the original's AI on what its side may know | battle | `█████░░░░░` 1/2 I | increment 1 built; checkpoint with you next |
 | [E09](docs/epics/E09-towns.md) | Towns and economy | town | `██████░░░░` 5/8 I | I1–I5 closed (towns on the map, construction, growth and recruitment, the Tavern, the mage guild); I6 (the town's trades) refined; the buildings for heroes and the map, travel and Grail follow |
 | [E27](docs/epics/E27-game-shell.md) | Game shell: menus, scenario setup, load/save, options, start clips | client | `████████░░` 4/5 M | M1–M4 closed (reading, start and menus, a game's setup, High Scores, Credits, the save file and Load Game); M5 (in play) after E24 M5 |
 | [E25](docs/epics/E25-battle-ai-v2.md) | Battle AI v2: beat the faithful system actor | ai | `▓▓▓▓▓▓▓▓▓▓` 10 I done, open-ended | I10 closed (the ceiling: +0.085 possible against the fair actor, #2 holds +0.026); paused for E31; I11 (expert iteration) when it resumes |
-| [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `███░░░░░░░` 2/7 I | I1 closed (the reading, the oracle, the survey, the quirk ledger, the ADR draft); I2 closed (templates, the stream, the start: the settings, the tables, the template's draw, the positions); I3 (zones and terrain) refined, I4–I7 cut in the generator's run order |
+| [E14](docs/epics/E14-original-map-generator.md) | The original's random map generator: the same map per seed | rmg | `████░░░░░░` 3/7 I | I1 closed (the reading, the oracle, the survey, the quirk ledger, the ADR draft); I2 closed (templates, the stream, the start); I3 closed (zones and terrain: steps 1 to 3 and the terrain painter, equal to the original on the 24 oracle cases); I4 (towns and connections) refined, I5–I7 cut in the generator's run order |
 | [E11](docs/epics/E11-historical-rules.md) | Historical rules of RoE and AB | battle | `░░░░░░░░░░` planned | waits for the original media of the older editions |
-| [E10](docs/epics/E10-game-orchestration.md) | Game orchestration: teams, the game's end, special victory and loss conditions, the score, the starting bonus and handicap | adventure | `░░░░░░░░░░` planned | refined; after E08 (its increments sketched) |
+| [E10](docs/epics/E10-game-orchestration.md) | Game orchestration: teams, the game's end, special victory and loss conditions, the score, the starting bonus and handicap | adventure | `░░░░░░░░░░` planned | refined; next in the adventure lane (increment 1's survey queued; its increments sketched) |
 | [E31](docs/epics/E31-original-computer-player.md) | The original's computer player: the adventure AI read from the executable, faithful then fair | ai | `█░░░░░░░░░` 1/7 I | I1 closed (the reading of 255 functions, the survey, the ADR draft: a module of `h3-game` for now); I2 (the module and the frame) next |
 | [E13](docs/epics/E13-adventure-ai.md) | Adventure AI (hierarchical): macro-actions over a deterministic executor | ai | `░░░░░░░░░░` planned | refined in shape; after all of E10 and E31 |
 

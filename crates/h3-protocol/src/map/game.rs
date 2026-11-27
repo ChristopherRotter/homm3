@@ -27,10 +27,10 @@ use h3_game::{
     GuildHero as EngineGuildHero, GuildPart as EngineGuildPart, GuildPlayer as EngineGuildPlayer,
     GuildRow as EngineGuildRow, HeroInfo as EngineInfo, HillFortView,
     HireCreature as EngineCreature, HireSeen as EngineSeen, HireView, HiredPart as EngineHiredPart,
-    LevelUpView, MapGarrisonView, MarketScreen as EngineScreen, MarketView, MonthKind, PlayerView,
-    SlotState as EngineSlot, TavernHero as EngineTavernHero, TavernHeroView as EngineTavernView,
-    TavernPart as EngineTavernPart, ThievesGuildView, TownBuildingsView, TownOwnerView, TownView,
-    Viewer, WeekKind,
+    LevelUpView, MapGarrisonView, MarketScreen as EngineScreen, MarketSeen as EngineMarketSeen,
+    MarketView, MonthKind, PlayerView, SlotState as EngineSlot, TavernHero as EngineTavernHero,
+    TavernHeroView as EngineTavernView, TavernPart as EngineTavernPart, ThievesGuildView,
+    TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::{
     ArtifactInstance, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -45,9 +45,9 @@ use crate::wire::game::{
     GarrisonHero, GarrisonStack, Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow,
     HeroDetails, HeroInfo, HillFortRow, HillFortState, HillFortWindow, Hire, HireCreature,
     HireSeen, HireTarget, HiredPart, Known, KnownObject as WireKnownObject, LevelUp, Lot,
-    MapGarrison, MapHero, MarketScreen, MarketWindow, Monster, Month, Object, ObjectRef, Offer,
-    OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, ResourceLot, RevealedArea,
-    RevealedView, SaleLots, SkillLevel, SlotState, StockEntry, Summoned, TavernHero,
+    MapGarrison, MapHero, MarketScreen, MarketSeen, MarketWindow, Monster, Month, Object,
+    ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, ResourceLot,
+    RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState, StockEntry, Summoned, TavernHero,
     TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings, TownOwnerFacts, TradeLot,
     UniversityVisit, VisitBonus, Week,
 };
@@ -481,8 +481,8 @@ fn market(view: &MarketView) -> MarketWindow {
     };
     let offers = &view.offers;
     MarketWindow {
-        hero: view.hero.raw(),
-        object: object_ref((view.object_type, view.anchor)),
+        hero: view.hero.map(h3_contracts::HeroId::raw),
+        place: market_seen(view.place),
         screens: offers
             .screens
             .iter()
@@ -1060,6 +1060,19 @@ pub(crate) const fn pos(p: h3_adventure::Pos) -> Pos {
 }
 
 /// An object by type and anchor on the wire.
+/// A market's place on the wire (E09 T58a1, v85).
+pub(crate) const fn market_seen(place: EngineMarketSeen) -> MarketSeen {
+    match place {
+        EngineMarketSeen::Object {
+            object_type,
+            anchor,
+        } => MarketSeen::Object {
+            object: object_ref((object_type, anchor)),
+        },
+        EngineMarketSeen::Town(town) => MarketSeen::Town { town: town.raw() },
+    }
+}
+
 pub(crate) const fn object_ref(
     (object_type, anchor): (ObjectTypeId, h3_adventure::Pos),
 ) -> ObjectRef {

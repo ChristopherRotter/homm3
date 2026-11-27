@@ -694,37 +694,37 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x2f50da5f196487d8",
-    "0x0fe2b461f0d9bf20",
-    "0x74dbfd70ae7bc75b",
-    "0x26ede997e0e9abeb",
-    "0x55bcf8f40282cb9c",
-    "0xa951bb82bfd1e7ea",
-    "0xc5a00ee83240debb",
-    "0x78ef4655ccba3307",
-    "0x702cbc9ddeee179a",
-    "0x5e50f5ca4abc12f9",
-    "0xd2f5c008fdf9ce7e",
-    "0x1a4cf58067274de1",
-    "0x6a3af4e1b3a0c572",
-    "0xe3863a099eb3b981",
-    "0x7c19ae58277228f3",
-    "0x25372c3662582820",
-    "0x417ef53b20563490",
-    "0x75c5eefa94ba9dc0",
-    "0x9904aadc871510ed",
-    "0xb64ebf4a12f79d18",
-    "0x6cca3d9641e15059",
-    "0xec99ff85b4d79c73",
-    "0xb6ff190a240cabe8",
-    "0xc93f2dae1c0b9d77",
-    "0x928e5b8959abf4c9",
-    "0xe08e4b89b5e5c2c3",
-    "0x9db4a3e8c1bc2466",
+    "0xeca2af8533205077",
+    "0xb1c8970a83897927",
+    "0x4c4e4d8cab207c38",
+    "0x1e5ee2f563866ddc",
+    "0x99dc7055523881e3",
+    "0x7bb6a0cae5ffe5e9",
+    "0xba84b5c77bf8c194",
+    "0xce893047c897cf2c",
+    "0xb0719662ded772c1",
+    "0x80be0c9e64e7be66",
+    "0x99eca92cd383891d",
+    "0x01be94ee28b38f7a",
+    "0x312916158192a9bb",
+    "0xd616ae3b8bfc8a8a",
+    "0xd143084bb7a05688",
+    "0xf30adad522726cc3",
+    "0x574b88182c8208eb",
+    "0x695e189d732d0051",
+    "0xc1ea280c7e78b914",
+    "0x332a02d0a02b0d8b",
+    "0xb700e46a62c662ea",
+    "0xd605a1e811b73594",
+    "0xd75fcea3950db3df",
+    "0x8abd36b57f06c2b0",
+    "0xf0d13bbcabae2f2a",
+    "0xdb3ed78262992c4c",
+    "0x26b2b8684a5b703d",
 ]
 
 [replay]
-format = 26
+format = 27
 engine = "0.1.0"
 seed = "5249"
 difficulty = 1
@@ -743,14 +743,14 @@ packs = [
 ],
 ]
 profile = "base:faithful"
-ruleset_hash = "0x7d6081fbb0552a2f"
+ruleset_hash = "0x810a2c4eb5a0373f"
 adventure_ruleset_hash = "0x9fc40eb6455ae78a"
 town_ruleset_hash = "0xc830faa47b612bfc"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 39
+game_state_hash_version = 40
 adventure_state_hash_version = 30
 checkpoint_every = 25
 
@@ -761,7 +761,7 @@ import_version = 29
 
 [result]
 day = 29
-final_hash = "0xb7d34c93f9a0962f"
+final_hash = "0x018775cbf8058e9c"
 
 [[players]]
 colour = 0

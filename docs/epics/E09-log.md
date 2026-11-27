@@ -6692,3 +6692,168 @@ entry's hash) closed by a test. Coverage 23 minutes, determinism 8, bench-check 
 h3-protocol -p h3-server -p h3-files` (every golden replay replayed). **Owed:** the scoped verify
 `--with-original-data` (the user's computer offline all session); CI on the pull request is the
 record.
+
+### T58a1 — the market at a town: the count, the window with the town as its place, the trades, the transfer, the guild's sale, the merchants' purchase (2026-11-26)
+
+One session, the user present; branch `town/e09-t58a1`, `cross-lane` (the adventure lane's
+`h3-adventure` `command.rs`, `lib.rs`, `state.rs`, `state/markets.rs` and its tests, `h3-game`'s
+`command.rs`, `observe.rs`, `lib.rs`, `state.rs`, `state/market.rs`, `tests/markets.rs`, `h3-map`'s
+plans and view tests, `h3-files`' replay word, `h3-sim`'s replay version, the 118 goldens, the
+catalog's GAM-DEC-011 and ADV-MKT-004; the server lane's `h3-protocol` and `h3-server`'s record
+test). Starting point: `master` at dc70cf8 (#1198, T57, merged; no other pull request open). The
+user's computer was online: five files staged (`Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`,
+`maps.tar`, `extracted.tar`); the setup's full baseline died with a VM restart (CI's run on
+`master` served). **T58a cut** (decision 224): T58a1 the rule, T58a2 the listing with the env, T58b
+the artifact sale; the `cross-lane` consent with the cut.
+
+- **`h3-towns`** (design §103, §104; `src/market.rs`): `marketplaces(store, part, towns)` (the
+  given towns with a `marketplace` ever built), `check_market(record, part, hero)` →
+  `TownMarket { merchants, freelancers }` or `NoMarket` / `NoVisitor`; `TownCommand::Market {
+  town }`, `TownCommandError::NoMarket`.
+- **`h3-adventure`** (`cross-lane`): `MarketVisit { hero: Option<HeroId>, place: MarketPlace }`
+  (`Object { index, object_type, anchor }` or `Town(TownId)`); `state/markets.rs`' checks take a
+  resolved `MarketWindow { visit, screens, count }` (`market_window` for a map market;
+  `MarketWindow::check_screen`; `market_offers` infallible, no sale without a hero; the stock the
+  place's, `market_stock`); `buy` empties the merchants' entry (the town lane's
+  `town/merchants.rs`' `empty_merchants_entry`); `sell` a garrison hero's stack too (`town/rows.rs`'
+  `garrisoned_mut`).
+- **`h3-game`:** the town lane's `town/market.rs`: `open` (UnknownTown, NotOwner, the window's
+  hero, `check_market`, then E08's `open_market`), `window_hero` (the actor's visitor; with
+  `TWN-QUIRK-15`'s flag off the garrison hero; an ally's visitor none, `TWN-STUB-21`), `window`
+  (one of four static screen lists, the count), `count` (clamped 1 ..= the parameters' rows,
+  `TWN-QUIRK-17`); `GameState::market_window` (`state/market.rs`) dispatches by the place, each
+  answer, `market_answers` and `market_view` reading it once (no new `?` arm: each answer's own
+  check refuses). `GameEvent::MarketOpened` and `MarketView` carry `hero: Option<HeroId>` and
+  `place: MarketSeen` (as `HireSeen`: never an index). **Game state hash v40** (the decision's
+  hero an option, its place's tag). `TWN-STUB-22`: not listed (T58a2).
+- **The wire** (protocol **v85**): `TownCommand::Market`, `TownReject::NoMarket`, `MarketSeen`,
+  `MarketWindow`'s and `MarketOpened`'s optional hero and place. **Replays:** the word `town market
+  <town>` (format **v27**); the 118 goldens re-recorded from their commands (the scratch script
+  over `h3 adventure run --script`, 7 s): only `format`, `game_state_hash_version`, 1 182
+  checkpoint entries (19 lists) and the 118 final hashes moved; `h3-server`'s `tests/record.rs`
+  literals.
+- **Rules:** TWN-MKT-001 to -004 entered `verified` (the code reading, batch TWN-6's rows
+  TWN-6-1, -2, -5 and -8, VCMI on the count and the hero); GAM-DEC-011 amended (a town's place);
+  `TWN-QUIRK-17` entered (T-19, an exploit: the count's floor); `TWN-QUIRK-15`'s rule test named.
+  TWN-VEW-005 (the views of the trades) waits for the whole set (T59).
+- **Tests:** `h3-towns`' `market.rs` (the count over the given towns, the window's openings and
+  refusals); `h3-adventure`'s market tests on resolved windows (the map's window refused for a
+  hero gone or none, an index past the objects, a non-market, a town's place; a hero-less or
+  gone window's sale and purchase) and `a_towns_window_trades_at_its_count_and_sells_the_merchants_stock`;
+  `h3-game`'s `town/tests/market.rs` (6: a Marketplace's window without a hero, its view, a trade
+  at count 1, the transfer, the screens refused, the listing's trade, `Leave`; the merchants'
+  purchase emptying the one stock, `Entry`, `CannotPay`, `NoVisitor` without a hero; the guild's
+  sale at count 1; the garrison hero's sale with the flag off, `NoVisitor` and the hero-less
+  Marketplace with it on; the count from 1 to the rows, a trader owning both towns; `NoMarket`,
+  `NotOwner`, `UnknownTown`, `NotYourTurn`, `DecisionOpen`); the protocol's round trips (a town's
+  window and event without a hero, 168 rejections), the replay word's.
+- *Agent's calls* (change freely): `marketplaces` takes the trader's towns (the store knows no
+  owners; ADR-0028 point 6's `player` is the game's, a wording for the next `shared/` pull
+  request); the window resolved per answer and view, never stored; a town's screens in the
+  original's order (Trade, Transfer, Buy, Sell); the window's hero an ally's visitor never; the
+  listing's stub its own (`TWN-STUB-22`).
+
+**The queue:** T58a1 out; T58a2 next (the listing, the env's opening, the plans). Ids: decisions
+next 225; quirks `TWN-QUIRK-18` (planned `-18` to `-20`, `-22`, `-23`); stubs `TWN-STUB-23`.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`: every step passes
+but `check-lane` (by design; `check-lane --cross-lane --base origin/master` ok), `check-rules`
+(a covers of TWN-VEW-005, not yet a rule: dropped) and coverage (one region, `garrisoned_mut`'s
+`?`: written without it, the step run again clean); bench-check inside every gate (no
+re-baseline), determinism and `original-data` (T57's owed run) passed. Coverage 26 minutes,
+determinism 10, bench-check 18. `verify-step coverage --scope server` (the wire's mapping, the
+town trap) clean; its first run met a timing flake of `h3-server`'s
+`a_spectator_watches_a_timed_game_through_a_restart_to_a_stalled_battles_void` under the
+instrumentation (the test passes alone and in the plain run). `cargo clippy --workspace
+--all-targets -- -D warnings`; `cargo test -p h3-towns -p h3-adventure -p h3-game -p h3-files -p
+h3-protocol -p h3-server -p h3-sim -p h3-cli` (every golden replayed). `master`'s da69ee4 (#1199,
+rmg only) merged in.
+
+### T58a2 — the market window listed, the env's `TOWN_MARKET` v22, the plans open towns' windows (2026-11-27)
+
+One session, the user present; branch `town/e09-t58a2`, `cross-lane` (the adventure lane's
+`h3-adventure` `market.rs` and its tests, `h3-game`'s `state/market.rs`, `h3-map`'s `play.rs` and
+`play/trades.rs`, seven adventure workloads; the AI lane's `h3-sim` `adventure/action.rs`, `mod.rs`,
+`rollout.rs`, `tests.rs`, `tests/towns.rs`). Starting point: `master` at a7b6752 (#1204; T58a1's
+#1202 merged), CI green on it; the setup's full baseline was stopped after 55 minutes of coverage
+with 9 GB of disk left (CI's run served), `master`'s 41 adventure workloads measured in the same
+sandbox for the comparison. The user's computer was online: five files staged (`Heroes3.exe`,
+`H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`). **T58a2 whole** (decision 225).
+
+- **The listing** (`h3-game`'s `town/offer.rs`, `town/market.rs`): `legal_builds` gives each own
+  town's `Market` after its spell book's purchase and before its hero moves where
+  `market::listed` holds: `check_market` as if a hero stood there (no market building: none), the
+  window's hero (`hero_of`, shared with `open`: the visitor and garrison hero with their owners as
+  the listing found them on the entrance) read only where the merchants or the guild stand, then a
+  trade's lot the treasury pays at every count (`GameState::pays_a_lot` over
+  `MarketParams::cheapest_at_every_count`: no count), else at the trader's count (computed at the
+  listing's first window that needs it) by `GameState::offers_an_answer` (the least lot at that
+  count, else `market_answers`' sales and purchases with a hero: `window_answers`, the list on a
+  resolved window). `TWN-STUB-22` lifted.
+- **`h3-towns`:** `check_market` and `marketplaces` read the part's derived `MarketRoles` per
+  record (the three roles' sets and the buildings that can supersede one; not hashed, as
+  `GuildRoles`); `TownRuleset::town`, `town_with_guild_roles` and `town_with_market_roles` find
+  the record at the faction's index first (`record_index`, the search after).
+- **`h3-adventure`** (`cross-lane`): `MarketParams` tabulates every count's lot of every pair at
+  its build (`resource_lot` a lookup: the same arithmetic, the same values) and derives
+  `cheapest_lot(count, give)` and `cheapest_at_every_count(give)`; none hashed.
+- **The env** (action encoding **v22**): `TOWN_MARKET` (145, after the casts so that no entry
+  moves), `ENTRY_COUNT` 146, `Action::town_market`; its tile mask the entrances of the towns of the
+  listed windows, building 0; `tileless` stops the casts at it; the random agent draws it as every
+  listed command. The mask property (`check_town_heroes`) covers it; the layout test the numbers.
+  The town map's end-of-days seed **864** (a search over 1 to 3 000 in release, mask checks off:
+  four met every feature, 864 the shortest, 980 steps, 29 builds, 96 dialogs, 15 hires, 3 books,
+  30 windows and 176 answers in them; 264 met no undefended capture); `Played` counts the windows
+  and their answers. The fork's seed 6 holds.
+- **The plans** (`h3-map`): `trades::trade_open` gives `(Option<HeroId>, TradeAt)` (`Object` or
+  `Town`), `trade_army` a garrison hero's army too; `trade_answers` probes a town's window (no
+  sale without a hero, the merchants' one stock), the answer and listing oracles take its
+  optional hero; `check_decisions` a town's `MarketOpened` (the owner's town, the hero its visitor
+  or garrison hero, the actor's); `check_trades` the Artifact Merchants' stock (an answer changes
+  it only by a town's purchase's entry); `town_builds` probes `Market` after the book,
+  `accepted_builds` keeps it where the opened window lists an answer but its `Leave`,
+  `check_town_builds` reads a listed or an accepted unlisted one apart (`check_town_market`);
+  `visit_town` opens a listed window in one step of sixteen (half the book's);
+  `TOWN_BUILDINGS`' first custom set holds the Marketplace (bit 8); the towns' cover test counts
+  the windows and their answers. All of `h3-map`'s tests passed (release) after
+  `check_town_builds` learned the window; then the play and view blocks once at ten and five times
+  their cases: every property passed but the hygiene one, whose seed (a plan without towns,
+  `Exchange` steps) `master` fails too (the adventure lane's inbox; not added to the regressions);
+  a fresh 240-case run of it passed.
+- **Tests:** `h3-towns`' window (a superseded Marketplace not standing, still counted);
+  `h3-adventure`'s `the_cheapest_lot_is_the_least_any_trade_takes_and_its_most_over_the_counts`;
+  `h3-game`'s `the_listing_opens_a_window_where_it_opens_and_offers_an_answer` (a Marketplace
+  without a hero, an empty treasury not listed but accepted, one wood, the guild's sale with an
+  empty treasury after the guild's commands and before the moves, the merchants' price, no hero,
+  no market, both towns' windows); `h3-sim`'s layout and mask tests.
+- **The bench** (`master` measured in the same sandbox, per function): on `master`'s games (the
+  agent made to skip the listed windows, an experiment) the first build cost `legal-towns-36`
+  +21.9 % (each pair's lot in float arithmetic, `resource_lot`, `lot` and `X87`, 4.0 M; the
+  trader's count, 1.0 M); one design pass: the cheapest lots derived at the build (+4.3 %), the
+  window's hero read only where the merchants or the guild stand (+3.6 %), the records read at the
+  faction's index (+0.02 %: the search per owned town paid for the rule). With the agent drawing
+  the windows the town map's games changed course (it trades lot by lot inside them):
+  `legal-towns-36` +128.6 % on `master` with E08's `market_answers` listing every pair's lot at
+  every step inside a window, +36.7 % once `MarketParams` tabulated the lots (the offers' vectors
+  and the merchants' prices left). Re-baselined, the counted code the same (the functions in the
+  same shares): `legal-towns-36` +36.67 % (`master` 34 810 958), `reach-towns-36` −15.52 %,
+  `fork-towns-36` −16.11 %, `day-start-builds-36` −12.03 %, `day-start-towns-36` −8.85 %,
+  `day-start-guild-36` −8.00 %, `month-start-builds-36` −4.89 %; every other adventure workload
+  within 1.5 % of `master`.
+- *Agent's calls* (change freely): the window listed after the town's spell book's purchase; the
+  count read only where the worst count's lot is not paid; the lot table in `MarketParams` (one
+  allocation of rows × resources², the original's 490 lots) rather than a cache in the game; the
+  plans' Marketplace in one of the four building sets rather than a new draw (no case shifts).
+
+**The queue:** T58a2 out; T58b next (the artifact sale). Ids: decisions next 226; quirks
+`TWN-QUIRK-18` (planned `-18` to `-20`, `-22`, `-23`); stubs `TWN-STUB-23`.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` after merging
+`master` (#1205, #1206): every step passes but `check-lane` (by design; `check-lane --cross-lane
+--base origin/master` ok) and coverage (two lines of `check_market`, a faction without a record
+and the only market building superseded: tested, `verify-step coverage --scope town` then clean);
+bench-check (the re-baselines), determinism and `original-data` passed. Coverage 24 minutes,
+determinism 9, bench-check 15. `cargo clippy --workspace --all-targets -- -D warnings`; `cargo
+test -p h3-sim -p h3-cli` (every golden replay); `h3-map`'s tests again after the merge (218) and
+`random-play-spells-36` (−0.03 %). No wire change: the protocol, the replay format and every hash
+as `master`'s.

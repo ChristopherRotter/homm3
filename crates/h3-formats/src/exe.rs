@@ -66,6 +66,65 @@ pub struct RmgTables {
     pub native_terrains_va: u32,
     /// Number of town types.
     pub town_types: usize,
+    /// Virtual address of the terrain painter's picture sets by terrain (`terrain_picture_sets`,
+    /// a set's address per terrain; survey §2.7.1).
+    pub picture_sets_va: u32,
+    /// Per terrain from dirt, the virtual address of its picture set's static initializer
+    /// (`<terrain>_picture_set_static_init`): `push table`, `push count`, `push share`,
+    /// `push byte +5`, `push byte +4`, `mov ecx, set`, its constructor's call.
+    pub picture_set_inits: &'static [u32],
+    /// Virtual address of rock's pictures (`rock_picture_shapes`, 8 bytes each: the shape as a
+    /// `u32`, two variant bytes).
+    pub rock_pictures_va: u32,
+    /// Number of rock's pictures.
+    pub rock_pictures: usize,
+    /// Virtual address of the (class, value) pairs `object_settings_init` 0x41B500 copies to the
+    /// object settings' +0x8 (`object_class_values`, two `i32` each; E14 T4b).
+    pub class_groups_va: u32,
+    /// Number of those pairs.
+    pub class_groups: usize,
+    /// Virtual address of the classes (`i32` each) whose settings get +0x0 set
+    /// (`object_classes_not_entered`).
+    pub not_entered_va: u32,
+    /// Number of those classes.
+    pub not_entered: usize,
+    /// Virtual address of the classes whose settings get +0x1 set (`object_classes_from_above`).
+    pub from_above_va: u32,
+    /// Number of those classes.
+    pub from_above: usize,
+    /// Virtual address of the classes whose settings get +0x2 set (`object_classes_removable`).
+    pub removable_va: u32,
+    /// Number of those classes.
+    pub removable: usize,
+}
+
+/// The terrain painter's picture set of one terrain (`terrain_picture_set_init` 0x5B3780's
+/// arguments and table; survey §2.7.1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PictureSetData {
+    /// Byte +4: the terrain meets the others through dirt (the transitions' classes).
+    pub through_dirt: bool,
+    /// Byte +5: land (the painter's pinches without the ring).
+    pub land: bool,
+    /// The flagged plain pictures' share in percent.
+    pub share: u8,
+    /// Per picture its shape (0 to 28) and flag.
+    pub pictures: Vec<(u8, bool)>,
+}
+
+/// One class's object settings as `object_settings_init` 0x41B500 fills them: the bytes the map
+/// generator reads (E14 T4b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectSettingsData {
+    /// +0x0: visited from a neighbouring tile, not entered.
+    pub not_entered: bool,
+    /// +0x1: entered from or left toward the three tiles above its entrance.
+    pub from_above: bool,
+    /// +0x2: removable.
+    pub removable: bool,
+    /// +0x8: the class whose prototypes the generator files this class's among
+    /// (`rmg_objects_read` 0x536200): the class itself unless a pair gives another.
+    pub class_group: u8,
 }
 
 /// The map generator's limit pairs of a build, in the tables' order, and step 1's tables.
@@ -84,6 +143,200 @@ pub struct RmgData {
     pub terrain_towns: Vec<[i32; 4]>,
     /// Per town type, its native terrain.
     pub native_terrains: Vec<i32>,
+    /// The terrain painter's picture sets, per terrain from dirt.
+    pub picture_sets: Vec<PictureSetData>,
+    /// Rock's pictures: per picture its shape (0 to 28) and two variant bytes.
+    pub rock_pictures: Vec<RockPictureData>,
+    /// The object settings by class, [`RMG_OBJECT_TYPES`] of them.
+    pub object_settings: Vec<ObjectSettingsData>,
+}
+
+/// Rock's pictures: per picture its shape and two variant bytes.
+pub type RockPictureData = (u8, [bool; 2]);
+
+/// The highest shape a terrain picture has (the sets' 58 and rock's 116 ranges).
+const PICTURE_SHAPES: u32 = 28;
+
+/// A byte that is 0 or 1 as a flag.
+fn flag_byte(byte: u8, what: &'static str) -> Result<bool, FormatError> {
+    match byte {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => Err(FormatError::OutOfRange {
+            what,
+            value: u64::from(byte),
+        }),
+    }
+}
+
+/// A shape word at most [`PICTURE_SHAPES`].
+fn shape_word(word: u32) -> Result<u8, FormatError> {
+    u8::try_from(word)
+        .ok()
+        .filter(|&s| u32::from(s) <= PICTURE_SHAPES)
+        .ok_or(FormatError::OutOfRange {
+            what: "rmg picture's shape",
+            value: u64::from(word),
+        })
+}
+
+/// The picture sets and rock's pictures of `t` (survey §2.7.1): each initializer's pushes, its
+/// set the one `terrain_picture_sets` gives for its terrain, each picture's shape and flag bytes.
+fn picture_data(
+    image: &PeImage<'_>,
+    t: &RmgTables,
+) -> Result<(Vec<PictureSetData>, Vec<RockPictureData>), FormatError> {
+    let bytes = |va: u32, len: usize, what: &'static str| -> Result<&[u8], FormatError> {
+        let off = image.file_offset(va).ok_or(FormatError::OutOfRange {
+            what,
+            value: u64::from(va),
+        })?;
+        image
+            .data
+            .get(off..off + len)
+            .ok_or(FormatError::Truncated { what, offset: off })
+    };
+    let pictures =
+        |va: u32, count: usize, what: &'static str| -> Result<Vec<[u8; 8]>, FormatError> {
+            let table = bytes(va, 8 * count, what)?;
+            Ok(table
+                .chunks(8)
+                .map(|c| [c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]])
+                .collect())
+        };
+    let sets = bytes(
+        t.picture_sets_va,
+        4 * t.picture_set_inits.len(),
+        "rmg picture sets",
+    )?;
+    let mut out = Vec::new();
+    for (terrain, &init) in t.picture_set_inits.iter().enumerate() {
+        // 68 table, 6A count, 6A share, 6A +5, 6A +4, B9 set.
+        let code = bytes(init, 18, "rmg picture set's initializer")?;
+        let opcodes = [
+            (0, 0x68),
+            (5, 0x6A),
+            (7, 0x6A),
+            (9, 0x6A),
+            (11, 0x6A),
+            (13, 0xB9),
+        ];
+        if opcodes.iter().any(|&(at, op)| code[at] != op) {
+            return Err(FormatError::BadMagic("rmg picture set's initializer"));
+        }
+        let set = le::u32_at(code, 14, "rmg picture set's initializer")?;
+        if set != le::u32_at(sets, 4 * terrain, "rmg picture sets")? {
+            return Err(FormatError::OutOfRange {
+                what: "rmg picture set's address",
+                value: u64::from(set),
+            });
+        }
+        let share = code[8];
+        if share > 100 {
+            return Err(FormatError::OutOfRange {
+                what: "rmg picture set's share",
+                value: u64::from(share),
+            });
+        }
+        let table = le::u32_at(code, 1, "rmg picture set's initializer")?;
+        out.push(PictureSetData {
+            through_dirt: flag_byte(code[12], "rmg picture set's byte +4")?,
+            land: flag_byte(code[10], "rmg picture set's byte +5")?,
+            share,
+            pictures: pictures(table, usize::from(code[6]), "rmg picture table")?
+                .iter()
+                .map(|p| {
+                    Ok((
+                        shape_word(u32::from_le_bytes([p[0], p[1], p[2], p[3]]))?,
+                        flag_byte(p[4], "rmg picture's flag")?,
+                    ))
+                })
+                .collect::<Result<_, FormatError>>()?,
+        });
+    }
+    let rock = pictures(t.rock_pictures_va, t.rock_pictures, "rmg rock pictures")?
+        .iter()
+        .map(|p| {
+            Ok((
+                shape_word(u32::from_le_bytes([p[0], p[1], p[2], p[3]]))?,
+                [
+                    flag_byte(p[4], "rmg rock picture's variant")?,
+                    flag_byte(p[5], "rmg rock picture's variant")?,
+                ],
+            ))
+        })
+        .collect::<Result<_, FormatError>>()?;
+    Ok((out, rock))
+}
+
+/// `count` little-endian `i32` at `va`.
+fn words_at(
+    image: &PeImage<'_>,
+    va: u32,
+    count: usize,
+    what: &'static str,
+) -> Result<Vec<i32>, FormatError> {
+    let base = image.file_offset(va).ok_or(FormatError::OutOfRange {
+        what,
+        value: u64::from(va),
+    })?;
+    (0..count)
+        .map(|i| le::i32_at(image.data, base + 4 * i, what))
+        .collect()
+}
+
+/// The object settings by class as `object_settings_init` 0x41B500 fills them (E14 T4b): every
+/// class first its own class as +0x8 and the flags clear (0x41B55E to 0x41B57D), then the pairs'
+/// values in the table's order (a class given twice keeps its last), then the classes of the
+/// three flag tables; a class or value outside `0..232` is refused (the code would write past the
+/// settings).
+fn object_settings(
+    image: &PeImage<'_>,
+    t: &RmgTables,
+) -> Result<Vec<ObjectSettingsData>, FormatError> {
+    let class = |value: i32, what: &'static str| {
+        u8::try_from(value)
+            .ok()
+            .filter(|&k| i32::from(k) < RMG_OBJECT_TYPES)
+            .ok_or(FormatError::OutOfRange {
+                what,
+                value: u64::from(value.unsigned_abs()),
+            })
+    };
+    let mut out: Vec<ObjectSettingsData> = (0..u8::MAX)
+        .filter(|&k| i32::from(k) < RMG_OBJECT_TYPES)
+        .map(|class_group| ObjectSettingsData {
+            not_entered: false,
+            from_above: false,
+            removable: false,
+            class_group,
+        })
+        .collect();
+    let pairs = words_at(
+        image,
+        t.class_groups_va,
+        2 * t.class_groups,
+        "rmg class groups",
+    )?;
+    for pair in pairs.chunks(2) {
+        let k = class(pair[0], "rmg class group's class")?;
+        out[usize::from(k)].class_group = class(pair[1], "rmg class group")?;
+    }
+    for (field, va, count) in [
+        (0, t.not_entered_va, t.not_entered),
+        (1, t.from_above_va, t.from_above),
+        (2, t.removable_va, t.removable),
+    ] {
+        for value in words_at(image, va, count, "rmg object settings' classes")? {
+            let s = &mut out[usize::from(class(value, "rmg object settings' class")?)];
+            match field {
+                0 => s.not_entered = true,
+                1 => s.from_above = true,
+                _ => s.removable = true,
+            }
+        }
+    }
+    Ok(out)
 }
 
 /// A double as ten-thousandths when it is the one nearest a decimal of at most four places (its
@@ -187,6 +440,7 @@ pub fn rmg_data_at(image: &PeImage<'_>, t: &RmgTables) -> Result<RmgData, Format
         -1..=8,
         "rmg terrain's town type",
     )?;
+    let (picture_sets, rock_pictures) = picture_data(image, t)?;
     Ok(RmgData {
         map_limits: pairs(t.map_limits_va, t.map_limits)?,
         zone_limits: pairs(t.zone_limits_va, t.zone_limits)?,
@@ -201,6 +455,9 @@ pub fn rmg_data_at(image: &PeImage<'_>, t: &RmgTables) -> Result<RmgData, Format
             0..=8,
             "rmg town's native terrain",
         )?,
+        picture_sets,
+        rock_pictures,
+        object_settings: object_settings(image, t)?,
     })
 }
 
@@ -572,6 +829,28 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
         terrains: 9,
         native_terrains_va: 0x0064_08C8,
         town_types: 9,
+        picture_sets_va: 0x0064_2BD8,
+        picture_set_inits: &[
+            0x005B_3B60,
+            0x005B_3BA0,
+            0x005B_3BE0,
+            0x005B_3C20,
+            0x005B_3C60,
+            0x005B_3CA0,
+            0x005B_3CE0,
+            0x005B_3D20,
+            0x005B_3D60,
+        ],
+        rock_pictures_va: 0x0064_24A8,
+        rock_pictures: 48,
+        class_groups_va: 0x0063_A6E4,
+        class_groups: 46,
+        not_entered_va: 0x0063_AA58,
+        not_entered: 42,
+        from_above_va: 0x0063_AB00,
+        from_above: 42,
+        removable_va: 0x0063_A9D0,
+        removable: 34,
     },
 }];
 
@@ -1649,6 +1928,21 @@ mod tests {
         for v in [0i32, 1, 4, -1, 2, 7] {
             p.extend_from_slice(&v.to_le_bytes());
         }
+        // At 0x50 one terrain's set address; at 0x54 its initializer (a table of two pictures at
+        // 0x68, share 50, land, not through dirt); at 0x78 one rock picture.
+        p.extend_from_slice(&0x00AB_CDEFu32.to_le_bytes());
+        p.push(0x68);
+        p.extend_from_slice(&0x0040_1068u32.to_le_bytes());
+        p.extend_from_slice(&[0x6A, 2, 0x6A, 50, 0x6A, 1, 0x6A, 0, 0xB9]);
+        p.extend_from_slice(&0x00AB_CDEFu32.to_le_bytes());
+        p.extend_from_slice(&[0, 0]);
+        p.extend_from_slice(&[8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]);
+        p.extend_from_slice(&[13, 0, 0, 0, 1, 0, 0, 0]);
+        // At 0x80 two class groups (class 3 given twice, the last kept), at 0x90 one class not
+        // entered, at 0x94 one entered from above, at 0x98 one removable.
+        for v in [3i32, 1, 3, 2, 0, 5, 231] {
+            p.extend_from_slice(&v.to_le_bytes());
+        }
         let img = build_test_image(1, &p);
         let pe = PeImage::parse(&img).unwrap();
         let t = RmgTables {
@@ -1663,7 +1957,31 @@ mod tests {
             terrains: 1,
             native_terrains_va: 0x0040_1048,
             town_types: 2,
+            picture_sets_va: 0x0040_1050,
+            picture_set_inits: &[0x0040_1054],
+            rock_pictures_va: 0x0040_1078,
+            rock_pictures: 1,
+            class_groups_va: 0x0040_1080,
+            class_groups: 2,
+            not_entered_va: 0x0040_1090,
+            not_entered: 1,
+            from_above_va: 0x0040_1094,
+            from_above: 1,
+            removable_va: 0x0040_1098,
+            removable: 1,
         };
+        let mut settings: Vec<ObjectSettingsData> = (0..232u8)
+            .map(|class_group| ObjectSettingsData {
+                not_entered: false,
+                from_above: false,
+                removable: false,
+                class_group,
+            })
+            .collect();
+        settings[3].class_group = 2;
+        settings[0].not_entered = true;
+        settings[5].from_above = true;
+        settings[231].removable = true;
         assert_eq!(
             rmg_data_at(&pe, &t).unwrap(),
             RmgData {
@@ -1673,6 +1991,14 @@ mod tests {
                 layout_sin: vec![0, -1951],
                 terrain_towns: vec![[0, 1, 4, -1]],
                 native_terrains: vec![2, 7],
+                picture_sets: vec![PictureSetData {
+                    through_dirt: false,
+                    land: true,
+                    share: 50,
+                    pictures: vec![(8, false), (0, true)],
+                }],
+                rock_pictures: vec![(13, [true, false])],
+                object_settings: settings,
             }
         );
         // An object type outside 0..232, a table cut short, an unmapped table.
@@ -1691,6 +2017,23 @@ mod tests {
             (0x20, f64::NAN.to_bits().to_le_bytes().to_vec()),
             (0x38, 9i32.to_le_bytes().to_vec()),
             (0x4C, (-1i32).to_le_bytes().to_vec()),
+            // The picture sets: another instruction, another set's address, a share past 100,
+            // a byte +4 of 2, a table past the image, a shape of 29 or past a byte, a flag of 2,
+            // a rock shape of 29, a rock variant of 2.
+            (0x5D, vec![0x90]),
+            (0x50, vec![0xEE]),
+            (0x5C, vec![101]),
+            (0x60, vec![2]),
+            (0x5A, vec![0xFF]),
+            (0x68, vec![29]),
+            (0x69, vec![1]),
+            (0x74, vec![2]),
+            (0x78, vec![29]),
+            (0x7D, vec![2]),
+            // The object settings: a pair's class or value outside 0..232, a flag table's class.
+            (0x80, 232i32.to_le_bytes().to_vec()),
+            (0x84, (-1i32).to_le_bytes().to_vec()),
+            (0x98, 232i32.to_le_bytes().to_vec()),
         ] {
             let mut q = p.clone();
             q[at..at + bytes.len()].copy_from_slice(&bytes);
@@ -1715,6 +2058,26 @@ mod tests {
             },
             RmgTables {
                 town_types: 99,
+                ..t
+            },
+            RmgTables {
+                picture_sets_va: 0x10,
+                ..t
+            },
+            RmgTables {
+                picture_set_inits: &[0x10],
+                ..t
+            },
+            RmgTables {
+                rock_pictures_va: 0x10,
+                ..t
+            },
+            RmgTables {
+                class_groups_va: 0x10,
+                ..t
+            },
+            RmgTables {
+                removable_va: 0x10,
                 ..t
             },
         ] {

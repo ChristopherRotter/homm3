@@ -145,7 +145,7 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) -> usize 
 #[test]
 fn the_golden_replays_record_through_the_session() {
     let files = golden();
-    assert_eq!(files.len(), 118, "the golden adventure replays");
+    assert_eq!(files.len(), 130, "the golden adventure replays");
     let threads = std::thread::available_parallelism().map_or(1, usize::from);
     let chunk = files.len().div_ceil(threads);
     let players: (usize, usize) = std::thread::scope(|scope| {
@@ -209,15 +209,15 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
     let cases = [
         (
             "checkpoint",
-            "0x1c3f939413640365\"]",
-            "0x1c3f939413640360\"]",
-            "checkpoint 0 after command 4: the replay's 0x1c3f939413640360, the session's 0x1c3f939413640365",
+            "0x9de9a095cb522156\"]",
+            "0x9de9a095cb522150\"]",
+            "checkpoint 0 after command 4: the replay's 0x9de9a095cb522150, the session's 0x9de9a095cb522156",
         ),
         (
             "final-hash",
-            "final_hash = \"0xf30372ebca8fb8ef\"",
-            "final_hash = \"0xf30372ebca8fb8ee\"",
-            "state hash after 8 commands: expected 0xf30372ebca8fb8ee, got 0xf30372ebca8fb8ef",
+            "final_hash = \"0x2cf540bc5f28ec72\"",
+            "final_hash = \"0x2cf540bc5f28ec70\"",
+            "state hash after 8 commands: expected 0x2cf540bc5f28ec70, got 0x2cf540bc5f28ec72",
         ),
         ("day", "day = 2", "day = 3", "final day: expected 3, got 2"),
         (
@@ -234,13 +234,13 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         ),
         (
             "rules",
-            "ruleset_hash = \"0x7d6081fbb0552a2f\"",
+            "ruleset_hash = \"0x810a2c4eb5a0373f\"",
             "ruleset_hash = \"0x437388440d9286a0\"",
             "replay header mismatch: ruleset_hash",
         ),
         (
             "checkpoints",
-            "checkpoints = [\"0x1c3f939413640365\"]",
+            "checkpoints = [\"0x9de9a095cb522156\"]",
             "checkpoints = []",
             "checkpoint count does not match the command count",
         ),
@@ -346,7 +346,7 @@ fn each_players_record_is_written_to_its_file() {
     assert_eq!(lines.len(), 1);
     assert!(
         lines[0].ends_with(&format!(
-            ": fixtures/maps/e08-army-12.h3m (8 commands, day 2, final hash 0xf30372ebca8fb8ef): {}, {}",
+            ": fixtures/maps/e08-army-12.h3m (8 commands, day 2, final hash 0x2cf540bc5f28ec72): {}, {}",
             files[0].display(),
             files[1].display()
         )),

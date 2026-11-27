@@ -52,9 +52,10 @@ use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
     GameEvent, GameRuleset, GameState, HeroChange, HeroStatus, HireAnswer, HireSeen, HireTarget,
-    HireView, Manage, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer,
-    SlotState, TavernAnswer, TownCommand, TownHeroChange, UniversityAnswer, Viewer, apply,
-    hire_range, legal_commands, legal_management, legal_moves, observe, split_range,
+    HireView, Manage, MarketSeen, MonthKind, NoopSink, OpenBattle, Position, SchoolChoice, Sink,
+    SkillOffer, SlotState, TavernAnswer, TownCommand, TownHeroChange, UniversityAnswer, Viewer,
+    apply, hire_range, legal_cast_targets, legal_commands, legal_management, legal_moves, observe,
+    split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -76,7 +77,9 @@ use crate::{Limits, import, parse};
 
 /// The trades and services in the plans (E08 T135b2, increment 14's design note §18): their
 /// layout's draw, their step, their listing's oracle, their answers' oracles and their cover test.
+mod casts;
 mod trades;
+pub(super) use casts::{spell_plan, spell_steps};
 pub(super) use trades::{trade_plan, trade_steps};
 
 fn rules(profile: &str) -> GameRuleset {
@@ -1036,6 +1039,9 @@ pub(super) struct Plan {
     /// ([`trades::trades`]): each one's anchor (modulo the map) and object ([`TRADE_OBJECTS`]),
     /// laid out after the map Taverns (with them, [`bonuses_laid_out`]).
     pub(super) trades: Vec<(Spot, usize)>,
+    /// (E08 T144b; increment 15's design note §17) The casters ([`casts::spell_plan`]): heroes
+    /// with a Spell Book and some of the five adventure spells, laid out with the heroes.
+    pub(super) casters: Vec<casts::Caster>,
 }
 
 /// A plan's map garrison (E08 T116b1; increment 12's design note §16; ADV-GAR-001): where it
@@ -1102,12 +1108,13 @@ pub(super) struct TownPlan {
 /// The plans' towns' buildings (E09 T9b1; building bits, `docs/formats/h3m.md`, "Town
 /// buildings"): the standard set without a Fort and with one, and custom sets of the Town Hall,
 /// the City Hall and the Capitol (TWN-CAP-002: one Capitol per player after a capture) with a
-/// Fort and without one.
+/// Fort and a Marketplace (E09 T58a2: bit 8, so that the plans' games open towns' market windows,
+/// TWN-MKT-002) and without either.
 pub(super) const TOWN_BUILDINGS: [Buildings; 4] = [
     Buildings::Standard { fort: false },
     Buildings::Standard { fort: true },
     Buildings::Custom {
-        built: [0b1111, 0, 0, 0, 0, 0],
+        built: [0b1111, 0b1, 0, 0, 0, 0],
         forbidden: [0; 6],
     },
     Buildings::Custom {
@@ -1616,6 +1623,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     banks: banked,
                     taverns: Vec::new(),
                     trades: Vec::new(),
+                    casters: Vec::new(),
                 }
             },
         )
@@ -2362,7 +2370,9 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         let parts = mated
             .filter(|e| e.parts)
             .map_or(&[][..], |_| &ELIXIR_PARTS[..]);
-        let book = skills.is_some() || (index == 0 && exchange.is_some());
+        // E08 T144b: a caster wears a Spell Book with its adventure spells of its own.
+        let caster = casts::caster_of(plan, usize::from(index), heroes.len());
+        let book = skills.is_some() || (index == 0 && exchange.is_some()) || caster.is_some();
         let own = backpack.is_some() || book || !worn_kit.is_empty();
         let artifacts = own.then(|| {
             let mut worn = vec![None; v.artifact_slots()];
@@ -2382,15 +2392,24 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
                 backpack: backpack.into_iter().flatten().copied().map(Some).collect(),
             }
         });
-        let spells = mated.filter(|e| v == Version::Sod && !e.spells.is_empty());
-        let spells = spells.map(|exchange| {
+        let mate_spells = mated.map_or(&[][..], |e| &e.spells[..]);
+        let mate_spells = mate_spells.iter().map(|&i| MATE_SPELLS[i]);
+        let cast_spells = caster.map_or(&[][..], |c| &c.spells[..]);
+        let cast_spells = cast_spells.iter().map(|&i| casts::ADVENTURE_SPELLS[i]);
+        let own: Vec<u8> = mate_spells.chain(cast_spells).collect();
+        let spells = (v == Version::Sod && !own.is_empty()).then(|| {
             let mut bits = vec![0u8; 9];
-            for &i in &exchange.spells {
-                let spell = MATE_SPELLS[i];
+            for spell in own {
                 bits[usize::from(spell / 8)] |= 1 << (spell % 8);
             }
             Bits(bits)
         });
+        // AB's one spell byte: a caster's first spell beside its type's own, else none.
+        let spell = (v == Version::Ab)
+            .then(|| caster.map_or(u8::MAX, |c| casts::ADVENTURE_SPELLS[c.spells[0]]));
+        let primary_skills = caster
+            .filter(|_| v == Version::Sod)
+            .map(|c| [1, 1, 1, c.knowledge]);
         let owner = if mated.is_some() {
             0
         } else {
@@ -2404,10 +2423,11 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             army,
             patrol: u8::MAX,
             sex: u8::MAX,
-            spell: (v == Version::Ab).then_some(u8::MAX),
+            spell,
             artifacts,
             secondary_skills: skills,
             spells,
+            primary_skills,
             ..HeroBody::default()
         };
         let mut o = object(x + 1, y, HERO_TEMPLATE, Body::Hero(Box::new(body)));
@@ -3083,6 +3103,10 @@ pub(super) enum Step {
     /// map a trade's revisit, an option that ends on a trade's entrance, or one that gets nearer to
     /// one ([`trades::seek_trade`]); as `Bank(n)` on a map without trades.
     Trade(u16),
+    /// (E08 T144b; increment 15's design note §17) In a battle as `Fight(n)`; a decision settled;
+    /// else a cast of the actor's, listed or at a target its hero's query gives, or the `n`-th
+    /// option ([`casts::seek_cast`]).
+    Cast(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -3814,7 +3838,8 @@ fn hire(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
 /// siege's too, either side's); an open decision settled as [`seek`] settles it; (E09 T29b) a
 /// listed hero move between an own town's bars in five steps of eight (`Enter` in three, `Leave`
 /// and `Swap` in one each), (E09 T38a2) a listed hire in one of eight, (E09 T49a2) a listed
-/// opening in another, (E09 T49b) a listed spell book's purchase in the last; on the map the
+/// opening in another, (E09 T49b) a listed spell book's purchase in the last (E09 T58a2: a listed
+/// market window in one of its two, before the book); on the map the
 /// `n`-th of its options that end on a town's entrance (its own entered, TWN-VIS-001; another
 /// player's or a neutral one captured or besieged, TWN-CAP-001, TWN-SIE-001; another team's
 /// visitor besieged with the garrison merged, TWN-SIE-002), in three steps of four of a town not
@@ -3862,6 +3887,14 @@ fn visit_town(
         .find(|c| matches!(c, GameCommand::Town(TownCommand::Open { .. })));
     if let Some(open) = open.filter(|_| n % 8 == 6) {
         return open.clone();
+    }
+    // E09 T58a2: a listed market window (TWN-MKT-002) in one step of sixteen (half the book's),
+    // so that the towns' trades meet the oracles; its answers settled as a map market's.
+    let market = legal
+        .iter()
+        .find(|c| matches!(c, GameCommand::Town(TownCommand::Market { .. })));
+    if let Some(market) = market.filter(|_| n % 16 == 15) {
+        return market.clone();
     }
     // E09 T49b: a listed spell book's purchase (TWN-GLD-007) in one step of eight, so that heroes
     // without a book learn the guild's spells.
@@ -5197,6 +5230,7 @@ pub(super) fn resolve(
         Step::Bonus(n) => (who, seek_bonus(state, rules, legal, *n)),
         Step::Bank(n) => (who, seek_bank(state, rules, legal, *n)),
         Step::Trade(n) => (who, trades::seek_trade(state, rules, legal, *n)),
+        Step::Cast(n) => (who, casts::seek_cast(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
             let boat = |c: &GameCommand| {
                 matches!(
@@ -6481,6 +6515,11 @@ fn check_jumps(
     channels: &h3_adventure::Channels,
 ) -> Result<Option<(ObjectKind, Jumped)>, TestCaseError> {
     prop_assert_eq!(after.adventure().map().channels(), channels);
+    // E08 T144b: a Dimension Door's arrival is a `HeroTeleported` with no teleporter
+    // ([`casts::check_casts_step`] checks it).
+    if matches!(command, GameCommand::Cast { .. }) {
+        return Ok(None);
+    }
     let stepped = as_move(command).is_some();
     let revisit = matches!(
         command,
@@ -6871,7 +6910,7 @@ fn check_build_boat(
 /// in `TownId` order, a build of each building of its faction's record and one past it, in index
 /// order, then (E09 T27) a recruitment at each of them, in the same order, then (E09 T38a2) a hire
 /// of each tavern slot and one past them, then (E09 T49a2) its opening, then (E09 T49b) a spell
-/// book's purchase, then (E09 T28a) the three hero moves.
+/// book's purchase, then (E09 T58a2) its market window, then (E09 T28a) the three hero moves.
 fn town_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -6892,6 +6931,8 @@ fn town_builds<'a>(
         let open = core::iter::once(TownCommand::Open { town });
         // E09 T49b: a spell book's purchase at its Mage Guild (TWN-GLD-007).
         let book = core::iter::once(TownCommand::BuySpellBook { town });
+        // E09 T58a2: its market window (TWN-MKT-002).
+        let market = core::iter::once(TownCommand::Market { town });
         // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
         let rows = [
             TownHeroChange::Enter,
@@ -6904,6 +6945,7 @@ fn town_builds<'a>(
             .chain(hires)
             .chain(open)
             .chain(book)
+            .chain(market)
             .chain(rows)
             .map(move |command| (town, GameCommand::Town(command)))
     })
@@ -6912,7 +6954,9 @@ fn town_builds<'a>(
 /// The town commands `player` may give in `state` by `apply`'s checks alone (E09 T18b2b;
 /// TWN-BLD-001; since E09 T27 TWN-REC-001): of [`town_builds`], those a probe accepts, in that
 /// order, as `legal_commands` must list them; since E09 T49a2 an opening only where the probe
-/// changed the state (TWN-GLD-006: an opening that changes nothing is accepted but not listed).
+/// changed the state (TWN-GLD-006: an opening that changes nothing is accepted but not listed);
+/// since E09 T58a2 a market window only where the window the probe opened lists an answer but its
+/// `Leave` (TWN-MKT-002, ADR-0017 point 6: [`trades::trade_answers`]' oracle of its listing).
 fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
     town_builds(state, rules)
         .map(|(_, command)| command)
@@ -6920,8 +6964,11 @@ fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> 
             let mut probe = state.clone();
             let actor = Actor::Player(player);
             let opening = matches!(command, GameCommand::Town(TownCommand::Open { .. }));
+            let window = matches!(command, GameCommand::Town(TownCommand::Market { .. }));
             apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
                 && (!opening || probe != *state)
+                && (!window
+                    || trades::trade_answers(&probe, rules, player).is_some_and(|a| a.len() > 1))
         })
         .collect()
 }
@@ -7025,8 +7072,7 @@ fn check_cast_targets(
         .filter(|(_, e)| e.targets());
     for &(spell, _) in targeted {
         for on in state.adventure().heroes() {
-            let queried =
-                h3_game::legal_cast_targets(state, rules, Actor::Player(player), (on.id, spell));
+            let queried = legal_cast_targets(state, rules, Actor::Player(player), (on.id, spell));
             let expected = if ready && on.owner == player {
                 accepted_targets(state, rules, player, (on.id, spell))
             } else {
@@ -7433,6 +7479,55 @@ fn check_town_hire(
     Ok(())
 }
 
+/// An accepted market window of `actor` at its `town`, from `state` to `probe` with `events` (E09
+/// T58a2; TWN-MKT-002, GAM-DEC-011), by an independent reading of the town's heroes: told to the
+/// actor alone as `MarketOpened` naming the town and the window's hero (the actor's visitor of the
+/// town; with `TWN-QUIRK-15`'s flag off else its garrison hero; else none), the actor's open visit
+/// the same, nothing else changed; the window lists an answer but its `Leave`
+/// ([`trades::trade_answers`]) exactly when the command is `listed`.
+fn check_town_market(
+    (state, probe): (&GameState, &GameState),
+    rules: &GameRuleset,
+    (actor, town): (PlayerId, TownId),
+    events: &[GameEvent],
+    listed: bool,
+) -> Result<(), TestCaseError> {
+    let adventure = state.adventure();
+    let visitor = adventure
+        .town_visitor(town)
+        .filter(|&h| adventure.hero(h).is_some_and(|on| on.owner == actor));
+    let garrison = adventure
+        .town_hero(town)
+        .filter(|on| on.owner == actor)
+        .map(|on| on.id);
+    let visitor_only = rules
+        .core()
+        .quirks()
+        .is_enabled(h3_content::VISITOR_ONLY_TRADES);
+    let hero = if visitor_only {
+        visitor
+    } else {
+        visitor.or(garrison)
+    };
+    let opened = GameEvent::MarketOpened {
+        player: actor,
+        hero,
+        place: MarketSeen::Town(town),
+    };
+    prop_assert_eq!(events, &[opened][..]);
+    let visit = h3_game::MarketVisit {
+        hero,
+        place: h3_game::MarketPlace::Town(town),
+    };
+    prop_assert_eq!(probe.market(actor), Some(&visit));
+    prop_assert_eq!(probe.towns().get(town), state.towns().get(town));
+    prop_assert_eq!(probe.treasury(actor), state.treasury(actor));
+    prop_assert_eq!(probe.adventure(), state.adventure());
+    let answers = trades::trade_answers(probe, rules, actor).unwrap_or_default();
+    prop_assert_eq!(answers.len() > 1, listed, "{:?}", answers);
+    Ok(())
+}
+
 fn check_town_builds(
     state: &GameState,
     rules: &GameRuleset,
@@ -7455,6 +7550,12 @@ fn check_town_builds(
             &mut events,
         );
         if !legal.contains(&command) {
+            // E09 T58a2: an unlisted market window `apply` accepts opens one that lists no
+            // answer but its `Leave` (TWN-MKT-002: an empty treasury, nothing to sell).
+            if result.is_ok() && matches!(command, GameCommand::Town(TownCommand::Market { .. })) {
+                check_town_market((state, &probe), rules, (actor, town), &events, false)?;
+                continue;
+            }
             // E09 T49a2: an unlisted opening is accepted when it changes nothing (TWN-GLD-006).
             let opening = matches!(command, GameCommand::Town(TownCommand::Open { .. }));
             prop_assert!(
@@ -7519,6 +7620,11 @@ fn check_town_builds(
             // heroes and the treasury.
             GameCommand::Town(TownCommand::BuySpellBook { .. }) => {
                 check_town_book((state, &probe), rules, actor, town)?;
+                continue;
+            }
+            // E09 T58a2: a listed market window, by an independent reading of the town's heroes.
+            GameCommand::Town(TownCommand::Market { .. }) => {
+                check_town_market((state, &probe), rules, (actor, town), &events, true)?;
                 continue;
             }
             _ => return Err(fail(format!("{command:?}"))),
@@ -7611,6 +7717,18 @@ fn check_unlisted(
         let mut targets = CastTargets::new();
         cast_targets(field, ruleset, side, spell, &mut targets);
         prop_assert!(targets.iter().any(|&t| t == target), "{:?}", command);
+        return Ok(());
+    }
+    // E08 T144b: a cast with a target `apply` accepts is one at a target its hero's query gives
+    // (`legal_cast_targets`, GAM-SPL-001: `legal_commands` lists none of them, decision 422).
+    if let GameCommand::Cast {
+        hero,
+        spell,
+        target: Some(target),
+    } = *command
+    {
+        let targets = legal_cast_targets(before, rules, Actor::Player(actor), (hero, spell));
+        prop_assert!(targets.contains(&target), "unlisted {:?} accepted", command);
         return Ok(());
     }
     // E08 T52: a management command `apply` accepts is one its hero lists, or a split to a count
@@ -12970,11 +13088,45 @@ fn check_decisions(
                 prop_assert!(matches!(kind, ObjectKind::Tavern), "{:?}", event);
                 exchange.4 = Some((hero, anchor));
             }
+            // E09 T58a2: a town's market window opens for its owner (TWN-MKT-002), its hero (none
+            // possible) the owner's visitor of the town, or its garrison hero.
             GameEvent::MarketOpened {
                 player,
                 hero,
-                object_type,
-                anchor,
+                place: MarketSeen::Town(town),
+            } => {
+                let none = (None, None, None, None, None, None);
+                prop_assert_eq!((player, exchange), (actor, none));
+                let adventure = after.adventure();
+                let index = adventure.map().town_object(town);
+                prop_assert_eq!(index.and_then(|i| adventure.owner(i)), Some(actor));
+                let heroes = [
+                    adventure.town_visitor(town),
+                    adventure.town_hero(town).map(|on| on.id),
+                ];
+                prop_assert!(
+                    hero.is_none_or(|h| heroes.contains(&Some(h))),
+                    "{:?}",
+                    event
+                );
+                let owner = |h: HeroId| {
+                    let on = adventure
+                        .hero(h)
+                        .or_else(|| adventure.garrisoned(h).map(|(_, on)| on));
+                    on.map(|on| on.owner)
+                };
+                prop_assert!(hero.is_none_or(|h| owner(h) == Some(actor)), "{:?}", event);
+                exchange.5 = Some((hero, trades::TradeAt::Town(town)));
+            }
+            // A map market's.
+            GameEvent::MarketOpened {
+                player,
+                hero: Some(hero),
+                place:
+                    MarketSeen::Object {
+                        object_type,
+                        anchor,
+                    },
             }
             | GameEvent::AltarOpened {
                 player,
@@ -13003,7 +13155,7 @@ fn check_decisions(
                 let at = visited_at(after, pos).and_then(|i| after.adventure().object(i));
                 let at = at.map(|o| (o.object_type, o.anchor));
                 prop_assert_eq!(at, Some((Some(object_type), anchor)), "{:?}", event);
-                exchange.5 = Some((hero, object_type, anchor));
+                exchange.5 = Some((Some(hero), trades::TradeAt::Object(object_type, anchor)));
             }
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, actor);
@@ -13329,10 +13481,10 @@ proptest! {
     /// ([`check_guild_step`], `given` its count by town).
     #[test]
     fn every_step_keeps_the_commands_invariants(
-        plan in trade_plan(),
+        plan in spell_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in trade_steps(),
+        steps in spell_steps(),
         experience in proptest::option::weighted(0.5, vec(experience(), 6)),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
@@ -13416,6 +13568,8 @@ proptest! {
             check_banks(rules, (&before, &state), (player, &command), &events)?;
             // E08 T135b2: the trades' stocks and the answers' effects, listed or not.
             trades::check_trades(rules, (&before, &state), (player, &command), &events)?;
+            // E08 T144b: the door's points and the day spells cleared at a new day.
+            casts::check_casts_step(rules, (&before, &state), &command, &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -13431,9 +13585,9 @@ proptest! {
     /// parent evolve identically under the same commands.
     #[test]
     fn forks_evolve_as_their_parent(
-        plan in trade_plan(),
+        plan in spell_plan(),
         seed in any::<u64>(),
-        steps in trade_steps().prop_filter("a step", |steps| !steps.is_empty()),
+        steps in spell_steps().prop_filter("a step", |steps| !steps.is_empty()),
         split in any::<proptest::sample::Index>(),
     ) {
         let rules = &*FAITHFUL;
@@ -13487,10 +13641,10 @@ proptest! {
     /// forked with the state).
     #[test]
     fn a_forks_week_is_its_parents(
-        plan in trade_plan(),
+        plan in spell_plan(),
         strict in any::<bool>(),
         seed in any::<u64>(),
-        steps in trade_steps(),
+        steps in spell_steps(),
         n in any::<u16>(),
     ) {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
@@ -13546,9 +13700,9 @@ proptest! {
     /// also with the rules compiled again.
     #[test]
     fn replays_are_deterministic(
-        plan in trade_plan(),
+        plan in spell_plan(),
         seed in any::<u64>(),
-        steps in trade_steps(),
+        steps in spell_steps(),
     ) {
         let m = lay_out(&plan);
         prop_assert_eq!(parse(&encode(&m), &Limits::default()), Ok(m));
@@ -13761,6 +13915,11 @@ fn the_plans_play_battles_to_a_victory() {
 /// each of Pathfinding, Logistics and Scouting at the start; the accepted moves of a flyer over
 /// water and over a tile an object blocks, of a water walker over water, and of a hero whose army
 /// holds Nomads; the moves refused with `NoStop` (a path that ends where its hero may only pass).
+/// Under `strict-fixed` (E08 T145's audit of decision 407's free probe, `ADV-QUIRK-15` off): the
+/// accepted flights whose path holds a tile the mover's owner had not explored, the compromise's
+/// stops (a flight cut short on its last stop node, nothing visited, a hidden tile in the rest
+/// it dropped) and the Scuttle Boat and Dimension Door targets `legal_cast_targets` lists on a
+/// tile hidden from the caster's owner.
 #[derive(Debug, Default)]
 struct Moved {
     wearing: [usize; 6],
@@ -13770,6 +13929,9 @@ struct Moved {
     walked_on_water: usize,
     with_nomads: usize,
     no_stop: usize,
+    flown_over_hidden: usize,
+    compromise_stops: usize,
+    hidden_targets: usize,
 }
 
 impl Moved {
@@ -13794,12 +13956,30 @@ impl Moved {
         }
     }
 
-    /// Counts the command `command` of `before`, accepted or refused (`result`).
+    /// Counts the targeted casts' listed targets of `state` hidden from the acting player (under
+    /// `strict-fixed`: [`Moved`]).
+    fn targets(&mut self, rules: &GameRuleset, state: &GameState) {
+        let (who, player) = (actor(state), acting(state));
+        for hero in state.adventure().hero_list(player) {
+            for &(spell, effect) in rules.adventure().spells() {
+                if effect.targets() {
+                    let targets = legal_cast_targets(state, rules, who, (hero, spell));
+                    let hidden = targets
+                        .iter()
+                        .filter(|&&pos| !state.adventure().is_explored(player, pos));
+                    self.hidden_targets += hidden.count();
+                }
+            }
+        }
+    }
+
+    /// Counts the command `command` of `before`, accepted or refused (`result`) with `events`,
+    /// under `strict-fixed` or not.
     fn count(
         &mut self,
-        rules: &GameRuleset,
+        (rules, strict): (&GameRuleset, bool),
         before: &GameState,
-        command: &GameCommand,
+        (command, events): (&GameCommand, &[GameEvent]),
         result: &Result<(), GameCommandError>,
     ) {
         let Some((hero, path)) = as_move(command) else {
@@ -13816,6 +13996,28 @@ impl Moved {
         let movement = h3_heroes::movement(details, rules.core());
         let passed = &path[..path.len().saturating_sub(1)];
         let over_water = passed.iter().any(|&pos| is_water(before, rules, pos));
+        let flies = movement.flying.is_some() || before.adventure().day_spells(hero).fly.is_some();
+        if strict && flies && on_map.boat.is_none() {
+            let hidden = |pos: &TilePos| !before.adventure().is_explored(on_map.owner, *pos);
+            self.flown_over_hidden += usize::from(path.iter().any(hidden));
+            let walk_only = events.iter().all(|e| {
+                matches!(e, GameEvent::Adventure(a) if matches!(
+                    a.kind,
+                    AdventureEventKind::HeroStepped { .. }
+                        | AdventureEventKind::MovementChanged { .. }
+                        | AdventureEventKind::DaySpellsChanged { .. }
+                        | AdventureEventKind::BonusChanged { .. }
+                        | AdventureEventKind::OnceMarkChanged { .. }
+                        | AdventureEventKind::TimedMarkChanged { .. }
+                ))
+            });
+            let steps = events.iter().filter(|e| {
+                matches!(e, GameEvent::Adventure(a)
+                    if matches!(a.kind, AdventureEventKind::HeroStepped { hero: h, .. } if h == hero))
+            });
+            let rest = path.get(steps.count()..).unwrap_or_default();
+            self.compromise_stops += usize::from(walk_only && rest.iter().any(hidden));
+        }
         if movement.flying.is_some() {
             self.flown_over_water += usize::from(over_water);
             let blocked = passed.iter().any(|&pos| live_bits(before, pos).0);
@@ -13841,7 +14043,8 @@ impl Moved {
 /// walkers over water and heroes with Nomads, and refuses paths that end where their heroes may
 /// only pass (`NoStop`); every accepted move ends where its hero may stop
 /// (`every_step_keeps_the_commands_invariants`). E08 T97b2: 96 cases (64 before): the dwellings
-/// laid out on water changed the games, and no `NoStop` was left.
+/// laid out on water changed the games, and no `NoStop` was left. E08 T145: under `strict-fixed`
+/// the flights over hidden tiles, the compromise's stops and the hidden cast targets ([`Moved`]).
 // covers: ADV-MOV-007, ADV-MOV-009, ADV-MOV-010
 #[test]
 fn the_plans_fly_and_walk_on_water() {
@@ -13856,19 +14059,30 @@ fn the_plans_fly_and_walk_on_water() {
         moved.start(rules, &state);
         for step in &steps {
             let legal = options(&state, rules);
+            if strict {
+                moved.targets(rules, &state);
+            }
             let (actor, command) = resolve(&state, rules, &legal, step);
             let before = state.clone();
-            let result = apply(&mut state, rules, actor, command.clone(), &mut Vec::new());
-            moved.count(rules, &before, &command, &result);
+            let mut events = Vec::new();
+            let result = apply(&mut state, rules, actor, command.clone(), &mut events);
+            moved.count((rules, strict), &before, (&command, &events), &result);
         }
     }
     let m = &moved;
+    eprintln!("{m:?}");
     assert!(m.wearing.iter().chain(&m.skilled).all(|&n| n > 0), "{m:?}");
     assert!(m.flown_over_water > 0 && m.flown_over_blocked > 0, "{m:?}");
     assert!(
         m.walked_on_water > 0 && m.with_nomads > 0 && m.no_stop > 0,
         "{m:?}"
     );
+    // E08 T145 (96 cases: 1 flight over a hidden tile, 4 843 hidden targets): a hidden tile is a
+    // pass, never a stop, so a flight crosses one only on its way to an explored tile beyond it,
+    // which the plans' small maps, explored outward from their heroes, rarely hold; the
+    // compromise's stops, which need such a flight and a revealed tile that forbids its step,
+    // stay 0 and unasserted.
+    assert!(m.flown_over_hidden > 0 && m.hidden_targets > 0, "{m:?}");
 }
 
 /// What a set of games managed (E08 T52): the meetings opened and the spells Scholar taught at
@@ -14237,6 +14451,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.
@@ -14963,6 +15178,10 @@ struct Besieged {
     cleared: usize,
     /// Town events fired, of them those that gave, took, and named a building standing.
     fired: [usize; 4],
+    /// E09 T58a2: towns' market windows opened (TWN-MKT-002), and the answers accepted in them but
+    /// their `Leave`.
+    windows: usize,
+    traded: usize,
     /// The sieges in progress: the attacking hero, and whether a visitor defends.
     open: Vec<(HeroId, usize)>,
 }
@@ -14985,8 +15204,18 @@ impl Besieged {
             .collect();
         let town_at = |pos: TilePos| entrances.iter().find(|&&(e, _)| e == pos).map(|&(_, i)| i);
         let mut captured = false;
+        // E09 T58a2: an answer in a town's market window.
+        let window = before
+            .market(acting(before))
+            .filter(|visit| matches!(visit.place, h3_game::MarketPlace::Town(_)));
+        let leave = GameCommand::Answer(Answer::Market(h3_game::MarketAnswer::Leave));
+        self.traded += usize::from(window.is_some() && *command != leave);
         for event in events {
             match event {
+                GameEvent::MarketOpened {
+                    place: MarketSeen::Town(_),
+                    ..
+                } => self.windows += 1,
                 GameEvent::Adventure(AdventureEvent {
                     kind: AdventureEventKind::TownCaptured { town, .. },
                     ..
@@ -15108,7 +15337,7 @@ impl Besieged {
 /// marks, and (E09 T19b) the towns' events fire, give, take, build, and skip a building standing,
 /// and (E09 T29b) heroes enter, leave and swap at the garrisons ([`visit_town`]), which then
 /// defend sieges alone and beside a visitor, and the Plague comes and the counts meet their bound,
-/// so the properties above ([`check_towns`], [`check_timed`], the entrances and the counts' bound
+/// and (E09 T58a2) the towns' market windows open and trade, so the properties above ([`check_towns`], [`check_timed`], the entrances and the counts' bound
 /// in [`check_invariants`], the forks' store and week, the listed builds of
 /// [`check_town_builds`]) see each.
 #[test]
@@ -15153,6 +15382,8 @@ fn the_plans_capture_and_besiege_towns() {
     // E09 T29b: the hero moves, and the Plague and the bound met by the towns' counts.
     assert!(b.rows.iter().all(|&n| n > 0), "{b:?}");
     assert!(b.plagues > 0 && b.saturated > 0, "{b:?}");
+    // E09 T58a2: the towns' market windows and their trades.
+    assert!(b.windows > 0 && b.traded > 0, "{b:?}");
 }
 
 /// What the plans' games did at the teleporters (E08 T106b1; increment 11's design note §14): the

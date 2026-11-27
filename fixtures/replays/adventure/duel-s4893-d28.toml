@@ -626,35 +626,35 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x200375526a3143f5",
-    "0x96211ce8b579fc7a",
-    "0x9eeb12fc077ea83d",
-    "0x6dd3986a63a2b03b",
-    "0x07b623dbc68cfa0e",
-    "0x6f61bba618c65d2a",
-    "0x12126b67832e7083",
-    "0xab3ff671e6282cab",
-    "0x4929d660ff19000c",
-    "0xed5dc49b3ed8eb2e",
-    "0x2694690ae6c5b4f8",
-    "0x716fc77ad5e1678f",
-    "0xad68f9f230e5831d",
-    "0x41cd7047eb89e56e",
-    "0x48773236f0339967",
-    "0x6af103eeeb1aa2b3",
-    "0x8489b05f9de1bb12",
-    "0x6d4fd45e5b8e4332",
-    "0x0627869f7c7f851d",
-    "0xaf7eddb42c08bdcc",
-    "0xfefb383448237db8",
-    "0xfe7fee9e46f7d520",
-    "0x96250179a88fe0c1",
-    "0x30ebddc9b7ba7143",
-    "0x66f39a4481377021",
+    "0x2622a97b7c813c48",
+    "0x6e6caf5ff81f8c9b",
+    "0xb6c674ad05389578",
+    "0x81a2bb48b1775f42",
+    "0x6ede113575a91f17",
+    "0x9d477c9b04db6637",
+    "0x4f552b217489d35e",
+    "0xbba504802e6ffab2",
+    "0x13e65152f3a4df8d",
+    "0xd311643a1c282a0b",
+    "0x6862d557f5a76499",
+    "0xdc103a449bc2c3f8",
+    "0x75e7e8ea90682bea",
+    "0x7a5b5d74a460830d",
+    "0x0a2ff7f07414510c",
+    "0xf032f7a670709f4c",
+    "0x53d00ad652676bb9",
+    "0xd5c778cec1181edd",
+    "0xba0fc72c076239f4",
+    "0xa88af0d2d2d94465",
+    "0x6bbe03516062b041",
+    "0x2f571739cbb127ef",
+    "0xa6947d8fe009f644",
+    "0x0c017c5fbdf7cd02",
+    "0xeca245ddec57e9ae",
 ]
 
 [replay]
-format = 26
+format = 27
 engine = "0.1.0"
 seed = "4893"
 difficulty = 1
@@ -673,14 +673,14 @@ packs = [
 ],
 ]
 profile = "base:faithful"
-ruleset_hash = "0x7d6081fbb0552a2f"
+ruleset_hash = "0x810a2c4eb5a0373f"
 adventure_ruleset_hash = "0x9fc40eb6455ae78a"
 town_ruleset_hash = "0xc830faa47b612bfc"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 39
+game_state_hash_version = 40
 adventure_state_hash_version = 30
 checkpoint_every = 25
 
@@ -691,7 +691,7 @@ import_version = 29
 
 [result]
 day = 29
-final_hash = "0x66f39a4481377021"
+final_hash = "0xeca245ddec57e9ae"
 
 [[players]]
 colour = 0

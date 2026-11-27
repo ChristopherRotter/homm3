@@ -7,8 +7,12 @@
 //! zone at 76 or more with column 3 set, a connection at 85 or more with 76 set and 77 not empty;
 //! *set*: not empty, no leading space; numbers as `c_atoi`; quoted cells as the game's loader).
 //! In `faithful` the part must equal the tables; in `strict-fixed` it differs only by 8XM8's six
-//! decimal first zones, 6, 6, 7, 7, 8, 8 (RMG-QUIRK-22). Without the text tables the check is
-//! skipped with a note. The installation copy is only read.
+//! decimal first zones, 6, 6, 7, 7, 8, 8 (RMG-QUIRK-22). The object templates in SoD's line
+//! order are the generator's table, whose index the phase oracle's dump gives (E14 T4b). An
+//! object template's `.msk` fields
+//! (width, height, colour mask; E14 T4b) are not in the text tables: they are taken from the part
+//! here and checked against the sprite archives by `h3-harvest`'s own `original_data` example.
+//! Without the text tables the check is skipped with a note. The installation copy is only read.
 
 use std::path::Path;
 use std::process::ExitCode;
@@ -175,12 +179,15 @@ fn objects(bytes: &[u8]) -> Vec<ObjectTemplate> {
                 picture: f[0].to_owned(),
                 passability: mask(f[1]),
                 actions: mask(f[2]),
-                terrains: u16::try_from(mask(f[3])).unwrap_or(0),
-                editor_terrains: u16::try_from(mask(f[4])).unwrap_or(0),
+                editor_terrains: u16::try_from(mask(f[3])).unwrap_or(0),
+                terrains: u16::try_from(mask(f[4])).unwrap_or(0),
                 class: n(5),
                 subclass: n(6),
                 group: u8::try_from(n(7)).unwrap_or(u8::MAX),
                 overlay: u8::try_from(n(8)).unwrap_or(u8::MAX),
+                width: 0,
+                height: 0,
+                colour: 0,
             }
         })
         .collect()
@@ -224,7 +231,12 @@ fn compare(part: &RmgRuleset, dir: &Path, what: &str) -> Result<Vec<String>, Str
             ));
         }
     }
-    if part.object_templates() != objects(&read("Objects.txt")?).as_slice() {
+    // The `.msk` fields are the part's (h3-harvest's example checks them).
+    let mut lines = objects(&read("Objects.txt")?);
+    for (line, got) in lines.iter_mut().zip(part.object_templates()) {
+        (line.width, line.height, line.colour) = (got.width, got.height, got.colour);
+    }
+    if part.object_templates() != lines.as_slice() {
         out.push(format!(
             "{what}: the object templates differ from Objects.txt's"
         ));

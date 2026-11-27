@@ -4,44 +4,30 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143a and T143b done (2026-11-25), T144a1 done (2026-11-25), T144a2 done (2026-11-26), T144b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 7, the next 8). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T144 — the casts in the env, the replays and the maps** (round 8; design note
-`E08-design.md` §17, §18, §20, §21; T143b, Dimension Door, done 2026-11-25; T144a1, the
-casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done 2026-11-26)
+**E10 T1a — increment 1's survey: the teams and the game's end** (E10 decisions 4, 5; the epic's increment 1 sketch)
 
-- **T144b, the maps, the replays, the plans and oracles, the benchmarks** (§17):
-  a generated map with a prison, the Market of Time, special grounds, boats and water, a hero
-  with the five spells and a book; the golden replays (each spell, the failures, the prison
-  freed and full, both flag settings of §11); the hygiene property under `strict-fixed` (the
-  flight's, the door's and Scuttle Boat's legal moves never depend on a hidden tile); the
-  census `--with-original-data` (89 prisons, one Market of Time).
-- **Inputs:** T143a's, T143b's and T144a1's records in `E08-log.md` (`check_cast` is the oracle of a
-  listed target: under `strict-fixed` the door's are the explored free tiles of the hero's kind
-  and every hidden tile of the window, Scuttle Boat's the explored empty boats and every hidden
-  tile; under `faithful` the hidden truth, the door's wrong kind listed and charged).
-- **For T144b** (noted by T143a, T143b, T144a1): `view.rs`' hygiene oracle already follows the
-  boat events and `CastFailed`, and the door's arrival is a teleporter's `HeroTeleported` (its
-  `jumper` handling); its faithful exception for the door's and the scuttle's hidden targets came
-  with T144a1 (`targets_hidden`, beside T142b's `flies`); the plans' oracles probe and check the
-  listed casts and the queried targets (`play.rs`' `accepted_casts`, `check_casts`,
-  `accepted_targets`; `view.rs`' `check_same` compares the queries). The plans' heroes meet the casts only
-  through the shrines' and guilds' spells (no plan gives Summon Boat, Fly, Water Walk or the door):
-  the generated map is where they are played.
-- **For T144b** (noted by T144a2): the env plays the casts (encoding v21: `CAST_BASE` + 5 × slot
-  + the behaviour's code, the targets in the tile head) and the random agent draws them, so the
-  generated map's random games and `h3-cli`'s workloads on it cast without help; `h3-sim`'s
-  `tests/casts.rs` has a caster setup on the duel (`caster_setup`: a book, the five spells,
-  Knowledge 20), the mask property's kind 5.
-- **The cut:** **whole, one pull request** (decision 423, the user, 2026-11-26; not the
-  recommendation, two parts as T135b): the map (`e08-spells-36.h3m` with its `h3-map` test), the
-  golden replays with the server lane's counts bumped (`cross-lane`, as T135b1), the plans and
-  oracles (the plans' heroes given the five spells and a book), the properties of §17, the
-  workload on the new map and the census `--with-original-data` (89 prisons, one Market of Time).
-- **Depends on:** nothing open (T144a2's #1191 merged 2026-11-26; the inbox's two property seeds
-  settled first, `adventure/reach-property-seed`). **Status:** T144b next. Then T145 (the
-  audit, the `shared/` task; it applies `adr-drafts/0016-0017-hero-list.md` and
-  `adr-drafts/0017-casts-encoding.md`).
+- **The cut** confirmed with the user at its start (what the survey reads first, its size measured
+  as E08 T137a's); then the survey `docs/rules/surveys/E10-teams.md` (*agent's call* for the name):
+  the code reading of `Heroes3.exe` (what allies share: the fog, passing and visiting allied
+  heroes and towns, the mines' and objects' team marks; elimination by the standard loss and by
+  seven days without a town with its warnings; a defeated player's heroes, towns and flags; a
+  player removed; the standard victory; the game over, its events, every command after it), the
+  wiki and VCMI 1.7.5, a census of the 160 shipped maps' teams (`h3_map::Teams`); the disputes and
+  quirk candidates; the batch's plan on the client lane's harness; the interfaces' sketch and the
+  checkpoint's questions for T1b.
+- **Inputs:** the epic's "Inputs" (this inbox's client-lane notes of 2026-11-12 to -19, E27 design
+  §3, §5, §21.1, §26.3; the server lane's E16 "Later", SRV-Q29); ADR-0017 (players, turns,
+  projections); the map client's scripted game `game-week` (Blue banished on day 8).
+- **Depends on:** E08 T145's pull requests merged. **Status:** next.
+
+**E10 T1b — increment 1's ADR amendment drafts, the design note and the cut** (E10 decision 5)
+
+- The drafts in `adr-drafts/` (ADR-0017, ADR-0016 where a view changes), the design note
+  `docs/epics/E10-design.md` with increment 1's exit criteria and the building tasks cut; the
+  user accepts the drafts before anything is built (the checkpoint).
+- **Depends on:** T1a. **Status:** after T1a.
 
 ## Inbox
 
@@ -54,7 +40,46 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
   Seer's texts), **MCL-Q63** (a monster's offer naming the stack offered), **MCL-Q65** (a hero's
   derived primary skills, morale and luck as its window shows them), **MCL-Q69** (the slot a join
   fills: `CreaturesJoined` comes with no `StackChanged`). Each recommends (a).
-
+- 2026-11-27 (the town lane, E09 T58a2, `town/e09-t58a2`, `cross-lane` with the user's consent,
+  E09 decision 225; **in your paths, for your review; no rule or hash of yours changed**): (1)
+  `MarketParams` (`market.rs`) tabulates every count's lot of every pair at its build
+  (`resource_lot` reads the table: the same arithmetic, the same values) and derives
+  `cheapest_lot(count, give)` and `cheapest_at_every_count(give)`, none hashed: a listing inside
+  a window walked 42 lots of float arithmetic; (2) `h3-game`'s `market_answers` is
+  `window_answers` on a resolved window, beside `offers_an_answer` and `pays_a_lot` (the town
+  listing's tests); (3) the plans (`play.rs`, `play/trades.rs`): `trade_open` gives `(Option<HeroId>,
+  TradeAt)` (`Object(type, anchor)` or `Town`), `trade_army` reads a garrison hero's army,
+  `trade_answers` and the answer and listing oracles take a town's window, `check_decisions` a
+  town's `MarketOpened`, `check_trades` the Artifact Merchants' stock, `town_builds` and
+  `check_town_builds` probe `Market` (`check_town_market`), `visit_town` opens a listed window in
+  one step of sixteen, `TOWN_BUILDINGS`' first custom set holds the Marketplace (bit 8), the
+  towns' cover test counts the windows; (4) the town-map workloads re-baselined (their games
+  changed course; the numbers in `E09-log.md`). **A seed of yours** (for your decision): at 240
+  cases `a_viewer_learns_nothing_it_cannot_see` met `cc 5f490c79307edc688709adbe7638cfb284e69480d6eef3bc78eafec0f9169ceb` (a plan without towns, `Exchange`
+  steps: another player's hero seen in one game and not in the other), which `master` a7b6752
+  fails too; not added to `proptest-regressions/tests/view.txt`, as it would fail CI.
+- 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). Your 123 golden replays' `ruleset_hash` lines were substituted (nothing else in them). A branch of yours that records new `faithful` replays before this merges needs the same substitution.
+- 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent, E09
+  decision 224; **in your paths, for your review; no rule of yours changed**): a town opens E08's
+  market decision (`TownCommand::Market`, TWN-MKT-002), so (1) `MarketVisit` is `{ hero:
+  Option<HeroId>, place: MarketPlace }` (`MarketPlace::Object { index, object_type, anchor }` or
+  `Town(TownId)`; `command.rs`), the visit's outcome a map market's with `Some(hero)`; (2) every
+  check in `state/markets.rs` takes a resolved `MarketWindow { visit, screens, count }`
+  (`AdventureState::market_window(part, visit)` resolves a map market's, `Visit` for a town's
+  place; `check_screen` is `MarketWindow::check_screen`; `market_offers` returns `MarketOffers`,
+  the sales empty without a hero; `MarketPurchase` names the place; `buy` empties the Artifact
+  Merchants' entry for a town's, `town/merchants.rs`), `sell` lowers a garrison hero's stack too
+  (`town/rows.rs`' `garrisoned_mut`); (3) `h3-game`: `GameState::market_window` resolves a
+  town's window (`town/market.rs`), every answer, `market_answers` and `market_view` read it once;
+  `GameEvent::MarketOpened` and `MarketView` carry `hero: Option<HeroId>` and `place: MarketSeen`
+  (no index); `Decision::Market`'s hash writes the hero as an option and the place's tag: **game
+  state hash v40**; (4) the replay word `town market <town>`: **replay format v27**; the 118
+  goldens re-recorded from their commands (only the format, `game_state_hash_version` and hash
+  lines moved), `h3-server`'s `tests/record.rs` literals; (5) your tests: `state/tests/markets.rs`
+  builds windows from the kind (`window`, `visit`) and gained a town window's test; `h3-map`'s
+  `play.rs`, `play/trades.rs` and `view.rs` read a map market's place (the plans open no town's
+  window until T58a2, which lists it and grows `trades::trade_open`). A pull request of yours that
+  bumps the game state hash or the replay format after this one merges bumps again.
 - 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
   nothing blocks**): play now answers a visit's questions and level-ups and Space's revisit
   through the engine, and some facts a box needs are still the client's (**MCL-Q59**, facts

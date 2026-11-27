@@ -79,6 +79,15 @@ objects' values and the guards' strengths read from the original rather than gue
    T3e (below); its four flags (-1 `quirk.rmg.zone_memory_model`, -12 `terrain_towns_count`, -14
    `partition_units`, -21 `cosmetic`) registered at T3c in one re-hash, each read by the task that
    ports its step.
+11. **The checkpoint after increment 3** (the user, 2026-11-27): increment 3 closed; RMG-QUIRK-1's
+   form left open (the constants stay provisional until increment 4, where the water zones' town
+   types reach their guards); T3b's clip of an off-map side harmless and accepted (no flag); a zone
+   that fills nothing (7 land zones in the corpus) fix-optional, RMG-QUIRK-25, its fix designed in
+   increment 4; increment 4 cut into T4a to T4e (below), as proposed.
+12. **T4b and T4a's monoliths** (the user, 2026-11-27): T4b kept whole, worker sub-agents for its
+   parts; the objects' `.msk` harvest a `cross-lane` change in its branch, as T3e's; the one-way
+   monoliths' shared channel (T4a) fix-optional, **RMG-QUIRK-26**, its flag registered when T4d
+   ports RMG-CON-017.
 
 **Agent decisions** (change freely):
 
@@ -113,22 +122,22 @@ the survey; (f) the checkpoint with the user.
 | Inc | Scope | Rules (survey §3.2) | Ledger | Not read, read first | Its own exit |
 |---|---|---|---|---|---|
 | 2 (closed) | **Templates, the stream, the start:** the crates, `CrtRand`, the three tables harvested, the rmg part, the settings, the template's choice, the positions | SET-001 to -009, TPL-001 to -008 (17) | -6; -11 (the tables' half); -22 | none | the 21 cases' kept and drawn templates (`kept.txt`'s names) and the draws before step 1 equal; the harvested tables equal the text tables (with the original data) |
-| 3 | **Zones and terrain:** steps 1 to 3, the terrain painter (§2.7.1 to §2.7.3) | ZON-001 to -014, TER-001 to -003, TER-005 to -018 (31) | -1 (the measurement, the model); -3 (its steps' cases); -12; -14; -21 (the painter's) | ZON-009's triangulation, ZON-012's clip corners, ZON-013's fill tail, ZON-014's water test; whether a divide by zero reaches code 1 | first the harness records each step's draw count and digest and RMG-QUIRK-1's bytes (`phases.txt` again); the control word read; the cells after steps 1 to 3 (the terrain layer) equal |
-| 4 | **Towns and connections:** steps 4 to 7 (the guards' creation, the gates, monoliths, shipyards and Border Guards) | TWN-001 to -005, OBJ-009 to -011, CON-001 to -021, OBS-001, -002 (31) | -3, -4, -5 (their cases); -7; -8; -9; -10; -11 (the guards' half); -13; -19; -23 (the towns' half); the ledger's two open items (6LM10's self-connection, Ownership 0 starts) | OBJ-011's `rmg_map_can_place` branches (tents on water), CON-008's heightmap quadrants, CON-017's one-way monolith pairing, OBJ-008's null prototype, OBJ-009's masks | the cells after steps 4 to 7 equal |
+| 3 (closed) | **Zones and terrain:** steps 1 to 3, the terrain painter (§2.7.1 to §2.7.3) | ZON-001 to -014, TER-001 to -003, TER-005 to -018 (31) | -1 (the measurement, the model); -3 (its steps' cases); -12; -14; -21 (the painter's) | ZON-009's triangulation, ZON-012's clip corners, ZON-013's fill tail, ZON-014's water test; whether a divide by zero reaches code 1 | first the harness records each step's draw count and digest and RMG-QUIRK-1's bytes (`phases.txt` again); the control word read; the cells after steps 1 to 3 (the terrain layer) equal |
+| 4 | **Towns and connections:** steps 4 to 7 (the guards' creation, the gates, monoliths, shipyards and Border Guards) | TWN-001 to -005, OBJ-009 to -011, CON-001 to -021, OBS-001, -002 (31) | -1 (the form, decision 11); -3, -4, -5 (their cases); -7; -8; -9; -10; -11 (the guards' half); -13; -19; -23 (the towns' half); -25 (the fix); -26 (decision 12); the ledger's two open items (6LM10's self-connection, Ownership 0 starts) | OBJ-011's `rmg_map_can_place` branches (tents on water), CON-008's heightmap quadrants, CON-017's one-way monolith pairing, OBJ-008's null prototype, OBJ-009's masks | the cells after steps 4 to 7 equal |
 | 5 | **Mines and treasures:** steps 8 to 10, the object generators | OBJ-001 to -008, MIN-001 to -006, CON-022, TRS-001 to -012 (27) | -3 (the density filter); -15; -18; -20 | the pile ring (§2.4) | the cells after steps 8 to 10 equal; the generators' constants in `packs/sod/rmg.toml` |
 | 6 | **Rock, shores, obstacles, roads, rivers:** steps 11 to 15, the road and river painter (§2.7.4), the teams' draw | TER-004, OBS-003 to -007, RDR-001 to -014, WRT-004 (21) | -2; -17; -21 (the roads' and rivers') | OBS-006's depth grid, RDR-010's river strokes | the cells after steps 11 to 15 and the whole stream (`draws=`, `log=`) equal |
 | 7 | **The file and the game:** the writer (`h3_map::generated`), the census, `strict-fixed`, a game on a generated map | WRT-001 to -003, WRT-005 to -010 (9) | -16; -21 (the description); -23 (the player block) | WRT-007's settings +0xC types | the uncompressed `.h3m` equal on 21 of 21 (`kept.txt`) through `h3_map::writer` (survey §3.3.3's seven gaps closed), the game from the bytes read and imported; a census over more seeds and choices (RoE and AB formats among them); `strict-fixed` over the census without a failure; a game set up on a generated map (CLI, `GameSetup`); the benchmark; the client's and server's inboxes; the closure |
 
-**Increment 3's tasks** (refined at increment 2's checkpoint, decision 10; in this order, each
+**Increment 4's tasks** (refined at increment 3's checkpoint, decision 11; in this order, each
 about one session, the oracle's set staged from the PC for each):
 
 | Task | What | Out |
 |---|---|---|
-| T3a (done) | The phase oracle again (`clients/capture/`, Wine): per step its draw count and its log's digest in `phases.txt` (a port of steps 1 to k compares its draws without the later ones); RMG-QUIRK-1's bytes, the temporary zone's and each water zone's unwritten fields (+0x40 to +0x49, +0x84, +0x94, +0xC to +0x18, its zone generator's +8) as `rmg_zone_generator_init` 0x5329E0 finds them, per case, and what moves them (T1c2's `m2-4p`: repeated corpus runs, the environment's size); the x87 control word at the generator's start (ADR-0029 point 4); corpus cases drawing 2SM2i(2) with three players and 2SM0k (their seeds found by the port's draw) for RMG-QUIRK-24 | `phases.txt`'s new format (ORACLE.md), the measurement (ORACLE.md, the ledger's -1), the corpus with its new cases (`kept.txt`, the T2c corpus test) |
-| T3b (done) | Exit (e), the items not read, into survey §2.2 and §3.2.4: the triangulation's insertion and finish (`triangulation_insert` 0x5FD790, `triangulation_finish` 0x5FDB40: whether Delaunay, what +0x1C and +0x20 hold), the fill's tail 0x53D640, the water zones' distance test and `rmg_zone_graph_distances`' order, the corner cases of `rmg_zone_borders_draw` and `rmg_segment_clip`, whether a division by zero reaches code 1 (RMG-QUIRK-3) | the survey, ZON-009 and -012 to -014 rewritten, `map.toml` |
-| T3c (done) | Step 1 (RMG-ZON-001 to -008): the zone generators, the layout tables (`rmg_layout_cos`, `_sin`, the terrain towns), the generator's cell record (the dump's 12 words), the comparison seam (ADR-0029 point 8: the port's cells in dump format 1 and its draws as the log's lines, their digests against `phases.txt` per step in CI); RMG-QUIRK-12, -3's step 1 case (an empty candidate list) a typed error; the increment's four flags registered in one re-hash (`quirk.rmg.zone_memory_model`, `terrain_towns_count`, `partition_units`, `cosmetic`; decision 10, `cross-lane`) | the cells after step 1 and the draws to it equal on the corpus |
-| T3d (done) | Step 2 (RMG-ZON-009 to -014): the triangulation, the borders, the fill, the water zones and their connections; RMG-QUIRK-1's oracle model from T3a's measurement (its form decided at the increment's checkpoint, ADR-0029 point 6), -14, -3's step 2 cases; T3b's corner cases (the ledger's open table: the edge walk's chords checked against the oracle's step 2 cells) | the cells after step 2 and the draws to it equal |
-| T3e | Step 3 and the terrain painter (RMG-TER-001 to -003, -005 to -018; survey §2.7.1 to §2.7.3): the boxes and centroids, the islands' coasts, the painter's sets, pinches and transitions; RMG-QUIRK-21's painters' half | the cells after step 3 and the draws to it equal; the increment's exit (a) to (e) |
+| T4a | Exit (e), the items not read, into the survey (code reading only): `rmg_map_can_place`'s outline, ring and water branches (OBJ-011; tents on water), the islets' heightmap quadrants (CON-008), the one-way monoliths' pairing (CON-017), the null prototype (OBJ-008), the objects' masks (OBJ-009) | the survey, the rules rewritten, `map.toml` |
+| T4b | Steps 4 and 5, the towns (RMG-TWN-001 to -005), with the object placing they need (RMG-OBJ-009 to -011: `rmg_map_place_object`, `rmg_map_can_place`, the town prototypes); RMG-QUIRK-13, -23's towns' half, the open table's Ownership 0 starts; RMG-QUIRK-25's fix designed and its flag registered (`cross-lane`, a re-hash) | the cells after steps 4 and 5 and the draws to them equal |
+| T4c | Step 6's obstacle plan (RMG-CON-001 to -012): the lanes, the jagged segments and branches, the walls, the cells of no zone, the islets (the terrain painter's flush: its water and rock branches against the oracle), the joining, the cost flood, the carving, the shores sealed; RMG-QUIRK-5 | its draws equal the oracle log's prefix of step 6 (an oracle run; step 6 has one dump, its cells checked with T4d's) |
+| T4d | Step 6's connections (RMG-CON-013 to -021): by land, by shipyard, by gates, by monoliths, the guards' values, Border Guards and monsters; RMG-QUIRK-7 to -10, -11's guards' half, -19; the open table's 6LM10 self-connection | the cells after step 6 and the draws to it equal |
+| T4e | Step 7, the junction zones (RMG-OBS-001, -002); RMG-QUIRK-1's form (decision 11); the increment's exit (a) to (e) | the cells after step 7 and the draws to it equal |
 
 ## Risks
 
@@ -146,36 +155,21 @@ about one session, the oracle's set staged from the PC for each):
   `cross-lane` with the user's consent.
 - **The oracle model** (RMG-QUIRK-1): measured by T3a (ORACLE.md, "The memory record and the
   fixed environment"): the temporary zone's stack bytes are stable, the water zones' heap bytes
-  follow the game's environment block's size (fixed for the oracle since); the model's form at
-  increment 3's checkpoint.
+  follow the game's environment block's size (fixed for the oracle since); the model's form left open at
+  increment 3's checkpoint (decision 11) for increment 4.
 - **The registry's flags** (`h3_content::MAX_QUIRKS`): widened from 64 to 128 by T2c (decision 9);
-  54 positions are taken; of the ledger's 16 `quirk.rmg.*` flags still to come (ADR-0029 point 6),
-  increment 3's four at T3c (decision 10), the other 12 with their steps.
+  60 positions are taken; of the ledger's 17 `quirk.rmg.*` flags (ADR-0029 point 6, RMG-QUIRK-25
+  since decision 11), increment 3's four at T3c (decision 10), the other 13 with their steps.
 
 ## Tasks done
 
-The full records: `E14-log.md`. Increment 1's tasks (T1a1 to T1c3) and increment 2's (T2a to T2c,
-its checkpoint): `E14-archive.md`.
+The full records: `E14-log.md`. Increment 1's tasks (T1a1 to T1c3), increment 2's (T2a to T2c,
+its checkpoint) and increment 3's (T3a to T3e, its checkpoint): `E14-archive.md`.
 
-- T3a (2026-11-25): the phase oracle's memory record (the x87 control word 0x027F, step 2's zone
-  bytes at `rmg_zone_generator_init`), `phases.txt`'s per-phase draws and digests, `zones.txt`,
-  the oracle's game environment fixed (`H3_FIXED_ENV`), the corpus at 24 (RMG-QUIRK-24's three
-  cases, confirmed), what moves RMG-QUIRK-1's bytes (one agent); log `## T3a`.
-- T3b (2026-11-26): step 2's items not read, read (code reading only): the triangulation is
-  Lischinski's incremental Delaunay one in integers, +0x1C/+0x20 the left triangle's circumcentre;
-  the borders' walk and edge walk, the clip (a side's line), the fill (4-connected), the water
-  connections and their distance test; code 1 is only the file's open failure (RMG-QUIRK-3 corrected);
-  five corner cases into the ledger's open table; log `## T3b`.
-- T3c (2026-11-26, whole at the user's choice): step 1 ported (RMG-ZON-001 to -008, `layout.rs`),
-  the generator's map (`Cells`, RMG-SET-010) and the comparison seam (dump format 1, the draws'
-  digests against `phases.txt` per phase in CI); the oracle's zone generators after each step
-  (`layout.txt`, the user's addition): 388 of 388 the port's on the corpus; the layout tables
-  harvested (`RMG_RULESET_HASH_VERSION` 3); the four flags at 56 to 59 (one agent; `faithful`'s
-  core hash re-pinned, `cross-lane`); RMG-QUIRK-12 confirmed, -3's step 1 cases typed; log
-  `## T3c`.
-- T3d (2026-11-26, whole at the user's choice): step 2 ported (RMG-ZON-009 to -014,
-  `triangulation.rs`, `partition.rs`): the step's draws and cells equal the oracle's on 24 of 24
-  with `zones.txt`'s bytes (22 with the provisional model's own), the water zones `water.txt`'s
-  (the oracle's new record, 44 in 4 cases); RMG-QUIRK-1's provisional form, -14 confirmed, -3's and
-  -4's step 2 cases typed; T3b's five corner cases counted on the corpus (the ledger's open
-  table); log `## T3d`.
+- Increment 3's checkpoint (2026-11-27, decision 11): increment 3 closed, increment 4 cut into T4a
+  to T4e; log `## Increment 3's checkpoint`.
+- T4a (2026-11-27): the items not read, read (the masks, the placing tests, the islets' height map,
+  the monoliths' pairing, the null prototype); log `## T4a`.
+- T4b (2026-11-27, whole, decision 12): steps 4 and 5, the towns, with the objects' data and
+  model; RMG-QUIRK-13's and -25's flags; the corpus to step 5 equal, 24 of 24; log `## T4b`.
+

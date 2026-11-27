@@ -198,7 +198,7 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §2, §4.2, T-28); batch TWN-6's row TWN-6-5 (`experiments/results/E09-batch-6a.md`, `-6a-run2.md`: with a garrison hero and no visitor the merchants, the Freelancer's Guild, the Blacksmith and the Ballista Yard each showed GENRLTXT 274 and opened nothing; the Marketplace opened screen 0 with only the transfer's button; survey §14).
 - Flag: `quirk.town.visitor_only_trades` (`VISITOR_ONLY_TRADES`, registry position 54, E09 T55b)
 - Defaults: faithful = on (the visitor only), strict-fixed = off (the visitor, else the garrison hero)
-- Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's with E09 T58a
+- Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's `crates/h3-game/src/town/tests/market.rs`, `the_garrison_hero_trades_only_with_the_visitor_only_flag_off` (E09 T58a1: the market window's hero; the Blacksmith's with E09 T59a)
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 202); confirmed by batch TWN-6 (E09 T54, TWN-6-5); the flag added and the entry made by E09 T55b, 2026-11-25
 
 ### TWN-QUIRK-16 — The Magic University teaches a school the scenario bans
@@ -213,6 +213,19 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = on (the scenario's bans not tested), strict-fixed = off (the banned schools left out)
 - Regression test: `crates/h3-pack/src/tests.rs`, `the_harvested_flags_of_e09_increment_6` (the profiles, E09 T55b); the rule's with E09 T59b
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 204); confirmed by batch TWN-6 (E09 T54, TWN-6-7); the flag added and the entry made by E09 T55b, 2026-11-25
+
+### TWN-QUIRK-17 — The Artifact Merchants free at a count of 0
+- Class: fix, no flag (an exploit, which AGENTS.md always fixes; quirk candidate T-19 with TD-29, the trader's count floored at 1 by the user's choice, 2026-11-24, TWN-Q35; the epic's decision 203)
+- Context / rules affected: town, the trader's count of Marketplaces (TWN-MKT-001) and every rate a town's window reads at it: the merchants' purchase (TWN-MKT-004), the trades and the creature sale (TWN-MKT-003), the artifact sale (TWN-MKT-005, E09 T58b)
+- Original behavior: the market window's count is the current player's towns with the Marketplace (at most 10), whoever owns the town traded at; a trader with none (at an ally's Tower, Dungeon, Conflux or Stronghold, or a preset town with the merchants and no Marketplace) trades at 0, the artifacts' factor 0, so every entry of the Artifact Merchants is priced 0 and given free, repeatably until the stock is empty; the resource and creature screens divide by zero there (inferred: nothing tradable).
+- Intended/expected behavior: the count is at least 1: a trader without a Marketplace trades as with one, so an artifact always costs its first row's price (five times its cost with the shipped rows).
+- Impact: gameplay: an exploit closed (seven free artifacts a month at an ally's merchants); nothing else moves, a trader with a Marketplace trades at its count as ever.
+- Community status: VCMI 1.7.5 reads the town owner's count and a factor of 0.15 at 0, so never free; the wiki calls the free artifacts an exploit fixed by HD Mod and HotA (survey `docs/rules/surveys/E09-trades.md` §10 TD-29).
+- Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §2.1, §2.2, §10 T-19); batch TWN-6's row TWN-6-2 (`experiments/results/E09-batch-6b.md`, `-6b-run2.md`: at Blue's Tower, an ally's, Red's visitor at count 0, the merchants' entries priced 0 gold, the Trade giving the major with Red's treasury unchanged; survey §14).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-game/src/town/tests/market.rs`, `the_count_is_the_traders_marketplaces_from_one_to_the_parameters_rows` and `the_merchants_sell_the_stock_to_the_visitor_and_an_entry_empties_for_everyone` (the purchase at a count of 0 priced at the first row)
+- Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 203); confirmed by batch TWN-6 (E09 T54, TWN-6-2); entered by E09 T58a1, 2026-11-26
 
 ### TWN-QUIRK-21 — The Artifact Merchants' draw with every artifact banned
 - Class: fix, no flag (state-corrupting: a hang, which AGENTS.md always fixes; quirk candidate T-24, an empty entry accepted by the user with the agent's calls, 2026-11-24, TWN-Q35; the epic's decision 207)

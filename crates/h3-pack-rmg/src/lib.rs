@@ -5,7 +5,7 @@
 //! `objects.txt`'s template lines, `rand_trn.txt`'s rows), `packs/sod/rmg.toml` SoD's additions
 //! (three templates; `objects.txt`'s added and changed lines) and the generator's constants read
 //! from SoD's executable (`[generator]`, E14 T2c); both are harvested by `h3-harvest` (E14 T2b,
-//! [`ORIGINAL_PACKS`]). The format: `packs/README.md`, "The map generator's tables".
+//! [`ORIGINAL_PACKS`]), each `objects.txt` line with its picture's `.msk` (E14 T4b). The format: `packs/README.md`, "The map generator's tables".
 //! Parsing is strict like `h3-pack`'s (unknown fields are errors, numbers must fit their types, a
 //! mark string has its length and only `0` and `1`); the compiler checks the references.
 
@@ -17,9 +17,9 @@ use std::fmt;
 use h3_content::{PackManifest, Ruleset};
 use h3_pack::PackError;
 use h3_rmg::{
-    Connection, ConnectionOverride, GeneratorTables, ObjectTemplate, ObjectTemplateLine,
-    ObjectTemplateOverride, Obstacle, RmgCompileError, RmgPack, RmgRuleset, Strength, Template,
-    Zone, ZoneKind,
+    Connection, ConnectionOverride, GeneratorTables, MAX_PICTURES, OBJECT_TYPES, ObjectSettings,
+    ObjectTemplate, ObjectTemplateLine, ObjectTemplateOverride, Obstacle, PictureSet,
+    RmgCompileError, RmgPack, RmgRuleset, RockPicture, Strength, Template, Zone, ZoneKind,
 };
 use serde::Deserialize;
 
@@ -100,12 +100,15 @@ struct ObjectDto {
     picture: String,
     passability: String,
     actions: String,
-    terrains: String,
     editor_terrains: String,
+    terrains: String,
     class: u32,
     subclass: u32,
     group: u8,
     overlay: u8,
+    width: u8,
+    height: u8,
+    colour: String,
 }
 
 #[derive(Deserialize)]
@@ -205,6 +208,119 @@ struct GeneratorDto {
     layout_sin: Vec<i32>,
     terrain_towns: Vec<[i32; 4]>,
     native_terrains: Vec<i32>,
+    picture_sets: Vec<PictureSetDto>,
+    rock_pictures: Vec<(u8, u8, u8, usize)>,
+    object_not_entered: String,
+    object_from_above: String,
+    object_removable: String,
+    object_class_groups: Vec<(u8, u8)>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PictureSetDto {
+    through_dirt: bool,
+    land: bool,
+    share: u8,
+    pictures: Vec<(u8, u8, usize)>,
+}
+
+/// A 0 or 1 as a flag.
+fn bit(value: u8, what: &str) -> Result<bool, RmgPackError> {
+    match value {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => Err(RmgPackError::Invalid(format!(
+            "{what} {value} is not 0 or 1"
+        ))),
+    }
+}
+
+/// Runs of an entry and its count expanded in order, at most [`MAX_PICTURES`] entries.
+fn expand<T: Copy>(runs: &[(T, usize)], what: &str) -> Result<Vec<T>, RmgPackError> {
+    let mut out = Vec::new();
+    for &(entry, count) in runs {
+        if count > MAX_PICTURES - out.len() {
+            return Err(RmgPackError::Invalid(format!(
+                "{what} hold more than {MAX_PICTURES} pictures"
+            )));
+        }
+        out.extend(core::iter::repeat_n(entry, count));
+    }
+    Ok(out)
+}
+
+/// The painter's picture sets and rock's pictures from their runs.
+fn pictures(g: &GeneratorDto) -> Result<(Vec<PictureSet>, Vec<RockPicture>), RmgPackError> {
+    let sets = g
+        .picture_sets
+        .iter()
+        .map(|set| {
+            let runs = set
+                .pictures
+                .iter()
+                .map(|&(shape, flag, n)| {
+                    Ok(((shape, bit(flag, "generator.picture_sets' flag")?), n))
+                })
+                .collect::<Result<Vec<_>, RmgPackError>>()?;
+            Ok(PictureSet {
+                through_dirt: set.through_dirt,
+                land: set.land,
+                share: set.share,
+                pictures: expand(&runs, "generator.picture_sets")?,
+            })
+        })
+        .collect::<Result<_, RmgPackError>>()?;
+    let runs = g
+        .rock_pictures
+        .iter()
+        .map(|&(shape, a, b, n)| {
+            let variant = |v| bit(v, "generator.rock_pictures' variant");
+            Ok(((shape, [variant(a)?, variant(b)?]), n))
+        })
+        .collect::<Result<Vec<_>, RmgPackError>>()?;
+    Ok((sets, expand(&runs, "generator.rock_pictures")?))
+}
+
+/// The object settings by class (E14 T4b): three strings of one mark per class, [`OBJECT_TYPES`]
+/// each, and the classes whose group is not their own as pairs of class and group, in order (a
+/// class given twice keeps its last).
+fn object_settings(g: &GeneratorDto) -> Result<Vec<ObjectSettings>, RmgPackError> {
+    let per_class = |text: &str, what: &str| {
+        let marks = flags(text, what)?;
+        if marks.len() == OBJECT_TYPES {
+            Ok(marks)
+        } else {
+            Err(RmgPackError::Invalid(format!(
+                "{what} has {} marks, not one per class ({OBJECT_TYPES})",
+                marks.len()
+            )))
+        }
+    };
+    let not_entered = per_class(&g.object_not_entered, "generator.object_not_entered")?;
+    let from_above = per_class(&g.object_from_above, "generator.object_from_above")?;
+    let removable = per_class(&g.object_removable, "generator.object_removable")?;
+    let mut out: Vec<ObjectSettings> = (0..=u8::MAX)
+        .zip(not_entered.iter().zip(&from_above).zip(&removable))
+        .map(
+            |(class_group, ((&not_entered, &from_above), &removable))| ObjectSettings {
+                not_entered,
+                from_above,
+                removable,
+                class_group,
+            },
+        )
+        .collect();
+    for &(class, group) in &g.object_class_groups {
+        let settings = out.get_mut(usize::from(class)).ok_or_else(|| {
+            RmgPackError::Invalid(format!(
+                "generator.object_class_groups names class {class}, past {}",
+                OBJECT_TYPES - 1
+            ))
+        })?;
+        settings.class_group = group;
+    }
+    Ok(out)
 }
 
 /// A string of one mark per entry, each `0` or `1`, as flags.
@@ -245,17 +361,30 @@ fn narrow_marks<T: TryFrom<u64>>(text: &str, len: usize, what: &str) -> Result<T
         .map_err(|_| RmgPackError::Invalid(format!("{what} `{text}` has too many marks")))
 }
 
+/// An `objects.txt` line with its picture's `.msk`: a footprint of 1 to 8 columns and 1 to 6 rows
+/// (the masks' cells).
 fn object(o: ObjectDto) -> Result<ObjectTemplate, RmgPackError> {
     let what = |field: &str| format!("object template `{}`'s {field}", o.picture);
+    if !(1..=8).contains(&o.width) || !(1..=6).contains(&o.height) {
+        return Err(RmgPackError::Invalid(format!(
+            "{} {} x {} is not within the masks' 8 x 6",
+            what("footprint"),
+            o.width,
+            o.height
+        )));
+    }
     Ok(ObjectTemplate {
         passability: marks(&o.passability, 48, &what("passability"))?,
         actions: marks(&o.actions, 48, &what("actions"))?,
-        terrains: narrow_marks(&o.terrains, 9, &what("terrains"))?,
         editor_terrains: narrow_marks(&o.editor_terrains, 9, &what("editor_terrains"))?,
+        terrains: narrow_marks(&o.terrains, 9, &what("terrains"))?,
         class: o.class,
         subclass: o.subclass,
         group: o.group,
         overlay: o.overlay,
+        width: o.width,
+        height: o.height,
+        colour: marks(&o.colour, 48, &what("colour"))?,
         picture: o.picture,
     })
 }
@@ -327,8 +456,9 @@ fn template(t: TemplateDto) -> Result<Template, RmgPackError> {
 /// # Errors
 ///
 /// [`RmgPackError::Syntax`] for text that does not fit the schema, [`RmgPackError::Invalid`] for a
-/// malformed mark string or an `objects.txt` line with `line` among the added lines or `before`
-/// (or no `line`) among the replaced ones.
+/// malformed mark string, a footprint past the masks, object settings not one per class, or an
+/// `objects.txt` line with `line` among the added lines or `before` (or no `line`) among the
+/// replaced ones.
 pub fn parse_rmg(manifest: &PackManifest, text: &str) -> Result<RmgPack, RmgPackError> {
     let file: RmgFile = toml::from_str(text).map_err(|e| RmgPackError::Syntax(e.to_string()))?;
     let misplaced = |o: &ObjectDto, list: &str| {
@@ -389,6 +519,8 @@ pub fn parse_rmg(manifest: &PackManifest, text: &str) -> Result<RmgPack, RmgPack
     let generator = file
         .generator
         .map(|g| {
+            let (picture_sets, rock_pictures) = pictures(&g)?;
+            let object_settings = object_settings(&g)?;
             Ok::<_, RmgPackError>(GeneratorTables {
                 heroes_roe: flags(&g.heroes_roe, "generator.heroes_roe")?,
                 heroes_expansions: flags(&g.heroes_expansions, "generator.heroes_expansions")?,
@@ -399,6 +531,9 @@ pub fn parse_rmg(manifest: &PackManifest, text: &str) -> Result<RmgPack, RmgPack
                 layout_sin: g.layout_sin,
                 terrain_towns: g.terrain_towns,
                 native_terrains: g.native_terrains,
+                picture_sets,
+                rock_pictures,
+                object_settings,
             })
         })
         .transpose()?;
