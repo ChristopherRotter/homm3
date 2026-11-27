@@ -3,7 +3,8 @@
 # code; scripts/exe.py, docs/exe/) is the primary source, the oracle (the original generating under
 # Wine, docs/lanes/rmg/ORACLE.md) the observation; the survey docs/rules/surveys/E14-generator.md
 # holds the readings (§3.2 the rules by phase). Increment 2 (E14 T2b, T2c): the settings, the
-# tables, the template and the positions; increment 3 (E14 T3c, T3d): steps 1 and 2, the zones.
+# tables, the template and the positions; increment 3 (E14 T3c, T3d): steps 1 and 2, the zones;
+# increment 4 (E14 T4b): the object model the steps place with (RMG-OBJ-009 to -011).
 
 [[rule]]
 id       = "RMG-SET-001"
@@ -796,4 +797,45 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (E14 T1c1c, T3e): terrain_painter_transition_pass 0x5B5A70 (0x5B60B6, 0x5B60D4, 0x5B6104); survey E14-generator.md §2.7.3"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-OBJ-009"
+title    = "The object templates, the prototypes and placing an object"
+context  = "rmg"
+status   = "implemented"
+summary  = "A template's masks: bit 8r + c of a 48-mark mask is the cell c columns left of and r rows above the anchor; its footprint (columns, rows) and colour mask from the picture's .msk (1 x 1 without one); passable = the passability text OR NOT the colour mask; the entrances = the actions text AND NOT passable; the first entrance the lowest such bit, rows from the anchor's up, each leftward (none: (8, 6)). The prototypes: per objects.txt line in order whose class the format allows (RoE below 165, AB below 222, SoD below 232; before SoD classes 43 to 45 only subclasses 0 to 2; compared signed), one appended to its class group's vector (the class's object settings +8); the monsters' (54) sorted by subclass with an exchange sort (a later smaller one exchanged into each place: equal subclasses may change order); each counts its created objects. Placing (the steps' only way, the generator's slot 1): the position; per footprint cell on the map an entrance gets bit 22 of +0x28 and, unless +0x2C bit 0, bit 26 cleared and 27 set, its bit 25 kept; any other cell not passable loses bit 25; both list the object, passable cells are left alone; the object is listed, its type counted, and with an entrance the zone generator its cell's zone byte names (not negative) counts it, then the distance flood (RMG-OBJ-010). A footprint past the masks' bits throws std::bitset's range error (the original's code 1), an entrance or a level off the map or a zone byte past the zone generators reads outside its arrays: typed faults (RMG-QUIRK-4), none reached with the shipped tables."
+quirks   = ["RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2a, T4a, T4b): rmg_objects_read 0x536200 (the filter 0x536252 to 0x5362A0, the exchange sort 0x536321 to 0x536386), object_template_text_read 0x514B80, object_template_entrances_set 0x514A60, object_template_no_entrance 0x640278, msk_load 0x514610, rmg_map_place_object 0x531EA0, rmg_generator_add_object 0x5402A0 (0x5402A0 to 0x5403A7), bitset_range_error 0x41B410; survey E14-generator.md §2.1 (\"Placing an object\", \"The template's masks as read\", \"The objects as ported (T4b)\")"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-OBJ-010"
+title    = "The entrance's distance flood"
+context  = "rmg"
+status   = "implemented"
+summary  = "After an object with an entrance is placed, its entrance cell's distance (+0x20 bits 0-15) becomes 0 and a flood over its level runs to an empty queue: the queue's last cell taken (its distance as the cell holds it now, d), each of its eight neighbours (E, SE, S, SW, W, NW, N, NE) on the map, whatever it holds, whose distance is above d + 2 (orthogonal) or d + 3 (diagonal) gets that value and goes into the queue before the first entry of a distance at most its own (a binary search; the queue falls by distance, so the nearest is taken first and equal ones first in, first out). A cell not lowered stops the flood there; the result is each cell's least distance to the entrances flooded, through cells whose value was lowered."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2a, T4b): rmg_generator_add_object 0x5402A0 (0x540321 to 0x540594: the queue's insert 0x54052D to 0x54056E), rmg_neighbours 0x69CDC0 (rmg_neighbours_init 0x530DA0); survey E14-generator.md §2.1"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-OBJ-011"
+title    = "The placing test"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_map_can_place (a prototype at x, y, z in a zone) is true when, in order: (1) the footprint is not blocked: it leaves the map when x < columns - 1, x >= the map's width, y < rows - 1 or y >= its height; else each cell (x - c, y - r): an entrance refuses unless free (bit 25), not rock, without bit 22 and of the zone (its zone byte equal to the zone's id), then any cell not passable (an entrance too) refuses unless free, not rock, without bit 22, of the zone and on water exactly when the template is a sea object's (group 0 with water among its fourth column's terrains); passable cells are not tested; (2) the outline (computed once per prototype: from the cell below the anchor's row's first blocked cell, a walk of orthogonal steps trying a right turn, straight on, a left turn, back, entering cells outside the footprint or passable in it, until back: the ring clockwise around that blocked group) is clear: walked cyclically over its n cells and the first again, the state before counted closed, a cell open when on the map, free, not rock, without bit 22, water exactly when the zone is and of the zone, the open cells must form one unbroken arc or the whole ring (a second open-to-closed change refuses; all closed refuses); a ring cell with bit 22 refuses at once unless the class's object settings +1 and +2 are both set; (3) without an entrance, yes; else the cell below the entrance (x - +0x2C, y - +0x30 + 1) must have its row below the map's height, be free, not rock, of the zone (its zone byte not negative and the id), without bit 22 unless the first object on it is of a class with settings +2, and water exactly when the zone is. An empty outline divides by its length (RMG-QUIRK-3), the cell below an entrance off the map or a bit 22 without an object reads outside the arrays (RMG-QUIRK-4): typed faults that refuse, none reached with the shipped tables."
+quirks   = ["RMG-QUIRK-3", "RMG-QUIRK-4"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T4a, T4b): rmg_map_can_place 0x531CF0, rmg_map_footprint_blocked 0x5318B0, rmg_prototype_outline 0x532C80, rmg_map_outline_clear 0x531170; survey E14-generator.md §2.2 (\"The placing tests as read\") and §2.1 (\"The objects as ported (T4b)\")"
   confidence = "high"

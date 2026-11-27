@@ -16,6 +16,7 @@ use h3_kernel::rng::CrtRand;
 
 use crate::cells::Cells;
 use crate::layout::{LayoutInput, ZoneGenerator, lay_out};
+use crate::objects::{Object, ObjectFault, Objects};
 use crate::part::RmgRuleset;
 use crate::partition::{
     MemoryZone, Partition, PartitionFault, PartitionInput, ZoneMemory, partition,
@@ -35,14 +36,23 @@ pub const SITE_WATER: u32 = 0x0053_7C89;
 pub const SITE_TEMPLATE: u32 = 0x0054_9975;
 
 /// What the generation holds at a step's end, as the comparison seam reads it (ADR-0029 point
-/// 8): the generator's map (the oracle's dump of that step) and the zone generators (its
-/// `layout.txt` after step 1; none before).
+/// 8): the generator's map and its placed objects (the oracle's dump of that step,
+/// [`StepState::dump`]) and the zone generators (its `layout.txt` after step 1; none before).
 #[derive(Debug, Clone, Copy)]
 pub struct StepState<'a> {
     /// The generator's map.
     pub cells: &'a Cells,
     /// The zone generators.
     pub zones: &'a [ZoneGenerator],
+    /// The placed objects (the generator's +0xEC4; none before step 4).
+    pub objects: &'a [Object],
+}
+
+impl StepState<'_> {
+    /// The phase oracle's dump of the map and the placed objects after `step` ([`Cells::dump`]).
+    pub fn dump(&self, step: u8) -> Vec<u8> {
+        self.cells.dump(step, self.objects)
+    }
 }
 
 /// Where the generation reports its draws and steps (ADR-0029 point 8): the comparison seam with
@@ -115,6 +125,15 @@ pub enum GenerateError {
     /// Step 3 met what the original divides by zero at (RMG-QUIRK-3) or reads outside its
     /// arrays or never ends at (RMG-QUIRK-4).
     Terrain(TerrainFault),
+    /// A step's object placing met what the original divides by zero at (RMG-QUIRK-3), throws at
+    /// or reads or writes outside its arrays at (RMG-QUIRK-4): [`Objects::take_fault`] at the
+    /// step's end.
+    Objects {
+        /// The step.
+        step: u8,
+        /// What went wrong, the first met.
+        fault: ObjectFault,
+    },
 }
 
 impl From<SettingsError> for GenerateError {
@@ -147,6 +166,7 @@ impl fmt::Display for GenerateError {
             Self::LayoutSpan => f.write_str("step 1: the layout spans nothing"),
             Self::Partition { level, fault } => write!(f, "step 2, level {level}: {fault:?}"),
             Self::Terrain(fault) => write!(f, "step 3: {fault:?}"),
+            Self::Objects { step, fault } => write!(f, "step {step}, an object: {fault:?}"),
         }
     }
 }
@@ -174,6 +194,8 @@ pub struct GeneratedMap {
     pub zones: Vec<ZoneGenerator>,
     /// Step 2's polygons and distances.
     pub partition: Partition,
+    /// The prototypes and the placed objects (none placed before step 4).
+    pub objects: Objects,
 }
 
 /// The stream: `CrtRand` seeded once, each draw reported with its call site.
@@ -212,7 +234,8 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// `srand(seed)`; water's Random `rand() % 3` (0x537C89); the templates kept for the size
 /// index and the counts; the heroes banned; the template `rand() % kept` (0x549975); the
 /// positions; the generator's map (`rmg_map_init`); step 1, the zones laid out
-/// (`rmg_zones_lay_out` 0x53BCB0).
+/// (`rmg_zones_lay_out` 0x53BCB0); steps 2 and 3; the prototypes (`rmg_objects_read` 0x536200,
+/// read by the constructor; nothing draws there) for the steps that place objects.
 ///
 /// # Errors
 ///
@@ -293,6 +316,7 @@ pub fn generate<T: Trace>(
         StepState {
             cells: &cells,
             zones: &[],
+            objects: &[],
         },
     );
     let mut zones = lay_out(
@@ -315,6 +339,7 @@ pub fn generate<T: Trace>(
         StepState {
             cells: &cells,
             zones: &zones,
+            objects: &[],
         },
     );
     let mut template = template;
@@ -337,6 +362,7 @@ pub fn generate<T: Trace>(
         StepState {
             cells: &cells,
             zones: &zones,
+            objects: &[],
         },
     );
     paint(
@@ -356,7 +382,14 @@ pub fn generate<T: Trace>(
         StepState {
             cells: &cells,
             zones: &zones,
+            objects: &[],
         },
+    );
+    let objects = Objects::new(
+        part.object_templates(),
+        &tables.object_settings,
+        run.format,
+        zones.len(),
     );
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
@@ -369,5 +402,6 @@ pub fn generate<T: Trace>(
         cells,
         zones,
         partition,
+        objects,
     })
 }

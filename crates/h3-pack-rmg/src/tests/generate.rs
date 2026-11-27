@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use h3_rmg::{
     Choices, CrtRand, Fit, GenerateError, GeneratedMap, MapFormat, MapSize, MemoryZone, Monsters,
-    PartitionFault, PositionError, SITE_TEMPLATE, SITE_WATER, SITE_ZONE_POSITION,
+    Objects, PartitionFault, PositionError, SITE_TEMPLATE, SITE_WATER, SITE_ZONE_POSITION,
     SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, TerrainFault,
     Trace, Water, ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
 };
@@ -82,7 +82,7 @@ impl Trace for Phases {
         } else {
             self.phases.insert(step.to_string(), lines_digest(draws));
         }
-        self.cells.insert(step, digest12(&state.cells.dump(step)));
+        self.cells.insert(step, digest12(&state.dump(step)));
         match step {
             1 => self.layout = state.zones.to_vec(),
             2 => self.partitioned = state.zones.to_vec(),
@@ -627,6 +627,64 @@ proptest! {
             }
         }
     }
+}
+
+// covers: RMG-OBJ-009
+/// The original tables' prototypes (`rmg_objects_read`): SoD's table files every line of a class
+/// below 232, AB's format those below 222 but SoD's monoliths and gates past subclass 2, RoE's
+/// below 165 likewise; AB's and SoD's decorations 165 to 205 file among RoE's 114 to 161 (their
+/// class group); the monsters' prototypes rise by subclass. A generated map has them with
+/// nothing placed yet (steps 4 on place).
+#[test]
+fn the_originals_prototypes_are_filed_by_the_format() {
+    let (_, part) = original("base:faithful");
+    let tables = part.generator().unwrap();
+    let lines = part.object_templates();
+    let filed = |format| Objects::new(lines, &tables.object_settings, format, 0);
+    let wanted = |bound: u32, roe_ab: bool| {
+        lines
+            .iter()
+            .filter(|t| {
+                t.class < bound && !(roe_ab && (43..=45).contains(&t.class) && t.subclass > 2)
+            })
+            .count()
+    };
+    let (roe, ab, sod) = (
+        filed(MapFormat::RoE),
+        filed(MapFormat::AB),
+        filed(MapFormat::SoD),
+    );
+    assert_eq!(roe.prototypes().len(), wanted(165, true));
+    assert_eq!(ab.prototypes().len(), wanted(222, true));
+    assert_eq!(sod.prototypes().len(), wanted(232, false));
+    assert!(roe.prototypes().len() < ab.prototypes().len());
+    assert!(ab.prototypes().len() < sod.prototypes().len());
+    for o in [&roe, &ab, &sod] {
+        let group = |class: usize| -> Vec<u32> {
+            o.group(class)
+                .iter()
+                .map(|&p| o.prototypes()[p].shape.class)
+                .collect()
+        };
+        assert!(group(165).is_empty() && group(205).is_empty());
+        let monsters: Vec<u32> = o
+            .group(54)
+            .iter()
+            .map(|&p| o.prototypes()[p].shape.subclass)
+            .collect();
+        assert!(!monsters.is_empty() && monsters.is_sorted());
+    }
+    assert!((114..=161).any(|g| {
+        sod.group(g)
+            .iter()
+            .any(|&p| sod.prototypes()[p].shape.class >= 165)
+    }));
+    let (core, part) = original("base:faithful");
+    let (_, s, seed, _) = corpus_settings(0);
+    let map = generate(core, part, &s, seed, &mut Log::default()).unwrap();
+    assert!(map.objects.placed().is_empty());
+    assert_eq!(map.objects.prototypes(), sod.prototypes());
+    assert_eq!(map.objects.zone_count(map.zones.len() - 1).len(), 232);
 }
 
 // covers: RMG-TPL-008

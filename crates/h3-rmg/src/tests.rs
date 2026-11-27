@@ -604,6 +604,7 @@ fn no_trace_keeps_nothing() {
         StepState {
             cells: &Cells::new(36, 1),
             zones: &[],
+            objects: &[],
         },
     );
     assert_eq!(t, NoTrace);
@@ -632,7 +633,7 @@ fn the_generators_map_is_reset_and_dumped_as_the_oracles() {
     let cells = Cells::new(2, 2);
     assert_eq!(cells.size(), (2, 2, 2));
     assert_eq!(cells.cells(), [Cell::RESET; 8]);
-    let dump = cells.dump(1);
+    let dump = cells.dump(1, &[]);
     assert_eq!(dump.len(), 8 + 4 * 5 + 48 * 8 + 8);
     assert_eq!(&dump[..8], b"H3RMGCEL");
     let word = |k: usize| u32::from_le_bytes(dump[4 * k + 8..4 * k + 12].try_into().unwrap());
