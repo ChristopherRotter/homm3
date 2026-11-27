@@ -51,7 +51,7 @@ fn kinds(events: &[GameEvent]) -> Vec<Result<AdventureEventKind, GameEvent>> {
         .iter()
         .map(|event| match event {
             GameEvent::Adventure(event) => Ok(event.kind),
-            other => Err(other.clone()),
+            other => Err(*other),
         })
         .collect()
 }

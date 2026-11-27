@@ -2,16 +2,15 @@
 //! epic's design note §110, decision 211; survey `E09-trades.md` §4): `TownCommand::BuyWarMachine`
 //! buys the war machine a standing building sells for the town's hero at the price of its
 //! creature, as one command (the original's own Buy-or-Cancel dialog, `town_blacksmith_buy`
-//! 0x5D1D30), and the legal listing offers each purchase `apply` accepts.
+//! 0x5D1D30); the legal listing offers each purchase `apply` accepts (`town::services`).
 
-use h3_adventure::HeroOnMap;
 use h3_content::{ArtifactTypeId, Ruleset};
 use h3_contracts::{PlayerId, TownId};
 use h3_heroes::{HeroChange, HeroDetails};
-use h3_towns::{BuildingId, BuildingSet, TownCommandError};
+use h3_towns::{BuildingId, TownCommandError};
 
 use super::command::owner;
-use super::market::{hero_of, window_hero};
+use super::market::window_hero;
 use crate::command::{GameCommandError, Sink};
 use crate::{GameRuleset, GameState};
 
@@ -77,42 +76,11 @@ pub(crate) fn buy<S: Sink>(
     Ok(())
 }
 
-/// The purchases [`crate::legal_commands`] lists at `player`'s own `town` (TWN-SMT-001; E09 T59a,
-/// design §115), as [`buy`] accepts them: each building of [`h3_towns::war_machine_buildings`]
-/// (the standing ones that sell a machine, in the record's order) whose machine the town's hero
-/// would receive and whose price `player`'s treasury holds. `visitor` and `garrison` are the
-/// heroes the listing found (the hero on the town's entrance, any player's, and its garrison
-/// hero); none for a town without a hero of `player`'s that may buy, the cheapest test first.
-// rule: TWN-SMT-001
-pub(crate) fn listed(
-    state: &GameState,
-    rules: &GameRuleset,
-    (town, player): (TownId, PlayerId),
-    (visitor, garrison): (Option<&HeroOnMap>, Option<&HeroOnMap>),
-) -> BuildingSet {
-    let heroes = [visitor, garrison].map(|on| on.map(|on| (on.id, on.owner)));
-    let core = rules.core();
-    let buyer = hero_of(rules, player, heroes).and_then(|hero| state.hero(hero));
-    let record = state.towns().get(town);
-    let (Some(details), Some(record)) = (buyer, record) else {
-        return BuildingSet::EMPTY;
-    };
-    let part = rules.towns();
-    h3_towns::war_machine_buildings(record, part)
-        .iter()
-        .filter(|&building| {
-            h3_towns::check_war_machine(record, part, core, building).is_ok_and(|sale| {
-                state.can_pay(player, sale.price) && receives(details, core, sale.artifact)
-            })
-        })
-        .fold(BuildingSet::EMPTY, BuildingSet::with)
-}
-
 /// Whether the hero `details` would receive the war machine `artifact` (TWN-SMT-001; survey §4.4):
 /// it holds none, worn or carried (the original's `hero_has_artifact` 0x4D91B0; a war machine is
 /// never carried, HER-ART-002), and a position takes it (`HeroChange::AddArtifact`'s check,
 /// HER-CHG-002: in the original packs the machine's own, free while the hero holds none).
-fn receives(details: &HeroDetails, core: &Ruleset, artifact: ArtifactTypeId) -> bool {
+pub(super) fn receives(details: &HeroDetails, core: &Ruleset, artifact: ArtifactTypeId) -> bool {
     let held = details
         .worn
         .iter()

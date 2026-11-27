@@ -1,6 +1,7 @@
 //! The town's Shipyard in the game (TWN-SHY-001; E09 T59a, the town epic's design note §111;
 //! survey `E09-trades.md` §5): `TownCommand::BuildBoat` builds a boat on the town's spot for the
-//! part's price, without a hero, and the legal listing offers it where `apply` accepts it.
+//! part's price, without a hero; the legal listing offers it where `apply` accepts it
+//! (`town::services`).
 
 use h3_contracts::{PlayerId, TownId};
 use h3_towns::TownCommandError;
@@ -61,24 +62,4 @@ pub(crate) fn build<S: Sink>(
         adventure.build_town_boat(rules.core(), boat, player, &mut AdventureSink(&mut *sink));
     state.pay_price(player, sale.price, sink);
     Ok(())
-}
-
-/// Whether [`crate::legal_commands`] lists the boat at `player`'s own `town` (TWN-SHY-001; E09
-/// T59a, design §115), as [`build`] accepts it: a standing Shipyard, the price in `player`'s
-/// treasury, the spot free; the cheapest test first (the record's derived roles, then the
-/// treasury, then the walk over the heroes on the map).
-// rule: TWN-SHY-001
-pub(crate) fn listed(
-    state: &GameState,
-    rules: &GameRuleset,
-    (town, player): (TownId, PlayerId),
-) -> bool {
-    state
-        .towns()
-        .get(town)
-        .and_then(|record| h3_towns::check_boat(record, rules.towns()).ok())
-        .is_some_and(|sale| {
-            state.can_pay(player, sale.price)
-                && state.adventure().free_town_boat_spot(town).is_some()
-        })
 }

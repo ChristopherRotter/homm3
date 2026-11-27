@@ -104,7 +104,10 @@ pub use ruleset::{
     MAX_MERCHANTS_STOCK, Reveal, TownCompileError, TownDef, TownOverride, TownPack, TownParams,
     TownParamsDef, TownPatch, TownRecord, TownRuleset, WeekParams,
 };
-pub use service::{BoatSale, WarMachineSale, check_boat, check_war_machine, war_machine_buildings};
+pub use service::{
+    BoatSale, ServiceOffers, WarMachineSale, check_boat, check_war_machine, service_offers,
+    war_machine_buildings,
+};
 pub use setup::{
     BuildingsSetup, BuiltTown, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup,
     TownFaction, TownSetup, TownSetupError, town_buildings_setup, town_garrison, town_setup,

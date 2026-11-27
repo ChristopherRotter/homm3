@@ -33,6 +33,43 @@ pub struct BoatSale<'a> {
     pub boat_type: u8,
 }
 
+/// What the legal listing offers at a town (E09 T59a, design §115): its standing buildings that
+/// sell a war machine ([`war_machine_buildings`]) and its boat where a Shipyard stands
+/// ([`check_boat`]), read together (the record and its standing set once a town: `bench-check`'s
+/// `legal-towns-36`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ServiceOffers<'a> {
+    /// The standing buildings that sell a war machine, in the record's order.
+    pub machines: BuildingSet,
+    /// The boat, where a Shipyard stands.
+    pub boat: Option<BoatSale<'a>>,
+}
+
+/// [`war_machine_buildings`] and [`check_boat`] of `town` at once (TWN-SMT-001, TWN-SHY-001; E09
+/// T59a, design §115: the legal listing's question to the town part): the same answers, the
+/// record's derived roles and the town's superseded buildings read once.
+// rule: TWN-SMT-001, TWN-SHY-001
+pub fn service_offers<'a>(town: &Town, part: &'a TownRuleset) -> ServiceOffers<'a> {
+    let read = part.town_with_service_roles(town.faction());
+    let standing = read.map_or(BuildingSet::EMPTY, |(record, roles)| {
+        standing(town, record, roles, roles.smiths.union(roles.shipyard))
+    });
+    let (smiths, shipyard) = read.map_or((BuildingSet::EMPTY, BuildingSet::EMPTY), |(_, roles)| {
+        (roles.smiths, roles.shipyard)
+    });
+    let boat = part
+        .params()
+        .filter(|_| standing.intersects(shipyard))
+        .map(|params| BoatSale {
+            price: &params.boat_price,
+            boat_type: params.boat_type,
+        });
+    ServiceOffers {
+        machines: standing.intersection(smiths),
+        boat,
+    }
+}
+
 /// The town part's test of a war machine's purchase at `building` of `town` (TWN-SMT-001; E09
 /// T59a, design §110; survey §4.3, §4.6, the original's `town_blacksmith_buy` 0x5D1D30 from the
 /// town screen's building 16 or a Stronghold's 22), in this order, each refusal changing nothing:

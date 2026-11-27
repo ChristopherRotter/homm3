@@ -52,6 +52,7 @@ pub(crate) mod pool;
 pub(crate) mod portal;
 pub(crate) mod recruit;
 pub(crate) mod rows;
+pub(crate) mod services;
 pub(crate) mod siege;
 pub(crate) mod smith;
 pub(crate) mod tavern;

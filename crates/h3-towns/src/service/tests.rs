@@ -110,6 +110,35 @@ fn the_listing_reads_the_standing_smiths_in_the_records_order() {
 }
 
 #[test]
+fn the_listings_offers_are_the_two_questions_answers() {
+    // covers: TWN-SMT-001, TWN-SHY-001
+    let smiths = part_with_keep(|keep| {
+        keep.buildings[TAVERN].war_machine = Some(BALLISTA);
+        keep.buildings[BROTHERHOOD].war_machine = Some(CART);
+        keep.buildings[ESCAPE_TUNNEL].supersedes = set(&[SHIPYARD]);
+    });
+    let parts = [smiths, part(), empty_part()];
+    let built: [&[usize]; 6] = [
+        &[],
+        &[TAVERN],
+        &[TAVERN, BROTHERHOOD, SHIPYARD],
+        &[SHIPYARD, ESCAPE_TUNNEL],
+        &[SHIPYARD, SILO],
+        &[BROTHERHOOD],
+    ];
+    for part in &parts {
+        for faction in [KEEP, MARSH, WILD] {
+            for set in built {
+                let town = town_of(faction, set);
+                let offers = service_offers(&town, part);
+                assert_eq!(offers.machines, war_machine_buildings(&town, part));
+                assert_eq!(offers.boat, check_boat(&town, part).ok());
+            }
+        }
+    }
+}
+
+#[test]
 fn a_standing_shipyard_builds_the_parts_boat_for_its_price() {
     // covers: TWN-SHY-001
     let part = part();
