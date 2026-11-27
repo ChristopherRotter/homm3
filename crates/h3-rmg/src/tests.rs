@@ -549,7 +549,24 @@ fn tables() -> GeneratorTables {
         native_terrains: vec![0; 9],
         picture_sets: Vec::new(),
         rock_pictures: Vec::new(),
+        object_settings: (0..232)
+            .map(|class_group| ObjectSettings {
+                not_entered: class_group == 3,
+                from_above: false,
+                removable: false,
+                class_group,
+            })
+            .collect(),
     }
+}
+
+#[test]
+fn the_object_settings_are_by_class() {
+    let t = tables();
+    let mine = t.object_settings_of(3).unwrap();
+    assert!(mine.not_entered && !mine.from_above && !mine.removable);
+    assert_eq!(t.object_settings_of(231).unwrap().class_group, 231);
+    assert_eq!(t.object_settings_of(232), None);
 }
 
 // covers: RMG-SET-008

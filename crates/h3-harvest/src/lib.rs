@@ -2,7 +2,9 @@
 //! TOML packs `base` (RoE, latest patch), `ab` (Armageddon's Blade) and `sod` (Shadow of Death).
 //!
 //! Inputs, all read-only: `Heroes3.exe` (static creature table: town, level, flags) and the text
-//! tables in `Data/H3bitmap.lod` (SoD) and `Data/H3ab_bmp.lod` (AB-era), plus the committed
+//! tables in `Data/H3bitmap.lod` (SoD) and `Data/H3ab_bmp.lod` (AB-era), the `.msk` files of the
+//! sprite archives `Data/H3sprite.lod` and `Data/H3ab_spr.lod` (the map generator's footprints,
+//! E14 T4b), plus the committed
 //! gap-fill file with labelled sources for what the installation cannot tell
 //! (`data/gapfill.toml`). Output: the pack texts, each split into `core.toml` and `battle.toml`
 //! ([`split`]), deterministic byte for byte, and a report of
@@ -83,7 +85,8 @@ pub struct Inputs {
 
 impl Inputs {
     /// Reads an installation directory (or a copy of it): `Heroes3.exe`, `Data/H3bitmap.lod`,
-    /// `Data/H3ab_bmp.lod`. Only reads.
+    /// `Data/H3ab_bmp.lod`, and the `.msk` files of `Data/H3sprite.lod` and `Data/H3ab_spr.lod`
+    /// (E14 T4b). Only reads.
     ///
     /// # Errors
     /// Missing files, unknown executable build, malformed archives or tables.
@@ -113,6 +116,7 @@ impl Inputs {
             native_terrains: rmg_limits.native_terrains,
             picture_sets: rmg_limits.picture_sets,
             rock_pictures: rmg_limits.rock_pictures,
+            object_settings: rmg_limits.object_settings,
         };
         let obstacles =
             h3_formats::exe::obstacle_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
@@ -134,6 +138,24 @@ impl Inputs {
                 .ok_or_else(|| format!("{archive}: no {name}"))?;
             TextTable::parse(&bytes).map_err(|e| format!("{archive}/{name}: {e}"))
         };
+        // The `.msk` files of the sprite archives in the game's search order, the first archive
+        // holding a name winning (E14 T4b).
+        let mut masks = BTreeMap::new();
+        for archive in ["H3sprite.lod", "H3ab_spr.lod"] {
+            let data = read(&format!("Data/{archive}"))?;
+            let lod = LodArchive::parse(&data).map_err(|e| format!("{archive}: {e}"))?;
+            for entry in lod.entries() {
+                let name = entry.name.to_ascii_lowercase();
+                if name.ends_with(".msk") && !masks.contains_key(&name) {
+                    let bytes = lod
+                        .read(entry)
+                        .map_err(|e| format!("{archive}/{}: {e}", entry.name))?;
+                    let msk = rmg::Msk::parse(&bytes)
+                        .map_err(|e| format!("{archive}/{}: {e}", entry.name))?;
+                    masks.insert(name, msk);
+                }
+            }
+        }
         Ok(Self {
             exe,
             sod_creatures: table(&sod, "H3bitmap.lod", "CRTRAITS.TXT")?,
@@ -182,6 +204,7 @@ impl Inputs {
                     rand_trn: table(&sod, "H3bitmap.lod", "Rand_trn.txt")?,
                 },
                 constants: rmg_constants,
+                masks,
             },
         })
     }

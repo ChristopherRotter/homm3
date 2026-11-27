@@ -155,8 +155,10 @@ pub struct Template {
     pub connections: Vec<Connection>,
 }
 
-/// A template line of `objects.txt`. The masks are bit sets: bit `k` is the line's `k`-th
-/// character `1`, as the file gives them (`docs/formats/h3m.md`, "Template masks").
+/// A template line of `objects.txt` with its picture's `.msk` (survey §2.1, "The template's masks
+/// as read"). The masks are bit sets: bit `k` is the line's `k`-th character `1`, as the file
+/// gives them, the cell `k % 8` columns left of and `k / 8` rows above the anchor (the game's bit
+/// 47 − `k`; `docs/formats/h3m.md`, "Template masks").
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjectTemplate {
     /// The picture's name (`.def`).
@@ -165,10 +167,13 @@ pub struct ObjectTemplate {
     pub passability: u64,
     /// The actions mask (48 bits).
     pub actions: u64,
-    /// The terrains it may stand on (9 bits).
-    pub terrains: u16,
-    /// The editor's terrain menu (9 bits).
+    /// The third column's terrains (9 bits; the template's +0x14): the editor's, which the
+    /// generator never tests.
     pub editor_terrains: u16,
+    /// The fourth column's terrains (9 bits; +0x18): the ones it may stand on, which every
+    /// terrain test of the generator reads (VCMI 1.7.5 `ObjectTemplate::readTxt` reads them as
+    /// the allowed terrains too).
+    pub terrains: u16,
     /// The object class.
     pub class: u32,
     /// The subclass.
@@ -177,6 +182,15 @@ pub struct ObjectTemplate {
     pub group: u8,
     /// The overlay field.
     pub overlay: u8,
+    /// The footprint's width in cells: the picture's `.msk` byte 0 (`msk_load` 0x514610; the
+    /// sprite archives searched in the game's order, `default.msk`'s 1 without one; +0x34).
+    pub width: u8,
+    /// Its height: the `.msk`'s byte 1 (+0x38).
+    pub height: u8,
+    /// The colour mask (48 bits, bit `k` as the masks' above): the cells with body pixels, the
+    /// `.msk`'s byte (47 − `k`) / 8, bit (47 − `k`) % 8 (+0x3C). A cell without one is passable
+    /// whatever the passability mask says (0x515510).
+    pub colour: u64,
 }
 
 /// An obstacle, one row of `rand_trn.txt` (record `rmg_obstacle`, RMG-TPL-006).
@@ -269,6 +283,23 @@ pub struct PictureSet {
     pub pictures: Vec<(u8, bool)>,
 }
 
+/// One class's object settings the generator reads (`object_settings_init` 0x41B500 fills them
+/// at start-up; E14 T4b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectSettings {
+    /// +0x0: a hero visits it from a neighbouring tile without entering it.
+    pub not_entered: bool,
+    /// +0x1: it may be entered from or left toward the three tiles above its entrance.
+    pub from_above: bool,
+    /// +0x2: removable.
+    pub removable: bool,
+    /// +0x8: the class whose prototypes the generator files this class's templates among
+    /// (`rmg_objects_read` 0x536200): its own unless the executable's pairs give another (AB's
+    /// and SoD's decorations 165 to 205 as RoE's 114 to 161, 219 as 33, 220 as 53, 221 as 99,
+    /// 223 as 21, 230 as 46).
+    pub class_group: u8,
+}
+
 /// One of rock's pictures (`rock_picture_shapes` 0x6424A8): its shape and two variant bytes,
 /// which a transition's mirroring picks (rock has no mirrored pictures).
 pub type RockPicture = (u8, [bool; 2]);
@@ -306,6 +337,9 @@ pub struct GeneratorTables {
     pub picture_sets: Vec<PictureSet>,
     /// Rock's pictures (terrain 9's set, the second kind).
     pub rock_pictures: Vec<RockPicture>,
+    /// The object settings by class, [`OBJECT_TYPES`] of them (`object_settings` 0x691698;
+    /// E14 T4b).
+    pub object_settings: Vec<ObjectSettings>,
 }
 
 /// The limits by object type the generator places under, per map and per zone (RMG-SET-009).
@@ -333,6 +367,12 @@ impl GeneratorTables {
             .zip(available)
             .map(|(&campaign, &available)| campaign || !available)
             .collect()
+    }
+
+    /// The object settings of `class`; `None` past [`OBJECT_TYPES`] (the generator files no
+    /// template of such a class, `rmg_objects_read` 0x536200).
+    pub fn object_settings_of(&self, class: u32) -> Option<&ObjectSettings> {
+        self.object_settings.get(class as usize)
     }
 
     /// The limits by object type (RMG-SET-009, `rmg_generator_create` 0x537D3D to 0x537D95):
@@ -446,8 +486,8 @@ pub enum RmgCompileError {
         /// The obstacle row.
         obstacle: usize,
     },
-    /// The generator's hero bytes are not one each per hero, or a limit's object type is past
-    /// [`OBJECT_TYPES`].
+    /// The generator's hero bytes are not one each per hero, a limit's object type is past
+    /// [`OBJECT_TYPES`], or another of its tables is not of its shape.
     GeneratorTables(String),
 }
 
@@ -498,8 +538,9 @@ impl fmt::Display for RmgCompileError {
                 f,
                 "pack `{pack}`: the generator's hero bytes need one each per hero, its limits \
                  object types below {OBJECT_TYPES}, its layout {LAYOUT_POINTS} cosines and sines, \
-                 its terrain towns {TERRAINS} rows of town types (-1 to 8) and its native terrains \
-                 one terrain (0 to 8) per town type"
+                 its terrain towns {TERRAINS} rows of town types (-1 to 8), its native terrains \
+                 one terrain (0 to 8) per town type and its object settings one per class below \
+                 {OBJECT_TYPES}"
             ),
         }
     }
@@ -608,7 +649,8 @@ impl CanonicalHash for RmgRuleset {
     /// in [`ObjectTemplate`]'s order); the obstacles (their number, each its fields in
     /// [`Obstacle`]'s order, the scores with their number); the generator's tables (whether given,
     /// then each list with its number in [`GeneratorTables`]' order, a pair its type and limit,
-    /// a terrain's town types without their number, E14 T3c).
+    /// a terrain's town types without their number, E14 T3c; an object settings' fields in
+    /// [`ObjectSettings`]' order, E14 T4b).
     /// The core's hash is not part of it.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RMG_RULESET_HASH_VERSION);
@@ -633,12 +675,15 @@ impl CanonicalHash for RmgRuleset {
             o.picture.as_str().hash_into(h);
             h.write_u64(o.passability);
             h.write_u64(o.actions);
-            h.write_u16(o.terrains);
             h.write_u16(o.editor_terrains);
+            h.write_u16(o.terrains);
             h.write_u32(o.class);
             h.write_u32(o.subclass);
             h.write_u8(o.group);
             h.write_u8(o.overlay);
+            h.write_u8(o.width);
+            h.write_u8(o.height);
+            h.write_u64(o.colour);
         }
         h.write_len(self.obstacles.len());
         for o in &self.obstacles {
@@ -690,6 +735,13 @@ impl CanonicalHash for RmgRuleset {
                 h.write_u8(shape);
                 h.write_bool(a);
                 h.write_bool(b);
+            }
+            h.write_len(g.object_settings.len());
+            for o in &g.object_settings {
+                h.write_bool(o.not_entered);
+                h.write_bool(o.from_above);
+                h.write_bool(o.removable);
+                h.write_u8(o.class_group);
             }
         }
     }
@@ -853,7 +905,7 @@ impl Tables {
     /// [`OBJECT_TYPES`], [`LAYOUT_POINTS`] cosines and sines, [`TERRAINS`] rows of town types
     /// (-1 to 8), a terrain (0 to 8) per town type, [`TERRAINS`] picture sets and rock's
     /// pictures, at most [`MAX_PICTURES`] each, their shapes at most [`MAX_SHAPE`], the shares
-    /// at most 100.
+    /// at most 100, and [`OBJECT_TYPES`] object settings whose class groups are below it.
     fn generator(
         &mut self,
         scope: &Scope<'_>,
@@ -890,7 +942,12 @@ impl Tables {
             && generator
                 .rock_pictures
                 .iter()
-                .all(|&(shape, _)| shape <= MAX_SHAPE);
+                .all(|&(shape, _)| shape <= MAX_SHAPE)
+            && generator.object_settings.len() == OBJECT_TYPES
+            && generator
+                .object_settings
+                .iter()
+                .all(|o| usize::from(o.class_group) < OBJECT_TYPES);
         if !fits {
             return Err(RmgCompileError::GeneratorTables(String::from(scope.id)));
         }

@@ -332,10 +332,18 @@ Placing (`rmg_map_place_object`) is one or the other per footprint cell: an entr
 22 (bit 26 cleared and 27 set unless +0x2C bit 0) and keeps bit 25; any other cell outside +0x4
 loses bit 25; both get the object in their list; passable cells are left alone. So bit 22 marks an
 object's entrance and a clear bit 25 its blocked body. For the port: the footprint's size and +0x4
-depend on each picture's `.msk`, which the rmg packs do not hold yet (the harvest takes
-`objects.txt`'s text alone; the adventure lane's table has the special grounds' sizes only); and
-`h3-rmg`'s `ObjectTemplate` calls the third column `terrains` and the fourth `editor_terrains`,
-the other way round from the generator's use.
+depend on each picture's `.msk`, which the rmg packs hold since T4b: each `objects.txt` line's
+`width`, `height` and `colour` (48 marks in the passability's order: mark k is the game's bit
+47 − k, the `.msk`'s byte (47 − k) / 8, bit (47 − k) % 8), found as `msk_load` finds it (the
+picture's name from its last `.` replaced by `.msk`, looked up by `sprite_archive_find` 0x55CF50 in
+`H3sprite.lod`, then `H3ab_spr.lod`, the first holding it winning; `default.msk`, 1 × 1 with its
+anchor coloured, without one). Every line of both tables has its own `.msk` (AB's 1 221, SoD's
+1 326), and no line's passability text blocks a cell without a body pixel, so on the shipped data
++0x4 is the passability text. `h3-rmg`'s `ObjectTemplate` names the third column `editor_terrains`
+and the fourth `terrains` (the other way round before T4b). The object settings the generator
+reads, +0x0, +0x1, +0x2 and +0x8 (`object_settings_init` 0x41B500: a class no table names keeps
+its own class as +0x8 and the flags clear), are harvested into SoD's `[generator]` too
+(`GeneratorTables::object_settings`).
 
 **Draw sites** (none runs during the setup but water's; the others run when a step creates an
 object through these methods):
@@ -691,9 +699,9 @@ the zone's terrain is water.
   an object never splits the free cells around it, nor stands walled in. An empty outline divides
   by its count of 0 (the index is i mod n): a fault (RMG-QUIRK-3's class) that no template of the
   classes `rmg_map_can_place` places reaches with the shipped `objects.txt` (every town, shipyard,
-  gate, monolith, tent, mine and resource line has a blocked cell on its anchor's row in the text;
-  whether their `.msk`'s keep it blocked waits for the `.msk` harvest); the piles' own outline
-  (`rmg_pile_fits_at`, increment 5's pile ring) is not read.
+  gate, monolith, tent, mine and resource line has a blocked cell on its anchor's row in the text,
+  and its `.msk` keeps it blocked: no line blocks a cell without a body pixel, T4b); the piles' own
+  outline (`rmg_pile_fits_at`, increment 5's pile ring) is not read.
 - **Tents on water** (§2.3's shipyard guards): the Keymaster's Tents are group 0 without water in
   the fourth column, and their two blocked cells (the anchor, which is the entrance, and the cell
   left of it, as the text gives them) refuse water; in a water zone a tent fits only on land cells of that zone (an

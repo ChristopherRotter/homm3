@@ -39,6 +39,7 @@ fn tables() -> GeneratorTables {
         native_terrains: vec![],
         picture_sets: Vec::new(),
         rock_pictures: Vec::new(),
+        object_settings: Vec::new(),
     }
 }
 

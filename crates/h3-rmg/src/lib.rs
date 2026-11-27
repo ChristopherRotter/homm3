@@ -62,9 +62,9 @@ pub use painter::{
 };
 pub use part::{
     Connection, ConnectionOverride, GeneratorTables, LAYOUT_POINTS, MAX_PICTURES, MAX_SHAPE,
-    NO_LIMIT, OBJECT_TYPES, ObjectTemplate, ObjectTemplateLine, ObjectTemplateOverride, Obstacle,
-    PictureSet, RmgCompileError, RmgPack, RmgRuleset, RockPicture, Strength, TERRAIN_TOWNS,
-    TERRAINS, Template, TypeLimits, Zone, ZoneKind,
+    NO_LIMIT, OBJECT_TYPES, ObjectSettings, ObjectTemplate, ObjectTemplateLine,
+    ObjectTemplateOverride, Obstacle, PictureSet, RmgCompileError, RmgPack, RmgRuleset,
+    RockPicture, Strength, TERRAIN_TOWNS, TERRAINS, Template, TypeLimits, Zone, ZoneKind,
 };
 pub use partition::{
     MemoryZone, Partition, PartitionFault, SITE_BORDER_JITTER, UNREACHED, ZoneMemory,
@@ -81,8 +81,9 @@ pub use h3_kernel::rng::CrtRand;
 
 /// Version of [`RmgRuleset`]'s canonical hash (ADR-0029 point 7): bumped whenever the bytes the
 /// part hashes change for the same tables (2: the generator's tables, E14 T2c; 3: step 1's
-/// tables, E14 T3c; 4: the terrain painter's picture sets, E14 T3e).
-pub const RMG_RULESET_HASH_VERSION: u32 = 4;
+/// tables, E14 T3c; 4: the terrain painter's picture sets, E14 T3e; 5: the object templates'
+/// `.msk` footprints and colour masks, the object settings, E14 T4b).
+pub const RMG_RULESET_HASH_VERSION: u32 = 5;
 
 #[cfg(test)]
 mod tests;
