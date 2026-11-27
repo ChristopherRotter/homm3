@@ -682,7 +682,10 @@ fn a_towns_window_buys_its_heros_artifact_at_the_place_it_names() {
     let worn = |at| ArtifactPlace::Worn(Position(at));
     // The ring (2 000) at one Marketplace: f32(2 000 × 0.2) / 1 gold, / 250 wood rounded half up.
     let ring = sell(worn(0), GOLD).unwrap();
-    assert_eq!((ring.hero(), ring.place(), ring.gain()), (HERO, worn(0), (GOLD, 400)));
+    assert_eq!(
+        (ring.hero(), ring.place(), ring.gain()),
+        (HERO, worn(0), (GOLD, 400))
+    );
     assert_eq!(sell(worn(0), WOOD).map(|s| s.gain()), Ok((WOOD, 2)));
     // At least one unit: the charm (1 gold), the cloak of no cost (TWN-MKT-005).
     let backpack = ArtifactPlace::Backpack;
@@ -691,7 +694,10 @@ fn a_towns_window_buys_its_heros_artifact_at_the_place_it_names() {
     // Refused: the catapult's slot is not carried; no artifact at a place; no price.
     assert_eq!(sell(worn(1), GOLD), Err(MarketError::NotTradable));
     assert_eq!(sell(worn(2), GOLD), Err(MarketError::Place(worn(2))));
-    assert_eq!(sell(backpack(2), GOLD), Err(MarketError::Place(backpack(2))));
+    assert_eq!(
+        sell(backpack(2), GOLD),
+        Err(MarketError::Place(backpack(2)))
+    );
     let unvalued = ResourceId::from_raw(7);
     assert_eq!(sell(worn(0), unvalued), Err(MarketError::NoPrice));
     // The window's offers: each place that sells in place order, its price per resource.

@@ -203,9 +203,8 @@ use h3_contracts::TownId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, AltarAnswer, Answer, ArenaChoice, ArtifactPlace, ChestChoice, Consent, GameCommand,
-    GameRuleset, Position,
-    GameState, HillFortAnswer, HireAnswer, MarketAnswer, SchoolChoice, SkillOffer, TavernAnswer,
-    UniversityAnswer, legal_cast_targets, legal_commands, legal_moves,
+    GameRuleset, GameState, HillFortAnswer, HireAnswer, MarketAnswer, Position, SchoolChoice,
+    SkillOffer, TavernAnswer, UniversityAnswer, legal_cast_targets, legal_commands, legal_moves,
 };
 use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 
@@ -1121,7 +1120,9 @@ const fn listed_only(answer: &Answer) -> bool {
     matches!(
         answer,
         Answer::Market(
-            MarketAnswer::Sell { .. } | MarketAnswer::Buy { .. } | MarketAnswer::SellArtifact { .. }
+            MarketAnswer::Sell { .. }
+                | MarketAnswer::Buy { .. }
+                | MarketAnswer::SellArtifact { .. }
         ) | Answer::Altar(AltarAnswer::Artifacts(_) | AltarAnswer::Creatures(_))
     )
 }

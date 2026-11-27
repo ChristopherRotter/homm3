@@ -178,8 +178,38 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 22);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 146));
+    assert_eq!(ACTION_ENCODING_VERSION, 23);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 168));
+    // E09 T58b (v23): a town's artifact sale after the window, the worn positions 0 to 13, then
+    // the backpack's 0 to 7, each by its place, none past them, whatever the resource.
+    assert_eq!(
+        (MARKET_SELL_ARTIFACT, SALE_WORN, SALE_BACKPACK),
+        (146, 14, 8)
+    );
+    let sale = |place| {
+        answer_entry(h3_game::Answer::Market(
+            h3_game::MarketAnswer::SellArtifact {
+                place,
+                take: h3_content::ResourceId::from_raw(3),
+            },
+        ))
+    };
+    let (worn, carried) = (
+        |at| h3_game::ArtifactPlace::Worn(h3_game::Position(at)),
+        h3_game::ArtifactPlace::Backpack,
+    );
+    assert_eq!(
+        [
+            worn(0),
+            worn(13),
+            worn(14),
+            carried(0),
+            carried(7),
+            carried(8)
+        ]
+        .map(sale),
+        [Some(146), Some(159), None, Some(160), Some(167), None]
+    );
     // E09 T58a2 (v22): a town's market window after the casts.
     assert_eq!(
         (TOWN_MARKET, Action::town_market(9)),

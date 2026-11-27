@@ -122,7 +122,7 @@ pub fn command(command: &EngineCommand) -> GameCommand {
 }
 
 /// An answer on the wire.
-const fn answer(a: EngineAnswer) -> Answer {
+fn answer(a: EngineAnswer) -> Answer {
     match a {
         EngineAnswer::Offer(consent) => Answer::Offer {
             consent: match consent {
@@ -427,7 +427,7 @@ const fn pos_to_engine(p: Pos) -> h3_adventure::Pos {
 }
 
 /// A wire answer in the engine.
-const fn answer_to_engine(a: Answer) -> EngineAnswer {
+fn answer_to_engine(a: Answer) -> EngineAnswer {
     match a {
         Answer::Offer { consent } => EngineAnswer::Offer(match consent {
             Consent::Accept => EngineConsent::Accept,

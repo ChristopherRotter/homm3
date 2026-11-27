@@ -1,5 +1,5 @@
-//! The market at a town in the game (TWN-MKT-001 to -004; E09 T58a1, the town epic's design note
-//! §103 to §106, decision 209; survey `E09-trades.md` §2, §3.3): `TownCommand::Market` opens E08's
+//! The market at a town in the game (TWN-MKT-001 to -005; E09 T58a1, the town epic's design note
+//! §103 to §107, decision 209; survey `E09-trades.md` §2, §3.3): `TownCommand::Market` opens E08's
 //! market decision with the town as its place (GAM-DEC-011 amended), its hero the town's; every
 //! answer and view of that decision reads the town's window as [`window`] resolves it (the
 //! screens the town's buildings and the window's hero allow, the trader's count of Marketplaces),
@@ -134,7 +134,8 @@ fn hero_of(
 /// Marketplace's window alone offers the same with a hero or without) offers an answer the listing
 /// gives inside it: a trade whose lot the treasury pays at every count
 /// (`MarketParams::cheapest_at_every_count`, no count needed), else at `player`'s count
-/// (`GameState::offers_an_answer`: such a trade, else a sale or a purchase). `counted` is that
+/// (`GameState::offers_an_answer`: such a trade, else a sale, a purchase or since E09 T58b an
+/// artifact's sale). `counted` is that
 /// count of Marketplaces ([`count`]), computed at the listing's first window that needs it and
 /// kept for the rest (one walk over the player's towns a listing at most).
 // rule: TWN-MKT-002
@@ -189,12 +190,13 @@ fn screens(offer: TownMarket) -> &'static [MarketScreen] {
     SCREENS[usize::from(offer.merchants) + 2 * usize::from(offer.freelancers)]
 }
 
-/// The window of `player`'s open market `visit` at `town` (TWN-MKT-001 to -004; design §103,
+/// The window of `player`'s open market `visit` at `town` (TWN-MKT-001 to -005; design §103,
 /// §104): the screens [`h3_towns::check_market`] allows with the visit's hero (the trades and the
 /// transfer, with a hero the merchants' purchase and sale and the guild's sale where their
-/// building stands; [`SCREENS`]' order) and the trader's count ([`count`]). The town cannot change while
-/// the window is open (a decision refuses every other command), so [`MarketError::Visit`] for a
-/// town the store lost or a window it no longer opens is defensive only.
+/// building stands; [`SCREENS`]' order) and the trader's count ([`count`]). The town cannot
+/// change while the window is open (a decision refuses every other command), so
+/// [`MarketError::Visit`] for a town the store lost or a window it no longer opens is defensive
+/// only.
 // rule: TWN-MKT-001, TWN-MKT-002
 pub(crate) fn window<'r>(
     state: &GameState,

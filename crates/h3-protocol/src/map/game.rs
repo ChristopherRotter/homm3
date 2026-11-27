@@ -41,15 +41,15 @@ use h3_kernel::handle::Handle;
 use crate::wire::WireU64;
 use crate::wire::game::{
     Adventure, AdventureReveal, AltarItem, AltarStack, AltarWindow, Amount, ArmyStack, Artifact,
-    ArtifactSale, Boat, Bonuses, Choice, ChoiceKind, Decision, Formation, GameObservation, GameReveal, Garrison,
-    GarrisonHero, GarrisonStack, Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow,
-    HeroDetails, HeroInfo, HillFortRow, HillFortState, HillFortWindow, Hire, HireCreature,
-    HireSeen, HireTarget, HiredPart, Known, KnownObject as WireKnownObject, LevelUp, Lot,
-    MapGarrison, MapHero, MarketScreen, MarketSeen, MarketWindow, Monster, Month, Object,
-    ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, ResourceLot,
-    RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState, StockEntry, Summoned, TavernHero,
-    TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings, TownOwnerFacts, TradeLot,
-    UniversityVisit, VisitBonus, Week,
+    ArtifactSale, Boat, Bonuses, Choice, ChoiceKind, Decision, Formation, GameObservation,
+    GameReveal, Garrison, GarrisonHero, GarrisonStack, Guards, GuildHero, GuildPart, GuildPlayer,
+    GuildRanking, GuildRow, HeroDetails, HeroInfo, HillFortRow, HillFortState, HillFortWindow,
+    Hire, HireCreature, HireSeen, HireTarget, HiredPart, Known, KnownObject as WireKnownObject,
+    LevelUp, Lot, MapGarrison, MapHero, MarketScreen, MarketSeen, MarketWindow, Monster, Month,
+    Object, ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill,
+    ResourceLot, RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState, StockEntry, Summoned,
+    TavernHero, TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings,
+    TownOwnerFacts, TradeLot, UniversityVisit, VisitBonus, Week,
 };
 
 mod command;

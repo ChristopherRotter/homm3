@@ -2176,6 +2176,31 @@ quirks   = ["TWN-QUIRK-15", "TWN-QUIRK-17"]
   confidence = "high"
 
 [[rule]]
+id       = "TWN-MKT-005"
+title    = "The artifact sale at a town"
+context  = "town"
+status   = "verified"
+summary  = "A town's window with the merchants (screen 3, MarketScreen::SellArtifact, shown with the purchase where a building of role artifact_merchants stands and the window has a hero) answers MarketAnswer::SellArtifact { place, take }: the window's hero's artifact at a worn position or a backpack index sells for max(1, round(f32(f32(f32(cost) x A) / f32(v(take))))) units of take, A the artifacts' factor at the trader's count (TWN-MKT-001, at least 1), v the trades' value table (not the purchase's), the artifact's cost in the cost resource (a combination's its parts' sum, HER-ART-008); an artifact of no cost and the Grail sell for 1. Refused, in this order: a window without the sale (Screen), a window without a hero (Visit, defensive), no artifact at the place (Place: an empty position, a combination's locked part, an index past the backpack), a worn artifact whose slot the backpack does not take (NotTradable: the war machines, the Catapult, the Spell Book, HER-ART-002), a resource the parameters do not value (NoPrice). SoD's fifth misc position sells like the other worn ones (T-22 fixed, TWN-QUIRK-20); the place priced is the place removed (T-20 fixed by construction, TWN-QUIRK-18); one artifact a sale, a combination whole from its own position. Applied: the artifact removed (HeroChanged, HeroChange::RemoveArtifact: its parts' locks freed, its effects gone), then the price gained (ResourceGained, saturating); the spell points stay; the stock and the pool untouched. The view lists each place that sells, the worn ones by position, then the backpack's, with its artifact and price per resource (MarketOffers::artifacts), to the window's owner alone; legal_commands lists one sale for the cost resource per such place. E09 T58b (the town epic's design note section 107): MarketParams::artifact_sale, AdventureState::check_artifact_sale."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-15", "TWN-QUIRK-17", "TWN-QUIRK-18", "TWN-QUIRK-20"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T127a1, E09 T52; surveys E08-trades.md section 4, E09-trades.md section 2.4): market_artifact_sale_rate 0x5ECDC0 (fild of the artifact's cost, fmul market_artifact_rates[market_count], fdiv by the fild of resource_values 0x68C482, the quotient stored to f32, raised to 1.0 below it, fadd 0.5 and _ftol), market_sell_artifact_proc 0x5EDF60 (positions 0 to 12 and the backpack picked, 13 to 17 GENRLTXT 22, the fifth misc position never shown; the rate read at backpack place p - 18 without the scroll's offset, the removal at (offset + p - 18) mod count: T-20)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6a.md and -6a-run2.md, rows TWN-6-3 and TWN-6-4 (2026-11-25, E09 T54; survey E09-trades.md section 14): Titan's Gladius (10 000) at count 8 offered 5 500 gold (10 000 x 0.55), the Trade after the backpack's scroll paying it and removing the artifact shown (T-20); Ring of the Magi (its parts' 3 000) at count 1 for 600 gold"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 107; E09 decisions 205, 207 and 226"
+  confidence = "high"
+
+[[rule]]
 id       = "TWN-STK-001"
 title    = "The Artifact Merchants' stock at the new game"
 context  = "town"

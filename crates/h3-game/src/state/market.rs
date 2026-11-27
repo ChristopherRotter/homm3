@@ -60,7 +60,8 @@ impl GameState {
     ///   (*agent's call*, design note §13);
     /// - a sale (ADV-MKT-005): the adventure's check
     ///   ([`h3_adventure::AdventureState::check_sale`]), then the stack lowered (`StackChanged`)
-    ///   and the gain (`ResourceGained`);
+    ///   and the gain (`ResourceGained`); a town's garrison hero's sale then tells the town's
+    ///   viewers its view (TWN-VEW-002, `TownChanged` and the rest: E09 T58b);
     /// - a purchase (ADV-MKT-007): the adventure's check
     ///   ([`h3_adventure::AdventureState::check_buy`], A-46 fixed: the hero's room before
     ///   paying), then the price against the treasury, then paid (`ResourcePaid`), the artifact
@@ -128,11 +129,17 @@ impl GameState {
                 let sale = window
                     .and_then(|w| self.adventure.check_sale(checks, &w, (slot, take, lots)))
                     .map_err(refused)?;
+                // E09 T58b (found on the way): a garrison hero's army is its town's upper bar
+                // (TWN-VEW-002), so the town's viewers are told its view after the sale.
+                let town = visit.hero.and_then(|hero| self.adventure.garrisoned(hero));
+                let town = town.map(|(town, _)| town);
+                let told = crate::town::Told::before::<S>(self, rules, town.as_slice(), &[]);
                 let gain = sale.gain();
                 let at = self.adventure.sell(sale);
                 let stack = self.stack_at(player, at);
                 sink.emit(GameEvent::StackChanged { player, at, stack });
                 self.gain(player, &[gain], sink);
+                told.tell(self, rules, sink);
             }
             MarketAnswer::Buy { entry, pay } => {
                 let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
@@ -151,9 +158,7 @@ impl GameState {
             MarketAnswer::SellArtifact { place, take } => {
                 let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
                 let sale = window
-                    .and_then(|w| {
-                        (self.adventure).check_artifact_sale(rules3, &w, (place, take))
-                    })
+                    .and_then(|w| (self.adventure).check_artifact_sale(rules3, &w, (place, take)))
                     .map_err(refused)?;
                 let change = HeroChange::RemoveArtifact(sale.place());
                 self.change_hero(rules.core(), sale.hero(), Some(player), change, sink);
@@ -178,9 +183,9 @@ impl GameState {
     /// of the stock whose check passes ([`h3_adventure::AdventureState::check_buy`]: unsold, the
     /// hero's room) and whose price the treasury holds; since E09 T58b (TWN-MKT-005) a sale for
     /// that resource of each place of the hero's that sells, the worn ones by position, then the
-    /// backpack's ([`h3_adventure::MarketOffers::artifacts`]). No transfer is listed (as the management
-    /// commands, decision 99: a client sends one from the view); every other answer the view
-    /// allows stays legal for `apply`.
+    /// backpack's ([`h3_adventure::MarketOffers::artifacts`]). No transfer is listed (as the
+    /// management commands, decision 99: a client sends one from the view); every other answer
+    /// the view allows stays legal for `apply`.
     // rule: GAM-DEC-011, ADV-MKT-003, ADV-MKT-005, ADV-MKT-007, TWN-MKT-005
     pub(crate) fn market_answers(
         &self,
@@ -202,8 +207,8 @@ impl GameState {
     /// `crate::town::market::listed`): a trade whose lot the treasury pays, asked first and alone
     /// ([`Self::pays_a_lot`] at the window's count: no list built, no lot's arithmetic; the
     /// listing asks it of every owned town whose window opens, `bench-check`'s `legal-towns-36`);
-    /// without one and with a hero, the window's sales and purchases as [`Self::market_answers`]
-    /// gives them.
+    /// without one and with a hero, the window's sales, purchases and (E09 T58b) artifact sales as
+    /// [`Self::market_answers`] gives them.
     pub(crate) fn offers_an_answer(
         &self,
         rules: &GameRuleset,
