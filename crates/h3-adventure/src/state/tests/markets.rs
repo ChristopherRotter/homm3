@@ -3,7 +3,9 @@
 //! (ADV-MKT-001), a sale by whole lots keeping the army a creature (ADV-MKT-005), a purchase at
 //! its price, refused before paying when the hero cannot receive the artifact (ADV-MKT-007, A-46
 //! fixed as `ADV-QUIRK-48`); since E08 T133b a trade's lot (ADV-MKT-003), a transfer's screen
-//! (ADV-MKT-004) and what the window offers (ADV-MKT-008).
+//! (ADV-MKT-004) and what the window offers (ADV-MKT-008); since E09 T58a1 every check through a
+//! resolved window ([`MarketWindow`]: a map market's from its kind, a town's from the game), the
+//! Artifact Merchants' stock at a town's window (TWN-MKT-004).
 
 use std::collections::BTreeSet;
 use std::string::ToString;
@@ -12,7 +14,7 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{ArtifactClass, ArtifactTypeId, CreatureTypeId, HeroParamsDef};
-use h3_contracts::ArmyStack;
+use h3_contracts::{ArmyStack, TownId};
 use h3_heroes::HeroDetails;
 
 use super::draws::{object, rules_with};
@@ -22,12 +24,12 @@ use super::rewards::{
 };
 use super::*;
 use crate::army::{ArmyRef, ArmySlot};
-use crate::command::{MarketError, MarketVisit, ServiceVisit};
+use crate::command::{MarketError, MarketPlace, MarketVisit, ServiceVisit};
 use crate::market::Lot;
 use crate::ruleset::{Market, MarketScreen, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::setup::Holds;
 use crate::state::Resolved;
-use crate::state::{MarketOffers, SaleOffer, StockEntry, TradeOffer};
+use crate::state::{MarketOffers, MarketWindow, SaleOffer, StockEntry, TradeOffer};
 use crate::testing::{GNOLL, PEASANT, PIKEMAN, WOLF, key, stream};
 
 const CLOAK: ArtifactTypeId = ArtifactTypeId::from_raw(3);
@@ -92,13 +94,29 @@ fn rules() -> Rules {
     )
 }
 
-/// The window of the market of type `k` at object index `index` and [`AT`] for hero 1.
-fn window(rules: &Rules, k: &str, index: usize) -> MarketVisit {
+/// The visit of hero 1 to the market of type `k` at object index `index` and [`AT`].
+fn visit(rules: &Rules, k: &str, index: usize) -> MarketVisit {
     MarketVisit {
-        hero: HERO,
-        index,
-        object_type: type_of(rules, k),
-        anchor: AT,
+        hero: Some(HERO),
+        place: MarketPlace::Object {
+            index,
+            object_type: type_of(rules, k),
+            anchor: AT,
+        },
+    }
+}
+
+/// The window of [`visit`]'s market as its kind gives it: its screens and its count (E09 T58a1;
+/// [`AdventureState::market_window`] resolves the same for a state that holds the market).
+fn window<'r>(rules: &'r Rules, k: &str, index: usize) -> MarketWindow<'r> {
+    let kind = rules.1.object_type(type_of(rules, k)).map(|ty| &ty.kind);
+    let Some(ObjectKind::Market(market)) = kind else {
+        panic!("{k} is no market");
+    };
+    MarketWindow {
+        visit: visit(rules, k, index),
+        screens: &market.screens,
+        count: market.count,
     }
 }
 
@@ -125,7 +143,7 @@ fn a_markets_step_ends_the_move_and_opens_its_window_at_every_visit() {
     for k in ["t:black_market", "t:trading_post", "t:guild"] {
         let mut state = map_of(&rules, vec![object(&rules, AT.x, k, Holds::Nothing)]);
         let heroes = store(hero());
-        let window = ServiceVisit::Market(window(&rules, k, 0));
+        let window = ServiceVisit::Market(visit(&rules, k, 0));
         let outcome = rewards::visit(&rules, &mut state, &heroes);
         let opened = AdventureOutcome {
             service: Some(window),
@@ -301,25 +319,30 @@ fn a_markets_answer_is_refused_for_another_screen_or_a_window_that_is_not_one() 
         guild.check_buy(rules3, &sells, (0, GOLD)),
         Err(MarketError::Screen)
     );
-    // A hero not on the map, an index past the objects, an object that is not a market.
+    // The map's window of its visit is its kind's; none for a hero not on the map or none at
+    // all, an index past the objects, an object that is not a market, a town's place (E09 T58a1:
+    // the game resolves a town's window).
+    let seen = market.visit;
+    assert_eq!(state.market_window(&rules.1, &seen), Ok(market));
     let elsewhere = [
         MarketVisit {
-            hero: HeroId::new(9),
-            ..market
+            hero: Some(HeroId::new(9)),
+            ..seen
         },
-        MarketVisit { index: 5, ..market },
+        MarketVisit { hero: None, ..seen },
+        visit(&rules, "t:black_market", 5),
+        MarketVisit {
+            place: MarketPlace::Town(TownId::new(0)),
+            ..seen
+        },
     ];
     for visit in elsewhere {
         assert_eq!(
-            state.check_sale(rules2, &visit, (0, GOLD, 1)),
-            Err(MarketError::Visit)
-        );
-        assert_eq!(
-            state.check_buy(rules3, &visit, (0, GOLD)),
+            state.market_window(&rules.1, &visit),
             Err(MarketError::Visit)
         );
     }
-    let mut other = map_of(
+    let other = map_of(
         &rules,
         vec![object(
             &rules,
@@ -328,10 +351,40 @@ fn a_markets_answer_is_refused_for_another_screen_or_a_window_that_is_not_one() 
             Holds::Artifact(RING.into()),
         )],
     );
-    other.hero_mut(HERO).unwrap().army = vec![stack(0, PEASANT, 4)];
     assert_eq!(
-        other.check_sale(rules2, &market, (0, GOLD, 1)),
+        other.market_window(&rules.1, &seen),
         Err(MarketError::Visit)
+    );
+    // A window whose hero is gone or that has none sells nothing and gives nothing (defensive: a
+    // town's window shows neither screen without a hero).
+    let both = MarketWindow {
+        screens: &[MarketScreen::Sell, MarketScreen::Buy],
+        ..market
+    };
+    let gone = MarketWindow {
+        visit: MarketVisit {
+            hero: Some(HeroId::new(9)),
+            ..seen
+        },
+        ..both
+    };
+    let heroless = MarketWindow {
+        visit: MarketVisit { hero: None, ..seen },
+        ..both
+    };
+    for window in [gone, heroless] {
+        assert_eq!(
+            state.check_sale(rules2, &window, (0, GOLD, 1)),
+            Err(MarketError::Visit)
+        );
+    }
+    assert_eq!(
+        state.check_buy(rules3, &heroless, (0, GOLD)),
+        Err(MarketError::Visit)
+    );
+    assert_eq!(
+        state.check_buy(rules3, &gone, (0, GOLD)),
+        Err(MarketError::NoRoom)
     );
 }
 
@@ -379,13 +432,10 @@ fn a_trades_lot_is_the_rates_and_a_transfer_needs_its_screen() {
         state.trade_lot(part, &post, (WOOD, unknown)),
         Err(MarketError::NoPrice)
     );
-    // The transfer's screen is the Trading Post's, not the guild's; neither trades elsewhere.
+    // The transfer's screen is the Trading Post's, not the guild's.
+    assert_eq!(post.check_screen(MarketScreen::Transfer), Ok(()));
     assert_eq!(
-        state.check_screen(part, &post, MarketScreen::Transfer),
-        Ok(())
-    );
-    assert_eq!(
-        state.check_screen(part, &post, MarketScreen::Sell),
+        post.check_screen(MarketScreen::Sell),
         Err(MarketError::Screen)
     );
     let guild = at_market(&rules, "t:guild", vec![stack(0, PEASANT, 1)]);
@@ -393,18 +443,6 @@ fn a_trades_lot_is_the_rates_and_a_transfer_needs_its_screen() {
     assert_eq!(
         guild.trade_lot(part, &sells, (WOOD, GOLD)),
         Err(MarketError::Screen)
-    );
-    let gone = MarketVisit {
-        hero: HeroId::new(9),
-        ..post
-    };
-    assert_eq!(
-        state.trade_lot(part, &gone, (WOOD, GOLD)),
-        Err(MarketError::Visit)
-    );
-    assert_eq!(
-        state.check_screen(part, &gone, MarketScreen::Transfer),
-        Err(MarketError::Visit)
     );
 }
 
@@ -416,9 +454,7 @@ fn a_markets_window_offers_the_rates_of_its_screens_alone() {
     let rates = rules.1.params().market().unwrap();
     // A Trading Post: both trades' lots, no sale, no stock.
     let post = at_market(&rules, "t:trading_post", vec![stack(0, PEASANT, 40)]);
-    let offers = post
-        .market_offers(rules2, &window(&rules, "t:trading_post", 0))
-        .unwrap();
+    let offers = post.market_offers(rules2, &window(&rules, "t:trading_post", 0));
     let trade = |give, take| TradeOffer {
         give,
         take,
@@ -437,9 +473,8 @@ fn a_markets_window_offers_the_rates_of_its_screens_alone() {
     // The guild: each stack's lot per resource; the gnoll's 5 wood are no gold cost, so none.
     let army = vec![stack(0, PEASANT, 40), stack(3, GNOLL, 5)];
     let guild = at_market(&rules, "t:guild", army);
-    let offers = guild
-        .market_offers(rules2, &window(&rules, "t:guild", 0))
-        .unwrap();
+    let sells = window(&rules, "t:guild", 0);
+    let offers = guild.market_offers(rules2, &sells);
     let peasant = |take| (take, rates.creature_lot(5, 25, take).unwrap());
     assert_eq!(peasant(GOLD).1, Lot { give: 1, take: 17 });
     let sales = vec![
@@ -463,7 +498,7 @@ fn a_markets_window_offers_the_rates_of_its_screens_alone() {
     );
     market.visits_mut().sell(0, 0);
     let visit = window(&rules, "t:black_market", 0);
-    let offers = market.market_offers(rules2, &visit).unwrap();
+    let offers = market.market_offers(rules2, &visit);
     let prices = |cost| {
         [WOOD, GOLD]
             .into_iter()
@@ -489,10 +524,81 @@ fn a_markets_window_offers_the_rates_of_its_screens_alone() {
         (offers.screens, offers.sales, offers.stock),
         (vec![MarketScreen::Buy], vec![], stock)
     );
-    // A window that is not one.
-    let gone = MarketVisit {
-        hero: HeroId::new(9),
-        ..visit
+    // A window without a hero offers no sale (E09 T58a1: a town's Marketplace alone).
+    let heroless = MarketWindow {
+        visit: MarketVisit {
+            hero: None,
+            ..sells.visit
+        },
+        ..sells
     };
-    assert_eq!(market.market_offers(rules2, &gone), Err(MarketError::Visit));
+    assert_eq!(guild.market_offers(rules2, &heroless).sales, vec![]);
+}
+
+// covers: TWN-MKT-004, TWN-MKT-003, ADV-MKT-008
+#[test]
+fn a_towns_window_trades_at_its_count_and_sells_the_merchants_stock() {
+    let rules = rules();
+    let (rules2, heroes) = ((&rules.0, &rules.1), store(hero()));
+    let rules3 = (&rules.0, &rules.1, &heroes[..]);
+    let rates = rules.1.params().market().unwrap();
+    let mut state = at_market(&rules, "t:trading_post", vec![stack(0, PEASANT, 4)]);
+    let classes = [ArtifactClass::Treasure, ArtifactClass::Treasure];
+    state.draw_merchants(&rules.0, &classes, &mut stream());
+    let stock = state.merchants_stock().to_vec();
+    // A town's window as the game resolves it: every screen, the trader's two Marketplaces.
+    let town = MarketWindow {
+        visit: MarketVisit {
+            hero: Some(HERO),
+            place: MarketPlace::Town(TownId::new(0)),
+        },
+        screens: &[
+            MarketScreen::Trade,
+            MarketScreen::Transfer,
+            MarketScreen::Buy,
+            MarketScreen::Sell,
+        ],
+        count: 2,
+    };
+    assert_eq!(
+        state.trade_lot(&rules.1, &town, (WOOD, GOLD)),
+        Ok(rates.resource_lot(2, WOOD, GOLD).unwrap())
+    );
+    let offers = state.market_offers(rules2, &town);
+    assert_eq!(offers.count, 2);
+    assert_eq!(offers.sales.len(), 1);
+    let entries: Vec<_> = offers.stock.iter().map(|e| e.artifact).collect();
+    assert_eq!(entries, stock);
+    let sale = state.check_sale(rules2, &town, (0, GOLD, 1)).unwrap();
+    let lot = rates.creature_lot(2, 25, GOLD).unwrap();
+    assert_eq!(sale.gain(), (GOLD, lot.take));
+    // The purchase empties its entry of the one stock, for every town; the rest stays. The entry
+    // bought is one with a gold price (the draw's treasures: the ring, the charm, the cloak of
+    // none).
+    let priced = offers.stock.iter().position(|e| !e.prices.is_empty());
+    let at = priced.unwrap();
+    let entry = u8::try_from(at).unwrap();
+    let purchase = state.check_buy(rules3, &town, (entry, GOLD)).unwrap();
+    assert_eq!(
+        (purchase.artifact(), purchase.hero()),
+        (stock[at].unwrap(), HERO)
+    );
+    state.buy(purchase);
+    let mut emptied = stock.clone();
+    emptied[at] = None;
+    assert_eq!(state.merchants_stock(), emptied);
+    assert_eq!(
+        state.check_buy(rules3, &town, (entry, GOLD)),
+        Err(MarketError::Entry(entry))
+    );
+    assert_eq!(
+        state.check_buy(rules3, &town, (2, GOLD)),
+        Err(MarketError::Entry(2))
+    );
+    let shown = state.market_offers(rules2, &town).stock;
+    assert_eq!((shown[at].artifact, shown[at].prices.len()), (None, 0));
+    // An entry past the stock empties nothing (the purchase's check finds it first).
+    let before = state.merchants_stock().to_vec();
+    state.empty_merchants_entry(5);
+    assert_eq!(state.merchants_stock(), before);
 }

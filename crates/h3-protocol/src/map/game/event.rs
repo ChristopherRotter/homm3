@@ -18,7 +18,8 @@ use super::command::{artifact_place, slot};
 use super::town_buildings;
 use super::{
     army_stack, artifact, fort_level, garrison_stack, guild_part, hire_seen, hire_target,
-    hired_part, month_kind, pos, primary_skill, tavern_head, tavern_part, visit_bonus, week_kind,
+    hired_part, market_seen, month_kind, pos, primary_skill, tavern_head, tavern_part, visit_bonus,
+    week_kind,
 };
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
@@ -296,13 +297,11 @@ fn event(e: &EngineEvent) -> GameEvent {
         EngineEvent::MarketOpened {
             player,
             hero,
-            object_type,
-            anchor,
+            place,
         } => GameEvent::MarketOpened {
             player: player.raw(),
-            hero: hero.raw(),
-            object_type: object_type.raw(),
-            anchor: pos(anchor),
+            hero: hero.map(h3_contracts::HeroId::raw),
+            place: market_seen(place),
         },
         EngineEvent::AltarOpened {
             player,

@@ -890,9 +890,14 @@ fn market_back(m: &MarketWindow) -> h3_game::MarketView {
         take: l.take,
     };
     h3_game::MarketView {
-        hero: HeroId::new(m.hero),
-        object_type: Handle::from_raw(m.object.object_type),
-        anchor: pos_back(m.object.anchor),
+        hero: m.hero.map(HeroId::new),
+        place: match m.place {
+            MarketSeen::Object { object } => h3_game::MarketSeen::Object {
+                object_type: Handle::from_raw(object.object_type),
+                anchor: pos_back(object.anchor),
+            },
+            MarketSeen::Town { town } => h3_game::MarketSeen::Town(TownId::new(town)),
+        },
         offers: h3_game::MarketOffers {
             screens: m
                 .screens
@@ -1412,9 +1417,11 @@ fn every_decision() -> Vec<DecisionView> {
     let lot = |give, take| h3_game::Lot { give, take };
     let r = Handle::from_raw;
     out.push(DecisionView::Market(h3_game::MarketView {
-        hero,
-        object_type,
-        anchor,
+        hero: Some(hero),
+        place: h3_game::MarketSeen::Object {
+            object_type,
+            anchor,
+        },
         offers: h3_game::MarketOffers {
             screens: vec![
                 h3_game::MarketScreen::Trade,
@@ -1446,11 +1453,20 @@ fn every_decision() -> Vec<DecisionView> {
         recipients: vec![PlayerId::new(0), PlayerId::new(3)],
     }));
     out.push(DecisionView::Market(h3_game::MarketView {
-        hero,
-        object_type,
-        anchor,
+        hero: Some(hero),
+        place: h3_game::MarketSeen::Object {
+            object_type,
+            anchor,
+        },
         offers: h3_game::MarketOffers::default(),
         recipients: Vec::new(),
+    }));
+    // E09 T58a1 (v85): a town's window without a hero.
+    out.push(DecisionView::Market(h3_game::MarketView {
+        hero: None,
+        place: h3_game::MarketSeen::Town(TownId::new(3)),
+        offers: h3_game::MarketOffers::default(),
+        recipients: vec![PlayerId::new(1)],
     }));
     // E08 T134a (v76): an Altar with both screens and each list, and one with none.
     out.push(DecisionView::Altar(h3_game::AltarView {

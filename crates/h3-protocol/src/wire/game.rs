@@ -771,10 +771,11 @@ pub struct AltarStack {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MarketWindow {
-    /// The visiting hero.
-    pub hero: u16,
-    /// The market by type and anchor.
-    pub object: ObjectRef,
+    /// The window's hero: a map market's visitor, a town's visitor or garrison hero, none possible
+    /// at a town (E09 T58a1, v85).
+    pub hero: Option<u16>,
+    /// The market's place: a map market by type and anchor, or a town (E09 T58a1, v85).
+    pub place: MarketSeen,
     /// Its screens, in its kind's order.
     pub screens: Vec<MarketScreen>,
     /// The Marketplaces it trades as.
@@ -787,6 +788,22 @@ pub struct MarketWindow {
     pub stock: Vec<StockEntry>,
     /// The transfer's recipients: every other player of the game.
     pub recipients: Vec<u8>,
+}
+
+/// A market's place (`h3_game::MarketSeen`; E09 T58a1, v85): a market on the map by type and
+/// anchor, or a town's Marketplace, Artifact Merchants or Freelancer's Guild by the town.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MarketSeen {
+    /// A market on the map.
+    Object {
+        /// The market by type and anchor.
+        object: ObjectRef,
+    },
+    /// A town.
+    Town {
+        /// The town.
+        town: u16,
+    },
 }
 
 /// A market's screen (`h3_game::MarketScreen`; E08 T133b, v75).

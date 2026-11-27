@@ -54,6 +54,11 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
+- 2026-11-26 (E09 T58a1, `town/e09-t58a1`, `cross-lane`; **nothing to do**): a town's market
+  window (`TownCommand::Market`) is E08's market decision with `MarketVisit::hero` an `Option`
+  and a `place` (`MarketPlace::Object` or `Town`); your entries read neither, so the encoding did
+  not move. It is not listed yet (`TWN-STUB-22`): T58a2 lists it and appends the opening's entry
+  in your `adventure/action.rs` (`cross-lane`), the market's 56 entries serving its answers.
 - 2026-11-25: increment 6 (the town's trades) appends **42 entries** to the action encoding,
   `cross-lane` in your paths at T58a to T59b (design note `docs/epics/E09-design.md` §115; E09
   decision 216): the market's opening (1), the artifact sale by place for gold (22: worn positions

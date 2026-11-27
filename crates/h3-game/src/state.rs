@@ -12,9 +12,9 @@ use alloc::vec::Vec;
 
 use h3_adventure::{
     AdventureOutcome, AdventureState, AltarVisit, ArmyRef, ArmySlot, Choice, ChoiceKind, Drowned,
-    Exchange, Garrison, HeroGains, HillFortVisit, HireDialog, HireSource, HireTarget, MarketVisit,
-    Meeting, ObjectTypeId, Offer, OfferKind, Pick, Pos, ServiceVisit, TavernVisit, TownReveal,
-    UniversityVisit, Weekday,
+    Exchange, Garrison, HeroGains, HillFortVisit, HireDialog, HireSource, HireTarget, MarketPlace,
+    MarketVisit, Meeting, ObjectTypeId, Offer, OfferKind, Pick, Pos, ServiceVisit, TavernVisit,
+    TownReveal, UniversityVisit, Weekday,
 };
 use h3_content::{ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
@@ -2082,14 +2082,34 @@ impl CanonicalHash for GameState {
                     visit.anchor.hash_into(h);
                     visit.entrance.hash_into(h);
                 }
-                // E08 T133b (game state hash v35).
+                // E08 T133b (game state hash v35); the hero an option and the place's tag since
+                // E09 T58a1 (v40, the town lane's, `cross-lane`).
                 Decision::Market { owner, visit } => {
                     h.write_u8(10);
                     h.write_u8(owner.raw());
-                    h.write_u16(visit.hero.raw());
-                    h.write_len(visit.index);
-                    visit.object_type.hash_into(h);
-                    visit.anchor.hash_into(h);
+                    match visit.hero {
+                        None => h.write_u8(0),
+                        Some(hero) => {
+                            h.write_u8(1);
+                            h.write_u16(hero.raw());
+                        }
+                    }
+                    match visit.place {
+                        MarketPlace::Object {
+                            index,
+                            object_type,
+                            anchor,
+                        } => {
+                            h.write_u8(0);
+                            h.write_len(index);
+                            object_type.hash_into(h);
+                            anchor.hash_into(h);
+                        }
+                        MarketPlace::Town(town) => {
+                            h.write_u8(1);
+                            h.write_u16(town.raw());
+                        }
+                    }
                 }
                 // E08 T134a (game state hash v36).
                 Decision::Altar { owner, visit } => {

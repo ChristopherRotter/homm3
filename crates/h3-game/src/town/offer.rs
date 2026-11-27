@@ -69,7 +69,10 @@ impl GameState {
 /// moves between its bars `Enter`,
 /// `Leave`, `Swap` the adventure accepts (TWN-ROW-002 to -004; `rows::legal_moves`). A town built
 /// in today offers no build (TWN-BLD-004) and costs no Capitol test; a map without towns walks
-/// nothing.
+/// nothing. A market window's opening (TWN-MKT-002, E09 T58a1) is not listed yet (`TWN-STUB-22`,
+/// E09 T58a2).
+// stub: TWN-STUB-22 (a town's market window is not listed: `apply` accepts it, the env and the
+// random plans never open it)
 // rule: TWN-BLD-001, TWN-BLD-004, TWN-REC-001, TWN-REC-002, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004
 // rule: TWN-TAV-003, TWN-GLD-006, TWN-GLD-007
 pub(crate) fn legal_builds<'a>(

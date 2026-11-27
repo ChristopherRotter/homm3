@@ -92,11 +92,12 @@ pub use h3_adventure::{HillFortError, HillFortRow, HillFortVisit};
 /// [`GameState::hire_dialog`], [`GameEvent::HireOpened`], [`DecisionView::Hire`] and
 /// [`GameCommandError::Hire`] carry.
 pub use h3_adventure::{HireDialog, HireError, HireSource, HireTarget};
-/// A market's visit, its refusals, what its window offers and its screens (E08 T133b;
-/// `h3_adventure`'s types): what [`GameState::market`], [`GameCommandError::Market`] and
-/// [`DecisionView::Market`] carry.
+/// A market's visit, its place, its refusals, what its window offers and its screens (E08 T133b;
+/// the place since E09 T58a1; `h3_adventure`'s types): what [`GameState::market`],
+/// [`GameCommandError::Market`] and [`DecisionView::Market`] carry.
 pub use h3_adventure::{
-    Lot, MarketError, MarketOffers, MarketScreen, MarketVisit, SaleOffer, StockEntry, TradeOffer,
+    Lot, MarketError, MarketOffers, MarketPlace, MarketScreen, MarketVisit, SaleOffer, StockEntry,
+    TradeOffer,
 };
 /// A University's slot state for a hero (`h3_heroes`' derivation, HER-CHG-004), which
 /// [`DecisionView::University`] shows (E08 T63a).
@@ -135,8 +136,8 @@ pub use legal::{
 pub use manage::{Manage, ManageError};
 pub use observe::{
     AltarView, DecisionView, GameObservation, GameReveal, HeroInfo, HillFortRowView, HillFortState,
-    HillFortView, HireCreature, HireSeen, HireView, LevelUpView, MarketView, PlayerView, Viewer,
-    observe, project, reveal,
+    HillFortView, HireCreature, HireSeen, HireView, LevelUpView, MarketSeen, MarketView,
+    PlayerView, Viewer, observe, project, reveal,
 };
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
@@ -209,5 +210,7 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// T141a, increment 15's design note §15): the store holds each prisoner's details after the
 /// build's heroes and before the customised types' records, its type's record its own; the
 /// encoding is unchanged, the build's (and the setup stream's draws after the build's heroes')
-/// are not.
-pub const GAME_STATE_HASH_VERSION: u32 = 39;
+/// are not. v40 (E09 T58a1, the town lane's, `cross-lane`; GAM-DEC-011 amended): a market's
+/// decision writes its hero as an option (0 for none, else 1 and the hero) and its place's tag
+/// before the place's fields (0: a map object's index, type and anchor; 1: a town's id).
+pub const GAME_STATE_HASH_VERSION: u32 = 40;

@@ -278,6 +278,14 @@ fn commands_round_trip_through_their_text() {
             }),
             "2 town book 4",
         ),
+        // Format v27 (E09 T58a1): a market window's opening at a town, by its town.
+        (
+            PlayerId::new(1),
+            GameCommand::Town(TownCommand::Market {
+                town: TownId::new(5),
+            }),
+            "1 town market 5",
+        ),
         // Format v26 (E08 T142a): a cast on the map, by its hero and spell, its target if any.
         (
             PlayerId::new(0),
@@ -535,6 +543,9 @@ fn commands_round_trip_through_their_text() {
         "0 town book x",
         "0 town book 70000",
         "0 town book 2 now",
+        "0 town market",
+        "0 town market x",
+        "0 town market 2 now",
         "0 cast",
         "0 cast 1",
         "0 cast h1 6",

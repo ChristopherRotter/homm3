@@ -12,6 +12,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent;
+  **in your paths, mapped; for your review**): protocol **v85**: `TownCommand::Market { town }`
+  both ways, `TownReject::NoMarket`, the wire's `MarketSeen` (`Object { object }` or `Town {
+  town }`), `MarketWindow`'s and `GameEvent::MarketOpened`'s `hero: Option<u16>` and `place`
+  (in place of `object` / `object_type` and `anchor`); the tests' engine round trips (a town's
+  window without a hero, its event, the refusal; 168 rejections) and the fold's literal.
+  `h3-server`'s `tests/record.rs` literals moved with the goldens (game state hash v40).
 - 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
   nothing blocks**): the map client's hot seat asks a visit's question from the engine's open
   decision, read through `observe` in-process because the fold keeps no offer's or choice's view

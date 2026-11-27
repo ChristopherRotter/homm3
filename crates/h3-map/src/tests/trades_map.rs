@@ -421,7 +421,10 @@ fn the_full_hero_s_purchase_on_the_trades_map_is_refused_changing_nothing() {
         &mut Vec::new(),
     )
     .unwrap();
-    assert_eq!(game.market(red).map(|visit| visit.hero), Some(christian));
+    assert_eq!(
+        game.market(red).map(|visit| visit.hero),
+        Some(Some(christian))
+    );
     let gold = rules
         .core()
         .resources()

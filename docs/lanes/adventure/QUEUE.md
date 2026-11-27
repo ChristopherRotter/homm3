@@ -45,6 +45,27 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
 
 ## Inbox
 
+- 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent, E09
+  decision 224; **in your paths, for your review; no rule of yours changed**): a town opens E08's
+  market decision (`TownCommand::Market`, TWN-MKT-002), so (1) `MarketVisit` is `{ hero:
+  Option<HeroId>, place: MarketPlace }` (`MarketPlace::Object { index, object_type, anchor }` or
+  `Town(TownId)`; `command.rs`), the visit's outcome a map market's with `Some(hero)`; (2) every
+  check in `state/markets.rs` takes a resolved `MarketWindow { visit, screens, count }`
+  (`AdventureState::market_window(part, visit)` resolves a map market's, `Visit` for a town's
+  place; `check_screen` is `MarketWindow::check_screen`; `market_offers` returns `MarketOffers`,
+  the sales empty without a hero; `MarketPurchase` names the place; `buy` empties the Artifact
+  Merchants' entry for a town's, `town/merchants.rs`), `sell` lowers a garrison hero's stack too
+  (`town/rows.rs`' `garrisoned_mut`); (3) `h3-game`: `GameState::market_window` resolves a
+  town's window (`town/market.rs`), every answer, `market_answers` and `market_view` read it once;
+  `GameEvent::MarketOpened` and `MarketView` carry `hero: Option<HeroId>` and `place: MarketSeen`
+  (no index); `Decision::Market`'s hash writes the hero as an option and the place's tag: **game
+  state hash v40**; (4) the replay word `town market <town>`: **replay format v27**; the 118
+  goldens re-recorded from their commands (only the format, `game_state_hash_version` and hash
+  lines moved), `h3-server`'s `tests/record.rs` literals; (5) your tests: `state/tests/markets.rs`
+  builds windows from the kind (`window`, `visit`) and gained a town window's test; `h3-map`'s
+  `play.rs`, `play/trades.rs` and `view.rs` read a map market's place (the plans open no town's
+  window until T58a2, which lists it and grows `trades::trade_open`). A pull request of yours that
+  bumps the game state hash or the replay format after this one merges bumps again.
 - 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
   nothing blocks**): play now answers a visit's questions and level-ups and Space's revisit
   through the engine, and some facts a box needs are still the client's (**MCL-Q59**, facts
