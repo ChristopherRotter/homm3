@@ -92,3 +92,23 @@ T1b's entry to `QUEUE-ARCHIVE.md`, T2 and T3 queued; the inboxes of the town lan
 the server lane (the end, the hand-over, v86), the AI lane (the terminal, the seats' `human`
 marks), the client lane (E27 M5's facts, the boxes) and the map client lane (`MCL-STUB-4`).
 **Verify:** docs only: `check-docs`, `check-lane`. No code, version or replay moved. **Next:** T2.
+
+### Increment 1, round 2: T2, the `shared/` task (2026-11-27, `shared/e10-t2`, `cross-lane`)
+
+**Baseline:** `master` be38c3e (#1216, E09 T58b, merged after T1b). Nothing staged (no folder of
+the user's PC shared with the session; not needed). **The ADRs** (the three drafts accepted at
+ADV-Q65, decision 19, applied and deleted with their folder): **ADR-0016** points 1 (the teams in
+the static part), 4 (what allies share, the meeting, a defeated player's objects), 5 (one
+explored layer a team), 6 (the team's views), an alternative, the history; **ADR-0017** points 1
+(the setup's team, the defeat, the days, the result, the check's moments, `GameOver`), 2
+(`HandOver`, the views), 3 (a defeated player out of the schedule, the count-down), 6 (the gifts,
+an ally's dwelling read-only), 8 (the env's terminal), 9 (the versions), a consequence, an
+alternative, the history; **ADR-0028** point 6 (an ally's town), the history. One change from the
+drafts: E09 T58b took encoding v23, replay format v28 and protocol v86 after them, so point 8's
+encoding stays v23 and point 9's next numbers are map import v30, adventure state hash v31, game
+state hash v41, replay format v29, protocol v87. The index's status and Read-when cells.
+**`docs/03-domain.md`:** team, ally, defeated, the seven days, the game's result, hand-over.
+**`docs/06-security.md`:** increment 1's section (the teams fixed; an ally's things validated
+against the trusted actor; the hand-over the host's alone; a player's days its own; a defeated
+player never acts again; every command refused after the end; the events' audiences).
+**Verify:** docs only: `check-docs` ok. Pull request #1218. **Next:** T3a.

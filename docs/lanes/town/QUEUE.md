@@ -22,6 +22,19 @@ benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, 
 
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E10 T3a, `adventure/e10-t3a`, `cross-lane` with the user's
+  consent, E10 decision 17; **in your paths, for your review; no hash of yours changed**): the
+  teams. `h3_adventure::allied` (the free function, "the player alone until E10") is gone:
+  **`AdventureState::allied(&self, a, b)`** reads the players' teams (the static map's,
+  `StaticMap::team`; a player with itself included). Your sites now call it: `town.rs`'
+  `besieges`, `town_visit`, `visit_town`, `town_won` and `h3-game`'s `town/view.rs` (the owner's
+  team's view). So a town of the visitor's team is entered, not captured; a step onto an ally's
+  town whose entrance holds an ally's hero still meets that hero first (a battle until T3b's
+  meeting); the siege of an ally's visitor and the trades are T3c's (`TWN-STUB-21`). The explored
+  layers are one a team (`AdventureState::explored(player)` is its team's; adventure state hash
+  v31), `PlayerSetup::team` new (map import v30, game state hash v41). A new `PlayerSetup` or
+  adventure `Seat` literal of yours needs `team`.
+
 - 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **in your paths later, for your
   planning; nothing to do now**): E10 increment 1 (the teams and the game's end) is designed
   (`docs/epics/E10-design.md`). The user chose (E10 decision 17) that **the adventure lane builds

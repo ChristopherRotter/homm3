@@ -1518,3 +1518,59 @@ numeric  = "integer"
   kind       = "design"
   ref        = "E08-design.md increment 15's sections 14, 16; ADR-0017 points 1, 10; E08 decision 414"
   confidence = "high"
+
+[[rule]]
+id       = "GAM-TEM-001"
+title    = "The teams come from the map; no diplomacy"
+context  = "game"
+status   = "implemented"
+summary  = "Each player's team is the map's code for its colour when the map defines teams, else its own index (every colour its own team, E10 decision 2); the teams must be dense (each below the number of players, every team below the highest used held by a player; else the build refuses the setup, `h3_adventure::SetupError::Team`). No command changes a team during play: there is no diplomacy. The players of one team are allies (`AdventureState::allied`: a player with itself included, the original's players_same_team); every rule naming the team reads them (ADV-VIS-006, ADV-BON-009, ADV-OWN-001, ADV-DWL-004, ADV-GAR-003, -004, ADV-SHY-003, ADV-MIN-002, ADV-BNK-003, ADV-TEL-003). E10 T3a (`PlayerSetup::team`, `h3_map::import`; the adventure's static map holds the teams by player, the game's players their team)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E10-teams.md section 6; docs/exe/map.toml): player_team 0x4A5960 reads a colour's team byte (game +0x1F879), players_same_team 0x5296D0 compares two colours' bytes (both valid; a colour with itself counts); 85 functions read the bytes and none writes them during play"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "the 160 shipped maps (survey E10-teams.md section 1, h3_map::read): 51 define teams, every team code below the count and every count the teams in use; no map puts every playable colour on one team"
+  retrieved  = "2026-11-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapping/MapFormatH3M.cpp readTeamInfo: the file's team bytes, else every playable colour a team of its own (survey E10-teams.md section 8)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp"
+  retrieved  = "2026-11-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E10 decision 2 (no diplomacy in play); E10-design.md sections 1, 2; ADR-0016 point 1, ADR-0017 point 1"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-TEM-002"
+title    = "A team shares one explored layer"
+context  = "adventure"
+status   = "implemented"
+summary  = "Every reveal goes to the player's team: the adventure keeps one explored layer per team (amends ADV-FOG-003, where a reveal went to its player alone), which every reveal of a member writes (a step's, a placement's, a flag's, a town's, a jump's, a door's, the Cartographer's, strict-fixed's new day's, the failed casts' tiles) and every member reads, its fringe the team's; who sees an object, a hero or a tile is tested on each player's team layer. With fixed teams the members' layers of the original are always equal, so one layer a team gives the same views. E10 T3a (`AdventureState::explored`; adventure state hash v31)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E10-teams.md section 6, 'The fog'): reveal_disk 0x49D160 writes the revealing player's bit and every bit of its team (a step's 0x48106B, a placement's, a town's, the Cartographer's reveal_terrain_mask 0x4CA240); the Cover of Darkness hides from every player but the town owner's team (hide_disk 0x49D3D0, inferred)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/gameState/CGameState.cpp: the fog of war kept per team (TeamState), as the original's reveals (survey E10-teams.md section 8)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-11-27"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E10-design.md section 3 (one explored layer a team, the agent's call; E10 decision 19); ADR-0016 point 5"
+  confidence = "high"
