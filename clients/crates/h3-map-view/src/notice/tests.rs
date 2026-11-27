@@ -5,7 +5,8 @@ use alloc::vec::Vec;
 
 use h3_protocol::wire::game::{
     AltarWindow, Amount, Choice, ChoiceKind, HillFortState, HillFortWindow, Hire, HireSeen,
-    HireTarget, LevelUp, MarketWindow, ObjectRef, Offer, Pos, PrimarySkill, UniversityVisit,
+    HireTarget, LevelUp, MarketSeen, MarketWindow, ObjectRef, Offer, Pos, PrimarySkill,
+    UniversityVisit,
 };
 
 const ANCHOR: Pos = Pos {
@@ -177,8 +178,8 @@ fn decisions() -> Vec<(Decision, Option<Notice>, Option<Answer>)> {
         (
             Decision::Market {
                 market: MarketWindow {
-                    hero: 0,
-                    object: OBJECT,
+                    hero: Some(0),
+                    place: MarketSeen::Object { object: OBJECT },
                     screens: Vec::new(),
                     count: 1,
                     trades: Vec::new(),
