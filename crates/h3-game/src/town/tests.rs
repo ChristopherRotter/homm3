@@ -960,6 +960,7 @@ fn two_players_pick_two_types() {
         s.players.push(PlayerSetup {
             colour: 2,
             human: false,
+            team: 2,
             start: PlayerStart {
                 pick: Some(hero(&rules, "t:c0")),
                 ..PlayerStart::default()

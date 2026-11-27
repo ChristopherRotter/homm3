@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use h3_content::Ruleset;
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
-use super::{AdventureState, allied};
+use super::AdventureState;
 use crate::command::{
     AdventureEvent, AdventureEventKind, AdventureOutcome, Defender, Garrison, Offer, OfferKind,
     Sink, Viewers,
@@ -71,7 +71,7 @@ impl AdventureState {
             },
             seen_by: self.object_viewers(core, object).with(player),
         });
-        let grid = &mut self.explored[usize::from(player.raw())];
+        let grid = &mut self.explored[self.map.layer(player)];
         let before = grid.count();
         reveal(grid, entrance, part.params().flag_radius());
         sink.emit(AdventureEvent {
@@ -104,7 +104,7 @@ impl AdventureState {
         match self.owner(index) {
             // Until E10's teams a team is its player alone: every mine of the team is the
             // visitor's own (an ally's would do nothing, survey §2.4).
-            Some(owner) if allied(owner, player) => AdventureOutcome {
+            Some(owner) if self.allied(owner, player) => AdventureOutcome {
                 garrison: (owner == player).then_some(Garrison {
                     hero,
                     mine: index,
@@ -145,7 +145,7 @@ impl AdventureState {
     ) {
         if !self
             .owner(object.0)
-            .is_some_and(|owner| allied(owner, player))
+            .is_some_and(|owner| self.allied(owner, player))
         {
             self.flag(rules, object, player, sink);
         }

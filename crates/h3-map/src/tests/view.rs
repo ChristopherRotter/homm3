@@ -5,7 +5,7 @@
 
 use h3_adventure::{
     AdventureCommand, AdventureEvent, AdventureEventKind, CastFailure, GuardsView, ObjectKind,
-    ObjectView, OfferKind, OwnHeroView, Pos as TilePos, TileMask, TileView, Viewers, allied,
+    ObjectView, OfferKind, OwnHeroView, Pos as TilePos, TileMask, TileView, Viewers,
 };
 use h3_content::HeroTypeId;
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
@@ -3047,7 +3047,7 @@ fn check_town_views(
         let record = towns.get(town);
         prop_assert!(record.is_some(), "{:?} has no record", town);
         let record = record.unwrap();
-        let ours = owner.is_some_and(|o| allied(o, viewer));
+        let ours = owner.is_some_and(|o| adventure.allied(o, viewer));
         let top = ours || object.entrance(map).is_some_and(sighted);
         let level = if top { OWNER_LEVEL } else { taverns };
         // E09 T28b2: the upper bar, the garrison hero's army with one (TWN-VEW-002).

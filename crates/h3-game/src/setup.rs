@@ -36,6 +36,13 @@ pub struct PlayerSetup {
     /// original lets a side without a human player off one bad-morale freeze in four
     /// (BAT-MOR-004, BAT-QUIRK-27). It does not decide who sends a player's commands.
     pub human: bool,
+    /// Its team (GAM-TEM-001, E10 T3a; E10 design note §1): a map's import sets it from the map's
+    /// teams, else the player's index (every colour its own team, E10 decision 2). The players of
+    /// one team are allies (ADR-0016 point 4, ADR-0017 point 6) and share one explored layer
+    /// (GAM-TEM-002); no team changes during play (no diplomacy). The teams must be dense: each
+    /// below the number of players, every team below the highest one used held by a player
+    /// (`h3_adventure::SetupError::Team`, through [`GameSetupError::Adventure`]).
+    pub team: u8,
     /// Its start (E09 T7a1, design note `E09-design.md` §13): its factions, choice, pick, main
     /// town and random-hero flag; the default for a setup without towns.
     pub start: PlayerStart,
@@ -750,6 +757,7 @@ impl GameSetup {
                 .map(|player| Seat {
                     colour: player.colour,
                     human: player.human,
+                    team: player.team,
                 })
                 .collect(),
             // E09 T8a1: one garrison per town, by `TownId` (the setup's towns are the static

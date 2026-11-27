@@ -46,6 +46,41 @@ use crate::town::{Merchants, TavernVisit, TownHeroes, TownReveal};
 /// along each axis (GAM-BAT-011, E08 T54; the original's 0x41ADB0: x − 3 to x + 3, y − 3 to y + 3).
 pub const BACKGROUND_RADIUS: u16 = 3;
 
+/// The mark of a [`StaticMap`] team entry past the players (E10 T3a): `NO_TEAM | index`, allied
+/// with nobody but itself and the team of no explored layer.
+const NO_TEAM: u8 = 0x80;
+
+/// Every team entry past the players: what the static map holds until the state's build sets the
+/// players' teams.
+const NO_TEAMS: [u8; MAX_PLAYERS as usize] = {
+    let mut teams = [NO_TEAM; MAX_PLAYERS as usize];
+    let mut index = 0;
+    while index < MAX_PLAYERS {
+        teams[index as usize] |= index;
+        index += 1;
+    }
+    teams
+};
+
+/// The seats' teams by player id, checked dense (GAM-TEM-001, E10 T3a; E10 design note §1): each
+/// below the number of seats and every team below the highest one used held by a seat, else
+/// [`SetupError::Team`] with the first team out of range or missing; the entries past the seats
+/// `NO_TEAM | index`. With the number of teams, one explored layer each (GAM-TEM-002).
+fn teams_of(seats: &[Seat]) -> Result<([u8; MAX_PLAYERS as usize], u8), SetupError> {
+    let mut teams = NO_TEAMS;
+    for (entry, seat) in teams.iter_mut().zip(seats) {
+        if usize::from(seat.team) >= seats.len() {
+            return Err(SetupError::Team(seat.team));
+        }
+        *entry = seat.team;
+    }
+    let count = seats.iter().map(|seat| seat.team + 1).max().unwrap_or(0);
+    match (0..count).find(|&team| !seats.iter().any(|seat| seat.team == team)) {
+        Some(team) => Err(SetupError::Team(team)),
+        None => Ok((teams, count)),
+    }
+}
+
 /// A tile of the static map.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StaticTile {
@@ -137,7 +172,6 @@ pub use draws::Resolved;
 use dwellings::{Camp, DwellingWeek};
 pub use dwellings::{HirePurchase, hire_price};
 pub use economy::Weekly;
-pub use economy::allied;
 use flags::Flags;
 pub use hill_fort::{HillFortRow, HillFortUpgrade};
 pub use markets::{
@@ -370,6 +404,11 @@ pub struct StaticMap {
     /// design note §5), built without a draw after every type is final; empty without
     /// teleporters. Follows from the objects, so the hash leaves it out.
     channels: Channels,
+    /// Each player's team by player id (GAM-TEM-001, E10 T3a; E10 design note §2): static and
+    /// shared by forks. Set by the state's build from its seats, not by the map's: the content
+    /// hash leaves it out and the state hash writes it (v31). The entries past the players hold
+    /// `NO_TEAM | index`, allied with nobody but themselves.
+    teams: [u8; MAX_PLAYERS as usize],
     hash: u64,
 }
 
@@ -459,6 +498,7 @@ impl StaticMap {
             camps: Vec::new(),
             camp_levels: Vec::new(),
             channels: Channels::default(),
+            teams: NO_TEAMS,
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -1239,6 +1279,33 @@ impl StaticMap {
     pub const fn content_hash(&self) -> u64 {
         self.hash
     }
+
+    /// Whether `a` and `b` are of one team (GAM-TEM-001, E10 T3a; `players_same_team` 0x5296D0):
+    /// a player with itself included; a player past the game's is allied with itself alone.
+    #[inline]
+    pub fn allied(&self, a: PlayerId, b: PlayerId) -> bool {
+        a == b
+            || self
+                .teams
+                .get(a.index())
+                .is_some_and(|team| self.teams.get(b.index()) == Some(team))
+    }
+
+    /// The team of `player`, if it is a player of the game (GAM-TEM-001, E10 T3a).
+    pub fn team(&self, player: PlayerId) -> Option<u8> {
+        self.teams
+            .get(player.index())
+            .copied()
+            .filter(|&team| team & NO_TEAM == 0)
+    }
+
+    /// The index of `player`'s explored layer, its team's (GAM-TEM-002, E10 T3a): `NO_TEAM` or
+    /// more for a player past the game's, so that a read by `get` finds none.
+    fn layer(&self, player: PlayerId) -> usize {
+        self.teams
+            .get(player.index())
+            .map_or(usize::MAX, |&team| usize::from(team))
+    }
 }
 
 impl CanonicalHash for StaticMap {
@@ -1444,7 +1511,8 @@ pub struct AdventureState {
     map: Arc<StaticMap>,
     players: u8,
     heroes: Vec<HeroOnMap>,
-    /// Each player's explored tiles, by player id (ADR-0016 point 5).
+    /// Each team's explored tiles, by team (ADR-0016 point 5; GAM-TEM-002, E10 T3a: one layer a
+    /// team, which every reveal of its players writes and each of them reads).
     explored: Vec<BitGrid>,
     /// The objects that left the map and the tiles they freed (ADR-0016 point 1); none until an
     /// object leaves, so a fork and a tile's read cost nothing more before (`bench-check`).
@@ -1576,13 +1644,15 @@ impl AdventureState {
             setup.town_factions.as_slice(),
             setup.prisoners.as_slice(),
         );
-        let (map, marks) = StaticMap::new(core, part, &setup.map, inputs, draws)?;
+        let (mut map, marks) = StaticMap::new(core, part, &setup.map, inputs, draws)?;
         if !(1..=part.params().max_players()).contains(&setup.players) {
             return Err(SetupError::Players(setup.players));
         }
         if setup.seats.len() != usize::from(setup.players) {
             return Err(SetupError::Seats(setup.seats.len()));
         }
+        // rule: GAM-TEM-001
+        let (teams, team_count) = teams_of(&setup.seats)?;
         // rule: ADV-OWN-002
         for (index, object) in setup.map.objects.iter().enumerate() {
             let ownable = object
@@ -1604,11 +1674,12 @@ impl AdventureState {
         let owners = economy::owners_at_start(&map, &setup.map.objects);
         let (weekly, camps, fortunes) = economy::first_week(core, part, &map, draws);
         let unexplored = BitGrid::new(map.width(), map.height(), map.levels());
+        map.teams = teams;
         let mut state = Self {
             map: Arc::new(map),
             players: setup.players,
             heroes: Vec::with_capacity(setup.heroes.len()),
-            explored: vec![unexplored; usize::from(setup.players)],
+            explored: vec![unexplored; usize::from(team_count)],
             occupancy: None,
             added: None,
             flags: None,
@@ -1719,7 +1790,7 @@ impl AdventureState {
         for hero in &self.heroes {
             let radius = hero_radius(core, part, details_of(heroes, hero.id));
             reveal(
-                &mut self.explored[usize::from(hero.owner.raw())],
+                &mut self.explored[self.map.layer(hero.owner)],
                 hero.pos,
                 radius,
             );
@@ -2098,7 +2169,7 @@ impl AdventureState {
         let radius = hero_radius(core, part, details);
         let mut from = start;
         for &to in walked {
-            reveal(&mut self.explored[usize::from(player.raw())], to, radius);
+            reveal(&mut self.explored[self.map.layer(player)], to, radius);
             let (seen_from, seen_to) = (
                 self.viewers(core, player, from),
                 self.viewers(core, player, to),
@@ -2119,7 +2190,7 @@ impl AdventureState {
             // The undone passes' reveals stay, told by no step (decision 407), and the tile that
             // stopped the move shows whatever the radius; the move ends on its last stop node, a
             // guard there attacking (a flyer is at its move's end, 0x48147D), nothing visited.
-            let explored = &mut self.explored[usize::from(player.raw())];
+            let explored = &mut self.explored[self.map.layer(player)];
             for &to in undone {
                 reveal(explored, to, radius);
             }
@@ -2650,7 +2721,7 @@ impl AdventureState {
                 });
             }
             Effect::Reveal(radius) => {
-                let grid = &mut self.explored[usize::from(player.raw())];
+                let grid = &mut self.explored[self.map.layer(player)];
                 let before = grid.count();
                 reveal(grid, visit.tile, radius);
                 sink.emit(AdventureEvent {
@@ -3010,7 +3081,7 @@ impl AdventureState {
         let (width, height) = (usize::from(map.width()), usize::from(map.height()));
         let at = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
         let reveals = |tile: &StaticTile| terrains.contains(&tile.terrain);
-        let grid = &mut self.explored[usize::from(player.raw())];
+        let grid = &mut self.explored[self.map.layer(player)];
         let before = grid.count();
         for (row, tiles) in map.tiles().chunks_exact(width).enumerate() {
             let level = u8::try_from(row / height).unwrap_or(u8::MAX);
@@ -3070,9 +3141,7 @@ impl AdventureState {
     /// its fringe.
     pub(crate) fn object_viewers(&self, core: &Ruleset, object: &MapObject) -> Viewers {
         let fringe = core.quirks().is_enabled(FRINGE_SHOWS_OBJECTS) || object.monster.is_some();
-        self.explored
-            .iter()
-            .zip((0..self.players).map(PlayerId::new))
+        self.layers()
             .filter(|(grid, _)| {
                 object
                     .tiles(&self.map)
@@ -3160,7 +3229,7 @@ impl AdventureState {
                     Effect::Gate(key) => self.has_key(player, key),
                     Effect::Garrison => self
                         .owner(object)
-                        .is_some_and(|owner| allied(owner, player)),
+                        .is_some_and(|owner| self.allied(owner, player)),
                     _ => false,
                 },
                 from_above: ty.from_above,
@@ -3184,9 +3253,7 @@ impl AdventureState {
     // rule: ADV-FOG-004, ADV-FOG-005
     pub(crate) fn viewers(&self, core: &Ruleset, owner: PlayerId, pos: Pos) -> Viewers {
         let fringe = core.quirks().is_enabled(FRINGE_SHOWS_OBJECTS);
-        self.explored
-            .iter()
-            .zip((0..self.players).map(PlayerId::new))
+        self.layers()
             .filter(|(grid, player)| {
                 *player == owner || grid.get(pos) || (fringe && on_fringe(grid, pos))
             })
@@ -3321,9 +3388,25 @@ impl AdventureState {
             .map(|hero| hero.id)
     }
 
-    /// The tiles `player` has explored, if it is a player of the game (ADR-0016 point 5).
+    /// The tiles `player` has explored, if it is a player of the game (ADR-0016 point 5): its
+    /// team's (GAM-TEM-002, E10 T3a).
     pub fn explored(&self, player: PlayerId) -> Option<&BitGrid> {
-        self.explored.get(usize::from(player.raw()))
+        self.explored.get(self.map.layer(player))
+    }
+
+    /// Whether `a` and `b` are of one team (GAM-TEM-001, E10 T3a; [`StaticMap::allied`]): a
+    /// player with itself included.
+    #[inline]
+    pub fn allied(&self, a: PlayerId, b: PlayerId) -> bool {
+        self.map.allied(a, b)
+    }
+
+    /// Each player of the game with its team's explored layer (GAM-TEM-002, E10 T3a), in player
+    /// order: what the viewers' tests walk.
+    pub(crate) fn layers(&self) -> impl Iterator<Item = (&BitGrid, PlayerId)> + '_ {
+        (0..self.players)
+            .map(PlayerId::new)
+            .map(|player| (&self.explored[self.map.layer(player)], player))
     }
 
     /// The tile at `pos` as it stands now (ADR-0016 point 1): `tile`, the static map's tile there,
@@ -3447,7 +3530,7 @@ impl AdventureState {
     /// `player`'s explored tiles, with the static map (E09 T8a2: a captured town's reveal). The
     /// caller names a player of the game.
     pub(crate) fn explored_mut(&mut self, player: PlayerId) -> (&mut BitGrid, &StaticMap) {
-        (&mut self.explored[usize::from(player.raw())], &self.map)
+        (&mut self.explored[self.map.layer(player)], &self.map)
     }
 
     /// The garrison of the town at object index `index` as it stands (E09 T8a1, the town epic's
@@ -3588,6 +3671,10 @@ impl CanonicalHash for AdventureState {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
         h.write_u8(self.players);
+        // v31 (E10 T3a): each player's team; the explored layers below are the teams'.
+        for &team in &self.map.teams[..usize::from(self.players)] {
+            h.write_u8(team);
+        }
         h.write_len(self.heroes.len());
         for hero in &self.heroes {
             self.hash_hero(h, hero);

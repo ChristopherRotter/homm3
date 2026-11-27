@@ -11,7 +11,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureObservation, AdventureState, Pos, Viewers, allied};
+use h3_adventure::{AdventureObservation, AdventureState, Pos, Viewers};
 use h3_content::{CreatureTypeId, FactionId, ResourceId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{BuildingSet, CREATURE_INDEXES, GuildSlots, Summoned, TownRuleset, Towns};
@@ -223,7 +223,7 @@ impl<'a> Seer<'a> {
             .filter(|&(index, _)| map.objects()[index].tiles(map).any(&explored))?;
         let object = &map.objects()[index];
         let owner = adventure.owner(index);
-        let ours = owner.is_some_and(|owner| allied(owner, viewer));
+        let ours = owner.is_some_and(|owner| adventure.allied(owner, viewer));
         // rule: TWN-VEW-003
         let top = ours
             || object.entrance(map).is_some_and(|entrance| {

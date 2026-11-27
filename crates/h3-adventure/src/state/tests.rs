@@ -610,6 +610,7 @@ fn each_broken_invariant_is_its_own_error() {
     assert_eq!(error(|s| s.players = 0), SetupError::Players(0));
     assert_eq!(error(|s| s.players = 3), SetupError::Players(3));
     assert_eq!(error(|s| s.seats.truncate(1)), SetupError::Seats(1));
+    assert_eq!(error(|s| s.seats[1].team = 2), SetupError::Team(2));
     assert_eq!(
         error(|s| s.map.objects[1].anchor = Pos::new(0, 0, 2)),
         SetupError::ObjectLevel(1)
@@ -723,6 +724,7 @@ fn the_errors_read_well() {
         (SetupError::UnknownRiver(2), "tile 2 has an unknown river"),
         (SetupError::Players(9), "9 players are outside the bounds"),
         (SetupError::Seats(1), "1 seats do not give one per player"),
+        (SetupError::Team(2), "team 2 leaves the teams not dense"),
         (
             SetupError::ObjectLevel(3),
             "object 3 is anchored on a missing level",
@@ -871,8 +873,12 @@ fn the_hash_sees_content_not_sharing() {
     more.players = 2;
     more.seats = crate::testing::seats(2);
     assert_ne!(build(&more).unwrap().state_hash(), one.state_hash());
-    // The seats are state (v15, E08 T62b2): a colour, a human flag.
-    for edit in [|s: &mut Seat| s.colour = 5, |s: &mut Seat| s.human = false] {
+    // The seats are state (v15, E08 T62b2): a colour, a human flag; since v31 (E10 T3a) a team.
+    for edit in [
+        |s: &mut Seat| s.colour = 5,
+        |s: &mut Seat| s.human = false,
+        |s: &mut Seat| s.team = 0,
+    ] {
         let mut seated = setup();
         edit(&mut seated.seats[1]);
         assert_ne!(build(&seated).unwrap().state_hash(), base.state_hash());
@@ -929,6 +935,7 @@ mod sea_battles;
 mod sea_pickups;
 mod shipyards;
 mod spells;
+mod teams;
 mod teleporters;
 mod towns;
 mod visitables;

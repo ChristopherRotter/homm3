@@ -18,7 +18,6 @@ use h3_kernel::num::Real;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use super::AdventureState;
-use super::economy::allied;
 use crate::command::{
     AdventureEvent, AdventureEventKind, AdventureOutcome, Drowned, HeroGains, NothingWhy, Sink,
     Viewers,
@@ -88,7 +87,7 @@ impl AdventureState {
         }
         let team = (0..self.players)
             .map(PlayerId::new)
-            .filter(|&p| allied(p, player) && !self.knows_kind(p, object_type))
+            .filter(|&p| self.allied(p, player) && !self.knows_kind(p, object_type))
             .fold(Viewers::NONE, Viewers::with);
         if team == Viewers::NONE {
             return;

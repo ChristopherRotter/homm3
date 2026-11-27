@@ -15,7 +15,7 @@ use h3_heroes::{HeroDetails, HeroReward};
 use h3_kernel::Rng;
 
 use super::pool::ArtifactPool;
-use super::{AdventureState, Resolved, StepVisit, allied};
+use super::{AdventureState, Resolved, StepVisit};
 use crate::command::{
     AdventureEvent, AdventureEventKind, AdventureOutcome, Defender, Offer, OfferKind, Sink, Viewers,
 };
@@ -380,7 +380,7 @@ impl AdventureState {
     ) {
         let marked = (0..self.players)
             .map(PlayerId::new)
-            .filter(|&p| allied(p, player) && !self.knows(p, index))
+            .filter(|&p| self.allied(p, player) && !self.knows(p, index))
             .fold(Viewers::NONE, Viewers::with);
         if marked == Viewers::NONE {
             return;

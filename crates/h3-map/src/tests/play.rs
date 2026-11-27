@@ -10057,7 +10057,7 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
         {
             let owner = adventure.owner(i);
             prop_assert!(
-                owner.is_some_and(|o| h3_adventure::allied(o, hero.owner)),
+                owner.is_some_and(|o| adventure.allied(o, hero.owner)),
                 "{:?} on town {} of {:?}",
                 hero.id,
                 i,

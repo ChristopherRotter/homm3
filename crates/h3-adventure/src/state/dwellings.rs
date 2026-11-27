@@ -22,7 +22,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::factory::{machine_room, machine_stock, target_hero};
 use super::monsters::{Room, add_stack, join_at, room, room_bound};
-use super::{AdventureState, StaticMap, allied, pick};
+use super::{AdventureState, StaticMap, pick};
 use crate::army::{ArmyRef, ArmySlot};
 use crate::command::{
     AdventureEvent, AdventureEventKind, AdventureOutcome, Defender, HireDialog, HireError,
@@ -531,7 +531,7 @@ impl AdventureState {
     ) -> AdventureOutcome {
         if !self
             .owner(object.0)
-            .is_some_and(|owner| allied(owner, player))
+            .is_some_and(|owner| self.allied(owner, player))
             && let Some(kind) = self.guards_question(rules.1, object.0)
         {
             return self.ask(hero, object, kind);
@@ -579,7 +579,7 @@ impl AdventureState {
     ) -> AdventureOutcome {
         let flagged = !self
             .owner(object.0)
-            .is_some_and(|owner| allied(owner, player));
+            .is_some_and(|owner| self.allied(owner, player));
         if flagged {
             self.flag(rules, object, player, sink);
         }
@@ -621,7 +621,7 @@ impl AdventureState {
         let guards = self.dwelling_guards(object.0);
         if !self
             .owner(object.0)
-            .is_some_and(|owner| allied(owner, player))
+            .is_some_and(|owner| self.allied(owner, player))
             && !guards.is_empty()
         {
             let defender = Defender::Guards { army: guards };
