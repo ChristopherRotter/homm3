@@ -158,3 +158,12 @@ census, not re-run).
   Portal's team list. GAM-TEM-001, -002 written; ADV-FOG-002, -003 amended.
 - **Not yet (T3b):** a step toward an ally's hero is still a battle (GAM-BAT-004), an ally's
   dwelling's dialog still buys; T3b builds the meeting and the read-only dialog.
+- **The goldens** (a sub-agent, `homm3-rerecord-replays`): the 130 adventure replays re-recorded
+  from their commands, only `final_hash`, the checkpoints and the three version lines moved (no
+  golden plays a map with teams); `h3-server`'s `tests/record.rs` literals (`cross-lane`; the
+  import case from `MAP_IMPORT_VERSION`). `h3-sim`, `h3-files`, `h3-cli`, `h3-protocol`,
+  `h3-server` tests and clippy pass; the bots tables stay (the part's hash unmoved). The inboxes
+  of the town, server and AI lanes told.
+- **Verify:** `cargo xtask verify --scope adventure --summary`: every step passes (coverage,
+  determinism, bench-check) but `check-lane`, which fails by design for the `cross-lane` paths
+  (the town lane's 5, the AI lane's 4, the server lane's 1). **Next:** T3b.
