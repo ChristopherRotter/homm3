@@ -308,6 +308,35 @@ entrance (+0x29) the entrance cell's zone counts it too, and a flood from the en
 bits 0-15 of every cell's +0x20 on that level the least distance (2 per orthogonal, 3 per diagonal
 step, over every cell whatever it holds; the nearest cell first, ties first in, first out).
 
+**The template's masks as read (T4a; RMG-OBJ-009).** `template_file_read` 0x514D80 reads each
+`objects.txt` line into a 0x4C-byte template (`rmg_object_template`; its stride is 0x4C for both
+callers) through the record reader 0x514B80: the picture's name, two 48-character masks, two
+9-character terrain marks, the class, subclass, group and overlay field. A mask is read as a
+`std::bitset<48>` (0x515560: the line's character k is bit 47 − k), so character 8r + c is the
+cell c columns left of and r rows above the anchor, the bit 47 − 8r − c the placing code tests
+(`h3-rmg`'s bit k; `docs/formats/h3m.md`, "Template masks"; VCMI 1.7.5 `ObjectTemplate::readTxt`
+reads character 0 as offset (0, 0) too); a terrain mark likewise (character 0 is bit 8, water).
+`msk_load` 0x514610 then gives the template the picture's `.msk`: the width and height (+0x34,
++0x38, the footprint; `default.msk`, 1 × 1, without one) and its colour and shadow masks (+0x3C,
++0x44). The two masks the generator tests come from both: **+0x4, passable** = the passability text
+OR NOT the colour mask (0x515510, 0x516770: a cell without body pixels is passable whatever the
+text says; VCMI's `readMsk` takes the size alone, and 8 × 6 without a `.msk`); **+0xC, the
+entrances** = the actions text AND NOT +0x4 (0x514A60): the visitable cells that are not passable.
++0x29 is set when +0xC has a bit; then +0x2C and +0x30 are the first entrance's columns left and
+rows up, rows scanned from the anchor's upward, each from the anchor's column leftward (none: 8
+and 6, 0x640278). +0x14 holds the third column's terrains, +0x18 the fourth's: every terrain test
+of the generator reads +0x18 (`rmg_prototype_draw`, `rmg_mine_place`, the footprint's water test
+below), the writer both (VCMI's allowed terrains are the fourth column as well); +0x1C the
+class, +0x20 the subclass, +0x24 the group (the seventh column), +0x28 the overlay field not 0.
+Placing (`rmg_map_place_object`) is one or the other per footprint cell: an entrance cell gets bit
+22 (bit 26 cleared and 27 set unless +0x2C bit 0) and keeps bit 25; any other cell outside +0x4
+loses bit 25; both get the object in their list; passable cells are left alone. So bit 22 marks an
+object's entrance and a clear bit 25 its blocked body. For the port: the footprint's size and +0x4
+depend on each picture's `.msk`, which the rmg packs do not hold yet (the harvest takes
+`objects.txt`'s text alone; the adventure lane's table has the special grounds' sizes only); and
+`h3-rmg`'s `ObjectTemplate` calls the third column `terrains` and the fourth `editor_terrains`,
+the other way round from the generator's use.
+
 **Draw sites** (none runs during the setup but water's; the others run when a step creates an
 object through these methods):
 
@@ -325,7 +354,11 @@ object through these methods):
 table or a vector, the flood until its queue is empty. Failure paths: no template kept makes `rmg_generate_map` fail (code 3, §1.5); a
 zone or connection outside the player counts is dropped silently; a template too small, too large
 or short of start zones is destroyed; a prison is not created when every hero is banned and
-`rmg_prototype_draw` returns null without candidates (how the callers treat a null was not read);
+`rmg_prototype_draw` returns null without candidates (its callers, T4a: `rmg_mine_place`'s
+resources and `rmg_object_choose` test it, the mine then placed without resources and the
+generator not kept; the three seer huts' create methods and `rmg_path_carve` use it unchecked,
+adding to its +8 count through null: RMG-QUIRK-4's class, reachable only with tables that lack a
+quest artifact of type 65 for dirt or a Border Guard of a colour);
 the bitset range exceptions (a terrain of 10 or more) cannot be reached from the callers read.
 `rmg_scroll_generator_create` and `rmg_creature_generator_init` divide by a count and an AI value
 that the game's tables never make 0.
@@ -356,9 +389,7 @@ progress window's vtable (T1a1) and no game object helper: the tables are read i
 - The distance flood ignores what the cells hold (a reading, not yet a quirk: what reads the
   distance decides).
 
-**Not read:** the growth code of the four `inferred` library inserts; how `template_file_read`
-fills the masks +0x4 and +0xC (H3API's passable and enterable; the flags they set fit H3API's bit
-names only loosely); who calls the map vtable's slots 1-6; who reads +0x1100, a prototype's +4
+**Not read:** the growth code of the four `inferred` library inserts; who calls the map vtable's slots 1-6; who reads +0x1100, a prototype's +4
 and +0x10 and the distances; the 13 object vtables' methods (§2.5). Answered later (§2.4): the
 constant test is applied by the replacements, `rand_trn.txt`'s rows by step 13, +0xF58, +0xF5C
 and +0x10B4 set by steps 6 and 10.
@@ -399,7 +430,7 @@ by §2.1) and 10 outside it.
 | 0x544A50 `rmg_zone_first_town` | step 4 | at most one town (below) | read |
 | 0x545250 `rmg_town_place_central` | 0x544A50, 0x544D90 | a zone's first town, nearest its centre (0x545492) | read |
 | 0x531CF0 `rmg_map_can_place` | 0x545250, 0x544D90; five functions of later steps | whether a prototype fits at a cell in a zone | read |
-| 0x5318B0 `rmg_map_footprint_blocked`, 0x532C80 `rmg_prototype_outline`, 0x531170 `rmg_map_outline_clear` | 0x531CF0 (and functions of later steps) | its footprint, outline and ring tests | inferred |
+| 0x5318B0 `rmg_map_footprint_blocked`, 0x532C80 `rmg_prototype_outline`, 0x531170 `rmg_map_outline_clear` | 0x531CF0 (and functions of later steps) | its footprint, outline and ring tests | read (T4a) |
 | 0x5330E0 `rmg_object_init` | 0x545250; two functions of later steps | a placed object's base | read |
 | 0x544AE0 `rmg_zone_towns_place` | step 5 | least towns, then by density (below) | read |
 | 0x544D90 `rmg_town_place_far`, 0x533150 `rmg_object_clear_flags` | 0x544AE0; 0x544D90 | one more town, farthest from the objects (0x544DEC, 0x544E22, 0x545174) | read |
@@ -620,6 +651,55 @@ against the index), each painter finished even without cells. On the 24 corpus c
 draws and cells after step 3 equal the oracle's at the first run (the four islands cases too);
 RMG-QUIRK-3's and -4's step 3 cases are typed errors (`TerrainFault`, `PaintFault`).
 
+**The placing tests as read (T4a; RMG-OBJ-011).** `rmg_map_can_place` (prototype, x, y, z, zone
+generator) is true when, in order: (1) `rmg_map_footprint_blocked` (prototype, x, y, z, the zone's
+id, flag 0) is false; (2) `rmg_map_outline_clear` over the prototype's outline (built once by
+`rmg_prototype_outline`) is true, its object flag set when the type's object settings +1 and +2
+are both set; (3) a template without an entrance passes here; else the cell below the entrance,
+(x − +0x2C, y − +0x30 + 1), lies on the map (only its row is tested: the column cannot leave it), is
+free (bit 25), not rock, of this zone (its zone byte not negative and equal to the id), without
+bit 22 unless the first object of its list has its type's settings +2, and is water exactly when
+the zone's terrain is water.
+
+- **The footprint** (`rmg_map_footprint_blocked`, flag the sixth argument: 0 from
+  `rmg_map_can_place`, others pass 1): blocked when x < width − 1, x ≥ the map's width, y <
+  height − 1 or y ≥ its height; else per cell (x − c, y − r), rows r from 0, columns c from 0 within
+  them: an entrance cell (+0xC) is blocked unless free (bit 25), not rock, without bit 22, of the
+  zone and, with the flag, without bit 26; then any cell outside +0x4 (the entrances too) is blocked
+  unless free, not rock, without bit 22, of the zone and, **on water, the template's group (+0x24)
+  is 0 and its fourth-column terrains (+0x18) hold water; on land, not both** (a group-0 template
+  with water among its terrains is water-only). Passable cells are not tested. So only group-0
+  templates with water in that column put blocked cells on water (the sea objects, whose two
+  columns are water alone); every other template's body stays on land.
+- **The outline** (`rmg_prototype_outline`, once per prototype, into its +0x14 vector of (dx, dy)
+  i32 pairs relative to the position): on the anchor's row, from the anchor leftward, the first
+  cell outside +0x4; none (the whole row passable within the width): the outline stays empty. Else
+  from the cell below it (dx, 1) a walk of orthogonal steps keeping the blocked cells on its right
+  hand: from the direction it came, it tries a right turn, straight on, a left turn, then back
+  (`rmg_neighbours`' even entries; a cell may be entered when it lies outside the footprint or is
+  passable in it; after four refusals it steps the last way tried), recording each cell before its
+  step, until it returns to the first: a clockwise ring (on the screen) of the cells around the
+  blocked group the start touches, passable cells inside the footprint included.
+- **The ring** (`rmg_map_outline_clear` (outline, x, y, z, object flag, zone generator, kept
+  flag): `rmg_map_can_place` passes kept 0): a cell is open when on the map, free, not rock,
+  without bit 22, with the kept flag also bit 27, water exactly when the zone is, and of the zone;
+  without the object flag a ring cell with bit 22 makes the test false at once. The ring is walked
+  cyclically, its first cell twice (n + 1 cells, the state before the first counted closed); a
+  second open-to-closed change makes it false; at the end it is true when it saw one such change,
+  or none and its first cell is open (the whole ring open), false when none and the ring is all
+  closed. So the open cells around the object must form **one unbroken arc, or the whole ring**:
+  an object never splits the free cells around it, nor stands walled in. An empty outline divides
+  by its count of 0 (the index is i mod n): a fault (RMG-QUIRK-3's class) that no template of the
+  classes `rmg_map_can_place` places reaches with the shipped `objects.txt` (every town, shipyard,
+  gate, monolith, tent, mine and resource line has a blocked cell on its anchor's row in the text;
+  whether their `.msk`'s keep it blocked waits for the `.msk` harvest); the piles' own outline
+  (`rmg_pile_fits_at`, increment 5's pile ring) is not read.
+- **Tents on water** (§2.3's shipyard guards): the Keymaster's Tents are group 0 without water in
+  the fourth column, and their two blocked cells (the anchor, which is the entrance, and the cell
+  left of it) refuse water; in a water zone a tent fits only on land cells of that zone (an
+  islet's, a sealed shore's: RMG-CON-008, -012) with water below its entrance and an unbroken arc
+  of open water around it, else nowhere, and the guard falls back to its monster (RMG-CON-019).
+
 **Steps 4 and 5, the towns.** Step 4 tries, in this order and only if asked for, a castle of the
 zone's colour, a town of it, a neutral castle, a neutral town, with town type +4, and **stops at
 the first placed: at most one town per zone** (T1a1 read "one of each"). `rmg_town_place_central`
@@ -711,8 +791,7 @@ zone). No file and no object table besides `object_settings_pointer`.
   dropped; a zone whose centre and left cell lie on borders gets no cell (above; the ledger's
   open table).
 
-**Not read:** the water branch of `rmg_map_footprint_blocked`; `rmg_prototype_outline` and
-`rmg_map_outline_clear` in detail; the painter's algorithm (its constructor, its rectangle code, the tests inside
+**Not read:** (the placing tests read in T4a, above) the painter's algorithm (its constructor, its rectangle code, the tests inside
 `terrain_painter_finish`) and its third value 4; the 22 library helpers.
 
 **For the next parts:** a cell's zone is +0x20 bits 16-23 (the zone generator's index, also its
@@ -745,7 +824,7 @@ pending border guard) unless they place the guard. H3API's names for bits 25 to 
 | 0x54D0F0 `point_list_node_new` (was `rmg_range_last`, past the range), 0x54D000 `point_list_insert`, 0x54D060 `point_list_erase`, 0x54D0A0 `point_list_erase_range` | 0x543E20 | the branch queue, a linked list of points | read |
 | 0x53F880 `rmg_zone_borders_close` | 0x544920 | zone walls (below) | read |
 | 0x53F470 `rmg_water_zone_islets`, 0x53F1A0 `rmg_zone_distance_flood` | 0x544920 per zone generator; 0x53F470 | islets in water zones far from their edge (below); the distance flood | read |
-| 0x53EFA0 `rmg_islet_draw`, 0x53ED00 `rmg_islet_heightmap`, 0x53E9E0 `rmg_heightmap_quadrants_push`, 0x54C670 `entry24_vector_size` | 0x53F470 down | an islet's terrain, shape and obstacles | read; read; inferred; read |
+| 0x53EFA0 `rmg_islet_draw`, 0x53ED00 `rmg_islet_heightmap`, 0x53E9E0 `rmg_heightmap_quadrants_push`, 0x54C670 `entry24_vector_size` | 0x53F470 down | an islet's terrain, shape and obstacles | read; read; read (T4a); read |
 | 0x5405D0 `rmg_zone_paths_connect` | 0x544920, step 9, 0x542B00 | the floods reset; per zone the free cells joined (below) | read |
 | 0x531460 `rmg_zone_cost_flood` | 0x5405D0; step 7's `rmg_junction_zone_paths` | a zone's cost flood (below) | read |
 | 0x5408E0 `rmg_path_carve` | 0x5405D0, 0x541140 | a path back to the zone's free cells; pending border guards placed | read |
@@ -792,6 +871,24 @@ quadrants last in, first out, the low-low one first), painted by the terrain pai
 (`terrain_painter_init` 0x5B7250, `terrain_painter_add_rect` 0x5B7690, `terrain_painter_finish`
 0x5B72F0); **every land cell of the box then becomes an obstacle**; the distance flooded again
 from the islet's centre.
+
+**The height map as read (T4a; RMG-CON-008).** `rmg_islet_draw` sizes a byte mask to the box (W =
+x1 − x0 columns, H = y1 − y0 rows) and `rmg_islet_heightmap` fills it row-major (index row × W +
+column). Its records (0x24 bytes, `rmg_heightmap_rect`): the first row, the first column, the row
+end, the column end (ends exclusive), the corner heights top-left, top-right, bottom-left,
+bottom-right, the amplitude. The whole box is never a record itself: with a = (H + W) / 4 + 1 its
+four quadrants are pushed at once, with corners 0, edge midpoints 0, the centre a / 2 and amplitude
+a, and no draw. A popped record of one cell writes its top-left height clamped to 0..255 into that
+cell (when inside the mask); a larger one takes the means of its edges' two corners (top:
+top-left and top-right; left; bottom; right) and of all four, and, while its amplitude a > 1, adds
+`rand() % a − a / 2` to each in the order top, left, bottom, right, centre (the sites 0x53EEFF to
+0x53EF43); its quadrants get amplitude (a − 1) / 2 + 1. Every division here is C's, toward zero.
+`rmg_heightmap_quadrants_push` cuts at the middle row (first + end) / 2 and the middle column, gives
+each quadrant the heights at its own corners, and appends them bottom-right, bottom-left,
+top-right, top-left, skipping one of no row or no column; the stack is last in, first out, so the
+top-left one is split first (the fourth append inlines the vector's growth, capacity size +
+max(size, 1): no effect on the order). A cell belongs to the islet when its height is above 0; the
+cells go to the painter row by row.
 
 **Joining each zone's free cells** (`rmg_zone_paths_connect`, also GenerateMap's step 9). Every
 cell's costs reset (+0x1C 32000 in both halves, the previous cell +0x10 −1, +0x20 bits 24-31 −1,
@@ -841,6 +938,20 @@ monoliths, **both ends marked made whatever was placed**. The ways:
 - **By monoliths** (both land): an index cycling over the two-way monolith prototypes (type 45),
   then the one-way entrance and exit pairs (types 43, 44); an entrance placed at random in each zone
   (`rmg_object_place_in_zone`), for one-way also an exit in each; listed in +0x14D0 or +0x14C0.
+  **The pairing as read (T4a; RMG-CON-017):** nothing pairs them at write. Each monolith is
+  written as its template (class and subclass, the channel), and the game sends an entrance to one
+  of its channel's exits (ADV-TEL-002, -003). The index i starts at 0 and becomes (i + 1) mod (n45
+  + n43) after each monolith connection (the two prototype lists' sizes, 0x543957); i < n45 takes
+  two-way prototype i for both ends, else entrance prototype j = i − n45 (type 43) and exit
+  prototype j (type 44): the j-th lines of their classes in `objects.txt` (the version filter keeps
+  subclasses 0 to 2 before SoD), whose subclasses agree in the shipped tables (AB 0 to 2, SoD 0 to
+  7). The order: the entrance in this zone, then its Border Guard or the monster below it; the
+  entrance in the other zone, the same; then for one-way an exit in this zone and one in the
+  other, unguarded, both listed in +0x14C0; every monolith placed puts its position into its zone's
+  +0x404. So a one-way connection is one channel with an entrance and an exit in each zone, each
+  entrance leading to either exit (its own zone's among them), and from the (n45 + n43 + 1)-th
+  monolith connection on a channel is used again, its monoliths shared with an earlier
+  connection's.
 
 **The guards.** Value g = 0 for a wide connection, else from the connection's value v and the
 generator's monster strength s (+0x10BC): g = (v − `rmg_guard_threshold_low`[s]) ×
@@ -932,10 +1043,12 @@ not read). UI: the progress window's +8 only. No file. Tables read in place:
   draws; shipyard sites found from neighbouring cells are counted more than once.
 - `rmg_connection_by_land`'s shortcut for a least cost of 1 is dead (entering costs are 10 or more).
 - The islet candidates are not restricted to the zone's cells (harmless: the others are seeds at 0).
+- T4a: a one-way connection puts both its entrances and both its exits on one channel, so an
+  entrance may lead back into its own zone; and the monolith index wraps after n45 + n43
+  connections (AB 6, SoD 16), so later connections share a channel's monoliths with earlier ones.
 
-**Not read:** `rmg_heightmap_quadrants_push`'s growth code and which corner each record field is
-(the draw order above follows the code); the 9 library helpers; whether `rmg_map_can_place` refuses
-a tent on water; what reads the zones' +0x404 and how one-way monoliths pair at write time; what
+**Not read:** (read in T4a: the heightmap's records and growth, the tents on water in §2.2's
+placing tests, the monoliths' pairing) the 9 library helpers; what reads the zones' +0x404; what
 later steps do with cells that are neither obstacles nor free; the monster object's +0x24 = 3
 (H3API unknown; §2.5's writer).
 
@@ -1992,8 +2105,8 @@ and river painter; WRT the writer. A draw is `site %modulus`; *(QC: …)* marks 
 | RMG-OBJ-005 | Creating: Pandora's Box its creature and count, experience, gold or its levels' and schools' spells (level downward, no flag 0x2000); prison a hero (none when all banned), experience, serial +0xF44; scroll a spell; seer hut its reward and a quest artifact (type 65), returned as the object. | at creation: 0x54B136, 0x534F06, 0x546154 | §2.1 |
 | RMG-OBJ-006 | The prison's hero: the r-th unbanned from the top among 0–127 (RoE) or 0–144, then banned. *(QC: SoD's 145–155 never)* | 0x54B136 %unbanned | §2.1 |
 | RMG-OBJ-007 | The scroll's spell: the r-th by id of the level's spells with a school, without flag 0x2000. | 0x534F06 %spells | §2.1 |
-| RMG-OBJ-008 | `rmg_prototype_draw`: the r-th candidate prototype; none: null (callers' handling not read). | 0x546154 %candidates (unsigned) | §2.1 |
-| RMG-OBJ-009 | Placing (the only way): position; footprint up and left: enterable-mask cells bit 22 and, unless +0x2C bit 0, 26 cleared, 27 set; cells outside the passable mask bit 25 cleared; listed, type counted, the entrance's zone counts it. | — | §2.1 |
+| RMG-OBJ-008 | `rmg_prototype_draw`: the r-th candidate prototype; none: null. A mine's resources then none, `rmg_object_choose` skips the generator; the seer huts' creates and `rmg_path_carve` use it unchecked (RMG-QUIRK-4). | 0x546154 %candidates (unsigned) | §2.1 |
+| RMG-OBJ-009 | The masks: character 8r + c of a 48-mark mask is the cell c left of, r above the anchor (bit 47 − 8r − c); footprint and colour mask from the picture's `.msk` (1 × 1 without); passable = the passability text or no body pixel; entrances = visitable and not passable; the first entrance from the anchor's row up, each row leftward (none: (8, 6)). Placing (the only way): position; per footprint cell an entrance bit 22 and, unless +0x2C bit 0, 26 cleared, 27 set; else one not passable bit 25 cleared; listed, type counted, the entrance's zone counts it. | — | §2.1 |
 | RMG-OBJ-010 | The entrance's distance flood: bits 0–15 of +0x20 on its level, 2 orthogonal, 3 diagonal, over every cell, nearest first, ties FIFO. *(QC: ignores contents)* | — | §2.1 |
 
 Reads: the setup's slots; `rmg.txt`, `rand_trn.txt`, `objects.txt`; hero, creature, spell, dwelling
@@ -2056,7 +2169,7 @@ Reads: zone and land bits. Floats: none. Limits: none; allocation failure throws
 
 | Id | Rule | Draws (sites, in order) | § |
 |---|---|---|---|
-| RMG-OBJ-011 | `rmg_map_can_place`: a prototype fits at a cell in a zone (footprint, outline, ring). Outline, ring and water branches inferred, not read. | — | §2.2 |
+| RMG-OBJ-011 | `rmg_map_can_place`: the footprint on the map, its entrances and blocked cells free, not rock, without an entrance, of the zone; a blocked cell on water only for a group-0 template with water in its fourth column, on land not for one; the outline (a right-hand walk around the anchor row's blocked group) open in one unbroken arc or whole (open: on the map, free, not rock, no entrance, of the zone, water as the zone; an entrance on it refuses unless the type's settings +1 and +2); the cell below the entrance free, not rock, of the zone, without an entrance unless removable, water as the zone. *(QC: an empty outline divides by 0)* | — | §2.2 |
 | RMG-TWN-001 | Step 4 per zone: colour castle, colour town, neutral castle, neutral town (if asked, type +4); stops at the first placed. | TWN-002's | §2.2 |
 | RMG-TWN-002 | Central town: type −1 refused; town prototype (98) at the placeable cells nearest the centre (squared); entrance into +0x30 and the road targets. | 0x545492 %nearest | §2.2 |
 | RMG-TWN-003 | Step 5: per kind the least count not yet placed, no spacing, the first of the first kind asked counted as step 4's. *(QC: even when step 4 placed none)* | TWN-005's | §2.2 |
@@ -2080,7 +2193,7 @@ bit 0) is skipped by both unless placing it.
 | RMG-CON-005 | Walls: a land zone cell is an obstacle when its 3×3 holds water of no zone, an unconnected zone, a not-wide connection, or it is on level 1; its 3×3 empties lose bit 27. *(QC: level 1 walled even along wide)* | — | §2.3 |
 | RMG-CON-006 | Land cells of no zone, passable, empty, not rock: obstacles. | — | §2.3 |
 | RMG-CON-007 | Islets per water zone: edge distance (2/3); while a box cell (3..W−4, 3..H−4) is ≥ 20 away, a centre and r = 3 + rand % (d/3 − 5) (≤ 6); after it the distance re-flooded from the centre. *(QC: candidates outside the zone)* | 0x53F745 %cells (unsigned); 0x53F794 %(d/3−5) | §2.3 |
-| RMG-CON-008 | An islet: terrain dirt..rough; shape the positive cells of a midpoint-displacement height map (amplitude (w+h)/4 + 1, then (a−1)/2 + 1; five displacements per split, edge midpoints then centre; quadrants LIFO, low-low first); painted; the box's land made obstacles. Quadrant record fields not read. | 0x53EFE4 %6; per split 0x53EEFF…0x53EF43 %a; the painter's | §2.3, §2.7.5 |
+| RMG-CON-008 | An islet: terrain dirt..rough; shape the positive cells of a row-major midpoint-displacement height map: the box split at once (corners and edges 0, centre a / 2, a = (h + w) / 4 + 1, no draw); a split record's edges top, left, bottom, right and centre displaced by rand % a − a/2 while a > 1, its quadrants at (a − 1) / 2 + 1, appended bottom-right, bottom-left, top-right, top-left, popped last first; a 1 × 1 its top-left height clamped to 0..255; painted; the box's land made obstacles. | 0x53EFE4 %6; per split 0x53EEFF…0x53EF43 %a; the painter's | §2.3, §2.7.5 |
 | RMG-CON-009 | Joining (also step 9): costs reset; per zone in order the seed is the first box cell in the zone, empty, free, passable, not rock (water only in water zones); none: the last empty cell tried made free. *(QC: stale coordinates with no empty cell)* | — | §2.3 |
 | RMG-CON-010 | Cost flood: least first; 8 steps (out of an object without settings +1: E, SE, S, SW, W); objects entered as settings +0, +2 allow; +1 a step, +10 onto water, 0 from cost 0 onto free; into a neighbouring zone +10, upper half, zone and direction back recorded. | — | §2.3 |
 | RMG-CON-011 | Carve: each free passable land cell of cost ≠ 0 walks back while cost > 0, cells freed, their 3×3 cleared, a marked Border Guard placed; then re-flooded. | per guard crossed 0x546154 %guards | §2.3 |
@@ -2089,9 +2202,9 @@ bit 0) is skipped by both unless placing it.
 | RMG-CON-014 | By land: crossings P (cell back Q) empty, n; candidates of least cost (≤ 100); k = min(candidates, (n + 39) / 40) passages, each drawn and carved from P and Q. | per passage 0x54146B %candidates | §2.3 |
 | RMG-CON-015 | By shipyard: a prototype drawn; a crossing already reached by boat makes it; else sites x..x+2 per land cell (3 × 2 land, free water beside, land beyond); placed, a road target, row below free, boat reach flooded. *(QC: drawn before any test; sites counted twice)* | 0x541B78 %prototypes; 0x541D6C %sites | §2.3 |
 | RMG-CON-016 | By gates (other level, boxes overlap): a prototype drawn; overlap cells fitting both, greatest distance sum; a gate per level, below each free. *(QC: drawn before any site)* | 0x5421BC %prototypes; 0x542387 %positions | §2.3 |
-| RMG-CON-017 | By monoliths: an index cycling two-way (45), then one-way pairs (43, 44); entrances (and exits) at random in each zone. One-way pairing at write not read. | per object 0x542A8F %positions | §2.3 |
+| RMG-CON-017 | By monoliths: an index i from 0, (i + 1) mod (n45 + n43) per connection: two-way prototype i, else one-way entrance and exit prototypes i − n45 (the same channel); entrances at random in each zone (each with its guard, if any), then for one-way an exit in each; no pairing written: the channel pairs them in the game. *(QC: one channel per one-way connection, both exits; channels reused after n45 + n43)* | per object 0x542A8F %positions | §2.3 |
 | RMG-CON-018 | Guard value: 0 when wide; (v − low[s]) × fl[s] / 4 above low plus (v − high[s]) × fh[s] / 4 above high; none under 2000; the four tables of §2.3. | — | §2.3 |
-| RMG-CON-019 | Border Guard (the flag): this side, tent in the other zone, then the other side, tent here (shipyard: three before its entrance; monolith: after CON-009 again); next Keymaster colour; 3×3 obstacles marked; one placed: g = 0. Fails: monster. *(QC: two guards in a row, keys crossed; tent in water; five cells unchecked)* | per tent 0x542A8F %positions | §2.3 |
+| RMG-CON-019 | Border Guard (the flag): this side, tent in the other zone, then the other side, tent here (shipyard: three before its entrance; monolith: after CON-009 again); next Keymaster colour; 3×3 obstacles marked; one placed: g = 0. Fails: monster. *(QC: two guards in a row, keys crossed; a shipyard's tent in the water zone, fitting only on its land; five cells unchecked)* | per tent 0x542A8F %positions | §2.3 |
 | RMG-CON-020 | Guard monsters (g > 0, no Border Guard): land one at P or Q; shipyard one; gates and monoliths one per side, each full value. *(QC: counts differ by way)* | land 0x541673 &1; CON-021's | §2.3 |
 | RMG-CON-021 | The monster: an allowed town's creatures, AI × (low + high) / 2 ≤ g ≤ AI × 100, the r-th from the top; n = (g + AI/2) / AI, ± rand % (n/4 + 1) when > 1; serial +0xF44. *(QC: RoE counts 0–116, walks from 144)* | 0x540C61 %fitting; 0x540CCE, 0x540CD8 %s | §2.3 |
 
@@ -2233,11 +2346,12 @@ hooks (+0xF58, +0xF5C, +0x10B4) and connection hops; step 11 bit 27 and objects;
 first call and at `rmg_generate_map`'s return: the port compares its draws and cells after every
 step (steps 7 and 11 have no dump when they do not run; steps 9 and 12 drew nothing in the corpus),
 then the file with the plain executable's. Memory-dependent: ZON-010/011's town-type draw,
-RDR-006's past-the-end read. Not read: `rmg_map_can_place`'s branches (§2.2, OBJ-011; tents on water §2.3; pile ring §2.4);
-heightmap quadrants (§2.3, CON-008); one-way monolith pairing (§2.3, CON-017); depth grid
-(§2.4, OBS-006); settings +0xC types (§2.5, WRT-007); null prototype handling (§2.1, OBJ-008);
-objects' masks (§2.1, OBJ-009); river strokes (§2.7.4, RDR-010). Read in T3b: step 2's
-triangulation, borders, clip, fill and water connections (§2.2), code 1 (§1.2).
+RDR-006's past-the-end read. Not read: the pile ring (§2.4, increment 5); depth grid (§2.4,
+OBS-006); settings +0xC types (§2.5, WRT-007); river strokes (§2.7.4, RDR-010). Read in T3b: step
+2's triangulation, borders, clip, fill and water connections (§2.2), code 1 (§1.2). Read in T4a
+(increment 4's, exit (e)): the objects' masks and the null prototype's callers (§2.1, OBJ-009,
+OBJ-008), `rmg_map_can_place`'s footprint, outline and ring with tents on water (§2.2, OBJ-011),
+the islets' height map (§2.3, CON-008), the one-way monoliths' pairing (§2.3, CON-017).
 
 ### 3.3 The objects placed, the reader and the writer
 

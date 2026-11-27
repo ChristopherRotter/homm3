@@ -1572,26 +1572,26 @@ fields = [
 [[struct]]
 name = "rmg_object_template"
 size = 0x4C
-summary = "An objects.txt template as the generator reads it (H3API's H3RmgObjectProperties)."
+summary = "An objects.txt template as the generator reads it (H3API's H3RmgObjectProperties): object_template_text_read 0x514B80 fills it (E14 T4a). Its masks are 48-bit sets, bit 47 - (8 x row + column) the cell that many columns left of and rows above the anchor, the line's character 8 x row + column."
 refs = ["rules/surveys/E14-generator.md §1.7", "rules/surveys/E14-generator.md §2.1", "rules/surveys/E14-generator.md §2.5"]
 h3api = "H3RmgObjectProperties"
 fields = [
   { offset = 0x0, name = "def", type = "i32", summary = "H3API's defNumber", confidence = "guess" },
-  { offset = 0x4, name = "passable", type = "u8[8]", summary = "H3API's mask: a footprint cell outside it gets bit 25 of +0x28 cleared (rmg_map_place_object; bit 47 - 8 x row - column); how template_file_read fills it not read", confidence = "read" },
-  { offset = 0xC, name = "enterable", type = "u8[8]", summary = "H3API's mask: a footprint cell in it gets bit 22 and the entrance bits of +0x28 (rmg_map_place_object); how template_file_read fills it not read", confidence = "read" },
-  { offset = 0x14, name = "land", type = "u32", summary = "H3API's terrain bits; written as the template's first u16 terrain mask (rmg_write_template)", confidence = "read" },
-  { offset = 0x18, name = "land_page", type = "u32", summary = "a terrain bitset 0..9: rmg_rand_trn_read takes its first terrain, rmg_prototype_draw tests the zone's, rmg_river_to_mouth the mouth's land; written as the second u16 terrain mask (rmg_write_template)", confidence = "read" },
+  { offset = 0x4, name = "passable", type = "u8[8]", summary = "the line's passability mask OR NOT the .msk's colour mask (+0x3C): a cell without body pixels is passable; a footprint cell outside it and not an entrance gets bit 25 of +0x28 cleared (rmg_map_place_object)", confidence = "read", refs = ["rules/surveys/E14-generator.md §2.1"] },
+  { offset = 0xC, name = "enterable", type = "u8[8]", summary = "the entrances: the line's actions mask AND NOT +0x4, the visitable cells that are not passable (object_template_entrances_set); a footprint cell in it gets bit 22 and the entrance bits of +0x28, its bit 25 kept (rmg_map_place_object)", confidence = "read", refs = ["rules/surveys/E14-generator.md §2.1"] },
+  { offset = 0x14, name = "land", type = "u32", summary = "the line's first terrain mark (its third column; character 0 bit 8, water); H3API's terrain bits; written as the template's first u16 terrain mask (rmg_write_template), read by no test of the generator", confidence = "read" },
+  { offset = 0x18, name = "land_page", type = "u32", summary = "the line's second terrain mark (its fourth column; VCMI's allowed terrains): a terrain bitset 0..9: rmg_map_footprint_blocked's water test, rmg_mine_place's ground, rmg_rand_trn_read takes its first terrain, rmg_prototype_draw tests the zone's, rmg_river_to_mouth the mouth's land; written as the second u16 terrain mask (rmg_write_template)", confidence = "read" },
   { offset = 0x1C, name = "type", type = "i32", summary = "the object type (rmg_objects_read filters by it)", confidence = "read" },
   { offset = 0x20, name = "subtype", type = "i32", summary = "its subtype (the monsters' sort key)", confidence = "read" },
-  { offset = 0x24, name = "page", type = "i32", summary = "4 or 5: rmg_prototype_draw takes the template on any terrain but water (H3API's page); its low byte written as the template's group byte (rmg_write_template)", confidence = "read" },
-  { offset = 0x28, name = "flat", type = "u8", summary = "written as the template's priority byte (rmg_write_template); H3API's name", confidence = "read" },
-  { offset = 0x29, name = "has_entrance", type = "u8", summary = "set: rmg_generator_add_object counts the object in its entrance cell's zone and floods the distances from it", confidence = "read" },
-  { offset = 0x2C, name = "enter_x", type = "i32", summary = "the entrance's offset left of the object's position (rmg_generator_add_object, rmg_river_sources_mark, rmg_rivers_lay)", confidence = "read" },
-  { offset = 0x30, name = "enter_y", type = "i32", summary = "its offset above", confidence = "read" },
-  { offset = 0x34, name = "width", type = "i32", summary = "the footprint's columns (rmg_map_place_object)", confidence = "read" },
-  { offset = 0x38, name = "height", type = "i32", summary = "the footprint's rows", confidence = "read" },
-  { offset = 0x3C, name = "colors", type = "u8[8]", summary = "H3API's mask", confidence = "guess" },
-  { offset = 0x44, name = "shadows", type = "u8[8]", summary = "H3API's mask", confidence = "guess" },
+  { offset = 0x24, name = "page", type = "i32", summary = "the line's group (its seventh column): 0 with water in +0x18 lets rmg_map_footprint_blocked put blocked cells on water (and keeps them off land); 4 or 5: rmg_prototype_draw takes the template on any terrain but water (H3API's page); its low byte written as the template's group byte (rmg_write_template)", confidence = "read" },
+  { offset = 0x28, name = "flat", type = "u8", summary = "the line's overlay field not 0; written as the template's priority byte (rmg_write_template); H3API's name", confidence = "read" },
+  { offset = 0x29, name = "has_entrance", type = "u8", summary = "+0xC not empty (object_template_entrances_set); set: rmg_generator_add_object counts the object in its entrance cell's zone and floods the distances from it", confidence = "read" },
+  { offset = 0x2C, name = "enter_x", type = "i32", summary = "the first entrance (rows from the anchor's upward, each from the anchor's column leftward; 8 without one): its offset left of the object's position (rmg_generator_add_object, rmg_river_sources_mark, rmg_rivers_lay)", confidence = "read" },
+  { offset = 0x30, name = "enter_y", type = "i32", summary = "its offset above (6 without one)", confidence = "read" },
+  { offset = 0x34, name = "width", type = "i32", summary = "the footprint's columns (rmg_map_place_object): the picture's .msk (msk_load; 1 without one)", confidence = "read" },
+  { offset = 0x38, name = "height", type = "i32", summary = "the footprint's rows, from the .msk likewise", confidence = "read" },
+  { offset = 0x3C, name = "colors", type = "u8[8]", summary = "the .msk's colour mask (msk_load): the cells with body pixels; NOT it joins +0x4", confidence = "read", refs = ["rules/surveys/E14-generator.md §2.1"] },
+  { offset = 0x44, name = "shadows", type = "u8[8]", summary = "the .msk's shadow mask (msk_load); no test of the generator reads it", confidence = "read", refs = ["rules/surveys/E14-generator.md §2.1"] },
 ]
 
 [[struct]]
@@ -1606,9 +1606,26 @@ fields = [
   { offset = 0x8, name = "used", type = "i32", summary = "0 at creation; each object created from it adds 1 (the generators' create methods); rmg_write_map writes the template when above 0", confidence = "read" },
   { offset = 0xC, name = "index", type = "i32", summary = "its index among the written templates (from 2)", confidence = "read" },
   { offset = 0x10, name = "obstacle", type = "rmg_obstacle*", summary = "the last rand_trn.txt row of its type group, terrain and subtype, else null (rmg_rand_trn_read)", confidence = "read" },
-  { offset = 0x14, name = "f14", type = "vector", summary = "a vector freed with the prototype (rmg_generator_base_destroy); its use not read", confidence = "read" },
+  { offset = 0x14, name = "outline", type = "vector<i32[2]>", summary = "the outline: (dx, dy) pairs relative to the position, the ring around the footprint's blocked cells (rmg_prototype_outline, once; read by rmg_map_outline_clear through rmg_map_can_place); freed with the prototype (rmg_generator_base_destroy)", confidence = "read", refs = ["rules/surveys/E14-generator.md §2.2"] },
   { offset = 0x24, name = "depth", type = "i32[8][6]", summary = "per footprint column six rows of a depth value for the visible-mask cells (rmg_prototype_depth_grid); rmg_obstacle_score compares two obstacles' values on a shared cell to tell which is in front", confidence = "inferred" },
   { offset = 0xE4, name = "depth_done", type = "u8", summary = "0 at creation; set once rmg_prototype_depth_grid has filled +0x24", confidence = "read" },
+]
+
+[[struct]]
+name = "rmg_heightmap_rect"
+size = 0x24
+summary = "A record of rmg_islet_heightmap's stack: a rectangle of the islet's mask, its corner heights, its amplitude (E14 T4a)."
+refs = ["rules/surveys/E14-generator.md §2.3"]
+fields = [
+  { offset = 0x0, name = "row", type = "i32", summary = "its first row", confidence = "read" },
+  { offset = 0x4, name = "column", type = "i32", summary = "its first column", confidence = "read" },
+  { offset = 0x8, name = "row_end", type = "i32", summary = "its row end, exclusive", confidence = "read" },
+  { offset = 0xC, name = "column_end", type = "i32", summary = "its column end, exclusive", confidence = "read" },
+  { offset = 0x10, name = "top_left", type = "i32", summary = "the height at (row, column); a 1 x 1 record writes it", confidence = "read" },
+  { offset = 0x14, name = "top_right", type = "i32", summary = "the height at (row, column_end)", confidence = "read" },
+  { offset = 0x18, name = "bottom_left", type = "i32", summary = "the height at (row_end, column)", confidence = "read" },
+  { offset = 0x1C, name = "bottom_right", type = "i32", summary = "the height at (row_end, column_end)", confidence = "read" },
+  { offset = 0x20, name = "amplitude", type = "i32", summary = "a: its five displacements are rand() % a - a / 2 while a > 1; its quadrants get (a - 1) / 2 + 1", confidence = "read" },
 ]
 
 [[struct]]
