@@ -77,6 +77,11 @@ const TEMPLE: u32 = 96;
 const PILE: u32 = 79;
 /// An artifact's.
 const ARTIFACT: u32 = 5;
+/// The random artifacts' first and last (any, treasure, minor, major, relic): a new game made each
+/// an artifact, whose picture the view does not name (`MCL-STUB-1`) but whose pickup the record
+/// tells by its `AddArtifact` (E24 M5 T4c, T4's game: taken with no box before).
+const RANDOM_ARTIFACT: u32 = 65;
+const RANDOM_RELIC: u32 = 69;
 /// A Learning Stone's.
 const STONE: u32 = 100;
 /// A Star Axis's.
@@ -581,7 +586,7 @@ fn shown(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told>
                 Find::Windmill { resource, amount }
             })
         }
-        ARTIFACT => events.iter().find_map(|e| match e {
+        ARTIFACT | RANDOM_ARTIFACT..=RANDOM_RELIC => events.iter().find_map(|e| match e {
             GameEvent::HeroChanged {
                 change: HeroChange::AddArtifact { artifact },
                 ..

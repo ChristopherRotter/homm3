@@ -325,6 +325,47 @@ fn a_start_as_the_original_s_live_part() {
 }
 
 #[test]
+fn a_later_start_draws_no_object_taken_off_the_map() {
+    // E24 M5 T4c, T4's game: the hot seat's view set up again from a later snapshot showed a pile
+    // taken the day before standing again. An object of the import's that the view does not show
+    // where the viewer explored a tile it covers is gone; under the fog it stands as the file has
+    // it. A new game's start has none (no `gone`).
+    let g = game();
+    assert!(
+        !start(&g, &g.observation)
+            .unwrap()
+            .table
+            .contains_key("gone")
+    );
+    let wood = object(&g, "AVTwood0.def");
+    let at = g.art.objects[wood].anchor;
+    let without = |observation: &GameObservation| {
+        let mut o = observation.clone();
+        o.adventure.objects.retain(|v| {
+            (v.anchor.x, v.anchor.y, v.anchor.level) != (u16::from(at.x), u16::from(at.y), at.z)
+        });
+        assert_eq!(
+            o.adventure.objects.len() + 1,
+            observation.adventure.objects.len()
+        );
+        o
+    };
+    let taken = without(&g.observation);
+    let t = start(&g, &taken).unwrap().table;
+    assert_eq!(
+        t["gone"],
+        Value::Array(vec![Value::Integer(i64::try_from(wood).unwrap())])
+    );
+    // The same with its tile unexplored: standing, nothing gone.
+    let mut fogged = taken.clone();
+    let a = &mut fogged.adventure;
+    let row = usize::from(at.z) * usize::from(a.width) + usize::from(at.y);
+    let word = row * usize::from(a.stride) + usize::from(at.x) / 64;
+    a.explored[word].0 &= !(1 << (at.x % 64));
+    assert!(!start(&g, &fogged).unwrap().table.contains_key("gone"));
+}
+
+#[test]
 fn a_hero_in_a_boat_and_an_odd_pile() {
     let g = game();
     let mut observation = g.observation.clone();
@@ -2779,10 +2820,20 @@ fn what_a_record_s_visits_tell() {
     // An artifact added and taken; without it taken alone (E24 M4 T6); another class tells
     // nothing.
     assert_eq!(
-        find(found(5, vec![removed.clone(), artifact])).map(|f| (f.0, f.2)),
+        find(found(5, vec![removed.clone(), artifact.clone()])).map(|f| (f.0, f.2)),
         Some((Find::Artifact { artifact: 108 }, true))
     );
-    assert_eq!(found(5, vec![removed]), Some(Told::Taken));
+    assert_eq!(found(5, vec![removed.clone()]), Some(Told::Taken));
+    // A random artifact's (65 to 69: the view draws its random template, MCL-STUB-1) as an
+    // artifact's, by the record's `AddArtifact` (E24 M5 T4c, T4's game: no box before).
+    for class in 65..=69 {
+        assert_eq!(
+            find(found(class, vec![removed.clone(), artifact.clone()])).map(|f| (f.0, f.2)),
+            Some((Find::Artifact { artifact: 108 }, true))
+        );
+    }
+    assert_eq!(found(69, vec![removed.clone()]), Some(Told::Taken));
+    assert_eq!(found(70, vec![removed, artifact]), Some(Told::Taken));
     assert_eq!(found(91, vec![visited]), None);
     // The questions: no answer, none; the answer another class's, none.
     let asked = |class, answer, after: Vec<GameEvent>| {

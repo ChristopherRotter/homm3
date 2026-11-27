@@ -40,6 +40,11 @@
 //!   engine keeps no facing: M4 T4 takes it from the steps), its boat's flag its owner's; an
 //!   object the view does not show keeps the file's owner (under the fog it is not drawn).
 //! - **The explored tiles** as the view's bits, `size × levels` rows of `size` tiles.
+//! - **The objects gone** (E24 M5 T4c, T4's game; `gone`, only when there are some): an object
+//!   of the import's (not a blocker, not an event) that the view does not show though it covers
+//!   a tile the viewer has explored was taken off the map (ADV-FOG-004: an explored tile shows
+//!   what objects still cover it): a later start's, the hot seat's view set up again from its
+//!   record since (a pile taken, a monster beaten), which a new game's start never has.
 //! - **A creature by the original's number** (E24 M5 T4c, design §5.29, *provisional*): the
 //!   wire's is the engine's handle, [`Loaded::creatures`] numbers it ([`Creatures`]) at each
 //!   reading (an army, a mine's guards, a random monster's picture, a week's creature, a visit's).
@@ -50,7 +55,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_adventure::{ObjectKind, ObjectSetup, ObjectTypeId, Pickup};
+use h3_adventure::{Holds, ObjectKind, ObjectSetup, ObjectTypeId, Pickup, TileMask};
 use h3_game::{GameRuleset, GameSetup};
 use h3_kernel::Handle;
 use h3_kernel::hash::StateHasher;
@@ -439,6 +444,10 @@ pub fn start(
         }
     }
     let classes: Vec<Value> = drawn.iter().map(|&(c, s)| pair(c, s)).collect();
+    let gone: Vec<Value> = (0..entries.len())
+        .filter(|&k| !taken[k] && gone(&entries[k], observation, art))
+        .map(|k| Value::Integer(int(kept[k])))
+        .collect();
     let mut heroes = Vec::new();
     for hero in &observation.adventure.heroes {
         let class = observation
@@ -491,6 +500,9 @@ pub fn start(
     table.insert("heroes".to_string(), Value::Array(heroes));
     table.insert("boats".to_string(), Value::Array(boats));
     table.insert("explored".to_string(), explored(observation, art));
+    if !gone.is_empty() {
+        table.insert("gone".to_string(), Value::Array(gone));
+    }
     // The panels (E24 M4 T3b1, design §5.10).
     let picks = loaded.live.as_ref().and_then(|l| l.picks);
     let numbered = (rules, &loaded.creatures);
@@ -606,6 +618,35 @@ fn became(
             .rev()
             .find(|t| (t.class, t.subclass) == (MONSTER, creature))
             .map(|t| (t.def.clone(), MONSTER, creature))
+    })
+}
+
+/// Whether the import's object `entry`, which `observation` does not show, was taken off the map
+/// (the module's documentation): it is no blocker and no event, and a tile it covers (its
+/// blocked, visitable and drawn tiles, as the engine's `MapObject::tiles`) is one the viewer has
+/// explored, where the view would show it standing.
+fn gone(entry: &ObjectSetup, observation: &GameObservation, art: &MapArt) -> bool {
+    if entry.object_type.is_none() || matches!(entry.holds, Holds::Event(_)) {
+        return false;
+    }
+    let stride = usize::from(observation.adventure.stride);
+    let mask =
+        TileMask::from_bits(entry.blocked.bits() | entry.visitable.bits() | entry.drawn.bits());
+    let explored = |(x, y): (usize, usize)| {
+        let row = usize::from(entry.anchor.level) * art.size + y;
+        observation
+            .adventure
+            .explored
+            .get(row * stride + x / 64)
+            .is_some_and(|w| w.0 >> (x % 64) & 1 == 1)
+    };
+    // A tile off the map (left of or above it, or past its size) is none.
+    mask.offsets().any(|(column, row)| {
+        let x = usize::from(entry.anchor.x).checked_sub(usize::from(column));
+        let y = usize::from(entry.anchor.y).checked_sub(usize::from(row));
+        x.zip(y)
+            .filter(|&(x, y)| x < art.size && y < art.size)
+            .is_some_and(explored)
     })
 }
 

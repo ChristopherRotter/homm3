@@ -707,6 +707,21 @@ pub fn apply_live(
             }
         }
     }
+    if let Some(gone) = table.get("gone") {
+        // The objects taken off the map before a later start (E24 M5 T4c, T4's game: the hot
+        // seat's view set up again; `h3_map_view::engine`'s `gone`), by their indexes.
+        let gone: Option<Vec<usize>> = gone.as_array().and_then(|a| {
+            a.iter()
+                .map(|v| v.as_integer().and_then(|n| usize::try_from(n).ok()))
+                .collect()
+        });
+        let gone = gone
+            .filter(|g| g.iter().all(|&i| i < live.objects.len()))
+            .ok_or_else(|| failed("`gone` is not a list of objects"))?;
+        for index in gone {
+            live.objects[index].standing = false;
+        }
+    }
     if let Some(owners) = table.get("owners") {
         // Every object's owner as the view passes find it (`-1` none; E24 M1 T5b1).
         let owners: Option<Vec<i64>> = owners
