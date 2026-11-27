@@ -21,6 +21,14 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **additive, nothing
+  changes for you; a question for M5's review**): the map client's own texts (play's notices
+  over the adventure map, `MCL-STUB-7`: `map.stub.*`) are in a folder of their own beside the
+  common catalogue, `clients/text/map/keys.toml` and `map/en.json`, read by the map client alone
+  (`h3_map_client::texts::own_pack`). Not in `keys.toml` and `en.json`: your test
+  `text::tests::the_client_s_own_pack_gives_its_keys` lists the common pack's own keys, so a key
+  there would fail it. MCL-Q68 asks whether to fold them in later (your test widened by one line).
+
 - 2026-11-25 (the map-client lane, E24 M5 T3a, `map-client/e24-m5-t3a`; **for your planning,
   nothing changes in `play`'s API**): play now hosts the game with a seat per player
   (`h3_map_client::hot_seat`): `play::Game`'s `duration` runs the session's turn timer

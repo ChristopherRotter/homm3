@@ -5131,3 +5131,108 @@ their answers are M4's (§5.4, §5.5, §5.14), the engine's rules the engine's.
   start after seven End Turns in place (`game-asks`, one human), `seq-find-pile`'s pile (its
   70 000 gold, as the original's recording): every frame read back exact, as afresh and as the
   headless loop's; the records played to their end.
+
+### 5.28 The screens' notice (M5 T4c)
+
+T4c's first part: a screen of M6 or M7 a notice in the client's words, and every decision the view
+does not ask closed by its notice's OK (`MCL-STUB-7`), so play goes on. No reading: no original;
+the notice is play's alone (a recording refuses the click as before, M4 unchanged).
+
+- **A decision's notice** (`h3_map_view::notice`, *provisional*): `Notice::of` names the window of
+  a decision the view does not ask (an offer of a guarded object's, a mine's or a dwelling's
+  guards' fight, the battles of T6; a Shipyard's boat; a dwelling's or a Refugee Camp's hire; a
+  hire dialog, a University, a market, an Altar, a Hill Fort, a map Tavern, a meeting, an army
+  dialog, a garrison's exchange; not a level-up, not the questions of §5.27); `closing` its
+  answer: the offer declined (the user's choice for the fights until T6), the window left or
+  closed. `engine::visits::opened` gives it as `Ask::Notice` (a box of style 1, its OK the host's,
+  §5.27's `Loop::answer_asked` path); the window's `asks` takes every decision but a level-up and
+  `wire_answer` gives the closing answer for any button. A decision opened after an answer (an
+  army dialog after a join with no room) is the answer's next question, as a monster's flight.
+- **Placed where the engine's walk ended** (`engine::visits::Placed`, *provisional*): a live
+  visit is from beside where the record's walk stops one short of its tile (a Tavern's, a guarded
+  pile's, a meeting's), else on it; a decision opened on the way (a monster's zone entered: its
+  offer) is told where the walk ended, on the decision's object (its anchor); a meeting's on no
+  object (`NO_OBJECT`). A later answer takes the object the record removed (its anchor's), also
+  an earlier answer's (a join's monster, after its army dialog).
+- **A screen without a decision** (`Hosted::notices`, laid out at the view's start): the selected
+  hero's portrait or the hero clicked on the map (the hero screen), the selected town's picture or
+  a town of the viewer's clicked while a town is selected (the town screen), a hero's entry into a
+  town that tells nothing else (`Told::Notice`), cast a spell, the kingdom overview, the quest log,
+  the adventure options: the notice, its OK closing it. Sleep (an engine command) and the system
+  options (the client lane's, E27 M5) stay as before.
+- **The texts** (`clients/text/map/`, *provisional*, MCL-Q68): the map client's own keys
+  (`map.stub.*`, `notice::KEYS`) and their pack, apart from the common catalogue's own.
+- **Checked:** the tests (each decision's notice and closing answer, the notice's box, the
+  panels' and the map's screens in play, refused in a recording, placed visits); under Xvfb
+  (`play --check`, one human) on `game-notices`: every notice shown and closed by Enter, each
+  closing answer in the record and the hero walking on; `game-asks`' and `seq-ask-join-no`'s maps
+  as T4b's; every frame read back exact and as the headless loop's; the records played to their
+  end.
+
+### 5.29 The facts audit (M5 T4c)
+
+T4c's second part, the user's rule at M5 T0 (facts first): in play (the hot seat's window, `paint`'s
+`for_live` and `live_*`, the view crate under them) every game fact comes from the engine's view
+and events (the record, the decision, `observe` while MCL-Q60 stands); no client rules table and no
+map text; the map file stays the pictures' source. Test tooling (sequences, situations,
+recordings, `Ask::of`) keeps its tables. An audit traced play's path and classed each fact: A the
+record or the decision carries it, B none does (asked), C presentation or not reached in play.
+
+- **A bug found and fixed:** `engine::visits::gain` counted `ResourceGained` alone, so a price
+  paid stayed on the bar (`seq-ask-tree` under seed 3, the Tree's 10 gems: 10 before and after;
+  now 0). It takes `ResourcePaid` and `ResourceLost` off.
+- **From the record and the decision now** (*provisional*): the Warrior's Tomb's morale (the
+  answer's `OnceMarkChanged`); a Cartographer's price (the offer's) and tiles (each answer's
+  `GameReveal`, `Visit::revealed`, shown with the walks', `asks::Reveal::Tiles`): facts of
+  `Ask::Tomb` and `Ask::Maps`, so `Ask::yes` takes no `AskArt` (`Ask::of`'s alone). A live reply's
+  object taken by the record's `ObjectRemoved` (`paint::taken_by`); the hero's slots by
+  `StackChanged` where told (`Gain::slotted`; a join tells none, MCL-Q69). The observatories'
+  visit a find by `TilesRevealed` (`Find::Observatory`: ADVEVENT 98, 99, read at `visit_object`
+  0x4A9992, 0x4A9A12, the box before `reveal_disk`; its tiles the walk's first step's, MCL-Q39).
+  The Deity's week the engine's creatures and growth (`[2, creature, upgrade, bonus]`,
+  `Calendar::Deity`); `[map.turn] deity` and `texts::growth` a recording's alone.
+- **No map text by construction:** `render::apply_live` (an engine's table) names no town from the
+  map; a capture's file does (`read_live`).
+- **Left, asked (B):** a hero's name and portrait (MCL-Q61), the map's texts (MCL-Q62; Pandora's
+  from the map file meanwhile), a monster's count (MCL-Q63), the teams (MCL-Q64), the derived
+  values (MCL-Q65: `artifact_skills`, `[map.level_up]`), a level-up offer's level (MCL-Q66), an
+  unnamed town's name (MCL-Q67), a join's slot (MCL-Q69); the known ones (MCL-Q36 to -Q58,
+  `SRV-STUB-4`, -7). A mine's income stays `[map.finds]`' until `SRV-STUB-10` (`observe` has it,
+  but no channel brings it from the host to the find).
+- **Kept (C):** the view's facts' presentation (the hint's and cursor's dispatch by class), facts
+  play does not reach (a dwelling's count, level thresholds, days without a town), the pictures.
+- **For the user to confirm (review list):** the view reads the engine's own `GameRuleset` (a
+  hero's class, an object's kind, a random object's shift): the engine's manifest-checked rules,
+  not a client table (the audit's row 28).
+- **The creatures' handles** (part three, *provisional*): a wire creature is the packs' handle,
+  not the original's number past 117 (a Peasants' join drawn as Boars; TRAPS). `engine::Creatures`
+  (`Loaded::creatures`, of the record's rules) numbers a handle by its key (`creature_key`) and the
+  original's number of each key: the import's table (`h3_map`'s `codes::CREATURES`, crate-private)
+  copied into the view, a test checking it against the import (each number a map file holds, to
+  144; the war machines by their keys). Read by the panels' armies (a hero's, a garrison's), a
+  mine's guards, a random monster's picture, a week's and a month's creature; a visit's events
+  numbered as `played` keeps them (a stack changed, an army dialog's, creatures joined, refused,
+  none to recruit). An offer's creatures are drawn by no reading (a monster's its map subclass).
+  For the user (review list): the view's copy, or the adventure lane exposing the import's table.
+- **Checked:** the tests (a gain's prices, losses and slots; an answer's reveal kept; the Tomb's,
+  the Cartographer's and the observatories' facts; a Deity's week read and named; play's tiles and
+  slots in the loop); under Xvfb (`play --check`, one human): the Tree, the Tomb, the
+  Cartographer (its land revealed), the Observatory, the Pillar of Fire, a join, `game-asks` and
+  `game-notices`: every frame read back exact, as afresh and as the headless loop's; the records
+  played to their end. The Deity's week could not be forced in a situation (a unit test alone).
+
+### 5.30 T4's game (M5 T4c)
+
+T4c's last part, T4's acceptance: a two-human hot-seat game played in play's window by keys and
+mouse (the log's "M5 T4c, part four"). Two fixes, each a gap of play the game showed:
+
+- **A random artifact's pickup** (classes 65 to 69, drawn as its random template, `MCL-STUB-1`):
+  `engine::visits::shown` read the record's `AddArtifact` for class 5 alone, so the artifact was
+  taken with no box; now any of the six is an artifact's find, its box the record's artifact.
+- **A later start's objects taken off the map** (`engine::start`'s `gone`, *provisional*): a hot
+  seat's view set up again from its record since (design §5.25) draws the map's objects as the
+  file has them but those the view shows, so a pile taken the day before stood again. An object
+  of the import's (no blocker, no event) that the view does not show though it covers a tile the
+  viewer explored is gone (ADV-FOG-004: an explored tile shows what objects cover it, the
+  engine's `MapObject::tiles`); `render::apply_live` takes each off the map. A new game's start
+  has none; under the fog an object stands as the file has it.

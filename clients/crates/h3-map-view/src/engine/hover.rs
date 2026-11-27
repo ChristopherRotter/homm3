@@ -36,7 +36,7 @@ use h3_protocol::wire::game::{
 };
 use toml::{Table, Value};
 
-use super::{int, row};
+use super::{Creatures, int, row};
 use crate::art::MapArt;
 use crate::hover::{SEVERAL, SIZES, VISITS};
 use crate::live::TOWN_CLASS;
@@ -81,6 +81,8 @@ const GEMS: u16 = 5;
 /// show), with each one's class as the game loads it (`Records::game_class` of the live part's:
 /// the class the hint dispatches on, 219 a garrison's 33, 220 a mine's 53) and subclass.
 pub(super) struct Sight<'a> {
+    /// The original's number of each creature handle (E24 M5 T4c: a mine's guards).
+    pub creatures: &'a Creatures,
     /// The view's object of each map object.
     pub views: Vec<Option<&'a Object>>,
     /// Each map object's class as the game loads it, and its subclass.
@@ -231,7 +233,10 @@ pub(super) fn table(
             -1
         };
         visits.push(row(&[i64::from(bonus), mark]));
-        contents.add(index, class, subclass, object, known, bonus, own, details);
+        let numbers = sight.creatures;
+        contents.add(
+            index, class, subclass, object, known, bonus, own, details, numbers,
+        );
     }
     let rows = art.size.saturating_mul(art.levels);
     // stub: MCL-Q37 (the tiles a monster guards: none in the record)
@@ -300,7 +305,7 @@ struct Contents {
 impl Contents {
     /// The row of the object `index` of `class` and `subclass` (its view `object`, what the
     /// player learnt of it `known`, its kind known `bonus`), the selected hero's `own` view and
-    /// `details`.
+    /// `details`, a creature by the original's number (`creatures`: a mine's guards).
     #[allow(clippy::too_many_arguments)]
     fn add(
         &mut self,
@@ -312,6 +317,7 @@ impl Contents {
         bonus: bool,
         own: Option<&OwnMapHero>,
         details: Option<&HeroDetails>,
+        creatures: &Creatures,
     ) {
         let index = int(index);
         let kind_known = i64::from(bonus);
@@ -327,7 +333,9 @@ impl Contents {
                 |p| i64::from(p.resource),
             );
             let guards = object.guards.as_ref().map_or_else(Vec::new, |g| {
-                let creature = g.creature.map_or(i64::from(SEVERAL), i64::from);
+                let creature = g
+                    .creature
+                    .map_or(i64::from(SEVERAL), |c| i64::from(creatures.number(c)));
                 alloc::vec![row(&[creature, first_count(g.count_word)])]
             });
             self.mines.push(Value::Array(alloc::vec![

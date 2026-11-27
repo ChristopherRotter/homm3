@@ -31,6 +31,15 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 
 ## Inbox
 
+- 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
+  nothing blocks**): the facts audit of play (E24 design §5.29) takes every fact an event carries
+  from the record (the Tomb's morale, a Cartographer's tiles, the prices paid, the slots joined,
+  the observatories' `TilesRevealed`) and asks the rest. Yours: **MCL-Q61** (a hero's own name and
+  custom portrait in the state from the import, as a town's), **MCL-Q62** (a map text in its
+  event or offer: Pandora's Box, signs, bottles, map, timed and town events, guarded messages,
+  Seer's texts), **MCL-Q63** (a monster's offer naming the stack offered), **MCL-Q65** (a hero's
+  derived primary skills, morale and luck as its window shows them), **MCL-Q69** (the slot a join
+  fills: `CreaturesJoined` comes with no `StackChanged`). Each recommends (a).
 - 2026-11-27 (the town lane, E09 T58a2, `town/e09-t58a2`, `cross-lane` with the user's consent,
   E09 decision 225; **in your paths, for your review; no rule or hash of yours changed**): (1)
   `MarketParams` (`market.rs`) tabulates every count's lot of every pair at its build

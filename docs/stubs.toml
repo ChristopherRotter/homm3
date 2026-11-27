@@ -247,6 +247,13 @@ epic   = "E16"
 # reason = "A walk in play that begins a battle (a guard's zone entered, a monster or a hero attacked) ends play with an error (E24 M5 T4a, design section 5.26): the engine's battle runs, but the map hands it to no battle client in play yet. Lifted by M5 T6 (a human's attack played live in the window through the battle client's seat on the in-process session)"
 # epic   = "E24"
 
+# MCL-STUB-7, a comment for the same reason; its marker `// stub: MCL-STUB-7` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-7"
+# where  = "clients/crates/h3-map-view/src/notice.rs::Notice"
+# reason = "A screen of M6 or M7 is a notice in the client's words in play (E24 M5 T4c, design section 5.28): the hero screen, the town screen (a hero's entry into a town too), the spell book, the kingdom overview, the quest log and the adventure options show a box with one OK; a decision the view does not ask (a hire dialog or a dwelling's or a Refugee Camp's hire question, a Shipyard's boat, a University, a market, an Altar, a Hill Fort, a map Tavern, a meeting, an army dialog, a garrison's exchange, and a guarded object's or a dwelling's guards' fight) shows its window's notice, whose OK closes the decision through the host (the offer declined, the window left or closed). A recording refuses them as before. Lifted screen by screen by M6 (the hero's screens) and M7 (the town screen), the fights by M5 T6 (the battles in play)"
+# epic   = "E24"
+
 # --- town (TWN-STUB-<n>) ---
 
 [[stub]]
