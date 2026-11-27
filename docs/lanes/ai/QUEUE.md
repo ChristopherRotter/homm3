@@ -30,7 +30,8 @@ resumes (the epic file); its tasks are cut then.
   `h3_battle::estimate`'s `caster.rs`), T2f the artifacts (done 2026-11-26, not cut, AI-Q37; the
   equipped value moved to increment 3), T2g the army and town values (done 2026-11-27, not cut,
   AI-Q38), T2h the object value (done 2026-11-27, not cut, AI-Q39; `tile_index` public,
-  AI-Q40), **T2i** the planning (next), T2j the walk with the exit's
+  AI-Q40), T2i0 the computer's search (inserted and done 2026-11-27, whole, AI-Q41:
+  `h3_adventure::search`, `cross-lane`), **T2i** the planning (next), T2j the walk with the exit's
   property tests and the gated benchmark, T2k trace T-A's harness and days 1 to 3. Each with its
   `CPU-` ids, tests, coverage 100 %, stubs by epic.
   - **T2i — the planning** (next; survey §1.9; the epic file's table: the danger map
@@ -38,9 +39,15 @@ resumes (the epic file); its tasks are cut then.
     candidate's score `ai_candidate_score` 0x42F980, the destination `ai_hero_destination`
     0x42E0B0 with its noise (76 to 100, the caller's stream), the class tables; since T2d the
     start's Grail target (+0x39, AI-STUB-15); about 2 900 of the original's instructions):
-    measure its size at the start and propose a cut by size (the user: a couple of small tasks or
-    one bigger one a session, a seam confirmed with them); `Heroes3.exe` staged (or attached) for
-    the readings. It calls T2h's object value (`objects::value` with an `objects::Asking`: the
+    measured at T2i0's session: 11 functions, 7.7 KB, about 2 860 instructions, plus about 270 for
+    `ai_hero_search_and_walk` 0x5267B0's search loop; **the user: whole** (AI-Q41); `Heroes3.exe`
+    staged (or attached) for the readings. Its searches are T2i0's `computer_search` (survey
+    §1.11): the danger map mode 3 with the enemy's maximum plus 300; the hero's own mode 4 (5 from
+    the walk) with the budget and its points left, the danger map as `SearchAsks::danger`,
+    `objects::fight_answer` as `fight_answer`, the jumps as `pathfinder_run` sets them
+    (0x56B4FC..0x56B731: `SearchJumps`); the claims mode 2 from the colleague's kept destination;
+    the value field mode 1 with 59 999 points, bound 500, in a `SearchWindow` of 5 tiles each way
+    (read its exact bounds at 0x42E0B0); the fog `SearchFog::Computer` (AI-Q41). It calls T2h's object value (`objects::value` with an `objects::Asking`: the
     hero's `towns::Asked` and its kept destination, +0x35, which the Magic Well and Spring read;
     the candidate's cost, which some classes lower) and lifts the `expect(dead_code)` of
     `computer/fight.rs`, `skills.rs`, `armies.rs`, `towns.rs`, `objects.rs` and `vision.rs`

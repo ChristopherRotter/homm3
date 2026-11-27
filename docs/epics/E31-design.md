@@ -56,7 +56,7 @@ draft points 5 and 8 say (no reseed, a record from the first turn start).
 
 | Need | Where | Lane | When |
 |---|---|---|---|
-| The pathfinder's query with an overlay (the boat marks, §1.3, §1.10) and the original's fog test for a computer (ADV-MOV-008) | `h3_adventure::reach` | adventure | increment 2 |
+| The pathfinder's query with an overlay (the boat marks, §1.3, §1.10) and the original's fog test for a computer (ADV-MOV-008) | `h3_adventure::search` (built: the original's computer pathfinder, the marks and the fog the caller's, `SearchAsks`, `SearchFog`) | ai, `cross-lane` (AI-Q41) | done at T2i0 |
 | Each object's contents and guards read as the original reads them (the faithful policy reads the whole state) | `h3-adventure`'s public accessors | adventure | increments 2, 4 |
 | A town's buildable set, prices and growth as the original's build choice reads them | `h3-towns`, `legal_commands` | town | increment 3 |
 | The hero's derived values (the spells and masteries, the movement) | `h3-heroes` (ADR-0013 point 2) | adventure | increment 2 |

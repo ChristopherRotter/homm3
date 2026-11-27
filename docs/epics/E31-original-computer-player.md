@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23 (T1a1a; refined 2026-11-21, AI-Q22); increment 1 closed
 2026-11-24 (AI-Q31), increments 2 to 7 cut; increment 2 refined 2026-11-25 (AI-Q32: ADR-0030
-accepted, eleven tasks), T2a to T2h done, T2i next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
+accepted, eleven tasks; T2i0 inserted at T2i's start, AI-Q41), T2a to T2h and T2i0 done, T2i next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
 fair system actor) for battle · Prerequisite of E13 (its target and ladder opponent) ·
 Consumers: the env (a computer seat), the server (a computer player in a hosted game), the shell
 (a game's computer players), the adventure lane (ADV-STUB-8, ADV-STUB-9)
@@ -232,3 +232,9 @@ Increment 2's (increment 1's: `E31-archive.md`).
   (`cross-lane`, AI-Q40); `expect(dead_code)` until T2i; `ai_join_without_room` 0x52BC60 to
   increment 3; AI-STUB-20 (the Hut of the Magi, the Obelisk, the Seer, E12, E09), AI-STUB-21 (a
   campaign's garrisons, E20); §5.5's #72 and #73 new. Record: `E31-log.md` T2h.
+- **T2i0** (2026-11-27, inserted and whole, AI-Q41): the original's computer pathfinder in
+  `h3-adventure` (`h3_adventure::search`, `cross-lane`; CPU-PTH-001 to -007: the frame and its open
+  list, the relax, the step over several days with the fog by the variant, the guards by the
+  caller's fight answer, the passage past an entrance, the teleporters, mode 4's jumps), the
+  threat fold on it (AI-STUB-11 lifted); AI-STUB-22 (Castle Gate, Town Portal, E09), AI-STUB-23
+  (the Sanctuary, the Quest Guard, E12); §5.5's #74 to #79 new. Record: `E31-log.md` T2i0.
