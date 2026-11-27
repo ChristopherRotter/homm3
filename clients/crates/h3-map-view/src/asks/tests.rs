@@ -917,3 +917,35 @@ fn the_styles_of_the_others() {
     let looted = ask(&seen(16, 0, 1 << 25)).unwrap();
     assert_eq!(looted.style(), Style::Ok);
 }
+
+#[test]
+fn a_notice_s_box_and_its_answers() {
+    // E24 M5 T4c (design §5.28): a box of style 1 in the client's words, no status window chosen
+    // before it, not from beside of itself (its tile's, `engine::visits::lay`), no answer of the
+    // client's (the host's closing answer), its Cancel's the default.
+    use crate::notice::Notice;
+    let texts = Catalogue {
+        packs: vec![
+            Pack::from_json(
+                "en",
+                r#"{ "map": { "stub": { "battle": "{Battle}\n\nNot yet." } } }"#,
+            )
+            .unwrap(),
+        ],
+    };
+    let notice = Ask::Notice(Notice::Battle);
+    let told = notice.told(&texts);
+    assert_eq!(
+        (told.text.as_str(), told.pictures.len()),
+        ("{Battle}\n\nNot yet.", 0)
+    );
+    assert_eq!((notice.style(), notice.asks()), (Style::Ok, false));
+    assert!(!notice.chooses() && !notice.beside() && !notice.flags());
+    let tables = tables();
+    assert_eq!(notice.yes(&tables.map.finds, &art(), &texts), None);
+    assert_eq!(
+        (notice.no(), notice.second()),
+        (Some(Reply::default()), None)
+    );
+    assert_eq!((notice.or(&texts), notice.attacker()), (None, None));
+}

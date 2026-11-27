@@ -5,6 +5,11 @@
 //! families, the battle's, left out), their original forms read from the installation copy's text
 //! tables (the archives as the game searches a name) and from its `Heroes3.exe` (the table
 //! `EXE`), as the battle client's `h3-view text` reads them.
+//!
+//! Since E24 M5 T4c (*provisional*, design §5.28) the map client's own texts ([`own_pack`]: the
+//! screens' notices, [`h3_map_view::notice::KEYS`]): keys with no original form and their messages
+//! in the client's words, beside the common catalogue in a folder of their own
+//! (`clients/text/map/`: the common one's own keys the battle client's tests pin, MCL-Q68).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -13,7 +18,7 @@ use std::path::{Path, PathBuf};
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_map_view::asks::Traits;
-use h3_map_view::{asks, finds, hover, levels, panels, status, turn};
+use h3_map_view::{asks, finds, hover, levels, notice, panels, status, turn};
 use h3_ui::text::Catalogue;
 use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, KeysFile, Row, address_field};
 use h3_ui::text::pack::{Pack, Tables};
@@ -74,6 +79,43 @@ pub fn default_keys() -> PathBuf {
 /// (E24 M3 T7c1, *provisional*; the build's own folder is not on that machine).
 pub fn keys_beside(map: &Path) -> PathBuf {
     map.join("../text/keys.toml")
+}
+
+/// The map client's own catalogue beside the common one (E24 M5 T4c): its keys, the pack of their
+/// messages beside them ([`OWN_PACK`]).
+pub const OWN_KEYS: &str = "map/keys.toml";
+
+/// The map client's own pack beside its own keys ([`OWN_KEYS`]).
+pub const OWN_PACK: &str = "map/en.json";
+
+/// The map client's own texts beside the common catalogue at `catalogue` (E24 M5 T4c, design
+/// §5.28, *provisional*; the module's documentation): its own keys ([`OWN_KEYS`], each of
+/// [`notice::KEYS`] among them) and their pack ([`OWN_PACK`]), checked as the battle client checks
+/// its own pack: an entry no key names, a placeholder its key lacks or a key it gives no message is
+/// an error.
+pub fn own_pack(catalogue: &Path) -> Result<Pack, String> {
+    let keys_path = catalogue.with_file_name(OWN_KEYS);
+    let text =
+        fs::read_to_string(&keys_path).map_err(|e| format!("{}: {e}", keys_path.display()))?;
+    let keys = Keys::parse(&text, &BTreeMap::new())
+        .map_err(|e| format!("{}: {e}", keys_path.display()))?;
+    if let Some(id) = notice::KEYS.iter().find(|&&id| !keys.keys.contains_key(id)) {
+        return Err(format!("{}: no key `{id}`", keys_path.display()));
+    }
+    let path = catalogue.with_file_name(OWN_PACK);
+    let json = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let pack = Pack::from_json("en", &json).map_err(|e| format!("{}: {e}", path.display()))?;
+    let mut wrong: Vec<String> = pack.check(&keys).iter().map(ToString::to_string).collect();
+    wrong.extend(
+        pack.lacks(&keys)
+            .iter()
+            .map(|id| format!("`{id}`: not given")),
+    );
+    if wrong.is_empty() {
+        Ok(pack)
+    } else {
+        Err(format!("{}: {}", path.display(), wrong.join("; ")))
+    }
 }
 
 /// The viewer's keys of the catalogue `text`: the panels' and the status window's
@@ -245,7 +287,8 @@ fn exe_string(exe: &[u8], at: Option<usize>) -> Option<String> {
 
 /// The panels' texts for the installation copy `install` (its `Heroes3.exe`) and its `archives`:
 /// the original's pack of the viewer's [`keys`] of the catalogue beside the data folder `map`
-/// ([`keys_beside`]); a form that cannot be read is an error.
+/// ([`keys_beside`]); a form that cannot be read is an error. Since E24 M5 T4c the map client's
+/// own pack ([`own_pack`]) before it.
 pub fn catalogue(
     install: &Path,
     map: &Path,
@@ -258,10 +301,13 @@ pub fn catalogue(
     let exe_path = crate::sounds::find_ci(install, "Heroes3.exe")
         .map_err(|e| format!("{}: Heroes3.exe: {e}", install.display()))?;
     let exe = fs::read(&exe_path).map_err(|e| format!("{}: {e}", exe_path.display()))?;
+    let own = own_pack(&path)?;
     let (pack, problems) = Pack::original(&keys, &tables(&keys, archives, &exe)?);
     match problems.first() {
         Some(p) => Err(format!("the original's texts: {p}")),
-        None => Ok(Catalogue { packs: vec![pack] }),
+        None => Ok(Catalogue {
+            packs: vec![own, pack],
+        }),
     }
 }
 
@@ -312,6 +358,56 @@ mod tests {
         assert_eq!(exe_string(exe, Some(99)), None);
         assert_eq!(exe_string(b"no end", Some(0)), None);
         assert_eq!(exe_string(b"%s\n%s\0", Some(0)).as_deref(), Some("%s\n%s"));
+    }
+
+    #[test]
+    fn the_map_client_s_own_texts_give_its_notices() {
+        // E24 M5 T4c: each notice's key, its message in the client's words.
+        let own = own_pack(&default_keys()).unwrap();
+        let ids: Vec<&str> = own.messages.keys().map(String::as_str).collect();
+        let mut want = notice::KEYS.to_vec();
+        want.sort_unstable();
+        assert_eq!(ids, want);
+        let catalogue = Catalogue { packs: vec![own] };
+        let text = catalogue.text("map.stub.hero", &h3_ui::text::Args::new());
+        assert_eq!(text, "{Hero}\n\nThe hero screen is not available yet.");
+        // Beside another catalogue: its own files checked.
+        let dir = std::env::temp_dir().join(format!("h3-map-own-{}", std::process::id()));
+        fs::create_dir_all(dir.join("map")).unwrap();
+        let catalogue = dir.join("keys.toml");
+        let own = |keys: &str, pack: &str| {
+            fs::write(dir.join(OWN_KEYS), keys).unwrap();
+            fs::write(dir.join(OWN_PACK), pack).unwrap();
+            own_pack(&catalogue)
+        };
+        let all: String = notice::KEYS
+            .iter()
+            .map(|id| format!("[[key]]\nid = \"{id}\"\n"))
+            .collect();
+        let given = |extra: &str| {
+            let entries: Vec<String> = notice::KEYS
+                .iter()
+                .map(|id| format!("\"{id}\": \"x\""))
+                .chain((!extra.is_empty()).then(|| extra.to_string()))
+                .collect();
+            format!("{{ {} }}", entries.join(", "))
+        };
+        assert!(own(&all, &given("")).is_ok());
+        let wrong = own(&all, &given("\"map.other\": \"y\"")).unwrap_err();
+        assert!(
+            wrong.ends_with("`map.other`: no key has this name"),
+            "{wrong}"
+        );
+        let lacking = own(&format!("{all}[[key]]\nid = \"map.more\"\n"), &given(""));
+        assert!(lacking.unwrap_err().ends_with("`map.more`: not given"));
+        let short = own("[[key]]\nid = \"map.stub.hero\"\n", "{}").unwrap_err();
+        assert!(short.ends_with("no key `map.stub.town`"), "{short}");
+        assert!(own("[[key]]\nnot = 1\n", "{}").is_err());
+        assert!(own(&all, "not json").is_err());
+        fs::remove_file(dir.join(OWN_PACK)).unwrap();
+        assert!(own_pack(&catalogue).is_err());
+        fs::remove_dir_all(&dir).unwrap();
+        assert!(own_pack(&dir.join("keys.toml")).is_err());
     }
 
     #[test]

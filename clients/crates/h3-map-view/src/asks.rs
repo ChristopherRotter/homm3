@@ -42,6 +42,10 @@
 //!
 //! Since E24 M4 T2d1 (design §5.6, *provisional*): a dwelling of another team without guards is
 //! the visitor's first ([`Ask::flags`]), then asks its hire as the visitor's own does.
+//!
+//! Since E24 M5 T4c (design §5.28, *provisional*): live, a decision the view does not ask is a
+//! notice in the client's words ([`Ask::Notice`]: a box of style 1, its OK the host's closing
+//! answer).
 
 use alloc::boxed::Box;
 use alloc::format;
@@ -57,6 +61,7 @@ use serde::Deserialize;
 use crate::finds::{self, FindArt, Gain, Reward, Told};
 use crate::hover::SIZES;
 use crate::live::Stack;
+use crate::notice::Notice;
 
 /// The questions' numbers (the tables' `[map.asks]`; design §5.4).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
@@ -529,6 +534,10 @@ pub enum Ask {
         /// The price, `[resource, amount]`.
         price: [i32; 2],
     },
+    /// Live, the notice of a decision the view does not ask (E24 M5 T4c, design §5.28,
+    /// `MCL-STUB-7`; [`crate::notice`]): a box of style 1 in the client's own words, its OK the
+    /// host's closing answer (no answer of the client's: [`Ask::yes`] none).
+    Notice(Notice),
 }
 
 /// A monster's aggression in its `word` (bits 12 to 16, signed: −16 to 15).
@@ -709,7 +718,7 @@ impl Ask {
     }
 
     /// Whether its box is a question (style 2, its OK and Cancel); a looted bank's and the Tree's
-    /// visited and too poor ones are an OK's alone (style 1).
+    /// visited and too poor ones are an OK's alone (style 1), as a notice's (E24 M5 T4c).
     #[must_use]
     pub const fn asks(&self) -> bool {
         !matches!(
@@ -717,12 +726,14 @@ impl Ask {
             Self::Bank { looted: true, .. }
                 | Self::Tree { visited: true, .. }
                 | Self::Tree { poor: true, .. }
+                | Self::Notice(_)
         )
     }
 
     /// Whether its handler builds the status window again before its box (`status_window_choose`
     /// 0x415DE0 with 0, 1, 1: the pile's, the artifact's, the mine's, the bank's, the dwelling's
-    /// and the Pyramid's; *provisional* for a dwelling's hire, as its guards').
+    /// and the Pyramid's; *provisional* for a dwelling's hire, as its guards'; a notice's not, E24
+    /// M5 T4c: no original).
     #[must_use]
     pub const fn chooses(&self) -> bool {
         !matches!(
@@ -734,12 +745,14 @@ impl Ask {
                 | Self::Pass
                 | Self::Maps(_)
                 | Self::OpenBox { .. }
+                | Self::Notice(_)
         )
     }
 
     /// Whether its object blocks its entrance (a pile, a scroll, an artifact; since part A2 a
     /// monster, a Border Guard, Pandora's Box; since part B a chest): a key's step onto it visits
-    /// it from beside.
+    /// it from beside. A notice's by its tile (E24 M5 T4c: `crate::engine::visits::lay`), none
+    /// here.
     #[must_use]
     pub const fn beside(&self) -> bool {
         matches!(
@@ -909,6 +922,7 @@ impl Ask {
                     (PRIMARY + 3, i32::from(*gain)),
                 ],
             },
+            Self::Notice(notice) => plain(notice.key()),
         }
     }
 

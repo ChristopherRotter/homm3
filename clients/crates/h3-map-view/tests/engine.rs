@@ -86,6 +86,23 @@ const LINES: [&str; 8] = [
 ];
 
 /// The game's templates: the map's, then a monster's of every creature (`M<creature>.def`).
+/// A visit placed on object `object` of `class` on its own tile (E24 M5 T4c: `visits::lay`'s
+/// `object_at`), from beside or not.
+fn placed(
+    v: &engine::Visit,
+    object: usize,
+    class: [u32; 2],
+    beside: bool,
+) -> engine::visits::Placed {
+    engine::visits::Placed {
+        at: v.at,
+        object,
+        class,
+        word: None,
+        beside,
+    }
+}
+
 fn templates() -> Vec<ObjectTemplate> {
     let monster = |c: u32| {
         format!(
@@ -2917,14 +2934,14 @@ fn a_record_s_visits_laid_out_each_on_its_own() {
         });
     }
     visits[1].levels = vec![0, 1];
-    let object_at = |at: h3_map::model::Pos| match at.x {
-        5 => Some((1, [112, 0], None)),
-        6 => Some((2, [6, 0], None)),
-        7 => Some((3, [4, 0], None)),
-        8 => Some((4, [53, 0], None)),
-        9 => Some((5, [54, 139], None)),
-        10 => Some((6, [5, 0], None)),
-        11 => Some((7, [96, 0], None)),
+    let object_at = |v: &engine::Visit| match v.at.x {
+        5 => Some(placed(v, 1, [112, 0], false)),
+        6 => Some(placed(v, 2, [6, 0], false)),
+        7 => Some(placed(v, 3, [4, 0], false)),
+        8 => Some(placed(v, 4, [53, 0], false)),
+        9 => Some(placed(v, 5, [54, 139], false)),
+        10 => Some(placed(v, 6, [5, 0], false)),
+        11 => Some(placed(v, 7, [96, 0], false)),
         _ => None,
     };
     let text = std::fs::read_to_string(
@@ -3050,7 +3067,7 @@ fn a_record_s_object_taken_alone() {
     let laid = visits::lay(
         &[visit],
         None,
-        |_| Some((3, [81, 0], None)),
+        |v| Some(placed(v, 3, [81, 0], false)),
         &tables.map.finds,
         |_| String::new(),
     );
@@ -3308,9 +3325,9 @@ fn a_record_s_flags_in_their_owners_colours() {
     assert_eq!(flags, [Some(5), Some(3), Some(5), None, Some(3)]);
     // Laid out on a mine (the first and the last walk's) and a Shipyard: each visit's own flag,
     // a Shipyard's alone.
-    let object_at = |at: h3_map::model::Pos| match at.x {
-        5 => Some((0, [53, 0], None)),
-        6 => Some((1, [87, 0], None)),
+    let object_at = |v: &engine::Visit| match v.at.x {
+        5 => Some(placed(v, 0, [53, 0], false)),
+        6 => Some(placed(v, 1, [87, 0], false)),
         _ => None,
     };
     let text = std::fs::read_to_string(
@@ -4213,7 +4230,6 @@ fn a_live_visit_asks_the_question_of_the_decision_held_open() {
     assert_eq!(ask(&primary(2, Vec::new(), false), 101), None);
     assert_eq!(ask(&pandora, 101), None);
     assert_eq!(ask(&offer(OfferKind::Pass {}), 6), None);
-    assert_eq!(ask(&offer(OfferKind::Fight {}), 54), None);
     let level = Decision::LevelUp {
         level_up: LevelUp {
             hero: 0,
@@ -4247,7 +4263,7 @@ fn a_live_visit_asks_the_question_of_the_decision_held_open() {
     let laid = visits::lay(
         &[visit(0), visit(1)],
         Some(&open),
-        |_| Some((3, [101, 0], None)),
+        |v| Some(placed(v, 3, [101, 0], false)),
         &tables.map.finds,
         |_| "Rion".into(),
     );
@@ -4279,7 +4295,7 @@ fn a_live_visit_asks_the_question_of_the_decision_held_open() {
         visits::lay(
             core::slice::from_ref(&leveled),
             open,
-            |_| Some((3, [102, 0], None)),
+            |v| Some(placed(v, 3, [102, 0], false)),
             &tables.map.finds,
             |_| String::new(),
         )
@@ -4297,6 +4313,197 @@ fn a_live_visit_asks_the_question_of_the_decision_held_open() {
     };
     assert_eq!(levels, &[0]);
     assert!(lay(None).is_empty());
+}
+
+#[test]
+fn a_live_visit_s_notice_of_a_decision_the_view_does_not_ask() {
+    // E24 M5 T4c (design §5.28): a fight's, a hire's, a window's notice, whatever the object, its
+    // every answer its OK's; laid out from beside where the object blocks its tile, a meeting's on
+    // no object; a town entered its screen's notice.
+    use h3_map_view::asks::Ask;
+    use h3_map_view::engine::visits::{self, Answered, Kept, Laid, NO_OBJECT, Told};
+    use h3_map_view::notice::Notice;
+    use h3_protocol::wire::game::{
+        Answer, Consent, Decision, GameEvent, Offer, OfferKind, Pos as WirePos,
+    };
+    let offer = |kind| Decision::Offer {
+        offer: Offer {
+            hero: 0,
+            object_type: 1,
+            anchor: WirePos {
+                x: 5,
+                y: 4,
+                level: 0,
+            },
+            kind,
+        },
+    };
+    let fight = offer(OfferKind::Fight {});
+    let meeting = Decision::Meeting { heroes: [0, 1] };
+    for (decision, class, notice) in [
+        (&fight, 79, Notice::Battle),
+        (&fight, 54, Notice::Battle),
+        (&meeting, 0, Notice::Meeting),
+    ] {
+        assert_eq!(
+            visits::opened(decision, [class, 0], None, "Rion"),
+            Some(Ask::Notice(notice))
+        );
+    }
+    let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
+    let visit = |walk, answers: Vec<(Answer, Vec<GameEvent>)>| engine::Visit {
+        at,
+        walk,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
+        flag: None,
+        events: Vec::new(),
+        answers,
+        battle: None,
+    };
+    let decline = Answer::Offer {
+        consent: Consent::Decline,
+    };
+    let told = |v: &engine::Visit, d: &Decision| match visits::live(v, d, ([79, 0], None), "") {
+        Some(Told::Ask { ask, answered, .. }) => Some((ask, answered)),
+        _ => None,
+    };
+    let battle = Ask::Notice(Notice::Battle);
+    assert_eq!(
+        told(&visit(0, Vec::new()), &fight),
+        Some((battle.clone(), Answered::Open))
+    );
+    assert_eq!(
+        told(&visit(0, vec![(decline, Vec::new())]), &fight),
+        Some((battle, Answered::Yes))
+    );
+    let text = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml"),
+    )
+    .unwrap();
+    let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
+    let lay = |visits: &[engine::Visit], open: Option<&[(usize, Decision)]>, beside| {
+        visits::lay(
+            visits,
+            open,
+            |v: &engine::Visit| match v.at.x {
+                5 => Some(placed(v, 3, [79, 0], beside)),
+                _ => None,
+            },
+            &tables.map.finds,
+            |_| String::new(),
+        )
+    };
+    // A guarded pile's fight: from beside where the walk stops one short of it; on its entrance,
+    // not.
+    let open = [(0, fight.clone())];
+    for beside in [true, false] {
+        let [
+            Laid {
+                told:
+                    Told::Ask {
+                        ask: Ask::Notice(Notice::Battle),
+                        answered: Answered::Open,
+                        ..
+                    },
+                object: 3,
+                blocks,
+                kept,
+                ..
+            },
+        ] = &lay(&[visit(0, Vec::new())], Some(&open), beside)[..]
+        else {
+            panic!("the fight's notice");
+        };
+        assert_eq!((*blocks, *kept), (beside, Kept::default()));
+    }
+    // A monster's offer on the way (its zone entered): told where the engine's walk ended, on its
+    // tile or from beside by the engine's walk.
+    let zone = h3_map::model::Pos { x: 4, ..at };
+    let join = [(0, offer(OfferKind::Join {}))];
+    for beside in [false, true] {
+        let laid = visits::lay(
+            &[visit(0, Vec::new())],
+            Some(&join),
+            |_| {
+                Some(visits::Placed {
+                    at: zone,
+                    object: 3,
+                    class: [54, 9],
+                    word: Some(14),
+                    beside,
+                })
+            },
+            &tables.map.finds,
+            |_| String::new(),
+        );
+        let [
+            Laid {
+                at,
+                blocks,
+                told:
+                    Told::Ask {
+                        ask: Ask::Monster { .. },
+                        ..
+                    },
+                ..
+            },
+        ] = &laid[..]
+        else {
+            panic!("the monster's offer");
+        };
+        assert_eq!((*at, *blocks), (zone, beside));
+    }
+    // A meeting on no object's entrance: on none, from beside; another walk's visit there, or a
+    // record's, nothing.
+    let elsewhere = h3_map::model::Pos { x: 9, ..at };
+    let met = [engine::Visit {
+        at: elsewhere,
+        ..visit(1, Vec::new())
+    }];
+    let open = [(1, meeting.clone())];
+    let [
+        Laid {
+            told:
+                Told::Ask {
+                    ask: Ask::Notice(Notice::Meeting),
+                    ..
+                },
+            object: NO_OBJECT,
+            blocks: true,
+            ..
+        },
+    ] = &lay(&met, Some(&open), false)[..]
+    else {
+        panic!("the meeting's notice");
+    };
+    assert!(lay(&met, Some(&[(0, meeting)]), false).is_empty());
+    assert!(lay(&met, None, false).is_empty());
+    // A town entered (live, nothing else told): the town screen's notice; a record's, nothing.
+    let town = |open| {
+        visits::lay(
+            &[visit(0, Vec::new())],
+            open,
+            |v| Some(placed(v, 2, [98, 1], false)),
+            &tables.map.finds,
+            |_| String::new(),
+        )
+    };
+    let [
+        Laid {
+            told: Told::Notice(Notice::Town),
+            blocks: false,
+            kept,
+            ..
+        },
+    ] = &town(Some(&[]))[..]
+    else {
+        panic!("the town's notice");
+    };
+    assert_eq!(*kept, Kept::default());
+    assert!(town(None).is_empty());
 }
 
 #[test]
