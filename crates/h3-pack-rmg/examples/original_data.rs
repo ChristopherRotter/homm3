@@ -7,7 +7,9 @@
 //! zone at 76 or more with column 3 set, a connection at 85 or more with 76 set and 77 not empty;
 //! *set*: not empty, no leading space; numbers as `c_atoi`; quoted cells as the game's loader).
 //! In `faithful` the part must equal the tables; in `strict-fixed` it differs only by 8XM8's six
-//! decimal first zones, 6, 6, 7, 7, 8, 8 (RMG-QUIRK-22). An object template's `.msk` fields
+//! decimal first zones, 6, 6, 7, 7, 8, 8 (RMG-QUIRK-22). The object templates in SoD's line
+//! order are the generator's table, whose index the phase oracle's dump gives (E14 T4b). An
+//! object template's `.msk` fields
 //! (width, height, colour mask; E14 T4b) are not in the text tables: they are taken from the part
 //! here and checked against the sprite archives by `h3-harvest`'s own `original_data` example.
 //! Without the text tables the check is skipped with a note. The installation copy is only read.

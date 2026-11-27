@@ -345,6 +345,32 @@ reads, +0x0, +0x1, +0x2 and +0x8 (`object_settings_init` 0x41B500: a class no ta
 its own class as +0x8 and the flags clear), are harvested into SoD's `[generator]` too
 (`GeneratorTables::object_settings`).
 
+**The objects as ported (T4b).** `h3-rmg`'s `objects` module (`Objects`, `Prototype`, `Shape`,
+`Object`; each cell's list in `Cells`) ports `rmg_objects_read`, `rmg_map_place_object`,
+`rmg_generator_add_object`, `rmg_map_can_place`, `rmg_map_footprint_blocked`,
+`rmg_prototype_outline` and `rmg_map_outline_clear`, all read again whole. As read: the filter's
+numbers are signed (`c_atoi`'s: a subclass of 2^31 or more passes the monoliths' and gates'
+test); the monsters' exchange sort swaps the two prototypes' template pointers when the earlier
+subtype is greater, which can reverse equal subtypes (2a 2b 1 gives 1 2b 2a); the part's merged
+object table is SoD's `Objects.txt` in line order (`h3-pack-rmg`'s `original_data` example
+compares them), the index the phase oracle's dump gives. The add counts the type, then the
+entrance's zone (its zone byte an index into +0x10E0, unchecked), then floods: two vectors, the
+cells and their distances falling, the last entry taken and the cell's own distance read again
+(the queued one unused), a cell lowered strictly below its value (the d + 2 or d + 3 of its
+neighbour) inserted by a binary search before the first entry of a distance at most its own.
+Precisions: placing tests the map's columns and rows per cell, not the level; the footprint test
+reads every footprint cell once its bounds pass (no per-cell test); `rmg_map_can_place` tests only
+the row of the cell below the entrance against the height, not its column, its row's lower bound
+or its level (the column stays on the map only while the entrance lies within the footprint's
+width, true of every shipped line); the outline's four refusals never happen (the walker stands
+only on cells it may enter, its start below the footprint), and the walk stays within one cell
+around the footprint's box. A bit position past 47 (a footprint past 8 × 6) is `std::bitset`'s
+range error `bitset_range_error` 0x41B410, which the original throws (code 1). The port's faults
+(`ObjectFault`, kept until the step ends: `GenerateError::Objects`) are the empty outline's
+division (RMG-QUIRK-3), that range error, an unchecked cell off the map, an entrance zone byte
+past the zone generators and an entrance below without an object listed (RMG-QUIRK-4); none is
+reached with the shipped tables.
+
 **Draw sites** (none runs during the setup but water's; the others run when a step creates an
 object through these methods):
 
