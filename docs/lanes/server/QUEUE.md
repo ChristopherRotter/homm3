@@ -12,6 +12,18 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for your planning; the wire
+  comes in `cross-lane` pull requests**): E10 increment 1 (the teams and the game's end) is
+  designed (`docs/epics/E10-design.md` §14 to §16). What reaches `h3-protocol` (T4b, T6, protocol
+  v86 at the first): the events `LastTownLost`, `DaysLeft`, `PlayerDefeated`, `ObjectFreed`,
+  `PlayerHandedOver`, `GameOver`; the errors `AllyHero`, `Defeated`, `GameOver`, `NotHuman`; the
+  observation's `PlayerView` fields (`team`, `defeated`, `human`, the owner's days) and the
+  result; **`SystemCommand::HandOver { player }`** (SRV-Q29's removal, E10 decision 15: the
+  colour becomes a computer, the host plays it with its system commands, until E31 by ending its
+  turns). For `h3-server`: a hosted whole game ends at `GameOver` (its "never ends before E10"),
+  and a seat that leaves may be handed over (when is yours to decide). **No human left ends the
+  game** (decision 14): it reads `PlayerSetup::human`, which `whole.rs` sets true for every seat;
+  a handed-over seat is then a computer, so the last human leaving ends the game.
 - 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
   nothing blocks**): the facts audit of play (E24 design §5.29) asks for wire fields the view
   lacks: **MCL-Q61** (`HeroInfo`'s name and custom portrait), **MCL-Q62** (a map text in its event

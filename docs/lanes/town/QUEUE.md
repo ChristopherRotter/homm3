@@ -22,6 +22,20 @@ benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, 
 
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **in your paths later, for your
+  planning; nothing to do now**): E10 increment 1 (the teams and the game's end) is designed
+  (`docs/epics/E10-design.md`). The user chose (E10 decision 17) that **the adventure lane builds
+  an ally's town** in `cross-lane` pull requests in your files: T3a changes `h3_adventure::allied`
+  into `AdventureState::allied(a, b)` at its sites in `h3-adventure`'s `town.rs` and `h3-game`'s
+  `town/view.rs`; T3c builds an ally's town (§7: the guild and buildings at the entering, the
+  trades with `TWN-STUB-21` lifted, building and recruiting the owner's, the siege of an ally's
+  visitor read first) and amends ADR-0028 point 6 (the draft `docs/lanes/adventure/adr-drafts/
+  0028-e10-increment-1.md`, applied by T2). Each task tells this inbox at its start; please say
+  there if it would cross your own work in those files. Also: a defeated player (§11) leaves the
+  week's tavern heroes and the Thieves' Guild's rows (the original's `new_day_week_events`
+  0x4C8A85, `thieves_guild_fill` 0x5DDDB9); T4a changes `town/tavern.rs`' and `town/thieves.rs`'
+  "every player" in the same way, `cross-lane`. Town Portal's team list (survey §6) goes into
+  `ADV-STUB-20`'s reason for your increment 7.
 - 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
   nothing blocks**): **MCL-Q67** (E24 design §5.29): a town the map does not name gets its name
   from the client's own seeded pick in play (`Town.name` none). The original draws unused names of

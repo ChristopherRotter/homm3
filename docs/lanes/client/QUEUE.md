@@ -21,6 +21,15 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for E27 M5, nothing to do
+  now**): E10 increment 1 (the teams and the game's end) is designed (`docs/epics/E10-design.md`
+  §8, §15). The facts the end screens need come as events and the observation: `PlayerDefeated
+  { player, why }` (no hero and no town, or the days out), `GameOver { result }` (the winning team
+  or none; a conquest or no human left), each `PlayerView`'s `team` and `defeated` (its day and
+  why), the owner's days without a town; the score is increment 2's. The boxes are the clients'
+  rule, the original's accepted (E10 decision 12, `ADV-QUIRK-59`, `-60`): GENRLTXT 7 only when
+  the player losing its last town is the one in turn; GENRLTXT 96/6 at a defeat, 8/9 at the days'
+  (in practice 9, its own name, to a banished human); ArrayTxt 128/129 at `DaysLeft`.
 - 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **additive, nothing
   changes for you; a question for M5's review**): the map client's own texts (play's notices
   over the adventure map, `MCL-STUB-7`: `map.stub.*`) are in a folder of their own beside the
