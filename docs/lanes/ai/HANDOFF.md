@@ -38,7 +38,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `benches/README.md` row of T2a's workload; ADR-0030's note that the simulated combat (AI-Q34)
   and the spell values (AI-Q36) are `h3_battle::estimate`'s.
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
-  block), replay format v32 (CLT-Q40), the adventure env's action encoding v22 (E09 T58a2), C ABI
+  block), replay format v32 (CLT-Q40), the adventure env's action encoding v23 (E09 T58b), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
   encoding v4 (`MEMORY_ENCODING_VERSION`, E31 T2f: the artifacts' mean) (`docs/08-work-process.md`,
   "Versions"). Next ids: AI-Q42, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-24;
