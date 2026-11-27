@@ -164,4 +164,6 @@ its checkpoint) and increment 3's (T3a to T3e, its checkpoint): `E14-archive.md`
 
 - Increment 3's checkpoint (2026-11-27, decision 11): increment 3 closed, increment 4 cut into T4a
   to T4e; log `## Increment 3's checkpoint`.
+- T4a (2026-11-27): the items not read, read (the masks, the placing tests, the islets' height map,
+  the monoliths' pairing, the null prototype); log `## T4a`.
 
