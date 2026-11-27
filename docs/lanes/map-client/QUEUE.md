@@ -42,7 +42,10 @@ in four parts). Next: T5.
   AI); the result in each human's view. With them a plain cut's battle (a record's walk's, an
   answer's the record player passes over: a dwelling's guards, Pandora's Box; design §5.20)
   restarting the ambient loops at its hand-back as a switch's lift does (T1c built it for the
-  switch's battles only, design §5.24: `dwellings-guards-s1`'s loop silent after its won battle).
+  switch's battles only, design §5.24: `dwellings-guards-s1`'s loop silent after its won battle); and the
+  terrain's music at the return as the original's, which restarts the track from its start at once
+  (MCL-Q47, answered by the user's ear at the M4 hand test, 2026-11-27: the reading's silence was
+  wrong; where the restart comes from read first, then built).
 - **Acceptance:** each kind played in a hot-seat game; the switches as recorded; the scoped
   verify.
 - **Depends on:** T4; the client lane's part of `CLT-STUB-4` and `-5`. **Status:** queued; cut
@@ -65,6 +68,12 @@ in four parts). Next: T5.
 - **Depends on:** T7. **Status:** queued.
 
 ## Inbox
+
+- 2026-11-27 (this lane, E24 M5 T5; **for the user to place**): MCL-Q11 (c) is settled by ear
+  (the M4 hand test's part 5: each `HORSE2x` is its terrain's `HORSE0x` with more footsteps, as on a
+  road). The option it asked for: a step on a road of terrain x plays `HORSE2x` (no 28: water), the
+  original's set by default and for the comparisons. A small task (the sound's settings, the step's
+  road read from the view's tile); not in M5's scope.
 
 - 2026-11-25 (the adventure lane, E08 T143b; **for your planning, nothing blocks**): protocol
   v84 casts Dimension Door. Its arrival is `AdventureEvent::HeroTeleported` (a teleporter's: each

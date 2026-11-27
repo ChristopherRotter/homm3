@@ -62,12 +62,11 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 ## Recent sessions
 
 - **2026-11-27, E24 M5 T5, in progress** (kept whole by the user at its start; branch
-  `map-client/e24-m5-t5`): part one done (the reading, 2834a0a: design §5.31 the hand-over, §5.32
-  the clock as shown; MCL-Q70 to Q73, next id MCL-Q74). Next: part two, the hot seat recorded
-  under Wine (design §5.31's recording plan), then the hand-over built, the clock built. The M4
-  hand test: parts 3 to 5 only (the user); part 5's samples were ADPCM (TRAPS), PCM copies and
-  `map-m4-part5.cmd` put in `clients/out/win/`.
-
+  `map-client/e24-m5-t5`): part one the reading (2834a0a: design §5.31 the hand-over, §5.32 the
+  clock; MCL-Q70 to Q73); part two the hot seat recorded (15e2ba3: `hot_seat` in `h3map.py`,
+  nine `seat-*` sequences in `clients/map/to-record.toml`, MCL-Q74; next id MCL-Q75). Next: part
+  three, the hand-over built; then the clock recorded and built. The M4 hand test (parts 3 to 5
+  only, the user) placed: MCL-Q47 answered (T6), MCL-Q11 (c) queued, two kit traps.
 - **2026-11-27, E24 M5 T4c** (kept whole by the user at its start, "use subagents efficiently";
   one runner, five worker sub-agents in turn): a read-only audit of play's facts; the notice
   (`MCL-STUB-7`, 17 keys in `clients/text/map/`, MCL-Q68); the audit's class-A rows (a price paid
@@ -86,12 +85,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   Checked under Xvfb on six situation maps (gzipped for `play`). The PC up at the start only (58
   files and the manuals staged, SHA-256 checked); the VM restarted between the parts (files
   kept); the setup's baseline stopped at coverage (CI's Clients on `master` standing in).
-
-- **2026-11-26, E24 M5 T4a** (T4 cut in three by the user at its start): `h3_map_view::reach`
-  (`Stand`, `Reach`, `Hosted`, `WalkAsked`), the loop's and the replay's host questions (the
-  reach per stand, a walk past the known ones, refusals by stand), `Hover::cursor_by`,
-  `HotSeat::play` and `query`, `Session::moves` and `walk`, `paint::live_walks`; T3b's End Turn
-  after a walk fixed (`live_turns` by the view's start's heroes); `MCL-STUB-6` registered. The PC
-  up at the start only (the files and manuals staged, SHA-256 checked); the VM restarted once
-  (the baseline lost, CI's Clients on `master` standing in; CI's engine run there red, the ai
-  lane's `computer/start/tests.rs`).

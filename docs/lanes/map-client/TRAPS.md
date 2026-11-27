@@ -145,6 +145,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `--map` (the catalogue beside it, `<map>/../text/keys.toml`) and `--install`; a hand test's
   `.cmd` passes both, master's `clients/map` and `clients/text` copied into `out/win/<task>/` when
   the user's checkout is behind. A new file a command reads goes beside `--map` too.
+- **A hand-test kit carries its own packs and plays PCM** (M5 T5, the M4 kit's run on
+  2026-11-27): the `.cmd`'s `--packs ..\packs` read the user's checkout, newer than the kit's
+  binary by then (an unknown quirk flag: two parts never ran); copy the packs the binary was built
+  with into `out/win/<task>/` and pass those. A `.cmd`'s PowerShell `Media.SoundPlayer` plays PCM
+  only, and the original's samples are IMA ADPCM (format 17): convert them for the kit
+  (`ffmpeg -c:a pcm_s16le`).
 - **A new table in the common catalogue fails the client lane's test** (M4 T2a2):
   `h3-battle-client`'s `text::tests::the_committed_catalogue_parses` lists every original table
   `clients/text/keys.toml`'s keys name (a family's do not count), so a key from a new file

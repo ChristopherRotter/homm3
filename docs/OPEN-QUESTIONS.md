@@ -392,22 +392,6 @@ map as the next turn the record shows starts, the turn not shown (no time, nothi
 comparisons list the difference). **Recommended (a)**; a note in the adventure lane's inbox
 (2026-11-21). Meanwhile (c) (`stub: MCL-Q46` in `h3_map_view::engine`'s played). Blocks nothing.
 
-#### MCL-Q47 — The map's music after a battle (E24 M4 T5a, a code reading)
-
-The original asks for no terrain track when the map comes back from a battle: the adventure
-manager's exit lets the map's track play on into the battle (`music_track_play(-1)` asks for
-nothing, 0x4077E0), the battle's combat music and its result's tune replace it, and back on the
-map only `hero_select` (through `mobilize_hero`, 0x4AE8F3) asks for a track, and only when the
-hero's terrain differs from the one asked for last (adventure manager +0x58, 0x418113). So after a
-battle on the hero's own terrain the map would be silent once the tune ends, until the next walk's
-or key's end asks for +0x58's track again (design §5.19). Read only: the harness logs samples, not
-the music, and nobody has listened. Options: (a) as the original: no track asked for at the return;
-(b) the client asks for the terrain's track as the map comes back (the client lane's
-`HostSound` fades the tune out into it, E17 design §13.6); (c) (a) in the original's profile
-(`--bugs original`), (b) in the client's. **Recommended (a)**, checked by ear at M4 T6's hand test
-(the original on the user's machine: a battle won, then a wait without moving). Built as (a) at
-T5b1 (2026-11-21: no track asked for at the return). Blocks nothing.
-
 #### MCL-Q48 — A record does not tell an abandoned mine's resource (E24 M4 T5b2, a record)
 
 An abandoned mine's flag box after its guards' battle is MINEEVNT's record by the mine's resource
