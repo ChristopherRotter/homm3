@@ -251,7 +251,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   build it again (`seat-new-day-quick`: day 1's window over day 2's bar, no `newday.wav`); a
   sequence of the usual hand-over ends the turn after it (the redraw after 7 360 when the start
   came at 4 360: the `seat-*` End Turn at 7 500). Each OK in the cover's first 1 759 ms adds the
-  4-s wait.
+  4-s wait. A sample's channel (the game's handle) is not always the same from run to run where
+  it starts while another plays (`seat-new-month`'s click at 12 300: 0, then 7); its time and
+  length are.
 - **A turn timer ahead of the frozen clock expires at once** (M5 T5): the expiry and the
   warnings take the time since the timer's start unsigned, so a start written for the next
   millisecond reads as 4 billion ms ago (the expiry's box at the step to 0, the redraw never

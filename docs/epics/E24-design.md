@@ -5396,7 +5396,7 @@ clock's start and the "your turn" window: survey `E16-timer-survey.md` §2, §8.
     lines for `covered_view` 0x699538, `shown_player` 0x69778C and the box's text and picture; a
     situation with a timed event; `move_reminder`, `week_name`, `month_name` as today.
 - **Recorded** (T5 part two; `clients/map/to-record.toml`, situations `seq-seat*`; each twice,
-  the same timeline; the timelines and the samples kept as `timelines/seat-*.txt` and
+  the same timeline, the same samples but one's channel, the month's click; the timelines and the samples kept as `timelines/seat-*.txt` and
   `seat-*-sounds.txt`; the harness's hot seat: the runbook's "A hot seat"): `seat-hand-over`,
   `seat-hand-over-late` (a one-minute turn), `seat-new-day`, `seat-new-day-quick`,
   `seat-new-day-ai` (Tan, a computer, between), `seat-new-week`, `seat-new-month`,
