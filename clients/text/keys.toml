@@ -970,6 +970,13 @@ original = [{ at = "GENRLTXT:392" }]
 id = "map.turn.end"
 original = [{ at = "GENRLTXT:56" }]
 
+# A hot seat's hand-over (E24 M5 T5; docs/epics/E24-design.md §5.31): the cover's box with the
+# human's hot-seat name (`next_player_turn` 0x4C7807, `adventure_manager_start` 0x40769D).
+[[key]]
+id = "map.turn.hand-over"
+args = { player = "text" }
+original = [{ at = "GENRLTXT:14", printf = ["player"] }]
+
 [[key]]
 id = "map.turn.month"
 args = { name = "text" }

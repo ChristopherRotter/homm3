@@ -223,6 +223,10 @@ pub struct Player {
     slots: Vec<Lane>,
     /// The sound played once (E24 M3 T5b2): its stream, never queued again.
     effect: Lane,
+    /// A hot seat's cover's sound (E24 M5 T5: `NewWeek.wav`, a channel of its own beside the
+    /// effects'), and the music faded at the cover until a track is asked again.
+    cover: Lane,
+    faded: bool,
     /// Whether the music and the effects are heard.
     pub music_on: bool,
     pub effects_on: bool,
@@ -247,9 +251,9 @@ impl Player {
     /// handed back with it.
     pub fn over(mut host: HostSound) -> Result<Self, Box<(String, HostSound)>> {
         // The step's, the slots' and the sound played once's, in that order (as `open` added them
-        // before E24 M5 T2b).
-        let mut lanes: Vec<Lane> = Vec::with_capacity(SLOTS + 2);
-        for _ in 0..SLOTS + 2 {
+        // before E24 M5 T2b), then the cover's (E24 M5 T5).
+        let mut lanes: Vec<Lane> = Vec::with_capacity(SLOTS + 3);
+        for _ in 0..SLOTS + 3 {
             match host.audio().add_stream(22_050, 1) {
                 Ok(stream) => lanes.push(Lane {
                     stream,
@@ -266,9 +270,10 @@ impl Player {
                 }
             }
         }
+        let cover = lanes.pop();
         let effect = lanes.pop();
         let slots = lanes.split_off(1);
-        let (Some(step), Some(effect)) = (lanes.pop(), effect) else {
+        let (Some(step), Some(effect), Some(cover)) = (lanes.pop(), effect, cover) else {
             return Err(Box::new(("no streams added".to_owned(), host)));
         };
         Ok(Self {
@@ -276,6 +281,8 @@ impl Player {
             step,
             slots,
             effect,
+            cover,
+            faded: false,
             music_on: true,
             effects_on: true,
             played: 0,
@@ -292,9 +299,26 @@ impl Player {
         let on = self.effects_on;
         match cue {
             Cue::Music(name) => {
+                // After a hot seat's cover the music comes back first (`music_resume`, as a
+                // regained focus asks it), then the track asked (E24 M5 T5, *provisional*).
+                if core::mem::take(&mut self.faded) {
+                    host.focus(true);
+                }
                 library.request(name, host);
                 library.collect(host, lines);
                 host.request(name, false);
+            }
+            // A hot seat's cover (E24 M5 T5, *provisional*): the music faded out as a lost focus
+            // fades it (its place kept), and the cover's sound on its own channel.
+            Cue::Fade => {
+                if !self.faded {
+                    host.focus(false);
+                    self.faded = true;
+                }
+            }
+            Cue::Cover(name) => {
+                play(host.audio(), &mut self.cover, library, name, FULL, on);
+                self.cover.clip = None;
             }
             Cue::Step(name) => play(host.audio(), &mut self.step, library, name, FULL, on),
             Cue::StepStop => stop(host.audio(), &mut self.step),
@@ -327,7 +351,7 @@ impl Player {
     fn stop_effects(&mut self) {
         if let Some(host) = self.host.as_mut() {
             let out = host.audio();
-            for lane in [&mut self.step, &mut self.effect]
+            for lane in [&mut self.step, &mut self.effect, &mut self.cover]
                 .into_iter()
                 .chain(&mut self.slots)
             {
@@ -350,7 +374,10 @@ impl Player {
         let Some(host) = self.host.as_mut() else {
             return;
         };
-        for lane in [&self.step, &self.effect].into_iter().chain(&self.slots) {
+        for lane in [&self.step, &self.effect, &self.cover]
+            .into_iter()
+            .chain(&self.slots)
+        {
             let v = if on { lane.volume } else { 0 };
             host.audio().set_gain(lane.stream, gain(v));
         }
@@ -369,7 +396,7 @@ impl Player {
         library.collect(host, lines);
         host.focus(on);
         let out = host.audio();
-        for lane in [&mut self.step, &mut self.effect]
+        for lane in [&mut self.step, &mut self.effect, &mut self.cover]
             .into_iter()
             .chain(&mut self.slots)
         {
@@ -431,7 +458,10 @@ impl Player {
         self.stop_effects();
         let mut host = self.host.take()?;
         let out = host.audio();
-        for lane in [&self.step, &self.effect].into_iter().chain(&self.slots) {
+        for lane in [&self.step, &self.effect, &self.cover]
+            .into_iter()
+            .chain(&self.slots)
+        {
             out.remove_stream(lane.stream);
         }
         out.pause(false);

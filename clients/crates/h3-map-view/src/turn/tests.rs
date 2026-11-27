@@ -28,6 +28,9 @@ fn art() -> TurnArt {
         deity: [42, 43],
         town_days: 7,
         computer: Vec::new(),
+        cover: "NewWeek.wav".to_string(),
+        wait: 4000,
+        covered: 9_999_999,
     }
 }
 
@@ -143,6 +146,9 @@ fn the_tables_section_reads_from_toml() {
         month = "newmonth.wav"
         deity = [42, 43]
         town_days = 7
+        cover = "NewWeek.wav"
+        wait = 4000
+        covered = 9999999
         "#,
     )
     .unwrap();

@@ -136,9 +136,9 @@ use crate::layout::{AdventureLayout, DIRECTIONS};
 use crate::levels::{self, LevelArt};
 use crate::lists::{SLOTS, top_showing};
 use crate::live::{
-    Arrow, Attacking, Boat, Buttons, Cast, Chosen, ChosenHero, ChosenTown, Date, DateStatus,
-    Facing, FoundStatus, HeroStatus, Kingdom, KingdomStatus, Live, LiveBoat, Selected, Stack,
-    Status, Summoned, Turn, TurnStatus,
+    Arrow, Attacking, Boat, Buttons, Cast, Chosen, ChosenHero, ChosenTown, Covered, Date,
+    DateStatus, Facing, FoundStatus, HeroStatus, Kingdom, KingdomStatus, Live, LiveBoat, Selected,
+    Stack, Status, Summoned, Turn, TurnStatus,
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::notice::Notice;
@@ -961,6 +961,9 @@ pub struct Start {
     /// ([`Loop::walk_asked`], [`Loop::reach_asked`]), and what it gave so far. None: neither is
     /// asked (a recording's, a record's walks).
     pub host: Option<Hosted>,
+    /// A hot seat's hand-overs (E24 M5 T5, design §5.31): each human's turn of [`Start::turns`]
+    /// with a [`Cover`] shown covered first. None: a single human's game, never covered.
+    pub seat: Option<HandOver>,
 }
 
 /// One of the engine's walks (E24 M4 T4a2, design §5.13, *provisional*): a `MoveHero`'s tiles
@@ -1321,6 +1324,43 @@ pub struct NextTurn {
     /// A computer's turn the record ends in (E24 M4 T6, R1-1, *provisional*): played to its last
     /// walk, the map then left in its screen (its end is not in the record).
     pub open: bool,
+    /// A hot seat's human's turn (E24 M5 T5, design §5.31): its start comes after its cover, its
+    /// box and the wait ([`Start::seat`]); none: at once (a single human's, a computer's).
+    pub cover: Option<Cover>,
+}
+
+/// What a hot seat's human's turn shows before its start (E24 M5 T5, design §5.31,
+/// *provisional*): the cover's facts and the start's that the turn's facts lack.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Cover {
+    /// The view it is shown in from its cover on (the adapter's [`Draw::seat`]: a recording's
+    /// hand-over's `[[seat]]`, its explored tiles); none: the live part's own.
+    pub seat: Option<usize>,
+    /// A computer's turn came since the last human's (`covered_view_redraw` 0x4CA5B0): the
+    /// cover's sleep, move hero, cast and End Turn drawn disabled.
+    pub computers: bool,
+    /// The selection's window its start shows once the date's gives way (a recording's seat's
+    /// `selection`); none: the one its turn's end left, else what choosing its hero shows.
+    pub selection: Option<Status>,
+    /// The map's timed events' boxes at its start (`map_timed_events` 0x4CD910, MCL-Q71), each
+    /// with the resources it gives (the original's seven, added as its box opens).
+    pub events: Vec<(Arc<MessageBox>, [i32; 7])>,
+}
+
+/// A hot seat's hand-overs (E24 M5 T5, design §5.31, *provisional*): the game begun with more
+/// than one human (`begin_humans` 0x699274 above 1: every later human's turn covered, MCL-Q73).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HandOver {
+    /// Each human's cover's box by its colour (GENRLTXT 14 with its hot seat's name, its crest
+    /// captioned with its colour's name, framed in its colours: laid out by the adapter).
+    pub boxes: Vec<(u8, Arc<MessageBox>)>,
+    /// The cover's sound's length, ms ([`TurnArt::cover`]): the start waits for its end after
+    /// the box's OK, at most [`TurnArt::wait`]; none, no wait (a run without sound: the
+    /// original's `wait_for_sample` waits for nothing without its driver).
+    pub sample: Option<u32>,
+    /// The turns are timed: the turn's clock runs from each human's start to its turn's end
+    /// (`turn_timer_start` 0x4C78F0; the timeline's `timer` lines, the clock itself §5.32's).
+    pub timed: bool,
 }
 
 /// A computer player's hero's walk in its turn (E24 M4 T1b2, *provisional*): the hero (its index
@@ -1520,6 +1560,12 @@ pub struct Draw {
     /// The heroes gone off the map (E24 M4 T5b2: a battle lost; since E24 M4 T6, R1-5, another
     /// player's hero lost in sight), by their indexes among the map's heroes: drawn nowhere.
     pub left: Vec<usize>,
+    /// A hot seat's cover shown (E24 M5 T5, design §5.31): the view drawn from the map's corner,
+    /// every tile unexplored ([`Covered`]).
+    pub cover: Option<Covered>,
+    /// The hot seat's view shown since a hand-over ([`Cover::seat`]: the colour and the explored
+    /// tiles drawn); none: the live part's own.
+    pub seat: Option<usize>,
 }
 
 /// What a battle's switch shows (E24 M4 T5b2, design §5.21, *provisional*: the host draws it,
@@ -1598,6 +1644,12 @@ pub struct State {
     /// The battle shown whole at this millisecond (E24 M4 T5b2, design §5.21): its winner, the
     /// timeline's `battle` (the harness's `<ms> battle <winner>`).
     pub battle: Option<i32>,
+    /// A hot seat's colour shown (E24 M5 T5, design §5.31: `shown_player` 0x69778C), the
+    /// timeline's `shown`; none in a single human's game.
+    pub shown: Option<u8>,
+    /// A hot seat's turn's clock running (the turn timer's start set and not paused), the
+    /// timeline's `timer`; none in a single human's game.
+    pub timer: Option<bool>,
 }
 
 /// A walk under way: inside a key's step or the path's walk, which wait for their frames' times.
@@ -1831,6 +1883,32 @@ pub struct Loop {
     /// millisecond and [`Move::battle`]; since E24 M4 T5b2 each switch's where it shows the
     /// battle whole ([`Loop::battles`]).
     battles: Vec<(u32, u32)>,
+    /// A hot seat's hand-overs ([`Start::seat`]; E24 M5 T5, design §5.31): the colour shown, the
+    /// turn's clock running, the colour the frame's picture was last drawn in, the view shown
+    /// ([`Draw::seat`]), the cover drawn, the hand-over under way, each human's turn's end left
+    /// for its next start and the live part's viewer (whose choices [`Start::chosen`] are).
+    seat: Option<Arc<HandOver>>,
+    shown: u8,
+    timer: bool,
+    framed: u8,
+    seat_shown: Option<usize>,
+    covered: Option<Covered>,
+    handing: Option<Handing>,
+    ends: BTreeMap<u8, Ended>,
+    viewer: u8,
+}
+
+/// A hot seat's hand-over under way (E24 M5 T5, design §5.31): the turn it starts and its
+/// selection, the cover's sample's end, the start's millisecond once the box's OK came (the
+/// wait), the actions given meanwhile and the timed events' boxes left.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Handing {
+    next: NextTurn,
+    choice: Choice,
+    sample_end: Option<u32>,
+    until: Option<u32>,
+    queued: Vec<Action>,
+    events: VecDeque<(Arc<MessageBox>, [i32; 7])>,
 }
 
 /// A computer player's turn under way (E24 M4 T1b2, design §5.2, *provisional*): its facts, kind
@@ -2099,6 +2177,12 @@ enum Told {
     /// (*provisional*: `turn-no-town` at 2060 shows the date's window unstepped, as `hero_select`
     /// after the box would build it; not read), then the idle step.
     DaysLeft,
+    /// A hot seat's cover's box (E24 M5 T5, design §5.31): its OK starts the wait for the
+    /// cover's sound, then the turn's start ([`Loop::covered_ok`]).
+    Cover,
+    /// A timed event's box at a covered turn's start (E24 M5 T5, MCL-Q71): its close opens the
+    /// next, after the last the turn's start.
+    Event,
     /// Any other (a find told again): its close goes to the idle step.
     Plain,
 }
@@ -2186,6 +2270,8 @@ impl Loop {
                 walked: Arc::new(Vec::new()),
                 switch: None,
                 left: Vec::new(),
+                cover: None,
+                seat: None,
             },
             hero: start.hero,
             lifted: false,
@@ -2290,6 +2376,15 @@ impl Loop {
             battles: Vec::new(),
             walked_tiles: Arc::new(Vec::new()),
             off_record: None,
+            seat: start.seat.clone().map(Arc::new),
+            shown: start.player,
+            timer: start.seat.as_ref().is_some_and(|s| s.timed),
+            framed: start.player,
+            seat_shown: None,
+            covered: None,
+            handing: None,
+            ends: BTreeMap::new(),
+            viewer: start.player,
             rules,
         };
         // The status window at 0 (E24 M3 T5b2): the kind asked, else the date's or the kingdom's
@@ -2373,6 +2468,8 @@ impl Loop {
                 .whole
                 .filter(|(at, _)| *at == t)
                 .map(|(_, winner)| winner),
+            shown: self.seat.as_ref().map(|_| self.shown),
+            timer: self.seat.as_ref().map(|_| self.timer),
         }
     }
 
@@ -2559,7 +2656,8 @@ impl Loop {
             {
                 self.dissolved(t, dissolving)?;
             }
-        } else {
+        } else if !self.waiting(t)? {
+            // (A hot seat's wait after its cover's OK holds the loop: E24 M5 T5.)
             self.turn_of_loop(t)?;
         }
         // A box opened by the loop's turn (a walk's end) emptied the queue then: the actions given
@@ -2582,6 +2680,10 @@ impl Loop {
                 // The mouse's point is read at once; the message waits as during a walk.
                 self.pointer = action.point().unwrap_or(self.pointer);
                 dissolving.queued.push(action);
+                continue;
+            }
+            // A hot seat's wait (E24 M5 T5): the messages stay queued for the start.
+            if self.wait_input(action) {
                 continue;
             }
             if self.ai.is_some() {
@@ -3275,6 +3377,13 @@ impl Loop {
             return self.unbuilt(refused);
         };
         let ended = self.turn_end(t);
+        self.next_turn += 1;
+        // A hot seat's human's turn (E24 M5 T5, design §5.31): its cover first.
+        if self.covers(&next) {
+            self.ends.insert(self.player, ended);
+            self.hand_over(t, next, choice);
+            return Ok(());
+        }
         self.day_start(t, next, choice, ended);
         Ok(())
     }
@@ -3339,7 +3448,6 @@ impl Loop {
     /// week's start but the game's first its sound (0x4CCAE5) and its message
     /// ([`Loop::open_box`]).
     fn day_start(&mut self, t: u32, next: NextTurn, choice: Choice, ended: Ended) {
-        self.next_turn += 1;
         let NextTurn {
             turn,
             message,
@@ -3349,6 +3457,7 @@ impl Loop {
             lost,
             boats,
             list,
+            cover,
             ..
         } = next;
         let Ended {
@@ -3359,8 +3468,9 @@ impl Loop {
         self.place(&heroes);
         self.changed(&taken, &flags, &lost, &boats);
         // The choices by the day's list (E24 M4 T6, R1-4): each hero's as it was, a hired one's
-        // none.
-        if let Some(list) = list {
+        // none; the live part's viewer's only (E24 M5 T5: a hot seat's other human's list maps
+        // its own heroes, not the viewer's choices).
+        if let Some(list) = list.filter(|_| turn.player == self.viewer) {
             let before = core::mem::take(&mut self.chosen.heroes);
             self.chosen.heroes = list
                 .iter()
@@ -3375,12 +3485,20 @@ impl Loop {
         let mut kingdom = turn.kingdom;
         kingdom.status = self.kingdom.status.take();
         kingdom.realm = self.kingdom.realm.take();
+        // What choosing a hero or town shows is the live part's viewer's (E24 M5 T5: another
+        // human of a hot seat has its seat's selection's window, `Cover::selection`).
+        let own = self.player == self.viewer;
+        let seated = cover.and_then(|c| c.selection);
         // The window memory built for the same hero or town first: a map's start's choices
         // (`Live::at_start`) are the map's, not the game's.
         kingdom.selection = window
             .filter(|_| selected == before)
+            .or(seated)
             .or_else(|| match selected {
-                Selected::Hero(i) => self.chosen_hero(i).map(|c| Status::Hero(c.status.clone())),
+                Selected::Hero(i) => self
+                    .chosen_hero(i)
+                    .filter(|_| own)
+                    .map(|c| Status::Hero(c.status.clone())),
                 Selected::Town(_) => choice
                     .town
                     .as_ref()
@@ -3390,7 +3508,9 @@ impl Loop {
         self.kingdom = kingdom;
         self.flush = true;
         self.drawn.computer = false;
-        // The screen redrawn whole, the date's window asked and built.
+        // The screen redrawn whole (its frame's picture in the colours shown: E24 M5 T5), the
+        // date's window asked and built.
+        self.framed = self.shown;
         self.asked = 1;
         self.end = t.saturating_add(self.rules.turn.asked);
         self.draw_lists();
@@ -3408,7 +3528,7 @@ impl Loop {
                 self.path = if before == Selected::Hero(i) {
                     path
                 } else {
-                    let arrows = self.chosen_hero(i).map(|c| c.path.clone());
+                    let arrows = self.chosen_hero(i).filter(|_| own).map(|c| c.path.clone());
                     self.hero
                         .zip(arrows)
                         .and_then(|(h, a)| chain(h.at, &a))
@@ -3541,6 +3661,10 @@ impl Loop {
         } = next;
         self.place(&heroes);
         self.changed(&taken, &flags, &lost, &boats);
+        // The human's turn's end kept for its next start (E24 M5 T5: a hot seat's).
+        if self.seat.is_some() && self.player != turn.player {
+            self.ends.insert(self.player, ended.clone());
+        }
         self.player = turn.player;
         // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*; since E24
         // M5 T4b in play the client's own pick).
@@ -3914,6 +4038,12 @@ impl Loop {
         let Some(choice) = self.turn_choice(&next) else {
             return self.unbuilt(refused);
         };
+        self.next_turn += 1;
+        // A hot seat's human after the computer's turn (E24 M5 T5): its cover first.
+        if self.covers(&next) {
+            self.hand_over(t, next, choice);
+            return Ok(());
+        }
         self.day_start(t, next, choice, ended);
         Ok(())
     }
@@ -4140,6 +4270,9 @@ impl Loop {
                 return self.leveled(t, *leveling, chosen);
             }
             Told::DaysLeft => self.choose(t, true),
+            // A hot seat's cover's OK and a timed event's close (E24 M5 T5, design §5.31).
+            Told::Cover => return self.covered_ok(t),
+            Told::Event => return self.hand_events(t),
             _ => {}
         }
         // A box waiting opens in this millisecond (E24 M4 T2a2).
@@ -7064,8 +7197,18 @@ impl Loop {
     /// [`Loop::draw_minimap`] writes); then the status window chosen (0x40F861,
     /// E24 M3 T5b2).
     fn draw(&mut self, t: u32) {
+        // A hot seat's cover draws the view from the map's corner (E24 M5 T5, design §5.31:
+        // `view_draw_here` 0x40F870 with 1), the view's corner kept.
+        let view = match self.covered {
+            Some(_) => ViewAt {
+                x: 0,
+                y: 0,
+                ..self.view
+            },
+            None => self.view,
+        };
         self.drawn = Draw {
-            view: self.view,
+            view,
             frames: self.steps,
             cycles: self.ticks.saturating_sub(1),
             offset: self.walk.offset,
@@ -7098,6 +7241,8 @@ impl Loop {
             walked: Arc::clone(&self.walked_tiles),
             switch: None,
             left: self.left.clone(),
+            cover: self.covered,
+            seat: self.seat_shown,
         };
         self.choose(t, false);
     }
@@ -7372,6 +7517,30 @@ pub fn play_held(
     Ok((states, held))
 }
 
+/// [`play`] with the sound's cues given, with their milliseconds, in order (E24 M5 T5: a sound
+/// run's samples compared, `timelines/<id>-sounds.txt`).
+///
+/// # Errors
+/// As [`play`].
+pub fn play_heard(
+    rules: Rules,
+    start: &Start,
+    actions: &BTreeMap<u32, Vec<Action>>,
+    until: u32,
+) -> Result<(Vec<State>, Vec<(u32, Cue)>), (u32, Unplayable)> {
+    let mut l = Loop::start(rules, start).map_err(|why| (0, why))?;
+    let mut states = Vec::with_capacity(usize::try_from(until).unwrap_or(0).saturating_add(1));
+    states.push(l.state(0));
+    let mut cues = l.take_cues();
+    for t in 1..=until {
+        let given = actions.get(&t).map_or(&[][..], Vec::as_slice);
+        l.run(t, given).map_err(|why| (t, why))?;
+        states.push(l.state(t));
+        cues.extend(l.take_cues());
+    }
+    Ok((states, cues))
+}
+
 /// The timeline's lines (design §3.2): at 0 the view, the objects, the cycles, the cursor, the
 /// buttons (move hero's and next hero's states, 1 enabled; E24 M3 T2a) and the selected hero's
 /// points (E24 M3 T4b; none without one), then each one where it changed, in that order within a
@@ -7454,6 +7623,18 @@ pub fn lines(states: &[State], screens: &BTreeMap<u32, [i32; 4]>) -> Vec<String>
             if s.book != l.book {
                 out.push(format!("{} book {}", s.t, u8::from(s.book)));
             }
+            // A hot seat's colour shown and its turn's clock where they change (E24 M5 T5: the
+            // timer's pause never set, `<started> 0`).
+            if let (Some(shown), Some(was)) = (s.shown, l.shown)
+                && shown != was
+            {
+                out.push(format!("{} shown {shown}", s.t));
+            }
+            if let (Some(timer), Some(was)) = (s.timer, l.timer)
+                && timer != was
+            {
+                out.push(format!("{} timer {} 0", s.t, u8::from(timer)));
+            }
             if s.arrows != l.arrows {
                 let arrows: String = s
                     .arrows
@@ -7504,6 +7685,8 @@ pub fn changed(before: &Screen, after: &Screen, masked: &[[i32; 4]]) -> Option<[
     }
     found
 }
+
+mod hand;
 
 #[cfg(test)]
 pub(crate) mod tests;

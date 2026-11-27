@@ -101,8 +101,8 @@ fn the_tables_sounds_are_the_originals() {
     // The loops, the step sounds, the flying one, (E24 M3 T6b1) the buttons' press, (E24 M3 T5b2)
     // the day's status window's, (E24 M4 T1a) the week's and the month's message's, (E24 M4
     // T2c) a level-up's dialog's, (E24 M4 T2d3) Summon Boat's and (E24 M4 T4a) an object taken's:
-    // the seven pickups' and a monster's removal's.
-    assert_eq!(r.wavs().len(), 95);
+    // the seven pickups' and a monster's removal's; (E24 M5 T5) a hot seat's cover's.
+    assert_eq!(r.wavs().len(), 96);
     assert_eq!(
         r.effects,
         [
@@ -110,6 +110,7 @@ fn the_tables_sounds_are_the_originals() {
             "newday.wav",
             "newweek.wav",
             "newmonth.wav",
+            "NewWeek.wav",
             "nwherolv.wav",
             "summboat.wav",
             "pickup01.wav",
@@ -380,6 +381,8 @@ pub(crate) fn map_with(
         computer: false,
         level_ups: Vec::new(),
         casts: Vec::new(),
+        seats: Vec::new(),
+        covered: None,
     };
     (art, live, shapes)
 }

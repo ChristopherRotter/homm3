@@ -2738,6 +2738,14 @@ class Mem:
             kind, = struct.unpack_from("<i", raw, at + 0x1E)
             if kind in (HERO_OBJECT, BOAT_OBJECT) and raw[at + 0xD] & ENTRANCE and word != 0xFFFFFFFF:
                 out[(i % side, i // side)] = ("hero" if kind == HERO_OBJECT else "boat", word)
+        # A hot seat's start (E24 M5 T5 part three, `h3map.stage_start`): the current player's
+        # selected hero, lifted off its tile under the cover, on its record's tile.
+        if getattr(self, "lifted_standing", False):
+            index = self.player(self.current_player())["selected"]
+            if index >= 0:
+                x, y, level = self.hero(index)["tile"]
+                if level == z:
+                    out.setdefault((x, y), ("hero", index))
         return out
 
     def map_heroes(self, z=0):

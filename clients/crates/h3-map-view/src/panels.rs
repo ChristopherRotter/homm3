@@ -95,6 +95,13 @@ pub fn dialog(
     let buttons = live
         .buttons
         .unwrap_or_else(|| Buttons::of(kingdom, &live.path));
+    // A hot seat's cover (E24 M5 T5, design §5.31): the buttons as the last draw left them but
+    // the quest log's by the new viewer, the four its start enables once enabled; the lists'
+    // slots empty (`hero_list_slot` 0x403560, `town_list_slot` 0x4037A0 under the flag).
+    let covered = live.covered;
+    let started = covered.is_some_and(|c| c.started);
+    let empty = Kingdom::default();
+    let listed = if covered.is_some() { &empty } else { kingdom };
     let hero = match kingdom.selected {
         Selected::Hero(i) => Some(kingdom.heroes.get(i).copied().unwrap_or_default()),
         Selected::None | Selected::Town(_) => None,
@@ -111,6 +118,11 @@ pub fn dialog(
     };
     let off: Vec<u16> = disabled(kingdom, buttons, levels)
         .into_iter()
+        .map(|(id, off)| match covered {
+            Some(c) if id == id::QUESTS => (id, !c.quests),
+            Some(_) if started && STARTED.contains(&id) => (id, false),
+            _ => (id, off),
+        })
         .chain(computer)
         .filter(|&(_, off)| off)
         .map(|(id, _)| id)
@@ -140,8 +152,8 @@ pub fn dialog(
         .chain(pressed)
         .chain((id::FRAMES..).take(SLOTS).map(|id| (id, hidden)))
         .collect();
-    let heroes = lists::hero_slots(lists, kingdom)?;
-    let towns = lists::town_slots(lists, kingdom);
+    let heroes = lists::hero_slots(lists, listed)?;
+    let towns = lists::town_slots(lists, listed);
     let mut frames = BTreeMap::new();
     let mut pictures = BTreeMap::new();
     for ((slot, hero), town) in (0u16..).zip(&heroes).zip(towns) {
@@ -181,6 +193,7 @@ pub fn dialog(
 /// its slots lie below the top.
 #[must_use]
 pub fn disabled(kingdom: &Kingdom, buttons: Buttons, levels: usize) -> [(u16, bool); 10] {
+    // (The four a hot seat's start enables before its full redraw: [`STARTED`].)
     let hero = matches!(kingdom.selected, Selected::Hero(_));
     let [heroes_top, towns_top] = kingdom.tops;
     [
@@ -210,7 +223,9 @@ pub fn disabled(kingdom: &Kingdom, buttons: Buttons, levels: usize) -> [(u16, bo
 /// itself, it would show the mark over what lies under it (a redraw artifact, not copied).
 #[must_use]
 pub fn selections(layout: &AdventureLayout, lists: &ListArt, live: &Live) -> Vec<Draw> {
-    let Some((selected, slot)) = lists::selected_slot(&live.kingdom) else {
+    // None under a hot seat's cover (E24 M5 T5: the lists' slots empty).
+    let selection = lists::selected_slot(&live.kingdom).filter(|_| live.covered.is_none());
+    let Some((selected, slot)) = selection else {
         return Vec::new();
     };
     let slot = u16::try_from(slot).unwrap_or(u16::MAX);
@@ -243,6 +258,11 @@ pub fn selections(layout: &AdventureLayout, lists: &ListArt, live: &Live) -> Vec
     }
 }
 
+/// The buttons a hot seat's start enables before its full redraw (E24 M5 T5, design §5.31:
+/// items 8, 7, 6 and 12's `+0x24` with 1 at 0x4C787C to 0x4C78CF): cast, move hero, sleep, End
+/// Turn.
+pub const STARTED: [u16; 4] = [id::CAST, id::MOVE_HERO, id::SLEEP, id::END_TURN];
+
 /// The string catalogue's keys the panels show texts by (E24 M3 T5a; `clients/text/keys.toml`).
 pub const KEYS: [&str; 5] = [
     "map.resources.amount",
@@ -267,14 +287,19 @@ pub const AMOUNT_FITS: usize = 7;
 pub fn resource_bar(layout: &AdventureLayout, live: &Live, texts: &Catalogue, bugs: Bugs) -> Shown {
     let kingdom = &live.kingdom;
     let mut shown_texts = BTreeMap::new();
-    for (place, amount) in (0u16..).zip(kingdom.resources) {
-        let args = Args::new().number("amount", i64::from(amount));
+    // A hot seat's cover blanks the amounts (`resource_bar_blank` 0x559020: E24 M5 T5, design
+    // §5.31) and writes the new date; a timed event's box draws them (MCL-Q71).
+    let (resources, date) = match live.covered {
+        Some(c) => (c.resources, c.date),
+        None => (Some(kingdom.resources), kingdom.date),
+    };
+    for (place, amount) in (0u16..).zip(resources.iter().flatten()) {
+        let args = Args::new().number("amount", i64::from(*amount));
         let text = texts.text("map.resources.amount", &args);
         let wide = bugs == Bugs::Fixed && text.chars().count() > AMOUNT_FITS;
         let id = if wide { id::WIDE_AMOUNTS } else { id::AMOUNTS };
         shown_texts.insert(id + place, text);
     }
-    let date = kingdom.date;
     let word = |key: &str| texts.text(key, &Args::new());
     let args = Args::new()
         .text("month_word", &word("word.month"))

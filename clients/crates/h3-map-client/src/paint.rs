@@ -34,8 +34,8 @@ use h3_map_view::hover::{Facts, Hover, Tile};
 use h3_map_view::layout::{AdventureLayout, CursorArt};
 use h3_map_view::levels;
 use h3_map_view::live::{
-    Buttons, Calendar, Explored, Facing, Lifted, Live, Moment, Selected, Stack, Status, Turn,
-    Walking,
+    Buttons, Calendar, DateStatus, Explored, Facing, Lifted, Live, Moment, Selected, Stack, Status,
+    Turn, Walking,
 };
 use h3_map_view::minimap::Shown;
 use h3_map_view::notice::Notice;
@@ -46,9 +46,9 @@ use h3_map_view::situation::Situation;
 use h3_map_view::sound::{Sound, TileSounds};
 use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
-    Action, AfterBattle, Answer, BATTLE_CURSOR, Boats, Computer, Cursor, DEFAULT_CURSOR, Direction,
-    Dissolve, Draw, FADE_BLACK, Fight, Found, Hero, LevelBox, Move, NextTurn, Owners, Question,
-    Rules, Start, Switch, TownBoxes, Walked,
+    Action, AfterBattle, Answer, BATTLE_CURSOR, Boats, Computer, Cover, Cursor, DEFAULT_CURSOR,
+    Direction, Dissolve, Draw, FADE_BLACK, Fight, Found, HandOver, Hero, LevelBox, Move, NextTurn,
+    Owners, Question, Rules, Start, Switch, TownBoxes, Walked,
 };
 use h3_map_view::{engine, status, timeline, turn};
 use h3_protocol::wire::game::{Decision, GameEvent};
@@ -319,6 +319,27 @@ pub fn for_sequence<'a>(
     let (question, turns) = painter
         .boxes(&lines, played.as_ref(), None)
         .map_err(|e| format!("{}: {e}", live_path.display()))?;
+    // A hot seat's hand-overs (E24 M5 T5, design §5.31): each human's turn covered, the game's
+    // first too with `start`; the cover's sound's length for the wait in a sound run.
+    let (turns, seat) = match sequence.names()? {
+        Some(names) => {
+            let sample = if sequence.sound {
+                Some(sample_length(install, &assets.tables.map.turn.cover)?)
+            } else {
+                None
+            };
+            let (turns, boxes) = painter
+                .hot_seat(names, turns, &raw, sequence.start)
+                .map_err(|e| format!("{}: {e}", live_path.display()))?;
+            let seat = HandOver {
+                boxes,
+                sample,
+                timed: sequence.timed(),
+            };
+            (turns, Some(seat))
+        }
+        None => (turns, None),
+    };
     // The finds a walk tells and the turn without a town's boxes (E24 M4 T2a2); a record's from
     // its visits (E24 M4 T4b1).
     let hover = painter.hover()?;
@@ -385,6 +406,7 @@ pub fn for_sequence<'a>(
         // The engine's walks (E24 M4 T4a2): a record's.
         moves: played.map(|p| p.moves),
         host: None,
+        seat,
     };
     Ok(Setup {
         painter,
@@ -744,6 +766,7 @@ fn for_played<'a>(
         water: water(&painter.art),
         moves: Some(played.moves.clone()),
         host: None,
+        seat: None,
     };
     let rules = Rules::new(assets.tables, assets.layout, assets.bugs);
     let heroes = turn::record_heroes(&played.shown, &painter.live.heroes);
@@ -855,6 +878,7 @@ pub fn for_situation<'a>(
         water: water(&painter.art),
         moves: None,
         host: None,
+        seat: None,
     };
     Ok(Setup {
         painter,
@@ -866,6 +890,56 @@ pub fn for_situation<'a>(
 }
 
 /// The map's water tiles in the art's order (E24 M4 T2d2: the timeline's [`Start::water`]).
+/// The map's hero of each of `kingdom`'s heroes, slot by slot, of `colour`'s (E24 M5 T5: a hot
+/// seat's other human, whose list the mouse-over's facts do not hold): the colour's hero whose
+/// record the facts name by the slot's portrait, else its slot's among the colour's in the live
+/// part's order.
+fn colour_heroes(
+    live: &Live,
+    kingdom: &h3_map_view::live::Kingdom,
+    colour: u8,
+) -> Vec<Option<usize>> {
+    let owned: Vec<usize> = (0..live.heroes.len())
+        .filter(|&i| live.heroes.get(i).is_some_and(|h| h.owner == colour))
+        .collect();
+    let ids = live.hover.as_ref().map(|f| &f.heroes);
+    kingdom
+        .heroes
+        .iter()
+        .enumerate()
+        .map(|(slot, hero)| {
+            let by_id = ids.and_then(|ids| {
+                owned
+                    .iter()
+                    .copied()
+                    .find(|&i| ids.get(i).is_some_and(|(id, _)| *id == hero.portrait))
+            });
+            by_id.or_else(|| owned.get(slot).copied())
+        })
+        .collect()
+}
+
+/// A sample's length, ms, as the harness's clock plays it (E24 M5 T5: `xdd.c`'s, its frames
+/// × 1 000 over its rate, rounded up), from the installation's sound archives.
+///
+/// # Errors
+/// The archives unread, or the sample missing or undecodable.
+pub fn sample_length(install: &Path, name: &str) -> Result<u32, String> {
+    let bytes = crate::sounds::read_archives(install)?;
+    let archives = crate::sounds::parse_archives(&bytes)?;
+    let pcm = crate::sounds::decode(&archives, &crate::sounds::stem(name))
+        .ok_or_else(|| format!("{name}: not in the sound archives"))??;
+    Ok(length_of(&pcm))
+}
+
+/// A decoded sample's length, ms, rounded up ([`sample_length`]).
+#[must_use]
+pub fn length_of(pcm: &h3_assets::wav::Pcm) -> u32 {
+    let frames = u64::try_from(pcm.frames()).unwrap_or(u64::MAX);
+    let rate = u64::from(pcm.rate.max(1));
+    u32::try_from((frames * 1000).div_ceil(rate)).unwrap_or(u32::MAX)
+}
+
 fn water(art: &MapArt) -> Arc<Vec<bool>> {
     Arc::new(art.tiles.iter().map(|t| t.terrain.code == WATER).collect())
 }
@@ -945,6 +1019,10 @@ pub struct Painter<'a> {
     /// *provisional*: the situation's `diplomacy`, which the harness writes and the live part does
     /// not read; 0 without one, the type's not known; the difficulty Normal's, no Easy bonus).
     diplomacy: u8,
+    /// A hot seat's view the last draw showed (E24 M5 T5: `Draw::seat`, a hand-over's colour and
+    /// explored tiles), and the live part's own viewer and explored tiles at 0.
+    seated: Option<usize>,
+    own: (u8, Explored),
 }
 
 impl<'a> Painter<'a> {
@@ -1000,6 +1078,7 @@ impl<'a> Painter<'a> {
             .collect::<Result<Vec<_>, String>>()?;
         let composer = Composer::new(assets.layout.frame).map_err(|e| e.to_string())?;
         let explored = start.explored.clone();
+        let own = (start.viewer, start.explored.clone());
         let owners_at_0 = start.objects.iter().map(|o| o.owner).collect();
         let boats = Arc::new(Boats::of(&start));
         let mut painter = Self {
@@ -1029,6 +1108,8 @@ impl<'a> Painter<'a> {
             battle_frames: BTreeMap::new(),
             selected: None,
             diplomacy: 0,
+            seated: None,
+            own,
         };
         painter.add([
             assets.layout.cursor.def.to_ascii_uppercase(),
@@ -1231,10 +1312,195 @@ impl<'a> Painter<'a> {
                     list,
                     first: i == 0 && record.is_some_and(|p| p.waits),
                     open: other.is_some_and(|o| o.open),
+                    cover: None,
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;
         Ok((question, turns))
+    }
+
+    /// A hot seat's hand-overs (E24 M5 T5, design §5.31, *provisional*): the humans the
+    /// recording named (`names`, from Red on: the live part's colours with a hero in their order,
+    /// the first ones; the rest computers), each one's cover's box ([`Painter::hand_box`]); each
+    /// human's turn of `turns` covered ([`Cover`]: its `[[seat]]`'s view and selection's window, a
+    /// computer's turn since the human before, the map's timed events for it that day), its heroes
+    /// mapped to the map's ([`NextTurn::list`]) and its first hero (else its first town) selected
+    /// where the turn's facts hold none (the cover's memory: its start chooses, 0x4CCAB4 not read;
+    /// the recordings' first hero); with `opening` the game's first turn played covered at 0
+    /// ([`NextTurn::first`]: the live part's own kingdom and selection).
+    fn hot_seat(
+        &mut self,
+        names: &[String],
+        mut turns: Vec<NextTurn>,
+        raw: &RawMap,
+        opening: bool,
+    ) -> Result<(Vec<NextTurn>, Vec<(u8, Arc<MessageBox>)>), String> {
+        let live = &self.live;
+        let mut colours: Vec<u8> = live.heroes.iter().map(|h| h.owner).collect();
+        colours.push(live.viewer);
+        colours.sort_unstable();
+        colours.dedup();
+        let humans: Vec<u8> = colours.iter().copied().take(names.len()).collect();
+        if humans.len() != names.len() {
+            return Err(format!(
+                "{} names for the hot seat's {} colours with a hero",
+                names.len(),
+                humans.len()
+            ));
+        }
+        let boxes = humans
+            .iter()
+            .zip(names)
+            .map(|(&colour, name)| Ok((colour, self.hand_box(colour, name)?)))
+            .collect::<Result<Vec<_>, String>>()?;
+        let mut before = self.live.viewer;
+        for next in &mut turns {
+            let player = next.turn.player;
+            if !humans.contains(&player) || matches!(next.turn.status, Status::Turn(_)) {
+                before = player;
+                continue;
+            }
+            let at = next.turn.at;
+            let live = &self.live;
+            let seat = live
+                .seats
+                .iter()
+                .position(|s| s.at == at && s.shown == player);
+            // A computer's colour of the game's between the human before and this one.
+            let computers = (1..8)
+                .map(|k| (before + k) % 8)
+                .take_while(|&c| c != player)
+                .any(|c| colours.contains(&c) && !humans.contains(&c));
+            let selection = seat.and_then(|k| live.seats.get(k)?.selection.clone());
+            let kingdom = &next.turn.kingdom;
+            if kingdom.selected == Selected::None {
+                next.turn.kingdom.selected = if kingdom.heroes.is_empty() {
+                    if kingdom.towns.is_empty() {
+                        Selected::None
+                    } else {
+                        Selected::Town(0)
+                    }
+                } else {
+                    Selected::Hero(0)
+                };
+            }
+            if next.list.is_none() && player != live.viewer {
+                next.list = Some(colour_heroes(live, &next.turn.kingdom, player));
+            }
+            let events = self.timed_events(raw, player, next.turn.kingdom.date)?;
+            next.cover = Some(Cover {
+                seat,
+                computers,
+                selection,
+                events,
+            });
+            before = player;
+        }
+        if opening {
+            let live = &self.live;
+            let turn = Turn {
+                at: 0,
+                player: live.viewer,
+                kingdom: live.kingdom.clone(),
+                status: live
+                    .kingdom
+                    .status
+                    .clone()
+                    .unwrap_or(Status::Date(DateStatus { frame: 0 })),
+                week: Calendar::Named(0),
+                month: Calendar::Named(0),
+                heroes: None,
+                boats: None,
+            };
+            let events = self.timed_events(raw, turn.player, turn.kingdom.date)?;
+            turns.insert(
+                0,
+                NextTurn {
+                    turn,
+                    message: None,
+                    heroes: Vec::new(),
+                    walks: Vec::new(),
+                    taken: Vec::new(),
+                    flags: Vec::new(),
+                    lost: Vec::new(),
+                    boats: Vec::new(),
+                    list: None,
+                    first: true,
+                    open: false,
+                    cover: Some(Cover {
+                        events,
+                        ..Cover::default()
+                    }),
+                },
+            );
+        }
+        Ok((turns, boxes))
+    }
+
+    /// A hot seat's cover's box for `colour`'s human `name` (E24 M5 T5, design §5.31:
+    /// `message_box` 0x4F6570 of style 1 at 0x4CA98F): GENRLTXT 14 with the name, the crest
+    /// (type 10, the colour's frame captioned with the colour's name), framed in its colours.
+    fn hand_box(&mut self, colour: u8, name: &str) -> Result<Arc<MessageBox>, String> {
+        let texts = &self.assets.tables.texts;
+        let told = Told {
+            text: turn::hand_over(texts, name),
+            pictures: vec![(finds::CREST, i32::from(colour))],
+        };
+        let pictures = self.pictures(&told)?;
+        let assets = self.assets;
+        Ok(Arc::new(message::told(
+            &assets.layout.message,
+            self.fonts()?,
+            &told.text,
+            Style::Ok,
+            &pictures,
+            (colour, assets.bugs),
+        )))
+    }
+
+    /// The map's timed events `colour`'s human gets at its start on `date` (E24 M5 T5, MCL-Q71:
+    /// `map_timed_events` 0x4CD910, *provisional*: those for its colour and humans whose first
+    /// day or one of its repeats is the date), each its box (its text and its resources'
+    /// pictures, `finds::rewards`) framed in the colour's colours, with its resources.
+    fn timed_events(
+        &mut self,
+        raw: &RawMap,
+        colour: u8,
+        date: h3_map_view::live::Date,
+    ) -> Result<Vec<(Arc<MessageBox>, [i32; 7])>, String> {
+        let day = u32::from(date.month.saturating_sub(1)) * 28
+            + u32::from(date.week.saturating_sub(1)) * 7
+            + u32::from(date.day.saturating_sub(1));
+        let mut out = Vec::new();
+        for event in &raw.events {
+            let first = u32::from(event.first_day);
+            let interval = u32::from(event.interval);
+            let due =
+                day == first || (interval > 0 && day > first && (day - first) % interval == 0);
+            if !due || event.players >> (colour % 8) & 1 == 0 || !event.human {
+                continue;
+            }
+            let text = decode_windows_1252(event.message.as_bytes());
+            let rewards = h3_map::model::Rewards {
+                resources: event.resources,
+                ..Default::default()
+            };
+            let texts = &self.assets.tables.texts;
+            let (boxes, _) = finds::rewards(&rewards, texts, "", &text);
+            for reward in boxes {
+                let pictures = self.pictures(&reward.told)?;
+                let assets = self.assets;
+                let message = Arc::new(message::pictures(
+                    &assets.layout.message,
+                    self.fonts()?,
+                    &reward.told.text,
+                    &pictures,
+                    (colour, assets.bugs),
+                ));
+                out.push((message, event.resources));
+            }
+        }
+        Ok(out)
     }
 
     /// The pictures of `told` (`finds::picture`: each DEF decoded for its size, its caption in
@@ -2314,6 +2580,10 @@ impl<'a> Painter<'a> {
         self.live.buttons = Some(buttons);
         // The status bar's hint as last shown (E24 M3 T6a1).
         self.live.hint = Some(draw.hint.clone());
+        // A hot seat's view (E24 M5 T5, design §5.31): the colour shown and its explored tiles
+        // since a hand-over, its cover.
+        self.seated(draw.seat)?;
+        self.live.covered = draw.cover;
         // The objects' owners changed (E24 M4 T2d1), the objects taken off the map (E24 M4 T2a2
         // part B), the terrains revealed (T2b2), then the minimap's own owners (T2d1).
         self.owned(&draw.owners)?;
@@ -2478,6 +2748,26 @@ impl<'a> Painter<'a> {
         self.index = self.indexes()?;
         self.spare = None;
         self.minimap_owners = None;
+        Ok(())
+    }
+
+    /// A hot seat's view `seat` shown (E24 M5 T5: `Draw::seat`): its colour and explored tiles
+    /// (the live part's own for none), each level's index built again for them.
+    fn seated(&mut self, seat: Option<usize>) -> Result<(), String> {
+        if self.seated == seat {
+            return Ok(());
+        }
+        let (viewer, explored) = match seat.and_then(|k| self.live.seats.get(k)) {
+            Some(s) => (s.shown, s.explored.clone()),
+            None => self.own.clone(),
+        };
+        self.live.viewer = viewer;
+        self.explored = explored;
+        self.live.explored = self.explored_with(self.revealed, &self.walked);
+        self.index = self.indexes()?;
+        self.spare = None;
+        self.minimap_owners = None;
+        self.seated = seat;
         Ok(())
     }
 

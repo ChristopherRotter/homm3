@@ -95,6 +95,8 @@ fn live(objects: usize) -> Live {
         computer: false,
         level_ups: Vec::new(),
         casts: Vec::new(),
+        seats: Vec::new(),
+        covered: None,
     }
 }
 

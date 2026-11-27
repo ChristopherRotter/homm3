@@ -832,6 +832,8 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         rules
             .effects
             .extend([map.turn.week.clone(), map.turn.month.clone()]);
+        // A hot seat's hand-over's (E24 M5 T5, design §5.31).
+        rules.effects.push(map.turn.cover.clone());
         // A level-up's dialog's (E24 M4 T2c), when the tables name it.
         if !map.level_up.sound.is_empty() {
             rules.effects.push(map.level_up.sound.clone());

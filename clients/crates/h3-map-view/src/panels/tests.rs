@@ -52,6 +52,8 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         computer: false,
         level_ups: Vec::new(),
         casts: Vec::new(),
+        seats: Vec::new(),
+        covered: None,
     }
 }
 

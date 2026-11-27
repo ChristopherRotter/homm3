@@ -21,6 +21,7 @@ use std::process::ExitCode;
 
 use h3_map_view::live::Buttons;
 use h3_map_view::sequence::{Sequence, Sequences};
+use h3_map_view::sound::Cue;
 use h3_map_view::timeline::{self, Cursor, Draw, Found, Rules, Unplayable};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
@@ -116,6 +117,11 @@ enum Verdict {
     /// Played from a record: the first difference that is not the listed gap there (0-based):
     /// ours and the listed one (empty past the end).
     GapChanged(usize, String, String),
+    /// A sound run (E24 M5 T5): its timeline and its samples as recorded, their counts.
+    Heard(usize, usize),
+    /// A sound run whose timeline is as recorded: the first sample that differs (0-based), ours
+    /// and the recorded one (empty past the end).
+    SoundChanged(usize, String, String),
 }
 
 pub fn run(options: &Options) -> ExitCode {
@@ -148,6 +154,12 @@ fn all(options: &Options) -> Result<bool, String> {
     let archives = files::parse_archives(&archive_bytes)?;
     tables.texts = crate::texts::catalogue(&options.install, &options.map, &archives)?;
     let templates = files::templates(&archives)?;
+    // The samples' lengths a sound run's cues are compared by (E24 M5 T5), when one is chosen.
+    let lengths = if chosen.iter().any(|s| s.sound) {
+        sample_lengths(&options.install, &tables)?
+    } else {
+        BTreeMap::new()
+    };
     let assets = Assets {
         tables: &tables,
         layout: &layout,
@@ -158,6 +170,7 @@ fn all(options: &Options) -> Result<bool, String> {
     let context = Context {
         assets: &assets,
         options,
+        lengths: &lengths,
     };
     let mut same = 0;
     for sequence in &chosen {
@@ -183,6 +196,14 @@ fn all(options: &Options) -> Result<bool, String> {
                 "{id}: a gap CHANGED at gap {}: ours `{ours}`, listed `{listed}`",
                 line + 1
             ),
+            Ok(Verdict::Heard(n, samples)) => {
+                same += 1;
+                println!("{id}: {n} lines and {samples} samples as recorded");
+            }
+            Ok(Verdict::SoundChanged(n, ours, recorded)) => println!(
+                "{id}: the samples CHANGED at sample {}: ours `{ours}`, recorded `{recorded}`",
+                n + 1
+            ),
             Err(message) => println!("{id}: FAILED ({message})"),
         }
     }
@@ -191,10 +212,11 @@ fn all(options: &Options) -> Result<bool, String> {
     Ok(same == played)
 }
 
-/// What every sequence shares.
+/// What every sequence shares: since E24 M5 T5 the samples' lengths by their names' stems.
 struct Context<'a> {
     assets: &'a Assets<'a>,
     options: &'a Options,
+    lengths: &'a BTreeMap<String, u32>,
 }
 
 impl Context<'_> {
@@ -242,7 +264,7 @@ impl Context<'_> {
         }
         let assets = self.assets;
         let rules = Rules::new(assets.tables, assets.layout, assets.bugs);
-        let states = timeline::play(rules, &start, &actions, sequence.ms)
+        let (states, cues) = timeline::play_heard(rules, &start, &actions, sequence.ms)
             .map_err(|(t, why): (u32, Unplayable)| format!("at {t} ms: {why}"))?;
         let wanted = match &self.options.frames {
             Some(dir) => original_times(dir)?,
@@ -303,7 +325,11 @@ impl Context<'_> {
             return Ok(Verdict::New(lines.len()));
         };
         if options.record.is_none() {
-            return Ok(compare(&lines, &recorded));
+            let verdict = compare(&lines, &recorded);
+            if !sequence.sound || verdict != Verdict::Same(lines.len()) {
+                return Ok(verdict);
+            }
+            return self.heard(sequence, &cues, lines.len());
         }
         // Played from a record (E24 M4 T4a2): the differences against the listed gaps.
         let theirs: Vec<&str> = recorded.lines().collect();
@@ -331,6 +357,92 @@ impl Context<'_> {
             other => other,
         })
     }
+}
+
+impl Context<'_> {
+    /// A sound run's samples (E24 M5 T5): our cues' one-shot samples (an effect, a hot seat's
+    /// cover's sound) as `<ms> <length> <loops>`, against the recorded `<id>-sounds.txt` without
+    /// its channels (the game's handles, not the same from run to run: the lane's TRAPS), each
+    /// millisecond's in order of length; a game's start's cover at 0 is the recording's −1 (its
+    /// Begin's click before it the shell's), written as `<dir>/ours-sounds.txt` with `--frames`.
+    fn heard(&self, sequence: &Sequence, cues: &[(u32, Cue)], n: usize) -> Result<Verdict, String> {
+        let mut ours: Vec<(i64, u32, u32)> = Vec::new();
+        for (t, cue) in cues {
+            let name = match cue {
+                Cue::Effect(name) | Cue::Cover(name) => name,
+                _ => continue,
+            };
+            let length = self
+                .lengths
+                .get(&crate::sounds::stem(name))
+                .ok_or_else(|| format!("{name}: no length (not in the sound archives)"))?;
+            ours.push((i64::from(*t), *length, 1));
+        }
+        ours.sort_unstable();
+        let path = self
+            .options
+            .map
+            .join("timelines")
+            .join(format!("{}-sounds.txt", sequence.id));
+        let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let mut theirs: Vec<(i64, u32, u32)> = Vec::new();
+        for line in text.lines().filter(|l| !l.is_empty()) {
+            let fields: Vec<i64> = line
+                .split_whitespace()
+                .map(str::parse)
+                .collect::<Result<_, _>>()
+                .map_err(|e| format!("{}: `{line}`: {e}", path.display()))?;
+            let [t, _, length, loops] = fields[..] else {
+                return Err(format!("{}: `{line}` is not 4 numbers", path.display()));
+            };
+            let t = match (sequence.start, t) {
+                (true, -1) => 0,
+                (_, t) if t < 0 => continue,
+                (_, t) => t,
+            };
+            let number = |v: i64| u32::try_from(v).map_err(|e| format!("{}: {e}", path.display()));
+            theirs.push((t, number(length)?, number(loops)?));
+        }
+        theirs.sort_unstable();
+        let line = |s: &(i64, u32, u32)| format!("{} {} {}", s.0, s.1, s.2);
+        if let Some(dir) = &self.options.frames {
+            let out = dir.join("ours-sounds.txt");
+            let text: String = ours.iter().map(|s| line(s) + "\n").collect();
+            fs::write(&out, text).map_err(|e| format!("{}: {e}", out.display()))?;
+        }
+        for k in 0..ours.len().max(theirs.len()) {
+            let (a, b) = (ours.get(k), theirs.get(k));
+            if a != b {
+                return Ok(Verdict::SoundChanged(
+                    k,
+                    a.map(line).unwrap_or_default(),
+                    b.map(line).unwrap_or_default(),
+                ));
+            }
+        }
+        Ok(Verdict::Heard(n, ours.len()))
+    }
+}
+
+/// Each sample's length, ms, the map's sound tables name (E24 M5 T5: a sound run's comparison),
+/// by its name's stem, as the harness's clock plays it ([`paint::length_of`]).
+fn sample_lengths(
+    install: &Path,
+    tables: &h3_map_view::tables::Tables,
+) -> Result<BTreeMap<String, u32>, String> {
+    let Some(rules) = &tables.sound else {
+        return Ok(BTreeMap::new());
+    };
+    let bytes = crate::sounds::read_archives(install)?;
+    let archives = crate::sounds::parse_archives(&bytes)?;
+    let mut lengths = BTreeMap::new();
+    for name in rules.wavs() {
+        let stem = crate::sounds::stem(&name);
+        if let Some(Ok(pcm)) = crate::sounds::decode(&archives, &stem) {
+            lengths.insert(stem, paint::length_of(&pcm));
+        }
+    }
+    Ok(lengths)
 }
 
 /// Our lines' differences from the recorded ones (E24 M4 T4a2): a longest common subsequence's

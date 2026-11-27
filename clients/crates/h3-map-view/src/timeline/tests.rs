@@ -262,6 +262,7 @@ fn start(situation: &str, speed: usize) -> Start {
         water: Arc::default(),
         moves: None,
         host: None,
+        seat: None,
     }
 }
 
@@ -466,6 +467,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         water: Arc::default(),
         moves: None,
         host: None,
+        seat: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -684,6 +686,7 @@ fn what_it_cannot_play_yet() {
         water: Arc::default(),
         moves: None,
         host: None,
+        seat: None,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -839,6 +842,7 @@ pub(crate) fn walking_start(speed: usize, paths: Vec<Vec<Arrow>>) -> Start {
         water: Arc::default(),
         moves: None,
         host: None,
+        seat: None,
     }
 }
 
@@ -1493,6 +1497,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         water: Arc::default(),
         moves: None,
         host: None,
+        seat: None,
     }
 }
 
@@ -2120,6 +2125,7 @@ fn hovering_start(live: bool) -> Start {
         water: Arc::default(),
         moves: None,
         host: None,
+        seat: None,
     }
 }
 
@@ -3150,5 +3156,6 @@ mod levels;
 mod moves;
 mod notices;
 mod replies;
+mod seats;
 mod turns;
 mod visits;

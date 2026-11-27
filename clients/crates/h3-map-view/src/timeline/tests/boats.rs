@@ -70,6 +70,8 @@ fn live_part(text: &str) -> Live {
         computer: false,
         level_ups: Vec::new(),
         casts: Vec::new(),
+        seats: Vec::new(),
+        covered: None,
     }
 }
 

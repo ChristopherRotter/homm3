@@ -60,8 +60,8 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       clients/map/timelines/<id>.txt (`ok`, `CHANGED`, `new`), and the viewer's frame at 0
       drawn with the live part read then against the original's; exit 1 unless each is as
       recorded and exact at 0. A run as recorded or new and exact at 0 keeps that live part
-      (timelines/<id>-live.toml; since E24 M4 T6 a sequence of sequences.toml only, not a sound
-      run: the others' stays under <dir>/<id>/). Since E24 M2 T1a2 a sequence's options (the
+      (timelines/<id>-live.toml; since E24 M4 T6 a sequence of sequences.toml only, the others'
+      staying under <dir>/<id>/; a sound run's too since E24 M5 T5 part three). Since E24 M2 T1a2 a sequence's options (the
       scroll and hero speeds) are written once it is staged and its inputs (keys pressed and released, the
       pointer moved) given at their milliseconds; the timeline has the cursor too. Since E24 M2
       T2 the frame check: the viewer's frames at the times the original's screen changed
@@ -697,6 +697,10 @@ def stage_start(situation_path, out, seed=None, sound=False, hot_seat=None):
             time.sleep(0.2)
         mem = game_mem(game)
         mem.heard, mem.start_stepped = heard, stepped
+        # The first human's selected hero is lifted off its tile under the cover (its start's
+        # `hero_select`; E24 M5 T5 part three): the live part's heroes and the mouse-over's
+        # facts hold it on its record's tile, as the start puts it back.
+        mem.lifted_standing = True
         check_hot_seat(mem, sit, hot_seat)
     except BaseException:
         game.stop()
@@ -1705,7 +1709,7 @@ def sequence(entry, out):
         states, last = [state(t0, first, None)], first
         # Each turn's start the sequence reaches (E24 M4 T1a, design §5): its facts as memory
         # holds them in the millisecond the current player or the date changed.
-        turns, seats = [], []
+        turns, seats, selecting = [], [], None
         # Each message box opened and each status window of a resource found built (E24 M4
         # T2a1, design §5.3): their facts in the millisecond they first show, after the turns'.
         shown_box, shown_found, finds = None, mem.status_shown() == 6, []
@@ -1750,6 +1754,14 @@ def sequence(entry, out):
             # tiles as memory holds them in that millisecond (what its start will show).
             if hot and states[-1]["shown"] != states[-2]["shown"]:
                 seats.append(seat_toml(mem, t - t0))
+                selecting = mem.shown_player()
+            # E24 M5 T5 part three: the shown colour's selection's window (its hero's or its
+            # town's) as its start's date window first gives way to it, the seat's `selection`
+            # (what the viewer's chooser builds then; none when the run ends before).
+            if hot and seats and selecting is not None and not away \
+                    and mem.status_shown() in (3, 4) and mem.shown_player() == selecting:
+                seats[-1] += f"selection = {status_toml(mem, selecting)}\n"
+                selecting = None
             box = None if away else mem.message_box()
             # E24 M4 T2b1: a choice made or a button's state changed is a table of its own.
             key = None if box is None else (box["box"], box["texts"], box["pictures"],
@@ -1958,8 +1970,8 @@ def run_frames(rest):
     `clients/map/timelines/<id>.txt` (`ok`, `CHANGED`, `new`), and the viewer's frame at 0 against
     the original's (the live part at 0 is a still's: exact, as the capture set). A run as recorded
     or new and exact at 0 keeps its live part at 0 as `timelines/<id>-live.toml` (for the frame
-    check, M2 T2), a sequence of `sequences.toml` only and not a sound run (E24 M4 T6, R6-7: the
-    others' stays under `<out>/<id>/`). Exit 1 unless every sequence is as recorded, its frame at
+    check, M2 T2), a sequence of `sequences.toml` only (E24 M4 T6, R6-7: the others' stays under
+    `<out>/<id>/`; a sound run's too since E24 M5 T5 part three). Exit 1 unless every sequence is as recorded, its frame at
     0 exact, its frames as recorded and the viewer's timeline as recorded."""
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT_FRAMES
@@ -2002,17 +2014,18 @@ def run_frames(rest):
         print(f"{e['id']}: {len(got.splitlines())} changes, {frames} screens kept in {e['ms']} ms "
               f"{verdict}; the frame at 0: {at_0}", flush=True)
         failed += verdict != "ok" or n not in (0, None)
-        if verdict == "CHANGED" or n != 0:
+        if verdict == "CHANGED" or n not in (0, None):
             # Only a run exact at 0 keeps its live part (M2 T6a, the reviewer's R3-5): `drawn`
-            # takes it as its reference.
-            why = ("not as recorded" if verdict == "CHANGED" else "its frame at 0 not compared"
-                   if n is None else "its frame at 0 not exact")
+            # takes it as its reference. A hot seat's start (E24 M5 T5 part three) keeps its own:
+            # its cover at 0 is the frame check's (the viewer draws it since).
+            why = "not as recorded" if verdict == "CHANGED" else "its frame at 0 not exact"
             print(f"{e['id']}: {why}, its live part not kept ({here})", flush=True)
-        elif not committed or e.get("sound", False):
-            # A scratch file's sequence or a sound run (E24 M4 T6, the reviewer's R6-7): no
-            # `drawn` visits a kept part of either, so it stays with the run.
-            why = "a sound run" if committed else f"not of {SEQUENCES.name}"
-            print(f"{e['id']}: {why}, its live part stays at {here / 'live.toml'}", flush=True)
+        elif not committed:
+            # A scratch file's sequence (E24 M4 T6, the reviewer's R6-7): no `drawn` visits its
+            # kept part, so it stays with the run. A sound run of `sequences.toml` keeps its own
+            # since E24 M5 T5 part three (the hot seat's: `drawn` visits them).
+            print(f"{e['id']}: not of {SEQUENCES.name}, its live part stays at "
+                  f"{here / 'live.toml'}", flush=True)
         else:
             TIMELINES.mkdir(exist_ok=True)
             shutil.copy(here / "live.toml", TIMELINES / f"{e['id']}-live.toml")

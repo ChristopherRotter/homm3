@@ -107,6 +107,8 @@ pub(super) fn hover_of(live: &str) -> Arc<Hover> {
         computer: false,
         level_ups: Vec::new(),
         casts: Vec::new(),
+        seats: Vec::new(),
+        covered: None,
     };
     let text = include_str!("../../../../../map/assets/base.toml");
     let tables = tables::load(&[tables::parse(text).unwrap()], "base").unwrap();
@@ -165,6 +167,7 @@ fn computing(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str)
             list: None,
             first: false,
             open: false,
+            cover: None,
         })
         .collect();
     start.points = sequence.points(timeline).unwrap();

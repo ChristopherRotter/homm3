@@ -432,10 +432,12 @@ pub fn scene_in(
     };
     view.check_codes()?;
     let mut draws = Vec::new();
+    // A hot seat's cover draws no frame: its picture stays in the colours last drawn (E24 M5 T5,
+    // design §5.31).
     draws.push(Draw::Frame {
         picture: layout.picture.clone(),
         players: layout.player_palette.clone(),
-        viewer: live.viewer,
+        viewer: live.covered.map_or(live.viewer, |c| c.frame),
     });
     // The panels (`adventure_full_update` 0x417420 after its picture, design §4.1): the dialog's
     // items in their order, the lists' selections (0x4038C0, §4.5), then the resource bar's; the
@@ -508,7 +510,10 @@ pub fn scene_in(
         .dialog
         .item(panels::id::MINIMAP)
         .and_then(ui::Item::area);
-    match (live.computer, area) {
+    // A hot seat's cover shows the shield too until its start draws the minimap over it (E24 M5
+    // T5, design §5.31: `ai_shield_draw` 0x4CA780).
+    let shield = live.computer || live.covered.is_some_and(|c| !c.started);
+    match (shield, area) {
         (true, Some(([x, y], size))) => draws.push(Draw::Dialog(ui::Draw::Picture {
             picture: layout.panels.shield.clone(),
             x: layout.dialog.place[0].saturating_add(x),
@@ -1369,8 +1374,12 @@ impl<'a> View<'a> {
     /// Pass 10: an unexplored tile of the map, its piece by its unexplored neighbours (0x412220,
     /// 0x40F8C0).
     fn shroud(&self, x: i32, y: i32, place: [i32; 2], out: &mut Vec<Draw>) {
-        let (z, explored) = (self.at.z, &self.live.explored);
-        let hidden = self.art.tile(x, y, z).is_some() && !explored.explored(x, y, z);
+        let z = self.at.z;
+        // A hot seat's cover draws every tile unexplored (E24 M5 T5, design §5.31: the covered
+        // tests 0x412255, 0x41233E).
+        let covered = self.live.covered.is_some();
+        let explored = |x: i32, y: i32| !covered && self.live.explored.explored(x, y, z);
+        let hidden = self.art.tile(x, y, z).is_some() && !explored(x, y);
         let Some(clip) = self.clip(place, 0).filter(|_| hidden) else {
             return;
         };
@@ -1388,7 +1397,7 @@ impl<'a> View<'a> {
         let mask = neighbours
             .iter()
             .enumerate()
-            .filter(|(_, (dx, dy))| !explored.explored(x + dx, y + dy, z))
+            .filter(|(_, (dx, dy))| !explored(x + dx, y + dy))
             .fold(0u8, |mask, (bit, _)| mask | 1 << bit);
         let shroud = &self.tables.map.shroud;
         let (tx, ty) = (u8::try_from(x).unwrap_or(0), u8::try_from(y).unwrap_or(0));
