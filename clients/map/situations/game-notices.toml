@@ -1,0 +1,89 @@
+# Play's notices (E24 M5 T4c, design §5.28; MCL-STUB-7): every decision the view does not ask and
+# a town entered, for a hand test in play (`h3-map-view play`, no recording of the original). Four
+# heroes of Red's, each by a row of objects whose entrances lie one row above its road:
+# - Hero A (its army of seven kinds: no room for another) on the road of row 12: a guarded pile
+#   (a fight, from beside), compliant Peasants (their join, then the army dialog), an abandoned
+#   mine (its guards' fight, on its entrance), a Monastery (its guards), Red's Guardhouse (its
+#   hire), a Refugee Camp (its hire), a University, a Trading Post and an Altar of Sacrifice.
+# - Hero B on the road of row 20: a Hill Fort, a Tavern, Red's garrison, Red's Shipyard on a lake's
+#   shore, then Hero C on the road (a meeting).
+# - Hero D below the entrance of Red's town (the town screen).
+# Blue's hero far off. The pile's message is the client's own words (no original text).
+size = 36
+terrain = "grass"
+explored = "start"
+patches = [{ terrain = "water", from = [14, 15], to = [18, 18] }]
+roads = [
+    { kind = "cobblestone", row = 12, from = 1, to = 33 },
+    { kind = "cobblestone", row = 20, from = 1, to = 22 },
+]
+heroes = [
+    { at = [3, 12], class = 1, map_army = [[0, 10], [2, 10], [4, 5], [6, 5], [8, 3], [10, 2], [12, 1]] },
+    { at = [3, 20], class = 2, map_army = [[0, 10]] },
+    { at = [21, 20], class = 3, map_army = [[2, 5]] },
+    { at = [4, 7], class = 4, map_army = [[4, 5]] },
+    { at = [33, 33], owner = 1, class = 6 },
+]
+towns = [{ at = [6, 6], faction = 0, owner = 0, buildings = "fort" }]
+bonus = "gold"
+resources = [20, 10, 20, 10, 10, 10, 20000]
+select = { hero = [3, 12] }
+view = [0, 3, 0]
+
+[[objects]]
+def = "AVTgold0.def"
+at = [5, 11]
+amount = 5
+guards = { army = [[0, 10]], text = "Soldiers guard this gold. Fight them for it?" }
+
+[[objects]]
+def = "AVWpeas.def"
+at = [8, 11]
+monster = { count = 10, disposition = 0, never_flees = false }
+
+[[objects]]
+def = "AVXabnd0.def"
+at = [12, 11]
+
+[[objects]]
+def = "AVGmonk0.def"
+at = [14, 11]
+
+[[objects]]
+def = "AVGpike0.def"
+at = [17, 11]
+owner = 0
+
+[[objects]]
+def = "AVGrefg0.def"
+at = [20, 11]
+
+[[objects]]
+def = "AVSuniv0.def"
+at = [25, 11]
+
+[[objects]]
+def = "AVXpost0.def"
+at = [28, 11]
+
+[[objects]]
+def = "AvXAltar.def"
+at = [31, 11]
+
+[[objects]]
+def = "AVXhilg0.def"
+at = [5, 19]
+
+[[objects]]
+def = "AVXtvrn0.def"
+at = [9, 19]
+
+[[objects]]
+def = "AVCgar10.def"
+at = [13, 19]
+owner = 0
+
+[[objects]]
+def = "AVXshyd0.def"
+at = [17, 19]
+owner = 0

@@ -1149,6 +1149,16 @@ original = [{ at = "ADVEVENT:79" }]
 id = "map.find.lighthouse"
 original = [{ at = "ADVEVENT:69" }]
 
+# The observatories' visit (E24 M5 T4c; docs/epics/E24-design.md §5.29): `visit_object`'s cases 58
+# (the Redwood Observatory, 0x4A9992) and 60 (the Pillar of Fire, 0x4A9A12), no picture.
+[[key]]
+id = "map.find.observatory"
+original = [{ at = "ADVEVENT:98" }]
+
+[[key]]
+id = "map.find.pillar"
+original = [{ at = "ADVEVENT:99" }]
+
 [[key]]
 id = "map.find.reward-experience"
 args = { hero = "text" }

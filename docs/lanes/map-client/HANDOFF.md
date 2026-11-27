@@ -22,15 +22,19 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **T4a done** 2026-11-26 (design §5.26: the walks through the engine, `h3_map_view::reach`).
   **T4b done** 2026-11-26 in two sessions (kept whole by the user; design §5.27: a visit's
   questions, choices and level-ups and Space's visit answered through the host, the client's own
-  random picks `h3_map_view::picks`; MCL-Q59, MCL-Q60). **Next: M5 T4c** (the M6/M7 notice, which
-  also closes a decision the view does not ask; the facts audit with MCL-Q59's client part; T4's
-  game). The M4 hand-test notes (`clients/out/win/map-m4-notes.txt`) still blank on 2026-11-26.
-  Open questions: MCL-Q29 to MCL-Q49, MCL-Q58 to MCL-Q60 (none blocks). Stubs: `MCL-STUB-1` (a
+  random picks `h3_map_view::picks`; MCL-Q59, MCL-Q60). **T4c done** 2026-11-27 (kept whole by the user; four parts, design §5.28 to §5.30: the
+  screens' notice closing every decision the view does not ask, fights declined, `h3_map_view::notice`;
+  the facts audit, play's replies from the record, MCL-Q61 to Q69 asked of the engine lanes; a
+  wire creature read by the original's number, `engine::Creatures`; T4's game, two humans on
+  `Barbarian Breakout` for eight days by keys and mouse). **Next: M5 T5** (the hand-over and the
+  clock; its cut confirmed with the user at its start). The M4 hand-test notes
+  (`clients/out/win/map-m4-notes.txt`) still blank on 2026-11-27.
+  Open questions: MCL-Q29 to MCL-Q49, MCL-Q58 to MCL-Q69 (none blocks). Stubs: `MCL-STUB-1` (a
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10), `MCL-STUB-5` (a computer's turn ended at once, E31's
-  increment 2), `MCL-STUB-6` (a battle in play ends play, M5 T6); planned `MCL-STUB-7` (T4c).
-  Next ids **MCL-Q61**, **MCL-STUB-7**.
-- **Open pull requests** (2026-11-26): T4b's (`map-client/e24-m5-t4b`; T4a's #1194 merged): check it
+  increment 2), `MCL-STUB-6` (a battle in play ends play, M5 T6), `MCL-STUB-7` (a screen of M6 or
+  M7 or an unasked decision: its notice, M5 T6, M6, M7). Next ids **MCL-Q70**, **MCL-STUB-8**.
+- **Open pull requests** (2026-11-27): T4c's (`map-client/e24-m5-t4c`; T4b's #1201 merged): check it
   first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
   branches are the user's to delete (the proxy refuses it).
@@ -57,6 +61,15 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-27, E24 M5 T4c** (kept whole by the user at its start, "use subagents efficiently";
+  one runner, five worker sub-agents in turn): a read-only audit of play's facts; the notice
+  (`MCL-STUB-7`, 17 keys in `clients/text/map/`, MCL-Q68); the audit's class-A rows (a price paid
+  never left the bar: fixed); a wire creature is the packs' handle (Peasants drawn as Boars:
+  fixed); T4's game (a random artifact's pickup and a later start's taken piles fixed). Not done:
+  play's frames against the original's (no digests on the window's clock: M5's review list).
+  Staging: the 58 originals (sums checked), the saves, the SoD tables and the manuals from the PC
+  at the start; the VM restarted twice (files kept; a stopped worker resumed from its transcript).
+
 - **2026-11-26, E24 M5 T4b** (kept whole by the user at its start; two sessions, the user's "go
   on" between them): part one the boxes answered through the host (`Loop::answer_asked`,
   `level_asked`; `engine::visits::opened`, `live`; `HotSeat::decision` through `observe`); part two
@@ -75,11 +88,3 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   up at the start only (the files and manuals staged, SHA-256 checked); the VM restarted once
   (the baseline lost, CI's Clients on `master` standing in; CI's engine run there red, the ai
   lane's `computer/start/tests.rs`).
-
-- **2026-11-26, E24 M5 T3b** (kept whole by the user at its start, the same human's next day in
-  place): `engine::live` (a later snapshot let through for a live start, the host's facings),
-  the kingdom's heroes by `hero_list`, `Loop`/`Replay::turns_asked` and `add_turns`,
-  `HotSeat::leave` and `since`, `paint::for_live` and `live_turns`, `window::Session`, play's
-  views in turn; MCL-Q58 (the view names no facing) asked, the adventure lane's inbox told. The
-  PC up at the start only (58 files and the manuals staged, SHA-256 checked); the VM restarted
-  once (the setup's baseline lost at coverage, CI's Clients on `master` standing in).

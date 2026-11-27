@@ -12,27 +12,11 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
 "Later". Every task's cut is confirmed with the user at its start. `MCL-STUB-5` (a computer
 colour's turn ended at once) since T3a, `MCL-STUB-6` (a battle in play ends play, until T6)
-since T4a; planned `MCL-STUB-7` (a screen of M6 or M7, T4c). T1 was cut in three at its start
+since T4a, `MCL-STUB-7` (a screen of M6 or M7 or a decision the view does not ask: its notice)
+since T4c. T1 was cut in three at its start
 (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done 2026-11-25), T3 in two (T3a done
-2026-11-25, T3b 2026-11-26), T4 in three (T4a done 2026-11-26, T4b 2026-11-26 in two sessions).
-
-### E24 M5 T4c — the screens' notice, the facts audit, T4's game
-
-- **Scope:** a screen of M6 or M7 (the hero and town screens, the spell book, a visit window) a
-  notice in the client's words, its decision closed (`MCL-STUB-7`, planned); the facts audit
-  (**facts first**, the user at T0): no rules table of the client's and no map text read from the
-  file in play (the finds' and the hints' tables, the visit marks, the town names), each fact the
-  view lacks an `MCL-Q<n>` and a note in the engine lanes' inboxes; the list of facts the view
-  lacks completed in the epic's risks (begun at T4a). From T4b: MCL-Q59's client part (the
-  replies taken from the record's events where they carry them); a decision the view does not
-  ask (a dwelling's or a Refugee Camp's hire dialog, a Shipyard's boat, a University, a market,
-  an Altar, a Hill Fort, a map Tavern, a meeting, an army dialog) holds the game until answered:
-  the notice closes it (its `Close` or decline) so play goes on.
-- **Acceptance:** a hot-seat game played by keys and mouse from Begin (until the shell's crate,
-  `h3-map-view play`) through several days, every command accepted by the engine; scripted games
-  compared with the original's frames where the commands are the same; the list in the epic's
-  risks; the scoped verify.
-- **Depends on:** T4b (done). **Status:** queued (next).
+2026-11-25, T3b 2026-11-26), T4 in three (T4a done 2026-11-26, T4b 2026-11-26 in two sessions, T4c 2026-11-27 kept whole,
+in four parts). Next: T5.
 
 ### E24 M5 T5 — the hand-over and the clock
 

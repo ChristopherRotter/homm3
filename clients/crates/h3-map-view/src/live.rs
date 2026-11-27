@@ -208,22 +208,41 @@ pub enum Calendar {
     Named(u16),
     /// Kind 1: a creature's, the creature.
     Creature(u16),
-    /// Kind 2: the week of the Deity (the Imp's and the Familiar's), the month of the Plague.
+    /// Kind 2: the week of the Deity (the Imp's and the Familiar's), the month of the Plague; a
+    /// recording's week of the Deity names its creatures and growth by the client's tables (test
+    /// tooling's: `[map.turn] deity`, the original's creature table).
     Special,
+    /// Kind 2, a record's week of a building (the Deity of Fire's; E24 M5 T4c, design §5.29): its
+    /// level's creature and its upgrade's (none: no such) and what each such dwelling grows more,
+    /// the engine's (`Week::Of`), `[2, creature, upgrade, bonus]` (−1 none).
+    Deity {
+        /// The creatures.
+        creatures: [Option<u16>; 2],
+        /// The growth more.
+        bonus: u16,
+    },
 }
 
 impl Calendar {
-    /// `[kind, n]` as the harness writes it; none for another kind or a number out of range.
+    /// `[kind, n]` as the harness writes it (since E24 M5 T4c a record's week of a building
+    /// `[2, creature, upgrade, bonus]`, [`Calendar::Deity`]); none for another kind or a number out
+    /// of range.
     #[must_use]
     pub fn read(value: &toml::Value) -> Option<Self> {
-        let [kind, n] = value.as_array()?.as_slice() else {
-            return None;
-        };
-        let n = u16::try_from(n.as_integer()?).ok();
-        match kind.as_integer()? {
-            0 => Some(Self::Named(n?)),
-            1 => Some(Self::Creature(n?)),
-            2 => Some(Self::Special),
+        let numbers: Vec<i64> = value
+            .as_array()?
+            .iter()
+            .map(toml::Value::as_integer)
+            .collect::<Option<_>>()?;
+        let n = |v: i64| u16::try_from(v).ok();
+        match numbers.as_slice() {
+            [0, v] => Some(Self::Named(n(*v)?)),
+            [1, v] => Some(Self::Creature(n(*v)?)),
+            [2, _] => Some(Self::Special),
+            [2, first, second, bonus] => Some(Self::Deity {
+                creatures: [*first, *second].map(n),
+                bonus: n(*bonus)?,
+            }),
             _ => None,
         }
     }

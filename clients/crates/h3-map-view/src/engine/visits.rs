@@ -47,6 +47,12 @@
 //!   ([`Visit::flag`]); a visit that raises a flag and tells nothing else Part A builds (a
 //!   dwelling's hire not built, a Shipyard, an abandoned mine, a guarded dwelling) raises it
 //!   alone ([`Told::Flagged`]), so that every flag the viewer's visits raise is drawn.
+//!
+//! Since E24 M5 T4c (design §5.28, *provisional*; `MCL-STUB-7`): live, a decision the view does
+//! not ask is its notice ([`Ask::Notice`], [`crate::notice`]), its every answer its OK's; a visit
+//! is placed where the engine's walk ended ([`Placed`]: from beside where it stops one short, a
+//! monster's zone entered on the monster, a meeting on no object); a town entered shows the town
+//! screen's notice ([`Told::Notice`]).
 
 use alloc::string::String;
 
@@ -54,15 +60,16 @@ use alloc::vec::Vec;
 
 use h3_map::model::{Pos, Rewards};
 use h3_protocol::wire::game::{
-    AdventureEvent, Answer, ArenaChoice, ChestChoice, ChoiceKind, Consent, Decision, GameEvent,
-    HeroChange, NothingWhy, OfferKind, SchoolChoice,
+    AdventureEvent, Answer, ArenaChoice, ArmyRef, ArmySlot, ChestChoice, ChoiceKind, Consent,
+    Decision, GameEvent, HeroChange, NothingWhy, OfferKind, SchoolChoice,
 };
 use h3_protocol::wire::{Outcome, Side};
 
 use super::played::{Held, Visit};
-use crate::asks::{Ask, Offer as AskOffer};
+use crate::asks::{Ask, Offer as AskOffer, Reveal};
 use crate::finds::{Find, FindArt, Gain};
 use crate::live::Stack;
+use crate::notice::Notice;
 
 /// A Temple's class.
 const TEMPLE: u32 = 96;
@@ -70,6 +77,11 @@ const TEMPLE: u32 = 96;
 const PILE: u32 = 79;
 /// An artifact's.
 const ARTIFACT: u32 = 5;
+/// The random artifacts' first and last (any, treasure, minor, major, relic): a new game made each
+/// an artifact, whose picture the view does not name (`MCL-STUB-1`) but whose pickup the record
+/// tells by its `AddArtifact` (E24 M5 T4c, T4's game: taken with no box before).
+const RANDOM_ARTIFACT: u32 = 65;
+const RANDOM_RELIC: u32 = 69;
 /// A Learning Stone's.
 const STONE: u32 = 100;
 /// A Star Axis's.
@@ -114,6 +126,16 @@ const BORDER_GUARD: u32 = 9;
 const CARTOGRAPHER: u32 = 13;
 /// A monster's count in the view's word (its first of the count's word).
 const COUNT: u32 = 0xFFF;
+/// A town's (as the game loads it).
+const TOWN: u32 = 98;
+/// The Redwood Observatory's (E24 M5 T4c).
+const OBSERVATORY: u32 = 58;
+/// The Pillar of Fire's.
+const PILLAR: u32 = 60;
+
+/// The object of a live visit's notice on a tile with no object's entrance ([`lay`]: a meeting's,
+/// the visited hero's tile; E24 M5 T4c): none of the map's.
+pub const NO_OBJECT: usize = usize::MAX;
 
 /// What a visit shows (the module's documentation).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -191,6 +213,10 @@ pub enum Told {
         /// What the panels show.
         gain: Gain,
     },
+    /// Live, a screen the visit opens with no decision (E24 M5 T4c, design §5.28, `MCL-STUB-7`: a
+    /// hero's entry into a town, the town screen of M7): its notice, a box of its own whose OK
+    /// closes it.
+    Notice(Notice),
 }
 
 /// Which of a question's answers the record's takes: its OK or a choice's first picture, a
@@ -231,8 +257,10 @@ pub fn told(visit: &Visit, class: [u32; 2], hero: &str) -> Option<Told> {
 /// (its artifact told by the answer), the Tree of Knowledge's price in gold or gems, a
 /// Cartographer's map, a Border Guard's passage, the Pyramid, a wandering monster's offer to join
 /// free or for its price and its flight (each next offer the engine's next decision: no flight
-/// of the client's); none for another decision or class (a guarded object's fight and a
-/// dwelling's hire: M5 T6's battles, the hire dialog of M6 and M7).
+/// of the client's); none for another decision or class. Since E24 M5 T4c (design §5.28) a
+/// decision the view does not ask its notice ([`Ask::Notice`], [`Notice::of`]: a guarded object's
+/// fight and a dwelling's guards, M5 T6's battles; a dwelling's hire, a Shipyard's boat and every
+/// window of M6 and M7 but a level-up's), whatever the object.
 #[must_use]
 pub fn opened(
     decision: &Decision,
@@ -250,7 +278,7 @@ pub fn opened(
         room: true,
         flees: false,
     };
-    match decision {
+    let asked = match decision {
         Decision::Choice { choice } => match (&choice.kind, class) {
             (ChoiceKind::Chest { gold, experience }, CHEST) => Some(Ask::Chest {
                 gold: clamp(gold.amount),
@@ -275,13 +303,22 @@ pub fn opened(
                 rewards: Rewards::default(),
                 hero: String::from(hero),
             }),
-            (OfferKind::Search {}, TOMB) => Some(Ask::Tomb(None)),
+            (OfferKind::Search {}, TOMB) => Some(Ask::Tomb {
+                artifact: None,
+                morale: 0,
+            }),
             (OfferKind::Gift { price }, TREE) => Some(Ask::Tree {
                 gems: price.iter().any(|p| p.resource == GEMS),
                 visited: false,
                 poor: false,
             }),
-            (OfferKind::Reveal { .. }, CARTOGRAPHER) => Some(Ask::Maps(subclass)),
+            (OfferKind::Reveal { price }, CARTOGRAPHER) => Some(Ask::Maps {
+                kind: subclass,
+                price: price.first().map_or([GOLD_HANDLE, 0], |p| {
+                    [i32::from(p.resource), clamp(p.amount)]
+                }),
+                reveal: Reveal::None,
+            }),
             (OfferKind::Pass {}, BORDER_GUARD) => Some(Ask::Pass),
             (OfferKind::SearchPyramid {}, PYRAMID) => Some(Ask::Pyramid),
             (OfferKind::Join {}, MONSTER) => Some(monster(AskOffer::Join)),
@@ -293,14 +330,16 @@ pub fn opened(
             _ => None,
         },
         _ => None,
-    }
+    };
+    asked.or_else(|| Notice::of(decision).map(Ask::Notice))
 }
 
 /// What a live visit tells (E24 M5 T4b, design §5.27): the question of the decision the host held
 /// open there ([`opened`], `class` its object's class and subclass and its word), unanswered
 /// every answer the host's ([`Answered::Open`]); answered, the record's answer, the question's
 /// facts brought up to what it told (Pandora's Box's rewards, the Tomb's artifact, a monster's
-/// creatures joined). None where the decision asks no question here.
+/// creatures joined). None where the decision asks no question here. A notice's every answer its
+/// OK's (E24 M5 T4c: the host's closing answer).
 #[must_use]
 pub fn live(
     visit: &Visit,
@@ -318,6 +357,7 @@ pub fn live(
         });
     };
     let answered = match *answer {
+        _ if matches!(ask, Ask::Notice(_)) => Answered::Yes,
         Answer::Offer {
             consent: Consent::Accept,
         }
@@ -346,13 +386,23 @@ pub fn live(
             rewards: rewards(visit),
             hero,
         },
-        Ask::Tomb(_) => Ask::Tomb(after.iter().find_map(|e| match e {
-            GameEvent::HeroChanged {
-                change: HeroChange::AddArtifact { artifact },
-                ..
-            } => Some(artifact.artifact),
-            _ => None,
-        })),
+        // The Tomb's artifact and its morale lost (`OnceMarkChanged`), the record's.
+        Ask::Tomb { .. } => Ask::Tomb {
+            artifact: after.iter().find_map(|e| match e {
+                GameEvent::HeroChanged {
+                    change: HeroChange::AddArtifact { artifact },
+                    ..
+                } => Some(artifact.artifact),
+                _ => None,
+            }),
+            morale: gain(after).morale[0],
+        },
+        // The tiles the answer revealed (its `GameReveal`), the record's.
+        Ask::Maps { kind, price, .. } => Ask::Maps {
+            kind,
+            price,
+            reveal: Reveal::Tiles(visit.revealed.first().cloned().unwrap_or_default()),
+        },
         Ask::Monster {
             stack, offer, room, ..
         } => {
@@ -398,14 +448,24 @@ pub fn answered_gain(visit: &Visit) -> Gain {
 
 /// Whether `events` take an object off the map (`ObjectRemoved`; since E24 M5 T4b a live answer's
 /// object taken, `h3-map-client`'s).
+#[must_use]
 pub fn removes(events: &[GameEvent]) -> bool {
-    events.iter().any(|e| {
-        matches!(
-            e,
-            GameEvent::Adventure {
-                event: AdventureEvent::ObjectRemoved { .. }
-            }
-        )
+    removed(events).is_some()
+}
+
+/// The anchor of the first object `events` take off the map (`ObjectRemoved`; E24 M5 T4c, design
+/// §5.29: a live answer's object taken, the record's), none without one or off the map's tiles.
+#[must_use]
+pub fn removed(events: &[GameEvent]) -> Option<Pos> {
+    events.iter().find_map(|e| match e {
+        GameEvent::Adventure {
+            event: AdventureEvent::ObjectRemoved { anchor, .. },
+        } => Some(Pos {
+            x: u8::try_from(anchor.x).ok()?,
+            y: u8::try_from(anchor.y).ok()?,
+            z: anchor.level,
+        }),
+        _ => None,
     })
 }
 
@@ -481,6 +541,15 @@ fn shown(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told>
             }
         )
     });
+    // An observatory's reveal told (E24 M5 T4c: `TilesRevealed`, at every visit).
+    let revealed = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure {
+                event: AdventureEvent::TilesRevealed { .. }
+            }
+        )
+    });
     let find = |find: Find| {
         Some(Told::Find {
             find,
@@ -494,6 +563,9 @@ fn shown(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told>
         TEMPLE if gained.morale != [0; 2] => find(Find::Temple { visited: false }),
         AXIS if visited => find(Find::Axis { visited: true }),
         AXIS if gained.skills != [0; 4] => find(Find::Axis { visited: false }),
+        OBSERVATORY | PILLAR if revealed => find(Find::Observatory {
+            fire: class == PILLAR,
+        }),
         STONE if visited => find(Find::Stone { visited: true }),
         STONE if gained.experience > 0 => find(Find::Stone { visited: false }),
         PILE | WINDMILL => {
@@ -514,7 +586,7 @@ fn shown(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told>
                 Find::Windmill { resource, amount }
             })
         }
-        ARTIFACT => events.iter().find_map(|e| match e {
+        ARTIFACT | RANDOM_ARTIFACT..=RANDOM_RELIC => events.iter().find_map(|e| match e {
             GameEvent::HeroChanged {
                 change: HeroChange::AddArtifact { artifact },
                 ..
@@ -690,13 +762,6 @@ fn rewards(visit: &Visit) -> Rewards {
                 creature: stack.creature,
                 count: u16::try_from(stack.count).unwrap_or(u16::MAX),
             }),
-            GameEvent::ResourceLost {
-                resource, amount, ..
-            } => {
-                if let Some(r) = rewards.resources.get_mut(usize::from(*resource)) {
-                    *r = r.saturating_sub(i32::try_from(*amount).unwrap_or(i32::MAX));
-                }
-            }
             GameEvent::HeroChanged { change, .. } => match *change {
                 HeroChange::RaiseSkill { skill, level } => {
                     if let Ok(skill) = u8::try_from(skill) {
@@ -824,13 +889,15 @@ impl Kept {
             | Told::Fight { .. }
             | Told::Flagged { .. }
             | Told::Taken
-            | Told::Levels { .. } => none,
+            | Told::Levels { .. }
+            | Told::Notice(_) => none,
         }
     }
 }
 
 /// `visits` laid out (E24 M4 T6, the reviewers' R2-1, R2-6 and R2-8): each on the object whose
-/// entrance `object_at` finds on its tile (its index and its class and subclass), told
+/// entrance `object_at` finds on its tile (its index and its class and subclass; since E24 M5 T4c
+/// `object_at` is given the visit), told
 /// ([`told`]) with its hero named by `name` (by its type), in the record's order, one a visit; an
 /// artifact's pickup with the artifact's primary skills (`art`'s `artifact_skills`, taken as
 /// worn: SRV-STUB-7); a visit on no object, or that tells nothing, left out. Since E24 M5 T4b
@@ -838,54 +905,113 @@ impl Kept {
 /// question of the decision the host held open there ([`live`]): with no answer yet every answer
 /// the host's ([`Answered::Open`]), else the record's; one that tells nothing else but opens
 /// level-ups shows them ([`Told::Levels`]); `object_at` gives its object's word too (the view's:
-/// a monster's first count of its word).
+/// a monster's first count of its word). Since E24 M5 T4c (design §5.28) `object_at` places the
+/// visit ([`Placed`]): the tile it is told on and whether the engine's walk stops one short of it
+/// too; live, a question's visit is from beside where it does (the engine's walk), a meeting's
+/// always, its tile the visited hero's (no object's entrance there: its object [`NO_OBJECT`]); a
+/// decision the view does not ask is its notice ([`Ask::Notice`]); a live visit to a town that
+/// tells nothing else shows the town screen's notice ([`Told::Notice`]).
 #[must_use]
 pub fn lay(
     visits: &[Visit],
     open: Option<&[(usize, Decision)]>,
-    object_at: impl Fn(Pos) -> Option<(usize, [u32; 2], Option<u32>)>,
+    object_at: impl Fn(&Visit) -> Option<Placed>,
     art: &FindArt,
     name: impl Fn(Option<u8>) -> String,
 ) -> Vec<Laid> {
     visits
         .iter()
-        .filter_map(|visit| {
-            let (object, class, word) = object_at(visit.at)?;
-            let hero = name(visit.hero_type);
-            let mut told = laid_live(visit, open, (class, word), &hero)?;
-            if let Told::Find {
-                find: Find::Artifact { artifact },
-                gain,
-                ..
-            } = &mut told
-            {
-                for (skill, more) in gain.skills.iter_mut().zip(art.skills_of(*artifact)) {
-                    *skill = skill.saturating_add(more);
-                }
-            }
-            let blocks = match &told {
-                Told::Fight { .. } | Told::Taken => true,
-                Told::Guarded { .. } | Told::Flagged { .. } | Told::Levels { .. } => false,
-                Told::Find { taken, .. } => *taken,
-                Told::Ask { ask, .. } => ask.beside(),
-            };
-            Some(Laid {
-                at: visit.at,
-                object,
-                walk: visit.walk,
-                kept: Kept::of(&told),
-                told,
-                blocks,
-                levels: visit.levels.clone(),
-            })
-        })
+        .filter_map(|visit| laid(visit, open, object_at(visit), art, &name(visit.hero_type)))
         .collect()
+}
+
+/// Where a visit is told and on what object ([`lay`]'s `object_at`, E24 M5 T4c,
+/// *provisional*): a record's on the object of its walk's last tile; live, a decision the engine
+/// opened on the way (a monster's zone entered: its offer) where the engine's walk ended, on the
+/// decision's object.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Placed {
+    /// The tile it is told on: the walk's last (the object's entrance, or the tile it is visited
+    /// from beside on), or where the engine's walk ended.
+    pub at: Pos,
+    /// The object (its index in the map's order).
+    pub object: usize,
+    /// Its class and subclass.
+    pub class: [u32; 2],
+    /// Its word (the view's: a monster's first count of its word).
+    pub word: Option<u32>,
+    /// The engine's walk stops one short of the tile: its object visited from beside.
+    pub beside: bool,
+}
+
+/// `visit` laid out as [`lay`] lays it ([`lay`]'s body, not generic: E24 M5 T4c, each
+/// instance of a generic function's closures counted on its own): as `found` places it, its hero
+/// named `hero`.
+fn laid(
+    visit: &Visit,
+    open: Option<&[(usize, Decision)]>,
+    found: Option<Placed>,
+    art: &FindArt,
+    hero: &str,
+) -> Option<Laid> {
+    let Placed {
+        at,
+        object,
+        class,
+        word,
+        beside,
+    } = match found {
+        Some(found) => found,
+        // Live, a notice on no object's entrance (a meeting: the visited hero's tile).
+        None if notice_of(visit, open).is_some() => Placed {
+            at: visit.at,
+            object: NO_OBJECT,
+            class: [0, 0],
+            word: None,
+            beside: false,
+        },
+        None => return None,
+    };
+    let mut told = laid_live(visit, open, (class, word), hero)?;
+    if let Told::Find {
+        find: Find::Artifact { artifact },
+        gain,
+        ..
+    } = &mut told
+    {
+        for (skill, more) in gain.skills.iter_mut().zip(art.skills_of(*artifact)) {
+            *skill = skill.saturating_add(more);
+        }
+    }
+    let blocks = match &told {
+        Told::Fight { .. } | Told::Taken => true,
+        Told::Guarded { .. } | Told::Flagged { .. } | Told::Levels { .. } | Told::Notice(_) => {
+            false
+        }
+        Told::Find { taken, .. } => *taken,
+        Told::Ask {
+            ask: Ask::Notice(Notice::Meeting),
+            ..
+        } => true,
+        // Live, from beside where the engine's walk stops one short of the tile (E24 M5 T4c).
+        Told::Ask { .. } if open.is_some() => beside,
+        Told::Ask { ask, .. } => ask.beside(),
+    };
+    Some(Laid {
+        at,
+        object,
+        walk: visit.walk,
+        kept: Kept::of(&told),
+        told,
+        blocks,
+        levels: visit.levels.clone(),
+    })
 }
 
 /// What `visit` tells as [`lay`] lays it out (its object of `class` with its `word`, its hero
 /// named `hero`): live (`open` given), the question of the decision the host held open at its walk
-/// ([`live`]), else what it tells ([`told`]), else its level-ups alone ([`Told::Levels`]); a
-/// record's, what it tells.
+/// ([`live`]), else what it tells ([`told`]), else its level-ups alone ([`Told::Levels`]), else at
+/// a town the town screen's notice (E24 M5 T4c: [`Told::Notice`]); a record's, what it tells.
 fn laid_live(
     visit: &Visit,
     open: Option<&[(usize, Decision)]>,
@@ -899,11 +1025,23 @@ fn laid_live(
         .iter()
         .find(|(walk, _)| *walk == visit.walk)
         .and_then(|(_, decision)| live(visit, decision, (class, word), hero));
-    asked.or_else(|| told(visit, class, hero)).or_else(|| {
-        (!visit.levels.is_empty()).then(|| Told::Levels {
-            gain: gain(&visit.events),
+    asked
+        .or_else(|| told(visit, class, hero))
+        .or_else(|| {
+            (!visit.levels.is_empty()).then(|| Told::Levels {
+                gain: gain(&visit.events),
+            })
         })
-    })
+        .or_else(|| (class[0] == TOWN).then_some(Told::Notice(Notice::Town)))
+}
+
+/// The notice of the decision the host held open at `visit`'s walk (live, `open` given; E24 M5
+/// T4c), none without one.
+fn notice_of(visit: &Visit, open: Option<&[(usize, Decision)]>) -> Option<Notice> {
+    open?
+        .iter()
+        .find(|(walk, _)| *walk == visit.walk)
+        .and_then(|(_, decision)| Notice::of(decision))
 }
 
 /// The one resource `gained` holds, with its amount; none for none or several.
@@ -948,17 +1086,49 @@ fn winner(result: &Outcome) -> i32 {
 
 /// What `events` give that the panels show: the resources gained (in the bar's order), the
 /// primary skills raised, a once-mark's morale (on any day: the record's) and luck, the
-/// experience.
+/// experience. Since E24 M5 T4c (design §5.29, the facts audit) the resources paid and lost
+/// taken off (a Tree of Knowledge's price, a Cartographer's, a monster's join for gold) and the
+/// hero's army's slots as the record tells them ([`Gain::slotted`]: `StackChanged`).
 #[must_use]
 pub fn gain(events: &[GameEvent]) -> Gain {
     let mut gain = Gain::default();
+    // A resource's amount added (a gain) or taken off (a price paid, a loss).
+    let changed = |resources: &mut [i32; 7], resource: u16, amount: u32, more: bool| {
+        if let Some(r) = resources.get_mut(usize::from(resource)) {
+            let amount = i32::try_from(amount).unwrap_or(i32::MAX);
+            *r = if more {
+                r.saturating_add(amount)
+            } else {
+                r.saturating_sub(amount)
+            };
+        }
+    };
     for event in events {
         match event {
             GameEvent::ResourceGained {
                 resource, amount, ..
+            } => changed(&mut gain.resources, *resource, *amount, true),
+            GameEvent::ResourcePaid {
+                resource, amount, ..
+            }
+            | GameEvent::ResourceLost {
+                resource, amount, ..
+            } => changed(&mut gain.resources, *resource, *amount, false),
+            GameEvent::StackChanged {
+                at:
+                    ArmySlot {
+                        army: ArmyRef::Hero { .. },
+                        slot,
+                    },
+                stack: Some(stack),
+                ..
             } => {
-                if let Some(r) = gain.resources.get_mut(usize::from(*resource)) {
-                    *r = r.saturating_add(i32::try_from(*amount).unwrap_or(i32::MAX));
+                if let Some(held) = gain.army.get_mut(usize::from(*slot)) {
+                    *held = Some(Stack {
+                        creature: stack.creature,
+                        count: i32::try_from(stack.count).unwrap_or(i32::MAX),
+                    });
+                    gain.slotted = true;
                 }
             }
             GameEvent::HeroChanged { change, .. } => match change {

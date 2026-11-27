@@ -40,6 +40,14 @@
 //!   engine keeps no facing: M4 T4 takes it from the steps), its boat's flag its owner's; an
 //!   object the view does not show keeps the file's owner (under the fog it is not drawn).
 //! - **The explored tiles** as the view's bits, `size × levels` rows of `size` tiles.
+//! - **The objects gone** (E24 M5 T4c, T4's game; `gone`, only when there are some): an object
+//!   of the import's (not a blocker, not an event) that the view does not show though it covers
+//!   a tile the viewer has explored was taken off the map (ADV-FOG-004: an explored tile shows
+//!   what objects still cover it): a later start's, the hot seat's view set up again from its
+//!   record since (a pile taken, a monster beaten), which a new game's start never has.
+//! - **A creature by the original's number** (E24 M5 T4c, design §5.29, *provisional*): the
+//!   wire's is the engine's handle, [`Loaded::creatures`] numbers it ([`Creatures`]) at each
+//!   reading (an army, a mine's guards, a random monster's picture, a week's creature, a visit's).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -47,7 +55,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_adventure::{ObjectKind, ObjectSetup, ObjectTypeId, Pickup};
+use h3_adventure::{Holds, ObjectKind, ObjectSetup, ObjectTypeId, Pickup, TileMask};
 use h3_game::{GameRuleset, GameSetup};
 use h3_kernel::Handle;
 use h3_kernel::hash::StateHasher;
@@ -67,10 +75,13 @@ use crate::objects;
 use crate::record::Records;
 use crate::tables::{CAPITOL, FORT, TownArt};
 
+mod creatures;
 mod hover;
 mod panels;
 mod played;
 pub mod visits;
+
+pub use creatures::{Creatures, NONE};
 
 pub use played::{
     Battled, Command, Held, Leveled, OtherEnd, OtherStep, OtherTurn, OtherWalk, Played, REVISIT,
@@ -227,6 +238,8 @@ pub struct Loaded {
     pub setup: GameSetup,
     /// A live start's facts (E24 M5 T3b, [`live`]); none for a record's file.
     pub live: Option<Live>,
+    /// The original's number of each creature handle of the record's rules (E24 M5 T4c).
+    pub creatures: Creatures,
 }
 
 /// A live start's facts the view lacks (E24 M5 T3b, *provisional*): each hero's facing as the
@@ -284,6 +297,7 @@ pub fn check(record: GameRecord, map: &[u8], rules: &GameRuleset) -> Result<Load
         raw,
         setup,
         live: None,
+        creatures: Creatures::new(rules),
     })
 }
 
@@ -416,7 +430,8 @@ pub fn start(
         seen[index] = true;
         views[index] = Some(object);
         owners[index] = Value::Integer(object.owner.map_or(Ok(-1), colour)?);
-        let became = class(index).and_then(|(c, _)| became(c, object, rules, templates));
+        let became = class(index)
+            .and_then(|(c, _)| became(c, object, (rules, &loaded.creatures), templates));
         if let Some((def, c, s)) = became {
             defs[index] = Value::String(def);
             drawn[index] = (c, s);
@@ -429,6 +444,10 @@ pub fn start(
         }
     }
     let classes: Vec<Value> = drawn.iter().map(|&(c, s)| pair(c, s)).collect();
+    let gone: Vec<Value> = (0..entries.len())
+        .filter(|&k| !taken[k] && gone(&entries[k], observation, art))
+        .map(|k| Value::Integer(int(kept[k])))
+        .collect();
     let mut heroes = Vec::new();
     for hero in &observation.adventure.heroes {
         let class = observation
@@ -481,11 +500,16 @@ pub fn start(
     table.insert("heroes".to_string(), Value::Array(heroes));
     table.insert("boats".to_string(), Value::Array(boats));
     table.insert("explored".to_string(), explored(observation, art));
+    if !gone.is_empty() {
+        table.insert("gone".to_string(), Value::Array(gone));
+    }
     // The panels (E24 M4 T3b1, design §5.10).
     let picks = loaded.live.as_ref().and_then(|l| l.picks);
-    panels::insert(&mut table, observation, (&loaded.raw, picks), art, rules);
+    let numbered = (rules, &loaded.creatures);
+    panels::insert(&mut table, observation, (&loaded.raw, picks), art, numbered);
     // The mouse-over's facts (E24 M4 T3b2, design §5.11).
     let sight = hover::Sight {
+        creatures: &loaded.creatures,
         views,
         classes: drawn
             .iter()
@@ -561,11 +585,12 @@ fn drawn_shift(rules: &GameRuleset, id: Option<ObjectTypeId>) -> Option<u16> {
 
 /// What a random object of the file's class `class` became, as the original's copy of its
 /// template names it (design §2.7): its DEF, class and subclass; none for every other object and
-/// for the random kinds `MCL-STUB-1` leaves.
+/// for the random kinds `MCL-STUB-1` leaves. A monster's creature by the original's number
+/// (`creatures`, E24 M5 T4c).
 fn became(
     class: u32,
     object: &Object,
-    rules: &GameRuleset,
+    (rules, creatures): (&GameRuleset, &Creatures),
     templates: &[ObjectTemplate],
 ) -> Option<(String, u32, u32)> {
     if class == RANDOM_RESOURCE {
@@ -587,12 +612,41 @@ fn became(
         return None;
     }
     object.monster.as_ref().and_then(|monster| {
-        let creature = u32::from(monster.creature);
+        let creature = u32::from(creatures.number(monster.creature));
         templates
             .iter()
             .rev()
             .find(|t| (t.class, t.subclass) == (MONSTER, creature))
             .map(|t| (t.def.clone(), MONSTER, creature))
+    })
+}
+
+/// Whether the import's object `entry`, which `observation` does not show, was taken off the map
+/// (the module's documentation): it is no blocker and no event, and a tile it covers (its
+/// blocked, visitable and drawn tiles, as the engine's `MapObject::tiles`) is one the viewer has
+/// explored, where the view would show it standing.
+fn gone(entry: &ObjectSetup, observation: &GameObservation, art: &MapArt) -> bool {
+    if entry.object_type.is_none() || matches!(entry.holds, Holds::Event(_)) {
+        return false;
+    }
+    let stride = usize::from(observation.adventure.stride);
+    let mask =
+        TileMask::from_bits(entry.blocked.bits() | entry.visitable.bits() | entry.drawn.bits());
+    let explored = |(x, y): (usize, usize)| {
+        let row = usize::from(entry.anchor.level) * art.size + y;
+        observation
+            .adventure
+            .explored
+            .get(row * stride + x / 64)
+            .is_some_and(|w| w.0 >> (x % 64) & 1 == 1)
+    };
+    // A tile off the map (left of or above it, or past its size) is none.
+    mask.offsets().any(|(column, row)| {
+        let x = usize::from(entry.anchor.x).checked_sub(usize::from(column));
+        let y = usize::from(entry.anchor.y).checked_sub(usize::from(row));
+        x.zip(y)
+            .filter(|&(x, y)| x < art.size && y < art.size)
+            .is_some_and(explored)
     })
 }
 
