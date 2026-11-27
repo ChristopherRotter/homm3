@@ -50,12 +50,14 @@ In `TRAPS.md`.
 ### 2026-11-27 — T58b: the artifact sale (`cross-lane`)
 
 Baseline 10889f7 (#1211 merged a minute before the start; the setup's run passed its light gates
-and tests, then was stopped at coverage for disk; CI's run on `master`); 5 files staged. The user
+and tests, then was stopped at coverage for disk; CI's run on `master` failed on an `h3-server`
+timing test under coverage, green when re-run); 7 files staged (the harvest now reads
+`H3sprite.lod` and `H3ab_spr.lod`: stage them too). The user
 kept T58b whole (decision 226) over the recommended cut. The price (0x5ECDC0 read again), the
 check, the view, the listing, the wire v86, the word (format v28: the 130 goldens' format lines
 only), the env's v23, the plans; a garrison hero's creature sale now tells its town's view (a
 T58a1 gap the plans met). Every adventure workload inside its gate, `master` measured the same.
-No sub-agents. **In progress:** the scoped verify, then the pull request.
+No sub-agents. The scoped verify `--with-original-data` passed (`E09-log.md`).
 
 ### 2026-11-27 — T58a2: the market window listed (`cross-lane`)
 

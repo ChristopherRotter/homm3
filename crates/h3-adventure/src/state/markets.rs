@@ -472,11 +472,9 @@ impl AdventureState {
                 .artifacts()
                 .get(artifact.index())
                 .map_or(0, |ty| cost(&ty.cost));
+            let price_in = |take| rates.and_then(|r| r.artifact_sale(count, value, take));
             let prices = resources()
-                .filter_map(|take| {
-                    let price = rates.and_then(|r| r.artifact_sale(count, value, take))?;
-                    Some((take, price))
-                })
+                .filter_map(|take| price_in(take).map(|price| (take, price)))
                 .collect();
             Some(ArtifactSaleOffer {
                 place,

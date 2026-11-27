@@ -6935,3 +6935,14 @@ five files staged (`Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `e
 
 **The queue:** T58 out; T59 next (the services). Ids: decisions next 227; quirks planned `-19`,
 `-22`, `-23`, a new one `-24`; stubs `TWN-STUB-23`.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` after merging
+`master` (#1213): every step passes but `check-lane` (by design; `check-lane --cross-lane --base
+origin/master` ok), coverage (one region, the offers' price's `?` for an unpriced resource:
+written without it, `verify-step coverage --scope town` then clean) and `original-data` (the
+harvest reads `H3sprite.lod` since E14 T4b: staged with `H3ab_spr.lod`, the step then passed);
+bench-check (no re-baseline) and determinism passed. Coverage 27 minutes, determinism 8,
+bench-check 17. `verify-step coverage --scope server` clean (the wire's mapping); `cargo clippy
+--workspace --all-targets -- -D warnings`; `cargo test -p h3-protocol -p h3-server -p h3-cli -p
+h3-files` (431, every golden replayed); the clients' `h3-map-view` checked (`cargo check
+--all-targets`; the SDL crates not built here).
