@@ -112,3 +112,49 @@ state hash v41, replay format v29, protocol v87. The index's status and Read-whe
 against the trusted actor; the hand-over the host's alone; a player's days its own; a defeated
 player never acts again; every command refused after the end; the events' audiences).
 **Verify:** docs only: `check-docs` ok. Pull request #1218. **Next:** T3a.
+
+### Increment 1, round 3: T3a, the teams' setup, `allied` by state and the fog per team (2026-11-27, `adventure/e10-t3a`, `cross-lane`)
+
+**The cut** (the user at its start: as far as the session gets without the original data, with
+sub-agents). **Baseline:** `master` be38c3e (the setup's light gates passing); T2's #1218 open.
+Nothing staged (no folder of the user's PC shared; the shipped maps' import is covered by T1a's
+census, not re-run).
+
+- **The setup** (GAM-TEM-001, design note §1): `PlayerSetup::team` (h3-game), set by the import
+  from `Teams::of_player[colour]`, else the player's index (map import v30; the experiment
+  example's too); the adventure's `Seat::team`; the teams checked dense by the adventure's build
+  (`SetupError::Team`, through `GameSetupError::Adventure`: *agent's call*, the check where the
+  layers are made; the note's §1 amended "as built").
+- **The state** (§2): `StaticMap::teams` by player (the entries past the players `NO_TEAM |
+  index`, allied with nobody), set by the state's build, out of the content hash, written by the
+  state hash after the player count (adventure state hash v31); `StaticMap::allied`, `team`;
+  `AdventureState::allied` replaces the free `allied` at its 22 sites (the town lane's
+  `town.rs` and `town/view.rs`, `cross-lane`, decision 17; `h3-game`'s garrisons, the computer's
+  start and objects); the teleporters' exits leave a hero of the team out (ADV-TEL-003); the
+  game's players hold their team (`GameState::team`; game state hash v41, so T4a takes v42).
+- **The fog** (GAM-TEM-002, §3): one explored layer a team (`explored` by team; every reveal
+  writes its player's team's, the viewers' tests walk `layers()`).
+- **Measured at its first build** (a sub-agent, `homm3-bench-regression`, against `master` in a
+  worktree): +2.3 to +6.7 % on all 19 reach and random-play workloads (the team table read at
+  every tile test, not hoisted). Fixed by `passage::Side` (the mover's player and its team's
+  layer, one 16-bit word in the mover tuple: no new argument, TRAPS line 38), set once a search
+  (`Search::side`) or move (`check_steps`), read by `explored_by`; the passage's `visit` closure,
+  out of line on the branch, became the always-inline `visit_entry`. Final: every workload within
+  ±0.5 % of `master` but `reach-sea-xl-144` −2.97 % (the same calls, the sail path cheaper),
+  re-baselined with its reason; `fork-boxes`/`fork-stones` +1.98 % against the committed
+  baselines (`master` itself +1.75 %).
+- **§4's rules re-tested with allies** (a sub-agent): ADV-VIS-006, ADV-BON-009, ADV-OWN-001,
+  ADV-DWL-004, ADV-GAR-003, -004, ADV-SHY-003, ADV-MIN-002, ADV-BNK-003, ADV-TEL-003 in the
+  adventure's unit tests, and Red playing Blue's dwelling as an ally's on batch E10's map through
+  the game; the plans' oracles of ADV-SHY-003 and ADV-TEL-003 test the team. **Found:**
+  ADV-VIS-006's knowledge (`Visits::known`: a Shrine's spell, a hut's skill, a find emptied, the
+  Pyramid, a Fountain's and a Spring's visit) is still the visitor's alone, while the original's
+  tile bits are the team's (survey §6; the Corpse and Lean To the player's own): telling an ally
+  the content needs an event of its own, so it moves to **T3b** with the team's views
+  (ADV-VIS-006's summary says so).
+- **The sweep:** 32 marks naming E10 as the teams' place rewritten as built (17 in code, 15 in the
+  catalog, the town lane's three `cross-lane`); the end's left for T4a, the meeting's and an
+  ally's dwelling's for T3b, an ally's town's for T3c. `ADV-STUB-20`'s reason gains Town
+  Portal's team list. GAM-TEM-001, -002 written; ADV-FOG-002, -003 amended.
+- **Not yet (T3b):** a step toward an ally's hero is still a battle (GAM-BAT-004), an ally's
+  dwelling's dialog still buys; T3b builds the meeting and the read-only dialog.
