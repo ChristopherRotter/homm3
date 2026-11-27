@@ -17,6 +17,11 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 
 ## Inbox
 
+- 2026-11-27 (the AI lane, E31 T2h, `ai/e31-t2h`, `cross-lane` with the user's consent, AI-Q40;
+  **in your paths, for your review, nothing to do**): `AdventureState::tile_index` is public
+  (`state.rs`, its doc says why): the computer's object value (`h3_game::computer::objects::at`)
+  finds the object whose entrance is a tile through it. Nothing else changed in your crates.
+
 - 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
   nothing blocks**): the facts audit of play (E24 design §5.29) takes every fact an event carries
   from the record (the Tomb's morale, a Cartographer's tiles, the prices paid, the slots joined,

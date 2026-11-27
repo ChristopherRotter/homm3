@@ -32,17 +32,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1208 (`ai/e31-t2g`: T2g). Merged: #1203 (T2f), #1197 (T2e), #1192
-  (`master`'s build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b), #1172 (T2a), #1163 (the
-  shared module PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
+- **Open pull requests:** `ai/e31-t2h` (T2h, `cross-lane`). Merged: #1208 (T2g), #1203 (T2f),
+  #1197 (T2e), #1192 (`master`'s build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b),
+  #1172 (T2a), #1163 (the shared module PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
   `benches/README.md` row of T2a's workload; ADR-0030's note that the simulated combat (AI-Q34)
   and the spell values (AI-Q36) are `h3_battle::estimate`'s.
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
-  block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
+  block), replay format v32 (CLT-Q40), the adventure env's action encoding v22 (E09 T58a2), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
   encoding v4 (`MEMORY_ENCODING_VERSION`, E31 T2f: the artifacts' mean) (`docs/08-work-process.md`,
-  "Versions"). Next ids: AI-Q39, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-20;
-  CPU-SIM-013, CPU-STA-009, CPU-SPL-008, CPU-SKL-004, CPU-ART-012, CPU-ARM-006, CPU-TWN-006.
+  "Versions"). Next ids: AI-Q41, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-22;
+  CPU-SIM-013, CPU-STA-009, CPU-SPL-008, CPU-SKL-004, CPU-ART-012, CPU-ARM-006, CPU-TWN-006,
+  CPU-OBJ-013; the survey's §5.5 #74.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
@@ -53,7 +54,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `h3-game` for now, refactored into a crate later; the memory the policy's; every battle fought
   until the battle lane decides; `SignedX87`; AI-QUIRK-1 for the slips. **Increment 2 refined**
   (AI-Q32): eleven tasks T2a to T2k (the epic file), about 26 000 of the original's instructions.
-  **T2a to T2g done** (2026-11-25 to -27; one line each in the epic file's "Tasks done", their
+  **T2a to T2h done** (2026-11-25 to -27; one line each in the epic file's "Tasks done", their
   records in `E31-log.md`): the frame (`choose`, `Memory`, the turn's passes); the simulated
   combat, since T2c the battle lane's public `h3_battle::estimate` (`cross-lane`, with T2e's
   caster record and spell values and T2f's morale and luck change value); the fight estimate
@@ -62,9 +63,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the artifacts' values and the start's mean (`artifacts.rs`, CPU-ART-001 to -011, CPU-STA-008;
   the equipped value 0x433C60 moved to increment 3, AI-Q37); the army plan's values and the
   dwelling and town values (`armies.rs`, `towns.rs`, CPU-ARM-001 to -005, CPU-TWN-001 to -005,
-  AI-QUIRK-2 fixed; `expect(dead_code)` until T2h; not cut, AI-Q38). `computer-turns-towns-36` at
-  309 M Ir (the threat fold's searches, the gains, the mean). **Next: T2h**, the object value
-  (`QUEUE.md`): propose a cut by size (the user asked for smaller sessions). Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
+  AI-QUIRK-2 fixed; not cut, AI-Q38); the object value and the vision circle (`objects.rs` with
+  `fights.rs` and `visits.rs`, `vision.rs`, CPU-OBJ-001 to -012; not cut, AI-Q39;
+  `AdventureState::tile_index` public, AI-Q40), all `expect(dead_code)` until T2i calls them.
+  `computer-turns-towns-36` at 309 M Ir (the threat fold's searches, the gains, the mean).
+  **Next: T2i**, the planning (`QUEUE.md`): propose a cut by size (the user asked for smaller
+  sessions). Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
   done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -73,6 +77,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **The computer player (E31)** (its coverage, its workload, the memory), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-27 — E31 T2h: the object value
+
+- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
+  the user's repo folder at the start (the PC's shell left after it). Measured 12.8 KB, about
+  4 300 instructions: the user kept it whole (AI-Q39) and made `tile_index` public (AI-Q40). The
+  engine knows an object by its kind, not the original's class: `Class::of` maps one to the other. Seven of my hand
+  expectations were wrong, the port right (fixture traps in `TRAPS.md`). The workload +0.00 %; the
+  scoped verify with the original data passed (coverage 29 minutes, bench-check 24).
 
 ### 2026-11-27 — E31 T2g: the army and town values
 
@@ -94,14 +107,3 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   (T57 merged), whose CI stood for it. The test core refuses foreign keys: the content is read by
   the original packs' handles (`TRAPS.md`). First build +64 % on the workload; two wastes removed
   (+34.8 %, re-baselined). Four of my test expectations were wrong, the port right.
-
-### 2026-11-26 — E31 T2e: the spells' and skills' values
-
-- A cloud clone; the PC left before any original data was staged: the user attached
-  `Heroes3.exe` to the chat (readings only; no `--with-original-data` run). Measured 5.0 KB: the
-  user chose no cut, the spell values in `h3_battle::estimate` and the flag-set skill path in
-  `h3_heroes::choice` (both `cross-lane`, AI-Q36). Found `master` broken since #1190 met #1189
-  (a test literal without T56's field): #1195, superseded by #1192. Since T56 the Marketplace is
-  read by its role, not its key (the town lane's request dropped). The models agreed
-  with the port once `fight::battle_hero` carried the maximum mana. The workload +10.5 %
-  (the heroes' caster records), re-baselined.

@@ -351,7 +351,7 @@ epic   = "E10"
 [[stub]]
 id     = "AI-STUB-10"
 where  = "crates/h3-game/src/computer/start.rs::record"
-reason = "The original's computer player (E31 T2d): the turn start's Eye value (the record's +0x04, ai_eyes_value 0x429910: the scouting value ai_vision_area_value 0x432220 of radius 10 around every Eye of the Magi's entrance, explored or not; 1 000 000 with the turn's flag and a sum above 0) is 0: the engine has no Eye of the Magi (E08 left the information objects out, its decision 394). The vision circle and its 75 class values (ai_class_scout_values 0x6925AC) come with T2h, its other reader (the Redwood Observatory and the Pillar of Fire); lifted when the adventure lane builds the Eyes"
+reason = "The original's computer player (E31 T2d): the turn start's Eye value (the record's +0x04, ai_eyes_value 0x429910: the scouting value ai_vision_area_value 0x432220 of radius 10 around every Eye of the Magi's entrance, explored or not; 1 000 000 with the turn's flag and a sum above 0) is 0: the engine has no Eye of the Magi (E08 left the information objects out, its decision 394). The vision circle and its 75 class values (ai_vision_area_value, ai_class_scout_values 0x6925AC) are built since T2h (CPU-OBJ-012, h3_game::computer::vision), read by the object value for the Redwood Observatory and the Pillar of Fire; lifted when the adventure lane builds the Eyes"
 epic   = "E08"
 
 [[stub]]
@@ -395,7 +395,7 @@ epic   = "E09"
 [[stub]]
 id     = "AI-STUB-18"
 where  = "crates/h3-game/src/computer/towns.rs::town_value"
-reason = "The original's computer player (E31 T2g): the army and town values' reads of the teams and of the victory and loss conditions: an ally's dwelling is worth 0 and an ally's town its visit value (h3_adventure::allied is the player alone until E10's teams); the dwellings to flag (ai_dwelling_value 0x529A30: 5 000 000 over the map's dwellings, victory kind 8), the loss of the capture's town (ai_town_capture_value 0x529CB0: 5 000 000, loss kind 0), and in ai_town_value 0x52AB80 the Grail to build there (kind 4), the artifact to bring there (kind 10) and the town to capture with the threat's and the strongest hero's 5 000 000 (kind 6); the engine has no victory or loss conditions until E10 increment 2 (survey section 5.4)"
+reason = "The original's computer player (E31 T2g): the army and town values' reads of the teams and of the victory and loss conditions: an ally's dwelling is worth 0 and an ally's town its visit value (h3_adventure::allied is the player alone until E10's teams); the dwellings to flag (ai_dwelling_value 0x529A30: 5 000 000 over the map's dwellings, victory kind 8), the loss of the capture's town (ai_town_capture_value 0x529CB0: 5 000 000, loss kind 0), and in ai_town_value 0x52AB80 the Grail to build there (kind 4), the artifact to bring there (kind 10) and the town to capture with the threat's and the strongest hero's 5 000 000 (kind 6); since T2h the object value's too (h3_game::computer::objects): an ally's hero is worth 0 (class 34), the mine's share of the flag-all-mines condition (ai_mine_value 0x52A010: 5 000 000 over the mines' list, kind 9; survey 5.5 #6) and the monster's 5 000 000 as the defeat-a-monster target (ai_monster_value 0x52A140, kind 7); the engine has no victory or loss conditions until E10 increment 2 (survey section 5.4)"
 epic   = "E10"
 
 [[stub]]
@@ -403,3 +403,16 @@ id     = "AI-STUB-19"
 where  = "crates/h3-game/src/computer/towns.rs::visit_of"
 reason = "The original's computer player (E31 T2g): the visit value's building a hero visits once (ai_town_building_value 0x52B1E0's switch 0x52B355 behind the hero's mark of the town, +0x121: the Tower's Wall of Knowledge its Knowledge gain +0x486, the Inferno's Order of Fire its Spell Power gain +0x47E, the Dungeon's Academy of Battle Scholars 1 000 experience, the Stronghold's Hall of Valhalla and the Fortress's Cage of Warlords a level's experience, each at its experience weight +0x109) waits for those buildings and their marks (E09 increment 7, decision 197)"
 epic   = "E09"
+
+
+[[stub]]
+id     = "AI-STUB-20"
+where  = "crates/h3-game/src/computer/objects.rs::Class::of"
+reason = "The original's computer player (E31 T2h): the object value's classes the engine does not have: the Hut of the Magi (37: the player record's Eye value, +0x04), the Seer's Hut (83: ai_seer_hut_value 0x5735A0 with seer_reward_value 0x573A70, unvisited its reward's value at least 20, visited the reward less the quest's price if the hero can complete it before its deadline; ai_seer_spell_value 0x527AA0) and the Obelisk (57: ai_obelisk_value 0x52A2B0, the Grail's value over the obelisks' count, 0 once the puzzle target is the Grail's true tile); their scouting values (200, 10, 10) are in the vision circle's table, never met. Lifted when the adventure lane builds them (E12 the information objects and the quests; E09 increment 8 the puzzle map and the Obelisks)"
+epic   = "E12"
+
+[[stub]]
+id     = "AI-STUB-21"
+where  = "crates/h3-game/src/computer/objects/fights.rs::garrison"
+reason = "The original's computer player (E31 T2h): an own garrison's exchange is worth 0 in a campaign whose id is below 7 (ai_object_value 0x528A8D: campaign_game 0x69774C and game +0x1F45C), RoE's campaigns; the engine has no campaigns until E20"
+epic   = "E20"
