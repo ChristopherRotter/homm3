@@ -21,8 +21,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   player)` is `(store, part, towns)` as built (design §103's *As built*). Waiting elsewhere:
   `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach), `-2` (the victory conditions),
   `-16` (E10's loss condition), `-17` (increment 8), `-18` (E13), `-21` (E10's teams).
-- **Open pull requests:** T58a2's (`town/e09-t58a2`, `cross-lane`; its number in the newest
-  session entry); watch it until it merges (T58a1's #1202 merged 2026-11-27; the adventure lane's
+- **Open pull requests:** T58a2's **#1211** (`town/e09-t58a2`, `cross-lane`); watch it until it
+  merges (T58a1's #1202 merged 2026-11-27; the adventure lane's
   #1205, E08 T144b, merged into it: `h3-map`'s tests and `random-play-spells-36` re-run).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
