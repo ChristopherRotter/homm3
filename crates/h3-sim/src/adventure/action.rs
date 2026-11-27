@@ -33,6 +33,9 @@
 //! | 104 | Buy a spell book at the Mage Guild of the town whose entrance is the tile in the tile head (E09 T49b) |
 //! | 105 + 5s + c, s < 8, c < 5 | The hero in slot `s` casts the adventure spell of behaviour `c` (0 Summon Boat, 1 Scuttle Boat, 2 Fly, 3 Water Walk, 4 Dimension Door): Scuttle Boat's boat and the door's arrival the tile in the tile head, the others tile 0 (E08 T144a2) |
 //! | 145 | Open the market window of the town whose entrance is the tile in the tile head: its Marketplace's trades and transfer, its Artifact Merchants' or Freelancer's Guild's with a hero (E09 T58a2) |
+//! | 146 + p, p < 22 | Sell the artifact at place `p` of the hero of the player's open town market window for the cost resource: worn positions 0 to 13, then backpack indices 0 to 7 (E09 T58b) |
+//! | 168 + k, k < 2 | Buy the war machine of the `k`-th building selling one, in the record's order, of the town whose entrance is the tile in the tile head, for its hero (E09 T59a) |
+//! | 170 | Build a boat at the Shipyard of the town whose entrance is the tile in the tile head, on its spot (E09 T59a) |
 //!
 //! A player's hero slots are its list of heroes' first [`HERO_SLOTS`] (since version 20, E08
 //! T141a: its heroes on the map in the order they joined it, GAM-HER-003; before, in the order of
@@ -192,7 +195,14 @@
 //! market parameters' cost resource by the window's hero's place, with tile 0 alone: the worn
 //! positions 0 to [`SALE_WORN`] − 1 (SoD's head to its fifth misc position; the war machines and
 //! the book never sell), then the backpack's indices 0 to [`SALE_BACKPACK`] − 1; one action per
-//! listed sale (a place past them has none).
+//! listed sale (a place past them has none). Version 24 (E09 T59a, the same, E09 decision 227; the
+//! town epic's design note §115) appends the services' three: [`WAR_MACHINE`] and its next, a war
+//! machine bought at a town (`TownCommand::BuyWarMachine`, TWN-SMT-001) of the first or the second
+//! of its record's buildings that sell one, in the record's order (a Stronghold's Blacksmith, then
+//! its Ballista Yard; every other faction's Blacksmith first), and [`TOWN_BOAT`], a boat built at
+//! its Shipyard (`TownCommand::BuildBoat`, TWN-SHY-001); each by its town's entrance in the tile
+//! head, the building head 0; one action per listed command (a third building selling a machine
+//! has none).
 
 use h3_adventure::{
     ALTAR_SLOTS, AdventureCommand, AdventureSpell, AltarPlaces, MarketParams, Pos, Reach,
@@ -211,7 +221,7 @@ use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 23;
+pub const ACTION_ENCODING_VERSION: u32 = 24;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -369,8 +379,21 @@ pub const SALE_BACKPACK: usize = 8;
 /// ([`sale_place`]).
 pub const MARKET_SELL_ARTIFACT: usize = TOWN_MARKET + 1;
 
+/// The buildings selling a war machine a town's entries name (E09 T59a): its record's first two
+/// (the original's Stronghold has two, every other faction one).
+pub const WAR_MACHINES: usize = 2;
+
+/// The entry that buys the war machine of the first building selling one, in the record's order,
+/// of the town whose entrance is the tile in the tile head, for its hero (E09 T59a; TWN-SMT-001):
+/// the `k`-th is `WAR_MACHINE + k` ([`Action::war_machine`]).
+pub const WAR_MACHINE: usize = MARKET_SELL_ARTIFACT + SALE_WORN + SALE_BACKPACK;
+
+/// The entry that builds a boat at the Shipyard of the town whose entrance is the tile in the tile
+/// head, on its spot (E09 T59a; TWN-SHY-001).
+pub const TOWN_BOAT: usize = WAR_MACHINE + WAR_MACHINES;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = MARKET_SELL_ARTIFACT + SALE_WORN + SALE_BACKPACK;
+pub const ENTRY_COUNT: usize = TOWN_BOAT + 1;
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -550,6 +573,18 @@ impl Action {
         Self::map(TOWN_MARKET, tile)
     }
 
+    /// Buys the war machine of the `k`-th building selling one of the town whose entrance is the
+    /// tile at `tile` (E09 T59a): [`WAR_MACHINE`] plus `k`.
+    pub const fn war_machine(tile: u32, k: usize) -> Self {
+        Self::map(WAR_MACHINE + k, tile)
+    }
+
+    /// Builds a boat at the Shipyard of the town whose entrance is the tile at `tile` (E09 T59a):
+    /// [`TOWN_BOAT`].
+    pub const fn town_boat(tile: u32) -> Self {
+        Self::map(TOWN_BOAT, tile)
+    }
+
     /// The hero in `slot` casts the adventure spell of behaviour `spell` at `tile` (E08 T144a2): its
     /// [`CAST_BASE`] entry; `tile` the target of Scuttle Boat or Dimension Door, 0 for the others.
     pub fn cast(slot: usize, spell: AdventureSpell, tile: u32) -> Self {
@@ -718,7 +753,8 @@ fn bound_spell(rules: &GameRuleset, spell: AdventureSpell) -> Option<SpellId> {
 /// town's build, E09 T19c1, [`RECRUIT`] a town's recruitment, E09 T27, a [`TOWN_HEROES`] entry
 /// a hero move of its kind, E09 T28a, a [`TAVERN_HIRE`] entry a hire of its slot, E09 T38a2,
 /// [`TOWN_OPEN`] a town's opening, E09 T49a2, [`SPELL_BOOK`] a spell book's purchase, E09 T49b,
-/// [`TOWN_MARKET`] a town's market window, E09 T58a2, a hero's cast entry of Summon Boat, Fly or Water Walk its cast, E08 T144a2; or with an open
+/// [`TOWN_MARKET`] a town's market window, E09 T58a2, a [`WAR_MACHINE`] entry a war machine's
+/// purchase of its building, [`TOWN_BOAT`] a boat, E09 T59a, a hero's cast entry of Summon Boat, Fly or Water Walk its cast, E08 T144a2; or with an open
 /// decision its answers alone: `Decline`, and `Accept` while the offer stands,
 /// E08 T15a; a level-up's `First` and `Second`, E08 T30; a hire dialog's purchases by their
 /// creatures' places, E08 T95b), each hero slot with a tile to move to ([`legal_moves`]: none
@@ -757,7 +793,8 @@ pub fn legal_mask(
 /// of the listed hires of a [`TAVERN_HIRE`] entry's slot after it (E09 T38a2), and of the listed
 /// openings after [`TOWN_OPEN`] (E09 T49a2), and of the listed spell books' purchases after
 /// [`SPELL_BOOK`] (E09 T49b), and of the listed market windows after [`TOWN_MARKET`] (E09 T58a2),
-/// the targets of its hero's query after a cast entry of Scuttle Boat
+/// and of the listed purchases of a [`WAR_MACHINE`] entry's building and of the listed boats after
+/// [`TOWN_BOAT`] (E09 T59a), the targets of its hero's query after a cast entry of Scuttle Boat
 /// or Dimension Door ([`cast_targets`], E08 T144a2; 0 alone after a legal cast entry of another
 /// spell); none after an illegal entry or in the battle phase (none for the neutral seat).
 pub fn tile_mask(
@@ -813,9 +850,22 @@ pub fn tile_mask(
                 mask[index as usize] = true;
             }
         }
-    } else if entry == TOWN_OPEN || entry == SPELL_BOOK || entry == TOWN_MARKET {
+    } else if entry == TOWN_OPEN
+        || entry == SPELL_BOOK
+        || entry == TOWN_MARKET
+        || entry == TOWN_BOAT
+    {
         for command in legal_commands(state, rules, seat.actor()) {
             if let Some(town) = guild_command(entry, &command)
+                && let Some(index) = town_tile(state, town)
+            {
+                mask[index as usize] = true;
+            }
+        }
+    } else if machine_slot(entry).is_some() {
+        for command in legal_commands(state, rules, seat.actor()) {
+            if let GameCommand::Town(TownCommand::BuyWarMachine { town, building }) = command
+                && machine_entry(state, rules, town, building) == Some(entry)
                 && let Some(index) = town_tile(state, town)
             {
                 mask[index as usize] = true;
@@ -872,14 +922,58 @@ pub fn building_mask(
 }
 
 /// The town of `command` when it is the town command of `entry`: [`TOWN_OPEN`]'s opening (E09
-/// T49a2), [`SPELL_BOOK`]'s purchase (E09 T49b), [`TOWN_MARKET`]'s window (E09 T58a2).
+/// T49a2), [`SPELL_BOOK`]'s purchase (E09 T49b), [`TOWN_MARKET`]'s window (E09 T58a2),
+/// [`TOWN_BOAT`]'s boat (E09 T59a).
 fn guild_command(entry: usize, command: &GameCommand) -> Option<TownId> {
     match *command {
         GameCommand::Town(TownCommand::Open { town }) if entry == TOWN_OPEN => Some(town),
         GameCommand::Town(TownCommand::BuySpellBook { town }) if entry == SPELL_BOOK => Some(town),
         GameCommand::Town(TownCommand::Market { town }) if entry == TOWN_MARKET => Some(town),
+        GameCommand::Town(TownCommand::BuildBoat { town }) if entry == TOWN_BOAT => Some(town),
         _ => None,
     }
+}
+
+/// The place of a [`WAR_MACHINE`] entry among the buildings selling a war machine (E09 T59a); none
+/// for another entry.
+fn machine_slot(entry: usize) -> Option<usize> {
+    entry.checked_sub(WAR_MACHINE).filter(|&k| k < WAR_MACHINES)
+}
+
+/// The buildings of `town`'s record that sell a war machine, in the record's order (E09 T59a;
+/// TWN-SMT-001: a building with a `war_machine`, standing or not); none for a town the store
+/// lacks.
+fn machine_buildings<'a>(
+    state: &'a GameState,
+    rules: &'a GameRuleset,
+    town: TownId,
+) -> impl Iterator<Item = BuildingId> + 'a {
+    let record = state
+        .towns()
+        .get(town)
+        .and_then(|town| rules.towns().town(town.faction()));
+    record.into_iter().flat_map(|record| {
+        (0..)
+            .map_while(BuildingId::from_index)
+            .zip(&record.buildings)
+            .filter(|(_, building)| building.war_machine.is_some())
+            .map(|(id, _)| id)
+    })
+}
+
+/// The [`WAR_MACHINE`] entry of a purchase at `building` of `town` (E09 T59a): its place among the
+/// record's buildings selling a war machine, none past [`WAR_MACHINES`] or for a building that
+/// sells none.
+fn machine_entry(
+    state: &GameState,
+    rules: &GameRuleset,
+    town: TownId,
+    building: BuildingId,
+) -> Option<usize> {
+    machine_buildings(state, rules, town)
+        .position(|id| id == building)
+        .filter(|&k| k < WAR_MACHINES)
+        .map(|k| WAR_MACHINE + k)
 }
 
 /// The town and building of `command` when it is the town command of `entry`: [`BUILD`]'s build
@@ -963,7 +1057,7 @@ pub fn second_mask(
 /// Whether `entry` takes no tile: `EndTurn`, an answer (a hire dialog's purchase too; since E08
 /// T135a the trades' and services'), a revisit (E08 T105b2) or a cast of Summon Boat, Fly or Water
 /// Walk (E08 T144a2), or a town's artifact sale (E09 T58b); not [`TOWN_OPEN`] (E09 T49a2),
-/// [`SPELL_BOOK`] (E09 T49b) nor [`TOWN_MARKET`] (E09 T58a2).
+/// [`SPELL_BOOK`] (E09 T49b), [`TOWN_MARKET`] (E09 T58a2) nor the services' (E09 T59a).
 const fn tileless(entry: usize) -> bool {
     entry == END_TURN
         || (entry >= ACCEPT && entry < BUILD_BOAT)
@@ -972,7 +1066,7 @@ const fn tileless(entry: usize) -> bool {
         || (entry >= CAST_BASE
             && entry < TOWN_MARKET
             && !AdventureSpell::ALL[(entry - CAST_BASE) % CAST_SPELLS].targets())
-        || (entry >= MARKET_SELL_ARTIFACT && entry < ENTRY_COUNT)
+        || (entry >= MARKET_SELL_ARTIFACT && entry < WAR_MACHINE)
 }
 
 /// The [`MARKET_SELL_ARTIFACT`] entry of an artifact's sale at `place` (E09 T58b): none for a
@@ -985,7 +1079,7 @@ const fn sale_entry(place: ArtifactPlace) -> Option<usize> {
 }
 
 /// The place a [`MARKET_SELL_ARTIFACT`] entry names (E09 T58b): the worn position, then the
-/// backpack's index; `entry` from [`MARKET_SELL_ARTIFACT`], below [`ENTRY_COUNT`].
+/// backpack's index; `entry` from [`MARKET_SELL_ARTIFACT`], below [`WAR_MACHINE`].
 const fn sale_place(entry: usize) -> ArtifactPlace {
     let at = entry - MARKET_SELL_ARTIFACT;
     if at < SALE_WORN {
@@ -1307,7 +1401,9 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
 /// [`BUILD`] for a town's build (E09 T19c1), [`RECRUIT`] for its recruitment (E09 T27), a
 /// [`TOWN_HEROES`] entry for a hero move (E09 T28a), a [`TAVERN_HIRE`] entry for a hire (E09
 /// T38a2), [`TOWN_OPEN`] for an opening (E09 T49a2), [`SPELL_BOOK`] for a spell book's
-/// purchase (E09 T49b), [`TOWN_MARKET`] for a market window (E09 T58a2), or a cast's by its hero's slot and its spell's behaviour (E08 T144a2,
+/// purchase (E09 T49b), [`TOWN_MARKET`] for a market window (E09 T58a2), a [`WAR_MACHINE`] entry
+/// for a war machine's purchase by its building's place ([`machine_entry`]) and [`TOWN_BOAT`] for
+/// a boat (E09 T59a), or a cast's by its hero's slot and its spell's behaviour (E08 T144a2,
 /// [`cast_command_entry`]; `legal_commands` lists those without a target).
 fn command_entry(
     state: &GameState,
@@ -1333,6 +1429,10 @@ fn command_entry(
         GameCommand::Town(TownCommand::Open { .. }) => Some(TOWN_OPEN),
         GameCommand::Town(TownCommand::BuySpellBook { .. }) => Some(SPELL_BOOK),
         GameCommand::Town(TownCommand::Market { .. }) => Some(TOWN_MARKET),
+        GameCommand::Town(TownCommand::BuyWarMachine { town, building }) => {
+            machine_entry(state, rules, *town, *building)
+        }
+        GameCommand::Town(TownCommand::BuildBoat { .. }) => Some(TOWN_BOAT),
         other => tileless_entry(other, hire),
     }
 }
@@ -1436,7 +1536,9 @@ fn build_boat(
 /// the hero in the player's tavern slot of a [`TAVERN_HIRE`] entry (building 0), or since E09
 /// T49a2 its opening with [`TOWN_OPEN`] (building 0), or since E09 T49b its spell book's purchase
 /// with [`SPELL_BOOK`] (building 0), or since E09 T58a2 its market window with [`TOWN_MARKET`]
-/// (building 0), or since E08 T144a2 a cast of its entry's hero and
+/// (building 0), or since E09 T59a its war machine's purchase at its record's building of a
+/// [`WAR_MACHINE`] entry's place and its boat with [`TOWN_BOAT`] (building 0), or since E08 T144a2
+/// a cast of its entry's hero and
 /// behaviour's bound spell (building 0): Scuttle Boat and Dimension Door at the tile, whichever
 /// it is (their target is `apply`'s to check, as the cast's other conditions), the others with
 /// tile 0 alone (a building other than 0 with another entry names none); none for the neutral
@@ -1468,14 +1570,27 @@ pub fn decode(
         return (action.building == 0)
             .then_some(GameCommand::Town(TownCommand::Hire { town, slot }));
     }
-    if action.entry == TOWN_OPEN || action.entry == SPELL_BOOK || action.entry == TOWN_MARKET {
+    if action.entry == TOWN_OPEN
+        || action.entry == SPELL_BOOK
+        || action.entry == TOWN_MARKET
+        || action.entry == TOWN_BOAT
+    {
         let town = town_of_tile(state, action.tile)?;
         let command = match action.entry {
             TOWN_OPEN => TownCommand::Open { town },
             SPELL_BOOK => TownCommand::BuySpellBook { town },
-            _ => TownCommand::Market { town },
+            TOWN_MARKET => TownCommand::Market { town },
+            _ => TownCommand::BuildBoat { town },
         };
         return (action.building == 0).then_some(GameCommand::Town(command));
+    }
+    if let Some(k) = machine_slot(action.entry) {
+        let town = town_of_tile(state, action.tile)?;
+        let building = machine_buildings(state, rules, town).nth(k)?;
+        return (action.building == 0).then_some(GameCommand::Town(TownCommand::BuyWarMachine {
+            town,
+            building,
+        }));
     }
     if action.entry == BUILD || action.entry == RECRUIT {
         let town = town_of_tile(state, action.tile)?;
@@ -1541,7 +1656,9 @@ pub fn decode(
 /// (E09 T28a), a hire by its slot's entry and the town's entrance (E09 T38a2), an opening by
 /// [`TOWN_OPEN`] and the town's entrance (E09 T49a2), a spell book's purchase by [`SPELL_BOOK`]
 /// and the town's entrance (E09 T49b), a market window by [`TOWN_MARKET`] and the town's entrance
-/// (E09 T58a2), a cast by its hero's slot and its spell's behaviour, with
+/// (E09 T58a2), a war machine's purchase by its building's [`WAR_MACHINE`] entry and a boat by
+/// [`TOWN_BOAT`], each with the town's entrance (E09 T59a), a cast by its hero's slot and its
+/// spell's behaviour, with
 /// its target for Scuttle Boat and Dimension Door and tile 0 for the others (E08 T144a2: none for
 /// a target with another spell, or none with these two; none of these for the neutral seat), a
 /// battle command by the
@@ -1590,6 +1707,13 @@ pub fn encode(
         }
         GameCommand::Town(TownCommand::Market { town }) => {
             return town_tile(state, *town).map(Action::town_market);
+        }
+        GameCommand::Town(TownCommand::BuyWarMachine { town, building }) => {
+            let entry = machine_entry(state, rules, *town, *building)?;
+            return town_tile(state, *town).map(|tile| Action::map(entry, tile));
+        }
+        GameCommand::Town(TownCommand::BuildBoat { town }) => {
+            return town_tile(state, *town).map(Action::town_boat);
         }
         GameCommand::Cast {
             hero,

@@ -178,8 +178,23 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 23);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 168));
+    assert_eq!(ACTION_ENCODING_VERSION, 24);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 171));
+    // E09 T59a (v24): a town's two war machines' purchases by their buildings' places, then its
+    // boat, after the artifact sale.
+    assert_eq!((WAR_MACHINE, WAR_MACHINES, TOWN_BOAT), (168, 2, 170));
+    assert_eq!(
+        [
+            Action::war_machine(9, 0),
+            Action::war_machine(9, 1),
+            Action::town_boat(9)
+        ],
+        [
+            Action::map(168, 9),
+            Action::map(169, 9),
+            Action::map(170, 9)
+        ]
+    );
     // E09 T58b (v23): a town's artifact sale after the window, the worn positions 0 to 13, then
     // the backpack's 0 to 7, each by its place, none past them, whatever the resource.
     assert_eq!(
@@ -547,6 +562,7 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
             || entry == TOWN_OPEN
             || entry == SPELL_BOOK
             || entry == TOWN_MARKET
+            || (WAR_MACHINE..ENTRY_COUNT).contains(&entry)
         {
             check_town_heroes(env, (player, entry), &commands, &tiles)?;
             continue;
@@ -663,7 +679,9 @@ fn check_build_boat(
 /// moves of its kind, each decoding to its move, which encodes back to it; a [`TAVERN_HIRE`]
 /// entry's the same with the listed hires of its slot (E09 T38a2), [`TOWN_OPEN`]'s with the listed
 /// openings (E09 T49a2), [`SPELL_BOOK`]'s with the listed spell books' purchases (E09 T49b),
-/// [`TOWN_MARKET`]'s with the listed market windows (E09 T58a2).
+/// [`TOWN_MARKET`]'s with the listed market windows (E09 T58a2), a [`WAR_MACHINE`] entry's with the
+/// listed purchases of its building's place ([`machine_place`]) and [`TOWN_BOAT`]'s with the
+/// listed boats (E09 T59a).
 fn check_town_heroes(
     env: &AdventureEnv,
     (player, entry): (PlayerId, usize),
@@ -693,6 +711,14 @@ fn check_town_heroes(
             GameCommand::Town(TownCommand::Market { town }) if entry == TOWN_MARKET => {
                 town_tile(state, town)
             }
+            GameCommand::Town(TownCommand::BuyWarMachine { town, building })
+                if machine_place(env, town, building).map(|k| WAR_MACHINE + k) == Some(entry) =>
+            {
+                town_tile(state, town)
+            }
+            GameCommand::Town(TownCommand::BuildBoat { town }) if entry == TOWN_BOAT => {
+                town_tile(state, town)
+            }
             _ => None,
         })
         .collect();
@@ -715,6 +741,23 @@ fn check_town_heroes(
         prop_assert_eq!(back, Some(action));
     }
     Ok(())
+}
+
+/// The place of `building` among the buildings of `town`'s record that sell a war machine, in its
+/// order (E09 T59a: the [`WAR_MACHINE`] entries' places).
+fn machine_place(
+    env: &AdventureEnv,
+    town: h3_contracts::TownId,
+    building: h3_towns::BuildingId,
+) -> Option<usize> {
+    let faction = env.state().towns().get(town)?.faction();
+    let record = env.rules().towns().town(faction)?;
+    record
+        .buildings
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| b.war_machine.is_some())
+        .position(|(i, _)| i == building.index())
 }
 
 fn check_build(
