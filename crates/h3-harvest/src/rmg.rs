@@ -13,8 +13,10 @@
 //! pack holds what SoD's tables add to AB's: the templates after AB's (AB's must be a prefix), the
 //! `objects.txt` lines inserted or changed (a changed line keeps its picture, class and subclass),
 //! the obstacles if they differ. A data quirk's fix is an override gated by its flag, from the
-//! gap-fill (8XM8's ids, RMG-QUIRK-22).
+//! gap-fill (8XM8's ids, RMG-QUIRK-22). Each `objects.txt` line carries its picture's `.msk` as
+//! `msk_load` 0x514610 finds it (E14 T4b): the footprint and the colour mask.
 
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use h3_formats::text::TextTable;
@@ -57,6 +59,67 @@ pub struct Constants {
     pub picture_sets: Vec<h3_formats::exe::PictureSetData>,
     /// Rock's pictures: shape and variant bytes (`rock_picture_shapes` 0x6424A8).
     pub rock_pictures: Vec<(u8, [bool; 2])>,
+    /// The object settings by class (`object_settings_init` 0x41B500; E14 T4b).
+    pub object_settings: Vec<h3_formats::exe::ObjectSettingsData>,
+}
+
+/// A picture's `.msk` as `msk_load` 0x514610 keeps it for a template: the width and height in
+/// cells (bytes 0 and 1) and the colour mask (bytes 2 to 7; the shadow mask after it is not
+/// kept).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Msk {
+    /// Byte 0.
+    pub width: u8,
+    /// Byte 1.
+    pub height: u8,
+    /// Bytes 2 to 7: bit `i` of the game's 48-bit set is bit `i % 8` of byte `i / 8`.
+    pub colour: [u8; 6],
+}
+
+/// The bytes `msk_load` reads of a `.msk`: width, height and two masks of six.
+const MSK_BYTES: usize = 14;
+
+impl Msk {
+    /// Reads a `.msk`.
+    ///
+    /// # Errors
+    ///
+    /// A file shorter than the 14 bytes the game reads.
+    pub fn parse(bytes: &[u8]) -> Result<Self, String> {
+        match bytes {
+            [width, height, c0, c1, c2, c3, c4, c5, ..] if bytes.len() >= MSK_BYTES => Ok(Self {
+                width: *width,
+                height: *height,
+                colour: [*c0, *c1, *c2, *c3, *c4, *c5],
+            }),
+            _ => Err(format!(
+                "{} bytes, not the {MSK_BYTES} msk_load reads",
+                bytes.len()
+            )),
+        }
+    }
+
+    /// Whether mark `k` of the colour mask is set: the cell `k % 8` columns left of and `k / 8`
+    /// rows above the anchor, the game's bit 47 − `k` (the passability text's character `k` is
+    /// bit 47 − `k` of its set too, survey §2.1).
+    fn coloured(&self, k: usize) -> bool {
+        let bit = 47 - k;
+        self.colour[bit / 8] >> (bit % 8) & 1 == 1
+    }
+
+    /// The colour mask as 48 marks in the passability's order.
+    fn marks(&self) -> String {
+        (0..48)
+            .map(|k| if self.coloured(k) { '1' } else { '0' })
+            .collect()
+    }
+}
+
+/// The name `msk_load` asks the archives for: the picture's name from its last `.` replaced by
+/// `.msk` (`.msk` appended without one), lower case (the archives compare names ignoring case).
+fn msk_name(picture: &str) -> String {
+    let stem = picture.rfind('.').map_or(picture, |dot| &picture[..dot]);
+    format!("{stem}.msk").to_ascii_lowercase()
 }
 
 /// A table as runs of equal entries, each with its count, in order.
@@ -112,6 +175,44 @@ pub struct Tables {
     pub sod: Files,
     /// `Heroes3.exe`'s.
     pub constants: Constants,
+    /// The sprite archives' `.msk` files by lower-case name, each from the first archive of the
+    /// game's sprite search list that holds it: `H3sprite.lod`, then `H3ab_spr.lod`
+    /// (`sprite_archive_find` 0x55CF50, which `msk_load` calls; `docs/epics/E17-design.md` §3.1).
+    pub masks: BTreeMap<String, Msk>,
+}
+
+/// The object settings' lines: three mark strings by class, the class groups that are not their
+/// own class as pairs in class order.
+fn settings_lines(c: &Constants) -> String {
+    let marks = |flag: fn(&h3_formats::exe::ObjectSettingsData) -> bool| -> String {
+        c.object_settings
+            .iter()
+            .map(|o| if flag(o) { '1' } else { '0' })
+            .collect()
+    };
+    let groups = c
+        .object_settings
+        .iter()
+        .enumerate()
+        .filter(|(class, o)| usize::from(o.class_group) != *class)
+        .map(|(class, o)| format!("[{class}, {}]", o.class_group))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "# The object settings by class (object_settings_init 0x41B500; E14 T4b), one mark per \
+         class from 0:
+# +0x0 (visited from a neighbouring tile, not entered), +0x1 (entered from \
+         above), +0x2
+# (removable); the classes whose +0x8, the class their templates are filed \
+         among
+# (rmg_objects_read 0x536200), is not their own, as class and group.
+\
+         object_not_entered = \"{}\"\nobject_from_above = \"{}\"\nobject_removable = \"{}\"\n\
+         object_class_groups = [{groups}]\n",
+        marks(|o| o.not_entered),
+        marks(|o| o.from_above),
+        marks(|o| o.removable),
+    )
 }
 
 /// SoD's pack's `[generator]`: the constants as mark strings by hero id and pairs in order.
@@ -147,7 +248,7 @@ fn generator_section(c: &Constants) -> String {
          (rmg_town_native_terrain 0x6408C8; E14 T3c).\n[generator]\nheroes_roe = \"{}\"\n\
          heroes_expansions = \"{}\"\nheroes_campaign = \"{}\"\nmap_limits = [{}]\n\
          zone_limits = [{}]\nlayout_cos = [{}]\nlayout_sin = [{}]\nterrain_towns = [{}]\n\
-         native_terrains = [{}]\n{}",
+         native_terrains = [{}]\n{}{}",
         marks(0),
         marks(1),
         marks(2),
@@ -158,6 +259,7 @@ fn generator_section(c: &Constants) -> String {
         rows,
         list(&c.native_terrains),
         picture_lines(c),
+        settings_lines(c),
     )
 }
 
@@ -369,8 +471,44 @@ struct ObjectLine {
     fields: String,
 }
 
-/// `objects.txt`'s template lines in file order: the count line, then that many lines.
-fn objects(table: &TextTable) -> Result<Vec<ObjectLine>, String> {
+/// What the `.msk` lookups of a table found: lines with their own, lines with `default.msk`, and
+/// per class the lines whose passability text blocks a cell without a body pixel (which the
+/// generator then treats as passable, survey §2.1).
+#[derive(Default)]
+struct MskCounts {
+    own: usize,
+    default: usize,
+    unpainted: BTreeMap<u32, usize>,
+}
+
+impl MskCounts {
+    fn report(&self) -> String {
+        let unpainted = self
+            .unpainted
+            .iter()
+            .map(|(class, n)| format!("{n} of class {class}"))
+            .collect::<Vec<_>>();
+        format!(
+            "{} with their own .msk, {} with default.msk, {} blocking a cell without a body pixel{}",
+            self.own,
+            self.default,
+            self.unpainted.values().sum::<usize>(),
+            if unpainted.is_empty() {
+                String::new()
+            } else {
+                format!(" ({})", unpainted.join(", "))
+            }
+        )
+    }
+}
+
+/// `objects.txt`'s template lines in file order: the count line, then that many lines, each with
+/// its picture's `.msk` from `masks` (`default.msk` when they lack it).
+fn objects(
+    table: &TextTable,
+    masks: &BTreeMap<String, Msk>,
+    counts: &mut MskCounts,
+) -> Result<Vec<ObjectLine>, String> {
     let line = |n: usize| {
         table
             .records
@@ -390,11 +528,32 @@ fn objects(table: &TextTable) -> Result<Vec<ObjectLine>, String> {
             }
             let numbers: Result<Vec<u32>, _> = f[5..].iter().map(|x| x.parse::<u32>()).collect();
             let numbers = numbers.map_err(|e| format!("Objects.txt line {}: {e}", n + 1))?;
+            let msk = match masks.get(&msk_name(f[0])) {
+                Some(msk) => {
+                    counts.own += 1;
+                    msk
+                }
+                None => {
+                    counts.default += 1;
+                    masks
+                        .get("default.msk")
+                        .ok_or_else(|| format!("no {} and no default.msk", msk_name(f[0])))?
+                }
+            };
+            let unpainted = f[1]
+                .bytes()
+                .take(48)
+                .enumerate()
+                .any(|(k, c)| c == b'0' && !msk.coloured(k));
+            if unpainted {
+                *counts.unpainted.entry(numbers[0]).or_default() += 1;
+            }
             Ok(ObjectLine {
                 identity: (f[0].to_owned(), f[5].to_owned(), f[6].to_owned()),
                 fields: format!(
-                    "picture = {}, passability = \"{}\", actions = \"{}\", terrains = \"{}\", \
-                     editor_terrains = \"{}\", class = {}, subclass = {}, group = {}, overlay = {}",
+                    "picture = {}, passability = \"{}\", actions = \"{}\", editor_terrains = \
+                     \"{}\", terrains = \"{}\", class = {}, subclass = {}, group = {}, overlay = {}, \
+                     width = {}, height = {}, colour = \"{}\"",
                     quote(f[0]),
                     f[1],
                     f[2],
@@ -403,7 +562,10 @@ fn objects(table: &TextTable) -> Result<Vec<ObjectLine>, String> {
                     numbers[0],
                     numbers[1],
                     numbers[2],
-                    numbers[3]
+                    numbers[3],
+                    msk.width,
+                    msk.height,
+                    msk.marks()
                 ),
             })
         })
@@ -517,13 +679,13 @@ fn header(archive: &str, holds: &str) -> String {
     )
 }
 
-/// Harvests `ab/rmg.toml` and `sod/rmg.toml`; `report` gets one line of counts.
+/// Harvests `ab/rmg.toml` and `sod/rmg.toml`; `report` gets two lines of counts.
 ///
 /// # Errors
 ///
 /// A table that does not read as survey §3.1 describes; SoD's tables not extending AB's (its
-/// templates after AB's, every AB line of `objects.txt` kept or changed); a gap-fill fix that does
-/// not match its template.
+/// templates after AB's, every AB line of `objects.txt` kept or changed); a picture without its
+/// `.msk` when the archives lack `default.msk`; a gap-fill fix that does not match its template.
 pub fn harvest_rmg(
     tables: &Tables,
     gap: &GapFill,
@@ -531,8 +693,10 @@ pub fn harvest_rmg(
 ) -> Result<Vec<(&'static str, String)>, String> {
     let ab_templates = templates(&tables.ab.rmg)?;
     let sod_templates = templates(&tables.sod.rmg)?;
-    let ab_objects = objects(&tables.ab.objects)?;
-    let sod_objects = objects(&tables.sod.objects)?;
+    let mut ab_masks = MskCounts::default();
+    let mut sod_masks = MskCounts::default();
+    let ab_objects = objects(&tables.ab.objects, &tables.masks, &mut ab_masks)?;
+    let sod_objects = objects(&tables.sod.objects, &tables.masks, &mut sod_masks)?;
     let ab_obstacles = obstacles(&tables.ab.rand_trn)?;
     let sod_obstacles = obstacles(&tables.sod.rand_trn)?;
     let extends = sod_templates.len() >= ab_templates.len()
@@ -607,6 +771,11 @@ pub fn harvest_rmg(
         } else {
             ", its own obstacles"
         }
+    ));
+    report.push(format!(
+        "rmg: ab's object templates {}; sod's {}",
+        ab_masks.report(),
+        sod_masks.report()
     ));
     Ok(vec![("ab", ab), ("sod", sod)])
 }

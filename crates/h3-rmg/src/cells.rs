@@ -2,15 +2,25 @@
 //! `docs/exe/structs.toml`'s `rmg_map_cell`): its cells as the original's records hold them,
 //! level by level, row by row, so that the steps port their bit operations as read and the
 //! comparison seam (ADR-0029 point 8) turns them into the phase oracle's dump format 1
-//! (`clients/capture/xdd.c` section 10).
+//! (`clients/capture/xdd.c` section 10), each cell's objects with it ([`Cells::objects_at`]).
 
 use alloc::vec::Vec;
 
+use crate::objects::{Object, ObjectFault, Shape};
+
 /// +0x28 bit 28, the land bit.
 const LAND: u32 = 1 << 28;
+/// +0x28 bit 22: an object's entrance.
+pub(crate) const ENTRANCE: u32 = 1 << 22;
+/// +0x28 bit 25: free (cleared under an object's blocked cells).
+pub(crate) const FREE: u32 = 1 << 25;
+/// +0x28 bit 26: to be filled with obstacles.
+pub(crate) const OBSTACLES: u32 = 1 << 26;
+/// +0x28 bit 27: kept free.
+pub(crate) const KEPT: u32 = 1 << 27;
 
 /// One cell of the generator's map: its words +0x10 to +0x2C (`rmg_map_cell`); the objects on it
-/// (+0x0) come with the steps that place them.
+/// (+0x0) are the map's lists ([`Cells::objects_at`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Cell {
     /// +0x10 to +0x18: the cell a zone flood came from.
@@ -39,6 +49,16 @@ impl Cell {
         self.tile_data & LAND != 0
     }
 
+    /// The land type, +0x24 bits 0-5 (8 water, 9 rock).
+    pub const fn land(&self) -> u32 {
+        self.tile & 0x3F
+    }
+
+    /// The zone byte as the signed index the placing tests compare (-1 none).
+    pub(crate) const fn zone_index(&self) -> i32 {
+        self.zone_byte() as i8 as i32
+    }
+
     /// Step 2's marks: the zone byte `index` and, with `land`, +0x28 bit 28.
     pub(crate) const fn mark(&mut self, index: u8, land: bool) {
         self.zone = (self.zone & 0xFF00_FFFF) | ((index as u32) << 16);
@@ -63,13 +83,16 @@ impl Cell {
     };
 }
 
-/// The generator's map: `width` × `height` cells per level, level by level, row by row.
+/// The generator's map: `width` × `height` cells per level, level by level, row by row, and per
+/// cell the objects on it (`rmg_map_cell` +0x0: their indices among the generator's placed
+/// objects, in the order placed).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cells {
     width: i32,
     height: i32,
     levels: i32,
     cells: Vec<Cell>,
+    objects: Vec<Vec<u32>>,
 }
 
 impl Cells {
@@ -82,6 +105,7 @@ impl Cells {
             height: side,
             levels,
             cells: alloc::vec![Cell::RESET; count],
+            objects: alloc::vec![Vec::new(); count],
         }
     }
 
@@ -102,6 +126,59 @@ impl Cells {
 
     pub(crate) fn get_mut(&mut self, x: i32, y: i32, z: i32) -> Option<&mut Cell> {
         self.index(x, y, z).map(|i| &mut self.cells[i])
+    }
+
+    /// The objects on the cell at (x, y, z), by their index among the placed objects, in the
+    /// order placed; none outside the map.
+    pub fn objects_at(&self, x: i32, y: i32, z: i32) -> &[u32] {
+        self.index(x, y, z).map_or(&[], |i| &self.objects[i])
+    }
+
+    /// `rmg_map_place_object` 0x531EA0 for object `object` (its index among the placed objects)
+    /// of `shape` at (x, y, z): per footprint cell (x − c, y − r), rows r and columns c from 0,
+    /// those on the map (the level unchecked), the masks' bit 8r + c ([`Shape::cell`]): an
+    /// entrance gets bit 22 and, unless +0x2C bit 0, bit 26 cleared and 27 set, its bit 25 kept;
+    /// any other cell not passable loses bit 25; both get the object appended to their list;
+    /// passable cells are left alone.
+    ///
+    /// # Errors
+    ///
+    /// [`ObjectFault::MaskBit`] past the masks' bits, [`ObjectFault::Outside`] on a level the
+    /// map has not (the original stops there, its cells written so far kept).
+    // rule: RMG-OBJ-009
+    pub(crate) fn place(
+        &mut self,
+        object: u32,
+        shape: &Shape,
+        [x, y, z]: [i32; 3],
+    ) -> Result<(), ObjectFault> {
+        for r in 0..shape.height {
+            let v = y.wrapping_sub(r);
+            if !(0..self.height).contains(&v) {
+                continue;
+            }
+            for c in 0..shape.width {
+                let u = x.wrapping_sub(c);
+                if !(0..self.width).contains(&u) {
+                    continue;
+                }
+                let (passable, entrance) = shape.cell(c, r).ok_or(ObjectFault::MaskBit)?;
+                let i = self.index(u, v, z).ok_or(ObjectFault::Outside)?;
+                let cell = &mut self.cells[i];
+                if entrance {
+                    cell.tile_data |= ENTRANCE;
+                    if cell.pending_guard & 1 == 0 {
+                        cell.tile_data = (cell.tile_data & !OBSTACLES) | KEPT;
+                    }
+                } else if passable {
+                    continue;
+                } else {
+                    cell.tile_data &= !FREE;
+                }
+                self.objects[i].push(object);
+            }
+        }
+        Ok(())
     }
 
     /// The cell at (x, y, z) clamped to the map on each axis.
@@ -127,7 +204,7 @@ impl Cells {
     }
 
     /// `((height × z + y) × width + x)`, the original's index, for a cell on the map.
-    fn index(&self, x: i32, y: i32, z: i32) -> Option<usize> {
+    pub(crate) fn index(&self, x: i32, y: i32, z: i32) -> Option<usize> {
         if !(0..self.width).contains(&x)
             || !(0..self.height).contains(&y)
             || !(0..self.levels).contains(&z)
@@ -137,31 +214,51 @@ impl Cells {
         usize::try_from((self.height * z + y) * self.width + x).ok()
     }
 
-    /// The phase oracle's dump of the cells after `step` (format 1, `xdd.c` section 10):
-    /// "H3RMGCEL", then little-endian 32-bit words: the format 1, the step, the width, height
-    /// and levels; per cell 12 words (the objects on it and the first three's indices, -1 none,
-    /// then +0x10 to +0x2C); the objects' count and six words each; the further places' count and
-    /// three words each. No step places an object yet: none, none further.
-    pub fn dump(&self, step: u8) -> Vec<u8> {
-        let mut out = Vec::with_capacity(36 + 48 * self.cells.len());
+    /// The phase oracle's dump of the cells after `step` with the generator's placed objects
+    /// `placed` (format 1, `xdd.c` section 10): "H3RMGCEL", then little-endian 32-bit words: the
+    /// format 1, the step, the width, height and levels; per cell 12 words (the objects on it and
+    /// the first three's indices among `placed`, -1 none or not there, then +0x10 to +0x2C); the
+    /// objects' count and six words each (its template's index in the part's object table, the
+    /// template's class and subclass, x, y, z); the count of the places past a cell's third and
+    /// three words each (the cell's index, the place from 3, the object's index), cell by cell.
+    pub fn dump(&self, step: u8, placed: &[Object]) -> Vec<u8> {
+        let mut out = Vec::with_capacity(40 + 48 * self.cells.len() + 24 * placed.len());
+        let word = |out: &mut Vec<u8>, w: u32| out.extend_from_slice(&w.to_le_bytes());
         out.extend_from_slice(b"H3RMGCEL");
-        let mut word = |w: u32| out.extend_from_slice(&w.to_le_bytes());
         for w in [1, i32::from(step), self.width, self.height, self.levels] {
-            word(w.cast_unsigned());
+            word(&mut out, w.cast_unsigned());
         }
-        for c in &self.cells {
-            for w in [0, u32::MAX, u32::MAX, u32::MAX] {
-                word(w);
+        // An index among `placed`, -1 when it is not there.
+        let found = |&i: &u32| placed.get(i as usize).map_or(u32::MAX, |_| i);
+        let mut further = Vec::new();
+        for (k, (c, on)) in self.cells.iter().zip(&self.objects).enumerate() {
+            word(&mut out, on.len() as u32);
+            for j in 0..3 {
+                word(&mut out, on.get(j).map_or(u32::MAX, found));
             }
             for w in c.previous {
-                word(w.cast_unsigned());
+                word(&mut out, w.cast_unsigned());
             }
             for w in [c.movement, c.zone, c.tile, c.tile_data, c.pending_guard] {
-                word(w);
+                word(&mut out, w);
+            }
+            for (j, i) in on.iter().enumerate().skip(3) {
+                further.push([k as u32, j as u32, found(i)]);
             }
         }
-        word(0);
-        word(0);
+        word(&mut out, placed.len() as u32);
+        for o in placed {
+            for w in [o.template as u32, o.class, o.subclass] {
+                word(&mut out, w);
+            }
+            for w in o.position {
+                word(&mut out, w.cast_unsigned());
+            }
+        }
+        word(&mut out, further.len() as u32);
+        for w in further.into_iter().flatten() {
+            word(&mut out, w);
+        }
         out
     }
 }

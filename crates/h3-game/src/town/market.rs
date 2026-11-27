@@ -8,7 +8,7 @@
 //! purchase (TWN-MKT-004, `AdventureState::merchants_stock`).
 
 use h3_adventure::{
-    MarketError, MarketParams, MarketPlace, MarketScreen, MarketVisit, MarketWindow,
+    HeroOnMap, MarketError, MarketParams, MarketPlace, MarketScreen, MarketVisit, MarketWindow,
 };
 use h3_content::VISITOR_ONLY_TRADES;
 use h3_contracts::{HeroId, PlayerId, TownId};
@@ -99,7 +99,16 @@ fn window_hero(
     rules: &GameRuleset,
     (town, player): (TownId, PlayerId),
 ) -> Option<HeroId> {
-    let [visitor, garrison] = heroes(state, town);
+    hero_of(rules, player, heroes(state, town))
+}
+
+/// [`window_hero`] of the town's visitor and garrison hero, each with its owner (the adventure's
+/// records, `guild::heroes`; the listing's from the town's entrance, [`listed`]).
+fn hero_of(
+    rules: &GameRuleset,
+    player: PlayerId,
+    [visitor, garrison]: [Option<(HeroId, PlayerId)>; 2],
+) -> Option<HeroId> {
     let own = |hero: Option<(HeroId, PlayerId)>| {
         hero.filter(|&(_, owner)| owner == player)
             .map(|(hero, _)| hero)
@@ -112,6 +121,69 @@ fn window_hero(
     } else {
         visitor.or_else(|| own(garrison))
     }
+}
+
+/// Whether [`crate::legal_commands`] lists `player`'s `TownCommand::Market` at its own `town`
+/// (TWN-MKT-002; E09 T58a2, design §104, §115, ADR-0017 point 6; `town::offer::legal_builds`
+/// asks it in `player`'s turn without a decision): the window [`open`] would open
+/// ([`h3_towns::check_market`] with the window's hero, [`hero_of`] of the town's visitor and
+/// garrison hero as the listing found them, read only where the merchants or the guild stand: a
+/// Marketplace's window alone offers the same with a hero or without) offers an answer the listing
+/// gives inside it: a trade whose lot the treasury pays at every count
+/// (`MarketParams::cheapest_at_every_count`, no count needed), else at `player`'s count
+/// (`GameState::offers_an_answer`: such a trade, else a sale or a purchase). `counted` is that
+/// count of Marketplaces ([`count`]), computed at the listing's first window that needs it and
+/// kept for the rest (one walk over the player's towns a listing at most).
+// rule: TWN-MKT-002
+pub(crate) fn listed(
+    state: &GameState,
+    rules: &GameRuleset,
+    (town, player): (TownId, PlayerId),
+    (visitor, garrison): (Option<&HeroOnMap>, Option<&HeroOnMap>),
+    counted: &mut Option<u8>,
+) -> bool {
+    // The town's market buildings first, as if a hero stood there (a town without one lists
+    // none, whoever stands there; a town the store lacks neither: no game holds one).
+    let market = |hero: bool| {
+        let record = state.towns().get(town);
+        record.and_then(|record| h3_towns::check_market(record, rules.towns(), hero).ok())
+    };
+    let Some(with) = market(true) else {
+        return false;
+    };
+    // Only the merchants' and the guild's screens read the window's hero: a Marketplace's
+    // window alone offers the same without one.
+    let reads = with.merchants || with.freelancers;
+    let heroes = [visitor, garrison].map(|on| on.map(|on| (on.id, on.owner)));
+    let hero = reads.then(|| hero_of(rules, player, heroes)).flatten();
+    let offer = if reads && hero.is_none() {
+        market(false)
+    } else {
+        Some(with)
+    };
+    let Some(offer) = offer else {
+        return false;
+    };
+    // A trade's lot the treasury pays at every count: listed without the count (every town's
+    // window shows the trades).
+    if state.pays_a_lot(rules, player, MarketParams::cheapest_at_every_count) {
+        return true;
+    }
+    let count = *counted.get_or_insert_with(|| count(state, rules, player));
+    let window = MarketWindow {
+        visit: MarketVisit {
+            hero,
+            place: MarketPlace::Town(town),
+        },
+        screens: screens(offer),
+        count,
+    };
+    state.offers_an_answer(rules, player, &window)
+}
+
+/// The screens of a town's window offering `offer` ([`SCREENS`]' order).
+fn screens(offer: TownMarket) -> &'static [MarketScreen] {
+    SCREENS[usize::from(offer.merchants) + 2 * usize::from(offer.freelancers)]
 }
 
 /// The window of `player`'s open market `visit` at `town` (TWN-MKT-001 to -004; design §103,
@@ -131,9 +203,9 @@ pub(crate) fn window<'r>(
         .towns()
         .get(town)
         .and_then(|record| h3_towns::check_market(record, rules.towns(), visit.hero.is_some()).ok())
-        .map(|offer: TownMarket| MarketWindow {
+        .map(|offer| MarketWindow {
             visit: *visit,
-            screens: SCREENS[usize::from(offer.merchants) + 2 * usize::from(offer.freelancers)],
+            screens: screens(offer),
             count: count(state, rules, player),
         })
         .ok_or(MarketError::Visit)

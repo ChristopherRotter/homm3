@@ -20,6 +20,7 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `h3-formats`' executable reader gained the object settings the map generator uses (`exe::ObjectSettingsData`, `RmgData.object_settings`, the four tables in `RmgTables`), and `h3-harvest`'s rmg harvest each `objects.txt` line's `.msk` (width, height, colour mask) and those settings, with an original-data check `examples/original_data.rs` (skipped without the data).
 - 2026-11-26 (the AI lane, E31 T2f, `ai/e31-t2f`, `cross-lane` with the user's consent, AI-Q37;
   **yours from now on, nothing to do now**): the value of a morale or luck change
   (`ai_morale_change_value` 0x435850, BAT-AI-016) moved from `h3-battle-ai`'s `spells/boosts.rs`

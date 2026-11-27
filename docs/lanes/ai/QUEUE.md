@@ -50,6 +50,7 @@ resumes (the epic file); its tasks are cut then.
 
 ## Inbox
 
+- 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). The two bot reports' `core` lines were substituted by hand (no report regenerated). A branch of yours regenerating them before this merges carries the new hash.
 Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10-19); the
 origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: the notices of
 E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last part, the battle
@@ -60,6 +61,18 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
+- 2026-11-27 (E09 T58a2, `town/e09-t58a2`, `cross-lane` with the user's consent, E09 decision
+  225; **in your paths, for your review; adventure action encoding v22 taken**): `legal_commands`
+  lists `TownCommand::Market` (TWN-MKT-002) for each own town after its spell book's purchase,
+  where the window opens and offers an answer; `adventure/action.rs` appends **`TOWN_MARKET`
+  (145)** after the casts, by the town's entrance in the tile head, building 0 (`ENTRY_COUNT`
+  146; `tileless` stops the casts at it); the masks, `decode`, `encode`, `Action::town_market`;
+  the window's answers are the market's 56 entries, its `Leave` `DECLINE`. The random agent draws
+  it as every listed command (`rollout.rs`' docs), so every random game with an owned
+  Marketplace changed course: the town map's end-of-days seed is **864** (`tests/towns.rs`, a
+  search over 1 to 3 000; `Played` counts the windows and their answers), the fork's 6 still
+  holds. The weight of a window in the draw (an agent inside it trades lot by lot until it draws
+  `Leave`) is yours to choose.
 - 2026-11-26 (E09 T58a1, `town/e09-t58a1`, `cross-lane`; **nothing to do**): a town's market
   window (`TownCommand::Market`) is E08's market decision with `MarketVisit::hero` an `Option`
   and a `place` (`MarketPlace::Object` or `Town`); your entries read neither, so the encoding did

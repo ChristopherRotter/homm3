@@ -101,6 +101,16 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   opening's and the book's questions read the town's derived roles once (`h3_towns::guild_offers`).
   First build +5.5 % on `master`'s games, +1.6 % after the pass.
 
+- **A listing's lot is integer, its record by index** (E09 T58a2, the market window): asked of
+  every owned town with a market at every listing, `resource_lot` pair by pair (the market's
+  float arithmetic, `X87`) and the trader's count cost `legal-towns-36` +21.9 % on `master`'s
+  games; `MarketParams::cheapest_lot` and `cheapest_at_every_count` (derived at the part's build,
+  not hashed) answer the trades with a compare, the count only where the worst count's lot is not
+  paid, the window's hero only where the merchants or the guild stand: +3.6 %. The rest was the
+  record's binary search per town (about 50 Ir): `TownRuleset::town` and the derived roles read
+  the record at the faction's index first (`record_index`), +0.02 % with the market listed. A new
+  listed town command reads integers derived at the build and the record once.
+
 - **CI's `bench` job stops at 60 minutes** (CI phase 1, 2026-11-25: the verify runs as the
   parallel jobs `gates`, `coverage`, `replays` and `bench`, each capped at 60 minutes and never
   raised again; `docs/05-testing.md`, "CI"): `bench-check` alone runs in `bench`, so a workload
