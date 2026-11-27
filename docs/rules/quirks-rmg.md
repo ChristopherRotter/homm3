@@ -368,6 +368,9 @@ Reproduced in every profile, no flag (the user, 2026-11-24, T1c2: group E of the
 
 | Candidate | What decides | Survey |
 |---|---|---|
+| T4c: a lane's end segment whose other point lies off the map frees no 3×3, so the lane's end cell can stay an obstacle and the lane may stop short of the map's edge | cosmetic or a fix (the user, at increment 4's checkpoint) | §2.3 |
+| T4c: the zone walls' second pass (`rmg_zone_borders_close` 0x53F880) tests only the walled cell itself, not its 3×3, and changes nothing (an intended 3×3 coded as one cell?); not ported | harmless or a fix (the user, at increment 4's checkpoint) | §2.3 |
+| T4c: beside a wall, water of no zone loses bit 27 (kept free) with the walled cell's other 3×3 empties | whether a later step reads it there (steps 11 to 13) | §2.3 |
 | Both 6LM10 templates connect zone 13 to itself | what step 6 makes of a self-connection (a fault would be RMG-QUIRK-3's or -4's class; T4d) | §3.1 |
 | T3b: the borders' edge walk draws straight to the re-entry point whenever it shares x or y with the current point, also across the map: a cell whose one side on the map is axis-aligned gets a straight chord over its jagged side, in both zones' ids; the cells between are reached by no fill (water on level 0, rock on level 1, as read). **T3d: never in the corpus** | cosmetic or a fix, once a census shows it (increment 7's census, E14 decision 11) | §2.2 |
 | T3b: a cell with no side on the map (meant for one holding the whole map) gets the whole frame drawn in its id, also a water zone's cell wholly off the map. **T3d: never in the corpus** | whether such a cell occurs (a census) (increment 7's census, E14 decision 11) | §2.2 |

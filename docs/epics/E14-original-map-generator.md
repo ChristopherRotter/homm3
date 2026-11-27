@@ -88,6 +88,10 @@ objects' values and the guards' strengths read from the original rather than gue
    parts; the objects' `.msk` harvest a `cross-lane` change in its branch, as T3e's; the one-way
    monoliths' shared channel (T4a) fix-optional, **RMG-QUIRK-26**, its flag registered when T4d
    ports RMG-CON-017.
+13. **T4c and the Ownership 0 starts** (the user, 2026-11-27): T4c kept whole, worker sub-agents
+   in turn; the start zones with Ownership 0 (no town of their colour; T4b) accepted for now, every
+   profile as the original, no flag, to be compared with VCMI's and HotA's generators later (the
+   ledger's "Considered, not quirks").
 
 **Agent decisions** (change freely):
 
