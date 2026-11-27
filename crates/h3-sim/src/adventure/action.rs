@@ -82,7 +82,8 @@
 //! version 15), a Hill Fort's `Leave` (GAM-DEC-013, version 16); since version 17 (E08 T135a) a
 //! market's trades of one lot by their pairs, its sales of one lot for the cost resource by their
 //! slots and its purchases in it by their entries, an Altar's two alls, a Hill Fort's upgrades by
-//! their slots and its `All`, each the answer `legal_commands` lists for it. With no open decision
+//! their slots and its `All`; since version 23 (E09 T58b) a town's artifact sales for the cost
+//! resource by their places; each the answer `legal_commands` lists for it. With no open decision
 //! of that role the entry decodes to the offer's or the level-up's answer, or the purchase (a hire
 //! entry's: a `Buy` of 0, [`hire_answer`]), or the trade's, sale's, purchase's or upgrade's
 //! answer its entry names, or an Altar's empty sacrifice ([`answer_of`]), which `apply` rejects.
@@ -185,7 +186,13 @@
 //! TWN-MKT-002) by its town's entrance in the tile head, the building head 0; one action per
 //! listed window, which `legal_commands` lists where the window opens and offers a legal answer.
 //! Inside it the answers are the market's entries above (E08's, no transfer), its `Leave` the
-//! closing role. Appended after the casts, so that no entry moves.
+//! closing role. Appended after the casts, so that no entry moves. Version 23 (E09 T58b, the
+//! same, E09 decision 226; the town epic's design note §115) appends the 22 entries of a town's
+//! artifact sale ([`MARKET_SELL_ARTIFACT`]: `MarketAnswer::SellArtifact`, TWN-MKT-005) for the
+//! market parameters' cost resource by the window's hero's place, with tile 0 alone: the worn
+//! positions 0 to [`SALE_WORN`] − 1 (SoD's head to its fifth misc position; the war machines and
+//! the book never sell), then the backpack's indices 0 to [`SALE_BACKPACK`] − 1; one action per
+//! listed sale (a place past them has none).
 
 use h3_adventure::{
     ALTAR_SLOTS, AdventureCommand, AdventureSpell, AltarPlaces, MarketParams, Pos, Reach,
@@ -195,16 +202,16 @@ use h3_content::{CreatureTypeId, ResourceId, SpellId};
 use h3_contracts::TownId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
-    Actor, AltarAnswer, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset,
-    GameState, HillFortAnswer, HireAnswer, MarketAnswer, SchoolChoice, SkillOffer, TavernAnswer,
-    UniversityAnswer, legal_cast_targets, legal_commands, legal_moves,
+    Actor, AltarAnswer, Answer, ArenaChoice, ArtifactPlace, ChestChoice, Consent, GameCommand,
+    GameRuleset, GameState, HillFortAnswer, HireAnswer, MarketAnswer, Position, SchoolChoice,
+    SkillOffer, TavernAnswer, UniversityAnswer, legal_cast_targets, legal_commands, legal_moves,
 };
 use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 22;
+pub const ACTION_ENCODING_VERSION: u32 = 23;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -348,8 +355,22 @@ pub const CAST_BASE: usize = SPELL_BOOK + 1;
 /// (none possible at a Marketplace), answered by the market's entries.
 pub const TOWN_MARKET: usize = CAST_BASE + HERO_SLOTS * CAST_SPELLS;
 
+/// The worn positions the artifact sale's entries name (E09 T58b): SoD's 0 to 13, head to the
+/// fifth misc position (`h3_heroes::Position`'s order; the war machines and the book after them
+/// never sell, HER-ART-002).
+pub const SALE_WORN: usize = 14;
+
+/// The backpack's indices the artifact sale's entries name (E09 T58b): 0 to 7.
+pub const SALE_BACKPACK: usize = 8;
+
+/// The entry that sells the artifact worn at position 0 by the hero of the player's open town
+/// market window, for the market parameters' cost resource (E09 T58b; TWN-MKT-005): worn position
+/// `p` is `MARKET_SELL_ARTIFACT + p`, backpack index `i` is `MARKET_SELL_ARTIFACT + SALE_WORN + i`
+/// ([`sale_place`]).
+pub const MARKET_SELL_ARTIFACT: usize = TOWN_MARKET + 1;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = TOWN_MARKET + 1;
+pub const ENTRY_COUNT: usize = MARKET_SELL_ARTIFACT + SALE_WORN + SALE_BACKPACK;
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -941,8 +962,8 @@ pub fn second_mask(
 
 /// Whether `entry` takes no tile: `EndTurn`, an answer (a hire dialog's purchase too; since E08
 /// T135a the trades' and services'), a revisit (E08 T105b2) or a cast of Summon Boat, Fly or Water
-/// Walk (E08 T144a2); not [`TOWN_OPEN`] (E09 T49a2), [`SPELL_BOOK`] (E09 T49b) nor
-/// [`TOWN_MARKET`] (E09 T58a2).
+/// Walk (E08 T144a2), or a town's artifact sale (E09 T58b); not [`TOWN_OPEN`] (E09 T49a2),
+/// [`SPELL_BOOK`] (E09 T49b) nor [`TOWN_MARKET`] (E09 T58a2).
 const fn tileless(entry: usize) -> bool {
     entry == END_TURN
         || (entry >= ACCEPT && entry < BUILD_BOAT)
@@ -951,6 +972,27 @@ const fn tileless(entry: usize) -> bool {
         || (entry >= CAST_BASE
             && entry < TOWN_MARKET
             && !AdventureSpell::ALL[(entry - CAST_BASE) % CAST_SPELLS].targets())
+        || (entry >= MARKET_SELL_ARTIFACT && entry < ENTRY_COUNT)
+}
+
+/// The [`MARKET_SELL_ARTIFACT`] entry of an artifact's sale at `place` (E09 T58b): none for a
+/// worn position from [`SALE_WORN`] or a backpack index from [`SALE_BACKPACK`].
+const fn sale_entry(place: ArtifactPlace) -> Option<usize> {
+    match place {
+        ArtifactPlace::Worn(at) => below(at.0, SALE_WORN, MARKET_SELL_ARTIFACT),
+        ArtifactPlace::Backpack(i) => below(i, SALE_BACKPACK, MARKET_SELL_ARTIFACT + SALE_WORN),
+    }
+}
+
+/// The place a [`MARKET_SELL_ARTIFACT`] entry names (E09 T58b): the worn position, then the
+/// backpack's index; `entry` from [`MARKET_SELL_ARTIFACT`], below [`ENTRY_COUNT`].
+const fn sale_place(entry: usize) -> ArtifactPlace {
+    let at = entry - MARKET_SELL_ARTIFACT;
+    if at < SALE_WORN {
+        ArtifactPlace::Worn(Position(at))
+    } else {
+        ArtifactPlace::Backpack(at - SALE_WORN)
+    }
 }
 
 /// The [`CAST_BASE`] entry of the hero in `slot` casting the adventure spell of behaviour `spell`
@@ -1006,7 +1048,9 @@ pub fn market_pair(index: usize) -> Option<(ResourceId, ResourceId)> {
 /// the entries), its sale of one lot by its slot and its purchase by its entry (whatever the
 /// resource: the listed one is the cost resource's, [`encode`] names no other), an Altar's
 /// sacrifices by their kind (whatever the set: the listed one is the all), a Hill Fort's upgrade
-/// by its slot and its `All` (none for a slot or an entry past the entries). None for a hire
+/// by its slot and its `All` (none for a slot or an entry past the entries); since version 23 (E09
+/// T58b) a town's artifact sale by its place ([`sale_entry`], whatever the resource, as the
+/// sale's: none for a place past the entries). None for a hire
 /// dialog's purchase, whose entry is its creature's place in the dialog's source, which the answer
 /// does not carry ([`hire_entry`], E08 T95b), and for a market's transfer.
 pub const fn answer_entry(answer: Answer) -> Option<usize> {
@@ -1056,6 +1100,7 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
             below(slot as usize, ARMY_SLOTS, HILL_FORT_UPGRADE)
         }
         Answer::HillFort(HillFortAnswer::All) => Some(HILL_FORT_ALL),
+        Answer::Market(MarketAnswer::SellArtifact { place, .. }) => sale_entry(place),
         Answer::Hire(HireAnswer::Buy { .. })
         | Answer::Tavern(TavernAnswer::Hire { .. })
         | Answer::Market(_) => None,
@@ -1074,17 +1119,21 @@ const fn below(at: usize, count: usize, base: usize) -> Option<usize> {
 const fn listed_only(answer: &Answer) -> bool {
     matches!(
         answer,
-        Answer::Market(MarketAnswer::Sell { .. } | MarketAnswer::Buy { .. })
-            | Answer::Altar(AltarAnswer::Artifacts(_) | AltarAnswer::Creatures(_))
+        Answer::Market(
+            MarketAnswer::Sell { .. }
+                | MarketAnswer::Buy { .. }
+                | MarketAnswer::SellArtifact { .. }
+        ) | Answer::Altar(AltarAnswer::Artifacts(_) | AltarAnswer::Creatures(_))
     )
 }
 
 /// The answer the trade's or service's entry `entry` (from [`MARKET_TRADE`], below
-/// [`TOWN_OPEN`]) names when [`legal_commands`] lists none of its role (E08 T135a): the trade of
-/// one lot of its pair, the sale of one lot of its slot's stack and the purchase of its entry in
-/// the market parameters' cost resource (resource 0 without the parameters, where no market
-/// opens), the Hill Fort's upgrade of its slot or `All`, which `apply` accepts or rejects with the
-/// reason (no decision, the wrong kind, the price, the lot, the stack), or an Altar's empty
+/// [`TOWN_OPEN`]; since E09 T58b from [`MARKET_SELL_ARTIFACT`] too) names when [`legal_commands`]
+/// lists none of its role (E08 T135a): the trade of one lot of its pair, the sale of one lot of
+/// its slot's stack, the purchase of its entry and the artifact's sale at its place in the market
+/// parameters' cost resource (resource 0 without the parameters, where no market opens), the
+/// Hill Fort's upgrade of its slot or `All`, which `apply` accepts or rejects with the reason (no
+/// decision, the wrong kind, the price, the lot, the stack, the place), or an Altar's empty
 /// sacrifice, which it rejects.
 fn service_answer(rules: &GameRuleset, entry: usize) -> Answer {
     let cost = rules
@@ -1095,6 +1144,10 @@ fn service_answer(rules: &GameRuleset, entry: usize) -> Answer {
     // Each base's entries are fewer than 256.
     let slot = |base: usize| u8::try_from(entry - base).unwrap_or(u8::MAX);
     match entry {
+        _ if entry >= MARKET_SELL_ARTIFACT => Answer::Market(MarketAnswer::SellArtifact {
+            place: sale_place(entry),
+            take: cost,
+        }),
         ALTAR_ARTIFACTS => Answer::Altar(AltarAnswer::Artifacts(AltarPlaces::NONE)),
         ALTAR_CREATURES => Answer::Altar(AltarAnswer::Creatures([0; ALTAR_SLOTS])),
         HILL_FORT_ALL => Answer::HillFort(HillFortAnswer::All),

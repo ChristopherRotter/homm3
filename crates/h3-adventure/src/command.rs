@@ -776,9 +776,10 @@ pub enum MarketPlace {
 
 /// Why a market's answer is refused (E08 T133a2; increment 14's design note §11, §13): the
 /// adventure's checks of a sale ([`crate::AdventureState::check_sale`]), a purchase
-/// ([`crate::AdventureState::check_buy`]) and since E08 T133b a trade's lot
+/// ([`crate::AdventureState::check_buy`]), since E08 T133b a trade's lot
 /// ([`crate::AdventureState::trade_lot`]) and a transfer's screen
-/// ([`crate::MarketWindow::check_screen`]); a trade's and a transfer's amounts and a transfer's
+/// ([`crate::MarketWindow::check_screen`]), and since E09 T58b an artifact's sale
+/// ([`crate::AdventureState::check_artifact_sale`], TWN-MKT-005); a trade's and a transfer's amounts and a transfer's
 /// recipient are the game's, which wraps these in its command error. A refused answer changes
 /// nothing (ADR-0004).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -810,6 +811,12 @@ pub enum MarketError {
     NoPrice,
     /// The hero cannot receive the artifact (A-46 fixed, `ADV-QUIRK-48`: refused before paying).
     NoRoom,
+    /// The window's hero holds no artifact at the place (an artifact's sale, E09 T58b).
+    Place(ArtifactPlace),
+    /// The artifact at the place is worn where the backpack does not take its slot's artifacts
+    /// (HER-ART-002: the war machines, the Catapult, the Spell Book; the original's GENRLTXT 22),
+    /// so it is not sold (E09 T58b).
+    NotTradable,
 }
 
 impl fmt::Display for MarketError {
@@ -827,6 +834,13 @@ impl fmt::Display for MarketError {
             Self::Entry(entry) => write!(f, "entry {entry} is not for sale"),
             Self::NoPrice => f.write_str("the market has no price in that resource"),
             Self::NoRoom => f.write_str("the hero has no room for the artifact"),
+            Self::Place(ArtifactPlace::Worn(at)) => {
+                write!(f, "the hero wears no artifact at position {at}")
+            }
+            Self::Place(ArtifactPlace::Backpack(i)) => {
+                write!(f, "the hero carries no artifact in the backpack at {i}")
+            }
+            Self::NotTradable => f.write_str("this artifact is not traded"),
         }
     }
 }

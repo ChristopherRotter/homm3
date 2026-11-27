@@ -47,6 +47,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   (`restores`) and `h3-server`'s `tests::record` moved from 118 to **130**; all three pass over
   them, the session's bounds unmet. Their random games cast often (45 casts in
   `spells-s415-d28`), no turn longer than the duel's and garrisons' battles.
+- 2026-11-27 (the town lane, E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent;
+  **in your paths, mapped; for your review**): protocol **v86**: `MarketAnswer::SellArtifact {
+  place, take }` both ways (the wire's `ArtifactPlace`), `MarketReject::Place { place }` and
+  `NotTradable`, `MarketScreen::SellArtifact`, `MarketWindow::artifact_sales` (`ArtifactSale {
+  place, artifact, prices }`); `map/game/command.rs`' `answer` and `answer_to_engine` are no
+  longer `const` (the place's mapping); the tests' round trips (171 rejections) and a window with
+  the sale's list. The replay format is v28 (the goldens' `format` lines only).
 - 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent;
   **in your paths, mapped; for your review**): protocol **v85**: `TownCommand::Market { town }`
   both ways, `TownReject::NoMarket`, the wire's `MarketSeen` (`Object { object }` or `Town {

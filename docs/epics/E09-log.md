@@ -6857,3 +6857,92 @@ determinism 9, bench-check 15. `cargo clippy --workspace --all-targets -- -D war
 test -p h3-sim -p h3-cli` (every golden replay); `h3-map`'s tests again after the merge (218) and
 `random-play-spells-36` (−0.03 %). No wire change: the protocol, the replay format and every hash
 as `master`'s.
+
+### T58b — the artifact sale: the price, the check, the view, the listing, the wire, the word, the env's 22 entries, the plans (2026-11-27)
+
+One session, the user present; branch `town/e09-t58b`, `cross-lane` (the adventure lane's
+`h3-adventure` `command.rs`, `lib.rs`, `market.rs`, `ruleset/trades.rs`, `state.rs`,
+`state/markets.rs` and their tests, `h3-game`'s `command.rs`, `lib.rs`, `state/market.rs`,
+`tests/markets.rs`, `h3-files`' replay word, `h3-sim`'s replay version, `h3-map`'s
+`play/trades.rs` and a view seed, the 130 goldens, the catalog's ADV-MKT-002; the AI lane's
+`h3-sim` `adventure/action.rs`, `mod.rs`, `tests.rs`, `tests/hiring.rs`; the server lane's
+`h3-protocol`). Starting point: `master` at 10889f7 (#1211, T58a2, merged a minute before the
+session); the setup's full baseline passed its light gates and the tests, then was stopped at
+coverage for disk (9 GB left); CI's run on `master` failed in its coverage job on a timing test
+of `h3-server` (`tests::clock::a_side_whose_chess_clock_runs_out_…`, `fought >= base_ms` under the
+instrumentation; T58a1's log met another), its failed job re-run. The user's computer was online:
+five files staged (`Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`).
+**T58b whole** (decision 226, over the recommended cut).
+
+- **The price** (design §107; `market.rs`): `MarketParams::artifact_sale(count, cost, take)`,
+  read again at 0x5ECDC0: f32(cost), times the artifacts' factor, stored, over f32 of the trades'
+  value (`resource_values` 0x68C482, not the purchase's), stored, raised to 1.0 below it, then
+  half up; none for a count outside, an unvalued resource or past `u32`. Batch TWN-6's TWN-6-3
+  (10 000 at count 8: 5 500 gold) and TWN-6-4 (3 000 at count 1: 600) in its test.
+- **`h3-adventure`** (`cross-lane`): `MarketScreen::SellArtifact` (screen 3; the part's hash tag
+  4, no pack names it); `MarketError::Place(ArtifactPlace)` and `NotTradable`;
+  `AdventureState::check_artifact_sale((core, part, heroes), window, (place, take))` →
+  `ArtifactSale { hero, place, gain }`, refused `Screen`, `Visit` (no hero or one the store lacks,
+  defensive), `Place`, `NotTradable` (a worn artifact whose slot the backpack does not take,
+  HER-ART-002), `NoPrice`; `market_offers` takes the store of heroes and lists
+  `MarketOffers::artifacts` (`ArtifactSaleOffer { place, artifact, prices }`, worn by position,
+  then the backpack). Nothing of the adventure state changes.
+- **`h3-game`:** `MarketAnswer::SellArtifact { place, take }` (the artifact removed,
+  `HeroChanged` with `RemoveArtifact`, then `ResourceGained`); a town window with the merchants
+  shows `SellArtifact` after `Buy` (`town/market.rs`' `SCREENS`); `market_answers` lists one sale
+  for the cost resource per offered place after the purchases, so `offers_an_answer` lists a
+  merchants' window whose hero holds an artifact that sells. **Found on the way:** a garrison
+  hero's creature sale (T58a1, TWN-MKT-003) changed its town's view untold (TWN-VEW-002: the
+  hero's army is the upper bar); the plans' `views_move_as_the_events_say` met it once the drawn
+  answers moved (seed `d7a0336…` in `proptest-regressions/tests/view.txt`). Fixed: the sale takes
+  `town::Told` before and tells it after the gain (the town lane's `TRAPS.md`, the views).
+- **The wire** (protocol **v86**): `MarketAnswer::SellArtifact` (the wire's `ArtifactPlace`),
+  `MarketReject::Place` and `NotTradable`, `MarketScreen::SellArtifact`,
+  `MarketWindow::artifact_sales`; `answer` and `answer_to_engine` no longer `const`.
+  **Replays:** the word `answer market sell-artifact <place> <take>` (format **v28**); the 130
+  goldens re-recorded from their commands (the scratch script over `h3 adventure run --script`,
+  9 s): only the `format` lines moved.
+- **The env** (action encoding **v23**): `MARKET_SELL_ARTIFACT` (146) and its 22 entries
+  (`SALE_WORN` 14, `SALE_BACKPACK` 8), tileless, `ENTRY_COUNT` 168; `answer_entry`
+  (`sale_entry`), `listed_only`, `service_answer` (`sale_place`); the layout test. The town map's
+  seeds held.
+- **The plans** (`h3-map`): `drawn_answer` draws a sale at a drawn place among five kinds,
+  `trade_answers` probes every place of the window's hero, `trade_moves` and
+  `check_trade_answer` check a sale (the artifact shown removed, one artifact fewer, the price
+  gained, the adventure unchanged; a garrison hero's creature sale's told town views set aside),
+  `check_trade_listing` refuses a backpack index past the most. All of `h3-map`'s tests (release);
+  the play block at ten and the view block at five times their cases once. The towns' cover test
+  met one sale in its cases (counted by hand, not asserted: thin; T60's trades map).
+- **Rules:** TWN-MKT-005 entered `verified` (the code reading, rows TWN-6-3 and -4, the design);
+  ADV-MKT-002 amended (the sale's rate); `TWN-QUIRK-18` (T-20, an exploit, fixed by construction)
+  and `TWN-QUIRK-20` (T-22, harmless, fixed by the user's choice) entered.
+- **Tests:** `h3-adventure`'s `an_artifact_sells_for_its_cost_by_the_artifacts_factor_over_the_trades_value`
+  and `a_towns_window_buys_its_heros_artifact_at_the_place_it_names` (a machine slot added to the
+  market rules), the hash's screen edit, the errors' texts; `h3-game`'s
+  `the_merchants_buy_the_visitors_artifact_at_the_place_it_names_for_its_price` (the view, the
+  listing, wood and gold, `NotTradable` for the book and the cart, `Place`, `NoPrice`, `Screen`
+  at the Marketplace and the guild) and the garrison hero's sale's told view; the protocol's
+  round trips (171 rejections, a window with the sale's list); the replay word's; the env's
+  layout.
+- **The bench:** every adventure workload within its gate on the first build (largest
+  `random-play-bonuses-36` +1.94 %, `fork-boxes-xl-144` +1.75 %, `siege-towns-36` +1.06 %,
+  `legal-towns-36` +0.69 %); `master` 10889f7 measured in the same sandbox gave +1.96 %, +1.75 %
+  and +1.06 % for those three (a toolchain drift against the committed baselines, not this
+  change): no re-baseline. `computer-turns-towns-36` (the AI lane's) −0.33 %.
+- *Agent's calls* (change freely): the screen a variant of `MarketScreen` (not a flag of the
+  window); `Place` carrying its place, `NotTradable` none; the offers' list naming the artifact;
+  the env's sale answer the listed one of its place, whatever the resource (as E08's sales).
+
+**The queue:** T58 out; T59 next (the services). Ids: decisions next 227; quirks planned `-19`,
+`-22`, `-23`, a new one `-24`; stubs `TWN-STUB-23`.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` after merging
+`master` (#1213): every step passes but `check-lane` (by design; `check-lane --cross-lane --base
+origin/master` ok), coverage (one region, the offers' price's `?` for an unpriced resource:
+written without it, `verify-step coverage --scope town` then clean) and `original-data` (the
+harvest reads `H3sprite.lod` since E14 T4b: staged with `H3ab_spr.lod`, the step then passed);
+bench-check (no re-baseline) and determinism passed. Coverage 27 minutes, determinism 8,
+bench-check 17. `verify-step coverage --scope server` clean (the wire's mapping); `cargo clippy
+--workspace --all-targets -- -D warnings`; `cargo test -p h3-protocol -p h3-server -p h3-cli -p
+h3-files` (431, every golden replayed); the clients' `h3-map-view` checked (`cargo check
+--all-targets`; the SDL crates not built here).

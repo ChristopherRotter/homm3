@@ -274,7 +274,12 @@ pub mod wire;
 /// `TownReject::NoMarket`; `MarketWindow` and `GameEvent::MarketOpened` name their place
 /// (`MarketSeen`: a map market by type and anchor, or a town) and their hero as an option (none
 /// possible at a town).
-pub const PROTOCOL_VERSION: u32 = 85;
+/// v86 (E09 T58b, the town lane's, `cross-lane`; the town epic's design note §107, §115): a town's
+/// artifact sale, `MarketAnswer::SellArtifact` (a place of the window's hero, the resource
+/// wanted), its refusals `MarketReject::Place` and `NotTradable`, the screen
+/// `MarketScreen::SellArtifact` and `MarketWindow::artifact_sales` (each place that sells, its
+/// artifact and price per resource).
+pub const PROTOCOL_VERSION: u32 = 86;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes, with its reader ([`record`], every client's: E24 M5 T2c) in the same

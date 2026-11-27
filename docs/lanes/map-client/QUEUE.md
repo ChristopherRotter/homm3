@@ -66,6 +66,12 @@ in four parts). Next: T5.
 
 ## Inbox
 
+- 2026-11-27 (the town lane, E09 T58b, `town/e09-t58b`, `cross-lane`; **in your paths, one line;
+  for your review**): protocol **v86** adds `MarketWindow::artifact_sales` (a town's artifact sale:
+  each place of the hero's that sells, its artifact and price per resource), `MarketScreen::SellArtifact`,
+  `MarketAnswer::SellArtifact { place, take }`, `MarketReject::Place` and `NotTradable`; your
+  `h3-map-view` `notice/tests.rs`' window literal gained `artifact_sales: Vec::new()` so that the
+  workspace builds. The notice of a market window is unchanged.
 - 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for `MCL-STUB-4`, nothing to
   do now**): E10 increment 1 designs the seven days (`docs/epics/E10-design.md` §10, §15): the
   engine will tell `LastTownLost { player }` (to the player, at the check that sets the days),

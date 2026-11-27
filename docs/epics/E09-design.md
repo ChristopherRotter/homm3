@@ -3859,6 +3859,20 @@ screen 3 is the town's alone, §2.2):
   The spell points stay (the original's).
 - **The view:** each place that would sell, in place order (worn, then backpack), with its price
   per valued resource (`MarketOffers`' new list, E08's type in the adventure lane's paths).
+- *As built* (T58b, decision 226: T58b whole; `E09-log.md`): the screen
+  `MarketScreen::SellArtifact` (the part's hash tag 4; no pack names it), the town's windows with
+  the merchants showing it after `Buy` (the original's screens 0 to 4 in order);
+  `MarketParams::artifact_sale(count, cost, take)` (the reading of 0x5ECDC0: f32(cost), times A,
+  stored, over f32(v(take)), stored, raised to 1, then half up; none past `u32`);
+  `AdventureState::check_artifact_sale((core, part, heroes), window, (place, take))` giving an
+  `ArtifactSale` (the hero, the place, the gain), refused `Screen`, `Visit` (no hero, defensive),
+  `Place(place)`, `NotTradable`, `NoPrice` (the new `MarketError` variants `Place` and
+  `NotTradable`); the game removes the artifact (`HeroChanged`) and gains the price
+  (`ResourceGained`), the adventure state untouched. `market_offers` takes the store of heroes
+  (`Rules`) and lists `MarketOffers::artifacts` (`ArtifactSaleOffer { place, artifact, prices }`);
+  `market_answers` lists one sale for the cost resource per offered place after the purchases, so
+  a town's window with the merchants is listed (§104's `offers_an_answer`) where its hero holds an
+  artifact that sells, whatever the treasury. `TWN-QUIRK-18` and `-20` entered.
 
 ### 108. The merchants' stock (TWN-STK-001, -002; ADV-OBJ-006 amended; GAM-CAL-002 amended)
 
@@ -4016,7 +4030,14 @@ Decision 210 (the original's town University runs the map's dialog functions, §
   transfer, as E08 (decision 372). The next version at merge per task, or one when tasks land
   together. *As built* (T58a2, decision 225): the opening `TOWN_MARKET` (145, after the casts so
   that no entry moves; encoding **v22**), its tile mask the entrances of the towns of the listed
-  windows, building 0; the random agent draws it as every listed command.
+  windows, building 0; the random agent draws it as every listed command. *As built* (T58b,
+  decision 226): the sale's 22 from `MARKET_SELL_ARTIFACT` (146: worn positions 0 to 13 by
+  `SALE_WORN`, backpack indices 0 to 7 by `SALE_BACKPACK`), tileless, its answer the listed one of
+  its place (any resource, as E08's sales), else the sale of its place for the cost resource;
+  `ENTRY_COUNT` 168, encoding **v23**; the protocol **v86** (`MarketAnswer::SellArtifact`,
+  `MarketReject::Place`, `NotTradable`, `MarketScreen::SellArtifact`,
+  `MarketWindow::artifact_sales`); the word `answer market sell-artifact <place> <take>` (the
+  place as the management lines', `w<position>` or `b<index>`; format **v28**).
 - **The protocol** (the server lane's paths, `cross-lane`): the decisions' places (`MarketWindow`'s
   object or town, its hero optional; the University's), `SellArtifact` with its refusals, the five
   commands with their refusals, the events' places; the next version per task at merge.
