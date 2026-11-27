@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 
 use h3_contracts::PlayerId;
 use h3_game::Actor;
+use h3_map::MAP_IMPORT_VERSION;
 use h3_protocol::RECORD_FORMAT_VERSION;
 use h3_protocol::codec;
 use h3_protocol::wire::game::{GameEvent, GameRecordHeader, MapIdentity};
@@ -206,18 +207,21 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         fs::write(&file, text.replacen(from, to, 1)).unwrap();
         recorded(&file, 0).unwrap_err()
     };
+    // The import version from its constant: a bump of the map import moves this replay's line.
+    let import = format!("import_version = {MAP_IMPORT_VERSION}");
+    let older_import = format!("import_version = {}", MAP_IMPORT_VERSION - 1);
     let cases = [
         (
             "checkpoint",
-            "0x9de9a095cb522156\"]",
-            "0x9de9a095cb522150\"]",
-            "checkpoint 0 after command 4: the replay's 0x9de9a095cb522150, the session's 0x9de9a095cb522156",
+            "0xfefa6b6cef8abcc5\"]",
+            "0xfefa6b6cef8abcc0\"]",
+            "checkpoint 0 after command 4: the replay's 0xfefa6b6cef8abcc0, the session's 0xfefa6b6cef8abcc5",
         ),
         (
             "final-hash",
-            "final_hash = \"0x2cf540bc5f28ec72\"",
-            "final_hash = \"0x2cf540bc5f28ec70\"",
-            "state hash after 8 commands: expected 0x2cf540bc5f28ec70, got 0x2cf540bc5f28ec72",
+            "final_hash = \"0x628adbc155ee3b29\"",
+            "final_hash = \"0x628adbc155ee3b20\"",
+            "state hash after 8 commands: expected 0x628adbc155ee3b20, got 0x628adbc155ee3b29",
         ),
         ("day", "day = 2", "day = 3", "final day: expected 3, got 2"),
         (
@@ -228,8 +232,8 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         ),
         (
             "import",
-            "import_version = 29",
-            "import_version = 28",
+            import.as_str(),
+            older_import.as_str(),
             "replay header mismatch: map.import_version",
         ),
         (
@@ -240,7 +244,7 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         ),
         (
             "checkpoints",
-            "checkpoints = [\"0x9de9a095cb522156\"]",
+            "checkpoints = [\"0xfefa6b6cef8abcc5\"]",
             "checkpoints = []",
             "checkpoint count does not match the command count",
         ),
@@ -346,7 +350,7 @@ fn each_players_record_is_written_to_its_file() {
     assert_eq!(lines.len(), 1);
     assert!(
         lines[0].ends_with(&format!(
-            ": fixtures/maps/e08-army-12.h3m (8 commands, day 2, final hash 0x2cf540bc5f28ec72): {}, {}",
+            ": fixtures/maps/e08-army-12.h3m (8 commands, day 2, final hash 0x628adbc155ee3b29): {}, {}",
             files[0].display(),
             files[1].display()
         )),

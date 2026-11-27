@@ -694,33 +694,33 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xeca2af8533205077",
-    "0xb1c8970a83897927",
-    "0x4c4e4d8cab207c38",
-    "0x1e5ee2f563866ddc",
-    "0x99dc7055523881e3",
-    "0x7bb6a0cae5ffe5e9",
-    "0xba84b5c77bf8c194",
-    "0xce893047c897cf2c",
-    "0xb0719662ded772c1",
-    "0x80be0c9e64e7be66",
-    "0x99eca92cd383891d",
-    "0x01be94ee28b38f7a",
-    "0x312916158192a9bb",
-    "0xd616ae3b8bfc8a8a",
-    "0xd143084bb7a05688",
-    "0xf30adad522726cc3",
-    "0x574b88182c8208eb",
-    "0x695e189d732d0051",
-    "0xc1ea280c7e78b914",
-    "0x332a02d0a02b0d8b",
-    "0xb700e46a62c662ea",
-    "0xd605a1e811b73594",
-    "0xd75fcea3950db3df",
-    "0x8abd36b57f06c2b0",
-    "0xf0d13bbcabae2f2a",
-    "0xdb3ed78262992c4c",
-    "0x26b2b8684a5b703d",
+    "0x8546182e42e0e045",
+    "0x2fe5e80befa6e2e1",
+    "0x70b8409a9e99d59e",
+    "0x32f0c73cd24a7362",
+    "0x77999f7a64737689",
+    "0x5e8a6047fa2f0f87",
+    "0x36d9988565a4231e",
+    "0x5434dd9999649d86",
+    "0x30d4e4392051681b",
+    "0x6804aee86e78fdf0",
+    "0xfc6d1271121ca42b",
+    "0x2005fd7c8826cbec",
+    "0xffb05d7d7d85d35c",
+    "0x3fabf8eb8def9d96",
+    "0x52d4c4c1cb2b5154",
+    "0xc7dbb3fe4d5b5a33",
+    "0x450ab3759ecbbe6b",
+    "0x56580f6aa6c9f6b4",
+    "0xe6282c8b87f5e100",
+    "0x6f254076518c7fcc",
+    "0x73d8fa57b605a7e5",
+    "0x46a176953baf104b",
+    "0xc36ce38c94b7da38",
+    "0xc2d8d92602ee0edf",
+    "0x1dba7bd8491c9fe5",
+    "0xf45b099d36659593",
+    "0x7110230515762dc0",
 ]
 
 [replay]
@@ -750,18 +750,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x5918efa3271a85e0"
-import_version = 29
+import_version = 30
 
 [result]
 day = 29
-final_hash = "0x018775cbf8058e9c"
+final_hash = "0xaaac75df25cacc0a"
 
 [[players]]
 colour = 0

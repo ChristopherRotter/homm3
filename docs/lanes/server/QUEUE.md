@@ -12,6 +12,14 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E10 T3a, `adventure/e10-t3a`, `cross-lane`; **in your paths,
+  for your review; nothing to do**): the adventure state hash v31, the game state hash v41 and
+  the map import v30 moved every golden adventure replay's hash lines (the 130 re-recorded from
+  their commands, only hash and version lines); `h3-server`'s `src/tests/record.rs`:
+  `army-dialog-s1`'s checkpoint and final hash, and the `import` case now built from
+  `h3_map::MAP_IMPORT_VERSION` (and one less) instead of the literals 29 and 28. No wire type
+  changed (`PlayerView::team` comes with T3b, `cross-lane`, then protocol v87).
+
 - 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for your planning; the wire
   comes in `cross-lane` pull requests**): E10 increment 1 (the teams and the game's end) is
   designed (`docs/epics/E10-design.md` §14 to §16). What reaches `h3-protocol` (T4b, T6, protocol
