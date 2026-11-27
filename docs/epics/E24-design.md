@@ -5220,3 +5220,19 @@ record or the decision carries it, B none does (asked), C presentation or not re
   Cartographer (its land revealed), the Observatory, the Pillar of Fire, a join, `game-asks` and
   `game-notices`: every frame read back exact, as afresh and as the headless loop's; the records
   played to their end. The Deity's week could not be forced in a situation (a unit test alone).
+
+### 5.30 T4's game (M5 T4c)
+
+T4c's last part, T4's acceptance: a two-human hot-seat game played in play's window by keys and
+mouse (the log's "M5 T4c, part four"). Two fixes, each a gap of play the game showed:
+
+- **A random artifact's pickup** (classes 65 to 69, drawn as its random template, `MCL-STUB-1`):
+  `engine::visits::shown` read the record's `AddArtifact` for class 5 alone, so the artifact was
+  taken with no box; now any of the six is an artifact's find, its box the record's artifact.
+- **A later start's objects taken off the map** (`engine::start`'s `gone`, *provisional*): a hot
+  seat's view set up again from its record since (design §5.25) draws the map's objects as the
+  file has them but those the view shows, so a pile taken the day before stood again. An object
+  of the import's (no blocker, no event) that the view does not show though it covers a tile the
+  viewer explored is gone (ADV-FOG-004: an explored tile shows what objects cover it, the
+  engine's `MapObject::tiles`); `render::apply_live` takes each off the map. A new game's start
+  has none; under the fog an object stands as the file has it.

@@ -263,6 +263,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `play` reads a map as the game keeps it (M5 T4b): a situation's map written by
   `h3-map-view situation` is not compressed, so `gzip -c` it first ("not a gzip-compressed map
   file"); a record of it is played by `record --record-map` on the gzipped file (its hash).
+  A shipped map is gzipped already. An acceptance game's script (M5 T4c, the log's "part four")
+  avoids objects the engine does not model yet (an Obelisk, a blocker until E09 increment 6:
+  drawn and hinted from the file, a click shows no path, a key's step onto it is refused) and
+  monsters' zones (a battle ends play, MCL-STUB-6); `tesseract` on the status bar's crop (white
+  text thresholded) names what is under the pointer, which finds the tiles to click.
 - The client lane's standing traps apply to the foundation and the harness (`docs/lanes/client/HANDOFF.md`): the licences (`winit`, `cpal`, Bevy are excluded: SDL 3), the purity allowlist of a pure crate, `clients/Cargo.lock` as a common path, no float arithmetic in drawing and timing, never running the original from the installation, captures never in git, a capture run alone.
 
 - **A re-run of CI forces the full verify** (M4 T2b1, PR #1007): `ci.yml`'s plan sets `FORCE` for a

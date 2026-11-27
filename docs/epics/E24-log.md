@@ -3927,3 +3927,35 @@ import; an AB creature or a war machine in each reading: armies, `PANELS`' Peasa
 guards, a random monster, the calendars, a visit's join, refusal, recruit, dialog and slot);
 coverage without `H3_INSTALL` (0 lines, 0 regions missed); clippy; under Xvfb `seq-ask-join`'s
 Peasants joined drawn as Peasants, every frame exact and as the headless loop's; its record played.
+
+### M5 T4c, part four: T4's game (2026-11-27)
+
+A worker (the user away: *provisional*). **The game:** `Barbarian Breakout` (RoE, 36 × 36, two
+levels; the import's two humans: Red on the surface, Tan underground; computers Blue and Green
+ended at once), `play <map> --mute --scale 1 --check 3600 --records <dir>` under Xvfb, driven by
+xdotool from a command file (each key held 0.3 s, `mousemove --window` then plain
+`mousedown`/`mouseup`, 2 to 6 s after each answer; a new window searched after each hand-over).
+**Played** from play's start (the shell's Begin not yet hosting it) to week 2's first day for both
+(16 views): Red: click walks to an ore pile, the Ore Pit (flagged, its box closed by a click), the
+Marletto Tower, the Windmill (Enter), wood piles from beside by keys and clicks, the Sawmill
+(flagged), Space's revisit, the Obelisk; next hero (H), K's and the army's notices, U and the
+panel's level button, the hero list's portrait twice (the hero screen's notice), each town's
+entrance (the town screen's notice), the week-2 Windmill; Tan: the Windmill, the Dragon Fly Hive
+(its guards' fight declined by the notice), a random artifact from beside, its Ore Pit and pile,
+the Marletto Tower, the Shrine, the town list twice; End Turn by E and by the button, Move
+Reminder's question by Enter and by its OK clicked. **Commands:** 48 accepted (15 End Turns, 30
+walks, a revisit, an offer declined, a notice closed), 1 refused: a key's step onto the Obelisk
+(`Visit { step: 0 }`: a blocker in the engine until E09 increment 6, drawn and hinted from the
+file; a refused step does nothing, design §5.26). **Checked:** every view's frames read back exact,
+as afresh and as the headless loop's (16 views, about 4 600 frames); both records played to their
+end by `h3-map-view record`; the screenshots: heroes, armies' portraits, the resource bar's gains
+(wood, ore, gems, the days' gold, the week's sulfur) and the date, the flags in each colour.
+**Found and fixed** (design §5.30): a random artifact taken with no box; a pile taken drawn again
+at the next day's view (`gone`). **B, the scripted games against the original's frames:** not
+comparable in play: play runs on the window's clock with live input and writes no digests (the
+frames at the original's times are `sequences --frames`'s, headless, from a record); giving play
+a sequence's inputs on a virtual clock with the host answering inside the loop and digests outside
+the panels is not a small option, not built. By their commands (play's `--seed` the engine's):
+`game-walk`, `-day`, `-week`, `-finds`, `-asks`, `-level` (seed 74), `-flags`, `-boats` the same;
+`game-ai`, `-ai-boat` not (play ends a computer's turn at once); the four `battle-*` not
+(MCL-STUB-6). **Gates:** the tests, clippy, `h3-map-view`'s coverage (0 lines, 0 regions missed).
