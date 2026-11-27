@@ -29,22 +29,25 @@ resumes (the epic file); its tasks are cut then.
   T2e the spells' and skills' values (done 2026-11-26, not cut, AI-Q36; the spell values in
   `h3_battle::estimate`'s `caster.rs`), T2f the artifacts (done 2026-11-26, not cut, AI-Q37; the
   equipped value moved to increment 3), T2g the army and town values (done 2026-11-27, not cut,
-  AI-Q38), **T2h** the object value (next), T2i the planning, T2j the walk with the exit's
+  AI-Q38), T2h the object value (done 2026-11-27, not cut, AI-Q39; `tile_index` public,
+  AI-Q40), **T2i** the planning (next), T2j the walk with the exit's
   property tests and the gated benchmark, T2k trace T-A's harness and days 1 to 3. Each with its
   `CPU-` ids, tests, coverage 100 %, stubs by epic.
-  - **T2h — the object value** (next; survey §2.1; the epic file's table: `ai_object_value`
-    0x528040 over the classes the engine has, its per-class helpers, the guarded object's fight,
-    the vision circle `ai_vision_area_value` 0x432220 with its 75 class values; about 4 300 of the
-    original's instructions less the gaps): measure its size at the start and propose a cut by
-    size (the user: a couple of small tasks or one bigger one a session, a seam confirmed with
-    them); `Heroes3.exe` staged (or attached) for the readings. It calls T2g's values, all
-    `expect(dead_code)` until then (`computer/towns.rs`: `dwelling_value` for classes 17 and 20,
-    `town_value` for 98, each with the candidate's cost and the tile; `armies::Plan::
-    exchange_value` for the garrison and hero cases, a plan cleared as `ai_army_plan_clear`
-    0x42C040 does); since AI-Q38 also `ai_army_plan_init_creature` 0x42CF50 with its callers (the
-    Refugee Camp's purchase value 0x52A710, the joining creatures 0x52BC60), on `armies::Plan::new`
-    and `Offer`. The values ask a `towns::Asked` (the hero's `artifacts::Valued` and the start
-    record).
+  - **T2i — the planning** (next; survey §1.9; the epic file's table: the danger map
+    `ai_danger_map` 0x42DE50, the candidates `ai_hero_candidates` 0x42EDD0, the claims, the
+    candidate's score `ai_candidate_score` 0x42F980, the destination `ai_hero_destination`
+    0x42E0B0 with its noise (76 to 100, the caller's stream), the class tables; since T2d the
+    start's Grail target (+0x39, AI-STUB-15); about 2 900 of the original's instructions):
+    measure its size at the start and propose a cut by size (the user: a couple of small tasks or
+    one bigger one a session, a seam confirmed with them); `Heroes3.exe` staged (or attached) for
+    the readings. It calls T2h's object value (`objects::value` with an `objects::Asking`: the
+    hero's `towns::Asked` and its kept destination, +0x35, which the Magic Well and Spring read;
+    the candidate's cost, which some classes lower) and lifts the `expect(dead_code)` of
+    `computer/fight.rs`, `skills.rs`, `armies.rs`, `towns.rs`, `objects.rs` and `vision.rs`
+    (`mod.rs`); `objects::fight_answer` is also the computer's pathfinder's (0x56A3CC, 0x56A4FA,
+    0x56AB0D: a node at or below −500 000 000 dropped) and the answers' (increment 4): keep its
+    own `expect` if neither lands here.
+
 ## Inbox
 
 - 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for your planning; the env's
