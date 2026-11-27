@@ -4,44 +4,26 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143a and T143b done (2026-11-25), T144a1 done (2026-11-25), T144a2 done (2026-11-26), T144b below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T136 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 14 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11, -11-15, -11-18, -11-21; increment 14, the trades and services, by T136's audit). **Increment 15, the Prison, the Market of Time and the adventure spells**, refined with the user at T136 (ADV-Q61; decisions 394, 395): round 1 was the survey (T137a, decision 397) and the drafts with the design note and the cut (T137b, decisions 398 to 407: `docs/epics/E08-design.md`); the building tasks T138 to T145 are cut (the epic's task list); T138 done (2026-11-21), T139a, T139b and T140 done (2026-11-22), T141a and T141b done (2026-11-23, -24), T142a and T142b done (2026-11-24), T143a and T143b done (2026-11-25), T144a1 done (2026-11-25), T144a2 done (2026-11-26), T144b done (2026-11-27), T145 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T144 — the casts in the env, the replays and the maps** (round 8; design note
-`E08-design.md` §17, §18, §20, §21; T143b, Dimension Door, done 2026-11-25; T144a1, the
-casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done 2026-11-26)
+**E08 T145 — the audit, increment 15 and E08 closed** (round 9; design note `E08-design.md`
+§20's exit criteria; decision 396: E08's last; T144b, the maps, replays, plans and benchmark, done
+2026-11-27)
 
-- **T144b, the maps, the replays, the plans and oracles, the benchmarks** (§17):
-  a generated map with a prison, the Market of Time, special grounds, boats and water, a hero
-  with the five spells and a book; the golden replays (each spell, the failures, the prison
-  freed and full, both flag settings of §11); the hygiene property under `strict-fixed` (the
-  flight's, the door's and Scuttle Boat's legal moves never depend on a hidden tile); the
-  census `--with-original-data` (89 prisons, one Market of Time).
-- **Inputs:** T143a's, T143b's and T144a1's records in `E08-log.md` (`check_cast` is the oracle of a
-  listed target: under `strict-fixed` the door's are the explored free tiles of the hero's kind
-  and every hidden tile of the window, Scuttle Boat's the explored empty boats and every hidden
-  tile; under `faithful` the hidden truth, the door's wrong kind listed and charged).
-- **For T144b** (noted by T143a, T143b, T144a1): `view.rs`' hygiene oracle already follows the
-  boat events and `CastFailed`, and the door's arrival is a teleporter's `HeroTeleported` (its
-  `jumper` handling); its faithful exception for the door's and the scuttle's hidden targets came
-  with T144a1 (`targets_hidden`, beside T142b's `flies`); the plans' oracles probe and check the
-  listed casts and the queried targets (`play.rs`' `accepted_casts`, `check_casts`,
-  `accepted_targets`; `view.rs`' `check_same` compares the queries). The plans' heroes meet the casts only
-  through the shrines' and guilds' spells (no plan gives Summon Boat, Fly, Water Walk or the door):
-  the generated map is where they are played.
-- **For T144b** (noted by T144a2): the env plays the casts (encoding v21: `CAST_BASE` + 5 × slot
-  + the behaviour's code, the targets in the tile head) and the random agent draws them, so the
-  generated map's random games and `h3-cli`'s workloads on it cast without help; `h3-sim`'s
-  `tests/casts.rs` has a caster setup on the duel (`caster_setup`: a book, the five spells,
-  Knowledge 20), the mask property's kind 5.
-- **The cut:** **whole, one pull request** (decision 423, the user, 2026-11-26; not the
-  recommendation, two parts as T135b): the map (`e08-spells-36.h3m` with its `h3-map` test), the
-  golden replays with the server lane's counts bumped (`cross-lane`, as T135b1), the plans and
-  oracles (the plans' heroes given the five spells and a book), the properties of §17, the
-  workload on the new map and the census `--with-original-data` (89 prisons, one Market of Time).
-- **Depends on:** nothing open (T144a2's #1191 merged 2026-11-26; the inbox's two property seeds
-  settled first, `adventure/reach-property-seed`). **Status:** T144b next. Then T145 (the
-  audit, the `shared/` task; it applies `adr-drafts/0016-0017-hero-list.md` and
-  `adr-drafts/0017-casts-encoding.md`).
+- **T145, the audit and the `shared/` task:** each of §20's ten exit criteria against the code,
+  the tests and batch E15's rows (T136's precedent: a fresh review per area, the findings fixed);
+  increment 15 and E08 closed (the epic's scope, decisions and task list to `E08-archive.md`, the
+  README's epic row, `docs/BACKLOG.md`: E08 done, E10 next); E10's first round queued
+  (`docs/epics/E10-game-orchestration.md`).
+- **Its `shared/` task** (`cross-lane`): ADR-0017 point 4's order of the cast's checks (decision
+  414: the cost before the ground); ADR-0016 point 3 with the day spells' block (T142a's agent's
+  call); `adr-drafts/0016-0017-hero-list.md` (decision 413) and `adr-drafts/0017-casts-encoding.md`
+  (decisions 421, 422: ADR-0017 point 8's increment 15 paragraph) applied and deleted; the
+  `benches/README.md` row of `random-play-spells-36` (T144b's workload: 5 random games of 28 days
+  on `fixtures/maps/e08-spells-36.h3m`, seed 1, inside `h3_sim::adventure::random_rollout`).
+- **Inputs:** T144b's record in `E08-log.md` (the census, the map's refusals, the twelve replays,
+  the plans' casters and `check_casts_step`, the cover test's counts); T138 to T144a2's records.
+- **Depends on:** T144b (`adventure/e08-t144b`). **Status:** next, once T144b merges.
 
 ## Inbox
 

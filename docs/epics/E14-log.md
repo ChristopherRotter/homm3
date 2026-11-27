@@ -654,3 +654,31 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   fix and flag in T4b); the three corner cases never seen wait for increment 7's census;
   increment 4 cut into T4a (the items not read), T4b (steps 4 and 5, object placing), T4c (step
   6's obstacle plan), T4d (step 6's connections), T4e (step 7), as proposed. Docs only.
+
+## T4a — the items not read: the masks, the placing tests, the islets, the monoliths (2026-11-27, increment 4)
+
+- **Read** (code only, `Heroes3.exe` staged; survey §2.1 "The template's masks as read", §2.2
+  "The placing tests as read", §2.3 "The height map as read" and the monoliths' pairing; §3.2's
+  rules rewritten; §3.2.15's list holds no item of increment 4's now):
+  - RMG-OBJ-009: `objects.txt`'s masks are `std::bitset<48>`s (character 8r + c is the cell c
+    left of, r above the anchor, VCMI alike); the footprint's size and colour mask come from the
+    picture's `.msk`; +0x4 = passability OR NOT colour; +0xC = actions AND NOT +0x4 (the
+    entrances); placing marks an entrance bit 22 (bit 25 kept), else a blocked cell bit 25 clear.
+  - RMG-OBJ-011: the footprint (with its water branch: a blocked cell on water only for a group-0
+    template with water in the fourth column), the outline (a right-hand walk from below the
+    anchor row's first blocked cell), the ring (its open cells one unbroken arc, or all), the cell
+    below the entrance. Tents on water: refused; a water zone's tent fits only on its land.
+  - RMG-OBJ-008: the six callers of `rmg_prototype_draw`, two testing a null.
+  - RMG-CON-008: the height map's records (rows, columns, corners top-left to bottom-right, the
+    amplitude), the first split without a draw (centre a / 2), the quadrants' order.
+  - RMG-CON-017: no pairing at write; entrance and exit prototypes share the index, one channel
+    per one-way connection with an exit in each zone; the index wraps after n45 + n43.
+- **Found:** an empty outline divides by 0 (RMG-QUIRK-3's class, not reached by the shipped
+  lines); the seer huts' creates use a null unchecked (RMG-QUIRK-4's class); the one-way
+  monoliths' shared channel, a new open candidate for the user; **for T4b** the rmg packs lack
+  each picture's `.msk` (width, height, colour mask), which the footprint and +0x4 need, and
+  `h3-rmg`'s `ObjectTemplate` names the two terrain columns the other way round from the
+  generator's use.
+- **Docs:** the survey, `map.toml` (ten entries read again or corrected, seven added),
+  `structs.toml` (`rmg_object_template`'s fields, `rmg_prototype`'s outline, `rmg_heightmap_rect`),
+  the ledger. No code. The gates: `exe.py check`, `cited`, `check-exe-map`, the light verify.
