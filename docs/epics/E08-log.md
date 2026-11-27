@@ -22727,4 +22727,14 @@ checked against the PC's); the PC left during the session.
 - *Agent's calls (change freely):* the map's layout, heroes and grounds; the replays' paths and
   seeds and the sweep's criteria; the casters' draw and weights, `drawn_cast`'s offsets; the
   workload's seed.
+- **Gates:** the scoped verify `--with-original-data`: every step passing but `check-lane` (by
+  design for a `cross-lane` branch; `check-lane --cross-lane` ok) and clippy (one useless
+  conversion in `casts.rs`, fixed after the run; clippy then clean on every touched crate):
+  coverage 1 429 s, determinism 220 s (the 130 goldens), bench-check 892 s (every workload inside
+  its gate, no engine code changed: the nearest `random-play-bonuses-36` +1.98 %, the sandbox's
+  drift, then `fork-stones-xl-144` and `fork-boxes-xl-144` +1.75 %), original-data 137 s (the
+  census all equal); `cargo check --workspace --all-targets` clean. The server lane's tests run
+  alone (`h3-protocol`'s `tests::game_*`, `h3-server`'s `tests::record`), `h3-cli`'s
+  `adventure_replays`; the main property, the hygiene property and the views property soaked at
+  144 random cases each, all passing.
 - **Versions:** none.

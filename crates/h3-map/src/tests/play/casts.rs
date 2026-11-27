@@ -187,7 +187,7 @@ pub(super) fn check_casts_step(
             before.adventure().hero(hero).unwrap(),
             after.adventure().hero(hero).unwrap(),
         );
-        prop_assert_eq!(is.movement, was.movement.saturating_sub(u32::from(points)));
+        prop_assert_eq!(is.movement, was.movement.saturating_sub(points));
         let failed = events
             .iter()
             .any(|e| matches!(e, GameEvent::CastFailed { .. }));
