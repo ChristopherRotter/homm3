@@ -61,6 +61,13 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
+- **2026-11-27, E24 M5 T5, in progress** (kept whole by the user at its start; branch
+  `map-client/e24-m5-t5`): part one done (the reading, 2834a0a: design §5.31 the hand-over, §5.32
+  the clock as shown; MCL-Q70 to Q73, next id MCL-Q74). Next: part two, the hot seat recorded
+  under Wine (design §5.31's recording plan), then the hand-over built, the clock built. The M4
+  hand test: parts 3 to 5 only (the user); part 5's samples were ADPCM (TRAPS), PCM copies and
+  `map-m4-part5.cmd` put in `clients/out/win/`.
+
 - **2026-11-27, E24 M5 T4c** (kept whole by the user at its start, "use subagents efficiently";
   one runner, five worker sub-agents in turn): a read-only audit of play's facts; the notice
   (`MCL-STUB-7`, 17 keys in `clients/text/map/`, MCL-Q68); the audit's class-A rows (a price paid
