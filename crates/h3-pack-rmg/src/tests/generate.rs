@@ -781,6 +781,57 @@ fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5() {
     }
 }
 
+/// `plan.txt`'s lines by case: the lanes' draws and their digest, the draws of step 6's plan.
+fn kept_plan() -> BTreeMap<String, ((usize, String), usize)> {
+    include_str!("../../../../clients/capture/rmg/plan.txt")
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(|line| {
+            let field = |name: &str| line.split(' ').find_map(|w| w.strip_prefix(name)).unwrap();
+            let (n, digest) = field("lanes=").split_once(':').unwrap();
+            let id = line.split(' ').next().unwrap().to_string();
+            let lanes = (n.parse().unwrap(), digest.to_string());
+            (id, (lanes, field("draws=").parse().unwrap()))
+        })
+        .collect()
+}
+
+// covers: RMG-CON-001, RMG-CON-002, RMG-CON-003, RMG-CON-004, RMG-CON-005, RMG-CON-006
+/// Step 6's lanes over the oracle's corpus (`clients/capture/rmg/plan.txt`, E14 T4c): the port's
+/// first draws after step 5's end are the original's lanes (`rmg_free_lanes_draw`'s, their
+/// count and digest), step 2's unwritten bytes as measured (`zones.txt`). In the 11 cases whose
+/// step 6 draws nothing between the lanes and the first connection (no islet), the port draws
+/// exactly the lanes' after step 5: the zone walls and the cells of no zone draw nothing.
+#[test]
+fn the_corpus_draws_step_6s_lanes_as_the_original() {
+    let packs = original("base:faithful");
+    let kept = kept_plan();
+    let memory = kept_zone_memory();
+    assert_eq!(kept.len(), CORPUS.len());
+    let mut whole = Vec::new();
+    for case in 0..CORPUS.len() {
+        let (id, s, seed, _) = corpus_settings(case);
+        let mut t = Phases {
+            memory: memory.get(id).cloned().unwrap_or_default(),
+            ..Phases::default()
+        };
+        generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap_or_else(|e| panic!("{id}: {e}"));
+        let ((lanes, digest), plan) = &kept[id];
+        let after = &t.log.draws[t.log.ends[5]..];
+        assert!(after.len() >= *lanes, "{id}: {} draws", after.len());
+        assert_eq!(
+            lines_digest(&after[..*lanes]),
+            (*lanes, digest.clone()),
+            "{id}"
+        );
+        if plan == lanes {
+            assert_eq!(after.len(), *lanes, "{id}");
+            whole.push(id);
+        }
+    }
+    assert_eq!(whole.len(), 11);
+}
+
 // covers: RMG-ZON-010, RMG-ZON-011
 /// The oracle model's own bytes (RMG-QUIRK-1, provisional: the temporary zone's 0BB, a water
 /// zone's nine town types) give the oracle's step 2 on 22 of the corpus's 24: `l1-4p-b`'s and

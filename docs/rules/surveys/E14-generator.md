@@ -1047,6 +1047,42 @@ of an allowed town (the zone's town type when its monsters match it, else its ne
 drawn; count n = (g + AI/2) / AI, then n + `rand() % s` − `rand() % s` with s = n/4 + 1 when s > 1;
 the object takes the serial +0xF44.
 
+**Step 6's plan as ported (T4c).** `h3-rmg`'s `plan` module, parts (1) to (3) of the order (the
+lanes, the walls, the cells of no zone; the corpus's lanes equal the oracle's, 24 of 24, and in the
+11 cases without an islet the port draws no more: `plan.txt`). Read again, beyond the above:
+
+- The lanes' first pass tests a cell's object list (+0x4 to +0x8 not empty), not bit 22: an
+  object's passable cells off its list stay obstacles.
+- The segment stack holds points in pairs (p, q), q on top; a split pushes q, m, m, p, so (m, p) is
+  drawn before (q, m), and each child has its parent's end in the other place. A terminal segment
+  (m = p or m = q) marks p's 3 × 3 only, and only when p lies on the map: a lane's end whose last
+  segment starts off the map (a midpoint displaced past the edge) can stay an obstacle.
+- A segment of length 1 whose midpoint is neither end ((1, 0)–(0, 1): the midpoint (1, 1)) splits
+  without a draw (L ≤ 1); the split's tests use the displaced midpoint (on the map, for the
+  branches).
+- The branch queue is a `std::list` filled at its back and taken from its front, two points at a
+  time: the branches run in the order queued, (m, m + n) before (m, m − n), and only once the
+  segment stack is empty; a cast branch's segment is pushed as (end, from).
+- `rmg_lane_ray_cast` 0x543C70: the major axis is |dy| on ties; the diagonal step's signs are
+  + for a delta above 0, else − (on both axes); the interior is 1 ≤ x < W − 1, 1 ≤ y < H − 1 (the
+  map's +0xC, +0x10); a first step out returns the start (no segment: distance 0).
+- `rmg_map_mark_free_3x3` writes the cell, then the 3 × 3 clamped to the map with it, each unless
+  +0x2C bit 0; `rmg_map_mark_obstacle` indexes its cell unchecked (every caller passes one on the
+  map) and clamps its 3 × 3 (the cell itself among them).
+- The lanes' last pass is one sweep: per cell, water or rock made free, then a bit-26 cell marked
+  an obstacle; the two never meet (the mark skips water and rock).
+- The walls take the zone generator by the cell's zone byte (+0x10E4, unchecked: RMG-QUIRK-4;
+  step 2 writes no byte past them, the port leaves such a cell unwalled) and its template zone's
+  list +0xC4, the first connection whose far end's id (+0x0's +0x0) is the neighbour's zone byte.
+  On level 1 any other zone's cell walls, connected or not (RMG-QUIRK-9). A neighbour of no zone
+  walls only when it is water. The 3 × 3's
+  bit 27 is cleared on every cell without an object and without +0x2C bit 0, water, rock and other
+  zones' cells included (no land test, unlike `rmg_map_mark_obstacle`); a second pass over
+  [y, y + 1) × [x, x + 1) re-marks the cell alone when empty, which changes nothing (not ported).
+- The cells of no zone (0x544937 to 0x5449F7): bit 26 clear, bit 25 set, land not 9, bit 22
+  clear, no object, +0x20 bit 23 set (the zone byte negative), land not 8; marked by
+  `rmg_map_mark_obstacle`.
+
 **Draw sites** (20 here and one of §2.1; in the order they run):
 
 | Site | Function | Drawn | Per | Condition |

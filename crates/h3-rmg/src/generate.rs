@@ -2,8 +2,9 @@
 //! §1.2 to §1.5): the run's adjustments, the seed, water's Random, the templates kept and drawn,
 //! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
 //! T3c, step 2 since T3d, step 3 since T3e), each draw and each step's end reported to a
-//! [`Trace`]. Steps 4 and 5, the towns, since T4b; steps 6 to 15 and the writer's content come
-//! with increments 4 to 7.
+//! [`Trace`]. Steps 4 and 5, the towns, since T4b; step 6's obstacle plan in part (the lanes,
+//! the zone walls, the cells of no zone) since T4c, step 6 not ended; the rest of step 6, steps
+//! 7 to 15 and the writer's content come with increments 4 to 7.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -23,6 +24,7 @@ use crate::part::RmgRuleset;
 use crate::partition::{
     MemoryZone, Partition, PartitionFault, PartitionInput, ZoneMemory, partition,
 };
+use crate::plan::{PlanInput, plan};
 use crate::settings::{COLOURS, Settings, SettingsError, Water};
 use crate::template::{Fit, KeptTemplate, PositionError, kept_templates, positions};
 use crate::terrain::{TerrainFault, TerrainInput, paint};
@@ -174,8 +176,9 @@ impl fmt::Display for GenerateError {
     }
 }
 
-/// A generated map: so far what the frame and steps 1 to 5 make (stub RMG-STUB-1: steps 6 to 15
-/// and the writer's content come with increments 4 to 7).
+/// A generated map: so far what the frame and steps 1 to 5 make, with step 6's plan in part (stub
+/// RMG-STUB-1: the rest of step 6, steps 7 to 15 and the writer's content come with increments
+/// 4 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
     /// The settings as the generator ran them: water drawn, and under two players in all one
@@ -242,7 +245,8 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// (`rmg_zones_lay_out` 0x53BCB0); steps 2 and 3; the prototypes (`rmg_objects_read` 0x536200,
 /// read by the constructor; nothing draws there) for the steps that place objects; steps 4 and
 /// 5, the towns (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0 per zone
-/// generator).
+/// generator); step 6's plan so far (`rmg_paths_and_connections` 0x544920: the lanes, the zone
+/// walls, the cells of no zone), step 6 not yet ended.
 ///
 /// # Errors
 ///
@@ -426,6 +430,15 @@ pub fn generate<T: Trace>(
             },
         );
     }
+    plan(
+        &mut stream,
+        &PlanInput {
+            zones: &template.zones,
+            connections: &template.connections,
+            gens: &zones,
+        },
+        &mut cells,
+    );
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
         settings: run,
