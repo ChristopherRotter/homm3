@@ -12,6 +12,14 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-26 (the adventure lane, E08 T144b, `adventure/e08-t144b`, `cross-lane` with the
+  user's consent, E08 decision 423; **your tests changed, mechanical; for your review**): twelve
+  new golden adventure replays (`spells-*` on `fixtures/maps/e08-spells-36.h3m`: the five
+  adventure spells' casts and charged failures in both profiles, a prisoner freed and a Prison
+  full), so the counts of `h3-protocol`'s `tests::game_fold` (`golden`), `tests::game_session`
+  (`restores`) and `h3-server`'s `tests::record` moved from 118 to **130**; all three pass over
+  them, the session's bounds unmet. Their random games cast often (45 casts in
+  `spells-s415-d28`), no turn longer than the duel's and garrisons' battles.
 - 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent;
   **in your paths, mapped; for your review**): protocol **v85**: `TownCommand::Market { town }`
   both ways, `TownReject::NoMarket`, the wire's `MarketSeen` (`Object { object }` or `Town {

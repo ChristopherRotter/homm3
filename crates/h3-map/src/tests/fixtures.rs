@@ -470,6 +470,7 @@ fn duel() -> Plan {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     }
 }
 
@@ -519,6 +520,7 @@ fn xl() -> Plan {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     }
 }
 
@@ -562,6 +564,7 @@ fn army() -> Plan {
         banks: Vec::new(),
         taverns: Vec::new(),
         trades: Vec::new(),
+        casters: Vec::new(),
     }
 }
 
