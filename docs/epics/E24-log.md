@@ -3947,8 +3947,8 @@ Reminder's question by Enter and by its OK clicked. **Commands:** 48 accepted (1
 walks, a revisit, an offer declined, a notice closed), 1 refused: a key's step onto the Obelisk
 (`Visit { step: 0 }`: a blocker in the engine until E09 increment 6, drawn and hinted from the
 file; a refused step does nothing, design §5.26). **Checked:** every view's frames read back exact,
-as afresh and as the headless loop's (16 views, about 4 600 frames); both records played to their
-end by `h3-map-view record`; the screenshots: heroes, armies' portraits, the resource bar's gains
+as afresh and as the headless loop's (16 views, about 4 600 frames; the script run again after
+`master`'s merge, protocol v85: the same 48 and 1, 2 237 frames); the records played to their end; the screenshots: heroes, armies' portraits, the resource bar's gains
 (wood, ore, gems, the days' gold, the week's sulfur) and the date, the flags in each colour.
 **Found and fixed** (design §5.30): a random artifact taken with no box; a pile taken drawn again
 at the next day's view (`gone`). **B, the scripted games against the original's frames:** not
@@ -3958,4 +3958,5 @@ a sequence's inputs on a virtual clock with the host answering inside the loop a
 the panels is not a small option, not built. By their commands (play's `--seed` the engine's):
 `game-walk`, `-day`, `-week`, `-finds`, `-asks`, `-level` (seed 74), `-flags`, `-boats` the same;
 `game-ai`, `-ai-boat` not (play ends a computer's turn at once); the four `battle-*` not
-(MCL-STUB-6). **Gates:** the tests, clippy, `h3-map-view`'s coverage (0 lines, 0 regions missed).
+(MCL-STUB-6). **Gates:** the tests (the notice's on v85's market window), clippy, `h3-map-view`'s
+coverage (0 lines, 0 regions missed), the scoped verify with the original data.
