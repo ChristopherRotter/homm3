@@ -6,8 +6,9 @@
 //! -008, ADV-ALT-001 to -003, ADV-HFT-001, -002, ADV-WMF-001, GAM-DEC-008, GAM-DEC-011 to -013.
 //! Since E09 T58a2 a town's market window too (TWN-MKT-002 to -004: `TownCommand::Market`, listed
 //! where it opens and offers an answer; its hero the town's, none possible; the Artifact
-//! Merchants' one stock). The cover test [`the_plans_trade_and_use_the_services`] counts what the
-//! games meet.
+//! Merchants' one stock); since E09 T58b its artifact sale (TWN-MKT-005: each place of the hero's
+//! that sells, the artifact removed and the price gained). The cover test
+//! [`the_plans_trade_and_use_the_services`] counts what the games meet.
 
 use super::*;
 use h3_adventure::MarketScreen;
@@ -212,7 +213,9 @@ fn cost_resource(rules: &GameRuleset) -> ResourceId {
 /// the view, which `apply` may refuse: a market's trade of 1 to 3 lots of a drawn pair (a pair
 /// of one resource too), a transfer of 1 to 10 of a drawn resource to a drawn player (the actor
 /// too), a sale of 1 to 3 lots of a drawn slot for a drawn resource, a purchase of a drawn entry
-/// (one past the stock too) in a drawn resource; an Altar's sacrifice of the first of the listed
+/// (one past the stock too) in a drawn resource, since E09 T58b an artifact's sale at a drawn place
+/// (a worn position to 19, a backpack index to 9) for a drawn resource; an Altar's sacrifice of
+/// the first of the listed
 /// all's artifacts (none too), or of half of each stack (the lowest's all but one when it is
 /// alone); a Hill Fort's upgrade of a drawn slot (one past the army's too) or its `All`. None
 /// without such a decision.
@@ -245,7 +248,7 @@ pub(super) fn drawn_answer(
     let small = |k: u16| u32::from(k % 3) + 1;
     let answer = if state.market(player).is_some() {
         let players = u8::try_from(state.players()).unwrap();
-        Answer::Market(match n % 4 {
+        Answer::Market(match n % 5 {
             0 => MarketAnswer::Trade {
                 give: resource(n / 4),
                 take: resource(n / 28),
@@ -261,9 +264,17 @@ pub(super) fn drawn_answer(
                 take: resource(n / 28),
                 lots: small(n / 196),
             },
-            _ => MarketAnswer::Buy {
+            3 => MarketAnswer::Buy {
                 entry: u8::try_from(n / 4 % 9).unwrap(),
                 pay: resource(n / 36),
+            },
+            _ => MarketAnswer::SellArtifact {
+                place: if (n / 5).is_multiple_of(2) {
+                    ArtifactPlace::Worn(Position(usize::from(n / 10 % 20)))
+                } else {
+                    ArtifactPlace::Backpack(usize::from(n / 10 % 10))
+                },
+                take: resource(n / 200),
             },
         })
     } else if let Some(visit) = state.altar(player) {
@@ -400,7 +411,9 @@ fn accepts(state: &GameState, rules: &GameRuleset, player: PlayerId, answer: Ans
 /// kept when `apply` accepts it, then the kind's `Leave`:
 /// - a market's trade of one lot of every pair, the given then the wanted in the core's order; a
 ///   sale of one lot of every slot of the army, in slot order, for the cost resource; a purchase
-///   of every entry of the stock (the market's resolved draw) in the cost resource; no transfer;
+///   of every entry of the stock (the market's resolved draw) in the cost resource; since E09
+///   T58b an artifact's sale for the cost resource of every place of the window's hero's
+///   artifacts, the worn ones by position, then the backpack's in its order; no transfer;
 /// - an Altar's artifacts' all, every place of the hero's artifacts, the worn ones by position,
 ///   then the backpack's in its order, but those the Altar keeps (the Spell Book, the Catapult),
 ///   until the Altar's places; then its creatures' all, every stack whole but one creature of the
@@ -441,7 +454,21 @@ pub(super) fn trade_answers(
         let purchases = (0..=u8::MAX)
             .take(stock)
             .map(|entry| MarketAnswer::Buy { entry, pay: cost });
-        let answers = trades.chain(sales).chain(purchases).map(Answer::Market);
+        // E09 T58b: every place of the window's hero's artifacts (refused but where the window
+        // has the merchants' sale and the artifact is not worn in a machine's or the book's slot).
+        let details = visit.hero.and_then(|hero| state.hero(hero));
+        let worn = details.into_iter().flat_map(|d| {
+            (d.worn.iter().enumerate())
+                .filter(|(_, a)| a.is_some())
+                .map(|(p, _)| ArtifactPlace::Worn(Position(p)))
+        });
+        let carried = details
+            .into_iter()
+            .flat_map(|d| (0..d.backpack.len()).map(ArtifactPlace::Backpack));
+        let artifacts = worn
+            .chain(carried)
+            .map(|place| MarketAnswer::SellArtifact { place, take: cost });
+        let answers = (trades.chain(sales).chain(purchases).chain(artifacts)).map(Answer::Market);
         (
             answers.filter(accepted).collect(),
             Answer::Market(MarketAnswer::Leave),
@@ -571,6 +598,15 @@ pub(super) fn trade_moves(
                 let price = entry.and_then(|e| e.prices.iter().find(|&&(r, _)| r == pay));
                 (price.into_iter().copied().collect(), Vec::new())
             }
+            MarketAnswer::SellArtifact { place, take } => {
+                let sale = view.offers.artifacts.iter().find(|a| a.place == place);
+                let price = sale.and_then(|a| a.prices.iter().find(|&&(r, _)| r == take));
+                let Some(&(_, price)) = price else {
+                    return Default::default();
+                };
+                let gain = gained(held(before, player, take), u64::from(price));
+                (Vec::new(), vec![(player, take, gain)])
+            }
             MarketAnswer::Leave => Default::default(),
         },
         (Some(DecisionView::HillFort(view)), Answer::HillFort(answer)) => {
@@ -597,8 +633,10 @@ pub(super) fn trade_moves(
 ///   lists pays the amount and gains it to the recipient alone, the sum kept; a sale (ADV-MKT-005)
 ///   lowers the slot by its lots of the view's creatures and gains its lots of the resource, the
 ///   army keeping a creature; a purchase (ADV-MKT-007) of an entry the view shows pays its price
-///   in the resource and gives the hero the artifact, the entry shown sold after; each told as
-///   exactly those events, the market still open, the adventure unchanged but for the sale's
+///   in the resource and gives the hero the artifact, the entry shown sold after; since E09 T58b
+///   an artifact's sale (TWN-MKT-005) of a place the view offers removes the artifact shown there
+///   (and nothing else of the hero's) and gains its price in the resource, saturating; each told
+///   as exactly those events, the market still open, the adventure unchanged but for the sale's
 ///   stack and the purchase's sold entry;
 /// - an Altar's sacrifice (ADV-ALT-002, -003) of artifacts the view prices removes each from its
 ///   place in the change's order and gives the sum of their experience, of creatures lowers each
@@ -724,10 +762,49 @@ pub(super) fn check_trade_answer(
                     prop_assert_eq!(entry.and_then(|e| e.artifact), None, "{:?}", answer);
                     prop_assert_eq!(army_of(before), army_of(after));
                 }
+                MarketAnswer::SellArtifact { place, .. } => {
+                    let hero = hero()?;
+                    prop_assert!(view.offers.screens.contains(&MarketScreen::SellArtifact));
+                    let shown = view.offers.artifacts.iter().find(|a| a.place == place);
+                    let shown = shown.ok_or_else(|| fail(format!("{answer:?} unoffered")))?;
+                    prop_assert_eq!(gains.len(), 1, "{:?} unpriced", answer);
+                    let artifact_at = |details: &h3_heroes::HeroDetails| match place {
+                        ArtifactPlace::Worn(at) => details.worn[at.0].as_ref().map(|a| a.artifact),
+                        ArtifactPlace::Backpack(i) => Some(details.backpack[i].artifact),
+                    };
+                    let (was, is) = (before.hero(hero).unwrap(), after.hero(hero).unwrap());
+                    prop_assert_eq!(artifact_at(was), Some(shown.artifact));
+                    let count = |d: &h3_heroes::HeroDetails| {
+                        d.worn.iter().flatten().count() + d.backpack.len()
+                    };
+                    prop_assert_eq!(count(is) + 1, count(was), "{:?}", answer);
+                    expected.push(GameEvent::HeroChanged {
+                        player: actor,
+                        hero,
+                        change: HeroChange::RemoveArtifact(place),
+                    });
+                    prop_assert_eq!(before.adventure(), after.adventure());
+                }
                 MarketAnswer::Leave => unreachable!(),
             }
             expected.extend(gain_events(&gains));
-            prop_assert_eq!(events, &expected[..], "{:?}", answer);
+            // E09 T58b: a garrison hero's sale then tells its town's viewers the town's view
+            // (TWN-VEW-002: the hero's army is the upper bar), which `view.rs` checks.
+            let garrisoned = open
+                .0
+                .is_some_and(|h| before.adventure().garrisoned(h).is_some());
+            let told = |e: &&GameEvent| {
+                matches!(market, MarketAnswer::Sell { .. })
+                    && garrisoned
+                    && matches!(
+                        e,
+                        GameEvent::TownChanged { .. }
+                            | GameEvent::TownStackSeen { .. }
+                            | GameEvent::TownIncomeSeen { .. }
+                    )
+            };
+            let own: Vec<GameEvent> = events.iter().filter(|e| !told(e)).copied().collect();
+            prop_assert_eq!(&own[..], &expected[..], "{:?}", answer);
             prop_assert_eq!(trade_open(after, actor), Some(open));
         }
         (Some(DecisionView::Altar(view)), Answer::Altar(altar)) => {
@@ -874,7 +951,8 @@ pub(super) fn check_trade_answer(
 /// each applies with the effects [`check_trade_answer`] checks; refused with the state unchanged
 /// and nothing told: a trade of a resource for itself and of one lot past the most, a transfer
 /// to the actor and one past the treasury's, a sale of a slot past the army's, a purchase of an
-/// entry past the stock, an Altar's empty sacrifices and its creatures' all with the lowest
+/// entry past the stock, an artifact's sale at a backpack index past the backpack's most (E09
+/// T58b), an Altar's empty sacrifices and its creatures' all with the lowest
 /// creature too, a Hill Fort's upgrade of each row not affordable (a stack without an upgrade,
 /// one too dear) and its `All` unless the whole is affordable.
 pub(super) fn check_trade_listing(
@@ -943,6 +1021,10 @@ pub(super) fn check_trade_listing(
             refused.push(Answer::Market(MarketAnswer::Buy {
                 entry: stock,
                 pay: gold,
+            }));
+            refused.push(Answer::Market(MarketAnswer::SellArtifact {
+                place: ArtifactPlace::Backpack(64),
+                take: gold,
             }));
         }
         Some(DecisionView::Altar(_)) => {
@@ -1129,6 +1211,8 @@ impl Traded {
                 Answer::Market(MarketAnswer::Transfer { .. }) => self.transfers[i] += 1,
                 Answer::Market(MarketAnswer::Sell { .. }) => self.sales[i] += 1,
                 Answer::Market(MarketAnswer::Buy { .. }) => self.purchases[i] += 1,
+                // E09 T58b: a town's alone (the towns' cover test counts it).
+                Answer::Market(MarketAnswer::SellArtifact { .. }) => {}
                 Answer::Altar(AltarAnswer::Artifacts(_)) => self.artifacts[i] += 1,
                 Answer::Altar(AltarAnswer::Creatures(_)) => self.creatures[i] += 1,
                 Answer::HillFort(HillFortAnswer::Upgrade(_)) => self.upgrades[i] += 1,

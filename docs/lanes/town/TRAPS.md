@@ -244,6 +244,9 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   command naming it, its battle's end, its Necromancy) is a write of its town's view
   (`state/manage.rs`' `town_told`, `state/battle.rs`' `bar_told`), and the plans' fold takes a
   told view's garrison by slot whole (`views_move_as_the_events_say`, found by a stress of 300).
+  E09 T58b: a market's creature sale by a garrison hero (T58a1's, `state/market.rs`) missed it
+  until the plans' drawn answers moved (fixed: `town::Told` around the sale); the Skeleton
+  Transformer's change of a garrison hero's army (T59b) takes the same.
 
 ## The import (`h3-map` `src/import/town.rs`)
 

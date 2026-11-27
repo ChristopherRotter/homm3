@@ -37,6 +37,26 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 
 ## Inbox
 
+- 2026-11-27 (the town lane, E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent,
+  E09 decision 226; **in your paths, for your review; no hash of yours changed**): a town's
+  artifact sale (TWN-MKT-005). (1) `MarketScreen::SellArtifact` (the part's hash tag 4; no pack
+  names it), `MarketError::Place(ArtifactPlace)` and `NotTradable` (`command.rs`);
+  `MarketParams::artifact_sale(count, cost, take)` (`market.rs`; ADV-MKT-002 amended in the
+  catalog); `AdventureState::check_artifact_sale` and `ArtifactSale`, `MarketOffers::artifacts`
+  (`ArtifactSaleOffer`), and **`market_offers` takes `(core, part, heroes)`** (`state/markets.rs`);
+  (2) `h3-game`: `MarketAnswer::SellArtifact { place, take }`, its arm in `answer_market` (the
+  artifact removed, `HeroChanged`, then the gain), `market_answers` lists a sale per offered place
+  after the purchases; **found on the way:** a town's garrison hero's creature sale (T58a1) left
+  its town's view untold (TWN-VEW-002), now told after the gain (`town::Told`), the plans' seed
+  added to `proptest-regressions/tests/view.txt`; (3) the replay word `answer market sell-artifact
+  <place> <take>` (`h3-files`): **replay format v28**, the 130 goldens re-recorded from their
+  commands (only the `format` lines moved); (4) the plans (`play/trades.rs`): `drawn_answer` draws
+  among five kinds (a sale at a drawn place), `trade_answers` probes every place of the window's
+  hero, `trade_moves` and `check_trade_answer` know the sale, `check_trade_listing` refuses a
+  backpack index past the most. Every adventure workload within its gate (`master` measured the
+  same in this sandbox: `random-play-bonuses-36` +1.96 %, `fork-boxes-xl-144` +1.75 % against the
+  committed baselines before any change). A pull request of yours that bumps the replay format
+  after this one merges bumps again.
 - 2026-11-27 (the AI lane, E31 T2h, `ai/e31-t2h`, `cross-lane` with the user's consent, AI-Q40;
   **in your paths, for your review, nothing to do**): `AdventureState::tile_index` is public
   (`state.rs`, its doc says why): the computer's object value (`h3_game::computer::objects::at`)

@@ -141,7 +141,8 @@ pub use economy::allied;
 use flags::Flags;
 pub use hill_fort::{HillFortRow, HillFortUpgrade};
 pub use markets::{
-    MarketOffers, MarketPurchase, MarketWindow, Sale, SaleOffer, StockEntry, TradeOffer,
+    ArtifactSale, ArtifactSaleOffer, MarketOffers, MarketPurchase, MarketWindow, Sale, SaleOffer,
+    StockEntry, TradeOffer,
 };
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};

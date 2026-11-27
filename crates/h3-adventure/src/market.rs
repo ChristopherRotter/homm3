@@ -272,6 +272,22 @@ impl MarketParams {
         }
     }
 
+    /// What an artifact of cost `cost` (in [`Self::cost`]'s resource) sells for in `take` at
+    /// `count` Marketplaces (screen 3, the town's: `market_artifact_sale_rate` 0x5ECDC0; E09
+    /// T58b, TWN-MKT-005): a = f32(f32(cost) × A), q = f32(a / f32(v(take))) with v the trades'
+    /// value table (the original's `resource_values` 0x68C482, not the purchase's), at least 1,
+    /// then round(q) units: an artifact of no cost sells for 1. None for a count outside the
+    /// parameters, a resource they do not value, or a price past `u32`.
+    // rule: ADV-MKT-002, TWN-MKT-005
+    pub fn artifact_sale(&self, count: u8, cost: u32, take: ResourceId) -> Option<u32> {
+        let row = self.row(count)?;
+        let wanted = stored(value(&self.values, take)?);
+        let a = stored(cost).times(row.artifacts).round(SINGLE_BITS);
+        // `wanted` is above 0 (`new` refuses a value of 0).
+        let quotient = a.over(wanted).unwrap_or(X87::ZERO).round(SINGLE_BITS);
+        u32::try_from(half_up(quotient.max(X87::int(1)))).ok()
+    }
+
     /// The row of `count` Marketplaces, from 1.
     fn row(&self, count: u8) -> Option<Row> {
         self.rows.get(usize::from(count).checked_sub(1)?).copied()

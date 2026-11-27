@@ -786,8 +786,23 @@ pub struct MarketWindow {
     pub sales: Vec<SaleLots>,
     /// The Black Market's stock, each entry's artifact (none once bought) and price per resource.
     pub stock: Vec<StockEntry>,
+    /// A town's artifact sale: each place of the hero's that sells, its artifact and price per
+    /// resource (E09 T58b, v86).
+    pub artifact_sales: Vec<ArtifactSale>,
     /// The transfer's recipients: every other player of the game.
     pub recipients: Vec<u8>,
+}
+
+/// An artifact's sale in a town's window (`h3_game::ArtifactSaleOffer`; E09 T58b, v86).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactSale {
+    /// Where the hero holds it.
+    pub place: ArtifactPlace,
+    /// The artifact's handle.
+    pub artifact: u16,
+    /// Its price per resource.
+    pub prices: Vec<Amount>,
 }
 
 /// A market's place (`h3_game::MarketSeen`; E09 T58a1, v85): a market on the map by type and
@@ -817,6 +832,8 @@ pub enum MarketScreen {
     Sell,
     /// Resources for an artifact of the stock.
     Buy,
+    /// The hero's artifact for resources (a town's with the Artifact Merchants; E09 T58b, v86).
+    SellArtifact,
 }
 
 /// A rate (`h3_game::Lot`; E08 T133b, v75): so many given for so many wanted, one of them 1.

@@ -60,11 +60,15 @@ impl GameState {
     ///   (*agent's call*, design note §13);
     /// - a sale (ADV-MKT-005): the adventure's check
     ///   ([`h3_adventure::AdventureState::check_sale`]), then the stack lowered (`StackChanged`)
-    ///   and the gain (`ResourceGained`);
+    ///   and the gain (`ResourceGained`); a town's garrison hero's sale then tells the town's
+    ///   viewers its view (TWN-VEW-002, `TownChanged` and the rest: E09 T58b);
     /// - a purchase (ADV-MKT-007): the adventure's check
     ///   ([`h3_adventure::AdventureState::check_buy`], A-46 fixed: the hero's room before
     ///   paying), then the price against the treasury, then paid (`ResourcePaid`), the artifact
     ///   given (`HeroChanged`) and the entry sold;
+    /// - an artifact's sale at a town (TWN-MKT-005; E09 T58b): the adventure's check
+    ///   ([`h3_adventure::AdventureState::check_artifact_sale`]), then the artifact removed at
+    ///   the place checked (`HeroChanged`) and the gain (`ResourceGained`, saturating);
     /// - `Leave`: closed (`DecisionClosed`), nothing lost.
     ///
     /// # Errors
@@ -72,7 +76,8 @@ impl GameState {
     /// [`GameCommandError::Market`] (the adventure's refusal; `Recipient`; `Amount` for a trade's
     /// lots or a transfer's amount), then [`GameCommandError::CannotPay`] for a purchase; the
     /// state is then unchanged.
-    // rule: GAM-DEC-011, ADV-MKT-003, ADV-MKT-004, ADV-MKT-005, ADV-MKT-007, GAM-RES-001
+    // rule: GAM-DEC-011, ADV-MKT-003, ADV-MKT-004, ADV-MKT-005, ADV-MKT-007, TWN-MKT-005
+    // rule: GAM-RES-001
     pub(super) fn answer_market<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -124,11 +129,17 @@ impl GameState {
                 let sale = window
                     .and_then(|w| self.adventure.check_sale(checks, &w, (slot, take, lots)))
                     .map_err(refused)?;
+                // E09 T58b (found on the way): a garrison hero's army is its town's upper bar
+                // (TWN-VEW-002), so the town's viewers are told its view after the sale.
+                let town = visit.hero.and_then(|hero| self.adventure.garrisoned(hero));
+                let town = town.map(|(town, _)| town);
+                let told = crate::town::Told::before::<S>(self, rules, town.as_slice(), &[]);
                 let gain = sale.gain();
                 let at = self.adventure.sell(sale);
                 let stack = self.stack_at(player, at);
                 sink.emit(GameEvent::StackChanged { player, at, stack });
                 self.gain(player, &[gain], sink);
+                told.tell(self, rules, sink);
             }
             MarketAnswer::Buy { entry, pay } => {
                 let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
@@ -143,6 +154,15 @@ impl GameState {
                 let change = HeroChange::AddArtifact(purchase.artifact().into());
                 self.change_hero(rules.core(), purchase.hero(), Some(player), change, sink);
                 self.adventure.buy(purchase);
+            }
+            MarketAnswer::SellArtifact { place, take } => {
+                let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
+                let sale = window
+                    .and_then(|w| (self.adventure).check_artifact_sale(rules3, &w, (place, take)))
+                    .map_err(refused)?;
+                let change = HeroChange::RemoveArtifact(sale.place());
+                self.change_hero(rules.core(), sale.hero(), Some(player), change, sink);
+                self.gain(player, &[sale.gain()], sink);
             }
             MarketAnswer::Leave => {
                 self.close(at);
@@ -161,10 +181,12 @@ impl GameState {
     /// original's gold) whose check passes ([`h3_adventure::AdventureState::check_sale`]: the
     /// stack holds a lot, the army keeps a creature); a purchase in that resource of each entry
     /// of the stock whose check passes ([`h3_adventure::AdventureState::check_buy`]: unsold, the
-    /// hero's room) and whose price the treasury holds. No transfer is listed (as the management
-    /// commands, decision 99: a client sends one from the view); every other answer the view
-    /// allows stays legal for `apply`.
-    // rule: GAM-DEC-011, ADV-MKT-003, ADV-MKT-005, ADV-MKT-007
+    /// hero's room) and whose price the treasury holds; since E09 T58b (TWN-MKT-005) a sale for
+    /// that resource of each place of the hero's that sells, the worn ones by position, then the
+    /// backpack's ([`h3_adventure::MarketOffers::artifacts`]). No transfer is listed (as the
+    /// management commands, decision 99: a client sends one from the view); every other answer
+    /// the view allows stays legal for `apply`.
+    // rule: GAM-DEC-011, ADV-MKT-003, ADV-MKT-005, ADV-MKT-007, TWN-MKT-005
     pub(crate) fn market_answers(
         &self,
         rules: &GameRuleset,
@@ -185,8 +207,8 @@ impl GameState {
     /// `crate::town::market::listed`): a trade whose lot the treasury pays, asked first and alone
     /// ([`Self::pays_a_lot`] at the window's count: no list built, no lot's arithmetic; the
     /// listing asks it of every owned town whose window opens, `bench-check`'s `legal-towns-36`);
-    /// without one and with a hero, the window's sales and purchases as [`Self::market_answers`]
-    /// gives them.
+    /// without one and with a hero, the window's sales, purchases and (E09 T58b) artifact sales as
+    /// [`Self::market_answers`] gives them.
     pub(crate) fn offers_an_answer(
         &self,
         rules: &GameRuleset,
@@ -231,7 +253,8 @@ impl GameState {
         window: &MarketWindow<'_>,
     ) -> Vec<MarketAnswer> {
         let checks = (rules.core(), rules.adventure());
-        let offers = self.adventure.market_offers(checks, window);
+        let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
+        let offers = self.adventure.market_offers(rules3, window);
         // The part refuses a market kind without its parameters, so an open market has a cost.
         let cost = rules.adventure().params().market().map(MarketParams::cost);
         let trades = offers
@@ -256,7 +279,6 @@ impl GameState {
                 take,
                 lots: 1,
             });
-        let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
         let purchases = (0..=u8::MAX)
             .take(offers.stock.len())
             .flat_map(|entry| cost.map(|pay| (entry, pay)))
@@ -265,7 +287,21 @@ impl GameState {
                 purchase.is_ok_and(|purchase| self.can_pay(player, &[purchase.price()]))
             })
             .map(|(entry, pay)| MarketAnswer::Buy { entry, pay });
-        trades.chain(sales).chain(purchases).collect()
+        // Each offered place sells for the cost resource whenever the offer prices it there.
+        let artifacts = offers
+            .artifacts
+            .iter()
+            .flat_map(|offer| cost.map(|take| (offer, take)))
+            .filter(|&(offer, take)| offer.prices.iter().any(|&(r, _)| r == take))
+            .map(|(offer, take)| MarketAnswer::SellArtifact {
+                place: offer.place,
+                take,
+            });
+        trades
+            .chain(sales)
+            .chain(purchases)
+            .chain(artifacts)
+            .collect()
     }
 
     /// The window of `player`'s open market `visit` (GAM-DEC-011; E09 T58a1, the town epic's
@@ -301,7 +337,8 @@ impl GameState {
     /// design note §12, §13; E09 T58a1 at a town, TWN-VEW-005): the hero (none possible at a
     /// town), the place (a map market by type and anchor, never by index, ADR-0016 point 6; a town
     /// by its id), what its window offers ([`h3_adventure::AdventureState::market_offers`]: the
-    /// screens, the count, the trades' lots, the stacks' lots, the stock with its prices) and with
+    /// screens, the count, the trades' lots, the stacks' lots, the stock with its prices, since E09
+    /// T58b the hero's places that sell with their prices) and with
     /// the transfer's screen the recipients, every other player of the game in order. The
     /// treasury is the owner's own observation's, so no most shows: a client draws the slider.
     pub(crate) fn market_view(
@@ -315,8 +352,8 @@ impl GameState {
         let offers = self
             .market_window(rules, player, visit)
             .map(|w| {
-                self.adventure
-                    .market_offers((rules.core(), rules.adventure()), &w)
+                let rules3 = (rules.core(), rules.adventure(), self.heroes.as_slice());
+                self.adventure.market_offers(rules3, &w)
             })
             .unwrap_or_default();
         let transfers = offers.screens.contains(&MarketScreen::Transfer);

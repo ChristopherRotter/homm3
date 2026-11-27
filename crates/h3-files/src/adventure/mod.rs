@@ -43,7 +43,9 @@
 //! `all` and `leave`; v24 `town open <town>`, a town screen's opening, E09 T49a2; v25 `town book
 //! <town>`, a spell book's purchase at its Mage Guild, E09 T49b; v26 `cast <hero> <spell>
 //! [<x>,<y>,<level>]`, a cast on the adventure map by the core spell's index, the target tile for
-//! Scuttle Boat and Dimension Door, E08 T142a):
+//! Scuttle Boat and Dimension Door, E08 T142a; v27 `town market <town>`, a market window's opening
+//! at a town, E09 T58a1; v28 `answer market sell-artifact <place> <take>`, a town's artifact sale,
+//! the place as the management lines', E09 T58b):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -458,6 +460,10 @@ fn format_answer(answer: Answer) -> String {
         Answer::Market(MarketAnswer::Buy { entry, pay }) => {
             return format!("market buy {entry} {}", pay.raw());
         }
+        // Format v28 (E09 T58b): the place as the management lines' (`w<position>`, `b<index>`).
+        Answer::Market(MarketAnswer::SellArtifact { place, take }) => {
+            return format!("market sell-artifact {} {}", place_word(place), take.raw());
+        }
         Answer::Market(MarketAnswer::Leave) => "market leave",
         // Format v22 (E08 T134a): the places as the management lines' (`w<position>`,
         // `b<index>`) in the change's order; the seven amounts by slot.
@@ -532,6 +538,10 @@ fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> 
         ("market", Some("buy")) => Answer::Market(MarketAnswer::Buy {
             entry: words.next()?.parse().ok()?,
             pay: ResourceId::from_raw(words.next()?.parse().ok()?),
+        }),
+        ("market", Some("sell-artifact")) => Answer::Market(MarketAnswer::SellArtifact {
+            place: parse_place_word(words.next()?)?,
+            take: ResourceId::from_raw(words.next()?.parse().ok()?),
         }),
         ("market", Some("leave")) => Answer::Market(MarketAnswer::Leave),
         ("altar", Some("artifacts")) => {

@@ -147,6 +147,23 @@ fn commands_round_trip_through_their_text() {
             })),
             "0 answer market buy 6 5",
         ),
+        // Format v28 (E09 T58b): a town's artifact sale by its place.
+        (
+            PlayerId::new(1),
+            answer(Answer::Market(MarketAnswer::SellArtifact {
+                place: ArtifactPlace::Worn(Position(13)),
+                take: ResourceId::from_raw(6),
+            })),
+            "1 answer market sell-artifact w13 6",
+        ),
+        (
+            PlayerId::new(0),
+            answer(Answer::Market(MarketAnswer::SellArtifact {
+                place: ArtifactPlace::Backpack(2),
+                take: ResourceId::from_raw(0),
+            })),
+            "0 answer market sell-artifact b2 0",
+        ),
         (
             PlayerId::new(0),
             answer(Answer::Market(MarketAnswer::Leave)),
@@ -633,6 +650,11 @@ fn commands_round_trip_through_their_text() {
         "0 answer market buy 6",
         "0 answer market buy x 5",
         "0 answer market buy 6 x",
+        "0 answer market sell-artifact",
+        "0 answer market sell-artifact w3",
+        "0 answer market sell-artifact x3 6",
+        "0 answer market sell-artifact w3 x",
+        "0 answer market sell-artifact w3 6 1",
         "0 answer market leave now",
         "0 answer altar",
         "0 answer altar burn",

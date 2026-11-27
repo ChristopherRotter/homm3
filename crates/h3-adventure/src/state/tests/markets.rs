@@ -13,9 +13,12 @@ use std::sync::Arc;
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{ArtifactClass, ArtifactTypeId, CreatureTypeId, HeroParamsDef};
+use h3_content::{
+    ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentPack, CreatureTypeId,
+    HeroParamsDef, ResourceId,
+};
 use h3_contracts::{ArmyStack, TownId};
-use h3_heroes::HeroDetails;
+use h3_heroes::{ArtifactPlace, HeroDetails, Position};
 
 use super::draws::{object, rules_with};
 use super::revisits::{revisit, revisitable};
@@ -29,7 +32,9 @@ use crate::market::Lot;
 use crate::ruleset::{Market, MarketScreen, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::setup::Holds;
 use crate::state::Resolved;
-use crate::state::{MarketOffers, MarketWindow, SaleOffer, StockEntry, TradeOffer};
+use crate::state::{
+    ArtifactSaleOffer, MarketOffers, MarketWindow, SaleOffer, StockEntry, TradeOffer,
+};
 use crate::testing::{GNOLL, PEASANT, PIKEMAN, WOLF, key, stream};
 
 const CLOAK: ArtifactTypeId = ArtifactTypeId::from_raw(3);
@@ -39,6 +44,11 @@ const CLOAK: ArtifactTypeId = ArtifactTypeId::from_raw(3);
 /// cloak none), the market's cost resource gold (ADV-Q60 (a)), and three entered markets at five Marketplaces: `t:black_market` (buy, the base pack's
 /// stock), `t:trading_post` (trade, transfer) and `t:guild` (sell).
 fn rules() -> Rules {
+    market_rules(|_| {})
+}
+
+/// [`rules`] with the core changed by `more_core` after its own changes.
+fn market_rules(more_core: impl FnOnce(&mut ContentPack)) -> Rules {
     let market = |k: &str, screens: Vec<MarketScreen>, stock: Vec<ArtifactClass>| ObjectTypeDef {
         key: key(k),
         name: "Market".into(),
@@ -75,6 +85,7 @@ fn rules() -> Rules {
                 base_mana_regain: 1,
                 regain_specialist_bonus: 1,
             });
+            more_core(core);
         },
         |types| {
             types.extend([
@@ -401,6 +412,9 @@ fn every_market_error_reads_apart() {
         MarketError::Entry(4),
         MarketError::NoPrice,
         MarketError::NoRoom,
+        MarketError::Place(ArtifactPlace::Worn(Position(3))),
+        MarketError::Place(ArtifactPlace::Backpack(3)),
+        MarketError::NotTradable,
     ];
     let texts: BTreeSet<_> = all.iter().map(ToString::to_string).collect();
     assert_eq!(texts.len(), all.len());
@@ -450,7 +464,8 @@ fn a_trades_lot_is_the_rates_and_a_transfer_needs_its_screen() {
 #[test]
 fn a_markets_window_offers_the_rates_of_its_screens_alone() {
     let rules = rules();
-    let rules2 = (&rules.0, &rules.1);
+    let heroes = store(hero());
+    let rules2 = (&rules.0, &rules.1, &heroes[..]);
     let rates = rules.1.params().market().unwrap();
     // A Trading Post: both trades' lots, no sale, no stock.
     let post = at_market(&rules, "t:trading_post", vec![stack(0, PEASANT, 40)]);
@@ -468,6 +483,7 @@ fn a_markets_window_offers_the_rates_of_its_screens_alone() {
             trades: vec![trade(WOOD, GOLD), trade(GOLD, WOOD)],
             sales: vec![],
             stock: vec![],
+            artifacts: vec![],
         }
     );
     // The guild: each stack's lot per resource; the gnoll's 5 wood are no gold cost, so none.
@@ -564,7 +580,7 @@ fn a_towns_window_trades_at_its_count_and_sells_the_merchants_stock() {
         state.trade_lot(&rules.1, &town, (WOOD, GOLD)),
         Ok(rates.resource_lot(2, WOOD, GOLD).unwrap())
     );
-    let offers = state.market_offers(rules2, &town);
+    let offers = state.market_offers(rules3, &town);
     assert_eq!(offers.count, 2);
     assert_eq!(offers.sales.len(), 1);
     let entries: Vec<_> = offers.stock.iter().map(|e| e.artifact).collect();
@@ -595,10 +611,136 @@ fn a_towns_window_trades_at_its_count_and_sells_the_merchants_stock() {
         state.check_buy(rules3, &town, (2, GOLD)),
         Err(MarketError::Entry(2))
     );
-    let shown = state.market_offers(rules2, &town).stock;
+    let shown = state.market_offers(rules3, &town).stock;
     assert_eq!((shown[at].artifact, shown[at].prices.len()), (None, 0));
     // An entry past the stock empties nothing (the purchase's check finds it first).
     let before = state.merchants_stock().to_vec();
     state.empty_merchants_entry(5);
     assert_eq!(state.merchants_stock(), before);
+}
+
+/// The catapult's handle in [`sale_rules`]' core: the artifact its machine slot takes (not
+/// carried in the backpack: HER-ART-002), after the draws' seven.
+const CATAPULT: ArtifactTypeId = ArtifactTypeId::from_raw(7);
+
+/// [`rules`] with a second artifact slot, `t:machine` (one position after the finger's, its
+/// artifacts not carried in the backpack), and the catapult worn there.
+fn sale_rules() -> Rules {
+    market_rules(|core| {
+        core.artifact_slots.push(ArtifactSlotDef {
+            key: key("t:machine"),
+            name: "Machine".into(),
+            count: 1,
+            backpack: false,
+        });
+        core.artifacts.push(ArtifactDef {
+            key: key("t:catapult"),
+            name: "Catapult".into(),
+            class: ArtifactClass::Special,
+            cost: vec![(key("t:gold"), 2_500)],
+            slot: Some(key("t:machine")),
+            war_machine: None,
+            needs_skill: None,
+            effects: vec![],
+            parts: vec![],
+        });
+    })
+}
+
+// covers: TWN-MKT-005, ADV-MKT-002, ADV-MKT-008
+#[test]
+fn a_towns_window_buys_its_heros_artifact_at_the_place_it_names() {
+    let rules = sale_rules();
+    assert_eq!(
+        rules.0.artifact(CATAPULT).map(|ty| ty.key.as_str()),
+        Some("t:catapult")
+    );
+    let rates = rules.1.params().market().unwrap();
+    // The hero wears the ring and the catapult, carries the charm (1 gold) and the cloak (no cost).
+    let details = HeroDetails {
+        worn: vec![Some(RING.into()), Some(CATAPULT.into())],
+        backpack: vec![CHARM.into(), CLOAK.into()],
+        ..hero()
+    };
+    let heroes = store(details);
+    let rules3 = (&rules.0, &rules.1, &heroes[..]);
+    let state = at_market(&rules, "t:trading_post", vec![stack(0, PEASANT, 4)]);
+    let town = MarketWindow {
+        visit: MarketVisit {
+            hero: Some(HERO),
+            place: MarketPlace::Town(TownId::new(0)),
+        },
+        screens: &[
+            MarketScreen::Trade,
+            MarketScreen::Transfer,
+            MarketScreen::Buy,
+            MarketScreen::SellArtifact,
+        ],
+        count: 1,
+    };
+    let sell = |place, take| state.check_artifact_sale(rules3, &town, (place, take));
+    let worn = |at| ArtifactPlace::Worn(Position(at));
+    // The ring (2 000) at one Marketplace: f32(2 000 × 0.2) / 1 gold, / 250 wood rounded half up.
+    let ring = sell(worn(0), GOLD).unwrap();
+    assert_eq!(
+        (ring.hero(), ring.place(), ring.gain()),
+        (HERO, worn(0), (GOLD, 400))
+    );
+    assert_eq!(sell(worn(0), WOOD).map(|s| s.gain()), Ok((WOOD, 2)));
+    // At least one unit: the charm (1 gold), the cloak of no cost (TWN-MKT-005).
+    let backpack = ArtifactPlace::Backpack;
+    assert_eq!(sell(backpack(0), GOLD).map(|s| s.gain()), Ok((GOLD, 1)));
+    assert_eq!(sell(backpack(1), WOOD).map(|s| s.gain()), Ok((WOOD, 1)));
+    // Refused: the catapult's slot is not carried; no artifact at a place; no price.
+    assert_eq!(sell(worn(1), GOLD), Err(MarketError::NotTradable));
+    assert_eq!(sell(worn(2), GOLD), Err(MarketError::Place(worn(2))));
+    assert_eq!(
+        sell(backpack(2), GOLD),
+        Err(MarketError::Place(backpack(2)))
+    );
+    let unvalued = ResourceId::from_raw(7);
+    assert_eq!(sell(worn(0), unvalued), Err(MarketError::NoPrice));
+    // The window's offers: each place that sells in place order, its price per resource.
+    let prices = |cost| {
+        [WOOD, GOLD]
+            .into_iter()
+            .filter_map(|take| rates.artifact_sale(1, cost, take).map(|p| (take, p)))
+            .collect::<Vec<_>>()
+    };
+    let offer = |place, artifact, cost| ArtifactSaleOffer {
+        place,
+        artifact,
+        prices: prices(cost),
+    };
+    let offers = state.market_offers(rules3, &town);
+    assert_eq!(
+        offers.artifacts,
+        [
+            offer(worn(0), RING, 2_000),
+            offer(backpack(0), CHARM, 1),
+            offer(backpack(1), CLOAK, 0),
+        ]
+    );
+    // A window without the screen: refused and no offer; a window without a hero or with one the
+    // store lacks (defensive).
+    let merchants_less = MarketWindow {
+        screens: &[MarketScreen::Trade, MarketScreen::Transfer],
+        ..town
+    };
+    assert_eq!(
+        state.check_artifact_sale(rules3, &merchants_less, (worn(0), GOLD)),
+        Err(MarketError::Screen)
+    );
+    assert_eq!(state.market_offers(rules3, &merchants_less).artifacts, []);
+    for hero in [None, Some(HeroId::new(9))] {
+        let gone = MarketWindow {
+            visit: MarketVisit { hero, ..town.visit },
+            ..town
+        };
+        assert_eq!(
+            state.check_artifact_sale(rules3, &gone, (worn(0), GOLD)),
+            Err(MarketError::Visit)
+        );
+        assert_eq!(state.market_offers(rules3, &gone).artifacts, []);
+    }
 }
