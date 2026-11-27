@@ -340,16 +340,16 @@ pub(super) const TABLE: [&[Effect]; 144] = [
 /// them): the hero, its army's value, its spell gains and its owner's resource weights from the
 /// turn start's record, its caster record, its available spells, its own morale and luck.
 pub(super) struct Valued<'a> {
-    state: &'a GameState,
-    rules: &'a GameRuleset,
-    hero: Fighter<'a>,
+    pub(super) state: &'a GameState,
+    pub(super) rules: &'a GameRuleset,
+    pub(super) hero: Fighter<'a>,
     /// The army's value (`army_value` 0x44AC80 of +0x91, 32 bits).
     army: i32,
     /// Its spell gains as the turn start's record holds them (+0x47E Spell Power, +0x482 the
     /// rounds, +0x486 Knowledge; CPU-STA-007); all 0 for a hero the record does not list.
     gains: SpellGains,
     /// Its owner's resource weights (`ai_player_records` +0x60, CPU-STA-003), by resource.
-    weights: &'a [SignedX87],
+    pub(super) weights: &'a [SignedX87],
     /// Its caster record (`ai_caster_record` 0x526D40, which codes 11, 12, 18 and the scroll
     /// build at each call; CPU-SPL-001).
     caster: CasterRecord,
@@ -488,7 +488,11 @@ fn own_side(affects: Affects) -> bool {
 /// Evil Hour: the original's test of artifact 85). Neither cap of the enemy's is read. The
 /// Grail structures' +2 are not in the engine (`AI-STUB-17`).
 // rule: CPU-ART-003
-fn own_morale_and_luck(state: &GameState, rules: &GameRuleset, hero: Fighter<'_>) -> (i32, i32) {
+pub(super) fn own_morale_and_luck(
+    state: &GameState,
+    rules: &GameRuleset,
+    hero: Fighter<'_>,
+) -> (i32, i32) {
     // stub: AI-STUB-17
     let marks = state.adventure().visit_marks(hero.on_map.id);
     let bonuses: BattleBonuses<'_> = marks.bonuses().battle();
@@ -1058,7 +1062,7 @@ pub(super) fn value_to_hero(v: &Valued<'_>, item: ArtifactInstance, counted: boo
 /// Each hero of `player` on the map (the original's player list, +0x8) with its reads, its
 /// caster record from `casters` (by hero, in id order: the turn start's, `start::heroes`'; built
 /// for a hero the list lacks).
-fn players_heroes<'a>(
+pub(super) fn players_heroes<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
     (record, weights): (&Record, &'a [SignedX87]),

@@ -14,7 +14,8 @@ use super::*;
 use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind};
 use crate::ruleset::AdventureSpell;
 use crate::testing::{
-    FLYING, PEASANT, WATER_WALKING, hero_at, hero_details, hero_rules, stream, world,
+    ADMIRAL, FLYING, PEASANT, WATER_WALKING, coasted, hero_at, hero_details, hero_rules,
+    hero_rules_with, hero_skills, sea_skills, stream, world,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -229,28 +230,59 @@ fn a_recast_is_refused_free_under_adv_quirk_54_and_only_a_higher_one_is_taken_of
 #[test]
 fn aboard_fly_is_refused_and_water_walk_is_cast_without_its_tests() {
     // E15-11: Fly aboard refused (GENRLTXT 193), free; E15-12 (A-49, `ADV-QUIRK-57`): Water Walk
-    // aboard is cast, even with the Boots, and its level holds after landing the same day.
-    let rules = hero_rules(true);
-    let rows = ["gb~", "ggg"];
-    let worn = store(&[(WATER_WALKING, 3)]);
-    let mut state = spell_world(&rules, &rows, p(0, 0));
-    walk(&mut state, &rules, &worn, &[p(1, 0)]).unwrap();
-    assert!(state.hero(HERO).unwrap().boat.is_some());
-    assert_eq!(
-        check(&state, &rules, &worn, (AdventureSpell::Fly, 3)),
-        Err(CastError::InBoat)
-    );
-    assert_eq!(
-        cast(&mut state, &rules, &worn, (AdventureSpell::WaterWalk, 1)),
-        Ok(())
-    );
-    assert_eq!(
-        cast(&mut state, &rules, &worn, (AdventureSpell::WaterWalk, 1)),
-        Ok(())
-    );
-    // At sea the level prices nothing (a boat's mode, ADV-SEA-004); a landing writes no day
-    // spell (`land` leaves them), so it holds ashore the same day.
-    assert_eq!(state.day_spells(HERO), water_walk(1));
+    // aboard is cast, even with the Boots and again at its level, under both profiles (the
+    // re-cast tests skipped aboard), and its level holds after landing the same day.
+    for faithful in [true, false] {
+        let rules = hero_rules(faithful);
+        let rows = ["gb~", "ggg"];
+        let worn = store(&[(WATER_WALKING, 3)]);
+        let mut state = spell_world(&rules, &rows, p(0, 0));
+        walk(&mut state, &rules, &worn, &[p(1, 0)]).unwrap();
+        assert!(state.hero(HERO).unwrap().boat.is_some());
+        assert_eq!(
+            check(&state, &rules, &worn, (AdventureSpell::Fly, 3)),
+            Err(CastError::InBoat)
+        );
+        for _ in 0..2 {
+            assert_eq!(
+                cast(&mut state, &rules, &worn, (AdventureSpell::WaterWalk, 1)),
+                Ok(()),
+                "faithful {faithful}"
+            );
+        }
+        // At sea the level prices nothing (a boat's mode, ADV-SEA-004); a landing writes no day
+        // spell (`land` leaves them), so it holds ashore the same day.
+        assert_eq!(state.day_spells(HERO), water_walk(1));
+    }
+}
+
+/// A Water Walk cast aboard prices the hero's steps from plain water at its level once it lands
+/// (A-49, `ADV-QUIRK-57`; ADV-SPL-006, ADV-MOV-010).
+// covers: ADV-SPL-006, ADV-MOV-010
+#[test]
+fn water_walk_cast_aboard_prices_the_water_at_its_level_after_landing() {
+    for faithful in [true, false] {
+        // Free boarding keeps the points over the landing.
+        let rules = hero_rules_with(faithful, [hero_skills(), sea_skills()].concat());
+        let admiral = store(&[(ADMIRAL, 1)]);
+        let heroes = vec![
+            hero_at(1, 0, p(0, 0), &[PEASANT]),
+            hero_at(2, 1, p(0, 1), &[PEASANT]),
+        ];
+        let setup = coasted(&["gb~~g", "ggggg"], heroes);
+        let mut state = crate::testing::started(&rules, &setup).unwrap();
+        walk(&mut state, &rules, &admiral, &[p(1, 0)]).unwrap();
+        cast(&mut state, &rules, &admiral, (AdventureSpell::WaterWalk, 2)).unwrap();
+        walk(&mut state, &rules, &admiral, &[p(2, 1)]).unwrap();
+        let (ashore, points) = at(&state);
+        assert_eq!(ashore, p(2, 1));
+        assert!(state.hero(HERO).unwrap().boat.is_none());
+        // 100 from grass onto the water, then the level's 120 from each water tile (not None's 140).
+        let from_water = rules.1.params().water_walk_cost(2);
+        assert_eq!(from_water, 120);
+        walk(&mut state, &rules, &admiral, &[p(2, 0), p(3, 0), p(4, 0)]).unwrap();
+        assert_eq!(at(&state), (p(4, 0), points - 100 - 2 * from_water));
+    }
 }
 
 // covers: ADV-SPL-002
@@ -364,7 +396,7 @@ fn the_drop_to_0_prices_with_the_spells_levels_under_adv_quirk_17() {
     assert_eq!(by_wings.left_after(&tile, 120), 0);
 }
 
-// covers: ADV-SPL-002
+// covers: ADV-SPL-002, ADV-SPL-010
 #[test]
 fn the_day_spells_are_hashed_kept_in_one_encoding_and_shown_to_their_owner_alone() {
     let rules = hero_rules(true);

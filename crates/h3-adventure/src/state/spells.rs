@@ -82,7 +82,7 @@ pub struct Cast {
 }
 
 /// Why the adventure refuses a cast on the map (increment 15's design note §10; ADV-SPL-003 to
-/// ADV-SPL-006). A refusal changes nothing, draws nothing and spends nothing (the game spends the
+/// ADV-SPL-008). A refusal changes nothing, draws nothing and spends nothing (the game spends the
 /// points only after the cast is accepted).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CastError {
@@ -131,7 +131,9 @@ pub enum CastError {
 
 /// Why an accepted cast on the map failed (increment 15's design note §10, §14; E08 T143a): a
 /// **charged failure**, its spell points spent as for an effect, told as the game's `CastFailed`
-/// after its `SpellCast`. Nothing else changed but the target's reveal under `ADV-QUIRK-52` off.
+/// after its `SpellCast`. Nothing else changed but the target's reveal under `ADV-QUIRK-52` off
+/// (Scuttle Boat's) or `ADV-QUIRK-51` off (the door's: that tile alone), and for the door its
+/// movement points and its cast of the day, spent as for an arrival.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CastFailure {
     /// The chance draw, one of 1 to 100 from the caster's player's stream, came above the
@@ -169,7 +171,7 @@ impl fmt::Display for CastError {
             Self::NotYourHero(hero) => {
                 write!(f, "hero {} is not the player's on the map", hero.raw())
             }
-            Self::InBoat => f.write_str("Fly is not cast in a boat"),
+            Self::InBoat => f.write_str("the spell is not cast in a boat"),
             Self::AlreadyOn => f.write_str("the spell's level is on already"),
             Self::NotHigher => f.write_str("the cast would not raise the hero's level"),
             Self::NoWater => f.write_str("no free water lies around the hero"),

@@ -12,6 +12,12 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E08 T145's audit, `adventure/e08-t145`; **a doc comment in
+  your paths, nothing else**): `wire/game/event.rs`' `CastFailure::Target` says "The target, once
+  revealed, held nothing the spell acts on", but a door's explored target of the wrong kind under
+  `faithful` (`ADV-QUIRK-55` on: charged) is never revealed; the engine's
+  `h3_adventure::CastFailure::Target` covers both. Proposed: "The target held nothing the spell
+  acts on, or could not take the hero (a door's wrong kind, GENRLTXT 71)". No wire change.
 - 2026-11-26 (the adventure lane, E08 T144b, `adventure/e08-t144b`, `cross-lane` with the
   user's consent, E08 decision 423; **your tests changed, mechanical; for your review**): twelve
   new golden adventure replays (`spells-*` on `fixtures/maps/e08-spells-36.h3m`: the five

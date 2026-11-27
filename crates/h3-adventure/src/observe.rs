@@ -754,6 +754,7 @@ impl AdventureEvent {
                 },
                 // A summoned boat as a jump's two ends (ADV-FOG-008; E08 T143a): an end the viewer
                 // does not see is left out, so no viewer learns where a hidden boat lay.
+                // rule: ADV-SPL-010
                 AdventureEventKind::BoatSummoned {
                     boat,
                     from,

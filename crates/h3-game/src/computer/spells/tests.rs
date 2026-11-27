@@ -254,17 +254,17 @@ fn the_flag_set_path_reads_the_computers_values_and_a_university_sums_what_it_wo
     // known Air and `t:s5` (no class weight): the first two, which it would take.
     let offer = [2, 1, 15, 5].map(SkillId::from_raw);
     assert_eq!(
-        university_value(&state, &rules, hero, &reads, (offer, true)),
+        university_value(&state, &rules, hero, &reads, (&offer, true)),
         220
     );
     // 1 999 gold fail the University's gold test; a hero of eight skills takes none.
     let poor = game(&rules, true);
     assert_eq!(
-        university_value(&poor, &rules, hero, &reads, (offer, true)),
+        university_value(&poor, &rules, hero, &reads, (&offer, true)),
         0
     );
     assert_eq!(
-        university_value(&poor, &rules, hero, &reads, (offer, false)),
+        university_value(&poor, &rules, hero, &reads, (&offer, false)),
         220
     );
     let eight: Vec<(SkillId, u8)> = (4..12).map(|i| (SkillId::from_raw(i), 1)).collect();
@@ -274,7 +274,7 @@ fn the_flag_set_path_reads_the_computers_values_and_a_university_sums_what_it_wo
         details: &details,
     };
     assert_eq!(
-        university_value(&state, &rules, full, &reads, (offer, false)),
+        university_value(&state, &rules, full, &reads, (&offer, false)),
         0
     );
     // With eight skills no school is reached; on a ruleset whose cart shoots and heals, a hero
