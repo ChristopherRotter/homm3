@@ -53,7 +53,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_map::model::Rewards;
+use h3_map::model::{Pos, Rewards};
 use h3_ui::message::Style;
 use h3_ui::text::{Args, Catalogue};
 use serde::Deserialize;
@@ -63,7 +63,10 @@ use crate::hover::SIZES;
 use crate::live::Stack;
 use crate::notice::Notice;
 
-/// The questions' numbers (the tables' `[map.asks]`; design §5.4).
+/// The questions' numbers (the tables' `[map.asks]`; design §5.4). Test tooling's alone since E24
+/// M5 T4c (design §5.29, the facts audit): only [`Ask::of`] reads them (a recording's or a
+/// situation's question at its 0); play's questions and their facts are the engine's decision and
+/// record's (`crate::engine::visits::opened`, `live`), and [`Ask::yes`] takes no tables.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AskArt {
@@ -351,11 +354,27 @@ pub struct Reply {
     /// chest's experience, whose levels follow the chest's removal, `visit_treasure_chest`
     /// 0x4A6520's `hero_level_up`).
     pub after: Gain,
-    /// The terrains revealed.
-    pub reveal: u32,
+    /// What it reveals (since E24 M5 T4c a recording's terrains or play's tiles, [`Reveal`]).
+    pub reveal: Reveal,
     /// A Cancel's answer marks the find answered as an OK's does (part B: the Arena's, which
     /// gives the Attack: MCL-Q33).
     pub marks: bool,
+}
+
+/// What an answer reveals to the viewer (E24 M5 T4c, design §5.29, *provisional*): a recording's
+/// terrains (test tooling's: a Cartographer's kind's by the tables, [`Ask::of`]) or play's tiles
+/// (the record's: those its answer's `GameReveal` explored); then the view and the minimap drawn
+/// again.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum Reveal {
+    /// Nothing.
+    #[default]
+    None,
+    /// Every tile of these terrains on both levels (a bit per terrain code,
+    /// `reveal_terrain_mask` 0x4CA240).
+    Terrains(u32),
+    /// These tiles.
+    Tiles(Vec<Pos>),
 }
 
 /// A hero's power against a wandering monster (`hero_army_power` 0x427650): its army's value
@@ -458,8 +477,15 @@ pub enum Ask {
     /// The Pyramid's (`visit_pyramid` 0x4A4230: ADVEVENT 105 at every visit).
     Pyramid,
     /// The Warrior's Tomb's (`visit_warriors_tomb` 0x4A7C30: ADVEVENT 161): its artifact (the
-    /// word's bits 13 to 22 while its bit 0 is set), none.
-    Tomb(Option<u16>),
+    /// word's bits 13 to 22 while its bit 0 is set), none; since E24 M5 T4c (design §5.29) the
+    /// morale its search costs, a fact of its own (a recording's the tables' −3, [`Ask::of`];
+    /// play's the record's `OnceMarkChanged`).
+    Tomb {
+        /// The artifact found.
+        artifact: Option<u16>,
+        /// The morale its search changes.
+        morale: i8,
+    },
     /// A dwelling's guards (`visit_dwelling` 0x4A18B0: GENRLTXT 422): the dwelling (the subclass)
     /// and its guards.
     Guarded {
@@ -502,9 +528,18 @@ pub enum Ask {
     /// A Border Guard's passage, its colour's key held (part A2; `visit_object` 0x4A8734:
     /// ADVEVENT 17).
     Pass,
-    /// A Cartographer's map (part A2; `visit_object` 0x4A8A14: ADVEVENT 25 + its kind) for the
-    /// tables' price: its kind (0 sea, 1 land, 2 underground).
-    Maps(u32),
+    /// A Cartographer's map (part A2; `visit_object` 0x4A8A14: ADVEVENT 25 + its kind): its kind
+    /// (0 sea, 1 land, 2 underground); since E24 M5 T4c (design §5.29) its price and what it
+    /// reveals, facts of their own (a recording's the tables', [`Ask::of`]; play's the engine's
+    /// offer and the record's tiles).
+    Maps {
+        /// The kind.
+        kind: u32,
+        /// The price, `[resource, amount]`.
+        price: [i32; 2],
+        /// What it reveals.
+        reveal: Reveal,
+    },
     /// Pandora's Box (part A2; `visit_pandora_box` 0x4A0C50: ADVEVENT 14): what it gives and the
     /// hero its boxes name.
     OpenBox {
@@ -589,11 +624,13 @@ impl Ask {
                 }
             }
             PYRAMID => Self::Pyramid,
-            TOMB => Self::Tomb(
-                seen.word
+            TOMB => Self::Tomb {
+                artifact: seen
+                    .word
                     .filter(|_| bit(0))
                     .and_then(|w| u16::try_from((w >> 13) & 0x3FF).ok()),
-            ),
+                morale: art.tomb_morale,
+            },
             DWELLING => {
                 let (creature, growth) = seen.dwelling?;
                 let level = art.level(creature);
@@ -638,11 +675,17 @@ impl Ask {
             }
             BORDER_GUARD if seen.key => Self::Pass,
             CARTOGRAPHER if !seen.visited => {
-                let known = usize::try_from(subclass).is_ok_and(|k| k < art.reveals.len());
-                if !visitor.has(art.maps_price) || !known {
+                let reveal = usize::try_from(subclass)
+                    .ok()
+                    .and_then(|k| art.reveals.get(k))?;
+                if !visitor.has(art.maps_price) {
                     return None;
                 }
-                Self::Maps(subclass)
+                Self::Maps {
+                    kind: subclass,
+                    price: art.maps_price,
+                    reveal: Reveal::Terrains(*reveal),
+                }
             }
             CHEST if !bit(CHEST_ARTIFACT) => {
                 let steps = seen.word.map_or(0, |w| (w >> CHEST_GOLD) & 0xF);
@@ -740,10 +783,10 @@ impl Ask {
             self,
             Self::Search(_)
                 | Self::Tree { .. }
-                | Self::Tomb(_)
+                | Self::Tomb { .. }
                 | Self::Monster { .. }
                 | Self::Pass
-                | Self::Maps(_)
+                | Self::Maps { .. }
                 | Self::OpenBox { .. }
                 | Self::Notice(_)
         )
@@ -855,7 +898,7 @@ impl Ask {
                 },
             },
             Self::Pyramid => plain("map.ask.pyramid"),
-            Self::Tomb(_) => plain("map.ask.tomb"),
+            Self::Tomb { .. } => plain("map.ask.tomb"),
             Self::Guarded { dwelling, guards } => {
                 let args = Args::new()
                     .text("dwelling", &family(texts, "dwelling1", *dwelling))
@@ -901,7 +944,7 @@ impl Ask {
                 }
             }
             Self::Pass => plain("map.ask.pass"),
-            Self::Maps(kind) => plain(match *kind {
+            Self::Maps { kind, .. } => plain(match *kind {
                 0 => "map.ask.maps-sea",
                 1 => "map.ask.maps-land",
                 _ => "map.ask.maps-underground",
@@ -929,22 +972,26 @@ impl Ask {
     /// What its OK shows where the viewer builds it ([`Reply`]): A1's boxes (style 1) and what
     /// the panels show at the last one's close (recorded, `ask-tomb` and `ask-hire` at 1660), the
     /// artifacts' skills `art`'s. The Warrior's Tomb's: ADVEVENT 162 with its artifact (its
-    /// skills, the artifact taken as worn), else 163 with three pictures of bad morale; the
-    /// tables' morale lost either way. A dwelling's creatures joining free (`visit_dwelling`
+    /// skills, the artifact taken as worn), else 163 with three pictures of bad morale; its
+    /// morale lost either way. A dwelling's creatures joining free (`visit_dwelling`
     /// 0x4A18B0's own path): GENRLTXT 424 with their count and name (one's the singular,
     /// *provisional*: not recorded) and the army joined, else 423 (none to hire) or 426 (no room).
     /// Part A2's: a monster's join (its price paid, the army joined, the status window built
     /// again, the monster taken with `killfade.82M`; recorded, `ask-join`, `ask-join-gold`), a
     /// Border Guard taken with a pickup's sound (`ask-guard`), a Cartographer's price paid and
-    /// its kind's terrains revealed by the tables `asks` (`ask-cartographer`), Pandora's Box's
+    /// what it reveals (`ask-cartographer`), Pandora's Box's
     /// `grant_rewards` boxes without the map's text (`finds::rewards`), then the box taken with a
     /// pickup's sound (`ask-pandora`). Part B's: a choice's first picture chosen, a chest's gold
     /// given and the chest taken with a pickup's sound (`choose-chest-gold`), the Arena's gain to
     /// Attack, a School's to Spell Power for its price ([`Ask::chosen`]). None for every other
     /// answer (*Not built* above).
+    ///
+    /// Since E24 M5 T4c (design §5.29, the facts audit) every number it shows is the question's
+    /// own fact (the Tomb's morale, a Cartographer's price and reveal: no [`AskArt`] here, so play,
+    /// whose questions the engine's decision and record give, reads no table of the client's
+    /// but the artifacts' skills, MCL-Q65).
     #[must_use]
-    pub fn yes(&self, art: &FindArt, asks: &AskArt, texts: &Catalogue) -> Option<Reply> {
-        let morale = [asks.tomb_morale; 2];
+    pub fn yes(&self, art: &FindArt, texts: &Catalogue) -> Option<Reply> {
         let told = |told: Told, gain: Gain| Reply {
             boxes: vec![Reward {
                 told,
@@ -954,7 +1001,10 @@ impl Ask {
             ..Reply::default()
         };
         match self {
-            Self::Tomb(Some(artifact)) => {
+            Self::Tomb {
+                artifact: Some(artifact),
+                morale,
+            } => {
                 let named = texts
                     .known(&format!("artifact.{artifact}"), &Args::new())
                     .unwrap_or_default();
@@ -966,18 +1016,21 @@ impl Ask {
                     },
                     Gain {
                         skills: art.skills_of(*artifact),
-                        morale,
+                        morale: [*morale; 2],
                         ..Gain::default()
                     },
                 ))
             }
-            Self::Tomb(None) => Some(told(
+            Self::Tomb {
+                artifact: None,
+                morale,
+            } => Some(told(
                 Told {
                     text: texts.text("map.ask.tomb-empty", &Args::new()),
                     pictures: vec![BAD_MORALE; 3],
                 },
                 Gain {
-                    morale,
+                    morale: [*morale; 2],
                     ..Gain::default()
                 },
             )),
@@ -1031,23 +1084,21 @@ impl Ask {
                 taken: Some(Fade::Pickup),
                 ..Reply::default()
             }),
-            Self::Maps(kind) => {
-                let [resource, amount] = asks.maps_price;
+            Self::Maps {
+                price: [resource, amount],
+                reveal,
+                ..
+            } => {
                 let mut gain = Gain::default();
-                if let Some(paid) = usize::try_from(resource)
+                if let Some(paid) = usize::try_from(*resource)
                     .ok()
                     .and_then(|r| gain.resources.get_mut(r))
                 {
                     *paid = amount.saturating_neg();
                 }
-                let reveal = usize::try_from(*kind)
-                    .ok()
-                    .and_then(|k| asks.reveals.get(k))
-                    .copied()
-                    .unwrap_or(0);
                 Some(Reply {
                     gain,
-                    reveal,
+                    reveal: reveal.clone(),
                     ..Reply::default()
                 })
             }

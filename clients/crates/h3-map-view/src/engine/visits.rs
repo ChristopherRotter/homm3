@@ -60,13 +60,13 @@ use alloc::vec::Vec;
 
 use h3_map::model::{Pos, Rewards};
 use h3_protocol::wire::game::{
-    AdventureEvent, Answer, ArenaChoice, ChestChoice, ChoiceKind, Consent, Decision, GameEvent,
-    HeroChange, NothingWhy, OfferKind, SchoolChoice,
+    AdventureEvent, Answer, ArenaChoice, ArmyRef, ArmySlot, ChestChoice, ChoiceKind, Consent,
+    Decision, GameEvent, HeroChange, NothingWhy, OfferKind, SchoolChoice,
 };
 use h3_protocol::wire::{Outcome, Side};
 
 use super::played::{Held, Visit};
-use crate::asks::{Ask, Offer as AskOffer};
+use crate::asks::{Ask, Offer as AskOffer, Reveal};
 use crate::finds::{Find, FindArt, Gain};
 use crate::live::Stack;
 use crate::notice::Notice;
@@ -123,6 +123,10 @@ const CARTOGRAPHER: u32 = 13;
 const COUNT: u32 = 0xFFF;
 /// A town's (as the game loads it).
 const TOWN: u32 = 98;
+/// The Redwood Observatory's (E24 M5 T4c).
+const OBSERVATORY: u32 = 58;
+/// The Pillar of Fire's.
+const PILLAR: u32 = 60;
 
 /// The object of a live visit's notice on a tile with no object's entrance ([`lay`]: a meeting's,
 /// the visited hero's tile; E24 M5 T4c): none of the map's.
@@ -294,13 +298,22 @@ pub fn opened(
                 rewards: Rewards::default(),
                 hero: String::from(hero),
             }),
-            (OfferKind::Search {}, TOMB) => Some(Ask::Tomb(None)),
+            (OfferKind::Search {}, TOMB) => Some(Ask::Tomb {
+                artifact: None,
+                morale: 0,
+            }),
             (OfferKind::Gift { price }, TREE) => Some(Ask::Tree {
                 gems: price.iter().any(|p| p.resource == GEMS),
                 visited: false,
                 poor: false,
             }),
-            (OfferKind::Reveal { .. }, CARTOGRAPHER) => Some(Ask::Maps(subclass)),
+            (OfferKind::Reveal { price }, CARTOGRAPHER) => Some(Ask::Maps {
+                kind: subclass,
+                price: price.first().map_or([GOLD_HANDLE, 0], |p| {
+                    [i32::from(p.resource), clamp(p.amount)]
+                }),
+                reveal: Reveal::None,
+            }),
             (OfferKind::Pass {}, BORDER_GUARD) => Some(Ask::Pass),
             (OfferKind::SearchPyramid {}, PYRAMID) => Some(Ask::Pyramid),
             (OfferKind::Join {}, MONSTER) => Some(monster(AskOffer::Join)),
@@ -368,13 +381,23 @@ pub fn live(
             rewards: rewards(visit),
             hero,
         },
-        Ask::Tomb(_) => Ask::Tomb(after.iter().find_map(|e| match e {
-            GameEvent::HeroChanged {
-                change: HeroChange::AddArtifact { artifact },
-                ..
-            } => Some(artifact.artifact),
-            _ => None,
-        })),
+        // The Tomb's artifact and its morale lost (`OnceMarkChanged`), the record's.
+        Ask::Tomb { .. } => Ask::Tomb {
+            artifact: after.iter().find_map(|e| match e {
+                GameEvent::HeroChanged {
+                    change: HeroChange::AddArtifact { artifact },
+                    ..
+                } => Some(artifact.artifact),
+                _ => None,
+            }),
+            morale: gain(after).morale[0],
+        },
+        // The tiles the answer revealed (its `GameReveal`), the record's.
+        Ask::Maps { kind, price, .. } => Ask::Maps {
+            kind,
+            price,
+            reveal: Reveal::Tiles(visit.revealed.first().cloned().unwrap_or_default()),
+        },
         Ask::Monster {
             stack, offer, room, ..
         } => {
@@ -420,14 +443,24 @@ pub fn answered_gain(visit: &Visit) -> Gain {
 
 /// Whether `events` take an object off the map (`ObjectRemoved`; since E24 M5 T4b a live answer's
 /// object taken, `h3-map-client`'s).
+#[must_use]
 pub fn removes(events: &[GameEvent]) -> bool {
-    events.iter().any(|e| {
-        matches!(
-            e,
-            GameEvent::Adventure {
-                event: AdventureEvent::ObjectRemoved { .. }
-            }
-        )
+    removed(events).is_some()
+}
+
+/// The anchor of the first object `events` take off the map (`ObjectRemoved`; E24 M5 T4c, design
+/// §5.29: a live answer's object taken, the record's), none without one or off the map's tiles.
+#[must_use]
+pub fn removed(events: &[GameEvent]) -> Option<Pos> {
+    events.iter().find_map(|e| match e {
+        GameEvent::Adventure {
+            event: AdventureEvent::ObjectRemoved { anchor, .. },
+        } => Some(Pos {
+            x: u8::try_from(anchor.x).ok()?,
+            y: u8::try_from(anchor.y).ok()?,
+            z: anchor.level,
+        }),
+        _ => None,
     })
 }
 
@@ -503,6 +536,15 @@ fn shown(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told>
             }
         )
     });
+    // An observatory's reveal told (E24 M5 T4c: `TilesRevealed`, at every visit).
+    let revealed = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure {
+                event: AdventureEvent::TilesRevealed { .. }
+            }
+        )
+    });
     let find = |find: Find| {
         Some(Told::Find {
             find,
@@ -516,6 +558,9 @@ fn shown(visit: &Visit, [class, subclass]: [u32; 2], hero: &str) -> Option<Told>
         TEMPLE if gained.morale != [0; 2] => find(Find::Temple { visited: false }),
         AXIS if visited => find(Find::Axis { visited: true }),
         AXIS if gained.skills != [0; 4] => find(Find::Axis { visited: false }),
+        OBSERVATORY | PILLAR if revealed => find(Find::Observatory {
+            fire: class == PILLAR,
+        }),
         STONE if visited => find(Find::Stone { visited: true }),
         STONE if gained.experience > 0 => find(Find::Stone { visited: false }),
         PILE | WINDMILL => {
@@ -712,13 +757,6 @@ fn rewards(visit: &Visit) -> Rewards {
                 creature: stack.creature,
                 count: u16::try_from(stack.count).unwrap_or(u16::MAX),
             }),
-            GameEvent::ResourceLost {
-                resource, amount, ..
-            } => {
-                if let Some(r) = rewards.resources.get_mut(usize::from(*resource)) {
-                    *r = r.saturating_sub(i32::try_from(*amount).unwrap_or(i32::MAX));
-                }
-            }
             GameEvent::HeroChanged { change, .. } => match *change {
                 HeroChange::RaiseSkill { skill, level } => {
                     if let Ok(skill) = u8::try_from(skill) {
@@ -1043,17 +1081,49 @@ fn winner(result: &Outcome) -> i32 {
 
 /// What `events` give that the panels show: the resources gained (in the bar's order), the
 /// primary skills raised, a once-mark's morale (on any day: the record's) and luck, the
-/// experience.
+/// experience. Since E24 M5 T4c (design §5.29, the facts audit) the resources paid and lost
+/// taken off (a Tree of Knowledge's price, a Cartographer's, a monster's join for gold) and the
+/// hero's army's slots as the record tells them ([`Gain::slotted`]: `StackChanged`).
 #[must_use]
 pub fn gain(events: &[GameEvent]) -> Gain {
     let mut gain = Gain::default();
+    // A resource's amount added (a gain) or taken off (a price paid, a loss).
+    let changed = |resources: &mut [i32; 7], resource: u16, amount: u32, more: bool| {
+        if let Some(r) = resources.get_mut(usize::from(resource)) {
+            let amount = i32::try_from(amount).unwrap_or(i32::MAX);
+            *r = if more {
+                r.saturating_add(amount)
+            } else {
+                r.saturating_sub(amount)
+            };
+        }
+    };
     for event in events {
         match event {
             GameEvent::ResourceGained {
                 resource, amount, ..
+            } => changed(&mut gain.resources, *resource, *amount, true),
+            GameEvent::ResourcePaid {
+                resource, amount, ..
+            }
+            | GameEvent::ResourceLost {
+                resource, amount, ..
+            } => changed(&mut gain.resources, *resource, *amount, false),
+            GameEvent::StackChanged {
+                at:
+                    ArmySlot {
+                        army: ArmyRef::Hero { .. },
+                        slot,
+                    },
+                stack: Some(stack),
+                ..
             } => {
-                if let Some(r) = gain.resources.get_mut(usize::from(*resource)) {
-                    *r = r.saturating_add(i32::try_from(*amount).unwrap_or(i32::MAX));
+                if let Some(held) = gain.army.get_mut(usize::from(*slot)) {
+                    *held = Some(Stack {
+                        creature: stack.creature,
+                        count: i32::try_from(stack.count).unwrap_or(i32::MAX),
+                    });
+                    gain.slotted = true;
                 }
             }
             GameEvent::HeroChanged { change, .. } => match change {

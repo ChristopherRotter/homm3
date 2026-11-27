@@ -54,11 +54,11 @@ use h3_adventure::{ObjectKind, ObjectTypeId};
 use h3_game::GameRuleset;
 use h3_kernel::Handle;
 use h3_map::model::Pos;
-use h3_protocol::wire::ServerMessage;
 use h3_protocol::wire::game::{
     AdventureCommand, AdventureEvent, Answer, Boat, GameCommand, GameEvent, GameObservation, Month,
     Pos as WirePos, PrimarySkill, SystemCommand, Week,
 };
+use h3_protocol::wire::{ServerMessage, WireU64};
 use toml::{Table, Value};
 
 use super::{Loaded, Refused, int, panels, row};
@@ -313,6 +313,9 @@ pub struct Visit {
     pub events: Vec<GameEvent>,
     /// The answers after it, in order, each with its events.
     pub answers: Vec<(Answer, Vec<GameEvent>)>,
+    /// The tiles each answer's `GameReveal` explored for the viewer, by the answers' order (E24
+    /// M5 T4c, design §5.29: a Cartographer's map), in the view's order.
+    pub revealed: Vec<Vec<Pos>>,
     /// The battle it began (E24 M4 T5b2, design §5.21): its command's or an answer's.
     pub battle: Option<Battled>,
     /// The colour of the flag it raises (E24 M4 T6, the reviewers' R3-1 and R3-4): the first
@@ -477,6 +480,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                                     levels: Vec::new(),
                                     events: Vec::new(),
                                     answers: Vec::new(),
+                                    revealed: Vec::new(),
                                     battle: None,
                                     flag: None,
                                 });
@@ -499,6 +503,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     GameCommand::Answer { answer } => {
                         if let Some(visit) = visits.last_mut().filter(|_| visiting) {
                             visit.answers.push((*answer, Vec::new()));
+                            visit.revealed.push(Vec::new());
                         }
                     }
                     // Space's visit again of the entered object under the hero (E24 M5 T4b,
@@ -525,6 +530,7 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                                 levels: Vec::new(),
                                 events: Vec::new(),
                                 answers: Vec::new(),
+                                revealed: Vec::new(),
                                 battle: None,
                                 flag: None,
                             });
@@ -707,7 +713,15 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                 }
             }
             ServerMessage::GameReveal { reveal, .. } => {
+                // An answer's reveal (E24 M5 T4c: a Cartographer's map), kept by its answer.
+                let answered = visits
+                    .last_mut()
+                    .filter(|v| visiting && open.is_none() && !v.answers.is_empty());
+                let before = observation.adventure.explored.clone();
                 observation.reveal(reveal);
+                if let Some(tiles) = answered.and_then(|v| v.revealed.last_mut()) {
+                    tiles.extend(explored_since(&observation, art, &before));
+                }
                 // The empty boats it shows (E24 M4 T6, the reviewer's R3-3): the open walk's, else
                 // the next walk's or table's.
                 let boats = reveal.adventure.boats.iter().filter_map(live_boat);
@@ -1283,13 +1297,20 @@ fn turn(
 }
 
 /// A week's `[kind, name or creature]` (`crate::live::Calendar`): a normal one's name the
-/// client's (MCL-Q40 (b)), a building's week the Deity's (kind 2).
+/// client's (MCL-Q40 (b)), a building's week the Deity's (kind 2; since E24 M5 T4c, design §5.29,
+/// with the engine's creatures and growth, `[2, creature, upgrade, bonus]`, −1 none).
 fn week_calendar((n, kind): (u32, Week)) -> Value {
     match kind {
         // stub: MCL-Q40 (a normal week's name: the client's)
         Week::Normal {} => row(&[0, name(n, WEEK_NAMES)]),
         Week::Creature { creature } => row(&[1, i64::from(creature)]),
-        Week::Of { .. } => row(&[2, 0]),
+        Week::Of {
+            creatures: [first, second],
+            bonus,
+        } => {
+            let creature = |c: Option<u16>| c.map_or(-1, i64::from);
+            row(&[2, creature(first), creature(second), i64::from(bonus)])
+        }
     }
 }
 
@@ -1311,6 +1332,12 @@ fn name(n: u32, names: u16) -> i64 {
 /// The viewer's explored tiles, level by level, row by row (the view's bits; a map is at most 252
 /// tiles a side).
 fn explored(observation: &GameObservation, art: &MapArt) -> Vec<Pos> {
+    explored_since(observation, art, &[])
+}
+
+/// The viewer's explored tiles that the view's bits `before` did not hold, as [`explored`] orders
+/// them (E24 M5 T4c: an answer's reveal).
+fn explored_since(observation: &GameObservation, art: &MapArt, before: &[WireU64]) -> Vec<Pos> {
     let a = &observation.adventure;
     let stride = usize::from(a.stride);
     let size = u8::try_from(art.size).unwrap_or(u8::MAX);
@@ -1321,7 +1348,8 @@ fn explored(observation: &GameObservation, art: &MapArt) -> Vec<Pos> {
             let row = usize::from(z) * usize::from(size) + usize::from(y);
             for x in 0..size {
                 let at = usize::from(x);
-                let word = a.explored.get(row * stride + at / 64).map_or(0, |w| w.0);
+                let i = row * stride + at / 64;
+                let word = a.explored.get(i).map_or(0, |w| w.0) & !before.get(i).map_or(0, |w| w.0);
                 if word >> (at % 64) & 1 == 1 {
                     tiles.push(Pos { x, y, z });
                 }

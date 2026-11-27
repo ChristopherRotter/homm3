@@ -129,7 +129,7 @@ use h3_render::screen::Screen;
 use h3_ui::message::{self as boxes, Key, MessageBox, Open, Outcome};
 use h3_ui::ui::Item;
 
-use crate::asks::Fade;
+use crate::asks::{Fade, Reveal};
 use crate::finds::{FindArt, Gain, pickup};
 use crate::hover::{self, Hint, Hover, PanelItems, Selection};
 use crate::layout::{AdventureLayout, DIRECTIONS};
@@ -1231,8 +1231,9 @@ pub struct Answer {
     /// What the panels show at the taken object's dissolve's end (E24 M4 T2c: a chest's
     /// experience, its levels after the chest's removal).
     pub after: Gain,
-    /// The terrains revealed (a bit per terrain, `reveal_terrain_mask` 0x4CA240).
-    pub reveal: u32,
+    /// What it reveals (a recording's terrains, `reveal_terrain_mask` 0x4CA240; since E24 M5 T4c
+    /// play's tiles, the record's: [`Reveal`]).
+    pub reveal: Reveal,
     /// A Cancel's answer marks the find answered as an OK's does (E24 M4 T2b2 part B: the
     /// Arena's, MCL-Q33).
     pub marks: bool,
@@ -4543,13 +4544,27 @@ impl Loop {
             self.take(t, object, answer.after, fade);
             return Ok(());
         }
-        if answer.reveal != 0 {
-            self.drawn.revealed |= answer.reveal;
+        if self.reveal(answer.reveal) {
             self.draw(t);
             self.draw_minimap();
         }
         self.visited(t, i);
         Ok(())
+    }
+
+    /// What an answer reveals shown at the view's and the minimap's next draws: a recording's
+    /// terrains, play's tiles with the walks' (E24 M5 T4c, design §5.29); whether it reveals any.
+    fn reveal(&mut self, reveal: Reveal) -> bool {
+        match reveal {
+            Reveal::Terrains(mask) if mask != 0 => self.drawn.revealed |= mask,
+            Reveal::Tiles(tiles) if !tiles.is_empty() => {
+                let mut walked = (*self.walked_tiles).clone();
+                walked.extend(tiles);
+                self.walked_tiles = Arc::new(walked);
+            }
+            _ => return false,
+        }
+        true
     }
 
     /// Find `i`'s visit ended with nothing more to show (E24 M4 T2b2 part A1): one from beside
@@ -5250,9 +5265,10 @@ impl Loop {
     /// A find's gain shown (E24 M4 T2a2, *provisional*: the engine's in time): the kingdom's
     /// resources, the resource bar drawn; the selected hero's primary skills, morale (−3 to 3; the
     /// week's seventh day's on that day) and luck (−3 to 3) in its windows and its army's new
-    /// creatures (each the slot of its kind, else the first empty one; none with no room), its
-    /// spell points in the kingdom's list, the window shown drawn; since E24 M4 T2c its
-    /// experience, which nothing shows (its levels: [`Loop::levels_due`]).
+    /// creatures (each the slot of its kind, else the first empty one; none with no room; since
+    /// E24 M5 T4c play's slots as the record tells them, [`Gain::slotted`]), its spell points in
+    /// the kingdom's list, the window shown drawn; since E24 M4 T2c its experience, which nothing
+    /// shows (its levels: [`Loop::levels_due`]).
     fn gain(&mut self, gain: Gain) {
         // A record's visit's level-ups due with its experience (E24 M4 T6, the reviewer's R2-3:
         // the record's, any hero's).
@@ -5295,8 +5311,17 @@ impl Loop {
             }
             hero.morale = hero.morale.saturating_add(morale).clamp(-3, 3);
             hero.luck = hero.luck.saturating_add(gain.luck).clamp(-3, 3);
-            for stack in gain.army.iter().flatten() {
-                joined(&mut hero.army, *stack);
+            if gain.slotted {
+                // Play's: each slot's stack as the record tells it (E24 M5 T4c).
+                for (held, now) in hero.army.iter_mut().zip(gain.army) {
+                    if now.is_some() {
+                        *held = now;
+                    }
+                }
+            } else {
+                for stack in gain.army.iter().flatten() {
+                    joined(&mut hero.army, *stack);
+                }
             }
         };
         let kingdom = &mut self.kingdom;

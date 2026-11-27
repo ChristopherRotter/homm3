@@ -128,8 +128,8 @@ pub fn pickup(art: &FindArt, n: usize) -> Option<&str> {
 /// the names are the families `resource`, `artifact`, `artifact-event`, `spell`, `player-colour`,
 /// `skill-level`, `secondary-skill`, `primary-skill`, `creature`, `hero`, `sign`'s and (E24 M4
 /// T2d1) `mine-event`'s, a mine's box (MINEEVNT's records); since E24 M4 T5b2 a mine's guards
-/// beaten (ADVEVENT 85).
-pub const KEYS: [&str; 46] = [
+/// beaten (ADVEVENT 85); since E24 M5 T4c the observatories' (ADVEVENT 98, 99).
+pub const KEYS: [&str; 48] = [
     "map.find.per-day",
     "map.find.level",
     "map.find.count",
@@ -173,6 +173,8 @@ pub const KEYS: [&str; 46] = [
     "map.find.reward-creatures",
     "map.find.lighthouse",
     "map.find.mine-guards",
+    "map.find.observatory",
+    "map.find.pillar",
     "map.turn.town-lost",
     "map.turn.days-left",
     "map.turn.last-day",
@@ -438,6 +440,15 @@ pub enum Find {
     /// A Lighthouse (42, E24 M4 T2d1: `visit_object`'s case 42, 0x4A9479) not of the visitor's
     /// team: ADVEVENT 69 without a picture; then the visitor's.
     Lighthouse,
+    /// The Redwood Observatory (58) or the Pillar of Fire (60) (E24 M5 T4c, design §5.29: play's,
+    /// from the record's `TilesRevealed`; `visit_object`'s cases 0x4A9992 and 0x4A9A12): ADVEVENT
+    /// 98 or 99 without a picture, at every visit, then the tiles of radius 20 revealed
+    /// (`reveal_disk` at 0x4A9AC6; *provisional*: play's walk reveals them at its first step,
+    /// MCL-Q39).
+    Observatory {
+        /// The Pillar of Fire's (60).
+        fire: bool,
+    },
 }
 
 /// What a find's visit changes that the panels show (E24 M4 T2a2, *provisional*: the engine's
@@ -459,11 +470,16 @@ pub struct Gain {
     /// The spell points.
     pub mana: i32,
     /// The creatures joining the hero's army (each the slot of its kind, else the first empty
-    /// one; *provisional*: one without room is dropped, `army_dialog_with` not built).
+    /// one; *provisional*: one without room is dropped, `army_dialog_with` not built); since E24
+    /// M5 T4c ([`Gain::slotted`]) the slots as the record tells them.
     pub army: [Option<Stack>; 7],
     /// The experience (E24 M4 T2c, design §5.5: the levels it reaches, `hero_level_up` 0x4DA720,
     /// each its dialog after the visit's boxes).
     pub experience: i32,
+    /// [`Gain::army`] is by slot, each stack the one its slot holds now (E24 M5 T4c, design §5.29,
+    /// *provisional*: play's, the record's `StackChanged`; an emptied slot not told); else each a
+    /// stack joining by the client's rule.
+    pub slotted: bool,
 }
 
 /// A box's text and pictures (type and subtype each).
@@ -670,7 +686,8 @@ impl Find {
             | Self::Artifact { .. }
             | Self::Well { .. }
             | Self::Mine { .. }
-            | Self::Lighthouse => self.clone(),
+            | Self::Lighthouse
+            | Self::Observatory { .. } => self.clone(),
         }
     }
 
@@ -864,6 +881,8 @@ impl Find {
                 )],
             },
             Self::Lighthouse => alone("map.find.lighthouse"),
+            Self::Observatory { fire: false } => alone("map.find.observatory"),
+            Self::Observatory { fire: true } => alone("map.find.pillar"),
         })
     }
 }

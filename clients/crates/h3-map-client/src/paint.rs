@@ -24,7 +24,7 @@ use h3_map::Limits;
 use h3_map::model::{Body, EventBody, Pos, RawMap};
 use h3_map::writer::ObjectTemplate;
 use h3_map_view::art::{MapArt, WATER};
-use h3_map_view::asks::{self, Ask, Fade, Reply, Seen, Visitor};
+use h3_map_view::asks::{self, Ask, Fade, Reply, Reveal, Seen, Visitor};
 use h3_map_view::batch::{self, Batch};
 use h3_map_view::compose::{self, ComposeError, Composer, FORMAT};
 use h3_map_view::damage::{Held, History, drop_held};
@@ -51,7 +51,7 @@ use h3_map_view::timeline::{
     Rules, Start, Switch, TownBoxes, Walked,
 };
 use h3_map_view::{engine, status, timeline, turn};
-use h3_protocol::wire::game::{AdventureEvent, Decision, GameEvent};
+use h3_protocol::wire::game::{Decision, GameEvent};
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
 use h3_ui::cursor::{Cursor as Sprite, Image};
@@ -560,26 +560,14 @@ pub fn live_reply(
     // The object taken by this answer, or by an earlier one whose next question showed first (E24
     // M5 T4c: a monster's join with no room, taken at its army dialog's close), by the record's
     // `ObjectRemoved` (its anchor: a monster's zone entered visits it from another tile).
-    let removed = visit
-        .answers
-        .iter()
-        .take(nth + 1)
-        .flat_map(|(_, e)| e)
-        .find_map(|e| match e {
-            GameEvent::Adventure {
-                event: AdventureEvent::ObjectRemoved { anchor, .. },
-            } => Some(*anchor),
-            _ => None,
-        });
-    let taken = removed.and_then(|a| {
-        let tile = hover.base([i32::from(a.x), i32::from(a.y), i32::from(a.level)])?;
-        let fade = if tile.class == MONSTER_CLASS {
-            Fade::Killfade
-        } else {
-            Fade::Pickup
-        };
-        Some((tile.object?, fade))
-    });
+    let taken = taken_by(
+        hover,
+        visit
+            .answers
+            .iter()
+            .take(nth + 1)
+            .map(|(_, e)| e.as_slice()),
+    );
     Ok(Some(Answer {
         gain: engine::visits::gain(events),
         taken,
@@ -589,6 +577,37 @@ pub fn live_reply(
 
 /// A wandering monster's class.
 const MONSTER_CLASS: u32 = 54;
+
+/// The object the first of `answers` that takes one off the map takes, by the record's
+/// `ObjectRemoved` (`engine::visits::removed`: its anchor's object on the mouse-over `hover`),
+/// with a monster's sound (`killfade.82M`) or a pickup's (E24 M5 T4c, design §5.29: every live
+/// answer's object taken the record's); none.
+fn taken_by<'e>(
+    hover: &Hover,
+    mut answers: impl Iterator<Item = &'e [GameEvent]>,
+) -> Option<(usize, Fade)> {
+    let at = answers.find_map(engine::visits::removed)?;
+    let tile = hover.base([i32::from(at.x), i32::from(at.y), i32::from(at.z)])?;
+    let fade = if tile.class == MONSTER_CLASS {
+        Fade::Killfade
+    } else {
+        Fade::Pickup
+    };
+    Some((tile.object?, fade))
+}
+
+/// A live visit's first answer `answer` (its boxes and pictures the client's) with the record's
+/// facts (E24 M5 T4c, design §5.29, the facts audit): the hero's army's slots as the record's
+/// `StackChanged` tell them, the object taken only where the record's `ObjectRemoved` says
+/// ([`taken_by`]), on the mouse-over `hover`, `events` the answer's.
+fn as_recorded(answer: &mut Answer, events: &[GameEvent], hover: &Hover) {
+    let told = engine::visits::gain(events);
+    if told.slotted {
+        answer.gain.army = told.army;
+        answer.gain.slotted = true;
+    }
+    answer.taken = taken_by(hover, std::iter::once(events));
+}
 
 /// Where a record's `visit` is told and on what object (`engine::visits::lay`'s `object_at`; E24
 /// M5 T4c, *provisional*), by the mouse-over `hover` and the record's walks `moves`: on the object
@@ -1123,7 +1142,8 @@ impl<'a> Painter<'a> {
         let laid = |text: &str, style| Arc::new(message::layout(layout, font, text, style, framed));
         let question = laid(&turn::question(texts), Style::OkCancel);
         let art = &assets.tables.map.turn;
-        // The week of the Deity's growth, its first creature's, read when a turn needs it.
+        // The week of the Deity's growth, its first creature's, read when a recording's turn needs
+        // it (test tooling's: a record's week names the engine's growth, E24 M5 T4c).
         let deity = self.live.turns.iter().any(|t| t.week == Calendar::Special);
         let growth = if deity {
             crate::texts::growth(assets.archives, art.deity[0])?
@@ -1605,7 +1625,7 @@ impl<'a> Painter<'a> {
                         then: None,
                         taken: None,
                         after: Gain::default(),
-                        reveal: 0,
+                        reveal: Reveal::None,
                         marks: false,
                         fight: Some(Fight {
                             attacker: 0,
@@ -1665,12 +1685,22 @@ impl<'a> Painter<'a> {
                             engine::visits::Answered::No => Some(&mut question.no),
                             engine::visits::Answered::Open => None,
                         };
+                        let visit = visits.iter().find(|v| v.walk == walk);
                         if let Some(reply @ None) = reply {
-                            let visit = visits.iter().find(|v| v.walk == walk);
                             *reply = Some(Answer {
                                 gain: visit.map(engine::visits::answered_gain).unwrap_or_default(),
                                 ..Answer::default()
                             });
+                        }
+                        // Every reply kept, its facts the record's answer's (E24 M5 T4c: the
+                        // slots joined, the object taken).
+                        if let Some((_, events)) = visit.and_then(|v| v.answers.first()) {
+                            for kept in [&mut question.yes, &mut question.second, &mut question.no]
+                                .into_iter()
+                                .flatten()
+                            {
+                                as_recorded(kept, events, hover);
+                            }
                         }
                     }
                     // Pandora's Box's own text first, a box of its own (design §5.4's table:
@@ -1985,7 +2015,7 @@ impl<'a> Painter<'a> {
             }
             style => self.told_in(&told, style)?,
         };
-        let yes = match ask.yes(&tables.map.finds, &tables.map.asks, &tables.texts) {
+        let yes = match ask.yes(&tables.map.finds, &tables.texts) {
             Some(reply) => Some(self.answer(reply, o)?),
             None => None,
         };

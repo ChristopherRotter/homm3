@@ -82,6 +82,25 @@ fn the_weeks_message_by_its_kind() {
         message(&t, &a, (second, Calendar::Special, Calendar::Named(0)), -2).as_deref(),
         Some("Week of the Imp: Imp -2, Familiar -2")
     );
+    // A record's (E24 M5 T4c): the engine's creatures and growth, neither the tables' nor the
+    // growth given; an upgrade the level lacks named as its creature; none known, empty names.
+    let deity = |creatures| Calendar::Deity {
+        creatures,
+        bonus: 7,
+    };
+    let played = |creatures| message(&t, &a, (second, deity(creatures), Calendar::Named(0)), -2);
+    assert_eq!(
+        played([Some(43), Some(42)]).as_deref(),
+        Some("Week of the Familiar: Familiar +7, Imp +7")
+    );
+    assert_eq!(
+        played([Some(42), None]).as_deref(),
+        Some("Week of the Imp: Imp +7, Imp +7")
+    );
+    assert_eq!(
+        played([None, None]).as_deref(),
+        Some("Week of the :  +7,  +7")
+    );
 }
 
 #[test]

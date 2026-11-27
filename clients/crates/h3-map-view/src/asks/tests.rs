@@ -96,9 +96,9 @@ fn said(reply: Option<Reply>) -> (Told, Gain) {
             reply.chooses,
             &reply.then,
             reply.taken,
-            reply.reveal
+            reply.reveal.clone()
         ),
-        (false, false, &None, None, 0)
+        (false, false, &None, None, Reveal::None)
     );
     (reply.boxes[0].told.clone(), reply.gain)
 }
@@ -148,7 +148,7 @@ fn a_guarded_pile_and_artifact() {
         "a pack of Pikemen keep it. Attack the Pikemen?"
     );
     assert_eq!(ask(&artifact(vec![pikemen(10), pikemen(5)])), None);
-    assert!(asked.yes(&tables().map.finds, &art(), &texts()).is_none());
+    assert!(asked.yes(&tables().map.finds, &texts()).is_none());
 }
 
 #[test]
@@ -238,7 +238,7 @@ fn the_tree_of_knowledge() {
     odd.tree_prices = vec![[9, 1]];
     let never = Ask::of(&seen(102, 0, 1 << 13), &red(), &odd).unwrap();
     assert!(matches!(never, Ask::Tree { poor: true, .. }));
-    assert!(gold.yes(&tables().map.finds, &art(), &texts()).is_none());
+    assert!(gold.yes(&tables().map.finds, &texts()).is_none());
 }
 
 #[test]
@@ -246,25 +246,42 @@ fn the_pyramid_and_the_tomb() {
     let pyramid = ask(&seen(63, 0, 0)).unwrap();
     assert!(pyramid.asks() && pyramid.chooses());
     assert_eq!(pyramid.told(&texts()).text, "PYRAMID");
-    assert!(pyramid.yes(&tables().map.finds, &art(), &texts()).is_none());
+    assert!(pyramid.yes(&tables().map.finds, &texts()).is_none());
     // The Tomb's artifact while its bit 0 is set (`ask-tomb`'s 0xFF88C01F: the Equestrian's
     // Gloves, 70), its search the artifact's box and its morale lost.
     let tomb = ask(&seen(108, 0, 0xFF88_C01F)).unwrap();
-    assert_eq!(tomb, Ask::Tomb(Some(70)));
+    assert_eq!(
+        tomb,
+        Ask::Tomb {
+            artifact: Some(70),
+            morale: -3
+        }
+    );
     assert!(tomb.asks() && !tomb.chooses());
     assert_eq!(tomb.told(&texts()).text, "TOMB");
     let finds = tables().map.finds;
-    let (found, gain) = said(tomb.yes(&finds, &art(), &texts()));
+    let (found, gain) = said(tomb.yes(&finds, &texts()));
     assert_eq!(found.text, "TOMB: Equestrian's Gloves");
     assert_eq!(found.pictures, vec![(8, 70)]);
     assert_eq!((gain.morale, gain.skills), ([-3, -3], [0; 4]));
     // An artifact of primary skills gives them (the Centaur's Axe, 7: +2 Attack).
-    let (_, axe) = said(Ask::Tomb(Some(7)).yes(&finds, &art(), &texts()));
-    assert_eq!(axe.skills, [2, 0, 0, 0]);
+    let axe = Ask::Tomb {
+        artifact: Some(7),
+        morale: -1,
+    };
+    let (_, axe) = said(axe.yes(&finds, &texts()));
+    // Its morale the question's own (E24 M5 T4c: play's the record's).
+    assert_eq!((axe.skills, axe.morale), ([2, 0, 0, 0], [-1, -1]));
     // Emptied: three pictures of bad morale, the morale lost.
     let empty = ask(&seen(108, 0, 0xFF88_C01E)).unwrap();
-    assert_eq!(empty, Ask::Tomb(None));
-    let (told, gain) = said(empty.yes(&finds, &art(), &texts()));
+    assert_eq!(
+        empty,
+        Ask::Tomb {
+            artifact: None,
+            morale: -3
+        }
+    );
+    let (told, gain) = said(empty.yes(&finds, &texts()));
     assert_eq!(told.text, "TOMB0");
     assert_eq!(told.pictures, vec![(16, 0); 3]);
     assert_eq!(gain.morale, [-3, -3]);
@@ -298,7 +315,7 @@ fn a_dwellings_guards() {
         guarded.told(&texts()).text,
         "several Monks keep the Monastery."
     );
-    assert!(guarded.yes(&tables().map.finds, &art(), &texts()).is_none());
+    assert!(guarded.yes(&tables().map.finds, &texts()).is_none());
     // Another player's too; a creature below level 5 guards nothing (its flag, then its hire:
     // below); no creature known, none.
     assert!(matches!(
@@ -326,7 +343,7 @@ fn a_dwellings_hire() {
     assert!(hire.asks() && hire.chooses() && !hire.beside());
     assert_eq!(hire.told(&texts()).text, "[Guardhouse] recruit Pikemen?");
     let finds = tables().map.finds;
-    let (joined, gain) = said(hire.yes(&finds, &art(), &texts()));
+    let (joined, gain) = said(hire.yes(&finds, &texts()));
     assert_eq!(joined.text, "14 Pikemen come along.");
     assert_eq!(gain.army[0], Some(pikemen(14)));
     assert_eq!(gain.army[1..], [None; 6]);
@@ -339,7 +356,7 @@ fn a_dwellings_hire() {
         flag: false,
     };
     assert_eq!(
-        said(one.yes(&finds, &art(), &texts())).0.text,
+        said(one.yes(&finds, &texts())).0.text,
         "1 Pikeman come along."
     );
     let none = Ask::Hire {
@@ -349,7 +366,7 @@ fn a_dwellings_hire() {
         room: true,
         flag: false,
     };
-    let (told, gain) = said(none.yes(&finds, &art(), &texts()));
+    let (told, gain) = said(none.yes(&finds, &texts()));
     assert_eq!(told.text, "No Pikemen to hire.");
     assert_eq!(gain, Gain::default());
     let full = Visitor {
@@ -361,7 +378,7 @@ fn a_dwellings_hire() {
     };
     let crowded = Ask::of(&dwelling(56, 0, 14, Some(0)), &full, &art()).unwrap();
     assert!(matches!(crowded, Ask::Hire { room: false, .. }));
-    let (told, gain) = said(crowded.yes(&finds, &art(), &texts()));
+    let (told, gain) = said(crowded.yes(&finds, &texts()));
     assert_eq!(told.text, "No room for the Pikemen");
     assert_eq!(gain, Gain::default());
     // A stack of their kind is room.
@@ -374,7 +391,7 @@ fn a_dwellings_hire() {
     // A level-2 creature's or an ally's dwelling: the recruit dialog (not built).
     let archers = ask(&dwelling(57, 2, 9, Some(0))).unwrap();
     assert!(matches!(archers, Ask::Hire { free: false, .. }));
-    assert!(archers.yes(&finds, &art(), &texts()).is_none());
+    assert!(archers.yes(&finds, &texts()).is_none());
     let allied = Visitor {
         teams: [0, 0, 2, 3, 4, 5, 6, 7],
         ..red()
@@ -404,7 +421,7 @@ fn a_dwelling_of_another_team_without_guards_takes_its_flag_then_asks_its_hire()
     );
     assert!(hire.flags() && hire.asks() && hire.chooses() && !hire.beside());
     assert_eq!(hire.told(&texts()).text, "[Guardhouse] recruit Pikemen?");
-    let (joined, gain) = said(hire.yes(&tables().map.finds, &art(), &texts()));
+    let (joined, gain) = said(hire.yes(&tables().map.finds, &texts()));
     assert_eq!(joined.text, "14 Pikemen come along.");
     assert_eq!(gain.army[0], Some(pikemen(14)));
     // Blue's alike; a level-2 creature's flag taken, then the recruit dialog (not built).
@@ -418,7 +435,7 @@ fn a_dwelling_of_another_team_without_guards_takes_its_flag_then_asks_its_hire()
             ..
         }
     ));
-    assert!(archers.yes(&tables().map.finds, &art(), &texts()).is_none());
+    assert!(archers.yes(&tables().map.finds, &texts()).is_none());
 }
 
 // Part A2: a monster's offers, a Border Guard's, a Cartographer's and Pandora's Box's questions.
@@ -528,7 +545,7 @@ fn a_monsters_free_join() {
     let told = join.told(&texts());
     assert_eq!(told.text, "{Followers} Peasants ask to come.");
     assert!(told.pictures.is_empty());
-    let yes = join.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    let yes = join.yes(&tables().map.finds, &texts()).unwrap();
     let mut gain = Gain::default();
     gain.army[0] = Some(peasants);
     assert_eq!(
@@ -553,7 +570,7 @@ fn a_monsters_free_join() {
         }
     );
     assert_eq!(flight.told(&texts()).text, "Peasants run.");
-    assert_eq!(flight.yes(&tables().map.finds, &art(), &texts()), None);
+    assert_eq!(flight.yes(&tables().map.finds, &texts()), None);
     assert_eq!(
         flight.no(),
         Some(Reply {
@@ -571,7 +588,7 @@ fn a_monsters_free_join() {
     };
     let crowded = Ask::of(&monster(139, PEASANTS, 114_698), &full, &art()).unwrap();
     assert!(matches!(crowded, Ask::Monster { room: false, .. }));
-    assert_eq!(crowded.yes(&tables().map.finds, &art(), &texts()), None);
+    assert_eq!(crowded.yes(&tables().map.finds, &texts()), None);
 }
 
 #[test]
@@ -595,7 +612,7 @@ fn a_monsters_join_for_gold() {
     let told = gold.told(&texts());
     assert_eq!(told.text, "An offer:\n\n5 Pikemen: 300 gold.");
     assert_eq!(told.pictures, vec![(6, 300)]);
-    let yes = gold.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    let yes = gold.yes(&tables().map.finds, &texts()).unwrap();
     assert_eq!(yes.gain.resources, [0, 0, 0, 0, 0, 0, -300]);
     assert_eq!(yes.gain.army[0], Some(pikemen(5)));
     assert_eq!((yes.chooses, yes.taken), (true, Some(Fade::Killfade)));
@@ -696,7 +713,7 @@ fn a_border_guards_passage_and_a_cartographers_maps() {
     assert_eq!(pass.attacker(), None);
     assert_eq!(pass.told(&texts()).text, "PASS");
     assert_eq!(
-        pass.yes(&tables().map.finds, &art(), &texts()),
+        pass.yes(&tables().map.finds, &texts()),
         Some(Reply {
             taken: Some(Fade::Pickup),
             ..Reply::default()
@@ -706,12 +723,22 @@ fn a_border_guards_passage_and_a_cartographers_maps() {
     assert_eq!(ask(&seen(9, 0, 0)), None);
     // `ask-cartographer`: a land one, 1 000 gold paid and the land's terrains revealed; entered.
     let maps = ask(&seen(13, 1, 0)).unwrap();
-    assert_eq!(maps, Ask::Maps(1));
+    assert_eq!(
+        maps,
+        Ask::Maps {
+            kind: 1,
+            price: [6, 1000],
+            reveal: Reveal::Terrains(0xBF)
+        }
+    );
     assert!(maps.asks() && !maps.chooses() && !maps.beside());
     assert_eq!(maps.told(&texts()).text, "LAND");
-    let yes = maps.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    let yes = maps.yes(&tables().map.finds, &texts()).unwrap();
     assert_eq!(yes.gain.resources, [0, 0, 0, 0, 0, 0, -1000]);
-    assert_eq!((yes.reveal, yes.taken, yes.chooses), (0xBF, None, false));
+    assert_eq!(
+        (yes.reveal, yes.taken, yes.chooses),
+        (Reveal::Terrains(0xBF), None, false)
+    );
     assert_eq!(maps.no(), Some(Reply::default()));
     let texts = texts();
     assert_eq!(ask(&seen(13, 0, 0)).unwrap().told(&texts).text, "SEA");
@@ -728,20 +755,25 @@ fn a_border_guards_passage_and_a_cartographers_maps() {
     };
     assert_eq!(Ask::of(&seen(13, 1, 0), &poor, &art()), None);
     assert_eq!(ask(&seen(13, 3, 0)), None);
-    // A price of an unknown resource is paid by nothing, a kind past the masks reveals nothing.
+    // A price of an unknown resource is paid by nothing.
     let mut odd = art();
     odd.maps_price = [9, 0];
     let free = Ask::of(&seen(13, 1, 0), &red(), &odd).unwrap();
     assert_eq!(
-        free.yes(&tables().map.finds, &odd, &texts).unwrap().gain,
+        free.yes(&tables().map.finds, &texts).unwrap().gain,
         Gain::default()
     );
+    // Play's (E24 M5 T4c): its price and the tiles it reveals the question's own, the engine's.
+    let tiles = vec![Pos { x: 1, y: 2, z: 0 }];
+    let played = Ask::Maps {
+        kind: 0,
+        price: [5, 10],
+        reveal: Reveal::Tiles(tiles.clone()),
+    };
+    let yes = played.yes(&tables().map.finds, &texts).unwrap();
     assert_eq!(
-        Ask::Maps(7)
-            .yes(&tables().map.finds, &art(), &texts)
-            .unwrap()
-            .reveal,
-        0
+        (yes.gain.resources, yes.reveal),
+        ([0, 0, 0, 0, 0, -10, 0], Reveal::Tiles(tiles))
     );
 }
 
@@ -767,7 +799,7 @@ fn pandoras_box() {
     );
     assert!(open.asks() && !open.chooses() && open.beside());
     assert_eq!(open.told(&texts()).text, "OPEN?");
-    let yes = open.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    let yes = open.yes(&tables().map.finds, &texts()).unwrap();
     assert_eq!(yes.boxes.len(), 1);
     assert_eq!(yes.boxes[0].told.text, "Mephala: treasure.");
     assert_eq!(yes.boxes[0].told.pictures, vec![(6, 1500)]);
@@ -804,7 +836,7 @@ fn the_tables_choices() {
 /// What a choice's answer gives that the panels show: `gold` more, `skills` gained.
 fn gives(reply: &Reply) -> (i32, [i8; 4]) {
     assert!(reply.boxes.is_empty() && !reply.granted && !reply.chooses);
-    assert_eq!((&reply.then, reply.reveal), (&None, 0));
+    assert_eq!((&reply.then, &reply.reveal), (&None, &Reveal::None));
     (reply.gain.resources[6], reply.gain.skills)
 }
 
@@ -828,7 +860,7 @@ fn a_treasure_chests_choice() {
     assert_eq!(told.pictures, vec![(6, 1000), (17, 500)]);
     // The gold's picture the gold, the experience's nothing the panels show; taken either way
     // with a pickup's sound. No Cancel: the default.
-    let yes = chest.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    let yes = chest.yes(&tables().map.finds, &texts()).unwrap();
     assert_eq!(
         (gives(&yes), yes.taken, yes.marks),
         ((1000, [0; 4]), Some(Fade::Pickup), false)
@@ -859,7 +891,7 @@ fn the_arenas_and_a_schools_choices() {
         (told.text.as_str(), told.pictures),
         ("ARENA", vec![(31, 2), (32, 2)])
     );
-    let yes = arena.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    let yes = arena.yes(&tables().map.finds, &texts()).unwrap();
     assert_eq!((gives(&yes), yes.taken), ((0, [2, 0, 0, 0]), None));
     assert_eq!(gives(&arena.second().unwrap()), (0, [0, 2, 0, 0]));
     let no = arena.no().unwrap();
@@ -885,7 +917,7 @@ fn the_arenas_and_a_schools_choices() {
         (told.text.as_str(), told.pictures),
         ("SCHOOL", vec![(33, 1), (34, 1)])
     );
-    let yes = school.yes(&tables().map.finds, &art(), &texts()).unwrap();
+    let yes = school.yes(&tables().map.finds, &texts()).unwrap();
     assert_eq!(gives(&yes), (-1000, [0, 0, 1, 0]));
     assert_eq!(gives(&school.second().unwrap()), (-1000, [0, 0, 0, 1]));
     assert_eq!(school.no(), Some(Reply::default()));
@@ -942,7 +974,7 @@ fn a_notice_s_box_and_its_answers() {
     assert_eq!((notice.style(), notice.asks()), (Style::Ok, false));
     assert!(!notice.chooses() && !notice.beside() && !notice.flags());
     let tables = tables();
-    assert_eq!(notice.yes(&tables.map.finds, &art(), &texts), None);
+    assert_eq!(notice.yes(&tables.map.finds, &texts), None);
     assert_eq!(
         (notice.no(), notice.second()),
         (Some(Reply::default()), None)

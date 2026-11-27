@@ -237,7 +237,9 @@ pub fn tables(keys: &Keys, archives: &[LodArchive<'_>], exe: &[u8]) -> Result<Ta
 
 /// The growth of the creature `creature` (its record's +0x44: `CRTRAITS.TXT`'s Growth, column 11
 /// of its non-blank record from record 2, as the `creature` family's records; E24 M4 T1a, the week
-/// of the Deity's message, design §5.1) from `archives`.
+/// of the Deity's message, design §5.1) from `archives`. Test tooling's alone since E24 M5 T4c
+/// (design §5.29): a recording's Deity's week and a situation's dwelling (`Painter::asked`); play's
+/// week names the engine's growth (`Calendar::Deity`).
 pub fn growth(archives: &[LodArchive<'_>], creature: u16) -> Result<i32, String> {
     let name = "CRTRAITS.TXT";
     let (_, bytes) = files::find(archives, name)?.ok_or_else(|| format!("no {name}"))?;
