@@ -58,6 +58,15 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
+- 2026-11-27 (E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent, E09 decision
+  226; **in your paths, for your review; adventure action encoding v23 taken**): a town's window
+  with the Artifact Merchants sells its hero's artifacts (`MarketAnswer::SellArtifact { place,
+  take }`, TWN-MKT-005), and `legal_commands` lists one sale for the cost resource per place that
+  sells; `adventure/action.rs` appends the **22 entries from `MARKET_SELL_ARTIFACT` (146)**: worn
+  positions 0 to 13 (`SALE_WORN`), then backpack indices 0 to 7 (`SALE_BACKPACK`), tileless
+  (`ENTRY_COUNT` 168); `answer_entry`, `listed_only` (the resource the listing's) and
+  `service_answer` (the place's sale for the cost resource) know them. The town map's seeds and
+  the env's tests held; the replay format is v28 (`adventure/replay.rs`, `tests/hiring.rs`).
 - 2026-11-27 (E09 T58a2, `town/e09-t58a2`, `cross-lane` with the user's consent, E09 decision
   225; **in your paths, for your review; adventure action encoding v22 taken**): `legal_commands`
   lists `TownCommand::Market` (TWN-MKT-002) for each own town after its spell book's purchase,

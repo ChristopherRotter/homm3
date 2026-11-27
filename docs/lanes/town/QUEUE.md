@@ -7,18 +7,17 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 6: the town's trades, refined at T51, `TWN-Q34`,
 decisions 196 to 199; its survey T52 with the checkpoint `TWN-Q35`, decisions 200 to 207; its
 drafts, cut and exit criteria by T53, `TWN-Q36`, `TWN-Q37`, decisions 208 to 217; batch TWN-6
-by T54, decision 218; T55 `shared/`, decision 219; T56, decision 220; T57, decisions 221 to 223; the buildings for heroes and the map are increment 7, travel and the Grail
-8, decision 197); done
+by T54, decision 218; T55 `shared/`, decision 219; T56, decision 220; T57, decisions 221 to
+223; T58, decisions 224 to 226; the buildings for heroes and the map are increment 7, travel
+and the Grail 8, decision 197); done
 tasks in `E09-log.md`; increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T58 to T61** (queued, design §118's rounds 6 to 8; each cut confirmed at its start): **Status:** T58b next (T58a2 done 2026-11-27, decision 225, `E09-log.md`). T58 the market
-at a town (§103 to §107, `cross-lane`): **T58b** the artifact sale
-(`MarketAnswer::SellArtifact`, `MarketParams::artifact_sale`, `TWN-QUIRK-18`, `-20`, its env
-entries and word, the protocol); T59 the services (§110 to §113: T59a `BuyWarMachine` and
-`BuildBoat`; T59b `University` with T-23 and `Transform`; each with its env entries, word and
-protocol, `cross-lane`); T60 the trades map, its replays, the census, the properties, the
+**E09 T59 to T61** (queued, design §118's rounds 7 and 8; each cut confirmed at its start):
+**Status:** T59 next (T58 done 2026-11-27: T58b, decision 226, `E09-log.md`). T59 the services
+(§110 to §113: T59a `BuyWarMachine` and `BuildBoat`; T59b `University` with T-23 and
+`Transform`; each with its env entries, word and protocol, `cross-lane`); T60 the trades map, its replays, the census, the properties, the
 benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, increment 7 refined.
 
 ## Inbox
