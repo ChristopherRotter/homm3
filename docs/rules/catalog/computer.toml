@@ -749,3 +749,160 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (survey section 2.4; E31 T1a2d, read whole again at T2g): ai_town_value 0x52AB80 (the dropped fight 0x52ACDA, the Legion's parts ai_legion_parts 0x640558, the cap 0x52B063)"
   confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-001"
+title    = "The object at a tile and its class for the computer's object value"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_object_value for one of the computer's heroes, the candidate's cost (an i32 the movement objects and the Swan Pond change) and a tile: what stands there is a hero (the original's class 34), else an empty boat (8), else the object a visit from the tile meets (AdventureState::tile_index); none, a boat, a blocker and every class the switch does not list are worth 0. The engine knows an object by its type's kind, so the class is read from the kind and its parameters (h3_game::computer::objects::Class::of): a kind of one class is that class; a bonus visitable by its gift (drain: the Swan Pond; points and luck: the Rally Flag; points: the Fountain of Youth, the Oasis and the Watering Hole, one value; a changing week: the Idol with luck, the Temple without; else one morale the Buoy or one luck the Faerie Ring and the Mermaids, one value); a once-per-hero gift by what it gives (a free choice the Arena; a paid one a School, of Magic when it offers Spell Power or Knowledge; the Library's condition; Spell Power alone the Star Axis, Knowledge alone the Garden of Revelation, Attack or Defense the Marletto Tower and the Mercenary Camp, one value; experience the Learning Stone; a level the Tree); a find by its shape (a question or a bonus the Warrior's Tomb; leaving the map: an artifact lost or kept the Survivor, gold given the Sea Chest, none the Flotsam; else drawn resources the Wagon, gold the Corpse, none the Lean-To); a Market with the buy screen the Black Market. The answer to a guarded object's question (ai_fight_answer 0x52BD10, increment 4's) is the value with a scratch cost of 0."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey section 2.1; E31 T1a2a, read again whole at T2h): ai_object_value 0x528040 (the entrance test 0x528066, the switch 0x528087 with its tables 0x5294F0 and 0x529600), ai_fight_answer 0x52BD10"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-002"
+title    = "The object value's units: one level, the strength, the resources, the morale and luck gains"
+context  = "computer"
+status   = "implemented"
+summary  = "One level's experience: the experience to the hero's next level as an f32 times its experience weight (+0x109, the turn start's), truncated. The strength: the army's value times 40 plus the hero's primary sum, in 32 bits, over 40. A resource amount's value: over the resources in order the running total plus the amount times its weight (double), truncated at each step (ai_resources_value 0x526C70). A morale gain of c: 0 for an army all undead (an empty one too, 0x44AB20); else the value of the change by c from the hero's own morale held to -3..3 (ai_morale_change, BAT-AI-016's change_value with the slip) times the strength, truncated. A luck gain of c (ai_luck_gain_value 0x527D80): when the luck plus c passes 3 the luck is taken as 3 less itself (survey 5.5 #4, a slip ported as read: a hero at 3 values a rise as from 0), then the change times the strength."
+numeric  = "integer"
+
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T2h): 0x52809E (one level), 0x5284D5 (the strength), ai_resources_value 0x526C70, ai_morale_gain_value 0x527CF0, ai_luck_gain_value 0x527D80, the undead test 0x44AB20"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-003"
+title    = "The guarded pickups' values: an artifact, a Spell Scroll, a resource pile"
+context  = "computer"
+status   = "implemented"
+summary  = "An artifact (class 5): 0 with 64 artifacts in the backpack; else its value to the player (CPU-ART-011, at least 10; the placed one or a random one's draw), plus the fight against its guards while they stand (ai_guarded_object_fight 0x529890). Its pickup conditions 1 to 6 are not ported: no map reaches them (E08-rewards.md 3.3). A Spell Scroll (93): 0 with a full backpack; else 10, plus its guards' fight, plus the scroll's value to the hero as a candidate (CPU-ART-009, not counted) when its spell is not available to it. A resource pile (79): its amount (the gold's whole) times its weight plus its guards' fight, in double precision, truncated."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T2h): ai_object_value's case 5 0x5280CA with its dead pickup switch 0x529670, ai_guarded_object_fight 0x529890, ai_spell_scroll_value 0x52A8C0, ai_resource_pile_value 0x52A7C0"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-004"
+title    = "Pandora's Box's value"
+context  = "computer"
+status   = "implemented"
+summary  = "The fight against its guards while they stand, else 0; with experience above 0 as a signed value, that times the hero's weight plus the fight, single-precision operands, truncated; plus its resources' value (CPU-OBJ-002); one level's experience per primary point given; per skill the levels it adds (a new one only below eight skills); its artifacts' count times the player's mean artifact value plus the rest, single-precision operands, truncated; with a spell book its spells' values to the hero (ai_learnable_spell_value: 0 above Wisdom plus 2 or learned, else the spell's gain); its creatures' AI values times their counts where the army can take them (a stack of the creature or a free slot). Its mana, morale and luck count nothing."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T2h): ai_object_value's case 6 0x528204, ai_learnable_spell_value 0x5298D0, army_can_take 0x44AC50"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-005"
+title    = "A creature bank's and a crypt's value"
+context  = "computer"
+status   = "implemented"
+summary  = "Classes 16, 24, 25, 84 and 85 alike: 0 once looted; else the fight against its guards as they stand, returned alone when -500 000 000 or less; plus its drawn level's resources' value (CPU-OBJ-002), its creature's AI value times its count, and its artifacts' count times the player's mean plus the rest (single-precision operands, truncated)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T2h): ai_object_value's cases 16 0x528626 and 24-25 0x5287C8, ai_crypt_value 0x529920 (its inline resources loop the same as ai_resources_value)"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-006"
+title    = "A monster's, a mine's, a Prison's and the Pyramid's values"
+context  = "computer"
+status   = "implemented"
+summary  = "A monster (54): the fight against its creature with its count's low 12 bits spread over seven slots (army_fill_split: slot k the rest over 7 - k); the defeat-a-monster condition's 5 000 000 waits for E10 (AI-STUB-18). A mine (53): 0 when its owner is of the player's team; else its guards' fight when it has some, returned when -500 000 000 or less; plus two days of its income at its resource's weight, truncated, times 1 plus the blend of its owner (CPU-SIM-012), single operands, truncated; the flag-all-mines share waits for E10 (AI-STUB-18; survey 5.5 #6). A Prison (62): 0 while the player has eight heroes; else 2 500 gold at its weight plus the prisoner's army's value, truncated. The Pyramid (63): 0 when the player knows it looted; else the fight against one stack of its first creature and count and one of its second with its stacks summed, plus with Expert Wisdom the mean over every spell of level 5 of the gains of those the hero has neither available nor learned, with a spell book (0 for the others)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T2h): ai_monster_value 0x52A140, army_fill_split 0x44AAA0, ai_mine_value 0x52A010, ai_prison_value 0x52A3A0, ai_pyramid_value 0x52A410"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-007"
+title    = "A garrison's and a hero's values"
+context  = "computer"
+status   = "implemented"
+summary  = "A garrison (33): the player's own with removable troops, the exchange of the hero's army with it (CPU-ARM-004 on a cleared plan: the Alliance's flag, the hero's morale, its primary sum the advantage); a team's 0; another's or a neutral one the fight against its army. A campaign's wait for E20 (AI-STUB-21). Another player's hero (34): an ally's 0 (AI-STUB-18); an enemy's the fight against it and its army (no town), plus within the hero's points left (the cost's low word) the blend of its owner times its threat (the turn start's) plus 10 000, single operands, truncated; at a town's entrance, plus that town's capture value (CPU-TWN-002, the cost's low word), a fight lost by 500 000 000 or more returned alone while the player owns a town, else -1 250 000. Its own hero: 0 on Easy; weaker by primary sum, half the exchange of its army into the hero's (the sums' difference the advantage), kept within the day's maximum or when the plan's gain reaches the army's value, else 0; stronger, the whole exchange from its side; equal, 0."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T2h): ai_object_value's cases 33 0x528A6B and 34 0x528BD9 (its own hero 0x528D0C), players_same_team 0x5296D0, town_at_entrance 0x4BB870"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-008"
+title    = "The Hill Fort's, the Refugee Camp's, a dwelling's and a town's values"
+context  = "computer"
+status   = "implemented"
+summary  = "The Hill Fort (35): on a copy of the player's resources, each stack of the army in slot order whose creature has an upgrade (RoE's elementals have none in its ruleset) is priced (by resource the upgrade's cost less the creature's, at least 0, times the count; the gold times the fort's percent of the creature's level, single operands, truncated) and bought when every resource covers it: the AI value it adds summed, its price paid from the copy; beyond a cost of 500 it counts only when three times the sum reaches the army's value. The Refugee Camp (78): a plan of its week's creature and count, not free (ai_army_plan_init_creature 0x42CF50: the plan with one offer), valued by the purchase (CPU-ARM-005) on the hero's army with no spare, the player's resources, the Alliance's flag and the hero's morale. A dwelling (17, 20): CPU-TWN-001 with the cost. A town (98): CPU-TWN-005 with the cost's low word."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T1a2c, T2h): ai_object_value's cases 35 0x528DF0, 17/20 0x5286E8 and 98 0x5292F5, ai_creature_upgrade 0x529710, upgrade_cost 0x54E750, ai_refugee_camp_value 0x52A700, ai_refugee_camp_purchase 0x52A710, ai_army_plan_init_creature 0x42CF50"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-009"
+title    = "The experience and skill objects' values"
+context  = "computer"
+status   = "implemented"
+summary  = "Each worth 0 to a hero that holds its once-per-hero mark. The Arena: two levels' experience (f32 of twice the gap, times the weight); the Marletto Tower and the Mercenary Camp: one level; the Scholar: one level, unmarked; the Garden of Revelation and the Star Axis: the hero's Knowledge or Spell Power value; the Library: 0 below its condition (level plus twice Diplomacy under 10), else twice the two values plus the army's value times 4 (32 bits) over 40; the Learning Stone: the weight times 1 000 (f32); the School of Magic: with 1 000 gold, the larger of the two values less 1 000 gold's weight, truncated; the School of War: with 1 000 gold, f32(one level's gap) times the weight less 1 000 gold's weight, truncated; the Tree of Knowledge: one level less its price, known (the drawn price: 1 2 000 gold, 2 10 gems; 0 when the player cannot pay, else the level less its weight; free the level) or else the expected price (a third of both weights, at most two thirds of the level); the University: CPU-SKL-003 of its drawn skills with the gold's test; a Witch Hut: its skill known, 0 with eight skills, without a skill, one the hero has or one the computer would not take, else its value (CPU-SKL-001's flag-set path), unknown one level; a Shrine: its spell's value to the hero (ai_learnable_spell_value: 0 above the Wisdom level plus 2, learned or without a spell book, else its gain, CPU-SPL-007)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T2h): ai_object_value's cases 4, 23, 32, 41, 51, 81, 88-90, 100, 104, ai_school_of_magic_value 0x529F90, ai_school_of_war_value 0x52B790, ai_tree_of_knowledge_value 0x52B5A0, ai_witch_hut_value 0x52B900, ai_star_axis_value 0x52A380, ai_learnable_spell_value 0x5298D0"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-010"
+title    = "The morale, luck and movement objects' values"
+context  = "computer"
+status   = "implemented"
+summary  = "Each worth 0 to a hero that holds its mark. Reachable today only (the cost within the points left): the Buoy one morale (CPU-OBJ-002), the Faerie Ring and the Mermaids one luck, the Temple two morale, the Swan Pond two luck and only within 200 of the points left, the cost then the day's points. The Fountain and the Idol of Fortune: a bare fraction truncated, always 0 (survey 5.5 #3, a slip ported as read). The Fountain of Youth, the Oasis and the Watering Hole: a cost of at least half their points lowered by it and one morale (0 undead), else the cost set to 0 and worth 10 000; the Rally Flag reachable: the same part plus the bare morale and luck fractions of a point each, truncated. The Stables: without their week's mark, half their points for the week's days left (8 - the day) off the cost, the base 50, or the cost set to 0 and the base 10 000; plus with a stack of the creature they upgrade, its AI gain times the number of such stacks (survey 5.5 #72, a slip ported as read: stacks, not creatures), times 1.2 when a stack of the upgrade is there too. The Sirens, no mark read (survey 5.5 #73): each stack above 1 keeps trunc(f32(count) x 0.7) as a word; the experience of the lost hit points grown by Learning at the value of the army left (CPU-SIM-012's experience value) less the strength lost (the army's value lost times 40 plus the primary sum, over 40), single operands, truncated; with a weight of 0 less the strength lost. A Magic Well (its day's mark) and a Magic Spring (its water this week): the hero's extra or double mana value, farther than 300 (the cost's low word) only while the hero's kept destination is a Well or a Spring."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T2h): ai_object_value's cases 11, 14, 28, 30, 31, 38, 52, 64, 96, 110 and 56, ai_oasis_value 0x52A1E0, ai_rally_flag_value 0x52A5F0, ai_stables_value 0x52AAC0 with army_count_type 0x4E2340, ai_sirens_value 0x52A960, ai_magic_well_value 0x52A510, ai_magic_spring_value 0x52B810"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-011"
+title    = "The finds', weekly objects', markets' and flat values"
+context  = "computer"
+status   = "implemented"
+summary  = "The Keymaster's Tent 5 000 while the player lacks its key; the Lighthouse and a Shipyard 1 000 while not the team's; the Campfire its amount of its resource and 100 times that in gold at their weights; the Flotsam 175 gold and 5 wood; the Sea Chest a tenth of the mean artifact value and 1 200 gold (the gold alone with a full backpack); the Shipwreck Survivor and the Warrior's Tomb (unknown) the mean, 0 with a full backpack; the Corpse (unknown) a fifth of the mean, 200 gold with a full backpack; the Lean-To (unknown) three mean resource weights; the Wagon (unknown) two fifths of the mean plus 7/4 of the mean weight; the Treasure Chest over its three tiers the larger of the experience (160, 320, 465 times the weight) and the gold (320, 480, 620 at its weight), plus a twentieth of the mean; the Mystical Garden while it holds its gift half of 500 gold and 5 gems; the Windmill 9/2 of the mean weight unless visited and empty; the Water Wheel 1 000 gold, visited its stored gold; the Black Market (0 with exactly 64 artifacts carried) its unsold entries' values to the player less the price the computer would pay (in gold its cost over the artifacts' rate, truncated; another resource of 2p / its value when held and weighed no dearer, the later on ties), 0 each it cannot pay, at least 0; the War Machine Factory its machines' values (0 carried or on Easy; the value counted less the creature's weighed cost, 0 when a resource is short, nothing within a cost of 500: survey 5.5 #5, a slip ported as read; 0 when the price is above the value)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2a, T2h): ai_object_value's cases 7, 10, 12, 22, 29, 39, 42, 55, 86, 87, 108, 109, 112, ai_sea_chest_value 0x52A870, ai_treasure_chest_value 0x52B4E0, ai_wagon_value 0x52B710, ai_black_market_artifact_value 0x529750, ai_artifact_market_price 0x524550, ai_war_machine_factory_value 0x5297D0, ai_war_machine_value 0x525120"
+  confidence = "high"
+
+[[rule]]
+id       = "CPU-OBJ-012"
+title    = "The scouting value of a circle"
+context  = "computer"
+status   = "implemented"
+summary  = "ai_vision_area_value for a player, a radius r and a tile: over the tiles of the tile's level within r columns and rows (clipped to the map) with dx^2 + dy^2 at most r^2 + r (the original's sqrt in double against r + 0.5), each tile the player has not explored counts 1, plus its class's scouting value when it is an entrance (ai_class_scout_value_list 0x6605D8: 75 pairs from 1 to 1 000; a hero's tile the class 34, 0; an empty boat's 8, 100). The object value reads it for the Redwood Observatory and the Pillar of Fire (radius 20); the turn start's Eye value would for each Eye of the Magi (radius 10, AI-STUB-10). It reads the objects under the fog."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E31 T1a2d, T2h): ai_vision_area_value 0x432220, ai_class_tables_init 0x428070, ai_class_scout_value_list 0x6605D8"
+  confidence = "high"

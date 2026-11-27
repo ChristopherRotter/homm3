@@ -4,30 +4,16 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 7, the next 8). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E10 T1a — increment 1's survey: the teams and the game's end** (E10 decisions 4, 5; the epic's increment 1 sketch)
-
-- **The cut** confirmed with the user at its start (what the survey reads first, its size measured
-  as E08 T137a's); then the survey `docs/rules/surveys/E10-teams.md` (*agent's call* for the name):
-  the code reading of `Heroes3.exe` (what allies share: the fog, passing and visiting allied
-  heroes and towns, the mines' and objects' team marks; elimination by the standard loss and by
-  seven days without a town with its warnings; a defeated player's heroes, towns and flags; a
-  player removed; the standard victory; the game over, its events, every command after it), the
-  wiki and VCMI 1.7.5, a census of the 160 shipped maps' teams (`h3_map::Teams`); the disputes and
-  quirk candidates; the batch's plan on the client lane's harness; the interfaces' sketch and the
-  checkpoint's questions for T1b.
-- **Inputs:** the epic's "Inputs" (this inbox's client-lane notes of 2026-11-12 to -19, E27 design
-  §3, §5, §21.1, §26.3; the server lane's E16 "Later", SRV-Q29); ADR-0017 (players, turns,
-  projections); the map client's scripted game `game-week` (Blue banished on day 8).
-- **Depends on:** E08 T145's pull requests merged. **Status:** next.
+Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 8, the next 9). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E10 T1b — increment 1's ADR amendment drafts, the design note and the cut** (E10 decision 5)
 
 - The drafts in `adr-drafts/` (ADR-0017, ADR-0016 where a view changes), the design note
   `docs/epics/E10-design.md` with increment 1's exit criteria and the building tasks cut; the
   user accepts the drafts before anything is built (the checkpoint).
-- **Depends on:** T1a. **Status:** after T1a.
+- **Inputs:** the survey `docs/rules/surveys/E10-teams.md` (T1a, done 2026-11-27: its §11
+  interfaces' sketch, §12 ids, §13 the checkpoint's nine questions; batch GAM-1's plan §10).
+- **Depends on:** T1a (done). **Status:** next.
 
 ## Inbox
 
@@ -51,6 +37,11 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
   same in this sandbox: `random-play-bonuses-36` +1.96 %, `fork-boxes-xl-144` +1.75 % against the
   committed baselines before any change). A pull request of yours that bumps the replay format
   after this one merges bumps again.
+- 2026-11-27 (the AI lane, E31 T2h, `ai/e31-t2h`, `cross-lane` with the user's consent, AI-Q40;
+  **in your paths, for your review, nothing to do**): `AdventureState::tile_index` is public
+  (`state.rs`, its doc says why): the computer's object value (`h3_game::computer::objects::at`)
+  finds the object whose entrance is a tile through it. Nothing else changed in your crates.
+
 - 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
   nothing blocks**): the facts audit of play (E24 design §5.29) takes every fact an event carries
   from the record (the Tomb's morale, a Cartographer's tiles, the prices paid, the slots joined,
@@ -311,17 +302,6 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
   follow: `check_timed` expects the learning after each event's build, the details' check and the
   views' fold take a hero hired in the command as the hirer's. No golden replay, version or bot
   report moved.
-- 2026-11-21 (the ai lane, E13's refinement, AI-Q21; **for your planning; nothing blocks**): the
-  user moved E13 (the adventure AI) to the ai lane and decided it **waits for all of E10**
-  (victory and defeat, teams, diplomacy, the setup beyond the import), with no piece of E10
-  pulled forward for it. E10's place in your order stays the user's. The computer players'
-  turns are now **E31** (the ai lane: the original's adventure AI ported, faithful then fair),
-  no longer E13's; E31's port plays a player's turns through `h3-game`'s commands, so its
-  refinement will ask what seat it takes (the inbox's E27 note below names E13 for them).
-  E10's refinement (ADV-Q62, #1109) pointed `ADV-STUB-8` and `-9` (the computer player's facts)
-  and the computer players' behaviour to E13: both are **E31's** now (the stubs re-pointed in
-  `docs/stubs.toml` by #1110); please follow in `E10-game-orchestration.md` decisions 1 and 6
-  when you next touch it. (E30 is the rmg lane's custom map generator, #1112.)
 - 2026-11-21 (E08 T136; **for E10's elimination**): the market's transfer (ADV-MKT-004) refuses
   only the actor and an index past the game's players (`h3-game`'s `state/market.rs`:
   `answer_market`'s `Transfer`), and its view's `recipients` lists every other player, so "another

@@ -3110,8 +3110,10 @@ impl AdventureState {
     /// The index of [`Self::tile_object`]'s object, typed or not: the one a step onto `pos`
     /// meets (E09 T8a2: [`Self::besieges`] reads it as [`Self::visit_at`] does). The same lookup
     /// as `tile_object`'s, which keeps its own copy: calling this one there put the lookup out of
-    /// line in the walking search's visits (`bench-check`: reach-lifted-xl-144 +2.8 %).
-    pub(crate) fn tile_index(&self, pos: Pos) -> Option<usize> {
+    /// line in the walking search's visits (`bench-check`: reach-lifted-xl-144 +2.8 %). Public
+    /// since E31 T2h: the computer's object value reads the object a visit would meet (an object
+    /// added in play first, then the static map's last still on it).
+    pub fn tile_index(&self, pos: Pos) -> Option<usize> {
         self.added_visited_from(pos).or_else(|| {
             self.map
                 .visited_from(pos)

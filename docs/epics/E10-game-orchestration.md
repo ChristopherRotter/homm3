@@ -1,6 +1,6 @@
 # E10 — Game orchestration: teams, the scenario's conditions and its end
 
-Status: **refined, not started** (2026-11-21, the user, ADV-Q62). E10 opens in the adventure lane now that E08 closed with increment 15 (the Prison, the Market of Time and the adventure spells; E08 decisions 394, 396; E08 T145, 2026-11-27): increment 1's first round, T1a (the survey) and T1b (the drafts, the design note and the cut), is queued (`docs/lanes/adventure/QUEUE.md`). E08 built E10's players, turns, battle integration and projections in `h3-game` (ADR-0017); what is left is listed here.
+Status: **in progress** (increment 1; refined 2026-11-21, the user, ADV-Q62). E10 opened in the adventure lane once E08 closed with increment 15 (the Prison, the Market of Time and the adventure spells; E08 decisions 394, 396; E08 T145, 2026-11-27). Increment 1's survey T1a is done (2026-11-27, decision 8); **next T1b** (the drafts, the design note `E10-design.md` and the cut; the checkpoint), `docs/lanes/adventure/QUEUE.md`. E08 built E10's players, turns, battle integration and projections in `h3-game` (ADR-0017); what is left is listed here. Done tasks get one line below; their records are in `E10-log.md`.
 
 ## Goal
 
@@ -8,13 +8,22 @@ A game played to its end as the original plays it: the map's alliances, the play
 
 ## Decisions at the refinement (2026-11-21, the user, ADV-Q62)
 
-1. **Scope: three parts.** (a) the teams and the game's end, (b) the special victory and loss conditions and the score, (c) the starting bonus and the handicap. **Not in E10:** the computer players' behaviour and the computer player's facts the engine reads for it (`ADV-STUB-8`, `-9`: decision 6; E13), the tutorial mode (stays in the backlog's inbox, unplaced), campaigns (E20), the saves (E27's, CLT-Q173).
+1. **Scope: three parts.** (a) the teams and the game's end, (b) the special victory and loss conditions and the score, (c) the starting bonus and the handicap. **Not in E10:** the computer players' behaviour and the computer player's facts the engine reads for it (`ADV-STUB-8`, `-9`: decision 6; E31's since AI-Q21, the computer's turns there), the tutorial mode (stays in the backlog's inbox, unplaced), campaigns (E20), the saves (E27's, CLT-Q173).
 2. **Diplomacy is the map's alliances only**, as in the original: the teams are fixed by the map (`h3_map::Teams`; every colour its own team when the map defines none) and there is no diplomacy during play. Not chosen: teams regrouped by the setup (the shell or the server); dropping the word.
 3. **The adventure lane builds E10 after E08** (the user). E08's increment 15 (the Prison, the Market of Time and the adventure spells, refined the same day at T136: E08 decisions 394, 395) is built first; **E08 then closes** (E08 decision 396): its quests (the sketch's item 16, placed after E10 by E08 decision 127) and the items still unplaced (simultaneous play, the other visitables of T97c's census: the information objects outside E09's) move to **E12** (the map objects' long tail), refined after E10. At first this session recorded E08 closing with increment 14; the user chose increment 15 first once the parallel T136 session's refinement came to light. Not chosen: E10 right after increment 14 with E08 kept open; E08 closing with increment 14 (increment 15 to E12); increment 15, then E10, then quests as E08's increment 16; a new lane in parallel.
 4. **Increments in this order** (recommended): 1 the teams and the game's end (the server, the env and the end screens need a terminal first); 2 the special conditions and the score; 3 the starting bonus and the handicap. Not chosen: the bonus first (smallest, lifts the shell's stubs early); the order decided at one survey of all three.
 5. **Built like E08 and E09** (recommended): each increment with a survey (the code reading of `Heroes3.exe`, the wiki and VCMI, a census of the 160 shipped maps), the ADR amendment drafts with a design note and the cut, the user's acceptance before the build, an experiment batch for the readings at risk, the build in rounds, the replays and gates, an audit of the exit criteria; a user checkpoint per increment and the cut confirmed at each round. Not chosen: one survey for the whole epic, checkpoints only at the ADRs.
-6. **`ADV-STUB-8` and `-9` re-pointed to E13** (recommended): both read the computer player's state, which needs computer players on the map. The one fact of `-9` that is E10's, whether the scenario's victory condition wants the retreating hero defeated, is built with increment 2 and lifted from the stub then. Not chosen: both kept as E10's outside its increments.
+6. **`ADV-STUB-8` and `-9` re-pointed to E13** (recommended; since AI-Q21, 2026-11-21, E31's, the original's computer player, as `docs/stubs.toml` says): both read the computer player's state, which needs computer players on the map. The one fact of `-9` that is E10's, whether the scenario's victory condition wants the retreating hero defeated, is built with increment 2 and lifted from the stub then. Not chosen: both kept as E10's outside its increments.
 7. *Agent's calls (change freely):* the conditions and the teams live in `h3-game` (the Game context, `docs/03-domain.md`), carried from the map by `h3-map`'s import into `GameSetup` (the reader parses all three already: `Victory`, `Loss`, `Teams`); ADR-0017 is amended per increment; rule ids `GAM-*` in a new group per part; the town lane's `TWN-STUB-16` (a hero the loss condition names may be dismissed) is lifted in increment 2 `cross-lane` with the user's consent, or handed to the town lane's inbox.
+
+## Decisions during the epic
+
+8. **T1a's cut: whole** (the user, 2026-11-27, at T1a's start after the reading was measured: the end about 4 to 5 KB still unread, the teams about 2 KB new with the gathering of about 60 read team tests, the census). Not chosen: two parts, the end first (recommended); two parts, the teams first.
+
+## Increment 1: tasks
+
+- **T1a done** (2026-11-27): the survey `docs/rules/surveys/E10-teams.md` (the census, elimination and the seven days, a defeated player, the checks and the verdict, a removal, what allies share, VCMI and the wiki, D-80 to D-84, A-55 to A-57, batch GAM-1's plan, the interfaces' sketch, T1b's nine questions); record in `E10-log.md`.
+- **T1b** next: the ADR amendment drafts, the design note `E10-design.md` and the cut; the checkpoint (the survey's §13).
 
 ## Increments (sketch; the cut of each decided at its refinement, as E08 decision 48)
 
