@@ -6847,3 +6847,13 @@ sandbox for the comparison. The user's computer was online: five files staged (`
 
 **The queue:** T58a2 out; T58b next (the artifact sale). Ids: decisions next 226; quirks
 `TWN-QUIRK-18` (planned `-18` to `-20`, `-22`, `-23`); stubs `TWN-STUB-23`.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` after merging
+`master` (#1205, #1206): every step passes but `check-lane` (by design; `check-lane --cross-lane
+--base origin/master` ok) and coverage (two lines of `check_market`, a faction without a record
+and the only market building superseded: tested, `verify-step coverage --scope town` then clean);
+bench-check (the re-baselines), determinism and `original-data` passed. Coverage 24 minutes,
+determinism 9, bench-check 15. `cargo clippy --workspace --all-targets -- -D warnings`; `cargo
+test -p h3-sim -p h3-cli` (every golden replay); `h3-map`'s tests again after the merge (218) and
+`random-play-spells-36` (−0.03 %). No wire change: the protocol, the replay format and every hash
+as `master`'s.
