@@ -638,3 +638,19 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   a split water ring mended, water neighbours entering and leaving set 1, the cosmetic flag's two
   halves, the classes and refinements, a missing shape, a cell that cannot be mended) and step 3
   units (boxes, centroids and levels, an island, the faults). `RMG_GENERATOR_VERSION` stays 1.
+
+## Increment 3's checkpoint — the exit, increment 4's cut (2026-11-27, increment 3)
+
+- **The exit, as checked:** (a) the catalog's 31 rules (RMG-ZON-001 to -014, RMG-TER-001 to -003,
+  -005 to -018) `implemented`, each named by a test; (b) on the 24 corpus cases in `faithful` the
+  draws and dumps after steps 1, 2 and 3 equal `phases.txt`'s (with `zones.txt`'s measured bytes;
+  the model's own give step 2 on 22), in CI; (c) RMG-QUIRK-12, -14 confirmed by (b), -21's
+  painter's half and -1's flag tested in both profiles, -3's and -4's cases of steps 1 to 3 typed
+  errors; (d) `arbitrary_settings_never_panic` over steps 1 to 3; (e) T3b's items and
+  `rmg_island_fill` read. #1204 (T3e) open, CI running.
+- **The user** (decision 11): increment 3 closed; RMG-QUIRK-1's form left open until increment 4
+  (the constants stay provisional); T3b's clip of an off-map side harmless and accepted (the
+  ledger's "Considered, not quirks"); a zone that fills nothing fix-optional as RMG-QUIRK-25 (its
+  fix and flag in T4b); the three corner cases never seen wait for increment 7's census;
+  increment 4 cut into T4a (the items not read), T4b (steps 4 and 5, object placing), T4c (step
+  6's obstacle plan), T4d (step 6's connections), T4e (step 7), as proposed. Docs only.
