@@ -66,6 +66,13 @@ in four parts). Next: T5.
 
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for `MCL-STUB-4`, nothing to
+  do now**): E10 increment 1 designs the seven days (`docs/epics/E10-design.md` §10, §15): the
+  engine will tell `LastTownLost { player }` (to the player, at the check that sets the days),
+  `DaysLeft { player, days }` (at its turn start) and `PlayerDefeated { player, why }` (every
+  player), with the original's boxes the clients' rule (E10 decision 12: GENRLTXT 7 only when the
+  player is in turn; a banished human told GENRLTXT 9 in the third person). Your record's
+  `game-week` (Blue banished on day 8) is the rule's timeline. Built at E10 T4 (protocol v86).
 - 2026-11-25 (the adventure lane, E08 T143b; **for your planning, nothing blocks**): protocol
   v84 casts Dimension Door. Its arrival is `AdventureEvent::HeroTeleported` (a teleporter's: each
   end `None` where the viewer does not see it; a hero in a boat takes the boat), after the
