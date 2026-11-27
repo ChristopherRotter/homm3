@@ -73,6 +73,20 @@ fn owners_are_none_or_a_colour() {
 }
 
 #[test]
+fn objects_gone_stand_no_more() {
+    // E24 M5 T4c, T4's game: a later start's objects taken off the map (`gone`).
+    let (_, live) = read("gone = [1]\n").unwrap();
+    assert!(live.objects[0].standing);
+    assert!(!live.objects[1].standing);
+    for wrong in ["[2]", "[-1]", "[\"a\"]", "1"] {
+        assert_eq!(
+            read(&format!("gone = {wrong}\n")).unwrap_err(),
+            "`gone` is not a list of objects"
+        );
+    }
+}
+
+#[test]
 fn the_objects_must_be_the_maps() {
     let (art, _) = map();
     let anchors: Vec<String> = art

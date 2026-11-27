@@ -674,6 +674,24 @@ fn the_turns_tables_read() {
             crate::live::Calendar::Creature(4)
         )
     );
+    // A record's week of the Deity (E24 M5 T4c): its creatures (−1 none) and growth; a growth
+    // out of range, none.
+    let week = |row: &[i64]| {
+        let mut turn = turn.clone();
+        let values = row.iter().map(|&n| toml::Value::Integer(n)).collect();
+        let table = turn.as_table_mut().unwrap();
+        table.insert("week".into(), toml::Value::Array(values));
+        Turn::read(&turn).map(|t| t.week)
+    };
+    assert_eq!(
+        week(&[2, 42, -1, 15]),
+        Some(crate::live::Calendar::Deity {
+            creatures: [Some(42), None],
+            bonus: 15
+        })
+    );
+    assert_eq!(week(&[2, 42, 43, -1]), None);
+    assert_eq!(week(&[2, 42, 43]), None);
     let _: Option<HeroStatus> = None;
 }
 

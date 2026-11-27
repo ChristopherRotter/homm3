@@ -474,3 +474,86 @@ fn a_window_is_refused_where_no_market_stands_or_the_town_is_not_the_players() {
         Err(GameCommandError::DecisionOpen)
     );
 }
+
+/// Red's listed town commands at `town`, in the listing's order.
+fn listed_at(rules: &GameRuleset, game: &GameState, town: TownId) -> Vec<TownCommand> {
+    let legal = crate::legal_commands(game, rules, crate::Actor::Player(RED));
+    legal
+        .into_iter()
+        .filter_map(|command| match command {
+            GameCommand::Town(command) => Some(command),
+            _ => None,
+        })
+        .filter(|command| {
+            let at = match *command {
+                TownCommand::Build { town, .. }
+                | TownCommand::Recruit { town, .. }
+                | TownCommand::Heroes { town, .. }
+                | TownCommand::Hire { town, .. }
+                | TownCommand::Open { town }
+                | TownCommand::BuySpellBook { town }
+                | TownCommand::Market { town } => town,
+            };
+            at == town
+        })
+        .collect()
+}
+
+// covers: TWN-MKT-002, GAM-DEC-011
+#[test]
+fn the_listing_opens_a_window_where_it_opens_and_offers_an_answer() {
+    let rules = rules();
+    let window = TownCommand::Market { town: T0 };
+    // A Marketplace without a hero: listed while the treasury pays a trade's lot, and accepted.
+    let mut game = built(&rules, &[MARKET_SLOT], false);
+    assert!(listed_at(&rules, &game, T0).contains(&window));
+    let mut opened = game.clone();
+    run(&rules, &mut opened, RED, market(T0)).unwrap();
+    assert!(opened.market(RED).is_some());
+    // An empty treasury pays no lot, and without a hero nothing sells: not listed (`apply` still
+    // opens it).
+    game.set_resource(RED, GOLD, 0);
+    assert_eq!(held(&game, WOOD), 0);
+    assert!(!listed_at(&rules, &game, T0).contains(&window));
+    run(&rules, &mut game.clone(), RED, market(T0)).unwrap();
+    // One wood pays no lot of gold at one Marketplace: still none.
+    game.set_resource(RED, WOOD, 1);
+    let lot = rules
+        .adventure()
+        .params()
+        .market()
+        .unwrap()
+        .resource_lot(1, WOOD, GOLD)
+        .unwrap();
+    assert_eq!(
+        lot.give > 1,
+        !listed_at(&rules, &game, T0).contains(&window)
+    );
+    // With the visitor at the guild: its army's sale answers with an empty treasury, listed after
+    // the guild's commands and before the hero moves.
+    let mut game = built(&rules, &[GUILD_SLOT], true);
+    game.set_resource(RED, GOLD, 0);
+    let listed = listed_at(&rules, &game, T0);
+    let at = listed.iter().position(|c| *c == window).unwrap();
+    let moves = listed
+        .iter()
+        .position(|c| matches!(c, TownCommand::Heroes { .. }))
+        .unwrap();
+    assert!(at < moves, "{listed:?}");
+    // At the merchants alone the purchase needs the price: none with an empty treasury; no hero,
+    // no window.
+    let mut game = built(&rules, &[MERCHANTS_SLOT], true);
+    game.set_resource(RED, GOLD, 0);
+    assert!(!listed_at(&rules, &game, T0).contains(&window));
+    let away = built(&rules, &[MERCHANTS_SLOT, GUILD_SLOT], false);
+    assert!(!listed_at(&rules, &away, T0).contains(&window));
+    // None without a market.
+    let none = built(&rules, &[], true);
+    assert!(!listed_at(&rules, &none, T0).contains(&window));
+    // Red owning both towns lists both windows (the count read once).
+    let mut setup = setup(&rules, &[MARKET_SLOT]);
+    setup.map.objects[1].owner = Some(RED);
+    let both = GameState::new(&rules, &setup, 9).unwrap();
+    assert!(listed_at(&rules, &both, T0).contains(&window));
+    assert!(listed_at(&rules, &both, T1).contains(&TownCommand::Market { town: T1 }));
+}

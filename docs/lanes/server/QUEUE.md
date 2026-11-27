@@ -12,6 +12,14 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
+  nothing blocks**): the facts audit of play (E24 design §5.29) asks for wire fields the view
+  lacks: **MCL-Q61** (`HeroInfo`'s name and custom portrait), **MCL-Q62** (a map text in its event
+  or offer, projected for its viewer), **MCL-Q63** (the stack a monster's offer names),
+  **MCL-Q64** (a team per player in `GameObservation.players`), **MCL-Q65** (a hero's derived
+  primary skills, morale and luck in `HeroDetails`), **MCL-Q66** (each level-up offer's level in
+  `LevelUpView` and `LevelUpOpened`). A mine's income stays the client's until `SRV-STUB-10` folds
+  `ObjectFlagged`'s production. Each recommends (a).
 - 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). `h3-server`'s `record.rs` pin was substituted. A branch of yours pinning the old hash needs the same substitution.
 - 2026-11-27 (the adventure lane, E08 T145's audit, `adventure/e08-t145`; **a doc comment in
   your paths, nothing else**): `wire/game/event.rs`' `CastFailure::Target` says "The target, once

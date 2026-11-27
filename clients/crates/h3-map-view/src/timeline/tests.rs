@@ -3148,6 +3148,7 @@ mod flags;
 mod hosted;
 mod levels;
 mod moves;
+mod notices;
 mod replies;
 mod turns;
 mod visits;

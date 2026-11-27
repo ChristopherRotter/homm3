@@ -1,0 +1,59 @@
+# The map client's own texts (E24 M5 T4c, *provisional*; docs/epics/E24-design.md §5.28): keys
+# with no original form, their messages in the client's own words in the pack beside this file
+# (`en.json`), read by the map client alone. Apart from the common catalogue's own texts
+# (`../keys.toml`, `../en.json`), whose list the battle client's tests pin (MCL-Q68).
+#
+# The screens' notice (MCL-STUB-7): a box of style 1 in play over the adventure map where a screen
+# of M6 or M7 (the hero screen, the town screen, the spell book; the kingdom overview, the quest
+# log, the adventure options), a visit's window or a battle (M5 T6) is not built yet; a decision's
+# notice closes it through the host (h3_map_view::notice).
+[[key]]
+id = "map.stub.hero"
+
+[[key]]
+id = "map.stub.town"
+
+[[key]]
+id = "map.stub.book"
+
+[[key]]
+id = "map.stub.kingdom"
+
+[[key]]
+id = "map.stub.quests"
+
+[[key]]
+id = "map.stub.adventure"
+
+[[key]]
+id = "map.stub.recruit"
+
+[[key]]
+id = "map.stub.shipyard"
+
+[[key]]
+id = "map.stub.university"
+
+[[key]]
+id = "map.stub.market"
+
+[[key]]
+id = "map.stub.altar"
+
+[[key]]
+id = "map.stub.hill-fort"
+
+[[key]]
+id = "map.stub.tavern"
+
+[[key]]
+id = "map.stub.meeting"
+
+[[key]]
+id = "map.stub.army"
+
+[[key]]
+id = "map.stub.garrison"
+
+[[key]]
+id = "map.stub.battle"

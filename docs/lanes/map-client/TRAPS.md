@@ -190,6 +190,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   and Blue id 1, so the two agree there. Turn it into the colour where the observation is at hand
   (`engine::played`: `Visit::flag`, `OtherOpen`'s colour); a test with ids and colours apart
   (`tests/engine.rs::a_record_s_flags_in_their_owners_colours`) catches a raw id drawn.
+- **A record's creature is a content handle, not the original's number** (M5 T4c, design
+  §5.29; fixed): the packs give handles in their order (`base` the original's 0 to 117, then its
+  war machines 145 to 149 as 118 to 122; `ab` 118 on as 123 on), so past 117 a wire `creature` is
+  not the creature tables' (`creature.<n>`, portraits, templates) number (`seq-ask-join`'s
+  Peasants, 139, were drawn as Boars, handle 140). Read one through `Loaded::creatures`
+  (`engine::Creatures::number`: the handle's key in the rules, the original's number of the key);
+  a visit's events come numbered (`Creatures::event`, the kinds `engine::visits` reads: a new
+  kind read there joins its match). A test of a new reading takes an AB creature or a war machine
+  (`tests/engine.rs::handle`); the recordings' paths read the original's numbers already.
 - **A record's walk need not take its whole path** (M4 T6, design §5.13): `MoveHero`'s path is
   what was clicked; the record's `HeroStepped` are what was walked (a visit from beside stops one
   short, an event or a guard's battle earlier). Read a walk's end from its steps (`Move::stops`,
@@ -254,6 +263,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `play` reads a map as the game keeps it (M5 T4b): a situation's map written by
   `h3-map-view situation` is not compressed, so `gzip -c` it first ("not a gzip-compressed map
   file"); a record of it is played by `record --record-map` on the gzipped file (its hash).
+  A shipped map is gzipped already. An acceptance game's script (M5 T4c, the log's "part four")
+  avoids objects the engine does not model yet (an Obelisk, a blocker until E09 increment 8, TWN-STUB-17:
+  drawn and hinted from the file, a click shows no path, a key's step onto it is refused) and
+  monsters' zones (a battle ends play, MCL-STUB-6); `tesseract` on the status bar's crop (white
+  text thresholded) names what is under the pointer, which finds the tiles to click.
 - The client lane's standing traps apply to the foundation and the harness (`docs/lanes/client/HANDOFF.md`): the licences (`winit`, `cpal`, Bevy are excluded: SDL 3), the purity allowlist of a pure crate, `clients/Cargo.lock` as a common path, no float arithmetic in drawing and timing, never running the original from the installation, captures never in git, a capture run alone.
 
 - **A re-run of CI forces the full verify** (M4 T2b1, PR #1007): `ci.yml`'s plan sets `FORCE` for a

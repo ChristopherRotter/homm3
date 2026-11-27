@@ -3796,8 +3796,14 @@ the town as its place; refusals typed (`TownCommandError`), nothing changed:
   hero when no visitor of the actor's stands (an ally's visitor is none: `TWN-STUB-21`).
   `MarketOpened` and `MarketView` carry `hero: Option<HeroId>` and `place: MarketSeen`
   (`Object { object_type, anchor }` or `Town(TownId)`, never an index); the decision's hash writes
-  the hero as an option and the place's tag (game state hash **v40**). Not listed yet
-  (`TWN-STUB-22`, T58a2). The wire (protocol **v85**): `TownCommand::Market`, `TownReject::NoMarket`,
+  the hero as an option and the place's tag (game state hash **v40**). Listed since T58a2
+  (decision 225; `TWN-STUB-22` lifted): `legal_builds` gives a town's `Market` after its spell
+  book's purchase and before its hero moves where `town::market::listed` holds (`check_market`
+  with the window's hero, the visitor and garrison hero with their owners found on the town's
+  entrance as for the guild; the trader's count once a listing; `GameState::offers_an_answer`: a
+  trade of a valued pair whose lot the treasury pays, asked first without a list, else
+  `market_answers`' sales and purchases with a hero); `check_market` and `marketplaces` read the
+  part's derived `MarketRoles` per record (not hashed, as `GuildRoles`). The wire (protocol **v85**): `TownCommand::Market`, `TownReject::NoMarket`,
   `MarketSeen`, `MarketWindow`'s and `MarketOpened`'s optional hero and place; the replay word
   `town market <town>` (format **v27**; the 118 goldens re-recorded from their commands: the
   format and game state hash version lines and the hash lines only).
@@ -4008,7 +4014,9 @@ Decision 210 (the original's town University runs the map's dialog functions, §
   stack that changes). The market's trades, sales and purchases inside a town's window are E08's
   56 entries; the University's purchases its four; each window's `Leave` the closing role. No
   transfer, as E08 (decision 372). The next version at merge per task, or one when tasks land
-  together.
+  together. *As built* (T58a2, decision 225): the opening `TOWN_MARKET` (145, after the casts so
+  that no entry moves; encoding **v22**), its tile mask the entrances of the towns of the listed
+  windows, building 0; the random agent draws it as every listed command.
 - **The protocol** (the server lane's paths, `cross-lane`): the decisions' places (`MarketWindow`'s
   object or town, its hero optional; the University's), `SellArtifact` with its refusals, the five
   commands with their refusals, the events' places; the next version per task at merge.

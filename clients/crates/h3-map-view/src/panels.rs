@@ -25,6 +25,8 @@ pub mod id {
     pub const MINIMAP: u16 = 1;
     /// The text over the view (+0x54: a press there a tile's click, as the view's).
     pub const TEXT: u16 = 37;
+    /// The kingdom overview (E24 M5 T4c: its notice in play).
+    pub const KINGDOM: u16 = 3;
     /// The underground.
     pub const UNDERGROUND: u16 = 4;
     /// The quest log.
@@ -35,6 +37,8 @@ pub mod id {
     pub const MOVE_HERO: u16 = 7;
     /// Cast a spell.
     pub const CAST: u16 = 8;
+    /// The adventure options (E24 M5 T4c: its notice in play).
+    pub const ADVENTURE: u16 = 9;
     /// Next hero.
     pub const NEXT_HERO: u16 = 11;
     /// End turn (E24 M4 T1a).

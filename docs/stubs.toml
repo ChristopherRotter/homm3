@@ -247,6 +247,13 @@ epic   = "E16"
 # reason = "A walk in play that begins a battle (a guard's zone entered, a monster or a hero attacked) ends play with an error (E24 M5 T4a, design section 5.26): the engine's battle runs, but the map hands it to no battle client in play yet. Lifted by M5 T6 (a human's attack played live in the window through the battle client's seat on the in-process session)"
 # epic   = "E24"
 
+# MCL-STUB-7, a comment for the same reason; its marker `// stub: MCL-STUB-7` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-7"
+# where  = "clients/crates/h3-map-view/src/notice.rs::Notice"
+# reason = "A screen of M6 or M7 is a notice in the client's words in play (E24 M5 T4c, design section 5.28): the hero screen, the town screen (a hero's entry into a town too), the spell book, the kingdom overview, the quest log and the adventure options show a box with one OK; a decision the view does not ask (a hire dialog or a dwelling's or a Refugee Camp's hire question, a Shipyard's boat, a University, a market, an Altar, a Hill Fort, a map Tavern, a meeting, an army dialog, a garrison's exchange, and a guarded object's or a dwelling's guards' fight) shows its window's notice, whose OK closes the decision through the host (the offer declined, the window left or closed). A recording refuses them as before. Lifted screen by screen by M6 (the hero's screens) and M7 (the town screen), the fights by M5 T6 (the battles in play)"
+# epic   = "E24"
+
 # --- town (TWN-STUB-<n>) ---
 
 [[stub]]
@@ -289,12 +296,6 @@ epic   = "E09"
 id     = "TWN-STUB-21"
 where  = "crates/h3-game/src/town/market.rs::window_hero"
 reason = "An ally's town's trades wait for E10's teams (E09 T58a1, design note E09-design.md section 101, 'Not here'): every town command is the town owner's, so a player's visitor at an ally's Artifact Merchants or Freelancer's Guild (the original serves the current player's visitor there at the current player's count, TD-29, TWN-6-2) and an ally's visitor at an own town (not the window's hero) trade nothing; the University, the Transformer and the Blacksmith (E09 T59) the same. Lifted with E10's teams"
-epic   = "E09"
-
-[[stub]]
-id     = "TWN-STUB-22"
-where  = "crates/h3-game/src/town/offer.rs::legal_builds"
-reason = "A town's market window (TownCommand::Market, TWN-MKT-002; E09 T58a1) is not listed by legal_commands: apply accepts it, but the env has no entry for it and the random agents and the property plans never open it. Lifted by E09 T58a2 (the listing where the window opens and offers a legal answer, the env's opening entry, the plans)"
 epic   = "E09"
 
 # --- ai (AI-STUB-<n>) ---

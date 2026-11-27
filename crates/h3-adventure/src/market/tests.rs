@@ -278,6 +278,42 @@ fn the_parameters_refuse_what_no_rate_can_use() {
     assert_eq!((original().cost(), most.cost()), (GOLD, WOOD));
 }
 
+// covers: ADV-MKT-002
+#[test]
+fn the_cheapest_lot_is_the_least_any_trade_takes_and_its_most_over_the_counts() {
+    // E09 T58a2: the legal listing's tables, each the lots' own.
+    let params = original();
+    let resources = || (0..7).map(resource);
+    for give in resources() {
+        let mut most = 0;
+        for count in 1..=params.counts() {
+            let least = resources()
+                .filter_map(|take| params.resource_lot(count, give, take))
+                .map(|lot| lot.give.max(1))
+                .min();
+            assert_eq!(
+                params.cheapest_lot(count, give),
+                least,
+                "{give:?} at {count}"
+            );
+            most = most.max(least.unwrap());
+        }
+        assert_eq!(params.cheapest_at_every_count(give), Some(most));
+    }
+    // Gold buys a wood at one Marketplace for its 2 500 (250 over 0.1), at ten for 500.
+    assert_eq!(params.cheapest_lot(1, GOLD), Some(2500));
+    assert_eq!(params.cheapest_lot(10, GOLD), Some(500));
+    assert_eq!(params.cheapest_at_every_count(GOLD), Some(2500));
+    // None outside the counts, for a resource not valued, or with no other resource.
+    assert_eq!(params.cheapest_lot(0, GOLD), None);
+    assert_eq!(params.cheapest_lot(11, GOLD), None);
+    assert_eq!(params.cheapest_lot(1, UNKNOWN), None);
+    assert_eq!(params.cheapest_at_every_count(UNKNOWN), None);
+    let alone = MarketParams::new(WOOD, vec![250], vec![125], &[[10, 20, 30]]).unwrap();
+    assert_eq!(alone.cheapest_lot(1, WOOD), None);
+    assert_eq!(alone.cheapest_at_every_count(WOOD), None);
+}
+
 proptest! {
     // covers: ADV-MKT-002
     #[test]

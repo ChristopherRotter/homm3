@@ -178,8 +178,13 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 21);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 145));
+    assert_eq!(ACTION_ENCODING_VERSION, 22);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 146));
+    // E09 T58a2 (v22): a town's market window after the casts.
+    assert_eq!(
+        (TOWN_MARKET, Action::town_market(9)),
+        (145, Action::map(145, 9))
+    );
     // E08 T144a2 (v21): five casts per hero slot after the spell book's purchase.
     assert_eq!(
         (TOWN_OPEN, SPELL_BOOK, CAST_BASE, CAST_SPELLS),
@@ -435,8 +440,9 @@ fn is_move(entry: usize) -> bool {
 /// [`RECRUIT`]'s those of the listed recruitments (E09 T27); a [`TOWN_HEROES`] entry's the
 /// entrances of the towns of the listed hero moves of its kind, each decoding to that move
 /// ([`check_town_heroes`], E09 T28a), a [`TAVERN_HIRE`] entry's those of the listed hires of
-/// its slot (E09 T38a2), [`TOWN_OPEN`]'s those of the listed openings (E09 T49a2) and
-/// [`SPELL_BOOK`]'s those of the listed spell books' purchases (E09 T49b); a cast entry's 0 alone
+/// its slot (E09 T38a2), [`TOWN_OPEN`]'s those of the listed openings (E09 T49a2),
+/// [`SPELL_BOOK`]'s those of the listed spell books' purchases (E09 T49b) and [`TOWN_MARKET`]'s
+/// those of the listed market windows (E09 T58a2); a cast entry's 0 alone
 /// for its hero's listed cast without a target, the targets of its hero's query for Scuttle Boat
 /// and Dimension Door, each decoding to that cast ([`casts::check_cast`], E08 T144a2); after
 /// another entry the building head allows 0 alone at its first legal tile, nothing after an
@@ -507,12 +513,15 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
             check_build_boat(env, player, &commands, &tiles)?;
             continue;
         }
-        if (TOWN_HEROES..MARKET_TRADE).contains(&entry) || entry == TOWN_OPEN || entry == SPELL_BOOK
+        if (TOWN_HEROES..MARKET_TRADE).contains(&entry)
+            || entry == TOWN_OPEN
+            || entry == SPELL_BOOK
+            || entry == TOWN_MARKET
         {
             check_town_heroes(env, (player, entry), &commands, &tiles)?;
             continue;
         }
-        if (CAST_BASE..ENTRY_COUNT).contains(&entry) {
+        if (CAST_BASE..TOWN_MARKET).contains(&entry) {
             casts::check_cast(env, (player, entry), &commands, &tiles)?;
             continue;
         }
@@ -623,7 +632,8 @@ fn check_build_boat(
 /// A [`TOWN_HEROES`] entry's tiles (E09 T28a): the entrances of the towns of the listed hero
 /// moves of its kind, each decoding to its move, which encodes back to it; a [`TAVERN_HIRE`]
 /// entry's the same with the listed hires of its slot (E09 T38a2), [`TOWN_OPEN`]'s with the listed
-/// openings (E09 T49a2), [`SPELL_BOOK`]'s with the listed spell books' purchases (E09 T49b).
+/// openings (E09 T49a2), [`SPELL_BOOK`]'s with the listed spell books' purchases (E09 T49b),
+/// [`TOWN_MARKET`]'s with the listed market windows (E09 T58a2).
 fn check_town_heroes(
     env: &AdventureEnv,
     (player, entry): (PlayerId, usize),
@@ -648,6 +658,9 @@ fn check_town_heroes(
                 town_tile(state, town)
             }
             GameCommand::Town(TownCommand::BuySpellBook { town }) if entry == SPELL_BOOK => {
+                town_tile(state, town)
+            }
+            GameCommand::Town(TownCommand::Market { town }) if entry == TOWN_MARKET => {
                 town_tile(state, town)
             }
             _ => None,
