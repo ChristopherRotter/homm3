@@ -17,7 +17,7 @@
 //! the object model the steps from 4 place with ([`Objects`]: the prototypes, the placed objects
 //! and the cells' lists, the entrances' distance flood, the placing test; E14 T4b); steps 4 and
 //! 5, the towns ([`Placed`], E14 T4b); step 6's obstacle plan in part (the lanes, the zone
-//! walls, the cells of no zone; E14 T4c). The other steps come with increments 4 to 6, the
+//! walls, the cells of no zone, the islets; E14 T4c). The other steps come with increments 4 to 6, the
 //! writer's content with 7.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
@@ -77,7 +77,10 @@ pub use part::{
 pub use partition::{
     MemoryZone, Partition, PartitionFault, SITE_BORDER_JITTER, UNREACHED, ZoneMemory,
 };
-pub use plan::{SITE_LANE_JITTER, SITE_LANE_ORIENTATION};
+pub use plan::{
+    SITE_ISLET_CENTRE, SITE_ISLET_HEIGHTS, SITE_ISLET_RADIUS, SITE_ISLET_TERRAIN, SITE_LANE_JITTER,
+    SITE_LANE_ORIENTATION,
+};
 pub use settings::{
     COLOURS, Choices, MapFormat, MapSize, Monsters, Settings, SettingsError, TOWN_TYPES, Water,
     resolve_random,

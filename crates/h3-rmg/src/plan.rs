@@ -2,9 +2,9 @@
 //! `docs/rules/surveys/E14-generator.md` §2.3, "Step 6's plan as ported (T4c)"): which cells
 //! take obstacles (+0x28 bit 26, filled by step 13) and which stay free (bit 27), in the
 //! original's order: the lanes (`rmg_free_lanes_draw` 0x543E20), the zone walls
-//! (`rmg_zone_borders_close` 0x53F880), the land cells of no zone made obstacles; then (later
-//! parts of E14 T4c) the islets, the zones' free cells joined and the water shores sealed. The
-//! connections (T4d) follow and end step 6.
+//! (`rmg_zone_borders_close` 0x53F880), the land cells of no zone made obstacles, the islets
+//! ([`islets`]); then (a later part of E14 T4c) the zones' free cells joined and the water shores
+//! sealed. The connections (T4d) follow and end step 6.
 //!
 //! A cell with +0x2C bit 0 (a pending Border Guard) keeps its bits 26 and 27 through every mark
 //! here.
@@ -16,9 +16,13 @@ use alloc::vec::Vec;
 use crate::cells::{Cells, ENTRANCE, FREE, KEPT, OBSTACLES};
 use crate::generate::{Stream, Trace};
 use crate::layout::{ZoneGenerator, trunc_sqrt};
-use crate::painter::{ROCK, WATER};
+use crate::painter::{PaintFault, Pictures, ROCK, WATER};
 use crate::part::Zone;
 use crate::template::KeptConnection;
+
+mod islets;
+
+pub use islets::{SITE_ISLET_CENTRE, SITE_ISLET_HEIGHTS, SITE_ISLET_RADIUS, SITE_ISLET_TERRAIN};
 
 /// The call site of a lane's orientation draw (`rmg_free_lanes_draw`,
 /// `rmg_lane_orientation_draw`): `rand() % 4` per level.
@@ -37,6 +41,10 @@ pub(crate) struct PlanInput<'a> {
     pub connections: &'a [KeptConnection],
     /// The zone generators.
     pub gens: &'a [ZoneGenerator],
+    /// The terrain painter's picture sets (the islets', the shores' seal).
+    pub pictures: &'a Pictures,
+    /// `quirk.rmg.cosmetic` (RMG-QUIRK-21's painter's half).
+    pub cosmetic: bool,
 }
 
 /// +0x2C bit 0: a pending Border Guard, whose cell keeps its bits 26 and 27.
@@ -390,10 +398,18 @@ fn no_zone(cells: &mut Cells) {
 }
 
 /// Step 6's plan (`rmg_paths_and_connections` 0x544920 up to its connections), in its order:
-/// the lanes, the zone walls, the land cells of no zone made obstacles. The islets, the joining
+/// the lanes, the zone walls, the land cells of no zone made obstacles, the islets. The joining
 /// and the shores' seal are to come (E14 T4c), then the connections (T4d), which end step 6.
+///
+/// # Errors
+///
+/// The first terrain painter's fault met (RMG-QUIRK-3, -4; an islet's), the plan run to its end.
 // rule: RMG-CON-001
-pub(crate) fn plan<T: Trace>(stream: &mut Stream<'_, T>, input: &PlanInput<'_>, cells: &mut Cells) {
+pub(crate) fn plan<T: Trace>(
+    stream: &mut Stream<'_, T>,
+    input: &PlanInput<'_>,
+    cells: &mut Cells,
+) -> Result<(), PaintFault> {
     // (1) The lanes (RMG-CON-002 to -004).
     lanes(stream, cells);
     // (2) The zone walls (RMG-CON-005).
@@ -401,11 +417,13 @@ pub(crate) fn plan<T: Trace>(stream: &mut Stream<'_, T>, input: &PlanInput<'_>, 
     // (3) The land cells of no zone (RMG-CON-006).
     no_zone(cells);
     // (4) The islets (RMG-CON-007, -008): `rmg_water_zone_islets` 0x53F470 per zone generator,
-    // in order. stub: RMG-STUB-1
+    // in order.
+    let painted = islets::islets(stream, input, cells);
     // (5) The free cells joined (RMG-CON-009 to -011): `rmg_zone_paths_connect` 0x5405D0.
     // stub: RMG-STUB-1
     // (6) The water shores sealed (RMG-CON-012): `rmg_water_shores_seal` 0x53FCB0.
     // stub: RMG-STUB-1
+    painted
 }
 
 #[cfg(test)]

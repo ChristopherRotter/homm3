@@ -3,7 +3,7 @@
 //! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
 //! T3c, step 2 since T3d, step 3 since T3e), each draw and each step's end reported to a
 //! [`Trace`]. Steps 4 and 5, the towns, since T4b; step 6's obstacle plan in part (the lanes,
-//! the zone walls, the cells of no zone) since T4c, step 6 not ended; the rest of step 6, steps
+//! the zone walls, the cells of no zone, the islets) since T4c, step 6 not ended; the rest of step 6, steps
 //! 7 to 15 and the writer's content come with increments 4 to 7.
 
 use alloc::string::String;
@@ -20,6 +20,7 @@ use h3_kernel::rng::CrtRand;
 use crate::cells::Cells;
 use crate::layout::{LayoutInput, ZoneGenerator, lay_out};
 use crate::objects::{Object, ObjectFault, Objects};
+use crate::painter::{PaintFault, Pictures};
 use crate::part::RmgRuleset;
 use crate::partition::{
     MemoryZone, Partition, PartitionFault, PartitionInput, ZoneMemory, partition,
@@ -130,6 +131,14 @@ pub enum GenerateError {
     /// Step 3 met what the original divides by zero at (RMG-QUIRK-3) or reads outside its
     /// arrays or never ends at (RMG-QUIRK-4).
     Terrain(TerrainFault),
+    /// A terrain painter after step 3 met what the original divides by zero at (RMG-QUIRK-3) or
+    /// never ends at (RMG-QUIRK-4): the first met in the step.
+    Paint {
+        /// The step.
+        step: u8,
+        /// What went wrong.
+        fault: PaintFault,
+    },
     /// A step's object placing met what the original divides by zero at (RMG-QUIRK-3), throws at
     /// or reads or writes outside its arrays at (RMG-QUIRK-4): [`Objects::take_fault`] at the
     /// step's end.
@@ -171,6 +180,7 @@ impl fmt::Display for GenerateError {
             Self::LayoutSpan => f.write_str("step 1: the layout spans nothing"),
             Self::Partition { level, fault } => write!(f, "step 2, level {level}: {fault:?}"),
             Self::Terrain(fault) => write!(f, "step 3: {fault:?}"),
+            Self::Paint { step, fault } => write!(f, "step {step}, the terrain painter: {fault:?}"),
             Self::Objects { step, fault } => write!(f, "step {step}, an object: {fault:?}"),
         }
     }
@@ -246,7 +256,7 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// read by the constructor; nothing draws there) for the steps that place objects; steps 4 and
 /// 5, the towns (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0 per zone
 /// generator); step 6's plan so far (`rmg_paths_and_connections` 0x544920: the lanes, the zone
-/// walls, the cells of no zone), step 6 not yet ended.
+/// walls, the cells of no zone, the islets), step 6 not yet ended.
 ///
 /// # Errors
 ///
@@ -430,15 +440,19 @@ pub fn generate<T: Trace>(
             },
         );
     }
+    let pictures = Pictures::new(tables);
     plan(
         &mut stream,
         &PlanInput {
             zones: &template.zones,
             connections: &template.connections,
             gens: &zones,
+            pictures: &pictures,
+            cosmetic: quirks.is_enabled(RMG_COSMETIC),
         },
         &mut cells,
-    );
+    )
+    .map_err(|fault| GenerateError::Paint { step: 6, fault })?;
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
         settings: run,

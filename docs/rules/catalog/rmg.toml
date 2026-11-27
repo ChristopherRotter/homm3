@@ -941,7 +941,7 @@ id       = "RMG-CON-001"
 title    = "Step 6: the obstacle plan's order"
 context  = "rmg"
 status   = "implemented"
-summary  = "rmg_paths_and_connections runs, in this order: the lanes (RMG-CON-002 to -004), the zone walls (RMG-CON-005), the land cells of no zone made obstacles (RMG-CON-006), per zone generator in order the islets (RMG-CON-007, -008), the zones' free cells joined (RMG-CON-009 to -011), the water shores sealed (RMG-CON-012), the connections (RMG-CON-013 on). Bit 26 of a cell's +0x28 marks it for obstacles (step 13), bit 27 keeps it free; a cell with +0x2C bit 0 (a pending Border Guard) keeps both through every mark. The port runs the first three parts so far (E14 T4c)."
+summary  = "rmg_paths_and_connections runs, in this order: the lanes (RMG-CON-002 to -004), the zone walls (RMG-CON-005), the land cells of no zone made obstacles (RMG-CON-006), per zone generator in order the islets (RMG-CON-007, -008), the zones' free cells joined (RMG-CON-009 to -011), the water shores sealed (RMG-CON-012), the connections (RMG-CON-013 on). Bit 26 of a cell's +0x28 marks it for obstacles (step 13), bit 27 keeps it free; a cell with +0x2C bit 0 (a pending Border Guard) keeps both through every mark. The port runs the first four parts so far (E14 T4c)."
 quirks   = []
 numeric  = "integer"
 
@@ -1049,3 +1049,41 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "The phase oracle (E14 T4c, clients/capture/rmg/plan.txt): in the 11 corpus cases whose plan draws nothing after the lanes the port draws no more (h3-pack-rmg's the_corpus_draws_step_6s_lanes_as_the_original); the cells are checked with step 6's dump after E14 T4d"
   confidence = "medium"
+
+[[rule]]
+id       = "RMG-CON-007"
+title    = "The islets: the distance from a water zone's edge and the centres"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_water_zone_islets, per zone generator in order whose terrain is water (8), with its zone's id and box [x0, x1) x [y0, y1) on its level: every cell of the box takes +0x1C bits 16-31 32000, +0x28 bits 12-14 and +0x20 bits 24-31 0; every cell of the box widened by one and clamped to the map (row by row) whose zone byte is not the id seeds rmg_zone_distance_flood: the seed entered at cost 0 (its zone unchecked), then least cost first (a vector sorted from the highest, the last taken, a new entry before its equals: equal costs first listed first; a cell entered again is listed again and expands at its current cost) each rmg_neighbours step (E, SE, S, SW, W, NW, N, NE) on the map into a cell whose zone byte is the id, 2 orthogonal and 3 diagonal, entering it (the cost into +0x1C bits 16-31, the step's index into +0x28 bits 12-14, +0x20 bits 24-31 0) when below its cost. Then while the box's cells in columns max(x0, 3)..min(x1, W - 4) and rows max(y0, 3)..min(y1, H - 4) (row by row) hold some at 20 or more: one drawn rand() % their count (0x53F745, unsigned) at (x, y) with its cost d, a half-size r = 3 + rand() % (d / 3 - 5) at most 6 (0x53F794; d >= 20 makes the modulus 1 or more), the islet (RMG-CON-008) over [max(x - r, 0), min(x + r, W)) x [max(y - r, 0), min(y + r, H)), and a flood from (x, y). The candidates are any cells of the box, the zone's or not (the others are seeds at 0: never drawn)."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4c): rmg_water_zone_islets 0x53F470, rmg_zone_distance_flood 0x53F1A0; survey E14-generator.md §2.3 (\"The islets\", \"Step 6's plan as ported (T4c)\"), §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/out/rmg/<case>/run1/clock/rmg1.draws): in the 4 corpus cases with islets (m2-4p 3, l1-4p-b 22, l1-4p-c 13, xl2-4p-seed0 63) the port's draws after step 5 equal the original's step 6 draws over their whole length, the lanes then every islet; in the other 20 the port draws no islet; the cells are checked with step 6's dump after E14 T4d"
+  confidence = "high"
+
+[[rule]]
+id       = "RMG-CON-008"
+title    = "An islet: the terrain, the height map, the painter, the obstacles"
+context  = "rmg"
+status   = "implemented"
+summary  = "rmg_islet_draw over the box of W columns and H rows: a terrain rand() % 6 (0x53EFE4: dirt, sand, grass, snow, swamp, rough); rmg_islet_heightmap's row-major byte mask: with a = (H + W) / 4 + 1 the whole box is split at once (rmg_heightmap_quadrants_push: corners and edge midpoints 0, the centre a / 2, amplitude a, no draw); then last in, first out, a record of one cell writes its top-left height clamped to 0..255, a larger one takes its edges' means top (top-left, top-right), left (top-left, bottom-left), bottom, right and the centre (all four), each displaced while a > 1 by rand() % a - a / 2 in that order (0x53EEFF, 0x53EF0C, 0x53EF19, 0x53EF2E, 0x53EF43), and is split with amplitude (a - 1) / 2 + 1: cut at the middle row (r0 + r1) / 2 and column, each quadrant given the heights at its own corners, appended bottom-right, bottom-left, top-right, top-left (a quadrant of no row or no column skipped). Divisions are C's, toward zero. A terrain painter of the terrain (terrain_painter_init, weight 4, a view of the level) is given each cell of a height above 0 row by row as a rectangle of one cell and finished (RMG-TER-005 on); then every cell of the box not water, unless +0x2C bit 0, takes bit 26 and loses 27: an islet is obstacles only (a cell the painter made land outside the box is left). Progress +1000."
+quirks   = ["RMG-QUIRK-3"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E14 T1a2c, T4a, T4c): rmg_islet_draw 0x53EFA0, rmg_islet_heightmap 0x53ED00, rmg_heightmap_quadrants_push 0x53E9E0, the terrain painter's init 0x5B7250, add_rect 0x5B7690, finish 0x5B72F0; survey E14-generator.md §2.3 (\"The islets\", \"The height map as read (T4a; RMG-CON-008)\", \"Step 6's plan as ported (T4c)\"), §2.7, §3.2.7"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The phase oracle (E14 T4c, clients/out/rmg/<case>/run1/clock/rmg1.draws and rmg1-6.cells): the 101 islets of the corpus draw as the original's, their painters' picture draws included; in m2-4p and l1-4p-c (no shore sealed after them) the port's terrain and pictures after the islets equal step 6's dump on every cell"
+  confidence = "high"

@@ -1047,9 +1047,11 @@ of an allowed town (the zone's town type when its monsters match it, else its ne
 drawn; count n = (g + AI/2) / AI, then n + `rand() % s` − `rand() % s` with s = n/4 + 1 when s > 1;
 the object takes the serial +0xF44.
 
-**Step 6's plan as ported (T4c).** `h3-rmg`'s `plan` module, parts (1) to (3) of the order (the
+**Step 6's plan as ported (T4c).** `h3-rmg`'s `plan` module, parts (1) to (4) of the order (the
 lanes, the walls, the cells of no zone; the corpus's lanes equal the oracle's, 24 of 24, and in the
-11 cases without an islet the port draws no more: `plan.txt`). Read again, beyond the above:
+11 cases without an islet the port draws no more: `plan.txt`; the islets, `plan/islets.rs`: in the
+4 cases with islets, 101 in all, the port's draws after step 5 equal the oracle log's step 6 over
+their whole length, and in the other 20 it draws none). Read again, beyond the above:
 
 - The lanes' first pass tests a cell's object list (+0x4 to +0x8 not empty), not bit 22: an
   object's passable cells off its list stay obstacles.
@@ -1082,6 +1084,34 @@ lanes, the walls, the cells of no zone; the corpus's lanes equal the oracle's, 2
 - The cells of no zone (0x544937 to 0x5449F7): bit 26 clear, bit 25 set, land not 9, bit 22
   clear, no object, +0x20 bit 23 set (the zone byte negative), land not 8; marked by
   `rmg_map_mark_obstacle`.
+- The islets' reset of the box also clears +0x28 bits 12-14 and +0x20 bits 24-31. The seeds are
+  the cells of the box widened by one and clamped to [0, W) × [0, H), row by row, whose zone byte
+  is not the zone's id (the template zone's +0x0; the kept zones are renumbered from 0 in the
+  generators' order, so it is the generator's index): one `rmg_zone_distance_flood` call each, a
+  later one entering a cell only below its cost. The candidates: columns max(x0, 3) to
+  min(x1, W − 4), rows alike, ends exclusive; rebuilt after every islet. d / 3 is unsigned, the
+  modulus (d / 3 − 5) signed; the islet's box is [max(x − r, 0), min(x + r, W)) and alike in y.
+- `rmg_zone_distance_flood` keeps two vectors (the points, their costs) sorted from the highest:
+  a binary search puts a new entry before its equals (equal costs are taken first listed first),
+  the last is taken and expands at the cell's current cost, so a cell entered twice is listed
+  twice (harmless). The seed's zone is not tested; its +0x1C high half, bits 12-14 and +0x20's
+  top byte are cleared. A step leaves the map (tested) or the level never; a cell of another zone
+  byte is skipped before its cost is read.
+- `rmg_islet_draw` draws the terrain before the height map; its painter has a view of the level
+  (one level, `rmg_map_vtable`) made before the height map (no draw), is finished, never flushed.
+  The mask is `operator new`'s, unset, but every cell is written by exactly one one-cell record;
+  the height map's bounds tests (a one-cell record inside the mask, a larger one meeting it)
+  never fail (not ported). The quadrants' corners (top-left, top-right, bottom-left,
+  bottom-right): bottom-right (centre, right, bottom, the record's), bottom-left (left, centre,
+  the record's, bottom), top-right (top, the record's, centre, right), top-left (the record's,
+  top, left, centre); a one-row record's top quadrants are empty, so its cells take its
+  displaced left and centre, not its corners. The obstacles' loop tests the land byte
+  (+0x24 & 0x3F) against 8 and +0x2C bit 0, per cell of the box.
+- The islets' painters are of land: `terrain_painter_set_cell`'s water and rock branch and the
+  split ring's mending are not reached (they are the painter's own terrain's), only the water
+  cells' ring test in the pinch and the diagonal queue; they draw as the original's (no fault in
+  `painter.rs`). A painter's fault there (a shape its set lacks) is `GenerateError::Paint` with
+  step 6 at the plan's end (RMG-QUIRK-3).
 
 **Draw sites** (20 here and one of §2.1; in the order they run):
 

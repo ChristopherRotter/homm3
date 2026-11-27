@@ -7,11 +7,12 @@ use alloc::vec::Vec;
 
 use super::*;
 use crate::objects::Shape;
+use crate::painter::tests::tables;
 use crate::part::{Connection, Strength, ZoneKind};
 
 #[derive(Debug, Default)]
-struct Log {
-    draws: Vec<(u32, u32)>,
+pub(super) struct Log {
+    pub(super) draws: Vec<(u32, u32)>,
 }
 
 impl Trace for Log {
@@ -26,7 +27,7 @@ const DIRT: u32 = 0;
 
 /// A map of `side` × `side` on `levels` levels, every cell dirt of no zone, passable (bit 25),
 /// without bits 26 and 27.
-fn land(side: i32, levels: i32) -> Cells {
+pub(super) fn land(side: i32, levels: i32) -> Cells {
     let mut cells = Cells::new(side, levels);
     for z in 0..levels {
         for y in 0..side {
@@ -42,7 +43,7 @@ fn land(side: i32, levels: i32) -> Cells {
 
 /// The map of `rows` per level: `.` dirt of no zone, `~` water of no zone, `r` rock of no zone,
 /// a digit dirt of that zone, `w` water of zone 0; each passable, without bits 26 and 27.
-fn drawn(levels: &[&[&str]]) -> Cells {
+pub(super) fn drawn(levels: &[&[&str]]) -> Cells {
     let side = levels[0].len() as i32;
     let mut cells = land(side, levels.len() as i32);
     for (z, rows) in levels.iter().enumerate() {
@@ -65,7 +66,7 @@ fn drawn(levels: &[&[&str]]) -> Cells {
 }
 
 /// Level `z`'s cells with `bit` as rows of `#`, the others `.`.
-fn bits(cells: &Cells, z: i32, bit: u32) -> Vec<String> {
+pub(super) fn bits(cells: &Cells, z: i32, bit: u32) -> Vec<String> {
     let (w, h, _) = cells.size();
     (0..h)
         .map(|y| {
@@ -98,7 +99,7 @@ fn object(cells: &mut Cells, [x, y, z]: [i32; 3], entrance: bool) {
     cells.place(0, &shape, [x, y, z]).unwrap();
 }
 
-fn pend(cells: &mut Cells, x: i32, y: i32, z: i32) {
+pub(super) fn pend(cells: &mut Cells, x: i32, y: i32, z: i32) {
     cells.get_mut(x, y, z).unwrap().pending_guard = 1;
 }
 
@@ -106,7 +107,7 @@ fn tile_data(cells: &Cells, x: i32, y: i32, z: i32) -> u32 {
     cells.get(x, y, z).unwrap().tile_data
 }
 
-fn zone(id: i32) -> Zone {
+pub(super) fn zone(id: i32) -> Zone {
     Zone {
         id,
         kind: ZoneKind::Treasure,
@@ -130,7 +131,7 @@ fn zone(id: i32) -> Zone {
     }
 }
 
-fn generator(zone: usize) -> ZoneGenerator {
+pub(super) fn generator(zone: usize) -> ZoneGenerator {
     ZoneGenerator {
         zone,
         town_type: -1,
@@ -404,6 +405,8 @@ fn walls_of(cells: &mut Cells, zones: usize, connections: &[KeptConnection]) {
             zones: &zones,
             connections,
             gens: &gens,
+            pictures: &Pictures::new(&tables()),
+            cosmetic: true,
         },
         cells,
     );
@@ -468,9 +471,14 @@ fn a_zone_byte_past_the_generators_is_left_unwalled() {
         zones: &zones,
         connections: &[],
         gens: &gens,
+        pictures: &Pictures::new(&tables()),
+        cosmetic: true,
     };
     let mut log = Log::default();
-    plan(&mut Stream::new(0, &mut log), &input, &mut cells);
+    assert_eq!(
+        plan(&mut Stream::new(0, &mut log), &input, &mut cells),
+        Ok(())
+    );
     assert_eq!(log.draws[0].0, SITE_LANE_ORIENTATION);
     // Water is kept free by the lanes; zone 0's cell beside water of no zone is walled, and that
     // water loses bit 27 with the wall's 3 × 3.
