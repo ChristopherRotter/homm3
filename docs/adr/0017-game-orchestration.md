@@ -275,10 +275,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    with no decision open. The game checks, in order, each refusal typed and changing nothing: the
    actor's hero on the map; the spell castable on the map (`h3_heroes::can_cast_on_map`: among
    the available spells, worn scrolls included, no book test, ADR-0013 point 17.3); one of the
-   adventure part's spells; the ground (the special ground's battlefield's highest spell level, an
-   anti-magic garrison's tile); the cost (`map_spell_cost` at the mastery on the hero's tile's
-   ground, the raise from the battle part) against the spell points; then the adventure's checks
-   (ADR-0016 point 4). The adventure applies, the game sets the spell points less the cost (at
+   adventure part's spells; a target exactly for Scuttle Boat and Dimension Door; the cost
+   (`map_spell_cost` at the mastery on the hero's tile's ground, the raise from the battle part)
+   against the spell points; the ground (the special ground's battlefield's highest spell level,
+   then an anti-magic garrison's tile); then the adventure's checks (ADR-0016 point 4). The cost
+   before the ground is the original's order (its book tests the points, then
+   `hero_special_ground`; E08 decision 414): both refuse free, only the reported error differs. The adventure applies, the game sets the spell points less the cost (at
    least 0). Batch E15 saw the refusals change nothing (E08 T139a, survey `E08-spells.md` §18:
    E15-4's ground and garrison, E15-5's fifth door, E15-6's door without movement points, E15-11's
    cast aboard).
@@ -700,6 +702,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    start drawing anew, the 27 levels against their chances with no evidence against them).
    **Increment 15's draws:** Summon Boat's and Scuttle Boat's chance draws come from the caster's
    stream, one draw each, in the cast's order (the draw made at 100 % too, as the original's).
+   **Each player's list of heroes at the build** (E08 decision 413, GAM-SET-004): the game hands
+   the adventure its heroes in the start list's order: each player's placed heroes by hero type
+   (a random hero by its drawn type), then the main towns' generated heroes in player order (the
+   original's `placed_heroes_setup` and `main_town_heroes`). The heroes' ids stay the setup's;
+   the prisoners are in no list.
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
@@ -1088,11 +1095,27 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    Hill Fort's upgrade per slot (7) and `All` (1); one `Leave` for the three kinds (E08 decision
    372, `cross-lane`). The factory uses the offer's and the hire dialog's entries. An amount head
    stays the AI lane's.
-   **Increment 15's action encoding** (the next version at merge, v18; the AI lane's,
-   `cross-lane`): three casts without a target and two 19 × 17 windows around the hero (Dimension
-   Door, Scuttle Boat); the masks from `legal_commands`, which lists each castable spell after the
-   hero's moves (every offered target of the two windows in row order). The own hero's observation
-   gains its day spells.
+   **Increment 15's action encoding v21** (E08 T144a2, decisions 421, 422; the AI lane's,
+   `cross-lane`): five entries per hero slot after the spell book's purchase (40, from `CAST_BASE`
+   105: slot `s`'s cast of the behaviour of code `c`, the original's spell order Summon Boat,
+   Scuttle Boat, Fly, Water Walk, Dimension Door, is `105 + 5s + c`), each naming the core spell
+   the adventure part binds to that behaviour. Summon Boat, Fly and Water Walk take no tile (tile
+   0 alone) and are legal where `legal_commands` lists the hero's cast; Scuttle Boat's boat and
+   Dimension Door's arrival are the **tile head's** tile (the encoding has no slot head for
+   windows around a hero, decision 421), the entry legal where the hero's targets query is not
+   empty and its tile mask that query's targets (decision 422). `legal_commands` lists the casts
+   without a target last, per hero in the player's list; **Scuttle Boat's and Dimension Door's
+   targets are a per-hero query**, `legal_cast_targets(state, rules, actor, (hero, spell))`, in
+   row order, as the moves are `legal_moves`' (listing every target wrote up to 646 commands per
+   caster on every call). The env's random agent draws each listed command, each hero's move and
+   each hero's targeted cast that has a target once, a move's tile and a cast's target then
+   uniformly (the AI lane may choose other weights). The own hero's observation carries its day
+   spells (the door's casts made among them); no field counts the casts left: the masks say
+   whether a cast is legal.
+   **Each player's list of heroes** (E08 decision 413): the viewer's observation carries its list
+   (`GameObservation::hero_list`); the wire's and the protocol's fold keep it from the viewer's
+   heroes on the map (one that left leaves it, one that came joins its end); a player's hero slots
+   are its list's first eight places.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -1195,7 +1218,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    day spells), the game state hash (the prisoners, the cast), the adventure replay format (`cast`),
    the env's action encoding (the AI lane's, point 8) and `h3-protocol`'s protocol once per wire
    task (the server lane's); the next at merge: part v25, map import v29, adventure state hash v28,
-   game state hash v39, replay format v24, encoding v18, protocol v79. Shared (E08 T140): the six
+   game state hash v39, replay format v24, encoding v18, protocol v79. *As built* (E08 T141a to
+   T144b): part v25 (the kinds) and v26 (the spells), map import v29, adventure state hash v28 (the
+   list of heroes) and v29 (the day spells' block), game state hash v39 (the prisoners), replay
+   format v26 (`cast`, T142a), encoding v20 (the list's slots) and v21 (the casts), protocol v81
+   to v84 (one per wire task). Shared (E08 T140): the six
    quirk flags of `ADV-QUIRK-15` and `-51` to `-55` in the core's profiles (no version moves: the
    faithful profiles' ruleset hashes do); no new stream.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
@@ -1927,3 +1954,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   the env's 42 entries, the versions, the trades' gains and costs. Drafted in E09 T53 (design note
   `E09-design.md` Part H §101 to §120), accepted at `TWN-Q37`; batch TWN-6's outcome (T54, survey
   `E09-trades.md` §14: every row as read) folded in.
+- 2026-11-27 (E08 T145 `shared/`; E08 decisions 413, 414, 421, 422): points 1, 4, 8 and 9 amended
+  for increment 15 as built: the cast's checks in the original's order (the target test, then the
+  cost before the ground; point 1's sentence, which decision 414 placed in point 4); each
+  player's list of heroes at the build (point 4) and in the observation and the env's slots
+  (point 8); the action encoding v21's casts by hero slot with Scuttle Boat's and Dimension
+  Door's targets by a per-hero query (point 8, replacing the paragraph written before T144); the
+  versions as built (point 9). Drafted in E08 T141a and T144a2
+  (`docs/lanes/adventure/adr-drafts/0016-0017-hero-list.md`, `0017-casts-encoding.md`, deleted).

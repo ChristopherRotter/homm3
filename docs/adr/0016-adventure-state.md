@@ -189,11 +189,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      - **Nothing else:** the Trading Posts, the Freelancer's Guild, the Altar of Sacrifice, the
        Hill Fort and the War Machine Factory keep no state (no visit limit, no owner, no week);
        the Altar's and the Hill Fort's visits set increment 12's kind marks.
-   - **Increment 15's objects** (E08 decision 394): **no new block.**
+   - **Increment 15's objects** (E08 decision 394): **no new object block.**
      - **A prison's prisoner** is its drawn content in the static map (its `HeroId`; the hero's
        details are the game's store); the freeing removes the object (increment 2's occupancy).
      - **The Market of Time** keeps no state.
-     - **A hero's day spells** are plain per-hero fields (point 3).
+     - **The heroes' day spells** are one block of their own by hero id (point 3; E08 T142a's
+       call, as built: a field on the hero on the map would cost every fork).
    - **E09's increment 6** (TWN-STK-001, -002; E09 decision 212): the adventure state holds **the
      merchants' stock** (one entry per class of the town part's `merchants_stock`, each an artifact
      or empty; at most `MAX_STOCK`, 8) and **the artifact pool's marks** (ADV-OBJ-006's bans and
@@ -360,13 +361,27 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    rest (its player, its last hero, ADR-0017 point 1). The setup's stand rule (ADV-MAP-001's
    `StandError::Visited`) is unchanged: only a hire places a hero on a tile its object is visited
    from.
-   From increment 15 a hero on the map holds its **day spells** (`DaySpells`): the Fly and Water
-   Walk levels (none, or 0 to 3 by the cast's mastery) and the day's Dimension Door casts. Its
-   flying and water-walking levels for its steps are the best of its details' (`h3_heroes::movement`,
-   the artifacts') and its day spells'. The adventure's start of the day clears them for every hero
-   on the map; boarding clears Fly and Water Walk; nothing else but a cast writes them. Batch E15
+   From increment 15 a hero holds its **day spells** (`DaySpells`): the Fly and Water Walk levels
+   (none, or 0 to 3 by the cast's mastery) and the day's Dimension Door casts. They are kept in
+   **one block by hero id**, not on the hero on the map (E08 T142a's call: a field there costs
+   every fork): absent while no hero has any, an entry never empty, in hero id order, hashed last
+   in the adventure state (adventure state hash v29); a hero keeps its entry into a town's
+   garrison the same day, as the original's record does. Its flying and water-walking levels for
+   its steps are the best of its details' (`h3_heroes::movement`, the artifacts') and its day
+   spells'. The adventure's start of the day drops the block; boarding clears Fly and Water Walk;
+   nothing else but a cast writes them. Batch E15
    read them so (E08 T139a, survey `E08-spells.md` §18: E15-11, boarding cleared Fly; E15-12, Water
    Walk cast aboard and kept after landing, A-49; E15-6, the day's doors counted).
+   From increment 15 a hero on the map also holds **its place in its owner's list of heroes**
+   (`listed`, from 0; E08 decision 413, GAM-HER-003): an owner's heroes on the map hold the places
+   0 to n − 1 in the order they joined the map; a town's garrison heroes are in no list (their
+   place 0, unhashed). The adventure sets the place whenever a hero joins the map (a caller's
+   value replaced): the setup's heroes take theirs in the setup's order (the game's start list,
+   ADR-0017 point 4), each hero that joins later (a hire, a garrison hero stepping out, a freed
+   prisoner) the end; a hero that leaves the map (a battle's loser, a retreat or surrender, a
+   dismissal, a visitor going into a garrison) leaves it and the heroes after it move up, so a
+   state's list has one encoding. The state hash holds each hero on the map's place (adventure
+   state hash v28). `AdventureState::hero_list(player)` and `listed_hero(player, n)` read it.
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -1609,3 +1624,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   only in its window. Drafted in E09 T53 (design note `E09-design.md` Part H §104, §107, §108,
   §111, §112, §114), accepted at `TWN-Q37`; batch TWN-6's outcome (T54, survey `E09-trades.md`
   §14: every row as read) folded in.
+- 2026-11-27 (E08 T145 `shared/`; E08 decision 413, T142a's call): points 1 and 3 amended for
+  increment 15 as built: the heroes' day spells as one block by hero id (point 1's line, point
+  3's paragraph); each hero on the map's place in its owner's list of heroes (point 3). Drafted in
+  E08 T141a (`docs/lanes/adventure/adr-drafts/0016-0017-hero-list.md`, deleted).
