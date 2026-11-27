@@ -220,7 +220,7 @@ fn the_door_is_refused_on_a_tile_that_is_not_free() {
     }
 }
 
-// covers: ADV-SPL-009, ADV-SPL-007
+// covers: ADV-SPL-009, ADV-SPL-007, ADV-SPL-010
 #[test]
 fn the_door_relocates_the_hero_without_a_battle_or_a_visit() {
     // Beside the monster on (1, 1): no battle (the outcome holds none, the arrival's), the
@@ -267,7 +267,7 @@ fn the_door_relocates_the_hero_without_a_battle_or_a_visit() {
     assert!(seen_to.contains(BLUE) && !seen_from.contains(BLUE));
 }
 
-// covers: ADV-SPL-009
+// covers: ADV-SPL-008, ADV-SPL-009
 #[test]
 fn a_hero_in_a_boat_takes_it_through_the_door() {
     // Red's hero aboard the boat on (5, 0) of the door's map: a water target takes hero and boat
@@ -293,10 +293,10 @@ fn a_hero_in_a_boat_takes_it_through_the_door() {
     }
 }
 
-// covers: ADV-SPL-009
+// covers: ADV-SPL-008, ADV-SPL-009
 #[test]
 fn a_wrong_kind_fails_charged_under_adv_quirk_55_or_is_refused_without_it() {
-    // E15-14 (faithful): water from land fails after the dialog (GENRLTXT 71), the points and
+    // E15-7 (faithful): water from land fails after the dialog (GENRLTXT 71), the points and
     // the cast spent, the hero where it was, nothing told by the adventure. Off (strict-fixed):
     // an explored target of the wrong kind is not offered.
     let rules_on = rules(true);
