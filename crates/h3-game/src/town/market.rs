@@ -97,7 +97,7 @@ pub(crate) fn open<S: Sink>(
 /// TWN-6's TWN-6-5; its spell book, University, Transformer and Grail take the garrison hero);
 /// none else (a Marketplace's window opens without one).
 // rule: TWN-MKT-002
-fn window_hero(
+pub(super) fn window_hero(
     state: &GameState,
     rules: &GameRuleset,
     (town, player): (TownId, PlayerId),
@@ -106,8 +106,9 @@ fn window_hero(
 }
 
 /// [`window_hero`] of the town's visitor and garrison hero, each with its owner (the adventure's
-/// records, `guild::heroes`; the listing's from the town's entrance, [`listed`]).
-fn hero_of(
+/// records, `guild::heroes`; the listing's from the town's entrance, [`listed`]; since E09 T59a
+/// also the Blacksmith's and the Ballista Yard's hero, TWN-SMT-001, `smith`).
+pub(super) fn hero_of(
     rules: &GameRuleset,
     player: PlayerId,
     [visitor, garrison]: [Option<(HeroId, PlayerId)>; 2],

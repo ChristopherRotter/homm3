@@ -279,7 +279,13 @@ pub mod wire;
 /// wanted), its refusals `MarketReject::Place` and `NotTradable`, the screen
 /// `MarketScreen::SellArtifact` and `MarketWindow::artifact_sales` (each place that sells, its
 /// artifact and price per resource).
-pub const PROTOCOL_VERSION: u32 = 86;
+/// v87 (E09 T59a, the town lane's, `cross-lane`; the town epic's design note §110, §111, §115): a
+/// town's services, `TownCommand::BuyWarMachine` (a building of a town of the actor's, the
+/// Blacksmith's or the Ballista Yard's war machine for the town's hero) and
+/// `TownCommand::BuildBoat` (a boat at the town's Shipyard on its spot), their refusals
+/// `TownReject::NoWarMachine`, `HasWarMachine` and `BoatSpotTaken`; no new event (the machine is
+/// `HeroChanged`, the boat `BoatBuilt`).
+pub const PROTOCOL_VERSION: u32 = 87;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes, with its reader ([`record`], every client's: E24 M5 T2c) in the same

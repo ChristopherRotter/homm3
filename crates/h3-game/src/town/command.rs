@@ -9,7 +9,7 @@ use h3_contracts::{PlayerId, TownId};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use super::view::Told;
-use super::{Draws, guild, hire, holds_capitol, market, portal, recruit, rows};
+use super::{Draws, boat, guild, hire, holds_capitol, market, portal, recruit, rows, smith};
 use crate::command::{GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
@@ -20,7 +20,9 @@ use crate::{GameRuleset, GameState};
 /// the guild's spells (TWN-GLD-006; E09 T49a2, [`guild::open`]); a spell book's purchase gives the
 /// town's hero a book and teaches (TWN-GLD-007; E09 T49b, [`guild::buy_book`]); a market's
 /// opening opens E08's market decision with the town as its place (TWN-MKT-002; E09 T58a1,
-/// [`market::open`]); a build (TWN-BLD-001),
+/// [`market::open`]); a war machine's purchase gives the town's hero the machine (TWN-SMT-001;
+/// E09 T59a, [`smith::buy`]); a boat's build launches one on the town's spot (TWN-SHY-001; E09
+/// T59a, [`boat::build`]); a build (TWN-BLD-001),
 /// checked in this order, each refusal changing nothing:
 ///
 /// 1. the town in the store of towns, else [`TownCommandError::UnknownTown`];
@@ -66,6 +68,10 @@ pub(crate) fn command<S: Sink>(
             return guild::buy_book(state, rules, player, town, sink);
         }
         TownCommand::Market { town } => return market::open(state, rules, player, town, sink),
+        TownCommand::BuyWarMachine { town, building } => {
+            return smith::buy(state, rules, player, (town, building), sink);
+        }
+        TownCommand::BuildBoat { town } => return boat::build(state, rules, player, town, sink),
     };
     let part = rules.towns();
     let record = state

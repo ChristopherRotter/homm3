@@ -303,6 +303,23 @@ fn commands_round_trip_through_their_text() {
             }),
             "1 town market 5",
         ),
+        // Format v29 (E09 T59a): a war machine's purchase by its town and building, a boat's build
+        // by its town.
+        (
+            PlayerId::new(1),
+            GameCommand::Town(TownCommand::BuyWarMachine {
+                town: TownId::new(2),
+                building: BuildingId::from_index(16).unwrap(),
+            }),
+            "1 town machine 2 16",
+        ),
+        (
+            PlayerId::new(0),
+            GameCommand::Town(TownCommand::BuildBoat {
+                town: TownId::new(6),
+            }),
+            "0 town boat 6",
+        ),
         // Format v26 (E08 T142a): a cast on the map, by its hero and spell, its target if any.
         (
             PlayerId::new(0),
@@ -563,6 +580,13 @@ fn commands_round_trip_through_their_text() {
         "0 town market",
         "0 town market x",
         "0 town market 2 now",
+        "0 town boat",
+        "0 town boat x",
+        "0 town boat 2 now",
+        "0 town machine 2",
+        "0 town machine x 16",
+        "0 town machine 2 x",
+        "0 town machine 2 16 now",
         "0 cast",
         "0 cast 1",
         "0 cast h1 6",

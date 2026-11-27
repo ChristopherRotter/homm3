@@ -1058,6 +1058,7 @@ pub(super) fn telling(viewer: PlayerId, view: &TownView) -> Vec<GameEvent> {
     events
 }
 
+mod boat;
 mod book;
 mod build;
 mod capture;
@@ -1081,5 +1082,6 @@ mod portal;
 mod recruit;
 mod rows;
 mod siege;
+mod smith;
 mod tavern;
 mod view;

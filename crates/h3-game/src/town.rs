@@ -32,6 +32,7 @@ use h3_towns::TownFaction;
 
 use crate::{GameRuleset, GameSetup, GameSetupError, PlayerSetup};
 
+pub(crate) mod boat;
 pub(crate) mod build;
 pub(crate) mod capture;
 pub(crate) mod command;
@@ -52,6 +53,7 @@ pub(crate) mod portal;
 pub(crate) mod recruit;
 pub(crate) mod rows;
 pub(crate) mod siege;
+pub(crate) mod smith;
 pub(crate) mod tavern;
 pub(crate) mod thieves;
 pub(crate) mod view;

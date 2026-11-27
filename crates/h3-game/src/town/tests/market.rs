@@ -516,7 +516,9 @@ fn listed_at(rules: &GameRuleset, game: &GameState, town: TownId) -> Vec<TownCom
                 | TownCommand::Hire { town, .. }
                 | TownCommand::Open { town }
                 | TownCommand::BuySpellBook { town }
-                | TownCommand::Market { town } => town,
+                | TownCommand::Market { town }
+                | TownCommand::BuyWarMachine { town, .. }
+                | TownCommand::BuildBoat { town } => town,
             };
             at == town
         })
