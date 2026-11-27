@@ -11,16 +11,20 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   part v10 (TWN-TRD-001); T57 the stock (TWN-STK-001, -002); **T58a1** the market at a town
   (TWN-MKT-001 to -004: `TownCommand::Market` opening E08's market decision with the town as its
   place, `h3_adventure::MarketWindow`, the trader's count, the merchants' purchase; `TWN-QUIRK-17`;
-  `TWN-STUB-21`, `-22`; decision 224's cut). **Next:** **T58a2** (the listing, the env's opening,
-  the plans; `TWN-STUB-22` lifted), then T58b (the artifact sale), T59 to T61 (`QUEUE.md`). In the
+  `TWN-STUB-21`, `-22`; decision 224's cut); **T58a2** the listing (`Market` listed where the
+  window opens and offers an answer, the env's `TOWN_MARKET` v22, the plans open towns' windows;
+  `TWN-STUB-22` lifted; decision 225). **Next:** **T58b** (the artifact sale), then T59 to T61
+  (`QUEUE.md`). In the
   inbox for review: E08 T141a's note (2) (the Thieves' Guild's best hero row may follow
   `AdventureState::hero_list`); the AI lane's E31 note (a town's creature upgrade: where
   planned?). For the next `shared/` pull request: ADR-0028 point 6's `marketplaces(store, part,
   player)` is `(store, part, towns)` as built (design §103's *As built*). Waiting elsewhere:
   `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach), `-2` (the victory conditions),
   `-16` (E10's loss condition), `-17` (increment 8), `-18` (E13), `-21` (E10's teams).
-- **Open pull requests:** T58a1's **#1202** (`town/e09-t58a1`, `cross-lane`); watch it until it merges
-  (T57's #1198 merged 2026-11-26).
+- **Open pull requests:** T58a2's (`town/e09-t58a2`, `cross-lane`; its number in the newest
+  session entry); watch it until it merges (T58a1's #1202 merged 2026-11-27). The adventure lane's
+  #1205 (E08 T144b: the plans, a new workload `random-play-spells-36`) is open beside it: the
+  second to merge merges `master` and re-runs `h3-map`'s tests and that workload.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -30,10 +34,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v10: T56; the goldens' town hash
   0xc830faa47b612bfc), both in `h3-towns`; the adventure lane's (game state hash v40 by T58a1,
   map import v29, adventure part v26, adventure state hash v30, replay format v27 by T58a1), the
-  env's (v20) and the protocol's (v85 by T58a1) are bumped `cross-lane` (each task's record in
-  `E09-log.md`). Shared: core ruleset hash v53 (T55's base `faithful` hash 0x3f1f68842dab4e0c,
+  env's action encoding (v22 by T58a2) and the protocol's (v85 by T58a1) are bumped `cross-lane`
+  (each task's record in `E09-log.md`). Shared: core ruleset hash v53 (T55's base `faithful` hash 0x3f1f68842dab4e0c,
   `strict-fixed` 0x0bd901a144728cc7), pack format v53, quirk flags 55.
-- **Ids** (next): questions `TWN-Q38`; decisions 225; quirks `TWN-QUIRK-18` (planned `-18` to
+- **Ids** (next): questions `TWN-Q38`; decisions 226; quirks `TWN-QUIRK-18` (planned `-18` to
   `-20`, `-22`, `-23`, design §116); stubs `TWN-STUB-23`; experiment batch `TWN-7`; disputes
   `TD-32`; quirk candidates `T-29`. ADR-0028 is the lane's; no drafts open; every TWN-GLD rule
   `verified` but TWN-GLD-007.
@@ -45,6 +49,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-27 — T58a2: the market window listed (`cross-lane`)
+
+Baseline a7b6752 (#1204; CI green; the local full run stopped at coverage for disk, `master`'s
+workloads measured instead); 5 files staged. The user kept T58a2 whole (decision 225). The
+listing, `MarketParams`' lot tables, the env's v22, seed 864, the plans; one design pass on
+`legal-towns-36` (+21.9 % to +0.02 % on `master`'s games), seven town workloads re-baselined
+(their games changed course). A hygiene seed `master` fails too went to the adventure lane's
+inbox. No sub-agents.
 
 ### 2026-11-26 — T58a1: the market at a town (`cross-lane`)
 
@@ -62,11 +75,3 @@ too). No sub-agents.
 verify without original data (its `--with-original-data` run is owed). The user kept T57 whole
 (decision 221) and chose to fix ADV-OBJ-006's restart by class on the way (decision 223). The
 118 goldens re-recorded once (hash lines only). No sub-agents.
-
-### 2026-11-26 — T56: the town part v10 (`cross-lane`)
-
-Baseline b1e7a44 (#1182; the setup's light gates, CI green on `master`); 5 files staged. The user
-kept T56 whole (decision 220). The part v10 in `h3-towns` and `h3-pack-towns`, two executable
-tables read in `h3-formats`, the harvest re-run (only the `towns.toml` changed), the 118 goldens'
-town hash replaced (0xc830faa47b612bfc; the rest unchanged). No sub-agents. The coverage run hit
-a random case of `h3-map`'s view property failing on `master` too: the adventure lane's inbox.

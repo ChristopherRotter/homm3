@@ -65,6 +65,12 @@ struct Played {
     /// Spell books bought at a town's Mage Guild (E09 T49b, TWN-GLD-007: an accepted
     /// [`SPELL_BOOK`] action).
     books: u32,
+    /// Market windows opened at a town (E09 T58a2, TWN-MKT-002: a `MarketOpened` at a town's
+    /// place, by an accepted [`TOWN_MARKET`] action).
+    markets: u32,
+    /// Answers accepted in a town's market window but its `Leave` (a trade, a sale or a purchase
+    /// by the market's entries).
+    traded: u32,
 }
 
 /// Plays the town map with the env's random agent (as `random_rollout` and `h3 adventure run
@@ -116,9 +122,15 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
             }
         }
         assert!(legal_by_masks(&env, seat, action), "{seat:?} {action:?}");
+        // E09 T58a2: an answer in a town's market window.
+        let trading = seat
+            .player()
+            .and_then(|player| env.state().market(player))
+            .is_some_and(|visit| matches!(visit.place, h3_game::MarketPlace::Town(_)));
         let mut events = Vec::new();
         let result = env.step_with(seat, action, &mut events).unwrap();
         played.books += u32::from(matches!(action, Action::Adventure(a) if a.entry == SPELL_BOOK));
+        played.traded += u32::from(trading && action != Action::map(DECLINE, 0));
         // Only the day limit ends an episode: the step that starts the day after it.
         assert_eq!(
             (result.done, result.truncated),
@@ -143,6 +155,13 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
                     target: h3_game::HireTarget::Garrison(_),
                     ..
                 } => played.recruited += 1,
+                GameEvent::MarketOpened {
+                    place: h3_game::MarketSeen::Town(_),
+                    ..
+                } => {
+                    played.markets += 1;
+                    touched = true;
+                }
                 GameEvent::HeroHired { slot: Some(_), .. } => {
                     played.hired += 1;
                     touched = true;
@@ -201,7 +220,10 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
     (env, played)
 }
 
-/// Random play on the town map (E08 T141a after #1136: a search over the seeds 1 to 3 000, cut
+/// Random play on the town map (E09 T58a2: a search over the seeds 1 to 3 000 after a town's
+/// market windows joined the agent's draw, encoding v22: seed 864 the shortest of the four
+/// meeting every feature, 980 steps, 29 builds, 96 dialogs, 15 hires, 3 books, 30 windows and 176
+/// answers in them; E08 T141a after #1136: a search over the seeds 1 to 3 000, cut
 /// short by a restart with five found, after the env's hero slots followed each player's list of
 /// heroes, GAM-HER-003, encoding v20: seed 264 the shortest, 765 steps, 26 builds, 53 dialogs, 13
 /// hires and 3 books; E09 T49b's seed 277: a search over the seeds 1 to 3 000 after the spell
@@ -219,11 +241,12 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
 /// and one lost, builds by the towns' owners, each town's the only one of its day, town hire
 /// dialogs with purchases into a garrison (TWN-REC-001; [`play`]) and tavern heroes hired
 /// (TWN-TAV-003, E09 T38a2) and spell books bought at a town's Mage Guild (TWN-GLD-007, E09
-/// T49b). The game ends on the day after
+/// T49b) and towns' market windows opened and traded in (TWN-MKT-002, E09 T58a2). The game ends
+/// on the day after
 /// the limit with no seat to move.
 #[test]
 fn the_env_plays_the_town_map_to_its_end_of_days() {
-    let (env, all) = play(264, 21);
+    let (env, all) = play(864, 21);
     assert!(env.is_done());
     assert_eq!((env.day(), env.to_move().count()), (22, 0));
     assert_eq!(
@@ -238,6 +261,7 @@ fn the_env_plays_the_town_map_to_its_end_of_days() {
     assert!(all.recruited > 0 && all.bought > 0, "{all:?}");
     assert!(all.hired > 0, "{all:?}");
     assert!(all.books > 0, "{all:?}");
+    assert!(all.markets > 0 && all.traded > 0, "{all:?}");
 }
 
 /// The town map's rollouts are deterministic, and a fork taken while a siege is open (seed 6: a

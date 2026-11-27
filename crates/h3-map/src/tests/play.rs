@@ -1102,12 +1102,13 @@ pub(super) struct TownPlan {
 /// The plans' towns' buildings (E09 T9b1; building bits, `docs/formats/h3m.md`, "Town
 /// buildings"): the standard set without a Fort and with one, and custom sets of the Town Hall,
 /// the City Hall and the Capitol (TWN-CAP-002: one Capitol per player after a capture) with a
-/// Fort and without one.
+/// Fort and a Marketplace (E09 T58a2: bit 8, so that the plans' games open towns' market windows,
+/// TWN-MKT-002) and without either.
 pub(super) const TOWN_BUILDINGS: [Buildings; 4] = [
     Buildings::Standard { fort: false },
     Buildings::Standard { fort: true },
     Buildings::Custom {
-        built: [0b1111, 0, 0, 0, 0, 0],
+        built: [0b1111, 0b1, 0, 0, 0, 0],
         forbidden: [0; 6],
     },
     Buildings::Custom {
@@ -3814,7 +3815,8 @@ fn hire(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
 /// siege's too, either side's); an open decision settled as [`seek`] settles it; (E09 T29b) a
 /// listed hero move between an own town's bars in five steps of eight (`Enter` in three, `Leave`
 /// and `Swap` in one each), (E09 T38a2) a listed hire in one of eight, (E09 T49a2) a listed
-/// opening in another, (E09 T49b) a listed spell book's purchase in the last; on the map the
+/// opening in another, (E09 T49b) a listed spell book's purchase in the last (E09 T58a2: a listed
+/// market window in one of its two, before the book); on the map the
 /// `n`-th of its options that end on a town's entrance (its own entered, TWN-VIS-001; another
 /// player's or a neutral one captured or besieged, TWN-CAP-001, TWN-SIE-001; another team's
 /// visitor besieged with the garrison merged, TWN-SIE-002), in three steps of four of a town not
@@ -3862,6 +3864,14 @@ fn visit_town(
         .find(|c| matches!(c, GameCommand::Town(TownCommand::Open { .. })));
     if let Some(open) = open.filter(|_| n % 8 == 6) {
         return open.clone();
+    }
+    // E09 T58a2: a listed market window (TWN-MKT-002) in one step of sixteen (half the book's),
+    // so that the towns' trades meet the oracles; its answers settled as a map market's.
+    let market = legal
+        .iter()
+        .find(|c| matches!(c, GameCommand::Town(TownCommand::Market { .. })));
+    if let Some(market) = market.filter(|_| n % 16 == 15) {
+        return market.clone();
     }
     // E09 T49b: a listed spell book's purchase (TWN-GLD-007) in one step of eight, so that heroes
     // without a book learn the guild's spells.
@@ -6871,7 +6881,7 @@ fn check_build_boat(
 /// in `TownId` order, a build of each building of its faction's record and one past it, in index
 /// order, then (E09 T27) a recruitment at each of them, in the same order, then (E09 T38a2) a hire
 /// of each tavern slot and one past them, then (E09 T49a2) its opening, then (E09 T49b) a spell
-/// book's purchase, then (E09 T28a) the three hero moves.
+/// book's purchase, then (E09 T58a2) its market window, then (E09 T28a) the three hero moves.
 fn town_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -6892,6 +6902,8 @@ fn town_builds<'a>(
         let open = core::iter::once(TownCommand::Open { town });
         // E09 T49b: a spell book's purchase at its Mage Guild (TWN-GLD-007).
         let book = core::iter::once(TownCommand::BuySpellBook { town });
+        // E09 T58a2: its market window (TWN-MKT-002).
+        let market = core::iter::once(TownCommand::Market { town });
         // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
         let rows = [
             TownHeroChange::Enter,
@@ -6904,6 +6916,7 @@ fn town_builds<'a>(
             .chain(hires)
             .chain(open)
             .chain(book)
+            .chain(market)
             .chain(rows)
             .map(move |command| (town, GameCommand::Town(command)))
     })
@@ -6912,7 +6925,9 @@ fn town_builds<'a>(
 /// The town commands `player` may give in `state` by `apply`'s checks alone (E09 T18b2b;
 /// TWN-BLD-001; since E09 T27 TWN-REC-001): of [`town_builds`], those a probe accepts, in that
 /// order, as `legal_commands` must list them; since E09 T49a2 an opening only where the probe
-/// changed the state (TWN-GLD-006: an opening that changes nothing is accepted but not listed).
+/// changed the state (TWN-GLD-006: an opening that changes nothing is accepted but not listed);
+/// since E09 T58a2 a market window only where the window the probe opened lists an answer but its
+/// `Leave` (TWN-MKT-002, ADR-0017 point 6: [`trades::trade_answers`]' oracle of its listing).
 fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
     town_builds(state, rules)
         .map(|(_, command)| command)
@@ -6920,8 +6935,11 @@ fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> 
             let mut probe = state.clone();
             let actor = Actor::Player(player);
             let opening = matches!(command, GameCommand::Town(TownCommand::Open { .. }));
+            let window = matches!(command, GameCommand::Town(TownCommand::Market { .. }));
             apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
                 && (!opening || probe != *state)
+                && (!window
+                    || trades::trade_answers(&probe, rules, player).is_some_and(|a| a.len() > 1))
         })
         .collect()
 }
@@ -7433,6 +7451,55 @@ fn check_town_hire(
     Ok(())
 }
 
+/// An accepted market window of `actor` at its `town`, from `state` to `probe` with `events` (E09
+/// T58a2; TWN-MKT-002, GAM-DEC-011), by an independent reading of the town's heroes: told to the
+/// actor alone as `MarketOpened` naming the town and the window's hero (the actor's visitor of the
+/// town; with `TWN-QUIRK-15`'s flag off else its garrison hero; else none), the actor's open visit
+/// the same, nothing else changed; the window lists an answer but its `Leave`
+/// ([`trades::trade_answers`]) exactly when the command is `listed`.
+fn check_town_market(
+    (state, probe): (&GameState, &GameState),
+    rules: &GameRuleset,
+    (actor, town): (PlayerId, TownId),
+    events: &[GameEvent],
+    listed: bool,
+) -> Result<(), TestCaseError> {
+    let adventure = state.adventure();
+    let visitor = adventure
+        .town_visitor(town)
+        .filter(|&h| adventure.hero(h).is_some_and(|on| on.owner == actor));
+    let garrison = adventure
+        .town_hero(town)
+        .filter(|on| on.owner == actor)
+        .map(|on| on.id);
+    let visitor_only = rules
+        .core()
+        .quirks()
+        .is_enabled(h3_content::VISITOR_ONLY_TRADES);
+    let hero = if visitor_only {
+        visitor
+    } else {
+        visitor.or(garrison)
+    };
+    let opened = GameEvent::MarketOpened {
+        player: actor,
+        hero,
+        place: MarketSeen::Town(town),
+    };
+    prop_assert_eq!(events, &[opened][..]);
+    let visit = h3_game::MarketVisit {
+        hero,
+        place: h3_game::MarketPlace::Town(town),
+    };
+    prop_assert_eq!(probe.market(actor), Some(&visit));
+    prop_assert_eq!(probe.towns().get(town), state.towns().get(town));
+    prop_assert_eq!(probe.treasury(actor), state.treasury(actor));
+    prop_assert_eq!(probe.adventure(), state.adventure());
+    let answers = trades::trade_answers(probe, rules, actor).unwrap_or_default();
+    prop_assert_eq!(answers.len() > 1, listed, "{:?}", answers);
+    Ok(())
+}
+
 fn check_town_builds(
     state: &GameState,
     rules: &GameRuleset,
@@ -7455,6 +7522,12 @@ fn check_town_builds(
             &mut events,
         );
         if !legal.contains(&command) {
+            // E09 T58a2: an unlisted market window `apply` accepts opens one that lists no
+            // answer but its `Leave` (TWN-MKT-002: an empty treasury, nothing to sell).
+            if result.is_ok() && matches!(command, GameCommand::Town(TownCommand::Market { .. })) {
+                check_town_market((state, &probe), rules, (actor, town), &events, false)?;
+                continue;
+            }
             // E09 T49a2: an unlisted opening is accepted when it changes nothing (TWN-GLD-006).
             let opening = matches!(command, GameCommand::Town(TownCommand::Open { .. }));
             prop_assert!(
@@ -7519,6 +7592,11 @@ fn check_town_builds(
             // heroes and the treasury.
             GameCommand::Town(TownCommand::BuySpellBook { .. }) => {
                 check_town_book((state, &probe), rules, actor, town)?;
+                continue;
+            }
+            // E09 T58a2: a listed market window, by an independent reading of the town's heroes.
+            GameCommand::Town(TownCommand::Market { .. }) => {
+                check_town_market((state, &probe), rules, (actor, town), &events, true)?;
                 continue;
             }
             _ => return Err(fail(format!("{command:?}"))),
@@ -12970,7 +13048,37 @@ fn check_decisions(
                 prop_assert!(matches!(kind, ObjectKind::Tavern), "{:?}", event);
                 exchange.4 = Some((hero, anchor));
             }
-            // A map market's (the plans open no town's window yet: E09 T58a2 lists it).
+            // E09 T58a2: a town's market window opens for its owner (TWN-MKT-002), its hero (none
+            // possible) the owner's visitor of the town, or its garrison hero.
+            GameEvent::MarketOpened {
+                player,
+                hero,
+                place: MarketSeen::Town(town),
+            } => {
+                let none = (None, None, None, None, None, None);
+                prop_assert_eq!((player, exchange), (actor, none));
+                let adventure = after.adventure();
+                let index = adventure.map().town_object(town);
+                prop_assert_eq!(index.and_then(|i| adventure.owner(i)), Some(actor));
+                let heroes = [
+                    adventure.town_visitor(town),
+                    adventure.town_hero(town).map(|on| on.id),
+                ];
+                prop_assert!(
+                    hero.is_none_or(|h| heroes.contains(&Some(h))),
+                    "{:?}",
+                    event
+                );
+                let owner = |h: HeroId| {
+                    let on = adventure
+                        .hero(h)
+                        .or_else(|| adventure.garrisoned(h).map(|(_, on)| on));
+                    on.map(|on| on.owner)
+                };
+                prop_assert!(hero.is_none_or(|h| owner(h) == Some(actor)), "{:?}", event);
+                exchange.5 = Some((hero, trades::TradeAt::Town(town)));
+            }
+            // A map market's.
             GameEvent::MarketOpened {
                 player,
                 hero: Some(hero),
@@ -13007,7 +13115,7 @@ fn check_decisions(
                 let at = visited_at(after, pos).and_then(|i| after.adventure().object(i));
                 let at = at.map(|o| (o.object_type, o.anchor));
                 prop_assert_eq!(at, Some((Some(object_type), anchor)), "{:?}", event);
-                exchange.5 = Some((hero, object_type, anchor));
+                exchange.5 = Some((Some(hero), trades::TradeAt::Object(object_type, anchor)));
             }
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, actor);
@@ -14967,6 +15075,10 @@ struct Besieged {
     cleared: usize,
     /// Town events fired, of them those that gave, took, and named a building standing.
     fired: [usize; 4],
+    /// E09 T58a2: towns' market windows opened (TWN-MKT-002), and the answers accepted in them but
+    /// their `Leave`.
+    windows: usize,
+    traded: usize,
     /// The sieges in progress: the attacking hero, and whether a visitor defends.
     open: Vec<(HeroId, usize)>,
 }
@@ -14989,8 +15101,18 @@ impl Besieged {
             .collect();
         let town_at = |pos: TilePos| entrances.iter().find(|&&(e, _)| e == pos).map(|&(_, i)| i);
         let mut captured = false;
+        // E09 T58a2: an answer in a town's market window.
+        let window = before
+            .market(acting(before))
+            .filter(|visit| matches!(visit.place, h3_game::MarketPlace::Town(_)));
+        let leave = GameCommand::Answer(Answer::Market(h3_game::MarketAnswer::Leave));
+        self.traded += usize::from(window.is_some() && *command != leave);
         for event in events {
             match event {
+                GameEvent::MarketOpened {
+                    place: MarketSeen::Town(_),
+                    ..
+                } => self.windows += 1,
                 GameEvent::Adventure(AdventureEvent {
                     kind: AdventureEventKind::TownCaptured { town, .. },
                     ..
@@ -15112,7 +15234,7 @@ impl Besieged {
 /// marks, and (E09 T19b) the towns' events fire, give, take, build, and skip a building standing,
 /// and (E09 T29b) heroes enter, leave and swap at the garrisons ([`visit_town`]), which then
 /// defend sieges alone and beside a visitor, and the Plague comes and the counts meet their bound,
-/// so the properties above ([`check_towns`], [`check_timed`], the entrances and the counts' bound
+/// and (E09 T58a2) the towns' market windows open and trade, so the properties above ([`check_towns`], [`check_timed`], the entrances and the counts' bound
 /// in [`check_invariants`], the forks' store and week, the listed builds of
 /// [`check_town_builds`]) see each.
 #[test]
@@ -15157,6 +15279,8 @@ fn the_plans_capture_and_besiege_towns() {
     // E09 T29b: the hero moves, and the Plague and the bound met by the towns' counts.
     assert!(b.rows.iter().all(|&n| n > 0), "{b:?}");
     assert!(b.plagues > 0 && b.saturated > 0, "{b:?}");
+    // E09 T58a2: the towns' market windows and their trades.
+    assert!(b.windows > 0 && b.traded > 0, "{b:?}");
 }
 
 /// What the plans' games did at the teleporters (E08 T106b1; increment 11's design note §14): the

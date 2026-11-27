@@ -6,8 +6,8 @@
 
 use h3_contracts::TownId;
 
+use crate::building::BuildingSet;
 use crate::command::TownCommandError;
-use crate::derive::Roles;
 use crate::record::Town;
 use crate::ruleset::TownRuleset;
 use crate::store::Towns;
@@ -35,13 +35,14 @@ pub fn marketplaces(
     part: &TownRuleset,
     towns: impl IntoIterator<Item = TownId>,
 ) -> usize {
+    // E09 T58a2: the record's derived roles, no walk over a town's buildings (the listing's
+    // count, `bench-check`'s `legal-towns-36`).
     towns
         .into_iter()
         .filter_map(|town| store.get(town))
         .filter(|town| {
-            Roles::of(town, part)
-                .built_roles()
-                .any(|(_, roles)| roles.marketplace)
+            part.town_with_market_roles(town.faction())
+                .is_some_and(|(_, roles)| town.built().intersects(roles.marketplace))
         })
         .count()
 }
@@ -64,12 +65,25 @@ pub fn check_market(
     part: &TownRuleset,
     hero: bool,
 ) -> Result<TownMarket, TownCommandError> {
-    let (mut marketplace, mut merchants, mut freelancers) = (false, false, false);
-    for (_, roles) in Roles::of(town, part).standing_roles() {
-        marketplace |= roles.marketplace;
-        merchants |= roles.artifact_merchants;
-        freelancers |= roles.freelancers;
+    // E09 T58a2: the record's derived roles, the three read standing through the built buildings
+    // that can supersede one (the listing asks it of every owned town: `bench-check`'s
+    // `legal-towns-36`, as `guild_offers`).
+    let Some((record, roles)) = part.town_with_market_roles(town.faction()) else {
+        return Err(TownCommandError::NoMarket);
+    };
+    let built = town.built();
+    let standing = built.intersection(roles.any());
+    if standing.is_empty() {
+        return Err(TownCommandError::NoMarket);
     }
+    let superseded = built
+        .intersection(roles.superseding)
+        .iter()
+        .filter_map(|id| record.building(id))
+        .fold(BuildingSet::EMPTY, |set, b| set.union(b.supersedes));
+    let standing = standing.difference(superseded);
+    let [marketplace, merchants, freelancers] =
+        [roles.marketplace, roles.merchants, roles.freelancers].map(|set| standing.intersects(set));
     if !(marketplace || merchants || freelancers) {
         return Err(TownCommandError::NoMarket);
     }
@@ -114,6 +128,14 @@ mod tests {
         assert_eq!(count(&[0, 1, 2, 3]), 2);
         assert_eq!(count(&[1]), 0);
         assert_eq!(count(&[2, 0]), 2);
+        // Ever built: a superseded Marketplace still counts (the fixture's Fountain supersedes the
+        // Pond).
+        let superseded = Towns::new(alloc::vec![(
+            town(&[MYSTIC_POND, FOUNTAIN]),
+            TownStatic::default()
+        )])
+        .unwrap();
+        assert_eq!(marketplaces(&superseded, &trades, [TownId::new(0)]), 1);
         // A town the store lacks counts none; the part without records none either.
         assert_eq!(count(&[9]), 0);
         assert_eq!(marketplaces(&store, &part(), [TownId::new(0)]), 0);
@@ -140,6 +162,12 @@ mod tests {
         assert_eq!(window(&[LOOKOUT], false), Err(TownCommandError::NoVisitor));
         assert_eq!(window(&[FOUNTAIN], false), Err(TownCommandError::NoVisitor));
         assert_eq!(window(&[TAVERN], true), Err(TownCommandError::NoMarket));
+        // A superseded Marketplace does not stand (the fixture's Fountain supersedes the Pond).
+        assert_eq!(window(&[MYSTIC_POND, FOUNTAIN], true), offers(false, true));
+        assert_eq!(
+            window(&[MYSTIC_POND, FOUNTAIN], false),
+            Err(TownCommandError::NoVisitor)
+        );
         assert_eq!(
             check_market(&town(&[MYSTIC_POND]), &part(), true),
             Err(TownCommandError::NoMarket)

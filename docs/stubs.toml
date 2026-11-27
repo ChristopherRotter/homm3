@@ -291,12 +291,6 @@ where  = "crates/h3-game/src/town/market.rs::window_hero"
 reason = "An ally's town's trades wait for E10's teams (E09 T58a1, design note E09-design.md section 101, 'Not here'): every town command is the town owner's, so a player's visitor at an ally's Artifact Merchants or Freelancer's Guild (the original serves the current player's visitor there at the current player's count, TD-29, TWN-6-2) and an ally's visitor at an own town (not the window's hero) trade nothing; the University, the Transformer and the Blacksmith (E09 T59) the same. Lifted with E10's teams"
 epic   = "E09"
 
-[[stub]]
-id     = "TWN-STUB-22"
-where  = "crates/h3-game/src/town/offer.rs::legal_builds"
-reason = "A town's market window (TownCommand::Market, TWN-MKT-002; E09 T58a1) is not listed by legal_commands: apply accepts it, but the env has no entry for it and the random agents and the property plans never open it. Lifted by E09 T58a2 (the listing where the window opens and offers a legal answer, the env's opening entry, the plans)"
-epic   = "E09"
-
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]

@@ -3,7 +3,7 @@
 //! and the neutral seat's since T20b3a; a town's build since E09 T19c1, encoding v9's entry; the
 //! listed builds skipped before it, E09 T18b2b, decision 56; a town's hire since E09 T38a2,
 //! encoding v12; the listed casts skipped from E08 T144a1 to encoding v21, T144a2, which draws
-//! them).
+//! them; a town's market window since E09 T58a2, encoding v22).
 
 use h3_adventure::Reach;
 use h3_battle::LegalCommands;
@@ -63,7 +63,8 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
 /// were left out of the draw, decision 56), its recruitments and hero moves (E09 T27, T28a) and
 /// its hires (by its entrance and the slot, E09 T38a2, encoding v12) and its heroes' casts of
 /// Summon Boat, Fly and Water Walk (encoding v21, E08 T144a2; left out of the draw from T144a1 to
-/// it), or with an open decision its answers alone (`Decline`, and `Accept` while the offer
+/// it) and its market windows (by its entrance, E09 T58a2, encoding v22; their answers the
+/// market's entries), or with an open decision its answers alone (`Decline`, and `Accept` while the offer
 /// stands; a level-up's `First` and `Second`, E08 T30), each at even odds with each hero's move
 /// (GAM-DEC-001, GAM-DEC-002; E08 T14b, T15a) and each hero's cast of Scuttle Boat or Dimension
 /// Door that has a target (E08 T144a2: the hero's query, [`action::targeted_casts`]), whose target

@@ -6768,3 +6768,82 @@ instrumentation (the test passes alone and in the plain run). `cargo clippy --wo
 --all-targets -- -D warnings`; `cargo test -p h3-towns -p h3-adventure -p h3-game -p h3-files -p
 h3-protocol -p h3-server -p h3-sim -p h3-cli` (every golden replayed). `master`'s da69ee4 (#1199,
 rmg only) merged in.
+
+### T58a2 — the market window listed, the env's `TOWN_MARKET` v22, the plans open towns' windows (2026-11-27)
+
+One session, the user present; branch `town/e09-t58a2`, `cross-lane` (the adventure lane's
+`h3-adventure` `market.rs` and its tests, `h3-game`'s `state/market.rs`, `h3-map`'s `play.rs` and
+`play/trades.rs`, seven adventure workloads; the AI lane's `h3-sim` `adventure/action.rs`, `mod.rs`,
+`rollout.rs`, `tests.rs`, `tests/towns.rs`). Starting point: `master` at a7b6752 (#1204; T58a1's
+#1202 merged), CI green on it; the setup's full baseline was stopped after 55 minutes of coverage
+with 9 GB of disk left (CI's run served), `master`'s 41 adventure workloads measured in the same
+sandbox for the comparison. The user's computer was online: five files staged (`Heroes3.exe`,
+`H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`). **T58a2 whole** (decision 225).
+
+- **The listing** (`h3-game`'s `town/offer.rs`, `town/market.rs`): `legal_builds` gives each own
+  town's `Market` after its spell book's purchase and before its hero moves where
+  `market::listed` holds: `check_market` as if a hero stood there (no market building: none), the
+  window's hero (`hero_of`, shared with `open`: the visitor and garrison hero with their owners as
+  the listing found them on the entrance) read only where the merchants or the guild stand, then a
+  trade's lot the treasury pays at every count (`GameState::pays_a_lot` over
+  `MarketParams::cheapest_at_every_count`: no count), else at the trader's count (computed at the
+  listing's first window that needs it) by `GameState::offers_an_answer` (the least lot at that
+  count, else `market_answers`' sales and purchases with a hero: `window_answers`, the list on a
+  resolved window). `TWN-STUB-22` lifted.
+- **`h3-towns`:** `check_market` and `marketplaces` read the part's derived `MarketRoles` per
+  record (the three roles' sets and the buildings that can supersede one; not hashed, as
+  `GuildRoles`); `TownRuleset::town`, `town_with_guild_roles` and `town_with_market_roles` find
+  the record at the faction's index first (`record_index`, the search after).
+- **`h3-adventure`** (`cross-lane`): `MarketParams` tabulates every count's lot of every pair at
+  its build (`resource_lot` a lookup: the same arithmetic, the same values) and derives
+  `cheapest_lot(count, give)` and `cheapest_at_every_count(give)`; none hashed.
+- **The env** (action encoding **v22**): `TOWN_MARKET` (145, after the casts so that no entry
+  moves), `ENTRY_COUNT` 146, `Action::town_market`; its tile mask the entrances of the towns of the
+  listed windows, building 0; `tileless` stops the casts at it; the random agent draws it as every
+  listed command. The mask property (`check_town_heroes`) covers it; the layout test the numbers.
+  The town map's end-of-days seed **864** (a search over 1 to 3 000 in release, mask checks off:
+  four met every feature, 864 the shortest, 980 steps, 29 builds, 96 dialogs, 15 hires, 3 books,
+  30 windows and 176 answers in them; 264 met no undefended capture); `Played` counts the windows
+  and their answers. The fork's seed 6 holds.
+- **The plans** (`h3-map`): `trades::trade_open` gives `(Option<HeroId>, TradeAt)` (`Object` or
+  `Town`), `trade_army` a garrison hero's army too; `trade_answers` probes a town's window (no
+  sale without a hero, the merchants' one stock), the answer and listing oracles take its
+  optional hero; `check_decisions` a town's `MarketOpened` (the owner's town, the hero its visitor
+  or garrison hero, the actor's); `check_trades` the Artifact Merchants' stock (an answer changes
+  it only by a town's purchase's entry); `town_builds` probes `Market` after the book,
+  `accepted_builds` keeps it where the opened window lists an answer but its `Leave`,
+  `check_town_builds` reads a listed or an accepted unlisted one apart (`check_town_market`);
+  `visit_town` opens a listed window in one step of sixteen (half the book's);
+  `TOWN_BUILDINGS`' first custom set holds the Marketplace (bit 8); the towns' cover test counts
+  the windows and their answers. All of `h3-map`'s tests passed (release) after
+  `check_town_builds` learned the window; then the play and view blocks once at ten and five times
+  their cases: every property passed but the hygiene one, whose seed (a plan without towns,
+  `Exchange` steps) `master` fails too (the adventure lane's inbox; not added to the regressions);
+  a fresh 240-case run of it passed.
+- **Tests:** `h3-towns`' window (a superseded Marketplace not standing, still counted);
+  `h3-adventure`'s `the_cheapest_lot_is_the_least_any_trade_takes_and_its_most_over_the_counts`;
+  `h3-game`'s `the_listing_opens_a_window_where_it_opens_and_offers_an_answer` (a Marketplace
+  without a hero, an empty treasury not listed but accepted, one wood, the guild's sale with an
+  empty treasury after the guild's commands and before the moves, the merchants' price, no hero,
+  no market, both towns' windows); `h3-sim`'s layout and mask tests.
+- **The bench** (`master` measured in the same sandbox, per function): on `master`'s games (the
+  agent made to skip the listed windows, an experiment) the first build cost `legal-towns-36`
+  +21.9 % (each pair's lot in float arithmetic, `resource_lot`, `lot` and `X87`, 4.0 M; the
+  trader's count, 1.0 M); one design pass: the cheapest lots derived at the build (+4.3 %), the
+  window's hero read only where the merchants or the guild stand (+3.6 %), the records read at the
+  faction's index (+0.02 %: the search per owned town paid for the rule). With the agent drawing
+  the windows the town map's games changed course (it trades lot by lot inside them):
+  `legal-towns-36` +128.6 % on `master` with E08's `market_answers` listing every pair's lot at
+  every step inside a window, +36.7 % once `MarketParams` tabulated the lots (the offers' vectors
+  and the merchants' prices left). Re-baselined, the counted code the same (the functions in the
+  same shares): `legal-towns-36` +36.67 % (`master` 34 810 958), `reach-towns-36` −15.52 %,
+  `fork-towns-36` −16.11 %, `day-start-builds-36` −12.03 %, `day-start-towns-36` −8.85 %,
+  `day-start-guild-36` −8.00 %, `month-start-builds-36` −4.89 %; every other adventure workload
+  within 1.5 % of `master`.
+- *Agent's calls* (change freely): the window listed after the town's spell book's purchase; the
+  count read only where the worst count's lot is not paid; the lot table in `MarketParams` (one
+  allocation of rows × resources², the original's 490 lots) rather than a cache in the game; the
+  plans' Marketplace in one of the four building sets rather than a new draw (no case shifts).
+
+**The queue:** T58a2 out; T58b next (the artifact sale). Ids: decisions next 226; quirks
+`TWN-QUIRK-18` (planned `-18` to `-20`, `-22`, `-23`); stubs `TWN-STUB-23`.
