@@ -9,7 +9,7 @@ Human-editable content packs (ADR-0006). Keys are namespaced `pack:name`. Since 
 | `battle.toml` | no manifest (it belongs to its folder's `core.toml`): `[battle]`, special battlefields (v36), sieges (v37), obstacles, each creature's battle data (`[[creature]]` with its `id`: attack, defense, damage, hit points, shots, casts, abilities), creature overrides' battle halves (`target`, `fixes` and those fields), each spell's battle magic (`[[spell]]` with its `id`: polarity and every targeting and effect field) | `h3-pack-battle` into a `BattlePack`; `h3-content-battle` into the `BattleRuleset` on the core |
 | `adventure.toml` | the adventure map's data (owned by the adventure lane; format: `crates/h3-pack-adventure/src/lib.rs`) | `h3-pack-adventure` |
 | `towns.toml` | the town part's data: per faction a town record, the part's parameters (owned by the town lane, ADR-0028 point 5; format: `crates/h3-pack-towns/src/lib.rs`, from E09 T5a). The synthetic packs' are hand-written (E09 T5b2a), the original packs' harvested (E09 T5b2b2: `base` the eight RoE factions and the parameters, `ab` Conflux, `sod` the moats as SoD plays them; since E09 T36 each record's tavern weights from `HCTRAITS.TXT`, `ab`'s overrides adding its two classes to the base records, and the hire's price; since E09 T39b1 the Thieves' Guild's resource rows, `RESTYPES.TXT`'s indexes from the gap-fill; since E09 T46 each record's guild weights from `SPTRAITS.TXT`'s town columns, the roles `guild`, `library`, `aurora` and `mana_vortex` and the guild's parameters from the gap-fill; since E09 T56 the roles `marketplace`, `artifact_merchants`, `freelancers`, `university` and `transformer` and the trades' parameters from the gap-fill, each Blacksmith's `war_machine` from the executable's `blacksmith_machine_creatures` (the Ballista Yard's from the gap-fill), the Skeleton Transformer's targets and each pack's `[town_transformer]` dragons from `skeleton_transformer_targets`) | `h3-pack-towns`; `h3-towns` into the `TownRuleset` on the core |
-| `rmg.toml` | the map generator's tables (owned by the rmg lane, ADR-0029 point 5; format below, "The map generator's tables"): `ab` AB's `rmg.txt`, `objects.txt` and `rand_trn.txt` as the game reads them, `sod` what SoD's add (three templates, `objects.txt`'s 105 added and 2 changed lines) and the executable's constants (`[generator]`, E14 T2c); harvested since E14 T2b; the synthetic pack's hand-written | `h3-pack-rmg`; `h3-rmg` into the `RmgRuleset` on the core (not part of the game's rulesets) |
+| `rmg.toml` | the map generator's tables (owned by the rmg lane, ADR-0029 point 5; format below, "The map generator's tables"): `ab` AB's `rmg.txt`, `objects.txt` and `rand_trn.txt` as the game reads them, `sod` what SoD's add (three templates, `objects.txt`'s 105 added and 2 changed lines) and the executable's constants (`[generator]`, E14 T2c), each `objects.txt` line with its picture's `.msk` from the sprite archives (E14 T4b); harvested since E14 T2b; the synthetic pack's hand-written | `h3-pack-rmg`; `h3-rmg` into the `RmgRuleset` on the core (not part of the game's rulesets) |
 
 The TOML keys are the same in either file; the sections below show each table with all its
 fields, whichever file a field lives in. Every creature and every spell of a pack has a row in
@@ -27,7 +27,7 @@ A pack folder without `battle.toml` (or `adventure.toml`) reads as an empty one.
 
 The harvested packs `base` (RoE), `ab` and `sod` are generated from the user's installation by
 `crates/h3-harvest` and committed (E02 T4; OPEN-QUESTIONS Q13: gameplay data and names only, no
-flavor text). Do not edit them by hand: change the harvester or its gap-fill file and re-run
+flavor text; the rmg packs also the `.msk` files' footprints and colour masks, E14 T4b). Do not edit them by hand: change the harvester or its gap-fill file and re-run
 `cargo run -p h3-harvest -- --install original-data/install --out packs` (it writes `core.toml`,
 `battle.toml`, `towns.toml` and `ab`'s and `sod`'s `rmg.toml`); `cargo xtask verify --with-original-data` checks that they match
 the installation. Original files stay in the gitignored `original-data/`; the installation itself is
@@ -846,7 +846,7 @@ profile, quirks, resources, terrains, factions, obstacles, all creature fields i
 and upgrades, the battle parameters and the hero content (spells with their battle magic) with
 the artifacts and the hero parameters; replays record it.
 
-## The map generator's tables (`rmg.toml`, E14 T2b, T2c)
+## The map generator's tables (`rmg.toml`, E14 T2b, T2c, T4b)
 
 The rmg part (ADR-0029 point 5; `crates/h3-rmg`, parsed by `crates/h3-pack-rmg`) holds the original
 generator's three tables as the game reads them: the values as `c_atoi` reads them, a mark's
@@ -860,8 +860,13 @@ object_templates = [             # objects.txt's template lines, in file order (
                                  # their number); a later pack's lines are inserted `before` a line
                                  # (from 0) of the table the earlier packs left, else appended
   { before = 124, picture = "AVA0130.def", passability = "0111…", actions = "1000…", # 48 marks
-    terrains = "111111111", editor_terrains = "011111111", class = 5, subclass = 129,  # 9 marks
-    group = 4, overlay = 0 },    # (TOML wants an inline table on one line)
+    editor_terrains = "111111111", terrains = "011111111", # columns 3 and 4, 9 marks each: the
+                                 # editor's, never tested, and the ones it stands on (+0x18)
+    class = 5, subclass = 129, group = 4, overlay = 0,     # columns 5 to 8
+    width = 2, height = 1,       # its picture's .msk (E14 T4b): bytes 0 and 1, 1-8 x 1-6
+    colour = "1100…" },          # the .msk's colour mask, 48 marks in passability's order
+                                 # (mark k: byte (47 - k) / 8, bit (47 - k) % 8); TOML wants an
+                                 # inline table on one line
 ]
 object_template_overrides = [    # replaces `line` of the earlier packs' table, once per line
   { line = 1186, picture = "AVXcrsd0.def", … },
@@ -918,7 +923,17 @@ picture_sets = [                 # the terrain painter's sets (0x642BD8; E14 T3e
   …                              # bytes +4 and +5, the decorated share in percent, the
 ]                                # pictures in order as runs [shape, flag, count] (RMG-TER-006)
 rock_pictures = [[0, 0, 0, 8], …] # rock's (0x6424A8) as runs [shape, a, b, count]
+object_not_entered = "0001…"     # the object settings by class 0 to 231 (object_settings_init
+object_from_above = "0001…"      # 0x41B500; E14 T4b), one mark per class: +0x0 (not entered),
+object_removable = "0000…"       # +0x1 (entered from above), +0x2 (removable); the classes whose
+object_class_groups = [[165, 114], …] # +0x8 (their templates' class, rmg_objects_read) is not
+                                 # their own: class and group, in order (a class twice: the last)
 ```
+
+The `.msk` is the one `msk_load` 0x514610 finds: the picture's name from its last `.` replaced
+by `.msk`, in `H3sprite.lod`, then `H3ab_spr.lod` (the game's sprite search order, the first
+holding it winning), else `default.msk` (1 × 1, its anchor coloured); every shipped line has its
+own (survey §2.1).
 
 The compiler refuses a line, template or connection index past its table or outside the pack's
 dependency closure, a line replaced twice by one pack, a `fixes` that is no registered
@@ -926,10 +941,14 @@ dependency closure, a line replaced twice by one pack, a `fixes` that is no regi
 Overlap score per row, and generator's tables whose three hero mark strings differ in length,
 whose limits name an object type past 231, or without 32 cosines and sines, nine rows of town
 types from -1 to 8 and a terrain from 0 to 8 per town type, or without nine picture sets of
-shares up to 100, each set and rock's of at most 127 pictures of shapes up to 28 (a flag or
-variant other than 0 and 1, and runs past 127 pictures, are refused when the pack is read). The harvested `ab` pack carries 8XM8's six overrides (RMG-QUIRK-22, from the
+shares up to 100, each set and rock's of at most 127 pictures of shapes up to 28, or without 232
+object settings whose class groups are below 232 (a flag or variant other than 0 and 1, runs past
+127 pictures, object settings' mark strings of another length than 232 or a class group's class
+past 231, a colour mask not of 48 marks and a footprint outside 1-8 × 1-6 are refused when the
+pack is read). The harvested `ab` pack carries 8XM8's six overrides (RMG-QUIRK-22, from the
 gap-fill); `cargo xtask verify --with-original-data` also compares the compiled part with the text
-tables (`crates/h3-pack-rmg/examples/original_data.rs`).
+tables (`crates/h3-pack-rmg/examples/original_data.rs`) and the packs' `.msk` fields and object
+settings with the sprite archives and the executable (`crates/h3-harvest/examples/original_data.rs`).
 
 ## Scenarios
 

@@ -148,6 +148,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.rmg.terrain_towns_count",
     "quirk.rmg.partition_units",
     "quirk.rmg.cosmetic",
+    "quirk.rmg.least_town_skipped",
+    "quirk.rmg.fill_start_on_border",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -500,6 +502,19 @@ pub const RMG_PARTITION_UNITS: QuirkFlag = QuirkFlag(58);
 /// chosen. Read by the painters and the writer from E14 T3e.
 pub const RMG_COSMETIC: QuirkFlag = QuirkFlag(59);
 
+/// RMG-QUIRK-13 (survey `E14-generator.md` §2.2; registered at E14 T4b with steps 4 and 5): step
+/// 5 (`rmg_zone_towns_place` 0x544AE0) skips the first of the first kind of town a zone asks for
+/// as step 4's town even when step 4 placed none, so such a zone ends one least town short. Off:
+/// step 5 skips it only when step 4 placed the zone's town. Read by step 5 (E14 T4b).
+pub const RMG_LEAST_TOWN_SKIPPED: QuirkFlag = QuirkFlag(60);
+
+/// RMG-QUIRK-25 (survey `E14-generator.md` §2.2; registered at E14 T4b, increment 3's checkpoint
+/// decision 11): step 2's fill (`rmg_zone_flood_fill` 0x53D380) starts at the zone's centre, or
+/// the cell left of it, and fills nothing when both lie on borders, the zone keeping only its
+/// border cells. Off: such a fill starts at the free cell nearest the centre whose region no
+/// later zone's fill starts in. Read by step 2 (E14 T4b).
+pub const RMG_FILL_START_ON_BORDER: QuirkFlag = QuirkFlag(61);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -542,7 +557,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 60);
+        assert_eq!(REGISTRY.len(), 62);
         assert_eq!(
             [
                 "quirk.adventure.flight_reads_hidden",
@@ -560,6 +575,8 @@ mod tests {
                 "quirk.rmg.terrain_towns_count",
                 "quirk.rmg.partition_units",
                 "quirk.rmg.cosmetic",
+                "quirk.rmg.least_town_skipped",
+                "quirk.rmg.fill_start_on_border",
             ]
             .map(|name| REGISTRY.lookup(name)),
             [
@@ -578,6 +595,8 @@ mod tests {
                 RMG_TERRAIN_TOWNS_COUNT,
                 RMG_PARTITION_UNITS,
                 RMG_COSMETIC,
+                RMG_LEAST_TOWN_SKIPPED,
+                RMG_FILL_START_ON_BORDER,
             ]
             .map(Some)
         );
@@ -781,7 +800,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 60);
+        assert_eq!(REGISTRY.len(), 62);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -795,7 +814,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..60).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..62).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

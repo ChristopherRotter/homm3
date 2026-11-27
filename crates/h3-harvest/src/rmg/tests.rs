@@ -76,6 +76,37 @@ fn object(picture: &str, editor: &str) -> String {
     )
 }
 
+/// The sprite archives' masks: `a.def`'s 2 × 1, its anchor and the cell left of it coloured;
+/// `default.msk`, 1 × 1, its anchor.
+fn masks() -> BTreeMap<String, Msk> {
+    let msk = |width, height, last| Msk {
+        width,
+        height,
+        colour: [0, 0, 0, 0, 0, last],
+    };
+    BTreeMap::from([
+        ("a.msk".to_owned(), msk(2, 1, 0xC0)),
+        ("default.msk".to_owned(), msk(1, 1, 0x80)),
+    ])
+}
+
+/// The object settings of three classes: 0 not entered, 1 filed among class 0, 2 entered from
+/// above and removable.
+fn settings() -> Vec<h3_formats::exe::ObjectSettingsData> {
+    let class =
+        |class_group, not_entered, from_above, removable| h3_formats::exe::ObjectSettingsData {
+            not_entered,
+            from_above,
+            removable,
+            class_group,
+        };
+    vec![
+        class(0, true, false, false),
+        class(0, false, false, false),
+        class(2, false, true, true),
+    ]
+}
+
 fn rand_trn() -> TextTable {
     let mut first = row(
         18,
@@ -121,7 +152,7 @@ fn gap(fixes: Vec<RmgZoneIdsFix>) -> GapFill {
 fn harvest(tables: &Tables, fixes: Vec<RmgZoneIdsFix>) -> Result<(String, String), String> {
     let mut report = Vec::new();
     let packs = harvest_rmg(tables, &gap(fixes), &mut report)?;
-    assert_eq!(report.len(), 1);
+    assert_eq!(report.len(), 2);
     let [("ab", ab), ("sod", sod)] = packs.as_slice() else {
         panic!("{packs:?}");
     };
@@ -138,6 +169,7 @@ fn the_tables_are_kept_as_read() {
     let tables = Tables {
         ab: files(rmg("One"), &[&a]),
         sod: files(rmg("One"), &[&a]),
+        masks: masks(),
         constants: Constants {
             heroes: vec![[true, true, false], [false, true, true]],
             map_limits: vec![(26, 200), (6, 200)],
@@ -153,6 +185,7 @@ fn the_tables_are_kept_as_read() {
                 pictures: vec![(0, false), (0, false), (0, true)],
             }],
             rock_pictures: vec![(0, [false, false]), (8, [true, false]), (8, [true, false])],
+            object_settings: settings(),
         },
     };
     let (ab, sod) = harvest(&tables, Vec::new()).unwrap();
@@ -168,6 +201,11 @@ fn the_tables_are_kept_as_read() {
     assert!(sod.contains(
         "picture_sets = [\n  { through_dirt = false, land = true, share = 70, pictures = [[0, 0, \
          2], [0, 1, 1]] },\n]\nrock_pictures = [[0, 0, 0, 1], [8, 1, 0, 2]]\n"
+    ));
+    // The object settings: a mark per class, the groups that are not their class.
+    assert!(sod.contains(
+        "object_not_entered = \"100\"\nobject_from_above = \"001\"\nobject_removable = \"001\"\n\
+         object_class_groups = [[1, 0]]\n"
     ));
     // Column 6 set after 4: the last set wins; a space is not set; strength by its first letter.
     assert!(ab.contains(
@@ -186,11 +224,14 @@ fn the_tables_are_kept_as_read() {
     ));
     assert!(ab.contains("{ zones = [2, 1], value = 0, wide = false, border_guard = true"));
     assert!(ab.contains("[[template]]\nname = \"One\"\nsizes = [1, 8]\n"));
+    // The third column first, then the fourth; the picture's .msk after the line's fields.
     assert!(ab.contains(&format!(
-        "{{ picture = \"a.def\", passability = \"{}\", actions = \"{}\", terrains = \"111111111\", \
-         editor_terrains = \"000000001\", class = 5, subclass = 1, group = 2, overlay = 0 }},",
+        "{{ picture = \"a.def\", passability = \"{}\", actions = \"{}\", editor_terrains = \
+         \"111111111\", terrains = \"000000001\", class = 5, subclass = 1, group = 2, overlay = 0, \
+         width = 2, height = 1, colour = \"11{}\" }},",
         "1".repeat(48),
-        "0".repeat(48)
+        "0".repeat(48),
+        "0".repeat(46)
     )));
     assert!(ab.contains(
         "[[obstacle]]\ntype = 135\nsubtype = 0\nterrain = 0\nmodifiers = [10, 0, 0, 0, 0, 0, 0, \
@@ -229,13 +270,19 @@ fn sods_pack_holds_what_its_tables_add() {
             objects: objects_table(&[&new, &a, &b2, &c, &late]),
             rand_trn: sod_trn,
         },
+        masks: masks(),
         ..Tables::default()
     };
     let (_, sod) = harvest(&tables, Vec::new()).unwrap();
     assert!(sod.contains("  { before = 0, picture = \"new.def\""));
     assert!(sod.contains("  { before = 3, picture = \"late.def\""));
     assert!(sod.contains("  { line = 1, picture = \"b.def\""));
-    assert!(sod.contains("editor_terrains = \"111111111\""));
+    assert!(sod.contains("terrains = \"111111111\", class"));
+    // A picture without its own .msk takes default.msk's.
+    assert!(sod.contains(&format!(
+        "width = 1, height = 1, colour = \"1{}\" }},\n]\nobject_template_overrides",
+        "0".repeat(47)
+    )));
     assert!(sod.contains("name = \"Two\"") && !sod.contains("name = \"One\""));
     assert!(sod.contains("modifiers = [11,"));
 }
@@ -249,6 +296,7 @@ fn decimal_first_zones_get_their_gated_overrides() {
     let tables = Tables {
         ab: files(text.clone(), &[&a]),
         sod: files(text, &[&a]),
+        masks: masks(),
         ..Tables::default()
     };
     let fix = |first_zones: Vec<i32>, template: &str| RmgZoneIdsFix {
@@ -288,6 +336,7 @@ fn tables_that_do_not_read_are_refused() {
     let ok = || Tables {
         ab: files(rmg("One"), &[&a]),
         sod: files(rmg("One"), &[&a]),
+        masks: masks(),
         ..Tables::default()
     };
     type Change = Box<dyn Fn(&mut Tables)>;
@@ -338,6 +387,10 @@ fn tables_that_do_not_read_are_refused() {
             Box::new(|t| t.ab.rand_trn.records[3][16] = "9999999999".into()),
             "Rand_trn.txt row 4",
         ),
+        (
+            Box::new(|t| t.masks = BTreeMap::new()),
+            "no a.msk and no default.msk",
+        ),
     ];
     for (change, message) in cases {
         let mut tables = ok();
@@ -349,4 +402,54 @@ fn tables_that_do_not_read_are_refused() {
     assert_eq!(atoi(&[String::from("\t7")], 0), Ok(7));
     assert_eq!(atoi(&[String::from("-2147483648")], 0), Ok(i32::MIN));
     assert_eq!(atoi(&[], 0), Ok(0));
+}
+
+/// `msk_load`'s name, bytes and marks; the report's counts of own and default masks and of lines
+/// blocking a cell without a body pixel.
+#[test]
+fn the_masks_are_the_pictures_msk() {
+    assert_eq!(msk_name("AVWmon1.def"), "avwmon1.msk");
+    assert_eq!(msk_name("a.b.DEF"), "a.b.msk");
+    assert_eq!(msk_name("plain"), "plain.msk");
+    let file = [3, 2, 1, 0, 0, 0, 0, 0x80, 9, 9, 9, 9, 9, 9];
+    let msk = Msk::parse(&file).unwrap();
+    assert_eq!((msk.width, msk.height), (3, 2));
+    // Mark 0 is the game's bit 47 (byte 5, bit 7), mark 47 its bit 0 (byte 0, bit 0).
+    assert_eq!(msk.marks(), format!("1{}1", "0".repeat(46)));
+    assert!(Msk::parse(&file[..13]).unwrap_err().contains("13 bytes"));
+    assert!(Msk::parse(&file[..3]).is_err());
+    // d.def (default.msk, its anchor alone) blocks its anchor and the cell left of it.
+    let d = format!(
+        "d.def 00{} {} 111111111 000000001 7 0 0 0",
+        "1".repeat(46),
+        "0".repeat(48)
+    );
+    let a = object("a.def", "000000001");
+    let tables = Tables {
+        ab: files(rmg("One"), &[&a, &d]),
+        sod: files(rmg("One"), &[&a, &d]),
+        masks: masks(),
+        ..Tables::default()
+    };
+    let mut report = Vec::new();
+    harvest_rmg(&tables, &gap(Vec::new()), &mut report).unwrap();
+    assert_eq!(
+        report[1],
+        "rmg: ab's object templates 1 with their own .msk, 1 with default.msk, 1 blocking a cell \
+         without a body pixel (1 of class 7); sod's 1 with their own .msk, 1 with default.msk, 1 \
+         blocking a cell without a body pixel (1 of class 7)"
+    );
+    let tables = Tables {
+        ab: files(rmg("One"), &[&a]),
+        sod: files(rmg("One"), &[&a]),
+        ..tables
+    };
+    report.clear();
+    harvest_rmg(&tables, &gap(Vec::new()), &mut report).unwrap();
+    assert_eq!(
+        report[1],
+        "rmg: ab's object templates 1 with their own .msk, 0 with default.msk, 0 blocking a cell \
+         without a body pixel; sod's 1 with their own .msk, 0 with default.msk, 0 blocking a cell \
+         without a body pixel"
+    );
 }

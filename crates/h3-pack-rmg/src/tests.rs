@@ -1,6 +1,8 @@
 use h3_content::{PackManifest, Ruleset};
 use h3_pack::{SYNTHETIC_CORE, SYNTHETIC_EXT_CORE};
-use h3_rmg::{GeneratorTables, RmgCompileError, RmgPack, RmgRuleset, Strength, ZoneKind};
+use h3_rmg::{
+    GeneratorTables, ObjectSettings, RmgCompileError, RmgPack, RmgRuleset, Strength, ZoneKind,
+};
 
 use super::*;
 
@@ -16,19 +18,19 @@ depends = []
 
 [[profile]]
 id = "on"
-quirks = { "quirk.content.rmg_8xm8_zone_ids" = true, "quirk.rmg.roe_monster_town_byte" = true, "quirk.rmg.unowned_start_seventh" = true, "quirk.rmg.zone_memory_model" = true, "quirk.rmg.terrain_towns_count" = true, "quirk.rmg.partition_units" = true, "quirk.rmg.cosmetic" = true }
+quirks = { "quirk.content.rmg_8xm8_zone_ids" = true, "quirk.rmg.roe_monster_town_byte" = true, "quirk.rmg.unowned_start_seventh" = true, "quirk.rmg.zone_memory_model" = true, "quirk.rmg.terrain_towns_count" = true, "quirk.rmg.partition_units" = true, "quirk.rmg.cosmetic" = true, "quirk.rmg.least_town_skipped" = true, "quirk.rmg.fill_start_on_border" = true }
 
 [[profile]]
 id = "off"
-quirks = { "quirk.content.rmg_8xm8_zone_ids" = false, "quirk.rmg.roe_monster_town_byte" = false, "quirk.rmg.unowned_start_seventh" = false, "quirk.rmg.zone_memory_model" = false, "quirk.rmg.terrain_towns_count" = false, "quirk.rmg.partition_units" = false, "quirk.rmg.cosmetic" = false }
+quirks = { "quirk.content.rmg_8xm8_zone_ids" = false, "quirk.rmg.roe_monster_town_byte" = false, "quirk.rmg.unowned_start_seventh" = false, "quirk.rmg.zone_memory_model" = false, "quirk.rmg.terrain_towns_count" = false, "quirk.rmg.partition_units" = false, "quirk.rmg.cosmetic" = false, "quirk.rmg.least_town_skipped" = false, "quirk.rmg.fill_start_on_border" = false }
 "#;
 
 /// An `objects.txt` line of `picture` with `extra` fields first (`before = 1, `).
 fn line(extra: &str, picture: &str) -> String {
     format!(
-        "{{ {extra}picture = \"{picture}\", passability = \"{p}\", actions = \"{a}\", terrains = \
-         \"000000001\", editor_terrains = \"100000000\", class = 5, subclass = 1, group = 2, \
-         overlay = 0 }}",
+        "{{ {extra}picture = \"{picture}\", passability = \"{p}\", actions = \"{a}\", \
+         editor_terrains = \"000000001\", terrains = \"100000000\", class = 5, subclass = 1, \
+         group = 2, overlay = 0, width = 1, height = 1, colour = \"{a}\" }}",
         p = "1".repeat(48),
         a = "0".repeat(48),
     )
@@ -152,15 +154,23 @@ fn the_synthetic_tables_compile_as_written() {
     assert_eq!(vales.connections[2].humans, [2, 2]);
     assert_eq!(ring.connections[1].zones, [1, 1]);
     assert_eq!(
-        pictures(&part),
+        pictures(&part)[..3],
         ["synth_blank.def", "synth_mine.def", "synth_tree.def"]
     );
+    // The nine towns, subclasses 0 to 8 (steps 4 and 5 take them by the town type's index).
+    let towns: Vec<(u32, u32)> = part.object_templates()[3..]
+        .iter()
+        .map(|t| (t.class, t.subclass))
+        .collect();
+    assert_eq!(towns, (0..9).map(|t| (98, t)).collect::<Vec<_>>());
     let mine = &part.object_templates()[1];
     assert_eq!(mine.passability, (1u64 << 48) - 2);
+    // The third column is the editor's terrains, the fourth the ones it stands on.
     assert_eq!(
-        (mine.actions, mine.terrains, mine.editor_terrains),
+        (mine.actions, mine.editor_terrains, mine.terrains),
         (1, 0x1FF, 1 << 8)
     );
+    assert_eq!((mine.width, mine.height, mine.colour), (3, 2, 0x707));
     assert_eq!((mine.class, mine.subclass, mine.group), (53, 2, 2));
     assert_eq!(part.object_templates()[2].overlay, 1);
     let [tree, crater] = part.obstacles() else {
@@ -196,8 +206,25 @@ fn the_synthetic_tables_compile_as_written() {
             native_terrains: vec![2, 2, 3, 7, 0, 6, 5, 4, 2],
             picture_sets: synthetic_picture_sets(),
             rock_pictures: synthetic_rock_pictures(),
+            object_settings: synthetic_object_settings(),
         })
     );
+    let generator = part.generator().unwrap();
+    assert!(generator.object_settings_of(53).unwrap().not_entered);
+    assert_eq!(generator.object_settings_of(136).unwrap().class_group, 135);
+}
+
+/// The synthetic pack's object settings: class 53 not entered and from above, 5 removable, 136
+/// among 135.
+fn synthetic_object_settings() -> Vec<ObjectSettings> {
+    (0..232u8)
+        .map(|class| ObjectSettings {
+            not_entered: class == 53,
+            from_above: class == 53,
+            removable: class == 5,
+            class_group: if class == 136 { 135 } else { class },
+        })
+        .collect()
 }
 
 /// The synthetic pack's picture sets, its runs expanded.
@@ -292,6 +319,8 @@ fn the_generators_tables_are_checked_and_replaced() {
             "rock_pictures = [[0, 0, 0, 2]",
             "rock_pictures = [[29, 0, 0, 2]",
         ),
+        // A class group past 231.
+        ("[[136, 135]]", "[[136, 232]]"),
     ] {
         let text = SYNTHETIC_RMG.replacen(from, to, 1);
         assert_eq!(
@@ -304,10 +333,12 @@ fn the_generators_tables_are_checked_and_replaced() {
         "[generator]\nheroes_roe = \"1\"\nheroes_expansions = \"0\"\nheroes_campaign = \"0\"\n\
          map_limits = []\nzone_limits = [[0, 1]]\nlayout_cos = {COS:?}\nlayout_sin = {COS:?}\n\
          terrain_towns = {:?}\nnative_terrains = {:?}\npicture_sets = [{}]\n\
-         rock_pictures = []\n",
+         rock_pictures = []\nobject_not_entered = \"{none}\"\nobject_from_above = \"{none}\"\n\
+         object_removable = \"{none}\"\nobject_class_groups = []\n",
         [[8, -1, 0, 0]; 9],
         [8; 9],
-        "{ through_dirt = false, land = false, share = 0, pictures = [] }, ".repeat(9)
+        "{ through_dirt = false, land = false, share = 0, pictures = [] }, ".repeat(9),
+        none = "0".repeat(232),
     );
     let part = compile(
         &[(SYNTHETIC_CORE, SYNTHETIC_RMG), (SYNTHETIC_EXT_CORE, &ext)],
@@ -317,6 +348,23 @@ fn the_generators_tables_are_checked_and_replaced() {
     assert_eq!(part.generator().unwrap().zone_limits, [(0, 1)]);
     assert_eq!(part.generator().unwrap().native_terrains, [8; 9]);
     assert!(part.generator().unwrap().rock_pictures.is_empty());
+    assert_eq!(
+        part.generator().unwrap().object_settings_of(136).unwrap(),
+        &ObjectSettings {
+            not_entered: false,
+            from_above: false,
+            removable: false,
+            class_group: 136,
+        }
+    );
+    // The compiler checks the settings' number too (a table built without the parser).
+    let core = core(&[SYNTHETIC_CORE], PROFILE);
+    let mut pack = parse_rmg(&manifest(SYNTHETIC_CORE), SYNTHETIC_RMG).unwrap();
+    pack.generator.as_mut().unwrap().object_settings.pop();
+    assert_eq!(
+        RmgRuleset::compile(&core, &[pack]).unwrap_err(),
+        RmgCompileError::GeneratorTables("synthetic".into())
+    );
     assert!(
         compile(&[(SYNTHETIC_CORE, "")], PROFILE)
             .unwrap()
@@ -396,6 +444,18 @@ fn the_hash_covers_every_table() {
             "rock_pictures = [[0, 0, 0, 2]",
             "rock_pictures = [[0, 0, 1, 2]",
         ),
+        // The two terrain columns, the footprint, the colour mask, the object settings.
+        (
+            "editor_terrains = \"111111111\", terrains = \"000000001\"",
+            "editor_terrains = \"000000001\", terrains = \"111111111\"",
+        ),
+        ("width = 3", "width = 4"),
+        ("height = 2", "height = 3"),
+        ("colour = \"111", "colour = \"011"),
+        ("object_not_entered = \"0", "object_not_entered = \"1"),
+        ("object_from_above = \"0", "object_from_above = \"1"),
+        ("object_removable = \"0", "object_removable = \"1"),
+        ("[[136, 135]]", "[[136, 134]]"),
     ] {
         assert!(SYNTHETIC_RMG.contains(from), "{from}");
         assert_ne!(base, hash(&SYNTHETIC_RMG.replacen(from, to, 1)), "{from}");
@@ -431,8 +491,17 @@ fn a_later_pack_inserts_replaces_appends_and_overrides() {
             "ext_a.def",
             "synth_mine.def",
             "ext_tree.def",
-            "ext_c.def",
-            "ext_d.def"
+            "ext_d.def",
+            "synth_town0.def",
+            "synth_town1.def",
+            "synth_town2.def",
+            "synth_town3.def",
+            "synth_town4.def",
+            "synth_town5.def",
+            "synth_town6.def",
+            "synth_town7.def",
+            "synth_town8.def",
+            "ext_c.def"
         ]
     );
     let names: Vec<_> = part.templates().iter().map(|t| t.name.as_str()).collect();
@@ -481,10 +550,23 @@ fn malformed_files_are_refused() {
             "monster_towns = \"1111111111\"",
         ),
         (
-            "editor_terrains = \"000000001\"",
-            "editor_terrains = \"00000001\"",
+            "editor_terrains = \"111111111\"",
+            "editor_terrains = \"11111111\"",
         ),
-        ("terrains = \"100000000\"", "terrains = \"10000000\""),
+        ("terrains = \"000000001\"", "terrains = \"00000001\""),
+        // A colour mask of 47 marks or with another character; a footprint of no or too many
+        // columns or rows.
+        ("colour = \"111", "colour = \"11"),
+        ("colour = \"111", "colour = \"x11"),
+        ("width = 3", "width = 0"),
+        ("width = 3", "width = 9"),
+        ("height = 2", "height = 0"),
+        ("height = 2", "height = 7"),
+        // Object settings of 231 or 233 marks, or with another character; a class past 231.
+        ("object_not_entered = \"0", "object_not_entered = \""),
+        ("object_from_above = \"0", "object_from_above = \"00"),
+        ("object_removable = \"0", "object_removable = \"x"),
+        ("[[136, 135]]", "[[232, 135]]"),
         ("heroes_roe = \"1101\"", "heroes_roe = \"11x1\""),
         // A flag or a variant of 2, more than 127 pictures in a set or in rock's.
         (
@@ -591,21 +673,21 @@ fn references_must_be_of_the_table_and_the_closure() {
     assert_eq!(
         two(&format!(
             "object_template_overrides = [{}]",
-            line("line = 3, ", "a.def")
+            line("line = 12, ", "a.def")
         )),
         RmgCompileError::ObjectLine {
             pack: pack(),
-            line: 3
+            line: 12
         }
     );
     assert_eq!(
         two(&format!(
             "object_templates = [{}]",
-            line("before = 4, ", "a.def")
+            line("before = 13, ", "a.def")
         )),
         RmgCompileError::ObjectLine {
             pack: pack(),
-            line: 4
+            line: 13
         }
     );
     assert_eq!(

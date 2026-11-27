@@ -84,6 +84,10 @@ objects' values and the guards' strengths read from the original rather than gue
    types reach their guards); T3b's clip of an off-map side harmless and accepted (no flag); a zone
    that fills nothing (7 land zones in the corpus) fix-optional, RMG-QUIRK-25, its fix designed in
    increment 4; increment 4 cut into T4a to T4e (below), as proposed.
+12. **T4b and T4a's monoliths** (the user, 2026-11-27): T4b kept whole, worker sub-agents for its
+   parts; the objects' `.msk` harvest a `cross-lane` change in its branch, as T3e's; the one-way
+   monoliths' shared channel (T4a) fix-optional, **RMG-QUIRK-26**, its flag registered when T4d
+   ports RMG-CON-017.
 
 **Agent decisions** (change freely):
 
@@ -119,7 +123,7 @@ the survey; (f) the checkpoint with the user.
 |---|---|---|---|---|---|
 | 2 (closed) | **Templates, the stream, the start:** the crates, `CrtRand`, the three tables harvested, the rmg part, the settings, the template's choice, the positions | SET-001 to -009, TPL-001 to -008 (17) | -6; -11 (the tables' half); -22 | none | the 21 cases' kept and drawn templates (`kept.txt`'s names) and the draws before step 1 equal; the harvested tables equal the text tables (with the original data) |
 | 3 (closed) | **Zones and terrain:** steps 1 to 3, the terrain painter (§2.7.1 to §2.7.3) | ZON-001 to -014, TER-001 to -003, TER-005 to -018 (31) | -1 (the measurement, the model); -3 (its steps' cases); -12; -14; -21 (the painter's) | ZON-009's triangulation, ZON-012's clip corners, ZON-013's fill tail, ZON-014's water test; whether a divide by zero reaches code 1 | first the harness records each step's draw count and digest and RMG-QUIRK-1's bytes (`phases.txt` again); the control word read; the cells after steps 1 to 3 (the terrain layer) equal |
-| 4 | **Towns and connections:** steps 4 to 7 (the guards' creation, the gates, monoliths, shipyards and Border Guards) | TWN-001 to -005, OBJ-009 to -011, CON-001 to -021, OBS-001, -002 (31) | -1 (the form, decision 11); -3, -4, -5 (their cases); -7; -8; -9; -10; -11 (the guards' half); -13; -19; -23 (the towns' half); -25 (the fix); the ledger's two open items (6LM10's self-connection, Ownership 0 starts) | OBJ-011's `rmg_map_can_place` branches (tents on water), CON-008's heightmap quadrants, CON-017's one-way monolith pairing, OBJ-008's null prototype, OBJ-009's masks | the cells after steps 4 to 7 equal |
+| 4 | **Towns and connections:** steps 4 to 7 (the guards' creation, the gates, monoliths, shipyards and Border Guards) | TWN-001 to -005, OBJ-009 to -011, CON-001 to -021, OBS-001, -002 (31) | -1 (the form, decision 11); -3, -4, -5 (their cases); -7; -8; -9; -10; -11 (the guards' half); -13; -19; -23 (the towns' half); -25 (the fix); -26 (decision 12); the ledger's two open items (6LM10's self-connection, Ownership 0 starts) | OBJ-011's `rmg_map_can_place` branches (tents on water), CON-008's heightmap quadrants, CON-017's one-way monolith pairing, OBJ-008's null prototype, OBJ-009's masks | the cells after steps 4 to 7 equal |
 | 5 | **Mines and treasures:** steps 8 to 10, the object generators | OBJ-001 to -008, MIN-001 to -006, CON-022, TRS-001 to -012 (27) | -3 (the density filter); -15; -18; -20 | the pile ring (§2.4) | the cells after steps 8 to 10 equal; the generators' constants in `packs/sod/rmg.toml` |
 | 6 | **Rock, shores, obstacles, roads, rivers:** steps 11 to 15, the road and river painter (§2.7.4), the teams' draw | TER-004, OBS-003 to -007, RDR-001 to -014, WRT-004 (21) | -2; -17; -21 (the roads' and rivers') | OBS-006's depth grid, RDR-010's river strokes | the cells after steps 11 to 15 and the whole stream (`draws=`, `log=`) equal |
 | 7 | **The file and the game:** the writer (`h3_map::generated`), the census, `strict-fixed`, a game on a generated map | WRT-001 to -003, WRT-005 to -010 (9) | -16; -21 (the description); -23 (the player block) | WRT-007's settings +0xC types | the uncompressed `.h3m` equal on 21 of 21 (`kept.txt`) through `h3_map::writer` (survey §3.3.3's seven gaps closed), the game from the bytes read and imported; a census over more seeds and choices (RoE and AB formats among them); `strict-fixed` over the census without a failure; a game set up on a generated map (CLI, `GameSetup`); the benchmark; the client's and server's inboxes; the closure |
@@ -166,4 +170,6 @@ its checkpoint) and increment 3's (T3a to T3e, its checkpoint): `E14-archive.md`
   to T4e; log `## Increment 3's checkpoint`.
 - T4a (2026-11-27): the items not read, read (the masks, the placing tests, the islets' height map,
   the monoliths' pairing, the null prototype); log `## T4a`.
+- T4b (2026-11-27, whole, decision 12): steps 4 and 5, the towns, with the objects' data and
+  model; RMG-QUIRK-13's and -25's flags; the corpus to step 5 equal, 24 of 24; log `## T4b`.
 
