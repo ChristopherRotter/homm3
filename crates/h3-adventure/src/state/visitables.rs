@@ -71,8 +71,8 @@ impl AdventureState {
     /// §3, decision 302: the original's `kinds_visited`, game +0x4E344 + k, a bit for every player
     /// of the visitor's team, `player_team`), for a type the part marks
     /// ([`crate::ObjectType::kind_mark`]): each player of the team that did not hold it gains it,
-    /// told to each of them ([`AdventureEventKind::KindKnown`]). The team is the visitor alone
-    /// until E10's teams ([`allied`]). Nothing for a type without the flag, nor when the team
+    /// told to each of them ([`AdventureEventKind::KindKnown`]). The team is the visitor's with its
+    /// allies (E10 T3a, [`Self::allied`]). Nothing for a type without the flag, nor when the team
     /// holds it.
     // rule: ADV-BON-009
     pub(super) fn mark_kind<S: Sink>(

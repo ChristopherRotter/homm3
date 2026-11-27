@@ -515,7 +515,7 @@ impl AdventureState {
     /// `creatures` (its kind's, in order), by `player`'s hero `hero` on its entrance (ADV-DWL-004,
     /// ADV-OWN-001 amended; E08 T95a1, T95a2, increment 10's design note §7, §12; survey
     /// `E08-dwellings.md` §4.1 to §4.3, the original's `visit_dwelling` 0x4A18B0): one of the
-    /// visitor's team (the visitor's own until E10's teams) asks the hire question at once, no
+    /// visitor's team (its own or an ally's since E10 T3a) asks the hire question at once, no
     /// flag, no guards; a neutral one or another team's whose guards stand asks the guards'
     /// question ([`OfferKind::Guarded`], [`Self::guards_question`]: the original's GENRLTXT 422),
     /// accepted their battle ([`Self::fight_for_dwelling`]); else the visit goes on at once
@@ -729,9 +729,9 @@ impl AdventureState {
     /// part's `free_level` (ADV-HIR-002, E08 T95b: the original's `dwelling_offer_hire` when one of
     /// level 2 or more is there; no class-17 dwelling of level 1 opens it). A camp's always opens
     /// the dialog (its question stands only with creatures left, ADV-RFG-001), nothing free. Any
-    /// other dwelling's, another team's (unreachable: its visit flags it first), gives nothing; an
-    /// ally's read-only dialog is E10's (design note §13: left out until its teams). Since E08
-    /// T134b2 a War Machine Factory's always opens the dialog of its machines, nothing free
+    /// other dwelling's, another team's (unreachable: its visit flags it first) or since E10 T3a
+    /// an ally's, gives nothing; an ally's read-only dialog is E10 T3b's (design note §13). Since
+    /// E08 T134b2 a War Machine Factory's always opens the dialog of its machines, nothing free
     /// (ADV-WMF-001; increment 14's design note §10).
     // rule: ADV-HIR-001, ADV-HIR-002, ADV-WMF-001
     pub(super) fn accept_hire<S: Sink>(

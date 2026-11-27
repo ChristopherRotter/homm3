@@ -43,7 +43,7 @@ impl AdventureState {
     /// written, told to the players that see the object and to its new owner
     /// ([`AdventureEventKind::ObjectFlagged`]), then the tiles within the part's flag radius of
     /// its entrance (its anchor for an object without one, which no visit reaches; E08 decision
-    /// 217) explored for the new owner (its team from E10; ADV-FOG-002's
+    /// 217) explored for the new owner's team (GAM-TEM-002; ADV-FOG-002's
     /// disk), told to it alone with the number it had not explored, as an observatory's
     /// ([`AdventureEventKind::TilesRevealed`]). The caller has checked that the object is ownable
     /// and not of `player`'s team; nothing is paid.
@@ -102,8 +102,8 @@ impl AdventureState {
         let anchor = self.object_at(index).anchor;
         let guards = self.mine_guards(rules.1, index);
         match self.owner(index) {
-            // Until E10's teams a team is its player alone: every mine of the team is the
-            // visitor's own (an ally's would do nothing, survey §2.4).
+            // A mine of the team: Leave Guards for its owner alone, nothing for an ally (E10 T3a;
+            // survey §2.4, `E10-teams.md` §6).
             Some(owner) if self.allied(owner, player) => AdventureOutcome {
                 garrison: (owner == player).then_some(Garrison {
                     hero,

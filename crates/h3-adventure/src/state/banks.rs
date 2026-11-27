@@ -168,7 +168,7 @@ impl AdventureState {
     /// `player`'s hero `hero` (ADV-BNK-003, E08 T124b2; increment 13's design note §6, survey
     /// `E08-banks.md` §4, D-66 the original), by its kind's question:
     /// - **attack** (`visit_creature_bank` 0x4A15A0, `visit_dragon_utopia` 0x4A2140): the team's
-    ///   marks at once (ADV-VIS-006: the visitor's owner's, its team's from E10); a looted one
+    ///   marks at once (ADV-VIS-006: the visitor's team's, E10 T3a); a looted one
     ///   tells the owner so ([`AdventureEventKind::ObjectEmpty`]: ADVEVENT 33) and asks nothing;
     ///   else its question ([`OfferKind::Fight`], ADVEVENT 32);
     /// - **search** (`visit_search_bank` 0x4AC490): its question first, looted or not
@@ -364,7 +364,7 @@ impl AdventureState {
 
     /// The marks of `player`'s team on the bank at `index` of type `object_type` (ADV-VIS-006,
     /// ADV-BNK-006, E08 T125a; increment 13's design note §10, §16): each player of the team that
-    /// did not hold the mark learns it (the visitor alone until E10's teams), told
+    /// did not hold the mark learns it (its allies too since E10 T3a, GAM-TEM-001), told
     /// [`AdventureEventKind::ObjectMarked`], then the bank's hint as
     /// [`AdventureEventKind::GuardsChanged`] to the same players, so a declined attack teaches its
     /// team the guards' word. A bank looted or with none standing shows no hint, as before the

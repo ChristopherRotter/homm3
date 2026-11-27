@@ -164,11 +164,11 @@ impl AdventureState {
     /// The exit of `player`'s jump among `listed`, a channel's tiles in the walk's order, each
     /// with whether the visit excludes it (ADV-TEL-003; `teleport_exit_draw` 0x4CDB80, survey
     /// §4.1, read whole; D-53, D-57 as the original): over the list, a tile is a **candidate** when
-    /// a hero of another team stands on it, whatever lies there (a team is its player until E10's
-    /// allies), or when no hero and no empty boat stand on it and the visit does not exclude it (a
-    /// two-way monolith excludes its own tile, a Whirlpool its own Whirlpool's; the mover stands
-    /// on the entrance anyway, a hero of its team). *Agent's call* (design note §7): a tile with
-    /// an empty boat is no candidate. None: no exit. **One: no draw** (the original's
+    /// a hero of another team stands on it, whatever lies there (an ally's is not, E10 T3a,
+    /// GAM-TEM-001), or when no hero and no empty boat stand on it and the visit does not exclude
+    /// it (a two-way monolith excludes its own tile, a Whirlpool its own Whirlpool's; the mover
+    /// stands on the entrance anyway, a hero of its team). *Agent's call* (design note §7): a tile
+    /// with an empty boat is no candidate. None: no exit. **One: no draw** (the original's
     /// `random_between` returns equal bounds at once). Else one uniform draw of the candidate's
     /// place among them from the visitor's stream, which no profile can reproduce (the original
     /// draws from the C runtime's one stream; the spread uniform as read, batch E11's E11-15 and

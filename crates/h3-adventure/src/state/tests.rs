@@ -137,6 +137,13 @@ fn error(edit: impl FnOnce(&mut AdventureSetup)) -> SetupError {
     build(&setup).unwrap_err()
 }
 
+/// `setup` with blue (player 1) on red's team (GAM-TEM-001, E10 T3a): the two players allied,
+/// for the tests of the rules that name the team (E10 design note §4).
+fn allies(mut setup: AdventureSetup) -> AdventureSetup {
+    setup.seats[1].team = 0;
+    setup
+}
+
 // covers: ADV-OBJ-001
 #[test]
 fn builds_the_static_map_with_the_objects_footprints() {

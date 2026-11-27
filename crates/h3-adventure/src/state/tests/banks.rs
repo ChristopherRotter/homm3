@@ -17,7 +17,7 @@ use h3_heroes::{HeroDetails, VisitBonus};
 
 use super::draws::{object, rules_with};
 use super::rewards::{
-    AT, BLUE, GOLD, HERO, RED, RING, Rules, add, draw, hero, map_of, store, type_of,
+    AT, BLUE, GOLD, HERO, RED, RING, Rules, add, draw, hero, map_of, setup_of, store, type_of,
 };
 use super::*;
 use crate::command::{Defender, HeroGains, NoRoom};
@@ -120,7 +120,13 @@ fn rules() -> Rules {
 /// A started map with a bank of type `k` at [`AT`], drawn at its one level with the crown and
 /// the ring (the relic first), its guards five stacks of 2 peasants.
 fn bank(rules: &Rules, k: &str) -> AdventureState {
-    let mut s = map_of(rules, vec![object(rules, AT.x, k, Holds::Nothing)]);
+    bank_in(rules, k, |setup| setup)
+}
+
+/// [`bank`] on `edit`'s setup ([`allies`]: blue on red's team).
+fn bank_in(rules: &Rules, k: &str, edit: fn(AdventureSetup) -> AdventureSetup) -> AdventureState {
+    let setup = edit(setup_of(vec![object(rules, AT.x, k, Holds::Nothing)]));
+    let mut s = started(rules, &setup).unwrap();
     let artifacts = vec![CROWN, RING];
     draw(
         &mut s,
@@ -338,6 +344,34 @@ fn a_search_bank_asks_first_and_marks_after_a_yes() {
     let revisit = AdventureCommand::Revisit { hero: HERO };
     let (outcome, events) = run(&rules, &mut s, &heroes, &revisit);
     assert_eq!((outcome.offer, events.len()), (Some(search), 0));
+}
+
+// covers: ADV-BNK-003, ADV-VIS-006, ADV-BNK-006
+#[test]
+fn a_bank_s_marks_go_to_every_player_of_the_visitor_s_team() {
+    // Blue on red's team (E10 T3a; E10 design note §4): an attack kind marks both at once, told
+    // with the hint to both, and both see it visited with its hint.
+    let rules = rules();
+    let heroes = store(hero());
+    let both = Viewers::NONE.with(RED).with(BLUE);
+    let ten = Some((Some(PEASANT), word(&rules, 10)));
+    let mut s = bank_in(&rules, "t:utopia", allies);
+    let fight = offer(&rules, "t:utopia", OfferKind::Fight);
+    let (outcome, events) = step(&rules, &mut s, &heroes);
+    assert_eq!(outcome.offer, Some(fight));
+    assert_eq!(events, marked(&rules, ("t:utopia", AT), ten, both));
+    assert!(s.knows(RED, 0) && s.knows(BLUE, 0));
+    assert_eq!(known(&rules, &s, BLUE), known(&rules, &s, RED));
+    let peasants = hint(Some(PEASANT), word(&rules, 10));
+    assert_eq!(view(&rules, &s, BLUE), (true, peasants));
+    // A search kind: no mark at the question, both marked after red's yes.
+    let mut crypt = bank_in(&rules, "t:crypt", allies);
+    let search = offer(&rules, "t:crypt", OfferKind::Search);
+    step(&rules, &mut crypt, &heroes);
+    assert!(!crypt.knows(RED, 0) && !crypt.knows(BLUE, 0));
+    let (_, events) = accept(&rules, &mut crypt, &heroes, &search);
+    assert!(crypt.knows(RED, 0) && crypt.knows(BLUE, 0));
+    assert_eq!(events, marked(&rules, ("t:crypt", AT), ten, both));
 }
 
 // covers: ADV-BNK-004, GAM-BAT-001, ADV-BNK-006

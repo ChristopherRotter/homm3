@@ -1647,7 +1647,8 @@ fn check_told(
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
             // E08 T115b: a kind mark the viewer's team learned (ADV-BON-009), as its observation
-            // shows it after the command; the visitor alone until E10's teams.
+            // shows it after the command; the visitor alone, the plans' players each on a team of
+            // its own (an ally's share: `h3-adventure`'s kind mark tests, E10 T3a).
             GameEvent::Adventure(AdventureEvent {
                 kind: AdventureEventKind::KindKnown { object_type },
                 seen_by,

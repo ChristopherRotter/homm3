@@ -1301,6 +1301,7 @@ impl StaticMap {
 
     /// The index of `player`'s explored layer, its team's (GAM-TEM-002, E10 T3a): `NO_TEAM` or
     /// more for a player past the game's, so that a read by `get` finds none.
+    // rule: GAM-TEM-002
     fn layer(&self, player: PlayerId) -> usize {
         self.teams
             .get(player.index())

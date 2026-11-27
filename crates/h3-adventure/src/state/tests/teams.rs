@@ -3,7 +3,7 @@
 
 use h3_contracts::PlayerId;
 
-use super::{build, error, setup};
+use super::{allies, build, error, setup};
 use crate::setup::{Pos, SetupError};
 
 const RED: PlayerId = PlayerId::new(0);
@@ -23,9 +23,7 @@ fn the_seats_teams_must_be_dense() {
         SetupError::Team(0)
     );
     // One team for both, or each its own, builds.
-    let mut allies = setup();
-    allies.seats[1].team = 0;
-    assert!(build(&allies).is_ok());
+    assert!(build(&allies(setup())).is_ok());
     let mut swapped = setup();
     swapped.seats[0].team = 1;
     swapped.seats[1].team = 0;
@@ -35,9 +33,7 @@ fn the_seats_teams_must_be_dense() {
 // covers: GAM-TEM-001
 #[test]
 fn players_of_one_team_are_allies() {
-    let mut allies = setup();
-    allies.seats[1].team = 0;
-    let state = build(&allies).unwrap();
+    let state = build(&allies(setup())).unwrap();
     assert!(state.allied(RED, BLUE) && state.allied(BLUE, RED));
     assert_eq!(state.map().team(BLUE), Some(0));
     let apart = build(&setup()).unwrap();
@@ -65,9 +61,7 @@ fn a_team_shares_one_explored_layer() {
     let apart = build(&apart_setup).unwrap();
     assert!(apart.is_explored(BLUE, below) && !apart.is_explored(RED, below));
     assert!(apart.is_explored(RED, above) && !apart.is_explored(BLUE, above));
-    let mut allies = apart_setup.clone();
-    allies.seats[1].team = 0;
-    let shared = build(&allies).unwrap();
+    let shared = build(&allies(apart_setup)).unwrap();
     // The team's layer holds each member's reveals, and each member reads it.
     assert_eq!(shared.explored(RED), shared.explored(BLUE));
     for player in [RED, BLUE] {
