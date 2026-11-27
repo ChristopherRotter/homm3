@@ -168,6 +168,19 @@ mod tests {
             window(&[MYSTIC_POND, FOUNTAIN], false),
             Err(TownCommandError::NoVisitor)
         );
+        // The Pond the only market building, superseded: none stands.
+        let pond = part_with_keep(|keep| keep.buildings[MYSTIC_POND].roles.marketplace = true);
+        let superseded = town(&[MYSTIC_POND, FOUNTAIN]);
+        assert_eq!(
+            check_market(&superseded, &pond, true),
+            Err(TownCommandError::NoMarket)
+        );
+        // A faction without a record has no market.
+        let wild = town_of(WILD, &[MYSTIC_POND]);
+        assert_eq!(
+            check_market(&wild, &trades, true),
+            Err(TownCommandError::NoMarket)
+        );
         assert_eq!(
             check_market(&town(&[MYSTIC_POND]), &part(), true),
             Err(TownCommandError::NoMarket)
