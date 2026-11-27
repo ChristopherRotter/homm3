@@ -770,5 +770,9 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   seal, a third zone's land sealing water, cost-1 cells carved again on a re-flood, enclosed free
   pockets left unjoined).
 - **Gates:** each worker's scoped verify `--with-original-data` passed every step it ran (exit 2,
-  coverage 100 %).
+  coverage 100 %). CI's first run on #1217 cancelled its coverage job at 60 minutes: every corpus
+  test and the property test now pay the seal's flushes (497 whole-level transition passes on
+  `xl2-8p-t4-islands`). Two exact shortcuts in the pass (no shape at once among a cell's own
+  terrain, a test holding the table to it; a kept plain picture before the weight is read) took
+  `h3-pack-rmg`'s tests from 354 s to 102 s in a debug build; the next ways in the lane's inbox.
 
