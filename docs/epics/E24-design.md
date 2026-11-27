@@ -5204,8 +5204,16 @@ record or the decision carries it, B none does (asked), C presentation or not re
 - **For the user to confirm (review list):** the view reads the engine's own `GameRuleset` (a
   hero's class, an object's kind, a random object's shift): the engine's manifest-checked rules,
   not a client table (the audit's row 28).
-- **Found, not fixed:** a wire creature is the packs' handle, not the original's number past 117
-  (a Peasants' join drawn as Boars; TRAPS).
+- **The creatures' handles** (part three, *provisional*): a wire creature is the packs' handle,
+  not the original's number past 117 (a Peasants' join drawn as Boars; TRAPS). `engine::Creatures`
+  (`Loaded::creatures`, of the record's rules) numbers a handle by its key (`creature_key`) and the
+  original's number of each key: the import's table (`h3_map`'s `codes::CREATURES`, crate-private)
+  copied into the view, a test checking it against the import (each number a map file holds, to
+  144; the war machines by their keys). Read by the panels' armies (a hero's, a garrison's), a
+  mine's guards, a random monster's picture, a week's and a month's creature; a visit's events
+  numbered as `played` keeps them (a stack changed, an army dialog's, creatures joined, refused,
+  none to recruit). An offer's creatures are drawn by no reading (a monster's its map subclass).
+  For the user (review list): the view's copy, or the adventure lane exposing the import's table.
 - **Checked:** the tests (a gain's prices, losses and slots; an answer's reveal kept; the Tomb's,
   the Cartographer's and the observatories' facts; a Deity's week read and named; play's tiles and
   slots in the loop); under Xvfb (`play --check`, one human): the Tree, the Tomb, the

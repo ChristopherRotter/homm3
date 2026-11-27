@@ -3916,3 +3916,14 @@ On `map-client/e24-m5-t4c` after part one (a worker; the user away: *provisional
   Cartographer, the Observatory and the Pillar of Fire (situations of the Tomb's with their
   templates), a join, `game-asks`, `game-notices`: every frame exact and as the headless loop's;
   the records played to their end by `h3-map-view record`.
+
+### M5 T4c, part three: the creatures' handles (2026-11-27)
+
+A worker (the user away: *provisional*). **Built** (design §5.29): `engine::Creatures` (a handle
+to the original's number by the rules' keys and the import's table, copied), `Loaded::creatures`,
+read by `panels::army`, the hover's mine guards, `became`, the week's and month's calendars, and
+`Creatures::event` on a visit's events in `played`. **Checked:** the tests (the table against the
+import; an AB creature or a war machine in each reading: armies, `PANELS`' Peasants, a mine's
+guards, a random monster, the calendars, a visit's join, refusal, recruit, dialog and slot);
+coverage without `H3_INSTALL` (0 lines, 0 regions missed); clippy; under Xvfb `seq-ask-join`'s
+Peasants joined drawn as Peasants, every frame exact and as the headless loop's; its record played.
