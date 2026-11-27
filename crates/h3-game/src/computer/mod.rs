@@ -17,10 +17,21 @@
 //! hero's spell gains (T2e, `spells`, on `h3_battle::estimate`'s caster record, AI-Q36) and its
 //! skills' values (T2e, `skills`, the flag-set path of `h3_heroes::choice`'s switch); the artifacts'
 //! values (T2f, `artifacts`: the effects' table, the values to a hero and to a player, the turn
-//! start's mean).
+//! start's mean); the army plan's values (T2g, `armies`: a stack's worth, the exchange, the
+//! purchase) and the dwelling and town values on them (T2g, `towns`), waiting for the object value
+//! that asks for them (T2h).
 //!
 //! [`GameCommand`]: crate::GameCommand
 
+// The army plan's values have no caller until the town and dwelling values' callers (T2h).
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the army plan's values have no caller until the object value, E31 T2h"
+    )
+)]
+mod armies;
 mod artifacts;
 // The values that ask for a fight's worth (T2h, T2i) are the fight estimate's first callers
 // outside the tests; the turn's start calls the capture estimate beside it (T2d).
@@ -46,6 +57,15 @@ mod order;
 mod skills;
 mod spells;
 mod start;
+// The town and dwelling values are the object value's (T2h), their only callers.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the town and dwelling values have no caller until the object value, E31 T2h"
+    )
+)]
+mod towns;
 mod turn;
 
 #[cfg(test)]

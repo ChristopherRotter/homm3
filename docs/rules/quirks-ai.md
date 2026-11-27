@@ -23,7 +23,7 @@ Known differences between the original's computer player (GOG Complete's `Heroes
 - Sources: code reading (survey §2.3, "Quirk candidates" (a); `docs/exe/map.toml` 0x42C8B6)
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, strict-fixed = fixed
-- Regression test: when the army values are ported (E31 increment 2): a hero of a player wearing the Alliance values a neutral stack's purchase and an exchange with one, both profiles, the neutral counted as its own alignment
+- Regression test: `crates/h3-game/src/computer/armies/tests.rs::a_neutral_under_the_alliance_is_its_own_alignment_in_every_profile` (E31 T2g, CPU-ARM-001): under the Alliance a neutral stack's purchase and an exchange with one, and a replacement under morale-bad asking a neutral's alignment, the neutral its own alignment; the plan reads no profile, so the same under each of the test core's two
 - Decided by / date: the survey's second look (E31 T1b), the user at the checkpoint, 2026-11-24 (AI-Q31)
 
 ### AI-QUIRK-3 — The formation keeps a stack's count in 16 bits
