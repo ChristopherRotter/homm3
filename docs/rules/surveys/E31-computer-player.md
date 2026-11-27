@@ -1940,16 +1940,16 @@ and #68 (38 slips), T2e's one, #69 (39 slips).
 | 9 | §2.2 (c) | quick battle's Necromancy counts the cleared loser army: raises 1 | 0x427003 | state | battle, adventure (§3.6 row 1) | experiment: unseen computer Necromancer beats neutrals; Skeletons gained = 1? |  |
 | 10 | §2.2 (d) | mutual wipe and equal stand-off go to the defender | 0x4270C0 | none | battle, adventure | none | a tie ported as read |
 | 11 | §2.2 (e) | quick battle's Eagle Eye: loser's lowest-id available spell, no chance | 0x426EE0 | none | battle, adventure | none | the asymmetry's own design: no cast spells exist |
-| 12 | §2.3 (a) | Angelic Alliance worn: factionless creature indexes the town set at −1, std::out_of_range | 0x42C8B6, 0x42C781 | exploit-fix | ai | none | crash if uncaught; port tests the faction |
-| 13 | §2.3 (b) | displaced stack overwrites the full spare's least valuable stack | 0x42C130 | slip | ai | blind 0x42C130 | real in visits (#28); a dismiss in command terms |
-| 14 | §2.3 (c) | dwelling value mixes current player's treasury, team with owner's artifact, weights | 0x529A30 | slip | ai | blind 0x529A30 (callers) | differs only when valued off its own turn |
+| 12 | §2.3 (a) | Angelic Alliance worn: factionless creature indexes the town set at −1, std::out_of_range | 0x42C8B6, 0x42C781 | exploit-fix | ai | none | crash if uncaught; port tests the faction; fixed (AI-QUIRK-2, E31 T2g, CPU-ARM-001) |
+| 13 | §2.3 (b) | displaced stack overwrites the full spare's least valuable stack | 0x42C130 | slip | ai | blind 0x42C130; read at T2g (not blind) | real in visits (#28); a dismiss in command terms; T2g: only the spare's least strictly below the displaced goes, else the displaced is lost; ported as read in the values (CPU-ARM-003) |
+| 14 | §2.3 (c) | dwelling value mixes current player's treasury, team with owner's artifact, weights | 0x529A30 | slip | ai | blind 0x529A30 (callers) | differs only when valued off its own turn; the port values in its own turn: the hero's owner (E31 T2g, CPU-TWN-001) |
 | 15 | §2.3 (d) | Marketplace purchase tests the current player's resources, not the owner's | 0x42AB40 | none | ai | none | hire path runs on the owner's own turn only |
-| 16 | §2.4 (a) | the visiting hero's fight dropped | 0x52ACDA | slip | ai | blind 0x52ACDA |  |
+| 16 | §2.4 (a) | the visiting hero's fight dropped | 0x52ACDA | slip | ai | blind 0x52ACDA | no effect (no draw, no write): not run (E31 T2g, CPU-TWN-005) |
 | 17 | §2.4 (b) | a new magic school valued at Expert | 0x524D20 | slip | ai | blind 0x524D20; read at T2e (0x524D73, not blind) | the schools' values; ported as read (E31 T2e, CPU-SKL-002) |
 | 18 | §2.4 (c) | Ballista's q × s overflows 32 bits for large armies | 0x4337C3 | slip | ai | blind 0x4337C3 |  |
-| 19 | §2.4 (d) | week-roll test counts day 7 itself | 0x529DEF | slip | ai | blind 0x529DEF |  |
+| 19 | §2.4 (d) | week-roll test counts day 7 itself | 0x529DEF | slip | ai | blind 0x529DEF; read at T2g (not blind) | ported as read (E31 T2g, CPU-TWN-002) |
 | 20 | §2.4 (e) | University test: 2 000 gold once, four skills summed | 0x525BF0 | slip | ai | blind 0x525BF0; read at T2e (0x525C17, 0x525C7B, not blind) | the University's value; ported as read (E31 T2e, CPU-SKL-003) |
-| 21 | §2.4 (f) | guild loop reads one level past the built one | Mage Guild value (no address) | none | ai | none | survey: harmless |
+| 21 | §2.4 (f) | guild loop reads one level past the built one | Mage Guild value (no address) | none | ai | none | survey: harmless; the port reads the levels the guild shows (E31 T2g, CPU-TWN-004) |
 | 22 | §3.1 (a) | value × 1 000 in 32 bits wraps the victory's 5 000 000 | 0x42A150 | slip | ai | blind 0x42A150 | wrapped value still the largest |
 | 23 | §3.1 (b) | Citadel and Castle valued alike, one creature per dwelling, not growth | 0x42B670 | slip | ai | blind 0x42B670 |  |
 | 24 | §3.1 (c) | Necromancy Amplifier counts Necromancers (class 9), not Death Knights | 0x42AE00 (faction specials) | slip | ai | blind 0x42AE00 |  |

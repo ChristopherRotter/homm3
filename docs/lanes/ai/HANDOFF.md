@@ -32,7 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1203 (`ai/e31-t2f`, `cross-lane`: T2f). Merged: #1197 (T2e), #1192
+- **Open pull requests:** PR_T2G (`ai/e31-t2g`: T2g). Merged: #1203 (T2f), #1197 (T2e), #1192
   (`master`'s build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b), #1172 (T2a), #1163 (the
   shared module PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
   `benches/README.md` row of T2a's workload; ADR-0030's note that the simulated combat (AI-Q34)
@@ -41,8 +41,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v13 (E09 T39a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
   encoding v4 (`MEMORY_ENCODING_VERSION`, E31 T2f: the artifacts' mean) (`docs/08-work-process.md`,
-  "Versions"). Next ids: AI-Q38, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-18;
-  CPU-SIM-013, CPU-STA-009, CPU-SPL-008, CPU-SKL-004, CPU-ART-012.
+  "Versions"). Next ids: AI-Q39, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-20;
+  CPU-SIM-013, CPU-STA-009, CPU-SPL-008, CPU-SKL-004, CPU-ART-012, CPU-ARM-006, CPU-TWN-006.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
@@ -53,16 +53,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `h3-game` for now, refactored into a crate later; the memory the policy's; every battle fought
   until the battle lane decides; `SignedX87`; AI-QUIRK-1 for the slips. **Increment 2 refined**
   (AI-Q32): eleven tasks T2a to T2k (the epic file), about 26 000 of the original's instructions.
-  **T2a to T2f done** (2026-11-25 and -26; one line each in the epic file's "Tasks done", their
+  **T2a to T2g done** (2026-11-25 to -27; one line each in the epic file's "Tasks done", their
   records in `E31-log.md`): the frame (`choose`, `Memory`, the turn's passes); the simulated
   combat, since T2c the battle lane's public `h3_battle::estimate` (`cross-lane`, with T2e's
   caster record and spell values and T2f's morale and luck change value); the fight estimate
   (`computer/fight.rs`, `expect(dead_code)` until T2h or T2i calls it); the start's records
   (`computer/start.rs`, memory v4); the spells' and skills' values (`spells.rs`, `skills.rs`);
   the artifacts' values and the start's mean (`artifacts.rs`, CPU-ART-001 to -011, CPU-STA-008;
-  the equipped value 0x433C60 moved to increment 3, AI-Q37). `computer-turns-towns-36` at 309 M
-  Ir (the threat fold's searches, the gains, the mean). **Next: T2g**, the army and town values (`QUEUE.md`):
-  propose a cut by size (the user asked for smaller sessions). Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
+  the equipped value 0x433C60 moved to increment 3, AI-Q37); the army plan's values and the
+  dwelling and town values (`armies.rs`, `towns.rs`, CPU-ARM-001 to -005, CPU-TWN-001 to -005,
+  AI-QUIRK-2 fixed; `expect(dead_code)` until T2h; not cut, AI-Q38). `computer-turns-towns-36` at
+  309 M Ir (the threat fold's searches, the gains, the mean). **Next: T2h**, the object value
+  (`QUEUE.md`): propose a cut by size (the user asked for smaller sessions). Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
   done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -71,6 +73,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **The computer player (E31)** (its coverage, its workload, the memory), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-27 — E31 T2g: the army and town values
+
+- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
+  the user's repo folder at the start (the PC left mid-session). Measured 8.3 KB, about 3 060
+  instructions: the user chose no cut (AI-Q38); three functions go with their later callers. The VM
+  restarted during the setup's baseline; `master` had moved to a7b6752, whose CI stood for it.
+  The town fixtures needed their starting gold cleared and fight values set (`TRAPS.md`). Five of
+  my hand expectations were wrong, the port right. The workload +0.00 %; the scoped verify with
+  the original data passed (coverage 31 minutes, bench-check 27).
 
 ### 2026-11-26 — E31 T2f: the artifacts
 
@@ -93,14 +105,3 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   read by its role, not its key (the town lane's request dropped). The models agreed
   with the port once `fight::battle_hero` carried the maximum mana. The workload +10.5 %
   (the heroes' caster records), re-baselined.
-
-### 2026-11-26 — E31 T2d: the start's values
-
-- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
-  the user's repo folder at the start (the PC left mid-session). Measured 6.2 KB, about 2 300
-  instructions: the user chose no cut, three values moved to later tasks, four small `cross-lane`
-  helpers, the vision circle to T2h (AI-Q35). The setup's baseline stopped (`master` moved; CI
-  green at abf981f stood for it); its instrumented binaries then spoiled a coverage report until
-  `cargo llvm-cov clean --workspace`. Found a failing case of the adventure lane's reach property
-  test on `master` (its inbox). Every expectation from the models agreed with the port at once.
-  The scoped verify with the original data passed (but `check-lane`, by design); PR #1190.

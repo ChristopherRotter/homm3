@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23 (T1a1a; refined 2026-11-21, AI-Q22); increment 1 closed
 2026-11-24 (AI-Q31), increments 2 to 7 cut; increment 2 refined 2026-11-25 (AI-Q32: ADR-0030
-accepted, eleven tasks), T2a to T2f done, T2g next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
+accepted, eleven tasks), T2a to T2g done, T2h next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
 fair system actor) for battle · Prerequisite of E13 (its target and ladder opponent) ·
 Consumers: the env (a computer seat), the server (a computer player in a hosted game), the shell
 (a game's computer players), the adventure lane (ADV-STUB-8, ADV-STUB-9)
@@ -163,7 +163,7 @@ are the original's, from `docs/exe/map.toml`'s sizes.
 | T2e | **The spells' and skills' values**: `ai_spell_value` 0x5273D0 and its kinds, the caster's record, `ai_secondary_skill_value` 0x524690, the schools, the University's; since T2d (AI-Q35) the start's spell gains of `ai_hero_effectiveness` 0x527760 (AI-STUB-13) | 11 (§2) | 1 700 |
 | T2f | **The artifacts**: the effects' table (`ai_artifact_effects_build` 0x434100, the effects of §4.1), `ai_hero_artifact_value` 0x4336C0, the values to a hero and to a player; since T2d the start's artifacts' mean (+0x164, AI-STUB-14); `ai_hero_equipped_value` 0x433C60 moved to increment 3 (AI-Q37) | 37 (§4.1, §2.4) | 2 900 |
 | T2g | **The army and town values**: the army plans (`ai_army_plan_*`, `ai_stack_marginal_value` 0x42C830, the exchange and purchase values; AI-QUIRK-2), the dwelling's, the town's and its buildings', the weighted cost | 22 (§2.3, §2.4) | 3 400 |
-| T2h | **The object value** `ai_object_value` 0x528040 over the classes the engine has (§2.1's 36 value functions, the guarded object's fight), the rest `AI-STUB`s by epic; since T2d the vision circle `ai_vision_area_value` 0x432220 with its 75 class values (the start's Eye value, AI-STUB-10) | 39 (§2.1) | 4 300 less the gaps |
+| T2h | **The object value** `ai_object_value` 0x528040 over the classes the engine has (§2.1's 36 value functions, the guarded object's fight), the rest `AI-STUB`s by epic; since T2d the vision circle `ai_vision_area_value` 0x432220 with its 75 class values (the start's Eye value, AI-STUB-10); since T2g (AI-Q38) the plan of one creature's offer `ai_army_plan_init_creature` 0x42CF50 with its callers (the Refugee Camp, the joining creatures), the callers of T2g's values (classes 17, 20, 98, the garrison and hero cases' exchange) and their `expect(dead_code)` lifted | 39 (§2.1) | 4 300 less the gaps |
 | T2i | **The planning**: the danger map `ai_danger_map` 0x42DE50, the candidates `ai_hero_candidates` 0x42EDD0, the claims, the candidate's score, the destination `ai_hero_destination` 0x42E0B0 with its noise (76 to 100, the caller's stream), the class tables; since T2d the start's Grail target (+0x39, AI-STUB-15) | 11 (§1.9) | 2 900 |
 | T2j | **The walk**: `ai_hero_walk` 0x42FEE0 and its steps as `MoveHero` on the engine's pathfinder (the boat marks' overlay the adventure lane's API, stubbed until it lands; the spells and jumps stubbed until E08 increment 15), the boat's purchase; exit criteria (1), (3) to (5): the property tests over whole turns, the benchmark gated and the turn's cost recorded, the stubs listed | 8 (§1.10) | 2 200 |
 | T2k | **Trace T-A's harness and days 1 to 3** (`E31-design.md` §1: the map compiled by `h3-experiment`, the original under Wine through the capture harness with `h3mem.py`'s readers, `h3 ai trace`, the diff); exit criterion (2) | the harness | — |
@@ -213,3 +213,10 @@ Increment 2's (increment 1's: `E31-archive.md`).
   `h3_battle::estimate` (`cross-lane`, BAT-AI-016 unchanged); the equipped value 0x433C60 to
   increment 3; AI-STUB-16 (the victory artifact, E10), AI-STUB-17 (the hero's reads of its
   owner's towns, E09); §5.5's #70 and #71 new. Record: `E31-log.md` T2f.
+- **T2g** (2026-11-27, not cut, AI-Q38): the army plan's values in `computer/armies.rs` (the
+  alignments and the base morale with the Alliance, CPU-ARM-001, AI-QUIRK-2 fixed; a stack's worth
+  and its slot, -002; the put and the shed, -003; the exchange, -004; the purchase and the
+  weighted cost, -005) and the values on them in `computer/towns.rs` (the dwelling's, CPU-TWN-001;
+  the capture's, -002; the own town's army part, -003; the visit value, -004; the town's, -005),
+  `expect(dead_code)` until T2h; 0x42CE30 read; AI-STUB-18 (the teams and the conditions, E10),
+  AI-STUB-19 (the buildings a hero visits once, E09). Record: `E31-log.md` T2g.

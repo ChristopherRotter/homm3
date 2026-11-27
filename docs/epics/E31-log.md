@@ -764,3 +764,72 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   position asked per artifact (`h3_heroes::first_position` re-derives the locks, 62 M Ir) and a
   second caster record per hero; now one answer a slot for the artifacts that are not combinations
   and the start's records reused, the values unchanged.
+
+## T2g — the army and town values (2026-11-27, increment 2)
+
+- **The size, measured at the start** (`docs/exe/map.toml`): 19 functions, 8 266 bytes, about
+  3 060 instructions (the army plan 4.8 KB with the dwelling's value, the towns' 3.5 KB); the
+  epic's 3 400 counted three whose callers come later (`ai_army_plan_init_creature` 0x42CF50 to
+  T2h, `ai_army_plan_run` 0x42D690 and `ai_army_merge_types` 0x42D870 to increment 3). Offered two
+  parts (the army plan and the dwelling now, the towns next session; recommended), the dwelling
+  with the towns, or no cut; **the user chose no cut** (AI-Q38). A cloud clone; `Heroes3.exe`, the
+  two bitmap LODs, `maps.tar` and `extracted.tar` staged from the user's repo folder at the start
+  (SHA-256 checked); the PC left mid-session. The VM restarted during the setup's baseline;
+  `master` had moved to a7b6752 (#1204) meanwhile, the branch rebased onto it before any change.
+- **Readings** (the main session, the survey's text known: not blind): every function of the
+  plan whole again (0x42C060, 0x42C130, 0x42C280, 0x42C4A0, 0x42C5B0, 0x42C690, 0x42C830,
+  0x42CB70, 0x42D420, 0x42D780, 0x526CC0) with `army_add_stack` 0x44ACE0, `army_clear_slot`
+  0x44AB60, `army_alignment_count` 0x44ABB0 and `alignment_join_towns_get` 0x44A460; the towns'
+  (0x529A30, 0x529CB0, 0x52AB80, 0x52B090, 0x52B1E0). New: 0x42CE30 read first (the own town's
+  plan of its available creatures, renamed `ai_army_plan_init_town_value`); `stack_base_morale`
+  0x44AE60 read whole (its middle: the Alliance's join of the set's towns, the undead's −1, the
+  Angels' +1, the enemy's Bone and Ghost Dragons' −1, a town's Tavern +1 and a Castle's
+  Brotherhood +2), the plan's call with no hero, town or enemy; the put over a full spare replaces
+  only the spare's least stack strictly below the displaced one, else the displaced is lost
+  (§5.5 #13 sharpened); the shed's test before each stack repeats the test after the last move;
+  the own town's plan sums the exchange's and the purchase's puts in its +0x18.
+- **Built:** `h3_game::computer`'s `armies.rs` (CPU-ARM-001 to -005: `Army` as the original's
+  record, `Offer`, `Plan` with `recount`, `base_morale`, `marginal`, `to_replace`, `put`, `shed`,
+  `exchange_step` / `exchange_value`, `purchase_step` / `purchase_value`; `weighted_cost`,
+  `creature_costs`, `alliance_factions`) and `towns.rs` (CPU-TWN-001 to -005: `Asked` (the hero's
+  `artifacts::Valued` reads and its owner's start record), `dwelling_value`, `capture_value`,
+  `own_army_value`, `visit_value`, `town_value`), both `expect(dead_code)` until T2h calls them.
+  `artifacts::Valued`'s reads, `own_morale_and_luck` and `players_heroes` now `pub(super)`;
+  `skills::university_value` takes the part's skill list (the test part offers one). AI-QUIRK-2
+  fixed (a creature without a faction the neutral alignment under the Alliance). AI-STUB-18 (the
+  teams and the victory and loss conditions, E10), AI-STUB-19 (the buildings a hero visits once,
+  E09 increment 7). §5.5 #12 to #14, #16, #19, #21 noted.
+- **Agent decisions (change freely):** the creatures by the base pack's handles where the
+  original names ids (the Angels 12, 13, the Minotaurs 78, 79), the Necropolis as faction 4 (the
+  base and AB packs' order); the RoE game's elementals by the enabled packs (E08 decision 378, as
+  the engine's battle); the Alliance's set its own `alignment_group`, its first the lowest
+  faction; the alignment counts sized by the core's factions (the original's nine towns and the
+  neutral where the packs are the original's); the original's current player the hero's owner
+  (the values are asked in its own turn: §5.5 #14); the ally branches left out until E10's teams
+  (`allied` is the player alone, a dead branch fails coverage); the dropped fight against a
+  visiting hero not run (no draw, no write); the guild's spells those the guild shows at the
+  levels up to the hero's (`h3_towns::shown`, the original's counts); the University's skills
+  the part's.
+- **Tests** (`computer/armies/tests.rs`, 9, on the crate's test core with nine factions, the
+  creatures to 79 and the Alliance at 129; `computer/towns/tests.rs`, 8, on the town fixtures with
+  a second resource, a dwelling of both creatures, three guild levels and a University, no
+  starting resources, the creatures' fight values their AI values): the alignments and the base
+  morale with and without the Alliance, AI-QUIRK-2's regression test under two profiles; the
+  worth's own slot, forced swap, free slot, the speed's loss, six stacks with a spare, morale-bad
+  (the feeling stacks, a Minotaur, the Necropolis' 2, the hero's morale), the shooters' rules;
+  the put into a spare, over a full one, lost, a count's word; the shed; the exchange by the
+  advantage, the swap of a full army; the purchase with its cap, free offers, no gold; the
+  dwelling's own, far, guarded and lost cases; the capture with and without the week's growth,
+  lost with and without a town, with a garrison hero; the own town's army part near and far; the
+  visit's University, guild spells by Wisdom and the book's 1 000; the town by its owner, the
+  Grail, the threat, the Legion's part, the cap. Numbers with doubles from an IEEE double model
+  (Python, not committed); the fight estimate, a spell's gain, the University's and an
+  artifact's values asked of their tested functions. Five of my hand expectations were wrong
+  (the port right): the neutral's alignment count after the purchase, the exchange's last imp, a
+  replacement's slot, the spare's displaced creature, and the swap case the shed changes first
+  (six stacks with a spare make a worth-1 shooter worthless). Coverage of `armies.rs` and
+  `towns.rs` 100 % lines and regions (two impossible `if let` elses and three `let … else`
+  returns restructured).
+- **The benchmark and the verify:** `computer-turns-towns-36` 308 574 798 Ir (+0.00 %): the new
+  values have no caller in a turn yet. The scoped verify `--with-original-data` passed (but
+  `check-lane`, by design): coverage 31 minutes, determinism 11, bench-check 27, original-data 3.
