@@ -1221,7 +1221,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    game state hash v39, replay format v24, encoding v18, protocol v79. *As built* (E08 T141a to
    T144b): part v25 (the kinds) and v26 (the spells), map import v29, adventure state hash v28 (the
    list of heroes) and v29 (the day spells' block), game state hash v39 (the prisoners), replay
-   format v26 (`cast`, T142a), encoding v19 (the list's slots) and v21 (the casts), protocol v80
+   format v26 (`cast`, T142a), encoding v20 (the list's slots) and v21 (the casts), protocol v81
    to v84 (one per wire task). Shared (E08 T140): the six
    quirk flags of `ADV-QUIRK-15` and `-51` to `-55` in the core's profiles (no version moves: the
    faithful profiles' ruleset hashes do); no new stream.
