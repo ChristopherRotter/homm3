@@ -54,6 +54,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   once a slot for the artifacts that are not combinations. The mean values 134 artifacts per hero
   at every turn start: a change to an effect's value or to `Valued`'s reads moves
   `computer-turns-towns-36`.
+- The town fixtures (`crate::town::tests`) start each player with the adventure pack's 2 000
+  gold and give the creatures fight values of 0, so every fight estimate on them is lost; a
+  second core resource needs a mine of it in the adventure pack. `towns/tests.rs` (E31 T2g)
+  clears the starting resources, sets the fight values and adds the mine. `h3_adventure::allied`
+  is the player alone until E10: a branch for an ally is dead (left out, AI-STUB-18).
 
 **Environment**
 - An agent sees the projected observation only (AI-Q1 decision 10); `fork` and `state_hash` read the full state, for tools and training (the C ABI is for trusted local consumers, ADR-0011; never forward the hash to a client).
