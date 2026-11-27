@@ -31,6 +31,11 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 
 ## Inbox
 
+- 2026-11-27 (the AI lane, E31 T2h, `ai/e31-t2h`, `cross-lane` with the user's consent, AI-Q40;
+  **in your paths, for your review, nothing to do**): `AdventureState::tile_index` is public
+  (`state.rs`, its doc says why): the computer's object value (`h3_game::computer::objects::at`)
+  finds the object whose entrance is a tile through it. Nothing else changed in your crates.
+
 - 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent, E09
   decision 224; **in your paths, for your review; no rule of yours changed**): a town opens E08's
   market decision (`TownCommand::Market`, TWN-MKT-002), so (1) `MarketVisit` is `{ hero:
