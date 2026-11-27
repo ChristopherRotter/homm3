@@ -641,6 +641,12 @@ fn every_trade_parameter_is_in_the_hash() {
             post.screens = vec![MarketScreen::Sell, MarketScreen::Transfer];
             set(p, "post", ObjectKindDef::Market(post));
         }),
+        // E09 T58b: the town's screen 3 (no pack names it; a part could hold it).
+        Box::new(|p| {
+            let mut post = trading_post();
+            post.screens = vec![MarketScreen::SellArtifact, MarketScreen::Transfer];
+            set(p, "post", ObjectKindDef::Market(post));
+        }),
         Box::new(|p| {
             let mut post = trading_post();
             post.count = 1;

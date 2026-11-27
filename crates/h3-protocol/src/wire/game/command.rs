@@ -374,6 +374,14 @@ pub enum MarketAnswer {
         /// The resource paid in.
         pay: u16,
     },
+    /// Sells the window's hero's artifact at a place, at a town with the Artifact Merchants
+    /// (TWN-MKT-005; E09 T58b, v86).
+    SellArtifact {
+        /// The artifact's place.
+        place: ArtifactPlace,
+        /// The resource wanted.
+        take: u16,
+    },
     /// Leaves the market.
     Leave {},
 }
@@ -1108,4 +1116,12 @@ pub enum MarketReject {
     NoPrice {},
     /// The hero cannot receive the artifact.
     NoRoom {},
+    /// The hero holds no artifact at the place (an artifact's sale; v86).
+    Place {
+        /// The place.
+        place: ArtifactPlace,
+    },
+    /// The artifact at the place is not traded: worn where the backpack does not take its slot's
+    /// artifacts (the war machines, the Catapult, the Spell Book; v86).
+    NotTradable {},
 }

@@ -4,8 +4,9 @@
 //! answer and view of that decision reads the town's window as [`window`] resolves it (the
 //! screens the town's buildings and the window's hero allow, the trader's count of Marketplaces),
 //! the adventure's checks (`h3_adventure`'s `state/markets.rs`) the rest: E08's trades, transfer
-//! and creature sale at the trader's count (TWN-MKT-003) and the Artifact Merchants' stock for the
-//! purchase (TWN-MKT-004, `AdventureState::merchants_stock`).
+//! and creature sale at the trader's count (TWN-MKT-003), the Artifact Merchants' stock for the
+//! purchase (TWN-MKT-004, `AdventureState::merchants_stock`) and since E09 T58b the window's
+//! hero's artifacts for the sale (TWN-MKT-005).
 
 use h3_adventure::{
     HeroOnMap, MarketError, MarketParams, MarketPlace, MarketScreen, MarketVisit, MarketWindow,
@@ -20,14 +21,15 @@ use crate::command::{GameCommandError, Sink};
 use crate::{GameRuleset, GameState};
 
 /// A town window's screens by what it offers beside the trades and the transfer (the original's
-/// screens 0, 1, 2 and 4 in its order; survey §2.2): indexed by the merchants' purchase plus twice
-/// the Freelancer's Guild's sale.
+/// screens 0 to 4 in its order; survey §2.2): indexed by the merchants' purchase and sale (screens
+/// 2 and 3, since E09 T58b the sale too, TWN-MKT-005) plus twice the Freelancer's Guild's sale.
 const SCREENS: [&[MarketScreen]; 4] = [
     &[MarketScreen::Trade, MarketScreen::Transfer],
     &[
         MarketScreen::Trade,
         MarketScreen::Transfer,
         MarketScreen::Buy,
+        MarketScreen::SellArtifact,
     ],
     &[
         MarketScreen::Trade,
@@ -38,6 +40,7 @@ const SCREENS: [&[MarketScreen]; 4] = [
         MarketScreen::Trade,
         MarketScreen::Transfer,
         MarketScreen::Buy,
+        MarketScreen::SellArtifact,
         MarketScreen::Sell,
     ],
 ];
@@ -188,8 +191,8 @@ fn screens(offer: TownMarket) -> &'static [MarketScreen] {
 
 /// The window of `player`'s open market `visit` at `town` (TWN-MKT-001 to -004; design §103,
 /// §104): the screens [`h3_towns::check_market`] allows with the visit's hero (the trades and the
-/// transfer, with a hero the merchants' purchase and the guild's sale where their building
-/// stands; [`SCREENS`]' order) and the trader's count ([`count`]). The town cannot change while
+/// transfer, with a hero the merchants' purchase and sale and the guild's sale where their
+/// building stands; [`SCREENS`]' order) and the trader's count ([`count`]). The town cannot change while
 /// the window is open (a decision refuses every other command), so [`MarketError::Visit`] for a
 /// town the store lost or a window it no longer opens is defensive only.
 // rule: TWN-MKT-001, TWN-MKT-002

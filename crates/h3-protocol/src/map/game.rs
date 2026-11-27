@@ -41,7 +41,7 @@ use h3_kernel::handle::Handle;
 use crate::wire::WireU64;
 use crate::wire::game::{
     Adventure, AdventureReveal, AltarItem, AltarStack, AltarWindow, Amount, ArmyStack, Artifact,
-    Boat, Bonuses, Choice, ChoiceKind, Decision, Formation, GameObservation, GameReveal, Garrison,
+    ArtifactSale, Boat, Bonuses, Choice, ChoiceKind, Decision, Formation, GameObservation, GameReveal, Garrison,
     GarrisonHero, GarrisonStack, Guards, GuildHero, GuildPart, GuildPlayer, GuildRanking, GuildRow,
     HeroDetails, HeroInfo, HillFortRow, HillFortState, HillFortWindow, Hire, HireCreature,
     HireSeen, HireTarget, HiredPart, Known, KnownObject as WireKnownObject, LevelUp, Lot,
@@ -491,6 +491,7 @@ fn market(view: &MarketView) -> MarketWindow {
                 EngineScreen::Transfer => MarketScreen::Transfer,
                 EngineScreen::Sell => MarketScreen::Sell,
                 EngineScreen::Buy => MarketScreen::Buy,
+                EngineScreen::SellArtifact => MarketScreen::SellArtifact,
             })
             .collect(),
         count: offers.count,
@@ -524,6 +525,15 @@ fn market(view: &MarketView) -> MarketWindow {
             .map(|entry| StockEntry {
                 artifact: entry.artifact.map(Handle::raw),
                 prices: amounts(&entry.prices),
+            })
+            .collect(),
+        artifact_sales: offers
+            .artifacts
+            .iter()
+            .map(|sale| ArtifactSale {
+                place: command::artifact_place(sale.place),
+                artifact: sale.artifact.raw(),
+                prices: amounts(&sale.prices),
             })
             .collect(),
         recipients: view.recipients.iter().map(|p| p.raw()).collect(),
