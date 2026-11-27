@@ -244,6 +244,19 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   until both list them; `drawn` then reports them `new` (`drawn --only <id> --record` each).
   Since M4 T6 (R6-7) a scratch file's run keeps no live part in `timelines/` (nor a sound run):
   once moved, `frames --only <id> --reuse` over the recording's `--out` keeps it, then `drawn`.
+  The hot seat's `seat-*` (M5 T5, `to-record.toml`) need the viewer's `Sequence` to take
+  `hot_seat`, `duration`, `start` and `sound` first (`deny_unknown_fields`).
+- **A hot seat's second End Turn within 3 s of a start** (M5 T5, design §5.31, MCL-Q74): the
+  start asks the date's window for 3 000 ms, and a cover drawn while it still shows does not
+  build it again (`seat-new-day-quick`: day 1's window over day 2's bar, no `newday.wav`); a
+  sequence of the usual hand-over ends the turn after it (the redraw after 7 360 when the start
+  came at 4 360: the `seat-*` End Turn at 7 500). Each OK in the cover's first 1 759 ms adds the
+  4-s wait.
+- **A turn timer ahead of the frozen clock expires at once** (M5 T5): the expiry and the
+  warnings take the time since the timer's start unsigned, so a start written for the next
+  millisecond reads as 4 billion ms ago (the expiry's box at the step to 0, the redraw never
+  due). `h3map.py` pauses a timed hot seat's timer through the staging (+0x10) and restarts it
+  only once the clock stands at 0 (§5.32's sequences build on it).
 - **A hero's secondary skills written show at the walk** (M4 T2c, design §5.5): a situation's
   `secondary` is written without a selection (none of another hero to make), after the status
   window at 0 was built; the walk's first step builds it again from the hero. So the skills

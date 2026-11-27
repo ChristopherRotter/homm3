@@ -71,7 +71,9 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       is played by the viewer from its engine record (the root workspace's `target/debug/h3
       adventure run` and `h3-server record`, H3_ENGINE another directory: `sequences <id>
       --record <r.jsonl> --record-map <map.h3m>`), its timeline's differences from the recorded
-      one the gaps listed in clients/map/timelines/<id>-gaps.txt. --reuse keeps the original's
+      one the gaps listed in clients/map/timelines/<id>-gaps.txt. Since E24 M5 T5 a hot seat
+      (`hot_seat`, its names; `duration`; `start`, its 0 the game's first cover: the runbook's
+      "A hot seat"). --reuse keeps the original's
       run of an earlier `frames` (its screens, its live part) and only compares again. <dir>
       defaults to clients/out/map-frames.
 
@@ -81,6 +83,7 @@ Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-client` (f
 import hashlib
 import json
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -278,7 +281,8 @@ def to_shipped(game, timeout=120.0, gold=0):
     h3adv.dismiss(game)
 
 
-def started(map_path, run_dir, shipped=False, tries=2, seed=None, sound=False, gold=0):
+def started(map_path, run_dir, shipped=False, tries=2, seed=None, sound=False, gold=0,
+            hot_seat=None):
     """The original on the map's adventure screen (a single scenario). A game that crashes on its
     way there is started once more: the original's tavern rumour at a new game reads one entry past
     its table about once in 800 games (rumour_pick_text 0x4CCF20; E24 M1 T4a saw it). So is one
@@ -287,14 +291,25 @@ def started(map_path, run_dir, shipped=False, tries=2, seed=None, sound=False, g
     map only) the random generator seeded just before Begin (`h3drive.to_scenario`). With `sound`
     (E24 M4 T1b2) the game plays its sounds (h3drive's `sound`). With `gold` (E24 M4 T3b1; a
     shipped map's and an underground's too since T6, the reviewer's R6-1) that many players'
-    starting bonus Gold (`h3drive.gold_bonus`): no artifact."""
-    if shipped and seed is not None:
+    starting bonus Gold (`h3drive.gold_bonus`): no artifact. With `hot_seat` (E24 M5 T5, design
+    §5.31: a table of `names`, `duration` and `begin`, `h3adv.to_hot_seat`'s) a hot seat's new
+    game, its first human's start box closed (with `begin` false: on the scenario list before
+    Begin)."""
+    if shipped and seed is not None and not hot_seat:
         raise ValueError(f"{map_path}: a seed for a shipped map's start")
     for attempt in range(1, tries + 1):
         game = h3drive.Game(run_dir, sound=sound)
         game.start(map_path)
         try:
-            if shipped:
+            if hot_seat:
+                h3adv.to_hot_seat(game, hot_seat["names"], gold=gold, seed=seed,
+                                  duration=hot_seat.get("duration"),
+                                  begin=hot_seat.get("begin", True))
+                # With sound the start box's OK holds the start while its NewWeek.wav plays
+                # (`wait_for_sample`, at most 4 s; design §5.31): a click meanwhile is lost.
+                if sound and hot_seat.get("begin", True):
+                    h3drive.sounds_settled(game)
+            elif shipped:
                 to_shipped(game, gold=gold)
             else:
                 h3drive.to_scenario(game, gold=gold, seed=seed)
@@ -585,23 +600,124 @@ def still(situation_path, out=None, keep=False):
     return compare(situation_path, out, cap)
 
 
-def stage(situation_path, out, seed=None, sound=False, sequence=False):
-    """Shows one situation in the original, up to its moment (E24 M2 T1a1: `capture`'s and
-    `sequence`'s common part): its map written to `out` (`map.h3m`), the game started on it, the
-    heroes walked, the explored tiles written, the view set, the path shown, the facings and the
-    boats' colours written; the clock still running. Returns the game (the caller stops it; a
-    failure here stops it first), its memory, the situation and the facings written
-    (`arrange`). With `seed` (E24 M4 T1b1) the new game starts from that seed (`started`). With
-    `sequence` (E24 M4 T6) a sequence's situation (`check_situation`'s)."""
-    out.mkdir(parents=True, exist_ok=True)
-    sit = tomllib.loads(situation_path.read_text())
-    check_situation(situation_path, sit, sequence=sequence)
+def check_hot_seat(mem, sit, hot_seat):
+    """A hot seat begun as asked (E24 M5 T5, design §5.31): the situation's colours with a hero,
+    from red on, human for each name and computers after them, the game begun with that many
+    humans (`begin_humans`) and the turn's duration asked (10 Unlimited when none)."""
+    colours = sorted({h.get("owner", 0) for h in sit.get("heroes", [])})
+    names = hot_seat["names"]
+    if len(colours) < len(names):
+        raise ValueError(f"{len(names)} names for the hot seat's {len(colours)} colours")
+    humans = [c for c in colours if mem.is_human(c)]
+    if humans != colours[:len(names)] or mem.begin_humans() != len(names):
+        raise RuntimeError(f"the hot seat's humans {humans} (begun with {mem.begin_humans()}), "
+                           f"not the colours {colours[:len(names)]}")
+    duration = hot_seat.get("duration", h3adv.DURATION_UNLIMITED)
+    if mem.turn_duration() != duration:
+        raise RuntimeError(f"the turn's duration {mem.turn_duration()}, not {duration}: a click "
+                           "on the bar was lost")
+
+
+def map_and_bonus(situation_path, sit, out):
+    """A situation's map written to `out` (`map.h3m`) and the starting bonus Gold's players
+    (`stage`'s; E24 M5 T5 `stage_start`'s too)."""
     # The towns' own names the situation writes into its map (E24 M4 T3b1): `status_toml` keeps
     # them as text, the situation's own (never the original's: ADR-0009).
     OWN_TOWN_NAMES.clear()
     OWN_TOWN_NAMES.update(t["name"] for t in sit.get("towns", []) if "name" in t)
     map_path = out / "map.h3m"
     write_map(situation_path, sit, map_path)
+    # `bonus = "gold"` (E24 M4 T3b1): every player's starting bonus Gold, none an artifact (the
+    # engine has no starting bonus yet, E10's; the situation writes the resources).
+    colours = {h.get("owner", 0) for h in sit.get("heroes", [])}
+    gold = sit.get("players", len(colours)) if sit.get("bonus") == "gold" else 0
+    return map_path, gold
+
+
+# What a hot seat's start (E24 M5 T5, `stage_start`) cannot stage: the situation's keys and its
+# heroes' that `stage` plays or writes after the first human's start box.
+STAGED_KEYS = {"select", "reselect", "choose", "visits", "status", "teams", "date", "resources",
+               "hidden", "pointer"}
+STAGED_HERO_KEYS = {"walk", "path", "facing", *HERO_WRITES}
+
+
+def start_staged(sit):
+    """What a situation asks that a hot seat's start cannot stage (`stage_start`), sorted: its
+    keys and its heroes', boats' and towns' that `stage` plays or writes after the first human's
+    start box, a shipped map (its start is `to_shipped`'s) or an underground (its level button
+    `adventure`'s wait); [] when none."""
+    staged = (set(sit) & (STAGED_KEYS | {"map", "underground"})
+              | {k for h in sit.get("heroes", []) for k in h} & STAGED_HERO_KEYS
+              | {k for b in sit.get("boats", []) for k in b} & {"facing", "colour"}
+              | {k for t in sit.get("towns", []) for k in t if t.get(k)}
+              & {"built", "garrison", "garrison_hero"})
+    return sorted(staged)
+
+
+def stage_start(situation_path, out, seed=None, sound=False, hot_seat=None):
+    """A hot seat's start (E24 M5 T5, design §5.31: `seat-start`): its map written, the hot seat
+    set up as `hot_seat` asks up to the scenario list, the clock frozen there and Begin clicked:
+    the map loaded on the frozen clock (its own draws need no time), up to the first human's
+    cover and its start box, which waits. Returns as `stage` (no facings), and the samples
+    started before Begin (`mem.heard`): the cover's start among the run's. A situation for it
+    stages nothing after the start (STAGED_KEYS, STAGED_HERO_KEYS: refused) and keeps the
+    start's explored tiles."""
+    out.mkdir(parents=True, exist_ok=True)
+    sit = tomllib.loads(situation_path.read_text())
+    check_situation(situation_path, sit, sequence=True)
+    staged = start_staged(sit)
+    if staged:
+        raise ValueError(f"{situation_path}: a hot seat's start stages nothing ({staged})")
+    map_path, gold = map_and_bonus(situation_path, sit, out)
+    game = started(map_path, out / "run", seed=seed, sound=sound, gold=gold,
+                   hot_seat={**hot_seat, "begin": False})
+    try:
+        heard = len(h3drive.sounds(game))
+        game.clock("freeze")
+        game.click(*h3adv.BEGIN, 0.0)
+        game.move(*h3adv.PARK)
+        # The load needs no clock time (the shell's recipes step it, `until`, to the same end):
+        # wait for the start box in real time, then step 10 ms at a time should it not come.
+        end, stepped = time.monotonic() + 60, 0
+
+        def shown():
+            try:
+                return game.matches("turn_dialog", game.pixels())
+            except h3drive.Unreadable:  # a display not dumped whole yet
+                return False
+
+        while not shown():
+            if game.proc is not None and game.proc.poll() is not None:
+                raise RuntimeError(f"the game exited ({game.proc.returncode}) before its start")
+            if time.monotonic() > end:
+                if stepped >= 2000:
+                    raise TimeoutError("the hot seat's start box did not show")
+                game.clock("step 10")
+                stepped += 10
+            time.sleep(0.2)
+        mem = game_mem(game)
+        mem.heard, mem.start_stepped = heard, stepped
+        check_hot_seat(mem, sit, hot_seat)
+    except BaseException:
+        game.stop()
+        raise
+    return game, mem, sit, []
+
+
+def stage(situation_path, out, seed=None, sound=False, sequence=False, hot_seat=None):
+    """Shows one situation in the original, up to its moment (E24 M2 T1a1: `capture`'s and
+    `sequence`'s common part): its map written to `out` (`map.h3m`), the game started on it, the
+    heroes walked, the explored tiles written, the view set, the path shown, the facings and the
+    boats' colours written; the clock still running. Returns the game (the caller stops it; a
+    failure here stops it first), its memory, the situation and the facings written
+    (`arrange`). With `seed` (E24 M4 T1b1) the new game starts from that seed (`started`). With
+    `sequence` (E24 M4 T6) a sequence's situation (`check_situation`'s). With `hot_seat` (E24 M5
+    T5, design §5.31: `names` and `duration`) a hot seat's new game (`started`, checked by
+    `check_hot_seat`), staged on its first human's (Red's) turn as a single scenario's."""
+    out.mkdir(parents=True, exist_ok=True)
+    sit = tomllib.loads(situation_path.read_text())
+    check_situation(situation_path, sit, sequence=sequence)
+    map_path, gold = map_and_bonus(situation_path, sit, out)
     vx, vy, vz = sit["view"]
     hidden = sit.get("hidden", [])
     # `explored = "start"` (E24 M1 T5b2): the explored tiles as the new game left them, not written.
@@ -609,14 +725,20 @@ def stage(situation_path, out, seed=None, sound=False, sequence=False):
     if start and hidden:
         raise ValueError(f"{situation_path}: `hidden` with the start's explored tiles")
     # A map with an underground shows the level button enabled (E24 M3 T6b2): `adventure`'s wait.
-    # `bonus = "gold"` (E24 M4 T3b1): every player's starting bonus Gold, none an artifact (the
-    # engine has no starting bonus yet, E10's; the situation writes the resources).
-    colours = {h.get("owner", 0) for h in sit.get("heroes", [])}
-    gold = sit.get("players", len(colours)) if sit.get("bonus") == "gold" else 0
     game = started(map_path, out / "run", shipped="map" in sit or "underground" in sit,
-                   seed=seed, sound=sound, gold=gold)
+                   seed=seed, sound=sound, gold=gold, hot_seat=hot_seat)
     try:
         mem = game_mem(game)
+        if hot_seat:
+            check_hot_seat(mem, sit, hot_seat)
+            # A timed turn (E24 M5 T5, for §5.32's clock): Red's timer started after its start
+            # box, in real time; paused through the staging (no warning, no expiry: the poll and
+            # the expiry test a pause, +0x10) and restarted at the sequence's 0 (`sequence`).
+            if hot_seat.get("duration", h3adv.DURATION_UNLIMITED) != h3adv.DURATION_UNLIMITED:
+                timer = mem.turn_timer()
+                if not timer["start"] or timer["paused"]:
+                    raise RuntimeError(f"the timed hot seat's timer at Red's start: {timer}")
+                mem.write_turn_timer(paused=timer["start"])
         turn = arrange(game, mem, sit)
         lists(game, mem, sit)
         if not start:
@@ -1018,7 +1140,10 @@ def map_timeline(states):
     battle's screen first shows whole (0 the attacker won, 1 the defender, -1 neither): the battle
     played then takes none of the sequence's time, its next millisecond the result window's;
     from there until the map is the active manager again (the result window, the battle's fade
-    out) no line (design §5.19)."""
+    out) no line (design §5.19). Since E24 M5 T5 (design §5.31) a hot seat's `<ms> shown <colour>`
+    (the colour the screen is shown for, `shown_player`), `<ms> covered <0 or 1>` (the covered
+    draw's flag) and `<ms> timer <started> <paused>` (the turn timer's start and pause set, 1 or 0)
+    where they change; a single human's sequence has none of them."""
     lines, last = [], {}
     for state in states:
         t = state["t"]
@@ -1028,7 +1153,8 @@ def map_timeline(states):
             if key in state and last.get(key) != state[key]:
                 lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
                 last[key] = state[key]
-        for key in ("hero", "walk", "date", "player", "other", "book"):
+        for key in ("hero", "walk", "date", "player", "other", "book", "shown", "covered",
+                    "timer"):
             if key not in state:
                 continue
             if key in last and last[key] != state[key]:
@@ -1112,6 +1238,19 @@ def turn_toml(mem, t):
             f"status = {status_toml(mem, player, other=True)}\n"
             f"week = {calendar['week']}\nmonth = {calendar['month']}\n"
             f"heroes = {heroes}\nboats = {boats}\n")
+
+
+def seat_toml(mem, t):
+    """A hot seat's hand-over in a sequence (E24 M5 T5, design §5.31), a `[[seat]]` table of the
+    live part (after the `[[turn]]` tables), in each millisecond the colour shown (`shown_player`
+    0x69778C) changes: its millisecond, the colour `shown` and the `current` player, the humans
+    the game began with, the shown colour's kingdom as memory holds it (`Mem.kingdom`) and its
+    explored tiles (as the live part's `explored`): what its turn's start shows after the cover,
+    none of it drawn under the cover."""
+    shown = mem.shown_player()
+    return (f"\n[[seat]]\nat = {t}\nshown = {shown}\ncurrent = {mem.current_player()}\n"
+            f"humans = {mem.begin_humans()}\nkingdom = {kingdom_toml(mem.kingdom(shown))}\n"
+            f"explored = {json.dumps(mem.explored_rows(shown))}\n")
 
 
 def own_texts(sit):
@@ -1210,8 +1349,10 @@ def sequence_inputs(entry):
     # `script` (E24 M4 T4a1, design §5.12): a scripted game's engine commands, the viewer's (a
     # string per command as `h3 adventure run --script` reads them).
     unknown = set(entry) - {"id", "situation", "ms", "why", "inputs", "status", "rolls",
-                            "seed", "sound", "script", "engine_seed", "battle", *OPTIONS}
+                            "seed", "sound", "script", "engine_seed", "battle", "hot_seat",
+                            "duration", "start", *OPTIONS}
     battle_plans(entry)
+    hot_seat_of(entry)
     script = entry.get("script", [])
     if not (isinstance(script, list) and all(isinstance(c, str) and c.strip() for c in script)):
         raise ValueError(f"{entry['id']}: `script` is a list of engine commands: {script!r}")
@@ -1272,6 +1413,41 @@ def sequence_inputs(entry):
         inputs.setdefault(t, []).append((kind, value))
         last = t
     return options, inputs
+
+
+# A hot seat's names (E24 M5 T5): typed into the hot-seat dialog's fields by xdotool, so letters
+# and digits only, as the dialog takes them (at most its field's 15 characters, read nowhere: a
+# name the harness keeps short).
+HOT_SEAT_NAME = re.compile(r"[A-Za-z0-9]{1,12}")
+
+
+def hot_seat_of(entry):
+    """A sequence's hot seat (E24 M5 T5, design §5.31), None without one: `hot_seat`, the humans'
+    names from Red on (two to eight: the hot-seat dialog takes no fewer; the situation's other
+    colours with a hero the computers), `duration` the turn's (turndur.txt's record 0 to 10, 10
+    Unlimited: the new game's default) and `start` (true: the sequence's 0 is the first human's
+    cover at the game's start, `stage_start`, not its staged turn). Returns `started`'s table."""
+    names = entry.get("hot_seat")
+    if names is None:
+        if "duration" in entry or "start" in entry:
+            raise ValueError(f"{entry['id']}: `duration` or `start` without a `hot_seat`")
+        return None
+    if not (isinstance(names, list) and 2 <= len(names) <= 8
+            and all(isinstance(n, str) and HOT_SEAT_NAME.fullmatch(n) for n in names)):
+        raise ValueError(f"{entry['id']}: `hot_seat` is two to eight names of letters and "
+                         f"digits: {names!r}")
+    duration = entry.get("duration", h3adv.DURATION_UNLIMITED)
+    if (not isinstance(duration, int) or isinstance(duration, bool)
+            or duration not in range(h3adv.DURATION_UNLIMITED + 1)):
+        raise ValueError(f"{entry['id']}: `duration` is turndur.txt's record, 0 to "
+                         f"{h3adv.DURATION_UNLIMITED}: {duration!r}")
+    start = entry.get("start", False)
+    if not isinstance(start, bool):
+        raise ValueError(f"{entry['id']}: `start` is true or false, not {start!r}")
+    if start and (entry.get("status") or entry.get("script") or entry.get("battle")):
+        raise ValueError(f"{entry['id']}: a hot seat's `start` asks no status window, script or "
+                         "battle")
+    return {"names": names, "duration": duration, "start": start}
 
 
 def battle_plans(entry):
@@ -1367,7 +1543,17 @@ def sequence(entry, out):
     if not isinstance(sound, bool):
         raise ValueError(f"{entry['id']}: `sound` is true or false, not `{sound!r}`")
     (out / "sounds.txt").unlink(missing_ok=True)
-    game, mem, sit, turn = stage(situation_path, out, seed=seed, sound=sound, sequence=True)
+    # A hot seat (E24 M5 T5, design §5.31): begun with its humans' names and turn duration, staged
+    # on Red's turn; with `start` its 0 is the first human's cover at the game's start (the clock
+    # frozen from Begin: `stage_start`), where nothing is staged, compared or waited for.
+    hot = hot_seat_of(entry)
+    opening = bool(hot and hot["start"])
+    if opening:
+        game, mem, sit, turn = stage_start(situation_path, out, seed=seed, sound=sound,
+                                           hot_seat=hot)
+    else:
+        game, mem, sit, turn = stage(situation_path, out, seed=seed, sound=sound, sequence=True,
+                                     hot_seat=hot)
     own = own_texts(sit)
     down = set()
     # Where the sequence holds the pointer (E24 M4 T5a): `h3adv.fight` parks it over the battle's
@@ -1406,19 +1592,25 @@ def sequence(entry, out):
         # a step of the virtual clock spans many times over; the original repeats nothing itself
         # (a key held is one press, design §3.4).
         h3drive.run("xset", "r", "off")
-        if sound:
+        if sound and not opening:
             # The look's `step 0` left the clock stepped (E24 M4 T2d3: `cast-boat`'s click over
             # the view): let it run, or the samples never reach their ends.
             game.clock("run")
             h3drive.sounds_settled(game)
-        heard = len(h3drive.sounds(game))
-        game.clock("step 100")
+        # A hot seat's start (E24 M5 T5): its cover's samples started on the frozen clock at
+        # Begin, before the 0 (counted from there: negative); the clock stays where it froze.
+        heard = mem.heard if opening else len(h3drive.sounds(game))
+        if not opening:
+            game.clock("step 100")
         now = game.clock("freeze")
         if seed is not None:
             game.seed(seed)
-        # As `capture`: a deadline the frozen clock passed is met at the next idle step first.
-        h3adv.wait_for(lambda: min(mem.map_due()) > now,
-                       lambda: f"the deadlines past the frozen clock at {now} ({mem.map_due()})")
+        # As `capture`: a deadline the frozen clock passed is met at the next idle step first
+        # (none under a hot seat's start box: the box's loop runs no idle step).
+        if not opening:
+            h3adv.wait_for(lambda: min(mem.map_due()) > now,
+                           lambda: f"the deadlines past the frozen clock at {now} "
+                                   f"({mem.map_due()})")
         t0 = now + 1
         # Each battle played (E24 M4 T5a): the clock when its screen showed whole, the clock when
         # it was frozen again at the result window, and the sequence's millisecond of both.
@@ -1439,15 +1631,27 @@ def sequence(entry, out):
             ask_status(mem, kind, t0 + end, rebuild=True)
         if game.clock("step 1", settle_reads=500) != t0:
             raise RuntimeError("the clock did not step to the sequence's 0")
+        # A timed hot seat staged on Red's turn (E24 M5 T5): its timer, paused since its start
+        # (`stage`), restarted at 0 as `turn_timer_start` starts it (the start and the last
+        # warning now; the next warning's interval as the start set it), the pause ended last.
+        # Only once the clock stands at 0: a start ahead of the clock reads as expired (the
+        # time since it, unsigned, past any limit: the expiry's box at once).
+        if hot and not opening and hot["duration"] != h3adv.DURATION_UNLIMITED:
+            mem.write_turn_timer(last=t0, start=t0)
+            mem.write_turn_timer(paused=0)
         # The tick and the redraw came at 0 (each moved its next time on), so the screen shows
-        # the live part read now (a still's moment, as `capture` steps to).
-        h3adv.wait_for(lambda: mem.map_due() == (t0 + 200, t0 + 180),
-                       lambda: f"the tick and the redraw at the sequence's 0 ({t0}: next "
-                               f"{mem.map_due()})")
+        # the live part read now (a still's moment, as `capture` steps to). Not under a hot
+        # seat's start box (E24 M5 T5): its cover is the screen at 0, and the box's loop runs
+        # no redraw.
+        if not opening:
+            h3adv.wait_for(lambda: mem.map_due() == (t0 + 200, t0 + 180),
+                           lambda: f"the tick and the redraw at the sequence's 0 ({t0}: next "
+                                   f"{mem.map_due()})")
         # The date's window steps its picture at the view's draws from when it was built: one
-        # built before 0 steps at times the viewer does not know (E24 M3 T5b2).
+        # built before 0 steps at times the viewer does not know (E24 M3 T5b2). The start's
+        # cover builds it (E24 M5 T5), kept as a frame of the sequence.
         shown_kind = mem.status_shown()
-        if shown_kind == 1 and entry.get("status", [0])[0] != 1:
+        if shown_kind == 1 and entry.get("status", [0])[0] != 1 and not opening:
             raise RuntimeError("the date's status window at 0 without the sequence's `status`")
         if "status" in entry and shown_kind != entry["status"][0]:
             raise RuntimeError(f"the status window's kind {shown_kind} at 0, not the one asked")
@@ -1480,6 +1684,13 @@ def sequence(entry, out):
                  "book": [int(mem.spell_book())]}
             if index >= 0:
                 s["points"] = [mem.points(index)]
+            if hot:
+                # E24 M5 T5 (design §5.31): the colour shown and the covered draw's flag, a hot
+                # seat's only (a single human's sequences hold neither).
+                s["shown"] = [mem.shown_player()]
+                s["covered"] = [mem.covered_view()]
+                timer = mem.turn_timer()
+                s["timer"] = [int(timer["start"] != 0), int(timer["paused"] != 0)]
             if span:
                 s["away"] = [1]
             box = (None if before is None or s["book"][0] or span
@@ -1494,7 +1705,7 @@ def sequence(entry, out):
         states, last = [state(t0, first, None)], first
         # Each turn's start the sequence reaches (E24 M4 T1a, design §5): its facts as memory
         # holds them in the millisecond the current player or the date changed.
-        turns = []
+        turns, seats = [], []
         # Each message box opened and each status window of a resource found built (E24 M4
         # T2a1, design §5.3): their facts in the millisecond they first show, after the turns'.
         shown_box, shown_found, finds = None, mem.status_shown() == 6, []
@@ -1535,6 +1746,10 @@ def sequence(entry, out):
             if [states[-1][k] for k in ("date", "player")] != [states[-2][k]
                                                                  for k in ("date", "player")]:
                 turns.append(turn_toml(mem, t - t0))
+            # A hot seat's hand-over (E24 M5 T5): the new colour shown, its kingdom and explored
+            # tiles as memory holds them in that millisecond (what its start will show).
+            if hot and states[-1]["shown"] != states[-2]["shown"]:
+                seats.append(seat_toml(mem, t - t0))
             box = None if away else mem.message_box()
             # E24 M4 T2b1: a choice made or a button's state changed is a table of its own.
             key = None if box is None else (box["box"], box["texts"], box["pictures"],
@@ -1641,13 +1856,18 @@ def sequence(entry, out):
         finally:
             game.stop()
     (out / "live.toml").write_text("# The original's live part at the sequence's 0 (h3map.py "
-                                   "frames).\n" + live + "".join(turns) + "".join(finds))
+                                   "frames).\n" + live + "".join(turns) + "".join(seats)
+                                   + "".join(finds))
     with open(out / "states.jsonl", "w") as f, open(out / "frames.jsonl", "w") as g:
         for s in states:
             f.write(json.dumps(s) + "\n")
             if "frame" in s:
                 g.write(json.dumps(s) + "\n")
     (out / "timeline.txt").write_text("\n".join(map_timeline(states)) + "\n")
+    if opening:
+        # A hot seat's start (E24 M5 T5): its 0 is the cover, which the viewer does not draw
+        # yet (design §5.31's part three): not compared.
+        return states, None
     draw_ours(out / "map.h3m", sit, out / "live.toml", out / "ours.png")
     n, _ = h3cap.compare(first, h3cap.png565(out / "ours.png"),
                          masked_for(first.shape), out / "diff.png")
@@ -1722,6 +1942,8 @@ def reused(entry, here):
                            f"`frames --only {entry['id']}`)")
     states = [json.loads(line) for line in (here / "states.jsonl").read_text().splitlines()]
     (here / "timeline.txt").write_text("\n".join(map_timeline(states)) + "\n")
+    if entry.get("start"):
+        return states, None  # a hot seat's start: its cover not compared (E24 M5 T5)
     first = np.load(here / "frames" / "t00000.npz")["screen"]
     draw_ours(here / "map.h3m", sit, here / "live.toml", here / "ours.png")
     n, _ = h3cap.compare(first, h3cap.png565(here / "ours.png"),
@@ -1774,13 +1996,17 @@ def run_frames(rest):
         verdict = ("new" if not recorded.exists()
                    else "ok" if got == recorded.read_text() else "CHANGED")
         frames = sum("frame" in s for s in states)
+        # A hot seat's start (E24 M5 T5): its 0 the cover, not compared (n None), its live part
+        # never kept.
+        at_0 = "not compared (the start's cover)" if n is None else f"{n} differing"
         print(f"{e['id']}: {len(got.splitlines())} changes, {frames} screens kept in {e['ms']} ms "
-              f"{verdict}; the frame at 0: {n} differing", flush=True)
-        failed += verdict != "ok" or n != 0
+              f"{verdict}; the frame at 0: {at_0}", flush=True)
+        failed += verdict != "ok" or n not in (0, None)
         if verdict == "CHANGED" or n != 0:
             # Only a run exact at 0 keeps its live part (M2 T6a, the reviewer's R3-5): `drawn`
             # takes it as its reference.
-            why = "not as recorded" if verdict == "CHANGED" else "its frame at 0 not exact"
+            why = ("not as recorded" if verdict == "CHANGED" else "its frame at 0 not compared"
+                   if n is None else "its frame at 0 not exact")
             print(f"{e['id']}: {why}, its live part not kept ({here})", flush=True)
         elif not committed or e.get("sound", False):
             # A scratch file's sequence or a sound run (E24 M4 T6, the reviewer's R6-7): no

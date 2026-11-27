@@ -5338,10 +5338,11 @@ clock's start and the "your turn" window: survey `E16-timer-survey.md` §2, §8.
   (0x4CCAE0), then the week's box (0x4CCAE5, §5.1). So:
   - **the timed events' and the scenario's boxes** open with the flag cleared but before the
     redraw: over the covered picture still shown (the minimap and the buttons drawn since, the
-    resource bar blank until 0x4CC87F), and on the new turn's clock (MCL-Q71; the recordings to
-    confirm);
+    resource bar blank until 0x4CC87F; seen: an event's resources draw the bar with the amounts
+    first, below), and on the new turn's clock (MCL-Q71);
   - **a new day** (no box): the date's window under the cover already shows the new date (with
-    `newday.wav` there), built again at the start;
+    `newday.wav` there), built again at the start; unless the previous start's window still
+    shows (its 3 000 ms): then the previous day's stays under the cover (seen, MCL-Q74);
   - **a new week or month:** under the cover the week's picture at its first frame (no sound
     there) and `NewWeek.wav`; after the start's redraw and the hero's centring the week's box with
     `newweek.wav` or `newmonth.wav`, the date's window stepping behind it (§5.1): after the cover,
@@ -5386,7 +5387,7 @@ clock's start and the "your turn" window: survey `E16-timer-survey.md` §2, §8.
   - `seat-new-week`: day 7 → 8 (the week's name forced, `week_name`): the week's picture under the
     cover, the week's box last with `newweek.wav`; and day 28 → 29 with `newmonth.wav`.
   - `seat-timed-event`: a timed event for Blue on day 1 (a text and a resource): its box over the
-    cover after Blue's OK, the bar blank until it closes (MCL-Q71).
+    cover after Blue's OK (MCL-Q71; the bar not blank, seen below).
   - `seat-start`: a hot seat's first turn (the uncovered map in a millisecond, then the cover) and
     a hot seat's save loaded.
   - **The harness** (`clients/capture/h3map.py`, additive): a sequence that starts in a hot seat
@@ -5394,6 +5395,60 @@ clock's start and the "your turn" window: survey `E16-timer-survey.md` §2, §8.
     save `h3shell.py` writes with `players` and `duration`, loaded); `Mem` readers and timeline
     lines for `covered_view` 0x699538, `shown_player` 0x69778C and the box's text and picture; a
     situation with a timed event; `move_reminder`, `week_name`, `month_name` as today.
+- **Recorded** (T5 part two; `clients/map/to-record.toml`, situations `seq-seat*`; each twice,
+  the same timeline; the timelines and the samples kept as `timelines/seat-*.txt` and
+  `seat-*-sounds.txt`; the harness's hot seat: the runbook's "A hot seat"): `seat-hand-over`,
+  `seat-hand-over-late` (a one-minute turn), `seat-new-day`, `seat-new-day-quick`,
+  `seat-new-day-ai` (Tan, a computer, between), `seat-new-week`, `seat-new-month`,
+  `seat-timed-event`, `seat-start` (the clock frozen from Begin). A save loaded not recorded.
+- **Seen** (the recordings: seed 1, sound, Red and Blue named so, End Turn's key up at 160, each
+  OK by Enter):
+  - **One millisecond:** End Turn's key up holds the turn's end, the new `player` and `shown`
+    colour, the cover and its box (the timeline's `screen` the whole screen); `covered` never
+    reads 1 between milliseconds (cleared before the box, as read); the cursor the arrow (type
+    0) from the cover to the start. Under the box only the palettes step (every 200 ms, in
+    memory); OK's key down draws OK pressed, its release closes the box and draws back its
+    rectangle alone, (272, 172) to (536, 436): the covered picture stays.
+  - **The wait:** an OK released 500 ms or 200 ms after the box starts the turn exactly 4 000 ms
+    after its release (660 → 4 660, 360 → 4 360), one released 6 000 ms after it (`NewWeek.wav`
+    over) in its own millisecond (6 160); nothing changes on the screen meanwhile. The start
+    draws the whole screen in one millisecond (the view centred on the selected hero, the
+    adventure's cursor); its date's window leaves at the first idle redraw after its 3 000 ms.
+  - **The sounds** (`<ms> <channel> <length> <loops>`): `NewWeek.wav` is 5 759 ms on the
+    harness's clock (so an OK waits in its first 1 759 ms); with it under the cover `newday.wav`
+    (3 739 ms) on an ordinary day; the start's millisecond plays `newday.wav` **three times**
+    (channels 0, 7, 8: the start's builds, one more than read), so four a day's hand-over
+    (MCL-Q72); on a week's first day neither under the cover (the week's picture) nor at the
+    start, the week's box sounding the same 5 759-ms sample again (`newweek.wav` is
+    `NewWeek.wav`), a month's `newmonth.wav` (4 784 ms); a button's press by its key a 151-ms
+    click. The music's fade is not heard (the harness's music volume 0).
+  - **The box** (`[[message]]`): the text with the hot seat's name as set up (names Ann and Bob:
+    "Bob's turn.", 11 characters), the crest captioned with the **colour's** name with a capital
+    first letter ("Blue" whatever the name; PLCOLORS.TXT holds "blue", so the kept label is
+    `[other: 4 characters]`).
+  - **The clock** (`seat-hand-over-late`, one minute): Red's timer stops in End Turn's
+    millisecond and starts again in Blue's start's, after the box and the wait (the `timer`
+    line), as read; at the game's start (`seat-start`) it starts in the start's millisecond
+    after the wait.
+  - **A quick hand-over** (`seat-new-day-quick`: Blue's End Turn 300 ms after its start): Red's
+    day-2 cover keeps the start's date window ("Day 1", at frame 2 and stepping) over a bar
+    dated day 2, no `newday.wav` under it; Red's start builds it with day 2 (MCL-Q74).
+  - **After a computer's turn** (`seat-new-day-ai`): the cover's sleep, cast and End Turn drawn
+    disabled (frame 2), where Blue's own hand-over draws them as Blue left them, as read; the
+    rest the same timeline (Tan's hero did not move).
+  - **A timed event** (`seat-timed-event`, 500 gold for Blue): its box opens in the start's
+    millisecond after the wait, over the covered view with the minimap drawn (Blue's explored
+    tiles, its view's frame where Red's view stood: the centring comes after) and the buttons
+    enabled, the lists still empty, and the resource bar **with Blue's amounts, the 500 gold
+    already added** (not blank: the event's resources draw it; an event without resources not
+    recorded); its OK's release draws the start in that millisecond (`newday.wav` three times).
+  - **The game's start** (`seat-start`): Begin's click at −151 ms; `NewWeek.wav` and
+    `newday.wav` in the cover's millisecond (−1): the uncovered map is drawn and covered in the
+    same millisecond, never on the screen at a step; the cover's view (−5, −4) is the first
+    human's own, kept under the shroud; OK at 560, the start at 4 560 (move hero's state 1 to
+    0, the three `newday.wav`, the clock).
+  - **The week's and the month's box** after the start: the date's window steps behind it every
+    100 ms (§5.1), the month's picture fewer times.
 
 ### 5.32 The turn's clock as shown (M5 T5)
 

@@ -590,8 +590,11 @@ bar blank until 0x4CC87F), and with the week's box and the days-left box on the 
 original's; (b) the client redraws the screen uncovered before the start's boxes, the original's
 behind `--bugs original` for the comparisons. The clock's part is the host's (`GameClock`, the
 server lane's), not asked here. **Recommended (a)** (the map stays hidden until the player has
-read its events: harmless, arguably as meant). Blocks nothing; to confirm in the recordings
-(`seat-timed-event`).
+read its events: harmless, arguably as meant). Blocks nothing. Recorded (T5 part two,
+`seat-timed-event`): the event's box opens in the start's millisecond after the cover's wait,
+over the covered view with the minimap and the buttons drawn and the lists empty, but the
+resource bar already shows the amounts with the event's gold added (not blank: its resources
+redraw the bar); the clock's part not recorded (an unlimited turn).
 
 #### MCL-Q72 — The hand-over's sounds (E24 M5 T5, a reading)
 
@@ -604,8 +607,11 @@ twice more (MCL-Q30); on a week's first day `NewWeek.wav` at the cover and `neww
 meanwhile. Options: (a) the original's; (b) the client plays `NewWeek.wav` alone at the cover (no
 `newday.wav` under it; the wait kept), the original's behind `--bugs original` for the
 comparisons. **Recommended (b)** (as MCL-Q30: the date's window under the cover is an accident of
-the view's draw calling the chooser). Blocks nothing; the sound runs show it (`seat-hand-over`,
-`seat-new-day`).
+the view's draw calling the chooser). Blocks nothing. Recorded (T5 part two): on an ordinary day
+`newday.wav` four times a hand-over, once with `NewWeek.wav` (5 759 ms) under the cover and three
+times in the start's millisecond (not twice); on a week's first day none, the week's box sounding
+`NewWeek.wav` again (`newweek.wav` is the same sample) or `newmonth.wav` (4 784 ms); an OK in
+`NewWeek.wav`'s first 1 759 ms starts the turn 4 000 ms after its release, a later one at once.
 
 #### MCL-Q73 — The cover with one human left (E24 M5 T5, a reading)
 
@@ -616,6 +622,19 @@ of its turns (design §5.31). Built as the original's meanwhile. Options: (a) th
 the client covers only while two humans or more are in the game, the original's behind `--bugs
 original` for the comparisons. **Recommended (a)** (harmless, rare, one box a turn; the host knows
 its seats either way). Blocks nothing; no recording planned (a defeat in a hot seat to stage).
+
+#### MCL-Q74 — The previous day's date window under a quick hand-over's cover (E24 M5 T5, a recording)
+
+A human's start asks the date's window for 3 000 ms; the hand-over's covered draw builds that
+window only when another kind shows (`status_window_date` 0x415FD2). So a human who ends the turn
+within those 3 s (a hot seat's player with nothing to do) hands over a cover that keeps the
+previous start's window, stepping on: `seat-new-day-quick` shows "Day 1" over a resource bar dated
+day 2, and no `newday.wav` under the cover; the next start builds it with the new day (design
+§5.31). Built as the original's meanwhile. Options: (a) the original's; (b) the client builds the
+date's window afresh at every cover (the new date, its first frame, its sound as MCL-Q72 decides),
+the original's behind `--bugs original` for the comparisons. **Recommended (b)** (the window names
+the wrong day on a screen whose bar names the right one; an accident of the chooser's test, as
+MCL-Q72's). Blocks nothing; recorded (`seat-new-day-quick`).
 
 ### RMG lane (`RMG-Q<n>`)
 

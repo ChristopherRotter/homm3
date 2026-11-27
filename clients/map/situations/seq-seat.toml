@@ -1,0 +1,12 @@
+# The hot seat's hand-over (E24 M5 T5, design §5.31; clients/map/to-record.toml `seat-*`): two
+# humans, Red and Blue (`hot_seat`), each with a hero and a town (a human without a town would get
+# the days-left box at its start), the view at 0 on an empty stretch of Red's explored grass (no
+# cycling terrain, nothing animated: the frames before a start are the hand-over's changes).
+size = 36
+terrain = "grass"
+heroes = [{ at = [4, 4], class = 2 }, { at = [30, 30], owner = 1 }]
+towns = [
+    { at = [8, 3], faction = 0, owner = 0, buildings = "fort" },
+    { at = [26, 31], faction = 1, owner = 1, buildings = "fort" },
+]
+view = [14, 0, 0]
