@@ -34,7 +34,8 @@ use toml::{Table, Value};
 
 use super::{int, row};
 use crate::art::MapArt;
-use crate::live::{HERO_CLASS, TOWN_CLASS, TOWN_NAMES};
+use crate::live::{HERO_CLASS, TOWN_CLASS};
+use crate::picks::town_name;
 
 /// A random town's class: its template's entrance is a town's.
 const RANDOM_TOWN: u32 = 77;
@@ -60,11 +61,13 @@ const FORTS: [u32; 3] = [7, 8, 9];
 /// The panels' keys of a live part's table (`kingdom`, `status`, `realm`, `chosen`), inserted into
 /// `table` for `observation` on the map `raw` (its art `art`) under `rules`. A chosen hero is
 /// named by its place among the view's map heroes, the order of the table's `heroes`; every one
-/// has its type (`super::start` refused the record otherwise).
+/// has its type (`super::start` refused the record otherwise). An unnamed town's name by the
+/// client's picks' seed `picks` (E24 M5 T4b, `crate::picks::town_name`; none: its faction's
+/// first).
 pub(super) fn insert(
     table: &mut Table,
     observation: &GameObservation,
-    raw: &RawMap,
+    (raw, picks): (&RawMap, Option<u64>),
     art: &MapArt,
     rules: &GameRuleset,
 ) {
@@ -86,7 +89,7 @@ pub(super) fn insert(
         .iter()
         .map(|&(_, hero, info)| hero_status(hero, info, art))
         .collect();
-    let town_status: Vec<Table> = towns.iter().map(|t| town_status(t)).collect();
+    let town_status: Vec<Table> = towns.iter().map(|t| town_status(t, picks)).collect();
     let kingdom_heroes = heroes
         .iter()
         .map(|&(_, hero, info)| {
@@ -281,11 +284,11 @@ fn hero_status(hero: &MapHero, info: &HeroInfo, art: &MapArt) -> Table {
 
 /// A town's status window (`live::TownStatus`): its name, its hall and fort, its garrison's
 /// mark and army, its silo and its gold.
-fn town_status(town: &Town) -> Table {
+fn town_status(town: &Town, picks: Option<u64>) -> Table {
     let mut t = Table::new();
     t.insert("kind".into(), Value::Integer(TOWN));
     let name = town.name.as_ref().map_or_else(
-        || Value::Integer(i64::from(town.faction.saturating_mul(TOWN_NAMES))),
+        || Value::Integer(i64::from(town_name(town.faction, town.town, picks))),
         |own| Value::String(own.clone()),
     );
     t.insert("name".into(), name);

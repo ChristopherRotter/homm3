@@ -45,6 +45,15 @@ casts in `legal_commands`, done 2026-11-25; T144a2, the env's encoding v21, done
 
 ## Inbox
 
+- 2026-11-26 (the map-client lane, E24 M5 T4b, `map-client/e24-m5-t4b`; **for your planning,
+  nothing blocks**): play now answers a visit's questions and level-ups and Space's revisit
+  through the engine, and some facts a box needs are still the client's (**MCL-Q59**, facts
+  first). From the engine's side: a visit that changes only a once-per-hero mark tells nothing
+  (a visited Learning Stone, by a walk or by `Revisit`: the original's box says it was visited;
+  `SRV-STUB-4`), an object's own text (Pandora's Box's, an event's, a sign's) is in no event
+  (the client reads the map file), and where an added artifact lands is not told (`SRV-STUB-7`).
+  Each a candidate event or field when you next touch the visits; MCL-Q59 recommends it.
+
 - 2026-11-26 (the town lane, E09 T57, `town/e09-t57`, `cross-lane` with the user's consent, E09
   decisions 221 and 223; **in your paths, for your review; one rule changed**): (1) **ADV-OBJ-006's
   restart** (`state/draws.rs`): a class without an unmarked artifact now restarts its own

@@ -151,6 +151,7 @@ fn a_box_declined_from_beside_then_opened() {
     start.moves = Some(vec![east_walk(), onto]);
     let asked = laid("Open it?", Style::OkCancel);
     let question = |yes: Option<Answer>, no: Option<Answer>| Question {
+        hosted: None,
         asked: Arc::clone(&asked),
         chooses: false,
         yes,
@@ -218,6 +219,7 @@ fn a_pile_on_a_walk_s_last_node_is_taken_from_beside() {
 /// A level-up's dialog of `level` with no offers (the record's facts laid out).
 fn level(level: u8) -> LevelBox {
     LevelBox {
+        hosted: false,
         level,
         dialog: laid(&format!("Level {level}."), Style::Ok),
         offers: Vec::new(),
@@ -270,6 +272,7 @@ fn choice(style: Style) -> Found {
     Found {
         first: Vec::new(),
         ask: Some(Question {
+            hosted: None,
             asked: chosen(style, None),
             chooses: false,
             yes: Some(Answer {
@@ -417,6 +420,7 @@ fn the_record_player_keeps_an_answer_for_its_question() {
     // record's decline is its question's Cancel.
     let mut start = record_start();
     let question = Question {
+        hosted: None,
         asked: laid("Open it?", Style::OkCancel),
         chooses: false,
         yes: None,

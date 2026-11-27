@@ -14,24 +14,7 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 colour's turn ended at once) since T3a, `MCL-STUB-6` (a battle in play ends play, until T6)
 since T4a; planned `MCL-STUB-7` (a screen of M6 or M7, T4c). T1 was cut in three at its start
 (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done 2026-11-25), T3 in two (T3a done
-2026-11-25, T3b 2026-11-26), T4 in three (T4a done 2026-11-26).
-
-### E24 M5 T4b — every box answered as its command
-
-- **Scope** (T4 cut in three by the user at its start, 2026-11-26; T4a done: the walks through
-  the engine, design §5.26): every box M4 shows answered by the player as the command through the
-  host (a question, a choice, a level-up, a find's OK where the engine waits, the week's and
-  month's messages), as T4a asks a walk (the loop marks the answer's millisecond, the host plays
-  the session's `Answer` and gives the record's facts, the loop runs again from before it); Space's
-  visit; the original's random picks (a computer turn's music, the pickup sounds, an unnamed
-  town's name) from the client's own seeded generator in play (M4's review item 2), the recorded
-  draws kept for recordings and records; **facts first**: each fact a box lacks an `MCL-Q<n>` and
-  a note in the engine lanes' inboxes. Seen at T4a: the Redwood Observatory's visit tells nothing.
-- **Acceptance:** a hot-seat game's visits (a pile, a chest's choice, a question's yes and no, a
-  level-up, a week's start) answered in the window under Xvfb, every answer accepted by the
-  engine, every view's frames read back exact and as the headless loop's; the records played by
-  `h3-map-view record`; the scoped verify.
-- **Depends on:** T4a (done). **Status:** queued (next).
+2026-11-25, T3b 2026-11-26), T4 in three (T4a done 2026-11-26, T4b 2026-11-26 in two sessions).
 
 ### E24 M5 T4c — the screens' notice, the facts audit, T4's game
 
@@ -40,12 +23,16 @@ since T4a; planned `MCL-STUB-7` (a screen of M6 or M7, T4c). T1 was cut in three
   (**facts first**, the user at T0): no rules table of the client's and no map text read from the
   file in play (the finds' and the hints' tables, the visit marks, the town names), each fact the
   view lacks an `MCL-Q<n>` and a note in the engine lanes' inboxes; the list of facts the view
-  lacks completed in the epic's risks (begun at T4a).
+  lacks completed in the epic's risks (begun at T4a). From T4b: MCL-Q59's client part (the
+  replies taken from the record's events where they carry them); a decision the view does not
+  ask (a dwelling's or a Refugee Camp's hire dialog, a Shipyard's boat, a University, a market,
+  an Altar, a Hill Fort, a map Tavern, a meeting, an army dialog) holds the game until answered:
+  the notice closes it (its `Close` or decline) so play goes on.
 - **Acceptance:** a hot-seat game played by keys and mouse from Begin (until the shell's crate,
   `h3-map-view play`) through several days, every command accepted by the engine; scripted games
   compared with the original's frames where the commands are the same; the list in the epic's
   risks; the scoped verify.
-- **Depends on:** T4b. **Status:** queued.
+- **Depends on:** T4b (done). **Status:** queued (next).
 
 ### E24 M5 T5 — the hand-over and the clock
 

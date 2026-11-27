@@ -251,6 +251,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   view's window is a new one (search again after End Turn passes the turn); `--check`'s seconds
   are the whole play's, so a script longer than them is cut silently; a root screenshot
   (`import -window root`) shows the window centred on the screen and no hardware cursor.
+  `play` reads a map as the game keeps it (M5 T4b): a situation's map written by
+  `h3-map-view situation` is not compressed, so `gzip -c` it first ("not a gzip-compressed map
+  file"); a record of it is played by `record --record-map` on the gzipped file (its hash).
 - The client lane's standing traps apply to the foundation and the harness (`docs/lanes/client/HANDOFF.md`): the licences (`winit`, `cpal`, Bevy are excluded: SDL 3), the purity allowlist of a pure crate, `clients/Cargo.lock` as a common path, no float arithmetic in drawing and timing, never running the original from the installation, captures never in git, a capture run alone.
 
 - **A re-run of CI forces the full verify** (M4 T2b1, PR #1007): `ci.yml`'s plan sets `FORCE` for a
@@ -258,4 +261,8 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   bench-check), while this lane's branches change no engine code and pass in the light path. When a
   light run fails on GitHub's API ("Record the verified code": an empty answer), push a commit to
   run again instead of re-running the job.
+- **Read coverage's missed counts, not its percentages** (M5 T4b, PR #1201): llvm-cov's summary
+  rounds one missed region in 16 000 to 100.00 %, and the gate fails on any (`--fail-under-regions
+  100`). CI's `clients/scripts/check.sh` runs without `H3_INSTALL`: run the local coverage with it
+  unset too, so a test that skips without the installation counts as on CI.
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.

@@ -3799,3 +3799,68 @@ ai lane's, not this lane's).
   what the tower shows: a find the record's visit does not lay out); at one human's start on
   `Good to Go` (seed 5) random objects drawn as their random templates (`RES`, `MON 3`), not
   looked into.
+
+### M5 T4b, part one — the boxes answered through the host (2026-11-26)
+
+On `map-client/e24-m5-t4b`, from `master` at dc70cf8 (#1198; T4a's #1194 merged). Original data
+staged from the user's repo folder at the start (58 files, SHA-256 checked against the PC's sums)
+and the four manuals and three help files; the PC not needed after that. The setup's baseline
+stopped at its coverage step (its clippy and tests passed), CI's green Clients run on `master`
+(dc70cf8) standing in.
+
+- **Asked at the start** (the user): T4b cut in two (the answers through the host; Space's visit,
+  the messages, the random picks and the facts) or in three, or kept whole: **kept whole**. This
+  session built its first part; the rest follows on the same branch.
+- **Built** (design §5.27):
+  - `h3_map_view::reach`: `Pick`, `AnswerKey`, `AnswerAsked`, `LevelAsked`; `Hosted::answers`,
+    `levels`, `answer`, `leveled`; `Stand::answers`.
+  - `timeline`: `Question::hosted`, `LevelBox::hosted`; `Loop::answer_asked`, `add_answer`,
+    `level_asked`, `add_level` (and `Replay`'s); a live visit's level-ups alone shown.
+  - `engine::visits`: `Answered::Open`, `opened` (the question of each decision and class),
+    `live` (an answered live visit's question brought up to the record's answer),
+    `Told::Levels`, `answered_gain`, `removes` public; `lay` takes the host's open decisions
+    (none for a record) and the object's word.
+  - `h3-map-client`: `HotSeat::decision` (`observe`); `window::Session::decision` and `answer`;
+    `paint::live_walks` with the open decisions, `live_question`, `live_reply`; the window's
+    answers (the decision kept per walk, each answer and level-up played and laid out again, a
+    next question hosted), each kept in the start for the headless check.
+- **Found and fixed on the way:** the engine's free Tree of Knowledge opened its level-up with no
+  question and the view showed nothing, the hero held (now `Told::Levels`); a reach asked while a
+  decision was open was cached as none for the stand after the answer (now `Stand::answers`).
+- **Checked:** the tests (the recorded choices and `level-up-twice` hosted, a replay's answer and
+  level-up, the questions of each decision, a live visit's answers by button, a visit's level-ups
+  alone); `h3-map-view`'s whole suite and coverage (100 % regions and lines); clippy on both map
+  crates; under Xvfb (`play --check --scale 1`, keys held 0.3 s by `xdotool`): `game-asks`' map
+  (written by `h3-map-view situation`, gzipped: `play` reads the game's form; Up: the Arena, its
+  second picture and Enter, Defense 0 to 2; Left: Pandora's Box, Escape, Left again, Enter, its
+  1 500 gold, Enter; Down twice: the chest, its experience and Enter; the level-up's right offer
+  and its OK, Knowledge 2 to 3; E and Enter), `seq-ask-join-no`'s (Up, Escape, Escape: the
+  Peasants gone), `seq-ask-tree`'s (Up: the free level's dialog, its left offer and OK, Down a
+  step): every view's frames read back exact, as afresh and as the headless loop's; both
+  records of `game-asks` played to their end by `h3-map-view record`.
+- **Seen for the next part:** the replies still built from the client's tables and the map's text
+  (the epic's risks); the golden records not played again (the record player's `lay` takes no
+  open decision, so a record lays out as before).
+
+### M5 T4b, part two — Space's visit, the picks, the facts' questions (2026-11-26)
+
+On the same branch, the user's "go on" after part one. The VM restarted between the parts (files
+kept); nothing staged again.
+
+- **Built** (design §5.27):
+  - Space's visit: `Loop::revisit_asked`, `add_revisit` (and `Replay`'s), `Loop::tell_found`
+    (a find told by its index), `reach::RevisitAsked`, `Hosted::revisits`; `engine::played` takes
+    a `Revisit` as a visit on the hero's tile keyed past the walks (`engine::REVISIT`);
+    `window::Session::revisit`, the window's revisit (the find laid out from the record).
+  - The picks: `h3_map_view::picks` (`Picks`, `town_name`); `Hosted::picks`, `engine::Live::picks`;
+    the loop's pickup sound and computer music, the live start's unnamed towns' names; the hot
+    seat's seed (`PICKS` mixed with the game's).
+  - MCL-Q59 and MCL-Q60 asked; the adventure and server lanes' inboxes told.
+- **Seen:** a visited Learning Stone's revisit emits no event (`SRV-STUB-4`, in MCL-Q59); the
+  week's and month's boxes need no answer of the engine's.
+- **Checked:** the tests (a record's revisit, Space through the host, the picks, a town's name by
+  the seed in the live start's tables, a pickup's sound and a computer's music by the picks);
+  under Xvfb: `game-level` (the stone, its level-up's right offer, Space: taken, nothing told),
+  `game-asks` with one human (seven End Turns in place, week 2's box, closed), `seq-find-pile`
+  (its gold): every frame read back exact, as afresh and as the headless loop's; the records
+  played to their end; `h3-map-view`'s coverage, clippy, the client tests, the scoped verify.

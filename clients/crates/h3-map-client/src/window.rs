@@ -46,14 +46,19 @@ use std::sync::Arc;
 use h3_battle_client::audio::HostSound;
 use h3_game::GameRuleset;
 use h3_map_view::damage::{Held, tidy};
-use h3_map_view::engine::{GameRecord, Live};
+use h3_map_view::engine::{GameRecord, Live, REVISIT};
 use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
-use h3_map_view::reach::{Hosted, Reach};
+use h3_map_view::reach::{Hosted, Pick, Reach};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
 use h3_map_view::sound;
-use h3_map_view::timeline::{self, Action, CURSOR_TYPE, Cursor, Found, Rules, Start, Unplayable};
-use h3_protocol::wire::game::{Moves, Pos as WirePos};
+use h3_map_view::timeline::{
+    self, Action, Answer, CURSOR_TYPE, Cursor, Found, LevelBox, Rules, Start, Unplayable,
+};
+use h3_protocol::wire::game::{
+    Answer as WireAnswer, ArenaChoice, ChestChoice, ChoiceKind, Consent, Decision, Moves,
+    Pos as WirePos, SchoolChoice, SkillOffer,
+};
 use h3_render::Bugs;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_ui::clock::Clock;
@@ -236,11 +241,74 @@ pub(crate) trait Session {
     /// # Errors
     /// The session's (no turn of a human's, a frame that does not read).
     fn walk(&mut self, hero: u16, path: Vec<WirePos>) -> Result<Option<String>, String>;
+    /// The viewer's first open decision but a battle as the engine projects it (E24 M5 T4b: a
+    /// visit's question's facts), none without one.
+    fn decision(&self) -> Option<Decision>;
+    /// The viewer's `answer` to its first open decision (`GameCommand::Answer`, E24 M5 T4b): why
+    /// the game refused it, none when it took it.
+    ///
+    /// # Errors
+    /// The session's (no turn of a human's, a frame that does not read).
+    fn answer(&mut self, answer: WireAnswer) -> Result<Option<String>, String>;
+    /// The viewer's hero `hero` visits the entered object under it again (`Revisit`, E24 M5
+    /// T4b: Space): why the game refused it, none when it took it.
+    ///
+    /// # Errors
+    /// The session's (no turn of a human's, a frame that does not read).
+    fn revisit(&mut self, hero: u16) -> Result<Option<String>, String>;
 }
 
 /// The host's facts a live start keeps (E24 M5 T4a): the headless check plays them as the loop did.
 fn hosted(start: &mut Start) -> &mut Hosted {
     start.host.get_or_insert_default()
+}
+
+/// Whether `decision` is a visit's question the view asks (E24 M5 T4b): an offer or a choice; a
+/// level-up rides on the record's `LevelUpOpened`, the screens are M6's and M7's.
+fn asks(decision: &Decision) -> bool {
+    matches!(decision, Decision::Offer { .. } | Decision::Choice { .. })
+}
+
+/// The engine's answer of `decision` by the button `pick` (E24 M5 T4b, design §5.27): an offer's
+/// OK its consent, any other button its refusal; a treasure chest's first picture its gold, its
+/// second its experience (no Cancel: the original's plain OK takes the gold); the Arena's first
+/// its first skill, its second the second, its Cancel the first (MCL-Q33); a School's the same,
+/// its Cancel leaving. None for another decision.
+fn wire_answer(decision: &Decision, pick: Pick) -> Option<WireAnswer> {
+    match decision {
+        Decision::Offer { .. } => {
+            let consent = match pick {
+                Pick::Yes => Consent::Accept,
+                Pick::Second | Pick::No => Consent::Decline,
+            };
+            Some(WireAnswer::Offer { consent })
+        }
+        Decision::Choice { choice } => match &choice.kind {
+            ChoiceKind::Chest { .. } => {
+                let choice = match pick {
+                    Pick::Second => ChestChoice::Experience,
+                    Pick::Yes | Pick::No => ChestChoice::Gold,
+                };
+                Some(WireAnswer::Chest { choice })
+            }
+            ChoiceKind::Primary { leave: false, .. } => {
+                let choice = match pick {
+                    Pick::Second => ArenaChoice::Defense,
+                    Pick::Yes | Pick::No => ArenaChoice::Attack,
+                };
+                Some(WireAnswer::Arena { choice })
+            }
+            ChoiceKind::Primary { leave: true, .. } => {
+                let choice = match pick {
+                    Pick::Yes => SchoolChoice::First,
+                    Pick::Second => SchoolChoice::Second,
+                    Pick::No => SchoolChoice::Leave,
+                };
+                Some(WireAnswer::School { choice })
+            }
+        },
+        _ => None,
+    }
 }
 
 /// The window's clock in milliseconds (the session's host's clock, E24 M5 T3b).
@@ -708,6 +776,11 @@ pub(crate) fn window(
     // the view is left).
     let mut session: Option<&mut (dyn Session + '_)> = None;
     let mut ids: Vec<(u16, usize)> = Vec::new();
+    // The engine's decisions the view's walks and answers left open (E24 M5 T4b, design §5.27),
+    // by the walk whose visit asks them, in order: each question's facts.
+    let mut opened: Vec<(usize, Decision)> = Vec::new();
+    // The seed of the client's own picks in play (E24 M5 T4b, the hot seat's).
+    let mut picks = None;
     let (setup, what) = match source {
         Source::Options => set_up(&assets, options)?,
         // A human's view in play (E24 M5 T3b): its record since it was last left, set up as a
@@ -715,6 +788,7 @@ pub(crate) fn window(
         Source::Session(s) => {
             let label = format!("play: colour {}'s view", s.colour());
             let (record, live) = s.record()?;
+            picks = live.picks;
             let (setup, heroes) = paint::for_live(
                 &assets,
                 s.map(),
@@ -766,7 +840,10 @@ pub(crate) fn window(
     start.live = true;
     // In play the walks and the reach are the hot seat's host's (E24 M5 T4a).
     if session.is_some() {
-        start.host = Some(Hosted::default());
+        start.host = Some(Hosted {
+            picks,
+            ..Hosted::default()
+        });
     }
     // The battles' first frames the switches fade in (E24 M4 T5b2, design §5.21).
     if let Some(list) = &battles {
@@ -1264,15 +1341,20 @@ pub(crate) fn window(
                 continue;
             }
             let label = format!("play: colour {}'s view", s.colour());
+            let known = start.moves.as_ref().map_or(0, Vec::len);
+            // A question the walk's visit asks (E24 M5 T4b): the engine's decision open, its
+            // facts the first question's (one walk a `MoveHero`: the visit's is the next walk).
+            if let Some(decision) = s.decision().filter(asks) {
+                opened.push((known, decision));
+            }
             let (record, live) = s.record()?;
             let (moves, finds) = paint::live_walks(
                 &mut painter,
                 s.map(),
                 (record, s.rules(), live),
-                start.hover.as_deref(),
+                (start.hover.as_deref(), &opened),
                 label,
             )?;
-            let known = start.moves.as_ref().map_or(0, Vec::len);
             let added = moves.get(known..).unwrap_or_default();
             if added.is_empty() {
                 return Err(format!(
@@ -1300,6 +1382,202 @@ pub(crate) fn window(
             start.moves.get_or_insert_default().extend_from_slice(added);
             start.finds.extend_from_slice(&found);
             replay.add_walks(t, added, &found);
+            renew = true;
+            continue;
+        }
+        // A question's answer asked of the host (E24 M5 T4b, design §5.27): the session plays the
+        // `Answer` its decision and button make; what it shows is the visit's find laid out again
+        // from the record (its answer's events), with the levels the visit opens (the answer's
+        // change made again from before it). An answer the engine refuses, or a button no answer
+        // takes, shows nothing (the visit ends; the decision stays open).
+        if let Some(s) = session.as_deref_mut()
+            && let Some(asked) = replay.answer_asked()
+        {
+            let t = asked.at;
+            let key = asked.asked;
+            let walk = start.finds.get(key.find).and_then(|f| f.walk);
+            let nth = usize::from(key.nth);
+            let decision = walk.and_then(|w| opened.iter().filter(|(o, _)| *o == w).nth(nth));
+            let answer = decision.and_then(|(_, d)| wire_answer(d, key.pick));
+            let refused = match answer {
+                Some(answer) => s.answer(answer)?,
+                None => Some("no answer of the decision takes the button".to_owned()),
+            };
+            let (shown, levels) = match refused {
+                Some(why) => {
+                    lines.push(format!("{t} ms: the answer {:?} refused: {why}", key.pick));
+                    let levels = start.finds.get(key.find).map(|f| f.levels.clone());
+                    (Answer::default(), levels.unwrap_or_default())
+                }
+                None => {
+                    let label = format!("play: colour {}'s view", s.colour());
+                    let (record, live) = s.record()?;
+                    let (_, finds) = paint::live_walks(
+                        &mut painter,
+                        s.map(),
+                        (record, s.rules(), live),
+                        (start.hover.as_deref(), &opened),
+                        label,
+                    )?;
+                    let found = finds
+                        .into_iter()
+                        .find(|f| f.walk.is_some() && f.walk == walk);
+                    let levels = found.as_ref().map(|f| f.levels.clone()).unwrap_or_default();
+                    let at = found.as_ref().map(|f| f.at);
+                    // The first question's answer as the visit's find lays it out; a next one's
+                    // from the record alone.
+                    let mut shown = match (nth, &start.hover, walk) {
+                        (0, ..) => found.and_then(|f| f.ask).and_then(|q| match key.pick {
+                            Pick::Yes => q.yes,
+                            Pick::Second => q.second,
+                            Pick::No => q.no,
+                        }),
+                        (_, Some(hover), Some(w)) => {
+                            let label = format!("play: colour {}'s view", s.colour());
+                            let (record, live) = s.record()?;
+                            paint::live_reply(
+                                &painter,
+                                s.map(),
+                                (record, s.rules(), live),
+                                (hover, w, nth),
+                                label,
+                            )?
+                        }
+                        _ => None,
+                    }
+                    .unwrap_or_default();
+                    // A question the engine holds open after it (a monster's flight after its
+                    // offer declined): the answer's next, its answers the host's too.
+                    if let (Some(next), Some(hover), Some(at), Some(w)) =
+                        (s.decision().filter(asks), &start.hover, at, walk)
+                        && let Some(then) = paint::live_question(
+                            &mut painter,
+                            &next,
+                            (hover, at),
+                            key.nth.saturating_add(1),
+                        )?
+                    {
+                        opened.push((w, next));
+                        shown.then = Some(Box::new(then));
+                    }
+                    lines.push(format!(
+                        "{t} ms: the answer {:?} taken: {} boxes, {} level-ups",
+                        key.pick,
+                        shown.boxes.len(),
+                        levels.len()
+                    ));
+                    (shown, levels)
+                }
+            };
+            hosted(&mut start).answers.push((key, shown.clone()));
+            if let Some(found) = start.finds.get_mut(key.find) {
+                found.levels.clone_from(&levels);
+            }
+            replay.add_answer(asked, &shown, &levels);
+            renew = true;
+            continue;
+        }
+        // A level-up's offer asked of the host (E24 M5 T4b): the session plays it; the levels the
+        // engine opens after it are those after its level in the visit's find laid out again.
+        if let Some(s) = session.as_deref_mut()
+            && let Some(asked) = replay.level_asked()
+        {
+            let t = asked.at;
+            let offer = match asked.offer {
+                0 => SkillOffer::First,
+                _ => SkillOffer::Second,
+            };
+            let next = match s.answer(WireAnswer::LevelUp { offer })? {
+                Some(why) => {
+                    lines.push(format!("{t} ms: the level-up's offer refused: {why}"));
+                    Vec::new()
+                }
+                None => {
+                    let label = format!("play: colour {}'s view", s.colour());
+                    let (record, live) = s.record()?;
+                    let (_, finds) = paint::live_walks(
+                        &mut painter,
+                        s.map(),
+                        (record, s.rules(), live),
+                        (start.hover.as_deref(), &opened),
+                        label,
+                    )?;
+                    let next: Vec<LevelBox> = finds
+                        .iter()
+                        .rev()
+                        .find_map(|f| {
+                            let k = f.levels.iter().position(|l| l.level == asked.level)?;
+                            Some(f.levels[k + 1..].to_vec())
+                        })
+                        .unwrap_or_default();
+                    lines.push(format!(
+                        "{t} ms: the level-up to level {} taken, {} more",
+                        asked.level,
+                        next.len()
+                    ));
+                    next
+                }
+            };
+            hosted(&mut start)
+                .levels
+                .push(((asked.hero, asked.level), next.clone()));
+            replay.add_level(&asked, &next);
+            renew = true;
+            continue;
+        }
+        // Space's revisit asked of the host (E24 M5 T4b, design §5.27): the session plays the
+        // engine's `Revisit`; taken, the find its visit tells from the record (the key's change
+        // made again from before it), refused or telling nothing, nothing.
+        if let Some(s) = session.as_deref_mut()
+            && let Some(asked) = replay.revisit_asked()
+        {
+            let t = asked.at;
+            let id = ids
+                .iter()
+                .find(|&&(_, i)| i == asked.stand.hero)
+                .map(|&(id, _)| id);
+            let refused = match id {
+                Some(id) => s.revisit(id)?,
+                None => Some("no hero of the view's there".to_owned()),
+            };
+            let found = match refused {
+                Some(why) => {
+                    lines.push(format!("{t} ms: Space's visit refused: {why}"));
+                    None
+                }
+                None => {
+                    let key = REVISIT + start.moves.as_ref().map_or(0, Vec::len);
+                    if let Some(decision) = s.decision().filter(asks) {
+                        opened.push((key, decision));
+                    }
+                    let label = format!("play: colour {}'s view", s.colour());
+                    let (record, live) = s.record()?;
+                    let (_, finds) = paint::live_walks(
+                        &mut painter,
+                        s.map(),
+                        (record, s.rules(), live),
+                        (start.hover.as_deref(), &opened),
+                        label,
+                    )?;
+                    // Its visit's find: the last of the revisits since the last walk.
+                    let found = finds.into_iter().rfind(|f| f.walk == Some(key));
+                    lines.push(format!(
+                        "{t} ms: Space's visit taken, {}",
+                        if found.is_some() {
+                            "its find told"
+                        } else {
+                            "nothing told"
+                        }
+                    ));
+                    found
+                }
+            };
+            let told = found.as_ref().map(|f| {
+                start.finds.push(f.clone());
+                start.finds.len() - 1
+            });
+            hosted(&mut start).revisits.push((asked.stand, told));
+            replay.add_revisit(&asked, found.as_ref());
             renew = true;
             continue;
         }
@@ -1433,7 +1711,12 @@ pub(crate) fn window(
         // answered before a change at or after it is shown.
         if session.is_some() && next.as_ref().is_some_and(|f| f.change.t <= ms) {
             replay.at(ms).map_err(unplayable)?;
-            if replay.walk_asked().is_some() || replay.reach_asked().is_some() {
+            if replay.walk_asked().is_some()
+                || replay.reach_asked().is_some()
+                || replay.answer_asked().is_some()
+                || replay.level_asked().is_some()
+                || replay.revisit_asked().is_some()
+            {
                 renew = true;
                 continue;
             }

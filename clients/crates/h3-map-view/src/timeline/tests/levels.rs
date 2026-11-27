@@ -13,6 +13,7 @@ use super::choices::chosen;
 use super::computers::hover_of;
 use super::turns::{laid, started};
 use crate::levels::{self, FRAMES, LevelUp, Offer};
+use crate::reach::{Hosted, Reach, Stand};
 use crate::sound::Cue;
 
 /// E24 M4 T2c's sequences: their situations, timelines and kept live parts.
@@ -73,6 +74,7 @@ fn dialogs(live: &str) -> Vec<LevelBox> {
 /// One level-up's dialog.
 fn boxed(layout: &AdventureLayout, up: &LevelUp) -> LevelBox {
     LevelBox {
+        hosted: false,
         level: up.level,
         dialog: Arc::new(levels::dialog(
             &layout.level_up,
@@ -143,6 +145,7 @@ fn chest(experience: i32) -> Found {
         blocks: Some(CHEST),
         flag: None,
         ask: Some(Question {
+            hosted: None,
             asked: chosen(Style::Choose, Some("or")),
             chooses: true,
             yes: Some(Answer {
@@ -503,4 +506,63 @@ fn a_record_s_level_up_closes_only_with_its_answer() {
     assert!(run(&start).unwrap().boxed.is_none());
     start.level_ups[0].chosen = Some(1);
     assert_eq!(run(&start).err(), Some(Unplayable::LevelUp(2)));
+}
+
+/// `start` played to `until` with `actions` as [`play`] does, the host `host` given to the loop
+/// once a level-up's dialog opens (E24 M5 T4b: a live view's walk is the engine's, here the
+/// recording's, the stand's reach none), the loop at the end or once it asks the host.
+fn play_hosted(
+    start: &Start,
+    actions: &BTreeMap<u32, Vec<Action>>,
+    until: u32,
+    host: &Hosted,
+) -> (Vec<State>, Loop) {
+    let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
+    let mut states = vec![l.state(0)];
+    for t in 1..=until {
+        if l.host.is_none() && open(&l).is_some() {
+            // The stand's reach the engine's: none after the walk, as the recording's facts.
+            let mut host = host.clone();
+            let stand = l.stand_of(l.index.unwrap_or_default());
+            for answers in 0..3 {
+                let stand = Stand { answers, ..stand };
+                host.reaches.push((stand, Arc::new(Reach::default())));
+            }
+            l.host = Some(Arc::new(host));
+        }
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+        states.push(l.state(t));
+        // Asked, the click changed nothing: the rest is the answer's.
+        if l.answer_asked().is_some() || l.level_asked().is_some() {
+            break;
+        }
+    }
+    (states, l)
+}
+
+#[test]
+fn a_hosted_level_up_asks_its_offer_then_shows_the_next_level() {
+    // E24 M5 T4b (design §5.27): the chest's two levels the engine's (its visit's), the first's
+    // offer the host's, the second opened by the engine after it.
+    let (mut start, actions, ms, timeline) = levelling("level-up-twice");
+    let [two, three] = <[LevelBox; 2]>::try_from(core::mem::take(&mut start.level_ups)).unwrap();
+    start.experience = None;
+    start.finds[0].levels = vec![LevelBox {
+        hosted: true,
+        ..two
+    }];
+    // Asked at the OK's click with the offer chosen: the dialog closed, nothing after it.
+    let (_, l) = play_hosted(&start, &actions, ms, &Hosted::default());
+    let asked = l.level_asked().unwrap();
+    assert_eq!(asked.level, 2);
+    assert!(l.boxed.is_none());
+    // Given level 3's dialog, played again from the start: the recording's timeline.
+    let host = Hosted {
+        levels: vec![((asked.hero, 2), vec![three])],
+        ..Hosted::default()
+    };
+    let (states, l) = play_hosted(&start, &actions, ms, &host);
+    assert_eq!(l.level_asked(), None);
+    assert_eq!(lines(&states, &BTreeMap::new()), without_screens(timeline));
 }

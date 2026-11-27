@@ -34,15 +34,18 @@ use std::path::Path;
 
 use h3_contracts::PlayerId;
 use h3_game::GameRuleset;
+use h3_game::Viewer;
 use h3_map_view::engine::{self, GameRecord, Live};
 use h3_protocol::codec;
 use h3_protocol::map::game::manifest;
+use h3_protocol::map::game::observe;
 use h3_protocol::record::MAX_LINE;
 use h3_protocol::session::game::{
     Allowance, Clock, CommandBounds, GameOptions, GameOutbound, GameSession, Spectators,
 };
 use h3_protocol::wire::game::{
-    GameAnswer, GameClock, GameCommand, GameObservation, GameQuery, GameReject, MapIdentity,
+    Decision, GameAnswer, GameClock, GameCommand, GameObservation, GameQuery, GameReject,
+    MapIdentity,
 };
 use h3_protocol::wire::{ServerMessage, WireU64};
 
@@ -51,6 +54,10 @@ use crate::play::Game;
 /// The original's turn durations by `turndur.txt`'s record, in minutes, 0 unlimited
 /// (`turn_duration_minutes` 0x641AE8, read in E16 M5 T15: `docs/epics/E16-timer-survey.md`).
 pub const TURN_MINUTES: [u8; 11] = [1, 2, 4, 6, 8, 10, 15, 20, 25, 30, 0];
+
+/// What the game's seed is mixed with for the client's own picks in its views (E24 M5 T4b): a
+/// stream apart from the engine's, the same for every view of the game.
+const PICKS: u64 = 0x6D61_702D_7069_636B;
 
 /// The turn duration's record that is unlimited (`turndur.txt`'s last).
 pub const UNLIMITED: u8 = 10;
@@ -181,6 +188,9 @@ fn number(message: &ServerMessage) -> Option<u32> {
 /// The game hosted in-process, a seat per player.
 pub struct HotSeat<'r> {
     session: GameSession<'r>,
+    rules: &'r GameRuleset,
+    /// The seed of the client's own picks in its views (E24 M5 T4b, `h3_map_view::picks`).
+    picks: u64,
     seats: Vec<Seat>,
     /// The host's last command's number (the in-process host's are only echoed).
     seq: u32,
@@ -259,6 +269,8 @@ impl<'r> HotSeat<'r> {
         .map_err(|e| failed(&format_args!("the game does not start: {e}")))?;
         let mut hot = Self {
             session,
+            rules,
+            picks: game.seed ^ PICKS,
             seats,
             seq: 0,
         };
@@ -316,6 +328,15 @@ impl<'r> HotSeat<'r> {
         let played = self.session.play(player, self.seq, command, &mut out);
         self.deliver(out)?;
         Ok(played.err())
+    }
+
+    /// `player`'s first open decision but a battle as the engine projects it now (E24 M5 T4b,
+    /// design §5.27: a visit's question's facts, a chest's gold and experience, a price), none
+    /// without one. *Provisional*: the in-process host reads the engine's projection (`observe`),
+    /// since the fold of the seat's frames keeps no offer's or choice's view (`SRV-STUB-5`).
+    #[must_use]
+    pub fn decision(&self, player: PlayerId) -> Option<Decision> {
+        observe(self.session.state(), self.rules, Viewer::Player(player)).decision
     }
 
     /// `player`'s `query` of the running game (`GameSession::query`, E24 M5 T4a: a hero's moves);
@@ -380,8 +401,15 @@ impl<'r> HotSeat<'r> {
             .ok_or_else(|| format!("no record of player {}", player.index()))?;
         let mut record =
             engine::parse(&text).map_err(|e| format!("player {}: {e}", player.index()))?;
+        let picks = Some(self.picks);
         let Some(left) = left else {
-            return Ok((record, Live::default()));
+            return Ok((
+                record,
+                Live {
+                    facings: Vec::new(),
+                    picks,
+                },
+            ));
         };
         record
             .messages
@@ -396,6 +424,7 @@ impl<'r> HotSeat<'r> {
         record.header.first = left.n;
         let live = Live {
             facings: left.facings.clone(),
+            picks,
         };
         Ok((record, live))
     }
@@ -460,8 +489,6 @@ impl<'r> HotSeat<'r> {
 
 #[cfg(test)]
 mod tests {
-    use h3_game::Viewer;
-    use h3_protocol::map::game::observe;
     use h3_protocol::wire::game::GameEvent;
 
     use super::*;

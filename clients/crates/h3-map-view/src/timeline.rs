@@ -142,7 +142,10 @@ use crate::live::{
 };
 use crate::minimap::{MinimapArt, divided};
 use crate::panels;
-use crate::reach::{Hosted, Reach, Stand, WalkAsked};
+use crate::picks::Picks;
+use crate::reach::{
+    AnswerAsked, AnswerKey, Hosted, LevelAsked, Pick, Reach, RevisitAsked, Stand, WalkAsked,
+};
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_COMPUTER_SPEED, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
 use crate::sound::{Cue, Sound};
@@ -1029,6 +1032,10 @@ pub struct LevelBox {
     /// The offer a record's answer took (E24 M4 T4b1, design §5.14): the OK closing it with
     /// another is refused ([`Unplayable::LevelUp`]); none: any (a recording's).
     pub chosen: Option<usize>,
+    /// The offer is the host's to answer (E24 M5 T4b, design §5.27: live, the engine's level-up
+    /// open): its OK with an offer chosen is asked of the host ([`Loop::level_asked`]), which
+    /// gives the levels the engine opens after it.
+    pub hosted: bool,
 }
 
 /// A find's boxes (E24 M4 T2a2, design §5.3, *provisional*: the viewer's facts at 0,
@@ -1194,6 +1201,10 @@ pub struct Question {
     /// what its second picture shows (0x780A); its first's is [`Question::yes`], its Cancel's
     /// [`Question::no`].
     pub second: Option<Answer>,
+    /// Its answers are the host's (E24 M5 T4b, design §5.27: live, the engine's decision open):
+    /// its place among its visit's questions (0 the first). A button whose answer is not built
+    /// asks the host ([`Loop::answer_asked`]); none: a record's or a recording's.
+    pub hosted: Option<u8>,
 }
 
 /// What a question's answer shows (E24 M4 T2b2 part A1): its boxes one after another, each with
@@ -1796,6 +1807,16 @@ pub struct Loop {
     /// reach is asked (E24 M5 T4a): each kept until the host answers.
     host: Option<Arc<Hosted>>,
     walk_asked: Option<WalkAsked>,
+    /// The question's answer asked of the host (E24 M5 T4b, [`Loop::answer_asked`]).
+    answer_asked: Option<AnswerAsked>,
+    /// The level-up's offer asked of the host (E24 M5 T4b, [`Loop::level_asked`]).
+    level_asked: Option<LevelAsked>,
+    /// Space's revisit asked of the host (E24 M5 T4b, [`Loop::revisit_asked`]).
+    revisit_asked: Option<RevisitAsked>,
+    /// The client's own picks in play (E24 M5 T4b, [`Hosted::picks`]); none: in turn.
+    picks: Option<Picks>,
+    /// The host's answers and level-ups' offers taken so far (E24 M5 T4b: a stand's).
+    answers_taken: usize,
     reach_asked: Option<(u32, Stand)>,
     next_move: usize,
     walking: Option<(usize, usize)>,
@@ -2252,6 +2273,11 @@ impl Loop {
             moves: start.moves.clone().map(Arc::new),
             host: start.host.clone().map(Arc::new),
             walk_asked: None,
+            answer_asked: None,
+            level_asked: None,
+            revisit_asked: None,
+            picks: start.host.as_ref().and_then(|h| h.picks).map(Picks::new),
+            answers_taken: 0,
             reach_asked: None,
             next_move: 0,
             walking: None,
@@ -2406,6 +2432,67 @@ impl Loop {
             Arc::make_mut(host).reaches.push((stand, Arc::clone(reach)));
         }
         self.reach_asked = None;
+    }
+
+    /// The question's answer asked of the host (E24 M5 T4b, design §5.27): a hosted question
+    /// ([`Question::hosted`]) closed by a button whose answer is not given yet; the click changes
+    /// nothing until the host answers. None since [`Loop::add_answer`].
+    #[must_use]
+    pub fn answer_asked(&self) -> Option<AnswerAsked> {
+        self.answer_asked
+    }
+
+    /// What the answer `asked` shows, given by the host (E24 M5 T4b: it played the session's
+    /// `Answer`), with the levels its find's visit opens as far as the engine told them (its
+    /// [`Found::levels`], due with the answer's experience); the question cleared.
+    pub fn add_answer(&mut self, asked: AnswerKey, answer: &Answer, levels: &[LevelBox]) {
+        if let Some(host) = &mut self.host {
+            Arc::make_mut(host).answers.push((asked, answer.clone()));
+        }
+        if let Some(found) = Arc::make_mut(&mut self.finds).get_mut(asked.find) {
+            found.levels = levels.to_vec();
+        }
+        self.answer_asked = None;
+    }
+
+    /// The level-up's offer asked of the host (E24 M5 T4b, design §5.27): a hosted level-up's
+    /// dialog ([`LevelBox::hosted`]) closed by its OK with an offer chosen; the click changes
+    /// nothing until the host answers. None since [`Loop::add_level`].
+    #[must_use]
+    pub fn level_asked(&self) -> Option<LevelAsked> {
+        self.level_asked
+    }
+
+    /// The levels the engine opened after the level-up `asked` (E24 M5 T4b: the host played its
+    /// offer), shown after it; the question cleared.
+    pub fn add_level(&mut self, asked: &LevelAsked, next: &[LevelBox]) {
+        if let Some(host) = &mut self.host {
+            let key = (asked.hero, asked.level);
+            Arc::make_mut(host).levels.push((key, next.to_vec()));
+        }
+        self.level_asked = None;
+    }
+
+    /// Space's revisit asked of the host (E24 M5 T4b, design §5.27): the selected hero on an
+    /// object's entrance, with no revisit given for its stand; Space changes nothing until the host
+    /// answers. None since [`Loop::add_revisit`].
+    #[must_use]
+    pub fn revisit_asked(&self) -> Option<RevisitAsked> {
+        self.revisit_asked
+    }
+
+    /// The revisit `asked` given by the host (E24 M5 T4b: it played the engine's `Revisit`): the
+    /// find its visit tells (added to the known ones), none where the engine refused it or it
+    /// tells nothing; the question cleared.
+    pub fn add_revisit(&mut self, asked: &RevisitAsked, found: Option<&Found>) {
+        let told = found.map(|f| {
+            Arc::make_mut(&mut self.finds).push(f.clone());
+            self.finds.len() - 1
+        });
+        if let Some(host) = &mut self.host {
+            Arc::make_mut(host).revisits.push((asked.stand, told));
+        }
+        self.revisit_asked = None;
     }
 
     /// The map's heroes ([`Start::heroes`]' order) where they stand and face now, the selected
@@ -3425,10 +3512,15 @@ impl Loop {
         self.place(&heroes);
         self.changed(&taken, &flags, &lost, &boats);
         self.player = turn.player;
-        // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*).
+        // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*; since E24
+        // M5 T4b in play the client's own pick).
         let tracks = &self.rules.turn.computer;
         if let (Some(sound), false) = (&mut self.sound, tracks.is_empty()) {
-            sound.computer(t, &tracks[self.next_turn % tracks.len()]);
+            let k = match &mut self.picks {
+                Some(picks) => picks.below(tracks.len()),
+                None => self.next_turn % tracks.len(),
+            };
+            sound.computer(t, &tracks[k]);
         }
         self.set_cursor(DEFAULT_CURSOR, self.rules.busy);
         self.buttons.move_hero = false;
@@ -4168,6 +4260,27 @@ impl Loop {
         {
             self.unbuilt(Unplayable::LevelUp(leveling.open.level))?;
         }
+        // Live, a hosted level-up's offer is the host's (E24 M5 T4b, design §5.27): the levels
+        // the engine opens after it shown after it; asked first, the click changing nothing.
+        if let (true, Some(host), Some(offer)) = (leveling.open.hosted, &self.host, chosen) {
+            let hero = self.index.unwrap_or_default();
+            let level = leveling.open.level;
+            match host.leveled(hero, level) {
+                Some(next) => {
+                    leveling.rest.extend(next.iter().cloned());
+                    self.answers_taken += 1;
+                }
+                None => {
+                    self.level_asked.get_or_insert(LevelAsked {
+                        at: t,
+                        hero,
+                        level,
+                        offer,
+                    });
+                    return Ok(());
+                }
+            }
+        }
         let raised = &mut leveling.raised;
         if let Some(skill) = raised.skills.get_mut(usize::from(leveling.open.primary)) {
             *skill = skill.saturating_add(1);
@@ -4220,6 +4333,13 @@ impl Loop {
         }) else {
             return false;
         };
+        self.tell_found(t, i)
+    }
+
+    /// Find `i` told on the selected hero's tile ([`Loop::tell_find`]'s; since E24 M5 T4b Space's
+    /// revisit's too): its first boxes, told again its later one, its question; whether a box
+    /// opened.
+    fn tell_found(&mut self, t: u32, i: usize) -> bool {
         self.visiting(i);
         let found = Arc::clone(&self.finds);
         let found = &found[i];
@@ -4247,6 +4367,16 @@ impl Loop {
                 self.raise(found.flag);
                 if self.ask(t, i) {
                     return true;
+                }
+                // Live, level-ups and no box (E24 M5 T4b, design §5.27: the Tree of Knowledge's
+                // free level): what the panels show, then their dialogs (the engine holds them
+                // open), the visit's end after them.
+                if !found.levels.is_empty() {
+                    self.due_levels.extend(found.levels.iter().cloned());
+                    self.leveling = None;
+                    self.gain(found.gain);
+                    let after = self.level_up(t, After::Found(i));
+                    return after.is_ok_and(|after| after.is_none());
                 }
                 // A record's flag raised alone (E24 M4 T6, the reviewers' R3-4: what the visit
                 // shows besides is not built): the minimap drawn after the visit
@@ -4289,10 +4419,27 @@ impl Loop {
     /// [`Question::second`], its Cancel's [`Question::no`] (marking the find where it
     /// [`Answer::marks`]: the Arena's).
     fn answer(&mut self, t: u32, i: usize, question: Question, id: u16) -> Result<(), Unplayable> {
-        let reply = match id {
-            boxes::YES | boxes::OK | boxes::CHOICE => question.yes,
-            _ if id == boxes::CHOICE + 1 => question.second,
-            _ => question.no,
+        let (pick, reply) = match id {
+            boxes::YES | boxes::OK | boxes::CHOICE => (Pick::Yes, question.yes),
+            _ if id == boxes::CHOICE + 1 => (Pick::Second, question.second),
+            _ => (Pick::No, question.no),
+        };
+        // Live, a hosted question's answer is the host's (E24 M5 T4b, design §5.27): given, it
+        // shows; else it is asked, and the click changes nothing until it is given.
+        let reply = match (reply, question.hosted, &self.host) {
+            (None, Some(nth), Some(host)) => {
+                let asked = AnswerKey { find: i, nth, pick };
+                if let Some(given) = host.answer(asked) {
+                    let given = given.clone();
+                    self.answers_taken += 1;
+                    Some(given)
+                } else {
+                    self.answer_asked
+                        .get_or_insert(AnswerAsked { at: t, asked });
+                    return Ok(());
+                }
+            }
+            (reply, ..) => reply,
         };
         if let Some(reply) = reply {
             if !matches!(id, boxes::NO | boxes::CANCEL) || reply.marks {
@@ -4603,8 +4750,14 @@ impl Loop {
         gone.push(object);
         gone.sort_unstable();
         gone.dedup();
+        // The pickup's sound in turn (a recording's, a record's), in play the client's own pick
+        // (E24 M5 T4b).
+        let n = match &mut self.picks {
+            Some(picks) => picks.below(self.rules.finds.pickups.len()),
+            None => taken,
+        };
         let name = match fade {
-            Fade::Pickup => pickup(&self.rules.finds, taken),
+            Fade::Pickup => pickup(&self.rules.finds, n),
             Fade::Killfade => Some(self.rules.finds.killfade.as_str()),
         };
         if let (Some(sound), Some(name)) = (&mut self.sound, name) {
@@ -5569,9 +5722,39 @@ impl Loop {
             i32::from(selection.at.z),
         ];
         match hover.current(at, Some(selection)) {
-            Some(tile) if tile.entrance && tile.class != 3 => self.unbuilt(Unplayable::Visit(at)),
+            Some(tile) if tile.entrance && tile.class != 3 => {
+                // Live, the engine's revisit (E24 M5 T4b, design §5.27).
+                if self.hosted_revisit(t) {
+                    return Ok(());
+                }
+                self.unbuilt(Unplayable::Visit(at))
+            }
             _ => Ok(()),
         }
+    }
+
+    /// Whether Space's visit at `t` is the host's (E24 M5 T4b, design §5.27: the engine's
+    /// `Revisit`): with one, the revisit of the stand given (its find told, or nothing where the
+    /// engine refused it or it tells nothing; a stand's, so the next Space asks again), else
+    /// asked: nothing changes until the host answers.
+    fn hosted_revisit(&mut self, t: u32) -> bool {
+        let Some(host) = &self.host else {
+            return false;
+        };
+        let stand = self.stand_of(self.index.unwrap_or_default());
+        match host.revisit(stand) {
+            Some(told) => {
+                self.answers_taken += 1;
+                if let Some(i) = told {
+                    self.tell_found(t, i);
+                }
+            }
+            None => {
+                self.revisit_asked
+                    .get_or_insert(RevisitAsked { at: t, stand });
+            }
+        }
+        true
     }
 
     /// The selected hero chosen again (`hero_select` 0x417B20 with 0, 0, 1, as
@@ -5936,6 +6119,7 @@ impl Loop {
             hero,
             walks: self.next_move,
             turns: self.next_turn,
+            answers: self.answers_taken,
         }
     }
 
