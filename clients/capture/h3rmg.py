@@ -476,29 +476,39 @@ PLAN = RMG / "plan.txt"
 PLAN_SITES = frozenset({0x543EB8, 0x54403E, 0x53F745, 0x53F794, 0x53EFE4, 0x53EEFF, 0x53EF0C,
                         0x53EF19, 0x53EF2E, 0x53EF43, 0x5B38B9, 0x5B38D3, 0x5B3912, 0x5B3AB6,
                         0x5B3B2D})
+# The lanes' two sites (`rmg_free_lanes_draw`, the plan's first part).
+LANE_SITES = frozenset({0x543EB8, 0x54403E})
 # The connections' first draw sites (survey §2.3): by land, by shipyard, by gates, by monoliths.
 CONNECTION_SITES = frozenset({0x54146B, 0x541B78, 0x5421BC, 0x542A8F})
+
+
+def prefix(draws, sites):
+    """The length of the longest prefix of `draws` drawn at `sites`."""
+    return next((k for k, (site, _) in enumerate(draws) if site not in sites), len(draws))
 
 
 def plan_prefix(phases):
     """Step 6's obstacle plan in a log's phases (`phase_log`'s): the draws of step 6 before its
     first draw at a site not of the plan (PLAN_SITES), their lines' digest as `phase_digests`
-    makes it, and the next site (None when the plan is the whole step). A next site that is not a
-    connection's first draw is an error: the plan's sites or the survey's order are wrong."""
+    makes it, and the next site (None when the plan is the whole step); first the same for the
+    lanes alone (LANE_SITES). A next site that is not a connection's first draw is an error: the
+    plan's sites or the survey's order are wrong."""
     draws = next((d for phase, d in phases if phase == 6), None)
     if draws is None:
         raise RuntimeError("no step 6 in the log")
-    n = next((k for k, (site, _) in enumerate(draws) if site not in PLAN_SITES), len(draws))
+    n = prefix(draws, PLAN_SITES)
     nxt = draws[n][0] if n < len(draws) else None
     if nxt is not None and nxt not in CONNECTION_SITES:
         raise RuntimeError(f"step 6's plan ends at draw {n} with {nxt:X}, not a connection's")
-    (_, count, digest), = phase_digests([(6, draws[:n])])
-    return count, digest, nxt
+    (_, lanes, lanes_digest), (_, count, digest) = phase_digests(
+        [("lanes", draws[:prefix(draws, LANE_SITES)]), (6, draws[:n])])
+    return (lanes, lanes_digest), (count, digest), nxt
 
 
 def plan_line(ident, phases):
-    count, digest, nxt = plan_prefix(phases)
-    return f"{ident} draws={count} digest={digest} next={'none' if nxt is None else f'{nxt:X}'}"
+    (lanes, lanes_digest), (count, digest), nxt = plan_prefix(phases)
+    return (f"{ident} lanes={lanes}:{lanes_digest} draws={count} digest={digest} "
+            f"next={'none' if nxt is None else f'{nxt:X}'}")
 
 
 def plan_command(args):
@@ -525,9 +535,10 @@ def plan_command(args):
         lines.append(line)
     if args.record:
         PLAN.write_text("# Step 6's obstacle plan by case (h3rmg.py plan --record, E14 T4c): the "
-                        "draws of step 6 before its\n# first draw at a site not of the plan "
-                        "(h3rmg.PLAN_SITES), their lines' digest as phases.txt's,\n# the next "
-                        "site (a connection's first draw, or none).\n" + "\n".join(lines) + "\n")
+                        "lanes' draws (h3rmg.LANE_SITES) and\n# the draws of step 6 before its first "
+                        "draw at a site not of the plan (h3rmg.PLAN_SITES), each with its lines'\n"
+                        "# digest as phases.txt's, the next site (a connection's first draw, or "
+                        "none).\n" + "\n".join(lines) + "\n")
         print(f"wrote {PLAN}")
         return 0
     return 1 if differ else 0
