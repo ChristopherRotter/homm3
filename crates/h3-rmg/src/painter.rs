@@ -300,17 +300,13 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
     }
 
     /// Slot 4 of terrain `t`'s set (`terrain_picture_draw` 0x5B3890, `rock_picture_draw`
-    /// 0x5B3AA0): a current plain picture kept; else, with decorated pictures, `rand() % 100`
-    /// below share × weight / 8 takes them, and `rand() %` the pictures' count.
+    /// 0x5B3AA0): a current plain picture kept (the transition pass's test, before it reads the
+    /// weight); else, with decorated pictures, `rand() % 100` below share × weight / 8 takes
+    /// them, and `rand() %` the pictures' count.
     // rule: RMG-TER-007
-    fn draw_plain(&mut self, t: u8, weight: u32, current: Option<u8>) -> u8 {
+    fn draw_plain(&mut self, t: u8, weight: u32) -> u8 {
         let pictures = self.pictures;
         let set = pictures.set(t);
-        if let Some(c) = current
-            && set.fits(c, 0, None)
-        {
-            return c;
-        }
         if set.rock {
             let range = set.range(0);
             return self.pick(range, SITE_ROCK_PICTURE, t, 0);
@@ -451,7 +447,7 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
     fn set_cell(&mut self, x: i32, y: i32) {
         let t = self.terrain;
         let weight = self.weight_at(x, y, t);
-        let picture = self.draw_plain(t, weight, None);
+        let picture = self.draw_plain(t, weight);
         self.write(x, y, t, picture, [false; 2]);
         self.queued.remove(&(y, x));
         if self.pictures.set(t).land {
@@ -509,7 +505,7 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
             for x in x0..x0 + w {
                 if self.terrain_at(x, y) == t {
                     let weight = self.weight_at(x, y, t);
-                    let picture = self.draw_plain(t, weight, None);
+                    let picture = self.draw_plain(t, weight);
                     self.write(x, y, t, picture, [false; 2]);
                 } else {
                     self.set_cell(x, y);
@@ -615,9 +611,27 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
 
     /// `terrain_painter_finish` 0x5B72F0: until both sets are empty, set 1's smallest cell
     /// resolved while set 1 holds one, then set 2's smallest taken out and, pinched against its
-    /// own terrain, made the painter's, while set 2 holds one; then the last pass.
+    /// own terrain, made the painter's, while set 2 holds one; then the last pass. The first
+    /// fault met in the painter's life.
     // rule: RMG-TER-005
     pub(crate) fn finish(mut self) -> Result<(), PaintFault> {
+        self.settle();
+        self.fault.map_or(Ok(()), Err)
+    }
+
+    /// `terrain_painter_flush(terrain, 4)` 0x5B7520: the finish's loop and last pass, the painter
+    /// kept (its sets drained; the original's cell words kept, a set-2 cell's loaded before its
+    /// set's byte +5 is read, which the finish's word reads load too: the same); then its
+    /// terrain is `terrain` and its weight 4, and it paints on.
+    // rule: RMG-TER-005
+    pub(crate) fn flush(&mut self, terrain: u8) {
+        self.settle();
+        self.terrain = terrain;
+        self.weight = WEIGHT;
+    }
+
+    /// The finish's loop and last pass.
+    fn settle(&mut self) {
         loop {
             while let Some(&(y, x)) = self.pinched.first() {
                 if self.resolve(x, y) == 0 {
@@ -635,7 +649,6 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
             }
         }
         self.transition_pass();
-        self.fault.map_or(Ok(()), Err)
     }
 
     /// `terrain_painter_border_class` 0x5B3E40: how a cell of terrain `t` meets a neighbour of
@@ -667,8 +680,14 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
                 let shape = self.refine(x, y, t, shape, word);
                 let current = picture_of(self.cell(x, y));
                 let (picture, word) = if shape == 0 {
-                    let weight = self.weight_at(x, y, t);
-                    (self.draw_plain(t, weight, Some(current)), [false; 2])
+                    // Slot 4 keeps a current plain picture; only a drawn one reads the weight.
+                    let picture = if self.pictures.set(t).fits(current, 0, None) {
+                        current
+                    } else {
+                        let weight = self.weight_at(x, y, t);
+                        self.draw_plain(t, weight)
+                    };
+                    (picture, [false; 2])
                 } else {
                     self.draw_shape(t, shape, word, current)
                 };
@@ -710,17 +729,23 @@ type Rule = (&'static [(usize, u8)], u8, bool);
 /// inverted), none shape 0.
 // rule: RMG-TER-016
 fn shape(classes: &[u8; 8], inverting: bool) -> (u8, [bool; 2]) {
-    for group in GROUPS {
-        for word in MIRRORINGS {
-            let roles = &ROLES[usize::from(word[0]) * 2 + usize::from(word[1])];
-            for &(all, shape, inverted) in group {
-                if all.iter().all(|&(role, c)| classes[roles[role]] == c) {
-                    let word = if inverted && inverting {
-                        [!word[0], !word[1]]
-                    } else {
-                        word
-                    };
-                    return (shape, word);
+    // The table meets every mix of classes but one: a cell among its own terrain (every class
+    // 0, most cells of a level) meets no condition, each asking for a class 1 or 2, and any
+    // other cell meets one (a unit test holds the table to both). So the search is skipped
+    // there, its answer unchanged.
+    if *classes != [0; 8] {
+        for group in GROUPS {
+            for word in MIRRORINGS {
+                let roles = &ROLES[usize::from(word[0]) * 2 + usize::from(word[1])];
+                for &(all, shape, inverted) in group {
+                    if all.iter().all(|&(role, c)| classes[roles[role]] == c) {
+                        let word = if inverted && inverting {
+                            [!word[0], !word[1]]
+                        } else {
+                            word
+                        };
+                        return (shape, word);
+                    }
                 }
             }
         }
