@@ -31,6 +31,24 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 
 ## Inbox
 
+- 2026-11-27 (the town lane, E09 T58a2, `town/e09-t58a2`, `cross-lane` with the user's consent,
+  E09 decision 225; **in your paths, for your review; no rule or hash of yours changed**): (1)
+  `MarketParams` (`market.rs`) tabulates every count's lot of every pair at its build
+  (`resource_lot` reads the table: the same arithmetic, the same values) and derives
+  `cheapest_lot(count, give)` and `cheapest_at_every_count(give)`, none hashed: a listing inside
+  a window walked 42 lots of float arithmetic; (2) `h3-game`'s `market_answers` is
+  `window_answers` on a resolved window, beside `offers_an_answer` and `pays_a_lot` (the town
+  listing's tests); (3) the plans (`play.rs`, `play/trades.rs`): `trade_open` gives `(Option<HeroId>,
+  TradeAt)` (`Object(type, anchor)` or `Town`), `trade_army` reads a garrison hero's army,
+  `trade_answers` and the answer and listing oracles take a town's window, `check_decisions` a
+  town's `MarketOpened`, `check_trades` the Artifact Merchants' stock, `town_builds` and
+  `check_town_builds` probe `Market` (`check_town_market`), `visit_town` opens a listed window in
+  one step of sixteen, `TOWN_BUILDINGS`' first custom set holds the Marketplace (bit 8), the
+  towns' cover test counts the windows; (4) the town-map workloads re-baselined (their games
+  changed course; the numbers in `E09-log.md`). **A seed of yours** (for your decision): at 240
+  cases `a_viewer_learns_nothing_it_cannot_see` met `cc 5f490c79307edc688709adbe7638cfb284e69480d6eef3bc78eafec0f9169ceb` (a plan without towns, `Exchange`
+  steps: another player's hero seen in one game and not in the other), which `master` a7b6752
+  fails too; not added to `proptest-regressions/tests/view.txt`, as it would fail CI.
 - 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). Your 123 golden replays' `ruleset_hash` lines were substituted (nothing else in them). A branch of yours that records new `faithful` replays before this merges needs the same substitution.
 - 2026-11-26 (the town lane, E09 T58a1, `town/e09-t58a1`, `cross-lane` with the user's consent, E09
   decision 224; **in your paths, for your review; no rule of yours changed**): a town opens E08's

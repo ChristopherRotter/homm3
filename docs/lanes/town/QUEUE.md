@@ -13,14 +13,8 @@ tasks in `E09-log.md`; increments 1 to 5 (closed by T10, T20, T30, T41 and T51) 
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T58 to T61** (queued, design §118's rounds 6 to 8; each cut confirmed at its start): **Status:** T58a2 next (T58a1 done 2026-11-26, decision 224, `E09-log.md`). T58 the market
-at a town (§103 to §107, `cross-lane`): **T58a2** the listing (`legal_commands` lists
-`TownCommand::Market` where the window opens and offers a legal answer, one lookup a town as
-`legal_builds`' others, the town lane's `TRAPS.md`; `TWN-STUB-22` lifted), the env's opening
-entry (§115: 1 entry by the town's entrance, the encoding's next version), the plans
-(`h3-map`'s `play.rs`: `trades::trade_open` and the oracles naming a town's window, today map
-markets only), the town-map seeds and the workloads that move (`legal-towns-36`, the
-`random-play-*` with towns; skill `homm3-bench-regression`); **T58b** the artifact sale
+**E09 T58 to T61** (queued, design §118's rounds 6 to 8; each cut confirmed at its start): **Status:** T58b next (T58a2 done 2026-11-27, decision 225, `E09-log.md`). T58 the market
+at a town (§103 to §107, `cross-lane`): **T58b** the artifact sale
 (`MarketAnswer::SellArtifact`, `MarketParams::artifact_sale`, `TWN-QUIRK-18`, `-20`, its env
 entries and word, the protocol); T59 the services (§110 to §113: T59a `BuyWarMachine` and
 `BuildBoat`; T59b `University` with T-23 and `Transform`; each with its env entries, word and

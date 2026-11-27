@@ -171,14 +171,67 @@ impl GameState {
         player: PlayerId,
         visit: &MarketVisit,
     ) -> Vec<MarketAnswer> {
-        let checks = (rules.core(), rules.adventure());
         // As `market_view`'s: the window stays as it opened while the decision is open (its hero
         // on the map or in its town, no build), so none is defensive only.
         let window = self.market_window(rules, player, visit).ok();
-        let offers = window
-            .as_ref()
-            .map(|w| self.adventure.market_offers(checks, w))
-            .unwrap_or_default();
+        window
+            .map(|window| self.window_answers(rules, player, &window))
+            .unwrap_or_default()
+    }
+
+    /// Whether `window`, a window `player` would open, offers an answer [`Self::market_answers`]
+    /// would list in it (E09 T58a2, the town epic's design note §104, §115; ADR-0017 point 6: the
+    /// listing's `TownCommand::Market` where the window opens and offers a legal answer,
+    /// `crate::town::market::listed`): a trade whose lot the treasury pays, asked first and alone
+    /// ([`Self::pays_a_lot`] at the window's count: no list built, no lot's arithmetic; the
+    /// listing asks it of every owned town whose window opens, `bench-check`'s `legal-towns-36`);
+    /// without one and with a hero, the window's sales and purchases as [`Self::market_answers`]
+    /// gives them.
+    pub(crate) fn offers_an_answer(
+        &self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        window: &MarketWindow<'_>,
+    ) -> bool {
+        let trade = window.shows(MarketScreen::Trade)
+            && self.pays_a_lot(rules, player, |rates, give| {
+                rates.cheapest_lot(window.count, give)
+            });
+        trade
+            || (window.visit.hero.is_some()
+                && !self.window_answers(rules, player, window).is_empty())
+    }
+
+    /// Whether `player`'s treasury holds, of a resource of the core, at least the least of it
+    /// `least` gives a lot of a trade (E09 T58a2: [`MarketParams::cheapest_lot`] at a count, or
+    /// [`MarketParams::cheapest_at_every_count`]): [`Self::market_answers`] lists a trade of that
+    /// resource for another; none without the market parameters.
+    pub(crate) fn pays_a_lot(
+        &self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        least: impl Fn(&MarketParams, ResourceId) -> Option<u32>,
+    ) -> bool {
+        let rates = rules.adventure().params().market();
+        rates.is_some_and(|rates| {
+            (0..rules.core().resources().len())
+                .filter_map(ResourceId::from_index)
+                .any(|give| {
+                    least(rates, give).is_some_and(|least| self.held(player, give) >= least)
+                })
+        })
+    }
+
+    /// [`Self::market_answers`] in `window`, the open visit's window as
+    /// [`Self::market_window`] resolves it.
+    fn window_answers(
+        &self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        window: &MarketWindow<'_>,
+    ) -> Vec<MarketAnswer> {
+        let checks = (rules.core(), rules.adventure());
+        let offers = self.adventure.market_offers(checks, window);
         // The part refuses a market kind without its parameters, so an open market has a cost.
         let cost = rules.adventure().params().market().map(MarketParams::cost);
         let trades = offers
@@ -195,10 +248,8 @@ impl GameState {
             .iter()
             .flat_map(|offer| cost.map(|take| (offer.slot, take)))
             .filter(|&(slot, take)| {
-                window.as_ref().is_some_and(|w| {
-                    let sale = self.adventure.check_sale(checks, w, (slot, take, 1));
-                    sale.is_ok()
-                })
+                let sale = self.adventure.check_sale(checks, window, (slot, take, 1));
+                sale.is_ok()
             })
             .map(|(slot, take)| MarketAnswer::Sell {
                 slot,
@@ -210,10 +261,8 @@ impl GameState {
             .take(offers.stock.len())
             .flat_map(|entry| cost.map(|pay| (entry, pay)))
             .filter(|&(entry, pay)| {
-                window.as_ref().is_some_and(|w| {
-                    let purchase = self.adventure.check_buy(rules3, w, (entry, pay));
-                    purchase.is_ok_and(|purchase| self.can_pay(player, &[purchase.price()]))
-                })
+                let purchase = self.adventure.check_buy(rules3, window, (entry, pay));
+                purchase.is_ok_and(|purchase| self.can_pay(player, &[purchase.price()]))
             })
             .map(|(entry, pay)| MarketAnswer::Buy { entry, pay });
         trades.chain(sales).chain(purchases).collect()
