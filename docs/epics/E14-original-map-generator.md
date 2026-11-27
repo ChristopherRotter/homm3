@@ -92,6 +92,9 @@ objects' values and the guards' strengths read from the original rather than gue
    in turn; the start zones with Ownership 0 (no town of their colour; T4b) accepted for now, every
    profile as the original, no flag, to be compared with VCMI's and HotA's generators later (the
    ledger's "Considered, not quirks").
+14. **RMG-QUIRK-5 narrowed** (the user, 2026-11-27, RMG-Q3): the shipped data reach it
+   (`l1-4p-c`, a water zone without a cell); the port refuses only when no zone generator before
+   had a seed, and makes no seed otherwise (the original's no-op).
 
 **Agent decisions** (change freely):
 
@@ -177,6 +180,6 @@ its checkpoint) and increment 3's (T3a to T3e, its checkpoint): `E14-archive.md`
 - T4b (2026-11-27, whole, decision 12): steps 4 and 5, the towns, with the objects' data and
   model; RMG-QUIRK-13's and -25's flags; the corpus to step 5 equal, 24 of 24; log `## T4b`.
 - T4c (2026-11-27, whole, decision 13): step 6's obstacle plan (RMG-CON-001 to -012), the
-  painter's flush; RMG-QUIRK-5 narrowed provisionally (RMG-Q3); the plan's draws equal, 24 of 24
+  painter's flush; RMG-QUIRK-5 narrowed (RMG-Q3, decision 14); the plan's draws equal, 24 of 24
   (`rmg/plan.txt`), the cells after it too; log `## T4c`.
 

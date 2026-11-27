@@ -142,7 +142,7 @@ fn carve(cells: &mut Cells, [x, y, z]: [i32; 3]) {
 /// rock seeds its [`cost_flood`]; with none, the last such empty cell tried is kept free (unless
 /// +0x2C bit 0) and seeds it; with no empty cell at all (a water zone of step 2 without a cell:
 /// `l1-4p-c`'s ninth), the original's seed is the one an earlier zone generator took, whose mark
-/// and flood change nothing, so none is made (RMG-QUIRK-5, provisional: RMG-Q3). Then every
+/// and flood change nothing, so none is made (RMG-QUIRK-5, as the user decided: RMG-Q3). Then every
 /// cell of the box of zone byte k, kept free, passable, neither rock nor water, whose cost is not
 /// 0 (row by row, as the floods leave them) gets a [`carve`] and a flood from it.
 ///

@@ -62,13 +62,13 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Class: exploit-fix (the user, 2026-11-24, T1c2)
 - Context / rules affected: `rmg_zone_paths_connect` 0x5405D0 (steps 6 and 9); survey §2.3
 - Original behavior: the fallback seed keeps the previous zone's coordinates when a zone has no empty cell, so the zone's paths are carved from a cell of another zone; reachable only with other data as read. **Read again in E14 T4c (survey §2.3, "Step 6's plan as ported"):** the coordinates kept are the last zone generator's seed that had one (cost 0, its zone's floods done), whose fallback mark and flood change nothing; the carving then reads the zone's own cells, no path runs through another zone. Only a first zone generator without such a cell takes the stack's bytes. **Reached by the shipped data:** `l1-4p-c`'s ninth zone generator, a water zone of step 2 at x = −14 without a cell, after eight that seeded; the oracle's step 6 dump equals the port's floods there with no seed made.
-- Intended/expected behavior: the generation fails with a typed error (a zone that cannot hold a path). **As ported (provisional, RMG-Q3):** refused (`GenerateError::NoEmptyCell`) only when no zone generator before had a seed; after one, no seed is made (the original's no-op), so `l1-4p-c` generates as the original.
+- Intended/expected behavior: the generation fails with a typed error (a zone that cannot hold a path). **As ported (the user, 2026-11-27, RMG-Q3, E14 decision 14):** refused (`GenerateError::NoEmptyCell`) only when no zone generator before had a seed; after one, no seed is made (the original's no-op), so `l1-4p-c` generates as the original.
 - Impact: corrupt map (paths through a foreign zone) where reached; as read in T4c, none after a seeded zone generator, the stack's bytes before one
 - Sources: code reading (survey §2.3); observation (the phase oracle, `l1-4p-c`'s step 6 dump, E14 T4c)
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, fixed = fixed
 - Regression test: `h3-rmg`'s `a_zone_without_an_empty_cell_is_refused_before_any_had_one` (since E14 T4c; also `a_zone_byte_past_the_generators_is_left_unwalled`'s plan); `h3-pack-rmg`'s `the_corpus_draws_step_6s_plan_as_the_original` (`l1-4p-c`)
-- Decided by / date: the user, 2026-11-24 (T1c2); the narrowing open, RMG-Q3 (E14 T4c)
+- Decided by / date: the user, 2026-11-24 (T1c2); narrowed by the user, 2026-11-27 (RMG-Q3, E14 decision 14)
 
 ### RMG-QUIRK-6 — Computer teams above the computers
 - Class: exploit-fix (the user, 2026-11-24, T1c2: input validation)

@@ -758,7 +758,7 @@ The record of E14's tasks: what each read, built and decided, beyond the one lin
   its marks before each level's painter, so the painter's map reads hold). **RMG-QUIRK-5** is
   reached by `l1-4p-c` (its ninth zone generator, a water zone off the map, has no cell): the
   original's stale seed is the last seeded zone's and changes nothing, so the port makes no seed
-  then and refuses (`GenerateError::NoEmptyCell`) only before any seed; RMG-Q3 asks the user.
+  then and refuses (`GenerateError::NoEmptyCell`) only before any seed; the user confirmed it (RMG-Q3, decision 14).
 - **Result:** the plan's draws equal `plan.txt` on 24 of 24 (`h3-pack-rmg`'s
   `the_corpus_draws_step_6s_plan_as_the_original`, in CI); beyond the acceptance, after the plan
   the floods' fields (+0x10 to +0x1C, +0x20 bits 24-31, +0x28 bits 12-14), terrain and pictures
