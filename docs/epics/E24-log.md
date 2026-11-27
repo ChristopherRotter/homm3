@@ -3864,3 +3864,99 @@ kept); nothing staged again.
   `game-asks` with one human (seven End Turns in place, week 2's box, closed), `seq-find-pile`
   (its gold): every frame read back exact, as afresh and as the headless loop's; the records
   played to their end; `h3-map-view`'s coverage, clippy, the client tests, the scoped verify.
+
+### M5 T4c, part one — the screens' notice (2026-11-27)
+
+On `map-client/e24-m5-t4c` from `master` at 24ba0f8 (a worker; the user away: *provisional*).
+
+- **Built** (design §5.28, `MCL-STUB-7`): `h3_map_view::notice` (`Notice`, `of`, `closing`,
+  `KEYS`); `Ask::Notice`; `engine::visits`: `opened` a decision's notice, `live` its every answer
+  the OK's, `Placed` (`lay`'s `object_at` given the visit; the body moved to a plain `laid`, as a
+  generic function's closures count per instance), `NO_OBJECT`, `Told::Notice` (a town entered);
+  `reach::Hosted::notices`; `timeline`: `Loop::screen`, `notice`, `screen_at` (the panels' hero
+  and town, cast a spell, K, Q, A, the hero and a town clicked on the map); `panels::id::KINGDOM`,
+  `ADVENTURE`. `h3-map-client`: `texts::own_pack` (`clients/text/map/`, MCL-Q68), the window's
+  `asks` and `wire_answer`, `Painter::notices`, `paint::placed` and `anchor_of`, `live_question`
+  and `live_reply` by the decision's and the removed object's anchors; `game-notices`' situation.
+- **Found and fixed on the way:** a monster's zone entered (a step beside it) opened its offer on
+  a tile with no object: nothing shown, the game held (now placed on the monster, §5.28); a join
+  with no room left the monster drawn (now taken at its army dialog's close).
+- **Asked:** MCL-Q68 (the own texts' folder); the client lane's inbox told.
+- **Checked:** the tests; `h3-map-view`'s coverage without `H3_INSTALL` (0 lines, 0 regions
+  missed); clippy, the map crates' and the battle client's text tests; under Xvfb (`play --check
+  --humans 0`) on `game-notices`: every notice of hero A's, B's and D's rows (from beside: the
+  pile, the Tavern, the meeting), an End Turn, cast, K, A, the portrait, the hero and the town
+  clicked: each shown, Enter, its closing answer in the record, the hero walking on; `game-asks`
+  and `seq-ask-join-no` as T4b's; every frame read back exact and as the headless loop's; the
+  records played to their end by `h3-map-view record`.
+
+### M5 T4c, part two: the facts audit (2026-11-27)
+
+On `map-client/e24-m5-t4c` after part one (a worker; the user away: *provisional*).
+
+- **Built** (design §5.29): `engine::visits::gain` takes `ResourcePaid` and `ResourceLost` off and
+  reads `StackChanged`'s slots (`Gain::slotted`, `Loop::gain`); `visits::removed`; `Ask::Tomb {
+  artifact, morale }`, `Ask::Maps { kind, price, reveal }`, `asks::Reveal` (a recording's terrains,
+  play's tiles), `Ask::yes` without `AskArt`; `opened` the Cartographer's price, `live` the Tomb's
+  morale and the answer's tiles (`Visit::revealed`, `engine::played`'s `explored_since`);
+  `Find::Observatory` (`map.find.observatory`, `map.find.pillar`: ADVEVENT 98, 99, read in
+  `visit_object`); `Calendar::Deity` (`week_calendar`'s `[2, creature, upgrade, bonus]`,
+  `turn::message`); `Loop::reveal`. `h3-map-client`: `paint::taken_by` and `as_recorded` (every
+  live reply's object taken and slots by the record), `render::read_live` alone names a town from
+  the map; doc comments on what test tooling alone reads (`AskArt`, `TurnArt::deity`,
+  `texts::growth`).
+- **Found and fixed:** a price paid stayed on the resource bar in play (`seq-ask-tree`, the
+  engine's seed 3: the Tree's 10 gems shown before and after; now 0).
+- **Found, not fixed:** a wire creature is the packs' handle, not the original's number past 117
+  (`seq-ask-join`'s Peasants, handle 140, drawn as Boars; TRAPS). **Left:** a mine's income
+  (`SRV-STUB-10`). **Asked:** MCL-Q61 to -Q67, -Q69 (a join's slot); MCL-Q59 corrected; the
+  adventure, server and town lanes' inboxes told.
+- **Checked:** the tests; `h3-map-view`'s coverage without `H3_INSTALL` (0 lines, 0 regions
+  missed); clippy; under Xvfb (`play --check --humans 0`): the Tree (seed 3), the Tomb, the
+  Cartographer, the Observatory and the Pillar of Fire (situations of the Tomb's with their
+  templates), a join, `game-asks`, `game-notices`: every frame exact and as the headless loop's;
+  the records played to their end by `h3-map-view record`.
+
+### M5 T4c, part three: the creatures' handles (2026-11-27)
+
+A worker (the user away: *provisional*). **Built** (design §5.29): `engine::Creatures` (a handle
+to the original's number by the rules' keys and the import's table, copied), `Loaded::creatures`,
+read by `panels::army`, the hover's mine guards, `became`, the week's and month's calendars, and
+`Creatures::event` on a visit's events in `played`. **Checked:** the tests (the table against the
+import; an AB creature or a war machine in each reading: armies, `PANELS`' Peasants, a mine's
+guards, a random monster, the calendars, a visit's join, refusal, recruit, dialog and slot);
+coverage without `H3_INSTALL` (0 lines, 0 regions missed); clippy; under Xvfb `seq-ask-join`'s
+Peasants joined drawn as Peasants, every frame exact and as the headless loop's; its record played.
+
+### M5 T4c, part four: T4's game (2026-11-27)
+
+A worker (the user away: *provisional*). **The game:** `Barbarian Breakout` (RoE, 36 × 36, two
+levels; the import's two humans: Red on the surface, Tan underground; computers Blue and Green
+ended at once), `play <map> --mute --scale 1 --check 3600 --records <dir>` under Xvfb, driven by
+xdotool from a command file (each key held 0.3 s, `mousemove --window` then plain
+`mousedown`/`mouseup`, 2 to 6 s after each answer; a new window searched after each hand-over).
+**Played** from play's start (the shell's Begin not yet hosting it) to week 2's first day for both
+(16 views): Red: click walks to an ore pile, the Ore Pit (flagged, its box closed by a click), the
+Marletto Tower, the Windmill (Enter), wood piles from beside by keys and clicks, the Sawmill
+(flagged), Space's revisit, the Obelisk; next hero (H), K's and the army's notices, U and the
+panel's level button, the hero list's portrait twice (the hero screen's notice), each town's
+entrance (the town screen's notice), the week-2 Windmill; Tan: the Windmill, the Dragon Fly Hive
+(its guards' fight declined by the notice), a random artifact from beside, its Ore Pit and pile,
+the Marletto Tower, the Shrine, the town list twice; End Turn by E and by the button, Move
+Reminder's question by Enter and by its OK clicked. **Commands:** 48 accepted (15 End Turns, 30
+walks, a revisit, an offer declined, a notice closed), 1 refused: a key's step onto the Obelisk
+(`Visit { step: 0 }`: a blocker in the engine until E09 increment 8 (TWN-STUB-17), drawn and hinted from the
+file; a refused step does nothing, design §5.26). **Checked:** every view's frames read back exact,
+as afresh and as the headless loop's (16 views, about 4 600 frames; the script run again after
+`master`'s merge, protocol v85: the same 48 and 1, 2 237 frames); the records played to their end; the screenshots: heroes, armies' portraits, the resource bar's gains
+(wood, ore, gems, the days' gold, the week's sulfur) and the date, the flags in each colour.
+**Found and fixed** (design §5.30): a random artifact taken with no box; a pile taken drawn again
+at the next day's view (`gone`). **B, the scripted games against the original's frames:** not
+comparable in play: play runs on the window's clock with live input and writes no digests (the
+frames at the original's times are `sequences --frames`'s, headless, from a record); giving play
+a sequence's inputs on a virtual clock with the host answering inside the loop and digests outside
+the panels is not a small option, not built. By their commands (play's `--seed` the engine's):
+`game-walk`, `-day`, `-week`, `-finds`, `-asks`, `-level` (seed 74), `-flags`, `-boats` the same;
+`game-ai`, `-ai-boat` not (play ends a computer's turn at once); the four `battle-*` not
+(MCL-STUB-6). **Gates:** the tests (the notice's on v85's market window), clippy, `h3-map-view`'s
+coverage (0 lines, 0 regions missed), the scoped verify with the original data.

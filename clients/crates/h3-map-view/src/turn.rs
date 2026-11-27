@@ -33,7 +33,8 @@ pub struct TurnArt {
     /// A month's first week's (`newmonth.wav`).
     pub month: String,
     /// The week of the Deity's two creatures (the Imp, 42, and the Familiar, 43: ArrayTxt 135's
-    /// names).
+    /// names). Test tooling's alone since E24 M5 T4c (a recording's week, [`Calendar::Special`]):
+    /// play's are the record's ([`Calendar::Deity`]).
     pub deity: [u16; 2],
     /// The days a player with heroes and no town has to take one (`scenario_condition_met`
     /// 0x4F2CE0: the player's +0x3D −1 become 7; E24 M4 T2a2, design §5.3).
@@ -107,7 +108,10 @@ pub fn question(texts: &Catalogue) -> String {
 /// creature's 131 with the creature's singular name, its first letter upper-cased (0x618B5F),
 /// twice, the Plague 132), else the week's (a normal week 133 with its name, a creature's 134 with
 /// the creature's name so, twice, the Deity's 135 with its first creature's name twice, `growth`
-/// (its creature record's +0x44, the Imp's) signed, its second's name and `growth` again).
+/// (its creature record's +0x44, the Imp's) signed, its second's name and `growth` again). Since
+/// E24 M5 T4c (design §5.29) a record's week of the Deity ([`Calendar::Deity`]) names the engine's
+/// creatures and growth; `art`'s `deity` and `growth` are a recording's alone (test tooling's:
+/// [`Calendar::Special`]).
 #[must_use]
 pub fn message(
     texts: &Catalogue,
@@ -141,20 +145,30 @@ pub fn message(
             let args = Args::new().text("creature", &creature(c));
             texts.text("map.turn.week-creature", &args)
         }
-        (_, Calendar::Special, _) => {
-            // The names as the creature table holds them (*provisional*: the reading names no
-            // upper-casing for the Deity's).
-            let [first, second] = art
-                .deity
-                .map(|c| texts.text(&format!("creature.{c}"), &Args::new().count(1)));
-            let args = Args::new()
-                .text("creature", &first)
-                .text("growth", &format!("{growth:+}"))
-                .text("other", &second);
-            texts.text("map.turn.week-deity", &args)
+        (_, Calendar::Special, _) => deity(texts, art.deity.map(Some), growth),
+        (_, Calendar::Deity { creatures, bonus }, _) => {
+            // An upgrade the level lacks named as its creature (*provisional*: none in the
+            // original's one building of the kind).
+            let [first, second] = creatures;
+            deity(texts, [first, second.or(first)], i32::from(bonus))
         }
     };
     Some(text)
+}
+
+/// The Deity's week's text (ArrayTxt 135): its `creatures`' names as the creature table holds them
+/// (*provisional*: the reading names no upper-casing for the Deity's; none known, empty) and its
+/// `growth` signed.
+fn deity(texts: &Catalogue, creatures: [Option<u16>; 2], growth: i32) -> String {
+    let [first, second] = creatures.map(|c| {
+        c.map(|c| texts.text(&format!("creature.{c}"), &Args::new().count(1)))
+            .unwrap_or_default()
+    });
+    let args = Args::new()
+        .text("creature", &first)
+        .text("growth", &format!("{growth:+}"))
+        .text("other", &second);
+    texts.text("map.turn.week-deity", &args)
 }
 
 /// `name` with its first letter upper-cased (`toupper` of its first byte, 0x618B5F: an ASCII

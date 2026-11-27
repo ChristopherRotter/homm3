@@ -1,0 +1,23 @@
+{
+  "map": {
+    "stub": {
+      "hero": "{Hero}\n\nThe hero screen is not available yet.",
+      "town": "{Town}\n\nThe town screen is not available yet.",
+      "book": "{Spell Book}\n\nThe spell book is not available yet.",
+      "kingdom": "{Kingdom Overview}\n\nThe kingdom overview is not available yet.",
+      "quests": "{Quest Log}\n\nThe quest log is not available yet.",
+      "adventure": "{Adventure Options}\n\nThe adventure options are not available yet.",
+      "recruit": "{Recruit}\n\nRecruiting creatures is not available yet. None are recruited.",
+      "shipyard": "{Shipyard}\n\nBuilding a boat is not available yet. No boat is built.",
+      "university": "{University}\n\nThe University is not available yet. No skill is learned.",
+      "market": "{Marketplace}\n\nTrading is not available yet. Nothing is traded.",
+      "altar": "{Altar of Sacrifice}\n\nThe Altar of Sacrifice is not available yet. Nothing is sacrificed.",
+      "hill-fort": "{Hill Fort}\n\nUpgrading creatures is not available yet. None are upgraded.",
+      "tavern": "{Tavern}\n\nThe Tavern is not available yet. No hero is hired.",
+      "meeting": "{Meeting}\n\nTrading between heroes is not available yet.",
+      "army": "{Army}\n\nArranging the troops is not available yet. Creatures without a place in the army are left behind.",
+      "garrison": "{Garrison}\n\nExchanging troops with the garrison is not available yet.",
+      "battle": "{Battle}\n\nBattles are not available in play yet. The guards are not fought."
+    }
+  }
+}

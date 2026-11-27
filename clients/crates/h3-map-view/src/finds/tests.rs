@@ -32,7 +32,8 @@ fn texts() -> Catalogue {
         r#""witch-hut-empty": "HUT0", "shrine": "{{text}}'{{spell}}'.", "#,
         r#""shrine-1": "SHRINE 1: ", "shrine-2": "SHRINE 2: ", "#,
         r#""shrine-3": "SHRINE 3: ", "shrine-known": " KNOWN", "#,
-        r#""shrine-no-book": " NO BOOK", "shrine-wisdom": " WISDOM", "lighthouse": "LIGHT" }, "#,
+        r#""shrine-no-book": " NO BOOK", "shrine-wisdom": " WISDOM", "lighthouse": "LIGHT", "#,
+        r#""observatory": "TOWER", "pillar": "PILLAR" }, "#,
         r#""turn": { "town-lost": "{{player}}: no town left.", "#,
         r#""days-left": "{{player}}: {{days}} days to take a town.", "#,
         r#""last-day": "{{player}}: the last day to take a town." } }, "#,
@@ -694,6 +695,14 @@ fn a_flag_raised_at_a_mine_and_a_lighthouse() {
     assert!(light.flagged());
     assert_eq!(told(&light), told_text("LIGHT", &[]));
     assert_eq!(light.visited(), light);
+    // The observatories (E24 M5 T4c): ADVEVENT 98 or 99 alone, at every visit, nothing gained.
+    for (fire, text) in [(false, "TOWER"), (true, "PILLAR")] {
+        let tower = Find::Observatory { fire };
+        assert_eq!(told(&tower), told_text(text, &[]));
+        assert_eq!(tower.visited(), tower);
+        assert!(!tower.flagged() && !tower.taken());
+        assert_eq!(tower.gain(&art()), Gain::default());
+    }
     // Of the visitor's team, guarded, the abandoned mine, without contents, another class: none.
     assert_eq!(Find::flag_of([53, 0], Some(&mine(0, vec![])), true), None);
     assert_eq!(Find::flag_of([42, 0], None, true), None);

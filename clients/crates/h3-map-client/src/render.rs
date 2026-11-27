@@ -545,14 +545,20 @@ pub fn read_live(
     templates: &[ObjectTemplate],
 ) -> Result<Option<[i32; 2]>, String> {
     let table = read_table(path)?;
-    apply_live(
+    let pointer = apply_live(
         &path.display().to_string(),
         &table,
         view,
         art,
         live,
         templates,
-    )
+    )?;
+    // A town the map names (E24 M4 T3b2): its name from the map, a capture's alone (since E24 M5
+    // T4c, design §5.29: no map text reaches an engine's table, `apply_live`).
+    if let Some(facts) = live.hover.as_mut().filter(|_| table.contains_key("hover")) {
+        facts.name_towns(&art.town_names);
+    }
+    Ok(pointer)
 }
 
 /// A live part's file (`live.toml`) read as its table.
@@ -564,7 +570,9 @@ pub fn read_table(path: &Path) -> Result<toml::Table, String> {
 }
 
 /// A live part's table applied as [`read_live`] applies its file's, `label` naming it in a
-/// message (E24 M4 T3a: a record's start, `h3_map_view::engine`, as a capture's).
+/// message (E24 M4 T3a: a record's start, `h3_map_view::engine`, as a capture's). Since E24 M5
+/// T4c (design §5.29) it puts no map text in (a capture's towns the map names: [`read_live`]'s),
+/// so an engine's table, play's, shows the engine's names alone.
 pub fn apply_live(
     label: &str,
     table: &toml::Table,
@@ -697,6 +705,21 @@ pub fn apply_live(
                     subclass,
                 });
             }
+        }
+    }
+    if let Some(gone) = table.get("gone") {
+        // The objects taken off the map before a later start (E24 M5 T4c, T4's game: the hot
+        // seat's view set up again; `h3_map_view::engine`'s `gone`), by their indexes.
+        let gone: Option<Vec<usize>> = gone.as_array().and_then(|a| {
+            a.iter()
+                .map(|v| v.as_integer().and_then(|n| usize::try_from(n).ok()))
+                .collect()
+        });
+        let gone = gone
+            .filter(|g| g.iter().all(|&i| i < live.objects.len()))
+            .ok_or_else(|| failed("`gone` is not a list of objects"))?;
+        for index in gone {
+            live.objects[index].standing = false;
         }
     }
     if let Some(owners) = table.get("owners") {
@@ -888,17 +911,14 @@ pub fn apply_live(
     if let Some(value) = table.get("hover") {
         // The game's facts the mouse-over reads (E24 M3 T6a1, design §4.10).
         let (objects, heroes) = (art.objects.len(), live.heroes.len());
-        let mut facts =
-            Facts::read(value, objects, heroes, art.size, art.levels).ok_or_else(|| {
-                failed(
-                    "`[hover]` is not words and armed (one per object), towns ([[name, type]]), \
+        let facts = Facts::read(value, objects, heroes, art.size, art.levels).ok_or_else(|| {
+            failed(
+                "`[hover]` is not words and armed (one per object), towns ([[name, type]]), \
                      hero_ids ([[index, own name]], one per hero), hero_list ([[index, class, own \
                      name]]), town_list, teams (8), guarded (rows), reach ([[x, y, cost]]) and \
                      day_points",
-                )
-            })?;
-        // A town the map names (E24 M4 T3b2): its name from the map.
-        facts.name_towns(&art.town_names);
+            )
+        })?;
         live.hover = Some(facts);
     }
     table.get("pointer").map_or(Ok(None), |value| {

@@ -32,6 +32,10 @@
 //! - **A level-up asked** ([`LevelAsked`]): a level-up's dialog whose offer is the host's
 //!   (`timeline::LevelBox::hosted`) closed by its OK with an offer chosen; the host plays it and
 //!   gives the levels the engine opens after it (`Loop::add_level`), kept by the hero and the level.
+//!
+//! Since E24 M5 T4c (*provisional*; design §5.28) the screens' notices a live view shows where a
+//! screen of M6 or M7 has no decision ([`Hosted::notices`], `crate::notice`): laid out by the
+//! window for the view, not the host's answers.
 
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
@@ -39,8 +43,10 @@ use alloc::vec::Vec;
 
 use h3_map::model::Pos;
 use h3_protocol::wire::game::{Moves, Pos as WirePos};
+use h3_ui::message::MessageBox;
 
 use crate::live::Arrow;
+use crate::notice::Notice;
 use crate::timeline::{self, Answer, LevelBox};
 
 /// The selected hero standing between two of the engine's commands (E24 M5 T4a): its place among
@@ -112,6 +118,10 @@ pub struct Hosted {
     /// The seed of the client's own picks (E24 M5 T4b, `crate::picks`: a pickup's sound, a
     /// computer turn's music); none: the picks in turn.
     pub picks: Option<u64>,
+    /// The notices of the screens without a decision (E24 M5 T4c, design §5.28: the hero screen,
+    /// the town screen, the spell book, [`Notice::SCREENS`]), each its box (style 1); one not
+    /// given: nothing shown, as before.
+    pub notices: Vec<(Notice, Arc<MessageBox>)>,
 }
 
 impl Hosted {
@@ -146,6 +156,15 @@ impl Hosted {
             .iter()
             .find(|(s, _)| *s == stand)
             .map(|&(_, told)| told)
+    }
+
+    /// The box of `notice` (E24 M5 T4c), given.
+    #[must_use]
+    pub fn notice(&self, notice: Notice) -> Option<&Arc<MessageBox>> {
+        self.notices
+            .iter()
+            .find(|(n, _)| *n == notice)
+            .map(|(_, laid)| laid)
     }
 
     /// The levels the engine opened after hero `hero`'s level-up to `level`, given.
