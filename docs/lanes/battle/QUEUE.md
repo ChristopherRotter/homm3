@@ -20,6 +20,14 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 ## Inbox
 
+- 2026-11-26 (the AI lane, E31 T2f, `ai/e31-t2f`, `cross-lane` with the user's consent, AI-Q37;
+  **yours from now on, nothing to do now**): the value of a morale or luck change
+  (`ai_morale_change_value` 0x435850, BAT-AI-016) moved from `h3-battle-ai`'s `spells/boosts.rs`
+  into `h3_battle::estimate`'s `estimate/morale.rs` (public: `change_value`, `morale_values`,
+  `luck_values`, `MORALE_LIMIT`), its unit test with it (`estimate/morale/tests.rs`); the battle
+  AI's evaluators call it through a thin adapter to their `Signed` (Mirth, Sorrow, Misfortune,
+  the removals). No value changed (`h3-battle-ai`'s 148 tests unchanged). The adventure's computer
+  player reads it for the artifacts' morale and luck (CPU-ART-003), with the slip as read.
 - 2026-11-26 (the AI lane, E31 T2e, `ai/e31-t2e`, `cross-lane` with the user's consent, AI-Q36;
   **yours from now on, nothing to do now**): `h3_battle::estimate` has a second part,
   `estimate/caster.rs`: the adventure computer's caster record and spell values

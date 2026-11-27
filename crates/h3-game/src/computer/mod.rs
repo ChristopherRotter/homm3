@@ -15,10 +15,13 @@
 //! `fight`) on the simulated combat, which lives in `h3_battle::estimate` (T2b and T2c, AI-Q34),
 //! waits for the values that ask for it (T2h, T2i); the turn start's records (T2d, `start`); a
 //! hero's spell gains (T2e, `spells`, on `h3_battle::estimate`'s caster record, AI-Q36) and its
-//! skills' values (T2e, `skills`, the flag-set path of `h3_heroes::choice`'s switch).
+//! skills' values (T2e, `skills`, the flag-set path of `h3_heroes::choice`'s switch); the artifacts'
+//! values (T2f, `artifacts`: the effects' table, the values to a hero and to a player, the turn
+//! start's mean).
 //!
 //! [`GameCommand`]: crate::GameCommand
 
+mod artifacts;
 // The values that ask for a fight's worth (T2h, T2i) are the fight estimate's first callers
 // outside the tests; the turn's start calls the capture estimate beside it (T2d).
 #[cfg_attr(

@@ -27,22 +27,20 @@ resumes (the epic file); its tasks are cut then.
   Necromancy and the fight estimate (done 2026-11-25; the simulated combat now
   `h3_battle::estimate`, AI-Q34), T2d the start's values (done 2026-11-26, not cut, AI-Q35),
   T2e the spells' and skills' values (done 2026-11-26, not cut, AI-Q36; the spell values in
-  `h3_battle::estimate`'s `caster.rs`), **T2f** the artifacts (next), T2g the army and town values,
+  `h3_battle::estimate`'s `caster.rs`), T2f the artifacts (done 2026-11-26, not cut, AI-Q37; the
+  equipped value moved to increment 3), **T2g** the army and town values (next),
   T2h the object value, T2i the planning, T2j the walk with the exit's property tests and the
   gated benchmark, T2k trace T-A's harness and days 1 to 3. Each with its `CPU-` ids, tests,
   coverage 100 %, stubs by epic.
-  - **T2f — the artifacts** (next; survey §4.1, §2.4; the epic file's table: the effects' table
-    `ai_artifact_effects_build` 0x434100 and its 24 effect methods 0x432510 to 0x433580,
-    `ai_hero_artifact_value` 0x4336C0, `ai_hero_equipped_value` 0x433C60, the values to a hero
-    `ai_artifact_value_to_hero` 0x4339E0 and to a player 0x433AA0; about 2 900 of the original's
-    instructions) and, moved from T2d (AI-Q35), the start's artifacts' mean (+0x164, AI-STUB-14):
-    measure its size at the start and propose a cut by size (the user, 2026-11-26: a couple of
-    small tasks or one bigger one a session, a seam confirmed with them); `Heroes3.exe` staged
-    (or attached to the chat) for the readings. The spell effects call T2e's values: the scroll
-    a spell's gain (`spells::gain`), the school power and school spells 0x5273D0 on the caster
-    record (`CasterRecord::value`, its power changed as 0x432890 does), the equipped value
-    0x5275B0 (`CasterRecord::best`); the Ballista's Artillery and the Tent's First Aid read the
-    hero's skills.
+  - **T2g — the army and town values** (next; survey §2.3, §2.4; the epic file's table: the army
+    plans `ai_army_plan_*`, `ai_stack_marginal_value` 0x42C830, the exchange and purchase values,
+    AI-QUIRK-2; the dwelling's, the town's and its buildings' values, the weighted cost; about
+    3 400 of the original's instructions): measure its size at the start and propose a cut by size
+    (the user, 2026-11-26: a couple of small tasks or one bigger one a session, a seam confirmed
+    with them); `Heroes3.exe` staged (or attached to the chat) for the readings. The skills'
+    values (T2e, `computer/skills.rs`) wait for its town buildings (the University's); its town
+    value (`ai_town_value` 0x52AB80) reads T2f's values to a hero and to a player
+    (`computer/artifacts.rs`, CPU-ART-010, -011: the Legion parts, the Grail's).
 
 ## Inbox
 

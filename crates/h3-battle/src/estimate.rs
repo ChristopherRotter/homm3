@@ -20,7 +20,9 @@
 //!
 //! Beside it the computer's values of a hero's spells (`caster`, E31 T2e, AI-Q36): the adventure
 //! computer's caster record and spell values ([`CasterRecord`], CPU-SPL-001 to -006), which the
-//! battle AI's odds read too.
+//! battle AI's odds read too; and the value of a morale or luck change (`morale`, E31 T2f,
+//! AI-Q37: [`change_value`], BAT-AI-016), which the battle AI's evaluators and the computer's
+//! artifact values read.
 //!
 //! Every value is the original's x87 arithmetic (`X87`, `SignedX87`: 53 bits, each sum truncated
 //! by `crt_ftol` where the code truncates, the f32 stores) and its 32-bit integers, wrapping where
@@ -49,11 +51,13 @@ use crate::magic::{self, Guard, HeroMagic, SpellRef, SpellSet};
 use crate::mana;
 
 mod caster;
+mod morale;
 #[cfg(test)]
 mod tests;
 
 pub use caster::CasterRecord;
 pub(crate) use caster::{SpellCaster, best as best_spell_value};
+pub use morale::{LIMIT as MORALE_LIMIT, change_value, luck_values, morale_values};
 
 /// The rounds a simulated combat fights before its stand-off (`sim_combat_run`'s 1 to 3).
 const ROUNDS: i32 = 3;

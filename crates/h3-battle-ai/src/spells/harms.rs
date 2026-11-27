@@ -4,22 +4,15 @@
 //! the other side's half, without the resistance); a cast's candidate (the hero's, E23 T5) also
 //! weighs the stack's resistance.
 
-use h3_battle::computer;
 use h3_battle::{BattleState, StackFlags, StackId, StackTraits, Status};
+use h3_battle::{computer, estimate};
 use h3_content::SpellCategory;
 use h3_content::SpellId;
 use h3_content_battle::{SpellEffect, TimedChange};
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, X87};
 
-use super::boosts::{LIMIT, Signed, change_value, values};
+use super::boosts::{LIMIT, Signed, change_value};
 use super::{Candidate, View};
-
-/// The values of a luck point above and below 0 (0x63B790, floats: 0.0173 and −0.0122, the
-/// second's magnitude; Misfortune's).
-const LUCK: [(u32, u32, u32); 2] = [(173, 10_000, SINGLE_BITS), (122, 10_000, SINGLE_BITS)];
-
-/// The values of a morale point (0x63B780, doubles: 0.0173 and −0.0833; Sorrow's).
-const MORALE: [(u32, u32, u32); 2] = [(173, 10_000, DOUBLE_BITS), (833, 10_000, DOUBLE_BITS)];
 
 /// The Hypnotize value's turns by mastery (0x660858: 1, 1, 2, 3).
 const HYPNOTIZE_TURNS: [u32; 4] = [1, 1, 2, 3];
@@ -173,7 +166,7 @@ impl View<'_> {
         {
             return 0;
         }
-        self.fall(s, c, (self.morale(s), values(MORALE)))
+        self.fall(s, c, (self.morale(s), estimate::morale_values()))
     }
 
     /// Misfortune's evaluator (0x438F60; BAT-AI-016): `s` threatens the side, not desperate (no
@@ -184,7 +177,7 @@ impl View<'_> {
         if !self.threatens(s) || self.desperate() {
             return 0;
         }
-        self.fall(s, c, (self.luck(s), values(LUCK)))
+        self.fall(s, c, (self.luck(s), estimate::luck_values()))
     }
 
     /// Slow's evaluator (0x439270; BAT-AI-016): 0 without a threat record's enemy, when beaten,

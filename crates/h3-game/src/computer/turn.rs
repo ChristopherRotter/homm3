@@ -11,7 +11,9 @@
 //! (`AI-STUB-2`, T2i and T2j): until then every hero finds no destination and is done at once.
 
 use h3_adventure::{HeroOnMap, army_value};
+use h3_content::Ruleset;
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
+use h3_heroes::HeroDetails;
 use h3_kernel::Rng;
 use h3_towns::{TownCommand, TownHeroChange};
 
@@ -164,11 +166,16 @@ pub(super) fn next_hero<'s>(
 /// to +0x479 with the worn artifacts) counted by [`counted`], Attack and Defense from 0, Spell
 /// Power and Knowledge from 1.
 fn primary_sum(state: &GameState, rules: &GameRuleset, hero: HeroId) -> u16 {
-    state.hero(hero).map_or(0, |details| {
-        let skills = h3_heroes::primary_skills(details, rules.core());
-        let [attack, defense, power, knowledge] = skills;
-        counted(attack, 0) + counted(defense, 0) + counted(power, 1) + counted(knowledge, 1)
-    })
+    state
+        .hero(hero)
+        .map_or(0, |details| primary_sum_of(details, rules.core()))
+}
+
+/// [`primary_sum`] of a hero's details (`hero_primary_sum` 0x4E5960 sums the same: each held to
+/// 0 to 99, Spell Power and Knowledge at least 1; E31 T2f, the Ballista's value).
+pub(super) fn primary_sum_of(details: &HeroDetails, core: &Ruleset) -> u16 {
+    let [attack, defense, power, knowledge] = h3_heroes::primary_skills(details, core);
+    counted(attack, 0) + counted(defense, 0) + counted(power, 1) + counted(knowledge, 1)
 }
 
 /// One primary skill as `ai_next_hero` 0x526A90 counts it: its signed byte above 99 as 99,
