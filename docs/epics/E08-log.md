@@ -22875,7 +22875,14 @@ epic's status names them.
 
 **Versions:** none moved (T145 changes no engine behaviour: an error message, tests, docs).
 
-**Verify:** the scoped verify `--with-original-data` on the final tree: VERIFY_PENDING.
+**Verify:** the scoped verify `--with-original-data` on the final tree passed every step it runs:
+fmt, clippy, check-arch, -rules, -stubs, -docs, -exe-map, -lane, coverage 1 641 s, determinism
+675 s with the golden replays unchanged, bench-check 1 068 s (all 42 adventure workloads inside
+their gate, `random-play-spells-36` +0.00 %; the nearest the gate as `master` left them:
+`random-play-bonuses-36` +1.98 %, `fork-boxes-xl-144` and `fork-stones-xl-144` +1.75 %,
+`fork-rewards-36` +1.22 %; no re-baseline), doc-drift, original-data 205 s (the census with its
+two new checks). A first run checked the docs worktree by mistake (`TRAPS.md`, the worktree's
+line): stopped and rerun.
 
 #### Increment 15's design note at its closure (moved by T145)
 
