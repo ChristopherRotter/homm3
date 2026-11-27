@@ -102,6 +102,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   from the query; the door's arrival is a `HeroTeleported` with no teleporter, so `check_jumps`
   leaves a cast's out (`check_casts_step` checks it). An oracle that reads `HeroTeleported` or the
   listing must know both before the plans' casters play it.
+- The cover test `the_plans_fly_and_walk_on_water` (E08 T145) asserts a `strict-fixed` flight over
+  a hidden tile that its 96 cases meet once: a change to the plans' draws or maps may lose it, so
+  raise the cases (not the assertion) and record the count; the compromise's stops stay 0 there.
 - The hygiene property and the seeded draws (`view.rs`): the other game may run on another seed
   (`unseen.seed`) and its unseen objects move the streams' positions, so every public draw the
   viewer is shown ends the comparison (a month's, a week's, a hire's, a Den of Thieves', since the

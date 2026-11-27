@@ -382,7 +382,8 @@ fn the_spells_map_s_grounds_give_their_casters_their_masteries() {
     }
 }
 
-// covers: ADV-SPL-001, ADV-SPL-003, ADV-SPL-004, ADV-SPL-005, ADV-SPL-006, ADV-SPL-007, GAM-SPL-001
+// covers: ADV-SPL-001, ADV-SPL-003, ADV-SPL-004, ADV-SPL-005, ADV-SPL-006, ADV-SPL-007,
+// covers: ADV-SPL-008, GAM-SPL-001
 #[test]
 fn the_spells_map_refuses_the_casts_a_replay_cannot_hold_changing_nothing() {
     use MapCastError as M;
