@@ -445,3 +445,70 @@ fn a_button_pressed_shows_its_click_frame() {
     assert!(shown.states[&3].pressed && !shown.states[&3].disabled);
     assert!(shown.states[&5].disabled && !shown.states[&5].pressed);
 }
+
+/// A hot seat's cover's facts (E24 M5 T5): the frame's colour, the date, the quests, the amounts
+/// and whether its start's first steps are done.
+fn covered(quests: bool, resources: Option<[i32; 7]>, started: bool) -> crate::live::Covered {
+    crate::live::Covered {
+        frame: 0,
+        date: crate::live::Date {
+            month: 1,
+            week: 2,
+            day: 3,
+        },
+        quests,
+        resources,
+        started,
+    }
+}
+
+#[test]
+fn a_hot_seat_s_cover_keeps_the_buttons_and_empties_the_lists() {
+    // E24 M5 T5 (design §5.31): the buttons as the last draw left them but the quest log's by
+    // the new viewer, the lists' slots empty, no selection's frame; its start's first steps
+    // enable sleep, move hero, cast and End Turn whatever the kingdom.
+    let layout = layout();
+    let mut l = live(one_hero(), vec![]);
+    l.covered = Some(covered(true, None, false));
+    let shown = dialog(&layout, &l, 1, 0);
+    let off = disabled(&shown);
+    assert!(!off.contains(&id::QUESTS) && !off.contains(&id::SLEEP));
+    assert!(off.contains(&id::MOVE_HERO));
+    assert!(shown.pictures.is_empty());
+    assert!(selections(&layout, &lists(), &l).is_empty());
+    l.computer = true;
+    l.covered = Some(covered(false, None, true));
+    let off = disabled(&dialog(&layout, &l, 1, 0));
+    assert!(off.contains(&id::QUESTS));
+    for id in STARTED {
+        assert!(!off.contains(&id) || l.computer, "{id}");
+    }
+    l.computer = false;
+    let off = disabled(&dialog(&layout, &l, 1, 0));
+    for id in STARTED {
+        assert!(!off.contains(&id), "{id}");
+    }
+}
+
+#[test]
+fn a_hot_seat_s_cover_blanks_the_resource_bar_but_its_date() {
+    // E24 M5 T5: `resource_bar_blank` 0x559020, the new date; a timed event's amounts drawn
+    // (MCL-Q71).
+    let layout = layout();
+    let json = r#"{ "map.resources.amount": "<{{amount}}>", "map.resources.date": "{{day}}" }"#;
+    let pack = h3_ui::text::pack::Pack::from_json("en", json).unwrap();
+    let texts = Catalogue { packs: vec![pack] };
+    let mut l = live(one_hero(), vec![]);
+    l.covered = Some(covered(false, None, false));
+    let shown = resource_bar(&layout, &l, &texts, Bugs::Original);
+    let all: Vec<(u16, &str)> = shown
+        .texts
+        .iter()
+        .map(|(&id, t)| (id, t.as_str()))
+        .collect();
+    assert_eq!(all, [(id::DATE, "3")]);
+    l.covered = Some(covered(false, Some([1, 2, 3, 4, 5, 6, 7]), true));
+    let shown = resource_bar(&layout, &l, &texts, Bugs::Original);
+    assert_eq!(shown.texts.len(), 8);
+    assert_eq!(shown.texts[&(id::AMOUNTS + 6)], "<7>");
+}

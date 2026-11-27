@@ -335,6 +335,7 @@ pub fn for_sequence<'a>(
                 boxes,
                 sample,
                 timed: sequence.timed(),
+                framed: None,
             };
             (turns, Some(seat))
         }
@@ -890,6 +891,36 @@ pub fn for_situation<'a>(
 }
 
 /// The map's water tiles in the art's order (E24 M4 T2d2: the timeline's [`Start::water`]).
+/// A hot seat's view in play as its host sees it (E24 M5 T5, design §5.31: `Painter::play_seat`):
+/// each human's colour and hot-seat name (none: the colour's), the cover's sound's length (none:
+/// no wait), the turns timed, a computer's turn since the human before, and the colour the
+/// frame's picture was last drawn in (the human before's view's; none: the viewer's).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Seated {
+    pub names: Vec<(u8, Option<String>)>,
+    pub sample: Option<u32>,
+    pub timed: bool,
+    pub computers: bool,
+    pub framed: Option<u8>,
+}
+
+/// A hot seat's turns added in place covered (E24 M5 T5, MCL-Q73: a hot seat down to one human
+/// still covers each of its turns): each human's turn among `turns` covered, a computer's turn
+/// before it told ([`Cover::computers`]).
+pub fn cover_turns(turns: &mut [NextTurn]) {
+    let mut computers = false;
+    for next in turns {
+        if matches!(next.turn.status, Status::Turn(_)) {
+            computers = true;
+            continue;
+        }
+        next.cover = Some(Cover {
+            computers: core::mem::take(&mut computers),
+            ..Cover::default()
+        });
+    }
+}
+
 /// The map's hero of each of `kingdom`'s heroes, slot by slot, of `colour`'s (E24 M5 T5: a hot
 /// seat's other human, whose list the mouse-over's facts do not hold): the colour's hero whose
 /// record the facts name by the slot's portrait, else its slot's among the colour's in the live
@@ -1393,48 +1424,97 @@ impl<'a> Painter<'a> {
                 computers,
                 selection,
                 events,
+                opening: false,
             });
             before = player;
         }
         if opening {
-            let live = &self.live;
-            let turn = Turn {
-                at: 0,
-                player: live.viewer,
-                kingdom: live.kingdom.clone(),
-                status: live
-                    .kingdom
-                    .status
-                    .clone()
-                    .unwrap_or(Status::Date(DateStatus { frame: 0 })),
-                week: Calendar::Named(0),
-                month: Calendar::Named(0),
-                heroes: None,
-                boats: None,
+            let events = self.timed_events(raw, self.live.viewer, self.live.kingdom.date)?;
+            let cover = Cover {
+                events,
+                ..Cover::default()
             };
-            let events = self.timed_events(raw, turn.player, turn.kingdom.date)?;
-            turns.insert(
-                0,
-                NextTurn {
-                    turn,
-                    message: None,
-                    heroes: Vec::new(),
-                    walks: Vec::new(),
-                    taken: Vec::new(),
-                    flags: Vec::new(),
-                    lost: Vec::new(),
-                    boats: Vec::new(),
-                    list: None,
-                    first: true,
-                    open: false,
-                    cover: Some(Cover {
-                        events,
-                        ..Cover::default()
-                    }),
-                },
-            );
+            turns.insert(0, self.opening(cover));
         }
         Ok((turns, boxes))
+    }
+
+    /// The game's start covered (E24 M5 T5, design §5.31: `adventure_manager_start` 0x406FD0): a
+    /// first turn ([`NextTurn::first`]) of the live part's own player, kingdom and selection, its
+    /// `cover` marked the opening.
+    fn opening(&self, cover: Cover) -> NextTurn {
+        let live = &self.live;
+        let turn = Turn {
+            at: 0,
+            player: live.viewer,
+            kingdom: live.kingdom.clone(),
+            status: live
+                .kingdom
+                .status
+                .clone()
+                .unwrap_or(Status::Date(DateStatus { frame: 0 })),
+            week: Calendar::Named(0),
+            month: Calendar::Named(0),
+            heroes: None,
+            boats: None,
+        };
+        NextTurn {
+            turn,
+            message: None,
+            heroes: Vec::new(),
+            walks: Vec::new(),
+            taken: Vec::new(),
+            flags: Vec::new(),
+            lost: Vec::new(),
+            boats: Vec::new(),
+            list: None,
+            first: true,
+            open: false,
+            cover: Some(Cover {
+                opening: true,
+                ..cover
+            }),
+        }
+    }
+
+    /// A hot seat's view in play (E24 M5 T5, design §5.31, *provisional*): `seated`'s humans'
+    /// cover's boxes, the cover's sound's length and the clock ([`Start::seat`]); the view's first
+    /// turn covered, the game's start made covered where the record does not wait
+    /// ([`Painter::opening`]), a computer's turn since the human before told
+    /// ([`Cover::computers`]). The map's timed events' boxes are not shown in play
+    /// (`MCL-STUB-8`: the record's events not read; the map's texts not read in play).
+    ///
+    /// # Errors
+    /// A box that does not lay out.
+    pub fn play_seat(&mut self, start: &mut Start, seated: &Seated) -> Result<(), String> {
+        let boxes = seated
+            .names
+            .iter()
+            .map(|(colour, name)| {
+                let texts = &self.assets.tables.texts;
+                let name = turn::seat_name(texts, *colour, name.as_deref());
+                Ok((*colour, self.hand_box(*colour, &name)?))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        start.seat = Some(HandOver {
+            boxes,
+            sample: seated.sample,
+            timed: seated.timed,
+            framed: seated.framed,
+        });
+        // stub: MCL-STUB-8 (a timed event's box at a hot seat's start in play)
+        let cover = Cover {
+            computers: seated.computers,
+            ..Cover::default()
+        };
+        match start.turns.first_mut().filter(|n| n.first) {
+            Some(first) => first.cover = Some(cover),
+            None => {
+                let opening = self.opening(cover);
+                start.turns.insert(0, opening);
+            }
+        }
+        Ok(())
     }
 
     /// A hot seat's cover's box for `colour`'s human `name` (E24 M5 T5, design §5.31:

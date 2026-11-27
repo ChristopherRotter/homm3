@@ -126,6 +126,48 @@ fn a_computer_s_turn_shows_the_shield_in_the_minimap_s_place() {
 }
 
 #[test]
+fn a_hot_seat_s_cover() {
+    // E24 M5 T5 (design §5.31): the frame's picture in the colours it was last drawn in, the gems
+    // in the new viewer's, every tile unexplored, the shield until its start draws the minimap.
+    let (art, mut live) = art_with(vec![]);
+    live.viewer = 1;
+    let cover = crate::live::Covered {
+        frame: 0,
+        date: crate::live::Date::default(),
+        quests: false,
+        resources: None,
+        started: false,
+    };
+    live.covered = Some(cover);
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    assert!(matches!(scene.draws[0], Draw::Frame { viewer: 0, .. }));
+    assert!(
+        scene
+            .draws
+            .iter()
+            .any(|d| matches!(d, Draw::Gem { frame: 1, .. }))
+    );
+    let shroud = pieces(&scene, Pass::Shroud);
+    assert_eq!(shroud.len(), 19 * 17);
+    assert!(
+        scene
+            .draws
+            .iter()
+            .any(|d| matches!(d, Draw::Dialog(ui::Draw::Picture { picture, .. }) if picture == "aishield.pcx"))
+    );
+    live.covered = Some(crate::live::Covered {
+        started: true,
+        ..cover
+    });
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    assert!(scene.draws.iter().any(|d| matches!(d, Draw::Minimap(_))));
+    live.covered = None;
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    assert!(pieces(&scene, Pass::Shroud).is_empty());
+    assert!(matches!(scene.draws[0], Draw::Frame { viewer: 1, .. }));
+}
+
+#[test]
 fn the_frame_then_the_passes_then_the_gems() {
     let (art, live) = art_with(vec![]);
     let scene = still(&art, &live, at(0, 0), Bugs::Fixed);

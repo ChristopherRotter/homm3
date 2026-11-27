@@ -33,7 +33,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
   without a town on a record, E10), `MCL-STUB-5` (a computer's turn ended at once, E31's
   increment 2), `MCL-STUB-6` (a battle in play ends play, M5 T6), `MCL-STUB-7` (a screen of M6 or
-  M7 or an unasked decision: its notice, M5 T6, M6, M7). Next ids **MCL-Q70**, **MCL-STUB-8**.
+  M7 or an unasked decision: its notice, M5 T6, M6, M7), `MCL-STUB-8` (no timed event's box in
+  play). Next ids **MCL-Q75**, **MCL-STUB-9**.
 - **Open pull requests** (2026-11-27): T4c's (`map-client/e24-m5-t4c`; T4b's #1201 merged): check it
   first.
   The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
@@ -65,8 +66,10 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
   `map-client/e24-m5-t5`): part one the reading (2834a0a: design §5.31 the hand-over, §5.32 the
   clock; MCL-Q70 to Q73); part two the hot seat recorded (15e2ba3: `hot_seat` in `h3map.py`,
   nine `seat-*` sequences in `clients/map/to-record.toml`, MCL-Q74; next id MCL-Q75). Next: part
-  three, the hand-over built; then the clock recorded and built. The M4 hand test (parts 3 to 5
-  only, the user) placed: MCL-Q47 answered (T6), MCL-Q11 (c) queued, two kit traps.
+  three, the hand-over built (the log's "M5 T5, part three": the nine `seat-*` in
+  `sequences.toml`, every frame and sample as recorded; play covers each human's turn, checked
+  under Xvfb; `MCL-STUB-8`). Next: the clock recorded and built (§5.32). The M4 hand test (parts
+  3 to 5 only, the user) placed: MCL-Q47 answered (T6), MCL-Q11 (c) queued, two kit traps.
 - **2026-11-27, E24 M5 T4c** (kept whole by the user at its start, "use subagents efficiently";
   one runner, five worker sub-agents in turn): a read-only audit of play's facts; the notice
   (`MCL-STUB-7`, 17 keys in `clients/text/map/`, MCL-Q68); the audit's class-A rows (a price paid

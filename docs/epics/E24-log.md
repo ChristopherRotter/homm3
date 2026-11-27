@@ -3960,3 +3960,23 @@ the panels is not a small option, not built. By their commands (play's `--seed` 
 `game-ai`, `-ai-boat` not (play ends a computer's turn at once); the four `battle-*` not
 (MCL-STUB-6). **Gates:** the tests (the notice's on v85's market window), clippy, `h3-map-view`'s
 coverage (0 lines, 0 regions missed), the scoped verify with the original data.
+
+### M5 T5, part three: the hand-over built (2026-11-27)
+
+A worker (the user away: *provisional*). **Built** (design §5.31's "Built"): the `Loop`'s
+hand-over (`timeline::hand`: the cover, its box, the wait for `NewWeek.wav`, the minimap, buttons
+and clock, the timed events, the start), the painter's covered view and seat views, the
+`[[seat]]` tables, `sequences`' samples compared for a sound run; play covers each human's view's
+first turn in a hot seat begun with more than one human (the game's start made covered, the frame
+in the human before's colours, a computer's seat between leaving four buttons disabled).
+**Harness** (common, additive): a seat's `selection` read when its start's date window gives way
+(Blue's hero's window at `seat-hand-over`'s 7 720), a hot seat's start's lifted hero kept in its
+live part (`Mem.lifted_standing`), a sound run of `sequences.toml` keeping its live part, a
+start's live part kept with its frame at 0 left to the frame check. The nine `seat-*` recorded
+again for them (the disk check's ballast kept by a watcher: a build during a run broke it) and
+moved into `sequences.toml` (`to-record.toml` removed): every frame exact, every sample as
+recorded. **Fixed on the way:** a day's `list` remapped the viewer's choices on another human's
+turn (Red's choice of its hero lost at its next day). **Play** checked under Xvfb (`seq-seat` with
+two humans, four views: Red's start, Blue's, Red's day 2, Blue's day 2): every view's frames read
+back exact, as afresh and as the headless loop's; the covers' screenshots as recorded. New:
+`MCL-STUB-8` (no timed event's box in play).

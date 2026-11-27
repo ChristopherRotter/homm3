@@ -9,7 +9,8 @@
 //! minimap drawn over the shield, four buttons enabled, the clock started, the timed events'
 //! boxes over the covered picture (MCL-Q71) and the turn's start ([`Loop::day_start`]), its
 //! date's window built once more than a day's (MCL-Q72: recorded). The game's first turn
-//! ([`NextTurn::first`]) is covered so too, its kingdom and selection kept.
+//! (a [`NextTurn::first`] made of the live part, [`super::Cover::opening`]) is covered so too, its
+//! kingdom and selection kept.
 //!
 //! [`TurnArt::wait`]: crate::turn::TurnArt::wait
 
@@ -33,11 +34,11 @@ impl Loop {
     /// The hand-over to `next`'s human at `t` (design §5.31's order: 0x4C7710 to 0x4C781E), its
     /// turn's selection `choice` kept for its start. A turn after another's takes the new
     /// player's kingdom with no selection yet (its start chooses), the colour shown, the four
-    /// buttons a computer's turn disabled ([`super::Cover::computers`]); the game's first keeps its
-    /// own.
+    /// buttons a computer's turn disabled ([`super::Cover::computers`]); the game's start keeps
+    /// its own ([`super::Cover::opening`]).
     pub(super) fn hand_over(&mut self, t: u32, next: NextTurn, choice: Choice) {
         let cover = next.cover.clone().unwrap_or_default();
-        if !next.first {
+        if !cover.opening {
             let mut kingdom = next.turn.kingdom.clone();
             kingdom.selected = Selected::None;
             kingdom.selection = None;
@@ -112,14 +113,13 @@ impl Loop {
     /// one after it none); the turn's start at once without a wait.
     pub(super) fn covered_ok(&mut self, t: u32) -> Result<(), Unplayable> {
         let wait = self.rules.turn.wait;
-        let Some(handing) = &mut self.handing else {
-            return Ok(());
-        };
-        let until = match handing.sample_end {
+        let until = match self.handing.as_ref().and_then(|h| h.sample_end) {
             Some(end) if end > t => t.saturating_add((end - t).min(wait)),
             _ => t,
         };
-        handing.until = Some(until);
+        if let Some(handing) = &mut self.handing {
+            handing.until = Some(until);
+        }
         if until <= t {
             return self.hand_start(t);
         }
@@ -174,7 +174,7 @@ impl Loop {
     /// gone, the turn's end its human left, the start's date window built once more (MCL-Q72),
     /// [`Loop::day_start`], then the actions given during the wait.
     pub(super) fn hand_events(&mut self, t: u32) -> Result<(), Unplayable> {
-        let Some(handing) = &mut self.handing else {
+        let Some(mut handing) = self.handing.take() else {
             self.idle_message(t);
             return Ok(());
         };
@@ -186,18 +186,16 @@ impl Loop {
                 covered.resources = Some(self.kingdom.resources);
             }
             self.drawn.cover = self.covered;
+            self.handing = Some(handing);
             self.open_box(message, Told::Event);
             return Ok(());
         }
-        let Some(Handing {
+        let Handing {
             mut next,
             choice,
             queued,
             ..
-        }) = self.handing.take()
-        else {
-            return Ok(());
-        };
+        } = handing;
         next.turn.kingdom.resources = self.kingdom.resources;
         self.covered = None;
         // The adventure's cursor again before the start's boxes (recorded: `seat-new-week`'s

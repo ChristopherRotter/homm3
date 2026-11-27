@@ -328,7 +328,7 @@ fn count_name(texts: &Catalogue, count: i32, name: &str) -> String {
 
 /// The colour `colour`'s name (`player_colour_names` 0x6A7DF8: PlColors.txt's, its first letter
 /// upper-cased as recorded, `turn-no-town`'s "Red"); none past the eight.
-fn colour(texts: &Catalogue, colour: i32) -> String {
+pub(crate) fn colour(texts: &Catalogue, colour: i32) -> String {
     let name = texts
         .known(&format!("player-colour.{colour}"), &Args::new())
         .unwrap_or_default();

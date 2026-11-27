@@ -257,6 +257,11 @@ pub(crate) trait Session {
     /// # Errors
     /// The session's (no turn of a human's, a frame that does not read).
     fn revisit(&mut self, hero: u16) -> Result<Option<String>, String>;
+    /// A hot seat begun with more than one human (E24 M5 T5, design §5.31): the view's hand-over
+    /// (`paint::Seated`); none: its turn starts uncovered.
+    fn seated(&self) -> Option<&paint::Seated> {
+        None
+    }
 }
 
 /// The host's facts a live start keeps (E24 M5 T4a): the headless check plays them as the loop did.
@@ -805,6 +810,17 @@ pub(crate) fn window(
                 RECORD_LIMIT,
             )?;
             ids = heroes;
+            // A hot seat's hand-over (E24 M5 T5): the view's turn covered first.
+            let mut setup = setup;
+            if let Some(seated) = s.seated() {
+                // The cover's sound's length from the installation (none: no wait).
+                let sample = paint::sample_length(&options.install, &tables.map.turn.cover).ok();
+                let seated = paint::Seated {
+                    sample,
+                    ..seated.clone()
+                };
+                setup.painter.play_seat(&mut setup.start, &seated)?;
+            }
             let what = format!(
                 "play on {}, colour {}'s view",
                 s.map().display(),
@@ -1313,15 +1329,26 @@ pub(crate) fn window(
                 &ids,
                 label,
             )?;
-            let added = turns.get(start.turns.len()..).unwrap_or_default();
+            // The record's turns known (a hot seat's opening made covered is none of them).
+            let known = start
+                .turns
+                .iter()
+                .filter(|n| !n.cover.as_ref().is_some_and(|c| c.opening))
+                .count();
+            let mut added = turns.get(known..).unwrap_or_default().to_vec();
             if added.is_empty() {
                 return Err(format!(
                     "{t} ms: End Turn: the session told no turn's start after it"
                 ));
             }
+            // A hot seat down to one human (E24 M5 T5, MCL-Q73: the original's, its begun
+            // humans): its next turn covered too, a computer's before it told.
+            if s.seated().is_some() {
+                paint::cover_turns(&mut added);
+            }
             lines.push(format!("{t} ms: End Turn, the viewer's next turn in place"));
-            start.turns.extend_from_slice(added);
-            replay.add_turns(t, added);
+            start.turns.extend_from_slice(&added);
+            replay.add_turns(t, &added);
             renew = true;
             continue;
         }

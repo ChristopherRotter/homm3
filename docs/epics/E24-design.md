@@ -5449,6 +5449,36 @@ clock's start and the "your turn" window: survey `E16-timer-survey.md` §2, §8.
     0, the three `newday.wav`, the clock).
   - **The week's and the month's box** after the start: the date's window steps behind it every
     100 ms (§5.1), the month's picture fewer times.
+- **Built (M5 T5 part three;** *provisional* names): `h3_map_view::timeline::hand` (the
+  `Loop`'s hand-over: `hand_over` the steps up to the box, `covered_ok` the wait,
+  `waiting`/`wait_input` the loop held and its input kept, `hand_start` the minimap, the four
+  buttons and the clock, `hand_events` the timed events then `day_start`, its date's window built
+  once more: MCL-Q72's third `newday.wav`); `Start::seat` (`HandOver`: each human's box, the cover's
+  sample's length, the clock), `NextTurn::cover` (`Cover`: the seat's view, a computer's turn
+  before, the seat's selection's window, the timed events, the opening), `Draw::cover`
+  (`live::Covered`) and `Draw::seat`, `State::shown` and `timer` (the timeline's `shown` and
+  `timer` lines), `timeline::play_heard`; `Cue::Fade` and `Cue::Cover` (the window: the music
+  faded as a lost focus fades it, the cover's sound on a stream of its own); the scene and the
+  panels covered (`panels::STARTED`), `turn::hand_over` and `seat_name` (`map.turn.hand-over`,
+  GENRLTXT 14); `live::Seat` (the `[[seat]]` tables, with the harness's new `selection`: the seat's
+  selection's window when its start's date window gives way) and `sequence::Sequence`'s
+  `hot_seat`, `duration`, `start`, `sound`. In `h3-map-client`: `paint::Painter::hot_seat` (a
+  recording's humans by the live part's colours with a hero, the first ones; each human's turn
+  covered, its heroes mapped by their colour, its first hero selected where the turn's facts hold
+  none, 0x4CCAB4 not read), `hand_box`, `timed_events` (the map's, by their days), `opening`,
+  `play_seat` and `Seated` (play's), `cover_turns` (a lone human's next turn in place, MCL-Q73),
+  `sample_length`/`length_of` (frames × 1 000 over the rate, rounded up, as `xdd.c`);
+  `sequences`' samples compared for a sound run (`<id>-sounds.txt` without the channels, a start's
+  −1 the viewer's 0, `ours-sounds.txt`). As the original meanwhile: MCL-Q70 (no chat yet), Q71
+  (the event's box over the cover), Q72 (the four `newday.wav`), Q73 (play covers a lone human's
+  turns too), Q74 (the window kept). The nine `seat-*` sequences in `sequences.toml`: every frame
+  exact and every sample as recorded (the frame check's `<id>-frames.txt`); recorded again for the
+  seats' `selection` and the start's lifted hero (`h3mem.Mem.standing`). **Play:** a hot seat
+  begun with more than one human covers each human's view's first turn (the game's start made
+  covered, `Cover::opening`), its box naming the human (the shell's name, else the colour's), the
+  wait by the installation's `NewWeek.wav`, a computer's seat between the two humans' leaving the
+  cover's four buttons disabled (`play::computers_between`); no timed event's box in play
+  (`MCL-STUB-8`: the record's `TimedEventFired` not read, the map's texts not read in play).
 
 ### 5.32 The turn's clock as shown (M5 T5)
 

@@ -119,6 +119,17 @@ pub fn hand_over(texts: &Catalogue, name: &str) -> String {
     texts.text("map.turn.hand-over", &Args::new().text("player", name))
 }
 
+/// A hot seat's human's name as its hand-over shows it (E24 M5 T5, design §5.31:
+/// `player_display_name` 0x4BADB0's code at 0x4C7755): its own, or for none or a default `Player`
+/// (any case) its colour's name with its first letter upper-cased.
+#[must_use]
+pub fn seat_name(texts: &Catalogue, colour: u8, name: Option<&str>) -> String {
+    match name {
+        Some(name) if !name.eq_ignore_ascii_case("player") => name.into(),
+        _ => crate::finds::colour(texts, i32::from(colour)),
+    }
+}
+
 /// The week's or the month's message on `date` (none on another day; 0x4CCAE5): on a month's
 /// first week with a normal week the month's (a normal month ArrayTxt 130 with its name, a
 /// creature's 131 with the creature's singular name, its first letter upper-cased (0x618B5F),

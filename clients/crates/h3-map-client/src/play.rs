@@ -43,6 +43,7 @@ use h3_sdl::{Config, Window};
 
 use crate::files;
 use crate::hot_seat::{self, HotSeat, Left};
+use crate::paint::Seated;
 use crate::window::{self, Host, Source};
 
 /// A game the shell began (its `begin::Game`, by the client lane's own type): what play needs of
@@ -137,6 +138,15 @@ fn played(
     let (mut lines, mut ok) = (Vec::new(), true);
     // Where each human's view was left, by player.
     let mut left: BTreeMap<usize, Left> = BTreeMap::new();
+    // A hot seat begun with more than one human (E24 M5 T5, design §5.31): each human's turn
+    // covered, its box naming it; the human whose view came last.
+    let humans: Vec<(u8, Option<String>)> = hot
+        .seats()
+        .iter()
+        .filter(|s| s.human)
+        .map(|s| (s.colour, s.name.clone()))
+        .collect();
+    let mut last: Option<PlayerId> = None;
     // An unattended run's seconds count for the whole of play, not for each view.
     let started = window.ticks_ns();
     loop {
@@ -155,6 +165,14 @@ fn played(
             options.run = Some((u32::try_from(rest).unwrap_or(seconds), read));
         }
         let colour = hot.seat(player).map_or(0, |s| s.colour);
+        let seated = (humans.len() > 1).then(|| Seated {
+            names: humans.clone(),
+            sample: None,
+            timed: game.duration != hot_seat::UNLIMITED,
+            computers: computers_between(hot, last, player),
+            framed: last.and_then(|p| hot.seat(p)).map(|s| s.colour),
+        });
+        last = Some(player);
         let mut viewed = Viewed {
             from: left.remove(&player.index()),
             hot: &mut *hot,
@@ -164,6 +182,7 @@ fn played(
             colour,
             left: None,
             read: false,
+            seated,
         };
         let host = Host::Lent {
             window: &mut *window,
@@ -195,6 +214,25 @@ struct Viewed<'h, 'r> {
     left: Option<Left>,
     /// Whether the view read the clock yet.
     read: bool,
+    /// The hot seat's hand-over (E24 M5 T5): none with one human.
+    seated: Option<Seated>,
+}
+
+/// Whether a computer's seat plays between the human `last` (none: the game's start) and
+/// `player` in the seats' order (E24 M5 T5, design §5.31: its turn, ended at once by the host,
+/// `MCL-STUB-5`, leaves the cover's four buttons disabled).
+fn computers_between(hot: &HotSeat<'_>, last: Option<PlayerId>, player: PlayerId) -> bool {
+    let seats = hot.seats();
+    let to = player.index();
+    let between = |i: usize| match last.map(PlayerId::index) {
+        None => i < to,
+        Some(from) if from < to => from < i && i < to,
+        Some(from) => i > from || i < to,
+    };
+    seats
+        .iter()
+        .enumerate()
+        .any(|(i, s)| !s.human && between(i))
 }
 
 impl window::Session for Viewed<'_, '_> {
@@ -261,6 +299,10 @@ impl window::Session for Viewed<'_, '_> {
         let command = AdventureCommand::Revisit { hero };
         let refused = self.hot.play(GameCommand::Adventure { command })?;
         Ok(refused.map(|why| format!("{why:?}")))
+    }
+
+    fn seated(&self) -> Option<&Seated> {
+        self.seated.as_ref()
     }
 }
 

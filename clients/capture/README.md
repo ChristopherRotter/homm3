@@ -1531,8 +1531,9 @@ recorded silent. Sequences recorded before the viewer plays them wait in a
 file of their own: `frames --sequences <file> --no-check` records them (the frame check left out),
 each moved into `sequences.toml` once the viewer plays it (T1b1's in `map/to-record.toml`, moved by
 T1b2, the file removed). Since E24 M4 T6 (the reviewer's R6-7) only a run of `sequences.toml`'s
-own sequences that is not a sound run keeps its live part in `timelines/` (as recorded or new and
-exact at 0); another's stays under `<out>/<id>/live.toml`, and once its entry is in
+own sequences keeps its live part in `timelines/` (as recorded or new and exact at 0; a sound
+run's too since E24 M5 T5 part three, a hot seat's start's with its frame at 0 left to the frame
+check); another's stays under `<out>/<id>/live.toml`, and once its entry is in
 `sequences.toml`, `frames --only <id> --reuse` (the same `--out`) keeps it and runs the frame
 check. A run with an
 `xdd.dll` built before T1b1 fails as stale where it reads the acknowledgement whole (15 fields,
@@ -1675,17 +1676,22 @@ clock stands there (a start ahead of the clock reads as expired). With `start = 
 sequence's 0 is the first human's cover at the game's start instead (`stage_start`: the clock
 frozen on the scenario list, Begin clicked, the map loaded and covered on the frozen clock; a
 situation that stages nothing after the start, `start_staged`; the samples since Begin listed,
-the cover's at −1; its frame at 0 not compared: the viewer draws no cover yet). The timeline
+the cover's at −1; its frame at 0 compared by the frame check alone, the still at 0 not: since
+E24 M5 T5 part three the viewer draws the cover; its live part holds the first human's selected
+hero, lifted under the cover, on its record's tile: `Mem.lifted_standing`). The timeline
 has, a hot seat's only, `<ms> shown <colour>` (`shown_player` 0x69778C), `<ms> covered <0|1>`
 (`covered_view` 0x699538: cleared before the cover's box, so never seen on the frozen clock)
 and `<ms> timer <started> <paused>` (the turn timer's +4 and +0x10 set) where they change; in
 each millisecond the colour shown changes the live part gets a `[[seat]]` table after the
 `[[turn]]` tables (`seat_toml`: `at`, `shown`, `current`, `humans`, the shown colour's
-`kingdom` and `explored` rows as memory holds them, what its start shows). A situation may give
+`kingdom` and `explored` rows as memory holds them, what its start shows; since part three its
+`selection`, the status window its selection shows when its start's date window first gives way
+to it, none when the run ends before). A situation may give
 the map's timed events (`events`, each `message`, `resources`, `players` by colour and `day`;
-once, for humans). The hand-over's sequences are sound runs waiting in `map/to-record.toml`
-(`frames --sequences map/to-record.toml --no-check`; their timelines and samples kept by hand
-as `timelines/<id>.txt` and `<id>-sounds.txt`) until the viewer plays them.
+once, for humans). The hand-over's sequences are sound runs of `sequences.toml` since E24 M5 T5
+part three (their timelines and samples kept by hand as `timelines/<id>.txt` and
+`<id>-sounds.txt`; the viewer's `sequences` compares its samples with the second without the
+channels).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live

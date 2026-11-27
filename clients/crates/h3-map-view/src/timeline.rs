@@ -1345,6 +1345,10 @@ pub struct Cover {
     /// The map's timed events' boxes at its start (`map_timed_events` 0x4CD910, MCL-Q71), each
     /// with the resources it gives (the original's seven, added as its box opens).
     pub events: Vec<(Arc<MessageBox>, [i32; 7])>,
+    /// The game's start (`adventure_manager_start` 0x406FD0, a [`NextTurn::first`] made of the
+    /// live part): the start's kingdom and selection kept under the cover, as the first human's
+    /// uncovered map drew them.
+    pub opening: bool,
 }
 
 /// A hot seat's hand-overs (E24 M5 T5, design §5.31, *provisional*): the game begun with more
@@ -1361,6 +1365,10 @@ pub struct HandOver {
     /// The turns are timed: the turn's clock runs from each human's start to its turn's end
     /// (`turn_timer_start` 0x4C78F0; the timeline's `timer` lines, the clock itself §5.32's).
     pub timed: bool,
+    /// The colour the frame's picture was last drawn in before the loop's start (play: the human
+    /// before's, whose view's start drew it whole; the cover draws no frame); none: the
+    /// viewer's.
+    pub framed: Option<u8>,
 }
 
 /// A computer player's hero's walk in its turn (E24 M4 T1b2, *provisional*): the hero (its index
@@ -2379,7 +2387,11 @@ impl Loop {
             seat: start.seat.clone().map(Arc::new),
             shown: start.player,
             timer: start.seat.as_ref().is_some_and(|s| s.timed),
-            framed: start.player,
+            framed: start
+                .seat
+                .as_ref()
+                .and_then(|s| s.framed)
+                .unwrap_or(start.player),
             seat_shown: None,
             covered: None,
             handing: None,
@@ -3662,9 +3674,7 @@ impl Loop {
         self.place(&heroes);
         self.changed(&taken, &flags, &lost, &boats);
         // The human's turn's end kept for its next start (E24 M5 T5: a hot seat's).
-        if self.seat.is_some() && self.player != turn.player {
-            self.ends.insert(self.player, ended.clone());
-        }
+        self.ends.insert(self.player, ended.clone());
         self.player = turn.player;
         // Its music (design §5.1; E24 M4 T4c: the tables' tracks in turn, *provisional*; since E24
         // M5 T4b in play the client's own pick).

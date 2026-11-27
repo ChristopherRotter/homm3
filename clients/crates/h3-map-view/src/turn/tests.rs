@@ -6,14 +6,16 @@ use h3_ui::text::pack::Pack;
 
 fn texts() -> Catalogue {
     let json = concat!(
-        r#"{ "map": { "turn": { "end": "End?", "month": "Month of the {{name}}.", "#,
+        r#"{ "map": { "turn": { "end": "End?", "hand-over": "{{player}}'s turn.", "#,
+        r#""month": "Month of the {{name}}.", "#,
         r#""month-creature": "Month of the {{creature}}: {{creature}}!", "plague": "PLAGUE", "#,
         r#""week": "Week of the {{name}}.", "#,
         r#""week-creature": "Week of the {{creature}}: {{creature}} +5", "#,
         r#""week-deity": "Week of the {{creature}}: {{creature}} {{growth}}, {{other}} {{growth}}" } }, "#,
         r#""week-name": { "4": "Rat" }, "month-name": { "6": "Locust" }, "#,
         r#""creature": { "4_one": "griffin", "4_other": "griffins", "42_one": "Imp", "#,
-        r#""43_one": "Familiar", "127_one": "Storm Elemental" } }"#,
+        r#""43_one": "Familiar", "127_one": "Storm Elemental" }, "#,
+        r#""player-colour": { "1": "blue" } }"#,
     );
     Catalogue {
         packs: vec![Pack::from_json("en", json).unwrap()],
@@ -359,4 +361,15 @@ fn a_record_s_moves_ends_by_the_steps_kept() {
         panic!("one walk");
     };
     assert_eq!((walk.ends[0].after, walk.ends[0].seen), (0, true));
+}
+
+#[test]
+fn a_hot_seat_s_hand_over_names_its_human() {
+    // E24 M5 T5 (design §5.31): GENRLTXT 14 with the hot seat's name; a default `Player` (any
+    // case) or none its colour's name, its first letter upper-cased.
+    let t = texts();
+    assert_eq!(hand_over(&t, "Bob"), "Bob's turn.");
+    assert_eq!(seat_name(&t, 1, Some("Bob")), "Bob");
+    assert_eq!(seat_name(&t, 1, Some("PLAYER")), "Blue");
+    assert_eq!(seat_name(&t, 1, None), "Blue");
 }

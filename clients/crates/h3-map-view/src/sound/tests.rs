@@ -748,3 +748,23 @@ fn a_computer_s_music_once() {
     s.computer(6, "AITheme1");
     assert_eq!(s.take(), [(5, Cue::Music("AITheme1".into()))]);
 }
+
+#[test]
+fn a_hot_seat_s_cover_fades_the_music_and_plays_its_sound() {
+    // E24 M5 T5 (design §5.31): the music faded (its terrain forgotten: the start asks it again),
+    // the cover's sound on its own channel; their lines.
+    let mut s = sound(tiles(4, |_, _| 2, |_, _| None));
+    s.start(0, [1, 1, 0], None);
+    s.take();
+    s.fade(7);
+    s.cover(7, "NewWeek.wav");
+    let cues = s.take();
+    assert_eq!(
+        cues,
+        [(7, Cue::Fade), (7, Cue::Cover("NewWeek.wav".into()))]
+    );
+    let lines: Vec<String> = cues.iter().map(|(t, c)| line(*t, c)).collect();
+    assert_eq!(lines, ["7 fade", "7 cover NewWeek.wav"]);
+    s.select(9, [1, 1, 0], Pos { x: 1, y: 1, z: 0 }, true);
+    assert!(s.take().iter().any(|(_, c)| matches!(c, Cue::Music(_))));
+}

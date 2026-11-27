@@ -9,7 +9,7 @@ use h3_ui::message::Style;
 use crate::live::Turn;
 
 /// The recorded hand-overs: their situations, timelines, kept live parts and samples.
-const SEATS: [(&str, &str, &str, &str, &str); 2] = [
+const SEATS: [(&str, &str, &str, &str, &str); 4] = [
     (
         "seat-hand-over",
         include_str!("../../../../../map/situations/seq-seat.toml"),
@@ -23,6 +23,20 @@ const SEATS: [(&str, &str, &str, &str, &str); 2] = [
         include_str!("../../../../../map/timelines/seat-new-day.txt"),
         include_str!("../../../../../map/timelines/seat-new-day-live.toml"),
         include_str!("../../../../../map/timelines/seat-new-day-sounds.txt"),
+    ),
+    (
+        "seat-new-day-quick",
+        include_str!("../../../../../map/situations/seq-seat.toml"),
+        include_str!("../../../../../map/timelines/seat-new-day-quick.txt"),
+        include_str!("../../../../../map/timelines/seat-new-day-quick-live.toml"),
+        include_str!("../../../../../map/timelines/seat-new-day-quick-sounds.txt"),
+    ),
+    (
+        "seat-new-day-ai",
+        include_str!("../../../../../map/situations/seq-seat-ai.toml"),
+        include_str!("../../../../../map/timelines/seat-new-day-ai.txt"),
+        include_str!("../../../../../map/timelines/seat-new-day-ai-live.toml"),
+        include_str!("../../../../../map/timelines/seat-new-day-ai-sounds.txt"),
     ),
 ];
 
@@ -56,6 +70,7 @@ fn seated(
     let sequences = Sequences::parse(SEQUENCES).unwrap();
     let sequence = sequences.get(id).unwrap();
     let mut start = start(situation, sequence.scroll_speed().unwrap());
+    let situated = Situation::parse(situation).unwrap();
     (start.kingdom, start.buttons) = live_kingdom(live);
     let (heroes, viewer) = live_heroes(live);
     let table: toml::Table = live.parse().unwrap();
@@ -134,6 +149,15 @@ fn seated(
                     .collect()
             });
             let week = turn::starts_week(turn.kingdom.date);
+            // The situation's timed events for the player that day (the binary's from the map).
+            let date = turn.kingdom.date;
+            let day = (date.month - 1) * 28 + (date.week - 1) * 7 + date.day;
+            let events = situated
+                .events
+                .iter()
+                .filter(|e| e.day == day && e.players.contains(&player))
+                .map(|e| (laid(&e.message, Style::Ok), e.resources))
+                .collect();
             NextTurn {
                 message: week.then(|| laid("Week of the Rat.", Style::Ok)),
                 turn,
@@ -150,11 +174,42 @@ fn seated(
                     seat,
                     computers,
                     selection,
-                    events: Vec::new(),
+                    events,
+                    opening: false,
                 }),
             }
         })
         .collect();
+    if sequence.start {
+        let kingdom = start.kingdom.clone();
+        let opening = NextTurn {
+            turn: Turn {
+                at: 0,
+                player: viewer,
+                status: kingdom.status.clone().unwrap(),
+                kingdom,
+                week: crate::live::Calendar::Named(0),
+                month: crate::live::Calendar::Named(0),
+                heroes: None,
+                boats: None,
+            },
+            message: None,
+            heroes: Vec::new(),
+            walks: Vec::new(),
+            taken: Vec::new(),
+            flags: Vec::new(),
+            lost: Vec::new(),
+            boats: Vec::new(),
+            list: None,
+            first: true,
+            open: false,
+            cover: Some(Cover {
+                opening: true,
+                ..Cover::default()
+            }),
+        };
+        start.turns.insert(0, opening);
+    }
     start.seat = Some(HandOver {
         boxes: humans
             .iter()
@@ -162,6 +217,7 @@ fn seated(
             .collect(),
         sample: Some(COVER),
         timed: sequence.timed(),
+        framed: None,
     });
     (
         start,
@@ -223,4 +279,187 @@ fn replays_the_recorded_hand_overs() {
         assert_eq!(got.len(), want.len(), "{id}");
         assert_eq!(samples(&cues), recorded_samples(sounds), "{id}");
     }
+}
+
+/// `id`'s loop run to `until` with its actions.
+fn seat_run_to(start: &Start, id: &str, until: u32) -> Loop {
+    let (_, actions, ..) = seated(id);
+    let mut l = Loop::start(rules(Bugs::Original), start).unwrap();
+    for t in 1..=until {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    l
+}
+
+#[test]
+fn the_cover_shows_the_new_colour_over_the_map_s_corner() {
+    // `seat-hand-over` at 160: Blue's cover (the view from (0, 0), the view's corner kept, the
+    // frame's picture Red's, the date and the quest log Blue's, the bar blank), its box, the
+    // arrow; Blue's kingdom with no selection; Red's clock stopped.
+    let (start, ..) = seated("seat-hand-over");
+    let l = seat_run_to(&start, "seat-hand-over", 160);
+    let s = l.state(160);
+    let cover = s.drawn.cover.unwrap();
+    assert_eq!(
+        (cover.frame, cover.resources, cover.started),
+        (0, None, false)
+    );
+    assert_eq!(s.drawn.view, ViewAt { x: 0, y: 0, z: 0 });
+    assert_eq!(s.view, ViewAt { x: 14, y: 0, z: 0 });
+    assert_eq!(s.drawn.seat, Some(0));
+    assert_eq!(
+        (s.player, s.shown, s.hero, s.points),
+        (1, Some(1), None, None)
+    );
+    assert_eq!((s.cursor.kind, s.cursor.frame), (DEFAULT_CURSOR, 0));
+    assert!(s.drawn.message.is_some() && s.drawn.hint == Hint::Empty);
+    // The OK at 660 waits 4 000 ms (NewWeek.wav's end at 5 919 is later); nothing changes.
+    let l = seat_run_to(&start, "seat-hand-over", 4659);
+    assert!(l.state(4659).drawn.cover.is_some() && l.handing.is_some());
+    let l = seat_run_to(&start, "seat-hand-over", 4660);
+    let s = l.state(4660);
+    assert!(s.drawn.cover.is_none() && l.handing.is_none());
+    assert_eq!(s.hero.map(|h| h.at), Some(Pos { x: 30, y: 30, z: 0 }));
+    assert_eq!(l.framed, 1);
+}
+
+#[test]
+fn input_during_the_wait_is_taken_at_the_start() {
+    // The pointer's moves and a key given while the start waits for the cover's sound: the point
+    // read at once, the messages kept and taken in the start's millisecond.
+    let (start, ..) = seated("seat-hand-over");
+    let mut l = seat_run_to(&start, "seat-hand-over", 1000);
+    l.run(
+        1001,
+        &[Action::Pointer([650, 250]), Action::Key(Hotkey::EndTurn)],
+    )
+    .unwrap();
+    assert_eq!(l.pointer, [650, 250]);
+    assert_eq!(l.handing.as_ref().map(|h| h.queued.len()), Some(2));
+    for t in 1002..=4660 {
+        l.run(t, &[]).unwrap();
+    }
+    assert!(l.handing.is_none());
+    assert_eq!(l.drawn().pressed, [panels::id::END_TURN]);
+}
+
+#[test]
+fn a_cover_without_its_box_starts_at_once() {
+    // No box laid out for the colour (*provisional*): the start at the loop's next turn.
+    let (mut start, ..) = seated("seat-hand-over");
+    if let Some(seat) = &mut start.seat {
+        seat.boxes.clear();
+    }
+    let l = seat_run_to(&start, "seat-hand-over", 160);
+    assert!(l.state(160).drawn.message.is_none());
+    assert_eq!(l.handing.as_ref().and_then(|h| h.until), Some(160));
+    let l = seat_run_to(&start, "seat-hand-over", 161);
+    assert!(l.handing.is_none() && l.state(161).drawn.cover.is_none());
+}
+
+#[test]
+fn a_timed_event_s_box_over_the_cover_then_the_start() {
+    // A timed event for Blue (MCL-Q71): its box after the wait, the resources added and drawn in
+    // the bar over the cover, the minimap over the shield; its close starts the turn with them.
+    let (mut start, ..) = seated("seat-hand-over");
+    let event = laid("An event.", Style::Ok);
+    if let Some(cover) = &mut start.turns[0].cover {
+        cover.events = vec![(event, [0, 0, 0, 0, 0, 0, 500])];
+    }
+    let mut l = seat_run_to(&start, "seat-hand-over", 4660);
+    let s = l.state(4660);
+    let cover = s.drawn.cover.unwrap();
+    assert!(cover.started && s.drawn.message.is_some());
+    assert_eq!(cover.resources.map(|r| r[6]), Some(20_500));
+    assert_eq!(s.timer, Some(false));
+    l.run(4700, &[Action::BoxKey(Key::Ok)]).unwrap();
+    l.run(4760, &[Action::BoxKeyUp(Key::Ok)]).unwrap();
+    let s = l.state(4760);
+    assert!(s.drawn.cover.is_none() && s.drawn.message.is_none());
+    assert_eq!(s.drawn.kingdom.resources[6], 20_500);
+    // A close with no hand-over under way goes to the idle step.
+    assert_eq!(l.hand_events(4761), Ok(()));
+}
+
+#[test]
+fn a_timed_turn_s_clock_stops_at_the_hand_over_and_starts_after_it() {
+    let (mut start, ..) = seated("seat-hand-over");
+    if let Some(seat) = &mut start.seat {
+        seat.timed = true;
+    }
+    let l = seat_run_to(&start, "seat-hand-over", 159);
+    assert_eq!(l.state(159).timer, Some(true));
+    let l = seat_run_to(&start, "seat-hand-over", 160);
+    assert_eq!(l.state(160).timer, Some(false));
+    let l = seat_run_to(&start, "seat-hand-over", 4660);
+    let states: Vec<State> = [159, 160, 4660]
+        .iter()
+        .map(|&t| {
+            let mut s = l.state(t);
+            s.timer = Some(t != 160);
+            s
+        })
+        .collect();
+    assert_eq!(
+        lines(&states, &BTreeMap::new())
+            .iter()
+            .filter(|l| l.contains("timer"))
+            .collect::<Vec<_>>(),
+        ["160 timer 0 0", "4660 timer 1 0"]
+    );
+}
+
+#[test]
+fn the_game_s_start_covered_keeps_its_selection() {
+    // A first turn made of the live part (the opening, as `start = true`): covered at 0 with the
+    // live part's kingdom and hero kept, its OK and the start without a wait (no sound).
+    let (mut start, ..) = seated("seat-hand-over");
+    let mut kingdom = start.kingdom.clone();
+    kingdom.status = Some(Status::Date(DateStatus { frame: 0 }));
+    start.kingdom.status = kingdom.status.clone();
+    let opening = NextTurn {
+        turn: Turn {
+            at: 0,
+            player: 0,
+            kingdom,
+            status: Status::Date(DateStatus { frame: 0 }),
+            week: crate::live::Calendar::Named(0),
+            month: crate::live::Calendar::Named(0),
+            heroes: None,
+            boats: None,
+        },
+        message: None,
+        heroes: Vec::new(),
+        walks: Vec::new(),
+        taken: Vec::new(),
+        flags: Vec::new(),
+        lost: Vec::new(),
+        boats: Vec::new(),
+        list: None,
+        first: true,
+        open: false,
+        cover: Some(Cover {
+            opening: true,
+            ..Cover::default()
+        }),
+    };
+    start.turns.insert(0, opening);
+    if let Some(seat) = &mut start.seat {
+        seat.sample = None;
+        seat.framed = Some(5);
+    }
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let s = l.state(0);
+    // The frame's picture in the colours the human before's view drew it (play's).
+    assert_eq!(s.drawn.cover.map(|c| c.frame), Some(5));
+    assert!(s.drawn.message.is_some());
+    assert_eq!((s.player, s.shown), (0, Some(0)));
+    assert!(s.hero.is_some() && s.points.is_some());
+    assert_eq!(s.drawn.seat, None);
+    l.run(1, &[Action::BoxKey(Key::Ok)]).unwrap();
+    l.run(2, &[Action::BoxKeyUp(Key::Ok)]).unwrap();
+    let s = l.state(2);
+    assert!(s.drawn.cover.is_none() && s.drawn.message.is_none());
+    assert_eq!((s.cursor.kind, s.hero), (CURSOR_TYPE, start.hero));
 }
