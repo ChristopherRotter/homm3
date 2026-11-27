@@ -729,22 +729,23 @@ type Rule = (&'static [(usize, u8)], u8, bool);
 /// inverted), none shape 0.
 // rule: RMG-TER-016
 fn shape(classes: &[u8; 8], inverting: bool) -> (u8, [bool; 2]) {
-    // A cell among its own terrain (every class 0, most cells of a level) meets no condition,
-    // each asking for a class 1 or 2 (a unit test holds the table to it): no shape, at once.
-    if *classes == [0; 8] {
-        return (0, [false; 2]);
-    }
-    for group in GROUPS {
-        for word in MIRRORINGS {
-            let roles = &ROLES[usize::from(word[0]) * 2 + usize::from(word[1])];
-            for &(all, shape, inverted) in group {
-                if all.iter().all(|&(role, c)| classes[roles[role]] == c) {
-                    let word = if inverted && inverting {
-                        [!word[0], !word[1]]
-                    } else {
-                        word
-                    };
-                    return (shape, word);
+    // The table meets every mix of classes but one: a cell among its own terrain (every class
+    // 0, most cells of a level) meets no condition, each asking for a class 1 or 2, and any
+    // other cell meets one (a unit test holds the table to both). So the search is skipped
+    // there, its answer unchanged.
+    if *classes != [0; 8] {
+        for group in GROUPS {
+            for word in MIRRORINGS {
+                let roles = &ROLES[usize::from(word[0]) * 2 + usize::from(word[1])];
+                for &(all, shape, inverted) in group {
+                    if all.iter().all(|&(role, c)| classes[roles[role]] == c) {
+                        let word = if inverted && inverting {
+                            [!word[0], !word[1]]
+                        } else {
+                            word
+                        };
+                        return (shape, word);
+                    }
                 }
             }
         }

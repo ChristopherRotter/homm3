@@ -262,11 +262,23 @@ fn the_cosmetic_flag_queues_both_and_keeps_group_3s_mirroring() {
     assert_eq!(shape(&classes, true), (8, [true, true]));
     assert_eq!(shape(&classes, false), (8, [false, false]));
     assert_eq!(shape(&[0; 8], true), (0, [false; 2]));
-    // The early return for every class 0 is the table's own answer: each condition asks for a
-    // class 1 or 2 of at least one role, so none holds among a cell's own terrain.
+    // The search skipped for every class 0 is the table's own answer: each condition asks for
+    // a class 1 or 2 of at least one role, so none holds among a cell's own terrain; and every
+    // other mix of classes 0 to 2 meets one.
     let mut conditions = GROUPS.iter().flat_map(|group| group.iter());
     assert!(conditions.clone().count() > 0);
     assert!(conditions.all(|(all, _, _)| !all.is_empty() && all.iter().all(|&(_, c)| c > 0)));
+    for n in 1..3u32.pow(8) {
+        let mut classes = [0u8; 8];
+        let mut m = n;
+        for c in &mut classes {
+            *c = (m % 3) as u8;
+            m /= 3;
+        }
+        for inverting in [true, false] {
+            assert_ne!(shape(&classes, inverting), (0, [false; 2]), "{classes:?}");
+        }
+    }
 }
 
 // covers: RMG-TER-015, RMG-TER-017
