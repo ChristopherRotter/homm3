@@ -696,7 +696,7 @@ the zone's terrain is water.
   (`rmg_pile_fits_at`, increment 5's pile ring) is not read.
 - **Tents on water** (§2.3's shipyard guards): the Keymaster's Tents are group 0 without water in
   the fourth column, and their two blocked cells (the anchor, which is the entrance, and the cell
-  left of it) refuse water; in a water zone a tent fits only on land cells of that zone (an
+  left of it, as the text gives them) refuse water; in a water zone a tent fits only on land cells of that zone (an
   islet's, a sealed shore's: RMG-CON-008, -012) with water below its entrance and an unbroken arc
   of open water around it, else nowhere, and the guard falls back to its monster (RMG-CON-019).
 
