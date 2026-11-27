@@ -758,10 +758,14 @@ fn a_building_beyond_every_record_is_refused_before_the_engine() {
     let recruit = |building| w::GameCommand::Town {
         command: w::TownCommand::Recruit { town: 3, building },
     };
+    // E09 T59a (v87): a war machine's purchase names its building too.
+    let machine = |building| w::GameCommand::Town {
+        command: w::TownCommand::BuyWarMachine { town: 3, building },
+    };
     let refused = w::GameReject::Town {
         error: w::TownReject::UnknownBuilding {},
     };
-    for command in [build, recruit] {
+    for command in [build, recruit, machine] {
         assert_eq!(command_to_engine(command(64)), Err(refused));
         assert_eq!(command_to_engine(command(u8::MAX)), Err(refused));
         assert!(command_to_engine(command(63)).is_ok());
