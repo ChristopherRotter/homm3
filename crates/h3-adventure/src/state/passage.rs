@@ -58,6 +58,36 @@ impl Mode {
     }
 }
 
+/// A moving hero's player with its team's explored layer (GAM-TEM-002, E10 T3a), resolved once a
+/// search or a move: the passage's and the walking search's tile tests read the layer as they read
+/// the player's before the teams, without the team table at each tile (`bench-check`). Aligned
+/// as one 16-bit word, so that the mover tuple copies it as the player alone before.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(C, align(2))]
+pub(crate) struct Side {
+    pub(crate) player: PlayerId,
+    /// The index of the team's explored layer: none (`u8::MAX`, or `NO_TEAM` or more) for a
+    /// player past the game's.
+    layer: u8,
+}
+
+impl AdventureState {
+    /// `player` with its team's explored layer ([`Side`]).
+    pub(crate) fn side(&self, player: PlayerId) -> Side {
+        let layer = u8::try_from(self.map.layer(player)).unwrap_or(u8::MAX);
+        Side { player, layer }
+    }
+
+    /// Whether the team of `side` has explored the tile at `pos` ([`Self::is_explored`], read by
+    /// the layer resolved once).
+    #[inline]
+    pub(crate) fn explored_by(&self, side: Side, pos: Pos) -> bool {
+        self.explored
+            .get(usize::from(side.layer))
+            .is_some_and(|grid| grid.get(pos))
+    }
+}
+
 /// How a flight treats a tile its owner has not explored (`ADV-QUIRK-15`; ADV-MOV-008,
 /// ADV-MOV-009; increment 15's design note §11.1, E08 T142b). A hero that does not fly never
 /// enters one, whatever the setting.
@@ -154,16 +184,17 @@ impl AdventureState {
     pub(crate) fn passage<'p>(
         &self,
         part: &'p AdventureRuleset,
-        (player, mover, mode): (PlayerId, HeroId, Mode),
+        (side, mover, mode): (Side, HeroId, Mode),
         (from, node): (Pos, Node),
         pos: Pos,
         direction: usize,
         step: usize,
     ) -> Result<Entry<'p>, AdventureCommandError> {
+        let player = side.player;
         let blocked = |error| AdventureCommandError::Blocked { step, error };
         let tile = *self.map.tile(pos).ok_or(blocked(StandError::Outside))?;
         // `ADV-QUIRK-15` (E08 T142b): out of line, so the explored tiles' path stays as it was.
-        if !self.is_explored(player, pos) && mode != Mode::Fly(Fog::Revealed) {
+        if !self.explored_by(side, pos) && mode != Mode::Fly(Fog::Revealed) {
             return self.hidden_passage(part, (player, mode), pos, tile, step);
         }
         let dy = DIRECTIONS[direction].1;
@@ -183,7 +214,7 @@ impl AdventureState {
         // property).
         if dy == -1
             && self.closed_above(part, from)
-            && (mode != Mode::Fly(Fog::Assumed) || self.is_explored(player, from))
+            && (mode != Mode::Fly(Fog::Assumed) || self.explored_by(side, from))
         {
             return match part.passage(tile.terrain) {
                 Some(Passage::Water(_))
@@ -212,23 +243,18 @@ impl AdventureState {
         if let Mode::Sail(boat) = mode {
             return self.sail_entry(part, (player, boat), (from, pos), tile, hero, step);
         }
-        let visit = |met: Option<Meets<'p>>| {
-            if met.is_none() && !fly {
-                return Err(AdventureCommandError::NoStop { step });
-            }
-            Ok(Entry {
-                tile,
-                stop: met.map(Some),
-                pass: fly,
-            })
-        };
         match part.passage(tile.terrain) {
             Some(Passage::Land(_)) => {}
             Some(Passage::Water(_)) => {
                 if let Some(other) = hero {
                     // A hero in a boat: a battle or a meeting from a stop node (GAM-BAT-004,
                     // GAM-MET-001; on the deck since T74b, `sea_battle_ground`).
-                    return visit((node == Node::Stop).then_some(Meets::Hero(other)));
+                    return Self::visit_entry(
+                        tile,
+                        fly,
+                        step,
+                        (node == Node::Stop).then_some(Meets::Hero(other)),
+                    );
                 }
                 if let Some(boat) = self.empty_boat(pos) {
                     // Boarded from a stop node, whatever the mode (ADV-SEA-002); a flight passes
@@ -274,7 +300,12 @@ impl AdventureState {
         }
         if let Some(other) = hero {
             // A battle or a meeting, from a stop node only (GAM-BAT-004, GAM-MET-001).
-            return visit((node == Node::Stop).then_some(Meets::Hero(other)));
+            return Self::visit_entry(
+                tile,
+                fly,
+                step,
+                (node == Node::Stop).then_some(Meets::Hero(other)),
+            );
         }
         if !tile.visitable {
             return match (tile.blocked, fly) {
@@ -295,11 +326,35 @@ impl AdventureState {
                 stop: Some(None),
                 pass: false,
             }),
-            Some(object) => visit(
+            Some(object) => Self::visit_entry(
+                tile,
+                fly,
+                step,
                 (object.mode == Visit::Enter || node == Node::Stop)
                     .then_some(Meets::Object(object)),
             ),
         }
+    }
+
+    /// What a step that meets `met` on `tile` allows (a hero, or an object entered or met from a
+    /// stop node): a stop, which a flight may also pass; none ends a walk there. Inline in the
+    /// passage, whatever else its callees add (E10 T3a: a closure here went out of line, +8 % on
+    /// the passage, `bench-check`).
+    #[inline(always)]
+    fn visit_entry<'p>(
+        tile: StaticTile,
+        fly: bool,
+        step: usize,
+        met: Option<Meets<'p>>,
+    ) -> Result<Entry<'p>, AdventureCommandError> {
+        if met.is_none() && !fly {
+            return Err(AdventureCommandError::NoStop { step });
+        }
+        Ok(Entry {
+            tile,
+            stop: met.map(Some),
+            pass: fly,
+        })
     }
 
     /// What a step by `mode` allows onto the tile `pos`, unexplored by its owner, whose tile is
@@ -369,7 +424,7 @@ impl AdventureState {
         (pos, direction, step): (Pos, usize, usize),
         kind: Node,
     ) -> bool {
-        let mover = (player, mover, Mode::Fly(Fog::Revealed));
+        let mover = (self.side(player), mover, Mode::Fly(Fog::Revealed));
         self.passage(part, mover, (from, node), pos, direction, step)
             .is_ok_and(|entry| kind == Node::Pass || entry.stop.is_some())
     }

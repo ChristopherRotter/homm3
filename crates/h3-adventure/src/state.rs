@@ -180,7 +180,7 @@ pub use markets::{
 };
 pub(crate) use monsters::{Room, join_at, room};
 pub(crate) use occupancy::{Added, Occupancy};
-pub(crate) use passage::{Fog, Mode, Node};
+pub(crate) use passage::{Fog, Mode, Node, Side};
 pub(crate) use pool::{ArtifactMarks, ArtifactPool};
 pub use spells::{Cast, CastError, CastFailure, DaySpells};
 pub(crate) use spells::{DaySpellBook, spells_in};
@@ -1301,7 +1301,6 @@ impl StaticMap {
 
     /// The index of `player`'s explored layer, its team's (GAM-TEM-002, E10 T3a): `NO_TEAM` or
     /// more for a player past the game's, so that a read by `get` finds none.
-    #[inline]
     fn layer(&self, player: PlayerId) -> usize {
         self.teams
             .get(player.index())
@@ -2082,6 +2081,7 @@ impl AdventureState {
         // The compromise's: the first step the revealed tile forbids, the last stop node before
         // it (its step and the points left there), and whether the step's source was hidden.
         let (mut cut, mut stand, mut off_hidden) = (None, None, false);
+        let side = self.side(player);
         for (step, &next) in path.iter().enumerate() {
             if visit.is_some() || guard.is_some() {
                 return Err(AdventureCommandError::PastVisit { step });
@@ -2094,7 +2094,7 @@ impl AdventureState {
                 (to, met, Node::Stop)
             } else {
                 let entry =
-                    self.passage(part, (player, id, mode), (at, node), next, direction, step)?;
+                    self.passage(part, (side, id, mode), (at, node), next, direction, step)?;
                 match entry.stop {
                     Some(met) if last || !entry.pass => (entry.tile, met, Node::Stop),
                     _ if !last => (entry.tile, None, Node::Pass),
@@ -3391,7 +3391,6 @@ impl AdventureState {
 
     /// The tiles `player` has explored, if it is a player of the game (ADR-0016 point 5): its
     /// team's (GAM-TEM-002, E10 T3a).
-    #[inline]
     pub fn explored(&self, player: PlayerId) -> Option<&BitGrid> {
         self.explored.get(self.map.layer(player))
     }
@@ -3508,7 +3507,6 @@ impl AdventureState {
 
     /// Whether `player` has explored the tile at `pos` (a tile off the map, or a player not in
     /// the game, has none).
-    #[inline]
     pub fn is_explored(&self, player: PlayerId, pos: Pos) -> bool {
         self.explored(player).is_some_and(|grid| grid.get(pos))
     }
