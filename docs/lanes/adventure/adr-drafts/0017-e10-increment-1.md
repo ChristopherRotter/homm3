@@ -1,8 +1,9 @@
 # Draft: ADR-0017 amended for E10 increment 1 (the teams and the game's end)
 
-Status: **Proposed** (E10 T1b, 2026-11-27; E10 decisions 9 to 19, ADV-Q65). Applied by the
-`shared/` task (T2) as accepted; amended as built with batch GAM-1's outcome by the audit's
-`shared/` task (T7). Design note: `docs/epics/E10-design.md` §1, §2, §5, §8 to §17.
+Status: **Proposed**, accepted at the checkpoint (E10 T1b, 2026-11-27, decision 19; E10 decisions 9
+to 19, ADV-Q65). Applied by the `shared/` task (T2) as accepted; amended as built with batch GAM-1's
+outcome by the audit's `shared/` task (T7). Design note: `docs/epics/E10-design.md` §1, §2, §5, §8
+to §17.
 
 ## Point 1 (one entry point), amended
 

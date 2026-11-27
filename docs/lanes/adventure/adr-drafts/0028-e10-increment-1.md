@@ -1,8 +1,9 @@
 # Draft: ADR-0028 amended for E10 increment 1 (an ally's town; `cross-lane`)
 
-Status: **Proposed** (E10 T1b, 2026-11-27; E10 decision 17: the adventure lane builds an ally's
-town in `cross-lane` pull requests with the user's consent, the town lane's inbox told). Applied
-by the `shared/` task (T2) as accepted; as built by T7. Design note: `docs/epics/E10-design.md` §7.
+Status: **Proposed**, accepted at the checkpoint (E10 T1b, 2026-11-27, decision 19; E10 decision 17:
+the adventure lane builds an ally's town in `cross-lane` pull requests with the user's consent, the
+town lane's inbox told). Applied by the `shared/` task (T2) as accepted; as built by T7. Design
+note: `docs/epics/E10-design.md` §7.
 
 ## Point 6 (seams), amended
 

@@ -47,6 +47,17 @@ resumes (the epic file); its tasks are cut then.
     record).
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for your planning; the env's
+  change comes `cross-lane` at E10 T6**): E10 increment 1 (the teams and the game's end) is
+  designed (`docs/epics/E10-design.md` §12, §14, §16). The env's step will report the game's
+  result (the winning team or none, why) and each player's defeat; a defeated seat or an ended
+  game has nothing `to_move`; the action encoding stays v21. **The verdict reads
+  `PlayerSetup::human`** (decision 14): once no human is left the game ends, the team left (if
+  one) named the winner; a game built with no human plays to one team, so mark the env's seats as
+  you mean them. A removed player's colour is **handed to the computer player**
+  (`SystemCommand::HandOver`, decision 15): E31's computer player will play such a colour; until
+  then the host ends its turns. The teams become readable (`AdventureState::allied`), which
+  `AI-STUB-18`'s ally values need (stays yours).
 - 2026-11-27 (the rmg lane, E14 T4b, `shared/e14-t4b`, `cross-lane` with the user's consent, E14 decision 12; **in your paths, for your review; no rule of yours changed**): `faithful`'s core hash moved from `0x7d6081fbb0552a2f` to `0x810a2c4eb5a0373f` (two `quirk.rmg` flags registered, positions 60 and 61; `strict-fixed`'s unchanged). The two bot reports' `core` lines were substituted by hand (no report regenerated). A branch of yours regenerating them before this merges carries the new hash.
 Sorted by destination at E06's audit (T9a, 2026-10-27; E05's at its T9a, 2026-10-19); the
 origin stays in brackets. Moved to `QUEUE-ARCHIVE.md` as done or informational: the notices of

@@ -1,8 +1,8 @@
 # Draft: ADR-0016 amended for E10 increment 1 (the teams and the game's end)
 
-Status: **Proposed** (E10 T1b, 2026-11-27; E10 decisions 2, 10, 15 to 17, ADV-Q65). Applied by the
-`shared/` task (T2) as accepted; as built by T7. Design note: `docs/epics/E10-design.md` §2 to
-§7, §11.
+Status: **Proposed**, accepted at the checkpoint (E10 T1b, 2026-11-27, decision 19; E10 decisions 2,
+10, 15 to 17, ADV-Q65). Applied by the `shared/` task (T2) as accepted; as built by T7. Design note:
+`docs/epics/E10-design.md` §2 to §7, §11.
 
 ## Point 1 (three kinds of storage), amended
 

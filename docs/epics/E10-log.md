@@ -48,3 +48,47 @@ read and renamed `victory_resources_test`, seven amended (`player_defeated` read
 `next_player_turn`, `player_turn_start`, `hero_relocate_spell`, `hero_popup`, `new_day`,
 `scenario_condition_met`); `structs.toml`: the player's +0x3D. The epic file: decisions 1 and 6
 point to E31 (the AI lane's inbox note of 2026-11-21). **Versions:** none (docs only). Next: T1b.
+
+### Increment 1, round 1: T1b, the design note, the drafts, the cut and the checkpoint (2026-11-27, `adventure/e10-t1b`)
+
+**The cut** (decision 9, the user at T1b's start): **whole**; not chosen: the checkpoint and the
+note first, the drafts and the cut in a next session. **Baseline:** `master` 5994188 (#1214, T1a,
+merged); docs only. Staged at the start while the PC was up: `Heroes3.exe` (SHA-256 `aac39e8c…`
+checked), `maps.tar`, `extracted.tar`; the repo cloned from GitHub. One narrow reading with
+`scripts/exe.py`: the readers of the defeated bytes (`grep '0x1f636\]'`, 60 sites), so the note's
+§11 names the loops a defeated player leaves (the turn order, the income, the week's tavern
+heroes, the Thieves' Guild, the market's recipients); and the check's colour loop around
+`player_defeated` (no turn ended there: §11's own-turn defeat is an agent's call, batch row
+GAM-1-7).
+
+**The checkpoint** (ADV-Q65, three rounds before the note, one after; decisions 9 to 19): the
+survey §13's nine questions. The build teams first (10); the original's moments (11, D-80); A-55,
+A-56 accepted as the clients' boxes (12); A-57 accepted (13); no human left ends the game with the
+team left named as the winner (14, D-84); a removed player's colour to the computer player, the
+user against the recommendation, and the engine's half (`SystemCommand::HandOver`) now (15, D-83;
+D-81 moot); give-only gifts (16, D-82); an ally's town built by this lane, `cross-lane`, the user
+against the recommendation (17); batch GAM-1 before the last round (18). After the note: the cut,
+the drafts and the agent's calls as written (19).
+
+**The design note** `E10-design.md` (§1 to §21): **A** the teams (§1 `PlayerSetup::team`, map
+import v30; §2 `AdventureState::allied` at the 22 sites and the 72 E10 marks swept; §3 one
+explored layer per team, adventure state hash v31; §4 the shared ownables and marks; §5 the
+allies' meeting with give-only gifts; §6 the team's views; §7 an ally's town: the entering, the
+trades, `TWN-STUB-21` lifted, the siege of an ally's visitor read at T3c); **B** the end (§8 the
+defeat, the days and the result, game state hash v41; §9 the check's three moments; §10 the
+eliminations and the seven days; §11 a defeated player's steps and the loops it leaves; §12 the
+verdict; §13 after the end; §14 the hand-over); **C** (§15 the events and the clients' boxes;
+§16 the wire v86, the env, the server, the clients; §17 replays v28, maps, properties,
+benchmarks; §18 versions, ids `GAM-TEM-001` to `-004` and `GAM-END-001` to `-008`, quirks
+`ADV-QUIRK-59` to `-61`, stubs); **D** (§19 batch GAM-1 with rows 7 and 8 added; §20 the shared and
+`cross-lane` work, the cut T2 to T7 and ten exit criteria; §21 risks).
+
+**The drafts** `docs/lanes/adventure/adr-drafts/0016-e10-increment-1.md` (points 1, 4, 5, 6),
+`0017-e10-increment-1.md` (points 1, 2, 3, 6, 8, 9) and `0028-e10-increment-1.md` (point 6, an
+ally's town), accepted at the checkpoint for T2. ADR-0015 needs none.
+
+**Docs:** decisions 9 to 19 and the next tasks in the epic; ADV-Q65 in `QUESTIONS-ANSWERED.md`;
+T1b's entry to `QUEUE-ARCHIVE.md`, T2 and T3 queued; the inboxes of the town lane (decision 17),
+the server lane (the end, the hand-over, v86), the AI lane (the terminal, the seats' `human`
+marks), the client lane (E27 M5's facts, the boxes) and the map client lane (`MCL-STUB-4`).
+**Verify:** docs only: `check-docs`, `check-lane`. No code, version or replay moved. **Next:** T2.

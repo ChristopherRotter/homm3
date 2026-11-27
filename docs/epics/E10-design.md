@@ -15,7 +15,8 @@ once no human is left, the result naming the team left when the players left are
 D-84); a removed player's colour handed to the computer player, as the original's network drop,
 and increment 1 builds the engine's half (15, D-83; D-81 moot); the allies' gifts give-only into
 empty places (16, D-82); an ally's town built by this lane, `cross-lane` (17); batch GAM-1 before
-the build's last round (18). After the note: decision 19 (§20).
+the build's last round (18). After the note: the cut, the drafts and the agent's calls as written
+(19, §20).
 
 ## Part A — the teams
 
@@ -316,8 +317,8 @@ fields and asks the battle lane's consent for any it adds. A verdict against a r
 
 ### 20. Shared and `cross-lane` work; the building tasks; the exit criteria
 
-**Decision 19** (the user after the note): the cut, the drafts and the agent's calls as written
-(*filled in at the acceptance*).
+**Decision 19** (the user after the note, ADV-Q65's last round): the cut, the three drafts and the
+agent's calls as written.
 
 **Shared:** T2 (`shared/`, `cross-lane`): the three drafts applied as accepted (ADR-0016 points 1,
 4 to 6; ADR-0017 points 1 to 3, 6, 8, 9; ADR-0028 point 6); `docs/03-domain.md`'s terms (team, an

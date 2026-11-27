@@ -1,6 +1,6 @@
 # E10 — Game orchestration: teams, the scenario's conditions and its end
 
-Status: **in progress** (increment 1; refined 2026-11-21, the user, ADV-Q62). E10 opened in the adventure lane once E08 closed with increment 15 (the Prison, the Market of Time and the adventure spells; E08 decisions 394, 396; E08 T145, 2026-11-27). Increment 1's survey T1a is done (2026-11-27, decision 8); **next T1b** (the drafts, the design note `E10-design.md` and the cut; the checkpoint), `docs/lanes/adventure/QUEUE.md`. E08 built E10's players, turns, battle integration and projections in `h3-game` (ADR-0017); what is left is listed here. Done tasks get one line below; their records are in `E10-log.md`.
+Status: **in progress** (increment 1; refined 2026-11-21, the user, ADV-Q62). E10 opened in the adventure lane once E08 closed with increment 15 (the Prison, the Market of Time and the adventure spells; E08 decisions 394, 396; E08 T145, 2026-11-27). Increment 1's survey T1a and its design note, drafts and cut T1b are done (2026-11-27, decisions 8 to 19; the checkpoint ADV-Q65); **next T2** (the `shared/` task: the drafts applied), `docs/lanes/adventure/QUEUE.md`; the rounds in the design note `E10-design.md` §20. E08 built E10's players, turns, battle integration and projections in `h3-game` (ADR-0017); what is left is listed here. Done tasks get one line below; their records are in `E10-log.md`.
 
 ## Goal
 
@@ -19,11 +19,23 @@ A game played to its end as the original plays it: the map's alliances, the play
 ## Decisions during the epic
 
 8. **T1a's cut: whole** (the user, 2026-11-27, at T1a's start after the reading was measured: the end about 4 to 5 KB still unread, the teams about 2 KB new with the gathering of about 60 read team tests, the census). Not chosen: two parts, the end first (recommended); two parts, the teams first.
+9. **T1b's cut: whole** (the user, 2026-11-27, at T1b's start; ADV-Q65 round 1). Not chosen: the checkpoint's answers and the note first, the drafts and the cut in a next session.
+10. **The build teams first** (recommended; survey §13 Q1): (a) the teams (the setup, `allied`, the fog, the meeting, the views, an ally's town), (b) the end (the check, the defeat, the verdict, after the end, the events), (c) the hand-over and the hand-overs, then the batch and the audit. Not chosen: the end first (the env's terminal sooner).
+11. **The check at the original's moments** (recommended; D-80): after every command, at each turn's end before the outgoing player's count-down, at a human's turn start. Not chosen: VCMI's (the defeat at the seventh turn's end).
+12. **A-55 and A-56 accepted** (recommended): the engine tells the facts; the clients show the original's boxes (GENRLTXT 7 only to the player in turn, GENRLTXT 9 to a banished human); `ADV-QUIRK-59`, `-60`. Not chosen: always warn the owner and tell it in the second person.
+13. **A-57 accepted** (recommended): no check at the game's first turn's start; `ADV-QUIRK-61`. Not chosen: a check when the game is built.
+14. **No human left ends the game** (recommended; D-84): the original's end, the result naming the team left when the players left are one team (computers too), else none. Not chosen: the end always without a winner; playing on to one team (VCMI's).
+15. **A removed player's colour goes to the computer player** (D-83; the user against the recommendation, defeated with its towns made neutral), as the original's network drop; increment 1 builds the engine's half (recommended in a second round): `SystemCommand::HandOver { player }` clears its `human` flag (the battles' rule and the verdict read it), the host plays the colour (until E31 ending its turns). Not chosen: defeated with its towns kept by nobody; nothing until E31. D-81 is moot (no defeat removes towns).
+16. **The allies' gifts give-only** (recommended; D-82): a stack into an empty slot, an artifact into an empty place, nothing taken. Not chosen: VCMI's merge into an ally's stack.
+17. **An ally's town built by this lane, `cross-lane`** (the user against the recommendation, the town lane's inbox): the screen, the trades (`TWN-STUB-21`), the siege of an ally's visitor, with the user's consent for the town modules; the town lane's inbox told at each task.
+18. **Batch GAM-1 before the build's last round** (recommended): the build starts at once, the outcome folded in before the hand-over's round and the audit. Not chosen: at once after the acceptance.
+19. **The cut, the drafts and the agent's calls as written** (the user after the note, ADV-Q65's last round): rounds 2 to 7 (`E10-design.md` §20), the drafts `adr-drafts/0016-`, `0017-`, `0028-e10-increment-1.md`, one explored layer per team, the check after every command but `EndTurn`, a player defeated in its turn ending it at once, the game's end dropping the open decisions, a game built with no human playing to one team.
 
 ## Increment 1: tasks
 
 - **T1a done** (2026-11-27): the survey `docs/rules/surveys/E10-teams.md` (the census, elimination and the seven days, a defeated player, the checks and the verdict, a removal, what allies share, VCMI and the wiki, D-80 to D-84, A-55 to A-57, batch GAM-1's plan, the interfaces' sketch, T1b's nine questions); record in `E10-log.md`.
-- **T1b** next: the ADR amendment drafts, the design note `E10-design.md` and the cut; the checkpoint (the survey's §13).
+- **T1b done** (2026-11-27): the checkpoint ADV-Q65 (decisions 9 to 19), the design note `E10-design.md` (§1 to §21: the teams, the end, the events and hand-overs, batch GAM-1 with rows 7 and 8, the cut and ten exit criteria), the drafts `docs/lanes/adventure/adr-drafts/0016-`, `0017-` and `0028-e10-increment-1.md`; record in `E10-log.md`.
+- **Next** (design note §20): T2 `shared/` (the drafts applied); T3 the teams (T3a the setup, `allied`, the fog; T3b the meeting, the views; T3c an ally's town, `cross-lane`); T4 the end (T4a the defeat; T4b the verdict, after the end, the events and wire); T5 batch GAM-1; T6 the hand-over, the env, the replays; T7 the audit.
 
 ## Increments (sketch; the cut of each decided at its refinement, as E08 decision 48)
 
