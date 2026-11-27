@@ -118,12 +118,14 @@ fn the_slots_draw_as_the_original() {
     let mut log = Log::default();
     let mut stream = Stream::new(3, &mut log);
     let mut p = Painter::new(&pictures, &mut cells, &mut stream, 0, 2, true);
-    assert_eq!(p.draw_plain(2, 4, Some(1)), 1);
-    let drawn = p.draw_plain(2, 4, None);
+    // A plain picture is kept (the transition pass's test), a decorated one is drawn again.
+    assert!(p.pictures.set(2).fits(1, 0, None));
+    assert!(!p.pictures.set(2).fits(5, 0, None));
+    let drawn = p.draw_plain(2, 4);
     assert!(drawn < 4);
-    assert_eq!(p.draw_plain(2, 0, Some(5)) / 2, 0, "weight 0: plain only");
-    let _ = p.draw_plain(WATER, 4, None);
-    let _ = p.draw_plain(ROCK, 4, None);
+    assert_eq!(p.draw_plain(2, 0) / 2, 0, "weight 0: plain only");
+    let _ = p.draw_plain(WATER, 4);
+    let _ = p.draw_plain(ROCK, 4);
     assert_eq!(p.draw_shape(2, 5, [true, false], 7), (7, [true, false]));
     let (picture, word) = p.draw_shape(2, 6, [true, true], 7);
     assert_eq!((picture, word), (8, [true, true]));
@@ -260,6 +262,11 @@ fn the_cosmetic_flag_queues_both_and_keeps_group_3s_mirroring() {
     assert_eq!(shape(&classes, true), (8, [true, true]));
     assert_eq!(shape(&classes, false), (8, [false, false]));
     assert_eq!(shape(&[0; 8], true), (0, [false; 2]));
+    // The early return for every class 0 is the table's own answer: each condition asks for a
+    // class 1 or 2 of at least one role, so none holds among a cell's own terrain.
+    let mut conditions = GROUPS.iter().flat_map(|group| group.iter());
+    assert!(conditions.clone().count() > 0);
+    assert!(conditions.all(|(all, _, _)| !all.is_empty() && all.iter().all(|&(_, c)| c > 0)));
 }
 
 // covers: RMG-TER-015, RMG-TER-017

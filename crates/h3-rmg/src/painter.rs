@@ -300,17 +300,13 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
     }
 
     /// Slot 4 of terrain `t`'s set (`terrain_picture_draw` 0x5B3890, `rock_picture_draw`
-    /// 0x5B3AA0): a current plain picture kept; else, with decorated pictures, `rand() % 100`
-    /// below share × weight / 8 takes them, and `rand() %` the pictures' count.
+    /// 0x5B3AA0): a current plain picture kept (the transition pass's test, before it reads the
+    /// weight); else, with decorated pictures, `rand() % 100` below share × weight / 8 takes
+    /// them, and `rand() %` the pictures' count.
     // rule: RMG-TER-007
-    fn draw_plain(&mut self, t: u8, weight: u32, current: Option<u8>) -> u8 {
+    fn draw_plain(&mut self, t: u8, weight: u32) -> u8 {
         let pictures = self.pictures;
         let set = pictures.set(t);
-        if let Some(c) = current
-            && set.fits(c, 0, None)
-        {
-            return c;
-        }
         if set.rock {
             let range = set.range(0);
             return self.pick(range, SITE_ROCK_PICTURE, t, 0);
@@ -451,7 +447,7 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
     fn set_cell(&mut self, x: i32, y: i32) {
         let t = self.terrain;
         let weight = self.weight_at(x, y, t);
-        let picture = self.draw_plain(t, weight, None);
+        let picture = self.draw_plain(t, weight);
         self.write(x, y, t, picture, [false; 2]);
         self.queued.remove(&(y, x));
         if self.pictures.set(t).land {
@@ -509,7 +505,7 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
             for x in x0..x0 + w {
                 if self.terrain_at(x, y) == t {
                     let weight = self.weight_at(x, y, t);
-                    let picture = self.draw_plain(t, weight, None);
+                    let picture = self.draw_plain(t, weight);
                     self.write(x, y, t, picture, [false; 2]);
                 } else {
                     self.set_cell(x, y);
@@ -684,8 +680,14 @@ impl<'a, 't, T: Trace> Painter<'a, 't, T> {
                 let shape = self.refine(x, y, t, shape, word);
                 let current = picture_of(self.cell(x, y));
                 let (picture, word) = if shape == 0 {
-                    let weight = self.weight_at(x, y, t);
-                    (self.draw_plain(t, weight, Some(current)), [false; 2])
+                    // Slot 4 keeps a current plain picture; only a drawn one reads the weight.
+                    let picture = if self.pictures.set(t).fits(current, 0, None) {
+                        current
+                    } else {
+                        let weight = self.weight_at(x, y, t);
+                        self.draw_plain(t, weight)
+                    };
+                    (picture, [false; 2])
                 } else {
                     self.draw_shape(t, shape, word, current)
                 };
@@ -727,6 +729,11 @@ type Rule = (&'static [(usize, u8)], u8, bool);
 /// inverted), none shape 0.
 // rule: RMG-TER-016
 fn shape(classes: &[u8; 8], inverting: bool) -> (u8, [bool; 2]) {
+    // A cell among its own terrain (every class 0, most cells of a level) meets no condition,
+    // each asking for a class 1 or 2 (a unit test holds the table to it): no shape, at once.
+    if *classes == [0; 8] {
+        return (0, [false; 2]);
+    }
     for group in GROUPS {
         for word in MIRRORINGS {
             let roles = &ROLES[usize::from(word[0]) * 2 + usize::from(word[1])];
