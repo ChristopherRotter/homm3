@@ -40,6 +40,9 @@
 //!   engine keeps no facing: M4 T4 takes it from the steps), its boat's flag its owner's; an
 //!   object the view does not show keeps the file's owner (under the fog it is not drawn).
 //! - **The explored tiles** as the view's bits, `size × levels` rows of `size` tiles.
+//! - **A creature by the original's number** (E24 M5 T4c, design §5.29, *provisional*): the
+//!   wire's is the engine's handle, [`Loaded::creatures`] numbers it ([`Creatures`]) at each
+//!   reading (an army, a mine's guards, a random monster's picture, a week's creature, a visit's).
 
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -67,10 +70,13 @@ use crate::objects;
 use crate::record::Records;
 use crate::tables::{CAPITOL, FORT, TownArt};
 
+mod creatures;
 mod hover;
 mod panels;
 mod played;
 pub mod visits;
+
+pub use creatures::{Creatures, NONE};
 
 pub use played::{
     Battled, Command, Held, Leveled, OtherEnd, OtherStep, OtherTurn, OtherWalk, Played, REVISIT,
@@ -227,6 +233,8 @@ pub struct Loaded {
     pub setup: GameSetup,
     /// A live start's facts (E24 M5 T3b, [`live`]); none for a record's file.
     pub live: Option<Live>,
+    /// The original's number of each creature handle of the record's rules (E24 M5 T4c).
+    pub creatures: Creatures,
 }
 
 /// A live start's facts the view lacks (E24 M5 T3b, *provisional*): each hero's facing as the
@@ -284,6 +292,7 @@ pub fn check(record: GameRecord, map: &[u8], rules: &GameRuleset) -> Result<Load
         raw,
         setup,
         live: None,
+        creatures: Creatures::new(rules),
     })
 }
 
@@ -416,7 +425,8 @@ pub fn start(
         seen[index] = true;
         views[index] = Some(object);
         owners[index] = Value::Integer(object.owner.map_or(Ok(-1), colour)?);
-        let became = class(index).and_then(|(c, _)| became(c, object, rules, templates));
+        let became = class(index)
+            .and_then(|(c, _)| became(c, object, (rules, &loaded.creatures), templates));
         if let Some((def, c, s)) = became {
             defs[index] = Value::String(def);
             drawn[index] = (c, s);
@@ -483,9 +493,11 @@ pub fn start(
     table.insert("explored".to_string(), explored(observation, art));
     // The panels (E24 M4 T3b1, design §5.10).
     let picks = loaded.live.as_ref().and_then(|l| l.picks);
-    panels::insert(&mut table, observation, (&loaded.raw, picks), art, rules);
+    let numbered = (rules, &loaded.creatures);
+    panels::insert(&mut table, observation, (&loaded.raw, picks), art, numbered);
     // The mouse-over's facts (E24 M4 T3b2, design §5.11).
     let sight = hover::Sight {
+        creatures: &loaded.creatures,
         views,
         classes: drawn
             .iter()
@@ -561,11 +573,12 @@ fn drawn_shift(rules: &GameRuleset, id: Option<ObjectTypeId>) -> Option<u16> {
 
 /// What a random object of the file's class `class` became, as the original's copy of its
 /// template names it (design §2.7): its DEF, class and subclass; none for every other object and
-/// for the random kinds `MCL-STUB-1` leaves.
+/// for the random kinds `MCL-STUB-1` leaves. A monster's creature by the original's number
+/// (`creatures`, E24 M5 T4c).
 fn became(
     class: u32,
     object: &Object,
-    rules: &GameRuleset,
+    (rules, creatures): (&GameRuleset, &Creatures),
     templates: &[ObjectTemplate],
 ) -> Option<(String, u32, u32)> {
     if class == RANDOM_RESOURCE {
@@ -587,7 +600,7 @@ fn became(
         return None;
     }
     object.monster.as_ref().and_then(|monster| {
-        let creature = u32::from(monster.creature);
+        let creature = u32::from(creatures.number(monster.creature));
         templates
             .iter()
             .rev()

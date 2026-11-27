@@ -129,6 +129,11 @@ fn rules() -> &'static GameRuleset {
     })
 }
 
+/// The handle of the packs' creature `key` (the engine's, by the packs' order).
+fn handle(key: &str) -> u16 {
+    rules().core().creature_by_key(key).unwrap().raw()
+}
+
 /// The committed tables' records (`[map.records]`): the classes the game loads the map's as.
 fn records() -> &'static Records {
     static RECORDS: OnceLock<Records> = OnceLock::new();
@@ -596,7 +601,7 @@ size = 36
 terrain = "grass"
 heroes = [
     { at = [12, 12], class = 5, name = "Quillon", map_army = [[28, 20]] },
-    { at = [8, 10], class = 1, map_army = [[0, 15], [2, 5]] },
+    { at = [8, 10], class = 1, map_army = [[0, 15], [139, 5]] },
     { at = [33, 33], owner = 1, class = 6 },
 ]
 towns = [{ at = [16, 8], faction = 0, owner = 0, buildings = "fort", name = "Brightmoor" }]
@@ -665,7 +670,8 @@ fn the_panels_of_a_start() {
     assert_eq!(numbers(&kingdom["resources"]), treasury);
     assert_eq!(numbers(&kingdom["date"]), [1, 1, 1]);
     // Rion's status window: its type, no name of the map's, its base skills, morale and luck 0
-    // (MCL-Q36), its army by slot.
+    // (MCL-Q36), its army by slot (the map's Peasants, AB's 139, by their number: the import's
+    // handle 140, E24 M5 T4c).
     let status = table(&t["status"]);
     assert_eq!(status["kind"], Value::Integer(3));
     assert_eq!(status["hero"], Value::Integer(8));
@@ -682,7 +688,7 @@ fn the_panels_of_a_start() {
         .iter()
         .map(numbers)
         .collect();
-    assert_eq!(army[..3], [vec![0, 15], vec![2, 5], vec![-1, 0]]);
+    assert_eq!(army[..3], [vec![0, 15], vec![139, 5], vec![-1, 0]]);
     // The kingdom's window: one village, Red against Blue (no teams).
     let realm = table(&t["realm"]);
     assert_eq!(numbers(&realm["halls"]), [1, 0, 0, 0]);
@@ -723,9 +729,10 @@ fn a_town_s_window_selected_or_nothing_selected() {
     facts.income = [(0, 1), (2, 1), (5, 0), (6, 1250)]
         .map(|(resource, amount)| Amount { resource, amount })
         .to_vec();
+    // A war machine by its number (the Ballista, 146: handle 119; E24 M5 T4c).
     town.garrison.army = Some(vec![h3_protocol::wire::game::ArmyStack {
         slot: 2,
-        creature: 4,
+        creature: handle("base:ballista"),
         count: 3,
     }]);
     let selected = start(&g, &o).unwrap();
@@ -736,7 +743,7 @@ fn a_town_s_window_selected_or_nothing_selected() {
     assert_eq!(status["name"], Value::Integer(0));
     assert_eq!(numbers(&status["buildings"]), [8, 10]);
     assert_eq!(status["garrison"], Value::Integer(1));
-    assert_eq!(numbers(&status["army"].as_array().unwrap()[2]), [4, 3]);
+    assert_eq!(numbers(&status["army"].as_array().unwrap()[2]), [146, 3]);
     assert_eq!(numbers(&status["silo"]), [0, 2]);
     assert_eq!(status["income"], Value::Integer(1250));
     // Blue on Red's team: an ally.
@@ -1622,7 +1629,8 @@ fn a_record_s_rarer_lines() {
         legal: Vec::new(),
         castable: Vec::new(),
     }));
-    // Each week's and month's kind but the normal ones, each with a turn's start.
+    // Each week's and month's kind but the normal ones, each with a turn's start; a creature by
+    // the original's number (E24 M5 T4c: AB's Peasants 139 and Pixies 118, the Ballista 146).
     let starts = [
         (
             GameEvent::MonthStarted {
@@ -1634,16 +1642,20 @@ fn a_record_s_rarer_lines() {
         (
             GameEvent::MonthStarted {
                 month: 3,
-                kind: Month::Creature { creature: 12 },
+                kind: Month::Creature {
+                    creature: handle("ab:peasant"),
+                },
             },
-            &[1, 12][..],
+            &[1, 139][..],
         ),
         (
             GameEvent::WeekStarted {
                 week: 9,
-                kind: Week::Creature { creature: 7 },
+                kind: Week::Creature {
+                    creature: handle("ab:pixie"),
+                },
             },
-            &[1, 7][..],
+            &[1, 118][..],
         ),
         (
             GameEvent::WeekStarted {
@@ -1660,11 +1672,11 @@ fn a_record_s_rarer_lines() {
             GameEvent::WeekStarted {
                 week: 11,
                 kind: Week::Of {
-                    creatures: [Some(30), None],
+                    creatures: [Some(handle("base:ballista")), None],
                     bonus: 5,
                 },
             },
-            &[2, 30, -1, 5][..],
+            &[2, 146, -1, 5][..],
         ),
     ];
     for (start, _) in &starts {
@@ -1717,6 +1729,250 @@ fn a_record_s_rarer_lines() {
         engine::played(&loaded, &g.art, rules()),
         Err(Refused::Line(_, why)) if why.contains("off the map")
     ));
+}
+
+/// Every creature the import knows by the original's number (E24 M5 T4c, design §5.29): a
+/// monster of each number a map file holds (to 144, `writer::CREATURE_COUNT`) on a map, imported
+/// to its handle (the packs' order: AB's from 123), numbered back as its number; the war machines
+/// (handles 118 to 122) by their keys; every handle of the packs numbered, one past them none.
+#[test]
+fn every_creature_by_the_original_s_number() {
+    // The numbers no creature has: the original's unused 122, 124, 126, 128.
+    let known: Vec<u16> = (0..writer::CREATURE_COUNT)
+        .filter(|n| ![122, 124, 126, 128].contains(n))
+        .collect();
+    let at = |i: usize| (2 + i % 16 * 2, 2 + i / 16 * 3);
+    let mut text = String::from(
+        "size = 36\nterrain = \"grass\"\nheroes = [{ at = [1, 34] }, { at = [34, 34], owner = 1 }]\nview = [0, 0, 0]\n",
+    );
+    for (i, n) in known.iter().enumerate() {
+        let (x, y) = at(i);
+        text.push_str(&format!(
+            "[[objects]]\ndef = \"M{n:03}.def\"\nat = [{x}, {y}]\nmonster = {{ count = 1, disposition = 0 }}\n"
+        ));
+    }
+    let bytes = map_file(&text);
+    let raw = h3_map::read(&bytes, &Limits::default()).unwrap();
+    let setup = h3_map::import(&raw, rules()).unwrap();
+    let creatures = engine::Creatures::new(rules());
+    let numbered: Vec<(u16, u16)> = setup
+        .map
+        .objects
+        .iter()
+        .filter_map(|o| {
+            let handle = o.monster.as_ref()?.creature?.raw();
+            let i = (0..known.len())
+                .find(|&i| at(i) == (usize::from(o.anchor.x), usize::from(o.anchor.y)))?;
+            Some((known[i], creatures.number(handle)))
+        })
+        .collect();
+    assert_eq!(numbered.len(), known.len());
+    for (number, numbered) in numbered {
+        assert_eq!(numbered, number);
+    }
+    let count = u16::try_from(rules().core().creature_count()).unwrap();
+    assert!((0..count).all(|h| creatures.number(h) != engine::NONE));
+    assert_eq!(creatures.number(count), engine::NONE);
+    let machines = [
+        "base:catapult",
+        "base:ballista",
+        "base:first_aid_tent",
+        "base:ammo_cart",
+        "base:arrow_tower",
+    ]
+    .map(handle);
+    assert_eq!(machines, [118, 119, 120, 121, 122]);
+    assert_eq!(
+        machines.map(|h| creatures.number(h)),
+        [145, 146, 147, 148, 149]
+    );
+    // The handles past the original's numbers.
+    let handles = ["ab:pixie", "ab:peasant"].map(handle);
+    assert_eq!(handles, [123, 140]);
+    assert_eq!(handles.map(|h| creatures.number(h)), [118, 139]);
+}
+
+/// A start's creatures by the original's numbers (E24 M5 T4c, design §5.29): a hero's army, a
+/// mine's guards, a random monster's picture and class (the mouse-over's hint by it).
+#[test]
+fn a_start_s_creatures_by_the_original_s_numbers() {
+    use h3_protocol::wire::game::ArmyStack;
+    let g = hover_game();
+    let mut o = g.observation.clone();
+    let [peasant, pixie] = ["ab:peasant", "ab:pixie"].map(handle);
+    let viewer = o.adventure.viewer;
+    let hero = o
+        .adventure
+        .heroes
+        .iter_mut()
+        .find(|h| h.owner == viewer)
+        .unwrap();
+    hero.own.as_mut().unwrap().army = vec![
+        ArmyStack {
+            slot: 0,
+            creature: peasant,
+            count: 10,
+        },
+        ArmyStack {
+            slot: 1,
+            creature: pixie,
+            count: 5,
+        },
+    ];
+    let ore = object_at(&g, "hv53.def", [10, 16]);
+    view_of(&g, &mut o, ore).guards = Some(Guards {
+        creature: Some(peasant),
+        count_word: 0,
+        army: None,
+    });
+    let monster = object_at(&g, "AVWmrnd0.def", [13, 16]);
+    view_of(&g, &mut o, monster)
+        .monster
+        .as_mut()
+        .unwrap()
+        .creature = pixie;
+    let start = start(&g, &o).unwrap();
+    let t = &start.table;
+    let army: Vec<Vec<i64>> = t["status"]["army"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(numbers)
+        .collect();
+    assert_eq!(army[..3], [vec![139, 10], vec![118, 5], vec![-1, 0]]);
+    let mine = t["hover"]["mines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r.as_array().unwrap()[0] == Value::Integer(i64::try_from(ore).unwrap()))
+        .unwrap();
+    assert_eq!(
+        mine[2],
+        Value::Array(vec![Value::Array(vec![139.into(), 1.into()])])
+    );
+    assert_eq!(
+        numbers(&t["classes"].as_array().unwrap()[monster]),
+        [54, 118]
+    );
+    assert_eq!(
+        t["defs"].as_array().unwrap()[monster].as_str(),
+        Some("M118.def")
+    );
+}
+
+/// A visit's events with their creatures by the original's numbers (E24 M5 T4c, design §5.29):
+/// the stacks a hero's army and its dialog tell, the creatures joined, refused and none to
+/// recruit, the command's and an answer's; every other event the record's.
+#[test]
+fn a_visit_s_creatures_by_the_original_s_numbers() {
+    use h3_protocol::wire::game::{
+        AdventureCommand, AdventureEvent, Answer, ArmyRef, ArmySlot, ArmyStack, Consent,
+        GameCommand, GameEvent, Pos,
+    };
+    let g = game();
+    let red = g
+        .observation
+        .adventure
+        .heroes
+        .iter()
+        .find(|h| h.owner == 0)
+        .unwrap()
+        .id;
+    let [peasant, pixie, ballista] = ["ab:peasant", "ab:pixie", "base:ballista"].map(handle);
+    let stack = |creature| ArmyStack {
+        slot: 1,
+        creature,
+        count: 4,
+    };
+    let at = ArmySlot {
+        army: ArmyRef::Hero { hero: red },
+        slot: 1,
+    };
+    let joined = |creature| GameEvent::Adventure {
+        event: AdventureEvent::CreaturesJoined {
+            hero: red,
+            creature,
+            count: 4,
+        },
+    };
+    let anchor = Pos {
+        x: 11,
+        y: 10,
+        level: 0,
+    };
+    let walked = |c: [u16; 4]| {
+        vec![
+            GameEvent::StackChanged {
+                player: 0,
+                at,
+                stack: Some(stack(c[0])),
+            },
+            GameEvent::StackChanged {
+                player: 0,
+                at,
+                stack: None,
+            },
+            GameEvent::Adventure {
+                event: AdventureEvent::JoinRefused {
+                    hero: red,
+                    creature: c[1],
+                    count: 4,
+                },
+            },
+            GameEvent::Adventure {
+                event: AdventureEvent::NoneToRecruit {
+                    object_type: 7,
+                    anchor,
+                    creature: c[2],
+                },
+            },
+            GameEvent::CreaturesRaised {
+                player: 0,
+                hero: red,
+                creature: c[3],
+                count: 4,
+            },
+        ]
+    };
+    let answered = |c: [u16; 2]| {
+        vec![
+            GameEvent::ArmyDialogOpened {
+                player: 0,
+                hero: red,
+                stack: stack(c[0]),
+            },
+            joined(c[1]),
+        ]
+    };
+    let record = text(
+        &g.header,
+        &[
+            snapshot(&g.observation),
+            accepted(GameCommand::Adventure {
+                command: AdventureCommand::MoveHero {
+                    hero: red,
+                    path: vec![anchor],
+                },
+            }),
+            events(walked([peasant, pixie, ballista, peasant])),
+            accepted(GameCommand::Answer {
+                answer: Answer::Offer {
+                    consent: Consent::Accept,
+                },
+            }),
+            events(answered([pixie, peasant])),
+        ],
+    );
+    let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
+    let played = engine::played(&loaded, &g.art, rules()).unwrap();
+    let [visit] = &played.visits[..] else {
+        panic!("one visit: {:?}", played.visits);
+    };
+    // A creature raised is no reading of a visit's: the record's handle.
+    assert_eq!(visit.events, walked([139, 118, 146, peasant]));
+    assert_eq!(visit.answers[0].1, answered([118, 139]));
+    let gain = engine::visits::gain(&visit.events);
+    assert_eq!(gain.army[1].map(|s| s.creature), Some(139));
 }
 
 /// A message of Red's command `command` accepted.

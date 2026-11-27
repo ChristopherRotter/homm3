@@ -61,7 +61,7 @@ use h3_protocol::wire::game::{
 use h3_protocol::wire::{ServerMessage, WireU64};
 use toml::{Table, Value};
 
-use super::{Loaded, Refused, int, panels, row};
+use super::{Creatures, Loaded, Refused, int, panels, row};
 use crate::art::MapArt;
 use crate::levels::{LevelUp, Offer};
 use crate::live::{Facing, LiveBoat};
@@ -309,9 +309,10 @@ pub struct Visit {
     /// The visit's level-ups (R2-3: a `LevelUpOpened` or a `LevelGained` without one while the
     /// visit's events are read, its battle's end's too), their places among [`Played::levels`].
     pub levels: Vec<usize>,
-    /// The command's events.
+    /// The command's events, the creatures the visit's readings name by the original's numbers
+    /// (E24 M5 T4c, `Creatures::event`; every other one the record's handle).
     pub events: Vec<GameEvent>,
-    /// The answers after it, in order, each with its events.
+    /// The answers after it, in order, each with its events (numbered as [`Visit::events`]).
     pub answers: Vec<(Answer, Vec<GameEvent>)>,
     /// The tiles each answer's `GameReveal` explored for the viewer, by the answers' order (E24
     /// M5 T4c, design §5.29: a Cartographer's map), in the view's order.
@@ -545,10 +546,12 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                 }
             }
             ServerMessage::GameEvents { n, events } => {
+                // A visit's events, their creatures by the original's numbers (E24 M5 T4c).
                 if let Some(visit) = visits.last_mut().filter(|_| visiting) {
+                    let numbered = events.iter().map(|e| loaded.creatures.event(e));
                     match visit.answers.last_mut() {
-                        Some((_, after)) => after.extend(events.iter().cloned()),
-                        None => visit.events.extend(events.iter().cloned()),
+                        Some((_, after)) => after.extend(numbered),
+                        None => visit.events.extend(numbered),
                     }
                 }
                 // The viewer's turn's start (E24 M4 T4b2): its table once the batch is folded (the
@@ -1235,7 +1238,8 @@ fn computer_turn(
 ) -> Value {
     let mut table = Table::new();
     let picks = loaded.live.as_ref().and_then(|l| l.picks);
-    panels::insert(&mut table, observation, (&loaded.raw, picks), art, rules);
+    let numbered = (rules, &loaded.creatures);
+    panels::insert(&mut table, observation, (&loaded.raw, picks), art, numbered);
     table.remove("realm");
     table.remove("chosen");
     // stub: MCL-Q43 (the computer's heroes' points and kind 5's value: none told)
@@ -1261,8 +1265,11 @@ fn computer_turn(
     table.insert("at".to_string(), Value::Integer(0));
     table.insert("player".to_string(), Value::Integer(i64::from(colour)));
     table.insert("status".to_string(), Value::Table(status));
-    table.insert("week".to_string(), week_calendar(week));
-    table.insert("month".to_string(), month_calendar(month));
+    table.insert("week".to_string(), week_calendar(week, &loaded.creatures));
+    table.insert(
+        "month".to_string(),
+        month_calendar(month, &loaded.creatures),
+    );
     Value::Table(table)
 }
 
@@ -1278,7 +1285,8 @@ fn turn(
     // The panels' kingdom; their status window, kingdom's window and choices are the start's.
     let mut table = Table::new();
     let picks = loaded.live.as_ref().and_then(|l| l.picks);
-    panels::insert(&mut table, observation, (&loaded.raw, picks), art, rules);
+    let numbered = (rules, &loaded.creatures);
+    panels::insert(&mut table, observation, (&loaded.raw, picks), art, numbered);
     table.remove("realm");
     table.remove("chosen");
     let colour = observation
@@ -1291,35 +1299,40 @@ fn turn(
     table.insert("at".to_string(), Value::Integer(0));
     table.insert("player".to_string(), Value::Integer(colour));
     table.insert("status".to_string(), Value::Table(status));
-    table.insert("week".to_string(), week_calendar(week));
-    table.insert("month".to_string(), month_calendar(month));
+    table.insert("week".to_string(), week_calendar(week, &loaded.creatures));
+    table.insert(
+        "month".to_string(),
+        month_calendar(month, &loaded.creatures),
+    );
     Value::Table(table)
 }
 
 /// A week's `[kind, name or creature]` (`crate::live::Calendar`): a normal one's name the
 /// client's (MCL-Q40 (b)), a building's week the Deity's (kind 2; since E24 M5 T4c, design §5.29,
-/// with the engine's creatures and growth, `[2, creature, upgrade, bonus]`, −1 none).
-fn week_calendar((n, kind): (u32, Week)) -> Value {
+/// with the engine's creatures and growth, `[2, creature, upgrade, bonus]`, −1 none); a creature
+/// by the original's number (`creatures`, E24 M5 T4c).
+fn week_calendar((n, kind): (u32, Week), creatures: &Creatures) -> Value {
+    let number = |c: u16| i64::from(creatures.number(c));
     match kind {
         // stub: MCL-Q40 (a normal week's name: the client's)
         Week::Normal {} => row(&[0, name(n, WEEK_NAMES)]),
-        Week::Creature { creature } => row(&[1, i64::from(creature)]),
+        Week::Creature { creature } => row(&[1, number(creature)]),
         Week::Of {
             creatures: [first, second],
             bonus,
         } => {
-            let creature = |c: Option<u16>| c.map_or(-1, i64::from);
+            let creature = |c: Option<u16>| c.map_or(-1, number);
             row(&[2, creature(first), creature(second), i64::from(bonus)])
         }
     }
 }
 
 /// A month's `[kind, name or creature]` (as [`week_calendar`]; the Plague kind 2).
-fn month_calendar((n, kind): (u32, Month)) -> Value {
+fn month_calendar((n, kind): (u32, Month), creatures: &Creatures) -> Value {
     match kind {
         // stub: MCL-Q40 (a normal month's name: the client's)
         Month::Normal {} => row(&[0, name(n, MONTH_NAMES)]),
-        Month::Creature { creature } => row(&[1, i64::from(creature)]),
+        Month::Creature { creature } => row(&[1, i64::from(creatures.number(creature))]),
         Month::Plague {} => row(&[2, 0]),
     }
 }
