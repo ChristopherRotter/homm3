@@ -367,6 +367,40 @@ gate checks that every change is told.
   transfer's recipient alone, `BoatBuilt` by the fog's rules, `StackChanged` and `HeroChanged` to
   the owner and to the viewers who see the army or the hero. The fold gate covers each.
 
+### The teams and the game's end (E10 increment 1)
+
+ADR-0016 points 1, 4, 5 and 6, ADR-0017 points 1, 2, 3, 6 and 8, ADR-0028 point 6 (E10 decisions
+2, 9 to 19; the design note `epics/E10-design.md` §1 to §16; rules GAM-TEM-001 to -004, GAM-END-001
+to -008). The build tasks E10 T3 to T6 implement it, each with its view tests; the fold gate
+checks that every change is told.
+
+- **The teams come from the setup and never change:** no command sets a team (no diplomacy in
+  play); the build refuses teams that are not dense (`GameSetupError::Team`). What a team shares is
+  its members' alone: the explored layer is the team's, a viewer sees a hero, town or garrison of
+  its team at the popups' top level. Not shared, each player's own: its treasury, the border
+  gates' keys, its turn, its decisions, its days without a town.
+- **An ally's things are validated against the trusted actor:** at an ally's hero the meeting
+  allows gifts only (the visitor's stack into an empty slot, its artifact into an empty place;
+  nothing taken, none of the ally's settings changed; each refusal typed, `AllyHero`, changing
+  nothing); at an ally's town the trades are the visitor's (its treasury, its hero), building and
+  recruiting the owner's alone; an ally's dwelling's hire dialog is read-only.
+- **The hand-over is the host's alone:** `SystemCommand::HandOver { player }` is a system command
+  (ADR-0017 point 2), never a player's; refused for a defeated player (`Defeated`) or a computer
+  (`NotHuman`), changing nothing. No player command removes a player; the server maps a resign or
+  a dropped seat to the hand-over.
+- **A player's days are its own:** its days without a town are in its own view only (`DaysLeft`
+  and `LastTownLost` told to it alone); its team, its defeat and whether it is human are public,
+  as the game's result is.
+- **A defeated player never acts again:** its commands are refused (`NotYourTurn`), a system
+  command naming it `Defeated`; it leaves every loop over players (the turn order, the income, the
+  taverns, the Thieves' Guild, the market's recipients), so no transfer reaches it.
+- **Every command is refused after the end:** once the result is set every command and system
+  command is refused (`GameOver`) with the state untouched, `legal_commands` is empty and no day
+  or turn advances; the env, the replays and the server stop at a final state.
+- **Events:** `PlayerDefeated`, `PlayerHandedOver` and `GameOver` to every player;
+  `ObjectFreed` to the players that see the object and to its old owner; a defeated player's
+  heroes' `HeroRemoved` and boats' `BoatRemoved` by the fog's rules. The fold gate covers each.
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).

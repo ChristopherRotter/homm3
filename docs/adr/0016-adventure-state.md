@@ -204,6 +204,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      written (the marks change only at the build and at each month's draw, the stock also at a
      purchase). The town lane's code lives in `h3-adventure`'s `src/town*`; the fields and the hash
      are the adventure lane's (`cross-lane`). A loaded game keeps them (the state is the save).
+   - **E10's increment 1** (the teams and the game's end; E10 decisions 2, 10; design note
+     `E10-design.md` §2, §3): the **teams** (a team per player, from the setup) are static: in
+     the shared static part, hashed once; `AdventureState::allied(a, b)` reads them (a player
+     with itself included). The explored layers are kept **per team** (point 5).
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -1070,6 +1074,18 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    re-cast free and without effect, a cast aboard refused (A-51, E15-11); the flight through the
    unexplored at the hidden truth's prices (A-13, E15-13); no path over hidden water for a
    water-walker (D-78, E15-14); a worn scroll's spell cast without a book (D-79, E15-15).
+   - **E10's increment 1** (the teams and a defeated player's objects; E10 decisions 15 to 17;
+     design note `E10-design.md` §4, §5, §7, §11): "a team is one player" ends; every rule naming
+     the team reads the teams (an ally's ownable not flagged, a mine's Leave Guards its owner's
+     alone, an ally's dwelling's dialog read-only, an ally's Shipyard's boat, a team's garrison
+     exchanged and passed, the visit marks the team's, a monolith's exit holding a hero of the
+     team no candidate). A step toward a hero of the team **meets** it (ADR-0017 point 6), an
+     enemy's is a battle as before. A town of the team is entered, never besieged; the siege of a
+     town whose visitor is the owner's ally follows the original as read by E10 T3c (no longer a
+     refusal). A **defeated player's** Shipyards, mines, Lighthouses, dwellings and garrisons
+     become neutral (a mine's guards and a garrison's army kept; ADV-OWN-004), each told as
+     freed, and its heroes leave the map (a boat with them), by an infallible step the game calls
+     (ADR-0017 point 1).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -1103,6 +1119,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    (increment 11's jump; batch E15's E15-8); under `strict-fixed` a door's failed cast onto a hidden
    tile, and every Scuttle Boat cast onto a hidden tile, reveal **that tile** for the caster's team
    (E08 decisions 399, 402); under `faithful` neither reveals, as the original's (E15-8, E15-10).
+   **E10's increment 1** (GAM-TEM-002; design note `E10-design.md` §3): **each team has an
+   explored layer**: every reveal (a step's, a placement's, a flag's, a town's, a jump's, a
+   door's, the Cartographer's, `strict-fixed`'s new day's, the failed casts' tiles) writes its
+   team's, every hide clears every team's but the town owner's; a viewer reads its team's, the
+   fringe its team's. "Shared vision of allies comes with teams" is built.
 6. **Information hiding.** `observe` and `project` take the viewer (ADR-0004 point 6). An
    event's visibility is resolved when it is emitted, with the state at hand: it carries the
    players who may see it (a move per step, since the fog changes during it), so `project`
@@ -1249,6 +1270,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    beside the artifact sale's places; no event tells anyone else that a purchase emptied an entry.
    The boat at a town's spot is the map's view (fog as ever). `docs/06-security.md` lists it (E09
    T55a: the stock's projection, the town commands' validation lines).
+   **E10's increment 1** (GAM-TEM-004; design note `E10-design.md` §6, §11): a viewer sees a
+   hero of its team at the popup's top level (the exact army, as Visions' level 2), a town and a
+   garrison of its team at level 3, a mine of its team's resource; a player whose hero enters an
+   ally's town learns its buildings at that visit (built). A freed ownable is told to the players
+   that see it and to its old owner. `docs/06-security.md` lists it (E10 T2).
 
 ## Consequences
 
@@ -1457,6 +1483,8 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   (explored tiles only); a failed door revealing nothing; Summon Boat by VCMI's whole rule (any
   owner, no last boat first: refuted by batch E15's E15-9b); the door's window with the extra row
   kept; the Market of Time as an inert blocker with an entrance (no kind).
+- E10 increment 1 (ADV-Q65): an explored layer per player with each reveal written to every
+  member (the original's bits; the same views with fixed teams, n writes and n layers hashed).
 
 ## Revision history
 
@@ -1628,3 +1656,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   increment 15 as built: the heroes' day spells as one block by hero id (point 1's line, point
   3's paragraph); each hero on the map's place in its owner's list of heroes (point 3). Drafted in
   E08 T141a (`docs/lanes/adventure/adr-drafts/0016-0017-hero-list.md`, deleted).
+- 2026-11-27 (E10 T2 `shared/`; E10 decisions 2, 10, 15 to 17, ADV-Q65): points 1, 4, 5 and 6
+  amended for E10 increment 1, the teams and a defeated player's objects; an alternative. Drafted
+  in E10 T1b (design note `E10-design.md` §2 to §7, §11;
+  `docs/lanes/adventure/adr-drafts/0016-e10-increment-1.md`, deleted); as built at T7.
