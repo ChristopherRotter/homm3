@@ -83,6 +83,17 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
+- 2026-11-28 (E09 T59b1, `town/e09-t59b1`, `cross-lane` with the user's consent, E09 decision
+  228; **in your paths, for your review; adventure action encoding v25 taken**): `legal_commands`
+  lists a town's Magic University's openings (`TownCommand::University { town, hero }`,
+  TWN-UNI-001: for its visitor, then its garrison hero, the actor's, where a skill taught has a slot
+  open and the treasury holds the price) after its boat; `adventure/action.rs` appends
+  **`TOWN_UNIVERSITY` (171) and its next** (`TOWN_STUDENTS` 2: the town's visitor, then its
+  garrison hero, any player's, by the town's entrance, building 0; `ENTRY_COUNT` 173); the
+  University's purchases stay E08's `UNIVERSITY_SLOTS`. `UniversityVisit` names its place (`place`,
+  the game state hash v42). The town map's games are unchanged (no University stands there); a new
+  test (`tests/towns.rs`) makes its random town a Conflux for the entries. The replay format is
+  v30.
 - 2026-11-27 (E09 T59a, `town/e09-t59a`, `cross-lane` with the user's consent, E09 decision
   227; **in your paths, for your review; adventure action encoding v24 taken**): `legal_commands`
   lists a town's war machines' purchases (`TownCommand::BuyWarMachine`, TWN-SMT-001, each standing

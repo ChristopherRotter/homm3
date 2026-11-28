@@ -58,38 +58,38 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x70d26ad83bbc713e",
-    "0xa9947a7a24d05f86",
-    "0xfff91ccb4e4f0461",
-    "0x6dbc49b42a96493e",
-    "0xfbbae2c1afff3629",
-    "0xc40beba63b80b1eb",
-    "0xb783bc4ecd202d27",
-    "0xd73fe668f5ff187d",
-    "0x678611ec29117146",
-    "0x316416006723c8fb",
-    "0xb7304564a03e0c04",
-    "0x77768ef8e2149644",
-    "0xb4354c035179dc45",
-    "0x0d91df68df393d00",
-    "0x31cb23f7f38f3763",
-    "0x11055b649c216155",
-    "0x8c5704e1ffe1ea68",
-    "0xd8bb388d8286827f",
-    "0xe8f082e84d460847",
-    "0x3c6f28c7e83156a9",
-    "0x4f58b4f8518d6dbe",
-    "0xea020cf5f73615c2",
-    "0x51cd3c7062e81249",
-    "0x9db0ce37ee8c98be",
-    "0x655f699515d19a7e",
-    "0xf77487aad9ff5880",
-    "0x9bb8546b82bd425f",
-    "0x6b449076dee7fd73",
+    "0xd8ad00338b092c71",
+    "0xbd62f46876b86391",
+    "0xdc2386e7fe0bdc0e",
+    "0x2b0de896f601c089",
+    "0xe8c0b385aebc2226",
+    "0x59652a4e9bfc895c",
+    "0xc048135e24559318",
+    "0x3c02e72a88cb56cc",
+    "0x2e9a9076a4717fd3",
+    "0x7498fbcbf786cb1e",
+    "0x15a8036447bc0cf5",
+    "0x250c72404b6d422d",
+    "0x2cb62af3ba0fbb58",
+    "0xa46538ba39c11f25",
+    "0xe6de0e09b503f482",
+    "0x72f1c413cc2c5d5c",
+    "0xeebd913c6a237aa9",
+    "0x5141eb18e7f5e92a",
+    "0x3b5f8b66db79e1d2",
+    "0x1cfb76bd977b53b0",
+    "0x5375e2775267bbc3",
+    "0x6590b22755543f0b",
+    "0x0c1adf20064bf1d4",
+    "0xe2febbff8490db3f",
+    "0x1d5afa26c19a927f",
+    "0xd3f7cab7809f9021",
+    "0x7ae87f4d253d491a",
+    "0xf43e64be34d149de",
 ]
 
 [replay]
-format = 29
+format = 30
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -115,7 +115,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 41
+game_state_hash_version = 42
 adventure_state_hash_version = 31
 checkpoint_every = 2
 
@@ -126,7 +126,7 @@ import_version = 30
 
 [result]
 day = 29
-final_hash = "0x60e01c1607993971"
+final_hash = "0x8404c7de368c6fb8"
 
 [[players]]
 colour = 0

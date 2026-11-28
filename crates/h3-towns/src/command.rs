@@ -10,11 +10,13 @@
 //! guild's spells (TWN-GLD-006); since E09 T58a1 the market window opens with the town as its
 //! place ([`crate::check_market`], TWN-MKT-002); since E09 T59a a war machine is bought at the
 //! Blacksmith or the Ballista Yard ([`crate::check_war_machine`], TWN-SMT-001) and a boat built at
-//! the Shipyard ([`crate::check_boat`], TWN-SHY-001). A refused command changes nothing.
+//! the Shipyard ([`crate::check_boat`], TWN-SHY-001); since E09 T59b1 the Magic University opens
+//! for the hero the command names ([`crate::check_university`], TWN-UNI-001). A refused command
+//! changes nothing.
 
 use core::fmt;
 
-use h3_contracts::TownId;
+use h3_contracts::{HeroId, TownId};
 
 use crate::building::BuildingId;
 
@@ -23,7 +25,7 @@ use crate::building::BuildingId;
 /// that the game and the wire match every variant (SRV-Q25; E09 T18b1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 // rule: TWN-BLD-001, TWN-REC-001, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004, TWN-TAV-003
-// rule: TWN-GLD-006, TWN-MKT-002, TWN-SMT-001, TWN-SHY-001
+// rule: TWN-GLD-006, TWN-MKT-002, TWN-SMT-001, TWN-SHY-001, TWN-UNI-001
 pub enum TownCommand {
     /// Builds `building` in `town`, the player's, as its hall offers it ([`crate::buildable`]),
     /// for the part's price (TWN-BLD-001): no hero, no visit, no field trusted but the two ids.
@@ -114,6 +116,20 @@ pub enum TownCommand {
         /// The town.
         town: TownId,
     },
+    /// Opens the Magic University of `town`, the player's, for `hero` (TWN-UNI-001; E09 T59b1,
+    /// design §112, decision 210: the original's Conflux building 21 clicked on the town screen,
+    /// `town_university_open` 0x5D2DA0 running the map's University dialog): E08's University
+    /// decision (GAM-DEC-006) with the town as its place, the part's skills and price
+    /// ([`crate::check_university`]). `hero` is the town's visitor or its garrison hero, the
+    /// player's (decision 207: the original's student, the visitor unless a stack of the upper
+    /// bar is selected, the command's choice). No visit, no movement points, no mark, no field
+    /// trusted but the two ids.
+    University {
+        /// The town.
+        town: TownId,
+        /// The student: the town's visitor or garrison hero.
+        hero: HeroId,
+    },
 }
 
 /// A hero's move between a town's two bars (TWN-ROW-002 to -004; E09 T28a, design §53).
@@ -145,7 +161,8 @@ pub enum TownHeroChange {
 /// [`crate::check_war_machine`] [`Self::UnknownBuilding`], [`Self::NoWarMachine`],
 /// [`Self::NotStanding`], then the game [`Self::NoVisitor`], [`Self::HasWarMachine`] (E09 T59a,
 /// TWN-SMT-001); for a boat [`crate::check_boat`] [`Self::NotStanding`], then the game
-/// [`Self::BoatSpotTaken`] (E09 T59a, TWN-SHY-001).
+/// [`Self::BoatSpotTaken`] (E09 T59a, TWN-SHY-001); for the University [`crate::check_university`]
+/// [`Self::NoUniversity`], then the game [`Self::NotTownHero`] (E09 T59b1, TWN-UNI-001).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TownCommandError {
     /// The town is not in the game's store.
@@ -222,6 +239,11 @@ pub enum TownCommandError {
     /// original builds over it), or the town has none (defensive: a Shipyard stands only where
     /// the town has a spot, TWN-SET-011).
     BoatSpotTaken,
+    /// No Magic University stands in the town (TWN-UNI-001: a building of role `university`).
+    NoUniversity,
+    /// The hero is neither the town's visitor nor its garrison hero, or not the player's
+    /// (TWN-UNI-001).
+    NotTownHero,
 }
 
 impl fmt::Display for TownCommandError {
@@ -260,6 +282,8 @@ impl fmt::Display for TownCommandError {
             Self::NoWarMachine => f.write_str("the building sells no war machine"),
             Self::HasWarMachine => f.write_str("the town's hero has the war machine"),
             Self::BoatSpotTaken => f.write_str("the town's boat spot is taken"),
+            Self::NoUniversity => f.write_str("no Magic University stands in the town"),
+            Self::NotTownHero => f.write_str("the hero is not the player's hero in the town"),
         }
     }
 }
@@ -309,6 +333,8 @@ mod tests {
             TownCommandError::NoWarMachine,
             TownCommandError::HasWarMachine,
             TownCommandError::BoatSpotTaken,
+            TownCommandError::NoUniversity,
+            TownCommandError::NotTownHero,
         ];
         for error in errors {
             assert!(!error.to_string().is_empty(), "{error:?}");
@@ -371,5 +397,11 @@ mod tests {
             town: TownId::new(2),
         };
         assert_ne!(boat, market);
+        // covers: TWN-UNI-001
+        let university = TownCommand::University {
+            town: TownId::new(2),
+            hero: HeroId::new(3),
+        };
+        assert_ne!(university, boat);
     }
 }

@@ -523,3 +523,70 @@ fn a_replay_keeps_the_players_choices_over_the_import() {
         Err(E::Setup(h3_game::GameSetupError::Pick(red)))
     );
 }
+
+/// A town's Magic University by its entrance and its student's entry (E09 T59b1, encoding v25;
+/// TWN-UNI-001): red's random town on the town map made a Conflux with its University (map slot
+/// 18) and its Mage Guild, Valeska moved onto its entrance; her listed opening encodes as the
+/// visitor's [`TOWN_UNIVERSITY`] entry at the entrance, decodes back and is legal by the masks; the
+/// garrison hero's entry decodes to nothing without one, and so do a tile that is no town's
+/// entrance and a building other than 0.
+#[test]
+fn a_university_action_names_its_town_by_the_entrance_and_the_student_by_its_entry() {
+    let rules = &*FAITHFUL;
+    let conflux = rules.core().faction_by_key("ab:conflux").unwrap();
+    let plain = town_setup(rules, 1);
+    let probe = AdventureEnv::new(rules.clone(), plain.clone(), 173, 21).unwrap();
+    let entrance = entrances(probe.state())[1];
+    let mut setup = (*plain).clone();
+    setup.towns[1].faction = h3_towns::TownFaction::Fixed(conflux);
+    setup.towns[1].buildings = h3_towns::BuildingsSetup::Custom {
+        built: [11, 18]
+            .into_iter()
+            .fold(h3_towns::SlotSet::EMPTY, h3_towns::SlotSet::with),
+        forbidden: h3_towns::SlotSet::EMPTY,
+    };
+    let valeska = setup
+        .heroes
+        .iter_mut()
+        .find(|hero| hero.pos == Pos::new(11, 8, 0))
+        .unwrap();
+    valeska.pos = entrance;
+    let env = AdventureEnv::new(rules.clone(), Arc::new(setup), 173, 21).unwrap();
+    let (state, red) = (env.state(), PlayerId::new(0));
+    let town = TownId::new(1);
+    let hero = state.adventure().town_visitor(town).unwrap();
+    let listed = GameCommand::Town(TownCommand::University { town, hero });
+    assert!(
+        legal_commands(state, rules, Actor::Player(red)).contains(&listed),
+        "{:?}",
+        state.towns().get(town)
+    );
+    let gate = town_tile(state, town).unwrap();
+    let action = Action::town_university(gate, 0);
+    assert_eq!(action::encode(state, rules, red, &listed), Some(action));
+    assert_eq!(action::decode(state, rules, red, action), Some(listed));
+    assert!(
+        legal_by_masks(&env, Seat::Player(red), action),
+        "{action:?}"
+    );
+    // No garrison hero: its entry names nothing; neither does another tile or building.
+    let count = u32::try_from(env.tile_count()).unwrap();
+    let elsewhere = (0..count).find(|&t| town_of(state, t).is_none()).unwrap();
+    for none in [
+        Action::town_university(gate, 1),
+        Action::town_university(elsewhere, 0),
+        Action::Adventure(MapAction {
+            entry: TOWN_UNIVERSITY,
+            tile: gate,
+            building: 1,
+        }),
+    ] {
+        assert_eq!(action::decode(state, rules, red, none), None, "{none:?}");
+    }
+    // A hero that is neither of the town's encodes to nothing.
+    let stranger = GameCommand::Town(TownCommand::University {
+        town,
+        hero: h3_contracts::HeroId::new(5),
+    });
+    assert_eq!(action::encode(state, rules, red, &stranger), None);
+}
