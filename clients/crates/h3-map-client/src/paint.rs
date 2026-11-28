@@ -629,7 +629,7 @@ pub fn live_reply(
 /// taken off the map after a win where the battle's end takes it (a monster beaten), the hero
 /// gone after a loss; its result the host's until it hosted the battle. None where the answer
 /// began none.
-// stub: MCL-STUB-9 (an answer's battle's aftermath a monster's: Pandora's Box's rewards after its
+// stub: MCL-STUB-10 (an answer's battle's aftermath a monster's: Pandora's Box's rewards after its
 // guards not shown)
 fn answer_fight(visit: &engine::Visit, nth: usize, object: usize) -> Option<Fight> {
     let Some(engine::visits::Told::Fight {

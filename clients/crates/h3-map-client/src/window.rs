@@ -1866,7 +1866,13 @@ pub(crate) fn window(
                 "{t} ms: the battle's result laid out: {}",
                 fought.as_ref().map_or_else(
                     || "no find of it, the map as folded".to_owned(),
-                    |f| format!("won by {}, {:?}", f.fight.winner, f.fight.after)
+                    |f| {
+                        let army: Vec<_> = f.fight.army.iter().flatten().flatten().collect();
+                        format!(
+                            "won by {}, {:?}, the army {army:?}",
+                            f.fight.winner, f.fight.after
+                        )
+                    }
                 )
             ));
             start.add_battle(asked.battle, fought.as_ref());

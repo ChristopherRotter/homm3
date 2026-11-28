@@ -1028,6 +1028,13 @@ fn a_battle_given_brings_its_finds_and_answers_up_to_it() {
         })
     );
     assert_eq!(host.answer(key(1)), Some(&unfought));
+    // A loop with no host (a record's) brings its finds up all the same.
+    let mut record = as_record("battle-won", vec![record_walk(AT, Some(BATTLE))]);
+    record.finds = vec![battled("battle-won")];
+    let mut l = Loop::start(rules(Bugs::Original), &record).unwrap();
+    l.add_battle(BATTLE, Some(&fought));
+    assert_eq!(l.finds[0].fight, Some(fought.fight.clone()));
+    assert_eq!(l.host, None);
     let mut bare = live("battle-won", record_walk(AT, None), Vec::new());
     bare.host = None;
     bare.add_battle(9, None);

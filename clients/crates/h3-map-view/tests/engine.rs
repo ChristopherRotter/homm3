@@ -5552,6 +5552,18 @@ fn a_live_visit_s_battle_tells_its_fight_before_and_after_its_end() {
         visits::answer_fight(&answered, 1),
         Some(fight(0, false, true))
     );
+    let taken = engine::Visit {
+        battle: Some(engine::Battled {
+            started: 4,
+            ended: vec![removed.clone()],
+            tile: Some(at),
+        }),
+        ..answered.clone()
+    };
+    assert_eq!(
+        visits::answer_fight(&taken, 1),
+        Some(fight(-1, true, false))
+    );
     assert_eq!(visits::answer_fight(&answered, 0), None);
     assert_eq!(visits::answer_fight(&answered, 2), None);
     let not_yet = engine::Visit {
