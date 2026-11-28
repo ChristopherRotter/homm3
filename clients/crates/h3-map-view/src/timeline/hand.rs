@@ -118,8 +118,7 @@ impl Loop {
         // A start at once, the redraws due since run in that millisecond (recorded:
         // `seat-hand-over-late`'s objects stepped at 6 160, the OK's release).
         if until <= t {
-            self.hand_start(t)?;
-            self.idle_message(t);
+            return self.hand_start(t).map(|()| self.idle_message(t));
         }
         Ok(())
     }

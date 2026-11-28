@@ -3974,9 +3974,16 @@ in the human before's colours, a computer's seat between leaving four buttons di
 live part (`Mem.lifted_standing`), a sound run of `sequences.toml` keeping its live part, a
 start's live part kept with its frame at 0 left to the frame check. The nine `seat-*` recorded
 again for them (the disk check's ballast kept by a watcher: a build during a run broke it) and
-moved into `sequences.toml` (`to-record.toml` removed): every frame exact, every sample as
-recorded. **Fixed on the way:** a day's `list` remapped the viewer's choices on another human's
-turn (Red's choice of its hero lost at its next day). **Play** checked under Xvfb (`seq-seat` with
-two humans, four views: Red's start, Blue's, Red's day 2, Blue's day 2): every view's frames read
-back exact, as afresh and as the headless loop's; the covers' screenshots as recorded. New:
+moved into `sequences.toml` (`to-record.toml` removed): every frame exact (213 frames), every
+sample as recorded; `seq-seat-start`'s `view` the first human's own (−5, −4), its live part's
+`frames` −1 read modulo 2³². Seen and built as recorded: move hero stays as it stood at the
+start's step (9) (`panels::STARTED`), the idle step runs after a start at the cover's OK or an
+event's close. **Fixed on the way:** a day's `list` remapped the viewer's choices on another
+human's turn (Red's choice of its hero lost at its next day). **Gates:** `drawn` every other
+situation and sequence the same, the nine recorded; `h3-map-view`'s coverage 0 lines, 0
+regions missed; `check.sh --no-coverage`. **Play** checked under Xvfb (`seq-seat` with
+two humans, four views: Red's start, Blue's, Red's day 2, Blue's day 2; and `seq-seat-ai`, Tan a
+computer between Blue and Red): every view's frames read back exact, as afresh and as the
+headless loop's; the covers' screenshots as recorded (the frame in the human before's colours,
+Red's day-2 cover after Tan's turn with its four buttons disabled). New:
 `MCL-STUB-8` (no timed event's box in play).

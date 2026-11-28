@@ -138,7 +138,7 @@ fn seated(
     }
     start.player = viewer;
     // The mouse-over's facts (the binary's): the viewer's heroes by its list.
-    start.hover = Some(super::computers::hover_of(live));
+    start.hover = Some(computers::hover_of(live));
     start.question = Some(laid("End?", Style::OkCancel));
     start.sound = Some(crate::sound::tests::sound(crate::sound::tests::tiles(
         36,
