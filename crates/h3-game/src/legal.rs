@@ -123,7 +123,8 @@ const LISTED: usize = 16;
 /// University's `Buy` of each slot open for the hero while the treasury can pay its price, in
 /// slot order, then `Leave` (GAM-DEC-006); a hire dialog's `Buy` of the most of each creature in
 /// the source's order whose most is at least 1 (`GameState::hire_mosts`), then `Close`
-/// (GAM-DEC-008, E08 T95b); a map Tavern's `Hire` of each slot whose hire passes, in slot order,
+/// (GAM-DEC-008, E08 T95b; since E10 T3b1 an ally's dwelling's `Close` alone, ADV-DWL-004); a map
+/// Tavern's `Hire` of each slot whose hire passes, in slot order,
 /// then `Close` (GAM-DEC-010, E09 T39a); since E08 T135a (increment 14's design note §18) a
 /// representative answer per action, then `Leave`: a market's trades of one lot, sales of one lot
 /// for the cost resource and purchases in it (GAM-DEC-011, `GameState::market_answers`: no
@@ -174,6 +175,11 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
             .collect();
     }
     if let Some(dialog) = state.hire_dialog(player) {
+        // rule: ADV-DWL-004
+        // E10 T3b1: an ally's dwelling's dialog is read-only, `Close` alone.
+        if state.adventure().hire_read_only(dialog) {
+            return vec![Answer::Hire(HireAnswer::Close)];
+        }
         return state
             .hire_mosts(rules, player, dialog)
             .into_iter()
@@ -435,13 +441,34 @@ pub fn legal_management(
             .map(|p| ArtifactPlace::Worn(Position(p)))
             .chain((0..details.backpack.len() + extra).map(ArtifactPlace::Backpack))
     };
-    // A meeting's other hero takes artifacts too (HER-ART-005).
-    let receiver = other.and_then(|id| state.own_details(player, id).ok().map(|d| (id, d)));
-    let targets = places(details, 1).map(|to| (hero, to, None)).chain(
-        receiver
-            .into_iter()
-            .flat_map(|(id, other)| places(other, 1).map(move |to| (id, to, Some(other)))),
-    );
+    // A meeting's other hero takes artifacts too (HER-ART-005); since E10 T3b1 an ally's into
+    // its empty positions and its backpack alone (GAM-TEM-003), and nothing is taken from it: its
+    // own commands are none (`own_details` refuses it above).
+    let ally = state.meeting_ally(player, together);
+    let receiver = other.and_then(|id| {
+        let details = match ally {
+            Some(ally) if ally == id => state.hero(ally),
+            _ => state.own_details(player, id).ok(),
+        };
+        details.map(|d| (id, d))
+    });
+    let gift = move |id: HeroId, other: &HeroDetails, to: ArtifactPlace| {
+        ally != Some(id)
+            || match to {
+                ArtifactPlace::Worn(Position(at)) => {
+                    other.worn.get(at).is_some_and(Option::is_none)
+                }
+                ArtifactPlace::Backpack(_) => true,
+            }
+    };
+    let targets =
+        places(details, 1)
+            .map(|to| (hero, to, None))
+            .chain(receiver.into_iter().flat_map(move |(id, other)| {
+                places(other, 1)
+                    .filter(move |&to| gift(id, other, to))
+                    .map(move |to| (id, to, Some(other)))
+            }));
     let moves = places(details, 0)
         .flat_map(|from| {
             targets

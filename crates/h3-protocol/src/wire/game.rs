@@ -1127,8 +1127,58 @@ pub struct HeroInfo {
     pub id: u16,
     /// Its hero type's handle: identity and class, public as the original's portrait.
     pub hero_type: u16,
-    /// Its details, for its owner only.
+    /// Its details, for its owner only; since v88 also for the visitor's owner while its meeting
+    /// with this hero, an ally's, is open (GAM-TEM-003).
     pub details: Option<HeroDetails>,
+    /// Its army by slot, for the visitor's owner while its meeting with this hero, an ally's, is
+    /// open (GAM-TEM-003, v88); none otherwise (an own hero's is [`MapHero::own`]'s).
+    pub army: Option<Vec<ArmyStack>>,
+}
+
+/// A part of the meeting's ally's hero as the visitor's owner sees it while the meeting is open
+/// (`h3_game::MeetingPart`; GAM-TEM-003, protocol v88): told after its `MeetingOpened`, in this
+/// order, so that they fold into the hero's [`HeroInfo`] details and army whole; the meeting's
+/// close ends that view.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MeetingPart {
+    /// First, once: what no list holds ([`HeroDetails`]' level, experience, base primary skills,
+    /// spell points, offered levels and how many worn positions).
+    Head {
+        /// Its level.
+        level: u8,
+        /// Its experience points.
+        experience: u32,
+        /// Its base primary skills: attack, defense, power, knowledge.
+        primary: [u8; 4],
+        /// Its spell points.
+        mana: u16,
+        /// The levels last offered.
+        offered: OfferLevels,
+        /// The positions' count.
+        positions: u8,
+    },
+    /// A stack of its army, by slot.
+    Stack {
+        /// The stack.
+        stack: ArmyStack,
+    },
+    /// A secondary skill with its level, in order.
+    Skill {
+        /// The skill and its level.
+        skill: SkillLevel,
+    },
+    /// An artifact at its place: the worn ones by position, then the backpack's in order.
+    Artifact {
+        /// Where it is.
+        place: ArtifactPlace,
+        /// The artifact.
+        artifact: Artifact,
+    },
+    /// A spell it has learned, by handle, in its details' order.
+    Spell {
+        /// The spell.
+        spell: u16,
+    },
 }
 
 /// The lasting details of a hero (ADR-0013 point 1), its base values: what artifacts and the

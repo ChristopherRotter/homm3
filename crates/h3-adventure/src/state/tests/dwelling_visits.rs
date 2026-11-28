@@ -151,8 +151,8 @@ fn an_own_dwelling_asks_the_hire_question_without_a_flag_or_its_guards() {
 fn an_ally_s_dwelling_asks_the_hire_question_without_a_flag_or_its_guards() {
     // Blue on red's team (E10 T3a; E10 design note §4, survey `E10-teams.md` §6): blue's level-1
     // dwelling and its guarded level-5 one ask red's hero the hire question at once, no guards'
-    // question, no flag, nothing told; each stays blue's with its guards. (The dialog read-only
-    // for an ally: T3b.)
+    // question, no flag, nothing told; each stays blue's with its guards. (Its dialog opens
+    // read-only for an ally, E10 T3b1: `hiring.rs`.)
     let rules = rules();
     for k in ["t:d1", "t:d5"] {
         let setup = allies(setup(vec![at_entrance(&rules, k, Some(BLUE))]));

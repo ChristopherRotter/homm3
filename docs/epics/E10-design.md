@@ -69,8 +69,11 @@ ADV-GAR-003, -004, ADV-SHY-003, ADV-MIN-002, ADV-BNK-003, ADV-TEL-003; survey §
 "the player alone until E10" and are re-tested with allies on batch E10's map (E08 T89a's
 `teams`): an ally's mine, Lighthouse, dwelling, Shipyard or garrison is not flagged; a mine's
 Leave Guards is the owner's alone; an ally's dwelling opens the hire dialog **read-only**, `Close`
-alone (batch E10's E10-6; ADR-0017 point 6 already says it, built now: `dwellings.rs`' "no
-read-only flag yet"); an ally's Shipyard offers its boat; a garrison of the team is exchanged and
+alone (batch E10's E10-6; ADR-0017 point 6 already says it; built by E10 T3b1: whatever its
+levels, nothing free, the original's 0x4ABAC4 read; the flag not stored but read from the
+source's owner, `AdventureState::hire_read_only`, so no hash moved and the wire's `Hire`, which
+the clients build, gains no field: a viewer reads it from the dwelling's owner); an ally's
+Shipyard offers its boat; a garrison of the team is exchanged and
 passed short of the destination without a visit (`step_garrison_pass` 0x48154B); a visit's marks
 (the tiles' visited bits, the kinds, the banks', the obelisks') are the team's; a monolith's exit
 holding a hero of the team is no candidate. **Not shared** (survey §6): treasuries, the border
@@ -92,6 +95,18 @@ gates' keys, the turn, a town's recruitment and buildings.
   refusal (`GameCommandError::AllyHero`, *agent's call* for the name), changing nothing.
 - The ally is told its hero's changes as its own (`StackChanged`, `HeroChanged` to the owner), not
   the meeting. The system actor's default answer stays `Close`.
+- **As built (E10 T3b1, 2026-11-28):** the user's call at T3b's start (decision 20): while the
+  meeting is open the visitor's owner sees the ally's hero's details whole and its army, as the
+  exchange screen's other hero (`HeroInfo::details` and the new `HeroInfo::army`); after
+  `MeetingOpened` the hero is told part by part (`GameEvent::MeetingPartSeen`, `MeetingPart`:
+  the head, the stacks, the skills, the worn artifacts, the backpack's, the spells: the events
+  are `Copy`, as the hire's parts); each gift's change is told to the visitor's owner too; the
+  close ends the view. *Agent's calls:* the adventure holds the ally's hero as a bar not the
+  player's (`Held::Ally`, a command's target only), so the one owner rule (ADV-GAR-003) makes a
+  gift an empty slot's and a split into one a gift (the original's split dialog not read); the
+  game's `check_gift` refuses the rest with `AllyHero(hero)` before the adventure;
+  `docs/06-security.md`'s line on the view waits for T7's `shared/` amendments. Protocol v88
+  (`h3-protocol`, `cross-lane`); no state hash moved (the decision holds nothing new).
 
 ### 6. The views for the team (GAM-TEM-004, amends ADV-FOG-006, ADV-GAR-006, the town's view)
 

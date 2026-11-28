@@ -1063,6 +1063,114 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
     assert_eq!(v, before);
 }
 
+/// A meeting with an ally's hero (E10 T3b1, GAM-TEM-003, v88) folds into the visitor's view as
+/// `observe` shows it while it is open: the hero's parts make its details and army, a gift's
+/// slot and a change of its details follow, the meeting's close ends the view of them.
+#[test]
+fn a_meeting_s_ally_hero_folds_its_parts_until_the_meeting_closes() {
+    use alloc::sync::Arc;
+    use h3_kernel::handle::Handle;
+
+    let mut v = view();
+    // Hero 9 (type 70) is not the viewer's: no details, no army.
+    let at = v.heroes.iter().position(|info| info.id == 9).unwrap();
+    assert_eq!((&v.heroes[at].details, &v.heroes[at].army), (&None, &None));
+    let details = h3_heroes::HeroDetails {
+        hero_type: Handle::from_raw(70),
+        level: 3,
+        experience: 1200,
+        offered: h3_heroes::OfferLevels {
+            wisdom: 2,
+            school: 3,
+        },
+        primary: [1, 2, 1, 1],
+        skills: vec![(Handle::from_raw(7), 1)],
+        worn: vec![None, Some(Handle::from_raw(40).into()), None],
+        backpack: vec![Handle::from_raw(55).into(), Handle::from_raw(56).into()],
+        spells: vec![Handle::from_raw(10)],
+        mana: 8,
+    };
+    let army = vec![h3_contracts::ArmyStack {
+        slot: 1,
+        creature: Handle::from_raw(5),
+        count: 4,
+    }];
+    let viewer = PlayerId::new(1);
+    let (hero, heroes) = (HeroId::new(9), [HeroId::new(4), HeroId::new(9)]);
+    let told: Vec<h3_game::GameEvent> = core::iter::once(h3_game::GameEvent::MeetingOpened {
+        player: viewer,
+        heroes,
+    })
+    .chain(h3_game::MeetingPart::of(&army, &details).map(|part| {
+        h3_game::GameEvent::MeetingPartSeen {
+            player: viewer,
+            hero,
+            part,
+        }
+    }))
+    .collect();
+    fold(&mut v, &events(&told, Viewer::Player(viewer)));
+    // As `observe` shows it: the engine's view with hero 9's details and army, on the wire.
+    let mut shown = super::game::every_game_part(None, h3_game::MonthKind::Normal);
+    let info = shown
+        .heroes
+        .iter_mut()
+        .find(|info| info.id == hero)
+        .unwrap();
+    info.details = Some(Arc::new(details));
+    info.army = Some(army);
+    let expected = crate::map::game::observation(&shown).heroes[at].clone();
+    assert_eq!(v.heroes[at], expected);
+    assert_eq!(v.decision, Some(Decision::Meeting { heroes: [4, 9] }));
+    // A gift's slot, a change of its details.
+    let stack = ArmyStack {
+        slot: 2,
+        creature: 6,
+        count: 3,
+    };
+    fold(
+        &mut v,
+        &[
+            GameEvent::StackChanged {
+                player: 1,
+                at: ArmySlot {
+                    army: ArmyRef::Hero { hero: 9 },
+                    slot: 2,
+                },
+                stack: Some(stack),
+            },
+            GameEvent::HeroChanged {
+                player: 1,
+                hero: 9,
+                change: HeroChange::LearnSpell { spell: 12 },
+            },
+        ],
+    );
+    let met = &v.heroes[at];
+    assert_eq!(met.army.as_ref().unwrap().last(), Some(&stack));
+    assert_eq!(met.details.as_ref().unwrap().spells, [10, 12]);
+    // A stray part for a hero the viewer does not see changes nothing.
+    let before = v.clone();
+    fold(
+        &mut v,
+        &[GameEvent::MeetingPartSeen {
+            player: 1,
+            hero: 77,
+            part: MeetingPart::Spell { spell: 3 },
+        }],
+    );
+    assert_eq!(v, before);
+    // Closed: no details, no army; the viewer's own hero keeps its details.
+    fold(&mut v, &[GameEvent::DecisionClosed { player: 1 }]);
+    assert_eq!((&v.heroes[at].details, &v.heroes[at].army), (&None, &None));
+    assert!(v.decision.is_none());
+    assert!(
+        v.heroes
+            .iter()
+            .any(|info| info.id == 4 && info.details.is_some())
+    );
+}
+
 #[test]
 fn the_fold_opens_and_closes_the_decisions_whose_events_hold_their_view() {
     let mut v = view();
@@ -2323,6 +2431,7 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
         id,
         hero_type,
         details: None,
+        army: None,
     };
     let town = |id: u16| Town {
         town: id,

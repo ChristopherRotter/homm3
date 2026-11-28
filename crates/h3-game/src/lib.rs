@@ -133,7 +133,7 @@ pub use legal::{
     default_answer, hire_range, legal_cast_targets, legal_commands, legal_management, legal_moves,
     legal_town_management, split_range,
 };
-pub use manage::{Manage, ManageError};
+pub use manage::{Manage, ManageError, MeetingPart};
 pub use observe::{
     AltarView, DecisionView, GameObservation, GameReveal, HeroInfo, HillFortRowView, HillFortState,
     HillFortView, HireCreature, HireSeen, HireView, LevelUpView, MarketSeen, MarketView,

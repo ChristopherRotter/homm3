@@ -932,8 +932,12 @@ impl GameState {
     /// [`meeting_spells`] gives, the visitor's first, each told to the player as its
     /// `HeroChanged`), then the meeting as the player's decision, told to it alone
     /// (`MeetingOpened`). The original's `visit_hero` (0x4A2800): 0x4A2940, then the exchange
-    /// screen (survey `E08-army.md` §2).
-    // rule: GAM-DEC-003, HER-SPL-007
+    /// screen (survey `E08-army.md` §2). Since E10 T3b1 the visited hero may be an ally's
+    /// (GAM-TEM-003, increment 1's design note §5): the Scholar's as between one's own, the ally's
+    /// hero's lessons told to its owner; the meeting the visitor's owner's decision, its
+    /// `MeetingOpened` followed by the ally's hero as the visitor's owner sees it while the
+    /// meeting is open (`MeetingPartSeen`, [`crate::MeetingPart::of`]).
+    // rule: GAM-DEC-003, HER-SPL-007, GAM-TEM-003
     fn meet<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -948,11 +952,20 @@ impl GameState {
             .zip(self.hero(visited))
             .map(|(a, b)| meeting_spells(a, b, core))
             .unwrap_or_default();
-        let taught = [(visitor, taught_visitor), (visited, taught_visited)];
-        for (hero, spells) in taught {
+        // E10 T3b1: the visited hero's owner, an ally when not the player.
+        let ally = self
+            .adventure
+            .hero(visited)
+            .map(|on| on.owner)
+            .filter(|&owner| owner != player);
+        let taught = [
+            (visitor, taught_visitor, player),
+            (visited, taught_visited, ally.unwrap_or(player)),
+        ];
+        for (hero, spells, owner) in taught {
             for spell in spells {
                 let learned = HeroChange::LearnSpell(spell);
-                self.change_hero(core, hero, Some(player), learned, sink);
+                self.change_hero(core, hero, Some(owner), learned, sink);
             }
         }
         let heroes = [visitor, visited];
@@ -961,6 +974,24 @@ impl GameState {
             heroes,
         });
         sink.emit(GameEvent::MeetingOpened { player, heroes });
+        // rule: GAM-TEM-003
+        if ally.is_some() {
+            self.tell_meeting_ally(player, visited, sink);
+        }
+    }
+
+    /// Tells `player` the meeting's ally's hero `hero` as it stands (GAM-TEM-003; E10 T3b1): one
+    /// `MeetingPartSeen` per [`crate::MeetingPart`]. Out of line: only a meeting with an ally's
+    /// hero meets it.
+    #[cold]
+    #[inline(never)]
+    fn tell_meeting_ally<S: Sink>(&self, player: PlayerId, hero: HeroId, sink: &mut S) {
+        let parts = self.adventure.hero(hero).zip(self.hero(hero));
+        if let Some((on, details)) = parts {
+            for part in crate::MeetingPart::of(&on.army, details) {
+                sink.emit(GameEvent::MeetingPartSeen { player, hero, part });
+            }
+        }
     }
 
     /// Opens the army dialog of a group that found no room in its hero's army (GAM-DEC-004; E08
@@ -1368,6 +1399,16 @@ impl GameState {
             Decision::Meeting { heroes, .. } => Some(*heroes),
             _ => None,
         }
+    }
+
+    /// The ally's hero of `player`'s first open decision, if it is a meeting with one
+    /// (GAM-TEM-003; E10 T3b1): its visited hero when that is another player's, an ally's.
+    pub fn meeting_ally_of(&self, player: PlayerId) -> Option<HeroId> {
+        let [_, visited] = self.meeting(player)?;
+        self.adventure
+            .hero(visited)
+            .filter(|on| on.owner != player)
+            .map(|_| visited)
     }
 
     /// The hero and the group of `player`'s first open decision, if it is an army dialog

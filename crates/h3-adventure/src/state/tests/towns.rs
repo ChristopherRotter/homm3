@@ -724,7 +724,7 @@ fn a_town_its_garrison_defends_is_besieged_from_the_tile_before() {
     assert_eq!(crate::town::holds_formation(&Holds::Nothing), None);
 }
 
-// covers: TWN-VIS-002, TWN-SIE-001
+// covers: TWN-VIS-002, TWN-SIE-001, GAM-TEM-003
 #[test]
 fn another_teams_visitor_defends_its_town_besieged_from_the_tile_before() {
     // Blue's hero on the entrance of any town, red's own included, with a garrison or none,
@@ -788,6 +788,29 @@ fn another_teams_visitor_defends_its_town_besieged_from_the_tile_before() {
     assert!(reach.points_left(p(5, 5)).is_some());
     let (outcome, _) = walk(&rules, &mut state, &[], &[p(5, 5)]).unwrap();
     assert_eq!(outcome.battle.unwrap().town, None);
+    // E10 T3b1 (GAM-TEM-003): blue on red's team, its hero is met, off the entrance and on it as
+    // its town's visitor (`visit_hero` 0x4A2800: the same team's byte first), never fought.
+    for (blue, visitor) in [(p(5, 5), None), (ENTRANCE, Some(HeroId::new(2)))] {
+        let town = object(&rules, "t:town", (4, 4), Some(1));
+        let mut setup = town_setup(vec![town], vec![vec![]]);
+        setup.seats[1].team = 0;
+        setup.heroes[0].pos = Pos::new(4, 5, 0);
+        setup.heroes[1].pos = blue;
+        let mut state = started(&rules, &setup).unwrap();
+        assert_eq!(state.town_visitor(TownId::new(0)), visitor);
+        let (outcome, _) = walk(&rules, &mut state, &[], &[blue]).unwrap();
+        assert_eq!(
+            outcome,
+            AdventureOutcome {
+                meeting: Some(Meeting {
+                    visitor: HERO,
+                    visited: HeroId::new(2),
+                }),
+                ..AdventureOutcome::default()
+            }
+        );
+        assert_eq!(state.hero(HERO).unwrap().pos, Pos::new(4, 5, 0));
+    }
     // Red's own hero on the entrance, of red's town or blue's: a meeting (GAM-MET-001).
     for owner in [Some(0), Some(1)] {
         let mut state = at_town(&rules, owner, garrison(), (FAR, Some(ENTRANCE)));

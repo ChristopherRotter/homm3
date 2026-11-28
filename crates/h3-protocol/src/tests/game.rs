@@ -307,6 +307,7 @@ fn info_back(h: &HeroInfo) -> h3_game::HeroInfo {
         id: HeroId::new(h.id),
         hero_type: Handle::from_raw(h.hero_type),
         details: h.details.as_ref().map(|d| Arc::new(details_back(d))),
+        army: h.army.as_deref().map(army_back),
     }
 }
 
@@ -1700,11 +1701,13 @@ pub(super) fn every_game_part(
                 id: HeroId::new(4),
                 hero_type: Handle::from_raw(33),
                 details: Some(Arc::new(details)),
+                army: None,
             },
             h3_game::HeroInfo {
                 id: HeroId::new(9),
                 hero_type: Handle::from_raw(70),
                 details: None,
+                army: None,
             },
         ],
         // The viewer's two heroes on the map in its list's order, not by id (E08 T141a, GAM-HER-003).
@@ -1795,6 +1798,23 @@ fn every_part_of_the_game_maps_back_and_round_trips() {
     in_tile_order(&mut o.adventure.objects);
     in_place_order(&mut o.garrisons);
     assert_eq!(inverse_game(&wire, None), o);
+    // E10 T3b1 (v88, GAM-TEM-003): a meeting's ally's hero, hero 9, with the details and the army
+    // its visitor's owner sees.
+    let mut o = every_game_part(None, MonthKind::Normal);
+    let own = o.heroes[0].details.clone();
+    let met = o
+        .heroes
+        .iter_mut()
+        .find(|info| info.id == HeroId::new(9))
+        .unwrap();
+    met.details = own;
+    met.army = Some(stacks(2));
+    let wire = observation(&o);
+    assert_eq!(wire.heroes[1].army.as_ref().map(Vec::len), Some(2));
+    in_tile_order(&mut o.adventure.objects);
+    in_place_order(&mut o.garrisons);
+    assert_eq!(inverse_game(&wire, o.battle.clone()), o);
+    round_trips(&wire);
 }
 
 #[test]

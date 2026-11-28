@@ -741,6 +741,43 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             player: p(player),
             heroes: heroes.map(HeroId::new),
         },
+        // E10 T3b1 (v88).
+        G::MeetingPartSeen { player, hero, part } => GameEvent::MeetingPartSeen {
+            player: p(player),
+            hero: id(hero),
+            part: match part {
+                w::MeetingPart::Head {
+                    level,
+                    experience,
+                    primary,
+                    mana,
+                    offered,
+                    positions,
+                } => h3_game::MeetingPart::Head {
+                    level,
+                    experience,
+                    primary,
+                    mana,
+                    offered: OfferLevels {
+                        wisdom: offered.wisdom,
+                        school: offered.school,
+                    },
+                    positions,
+                },
+                w::MeetingPart::Stack { stack } => h3_game::MeetingPart::Stack(stack_back(stack)),
+                w::MeetingPart::Skill { skill } => h3_game::MeetingPart::Skill {
+                    skill: Handle::from_raw(skill.skill),
+                    level: skill.level,
+                },
+                w::MeetingPart::Artifact { place, artifact } => h3_game::MeetingPart::Artifact {
+                    place: place_back(place),
+                    artifact: artifact_back(artifact),
+                },
+                w::MeetingPart::Spell { spell } => {
+                    h3_game::MeetingPart::Spell(Handle::from_raw(spell))
+                }
+            },
+        },
         G::ArmyDialogOpened {
             player,
             hero,
@@ -1272,6 +1309,51 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         GameEvent::MeetingOpened {
             player: P0,
             heroes: [hero, HeroId::new(5)],
+        },
+        // E10 T3b1 (v88, GAM-TEM-003): the meeting's ally's hero, each part kind once.
+        GameEvent::MeetingPartSeen {
+            player: P0,
+            hero: HeroId::new(5),
+            part: h3_game::MeetingPart::Head {
+                level: 4,
+                experience: 2100,
+                primary: [2, 1, 3, 1],
+                mana: 12,
+                offered: OfferLevels {
+                    wisdom: 3,
+                    school: 2,
+                },
+                positions: 19,
+            },
+        },
+        GameEvent::MeetingPartSeen {
+            player: P0,
+            hero: HeroId::new(5),
+            part: h3_game::MeetingPart::Stack(stack),
+        },
+        GameEvent::MeetingPartSeen {
+            player: P0,
+            hero: HeroId::new(5),
+            part: h3_game::MeetingPart::Skill {
+                skill: Handle::from_raw(7),
+                level: 2,
+            },
+        },
+        GameEvent::MeetingPartSeen {
+            player: P0,
+            hero: HeroId::new(5),
+            part: h3_game::MeetingPart::Artifact {
+                place: ArtifactPlace::Worn(Position(3)),
+                artifact: ArtifactInstance {
+                    artifact: Handle::from_raw(9),
+                    spell: None,
+                },
+            },
+        },
+        GameEvent::MeetingPartSeen {
+            player: P0,
+            hero: HeroId::new(5),
+            part: h3_game::MeetingPart::Spell(Handle::from_raw(30)),
         },
         GameEvent::ArmyDialogOpened {
             player: P0,
@@ -1987,8 +2069,8 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
     // `HeroHired`, `HiredPartSeen`; T39a: `TavernOpened`; T39b2: `ThievesGuildSeen`,
     // `GuildPartSeen`; E08 T133b: `MarketOpened`; T134a: `AltarOpened`; T134b1:
     // `HillFortOpened`; T141a: `PrisonerFreed`, `PrisonerPartSeen`, `PrisonFull`,
-    // `PrisonEmptied`; T142a: `SpellCast`; T143a: `CastFailed`).
-    assert_eq!(distinct.len(), 55, "{distinct:?}");
+    // `PrisonEmptied`; T142a: `SpellCast`; T143a: `CastFailed`; E10 T3b1: `MeetingPartSeen`).
+    assert_eq!(distinct.len(), 56, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);

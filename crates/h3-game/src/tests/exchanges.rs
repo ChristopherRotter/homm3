@@ -99,7 +99,7 @@ fn a_step_toward_an_own_hero_opens_a_meeting_its_decline_closes() {
 
 /// The rules of [`manage_rules`] with Scholar (`t:scholar`: a meeting teaches spells up to level
 /// 2, 3, 4).
-fn scholar_rules() -> GameRuleset {
+pub(super) fn scholar_rules() -> GameRuleset {
     let mut pack = core_pack(false);
     pack.skills.push(SecondarySkillDef {
         key: key("t:scholar"),

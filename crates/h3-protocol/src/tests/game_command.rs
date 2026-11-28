@@ -627,6 +627,7 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
             }
             w::HireReject::Amount { amount } => HireError::Amount(amount),
             w::HireReject::NoRoom {} => HireError::NoRoom,
+            w::HireReject::ReadOnly {} => HireError::ReadOnly,
         }),
         R::Town { error } => E::Town(match error {
             w::TownReject::UnknownTown {} => TownCommandError::UnknownTown,
@@ -719,6 +720,7 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
                 w::SpellReject::WrongKind {} => CastError::WrongKind,
             }),
         }),
+        R::AllyHero { hero } => E::AllyHero(HeroId::new(hero)),
     })
 }
 
