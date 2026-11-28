@@ -196,20 +196,20 @@ impl Memory {
         (self.turn.insert(turn), &mut self.plans)
     }
 
-    /// The canonical encoding (v4, [`MEMORY_ENCODING_VERSION`]), little-endian: the version
+    /// The canonical encoding (v5, [`MEMORY_ENCODING_VERSION`]), little-endian: the version
     /// (u32); 0 without a turn, else 1, the turn's day (u32), its pass (u8: 0 the first, 1 the
     /// second, 2 the end), its flag (u8: 0 or 1), the hero sent out (u8 0, or 1 and the hero's
     /// id as u16), the number of heroes done (u32) and each one's id (u16) in ascending order;
     /// then the start's record: the Eye value (i32), the number of resources (u32) and per
     /// resource the reserve, then the means, then the demand (i32 each), the rate's row (u8, 1 to
-    /// 10), the mean weight (i32), the artifacts' mean (its f32 bits, u32), and three lists, each its length (u32) then its entries in
-    /// ascending id order: the heroes' values per unit (the hero's id u16, the experience weight's
-    /// f32 bits u32, then the spell gains as i32: one Spell Power, one round, a Knowledge point,
-    /// the mana doubled, the mana refilled),
-    /// the threats (the hero's id u16, the threat i32, not 0) and the towns' counts (the town's
-    /// id u16, the count u8, not 0); last the kept plans, their number (u32) and each in ascending
-    /// hero order: the hero's id (u16), the destination's column and row (u16 each) and level
-    /// (u8), the cost beyond (u16) and the must-go (u8: 0 or 1).
+    /// 10), the mean weight (i32), the artifacts' mean (its f32 bits, u32), and three lists, each
+    /// its length (u32) then its entries in ascending id order: the heroes' values per unit (the
+    /// hero's id u16, the experience weight's f32 bits u32, then the spell gains as i32: one Spell
+    /// Power, one round, a Knowledge point, the mana doubled, the mana refilled), the threats (the
+    /// hero's id u16, the threat i32, not 0) and the towns' counts (the town's id u16, the count
+    /// u8, not 0); last the kept plans, their number (u32) and each in ascending hero order: the
+    /// hero's id (u16), the destination's column and row (u16 each) and level (u8), the cost
+    /// beyond (u16) and the must-go (u8: 0 or 1).
     pub fn encode(&self) -> Vec<u8> {
         let mut out = Vec::with_capacity(16);
         out.extend_from_slice(&MEMORY_ENCODING_VERSION.to_le_bytes());
