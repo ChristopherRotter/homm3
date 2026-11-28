@@ -65,3 +65,13 @@ inputs = [
     { at = 57000, click = [216, 280] }, { at = 57000, pointer = [700, 300] },
     { at = 57300, click = [216, 280] }, { at = 57300, pointer = [700, 300] },
 ]
+
+[[sequence]]
+id = "seat-clock-two"
+situation = "seq-seat"
+ms = 61000
+hot_seat = ["Red", "Blue"]
+duration = 1
+sound = true
+seed = 1
+why = "a two-minute turn's first warnings: 1.5 minutes at a quarter of it (GENRLTXT 630), 59 seconds at a minute left"

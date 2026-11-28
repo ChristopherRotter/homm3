@@ -5499,9 +5499,10 @@ test, the boxes' 15 s: survey `E16-timer-survey.md` §3 to §5, not repeated.
   and its sound only ever come with a warning; the status bar (item 200) is untouched (the chat's
   edit 38 over it is the network's typing, §4.1).
 - **The line** (0x5539F9 to 0x553A35): "%s%s" with GENRLTXT 54 and the warning, so "<SYSTEM>:" and
-  the text joined without a space ("<SYSTEM>:You have 30 seconds remaining in your turn."), the
-  records' trailing tab kept (627 to 630 end in one; the loader strips tabs from a quoted record
-  only, E17 §7.19); +0x2C set around `chat_add_line` (H3API's Show), so the entry is a system line
+  the text joined without a space ("<SYSTEM>:You have 30 seconds remaining in your turn."), no tab
+  after it (seen: the entries end in the full stop, 52 characters for "30 seconds", 51 for 9 to
+  2, 50 for "1 second"; the reading's trailing tab of 627 to 630 is not in the game's text); +0x2C
+  set around `chat_add_line` (H3API's Show), so the entry is a system line
   (+0x84) and `chat_add_line` plays no sound of its own. The text is left out in the last 59 s as
   the survey says (§3; the test reads the timer, not the line).
 - **The chat** (`chat_add_line`, the constructor): 20 entries of 0x88 bytes in a ring (+0 the
@@ -5530,14 +5531,16 @@ test, the boxes' 15 s: survey `E16-timer-survey.md` §3 to §5, not repeated.
   `chat_oldest_expired` (the exchange screen's, `swap_manager_proc` 0x5B06D8, which draws the
   chat too: not read) and `chat_clear` (the debug frame rate's line only, 0x40F80C) are not on
   this path. A 1-minute turn (survey §3): "30 seconds" at 30 s, gone at the first draw after
-  50 s; "9 seconds" from 50 s, one a second to "1 second", stacked newest at the bottom.
+  50 s; "9 seconds" from 50 s, one a second to "1 second", stacked newest at the bottom (seen:
+  1 020 ms apart, below).
 - **The sound** (0x553A39 to 0x553A89; `chat_sounds_load` from `game_main` 0x4EE630: +0x30
   `chat.wav`, +0x34 `playexit.wav`, +0x38 `sysmsg.wav`, +0x3C `timeover.wav`, +0x40
   `playcome.wav`): unless the chat's last sample (+0x28) still plays (`sample_query` with 4: Miles'
   playing), `timeover.wav` (`chat.wav` if it failed to load) by `play_sample` 0x59A210 with the
   sound manager's +0x84 forced 1 for the call; the handle kept in +0x28. It is 920 ms (20 288
-  frames at 22 050 Hz), so each warning a second apart sounds; it plays also when the text is left
-  out. A player's chat line plays `chat.wav` the same way (0x55391D).
+  frames at 22 050 Hz; 921 on the harness's clock), so each warning a second apart sounds; it
+  plays also when the text is left out. A player's chat line plays `chat.wav` the same way
+  (0x55391D).
 - **The expiry box** (0x4087F3 to 0x40884D, survey §4): at the adventure manager's first message
   once `turn_timer_expired`: `message_box_call` with GENRLTXT 202 (two spaces after "expired."),
   style 1 (OK), centred, no picture, the timeout 15 000 (kept only in a network game; elsewhere

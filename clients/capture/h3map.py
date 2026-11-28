@@ -83,6 +83,7 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
 Needs `clients/capture/setup.sh` and `cargo build --release -p h3-map-client` (from clients/).
 """
 
+import functools
 import hashlib
 import json
 import os
@@ -155,9 +156,11 @@ def pack565(rgb):
     return (r >> 3) << 11 | (g >> 2) << 5 | b >> 3
 
 
+@functools.cache
 def def_palette565(name):
     """A DEF's palette from the run directory's sprite archive, in 5-6-5 (the executable's
-    conversion 0x5226D0 truncates each channel)."""
+    conversion 0x5226D0 truncates each channel). Read once a run (E24 M5 T5 part four: with
+    `cycling` it was half of a sequence's step), as its file is the same throughout."""
     offset, size, packed = h3lod.directory(SPRITES)[name.lower()]
     with open(h3lod.DATA / SPRITES, "rb") as f:
         f.seek(offset)
@@ -170,8 +173,10 @@ def def_palette565(name):
 KINDS = ("terrain", "river")
 
 
+@functools.cache
 def cycling():
-    """The cycling DEFs of the map's tables: (kind, manager field, DEF, ranges)."""
+    """The cycling DEFs of the map's tables: (kind, manager field, DEF, ranges); read once a
+    run, as `def_palette565`."""
     tables = tomllib.loads(TABLES.read_text())
     found = []
     for kind, field in zip(KINDS, (TERRAIN_FIELD, RIVER_FIELD)):
