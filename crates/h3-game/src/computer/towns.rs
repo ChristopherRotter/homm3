@@ -37,7 +37,7 @@ use super::turn::{primary_sum_of, towns_of};
 use crate::GameState;
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
 
 /// A must: the value of a capture without a town of one's own, its share by the map's towns.
 const MUST: i32 = 5_000_000;

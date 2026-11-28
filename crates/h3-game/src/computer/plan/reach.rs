@@ -58,6 +58,11 @@ pub(super) const fn claimed(class: u8) -> bool {
     class < CLAIMED
 }
 
+/// The points from which one morale and points are the Oasis's (56; 800), else the Fountain of
+/// Youth's class (31).
+const OASIS_POINTS: u32 = 800;
+const YOUTH: u8 = 31;
+
 /// A class past the claimed ones: the original's class of an object the values count as
 /// [`Class::Other`] and of no class below 37.
 const UNCLAIMED: u8 = u8::MAX;
@@ -73,11 +78,12 @@ const UNCLAIMED: u8 = u8::MAX;
 /// (the Oasis's 800 points 56, else the Fountain of Youth 31, the Watering Hole's 110 read as it),
 /// a border guard 9; any other of [`Class::Other`] past 36.
 pub(super) fn class_number(state: &GameState, rules: &GameRuleset, pos: Pos) -> u8 {
-    let Some(at) = objects::at(state, rules, pos) else {
-        return 0;
-    };
-    let water = || water(state, rules, pos);
-    match at {
+    objects::at(state, rules, pos).map_or(0, |at| number_of(&at, || water(state, rules, pos)))
+}
+
+/// [`class_number`] of what stands at a tile, `water` its terrain's test.
+pub(super) fn number_of(at: &At<'_>, water: impl FnOnce() -> bool) -> u8 {
+    match *at {
         At::Hero(_) => Class::Hero.number(),
         At::Boat => Class::Boat.number(),
         At::Object { kind, class, .. } => match (class, kind) {
@@ -92,7 +98,13 @@ pub(super) fn class_number(state: &GameState, rules: &GameRuleset, pos: Pos) -> 
                 _ => Class::OneLevel.number(),
             },
             (Class::FaerieRing, _) if water() => 52,
-            (Class::Oasis, ObjectKind::Bonus { points, .. }) if *points >= 800 => 56,
+            (Class::Oasis, ObjectKind::Bonus { points, .. }) => {
+                if *points >= OASIS_POINTS {
+                    Class::Oasis.number()
+                } else {
+                    YOUTH
+                }
+            }
             (Class::Other, ObjectKind::KeyGuard { .. }) => 9,
             (Class::Other, _) => UNCLAIMED,
             (class, _) => class.number(),
@@ -223,7 +235,7 @@ fn summons(
     let mut boats = adventure
         .boats()
         .filter(|(_, boat)| !boat.aboard && !boat.gone);
-    if boats.any(|(_, b)| b.captain == Some(id) || b.owner.is_none_or(|o| o == player)) {
+    if boats.any(|(_, b)| b.captain == Some(id) || b.owner.is_none() || b.owner == Some(player)) {
         return true;
     }
     let plain = h3_heroes::spell_masteries_on(details, core, SchoolRaise::None)
@@ -299,7 +311,7 @@ impl Planner<'_> {
     /// its points left (16 bits) when that cost is not above them (a signed 32-bit compare),
     /// else 0 (survey §5.5 #2, a slip ported as read: a node nearer than that difference wraps
     /// and claims nothing).
-    fn claims(&self, search: &ComputerSearch, plans: &Plans) -> Vec<u16> {
+    pub(super) fn claims(&self, search: &ComputerSearch, plans: &Plans) -> Vec<u16> {
         let (state, rules) = (self.state, self.rules);
         let adventure = state.adventure();
         let hero = self.on_map();

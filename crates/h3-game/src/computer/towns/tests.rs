@@ -35,7 +35,7 @@ const HUT: usize = 2;
 const HUT_AT: Pos = Pos::new(0, 2, 0);
 
 /// The fixture's rules, the gog's AI value `gog`.
-fn rules_with(gog: u32) -> GameRuleset {
+pub(in crate::computer) fn rules_with(gog: u32) -> GameRuleset {
     let mut core = towns_core_pack(false);
     for (creature, ai) in core.creatures.iter_mut().zip([10, gog]) {
         creature.info.ai_value = ai;
@@ -148,7 +148,7 @@ fn built(slots: &[u8]) -> BuildingsSetup {
 }
 
 /// The fixture's game with `edit` made to its setup, red given `gold`.
-fn game(rules: &GameRuleset, gold: u32, edit: impl FnOnce(&mut GameSetup)) -> GameState {
+pub(in crate::computer) fn game(rules: &GameRuleset, gold: u32, edit: impl FnOnce(&mut GameSetup)) -> GameState {
     let mut setup: GameSetup = towns_setup(rules);
     setup.towns[0].buildings = built(&[0, 1, 2, 22, 30, 31]);
     setup.towns[1].buildings = built(&[15, 30]);

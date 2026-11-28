@@ -22,9 +22,9 @@ const LOST: (i32, i32) = (-500_000_000, -1_000_000_000);
 /// column.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in super::super) struct Danger {
-    width: u16,
-    height: u16,
-    tiles: Vec<i32>,
+    pub(super) width: u16,
+    pub(super) height: u16,
+    pub(super) tiles: Vec<i32>,
 }
 
 impl Danger {

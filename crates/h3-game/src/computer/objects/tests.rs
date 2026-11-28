@@ -104,7 +104,7 @@ fn find(
 const MORE: [&str; 5] = ["t:r1", "t:r2", "t:r3", "t:r4", "t:gems"];
 
 /// The fixture's rules.
-pub(super) fn rules() -> GameRuleset {
+pub(in crate::computer) fn rules() -> GameRuleset {
     let mut pack: ContentPack = core_pack(false);
     for (creature, (fight, ai)) in pack
         .creatures
@@ -421,7 +421,7 @@ pub(super) fn rules() -> GameRuleset {
 }
 
 /// An object of type `k` at `pos` (one tile, visited from it).
-pub(super) fn object(rules: &GameRuleset, k: &str, pos: Pos) -> ObjectSetup {
+pub(in crate::computer) fn object(rules: &GameRuleset, k: &str, pos: Pos) -> ObjectSetup {
     ObjectSetup {
         scenery: Default::default(),
         anchor: pos,
@@ -438,7 +438,7 @@ pub(super) fn object(rules: &GameRuleset, k: &str, pos: Pos) -> ObjectSetup {
 }
 
 /// The crate's test setup on a 12 × 12 map of grass.
-pub(super) fn wide() -> GameSetup {
+pub(in crate::computer) fn wide() -> GameSetup {
     let mut setup = setup();
     setup.map.width = 12;
     setup.map.height = 12;
@@ -455,7 +455,7 @@ pub(super) fn wide() -> GameSetup {
 }
 
 /// The game of [`wide`] with `objects`, `edit` made to its setup.
-pub(super) fn game(
+pub(in crate::computer) fn game(
     rules: &GameRuleset,
     objects: Vec<ObjectSetup>,
     edit: impl FnOnce(&mut GameSetup),
@@ -467,14 +467,14 @@ pub(super) fn game(
 }
 
 /// Red's hero on the map with its details.
-pub(super) fn red(state: &GameState) -> (HeroOnMap, HeroDetails) {
+pub(in crate::computer) fn red(state: &GameState) -> (HeroOnMap, HeroDetails) {
     let on_map = state.adventure().hero(HERO).unwrap().clone();
     let details = state.hero(HERO).unwrap().clone();
     (on_map, details)
 }
 
 /// `stacks` (creature, count) in slots 0 up.
-pub(super) fn army(stacks: &[(CreatureTypeId, u32)]) -> Vec<ArmyStack> {
+pub(in crate::computer) fn army(stacks: &[(CreatureTypeId, u32)]) -> Vec<ArmyStack> {
     (0..)
         .zip(stacks)
         .map(|(slot, &(creature, count))| ArmyStack {
@@ -486,18 +486,18 @@ pub(super) fn army(stacks: &[(CreatureTypeId, u32)]) -> Vec<ArmyStack> {
 }
 
 /// `n` tenths as a double.
-pub(super) fn tenths(n: u32) -> SignedX87 {
+pub(in crate::computer) fn tenths(n: u32) -> SignedX87 {
     SignedX87::from(X87::ratio(n, 10, DOUBLE_BITS).unwrap())
 }
 
 /// The f32 bits of `num / den`.
-pub(super) fn f32_bits(num: u32, den: u32) -> u32 {
+pub(in crate::computer) fn f32_bits(num: u32, den: u32) -> u32 {
     X87::ratio(num, den, SINGLE_BITS).unwrap().to_f32_bits()
 }
 
 /// A record with the hero's experience weight `w` (f32 bits), its spell values `gains`, the
 /// mean artifact value `mean` (f32 bits) and the mean weight `weight`.
-pub(super) fn record(w: u32, gains: SpellGains, (mean, weight): (u32, i32)) -> Record {
+pub(in crate::computer) fn record(w: u32, gains: SpellGains, (mean, weight): (u32, i32)) -> Record {
     Record {
         artifacts: mean,
         mean: weight,
@@ -513,19 +513,19 @@ pub(super) fn record(w: u32, gains: SpellGains, (mean, weight): (u32, i32)) -> R
 }
 
 /// What a test asks: the game, the rules, the hero, its record and weights, its destination.
-pub(super) struct Case<'a> {
-    pub(super) state: &'a GameState,
-    pub(super) rules: &'a GameRuleset,
-    pub(super) hero: (HeroOnMap, HeroDetails),
-    pub(super) record: Record,
-    pub(super) weights: Vec<SignedX87>,
-    pub(super) destination: Option<Pos>,
+pub(in crate::computer) struct Case<'a> {
+    pub(in crate::computer) state: &'a GameState,
+    pub(in crate::computer) rules: &'a GameRuleset,
+    pub(in crate::computer) hero: (HeroOnMap, HeroDetails),
+    pub(in crate::computer) record: Record,
+    pub(in crate::computer) weights: Vec<SignedX87>,
+    pub(in crate::computer) destination: Option<Pos>,
 }
 
 impl<'a> Case<'a> {
     /// Red's hero on `state` with a weight of 0.5, gains of 100 and 200, a mean of 1 000 and a
     /// mean weight of 3, the weights 0.1 (gold) and 1.0 to 1.4 (the others).
-    pub(super) fn new(state: &'a GameState, rules: &'a GameRuleset) -> Self {
+    pub(in crate::computer) fn new(state: &'a GameState, rules: &'a GameRuleset) -> Self {
         let gains = SpellGains {
             power: 100,
             knowledge: 200,
@@ -546,7 +546,7 @@ impl<'a> Case<'a> {
     }
 
     /// `f` of the case's [`Asking`].
-    pub(super) fn ask<T>(&self, f: impl FnOnce(Asking<'_, '_>) -> T) -> T {
+    pub(in crate::computer) fn ask<T>(&self, f: impl FnOnce(Asking<'_, '_>) -> T) -> T {
         let (on_map, details) = &self.hero;
         let hero = Fighter { on_map, details };
         let v = Valued::new(self.state, self.rules, (&self.record, &self.weights), hero);
@@ -560,7 +560,7 @@ impl<'a> Case<'a> {
     }
 
     /// The object value of `pos` at `cost`: the value and the cost after.
-    pub(super) fn value(&self, pos: Pos, cost: i32) -> (i32, i32) {
+    pub(in crate::computer) fn value(&self, pos: Pos, cost: i32) -> (i32, i32) {
         self.ask(|a| {
             let mut cost = cost;
             let v = value(a, pos, &mut cost);
@@ -569,7 +569,7 @@ impl<'a> Case<'a> {
     }
 
     /// The fight estimate of the hero against `army` on `pos`.
-    pub(super) fn fight(&self, army: &[ArmyStack], pos: Pos) -> i32 {
+    pub(in crate::computer) fn fight(&self, army: &[ArmyStack], pos: Pos) -> i32 {
         let (on_map, details) = &self.hero;
         let opponent = Opponent {
             hero: None,
@@ -587,13 +587,13 @@ impl<'a> Case<'a> {
 }
 
 /// `command` of red, applied.
-pub(super) fn play(state: &mut GameState, rules: &GameRuleset, command: GameCommand) {
+pub(in crate::computer) fn play(state: &mut GameState, rules: &GameRuleset, command: GameCommand) {
     let mut events: Vec<GameEvent> = Vec::new();
     apply(state, rules, Actor::Player(RED), command, &mut events).unwrap();
 }
 
 /// Red's hero's move along `path`.
-pub(super) fn walk(path: &[Pos]) -> GameCommand {
+pub(in crate::computer) fn walk(path: &[Pos]) -> GameCommand {
     GameCommand::Adventure(h3_adventure::AdventureCommand::MoveHero {
         hero: HERO,
         path: path.to_vec(),
@@ -601,7 +601,7 @@ pub(super) fn walk(path: &[Pos]) -> GameCommand {
 }
 
 /// The kind of the fixture's type `k`.
-fn kind(rules: &GameRuleset, k: &str) -> ObjectKind {
+pub(in crate::computer) fn kind(rules: &GameRuleset, k: &str) -> ObjectKind {
     let id = rules.adventure().object_type_by_key(k).unwrap();
     rules.adventure().object_type(id).unwrap().kind.clone()
 }
@@ -748,7 +748,7 @@ fn the_class_comes_from_the_kind() {
 }
 
 /// The shared game's objects: a key and a tile.
-pub(super) const OBJECTS: [(&str, (u16, u16)); 56] = [
+pub(in crate::computer) const OBJECTS: [(&str, (u16, u16)); 56] = [
     ("t:arena", (0, 4)),
     ("t:marletto", (1, 4)),
     ("t:scholar", (2, 4)),
@@ -808,25 +808,25 @@ pub(super) const OBJECTS: [(&str, (u16, u16)); 56] = [
 ];
 
 /// The tile of the shared game's object `k`.
-pub(super) fn tile(k: &str) -> Pos {
+pub(in crate::computer) fn tile(k: &str) -> Pos {
     let &(_, (x, y)) = OBJECTS.iter().find(|&&(o, _)| o == k).unwrap();
     Pos::new(x, y, 0)
 }
 
 /// The index of the shared game's object `k`.
-pub(super) fn index(k: &str) -> usize {
+pub(in crate::computer) fn index(k: &str) -> usize {
     OBJECTS.iter().position(|&(o, _)| o == k).unwrap()
 }
 
 /// The ring (the core's artifact 4).
-pub(super) const RING: h3_content::ArtifactTypeId = h3_content::ArtifactTypeId::from_raw(4);
+pub(in crate::computer) const RING: h3_content::ArtifactTypeId = h3_content::ArtifactTypeId::from_raw(4);
 /// The scroll (the core's artifact 3) and the gust (its spell 0).
-pub(super) const SCROLL: h3_content::ArtifactTypeId = h3_content::ArtifactTypeId::from_raw(3);
-pub(super) const GUST: h3_content::SpellId = h3_content::SpellId::from_raw(0);
+pub(in crate::computer) const SCROLL: h3_content::ArtifactTypeId = h3_content::ArtifactTypeId::from_raw(3);
+pub(in crate::computer) const GUST: h3_content::SpellId = h3_content::SpellId::from_raw(0);
 
 /// Pandora's Box's record: 1 000 experience, Attack +1 and Spell Power +2, Lore at Advanced, a
 /// ring, the gust, 1 000 gold and 2 gems, 5 imps.
-pub(super) fn box_record() -> h3_adventure::RewardRecord {
+pub(in crate::computer) fn box_record() -> h3_adventure::RewardRecord {
     h3_adventure::RewardRecord {
         hero: h3_adventure::HeroReward {
             experience: 1000,
@@ -844,7 +844,7 @@ pub(super) fn box_record() -> h3_adventure::RewardRecord {
 }
 
 /// The shared game: [`OBJECTS`] on [`wide`], `edit` made to its setup.
-pub(super) fn shared(rules: &GameRuleset, edit: impl FnOnce(&mut GameSetup)) -> GameState {
+pub(in crate::computer) fn shared(rules: &GameRuleset, edit: impl FnOnce(&mut GameSetup)) -> GameState {
     let objects = OBJECTS
         .iter()
         .map(|&(k, (x, y))| {
@@ -887,7 +887,7 @@ pub(super) fn shared(rules: &GameRuleset, edit: impl FnOnce(&mut GameSetup)) -> 
 }
 
 /// [`Case::new`] with red's hero's army `stacks`.
-pub(super) fn with_army<'a>(
+pub(in crate::computer) fn with_army<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
     stacks: &[(CreatureTypeId, u32)],
@@ -898,7 +898,7 @@ pub(super) fn with_army<'a>(
 }
 
 /// The big army: 400 imps and 100 gogs (8 000; its strength 8 800).
-pub(super) const BIG: [(CreatureTypeId, u32); 2] = [(IMP, 400), (GOG, 100)];
+pub(in crate::computer) const BIG: [(CreatureTypeId, u32); 2] = [(IMP, 400), (GOG, 100)];
 
 // covers: CPU-OBJ-002
 #[test]

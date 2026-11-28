@@ -40,7 +40,7 @@ const KEPT_ADDED: i32 = 20;
 const DRAW: (u32, u32, i32) = (1, 25, 75);
 
 /// The value field: an `i32` per tile of every level, (level × height + row) × width + column.
-pub(super) struct Field(Vec<i32>);
+pub(super) struct Field(pub(super) Vec<i32>);
 
 impl Field {
     /// The field at `index`.
