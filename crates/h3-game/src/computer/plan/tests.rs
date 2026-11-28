@@ -1228,3 +1228,108 @@ fn planner_index(state: &GameState, pos: Pos) -> usize {
         * usize::from(map.width())
         + usize::from(pos.x)
 }
+
+// covers: CPU-PLN-008
+#[test]
+fn the_search_doubles_its_budget_while_cut_short_without_a_destination_or_with_a_negative_one() {
+    let rules = fixture::rules();
+    // Blue's single imp on (11, 11), 1 551 away: past the first budget, in the second's.
+    let state = world(&rules, &[], |s| {
+        s.heroes[1].pos = p(11, 11);
+        blue_army(s, &[(IMP, 1)]);
+    });
+    let case = Case::new(&state, &rules);
+    let reads = Reads::of(&case);
+    let points = state.adventure().hero(HERO).unwrap().movement;
+    let run = |plans: &mut Plans, alone| {
+        let mut rng = stream();
+        let outcome =
+            reads.red((&state, &rules), |planner| search_and_walk(planner, plans, alone, &mut rng));
+        (outcome, rng)
+    };
+    let mut plans = Plans::default();
+    let (outcome, rng) = run(&mut plans, false);
+    assert_eq!((outcome, rng), (Outcome::Walks(p(11, 11)), draws(1)));
+    let beyond = u16::try_from(1551_u32.saturating_sub(points)).unwrap();
+    let plan = Plan {
+        destination: p(11, 11),
+        beyond,
+        must_go: false,
+    };
+    assert_eq!(plans.get(HERO), Some(plan));
+    // Alone, or with this destination kept, the first budget reaches it: kept, it draws nothing.
+    let (outcome, _) = run(&mut Plans::default(), true);
+    assert_eq!(outcome, Outcome::Walks(p(11, 11)));
+    let (outcome, rng) = run(&mut plans, false);
+    assert_eq!((outcome, rng), (Outcome::Walks(p(11, 11)), stream()));
+    // A campfire in danger: valued but scored below 0, it runs again with the doubled budget.
+    let state = world(&rules, &[("t:campfire", p(1, 0))], |s| {
+        s.heroes[1].pos = p(11, 11);
+        s.players[1].team = 0;
+    });
+    let case = Case::new(&state, &rules);
+    let reads = Reads {
+        danger: flat(&state, -1_000_000),
+        ..Reads::of(&case)
+    };
+    let mut rng = stream();
+    let mut plans = Plans::default();
+    let outcome = reads.red((&state, &rules), |planner| {
+        search_and_walk(planner, &mut plans, false, &mut rng)
+    });
+    assert_eq!(outcome, Outcome::Walks(p(1, 0)));
+    assert_eq!(rng, draws(2));
+    // Nothing anywhere: no destination.
+    let state = world(&rules, &[], |s| s.heroes.truncate(1));
+    let case = Case::new(&state, &rules);
+    let mut plans = Plans::default();
+    let outcome = Reads::of(&case).red((&state, &rules), |planner| {
+        search_and_walk(planner, &mut plans, false, &mut stream())
+    });
+    assert_eq!((outcome, plans), (Outcome::Nothing, Plans::default()));
+}
+
+// covers: CPU-PLN-008
+#[test]
+fn a_hero_on_a_town_waits_there_on_the_week_s_last_day_for_a_poor_destination() {
+    let rules = crate::computer::towns::tests::rules_with(40);
+    // Red alone with its town and a pile of gold (at 0.1 a gold piece: a rate far below 75).
+    let state = on_town(&rules, |s| {
+        s.players.truncate(1);
+        s.heroes.truncate(1);
+        s.towns.truncate(1);
+        s.map.objects.truncate(1);
+        s.map.objects.push(object(&rules, "t:pile", p(3, 2)));
+    });
+    let mut late = state.clone();
+    while late.weekday(&rules).get() != 7 {
+        for player in [RED] {
+            let mut events = Vec::new();
+            let end = GameCommand::EndTurn;
+            crate::apply(&mut late, &rules, crate::Actor::Player(player), end, &mut events).unwrap();
+        }
+    }
+    let outcome = |state: &GameState| {
+        town_reads(state, vec![]).red((state, &rules), |planner| {
+            search_and_walk(planner, &mut Plans::default(), false, &mut stream())
+        })
+    };
+    assert_eq!(outcome(&state), Outcome::Walks(p(3, 2)));
+    assert_eq!(outcome(&late), Outcome::Waits);
+}
+
+// covers: CPU-PLN-008, CPU-TRN-004
+#[test]
+fn a_computer_turn_plans_each_hero_and_keeps_its_destination() {
+    let rules = fixture::rules();
+    let mut state = world(&rules, &[("t:campfire", p(1, 0))], |_| {});
+    let mut memory = crate::computer::Memory::new();
+    let mut rng = stream();
+    let command = crate::computer::choose(&state, &rules, RED, &mut memory, &mut rng);
+    assert_eq!(command, Some(GameCommand::EndTurn));
+    let mut events = Vec::new();
+    crate::apply(&mut state, &rules, crate::Actor::Player(RED), GameCommand::EndTurn, &mut events)
+        .unwrap();
+    let (_, plans) = memory.turn_of(1, || panic!("no turn"), |_| true);
+    assert!(plans.get(HERO).is_some());
+}
