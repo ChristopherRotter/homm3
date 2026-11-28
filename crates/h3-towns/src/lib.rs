@@ -70,6 +70,7 @@ mod portal;
 mod record;
 mod recruit;
 mod ruleset;
+mod service;
 mod setup;
 mod siege;
 mod store;
@@ -102,6 +103,10 @@ pub use ruleset::{
     DefenderBonus, Dwelling, GarrisonRow, GarrisonWeekParams, Horde, MAX_CREATURE_LEVELS,
     MAX_MERCHANTS_STOCK, Reveal, TownCompileError, TownDef, TownOverride, TownPack, TownParams,
     TownParamsDef, TownPatch, TownRecord, TownRuleset, WeekParams,
+};
+pub use service::{
+    BoatSale, ServiceOffers, WarMachineSale, check_boat, check_war_machine, service_offers,
+    war_machine_buildings,
 };
 pub use setup::{
     BuildingsSetup, BuiltTown, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup,

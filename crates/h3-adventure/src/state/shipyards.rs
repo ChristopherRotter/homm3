@@ -7,7 +7,7 @@
 use h3_content::Ruleset;
 use h3_contracts::{HeroId, PlayerId};
 
-use super::{AdventureState, allied};
+use super::AdventureState;
 use crate::command::{
     AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome, Offer, OfferKind,
     ShipyardBlock, Sink, Viewers,
@@ -45,7 +45,10 @@ impl AdventureState {
         price: &Resources,
         sink: &mut S,
     ) -> AdventureOutcome {
-        if !self.owner(index).is_some_and(|owner| allied(owner, player)) {
+        if !self
+            .owner(index)
+            .is_some_and(|owner| self.allied(owner, player))
+        {
             self.flag(rules, (index, object_type), player, sink);
         }
         let anchor = self.object_at(index).anchor;
@@ -220,7 +223,10 @@ impl AdventureState {
                     .any(|pos| self.is_explored(player, pos))
             })
             .ok_or(AdventureCommandError::UnknownObject)?;
-        if !self.owner(index).is_some_and(|owner| allied(owner, player)) {
+        if !self
+            .owner(index)
+            .is_some_and(|owner| self.allied(owner, player))
+        {
             return Err(AdventureCommandError::NotOwner);
         }
         self.boat_site(index).map_err(|reason| match reason {

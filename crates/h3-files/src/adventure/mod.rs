@@ -45,7 +45,8 @@
 //! [<x>,<y>,<level>]`, a cast on the adventure map by the core spell's index, the target tile for
 //! Scuttle Boat and Dimension Door, E08 T142a; v27 `town market <town>`, a market window's opening
 //! at a town, E09 T58a1; v28 `answer market sell-artifact <place> <take>`, a town's artifact sale,
-//! the place as the management lines', E09 T58b):
+//! the place as the management lines', E09 T58b; v29 `town machine <town> <building>`, a war
+//! machine bought at the building, and `town boat <town>`, a boat built at its Shipyard, E09 T59a):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -71,6 +72,8 @@
 //!     "0 town hire 2 1",              #   `<player> town hire <town> <slot>` (format 17)
 //!     "0 town open 2",                #   `<player> town open <town>` (format 24)
 //!     "0 town book 2",                #   `<player> town book <town>` (format 25)
+//!     "0 town machine 2 16",          #   `<player> town machine <town> <building>`, `<player>
+//!     "0 town boat 2",                #   town boat <town>` (format 29)
 //!     "0 revisit 1",                  #   `<player> revisit <hero>` (format 12)
 //!     "0 cast 1 6",                   #   `<player> cast <hero> <spell> [<x>,<y>,<level>]`
 //!     "0 cast 1 8 12,4,0",            #   (format 26)
@@ -403,6 +406,13 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         // Format v27 (E09 T58a1).
         GameCommand::Town(TownCommand::Market { town }) => {
             format!("{player} town market {}", town.raw())
+        }
+        // Format v29 (E09 T59a).
+        GameCommand::Town(TownCommand::BuyWarMachine { town, building }) => {
+            format!("{player} town machine {} {}", town.raw(), building.index())
+        }
+        GameCommand::Town(TownCommand::BuildBoat { town }) => {
+            format!("{player} town boat {}", town.raw())
         }
         // Format v26 (E08 T142a).
         GameCommand::Cast {
@@ -865,8 +875,14 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
             GameCommand::Town(TownCommand::Hire { town, slot })
         }
         // Format v24 (E09 T49a2): a town screen's opening; v25 (E09 T49b) a spell book's
-        // purchase at its Mage Guild; v27 (E09 T58a1) a market window's opening.
-        Some("town") if matches!(words.clone().next(), Some("open" | "book" | "market")) => {
+        // purchase at its Mage Guild; v27 (E09 T58a1) a market window's opening; v29 (E09 T59a)
+        // a boat built at its Shipyard.
+        Some("town")
+            if matches!(
+                words.clone().next(),
+                Some("open" | "book" | "market" | "boat")
+            ) =>
+        {
             let (Some(kind), Some(town)) = (words.next(), words.next()) else {
                 return Err(bad());
             };
@@ -874,12 +890,14 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
             GameCommand::Town(match kind {
                 "open" => TownCommand::Open { town },
                 "book" => TownCommand::BuySpellBook { town },
-                _ => TownCommand::Market { town },
+                "market" => TownCommand::Market { town },
+                _ => TownCommand::BuildBoat { town },
             })
         }
-        // Format v11 (E09 T18b1): a town's build, without a hero; v15 (E09 T27) its recruitment.
+        // Format v11 (E09 T18b1): a town's build, without a hero; v15 (E09 T27) its recruitment;
+        // v29 (E09 T59a) a war machine's purchase.
         Some("town") => {
-            let (Some(kind @ ("build" | "recruit")), Some(town), Some(building)) =
+            let (Some(kind @ ("build" | "recruit" | "machine")), Some(town), Some(building)) =
                 (words.next(), words.next(), words.next())
             else {
                 return Err(bad());
@@ -890,10 +908,10 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
                 .ok()
                 .and_then(BuildingId::from_index)
                 .ok_or_else(bad)?;
-            GameCommand::Town(if kind == "build" {
-                TownCommand::Build { town, building }
-            } else {
-                TownCommand::Recruit { town, building }
+            GameCommand::Town(match kind {
+                "build" => TownCommand::Build { town, building },
+                "recruit" => TownCommand::Recruit { town, building },
+                _ => TownCommand::BuyWarMachine { town, building },
             })
         }
         // Format v6 (E08 T51a): the management commands; v18 (E09 T38b2) the dismissal.

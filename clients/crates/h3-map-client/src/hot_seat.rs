@@ -26,8 +26,9 @@
 //!   whole game one record), which the record player reads and plays (`h3-map-view record`).
 //!
 //! *Provisional* (T3a, an agent decision): the names, the frames read back from their text, the
-//! clock's level-up time and battle allowance (none, the session's default: T5 reads the
-//! original's), an error for a computer that may act but not end its turn.
+//! clock's level-up time and battle allowance (none, the session's default: the server's model
+//! until MCL-Q75 decides, read at T5: the original pauses the turn for every battle), an error for
+//! a computer that may act but not end its turn.
 
 use std::ffi::OsStr;
 use std::path::Path;
@@ -64,7 +65,7 @@ pub const UNLIMITED: u8 = 10;
 
 /// The session's clock of the turn's duration `duration` (`turndur.txt`'s record, 0 to 10): its
 /// minutes the turn timer's limit, none for [`UNLIMITED`]; no level-up time, the default battle
-/// allowance (*provisional*: M5 T5 reads the original's).
+/// allowance (*provisional*: the server's model until MCL-Q75 decides).
 ///
 /// # Errors
 /// A record past [`UNLIMITED`].
@@ -101,6 +102,21 @@ pub struct Seat {
 }
 
 impl Seat {
+    /// `player`'s seat of `colour`, a human's (named so) or a computer's, told nothing yet.
+    #[must_use]
+    pub fn new(player: PlayerId, colour: u8, human: bool, name: Option<String>) -> Self {
+        Self {
+            player,
+            colour,
+            human,
+            name,
+            view: None,
+            legal: None,
+            clock: None,
+            n: 0,
+        }
+    }
+
     /// The frame `message` folded in.
     ///
     /// # Errors
@@ -246,16 +262,7 @@ impl<'r> HotSeat<'r> {
                 .cloned()
                 .flatten()
                 .filter(|_| setup.human);
-            seats.push(Seat {
-                player,
-                colour: setup.colour,
-                human: setup.human,
-                name,
-                view: None,
-                legal: None,
-                clock: None,
-                n: 0,
-            });
+            seats.push(Seat::new(player, setup.colour, setup.human, name));
         }
         let mut out = Vec::new();
         let session = GameSession::start(

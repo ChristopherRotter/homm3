@@ -20,7 +20,7 @@ use super::strategy::{raw_map, version};
 use crate::import::codes;
 use crate::model::{
     Artifacts, Bits, Body, CustomHero, EventBody, HeroBody, Message, MonsterBody, MonsterTreasure,
-    Object, Player, Pos, RawMap, Rewards, Stack, Template, Text, Tile, Version,
+    Object, Player, Pos, RawMap, Rewards, Stack, Teams, Template, Text, Tile, Version,
 };
 use crate::{ImportError, Limits, Unsupported, import, import_map, parse};
 
@@ -1590,6 +1590,33 @@ fn a_placed_heros_artifacts_keep_the_maps_positions() {
 fn artifact(core: &h3_content::Ruleset, code: u16) -> h3_content::ArtifactTypeId {
     core.artifact_by_key(codes::ARTIFACTS[usize::from(code)])
         .unwrap()
+}
+
+// covers: GAM-TEM-001
+#[test]
+fn a_maps_teams_carry_over_else_each_colour_is_its_own() {
+    let teams = |m: &RawMap| -> Vec<u8> {
+        let setup = import(m, &SOD).unwrap();
+        setup.players.iter().map(|p| p.team).collect()
+    };
+    // Red, and a blue a human may play.
+    let mut m = map();
+    m.players[1] = Player {
+        human: true,
+        computer: true,
+        details: m.players[0].details.clone(),
+    };
+    assert_eq!(teams(&m), [0, 1]);
+    m.teams = Some(Teams {
+        count: 1,
+        of_player: [0; 8],
+    });
+    assert_eq!(teams(&m), [0, 0]);
+    m.teams = Some(Teams {
+        count: 2,
+        of_player: [1, 0, 0, 0, 0, 0, 0, 0],
+    });
+    assert_eq!(teams(&m), [1, 0]);
 }
 
 // covers: GAM-BAT-010, GAM-BAT-011

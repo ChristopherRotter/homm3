@@ -97,6 +97,8 @@ fn idle() -> Replay {
         water: Arc::default(),
         moves: None,
         host: None,
+        seat: None,
+        clock: None,
     };
     let actions = BTreeMap::from([
         (0, vec![Action::Scroll(Direction::East)]),
@@ -296,6 +298,8 @@ fn its_cues_are_handed_out_once() {
         water: Arc::default(),
         moves: None,
         host: None,
+        seat: None,
+        clock: None,
     };
     let actions = BTreeMap::from([
         (1, vec![Action::Click(dest)]),

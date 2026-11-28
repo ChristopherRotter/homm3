@@ -678,37 +678,37 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x0fa01a766f192252",
-    "0x1b39b6ab31a33729",
-    "0x91ff3eb9b53a4b0d",
-    "0x24773d965a0f7bac",
-    "0xfe160c51f529c6da",
-    "0xecc5c3b0aa3fbc31",
-    "0x32fe9c7f46f4c344",
-    "0x5bad30fb0d63c3ee",
-    "0xba6aae44e66a1280",
-    "0x3cd975bdd3aa21f0",
-    "0xb7f8841f62e8c0ed",
-    "0xd518c2e05bf3efa5",
-    "0xcc4f29c65defa704",
-    "0x9d2a0adb1eeaf57f",
-    "0x4a595c48be063a15",
-    "0xdee5fbbe0e633f89",
-    "0xdec65950b2eb99cc",
-    "0x2ec9591961d7b538",
-    "0xc8ef58036d4d19de",
-    "0x589375c55c9a64a3",
-    "0xb0099bd4f4cd0ea2",
-    "0xd8ac08258b2b0739",
-    "0x1588bb8d0c81a6cd",
-    "0x7c117c5b09ffd4e5",
-    "0xe6ee09ba254717be",
-    "0x4d80f8f89fb8f221",
-    "0xca39d75c4e3afe6e",
+    "0x8d46c978d06d223c",
+    "0x1a625dba5d3c580c",
+    "0x114ab1804ec47025",
+    "0xccb69bb07ee3b278",
+    "0xd3f41285fe98d481",
+    "0x69f2bfcb562839f6",
+    "0x33d25e2b114e2661",
+    "0xe9b72bbd62d3d7e4",
+    "0x4c238d6214a89d59",
+    "0xd58d433d6fc21f21",
+    "0x72fc2c698c889204",
+    "0xe8535d9f10f597ec",
+    "0x8ccf5f82be25147d",
+    "0x5d0777483d3e0ca6",
+    "0x3fe93421bbe39544",
+    "0xd6ac23bd2c42fe31",
+    "0xfb8e45ff755873bf",
+    "0xba1663d75804df0f",
+    "0xda0b4fc5e62a2a1c",
+    "0x746bd9074d43f4ab",
+    "0x1658f5e1d84b10f7",
+    "0x15ef8c18d9ec4580",
+    "0x4291e72333b42614",
+    "0x95f15c006e471eac",
+    "0x527725a5b9f91e73",
+    "0x5a3fde3af06cb9f8",
+    "0xb663c8a644bf1a66",
 ]
 
 [replay]
-format = 28
+format = 29
 engine = "0.1.0"
 seed = "2647"
 difficulty = 1
@@ -734,18 +734,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-teleporters-36.h3m"
 hash = "0x27ac37d3c2d89975"
-import_version = 29
+import_version = 30
 
 [result]
 day = 29
-final_hash = "0x0d5ff042c2f5e0b8"
+final_hash = "0xaa22f2409db0cc1b"
 
 [[players]]
 colour = 0

@@ -321,6 +321,60 @@ pub(crate) fn guild_core(quirks: &[&str]) -> Ruleset {
     })
 }
 
+/// The war machines of [`smith_core`] (E09 T59a, TWN-SMT-001): the Ballista's and the cart's
+/// artifacts, each in a position of its own, and a ring that is none.
+pub(crate) const BALLISTA: ArtifactTypeId = ArtifactTypeId::from_raw(0);
+pub(crate) const CART: ArtifactTypeId = ArtifactTypeId::from_raw(1);
+pub(crate) const RING: ArtifactTypeId = ArtifactTypeId::from_raw(2);
+
+/// [`core`] with two war machines (E09 T59a, TWN-SMT-001): the creatures `t:ballista` (2 wood and
+/// 2 500 gold) and `t:cart` (1 000 gold), handles 52 and 53, their artifacts [`BALLISTA`] and
+/// [`CART`] in positions of their own, and [`RING`], no war machine.
+pub(crate) fn smith_core() -> Ruleset {
+    core_edited(&[], |pack| {
+        let machine = |k: &str, cost: Vec<(ContentKey, u32)>| CreatureDef {
+            key: key(k),
+            speed: 0,
+            info: CreatureInfoDef {
+                flags: vec!["war_machine".into()],
+                cost,
+                ..CreatureInfoDef::default()
+            },
+        };
+        pack.creatures.extend([
+            machine(
+                "t:ballista",
+                vec![(key("t:wood"), 2), (key("t:gold"), 2500)],
+            ),
+            machine("t:cart", vec![(key("t:gold"), 1000)]),
+        ]);
+        let artifact = |k: &str, war_machine: Option<&str>| ArtifactDef {
+            key: key(k),
+            name: "Artifact".into(),
+            class: ArtifactClass::Treasure,
+            cost: vec![],
+            slot: Some(key(k)),
+            war_machine: war_machine.map(key),
+            needs_skill: None,
+            effects: vec![],
+            parts: vec![],
+        };
+        pack.artifact_slots = ["t:ballista", "t:cart", "t:ring"]
+            .map(|k| ArtifactSlotDef {
+                key: key(k),
+                name: "Slot".into(),
+                count: 1,
+                backpack: false,
+            })
+            .into();
+        pack.artifacts = vec![
+            artifact("t:ballista", Some("t:ballista")),
+            artifact("t:cart", Some("t:cart")),
+            artifact("t:ring", None),
+        ];
+    })
+}
+
 /// What a hero needs to learn in a guild (E09 T48a, TWN-GLD-004): the hero parameters (spell level
 /// 2 learnable without Wisdom), Wisdom `t:wisdom` raising it by its level, a class and one hero
 /// type ([`SAGE`]), and a spell book ([`BOOK`], the `spell_book` effect) on a slot of its own.

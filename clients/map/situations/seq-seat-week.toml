@@ -1,0 +1,13 @@
+# `seq-seat` on the first week's last day (E24 M5 T5, design §5.31; clients/map/sequences.toml
+# `seat-new-week`): a second hero of Red's selected (the date written is drawn by a selection's
+# redraw, as `seq-turn-week`'s), Blue's End Turn starting the next week.
+size = 36
+terrain = "grass"
+heroes = [{ at = [4, 4], class = 2 }, { at = [6, 7], class = 5 }, { at = [30, 30], owner = 1 }]
+select = { hero = [6, 7] }
+towns = [
+    { at = [8, 3], faction = 0, owner = 0, buildings = "fort" },
+    { at = [26, 31], faction = 1, owner = 1, buildings = "fort" },
+]
+view = [14, 0, 0]
+date = [1, 1, 7]

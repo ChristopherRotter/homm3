@@ -17,13 +17,13 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x986c50862b257c4d",
-    "0x2f1bb9e6b1baa485",
-    "0x2b276330892e4ba3",
+    "0x07bb13cd8bb950a1",
+    "0xa2ba33d60cb5d14e",
+    "0x6c096c8e923c463a",
 ]
 
 [replay]
-format = 28
+format = 29
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -49,18 +49,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-garrisons-36.h3m"
 hash = "0xa3cbaec168902eb6"
-import_version = 29
+import_version = 30
 
 [result]
 day = 2
-final_hash = "0x44d338e7fd8e0dcd"
+final_hash = "0x663947e256ef8dd8"
 
 [[players]]
 colour = 0

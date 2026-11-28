@@ -901,3 +901,75 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   value has no caller in a turn yet. The scoped verify `--with-original-data` passed (but
   `check-lane`, by design; `check-lane --cross-lane` and `cargo check --workspace --all-targets`
   passed): coverage 29 minutes, determinism 10, bench-check 24, original-data 3.
+
+## T2i0 — the computer's search (2026-11-27, increment 2)
+
+- **Inserted at T2i's start** (AI-Q41, two rounds): T2i measured 11 functions, 7.7 KB, about
+  2 860 instructions, but its searches are the original's computer pathfinder (several days under
+  a budget up to 32 000 points, the guards weighed, the teleporters, the danger's limit past the
+  day's points, searches from a tile no hero stands on), which the engine's one-day human reach
+  does not give. The user chose the pathfinder first, whole (about 4 300 instructions in ten
+  functions), in `h3-adventure` beside the human reach (`cross-lane`), and the fog by the variant
+  (the faithful policy the computer's test, the fair one the human's); T2i follows whole. A cloud
+  clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from the user's
+  repo folder at the start.
+- **Readings** (three fresh readers in turn, each a few functions with a short report; the deciding
+  sites checked by the main session; the five slips blind-confirmed by a fourth): `pathfinder_run`
+  0x56B440, `pathfinder_reset` 0x4B1530 and `pathfinder_relax` 0x4B1A70; `pathfinder_expand`
+  0x4B2300; `pathfinder_pass_through` 0x56AB40, `pathfinder_teleport_exits` 0x56A400,
+  `pathfinder_gate_exit` 0x56A730, the two guard tests and `find_guarding_monster` 0x41A460; the
+  survey's §1.11. New against the earlier summaries: no turn count (the order is the score S, the key
+  plus the danger past the day's points, then the second cost); the open list drops its best entry
+  at 500 (§5.5 #74); a new day leaves the whole maximum (#75); the diagonal window is negative past
+  the first day (#76); a border gate is passed by the current player's key (#78); mode 4's levels
+  come from the masteries whether castable or not (#79), the start's flying from the hero's own; the
+  two node slots are by the place-to-stop bit, not land and sea; the teleporters' second cost counts
+  the list's size; `docs/exe/map.toml` about 30 entries new, a dozen summaries corrected.
+- **Built** (two worker sub-agents in turn on a fixed design, the main session's review):
+  `h3_adventure::search` (`search.rs`: the API, the start, the loop, the relax, CPU-PTH-001,
+  -002; `search/expand.rs` the step, -003; `guards.rs` -004; `through.rs` -005; `teleport.rs` -006;
+  `jumps.rs` -007): `AdventureState::computer_search(core, part, heroes, &SearchStart, &asks)` with
+  `SearchMode` (the original's modes 1 to 5), `SearchFog`, `SearchJumps` (mode 4's castable jumps
+  and levels, the caller's: the adventure reads no spell points), `SearchWindow`, the trait
+  `SearchAsks` (the danger map, `ai_fight_answer`, the walk's boat marks and their price; `NoAsks`)
+  and `ComputerSearch` (the place and pass nodes, the reached list in first-reach order, the short
+  flag). The cells are plain integer arrays, zeroed by allocation; the open list as the original's
+  (a sorted vector, the back taken, the drop at 500, the pop's skip). The human reach, `passage`
+  and the pricing are unchanged. The threat fold (`computer/start.rs`) searches with it in mode 3
+  (AI-STUB-11 lifted). AI-STUB-22 (the Castle Gate and Town Portal, E09 increment 8), AI-STUB-23
+  (the Sanctuary's and the Quest Guard's cases, E12).
+- **Agent decisions (change freely):** a visitable tile whose visit the engine has not built counts
+  as blocked; every garrison is class 33; on a tile another hero first, then an empty boat, then the
+  object by its kind; "not entered" is the type's visit mode; class 3 (a landing) is a free coastal
+  tile; no magic is Cursed Ground or an anti-magic garrison; the teleporters' lists are the channels'
+  (the excluded word the entrance's tile or Whirlpool); Angel Wings and the Boots are the hero's own
+  levels without the day's spells; two cases the engine cannot produce left out (a gate's pair
+  without a gate or hero, a boat on a Whirlpool).
+- **Tests** (`search/tests.rs`, 40 on `crate::testing`'s fixtures, hand-computed): the start node,
+  the reached order, the pop's skip, the open list's order and its drop at 500, the bound and its
+  flag, the danger and its refusal, a higher score at a higher cost, the diagonal window, the new
+  day, the pass nodes, the boat's steps, the fog both ways, closed entrances both ways, the guards
+  in both mode ranges, every passage case by mode, the box, the jump levels, the no-magic mark,
+  each exit's costs, key, guard and order with the Whirlpool's −500 × k and the lost channel, the
+  heroes on exits, the gate pair, the start's teleporter, the Door's price, limit and refusal, Fly
+  against Water Walk, a summoned and a marked boat, the day's rest of a landing and a boarding.
+  Coverage of the seven files 100 % lines and regions.
+- **The speed** (a third worker's tuning loop, five rounds): the first build cost
+  `computer-turns-towns-36` 2 484 645 912 Ir (+705 % on `master`'s 307.6 M in the same sandbox),
+  the search's own loop, its relax and a tile read per neighbour step dominant; then each tile read
+  once a search, the step's price reused for an identical tile, the mode-3 loop compiled apart, the
+  refused relaxes cheap and plain cells: 1 236 132 835 (−50 %), every one of the workload's 564
+  searches hashed equal to the first build's at each round (a throwaway harness). Dropped: a heap
+  or a deque for the open list (the insert position is the 32-bit score's, the entries' copies
+  16-bit: only the sorted vector keeps the original's order past 65 535), helpers out of line.
+  Re-baselined (+300.6 % on the stored baseline: no fog in mode 3, objects and teleporters passed,
+  the whole map); the human reach's workloads flat (`reach-xl-144` +0.01 %, `reach-lifted-xl-144`
+  +0.70 %, `random-play-bonuses-36` +1.94 %, `reach-teleporters-xl-144` +0.11 %, each as `master`
+  measured in the same sandbox).
+
+- **The verify:** the scoped verify `--with-original-data` passed but `check-lane` (by design;
+  `check-lane --cross-lane` and `cargo check --workspace --all-targets` passed) and
+  `original-data`'s harvest check, which since E14 T4b reads `H3sprite.lod` and `H3ab_spr.lod`,
+  not staged (the PC had left); every crate's `original_data` check run by hand passed (the
+  computer on all 160 shipped maps, 800 games) and `exe.py check` agrees: coverage 23 minutes,
+  determinism 7, bench-check 19.

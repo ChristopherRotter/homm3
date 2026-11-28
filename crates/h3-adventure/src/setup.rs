@@ -389,7 +389,7 @@ pub struct AdventureSetup {
 }
 
 /// A player's seat as an event tests it (ADV-OBJ-007, E08 T62b2): the game's player's colour and
-/// whether it counts as human (GAM-BAT-010, E08 T54).
+/// whether it counts as human (GAM-BAT-010, E08 T54); since E10 T3a also its team (GAM-TEM-001).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Seat {
     /// The colour in the original's order (0 red to 7 pink); an event fires for a colour below 8
@@ -398,6 +398,11 @@ pub struct Seat {
     /// Whether the player counts as human: one that does not fires an event only with the event's
     /// computer flag.
     pub human: bool,
+    /// Its team (GAM-TEM-001, E10 T3a; E10 design note §1, §2): the players of one team are
+    /// allies ([`crate::AdventureState::allied`]) and share one explored layer (GAM-TEM-002). The
+    /// teams are dense: each below the number of players, every team below the highest one used
+    /// held by a player ([`SetupError::Team`]).
+    pub team: u8,
 }
 
 /// The scenario's bans as the build's draws read them (GAM-SET-003, E08 T61b; increment 7's design
@@ -504,6 +509,9 @@ pub enum SetupError {
     Players(u8),
     /// The seats do not give one per player (E08 T62b2); their number.
     Seats(usize),
+    /// The seats' teams are not dense (E10 T3a): a team at or past the number of players, or one
+    /// below the highest used that no seat holds; that team.
+    Team(u8),
     /// The object at this index is anchored on a level the map does not have.
     ObjectLevel(usize),
     /// The object at this index has an object type the ruleset does not know.
@@ -607,6 +615,7 @@ impl fmt::Display for SetupError {
             Self::UnknownRiver(tile) => write!(f, "tile {tile} has an unknown river"),
             Self::Players(n) => write!(f, "{n} players are outside the bounds"),
             Self::Seats(n) => write!(f, "{n} seats do not give one per player"),
+            Self::Team(team) => write!(f, "team {team} leaves the teams not dense"),
             Self::ObjectLevel(object) => {
                 write!(f, "object {object} is anchored on a missing level")
             }

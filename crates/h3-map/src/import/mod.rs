@@ -1117,7 +1117,10 @@ fn colours(map: &RawMap) -> [Option<PlayerId>; 8] {
 
 /// The colours that play, in colour order, and the player each colour is; a colour a human may
 /// play counts as human (GAM-BAT-010, E08 T54: the map's player kinds; ADV-Q27). Their starts
-/// are `town::starts`' (E09 T7a1).
+/// are `town::starts`' (E09 T7a1). Each player's team is the map's code for its colour when the
+/// map defines teams, else its own index (GAM-TEM-001, E10 T3a; E10 decision 2: every colour its
+/// own team); the build refuses teams that are not dense (the shipped maps' are, survey
+/// `E10-teams.md` §1).
 fn players(map: &RawMap) -> (Vec<PlayerSetup>, [Option<PlayerId>; 8]) {
     let mut players = Vec::new();
     let mut colours = [None; 8];
@@ -1125,11 +1128,18 @@ fn players(map: &RawMap) -> (Vec<PlayerSetup>, [Option<PlayerId>; 8]) {
         if !(player.human || player.computer) {
             continue;
         }
-        *id = u8::try_from(players.len()).ok().map(PlayerId::new);
-        // rule: GAM-BAT-010
+        let index = u8::try_from(players.len()).ok();
+        *id = index.map(PlayerId::new);
+        // rule: GAM-BAT-010, GAM-TEM-001
         players.push(PlayerSetup {
             colour,
             human: player.human,
+            team: map
+                .teams
+                .as_ref()
+                .map_or(index.unwrap_or(u8::MAX), |teams| {
+                    teams.of_player[usize::from(colour)]
+                }),
             start: PlayerStart::default(),
         });
     }

@@ -27,6 +27,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::iter;
 
+use crate::clock::ChatLine;
 use crate::live::Buttons;
 use crate::reach::{AnswerAsked, LevelAsked, Reach, RevisitAsked, Stand, WalkAsked};
 use crate::sound::Cue;
@@ -229,6 +230,27 @@ impl Replay {
         let from = self.t;
         self.cues.retain(|(c, _)| *c <= from);
         self.again = 0;
+    }
+
+    /// The host's session ended the turn by its time at `t` (E24 M5 T5 part five,
+    /// [`Loop::expire`]): known to the loop from 0 on, it runs again from the latest change kept
+    /// before `t`, as [`Replay::add_turns`] makes it.
+    pub fn expire(&mut self, t: u32) {
+        self.each(|l| l.expire(t));
+        self.again_from(t.max(1));
+    }
+
+    /// The screen chat's lines as far as the loop ran (E24 M5 T5 part five, [`Loop::chat`]).
+    #[must_use]
+    pub fn chat(&self) -> Vec<ChatLine> {
+        self.l.chat()
+    }
+
+    /// The millisecond the turn's timer was started as far as the loop ran, while it runs (E24 M5
+    /// T5 part five, [`Loop::timer_at`]).
+    #[must_use]
+    pub fn timer_at(&self) -> Option<u32> {
+        self.l.timer_at()
     }
 
     /// The millisecond End Turn's change asked the host for the turns after it, as far as the loop

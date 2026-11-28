@@ -734,12 +734,14 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
     }
 }
 
-/// `players` players' seats (E08 T62b2): each player's colour its id, every one human.
+/// `players` players' seats (E08 T62b2): each player's colour and team its id (every player its
+/// own team, E10 T3a), every one human.
 pub(crate) fn seats(players: u8) -> Vec<crate::Seat> {
     (0..players)
         .map(|colour| crate::Seat {
             colour,
             human: true,
+            team: colour,
         })
         .collect()
 }

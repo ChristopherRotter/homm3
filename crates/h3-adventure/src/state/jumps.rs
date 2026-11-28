@@ -164,11 +164,11 @@ impl AdventureState {
     /// The exit of `player`'s jump among `listed`, a channel's tiles in the walk's order, each
     /// with whether the visit excludes it (ADV-TEL-003; `teleport_exit_draw` 0x4CDB80, survey
     /// §4.1, read whole; D-53, D-57 as the original): over the list, a tile is a **candidate** when
-    /// a hero of another team stands on it, whatever lies there (a team is its player until E10's
-    /// allies), or when no hero and no empty boat stand on it and the visit does not exclude it (a
-    /// two-way monolith excludes its own tile, a Whirlpool its own Whirlpool's; the mover stands
-    /// on the entrance anyway, a hero of its team). *Agent's call* (design note §7): a tile with
-    /// an empty boat is no candidate. None: no exit. **One: no draw** (the original's
+    /// a hero of another team stands on it, whatever lies there (an ally's is not, E10 T3a,
+    /// GAM-TEM-001), or when no hero and no empty boat stand on it and the visit does not exclude
+    /// it (a two-way monolith excludes its own tile, a Whirlpool its own Whirlpool's; the mover
+    /// stands on the entrance anyway, a hero of its team). *Agent's call* (design note §7): a tile
+    /// with an empty boat is no candidate. None: no exit. **One: no draw** (the original's
     /// `random_between` returns equal bounds at once). Else one uniform draw of the candidate's
     /// place among them from the visitor's stream, which no profile can reproduce (the original
     /// draws from the C runtime's one stream; the spread uniform as read, batch E11's E11-15 and
@@ -182,7 +182,7 @@ impl AdventureState {
     ) -> Option<Pos> {
         let candidate =
             |&(tile, excluded): &(Pos, bool)| match self.heroes.iter().find(|h| h.pos == tile) {
-                Some(other) => other.owner != player,
+                Some(other) => !self.allied(other.owner, player),
                 None => !excluded && !self.is_empty_boat(tile),
             };
         let count = u32::try_from(listed.clone().filter(candidate).count()).unwrap_or(u32::MAX);
@@ -219,7 +219,7 @@ impl AdventureState {
             self.arrival(rules, (player, hero), (entrance, exit), sink);
             return AdventureOutcome::default();
         };
-        reveal(&mut self.explored[usize::from(player.raw())], exit, 1);
+        reveal(&mut self.explored[self.map.layer(player)], exit, 1);
         let other = &self.heroes[visited];
         if other.owner == player {
             let meeting = Meeting {
@@ -282,7 +282,7 @@ impl AdventureState {
         let index = self.heroes.partition_point(|h| h.id < hero);
         self.heroes[index].pos = exit;
         let radius = hero_radius(core, part, details_of(heroes, hero));
-        reveal(&mut self.explored[usize::from(player.raw())], exit, radius);
+        reveal(&mut self.explored[self.map.layer(player)], exit, radius);
         let (seen_from, seen_to) = (
             self.viewers(core, player, entrance),
             self.viewers(core, player, exit),

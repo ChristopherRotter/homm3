@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "E09 T40b (decision 159, the town epic's design note §78: the week workload on the taverns map): the step that starts day 8 (the last EndTurn of day 7: the week's step, the taverns' release and fill, TWN-TAV-002, sparing the returning offers, TD-18, from the six free types of e09-taverns-36.h3m, then red's turn start with its tavern heroes' points, TWN-TAV-005) in each of 16 random games of 7 days on the taverns map, where the random agent hires at both towns and the map Tavern and its heroes retreat, surrender and come back; the fork that tries the step is dropped before it, as day-start-builds-36's; a new workload, no engine code changed (master's code); E08 T141a re-baselined: master 1 830 161 in the same sandbox, the branch -1.79 % on it with the same counted code (the functions in the same shares): each player's list of heroes (decision 413) orders the env's hero slots (encoding v19), so the random games changed course (5 059 steps for 4 080; CI counted 1 793 808, -2.17 % on the old baseline)"
+description = "E09 T40b (decision 159, the town epic's design note §78: the week workload on the taverns map): the step that starts day 8 (the last EndTurn of day 7: the week's step, the taverns' release and fill, TWN-TAV-002, sparing the returning offers, TD-18, from the six free types of e09-taverns-36.h3m, then red's turn start with its tavern heroes' points, TWN-TAV-005) in each of 16 random games of 7 days on the taverns map, where the random agent hires at both towns and the map Tavern and its heroes retreat, surrender and come back; the fork that tries the step is dropped before it, as day-start-builds-36's; a new workload, no engine code changed (master's code); E08 T141a re-baselined: master 1 830 161 in the same sandbox, the branch -1.79 % on it with the same counted code (the functions in the same shares): each player's list of heroes (decision 413) orders the env's hero slots (encoding v19), so the random games changed course (5 059 steps for 4 080; CI counted 1 793 808, -2.17 % on the old baseline); E09 T59a re-baselined: master 1 799 777 in the same sandbox, the branch +2.75 % on it, on master's games (the agent made to skip the listed war machines and boats) +0.04 % with the same counted code: the random agent buys war machines at the towns' Blacksmiths (encoding v24), so the random games changed course"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*day_start_step*"
-instructions = 1797311
+instructions = 1849318
 threshold_percent = 2

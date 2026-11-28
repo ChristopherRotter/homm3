@@ -95,6 +95,47 @@ fn a_plain_map_with_two_heroes() {
 }
 
 #[test]
+fn timed_events_for_the_humans_they_name() {
+    // E24 M5 T5 (design §5.31): a hot seat's start's box after the hand-over's.
+    let text = format!(
+        "{PLAIN}events = [{{ message = \"Found.\", resources = [0, 0, 0, 0, 0, 0, 500], \
+         players = [1], day = 1 }}, {{ message = \"Again.\", players = [0, 7], day = 3 }}]\n"
+    );
+    let (map, _) = Situation::parse(&text)
+        .unwrap()
+        .build(&BTreeMap::new(), &[])
+        .unwrap();
+    let event = |message: &str, resources, players, first_day| TimedEvent {
+        name: String::new(),
+        message: message.into(),
+        resources,
+        players,
+        human: true,
+        computer: false,
+        first_day,
+        interval: 0,
+    };
+    assert_eq!(
+        map.events,
+        [
+            event("Found.", [0, 0, 0, 0, 0, 0, 500], 0b10, 0),
+            event("Again.", [0; 7], 0b1000_0001, 2)
+        ]
+    );
+    for bad in [
+        "players = [8], day = 1",
+        "players = [], day = 1",
+        "players = [1], day = 0",
+    ] {
+        let text = format!("{PLAIN}events = [{{ message = \"x\", {bad} }}]\n");
+        let built = Situation::parse(&text)
+            .unwrap()
+            .build(&BTreeMap::new(), &[]);
+        assert!(built.unwrap_err().contains("timed event"), "{bad}");
+    }
+}
+
+#[test]
 fn an_underground_of_terrains() {
     // E24 M3 T6b2 (design §4.14): the writer's second level, its terrain and patches, no objects.
     let text = r#"

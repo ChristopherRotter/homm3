@@ -75,7 +75,8 @@ impl Message {
     /// percent sign), each checked against the kind `kind` gives for its name. A `%+d` (or
     /// `%+i`) is a signed number the caller writes with its sign: a text argument (E17 M6
     /// T2a2b2, the morale and luck descriptions' spells line, ARRAYTXT 121); so is a `%02d`, a
-    /// number the caller writes with two digits at least (E27 M4 T4b1, a save's date).
+    /// number the caller writes with two digits at least (E27 M4 T4b1, a save's date), and a
+    /// `%0.1f`, one it writes to a tenth (E24 M5 T5 part five, GENRLTXT 630).
     ///
     /// # Errors
     /// The first problem found, as [`PrintfError`].
@@ -111,10 +112,18 @@ impl Message {
                     _ => return Err(PrintfError::Specifier(Some('+'))),
                 },
                 // `%02d` (E27 M4 T4b1, a save's date: its minute): a number the caller writes
-                // with two digits at least, a text argument as `%+d`'s.
+                // with two digits at least, a text argument as `%+d`'s; `%0.1f` (E24 M5 T5 part
+                // five, a turn's minutes left: GENRLTXT 630) a number the caller writes to a
+                // tenth, so too.
                 Some('0') => match (chars.next(), chars.next()) {
                     (Some((_, '2')), Some((_, 'd'))) => {
                         width = 4;
+                        Kind::Text
+                    }
+                    (Some((_, '.')), Some((_, '1')))
+                        if chars.next().map(|(_, c)| c) == Some('f') =>
+                    {
+                        width = 5;
                         Kind::Text
                     }
                     _ => return Err(PrintfError::Specifier(Some('0'))),

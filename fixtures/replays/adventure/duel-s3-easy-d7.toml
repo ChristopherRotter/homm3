@@ -313,22 +313,22 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x5efbe92773e1a567",
-    "0x274fde26f83a34e8",
-    "0x8c992f75b18cc7ac",
-    "0x7a5fbdc53f6b965e",
-    "0xb31e715e5e13b1f0",
-    "0xe65838f6d0f84c29",
-    "0xd76b5d21af980b67",
-    "0x3213106b117df047",
-    "0x6d10c57258140657",
-    "0xde11723e8e2554c4",
-    "0x471437ae34b9eb2b",
-    "0xf0858c67f97def5a",
+    "0x337168ad41270737",
+    "0x611efdca2bfc04fc",
+    "0x883ece205b3792a4",
+    "0xde71a8cd6ace1c1e",
+    "0x4f1ba376308ed248",
+    "0xa7aeae9748d38b25",
+    "0x7adba671c853e9cb",
+    "0x0c5796e743442f4f",
+    "0xa037d14a8435a713",
+    "0xedb3b34eb90c7b08",
+    "0x52e3d7605bd742df",
+    "0xd502b35e9b81cb8e",
 ]
 
 [replay]
-format = 28
+format = 29
 engine = "0.1.0"
 seed = "3"
 difficulty = 0
@@ -354,18 +354,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-duel-36.h3m"
 hash = "0x5918efa3271a85e0"
-import_version = 29
+import_version = 30
 
 [result]
 day = 8
-final_hash = "0xb12eb224570447d6"
+final_hash = "0x49947cc4ff42339f"
 
 [[players]]
 colour = 0

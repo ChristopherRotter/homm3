@@ -7,7 +7,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
-use h3_adventure::{HeroOnMap, Holds, ObjectKind, Pos, allied};
+use h3_adventure::{HeroOnMap, Holds, ObjectKind, Pos};
 use h3_contracts::ArmyStack;
 use h3_heroes::ArtifactInstance;
 use h3_kernel::arith::{SINGLE_BITS, SignedX87, X87};
@@ -343,7 +343,7 @@ pub(super) fn mine(asked: Asked<'_, '_>, index: usize, pos: Pos) -> i32 {
     let adventure = state.adventure();
     let part = asked.hero.rules.adventure();
     let owner = adventure.owner(index);
-    if owner.is_some_and(|o| allied(o, asked.player())) {
+    if owner.is_some_and(|o| adventure.allied(o, asked.player())) {
         return 0;
     }
     let guards = adventure.mine_guards(part, index);
@@ -473,7 +473,7 @@ pub(super) fn garrison(asked: Asked<'_, '_>, index: usize, pos: Pos) -> i32 {
             (asked.join(&factions), asked.morale(), short(advantage)),
         );
     }
-    if owner.is_some_and(|o| allied(o, player)) {
+    if owner.is_some_and(|o| adventure.allied(o, player)) {
         return 0;
     }
     fight_against(asked, army, pos)

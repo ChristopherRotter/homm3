@@ -98,7 +98,9 @@ pub use parse::parse;
 /// v29 (E08 T141a, increment 15's design note §7): the Prisons (class 62) typed with their
 /// prisoners' bodies read as placed heroes' (`GameSetup::prisoners`; a Prison entered from water
 /// refused, `Unsupported::PrisonerOnWater`) and the Market of Time (class 50) typed.
-pub const MAP_IMPORT_VERSION: u32 = 29;
+/// v30 (E10 T3a, E10 design note §1): each player's team from the map's teams, else its own
+/// (`PlayerSetup::team`, GAM-TEM-001).
+pub const MAP_IMPORT_VERSION: u32 = 30;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

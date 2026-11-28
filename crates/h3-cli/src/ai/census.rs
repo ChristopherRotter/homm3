@@ -381,6 +381,7 @@ impl Accumulator {
             players: vec![PlayerSetup {
                 colour: 0,
                 human: true,
+                team: 0,
                 start: Default::default(),
             }],
             difficulty: DEFAULT_DIFFICULTY,

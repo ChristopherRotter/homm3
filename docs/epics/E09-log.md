@@ -6946,3 +6946,85 @@ bench-check 17. `verify-step coverage --scope server` clean (the wire's mapping)
 --workspace --all-targets -- -D warnings`; `cargo test -p h3-protocol -p h3-server -p h3-cli -p
 h3-files` (431, every golden replayed); the clients' `h3-map-view` checked (`cargo check
 --all-targets`; the SDL crates not built here).
+
+### T59a — the war machines and the boat at a town: the rules, the listing, the wire, the words, the env's three entries, the plans (2026-11-27)
+
+One session, the user present at the start; branch `town/e09-t59a`, `cross-lane` (the adventure
+lane's `h3-adventure` `state/boats.rs` (`launch` now `pub(crate)`), `h3-files`' words, `h3-sim`'s
+replay version and `tests/hiring.rs`, the 130 goldens' `format` lines, `h3-map`'s plans; the AI
+lane's `h3-sim` `adventure/action.rs`, `mod.rs`, `tests.rs`, `tests/towns.rs`; the server lane's
+`h3-protocol`; the adventure workloads `legal-towns-36` and `week-start-taverns-36`). Starting
+point: `master` at be38c3e (#1216, T58b, merged before the session); the setup's light gates only
+(CI's fingerprint on `master`'s code). The user's computer was online: seven files staged
+(`Heroes3.exe`, the four LODs `H3bitmap`, `H3ab_bmp`, `H3sprite`, `H3ab_spr`, `maps.tar`,
+`extracted.tar`). The agent recommended a cut by command (T59a1 `BuyWarMachine`, T59a2
+`BuildBoat`); **the user kept T59a whole** (decision 227).
+
+- **The town part** (`h3-towns`' `service.rs`): `TownCommand::BuyWarMachine { town, building }`
+  and `BuildBoat { town }`; the refusals `NoWarMachine`, `HasWarMachine`, `BoatSpotTaken`;
+  `check_war_machine` (`UnknownBuilding`, `NoWarMachine`, `NotStanding`; the price the machine's
+  creature's cost, `TWN-QUIRK-22`), `war_machine_buildings`, `check_boat` (`NotStanding`; the
+  part's price and type), `service_offers` (both at once, for the listing); the part's derived
+  `ServiceRoles` (the sellers, the Shipyards, what supersedes them; unhashed). The fixture's
+  `smith_core` (the Ballista of 2 wood and 2 500 gold, the cart of 1 000).
+- **The adventure** (`town/boat.rs`, the town lane's): `free_town_boat_spot` (the spot while no
+  empty boat and no hero stands on it, `TWN-QUIRK-19`) and `build_town_boat` (E08's `launch`,
+  `BoatBuilt` by `viewers`).
+- **The game:** `town/smith.rs` (`buy`: the town, its owner, the part's check, the market window's
+  hero, `HasWarMachine` for a machine held or no free position, the treasury; paid, then
+  `HeroChanged`), `town/boat.rs` (`build`: the owner, `NotStanding`, `BoatSpotTaken`, `CannotPay`;
+  launched, then paid), `town/services.rs` (the listing's `listed` and its `Services` iterator:
+  the machines in the record's order, then the boat, after the town's market window);
+  `market::window_hero` and `hero_of` shared.
+- **The wire** (protocol **v87**): both commands both ways, the three refusals (174 rejections).
+  **Replays:** the words `town machine <town> <building>` and `town boat <town>` (format **v29**);
+  the 130 goldens' `format` lines only, every hash reproduced by `adventure_replays`. **The env**
+  (encoding **v24**): `WAR_MACHINE` (168) and its next (the first and the second of the record's
+  sellers, in its order, standing or not) and `TOWN_BOAT` (170), each by the town's entrance,
+  building 0; `ENTRY_COUNT` 171; `tileless` ends the sale's range at `WAR_MACHINE`; the layout test
+  and the masks' check (`machine_place`). **The town map's seed** (`tests/towns.rs`): 864 met no
+  siege won once the agent bought machines; a release search over the seeds 1 to 3 000 (without
+  the masks, 211 s on two threads) found four meeting every feature, 128 the one buying machines
+  (1 223 steps, 4 machines; the map has no boat spot); `Played` counts machines and boats. The
+  fork test's seed 6 held.
+- **The plans** (`h3-map`'s `play.rs`): `town_builds` probes each seller, the first building and
+  one past the record, and the boat; `check_town_machine` and `check_town_boat` read a listed one
+  independently; `check_conservation` takes their prices; `check_guild_refusals` the two commands;
+  `Step::Town` plays a listed machine in one step of sixteen (n % 16 == 11) and a boat in another
+  (== 9). At 48 cases the plans checked 24 listed machines and played 11; **no boat** (no plan
+  town has a boat spot: T60's trades map). The play block at ten and the view block at five times
+  their cases once (release): passed.
+- **Rules:** TWN-SMT-001 entered `implemented` (the code reading, VCMI, the wiki; row TWN-6-5
+  observed only the refusal), TWN-SHY-001 `verified` (row TWN-6-6: the purchase on the spot, its
+  price); TWN-SET-011 amended; `TWN-QUIRK-19` (T-21, state-corrupting, refused) and `-22` (T-25,
+  the cost per resource) entered.
+- **Tests:** `h3-towns`' four (`service/tests.rs`: the sellers, the listing's order, the boat, the
+  offers against the two questions), `h3-game`'s five (`town/tests/smith.rs`: the visitor's
+  purchase with gold and wood, the refusals in order, the garrison hero by the flag;
+  `town/tests/boat.rs`: the launch then the payment, a docked boat and a hero aboard refused, the
+  spot freed the next day, the refusals); the words' round trip and seven refusals; the
+  protocol's.
+- **The bench** (`master` built in `target/wt-master`, per function): on the first full run every
+  adventure workload inside its gate but `legal-towns-36` (+6.08 %) and `week-start-taverns-36`
+  (+2.91 %). `legal-towns-36` on `master`'s games (the rollout's `choose` made to skip the
+  services, a scratch edit): +2.79 % against `master` in the same sandbox (47 923 635; the
+  committed baseline 47 575 139), +2.40 % with both tests read at once (`service_offers`), +2.22 %
+  with the town part asked only where a hero stands or the town has a spot, +1.98 % with the
+  services one small iterator in the town's chain (the town lane's `TRAPS.md`); re-baselined with
+  the agent's games (+4.51 % on `master`). `week-start-taverns-36`: +0.04 % on `master`'s games
+  (1 799 777), the games changed course; re-baselined.
+- *Agent's calls* (change freely): the decision-227 list; `HasWarMachine` for no room too (one
+  refusal); the listing of the services in `town/services.rs` (T59b's two may join it).
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`: every step passes
+but `check-lane` (by design; `check-lane --cross-lane --base origin/master` ok), coverage 25
+minutes, determinism 12, bench-check 13, `original-data` 3; `verify-step coverage --scope server`
+met one region (the wire's out-of-range building of `BuyWarMachine`, tested since), then clean;
+`cargo clippy --workspace --all-targets`; `cargo test -p h3-sim -p h3-protocol -p h3-server -p
+h3-cli -p h3-files` (every golden replayed). **CI** (#1221): its first run failed in the coverage
+job on `h3-server`'s timing test `tests::clock::a_spectator_watches_a_timed_game_through_a_restart_…`
+under the instrumentation (the turn's clock read `None`; passed locally twice, no server code
+changed); the failed job re-run, green.
+
+**The queue:** T59b next (the University and the Transformer). Ids: decisions next 228; quirks
+planned `-23`, a new one `-24`; stubs `TWN-STUB-23`.

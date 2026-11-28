@@ -212,5 +212,6 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// encoding is unchanged, the build's (and the setup stream's draws after the build's heroes')
 /// are not. v40 (E09 T58a1, the town lane's, `cross-lane`; GAM-DEC-011 amended): a market's
 /// decision writes its hero as an option (0 for none, else 1 and the hero) and its place's tag
-/// before the place's fields (0: a map object's index, type and anchor; 1: a town's id).
-pub const GAME_STATE_HASH_VERSION: u32 = 40;
+/// before the place's fields (0: a map object's index, type and anchor; 1: a town's id). v41 (E10
+/// T3a, E10 design note §2): each player's team after its human flag (GAM-TEM-001).
+pub const GAME_STATE_HASH_VERSION: u32 = 41;

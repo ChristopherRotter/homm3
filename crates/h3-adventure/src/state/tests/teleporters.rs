@@ -337,6 +337,20 @@ pub(super) fn jump_state(
     others: &[(u16, u8, Pos)],
     objects: &[(&str, Pos)],
 ) -> AdventureState {
+    started(
+        rules,
+        &jump_setup(rules, (levels, monster), others, objects),
+    )
+    .unwrap()
+}
+
+/// [`jump_state`]'s setup.
+fn jump_setup(
+    rules: &Rules,
+    (levels, monster): (u8, Option<Pos>),
+    others: &[(u16, u8, Pos)],
+    objects: &[(&str, Pos)],
+) -> AdventureSetup {
     let mut rows = vec!["g".repeat(WIDE); 3 * usize::from(levels)];
     if let Some(at) = monster {
         let row = &mut rows[usize::from(at.level) * 3 + usize::from(at.y)];
@@ -361,7 +375,7 @@ pub(super) fn jump_state(
         }
         setup.map.objects.push(object);
     }
-    started(rules, &setup).unwrap()
+    setup
 }
 
 /// Red's hero [`HERO`] walks `path` with `draws` as its stream: the outcome and the events, or
@@ -524,6 +538,46 @@ fn a_monoliths_exit_is_drawn_among_its_candidates_from_the_visitors_stream() {
         }
     }
     assert_eq!(seen, [true; 3]);
+}
+
+// covers: ADV-TEL-003, ADV-TEL-004
+#[test]
+fn an_exit_holding_an_ally_s_hero_is_no_candidate() {
+    // Blue on red's team (E10 T3a; E10 design note §4, survey `E10-teams.md` §6,
+    // `teleport_exit_draw` 0x4CDB80): an exit under blue's hero 2 is no candidate, as one under
+    // red's own. Of a one-way entrance's exits (12, 0), free, and (16, 0), blue's, the free one
+    // alone: no draw (apart, both and a draw); its only exit blue's: nothing but the steps.
+    let rules = teleporter_rules();
+    let exits = [p(12, 0), p(16, 0)];
+    let both = [
+        ("t:entrance", p(2, 1)),
+        ("t:exit", exits[0]),
+        ("t:exit", exits[1]),
+    ];
+    let others = [(2, 1, exits[1])];
+    let team = |objects: &[(&str, Pos)]| {
+        started(
+            &rules,
+            &allies(jump_setup(&rules, (1, None), &others, objects)),
+        )
+        .unwrap()
+    };
+    let mut state = team(&both);
+    let mut draws = stream();
+    let (outcome, events) = walk(&mut state, &rules, &ONTO, &mut draws).unwrap();
+    assert_eq!((outcome, draws), (AdventureOutcome::default(), stream()));
+    assert_eq!(red(&state).0, exits[0]);
+    assert_eq!(jumps(&events), [(Some(p(2, 1)), Some(exits[0]))]);
+    let mut apart = jump_state(&rules, (1, None), &others, &both);
+    let mut draws = stream();
+    walk(&mut apart, &rules, &ONTO, &mut draws).unwrap();
+    assert_ne!(draws, stream());
+    let mut state = team(&[("t:entrance", p(2, 1)), ("t:exit", exits[1])]);
+    let mut draws = stream();
+    let (outcome, events) = walk(&mut state, &rules, &ONTO, &mut draws).unwrap();
+    assert_eq!(red(&state).0, p(2, 1));
+    assert_eq!((outcome, events.len()), (AdventureOutcome::default(), 2));
+    assert_eq!(draws, stream());
 }
 
 // covers: ADV-TEL-003, ADV-TEL-004

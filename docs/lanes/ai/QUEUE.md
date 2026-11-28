@@ -30,7 +30,8 @@ resumes (the epic file); its tasks are cut then.
   `h3_battle::estimate`'s `caster.rs`), T2f the artifacts (done 2026-11-26, not cut, AI-Q37; the
   equipped value moved to increment 3), T2g the army and town values (done 2026-11-27, not cut,
   AI-Q38), T2h the object value (done 2026-11-27, not cut, AI-Q39; `tile_index` public,
-  AI-Q40), **T2i** the planning (next), T2j the walk with the exit's
+  AI-Q40), T2i0 the computer's search (inserted and done 2026-11-27, whole, AI-Q41:
+  `h3_adventure::search`, `cross-lane`), **T2i** the planning (next), T2j the walk with the exit's
   property tests and the gated benchmark, T2k trace T-A's harness and days 1 to 3. Each with its
   `CPU-` ids, tests, coverage 100 %, stubs by epic.
   - **T2i — the planning** (next; survey §1.9; the epic file's table: the danger map
@@ -38,9 +39,15 @@ resumes (the epic file); its tasks are cut then.
     candidate's score `ai_candidate_score` 0x42F980, the destination `ai_hero_destination`
     0x42E0B0 with its noise (76 to 100, the caller's stream), the class tables; since T2d the
     start's Grail target (+0x39, AI-STUB-15); about 2 900 of the original's instructions):
-    measure its size at the start and propose a cut by size (the user: a couple of small tasks or
-    one bigger one a session, a seam confirmed with them); `Heroes3.exe` staged (or attached) for
-    the readings. It calls T2h's object value (`objects::value` with an `objects::Asking`: the
+    measured at T2i0's session: 11 functions, 7.7 KB, about 2 860 instructions, plus about 270 for
+    `ai_hero_search_and_walk` 0x5267B0's search loop; **the user: whole** (AI-Q41); `Heroes3.exe`
+    staged (or attached) for the readings. Its searches are T2i0's `computer_search` (survey
+    §1.11): the danger map mode 3 with the enemy's maximum plus 300; the hero's own mode 4 (5 from
+    the walk) with the budget and its points left, the danger map as `SearchAsks::danger`,
+    `objects::fight_answer` as `fight_answer`, the jumps as `pathfinder_run` sets them
+    (0x56B4FC..0x56B731: `SearchJumps`); the claims mode 2 from the colleague's kept destination;
+    the value field mode 1 with 59 999 points, bound 500, in a `SearchWindow` of 5 tiles each way
+    (read its exact bounds at 0x42E0B0); the fog `SearchFog::Computer` (AI-Q41). It calls T2h's object value (`objects::value` with an `objects::Asking`: the
     hero's `towns::Asked` and its kept destination, +0x35, which the Magic Well and Spring read;
     the candidate's cost, which some classes lower) and lifts the `expect(dead_code)` of
     `computer/fight.rs`, `skills.rs`, `armies.rs`, `towns.rs`, `objects.rs` and `vision.rs`
@@ -49,6 +56,15 @@ resumes (the epic file); its tasks are cut then.
     own `expect` if neither lands here.
 
 ## Inbox
+
+- 2026-11-27 (the adventure lane, E10 T3a, `adventure/e10-t3a`, `cross-lane`; **in your paths,
+  for your review; nothing to do now**): the teams. `PlayerSetup::team` is new (the map's teams,
+  else each its own; `h3-cli`'s `src/ai/census.rs` literal gained `team: 0`); `h3_adventure::allied`
+  (the free function) is now `AdventureState::allied(&self, a, b)`, read by `h3-game`'s
+  `computer/` (start, objects' visits and fights) through the state; `AdventureState::explored(p)`
+  is its team's layer (one a team, adventure state hash v31). No encoding moved (v23); the
+  adventure part's hash did not move, so the bots tables stay. `AI-STUB-18` (the computer's ally
+  values) stays yours with the teams now readable (`StaticMap::team`, `GameState::team`).
 
 - 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for your planning; the env's
   change comes `cross-lane` at E10 T6**): E10 increment 1 (the teams and the game's end) is
@@ -72,6 +88,19 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
+- 2026-11-27 (E09 T59a, `town/e09-t59a`, `cross-lane` with the user's consent, E09 decision
+  227; **in your paths, for your review; adventure action encoding v24 taken**): `legal_commands`
+  lists a town's war machines' purchases (`TownCommand::BuyWarMachine`, TWN-SMT-001, each standing
+  seller in the record's order) and its boat (`TownCommand::BuildBoat`, TWN-SHY-001) after its
+  market window; `adventure/action.rs` appends **`WAR_MACHINE` (168) and its next** (the first and
+  the second of the town's record's buildings with a `war_machine`, in the record's order, standing
+  or not: a Stronghold's Blacksmith, then its Ballista Yard) and **`TOWN_BOAT` (170)**, each by the
+  town's entrance in the tile head, building 0 (`ENTRY_COUNT` 171); `tileless` ends the sale's
+  range at `WAR_MACHINE`. **The town map's seed moved** (`tests/towns.rs`): 864 met no siege won
+  once the agent bought machines; a search over the seeds 1 to 3 000 found four meeting every
+  feature, **128** the one that buys machines (1 223 steps, 4 machines; the map has no boat spot);
+  `Played` counts the machines and the boats. The fork test's seed 6 held. The replay format is
+  v29.
 - 2026-11-27 (E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent, E09 decision
   226; **in your paths, for your review; adventure action encoding v23 taken**): a town's window
   with the Artifact Merchants sells its hero's artifacts (`MarketAnswer::SellArtifact { place,

@@ -5,6 +5,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 **Ownership**
 - The battle lane still writes rules the encodings show: a new observation feature or action entry comes as a `cross-lane` pull request from the battle lane with this lane's version bumps (`docs/08-work-process.md`, "Lanes"). This lane's own changes to `h3-battle` (an engine query the env needs) are `cross-lane` the other way. A new encoding also changes `python/h3env/train/layout.py` (the entity network's; `h3-sim`'s `the_python_layout_is_the_encodings` tests fail otherwise).
 - `docs/07-simulation-and-ai.md` is shared: only `--scope ai` checks it (T3a's edit slipped in).
+- `--with-original-data`'s harvest check reads `Data/H3sprite.lod` and `Data/H3ab_spr.lod` too
+  (since E14 T4b, the generator's footprints): stage them with the bitmap LODs, each in its own
+  call, or the step fails at once (E31 T2i0 ran the crates' `original_data` examples by hand).
 - A failing property test writes its case into the crate's `proptest-regressions/` file: never
   commit one of another lane's crate (`git add -A` took h3-adventure's reach case at E31 T2e and
   made every CI run fail); its seed goes into that lane's inbox.
@@ -23,11 +26,22 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   each command twice: never in the workload.
 - A `Memory` is the host's, one per computer player, never the game's: a host that rebuilds a
   game (a load, a replay) starts it empty (its turn restarts; ADR-0030 point 5).
-- The turn's start runs one reach per enemy hero (the threat fold, `start.rs`, E31 T2d: 87 % of
-  `computer-turns-towns-36`): a change to `h3-adventure`'s reach moves that workload, and a start
-  that does more searches multiplies it. The capture estimate before the search costs more than
+- The turn's start runs one computer search per enemy hero (the threat fold, `start.rs`; since
+  E31 T2i0 `h3_adventure::search` in mode 3, about 85 % of `computer-turns-towns-36`, four times
+  the human reach it replaced: no fog in mode 3, objects and teleporters passed, the whole map):
+  a change to the search moves that workload, and every search the planning adds (T2i) multiplies
+  it. The capture estimate before the search costs more than
   it saves (T2d: most enemies on a small map take some town). The start's weights are kept as
   their inputs: read them through `Record::weights`, never recompute them from the state later.
+- The computer's search (`h3_adventure::search`, E31 T2i0, AI-Q41) is the ai lane's code in the
+  adventure lane's crate: every change is `cross-lane`, its coverage comes from `h3-adventure`'s
+  own tests (`search/tests.rs`), and after a change run the adventure reach workloads too
+  (`reach-xl-144`), since a module of `h3-adventure` can move the reach's codegen. It must stay
+  the original's to the node: the open list's order and its drop at 500, the 16-bit costs stored
+  after a 32-bit insert position, the place and pass slots; T2i0's tuning hashed every search of
+  the workload against the first build's (a throwaway harness): do the same for a speed change.
+  What it cannot compute is the caller's (`SearchAsks`: the danger map, `ai_fight_answer`, the
+  boat marks; `SearchJumps`: mode 4's castable jumps and levels, as `pathfinder_run` sets them).
 - The simulated combat is `h3_battle::estimate` (AI-Q34), the battle lane's crate: a change
   there is `cross-lane`, its coverage comes from `h3-battle`'s own tests (`src/estimate/tests.rs`,
   on `tests::support`'s ruleset with Fight Values and AI kinds patched in), and its inputs are

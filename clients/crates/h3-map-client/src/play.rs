@@ -43,7 +43,9 @@ use h3_sdl::{Config, Window};
 
 use crate::files;
 use crate::hot_seat::{self, HotSeat, Left};
+use crate::paint::Seated;
 use crate::window::{self, Host, Source};
+use h3_map_view::clock::{ChatLine, Warning};
 
 /// A game the shell began (its `begin::Game`, by the client lane's own type): what play needs of
 /// it.
@@ -137,8 +139,27 @@ fn played(
     let (mut lines, mut ok) = (Vec::new(), true);
     // Where each human's view was left, by player.
     let mut left: BTreeMap<usize, Left> = BTreeMap::new();
+    // A hot seat begun with more than one human (E24 M5 T5, design §5.31): each human's turn
+    // covered, its box naming it; the human whose view came last.
+    let humans: Vec<(u8, Option<String>)> = hot
+        .seats()
+        .iter()
+        .filter(|s| s.human)
+        .map(|s| (s.colour, s.name.clone()))
+        .collect();
+    let mut last: Option<PlayerId> = None;
     // An unattended run's seconds count for the whole of play, not for each view.
     let started = window.ticks_ns();
+    // A timed game's clock across the views (E24 M5 T5 part five, design §5.32): the turn's
+    // limit; a hot seat's held from the game's start until the first cover's start.
+    let limit = hot_seat::TURN_MINUTES
+        .get(usize::from(game.duration))
+        .filter(|&&m| m > 0)
+        .map(|&m| u32::from(m) * 60_000);
+    let mut kept = Kept::default();
+    if humans.len() > 1 {
+        kept.hold(started / 1_000_000);
+    }
     loop {
         let Some(player) = hot.turn() else {
             lines.push("no human's turn runs: play ends".into());
@@ -155,6 +176,14 @@ fn played(
             options.run = Some((u32::try_from(rest).unwrap_or(seconds), read));
         }
         let colour = hot.seat(player).map_or(0, |s| s.colour);
+        let seated = (humans.len() > 1).then(|| Seated {
+            names: humans.clone(),
+            sample: None,
+            timed: game.duration != hot_seat::UNLIMITED,
+            computers: computers_between(hot.seats(), last, player),
+            framed: last.and_then(|p| hot.seat(p)).map(|s| s.colour),
+        });
+        last = Some(player);
         let mut viewed = Viewed {
             from: left.remove(&player.index()),
             hot: &mut *hot,
@@ -164,6 +193,9 @@ fn played(
             colour,
             left: None,
             read: false,
+            seated,
+            limit,
+            kept: &mut kept,
         };
         let host = Host::Lent {
             window: &mut *window,
@@ -195,6 +227,64 @@ struct Viewed<'h, 'r> {
     left: Option<Left>,
     /// Whether the view read the clock yet.
     read: bool,
+    /// The hot seat's hand-over (E24 M5 T5): none with one human.
+    seated: Option<Seated>,
+    /// A timed game's turn's limit, ms (E24 M5 T5 part five): none unlimited.
+    limit: Option<u32>,
+    /// What play keeps across the views (the host's clock held, the chat).
+    kept: &'h mut Kept,
+}
+
+/// What play keeps from one human's view for the next (E24 M5 T5 part five, design §5.32,
+/// *provisional*): the host's clock held while no human's turn runs on the screen (from the turn's
+/// passing, by End Turn or by its time, to the next view's start of its timer after its cover:
+/// the original starts the turn's timer there, `turn_timer_start` 0x4C78F0, while the session's
+/// starts at the turn's passing: MCL-Q76), and the screen chat's lines as a view left them, each
+/// by the host's time of its first draw (MCL-Q70).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct Kept {
+    /// The host's time a hold began, while it holds.
+    since: Option<u64>,
+    /// The host's time held so far.
+    held: u64,
+    /// The chat's lines, oldest first.
+    chat: Vec<(Warning, Option<u64>)>,
+}
+
+impl Kept {
+    /// The session's clock at the host's `now` (ms): the host's less the time held.
+    fn clock(&self, now: u64) -> u64 {
+        let holding = self.since.map_or(0, |since| now.saturating_sub(since));
+        now.saturating_sub(self.held).saturating_sub(holding)
+    }
+
+    /// The session's clock held from the host's `now` (a hold under way kept).
+    fn hold(&mut self, now: u64) {
+        self.since.get_or_insert(now);
+    }
+
+    /// The session's clock running again from the host's `now`.
+    fn release(&mut self, now: u64) {
+        if let Some(since) = self.since.take() {
+            self.held = self.held.saturating_add(now.saturating_sub(since));
+        }
+    }
+}
+
+/// Whether a computer's seat plays between the human `last` (none: the game's start) and
+/// `player` in the seats' order (E24 M5 T5, design §5.31: its turn, ended at once by the host,
+/// `MCL-STUB-5`, leaves the cover's four buttons disabled).
+fn computers_between(seats: &[hot_seat::Seat], last: Option<PlayerId>, player: PlayerId) -> bool {
+    let to = player.index();
+    let between = |i: usize| match last.map(PlayerId::index) {
+        None => i < to,
+        Some(from) if from < to => from < i && i < to,
+        Some(from) => i > from || i < to,
+    };
+    seats
+        .iter()
+        .enumerate()
+        .any(|(i, s)| !s.human && between(i))
 }
 
 impl window::Session for Viewed<'_, '_> {
@@ -216,19 +306,20 @@ impl window::Session for Viewed<'_, '_> {
 
     fn end_turn(&mut self, now: u64) -> Result<bool, String> {
         // The clock read first (the session's rule): a turn whose time ran out is not ended twice.
-        self.hot.elapse(now)?;
+        self.hot.elapse(self.kept.clock(now))?;
         if self.hot.turn() == Some(self.player) {
             self.hot.end_turn()?;
         }
-        Ok(self.hot.turn() == Some(self.player))
+        Ok(self.runs(now))
     }
 
     fn tick(&mut self, now: u64) -> Result<bool, String> {
-        if !self.read || self.hot.deadline().is_some_and(|d| d <= now) {
+        let at = self.kept.clock(now);
+        if !self.read || self.hot.deadline().is_some_and(|d| d <= at) {
             self.read = true;
-            self.hot.elapse(now)?;
+            self.hot.elapse(at)?;
         }
-        Ok(self.hot.turn() == Some(self.player))
+        Ok(self.runs(now))
     }
 
     fn leave(&mut self, facings: Vec<(u16, u8)>) {
@@ -261,6 +352,59 @@ impl window::Session for Viewed<'_, '_> {
         let command = AdventureCommand::Revisit { hero };
         let refused = self.hot.play(GameCommand::Adventure { command })?;
         Ok(refused.map(|why| format!("{why:?}")))
+    }
+
+    fn seated(&self) -> Option<&Seated> {
+        self.seated.as_ref()
+    }
+
+    fn clock(&self) -> Option<(u32, Option<u32>)> {
+        let left = self
+            .hot
+            .seat(self.player)
+            .and_then(|s| s.clock)
+            .and_then(|c| c.turn)
+            .map(|timer| timer.left_ms);
+        self.limit.map(|limit| (limit, left))
+    }
+
+    fn chat(&mut self, now: u64) -> Vec<ChatLine> {
+        let base = i64::try_from(now).unwrap_or(i64::MAX);
+        std::mem::take(&mut self.kept.chat)
+            .into_iter()
+            .map(|(warning, drawn)| ChatLine {
+                warning,
+                drawn: drawn.map(|d| i64::try_from(d).unwrap_or(i64::MAX).saturating_sub(base)),
+            })
+            .collect()
+    }
+
+    fn keep_chat(&mut self, lines: Vec<ChatLine>, ms: u32, now: u64) {
+        let base = i64::try_from(now).unwrap_or(i64::MAX) - i64::from(ms);
+        self.kept.chat = lines
+            .into_iter()
+            .map(|l| {
+                let drawn = l.drawn.map(|d| u64::try_from(base + d).unwrap_or(0));
+                (l.warning, drawn)
+            })
+            .collect();
+    }
+
+    fn started(&mut self, now: u64) {
+        self.kept.release(now);
+    }
+}
+
+impl Viewed<'_, '_> {
+    /// Whether the viewer's turn still runs at the host's `now`; once it passed to another human
+    /// of a hot seat (End Turn or its time), the session's clock held until that human's view
+    /// starts its timer (E24 M5 T5 part five).
+    fn runs(&mut self, now: u64) -> bool {
+        let runs = self.hot.turn() == Some(self.player);
+        if !runs && self.seated.is_some() {
+            self.kept.hold(now);
+        }
+        runs
     }
 }
 
@@ -729,6 +873,23 @@ pub(crate) mod tests {
         assert_eq!(o.duration, hot_seat::UNLIMITED);
         let o = Options::parse(&args(&["m.h3m", "--turns", "6", "--records", "r"])).unwrap();
         assert_eq!((o.turns, o.records), (Some(6), Some(PathBuf::from("r"))));
+    }
+
+    #[test]
+    fn a_computer_s_seat_between_two_humans() {
+        // E24 M5 T5 (design §5.31): a computer's seat between the human before and this one in
+        // the seats' order, round from the last; before the first human at the game's start.
+        let seat =
+            |index: u8, human: bool| hot_seat::Seat::new(PlayerId::new(index), index, human, None);
+        let seats = [seat(0, true), seat(1, true), seat(2, false)];
+        let p = PlayerId::new;
+        assert!(!computers_between(&seats, Some(p(0)), p(1)));
+        assert!(computers_between(&seats, Some(p(1)), p(0)));
+        assert!(!computers_between(&seats, None, p(0)));
+        let first = [seat(0, false), seat(1, true)];
+        assert!(computers_between(&first, None, p(1)));
+        // A lone human's next turn after the computer's.
+        assert!(computers_between(&first, Some(p(1)), p(1)));
     }
 
     #[test]
