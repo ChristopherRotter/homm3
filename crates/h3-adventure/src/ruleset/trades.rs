@@ -21,7 +21,9 @@ use super::{AdventureCompileError, DWELLING_LEVELS, ObjectKind, ObjectType, Scop
 use crate::command::{ALTAR_BACKPACK_PLACES, ALTAR_SLOTS};
 
 /// A screen of a market's window (ADV-MKT-001; survey §3): the original's screens 0, 1, 4 and
-/// 2. The town's artifact sale (screen 3) is the town lane's to add with its Marketplace.
+/// 2, and since E09 T58b (the town lane's, `cross-lane`; TWN-MKT-005) its screen 3, the town's
+/// artifact sale with the Artifact Merchants. No pack's map market names screen 3 (the pack's
+/// screens are E08's four).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MarketScreen {
     /// Resources for resources (screen 0; a Trading Post's).
@@ -32,6 +34,9 @@ pub enum MarketScreen {
     Sell,
     /// Resources for an artifact of the market's stock (screen 2; the Black Market's).
     Buy,
+    /// The window's hero's artifact for resources (screen 3; the town's with the Artifact
+    /// Merchants, TWN-MKT-005).
+    SellArtifact,
 }
 
 /// A market's type (increment 14's design note §1; ADV-MKT-001): one kind for the three markets.
@@ -358,8 +363,8 @@ const fn class_index(class: ArtifactClass) -> usize {
 }
 
 impl CanonicalHash for Market {
-    /// The screens as length and each (0 trade, 1 transfer, 2 sell, 3 buy), the count, the stock's
-    /// classes as length and each class.
+    /// The screens as length and each (0 trade, 1 transfer, 2 sell, 3 buy, 4 the artifact sale),
+    /// the count, the stock's classes as length and each class.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.screens.len());
         for screen in &self.screens {
@@ -368,6 +373,7 @@ impl CanonicalHash for Market {
                 MarketScreen::Transfer => 1,
                 MarketScreen::Sell => 2,
                 MarketScreen::Buy => 3,
+                MarketScreen::SellArtifact => 4,
             });
         }
         h.write_u8(self.count);

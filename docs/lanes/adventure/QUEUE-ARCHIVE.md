@@ -2792,3 +2792,64 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 - **Inputs:** T144b's record in `E08-log.md` (the census, the map's refusals, the twelve replays,
   the plans' casters and `check_casts_step`, the cover test's counts); T138 to T144a2's records.
 - **Depends on:** T144b (`adventure/e08-t144b`). **Status:** next, once T144b merges.
+
+## E10 T1a (moved 2026-11-27, done whole: `adventure/e10-t1a`, decision 8; the survey `docs/rules/surveys/E10-teams.md`)
+
+**E10 T1a — increment 1's survey: the teams and the game's end** (E10 decisions 4, 5; the epic's increment 1 sketch)
+
+- **The cut** confirmed with the user at its start (what the survey reads first, its size measured
+  as E08 T137a's); then the survey `docs/rules/surveys/E10-teams.md` (*agent's call* for the name):
+  the code reading of `Heroes3.exe` (what allies share: the fog, passing and visiting allied
+  heroes and towns, the mines' and objects' team marks; elimination by the standard loss and by
+  seven days without a town with its warnings; a defeated player's heroes, towns and flags; a
+  player removed; the standard victory; the game over, its events, every command after it), the
+  wiki and VCMI 1.7.5, a census of the 160 shipped maps' teams (`h3_map::Teams`); the disputes and
+  quirk candidates; the batch's plan on the client lane's harness; the interfaces' sketch and the
+  checkpoint's questions for T1b.
+- **Inputs:** the epic's "Inputs" (this inbox's client-lane notes of 2026-11-12 to -19, E27 design
+  §3, §5, §21.1, §26.3; the server lane's E16 "Later", SRV-Q29); ADR-0017 (players, turns,
+  projections); the map client's scripted game `game-week` (Blue banished on day 8).
+- **Depends on:** E08 T145's pull requests merged. **Status:** next.
+
+The inbox note acted upon (E10's decisions 1 and 6 now name E31):
+
+- 2026-11-21 (the ai lane, E13's refinement, AI-Q21; **for your planning; nothing blocks**): the
+  user moved E13 (the adventure AI) to the ai lane and decided it **waits for all of E10**
+  (victory and defeat, teams, diplomacy, the setup beyond the import), with no piece of E10
+  pulled forward for it. E10's place in your order stays the user's. The computer players'
+  turns are now **E31** (the ai lane: the original's adventure AI ported, faithful then fair),
+  no longer E13's; E31's port plays a player's turns through `h3-game`'s commands, so its
+  refinement will ask what seat it takes (the inbox's E27 note below names E13 for them).
+  E10's refinement (ADV-Q62, #1109) pointed `ADV-STUB-8` and `-9` (the computer player's facts)
+  and the computer players' behaviour to E13: both are **E31's** now (the stubs re-pointed in
+  `docs/stubs.toml` by #1110); please follow in `E10-game-orchestration.md` decisions 1 and 6
+  when you next touch it. (E30 is the rmg lane's custom map generator, #1112.)
+
+## E10 T1b (moved 2026-11-27, done whole: `adventure/e10-t1b`, decisions 9 to 19, ADV-Q65; the design note `docs/epics/E10-design.md`, the drafts in `adr-drafts/`)
+
+**E10 T1b — increment 1's ADR amendment drafts, the design note and the cut** (E10 decision 5)
+
+- The drafts in `adr-drafts/` (ADR-0017, ADR-0016 where a view changes), the design note
+  `docs/epics/E10-design.md` with increment 1's exit criteria and the building tasks cut; the
+  user accepts the drafts before anything is built (the checkpoint).
+- **Inputs:** the survey `docs/rules/surveys/E10-teams.md` (T1a, done 2026-11-27: its §11
+  interfaces' sketch, §12 ids, §13 the checkpoint's nine questions; batch GAM-1's plan §10).
+- **Depends on:** T1a (done). **Status:** next.
+
+**E10 T2 — increment 1's ADR amendments applied; the glossary and the security lines** (round 2; `shared/e10-t2`, `cross-lane`; design note `E10-design.md` §20, decision 19)
+
+- **Scope:** the three accepted drafts applied verbatim to the ADRs (`docs/lanes/adventure/adr-drafts/`
+  `0016-e10-increment-1.md` points 1, 4, 5, 6; `0017-e10-increment-1.md` points 1, 2, 3, 6, 8, 9;
+  `0028-e10-increment-1.md` point 6, the town lane's ADR: `cross-lane`, decision 17), each with its
+  revision line dated; the drafts deleted; `docs/03-domain.md`'s terms (team, an ally, defeated,
+  the seven days, the game's result, a hand-over); `docs/06-security.md`'s lines (the hand-over the
+  host's alone, every command refused after the end, a player's days its own).
+- **Inputs:** the drafts; the design note §1 to §17; E08 T140 (#1127) as the form.
+- **Depends on:** T1b (done 2026-11-27, `adventure/e10-t1b`) merged. **Status:** done 2026-11-27 (`shared/e10-t2`, #1218).
+
+- **T3a:** `PlayerSetup::team` from the import (map import v30) and its check; the teams in the
+  game's players and the adventure's static part; `AdventureState::allied` at the 22 sites (the
+  town modules' `town.rs` and `town/view.rs`: `cross-lane`, decision 17); one explored layer per
+  team (adventure state hash v31); §4's rules re-tested with allies on batch E10's map; the teams'
+  E10 marks swept; `ADV-STUB-20`'s reason gains Town Portal's team list. **Measured at its first
+  build** against `master` (`homm3-bench-regression`: the reach's `allied` reads). **Done** 2026-11-27 (`adventure/e10-t3a`).

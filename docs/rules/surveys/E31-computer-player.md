@@ -502,6 +502,16 @@ fight (T1a2b), the town, the enemy hero's town, the University, the artifact, sp
 values (T1a2d), `seer_reward_value` 0x573A70 and the quests' own checks (T1a3, E12), how
 `ai_fight_answer`'s 17 callers use the value (T1a3).
 
+**As ported (E31 T2h, CPU-OBJ-001 to -012; `h3_game::computer::objects`, `vision`):** the
+class is read from the engine's object kind (CPU-OBJ-001: the bonus visitables, the gifts and
+the finds by what they give). The re-read whole added five details: the Temple values two morale
+whatever the day (0x5292E3), the Rally Flag adds both bare fractions (0x52A6E2), the Black
+Market's backpack test is equality with 64 (0x528406), the Sirens read no mark (#73), the
+Stables count Cavalier stacks (#72). The artifact's pickup conditions 1 to 6 are dead (`E08-
+rewards.md` §3.3), `ai_paid_reward_value` with them. Not ported: the Hut of the Magi, the
+Obelisk and the Seer's Hut (`AI-STUB-20`), the conditions' musts (`AI-STUB-18`), a campaign's
+garrison (`AI-STUB-21`), `ai_join_without_room` 0x52BC60 (increment 3, with `ai_army_plan_run`).
+
 ### 2.2 The simulated combat (T1a2b)
 
 Read whole: 0x423EE0 to 0x427330 but the spell values and the container code, and the users
@@ -1931,10 +1941,10 @@ and #68 (38 slips), T2e's one, #69 (39 slips).
 |---|---|---|---|---|---|---|---|
 | 1 | §1.9 (1) | class claims marked by the list's count: classes 0-36, not the 37 listed | 0x428070 | slip | ai | blind 0x428070 | only which hero takes which target |
 | 2 | §1.9 (2) | a colleague's claim offset (+0x41 less points left) only when not larger, 16-bit | 0x42E0B0 | slip | ai | blind 0x42E0B0 | near tiles claim nothing |
-| 3 | §2.1 (1) | Fountain and Idol of Fortune worth 0: fraction truncated without the army's strength | 0x528040 (cases 30, 38), 0x435850 | slip | ai | blind 0x528040 |  |
-| 4 | §2.1 (2) | luck clamp above 3 replaces luck by 3 − luck instead of capping the change | 0x527D80; 0x528040 (cases 14, 28) | slip | ai | blind 0x527D80 | morale's twin caps the change |
-| 5 | §2.1 (3) | War Machine Factory ignores a machine's price within 500 | 0x525120 | slip | ai | blind 0x525120 |  |
-| 6 | §2.1 (4) | "flag all mines" bonus divided by the mines' list, Lighthouses included | 0x528040 (case 53) | slip | ai | blind 0x528040 |  |
+| 3 | §2.1 (1) | Fountain and Idol of Fortune worth 0: fraction truncated without the army's strength | 0x528040 (cases 30, 38), 0x435850 | slip | ai | blind 0x528040 | read at T2h: always 0; ported as read (E31 T2h, CPU-OBJ-010) |
+| 4 | §2.1 (2) | luck clamp above 3 replaces luck by 3 − luck instead of capping the change | 0x527D80; 0x528040 (cases 14, 28) | slip | ai | blind 0x527D80 | morale's twin caps the change; read at T2h, ported as read (CPU-OBJ-002) |
+| 5 | §2.1 (3) | War Machine Factory ignores a machine's price within 500 | 0x525120 | slip | ai | blind 0x525120 | read at T2h, ported as read (CPU-OBJ-011) |
+| 6 | §2.1 (4) | "flag all mines" bonus divided by the mines' list, Lighthouses included | 0x528040 (case 53) | slip | ai | blind 0x528040 | stubbed with the conditions at T2h (AI-STUB-18) |
 | 7 | §2.2 (a) | only a defender's engagement fights both sides fully in melee | 0x426D17 | state | battle, adventure (§3.6 row 1) | blind 0x426D17 | quick battle's result and the estimate; may be the model's design |
 | 8 | §2.2 (b) | mass-damage running total carried from stack to stack | 0x425FF6 | state | battle, adventure (§3.6 row 1) | blind 0x425FF6 | quick battle's result and the estimate |
 | 9 | §2.2 (c) | quick battle's Necromancy counts the cleared loser army: raises 1 | 0x427003 | state | battle, adventure (§3.6 row 1) | experiment: unseen computer Necromancer beats neutrals; Skeletons gained = 1? |  |
@@ -2000,3 +2010,5 @@ and #68 (38 slips), T2e's one, #69 (39 slips).
 | 69 | §2.4 | the caster record's army list values a stack at the AI value times its count's low 16 bits as a signed word: a stack of more than 32 767 creatures sorts and counts wrong, below 0 from 32 768 | 0x526E2F (0x526D40) | slip | ai | read at T2e | the effect spells' values (CPU-SPL-005); ported as read (E31 T2e, CPU-SPL-001) |
 | 70 | §4.1 | the value to a hero with no free position subtracts the worn value at the last position the candidate would replace, not the least valuable one | 0x433A41 to 0x433A6F (0x4339E0) | slip | ai | read at T2f | the values to a hero and to a player; ported as read (E31 T2f, CPU-ART-010) |
 | 71 | §1.5 | the artifacts' mean counts every artifact 7 to 140, the map's bans not read: it tests the setup's flag +0x1C, which only artifact_table_load sets, for 141 to 143 | 0x5279D9 (0x527960), 0x44D00D | slip | ai | read at T2f | the turn start's mean; ported as read (E31 T2f, CPU-STA-008) |
+| 72 | §2.1 | the Stables' upgrade value counts the army's stacks of the Cavaliers (`army_count_type` 0x4E2340), not the Cavaliers: one Cavalier stack of 100 is worth one Champion's gain | 0x52AB20, 0x52AB4A (0x52AAC0) | slip | ai | read at T2h | the Stables' value; ported as read (E31 T2h, CPU-OBJ-010) |
+| 73 | §2.1 | the Sirens are valued without the hero's mark (bit 20), so a hero that visited them, to whom they give nothing, values their losses all the same | 0x529288 (0x528040) | slip | ai | read at T2h | the Sirens' value; ported as read (E31 T2h, CPU-OBJ-010) |

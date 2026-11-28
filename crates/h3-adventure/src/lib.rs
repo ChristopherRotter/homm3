@@ -108,11 +108,12 @@ pub use split::{TileRand, split, split_with_second};
 /// no edge to the hero model.
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
-    AdventureState, AltarArtifact, AltarOffers, AltarStack, BACKGROUND_RADIUS, Boat, Cast,
-    CastError, CastFailure, Channels, DaySpells, GateEntry, HeroBonuses, HeroOnMap, HillFortRow,
-    HillFortUpgrade, HirePurchase, MapObject, MarketOffers, MarketPurchase, MarketWindow, Monster,
-    Resolved, Sacrifice, Sacrificed, Sale, SaleOffer, StaticMap, StaticTile, StockEntry,
-    TradeOffer, VisitMarks, Visits, Weekly, WhirlpoolTile, allied, hire_price,
+    AdventureState, AltarArtifact, AltarOffers, AltarStack, ArtifactSale, ArtifactSaleOffer,
+    BACKGROUND_RADIUS, Boat, Cast, CastError, CastFailure, Channels, DaySpells, GateEntry,
+    HeroBonuses, HeroOnMap, HillFortRow, HillFortUpgrade, HirePurchase, MapObject, MarketOffers,
+    MarketPurchase, MarketWindow, Monster, Resolved, Sacrifice, Sacrificed, Sale, SaleOffer,
+    StaticMap, StaticTile, StockEntry, TradeOffer, VisitMarks, Visits, Weekly, WhirlpoolTile,
+    hire_price,
 };
 pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 
@@ -150,8 +151,10 @@ pub use town::{TavernVisit, TownHeroError, TownHeroMove, TownReveal};
 /// tag 11). v29 (E08 T142a, increment 15's design note §8): the heroes' day spells by hero id
 /// ([`AdventureState::day_spells`]). v30 (E09 T57, the town lane's, `cross-lane`; the town
 /// epic's design note §108): the Artifact Merchants' stock and the random artifacts' marks kept
-/// from the build ([`AdventureState::merchants_stock`]), last.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 30;
+/// from the build ([`AdventureState::merchants_stock`]), last. v31 (E10 T3a, E10 design note §2,
+/// §3): each player's team after the number of players ([`StaticMap::team`]), and one explored
+/// layer a team instead of a player ([`AdventureState::explored`]).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 31;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

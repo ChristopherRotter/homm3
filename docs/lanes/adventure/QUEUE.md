@@ -4,32 +4,53 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 7, the next 8). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 19, the next 20; increment 1's design note `E10-design.md`, its rounds T2 to T7 in §20). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E10 T1a — increment 1's survey: the teams and the game's end** (E10 decisions 4, 5; the epic's increment 1 sketch)
+**E10 T3 — the teams** (round 3; design note `E10-design.md` §1 to §7; `adventure/e10-t3a`…)
 
-- **The cut** confirmed with the user at its start (what the survey reads first, its size measured
-  as E08 T137a's); then the survey `docs/rules/surveys/E10-teams.md` (*agent's call* for the name):
-  the code reading of `Heroes3.exe` (what allies share: the fog, passing and visiting allied
-  heroes and towns, the mines' and objects' team marks; elimination by the standard loss and by
-  seven days without a town with its warnings; a defeated player's heroes, towns and flags; a
-  player removed; the standard victory; the game over, its events, every command after it), the
-  wiki and VCMI 1.7.5, a census of the 160 shipped maps' teams (`h3_map::Teams`); the disputes and
-  quirk candidates; the batch's plan on the client lane's harness; the interfaces' sketch and the
-  checkpoint's questions for T1b.
-- **Inputs:** the epic's "Inputs" (this inbox's client-lane notes of 2026-11-12 to -19, E27 design
-  §3, §5, §21.1, §26.3; the server lane's E16 "Later", SRV-Q29); ADR-0017 (players, turns,
-  projections); the map client's scripted game `game-week` (Blue banished on day 8).
-- **Depends on:** E08 T145's pull requests merged. **Status:** next.
-
-**E10 T1b — increment 1's ADR amendment drafts, the design note and the cut** (E10 decision 5)
-
-- The drafts in `adr-drafts/` (ADR-0017, ADR-0016 where a view changes), the design note
-  `docs/epics/E10-design.md` with increment 1's exit criteria and the building tasks cut; the
-  user accepts the drafts before anything is built (the checkpoint).
-- **Depends on:** T1a. **Status:** after T1a.
+- **T3a done** (2026-11-27, `adventure/e10-t3a`; `E10-log.md`): the setup's team, `allied` by
+  state, one explored layer a team, measured (`passage::Side`), §4 re-tested with allies.
+- **T3b:** the allies' meeting with give-only gifts (§5: GAM-TEM-003, `AllyHero`; until then a
+  step toward an ally's hero is a battle), an ally's dwelling read-only (until then its dialog
+  buys), the team's views (§6: GAM-TEM-004, `PlayerView::team`), and **the team's knowledge**
+  (found by T3a: ADV-VIS-006's `Visits::known`, a Shrine's spell, a hut's skill, a find emptied,
+  the Pyramid, a Fountain's and a Spring's visit, still the visitor's alone; the original's tile
+  bits are the team's, the Corpse and Lean To the player's own, survey §6: each ally told the
+  content by an event, so the wire's `cross-lane` mapping comes with it).
+- **T3c** (`cross-lane`, the town lane's files; its inbox told at the start): an ally's town (§7):
+  the entering's guild and buildings, the trades (`TWN-STUB-21` lifted), building and recruiting
+  the owner's; the siege of an ally's visitor **read first** (`town_visit` 0x4AAFD0,
+  `town_defended` 0x5BDFE0), its rule written and tested.
+- **Inputs:** the design note §1 to §7, §18; the survey §6, §7; the adventure lane's `TRAPS.md`
+  (the state's storage, the fog) and the town lane's for its files.
+- **Depends on:** T2 (#1218) and T3a merged. **Status:** T3b next (each part's cut confirmed at its start).
 
 ## Inbox
+
+- 2026-11-27 (the town lane, E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent,
+  E09 decision 226; **in your paths, for your review; no hash of yours changed**): a town's
+  artifact sale (TWN-MKT-005). (1) `MarketScreen::SellArtifact` (the part's hash tag 4; no pack
+  names it), `MarketError::Place(ArtifactPlace)` and `NotTradable` (`command.rs`);
+  `MarketParams::artifact_sale(count, cost, take)` (`market.rs`; ADV-MKT-002 amended in the
+  catalog); `AdventureState::check_artifact_sale` and `ArtifactSale`, `MarketOffers::artifacts`
+  (`ArtifactSaleOffer`), and **`market_offers` takes `(core, part, heroes)`** (`state/markets.rs`);
+  (2) `h3-game`: `MarketAnswer::SellArtifact { place, take }`, its arm in `answer_market` (the
+  artifact removed, `HeroChanged`, then the gain), `market_answers` lists a sale per offered place
+  after the purchases; **found on the way:** a town's garrison hero's creature sale (T58a1) left
+  its town's view untold (TWN-VEW-002), now told after the gain (`town::Told`), the plans' seed
+  added to `proptest-regressions/tests/view.txt`; (3) the replay word `answer market sell-artifact
+  <place> <take>` (`h3-files`): **replay format v28**, the 130 goldens re-recorded from their
+  commands (only the `format` lines moved); (4) the plans (`play/trades.rs`): `drawn_answer` draws
+  among five kinds (a sale at a drawn place), `trade_answers` probes every place of the window's
+  hero, `trade_moves` and `check_trade_answer` know the sale, `check_trade_listing` refuses a
+  backpack index past the most. Every adventure workload within its gate (`master` measured the
+  same in this sandbox: `random-play-bonuses-36` +1.96 %, `fork-boxes-xl-144` +1.75 % against the
+  committed baselines before any change). A pull request of yours that bumps the replay format
+  after this one merges bumps again.
+- 2026-11-27 (the AI lane, E31 T2h, `ai/e31-t2h`, `cross-lane` with the user's consent, AI-Q40;
+  **in your paths, for your review, nothing to do**): `AdventureState::tile_index` is public
+  (`state.rs`, its doc says why): the computer's object value (`h3_game::computer::objects::at`)
+  finds the object whose entrance is a tile through it. Nothing else changed in your crates.
 
 - 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
   nothing blocks**): the facts audit of play (E24 design §5.29) takes every fact an event carries
@@ -291,17 +312,6 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
   follow: `check_timed` expects the learning after each event's build, the details' check and the
   views' fold take a hero hired in the command as the hirer's. No golden replay, version or bot
   report moved.
-- 2026-11-21 (the ai lane, E13's refinement, AI-Q21; **for your planning; nothing blocks**): the
-  user moved E13 (the adventure AI) to the ai lane and decided it **waits for all of E10**
-  (victory and defeat, teams, diplomacy, the setup beyond the import), with no piece of E10
-  pulled forward for it. E10's place in your order stays the user's. The computer players'
-  turns are now **E31** (the ai lane: the original's adventure AI ported, faithful then fair),
-  no longer E13's; E31's port plays a player's turns through `h3-game`'s commands, so its
-  refinement will ask what seat it takes (the inbox's E27 note below names E13 for them).
-  E10's refinement (ADV-Q62, #1109) pointed `ADV-STUB-8` and `-9` (the computer player's facts)
-  and the computer players' behaviour to E13: both are **E31's** now (the stubs re-pointed in
-  `docs/stubs.toml` by #1110); please follow in `E10-game-orchestration.md` decisions 1 and 6
-  when you next touch it. (E30 is the rmg lane's custom map generator, #1112.)
 - 2026-11-21 (E08 T136; **for E10's elimination**): the market's transfer (ADV-MKT-004) refuses
   only the actor and an index past the game's players (`h3-game`'s `state/market.rs`:
   `answer_market`'s `Transfer`), and its view's `recipients` lists every other player, so "another

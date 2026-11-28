@@ -7,22 +7,48 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 Epic: `docs/epics/E09-towns.md` (increment 6: the town's trades, refined at T51, `TWN-Q34`,
 decisions 196 to 199; its survey T52 with the checkpoint `TWN-Q35`, decisions 200 to 207; its
 drafts, cut and exit criteria by T53, `TWN-Q36`, `TWN-Q37`, decisions 208 to 217; batch TWN-6
-by T54, decision 218; T55 `shared/`, decision 219; T56, decision 220; T57, decisions 221 to 223; the buildings for heroes and the map are increment 7, travel and the Grail
-8, decision 197); done
+by T54, decision 218; T55 `shared/`, decision 219; T56, decision 220; T57, decisions 221 to
+223; T58, decisions 224 to 226; the buildings for heroes and the map are increment 7, travel
+and the Grail 8, decision 197); done
 tasks in `E09-log.md`; increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
-**E09 T58 to T61** (queued, design §118's rounds 6 to 8; each cut confirmed at its start): **Status:** T58b next (T58a2 done 2026-11-27, decision 225, `E09-log.md`). T58 the market
-at a town (§103 to §107, `cross-lane`): **T58b** the artifact sale
-(`MarketAnswer::SellArtifact`, `MarketParams::artifact_sale`, `TWN-QUIRK-18`, `-20`, its env
-entries and word, the protocol); T59 the services (§110 to §113: T59a `BuyWarMachine` and
-`BuildBoat`; T59b `University` with T-23 and `Transform`; each with its env entries, word and
-protocol, `cross-lane`); T60 the trades map, its replays, the census, the properties, the
+**E09 T59 to T61** (queued, design §118's rounds 7 and 8; each cut confirmed at its start):
+**Status:** T59 next (T58 done 2026-11-27: T58b, decision 226, `E09-log.md`). T59 the services
+(§110 to §113: T59a `BuyWarMachine` and `BuildBoat`; T59b `University` with T-23 and
+`Transform`; each with its env entries, word and protocol, `cross-lane`); T60 the trades map, its replays, the census, the properties, the
 benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, increment 7 refined.
 
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E10 T3a, `adventure/e10-t3a`, `cross-lane` with the user's
+  consent, E10 decision 17; **in your paths, for your review; no hash of yours changed**): the
+  teams. `h3_adventure::allied` (the free function, "the player alone until E10") is gone:
+  **`AdventureState::allied(&self, a, b)`** reads the players' teams (the static map's,
+  `StaticMap::team`; a player with itself included). Your sites now call it: `town.rs`'
+  `besieges`, `town_visit`, `visit_town`, `town_won` and `h3-game`'s `town/view.rs` (the owner's
+  team's view). So a town of the visitor's team is entered, not captured; a step onto an ally's
+  town whose entrance holds an ally's hero still meets that hero first (a battle until T3b's
+  meeting); the siege of an ally's visitor and the trades are T3c's (`TWN-STUB-21`). The explored
+  layers are one a team (`AdventureState::explored(player)` is its team's; adventure state hash
+  v31), `PlayerSetup::team` new (map import v30, game state hash v41). A new `PlayerSetup` or
+  adventure `Seat` literal of yours needs `team`.
+
+- 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **in your paths later, for your
+  planning; nothing to do now**): E10 increment 1 (the teams and the game's end) is designed
+  (`docs/epics/E10-design.md`). The user chose (E10 decision 17) that **the adventure lane builds
+  an ally's town** in `cross-lane` pull requests in your files: T3a changes `h3_adventure::allied`
+  into `AdventureState::allied(a, b)` at its sites in `h3-adventure`'s `town.rs` and `h3-game`'s
+  `town/view.rs`; T3c builds an ally's town (§7: the guild and buildings at the entering, the
+  trades with `TWN-STUB-21` lifted, building and recruiting the owner's, the siege of an ally's
+  visitor read first) and amends ADR-0028 point 6 (the draft `docs/lanes/adventure/adr-drafts/
+  0028-e10-increment-1.md`, applied by T2). Each task tells this inbox at its start; please say
+  there if it would cross your own work in those files. Also: a defeated player (§11) leaves the
+  week's tavern heroes and the Thieves' Guild's rows (the original's `new_day_week_events`
+  0x4C8A85, `thieves_guild_fill` 0x5DDDB9); T4a changes `town/tavern.rs`' and `town/thieves.rs`'
+  "every player" in the same way, `cross-lane`. Town Portal's team list (survey §6) goes into
+  `ADV-STUB-20`'s reason for your increment 7.
 - 2026-11-27 (the map-client lane, E24 M5 T4c, `map-client/e24-m5-t4c`; **for your planning,
   nothing blocks**): **MCL-Q67** (E24 design §5.29): a town the map does not name gets its name
   from the client's own seeded pick in play (`Town.name` none). The original draws unused names of

@@ -817,9 +817,15 @@ fn check(
         .iter()
         .zip(0u8..)
         .filter(|(player, _)| player.human || player.computer)
-        .map(|(player, colour)| PlayerSetup {
+        .zip(0u8..)
+        .map(|((player, colour), index)| PlayerSetup {
             colour,
             human: player.human,
+            // E10 T3a: the map's teams, else every colour its own (GAM-TEM-001).
+            team: map
+                .teams
+                .as_ref()
+                .map_or(index, |teams| teams.of_player[usize::from(colour)]),
             start: Default::default(),
         })
         .collect();

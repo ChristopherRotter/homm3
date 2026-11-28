@@ -352,7 +352,7 @@ pub(super) struct Valued<'a> {
     pub(super) weights: &'a [SignedX87],
     /// Its caster record (`ai_caster_record` 0x526D40, which codes 11, 12, 18 and the scroll
     /// build at each call; CPU-SPL-001).
-    caster: CasterRecord,
+    pub(super) caster: CasterRecord,
     /// Its available spells (+0x430: the learned, its scrolls' and its artifacts' spells).
     available: Vec<SpellId>,
     /// Its own morale (`hero_morale` 0x4E39B0 without the clamp).
@@ -435,7 +435,7 @@ impl<'a> Valued<'a> {
     }
 
     /// The level of the hero's skill `skill`, 0 without it.
-    fn skill(&self, skill: SkillId) -> u8 {
+    pub(super) fn skill(&self, skill: SkillId) -> u8 {
         self.hero
             .details
             .skills
@@ -451,12 +451,12 @@ impl<'a> Valued<'a> {
     }
 
     /// Whether it has learned `spell` (+0x3EA).
-    fn learned(&self, spell: SpellId) -> bool {
+    pub(super) fn learned(&self, spell: SpellId) -> bool {
         self.hero.details.spells.contains(&spell)
     }
 
     /// Whether `spell` is among its available ones (+0x430).
-    fn has(&self, spell: SpellId) -> bool {
+    pub(super) fn has(&self, spell: SpellId) -> bool {
         self.available.contains(&spell)
     }
 
@@ -516,7 +516,7 @@ pub(super) fn own_morale_and_luck(
 
 /// The slip of `ai_morale_change_value` 0x435850 (survey §5.5 #3: a rise from below 0 valued as
 /// crossing 0), ported as read until AI-QUIRK-1 (increment 4).
-const SLIP: bool = true;
+pub(super) const SLIP: bool = true;
 
 /// The hero's Necromancy share's room (0x432640, 0x4333A0): `h = trunc((1.0 − s) × 100.0)` of its
 /// share `s` (`hero_necromancy_power` 0x4E3CD0 in single precision: `h3_heroes::necromancy`,

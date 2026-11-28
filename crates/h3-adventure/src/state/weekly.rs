@@ -9,7 +9,7 @@ use alloc::vec;
 
 use h3_contracts::PlayerId;
 
-use super::{AdventureState, allied};
+use super::AdventureState;
 use crate::command::{AdventureEvent, AdventureEventKind, AdventureOutcome, Sink, Viewers};
 use crate::ruleset::ObjectTypeId;
 
@@ -42,7 +42,7 @@ impl AdventureState {
         let anchor = self.object_at(index).anchor;
         let marked = (0..self.players)
             .map(PlayerId::new)
-            .filter(|&p| allied(p, player) && !self.visited_by(index, p))
+            .filter(|&p| self.allied(p, player) && !self.visited_by(index, p))
             .fold(Viewers::NONE, Viewers::with);
         let empty = weekly.amount == 0;
         if marked != Viewers::NONE || !empty {

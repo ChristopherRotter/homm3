@@ -6,10 +6,10 @@ use std::collections::BTreeMap;
 
 use h3_rmg::{
     Choices, CrtRand, Fit, GenerateError, GeneratedMap, MapFormat, MapSize, MemoryZone, Monsters,
-    Objects, PartitionFault, PositionError, SITE_TEMPLATE, SITE_TOWN_CENTRAL_CELL,
-    SITE_TOWN_TYPE_ANY, SITE_WATER, SITE_ZONE_POSITION, SITE_ZONE_TERRAIN_TOWN,
-    SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, TerrainFault, Trace, Water,
-    ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
+    Objects, PaintFault, PartitionFault, PositionError, SITE_ISLET_CENTRE, SITE_TEMPLATE,
+    SITE_TOWN_CENTRAL_CELL, SITE_TOWN_TYPE_ANY, SITE_WATER, SITE_ZONE_POSITION,
+    SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, TerrainFault,
+    Trace, Water, ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
 };
 use proptest::prelude::*;
 use std::sync::LazyLock;
@@ -781,6 +781,62 @@ fn the_corpus_draws_and_dumps_as_the_phase_oracle_to_step_5() {
     }
 }
 
+/// `plan.txt`'s lines by case: the lanes' draws and their digest, the draws of step 6's plan and
+/// theirs.
+type KeptPlan = ((usize, String), (usize, String));
+
+fn kept_plan() -> BTreeMap<String, KeptPlan> {
+    include_str!("../../../../clients/capture/rmg/plan.txt")
+        .lines()
+        .filter(|line| !line.starts_with('#'))
+        .map(|line| {
+            let field = |name: &str| line.split(' ').find_map(|w| w.strip_prefix(name)).unwrap();
+            let (n, digest) = field("lanes=").split_once(':').unwrap();
+            let id = line.split(' ').next().unwrap().to_string();
+            let lanes = (n.parse().unwrap(), digest.to_string());
+            let plan = (
+                field("draws=").parse().unwrap(),
+                field("digest=").to_string(),
+            );
+            (id, (lanes, plan))
+        })
+        .collect()
+}
+
+// covers: RMG-CON-001, RMG-CON-002, RMG-CON-003, RMG-CON-004, RMG-CON-005, RMG-CON-006
+// covers: RMG-CON-007, RMG-CON-008, RMG-CON-009, RMG-CON-010, RMG-CON-011, RMG-CON-012
+// covers: RMG-TER-005
+/// Step 6's plan over the oracle's corpus (`clients/capture/rmg/plan.txt`, E14 T4c), step 2's
+/// unwritten bytes as measured (`zones.txt`): the port's first draws after step 5's end are the
+/// original's lanes (`rmg_free_lanes_draw`'s, their count and digest), and its draws after step
+/// 5 are the plan's whole (count and digest) in all 24 cases: the walls, the cells of no zone
+/// and the joining draw nothing, the islets (4 cases) and the sealed shores (11 cases, their
+/// painters flushed from one land to the next) draw as the original's.
+#[test]
+fn the_corpus_draws_step_6s_plan_as_the_original() {
+    let packs = original("base:faithful");
+    let kept = kept_plan();
+    let memory = kept_zone_memory();
+    assert_eq!(kept.len(), CORPUS.len());
+    for case in 0..CORPUS.len() {
+        let (id, s, seed, _) = corpus_settings(case);
+        let mut t = Phases {
+            memory: memory.get(id).cloned().unwrap_or_default(),
+            ..Phases::default()
+        };
+        generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap_or_else(|e| panic!("{id}: {e}"));
+        let ((lanes, digest), plan) = &kept[id];
+        let after = &t.log.draws[t.log.ends[5]..];
+        assert!(after.len() >= *lanes, "{id}: {} draws", after.len());
+        assert_eq!(
+            lines_digest(&after[..*lanes]),
+            (*lanes, digest.clone()),
+            "{id}"
+        );
+        assert_eq!(lines_digest(after), *plan, "{id}");
+    }
+}
+
 // covers: RMG-ZON-010, RMG-ZON-011
 /// The oracle model's own bytes (RMG-QUIRK-1, provisional: the temporary zone's 0BB, a water
 /// zone's nine town types) give the oracle's step 2 on 22 of the corpus's 24: `l1-4p-b`'s and
@@ -1120,6 +1176,40 @@ fn step_3s_coast_limit_of_0_is_refused() {
     assert_eq!(map, Err(error.clone()));
     assert_eq!(log.steps, [0, 1, 2]);
     assert_eq!(error.to_string(), "step 3: CoastLimit");
+}
+
+// covers: RMG-CON-007, RMG-CON-008
+/// RMG-QUIRK-3's step 6 case is a typed error: with dirt's pictures plain only, a dirt islet
+/// drawn into a water zone (the synthetic zones are lava: step 3 never paints dirt) asks the
+/// terrain painter for a transition shape its set lacks, `rand() % 0` in the original; the plan
+/// runs to its end and the first fault is the step's.
+#[test]
+fn step_6s_islet_without_its_shape_is_refused() {
+    let rmg = one_template(&[
+        zone_row(1, "human_start", 10, 1, "111111111", "00000001"),
+        zone_row(2, "computer_start", 10, 2, "111111111", "00000001"),
+    ])
+    .replace(
+        "[[0, 0, 2], [0, 1, 1], [8, 0, 1], [9, 0, 1], [10, 0, 1], [11, 0, 1], [12, 0, 1], \
+         [13, 0, 1], [16, 0, 1], [24, 0, 1]]",
+        "[[0, 0, 2], [0, 1, 1]]",
+    );
+    let (map, log) = run(
+        &lone("lone:on", &rmg),
+        &settings(&choices(MapSize::Medium, 1, 1)),
+        1,
+    );
+    let Err(error @ GenerateError::Paint { step: 6, fault }) = map else {
+        panic!("{map:?}");
+    };
+    assert!(matches!(fault, PaintFault::NoPicture { terrain: 0, .. }));
+    assert_eq!(log.steps, [0, 1, 2, 3, 4, 5]);
+    assert!(log.draws.iter().any(|&(site, _)| site == SITE_ISLET_CENTRE));
+    assert!(
+        error
+            .to_string()
+            .starts_with("step 6, the terrain painter: NoPicture")
+    );
 }
 
 // covers: RMG-ZON-012

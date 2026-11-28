@@ -7,7 +7,7 @@ commands = [
 checkpoints = []
 
 [replay]
-format = 27
+format = 28
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -33,18 +33,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-spells-36.h3m"
 hash = "0x438f8dcfa05d7cc7"
-import_version = 29
+import_version = 30
 
 [result]
 day = 2
-final_hash = "0x4f43daab8a66e952"
+final_hash = "0x9ca8d2d820f49869"
 
 [[players]]
 colour = 0

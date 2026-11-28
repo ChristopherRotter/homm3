@@ -91,7 +91,7 @@ impl AdventureState {
         target: Pos,
         heroed: impl Fn(Pos) -> bool,
     ) -> Result<(), CastError> {
-        let hidden = !self.explored[usize::from(player.raw())].get(target);
+        let hidden = !self.explored[self.map.layer(player)].get(target);
         if hidden && !core.quirks().is_enabled(DOOR_READS_HIDDEN) {
             return Ok(());
         }
@@ -130,7 +130,7 @@ impl AdventureState {
         let index = self.heroes.partition_point(|h| h.id < hero);
         let (from, afloat) = (self.heroes[index].pos, self.heroes[index].boat.is_some());
         let target = cast.target.unwrap_or(from);
-        let explored = &mut self.explored[usize::from(player.raw())];
+        let explored = &mut self.explored[self.map.layer(player)];
         if !explored.get(target) && !core.quirks().is_enabled(DOOR_READS_HIDDEN) {
             reveal(explored, target, 0);
         }

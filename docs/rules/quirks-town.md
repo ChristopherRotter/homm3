@@ -227,6 +227,32 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-game/src/town/tests/market.rs`, `the_count_is_the_traders_marketplaces_from_one_to_the_parameters_rows` and `the_merchants_sell_the_stock_to_the_visitor_and_an_entry_empties_for_everyone` (the purchase at a count of 0 priced at the first row)
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 203); confirmed by batch TWN-6 (E09 T54, TWN-6-2); entered by E09 T58a1, 2026-11-26
 
+### TWN-QUIRK-18 — The artifact sale's backpack price after a scroll
+- Class: fix, no flag (an exploit, which AGENTS.md always fixes; quirk candidate T-20, fixed by construction by the user's acceptance of the agent's calls, 2026-11-24, TWN-Q35; the epic's decision 207)
+- Context / rules affected: town, the Artifact Merchants' artifact sale (TWN-MKT-005, E09 T58b)
+- Original behavior: screen 3 shows five backpack places; with six or more artifacts its arrows move a backpack offset. Every rate (the pick 0x5EE4C0, `market_artifact_sale_rate` 0x5ECDE7, the scroll's recomputation, the price labels) reads backpack place *p* − 18 without the offset, while the removal (0x5EE0D8), the offer text and the right click add it modulo the count; the offset stays after a sale. After a scroll the player is paid the price of place *p* − 18 for the artifact shown at *p*: a cheap artifact sells at an expensive one's price, repeatably.
+- Intended/expected behavior: the sale names one place; that place's artifact is priced and that artifact removed (`MarketAnswer::SellArtifact { place, take }`, `AdventureState::check_artifact_sale`: the place priced is the place removed). No window state, no offset.
+- Impact: gameplay: an exploit closed; every other sale prices and removes as the original's with the offset 0.
+- Community status: not recorded (the survey's comparison with VCMI 1.7.5 and the wiki, `docs/rules/surveys/E09-trades.md` §9, has no row for the backpack's scroll).
+- Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §2.4, §10 T-20; `docs/exe/map.toml` 0x5EE4C0); batch TWN-6's row TWN-6-3 (`experiments/results/E09-batch-6a.md`, `-6a-run2.md`: at count 8, after the right arrow, the place showing Badge of Courage offered 5 500 gold, Titan's Gladius's price, and the Trade removed Badge of Courage; survey §14).
+- Flag: none (fixed in every profile, by construction)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-adventure/src/state/tests/markets.rs`, `a_towns_window_buys_its_heros_artifact_at_the_place_it_names`; `crates/h3-game/src/town/tests/market.rs`, `the_merchants_buy_the_visitors_artifact_at_the_place_it_names_for_its_price`
+- Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 207); confirmed by batch TWN-6 (E09 T54, TWN-6-3); entered by E09 T58b, 2026-11-27
+
+### TWN-QUIRK-20 — The fifth misc position never offered at the artifact sale
+- Class: fix, no flag (harmless, fixed by the user's choice over accepted, the recommendation, and `fix-optional`; quirk candidate T-22, 2026-11-24, TWN-Q35; the epic's decision 205)
+- Context / rules affected: town, the Artifact Merchants' artifact sale (TWN-MKT-005, E09 T58b); SoD's fifth misc position (the original's position 18, the engine's 13: `h3_heroes::Position`)
+- Original behavior: screen 3 shows 18 worn positions, 0 to 17; SoD's fifth misc position (18, after the spell book) is never shown, so an artifact worn there cannot be sold (moving it in the hero's screen first works).
+- Intended/expected behavior: an artifact worn in the fifth misc position sells like the other worn ones; the war machines, the Catapult and the Spell Book stay refused (HER-ART-002, `NotTradable`).
+- Impact: none to gameplay but convenience: the same artifacts sell as in the original, one move fewer.
+- Community status: VCMI 1.7.5 sells it (survey `docs/rules/surveys/E09-trades.md` §9's table).
+- Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §2.4, §10 T-22).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-sim/src/adventure/tests.rs`, `tiles_and_actions_encode_as_documented` (the env's entry of worn position 13); the rule's sale of any worn position whose slot the backpack takes: `crates/h3-adventure/src/state/tests/markets.rs`, `a_towns_window_buys_its_heros_artifact_at_the_place_it_names`
+- Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 205); entered by E09 T58b, 2026-11-27
+
 ### TWN-QUIRK-21 — The Artifact Merchants' draw with every artifact banned
 - Class: fix, no flag (state-corrupting: a hang, which AGENTS.md always fixes; quirk candidate T-24, an empty entry accepted by the user with the agent's calls, 2026-11-24, TWN-Q35; the epic's decision 207)
 - Context / rules affected: town, the Artifact Merchants' stock (TWN-STK-001 at the new game, TWN-STK-002 each month; E09 T57); ADV-OBJ-006's picker

@@ -61,7 +61,11 @@ fn map(rules: &Rules, objects: Vec<ObjectSetup>, human: bool) -> AdventureState 
         ],
     );
     setup.map.objects.extend(objects);
-    setup.seats[0] = Seat { colour: 0, human };
+    setup.seats[0] = Seat {
+        colour: 0,
+        human,
+        team: 0,
+    };
     started(rules, &setup).unwrap()
 }
 
@@ -392,6 +396,7 @@ fn an_event_before_the_compromise_s_stop_ends_the_flight_first() {
         setup.seats[0] = Seat {
             colour: 0,
             human: true,
+            team: 0,
         };
         started(&rules, &setup).unwrap()
     };
@@ -489,6 +494,7 @@ fn an_event_on_water_fires_for_a_boat_s_step_and_ends_the_move_there() {
     setup.seats[0] = Seat {
         colour: 0,
         human: true,
+        team: 0,
     };
     let mut state = started(&rules, &setup).unwrap();
     state.put_aboard(HERO, 0);

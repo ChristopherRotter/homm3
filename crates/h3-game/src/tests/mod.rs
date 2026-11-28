@@ -992,11 +992,13 @@ pub(crate) fn setup() -> GameSetup {
             PlayerSetup {
                 colour: 0,
                 human: true,
+                team: 0,
                 start: Default::default(),
             },
             PlayerSetup {
                 colour: 1,
                 human: true,
+                team: 1,
                 start: Default::default(),
             },
         ],
@@ -1141,6 +1143,7 @@ fn the_game_checks_its_part_before_the_adventure() {
     let player = PlayerSetup {
         colour: 0,
         human: true,
+        team: 0,
         start: Default::default(),
     };
     assert_eq!(
@@ -1214,12 +1217,35 @@ fn the_game_checks_its_part_before_the_adventure() {
     );
 }
 
+// covers: GAM-TEM-001
+#[test]
+fn the_players_teams_come_from_the_setup() {
+    let rules = rules();
+    let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+    let mut allied = setup();
+    allied.players[1].team = 0;
+    let allies = GameState::new(&rules, &allied, 5).unwrap();
+    assert_eq!(allies.team(blue), Some(0));
+    assert_eq!(allies.team(PlayerId::new(3)), None);
+    assert!(allies.adventure().allied(red, blue));
+    let apart = GameState::new(&rules, &setup(), 5).unwrap();
+    assert_eq!(apart.team(blue), Some(1));
+    assert!(!apart.adventure().allied(red, blue));
+    // The teams are state (game state hash v41).
+    assert_ne!(allies.state_hash(), apart.state_hash());
+    // Teams that are not dense are the adventure's refusal (E10 T3a: no check of the game's own).
+    assert_eq!(
+        error(|s| s.players[1].team = 2),
+        GameSetupError::Adventure(SetupError::Team(2))
+    );
+}
 #[test]
 fn the_adventure_checks_the_rest() {
     assert_eq!(
         error(|s| s.players.push(PlayerSetup {
             colour: 3,
             human: true,
+            team: 2,
             start: Default::default(),
         })),
         GameSetupError::Colour(2)
@@ -1229,6 +1255,7 @@ fn the_adventure_checks_the_rest() {
         .map(|colour| PlayerSetup {
             colour,
             human: true,
+            team: colour,
             start: Default::default(),
         })
         .collect();

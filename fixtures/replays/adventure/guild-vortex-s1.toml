@@ -21,20 +21,20 @@ commands = [
     "0 end-turn",
 ]
 checkpoints = [
-    "0x410513eecbdd2790",
-    "0xb7293628e6d3f2f0",
-    "0x59ce865128e60bce",
-    "0x9a54f54542830056",
-    "0x51bd03e64214e41a",
-    "0xb49198abfc6cf220",
-    "0x6d14a4a7bf04b1cd",
-    "0xce3497783a201a35",
-    "0xa8bb346616f9b4b9",
-    "0x7d6698dfcd1f5b5e",
+    "0x66e0214c0e41c777",
+    "0x9052ff887f2830e7",
+    "0x01d07417445e0619",
+    "0x8fd0a0faae1873d1",
+    "0xfe9e510444bf3c09",
+    "0x32ab7eabbff5fd03",
+    "0x33aa13d06c9bed56",
+    "0x9cf9e9eddb0d9cce",
+    "0x07faa6a61c2472a0",
+    "0x08bdc31d99861a2d",
 ]
 
 [replay]
-format = 27
+format = 28
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -60,18 +60,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 2
 
 [map]
 path = "fixtures/maps/e09-guild-36.h3m"
 hash = "0x048045fa8ddf666a"
-import_version = 29
+import_version = 30
 
 [result]
 day = 8
-final_hash = "0x7d6698dfcd1f5b5e"
+final_hash = "0x08bdc31d99861a2d"
 
 [[players]]
 colour = 0

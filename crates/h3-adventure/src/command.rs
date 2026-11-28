@@ -776,9 +776,10 @@ pub enum MarketPlace {
 
 /// Why a market's answer is refused (E08 T133a2; increment 14's design note §11, §13): the
 /// adventure's checks of a sale ([`crate::AdventureState::check_sale`]), a purchase
-/// ([`crate::AdventureState::check_buy`]) and since E08 T133b a trade's lot
+/// ([`crate::AdventureState::check_buy`]), since E08 T133b a trade's lot
 /// ([`crate::AdventureState::trade_lot`]) and a transfer's screen
-/// ([`crate::MarketWindow::check_screen`]); a trade's and a transfer's amounts and a transfer's
+/// ([`crate::MarketWindow::check_screen`]), and since E09 T58b an artifact's sale
+/// ([`crate::AdventureState::check_artifact_sale`], TWN-MKT-005); a trade's and a transfer's amounts and a transfer's
 /// recipient are the game's, which wraps these in its command error. A refused answer changes
 /// nothing (ADR-0004).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -810,6 +811,12 @@ pub enum MarketError {
     NoPrice,
     /// The hero cannot receive the artifact (A-46 fixed, `ADV-QUIRK-48`: refused before paying).
     NoRoom,
+    /// The window's hero holds no artifact at the place (an artifact's sale, E09 T58b).
+    Place(ArtifactPlace),
+    /// The artifact at the place is worn where the backpack does not take its slot's artifacts
+    /// (HER-ART-002: the war machines, the Catapult, the Spell Book; the original's GENRLTXT 22),
+    /// so it is not sold (E09 T58b).
+    NotTradable,
 }
 
 impl fmt::Display for MarketError {
@@ -827,6 +834,13 @@ impl fmt::Display for MarketError {
             Self::Entry(entry) => write!(f, "entry {entry} is not for sale"),
             Self::NoPrice => f.write_str("the market has no price in that resource"),
             Self::NoRoom => f.write_str("the hero has no room for the artifact"),
+            Self::Place(ArtifactPlace::Worn(at)) => {
+                write!(f, "the hero wears no artifact at position {at}")
+            }
+            Self::Place(ArtifactPlace::Backpack(i)) => {
+                write!(f, "the hero carries no artifact in the backpack at {i}")
+            }
+            Self::NotTradable => f.write_str("this artifact is not traded"),
         }
     }
 }
@@ -839,9 +853,9 @@ impl core::error::Error for MarketError {}
 /// the state's, read at each view and purchase ([`crate::AdventureState::hire_stock`]); a
 /// purchase is [`crate::AdventureState::hire`]. Both halves are enums so E09's town recruitment
 /// names a town's dwelling and a garrison through the same dialog (design note §13, "E09's
-/// reuse"). *Agent's call:* no read-only flag yet: an ally's dialog (E10's teams, the original
-/// disabling every button) is unreachable while `allied` is the player alone, so its branch is
-/// left out until then (design note §13).
+/// reuse"). *Agent's call:* no read-only flag yet: an ally's dialog (the original disabling
+/// every button) is E10 T3b's; since E10 T3a's teams an ally's accepted hire question opens none
+/// ([`crate::AdventureState::allied`]; design note §13).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HireDialog {
     /// The army the bought creatures join.
@@ -1759,7 +1773,7 @@ pub enum AdventureEventKind {
     /// A player's team learned an object type's kind mark (ADV-BON-009, E08 T115b; increment 12's
     /// design note §3, §10, decision 302: the original's `kinds_visited`, which the map's hint
     /// reads): a visit of a type the part marks. Seen by each player of the visitor's team that
-    /// did not hold it (the visitor alone until E10's teams), as [`Self::ObjectMarked`].
+    /// did not hold it (its allies too since E10 T3a, GAM-TEM-001), as [`Self::ObjectMarked`].
     KindKnown {
         /// The type.
         object_type: ObjectTypeId,

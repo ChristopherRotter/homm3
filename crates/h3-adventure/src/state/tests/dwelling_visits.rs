@@ -146,6 +146,37 @@ fn an_own_dwelling_asks_the_hire_question_without_a_flag_or_its_guards() {
     assert_eq!(s.dwelling_guards(0).len(), 2);
 }
 
+// covers: ADV-DWL-004, ADV-OWN-001
+#[test]
+fn an_ally_s_dwelling_asks_the_hire_question_without_a_flag_or_its_guards() {
+    // Blue on red's team (E10 T3a; E10 design note §4, survey `E10-teams.md` §6): blue's level-1
+    // dwelling and its guarded level-5 one ask red's hero the hire question at once, no guards'
+    // question, no flag, nothing told; each stays blue's with its guards. (The dialog read-only
+    // for an ally: T3b.)
+    let rules = rules();
+    for k in ["t:d1", "t:d5"] {
+        let setup = allies(setup(vec![at_entrance(&rules, k, Some(BLUE))]));
+        let mut s = started(&rules, &setup).unwrap();
+        let guards = s.dwelling_guards(0);
+        assert_eq!(guards.is_empty(), k == "t:d1");
+        let (outcome, events) = visit(&rules, &mut s);
+        let creatures = if k == "t:d1" {
+            ["t:c1", "t:w1"]
+        } else {
+            ["t:c5", "t:w5"]
+        };
+        assert_eq!(
+            outcome,
+            AdventureOutcome {
+                offer: Some(hire(&rules, k, &creatures)),
+                ..AdventureOutcome::default()
+            }
+        );
+        assert!(events.is_empty(), "{events:?}");
+        assert_eq!((s.owner(0), s.dwelling_guards(0)), (Some(BLUE), guards));
+    }
+}
+
 // covers: ADV-DWL-004, ADV-OWN-001, TWN-GRO-007
 #[test]
 fn a_neutral_or_another_s_unguarded_dwelling_is_flagged_then_asks() {

@@ -101,7 +101,7 @@ impl AdventureState {
         player: PlayerId,
         target: Pos,
     ) -> Result<(), CastError> {
-        let hidden = !self.explored[usize::from(player.raw())].get(target);
+        let hidden = !self.explored[self.map.layer(player)].get(target);
         if self.is_empty_boat(target) || (hidden && !core.quirks().is_enabled(SCUTTLE_READS_HIDDEN))
         {
             Ok(())
@@ -234,7 +234,7 @@ impl AdventureState {
         // the tile, empty, in the command's reveal (`AdventureState::reveal`).
         let seen_by = self.tile_viewers(core, target);
         if !core.quirks().is_enabled(SCUTTLE_READS_HIDDEN) {
-            reveal(&mut self.explored[usize::from(player.raw())], target, 0);
+            reveal(&mut self.explored[self.map.layer(player)], target, 0);
         }
         let Some(index) = self.empty_boat(target) else {
             return Err(CastFailure::Target);
@@ -263,9 +263,7 @@ impl AdventureState {
     /// unless it sees the tile ([`Self::viewers`] names one).
     fn tile_viewers(&self, core: &Ruleset, pos: Pos) -> Viewers {
         let fringe = core.quirks().is_enabled(FRINGE_SHOWS_OBJECTS);
-        self.explored
-            .iter()
-            .zip((0..self.players).map(PlayerId::new))
+        self.layers()
             .filter(|(grid, _)| grid.get(pos) || (fringe && on_fringe(grid, pos)))
             .fold(Viewers::NONE, |viewers, (_, player)| viewers.with(player))
     }

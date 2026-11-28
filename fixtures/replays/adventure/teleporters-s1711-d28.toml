@@ -498,29 +498,29 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xf8f7cfd8a84ad836",
-    "0x7b3b4e504db6e8db",
-    "0xaaf6963768ba3c2f",
-    "0x670898e476e6ec77",
-    "0x4b6d50a77f2bea0c",
-    "0x26f3459f8a7ba8ae",
-    "0x782ce891bc09d0a2",
-    "0x0faed7d8cc1c6022",
-    "0xfc7b595797ef5fa3",
-    "0x9f43cbeac79690c4",
-    "0x0c558ca1207dd761",
-    "0x8f462de380c68ca5",
-    "0x7699c39b414260c4",
-    "0xaa5ae94a3cefb7ad",
-    "0x1df0bc9e5fab0452",
-    "0x0b4476a979aeb6e0",
-    "0xbbd9f239d41328dc",
-    "0x9a5c008504e1db9b",
-    "0x844c5d09318014c4",
+    "0x37cf105fcd2264dc",
+    "0xb343aa530bc1f1c3",
+    "0x2e61aaf6df275b1a",
+    "0x402ec08f2f2f63b2",
+    "0x7347eeff60791db7",
+    "0x4bc67b59d94c620e",
+    "0x7eeea9739dfb78ee",
+    "0x061b565c9b23e347",
+    "0x69286e27a0a92d78",
+    "0xb926f6320c00bfd1",
+    "0x92383780d1f69070",
+    "0xc656dddbd991d0b4",
+    "0x4dc0d30e33ccfdc5",
+    "0xd4c28d26e938f0c0",
+    "0x14dccef5ef459690",
+    "0x63d7e96ade652ecb",
+    "0x59da949220f1ca37",
+    "0xd2c5c4bfa5358d23",
+    "0x3088aa3f6cabdbf5",
 ]
 
 [replay]
-format = 27
+format = 28
 engine = "0.1.0"
 seed = "1711"
 difficulty = 1
@@ -546,18 +546,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-teleporters-36.h3m"
 hash = "0x27ac37d3c2d89975"
-import_version = 29
+import_version = 30
 
 [result]
 day = 29
-final_hash = "0x04454e7d85d811fb"
+final_hash = "0x9e5572d5504909e0"
 
 [[players]]
 colour = 0

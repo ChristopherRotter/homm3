@@ -82,6 +82,13 @@ pub use h3_adventure::{
 pub use h3_adventure::{AdventureReveal, BitGrid, RevealedTile};
 /// The army commands a [`Manage::Army`] carries (E08 T51a; `h3_adventure`'s, ADR-0016 point 3).
 pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
+/// A market's visit, its place, its refusals, what its window offers and its screens (E08 T133b;
+/// the place since E09 T58a1, the artifact sale's offers since E09 T58b; `h3_adventure`'s types):
+/// what [`GameState::market`], [`GameCommandError::Market`] and [`DecisionView::Market`] carry.
+pub use h3_adventure::{
+    ArtifactSaleOffer, Lot, MarketError, MarketOffers, MarketPlace, MarketScreen, MarketVisit,
+    SaleOffer, StockEntry, TradeOffer,
+};
 /// A choice's and a University's views (E08 T63a; `h3_adventure`'s types): what
 /// [`DecisionView::Choice`] and [`DecisionView::University`] show.
 pub use h3_adventure::{Choice, ChoiceKind, UniversityVisit};
@@ -92,13 +99,6 @@ pub use h3_adventure::{HillFortError, HillFortRow, HillFortVisit};
 /// [`GameState::hire_dialog`], [`GameEvent::HireOpened`], [`DecisionView::Hire`] and
 /// [`GameCommandError::Hire`] carry.
 pub use h3_adventure::{HireDialog, HireError, HireSource, HireTarget};
-/// A market's visit, its place, its refusals, what its window offers and its screens (E08 T133b;
-/// the place since E09 T58a1; `h3_adventure`'s types): what [`GameState::market`],
-/// [`GameCommandError::Market`] and [`DecisionView::Market`] carry.
-pub use h3_adventure::{
-    Lot, MarketError, MarketOffers, MarketPlace, MarketScreen, MarketVisit, SaleOffer, StockEntry,
-    TradeOffer,
-};
 /// A University's slot state for a hero (`h3_heroes`' derivation, HER-CHG-004), which
 /// [`DecisionView::University`] shows (E08 T63a).
 pub use h3_heroes::SlotState;
@@ -212,5 +212,6 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// encoding is unchanged, the build's (and the setup stream's draws after the build's heroes')
 /// are not. v40 (E09 T58a1, the town lane's, `cross-lane`; GAM-DEC-011 amended): a market's
 /// decision writes its hero as an option (0 for none, else 1 and the hero) and its place's tag
-/// before the place's fields (0: a map object's index, type and anchor; 1: a town's id).
-pub const GAME_STATE_HASH_VERSION: u32 = 40;
+/// before the place's fields (0: a map object's index, type and anchor; 1: a town's id). v41 (E10
+/// T3a, E10 design note §2): each player's team after its human flag (GAM-TEM-001).
+pub const GAME_STATE_HASH_VERSION: u32 = 41;

@@ -38,6 +38,7 @@ fn three_players() -> GameSetup {
     setup.players.push(PlayerSetup {
         colour: 2,
         human: true,
+        team: 2,
         start: Default::default(),
     });
     setup.map.tiles[10].coast = true;

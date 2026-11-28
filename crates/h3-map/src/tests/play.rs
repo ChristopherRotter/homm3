@@ -6231,8 +6231,8 @@ fn check_legal(
 }
 
 /// The `BuildBoat`s `player` may issue now, by an oracle of ADV-SHY-003 (E08 T86b1; increment 9's
-/// design note §15): one for each Shipyard in object order that is its own (an ally's too: the
-/// player alone until E10), has a tile the player explored, a boat tile (ADV-SHY-001) with neither
+/// design note §15): one for each Shipyard in object order of its team (its own or, since E10 T3a,
+/// an ally's), has a tile the player explored, a boat tile (ADV-SHY-001) with neither
 /// an empty boat nor a hero on it, while the treasury pays the kind's price.
 fn buildable(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
     let adventure = state.adventure();
@@ -6253,12 +6253,15 @@ fn buildable(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Ga
             let pays = price
                 .iter()
                 .all(|&(r, amount)| treasury.get(r.index()).is_some_and(|&t| t >= amount));
-            (adventure.owner(i) == Some(player) && seen && !taken && pays).then_some(
-                GameCommand::Adventure(AdventureCommand::BuildBoat {
+            let ours = adventure
+                .owner(i)
+                .is_some_and(|o| adventure.allied(o, player));
+            (ours && seen && !taken && pays).then_some(GameCommand::Adventure(
+                AdventureCommand::BuildBoat {
                     object_type,
                     anchor: o.anchor,
-                }),
-            )
+                },
+            ))
         })
         .collect()
 }
@@ -6573,9 +6576,9 @@ fn check_jumps(
         );
         let team = before.adventure().heroes().iter();
         prop_assert!(
-            !team
-                .clone()
-                .any(|h| h.id != hero && h.owner == was.owner && h.pos == to),
+            !team.clone().any(|h| h.id != hero
+                && before.adventure().allied(h.owner, was.owner)
+                && h.pos == to),
             "{:?} jumped onto its team's hero",
             hero
         );
@@ -10057,7 +10060,7 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
         {
             let owner = adventure.owner(i);
             prop_assert!(
-                owner.is_some_and(|o| h3_adventure::allied(o, hero.owner)),
+                owner.is_some_and(|o| adventure.allied(o, hero.owner)),
                 "{:?} on town {} of {:?}",
                 hero.id,
                 i,
