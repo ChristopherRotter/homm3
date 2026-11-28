@@ -2,7 +2,11 @@
 # generator's tables"). Invented names; the values only exercise the format and the compiler. The
 # object templates' footprints and colour masks are invented too (E14 T4b): the mine's 3 x 2 with
 # body pixels beside its one blocked cell, the tree's 2 x 1, the nine towns' 2 x 1 with their
-# entrance at the anchor (steps 4 and 5 take a town type's line by its index among class 98's).
+# entrance at the anchor (steps 4 and 5 take a town type's line by its index among class 98's),
+# the shipyard's 3 x 1 with its entrance in the middle, the gate's 2 x 1 with its entrance at
+# the anchor (step 6 draws a prototype of each class for a connection by a shipyard or gates)
+# and the monoliths' 1 x 2 (a one-way entrance and exit, one channel) and 2 x 2 (a two-way one),
+# their anchor blocked and their entrance (step 6's connections by monoliths).
 
 object_templates = [
   { picture = "synth_blank.def", passability = "111111111111111111111111111111111111111111111111", actions = "000000000000000000000000000000000000000000000000", editor_terrains = "000000000", terrains = "000000000", class = 0, subclass = 0, group = 0, overlay = 0, width = 1, height = 1, colour = "000000000000000000000000000000000000000000000000" },
@@ -17,6 +21,11 @@ object_templates = [
   { picture = "synth_town6.def", passability = "001111111111111111111111111111111111111111111111", actions = "100000000000000000000000000000000000000000000000", editor_terrains = "011111111", terrains = "011111111", class = 98, subclass = 6, group = 1, overlay = 0, width = 2, height = 1, colour = "110000000000000000000000000000000000000000000000" },
   { picture = "synth_town7.def", passability = "001111111111111111111111111111111111111111111111", actions = "100000000000000000000000000000000000000000000000", editor_terrains = "011111111", terrains = "011111111", class = 98, subclass = 7, group = 1, overlay = 0, width = 2, height = 1, colour = "110000000000000000000000000000000000000000000000" },
   { picture = "synth_town8.def", passability = "001111111111111111111111111111111111111111111111", actions = "100000000000000000000000000000000000000000000000", editor_terrains = "011111111", terrains = "011111111", class = 98, subclass = 8, group = 1, overlay = 0, width = 2, height = 1, colour = "110000000000000000000000000000000000000000000000" },
+  { picture = "synth_shipyard.def", passability = "000111111111111111111111111111111111111111111111", actions = "010000000000000000000000000000000000000000000000", editor_terrains = "011111111", terrains = "011111111", class = 87, subclass = 0, group = 0, overlay = 0, width = 3, height = 1, colour = "111000000000000000000000000000000000000000000000" },
+  { picture = "synth_gate.def", passability = "001111111111111111111111111111111111111111111111", actions = "100000000000000000000000000000000000000000000000", editor_terrains = "011111111", terrains = "011111111", class = 103, subclass = 0, group = 0, overlay = 0, width = 2, height = 1, colour = "110000000000000000000000000000000000000000000000" },
+  { picture = "synth_monolith_in.def", passability = "011111111111111111111111111111111111111111111111", actions = "100000000000000000000000000000000000000000000000", editor_terrains = "011111111", terrains = "011111111", class = 43, subclass = 0, group = 0, overlay = 0, width = 1, height = 2, colour = "100000001000000000000000000000000000000000000000" },
+  { picture = "synth_monolith_out.def", passability = "011111111111111111111111111111111111111111111111", actions = "100000000000000000000000000000000000000000000000", editor_terrains = "011111111", terrains = "011111111", class = 44, subclass = 0, group = 0, overlay = 0, width = 1, height = 2, colour = "100000001000000000000000000000000000000000000000" },
+  { picture = "synth_monolith_two.def", passability = "011111111111111111111111111111111111111111111111", actions = "100000000000000000000000000000000000000000000000", editor_terrains = "011111111", terrains = "011111111", class = 45, subclass = 0, group = 0, overlay = 0, width = 2, height = 2, colour = "100000001000000000000000000000000000000000000000" },
 ]
 
 [[template]]

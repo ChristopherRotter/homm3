@@ -45,3 +45,14 @@ xl2-4p-seed0 36 town=7 terrain=8 x=-11 y=92 z=0 size=11
 xl2-4p-seed0 37 town=4 terrain=8 x=80 y=56 z=0 size=11
 xl2-4p-seed0 38 town=1 terrain=8 x=24 y=38 z=0 size=11
 xl2-4p-seed0 39 town=-1 terrain=8 x=46 y=16 z=0 size=11
+m1-2p-ready 10 town=0 terrain=8 x=31 y=-3 z=0 size=9
+m1-2p-ready 11 town=1 terrain=8 x=72 y=31 z=0 size=13
+m1-2p-ready 12 town=5 terrain=8 x=38 y=75 z=0 size=13
+m1-2p-ready 13 town=4 terrain=8 x=1 y=75 z=0 size=13
+m1-2p-ready 14 town=0 terrain=8 x=77 y=53 z=0 size=13
+m1-2p-ready 15 town=5 terrain=8 x=0 y=47 z=0 size=7
+m1-2p-ready 16 town=3 terrain=8 x=0 y=28 z=0 size=7
+m1-2p-ready 17 town=6 terrain=8 x=10 y=16 z=0 size=7
+m1-2p-ready 18 town=2 terrain=8 x=10 y=-2 z=0 size=7
+m1-2p-ready 19 town=0 terrain=8 x=75 y=9 z=0 size=7
+m1-2p-ready 20 town=0 terrain=8 x=61 y=-5 z=0 size=7

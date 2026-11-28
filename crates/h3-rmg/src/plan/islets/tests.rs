@@ -10,7 +10,7 @@ use crate::layout::ZoneGenerator;
 use crate::painter::Pictures;
 use crate::painter::tests::tables;
 use crate::part::GeneratorTables;
-use crate::plan::tests::{Log, drawn, generator, land, no_objects, pend, zone};
+use crate::plan::tests::{Log, drawn, generator, land, no_guards, no_objects, pend, zone};
 
 /// The far costs (+0x1C bits 16-31) of level 0, row by row.
 fn far(cells: &Cells) -> Vec<Vec<u32>> {
@@ -155,9 +155,14 @@ fn an_islet_is_painted_and_its_land_made_obstacles() {
         zones: &zones,
         connections: &[],
         gens: &[],
-        objects: &no_objects(),
+        objects: &mut no_objects(),
+        road_targets: &mut Vec::new(),
         pictures: &pictures,
         cosmetic: true,
+        guards: no_guards(),
+        shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     let mut log = Log::default();
     let before = cells.clone();
@@ -209,9 +214,14 @@ fn islets_of(
         zones: &zones,
         connections: &[],
         gens,
-        objects: &no_objects(),
+        objects: &mut no_objects(),
+        road_targets: &mut Vec::new(),
         pictures: &pictures,
         cosmetic: true,
+        guards: no_guards(),
+        shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     let mut log = Log::default();
     let painted = islets(&mut Stream::new(5, &mut log), &input, cells);

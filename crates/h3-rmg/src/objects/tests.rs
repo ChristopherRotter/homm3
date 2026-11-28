@@ -19,7 +19,7 @@ fn bits(cells: &[[i32; 2]]) -> u64 {
 }
 
 /// A line of class `class` and subclass `subclass`, 1 × 1, its anchor blocked, on land.
-fn line(class: u32, subclass: u32) -> ObjectTemplate {
+pub(crate) fn line(class: u32, subclass: u32) -> ObjectTemplate {
     ObjectTemplate {
         picture: String::from("AVXtest.def"),
         passability: MASK48 & !1,
@@ -37,7 +37,7 @@ fn line(class: u32, subclass: u32) -> ObjectTemplate {
 }
 
 /// Every class its own group, every flag clear.
-fn settings() -> Vec<ObjectSettings> {
+pub(crate) fn settings() -> Vec<ObjectSettings> {
     (0..OBJECT_TYPES as u8)
         .map(|class| ObjectSettings {
             not_entered: false,

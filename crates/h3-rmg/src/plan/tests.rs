@@ -6,7 +6,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use super::*;
-use crate::objects::Shape;
+use crate::objects::{ObjectFault, Shape};
 use crate::painter::tests::tables;
 use crate::part::{Connection, Strength, ZoneKind};
 use crate::settings::MapFormat;
@@ -103,6 +103,16 @@ fn object(cells: &mut Cells, [x, y, z]: [i32; 3], entrance: bool) {
 /// No object template, no object settings, nothing placed.
 pub(super) fn no_objects() -> Objects {
     Objects::new(&[], &[], MapFormat::SoD, 0)
+}
+
+/// No creature, SoD, normal monsters.
+pub(super) fn no_guards() -> GuardInput<'static> {
+    GuardInput {
+        creatures: &[],
+        format: MapFormat::SoD,
+        strength: 3,
+        roe_guard_walk: true,
+    }
 }
 
 pub(super) fn pend(cells: &mut Cells, x: i32, y: i32, z: i32) {
@@ -404,6 +414,11 @@ fn the_lanes_free_objects_water_and_rock_and_skip_pending_guards() {
 }
 
 fn walls_of(cells: &mut Cells, zones: usize, connections: &[KeptConnection]) {
+    walls_by(cells, zones, connections, true);
+}
+
+/// The walls of `zones` zones with `connections`, RMG-QUIRK-9 on or off (`underground`).
+fn walls_by(cells: &mut Cells, zones: usize, connections: &[KeptConnection], underground: bool) {
     let zones: Vec<Zone> = (0..zones as i32).map(zone).collect();
     let gens: Vec<ZoneGenerator> = (0..zones.len()).map(generator).collect();
     walls(
@@ -411,9 +426,14 @@ fn walls_of(cells: &mut Cells, zones: usize, connections: &[KeptConnection]) {
             zones: &zones,
             connections,
             gens: &gens,
-            objects: &no_objects(),
+            objects: &mut no_objects(),
+            road_targets: &mut Vec::new(),
             pictures: &Pictures::new(&tables()),
             cosmetic: true,
+            guards: no_guards(),
+            shipyard_sites_repeated: true,
+            underground_wide_walled: underground,
+            monolith_channels_shared: true,
         },
         cells,
     );
@@ -421,9 +441,9 @@ fn walls_of(cells: &mut Cells, zones: usize, connections: &[KeptConnection]) {
 
 // covers: RMG-CON-005
 /// The walls: a zone cell is walled beside water of no zone, a zone it has no connection to or
-/// one whose connection is not wide, and on level 1 beside any other zone; not beside land of
-/// no zone or along a wide connection on level 0. Water of a zone and cells of no zone are not
-/// walled.
+/// one whose connection is not wide, and on level 1 beside any other zone (RMG-QUIRK-9 on; off,
+/// level 1 as level 0); not beside land of no zone or along a wide connection on level 0. Water
+/// of a zone and cells of no zone are not walled.
 #[test]
 fn zones_are_walled_except_along_wide_connections_on_level_0() {
     let mut cells = drawn(&[
@@ -434,6 +454,14 @@ fn zones_are_walled_except_along_wide_connections_on_level_0() {
     walls_of(&mut cells, 3, &connections);
     assert_eq!(bits(&cells, 0, OBSTACLES), ["....", "###.", "####", ".#.."]);
     assert_eq!(bits(&cells, 1, OBSTACLES), [".##.", ".###", ".###", "...."]);
+    // RMG-QUIRK-9 off: level 1 as level 0, open along the wide connection.
+    let mut cells = drawn(&[
+        &["0011", "0011", "2200", "22~."],
+        &["0011", "0011", "0000", "0000"],
+    ]);
+    walls_by(&mut cells, 3, &connections, false);
+    assert_eq!(bits(&cells, 0, OBSTACLES), ["....", "###.", "####", ".#.."]);
+    assert_eq!(bits(&cells, 1, OBSTACLES), ["....", "....", "....", "...."]);
     let mut cells = drawn(&[&["w0..", "0w0.", "....", "...."]]);
     walls_of(&mut cells, 1, &[]);
     assert_eq!(bits(&cells, 0, OBSTACLES), ["....", "....", "....", "...."]);
@@ -465,7 +493,8 @@ fn a_walled_cells_3x3_loses_bit_27_but_objects_and_pending_guards() {
 // covers: RMG-CON-001, RMG-CON-005, RMG-CON-009
 /// A zone byte past the zone generators (the original's unchecked read, RMG-QUIRK-4; step 2
 /// writes none) leaves its cell unwalled; the plan runs the lanes, the walls and the cells of no
-/// zone in turn, then the joining, which refuses a zone generator without a box (RMG-QUIRK-5).
+/// zone in turn, then the joining, which refuses a zone generator without a box (RMG-QUIRK-5);
+/// with one, the seal and the connections (none) end it.
 #[test]
 fn a_zone_byte_past_the_generators_is_left_unwalled() {
     let mut cells = drawn(&[&["05", "~0"]]);
@@ -474,17 +503,22 @@ fn a_zone_byte_past_the_generators_is_left_unwalled() {
     let mut cells = drawn(&[&["0~.~", "....", "....", "...."]]);
     let zones = [zone(0)];
     let gens = [generator(0)];
-    let input = PlanInput {
+    let mut input = PlanInput {
         zones: &zones,
         connections: &[],
         gens: &gens,
-        objects: &no_objects(),
+        objects: &mut no_objects(),
+        road_targets: &mut Vec::new(),
         pictures: &Pictures::new(&tables()),
         cosmetic: true,
+        guards: no_guards(),
+        shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     let mut log = Log::default();
     assert_eq!(
-        plan(&mut Stream::new(0, &mut log), &input, &mut cells),
+        plan(&mut Stream::new(0, &mut log), &mut input, &mut cells),
         Err(GenerateError::NoEmptyCell { step: 6, zone: 0 })
     );
     assert_eq!(log.draws[0].0, SITE_LANE_ORIENTATION);
@@ -500,20 +534,64 @@ fn a_zone_byte_past_the_generators_is_left_unwalled() {
         bounds: [0, 0, 1, 1],
         ..generator(0)
     }];
-    let input = PlanInput {
+    let mut input = PlanInput {
         gens: &gens,
         ..input
     };
     let mut log = Log::default();
     assert_eq!(
-        plan(&mut Stream::new(0, &mut log), &input, &mut cells),
-        Ok(())
+        plan(&mut Stream::new(0, &mut log), &mut input, &mut cells),
+        Ok(Connected {
+            passages: alloc::vec![Vec::new()],
+            ..Connected::default()
+        })
     );
     assert_eq!(tile_data(&cells, 0, 0, 0) & (KEPT | OBSTACLES), KEPT);
     assert!(
         log.draws
             .iter()
             .all(|&(site, _)| site == SITE_LANE_ORIENTATION || site == SITE_LANE_JITTER)
+    );
+}
+
+// covers: RMG-CON-001, RMG-CON-013
+/// The connections end the plan: two zones apart, their connection not made by land goes to a
+/// shipyard, whose prototype without one is drawn `mod 0` (RMG-QUIRK-3), then to monoliths in
+/// pass 2, whose index is taken `mod 0` too: the step's first object fault.
+#[test]
+fn the_connections_object_fault_ends_the_plan() {
+    let mut cells = drawn(&[&["0..1", "....", "....", "...."]]);
+    let zones = [zone(0), zone(1)];
+    let gens = [
+        ZoneGenerator {
+            bounds: [0, 0, 1, 1],
+            ..generator(0)
+        },
+        ZoneGenerator {
+            bounds: [3, 0, 4, 1],
+            ..generator(1)
+        },
+    ];
+    let mut input = PlanInput {
+        zones: &zones,
+        connections: &[connection(0, 1, false)],
+        gens: &gens,
+        objects: &mut no_objects(),
+        road_targets: &mut Vec::new(),
+        pictures: &Pictures::new(&tables()),
+        cosmetic: true,
+        guards: no_guards(),
+        shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
+    };
+    let mut log = Log::default();
+    assert_eq!(
+        plan(&mut Stream::new(0, &mut log), &mut input, &mut cells),
+        Err(GenerateError::Objects {
+            step: 6,
+            fault: ObjectFault::NoShipyard
+        })
     );
 }
 
