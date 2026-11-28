@@ -7150,3 +7150,14 @@ seven files staged (`Heroes3.exe`, the four LODs, `maps.tar`, `extracted.tar`). 
   move between `Roles::of` (+407 k) and `holds_capitol` (−361 k); inside the gate, not
   re-baselined.
 - *Agent's calls* (change freely): decision 229's list.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`: every step passes
+but `check-lane` (by design; `check-lane --cross-lane --base origin/master` ok) and coverage at
+first (24 minutes): one region of `h3-adventure`'s `town/transform.rs`, the implicit `else` of an
+`if let` over the map's town (defensive), now a fold over the option; determinism 9 minutes,
+bench-check 16, `original-data` 10. Then `verify-step coverage --scope town` and `--scope server`
+VERIFYCOV; `cargo clippy --workspace --all-targets`; `cargo test -p h3-towns -p h3-game -p h3-files
+-p h3-protocol -p h3-server -p h3-sim -p h3-cli` (every golden replayed). **CI** (#PRNUM): CIRESULT.
+
+**The queue:** T60 next (the trades map). Ids: decisions next 230; quirks next `-24`; stubs
+`TWN-STUB-23`.

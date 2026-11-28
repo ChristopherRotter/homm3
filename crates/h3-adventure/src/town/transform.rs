@@ -40,12 +40,14 @@ impl AdventureState {
                 slot,
             };
         }
-        // The checked town's garrison (the map's town: written as a captured one's, E09 T8a2).
-        if let Some(index) = self.map().town_object(town) {
+        // The checked town's garrison (the map's town: written as a captured one's, E09 T8a2);
+        // none only defensively, so no branch.
+        let index = self.map().town_object(town);
+        index.into_iter().for_each(|index| {
             let mut army = self.town_garrison(index).unwrap_or_default().to_vec();
             set(&mut army);
             self.set_army_left(index, army);
-        }
+        });
         ArmySlot {
             army: ArmyRef::Garrison(town),
             slot,
