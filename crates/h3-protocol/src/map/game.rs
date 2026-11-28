@@ -28,9 +28,10 @@ use h3_game::{
     GuildRow as EngineGuildRow, HeroInfo as EngineInfo, HillFortView,
     HireCreature as EngineCreature, HireSeen as EngineSeen, HireView, HiredPart as EngineHiredPart,
     LevelUpView, MapGarrisonView, MarketScreen as EngineScreen, MarketSeen as EngineMarketSeen,
-    MarketView, MonthKind, PlayerView, SlotState as EngineSlot, TavernHero as EngineTavernHero,
-    TavernHeroView as EngineTavernView, TavernPart as EngineTavernPart, ThievesGuildView,
-    TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
+    MarketView, MeetingPart as EngineMeetingPart, MonthKind, PlayerView, SlotState as EngineSlot,
+    TavernHero as EngineTavernHero, TavernHeroView as EngineTavernView,
+    TavernPart as EngineTavernPart, ThievesGuildView, TownBuildingsView, TownOwnerView, TownView,
+    Viewer, WeekKind,
 };
 use h3_heroes::{
     ArtifactInstance, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -45,11 +46,11 @@ use crate::wire::game::{
     GameReveal, Garrison, GarrisonHero, GarrisonStack, Guards, GuildHero, GuildPart, GuildPlayer,
     GuildRanking, GuildRow, HeroDetails, HeroInfo, HillFortRow, HillFortState, HillFortWindow,
     Hire, HireCreature, HireSeen, HireTarget, HiredPart, Known, KnownObject as WireKnownObject,
-    LevelUp, Lot, MapGarrison, MapHero, MarketScreen, MarketSeen, MarketWindow, Monster, Month,
-    Object, ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill,
-    ResourceLot, RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState, StockEntry, Summoned,
-    TavernHero, TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings,
-    TownOwnerFacts, TradeLot, UniversitySeen, UniversityVisit, VisitBonus, Week,
+    LevelUp, Lot, MapGarrison, MapHero, MarketScreen, MarketSeen, MarketWindow, MeetingPart,
+    Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos,
+    PrimarySkill, ResourceLot, RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState,
+    StockEntry, Summoned, TavernHero, TavernHeroHead, TavernPart, ThievesGuild, Tile, Town,
+    TownBuildings, TownOwnerFacts, TradeLot, UniversitySeen, UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -659,11 +660,50 @@ fn hero_info(h: &EngineInfo) -> HeroInfo {
         id,
         hero_type,
         details,
+        army,
     } = h;
     HeroInfo {
         id: id.raw(),
         hero_type: hero_type.raw(),
         details: details.as_deref().map(hero_details),
+        army: army
+            .as_ref()
+            .map(|army| army.iter().copied().map(army_stack).collect()),
+    }
+}
+
+/// A part of the meeting's ally's hero on the wire (protocol v89, E10 T3b1).
+pub(super) fn meeting_part(part: EngineMeetingPart) -> MeetingPart {
+    match part {
+        EngineMeetingPart::Head {
+            level,
+            experience,
+            primary,
+            mana,
+            offered: EngineLevels { wisdom, school },
+            positions,
+        } => MeetingPart::Head {
+            level,
+            experience,
+            primary,
+            mana,
+            offered: OfferLevels { wisdom, school },
+            positions,
+        },
+        EngineMeetingPart::Stack(stack) => MeetingPart::Stack {
+            stack: army_stack(stack),
+        },
+        EngineMeetingPart::Skill { skill, level } => MeetingPart::Skill {
+            skill: SkillLevel {
+                skill: skill.raw(),
+                level,
+            },
+        },
+        EngineMeetingPart::Artifact { place, artifact: a } => MeetingPart::Artifact {
+            place: command::artifact_place(place),
+            artifact: artifact(a),
+        },
+        EngineMeetingPart::Spell(spell) => MeetingPart::Spell { spell: spell.raw() },
     }
 }
 

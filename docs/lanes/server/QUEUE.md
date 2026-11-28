@@ -12,6 +12,22 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-28 (the adventure lane, E10 T3b1, `adventure/e10-t3b1`, `cross-lane`; **in your paths,
+  for your review; one call is yours**): **protocol v89** (`lib.rs`' line; E09 T59b1 took v88): a meeting with an
+  ally's hero (GAM-TEM-003): `GameEvent::MeetingPartSeen { player, hero, part }` with
+  `MeetingPart` (`Head`, `Stack`, `Skill`, `Artifact`, `Spell`), told to the visitor's owner after
+  its `MeetingOpened`; `HeroInfo::army` (that hero's army while the meeting is open; its
+  `details` then too); `GameReject::AllyHero { hero }`; `HireReject::ReadOnly` (an ally's
+  dwelling's dialog, ADV-DWL-004). The fold (`wire/game/fold.rs`): `see_met` builds the hero's
+  details and army from the parts, `set_stack` reaches that army, `close_decision` drops both
+  when a meeting closes; tests in `tests/game_fold.rs` (`a_meeting_s_ally_hero_folds_…`),
+  `game.rs`, `game_event.rs` (56 kinds), `game_command.rs`. **Yours to decide:** the read-only
+  flag is not on the wire: the engine reads it from the dwelling's owner and stores none, and the
+  wire's `Hire`, `Decision::Meeting` and `GameObservation` are built by the clients' tests
+  (`h3-map-client`'s `window.rs`, `h3-map-view`'s `notice` tests, `h3-view`'s `game_record`
+  tests), so no field was added to them; a client reads it from the source object's owner, or
+  you carry it with the clients' lanes' consent.
+
 - 2026-11-27 (the adventure lane, E10 T3a, `adventure/e10-t3a`, `cross-lane`; **in your paths,
   for your review; nothing to do**): the adventure state hash v31, the game state hash v41 and
   the map import v30 moved every golden adventure replay's hash lines (the 130 re-recorded from

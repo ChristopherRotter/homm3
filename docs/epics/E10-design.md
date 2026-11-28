@@ -69,8 +69,11 @@ ADV-GAR-003, -004, ADV-SHY-003, ADV-MIN-002, ADV-BNK-003, ADV-TEL-003; survey §
 "the player alone until E10" and are re-tested with allies on batch E10's map (E08 T89a's
 `teams`): an ally's mine, Lighthouse, dwelling, Shipyard or garrison is not flagged; a mine's
 Leave Guards is the owner's alone; an ally's dwelling opens the hire dialog **read-only**, `Close`
-alone (batch E10's E10-6; ADR-0017 point 6 already says it, built now: `dwellings.rs`' "no
-read-only flag yet"); an ally's Shipyard offers its boat; a garrison of the team is exchanged and
+alone (batch E10's E10-6; ADR-0017 point 6 already says it; built by E10 T3b1: whatever its
+levels, nothing free, the original's 0x4ABAC4 read; the flag not stored but read from the
+source's owner, `AdventureState::hire_read_only`, so no hash moved and the wire's `Hire`, which
+the clients build, gains no field: a viewer reads it from the dwelling's owner); an ally's
+Shipyard offers its boat; a garrison of the team is exchanged and
 passed short of the destination without a visit (`step_garrison_pass` 0x48154B); a visit's marks
 (the tiles' visited bits, the kinds, the banks', the obelisks') are the team's; a monolith's exit
 holding a hero of the team is no candidate. **Not shared** (survey §6): treasuries, the border
@@ -92,6 +95,18 @@ gates' keys, the turn, a town's recruitment and buildings.
   refusal (`GameCommandError::AllyHero`, *agent's call* for the name), changing nothing.
 - The ally is told its hero's changes as its own (`StackChanged`, `HeroChanged` to the owner), not
   the meeting. The system actor's default answer stays `Close`.
+- **As built (E10 T3b1, 2026-11-28):** the user's call at T3b's start (decision 20): while the
+  meeting is open the visitor's owner sees the ally's hero's details whole and its army, as the
+  exchange screen's other hero (`HeroInfo::details` and the new `HeroInfo::army`); after
+  `MeetingOpened` the hero is told part by part (`GameEvent::MeetingPartSeen`, `MeetingPart`:
+  the head, the stacks, the skills, the worn artifacts, the backpack's, the spells: the events
+  are `Copy`, as the hire's parts); each gift's change is told to the visitor's owner too; the
+  close ends the view. *Agent's calls:* the adventure holds the ally's hero as a bar not the
+  player's (`Held::Ally`, a command's target only), so the one owner rule (ADV-GAR-003) makes a
+  gift an empty slot's and a split into one a gift (the original's split dialog not read); the
+  game's `check_gift` refuses the rest with `AllyHero(hero)` before the adventure;
+  `docs/06-security.md`'s line on the view waits for T7's `shared/` amendments. Protocol v89
+  (`h3-protocol`, `cross-lane`); no state hash moved (the decision holds nothing new).
 
 ### 6. The views for the team (GAM-TEM-004, amends ADV-FOG-006, ADV-GAR-006, the town's view)
 
@@ -265,7 +280,7 @@ it; the owner's observation shows the days).
 
 - **Wire** (`h3-protocol`, the server lane's; the global trap "engine types on the wire",
   `cross-lane` at each task): the new events, `SystemCommand::HandOver`, the errors `AllyHero`,
-  `Defeated`, `GameOver`, `NotHuman`, the observation's fields; protocol v87 at the first (E09 T58b took v86).
+  `Defeated`, `GameOver`, `NotHuman`, the observation's fields; protocol v87 at the first (E09 T58b took v86; as built: E09 T59a took v87, E09 T59b1 v88, E10 T3b1 v89, so T4b the next).
 - **The env** (`h3-sim`, the AI lane's, `cross-lane`): `AdventureEnv`'s step reports the end
   (`result`) and each player's defeat; a defeated or ended seat is never `to_move`; the action
   encoding stays v23 (E09 T58b's; the hand-over is the host's, no player entry). The reward is E13's.
@@ -277,7 +292,7 @@ it; the owner's observation shows the days).
 
 ### 17. Replays, maps, properties, benchmarks
 
-- **Replays** (the adventure replay format v29; E09 T58b took v28): the word `hand-over <player>`, the game's end
+- **Replays** (the adventure replay format v29; E09 T58b took v28; as built: E09 T59a took v29, so T6 the next): the word `hand-over <player>`, the game's end
   recorded and checked at the replay's end; golden replays of the three shipped
   maps that start Red without a town (Adventures of Jared Haret, Knee Deep in the Dead, Pirates!:
   defeated after seven own turns), an allied map's meeting and shared fog, a conquest and a
@@ -292,7 +307,8 @@ it; the owner's observation shows the days).
 ### 18. Versions, rule ids, quirks, stubs
 
 - **Versions:** map import v30 (§1), adventure state hash v31 (§2, §3), game state hash v41 (§2:
-  the players' teams, T3a) and v42 (§8, T4a), adventure replay format v29 (§17); protocol v87 (the
+  the players' teams, T3a) and v42 (§8, T4a; E09 T59b1 took v42, so T4a the next), adventure replay format v29 (§17; E09 T59a took it,
+  E09 T59b1 v30, T6 the next); protocol v87 (E09 T59a took it; v88 E09 T59b1's; v89 E10 T3b1's, §5; the
   server lane's; E09 T58b, merged after this note, took replay format v28, protocol v86 and the
   action encoding v23). The adventure ruleset part,
   the core ruleset hash and the quirk flags stay (no data, no flag).
@@ -343,8 +359,8 @@ events).
 | Round | Tasks | Content |
 |---|---|---|
 | 2 | **T2** | `shared/` (`cross-lane`): the drafts applied, the glossary, `docs/06-security.md` |
-| 3 | **T3** | T3a: the teams in the setup and the state, `allied` by state at every site, the fog per team, §4's rules re-tested with allies, the E10 marks of the teams (§1 to §4; map import v30, adventure state hash v31), measured at once. T3b: the allies' meeting and the views (§5, §6). T3c (`cross-lane`): an ally's town (§7), the siege's reading first |
-| 4 | **T4** | T4a: the defeat (§8 to §11: the check's moments, elimination, the seven days, a defeated player's steps and the loops; game state hash v42; ADV-QUIRK-59 to -61). T4b: the verdict and after the end (§12, §13), the events and the wire (§15, §16; protocol v87) |
+| 3 | **T3** | T3a: the teams in the setup and the state, `allied` by state at every site, the fog per team, §4's rules re-tested with allies, the E10 marks of the teams (§1 to §4; map import v30, adventure state hash v31), measured at once. T3b: the allies' meeting and the views (§5, §6; decision 20: T3b1 §5 with §4's read-only dwelling, T3b2 §6 with the team's knowledge). T3c (`cross-lane`): an ally's town (§7), the siege's reading first |
+| 4 | **T4** | T4a: the defeat (§8 to §11: the check's moments, elimination, the seven days, a defeated player's steps and the loops; game state hash v42, as built v43 (E09 T59b1 took v42); ADV-QUIRK-59 to -61). T4b: the verdict and after the end (§12, §13), the events and the wire (§15, §16; protocol v87) |
 | 5 | **T5** | Batch GAM-1: T5a its maps (§19), T5b the run on the harness, scored (needs the PC) |
 | 6 | **T6** | The hand-over (§14), the env's terminal (`cross-lane`), the replay format v29, the maps, replays, properties and benchmarks (§17); batch GAM-1's outcome folded in |
 | 7 | **T7** | The audit against the exit criteria; the ADR amendments as built (`shared/`); increment 1 closed; increment 2's survey queued |

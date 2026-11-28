@@ -728,12 +728,15 @@ impl AdventureState {
     /// ([`Self::give_free`]), then the hire dialog opens when its kind has a creature above the
     /// part's `free_level` (ADV-HIR-002, E08 T95b: the original's `dwelling_offer_hire` when one of
     /// level 2 or more is there; no class-17 dwelling of level 1 opens it). A camp's always opens
-    /// the dialog (its question stands only with creatures left, ADV-RFG-001), nothing free. Any
-    /// other dwelling's, another team's (unreachable: its visit flags it first) or since E10 T3a
-    /// an ally's, gives nothing; an ally's read-only dialog is E10 T3b's (design note §13). Since
+    /// the dialog (its question stands only with creatures left, ADV-RFG-001), nothing free. Since
+    /// E10 T3b1 an ally's dwelling opens the dialog straight away, nothing free, whatever its
+    /// creatures' levels (ADV-DWL-004: the original's `dwelling_offer_hire` jumps past the free
+    /// creatures and their return when the owner is not the current player, 0x4ABAC4 to
+    /// 0x4ABD06), read-only ([`Self::hire_read_only`]; batch E10's E10-6). Any other dwelling's,
+    /// another team's (unreachable: its visit flags it first), gives nothing. Since
     /// E08 T134b2 a War Machine Factory's always opens the dialog of its machines, nothing free
     /// (ADV-WMF-001; increment 14's design note §10).
-    // rule: ADV-HIR-001, ADV-HIR-002, ADV-WMF-001
+    // rule: ADV-HIR-001, ADV-HIR-002, ADV-WMF-001, ADV-DWL-004
     pub(super) fn accept_hire<S: Sink>(
         &mut self,
         (core, part): (&Ruleset, &AdventureRuleset),
@@ -741,7 +744,9 @@ impl AdventureState {
         (index, offer): (usize, &Offer),
         sink: &mut S,
     ) -> AdventureOutcome {
-        let own = self.owner(index) == Some(player);
+        let owner = self.owner(index);
+        let own = owner == Some(player);
+        let ally = owner.is_some_and(|owner| self.allied(owner, player));
         let free = free_level(part);
         let opens = match part
             .object_type(offer.object_type)
@@ -753,6 +758,8 @@ impl AdventureState {
                     .iter()
                     .any(|&creature| core.creature(creature).is_some_and(|c| c.level > free))
             }
+            // rule: ADV-DWL-004
+            Some(Effect::Dwelling(_)) if ally => true,
             Some(Effect::Camp | Effect::Factory(_)) => true,
             _ => false,
         };
@@ -988,6 +995,26 @@ impl AdventureState {
 
     /// The object index and the effect of the object `source` names, if the object at its index
     /// is of its type and anchor and its visit is built; none for a town's source.
+    /// Whether `dialog` is read-only (ADV-DWL-004; E10 T3b1, increment 1's design note §4; batch
+    /// E10's E10-6; survey `E08-dwellings.md` §4.4, §5.2, the original's `dwelling_offer_hire`
+    /// 0x4ABA50 setting the dialog's +0x4C, H3API's `teamDwelling`, when the dwelling's owner is
+    /// another player): its source an object on the map owned by another player than its hero's
+    /// owner, an ally's dwelling (another team's is flagged by the visit before its dialog opens).
+    /// Every purchase in it is refused ([`HireError::ReadOnly`]); the game lists `Close` alone.
+    /// Read from the state at each ask, so the dialog holds no flag.
+    // rule: ADV-DWL-004
+    pub fn hire_read_only(&self, dialog: &HireDialog) -> bool {
+        let (HireSource::Object { index, .. }, HireTarget::Hero(hero)) =
+            (dialog.source, dialog.target)
+        else {
+            return false;
+        };
+        let visitor = self.hero(hero).map(|on| on.owner);
+        self.owner(index)
+            .zip(visitor)
+            .is_some_and(|(owner, visitor)| owner != visitor)
+    }
+
     fn source_effect<'p>(
         &self,
         part: &'p AdventureRuleset,
@@ -1137,7 +1164,8 @@ impl AdventureState {
     /// makes with [`Self::hire`]. Refused, in this order: the dialog's hero not on the map or its
     /// source not the object it names ([`HireError::NoSource`]; defensive: the game holds the
     /// dialog its outcome gave, and its hero cannot move while it is open; a town's source too,
-    /// whose purchase is [`Self::check_join`]'s, E09 T27); the creature not the
+    /// whose purchase is [`Self::check_join`]'s, E09 T27); since E10 T3b1 the dialog read-only,
+    /// an ally's dwelling's ([`HireError::ReadOnly`], [`Self::hire_read_only`]); the creature not the
     /// source's ([`HireError::NotOffered`]); the amount 0 or above its count
     /// ([`HireError::Amount`]); no room in the army ([`HireError::NoRoom`]: the original's
     /// GENRLTXT 426, nothing bought; every amount up to [`Self::hire_room`] finds room, in the
@@ -1163,6 +1191,10 @@ impl AdventureState {
             .zip(stock)
             .zip(source)
             .ok_or(HireError::NoSource)?;
+        // rule: ADV-DWL-004
+        if self.hire_read_only(dialog) {
+            return Err(HireError::ReadOnly);
+        }
         let place = stock
             .iter()
             .position(|&(sold, _)| sold == creature)

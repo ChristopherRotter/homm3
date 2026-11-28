@@ -147,6 +147,57 @@ const fn paid(resource: ResourceId, amount: u32) -> GameEvent {
     }
 }
 
+// covers: ADV-DWL-004, GAM-DEC-008
+#[test]
+fn an_ally_s_dwelling_opens_a_read_only_dialog_closed_alone() {
+    // E10 T3b1 (batch E10's E10-6): blue's hut, blue on red's team. Red's hero accepts its hire
+    // question: the dialog opens, nothing free; its only legal answer `Close`, every purchase
+    // refused, nothing changed or told; `Close` closes it.
+    let rules = rules();
+    let hut = ObjectSetup {
+        owner: Some(BLUE),
+        ..reward_at(&rules, "t:hut", Holds::Nothing)
+    };
+    let mut setup = setup();
+    setup.players[1].team = 0;
+    setup.heroes[0].army = HeroArmy::Custom(vec![imp(1, 9)]);
+    setup.map.objects = vec![hut];
+    let mut state = GameState::new(&rules, &setup, 7).unwrap();
+    let events = open(&mut state, &rules);
+    assert_eq!(
+        events[1..],
+        [GameEvent::HireOpened {
+            player: RED,
+            target: HireTarget::Hero(RED_HERO),
+            source: HireSeen::Object {
+                object_type: hut_type(&rules),
+                anchor: ANCHOR,
+            },
+        }]
+    );
+    assert!(seen(&state, &rules, RED).is_some());
+    assert_eq!(
+        legal_commands(&state, &rules, Actor::Player(RED)),
+        [HIRE_CLOSE]
+    );
+    for creature in [IMP, GOG] {
+        let before = state.clone();
+        let mut told = Vec::new();
+        let error = apply(
+            &mut state,
+            &rules,
+            Actor::Player(RED),
+            buy(creature, 1),
+            &mut told,
+        );
+        assert_eq!(error, Err(GameCommandError::Hire(HireError::ReadOnly)));
+        assert_eq!((&state, told.len()), (&before, 0));
+    }
+    play(&mut state, &rules, RED, HIRE_CLOSE).unwrap();
+    assert!(state.hire_dialog(RED).is_none());
+    assert_eq!(state.adventure().owner(0), Some(BLUE));
+}
+
 // covers: GAM-DEC-008, ADV-HIR-002, ADV-RFG-001
 #[test]
 fn an_accepted_hire_question_opens_the_dialog_to_its_owner_alone() {

@@ -199,7 +199,8 @@ impl AdventureState {
     /// by the mover's owner, with no event (`reveal_disk` with radius 1 before `visit_hero`,
     /// survey §4.2, §4.3; batch E11's E11-7), the mover stays on the entrance and visits the hero
     /// on the exit from there (E08 T105b1, increment 11's design note §12): one of its team (only
-    /// a gate's pair can hold one: ADV-TEL-003's candidates leave them out) is **met**
+    /// a gate's pair can hold one: ADV-TEL-003's candidates leave them out; an ally's since E10
+    /// T3b1, GAM-TEM-003) is **met**
     /// (GAM-MET-001 amended: the outcome's meeting, the two heroes no neighbours; batch E11's
     /// E11-6, the mover staying); an enemy is **fought** (GAM-BAT-004 amended: the outcome's
     /// battle at the exit, the defender's tile, with the attacker's ground under the entrance),
@@ -207,7 +208,7 @@ impl AdventureState {
     /// winner's levels). A Whirlpool's exit under an enemy hero is fought the same way, on the two
     /// boats (A-37 fixed by the battle, decision 265, `ADV-QUIRK-39`: the original moves the
     /// mover onto that hero's tile, two heroes on one tile, batch E11's E11-16).
-    // rule: GAM-BAT-004, GAM-MET-001
+    // rule: GAM-BAT-004, GAM-MET-001, GAM-TEM-003
     fn jump<S: Sink>(
         &mut self,
         rules: Rules<'_>,
@@ -221,7 +222,8 @@ impl AdventureState {
         };
         reveal(&mut self.explored[self.map.layer(player)], exit, 1);
         let other = &self.heroes[visited];
-        if other.owner == player {
+        // E10 T3b1 (GAM-TEM-003): an ally's hero is met as an own one.
+        if self.allied(other.owner, player) {
             let meeting = Meeting {
                 visitor: hero,
                 visited: other.id,

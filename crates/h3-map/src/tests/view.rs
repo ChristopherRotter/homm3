@@ -2127,6 +2127,13 @@ fn check_told(
                 prop_assert!(decision.is_none());
                 decision = Some(Open::Meeting(heroes));
             }
+            // E10 T3b1 (GAM-TEM-003): an ally's hero's parts follow its meeting's opening; the
+            // plans' players are each on a team of their own, so none is told here (the game's
+            // unit tests and `h3-protocol`'s fold test them).
+            GameEvent::MeetingPartSeen { player, .. } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(matches!(decision, Some(Open::Meeting(_))));
+            }
             // E08 T62b1: one event per stack of the group at its opening, in slot order.
             GameEvent::ArmyDialogOpened {
                 player,

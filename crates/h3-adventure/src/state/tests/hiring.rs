@@ -13,7 +13,7 @@ use super::dwelling_visits::{
     BLUE, ENTRANCE, HERO, RED, accept, at_entrance, creature, game, hire as question, peasant,
     stack, to_red, visit,
 };
-use super::dwellings::{Rules, rules, type_of};
+use super::dwellings::{self, Rules, rules, type_of};
 use super::*;
 use crate::command::{HireDialog, HireError, HireSource, HireTarget};
 use crate::testing::{MAX_STACK, PEASANT};
@@ -118,6 +118,56 @@ fn an_accepted_question_opens_the_dialog_above_free_level_and_at_a_camp() {
     assert_eq!(outcome.hire, Some(dialog(&rules, HERO, "t:camp")));
     assert!(events.is_empty());
     assert_eq!(s, before);
+}
+
+// covers: ADV-DWL-004, ADV-HIR-002
+#[test]
+fn an_ally_s_dwelling_opens_its_dialog_read_only_whatever_its_levels() {
+    // Blue on red's team (E10 T3b1; batch E10's E10-6, survey `E08-dwellings.md` §4.4: the
+    // original's `dwelling_offer_hire` goes straight to the dialog for a dwelling not the current
+    // player's, 0x4ABAC4): blue's level-5 and level-1 dwellings each open red's hero's dialog,
+    // nothing free, read-only; every purchase refused, nothing changed.
+    let rules = rules();
+    for (k, creatures) in [("t:d5", ["t:c5", "t:w5"]), ("t:d1", ["t:c1", "t:w1"])] {
+        let ally = allies(dwellings::setup(vec![at_entrance(&rules, k, Some(BLUE))]));
+        let mut s = crate::testing::started(&rules, &ally).unwrap();
+        visit(&rules, &mut s);
+        let before = s.clone();
+        let (outcome, events) = accept(&rules, &mut s, &question(&rules, k, &creatures));
+        let open = dialog(&rules, HERO, k);
+        assert_eq!(
+            outcome,
+            AdventureOutcome {
+                hire: Some(open),
+                ..AdventureOutcome::default()
+            }
+        );
+        assert!(events.is_empty(), "{events:?}");
+        assert_eq!(s, before);
+        assert!(s.hire_read_only(&open));
+        assert!(s.hire_stock((&rules.1, &[]), &open).is_some());
+        for creature in creatures {
+            let (bought, events) = buy(&rules, &mut s, &open, (creature, 1));
+            assert_eq!(bought, Err(HireError::ReadOnly));
+            assert!(events.is_empty());
+            assert_eq!(s, before);
+        }
+    }
+    // Red's own dwelling's, a camp's and a dialog whose hero is gone are not read-only.
+    let own = game(&rules, at_entrance(&rules, "t:d5", Some(RED)), peasant());
+    assert!(!own.hire_read_only(&dialog(&rules, HERO, "t:d5")));
+    assert!(!own.hire_read_only(&dialog(&rules, HeroId::new(9), "t:d5")));
+    let camp = game(&rules, at_entrance(&rules, "t:camp", None), peasant());
+    assert!(!camp.hire_read_only(&dialog(&rules, HERO, "t:camp")));
+    let town = HireDialog {
+        target: HireTarget::Garrison(TownId::new(0)),
+        ..dialog(&rules, HERO, "t:d5")
+    };
+    assert!(!own.hire_read_only(&town));
+    assert_eq!(
+        HireError::ReadOnly.to_string(),
+        "an ally's dwelling sells nothing"
+    );
 }
 
 /// The camp's hire question naming `drawn`.

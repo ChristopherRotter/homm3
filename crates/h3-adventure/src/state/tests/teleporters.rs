@@ -686,7 +686,7 @@ fn a_one_way_exit_and_a_gate_without_a_pair_lead_nowhere() {
     }
 }
 
-// covers: ADV-TEL-005, ADV-TEL-007
+// covers: ADV-TEL-005, ADV-TEL-007, GAM-TEM-003
 #[test]
 fn a_gate_leads_to_its_pair_without_a_draw() {
     let rules = teleporter_rules();
@@ -703,9 +703,15 @@ fn a_gate_leads_to_its_pair_without_a_draw() {
     // A hero on the pair, of the team or another: the tiles within 1 of the pair explored by Red,
     // the mover on the gate (Red's own hero there explored its own surroundings at the start);
     // one of the team is met (GAM-MET-001, the two heroes no neighbours), an enemy fought at the
-    // pair with the jump held after it (E08 T105b1).
-    for owner in [0, 1] {
-        let mut state = jump_state(&rules, (2, None), &[(2, owner, pair)], &gates);
+    // pair with the jump held after it (E08 T105b1). (`owner` 0 below stands for the team.)
+    // E10 T3b1 (GAM-TEM-003): an ally's (blue on red's team) is met as an own one.
+    for (owner, allied) in [(0, false), (1, false), (1, true)] {
+        let mut setup = jump_setup(&rules, (2, None), &[(2, owner, pair)], &gates);
+        if allied {
+            setup.seats[1].team = 0;
+        }
+        let mut state = started(&rules, &setup).unwrap();
+        let owner = if allied { 0 } else { owner };
         let (outcome, events) = walk(&mut state, &rules, &ONTO, &mut draws).unwrap();
         assert_eq!(red(&state).0, gate);
         assert!(jumps(&events).is_empty());

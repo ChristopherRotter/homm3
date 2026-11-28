@@ -15,8 +15,8 @@ use super::{
     MarketSeen, Month, UniversitySeen, Week,
 };
 use super::{
-    GarrisonStack, GuildPart, HiredPart, OfferLevels, Pos, PrimarySkill, TavernHeroHead,
-    TavernPart, TownBuildings, VisitBonus,
+    GarrisonStack, GuildPart, HiredPart, MeetingPart, OfferLevels, Pos, PrimarySkill,
+    TavernHeroHead, TavernPart, TownBuildings, VisitBonus,
 };
 use crate::wire::{Event, Outcome};
 
@@ -138,6 +138,13 @@ pub enum GameEvent {
     MeetingOpened {
         player: u8,
         heroes: [u16; 2],
+    },
+    // E10 T3b1 (v89): the meeting's ally's hero as the visitor's owner sees it (GAM-TEM-003),
+    // after its `MeetingOpened`, one part each in `MeetingPart`'s order.
+    MeetingPartSeen {
+        player: u8,
+        hero: u16,
+        part: MeetingPart,
     },
     ArmyDialogOpened {
         player: u8,

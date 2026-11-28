@@ -649,6 +649,7 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 },
                 HireError::Amount(amount) => HireReject::Amount { amount },
                 HireError::NoRoom => HireReject::NoRoom {},
+                HireError::ReadOnly => HireReject::ReadOnly {},
             },
         },
         E::Town(error) => GameReject::Town {
@@ -744,6 +745,8 @@ pub fn reject(error: GameCommandError) -> GameReject {
         E::Cast(error) => GameReject::Cast {
             error: cast_reject(error),
         },
+        // E10 T3b1 (v89).
+        E::AllyHero(hero) => GameReject::AllyHero { hero: hero.raw() },
     }
 }
 

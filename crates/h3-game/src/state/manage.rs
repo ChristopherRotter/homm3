@@ -6,7 +6,8 @@
 //! decision (TWN-ROW-001), and while one is open the commands name only what it holds. The game checks the actor, the turn and the decision, which
 //! armies are together, then the context's rules (the adventure's for armies, ADR-0016 point 3;
 //! `h3-heroes`' for artifacts, ADR-0013 point 14) before anything changes, then tells the owner
-//! alone.
+//! alone; since E10 T3b1 a meeting with an ally's hero allows gifts onto it alone (GAM-TEM-003),
+//! each told to its owner too.
 
 use alloc::vec::Vec;
 
@@ -14,7 +15,8 @@ use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 use h3_content::Ruleset;
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{
-    ArtifactMove, HeroChange, HeroDetails, assemble_changes, disassemble_changes, move_changes,
+    ArtifactMove, ArtifactPlace, HeroChange, HeroDetails, Position, assemble_changes,
+    disassemble_changes, move_changes,
 };
 
 use super::{Decision, GameState, Together};
@@ -49,6 +51,10 @@ impl GameState {
         sink: &mut S,
     ) -> Result<(), GameCommandError> {
         let together = self.check_managing(player)?;
+        // rule: GAM-TEM-003
+        if let Some(ally) = self.meeting_ally(player, together) {
+            self.check_gift(player, ally, &command)?;
+        }
         match command {
             // E09 T38b2 (GAM-MAN-003): a dismissal only outside a decision.
             Manage::Dismiss { .. } if together != Together::Alone => {
@@ -64,6 +70,73 @@ impl GameState {
         }
         self.manage_checked(rules, player, together, command, sink)
             .map_err(GameCommandError::Manage)
+    }
+
+    /// The ally's hero of `player`'s open meeting `together`, if it holds one (GAM-TEM-003; E10
+    /// T3b1): its visited hero when that is not the player's (the visitor always is).
+    pub(crate) fn meeting_ally(&self, player: PlayerId, together: Together) -> Option<HeroId> {
+        let Together::Meeting([_, visited]) = together else {
+            return None;
+        };
+        self.adventure
+            .hero(visited)
+            .filter(|on| on.owner != player)
+            .map(|_| visited)
+    }
+
+    /// Checks that `command`, given in a meeting with the ally's hero `ally`, is a gift to it or
+    /// names it not at all, before the meeting's other checks (GAM-TEM-003; E10 T3b1, increment
+    /// 1's design note §5, D-82): a stack
+    /// moved or split into an empty slot of its army (`swap_army_move` 0x5B0DA0: no merge, no
+    /// swap; the adventure's one owner rule backs it, ADV-GAR-003), an artifact moved into an
+    /// empty worn position or into its backpack (`swap_worn_click` 0x5AF590,
+    /// `swap_backpack_click` 0x5AF990). Nothing is taken from it and none of its settings changes.
+    /// Out of line: only a meeting with an ally's hero meets it.
+    ///
+    /// # Errors
+    ///
+    /// [`GameCommandError::AllyHero`]: a stack or an artifact taken from it, a stack onto an
+    /// occupied slot, an artifact onto an occupied position, its formation, flag, assembly,
+    /// disassembly or dismissal.
+    // rule: GAM-TEM-003
+    #[cold]
+    #[inline(never)]
+    fn check_gift(
+        &self,
+        player: PlayerId,
+        ally: HeroId,
+        command: &Manage,
+    ) -> Result<(), GameCommandError> {
+        let refused = match *command {
+            Manage::Army(army) => {
+                let (from, to) = army.slots();
+                from.army == ArmyRef::Hero(ally)
+                    || to.is_some_and(|to| {
+                        to.army == ArmyRef::Hero(ally) && self.stack_at(player, to).is_some()
+                    })
+            }
+            Manage::Artifact { from, to } => {
+                from.0 == ally
+                    || (to.0 == ally
+                        && match to.1 {
+                            ArtifactPlace::Worn(Position(at)) => self
+                                .hero(ally)
+                                .and_then(|details| details.worn.get(at))
+                                .is_some_and(Option::is_some),
+                            ArtifactPlace::Backpack(_) => false,
+                        })
+            }
+            Manage::Formation { hero, .. }
+            | Manage::Tactics { hero, .. }
+            | Manage::Assemble { hero, .. }
+            | Manage::Disassemble { hero, .. }
+            | Manage::Dismiss { hero } => hero == ally,
+        };
+        if refused {
+            Err(GameCommandError::AllyHero(ally))
+        } else {
+            Ok(())
+        }
     }
 
     /// Checks that `player` may give a management command now and returns what its commands may
@@ -139,7 +212,10 @@ impl GameState {
     ) -> Result<(), ManageError> {
         let core = rules.core();
         match command {
-            Manage::Army(command) => self.manage_army(rules, player, &command, sink)?,
+            Manage::Army(command) => {
+                let ally = self.meeting_ally(player, together);
+                self.manage_army(rules, (player, ally), &command, sink)?;
+            }
             Manage::Formation { hero, formation } => {
                 self.adventure
                     .set_formation(player, hero, formation)
@@ -158,7 +234,14 @@ impl GameState {
             }
             Manage::Artifact { from, to } => {
                 let details = self.own_details(player, from.0)?;
-                let other = self.own_details(player, to.0)?;
+                // E10 T3b1 (GAM-TEM-003): a meeting's ally's hero receives (`check_gift`).
+                let ally = self
+                    .meeting_ally(player, together)
+                    .filter(|&ally| ally == to.0);
+                let other = match ally.and_then(|ally| self.hero(ally)) {
+                    Some(other) => other,
+                    None => self.own_details(player, to.0)?,
+                };
                 // Between two heroes only in a meeting (GAM-DEC-003): the moving hero's changes,
                 // then the receiving hero's (HER-ART-005).
                 let other = (to.0 != from.0).then_some(other);
@@ -172,7 +255,11 @@ impl GameState {
                 let changes =
                     move_changes(details, other, core, moved).map_err(ManageError::Artifact)?;
                 self.change_all(core, player, from.0, changes.from, sink);
-                self.change_all(core, player, to.0, changes.to, sink);
+                match ally {
+                    // rule: GAM-TEM-003
+                    Some(ally) => self.change_ally(core, (player, ally), changes.to, sink),
+                    None => self.change_all(core, player, to.0, changes.to, sink),
+                }
             }
             Manage::Assemble { hero, at } => {
                 let changes = assemble_changes(self.own_details(player, hero)?, core, at)
@@ -194,11 +281,12 @@ impl GameState {
 
     /// An army command of `player` whose armies are together: the adventure applies it with the
     /// open army dialog's group, if any (written back only when it applies), then each slot it
-    /// names is told with what it holds after it.
+    /// names is told with what it holds after it; since E10 T3b1 a slot of the meeting's ally's
+    /// hero `ally` to its owner too (GAM-TEM-003).
     fn manage_army<S: Sink>(
         &mut self,
         rules: &GameRuleset,
-        player: PlayerId,
+        (player, ally): (PlayerId, Option<HeroId>),
         command: &ArmyCommand,
         sink: &mut S,
     ) -> Result<(), ManageError> {
@@ -228,12 +316,38 @@ impl GameState {
         for at in core::iter::once(from).chain(to) {
             let stack = self.stack_at(player, at);
             sink.emit(GameEvent::StackChanged { player, at, stack });
+            // rule: GAM-TEM-003
+            // E10 T3b1: a gift's slot in the meeting's ally's hero's army is told to its owner
+            // too, as its own.
+            if let Some(owner) = ally.filter(|&ally| at.army == ArmyRef::Hero(ally)) {
+                self.tell_ally_stack(owner, at, stack, sink);
+            }
         }
         // rule: ADV-GAR-006
         told.tell(self, rules, sink);
         // rule: TWN-ROW-001
         town_told.tell(self, rules, sink);
         Ok(())
+    }
+
+    /// Tells the owner of the meeting's ally's hero `ally` its slot `at`, holding `stack` after a
+    /// gift (GAM-TEM-003; E10 T3b1). Out of line.
+    #[cold]
+    #[inline(never)]
+    fn tell_ally_stack<S: Sink>(
+        &self,
+        ally: HeroId,
+        at: ArmySlot,
+        stack: Option<ArmyStack>,
+        sink: &mut S,
+    ) {
+        self.adventure.hero(ally).into_iter().for_each(|on| {
+            sink.emit(GameEvent::StackChanged {
+                player: on.owner,
+                at,
+                stack,
+            });
+        });
     }
 
     /// The stack at `at`: in its hero's army on the map (since E09 T28a, or in a town's garrison),
@@ -275,6 +389,29 @@ impl GameState {
             .filter(|h| h.owner == player)
             .and(self.hero(hero))
             .ok_or(ManageError::NotYourHero(hero))
+    }
+
+    /// Applies `changes` to the meeting's ally's hero `ally`, checked in order by `h3-heroes`,
+    /// each told to its owner as its own and to `player`, the visitor's owner, whose meeting shows
+    /// it (GAM-TEM-003; E10 T3b1). Out of line.
+    #[cold]
+    #[inline(never)]
+    fn change_ally<S: Sink>(
+        &mut self,
+        core: &Ruleset,
+        (player, ally): (PlayerId, HeroId),
+        changes: Vec<HeroChange>,
+        sink: &mut S,
+    ) {
+        let owner = self.adventure.hero(ally).map(|on| on.owner);
+        for change in changes {
+            self.change_hero(core, ally, owner, change, sink);
+            sink.emit(GameEvent::HeroChanged {
+                player,
+                hero: ally,
+                change,
+            });
+        }
     }
 
     /// Applies `changes` to `hero`, checked in order by `h3-heroes`, each told to `player`.

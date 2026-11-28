@@ -18,8 +18,8 @@ use super::command::{artifact_place, slot};
 use super::town_buildings;
 use super::{
     army_stack, artifact, fort_level, garrison_stack, guild_part, hire_seen, hire_target,
-    hired_part, market_seen, month_kind, pos, primary_skill, tavern_head, tavern_part,
-    university_seen, visit_bonus, week_kind,
+    hired_part, market_seen, meeting_part, month_kind, pos, primary_skill, tavern_head,
+    tavern_part, university_seen, visit_bonus, week_kind,
 };
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
@@ -216,6 +216,12 @@ fn event(e: &EngineEvent) -> GameEvent {
         EngineEvent::MeetingOpened { player, heroes } => GameEvent::MeetingOpened {
             player: player.raw(),
             heroes: heroes.map(h3_contracts::HeroId::raw),
+        },
+        // E10 T3b1 (v89).
+        EngineEvent::MeetingPartSeen { player, hero, part } => GameEvent::MeetingPartSeen {
+            player: player.raw(),
+            hero: hero.raw(),
+            part: meeting_part(part),
         },
         EngineEvent::ArmyDialogOpened {
             player,

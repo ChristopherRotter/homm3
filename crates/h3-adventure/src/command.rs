@@ -868,9 +868,9 @@ impl core::error::Error for MarketError {}
 /// the state's, read at each view and purchase ([`crate::AdventureState::hire_stock`]); a
 /// purchase is [`crate::AdventureState::hire`]. Both halves are enums so E09's town recruitment
 /// names a town's dwelling and a garrison through the same dialog (design note §13, "E09's
-/// reuse"). *Agent's call:* no read-only flag yet: an ally's dialog (the original disabling
-/// every button) is E10 T3b's; since E10 T3a's teams an ally's accepted hire question opens none
-/// ([`crate::AdventureState::allied`]; design note §13).
+/// reuse"). *Agent's call:* no read-only flag: an ally's dwelling's dialog (the original
+/// disabling every button but `Close`) is read-only by its source's owner, read at each ask
+/// ([`crate::AdventureState::hire_read_only`]; E10 T3b1, ADV-DWL-004).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HireDialog {
     /// The army the bought creatures join.
@@ -937,6 +937,10 @@ pub enum HireError {
     /// at a War Machine Factory, the hero cannot receive the machine's artifact (HER-CHG-002: its
     /// position taken).
     NoRoom,
+    /// The dialog is read-only: an ally's dwelling's, whose every button but `Close` the original
+    /// disables (ADV-DWL-004; E10 T3b1, batch E10's E10-6;
+    /// [`crate::AdventureState::hire_read_only`]).
+    ReadOnly,
 }
 
 impl fmt::Display for HireError {
@@ -948,6 +952,7 @@ impl fmt::Display for HireError {
             }
             Self::Amount(amount) => write!(f, "{amount} is not an amount the source holds"),
             Self::NoRoom => f.write_str("the army has no room for the creatures"),
+            Self::ReadOnly => f.write_str("an ally's dwelling sells nothing"),
         }
     }
 }

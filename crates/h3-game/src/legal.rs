@@ -123,7 +123,8 @@ const LISTED: usize = 16;
 /// University's `Buy` of each slot open for the hero while the treasury can pay its price, in
 /// slot order, then `Leave` (GAM-DEC-006); a hire dialog's `Buy` of the most of each creature in
 /// the source's order whose most is at least 1 (`GameState::hire_mosts`), then `Close`
-/// (GAM-DEC-008, E08 T95b); a map Tavern's `Hire` of each slot whose hire passes, in slot order,
+/// (GAM-DEC-008, E08 T95b; since E10 T3b1 an ally's dwelling's `Close` alone, ADV-DWL-004); a map
+/// Tavern's `Hire` of each slot whose hire passes, in slot order,
 /// then `Close` (GAM-DEC-010, E09 T39a); since E08 T135a (increment 14's design note §18) a
 /// representative answer per action, then `Leave`: a market's trades of one lot, sales of one lot
 /// for the cost resource and purchases in it (GAM-DEC-011, `GameState::market_answers`: no
@@ -174,6 +175,11 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
             .collect();
     }
     if let Some(dialog) = state.hire_dialog(player) {
+        // rule: ADV-DWL-004
+        // E10 T3b1: an ally's dwelling's dialog is read-only, `Close` alone.
+        if state.adventure().hire_read_only(dialog) {
+            return vec![Answer::Hire(HireAnswer::Close)];
+        }
         return state
             .hire_mosts(rules, player, dialog)
             .into_iter()
@@ -435,8 +441,17 @@ pub fn legal_management(
             .map(|p| ArtifactPlace::Worn(Position(p)))
             .chain((0..details.backpack.len() + extra).map(ArtifactPlace::Backpack))
     };
-    // A meeting's other hero takes artifacts too (HER-ART-005).
-    let receiver = other.and_then(|id| state.own_details(player, id).ok().map(|d| (id, d)));
+    // A meeting's other hero takes artifacts too (HER-ART-005); since E10 T3b1 an ally's into
+    // its empty positions and its backpack alone (GAM-TEM-003), and nothing is taken from it: its
+    // own commands are none (`own_details` refuses it above).
+    let ally = state.meeting_ally(player, together);
+    let receiver = other.and_then(|id| {
+        let details = match ally {
+            Some(ally) if ally == id => state.hero(ally),
+            _ => state.own_details(player, id).ok(),
+        };
+        details.map(|d| (id, d))
+    });
     let targets = places(details, 1).map(|to| (hero, to, None)).chain(
         receiver
             .into_iter()
@@ -468,7 +483,8 @@ pub fn legal_management(
         .flatten()
         .filter(|on| crate::town::leave::check_dismissal(adventure, player, on).is_ok())
         .map(|_| Manage::Dismiss { hero });
-    army.into_iter()
+    let mut listed: Vec<Manage> = army
+        .into_iter()
         .chain(grouped)
         .map(Manage::Army)
         .chain(formations)
@@ -477,7 +493,33 @@ pub fn legal_management(
         .chain(assemblies)
         .chain(disassemblies)
         .chain(dismissal)
-        .collect()
+        .collect();
+    // rule: GAM-TEM-003
+    if let Some(ally) = ally {
+        gifts_only(state, ally, &mut listed);
+    }
+    listed
+}
+
+/// Keeps of `listed`, the commands of a meeting with the ally's hero `ally`, the artifacts' gifts
+/// alone (GAM-TEM-003; E10 T3b1): a move onto a worn position of it only when that position is
+/// empty (its backpack takes any; nothing is taken from it, as its own commands are none, and the
+/// army's by the one owner rule). Out of line, after the listing, so an own meeting's listing
+/// keeps its plain shape (`bench-check`, manage-army-12: a test among the targets cost +0.5 % to
+/// +0.8 %).
+#[cold]
+#[inline(never)]
+fn gifts_only(state: &GameState, ally: HeroId, listed: &mut Vec<Manage>) {
+    let worn = state.hero(ally).map(|details| &details.worn[..]);
+    listed.retain(|command| match *command {
+        Manage::Artifact {
+            to: (to, ArtifactPlace::Worn(Position(at))),
+            ..
+        } if to == ally => worn
+            .and_then(|worn| worn.get(at))
+            .is_some_and(Option::is_none),
+        _ => true,
+    });
 }
 
 /// The army of a town's other bar that `player`'s hero `hero` meets outside a decision

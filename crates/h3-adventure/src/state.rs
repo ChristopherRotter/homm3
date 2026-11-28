@@ -1433,8 +1433,9 @@ impl StepVisit<'_> {
 }
 
 /// What a step meets that ends the move (ADV-OBJ-003): an object's visit, or another hero, by
-/// index among the heroes on the map, visited from the tile before: another player's in a battle
-/// (GAM-BAT-004, E08 T19a), an own one in a meeting (GAM-MET-001, T50); since E08 T73 an empty
+/// index among the heroes on the map, visited from the tile before: another team's in a battle
+/// (GAM-BAT-004, E08 T19a), one of the team in a meeting (GAM-MET-001, T50; an ally's since E10
+/// T3b1, GAM-TEM-003); since E08 T73 an empty
 /// boat boarded (ADV-SEA-002) and a landing (ADV-SEA-003), each by boat index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Meets<'p> {
@@ -1994,9 +1995,9 @@ impl AdventureState {
     /// hero's own tile may be guarded: it leaves it. A step that does not enter (toward a
     /// neighbour-visited object or a hero) tests no guard, even from a guarded tile: the original
     /// tests the hero's tile only after a step that changed it (E08 T20b3a). A step toward another
-    /// hero visits it from the tile before as well: another player's starts a battle (GAM-BAT-004),
-    /// an own one makes a meeting ([`AdventureOutcome::meeting`], GAM-MET-001, E08 T50), which the
-    /// game opens.
+    /// hero visits it from the tile before as well: another team's starts a battle (GAM-BAT-004),
+    /// one of the team makes a meeting ([`AdventureOutcome::meeting`], GAM-MET-001, E08 T50; an
+    /// ally's since E10 T3b1, GAM-TEM-003), which the game opens.
     ///
     /// A flying or water-walking hero (E08 T41; ADV-MOV-009, ADV-MOV-010) moves by
     /// [`Self::passage`]'s table, each step from the node the step before left it on (the start a
@@ -2041,7 +2042,7 @@ impl AdventureState {
     /// The drop after a step is [`Pricing::left_by`]'s; a boarding's and a landing's conversion
     /// follows it (D-41).
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-MOV-008, ADV-MOV-009, ADV-MOV-010, ADV-FOG-003
-    // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001, ADV-MOV-011, ADV-OBJ-007
+    // rule: ADV-OBJ-003, ADV-MON-006, GAM-MET-001, ADV-MOV-011, ADV-OBJ-007, GAM-TEM-003
     // rule: ADV-SEA-002, ADV-SEA-003, ADV-SEA-004, ADV-SEA-005
     fn move_hero<S: Sink>(
         &mut self,
@@ -2246,13 +2247,17 @@ impl AdventureState {
                 self.land(rules, (player, index), (boat, water, direction), sink);
                 AdventureOutcome::default()
             }
-            Some(Meets::Hero(other)) if self.heroes[other].owner == player => AdventureOutcome {
-                meeting: Some(Meeting {
-                    visitor: id,
-                    visited: self.heroes[other].id,
-                }),
-                ..AdventureOutcome::default()
-            },
+            // E10 T3b1 (GAM-TEM-003): a hero of the team is met, an own one's as before
+            // (`visit_hero` 0x4A2800: the same team's byte, survey `E10-teams.md` §6).
+            Some(Meets::Hero(other)) if self.allied(self.heroes[other].owner, player) => {
+                AdventureOutcome {
+                    meeting: Some(Meeting {
+                        visitor: id,
+                        visited: self.heroes[other].id,
+                    }),
+                    ..AdventureOutcome::default()
+                }
+            }
             Some(Meets::Hero(defender)) => AdventureOutcome {
                 battle: Some(self.battle_start(part, index, defender)),
                 ..AdventureOutcome::default()
@@ -3295,12 +3300,13 @@ impl AdventureState {
             _ => None,
         };
         let closed = || across.is_some_and(|at| self.closed_above(part, at));
-        // ADR-0016 point 4: another hero is visited from the neighbouring tile: another player's
-        // in a battle at once (E08 T19a), an own one in a meeting (T50); not across the top of an
-        // object's tile it stands on or the visitor stands on. Another team's hero on a town's
-        // entrance: the town's visit instead ([`Self::besieges`]; since E09 T8b2b the siege
-        // against that visitor from the tile before, never a field battle).
-        // rule: GAM-BAT-004, GAM-MET-001, TWN-VIS-002
+        // ADR-0016 point 4: another hero is visited from the neighbouring tile: another team's in
+        // a battle at once (E08 T19a), one of the team in a meeting (T50, E10 T3b1); not across
+        // the top of an object's tile it stands on or the visitor stands on. Another team's hero
+        // on a town's entrance: the town's visit instead ([`Self::besieges`]; since E09 T8b2b the
+        // siege against that visitor from the tile before, never a field battle); an ally's
+        // there is met (E10 T3b1).
+        // rule: GAM-BAT-004, GAM-MET-001, TWN-VIS-002, GAM-TEM-003
         if let Some(other) = self
             .heroes
             .iter()

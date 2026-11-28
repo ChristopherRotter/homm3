@@ -19,7 +19,7 @@ use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId}
 use h3_heroes::{ArtifactPlace, Choice, HeroChange, PrimarySkill};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
-use crate::manage::{Manage, ManageError};
+use crate::manage::{Manage, ManageError, MeetingPart};
 use crate::observe::{HireSeen, MarketSeen};
 use crate::system::SystemCommand;
 use crate::town::hire::{HiredPart, TavernError};
@@ -467,6 +467,11 @@ pub enum GameCommandError {
     HillFort(HillFortError),
     /// A cast on the map refused (GAM-SPL-001; E08 T142a): [`MapCastError`]'s tests in order.
     Cast(MapCastError),
+    /// A management command in a meeting that is no gift to the meeting's ally's hero, the hero
+    /// named (GAM-TEM-003; E10 T3b1, increment 1's design note §5, D-82): a stack or an artifact
+    /// taken from it, a stack or an artifact put onto an occupied slot or position of it, its
+    /// formation, flag, assembly or disassembly; nothing changed.
+    AllyHero(HeroId),
 }
 
 /// Why the game refuses a cast on the adventure map (GAM-SPL-001, ADV-SPL-001; E08 T142a,
@@ -550,6 +555,11 @@ impl fmt::Display for GameCommandError {
             Self::Altar(error) => write!(f, "{error}"),
             Self::HillFort(error) => write!(f, "{error}"),
             Self::Cast(error) => write!(f, "{error}"),
+            Self::AllyHero(hero) => write!(
+                f,
+                "hero {} is an ally's: only gifts into its empty places",
+                hero.raw()
+            ),
         }
     }
 }
@@ -792,12 +802,26 @@ pub enum GameEvent {
         on: bool,
     },
     /// A meeting of two of the player's heroes opened (GAM-DEC-003; E08 T51b), after the spells
-    /// Scholar taught each (their `HeroChanged`, the visitor's first). Seen by the owner.
+    /// Scholar taught each (their `HeroChanged`, the visitor's first). Seen by the owner. Since
+    /// E10 T3b1 also the meeting of the player's hero with an ally's (GAM-TEM-003): seen by the
+    /// visitor's owner alone, the ally's hero's parts following as [`Self::MeetingPartSeen`] (the
+    /// Scholar's lessons of the ally's hero told to its owner).
     MeetingOpened {
-        /// The heroes' owner.
+        /// The visitor's owner.
         player: PlayerId,
         /// The visitor, then the visited hero.
         heroes: [HeroId; 2],
+    },
+    /// A part of the meeting's ally's hero as the visitor's owner sees it while the meeting is
+    /// open (GAM-TEM-003; E10 T3b1), told after [`Self::MeetingOpened`], one per part in
+    /// [`MeetingPart`]'s order; the meeting's close ends that view. Seen by `player`.
+    MeetingPartSeen {
+        /// The visitor's owner.
+        player: PlayerId,
+        /// The ally's hero.
+        hero: HeroId,
+        /// The part.
+        part: MeetingPart,
     },
     /// An army dialog opened (GAM-DEC-004; E08 T51b): one event per stack of its group at its
     /// opening, in slot order, the first opening it: an accepted join's group its hero's army had

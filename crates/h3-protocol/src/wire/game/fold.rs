@@ -32,9 +32,9 @@ use super::{
     Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
     ArtifactPlace, Boat, Bonuses, DaySpells, Decision, GameEvent, GameObservation, GameReveal,
     Garrison, GarrisonHero, GarrisonStack, Guards, HeroChange, HeroDetails, HeroInfo, HiredPart,
-    LevelUp, MapGarrison, MapHero, Monster, Object, ObjectRef, OfferLevels, OwnMapHero, Pos,
-    PrimarySkill, RevealedArea, RevealedView, SkillLevel, TavernHero, TavernPart, Tile, Town,
-    TownOwnerFacts,
+    LevelUp, MapGarrison, MapHero, MeetingPart, Monster, Object, ObjectRef, OfferLevels,
+    OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, TavernHero, TavernPart,
+    Tile, Town, TownOwnerFacts,
 };
 use crate::wire::WireU64;
 
@@ -209,6 +209,13 @@ impl GameObservation {
             GameEvent::MeetingOpened { player: _, heroes } => {
                 self.decision = Some(Decision::Meeting { heroes });
             }
+            // E10 T3b1 (v89, GAM-TEM-003): the meeting's ally's hero, part by part, until the
+            // meeting closes (`close_decision`).
+            GameEvent::MeetingPartSeen {
+                player: _,
+                hero,
+                part,
+            } => self.see_met(hero, part),
             GameEvent::ArmyDialogOpened {
                 player: _,
                 hero,
@@ -929,6 +936,7 @@ impl GameObservation {
                 id,
                 hero_type,
                 details,
+                army: None,
             },
         );
     }
@@ -1009,11 +1017,21 @@ impl GameObservation {
     /// guards (GAM-DEC-004 amended, ADV-MIN-002), which the owner's team sees by slot; their hint
     /// is a `GuardsChanged`'s, before or after.
     fn close_decision(&mut self) {
+        let decision = self.decision.take();
+        // E10 T3b1 (GAM-TEM-003): a meeting with an ally's hero ends the viewer's view of it, its
+        // details and army (the only hero with an army here).
+        if matches!(decision, Some(Decision::Meeting { .. })) {
+            for info in &mut self.heroes {
+                if info.army.take().is_some() {
+                    info.details = None;
+                }
+            }
+        }
         let Some(Decision::ArmyDialog {
             hero: _,
             group,
             mine: Some(mine),
-        }) = self.decision.take()
+        }) = decision
         else {
             return;
         };
@@ -1032,10 +1050,65 @@ impl GameObservation {
         }
     }
 
-    /// A slot of an army changed.
+    /// A part of the meeting's ally's hero after the ones before it (`MeetingPartSeen`, E10 T3b1,
+    /// GAM-TEM-003): the head makes its details and an empty army, a stack goes to its army, a
+    /// skill, an artifact at its place and a spell to its details.
+    fn see_met(&mut self, hero: u16, part: MeetingPart) {
+        let Some(info) = self.heroes.iter_mut().find(|info| info.id == hero) else {
+            return;
+        };
+        match part {
+            MeetingPart::Head {
+                level,
+                experience,
+                primary,
+                mana,
+                offered,
+                positions,
+            } => {
+                info.details = Some(HeroDetails {
+                    hero_type: info.hero_type,
+                    level,
+                    experience,
+                    offered,
+                    primary,
+                    skills: Vec::new(),
+                    worn: alloc::vec![None; usize::from(positions)],
+                    backpack: Vec::new(),
+                    spells: Vec::new(),
+                    mana,
+                });
+                info.army = Some(Vec::new());
+            }
+            MeetingPart::Stack { stack } => info
+                .army
+                .iter_mut()
+                .for_each(|army| set_slot(army, stack.slot, Some(stack))),
+            MeetingPart::Skill { skill } => info
+                .details
+                .iter_mut()
+                .for_each(|details| details.skills.push(skill)),
+            MeetingPart::Artifact { place, artifact } => info
+                .details
+                .iter_mut()
+                .for_each(|details| put_artifact(details, place, artifact)),
+            MeetingPart::Spell { spell } => info
+                .details
+                .iter_mut()
+                .for_each(|details| details.spells.push(spell)),
+        }
+    }
+
+    /// A slot of an army changed: since E10 T3b1 the meeting's ally's hero's too (its army in
+    /// the viewer's [`HeroInfo`], GAM-TEM-003).
     fn set_stack(&mut self, at: ArmySlot, stack: Option<ArmyStack>) {
         let ArmySlot { army, slot } = at;
         let held = match army {
+            ArmyRef::Hero { hero } if self.own_mut(hero).is_none() => self
+                .heroes
+                .iter_mut()
+                .find(|info| info.id == hero)
+                .and_then(|info| info.army.as_mut()),
             ArmyRef::Hero { hero } => self.own_mut(hero).map(|own| &mut own.army),
             ArmyRef::Group {} => match &mut self.decision {
                 Some(Decision::ArmyDialog { group, .. }) => Some(group),

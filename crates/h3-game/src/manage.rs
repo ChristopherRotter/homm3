@@ -9,9 +9,99 @@
 use core::fmt;
 
 use h3_adventure::{ArmyCommand, ArmyCommandError};
-use h3_content::Formation;
-use h3_contracts::HeroId;
-use h3_heroes::{ArtifactPlace, CombineError, MoveError, Position};
+use h3_content::{Formation, SkillId, SpellId};
+use h3_contracts::{ArmyStack, HeroId};
+use h3_heroes::{
+    ArtifactInstance, ArtifactPlace, CombineError, HeroDetails, MoveError, OfferLevels, Position,
+};
+
+/// A part of the meeting's ally's hero as the visitor's owner sees it while the meeting is open
+/// (GAM-TEM-003; E10 T3b1; [`crate::GameEvent::MeetingPartSeen`]): the hero's details whole and
+/// its army, as the exchange screen shows the other hero (the user's call at T3b's start: its
+/// skills, artifacts and army; the details' other fields ride with them, one type for the
+/// details). Told one per part in this order: the head, the army's stacks by slot, the secondary
+/// skills in order, the worn artifacts by position, the backpack's in order, the spells in the
+/// details' order ([`Self::of`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MeetingPart {
+    /// What no list holds (first, once): the level, the experience, the base primary skills,
+    /// the spell points, the levels a level-up last offered Wisdom and a school (HER-LVL-004) and
+    /// how many positions its worn artifacts have.
+    Head {
+        /// Its level.
+        level: u8,
+        /// Its experience.
+        experience: u32,
+        /// Its base primary skills (attack, defense, power, knowledge).
+        primary: [u8; 4],
+        /// Its spell points.
+        mana: u16,
+        /// The levels last offered.
+        offered: OfferLevels,
+        /// The positions' count.
+        positions: u8,
+    },
+    /// A stack of its army.
+    Stack(ArmyStack),
+    /// A secondary skill with its level (1 Basic to 3 Expert).
+    Skill {
+        /// The skill.
+        skill: SkillId,
+        /// Its level.
+        level: u8,
+    },
+    /// An artifact at its place: a worn position, or the backpack's index.
+    Artifact {
+        /// Where it is.
+        place: ArtifactPlace,
+        /// The artifact.
+        artifact: ArtifactInstance,
+    },
+    /// A spell it has learned.
+    Spell(SpellId),
+}
+
+impl MeetingPart {
+    /// The parts of a hero with `army` and `details`, in their order.
+    pub fn of<'a>(
+        army: &'a [ArmyStack],
+        details: &'a HeroDetails,
+    ) -> impl Iterator<Item = Self> + 'a {
+        let head = Self::Head {
+            level: details.level,
+            experience: details.experience,
+            primary: details.primary,
+            mana: details.mana,
+            offered: details.offered,
+            positions: u8::try_from(details.worn.len()).unwrap_or(u8::MAX),
+        };
+        let worn = details.worn.iter().enumerate().filter_map(|(at, worn)| {
+            worn.map(|artifact| Self::Artifact {
+                place: ArtifactPlace::Worn(Position(at)),
+                artifact,
+            })
+        });
+        let carried = details
+            .backpack
+            .iter()
+            .enumerate()
+            .map(|(at, &artifact)| Self::Artifact {
+                place: ArtifactPlace::Backpack(at),
+                artifact,
+            });
+        core::iter::once(head)
+            .chain(army.iter().map(|&stack| Self::Stack(stack)))
+            .chain(
+                details
+                    .skills
+                    .iter()
+                    .map(|&(skill, level)| Self::Skill { skill, level }),
+            )
+            .chain(worn)
+            .chain(carried)
+            .chain(details.spells.iter().map(|&spell| Self::Spell(spell)))
+    }
+}
 
 /// A management command (GAM-MAN-001): what a player does to its heroes on the map at no cost,
 /// any number of times in its turn.

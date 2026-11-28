@@ -4,9 +4,10 @@
 //! and the decision that allows two armies together (a meeting's, an army dialog's, since E08
 //! T114a2 a map garrison's exchange; ADR-0017 points 1 and 6, T51b; since E09 T28a a town's two
 //! bars, TWN-ROW-001); here each hero named must be the player's on the map or, since E09 T28a, in
-//! a town's garrison, the group must be given, a map garrison must be one, a town's garrison an own
-//! town's without a garrison hero, and each army's bar owner decides what may leave and enter it
-//! (the one owner rule, ADV-GAR-003, D-61).
+//! a town's garrison (since E10 T3b1 a command's target also an ally's on the map, GAM-TEM-003),
+//! the group must be given, a map garrison must be one, a town's garrison an own town's without a
+//! garrison hero, and each army's bar owner decides what may leave and enter it (the one owner
+//! rule, ADV-GAR-003, D-61).
 
 use alloc::vec::Vec;
 use core::ops::RangeInclusive;
@@ -26,6 +27,9 @@ use crate::setup::Holds;
 /// in the garrison's variant, so the enum keeps its size (`bench-check`, manage-army-12). Since
 /// E09 T28a a town's garrison hero by its place among the towns' ([`Self::TownHero`]) and an own
 /// town's garrison by its object index ([`Self::Town`], TWN-ROW-001: its town's owner's bar).
+/// Since E10 T3b1 an ally's hero on the map by its index among the heroes ([`Self::Ally`],
+/// GAM-TEM-003: its owner's bar, named only as a command's target, so the one owner rule makes
+/// every command onto it a gift into an empty slot).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Held {
     Hero(usize),
@@ -33,6 +37,7 @@ enum Held {
     MapGarrison { index: usize, own: bool },
     TownHero(usize),
     Town(usize),
+    Ally(usize),
 }
 
 impl Held {
@@ -40,17 +45,19 @@ impl Held {
     /// too (TWN-ROW-001: the original's 0x5C7436); the group and a stationary army, a town's
     /// garrison among them, may be emptied (increment 12's design note §13).
     const fn keeps_last(self) -> bool {
-        matches!(self, Self::Hero(_) | Self::TownHero(_))
+        matches!(self, Self::Hero(_) | Self::TownHero(_) | Self::Ally(_))
     }
 
     /// Whether the army's bar owner is the acting player: a hero's (its owner, the player's) and
     /// the group (its dialog's owner, the player) always; a map garrison's as found; a garrison
     /// hero's (its owner, the player) and an own town's garrison (its town's owner, the player:
-    /// another's is not named, [`ArmyCommandError::Garrison`]) always.
+    /// another's is not named, [`ArmyCommandError::Garrison`]) always; an ally's hero's never
+    /// (E10 T3b1, its owner's).
     const fn own(self) -> bool {
         match self {
             Self::Hero(_) | Self::Group | Self::TownHero(_) | Self::Town(_) => true,
             Self::MapGarrison { own, .. } => own,
+            Self::Ally(_) => false,
         }
     }
 }
@@ -86,6 +93,46 @@ impl AdventureState {
             ArmyRef::Garrison(town) => self.town_held(player, town),
             ArmyRef::MapGarrison(index) => self.map_garrison(player, index),
         }
+    }
+
+    /// The army `army` named as a command's target by `player` ([`Self::held`]), or since E10
+    /// T3b1 an ally's hero on the map, its owner's bar (GAM-TEM-003: a meeting's gift, the game
+    /// holding the meeting; [`Self::ally_held`]).
+    // rule: GAM-TEM-003
+    #[inline]
+    fn held_target(
+        &self,
+        player: PlayerId,
+        army: ArmyRef,
+        open: bool,
+    ) -> Result<Held, ArmyCommandError> {
+        self.held(player, army, open)
+            .or_else(|error| self.ally_held(player, army, error))
+    }
+
+    /// [`Self::held_target`]'s ally's hero (E10 T3b1): a hero on the map of `player`'s team but
+    /// not its own, `error` for any other army; out of line, so a hero's lookup stays as small as
+    /// before.
+    #[cold]
+    #[inline(never)]
+    fn ally_held(
+        &self,
+        player: PlayerId,
+        army: ArmyRef,
+        error: ArmyCommandError,
+    ) -> Result<Held, ArmyCommandError> {
+        let ArmyRef::Hero(id) = army else {
+            return Err(error);
+        };
+        self.heroes
+            .binary_search_by_key(&id, |h| h.id)
+            .ok()
+            .filter(|&index| {
+                let owner = self.heroes[index].owner;
+                owner != player && self.allied(owner, player)
+            })
+            .map(Held::Ally)
+            .ok_or(error)
     }
 
     /// [`Self::held`]'s garrison hero `id` of `player`, `error` when it is none (E09 T28a): out of
@@ -136,7 +183,7 @@ impl AdventureState {
     #[inline(always)]
     fn stacks<'a>(&'a self, held: Held, group: Option<&'a [ArmyStack]>) -> &'a [ArmyStack] {
         match held {
-            Held::Hero(index) => &self.heroes[index].army,
+            Held::Hero(index) | Held::Ally(index) => &self.heroes[index].army,
             Held::Group => group.unwrap_or_default(),
             Held::MapGarrison { index, .. } => self.garrison_stacks(index),
             Held::TownHero(at) => self.town_hero_stacks(at),
@@ -193,7 +240,8 @@ impl AdventureState {
     }
 
     /// Applies `player`'s army command (ADV-ARM-001 to -005, -007; E08 T50): each hero it names
-    /// must be the player's on the map, and the group, if named, is `group`, the open army
+    /// must be the player's on the map (since E10 T3b1 its target may be an ally's, a bar not the
+    /// player's: GAM-TEM-003), and the group, if named, is `group`, the open army
     /// dialog's (the game holds it, GAM-DEC-004); a map garrison it names must be one (E08
     /// T114a2); the one owner rule holds (ADV-GAR-003: [`ArmyCommandError::NotOwn`],
     /// [`ArmyCommandError::OnlyEmpty`]); the plan ([`crate::army`]) is checked whole, then the
@@ -222,7 +270,7 @@ impl AdventureState {
         for (held, stacks) in core::iter::once((source, source_army)).chain(target.zip(target_army))
         {
             match held {
-                Held::Hero(index) => self.heroes[index].army = stacks,
+                Held::Hero(index) | Held::Ally(index) => self.heroes[index].army = stacks,
                 Held::Group => *group = stacks,
                 Held::MapGarrison { index, .. } | Held::Town(index) => {
                     self.set_army_left(index, stacks);
@@ -252,7 +300,9 @@ impl AdventureState {
         let open = group.is_some();
         let (from, to) = command.armies();
         let source = self.held(player, from, open)?;
-        let target = to.map(|to| self.held(player, to, open)).transpose()?;
+        let target = to
+            .map(|to| self.held_target(player, to, open))
+            .transpose()?;
         if !source.own() || target.is_some_and(|held| !held.own()) {
             self.check_bar_owners(command, (source, target), group)?;
         }
@@ -325,7 +375,7 @@ impl AdventureState {
             .copied()?;
         // A split onto its own slot, or onto another creature, is none; a slot beyond the
         // army's holds no stack.
-        let target_army = self.held(player, to.army, open).ok()?;
+        let target_army = self.held_target(player, to.army, open).ok()?;
         let target = self
             .stacks(target_army, group)
             .iter()

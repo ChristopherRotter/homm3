@@ -407,8 +407,13 @@ pub struct HeroInfo {
     /// Its hero type: identity and class, public as the original's portrait.
     pub hero_type: HeroTypeId,
     /// Its details (experience, primary and secondary skills, artifacts, spells, spell points),
-    /// for its owner only.
+    /// for its owner only; since E10 T3b1 also for the visitor's owner while its meeting with this
+    /// hero, an ally's, is open (GAM-TEM-003: the exchange screen's other hero).
     pub details: Option<Arc<HeroDetails>>,
+    /// Its army by slot, for the visitor's owner while its meeting with this hero, an ally's, is
+    /// open (GAM-TEM-003; E10 T3b1); none otherwise (its owner's own is the adventure map's
+    /// view, [`h3_adventure::OwnHeroView::army`]).
+    pub army: Option<Vec<ArmyStack>>,
 }
 
 /// A player as every viewer sees it.
@@ -517,7 +522,12 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
                     state.hill_fort_view(rules, player, visit),
                 ))
             }),
-        heroes: hero_infos(state, &adventure.heroes, &adventure.garrison_heroes),
+        heroes: hero_infos(
+            state,
+            state.meeting_ally_of(player),
+            &adventure.heroes,
+            &adventure.garrison_heroes,
+        ),
         // rule: GAM-HER-003
         hero_list: state.adventure().hero_list(player),
         adventure,
@@ -533,8 +543,14 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 
 /// The heroes of `views` with their types and, for the viewer's own, their details
 /// ([`GameObservation::heroes`], GAM-HER-001), with the viewer's garrison heroes `held` (E09
-/// T28a, its own: their details too), by id.
-fn hero_infos(state: &GameState, views: &[HeroView], held: &[GarrisonHeroView]) -> Vec<HeroInfo> {
+/// T28a, its own: their details too), by id; since E10 T3b1 `ally`, the viewer's open meeting's
+/// ally's hero, with its details and army (GAM-TEM-003).
+fn hero_infos(
+    state: &GameState,
+    ally: Option<HeroId>,
+    views: &[HeroView],
+    held: &[GarrisonHeroView],
+) -> Vec<HeroInfo> {
     let seen = views.iter().map(|view| (view.id, view.own.is_some()));
     let mut all: Vec<(HeroId, bool)> = seen.chain(held.iter().map(|g| (g.id, true))).collect();
     if !held.is_empty() {
@@ -545,10 +561,15 @@ fn hero_infos(state: &GameState, views: &[HeroView], held: &[GarrisonHeroView]) 
         .flat_map(|(id, own)| {
             // Every hero on the map or in a garrison has its details in the store, at its id.
             let details = state.heroes().get(usize::from(id.raw()));
+            // rule: GAM-TEM-003
+            let met = ally == Some(id);
             details.map(|details| HeroInfo {
                 id,
                 hero_type: details.hero_type,
-                details: own.then(|| Arc::clone(details)),
+                details: (own || met).then(|| Arc::clone(details)),
+                army: met
+                    .then(|| state.adventure().hero(id).map(|on| on.army.clone()))
+                    .flatten(),
             })
         })
         .collect()
@@ -593,7 +614,7 @@ pub fn reveal(
         .adventure()
         .reveal(rules.core(), rules.adventure(), player, since);
     GameReveal {
-        heroes: hero_infos(state, &adventure.heroes, &[]),
+        heroes: hero_infos(state, None, &adventure.heroes, &[]),
         towns: views_of(state, rules, player, &adventure.towns),
         garrisons: revealed(state, rules, player, since),
         adventure,
@@ -708,6 +729,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::FormationSet { player: owner, .. }
         | GameEvent::TacticsSet { player: owner, .. }
         | GameEvent::MeetingOpened { player: owner, .. }
+        | GameEvent::MeetingPartSeen { player: owner, .. }
         | GameEvent::ArmyDialogOpened { player: owner, .. }
         | GameEvent::LeaveGuardsOpened { player: owner, .. }
         | GameEvent::ExchangeOpened { player: owner, .. }

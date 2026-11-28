@@ -4,15 +4,17 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 19, the next 20; increment 1's design note `E10-design.md`, its rounds T2 to T7 in §20). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 20, the next 21; increment 1's design note `E10-design.md`, its rounds T2 to T7 in §20). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E10 T3 — the teams** (round 3; design note `E10-design.md` §1 to §7; `adventure/e10-t3a`…)
 
 - **T3a done** (2026-11-27, `adventure/e10-t3a`; `E10-log.md`): the setup's team, `allied` by
   state, one explored layer a team, measured (`passage::Side`), §4 re-tested with allies.
-- **T3b:** the allies' meeting with give-only gifts (§5: GAM-TEM-003, `AllyHero`; until then a
-  step toward an ally's hero is a battle), an ally's dwelling read-only (until then its dialog
-  buys), the team's views (§6: GAM-TEM-004, `PlayerView::team`), and **the team's knowledge**
+- **T3b1 done** (2026-11-28, `adventure/e10-t3b1`; decision 20; `E10-log.md`): the allies'
+  meeting with gifts only (GAM-TEM-003), an ally's dwelling read-only; protocol v89.
+- **T3b2:** the team's views (§6: GAM-TEM-004, `PlayerView::team`; a hero of the team at the
+  popup's level 2, the exact army: `HeroInfo::army` holds it for the meeting's ally since T3b1,
+  for every team hero then, each army change told to the team) and **the team's knowledge**
   (found by T3a: ADV-VIS-006's `Visits::known`, a Shrine's spell, a hut's skill, a find emptied,
   the Pyramid, a Fountain's and a Spring's visit, still the visitor's alone; the original's tile
   bits are the team's, the Corpse and Lean To the player's own, survey §6: each ally told the
@@ -23,7 +25,7 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
   `town_defended` 0x5BDFE0), its rule written and tested.
 - **Inputs:** the design note §1 to §7, §18; the survey §6, §7; the adventure lane's `TRAPS.md`
   (the state's storage, the fog) and the town lane's for its files.
-- **Depends on:** T2 (#1218) and T3a merged. **Status:** T3b next (each part's cut confirmed at its start).
+- **Depends on:** T2 (#1218), T3a (#1220) and T3b1 merged. **Status:** T3b2 next (its cut confirmed at its start).
 
 ## Inbox
 
