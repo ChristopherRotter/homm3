@@ -32,6 +32,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_battle_client::audio::HostSound;
+use h3_battle_client::game_seat::GameSeat;
 use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup};
 use h3_map_view::engine::{GameRecord, Live};
@@ -239,8 +240,11 @@ struct Viewed<'h, 'r> {
 /// *provisional*): the host's clock held while no human's turn runs on the screen (from the turn's
 /// passing, by End Turn or by its time, to the next view's start of its timer after its cover:
 /// the original starts the turn's timer there, `turn_timer_start` 0x4C78F0, while the session's
-/// starts at the turn's passing: MCL-Q76), and the screen chat's lines as a view left them, each
-/// by the host's time of its first draw (MCL-Q70).
+/// starts at the turn's passing: MCL-Q76) and while a human's battle runs (E24 M5 T6a, design
+/// §5.33, MCL-Q75 (b): from its hand-over, `window::Session::battle`, to its return; the
+/// session's clock times a battle against a monster on the turn's timer, the original's pauses
+/// it for every battle and gives the time back), and the screen chat's lines as a view left
+/// them, each by the host's time of its first draw (MCL-Q70).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct Kept {
     /// The host's time a hold began, while it holds.
@@ -392,6 +396,27 @@ impl window::Session for Viewed<'_, '_> {
 
     fn started(&mut self, now: u64) {
         self.kept.release(now);
+    }
+
+    fn battle(&mut self, now: u64) -> Option<GameSeat> {
+        if self.hot.fighting() != Some(self.player) {
+            return None;
+        }
+        let seat = self.hot.battle()?;
+        // MCL-Q75 (b): the battle pauses the turn's timer (E24 M5 T6a, design §5.33).
+        self.kept.hold(now);
+        Some(seat)
+    }
+
+    fn serve(&mut self, seat: &mut GameSeat) -> Result<Vec<String>, String> {
+        let refused = self.hot.serve(seat)?;
+        Ok(refused.iter().map(|why| format!("{why:?}")).collect())
+    }
+
+    fn returned(&mut self, now: u64) -> Result<bool, String> {
+        self.kept.release(now);
+        self.hot.returned();
+        Ok(self.runs(now))
     }
 }
 
@@ -714,9 +739,16 @@ pub(crate) mod tests {
 
     impl MapFile {
         pub(crate) fn new(name: &str, text: &str) -> Self {
+            Self::with(name, text, &[])
+        }
+
+        /// The map of the situation `text` whose given objects' templates are among
+        /// `templates` (`Objects.txt`'s lines: [`template`]).
+        pub(crate) fn with(name: &str, text: &str, templates: &[&str]) -> Self {
+            let templates: Vec<_> = templates.iter().map(|line| template(line)).collect();
             let (map, extras) = Situation::parse(text)
                 .unwrap()
-                .build(&BTreeMap::new(), &[])
+                .build(&BTreeMap::new(), &templates)
                 .unwrap();
             // Compressed, as the game keeps its maps (the record player reads them so).
             let bytes = h3_map::writer::gzip(&h3_map::writer::write_with(&map, &extras).unwrap());
@@ -735,9 +767,35 @@ pub(crate) mod tests {
         }
     }
 
+    /// An object's template from its line of `Objects.txt` (written here: no installation read).
+    pub(crate) fn template(line: &str) -> h3_map::writer::ObjectTemplate {
+        h3_map::writer::ObjectTemplate::from_objects_txt(line).unwrap()
+    }
+
     /// Red's hero and Blue's on a small map.
     pub(crate) const TWO: &str = "size = 36\nterrain = \"grass\"\n\
         heroes = [{ at = [3, 3] }, { at = [30, 30], owner = 1 }]\nview = [0, 0, 0]\n";
+
+    /// A wandering Peasants' template (class 54, creature 139): its anchor's tile blocked and
+    /// visited, as `Objects.txt`'s monsters (`h3_map`'s tests' Gnolls).
+    pub(crate) const PEASANTS: &str = "AVWpeas.def \
+        011111111111111111111111111111111111111111111111 \
+        100000000000000000000000000000000000000000000000 111111111 000000001 54 139 2 0";
+
+    /// E24 M5 T6a's battle (as `clients/map/situations/seq-battle-won.toml`): Red's hero on
+    /// (5, 5) with the map's `army` ([creature, count] by slot), a second hero of Red's far off
+    /// (Red keeps one when the first is lost), `count` savage Peasants that never flee on (5, 4)
+    /// (a step north), Blue's hero far off.
+    pub(crate) fn peasants(army: &str, count: u16) -> String {
+        format!(
+            "size = 36\nterrain = \"grass\"\n\
+             heroes = [{{ at = [5, 5], class = 2, map_army = {army} }}, \
+             {{ at = [30, 5], class = 5 }}, {{ at = [32, 32], owner = 1 }}]\n\
+             view = [0, 0, 0]\n\
+             objects = [{{ def = \"AVWpeas.def\", at = [5, 4], \
+             monster = {{ count = {count}, disposition = 4, never_flees = true }} }}]\n"
+        )
+    }
 
     #[test]
     fn a_map_begins_with_the_import_s_humans_or_those_named() {
@@ -890,6 +948,63 @@ pub(crate) mod tests {
         assert!(computers_between(&first, None, p(1)));
         // A lone human's next turn after the computer's.
         assert!(computers_between(&first, Some(p(1)), p(1)));
+    }
+
+    #[test]
+    fn a_battle_pauses_the_turn_s_timer_and_gives_its_time_back() {
+        // E24 M5 T6a (MCL-Q75 (b), design §5.33): a minute's turn, read first at the host's 1 s;
+        // Red's walk onto the Peasants at 10 s begins a battle, handed over then and played
+        // through the view's session (the clock read meanwhile) until its return at 50 s: the
+        // 40 s are given back, Red's turn ends at the host's 101 s (the session's 61 s), not 61 s.
+        use crate::hot_seat::tests::{fight, hero, strike};
+        use crate::window::Session as _;
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::with("timed", &peasants("[[2, 5]]", 15), &[PEASANTS]);
+        let game = begin(&file.0, None, (4, 0), &rules).unwrap();
+        let mut hot = HotSeat::start(&game, &rules).unwrap();
+        let red = PlayerId::new(0);
+        let (ours, at) = hero(&hot, red);
+        let mut kept = Kept::default();
+        let mut viewed = Viewed {
+            hot: &mut hot,
+            map: &game.map,
+            rules: &rules,
+            player: red,
+            colour: 0,
+            from: None,
+            left: None,
+            read: false,
+            seated: None,
+            limit: Some(60_000),
+            kept: &mut kept,
+        };
+        assert!(viewed.tick(1_000).unwrap());
+        assert!(viewed.battle(5_000).is_none());
+        let north = WirePos { y: at.y - 1, ..at };
+        assert_eq!(viewed.walk(ours, vec![north]).unwrap(), None);
+        let mut seat = viewed.battle(10_000).unwrap();
+        let mut now = 10_000;
+        fight(
+            &mut seat,
+            |s| {
+                now += 20;
+                assert!(viewed.tick(now).unwrap());
+                let refused = viewed.serve(s).unwrap();
+                assert!(refused.is_empty(), "{refused:?}");
+                Vec::new()
+            },
+            strike,
+        );
+        assert!(now < 50_000, "{now}");
+        assert!(viewed.returned(50_000).unwrap());
+        assert_eq!(viewed.kept.clock(50_000), 10_000);
+        assert!(viewed.tick(61_000).unwrap());
+        assert!(viewed.tick(100_990).unwrap());
+        assert!(!viewed.tick(101_000).unwrap());
+        assert_eq!(viewed.hot.turn(), Some(PlayerId::new(1)));
+        // Without a battle held, there is none to serve or to hand over.
+        assert!(viewed.battle(101_000).is_none());
+        assert!(viewed.serve(&mut seat).is_err());
     }
 
     #[test]

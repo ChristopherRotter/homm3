@@ -39,6 +39,11 @@ h3-battle-client.workspace = true
 h3-view.workspace = true
 # A player's id (E24 M5 T2b: play's first human, its record; the renderer's tests since E24 M4 T3a).
 h3-contracts.workspace = true
+# A human's battle hosted in play (E24 M5 T6a): the unowned side played by the original's battle AI
+# (`h3-battle-ai`, as `h3_sim::computer`'s system actor) from a stream of the host's own
+# (`h3-kernel`'s generator).
+h3-battle-ai.workspace = true
+h3-kernel.workspace = true
 
 [lints]
 workspace = true

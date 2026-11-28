@@ -11,13 +11,25 @@
 //!   `GameTurn` the commands the seat may give now (none since the last `GameEvents` else: the
 //!   session tells every player each accepted command's events, then each that may act its turn),
 //!   a `GameClock` the seat's clock. Each seat's messages are numbered from 1 without a gap; a gap
-//!   is an error. A battle's own `Snapshot` is not folded (no battle opens before M5 T6, "the
-//!   battles in play").
-//! - **The turn:** the human whose turn runs and who may act ([`HotSeat::turn`]); its End Turn
-//!   ([`HotSeat::end_turn`]) is played as its command (`GameSession::play`, numbered by the host).
-//!   **A computer colour's turn ends at once** (`MCL-STUB-5`, the user at M5 T0, lifted by E31's
-//!   increment 2): whenever a computer may act, the host ends its turn for it, until a human's
-//!   turn runs.
+//!   is an error. A battle's own `Snapshot` is numbered but not folded: the battle is its battle
+//!   seat's (below), the view's `battle` stays none and its events change nothing but the
+//!   battle's end (`GameObservation::fold`); at the end of a human's own battle its view is the
+//!   engine's projection again (`BattleEnded` carries no survivors: SRV-STUB-9).
+//! - **The turn:** the human whose turn runs and who may act ([`HotSeat::turn`]; in its battle its
+//!   legal commands are the battle's); its End Turn ([`HotSeat::end_turn`]) is played as its
+//!   command (`GameSession::play`, numbered by the host). **A computer colour's turn ends at
+//!   once** (`MCL-STUB-5`, the user at M5 T0, lifted by E31's increment 2): whenever a computer
+//!   may act after a command, the host ends its turn for it, until a human's turn runs.
+//! - **A human's battle** (E24 M5 T6a, design §5.33: a walk's or an answer's battle against a
+//!   monster, guards or a neutral): from the `GameEvents` whose `BattleStarted` opens a battle with
+//!   a side of the human's, the host keeps that player's messages; [`HotSeat::battle`] gives a
+//!   battle client's seat (`h3_battle_client::game_seat::GameSeat`) fed with them, and each host
+//!   pass ([`HotSeat::serve`]) plays what the seat sent and hands it what came since. The unowned
+//!   side's turns are the system actor's, chosen by the original's battle AI (all-seeing,
+//!   `h3_battle_ai::choose`, as `h3_sim::computer`'s) from a stream of the host's own, after every
+//!   command, so that whenever the host returns a human may act (or the game is over). A battle
+//!   between two players' sides (another human's or a computer colour's hero, town or garrison
+//!   attacked) is refused with an error (E24 M5 T6c: `CLT-STUB-5`, `MCL-STUB-3`).
 //! - **The clock:** the turn's duration (`turndur.txt`'s record, [`clock`]) the session's turn
 //!   timer; the host reads its clock into the session ([`HotSeat::elapse`], before the session's
 //!   [`HotSeat::deadline`]), and a turn whose time ran out is ended by the session's system actor,
@@ -26,16 +38,26 @@
 //!   whole game one record), which the record player reads and plays (`h3-map-view record`).
 //!
 //! *Provisional* (T3a, an agent decision): the names, the frames read back from their text, the
-//! clock's level-up time and battle allowance (none, the session's default: the server's model
-//! until MCL-Q75 decides, read at T5: the original pauses the turn for every battle), an error for
-//! a computer that may act but not end its turn.
+//! clock's level-up time and battle allowance (none, the session's default: the session times a
+//! battle against a monster on the turn's timer; MCL-Q75 (b), the user at T6a: the original's
+//! pause for every battle, built by play's host, `crate::play`, which holds the clock it reads in
+//! from a battle's hand-over to its return), an error for a computer that may act but not end its
+//! turn. T6a's (agent decisions): the battle seat's own numbers played as the player's (the
+//! in-process session only echoes a number: the host's own sequence stays apart, so a record's
+//! `GameAccepted` numbers are two sequences), the battle AI's stream (the game's seed's
+//! `StreamId::AGENT`, the kernel's stream for bots, `h3_sim::computer`'s system actor's), the
+//! messages kept from the battle's start until its return (one battle at a time: a later one's
+//! start replaces them), a duel's refusal after the engine opened it (play ends then, as before
+//! T6a every battle did).
 
 use std::ffi::OsStr;
 use std::path::Path;
 
+use h3_battle_client::game_seat::{GameSeat, ToHost};
 use h3_contracts::PlayerId;
 use h3_game::GameRuleset;
 use h3_game::Viewer;
+use h3_kernel::{Rng, StreamId};
 use h3_map_view::engine::{self, GameRecord, Live};
 use h3_protocol::codec;
 use h3_protocol::map::game::manifest;
@@ -45,8 +67,8 @@ use h3_protocol::session::game::{
     Allowance, Clock, CommandBounds, GameOptions, GameOutbound, GameSession, Spectators,
 };
 use h3_protocol::wire::game::{
-    Decision, GameAnswer, GameClock, GameCommand, GameObservation, GameQuery, GameReject,
-    MapIdentity,
+    Decision, GameAnswer, GameClock, GameCommand, GameEvent, GameObservation, GameQuery,
+    GameRecordHeader, GameReject, MapIdentity,
 };
 use h3_protocol::wire::{ServerMessage, WireU64};
 
@@ -63,9 +85,18 @@ const PICKS: u64 = 0x6D61_702D_7069_636B;
 /// The turn duration's record that is unlimited (`turndur.txt`'s last).
 pub const UNLIMITED: u8 = 10;
 
+/// The game's number in its records (`GameOptions::game`: the in-process host hosts one).
+const GAME: u32 = 0;
+
+/// The most system commands a host's call plays for the unowned battle side before it gives up
+/// (E24 M5 T6a, *provisional*): a battle's side ends its turn within far fewer.
+const SIDE_STEPS: usize = 4_096;
+
 /// The session's clock of the turn's duration `duration` (`turndur.txt`'s record, 0 to 10): its
 /// minutes the turn timer's limit, none for [`UNLIMITED`]; no level-up time, the default battle
-/// allowance (*provisional*: the server's model until MCL-Q75 decides).
+/// allowance (*provisional*: the server's model; MCL-Q75 (b), the user at E24 M5 T6a, wants no
+/// battle clock, so play's host holds the clock for every battle, `crate::play`, and a battle
+/// between two players' sides, the allowance's, is refused until T6c).
 ///
 /// # Errors
 /// A record past [`UNLIMITED`].
@@ -91,7 +122,8 @@ pub struct Seat {
     pub human: bool,
     /// A human's name in the hot seat (its colour's), if the shell gave one.
     pub name: Option<String>,
-    /// Its view, every frame it was told folded in; none before its first snapshot.
+    /// Its view, every frame it was told folded in; none before its first snapshot. At the end
+    /// of a battle of its the engine's projection again (E24 M5 T6a: SRV-STUB-9's survivors).
     pub view: Option<GameObservation>,
     /// The commands it may give now, as its last `GameTurn` listed them; none when it may not act.
     pub legal: Option<Vec<GameCommand>>,
@@ -150,7 +182,8 @@ impl Seat {
             }
             ServerMessage::GameTurn { legal, .. } => self.legal = Some(legal),
             ServerMessage::GameClock { clock, .. } => self.clock = Some(clock),
-            // A command's answers change no view; a battle's `Snapshot` waits for M5 T6.
+            // A command's answers change no view; a battle's `Snapshot` is its battle seat's
+            // (E24 M5 T6a, `HotSeat::battle`): the adventure view's `battle` stays none.
             _ => {}
         }
         Ok(())
@@ -201,6 +234,27 @@ fn number(message: &ServerMessage) -> Option<u32> {
     }
 }
 
+/// Whether `message` begins a battle (its `GameEvents` hold a `BattleStarted`).
+fn begins(message: &ServerMessage) -> bool {
+    matches!(message, ServerMessage::GameEvents { events, .. }
+        if events.iter().any(|e| matches!(e, GameEvent::BattleStarted { .. })))
+}
+
+/// Whether `message` ends a battle (its `GameEvents` hold a `BattleEnded`).
+fn ends(message: &ServerMessage) -> bool {
+    matches!(message, ServerMessage::GameEvents { events, .. }
+        if events.iter().any(|e| matches!(e, GameEvent::BattleEnded { .. })))
+}
+
+/// A human's battle the host holds (E24 M5 T6a): the player's messages from the `GameEvents`
+/// whose `BattleStarted` began it, and how many of them the last seat was handed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Fight {
+    player: PlayerId,
+    messages: Vec<ServerMessage>,
+    handed: usize,
+}
+
 /// The game hosted in-process, a seat per player.
 pub struct HotSeat<'r> {
     session: GameSession<'r>,
@@ -208,8 +262,14 @@ pub struct HotSeat<'r> {
     /// The seed of the client's own picks in its views (E24 M5 T4b, `h3_map_view::picks`).
     picks: u64,
     seats: Vec<Seat>,
-    /// The host's last command's number (the in-process host's are only echoed).
+    /// The host's last command's number (the in-process host's are only echoed; a battle seat's
+    /// commands keep the seat's own, E24 M5 T6a).
     seq: u32,
+    /// The battle of a human's the host holds, from its start until its return (E24 M5 T6a).
+    fight: Option<Fight>,
+    /// The original's battle AI's stream for the unowned battle side (E24 M5 T6a, *provisional*):
+    /// the game's seed's `StreamId::AGENT`, apart from the engine's streams and the views' picks.
+    sides: Rng,
 }
 
 impl std::fmt::Debug for HotSeat<'_> {
@@ -217,6 +277,7 @@ impl std::fmt::Debug for HotSeat<'_> {
         f.debug_struct("HotSeat")
             .field("seats", &self.seats)
             .field("seq", &self.seq)
+            .field("fight", &self.fight)
             .finish_non_exhaustive()
     }
 }
@@ -246,7 +307,7 @@ impl<'r> HotSeat<'r> {
             import_version: map.import_version,
         };
         let options = GameOptions {
-            game: 0,
+            game: GAME,
             checkpoint_every: 0,
             record_bytes: usize::MAX,
             clock: clock(game.duration).map_err(|e| failed(&e))?,
@@ -280,9 +341,11 @@ impl<'r> HotSeat<'r> {
             picks: game.seed ^ PICKS,
             seats,
             seq: 0,
+            fight: None,
+            sides: Rng::for_stream(game.seed, StreamId::AGENT),
         };
         hot.deliver(out)?;
-        hot.computers()?;
+        hot.settle()?;
         Ok(hot)
     }
 
@@ -299,7 +362,8 @@ impl<'r> HotSeat<'r> {
     }
 
     /// The human whose turn runs and who may act now; none while no human may (a level-up of
-    /// another player's holding the game, E10's end).
+    /// another player's holding the game, E10's end). In its battle (E24 M5 T6a) the human too,
+    /// its legal commands the battle's: the host plays the other side at once.
     #[must_use]
     pub fn turn(&self) -> Option<PlayerId> {
         let state = self.session.state();
@@ -318,23 +382,117 @@ impl<'r> HotSeat<'r> {
     pub fn end_turn(&mut self) -> Result<Option<PlayerId>, String> {
         let player = self.turn().ok_or("no human's turn runs")?;
         self.command(player, GameCommand::EndTurn {})?;
-        self.computers()?;
+        self.settle()?;
         Ok(self.turn())
     }
 
     /// The human in turn's `command` (E24 M5 T4a: a walk), as the host vouches for it: the game's
     /// rejection if it refused it, its frames folded either way (a rejection is told to the
-    /// player too).
+    /// player too). A battle it began (E24 M5 T6a) is held for [`HotSeat::battle`], the unowned
+    /// side's turns played until the human's side is to act; the computers' turns ended after it.
     ///
     /// # Errors
-    /// No human's turn runs; a frame does not read or fold.
+    /// No human's turn runs; a frame does not read or fold; the command began a battle between
+    /// two players' sides (E24 M5 T6c); a computer may not end its turn.
     pub fn play(&mut self, command: GameCommand) -> Result<Option<GameReject>, String> {
         let player = self.turn().ok_or("no human's turn runs")?;
         self.seq += 1;
         let mut out = Vec::new();
         let played = self.session.play(player, self.seq, command, &mut out);
         self.deliver(out)?;
+        self.settle()?;
         Ok(played.err())
+    }
+
+    /// The human whose battle the host holds (E24 M5 T6a), from the command that began it until
+    /// its return ([`HotSeat::returned`]); none without one.
+    #[must_use]
+    pub fn fighting(&self) -> Option<PlayerId> {
+        self.fight.as_ref().map(|f| f.player)
+    }
+
+    /// The battle client's seat for the human's battle the host holds (E24 M5 T6a, design §5.33):
+    /// made from the player's record's header and fed every message the host kept since the
+    /// battle's start, so that it opened (`GameSeat::opened`: the window loads it,
+    /// `h3_battle_client::battle::Ground::load_game`); none without a battle held. A host makes
+    /// one for each battle it shows; a later call makes another from the start.
+    #[must_use]
+    pub fn battle(&mut self) -> Option<GameSeat> {
+        let header = self.header(self.fighting()?);
+        let fight = self.fight.as_mut()?;
+        let mut seat = GameSeat::new(&header);
+        for message in &fight.messages {
+            seat.receive(message);
+        }
+        fight.handed = fight.messages.len();
+        seat.opened().then_some(seat)
+    }
+
+    /// A host pass for the battle's `seat` (E24 M5 T6a, as `h3_battle_client`'s test host's): each
+    /// command it sent played as its player's, with the seat's own number (the in-process session
+    /// only echoes it: the host's numbers stay apart); each query answered from the battle's
+    /// state (`h3_protocol::map::query`: the targets the rules allow the player's side); the
+    /// unowned side's turns played; the computers' turns ended once the battle's end passed the
+    /// turn on; the player's messages since the last pass handed to the seat. The engine's
+    /// rejections of the seat's commands (told to the seat too), in order.
+    ///
+    /// # Errors
+    /// No battle held; a frame does not read or fold; the unowned side's turns do not end; a
+    /// computer may not end its turn.
+    pub fn serve(&mut self, seat: &mut GameSeat) -> Result<Vec<GameReject>, String> {
+        let player = self.fighting().ok_or("no human's battle is held")?;
+        let mut refused = Vec::new();
+        for sent in seat.take_outgoing() {
+            match sent {
+                ToHost::Command { seq, command } => {
+                    let mut out = Vec::new();
+                    let played = self.session.play(player, seq, command, &mut out);
+                    self.deliver(out)?;
+                    refused.extend(played.err());
+                }
+                ToHost::Query { seq, query } => {
+                    let state = self.session.state();
+                    let Some(battle) = state.battle(player) else {
+                        continue;
+                    };
+                    let Some(side) = battle.side_of(player) else {
+                        continue;
+                    };
+                    let targets =
+                        h3_protocol::map::query(battle.state(), self.rules.battle(), side, query);
+                    seat.answer(seq, targets);
+                }
+            }
+        }
+        self.settle()?;
+        if let Some(fight) = self.fight.as_mut() {
+            for message in fight.messages.get(fight.handed..).unwrap_or_default() {
+                seat.receive(message);
+            }
+            fight.handed = fight.messages.len();
+        }
+        Ok(refused)
+    }
+
+    /// The human's battle handed back (E24 M5 T6a): the host keeps its messages no longer; the
+    /// human whose turn runs then (the battle's end may have passed the turn on: a player left
+    /// without a hero or a town). *Provisional*: a battle still open stays the engine's (its
+    /// human's legal commands the battle's), with no seat to play it.
+    pub fn returned(&mut self) -> Option<PlayerId> {
+        self.fight = None;
+        self.turn()
+    }
+
+    /// `player`'s record's header (as `GameSession::record` writes it: the game's, the manifest,
+    /// every message from 1).
+    fn header(&self, player: PlayerId) -> GameRecordHeader {
+        GameRecordHeader {
+            format: h3_protocol::RECORD_FORMAT_VERSION,
+            game: GAME,
+            player: player.raw(),
+            manifest: self.session.manifest().clone(),
+            first: 1,
+        }
     }
 
     /// `player`'s first open decision but a battle as the engine projects it now (E24 M5 T4b,
@@ -354,15 +512,18 @@ impl<'r> HotSeat<'r> {
     }
 
     /// The host's clock reads `now`, in milliseconds (`GameSession::elapse`): a turn whose time
-    /// ran out ended by the session, its frames folded; the computers' turns ended after it.
+    /// ran out ended by the session, its frames folded; the unowned battle side's turns played
+    /// (E24 M5 T6a: a human's side the session played for it) and the computers' turns ended
+    /// after it.
     ///
     /// # Errors
-    /// A frame does not read or fold; a computer may not end its turn.
+    /// A frame does not read or fold; the unowned side's turns do not end; a computer may not end
+    /// its turn.
     pub fn elapse(&mut self, now: u64) -> Result<(), String> {
         let mut out = Vec::new();
         self.session.elapse(now, &mut out);
         self.deliver(out)?;
-        self.computers()
+        self.settle()
     }
 
     /// When the host's clock should next read (`GameSession::deadline`); none while no timer
@@ -452,6 +613,77 @@ impl<'r> HotSeat<'r> {
         })
     }
 
+    /// What follows any command (E24 M5 T6a): a battle between two players' sides refused, the
+    /// unowned battle side's turns played, the computers' turns ended.
+    ///
+    /// # Errors
+    /// [`HotSeat::duels`]', [`HotSeat::sides`]', [`HotSeat::computers`]'.
+    fn settle(&mut self) -> Result<(), String> {
+        self.duels()?;
+        self.sides()?;
+        self.computers()
+    }
+
+    /// A battle between two players' sides open (E24 M5 T6c's: a human's hero attacking another
+    /// player's hero, town or garrison; no seat plays the other side here, a computer's
+    /// idling, `MCL-STUB-5`) refused.
+    ///
+    /// # Errors
+    /// Such a battle is open.
+    fn duels(&self) -> Result<(), String> {
+        let state = self.session.state();
+        for seat in &self.seats {
+            // stub: CLT-STUB-5 (a battle between two players' sides, E24 M5 T6c; MCL-STUB-3)
+            let Some(battle) = state.battle(seat.player) else {
+                continue;
+            };
+            if let [Some(attacker), Some(defender)] = battle.owners() {
+                let colour = |p: PlayerId| self.seat(p).map_or(p.raw(), |s| s.colour);
+                return Err(format!(
+                    "colour {} attacks colour {}: a battle between two players' sides is not \
+                     played yet (E24 M5 T6c: CLT-STUB-5, MCL-STUB-3)",
+                    colour(attacker),
+                    colour(defender)
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// The unowned battle side's turns while it is to act (E24 M5 T6a: a monster's, guards', a
+    /// neutral's), each the system actor's command (`GameSession::system`) the original's battle
+    /// AI chooses seeing everything (`h3_battle_ai::choose`, as `h3_sim::computer`'s system
+    /// actor) from the host's stream; a choice the engine refuses replaced by the first of the
+    /// side's legal commands it takes (as the session's own system steps), its frames folded.
+    ///
+    /// # Errors
+    /// The engine takes none of the side's commands; the side still acts after
+    /// [`SIDE_STEPS`]; a frame does not read or fold.
+    fn sides(&mut self) -> Result<(), String> {
+        for _ in 0..SIDE_STEPS {
+            let state = self.session.state();
+            let Some(battle) = state.unowned_battle() else {
+                return Ok(());
+            };
+            let Some(side) = battle.state().side_to_act() else {
+                return Ok(());
+            };
+            let choice =
+                h3_battle_ai::choose(battle.state(), self.rules.battle(), side, &mut self.sides);
+            let choice = h3_protocol::map::game::command(&h3_game::GameCommand::Battle(choice));
+            let mut out = Vec::new();
+            let mut candidates = core::iter::once(choice).chain(self.session.system_legal());
+            let played = candidates.any(|command| self.session.system(command, &mut out).is_ok());
+            self.deliver(out)?;
+            if !played {
+                return Err("the unowned battle side's commands are all refused".into());
+            }
+        }
+        Err(format!(
+            "the unowned battle side still acts after {SIDE_STEPS} commands"
+        ))
+    }
+
     /// Each computer that may act has its turn ended (`MCL-STUB-5`), until none may.
     ///
     /// # Errors
@@ -476,31 +708,139 @@ impl<'r> HotSeat<'r> {
         Err("the computers' turns do not end".into())
     }
 
-    /// The session's frames read and folded into their players' seats, in order.
+    /// The session's frames read and folded into their players' seats, in order; a human's
+    /// battle's kept from its start (E24 M5 T6a, [`HotSeat::keep`]).
     ///
     /// # Errors
     /// A frame does not read; it is not a player of the game's; it does not fold.
     fn deliver(&mut self, out: Vec<GameOutbound>) -> Result<(), String> {
+        let mut ended = None;
         for GameOutbound { to, frame } in out {
             let message = codec::decode_server(frame.as_bytes(), MAX_LINE)
                 .map_err(|e| format!("player {}: a frame does not read: {e:?}", to.index()))?;
-            let seat = self
-                .seats
-                .get_mut(to.index())
-                .ok_or_else(|| format!("a frame for player {}, no seat", to.index()))?;
-            seat.fold(message)?;
+            let seat = self.seats.get(to.index());
+            let seat = seat.ok_or_else(|| format!("a frame for player {}, no seat", to.index()))?;
+            if seat.human {
+                self.keep(to, &message);
+                if ends(&message) && self.fighting() == Some(to) {
+                    ended = Some(to);
+                }
+            }
+            self.seats[to.index()].fold(message)?;
+        }
+        // The battle's end (E24 M5 T6a, *provisional*, the in-process host's): its human's view is
+        // the engine's projection again, since `BattleEnded` carries no hero's survivors and the
+        // fold keeps the armies as they were (SRV-STUB-9); the view left at the turn's end then
+        // starts the next turn right.
+        if let Some(player) = ended {
+            let view = observe(self.session.state(), self.rules, Viewer::Player(player));
+            self.seats[player.index()].view = Some(view);
         }
         Ok(())
+    }
+
+    /// The human `player`'s `message` kept for its battle's seat (E24 M5 T6a): from the
+    /// `GameEvents` whose `BattleStarted` opens a battle with a side of its (a battle it sees
+    /// another's fight is not), every later message of its until the battle's return; a later
+    /// battle's start begins the kept messages again. The state is the one after the command whose
+    /// frames these are: in this host no command both opens a battle and ends it.
+    fn keep(&mut self, player: PlayerId, message: &ServerMessage) {
+        let state = self.session.state();
+        let own = || {
+            state
+                .battle(player)
+                .is_some_and(|b| b.side_of(player).is_some())
+        };
+        if begins(message) && own() {
+            self.fight = Some(Fight {
+                player,
+                messages: Vec::new(),
+                handed: 0,
+            });
+        }
+        if let Some(fight) = self.fight.as_mut().filter(|f| f.player == player) {
+            fight.messages.push(message.clone());
+        }
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use h3_protocol::wire::game::GameEvent;
+pub(crate) mod tests {
+    use h3_battle_client::battle::Remote;
+    use h3_protocol::wire::Command;
+    use h3_protocol::wire::game::{AdventureCommand, Pos as WirePos};
 
     use super::*;
     use crate::play::begin;
-    use crate::play::tests::{MapFile, TWO};
+    use crate::play::tests::{MapFile, PEASANTS, TWO, peasants};
+
+    /// A test's human side in its battle: a shot, else an attack, else its first legal command.
+    pub(crate) fn strike(legal: &[Command]) -> Command {
+        let first = |f: fn(&Command) -> bool| legal.iter().find(|c| f(c)).copied();
+        first(|c| matches!(c, Command::Shoot { .. }))
+            .or_else(|| first(|c| matches!(c, Command::Attack { .. })))
+            .or_else(|| legal.first().copied())
+            .unwrap()
+    }
+
+    /// A test's human side that defends (else its first legal command): the other side wins.
+    fn defend(legal: &[Command]) -> Command {
+        let defend = Command::Defend {};
+        if legal.contains(&defend) {
+            defend
+        } else {
+            legal[0]
+        }
+    }
+
+    /// The battle `seat` follows played to its end as a window plays it (E24 M5 T6a): a host
+    /// pass (`serve`, the engine refusing none of the seat's commands), the seat polled, its turn
+    /// played by `choose`; the passes it took.
+    pub(crate) fn fight(
+        seat: &mut GameSeat,
+        mut serve: impl FnMut(&mut GameSeat) -> Vec<GameReject>,
+        choose: fn(&[Command]) -> Command,
+    ) -> usize {
+        for pass in 1..2_000 {
+            let refused = serve(seat);
+            assert!(refused.is_empty(), "{refused:?}");
+            seat.poll(0).unwrap();
+            if seat.over() {
+                return pass;
+            }
+            if let Some((legal, _)) = seat.turn() {
+                let command = choose(legal);
+                seat.send(command).unwrap();
+            }
+        }
+        panic!("the battle did not end");
+    }
+
+    /// `player`'s first hero in its seat's view: its id and tile.
+    pub(crate) fn hero(hot: &HotSeat<'_>, player: PlayerId) -> (u16, WirePos) {
+        let view = hot.seat(player).unwrap().view.as_ref().unwrap();
+        let id = view.hero_list[0];
+        let h = view.adventure.heroes.iter().find(|h| h.id == id).unwrap();
+        (h.id, h.pos)
+    }
+
+    /// The human in turn's hero `hero` walked along `path` (`MoveHero`).
+    pub(crate) fn walk(hero: u16, path: Vec<WirePos>) -> GameCommand {
+        GameCommand::Adventure {
+            command: AdventureCommand::MoveHero { hero, path },
+        }
+    }
+
+    /// The monsters in `player`'s view: their tiles.
+    fn monsters(hot: &HotSeat<'_>, player: PlayerId) -> Vec<WirePos> {
+        let view = hot.seat(player).unwrap().view.as_ref().unwrap();
+        view.adventure
+            .objects
+            .iter()
+            .filter(|o| o.monster.is_some())
+            .map(|o| o.anchor)
+            .collect()
+    }
 
     impl HotSeat<'_> {
         /// The game's state (the tests' measure of the seats' views).
@@ -747,5 +1087,160 @@ mod tests {
         let whole = engine::check(whole, &bytes, &rules).unwrap();
         let all = engine::played(&whole, &art, &rules).unwrap();
         assert_eq!(all.turns.last(), played.turns.first());
+    }
+
+    #[test]
+    fn a_human_s_battle_with_a_monster_is_played_through_its_seat() {
+        // E24 M5 T6a (design §5.33): Red's walk onto savage Peasants opens a battle the host
+        // holds; its seat, fed from the battle's start, opened as the attacker; Red's turn runs
+        // on, its legal commands the battle's; played to its end through the seat (the other side
+        // the battle AI's), the seat's record is the battle the player's record shows; the
+        // monster gone from the view, which is the engine's; Blue's computer turn ended after
+        // Red's End Turn as before.
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::with("monster", &peasants("[[2, 5]]", 15), &[PEASANTS]);
+        let game = begin(&file.0, Some(&[0]), (4, UNLIMITED), &rules).unwrap();
+        let mut hot = HotSeat::start(&game, &rules).unwrap();
+        let red = PlayerId::new(0);
+        let (ours, at) = hero(&hot, red);
+        let north = WirePos { y: at.y - 1, ..at };
+        assert_eq!(monsters(&hot, red), [north]);
+        assert_eq!((hot.fighting(), hot.battle().is_some()), (None, false));
+        assert_eq!(hot.play(walk(ours, vec![north])).unwrap(), None);
+        assert_eq!(hot.fighting(), Some(red));
+        let mut seat = hot.battle().unwrap();
+        assert!(seat.opened());
+        assert_eq!(seat.seat(), h3_protocol::wire::Seat::Attacker);
+        // The seat's header is the record's.
+        let record = engine::parse(&hot.record(red).unwrap()).unwrap();
+        assert_eq!(record.header, hot.header(red));
+        assert_eq!(hot.turn(), Some(red));
+        let legal = hot.seat(red).unwrap().legal.clone().unwrap();
+        assert!(
+            legal
+                .iter()
+                .all(|c| matches!(c, GameCommand::Battle { .. }))
+        );
+        // No End Turn in a battle.
+        assert!(hot.end_turn().is_err());
+        let passes = fight(&mut seat, |s| hot.serve(s).unwrap(), strike);
+        assert!(passes > 1);
+        let text = hot.record(red).unwrap();
+        let battles = h3_view::game_record::parse(&text).unwrap().battles();
+        assert_eq!(battles.len(), 1);
+        assert_eq!(seat.record(), Some(&battles[0].record));
+        assert!(battles[0].at.ended.is_some(), "{:?}", battles[0].at);
+        assert!(text.contains("BattleEnded"));
+        // The battle won: the monster gone, the hero where it stood; nothing left open.
+        assert_eq!(monsters(&hot, red), []);
+        assert_eq!(hero(&hot, red), (ours, at));
+        assert_eq!(hot.decision(red), None);
+        views_are_the_engine_s(&hot, &rules);
+        assert_eq!(hot.returned(), Some(red));
+        assert_eq!((hot.fighting(), hot.battle().is_some()), (None, false));
+        assert!(hot.serve(&mut seat).is_err());
+        // Red's End Turn: Blue's computer turn ended at once, Red's day 2.
+        assert_eq!(hot.end_turn().unwrap(), Some(red));
+        assert_eq!(hot.seat(red).unwrap().view.as_ref().unwrap().day, 2);
+        let blue = hot.record(PlayerId::new(1)).unwrap();
+        assert_eq!(blue.matches("GameAccepted").count(), 1);
+    }
+
+    #[test]
+    fn a_human_s_hero_lost_in_its_battle_leaves_the_map() {
+        // E24 M5 T6a: a lone Pikeman defending against fifty Peasants: the hero lost leaves the
+        // view, Red's turn runs on with its other hero, the Peasants stay.
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::with("lost", &peasants("[[0, 1]]", 50), &[PEASANTS]);
+        let game = begin(&file.0, None, (4, UNLIMITED), &rules).unwrap();
+        let mut hot = HotSeat::start(&game, &rules).unwrap();
+        let red = PlayerId::new(0);
+        let (ours, at) = hero(&hot, red);
+        let north = WirePos { y: at.y - 1, ..at };
+        assert_eq!(hot.play(walk(ours, vec![north])).unwrap(), None);
+        let mut seat = hot.battle().unwrap();
+        fight(&mut seat, |s| hot.serve(s).unwrap(), defend);
+        let view = hot.seat(red).unwrap().view.as_ref().unwrap();
+        assert!(!view.hero_list.contains(&ours), "{:?}", view.hero_list);
+        assert!(view.adventure.heroes.iter().all(|h| h.id != ours));
+        assert_eq!(monsters(&hot, red), [north]);
+        assert_eq!(hot.returned(), Some(red));
+        views_are_the_engine_s(&hot, &rules);
+        assert_eq!(hot.end_turn().unwrap(), Some(PlayerId::new(1)));
+    }
+
+    #[test]
+    fn a_battle_s_losses_show_in_the_view_after_it() {
+        // E24 M5 T6a: twenty Pikemen beat ninety Peasants and lose some; `BattleEnded` carries no
+        // survivors (SRV-STUB-9), and the host's view of Red is the engine's after the battle.
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::with("losses", &peasants("[[0, 20]]", 90), &[PEASANTS]);
+        let game = begin(&file.0, None, (4, UNLIMITED), &rules).unwrap();
+        let mut hot = HotSeat::start(&game, &rules).unwrap();
+        let red = PlayerId::new(0);
+        let (ours, at) = hero(&hot, red);
+        let north = WirePos { y: at.y - 1, ..at };
+        assert_eq!(hot.play(walk(ours, vec![north])).unwrap(), None);
+        let mut seat = hot.battle().unwrap();
+        fight(&mut seat, |s| hot.serve(s).unwrap(), strike);
+        assert_eq!(monsters(&hot, red), []);
+        views_are_the_engine_s(&hot, &rules);
+        let view = hot.seat(red).unwrap().view.as_ref().unwrap();
+        let army = view.adventure.heroes.iter().find(|h| h.id == ours);
+        let own = army.and_then(|h| h.own.as_ref()).unwrap();
+        // The seed's battle: some Pikemen fell.
+        assert!(own.army.iter().all(|s| s.count < 20), "{:?}", own.army);
+    }
+
+    #[test]
+    fn a_battle_won_may_leave_a_level_up_open() {
+        // E24 M5 T6a: a thousand Peasants beaten by twenty Archangels: the hero's experience
+        // reaches a level, whose offer is the open decision after the battle (Red's turn holds,
+        // its legal commands the level-up's answers).
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::with("level", &peasants("[[13, 20]]", 1_000), &[PEASANTS]);
+        let game = begin(&file.0, None, (4, UNLIMITED), &rules).unwrap();
+        let mut hot = HotSeat::start(&game, &rules).unwrap();
+        let red = PlayerId::new(0);
+        let (ours, at) = hero(&hot, red);
+        let north = WirePos { y: at.y - 1, ..at };
+        assert_eq!(hot.play(walk(ours, vec![north])).unwrap(), None);
+        let mut seat = hot.battle().unwrap();
+        fight(&mut seat, |s| hot.serve(s).unwrap(), strike);
+        assert_eq!(monsters(&hot, red), []);
+        assert_eq!(hot.turn(), Some(red));
+        assert_eq!(hot.session.state().waiting_for(), Some(red));
+        let legal = hot.seat(red).unwrap().legal.clone().unwrap();
+        assert!(
+            legal
+                .iter()
+                .all(|c| matches!(c, GameCommand::Answer { .. })),
+            "{legal:?}"
+        );
+        assert_eq!(hot.returned(), Some(red));
+    }
+
+    #[test]
+    fn a_battle_between_two_players_is_refused() {
+        // E24 M5 T6a: Red's hero attacking Blue's (a computer's, then a human's): the engine opens
+        // the battle, the host refuses it (E24 M5 T6c's).
+        let rules = h3_battle_client::maps::rules().unwrap();
+        let file = MapFile::new(
+            "duel",
+            "size = 36\nterrain = \"grass\"\n\
+             heroes = [{ at = [3, 3] }, { at = [4, 3], owner = 1 }]\nview = [0, 0, 0]\n",
+        );
+        for humans in [Some(&[0][..]), None] {
+            let game = begin(&file.0, humans, (4, UNLIMITED), &rules).unwrap();
+            let mut hot = HotSeat::start(&game, &rules).unwrap();
+            let (ours, at) = hero(&hot, PlayerId::new(0));
+            let east = WirePos { x: at.x + 1, ..at };
+            let e = hot.play(walk(ours, vec![east])).unwrap_err();
+            assert_eq!(
+                e,
+                "colour 0 attacks colour 1: a battle between two players' sides is not played \
+                 yet (E24 M5 T6c: CLT-STUB-5, MCL-STUB-3)"
+            );
+        }
     }
 }

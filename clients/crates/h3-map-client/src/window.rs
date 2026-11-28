@@ -44,6 +44,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use h3_battle_client::audio::HostSound;
+use h3_battle_client::game_seat::GameSeat;
 use h3_game::GameRuleset;
 use h3_map_view::clock::ChatLine;
 use h3_map_view::damage::{Held, tidy};
@@ -278,6 +279,50 @@ pub(crate) trait Session {
     /// The view's turn's timer started at the host's `now` (ms): the session's clock, held while
     /// no human's turn ran on the screen, runs again.
     fn started(&mut self, _now: u64) {}
+    /// The viewer's battle the host holds (E24 M5 T6a, design §5.33: a walk's or an answer's
+    /// battle against a monster, guards or a neutral), asked once the walk or the answer that
+    /// began it was played: its battle client's seat, opened (the window loads it with
+    /// `h3_battle_client::battle::Ground::load_game` and hosts the element), the session's clock
+    /// held from the host's `now` (ms) until [`Session::returned`] (MCL-Q75 (b), the user at
+    /// T6a, *provisional* in play's host: every battle pauses the turn's timer and gives its time
+    /// back, no battle clock). None without one (each source but play's).
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "E24 M5 T6a part two's window calls it")
+    )]
+    fn battle(&mut self, _now: u64) -> Option<GameSeat> {
+        None
+    }
+    /// A host pass for the viewer's battle `seat` (E24 M5 T6a), between the battle's passes (as
+    /// the battle client's own test host serves its seat): what it sent played as the viewer's
+    /// and answered, the other side's turns played (the original's battle AI), the viewer's
+    /// messages since handed to it; the engine's refusals of its commands (told to the seat too).
+    ///
+    /// # Errors
+    /// No battle held; the session's.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "E24 M5 T6a part two's window calls it")
+    )]
+    fn serve(&mut self, _seat: &mut GameSeat) -> Result<Vec<String>, String> {
+        Err("no battle is held here".into())
+    }
+    /// The viewer's battle handed back at the host's `now` (ms; E24 M5 T6a), once the battle
+    /// client closed (the result window's OK): the session's clock running again, the battle's
+    /// messages no longer kept; whether the viewer's turn still runs (a battle's end may pass it
+    /// on: a player left with no hero and no town). Its aftermath (a level-up's offer, the hero
+    /// lost) is the viewer's record's, as a walk's; a level-up after it is untimed (the session
+    /// stops the turn's timer while one holds the game, as the original's pause holds it).
+    ///
+    /// # Errors
+    /// The session's.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "E24 M5 T6a part two's window calls it")
+    )]
+    fn returned(&mut self, _now: u64) -> Result<bool, String> {
+        Ok(true)
+    }
 }
 
 /// The host's facts a live start keeps (E24 M5 T4a): the headless check plays them as the loop did.
