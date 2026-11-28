@@ -29,7 +29,9 @@ use core::iter;
 
 use crate::clock::ChatLine;
 use crate::live::Buttons;
-use crate::reach::{AnswerAsked, LevelAsked, Reach, RevisitAsked, Stand, WalkAsked};
+use crate::reach::{
+    AnswerAsked, BattleAsked, Fought, LevelAsked, Reach, RevisitAsked, Stand, WalkAsked,
+};
 use crate::sound::Cue;
 use crate::timeline::{
     Action, Answer, Cursor, Draw, Found, Hero, LevelBox, Loop, Move, NextTurn, Rules, Start,
@@ -341,6 +343,20 @@ impl Replay {
     /// [`Loop::add_revisit`]), the loop run again from before it.
     pub fn add_revisit(&mut self, asked: &RevisitAsked, found: Option<&Found>) {
         self.each(|l| l.add_revisit(asked, found));
+        self.again_from(asked.at.max(1));
+    }
+
+    /// The battle asked of the host as far as the loop ran (E24 M5 T6a, [`Loop::battle_asked`]).
+    #[must_use]
+    pub fn battle_asked(&self) -> Option<BattleAsked> {
+        self.l.battle_asked()
+    }
+
+    /// The result of the battle `asked` given by the host (E24 M5 T6a, [`Loop::add_battle`]), the
+    /// loop run again from before its hand-over (a switch's then closed by the host's
+    /// [`crate::timeline::Action::BattleClosed`] at that millisecond, given apart).
+    pub fn add_battle(&mut self, asked: BattleAsked, fought: Option<&Fought>) {
+        self.each(|l| l.add_battle(asked.battle, fought));
         self.again_from(asked.at.max(1));
     }
 

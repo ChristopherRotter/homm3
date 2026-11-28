@@ -146,7 +146,8 @@ use crate::notice::Notice;
 use crate::panels;
 use crate::picks::Picks;
 use crate::reach::{
-    AnswerAsked, AnswerKey, Hosted, LevelAsked, Pick, Reach, RevisitAsked, Stand, WalkAsked,
+    AnswerAsked, AnswerKey, BattleAsked, Fought, Hosted, LevelAsked, Pick, Reach, RevisitAsked,
+    Stand, WalkAsked,
 };
 use crate::scene::ViewAt;
 use crate::sequence::{DEFAULT_COMPUTER_SPEED, DEFAULT_HERO_SPEED, DEFAULT_SCROLL_SPEED};
@@ -973,6 +974,16 @@ pub struct Start {
     pub clock: Option<TurnClock>,
 }
 
+impl Start {
+    /// The result of the battle `battle` the host gave (E24 M5 T6a, design §5.33), kept with the
+    /// host's facts as the loop keeps it ([`Loop::add_battle`]): the window's headless check plays
+    /// the start with it as the loop played the battle's return.
+    pub fn add_battle(&mut self, battle: u32, fought: Option<&Fought>) {
+        let host = self.host.get_or_insert_default();
+        fought_in(&mut self.finds, Some(host), battle, fought);
+    }
+}
+
 /// A timed turn's clock (E24 M5 T5 part five, design §5.32, *provisional*): what the loop needs
 /// of the turn timer (`turn_timer` 0x69D630), the screen chat and the expiry.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1155,7 +1166,8 @@ impl Found {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fight {
     /// The monster's picture's frame in the attack DEF (as [`Question::attacker`]: twice its
-    /// creature; plus 1 with the hero left of it, added at the visit).
+    /// creature; plus 1 with the hero left of it, added at the visit; since E24 M5 T6a a fight
+    /// told where the walk stopped has it added already, [`Fight::object`]).
     pub attacker: u32,
     /// The battle: the record's number of the `GameEvents` whose `BattleStarted` began it.
     pub battle: u32,
@@ -1165,6 +1177,11 @@ pub struct Fight {
     pub after: AfterBattle,
     /// The experience the hero gains (the record's), which nothing shows (its levels).
     pub experience: i32,
+    /// The monster drawn attacking and taken off the map after a win where the find's object
+    /// does not block its tile (E24 M5 T6a, design §5.33, *provisional*: live, a savage monster's
+    /// zone entered, its fight told where the walk stopped as an offer there is; an answer's
+    /// battle): its index in the map's order. None: the find's [`Found::blocks`] (a record's).
+    pub object: Option<usize>,
 }
 
 /// What the map shows after a battle's switch (E24 M4 T5b2, design §5.19's rest).
@@ -1219,6 +1236,47 @@ impl AfterBattle {
             (_, true) => Self::Lost,
             (_, false) => Self::Stays,
         }
+    }
+}
+
+/// The battle `asked` of `host` (E24 M5 T6a, design §5.33: [`Loop::battle_asked`]): live, while
+/// its result is not given; the first asked kept.
+fn ask_battle(host: Option<&Hosted>, battle_asked: &mut Option<BattleAsked>, asked: BattleAsked) {
+    if host.is_some_and(|h| !h.fought(asked.battle)) {
+        battle_asked.get_or_insert(asked);
+    }
+}
+
+/// The result of the battle `battle` the host gave (E24 M5 T6a, design §5.33; [`Loop::add_battle`],
+/// [`Start::add_battle`]): each of `finds` whose own fight it is takes the given fight and the
+/// visit's level-ups; each of `host`'s answers whose fight it is the given answer (its fight
+/// the given one) and its find the level-ups; the battle listed as given.
+fn fought_in(finds: &mut [Found], host: Option<&mut Hosted>, battle: u32, fought: Option<&Fought>) {
+    let of = |fight: Option<&Fight>| fight.is_some_and(|f| f.battle == battle);
+    let mut leveled = Vec::new();
+    if let Some(host) = host {
+        host.battles.push(battle);
+        if let Some(fought) = fought {
+            for (key, answer) in &mut host.answers {
+                if of(answer.fight.as_ref()) {
+                    let mut given = fought.answer.clone().unwrap_or_default();
+                    given.fight = Some(fought.fight.clone());
+                    *answer = given;
+                    leveled.push(key.find);
+                }
+            }
+        }
+    }
+    let Some(fought) = fought else {
+        return;
+    };
+    for (i, found) in finds.iter_mut().enumerate() {
+        if of(found.fight.as_ref()) {
+            found.fight = Some(fought.fight.clone());
+        } else if !leveled.contains(&i) {
+            continue;
+        }
+        found.levels.clone_from(&fought.levels);
     }
 }
 
@@ -1929,6 +1987,9 @@ pub struct Loop {
     level_asked: Option<LevelAsked>,
     /// Space's revisit asked of the host (E24 M5 T4b, [`Loop::revisit_asked`]).
     revisit_asked: Option<RevisitAsked>,
+    /// The battle asked of the host where the map hands it over (E24 M5 T6a,
+    /// [`Loop::battle_asked`]).
+    battle_asked: Option<BattleAsked>,
     /// The client's own picks in play (E24 M5 T4b, [`Hosted::picks`]); none: in turn.
     picks: Option<Picks>,
     /// The host's answers and level-ups' offers taken so far (E24 M5 T4b: a stand's).
@@ -2167,6 +2228,10 @@ enum Then {
     Lost(Option<usize>),
     /// The actions given meanwhile, then the idle step (E24 M4 T6: a draw's monster taken).
     Resume,
+    /// A monster a battle took off the map from a find told where the walk stopped (E24 M5 T6a,
+    /// [`Fight::object`]): the gain shown, the levels reached, the visit's end (the walk ended
+    /// before it), the actions given meanwhile.
+    Visited(usize),
 }
 
 /// A step onto a boat held by its dissolve (E24 M4 T2d2): the walk, the boat's tile and whether
@@ -2468,6 +2533,7 @@ impl Loop {
             answer_asked: None,
             level_asked: None,
             revisit_asked: None,
+            battle_asked: None,
             picks: start.host.as_ref().and_then(|h| h.picks).map(Picks::new),
             answers_taken: 0,
             reach_asked: None,
@@ -2714,6 +2780,39 @@ impl Loop {
             Arc::make_mut(host).revisits.push((asked.stand, told));
         }
         self.revisit_asked = None;
+    }
+
+    /// The battle asked of the host (E24 M5 T6a, design §5.33): live, one of the viewer's battles
+    /// handed over (a walk's end's plain cut, a switch's battle whole) whose result the host has
+    /// not given ([`Hosted::fought`]); the map goes on unchanged meanwhile (a switch waits for
+    /// its close). None since [`Loop::add_battle`].
+    #[must_use]
+    pub fn battle_asked(&self) -> Option<BattleAsked> {
+        self.battle_asked
+    }
+
+    /// The result of the battle `battle` given by the host (E24 M5 T6a: it hosted the battle and
+    /// laid the record out again, [`Fought`]; none where the record tells no find of it): the
+    /// finds and the host's answers whose fight it is brought up to it (their level-ups the
+    /// visit's), the switch under way for it too; the battle listed as given; the question
+    /// cleared.
+    pub fn add_battle(&mut self, battle: u32, fought: Option<&Fought>) {
+        let host = self.host.as_mut().map(Arc::make_mut);
+        fought_in(
+            Arc::make_mut(&mut self.finds).as_mut_slice(),
+            host,
+            battle,
+            fought,
+        );
+        if let (Some(switching), Some(fought)) = (&mut self.switching, fought)
+            && switching.fight.battle == battle
+        {
+            switching.fight = fought.fight.clone();
+            if let (Some(rest), Some(answer)) = (&mut switching.rest, &fought.answer) {
+                **rest = answer.clone();
+            }
+        }
+        self.battle_asked = None;
     }
 
     /// The map's heroes ([`Start::heroes`]' order) where they stand and face now, the selected
@@ -4677,6 +4776,23 @@ impl Loop {
         if !self.told.contains(&i) {
             self.told.push(i);
         }
+        // Live, a savage monster's fight told where the walk stopped (E24 M5 T6a, design §5.33,
+        // *provisional*: its zone entered, as an offer there is told): drawn as its attack, the
+        // view drawn and shown, the hero put back on its tile, then the battle's switch, as a
+        // fight from beside ([`Loop::visit_beside`]).
+        if let (Some(fight), None) = (&found.fight, found.blocks) {
+            if let Some(object) = fight.object {
+                self.drawn.attacking = Some(Attacking {
+                    object,
+                    frame: fight.attacker,
+                });
+            }
+            self.draw(t);
+            self.step_objects(t);
+            self.battle_stop(t);
+            self.switch_out(t, i, fight.clone(), None);
+            return true;
+        }
         match found.first.first() {
             Some((first, shows)) => {
                 self.gain(*shows);
@@ -5152,6 +5268,14 @@ impl Loop {
                 return self.ai_on(t).map(|_| ());
             }
             Then::Lost(monster) => self.left_map(t, queued, monster)?,
+            Then::Visited(i) => {
+                self.gain(gain);
+                // The levels its experience reaches, the visit's end after them (E24 M5 T6a).
+                if let Some(After::Visited(i)) = self.level_up(t, After::Visited(i))? {
+                    self.visited(t, i);
+                    self.resume(t, queued)?;
+                }
+            }
             Then::Resume => {
                 self.cursor.shown = true;
                 self.resume(t, queued)?;
@@ -5203,6 +5327,29 @@ impl Loop {
             Then::Cast(cast) => self.cast_end(t, &cast, queued)?,
         }
         Ok(())
+    }
+
+    /// Battle `battle` handed over at `t` (E24 M4 T5b1; a `switch`'s or a walk's end's plain cut,
+    /// [`Loop::battles`]); live, one whose result the host has not given asked of it (E24 M5 T6a,
+    /// design §5.33: [`Loop::battle_asked`]).
+    fn battle_over(&mut self, t: u32, battle: u32, switch: bool) {
+        self.battles.push((t, battle));
+        let asked = BattleAsked {
+            at: t,
+            battle,
+            switch,
+        };
+        ask_battle(self.host.as_deref(), &mut self.battle_asked, asked);
+    }
+
+    /// Whether, live, a find's fight is battle `battle` (E24 M5 T6a): its switch hands it over,
+    /// not the walk's end that began it.
+    fn fights_here(&self, battle: u32) -> bool {
+        self.host.is_some()
+            && self
+                .finds
+                .iter()
+                .any(|f| f.fight.as_ref().is_some_and(|f| f.battle == battle))
     }
 
     /// A battle's start at `t` (E24 M5 T1a, design §5.22): `adventure_hero_stop` with 0, 1
@@ -5288,9 +5435,9 @@ impl Loop {
                     shift: 0,
                     ended: false,
                 });
-                let fight = &switching.fight;
-                self.whole = Some((t, fight.winner));
-                self.battles.push((t, fight.battle));
+                let (n, winner) = (switching.fight.battle, switching.fight.winner);
+                self.whole = Some((t, winner));
+                self.battle_over(t, n, true);
                 self.rephase(t, Phase::Battle);
             }
             Phase::Battle => {}
@@ -5400,7 +5547,10 @@ impl Loop {
             experience: fight.experience,
             ..Gain::default()
         };
-        let object = self.finds.get(find).and_then(|f| f.blocks);
+        // The monster: the find's blocking object, else the fight's own (E24 M5 T6a: live, told
+        // where the walk stopped or by an answer on the way, [`Fight::object`]).
+        let beside = self.finds.get(find).and_then(|f| f.blocks);
+        let object = beside.or(fight.object);
         match (fight.after, object) {
             // The answer's boxes after the battle, its flag past them (E24 M4 T5b2: a mine's).
             (AfterBattle::Boxes, _) => {
@@ -5410,8 +5560,12 @@ impl Loop {
                 }
                 self.visited(t, find);
             }
-            (AfterBattle::Taken, Some(object)) => {
+            (AfterBattle::Taken, Some(object)) if beside.is_some() => {
                 self.take(t, object, gain, Fade::Killfade);
+            }
+            // Its walk ended before the visit (E24 M5 T6a): the visit's end after the dissolve.
+            (AfterBattle::Taken, Some(object)) => {
+                self.take_then(t, object, gain, Fade::Killfade, Then::Visited(find));
             }
             (AfterBattle::Lost | AfterBattle::Both, _) => {
                 // `battle_aftermath` 0x4AC930's way: the view shown with the hero, its objects
@@ -6806,13 +6960,21 @@ impl Loop {
         // One of the engine's walks ends whole (E24 M4 T4a2): a step it does not take is off the
         // record (a walk a message ended).
         if let (Some(moves), Some((m, k))) = (&self.moves, self.walking.take()) {
-            // The battle the walk began handed over at its end (E24 M4 T5b1, design §5.20).
+            // The battle the walk began handed over at its end (E24 M4 T5b1, design §5.20); live
+            // not one a find's switch hands over where the walk stopped (E24 M5 T6a: a monster's
+            // zone entered, [`Loop::tell_found`]).
             if let Some(n) = moves
                 .get(m)
                 .and_then(|w| w.battle)
-                .filter(|n| !self.switched.contains(n))
+                .filter(|n| !self.switched.contains(n) && !self.fights_here(*n))
             {
                 self.battles.push((t, n));
+                let asked = BattleAsked {
+                    at: t,
+                    battle: n,
+                    switch: false,
+                };
+                ask_battle(self.host.as_deref(), &mut self.battle_asked, asked);
             }
             // A walk the record stops on the way ends there (E24 M4 T6, [`Move::stops`]).
             if let Some(&left) = moves

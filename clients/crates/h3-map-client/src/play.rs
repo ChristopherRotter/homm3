@@ -408,6 +408,12 @@ impl window::Session for Viewed<'_, '_> {
         Some(seat)
     }
 
+    fn opening(&mut self) -> Option<GameSeat> {
+        (self.hot.fighting() == Some(self.player))
+            .then(|| self.hot.battle())
+            .flatten()
+    }
+
     fn serve(&mut self, seat: &mut GameSeat) -> Result<Vec<String>, String> {
         let refused = self.hot.serve(seat)?;
         Ok(refused.iter().map(|why| format!("{why:?}")).collect())

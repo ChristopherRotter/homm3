@@ -347,6 +347,9 @@ pub struct Battled {
     pub started: u32,
     /// The events from its end on.
     pub ended: Vec<GameEvent>,
+    /// The tile it is fought at (its `BattleStarted`'s: the defender's, E24 M5 T6a: a guarding
+    /// monster's whose zone the walk entered); none off the map.
+    pub tile: Option<Pos>,
 }
 
 /// One of the viewer's heroes' level-ups in a record (E24 M4 T4b1, *provisional*): its dialog's
@@ -624,12 +627,13 @@ pub fn played(loaded: &Loaded, art: &MapArt, rules: &GameRuleset) -> Result<Play
                     match event {
                         // The viewer's walk began a battle (E24 M4 T5b1, design §5.20): its end
                         // hands the battle over; an answer's, the box it closes.
-                        GameEvent::BattleStarted { .. } => {
+                        GameEvent::BattleStarted { tile: at, .. } => {
                             // The visit's battle (E24 M4 T5b2): its end's events kept below.
                             if visiting && let Some(visit) = visits.last_mut() {
                                 visit.battle = Some(Battled {
                                     started: *n,
                                     ended: Vec::new(),
+                                    tile: tile(at.x, at.y, at.level),
                                 });
                                 fighting = Some(visits.len() - 1);
                             }

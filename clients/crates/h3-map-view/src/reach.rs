@@ -36,6 +36,16 @@
 //! Since E24 M5 T4c (*provisional*; design §5.28) the screens' notices a live view shows where a
 //! screen of M6 or M7 has no decision ([`Hosted::notices`], `crate::notice`): laid out by the
 //! window for the view, not the host's answers.
+//!
+//! Since E24 M5 T6a (*provisional*; design §5.33) the viewer's battles:
+//!
+//! - **A battle asked** ([`BattleAsked`]): a battle of the viewer's walk or answer the map hands
+//!   over where the record player would (a walk's end as a plain cut, a switch where it shows the
+//!   battle whole) whose result the host has not given: the host hosts the battle in the window
+//!   (the battle client on the session's seat) and gives its result as the record laid out again
+//!   tells it ([`Fought`], `Loop::add_battle`), kept by the battle's number; a switch's battle is
+//!   then closed in the same millisecond (`timeline::Action::BattleClosed`), as the record player
+//!   closes a record's.
 
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
@@ -122,6 +132,9 @@ pub struct Hosted {
     /// the town screen, the spell book, [`Notice::SCREENS`]), each its box (style 1); one not
     /// given: nothing shown, as before.
     pub notices: Vec<(Notice, Arc<MessageBox>)>,
+    /// The battles the host hosted and gave the result of (E24 M5 T6a, design §5.33), by the
+    /// record's number of the `GameEvents` whose `BattleStarted` began each: none is asked again.
+    pub battles: Vec<u32>,
 }
 
 impl Hosted {
@@ -156,6 +169,13 @@ impl Hosted {
             .iter()
             .find(|(s, _)| *s == stand)
             .map(|&(_, told)| told)
+    }
+
+    /// Whether the battle the record's `GameEvents` numbered `battle` began was hosted and its
+    /// result given (E24 M5 T6a).
+    #[must_use]
+    pub fn fought(&self, battle: u32) -> bool {
+        self.battles.contains(&battle)
     }
 
     /// The box of `notice` (E24 M5 T4c), given.
@@ -235,6 +255,35 @@ pub struct RevisitAsked {
     pub at: u32,
     /// The stand.
     pub stand: Stand,
+}
+
+/// A battle whose result the loop lacks, asked of the host where the map hands it over (E24 M5
+/// T6a, design §5.33): the millisecond of the hand-over (a walk's end, or the switch's battle
+/// whole), the record's number of the `GameEvents` whose `BattleStarted` began it and whether a
+/// switch hands it over (closed by the host in that millisecond, `timeline::Action::BattleClosed`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BattleAsked {
+    /// The hand-over's millisecond.
+    pub at: u32,
+    /// The battle.
+    pub battle: u32,
+    /// A switch hands it over (else a plain cut).
+    pub switch: bool,
+}
+
+/// A battle's result as the host gives it (E24 M5 T6a, design §5.33): the visit's fight as the
+/// record laid out again after the battle tells it (its winner, what the map shows after it, the
+/// experience, the monster it takes off), the answer that began it as it shows after it (its
+/// boxes, its flag: a mine's, Pandora's Box's rewards) and the visit's level-ups (the engine's,
+/// open: their offers the host's).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Fought {
+    /// The fight.
+    pub fight: timeline::Fight,
+    /// The answer that began it, its fight left out; none for a walk's.
+    pub answer: Option<Answer>,
+    /// The visit's level-ups.
+    pub levels: Vec<LevelBox>,
 }
 
 /// A walk whose facts the loop lacks, asked of the host (E24 M5 T4a): the millisecond it starts

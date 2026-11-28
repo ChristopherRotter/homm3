@@ -3221,6 +3221,7 @@ fn what_a_record_s_box_tells() {
     guarded.battle = Some(engine::Battled {
         started: 2,
         ended: Vec::new(),
+        tile: None,
     });
     assert_eq!(visits::told(&guarded, [6, 0], "Rion"), None);
 }
@@ -3359,6 +3360,7 @@ fn a_record_s_visits_laid_out_each_on_its_own() {
         visits[k].battle = Some(engine::Battled {
             started: 4,
             ended: vec![won.clone()],
+            tile: None,
         });
     }
     visits[1].levels = vec![0, 1];
@@ -4280,6 +4282,7 @@ fn a_visit_s_battle_in_a_record() {
         Some(engine::Battled {
             started: 51,
             ended: vec![ended, removed],
+            tile: Some(h3_map::model::Pos { x: 11, y: 10, z: 0 }),
         })
     );
 }
@@ -4329,7 +4332,11 @@ fn what_a_record_s_battles_tell() {
         answers,
         revealed: Vec::new(),
         flag: ended.contains(&flagged).then_some(0),
-        battle: Some(engine::Battled { started: 4, ended }),
+        battle: Some(engine::Battled {
+            started: 4,
+            ended,
+            tile: None,
+        }),
     };
     let fight =
         |ended: Vec<GameEvent>| match visits::told(&visit(ended, Vec::new()), [54, 139], "Rion") {
@@ -5437,4 +5444,148 @@ fn an_unnamed_town_named_by_the_client_s_picks_in_play() {
     assert!(status.iter().all(|n| drawn(Some(5)).contains(n)));
     let loaded = engine::load(&record, &g.bytes, rules()).unwrap();
     assert_eq!(names(&start_of(&loaded)).0, drawn(None));
+}
+
+#[test]
+fn a_live_visit_s_battle_tells_its_fight_before_and_after_its_end() {
+    // E24 M5 T6a (design §5.33): live, a monster's battle the walk began is its fight before the
+    // record ends it (no result yet: the host's) and after (its result); from beside where the
+    // engine's walk stops one short, else told where it stopped (a zone entered); a record's not
+    // ended tells nothing. An answer's battle (its events hold its `BattleStarted`) is its
+    // answer's fight, by the answer's place.
+    use h3_map_view::engine::visits::{self, Laid, Told};
+    use h3_protocol::wire::game::{AdventureEvent, Answer, Consent, GameEvent, Pos};
+    use h3_protocol::wire::{Outcome, Side};
+    let at = h3_map::model::Pos { x: 5, y: 4, z: 0 };
+    let anchor = Pos {
+        x: 5,
+        y: 4,
+        level: 0,
+    };
+    let won = GameEvent::BattleEnded {
+        heroes: [Some(0), None],
+        result: Outcome::Victory {
+            side: Side::Attacker,
+        },
+    };
+    let removed = GameEvent::Adventure {
+        event: AdventureEvent::ObjectRemoved {
+            object_type: 54,
+            anchor,
+        },
+    };
+    let gone = GameEvent::Adventure {
+        event: AdventureEvent::HeroRemoved {
+            hero: 0,
+            pos: anchor,
+        },
+    };
+    let started = GameEvent::BattleStarted {
+        heroes: [Some(0), None],
+        tile: anchor,
+    };
+    let visit = |ended: Vec<GameEvent>, answers: Vec<(Answer, Vec<GameEvent>)>| engine::Visit {
+        at,
+        walk: 0,
+        hero: 0,
+        hero_type: None,
+        held: engine::Held::default(),
+        levels: Vec::new(),
+        events: Vec::new(),
+        answers,
+        revealed: Vec::new(),
+        flag: None,
+        battle: Some(engine::Battled {
+            started: 4,
+            ended,
+            tile: Some(at),
+        }),
+    };
+    let text = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../map/assets/base.toml"),
+    )
+    .unwrap();
+    let tables = tables::load(&[tables::parse(&text).unwrap()], "base").unwrap();
+    let lay = |v: &engine::Visit, open: Option<&[_]>, beside| {
+        visits::lay(
+            core::slice::from_ref(v),
+            open,
+            |v| Some(placed(v, 3, [54, 139], beside)),
+            &tables.map.finds,
+            |_| String::new(),
+        )
+    };
+    let fight = |winner, taken, lost| Told::Fight {
+        battle: 4,
+        winner,
+        taken,
+        lost,
+        experience: 0,
+    };
+    // Not ended: live its fight with no result, from beside or where the walk stopped.
+    let open = visit(Vec::new(), Vec::new());
+    for beside in [true, false] {
+        let [Laid { told, blocks, .. }] = &lay(&open, Some(&[]), beside)[..] else {
+            panic!("its fight");
+        };
+        assert_eq!((told, *blocks), (&fight(-1, false, false), beside));
+    }
+    assert!(lay(&open, None, true).is_empty());
+    // Ended: its result, live and a record's alike (a record's from beside).
+    let ended = visit(vec![won.clone(), removed.clone()], Vec::new());
+    let [Laid { told, .. }] = &lay(&ended, Some(&[]), false)[..] else {
+        panic!("its fight");
+    };
+    assert_eq!(told, &fight(0, true, false));
+    let [Laid { blocks: true, .. }] = &lay(&ended, None, false)[..] else {
+        panic!("a record's fight from beside");
+    };
+    // A battle an answer began is its answer's, not the walk's.
+    let decline = Answer::Offer {
+        consent: Consent::Decline,
+    };
+    let answered = visit(
+        vec![won, gone],
+        vec![(decline, Vec::new()), (decline, vec![started])],
+    );
+    assert_eq!(
+        visits::answer_fight(&answered, 1),
+        Some(fight(0, false, true))
+    );
+    assert_eq!(visits::answer_fight(&answered, 0), None);
+    assert_eq!(visits::answer_fight(&answered, 2), None);
+    let not_yet = engine::Visit {
+        battle: None,
+        ..answered.clone()
+    };
+    assert_eq!(visits::answer_fight(&not_yet, 1), None);
+    let unended = visit(
+        Vec::new(),
+        vec![(
+            decline,
+            vec![GameEvent::BattleStarted {
+                heroes: [Some(0), None],
+                tile: anchor,
+            }],
+        )],
+    );
+    assert_eq!(
+        visits::answer_fight(&unended, 0),
+        Some(fight(-1, false, false))
+    );
+    // A visit with answers is no walk's fight; another class's none.
+    let other = visit(Vec::new(), Vec::new());
+    let mine = visits::lay(
+        core::slice::from_ref(&other),
+        Some(&[]),
+        |v| Some(placed(v, 3, [53, 7], false)),
+        &tables.map.finds,
+        |_| String::new(),
+    );
+    assert!(mine.is_empty());
+    assert!(
+        lay(&unended, Some(&[]), false)
+            .iter()
+            .all(|l| !matches!(l.told, Told::Fight { .. }))
+    );
 }
