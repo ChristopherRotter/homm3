@@ -178,8 +178,8 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 24);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 171));
+    assert_eq!(ACTION_ENCODING_VERSION, 25);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 173));
     // E09 T59a (v24): a town's two war machines' purchases by their buildings' places, then its
     // boat, after the artifact sale.
     assert_eq!((WAR_MACHINE, WAR_MACHINES, TOWN_BOAT), (168, 2, 170));
@@ -194,6 +194,13 @@ fn tiles_and_actions_encode_as_documented() {
             Action::map(169, 9),
             Action::map(170, 9)
         ]
+    );
+    // E09 T59b1 (v25): a town's University opened for its visitor, then its garrison hero, after
+    // the boat.
+    assert_eq!((TOWN_UNIVERSITY, TOWN_STUDENTS), (171, 2));
+    assert_eq!(
+        [Action::town_university(9, 0), Action::town_university(9, 1)],
+        [Action::map(171, 9), Action::map(172, 9)]
     );
     // E09 T58b (v23): a town's artifact sale after the window, the worn positions 0 to 13, then
     // the backpack's 0 to 7, each by its place, none past them, whatever the resource.
@@ -681,7 +688,8 @@ fn check_build_boat(
 /// openings (E09 T49a2), [`SPELL_BOOK`]'s with the listed spell books' purchases (E09 T49b),
 /// [`TOWN_MARKET`]'s with the listed market windows (E09 T58a2), a [`WAR_MACHINE`] entry's with the
 /// listed purchases of its building's place ([`machine_place`]) and [`TOWN_BOAT`]'s with the
-/// listed boats (E09 T59a).
+/// listed boats (E09 T59a), a [`TOWN_UNIVERSITY`] entry's with the listed openings for its
+/// student, the town's visitor or garrison hero (E09 T59b1).
 fn check_town_heroes(
     env: &AdventureEnv,
     (player, entry): (PlayerId, usize),
@@ -718,6 +726,15 @@ fn check_town_heroes(
             }
             GameCommand::Town(TownCommand::BuildBoat { town }) if entry == TOWN_BOAT => {
                 town_tile(state, town)
+            }
+            GameCommand::Town(TownCommand::University { town, hero }) => {
+                let adventure = state.adventure();
+                let students = [
+                    adventure.town_visitor(town),
+                    adventure.town_hero(town).map(|on| on.id),
+                ];
+                let k = students.iter().position(|&s| s == Some(hero))?;
+                (TOWN_UNIVERSITY + k == entry).then(|| town_tile(state, town))?
             }
             _ => None,
         })
