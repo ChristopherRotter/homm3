@@ -5637,4 +5637,12 @@ test, the boxes' 15 s: survey `E16-timer-survey.md` §3 to §5, not repeated.
   (`GameClock`'s `turn`); the host's clock fed to the session is held from a turn's passing (End
   Turn or its time) to the next view's timer start after its cover (`play::Kept`, MCL-Q76), so
   the session and the view agree on the turn's end within the window's millisecond; the chat
-  carried into the next human's view by each line's host time (MCL-Q70, built as the original).
+  carried into the next human's view by each line's host time (MCL-Q70, built as the original);
+  an End Turn the loop asks ahead of the clock (the expiry's box's own close, run ahead to) played
+  once the clock reaches it. Checked under Xvfb (`play` on `seq-seat`'s map, `--duration 0`,
+  idle after Red's cover's OK): "30 seconds", the nine every-second lines, the expiry's box at
+  65 878 ms and its own close at 80 878, Blue's cover with Red's lines over it, Blue's clock held
+  under its cover; every frame read back exact, as afresh and as the headless loop's (the expiry
+  kept in `TurnClock::expiry` for it). *Differs:* play's next view opens with two draws in its 0
+  (its first and its cover's), so a line more leaves there than the original's one (seven on
+  Blue's cover after the box's 15 s, the original's eight).

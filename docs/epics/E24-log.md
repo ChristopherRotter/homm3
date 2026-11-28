@@ -4006,3 +4006,26 @@ three's behaviour. **Seen:** no tab after the warning's text; the every-second w
 millisecond; Blue's start ageing the chat four times in its millisecond; the start after an OK
 2 s into the cover waiting for `NewWeek.wav`'s end (§5.31's reading). No new question (MCL-Q70
 noted with the recordings).
+
+### M5 T5, part five — the clock built (2026-11-28)
+
+A worker (the user away: *provisional*). **Built** (design §5.32's "Built"): `h3_map_view::clock`
+(the schedule, the warnings' texts through the catalogue's `map.clock.*` keys, the f32's `%0.1f`
+in integers, the screen chat) and `timeline::clock` (the timer started at each human's start and
+stopped at each turn's end, the 60-ms poll, the chat aged at each view's draw, the expiry's box at
+the manager's first message once the time is out, a box's 15-s deadline and the at-the-end close
+by its style); `Start::clock` (`TurnClock`), `Draw::chat` drawn as the dialog's text 37 after the
+view; `[map.clock]` in the tables; h3-ui's `%0.1f` (common, additive). **The five `seat-clock*`**
+moved into `sequences.toml` (`to-record.toml` removed): every frame exact (212, both part four's
+recordings alike) and every sample as recorded (the step sound's loop compared since, loops 0);
+`drawn` every other situation and sequence the same, the five recorded. **Play:** the session's
+system actor's end of a turn shown as the expiry's box (its box open closed as the session
+answered it), the hand-over after its close; the warnings from the loop's clock placed by the
+session's time left; the host's clock held from a turn's passing to the next view's timer start
+(MCL-Q76); checked under Xvfb on `seq-seat`'s map with a minute's turns (the warnings, the box at
+65 878 ms and its close 15 s on, Blue's cover with Red's lines; every frame read back exact, as
+afresh and as the headless loop's). **Fixed on the way:** an End Turn the loop asked ahead of the
+window's clock was played at once (the expiry's box left 15 s early). **Gates:** `h3-map-view`'s
+coverage 0 lines, 0 regions missed (`H3_INSTALL` unset); clippy; `check.sh --no-coverage`. New:
+MCL-Q76 (the hot seat's timer from the turn's passing), MCL-Q77 (a warning silent under a walk's
+step sound).

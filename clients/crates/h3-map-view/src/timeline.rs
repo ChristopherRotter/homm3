@@ -1000,6 +1000,9 @@ pub struct TurnClock {
     /// test of the time since the start off, and no box's deadline but the expiry's own (the
     /// session's model, design §5.32's "Built").
     pub hosted: bool,
+    /// The host's expiry known from the start (the window's headless check of its own run, as a
+    /// [`Loop::expire`] at that millisecond).
+    pub expiry: Option<u32>,
 }
 
 /// One of the engine's walks (E24 M4 T4a2, design §5.13, *provisional*): a `MoveHero`'s tiles
@@ -2493,7 +2496,7 @@ impl Loop {
             chat: Chat::of(start.clock.as_ref().map_or(&[][..], |c| &c.chat)),
             warned: None,
             chat_sample: None,
-            expired_at: None,
+            expired_at: start.clock.as_ref().and_then(|c| c.expiry),
             left_taken: false,
             rules,
         };
@@ -2851,8 +2854,9 @@ impl Loop {
     /// then), a walk's wait or its end, else the idle message.
     fn turn_of_loop(&mut self, t: u32) -> Result<(), Unplayable> {
         // A box timed out by the turn's clock (E24 M5 T5 part five, design §5.32).
-        if self.box_timeout(t)? {
-            return Ok(());
+        match self.box_timeout(t) {
+            Ok(false) => {}
+            done => return done.map(|_| ()),
         }
         match self.ai_on(t)? {
             Some(true) => self.idle_message(t),

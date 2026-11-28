@@ -1584,6 +1584,7 @@ impl<'a> Painter<'a> {
             sample,
             expired: self.expiry_box(self.live.viewer)?,
             hosted: false,
+            expiry: None,
         })
     }
 

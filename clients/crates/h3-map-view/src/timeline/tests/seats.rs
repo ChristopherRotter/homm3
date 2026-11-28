@@ -328,6 +328,7 @@ pub(super) fn seated(
             sample: Some(TIMEOVER),
             expired: laid("Out.", Style::Ok),
             hosted: false,
+            expiry: None,
         });
     (
         start,

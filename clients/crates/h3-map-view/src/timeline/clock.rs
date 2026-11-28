@@ -159,8 +159,7 @@ impl Loop {
                 return Ok(self.expires(t));
             }
             if boxed.deadline.is_some_and(|d| t >= d) {
-                self.close_box(t, timed_out(&boxed.open))?;
-                return Ok(true);
+                return self.close_box(t, timed_out(&boxed.open)).map(|()| true);
             }
             return Ok(false);
         }
@@ -176,17 +175,15 @@ impl Loop {
             return Ok(false);
         }
         let id = timed_out(&boxed.open);
-        self.close_box(t, id)?;
-        Ok(true)
+        self.close_box(t, id).map(|()| true)
     }
 
     /// The open box and those waiting gone, nothing they do done (play: the host's session
     /// answered them at the turn's end).
     fn dismiss_box(&mut self) {
-        if let Some(boxed) = self.boxed.take() {
-            self.drawn.message = None;
-            [self.cursor.kind, self.cursor.frame] = boxed.cursor;
-        }
+        let before = [self.cursor.kind, self.cursor.frame];
+        [self.cursor.kind, self.cursor.frame] = self.boxed.take().map_or(before, |b| b.cursor);
+        self.drawn.message = None;
         self.waiting.clear();
     }
 

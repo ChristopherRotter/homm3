@@ -118,8 +118,9 @@ pub const fn next(left: u32, limit: u32) -> u32 {
 }
 
 /// `left` ÷ 60 000 as the executable prints it (GENRLTXT 630's `%0.1f` of an f32), in tenths:
-/// the quotient's nearest f32 (ties to even), then its exact value rounded half away from zero to a
-/// tenth (the C library's), in integers (no float in the crate).
+/// the quotient's nearest f32, then its exact value rounded half away from zero to a tenth (the C
+/// library's), in integers (no float in the crate). The quotient never lies halfway between two
+/// f32s: 60 000 holds 2^5, the mantissa's shift 7 or more.
 #[must_use]
 pub fn tenths(left: u32) -> u32 {
     const MINUTE: u128 = 60_000;
@@ -134,11 +135,7 @@ pub fn tenths(left: u32) -> u32 {
         s += 1;
     }
     let (m, rem) = ((n << s) / MINUTE, (n << s) % MINUTE);
-    let m = if rem * 2 > MINUTE || (rem * 2 == MINUTE && m % 2 == 1) {
-        m + 1
-    } else {
-        m
-    };
+    let m = if rem * 2 > MINUTE { m + 1 } else { m };
     // Ten times m / 2^s, half up (s ≥ 7: a quotient below 2^17).
     let half = 1_u128 << s.saturating_sub(1);
     u32::try_from((10 * m + half) >> s).unwrap_or(u32::MAX)

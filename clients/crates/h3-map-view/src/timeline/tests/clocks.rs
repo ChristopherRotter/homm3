@@ -62,6 +62,7 @@ fn reminded() -> Start {
 fn the_chat_holds_the_last_warnings_and_the_lines_drawn() {
     let (start, actions, ..) = seated("seat-clock");
     let l = run_to(&start, &actions, 58_320);
+    assert_eq!(l.timer_at(), Some(0));
     let chat = l.chat();
     assert_eq!(chat.len(), 9);
     assert_eq!(chat[0].warning, Warning::Seconds(9));
@@ -118,10 +119,15 @@ fn the_host_ends_the_turn_and_closes_the_box_open() {
     assert!(l.boxed.as_ref().is_some_and(|b| b.told == Told::Expired));
     run_on(&mut l, 61_001, 76_000);
     assert_eq!(l.state(76_000).shown, Some(1));
-    // With no box open, at the host's expiry.
+    // With no box open, at the host's expiry; or known from the start.
     let mut l = run_to(&start, &BTreeMap::new(), 40_000);
     l.expire(40_001);
     run_on(&mut l, 40_001, 40_001);
+    assert!(l.boxed.as_ref().is_some_and(|b| b.told == Told::Expired));
+    if let Some(clock) = &mut start.clock {
+        clock.expiry = Some(40_001);
+    }
+    let l = run_to(&start, &BTreeMap::new(), 40_001);
     assert!(l.boxed.as_ref().is_some_and(|b| b.told == Told::Expired));
 }
 
@@ -160,12 +166,38 @@ fn a_warning_while_the_last_one_s_sound_plays_is_silent() {
 
 #[test]
 fn a_message_a_walk_kept_finds_the_turn_s_end() {
-    // `seat-clock-walk` with a move kept by the walk: taken at its end (60 500), it opens the
-    // expiry's box.
+    // `seat-clock-walk` with a move kept by the walk behind a hotkey's down (taken, not handled:
+    // the last step ends it): taken at its end (60 500), it opens the expiry's box.
     let (start, mut actions, ..) = seated("seat-clock-walk");
-    actions.insert(59_000, vec![Action::Pointer([710, 310])]);
+    actions.insert(
+        60_400,
+        vec![Action::Key(Hotkey::NextHero), Action::Pointer([710, 310])],
+    );
     let l = run_to(&start, &actions, 60_500);
     assert!(l.boxed.as_ref().is_some_and(|b| b.told == Told::Expired));
+}
+
+#[test]
+fn the_chat_carried_over_keeps_its_lines_drawn() {
+    // Play's next view (MCL-Q70): a line drawn before its 0 kept with its time, one not drawn
+    // yet stamped at its first draw.
+    let (mut start, ..) = seated("seat-clock");
+    if let Some(clock) = &mut start.clock {
+        clock.chat = vec![
+            ChatLine {
+                warning: Warning::Minute,
+                drawn: Some(-5_000),
+            },
+            ChatLine {
+                warning: Warning::Seconds(9),
+                drawn: None,
+            },
+        ];
+    }
+    let l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    let drawn: Vec<Option<i64>> = l.chat().iter().map(|c| c.drawn).collect();
+    assert_eq!(drawn, [Some(-5_000), Some(0)]);
+    assert_eq!(l.state(0).chat, Some(vec![-5_000, 0]));
 }
 
 #[test]
@@ -175,4 +207,19 @@ fn a_box_s_timing_out_takes_its_no_its_cancel_or_its_ok() {
     assert_eq!(timed_out(&open(Style::OkCancel)), boxes::NO);
     assert_eq!(timed_out(&open(Style::ChooseCancel)), boxes::CANCEL);
     assert_eq!(timed_out(&open(Style::Ok)), boxes::OK);
+}
+
+#[test]
+fn the_replay_takes_the_host_s_expiry() {
+    let (mut start, ..) = seated("seat-clock");
+    if let Some(clock) = &mut start.clock {
+        clock.hosted = true;
+    }
+    let mut replay =
+        crate::replay::Replay::new(rules(Bugs::Original), &start, BTreeMap::new()).unwrap();
+    assert!(replay.at(40_000).unwrap().drawn.message.is_none());
+    assert_eq!(replay.timer_at(), Some(0));
+    assert_eq!(replay.chat().len(), 1);
+    replay.expire(40_001);
+    assert!(replay.at(40_001).unwrap().drawn.message.is_some());
 }

@@ -1039,6 +1039,10 @@ pub(crate) fn window(
                 .ms(now)
                 .max(shown.as_ref().map_or(0, |f| f.change.t).saturating_add(1));
             replay.expire(t);
+            // Kept for the headless check, as the host's other facts.
+            if let Some(turn) = start.clock.as_mut() {
+                turn.expiry = Some(t);
+            }
             expired = true;
             renew = true;
             lines.push(format!("{t} ms: the turn's time ran out: the expiry's box"));
@@ -1371,8 +1375,11 @@ pub(crate) fn window(
         // End Turn's change asked for the turns after it (E24 M5 T3b): the session plays the End
         // Turn; the viewer's next turn its next day in this view (its turns' starts from its
         // record, the change made again from before it), another's the view left.
+        // Not before the clock reaches it (E24 M5 T5 part five: the expiry's box closing itself
+        // 15 s on, which the loop ran ahead to).
         if let Some(s) = session.as_deref_mut()
             && let Some(t) = replay.turns_asked()
+            && t <= clock.ms(win.ticks_ns())
         {
             if !s.end_turn(host_ms(win))? {
                 // The chat as the view leaves it (E24 M5 T5 part five, MCL-Q70).
