@@ -20,8 +20,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `-13` (Visions' reach), `-2` (the
   victory conditions), `-16` (E10's loss condition), `-17` (increment 8), `-18` (E13), `-21`
   (E10's teams).
-- **Open pull requests:** T59b1's (`town/e09-t59b1`, `cross-lane`; the number in the newest
-  session entry); watch it until it merges (T59a's #1221 merged 2026-11-28).
+- **Open pull requests:** T59b1's **#1224** (`town/e09-t59b1`, `cross-lane`); watch it until it
+  merges (T59a's #1221 merged 2026-11-28).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -55,7 +55,7 @@ for a seam in big tasks: T59b cut into T59b1 the University and T59b2 the Transf
 228, as recommended), the map client's two test literals consented. The rule, the place
 (`UniversityPlace`, game state hash v42, the 130 goldens re-recorded), the wire v88, the word
 format v30, the env's two entries v25, the plans. `legal-towns-36` +0.45 % on `master`'s games
-(no University on the town map). No sub-agents. PR and CI: below.
+(no University on the town map). No sub-agents. PR **#1224**, CI running at the session's end.
 
 ### 2026-11-27 — T59a: the war machines and the boat (`cross-lane`)
 
