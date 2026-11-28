@@ -206,7 +206,9 @@ clock and the battles as the original's.
   2026-11-26 in two sessions: the log's "M5 T4b, part one" and "part two", design §5.27;
   `h3_map_view::picks`, MCL-Q59, MCL-Q60), T4c the M6/M7 notices, the facts audit and T4's acceptance game (kept whole by the user at its
   start; **done** 2026-11-27 in four parts: the log's "M5 T4c, part one" to "part four", design
-  §5.28 to §5.30; `h3_map_view::notice`, `MCL-STUB-7`, MCL-Q61 to Q69); T5, the hand-over and the clock; T6, the battles in play; T7, a whole game;
+  §5.28 to §5.30; `h3_map_view::notice`, `MCL-STUB-7`, MCL-Q61 to Q69); T5, the hand-over and the clock (kept whole by the user at its start; **done** 2026-11-28 in
+  five parts: the log's "M5 T5, parts one and two" to "part five", design §5.31, §5.32; the
+  hot-seat recordings `seat-*`, `h3_map_view::clock`, MCL-Q70 to Q77, `MCL-STUB-8`); T6, the battles in play; T7, a whole game;
   T8, M5's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
   hot-seat game on a shipped map played from the shell's Begin to a day limit, headless by

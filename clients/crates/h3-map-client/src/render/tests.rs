@@ -301,3 +301,49 @@ fn a_record_s_start_is_built_on_the_file_s_art() {
         engine::differences(&start, &theirs).contains(&format!("object {dwelling}: `defs` differ"))
     );
 }
+
+/// A `[[seat]]` table (E24 M5 T5) of the 36-tile map, its kingdom and explored rows, with `rest`.
+fn seat_table(rest: &str) -> String {
+    let rows: Vec<String> = (0..36).map(|_| format!("\"{}\"", "0".repeat(36))).collect();
+    format!(
+        "[[seat]]\nat = 160\nshown = 1\ncurrent = 1\nhumans = 2\nkingdom = {{ heroes = [], \
+         towns = [], selected = [0, 0], tops = [0, 0], quests = 0, resources = [0, 0, 0, 0, \
+         0, 0, 5], date = [1, 1, 2] }}\nexplored = [{}]\n{rest}",
+        rows.join(", ")
+    )
+}
+
+#[test]
+fn a_hot_seat_s_seats_and_its_start_s_frames() {
+    // E24 M5 T5 part three: a hand-over's `[[seat]]` (its view's colour, kingdom and explored
+    // tiles, its selection's window maybe), refused when its colours disagree or a key is
+    // wrong; a hot seat's start's `frames` −1 taken modulo 2³².
+    let (_, live) = read(&seat_table("selection = { kind = 1, frame = 0 }\n")).unwrap();
+    let seat = &live.seats[0];
+    assert_eq!((seat.at, seat.shown, seat.humans), (160, 1, 2));
+    assert_eq!(seat.kingdom.resources[6], 5);
+    assert!(!seat.explored.explored(0, 0, 0));
+    assert!(seat.selection.is_some());
+    assert!(
+        read(&seat_table("")).unwrap().1.seats[0]
+            .selection
+            .is_none()
+    );
+    for wrong in [
+        seat_table("").replace("current = 1", "current = 0"),
+        seat_table("").replace("shown = 1", "shown = 9"),
+        seat_table("selection = 3\n"),
+        seat_table("").replace("explored = [", "explored = [\"0\", "),
+    ] {
+        assert!(
+            read(&wrong).unwrap_err().starts_with("`[[seat]]` is not"),
+            "{wrong}"
+        );
+    }
+    assert_eq!(read("frames = -1\n").unwrap().1.moment.frames, u32::MAX);
+    assert_eq!(read("frames = 7\n").unwrap().1.moment.frames, 7);
+    assert_eq!(
+        read("frames = -2\n").unwrap_err(),
+        "`frames` is not a count (or -1)"
+    );
+}

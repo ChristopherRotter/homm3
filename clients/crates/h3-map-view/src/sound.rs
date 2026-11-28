@@ -469,6 +469,13 @@ pub enum Cue {
     /// A sound played once on a channel of its own (`play_sound_async` 0x59A590, category 3; E24
     /// M3 T5b2: the day's status window's `newday.wav`, design §4.9).
     Effect(String),
+    /// The music faded out, its place kept (`music_fade_out` 0x59B010, a tenth of the volume less
+    /// every 100 ms; E24 M5 T5, design §5.31: a hot seat's cover): the next track asked fades in
+    /// where its fade began.
+    Fade,
+    /// A hot seat's cover's sound (`play_sound_file` 0x59A470, category 2; E24 M5 T5:
+    /// `NewWeek.wav`), on a channel of its own beside the effects'.
+    Cover(String),
 }
 
 /// An ambient slot (the manager's +0x228 entries): a sound and its distance.
@@ -533,6 +540,26 @@ impl Sound {
         if let Some(name) = self.rules.button.clone() {
             self.effect(t, &name);
         }
+    }
+
+    /// A hot seat's cover (E24 M5 T5, design §5.31): the music faded, its terrain and track
+    /// forgotten (the start asks its own again).
+    pub fn fade(&mut self, t: u32) {
+        self.terrain = None;
+        self.asked = None;
+        self.cues.push((t, Cue::Fade));
+    }
+
+    /// A hot seat's cover's sound `name` (E24 M5 T5).
+    pub fn cover(&mut self, t: u32, name: &str) {
+        self.cues.push((t, Cue::Cover(name.into())));
+    }
+
+    /// Whether a step sound loops (`step_sound_playing` 0x6968E0; E24 M5 T5 part five: the
+    /// sample a warning's sound shares, design §5.32).
+    #[must_use]
+    pub const fn stepping(&self) -> bool {
+        self.step.is_some()
     }
 
     /// The cues given since the last take, with their milliseconds, in order.
@@ -773,6 +800,8 @@ pub fn line(t: u32, cue: &Cue) -> String {
         Cue::LoopStop { slot } => format!("{t} loop-stop {slot}"),
         Cue::LoopVolume { slot, volume } => format!("{t} loop-volume {slot} {volume}"),
         Cue::Effect(name) => format!("{t} effect {name}"),
+        Cue::Fade => format!("{t} fade"),
+        Cue::Cover(name) => format!("{t} cover {name}"),
     }
 }
 

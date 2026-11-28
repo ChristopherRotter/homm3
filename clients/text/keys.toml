@@ -970,6 +970,43 @@ original = [{ at = "GENRLTXT:392" }]
 id = "map.turn.end"
 original = [{ at = "GENRLTXT:56" }]
 
+# A hot seat's hand-over (E24 M5 T5; docs/epics/E24-design.md §5.31): the cover's box with the
+# human's hot-seat name (`next_player_turn` 0x4C7807, `adventure_manager_start` 0x40769D).
+[[key]]
+id = "map.turn.hand-over"
+args = { player = "text" }
+original = [{ at = "GENRLTXT:14", printf = ["player"] }]
+
+# A timed turn's clock (E24 M5 T5 part five; docs/epics/E24-design.md §5.32): a warning's chat line
+# is the system's mark and the warning joined with nothing between (`chat_system_message` 0x553960,
+# "%s%s"); the warning by the time left (`turn_timer_poll` 0x557AF0): whole seconds (`count`), a
+# minute, or minutes to a tenth (`minutes`, written by the caller: "%0.1f"). The expiry's box
+# (0x4087F3).
+[[key]]
+id = "map.clock.system"
+original = [{ at = "GENRLTXT:54" }]
+
+[[key]]
+id = "map.clock.seconds"
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:627" },
+    { form = "other", at = "GENRLTXT:628", printf = ["count"] },
+]
+
+[[key]]
+id = "map.clock.minute"
+original = [{ at = "GENRLTXT:629" }]
+
+[[key]]
+id = "map.clock.minutes"
+args = { minutes = "text" }
+original = [{ at = "GENRLTXT:630", printf = ["minutes"] }]
+
+[[key]]
+id = "map.clock.expired"
+original = [{ at = "GENRLTXT:202" }]
+
 [[key]]
 id = "map.turn.month"
 args = { name = "text" }

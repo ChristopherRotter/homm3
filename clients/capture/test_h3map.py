@@ -141,11 +141,152 @@ class Lists(unittest.TestCase):
         self.assertEqual(mem.bytes[record + h3mem.SECONDARY + 21], 2)
 
 
-class KeptLiveParts(unittest.TestCase):
-    """R6-7: `frames` keeps a live part in `timelines/` only for a sequence of `sequences.toml`
-    that is not a sound run."""
+class HotSeat(unittest.TestCase):
+    """E24 M5 T5 (design §5.31): a sequence's hot seat, its start and its timeline's lines."""
 
-    def test_a_scratch_file_s_and_a_sound_run_s_stay_with_the_run(self):
+    def test_a_sequence_s_hot_seat_is_checked(self):
+        entry = {"id": "s", "hot_seat": ["Red", "Blue"]}
+        self.assertEqual(h3map.hot_seat_of(entry),
+                         {"names": ["Red", "Blue"], "duration": 10, "start": False})
+        self.assertEqual(h3map.hot_seat_of({**entry, "duration": 0, "start": True}),
+                         {"names": ["Red", "Blue"], "duration": 0, "start": True})
+        self.assertIsNone(h3map.hot_seat_of({"id": "s"}))
+        for bad in [{"id": "s", "duration": 3}, {"id": "s", "start": True},
+                    {**entry, "hot_seat": ["Red"]}, {**entry, "hot_seat": ["Red", "Pale Blue"]},
+                    {**entry, "hot_seat": "Red"}, {**entry, "duration": 11},
+                    {**entry, "duration": True}, {**entry, "start": 1},
+                    {**entry, "start": True, "status": [1, 100]}]:
+            with self.assertRaises(ValueError, msg=bad):
+                h3map.hot_seat_of(bad)
+        options, inputs = h3map.sequence_inputs({**entry, "situation": "x", "ms": 5,
+                                                 "duration": 4, "start": False})
+        self.assertEqual((options, inputs), ([], {}))
+
+    def setup_calls(self, **kwargs):
+        calls = []
+        game = mock.Mock(proc=None)
+        game.wait.side_effect = lambda name, *_: calls.append(("wait", name))
+        game.click.side_effect = lambda x, y, *_: calls.append(("click", x, y))
+        game.seed.side_effect = lambda value: calls.append(("seed", value))
+        with mock.patch.object(h3drive, "run"), \
+                mock.patch.object(h3drive, "gold_bonus",
+                                  side_effect=lambda g, players: calls.append(("gold", players))), \
+                mock.patch.object(h3map.h3adv, "dismiss"):
+            h3map.h3adv.to_hot_seat(game, ["Red", "Blue"], **kwargs)
+        return calls[calls.index(("wait", "scenario_list")) + 2:]
+
+    def test_the_duration_and_the_seed_are_set_before_begin(self):
+        left, begin = ("click", 66, 565), ("click", 497, 553)
+        self.assertEqual(self.setup_calls(duration=7, seed=5),
+                         [("click", 513, 518), left, left, left, ("seed", 5), begin,
+                          ("wait", "turn_dialog")])
+        # The bonus opened the advanced options already; a number of rows, as to_scenario's.
+        self.assertEqual(self.setup_calls(gold=2, duration=9),
+                         [("gold", 2), left, begin, ("wait", "turn_dialog")])
+        self.assertEqual(self.setup_calls(gold=True, duration=10), [("gold", 2), begin,
+                                                                    ("wait", "turn_dialog")])
+        self.assertEqual(self.setup_calls(duration=10, begin=False), [])
+        with self.assertRaises(ValueError):
+            self.setup_calls(duration=11)
+
+    def test_started_hands_the_hot_seat_over_and_lets_its_sounds_play_out(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(h3drive, "Game"), \
+                mock.patch.object(h3drive, "sounds_settled") as settled, \
+                mock.patch.object(h3map.h3adv, "to_hot_seat") as seat:
+            h3map.started(Path(tmp) / "map.h3m", Path(tmp), seed=3, sound=True, gold=2,
+                          hot_seat={"names": ["A", "B"], "duration": 0})
+            self.assertEqual(seat.call_args.kwargs,
+                             {"gold": 2, "seed": 3, "duration": 0, "begin": True})
+            settled.assert_called_once()
+            h3map.started(Path(tmp) / "map.h3m", Path(tmp), sound=True,
+                          hot_seat={"names": ["A", "B"], "begin": False})
+            settled.assert_called_once()
+
+    def test_the_humans_and_the_duration_begun_are_checked(self):
+        mem = mock.Mock()
+        mem.is_human.side_effect = lambda c: c < 2
+        mem.begin_humans.return_value = 2
+        mem.turn_duration.return_value = 10
+        sit = {"heroes": [{"at": [1, 1]}, {"at": [2, 2], "owner": 2}, {"at": [3, 3], "owner": 1}]}
+        h3map.check_hot_seat(mem, sit, {"names": ["A", "B"]})
+        with self.assertRaisesRegex(RuntimeError, "duration"):
+            h3map.check_hot_seat(mem, sit, {"names": ["A", "B"], "duration": 0})
+        with self.assertRaisesRegex(RuntimeError, "humans"):
+            h3map.check_hot_seat(mem, sit, {"names": ["A", "B", "C"]})
+        with self.assertRaisesRegex(ValueError, "colours"):
+            h3map.check_hot_seat(mem, {"heroes": sit["heroes"][:2]}, {"names": list("ABC")})
+
+    def test_a_start_stages_nothing(self):
+        self.assertEqual(h3map.start_staged({"view": [0, 0, 0], "explored": "start",
+                                             "heroes": [{"at": [1, 1], "class": 2}]}), [])
+        self.assertEqual(h3map.start_staged({
+            "date": [1, 1, 7], "heroes": [{"at": [1, 1], "points": 3}],
+            "boats": [{"at": [2, 2], "facing": 1}], "towns": [{"at": [3, 3], "built": True}]}),
+            ["built", "date", "facing", "points"])
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "s.toml").write_text('view = [0, 0, 0]\nselect = { hero = [1, 1] }\n')
+            with mock.patch.object(h3map, "started") as started, \
+                    self.assertRaisesRegex(ValueError, "stages nothing"):
+                h3map.stage_start(Path(tmp) / "s.toml", Path(tmp) / "out", hot_seat={})
+        started.assert_not_called()
+
+    def test_the_timeline_s_hot_seat_lines_where_they_change(self):
+        base = {"view": [0, 0, 0], "objects": [0], "cycles": [0, 0], "cursor": [1, 0, 700, 300],
+                "arrows": []}
+        seat = lambda t, shown, covered, timer: {  # noqa: E731
+            **base, "t": t, "shown": [shown], "covered": [covered], "timer": timer}
+        lines = h3map.map_timeline([seat(0, 0, 0, [1, 1]), seat(1, 0, 0, [1, 0]),
+                                    seat(2, 1, 1, [0, 0]), seat(3, 1, 0, [0, 0])])
+        self.assertEqual([line for line in lines if line.split()[1] in
+                          ("shown", "covered", "timer")],
+                         ["1 timer 1 0", "2 shown 1", "2 covered 1", "2 timer 0 0",
+                          "3 covered 0"])
+        self.assertFalse([line for line in h3map.map_timeline([{**base, "t": 0}])
+                          if line.split()[1] in ("shown", "covered", "timer")])
+
+    def test_the_clock_s_lines(self):
+        # E24 M5 T5 part four (design §5.32): a warning in its millisecond, the chat where it
+        # changes (never at 0).
+        base = {"view": [0, 0, 0], "objects": [0], "cycles": [0, 0], "cursor": [1, 0, 700, 300],
+                "arrows": []}
+        lines = h3map.map_timeline([
+            {**base, "t": 0, "chat": [0]},
+            {**base, "t": 30001, "chat": [1, -1], "warning": [20000]},
+            {**base, "t": 30060, "chat": [1, 30060]},
+            {**base, "t": 50040, "chat": [0]}])
+        self.assertEqual([line for line in lines if line.split()[1] in ("chat", "warning")],
+                         ["30001 chat 1 -1", "30001 warning 20000", "30060 chat 1 30060",
+                          "50040 chat 0"])
+
+    def test_the_chat_s_new_lines(self):
+        a, b, c = ["a", 1], ["b", 1], ["c", 0]
+        self.assertEqual(h3map.chat_added([], [a]), [a])
+        self.assertEqual(h3map.chat_added([a, b], [b, c]), [c])
+        self.assertEqual(h3map.chat_added([a, b], [b]), [])
+        self.assertEqual(h3map.chat_added([a], [a, a]), [a])
+        self.assertEqual(h3map.chat_added([a, b], [a, b]), [])
+
+    def test_the_hot_seat_sequences_pass_their_checks(self):
+        # Waiting in `to-record.toml` until the viewer plays them (part three moves them).
+        files = [CLIENTS / "map/sequences.toml", CLIENTS / "map/to-record.toml"]
+        entries = [e for f in files if f.exists()
+                   for e in tomllib.loads(f.read_text())["sequence"] if "hot_seat" in e]
+        self.assertTrue(entries)
+        for e in entries:
+            h3map.sequence_inputs(e)
+            path = CLIENTS / "map/situations" / f"{e['situation']}.toml"
+            sit = tomllib.loads(path.read_text())
+            h3map.check_situation(path, sit, sequence=True)
+            if h3map.hot_seat_of(e)["start"]:
+                self.assertEqual(h3map.start_staged(sit), [], e["id"])
+
+
+class KeptLiveParts(unittest.TestCase):
+    """R6-7: `frames` keeps a live part in `timelines/` only for a sequence of `sequences.toml`;
+    a sound run's too since E24 M5 T5 part three (the hot seat's, which `drawn` visits)."""
+
+    def test_a_scratch_file_s_stays_with_the_run(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             timelines, committed, scratch = tmp / "timelines", tmp / "seq.toml", tmp / "x.toml"
@@ -154,7 +295,7 @@ class KeptLiveParts(unittest.TestCase):
                                  '[[sequence]]\nid = "b"\nsituation = "s"\nms = 5\nsound = true\n')
             scratch.write_text('[[sequence]]\nid = "c"\nsituation = "s"\nms = 5\n')
 
-            def ran(entry, here):
+            def ran(entry, here, sparse=False):
                 here.mkdir(parents=True, exist_ok=True)
                 (here / "timeline.txt").write_text("0 view 0 0 0\n")
                 (here / "live.toml").write_text("k = 0\n")
@@ -167,9 +308,8 @@ class KeptLiveParts(unittest.TestCase):
                 h3map.run_frames(["--no-check", "--out", str(tmp / "out")])
                 h3map.run_frames(["--sequences", str(scratch), "--no-check", "--out",
                                   str(tmp / "out")])
-            self.assertEqual(sorted(p.name for p in timelines.iterdir()), ["a-live.toml"])
-            self.assertIn(f"b: a sound run, its live part stays at {tmp / 'out/b/live.toml'}",
-                          said.getvalue())
+            self.assertEqual(sorted(p.name for p in timelines.iterdir()),
+                             ["a-live.toml", "b-live.toml"])
             self.assertIn("c: not of seq.toml", said.getvalue())
 
 

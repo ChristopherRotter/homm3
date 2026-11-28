@@ -392,22 +392,6 @@ map as the next turn the record shows starts, the turn not shown (no time, nothi
 comparisons list the difference). **Recommended (a)**; a note in the adventure lane's inbox
 (2026-11-21). Meanwhile (c) (`stub: MCL-Q46` in `h3_map_view::engine`'s played). Blocks nothing.
 
-#### MCL-Q47 — The map's music after a battle (E24 M4 T5a, a code reading)
-
-The original asks for no terrain track when the map comes back from a battle: the adventure
-manager's exit lets the map's track play on into the battle (`music_track_play(-1)` asks for
-nothing, 0x4077E0), the battle's combat music and its result's tune replace it, and back on the
-map only `hero_select` (through `mobilize_hero`, 0x4AE8F3) asks for a track, and only when the
-hero's terrain differs from the one asked for last (adventure manager +0x58, 0x418113). So after a
-battle on the hero's own terrain the map would be silent once the tune ends, until the next walk's
-or key's end asks for +0x58's track again (design §5.19). Read only: the harness logs samples, not
-the music, and nobody has listened. Options: (a) as the original: no track asked for at the return;
-(b) the client asks for the terrain's track as the map comes back (the client lane's
-`HostSound` fades the tune out into it, E17 design §13.6); (c) (a) in the original's profile
-(`--bugs original`), (b) in the client's. **Recommended (a)**, checked by ear at M4 T6's hand test
-(the original on the user's machine: a battle won, then a wait without moving). Built as (a) at
-T5b1 (2026-11-21: no track asked for at the return). Blocks nothing.
-
 #### MCL-Q48 — A record does not tell an abandoned mine's resource (E24 M4 T5b2, a record)
 
 An abandoned mine's flag box after its guards' battle is MINEEVNT's record by the mine's resource
@@ -565,6 +549,126 @@ twice. Play takes the slots from `StackChanged` wherever the record tells it (`G
 design §5.29). Options: (a) the engine tells the slot a join fills (`StackChanged` after
 `CreaturesJoined`, or a slot in the event); (b) the client's rule (built). **Recommended (a)**
 (minor); the adventure lane's inbox told. Blocks nothing.
+
+#### MCL-Q70 — The last turn's warnings over the next human's cover (E24 M5 T5, a reading)
+
+The turn's warnings are screen chat lines that live 20 s from their first draw and leave one per
+view draw (`chat_expire` 0x553DF0); no view is drawn while a box is up, so the expiry box (up to
+15 s) ages none of them, and the hand-over's cover draws the view, the chat's lines with it
+(`view_draw_chat` 0x40F833): the expired player's last "<SYSTEM>:You have n seconds remaining in
+your turn." lines (up to nine) stand over the next human's covered view and its "%s's turn." box
+and into its turn (design §5.31, §5.32). Built as the original's meanwhile. Options: (a) the
+original's; (b) the client empties the chat's system lines at a hot seat's hand-over, the
+original's behind `--bugs original` for the comparisons. **Recommended (b)** (the lines tell the
+next human of a clock that is not its own; a carry-over the cover's draw makes by accident).
+Blocks nothing; T5's recordings show it (part four: `seat-clock`, eight lines on the cover after
+the box's own close, four of them leaving in Blue's start's millisecond, its four view draws;
+`seat-clock-ok`, all nine after an OK at once, each leaving at its own 20 s in Blue's turn).
+
+#### MCL-Q71 — The start's boxes over the covered picture, on the clock (E24 M5 T5, a reading)
+
+After the hand-over's box `player_turn_start` 0x4CC7D0 runs the scenario's tests and the timed
+events (0x4CC816 to 0x4CC83F) before it redraws the screen (0x4CC899), so their boxes open over
+the covered picture still on the screen (the minimap and the buttons drawn since, the resource
+bar blank until 0x4CC87F), and with the week's box and the days-left box on the new turn's clock
+(`turn_timer_start` 0x4C78F0 comes first; the cover's box itself is outside it, survey
+`E16-timer-survey.md` §8) (design §5.31). Built as the original's meanwhile. Options: (a) the
+original's; (b) the client redraws the screen uncovered before the start's boxes, the original's
+behind `--bugs original` for the comparisons. The clock's part is the host's (`GameClock`, the
+server lane's), not asked here. **Recommended (a)** (the map stays hidden until the player has
+read its events: harmless, arguably as meant). Blocks nothing. Recorded (T5 part two,
+`seat-timed-event`): the event's box opens in the start's millisecond after the cover's wait,
+over the covered view with the minimap and the buttons drawn and the lists empty, but the
+resource bar already shows the amounts with the event's gold added (not blank: its resources
+redraw the bar); the clock's part not recorded (an unlimited turn).
+
+#### MCL-Q72 — The hand-over's sounds (E24 M5 T5, a reading)
+
+`covered_view_new_week` 0x4CA840 fades the music and plays `NewWeek.wav` at every hand-over, on
+any day; its covered draw builds the date's window (`status_window_date`, kind 1), whose build
+starts `newday.wav` in the same millisecond (not on a week's first day), and the start builds it
+twice more (MCL-Q30); on a week's first day `NewWeek.wav` at the cover and `newweek.wav` or
+`newmonth.wav` again with the week's box; after OK `wait_for_sample` holds the start until
+`NewWeek.wav` (5 758 ms) ends or 4 s pass, cutting it (design §5.31). Built as the original's
+meanwhile. Options: (a) the original's; (b) the client plays `NewWeek.wav` alone at the cover (no
+`newday.wav` under it; the wait kept), the original's behind `--bugs original` for the
+comparisons. **Recommended (b)** (as MCL-Q30: the date's window under the cover is an accident of
+the view's draw calling the chooser). Blocks nothing. Recorded (T5 part two): on an ordinary day
+`newday.wav` four times a hand-over, once with `NewWeek.wav` (5 759 ms) under the cover and three
+times in the start's millisecond (not twice); on a week's first day none, the week's box sounding
+`NewWeek.wav` again (`newweek.wav` is the same sample) or `newmonth.wav` (4 784 ms); an OK in
+`NewWeek.wav`'s first 1 759 ms starts the turn 4 000 ms after its release, a later one at once.
+
+#### MCL-Q73 — The cover with one human left (E24 M5 T5, a reading)
+
+The hand-over's test is `begin_humans` 0x699274 above 1: the humans the game was begun or loaded
+with, written at a game's begin and load only (its 18 references), never at a defeat. So a hot
+seat down to one human (the other defeated) still covers its view and asks "%s's turn." at each
+of its turns (design §5.31). Built as the original's meanwhile. Options: (a) the original's; (b)
+the client covers only while two humans or more are in the game, the original's behind `--bugs
+original` for the comparisons. **Recommended (a)** (harmless, rare, one box a turn; the host knows
+its seats either way). Blocks nothing; no recording planned (a defeat in a hot seat to stage).
+
+#### MCL-Q74 — The previous day's date window under a quick hand-over's cover (E24 M5 T5, a recording)
+
+A human's start asks the date's window for 3 000 ms; the hand-over's covered draw builds that
+window only when another kind shows (`status_window_date` 0x415FD2). So a human who ends the turn
+within those 3 s (a hot seat's player with nothing to do) hands over a cover that keeps the
+previous start's window, stepping on: `seat-new-day-quick` shows "Day 1" over a resource bar dated
+day 2, and no `newday.wav` under the cover; the next start builds it with the new day (design
+§5.31). Built as the original's meanwhile. Options: (a) the original's; (b) the client builds the
+date's window afresh at every cover (the new date, its first frame, its sound as MCL-Q72 decides),
+the original's behind `--bugs original` for the comparisons. **Recommended (b)** (the window names
+the wrong day on a screen whose bar names the right one; an accident of the chooser's test, as
+MCL-Q72's). Blocks nothing; recorded (`seat-new-day-quick`).
+
+#### MCL-Q75 — The hot seat's clock in battles and level-ups: the original's or the server's (E24 M5 T5, a reading)
+
+Play hosts the hot seat's session in-process and builds its clock itself (`h3_map_client::hot_seat::clock`):
+the turn's duration from the eleven, the level-up waited for (`level_up_ms` none), the server's default
+battle allowance (*provisional*, "T5 reads the original's"). The original's hot seat (the E16 survey
+`docs/epics/E16-timer-survey.md` §6, §7): **every battle pauses the turn's timer** and gives its time
+back, with **no battle clock**, also between two humans; a level-up is on the turn's time (15 s when
+opened with less than 15 s left) and untimed after a battle (inside the pause). The session's clock
+follows SRV-Q31/Q33 (the server's online games, kept by the user there): the turn's timer runs on in a
+battle against a monster or a neutral garrison (at its end the computer plays the side), Fischer's
+chess clocks between two players' sides (the attacker's turn timer stopped), a level-up's own time with
+every other timer stopped. Nothing differs on the map; it matters from M5 T6 (the battles in play) on.
+Options: (a) the server's model in the hot seat too (as built: a hot seat timed as an online game);
+(b) the original's for the hot seat: a clock option of the session's for "battles pause the turn, no
+chess clock" (a request in the server lane's inbox; its online games keep SRV-Q31's), the level-up
+waited for as now; (c) (a) by default, (b) as a game option of the hot seat's. **Recommended (b)**: the
+hot seat is the original's own mode on one machine, and the turn's limit the original's slider names
+is "when not in combat" (the manual, p. 11). Built as (a) meanwhile (no battle is played in play before
+T6, `MCL-STUB-6`). Blocks nothing before T6.
+
+#### MCL-Q76 — The hot seat's turn timer: from the turn's passing or from the cover's start (E24 M5 T5 part five, a build)
+
+The original starts a hot seat's human's turn timer after its cover's box and the wait
+(`turn_timer_start` 0x4C78F0, design §5.31, §5.32): the expiry's box (up to 15 s), the cover and
+its box take none of the next human's time. The session's clock starts the next human's timer at
+the turn's passing (`crates/h3-protocol/src/session/game/clock.rs`: End Turn accepted, or the
+system actor's end of a turn out of time), so in play the expiry's box and the cover counted
+against the next human. Built (*provisional*, the lane's adapters only): play's host holds the
+clock it feeds the session (`HotSeat::elapse`) from the turn's passing to the next view's timer
+start on the screen (`play::Kept`), so the session and the view agree. Options: (a) as built, the
+host's hold; (b) a session option of the server lane's, a hot seat's timer started at the seat's
+acknowledgement of its turn (a request in its inbox), the hold dropped; (c) the session's as it is
+(no hold: the cover's time is the next human's). **Recommended (a)** while play is in-process (the
+host owns the clock it reads in), (b) once a network game's hot seat or a server-hosted one needs
+the same. Blocks nothing.
+
+#### MCL-Q77 — A turn's warning silent while a hero walks (E24 M5 T5 part five, a recording)
+
+`chat_system_message` 0x553960 plays `timeover.wav` unless the chat's last sample still plays
+(`sample_query` with 4); the step sound loops on the same sample (category 0's: a step's start
+stops what played there), so a warning given while the selected hero walks is silent once an
+earlier warning's sound played (recorded, `seat-clock-walk`: 58 199's "1 second" shown, no sound,
+the walk's `horse02.wav` looping since 57 300) (design §5.32). Built as the original's meanwhile
+(`Sound::stepping`). Options: (a) the original's; (b) the client plays every warning's sound, the
+original's behind `--bugs original` for the comparisons. **Recommended (b)** (the last seconds'
+warnings are the ones a walking player needs; the silence is an accident of the shared sample).
+Blocks nothing.
 
 ### RMG lane (`RMG-Q<n>`)
 
