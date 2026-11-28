@@ -59,6 +59,7 @@ fn fight(winner: i32, after: AfterBattle) -> Fight {
         after,
         experience: 15,
         object: None,
+        army: None,
     }
 }
 
@@ -794,15 +795,34 @@ fn a_live_fight_from_beside_asks_the_host_where_it_shows_whole() {
     };
     assert_eq!(l.battle_asked(), Some(ask));
     assert_eq!(l.drawn().switch, switch(Some(BATTLE), 0, false));
-    let won = given(0, AfterBattle::Taken, None);
+    // Won with a loss: the army as the engine projects it.
+    let mut army = [None; 7];
+    army[0] = Some(Stack {
+        creature: 2,
+        count: 4,
+    });
+    let won = Fought {
+        fight: Fight {
+            army: Some(army),
+            ..fight(0, AfterBattle::Taken)
+        },
+        ..given(0, AfterBattle::Taken, None)
+    };
     let (shown, asked, start, actions) = replayed(start, actions, Some(&won), 1_600);
     assert_eq!(asked, [ask]);
     assert!(actions[&350].contains(&Action::BattleClosed));
     assert!(as_headless(&shown, &start, &actions));
-    let l = run_start(&start, &actions, 1_600);
+    let mut l = run_start(&start, &actions, 1_600);
+    let Some(Status::Hero(hero)) = &l.kingdom.status else {
+        panic!("the hero's window: {:?}", l.kingdom.status);
+    };
+    assert_eq!(hero.army, army);
     assert!(l.drawn().gone.contains(&OBJECT));
     assert_eq!(l.battles(), [(350, BATTLE)]);
     assert_eq!(l.battle_asked(), None);
+    // The turn goes on: a key's step asks the host its walk.
+    l.run(1_601, &[Action::Step(Direction::South)]).unwrap();
+    assert!(l.walk_asked().is_some(), "{:?}", l.state(1_601));
     assert_eq!(start.finds[0].fight, Some(won.fight));
     assert!(start.host.as_ref().is_some_and(|h| h.fought(BATTLE)));
 }

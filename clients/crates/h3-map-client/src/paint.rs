@@ -649,6 +649,7 @@ fn answer_fight(visit: &engine::Visit, nth: usize, object: usize) -> Option<Figh
         after: AfterBattle::of_fight(taken, lost),
         experience,
         object: (object != engine::visits::NO_OBJECT).then_some(object),
+        army: None,
     })
 }
 
@@ -2049,6 +2050,7 @@ impl<'a> Painter<'a> {
                         after: AfterBattle::of_fight(taken, lost),
                         experience,
                         object,
+                        army: None,
                     });
                 }
                 // A neutral mine's guards fought after their question (E24 M4 T5b2, design §5.21):
@@ -2099,6 +2101,7 @@ impl<'a> Painter<'a> {
                             after,
                             experience,
                             object: None,
+                            army: None,
                         }),
                         flag: flag.map(|colour| (o, colour)),
                     });

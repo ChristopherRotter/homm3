@@ -48,8 +48,9 @@ use h3_battle_client::game_seat::GameSeat;
 use h3_game::GameRuleset;
 use h3_map_view::clock::ChatLine;
 use h3_map_view::damage::{Held, tidy};
-use h3_map_view::engine::{GameRecord, Live, REVISIT};
+use h3_map_view::engine::{Creatures, GameRecord, Live, REVISIT};
 use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
+use h3_map_view::live::Stack;
 use h3_map_view::notice;
 use h3_map_view::reach::{Fought, Hosted, Pick, Reach};
 use h3_map_view::replay::{Change, Replay};
@@ -59,8 +60,8 @@ use h3_map_view::timeline::{
     self, Action, Answer, CURSOR_TYPE, Cursor, Fight, Found, LevelBox, Rules, Start, Unplayable,
 };
 use h3_protocol::wire::game::{
-    Answer as WireAnswer, ArenaChoice, ChestChoice, ChoiceKind, Consent, Decision, Moves,
-    Pos as WirePos, SchoolChoice, SkillOffer,
+    Answer as WireAnswer, ArenaChoice, ArmyStack, ChestChoice, ChoiceKind, Consent, Decision,
+    Moves, Pos as WirePos, SchoolChoice, SkillOffer,
 };
 use h3_render::Bugs;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
@@ -287,6 +288,12 @@ pub(crate) trait Session {
     /// T6a, *provisional* in play's host: every battle pauses the turn's timer and gives its time
     /// back, no battle clock). None without one (each source but play's).
     fn battle(&mut self, _now: u64) -> Option<GameSeat> {
+        None
+    }
+    /// The viewer's hero `hero`'s army as the engine projects it now (E24 M5 T6a: after its
+    /// battle, SRV-STUB-9: the record tells no survivors), by slot; none for a hero not the
+    /// viewer's on the map.
+    fn army(&self, _hero: u16) -> Option<Vec<ArmyStack>> {
         None
     }
     /// The viewer's battle the host holds as [`Session::battle`] gives it, the clock not held (E24
@@ -932,6 +939,9 @@ pub(crate) fn window(
     // one, and (R5-9) how many came due and how many of them closed.
     let mut handed = (0, 0);
     let mut after_battle = false;
+    // The hero of the last walk asked (E24 M5 T6a): a battle's visitor, whose army the engine
+    // projects after it.
+    let mut fighter: Option<u16> = None;
     let mut mouse_again = false;
     let mut hosting = Hosting::default();
     let Setup {
@@ -1486,6 +1496,7 @@ pub(crate) fn window(
                 .iter()
                 .find(|&&(_, i)| i == asked.stand.hero)
                 .map(|&(id, _)| id);
+            fighter = id;
             let refused = match id {
                 Some(id) => s.walk(id, asked.path())?,
                 None => Some("no hero of the view's there".to_owned()),
@@ -1843,7 +1854,14 @@ pub(crate) fn window(
                 break 'run;
             }
             let runs = s.returned(host_ms(win))?;
-            let fought = fought_after(&mut painter, s, (&start, &opened), asked.battle)?;
+            let mut fought = fought_after(&mut painter, s, (&start, &opened), asked.battle)?;
+            // Its army as the engine projects it (SRV-STUB-9: the record tells no survivors).
+            if let Some(fought) = &mut fought {
+                let creatures = Creatures::new(s.rules());
+                fought.fight.army = fighter
+                    .and_then(|hero| s.army(hero))
+                    .map(|stacks| by_slot(&stacks, &creatures));
+            }
             lines.push(format!(
                 "{t} ms: the battle's result laid out: {}",
                 fought.as_ref().map_or_else(
@@ -2166,6 +2184,21 @@ pub(crate) fn window(
 /// frame where it saw none (outside the window).
 fn mouse_after(pointer: Option<(i32, i32)>, frame: [u32; 2]) -> [i32; 2] {
     pointer.map_or(OFF, |(x, y)| [clamp(x, frame[0]), clamp(y, frame[1])])
+}
+
+/// `stacks` by slot (E24 M5 T6a), each creature by the original's number (`creatures`: a wire
+/// creature is a content handle, the lane's TRAPS).
+fn by_slot(stacks: &[ArmyStack], creatures: &Creatures) -> [Option<Stack>; 7] {
+    let mut army = [None; 7];
+    for stack in stacks {
+        if let Some(slot) = army.get_mut(usize::from(stack.slot)) {
+            *slot = Some(Stack {
+                creature: creatures.number(stack.creature),
+                count: i32::try_from(stack.count).unwrap_or(i32::MAX),
+            });
+        }
+    }
+    army
 }
 
 /// The first frame of the viewer's battle numbered `n` the session `s` holds (E24 M5 T6a, design

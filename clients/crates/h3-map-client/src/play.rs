@@ -37,7 +37,8 @@ use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup};
 use h3_map_view::engine::{GameRecord, Live};
 use h3_protocol::wire::game::{
-    AdventureCommand, Answer, Decision, GameAnswer, GameCommand, GameQuery, Moves, Pos as WirePos,
+    AdventureCommand, Answer, ArmyStack, Decision, GameAnswer, GameCommand, GameQuery, Moves,
+    Pos as WirePos,
 };
 use h3_render::Bugs;
 use h3_sdl::{Config, Window};
@@ -406,6 +407,12 @@ impl window::Session for Viewed<'_, '_> {
         // MCL-Q75 (b): the battle pauses the turn's timer (E24 M5 T6a, design §5.33).
         self.kept.hold(now);
         Some(seat)
+    }
+
+    fn army(&self, hero: u16) -> Option<Vec<ArmyStack>> {
+        let view = self.hot.seat(self.player)?.view.as_ref()?;
+        let hero = view.adventure.heroes.iter().find(|h| h.id == hero)?;
+        hero.own.as_ref().map(|own| own.army.clone())
     }
 
     fn opening(&mut self) -> Option<GameSeat> {

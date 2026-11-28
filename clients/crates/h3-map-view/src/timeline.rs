@@ -1182,6 +1182,10 @@ pub struct Fight {
     /// zone entered, its fight told where the walk stopped as an offer there is; an answer's
     /// battle): its index in the map's order. None: the find's [`Found::blocks`] (a record's).
     pub object: Option<usize>,
+    /// The hero's army after the battle as the engine projects it, by slot (an emptied slot
+    /// empty), shown at the map's return (E24 M5 T6a, design §5.33, *provisional*: live, the
+    /// host's; a record tells no survivors, SRV-STUB-9). None: as it was (a record's).
+    pub army: Option<[Option<Stack>; 7]>,
 }
 
 /// What the map shows after a battle's switch (E24 M4 T5b2, design §5.19's rest).
@@ -5527,6 +5531,10 @@ impl Loop {
         self.cursor.shown = true;
         self.lifted = true;
         self.stand();
+        // Live, its army as the engine projects it (E24 M5 T6a: its losses).
+        if let Some(army) = fight.army {
+            self.army_now(army);
+        }
         self.draw(t);
         // Its sounds when it stays on the map (E24 M5 T1c, MCL-Q52 (a), design §5.24):
         // `adventure_battle`'s end lifts it through `mobilize_hero(0, 0, 1)` (0x4AE8F3, after
@@ -5618,6 +5626,26 @@ impl Loop {
             }
         }
         Ok(())
+    }
+
+    /// The selected hero's army now `army`, by slot (E24 M5 T6a: after a battle, the engine's), in
+    /// its windows and its choice's.
+    fn army_now(&mut self, army: [Option<Stack>; 7]) {
+        let kingdom = &mut self.kingdom;
+        for status in [&mut kingdom.status, &mut kingdom.selection] {
+            if let Some(Status::Hero(hero)) = status {
+                hero.army = army;
+            }
+        }
+        if let Some(Some(chosen)) = self
+            .selected_hero()
+            .and_then(|i| self.chosen.heroes.get_mut(i))
+        {
+            chosen.status.army = army;
+        }
+        Arc::make_mut(&mut self.drawn.kingdom)
+            .status
+            .clone_from(&self.kingdom.status);
     }
 
     /// A hero's dissolve off the map ended at `t` (E24 M4 T5b2, design §5.19): the lists and the
