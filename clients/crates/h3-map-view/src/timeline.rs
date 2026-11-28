@@ -1936,6 +1936,11 @@ pub struct Loop {
     /// The battles a switch handed over (their record's numbers): a walk's end lists none of
     /// them again ([`Loop::battles`]).
     switched: Vec<u32>,
+    /// How the hero's move under way began, and whether the walk's end asks for the terrain's
+    /// music again once the visit's rest after its battle's switch ended (E24 M5 T6a, design
+    /// §5.33, MCL-Q47: [`Loop::music_again`]).
+    by: By,
+    again: bool,
     /// The heroes off the map (E24 M4 T5b2: a battle lost; since E24 M4 T6, R1-5, another
     /// player's hero lost in sight), by their indexes among the map's heroes.
     left: Vec<usize>,
@@ -2256,6 +2261,20 @@ enum Aboard {
     Land,
 }
 
+/// How the hero's move under way began (E24 M5 T6a, design §5.33, MCL-Q47): whether the walk's
+/// end asks for the terrain's music again after a battle of its visit ([`Loop::asks_again`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum By {
+    /// A click's walk (`hero_move_loop` 0x407B80): its end's request after the visit (0x408141
+    /// to 0x408153; a guarded object's or a monster's visit at 0x4080E9).
+    Walk,
+    /// A key's step (`adventure_key_down` 0x408C40): its request after the step (0x40908D), its
+    /// visit after that (0x4090A9).
+    Key,
+    /// Space's visit (0x408E65): no request.
+    Space,
+}
+
 /// What a path's last node takes in place of a step (E24 M4 T6, [`Loop::last_node`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Beside {
@@ -2511,6 +2530,8 @@ impl Loop {
             switching: None,
             whole: None,
             switched: Vec::new(),
+            by: By::Walk,
+            again: false,
             left: Vec::new(),
             slots_left: Vec::new(),
             flush: false,
@@ -3220,6 +3241,14 @@ impl Loop {
     #[must_use]
     pub fn battles(&self) -> &[(u32, u32)] {
         &self.battles
+    }
+
+    /// Whether the battle `battle` (its record's number) was handed over by a switch (E24 M5
+    /// T6a): its return the map's fade in and lift; else by a plain cut, whose return a host
+    /// makes (the loops and the music again: design §5.24, §5.33).
+    #[must_use]
+    pub fn switched(&self, battle: u32) -> bool {
+        self.switched.contains(&battle)
     }
 
     /// The millisecond the battle's switch under way shows the battle whole and hands it over
@@ -4991,6 +5020,9 @@ impl Loop {
             self.draw_minimap();
             self.column = None;
             self.moved();
+            // The visit on the walk's last tile ended: the walk's end's request after its battle
+            // (E24 M5 T6a, MCL-Q47).
+            self.music_again(t);
         }
         self.idle_message(t);
     }
@@ -5272,6 +5304,9 @@ impl Loop {
             Then::Lost(monster) => self.left_map(t, queued, monster)?,
 
             Then::Resume => {
+                // A draw's monster taken after the hero: the walk's end's request after it (E24
+                // M5 T6a, MCL-Q47).
+                self.music_again(t);
                 self.cursor.shown = true;
                 self.resume(t, queued)?;
             }
@@ -5379,6 +5414,7 @@ impl Loop {
         self.set_cursor(DEFAULT_CURSOR, self.rules.busy);
         self.cursor.shown = false;
         self.switched.push(fight.battle);
+        self.again = self.asks_again(i);
         self.switching = Some(Switching {
             phase: Phase::Out,
             start: t,
@@ -5473,6 +5509,37 @@ impl Loop {
         Ok(())
     }
 
+    /// Whether the walk's end asks for the terrain's music again after the battle of find `i`'s
+    /// visit (E24 M5 T6a, design §5.33, MCL-Q47, read; [`By`]): a click's walk after every visit
+    /// (0x408141); a key's step after its step (0x40908D), so after a battle inside the step (a
+    /// monster's zone entered: its find on no tile of its own, a monster's fight or question)
+    /// but not after its visit's (0x4090A9: a monster attacked, a mine's guards; the tune plays
+    /// out, then silence, read, not observed); Space's visit never (0x408E65).
+    fn asks_again(&self, i: usize) -> bool {
+        match self.by {
+            By::Walk => true,
+            By::Key => self.finds.get(i).is_some_and(|f| {
+                f.blocks.is_none()
+                    && (f.fight.is_some() || f.ask.as_ref().is_some_and(|q| q.attacker.is_some()))
+            }),
+            By::Space => false,
+        }
+    }
+
+    /// The walk's end's request of the terrain's music after a battle (E24 M5 T6a, design §5.33,
+    /// MCL-Q47 read; [`Sound::again`]), once, where the rest of the visit its switch's battle
+    /// ended does (the map faded in, then a monster's dissolve, an object's boxes closed, a
+    /// level-up's dialogs, a lost hero's next choice): `hero_move_loop`'s end asks for +0x58's
+    /// track after the visit (0x408141), whose result's tune the music's thread then fades out
+    /// for it, the track from its start (MCL-Q78 (b)).
+    fn music_again(&mut self, t: u32) {
+        if core::mem::take(&mut self.again)
+            && let Some(sound) = &mut self.sound
+        {
+            sound.again(t);
+        }
+    }
+
     /// The switch's next phase from `t`.
     fn rephase(&mut self, t: u32, phase: Phase) {
         if let Some(switching) = &mut self.switching {
@@ -5542,8 +5609,9 @@ impl Loop {
         // every outcome), whose `hero_select` restarts the ambient sounds around the view's middle
         // (0x4180FF: each slot stopped and emptied, then found again), so the loops the
         // hand-over's `effects_stop_all` ended play again, and asks for the terrain's music only
-        // where it differs from the one asked for last (MCL-Q47 (a): none on the same terrain). A
-        // hero that leaves restarts none here: the next choice's lift does ([`Loop::left_map`]).
+        // where it differs from the one asked for last (none on the same terrain: the walk's end
+        // asks for it again after the visit's rest, E24 M5 T6a, MCL-Q47, [`Loop::music_again`]).
+        // A hero that leaves restarts none here: the next choice's lift does ([`Loop::left_map`]).
         // *Provisional:* a level-up's dialogs come first in the original (`hero_level_up`
         // 0x4AE324), so with one the restart waits for their close; here it comes with the lift.
         if !matches!(fight.after, AfterBattle::Lost | AfterBattle::Both) {
@@ -5677,6 +5745,9 @@ impl Loop {
             self.dissolving = self.dissolving.take().map(|d| Dissolving { queued, ..d });
             return Ok(());
         }
+        // The walk's end's request after the next choice's own (E24 M5 T6a, design §5.33,
+        // MCL-Q47: a repeat where that choice asked for its terrain's track).
+        self.music_again(t);
         self.cursor.shown = true;
         self.resume(t, queued)
     }
@@ -6277,6 +6348,7 @@ impl Loop {
         match host.revisit(stand) {
             Some(told) => {
                 self.answers_taken += 1;
+                self.by = By::Space;
                 if let Some(i) = told {
                     self.tell_found(t, i);
                 }
@@ -6565,6 +6637,7 @@ impl Loop {
         let Some(next) = self.hero.and_then(|h| self.next(h.at, direction)) else {
             return;
         };
+        self.by = By::Key;
         // Live with the hot seat's host (E24 M5 T4a): the engine's step asked first, nothing if it
         // refuses it (`hero_step_allowed`'s place).
         if self.hosted_walk(t, vec![next]) {
@@ -6719,6 +6792,7 @@ impl Loop {
     /// wait between them (the first red one a step the points do not pay, which ends the walk:
     /// 0x480864; the engine's move from M4); none, and the walk ends at once.
     fn walk_path(&mut self, t: u32) {
+        self.by = By::Walk;
         // Live with the hot seat's host (E24 M5 T4a): the engine's walk asked first.
         let tiles = self.path_steps().iter().map(|&(_, at)| at).collect();
         if self.hosted_walk(t, tiles) {
@@ -7058,6 +7132,8 @@ impl Loop {
         if stuck {
             self.stuck(t);
         }
+        // After a battle the visit began, the terrain's music again (E24 M5 T6a, MCL-Q47).
+        self.music_again(t);
     }
 
     /// A key's step's end with the hero unable to move (`adventure_key_down` from 0x40913E, after

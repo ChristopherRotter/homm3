@@ -1800,7 +1800,6 @@ pub(crate) fn window(
         // the loop run again from before the hand-over), a switch's battle closed in that
         // millisecond (`Action::BattleClosed`, as the record player closes a record's); the map's
         // clock on from there as if the battle took none.
-        // The hand-back (E24 M5 T6a part 2b's hook: the sound at the return).
         if let (Some(s), Some(list)) = (session.as_deref_mut(), &mut live_battles)
             && let Some(asked) = replay.battle_asked()
             && asked.at <= ms
@@ -1830,8 +1829,14 @@ pub(crate) fn window(
             let mut serve = |seat: &mut GameSeat| s.serve(seat);
             let (sound, shown) =
                 battles::host_game(&mut *win, list, seat, &mut serve, (sound, run), &mut lines)?;
-            if let (Some((_, player)), Some(sound)) = (&mut *audio, sound) {
-                player.take_back(sound);
+            // A plain cut's return (MCL-STUB-9's battles) plays the loops and the map's track
+            // again (E24 M5 T6a, design §5.24, §5.33); a switch's the map's return does.
+            if let (Some((library, player)), Some(sound)) = (&mut *audio, sound) {
+                if asked.switch {
+                    player.take_back(sound);
+                } else {
+                    player.take_back_cut(sound, library, &mut lines);
+                }
                 if paused {
                     player.pause(true);
                 }
@@ -1955,8 +1960,15 @@ pub(crate) fn window(
                 stop_ns: stop_ns.map(|s| started.saturating_add(s)),
             };
             let (sound, shown) = battles::host(&mut *win, list, k, sound, run, &mut lines)?;
-            if let (Some((_, player)), Some(sound)) = (&mut *audio, sound) {
-                player.take_back(sound);
+            // A plain cut's return (an answer's battle, a walk's no switch handed over) plays the
+            // loops and the map's track again (E24 M5 T6a, design §5.24, §5.33); a switch's the
+            // map's return does.
+            if let (Some((library, player)), Some(sound)) = (&mut *audio, sound) {
+                if walked && replay.switched(n) {
+                    player.take_back(sound);
+                } else {
+                    player.take_back_cut(sound, library, &mut lines);
+                }
                 if paused {
                     player.pause(true);
                 }

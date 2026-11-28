@@ -190,6 +190,13 @@ impl Replay {
         self.l.battles()
     }
 
+    /// Whether the battle `battle` was handed over by a switch as far as the loop ran (E24 M5
+    /// T6a, [`Loop::switched`]): else by a plain cut.
+    #[must_use]
+    pub fn switched(&self, battle: u32) -> bool {
+        self.l.switched(battle)
+    }
+
     /// The last millisecond run.
     #[must_use]
     pub fn ran(&self) -> u32 {

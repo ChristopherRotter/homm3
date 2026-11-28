@@ -441,6 +441,12 @@ pub enum Cue {
     /// `play_music` with a track's name: the one playing fades out over 900 ms (its place kept),
     /// then this one fades in where it last stopped.
     Music(String),
+    /// `play_music` with the music's terrain's track at the walk's end after a battle (E24 M5
+    /// T6a, design §5.33, MCL-Q47: [`Sound::again`]): the result's tune, if it still plays, fades
+    /// out over 900 ms, then this track fades in from its start (MCL-Q78, built as its option
+    /// (b): only this return forgets the track's kept place). A request of the track playing or
+    /// pending changes nothing, as [`Cue::Music`]'s.
+    Again(String),
     /// A step sound starts looping (category 0's one sample: what played there stops).
     Step(String),
     /// The step sound stops.
@@ -599,6 +605,19 @@ impl Sound {
             self.asked = Some(track.into());
             self.cues.push((t, Cue::Music(track.into())));
         }
+    }
+
+    /// The walk's end's request of the music's terrain's track (+0x58's; E24 M5 T6a, design
+    /// §5.33, MCL-Q47): `hero_move_loop` asks for it with no condition (0x408141 to 0x408153; a
+    /// key's step after its step, 0x40908D), so after a battle, whose result's tune the music's
+    /// thread plays then, the tune fades out and the terrain's track comes back, from its start
+    /// ([`Cue::Again`], MCL-Q78 (b)). Nothing without a track (rock, none asked yet).
+    pub fn again(&mut self, t: u32) {
+        let Some(name) = self.terrain.and_then(|c| self.rules.music.get(&c)).cloned() else {
+            return;
+        };
+        self.asked = Some(name.clone());
+        self.cues.push((t, Cue::Again(name)));
     }
 
     /// The path's walk starts (0x407D03): the start tile's step sound.
@@ -794,6 +813,7 @@ fn bit(sound: u8, bugs: Bugs) -> u128 {
 pub fn line(t: u32, cue: &Cue) -> String {
     match cue {
         Cue::Music(name) => format!("{t} music {name}"),
+        Cue::Again(name) => format!("{t} music-again {name}"),
         Cue::Step(name) => format!("{t} step {name}"),
         Cue::StepStop => format!("{t} step-stop"),
         Cue::Loop { slot, name, volume } => format!("{t} loop {slot} {name} {volume}"),

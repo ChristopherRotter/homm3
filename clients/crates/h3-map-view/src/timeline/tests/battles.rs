@@ -1051,3 +1051,198 @@ fn mine_answer() -> Answer {
         ..Answer::default()
     }
 }
+
+/// The grass map's tiles of the battle sequences with a loop on the mine's tile (6, 4), dirt from
+/// column `dirt` on.
+fn grass_to(dirt: i32) -> crate::sound::TileSounds {
+    crate::sound::tests::tiles(
+        36,
+        |x, _| if x >= dirt { 0 } else { 2 },
+        |x, y| (x == 6 && y == 4).then_some(3),
+    )
+}
+
+/// The cues of `start` played by the record player's input for `commands` to the record's end,
+/// with sound over `tiles`; and the input.
+fn directed_cues(
+    mut start: Start,
+    commands: &[Command],
+    tiles: crate::sound::TileSounds,
+) -> (Vec<String>, BTreeMap<u32, Vec<Action>>) {
+    start.sound = Some(crate::sound::tests::sound(tiles));
+    let (d, mut l) = directed(&start, commands);
+    let lines = l
+        .take_cues()
+        .iter()
+        .filter(|(_, c)| !matches!(c, Cue::Step(_) | Cue::StepStop))
+        .map(|(t, c)| crate::sound::line(*t, c))
+        .collect();
+    (lines, d.actions)
+}
+
+/// The music's lines of `lines`.
+fn music(lines: &[String]) -> Vec<&str> {
+    lines
+        .iter()
+        .filter(|l| l.contains(" music"))
+        .map(String::as_str)
+        .collect()
+}
+
+#[test]
+fn a_click_s_walk_s_battle_asks_the_terrain_s_music_again_after_the_visit() {
+    // E24 M5 T6a (design §5.33, MCL-Q47): the record player's walk (a click's) onto the Peasants:
+    // the map back at 1302 (the lift's scan, the dissolve's start), the Peasants dissolved, and
+    // at the walk's end after it (1822, 8 steps of 65 ms on) the terrain's track asked again,
+    // nothing before; the key's step of the scripted sequence asks none (its visit after the
+    // step's request: the tune plays out).
+    let start = as_record("battle-won", vec![record_walk(AT, Some(BATTLE))]);
+    let (lines, actions) = directed_cues(start, &[Command::Walk { hero: 1, to: AT }], grass_to(36));
+    assert!(actions[&1052].contains(&Action::BattleClosed));
+    assert!(lines.iter().any(|l| l == "1302 effect killfade.wav"));
+    assert_eq!(music(&lines), ["0 music Grass", "1822 music-again Grass"]);
+    let keyed = sounded_cues("battle-won", 3_000);
+    assert!(!keyed.iter().any(|(_, c)| matches!(c, Cue::Again(_))));
+}
+
+#[test]
+fn a_mine_s_guards_ask_the_music_again_once_their_boxes_closed() {
+    // E24 M5 T6a: the record's walk onto the mine's entrance, its question accepted, the battle,
+    // the guards' and the mine's boxes: the terrain's track again where the last closes (2687),
+    // after the lift's loop at the fade in's end (1764); the key's step's visit asks none.
+    let start = as_record("battle-mine", vec![record_walk(AT, None)]);
+    let accept = Command::Answer(h3_protocol::wire::game::Answer::Offer {
+        consent: h3_protocol::wire::game::Consent::Accept,
+    });
+    let commands = [
+        Command::Walk { hero: 1, to: AT },
+        accept,
+        Command::Battle(BATTLE),
+    ];
+    let (lines, actions) = directed_cues(start, &commands, grass_to(36));
+    assert!(actions[&2687].contains(&Action::BoxKeyUp(Key::Ok)));
+    assert!(lines.iter().any(|l| l == "1764 loop 0 LoopBehe.wav 28"));
+    assert_eq!(music(&lines), ["0 music Grass", "2687 music-again Grass"]);
+    let keyed = sounded_cues("battle-mine", 3_000);
+    assert!(!keyed.iter().any(|(_, c)| matches!(c, Cue::Again(_))));
+}
+
+#[test]
+fn a_lost_hero_s_next_choice_asks_its_terrain_then_the_walk_again() {
+    // E24 M5 T6a (design §5.33): the first hero retreats; its dissolve's end (1822) chooses the
+    // next, on (30, 5): on the same grass the walk's request restarts the track; on dirt the
+    // choice asks for Dirt first, the walk's request then a repeat.
+    let east = Pos { x: 31, y: 5, z: 0 };
+    let walks = || vec![record_walk(AT, Some(BATTLE)), record_walk(east, None)];
+    let commands = [
+        Command::Walk { hero: 1, to: AT },
+        Command::Walk { hero: 2, to: east },
+    ];
+    let (lines, _) = directed_cues(
+        as_record("battle-retreat", walks()),
+        &commands,
+        grass_to(36),
+    );
+    assert_eq!(music(&lines), ["0 music Grass", "1822 music-again Grass"]);
+    let (lines, _) = directed_cues(
+        as_record("battle-retreat", walks()),
+        &commands,
+        grass_to(20),
+    );
+    assert_eq!(
+        music(&lines),
+        ["0 music Grass", "1822 music Dirt", "1822 music-again Dirt"]
+    );
+    // A draw: the hero, then the Peasants dissolved; the request after the second.
+    let mut drawn = as_record("battle-retreat", walks());
+    drawn.finds[0].fight = Some(fight(-1, AfterBattle::Both));
+    let (lines, _) = directed_cues(drawn, &commands, grass_to(36));
+    assert_eq!(music(&lines), ["0 music Grass", "2342 music-again Grass"]);
+}
+
+#[test]
+fn a_key_s_step_asks_the_music_again_after_a_zone_s_battle_not_a_visit_s() {
+    // E24 M5 T6a (design §5.33): live, the key's step into the Peasants' zone (their fight told
+    // where the walk stopped, inside the step in the original) asks for the terrain's track at
+    // the visit's end after their dissolve; the key's step onto them (a visit from beside) none.
+    let east = Pos { x: 6, y: 5, z: 0 };
+    let zone = Found {
+        at: east,
+        blocks: None,
+        fight: Some(Fight {
+            object: Some(OBJECT),
+            ..fight(-1, AfterBattle::Stays)
+        }),
+        ..battled("battle-won")
+    };
+    let won = Fought {
+        fight: Fight {
+            object: Some(OBJECT),
+            ..fight(0, AfterBattle::Taken)
+        },
+        answer: None,
+        levels: Vec::new(),
+    };
+    let mut start = live("battle-won", record_walk(east, Some(BATTLE)), vec![zone]);
+    start.sound = Some(crate::sound::tests::sound(grass_to(36)));
+    let (_, asked, start, actions) =
+        replayed(start, stepped(Direction::East, &[]), Some(&won), 3_000);
+    let mut l = run_start(&start, &actions, 3_000);
+    let again: Vec<u32> = l
+        .take_cues()
+        .iter()
+        .filter(|(_, c)| matches!(c, Cue::Again(_)))
+        .map(|(t, _)| *t)
+        .collect();
+    // Closed where it shows whole: the map whole 250 ms on, the dissolve's 520 after it.
+    assert_eq!(again, [asked[0].at + 250 + 520]);
+    let found = Found {
+        fight: Some(fight(-1, AfterBattle::Stays)),
+        ..battled("battle-won")
+    };
+    let mut start = live("battle-won", record_walk(AT, Some(BATTLE)), vec![found]);
+    start.sound = Some(crate::sound::tests::sound(grass_to(36)));
+    let won = given(0, AfterBattle::Taken, None);
+    let (_, _, start, actions) = replayed(start, stepped(Direction::North, &[]), Some(&won), 3_000);
+    let mut l = run_start(&start, &actions, 3_000);
+    assert!(l.drawn().gone.contains(&OBJECT));
+    assert!(
+        !l.take_cues()
+            .iter()
+            .any(|(_, c)| matches!(c, Cue::Again(_)))
+    );
+}
+
+#[test]
+fn how_a_move_began_says_whether_its_battle_asks_the_music_again() {
+    // E24 M5 T6a (design §5.33, MCL-Q47): a click's walk always; a key's step for a find on no
+    // tile of its own that is a monster's (its fight, its question: a zone's offer declined),
+    // not a visit's (a monster from beside, a mine's guards); Space's visit never.
+    let mut l = run_to("battle-mine", 0);
+    let offer = Found {
+        ask: Some(Question {
+            attacker: Some(278),
+            ..battled("battle-mine").ask.unwrap()
+        }),
+        ..battled("battle-mine")
+    };
+    Arc::make_mut(&mut l.finds).extend([battled("battle-won"), offer]);
+    let asks = |l: &Loop| [0, 1, 2].map(|i| l.asks_again(i));
+    assert_eq!(asks(&l), [true; 3]);
+    l.by = By::Key;
+    assert_eq!(asks(&l), [false, false, true]);
+    l.by = By::Space;
+    assert_eq!(asks(&l), [false; 3]);
+}
+
+#[test]
+fn a_battle_handed_over_by_a_switch_is_told_so() {
+    // E24 M5 T6a: the window's plain cut and switch told apart (the cut's return its own).
+    let l = run_to("battle-won", 400);
+    assert!(l.switched(BATTLE) && !l.switched(BATTLE + 1));
+    let (start, actions, ..) = battling("battle-won");
+    let mut replay = Replay::new(rules(Bugs::Original), &start, actions).unwrap();
+    assert!(!replay.switched(BATTLE));
+    replay.at(400).unwrap();
+    assert!(replay.switched(BATTLE));
+}
