@@ -149,6 +149,12 @@ pub struct SearchStart {
     pub window: Option<SearchWindow>,
     /// Mode [`SearchMode::Plan`]'s jumps.
     pub jumps: SearchJumps,
+    /// Whether the start tile is read as no entrance for the whole search (E31 T2i, AI-Q42):
+    /// `ai_hero_destination` 0x42E0B0 clears its map item's entrance bit for a class visited
+    /// from the neighbouring tile before its value field's search (0x42E263, restored at
+    /// 0x42E37D). Its spot has no entrance (no guard's tile, no stop) and no closed top (no
+    /// up-off-the-entrance test from it); false for every other search.
+    pub open: bool,
 }
 
 /// The computer's numbers the search reads and `h3-adventure` does not compute.
@@ -678,6 +684,15 @@ impl<A: SearchAsks> Search<'_, A> {
                     ..self.spot_of(pos, self.occupant(pos))
                 };
             }
+        }
+        if self.start.open {
+            // The start's spot as the cleared entrance bit reads (0x42E263): its blocked bit
+            // (map item `+0xD` bit 0) kept. A start outside the region reaches nothing.
+            let at = spots.at(self.start.from);
+            spots.spots.get_mut(at).into_iter().for_each(|spot| {
+                spot.tile.entrance = None;
+                spot.closed = false;
+            });
         }
         spots
     }

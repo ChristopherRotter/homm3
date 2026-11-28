@@ -234,6 +234,7 @@ fn start(from: Pos, mode: SearchMode) -> SearchStart {
         fog: SearchFog::Computer,
         window: None,
         jumps: SearchJumps::default(),
+        open: false,
     }
 }
 
@@ -735,6 +736,35 @@ fn the_fog_follows_the_policy_and_the_mode() {
     assert!(!into);
     let (into, on, _) = reach(&owning, Human, Threat, &[]);
     assert_eq!((into, on), (true, true));
+}
+
+// covers: CPU-PTH-001
+#[test]
+fn an_open_start_is_no_entrance_no_closed_top_and_no_guard() {
+    let rules = rules();
+    let open = |from| SearchStart {
+        open: true,
+        ..start(from, SearchMode::Local)
+    };
+    // From the chart, the hero elsewhere: as an entrance its top is closed and the walker goes
+    // up round it; open, straight up.
+    let state = alone(&rules, &["ggg", "gCg", "ggg"], p(0, 2), vec![]);
+    let closed = search(&rules, &state, &start(p(1, 1), SearchMode::Local));
+    let up = closed.node(p(1, 0)).map(|node| (node.from, node.cost));
+    assert_eq!(up, Some((p(2, 1), 241)));
+    let opened = search(&rules, &state, &open(p(1, 1)));
+    let up = opened.node(p(1, 0)).map(|node| (node.from, node.cost));
+    assert_eq!(up, Some((p(1, 1), 100)));
+    // From a monster's tile: its neighbours are guarded by it and step only onto it; open, it
+    // guards nothing and the search goes on past them.
+    let rows = ["gggg", "gggg", "gggg"];
+    let state = alone(&rules, &rows, p(3, 0), vec![monster(p(1, 1))]);
+    let guarded = search(&rules, &state, &start(p(1, 1), SearchMode::Local));
+    assert!(guarded.node(p(2, 1)).is_some());
+    assert_eq!(guarded.node(p(3, 1)), None);
+    let free = search(&rules, &state, &open(p(1, 1)));
+    let beyond = free.node(p(3, 1)).map(|node| (node.from, node.cost));
+    assert_eq!(beyond, Some((p(2, 1), 200)));
 }
 
 // covers: CPU-PTH-003
