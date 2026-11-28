@@ -54,6 +54,7 @@ fn live(kingdom: Kingdom, path: Vec<Arrow>) -> Live {
         casts: Vec::new(),
         seats: Vec::new(),
         covered: None,
+        chat: Vec::new(),
     }
 }
 

@@ -48,9 +48,9 @@ use h3_map_view::tables::Tables;
 use h3_map_view::timeline::{
     Action, AfterBattle, Answer, BATTLE_CURSOR, Boats, Boxes, Computer, Cover, Cursor,
     DEFAULT_CURSOR, Direction, Dissolve, Draw, Events, FADE_BLACK, Fight, Found, HandOver, Hero,
-    LevelBox, Move, NextTurn, Owners, Question, Rules, Start, Switch, TownBoxes, Walked,
+    LevelBox, Move, NextTurn, Owners, Question, Rules, Start, Switch, TownBoxes, TurnClock, Walked,
 };
-use h3_map_view::{engine, status, timeline, turn};
+use h3_map_view::{clock, engine, status, timeline, turn};
 use h3_protocol::wire::game::{Decision, GameEvent};
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
@@ -341,6 +341,27 @@ pub fn for_sequence<'a>(
         }
         None => (turns, None),
     };
+    // A timed hot seat's clock (E24 M5 T5 part five, design §5.32): its limit the duration's
+    // minutes, restarted at the sequence's 0 but at a game's start (`h3map.py`'s staging), the
+    // warning's sound's length in a sound run.
+    let clock = match sequence.duration.filter(|_| sequence.timed()) {
+        Some(duration) => {
+            let minutes = crate::hot_seat::TURN_MINUTES
+                .get(usize::from(duration))
+                .copied()
+                .unwrap_or(0);
+            let sample = if sequence.sound {
+                Some(sample_length(install, &assets.tables.map.clock.sound)?)
+            } else {
+                None
+            };
+            let mut clock = painter.turn_clock(u32::from(minutes) * 60_000, sample)?;
+            clock.running = !sequence.start;
+            clock.tick = STAGED_TICK;
+            Some(clock)
+        }
+        None => None,
+    };
     // The finds a walk tells and the turn without a town's boxes (E24 M4 T2a2); a record's from
     // its visits (E24 M4 T4b1).
     let hover = painter.hover()?;
@@ -408,6 +429,7 @@ pub fn for_sequence<'a>(
         moves: played.map(|p| p.moves),
         host: None,
         seat,
+        clock,
     };
     Ok(Setup {
         painter,
@@ -768,6 +790,7 @@ fn for_played<'a>(
         moves: Some(played.moves.clone()),
         host: None,
         seat: None,
+        clock: None,
     };
     let rules = Rules::new(assets.tables, assets.layout, assets.bugs);
     let heroes = turn::record_heroes(&played.shown, &painter.live.heroes);
@@ -880,6 +903,7 @@ pub fn for_situation<'a>(
         moves: None,
         host: None,
         seat: None,
+        clock: None,
     };
     Ok(Setup {
         painter,
@@ -903,6 +927,11 @@ pub struct Seated {
     pub computers: bool,
     pub framed: Option<u8>,
 }
+
+/// The tick's next 60-ms call at a recorded sequence's 0 (E24 M5 T5 part five, *provisional*: the
+/// clock's five recordings poll at 59 modulo 60, the staging's last millisecond's call;
+/// `tick_60ms_time` 0x6989AC is not written by the harness).
+const STAGED_TICK: u32 = 59;
 
 /// A hot seat's turns added in place covered (E24 M5 T5, MCL-Q73: a hot seat down to one human
 /// still covers each of its turns): each human's turn among `turns` covered, a computer's turn
@@ -1534,6 +1563,41 @@ impl<'a> Painter<'a> {
             &told.text,
             Style::Ok,
             &pictures,
+            (colour, assets.bugs),
+        )))
+    }
+
+    /// A timed turn's clock of `limit` ms (E24 M5 T5 part five, design §5.32, *provisional*): the
+    /// expiry's box framed in the viewer's colours, the warning's sound's length `sample` (none:
+    /// none played); not running at 0, the tick's next call at 0, no chat, the loop's own expiry
+    /// (play's host sets its own: [`TurnClock::hosted`]).
+    ///
+    /// # Errors
+    /// The box's fonts not decoded.
+    pub fn turn_clock(&mut self, limit: u32, sample: Option<u32>) -> Result<TurnClock, String> {
+        Ok(TurnClock {
+            limit,
+            running: false,
+            tick: 0,
+            left: None,
+            chat: Vec::new(),
+            sample,
+            expired: self.expiry_box(self.live.viewer)?,
+            hosted: false,
+        })
+    }
+
+    /// The expiry's box (E24 M5 T5 part five, design §5.32: `message_box_call` 0x4F6530 at
+    /// 0x408811): GENRLTXT 202, style 1, no picture, framed in `colour`'s colours.
+    fn expiry_box(&mut self, colour: u8) -> Result<Arc<MessageBox>, String> {
+        let text = clock::expired(&self.assets.tables.texts);
+        let assets = self.assets;
+        Ok(Arc::new(message::told(
+            &assets.layout.message,
+            self.fonts()?,
+            &text,
+            Style::Ok,
+            &[],
             (colour, assets.bugs),
         )))
     }
@@ -2664,6 +2728,8 @@ impl<'a> Painter<'a> {
         // since a hand-over, its cover.
         self.seated(draw.seat)?;
         self.live.covered = draw.cover;
+        // The screen chat over the view (E24 M5 T5 part five, design §5.32).
+        self.live.chat.clone_from(&draw.chat);
         // The objects' owners changed (E24 M4 T2d1), the objects taken off the map (E24 M4 T2a2
         // part B), the terrains revealed (T2b2), then the minimap's own owners (T2d1).
         self.owned(&draw.owners)?;

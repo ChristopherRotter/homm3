@@ -1707,7 +1707,9 @@ window's kind on top) and in an input's millisecond and the next: the same scree
 times (`seat-hand-over-late` gave its recorded timeline, samples and frames), about 23 ms a
 step on a still map instead of 55 to 75 (the clock's 500 reads and three acknowledgements; the
 palettes' files are read once a run since); a sequence with a `battle` is refused. The clock's
-sequences (`seat-clock*`) wait in `map/to-record.toml`, recorded with it, until part five.
+sequences (`seat-clock*`), recorded with it, waited in `map/to-record.toml` until part five moved
+them into `sequences.toml` (the file removed; a step sound's loop among a sound run's samples
+compared since, its loops 0).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live

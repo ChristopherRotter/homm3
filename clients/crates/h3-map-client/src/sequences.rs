@@ -361,22 +361,25 @@ impl Context<'_> {
 
 impl Context<'_> {
     /// A sound run's samples (E24 M5 T5): our cues' one-shot samples (an effect, a hot seat's
-    /// cover's sound) as `<ms> <length> <loops>`, against the recorded `<id>-sounds.txt` without
+    /// cover's sound) and since part five the step sound's loop as `<ms> <length> <loops>`, against the recorded `<id>-sounds.txt` without
     /// its channels (the game's handles, not the same from run to run: the lane's TRAPS), each
     /// millisecond's in order of length; a game's start's cover at 0 is the recording's −1 (its
     /// Begin's click before it the shell's), written as `<dir>/ours-sounds.txt` with `--frames`.
     fn heard(&self, sequence: &Sequence, cues: &[(u32, Cue)], n: usize) -> Result<Verdict, String> {
         let mut ours: Vec<(i64, u32, u32)> = Vec::new();
         for (t, cue) in cues {
-            let name = match cue {
-                Cue::Effect(name) | Cue::Cover(name) => name,
+            // A step sound loops (E24 M5 T5 part five: `seat-clock-walk`'s, a sample of its own
+            // in the recording, its loops 0).
+            let (name, loops) = match cue {
+                Cue::Effect(name) | Cue::Cover(name) => (name, 1),
+                Cue::Step(name) => (name, 0),
                 _ => continue,
             };
             let length = self
                 .lengths
                 .get(&crate::sounds::stem(name))
                 .ok_or_else(|| format!("{name}: no length (not in the sound archives)"))?;
-            ours.push((i64::from(*t), *length, 1));
+            ours.push((i64::from(*t), *length, loops));
         }
         ours.sort_unstable();
         let path = self

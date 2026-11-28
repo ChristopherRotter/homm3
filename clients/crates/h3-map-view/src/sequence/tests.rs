@@ -53,7 +53,7 @@ fn reads_a_hot_seat() {
 #[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 119);
+    assert_eq!(sequences.sequence.len(), 124);
     // A scripted game's engine commands (E24 M4 T4a2): read, the viewer plays its record; since
     // E24 M4 T4b1 its engine's seed, accepted.
     let walk = sequences.get("game-walk").unwrap();

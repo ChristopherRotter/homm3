@@ -263,6 +263,7 @@ fn start(situation: &str, speed: usize) -> Start {
         moves: None,
         host: None,
         seat: None,
+        clock: None,
     }
 }
 
@@ -425,7 +426,8 @@ fn the_walks_frames_are_m2_t3bs() {
             "battle-won",
             "battle-mine",
             "battle-retreat",
-            "battle-mine-retreat"
+            "battle-mine-retreat",
+            "seat-clock-walk"
         ]
     );
 }
@@ -468,6 +470,7 @@ fn looped(bugs: Bugs, speed: usize) -> Loop {
         moves: None,
         host: None,
         seat: None,
+        clock: None,
     };
     Loop::start(rules(bugs), &start).unwrap()
 }
@@ -687,6 +690,7 @@ fn what_it_cannot_play_yet() {
         moves: None,
         host: None,
         seat: None,
+        clock: None,
     };
     assert_eq!(
         Loop::start(rules(Bugs::Fixed), &over),
@@ -843,6 +847,7 @@ pub(crate) fn walking_start(speed: usize, paths: Vec<Vec<Arrow>>) -> Start {
         moves: None,
         host: None,
         seat: None,
+        clock: None,
     }
 }
 
@@ -1498,6 +1503,7 @@ fn live(pointer: [i32; 2], hero: bool, path: Vec<Arrow>) -> Start {
         moves: None,
         host: None,
         seat: None,
+        clock: None,
     }
 }
 
@@ -2126,6 +2132,7 @@ fn hovering_start(live: bool) -> Start {
         moves: None,
         host: None,
         seat: None,
+        clock: None,
     }
 }
 
@@ -3147,6 +3154,7 @@ mod battles;
 mod boats;
 mod casts;
 mod choices;
+mod clocks;
 mod computers;
 mod director;
 mod finds;

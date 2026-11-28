@@ -109,6 +109,7 @@ pub(super) fn hover_of(live: &str) -> Arc<Hover> {
         casts: Vec::new(),
         seats: Vec::new(),
         covered: None,
+        chat: Vec::new(),
     };
     let text = include_str!("../../../../../map/assets/base.toml");
     let tables = tables::load(&[tables::parse(text).unwrap()], "base").unwrap();

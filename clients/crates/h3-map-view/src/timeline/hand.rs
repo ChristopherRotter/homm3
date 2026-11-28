@@ -54,6 +54,7 @@ impl Loop {
         self.flush = true;
         self.shown = next.turn.player;
         self.timer = false;
+        self.timer_stop();
         // The cover (0x4CA87D to 0x4CA962): the arrow, the music faded, its sound, the view
         // drawn covered with the date's window asked (built when another kind shows: the new
         // date's, at its first frame with its sound), the status bar's hint gone.
@@ -163,6 +164,8 @@ impl Loop {
         self.draw_minimap();
         self.drawn.cover = self.covered;
         self.timer = self.seat.as_ref().is_some_and(|s| s.timed);
+        // The turn's clock started (E24 M5 T5 part five, design §5.32).
+        self.timer_start(t);
         self.hand_events(t)
     }
 

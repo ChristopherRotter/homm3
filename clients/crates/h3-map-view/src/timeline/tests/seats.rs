@@ -75,14 +75,62 @@ const SEATS: [(&str, &str, &str, &str, &str); 9] = [
     ),
 ];
 
-/// The samples' lengths on the harness's clock (the recordings').
-const LENGTHS: [(&str, u32); 5] = [
+/// The recorded turn's clocks (E24 M5 T5 part five, design §5.32): as [`SEATS`].
+pub(super) const CLOCKS: [(&str, &str, &str, &str, &str); 5] = [
+    (
+        "seat-clock",
+        include_str!("../../../../../map/situations/seq-seat.toml"),
+        include_str!("../../../../../map/timelines/seat-clock.txt"),
+        include_str!("../../../../../map/timelines/seat-clock-live.toml"),
+        include_str!("../../../../../map/timelines/seat-clock-sounds.txt"),
+    ),
+    (
+        "seat-clock-ok",
+        include_str!("../../../../../map/situations/seq-seat.toml"),
+        include_str!("../../../../../map/timelines/seat-clock-ok.txt"),
+        include_str!("../../../../../map/timelines/seat-clock-ok-live.toml"),
+        include_str!("../../../../../map/timelines/seat-clock-ok-sounds.txt"),
+    ),
+    (
+        "seat-clock-box",
+        include_str!("../../../../../map/situations/seq-seat.toml"),
+        include_str!("../../../../../map/timelines/seat-clock-box.txt"),
+        include_str!("../../../../../map/timelines/seat-clock-box-live.toml"),
+        include_str!("../../../../../map/timelines/seat-clock-box-sounds.txt"),
+    ),
+    (
+        "seat-clock-walk",
+        include_str!("../../../../../map/situations/seq-seat.toml"),
+        include_str!("../../../../../map/timelines/seat-clock-walk.txt"),
+        include_str!("../../../../../map/timelines/seat-clock-walk-live.toml"),
+        include_str!("../../../../../map/timelines/seat-clock-walk-sounds.txt"),
+    ),
+    (
+        "seat-clock-two",
+        include_str!("../../../../../map/situations/seq-seat.toml"),
+        include_str!("../../../../../map/timelines/seat-clock-two.txt"),
+        include_str!("../../../../../map/timelines/seat-clock-two-live.toml"),
+        include_str!("../../../../../map/timelines/seat-clock-two-sounds.txt"),
+    ),
+];
+
+/// The samples' lengths on the harness's clock (the recordings'; since part five the warning's
+/// and the grass's step sound's).
+const LENGTHS: [(&str, u32); 7] = [
     ("NewWeek.wav", 5759),
     ("newweek.wav", 5759),
     ("newday.wav", 3739),
     ("newmonth.wav", 4784),
     ("button.wav", 151),
+    ("timeover.wav", 921),
+    ("horse02.wav", 479),
 ];
+
+/// The warning's sound's length (the harness's clock).
+pub(super) const TIMEOVER: u32 = 921;
+
+/// The turn durations' minutes (`turndur.txt`'s records: the binary's `hot_seat::TURN_MINUTES`).
+const MINUTES: [u32; 11] = [1, 2, 4, 6, 8, 10, 15, 20, 25, 30, 0];
 
 /// The cover's sound's length.
 const COVER: u32 = 5759;
@@ -92,7 +140,7 @@ const COVER: u32 = 5759;
 /// selection's window, a computer's colour between it and the human before), its first hero
 /// selected and its heroes by the colour; a box of each human's; the cover's sound's length, the
 /// clock, and the game's start covered with `start`.
-fn seated(
+pub(super) fn seated(
     id: &str,
 ) -> (
     Start,
@@ -101,7 +149,8 @@ fn seated(
     &'static str,
     &'static str,
 ) {
-    let &(_, situation, timeline, live, sounds) = SEATS.iter().find(|s| s.0 == id).unwrap();
+    let &(_, situation, timeline, live, sounds) =
+        SEATS.iter().chain(&CLOCKS).find(|s| s.0 == id).unwrap();
     let sequences = Sequences::parse(SEQUENCES).unwrap();
     let sequence = sequences.get(id).unwrap();
     let mut start = start(situation, sequence.scroll_speed().unwrap());
@@ -137,6 +186,15 @@ fn seated(
         })];
     }
     start.player = viewer;
+    start.move_reminder = sequence.move_reminder().unwrap();
+    // A walk's paths, points, cursor and speed the recording shows (E24 M5 T5 part five:
+    // `seat-clock-walk`; the binary's `for_sequence`).
+    if sequence.walks() {
+        start.paths = sequence.paths(timeline).unwrap();
+        start.points = sequence.points(timeline).unwrap();
+        start.reached = sequence.reached(timeline).unwrap();
+        start.hero_speed = sequence.hero_speed().unwrap();
+    }
     // The mouse-over's facts (the binary's): the viewer's heroes by its list.
     start.hover = Some(computers::hover_of(live));
     start.question = Some(laid("End?", Style::OkCancel));
@@ -256,6 +314,21 @@ fn seated(
         timed: sequence.timed(),
         framed: None,
     });
+    // A timed turn's clock (E24 M5 T5 part five): the binary's, restarted at 0 but at a game's
+    // start, the tick's next call at 59.
+    start.clock = sequence
+        .duration
+        .filter(|_| sequence.timed())
+        .map(|d| TurnClock {
+            limit: MINUTES[usize::from(d)] * 60_000,
+            running: !sequence.start,
+            tick: 59,
+            left: None,
+            chat: Vec::new(),
+            sample: Some(TIMEOVER),
+            expired: laid("Out.", Style::Ok),
+            hosted: false,
+        });
     (
         start,
         sequence.actions().unwrap(),
@@ -265,28 +338,28 @@ fn seated(
     )
 }
 
-/// The one-shot samples of `cues` as `<ms> <length> <loops>`, each millisecond's in order.
-fn samples(cues: &[(u32, Cue)]) -> Vec<String> {
-    let mut out: Vec<(u32, u32)> = cues
+/// The one-shot samples of `cues` and the step sound's loops as `<ms> <length> <loops>`, each
+/// millisecond's in order.
+pub(super) fn samples(cues: &[(u32, Cue)]) -> Vec<String> {
+    let length = |name: &String| LENGTHS.iter().find(|(n, _)| n == name).unwrap().1;
+    let mut out: Vec<(u32, u32, u32)> = cues
         .iter()
         .filter_map(|(t, cue)| match cue {
-            Cue::Effect(name) | Cue::Cover(name) => {
-                let length = LENGTHS.iter().find(|(n, _)| n == name).unwrap().1;
-                Some((*t, length))
-            }
+            Cue::Effect(name) | Cue::Cover(name) => Some((*t, length(name), 1)),
+            Cue::Step(name) => Some((*t, length(name), 0)),
             _ => None,
         })
         .collect();
     out.sort_unstable();
     out.iter()
-        .map(|(t, l)| alloc::format!("{t} {l} 1"))
+        .map(|(t, l, n)| alloc::format!("{t} {l} {n}"))
         .collect()
 }
 
 /// A recording's samples without their channels, each millisecond's in order (a game's start's
 /// cover at −1 the viewer's 0, its Begin's click before it left out).
-fn recorded_samples(text: &str) -> Vec<String> {
-    let mut out: Vec<(u32, u32)> = text
+pub(super) fn recorded_samples(text: &str) -> Vec<String> {
+    let mut out: Vec<(u32, u32, u32)> = text
         .lines()
         .filter_map(|line| {
             let n: Vec<i64> = line.split(' ').map(|f| f.parse().unwrap()).collect();
@@ -294,12 +367,13 @@ fn recorded_samples(text: &str) -> Vec<String> {
                 -1 => 0,
                 t => u32::try_from(t).ok()?,
             };
-            Some((t, u32::try_from(n[2]).unwrap()))
+            let number = |v: i64| u32::try_from(v).unwrap();
+            Some((t, number(n[2]), number(n[3])))
         })
         .collect();
     out.sort_unstable();
     out.iter()
-        .map(|(t, l)| alloc::format!("{t} {l} 1"))
+        .map(|(t, l, n)| alloc::format!("{t} {l} {n}"))
         .collect()
 }
 

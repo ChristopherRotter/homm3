@@ -273,6 +273,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   millisecond reads as 4 billion ms ago (the expiry's box at the step to 0, the redraw never
   due). `h3map.py` pauses a timed hot seat's timer through the staging (+0x10) and restarts it
   only once the clock stands at 0 (§5.32's sequences build on it).
+- **The clock's phase and its samples** (M5 T5 part five, design §5.32): the warnings' 60-ms
+  poll is not written by the harness; the recordings poll at 59 modulo 60 (the staging's last
+  millisecond's tick), which `paint::STAGED_TICK` gives every timed sequence: a staging change that
+  moves it shifts every warning. A sound run's compared samples hold the step sound's loop (loops
+  0) since part five: a walk in a sound run lists its `horse*.wav`. In play the session reads the
+  host's clock less the time held (`play::Kept`, MCL-Q76): compare a session deadline with
+  `Kept::clock`, never with the window's milliseconds.
 - **The clock's sequences are long** (M5 T5 part four, design §5.32): a one-minute turn's expiry
   box opens at 60 001 and closes itself at 75 001, the next cover in that millisecond, so an
   input after it is placed by a first run's timeline; record them with `frames --sparse` (about

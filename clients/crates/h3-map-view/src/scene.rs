@@ -29,6 +29,7 @@ use h3_render::Bugs;
 use h3_ui::ui;
 
 use crate::art::{Layer, MapArt};
+use crate::clock;
 use crate::layout::AdventureLayout;
 use crate::live::{Facing, Lifted, Live, LiveBoat, LiveHero};
 use crate::minimap::{self, Base};
@@ -501,6 +502,24 @@ pub fn scene_in(
             x: gem.at[0],
             y: gem.at[1],
         });
+    }
+    // The screen chat over the view (E24 M5 T5 part five, design §5.32: `chat_item_draw`
+    // 0x403F20 draws the dialog's text 37 alone after the view, its lines joined by line breaks).
+    if !live.chat.is_empty()
+        && let Some(ui::Item::Label(label)) = layout.dialog.item(panels::id::TEXT)
+    {
+        let lines: Vec<String> = live
+            .chat
+            .iter()
+            .map(|&w| clock::text(&tables.texts, w))
+            .collect();
+        draws.push(Draw::Dialog(ui::Draw::Label {
+            item: label.clone(),
+            x: layout.dialog.place[0].saturating_add(label.at[0]),
+            y: layout.dialog.place[1].saturating_add(label.at[1]),
+            text: lines.join("\n"),
+            disabled: false,
+        }));
     }
     // The minimap after the view (`adventure_full_update` 0x41753A, design §4.4), as it was last
     // drawn (T3b); during a computer player's turn the shield in its area from the shield's

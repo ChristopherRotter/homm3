@@ -642,6 +642,34 @@ hot seat is the original's own mode on one machine, and the turn's limit the ori
 is "when not in combat" (the manual, p. 11). Built as (a) meanwhile (no battle is played in play before
 T6, `MCL-STUB-6`). Blocks nothing before T6.
 
+#### MCL-Q76 — The hot seat's turn timer: from the turn's passing or from the cover's start (E24 M5 T5 part five, a build)
+
+The original starts a hot seat's human's turn timer after its cover's box and the wait
+(`turn_timer_start` 0x4C78F0, design §5.31, §5.32): the expiry's box (up to 15 s), the cover and
+its box take none of the next human's time. The session's clock starts the next human's timer at
+the turn's passing (`crates/h3-protocol/src/session/game/clock.rs`: End Turn accepted, or the
+system actor's end of a turn out of time), so in play the expiry's box and the cover counted
+against the next human. Built (*provisional*, the lane's adapters only): play's host holds the
+clock it feeds the session (`HotSeat::elapse`) from the turn's passing to the next view's timer
+start on the screen (`play::Kept`), so the session and the view agree. Options: (a) as built, the
+host's hold; (b) a session option of the server lane's, a hot seat's timer started at the seat's
+acknowledgement of its turn (a request in its inbox), the hold dropped; (c) the session's as it is
+(no hold: the cover's time is the next human's). **Recommended (a)** while play is in-process (the
+host owns the clock it reads in), (b) once a network game's hot seat or a server-hosted one needs
+the same. Blocks nothing.
+
+#### MCL-Q77 — A turn's warning silent while a hero walks (E24 M5 T5 part five, a recording)
+
+`chat_system_message` 0x553960 plays `timeover.wav` unless the chat's last sample still plays
+(`sample_query` with 4); the step sound loops on the same sample (category 0's: a step's start
+stops what played there), so a warning given while the selected hero walks is silent once an
+earlier warning's sound played (recorded, `seat-clock-walk`: 58 199's "1 second" shown, no sound,
+the walk's `horse02.wav` looping since 57 300) (design §5.32). Built as the original's meanwhile
+(`Sound::stepping`). Options: (a) the original's; (b) the client plays every warning's sound, the
+original's behind `--bugs original` for the comparisons. **Recommended (b)** (the last seconds'
+warnings are the ones a walking player needs; the silence is an accident of the shared sample).
+Blocks nothing.
+
 ### RMG lane (`RMG-Q<n>`)
 
 (no open questions)

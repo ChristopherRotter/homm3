@@ -91,6 +91,9 @@ pub struct Live {
     pub seats: Vec<Seat>,
     /// A hot seat's covered view drawn (E24 M5 T5, design §5.31); none: the view as it is.
     pub covered: Option<Covered>,
+    /// The screen chat's lines over the view, oldest first (E24 M5 T5 part five, design §5.32:
+    /// a timeline's turn's warnings); none in a still.
+    pub chat: Vec<crate::clock::Warning>,
 }
 
 /// A hot seat's hand-over (E24 M5 T5, design §5.31, *provisional*): a comparison's `[[seat]]`
@@ -1514,6 +1517,7 @@ impl Live {
             computer: false,
             seats: Vec::new(),
             covered: None,
+            chat: Vec::new(),
         }
     }
 }

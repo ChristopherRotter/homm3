@@ -58,6 +58,7 @@ fn live_part(text: &str) -> Live {
         casts: Cast::read_all(&table["cast"]).unwrap(),
         seats: Vec::new(),
         covered: None,
+        chat: Vec::new(),
     }
 }
 

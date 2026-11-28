@@ -97,6 +97,7 @@ fn live(objects: usize) -> Live {
         casts: Vec::new(),
         seats: Vec::new(),
         covered: None,
+        chat: Vec::new(),
     }
 }
 

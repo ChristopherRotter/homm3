@@ -45,6 +45,7 @@ use std::sync::Arc;
 
 use h3_battle_client::audio::HostSound;
 use h3_game::GameRuleset;
+use h3_map_view::clock::ChatLine;
 use h3_map_view::damage::{Held, tidy};
 use h3_map_view::engine::{GameRecord, Live, REVISIT};
 use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
@@ -262,6 +263,21 @@ pub(crate) trait Session {
     fn seated(&self) -> Option<&paint::Seated> {
         None
     }
+    /// A timed game's clock for the view (E24 M5 T5 part five, design §5.32): the turn's limit
+    /// and the time the session gives the view's turn now, ms; none: unlimited turns.
+    fn clock(&self) -> Option<(u32, Option<u32>)> {
+        None
+    }
+    /// The screen chat's lines the view before left (MCL-Q70), each first drawn by the clock of
+    /// a view whose 0 is the host's `now` (ms); taken.
+    fn chat(&mut self, _now: u64) -> Vec<ChatLine> {
+        Vec::new()
+    }
+    /// The view's screen chat `lines` as it is left at its millisecond `ms`, the host's `now`.
+    fn keep_chat(&mut self, _lines: Vec<ChatLine>, _ms: u32, _now: u64) {}
+    /// The view's turn's timer started at the host's `now` (ms): the session's clock, held while
+    /// no human's turn ran on the screen, runs again.
+    fn started(&mut self, _now: u64) {}
 }
 
 /// The host's facts a live start keeps (E24 M5 T4a): the headless check plays them as the loop did.
@@ -821,6 +837,17 @@ pub(crate) fn window(
                 };
                 setup.painter.play_seat(&mut setup.start, &seated)?;
             }
+            // A timed game's clock (E24 M5 T5 part five, design §5.32): the session ends the
+            // turn, the view shows its warnings and the expiry's box; a hand-over's starts at its
+            // cover's start, an uncovered view's runs at 0; the chat the view before left.
+            if let Some((limit, left)) = s.clock() {
+                let sample = paint::sample_length(&options.install, &tables.map.clock.sound).ok();
+                let mut clock = setup.painter.turn_clock(limit, sample)?;
+                clock.running = s.seated().is_none();
+                clock.left = left;
+                clock.hosted = true;
+                setup.start.clock = Some(clock);
+            }
             let what = format!(
                 "play on {}, colour {}'s view",
                 s.map().display(),
@@ -862,6 +889,14 @@ pub(crate) fn window(
         ..
     } = setup;
     start.live = true;
+    // The chat the view before left (E24 M5 T5 part five, MCL-Q70), by the host's clock now.
+    if let (Some(s), Some(turn), Some(win)) = (
+        session.as_deref_mut(),
+        start.clock.as_mut(),
+        lent_window.as_deref(),
+    ) {
+        turn.chat = s.chat(host_ms(win));
+    }
     // In play the walks and the reach are the hot seat's host's (E24 M5 T4a); the screens without
     // a decision their notices (E24 M5 T4c).
     if session.is_some() {
@@ -942,6 +977,9 @@ pub(crate) fn window(
     let mut hw: Option<([u32; 2], bool)> = None;
     let mut clock = Clock::new(win.ticks_ns(), 0);
     let mut shown: Option<Frame> = None;
+    // The session's expiry given to the view, and its timer's start told to the host (E24 M5 T5
+    // part five).
+    let (mut expired, mut released) = (false, false);
     let read = options.run.is_some_and(|(_, read)| read);
     let mut maker = Maker {
         check: read,
@@ -985,14 +1023,37 @@ pub(crate) fn window(
         if stop_ns.is_some_and(|s| now.saturating_sub(started) >= s) {
             break;
         }
-        // The session's clock on the window's (E24 M5 T3b): a turn whose time ran out leaves the
-        // view.
+        // The session's clock on the window's (E24 M5 T3b): a turn whose time ran out shows the
+        // expiry's box (E24 M5 T5 part five, design §5.32), its close asking the End Turn that
+        // leaves the view; with no clock shown, the view left at once.
         if let Some(s) = session.as_deref_mut()
+            && !expired
             && !s.tick(host_ms(win))?
         {
-            s.leave(facings(&replay, &ids));
-            lines.push(format!("{} ms: the turn's time ran out", clock.ms(now)));
-            break 'run;
+            if start.clock.is_none() {
+                s.leave(facings(&replay, &ids));
+                lines.push(format!("{} ms: the turn's time ran out", clock.ms(now)));
+                break 'run;
+            }
+            let t = clock
+                .ms(now)
+                .max(shown.as_ref().map_or(0, |f| f.change.t).saturating_add(1));
+            replay.expire(t);
+            expired = true;
+            renew = true;
+            lines.push(format!("{t} ms: the turn's time ran out: the expiry's box"));
+        }
+        // The view's turn's timer started on the screen (E24 M5 T5 part five): the session's
+        // clock, held since the turn passed, runs again from then.
+        if let Some(s) = session.as_deref_mut()
+            && !released
+            && let Some(at) = replay.timer_at()
+        {
+            let ms = clock.ms(now);
+            if at <= ms {
+                released = true;
+                s.started(host_ms(win).saturating_sub(u64::from(ms - at)));
+            }
         }
         // The map's clock held at a change's millisecond while its held draws show.
         if let Some((_, t)) = hold {
@@ -1314,6 +1375,8 @@ pub(crate) fn window(
             && let Some(t) = replay.turns_asked()
         {
             if !s.end_turn(host_ms(win))? {
+                // The chat as the view leaves it (E24 M5 T5 part five, MCL-Q70).
+                s.keep_chat(replay.chat(), clock.ms(win.ticks_ns()), host_ms(win));
                 s.leave(facings(&replay, &ids));
                 lines.push(format!(
                     "{t} ms: End Turn, the turn passed to another human"

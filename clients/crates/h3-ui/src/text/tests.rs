@@ -206,6 +206,16 @@ fn printf_rows_name_their_specifiers() {
             "{row}"
         );
     }
+    // To a tenth (`%0.1f`): a text the caller writes so (E24 M5 T5 part five, GENRLTXT 630).
+    let m = Message::from_printf("%0.1f min", &[s("who")], kinds).unwrap();
+    assert_eq!(m.segments, vec![ph("who"), lit(" min")]);
+    for row in ["%0.1d", "%0.2f", "%0.1"] {
+        assert_eq!(
+            Message::from_printf(row, &[s("who")], kinds),
+            Err(PrintfError::Specifier(Some('0'))),
+            "{row}"
+        );
+    }
 }
 
 #[test]

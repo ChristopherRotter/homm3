@@ -56,6 +56,7 @@ pub mod art;
 pub mod asks;
 pub mod batch;
 pub mod check;
+pub mod clock;
 pub mod compose;
 pub mod damage;
 pub mod director;

@@ -555,6 +555,13 @@ impl Sound {
         self.cues.push((t, Cue::Cover(name.into())));
     }
 
+    /// Whether a step sound loops (`step_sound_playing` 0x6968E0; E24 M5 T5 part five: the
+    /// sample a warning's sound shares, design §5.32).
+    #[must_use]
+    pub const fn stepping(&self) -> bool {
+        self.step.is_some()
+    }
+
     /// The cues given since the last take, with their milliseconds, in order.
     pub fn take(&mut self) -> Vec<(u32, Cue)> {
         core::mem::take(&mut self.cues)

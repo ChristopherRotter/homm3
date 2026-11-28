@@ -2002,3 +2002,76 @@ sound = true
 seed = 1
 why = "a hot seat's first turn, the clock frozen from Begin: Red's cover at 0 (its box; the uncovered map drawn before it in the same millisecond), the OK at 500, the wait, the screen redrawn, the date's window, the first day's newday.wav and the turn's clock started last"
 inputs = [{ at = 500, keydown = "Return" }, { at = 560, keyup = "Return" }]
+
+# A timed hot seat's clock (E24 M5 T5, design §5.32; recorded in part four with `frames --sparse`,
+# played since part five): sound runs as the hand-over's, a one-minute turn (`duration = 0`; a
+# two-minute one, 1) restarted at the sequence's 0 (the tick's 60-ms poll at 59 modulo 60, the
+# staging's: `paint::STAGED_TICK`); the warnings' chat lines at the view's draws and their
+# `timeover.wav`, the lines' 20 s, the expiry's box at 60 001 (its OK, or its own close 15 s on),
+# Blue's cover with Red's last lines on it (MCL-Q70).
+
+[[sequence]]
+id = "seat-clock"
+situation = "seq-seat"
+ms = 83000
+hot_seat = ["Red", "Blue"]
+duration = 0
+sound = true
+seed = 1
+why = "Red idle through a one-minute turn: each warning's line in the chat at the redraw after its due time with timeover.wav, the lines leaving one a draw after their 20 s, the expiry box after 60 s closing itself 15 s later, Blue's cover with Red's last lines on it, Blue's OK 6 s after it (NewWeek.wav over: no wait), the lines leaving in Blue's turn"
+inputs = [{ at = 81000, keydown = "Return" }, { at = 81060, keyup = "Return" }]
+
+[[sequence]]
+id = "seat-clock-ok"
+situation = "seq-seat"
+ms = 80000
+hot_seat = ["Red", "Blue"]
+duration = 0
+sound = true
+seed = 1
+why = "seat-clock with the expiry box's OK pressed at once: Blue's cover with all of Red's last lines, Blue's OK, the lines leaving in Blue's turn"
+inputs = [
+    { at = 60500, keydown = "Return" }, { at = 60560, keyup = "Return" },
+    { at = 62500, keydown = "Return" }, { at = 62560, keyup = "Return" },
+]
+
+[[sequence]]
+id = "seat-clock-box"
+situation = "seq-seat"
+ms = 61000
+hot_seat = ["Red", "Blue"]
+duration = 0
+move_reminder = 1
+sound = true
+seed = 1
+why = "a box over the map from 45 s to 55 s (End Turn's question, a hero able to move; Escape): the warnings written under it shown together at the first redraw after it, stamped then; the expiry box after 60 s"
+inputs = [
+    { at = 45000, keydown = "e" }, { at = 45060, keyup = "e" },
+    { at = 55000, keydown = "Escape" }, { at = 55060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "seat-clock-walk"
+situation = "seq-seat"
+ms = 62000
+hot_seat = ["Red", "Blue"]
+duration = 0
+hero_speed = 1
+points = 2000
+sound = true
+seed = 1
+why = "a long walk (16 steps at hero speed 1, (4, 4) to (20, 8), 57 300 to 60 500) across the last warnings and the turn's end: the walk's frames draw the lines, the expiry box at the walk's end"
+inputs = [
+    { at = 57000, click = [216, 280] }, { at = 57000, pointer = [700, 300] },
+    { at = 57300, click = [216, 280] }, { at = 57300, pointer = [700, 300] },
+]
+
+[[sequence]]
+id = "seat-clock-two"
+situation = "seq-seat"
+ms = 61000
+hot_seat = ["Red", "Blue"]
+duration = 1
+sound = true
+seed = 1
+why = "a two-minute turn's first warnings: 1.5 minutes at a quarter of it (GENRLTXT 630), 59 seconds at a minute left"

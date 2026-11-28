@@ -72,6 +72,7 @@ fn live_part(text: &str) -> Live {
         casts: Vec::new(),
         seats: Vec::new(),
         covered: None,
+        chat: Vec::new(),
     }
 }
 

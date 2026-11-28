@@ -213,6 +213,18 @@ cover = "NewWeek.wav"
 wait = 4000
 covered = 9999999
 
+# A timed turn's clock (E24 M5 T5 part five, design §5.32): the warnings' poll every `tick` ms
+# (tick_60ms_time 0x6989AC, turn_timer_poll 0x557AF0), a chat line's life from its first view draw
+# (chat_expire 0x553DF0), the chat's ring of `entries` (chat_add_line 0x553840), the warning's sound
+# (the chat's +0x3C, chat_sounds_load 0x5537B0) and a box's deadline when opened with less than it
+# left (message_box_build 0x4F6990; the expiry's box so).
+[map.clock]
+tick = 60
+life = 20000
+entries = 20
+sound = "timeover.wav"
+deadline = 15000
+
 # The finds told (E24 M4 T2a2; design §5.3, message_box_picture 0x4F4EB0): a picture's DEF by its
 # type (the resources' 0 to 7, 18 and 19, the frame the type; an artifact's 8; a spell's 9; a
 # player's crest 10, the frame the colour; the luck's 11 to 13 and the morale's 14 to 16, frames 4,

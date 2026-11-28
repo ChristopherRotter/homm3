@@ -5603,3 +5603,38 @@ test, the boxes' 15 s: survey `E16-timer-survey.md` §3 to §5, not repeated.
     by their `newday.wav`), then one per redraw (81 240 to 81 780); in `seat-clock-ok` none was
     old enough then. After an OK 2 000 ms into the cover the start waits for `NewWeek.wav`'s end (66 319 =
     the cover's 60 560 + 5 759), as §5.31 read.
+- **Built (M5 T5 part five;** *provisional* names): `h3_map_view::clock` (`ClockArt`, the tables'
+  `[map.clock]`: the 60-ms tick, a line's 20 s, the 20 entries, `timeover.wav`, a box's 15 s;
+  `first`, `next` and `warning`, the survey's schedule and texts: the interval to the next warning
+  is half the limit while more than half is left and the limit is above 2 minutes, not to half
+  left, which matches the survey's table; 629 below 1.2 minutes, the f32's test not built;
+  `tenths`, the f32's `%0.1f` in integers; `text` and `expired` through the catalogue's
+  `map.clock.*` keys, GENRLTXT 54, 627 to 630 and 202, h3-ui's `%0.1f` a text the caller writes;
+  `Chat`, `ChatLine`, `Warning`), `h3_map_view::timeline::clock` (the `Loop`'s `timer_start` at a
+  covered start's `hand_start`, an uncovered human's `turn_proceed` or the loop's 0,
+  `timer_stop` at every turn's end, `poll_timer` from `tick`, `chat_draw` at every `Loop::draw`,
+  `expires` at the adventure manager's idle message and at a message a walk kept, `deadline` and
+  `box_timeout`: a box opened with less than 15 s left closes itself 15 s on with its No, else its
+  OK, one open at the end by its style; `Told::Expired`'s close stops the timer and calls
+  `turn_change`); `Start::clock` (`TurnClock`: the limit, running at 0, the tick's phase, the
+  host's time left, the chat carried, the sample's length, the expiry's box, `hosted`),
+  `Draw::chat`, `live::Live::chat` (the scene draws the dialog's text 37 again after the view and
+  its gems), `State::chat` and `warning` (the timeline's lines), `Sound::stepping` (the warning's
+  sound is silent while the step sound loops: the two share category 0's sample, recorded,
+  `seat-clock-walk`'s 58 199, MCL-Q77), `Loop::expire`, `chat`, `timer_at` and their `Replay`'s.
+  In `h3-map-client`: `Painter::turn_clock` and `expiry_box`, `paint::STAGED_TICK` (59: the
+  recordings poll at 59 modulo 60, the staging's last millisecond's tick; the harness does not
+  write `tick_60ms_time`), `sequences`' samples with the step sound's loop (its loops 0). The five
+  `seat-clock*` sequences in `sequences.toml`: every frame exact (212 frames, the frame check's
+  `<id>-frames.txt`, both recordings alike) and every sample as recorded; Blue's start's four
+  removals in its millisecond come out of the start's own draws (no extra draw built). **Play**
+  (`hosted`): the session's system actor ends the turn; the window's tick sees the turn passed and
+  gives the view the expiry (`Replay::expire`): the box open then closes as the session answered
+  it (none asked of the host again), the expiry's box opens (its OK, or its 15 s), its close asks
+  the End Turn that leaves the view; no other box gets a deadline (the session has none: a box
+  opened late stays until the end, where the session answers it; the nearest to survey §5). The
+  warnings come from the loop's own clock, its start placed by the session's time left
+  (`GameClock`'s `turn`); the host's clock fed to the session is held from a turn's passing (End
+  Turn or its time) to the next view's timer start after its cover (`play::Kept`, MCL-Q76), so
+  the session and the view agree on the turn's end within the window's millisecond; the chat
+  carried into the next human's view by each line's host time (MCL-Q70, built as the original).
