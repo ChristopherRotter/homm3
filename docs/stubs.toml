@@ -389,7 +389,7 @@ epic   = "E14"
 [[stub]]
 id     = "RMG-STUB-2"
 where  = "crates/h3-rmg/src/generate.rs::generate"
-reason = "The flags of RMG-QUIRK-9 (quirk.rmg.underground_wide_walled), -10 (quirk.rmg.roe_guard_walk) and -26 (the one-way monoliths' shared channel) are registered with -7's and -8's at T4d2, in one re-hash (the user, 2026-11-28, E14 decision 16): until then step 6 runs the original's behaviour for them (every profile as faithful), each behind a plain boolean that generate sets"
+reason = "The flags of RMG-QUIRK-9 (quirk.rmg.underground_wide_walled), -10 (quirk.rmg.roe_guard_walk), -19 (quirk.rmg.shipyard_sites_repeated) and -26 (the one-way monoliths' shared channel) are registered with -7's and -8's at T4d2, in one re-hash (the user, 2026-11-28, E14 decision 16; -19 joined them as the same case): until then step 6 runs the original's behaviour for them (every profile as faithful), each behind a plain boolean that generate sets"
 epic   = "E14"
 
 [[stub]]
