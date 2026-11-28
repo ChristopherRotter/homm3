@@ -983,3 +983,248 @@ fn the_kept_destination_scores_one_and_a_half_and_a_lost_danger_softens_for_a_gr
         assert_eq!(rng, stream(), "the kept destination draws nothing");
     });
 }
+
+/// The choice over `list` with the field `values` (by tile) from the destination `chosen`, the
+/// best rate `best` and cost 0x7FFF: the destination, its score, the choice and the draws.
+fn choice_of(
+    planner: &Planner<'_>,
+    list: &[Candidate],
+    values: &[(Pos, i32)],
+    (mut chosen, best): (Candidate, i32),
+) -> (Candidate, i32, Choice, Rng) {
+    let search = planner.search(1000, planner.asking(None)).unwrap();
+    let mut field = vec![0; planner.tiles()];
+    for &(pos, value) in values {
+        field[planner.index(pos)] = value;
+    }
+    let mut choice = Choice {
+        best,
+        cheapest: NO_COST,
+        softened: Vec::new(),
+    };
+    let mut score = 0;
+    let mut rng = stream();
+    let asked = (planner.asking(None), None);
+    planner.choose(
+        (&search, asked),
+        (list, &Field(field)),
+        (&mut chosen, &mut score),
+        &mut choice,
+        &mut rng,
+    );
+    (chosen, score, choice, rng)
+}
+
+/// The draws of `n` scores.
+fn draws(n: usize) -> Rng {
+    let mut rng = stream();
+    for _ in 0..n {
+        let _ = rng.range_inclusive(1, 25);
+    }
+    rng
+}
+
+// covers: CPU-PLN-006
+#[test]
+fn the_choice_takes_a_must_go_a_value_over_none_near_over_far_then_the_cost_or_the_rate() {
+    let rules = crate::computer::towns::tests::rules_sized(40, 12);
+    let state = wide_town(&rules, p(0, 0), |s| s.heroes[1].pos = p(11, 11));
+    let reads = town_reads(&state, vec![]);
+    reads.red((&state, &rules), |planner| {
+        let within = planner.near_points();
+        let search = planner.search(1000, planner.asking(None)).unwrap();
+        // Near: (1, 0) and (0, 1) at 100, (2, 0) at 200; far: (4, 4) and (0, 6), explored.
+        let cost = |pos| i32::from(place(&search, pos).cost);
+        assert_eq!([cost(p(1, 0)), cost(p(0, 1)), cost(p(2, 0))], [100, 100, 200]);
+        assert!(
+            within >= 200 && cost(p(4, 4)) > within && cost(p(0, 6)) > within,
+            "{within} {} {}",
+            cost(p(4, 4)),
+            cost(p(0, 6))
+        );
+        let near = |pos| candidate(pos, 10, cost(pos));
+        let none = (Candidate::NONE, 0);
+        // A candidate without value counts only above the best rate; one with value beats none.
+        let (chosen, _, choice, rng) = choice_of(planner, &[candidate(p(1, 0), 0, 100)], &[], none);
+        assert_eq!((chosen.pos, choice.best, rng), (None, 0, draws(1)));
+        let (chosen, score, choice, _) =
+            choice_of(planner, &[near(p(1, 0))], &[(p(1, 0), 500)], none);
+        assert_eq!((chosen.pos, chosen.near, choice.cheapest), (Some(p(1, 0)), true, 100));
+        assert_eq!(choice.best, score);
+        // A valued destination skips one without value, undrawn.
+        let valued = (
+            Candidate {
+                value: 1,
+                ..Candidate::NONE
+            },
+            0,
+        );
+        let (_, _, _, rng) = choice_of(planner, &[candidate(p(1, 0), 0, 100)], &[], valued);
+        assert_eq!(rng, stream());
+        // A must-go is taken and ends the choice: the next one is not scored.
+        let must = Candidate {
+            must_go: true,
+            ..candidate(p(4, 4), 10, cost(p(4, 4)))
+        };
+        let (chosen, _, _, rng) = choice_of(planner, &[must, near(p(1, 0))], &[], none);
+        assert_eq!((chosen.pos, chosen.must_go, rng), (Some(p(4, 4)), true, draws(1)));
+        // Near beats far either way; far against far by the rate.
+        let far = |pos| candidate(pos, 10, cost(pos));
+        let rich = [(p(4, 4), 1_000_000), (p(0, 6), 100), (p(1, 0), 100)];
+        let order = |list: &[Candidate]| choice_of(planner, list, &rich, none).0.pos;
+        assert_eq!(order(&[far(p(4, 4)), near(p(1, 0))]), Some(p(1, 0)));
+        assert_eq!(order(&[near(p(1, 0)), far(p(4, 4))]), Some(p(1, 0)));
+        assert_eq!(order(&[far(p(0, 6)), far(p(4, 4))]), Some(p(4, 4)));
+        assert_eq!(order(&[far(p(4, 4)), far(p(0, 6))]), Some(p(4, 4)));
+        // Near against near: the cheaper node, at an equal cost the higher rate.
+        let rated = [(p(1, 0), 100), (p(0, 1), 1_000_000), (p(2, 0), 1_000_000)];
+        let order = |list: &[Candidate]| choice_of(planner, list, &rated, none).0.pos;
+        assert_eq!(order(&[near(p(2, 0)), near(p(1, 0))]), Some(p(1, 0)));
+        assert_eq!(order(&[near(p(1, 0)), near(p(2, 0))]), Some(p(1, 0)));
+        assert_eq!(order(&[near(p(1, 0)), near(p(0, 1))]), Some(p(0, 1)));
+        assert_eq!(order(&[near(p(0, 1)), near(p(1, 0))]), Some(p(0, 1)));
+        // The town's entrance beside the hero is near whatever its cost; a negative score is
+        // not, nor any without a town.
+        let beside = candidate(p(1, 1), 10, 10_000);
+        let (chosen, _, _, _) = choice_of(planner, &[beside], &[(p(1, 1), 100)], none);
+        assert_eq!((chosen.pos, chosen.near), (Some(p(1, 1)), true));
+        let (chosen, _, _, _) =
+            choice_of(planner, &[near(p(1, 0))], &[(p(1, 0), -100)], (Candidate::NONE, -1000));
+        assert_eq!((chosen.pos, chosen.near), (Some(p(1, 0)), false));
+    });
+    let rules = fixture::rules();
+    let state = world(&rules, &[], |_| {});
+    let case = Case::new(&state, &rules);
+    Reads::of(&case).red((&state, &rules), |planner| {
+        let (chosen, _, _, _) =
+            choice_of(planner, &[candidate(p(1, 0), 10, 100)], &[(p(1, 0), 100)], (Candidate::NONE, 0));
+        assert_eq!((chosen.pos, chosen.near), (Some(p(1, 0)), false));
+    });
+}
+
+// covers: CPU-PLN-006
+#[test]
+fn a_run_starts_from_the_carried_destination_and_writes_the_kept_plan() {
+    let rules = fixture::rules();
+    // Blue out of a 1 000 budget's reach: no candidate.
+    let state = world(&rules, &[], |s| s.heroes[1].pos = p(11, 11));
+    let case = Case::new(&state, &rules);
+    Reads::of(&case).red((&state, &rules), |planner| {
+        let points = planner.points();
+        let run = |cost, score| {
+            let mut plans = Plans::default();
+            let mut chosen = Candidate {
+                must_go: true,
+                ..candidate(p(3, 0), 1, cost)
+            };
+            let mut score = score;
+            let (rate, short) =
+                planner.destination(&mut plans, 1000, (&mut chosen, &mut score), &mut stream());
+            (rate, short, chosen, plans.get(HERO))
+        };
+        // The carried score per 100 points of its cost above 100, else whole; its must-go
+        // cleared; the plan its tile, nothing beyond.
+        let (rate, short, chosen, plan) = run(150, 300);
+        assert_eq!((rate, short, chosen.must_go, chosen.near), (200, true, false, false));
+        let plan = plan.unwrap();
+        assert_eq!((plan.destination, plan.beyond, plan.must_go), (p(3, 0), 0, false));
+        assert_eq!(run(50, 300).0, 300);
+        // Beyond the points left: the excess.
+        let far = points + 5;
+        assert_eq!(run(far, 300).3.map(|plan| plan.beyond), Some(5));
+    });
+    // A hero not on the map plans nothing.
+    let gone = HeroOnMap {
+        id: HeroId::new(9),
+        ..state.adventure().hero(HERO).unwrap().clone()
+    };
+    let details = state.hero(HERO).unwrap();
+    let fighter = Fighter {
+        on_map: &gone,
+        details,
+    };
+    let reads = Reads::of(&case);
+    let valued = Valued::new(&state, &rules, (&reads.record, &reads.weights), fighter);
+    let planner = Planner::new((&state, &rules), &valued, (&reads.record, &reads.danger, false));
+    let mut plans = Plans::default();
+    let outcome = search_and_walk(&planner, &mut plans, false, &mut stream());
+    assert_eq!((outcome, plans), (Outcome::Nothing, Plans::default()));
+}
+
+// covers: CPU-PLN-006
+#[test]
+fn a_hero_on_an_object_with_nothing_to_do_steps_off_to_its_cheapest_free_neighbour() {
+    let rules = fixture::rules();
+    // Red on a buoy (entered: it stands on it), blue an ally far away: no candidate.
+    let edit = |s: &mut GameSetup| {
+        s.heroes[0].pos = p(5, 5);
+        s.heroes.truncate(1);
+    };
+    let state = world(&rules, &[("t:buoy", p(5, 5))], edit);
+    let case = Case::new(&state, &rules);
+    let reads = Reads::of(&case);
+    let outcome = reads.red((&state, &rules), |planner| {
+        let mut plans = Plans::default();
+        let outcome = search_and_walk(planner, &mut plans, false, &mut stream());
+        (outcome, plans.get(HERO))
+    });
+    // Up first; nothing later strictly cheaper.
+    let plan = Plan {
+        destination: p(5, 4),
+        beyond: 0,
+        must_go: false,
+    };
+    assert_eq!(outcome, (Outcome::Walks(p(5, 4)), Some(plan)));
+    // An entrance up, a guard's reach up right: right, the first at 100.
+    let mut monster = object(&rules, "t:monster", p(7, 3));
+    monster.monster = Some(h3_adventure::MonsterSetup {
+        creature: Some(IMP),
+        count: 1,
+        disposition: 0,
+        never_flees: false,
+        no_growth: false,
+        treasure: vec![],
+        artifact: None,
+    });
+    let objects = vec![
+        object(&rules, "t:buoy", p(5, 5)),
+        object(&rules, "t:buoy", p(5, 4)),
+        monster,
+    ];
+    let state = fixture::game(&rules, objects, edit);
+    let case = Case::new(&state, &rules);
+    let mut reads = Reads::of(&case);
+    let step = |reads: &Reads| {
+        reads.red((&state, &rules), |planner| {
+            let search = planner.search(1000, planner.asking(None)).unwrap();
+            planner.step_off(&search)
+        })
+    };
+    assert_eq!(step(&reads), Some(p(6, 5)));
+    // In danger there: down right at 141 first, then down at 100.
+    reads.danger.tiles[planner_index(&state, p(6, 5))] = -1;
+    assert_eq!(step(&reads), Some(p(5, 6)));
+    // Not on an entrance, or on its own town's: no step.
+    let plain = world(&rules, &[], edit);
+    let case = Case::new(&plain, &rules);
+    let none = Reads::of(&case).red((&plain, &rules), |planner| {
+        let search = planner.search(1000, planner.asking(None)).unwrap();
+        planner.step_off(&search)
+    });
+    assert_eq!(none, None);
+    let rules = crate::computer::towns::tests::rules_with(40);
+    let town = on_town(&rules, |_| {});
+    let none = town_reads(&town, vec![]).red((&town, &rules), |planner| {
+        let search = planner.search(1000, planner.asking(None)).unwrap();
+        planner.step_off(&search)
+    });
+    assert_eq!(none, None);
+}
+
+/// The index of `pos` on `state`'s map.
+fn planner_index(state: &GameState, pos: Pos) -> usize {
+    let map = state.adventure().map();
+    (usize::from(pos.level) * usize::from(map.height()) + usize::from(pos.y))
+        * usize::from(map.width())
+        + usize::from(pos.x)
+}
