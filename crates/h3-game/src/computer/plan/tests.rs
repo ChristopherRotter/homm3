@@ -814,3 +814,172 @@ fn with_a_town_the_unexplored_tiles_are_worth_100_or_100_000_under_the_turn_s_fl
         assert!(unexplored.iter().all(|c| c.value == value));
     }
 }
+
+/// The field at `pos`.
+fn field_at(planner: &Planner<'_>, field: &Field, pos: Pos) -> i32 {
+    field.get(planner.index(pos))
+}
+
+/// A candidate on `pos` of `value` at `cost`.
+fn candidate(pos: Pos, value: i32, cost: i32) -> Candidate {
+    Candidate {
+        pos: Some(pos),
+        value,
+        cost,
+        near: false,
+        must_go: false,
+    }
+}
+
+// covers: CPU-PLN-004
+#[test]
+fn the_field_spreads_an_explored_value_over_its_box_and_an_unexplored_on_its_tile() {
+    let rules = fixture::rules();
+    let state = world(&rules, &[("t:campfire", p(1, 0))], |_| {});
+    let adventure = state.adventure();
+    assert!(adventure.is_explored(RED, p(2, 2)) && !adventure.is_explored(RED, p(11, 11)));
+    let case = Case::new(&state, &rules);
+    Reads::of(&case).red((&state, &rules), |planner| {
+        // The campfire is entered (m 0), blue's hero visited from beside: its box's m the dearest
+        // of the 3 × 3 around it, 141; the unexplored tile its own value alone.
+        let list = [
+            candidate(p(1, 0), 1000, 100),
+            candidate(p(2, 2), 3000, 282),
+            candidate(p(11, 11), 7, 0),
+        ];
+        let field = planner.field(&list);
+        let at = |pos| field_at(planner, &field, pos);
+        // (1, 0): the campfire's 1 000 and blue's at 241, 3 000 × 300 / (241 − 141 + 300).
+        assert_eq!(at(p(1, 0)), 1000 + 2250);
+        // (2, 0): the campfire's at 100 (750) and blue's at 200 (900 000 / 359).
+        assert_eq!(at(p(2, 0)), 750 + 2506);
+        // (2, 2): blue's own 3 000 and the campfire's at 241 (300 000 / 541).
+        assert_eq!(at(p(2, 2)), 3000 + 554);
+        // Within blue's m: 3 000 whole on (3, 3), at 141.
+        assert_eq!(at(p(3, 3)), 3000 + 300_000 / (382 + 300));
+        assert_eq!(at(p(11, 11)), 7);
+        // Past the boxes and the bound: nothing.
+        assert_eq!(at(p(7, 0)), 0);
+        assert_eq!(at(p(9, 9)), 0);
+    });
+}
+
+// covers: CPU-PLN-005
+#[test]
+fn the_score_reads_the_field_the_key_the_danger_and_a_guard_then_draws() {
+    let rules = fixture::rules();
+    let mut weak = object(&rules, "t:monster", p(6, 0));
+    weak.monster = Some(h3_adventure::MonsterSetup {
+        creature: Some(IMP),
+        count: 4,
+        disposition: 0,
+        never_flees: false,
+        no_growth: false,
+        treasure: vec![],
+        artifact: None,
+    });
+    let state = fixture::game(&rules, vec![object(&rules, "t:campfire", p(5, 0)), weak], |_| {});
+    let case = Case::new(&state, &rules);
+    let reads = Reads::of(&case);
+    reads.red((&state, &rules), |planner| {
+        let search = planner.search(1000, planner.asking(None)).unwrap();
+        let index = |pos| planner.index(pos);
+        let mut values = vec![0; 144];
+        values[index(p(1, 1))] = 5000;
+        values[index(p(5, 0))] = 40;
+        let field = Field(values);
+        let none = (planner.asking(None), None);
+        let mut rng = stream();
+        let mut softened = Vec::new();
+        // Blue's hero, visited from beside: its cost moved onto (1, 1), the source of its node
+        // (282 off, 141 on), the field read there; one draw.
+        let blue = place(&search, p(2, 2));
+        assert_eq!((blue.cost, blue.from), (282, p(1, 1)));
+        let mut c = candidate(p(2, 2), 1, 999);
+        let s = planner.score(&mut c, &blue, (&search, &field, none), &mut softened, &mut rng);
+        let mut draws = stream();
+        let r = 75 + i32::try_from(draws.range_inclusive(1, 25)).unwrap();
+        assert_eq!((s, c.cost), (5000 * r / 100, 999 - 282 + 141));
+        // The campfire, entered and guarded by the weak monster its path did not weigh: its
+        // value added to the field's 40 (both through the draw).
+        let camp = place(&search, p(5, 0));
+        assert_eq!(camp.guard, None);
+        let monster = case.value(p(6, 0), 500).0;
+        assert!(monster > 0, "{monster}");
+        let mut c = candidate(p(5, 0), 1, 500);
+        let s = planner.score(&mut c, &camp, (&search, &field, none), &mut softened, &mut rng);
+        let r = 75 + i32::try_from(draws.range_inclusive(1, 25)).unwrap();
+        assert_eq!(s, (40 + monster) * r / 100);
+        // Met on its path, the guard adds nothing.
+        let met = SearchNode {
+            guard: Some(p(6, 0)),
+            ..camp
+        };
+        let mut c = candidate(p(5, 0), 1, 500);
+        let s = planner.score(&mut c, &met, (&search, &field, none), &mut softened, &mut rng);
+        let r = 75 + i32::try_from(draws.range_inclusive(1, 25)).unwrap();
+        assert_eq!(s, 40 * r / 100);
+        // A score of 1 stays 1; 0 and below × (100.0 / r), truncated.
+        let empty = place(&search, p(0, 3));
+        for value in [1, 0, -1000] {
+            let mut values = vec![0; 144];
+            values[index(p(0, 3))] = value;
+            let field = Field(values);
+            let mut c = candidate(p(0, 3), 1, 300);
+            let s = planner.score(&mut c, &empty, (&search, &field, none), &mut softened, &mut rng);
+            let r = 75 + draws.range_inclusive(1, 25);
+            let low = SignedX87::int(100)
+                .over(SignedX87::int(r.into()))
+                .unwrap()
+                .times(SignedX87::int(value.into()))
+                .ftol();
+            assert_eq!(s, if value > 0 { 1 } else { low }, "{value}");
+        }
+        assert_eq!(rng, draws);
+    });
+}
+
+// covers: CPU-PLN-005
+#[test]
+fn the_kept_destination_scores_one_and_a_half_and_a_lost_danger_softens_for_a_great_score() {
+    let rules = fixture::rules();
+    let state = world(&rules, &[], |_| {});
+    let case = Case::new(&state, &rules);
+    Reads::of(&case).red((&state, &rules), |planner| {
+        let search = planner.search(1000, planner.asking(None)).unwrap();
+        let at = p(0, 3);
+        let kept = Plan {
+            destination: at,
+            beyond: 0,
+            must_go: true,
+        };
+        let asked = (planner.asking(Some(at)), Some(kept));
+        let node = SearchNode {
+            danger: -1_000_000_000,
+            ..place(&search, at)
+        };
+        let mut softened = Vec::new();
+        let mut rng = stream();
+        let mut score = |field: i32, node: &SearchNode, softened: &mut Vec<Pos>| {
+            let mut values = vec![0; 144];
+            values[planner.index(at)] = field;
+            let mut c = candidate(at, 1, 300);
+            let s = planner.score(&mut c, node, (&search, &Field(values), asked), softened, &mut rng);
+            (s, c.must_go)
+        };
+        // 5 000 000 with a danger of −1e9: softened to −2 500 000, then × 1.5 + 20; a must-go as
+        // the kept one.
+        assert_eq!(score(5_000_000, &node, &mut softened), (3_750_020, true));
+        assert_eq!(softened, [at]);
+        // Softened in the search's node: read so again, ÷ 1.5 below 0 (−1 666 666.67).
+        assert_eq!(score(0, &node, &mut softened), (-1_666_666 + 20, true));
+        // Below −500 000 000 no danger is added: −600 000 000 ÷ 1.5 + 20.
+        let fresh = place(&search, at);
+        let node = SearchNode {
+            danger: -1,
+            ..fresh
+        };
+        assert_eq!(score(-600_000_000, &node, &mut Vec::new()), (-399_999_980, true));
+        assert_eq!(rng, stream(), "the kept destination draws nothing");
+    });
+}
