@@ -354,6 +354,84 @@ between steps; the node's flags carry the walk's marks (`pathfinder_node` +0x4).
 
 No draw, hidden read or float of its own in the walk (the replans draw, §1.9).
 
+### 1.11 The computer's search (T2i0)
+
+Read for the port (AI-Q41: the original's computer pathfinder ported whole into `h3-adventure`,
+`h3_adventure::search`, CPU-PTH-001 to -007) by three fresh readers and checked at the deciding
+sites by the main session: `pathfinder_run` 0x56B440, `pathfinder_reset` 0x4B1530 and
+`pathfinder_relax` 0x4B1A70 whole; `pathfinder_expand` 0x4B2300 whole; `pathfinder_pass_through`
+0x56AB40, `pathfinder_teleport_exits` 0x56A400, `pathfinder_gate_exit` 0x56A730,
+`pathfinder_entrance_guarded` 0x56A360, `pathfinder_target_weigh` 0x56AAD0 and
+`find_guarding_monster` 0x41A460 whole. Not read again: the Castle Gate 0x56A850 and Town Portal
+0x56B050 (§1.10's reading; the engine has neither: AI-STUB-22).
+
+**The runs.** Eight arguments: the hero, the start tile, a destination (none from the computer),
+the bound, a boat flag, the mode, the start points (also the day's points, +0x8) and a resume
+flag. The danger map runs mode 3 from each enemy with its maximum plus 300 as bound and points,
+the threat fold mode 3 with its maximum plus 800; the hero's own search mode 4 (from the search
+and walk) or 5 (from the walk) with the budget as bound and its points left; a colleague's claims
+mode 2 from its kept destination (else its tile) with its day's points, the boat flag from the
+start tile's terrain; the value field mode 1 from a candidate with bound 500 and 59 999 points in
+a box of 5 tiles each way. The box is otherwise the whole map; two nodes a tile and level, a
+place to stop (flag bit 10) and a pass.
+
+**The order.** No turn count: a node's score S is its key plus, when its cost exceeds the day's
+points, its danger. The open list is a vector kept sorted by S, and for an equal S by the second
+cost from highest to lowest (a binary search; a new entry before its equals); the back is taken
+(the highest S, the lowest second cost, the oldest of equals), and skipped when the next entry
+is the same node; the node is reloaded from its tile, so a stale entry expands the current node.
+Every accepted relax inserts a copy; at 500 entries an insert first drops the back, the best
+(0x4B1DE7; #74). A relaxed node replaces the stored one when its S is higher, or equal with a
+strictly smaller second cost; past a positive bound only when its S is higher, else the run is
+marked short (+0x20). The reached list (+0x58) takes each place-to-stop node when first reached.
+
+**The costs and the days.** The cost is the sum of the steps' prices; the second cost adds the
+extras of jumps and teleporters (and the day's rest of a landing or boarding in modes 4, 5). Two
+"points left": the node's own (+0x1C) pays a step; when it cannot, a node that is a place to
+stop starts a new day with the whole land (or sea) maximum, the step not taken off it (#75), and
+loses flying and water walking; the diagonal exception reads the run's start points less the
+cost, negative past the first day, so it never applies there (#76). The danger is the tile
+buffer's within the day's points, past them the lowest on the path, and a node past them at or
+below -500 000 000 is not entered.
+
+**The tiles** (per step, after its price): rock and an object's blocked tile only by a flight or a
+Dimension Door leg; an unexplored tile (not in mode 3) a flight's only for a human, for a computer
+only from another unexplored tile while it owns a town (§5.3 row 9); up off an entrance not
+visited from above a flight's, down onto one never; from land onto water an empty boat, a hero
+or a coast bank's entrance a step, another entrance a flight's, plain water a sea step (by a
+flight, a water walk, a Door leg or, from a place to stop, a boat node); from a boat onto land a
+landing only onto a free coastal tile (class 3); an entrance of a class visited from the
+neighbouring tile, or a town's, only from a place to stop. A flying node on an entrance is also
+kept as a pass. Below mode 4 a node on a guarded tile steps only onto its guard.
+
+**Past an entrance** (`pathfinder_pass_through`, asked of a node on an entrance before it is
+expanded): mode 0 only a garrison of its team and a border gate by key; in the computer's modes
+an empty boat is boarded from mode 4, a border gate by the current player's key (#78) and a
+border guard so from mode 4, a garrison of the team always and another from mode 4, another
+team's hero in modes 3 to 5, a monster from mode 4, a town from mode 3 unless guarded (its
+Castle Gate first), the teleporters' exits relaxed (then no), any other class when it is entered.
+
+**The teleporters** (from mode 3; not at a guarded entrance of cost above 0): each exit of its
+list in order (one-way: its channel's exits; two-way: its channel but itself; Whirlpools: all
+but itself; a non-team hero on an exit accepted, a team-mate's skipped) as a copy of the
+entrance's node at no price, the second cost plus 100 per exit beyond the first (16 for a
+Whirlpool), the key lowered from mode 4 by the lowest answer of the exits' guards (a lost fight
+drops the channel; not for two-way monoliths) and a Whirlpool's k-th exit by 500 x k more; a
+Subterranean Gate's pair at no price, nothing else changed.
+
+**The guards and the jumps of modes 4 and 5.** Every step onto a hero's, a garrison's or a
+monster's entrance, then onto a guarded tile, is weighed by `ai_fight_answer` (a lost fight makes
+it a flight's tile, a negative answer lowers the key and records the guard met, whose fight the
+score then does not add again). Mode 4 alone (the jumps the run sets: Fly and Water Walk castable
+by the spell known and its cost plus 20 against the mana, or by Angel Wings and the Boots; the
+levels that price lifted steps from the school's mastery, lowered to the hero's own level when
+that is set and lower, whether castable or not, #79; the start node's flying and water walking
+stay the hero's own, read before):
+a Dimension Door leg where a step meets rock or a flight's tile (the second cost plus 500, 300
+points or 200 at Expert, its steps free, held to 9 columns and 8 rows, landing on no entrance), a
+Fly stretch there, Fly or Water Walk onto water by the higher level, a boat summoned or bought at
+a walk's boat mark (the purchase's value off the key); landings and boardings take the day's rest.
+
 ## 2. The values (T1a2)
 
 What a hero's plan weighs (§1.9): the value of every candidate, the fight estimates of the danger
@@ -1935,7 +2013,7 @@ increment 2 (ADR draft point 1), the exploit-fix entries first.
 
 Counts: 36 slips, 6 state, 5 exploit-fix, 13 none, 2 fixed (one item); T2b's re-read added two
 state rows, #63 and #64, T2c's reading two more, #65 and #66 (10 state), T2d's two slips, #67
-and #68 (38 slips), T2e's one, #69 (39 slips).
+and #68 (38 slips), T2e's one, #69 (39 slips). T2f to T2h added #70 to #73 (slips); T2i0's search #74 to #79 (five slips, one none).
 
 | # | § | Candidate | Address | Class | Lane | Confirm | Note |
 |---|---|---|---|---|---|---|---|
@@ -2012,3 +2090,9 @@ and #68 (38 slips), T2e's one, #69 (39 slips).
 | 71 | §1.5 | the artifacts' mean counts every artifact 7 to 140, the map's bans not read: it tests the setup's flag +0x1C, which only artifact_table_load sets, for 141 to 143 | 0x5279D9 (0x527960), 0x44D00D | slip | ai | read at T2f | the turn start's mean; ported as read (E31 T2f, CPU-STA-008) |
 | 72 | §2.1 | the Stables' upgrade value counts the army's stacks of the Cavaliers (`army_count_type` 0x4E2340), not the Cavaliers: one Cavalier stack of 100 is worth one Champion's gain | 0x52AB20, 0x52AB4A (0x52AAC0) | slip | ai | read at T2h | the Stables' value; ported as read (E31 T2h, CPU-OBJ-010) |
 | 73 | §2.1 | the Sirens are valued without the hero's mark (bit 20), so a hero that visited them, to whom they give nothing, values their losses all the same | 0x529288 (0x528040) | slip | ai | read at T2h | the Sirens' value; ported as read (E31 T2h, CPU-OBJ-010) |
+| 74 | §1.11 | the search's open list drops its back entry, the best, before an insert once it holds 500 entries, so a large search loses nodes it would expand next | 0x4B1DE7 (0x4B1A70) | slip | ai | read at T2i0, blind-confirmed | the computer's search; ported as read (E31 T2i0, CPU-PTH-001) |
+| 75 | §1.11 | a step that starts a new day leaves the node the whole maximum: its price is not taken off the new day's points | 0x4B2536 to 0x4B254E (0x4B2300) | slip | ai | read at T2i0, blind-confirmed | the computer's search; ported as read (CPU-PTH-003) |
+| 76 | §1.11 | the diagonal exception reads the run's start points less the cost, negative past the first day, so every diagonal past it costs the diagonal price | 0x4B2500, 0x4B256C (0x4B2300) | slip | ai | read at T2i0, blind-confirmed | the computer's search; ported as read (CPU-PTH-003) |
+| 77 | §1.11 | the reset clears the pass nodes only when a level or a jump is set, so they may keep an earlier run's | 0x56B759 to 0x56B787 (0x56B440) | none | ai | read at T2i0 | no search without levels or jumps makes a pass node; every search starts clear in the port |
+| 78 | §1.11 | a border gate and a border guard are passed by the current player's key, not the searching hero's owner's: an enemy's reach (mode 3) uses the computer's keys | 0x56ABB1 (0x56AB40) | slip | ai | read at T2i0, blind-confirmed | the danger map and the threat fold; ported as read (CPU-PTH-005) |
+| 79 | §1.11 | mode 4 sets both flying and water-walking levels from the masteries even where the spell cannot be cast, so Fly may be chosen onto water with only Water Walk castable | 0x56B6A3, 0x56B6FE (0x56B440), 0x4B2C31 (0x4B2300) | slip | ai | read at T2i0, blind-confirmed | the hero's own search; ported as read (CPU-PTH-007; the caller sets the levels as the original) |

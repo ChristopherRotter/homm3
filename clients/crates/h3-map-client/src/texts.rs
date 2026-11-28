@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_map_view::asks::Traits;
-use h3_map_view::{asks, finds, hover, levels, notice, panels, status, turn};
+use h3_map_view::{asks, clock, finds, hover, levels, notice, panels, status, turn};
 use h3_ui::text::Catalogue;
 use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, KeysFile, Row, address_field};
 use h3_ui::text::pack::{Pack, Tables};
@@ -147,6 +147,7 @@ pub fn keys(text: &str, ids: &BTreeMap<String, usize>) -> Result<Keys, String> {
         .chain(hover::KEYS)
         .chain(hover::contents::KEYS)
         .chain(turn::KEYS)
+        .chain(clock::KEYS)
         .chain(finds::KEYS)
         .chain(asks::KEYS)
         .chain(levels::KEYS)
@@ -329,6 +330,7 @@ mod tests {
                 .chain(hover::KEYS)
                 .chain(hover::contents::KEYS)
                 .chain(turn::KEYS)
+                .chain(clock::KEYS)
                 .chain(finds::KEYS)
                 .chain(asks::KEYS)
                 .chain(levels::KEYS)

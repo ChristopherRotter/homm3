@@ -117,6 +117,9 @@ week = "newweek.wav"
 month = "newmonth.wav"
 deity = [42, 43]
 town_days = 7
+cover = "NewWeek.wav"
+wait = 4000
+covered = 9999999
 
 [map.finds]
 resources = "resour82.def"

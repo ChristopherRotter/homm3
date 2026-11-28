@@ -18,6 +18,15 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 
 ## Inbox
 
+- 2026-11-28 (the map-client lane, E24 M5 T5, `map-client/e24-m5-t5`; **for `CLT-STUB-11`, and one
+  additive change in the common foundation**): the hot seat's clock runs and shows now. `play`
+  takes the turn's duration as before (`h3_map_client::play::Game::duration`, `turndur.txt`'s
+  record, through `hot_seat::clock`) and with T5 shows the original's warnings in the screen chat,
+  the expiry box (GENRLTXT 202) and the next human's covered hand-over (GENRLTXT 14; E24 design
+  §5.31, §5.32). So `CLT-STUB-11` lifts once the shell calls play with `begin::Game`'s duration
+  (your move of the shell into its own crate, queued at E24 M5 T2b). The common `h3-ui` gained
+  `%0.1f` in its printf rows (GENRLTXT 630's minutes), additive: nothing of yours changes.
+
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 

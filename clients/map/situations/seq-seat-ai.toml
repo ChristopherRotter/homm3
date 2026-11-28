@@ -1,0 +1,13 @@
+# `seq-seat` with a computer player between Blue and Red (E24 M5 T5, design §5.31;
+# clients/map/sequences.toml `seat-new-day-ai`): Tan's hero in a corner far from both humans'
+# sight (Red's explored tiles stop short of it, Blue's are the start's), no town (a computer with
+# a Tavern hires a hero that may walk into sight).
+size = 36
+terrain = "grass"
+heroes = [{ at = [4, 4], class = 2 }, { at = [30, 30], owner = 1 }, { at = [2, 33], owner = 2 }]
+towns = [
+    { at = [8, 3], faction = 0, owner = 0, buildings = "fort" },
+    { at = [26, 31], faction = 1, owner = 1, buildings = "fort" },
+]
+view = [14, 0, 0]
+hidden = [[0, 24, 11, 35]]

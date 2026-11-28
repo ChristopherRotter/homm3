@@ -3,7 +3,7 @@
 Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short; verbatim, grouped by area. Read the group for the area your task touches; delete a trap when it stops applying, merge duplicates, add a new one under its area (a trap of every lane goes into `docs/HANDOFF.md` or the topic doc it belongs to, a `shared/` change).
 
 - **The gate and `h3map.py`** need the four LODs and the shipped maps (the harness also the runbook's DLLs and sound archives, then `clients/capture/setup.sh`): `sandbox-setup.sh` copies only the bitmap LODs, so `cp -rn` the staged `original-data/.` into the clone (untar `maps.tar` into `install/`, `extracted.tar` beside it). Since M2 T5 the gate and the window's sound need `Data/Heroes3.snd`, `H3ab_ahd.snd` and the nine terrain tracks of `install/MP3/` (`DIRT.MP3` … `Underground.mp3`: stage them too; the gate reports a missing one).
-- **The game's own disk check** (E24 M4 T1a; the client lane's trap too): the original reads the free space in signed 32 bits (observed; `free_disk_space` 0x50C7A0 not read) and ends the game below 5 MiB (`main_menu_proc`'s floor of 5 242 880 bytes, read), so the disk's free bytes modulo 4 GiB must lie from 5 MiB up to 2 GiB: outside, every run stops at the main menu. Since E24 M4 T6 (R6-6) `Game.start` checks it first (`h3drive.disk_check_fault`: `os.statvfs` of the run directory, as `df -B1` gives it) and fails before the game starts, naming a ballast's size that brings the free bytes to 1 GiB (`fallocate -l <n> <file>`, outside the run directory); `H3_NO_DISK_CHECK=1` leaves the check out. Free space changes with every build (another session's too): size the ballast again before a long run.
+- **The game's own disk check** (E24 M4 T1a; the client lane's trap too): the original reads the free space in signed 32 bits (observed; `free_disk_space` 0x50C7A0 not read) and ends the game below 5 MiB (`main_menu_proc`'s floor of 5 242 880 bytes, read), so the disk's free bytes modulo 4 GiB must lie from 5 MiB up to 2 GiB: outside, every run stops at the main menu. Since E24 M4 T6 (R6-6) `Game.start` checks it first (`h3drive.disk_check_fault`: `os.statvfs` of the run directory, as `df -B1` gives it) and fails before the game starts, naming a ballast's size that brings the free bytes to 1 GiB (`fallocate -l <n> <file>`, outside the run directory); `H3_NO_DISK_CHECK=1` leaves the check out. Free space changes with every build (another session's too): size the ballast again before a long run. A run takes the check at each autosave too (a hot seat's End Turn, M5 T5): a build during a recording (cargo's own clean-up freed 5 GB once) breaks it mid-run, so keep a watcher sizing the ballast every few seconds (free bytes modulo 4 GiB back to 1 GiB: `fallocate` to grow, `truncate` to shrink) while recording and building at once.
 - **A computer player's turn out of sight takes no virtual time** (E24 M4 T1a, design §5.1): on the harness's frozen clock everything from End Turn's command to the next day's start falls in that millisecond, so a recording never shows the status window's kind 5 there; a turn's facts come from the live part's `[[turn]]`, read in that millisecond.
 - **A computer player's turn needs a `seed`** (E24 M4 T1b1, design §5.2): the game seeds its generator once, from the running clock, so without a sequence's `seed` no two runs walk alike. A computer with a Tavern in its town hires a hero and may walk it into sight (a hero the live part at 0 does not hold): the `ai-*` situations give Blue no town. An unseen step takes no time, so speed 4 and Blackout Computer show nothing of the turn either. A
   computer's `[[turn]]` table holds the computer's `kingdom` (its selected hero, points and kind
@@ -145,6 +145,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `--map` (the catalogue beside it, `<map>/../text/keys.toml`) and `--install`; a hand test's
   `.cmd` passes both, master's `clients/map` and `clients/text` copied into `out/win/<task>/` when
   the user's checkout is behind. A new file a command reads goes beside `--map` too.
+- **A hand-test kit carries its own packs and plays PCM** (M5 T5, the M4 kit's run on
+  2026-11-27): the `.cmd`'s `--packs ..\packs` read the user's checkout, newer than the kit's
+  binary by then (an unknown quirk flag: two parts never ran); copy the packs the binary was built
+  with into `out/win/<task>/` and pass those. A `.cmd`'s PowerShell `Media.SoundPlayer` plays PCM
+  only, and the original's samples are IMA ADPCM (format 17): convert them for the kit
+  (`ffmpeg -c:a pcm_s16le`).
 - **A new table in the common catalogue fails the client lane's test** (M4 T2a2):
   `h3-battle-client`'s `text::tests::the_committed_catalogue_parses` lists every original table
   `clients/text/keys.toml`'s keys name (a family's do not count), so a key from a new file
@@ -244,6 +250,44 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   until both list them; `drawn` then reports them `new` (`drawn --only <id> --record` each).
   Since M4 T6 (R6-7) a scratch file's run keeps no live part in `timelines/` (nor a sound run):
   once moved, `frames --only <id> --reuse` over the recording's `--out` keeps it, then `drawn`.
+  A sound run's samples (M5 T5 part three) are compared by `sequences` too: its
+  `<id>-sounds.txt` must be in `timelines/` before `drawn` visits it.
+- **A hot seat's second End Turn within 3 s of a start** (M5 T5, design §5.31, MCL-Q74): the
+  start asks the date's window for 3 000 ms, and a cover drawn while it still shows does not
+  build it again (`seat-new-day-quick`: day 1's window over day 2's bar, no `newday.wav`); a
+  sequence of the usual hand-over ends the turn after it (the redraw after 7 360 when the start
+  came at 4 360: the `seat-*` End Turn at 7 500). Each OK in the cover's first 1 759 ms adds the
+  4-s wait; a later one waits for `NewWeek.wav`'s end, 5 759 ms after the cover (part four:
+  `seat-clock-ok`'s OK 2 000 ms into it started Blue's turn 3 759 ms later), so an input meant
+  for the next turn goes after that. A sample's channel (the game's handle) is not always the same from run to run where
+  it starts while another plays (`seat-new-month`'s click at 12 300: 0, then 7); its time and
+  length are.
+- **A hot seat's views and choices** (M5 T5 part three, design §5.31): the live part's
+  `[chosen]` and `[hover]` are its viewer's alone; another human's turn takes its seat's
+  `selection` and maps its heroes by their colour (`NextTurn::list`), and a day's `list` remaps
+  the viewer's choices only on its own turn (Blue's list had wiped Red's choice of its hero). A
+  seat's `selection` exists only where its start's date window gave way within the run (3 000 ms
+  after the start): a sequence ending sooner needs none.
+- **A turn timer ahead of the frozen clock expires at once** (M5 T5): the expiry and the
+  warnings take the time since the timer's start unsigned, so a start written for the next
+  millisecond reads as 4 billion ms ago (the expiry's box at the step to 0, the redraw never
+  due). `h3map.py` pauses a timed hot seat's timer through the staging (+0x10) and restarts it
+  only once the clock stands at 0 (§5.32's sequences build on it).
+- **The clock's phase and its samples** (M5 T5 part five, design §5.32): the warnings' 60-ms
+  poll is not written by the harness; the recordings poll at 59 modulo 60 (the staging's last
+  millisecond's tick), which `paint::STAGED_TICK` gives every timed sequence: a staging change that
+  moves it shifts every warning. A sound run's compared samples hold the step sound's loop (loops
+  0) since part five: a walk in a sound run lists its `horse*.wav`. In play the session reads the
+  host's clock less the time held (`play::Kept`, MCL-Q76): compare a session deadline with
+  `Kept::clock`, never with the window's milliseconds.
+- **The clock's sequences are long** (M5 T5 part four, design §5.32): a one-minute turn's expiry
+  box opens at 60 001 and closes itself at 75 001, the next cover in that millisecond, so an
+  input after it is placed by a first run's timeline; record them with `frames --sparse` (about
+  23 ms a step, an 83-s run 29 minutes plus the staging; 55 to 75 ms a step without it) and chain
+  the runs in one script waited for once. A long run's `states.jsonl` and frames take 50 to 70 MB
+  under `--out`: size the ballast with room below (the free bytes modulo 4 GiB toward 1.4 GiB).
+  A step's cost was half `cycle_now`'s tables and DEF palettes read again each millisecond
+  (cached since part four); the rest is the clock's 500 reads and three acknowledgements.
 - **A hero's secondary skills written show at the walk** (M4 T2c, design §5.5): a situation's
   `secondary` is written without a selection (none of another hero to make), after the status
   window at 0 was built; the walk's first step builds it again from the hero. So the skills

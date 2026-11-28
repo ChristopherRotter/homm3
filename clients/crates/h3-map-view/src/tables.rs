@@ -23,6 +23,7 @@ use serde::Deserialize;
 
 use crate::art::Layer;
 use crate::asks::AskArt;
+use crate::clock::ClockArt;
 use crate::finds::FindArt;
 use crate::levels::LevelArt;
 use crate::lists::ListArt;
@@ -128,6 +129,11 @@ pub struct ViewArt {
     /// The map's sounds (E24 M2 T5; design §3.11): none, and the map plays none.
     #[serde(default)]
     pub sound: Option<SoundArt>,
+    /// A timed turn's clock (E24 M5 T5 part five; design §5.32): the warnings' tick, a chat
+    /// line's life, the chat's entries, the warning's sound and a box's deadline. None: a tick
+    /// every millisecond, lines living for ever, no sound, no deadline (*provisional*).
+    #[serde(default)]
+    pub clock: ClockArt,
 }
 
 /// A spell cast on the map (E24 M4 T2d3; design §5.8, *provisional*, `summon_boat_cast` 0x41C8A0):
@@ -832,6 +838,12 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         rules
             .effects
             .extend([map.turn.week.clone(), map.turn.month.clone()]);
+        // A hot seat's hand-over's (E24 M5 T5, design §5.31); a timed turn's warning's (part
+        // five, §5.32), when the tables name it.
+        rules.effects.push(map.turn.cover.clone());
+        if !map.clock.sound.is_empty() {
+            rules.effects.push(map.clock.sound.clone());
+        }
         // A level-up's dialog's (E24 M4 T2c), when the tables name it.
         if !map.level_up.sound.is_empty() {
             rules.effects.push(map.level_up.sound.clone());

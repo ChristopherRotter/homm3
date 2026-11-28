@@ -4,6 +4,25 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-28 (this lane, E24 M5 T5 done, kept whole by the user, in five parts: the log's
+  "M5 T5, parts one and two" to "part five", design §5.31 and §5.32: the hand-over and the
+  clock read, recorded in a hot seat under Wine and built, MCL-Q70 to Q77, `MCL-STUB-8`): the
+  task as it stood, verbatim.
+
+  ### E24 M5 T5 — the hand-over and the clock
+
+  - **Scope:** the original's human start in a hot seat read whole (`next_player_turn` 0x4C6FE0's
+    human branch at 0x4C7710: the covered view 0x699538, GENRLTXT 14 "%s's turn.",
+    `turn_start_screen` 0x419E00; GENRLTXT 352 "It's %s's turn." read for its caller) and its turn
+    timer (`turn_time_expired_end` 0x4087F3: GENRLTXT 202; the warnings, GENRLTXT 627 to 630),
+    recorded under Wine in hot seat (the harness's `hot_seat`, two humans and a turn's duration),
+    built on the session's clock (the duration from `begin::Game`, CLT-STUB-11's lift with the
+    client lane).
+  - **Acceptance:** the hand-over and the clock's boxes as recorded, frame by frame; the scoped
+    verify.
+  - **Depends on:** T3b (T4a for the clock's input). **Status:** queued; original data and Wine
+    needed.
+
 - 2026-11-27 (this lane, E24 M5 T4c done, kept whole by the user, in four parts: the log's
   "M5 T4c, part one" to "part four", design §5.28 to §5.30: the screens' notice closing a
   decision the view does not ask (`MCL-STUB-7`), the facts audit (MCL-Q61 to Q69), the creatures'

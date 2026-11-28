@@ -5236,3 +5236,413 @@ mouse (the log's "M5 T4c, part four"). Two fixes, each a gap of play the game sh
   viewer explored is gone (ADV-FOG-004: an explored tile shows what objects cover it, the
   engine's `MapObject::tiles`); `render::apply_live` takes each off the map. A new game's start
   has none; under the fog an object stands as the file has it.
+
+### 5.31 The hand-over in a hot seat (M5 T5)
+
+Read (T5 part one, a reading for the later parts, the recordings and the viewer):
+`covered_view_new_week` 0x4CA840 whole, `next_player_turn` 0x4C6FE0's human start 0x4C7710 to its
+end again, the hot seat's part of `adventure_manager_start` (0x407566 to 0x4076CC),
+`resource_bar_blank` 0x559020, `music_fade_out` 0x59B010 and `wait_for_sample` 0x59A4C0 whole,
+`window_menu_enable` 0x4F81E0 to its tail call; at sites `status_window_choose` 0x415DE0 (its kind
+0), `status_window_date` 0x415FB0 (its test), `adventure_view_draw` 0x40F3F0's end (0x40F7F0 to
+0x40F86A), `view_fog_pass` 0x412220's and the lists' covered tests (0x403399, 0x4034DD),
+`player_turn_start` 0x4CC7D0's calls in order (to 0x4CCAE5), `game_main`'s play start (0x4EFDA0,
+0x4EFE3E to 0x4EFE90; `executive_add_manager` 0x4B0B20's call 0x4B0B5E), the references to
+`covered_view` 0x699538, `hand_over_enabled` 0x6993DC and `begin_humans` 0x699274;
+`adventure_battle` 0x4AE194 to 0x4AE233 and `network_map_redraw` 0x405E30 (0x405F90) only placed.
+The turn's end and the start: §5.1; the computer's cover `covered_view_redraw` 0x4CA5B0: §5.2; the
+clock's start and the "your turn" window: survey `E16-timer-survey.md` §2, §8.
+
+- **When:** a new current player human here (+0xE2 and +0xE1, 0x4C74ED), `hand_over_enabled`
+  0x6993DC set and `begin_humans` 0x699274 above 1 (0x4C7735 to 0x4C774F); the cover repeats both
+  and adds no network game (`network_game` 0x69954C, 0x4CA843 to 0x4CA86D). 0x6993DC is only ever
+  written 1 (`game_globals_reset` 0x4F06A1 from `game_init`, the manager's start in a hot seat
+  0x407589 and 0x407643), so the test is the humans the game was begun or loaded with: written at
+  a game's begin and load only (its 18 references: `scenario_dialog_begin`, `game_main` 0x4EEC35
+  and 0x4EEF76, the network's), never at a defeat, so a hot seat down to one human still covers
+  each of its turns (MCL-Q73). Not the game type: a network game formats the text and the cover
+  returns at once.
+- **The order** (0x4C7710 to 0x4C7926): (1) the window's menu enabled (`window_menu_enable` with
+  1); (2) the input queue emptied (`input_flush` 0x4EC570, 0x4C7720): a key or click made through
+  the turn's end, the autosave or the computers' turns is dropped; (3) `shown_player` 0x69778C and
+  `viewing_player_bit` 0x69CCBC the new player's (0x4C7730, 0x4C773C), so all drawn from here (the
+  buttons, the corner gems, the resource bar, the box's frame: `viewing_player` 0x4CEA20 in a hot
+  seat the current human) is in its colours; (4) the test; (5) the name and the text; (6)
+  `covered_view_new_week` (0x4C781E) with the text and the colour: the cover, the box, the wait;
+  (7) `view_shown` 0x6989C0 1 (0x4C7862); (8) the minimap drawn and shown (`minimap_redraw`
+  0x413790 with 1, 1, 0, 0, 0, 0x4C786C: a human's minimap draw clears the shield's mark +0x38C,
+  0x412D58, and draws the map over the shield); (9) cast, move hero, sleep and End Turn enabled
+  (items 8, 7, 6, 12, their vtable +0x24 with 1, 0x4C787C to 0x4C78CF); (10) `turn_timer_start`
+  (0x4C78F0): the clock starts only now (survey §8); (11) `player_turn_start` (0x4C78F7, below);
+  (12) `adventure_mouse_again` 0x419570 (0x4C791B): the hint and cursor under the mouse.
+- **The name** (0x4C7755 to 0x4C77F0, `player_display_name` 0x4BADB0's code written inline): the
+  record's +0xCC; a human's named `Player` (any case) gets the colour's name (`player_colour_names`
+  0x6A7DF8) written into the record; its first letter upper-cased in the record (`crt_toupper`).
+  The text: GENRLTXT 14 ("%s's turn.") with it (0x4C7807): the hot seat's name as set up, the
+  colour's only for a default name.
+- **The cover** (`covered_view_new_week`; this the game, the text and the colour): the cursor
+  `crdeflt.def` frame 0, the arrow (`mouse_set_cursor` 0x50CCA0 with 0, 0, 0x4CA87D); `covered_view`
+  0x699538 set (0x4CA887); the status window asked (0x4CA8B6): kind 1 (the date's) for 9 999 999 ms
+  for a current player human here, else kind 0 (the battle's call, below); the sound manager's
+  +0x84 set (and left set); the music faded out (`music_fade_out`: while the stream plays a thread
+  of the stub 0x59A830 runs `music_stop_fade`, a tenth of the volume less every 100 ms, then
+  paused, its place kept, §3.11); `NewWeek.wav` started (`play_sound_file` 0x59A470, category 2;
+  5 758 ms: the hand-over's sound on any day). Then, under the flag:
+  - the view (`view_draw_here` 0x40F870 with 1): from the map's corner (0, 0) whatever the view's
+    corner (+0xE4 kept), every tile of the map and below it the full piece (`tshrc.def`, §1.5;
+    0x412255, 0x41233E, 0x412361; none right of a map narrower than the view, 0x412247): the shroud,
+    the map's edge (`edg.def`) in the view's first row and column (off the map) and the corner
+    gems; then, as at every view draw, the chat's lines (§5.32: the
+    last turn's warnings among them) and the chooser (0, 1, 1): kind 1 builds the date's window
+    when another shows (0x415FD2: +0x394 not 1), at its first frame with the new date: on a week's
+    first day the week's picture (no sound), else `NewDay.def` and `newday.wav`, in the
+    millisecond of `NewWeek.wav` (§4.9; MCL-Q72); that build redraws and shows the resource bar
+    (0x403F00 with 1, 1), blanked below in the same millisecond;
+  - the hero list (`hero_list_update` 0x4032E0 with 0, 1, 0): its five slots `hpsxxx.pcx` and
+    both bars frame 0, no selection's frame (`hero_list_slot` 0x403560, 0x403399); the town list
+    (0x403420 with 0, 1, 0): `itpa.def` frame 0 in each, no mark (`town_list_slot` 0x4037A0,
+    0x4034DD); the quest log's button by the new viewer (`quest_log_state` 0x4039B0 with 1); the
+    buttons 3 to 12 recoloured and drawn (`adventure_buttons_colours` 0x403F60 with 1, 0), none
+    enabled or disabled: after a human's turn as it left them, after the computers' (a new day's
+    first human) sleep, move hero, cast and End Turn disabled (`covered_view_redraw`, §5.2);
+  - the resource bar blanked (`resource_bar_blank`, the dialog's +0x5C): its picture in the shown
+    player's colours, the seven amounts empty, the date ("%s: %d, %s: %d, %s: %d" with GENRLTXT
+    63 to 65: Month, Week, Day) written, its items drawn;
+  - the shield over the minimap (`ai_shield_draw` 0x4CA780, which tests no player, only a network
+    flag and +0x38C): `aishield.pcx` at the minimap's area, +0x38C set;
+  - the whole screen shown (0x4CA962). The flag is cleared (0x4CA985) before the box, but nothing
+    redraws the view: the covered picture stays on the screen until the start's full redraw.
+- **The box** (`message_box` 0x4F6570, 0x4CA98F): style 1 (OK), centred (−1, −1), the text, one
+  picture: type 10 with the colour (`crest58.def` frame the colour, captioned with the colour's
+  name: `message_box_picture` 0x4F4EB0), the "or" argument −1 (one picture: nothing between), no
+  timeout, framed in the new player's colours (`message_box_build` 0x4F6B49). The turn timer is
+  stopped (0x4C708B, §5.1) and not yet started, so the box gets no deadline (survey §5): it waits
+  for OK however long. Its procedure steps no status window (`status_panel_update` with 1 needs
+  the dialog's +0x6C, the week's box's): the date's window stands at its first frame behind it.
+- **After OK** (0x4CA994 to 0x4CA9D0): `wait_for_sample` (−1: at most 4 000 ms from now, the
+  Windows messages pumped and the tick run meanwhile) holds the start while `NewWeek.wav` plays:
+  an OK in its first 1 758 ms waits 4 s and cuts it there, a later one waits for its end, one
+  after 5 758 ms not at all; input made meanwhile stays queued. Then both lists (0, 1, 0: drawn
+  uncovered, not shown) and the quest log (shown) again.
+- **The music and the loops:** faded at the cover (`NewWeek.wav` over silence); the ambient loops
+  left as the previous view's until the start asks the terrain's music and the loops at the new
+  view's middle (`adventure_view_enter` 0x419990 at 0x4CC88A, §3.11: a track faded before
+  restarts where its fade began, fading in over 900 ms).
+- **The start after the cover** (`player_turn_start`, its calls in order): the scenario's tests
+  (0x4CC816 to 0x4CC831), the map's and the towns' timed events (`map_timed_events` 0x4CD910,
+  `town_timed_events` 0x4CDA10 at 0x4CC838, 0x4CC83F), the resource bar with the amounts
+  (0x4CC87F), the music (0x4CC88A), the whole screen redrawn (`adventure_full_update` 0x417420,
+  0x4CC899), the date's window asked for 3 000 ms and built again (0x4CC8A7, 0x4CC8B6: `newday.wav`
+  again, twice with the next view draw, MCL-Q30), the screen shown (0x4CC8CF), the days-left box
+  (0x4CCA87), the hero chosen and centred or the town (0x4CCAB4, 0x4CCAD5), next hero's button
+  (0x4CCAE0), then the week's box (0x4CCAE5, §5.1). So:
+  - **the timed events' and the scenario's boxes** open with the flag cleared but before the
+    redraw: over the covered picture still shown (the minimap and the buttons drawn since, the
+    resource bar blank until 0x4CC87F; seen: an event's resources draw the bar with the amounts
+    first, below), and on the new turn's clock (MCL-Q71);
+  - **a new day** (no box): the date's window under the cover already shows the new date (with
+    `newday.wav` there), built again at the start; unless the previous start's window still
+    shows (its 3 000 ms): then the previous day's stays under the cover (seen, MCL-Q74);
+  - **a new week or month:** under the cover the week's picture at its first frame (no sound
+    there) and `NewWeek.wav`; after the start's redraw and the hero's centring the week's box with
+    `newweek.wav` or `newmonth.wav`, the date's window stepping behind it (§5.1): after the cover,
+    on the turn's clock;
+  - **the colours:** the new player's from step (3) (the cover's box, the buttons, the gems, the
+    bar's picture), its amounts from 0x4CC87F. The previous player's screen stays up through its
+    turn's end (the autosave's text GENRLTXT 108, §5.1): nothing of the next player's shows before
+    its cover, and the cover none of its map, lists or resources but the date.
+- **The game's start** (`adventure_manager_start` 0x406FD0, from `executive_add_manager` at
+  0x4B0B5E, from `game_main` 0x4EFDA0), in a hot seat (`game_type` 0x6989F0 3): 0x6993DC and
+  `view_shown` set (0x407589), the music and the loops (0x4075BB), the screen drawn and shown
+  uncovered (`adventure_full_update` with 1, 0x4075C4: the first human's own map, in the same
+  millisecond on the virtual clock), then (0x407630 to 0x4076CC) `view_shown` the current player's
+  both human flags, GENRLTXT 14 with `player_display_name`, the window manager's +0x48 cleared,
+  the cover and its box (0x40769D), the screen redrawn and shown (0x4076A7), the date's window
+  asked for 3 000 ms. `game_main` then, on a new game (`first_day_due` 0x699584), plays the first
+  day's `newday.wav` and fires its timed events (0x4EFE53 to 0x4EFE7B), before `turn_timer_start`
+  (0x4EFE85): the first box too is outside the clock. A load restarts through `game_main` too
+  (inferred: the manager's start again; the turn restarted whole, survey §2).
+- **A defended battle's cover** (T6's, placed only): `adventure_battle` 0x4AD470, 0x4AE194 to
+  0x4AE233: the defender human here and the attacker not (`player_id_is_human_here` 0x4CE970):
+  GENRLTXT 48 ("%s's %s is under attack!") with `colour_player_name` 0x4CEB60 and GENRLTXT 49
+  ("Town"), 50 ("Hero") or 430 ("garrison"), then `covered_view_new_week` with the defender's
+  colour: the same cover, kind 0 under it (so another player's turn, kind 5: 0x415E8F).
+- **GENRLTXT 352** ("It's %s's turn.") is a network game's chat line (`network_map_redraw` at
+  0x405F90, the current player human by 0x4BADA0, its raw name +0xCC, through `chat_message`
+  0x553AA0), not `turn_start_screen` 0x419E00's (its boxes GENRLTXT 332 and 333, 0x41A068 and
+  0x41A0C1, network only, not read): the hot seat shows GENRLTXT 14 alone.
+- **The recordings** (T5's later part; Wine, the virtual clock, `sound = true`, two humans Red and
+  Blue on a map whose view has no cycling terrain or animated object, so the frames are the
+  changes; frame by frame against the viewer):
+  - `seat-hand-over`: day 1, unlimited, Move Reminder off; Red's End Turn → Red's turn's end →
+    Blue's cover (the shroud from (0, 0) with Blue's gems, the empty lists, the buttons as left,
+    the blank bar with the date, the shield, the date's window at frame 0, the arrow) and its box
+    with Blue's crest; Blue's OK at 500 ms (the wait's 4 s, `NewWeek.wav` cut), then the minimap,
+    the buttons and Blue's start. Shows: each change's frame and millisecond; the samples' starts
+    and ends (`NewWeek.wav`, `newday.wav` under the cover and at the start, the music's fade).
+  - `seat-hand-over-late`: the same, OK after 6 s (no wait).
+  - `seat-new-day`: Blue's End Turn → day 2 → Red's cover and start (the date's window, the three
+    `newday.wav` starts); a variant with a computer player between (its buttons disabled under
+    the cover).
+  - `seat-new-week`: day 7 → 8 (the week's name forced, `week_name`): the week's picture under the
+    cover, the week's box last with `newweek.wav`; and day 28 → 29 with `newmonth.wav`.
+  - `seat-timed-event`: a timed event for Blue on day 1 (a text and a resource): its box over the
+    cover after Blue's OK (MCL-Q71; the bar not blank, seen below).
+  - `seat-start`: a hot seat's first turn (the uncovered map in a millisecond, then the cover) and
+    a hot seat's save loaded.
+  - **The harness** (`clients/capture/h3map.py`, additive): a sequence that starts in a hot seat
+    with its names and duration (`h3adv.to_hot_seat` with the scenario screen's duration, or a
+    save `h3shell.py` writes with `players` and `duration`, loaded); `Mem` readers and timeline
+    lines for `covered_view` 0x699538, `shown_player` 0x69778C and the box's text and picture; a
+    situation with a timed event; `move_reminder`, `week_name`, `month_name` as today.
+- **Recorded** (T5 part two; `clients/map/to-record.toml`, situations `seq-seat*`; each twice,
+  the same timeline, the same samples but one's channel, the month's click; the timelines and the samples kept as `timelines/seat-*.txt` and
+  `seat-*-sounds.txt`; the harness's hot seat: the runbook's "A hot seat"): `seat-hand-over`,
+  `seat-hand-over-late` (a one-minute turn), `seat-new-day`, `seat-new-day-quick`,
+  `seat-new-day-ai` (Tan, a computer, between), `seat-new-week`, `seat-new-month`,
+  `seat-timed-event`, `seat-start` (the clock frozen from Begin). A save loaded not recorded.
+- **Seen** (the recordings: seed 1, sound, Red and Blue named so, End Turn's key up at 160, each
+  OK by Enter):
+  - **One millisecond:** End Turn's key up holds the turn's end, the new `player` and `shown`
+    colour, the cover and its box (the timeline's `screen` the whole screen); `covered` never
+    reads 1 between milliseconds (cleared before the box, as read); the cursor the arrow (type
+    0) from the cover to the start. Under the box only the palettes step (every 200 ms, in
+    memory); OK's key down draws OK pressed, its release closes the box and draws back its
+    rectangle alone, (272, 172) to (536, 436): the covered picture stays.
+  - **The wait:** an OK released 500 ms or 200 ms after the box starts the turn exactly 4 000 ms
+    after its release (660 → 4 660, 360 → 4 360), one released 6 000 ms after it (`NewWeek.wav`
+    over) in its own millisecond (6 160); nothing changes on the screen meanwhile. The start
+    draws the whole screen in one millisecond (the view centred on the selected hero, the
+    adventure's cursor); its date's window leaves at the first idle redraw after its 3 000 ms.
+  - **The sounds** (`<ms> <channel> <length> <loops>`): `NewWeek.wav` is 5 759 ms on the
+    harness's clock (so an OK waits in its first 1 759 ms); with it under the cover `newday.wav`
+    (3 739 ms) on an ordinary day; the start's millisecond plays `newday.wav` **three times**
+    (channels 0, 7, 8: the start's builds, one more than read), so four a day's hand-over
+    (MCL-Q72); on a week's first day neither under the cover (the week's picture) nor at the
+    start, the week's box sounding the same 5 759-ms sample again (`newweek.wav` is
+    `NewWeek.wav`), a month's `newmonth.wav` (4 784 ms); a button's press by its key a 151-ms
+    click. The music's fade is not heard (the harness's music volume 0).
+  - **The box** (`[[message]]`): the text with the hot seat's name as set up (names Ann and Bob:
+    "Bob's turn.", 11 characters), the crest captioned with the **colour's** name with a capital
+    first letter ("Blue" whatever the name; PLCOLORS.TXT holds "blue", so the kept label is
+    `[other: 4 characters]`).
+  - **The clock** (`seat-hand-over-late`, one minute): Red's timer stops in End Turn's
+    millisecond and starts again in Blue's start's, after the box and the wait (the `timer`
+    line), as read; at the game's start (`seat-start`) it starts in the start's millisecond
+    after the wait.
+  - **A quick hand-over** (`seat-new-day-quick`: Blue's End Turn 300 ms after its start): Red's
+    day-2 cover keeps the start's date window ("Day 1", at frame 2 and stepping) over a bar
+    dated day 2, no `newday.wav` under it; Red's start builds it with day 2 (MCL-Q74).
+  - **After a computer's turn** (`seat-new-day-ai`): the cover's sleep, cast and End Turn drawn
+    disabled (frame 2), where Blue's own hand-over draws them as Blue left them, as read; the
+    rest the same timeline (Tan's hero did not move).
+  - **A timed event** (`seat-timed-event`, 500 gold for Blue): its box opens in the start's
+    millisecond after the wait, over the covered view with the minimap drawn (Blue's explored
+    tiles, its view's frame where Red's view stood: the centring comes after) and the buttons
+    enabled, the lists still empty, and the resource bar **with Blue's amounts, the 500 gold
+    already added** (not blank: the event's resources draw it; an event without resources not
+    recorded); its OK's release draws the start in that millisecond (`newday.wav` three times).
+  - **The game's start** (`seat-start`): Begin's click at −151 ms; `NewWeek.wav` and
+    `newday.wav` in the cover's millisecond (−1): the uncovered map is drawn and covered in the
+    same millisecond, never on the screen at a step; the cover's view (−5, −4) is the first
+    human's own, kept under the shroud; OK at 560, the start at 4 560 (move hero's state 1 to
+    0, the three `newday.wav`, the clock).
+  - **The week's and the month's box** after the start: the date's window steps behind it every
+    100 ms (§5.1), the month's picture fewer times.
+- **Built (M5 T5 part three;** *provisional* names): `h3_map_view::timeline::hand` (the
+  `Loop`'s hand-over: `hand_over` the steps up to the box, `covered_ok` the wait,
+  `waiting`/`wait_input` the loop held and its input kept, `hand_start` the minimap, the buttons
+  and the clock, `hand_events` the timed events then `day_start` (the idle step after an event's
+  box closes it), its date's window built once more: MCL-Q72's third `newday.wav`); seen, move
+  hero stays as it stood at the start's step (9) (`seat-timed-event`'s event box: blank, sleep,
+  cast and End Turn enabled: `panels::STARTED`); `Start::seat` (`HandOver`: each human's box, the cover's
+  sample's length, the clock), `NextTurn::cover` (`Cover`: the seat's view, a computer's turn
+  before, the seat's selection's window, the timed events, the opening), `Draw::cover`
+  (`live::Covered`) and `Draw::seat`, `State::shown` and `timer` (the timeline's `shown` and
+  `timer` lines), `timeline::play_heard`; `Cue::Fade` and `Cue::Cover` (the window: the music
+  faded as a lost focus fades it, the cover's sound on a stream of its own); the scene and the
+  panels covered (`panels::STARTED`), `turn::hand_over` and `seat_name` (`map.turn.hand-over`,
+  GENRLTXT 14); `live::Seat` (the `[[seat]]` tables, with the harness's new `selection`: the seat's
+  selection's window when its start's date window gives way) and `sequence::Sequence`'s
+  `hot_seat`, `duration`, `start`, `sound`. In `h3-map-client`: `paint::Painter::hot_seat` (a
+  recording's humans by the live part's colours with a hero, the first ones; each human's turn
+  covered, its heroes mapped by their colour, its first hero selected where the turn's facts hold
+  none, 0x4CCAB4 not read), `hand_box`, `timed_events` (the map's, by their days), `opening`,
+  `play_seat` and `Seated` (play's), `cover_turns` (a lone human's next turn in place, MCL-Q73),
+  `sample_length`/`length_of` (frames × 1 000 over the rate, rounded up, as `xdd.c`);
+  `sequences`' samples compared for a sound run (`<id>-sounds.txt` without the channels, a start's
+  −1 the viewer's 0, `ours-sounds.txt`). As the original meanwhile: MCL-Q70 (no chat yet), Q71
+  (the event's box over the cover), Q72 (the four `newday.wav`), Q73 (play covers a lone human's
+  turns too), Q74 (the window kept). The nine `seat-*` sequences in `sequences.toml`: every frame
+  exact and every sample as recorded (the frame check's `<id>-frames.txt`); recorded again for the
+  seats' `selection` and the start's lifted hero (`h3mem.Mem.standing`). **Play:** a hot seat
+  begun with more than one human covers each human's view's first turn (the game's start made
+  covered, `Cover::opening`), its box naming the human (the shell's name, else the colour's), the
+  wait by the installation's `NewWeek.wav`, a computer's seat between the two humans' leaving the
+  cover's four buttons disabled (`play::computers_between`); no timed event's box in play
+  (`MCL-STUB-8`: the record's `TimedEventFired` not read, the map's texts not read in play).
+
+### 5.32 The turn's clock as shown (M5 T5)
+
+Read: `chat_system_message` 0x553960 again and the chat's methods whole (`chat_add_line` 0x553840,
+`chat_draw` 0x553D00, `chat_oldest_expired` 0x553DB0, `chat_expire` 0x553DF0, `chat_text_build`
+0x553EE0, `chat_freeze` 0x554050, `chat_thaw` 0x554060, `chat_clear` 0x5540B0, `chat_sounds_load`
+0x5537B0, `chat_item_draw` 0x403F20), `sample_query` 0x59A030's query 4; at sites `chat_construct`
+0x5521C0 (to 0x552225), `adventure_view_draw` 0x40F3F0's chat (`view_draw_chat` 0x40F833),
+`adventure_dialog_create` 0x401510's text 37 (0x401F45 to 0x401F87), `turn_timer_poll` 0x557AF0's
+calls (0x557BD0 to 0x557CF7), the expiry (0x4087F3 to 0x40884D) and `message_box_call` 0x4F6530;
+the chat's 53 references grouped (its other screens placed, not read). The schedule, the expiry's
+test, the boxes' 15 s: survey `E16-timer-survey.md` §3 to §5, not repeated.
+
+- **The warnings' only way** is the screen chat (`screen_chat` 0x69D7B0, H3API's H3ScreenChat,
+  `structs.toml`): `chat_system_message`'s only caller is the poll (its four sites), so its mark
+  and its sound only ever come with a warning; the status bar (item 200) is untouched (the chat's
+  edit 38 over it is the network's typing, §4.1).
+- **The line** (0x5539F9 to 0x553A35): "%s%s" with GENRLTXT 54 and the warning, so "<SYSTEM>:" and
+  the text joined without a space ("<SYSTEM>:You have 30 seconds remaining in your turn."), no tab
+  after it (seen: the entries end in the full stop, 52 characters for "30 seconds", 51 for 9 to
+  2, 50 for "1 second"; the reading's trailing tab of 627 to 630 is not in the game's text); +0x2C
+  set around `chat_add_line` (H3API's Show), so the entry is a system line
+  (+0x84) and `chat_add_line` plays no sound of its own. The text is left out in the last 59 s as
+  the survey says (§3; the test reads the timer, not the line).
+- **The chat** (`chat_add_line`, the constructor): 20 entries of 0x88 bytes in a ring (+0 the
+  entries, +4 the oldest, +8 the count, +0x1C 20; an entry: the text, at most 127 characters,
+  +0x80 the clock at its first draw, 0 until then, +0x84 the system mark); a 21st drops the oldest
+  (0x553877); the drawn end (+0x20) follows the newest unless scrolled; +0x14 set: the text to
+  rebuild.
+- **Drawn at every view draw** but the puzzle map's (`view_draw_chat`): `chat_draw` with the
+  adventure dialog's text 37 (+0x54), 1 and 20: unless frozen (+0x10: a battle's start,
+  `chat_freeze` at 0x462D36, `chat_thaw` at 0x463210 moving the times on), each line not yet drawn
+  gets the clock now (0x553D38), then the expiry (below); with +0x14 set the text rebuilt
+  (`chat_text_build`: from the drawn end back, the newest entries whose wrapped lines in the item's
+  font and width, `text_line_count` 0x4B5820, sum to 20 at most, joined by "\n") and given to the
+  item (vtable +0x34); then `chat_item_draw` with 0 draws item 37 alone, the view's caller showing
+  it with the view ((0, 8) to (608, 552) at the idle step). Item 37 (`text_item_create` 0x5BC280 at
+  0x401F7B): (54, 100), 520 × 440, `medfont.fnt`, colour 13 (`game.pal`'s entry 22, E17 §3.6),
+  alignment 8 (left, the lines at the bottom: the newest ends at y = 540, older ones above),
+  background 0: the glyphs over the tiles, no box. So a warning shows at the first view draw after
+  the poll wrote it (the idle redraw, 180 ms on a still map, §4.9; a walk's frame); **never while a
+  modal box or another screen is up** (no view draw): lines written meanwhile show together at the
+  map's first redraw after it, each stamped then.
+- **How long** (`chat_expire`, from `chat_draw`'s 1): once the oldest was first drawn more than
+  20 000 ms ago it is removed (one per draw; +0x24 set, which a battle's redraw reads); each other
+  line but the newest already past 20 s gets 10 s more unless a system line (0x553EA4), so a
+  player's lines leave 10 s apart and old warnings one per draw (every 180 ms on a still map).
+  `chat_oldest_expired` (the exchange screen's, `swap_manager_proc` 0x5B06D8, which draws the
+  chat too: not read) and `chat_clear` (the debug frame rate's line only, 0x40F80C) are not on
+  this path. A 1-minute turn (survey §3): "30 seconds" at 30 s, gone at the first draw after
+  50 s; "9 seconds" from 50 s, one a second to "1 second", stacked newest at the bottom (seen:
+  1 020 ms apart, below).
+- **The sound** (0x553A39 to 0x553A89; `chat_sounds_load` from `game_main` 0x4EE630: +0x30
+  `chat.wav`, +0x34 `playexit.wav`, +0x38 `sysmsg.wav`, +0x3C `timeover.wav`, +0x40
+  `playcome.wav`): unless the chat's last sample (+0x28) still plays (`sample_query` with 4: Miles'
+  playing), `timeover.wav` (`chat.wav` if it failed to load) by `play_sample` 0x59A210 with the
+  sound manager's +0x84 forced 1 for the call; the handle kept in +0x28. It is 920 ms (20 288
+  frames at 22 050 Hz; 921 on the harness's clock), so each warning a second apart sounds; it
+  plays also when the text is left out. A player's chat line plays `chat.wav` the same way
+  (0x55391D).
+- **The expiry box** (0x4087F3 to 0x40884D, survey §4): at the adventure manager's first message
+  once `turn_timer_expired`: `message_box_call` with GENRLTXT 202 (two spaces after "expired."),
+  style 1 (OK), centred, no picture, the timeout 15 000 (kept only in a network game; elsewhere
+  the build's 15-s deadline, the time being out: survey §5), framed in the expired player's
+  colours; at the deadline it closes by itself with 9999 (`dialog_default_proc` 0x4F0FC0's first
+  test: no button pressed), the answer ignored; OK closes it sooner. Then `turn_timer_stop`
+  (0x408835) and `next_player_turn` (0x408840) directly: End Turn's question (GENRLTXT 56, §5.1) is
+  never asked; the procedure answers 0, the message that found the expiry not handled. The turn's
+  end as at End Turn, then in a hot seat the next human's cover (§5.31) with the expired turn's
+  last warnings still in the chat: no view draw aged them during the box, so those first drawn
+  less than 20 s before the cover's draw stand over the covered view, its box and into the next
+  turn, one leaving at each later draw (MCL-Q70): after a box left its 15 s eight of the nine at
+  most (the cover's draw takes one), after an OK at once all nine.
+- **The recordings** (as §5.31's; the duration index 0, 1 minute; part four, in
+  `clients/map/to-record.toml` until part five):
+  - `seat-clock` (83 000 ms): Red idle: each warning's line at the redraw after its due time and
+    its `timeover.wav`, the lines leaving one per draw, the expiry box after 60 s and its own
+    close 15 s later, Blue's cover with Red's last lines on it, Blue's OK 6 s after it
+    (`NewWeek.wav` over: no wait), the lines leaving in Blue's turn.
+  - `seat-clock-ok` (80 000 ms): the same, the expiry box's OK pressed at once (all nine lines on
+    the cover), Blue's OK 2 s after its cover (the start at `NewWeek.wav`'s end).
+  - `seat-clock-box` (61 000 ms): a box over the map from 45 s to 55 s, End Turn's question
+    (`move_reminder`, a hero able to move; Escape) in place of a visit's: the lines written under
+    it show at the first redraw after it, stamped then.
+  - `seat-clock-walk` (62 000 ms): a 16-step walk at hero speed 1 from 57 300 across the last
+    warnings (the walk's frames draw the lines; the box at the walk's end).
+  - `seat-clock-two` (61 000 ms): a 2-minute turn's first warnings (1.5 minutes, 59 seconds).
+  - **The harness**, beyond §5.31's: `Mem.chat`; the timeline's `<ms> warning <next>` (the poll's
+    warning, the timer's +0xC after it) and `<ms> chat <n> <drawn> ...` (each line by its first
+    draw, −1 before it), the live part's `[[chat]]` tables (`text` by its records, `values` the
+    numbers the warning shows); `frames --sparse`, the screen dumped only where the state in
+    memory or an input changed (the same timeline as 1 ms at a time; about 23 ms a step on a
+    still map: an 83-s run 29 minutes); `capture/README.md`, "The turn's clock".
+- **Seen (the recordings, part four)**, each twice alike:
+  - **The schedule** (1 minute, the timer started at 0): the poll's warnings at 30 059 ("30
+    seconds", 29 941 ms left), 50 039 ("9 seconds"), then 1 020 ms apart (the tick's 60-ms grid: a
+    second rounds up to 17 ticks) to 58 199 ("1 second", 1 801 ms left, `next` 0 after it): nine
+    after the first, 627 once, 628 for the rest, so the "every second" warnings drift 20 ms each.
+    Each `timeover.wav` (921 ms) starts in the poll's millisecond on one channel, under a box too
+    (`seat-clock-box`: 50 039 to 54 119 sound, nothing drawn); each line shows at the next view
+    draw (the idle redraw on its 180-ms grid: 30 060, 50 040, 51 120, …, 58 320; the walk's
+    frames, `seat-clock-walk`: 58 199 drawn at 58 200). A 2-minute turn (`seat-clock-two`): "1.5
+    minutes" (630, 89 941 ms left) at 30 059, `next` 29 941; "59 seconds" at 60 059, `next`
+    49 941 (to the 10-s point): the survey's table, each due point met at the tick after it.
+  - **Their lifetime:** "30 seconds", first drawn at 30 060, leaves at 50 220 (50 040 was 19 980 ms
+    after it); in Blue's turn after an OK at once (`seat-clock-ok`) each of the nine leaves at the
+    first of Blue's redraws past its own 20 s (70 099 to 78 379, a second apart: Blue's redraws on a
+    grid from its start, 66 319 + 180 k).
+  - **The box over the map** (`seat-clock-box`): the five lines written under End Turn's question
+    show in its release's millisecond (55 060), all stamped then, and that same draw removes "30
+    seconds" (25 000 ms old); the idle redraw's grid starts again there (55 240, 56 320, …).
+  - **The expiry:** the box at 60 001 (the first millisecond past the limit), GENRLTXT 202 at (240,
+    204), 320 × 192, OK, no sample; a walk under way finishes first (`seat-clock-walk`: its last
+    step at 60 300, the box at the walk's end at 60 500). Left alone it closes itself at 75 001
+    (15 000 ms), the turn's end, Blue's cover and its box in that millisecond, the cover's draw
+    taking one line (eight on the cover, `seat-clock`); its OK at 60 500 (released 60 560) gives
+    the cover with all nine (`seat-clock-ok`).
+  - **Blue's start ages the chat four times:** in `seat-clock` its millisecond (81 060) leaves
+    four of the eight (four view draws in that millisecond, not read: §5.31 counts three builds
+    by their `newday.wav`), then one per redraw (81 240 to 81 780); in `seat-clock-ok` none was
+    old enough then. After an OK 2 000 ms into the cover the start waits for `NewWeek.wav`'s end (66 319 =
+    the cover's 60 560 + 5 759), as §5.31 read.
+- **Built (M5 T5 part five;** *provisional* names): `h3_map_view::clock` (`ClockArt`, the tables'
+  `[map.clock]`: the 60-ms tick, a line's 20 s, the 20 entries, `timeover.wav`, a box's 15 s;
+  `first`, `next` and `warning`, the survey's schedule and texts: the interval to the next warning
+  is half the limit while more than half is left and the limit is above 2 minutes, not to half
+  left, which matches the survey's table; 629 below 1.2 minutes, the f32's test not built;
+  `tenths`, the f32's `%0.1f` in integers; `text` and `expired` through the catalogue's
+  `map.clock.*` keys, GENRLTXT 54, 627 to 630 and 202, h3-ui's `%0.1f` a text the caller writes;
+  `Chat`, `ChatLine`, `Warning`), `h3_map_view::timeline::clock` (the `Loop`'s `timer_start` at a
+  covered start's `hand_start`, an uncovered human's `turn_proceed` or the loop's 0,
+  `timer_stop` at every turn's end, `poll_timer` from `tick`, `chat_draw` at every `Loop::draw`,
+  `expires` at the adventure manager's idle message and at a message a walk kept, `deadline` and
+  `box_timeout`: a box opened with less than 15 s left closes itself 15 s on with its No, else its
+  OK, one open at the end by its style; `Told::Expired`'s close stops the timer and calls
+  `turn_change`); `Start::clock` (`TurnClock`: the limit, running at 0, the tick's phase, the
+  host's time left, the chat carried, the sample's length, the expiry's box, `hosted`),
+  `Draw::chat`, `live::Live::chat` (the scene draws the dialog's text 37 again after the view and
+  its gems), `State::chat` and `warning` (the timeline's lines), `Sound::stepping` (the warning's
+  sound is silent while the step sound loops: the two share category 0's sample, recorded,
+  `seat-clock-walk`'s 58 199, MCL-Q77), `Loop::expire`, `chat`, `timer_at` and their `Replay`'s.
+  In `h3-map-client`: `Painter::turn_clock` and `expiry_box`, `paint::STAGED_TICK` (59: the
+  recordings poll at 59 modulo 60, the staging's last millisecond's tick; the harness does not
+  write `tick_60ms_time`), `sequences`' samples with the step sound's loop (its loops 0). The five
+  `seat-clock*` sequences in `sequences.toml`: every frame exact (212 frames, the frame check's
+  `<id>-frames.txt`, both recordings alike) and every sample as recorded; Blue's start's four
+  removals in its millisecond come out of the start's own draws (no extra draw built). **Play**
+  (`hosted`): the session's system actor ends the turn; the window's tick sees the turn passed and
+  gives the view the expiry (`Replay::expire`): the box open then closes as the session answered
+  it (none asked of the host again), the expiry's box opens (its OK, or its 15 s), its close asks
+  the End Turn that leaves the view; no other box gets a deadline (the session has none: a box
+  opened late stays until the end, where the session answers it; the nearest to survey §5). The
+  warnings come from the loop's own clock, its start placed by the session's time left
+  (`GameClock`'s `turn`); the host's clock fed to the session is held from a turn's passing (End
+  Turn or its time) to the next view's timer start after its cover (`play::Kept`, MCL-Q76), so
+  the session and the view agree on the turn's end within the window's millisecond; the chat
+  carried into the next human's view by each line's host time (MCL-Q70, built as the original);
+  an End Turn the loop asks ahead of the clock (the expiry's box's own close, run ahead to) played
+  once the clock reaches it. Checked under Xvfb (`play` on `seq-seat`'s map, `--duration 0`,
+  idle after Red's cover's OK): "30 seconds", the nine every-second lines, the expiry's box at
+  65 878 ms and its own close at 80 878, Blue's cover with Red's lines over it, Blue's clock held
+  under its cover; every frame read back exact, as afresh and as the headless loop's (the expiry
+  kept in `TurnClock::expiry` for it). *Differs:* play's next view opens with two draws in its 0
+  (its first and its cover's), so a line more leaves there than the original's one (seven on
+  Blue's cover after the box's 15 s, the original's eight).

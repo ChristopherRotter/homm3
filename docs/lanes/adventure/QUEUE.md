@@ -29,6 +29,21 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 
 ## Inbox
 
+- 2026-11-27 (the AI lane, E31 T2i0, `ai/e31-t2i0`, `cross-lane` with the user's consent, AI-Q41;
+  **in your paths, for your review; no rule of yours changed**): a new module
+  `h3_adventure::search` (`src/search.rs` and `src/search/`, its own files) holds the original's
+  computer pathfinder (`pathfinder_run` 0x56B440's modes 1 to 5; CPU-PTH-001 to -007, the ai
+  lane's catalog `computer.toml`; survey `E31-computer-player.md` §1.11):
+  `AdventureState::computer_search` over several days, the score order and its open list, the fog
+  by the caller (`SearchFog`: the faithful policy the original's computer test, §5.3 row 9; the
+  fair one the human's), the guards by the caller's fight answer (`SearchAsks`), the passage past an
+  entrance, the teleporters and mode 4's jumps. It reuses your `Pricing`, `day_movement`,
+  `visit_at`, `closed_above`, `may_guard`, the channels and the boats, crate-private as they are;
+  the human reach, `passage` and the pricing are unchanged (your reach and random-play workloads
+  measured flat). `E31-design.md` §3's first row (the computer query) is thereby done by the ai
+  lane: no work for you; a change to the passage rules may want the same change there (its tests
+  pin each case), and Castle Gate and Town Portal (E09 increment 8) and the Sanctuary and Quest
+  Guard (E12) have stubs there (AI-STUB-22, -23).
 - 2026-11-27 (the town lane, E09 T59a, `town/e09-t59a`, `cross-lane` with the user's consent,
   E09 decision 227; **in your paths, for your review; no hash of yours changed**): a town's war
   machines (TWN-SMT-001) and its boat (TWN-SHY-001). (1) `state/boats.rs`: **`launch` is

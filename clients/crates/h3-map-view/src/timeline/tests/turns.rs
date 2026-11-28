@@ -102,6 +102,7 @@ fn next(turn: Turn) -> NextTurn {
         list: None,
         first: false,
         open: false,
+        cover: None,
     }
 }
 
