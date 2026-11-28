@@ -126,6 +126,86 @@ fn a_computer_s_turn_shows_the_shield_in_the_minimap_s_place() {
 }
 
 #[test]
+fn the_screen_chat_over_the_view() {
+    // E24 M5 T5 part five (design §5.32): the dialog's text 37 again alone after the view and its
+    // gems, its lines joined; without a line only the dialog's own, empty.
+    let (art, mut live) = art_with(vec![]);
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    let labels = |scene: &Scene| -> Vec<(i32, i32, String)> {
+        scene
+            .draws
+            .iter()
+            .filter_map(|d| match d {
+                Draw::Dialog(ui::Draw::Label {
+                    item, x, y, text, ..
+                }) if item.id == 37 && !text.is_empty() => Some((*x, *y, text.clone())),
+                _ => None,
+            })
+            .collect()
+    };
+    assert!(labels(&scene).is_empty());
+    live.chat = vec![clock::Warning::Seconds(9), clock::Warning::Seconds(8)];
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    let drawn = labels(&scene);
+    assert_eq!(drawn.len(), 1);
+    assert_eq!((drawn[0].0, drawn[0].1), (54, 100));
+    assert_eq!(drawn[0].2.lines().count(), 2);
+    let gem = scene
+        .draws
+        .iter()
+        .rposition(|d| matches!(d, Draw::Gem { .. }))
+        .unwrap();
+    let chat = scene
+        .draws
+        .iter()
+        .rposition(|d| matches!(d, Draw::Dialog(ui::Draw::Label { item, .. }) if item.id == 37))
+        .unwrap();
+    assert!(chat > gem);
+}
+
+#[test]
+fn a_hot_seat_s_cover() {
+    // E24 M5 T5 (design §5.31): the frame's picture in the colours it was last drawn in, the gems
+    // in the new viewer's, every tile unexplored, the shield until its start draws the minimap.
+    let (art, mut live) = art_with(vec![]);
+    live.viewer = 1;
+    let cover = crate::live::Covered {
+        frame: 0,
+        date: crate::live::Date::default(),
+        quests: false,
+        resources: None,
+        started: false,
+    };
+    live.covered = Some(cover);
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    assert!(matches!(scene.draws[0], Draw::Frame { viewer: 0, .. }));
+    assert!(
+        scene
+            .draws
+            .iter()
+            .any(|d| matches!(d, Draw::Gem { frame: 1, .. }))
+    );
+    let shroud = pieces(&scene, Pass::Shroud);
+    assert_eq!(shroud.len(), 19 * 17);
+    assert!(
+        scene
+            .draws
+            .iter()
+            .any(|d| matches!(d, Draw::Dialog(ui::Draw::Picture { picture, .. }) if picture == "aishield.pcx"))
+    );
+    live.covered = Some(crate::live::Covered {
+        started: true,
+        ..cover
+    });
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    assert!(scene.draws.iter().any(|d| matches!(d, Draw::Minimap(_))));
+    live.covered = None;
+    let scene = still(&art, &live, at(0, 0), Bugs::Fixed);
+    assert!(pieces(&scene, Pass::Shroud).is_empty());
+    assert!(matches!(scene.draws[0], Draw::Frame { viewer: 1, .. }));
+}
+
+#[test]
 fn the_frame_then_the_passes_then_the_gems() {
     let (art, live) = art_with(vec![]);
     let scene = still(&art, &live, at(0, 0), Bugs::Fixed);

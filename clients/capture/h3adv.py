@@ -112,6 +112,9 @@ HOT_SEAT = (580, 152)  # the multiplayer dialog's first button
 NAME_FIELDS = (400, 186, 30)  # the hot-seat names: x, the first field's y, the step
 NAMES_OK = (340, 444)
 BEGIN = (497, 553)  # scenario list
+# The advanced options' turn duration (E24 M5 T5; E27 design §3.13): the bar's left arrow, and
+# its value at a new game's start (turndur.txt's record 10, Unlimited).
+DURATION_LEFT, DURATION_UNLIMITED = (66, 565), 10
 DIFFICULTY_BUTTONS = (521, 478, 32)  # the scenario list's player difficulty: Easy's centre, the step
 PARK = (700, 300)  # over the right panel: no edge scrolls, no tile hovered
 HERO_LIST = (638, 227, 32, 5)  # the hero list's portraits: x, the first one's y, the step, rows
@@ -184,11 +187,20 @@ def dismiss(game, quiet=1.5, limit=60.0, mem=None, events=None):
 
 
 # -- the game's start and turns ----------------------------------------------------------------
-def to_hot_seat(game, names, difficulty="normal", gold=False):
+def to_hot_seat(game, names, difficulty="normal", gold=False, seed=None, duration=None,
+                begin=True):
     """From the start to the first human's adventure map of the only map in Maps/, every name a
     human player (hot seat, at least two; colours from red on, as the map allows them), the
     players' difficulty chosen in the scenario list (E17 H1; its default Normal); with `gold`
-    (the battle recipes, E17 M5 T8a) the named players' starting bonus Gold, else random."""
+    (the battle recipes, E17 M5 T8a) the named players' starting bonus Gold, else random (since
+    E24 M5 T5 a number: that many players' rows, as `h3drive.to_scenario`'s). Since E24 M5 T5
+    (design §5.31, the map's hot-seat sequences): `seed` seeds the game's generator just before
+    Begin (as `h3drive.to_scenario`'s), `duration` is the turn's duration (turndur.txt's record
+    0 to 10, the advanced options' bar: its left arrow pressed from 10, Unlimited, the new game's
+    default; the game's +0x1F843 holds it once begun, `Mem.turn_duration`), and with `begin`
+    false it stops on the scenario list before Begin (the caller begins)."""
+    if duration is not None and duration not in range(DURATION_UNLIMITED + 1):
+        raise ValueError(f"a turn duration from 0 to {DURATION_UNLIMITED}, not {duration!r}")
     game.wait("main_menu", 90)
     game.click(640, 75, 1.0)  # New Game
     game.wait("new_game_menu")
@@ -206,7 +218,16 @@ def to_hot_seat(game, names, difficulty="normal", gold=False):
     x, y, step = DIFFICULTY_BUTTONS
     game.click(x + step * h3mem.DIFFICULTIES.index(difficulty), y, 0.6)
     if gold:
-        h3drive.gold_bonus(game, len(names))
+        h3drive.gold_bonus(game, len(names) if gold is True else gold)
+    if duration is not None and duration != DURATION_UNLIMITED:
+        if not gold:  # gold_bonus opened the advanced options already
+            game.click(*h3drive.ADVANCED_OPTIONS, 1.0)
+        for _ in range(DURATION_UNLIMITED - duration):
+            game.click(*DURATION_LEFT, 0.4)
+    if seed is not None:
+        game.seed(seed)
+    if not begin:
+        return
     game.click(*BEGIN, 1.0)
     game.move(*PARK)
     game.wait("turn_dialog", 60)

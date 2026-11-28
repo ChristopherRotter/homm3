@@ -3960,3 +3960,103 @@ the panels is not a small option, not built. By their commands (play's `--seed` 
 `game-ai`, `-ai-boat` not (play ends a computer's turn at once); the four `battle-*` not
 (MCL-STUB-6). **Gates:** the tests (the notice's on v85's market window), clippy, `h3-map-view`'s
 coverage (0 lines, 0 regions missed), the scoped verify with the original data.
+
+### M5 T5, parts one and two: the cut, the reading, the hot seat recorded (2026-11-27)
+
+On `map-client/e24-m5-t5`, `master` at 66aaa28 (#1213 merged; CI green). The PC up at the start
+only: the 58 originals (their recorded SHA-256 sums checked), the saves, the SoD tables and the
+manuals staged; the setup's baseline stopped at coverage (fmt, clippy, the doc tests and deny
+passed; CI's Clients on `master` standing in). One runner and five worker sub-agents in turn; the
+session's server restarted four times (the VM kept; each worker resumed from its transcript).
+
+- **The cut** (the user at the start): T5 **kept whole** over the runner's proposed T5a/T5b seam.
+- **The M4 hand test** (the user's notes, `clients/out/win/map-m4-notes.txt`; the user counted
+  parts 3 to 5 only, its parts 1 and 2 being before M5's fixes and T6's): parts 1 and 2 never ran
+  (the kit's binary refused the checkout's newer packs: TRAPS); part 3's music, focus and loops as
+  the original (the scroll moves no loop's centre, `view_scroll` 0x4195C0: the kit's text was
+  wrong, not the viewer); part 4 answered **MCL-Q47** (the original restarts the terrain's track
+  from its start at once after a battle won without moving: the reading's silence wrong, read and
+  built at T6); part 5 settled **MCL-Q11** (each `HORSE2x` its terrain's `HORSE0x` with faster
+  steps: the road's; (c) queued in the inbox). Part 5's samples were IMA ADPCM, which PowerShell's
+  `Media.SoundPlayer` refuses: PCM copies and `map-m4-part5.cmd` put beside the kit (TRAPS).
+- **Part one, the reading** (2834a0a; design §5.31, §5.32): the human start in a hot seat at
+  0x4C7710 and `covered_view_new_week` 0x4CA840 whole, `turn_start_screen` 0x419E00 for GENRLTXT
+  352 (a network game's chat only), `chat_system_message` 0x553960 and the screen chat
+  (`screen_chat` in `structs.toml`), the expiry box at 0x4087F3; 21 map entries; MCL-Q70 to Q73.
+- **Part two, the hot seat recorded** (b826071, 15e2ba3): `h3map.py`'s hot-seat start
+  (`hot_seat`, `duration`, `start`; the timer paused while the harness stages), the `shown`,
+  `covered` and `timer` lines and the `[[seat]]` tables; situations' timed events; nine `seat-*`
+  sequences recorded twice alike; §5.31's "Seen" bullet; MCL-Q74. `seat-start` from a loaded save
+  not recorded (not cheap).
+- **MCL-Q75** (the runner, from the E16 survey): the hot seat's clock in battles and level-ups,
+  the original's or the server's model; built as the server's meanwhile (no battle in play
+  before T6).
+
+### M5 T5, part three: the hand-over built (2026-11-27)
+
+A worker (the user away: *provisional*). **Built** (design §5.31's "Built"): the `Loop`'s
+hand-over (`timeline::hand`: the cover, its box, the wait for `NewWeek.wav`, the minimap, buttons
+and clock, the timed events, the start), the painter's covered view and seat views, the
+`[[seat]]` tables, `sequences`' samples compared for a sound run; play covers each human's view's
+first turn in a hot seat begun with more than one human (the game's start made covered, the frame
+in the human before's colours, a computer's seat between leaving four buttons disabled).
+**Harness** (common, additive): a seat's `selection` read when its start's date window gives way
+(Blue's hero's window at `seat-hand-over`'s 7 720), a hot seat's start's lifted hero kept in its
+live part (`Mem.lifted_standing`), a sound run of `sequences.toml` keeping its live part, a
+start's live part kept with its frame at 0 left to the frame check. The nine `seat-*` recorded
+again for them (the disk check's ballast kept by a watcher: a build during a run broke it) and
+moved into `sequences.toml` (`to-record.toml` removed): every frame exact (213 frames), every
+sample as recorded; `seq-seat-start`'s `view` the first human's own (−5, −4), its live part's
+`frames` −1 read modulo 2³². Seen and built as recorded: move hero stays as it stood at the
+start's step (9) (`panels::STARTED`), the idle step runs after a start at the cover's OK or an
+event's close. **Fixed on the way:** a day's `list` remapped the viewer's choices on another
+human's turn (Red's choice of its hero lost at its next day). **Gates:** `drawn` every other
+situation and sequence the same, the nine recorded; `h3-map-view`'s coverage 0 lines, 0
+regions missed; `check.sh --no-coverage`. **Play** checked under Xvfb (`seq-seat` with
+two humans, four views: Red's start, Blue's, Red's day 2, Blue's day 2; and `seq-seat-ai`, Tan a
+computer between Blue and Red): every view's frames read back exact, as afresh and as the
+headless loop's; the covers' screenshots as recorded (the frame in the human before's colours,
+Red's day-2 cover after Tan's turn with its four buttons disabled). New:
+`MCL-STUB-8` (no timed event's box in play).
+
+### M5 T5, part four: the clock recorded (2026-11-28)
+
+A worker (the user away: *provisional*). **Recorded** (design §5.32's "The recordings", "Seen"):
+five sound runs of a hot seat's turn clock in `clients/map/to-record.toml` (until part five
+builds the clock), each twice with the same timeline and samples: `seat-clock` (83 000 ms, the
+expiry box closing itself, Blue's cover with eight lines), `seat-clock-ok` (80 000, the box's OK
+at once, nine), `seat-clock-box` (61 000, End Turn's question from 45 s to 55 s),
+`seat-clock-walk` (62 000, a 16-step walk to the turn's end) and `seat-clock-two` (61 000, a
+2-minute turn's first two warnings). **Harness** (common, additive): `Mem.chat`, the timeline's
+`warning` and `chat` lines and the live part's `[[chat]]` tables (`chat_label`: GENRLTXT 54 and
+the warning's record, the numbers as `values`), `frames --sparse` (checked on
+`seat-hand-over-late`: its recorded timeline, samples and frames), the cycling tables and DEF
+palettes read once a run (half of a step); the stale `KeptLiveParts` test brought to part
+three's behaviour. **Seen:** no tab after the warning's text; the every-second warnings
+1 020 ms apart; the expiry box at 60 001, its close at 75 001 with the next cover in that
+millisecond; Blue's start ageing the chat four times in its millisecond; the start after an OK
+2 s into the cover waiting for `NewWeek.wav`'s end (§5.31's reading). No new question (MCL-Q70
+noted with the recordings).
+
+### M5 T5, part five — the clock built (2026-11-28)
+
+A worker (the user away: *provisional*). **Built** (design §5.32's "Built"): `h3_map_view::clock`
+(the schedule, the warnings' texts through the catalogue's `map.clock.*` keys, the f32's `%0.1f`
+in integers, the screen chat) and `timeline::clock` (the timer started at each human's start and
+stopped at each turn's end, the 60-ms poll, the chat aged at each view's draw, the expiry's box at
+the manager's first message once the time is out, a box's 15-s deadline and the at-the-end close
+by its style); `Start::clock` (`TurnClock`), `Draw::chat` drawn as the dialog's text 37 after the
+view; `[map.clock]` in the tables; h3-ui's `%0.1f` (common, additive). **The five `seat-clock*`**
+moved into `sequences.toml` (`to-record.toml` removed): every frame exact (212, both part four's
+recordings alike) and every sample as recorded (the step sound's loop compared since, loops 0);
+`drawn` every other situation and sequence the same, the five recorded. **Play:** the session's
+system actor's end of a turn shown as the expiry's box (its box open closed as the session
+answered it), the hand-over after its close; the warnings from the loop's clock placed by the
+session's time left; the host's clock held from a turn's passing to the next view's timer start
+(MCL-Q76); checked under Xvfb on `seq-seat`'s map with a minute's turns (the warnings, the box at
+65 878 ms and its close 15 s on, Blue's cover with Red's lines; every frame read back exact, as
+afresh and as the headless loop's). **Fixed on the way:** an End Turn the loop asked ahead of the
+window's clock was played at once (the expiry's box left 15 s early). **Gates:** `h3-map-view`'s
+coverage 0 lines, 0 regions missed (`H3_INSTALL` unset); clippy; `check.sh --no-coverage`. New:
+MCL-Q76 (the hot seat's timer from the turn's passing), MCL-Q77 (a warning silent under a walk's
+step sound).

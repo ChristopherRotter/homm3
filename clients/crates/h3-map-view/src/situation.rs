@@ -26,7 +26,7 @@ use h3_map::writer::{
     ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS, AnyObject, AnyTown, EVENT_OBJECT, Event, Extras,
     GivenTile, Guards, Hero, HeroArtifacts, Map, MapObject, Message, Monster, ObjectTemplate,
     PANDORA_OBJECT, Patch, Pile, Player, RewardBody, RewardObject, RiverKind, Road, RoadKind,
-    SHRINE_OBJECTS, Terrain, Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
+    SHRINE_OBJECTS, Terrain, TimedEvent, Town, TownBuildings, Underground, WITCH_HUT_OBJECT,
 };
 
 use serde::Deserialize;
@@ -134,6 +134,57 @@ pub struct Situation {
     /// that tile read as a sequence's (`look_over_view`); none the parking over the right panel.
     #[serde(default)]
     pub pointer: Option<[i32; 2]>,
+    /// The map's timed events (E24 M5 T5, design §5.31: a hot seat's start's box after the
+    /// hand-over's), in the map's order: each fires once, for the human players it names.
+    #[serde(default)]
+    pub events: Vec<EventSpec>,
+}
+
+/// A timed event of the map (E24 M5 T5): its text (the situation's own, which the harness keeps
+/// as `[the map's text]`), the resources it gives, the colours it fires for and its day; it fires
+/// once, for a human player only.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EventSpec {
+    /// The text its box shows.
+    pub message: String,
+    /// The resources it gives, in the original's order (wood … gold).
+    #[serde(default)]
+    pub resources: [i32; 7],
+    /// The colours it fires for (0 Red … 7 Pink).
+    pub players: Vec<u8>,
+    /// The game's day it fires on (1 the first).
+    pub day: u16,
+}
+
+impl EventSpec {
+    /// The writer's event, its day the file's (0 the game's first).
+    ///
+    /// # Errors
+    /// A colour past 7, none, or day 0.
+    fn writer(&self) -> Result<TimedEvent, String> {
+        let players = self.players.iter().try_fold(0u8, |bits, &c| {
+            (c < 8)
+                .then(|| bits | 1 << c)
+                .ok_or_else(|| format!("a timed event's colour {c} past 7"))
+        })?;
+        if players == 0 || self.day == 0 {
+            return Err(format!(
+                "a timed event for no colour or on day 0: {:?}, day {}",
+                self.players, self.day
+            ));
+        }
+        Ok(TimedEvent {
+            name: String::new(),
+            message: self.message.clone(),
+            resources: self.resources,
+            players,
+            human: true,
+            computer: false,
+            first_day: self.day - 1,
+            interval: 0,
+        })
+    }
 }
 
 /// What the viewer knows of the object anchored on a tile (E24 M3 T6a2a): whether Red knows its
@@ -978,7 +1029,8 @@ impl Situation {
     /// A source missing, a copied rectangle outside its map or the situation's, a code with no
     /// name, a given object's, town's or boat's template not among `templates`; no hero of Red's or of
     /// another colour, an owner past 7, more than eight heroes of a colour or of a class, a
-    /// facing or a boat's colour past 7, a walk or a path of a hero not Red's, a second path.
+    /// facing or a boat's colour past 7, a walk or a path of a hero not Red's, a second path; a
+    /// timed event for no colour, a colour past 7 or on day 0.
     pub fn build(
         &self,
         sources: &BTreeMap<String, RawMap>,
@@ -1093,7 +1145,11 @@ impl Situation {
             banned_skills: vec![],
             banned_artifacts: Vec::new(),
             banned_spells: Vec::new(),
-            events: Vec::new(),
+            events: self
+                .events
+                .iter()
+                .map(EventSpec::writer)
+                .collect::<Result<_, _>>()?,
             teams: None,
         };
         let quests = self.quests(&map.objects, &objects, first)?;

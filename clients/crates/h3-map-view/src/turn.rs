@@ -44,12 +44,21 @@ pub struct TurnArt {
     /// turn, *provisional*); none, no music asked.
     #[serde(default)]
     pub computer: Vec<String>,
+    /// A hot seat's hand-over's sound (E24 M5 T5, design §5.31: `NewWeek.wav`,
+    /// `covered_view_new_week` 0x4CA840's `play_sound_file`, on any day).
+    pub cover: String,
+    /// The longest the start waits for it after the cover's OK, ms (`wait_for_sample` 0x59A4C0
+    /// with −1: 4 000).
+    pub wait: u32,
+    /// How long the cover asks the date's status window for, ms (0x4CA8B6: 9 999 999).
+    pub covered: u32,
 }
 
 /// The string catalogue's keys the turn shows (`clients/text/keys.toml`); the names are the
 /// `week-name`, `month-name` and `creature` families' ([`week_key`], [`month_key`]).
-pub const KEYS: [&str; 7] = [
+pub const KEYS: [&str; 8] = [
     "map.turn.end",
+    "map.turn.hand-over",
     "map.turn.month",
     "map.turn.month-creature",
     "map.turn.plague",
@@ -101,6 +110,24 @@ pub fn sound(art: &TurnArt, date: Date) -> &str {
 #[must_use]
 pub fn question(texts: &Catalogue) -> String {
     texts.text("map.turn.end", &Args::new())
+}
+
+/// A hot seat's hand-over's text (E24 M5 T5, design §5.31: GENRLTXT 14 at 0x4C7807, with the
+/// human's hot-seat name as set up: a default `Player` the colour's name, the caller's).
+#[must_use]
+pub fn hand_over(texts: &Catalogue, name: &str) -> String {
+    texts.text("map.turn.hand-over", &Args::new().text("player", name))
+}
+
+/// A hot seat's human's name as its hand-over shows it (E24 M5 T5, design §5.31:
+/// `player_display_name` 0x4BADB0's code at 0x4C7755): its own, or for none or a default `Player`
+/// (any case) its colour's name with its first letter upper-cased.
+#[must_use]
+pub fn seat_name(texts: &Catalogue, colour: u8, name: Option<&str>) -> String {
+    match name {
+        Some(name) if !name.eq_ignore_ascii_case("player") => name.into(),
+        _ => crate::finds::colour(texts, i32::from(colour)),
+    }
 }
 
 /// The week's or the month's message on `date` (none on another day; 0x4CCAE5): on a month's

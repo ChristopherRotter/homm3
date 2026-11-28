@@ -15,9 +15,45 @@ fn one(rest: &str) -> Sequence {
 }
 
 #[test]
+fn reads_a_hot_seat() {
+    // E24 M5 T5: the recorded hand-overs, their names, clocks, the game's start and sound.
+    let sequences = Sequences::parse(SEQUENCES).unwrap();
+    let late = sequences.get("seat-hand-over-late").unwrap();
+    let names = ["Red".to_string(), "Blue".to_string()];
+    assert_eq!(late.names(), Ok(Some(&names[..])));
+    assert!(late.timed() && late.sound && !late.start);
+    let over = sequences.get("seat-hand-over").unwrap();
+    assert!(!over.timed() && over.sound);
+    assert!(sequences.get("seat-start").unwrap().start);
+    let single = sequences.get("scroll-0").unwrap();
+    assert_eq!(single.names(), Ok(None));
+    assert!(!single.timed() && !single.sound);
+    // A clock or a start without a hot seat, too few or too many names or not letters and
+    // digits, a duration past unlimited: refused as the harness refuses them.
+    for (rest, why) in [
+        ("duration = 0", "without a `hot_seat`"),
+        ("start = true", "without a `hot_seat`"),
+        ("hot_seat = [\"Red\"]", "two to eight names"),
+        (
+            "hot_seat = [\"A\", \"B\", \"C\", \"D\", \"E\", \"F\", \"G\", \"H\", \"I\"]",
+            "two to eight",
+        ),
+        ("hot_seat = [\"Red\", \"Bl ue\"]", "letters and digits"),
+        ("hot_seat = [\"Red\", \"\"]", "letters and digits"),
+        ("hot_seat = [\"Red\", \"Blue\"]\nduration = 11", "0 to 10"),
+    ] {
+        let s = one(rest);
+        assert!(s.names().unwrap_err().contains(why), "{rest}");
+    }
+    let unlimited = one("hot_seat = [\"Red\", \"Blue\"]\nduration = 10");
+    assert!(!unlimited.timed());
+    assert!(one("hot_seat = [\"Red\", \"Blue\"]\nduration = 3").timed());
+}
+
+#[test]
 fn reads_the_recorded_sequences() {
     let sequences = Sequences::parse(SEQUENCES).unwrap();
-    assert_eq!(sequences.sequence.len(), 110);
+    assert_eq!(sequences.sequence.len(), 124);
     // A scripted game's engine commands (E24 M4 T4a2): read, the viewer plays its record; since
     // E24 M4 T4b1 its engine's seed, accepted.
     let walk = sequences.get("game-walk").unwrap();

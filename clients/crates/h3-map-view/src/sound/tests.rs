@@ -101,8 +101,9 @@ fn the_tables_sounds_are_the_originals() {
     // The loops, the step sounds, the flying one, (E24 M3 T6b1) the buttons' press, (E24 M3 T5b2)
     // the day's status window's, (E24 M4 T1a) the week's and the month's message's, (E24 M4
     // T2c) a level-up's dialog's, (E24 M4 T2d3) Summon Boat's and (E24 M4 T4a) an object taken's:
-    // the seven pickups' and a monster's removal's.
-    assert_eq!(r.wavs().len(), 95);
+    // the seven pickups' and a monster's removal's; (E24 M5 T5) a hot seat's cover's, (part
+    // five) a turn's warning's.
+    assert_eq!(r.wavs().len(), 97);
     assert_eq!(
         r.effects,
         [
@@ -110,6 +111,8 @@ fn the_tables_sounds_are_the_originals() {
             "newday.wav",
             "newweek.wav",
             "newmonth.wav",
+            "NewWeek.wav",
+            "timeover.wav",
             "nwherolv.wav",
             "summboat.wav",
             "pickup01.wav",
@@ -223,8 +226,9 @@ fn the_tables_with_and_without_sound() {
     let sounds = t.sounds();
     // Since E24 M3 T5b2 the day's status window's sound among them, since T6b1 the buttons', since
     // E24 M4 T1a the week's and the month's message's, since T2c a level-up's dialog's, since T2d3
-    // Summon Boat's, since T4a the pickups' and a monster's removal's (`Loop::take`'s cues).
-    assert_eq!(sounds.len(), 95);
+    // Summon Boat's, since T4a the pickups' and a monster's removal's (`Loop::take`'s cues), since
+    // E24 M5 T5 part five a turn's warning's.
+    assert_eq!(sounds.len(), 96);
     assert!(
         (1..=7).all(|i| sounds.contains(&format!("PICKUP0{i}"))) && sounds.contains("KILLFADE")
     );
@@ -233,16 +237,21 @@ fn the_tables_with_and_without_sound() {
     // Without a level-up's sound (E24 M4 T2c) none of its own.
     let silent = text.replace("sound = \"nwherolv.wav\"", "sound = \"\"");
     let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
-    assert_eq!(quiet.sounds().len(), 94);
+    assert_eq!(quiet.sounds().len(), 95);
     // Nor without Summon Boat's (E24 M4 T2d3).
     let silent = text.replace("summon_boat = \"summboat.wav\"", "summon_boat = \"\"");
     let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
-    assert_eq!(quiet.sounds().len(), 94);
+    assert_eq!(quiet.sounds().len(), 95);
     // Nor without a monster's removal's (E24 M4 T4a).
     let silent = text.replace("killfade = \"killfade.wav\"", "killfade = \"\"");
     let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
-    assert_eq!(quiet.sounds().len(), 94);
+    assert_eq!(quiet.sounds().len(), 95);
     assert!(!quiet.sounds().contains("KILLFADE"));
+    // Nor without a turn's warning's (E24 M5 T5 part five).
+    let silent = text.replace("sound = \"timeover.wav\"", "sound = \"\"");
+    let quiet = tables::load(&[tables::parse(&silent).unwrap()], "base").unwrap();
+    assert_eq!(quiet.sounds().len(), 95);
+    assert!(!quiet.sounds().contains("TIMEOVER"));
     // The terrains' nine and (E24 M4 T6, the reviewer's R6-2) a computer's turn's three.
     assert_eq!(t.tracks().len(), 12);
     assert!((0..3).all(|i| t.tracks().contains(&format!("AITheme{i}"))));
@@ -380,6 +389,9 @@ pub(crate) fn map_with(
         computer: false,
         level_ups: Vec::new(),
         casts: Vec::new(),
+        seats: Vec::new(),
+        covered: None,
+        chat: Vec::new(),
     };
     (art, live, shapes)
 }
@@ -744,4 +756,24 @@ fn a_computer_s_music_once() {
     s.computer(5, "AITheme1");
     s.computer(6, "AITheme1");
     assert_eq!(s.take(), [(5, Cue::Music("AITheme1".into()))]);
+}
+
+#[test]
+fn a_hot_seat_s_cover_fades_the_music_and_plays_its_sound() {
+    // E24 M5 T5 (design §5.31): the music faded (its terrain forgotten: the start asks it again),
+    // the cover's sound on its own channel; their lines.
+    let mut s = sound(tiles(4, |_, _| 2, |_, _| None));
+    s.start(0, [1, 1, 0], None);
+    s.take();
+    s.fade(7);
+    s.cover(7, "NewWeek.wav");
+    let cues = s.take();
+    assert_eq!(
+        cues,
+        [(7, Cue::Fade), (7, Cue::Cover("NewWeek.wav".into()))]
+    );
+    let lines: Vec<String> = cues.iter().map(|(t, c)| line(*t, c)).collect();
+    assert_eq!(lines, ["7 fade", "7 cover NewWeek.wav"]);
+    s.select(9, [1, 1, 0], Pos { x: 1, y: 1, z: 0 }, true);
+    assert!(s.take().iter().any(|(_, c)| matches!(c, Cue::Music(_))));
 }

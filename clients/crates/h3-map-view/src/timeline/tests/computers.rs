@@ -107,6 +107,9 @@ pub(super) fn hover_of(live: &str) -> Arc<Hover> {
         computer: false,
         level_ups: Vec::new(),
         casts: Vec::new(),
+        seats: Vec::new(),
+        covered: None,
+        chat: Vec::new(),
     };
     let text = include_str!("../../../../../map/assets/base.toml");
     let tables = tables::load(&[tables::parse(text).unwrap()], "base").unwrap();
@@ -165,6 +168,7 @@ fn computing(id: &str) -> (Start, BTreeMap<u32, Vec<Action>>, u32, &'static str)
             list: None,
             first: false,
             open: false,
+            cover: None,
         })
         .collect();
     start.points = sequence.points(timeline).unwrap();
@@ -1033,4 +1037,38 @@ fn a_computers_turn_the_record_ends_in() {
     start.turns[0].first = true;
     let l = Loop::start(rules(Bugs::Original), &start).unwrap();
     assert!(l.ai.is_some() && l.next_turn == 1);
+}
+
+#[test]
+fn a_hot_seat_s_human_after_a_computer_s_turn_in_sight_is_covered() {
+    // E24 M5 T5 (design §5.31): `ai-walk` in a hot seat, Red's next day a human's covered turn:
+    // the computer's end shows Red's cover with its four buttons disabled and its box; its OK
+    // (no sound: no wait) starts the day as the recording's.
+    let (mut start, actions, ms, _) = computing("ai-walk");
+    start.seat = Some(HandOver {
+        boxes: vec![(0, turns::laid("Red's turn.", h3_ui::message::Style::Ok))],
+        sample: None,
+        timed: false,
+        framed: None,
+    });
+    let last = start.turns.len() - 1;
+    start.turns[last].cover = Some(Cover {
+        computers: true,
+        ..Cover::default()
+    });
+    let mut l = Loop::start(rules(Bugs::Original), &start).unwrap();
+    for t in 1..=1660 {
+        l.run(t, actions.get(&t).map_or(&[][..], Vec::as_slice))
+            .unwrap();
+    }
+    let s = l.state(1660);
+    assert!(s.drawn.cover.is_some() && s.drawn.computer && s.drawn.message.is_some());
+    assert_eq!((s.player, s.shown, s.timer), (0, Some(0), Some(false)));
+    assert_eq!(s.hero, None);
+    l.run(1661, &[Action::BoxKey(Key::Ok)]).unwrap();
+    l.run(1662, &[Action::BoxKeyUp(Key::Ok)]).unwrap();
+    let s = l.state(1662);
+    assert!(s.drawn.cover.is_none() && !s.drawn.computer && s.drawn.message.is_none());
+    assert_eq!(s.hero.map(|h| h.at), Some(Pos { x: 4, y: 4, z: 0 }));
+    assert!(ms > 1662);
 }
