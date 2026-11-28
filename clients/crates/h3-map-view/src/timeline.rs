@@ -4785,12 +4785,10 @@ impl Loop {
         // view drawn and shown, the hero put back on its tile, then the battle's switch, as a
         // fight from beside ([`Loop::visit_beside`]).
         if let (Some(fight), None) = (&found.fight, found.blocks) {
-            if let Some(object) = fight.object {
-                self.drawn.attacking = Some(Attacking {
-                    object,
-                    frame: fight.attacker,
-                });
-            }
+            self.drawn.attacking = fight.object.map(|object| Attacking {
+                object,
+                frame: fight.attacker,
+            });
             self.draw(t);
             self.step_objects(t);
             self.battle_stop(t);
@@ -5258,7 +5256,7 @@ impl Loop {
             before,
             from,
             rect,
-            queued,
+            mut queued,
             gain,
             then,
             ..
@@ -5272,26 +5270,29 @@ impl Loop {
                 return self.ai_on(t).map(|_| ());
             }
             Then::Lost(monster) => self.left_map(t, queued, monster)?,
-            Then::Visited(i) => {
-                self.gain(gain);
-                // The levels its experience reaches, the visit's end after them (E24 M5 T6a).
-                if let Some(After::Visited(i)) = self.level_up(t, After::Visited(i))? {
-                    self.visited(t, i);
-                    self.resume(t, queued)?;
-                }
-            }
+
             Then::Resume => {
                 self.cursor.shown = true;
                 self.resume(t, queued)?;
             }
-            Then::Taken => {
+            Then::Taken | Then::Visited(_) => {
                 self.gain(gain);
                 // The levels its experience reaches (E24 M4 T2c: a chest's after its removal,
-                // `level-up-twice` at 1980), the step's end after them.
-                if let Some(After::Step(queued)) = self.level_up(t, After::Step(queued))? {
-                    self.finish(t, true);
-                    self.resume(t, queued)?;
+                // `level-up-twice` at 1980), the step's end after them; since E24 M5 T6a a
+                // monster a battle took off where the walk stopped: the visit's end after them.
+                let after = match then {
+                    Then::Visited(i) => After::Visited(i),
+                    _ => After::Step(core::mem::take(&mut queued)),
+                };
+                match self.level_up(t, after)? {
+                    Some(After::Step(steps)) => {
+                        self.finish(t, true);
+                        queued = steps;
+                    }
+                    Some(After::Visited(i)) => self.visited(t, i),
+                    _ => return Ok(()),
                 }
+                self.resume(t, queued)?;
             }
             Then::Board(boarding) => {
                 let Boarding {
@@ -5637,10 +5638,10 @@ impl Loop {
                 hero.army = army;
             }
         }
-        if let Some(Some(chosen)) = self
+        let chosen = self
             .selected_hero()
-            .and_then(|i| self.chosen.heroes.get_mut(i))
-        {
+            .and_then(|i| self.chosen.heroes.get_mut(i));
+        for chosen in chosen.into_iter().flatten() {
             chosen.status.army = army;
         }
         Arc::make_mut(&mut self.drawn.kingdom)
