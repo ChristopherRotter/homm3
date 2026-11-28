@@ -3987,3 +3987,22 @@ computer between Blue and Red): every view's frames read back exact, as afresh a
 headless loop's; the covers' screenshots as recorded (the frame in the human before's colours,
 Red's day-2 cover after Tan's turn with its four buttons disabled). New:
 `MCL-STUB-8` (no timed event's box in play).
+
+### M5 T5, part four: the clock recorded (2026-11-28)
+
+A worker (the user away: *provisional*). **Recorded** (design §5.32's "The recordings", "Seen"):
+five sound runs of a hot seat's turn clock in `clients/map/to-record.toml` (until part five
+builds the clock), each twice with the same timeline and samples: `seat-clock` (83 000 ms, the
+expiry box closing itself, Blue's cover with eight lines), `seat-clock-ok` (80 000, the box's OK
+at once, nine), `seat-clock-box` (61 000, End Turn's question from 45 s to 55 s),
+`seat-clock-walk` (62 000, a 16-step walk to the turn's end) and `seat-clock-two` (61 000, a
+2-minute turn's first two warnings). **Harness** (common, additive): `Mem.chat`, the timeline's
+`warning` and `chat` lines and the live part's `[[chat]]` tables (`chat_label`: GENRLTXT 54 and
+the warning's record, the numbers as `values`), `frames --sparse` (checked on
+`seat-hand-over-late`: its recorded timeline, samples and frames), the cycling tables and DEF
+palettes read once a run (half of a step); the stale `KeptLiveParts` test brought to part
+three's behaviour. **Seen:** no tab after the warning's text; the every-second warnings
+1 020 ms apart; the expiry box at 60 001, its close at 75 001 with the next cover in that
+millisecond; Blue's start ageing the chat four times in its millisecond; the start after an OK
+2 s into the cover waiting for `NewWeek.wav`'s end (§5.31's reading). No new question (MCL-Q70
+noted with the recordings).
