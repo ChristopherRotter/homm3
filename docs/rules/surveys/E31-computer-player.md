@@ -2027,8 +2027,8 @@ and #68 (38 slips), T2e's one, #69 (39 slips). T2f to T2h added #70 to #73 (slip
 
 | # | § | Candidate | Address | Class | Lane | Confirm | Note |
 |---|---|---|---|---|---|---|---|
-| 1 | §1.9 (1) | class claims marked by the list's count: classes 0-36, not the 37 listed | 0x428070 | slip | ai | blind-confirmed at T2i | ported as read (CPU-PLN-002) |
-| 2 | §1.9 (2) | a colleague's claim offset (+0x41 less points left) only when not larger, 16-bit | 0x42F82E | slip | ai | blind-confirmed at T2i | ported as read (CPU-PLN-002) |
+| 1 | §1.9 (1) | class claims marked by the list's count: classes 0-36, not the 37 listed | 0x428070 | slip | ai | blind-confirmed at T2i | only which hero takes which target; ported as read (E31 T2i, CPU-PLN-002) |
+| 2 | §1.9 (2) | a colleague's claim offset (+0x41 less points left) only when not larger, 16-bit | 0x42F82E | slip | ai | blind-confirmed at T2i | near tiles claim nothing; ported as read (E31 T2i, CPU-PLN-002) |
 | 3 | §2.1 (1) | Fountain and Idol of Fortune worth 0: fraction truncated without the army's strength | 0x528040 (cases 30, 38), 0x435850 | slip | ai | blind 0x528040 | read at T2h: always 0; ported as read (E31 T2h, CPU-OBJ-010) |
 | 4 | §2.1 (2) | luck clamp above 3 replaces luck by 3 − luck instead of capping the change | 0x527D80; 0x528040 (cases 14, 28) | slip | ai | blind 0x527D80 | morale's twin caps the change; read at T2h, ported as read (CPU-OBJ-002) |
 | 5 | §2.1 (3) | War Machine Factory ignores a machine's price within 500 | 0x525120 | slip | ai | blind 0x525120 | read at T2h, ported as read (CPU-OBJ-011) |

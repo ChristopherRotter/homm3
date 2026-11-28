@@ -32,7 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** #1222 (`ai/e31-t2i0`, T2i0, `cross-lane`). Merged: #1212 (T2h), #1208 (T2g), #1203 (T2f),
+- **Open pull requests:** PR_T2I (`ai/e31-t2i`, T2i, `cross-lane`). Merged: #1222 (T2i0), #1212 (T2h), #1208 (T2g), #1203 (T2f),
   #1197 (T2e), #1192 (`master`'s build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b),
   #1172 (T2a), #1163 (the shared module PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
   `benches/README.md` row of T2a's workload; ADR-0030's note that the simulated combat (AI-Q34)
@@ -41,10 +41,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
   block), replay format v32 (CLT-Q40), the adventure env's action encoding v24 (E09 T59a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
-  encoding v4 (`MEMORY_ENCODING_VERSION`, E31 T2f: the artifacts' mean) (`docs/08-work-process.md`,
-  "Versions"). Next ids: AI-Q42, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-24;
+  encoding v5 (`MEMORY_ENCODING_VERSION`, E31 T2i: the heroes' kept plans) (`docs/08-work-process.md`,
+  "Versions"). Next ids: AI-Q43, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-24;
   CPU-SIM-013, CPU-STA-009, CPU-SPL-008, CPU-SKL-004, CPU-ART-012, CPU-ARM-006, CPU-TWN-006,
-  CPU-OBJ-013, CPU-PTH-008; the survey's §5.5 #80.
+  CPU-OBJ-013, CPU-PTH-008, CPU-PLN-009; the survey's §5.5 #80.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
@@ -69,8 +69,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `AdventureState::tile_index` public, AI-Q40), all `expect(dead_code)` until T2i calls them;
   **T2i0** inserted and done (AI-Q41): the original's computer pathfinder in `h3-adventure`
   (`h3_adventure::search`, `cross-lane`, CPU-PTH-001 to -007; survey §1.11), the threat fold on it
-  (AI-STUB-11 lifted). `computer-turns-towns-36` re-baselined at T2i0 (the fold's searches).
-  **Next: T2i**, the planning, whole (AI-Q41; `QUEUE.md` says which search each part runs).
+  (AI-STUB-11 lifted). **T2i** done whole (AI-Q41): the planning (`computer/plan.rs` and
+  `plan/`, CPU-PLN-001 to -008; the memory's kept plans, v5; `SearchStart::open`, `cross-lane`,
+  AI-Q42; every `expect(dead_code)` lifted); each hero still done after planning.
+  `computer-turns-towns-36` re-baselined at T2i0 and T2i (the searches; about 25.8 M Ir a turn).
+  **Next: T2j**, the walk (`QUEUE.md`).
   Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
@@ -79,6 +82,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **The computer player (E31)** (its coverage, its workload, the memory), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-28 — E31 T2i: the planning
+
+- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
+  the user's repo folder at the start (the PC behind GitHub, nothing uncommitted). The VM restarted
+  during the setup's baseline; CI's green `master` stood for it. The main session read the value
+  field, the choice and the search loop, a fresh reader blind-confirmed the two slips, one worker
+  sub-agent built on a fixed design. The user approved `SearchStart::open` (AI-Q42).
+  `computer-turns-towns-36` +368 % (re-baselined: the planning's searches).
 
 ### 2026-11-27 — E31 T2i0: the computer's search
 
@@ -98,13 +110,3 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   engine knows an object by its kind, not the original's class: `Class::of` maps one to the other. Seven of my hand
   expectations were wrong, the port right (fixture traps in `TRAPS.md`). The workload +0.00 %; the
   scoped verify with the original data passed (coverage 29 minutes, bench-check 24).
-
-### 2026-11-27 — E31 T2g: the army and town values
-
-- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
-  the user's repo folder at the start (the PC left mid-session). Measured 8.3 KB, about 3 060
-  instructions: the user chose no cut (AI-Q38); three functions go with their later callers. The VM
-  restarted during the setup's baseline; `master` had moved to a7b6752, whose CI stood for it.
-  The town fixtures needed their starting gold cleared and fight values set (`TRAPS.md`). Five of
-  my hand expectations were wrong, the port right. The workload +0.00 %; the scoped verify with
-  the original data passed (coverage 31 minutes, bench-check 27).
