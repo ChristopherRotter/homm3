@@ -20,9 +20,9 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xba4c02bcbbbf033a",
-    "0xcdc2c03bed515870",
-    "0xc4a355e3e4b36857",
+    "0x69e8e10e268d9225",
+    "0xa3473735fff313c7",
+    "0x467ed991cb4f9230",
 ]
 
 [replay]
@@ -52,18 +52,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-banks-36.h3m"
 hash = "0xda3dd80d4aa94083"
-import_version = 29
+import_version = 30
 
 [result]
 day = 3
-final_hash = "0x0e8b40d444ac618f"
+final_hash = "0x2b24c405a5d87401"
 
 [[players]]
 colour = 0

@@ -61,6 +61,8 @@ struct PlayerState {
     colour: u8,
     /// Whether it counts as human (GAM-BAT-010, E08 T54; [`crate::PlayerSetup::human`]).
     human: bool,
+    /// Its team (GAM-TEM-001, E10 T3a; [`crate::PlayerSetup::team`]), fixed for the game.
+    team: u8,
     /// Its stream: randomness its commands cause draws only from it (ADR-0017 point 4).
     rng: Rng,
     /// Whether its turn is running: its group's turn has started and it has not ended its turn.
@@ -485,6 +487,7 @@ impl GameState {
             .map(|(player, index)| PlayerState {
                 colour: player.colour,
                 human: player.human,
+                team: player.team,
                 rng: Rng::for_stream(seed, StreamId::player(index)),
                 acting: false,
             })
@@ -1616,6 +1619,12 @@ impl GameState {
         self.players.get(player.index()).map(|p| p.human)
     }
 
+    /// A player's team (GAM-TEM-001, E10 T3a), if the player exists: the adventure's allies are
+    /// the players of one team ([`h3_adventure::AdventureState::allied`]).
+    pub fn team(&self, player: PlayerId) -> Option<u8> {
+        self.players.get(player.index()).map(|p| p.team)
+    }
+
     /// The players of the group whose turn is running.
     pub fn turn_group(&self) -> &[PlayerId] {
         &self.groups[self.group]
@@ -1886,6 +1895,8 @@ impl CanonicalHash for GameState {
         for player in &self.players {
             h.write_u8(player.colour);
             h.write_bool(player.human);
+            // v41 (E10 T3a): its team.
+            h.write_u8(player.team);
             h.write_bool(player.acting);
             player.rng.hash_into(h);
         }

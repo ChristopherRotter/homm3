@@ -32,18 +32,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-sea-36.h3m"
 hash = "0x22096c6bf8ae59ca"
-import_version = 29
+import_version = 30
 
 [result]
 day = 2
-final_hash = "0xfbb8249556c534c8"
+final_hash = "0x79dd288db7dbe694"
 
 [[players]]
 colour = 0

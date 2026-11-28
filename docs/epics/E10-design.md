@@ -29,7 +29,9 @@ the build's last round (18). After the note: the cut, the drafts and the agent's
 - `GameState::new` checks the teams (*agent's call*): every team below the player count and every
   team below the highest one used held by a player, else `GameSetupError::Team` (a setup the
   increment cannot represent, as the other checks). No team changes during play: no diplomacy
-  (decision 2; survey §6, no code writes the bytes).
+  (decision 2; survey §6, no code writes the bytes). *As built (T3a):* the adventure checks them
+  (`SetupError::Team`, the game's `GameSetupError::Adventure`): it indexes its explored layers by
+  team, so the check sits where the layers are made, and the game needs none of its own.
 - The writer and `h3-experiment` keep their `teams` field (E08 T89a); the import's version moves
   because `GameSetup` now carries what it dropped (map import v30).
 
@@ -263,10 +265,10 @@ it; the owner's observation shows the days).
 
 - **Wire** (`h3-protocol`, the server lane's; the global trap "engine types on the wire",
   `cross-lane` at each task): the new events, `SystemCommand::HandOver`, the errors `AllyHero`,
-  `Defeated`, `GameOver`, `NotHuman`, the observation's fields; protocol v86 at the first.
+  `Defeated`, `GameOver`, `NotHuman`, the observation's fields; protocol v87 at the first (E09 T58b took v86).
 - **The env** (`h3-sim`, the AI lane's, `cross-lane`): `AdventureEnv`'s step reports the end
   (`result`) and each player's defeat; a defeated or ended seat is never `to_move`; the action
-  encoding stays v21 (the hand-over is the host's, no player entry). The reward is E13's.
+  encoding stays v23 (E09 T58b's; the hand-over is the host's, no player entry). The reward is E13's.
 - **The server** (`h3-server`, its lane): a hosted whole game ends at `GameOver` ("never ends
   before E10" lifted there), a seat that leaves is handed over (when is the server's call), its
   turns ended by the host's clock until E31.
@@ -275,7 +277,7 @@ it; the owner's observation shows the days).
 
 ### 17. Replays, maps, properties, benchmarks
 
-- **Replays** (the adventure replay format v28): the word `hand-over <player>`, the game's end
+- **Replays** (the adventure replay format v29; E09 T58b took v28): the word `hand-over <player>`, the game's end
   recorded and checked at the replay's end; golden replays of the three shipped
   maps that start Red without a town (Adventures of Jared Haret, Knee Deep in the Dead, Pirates!:
   defeated after seven own turns), an allied map's meeting and shared fog, a conquest and a
@@ -289,8 +291,10 @@ it; the owner's observation shows the days).
 
 ### 18. Versions, rule ids, quirks, stubs
 
-- **Versions:** map import v30 (§1), adventure state hash v31 (§2, §3), game state hash v41 (§8),
-  adventure replay format v28 (§17); protocol v86 (the server lane's). The adventure ruleset part,
+- **Versions:** map import v30 (§1), adventure state hash v31 (§2, §3), game state hash v41 (§2:
+  the players' teams, T3a) and v42 (§8, T4a), adventure replay format v29 (§17); protocol v87 (the
+  server lane's; E09 T58b, merged after this note, took replay format v28, protocol v86 and the
+  action encoding v23). The adventure ruleset part,
   the core ruleset hash and the quirk flags stay (no data, no flag).
 - **Rule ids** (survey §12): `GAM-TEM-001` to `-004`, `GAM-END-001` to `-008`; amended: ADV-FOG-003,
   -006, ADV-GAR-006, GAM-MET-001, GAM-DEC-003, ADV-OWN-004 (built), the town lane's trades' rules
@@ -330,7 +334,7 @@ audit's `shared/` task (T7) amends them as built with batch GAM-1's outcome. **`
 elsewhere:** the town modules (T3a's `allied` sites in `town.rs`, `town/view.rs`; T3c whole;
 decision 17), `h3-protocol` at each wire task, `h3-sim` (T6), `h3-experiment` (T5a, if a field is
 needed; its consent asked there). **The inboxes:** town (decision 17, T3c's scope), server (§16,
-the hand-over, protocol v86), AI (the terminal, the `human` marks and §12's rule 2, E31 plays a
+the hand-over, protocol v87), AI (the terminal, the `human` marks and §12's rule 2, E31 plays a
 handed-over colour), client (E27 M5's facts, A-55 and A-56's boxes), map client (`MCL-STUB-4`'s
 events).
 
@@ -340,14 +344,14 @@ events).
 |---|---|---|
 | 2 | **T2** | `shared/` (`cross-lane`): the drafts applied, the glossary, `docs/06-security.md` |
 | 3 | **T3** | T3a: the teams in the setup and the state, `allied` by state at every site, the fog per team, §4's rules re-tested with allies, the E10 marks of the teams (§1 to §4; map import v30, adventure state hash v31), measured at once. T3b: the allies' meeting and the views (§5, §6). T3c (`cross-lane`): an ally's town (§7), the siege's reading first |
-| 4 | **T4** | T4a: the defeat (§8 to §11: the check's moments, elimination, the seven days, a defeated player's steps and the loops; game state hash v41; ADV-QUIRK-59 to -61). T4b: the verdict and after the end (§12, §13), the events and the wire (§15, §16; protocol v86) |
+| 4 | **T4** | T4a: the defeat (§8 to §11: the check's moments, elimination, the seven days, a defeated player's steps and the loops; game state hash v42; ADV-QUIRK-59 to -61). T4b: the verdict and after the end (§12, §13), the events and the wire (§15, §16; protocol v87) |
 | 5 | **T5** | Batch GAM-1: T5a its maps (§19), T5b the run on the harness, scored (needs the PC) |
-| 6 | **T6** | The hand-over (§14), the env's terminal (`cross-lane`), the replay format v28, the maps, replays, properties and benchmarks (§17); batch GAM-1's outcome folded in |
+| 6 | **T6** | The hand-over (§14), the env's terminal (`cross-lane`), the replay format v29, the maps, replays, properties and benchmarks (§17); batch GAM-1's outcome folded in |
 | 7 | **T7** | The audit against the exit criteria; the ADR amendments as built (`shared/`); increment 1 closed; increment 2's survey queued |
 
 *Agent's call:* the teams first (decision 10), the hot-path change measured in the first task; the
 town part last in its round (another lane's files; its reading first); the end's state and check
-before its events and wire, so protocol v86 moves once; the hand-over with the env and the replays,
+before its events and wire, so protocol v87 moves once; the hand-over with the env and the replays,
 so the replay format moves once.
 
 **Increment 1's exit criteria:**

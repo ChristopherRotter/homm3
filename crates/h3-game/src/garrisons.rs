@@ -8,7 +8,7 @@
 
 use alloc::vec::Vec;
 
-use h3_adventure::{BitGrid, ObjectTypeId, Pos, allied};
+use h3_adventure::{BitGrid, ObjectTypeId, Pos};
 use h3_contracts::PlayerId;
 
 use crate::command::{GameEvent, Sink};
@@ -130,7 +130,7 @@ impl<'a> Seer<'a> {
             .zip(adventure.garrison_removable(index))
             .filter(|_| object.tiles(map).any(&explored))?;
         let owner = adventure.owner(index);
-        let ours = owner.is_some_and(|owner| allied(owner, viewer));
+        let ours = owner.is_some_and(|owner| adventure.allied(owner, viewer));
         let top = ours
             || object.entrance(map).is_some_and(|entrance| {
                 let seers = self

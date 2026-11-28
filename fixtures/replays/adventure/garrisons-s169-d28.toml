@@ -754,36 +754,36 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x5b1cf4cbdfe2d095",
-    "0xe41b9517d3d7f7a5",
-    "0x00dca6a1e0c4260a",
-    "0x0f04f941094b7c82",
-    "0x3e6169094570277e",
-    "0x13f6b9ad38074b3f",
-    "0xa72d35bf3b1dd8b0",
-    "0xa6e528b3476710ed",
-    "0x8ecdf4266d4e48af",
-    "0x21ee0795a6096e2e",
-    "0x48933310d24df7e5",
-    "0x95f9888defd41bad",
-    "0x729148e71d10ea50",
-    "0x3d820668b652705a",
-    "0xc9f4005188d1ae7a",
-    "0xbd20cdea40756f94",
-    "0xe79241a31d1ae11e",
-    "0xe840d7499b34e3fb",
-    "0x0367607c72f41db4",
-    "0xdcca210f25e79230",
-    "0x164b7a8ec77f81f3",
-    "0x0614da6ba967bd90",
-    "0x3d645e3ad1c7132c",
-    "0xa3efc636663f0373",
-    "0x6e3f772d9e8ffce8",
-    "0x3bcb6b6f2359495d",
-    "0xcfece6e04a39bbf1",
-    "0xff0e8e46fb31e511",
-    "0x96f7909ffae5ee2e",
-    "0xba58f9a37b0368ac",
+    "0xe764a5a9fefc1bc0",
+    "0xa3a374d79034e944",
+    "0x8e39f3c72442f8a1",
+    "0xedcbf732bdb190fa",
+    "0x9152d27d3f3f2cf7",
+    "0x458ae0c826ce7d5a",
+    "0x0eebe037212669e9",
+    "0x374ad6931dcf84ec",
+    "0x9d33d5462781163e",
+    "0x49dfcaa07e087c1b",
+    "0xe51998f5ab4f6640",
+    "0xda8ab0592e0e15d8",
+    "0x141b2263cd3df9fd",
+    "0x0dd11fe09aab090f",
+    "0x04ca3125a245d56f",
+    "0x6a7c06e9e9c0061d",
+    "0x7beebc8901ee9617",
+    "0x1f0c1169fc060c96",
+    "0x52eff39a7ee4231d",
+    "0x7e2cfd8f19250981",
+    "0xfae1d546495821ba",
+    "0x6b47e148b51593ed",
+    "0xc1480557aae7ae95",
+    "0xb7b8281b4393518a",
+    "0xd9127a7e25f313d3",
+    "0x606fbba338b0400e",
+    "0x567ff01b4c0e1a97",
+    "0xe33ba79f2d49b4f9",
+    "0x2ad29945b52d5023",
+    "0x123ed43324dc5ad4",
 ]
 
 [replay]
@@ -813,18 +813,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-garrisons-36.h3m"
 hash = "0xa3cbaec168902eb6"
-import_version = 29
+import_version = 30
 
 [result]
 day = 29
-final_hash = "0x1aae403e48ec0b4e"
+final_hash = "0x103344f9732cb0e5"
 
 [[players]]
 colour = 0

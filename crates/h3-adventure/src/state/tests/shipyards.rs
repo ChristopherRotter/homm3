@@ -248,6 +248,69 @@ fn a_boat_offer_stands_while_its_tile_is_free() {
     assert_eq!(accept(&rules, &mut s, &elsewhere), []);
 }
 
+// covers: ADV-OWN-001, ADV-SHY-002, ADV-SHY-003
+#[test]
+fn an_ally_s_shipyard_offers_its_boat_unflagged_and_builds_one_without_a_visit() {
+    // Blue on red's team (E10 T3a; E10 design note §4, survey `E10-teams.md` §6): red's visit of
+    // blue's Shipyard flags nothing and offers its boat; `BuildBoat` there builds red's boat, told
+    // to the team, which shares its explored tiles.
+    let rules = rules();
+    let (core, part) = (&rules.0, &rules.1);
+    let ty = shipyard(&rules);
+    let objects = vec![owned(&rules, 2, 7, "t:shipyard", 1)];
+    let built = started(&rules, &allies(setup(&rows(false), objects))).unwrap();
+    let mut s = built.clone();
+    let (outcome, events) = visit(&rules, &mut s);
+    assert_eq!(s.hero(HERO).unwrap().pos, ENTRANCE);
+    assert_eq!((s.owner(0), events), (Some(BLUE), vec![]));
+    let price = vec![(GOLD, 1000)];
+    let offer = Offer {
+        hero: HERO,
+        object_type: ty,
+        anchor: ENTRANCE,
+        kind: OfferKind::Boat {
+            price: price.clone(),
+        },
+    };
+    assert_eq!(outcome.offer.as_ref(), Some(&offer));
+    assert!(s.offer_stands(&offer));
+    // Without a visit: listed for red and blue alike, then built by red for red.
+    let mut s = built;
+    for player in [RED, BLUE] {
+        assert_eq!(s.boat_price(part, player, ty, ENTRANCE), Ok(&price));
+        let listed: Vec<_> = s.buildable_shipyards(part, player).collect();
+        assert_eq!(listed, [(ty, ENTRANCE, &price)]);
+    }
+    let command = AdventureCommand::BuildBoat {
+        object_type: ty,
+        anchor: ENTRANCE,
+    };
+    let mut events = Vec::new();
+    let outcome = s
+        .apply(
+            core,
+            part,
+            &[],
+            (RED, Weekday::FIRST, &mut stream()),
+            &command,
+            &mut events,
+        )
+        .unwrap();
+    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(
+        events,
+        [AdventureEvent {
+            kind: AdventureEventKind::BoatBuilt {
+                tile: TILE,
+                boat_type: 1
+            },
+            seen_by: Viewers::NONE.with(RED).with(BLUE),
+        }]
+    );
+    assert_eq!(s.boat(0).map(|boat| boat.owner), Some(Some(RED)));
+    assert_eq!(s.owner(0), Some(BLUE));
+}
+
 // covers: ADV-SHY-003
 #[test]
 fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {

@@ -55,7 +55,7 @@ use alloc::vec::Vec;
 use core::cmp::Reverse;
 
 use h3_content::Ruleset;
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId};
 use h3_heroes::{HeroDetails, free_boarding};
 
 use crate::movement::{
@@ -65,7 +65,7 @@ use crate::persistent::BitGrid;
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
 use crate::state::{
-    AdventureState, Fog, HeroOnMap, Meets, Mode, Node, StaticMap, StaticTile, VisitMarks,
+    AdventureState, Fog, HeroOnMap, Meets, Mode, Node, Side, StaticMap, StaticTile, VisitMarks,
     enterable_terrain,
 };
 
@@ -77,7 +77,8 @@ struct Search<'s> {
     map: &'s StaticMap,
     pricing: Pricing<'s>,
     hero: HeroId,
-    owner: PlayerId,
+    /// The hero's owner with its team's explored layer, resolved once (E10 T3a, `bench-check`).
+    side: Side,
     /// Whether another hero stands on the slot's tile (on land, or on water in a boat), an empty
     /// boat lies there (E08 T73b: on water only, so a land tile's flag is a hero's) or it is a
     /// `coast` kind's water entrance (E08 T125a: [`StaticMap::coast_entrances`]).
@@ -108,7 +109,7 @@ impl Search<'_> {
     /// not explored it, else the tile as it stands now. Out of the layered search's loop.
     #[inline(never)]
     fn assumed(&self, at: Pos) -> StaticTile {
-        if self.state.is_explored(self.owner, at) {
+        if self.state.explored_by(self.side, at) {
             self.state.live(at, self.map.at(at))
         } else {
             StaticTile::HIDDEN
@@ -121,7 +122,7 @@ impl Search<'_> {
     #[cold]
     fn boarded(&self, tile: &StaticTile, left: u32) -> u32 {
         let (core, details, ..) = self.surface;
-        let lighthouses = self.state.lighthouse_points(self.part, self.owner);
+        let lighthouses = self.state.lighthouse_points(self.part, self.side.player);
         self.converted(
             self.pricing.sail_left_after(tile, left),
             sea_day_points(core, self.part, details, lighthouses),
@@ -255,7 +256,7 @@ impl Reach {
             map,
             pricing,
             hero: hero.id,
-            owner: hero.owner,
+            side: state.side(hero.owner),
             occupied,
             guards: map.any_monster() || state.added_tiles().is_some(),
             added: state.added_tiles(),
@@ -354,7 +355,7 @@ impl Reach {
             let pos = self.pos(next);
             let to = search.map.at(pos);
             // The same tile checks as MoveHero's (ADV-MOV-007, ADV-MOV-008, ADR-0016 point 4).
-            if !state.is_explored(search.owner, pos) {
+            if !state.explored_by(search.side, pos) {
                 continue;
             }
             if !enterable_terrain(part, &to) {
@@ -389,7 +390,7 @@ impl Reach {
                     _ => live,
                 };
                 if live.visitable {
-                    match state.visit_at(part, search.owner, pos) {
+                    match state.visit_at(part, search.side.player, pos) {
                         Some(v) if v.from_above || !(3..=5).contains(&dir) => visit = !v.pass,
                         _ => continue,
                     }
@@ -492,7 +493,7 @@ impl Reach {
         let mode = Mode::Sail(boat);
         let at = self.pos(slot);
         let from = search.map.at(at);
-        let mover = (search.owner, search.hero, mode);
+        let mover = (search.side, search.hero, mode);
         for (dir, &(dx, dy)) in DIRECTIONS.iter().enumerate() {
             let Some(next) = self.neighbour(slot, dx, dy) else {
                 continue;
@@ -577,7 +578,7 @@ impl Reach {
         } else {
             state.live(at, search.map.at(at))
         };
-        let mover = (search.owner, search.hero, mode);
+        let mover = (search.side, search.hero, mode);
         for (dir, &(dx, dy)) in DIRECTIONS.iter().enumerate() {
             let Some(next) = self.neighbour(slot, dx, dy) else {
                 continue;

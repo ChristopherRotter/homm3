@@ -30,8 +30,8 @@ pub struct Weekly {
     pub resource: ResourceId,
     /// The amount its next visit gives; 0 once a visit emptied it, until the week's step.
     pub amount: u32,
-    /// The players that visited it, a bit by player id: the visitor's team's (the visitor's own
-    /// until E10), a Garden's too (`ADV-QUIRK-35`, not reproduced); never cleared (the original's
+    /// The players that visited it, a bit by player id: the visitor's team's (its allies too since
+    /// E10 T3a), a Garden's too (`ADV-QUIRK-35`, not reproduced); never cleared (the original's
     /// week keeps them, §9.4), so they say "visited once", not "emptied".
     pub marks: u8,
 }
@@ -43,13 +43,6 @@ impl CanonicalHash for Weekly {
         h.write_u32(self.amount);
         h.write_u8(self.marks);
     }
-}
-
-/// Whether `a` and `b` are of one team: the player alone until E10's teams (increment 9's design
-/// note §19, "Teams"; an allied map plays its allies as enemies, as before). Public since E09
-/// T8c1: the game's town views read the owner's team by it.
-pub fn allied(a: PlayerId, b: PlayerId) -> bool {
-    a == b
 }
 
 /// The kind of the object at `index` of `map`, if it has a type: none for an object added in
@@ -398,7 +391,7 @@ impl AdventureState {
     }
 
     /// The start's reveal around every owned object (ADR-0016 point 5, ADV-OWN-002, E08 T83b1):
-    /// the tiles within the part's flag radius of its entrance, to its owner (its team from E10),
+    /// the tiles within the part's flag radius of its entrance, to its owner's team (GAM-TEM-002),
     /// a Lighthouse's and a Shipyard's too, as the original's `reveal_owned` 0x4C7C50 from
     /// `adventure_manager_start` (batch E9's E9-4 and E9-6; A-33 withdrawn) and VCMI's
     /// `initFogOfWar`. Since E09 T8a1 a town's by its reveal in `towns` by `TownId`, the game's
@@ -417,7 +410,7 @@ impl AdventureState {
                 .unwrap_or(flag);
             let entrance = self.map.objects()[index].entrance(&self.map);
             if let (Some(owner), Some(entrance)) = (owner, entrance) {
-                let grid = &mut self.explored[usize::from(owner.raw())];
+                let grid = &mut self.explored[self.map.layer(*owner)];
                 town.reveal(grid, &self.map, entrance);
             }
         }

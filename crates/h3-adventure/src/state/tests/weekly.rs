@@ -15,11 +15,12 @@ const GOLD: ResourceId = ResourceId::from_raw(1);
 
 /// The game of the grass map with an object of type `k` at [`ENTRANCE`] (its weekly place 0).
 fn game(rules: &Rules, k: &str) -> AdventureState {
-    started(
-        rules,
-        &setup(&GRASS_ROWS, vec![object(rules, ENTRANCE.x, ENTRANCE.y, k)]),
-    )
-    .unwrap()
+    started(rules, &map(rules, k)).unwrap()
+}
+
+/// [`game`]'s setup.
+fn map(rules: &Rules, k: &str) -> AdventureSetup {
+    setup(&GRASS_ROWS, vec![object(rules, ENTRANCE.x, ENTRANCE.y, k)])
 }
 
 /// Red's hero's walk onto [`ENTRANCE`]: the outcome and the events after its steps.
@@ -139,11 +140,49 @@ fn a_water_wheel_and_a_garden_give_their_week_s_amounts() {
         Some((0, 0b01))
     );
     // The Garden's drawn gift; its mark the visitor's team's (`ADV-QUIRK-35` not reproduced: the
-    // original's marks the visitor alone), until E10's teams the visitor's own.
+    // original's marks the visitor alone), here red's alone, blue on a team of its own (allies:
+    // `a_weekly_visit_marks_every_player_of_the_visitor_s_team`).
     let mut garden = game(&rules, "t:garden");
     let gift = *garden.weekly(0).unwrap();
     let (outcome, _) = visit(&rules, &mut garden);
     assert_eq!(outcome.gains, [(gift.resource, gift.amount)]);
     assert!(garden.visited_by(0, RED) && !garden.visited_by(0, BLUE));
     assert!(garden.check_weekly(&rules.1));
+}
+
+// covers: ADV-VIS-006, ADV-WEK-001, ADV-WEK-003
+#[test]
+fn a_weekly_visit_marks_every_player_of_the_visitor_s_team() {
+    // Blue on red's team (E10 T3a; E10 design note §4): red's visit marks both, a Garden's too
+    // (`ADV-QUIRK-35`), told to both in one event; blue's later visit holds its mark already.
+    let rules = rules();
+    for k in ["t:windmill", "t:garden"] {
+        let object_type = rules.1.object_type_by_key(k).unwrap();
+        let mut s = started(&rules, &allies(map(&rules, k))).unwrap();
+        let week = *s.weekly(0).unwrap();
+        let (outcome, events) = visit(&rules, &mut s);
+        assert_eq!(outcome.gains, [(week.resource, week.amount)]);
+        assert_eq!(
+            events,
+            [AdventureEvent {
+                kind: AdventureEventKind::ObjectMarked {
+                    object_type,
+                    anchor: ENTRANCE,
+                },
+                seen_by: Viewers::NONE.with(RED).with(BLUE),
+            }]
+        );
+        assert!(s.visited_by(0, RED) && s.visited_by(0, BLUE));
+        assert_eq!(s.weekly(0).map(|w| (w.amount, w.marks)), Some((0, 0b11)));
+        assert!(s.check_weekly(&rules.1));
+        // Blue's visit: nothing marked anew, the object empty, told to blue alone.
+        let mut events = Vec::new();
+        let outcome = s.visit_weekly(BLUE, (0, object_type), &mut events);
+        assert_eq!(outcome, AdventureOutcome::default());
+        let empty = AdventureEventKind::ObjectEmpty {
+            object_type,
+            anchor: ENTRANCE,
+        };
+        assert_eq!(events, [told(empty, BLUE)]);
+    }
 }

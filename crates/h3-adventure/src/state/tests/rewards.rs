@@ -234,6 +234,11 @@ pub(super) fn type_of(rules: &Rules, k: &str) -> ObjectTypeId {
 /// A started 16 × 2 grass map with these objects (each [`object`] on the top row), red's hero 1
 /// at (1, 1) and blue's hero 2 at (14, 1).
 pub(super) fn map_of(rules: &Rules, objects: Vec<ObjectSetup>) -> AdventureState {
+    started(rules, &setup_of(objects)).unwrap()
+}
+
+/// [`map_of`]'s setup.
+pub(super) fn setup_of(objects: Vec<ObjectSetup>) -> AdventureSetup {
     let mut setup = world(
         &["gggggggggggggggg", "gggggggggggggggg"],
         1,
@@ -243,7 +248,7 @@ pub(super) fn map_of(rules: &Rules, objects: Vec<ObjectSetup>) -> AdventureState
         ],
     );
     setup.map.objects.extend(objects);
-    started(rules, &setup).unwrap()
+    setup
 }
 
 /// [`map_of`] with one object of type `k` holding `holds` at [`AT`].

@@ -1,6 +1,6 @@
 # E10 — Game orchestration: teams, the scenario's conditions and its end
 
-Status: **in progress** (increment 1; refined 2026-11-21, the user, ADV-Q62). E10 opened in the adventure lane once E08 closed with increment 15 (the Prison, the Market of Time and the adventure spells; E08 decisions 394, 396; E08 T145, 2026-11-27). Increment 1's survey T1a and its design note, drafts and cut T1b are done (2026-11-27, decisions 8 to 19; the checkpoint ADV-Q65); **next T2** (the `shared/` task: the drafts applied), `docs/lanes/adventure/QUEUE.md`; the rounds in the design note `E10-design.md` §20. E08 built E10's players, turns, battle integration and projections in `h3-game` (ADR-0017); what is left is listed here. Done tasks get one line below; their records are in `E10-log.md`.
+Status: **in progress** (increment 1; refined 2026-11-21, the user, ADV-Q62). E10 opened in the adventure lane once E08 closed with increment 15 (the Prison, the Market of Time and the adventure spells; E08 decisions 394, 396; E08 T145, 2026-11-27). Increment 1's survey T1a and its design note, drafts and cut T1b are done (2026-11-27, decisions 8 to 19; the checkpoint ADV-Q65), the `shared/` task T2 and the teams' first part T3a too; **next T3b** (the meeting, the views, the team's knowledge), `docs/lanes/adventure/QUEUE.md`; the rounds in the design note `E10-design.md` §20. E08 built E10's players, turns, battle integration and projections in `h3-game` (ADR-0017); what is left is listed here. Done tasks get one line below; their records are in `E10-log.md`.
 
 ## Goal
 
@@ -35,7 +35,9 @@ A game played to its end as the original plays it: the map's alliances, the play
 
 - **T1a done** (2026-11-27): the survey `docs/rules/surveys/E10-teams.md` (the census, elimination and the seven days, a defeated player, the checks and the verdict, a removal, what allies share, VCMI and the wiki, D-80 to D-84, A-55 to A-57, batch GAM-1's plan, the interfaces' sketch, T1b's nine questions); record in `E10-log.md`.
 - **T1b done** (2026-11-27): the checkpoint ADV-Q65 (decisions 9 to 19), the design note `E10-design.md` (§1 to §21: the teams, the end, the events and hand-overs, batch GAM-1 with rows 7 and 8, the cut and ten exit criteria), the drafts `docs/lanes/adventure/adr-drafts/0016-`, `0017-` and `0028-e10-increment-1.md`; record in `E10-log.md`.
-- **Next** (design note §20): T2 `shared/` (the drafts applied); T3 the teams (T3a the setup, `allied`, the fog; T3b the meeting, the views; T3c an ally's town, `cross-lane`); T4 the end (T4a the defeat; T4b the verdict, after the end, the events and wire); T5 batch GAM-1; T6 the hand-over, the env, the replays; T7 the audit.
+- **T2 done** (2026-11-27, `shared/e10-t2`, #1218): the three drafts applied to ADR-0016, -0017, -0028 and deleted (the versions past E09 T58b's), the glossary, `docs/06-security.md`; record in `E10-log.md`.
+- **T3a done** (2026-11-27, `adventure/e10-t3a`): `PlayerSetup::team` (map import v30), the teams in the static map and the game's players (adventure state hash v31, game state hash v41), `AdventureState::allied` at the 22 sites, one explored layer a team, measured and fixed (`passage::Side`), §4's rules re-tested with allies, the marks swept; ADV-VIS-006's team knowledge moved to T3b; record in `E10-log.md`.
+- **Next** (design note §20): T3b (the meeting, the views, the team's knowledge), T3c (an ally's town, `cross-lane`); T4 the end (T4a the defeat, game state hash v42; T4b the verdict, after the end, the events and wire); T5 batch GAM-1; T6 the hand-over, the env, the replays; T7 the audit.
 
 ## Increments (sketch; the cut of each decided at its refinement, as E08 decision 48)
 

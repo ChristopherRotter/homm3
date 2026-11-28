@@ -58,34 +58,34 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xa7f3cb5d9b2e0f92",
-    "0x4ad78b29fba665ae",
-    "0xa8ef099eae8c32b1",
-    "0xa22de7c3173168b2",
-    "0x8b600958895cb5ad",
-    "0x07c6f210a2247bff",
-    "0x93540d240b61deef",
-    "0xb202708243ec39c5",
-    "0x55b2bceb291e2c72",
-    "0x08a0fc1558f3bd9b",
-    "0xfca8694185439a90",
-    "0xb0b3c41b7e2c28ec",
-    "0x3d2649ae5c049051",
-    "0x1e00d64e7e8c4720",
-    "0xe983074418918ed9",
-    "0x53089b20d675bd6b",
-    "0xd3b2b55a5d3d925a",
-    "0x94e37d50c92cc4d9",
-    "0x0ad9fcff7bf08385",
-    "0x0386db7d2ecc692b",
-    "0xe5e400ba036f7e74",
-    "0x0aa1f94857d0dd2c",
-    "0x9e61d5a1d10c3587",
-    "0xb843c247e37348f0",
-    "0x2ecb92a334d67c40",
-    "0x1541743bc4bc914a",
-    "0x2f0e36a824a5d8d5",
-    "0x924dca7924c2b115",
+    "0x70d26ad83bbc713e",
+    "0xa9947a7a24d05f86",
+    "0xfff91ccb4e4f0461",
+    "0x6dbc49b42a96493e",
+    "0xfbbae2c1afff3629",
+    "0xc40beba63b80b1eb",
+    "0xb783bc4ecd202d27",
+    "0xd73fe668f5ff187d",
+    "0x678611ec29117146",
+    "0x316416006723c8fb",
+    "0xb7304564a03e0c04",
+    "0x77768ef8e2149644",
+    "0xb4354c035179dc45",
+    "0x0d91df68df393d00",
+    "0x31cb23f7f38f3763",
+    "0x11055b649c216155",
+    "0x8c5704e1ffe1ea68",
+    "0xd8bb388d8286827f",
+    "0xe8f082e84d460847",
+    "0x3c6f28c7e83156a9",
+    "0x4f58b4f8518d6dbe",
+    "0xea020cf5f73615c2",
+    "0x51cd3c7062e81249",
+    "0x9db0ce37ee8c98be",
+    "0x655f699515d19a7e",
+    "0xf77487aad9ff5880",
+    "0x9bb8546b82bd425f",
+    "0x6b449076dee7fd73",
 ]
 
 [replay]
@@ -115,18 +115,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 2
 
 [map]
 path = "fixtures/maps/e09-builds-36.h3m"
 hash = "0x36e954b6f38638d8"
-import_version = 29
+import_version = 30
 
 [result]
 day = 29
-final_hash = "0x1160fed0a507b2d4"
+final_hash = "0x60e01c1607993971"
 
 [[players]]
 colour = 0

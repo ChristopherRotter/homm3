@@ -31,7 +31,7 @@ use crate::fog;
 use crate::persistent::BitGrid;
 use crate::ruleset::{AdventureRuleset, Visit};
 use crate::setup::{Holds, Pos};
-use crate::state::{AdventureState, HeroOnMap, Room, StaticMap, allied, join_at, room};
+use crate::state::{AdventureState, HeroOnMap, Room, StaticMap, join_at, room};
 
 /// What a town reveals to its owner (TWN-CAP-001; the town epic's design note §11): at the start
 /// of the game for each owned town ([`AdventureState::start_game`]) and at its capture
@@ -145,7 +145,7 @@ impl AdventureState {
     #[inline(never)]
     pub(crate) fn besieges(&self, player: PlayerId, other: &HeroOnMap) -> bool {
         let map = self.map();
-        !allied(other.owner, player)
+        !self.allied(other.owner, player)
             && self.tile_index(other.pos).is_some_and(|index| {
                 map.town_id(index).is_some()
                     && map.objects()[index].entrance(map) == Some(other.pos)
@@ -175,9 +175,11 @@ impl AdventureState {
         let visitor = map.objects()[index].entrance(map).is_some_and(|entrance| {
             self.heroes()
                 .iter()
-                .any(|hero| hero.pos == entrance && !allied(hero.owner, player))
+                .any(|hero| hero.pos == entrance && !self.allied(hero.owner, player))
         });
-        let own = self.owner(index).is_some_and(|owner| allied(owner, player));
+        let own = self
+            .owner(index)
+            .is_some_and(|owner| self.allied(owner, player));
         let holds = |army: &[ArmyStack]| !army.is_empty();
         // `TWN-QUIRK-11` (T-5, faithful): a garrison hero without a stack does not defend.
         let defended = visitor
@@ -215,7 +217,9 @@ impl AdventureState {
                 ..AdventureOutcome::default()
             };
         }
-        let own = self.owner(index).is_some_and(|owner| allied(owner, player));
+        let own = self
+            .owner(index)
+            .is_some_and(|owner| self.allied(owner, player));
         let town = self.map().town_id(index);
         // rule: TWN-GLD-005
         // E09 T48b: the visit's end teaches the town's heroes (the game's `town::guild::learn`).
@@ -427,7 +431,11 @@ impl AdventureState {
         let capture = self
             .hero(hero)
             .zip(self.map().town_object(town))
-            .filter(|&(hero, index)| !self.owner(index).is_some_and(|o| allied(o, hero.owner)))
+            .filter(|&(hero, index)| {
+                !self
+                    .owner(index)
+                    .is_some_and(|o| self.allied(o, hero.owner))
+            })
             .map(|_| town);
         AdventureOutcome {
             capture,

@@ -16,7 +16,6 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::allied;
 use h3_battle::estimate::{CasterRecord, EstimateHero};
 use h3_content::{CreatureTypeId, ResourceId};
 use h3_contracts::{HeroId, PlayerId, TownId};
@@ -149,7 +148,7 @@ fn threats(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Threats 
     let enemies = adventure
         .heroes()
         .iter()
-        .filter(|hero| !allied(hero.owner, player))
+        .filter(|hero| !adventure.allied(hero.owner, player))
         .filter_map(|hero| state.hero(hero.id).map(|details| (hero, details)));
     for (hero, details) in enemies {
         // stub: AI-STUB-11

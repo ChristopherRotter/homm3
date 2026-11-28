@@ -2,7 +2,7 @@
 //! objects, the morale, luck and movement objects, the finds and the weekly objects, the markets
 //! and the flat values. Every class `super::value` does not send to `fights`.
 
-use h3_adventure::{ObjectKind, ObjectTypeId, Pos, allied};
+use h3_adventure::{ObjectKind, ObjectTypeId, Pos};
 use h3_heroes::ArtifactInstance;
 use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, SignedX87, X87};
 
@@ -173,7 +173,10 @@ pub(super) fn value(
             _ => 0,
         },
         Class::Lighthouse | Class::Shipyard => {
-            if adventure.owner(index).is_some_and(|o| allied(o, player)) {
+            if adventure
+                .owner(index)
+                .is_some_and(|o| adventure.allied(o, player))
+            {
                 0
             } else {
                 OWNABLE

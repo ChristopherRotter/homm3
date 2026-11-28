@@ -7,8 +7,9 @@
 
 use std::collections::BTreeSet;
 
-use h3_adventure::{Holds, Scenery};
+use h3_adventure::{AdventureCommand, Holds, OfferKind, Pos, Scenery};
 use h3_contracts::{PlayerId, TownId};
+use h3_game::{Actor, GameCommand, GameState, apply};
 
 use super::economy::{hero, read_back};
 use super::import::{self as raw_import, ROE, SOD, object};
@@ -532,7 +533,7 @@ fn a_random_dwelling_tied_to_a_random_town_takes_its_drawn_faction() {
     let setup = import(&map, &SOD).unwrap();
     let mut factions = BTreeSet::new();
     for seed in 0..16 {
-        let state = h3_game::GameState::new(&SOD, &setup, seed).unwrap();
+        let state = GameState::new(&SOD, &setup, seed).unwrap();
         let faction = state.towns().get(TownId::new(0)).unwrap().faction();
         let table = SOD.adventure().random_dwelling(faction).unwrap();
         let resolved = &state.adventure().map().objects()[5];
@@ -659,4 +660,69 @@ fn a_dwelling_entered_from_water_is_imported() {
         );
         assert!(a.object_type.is_some());
     }
+}
+
+// covers: ADV-DWL-004, ADV-OWN-001, GAM-TEM-001, GAM-TEM-002
+#[test]
+fn red_plays_blue_s_dwelling_as_an_ally_s_on_batch_e10_s_map() {
+    // E10 T3a end to end (E10 design note §4; batch E10's E10-6): the import carries the map's
+    // teams, Red and Blue on one; Red's hero, placed below Blue's Golem Factory's entrance,
+    // steps onto it and is asked the hire question at once: no guards' question, no flag, the
+    // dwelling Blue's still, and the step's reveal Blue's too (one explored layer a team). The
+    // map without its teams plays Blue as an enemy: the guards' question first.
+    let rules = &*SOD;
+    let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
+    let golem = 2;
+    let visit = |map: &RawMap| {
+        let mut setup = import(map, rules).unwrap();
+        let dwelling = &setup.map.objects[golem];
+        let (column, row) = dwelling.visitable.offsets().next().unwrap();
+        let entrance = Pos::new(
+            dwelling.anchor.x - u16::from(column),
+            dwelling.anchor.y - u16::from(row),
+            0,
+        );
+        let at = setup.heroes.iter().position(|h| h.owner == red).unwrap();
+        setup.heroes[at].pos = Pos::new(entrance.x, entrance.y + 1, 0);
+        let mut state = GameState::new(rules, &setup, 1).unwrap();
+        let heroes = state.adventure().heroes();
+        let hero = heroes.iter().find(|h| h.owner == red).unwrap().id;
+        let path = vec![entrance];
+        let command = GameCommand::Adventure(AdventureCommand::MoveHero { hero, path });
+        apply(
+            &mut state,
+            rules,
+            Actor::Player(red),
+            command,
+            &mut Vec::new(),
+        )
+        .unwrap();
+        let hero = state.adventure().hero(hero).unwrap();
+        assert_eq!(hero.pos, entrance);
+        (setup, state)
+    };
+    let (setup, state) = visit(&raw());
+    let teams: Vec<_> = setup.players.iter().map(|p| p.team).collect();
+    assert_eq!(teams, [0, 0]);
+    assert!(state.adventure().allied(red, blue));
+    let asked = state.decision(red).unwrap();
+    assert!(matches!(asked.kind, OfferKind::Hire { .. }), "{asked:?}");
+    assert_eq!(state.adventure().owner(golem), Some(blue));
+    assert_eq!(
+        state.adventure().explored(red),
+        state.adventure().explored(blue)
+    );
+    let mut apart = raw();
+    apart.teams = None;
+    let (setup, state) = visit(&apart);
+    let teams: Vec<_> = setup.players.iter().map(|p| p.team).collect();
+    assert_eq!(teams, [0, 1]);
+    assert!(!state.adventure().allied(red, blue));
+    let asked = state.decision(red).unwrap();
+    assert!(matches!(asked.kind, OfferKind::Guarded { .. }), "{asked:?}");
+    assert_eq!(state.adventure().owner(golem), Some(blue));
+    assert_ne!(
+        state.adventure().explored(red),
+        state.adventure().explored(blue)
+    );
 }
