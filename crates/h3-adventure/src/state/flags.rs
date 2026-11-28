@@ -3,7 +3,7 @@
 //! T115b the kind marks each player's team holds (ADV-BON-009, decision 302), laid out as the
 //! original's flags, a byte of player bits per entry (bit `n` for the player with id `n`).
 //! Only a player's own commands write its bits (ADR-0017 point 7; a kind mark the visitor's team's
-//! bits, the visitor's alone until E10). The state holds them as one
+//! bits, its allies' too since E10 T3a). The state holds them as one
 //! small block the forks share, none until the first purchase or key: a fork costs nothing more
 //! before and a reference count after (`bench-check`), and a write copies the block.
 

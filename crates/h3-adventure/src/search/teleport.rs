@@ -9,7 +9,6 @@
 use super::marks::DIRECTION_SHIFT;
 use super::{Class, Frame, REFUSED, Search, SearchAsks, SearchMode, SearchNode, Teleporter};
 use crate::setup::Pos;
-use crate::state::allied;
 
 /// The list a teleporter's exits come from, as `pathfinder_teleport_exits` 0x56A400 tells them
 /// by its class argument (44, 45, 111).
@@ -129,7 +128,7 @@ impl<A: SearchAsks> Search<'_, A> {
         for (tile, excluded) in listed {
             let class = self.read(tile).entrance.map(|exit| exit.class);
             let taken = class.is_some_and(|class| match class {
-                Class::Hero(owner) => !allied(owner, self.owner),
+                Class::Hero(owner) => !self.state.allied(owner, self.owner),
                 class => !excluded && list.fits(class),
             });
             if !taken {

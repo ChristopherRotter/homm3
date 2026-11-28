@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "the reachable-tiles query of every hero in a boat of the acting player at each step of 2 random games of 56 days on the sea XL map (E08 T75b, increment 8: 144 x 144 of sea, sixteen islands, fifteen boats, each player's four heroes beside their boats with Navigation and the sea's artifacts: 1 832 queries of heroes in boats, about 2.29 M Ir each, 91 % inside Reach::expand_sail, 55 % in AdventureState::passage, 8.7 % in Search::landed, which computes the land's day points, day_points, at every landing tile); counts only inside h3_cli::adventure::bench::sail_queries; E08 T86b2 re-set it at master's count (+1.54 % against T75b's count: T83b2a's objects added in play, asked for by the boat's search through the passage, none on this map); E08 T144a2 re-baselined: master 4 239 267 265 in the same sandbox, the branch +29.04 % on it: the random agent draws the heroes' casts (encoding v21: each listed cast without a target, each hero's Scuttle Boat and Dimension Door with a target, T144a1's filter gone), so the games changed course (1 096 steps and 4 384 queries for 1 081 and 4 324; `passage` and `expand_sail` +30 % each, the same functions); the code alone +0.05 to +0.12 % on the random-play workloads whose games did not change"
+description = "the reachable-tiles query of every hero in a boat of the acting player at each step of 2 random games of 56 days on the sea XL map (E08 T75b, increment 8: 144 x 144 of sea, sixteen islands, fifteen boats, each player's four heroes beside their boats with Navigation and the sea's artifacts: 1 832 queries of heroes in boats, about 2.29 M Ir each, 91 % inside Reach::expand_sail, 55 % in AdventureState::passage, 8.7 % in Search::landed, which computes the land's day points, day_points, at every landing tile); counts only inside h3_cli::adventure::bench::sail_queries; E08 T86b2 re-set it at master's count (+1.54 % against T75b's count: T83b2a's objects added in play, asked for by the boat's search through the passage, none on this map); E08 T144a2 re-baselined: master 4 239 267 265 in the same sandbox, the branch +29.04 % on it: the random agent draws the heroes' casts (encoding v21: each listed cast without a target, each hero's Scuttle Boat and Dimension Door with a target, T144a1's filter gone), so the games changed course (1 096 steps and 4 384 queries for 1 081 and 4 324; `passage` and `expand_sail` +30 % each, the same functions); the code alone +0.05 to +0.12 % on the random-play workloads whose games did not change; E10 T3a re-baselined: master 5 470 293 784 in the same sandbox, the branch -2.97 % (5 307 986 987) with the same 17 751 528 calls of `passage`: its visit closure became the always-inline `visit_entry` (out of line on the branch, +2.56 % here, +4.22 % on reach-lifted-xl-144), the sail path's passage -145 M, `expand_sail` -17 M; the same games"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*sail_queries*"
-instructions = 5470286112
+instructions = 5307986987
 threshold_percent = 2

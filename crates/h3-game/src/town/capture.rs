@@ -33,8 +33,9 @@ use crate::{GameRuleset, GameState};
 /// sees it, its owner, mark, Capitol and garrison; for a town with a standing Tavern, the old and
 /// the new owner's of every town, whose garrison levels it counts, TWN-VEW-002; E09 T8a2 told the
 /// Capitol's limit alone). One infallible application: the step checked it; a town the store or
-/// the map lacks changes nothing (the store holds every town of the map). A team is its player
-/// alone until E10 (`h3_adventure::allied`).
+/// the map lacks changes nothing (the store holds every town of the map). A team is its players
+/// by the setup's teams (E10 T3a, `AdventureState::allied`): a town of the hero's team is no
+/// capture.
 // rule: TWN-CAP-001, TWN-CAP-002, TWN-BLD-004, TWN-VEW-002, TWN-GRO-007, TWN-SET-005
 pub(crate) fn capture<S: Sink>(
     state: &mut GameState,

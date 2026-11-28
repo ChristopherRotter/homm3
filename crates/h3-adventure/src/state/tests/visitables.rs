@@ -99,6 +99,11 @@ fn visitable_rules(faithful: bool) -> Rules {
 /// Red's hero [`HERO`] on (0, 1) of a 30 × 3 grass map with Pikemen, and the objects of type `k`
 /// anchored on each `anchor`, visited from the tiles of `visitable` (blocked as visited).
 fn state(rules: &Rules, objects: &[(&str, Pos, u64)]) -> AdventureState {
+    started(rules, &map(rules, objects)).unwrap()
+}
+
+/// [`state`]'s setup.
+fn map(rules: &Rules, objects: &[(&str, Pos, u64)]) -> AdventureSetup {
     let rows = vec!["g".repeat(30); 3];
     let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
     let mut setup = world(&rows, 1, vec![hero_at(1, 0, p(0, 1), &[PIKEMAN])]);
@@ -117,7 +122,7 @@ fn state(rules: &Rules, objects: &[(&str, Pos, u64)]) -> AdventureState {
             owner: None,
         });
     }
-    started(rules, &setup).unwrap()
+    setup
 }
 
 /// Red's hero walks `path` on the day `day` of the week, its details' spell points `mana` (the
@@ -695,4 +700,27 @@ fn a_kind_mark_is_its_teams_and_shows_in_its_observation_alone() {
     let mut events = Vec::new();
     marked.mark_kind(&rules.1, RED, fountain, &mut events);
     assert!(events.is_empty() && !marked.knows_kind(RED, fountain));
+    // Blue on red's team (E10 T3a; E10 design note §4): red's visit gives both players the mark,
+    // told to both at once, and each sees it; blue's own visit then marks nothing anew.
+    let blue = PlayerId::new(1);
+    let mut team = started(&rules, &allies(map(&rules, &[("t:oasis", ONTO[0], 1)]))).unwrap();
+    let (_, events) = go(&mut team, &rules, &ONTO[..1], (1, 0));
+    let known: Vec<_> = events
+        .iter()
+        .filter(|e| matches!(e.kind, AdventureEventKind::KindKnown { .. }))
+        .collect();
+    assert_eq!(
+        known,
+        [&AdventureEvent {
+            kind: kind_known(&rules, "t:oasis"),
+            seen_by: Viewers::NONE.with(RED).with(blue),
+        }]
+    );
+    for player in [RED, blue] {
+        assert!(team.knows_kind(player, oasis));
+        assert_eq!(kinds(&team, player), [oasis]);
+    }
+    let mut events = Vec::new();
+    team.mark_kind(&rules.1, blue, oasis, &mut events);
+    assert!(events.is_empty());
 }

@@ -960,6 +960,7 @@ fn two_players_pick_two_types() {
         s.players.push(PlayerSetup {
             colour: 2,
             human: false,
+            team: 2,
             start: PlayerStart {
                 pick: Some(hero(&rules, "t:c0")),
                 ..PlayerStart::default()
@@ -1058,6 +1059,7 @@ pub(super) fn telling(viewer: PlayerId, view: &TownView) -> Vec<GameEvent> {
     events
 }
 
+mod boat;
 mod book;
 mod build;
 mod capture;
@@ -1081,5 +1083,6 @@ mod portal;
 mod recruit;
 mod rows;
 mod siege;
+mod smith;
 mod tavern;
 mod view;

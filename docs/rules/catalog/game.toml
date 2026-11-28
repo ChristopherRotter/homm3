@@ -700,7 +700,7 @@ id       = "GAM-DEC-008"
 title    = "The hire dialog: a pending decision of purchases bounded by the count, the treasury and the room"
 context  = "game"
 status   = "implemented"
-summary  = "An accepted hire question's dialog (`AdventureOutcome::hire`, ADV-HIR-002: at the visitor's own dwelling with a creature above `free_level`, after its free creatures, and at a Refugee Camp) opens as a pending decision of the visitor's owner (GAM-DEC-001; `Decision::Hire`, the original's `H3RecruitMgr`) whatever its treasury holds, told to it alone (`HireOpened`: the army, the source by type and anchor, never its index); it holds no one else and blocks its owner's moves, management and `EndTurn` (`DecisionOpen`) as any decision. The owner's observation shows the army, the source by type and anchor, and each of the source's creatures in its order with its count as it stands and the cost of one by resource in the core's order (`DecisionView::Hire`, `HireView`; no most: the treasury is the owner's own); no other player sees it. It is answered with `Answer::Hire`: `Buy { creature, amount }` is refused, each typed and changing nothing, first by the map (`GameCommandError::Hire`: the creature not the source's, the amount 0 or above its count, no room in the army, ADV-ARM-007), then when the treasury is short of cost times amount for any resource (`CannotPay`); else the price is paid (`ResourcePaid` per resource, the core's order) and the map's purchase lowers the count and joins the creatures (`CreaturesJoined`, to the owner); a dialog whose source sells one creature (a camp's, a class-17 dwelling's of level 2 or more) then closes (`DecisionClosed`), one of several stays open with its counts read again. `Close` closes it (`DecisionClosed`); the exchange dialogs' `Answer::Close` and any other kind's answer are `WrongAnswer`; the system actor's default is `Close`. The most of a creature is the least of its count, the treasury divided by its cost for each resource it costs more than 0 of (integer division) and the room's bound (`AdventureState::hire_room`); `legal_commands` lists a `Buy` of the most of each creature in the source's order whose most is at least 1, then `Close`, and `hire_range(state, rules, player, creature)` gives `1..=most` (empty without the player's open dialog selling the creature, or while the game waits for another's level-up), every amount of it accepted. *Agent's call* (increment 10's design note section 13): the room in the most, so every listed answer applies; the original's slider leaves it out and refuses at Recruit (GENRLTXT 426), the same rule. On a tile a monster guards the dwelling's visit comes after the guard's (ADV-MON-006, GAM-DEC-007; E08 T103d), so nothing follows the dialog's close. The decision is hashed (game state hash v25: its owner, target and source). An ally's read-only dialog (E10's teams) is not built (unreachable while `allied` is the player alone). E08 T95b: `Decision::Hire`, `HireAnswer`, `HireView`, `HireCreature`, `hire_range`. E09 T27 (amended): a town's recruitment (TWN-REC-001, -002) opens the same dialog for the town's owner, its source a town's index or Portal (`HireSource::Town`, `::Portal`; seen as `HireSeen::Town`, `::Portal`, the map's as `HireSeen::Object` by type and anchor), its target the town's garrison (`HireTarget::Garrison`), its counts the town's (`h3_towns::recruit_stock`); a purchase is checked by the town (the creature, the amount), then the garrison's room, then the treasury, and joins the garrison (`StackChanged`), the town's changed views told; the most each legal `Buy` names bounds by the garrison's room. E08 T134b2 (amended, ADV-WMF-001): a War Machine Factory's accepted question opens the dialog of its machines (nothing free), each with a count of 1 while the hero lacks its artifact, else 0; a purchase pays, then gives the machine's artifact into its position (`HeroChanged`, not `CreaturesJoined`; no army change), the dialog of several machines staying open; the most's room is `AdventureState::dialog_room` (a machine's 1 or 0), so `legal_commands` lists a machine only while the hero lacks it and the gold pays it; `GameState::hire_stock` reads the dialog, not its source alone (E08 decision 388)."
+summary  = "An accepted hire question's dialog (`AdventureOutcome::hire`, ADV-HIR-002: at the visitor's own dwelling with a creature above `free_level`, after its free creatures, and at a Refugee Camp) opens as a pending decision of the visitor's owner (GAM-DEC-001; `Decision::Hire`, the original's `H3RecruitMgr`) whatever its treasury holds, told to it alone (`HireOpened`: the army, the source by type and anchor, never its index); it holds no one else and blocks its owner's moves, management and `EndTurn` (`DecisionOpen`) as any decision. The owner's observation shows the army, the source by type and anchor, and each of the source's creatures in its order with its count as it stands and the cost of one by resource in the core's order (`DecisionView::Hire`, `HireView`; no most: the treasury is the owner's own); no other player sees it. It is answered with `Answer::Hire`: `Buy { creature, amount }` is refused, each typed and changing nothing, first by the map (`GameCommandError::Hire`: the creature not the source's, the amount 0 or above its count, no room in the army, ADV-ARM-007), then when the treasury is short of cost times amount for any resource (`CannotPay`); else the price is paid (`ResourcePaid` per resource, the core's order) and the map's purchase lowers the count and joins the creatures (`CreaturesJoined`, to the owner); a dialog whose source sells one creature (a camp's, a class-17 dwelling's of level 2 or more) then closes (`DecisionClosed`), one of several stays open with its counts read again. `Close` closes it (`DecisionClosed`); the exchange dialogs' `Answer::Close` and any other kind's answer are `WrongAnswer`; the system actor's default is `Close`. The most of a creature is the least of its count, the treasury divided by its cost for each resource it costs more than 0 of (integer division) and the room's bound (`AdventureState::hire_room`); `legal_commands` lists a `Buy` of the most of each creature in the source's order whose most is at least 1, then `Close`, and `hire_range(state, rules, player, creature)` gives `1..=most` (empty without the player's open dialog selling the creature, or while the game waits for another's level-up), every amount of it accepted. *Agent's call* (increment 10's design note section 13): the room in the most, so every listed answer applies; the original's slider leaves it out and refuses at Recruit (GENRLTXT 426), the same rule. On a tile a monster guards the dwelling's visit comes after the guard's (ADV-MON-006, GAM-DEC-007; E08 T103d), so nothing follows the dialog's close. The decision is hashed (game state hash v25: its owner, target and source). An ally's read-only dialog (E10 T3b) is not built: since E10 T3a's teams an ally's accepted hire question opens none (ADV-HIR-001). E08 T95b: `Decision::Hire`, `HireAnswer`, `HireView`, `HireCreature`, `hire_range`. E09 T27 (amended): a town's recruitment (TWN-REC-001, -002) opens the same dialog for the town's owner, its source a town's index or Portal (`HireSource::Town`, `::Portal`; seen as `HireSeen::Town`, `::Portal`, the map's as `HireSeen::Object` by type and anchor), its target the town's garrison (`HireTarget::Garrison`), its counts the town's (`h3_towns::recruit_stock`); a purchase is checked by the town (the creature, the amount), then the garrison's room, then the treasury, and joins the garrison (`StackChanged`), the town's changed views told; the most each legal `Buy` names bounds by the garrison's room. E08 T134b2 (amended, ADV-WMF-001): a War Machine Factory's accepted question opens the dialog of its machines (nothing free), each with a count of 1 while the hero lacks its artifact, else 0; a purchase pays, then gives the machine's artifact into its position (`HeroChanged`, not `CreaturesJoined`; no army change), the dialog of several machines staying open; the most's room is `AdventureState::dialog_room` (a machine's 1 or 0), so `legal_commands` lists a machine only while the hero lacks it and the gold pays it; `GameState::hire_stock` reads the dialog, not its source alone (E08 decision 388)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1517,4 +1517,60 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "E08-design.md increment 15's sections 14, 16; ADR-0017 points 1, 10; E08 decision 414"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-TEM-001"
+title    = "The teams come from the map; no diplomacy"
+context  = "game"
+status   = "implemented"
+summary  = "Each player's team is the map's code for its colour when the map defines teams, else its own index (every colour its own team, E10 decision 2); the teams must be dense (each below the number of players, every team below the highest used held by a player; else the build refuses the setup, `h3_adventure::SetupError::Team`). No command changes a team during play: there is no diplomacy. The players of one team are allies (`AdventureState::allied`: a player with itself included, the original's players_same_team); every rule naming the team reads them (ADV-VIS-006, ADV-BON-009, ADV-OWN-001, ADV-DWL-004, ADV-GAR-003, -004, ADV-SHY-003, ADV-MIN-002, ADV-BNK-003, ADV-TEL-003). E10 T3a (`PlayerSetup::team`, `h3_map::import`; the adventure's static map holds the teams by player, the game's players their team)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E10-teams.md section 6; docs/exe/map.toml): player_team 0x4A5960 reads a colour's team byte (game +0x1F879), players_same_team 0x5296D0 compares two colours' bytes (both valid; a colour with itself counts); 85 functions read the bytes and none writes them during play"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "the 160 shipped maps (survey E10-teams.md section 1, h3_map::read): 51 define teams, every team code below the count and every count the teams in use; no map puts every playable colour on one team"
+  retrieved  = "2026-11-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapping/MapFormatH3M.cpp readTeamInfo: the file's team bytes, else every playable colour a team of its own (survey E10-teams.md section 8)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp"
+  retrieved  = "2026-11-27"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E10 decision 2 (no diplomacy in play); E10-design.md sections 1, 2; ADR-0016 point 1, ADR-0017 point 1"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-TEM-002"
+title    = "A team shares one explored layer"
+context  = "game"
+status   = "implemented"
+summary  = "Every reveal goes to the player's team: the adventure keeps one explored layer per team (amends ADV-FOG-003, where a reveal went to its player alone), which every reveal of a member writes (a step's, a placement's, a flag's, a town's, a jump's, a door's, the Cartographer's, strict-fixed's new day's, the failed casts' tiles) and every member reads, its fringe the team's; who sees an object, a hero or a tile is tested on each player's team layer. With fixed teams the members' layers of the original are always equal, so one layer a team gives the same views. E10 T3a (`AdventureState::explored`; adventure state hash v31)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E10-teams.md section 6, 'The fog'): reveal_disk 0x49D160 writes the revealing player's bit and every bit of its team (a step's 0x48106B, a placement's, a town's, the Cartographer's reveal_terrain_mask 0x4CA240); the Cover of Darkness hides from every player but the town owner's team (hide_disk 0x49D3D0, inferred)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/gameState/CGameState.cpp: the fog of war kept per team (TeamState), as the original's reveals (survey E10-teams.md section 8)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-11-27"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E10-design.md section 3 (one explored layer a team, the agent's call; E10 decision 19); ADR-0016 point 5"
   confidence = "high"

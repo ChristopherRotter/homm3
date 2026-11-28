@@ -2835,3 +2835,21 @@ The inbox note acted upon (E10's decisions 1 and 6 now name E31):
 - **Inputs:** the survey `docs/rules/surveys/E10-teams.md` (T1a, done 2026-11-27: its §11
   interfaces' sketch, §12 ids, §13 the checkpoint's nine questions; batch GAM-1's plan §10).
 - **Depends on:** T1a (done). **Status:** next.
+
+**E10 T2 — increment 1's ADR amendments applied; the glossary and the security lines** (round 2; `shared/e10-t2`, `cross-lane`; design note `E10-design.md` §20, decision 19)
+
+- **Scope:** the three accepted drafts applied verbatim to the ADRs (`docs/lanes/adventure/adr-drafts/`
+  `0016-e10-increment-1.md` points 1, 4, 5, 6; `0017-e10-increment-1.md` points 1, 2, 3, 6, 8, 9;
+  `0028-e10-increment-1.md` point 6, the town lane's ADR: `cross-lane`, decision 17), each with its
+  revision line dated; the drafts deleted; `docs/03-domain.md`'s terms (team, an ally, defeated,
+  the seven days, the game's result, a hand-over); `docs/06-security.md`'s lines (the hand-over the
+  host's alone, every command refused after the end, a player's days its own).
+- **Inputs:** the drafts; the design note §1 to §17; E08 T140 (#1127) as the form.
+- **Depends on:** T1b (done 2026-11-27, `adventure/e10-t1b`) merged. **Status:** done 2026-11-27 (`shared/e10-t2`, #1218).
+
+- **T3a:** `PlayerSetup::team` from the import (map import v30) and its check; the teams in the
+  game's players and the adventure's static part; `AdventureState::allied` at the 22 sites (the
+  town modules' `town.rs` and `town/view.rs`: `cross-lane`, decision 17); one explored layer per
+  team (adventure state hash v31); §4's rules re-tested with allies on batch E10's map; the teams'
+  E10 marks swept; `ADV-STUB-20`'s reason gains Town Portal's team list. **Measured at its first
+  build** against `master` (`homm3-bench-regression`: the reach's `allied` reads). **Done** 2026-11-27 (`adventure/e10-t3a`).

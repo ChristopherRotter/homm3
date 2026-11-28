@@ -240,6 +240,19 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-adventure/src/state/tests/markets.rs`, `a_towns_window_buys_its_heros_artifact_at_the_place_it_names`; `crates/h3-game/src/town/tests/market.rs`, `the_merchants_buy_the_visitors_artifact_at_the_place_it_names_for_its_price`
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 207); confirmed by batch TWN-6 (E09 T54, TWN-6-3); entered by E09 T58b, 2026-11-27
 
+### TWN-QUIRK-19 — A town's boat over a docked boat or hero
+- Class: fix, no flag (state-corrupting, which AGENTS.md always fixes; quirk candidate T-21, refused by the user's acceptance of the agent's calls, 2026-11-24, TWN-Q35; the epic's decision 207)
+- Context / rules affected: town, the boat built at a town's Shipyard (TWN-SHY-001, E09 T59a); the town's spot (TWN-SET-011)
+- Original behavior: neither the town screen's Shipyard case (0x5D36B4), its dialog nor `create_boat` (0x4BB250) tests the spot. The ship (20) the screen builds while a boat or a hero stands there covers the Shipyard's click zone but for 1 pixel in a Fortress and 2 to 4 in a Conflux; a click there and Build put a second boat on the spot, the one below kept as its under-object (two boat records on one tile).
+- Intended/expected behavior: the boat is refused while an empty boat lies on the spot or a hero stands there, in a boat (`TownCommandError::BoatSpotTaken`; the map's Shipyard's rule, ADV-SHY-002, GENRLTXT 52); with the spot free it is built as the original's.
+- Impact: gameplay: none but at those pixels; the state keeps one boat or hero a tile.
+- Community status: VCMI 1.7.5 builds on the second of the two tiles instead (TD-31, refuted by TWN-6-6); the wiki says a boat there blocks a new one (survey `docs/rules/surveys/E09-trades.md` §9).
+- Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §5.4, §5.8, §10 T-21); batch TWN-6's row TWN-6-6 (`experiments/results/E09-batch-6d.md`, `-6d-run2.md`: in a Fortress, a click at (233, 341) and Build put a second boat on the spot; survey §14).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-game/src/town/tests/boat.rs`, `a_boat_is_launched_on_the_towns_spot_then_paid`
+- Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 207); confirmed by batch TWN-6 (E09 T54, TWN-6-6); entered by E09 T59a, 2026-11-27
+
 ### TWN-QUIRK-20 — The fifth misc position never offered at the artifact sale
 - Class: fix, no flag (harmless, fixed by the user's choice over accepted, the recommendation, and `fix-optional`; quirk candidate T-22, 2026-11-24, TWN-Q35; the epic's decision 205)
 - Context / rules affected: town, the Artifact Merchants' artifact sale (TWN-MKT-005, E09 T58b); SoD's fifth misc position (the original's position 18, the engine's 13: `h3_heroes::Position`)
@@ -265,3 +278,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = fixed, strict-fixed = fixed
 - Regression test: `crates/h3-adventure/src/town/merchants/tests.rs`, `a_class_banned_whole_widens_and_nothing_left_leaves_the_entry_empty`
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 207); entered by E09 T57, 2026-11-26
+
+### TWN-QUIRK-22 — The Blacksmith charges every cost as gold
+- Class: fix, no flag (harmless; quirk candidate T-25, the cost per resource by the user's acceptance of the agent's calls, 2026-11-24, TWN-Q35; the epic's decision 207)
+- Context / rules affected: town, a war machine bought at the Blacksmith or the Ballista Yard (TWN-SMT-001, E09 T59a)
+- Original behavior: the dialog tests the viewing player's gold alone against the machine's creature's gold cost; the purchase (`town_blacksmith_buy`, 0x5D1E6D to 0x5D1E87) subtracts each of the creature's seven costs from the gold, the loop never moving to the next resource. A ruleset giving a machine another resource would charge that amount in gold.
+- Intended/expected behavior: the creature's cost is charged resource by resource, each tested against its own amount in the treasury (`h3_towns::check_war_machine`'s price, `CannotPay`).
+- Impact: none with the shipped tables (every machine costs gold only: the Ballista 2 500, the Ammo Cart 1 000, the First Aid Tent 750); a modded ruleset's machine costs what its creature costs.
+- Community status: VCMI 1.7.5 tests and charges gold only (survey `docs/rules/surveys/E09-trades.md` §9).
+- Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §4.5, §10 T-25).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-game/src/town/tests/smith.rs`, `a_purchase_gives_the_visitor_the_machine_for_its_creatures_price` (a cart of gold and wood); `crates/h3-towns/src/service/tests.rs`, `a_standing_smith_sells_its_war_machine_at_its_creatures_cost`
+- Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 207); entered by E09 T59a, 2026-11-27

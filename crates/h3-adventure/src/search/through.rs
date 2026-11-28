@@ -3,7 +3,6 @@
 
 use super::marks::{BOAT, FLY, WATER_WALK};
 use super::{Class, Frame, Search, SearchAsks, SearchMode, SearchNode};
-use crate::state::allied;
 
 impl<A: SearchAsks> Search<'_, A> {
     /// Whether the search goes on from `node`, a stop popped from `cell` (`pathfinder_pass_through`
@@ -57,9 +56,12 @@ impl<A: SearchAsks> Search<'_, A> {
             }
             Class::Gate(key) => self.state.has_key(self.start.player, key),
             Class::Garrison(owner) => {
-                owner.is_some_and(|owner| allied(owner, self.owner)) || mode >= SearchMode::Plan
+                owner.is_some_and(|owner| self.state.allied(owner, self.owner))
+                    || mode >= SearchMode::Plan
             }
-            Class::Hero(owner) => !allied(owner, self.owner) && mode >= SearchMode::Threat,
+            Class::Hero(owner) => {
+                !self.state.allied(owner, self.owner) && mode >= SearchMode::Threat
+            }
             Class::Monster => mode >= SearchMode::Plan,
             // Then the Castle Gate from the town (`pathfinder_castle_gate` 0x56A850, at
             // 0x56AF17), and yes.

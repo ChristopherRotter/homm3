@@ -30,6 +30,11 @@ fn game(rules: &Rules, mine: ObjectSetup) -> AdventureState {
     started(rules, &setup(&GRASS_ROWS, vec![mine])).unwrap()
 }
 
+/// [`game`] with blue on red's team ([`allies`]; E10 T3a).
+fn allied_game(rules: &Rules, mine: ObjectSetup) -> AdventureState {
+    started(rules, &allies(setup(&GRASS_ROWS, vec![mine]))).unwrap()
+}
+
 /// A mine of type `k` at [`ENTRANCE`], neutral or `owner`'s.
 fn mine(rules: &Rules, k: &str, owner: Option<u8>) -> ObjectSetup {
     match owner {
@@ -174,6 +179,33 @@ fn another_player_s_mine_without_guards_is_flagged_and_an_own_one_opens_leave_gu
             ..dialog
         })
     );
+}
+
+// covers: ADV-OWN-001, ADV-MIN-002
+#[test]
+fn an_ally_s_mine_or_lighthouse_is_not_flagged_and_its_leave_guards_is_its_owner_s() {
+    // Blue on red's team (E10 T3a; E10 design note §4, survey `E10-teams.md` §6): red's visit of
+    // blue's mine, with guards or without, ends on its entrance and does nothing: no flag, no
+    // question, no Leave Guards (its owner's alone); a Lighthouse of blue's the same.
+    let rules = rules();
+    for guards in [vec![], vec![stack(1, PIKEMAN, 3), stack(4, PEASANT, 9)]] {
+        let mut s = allied_game(&rules, mine(&rules, "t:sawmill", Some(1)));
+        s.set_army_left(0, guards.clone());
+        let (outcome, events) = visit(&rules, &mut s);
+        assert_eq!(outcome, AdventureOutcome::default());
+        assert_eq!(after_steps(&events), []);
+        assert_eq!(s.hero(HERO).unwrap().pos, ENTRANCE);
+        assert_eq!(
+            (s.owner(0), s.mine_guards(&rules.1, 0)),
+            (Some(BLUE), guards)
+        );
+        assert!(s.check_owners(&rules.1));
+    }
+    let mut lighthouse = allied_game(&rules, mine(&rules, "t:lighthouse", Some(1)));
+    let (outcome, events) = visit(&rules, &mut lighthouse);
+    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(after_steps(&events), []);
+    assert_eq!(lighthouse.owner(0), Some(BLUE));
 }
 
 // covers: ADV-MIN-002, ADV-OWN-003

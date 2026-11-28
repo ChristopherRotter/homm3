@@ -37,7 +37,6 @@ use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId, RiverId, RoadId
 use crate::setup::{Pos, TileMask};
 use crate::state::{
     AdventureState, Boat, DaySpells, HeroBonuses, HeroOnMap, MapObject, Resolved, StaticTile,
-    allied,
 };
 
 mod reveal;
@@ -533,7 +532,7 @@ impl AdventureState {
     ) -> ObjectView {
         let map = self.map();
         let owner = self.owner(index);
-        let ours = owner.is_some_and(|owner| allied(owner, viewer));
+        let ours = owner.is_some_and(|owner| self.allied(owner, viewer));
         let bank = part
             .object_type(object_type)
             .is_some_and(|ty| ty.kind.bank().is_some());

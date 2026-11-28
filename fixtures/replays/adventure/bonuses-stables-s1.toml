@@ -24,14 +24,14 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xacc8e212c7dbbd37",
-    "0x07404cf8fa973408",
-    "0x8c1c144b337b2382",
-    "0xc450ef91d1b99ae6",
+    "0x484997846213d1db",
+    "0xc4b64b0232fa1d9e",
+    "0xebf1c64206fa44c6",
+    "0x06e49ad00faeea0d",
 ]
 
 [replay]
-format = 28
+format = 29
 engine = "0.1.0"
 seed = "1"
 difficulty = 1
@@ -57,18 +57,18 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 40
-adventure_state_hash_version = 30
+game_state_hash_version = 41
+adventure_state_hash_version = 31
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-bonuses-36.h3m"
 hash = "0x25a3fac98e5682f3"
-import_version = 29
+import_version = 30
 
 [result]
 day = 9
-final_hash = "0x925c795e0a7feb32"
+final_hash = "0x743fb9c96756d556"
 
 [[players]]
 colour = 0

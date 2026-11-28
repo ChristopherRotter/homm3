@@ -682,6 +682,9 @@ pub struct TownRuleset {
     /// Each record's buildings a market window reads, in faction order beside `towns` (E09
     /// T58a2, [`crate::check_market`], [`crate::marketplaces`]; derived, not hashed).
     markets: Vec<MarketRoles>,
+    /// Each record's buildings the services read, in faction order beside `towns` (E09 T59a,
+    /// [`crate::check_war_machine`], [`crate::check_boat`]; derived, not hashed).
+    services: Vec<ServiceRoles>,
     hash: u64,
 }
 
@@ -792,6 +795,52 @@ impl MarketRoles {
     }
 }
 
+/// A record's buildings the services read (E09 T59a, [`crate::check_war_machine`],
+/// [`crate::check_boat`]; derived from the record when the part is built, so that the legal
+/// listing's tests walk no town's buildings: `bench-check`'s `legal-towns-36`, as
+/// [`MarketRoles`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct ServiceRoles {
+    /// Those that sell a war machine (a `war_machine`: the Blacksmith, the Ballista Yard).
+    pub(crate) smiths: BuildingSet,
+    /// Of role `shipyard`.
+    pub(crate) shipyard: BuildingSet,
+    /// Those that supersede one of the others: of a town's buildings only these can make such a
+    /// building not stand.
+    pub(crate) superseding: BuildingSet,
+}
+
+impl ServiceRoles {
+    /// The roles of `record`'s buildings.
+    fn of(record: &TownRecord) -> Self {
+        let ids = (0..).map_while(BuildingId::from_index);
+        let mut roles =
+            record
+                .buildings
+                .iter()
+                .zip(ids)
+                .fold(Self::default(), |mut roles, (b, id)| {
+                    let add = |set: &mut BuildingSet, role: bool| {
+                        if role {
+                            *set = set.with(id);
+                        }
+                    };
+                    add(&mut roles.smiths, b.war_machine.is_some());
+                    add(&mut roles.shipyard, b.roles.shipyard);
+                    roles
+                });
+        let read = roles.smiths.union(roles.shipyard);
+        let ids = (0..).map_while(BuildingId::from_index);
+        roles.superseding = record
+            .buildings
+            .iter()
+            .zip(ids)
+            .filter(|(b, _)| b.supersedes.intersects(read))
+            .fold(BuildingSet::EMPTY, |set, (_, id)| set.with(id));
+        roles
+    }
+}
+
 /// What the week's draw reads (TWN-GRO-002, E09 T26a2; [`crate::draw_week`]), derived from the
 /// records when the part is built, so that a week's draw walks neither the records nor a town's
 /// buildings (`bench-check`: both every week cost `day-start-builds-36` +8.7 %).
@@ -875,6 +924,7 @@ impl TownRuleset {
             portals,
             guilds: towns.iter().map(GuildRoles::of).collect(),
             markets: towns.iter().map(MarketRoles::of).collect(),
+            services: towns.iter().map(ServiceRoles::of).collect(),
             towns,
             hash: 0,
         };
@@ -936,6 +986,16 @@ impl TownRuleset {
     ) -> Option<(&TownRecord, MarketRoles)> {
         let at = self.record_index(faction)?;
         Some((&self.towns[at], self.markets[at]))
+    }
+
+    /// The town record of `faction` with its buildings' roles the services read (E09 T59a), if
+    /// it has one.
+    pub(crate) fn town_with_service_roles(
+        &self,
+        faction: FactionId,
+    ) -> Option<(&TownRecord, ServiceRoles)> {
+        let at = self.record_index(faction)?;
+        Some((&self.towns[at], self.services[at]))
     }
 
     /// The town record of `faction`, if it has one.

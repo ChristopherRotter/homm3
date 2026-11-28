@@ -91,6 +91,12 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                 EngineTown::BuySpellBook { town } => TownCommand::BuySpellBook { town: town.raw() },
                 // E09 T58a1 (v85).
                 EngineTown::Market { town } => TownCommand::Market { town: town.raw() },
+                // E09 T59a (v87).
+                EngineTown::BuyWarMachine { town, building } => TownCommand::BuyWarMachine {
+                    town: town.raw(),
+                    building: building.raw(),
+                },
+                EngineTown::BuildBoat { town } => TownCommand::BuildBoat { town: town.raw() },
             },
         },
         // E08 T142a (v82).
@@ -393,6 +399,14 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                 TownCommand::Market { town } => EngineTown::Market {
                     town: TownId::new(town),
                 },
+                // E09 T59a (v87).
+                TownCommand::BuyWarMachine { town, building: b } => EngineTown::BuyWarMachine {
+                    town: TownId::new(town),
+                    building: building(b)?,
+                },
+                TownCommand::BuildBoat { town } => EngineTown::BuildBoat {
+                    town: TownId::new(town),
+                },
             })
         }
         // E16 M5 T14 (v56): the engine refuses it from a seat (`SystemOnly`).
@@ -661,6 +675,10 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 TownCommandError::HasSpellBook => TownReject::HasSpellBook {},
                 // E09 T58a1 (v85).
                 TownCommandError::NoMarket => TownReject::NoMarket {},
+                // E09 T59a (v87).
+                TownCommandError::NoWarMachine => TownReject::NoWarMachine {},
+                TownCommandError::HasWarMachine => TownReject::HasWarMachine {},
+                TownCommandError::BoatSpotTaken => TownReject::BoatSpotTaken {},
             },
         },
         E::Tavern(error) => GameReject::Tavern {

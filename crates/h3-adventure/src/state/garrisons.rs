@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use h3_content::Ruleset;
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
-use super::{AdventureState, allied};
+use super::AdventureState;
 use crate::command::{AdventureOutcome, Defender, Exchange, Sink};
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId};
 use crate::setup::{Holds, Pos};
@@ -69,7 +69,7 @@ impl AdventureState {
         sink: &mut S,
     ) -> AdventureOutcome {
         match self.owner(object.0) {
-            Some(owner) if allied(owner, player) => self.exchange(hero, object),
+            Some(owner) if self.allied(owner, player) => self.exchange(hero, object),
             _ if self.garrison_army(object.0).is_empty() => {
                 self.flag(rules, object, player, sink);
                 AdventureOutcome {

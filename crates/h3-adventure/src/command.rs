@@ -853,9 +853,9 @@ impl core::error::Error for MarketError {}
 /// the state's, read at each view and purchase ([`crate::AdventureState::hire_stock`]); a
 /// purchase is [`crate::AdventureState::hire`]. Both halves are enums so E09's town recruitment
 /// names a town's dwelling and a garrison through the same dialog (design note §13, "E09's
-/// reuse"). *Agent's call:* no read-only flag yet: an ally's dialog (E10's teams, the original
-/// disabling every button) is unreachable while `allied` is the player alone, so its branch is
-/// left out until then (design note §13).
+/// reuse"). *Agent's call:* no read-only flag yet: an ally's dialog (the original disabling
+/// every button) is E10 T3b's; since E10 T3a's teams an ally's accepted hire question opens none
+/// ([`crate::AdventureState::allied`]; design note §13).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HireDialog {
     /// The army the bought creatures join.
@@ -1773,7 +1773,7 @@ pub enum AdventureEventKind {
     /// A player's team learned an object type's kind mark (ADV-BON-009, E08 T115b; increment 12's
     /// design note §3, §10, decision 302: the original's `kinds_visited`, which the map's hint
     /// reads): a visit of a type the part marks. Seen by each player of the visitor's team that
-    /// did not hold it (the visitor alone until E10's teams), as [`Self::ObjectMarked`].
+    /// did not hold it (its allies too since E10 T3a, GAM-TEM-001), as [`Self::ObjectMarked`].
     KindKnown {
         /// The type.
         object_type: ObjectTypeId,

@@ -84,7 +84,7 @@ epic   = "E12"
 [[stub]]
 id     = "ADV-STUB-20"
 where  = "crates/h3-game/src/state/cast.rs::GameState::check_cast"
-reason = "Town Portal (the original's adventure_spell case 9) has no binding in the adventure part, so its cast on the map is refused as not cast on the map (`MapCastError::NotOnMap`): it comes with the towns' spells, E09 increment 7 (increment 15's design note section 3)"
+reason = "Town Portal (the original's adventure_spell case 9) has no binding in the adventure part, so its cast on the map is refused as not cast on the map (`MapCastError::NotOnMap`): it comes with the towns' spells, E09 increment 7 (increment 15's design note section 3), counting and listing the towns of the hero's team (E10 T3a, E10-design.md section 7; survey E10-teams.md section 6: hero_relocate_spell 0x41D360's lists by `AdventureState::allied`, the Castle Gate the owner's own Inferno towns only)"
 epic   = "E09"
 
 # --- server (SRV-STUB-<n>) ---

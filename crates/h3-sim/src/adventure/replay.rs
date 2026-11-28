@@ -63,9 +63,12 @@ use super::rollout::choose;
 /// T142a): a cast on the adventure map (`h3_game::GameCommand::Cast` by its hero, its spell and
 /// its target, GAM-SPL-001); version 27 (E09 T58a1): a market window's opening at a town
 /// (`h3_towns::TownCommand::Market` by its town, TWN-MKT-002); version 28 (E09 T58b): a town's
-/// artifact sale (`h3_game::MarketAnswer::SellArtifact` by its place and resource, TWN-MKT-005). A
-/// replay of another version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 28;
+/// artifact sale (`h3_game::MarketAnswer::SellArtifact` by its place and resource, TWN-MKT-005);
+/// version 29 (E09 T59a): a war machine's purchase (`h3_towns::TownCommand::BuyWarMachine` by its
+/// town and building, TWN-SMT-001) and a boat built at a town's Shipyard
+/// (`h3_towns::TownCommand::BuildBoat` by its town, TWN-SHY-001). A replay of another version is
+/// refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 29;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

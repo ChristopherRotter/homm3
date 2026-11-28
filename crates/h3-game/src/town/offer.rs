@@ -67,12 +67,15 @@ impl GameState {
 /// (TWN-GLD-006; design §90), then since E09 T49b a spell book's purchase where it would be
 /// accepted (TWN-GLD-007; design §91; both `guild::offers`), then since E09 T58a2 its market
 /// window where it opens and offers a legal answer (TWN-MKT-002; design §104, §115:
-/// `market::listed`, the player's count of Marketplaces once a listing), then since E09 T28a the
+/// `market::listed`, the player's count of Marketplaces once a listing), then since E09 T59a each
+/// war machine's purchase its town's hero would receive (TWN-SMT-001; design §110, §115, in the
+/// record's order) and its boat where its spot is free (TWN-SHY-001; design §111; both
+/// `services::listed`), then since E09 T28a the
 /// hero moves between its bars `Enter`, `Leave`, `Swap` the adventure accepts (TWN-ROW-002 to
 /// -004; `rows::legal_moves`). A town built in today offers no build (TWN-BLD-004) and costs no
 /// Capitol test; a map without towns walks nothing.
 // rule: TWN-BLD-001, TWN-BLD-004, TWN-REC-001, TWN-REC-002, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004
-// rule: TWN-TAV-003, TWN-GLD-006, TWN-GLD-007, TWN-MKT-002
+// rule: TWN-TAV-003, TWN-GLD-006, TWN-GLD-007, TWN-MKT-002, TWN-SMT-001, TWN-SHY-001
 pub(crate) fn legal_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -131,10 +134,14 @@ pub(crate) fn legal_builds<'a>(
             let at = (on_entrance, garrison);
             let market = super::market::listed(state, rules, (town, player), at, &mut counted)
                 .then_some(TownCommand::Market { town });
+            // E09 T59a: its war machines (TWN-SMT-001), then its boat (TWN-SHY-001), asked at
+            // once of the town's record (`bench-check`'s `legal-towns-36`).
+            let services = super::services::listed(state, rules, (town, player, record), at);
             let guild = open
                 .into_iter()
                 .chain(book)
                 .chain(market)
+                .chain(services)
                 .map(GameCommand::Town);
             // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
             let moves = super::rows::legal_moves(state, rules, player, (town, entrance));

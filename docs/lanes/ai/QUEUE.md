@@ -57,6 +57,15 @@ resumes (the epic file); its tasks are cut then.
 
 ## Inbox
 
+- 2026-11-27 (the adventure lane, E10 T3a, `adventure/e10-t3a`, `cross-lane`; **in your paths,
+  for your review; nothing to do now**): the teams. `PlayerSetup::team` is new (the map's teams,
+  else each its own; `h3-cli`'s `src/ai/census.rs` literal gained `team: 0`); `h3_adventure::allied`
+  (the free function) is now `AdventureState::allied(&self, a, b)`, read by `h3-game`'s
+  `computer/` (start, objects' visits and fights) through the state; `AdventureState::explored(p)`
+  is its team's layer (one a team, adventure state hash v31). No encoding moved (v23); the
+  adventure part's hash did not move, so the bots tables stay. `AI-STUB-18` (the computer's ally
+  values) stays yours with the teams now readable (`StaticMap::team`, `GameState::team`).
+
 - 2026-11-27 (the adventure lane, E10 T1b, `adventure/e10-t1b`; **for your planning; the env's
   change comes `cross-lane` at E10 T6**): E10 increment 1 (the teams and the game's end) is
   designed (`docs/epics/E10-design.md` §12, §14, §16). The env's step will report the game's
@@ -79,6 +88,19 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
+- 2026-11-27 (E09 T59a, `town/e09-t59a`, `cross-lane` with the user's consent, E09 decision
+  227; **in your paths, for your review; adventure action encoding v24 taken**): `legal_commands`
+  lists a town's war machines' purchases (`TownCommand::BuyWarMachine`, TWN-SMT-001, each standing
+  seller in the record's order) and its boat (`TownCommand::BuildBoat`, TWN-SHY-001) after its
+  market window; `adventure/action.rs` appends **`WAR_MACHINE` (168) and its next** (the first and
+  the second of the town's record's buildings with a `war_machine`, in the record's order, standing
+  or not: a Stronghold's Blacksmith, then its Ballista Yard) and **`TOWN_BOAT` (170)**, each by the
+  town's entrance in the tile head, building 0 (`ENTRY_COUNT` 171); `tileless` ends the sale's
+  range at `WAR_MACHINE`. **The town map's seed moved** (`tests/towns.rs`): 864 met no siege won
+  once the agent bought machines; a search over the seeds 1 to 3 000 found four meeting every
+  feature, **128** the one that buys machines (1 223 steps, 4 machines; the map has no boat spot);
+  `Played` counts the machines and the boats. The fork test's seed 6 held. The replay format is
+  v29.
 - 2026-11-27 (E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent, E09 decision
   226; **in your paths, for your review; adventure action encoding v23 taken**): a town's window
   with the Artifact Merchants sells its hero's artifacts (`MarketAnswer::SellArtifact { place,

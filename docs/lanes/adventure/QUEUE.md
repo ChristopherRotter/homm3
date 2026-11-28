@@ -6,34 +6,24 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, ADV-Q62; its decisions 1 to 19, the next 20; increment 1's design note `E10-design.md`, its rounds T2 to T7 in §20). **E08 is done** (2026-11-27, T145: increments 1 to 15 closed; done tasks in `E08-log.md`, the chronicle of the rounds T1 to T145 in `QUEUE-ARCHIVE.md`). E10's increments are built as E08's (E10 decision 5): a survey, the ADR amendment drafts with the design note and the cut, the user's acceptance before the build, a batch for the readings at risk, the build in rounds, the audit. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E10 T2 — increment 1's ADR amendments applied; the glossary and the security lines** (round 2; `shared/e10-t2`, `cross-lane`; design note `E10-design.md` §20, decision 19)
-
-- **Scope:** the three accepted drafts applied verbatim to the ADRs (`docs/lanes/adventure/adr-drafts/`
-  `0016-e10-increment-1.md` points 1, 4, 5, 6; `0017-e10-increment-1.md` points 1, 2, 3, 6, 8, 9;
-  `0028-e10-increment-1.md` point 6, the town lane's ADR: `cross-lane`, decision 17), each with its
-  revision line dated; the drafts deleted; `docs/03-domain.md`'s terms (team, an ally, defeated,
-  the seven days, the game's result, a hand-over); `docs/06-security.md`'s lines (the hand-over the
-  host's alone, every command refused after the end, a player's days its own).
-- **Inputs:** the drafts; the design note §1 to §17; E08 T140 (#1127) as the form.
-- **Depends on:** T1b (done 2026-11-27, `adventure/e10-t1b`) merged. **Status:** next. Then T3.
-
 **E10 T3 — the teams** (round 3; design note `E10-design.md` §1 to §7; `adventure/e10-t3a`…)
 
-- **T3a:** `PlayerSetup::team` from the import (map import v30) and its check; the teams in the
-  game's players and the adventure's static part; `AdventureState::allied` at the 22 sites (the
-  town modules' `town.rs` and `town/view.rs`: `cross-lane`, decision 17); one explored layer per
-  team (adventure state hash v31); §4's rules re-tested with allies on batch E10's map; the teams'
-  E10 marks swept; `ADV-STUB-20`'s reason gains Town Portal's team list. **Measured at its first
-  build** against `master` (`homm3-bench-regression`: the reach's `allied` reads).
-- **T3b:** the allies' meeting with give-only gifts (§5: GAM-TEM-003, `AllyHero`), an ally's
-  dwelling read-only, the team's views (§6: GAM-TEM-004, `PlayerView::team`).
+- **T3a done** (2026-11-27, `adventure/e10-t3a`; `E10-log.md`): the setup's team, `allied` by
+  state, one explored layer a team, measured (`passage::Side`), §4 re-tested with allies.
+- **T3b:** the allies' meeting with give-only gifts (§5: GAM-TEM-003, `AllyHero`; until then a
+  step toward an ally's hero is a battle), an ally's dwelling read-only (until then its dialog
+  buys), the team's views (§6: GAM-TEM-004, `PlayerView::team`), and **the team's knowledge**
+  (found by T3a: ADV-VIS-006's `Visits::known`, a Shrine's spell, a hut's skill, a find emptied,
+  the Pyramid, a Fountain's and a Spring's visit, still the visitor's alone; the original's tile
+  bits are the team's, the Corpse and Lean To the player's own, survey §6: each ally told the
+  content by an event, so the wire's `cross-lane` mapping comes with it).
 - **T3c** (`cross-lane`, the town lane's files; its inbox told at the start): an ally's town (§7):
   the entering's guild and buildings, the trades (`TWN-STUB-21` lifted), building and recruiting
   the owner's; the siege of an ally's visitor **read first** (`town_visit` 0x4AAFD0,
   `town_defended` 0x5BDFE0), its rule written and tested.
 - **Inputs:** the design note §1 to §7, §18; the survey §6, §7; the adventure lane's `TRAPS.md`
   (the state's storage, the fog) and the town lane's for its files.
-- **Depends on:** T2 merged. **Status:** after T2 (each part's cut confirmed at its start).
+- **Depends on:** T2 (#1218) and T3a merged. **Status:** T3b next (each part's cut confirmed at its start).
 
 ## Inbox
 
@@ -52,6 +42,20 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
   lane: no work for you; a change to the passage rules may want the same change there (its tests
   pin each case), and Castle Gate and Town Portal (E09 increment 8) and the Sanctuary and Quest
   Guard (E12) have stubs there (AI-STUB-22, -23).
+- 2026-11-27 (the town lane, E09 T59a, `town/e09-t59a`, `cross-lane` with the user's consent,
+  E09 decision 227; **in your paths, for your review; no hash of yours changed**): a town's war
+  machines (TWN-SMT-001) and its boat (TWN-SHY-001). (1) `state/boats.rs`: **`launch` is
+  `pub(crate)`** (the town lane's `town/boat.rs` launches a town's boat with it:
+  `AdventureState::free_town_boat_spot` and `build_town_boat`, `BoatBuilt` by `viewers` as a
+  Shipyard's); (2) the replay words `town machine <town> <building>` and `town boat <town>`
+  (`h3-files`): **replay format v29**, the 130 goldens' `format` lines only (every hash
+  reproduced), `tests/hiring.rs`' literal; (3) `h3-map`'s plans: `town_builds` probes each
+  war-machine seller (with the first building and one past the record) and the boat,
+  `check_town_machine` and `check_town_boat` read a listed one, `check_conservation` takes their
+  prices, `check_guild_refusals` the two commands, `Step::Town` plays a listed machine in one step
+  of sixteen and a boat in another; the plans met 11 machines in their cases and no boat (no plan
+  town has a boat spot; the town lane's T60 trades map). The env's encoding is v24, the protocol
+  v87.
 - 2026-11-27 (the town lane, E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent,
   E09 decision 226; **in your paths, for your review; no hash of yours changed**): a town's
   artifact sale (TWN-MKT-005). (1) `MarketScreen::SellArtifact` (the part's hash tag 4; no pack
