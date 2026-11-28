@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23; increments 1 to 3 **closed** (2026-11-24, RMG-Q2;
 2026-11-25, decision 10; 2026-11-27, decision 11; `E14-archive.md`); increments 4 to 7 cut,
-increment 4 refined (T4a to T4e; T4a to T4c done); next T4d · Lane: **rmg** (opened
+increment 4 refined (T4a to T4e, T4d cut into T4d1 and T4d2, decision 15; T4a to T4d1 done); next T4d2 · Lane: **rmg** (opened
 at this refinement) · Prerequisite of E30 (the custom generator) · Consumers: the client lane (the shell's Begin, CLT-STUB-12), the server lane (a game offered on a
 random map), the adventure lane (the import of a generated map, the writer)
 
@@ -95,6 +95,15 @@ objects' values and the guards' strengths read from the original rather than gue
 14. **RMG-QUIRK-5 narrowed** (the user, 2026-11-27, RMG-Q3): the shipped data reach it
    (`l1-4p-c`, a water zone without a cell); the port refuses only when no zone generator before
    had a seed, and makes no seed otherwise (the original's no-op).
+15. **T4d cut in two** (the user, 2026-11-28): **T4d1** step 6's connections the corpus reaches
+   (RMG-CON-013 to -018, -020, -021: by land, shipyard, gates, monoliths, the guards; RMG-QUIRK-9,
+   -10, -11's guards' half, -19, -26; 6LM10's self-connection), three worker sub-agents in turn;
+   **T4d2** the Border Guards (RMG-CON-019, RMG-QUIRK-7, -8, the carve's pending guard), which no
+   corpus template reaches; a Ready or Not case (`m1-2p-ready`) recorded at T4d1 for it.
+16. **The flags at T4d2** (the user, 2026-11-28): RMG-QUIRK-7, -8, -9, -10 and -26's flags (and
+   -19's, the same case, joined by the runner) registered together at T4d2 in one re-hash
+   (`cross-lane`), with the guard tables' harvest
+   (RMG-STUB-3); until then T4d1 runs the original's behaviour behind plain booleans (RMG-STUB-2).
 
 **Agent decisions** (change freely):
 
@@ -118,7 +127,7 @@ reads). Rule ids are survey §3.2's (provisional until an increment writes them)
 Every increment needs the oracle's set staged from the PC (the client lane's, ORACLE.md).
 
 **Every increment's exit criteria**, beside the Definition of Done: (a) its rules in the catalog,
-implemented, each with a test; (b) on the corpus's cases (24 since T3a) in `faithful`, the port's draws and its
+implemented, each with a test; (b) on the corpus's cases (24 since T3a, 25 since T4d1) in `faithful`, the port's draws and its
 cells after each of its steps equal the phase oracle's (`clients/capture/rmg/phases.txt`'s
 digests in CI, the whole logs and dumps beside the oracle; a divergence named by step and draw);
 (c) its ledger entries confirmed by (b) or re-read, each flag's `strict-fixed` behaviour tested,
@@ -143,7 +152,8 @@ about one session, the oracle's set staged from the PC for each):
 | T4a | Exit (e), the items not read, into the survey (code reading only): `rmg_map_can_place`'s outline, ring and water branches (OBJ-011; tents on water), the islets' heightmap quadrants (CON-008), the one-way monoliths' pairing (CON-017), the null prototype (OBJ-008), the objects' masks (OBJ-009) | the survey, the rules rewritten, `map.toml` |
 | T4b | Steps 4 and 5, the towns (RMG-TWN-001 to -005), with the object placing they need (RMG-OBJ-009 to -011: `rmg_map_place_object`, `rmg_map_can_place`, the town prototypes); RMG-QUIRK-13, -23's towns' half, the open table's Ownership 0 starts; RMG-QUIRK-25's fix designed and its flag registered (`cross-lane`, a re-hash) | the cells after steps 4 and 5 and the draws to them equal |
 | T4c | Step 6's obstacle plan (RMG-CON-001 to -012): the lanes, the jagged segments and branches, the walls, the cells of no zone, the islets (the terrain painter's flush: its water and rock branches against the oracle), the joining, the cost flood, the carving, the shores sealed; RMG-QUIRK-5 | its draws equal the oracle log's prefix of step 6 (an oracle run; step 6 has one dump, its cells checked with T4d's) |
-| T4d | Step 6's connections (RMG-CON-013 to -021): by land, by shipyard, by gates, by monoliths, the guards' values, Border Guards and monsters; RMG-QUIRK-7 to -10, -11's guards' half, -19; the open table's 6LM10 self-connection | the cells after step 6 and the draws to it equal |
+| T4d1 | Step 6's connections but the Border Guards (RMG-CON-013 to -018, -020, -021): by land, by shipyard, by gates, by monoliths, the guards' values and monsters; RMG-QUIRK-9, -10, -11's guards' half, -19, -26 (their flags at T4d2, decision 16); the open table's 6LM10 self-connection (decision 15) | the cells after step 6 and the draws to it equal |
+| T4d2 | The Border Guards (RMG-CON-019): `rmg_border_guard_place` and its ring, the monoliths' guard, the carve's pending guard; RMG-QUIRK-7, -8; the six flags registered and the guard tables harvested (decision 16, `cross-lane`) | the flagged connections as the oracle's (`m1-2p-ready`); the flags' off halves tested |
 | T4e | Step 7, the junction zones (RMG-OBS-001, -002); RMG-QUIRK-1's form (decision 11); the increment's exit (a) to (e) | the cells after step 7 and the draws to it equal |
 
 ## Risks
@@ -182,4 +192,7 @@ its checkpoint) and increment 3's (T3a to T3e, its checkpoint): `E14-archive.md`
 - T4c (2026-11-27, whole, decision 13): step 6's obstacle plan (RMG-CON-001 to -012), the
   painter's flush; RMG-QUIRK-5 narrowed (RMG-Q3, decision 14); the plan's draws equal, 24 of 24
   (`rmg/plan.txt`), the cells after it too; log `## T4c`.
+- T4d1 (2026-11-28, decision 15): step 6's connections but the Border Guards (RMG-CON-013 to
+  -018, -020, -021); the corpus's 25th case (`m1-2p-ready`, Ready or Not); step 6's draws and
+  cells equal, 25 of 25; log `## T4d1`.
 

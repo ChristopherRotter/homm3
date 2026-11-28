@@ -41,7 +41,7 @@ python3 h3rmg.py templates   # each case's template predicted from either rmg.tx
 Setup: the client lane's staging set (`clients/capture/README.md`, "Before the first run"), then
 `env -u TMPDIR clients/capture/setup.sh`. The tab's points are `adv-random`'s (E27 design §3.16).
 
-## The corpus (24 cases)
+## The corpus (25 cases)
 
 `rmg/corpus.toml`: every size (S, M, L, XL), one and two levels (size indices 1 to 32), 2 to 8
 players with and without teams, computer-only players with and without their teams, eight players
@@ -50,7 +50,7 @@ in all, water none, normal and islands, monsters weak, normal and strong, seeds 
 choices. Since T3a three cases for RMG-QUIRK-24, their seeds found by the port's template draw:
 `s1-3p-2sm2i2` (2SM2i(2), whose human starts 3 and 5 have no Ownership, three players),
 `s1-2p-2sm0k` and `s1-1p-c1-2sm0k` (2SM0k, whose computer starts 3 to 8 have none; two players, one
-of them computer-only in the second). Each `kept.txt` line: the seed and template the description names, the format, size,
+of them computer-only in the second). Since T4d1 `m1-2p-ready` (Ready or Not, M, seed 2120000037), whose connections 4-5, 6-5 and 7-5 carry the Border Guard flag: its tents find no room, no guard is placed (E14 T4d1, seven such maps tried). Each `kept.txt` line: the seed and template the description names, the format, size,
 levels, the decompressed map's length and the first 16 hex digits of the SHA-256 of the map and
 of its gzip file.
 
