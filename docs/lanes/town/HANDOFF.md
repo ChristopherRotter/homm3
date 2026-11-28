@@ -54,7 +54,8 @@ kept T59a whole (decision 227) over the recommended cut by command. The rules, t
 listing (`town/services.rs`), the wire v87, the words (format v29: the goldens' `format` lines),
 the env's three entries (v24), the plans (11 machines, no boat: no spot), the town map's seed
 128. One design pass on `legal-towns-36` (+2.79 % to +1.98 % on `master`'s games); it and
-`week-start-taverns-36` re-baselined (the games changed course). No sub-agents.
+`week-start-taverns-36` re-baselined (the games changed course). No sub-agents. CI green on #1221
+after one re-run (an `h3-server` clock test under coverage).
 
 ### 2026-11-27 — T58b: the artifact sale (`cross-lane`)
 

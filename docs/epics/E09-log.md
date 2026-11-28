@@ -7016,5 +7016,15 @@ point: `master` at be38c3e (#1216, T58b, merged before the session); the setup's
 - *Agent's calls* (change freely): the decision-227 list; `HasWarMachine` for no room too (one
   refusal); the listing of the services in `town/services.rs` (T59b's two may join it).
 
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`: every step passes
+but `check-lane` (by design; `check-lane --cross-lane --base origin/master` ok), coverage 25
+minutes, determinism 12, bench-check 13, `original-data` 3; `verify-step coverage --scope server`
+met one region (the wire's out-of-range building of `BuyWarMachine`, tested since), then clean;
+`cargo clippy --workspace --all-targets`; `cargo test -p h3-sim -p h3-protocol -p h3-server -p
+h3-cli -p h3-files` (every golden replayed). **CI** (#1221): its first run failed in the coverage
+job on `h3-server`'s timing test `tests::clock::a_spectator_watches_a_timed_game_through_a_restart_…`
+under the instrumentation (the turn's clock read `None`; passed locally twice, no server code
+changed); the failed job re-run, green.
+
 **The queue:** T59b next (the University and the Transformer). Ids: decisions next 228; quirks
 planned `-23`, a new one `-24`; stubs `TWN-STUB-23`.
