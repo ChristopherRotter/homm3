@@ -1694,6 +1694,20 @@ part three (their timelines and samples kept by hand as `timelines/<id>.txt` and
 `<id>-sounds.txt`; the viewer's `sequences` compares its samples with the second without the
 channels).
 
+**The turn's clock** (E24 M5 T5 part four, design §5.32): a hot seat's timeline has too `<ms>
+warning <next>` in each millisecond the turn timer gave a warning (its +0 moved, its start not;
+`next` its +0xC, the time to the next warning, 0 none) and `<ms> chat <n> <drawn> ...` where the
+screen chat changes (`Mem.chat`, `screen_chat` 0x69D7B0: its `n` lines oldest first, each by the
+millisecond of its first draw, −1 until then); each line the chat takes appends a `[[chat]]`
+table to the live part in its millisecond (`at`, `text` by its records as the boxes' texts are
+kept, `system` 1 for a warning), before that millisecond's box. `frames --sparse` dumps the
+screen only in a millisecond whose state read from memory differs from the one before (every
+value of the state, the due times among them; the box, the level-up dialog and the status
+window's kind on top) and in an input's millisecond and the next: the same screens at the same
+times (`seat-hand-over-late` gave its recorded timeline, samples and frames), about 29 ms a
+step on a still map instead of 55 to 75; a sequence with a `battle` is refused. The clock's
+sequences (`seat-clock*`) wait in `map/to-record.toml`, recorded with it, until part five.
+
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
 <out>/<id>/live.toml`: the map's timeline from the situation, this run's live part at 0 and the

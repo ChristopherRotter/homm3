@@ -50,6 +50,7 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       (`differs`: render's differences, `pixels`: the differing count), else said; exit 1 unless
       every one is. <dir> defaults to clients/out/map-engine.
   h3map.py frames [--only <id>] [--out <dir>] [--reuse] [--sequences <file>] [--no-check]
+          [--sparse]
       every sequence of clients/map/sequences.toml (or of <file>: E24 M4 T1b1, the sequences
       recorded before the viewer plays them, with --no-check leaving out the frame check; or
       one; E24 M2 T1a1): its situation staged
@@ -73,7 +74,9 @@ compared pixel for pixel outside the masks of what the viewer does not draw yet.
       --record <r.jsonl> --record-map <map.h3m>`), its timeline's differences from the recorded
       one the gaps listed in clients/map/timelines/<id>-gaps.txt. Since E24 M5 T5 a hot seat
       (`hot_seat`, its names; `duration`; `start`, its 0 the game's first cover: the runbook's
-      "A hot seat"). --reuse keeps the original's
+      "A hot seat"). --sparse (E24 M5 T5 part four, the clock's long idle sequences) dumps the
+      screen only in a millisecond whose state in memory changed, an input's and the one after
+      it. --reuse keeps the original's
       run of an earlier `frames` (its screens, its live part) and only compares again. <dir>
       defaults to clients/out/map-frames.
 
@@ -1147,7 +1150,12 @@ def map_timeline(states):
     out) no line (design §5.19). Since E24 M5 T5 (design §5.31) a hot seat's `<ms> shown <colour>`
     (the colour the screen is shown for, `shown_player`), `<ms> covered <0 or 1>` (the covered
     draw's flag) and `<ms> timer <started> <paused>` (the turn timer's start and pause set, 1 or 0)
-    where they change; a single human's sequence has none of them."""
+    where they change; a single human's sequence has none of them. Since E24 M5 T5 part four
+    (design §5.32), a hot seat's too, `<ms> warning <next>` in each millisecond the turn timer
+    gave a warning (its last warning's time moved, its start not; `next` the time to the next
+    one, its +0xC, 0 none) and `<ms> chat <n> <drawn> ...` where the screen chat changes: its `n`
+    lines, oldest first, each by the millisecond of its first draw (-1 not drawn yet); their texts
+    are the live part's `[[chat]]` tables."""
     lines, last = [], {}
     for state in states:
         t = state["t"]
@@ -1158,13 +1166,15 @@ def map_timeline(states):
                 lines.append(f"{t} {key} " + " ".join(map(str, state[key])))
                 last[key] = state[key]
         for key in ("hero", "walk", "date", "player", "other", "book", "shown", "covered",
-                    "timer"):
+                    "timer", "chat"):
             if key not in state:
                 continue
             if key in last and last[key] != state[key]:
                 # No hero selected (E24 M3 T6b1: a town chosen): the line without numbers.
                 lines.append(f"{t} {key} {' '.join(map(str, state[key]))}".rstrip())
             last[key] = state[key]
+        if "warning" in state:
+            lines.append(f"{t} warning {state['warning'][0]}")
         if "battle" in state:
             lines.append(f"{t} battle " + " ".join(map(str, state["battle"])))
         if "arrows" in last and last["arrows"] != state["arrows"]:
@@ -1255,6 +1265,43 @@ def seat_toml(mem, t):
     return (f"\n[[seat]]\nat = {t}\nshown = {shown}\ncurrent = {mem.current_player()}\n"
             f"humans = {mem.begin_humans()}\nkingdom = {kingdom_toml(mem.kingdom(shown))}\n"
             f"explored = {json.dumps(mem.explored_rows(shown))}\n")
+
+
+def chat_added(before, after):
+    """The lines the screen chat took between two of its states (E24 M5 T5 part four), each
+    [text, system], oldest first: those after the longest end of `before` that `after` begins
+    with (the chat loses its oldest lines from the front: an expiry, a 21st line)."""
+    for k in range(len(before) + 1):
+        if after[:len(before) - k] == before[k:]:
+            return after[len(before) - k:]
+    return after
+
+
+def chat_toml(line, t, own=()):
+    """A line the screen chat took in a sequence (E24 M5 T5 part four, design §5.32), a
+    `[[chat]]` table of the live part (after the `[[seat]]` tables, among the boxes' in time):
+    its millisecond, its text by its records (`labels`: the original's texts never kept) and
+    `system` (1 a system line: a turn's warning, GENRLTXT 54 before it)."""
+    text, system = line
+    label, values = chat_label(text, own)
+    return (f"\n[[chat]]\nat = {t}\ntext = {json.dumps(label)}\nvalues = {json.dumps(values)}\n"
+            f"system = {system}\n")
+
+
+def chat_label(text, own=()):
+    """A chat line by its records (E24 M5 T5 part four): a system line is two records joined
+    ("%s%s", GENRLTXT 54 and the warning: design §5.32), which `labels` alone would not find, so
+    the first split whose head is one record and whose rest labels whole gives both; and the
+    numbers the rest shows (the warning's seconds or minutes, as strings), which a label drops.
+    Without such a split the line labelled whole, no numbers."""
+    for k in range(1, len(text)):
+        head = h3lod.label(text[:k], own)
+        if not re.fullmatch(r"\[[A-Z][A-Z0-9]*:\d+\]", head):
+            continue
+        rest = h3lod.label(text[k:], own)
+        if re.fullmatch(r"\[[A-Z][A-Z0-9]*:\d+(?:\+\d+)?\]", rest):
+            return head + rest, re.findall(r"\d+(?:\.\d+)?", text[k:])
+    return labels([text], own)[0], []
 
 
 def own_texts(sit):
@@ -1496,7 +1543,7 @@ def give_input(game, kind, value):
         h3drive.run("xdotool", kind, value)
 
 
-def sequence(entry, out):
+def sequence(entry, out, sparse=False):
     """One sequence in the original (E24 M2 T1a1): its situation staged as `still` stages it, the
     clock frozen once both the palette tick and the view's redraw lie ahead of it; then the
     sequence's 0 set to the next millisecond: the tick's and the redraw's next times written
@@ -1513,10 +1560,17 @@ def sequence(entry, out):
     (`<out>/timeline.txt`, `map_timeline`), the live part the screen shows at 0
     (`<out>/live.toml`, `live_part`) and the viewer's frame at 0 drawn with it against the
     original's (`<out>/ours.png`, `diff.png`); returns the states and that frame's differing
-    pixels."""
+    pixels. With `sparse` (E24 M5 T5 part four, `frames --sparse`: the clock's long idle
+    sequences) the screen is dumped only in a millisecond whose state read from memory differs
+    from the one before (any of its values, the due times among them, the box or the level-up
+    dialog on top, the status window's kind) and in an input's millisecond and the one after it:
+    the same screens kept at the same times, the steps several times faster."""
     situation_path = SITUATIONS / f"{entry['situation']}.toml"
     options, inputs = sequence_inputs(entry)
     plans = battle_plans(entry)
+    if sparse and plans:
+        raise ValueError(f"{entry['id']}: `--sparse` records no battle (its screen is found by "
+                         "the dump of every millisecond)")
     # An earlier run's files go first (M2 T6a, the reviewer's R3-3): a run that failed midway
     # left them beside its own partial screens, and `--reuse` took the mix as one run.
     kept = out / "frames"
@@ -1695,18 +1749,37 @@ def sequence(entry, out):
                 s["covered"] = [mem.covered_view()]
                 timer = mem.turn_timer()
                 s["timer"] = [int(timer["start"] != 0), int(timer["paused"] != 0)]
+                # E24 M5 T5 part four (design §5.32): a warning given in this millisecond (the
+                # timer's last warning moved, its start not: `turn_timer_poll`), with the time
+                # to the next one (+0xC, 0 none); the screen chat's lines, oldest first, each by
+                # its first draw (-1 not yet drawn).
+                was, clock_timer[0] = clock_timer[0], timer
+                if (was is not None and timer["start"] and timer["start"] == was["start"]
+                        and timer["last"] != was["last"]):
+                    s["warning"] = [timer["next"]]
+                lines = mem.chat()
+                s["chat"] = [len(lines)] + [at - t0 if at else -1 for _, at, _ in lines]
+                s["chat_lines"] = [[text, system] for text, _, system in lines]
             if span:
                 s["away"] = [1]
-            box = (None if before is None or s["book"][0] or span
+            if pix is not None:
+                keep_screen(s, pix, before)
+            return s
+
+        def keep_screen(s, pix, before):
+            box = (None if before is None or s["book"][0] or "away" in s
                    else view_changed(before, pix))
             if before is None or box:
                 s["changed"] = box
-                s["frame"] = f"t{t - t0:05d}.npz"
+                s["frame"] = f"t{s['t']:05d}.npz"
                 np.savez_compressed(kept / s["frame"], screen=pix)
-            return s
+
+        clock_timer = [None]
 
         first = game.settled()
         states, last = [state(t0, first, None)], first
+        on_top_was = None if not sparse else (mem.message_box(), mem.level_up_box(),
+                                               mem.status_shown())
         # Each turn's start the sequence reaches (E24 M4 T1a, design §5): its facts as memory
         # holds them in the millisecond the current player or the date changed.
         turns, seats, selecting = [], [], None
@@ -1738,13 +1811,30 @@ def sequence(entry, out):
                     game.clock("step 0", settle_reads=500)
             if t - t0 in inputs:
                 game.clock("step 0", settle_reads=500)
-            pix = game.settled()
             # E24 M4 T5a (design §5.19): while another manager runs (a battle: manager_run
             # 0x4B0C70 holds the adventure manager's +0x34 at 2 until the map is back) its dialogs
             # are not the map's boxes; after a battle played, the battle's span until then.
             away = mem.manager_field(MANAGER_STATE) != 1
             battle_span = battle_span and away
-            states.append(state(t, pix, last, battle_span))
+            if sparse:
+                # `frames --sparse` (E24 M5 T5 part four): the memory first, the screen only
+                # where it or an input says the game may have drawn.
+                s = state(t, None, last, battle_span)
+                on_top = None if away else (mem.message_box(), mem.level_up_box(),
+                                            mem.status_shown())
+                before = {k: v for k, v in states[-1].items()
+                          if k not in ("t", "changed", "frame", "warning")}
+                now_s = {k: v for k, v in s.items() if k not in ("t", "warning")}
+                pix = None
+                if (now_s != before or on_top != on_top_was or t - t0 in inputs
+                        or t - t0 - 1 in inputs):
+                    pix = game.settled()
+                    keep_screen(s, pix, last)
+                on_top_was = on_top
+                states.append(s)
+            else:
+                pix = game.settled()
+                states.append(state(t, pix, last, battle_span))
             if "frame" in states[-1]:
                 last = pix
             if [states[-1][k] for k in ("date", "player")] != [states[-2][k]
@@ -1762,6 +1852,11 @@ def sequence(entry, out):
                     and mem.status_shown() in (3, 4) and mem.shown_player() == selecting:
                 seats[-1] += f"selection = {status_toml(mem, selecting)}\n"
                 selecting = None
+            # E24 M5 T5 part four (design §5.32): each line the screen chat took in this
+            # millisecond (a turn's warning), a `[[chat]]` table, before the box's.
+            if hot:
+                finds.extend(chat_toml(line, t - t0, own) for line
+                             in chat_added(states[-2]["chat_lines"], states[-1]["chat_lines"]))
             box = None if away else mem.message_box()
             # E24 M4 T2b1: a choice made or a button's state changed is a table of its own.
             key = None if box is None else (box["box"], box["texts"], box["pictures"],
@@ -1804,7 +1899,8 @@ def sequence(entry, out):
             # the sequence's time goes on as if the battle took none: its next millisecond the
             # result window's, the inputs after it given from there. The battle's own screens are
             # the battle client's (E17); its screen stays on until its fade out darkens it.
-            battle_now = h3adv.in_battle(game, pix)
+            # `--sparse`: a millisecond not dumped changed nothing (its screen the last one).
+            battle_now = battle_shown if pix is None else h3adv.in_battle(game, pix)
             if battle_now and not battle_shown:
                 if not plans:
                     raise RuntimeError(f"a battle at {t - t0} that the sequence does not plan")
@@ -1964,7 +2060,8 @@ def reused(entry, here):
 
 
 def run_frames(rest):
-    """`frames [--only <id>] [--out <dir>] [--reuse] [--sequences <file>] [--no-check]`: each
+    """`frames [--only <id>] [--out <dir>] [--reuse] [--sequences <file>] [--no-check]
+    [--sparse]`: each
     sequence of `clients/map/sequences.toml` (or of `<file>`, E24 M4 T1b1; or one) recorded
     (`sequence`); its timeline against the one recorded in
     `clients/map/timelines/<id>.txt` (`ok`, `CHANGED`, `new`), and the viewer's frame at 0 against
@@ -1976,6 +2073,9 @@ def run_frames(rest):
     only = rest[rest.index("--only") + 1] if "--only" in rest else None
     base = Path(rest[rest.index("--out") + 1]) if "--out" in rest else OUT_FRAMES
     reuse = "--reuse" in rest
+    # E24 M5 T5 part four: the screen dumped only where memory or an input says it may change
+    # (`sequence`'s `sparse`), for the clock's long idle sequences.
+    sparse = "--sparse" in rest
     # E24 M4 T1b1: sequences recorded before the viewer plays them (`--sequences <file>`; T1b1's
     # in map/to-record.toml until T1b2 moved them), their frame check left out (`--no-check`).
     listed = (Path(rest[rest.index("--sequences") + 1]) if "--sequences" in rest
@@ -1998,7 +2098,7 @@ def run_frames(rest):
     for e in entries:
         here = base / e["id"]
         try:
-            states, n = reused(e, here) if reuse else sequence(e, here)
+            states, n = reused(e, here) if reuse else sequence(e, here, sparse)
         except Exception as err:  # noqa: BLE001 (any failure fails this sequence alone)
             failed += 1
             print(f"{e['id']}: FAILED ({type(err).__name__}: {err})", flush=True)

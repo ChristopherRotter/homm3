@@ -436,6 +436,9 @@ FOUND_RESOURCE, FOUND_TEXT = 0x3A0, 0x3A8
 # time to the next warning, the pause's start; clock times, 0 none).
 COVERED_VIEW, BEGIN_HUMANS, TURN_DURATION, TURN_TIMER = 0x699538, 0x699274, 0x1F843, 0x69D630
 TURN_TIMER_FIELDS = ("last", "start", "limit", "next", "paused")
+# The screen chat (E24 M5 T5 part four, design §5.32; structs.toml screen_chat, chat_entry): its
+# capacity's offset (+0x1C, 20) and an entry's size.
+SCREEN_CHAT, CHAT_CAPACITY, CHAT_ENTRY_SIZE = 0x69D7B0, 0x1C, 0x88
 # The message box's buttons (message_box_build 0x4F6990; E17 design §7.19): 0x7801 to 0x780A.
 BOX_BUTTONS = range(0x7801, 0x780B)
 # The box's style (message_box_style 0x699520) and, in styles 7 and 10, the picture chosen
@@ -1657,6 +1660,20 @@ class Mem:
         T5: the harness's pause through a hot seat's staging, its restart at a sequence's 0)."""
         for name, value in fields.items():
             self.write_u32(TURN_TIMER + 4 * TURN_TIMER_FIELDS.index(name), value)
+
+    def chat(self):
+        """The screen chat's lines (`screen_chat` 0x69D7B0, structs.toml; E24 M5 T5 part four,
+        design §5.32), oldest first: (text, the clock at its first draw or 0, system 0 or 1)
+        each; the text as the entry holds it (a warning's trailing tab kept)."""
+        entries, first, count = struct.unpack("<IiI", self.read(SCREEN_CHAT, 12))
+        capacity = self.i32(SCREEN_CHAT + CHAT_CAPACITY)
+        lines = []
+        for k in range(count if 0 < capacity <= 64 else 0):
+            raw = self.read(entries + CHAT_ENTRY_SIZE * ((first + k) % capacity), CHAT_ENTRY_SIZE)
+            text = raw[:0x80].split(b"\0", 1)[0].decode("latin-1")
+            shown_at, system = struct.unpack_from("<IB", raw, 0x80)
+            lines.append((text, shown_at, system))
+        return lines
 
     def found(self):
         """What the status window of a resource found shows (kind 6; E24 M4 T2a1, design §5.3):

@@ -245,6 +245,28 @@ class HotSeat(unittest.TestCase):
         self.assertFalse([line for line in h3map.map_timeline([{**base, "t": 0}])
                           if line.split()[1] in ("shown", "covered", "timer")])
 
+    def test_the_clock_s_lines(self):
+        # E24 M5 T5 part four (design §5.32): a warning in its millisecond, the chat where it
+        # changes (never at 0).
+        base = {"view": [0, 0, 0], "objects": [0], "cycles": [0, 0], "cursor": [1, 0, 700, 300],
+                "arrows": []}
+        lines = h3map.map_timeline([
+            {**base, "t": 0, "chat": [0]},
+            {**base, "t": 30001, "chat": [1, -1], "warning": [20000]},
+            {**base, "t": 30060, "chat": [1, 30060]},
+            {**base, "t": 50040, "chat": [0]}])
+        self.assertEqual([line for line in lines if line.split()[1] in ("chat", "warning")],
+                         ["30001 chat 1 -1", "30001 warning 20000", "30060 chat 1 30060",
+                          "50040 chat 0"])
+
+    def test_the_chat_s_new_lines(self):
+        a, b, c = ["a", 1], ["b", 1], ["c", 0]
+        self.assertEqual(h3map.chat_added([], [a]), [a])
+        self.assertEqual(h3map.chat_added([a, b], [b, c]), [c])
+        self.assertEqual(h3map.chat_added([a, b], [b]), [])
+        self.assertEqual(h3map.chat_added([a], [a, a]), [a])
+        self.assertEqual(h3map.chat_added([a, b], [a, b]), [])
+
     def test_the_hot_seat_sequences_pass_their_checks(self):
         # Waiting in `to-record.toml` until the viewer plays them (part three moves them).
         files = [CLIENTS / "map/sequences.toml", CLIENTS / "map/to-record.toml"]
@@ -261,10 +283,10 @@ class HotSeat(unittest.TestCase):
 
 
 class KeptLiveParts(unittest.TestCase):
-    """R6-7: `frames` keeps a live part in `timelines/` only for a sequence of `sequences.toml`
-    that is not a sound run."""
+    """R6-7: `frames` keeps a live part in `timelines/` only for a sequence of `sequences.toml`;
+    a sound run's too since E24 M5 T5 part three (the hot seat's, which `drawn` visits)."""
 
-    def test_a_scratch_file_s_and_a_sound_run_s_stay_with_the_run(self):
+    def test_a_scratch_file_s_stays_with_the_run(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             timelines, committed, scratch = tmp / "timelines", tmp / "seq.toml", tmp / "x.toml"
@@ -273,7 +295,7 @@ class KeptLiveParts(unittest.TestCase):
                                  '[[sequence]]\nid = "b"\nsituation = "s"\nms = 5\nsound = true\n')
             scratch.write_text('[[sequence]]\nid = "c"\nsituation = "s"\nms = 5\n')
 
-            def ran(entry, here):
+            def ran(entry, here, sparse=False):
                 here.mkdir(parents=True, exist_ok=True)
                 (here / "timeline.txt").write_text("0 view 0 0 0\n")
                 (here / "live.toml").write_text("k = 0\n")
@@ -286,9 +308,8 @@ class KeptLiveParts(unittest.TestCase):
                 h3map.run_frames(["--no-check", "--out", str(tmp / "out")])
                 h3map.run_frames(["--sequences", str(scratch), "--no-check", "--out",
                                   str(tmp / "out")])
-            self.assertEqual(sorted(p.name for p in timelines.iterdir()), ["a-live.toml"])
-            self.assertIn(f"b: a sound run, its live part stays at {tmp / 'out/b/live.toml'}",
-                          said.getvalue())
+            self.assertEqual(sorted(p.name for p in timelines.iterdir()),
+                             ["a-live.toml", "b-live.toml"])
             self.assertIn("c: not of seq.toml", said.getvalue())
 
 

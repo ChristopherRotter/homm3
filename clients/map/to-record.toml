@@ -1,0 +1,67 @@
+# The hot seat's clock recorded before the viewer draws it (E24 M5 T5 part four, design §5.32;
+# clients/capture/README.md, "A hot seat"): `python3 capture/h3map.py frames --sequences
+# map/to-record.toml --no-check --sparse [--only <id>]` from clients/ (`--sparse`: the screen
+# dumped only where memory or an input says it may change; the same timeline as 1 ms at a time,
+# several times faster: 80 s of a turn in about half an hour). Sound runs on the virtual clock,
+# two humans Red and Blue, a one-minute turn (`duration = 0`; the timer restarted at the
+# sequence's 0); the timeline's `warning` and `chat` lines and the live part's `[[chat]]` tables
+# (the warnings' texts by their records) are the clock's. Each timeline is kept in
+# `timelines/<id>.txt`, its samples in `timelines/<id>-sounds.txt` (copied by hand from a second
+# run as the first), its live part with the run. Part five (the clock built) moves them into
+# `sequences.toml` once the viewer draws the clock (and removes this file).
+
+[[sequence]]
+id = "seat-clock"
+situation = "seq-seat"
+ms = 83000
+hot_seat = ["Red", "Blue"]
+duration = 0
+sound = true
+seed = 1
+why = "Red idle through a one-minute turn: each warning's line in the chat at the redraw after its due time with timeover.wav, the lines leaving one a draw after their 20 s, the expiry box after 60 s closing itself 15 s later, Blue's cover with Red's last lines on it, Blue's OK 6 s after it (NewWeek.wav over: no wait), the lines leaving in Blue's turn"
+inputs = [{ at = 81000, keydown = "Return" }, { at = 81060, keyup = "Return" }]
+
+[[sequence]]
+id = "seat-clock-ok"
+situation = "seq-seat"
+ms = 80000
+hot_seat = ["Red", "Blue"]
+duration = 0
+sound = true
+seed = 1
+why = "seat-clock with the expiry box's OK pressed at once: Blue's cover with all of Red's last lines, Blue's OK, the lines leaving in Blue's turn"
+inputs = [
+    { at = 60500, keydown = "Return" }, { at = 60560, keyup = "Return" },
+    { at = 62500, keydown = "Return" }, { at = 62560, keyup = "Return" },
+]
+
+[[sequence]]
+id = "seat-clock-box"
+situation = "seq-seat"
+ms = 61000
+hot_seat = ["Red", "Blue"]
+duration = 0
+move_reminder = 1
+sound = true
+seed = 1
+why = "a box over the map from 45 s to 55 s (End Turn's question, a hero able to move; Escape): the warnings written under it shown together at the first redraw after it, stamped then; the expiry box after 60 s"
+inputs = [
+    { at = 45000, keydown = "e" }, { at = 45060, keyup = "e" },
+    { at = 55000, keydown = "Escape" }, { at = 55060, keyup = "Escape" },
+]
+
+[[sequence]]
+id = "seat-clock-walk"
+situation = "seq-seat"
+ms = 62000
+hot_seat = ["Red", "Blue"]
+duration = 0
+hero_speed = 1
+points = 2000
+sound = true
+seed = 1
+why = "a long walk (16 steps at hero speed 1) across the last warnings and the turn's end: the walk's frames draw the lines, the expiry box after the walk's end"
+inputs = [
+    { at = 57000, click = [216, 280] }, { at = 57000, pointer = [700, 300] },
+    { at = 57300, click = [216, 280] }, { at = 57300, pointer = [700, 300] },
+]
