@@ -27,6 +27,20 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 
 ## Inbox
 
+- 2026-11-27 (the town lane, E09 T59a, `town/e09-t59a`, `cross-lane` with the user's consent,
+  E09 decision 227; **in your paths, for your review; no hash of yours changed**): a town's war
+  machines (TWN-SMT-001) and its boat (TWN-SHY-001). (1) `state/boats.rs`: **`launch` is
+  `pub(crate)`** (the town lane's `town/boat.rs` launches a town's boat with it:
+  `AdventureState::free_town_boat_spot` and `build_town_boat`, `BoatBuilt` by `viewers` as a
+  Shipyard's); (2) the replay words `town machine <town> <building>` and `town boat <town>`
+  (`h3-files`): **replay format v29**, the 130 goldens' `format` lines only (every hash
+  reproduced), `tests/hiring.rs`' literal; (3) `h3-map`'s plans: `town_builds` probes each
+  war-machine seller (with the first building and one past the record) and the boat,
+  `check_town_machine` and `check_town_boat` read a listed one, `check_conservation` takes their
+  prices, `check_guild_refusals` the two commands, `Step::Town` plays a listed machine in one step
+  of sixteen and a boat in another; the plans met 11 machines in their cases and no boat (no plan
+  town has a boat spot; the town lane's T60 trades map). The env's encoding is v24, the protocol
+  v87.
 - 2026-11-27 (the town lane, E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent,
   E09 decision 226; **in your paths, for your review; no hash of yours changed**): a town's
   artifact sale (TWN-MKT-005). (1) `MarketScreen::SellArtifact` (the part's hash tag 4; no pack

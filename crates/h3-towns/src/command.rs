@@ -8,7 +8,9 @@
 //! T38a1 a tavern hero is hired at the town's Tavern ([`crate::check_hire`], TWN-TAV-003); since
 //! E09 T49a2 the town screen is opened, its heroes visiting the Mana Vortex and learning the
 //! guild's spells (TWN-GLD-006); since E09 T58a1 the market window opens with the town as its
-//! place ([`crate::check_market`], TWN-MKT-002). A refused command changes nothing.
+//! place ([`crate::check_market`], TWN-MKT-002); since E09 T59a a war machine is bought at the
+//! Blacksmith or the Ballista Yard ([`crate::check_war_machine`], TWN-SMT-001) and a boat built at
+//! the Shipyard ([`crate::check_boat`], TWN-SHY-001). A refused command changes nothing.
 
 use core::fmt;
 
@@ -21,7 +23,7 @@ use crate::building::BuildingId;
 /// that the game and the wire match every variant (SRV-Q25; E09 T18b1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 // rule: TWN-BLD-001, TWN-REC-001, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004, TWN-TAV-003
-// rule: TWN-GLD-006, TWN-MKT-002
+// rule: TWN-GLD-006, TWN-MKT-002, TWN-SMT-001, TWN-SHY-001
 pub enum TownCommand {
     /// Builds `building` in `town`, the player's, as its hall offers it ([`crate::buildable`]),
     /// for the part's price (TWN-BLD-001): no hero, no visit, no field trusted but the two ids.
@@ -90,6 +92,28 @@ pub enum TownCommand {
         /// The town.
         town: TownId,
     },
+    /// Buys the war machine that `building` of `town`, the player's, sells (TWN-SMT-001; E09 T59a,
+    /// design §110, decision 211: the original's Blacksmith, or the Stronghold's Ballista Yard,
+    /// clicked on the town screen, `town_blacksmith_buy` 0x5D1D30, its Buy-or-Cancel dialog the
+    /// command itself) for the town's hero, the game's (the visitor; with `TWN-QUIRK-15`'s flag off
+    /// the garrison hero too), at the price of the machine's creature ([`crate::check_war_machine`]):
+    /// the machine's artifact given to the hero. No visit, no movement points, no mark, no field
+    /// trusted but the two ids.
+    BuyWarMachine {
+        /// The town.
+        town: TownId,
+        /// The building, of the town's faction's record.
+        building: BuildingId,
+    },
+    /// Builds a boat at `town`'s Shipyard, the town the player's, for the part's price
+    /// (TWN-SHY-001; E09 T59a, design §111: the original's Shipyard clicked on the town screen,
+    /// `town_screen_proc`'s case 6 0x5D36B4 with `create_boat` 0x4BB250; [`crate::check_boat`]):
+    /// an empty boat of the part's type at the town's spot (TWN-SET-011), its builder the player.
+    /// No hero, no visit, no mark, no field trusted but the town's id.
+    BuildBoat {
+        /// The town.
+        town: TownId,
+    },
 }
 
 /// A hero's move between a town's two bars (TWN-ROW-002 to -004; E09 T28a, design §53).
@@ -117,7 +141,11 @@ pub enum TownHeroChange {
 /// [`Self::EmptySlot`] (E09 T38a1); for a spell book's purchase [`crate::check_spell_book`]
 /// [`Self::NoGuild`], then the game [`Self::NoHero`], [`Self::HasSpellBook`] (E09 T49b,
 /// TWN-GLD-007); for a market's window [`crate::check_market`] [`Self::NoMarket`], then
-/// [`Self::NoVisitor`] (E09 T58a1, TWN-MKT-002).
+/// [`Self::NoVisitor`] (E09 T58a1, TWN-MKT-002); for a war machine's purchase
+/// [`crate::check_war_machine`] [`Self::UnknownBuilding`], [`Self::NoWarMachine`],
+/// [`Self::NotStanding`], then the game [`Self::NoVisitor`], [`Self::HasWarMachine`] (E09 T59a,
+/// TWN-SMT-001); for a boat [`crate::check_boat`] [`Self::NotStanding`], then the game
+/// [`Self::BoatSpotTaken`] (E09 T59a, TWN-SHY-001).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TownCommandError {
     /// The town is not in the game's store.
@@ -184,6 +212,16 @@ pub enum TownCommandError {
     /// No Marketplace, Artifact Merchants or Freelancer's Guild stands in the town (TWN-MKT-002: a
     /// building of role `marketplace`, `artifact_merchants` or `freelancers`).
     NoMarket,
+    /// The building sells no war machine: it is no Blacksmith nor Ballista Yard (TWN-SMT-001).
+    NoWarMachine,
+    /// The town's hero holds the building's war machine already, worn or carried (TWN-SMT-001: the
+    /// original's Buy disabled), or has no free position for it (defensive: a war machine's
+    /// position takes it alone in the original packs).
+    HasWarMachine,
+    /// An empty boat or a hero stands on the town's spot (TWN-SHY-001, `TWN-QUIRK-19`: the
+    /// original builds over it), or the town has none (defensive: a Shipyard stands only where
+    /// the town has a spot, TWN-SET-011).
+    BoatSpotTaken,
 }
 
 impl fmt::Display for TownCommandError {
@@ -219,6 +257,9 @@ impl fmt::Display for TownCommandError {
             Self::NoHero => f.write_str("no hero stands in the town"),
             Self::HasSpellBook => f.write_str("the town's hero has a spell book"),
             Self::NoMarket => f.write_str("no market of any kind stands in the town"),
+            Self::NoWarMachine => f.write_str("the building sells no war machine"),
+            Self::HasWarMachine => f.write_str("the town's hero has the war machine"),
+            Self::BoatSpotTaken => f.write_str("the town's boat spot is taken"),
         }
     }
 }
@@ -265,6 +306,9 @@ mod tests {
             TownCommandError::NoHero,
             TownCommandError::HasSpellBook,
             TownCommandError::NoMarket,
+            TownCommandError::NoWarMachine,
+            TownCommandError::HasWarMachine,
+            TownCommandError::BoatSpotTaken,
         ];
         for error in errors {
             assert!(!error.to_string().is_empty(), "{error:?}");
@@ -316,5 +360,16 @@ mod tests {
             town: TownId::new(2),
         };
         assert_ne!(market, book);
+        // covers: TWN-SMT-001
+        let machine = TownCommand::BuyWarMachine {
+            town: TownId::new(2),
+            building,
+        };
+        assert_ne!(machine, command);
+        // covers: TWN-SHY-001
+        let boat = TownCommand::BuildBoat {
+            town: TownId::new(2),
+        };
+        assert_ne!(boat, market);
     }
 }

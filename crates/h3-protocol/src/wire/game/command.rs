@@ -144,6 +144,21 @@ pub enum TownCommand {
         /// The town.
         town: u16,
     },
+    /// Buys the war machine a building of a town of the actor's sells, for the town's hero, at
+    /// the price of the machine's creature (TWN-SMT-001: the Blacksmith, the Ballista Yard; E09
+    /// T59a, v87).
+    BuyWarMachine {
+        /// The town.
+        town: u16,
+        /// The building, as [`Self::Build`]'s.
+        building: u8,
+    },
+    /// Builds a boat on the spot of a town of the actor's at its Shipyard, for the town part's
+    /// price (TWN-SHY-001; E09 T59a, v87).
+    BuildBoat {
+        /// The town.
+        town: u16,
+    },
 }
 
 /// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v64).
@@ -817,6 +832,13 @@ pub enum TownReject {
     /// No Marketplace, Artifact Merchants or Freelancer's Guild stands in the town (TWN-MKT-002;
     /// v85).
     NoMarket {},
+    /// The building sells no war machine (TWN-SMT-001; E09 T59a, v87).
+    NoWarMachine {},
+    /// The town's hero holds the building's war machine, or has no position free for it
+    /// (TWN-SMT-001; v87).
+    HasWarMachine {},
+    /// An empty boat or a hero stands on the town's spot (TWN-SHY-001; v87).
+    BoatSpotTaken {},
 }
 
 /// Why the adventure map refused a command (`h3_adventure::AdventureCommandError`); a step is

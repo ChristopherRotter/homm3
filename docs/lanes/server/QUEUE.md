@@ -55,6 +55,12 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   (`restores`) and `h3-server`'s `tests::record` moved from 118 to **130**; all three pass over
   them, the session's bounds unmet. Their random games cast often (45 casts in
   `spells-s415-d28`), no turn longer than the duel's and garrisons' battles.
+- 2026-11-27 (the town lane, E09 T59a, `town/e09-t59a`, `cross-lane` with the user's consent;
+  **in your paths, mapped; for your review**): protocol **v87**: `TownCommand::BuyWarMachine {
+  town, building }` and `BuildBoat { town }` both ways, `TownReject::NoWarMachine`,
+  `HasWarMachine` and `BoatSpotTaken`; no new event (the machine is `HeroChanged`, the boat
+  `BoatBuilt`); the tests' round trips (174 rejections). The replay format is v29 (the goldens'
+  `format` lines only).
 - 2026-11-27 (the town lane, E09 T58b, `town/e09-t58b`, `cross-lane` with the user's consent;
   **in your paths, mapped; for your review**): protocol **v86**: `MarketAnswer::SellArtifact {
   place, take }` both ways (the wire's `ArtifactPlace`), `MarketReject::Place { place }` and

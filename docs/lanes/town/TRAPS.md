@@ -111,6 +111,15 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   the record at the faction's index first (`record_index`), +0.02 % with the market listed. A new
   listed town command reads integers derived at the build and the record once.
 
+- **A listed service asked of every owned town is dear** (E09 T59a, the war machines and the
+  boat): `legal-towns-36` on `master`'s games measured +2.79 % at the first build, each test
+  reading the town's record and its standing set; one question to the town part for both
+  (`h3_towns::service_offers`), asked only where a hero stands or the town has a boat spot (a town
+  without one stands no Shipyard, TWN-SET-011), and the town's services as one small iterator in
+  its chain (two `Chain` levels cost +0.25 %) left +1.98 %. Measure a new listed town command on
+  `master`'s games (the rollout's `choose` made to skip it, a scratch edit) against `master` built
+  in the same sandbox, whose counts drift from the committed baselines (+0.73 % here).
+
 - **CI's `bench` job stops at 60 minutes** (CI phase 1, 2026-11-25: the verify runs as the
   parallel jobs `gates`, `coverage`, `replays` and `bench`, each capped at 60 minutes and never
   raised again; `docs/05-testing.md`, "CI"): `bench-check` alone runs in `bench`, so a workload

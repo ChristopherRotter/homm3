@@ -3904,6 +3904,17 @@ fn visit_town(
     if let Some(book) = book.filter(|_| n % 8 == 7) {
         return book.clone();
     }
+    // E09 T59a: a listed war machine's purchase (TWN-SMT-001) in one step of sixteen and a listed
+    // boat (TWN-SHY-001) in another, each in a Swap's or a Leave's place, so that heroes carry the
+    // machines into battles and boats lie on the towns' spots.
+    let service = legal.iter().find(|c| match c {
+        GameCommand::Town(TownCommand::BuyWarMachine { .. }) => n % 16 == 11,
+        GameCommand::Town(TownCommand::BuildBoat { .. }) => n % 16 == 9,
+        _ => false,
+    });
+    if let Some(service) = service {
+        return service.clone();
+    }
     let row = legal.iter().find(|c| {
         matches!(c, GameCommand::Town(TownCommand::Heroes { change, .. }) if Some(*change) == wanted)
     });
@@ -6913,18 +6924,20 @@ fn check_build_boat(
 /// in `TownId` order, a build of each building of its faction's record and one past it, in index
 /// order, then (E09 T27) a recruitment at each of them, in the same order, then (E09 T38a2) a hire
 /// of each tavern slot and one past them, then (E09 T49a2) its opening, then (E09 T49b) a spell
-/// book's purchase, then (E09 T58a2) its market window, then (E09 T28a) the three hero moves.
+/// book's purchase, then (E09 T58a2) its market window, then (E09 T59a) a war machine's purchase
+/// at each building selling one, at the first building and at one past the record, and its boat,
+/// then (E09 T28a) the three hero moves.
 fn town_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
 ) -> impl Iterator<Item = (TownId, GameCommand)> + 'a {
     (0..=state.towns().len()).flat_map(move |place| {
         let town = town_id(place);
-        let buildings = state
+        let faction = state
             .towns()
             .get(town)
-            .and_then(|record| rules.towns().town(record.faction()))
-            .map_or(0, |record| record.buildings.len());
+            .and_then(|record| rules.towns().town(record.faction()));
+        let buildings = faction.map_or(0, |record| record.buildings.len());
         let ids = move || (0..=buildings).filter_map(BuildingId::from_index);
         let builds = ids().map(move |building| TownCommand::Build { town, building });
         let recruits = ids().map(move |building| TownCommand::Recruit { town, building });
@@ -6936,6 +6949,17 @@ fn town_builds<'a>(
         let book = core::iter::once(TownCommand::BuySpellBook { town });
         // E09 T58a2: its market window (TWN-MKT-002).
         let market = core::iter::once(TownCommand::Market { town });
+        // E09 T59a: its war machines (TWN-SMT-001: every building selling one, a building that
+        // sells none, one the record lacks), then its boat (TWN-SHY-001).
+        let sells = move |building: BuildingId| {
+            faction
+                .and_then(|record| record.building(building))
+                .is_some_and(|b| b.war_machine.is_some())
+        };
+        let machines = ids()
+            .filter(move |&b| b.index() == 0 || b.index() == buildings || sells(b))
+            .map(move |building| TownCommand::BuyWarMachine { town, building });
+        let boat = core::iter::once(TownCommand::BuildBoat { town });
         // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
         let rows = [
             TownHeroChange::Enter,
@@ -6949,6 +6973,8 @@ fn town_builds<'a>(
             .chain(open)
             .chain(book)
             .chain(market)
+            .chain(machines)
+            .chain(boat)
             .chain(rows)
             .map(move |command| (town, GameCommand::Town(command)))
     })
@@ -7419,6 +7445,138 @@ fn check_town_book(
     Ok(())
 }
 
+/// A listed war machine's purchase at `building` of `actor`'s `town` (E09 T59a; TWN-SMT-001, design
+/// note §110), from `state` to `after`, by an independent reading: the town is the actor's and the
+/// building stands there selling a war machine (its record's `war_machine`); the buyer is the
+/// actor's visitor, else with `TWN-QUIRK-15`'s flag off its garrison hero; it held no such artifact,
+/// worn or carried, and holds it after, every other detail of its unchanged; the price of the
+/// machine's creature paid, each resource as itself (`TWN-QUIRK-22`); every other hero, the town's
+/// record and the adventure unchanged.
+fn check_town_machine(
+    (state, after): (&GameState, &GameState),
+    rules: &GameRuleset,
+    actor: PlayerId,
+    (town, building): (TownId, BuildingId),
+) -> Result<(), TestCaseError> {
+    let was = state.adventure();
+    let index = was.map().town_object(town).unwrap();
+    prop_assert_eq!(was.owner(index), Some(actor));
+    let (core, part) = (rules.core(), rules.towns());
+    let record = state.towns().get(town).unwrap();
+    let faction = part.town(record.faction()).unwrap();
+    prop_assert!(
+        record.standing(faction).contains(building),
+        "{:?} not standing in {:?}",
+        building,
+        town
+    );
+    let artifact = faction.building(building).and_then(|b| b.war_machine);
+    let artifact = artifact.ok_or_else(|| fail(format!("{building:?} sells none")))?;
+    let creature = core.artifact(artifact).and_then(|a| a.war_machine).unwrap();
+    let price = &core.creature(creature).unwrap().cost;
+    let own =
+        |hero: Option<HeroId>| hero.filter(|&h| was.hero(h).is_some_and(|on| on.owner == actor));
+    let visitor = own(was.town_visitor(town));
+    let garrison = was
+        .town_hero(town)
+        .filter(|on| on.owner == actor)
+        .map(|on| on.id);
+    let buyer = if core.quirks().is_enabled(h3_content::VISITOR_ONLY_TRADES) {
+        visitor
+    } else {
+        visitor.or(garrison)
+    };
+    let buyer = buyer.ok_or_else(|| fail(format!("no buyer at {town:?}")))?;
+    let mut details = state.hero(buyer).unwrap().clone();
+    let held = details
+        .worn
+        .iter()
+        .flatten()
+        .chain(&details.backpack)
+        .any(|item| item.artifact == artifact);
+    prop_assert!(!held, "{:?} held {:?}", buyer, artifact);
+    h3_heroes::apply_change(&mut details, core, HeroChange::AddArtifact(artifact.into()));
+    prop_assert!(
+        details
+            .worn
+            .iter()
+            .flatten()
+            .any(|item| item.artifact == artifact),
+        "{:?} not worn",
+        artifact
+    );
+    prop_assert_eq!(after.hero(buyer), Some(&details));
+    let others = state.heroes().iter().zip(after.heroes()).enumerate();
+    for (_, (then, now)) in others.filter(|&(i, _)| i != usize::from(buyer.raw())) {
+        prop_assert_eq!(then, now);
+    }
+    prop_assert_eq!(after.towns().get(town), Some(record));
+    prop_assert_eq!(after.adventure(), was);
+    let mut treasury = state.treasury(actor).unwrap().to_vec();
+    for &(r, amount) in price {
+        treasury[r.index()] -= amount;
+    }
+    prop_assert_eq!(after.treasury(actor).unwrap(), &treasury[..]);
+    Ok(())
+}
+
+/// A listed boat at `actor`'s `town` (E09 T59a; TWN-SHY-001, design note §111), from `state` to
+/// `after`, by an independent reading: the town is the actor's, a building of role `shipyard`
+/// stands there, and its spot (TWN-SET-011) held no empty boat and no hero (`TWN-QUIRK-19`); after,
+/// one more boat, empty, of the part's type, on the spot, facing 2, the actor's, without a captain,
+/// every other boat and every hero as they were; the part's price paid; the towns unchanged.
+fn check_town_boat(
+    (state, after): (&GameState, &GameState),
+    rules: &GameRuleset,
+    actor: PlayerId,
+    town: TownId,
+) -> Result<(), TestCaseError> {
+    let was = state.adventure();
+    let index = was.map().town_object(town).unwrap();
+    prop_assert_eq!(was.owner(index), Some(actor));
+    let part = rules.towns();
+    let record = state.towns().get(town).unwrap();
+    let faction = part.town(record.faction()).unwrap();
+    let standing = record.standing(faction);
+    prop_assert!(
+        standing
+            .iter()
+            .any(|b| faction.building(b).is_some_and(|b| b.roles.shipyard)),
+        "no Shipyard in {:?}",
+        town
+    );
+    let spot = was.map().town_boat_spot(town).unwrap();
+    prop_assert!(!was.is_empty_boat(spot));
+    prop_assert!(was.heroes().iter().all(|on| on.pos != spot));
+    let now = after.adventure();
+    let boats: Vec<_> = now.boats().collect();
+    let before: Vec<_> = was.boats().collect();
+    prop_assert_eq!(boats.len(), before.len() + 1);
+    prop_assert_eq!(&boats[..before.len()], &before[..]);
+    let params = part.params().unwrap();
+    let launched = h3_adventure::Boat {
+        tile: spot,
+        kind: params.boat_type,
+        facing: 2,
+        owner: Some(actor),
+        captain: None,
+        aboard: false,
+        gone: false,
+    };
+    prop_assert_eq!(boats[before.len()].1, &launched);
+    prop_assert!(now.is_empty_boat(spot));
+    prop_assert_eq!(now.heroes(), was.heroes());
+    prop_assert_eq!(now.town_heroes(), was.town_heroes());
+    prop_assert_eq!(after.towns(), state.towns());
+    prop_assert_eq!(after.heroes(), state.heroes());
+    let mut treasury = state.treasury(actor).unwrap().to_vec();
+    for &(r, amount) in &params.boat_price {
+        treasury[r.index()] -= amount;
+    }
+    prop_assert_eq!(after.treasury(actor).unwrap(), &treasury[..]);
+    Ok(())
+}
+
 /// A listed hire of `actor`'s tavern slot `slot` at `town` (E09 T38a2; TWN-TAV-003), from
 /// `state` to `after`, by an independent reading: the slot's hero in the actor's tavern view
 /// before stands on the town's entrance after as its visitor, the actor's, with the view's army,
@@ -7628,6 +7786,16 @@ fn check_town_builds(
             // E09 T58a2: a listed market window, by an independent reading of the town's heroes.
             GameCommand::Town(TownCommand::Market { .. }) => {
                 check_town_market((state, &probe), rules, (actor, town), &events, true)?;
+                continue;
+            }
+            // E09 T59a: a listed war machine's purchase, by an independent reading of the town's
+            // hero and the treasury; a listed boat, of the town's spot and the boats.
+            GameCommand::Town(TownCommand::BuyWarMachine { building, .. }) => {
+                check_town_machine((state, &probe), rules, actor, (town, building))?;
+                continue;
+            }
+            GameCommand::Town(TownCommand::BuildBoat { .. }) => {
+                check_town_boat((state, &probe), rules, actor, town)?;
                 continue;
             }
             _ => return Err(fail(format!("{command:?}"))),
@@ -8555,6 +8723,10 @@ fn check_conservation(
                 _ => None,
             }
         }
+        // E09 T59a: a town's boat, the part's price (TWN-SHY-001).
+        GameCommand::Town(TownCommand::BuildBoat { .. }) => {
+            rules.towns().params().map(|params| &params.boat_price)
+        }
         _ => None,
     };
     // E09 T18b2b: a town's build pays its building's price (TWN-BLD-006).
@@ -8565,6 +8737,17 @@ fn check_conservation(
             .and_then(|town| rules.towns().town(town.faction()))
             .and_then(|record| record.building(building))
             .map(|building| &building.cost),
+        // E09 T59a: a war machine's, its creature's cost (TWN-SMT-001).
+        GameCommand::Town(TownCommand::BuyWarMachine { town, building }) => before
+            .towns()
+            .get(town)
+            .and_then(|town| rules.towns().town(town.faction()))
+            .and_then(|record| record.building(building))
+            .and_then(|building| building.war_machine)
+            .and_then(|artifact| rules.core().artifact(artifact))
+            .and_then(|artifact| artifact.war_machine)
+            .and_then(|creature| rules.core().creature(creature))
+            .map(|info| &info.cost),
         _ => None,
     };
     // E09 T38a2: a town's hire pays the part's price (TWN-TAV-003); (E09 T40b) a map Tavern's too
@@ -10570,9 +10753,15 @@ fn check_guild_refusals(
     let mut hashed = false;
     for (k, actor) in (0..).zip(actors) {
         let &town = spread(&towns, 1, hash.wrapping_add(k)).next().unwrap();
+        // E09 T59a: and a war machine's purchase and a boat (TWN-SMT-001, TWN-SHY-001).
         let commands = [
             TownCommand::Open { town },
             TownCommand::BuySpellBook { town },
+            TownCommand::BuyWarMachine {
+                town,
+                building: BuildingId::from_index(0).unwrap(),
+            },
+            TownCommand::BuildBoat { town },
         ];
         for command in commands.map(GameCommand::Town) {
             let (mut probe, mut events) = (state.clone(), Vec::new());

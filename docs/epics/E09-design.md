@@ -3944,6 +3944,14 @@ Decision 211 (the original's own Buy-or-Cancel dialog, §4.3, not the hire dialo
 - **The Stronghold sells both** (§4.6): its Blacksmith the Ammo Cart, its Ballista Yard the
   Ballista, each its own command (the building named).
 - Its owner is the town's (the original tests none: an ally's town, §101).
+- *As built* (T59a, decision 227): `h3_towns::check_war_machine(town, part, core, building)` →
+  `WarMachineSale { artifact, price }` (`UnknownBuilding`, then `NoWarMachine`, then
+  `NotStanding`: the recruitment's order), the standing read through the part's derived
+  `ServiceRoles` (unhashed, as `MarketRoles`); `war_machine_buildings` the listing's standing
+  sellers. The game's `town/smith.rs`: the hero is the market window's (`market::window_hero`, so
+  `TWN-QUIRK-15`'s flag and `TWN-STUB-21` as the window's), `HasWarMachine` for a machine held worn
+  or carried or no free position (one refusal: the room is defensive), then `CannotPay`; paid, then
+  `HeroChanged`. Listed after the market window, each seller in the record's order.
 
 ### 111. The Shipyard's boat (TWN-SHY-001; `TownCommand::BuildBoat { town }`; TWN-SET-011 amended)
 
@@ -3960,6 +3968,12 @@ Decision 211 (the original's own Buy-or-Cancel dialog, §4.3, not the hire dialo
   hero, any time of the turn, several a day while the spot frees (no day mark).
 - **The ship (20)** is the spot's occupancy, derived where a client asks (the adventure's boats and
   heroes on the spot), never a building of the store (T-27, decision 207).
+- *As built* (T59a, decision 227): `h3_towns::check_boat` → `BoatSale { price, boat_type }`
+  (`NotStanding`); the adventure's `town/boat.rs` (the town lane's): `free_town_boat_spot` (the
+  spot while no empty boat and no hero stands on it; a town without one as taken) and
+  `build_town_boat` (E08's `launch`, now `pub(crate)`, and `BoatBuilt` by `viewers`); the game's
+  `town/boat.rs`: `NotStanding`, `BoatSpotTaken`, `CannotPay` in this order, launched, then paid.
+  Listed after the town's war machines.
 
 ### 112. The Magic University (TWN-UNI-001; `TownCommand::University { town, hero }`; GAM-DEC-006 amended)
 
@@ -4037,7 +4051,13 @@ Decision 210 (the original's town University runs the map's dialog functions, §
   `ENTRY_COUNT` 168, encoding **v23**; the protocol **v86** (`MarketAnswer::SellArtifact`,
   `MarketReject::Place`, `NotTradable`, `MarketScreen::SellArtifact`,
   `MarketWindow::artifact_sales`); the word `answer market sell-artifact <place> <take>` (the
-  place as the management lines', `w<position>` or `b<index>`; format **v28**).
+  place as the management lines', `w<position>` or `b<index>`; format **v28**). *As built* (T59a,
+  decision 227): the machines' 2 from `WAR_MACHINE` (168: the first and the second of the town's
+  record's buildings with a `war_machine`, in the record's order, standing or not; a third has
+  none) and the boat's `TOWN_BOAT` (170), each by its town's entrance, building 0; `ENTRY_COUNT`
+  171, encoding **v24**; the protocol **v87** (`TownCommand::BuyWarMachine`, `BuildBoat`,
+  `TownReject::NoWarMachine`, `HasWarMachine`, `BoatSpotTaken`); the words `town machine <town>
+  <building>` and `town boat <town>` (format **v29**).
 - **The protocol** (the server lane's paths, `cross-lane`): the decisions' places (`MarketWindow`'s
   object or town, its hero optional; the University's), `SellArtifact` with its refusals, the five
   commands with their refusals, the events' places; the next version per task at merge.

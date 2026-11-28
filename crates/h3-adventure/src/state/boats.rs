@@ -382,8 +382,9 @@ impl AdventureState {
     /// original's `create_boat` 0x4BB250 from the boat dialog): an empty boat of type `kind` on
     /// `tile`, facing [`SETUP_FACING`], its owner `owner` and no captain, at the next boat index;
     /// the first boat of a map without boats makes its records and grid. No bound on their
-    /// number (`ADV-QUIRK-32`). The caller has checked that the tile is free water.
-    pub(super) fn launch(&mut self, tile: Pos, kind: u8, owner: PlayerId) {
+    /// number (`ADV-QUIRK-32`). The caller has checked that the tile is free water (since E09
+    /// T59a also a town's Shipyard, `town/boat.rs`, TWN-SHY-001).
+    pub(crate) fn launch(&mut self, tile: Pos, kind: u8, owner: PlayerId) {
         let map = &self.map;
         let boats = self.boats.get_or_insert_with(|| Boats {
             records: Table::new(),
