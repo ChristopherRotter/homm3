@@ -171,6 +171,7 @@ fn threats(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Threats 
                     fog: SearchFog::Computer,
                     window: None,
                     jumps: SearchJumps::default(),
+                    open: false,
                 };
                 adventure.computer_search(core, part, state.heroes(), &start, &NoAsks)
             });

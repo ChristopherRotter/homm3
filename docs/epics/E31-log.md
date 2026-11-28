@@ -973,3 +973,56 @@ newest last. Grep the task id (`## T1a1a`); never read whole.
   not staged (the PC had left); every crate's `original_data` check run by hand passed (the
   computer on all 160 shipped maps, 800 games) and `exe.py check` agrees: coverage 23 minutes,
   determinism 7, bench-check 19.
+
+## T2i — the planning (2026-11-28, increment 2)
+
+- **Whole** (AI-Q41, after T2i0): 11 functions, about 2 900 instructions, and the search loop of
+  `ai_hero_search_and_walk` 0x5267B0. A cloud clone; `Heroes3.exe`, the two bitmap LODs,
+  `maps.tar` and `extracted.tar` staged from the user's repo folder at the start (the PC behind
+  GitHub by #1222, nothing uncommitted). The VM restarted once and took the setup's baseline;
+  CI's green run on `master` (8f023a7) stood for it.
+- **Readings:** the main session read the value field and the choice of `ai_hero_destination`
+  0x42E0B0 and the search loop; a fresh reader blind-confirmed §5.5's #1 (the claimed classes are
+  0 to 36 by the list's count, 0x428071..0x42809E) and #2 (the claim's offset +0x41 less the
+  points left when not larger, a 16-bit sum kept when unsigned-less, 0x42F82E..0x42F925); the
+  worker read the rest whole. New against the survey (§1.9 corrected): the score reads the field,
+  key and danger at the source's place when the cost moves (0x42FA0C..0x42FA6E); the guard's term
+  is the object value at the guard's tile, for every entered class; the softened danger is written
+  into the search's node (0x42FACF), so a later candidate there reads it softened; near needs both
+  the node's and the candidate's cost within 21 %, or the node reached from the hero's tile on an
+  entrance; the danger map's and the claims' searches read no danger (the buffer is set only at
+  0x526568..0x526580); the claims use the reached list; Summon Boat's test (0x4E5550) is the cost
+  against the mana without the +20; the Grail step is 0x42F35A..0x42F54E and skipped while a town
+  is threatened; the candidates and the field read at most 32 768 (16-bit counters).
+- **Built** (one worker sub-agent on the main session's fixed design, then the main session's
+  review): `computer/plan.rs` (the search loop, `Outcome` nothing / waits / walks; one run of the
+  destination with the step off an entrance; the choice; CPU-PLN-006, -008), `plan/danger.rs`
+  (CPU-PLN-001), `plan/reach.rs` (the mode-4 jumps with Summon Boat's test, CPU-PLN-007; the
+  hero's search with the danger and fight-answer asks, the claims and the class table, CPU-PLN-002;
+  the candidates, CPU-PLN-003), `plan/field.rs` (the value field, CPU-PLN-004; the score with its
+  draw 76 to 100, CPU-PLN-005). The memory keeps each hero's plan (destination, cost beyond, must-go;
+  encoding v5), every must-go cleared at a turn's start and the plans of heroes the player no
+  longer owns dropped. `turn.rs` builds the danger map and plans on each hero's turn; the hero is
+  then done (the walk, the boat marks and the reveal: AI-STUB-2, narrowed). `SearchStart::open`
+  (`cross-lane`, AI-Q42): the value field's local search starts with its tile read as no entrance.
+  Every `expect(dead_code)` lifted. `POLICY_VERSION` stays 1 (no command changes; the draws are
+  the computer's stream). The Grail target and step stay in AI-STUB-15 (no Grail on the map, no
+  obelisks: both would be dead).
+- **Agent decisions (change freely):** the claims' class numbers split the engine's merged kinds by
+  their parameters (a bank deck, coast or looted; a gift of Attack; the Faerie Ring on water; an
+  Oasis of 800 points or more; a border guard 9), the Watering Hole 31, any "other" class past 36;
+  a plan kept only while its destination is some; Summon Boat's boat any engine boat, a free record
+  the boats in use below `boats_most`; the danger map on every hero's turn (the original's for a
+  newly selected hero: the same until the walk); the jump spells found by their adventure effect.
+- **Tests:** `plan/tests.rs` 17 (hand-computed: the class table, the danger map's add and its
+  −1 000 000 000 and the Easy skip, the jumps, the claims' offset and its wrap, each candidate case,
+  the field's m and its division, the score's cases and both draws, every arm of the choice and the
+  step-off, the loop's doubling, five runs, nothing and day 7), the memory's encoding both ways,
+  `search/tests.rs` one new (the open start both ways); `h3-game`'s computer tests 106 in 24 s,
+  `h3-sim`'s computer property tests 82 s. Coverage 100 % lines and regions of every touched file
+  from its crate's own tests.
+- **The speed:** `computer-turns-towns-36` 1 236 132 835 to 5 783 230 233 Ir (+368 %, re-baselined
+  with its cause: the planning; about 25.8 M Ir a turn, inside the 50 ms budget); `reach-xl-144`
+  +0.03 %. Searches without asks (the modes 1 to 3 with the start's threat fold) about 63 % of the
+  count, the hero's mode-4 search 20 %, the danger map 12 %, the search's read-ahead 10 %, the
+  explored test 7 %: tuning targets for T2j, whose walk searches again.

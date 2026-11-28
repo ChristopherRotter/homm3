@@ -7,8 +7,8 @@
 //! What the frame calls and the engine or E31 has not built yet is stubbed: the middle
 //! (`AI-STUB-3`, increment 3; the start's records since T2d, `super::start`), the town visit
 //! (`AI-STUB-4`, increment 3),
-//! the patrol (`AI-STUB-5`: no patrol in the game state), and each hero's search and walk
-//! (`AI-STUB-2`, T2i and T2j): until then every hero finds no destination and is done at once.
+//! the patrol (`AI-STUB-5`: no patrol in the game state), and each hero's walk (`AI-STUB-2`,
+//! T2j): since T2i each hero plans (`super::plan`) and is then done.
 
 use h3_adventure::{HeroOnMap, army_value};
 use h3_content::Ruleset;
@@ -17,7 +17,11 @@ use h3_heroes::HeroDetails;
 use h3_kernel::Rng;
 use h3_towns::{TownCommand, TownHeroChange};
 
-use super::memory::{Memory, Pass, Turn};
+use super::artifacts::Valued;
+use super::fight::Fighter;
+use super::memory::{Memory, Pass, Plans, Turn};
+use super::plan::{self, Planner};
+use super::spells;
 use crate::{GameCommand, GameRuleset, GameState};
 
 /// The player's heroes on the map from which `ai_next_hero` 0x526A90 sends no garrison hero out
@@ -27,8 +31,9 @@ const HEROES_SENT_OUT_BELOW: usize = 8;
 
 /// The command of `player`'s turn now, its frame in `memory`: a hero's garrison step or a
 /// garrison hero sent out, else, once both passes find no hero, `EndTurn` (CPU-TRN-002; survey
-/// §1.1). A turn of another day than the memory's starts anew ([`start`]). Draws from `rng` come
-/// with the planning (T2i); the frame draws nothing (survey §1.1).
+/// §1.1). A turn of another day than the memory's starts anew ([`start`]), the kept plans of the
+/// heroes `player` no longer owns (on the map or in a town's garrison) dropped. The frame draws
+/// nothing (survey §1.1); the planning draws from `rng` (T2i).
 // rule: CPU-TRN-002
 pub(super) fn step(
     state: &GameState,
@@ -37,7 +42,13 @@ pub(super) fn step(
     memory: &mut Memory,
     rng: &mut Rng,
 ) -> GameCommand {
-    let turn = memory.turn_of(state.day(), || start(state, rules, player));
+    let adventure = state.adventure();
+    let owns = |hero| {
+        let on_map = adventure.heroes().iter().filter(|h| h.owner == player);
+        let held = towns_of(state, player).filter_map(|town| adventure.town_hero(town));
+        on_map.chain(held).any(|h| h.id == hero)
+    };
+    let (turn, plans) = memory.turn_of(state.day(), || start(state, rules, player), owns);
     loop {
         let pass = turn.pass;
         if pass == Pass::Over {
@@ -45,7 +56,8 @@ pub(super) fn step(
         }
         match next_hero(state, rules, player, turn) {
             Pick::Hero(hero, alone) => {
-                if let Some(command) = hero_turn(state, rules, player, turn, (hero, alone), rng) {
+                let frame = (&mut *turn, &mut *plans);
+                if let Some(command) = hero_turn(state, rules, player, frame, (hero, alone), rng) {
                     return command;
                 }
             }
@@ -192,29 +204,51 @@ pub(super) fn counted(value: u8, floor: u16) -> u16 {
 /// first a visit of the town on whose entrance it stands (`ai_town_visit` 0x5253D0, increment 3:
 /// `AI-STUB-4`) and the patrol of radius 0 that never moves (`AI-STUB-5`); then with points left
 /// (every hero picked has them until the visit and the walk spend points) the selection, the
-/// danger map, the boat marks and the search and the walk (`ai_hero_search_and_walk` 0x5267B0,
-/// [`search_and_walk`]); last [`garrison`]'s step.
+/// danger map, the boat marks and the search and the walk ([`search_and_walk`]); last
+/// [`garrison`]'s step.
 // rule: CPU-TRN-004
 fn hero_turn(
     state: &GameState,
     rules: &GameRuleset,
     player: PlayerId,
-    turn: &mut Turn,
+    (turn, plans): (&mut Turn, &mut Plans),
     (hero, alone): (&HeroOnMap, bool),
     rng: &mut Rng,
 ) -> Option<GameCommand> {
     // stub: AI-STUB-4
     // stub: AI-STUB-5
-    search_and_walk(turn, hero.id, alone, rng);
+    search_and_walk(state, rules, (turn, plans), (hero, alone), rng);
     garrison(state, rules, player, turn, hero)
 }
 
-/// A hero's search and walk (`ai_hero_search_and_walk` 0x5267B0; survey §1.4): until the
-/// planning and the walk (T2i, T2j) it finds no destination, so the hero is done (put asleep) and
-/// its destination cleared (none kept yet).
-fn search_and_walk(turn: &mut Turn, hero: HeroId, _alone: bool, _rng: &mut Rng) {
-    // stub: AI-STUB-2
-    turn.sleep(hero);
+/// A hero's danger map and its search and walk (`ai_hero_turn` 0x5261F0 at 0x5263B1 and
+/// 0x526571; survey §1.3, §1.4): the danger map (`plan::danger_map`), on every hero's turn (the
+/// original's only for a hero newly selected: a hero is not picked twice in a turn until the walk,
+/// T2j), the boat marks (`AI-STUB-2`) and the planning (`plan::search_and_walk`, on the hero's
+/// values' reads: the turn start's record and weights, its caster record); then the hero is done,
+/// whatever the planning gives (the walk, T2j: `AI-STUB-2`).
+fn search_and_walk(
+    state: &GameState,
+    rules: &GameRuleset,
+    (turn, plans): (&mut Turn, &mut Plans),
+    (hero, alone): (&HeroOnMap, bool),
+    rng: &mut Rng,
+) {
+    state.hero(hero.id).into_iter().for_each(|details| {
+        let fighter = Fighter {
+            on_map: hero,
+            details,
+        };
+        let danger = plan::danger_map(state, rules, fighter);
+        // stub: AI-STUB-2
+        let record = &turn.record;
+        let weights = record.weights(rules);
+        let caster = spells::record(state, rules, fighter);
+        let valued = Valued::with(state, rules, (record, &weights), (fighter, caster));
+        let planner = Planner::new((state, rules), &valued, (record, &danger, turn.flag));
+        let _ = plan::search_and_walk(&planner, plans, alone, rng);
+    });
+    turn.sleep(hero.id);
 }
 
 /// The garrison step at the end of `hero`'s turn (`ai_hero_turn` 0x52667F; survey §1.3 step 7):

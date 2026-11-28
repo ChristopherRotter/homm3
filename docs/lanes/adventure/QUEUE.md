@@ -27,6 +27,12 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
 
 ## Inbox
 
+- 2026-11-28 (the AI lane, E31 T2i, `ai/e31-t2i`, `cross-lane` with the user's consent, AI-Q42;
+  **in your paths, for your review; nothing to do**): `h3_adventure::search`'s `SearchStart` has a
+  new field `open` (the start tile read as no entrance for the whole search, as the original's
+  value field clears its map item's entrance bit around a local search, 0x42E263; CPU-PTH-001);
+  every other literal passes `false`, so no search of yours changes (`reach-xl-144` +0.03 %).
+
 - 2026-11-27 (the AI lane, E31 T2i0, `ai/e31-t2i0`, `cross-lane` with the user's consent, AI-Q41;
   **in your paths, for your review; no rule of yours changed**): a new module
   `h3_adventure::search` (`src/search.rs` and `src/search/`, its own files) holds the original's

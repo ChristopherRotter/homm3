@@ -26,7 +26,7 @@ mod fights;
 mod visits;
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
 
 use h3_adventure::{
     Find, Gives, HeroOnMap, MarketScreen, MonolithWay, ObjectKind, ObjectTypeId, Pos, Turn,
@@ -332,6 +332,17 @@ pub(super) fn at<'a>(state: &'a GameState, rules: &'a GameRuleset, pos: Pos) -> 
     if let Some(hero) = adventure.heroes().iter().find(|h| h.pos == pos) {
         return Some(At::Hero(hero));
     }
+    beneath(state, rules, pos)
+}
+
+/// What stands at `pos` beneath a hero on it (the hero hidden, `hero_hide` 0x4D76E0): an empty
+/// boat, else the object a visit from it meets, as [`at`].
+pub(super) fn beneath<'a>(
+    state: &'a GameState,
+    rules: &'a GameRuleset,
+    pos: Pos,
+) -> Option<At<'a>> {
+    let adventure = state.adventure();
     if adventure.is_empty_boat(pos) {
         return Some(At::Boat);
     }
@@ -398,8 +409,8 @@ pub(super) fn value(asking: Asking<'_, '_>, pos: Pos, cost: &mut i32) -> i32 {
 }
 
 /// The computer's answer to a guarded object's question (`ai_fight_answer` 0x52BD10; CPU-OBJ-001):
-/// the object value of `pos` with a scratch cost of 0, as it is. Its callers are the answers
-/// (increment 4).
+/// the object value of `pos` with a scratch cost of 0, as it is. Asked by the hero's search in
+/// mode 4 (the planning, T2i: a guard's step); its other callers are the answers (increment 4).
 // rule: CPU-OBJ-001
 pub(super) fn fight_answer(asking: Asking<'_, '_>, pos: Pos) -> i32 {
     let mut cost = 0;

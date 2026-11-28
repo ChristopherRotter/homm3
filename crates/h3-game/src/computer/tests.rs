@@ -20,7 +20,7 @@ use h3_kernel::{Rng, StreamId};
 use h3_towns::{TownCommand, TownHeroChange};
 use proptest::prelude::*;
 
-use super::memory::{Pass, Turn};
+use super::memory::{Pass, Plan, Turn};
 use super::spells::SpellGains;
 use super::start::{self, HeroValues, Record};
 use super::turn::{Pick, counted, next_hero};
@@ -108,7 +108,10 @@ fn turn(state: &mut GameState, rules: &GameRuleset, memory: &mut Memory) -> Vec<
 
 /// The memory's turn, which [`Memory::turn_of`] gives for its own day.
 fn frame(memory: &mut Memory, day: u32) -> Turn {
-    memory.turn_of(day, || panic!("no turn")).clone()
+    memory
+        .turn_of(day, || panic!("no turn"), |_| true)
+        .0
+        .clone()
 }
 
 // covers: CPU-TRN-001, CPU-TRN-002, CPU-TRN-004
@@ -160,7 +163,8 @@ fn a_turn_without_a_step_ends_at_once_and_a_new_day_starts_a_new_turn() {
             ..played
         }
     );
-    assert_eq!(rng, stream(), "the frame draws nothing");
+    // The frame draws nothing; the planning draws once a scored candidate (CPU-PLN-005).
+    assert_ne!(rng, stream());
 }
 
 // covers: CPU-TRN-002
@@ -324,14 +328,18 @@ fn the_weakest_hero_by_its_primary_skills_plays_first_a_tie_to_the_earlier_in_th
         setup.heroes[0].details.primary = Some([5, 5, 5, 5]);
     });
     let mut memory = Memory::new();
-    let turn = memory.turn_of(1, || Turn {
-        day: 1,
-        pass: Pass::First,
-        flag: false,
-        next: None,
-        asleep: Vec::new(),
-        record: Record::default(),
-    });
+    let (turn, _) = memory.turn_of(
+        1,
+        || Turn {
+            day: 1,
+            pass: Pass::First,
+            flag: false,
+            next: None,
+            asleep: Vec::new(),
+            record: Record::default(),
+        },
+        |_| true,
+    );
     let mut order = Vec::new();
     while let Pick::Hero(hero, alone) = next_hero(&game, &rules, RED, turn) {
         order.push((hero.id.raw(), alone));
@@ -452,7 +460,7 @@ fn a_battle_is_the_battle_seats_and_a_level_up_is_answered_while_it_holds_the_ga
 fn holding(turn: Turn) -> Memory {
     let mut memory = Memory::new();
     let day = turn.day;
-    memory.turn_of(day, || turn);
+    memory.turn_of(day, || turn, |_| true);
     memory
 }
 
@@ -556,12 +564,45 @@ fn sample_record() -> Record {
     }
 }
 
+/// The two kept plans of [`the_memory_has_one_encoding_and_refuses_any_other_bytes`].
+fn sample_plans() -> [(HeroId, Plan); 2] {
+    [
+        (
+            HeroId::new(1),
+            Plan {
+                destination: Pos::new(0x0102, 3, 1),
+                beyond: 0x0405,
+                must_go: true,
+            },
+        ),
+        (
+            HeroId::new(0x0203),
+            Plan {
+                destination: Pos::new(4, 5, 0),
+                beyond: 0,
+                must_go: false,
+            },
+        ),
+    ]
+}
+
+/// A memory holding `turn` and the kept `plans`.
+fn planned(turn: Turn, plans: &[(HeroId, Plan)]) -> Memory {
+    let mut memory = Memory::new();
+    let day = turn.day;
+    let (_, kept) = memory.turn_of(day, || turn, |_| true);
+    for &(hero, plan) in plans {
+        kept.set(hero, Some(plan));
+    }
+    memory
+}
+
 // covers: CPU-TRN-005
 #[test]
 fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let empty = Memory::new();
     assert_eq!(empty, Memory::default());
-    assert_eq!(empty.encode(), [4, 0, 0, 0, 0]);
+    assert_eq!(empty.encode(), [5, 0, 0, 0, 0, 0, 0, 0, 0]);
     let turn = Turn {
         day: 0x0102_0304,
         pass: Pass::Second,
@@ -570,10 +611,10 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
         asleep: vec![HeroId::new(1), HeroId::new(0x0203)],
         record: sample_record(),
     };
-    let full = holding(turn.clone());
+    let full = planned(turn.clone(), &sample_plans());
     let bytes = full.encode();
     let frame: [u8; 22] = [
-        4, 0, 0, 0, 1, 4, 3, 2, 1, 1, 1, 1, 6, 5, 2, 0, 0, 0, 1, 0, 3, 2,
+        5, 0, 0, 0, 1, 4, 3, 2, 1, 1, 1, 1, 6, 5, 2, 0, 0, 0, 1, 0, 3, 2,
     ];
     let record: [u8; 88] = [
         0xFE, 0xFF, 0xFF, 0xFF, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0xFF, 0xFF, 0xFF,
@@ -581,7 +622,10 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
         0x80, 0x3F, 10, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 12, 0, 0, 0, 3, 0, 0, 0, 4, 3, 2, 1, 1, 0,
         0, 0, 9, 0, 0xA0, 0x25, 0x26, 0, 1, 0, 0, 0, 0, 0, 2,
     ];
-    assert_eq!(bytes, [&frame[..], &record[..]].concat());
+    let plans: [u8; 24] = [
+        2, 0, 0, 0, 1, 0, 2, 1, 3, 0, 1, 5, 4, 1, 3, 2, 4, 0, 5, 0, 0, 0, 0, 0,
+    ];
+    assert_eq!(bytes, [&frame[..], &record[..], &plans[..]].concat());
     assert_eq!(Memory::decode(&bytes), Ok(full.clone()));
     assert_eq!(Memory::decode(&empty.encode()), Ok(empty.clone()));
     // The hash is FNV-1a over the encoding.
@@ -590,8 +634,8 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     assert_eq!((full.hash(), hash_of(&full)), (h.finish(), h.finish()));
     assert_ne!(full.hash(), empty.hash());
     // Every shorter prefix, a longer one and each value out of its range are refused: the tags,
-    // the pass, the flag, the done heroes' order, the rate's row (0 and 11), a threat of 0 and a
-    // town's count of 0.
+    // the pass, the flag, the done heroes' order, the rate's row (0 and 11), a threat of 0, a
+    // town's count of 0, a must-go of 2 and the plans' heroes' order.
     let malformed = Err(MemoryError::Malformed);
     for end in 0..bytes.len() {
         assert_eq!(Memory::decode(&bytes[..end]), malformed, "{end}");
@@ -599,7 +643,7 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     let mut longer = bytes.clone();
     longer.push(0);
     assert_eq!(Memory::decode(&longer), malformed);
-    let edits: [(usize, &[u8]); 9] = [
+    let edits: [(usize, &[u8]); 11] = [
         (4, &[2]),
         (9, &[3]),
         (10, &[2]),
@@ -609,6 +653,8 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
         (54, &[11]),
         (99, &[0, 0, 0, 0]),
         (109, &[0]),
+        (123, &[2]),
+        (124, &[1, 0]),
     ];
     for (at, values) in edits {
         let mut edited = bytes.clone();
@@ -635,10 +681,47 @@ fn the_memory_has_one_encoding_and_refuses_any_other_bytes() {
     }
     let none_sent = holding(Turn { next: None, ..turn });
     assert_eq!(Memory::decode(&none_sent.encode()), Ok(none_sent));
+    // Without a turn, plans only.
+    let mut alone = bytes[..4].to_vec();
+    alone.push(0);
+    alone.extend_from_slice(&plans);
+    let decoded = Memory::decode(&alone).unwrap();
+    assert_eq!(decoded.encode(), alone);
     let mut other = bytes;
     other[0] = 1;
     assert_eq!(Memory::decode(&other), Err(MemoryError::Version(1)));
-    assert_eq!(MEMORY_ENCODING_VERSION, 4);
+    assert_eq!(MEMORY_ENCODING_VERSION, 5);
+}
+
+// covers: CPU-TRN-005
+#[test]
+fn a_new_turn_clears_the_must_goes_and_drops_the_plans_of_heroes_not_owned() {
+    let [(one, plan), (other, kept)] = sample_plans();
+    let day = |day| Turn {
+        day,
+        pass: Pass::First,
+        flag: false,
+        next: None,
+        asleep: Vec::new(),
+        record: Record::default(),
+    };
+    let mut memory = planned(day(1), &sample_plans());
+    // The same day's turn goes on: the plans stay.
+    let (_, plans) = memory.turn_of(1, || panic!("no turn"), |_| false);
+    assert_eq!((plans.get(one), plans.get(other)), (Some(plan), Some(kept)));
+    // A new day's: the hero not owned loses its plan, the other its must-go.
+    let (_, plans) = memory.turn_of(2, || day(2), |hero| hero == one);
+    let cleared = Plan {
+        must_go: false,
+        ..plan
+    };
+    assert_eq!((plans.get(one), plans.get(other)), (Some(cleared), None));
+    // A plan replaced, then dropped; dropping none changes nothing.
+    plans.set(one, Some(kept));
+    assert_eq!(plans.get(one), Some(kept));
+    plans.set(one, None);
+    plans.set(other, None);
+    assert_eq!(plans.get(one), None);
 }
 
 proptest! {
@@ -646,9 +729,21 @@ proptest! {
     #[test]
     fn a_memory_decodes_from_its_encoding_and_bytes_decode_only_to_theirs(
         turn in proptest::option::of(turn_strategy()),
+        plans in proptest::collection::btree_map(
+            any::<u16>(),
+            (any::<(u16, u16, u8, u16)>(), any::<bool>()),
+            0..4,
+        ),
         bytes in proptest::collection::vec(any::<u8>(), 0..120),
     ) {
-        let memory = turn.map_or_else(Memory::new, holding);
+        let plans: Vec<(HeroId, Plan)> = plans
+            .into_iter()
+            .map(|(hero, ((x, y, level, beyond), must_go))| {
+                let destination = Pos::new(x, y, level);
+                (HeroId::new(hero), Plan { destination, beyond, must_go })
+            })
+            .collect();
+        let memory = turn.map_or_else(Memory::new, |turn| planned(turn, &plans));
         prop_assert_eq!(Memory::decode(&memory.encode()), Ok(memory.clone()));
         let mut prefixed = MEMORY_ENCODING_VERSION.to_le_bytes().to_vec();
         prefixed.extend_from_slice(&bytes);

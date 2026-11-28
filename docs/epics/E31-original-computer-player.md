@@ -2,7 +2,7 @@
 
 Status: **in progress** since 2026-11-23 (T1a1a; refined 2026-11-21, AI-Q22); increment 1 closed
 2026-11-24 (AI-Q31), increments 2 to 7 cut; increment 2 refined 2026-11-25 (AI-Q32: ADR-0030
-accepted, eleven tasks; T2i0 inserted at T2i's start, AI-Q41), T2a to T2h and T2i0 done, T2i next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
+accepted, eleven tasks; T2i0 inserted at T2i's start, AI-Q41), T2a to T2i done, T2j next; started after E25's increment 10 (AI-Q23) · Lane: **ai** · Follows E23 (the battle AI) and E26 (the
 fair system actor) for battle · Prerequisite of E13 (its target and ladder opponent) ·
 Consumers: the env (a computer seat), the server (a computer player in a hosted game), the shell
 (a game's computer players), the adventure lane (ADV-STUB-8, ADV-STUB-9)
@@ -238,3 +238,10 @@ Increment 2's (increment 1's: `E31-archive.md`).
   caller's fight answer, the passage past an entrance, the teleporters, mode 4's jumps), the
   threat fold on it (AI-STUB-11 lifted); AI-STUB-22 (Castle Gate, Town Portal, E09), AI-STUB-23
   (the Sanctuary, the Quest Guard, E12); §5.5's #74 to #79 new. Record: `E31-log.md` T2i0.
+- **T2i** (2026-11-28, whole, AI-Q41): the planning in `computer/plan.rs` with `plan/danger.rs`,
+  `reach.rs` and `field.rs` (CPU-PLN-001 to -008: the danger map, the hero's search with its
+  colleagues' claims and the claimed classes 0 to 36, the candidates, the value field, the score
+  with its draw, the choice, the mode-4 jumps, the search loop with its five runs); the memory's
+  kept plans (encoding v5); `SearchStart::open` (`cross-lane`, AI-Q42); every `expect(dead_code)`
+  lifted; each hero still done after planning (the walk, AI-STUB-2 narrowed); the Grail step kept
+  in AI-STUB-15; §5.5's #1 and #2 blind-confirmed. Record: `E31-log.md` T2i.

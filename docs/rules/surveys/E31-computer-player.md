@@ -281,23 +281,32 @@ them the lowest value on the path; a node past the day's points whose danger is 
 **The value field.** Each candidate spreads its value over a dword per tile: an unexplored one
 only on its own tile; an explored one over the tiles a 500-point search from it reaches, within 5
 tiles each way: the whole value up to m, then value × 300 / (300 + cost − m). For a class the
-hero visits from a neighbouring tile, m is the cost of the dearest of the 3 × 3 tiles around it;
-otherwise 0. A candidate's field thus adds the values of the objects near it.
+hero visits from a neighbouring tile, m is the cost of the dearest of the 3 × 3 tiles around it
+(a place not reached 0; the u16 cost compared with m as a signed word); otherwise 0; for that
+class the search starts with the tile's entrance bit cleared (0x42E263, restored at 0x42E37D: no
+stop, no closed top, no guard there). The candidates and the field read the first 32 768 (16-bit
+counters). A candidate's field thus adds the values of the objects near it.
 
 **The score** (`ai_candidate_score`). For an explored object visited from a neighbouring tile, the
-candidate's cost becomes the cost of the tile it is visited from. The score is the field at the
-tile, plus the node's key (+0x10, T1a2), plus its danger (+0x14; a danger at or below
-−500 000 000 is softened to −2 500 000 for a score of 5 000 000 or more, so the Grail is sought
-through danger), plus, for an object entered, the fight estimate of a monster guarding it. The
+candidate's cost becomes the cost of the tile it is visited from (its node's cost off, the
+source's place's on), and the score is read at that place (T2i's reading: the field, the key and
+the danger are the source place's, 0x42FA0C..0x42FA6E). The score is the field at the tile, plus
+the node's key (+0x10, T1a2), plus its danger while the score is not below −500 000 000 (+0x14; a
+danger at or below −500 000 000 is softened to −2 500 000 for a score of 5 000 000 or more, so the
+Grail is sought through danger: written into the search's node, 0x42FACF, so a later candidate on
+that node reads it softened), plus, for a class entered (a tile without an object too), the object
+value (`ai_object_value`, its cost argument the candidate's) of the monster guarding it but the
+one its path met (node +0xC). The
 hero's kept destination gets × 1.5 + 20 (÷ 1.5 + 20 when negative) and stays a must-go if it was
 one; every other candidate is multiplied by a draw of 76 % to 100 % (a negative score divided by
 it). The **rate** is the score per 100 points of the candidate's cost (cost floored at 100), at
 least 1 when the score is positive.
 
 **The choice** (`ai_hero_destination`). The best rate starts at the danger of the hero's tile.
-A candidate is **near** when it is an entrance next to the hero, or its cost is at most 21 % of
-the day's points, but not when its node's second cost exceeds its cost, its score is negative or
-the player has no town. In order: a must-go is taken at once and ends the choice; a valued
+A candidate is **near** when it is an entrance its node reached from the hero's tile, or both its
+node's cost and its cost are at most 21 % of the day's maximum (T2i's reading, 0x42EA57..0x42EA6F),
+but not when its node's second cost exceeds its cost, its rate is negative or the player has no
+town. In order: a must-go is taken at once and ends the choice; a valued
 candidate beats a best without value; a near one beats a far one; among near ones the cheaper
 node wins (equal: the higher rate); among far ones the higher rate; a candidate without value
 counts only above the best rate and while the best has none. A hero standing on an object's
@@ -306,7 +315,8 @@ complete, steps to its cheapest free, unguarded neighbour out of danger. At the 
 +0x35 holds the destination (none: −1), +0x41 the cost beyond the points left, +0x43 the must-go
 flag; the rate is returned (§1.4 doubles the budget on a negative one).
 
-**Two oddities for T1b's second look** (quirk candidates, not flagged): `ai_class_tables_init`
+**Two oddities for T1b's second look** (quirk candidates, not flagged; blind-confirmed at T2i and
+ported as read, §5.5 #1 and #2): `ai_class_tables_init`
 0x428070 marks `ai_claimed_classes` by the list's count, not its entries, so the claims apply to
 classes 0 to 36 instead of the 37 listed (the artifact, the resources, the chests); and a
 colleague's claims are offset by its +0x41 less its points left only when +0x41 is not larger
@@ -2017,8 +2027,8 @@ and #68 (38 slips), T2e's one, #69 (39 slips). T2f to T2h added #70 to #73 (slip
 
 | # | § | Candidate | Address | Class | Lane | Confirm | Note |
 |---|---|---|---|---|---|---|---|
-| 1 | §1.9 (1) | class claims marked by the list's count: classes 0-36, not the 37 listed | 0x428070 | slip | ai | blind 0x428070 | only which hero takes which target |
-| 2 | §1.9 (2) | a colleague's claim offset (+0x41 less points left) only when not larger, 16-bit | 0x42E0B0 | slip | ai | blind 0x42E0B0 | near tiles claim nothing |
+| 1 | §1.9 (1) | class claims marked by the list's count: classes 0-36, not the 37 listed | 0x428070 | slip | ai | blind-confirmed at T2i | only which hero takes which target; ported as read (E31 T2i, CPU-PLN-002) |
+| 2 | §1.9 (2) | a colleague's claim offset (+0x41 less points left) only when not larger, 16-bit | 0x42F82E | slip | ai | blind-confirmed at T2i | near tiles claim nothing; ported as read (E31 T2i, CPU-PLN-002) |
 | 3 | §2.1 (1) | Fountain and Idol of Fortune worth 0: fraction truncated without the army's strength | 0x528040 (cases 30, 38), 0x435850 | slip | ai | blind 0x528040 | read at T2h: always 0; ported as read (E31 T2h, CPU-OBJ-010) |
 | 4 | §2.1 (2) | luck clamp above 3 replaces luck by 3 − luck instead of capping the change | 0x527D80; 0x528040 (cases 14, 28) | slip | ai | blind 0x527D80 | morale's twin caps the change; read at T2h, ported as read (CPU-OBJ-002) |
 | 5 | §2.1 (3) | War Machine Factory ignores a machine's price within 500 | 0x525120 | slip | ai | blind 0x525120 | read at T2h, ported as read (CPU-OBJ-011) |
