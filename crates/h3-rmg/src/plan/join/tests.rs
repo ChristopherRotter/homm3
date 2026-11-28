@@ -223,9 +223,11 @@ fn join_of(cells: &mut Cells, gens: &[ZoneGenerator], objects: &Objects) -> Resu
         connections: &[],
         gens,
         objects: &mut objects.clone(),
+        road_targets: &mut Vec::new(),
         pictures: &pictures,
         cosmetic: true,
         guards: no_guards(),
+        shipyard_sites_repeated: true,
     };
     join(&input, cells)
 }

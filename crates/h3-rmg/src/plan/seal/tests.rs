@@ -85,9 +85,11 @@ fn seal_of(cells: &mut Cells, tables: &GeneratorTables) -> (Result<(), PaintFaul
         connections: &[connection(1, 2, false)],
         gens: &gens,
         objects: &mut no_objects(),
+        road_targets: &mut Vec::new(),
         pictures: &pictures,
         cosmetic: true,
         guards: no_guards(),
+        shipyard_sites_repeated: true,
     };
     let mut log = Log::default();
     let sealed = seal(&mut Stream::new(6, &mut log), &input, cells);

@@ -77,10 +77,12 @@ pub enum ObjectFault {
     /// Step 6's monolith index taken `mod 0` (`rmg_zone_connections_make` 0x543957): no two-way
     /// and no one-way monolith prototype (RMG-QUIRK-3); the index is kept.
     NoMonolith,
-    /// A shipyard's water side read below the map's last row (`rmg_zone_connections_make`
-    /// 0x5437A5, its row unchecked: the next level's first row or past the map, RMG-QUIRK-4): that
-    /// side is skipped.
-    ShipyardSide,
+    /// Step 6's shipyard prototype drawn `mod 0` (`rmg_connection_by_shipyard` 0x541B85): no
+    /// prototype of class 87 (RMG-QUIRK-3); no shipyard, the connection not made that way.
+    NoShipyard,
+    /// Step 6's gate prototype drawn `mod 0` (`rmg_connection_by_gate` 0x5421C3): no prototype
+    /// of class 103 (RMG-QUIRK-3); no gates, the connection not made that way.
+    NoGate,
 }
 
 /// An object template as the generator's copy (`rmg_object_template`, 0x4C bytes) holds what the

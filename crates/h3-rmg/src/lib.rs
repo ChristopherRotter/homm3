@@ -18,7 +18,8 @@
 //! and the cells' lists, the entrances' distance flood, the placing test; E14 T4b); steps 4 and
 //! 5, the towns ([`Placed`], E14 T4b); step 6's obstacle plan (the lanes, the zone walls, the
 //! cells of no zone, the islets, the zones' free cells joined, the water shores sealed; E14 T4c);
-//! step 6's connections by land with their guard monsters ([`Connected`], [`Monster`], E14 T4d1).
+//! step 6's connections by land, by a shipyard and by gates with their guard monsters
+//! ([`Connected`], [`Monster`], E14 T4d1).
 //! Step 6's other ways and the other steps come with increments 4 to 6, the writer's content
 //! with 7.
 //!
@@ -85,8 +86,9 @@ pub use partition::{
     MemoryZone, Partition, PartitionFault, SITE_BORDER_JITTER, UNREACHED, ZoneMemory,
 };
 pub use plan::{
-    Connected, SITE_ISLET_CENTRE, SITE_ISLET_HEIGHTS, SITE_ISLET_RADIUS, SITE_ISLET_TERRAIN,
-    SITE_LANE_JITTER, SITE_LANE_ORIENTATION, SITE_PASSAGE_CELL, SITE_PASSAGE_GUARD_SIDE,
+    Connected, SITE_GATE_PROTOTYPE, SITE_GATE_SITE, SITE_ISLET_CENTRE, SITE_ISLET_HEIGHTS,
+    SITE_ISLET_RADIUS, SITE_ISLET_TERRAIN, SITE_LANE_JITTER, SITE_LANE_ORIENTATION,
+    SITE_PASSAGE_CELL, SITE_PASSAGE_GUARD_SIDE, SITE_SHIPYARD_PROTOTYPE, SITE_SHIPYARD_SITE,
 };
 pub use settings::{
     COLOURS, Choices, MapFormat, MapSize, Monsters, Settings, SettingsError, TOWN_TYPES, Water,

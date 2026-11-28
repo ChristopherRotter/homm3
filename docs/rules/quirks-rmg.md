@@ -233,9 +233,9 @@ Known differences between the original's random map generator (GOG Complete's `H
 - Intended/expected behavior: each site once.
 - Impact: gameplay-altering (minor)
 - Sources: code reading (survey §2.3)
-- Flag: `quirk.rmg.shipyard_sites_repeated`
+- Flag: `quirk.rmg.shipyard_sites_repeated` (registered at E14 T4d2; until then a plain boolean `generate` sets on, RMG-STUB-2)
 - Defaults: faithful = on, fixed = off
-- Regression test: when step 6 is ported
+- Regression test: `h3-rmg`'s `a_shipyard_takes_a_shore_site_and_guards_its_entrance` (both halves: three sites drawn among, two; E14 T4d1); the corpus's 8 cases placing shipyards run it on
 - Decided by / date: the user, 2026-11-24 (T1c2); unconfirmed
 
 ### RMG-QUIRK-20 — A pile's box one cell past its zone

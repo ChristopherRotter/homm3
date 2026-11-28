@@ -4,8 +4,8 @@
 //! original's order: the lanes (`rmg_free_lanes_draw` 0x543E20), the zone walls
 //! (`rmg_zone_borders_close` 0x53F880), the land cells of no zone made obstacles, the islets
 //! ([`islets`]), the zones' free cells joined ([`join`]), the water shores sealed ([`seal`]); then
-//! the connections ([`connect`], E14 T4d1: the frame, by land, the guard monsters; the shipyards,
-//! gates, monoliths and Border Guards T4d2's and T4d3's), which end step 6.
+//! the connections ([`connect`], E14 T4d1: the frame, by land, by a shipyard, by gates, the
+//! guard monsters; the monoliths T4d1's last part, the Border Guards T4d2's), which end step 6.
 //!
 //! A cell with +0x2C bit 0 (a pending Border Guard) keeps its bits 26 and 27 through every mark
 //! here but the carve's, which places the guard first (not ported: none is pending before the
@@ -31,7 +31,10 @@ mod islets;
 pub(crate) mod join;
 mod seal;
 
-pub use connect::{Connected, SITE_PASSAGE_CELL, SITE_PASSAGE_GUARD_SIDE};
+pub use connect::{
+    Connected, SITE_GATE_PROTOTYPE, SITE_GATE_SITE, SITE_PASSAGE_CELL, SITE_PASSAGE_GUARD_SIDE,
+    SITE_SHIPYARD_PROTOTYPE, SITE_SHIPYARD_SITE,
+};
 pub use islets::{SITE_ISLET_CENTRE, SITE_ISLET_HEIGHTS, SITE_ISLET_RADIUS, SITE_ISLET_TERRAIN};
 
 /// The call site of a lane's orientation draw (`rmg_free_lanes_draw`,
@@ -54,12 +57,18 @@ pub(crate) struct PlanInput<'a> {
     /// The placed objects and their classes' object settings (the cost floods); the
     /// connections place theirs.
     pub objects: &'a mut Objects,
+    /// The generator's +0x14B0 (steps 4 and 5's town entrances): the shipyards' entrances are
+    /// appended.
+    pub road_targets: &'a mut Vec<[i32; 3]>,
     /// The terrain painter's picture sets (the islets', the shores' seal).
     pub pictures: &'a Pictures,
     /// `quirk.rmg.cosmetic` (RMG-QUIRK-21's painter's half).
     pub cosmetic: bool,
     /// What the guard monsters read.
     pub guards: GuardInput<'a>,
+    /// `quirk.rmg.shipyard_sites_repeated` (RMG-QUIRK-19): a shipyard site enters the list once
+    /// per land cell it is found from (on), or once (off).
+    pub shipyard_sites_repeated: bool,
 }
 
 /// +0x2C bit 0: a pending Border Guard, whose cell keeps its bits 26 and 27.

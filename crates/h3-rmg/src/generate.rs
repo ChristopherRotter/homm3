@@ -201,8 +201,8 @@ impl fmt::Display for GenerateError {
 }
 
 /// A generated map: so far what the frame and steps 1 to 5 make, with step 6's plan and its
-/// connections by land (stub RMG-STUB-1: step 6's shipyards, gates, monoliths and Border Guards,
-/// steps 7 to 15 and the writer's content come with increments 4 to 7).
+/// connections by land, by a shipyard and by gates (stub RMG-STUB-1: step 6's monoliths and
+/// Border Guards, steps 7 to 15 and the writer's content come with increments 4 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
     /// The settings as the generator ran them: water drawn, and under two players in all one
@@ -272,8 +272,9 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// read by the constructor; nothing draws there) for the steps that place objects; steps 4 and
 /// 5, the towns (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0 per zone
 /// generator); step 6 (`rmg_paths_and_connections` 0x544920: the lanes, the zone walls, the
-/// cells of no zone, the islets, the joining, the shores' seal, the connections by land and their
-/// guard monsters), step 6 not yet ended (its shipyards, gates, monoliths and Border Guards).
+/// cells of no zone, the islets, the joining, the shores' seal, the connections by land, by a
+/// shipyard and by gates and their guard monsters), step 6 not yet ended (its monoliths and
+/// Border Guards).
 ///
 /// # Errors
 ///
@@ -467,6 +468,7 @@ pub fn generate<T: Trace>(
             connections: &template.connections,
             gens: &zones,
             objects: &mut objects,
+            road_targets: &mut placed.road_targets,
             pictures: &pictures,
             cosmetic: quirks.is_enabled(RMG_COSMETIC),
             guards: GuardInput {
@@ -477,6 +479,9 @@ pub fn generate<T: Trace>(
                 // at T4d2; every profile as faithful until then.
                 roe_guard_walk: true,
             },
+            // stub: RMG-STUB-2 — RMG-QUIRK-19's flag (`quirk.rmg.shipyard_sites_repeated`)
+            // registered at T4d2; every profile as faithful until then.
+            shipyard_sites_repeated: true,
         },
         &mut cells,
     )?;

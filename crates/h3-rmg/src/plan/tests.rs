@@ -422,9 +422,11 @@ fn walls_of(cells: &mut Cells, zones: usize, connections: &[KeptConnection]) {
             connections,
             gens: &gens,
             objects: &mut no_objects(),
+            road_targets: &mut Vec::new(),
             pictures: &Pictures::new(&tables()),
             cosmetic: true,
             guards: no_guards(),
+            shipyard_sites_repeated: true,
         },
         cells,
     );
@@ -491,9 +493,11 @@ fn a_zone_byte_past_the_generators_is_left_unwalled() {
         connections: &[],
         gens: &gens,
         objects: &mut no_objects(),
+        road_targets: &mut Vec::new(),
         pictures: &Pictures::new(&tables()),
         cosmetic: true,
         guards: no_guards(),
+        shipyard_sites_repeated: true,
     };
     let mut log = Log::default();
     assert_eq!(
@@ -534,9 +538,9 @@ fn a_zone_byte_past_the_generators_is_left_unwalled() {
 }
 
 // covers: RMG-CON-001, RMG-CON-013
-/// The connections end the plan: two zones apart, their connection not made in pass 1 goes to
-/// monoliths in pass 2, whose index without a monolith prototype is taken `mod 0` (RMG-QUIRK-3):
-/// the step's object fault.
+/// The connections end the plan: two zones apart, their connection not made by land goes to a
+/// shipyard, whose prototype without one is drawn `mod 0` (RMG-QUIRK-3), then to monoliths in
+/// pass 2, whose index is taken `mod 0` too: the step's first object fault.
 #[test]
 fn the_connections_object_fault_ends_the_plan() {
     let mut cells = drawn(&[&["0..1", "....", "....", "...."]]);
@@ -556,16 +560,18 @@ fn the_connections_object_fault_ends_the_plan() {
         connections: &[connection(0, 1, false)],
         gens: &gens,
         objects: &mut no_objects(),
+        road_targets: &mut Vec::new(),
         pictures: &Pictures::new(&tables()),
         cosmetic: true,
         guards: no_guards(),
+        shipyard_sites_repeated: true,
     };
     let mut log = Log::default();
     assert_eq!(
         plan(&mut Stream::new(0, &mut log), &mut input, &mut cells),
         Err(GenerateError::Objects {
             step: 6,
-            fault: ObjectFault::NoMonolith
+            fault: ObjectFault::NoShipyard
         })
     );
 }

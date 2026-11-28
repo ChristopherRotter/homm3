@@ -26,6 +26,9 @@ struct World {
     objects: Objects,
     creatures: Vec<GuardCreature>,
     cells: Cells,
+    road_targets: Vec<[i32; 3]>,
+    /// RMG-QUIRK-19's flag.
+    repeated: bool,
 }
 
 impl World {
@@ -56,6 +59,8 @@ impl World {
             objects: Objects::new(&[monster, line(5, 0)], &settings(), MapFormat::SoD, n),
             creatures,
             cells,
+            road_targets: Vec::new(),
+            repeated: true,
         }
     }
 
@@ -71,6 +76,7 @@ impl World {
             connections: &self.connections,
             gens: &self.gens,
             objects: &mut self.objects,
+            road_targets: &mut self.road_targets,
             pictures: &pictures,
             cosmetic: true,
             guards: GuardInput {
@@ -79,6 +85,7 @@ impl World {
                 strength: 3,
                 roe_guard_walk: true,
             },
+            shipyard_sites_repeated: self.repeated,
         };
         let mut log = Log::default();
         let r = f(&mut Connect::new(
@@ -101,6 +108,16 @@ impl World {
     /// A monster of the first line on (x, y, 0): its cell holds an object and stays passable.
     fn occupy(&mut self, x: i32, y: i32) {
         self.objects.add(&mut self.cells, 0, [x, y, 0]);
+    }
+}
+
+/// A shipyard line: three blocked cells on its anchor's row, the middle one its entrance.
+fn shipyard() -> ObjectTemplate {
+    ObjectTemplate {
+        passability: line(87, 0).passability & !0b110,
+        actions: 0b010,
+        width: 3,
+        ..line(87, 0)
     }
 }
 
@@ -376,7 +393,8 @@ fn a_land_connection_is_refused_off_one_level_and_the_guard_needs_room() {
 /// connection created), a zone whose id is past the zone generators (its entries left) and an
 /// end whose other has no entry back (nothing marked there); pass 2 per zone with an entry
 /// left from the first: monoliths for a land end (both ends made, a zone's connection to itself
-/// twice), nothing for a water end; a zone with every entry made skipped. Nothing is drawn.
+/// twice), nothing for a water end; a zone with every entry made skipped. Every way tried on one
+/// level but by land draws a shipyard prototype and finds no site (11 draws).
 #[test]
 fn the_passes_make_each_connection_once_from_either_end() {
     let connections = vec![
@@ -397,7 +415,7 @@ fn the_passes_make_each_connection_once_from_either_end() {
         ..line(class, 0)
     };
     world.objects = Objects::new(
-        &[monolith(45), monolith(45), monolith(43)],
+        &[monolith(45), monolith(45), monolith(43), shipyard()],
         &settings(),
         MapFormat::SoD,
         4,
@@ -408,7 +426,8 @@ fn the_passes_make_each_connection_once_from_either_end() {
         c.pass_2();
         (first, c.made.clone())
     });
-    assert!(draws.is_empty());
+    assert_eq!(draws.len(), 11);
+    assert!(draws.iter().all(|d| d.0 == SITE_SHIPYARD_PROTOTYPE));
     assert_eq!(
         first,
         [
@@ -432,9 +451,10 @@ fn the_passes_make_each_connection_once_from_either_end() {
 
 // covers: RMG-CON-013
 /// Pass 2's boat reach: the level's marks cleared, then from each shipyard of the zone the first
-/// side cell (its column on the map) that is water floods; another zone's shipyard is passed, one
-/// on the last row reads below the map (a fault, the side skipped). Without monolith prototypes
-/// the index is taken `mod 0` (a fault).
+/// side cell on the map that is water floods; another zone's shipyard is passed, one without
+/// water beside floods nothing. The shipyard tried in each pass draws its prototype and finds no
+/// site. Without monolith prototypes the index is taken `mod 0` (a fault; the zones on two
+/// levels, nothing drawn).
 #[test]
 fn pass_2_floods_the_boat_reach_from_the_zones_shipyards() {
     let mut cells = drawn(&[&[
@@ -451,12 +471,353 @@ fn pass_2_floods_the_boat_reach_from_the_zones_shipyards() {
         world.objects.add(&mut world.cells, 0, at);
     }
     let (out, draws) = world.connect(0);
-    assert!(draws.is_empty() && out.monsters.is_empty());
+    assert!(out.monsters.is_empty());
+    assert_eq!(draws.len(), 3);
+    assert!(draws.iter().all(|d| d.0 == SITE_SHIPYARD_PROTOTYPE));
     let mut boat = vec!["##......", "##......", "##......", "#......."];
     boat.extend(["........"; 4]);
     assert_eq!(bits(&world.cells, 0, BOAT), boat);
-    assert_eq!(world.objects.take_fault(), Some(ObjectFault::ShipyardSide));
-    let mut world = World::new(2, vec![connection(0, 1, false)], drawn(&[&["01", "01"]]));
-    world.connect(0);
     assert_eq!(world.objects.take_fault(), Some(ObjectFault::NoMonolith));
+    let mut world = World::new(
+        2,
+        vec![connection(0, 1, false)],
+        drawn(&[&["01", "01"], &["01", "01"]]),
+    );
+    world.gens[1].position[2] = 1;
+    let (_, draws) = world.connect(0);
+    assert!(draws.is_empty());
+    assert_eq!(world.objects.take_fault(), Some(ObjectFault::NoMonolith));
+}
+
+/// A gate line: one blocked cell, its anchor, the entrance.
+fn gate() -> ObjectTemplate {
+    ObjectTemplate {
+        actions: 1,
+        ..line(103, 0)
+    }
+}
+
+/// The objects of a world of `n` zones: its monster (0), a shipyard (1) and a gate (2).
+fn ways(n: usize) -> Objects {
+    let monster = ObjectTemplate {
+        actions: 1,
+        ..line(54, 0)
+    };
+    Objects::new(
+        &[monster, shipyard(), gate()],
+        &settings(),
+        MapFormat::SoD,
+        n,
+    )
+}
+
+/// The cells (x, y, 0) made water and kept free.
+fn sea(cells: &mut Cells, at: &[[i32; 2]]) {
+    for &[x, y] in at {
+        let c = cells.get_mut(x, y, 0).unwrap();
+        c.tile = u32::from(WATER);
+        c.tile_data |= KEPT;
+    }
+}
+
+/// The first connection by a shipyard (gates) between zone generators 0 and 1.
+fn yard(c: &mut Connect<'_, '_, '_, Log>) -> [bool; 2] {
+    let connections = c.input.connections;
+    c.by_shipyard(0, 1, &connections[0].row)
+}
+
+fn gates(c: &mut Connect<'_, '_, '_, Log>) -> [bool; 2] {
+    let connections = c.input.connections;
+    c.by_gate(0, 1, &connections[0].row)
+}
+
+// covers: RMG-CON-015
+/// A shipyard's site: the row below on the map; the 3 × 2 block land, without an entrance, free,
+/// not rock; the first of the four sides that is water and kept free (a water side not kept
+/// passed); the cell beyond on the anchor's row on the map and not water. A block cell off the
+/// map is read unchecked (a fault).
+#[test]
+fn a_shipyard_site_is_a_land_block_beside_kept_water() {
+    let mut cells = drawn(&[&[
+        "~0000~..", "~0000~..", "00000000", "00000000", "........", "........", "........",
+        "........",
+    ]]);
+    for [x, y] in [[0, 0], [0, 1], [5, 1]] {
+        cells.get_mut(x, y, 0).unwrap().tile_data |= KEPT;
+    }
+    let fits = |cells: &Cells, x, y| site_fits(cells, [x, y, 0]);
+    // Water on the left, (4, 0) beyond; on the right below, (1, 0) beyond.
+    assert_eq!(fits(&cells, 3, 0), Ok(true));
+    assert_eq!(fits(&cells, 4, 0), Ok(true));
+    // No water beside; water in the block; the row below off the map; the block off the map.
+    assert_eq!(fits(&cells, 4, 2), Ok(false));
+    assert_eq!(fits(&cells, 2, 1), Ok(false));
+    assert_eq!(fits(&cells, 3, 7), Ok(false));
+    assert_eq!(fits(&cells, 1, 2), Err(ObjectFault::Outside));
+    // A block cell an entrance, not free, rock.
+    for (bit, rock) in [(ENTRANCE, false), (0, false), (0, true)] {
+        let mut cells = cells.clone();
+        let c = cells.get_mut(2, 1, 0).unwrap();
+        c.tile_data = (c.tile_data | bit) & if bit == 0 && !rock { !FREE } else { !0 };
+        if rock {
+            c.tile = u32::from(ROCK);
+        }
+        assert_eq!(fits(&cells, 3, 0), Ok(false));
+    }
+    // Water beyond; beyond off the map.
+    cells.get_mut(1, 0, 0).unwrap().tile = u32::from(WATER);
+    assert_eq!(fits(&cells, 4, 0), Ok(false));
+    sea(&mut cells, &[[3, 2]]);
+    assert_eq!(fits(&cells, 2, 2), Ok(false));
+}
+
+// covers: RMG-CON-015
+/// A shipyard is refused off one level (nothing drawn); its prototype is drawn first, `mod 0`
+/// without one (a fault); then over the zone's box only cells the other's flood entered count: a
+/// water cell and one on the last row are passed, a land cell where none fits gives no site
+/// (refused); a cell already reached by boat makes it at once, at this end. A block read off the
+/// map (a shipyard narrower than 3) is a fault.
+#[test]
+fn a_shipyard_is_refused_without_a_site_and_made_by_boat() {
+    let rows: &[&str] = &["0w11", "0011", "0011", "0011"];
+    let mut world = World::new(2, vec![connection(0, 1, false)], drawn(&[rows, rows]));
+    world.gens[0].bounds = [0, 0, 4, 4];
+    world.gens[1].position[2] = 1;
+    assert_eq!(world.run(0, yard), ([false, false], vec![]));
+    world.gens[1].position[2] = 0;
+    let (made, draws) = world.run(0, yard);
+    assert_eq!(made, [false, false]);
+    assert_eq!(draws.len(), 1);
+    assert_eq!(draws[0].0, SITE_SHIPYARD_PROTOTYPE);
+    assert_eq!(world.objects.take_fault(), Some(ObjectFault::NoShipyard));
+    world.objects = ways(2);
+    for at in [[1, 0], [1, 3], [0, 1]] {
+        cross(&mut world.cells, at, 11, 4, 1);
+    }
+    let (made, draws) = world.run(0, yard);
+    assert_eq!((made, draws.len()), ([false, false], 1));
+    cross(&mut world.cells, [0, 2], 11, 4, 1);
+    world.cells.get_mut(0, 2, 0).unwrap().tile_data |= BOAT;
+    let (made, draws) = world.run(0, yard);
+    assert_eq!((made, draws.len()), ([true, false], 1));
+    assert!(world.objects.placed().is_empty());
+    assert_eq!(world.objects.take_fault(), None);
+    let mut world = World::new(2, vec![connection(0, 1, false)], drawn(&[&["0000"; 4]]));
+    world.gens[0].bounds = [0, 0, 4, 4];
+    world.objects = Objects::new(&[line(87, 0)], &settings(), MapFormat::SoD, 2);
+    cross(&mut world.cells, [0, 0], 11, 4, 1);
+    assert_eq!(world.run(0, yard).0, [false, false]);
+    assert_eq!(world.objects.take_fault(), Some(ObjectFault::Outside));
+}
+
+/// Zone 1 in columns 0 and 1 of rows 0 to 2, zone 0 beside it, on 8 × 8.
+const SHORE: [&str; 8] = [
+    "11000000", "11000000", "11000000", "........", "........", "........", "........", "........",
+];
+
+// covers: RMG-CON-015, RMG-CON-018, RMG-CON-020
+/// A shipyard on the shore of zone 1's water: the sites of the cells zone 1's flood entered,
+/// (4, 0) found from (2, 0) and from (3, 0), (4, 1) from (2, 1): one drawn among three (each
+/// once with RMG-QUIRK-19 off: among two). Placed there, its entrance a road target, the row below
+/// kept free (but a pending Border Guard's cell) and into zone 0's passages, the boat reach
+/// flooded from the water on its left; worth 2000, the guard monster below its entrance (the
+/// Border Guard placing none, E14 T4d2); wide, none. Made at this end.
+#[test]
+fn a_shipyard_takes_a_shore_site_and_guards_its_entrance() {
+    let mut differ = false;
+    for seed in 0..8 {
+        let mut ys = [0; 2];
+        for (i, repeated) in [true, false].into_iter().enumerate() {
+            let mut cells = drawn(&[&SHORE]);
+            sea(
+                &mut cells,
+                &[[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [1, 2]],
+            );
+            for at in [[2, 0], [3, 0], [2, 1]] {
+                cross(&mut cells, at, 11, 4, 1);
+            }
+            cells.get_mut(2, 1, 0).unwrap().pending_guard = 1;
+            let mut world = World::new(2, vec![row(0, 1, 3_000, false, i == 0)], cells);
+            world.gens[0].bounds = [2, 0, 8, 3];
+            world.gens[1].terrain = i32::from(WATER);
+            world.objects = ways(2);
+            world.repeated = repeated;
+            let ((made, out), draws) = world.run(seed, |c| (yard(c), core::mem::take(&mut c.out)));
+            assert_eq!(made, [true, false]);
+            let sites: Vec<u32> = draws.iter().map(|d| d.0).collect();
+            assert_eq!(
+                sites,
+                [
+                    SITE_SHIPYARD_PROTOTYPE,
+                    SITE_SHIPYARD_SITE,
+                    SITE_GUARD_CREATURE,
+                    crate::guards::SITE_GUARD_COUNT_PLUS,
+                    crate::guards::SITE_GUARD_COUNT_MINUS
+                ]
+            );
+            let r = draws[1].1 as usize;
+            let y = if repeated {
+                [0, 0, 1][r % 3]
+            } else {
+                [0, 1][r % 2]
+            };
+            ys[i] = y;
+            let placed = world.objects.placed();
+            assert_eq!((placed[0].class, placed[0].position), (87, [4, y, 0]));
+            assert_eq!(placed[1].position, [3, y + 1, 0]);
+            assert_eq!(out.monsters.len(), 1);
+            assert_eq!(world.road_targets, [[3, y, 0]]);
+            assert_eq!(
+                out.passages,
+                [vec![[2, y + 1], [3, y + 1], [4, y + 1]], vec![]]
+            );
+            let mut kept = vec![alloc::string::String::from("##......"); 3];
+            kept.resize(8, "........".into());
+            kept[y as usize].replace_range(3..4, "#");
+            let below = if y == 0 { "##.##..." } else { "#####..." };
+            kept[y as usize + 1] = below.into();
+            assert_eq!(bits(&world.cells, 0, KEPT), kept);
+            let mut boat = vec!["###....."; 3];
+            boat.extend(["##......", "........", "........", "........", "........"]);
+            assert_eq!(bits(&world.cells, 0, BOAT), boat);
+            assert_eq!(world.objects.take_fault(), None);
+        }
+        differ |= ys[0] != ys[1];
+    }
+    assert!(differ);
+    let mut cells = drawn(&[&SHORE]);
+    sea(
+        &mut cells,
+        &[[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [1, 2]],
+    );
+    cross(&mut cells, [2, 0], 11, 4, 1);
+    let mut world = World::new(2, vec![row(0, 1, 3_000, true, false)], cells);
+    world.gens[0].bounds = [2, 0, 8, 3];
+    world.objects = ways(2);
+    let (made, draws) = world.run(0, yard);
+    assert_eq!((made, draws.len()), ([true, false], 2));
+    assert_eq!(world.objects.placed().len(), 1);
+}
+
+// covers: RMG-CON-016
+/// Gates are refused on one level, from water or for boxes apart (nothing drawn); their
+/// prototype is drawn first, `mod 0` without one (a fault); no position fitting on both levels:
+/// refused.
+#[test]
+fn gates_are_refused_without_two_levels_or_a_common_position() {
+    let rows: &[&str] = &["000", "000", "000"];
+    let mut world = World::new(2, vec![connection(0, 1, false)], drawn(&[rows, rows]));
+    world.gens[0].bounds = [0, 0, 3, 3];
+    world.gens[1].bounds = [0, 0, 3, 3];
+    assert_eq!(world.run(0, gates), ([false, false], vec![]));
+    world.gens[1].position[2] = 1;
+    world.gens[0].terrain = i32::from(WATER);
+    assert_eq!(world.run(0, gates), ([false, false], vec![]));
+    world.gens[0].terrain = 0;
+    for bounds in [[3, 0, 5, 3], [0, 3, 3, 5]] {
+        world.gens[1].bounds = bounds;
+        assert_eq!(world.run(0, gates), ([false, false], vec![]));
+    }
+    world.gens[1].bounds = [0, 0, 3, 3];
+    let (made, draws) = world.run(0, gates);
+    assert_eq!((made, draws.len()), ([false, false], 1));
+    assert_eq!(draws[0].0, SITE_GATE_PROTOTYPE);
+    assert_eq!(world.objects.take_fault(), Some(ObjectFault::NoGate));
+    world.objects = ways(2);
+    let (made, draws) = world.run(0, gates);
+    assert_eq!((made, draws.len()), ([false, false], 1));
+    assert_eq!(world.objects.take_fault(), None);
+}
+
+/// Zone 0 on level 0 and zone 1 on level 1 of 5 × 5, both boxes overlapping in x 1..4; every
+/// object distance 0 but (2, 1) and (3, 2), summing 7, and (1, 3) and (2, 3), summing 20 and 60,
+/// where no gate fits (not free on level 1, rock on level 0); (3, 0) on level 0 and (1, 2) on
+/// level 1 of zone 2.
+fn two_levels() -> Cells {
+    let mut cells = drawn(&[&["00000"; 5], &["11111"; 5]]);
+    for z in 0..2 {
+        for y in 0..5 {
+            for x in 0..5 {
+                cells.get_mut(x, y, z).unwrap().zone &= 0xFFFF_0000;
+            }
+        }
+    }
+    for (x, y, z, d) in [
+        (2, 1, 0, 3),
+        (2, 1, 1, 4),
+        (3, 2, 0, 5),
+        (3, 2, 1, 2),
+        (1, 3, 0, 20),
+        (2, 3, 0, 30),
+        (2, 3, 1, 30),
+    ] {
+        cells.get_mut(x, y, z).unwrap().zone |= d;
+    }
+    cells.get_mut(1, 3, 1).unwrap().tile_data &= !FREE;
+    cells.get_mut(2, 3, 0).unwrap().tile = u32::from(ROCK);
+    for (x, y, z) in [(3, 0, 0), (1, 2, 1)] {
+        let c = cells.get_mut(x, y, z).unwrap();
+        c.zone = (c.zone & 0xFF00_FFFF) | (2 << 16);
+    }
+    cells.get_mut(3, 3, 1).unwrap().pending_guard = 1;
+    cells
+}
+
+// covers: RMG-CON-016, RMG-CON-018, RMG-CON-020
+/// Gates: the positions of the overlap in both zones fitting on both levels of greatest distance
+/// sum, (2, 1) and (3, 2) (ties kept, a greater sum emptying them); one drawn, a gate there on
+/// each level, its entrance into both zones' passages, the cell below it kept free on each level
+/// (but a pending Border Guard's), worth 2000 a guard monster below each (the Border Guard placing
+/// none, E14 T4d2), zone 0's first. Made at both ends. A gate line without an entrance writes
+/// below its offsets off the map (a fault).
+#[test]
+fn gates_take_the_farthest_common_position_and_guard_both_levels() {
+    let mut picked = [false; 2];
+    for seed in 0..8 {
+        let mut world = World::new(
+            2,
+            vec![row(0, 1, 3_000, false, seed % 2 == 0)],
+            two_levels(),
+        );
+        world.gens[0].bounds = [0, 0, 4, 5];
+        world.gens[1].bounds = [1, 0, 5, 5];
+        world.gens[1].position[2] = 1;
+        world.objects = ways(3);
+        let ((made, out), draws) = world.run(seed, |c| (gates(c), core::mem::take(&mut c.out)));
+        assert_eq!(made, [true, true]);
+        let sites: Vec<u32> = draws.iter().map(|d| d.0).collect();
+        let monster = [
+            SITE_GUARD_CREATURE,
+            crate::guards::SITE_GUARD_COUNT_PLUS,
+            crate::guards::SITE_GUARD_COUNT_MINUS,
+        ];
+        let mut expected = vec![SITE_GATE_PROTOTYPE, SITE_GATE_SITE];
+        expected.extend(monster);
+        expected.extend(monster);
+        assert_eq!(sites, expected);
+        let i = draws[1].1 as usize % 2;
+        picked[i] = true;
+        let [x, y] = [[2, 1], [3, 2]][i];
+        let placed = world.objects.placed();
+        let at: Vec<[i32; 3]> = placed.iter().map(|o| o.position).collect();
+        assert_eq!(at, [[x, y, 0], [x, y, 1], [x, y + 1, 0], [x, y + 1, 1]]);
+        assert_eq!((placed[0].class, placed[1].class), (103, 103));
+        assert_eq!(out.passages, [vec![[x, y]], vec![[x, y]]]);
+        assert_eq!(out.monsters.len(), 2);
+        for z in 0..2 {
+            let kept = world.cells.get(x, y + 1, z).unwrap().tile_data & KEPT != 0;
+            assert_eq!(kept, (x, z) != (3, 1));
+        }
+        assert_eq!(world.objects.take_fault(), None);
+    }
+    assert_eq!(picked, [true, true]);
+    let mut world = World::new(2, vec![connection(0, 1, false)], two_levels());
+    world.gens[0].bounds = [0, 0, 4, 5];
+    world.gens[1].bounds = [1, 0, 5, 5];
+    world.gens[1].position[2] = 1;
+    world.objects = Objects::new(&[line(103, 0)], &settings(), MapFormat::SoD, 3);
+    let ((made, out), _) = world.run(0, |c| (gates(c), core::mem::take(&mut c.out)));
+    assert_eq!(made, [true, true]);
+    assert_eq!(out.monsters, []);
+    assert_eq!(world.objects.take_fault(), Some(ObjectFault::Outside));
 }

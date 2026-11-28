@@ -1,22 +1,22 @@
 //! Step 6's connections (`rmg_zone_connections_make` 0x543240, the plan's seventh part; survey
 //! `docs/rules/surveys/E14-generator.md` §2.3, "The connections" and "The guards"): the crossing
 //! cells; per land zone generator in order its connections not yet made, by land
-//! (`rmg_connection_by_land` 0x541140), else by a shipyard, else, the other zone being land, by
-//! gates; then per land zone generator with one left, by a shipyard, else, the other zone being
-//! land, by monoliths. The shipyards (`rmg_connection_by_shipyard` 0x541AD0), the gates
-//! (`rmg_connection_by_gate` 0x542080), the monoliths (`rmg_connection_by_monoliths` 0x542CE0) and
-//! the Border Guards (`rmg_border_guard_place` 0x540D60) are E14 T4d2's and T4d3's
-//! (RMG-STUB-1): they make nothing and draw nothing.
+//! (`rmg_connection_by_land` 0x541140), else by a shipyard (`rmg_connection_by_shipyard`
+//! 0x541AD0), else, the other zone being land, by gates (`rmg_connection_by_gate` 0x542080); then
+//! per land zone generator with one left, by a shipyard, else, the other zone being land, by
+//! monoliths. The monoliths (`rmg_connection_by_monoliths` 0x542CE0) are E14 T4d1's last part and
+//! the Border Guards (`rmg_border_guard_place` 0x540D60) T4d2's (RMG-STUB-1): they place nothing
+//! and draw nothing.
 
 use alloc::vec;
 use alloc::vec::Vec;
 
 use super::PlanInput;
 use super::join::carve;
-use crate::cells::{Cells, FREE, KEPT, STEP};
+use crate::cells::{Cells, ENTRANCE, FREE, KEPT, OBSTACLES, STEP};
 use crate::generate::{Stream, Trace};
 use crate::guards::{Monster, create, guard_value};
-use crate::objects::{NEIGHBOURS, ObjectFault};
+use crate::objects::{NEIGHBOURS, ObjectFault, Objects, PlaceZone};
 use crate::painter::{ROCK, WATER};
 use crate::part::Connection;
 
@@ -28,11 +28,30 @@ pub const SITE_PASSAGE_CELL: u32 = 0x0054_146B;
 /// `rmg_passage_guard_side_draw`): `rand() & 1`, the monster at P (0) or Q (1).
 pub const SITE_PASSAGE_GUARD_SIDE: u32 = 0x0054_1673;
 
+/// The call site of a shipyard connection's prototype draw (`rmg_connection_by_shipyard`,
+/// `rmg_shipyard_prototype_draw`): `rand() %` the shipyard prototypes, before any site is sought.
+pub const SITE_SHIPYARD_PROTOTYPE: u32 = 0x0054_1B78;
+
+/// The call site of a shipyard's site draw (`rmg_connection_by_shipyard`,
+/// `rmg_shipyard_site_draw`): `rand() %` the sites found (RMG-QUIRK-19: with repeats).
+pub const SITE_SHIPYARD_SITE: u32 = 0x0054_1D6C;
+
+/// The call site of a gate connection's prototype draw (`rmg_connection_by_gate`,
+/// `rmg_gate_prototype_draw`): `rand() %` the gate prototypes, before any position is sought.
+pub const SITE_GATE_PROTOTYPE: u32 = 0x0054_21BC;
+
+/// The call site of a gate pair's position draw (`rmg_connection_by_gate`, `rmg_gate_site_draw`):
+/// `rand() %` the positions of greatest distance sum.
+pub const SITE_GATE_SITE: u32 = 0x0054_2387;
+
 /// +0x28 bit 24: reached by boat (`rmg_boat_reach_flood` 0x541780).
 const BOAT: u32 = 1 << 24;
 
 /// The shipyards' class (87).
 const SHIPYARDS: u32 = 87;
+
+/// The subterranean gates' class group (103, the generator's +0x6A8).
+const GATES: usize = 103;
 
 /// The two-way monoliths' class group (45, the generator's +0x308).
 const TWO_WAY: usize = 45;
@@ -162,13 +181,87 @@ fn boat_reach(cells: &mut Cells, [x, y, z]: [i32; 3]) {
     }
 }
 
-/// `rmg_border_guard_place` 0x540D60 at `at`, its tent in zone generator `tent`'s zone, then
-/// `rmg_border_guard_ring_mark` 0x540FC0: the guard value 0 once one is placed, else `value`.
-fn border_guard(_at: [i32; 3], _tent: usize, value: i32) -> i32 {
+/// The boat reach ([`boat_reach`]) from a shipyard anchored at (x, y, z): from the first of its
+/// [`SIDE_STEPS`] cells on the map that is water, kept free or not (none: nothing).
+fn boat_from_yard(cells: &mut Cells, [x, y, z]: [i32; 3]) {
+    let water = SIDE_STEPS.into_iter().find(|&[dx, dy]| {
+        cells
+            .get(x.wrapping_add(dx), y.wrapping_add(dy), z)
+            .is_some_and(|c| c.land() == u32::from(WATER))
+    });
+    if let Some([dx, dy]) = water {
+        boat_reach(cells, [x.wrapping_add(dx), y.wrapping_add(dy), z]);
+    }
+}
+
+/// `rmg_border_guard_place` 0x540D60: `count` guards from `at` eastward (by land 1 at P and Q, a
+/// shipyard 3 below its footprint from left of its entrance, gates 1 below each), the tent in
+/// zone generator `tent`'s zone, then the caller's marks (by land `rmg_border_guard_ring_mark`
+/// 0x540FC0, gates the two cells beside): the guard value 0 once one is placed (a shipyard's or
+/// gates' monsters are not placed then), else `value`.
+fn border_guard(_at: [i32; 3], _count: i32, _tent: usize, value: i32) -> i32 {
     // stub: RMG-STUB-1 — E14 T4d2: the Border Guard (the next Keymaster colour, its tent at
-    // random in the zone, 0x542A8F, its ring marked); places nothing and draws nothing, as every
+    // random in the zone, 0x542A8F, the marks); places nothing and draws nothing, as every
     // flagged connection of the corpus whose tent finds no room.
     value
+}
+
+/// `rmg_shipyard_site_fits` 0x541960 for a shipyard anchored at (x, y, z): the row below on the
+/// map; the 3 × 2 cells x − 2..x, y..y + 1 not water, without an entrance (bit 22), free (bit 25)
+/// and not rock; the first of its [`SIDE_STEPS`] cells (its column on the map) that is water and
+/// kept free (bit 27); the cell on the row y on the other side (x + 1 for a side on the left,
+/// x − 3 for one on the right) on the map and not water. A block cell is read unchecked
+/// ([`ObjectFault::Outside`] off the map: a shipyard narrower than 3 at x < 2, RMG-QUIRK-4).
+// rule: RMG-CON-015
+fn site_fits(cells: &Cells, [x, y, z]: [i32; 3]) -> Result<bool, ObjectFault> {
+    let below = y.wrapping_add(1);
+    if below >= cells.size().1 {
+        return Ok(false);
+    }
+    for v in y..=below {
+        for u in x.wrapping_sub(2)..=x {
+            let c = cells.get(u, v, z).ok_or(ObjectFault::Outside)?;
+            let land = c.land();
+            if land == u32::from(WATER)
+                || c.tile_data & ENTRANCE != 0
+                || c.tile_data & FREE == 0
+                || land == u32::from(ROCK)
+            {
+                return Ok(false);
+            }
+        }
+    }
+    let water = SIDE_STEPS.into_iter().find(|&[dx, dy]| {
+        cells
+            .get(x.wrapping_add(dx), y.wrapping_add(dy), z)
+            .is_some_and(|c| c.land() == u32::from(WATER) && c.tile_data & KEPT != 0)
+    });
+    let Some([dx, _]) = water else {
+        return Ok(false);
+    };
+    let u = if dx < 0 {
+        x.wrapping_add(1)
+    } else {
+        x.wrapping_sub(3)
+    };
+    Ok(cells
+        .get(u, y, z)
+        .is_some_and(|c| c.land() != u32::from(WATER)))
+}
+
+/// The cell below an entrance `at` kept free and not for obstacles (+0x28 bit 27 set, 26
+/// cleared) unless a Border Guard is pending there (+0x2C bit 0). The original writes it
+/// unchecked: off the map (a gate line without an entrance, offsets 8, 6) it is a fault
+/// ([`ObjectFault::Outside`], RMG-QUIRK-4), nothing written.
+fn keep_below(cells: &mut Cells, objects: &mut Objects, [x, y, z]: [i32; 3]) {
+    match cells.get_mut(x, y.wrapping_add(1), z) {
+        Some(c) => {
+            if c.pending_guard & 1 == 0 {
+                c.tile_data = (c.tile_data & !OBSTACLES) | KEPT;
+            }
+        }
+        None => objects.fail(ObjectFault::Outside),
+    }
 }
 
 /// The connections' work.
@@ -324,11 +417,11 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
 
     /// Pass 2's boat reach (0x5436DD to 0x543807): per placed shipyard (class 87) whose anchor's
     /// zone byte is `k`, the first of its [`SIDE_STEPS`] cells whose column is on the map and
-    /// which is water floods it ([`boat_reach`]); a side below the map's last row
-    /// ([`ObjectFault::ShipyardSide`]) is skipped.
+    /// which is water floods it ([`boat_from_yard`]). The original leaves the row unchecked: it is
+    /// on the map, every shipyard being [`Connect::by_shipyard`]'s, whose site test keeps the row
+    /// below its anchor on it.
     // rule: RMG-CON-013
     fn yards(&mut self, k: usize) {
-        let (w, _, _) = self.cells.size();
         let yards: Vec<[i32; 3]> = self
             .input
             .objects
@@ -341,20 +434,7 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
             if usize::try_from(self.cells.clamped(x, y, z).zone_index()) != Ok(k) {
                 continue;
             }
-            for [dx, dy] in SIDE_STEPS {
-                let (u, v) = (x.wrapping_add(dx), y.wrapping_add(dy));
-                if !(0..w).contains(&u) {
-                    continue;
-                }
-                match self.cells.get(u, v, z) {
-                    None => self.input.objects.fail(ObjectFault::ShipyardSide),
-                    Some(c) if c.land() == u32::from(WATER) => {
-                        boat_reach(self.cells, [u, v, z]);
-                        break;
-                    }
-                    Some(_) => {}
-                }
-            }
+            boat_from_yard(self.cells, [x, y, z]);
         }
     }
 
@@ -411,11 +491,7 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
         if candidates.is_empty() {
             return [false, false];
         }
-        let mut value = if row.wide {
-            0
-        } else {
-            guard_value(row.value, self.input.guards.strength)
-        };
+        let mut value = self.value(row);
         if least == 1 && value == 0 && !row.border_guard {
             return [true, true];
         }
@@ -432,8 +508,8 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
             carve(self.cells, q, row.border_guard);
             self.out.passages[f].push([q[0], q[1]]);
             if row.border_guard {
-                value = border_guard(p, f, value);
-                value = border_guard(q, k, value);
+                value = border_guard(p, 1, f, value);
+                value = border_guard(q, 1, k, value);
             }
             if value > 0 {
                 if self.stream.draw(SITE_PASSAGE_GUARD_SIDE) & 1 == 0 {
@@ -446,9 +522,10 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
         [true, true]
     }
 
-    /// A guard monster worth `value` at `at` when it holds no object (0x541692 to 0x541746): for
-    /// the zone generator of its zone byte (unchecked: P's is this zone generator's, Q's the
-    /// other's, `owner`, which a byte past them falls back to), created
+    /// A guard monster worth `value` at `at` when it holds no object (0x541692 to 0x541746, the
+    /// other ways' alike): for the zone generator of its zone byte (unchecked: P's is this zone
+    /// generator's, Q's the other's, below a shipyard's or gate's entrance the zone its
+    /// `rmg_map_can_place` tested; `owner`, which a byte past them falls back to), created
     /// ([`crate::guards::create`]) and placed through the generator's slot 1.
     fn guard(&mut self, at: [i32; 3], owner: usize, value: i32) {
         let [x, y, z] = at;
@@ -479,30 +556,238 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
         }
     }
 
-    /// `rmg_connection_by_shipyard` 0x541AD0 for zone generators `k` and `f`: which ends it made
-    /// (this one only).
-    fn by_shipyard(&mut self, _k: usize, _f: usize, _row: &Connection) -> [bool; 2] {
-        // stub: RMG-STUB-1 — E14 T4d2: a shipyard prototype drawn (0x541B78) on one level, its
-        // site (0x541D6C), the shipyard placed, a road target, the boat reach flooded; its
-        // guards. Makes nothing, draws nothing.
-        [false, false]
+    /// What `rmg_map_can_place` reads of zone generator `g`.
+    fn place_zone(&self, g: usize) -> PlaceZone {
+        let g = &self.input.gens[g];
+        PlaceZone {
+            id: self.input.zones[g.zone].id,
+            water: g.terrain == i32::from(WATER),
+        }
     }
 
-    /// `rmg_connection_by_gate` 0x542080 for zone generators `k` and `f` (another level, their
-    /// boxes overlapping): which ends it made (both).
-    fn by_gate(&mut self, _k: usize, _f: usize, _row: &Connection) -> [bool; 2] {
-        // stub: RMG-STUB-1 — E14 T4d2: a gate prototype drawn (0x5421BC), the best position of
-        // the overlap (0x542387), a gate on each level; their guards. Makes nothing, draws
-        // nothing.
-        [false, false]
+    /// The prototype of class group `class` drawn at `site` (`rand() %` its prototypes,
+    /// unsigned); none: the original divides by zero (`fault`, RMG-QUIRK-3).
+    fn prototype(&mut self, class: usize, site: u32, fault: ObjectFault) -> Option<usize> {
+        let r = self.stream.draw(site) as usize;
+        let group = self.input.objects.group(class);
+        let found = r.checked_rem(group.len()).map(|i| group[i]);
+        if found.is_none() {
+            self.input.objects.fail(fault);
+        }
+        found
+    }
+
+    /// The guard value of the connection `row` (0x541F24 to 0x541F97, 0x54250D to 0x542582,
+    /// inline: [`guard_value`]'s), 0 when wide.
+    fn value(&self, row: &Connection) -> i32 {
+        if row.wide {
+            0
+        } else {
+            guard_value(row.value, self.input.guards.strength)
+        }
+    }
+
+    /// `rmg_connection_by_shipyard` 0x541AD0 between zone generators `k` and `f` for the
+    /// connection `row`: refused unless on one level. A shipyard prototype drawn first (0x541B78,
+    /// [`ObjectFault::NoShipyard`] without one). Over k's box row by row, its cells of k's zone
+    /// the other's flood entered (+0x20 bits 24-31 its id): one reached by boat (+0x28 bit 24)
+    /// makes it at once; per land one whose row below is on the map, the anchors x..x + 2 on
+    /// its row that `rmg_map_can_place` (in k's zone) and [`site_fits`] allow, a site once per
+    /// such cell (RMG-QUIRK-19 on, else once); none: refused. The shipyard created (its use count
+    /// raised), its site `rand() %` the sites (0x541D6C, unsigned), placed through the
+    /// generator's slot 1; its entrance a road target (+0x14B0); the row below its footprint
+    /// (x − width + 1..x, y + 1) kept free unless a Border Guard is pending and each cell into
+    /// k's +0x404; the boat reach flooded from its water side ([`boat_from_yard`]). Its guard, on
+    /// the row below the anchor: with the Border Guard flag three guards from the entrance's
+    /// column less 1, the tent in f's zone; else, g above 0, a guard monster in the entrance's
+    /// column ([`Connect::guard`]). Made at this end only.
+    // rule: RMG-CON-015, RMG-CON-020
+    fn by_shipyard(&mut self, k: usize, f: usize, row: &Connection) -> [bool; 2] {
+        let gens = self.input.gens;
+        let (g, h) = (&gens[k], &gens[f]);
+        let z = g.position[2];
+        if z != h.position[2] {
+            return [false, false];
+        }
+        let Some(prototype) = self.prototype(
+            SHIPYARDS as usize,
+            SITE_SHIPYARD_PROTOTYPE,
+            ObjectFault::NoShipyard,
+        ) else {
+            return [false, false];
+        };
+        let (a, b) = (self.input.zones[g.zone].id, self.input.zones[h.zone].id);
+        let place = self.place_zone(k);
+        let height = self.cells.size().1;
+        let [x0, y0, x1, y1] = g.bounds;
+        let mut sites: Vec<[i32; 3]> = Vec::new();
+        for y in y0..y1 {
+            for x in x0..x1 {
+                // The box is on the map.
+                let c = self.cells.clamped(x, y, z);
+                if c.zone_index() != a || c.flooded_by() != b {
+                    continue;
+                }
+                if c.tile_data & BOAT != 0 {
+                    return [true, false];
+                }
+                if c.land() == u32::from(WATER) || y.wrapping_add(1) >= height {
+                    continue;
+                }
+                for u in x..=x.wrapping_add(2) {
+                    let at = [u, y, z];
+                    let fits = self
+                        .input
+                        .objects
+                        .can_place(self.cells, prototype, at, place)
+                        && site_fits(self.cells, at).unwrap_or_else(|fault| {
+                            self.input.objects.fail(fault);
+                            false
+                        });
+                    if fits && (self.input.shipyard_sites_repeated || !sites.contains(&at)) {
+                        sites.push(at);
+                    }
+                }
+            }
+        }
+        if sites.is_empty() {
+            return [false, false];
+        }
+        let objects = &mut *self.input.objects;
+        objects.created(prototype);
+        // `rand()` is at most 0x7FFF: an unsigned division.
+        let at = sites[self.stream.draw(SITE_SHIPYARD_SITE) as usize % sites.len()];
+        objects.add(self.cells, prototype, at);
+        let shape = objects.prototypes()[prototype].shape;
+        let [x, y, _] = at;
+        let entrance = [
+            x.wrapping_sub(shape.entrance[0]),
+            y.wrapping_sub(shape.entrance[1]),
+            z,
+        ];
+        self.input.road_targets.push(entrance);
+        let below = y.wrapping_add(1);
+        for u in x.wrapping_sub(shape.width).wrapping_add(1)..=x {
+            // On the map: the footprint test keeps x at least the width less 1, the site test
+            // the row below on the map.
+            let c = self.cells.clamped_mut(u, below, z);
+            if c.pending_guard & 1 == 0 {
+                c.tile_data = (c.tile_data & !OBSTACLES) | KEPT;
+            }
+            self.out.passages[k].push([u, below]);
+        }
+        // Its site's water side is still water: one floods.
+        boat_from_yard(self.cells, at);
+        // The guards' row is the anchor's below (0x541FAA, 0x541FE6), the entrance's below for an
+        // entrance on the anchor's row.
+        let mut value = self.value(row);
+        let ex = entrance[0];
+        if row.border_guard {
+            value = border_guard([ex.wrapping_sub(1), below, z], 3, f, value);
+        }
+        if value > 0 {
+            self.guard([ex, below, z], k, value);
+        }
+        [true, false]
+    }
+
+    /// `rmg_connection_by_gate` 0x542080 between zone generators `k` and `f` for the connection
+    /// `row`: refused on one level, for k on water, or when their boxes do not overlap. A gate
+    /// prototype drawn first (0x5421BC, [`ObjectFault::NoGate`] without one). Over the overlap
+    /// row by row, the (x, y) of k's zone on k's level and of f's on f's, whose sum of the two
+    /// cells' object distances (+0x20 bits 0-15, §2.1's flood) is at least the greatest kept
+    /// (from 0) and where `rmg_map_can_place` allows the prototype on both levels (in k's zone,
+    /// then f's); a greater sum empties them; none: refused. One drawn (0x542387, unsigned); a
+    /// gate created and placed there on k's level, then one on f's; the entrance (x, y) into
+    /// k's +0x404 and f's; the cell below the entrance kept free on each level ([`keep_below`]).
+    /// Its guards: with the Border Guard flag one below the entrance on k's level, the tent in
+    /// f's zone, then one on f's level, the tent in k's; then, g above 0, a guard monster below
+    /// each entrance, k's level first ([`Connect::guard`]). Made at both ends.
+    // rule: RMG-CON-016, RMG-CON-020
+    fn by_gate(&mut self, k: usize, f: usize, row: &Connection) -> [bool; 2] {
+        let gens = self.input.gens;
+        let (g, h) = (&gens[k], &gens[f]);
+        let (kz, fz) = (g.position[2], h.position[2]);
+        if kz == fz || g.terrain == i32::from(WATER) {
+            return [false, false];
+        }
+        let ([ax0, ay0, ax1, ay1], [bx0, by0, bx1, by1]) = (g.bounds, h.bounds);
+        let (x0, y0, x1, y1) = (ax0.max(bx0), ay0.max(by0), ax1.min(bx1), ay1.min(by1));
+        if x0 >= x1 || y0 >= y1 {
+            return [false, false];
+        }
+        let Some(prototype) = self.prototype(GATES, SITE_GATE_PROTOTYPE, ObjectFault::NoGate)
+        else {
+            return [false, false];
+        };
+        let (a, b) = (self.input.zones[g.zone].id, self.input.zones[h.zone].id);
+        let (near, far) = (self.place_zone(k), self.place_zone(f));
+        let mut best = 0u32;
+        let mut sites: Vec<[i32; 2]> = Vec::new();
+        for y in y0..y1 {
+            for x in x0..x1 {
+                // The overlap is on the map.
+                let c = self.cells.clamped(x, y, kz);
+                if c.zone_index() != a {
+                    continue;
+                }
+                let d = self.cells.clamped(x, y, fz);
+                if d.zone_index() != b {
+                    continue;
+                }
+                let sum = (c.zone & 0xFFFF) + (d.zone & 0xFFFF);
+                if sum < best {
+                    continue;
+                }
+                let objects = &mut *self.input.objects;
+                if !objects.can_place(self.cells, prototype, [x, y, kz], near)
+                    || !objects.can_place(self.cells, prototype, [x, y, fz], far)
+                {
+                    continue;
+                }
+                if sum > best {
+                    sites.clear();
+                    best = sum;
+                }
+                sites.push([x, y]);
+            }
+        }
+        if sites.is_empty() {
+            return [false, false];
+        }
+        // `rand()` is at most 0x7FFF: an unsigned division.
+        let [x, y] = sites[self.stream.draw(SITE_GATE_SITE) as usize % sites.len()];
+        let objects = &mut *self.input.objects;
+        for z in [kz, fz] {
+            objects.created(prototype);
+            objects.add(self.cells, prototype, [x, y, z]);
+        }
+        let [dx, dy] = objects.prototypes()[prototype].shape.entrance;
+        let (ex, ey) = (x.wrapping_sub(dx), y.wrapping_sub(dy));
+        self.out.passages[k].push([ex, ey]);
+        self.out.passages[f].push([ex, ey]);
+        let mut value = self.value(row);
+        for z in [kz, fz] {
+            keep_below(self.cells, self.input.objects, [ex, ey, z]);
+        }
+        let (p, q) = ([ex, ey.wrapping_add(1), kz], [ex, ey.wrapping_add(1), fz]);
+        if row.border_guard {
+            value = border_guard(p, 1, f, value);
+            value = border_guard(q, 1, k, value);
+        }
+        if value > 0 {
+            self.guard(p, k, value);
+            self.guard(q, f, value);
+        }
+        [true, true]
     }
 
     /// `rmg_connection_by_monoliths` 0x542CE0 for zone generators `k` and `f` with the monolith
     /// index `index`: both ends are made whatever it places.
     fn by_monoliths(&mut self, _k: usize, _f: usize, _row: &Connection, _index: usize) {
-        // stub: RMG-STUB-1 — E14 T4d3: the index's two-way or one-way prototypes, an entrance at
-        // random in each zone (0x542A8F), for one-way an exit in each; their guards. Places
-        // nothing, draws nothing.
+        // stub: RMG-STUB-1 — E14 T4d1 (its last part): the index's two-way or one-way
+        // prototypes, an entrance at random in each zone (0x542A8F), for one-way an exit in
+        // each; their guards. Places nothing, draws nothing.
     }
 }
 

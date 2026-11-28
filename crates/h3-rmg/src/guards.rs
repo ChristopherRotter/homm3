@@ -220,7 +220,7 @@ impl GuardCreature {
 }
 
 /// The creature table the guards read, by the original's creature id, 0 to 144, from `core`'s
-/// creatures ([`CREATURE_KEYS`]): the faction's index (the packs' factions are Castle to Conflux
+/// creatures (`CREATURE_KEYS`): the faction's index (the packs' factions are Castle to Conflux
 /// in the original's order), the level less 1, the AI value, the adventure map's counts.
 // rule: RMG-CON-021
 pub fn guard_creatures(core: &Ruleset) -> Vec<GuardCreature> {

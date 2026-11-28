@@ -631,10 +631,16 @@ proptest! {
             }
             // Steps 4 and 5: each town an object of class 98 with its entrance a road target, its
             // serial the next, its owner neutral or a position's colour, its zone with a first
-            // town whose entrance is that zone's first road target.
+            // town whose entrance is that zone's first road target. Step 6 appends each
+            // shipyard's entrance.
             let placed = &map.placed;
             let guards = &map.connected.monsters;
-            prop_assert_eq!(placed.towns.len(), placed.road_targets.len());
+            let yards: Vec<_> = map.objects.placed().iter().filter(|o| o.class == 87).collect();
+            prop_assert_eq!(placed.towns.len() + yards.len(), placed.road_targets.len());
+            for (o, &[x, y, z]) in yards.iter().zip(&placed.road_targets[placed.towns.len()..]) {
+                let [ex, ey] = map.objects.prototypes()[o.prototype].shape.entrance;
+                prop_assert_eq!([o.position[0] - ex, o.position[1] - ey, o.position[2]], [x, y, z]);
+            }
             prop_assert_eq!(
                 map.objects.serial(),
                 (placed.towns.len() + guards.len()) as i32 + 1
@@ -657,7 +663,7 @@ proptest! {
             }
             // Step 6: each guard monster an object of class 54 after the towns, its serial the
             // next, of a count of 1 or more; each passage end of its zone generator's zone, on
-            // its level.
+            // its level, or kept free (bit 27: the row below a shipyard, of any zone).
             for (k, m) in guards.iter().enumerate() {
                 prop_assert_eq!(map.objects.placed()[m.object].class, 54);
                 prop_assert_eq!(m.serial, (placed.towns.len() + k) as i32 + 1);
@@ -667,9 +673,9 @@ proptest! {
             for (g, ends) in map.zones.iter().zip(&map.connected.passages) {
                 for &[x, y] in ends {
                     let cell = map.cells.get(x, y, g.position[2]).unwrap();
-                    prop_assert_eq!(
-                        i32::from(cell.zone_byte() as i8),
-                        map.template.zones[g.zone].id
+                    prop_assert!(
+                        i32::from(cell.zone_byte() as i8) == map.template.zones[g.zone].id
+                            || cell.tile_data & 1 << 27 != 0
                     );
                 }
             }
@@ -876,17 +882,19 @@ fn kept_plan() -> BTreeMap<String, KeptPlan> {
 
 // covers: RMG-CON-001, RMG-CON-002, RMG-CON-003, RMG-CON-004, RMG-CON-005, RMG-CON-006
 // covers: RMG-CON-007, RMG-CON-008, RMG-CON-009, RMG-CON-010, RMG-CON-011, RMG-CON-012
-// covers: RMG-CON-013, RMG-CON-014, RMG-CON-018, RMG-CON-020, RMG-CON-021, RMG-TER-005
+// covers: RMG-CON-013, RMG-CON-014, RMG-CON-015, RMG-CON-018, RMG-CON-020, RMG-CON-021
+// covers: RMG-TER-005
 /// Step 6 over the oracle's corpus (`clients/capture/rmg/plan.txt`, E14 T4c; `phases.txt`),
 /// step 2's unwritten bytes as measured (`zones.txt`): the port's first draws after step 5's end
 /// are the original's lanes (`rmg_free_lanes_draw`'s, their count and digest), then the plan's
 /// whole (count and digest) in all 25 cases: the walls, the cells of no zone and the joining
 /// draw nothing, the islets (4 cases) and the sealed shores (11 cases, their painters flushed
 /// from one land to the next) draw as the original's. Where step 6 makes its connections by land
-/// alone (4 cases: the passages, their guard monsters), its draws and its dump after it are the
-/// phase oracle's; the others go on to a shipyard, gates or monoliths (E14 T4d2, T4d3), whose
-/// draws the port does not make yet (their prefix checked against the oracle's whole logs, E14
-/// T4d1).
+/// and shipyards alone (5 cases: the passages, `l1-4p-b`'s shipyards, the guard monsters), its
+/// draws and its dump after it are the phase oracle's; the others go on to monoliths or a Border
+/// Guard's tent (0x542A8F; the monoliths E14 T4d1's last part, the Border Guards T4d2's), whose
+/// draws the port does not make yet (their prefix up to the first, the gates' among them, checked
+/// against the oracle's whole logs, E14 T4d1).
 #[test]
 fn the_corpus_draws_step_6s_plan_as_the_original() {
     let packs = original("base:faithful");
@@ -919,7 +927,10 @@ fn the_corpus_draws_step_6s_plan_as_the_original() {
             whole.push(id);
         }
     }
-    assert_eq!(whole, ["s1-2p", "s1-2p-dry", "m1-4p", "s1-3p-2sm2i2"]);
+    assert_eq!(
+        whole,
+        ["s1-2p", "s1-2p-dry", "m1-4p", "l1-4p-b", "s1-3p-2sm2i2"]
+    );
 }
 
 // covers: RMG-ZON-010, RMG-ZON-011
