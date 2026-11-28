@@ -13,7 +13,7 @@ use super::dwelling_visits::{
     BLUE, ENTRANCE, HERO, RED, accept, at_entrance, creature, game, hire as question, peasant,
     stack, to_red, visit,
 };
-use super::dwellings::{Rules, rules, type_of};
+use super::dwellings::{self, Rules, rules, type_of};
 use super::*;
 use crate::command::{HireDialog, HireError, HireSource, HireTarget};
 use crate::testing::{MAX_STACK, PEASANT};
@@ -129,11 +129,7 @@ fn an_ally_s_dwelling_opens_its_dialog_read_only_whatever_its_levels() {
     // nothing free, read-only; every purchase refused, nothing changed.
     let rules = rules();
     for (k, creatures) in [("t:d5", ["t:c5", "t:w5"]), ("t:d1", ["t:c1", "t:w1"])] {
-        let ally = allies(super::dwellings::setup(vec![at_entrance(
-            &rules,
-            k,
-            Some(BLUE),
-        )]));
+        let ally = allies(dwellings::setup(vec![at_entrance(&rules, k, Some(BLUE))]));
         let mut s = crate::testing::started(&rules, &ally).unwrap();
         visit(&rules, &mut s);
         let before = s.clone();
@@ -164,7 +160,7 @@ fn an_ally_s_dwelling_opens_its_dialog_read_only_whatever_its_levels() {
     let camp = game(&rules, at_entrance(&rules, "t:camp", None), peasant());
     assert!(!camp.hire_read_only(&dialog(&rules, HERO, "t:camp")));
     let town = HireDialog {
-        target: HireTarget::Garrison(h3_contracts::TownId::new(0)),
+        target: HireTarget::Garrison(TownId::new(0)),
         ..dialog(&rules, HERO, "t:d5")
     };
     assert!(!own.hire_read_only(&town));

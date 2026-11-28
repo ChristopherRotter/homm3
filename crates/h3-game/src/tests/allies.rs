@@ -18,11 +18,13 @@ use super::*;
 const RED_ACTOR: Actor = Actor::Player(RED);
 
 /// [`manage_setup`] with its second hero blue's (on red's team when `allied`): red's hero at
-/// (0, 0) with 9 imps in slot 1, blue's hero 2 beside it at (1, 0) with 3 imps in slot 0, both
-/// wearing the ring and carrying the band and the charm.
+/// (0, 0) with 9 imps in slot 1, blue's hero 2 beside it at (1, 0) with 3 imps in slot 0 and
+/// Basic Tactics, both wearing the ring and carrying the band and the charm.
 fn setup_of(rules: &GameRuleset, allied: bool) -> GameSetup {
     let mut setup = manage_setup(rules);
     setup.heroes[2].owner = BLUE;
+    let tactics = rules.core().skill_by_key("t:tactics").unwrap();
+    setup.heroes[2].details.skills = Some(vec![(tactics, 1)]);
     if allied {
         setup.players[1].team = 0;
     }
@@ -69,8 +71,8 @@ fn a_step_toward_an_ally_s_hero_opens_the_visitor_s_meeting_with_that_hero_shown
     };
     assert_eq!(events[0], opened);
     assert_eq!(events[1..], parts[..]);
-    // The head, the stack, the ring worn, the band and the charm carried.
-    assert_eq!(parts.len(), 5);
+    // The head, the stack, the skill, the ring worn, the band and the charm carried.
+    assert_eq!(parts.len(), 6);
     assert!(matches!(
         parts[0],
         GameEvent::MeetingPartSeen {
@@ -250,12 +252,23 @@ fn onto_an_ally_s_hero_in_a_meeting_only_gifts_pass_each_told_to_its_owner() {
             hero: SECOND,
             at: Position(ring_at),
         }),
+        // Its dismissal (an own hero's is the meeting's `DecisionOpen`, below).
+        manage(Manage::Dismiss { hero: SECOND }),
     ] {
         assert_eq!(refused(&mut game, &rules, RED_ACTOR, command), ally);
     }
     assert_eq!(
         ally.to_string(),
         "hero 2 is an ally's: only gifts into its empty places"
+    );
+    assert_eq!(
+        refused(
+            &mut game,
+            &rules,
+            RED_ACTOR,
+            manage(Manage::Dismiss { hero: RED_HERO })
+        ),
+        GameCommandError::DecisionOpen
     );
 }
 

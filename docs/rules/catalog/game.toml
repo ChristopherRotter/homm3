@@ -1589,11 +1589,6 @@ numeric  = "integer"
   confidence = "high"
 
   [[rule.source]]
-  kind       = "wiki"
-  ref        = "the manual (page 32, survey E08-army.md section 2.3): between players' heroes trades are one-way"
-  confidence = "medium"
-
-  [[rule.source]]
   kind       = "vcmi"
   ref        = "server/CGameHandler.cpp heroExchange, arrangeStacks: an exchange between any two non-enemy heroes; taking another player's stacks and touching an occupied slot of its hero refused, but a merge into an ally's stack of the same creature allowed (survey E10-teams.md section 8): D-82, the original's empty slot followed"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"

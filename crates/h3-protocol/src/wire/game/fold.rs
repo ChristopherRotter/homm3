@@ -1080,26 +1080,22 @@ impl GameObservation {
                 });
                 info.army = Some(Vec::new());
             }
-            MeetingPart::Stack { stack } => {
-                if let Some(army) = &mut info.army {
-                    set_slot(army, stack.slot, Some(stack));
-                }
-            }
-            MeetingPart::Skill { skill } => {
-                if let Some(details) = &mut info.details {
-                    details.skills.push(skill);
-                }
-            }
-            MeetingPart::Artifact { place, artifact } => {
-                if let Some(details) = &mut info.details {
-                    put_artifact(details, place, artifact);
-                }
-            }
-            MeetingPart::Spell { spell } => {
-                if let Some(details) = &mut info.details {
-                    details.spells.push(spell);
-                }
-            }
+            MeetingPart::Stack { stack } => info
+                .army
+                .iter_mut()
+                .for_each(|army| set_slot(army, stack.slot, Some(stack))),
+            MeetingPart::Skill { skill } => info
+                .details
+                .iter_mut()
+                .for_each(|details| details.skills.push(skill)),
+            MeetingPart::Artifact { place, artifact } => info
+                .details
+                .iter_mut()
+                .for_each(|details| put_artifact(details, place, artifact)),
+            MeetingPart::Spell { spell } => info
+                .details
+                .iter_mut()
+                .for_each(|details| details.spells.push(spell)),
         }
     }
 

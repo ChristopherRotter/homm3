@@ -167,3 +167,59 @@ census, not re-run).
 - **Verify:** `cargo xtask verify --scope adventure --summary`: every step passes (coverage,
   determinism, bench-check) but `check-lane`, which fails by design for the `cross-lane` paths
   (the town lane's 5, the AI lane's 4, the server lane's 1). **Next:** T3b.
+
+### Increment 1, round 3: T3b1, the allies' meeting with gifts only and an ally's dwelling read-only (2026-11-28, `adventure/e10-t3b1`, `cross-lane`)
+
+Baseline: `master` 58142f1 (#1221; T3a's #1220 merged); CI green on 3f7a585 (T3a's merge). The
+setup's baseline was stopped (a shallow clone runs it in full, `TRAPS.md`); CI's verify of
+`master` stands for it. Staged 17 originals from the PC at the start (SHA-256 against the PC's
+sums of 2026-11-25). **The user's cut** (decision 20, at T3b's start): T3b1 the commands toward
+an ally's things (§5, §4's dwelling), T3b2 the projections (§6, the team's knowledge); the ally's
+hero's details and army shown to the visitor while the meeting is open.
+
+- **The meeting** (GAM-TEM-003 written; GAM-MET-001, GAM-DEC-003 amended): a step toward a hero
+  of the team, an ally's, is met as an own one (`state.rs`' step: `allied` for `==`; a gate's
+  pair, `jumps.rs`; on a town's entrance as its visitor, never besieged: `besieges` already
+  tested the team); the game's `meet` tells the Scholar's lessons to each hero's owner and, after
+  `MeetingOpened`, the ally's hero part by part to the visitor's owner (`MeetingPartSeen`,
+  `MeetingPart::of`: the head, the stacks, the skills, the worn artifacts, the backpack's, the
+  spells; the events are `Copy`, as the hire's parts). While it is open the visitor's observation
+  holds the ally's hero's details and its army (`HeroInfo::details`, the new `HeroInfo::army`;
+  `GameState::meeting_ally_of`); the close ends that view.
+- **The gifts:** the adventure holds an ally's hero on the map as a bar not the player's, named
+  only as a command's target (`Held::Ally`, `held_target`, the cold `ally_held`), so the one owner
+  rule (ADV-GAR-003) makes a move or a split onto it a gift into an empty slot (`OnlyEmpty` else;
+  the visitor's last stack stays, ADV-ARM-002); a source on it stays `NotYourHero`. The game's
+  `check_gift` (cold) refuses first, with `GameCommandError::AllyHero(hero)`, a stack or an
+  artifact taken from it, one onto an occupied slot or worn position, its formation, flag,
+  assembly, disassembly; an artifact goes into an empty worn position or its backpack (the ally's
+  details as the receiver, `change_ally`: told to its owner, then to the visitor's owner). A
+  gift's slot is told to the ally's owner too (`tell_ally_stack`). The listing (`legal_management`)
+  holds the gifts alone (the army's by the one owner rule, the artifacts filtered to empty
+  positions and the backpack), none of the ally's hero's own. *Agent's call:* a split into an
+  empty slot is a gift (D-61's rule; the original's split dialog's target test not read).
+- **An ally's dwelling** (ADV-DWL-004, ADV-HIR-002, GAM-DEC-008 amended): read at 0x4ABAB4 to
+  0x4ABAC4 (`dwelling_offer_hire`: the record's owner +0x57 against `current_player`, another
+  player's jumping to the dialog at 0x4ABD06, past the free creatures and their return; the map's
+  entry amended): its accepted hire question opens the dialog whatever its levels, nothing free;
+  read-only by the dialog's source's owner (`AdventureState::hire_read_only`; no flag stored, so
+  no hash moved), every purchase `HireError::ReadOnly` before the creature's test, the game's
+  legal answers `Close` alone.
+- **The wire** (`h3-protocol`, the server lane's, `cross-lane` by decision 19's §16): protocol
+  v88: `MeetingPartSeen` with `MeetingPart`, `HeroInfo::army`, `GameReject::AllyHero`,
+  `HireReject::ReadOnly`; the fold's `see_met`, `set_stack` onto the ally's army,
+  `close_decision` dropping it. **Not on the wire:** the read-only flag (the wire's `Hire`,
+  `Decision::Meeting` and `GameObservation` are built by the clients' tests, so no field was added
+  to them; a client reads it from the dwelling's owner; the server lane's inbox asked). The
+  clients' `h3-map-view` and `h3-view` build against v88.
+- **Tests:** the adventure's (`teams.rs`: the ally's bar's gifts and refusals, the split's range,
+  the listing; `hiring.rs`: the read-only dialog of a level-5 and a level-1 dwelling; `towns.rs`,
+  `teleporters.rs`: an ally's hero met off and on a town's entrance and on a gate's pair), the
+  game's (`tests/allies.rs`: the meeting and its parts, the view while open, the gifts and every
+  refusal, the listing, Scholar between allies; `hiring.rs`: the read-only dialog), the
+  protocol's (the round trip with an ally's hero's army, the fold of the parts, 56 event kinds);
+  `h3-map`'s view property knows the new event (its plans have no allies).
+- **The sweep:** the catalog's GAM-MET-001 ("allied heroes (teams, E10)" not modelled) and
+  ADV-DWL-004's T3b mark rewritten; the design note's §4, §5 "as built", §16 to §18 and §20's
+  versions (E09 T59a took protocol v87 and replay format v29: T4b takes v89, T6 v30).
+  `docs/06-security.md`'s line on the meeting's view waits for T7's `shared/` amendments.

@@ -51,6 +51,10 @@ impl GameState {
         sink: &mut S,
     ) -> Result<(), GameCommandError> {
         let together = self.check_managing(player)?;
+        // rule: GAM-TEM-003
+        if let Some(ally) = self.meeting_ally(player, together) {
+            self.check_gift(player, ally, &command)?;
+        }
         match command {
             // E09 T38b2 (GAM-MAN-003): a dismissal only outside a decision.
             Manage::Dismiss { .. } if together != Together::Alone => {
@@ -63,10 +67,6 @@ impl GameState {
             | Manage::Tactics { hero, .. }
             | Manage::Assemble { hero, .. }
             | Manage::Disassemble { hero, .. } => together.admits_heroes(core::iter::once(hero))?,
-        }
-        // rule: GAM-TEM-003
-        if let Some(ally) = self.meeting_ally(player, together) {
-            self.check_gift(player, ally, &command)?;
         }
         self.manage_checked(rules, player, together, command, sink)
             .map_err(GameCommandError::Manage)
@@ -85,7 +85,8 @@ impl GameState {
     }
 
     /// Checks that `command`, given in a meeting with the ally's hero `ally`, is a gift to it or
-    /// names it not at all (GAM-TEM-003; E10 T3b1, increment 1's design note §5, D-82): a stack
+    /// names it not at all, before the meeting's other checks (GAM-TEM-003; E10 T3b1, increment
+    /// 1's design note §5, D-82): a stack
     /// moved or split into an empty slot of its army (`swap_army_move` 0x5B0DA0: no merge, no
     /// swap; the adventure's one owner rule backs it, ADV-GAR-003), an artifact moved into an
     /// empty worn position or into its backpack (`swap_worn_click` 0x5AF590,
@@ -95,8 +96,8 @@ impl GameState {
     /// # Errors
     ///
     /// [`GameCommandError::AllyHero`]: a stack or an artifact taken from it, a stack onto an
-    /// occupied slot, an artifact onto an occupied position, its formation, flag, assembly or
-    /// disassembly.
+    /// occupied slot, an artifact onto an occupied position, its formation, flag, assembly,
+    /// disassembly or dismissal.
     // rule: GAM-TEM-003
     #[cold]
     #[inline(never)]
@@ -340,13 +341,13 @@ impl GameState {
         stack: Option<ArmyStack>,
         sink: &mut S,
     ) {
-        if let Some(on) = self.adventure.hero(ally) {
+        self.adventure.hero(ally).into_iter().for_each(|on| {
             sink.emit(GameEvent::StackChanged {
                 player: on.owner,
                 at,
                 stack,
             });
-        }
+        });
     }
 
     /// The stack at `at`: in its hero's army on the map (since E09 T28a, or in a town's garrison),

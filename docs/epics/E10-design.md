@@ -280,7 +280,7 @@ it; the owner's observation shows the days).
 
 - **Wire** (`h3-protocol`, the server lane's; the global trap "engine types on the wire",
   `cross-lane` at each task): the new events, `SystemCommand::HandOver`, the errors `AllyHero`,
-  `Defeated`, `GameOver`, `NotHuman`, the observation's fields; protocol v87 at the first (E09 T58b took v86).
+  `Defeated`, `GameOver`, `NotHuman`, the observation's fields; protocol v87 at the first (E09 T58b took v86; as built: E09 T59a took v87, E10 T3b1 v88, so T4b the next).
 - **The env** (`h3-sim`, the AI lane's, `cross-lane`): `AdventureEnv`'s step reports the end
   (`result`) and each player's defeat; a defeated or ended seat is never `to_move`; the action
   encoding stays v23 (E09 T58b's; the hand-over is the host's, no player entry). The reward is E13's.
@@ -292,7 +292,7 @@ it; the owner's observation shows the days).
 
 ### 17. Replays, maps, properties, benchmarks
 
-- **Replays** (the adventure replay format v29; E09 T58b took v28): the word `hand-over <player>`, the game's end
+- **Replays** (the adventure replay format v29; E09 T58b took v28; as built: E09 T59a took v29, so T6 the next): the word `hand-over <player>`, the game's end
   recorded and checked at the replay's end; golden replays of the three shipped
   maps that start Red without a town (Adventures of Jared Haret, Knee Deep in the Dead, Pirates!:
   defeated after seven own turns), an allied map's meeting and shared fog, a conquest and a
@@ -307,7 +307,8 @@ it; the owner's observation shows the days).
 ### 18. Versions, rule ids, quirks, stubs
 
 - **Versions:** map import v30 (§1), adventure state hash v31 (§2, §3), game state hash v41 (§2:
-  the players' teams, T3a) and v42 (§8, T4a), adventure replay format v29 (§17); protocol v87 (the
+  the players' teams, T3a) and v42 (§8, T4a), adventure replay format v29 (§17; E09 T59a took it,
+  T6 the next); protocol v87 (E09 T59a took it; v88 E10 T3b1's, §5; the
   server lane's; E09 T58b, merged after this note, took replay format v28, protocol v86 and the
   action encoding v23). The adventure ruleset part,
   the core ruleset hash and the quirk flags stay (no data, no flag).
@@ -358,7 +359,7 @@ events).
 | Round | Tasks | Content |
 |---|---|---|
 | 2 | **T2** | `shared/` (`cross-lane`): the drafts applied, the glossary, `docs/06-security.md` |
-| 3 | **T3** | T3a: the teams in the setup and the state, `allied` by state at every site, the fog per team, §4's rules re-tested with allies, the E10 marks of the teams (§1 to §4; map import v30, adventure state hash v31), measured at once. T3b: the allies' meeting and the views (§5, §6). T3c (`cross-lane`): an ally's town (§7), the siege's reading first |
+| 3 | **T3** | T3a: the teams in the setup and the state, `allied` by state at every site, the fog per team, §4's rules re-tested with allies, the E10 marks of the teams (§1 to §4; map import v30, adventure state hash v31), measured at once. T3b: the allies' meeting and the views (§5, §6; decision 20: T3b1 §5 with §4's read-only dwelling, T3b2 §6 with the team's knowledge). T3c (`cross-lane`): an ally's town (§7), the siege's reading first |
 | 4 | **T4** | T4a: the defeat (§8 to §11: the check's moments, elimination, the seven days, a defeated player's steps and the loops; game state hash v42; ADV-QUIRK-59 to -61). T4b: the verdict and after the end (§12, §13), the events and the wire (§15, §16; protocol v87) |
 | 5 | **T5** | Batch GAM-1: T5a its maps (§19), T5b the run on the harness, scored (needs the PC) |
 | 6 | **T6** | The hand-over (§14), the env's terminal (`cross-lane`), the replay format v29, the maps, replays, properties and benchmarks (§17); batch GAM-1's outcome folded in |

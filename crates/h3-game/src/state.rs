@@ -987,11 +987,10 @@ impl GameState {
     #[inline(never)]
     fn tell_meeting_ally<S: Sink>(&self, player: PlayerId, hero: HeroId, sink: &mut S) {
         let parts = self.adventure.hero(hero).zip(self.hero(hero));
-        if let Some((on, details)) = parts {
-            for part in crate::MeetingPart::of(&on.army, details) {
-                sink.emit(GameEvent::MeetingPartSeen { player, hero, part });
-            }
-        }
+        parts
+            .into_iter()
+            .flat_map(|(on, details)| crate::MeetingPart::of(&on.army, details))
+            .for_each(|part| sink.emit(GameEvent::MeetingPartSeen { player, hero, part }));
     }
 
     /// Opens the army dialog of a group that found no room in its hero's army (GAM-DEC-004; E08
