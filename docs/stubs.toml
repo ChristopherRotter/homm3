@@ -268,6 +268,13 @@ epic   = "E16"
 # reason = "An answer's battle in play shows a monster's aftermath only (E24 M5 T6a, design section 5.33): the object taken off after a win where the battle's end takes it, the hero gone after a loss; Pandora's Box's rewards after its guards' battle (and any object's boxes after its guards) are not shown. Lifted by E24 M5 T6e (each object's boxes after its guards' battle)"
 # epic   = "E24"
 
+# MCL-STUB-11, a comment for the same reason; its marker `// stub: MCL-STUB-11` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-11"
+# where  = "clients/crates/h3-map-client/src/audio.rs::ask"
+# reason = "The terrain's track asked again at a battle's return (E24 M5 T6a, design section 5.33, `Cue::Again`) comes back where its name's last fade began, not from its start as the user heard it (MCL-Q78 (b)): the host's music (`h3_ui::music` and the battle client's `HostSound`, the client lane's) forgets no track's place. Lifted with MCL-Q78's answer: a request that forgets the place when it is taken, additive in `h3_ui::music` and `HostSound` (with the client lane), or every reopened track from its start under (a)"
+# epic   = "E24"
+
 # --- town (TWN-STUB-<n>) ---
 
 [[stub]]

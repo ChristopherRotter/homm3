@@ -666,8 +666,10 @@ starts from its start (the client's kept places dropped, the map's and the commo
 with the client lane); (b) as read: the place kept and resumed, only a battle's return from the start
 as heard; (c) (b) until the user listens once more in the original (a town left after half a minute;
 a terrain crossed and crossed back within its track), then (a) or (b). **Recommended (c)**: one
-listening settles it. Built at T6a as (b): the return from a battle starts the terrain's track from its
-start (the user's ear), every other resume as built. Blocks nothing.
+listening settles it. At T6a the return from a battle asks for the terrain's track again (`Cue::Again`), but
+it still comes back at its kept place: (b)'s "from its start" needs a request that forgets the place,
+additive in `h3_ui::music` and the battle client's `HostSound` (the client lane's; `MCL-STUB-11`).
+Blocks nothing.
 
 ### RMG lane (`RMG-Q<n>`)
 

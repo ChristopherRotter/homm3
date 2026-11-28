@@ -208,7 +208,11 @@ clock and the battles as the original's.
   start; **done** 2026-11-27 in four parts: the log's "M5 T4c, part one" to "part four", design
   §5.28 to §5.30; `h3_map_view::notice`, `MCL-STUB-7`, MCL-Q61 to Q69); T5, the hand-over and the clock (kept whole by the user at its start; **done** 2026-11-28 in
   five parts: the log's "M5 T5, parts one and two" to "part five", design §5.31, §5.32; the
-  hot-seat recordings `seat-*`, `h3_map_view::clock`, MCL-Q70 to Q77, `MCL-STUB-8`); T6, the battles in play; T7, a whole game;
+  hot-seat recordings `seat-*`, `h3_map_view::clock`, MCL-Q70 to Q77, `MCL-STUB-8`); T6, the battles in play, cut in four by the user at its start
+  (2026-11-28) and a fifth at T6a's end: T6a a human's attack played live (**done** 2026-11-28 in
+  three parts: the log's "M5 T6a, part one" to "part three", design §5.33; MCL-Q75 answered (b),
+  MCL-Q47 read, MCL-Q78; `MCL-STUB-6` lifted, `MCL-STUB-9` to `-11`), T6b the defended and the two
+  humans' battles read and recorded, T6c those built, T6d Auto Combat, T6e the guards' fights; T7, a whole game;
   T8, M5's closure. A task that grows is cut at a seam agreed with the user.
 - **Exit:** the hand-over, the clock's boxes and the battles' switches as recorded; a two-human
   hot-seat game on a shipped map played from the shell's Begin to a day limit, headless by
@@ -283,7 +287,8 @@ clock and the battles as the original's.
   observatories' visit, the Deity's week, a reply's object taken, the slots where told, a
   creature's number (the packs' handle, `engine::Creatures`). An unasked decision (a fight, a
   hire, a Shipyard, a visit window, a meeting, an army dialog) is closed by its notice
-  (`MCL-STUB-7`) until M5 T6, M6 and M7 build it.
+  (`MCL-STUB-7`) until M5 T6e (the guards' fights; a monster's offer played since T6a), M6 and
+  M7 build it.
 
 ## Review lists
 
@@ -324,8 +329,9 @@ here.
 - The walks through the engine (M5 T4a, *provisional*; design §5.26): the reach asked once per
   stand (the hero's place, the walks and turns taken), only today's (MCL-Q37); a refusal kept by
   its stand and tiles, the same walk from there refused at once; the seat's record since read
-  again and its walks laid out again at each walk taken; a battle in play ending play
-  (`MCL-STUB-6`, until T6); each walk's and reach's line in play's report.
+  again and its walks laid out again at each walk taken; a battle in play hosted live in the
+  window since T6a (design §5.33: asked of the host at its hand-over, the record laid out again
+  after it); each walk's and reach's line in play's report.
 - The boxes answered through the host (M5 T4b, *provisional*; design §5.27): the answers and the
   next levels kept by the question (its find, its place among the visit's, the button) and by
   the hero and level; a stand counting the host's answers taken; the visit laid out again from

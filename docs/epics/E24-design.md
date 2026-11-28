@@ -5707,3 +5707,68 @@ the writers of the adventure manager's +0x58.
   The battle client shows no clock (`h3_view::game_record` reads no `GameClock`).
 - *Provisional:* the names; the seat's numbers echoed as they come; the battle AI's stream; the
   kept messages from the battle's start to its return; the view set to the engine's at the end.
+- **The window** (part two; `h3_map_view::timeline`, `h3_map_client::{window, battles}`): a battle of
+  the viewer's in play is asked of the host where the record player hands a recorded one over (a
+  walk's end with no find: the plain cut; a switch's battle shown whole) when the host has not
+  given its result (`Loop::battle_asked`); the loop waits there. The window takes the seat
+  (`Session::battle`, the clock held), hosts it in the battle client (`battles::host_game`:
+  `Ground::load_game`, the host's pass before each of the element's passes and at most 10 ms
+  apart, the sound lent as for a record's battle, keys reaching the battle, an unattended run's
+  human side by the unattended presses), then reads the record again and lays the walk's or the
+  answer's visit out from it (`fought_after`: the find whose fight it is, the hosted answer's
+  reply laid out again, its fight apart) and gives the result (`Loop::add_battle` with
+  `reach::Fought`): the finds, the host's answers and the switch under way updated, the loop run
+  again from before the hand-over, a switch's battle closed in that millisecond
+  (`Action::BattleClosed`). The map's clock goes on as if the battle took none (frames in the
+  battle are the battle client's); the headless check keeps the results as host facts
+  (`Hosted::battles`, `Start::add_battle`). Until its result a monster's battle is a fight with no
+  result; a battle begun on the way is placed on the object of `BattleStarted`'s tile (the
+  defender's, `Battled::tile`). The army shown after it is the seat's projected view's
+  (`Session::army`, `Fight::army`: `BattleEnded` tells no survivors, SRV-STUB-9).
+- **Which hand-over:** a monster attacked, a savage monster's zone entered and a monster's offer
+  declined go through the switch (the fades; `battle_start` 0x462A20 fades every shown battle, so
+  the zone's entry too: *provisional*, the record player keeps its plain cut there, §5.20); every
+  answer's battle through the switch at its box's close, what follows by whether the battle's end
+  took the object or the hero. A battle no find tells (an event's guards) goes by the plain cut,
+  the map after it the record's as the timeline folds it (`MCL-STUB-9`). Pandora's Box's rewards
+  after its guards are not shown (`MCL-STUB-10`). The guards' questions (a mine's, a dwelling's, a
+  bank's, a guarded pile's) stay T4c's notices whose OK declines (`MCL-STUB-7`, T6e).
+- **Checked** under Xvfb (`play --humans 0,1 --check`; each run on with a step, both End Turns and
+  Red's day 2): a walk onto savage Peasants won (100, 6 and 124 frames read back exact), a guard
+  zone's step won (98, 5, 125), a join offer declined and fought (116, 5, 118), a hero lost (the
+  hero faded off, the second chosen; 98, 5, 124); play's record of the offer's game plays to its
+  end in the record player (172 of 172 frames exact under `--check`); `drawn` 56 situations and
+  the sequences, none other. An unattended battle runs in real time (15 to 20 s for 15 Peasants,
+  about 60 s for a lost one against 40): a `--check` run allows for it.
+- *Provisional* (part two): the zone's entry by the switch; every answer's battle by the switch;
+  the clock held from the hand-over, not the walk; the army shown the last walked hero's.
+- **The music and the loops at the return** (part three; `h3_map_view::timeline`, `h3_map_client::
+  audio`): the walk's request is `Cue::Again` (the cues' `music-again`: the track of the music's
+  terrain, +0x58's, asked with no condition), made by `Loop::music_again` where the visit's rest
+  ends (`finish`, `visited`, a lost hero's next choice, a draw's monster dissolve). Whether it is
+  due is settled at the switch (`asks_again`) by how the move began (`By::Walk` a click's walk,
+  `By::Key` a key's step, `By::Space`): always after a click's walk; after a key's step only for a
+  battle inside the step (a find on no tile of its own that is a monster's fight or question: a
+  zone, a zone's offer declined); never after Space. A plain cut's return
+  (`Player::take_back_cut`; the window tells a cut by `asked.switch` in play, `Replay::switched` in
+  the record player) restarts the loops kept at the hand-over and asks for the map's last track at
+  once. Before, `Player::take_back` asked for nothing (MCL-Q47's first answer): the tune played
+  out, then silence until a choice or another terrain; a plain cut's loops silent until the next
+  scan (`dwellings-guards-s1`: to 5 330 ms, the next day). The track comes back at its kept place,
+  not from its start (`MCL-STUB-11`, MCL-Q78). `--cues` also logs `<ms> heard <track>` when the
+  music heard changes (polled once per window turn), and play takes `--cues <file>` (one per view).
+- **Checked** under Xvfb (SDL's disk audio; the map's ms): play's click onto the Peasants asks at
+  6 779 (the fade in's end 6 259 and the 520-ms dissolve), Grass heard at 7 678; a key's step into
+  the zone asks at 6 929; a key's step onto the Peasants asks none (the tune heard from 6 518,
+  silence from 12 179); a lost battle with the next hero on grass asks at 6 779, on dirt the
+  choice's `music Dirt` first and the request a repeat; a join offer declined by a key and by a
+  click asks at 7 687 and 8 968. The record player: `battle-won` asks at 1 822 (heard 2 902),
+  `battle-mine` at 2 836 as its last box closes (the loop again at the fade in's end, 1 913),
+  `dwellings-guards-s1`'s two plain cuts at 1 653 and 3 605 (the loop back at volume 32),
+  `rewards-stone-guard-s1`'s walk's cut at 1 552; every run's frames read back exact and the
+  headless loop's changes the same. `battle-won`, `battle-mine` and `battle-retreat` (scripted, by
+  keys) ask none, as recorded. `drawn` 56 situations and 124 sequences the same (its sound part
+  compares no music or loops).
+- *Provisional* (part three): which key's steps count as inside the step; a plain cut's request at
+  once, not after its visit's rest; the cut's loops those kept at the hand-over, not a scan; play's
+  `MCL-STUB-9` cuts as a click's walk (not exercised: no situation makes one).

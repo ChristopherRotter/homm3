@@ -11,30 +11,29 @@ archived with their review lists in `docs/epics/E24-archive.md`; their queue his
 `QUEUE-ARCHIVE.md`. **M5** (hot seat on the adventure map) was refined with the user at T0
 (2026-11-24): its scope, decisions and exit in the epic's M5 section; M6 to M8 sketched in its
 "Later". Every task's cut is confirmed with the user at its start. `MCL-STUB-5` (a computer
-colour's turn ended at once) since T3a, `MCL-STUB-6` (a battle in play ends play, until T6)
-since T4a, `MCL-STUB-7` (a screen of M6 or M7 or a decision the view does not ask: its notice)
-since T4c. T1 was cut in three at its start
+colour's turn ended at once) since T3a, `MCL-STUB-7` (a screen of M6 or M7 or a decision the view does not ask: its notice)
+since T4c, `MCL-STUB-9` to `-11` (a battle no find tells, an answer's battle's boxes, the track's
+kept place at a battle's return) since T6a. T1 was cut in three at its start
 (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done 2026-11-25), T3 in two (T3a done
 2026-11-25, T3b 2026-11-26), T4 in three (T4a done 2026-11-26, T4b 2026-11-26 in two sessions, T4c 2026-11-27 kept whole,
 in four parts), T5 kept whole (done 2026-11-28 in five parts), T6 in four by the user at its start
-(2026-11-28: T6a now, then T6b to T6d; the battle client's parts of T6c and T6d this lane's, in
-`cross-lane` pull requests). Next: T6a's rest.
+(2026-11-28: T6a, then T6b to T6d; the battle client's parts of T6c and T6d this lane's, in
+`cross-lane` pull requests; T6e cut out of T6a at its end). T6a done 2026-11-28 in three parts.
+Next: T6b (Wine) or T6e (none), the user's pick.
 
-### E24 M5 T6a — a human's attack played live
+### E24 M5 T6e — the guards' fights in play
 
-- **Scope:** a walk's or an answer's battle against a monster, guards or a neutral (the human
-  attacking) played live in play's window: the battle client's `GameSeat` on the in-process
-  session, the human's commands from the battle's screen, the other side the host's (the original's
-  battle AI, `h3_battle_ai::choose`); the map after it laid out from the record, each human's view
-  the engine's; the hot seat's clock held through it (MCL-Q75 (b), the user 2026-11-28); a plain
-  cut's battle restarting the ambient loops at its hand-back as a switch's lift does (design §5.24:
-  `dwellings-guards-s1`'s loop silent after its won battle); the terrain's music at the return as
-  the original's (MCL-Q47, read at T6a: design §5.33); `MCL-STUB-6` lifted.
-- **Acceptance:** each kind (a monster attacked, a guard zone entered, an answer's fight) played in
-  a hot-seat game under Xvfb, `--check` exact; the sounds by `--cues`; `drawn` as recorded; the
-  scoped verify.
-- **Depends on:** T5. **Status:** in progress (`map-client/e24-m5-t6a`; part one, the session's
-  side, done 2026-11-28).
+- **Scope:** the guards' questions T4c left notices (`MCL-STUB-7`'s fights: a mine's, a
+  dwelling's, a bank's, a guarded pile's question asked in play, Part A's questions in
+  `visits::opened`, an OK that fights in `wire_answer`), their battles hosted as T6a's, each
+  object's boxes and flag after the battle (Pandora's Box's rewards, `MCL-STUB-10`); an event's
+  guards told as a find (`MCL-STUB-9`); the record player's walks' and answers' battles by the
+  switch as play's (design §5.33: `battle_start` fades every shown battle; §5.20's plain cut was
+  no reading).
+- **Acceptance:** each kind played in a hot-seat game under Xvfb, `--check` exact; the record
+  player's battles as recorded (`drawn`); the scoped verify.
+- **Depends on:** T6a. Cut out of T6a at its end (2026-11-28: the runner's, the guards' questions
+  were T4c's notices). **Status:** queued.
 
 ### E24 M5 T6b — the defended and the two humans' battles read and recorded
 
@@ -72,7 +71,7 @@ in four parts), T5 kept whole (done 2026-11-28 in five parts), T6 in four by the
   gaps found placed (a question, a stub or a fix).
 - **Acceptance:** the game played both ways with every command the engine's; no rules table or
   map text read in play.
-- **Depends on:** T6a to T6d. **Status:** queued.
+- **Depends on:** T6a to T6e. **Status:** queued.
 
 ### E24 M5 T8 — M5's closure
 
