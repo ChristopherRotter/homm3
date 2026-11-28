@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use h3_protocol::wire::game::{
     AltarWindow, Amount, Choice, ChoiceKind, HillFortState, HillFortWindow, Hire, HireSeen,
     HireTarget, LevelUp, MarketSeen, MarketWindow, ObjectRef, Offer, Pos, PrimarySkill,
-    UniversityVisit,
+    UniversitySeen, UniversityVisit,
 };
 
 const ANCHOR: Pos = Pos {
@@ -126,8 +126,7 @@ fn decisions() -> Vec<(Decision, Option<Notice>, Option<Answer>)> {
             Decision::University {
                 visit: UniversityVisit {
                     hero: 0,
-                    object_type: 1,
-                    anchor: ANCHOR,
+                    place: UniversitySeen::Town { town: 2 },
                     skills: Vec::new(),
                     price: gold.clone(),
                 },

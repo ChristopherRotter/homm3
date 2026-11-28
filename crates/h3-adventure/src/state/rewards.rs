@@ -20,7 +20,8 @@ use h3_heroes::{
 
 use super::{AdventureState, MapObject, Resolved, Visits};
 use crate::command::{
-    AdventureOutcome, Choice, ChoiceKind, HeroGains, Offer, OfferKind, Pick, Sink, UniversityVisit,
+    AdventureOutcome, Choice, ChoiceKind, HeroGains, Offer, OfferKind, Pick, Sink, UniversityPlace,
+    UniversityVisit,
 };
 use crate::movement::details_of;
 use crate::ruleset::{
@@ -486,8 +487,10 @@ impl AdventureState {
         AdventureOutcome {
             university: Some(UniversityVisit {
                 hero,
-                object_type,
-                anchor: object.anchor,
+                place: UniversityPlace::Object {
+                    object_type,
+                    anchor: object.anchor,
+                },
                 skills: object.resolved.skills().to_vec(),
                 price: price.clone(),
             }),

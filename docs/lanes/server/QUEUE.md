@@ -64,6 +64,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   (`restores`) and `h3-server`'s `tests::record` moved from 118 to **130**; all three pass over
   them, the session's bounds unmet. Their random games cast often (45 casts in
   `spells-s415-d28`), no turn longer than the duel's and garrisons' battles.
+- 2026-11-28 (the town lane, E09 T59b1, `town/e09-t59b1`, `cross-lane` with the user's consent;
+  **in your paths, mapped; for your review**): protocol **v88**: `TownCommand::University { town,
+  hero }` both ways, `TownReject::NoUniversity` and `NotTownHero`; **`UniversityVisit` and
+  `GameEvent::UniversityOpened` name their place** (`place: UniversitySeen`, `Object { object }` or
+  `Town { town }`, as `MarketSeen`) in place of `object_type` and `anchor`; the tests' round trips
+  (a town's University decision and event). The game state hash is v42 (the 130 goldens
+  re-recorded; `h3-server`'s `src/tests/record.rs` hash literals), the replay format v30.
 - 2026-11-27 (the town lane, E09 T59a, `town/e09-t59a`, `cross-lane` with the user's consent;
   **in your paths, mapped; for your review**): protocol **v87**: `TownCommand::BuyWarMachine {
   town, building }` and `BuildBoat { town }` both ways, `TownReject::NoWarMachine`,

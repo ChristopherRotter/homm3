@@ -2355,3 +2355,30 @@ quirks   = ["TWN-QUIRK-19"]
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 111; E09 decisions 206, 207 and 227"
   confidence = "high"
+
+[[rule]]
+id       = "TWN-UNI-001"
+title    = "The Conflux's Magic University opened for the town's hero"
+context  = "town"
+status   = "verified"
+summary  = "TownCommand::University { town, hero } opens E08's University decision (GAM-DEC-006) at a standing Magic University (a building of role university) with the town as its place (UniversityPlace::Town), for the town's visitor or its garrison hero the command names, the actor's (decision 207: the original's student, the visitor unless a stack of the upper bar is selected and a garrison hero stands there, is the command's choice; not TWN-QUIRK-15's visitor alone: the University takes the garrison hero), at any time of the actor's turn, whatever its treasury holds (the original's dialog opens and disables the purchase it cannot pay). Its skills are the part's (TWN-TRD-001: Fire, Air, Water and Earth Magic, in slot order) at the part's price (2 000 gold each): with TWN-QUIRK-16's flag on (faithful) a school the scenario bans is offered and taught, off (strict-fixed) the scenario's banned skills (GAM-SET-002) are left out when it opens. Refused, in this order, each changing nothing: the actor's turn without a decision (GameState::check_ready), the town in the store (UnknownTown), its owner the actor (NotOwner; the original tests none: an ally's town waits for E10's teams, TWN-STUB-21), a standing University (NoUniversity), the hero the town's visitor or garrison hero and the actor's (NotTownHero). Applied: UniversityOpened to the actor with the hero and the town; the purchases, the slots (HER-CHG-004), the payer (the hero's owner, the actor) and Leave are E08's. No mark, no movement point, any number a turn. legal_commands lists the opening for the visitor, then the garrison hero, after the town's boat, where a skill taught has a slot open for the hero and the treasury holds the price. E09 T59b1 (the town epic's design note section 112, decisions 210, 228): h3_towns::check_university, h3-game's town/university.rs, UniversityVisit::place (game state hash v42); the replay word `town university <town> <hero>` (format v30), protocol v88, the env's TOWN_UNIVERSITY entries (encoding v25)."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-16"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T52; survey E09-trades.md section 6): town_screen_proc 0x5D3240's case 21 for the Conflux opens town_university_open 0x5D2DA0 (the visitor, else the garrison hero; a selected upper-bar stack picks the garrison hero; no hero: the building's description) with the four schools written as constants (0x5D2F0A to 0x5D2F1F) into the map's University dialog 0x5EF500 (the flag only its picture); its slot states, purchase box and learning (0x5F0790, 0x5F0AC0, 0x5F0F60) read no ban, take 2 000 gold from the hero's owner and teach at Basic; no owner, human or day test, no mark"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-6d.md and -6d-run2.md, row TWN-6-7 (2026-11-25, E09 T54; survey E09-trades.md section 14): on a map banning Fire Magic the University's Fire slot learnable, Air known, Water and Earth learnable; the purchase taught Fire Magic at Basic for 2 000 gold, its slot then known (T-23 confirmed)"
+  retrieved  = "2026-11-25"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 (survey E09-trades.md section 9): the same four schools, price, level and slot tests; the student the visitor or the garrison hero; a banned skill refused (isAllowed, TD-30, refuted by TWN-6-7 for the original)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5"
+  retrieved  = "2026-11-24"
+  confidence = "medium"

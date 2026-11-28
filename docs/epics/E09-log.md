@@ -7028,3 +7028,67 @@ changed); the failed job re-run, green.
 
 **The queue:** T59b next (the University and the Transformer). Ids: decisions next 228; quirks
 planned `-23`, a new one `-24`; stubs `TWN-STUB-23`.
+
+### T59b1 — the Magic University at a town: the rule, the place, the listing, the wire, the word, the env's two entries, the plans (2026-11-28)
+
+One session, the user present at the start; branch `town/e09-t59b1`, `cross-lane` (the adventure
+lane's `h3-adventure` `command.rs`, `lib.rs`, `state/rewards.rs` and its test, `h3-game`'s
+`command.rs`, `lib.rs`, `state.rs`, `tests/rewards.rs`, `h3-files`' word, `h3-sim`'s replay version,
+the 130 goldens, `h3-map`'s plans and view tests, the catalog's GAM-DEC-006; the AI lane's `h3-sim`
+`adventure/action.rs`, `mod.rs`, `tests.rs`, `tests/towns.rs`, `tests/hiring.rs`; the server lane's
+`h3-protocol` and `h3-server`'s record test; the map-client lane's `h3-map-client` `window.rs` and
+`h3-map-view` `notice/tests.rs`, one test literal each). Starting point: `master` at 58142f1 (#1221,
+T59a, merged before the session); the setup's full baseline stopped for the CPUs once CI's run on
+`master` had passed its gates, replays and bench (its coverage job still running); `master`'s
+8f023a7 (#1222, E31 T2i0) merged in before the verify. The user's computer was online: seven
+files staged (`Heroes3.exe`, the four LODs, `maps.tar`, `extracted.tar`). **The cut** (decision
+228): the user asked for a seam in big tasks; T59b1 the University, then T59b2 the Transformer, as
+recommended; the map client's two literals consented with it.
+
+- **The town part** (`h3-towns`' `service.rs`): `TownCommand::University { town, hero }`; the
+  refusals `NoUniversity`, `NotTownHero`; `check_university` → `UniversitySale { skills, price }`
+  (the part's); `service_offers` answers it too (`ServiceOffers::university`), the derived
+  `ServiceRoles` with a `university` set (unhashed).
+- **The adventure** (`cross-lane`): `UniversityVisit::place: UniversityPlace` (`Object {
+  object_type, anchor }` or `Town(TownId)`) in place of the object's type and anchor; the map's
+  University's visit names its object.
+- **The game:** `town/university.rs` (`open`: the town, its owner, the part's check, the student
+  among the town's visitor and garrison hero, the actor's; then `GameState::open_university`, now
+  `pub(crate)`; `taught`: the part's skills, the scenario's bans left out with `TWN-QUIRK-16`'s flag
+  off; `sells`: the listing's test, a skill taught open for the hero and the price in the treasury);
+  `GameEvent::UniversityOpened { player, hero, place }`; **game state hash v42** (a University
+  decision's place tag); `town/services.rs` lists the openings after the boat, the visitor's first
+  (the `Services` iterator now carries the two students).
+- **The wire** (protocol **v88**): `TownCommand::University`, `TownReject::NoUniversity`,
+  `NotTownHero`, `UniversitySeen` (as `MarketSeen`) in `UniversityVisit` and `UniversityOpened`.
+  **Replays:** the word `town university <town> <hero>` (format **v30**); the 130 goldens
+  re-recorded from their commands (a scratch script over `h3 adventure run --script`, 6 s): only
+  `format`, `game_state_hash_version`, 1 237 checkpoint entries (21 one-line lists) and the 130
+  final hashes moved; `h3-server`'s `src/tests/record.rs` literals. **The env** (encoding **v25**):
+  `TOWN_UNIVERSITY` (171) and its next (the town's visitor, then its garrison hero, any player's,
+  by the town's entrance, building 0); `ENTRY_COUNT` 173; the layout test, the masks' check, and
+  `a_university_action_names_its_town_by_the_entrance_and_the_student_by_its_entry` (the town map's
+  random town made a Conflux with its University, a hero on its entrance). The town map's games
+  unchanged (no University stands there in the searched seed's game).
+- **The plans** (`h3-map`'s `play.rs`): `town_builds` probes the University for the town's visitor,
+  its garrison hero and one hero that is neither; the oracle lists an opening only where the
+  probe's University lists an answer but `Leave`; `check_town_university` reads a listed or an
+  unlisted accepted one independently (the student, the event, the part's skills with the bans,
+  the price, nothing else changed); `Step::Town` plays a listed University in one step of sixteen
+  (n % 16 == 1); `check_guild_refusals` the command. `view.rs`' decision fold reads the place.
+- **Rules:** TWN-UNI-001 entered `verified` (the code reading, row TWN-6-7, VCMI); GAM-DEC-006
+  amended (the place); `TWN-QUIRK-16`'s rule test named.
+- **Tests:** `h3-towns`' (`service/tests.rs`: the University standing, superseded, missing; the
+  offers against the three questions; the command), `h3-game`'s five (`town/tests/university.rs`:
+  the visitor's opening, the purchase and `Leave`, the hash; the refusals in order; the garrison
+  hero with and without `TWN-QUIRK-15`'s flag; the ban by `TWN-QUIRK-16`'s flag; the listing's
+  price and slots), the word's round trip and four refusals, the protocol's (a town's University
+  decision and event both ways).
+- **The bench:** `legal-towns-36` on the same games (the town map stands no University): master
+  50 093 077 in the same sandbox, the branch 50 320 825 (+0.45 %; the committed baseline 50 085 106,
+  +0.47 %), every other counted function the same: the listing's chain and the services' iterator
+  carrying the two students; inside the gate, not re-baselined.
+- *Agent's calls* (change freely): decision 228's list.
+
+**The queue:** T59b2 next (the Transformer). Ids: decisions next 229; quirks planned `-23`, a new
+one `-24`; stubs `TWN-STUB-23`.

@@ -69,8 +69,10 @@ impl GameState {
 /// window where it opens and offers a legal answer (TWN-MKT-002; design §104, §115:
 /// `market::listed`, the player's count of Marketplaces once a listing), then since E09 T59a each
 /// war machine's purchase its town's hero would receive (TWN-SMT-001; design §110, §115, in the
-/// record's order) and its boat where its spot is free (TWN-SHY-001; design §111; both
-/// `services::listed`), then since E09 T28a the
+/// record's order) and its boat where its spot is free (TWN-SHY-001; design §111), then since
+/// E09 T59b1 its University's opening for its visitor, then its garrison hero, where a slot is
+/// open at a price the treasury holds (TWN-UNI-001; design §112; all three `services::listed`),
+/// then since E09 T28a the
 /// hero moves between its bars `Enter`, `Leave`, `Swap` the adventure accepts (TWN-ROW-002 to
 /// -004; `rows::legal_moves`). A town built in today offers no build (TWN-BLD-004) and costs no
 /// Capitol test; a map without towns walks nothing.
@@ -134,8 +136,9 @@ pub(crate) fn legal_builds<'a>(
             let at = (on_entrance, garrison);
             let market = super::market::listed(state, rules, (town, player), at, &mut counted)
                 .then_some(TownCommand::Market { town });
-            // E09 T59a: its war machines (TWN-SMT-001), then its boat (TWN-SHY-001), asked at
-            // once of the town's record (`bench-check`'s `legal-towns-36`).
+            // E09 T59a: its war machines (TWN-SMT-001), then its boat (TWN-SHY-001), since E09
+            // T59b1 its University's openings (TWN-UNI-001), asked at once of the town's record
+            // (`bench-check`'s `legal-towns-36`).
             let services = super::services::listed(state, rules, (town, player, record), at);
             let guild = open
                 .into_iter()

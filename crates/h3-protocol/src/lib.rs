@@ -285,7 +285,12 @@ pub mod wire;
 /// `TownCommand::BuildBoat` (a boat at the town's Shipyard on its spot), their refusals
 /// `TownReject::NoWarMachine`, `HasWarMachine` and `BoatSpotTaken`; no new event (the machine is
 /// `HeroChanged`, the boat `BoatBuilt`).
-pub const PROTOCOL_VERSION: u32 = 87;
+/// v88 (E09 T59b1, the town lane's, `cross-lane`; the town epic's design note §112, §115): a
+/// town's Magic University, `TownCommand::University` (a town of the actor's, its visitor or
+/// garrison hero the student) and its refusals `TownReject::NoUniversity` and `NotTownHero`;
+/// `UniversityVisit` and `GameEvent::UniversityOpened` name their place (`UniversitySeen`: a map
+/// University by type and anchor, or a town) in place of the object's type and anchor.
+pub const PROTOCOL_VERSION: u32 = 88;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes, with its reader ([`record`], every client's: E24 M5 T2c) in the same

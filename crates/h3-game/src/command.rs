@@ -12,7 +12,7 @@ use core::fmt;
 use h3_adventure::{
     ALTAR_SLOTS, AdventureCommand, AdventureCommandError, AdventureEvent, AltarError, AltarPlaces,
     ArmySlot, CastError, CastFailure, HillFortError, HireError, HireTarget, MarketError,
-    ObjectTypeId, Pick, Pos, Viewers,
+    ObjectTypeId, Pick, Pos, UniversityPlace, Viewers,
 };
 use h3_content::{CreatureTypeId, Formation, HeroTypeId, ResourceId, SkillId, SpellId};
 use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
@@ -858,18 +858,16 @@ pub enum GameEvent {
         /// The object's anchor.
         anchor: Pos,
     },
-    /// A University opened as a pending decision of its player (GAM-DEC-006, E08 T63a): its
-    /// skills and their slots' states are its view ([`crate::DecisionView::University`]). Seen
-    /// by the owner.
+    /// A University opened as a pending decision of its player (GAM-DEC-006, E08 T63a; since E09
+    /// T59b1 a town's Magic University, TWN-UNI-001): its skills and their slots' states are its
+    /// view ([`crate::DecisionView::University`]). Seen by the owner.
     UniversityOpened {
         /// The player.
         player: PlayerId,
-        /// The hero whose visit opened it.
+        /// The student: the hero whose visit opened it, or the town's hero the command named.
         hero: HeroId,
-        /// The object's type.
-        object_type: ObjectTypeId,
-        /// The object's anchor.
-        anchor: Pos,
+        /// Where it opened: a University on the map by type and anchor, or a town (E09 T59b1).
+        place: UniversityPlace,
     },
     /// A hire dialog opened as a pending decision of its player (GAM-DEC-008, E08 T95b) after an
     /// accepted hire question, or since E09 T27 a town's recruitment (TWN-REC-001, -002): its
