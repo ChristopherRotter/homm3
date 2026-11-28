@@ -198,3 +198,9 @@ seed = 1450000002
 size = "S"
 players = 1
 computers = 1
+
+[[case]]
+id = "m1-2p-ready"
+why = "Border Guards (E14 T4d): Ready or Not, whose connections 4-5, 6-5 and 7-5 carry the flag (their tents find no room: no guard placed)"
+seed = 2120000037
+size = "M"

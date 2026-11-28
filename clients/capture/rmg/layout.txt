@@ -386,3 +386,13 @@ s1-1p-c1-2sm0k 4 town=2 town2=2 terrain=3 x=22 y=28 z=0 size=5
 s1-1p-c1-2sm0k 5 town=6 town2=6 terrain=5 x=29 y=21 z=0 size=5
 s1-1p-c1-2sm0k 6 town=0 town2=0 terrain=2 x=5 y=29 z=0 size=5
 s1-1p-c1-2sm0k 7 town=8 town2=8 terrain=2 x=29 y=5 z=0 size=5
+m1-2p-ready 0 town=7 town2=7 terrain=4 x=26 y=38 z=0 size=9
+m1-2p-ready 1 town=3 town2=3 terrain=7 x=31 y=18 z=0 size=9
+m1-2p-ready 2 town=1 town2=1 terrain=2 x=44 y=9 z=0 size=9
+m1-2p-ready 3 town=1 town2=1 terrain=2 x=46 y=31 z=0 size=13
+m1-2p-ready 4 town=-1 town2=4 terrain=4 x=35 y=47 z=0 size=4
+m1-2p-ready 5 town=7 town2=7 terrain=4 x=20 y=57 z=0 size=13
+m1-2p-ready 6 town=3 town2=3 terrain=7 x=51 y=53 z=0 size=13
+m1-2p-ready 7 town=-1 town2=1 terrain=0 x=10 y=38 z=0 size=7
+m1-2p-ready 8 town=-1 town2=0 terrain=0 x=20 y=7 z=0 size=7
+m1-2p-ready 9 town=-1 town2=0 terrain=0 x=61 y=9 z=0 size=7

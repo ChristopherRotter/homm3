@@ -231,7 +231,7 @@ type Case = (
 );
 
 #[rustfmt::skip]
-const CORPUS: [Case; 24] = {
+const CORPUS: [Case; 25] = {
     use MapSize::{ExtraLarge as XL, Large as L, Medium as M, Small as S};
     use Monsters::{Normal as Nm, Strong as St, Weak as Wk};
     use Water::{Islands as I, None as D, Normal as N};
@@ -260,6 +260,7 @@ const CORPUS: [Case; 24] = {
         ("s1-3p-2sm2i2", S, 1, 3, 0, 0, 0, N, Nm, 1_350_000_003, "2SM2i(2)"),
         ("s1-2p-2sm0k", S, 1, 2, 0, 0, 0, N, Nm, 1_350_000_000, "2SM0k"),
         ("s1-1p-c1-2sm0k", S, 1, 1, 0, 1, 0, N, Nm, 1_450_000_002, "2SM0k"),
+        ("m1-2p-ready", M, 1, 2, 0, 0, 0, N, Nm, 2_120_000_037, "Ready \nor Not"),
     ]
 };
 
@@ -809,7 +810,7 @@ fn kept_plan() -> BTreeMap<String, KeptPlan> {
 /// Step 6's plan over the oracle's corpus (`clients/capture/rmg/plan.txt`, E14 T4c), step 2's
 /// unwritten bytes as measured (`zones.txt`): the port's first draws after step 5's end are the
 /// original's lanes (`rmg_free_lanes_draw`'s, their count and digest), and its draws after step
-/// 5 are the plan's whole (count and digest) in all 24 cases: the walls, the cells of no zone
+/// 5 are the plan's whole (count and digest) in all 25 cases: the walls, the cells of no zone
 /// and the joining draw nothing, the islets (4 cases) and the sealed shores (11 cases, their
 /// painters flushed from one land to the next) draw as the original's.
 #[test]
@@ -839,7 +840,7 @@ fn the_corpus_draws_step_6s_plan_as_the_original() {
 
 // covers: RMG-ZON-010, RMG-ZON-011
 /// The oracle model's own bytes (RMG-QUIRK-1, provisional: the temporary zone's 0BB, a water
-/// zone's nine town types) give the oracle's step 2 on 22 of the corpus's 24: `l1-4p-b`'s and
+/// zone's nine town types) give the oracle's step 2 on 23 of the corpus's 25: `l1-4p-b`'s and
 /// `xl2-4p-seed0`'s first and fourteenth water zones have none set (one draw fewer).
 #[test]
 fn the_oracle_models_own_bytes_give_step_2_on_all_but_two() {
@@ -890,7 +891,7 @@ fn the_corpus_appends_the_originals_water_zones() {
     let kept = kept_water();
     let layout = kept_layout();
     let memory = kept_zone_memory();
-    assert_eq!(kept.values().map(Vec::len).sum::<usize>(), 44);
+    assert_eq!(kept.values().map(Vec::len).sum::<usize>(), 55);
     for case in 0..CORPUS.len() {
         let (id, s, seed, _) = corpus_settings(case);
         let mut t = Phases {
