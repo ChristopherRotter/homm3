@@ -68,8 +68,10 @@ use super::rollout::choose;
 /// town and building, TWN-SMT-001) and a boat built at a town's Shipyard
 /// (`h3_towns::TownCommand::BuildBoat` by its town, TWN-SHY-001); version 30 (E09 T59b1): a town's
 /// Magic University opened for its hero (`h3_towns::TownCommand::University` by its town and hero,
-/// TWN-UNI-001). A replay of another version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 30;
+/// TWN-UNI-001); version 31 (E09 T59b2): a stack of a town's army transformed at its Skeleton
+/// Transformer (`h3_towns::TownCommand::Transform` by its town, army and slot, TWN-TRF-001). A
+/// replay of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 31;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

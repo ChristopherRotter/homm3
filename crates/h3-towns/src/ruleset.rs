@@ -796,7 +796,8 @@ impl MarketRoles {
 }
 
 /// A record's buildings the services read (E09 T59a, [`crate::check_war_machine`],
-/// [`crate::check_boat`]; since E09 T59b1 [`crate::check_university`]; derived from the record when the part is built, so that the legal
+/// [`crate::check_boat`]; since E09 T59b1 [`crate::check_university`], since E09 T59b2
+/// [`crate::check_transformer`]; derived from the record when the part is built, so that the legal
 /// listing's tests walk no town's buildings: `bench-check`'s `legal-towns-36`, as
 /// [`MarketRoles`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -807,6 +808,8 @@ pub(crate) struct ServiceRoles {
     pub(crate) shipyard: BuildingSet,
     /// Of role `university` (E09 T59b1).
     pub(crate) university: BuildingSet,
+    /// Of role `transformer` (E09 T59b2).
+    pub(crate) transformer: BuildingSet,
     /// Those that supersede one of the others: of a town's buildings only these can make such a
     /// building not stand.
     pub(crate) superseding: BuildingSet,
@@ -830,9 +833,10 @@ impl ServiceRoles {
                     add(&mut roles.smiths, b.war_machine.is_some());
                     add(&mut roles.shipyard, b.roles.shipyard);
                     add(&mut roles.university, b.roles.university);
+                    add(&mut roles.transformer, b.roles.transformer);
                     roles
                 });
-        let read = roles.smiths.union(roles.shipyard).union(roles.university);
+        let read = roles.read();
         let ids = (0..).map_while(BuildingId::from_index);
         roles.superseding = record
             .buildings
@@ -841,6 +845,14 @@ impl ServiceRoles {
             .filter(|(b, _)| b.supersedes.intersects(read))
             .fold(BuildingSet::EMPTY, |set, (_, id)| set.with(id));
         roles
+    }
+
+    /// The buildings of the roles the services read.
+    pub(crate) const fn read(&self) -> BuildingSet {
+        self.smiths
+            .union(self.shipyard)
+            .union(self.university)
+            .union(self.transformer)
     }
 }
 

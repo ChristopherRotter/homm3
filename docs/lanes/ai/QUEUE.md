@@ -88,6 +88,16 @@ to T127b, E09 T8c to T39a and E16 M5 T14.
 **From the town lane** (E09 T53, `town/e09-t53`, docs only; **for your planning, nothing to do
 now**):
 
+- 2026-11-28 (E09 T59b2, `town/e09-t59b2`, `cross-lane` with the user's consent, E09 decision
+  229; **in your paths, for your review; adventure action encoding v26 taken**): `legal_commands`
+  lists a town's transformations at its Skeleton Transformer (`TownCommand::Transform { town,
+  army, slot }`, TWN-TRF-001: each stack that changes, the actor's visitor's army first, then the
+  upper bar's, the garrison hero's or the town's garrison, no hero needed) after its University;
+  `adventure/action.rs` appends **`TOWN_TRANSFORM` (173) and its 13 next** (`TOWN_ARMIES` 2 times
+  `ARMY_SLOTS` 7: army, then slot, by the town's entrance, building 0; `ENTRY_COUNT` 187). A town
+  without a hero or a boat spot is now asked of the town part where its record has a Transformer
+  (`h3_towns::may_transform`). A new test (`tests/towns.rs`) makes the town map's random town a
+  Necropolis for the entries. The replay format is v31.
 - 2026-11-28 (E09 T59b1, `town/e09-t59b1`, `cross-lane` with the user's consent, E09 decision
   228; **in your paths, for your review; adventure action encoding v25 taken**): `legal_commands`
   lists a town's Magic University's openings (`TownCommand::University { town, hero }`,

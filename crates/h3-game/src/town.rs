@@ -21,7 +21,8 @@
 //! Thieves' Guild ([`thieves`]); since E09 T47a2 it checks the towns' spell sets and draws every
 //! town's mage guild at the build ([`guild`]); since E09 T57 it draws the Artifact Merchants' stock
 //! at the new game and each month ([`merchants`]); since E09 T58a1 it opens a town's market window
-//! and resolves it for E08's market decision ([`market`]).
+//! and resolves it for E08's market decision ([`market`]); since E09 T59a, T59b1 and T59b2 the
+//! services ([`smith`], [`boat`], [`university`], [`transform`]; listed by [`services`]).
 
 use alloc::vec::Vec;
 
@@ -57,6 +58,7 @@ pub(crate) mod siege;
 pub(crate) mod smith;
 pub(crate) mod tavern;
 pub(crate) mod thieves;
+pub(crate) mod transform;
 pub(crate) mod university;
 pub(crate) mod view;
 

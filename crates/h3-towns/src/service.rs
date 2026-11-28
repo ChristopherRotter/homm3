@@ -1,17 +1,19 @@
 //! The town's services (E09 T59a, the town epic's design note §110, §111; survey
 //! `E09-trades.md` §4, §5): the town part's half of a war machine's purchase at the Blacksmith or
 //! the Stronghold's Ballista Yard (TWN-SMT-001) and of a boat built at the Shipyard
-//! (TWN-SHY-001); since E09 T59b1 of the Magic University's opening (TWN-UNI-001, design §112).
+//! (TWN-SHY-001); since E09 T59b1 of the Magic University's opening (TWN-UNI-001, design §112);
+//! since E09 T59b2 of the Skeleton Transformer's transformation (TWN-TRF-001, design §113).
 //! The game checks the rest (the town's owner, its hero and what the hero holds, the adventure's
-//! spot, the treasury, the map's bans), pays the price and gives the machine, launches the boat or
-//! opens the University (ADR-0028 point 6, as a build's).
+//! spot, the treasury, the map's bans, the army and its stack), pays the price and gives the
+//! machine, launches the boat, opens the University or transforms the stack (ADR-0028 point 6,
+//! as a build's).
 
-use h3_content::{ArtifactTypeId, ResourceId, Ruleset, SkillId};
+use h3_content::{ArtifactTypeId, CreatureTypeId, FactionId, ResourceId, Ruleset, SkillId};
 
 use crate::building::{BuildingId, BuildingSet};
 use crate::command::TownCommandError;
 use crate::record::Town;
-use crate::ruleset::{ServiceRoles, TownRecord, TownRuleset};
+use crate::ruleset::{ServiceRoles, TownParams, TownRecord, TownRuleset};
 
 /// What a building sells as a war machine (TWN-SMT-001; design §110): the machine's artifact and
 /// its price.
@@ -47,11 +49,44 @@ pub struct UniversitySale<'a> {
     pub price: &'a [(ResourceId, u32)],
 }
 
+/// What the town's Skeleton Transformer makes of a creature (TWN-TRF-001; E09 T59b2, design
+/// §113): the part's table (TWN-TRD-001, the original's `skeleton_transformer_targets` 0x6412FC),
+/// read by [`Self::target`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TransformerSale<'a> {
+    /// What it makes of a creature not in `dragons` (`TownParams::transformer_into`: the
+    /// original's Skeleton).
+    pub into: CreatureTypeId,
+    /// What it makes of a creature in `dragons` (`TownParams::transformer_dragons_into`: the
+    /// original's Bone Dragon).
+    pub dragons_into: CreatureTypeId,
+    /// The creatures it makes `dragons_into`, in handle order (`TownParams::transformer_dragons`:
+    /// the original's ten dragons and the two hydras).
+    pub dragons: &'a [CreatureTypeId],
+}
+
+impl TransformerSale<'_> {
+    /// The creature a stack of `creature` becomes (TWN-TRF-001; survey `E09-trades.md` §7.5, the
+    /// original's `transformer_convert` 0x566C20 reading its table): `dragons_into` for one of
+    /// the dragons, else `into`, the undead included (the original's Skeleton Warriors, Bone and
+    /// Ghost Dragons become Skeletons). The creature itself where that is its target (the
+    /// original's Skeleton), which the game refuses to transform.
+    // rule: TWN-TRF-001
+    #[must_use]
+    pub fn target(&self, creature: CreatureTypeId) -> CreatureTypeId {
+        if self.dragons.binary_search(&creature).is_ok() {
+            self.dragons_into
+        } else {
+            self.into
+        }
+    }
+}
+
 /// What the legal listing offers at a town (E09 T59a, design §115): its standing buildings that
 /// sell a war machine ([`war_machine_buildings`]), its boat where a Shipyard stands
-/// ([`check_boat`]) and since E09 T59b1 its University where one stands ([`check_university`]),
-/// read together (the record and its standing set once a town: `bench-check`'s
-/// `legal-towns-36`).
+/// ([`check_boat`]), since E09 T59b1 its University where one stands ([`check_university`]) and
+/// since E09 T59b2 its Transformer where one stands ([`check_transformer`]), read together (the
+/// record and its standing set once a town: `bench-check`'s `legal-towns-36`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ServiceOffers<'a> {
     /// The standing buildings that sell a war machine, in the record's order.
@@ -60,19 +95,20 @@ pub struct ServiceOffers<'a> {
     pub boat: Option<BoatSale<'a>>,
     /// The University, where one stands.
     pub university: Option<UniversitySale<'a>>,
+    /// The Transformer, where one stands (E09 T59b2).
+    pub transformer: Option<TransformerSale<'a>>,
 }
 
-/// [`war_machine_buildings`], [`check_boat`] and [`check_university`] of `town` at once
-/// (TWN-SMT-001, TWN-SHY-001, TWN-UNI-001; E09 T59a, T59b1, design §115: the legal listing's
-/// question to the town part): the same answers, the record's derived roles and the town's
-/// superseded buildings read once.
-// rule: TWN-SMT-001, TWN-SHY-001, TWN-UNI-001
+/// [`war_machine_buildings`], [`check_boat`], [`check_university`] and [`check_transformer`] of
+/// `town` at once (TWN-SMT-001, TWN-SHY-001, TWN-UNI-001, TWN-TRF-001; E09 T59a, T59b1, T59b2,
+/// design §115: the legal listing's question to the town part): the same answers, the record's
+/// derived roles and the town's superseded buildings read once.
+// rule: TWN-SMT-001, TWN-SHY-001, TWN-UNI-001, TWN-TRF-001
 pub fn service_offers<'a>(town: &Town, part: &'a TownRuleset) -> ServiceOffers<'a> {
     let read = part.town_with_service_roles(town.faction());
     let roles = read.map_or(ServiceRoles::default(), |(_, roles)| roles);
     let standing = read.map_or(BuildingSet::EMPTY, |(record, roles)| {
-        let of = roles.smiths.union(roles.shipyard).union(roles.university);
-        standing(town, record, roles, of)
+        standing(town, record, roles, roles.read())
     });
     let params = part.params();
     let boat = params
@@ -87,11 +123,27 @@ pub fn service_offers<'a>(town: &Town, part: &'a TownRuleset) -> ServiceOffers<'
             skills: &params.university_skills,
             price: &params.university_price,
         });
+    let transformer = params
+        .filter(|_| standing.intersects(roles.transformer))
+        .map(transformer_sale);
     ServiceOffers {
         machines: standing.intersection(roles.smiths),
         boat,
         university,
+        transformer,
     }
+}
+
+/// Whether `faction`'s record has a building of role `transformer` (TWN-TRF-001; E09 T59b2,
+/// design §115): the legal listing's first test of a town whose armies a transformation may name
+/// without a hero there (the town's garrison), the record's derived roles alone, before
+/// [`service_offers`] (`bench-check`'s `legal-towns-36`: the town part asked of every owned town
+/// with a garrison cost more).
+// rule: TWN-TRF-001
+#[must_use]
+pub fn may_transform(faction: FactionId, part: &TownRuleset) -> bool {
+    part.town_with_service_roles(faction)
+        .is_some_and(|(_, roles)| !roles.transformer.is_empty())
 }
 
 /// The town part's test of a war machine's purchase at `building` of `town` (TWN-SMT-001; E09
@@ -209,6 +261,43 @@ pub fn check_university<'a>(
             price: &params.university_price,
         })
         .ok_or(TownCommandError::NoUniversity)
+}
+
+/// The town part's test of a transformation at `town`'s Skeleton Transformer (TWN-TRF-001; E09
+/// T59b2, design §113, decision 207; survey `E09-trades.md` §7.1, §7.5: the original's case 22 of
+/// `town_screen_proc` 0x5D3BCE for the Necropolis, its building clickable while it stands, then
+/// `town_skeleton_transformer_open` 0x5D2F90): a standing building of role `transformer`, else
+/// [`TownCommandError::NoTransformer`]; then the part's table ([`TransformerSale::target`]).
+/// The army, its stack and whether the stack changes are the game's (no owner, human, hero or
+/// day test in the original's click; no price, no mark).
+///
+/// # Errors
+///
+/// [`TownCommandError::NoTransformer`]; the town is unchanged.
+// rule: TWN-TRF-001
+pub fn check_transformer<'a>(
+    town: &Town,
+    part: &'a TownRuleset,
+) -> Result<TransformerSale<'a>, TownCommandError> {
+    let stands = part
+        .town_with_service_roles(town.faction())
+        .is_some_and(|(record, roles)| {
+            !standing(town, record, roles, roles.transformer).is_empty()
+        });
+    // A part with a record has its parameters (`TownCompileError::MissingParams`).
+    part.params()
+        .filter(|_| stands)
+        .map(transformer_sale)
+        .ok_or(TownCommandError::NoTransformer)
+}
+
+/// The part's Transformer table.
+fn transformer_sale(params: &TownParams) -> TransformerSale<'_> {
+    TransformerSale {
+        into: params.transformer_into,
+        dragons_into: params.transformer_dragons_into,
+        dragons: &params.transformer_dragons,
+    }
 }
 
 /// The buildings of `of` (of the services' roles in `record`, read as `roles`) that stand in

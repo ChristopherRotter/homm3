@@ -3908,11 +3908,12 @@ fn visit_town(
     // boat (TWN-SHY-001) in another, each in a Swap's or a Leave's place, so that heroes carry the
     // machines into battles and boats lie on the towns' spots.
     // E09 T59b1: a listed University (TWN-UNI-001) in a third, its answers settled as a map
-    // University's.
+    // University's. E09 T59b2: a listed transformation (TWN-TRF-001) in a fourth.
     let service = legal.iter().find(|c| match c {
         GameCommand::Town(TownCommand::BuyWarMachine { .. }) => n % 16 == 11,
         GameCommand::Town(TownCommand::BuildBoat { .. }) => n % 16 == 9,
         GameCommand::Town(TownCommand::University { .. }) => n % 16 == 1,
+        GameCommand::Town(TownCommand::Transform { .. }) => n % 16 == 3,
         _ => false,
     });
     if let Some(service) = service {
@@ -6980,6 +6981,28 @@ fn town_builds<'a>(
             .flatten()
             .chain(stranger)
             .map(move |hero| TownCommand::University { town, hero });
+        // E09 T59b2: its transformations (TWN-TRF-001): each army's slots that hold a stack, the
+        // visitor's (any player's) first, then the upper bar's, then one past the army's slots.
+        let most = rules.adventure().params().army_slots();
+        let visiting = students[0]
+            .and_then(|hero| adventure.hero(hero))
+            .map_or(&[][..], |on| &on.army[..]);
+        let slots = |army: &[h3_contracts::ArmyStack]| -> Vec<u8> {
+            army.iter().map(|s| s.slot).chain([most]).collect()
+        };
+        let transforms = [
+            (h3_towns::TownArmy::Visitor, slots(visiting)),
+            (
+                h3_towns::TownArmy::Garrison,
+                slots(adventure.upper_bar(town)),
+            ),
+        ]
+        .into_iter()
+        .flat_map(move |(army, slots)| {
+            slots
+                .into_iter()
+                .map(move |slot| TownCommand::Transform { town, army, slot })
+        });
         // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
         let rows = [
             TownHeroChange::Enter,
@@ -6996,6 +7019,7 @@ fn town_builds<'a>(
             .chain(machines)
             .chain(boat)
             .chain(universities)
+            .chain(transforms)
             .chain(rows)
             .map(move |command| (town, GameCommand::Town(command)))
     })
@@ -7791,6 +7815,113 @@ fn check_town_university(
     Ok(())
 }
 
+/// A transformation `apply` accepted at `actor`'s `town` of the stack in `slot` of `army` (E09
+/// T59b2; TWN-TRF-001, design note §113), from `state` to `probe`, by an independent reading: the
+/// town is the actor's, a building of role `transformer` stands there; the army is the actor's
+/// hero's on the town's entrance (the visitor's) or the upper bar's (its garrison hero's, else the
+/// town's garrison); its stack in `slot` becomes the part's table's target (the dragons' creature
+/// for one of the part's dragons, else the other), its count kept, never its own creature; the
+/// first event that slot's `StackChanged` to the actor; the army's other stacks, the towns, the
+/// treasury and every other army on the map unchanged.
+fn check_town_transform(
+    (state, probe): (&GameState, &GameState),
+    rules: &GameRuleset,
+    (actor, town): (PlayerId, TownId),
+    (army, slot): (h3_towns::TownArmy, u8),
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let (was, now) = (state.adventure(), probe.adventure());
+    let index = was.map().town_object(town).unwrap();
+    prop_assert_eq!(was.owner(index), Some(actor));
+    let part = rules.towns();
+    let record = state.towns().get(town).unwrap();
+    let faction = part.town(record.faction()).unwrap();
+    prop_assert!(
+        record
+            .standing(faction)
+            .iter()
+            .any(|b| faction.building(b).is_some_and(|b| b.roles.transformer)),
+        "no Transformer in {:?}",
+        town
+    );
+    // The army's hero (none: the town's garrison) and its stacks before and after.
+    let hero = match army {
+        h3_towns::TownArmy::Visitor => {
+            let visitor = was.town_visitor(town);
+            prop_assert!(
+                visitor.is_some_and(|h| was.hero(h).is_some_and(|on| on.owner == actor)),
+                "no visitor of {:?} at {:?}",
+                actor,
+                town
+            );
+            visitor
+        }
+        h3_towns::TownArmy::Garrison => was.town_hero(town).map(|on| on.id),
+    };
+    let stacks = |adventure: &AdventureState| -> Vec<h3_contracts::ArmyStack> {
+        match hero {
+            Some(hero) => adventure
+                .hero(hero)
+                .or_else(|| adventure.town_hero(town).filter(|on| on.id == hero))
+                .map(|on| on.army.clone())
+                .unwrap_or_default(),
+            None => adventure.town_garrison(index).unwrap_or_default().to_vec(),
+        }
+    };
+    let (before, after) = (stacks(was), stacks(now));
+    let old = before.iter().find(|s| s.slot == slot);
+    prop_assert!(old.is_some(), "no stack in {:?}'s slot {}", army, slot);
+    let old = *old.unwrap();
+    let params = part.params().unwrap();
+    let target = if params.transformer_dragons.contains(&old.creature) {
+        params.transformer_dragons_into
+    } else {
+        params.transformer_into
+    };
+    prop_assert_ne!(target, old.creature);
+    let expected: Vec<_> = before
+        .iter()
+        .map(|s| {
+            if s.slot == slot {
+                h3_contracts::ArmyStack {
+                    creature: target,
+                    ..*s
+                }
+            } else {
+                *s
+            }
+        })
+        .collect();
+    prop_assert_eq!(&after, &expected);
+    let at = ArmySlot {
+        army: hero.map_or(ArmyRef::Garrison(town), ArmyRef::Hero),
+        slot,
+    };
+    let changed = GameEvent::StackChanged {
+        player: actor,
+        at,
+        stack: expected.iter().find(|s| s.slot == slot).copied(),
+    };
+    prop_assert_eq!(events.first(), Some(&changed));
+    prop_assert_eq!(probe.towns().get(town), state.towns().get(town));
+    prop_assert_eq!(probe.treasury(actor), state.treasury(actor));
+    // Every other army on the map unchanged: the heroes' but the army's hero, the towns' garrison
+    // heroes and garrisons but the army's.
+    for on in was.heroes() {
+        if Some(on.id) != hero {
+            prop_assert_eq!(now.hero(on.id).map(|h| &h.army), Some(&on.army));
+        }
+    }
+    let visitor = matches!(army, h3_towns::TownArmy::Visitor);
+    for place in 0..state.towns().len() {
+        let other = town_id(place);
+        if other != town || visitor {
+            prop_assert_eq!(now.upper_bar(other), was.upper_bar(other));
+        }
+    }
+    Ok(())
+}
+
 fn check_town_builds(
     state: &GameState,
     rules: &GameRuleset,
@@ -7918,6 +8049,12 @@ fn check_town_builds(
             // the part's skills and price and the map's bans.
             GameCommand::Town(TownCommand::University { hero, .. }) => {
                 check_town_university((state, &probe), rules, (actor, town, hero), &events, true)?;
+                continue;
+            }
+            // E09 T59b2: a listed transformation, by an independent reading of the town's armies
+            // and the part's table.
+            GameCommand::Town(TownCommand::Transform { army, slot, .. }) => {
+                check_town_transform((state, &probe), rules, (actor, town), (army, slot), &events)?;
                 continue;
             }
             _ => return Err(fail(format!("{command:?}"))),
@@ -10883,7 +11020,7 @@ fn check_guild_refusals(
     for (k, actor) in (0..).zip(actors) {
         let &town = spread(&towns, 1, hash.wrapping_add(k)).next().unwrap();
         // E09 T59a: and a war machine's purchase and a boat (TWN-SMT-001, TWN-SHY-001); E09
-        // T59b1 a University (TWN-UNI-001).
+        // T59b1 a University (TWN-UNI-001); E09 T59b2 a transformation (TWN-TRF-001).
         let commands = [
             TownCommand::Open { town },
             TownCommand::BuySpellBook { town },
@@ -10896,6 +11033,12 @@ fn check_guild_refusals(
             TownCommand::University {
                 town,
                 hero: HeroId::new(0),
+            },
+            // E09 T59b2 (TWN-TRF-001).
+            TownCommand::Transform {
+                town,
+                army: h3_towns::TownArmy::Garrison,
+                slot: 0,
             },
         ];
         for command in commands.map(GameCommand::Town) {

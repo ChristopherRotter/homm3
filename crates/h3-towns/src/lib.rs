@@ -81,7 +81,7 @@ mod week;
 pub use build::{buildable, built_with, check_build, event_buildings, possible};
 pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 pub use capture::{capitol_limit, reveal};
-pub use command::{TownCommand, TownCommandError, TownHeroChange};
+pub use command::{TownArmy, TownCommand, TownCommandError, TownHeroChange};
 pub use garrison::{GarrisonWeek, garrison_week};
 pub use growth::{GrowthInputs, event_creatures, growth, index_creature};
 pub use guild::{
@@ -105,8 +105,9 @@ pub use ruleset::{
     TownParamsDef, TownPatch, TownRecord, TownRuleset, WeekParams,
 };
 pub use service::{
-    BoatSale, ServiceOffers, UniversitySale, WarMachineSale, check_boat, check_university,
-    check_war_machine, service_offers, war_machine_buildings,
+    BoatSale, ServiceOffers, TransformerSale, UniversitySale, WarMachineSale, check_boat,
+    check_transformer, check_university, check_war_machine, may_transform, service_offers,
+    war_machine_buildings,
 };
 pub use setup::{
     BuildingsSetup, BuiltTown, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup,

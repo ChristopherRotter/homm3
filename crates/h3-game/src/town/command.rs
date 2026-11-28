@@ -10,7 +10,8 @@ use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use super::view::Told;
 use super::{
-    Draws, boat, guild, hire, holds_capitol, market, portal, recruit, rows, smith, university,
+    Draws, boat, guild, hire, holds_capitol, market, portal, recruit, rows, smith, transform,
+    university,
 };
 use crate::command::{GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
@@ -25,7 +26,9 @@ use crate::{GameRuleset, GameState};
 /// [`market::open`]); a war machine's purchase gives the town's hero the machine (TWN-SMT-001;
 /// E09 T59a, [`smith::buy`]); a boat's build launches one on the town's spot (TWN-SHY-001; E09
 /// T59a, [`boat::build`]); the University's opening opens E08's University decision with the town
-/// as its place (TWN-UNI-001; E09 T59b1, [`university::open`]); a build (TWN-BLD-001),
+/// as its place (TWN-UNI-001; E09 T59b1, [`university::open`]); a transformation changes a stack
+/// of the town's armies at its Skeleton Transformer (TWN-TRF-001; E09 T59b2,
+/// [`transform::transform`]); a build (TWN-BLD-001),
 /// checked in this order, each refusal changing nothing:
 ///
 /// 1. the town in the store of towns, else [`TownCommandError::UnknownTown`];
@@ -77,6 +80,9 @@ pub(crate) fn command<S: Sink>(
         TownCommand::BuildBoat { town } => return boat::build(state, rules, player, town, sink),
         TownCommand::University { town, hero } => {
             return university::open(state, rules, player, (town, hero), sink);
+        }
+        TownCommand::Transform { town, army, slot } => {
+            return transform::transform(state, rules, player, (town, army, slot), sink);
         }
     };
     let part = rules.towns();

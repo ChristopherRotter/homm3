@@ -18,7 +18,7 @@ use h3_game::{
     ArmyCommandError, ArmyRef, ArmySlot, ArtifactPlace, BuildingId, ChestChoice, Consent,
     GameCommand, GameCommandError, HillFortAnswer, HillFortError, HireAnswer, HireError, Manage,
     ManageError, MapCastError, MarketAnswer, MarketError, NoopSink, Position, SchoolChoice,
-    SkillOffer, SystemCommand, TavernAnswer, TavernError, TownCommand, TownCommandError,
+    SkillOffer, SystemCommand, TavernAnswer, TavernError, TownArmy, TownCommand, TownCommandError,
     TownHeroChange, UniversityAnswer,
 };
 use h3_heroes::{CombineError, MoveError};
@@ -221,6 +221,14 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         town: TownId::new(3),
         hero: HeroId::new(2),
     }));
+    // E09 T59b2 (protocol v89): both armies.
+    for (army, slot) in [(TownArmy::Visitor, 0), (TownArmy::Garrison, 6)] {
+        commands.push(GameCommand::Town(TownCommand::Transform {
+            town: TownId::new(3),
+            army,
+            slot,
+        }));
+    }
     // E08 T142a (v82): a cast without and with a target.
     commands.push(GameCommand::Cast {
         hero: HeroId::new(1),
@@ -404,6 +412,8 @@ fn every_rejection() -> Vec<GameCommandError> {
             TownCommandError::BoatSpotTaken,
             TownCommandError::NoUniversity,
             TownCommandError::NotTownHero,
+            TownCommandError::NoTransformer,
+            TownCommandError::NothingToTransform,
         ]
         .map(E::Town),
     );
@@ -667,6 +677,8 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
             w::TownReject::HasSpellBook {} => TownCommandError::HasSpellBook,
             w::TownReject::NoUniversity {} => TownCommandError::NoUniversity,
             w::TownReject::NotTownHero {} => TownCommandError::NotTownHero,
+            w::TownReject::NoTransformer {} => TownCommandError::NoTransformer,
+            w::TownReject::NothingToTransform {} => TownCommandError::NothingToTransform,
             w::TownReject::NoMarket {} => TownCommandError::NoMarket,
             w::TownReject::NoWarMachine {} => TownCommandError::NoWarMachine,
             w::TownReject::HasWarMachine {} => TownCommandError::HasWarMachine,
@@ -786,17 +798,18 @@ fn every_rejection_maps_back_and_round_trips() {
     let errors = every_rejection();
     // 16 of the game's own (E16 M5 T14: `SystemOnly`), 31 of the battle's, 22 of the adventure's
     // (E08 T105b2: `NothingToRevisit`), 13 of the army's (E08 T114a2: `NoGarrison`, `NotOwn`,
-    // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 4 of a hire's, 33 of a town's
+    // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 4 of a hire's, 35 of a town's
     // (E09 T27: `NotRecruiting`, `NotStanding`, `NothingSummoned`; E09 T28a: `GarrisonHeld` to
     // `EmptyArmy`; E09 T38a1: `NoTavern`, `UnknownSlot`, `EmptySlot`; E09 T49b: `NoGuild`,
     // `NoHero`, `HasSpellBook`; E09 T58a1: `NoMarket`; E09 T59a: `NoWarMachine`,
-    // `HasWarMachine`, `BoatSpotTaken`; E09 T59b1: `NoUniversity`, `NotTownHero`), 3 of a
+    // `HasWarMachine`, `BoatSpotTaken`; E09 T59b1: `NoUniversity`, `NotTownHero`; E09 T59b2:
+    // `NoTransformer`, `NothingToTransform`), 3 of a
     // dismissal's (E09 T38b2: `NotOnMap`, `InTown`, `LastHero`), 4 of a map Tavern's hire (E09 T39a), 13 of a market's (E08 T133b; E09 T58b:
     // `Place` worn and in the backpack, `NotTradable`), 7 of an
     // Altar's (E08 T134a), 3 of a Hill Fort's (E08 T134b1), 18 of a cast's (E08 T142a: 7 of the
     // game's, 5 of the spell's own; T143a: `NoWater`, `OutOfWindow`, `NoBoat`; T143b: `NoPoints`,
     // `NoCastsLeft`, `NotFree`, `WrongKind`, `NotBuilt` gone).
-    assert_eq!(errors.len(), 176);
+    assert_eq!(errors.len(), 178);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

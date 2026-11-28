@@ -55,6 +55,11 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   (`restores`) and `h3-server`'s `tests::record` moved from 118 to **130**; all three pass over
   them, the session's bounds unmet. Their random games cast often (45 casts in
   `spells-s415-d28`), no turn longer than the duel's and garrisons' battles.
+- 2026-11-28 (the town lane, E09 T59b2, `town/e09-t59b2`, `cross-lane` with the user's consent;
+  **in your paths, mapped; for your review**): protocol **v89**: `TownCommand::Transform { town,
+  army, slot }` (the army `TownArmy::Visitor {}` or `Garrison {}`) both ways,
+  `TownReject::NoTransformer` and `NothingToTransform` (178 rejections); no new event (the stack is
+  `StackChanged`); the replay format v31 (the goldens' `format` lines; no hash moved).
 - 2026-11-28 (the town lane, E09 T59b1, `town/e09-t59b1`, `cross-lane` with the user's consent;
   **in your paths, mapped; for your review**): protocol **v88**: `TownCommand::University { town,
   hero }` both ways, `TownReject::NoUniversity` and `NotTownHero`; **`UniversityVisit` and

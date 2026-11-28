@@ -329,6 +329,25 @@ fn commands_round_trip_through_their_text() {
             }),
             "1 town university 6 3",
         ),
+        // Format v31 (E09 T59b2): a town's transformation by its town, army and slot.
+        (
+            PlayerId::new(0),
+            GameCommand::Town(TownCommand::Transform {
+                town: TownId::new(6),
+                army: TownArmy::Visitor,
+                slot: 0,
+            }),
+            "0 town transform 6 visitor 0",
+        ),
+        (
+            PlayerId::new(1),
+            GameCommand::Town(TownCommand::Transform {
+                town: TownId::new(2),
+                army: TownArmy::Garrison,
+                slot: 6,
+            }),
+            "1 town transform 2 garrison 6",
+        ),
         // Format v26 (E08 T142a): a cast on the map, by its hero and spell, its target if any.
         (
             PlayerId::new(0),
@@ -600,6 +619,11 @@ fn commands_round_trip_through_their_text() {
         "0 town university x 1",
         "0 town university 2 x",
         "0 town university 2 1 now",
+        "0 town transform 2 visitor",
+        "0 town transform x visitor 0",
+        "0 town transform 2 bar 0",
+        "0 town transform 2 garrison x",
+        "0 town transform 2 garrison 0 now",
         "0 cast",
         "0 cast 1",
         "0 cast h1 6",

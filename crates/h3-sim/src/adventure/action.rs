@@ -207,6 +207,11 @@
 //! and its next, a town's Magic University opened (`TownCommand::University`, TWN-UNI-001) for its
 //! visitor or for its garrison hero, by the town's entrance in the tile head, the building head 0;
 //! one action per listed opening (the University's purchases are E08's [`UNIVERSITY_SLOTS`]).
+//! Version 26 (E09 T59b2, the same, E09 decision 229; the town epic's design note §115) appends
+//! the Transformer's fourteen: [`TOWN_TRANSFORM`] and its next, a stack of a town's army
+//! transformed at its Skeleton Transformer (`TownCommand::Transform`, TWN-TRF-001), the visitor's
+//! army's slots 0 to [`ARMY_SLOTS`] − 1, then the upper bar's, by the town's entrance in the tile
+//! head, the building head 0; one action per listed transformation (a slot past them has none).
 
 use h3_adventure::{
     ALTAR_SLOTS, AdventureCommand, AdventureSpell, AltarPlaces, MarketParams, Pos, Reach,
@@ -220,12 +225,12 @@ use h3_game::{
     GameRuleset, GameState, HillFortAnswer, HireAnswer, MarketAnswer, Position, SchoolChoice,
     SkillOffer, TavernAnswer, UniversityAnswer, legal_cast_targets, legal_commands, legal_moves,
 };
-use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
+use h3_towns::{BuildingId, MAX_BUILDINGS, TownArmy, TownCommand, TownHeroChange};
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 25;
+pub const ACTION_ENCODING_VERSION: u32 = 26;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -404,8 +409,17 @@ pub const TOWN_STUDENTS: usize = 2;
 /// ([`Action::town_university`]).
 pub const TOWN_UNIVERSITY: usize = TOWN_BOAT + 1;
 
+/// The armies of a town a transformation's entries name (E09 T59b2): its visitor's, then its
+/// upper bar's (`h3_towns::TownArmy`).
+pub const TOWN_ARMIES: usize = 2;
+
+/// The entry that transforms the stack in slot 0 of the visitor's army of the town whose entrance
+/// is the tile in the tile head at its Skeleton Transformer (E09 T59b2; TWN-TRF-001): army `a`'s
+/// slot `s` is `TOWN_TRANSFORM + a * ARMY_SLOTS + s` ([`Action::town_transform`]).
+pub const TOWN_TRANSFORM: usize = TOWN_UNIVERSITY + TOWN_STUDENTS;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = TOWN_UNIVERSITY + TOWN_STUDENTS;
+pub const ENTRY_COUNT: usize = TOWN_TRANSFORM + TOWN_ARMIES * ARMY_SLOTS;
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -603,6 +617,13 @@ impl Action {
         Self::map(TOWN_UNIVERSITY + k, tile)
     }
 
+    /// Transforms the stack in `slot` of army `a` (0 the visitor's, 1 the upper bar's) of the town
+    /// whose entrance is the tile at `tile` (E09 T59b2): [`TOWN_TRANSFORM`] plus `a` times
+    /// [`ARMY_SLOTS`] plus `slot`.
+    pub const fn town_transform(tile: u32, a: usize, slot: usize) -> Self {
+        Self::map(TOWN_TRANSFORM + a * ARMY_SLOTS + slot, tile)
+    }
+
     /// The hero in `slot` casts the adventure spell of behaviour `spell` at `tile` (E08 T144a2): its
     /// [`CAST_BASE`] entry; `tile` the target of Scuttle Boat or Dimension Door, 0 for the others.
     pub fn cast(slot: usize, spell: AdventureSpell, tile: u32) -> Self {
@@ -773,7 +794,8 @@ fn bound_spell(rules: &GameRuleset, spell: AdventureSpell) -> Option<SpellId> {
 /// [`TOWN_OPEN`] a town's opening, E09 T49a2, [`SPELL_BOOK`] a spell book's purchase, E09 T49b,
 /// [`TOWN_MARKET`] a town's market window, E09 T58a2, a [`WAR_MACHINE`] entry a war machine's
 /// purchase of its building, [`TOWN_BOAT`] a boat, E09 T59a, a [`TOWN_UNIVERSITY`] entry a
-/// University's opening for its student, E09 T59b1, a hero's cast entry of Summon Boat, Fly or Water Walk its cast, E08 T144a2; or with an open
+/// University's opening for its student, E09 T59b1, a [`TOWN_TRANSFORM`] entry a transformation of
+/// its army's slot, E09 T59b2, a hero's cast entry of Summon Boat, Fly or Water Walk its cast, E08 T144a2; or with an open
 /// decision its answers alone: `Decline`, and `Accept` while the offer stands,
 /// E08 T15a; a level-up's `First` and `Second`, E08 T30; a hire dialog's purchases by their
 /// creatures' places, E08 T95b), each hero slot with a tile to move to ([`legal_moves`]: none
@@ -814,7 +836,8 @@ pub fn legal_mask(
 /// [`SPELL_BOOK`] (E09 T49b), and of the listed market windows after [`TOWN_MARKET`] (E09 T58a2),
 /// and of the listed purchases of a [`WAR_MACHINE`] entry's building and of the listed boats after
 /// [`TOWN_BOAT`] (E09 T59a), and of the listed Universities' openings for a [`TOWN_UNIVERSITY`]
-/// entry's student after it (E09 T59b1), the targets of its hero's query after a cast entry of
+/// entry's student after it (E09 T59b1), and of the listed transformations of a
+/// [`TOWN_TRANSFORM`] entry's army and slot after it (E09 T59b2), the targets of its hero's query after a cast entry of
 /// Scuttle Boat
 /// or Dimension Door ([`cast_targets`], E08 T144a2; 0 alone after a legal cast entry of another
 /// spell); none after an illegal entry or in the battle phase (none for the neutral seat).
@@ -896,6 +919,15 @@ pub fn tile_mask(
         for command in legal_commands(state, rules, seat.actor()) {
             if let GameCommand::Town(TownCommand::University { town, hero }) = command
                 && student_entry(state, town, hero) == Some(entry)
+                && let Some(index) = town_tile(state, town)
+            {
+                mask[index as usize] = true;
+            }
+        }
+    } else if transform_slot(entry).is_some() {
+        for command in legal_commands(state, rules, seat.actor()) {
+            if let GameCommand::Town(TownCommand::Transform { town, army, slot }) = command
+                && transform_entry(army, slot) == Some(entry)
                 && let Some(index) = town_tile(state, town)
             {
                 mask[index as usize] = true;
@@ -1030,6 +1062,29 @@ fn student_entry(state: &GameState, town: TownId, hero: HeroId) -> Option<usize>
         .iter()
         .position(|&student| student == Some(hero))
         .map(|k| TOWN_UNIVERSITY + k)
+}
+
+/// The army and slot of a [`TOWN_TRANSFORM`] entry (E09 T59b2); none for another entry.
+fn transform_slot(entry: usize) -> Option<(TownArmy, u8)> {
+    let k = entry
+        .checked_sub(TOWN_TRANSFORM)
+        .filter(|&k| k < TOWN_ARMIES * ARMY_SLOTS)?;
+    let army = if k < ARMY_SLOTS {
+        TownArmy::Visitor
+    } else {
+        TownArmy::Garrison
+    };
+    u8::try_from(k % ARMY_SLOTS).ok().map(|slot| (army, slot))
+}
+
+/// The [`TOWN_TRANSFORM`] entry of a transformation of `slot` of `army` (E09 T59b2); none for a
+/// slot past [`ARMY_SLOTS`].
+fn transform_entry(army: TownArmy, slot: u8) -> Option<usize> {
+    let a = match army {
+        TownArmy::Visitor => 0,
+        TownArmy::Garrison => ARMY_SLOTS,
+    };
+    below(usize::from(slot), ARMY_SLOTS, TOWN_TRANSFORM + a)
 }
 
 /// The town and building of `command` when it is the town command of `entry`: [`BUILD`]'s build
@@ -1460,7 +1515,8 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
 /// purchase (E09 T49b), [`TOWN_MARKET`] for a market window (E09 T58a2), a [`WAR_MACHINE`] entry
 /// for a war machine's purchase by its building's place ([`machine_entry`]) and [`TOWN_BOAT`] for
 /// a boat (E09 T59a), a [`TOWN_UNIVERSITY`] entry for a University's opening by its student's
-/// place ([`student_entry`], E09 T59b1), or a cast's by its hero's slot and its spell's behaviour (E08 T144a2,
+/// place ([`student_entry`], E09 T59b1), a [`TOWN_TRANSFORM`] entry for a transformation by its
+/// army and slot ([`transform_entry`], E09 T59b2), or a cast's by its hero's slot and its spell's behaviour (E08 T144a2,
 /// [`cast_command_entry`]; `legal_commands` lists those without a target).
 fn command_entry(
     state: &GameState,
@@ -1492,6 +1548,9 @@ fn command_entry(
         GameCommand::Town(TownCommand::BuildBoat { .. }) => Some(TOWN_BOAT),
         GameCommand::Town(TownCommand::University { town, hero }) => {
             student_entry(state, *town, *hero)
+        }
+        GameCommand::Town(TownCommand::Transform { army, slot, .. }) => {
+            transform_entry(*army, *slot)
         }
         other => tileless_entry(other, hire),
     }
@@ -1599,7 +1658,8 @@ fn build_boat(
 /// (building 0), or since E09 T59a its war machine's purchase at its record's building of a
 /// [`WAR_MACHINE`] entry's place and its boat with [`TOWN_BOAT`] (building 0), or since E09 T59b1
 /// its University's opening for its visitor or garrison hero of a [`TOWN_UNIVERSITY`] entry's
-/// place (building 0), or since E08 T144a2
+/// place (building 0), or since E09 T59b2 its transformation of a [`TOWN_TRANSFORM`] entry's army
+/// and slot (building 0), or since E08 T144a2
 /// a cast of its entry's hero and
 /// behaviour's bound spell (building 0): Scuttle Boat and Dimension Door at the tile, whichever
 /// it is (their target is `apply`'s to check, as the cast's other conditions), the others with
@@ -1659,6 +1719,14 @@ pub fn decode(
         let hero = students(state, town)[k]?;
         return (action.building == 0)
             .then_some(GameCommand::Town(TownCommand::University { town, hero }));
+    }
+    if let Some((army, slot)) = transform_slot(action.entry) {
+        let town = town_of_tile(state, action.tile)?;
+        return (action.building == 0).then_some(GameCommand::Town(TownCommand::Transform {
+            town,
+            army,
+            slot,
+        }));
     }
     if action.entry == BUILD || action.entry == RECRUIT {
         let town = town_of_tile(state, action.tile)?;
@@ -1726,7 +1794,9 @@ pub fn decode(
 /// and the town's entrance (E09 T49b), a market window by [`TOWN_MARKET`] and the town's entrance
 /// (E09 T58a2), a war machine's purchase by its building's [`WAR_MACHINE`] entry and a boat by
 /// [`TOWN_BOAT`], each with the town's entrance (E09 T59a), a University's opening by its
-/// student's [`TOWN_UNIVERSITY`] entry and the town's entrance (E09 T59b1), a cast by its hero's
+/// student's [`TOWN_UNIVERSITY`] entry and the town's entrance (E09 T59b1), a transformation by
+/// its army's and slot's [`TOWN_TRANSFORM`] entry and the town's entrance (E09 T59b2), a cast by
+/// its hero's
 /// slot and its
 /// spell's behaviour, with
 /// its target for Scuttle Boat and Dimension Door and tile 0 for the others (E08 T144a2: none for
@@ -1787,6 +1857,10 @@ pub fn encode(
         }
         GameCommand::Town(TownCommand::University { town, hero }) => {
             let entry = student_entry(state, *town, *hero)?;
+            return town_tile(state, *town).map(|tile| Action::map(entry, tile));
+        }
+        GameCommand::Town(TownCommand::Transform { town, army, slot }) => {
+            let entry = transform_entry(*army, *slot)?;
             return town_tile(state, *town).map(|tile| Action::map(entry, tile));
         }
         GameCommand::Cast {

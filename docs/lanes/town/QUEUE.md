@@ -8,19 +8,18 @@ Epic: `docs/epics/E09-towns.md` (increment 6: the town's trades, refined at T51,
 decisions 196 to 199; its survey T52 with the checkpoint `TWN-Q35`, decisions 200 to 207; its
 drafts, cut and exit criteria by T53, `TWN-Q36`, `TWN-Q37`, decisions 208 to 217; batch TWN-6
 by T54, decision 218; T55 `shared/`, decision 219; T56, decision 220; T57, decisions 221 to
-223; T58, decisions 224 to 226; T59a, decision 227; T59b, decision 228; the buildings for heroes and the map are increment 7, travel
+223; T58, decisions 224 to 226; T59a, decision 227; T59b, decisions 228, 229; the buildings for heroes and the map are increment 7, travel
 and the Grail 8, decision 197); done
 tasks in `E09-log.md`; increments 1 to 5 (closed by T10, T20, T30, T41 and T51) in
 `E09-archive.md`. Each task's cut confirmed at its start; every entry's acceptance includes the
 Definition of Done (`docs/05-testing.md`).
 
 **E09 T59 to T61** (queued, design §118's rounds 7 and 8; each cut confirmed at its start):
-**Status:** T59b2 next (T59b1 done 2026-11-28: `University` with T-23, decision 228,
-`E09-log.md`; T59a done 2026-11-27). T59b2 the services' last (§113: `Transform` with its 14 env
-entries, its word and protocol, `cross-lane`; no hash: one whole stack changed, `StackChanged`);
-T60 the trades map (a boat on a Shipyard's spot: the plans meet
-none), its replays, the census, the properties, the
-benchmarks (§117); T61 the audit against §119's criteria, increment 6 closed, increment 7 refined.
+**Status:** T60 next (T59b2 done 2026-11-28: `Transform`, `TWN-QUIRK-23`, decision 229; T59b1
+the same day: `University` with T-23, decision 228; `E09-log.md`). T60 the trades map (a boat on
+a Shipyard's spot, a University and a Transformer: the plans meet none of the three), its replays,
+the census, the properties, the benchmarks (§117); T61 the audit against §119's criteria,
+increment 6 closed, increment 7 refined.
 
 ## Inbox
 

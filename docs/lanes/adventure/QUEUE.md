@@ -42,6 +42,16 @@ Epic: `docs/epics/E10-game-orchestration.md` (refined 2026-11-21 with the user, 
   lane: no work for you; a change to the passage rules may want the same change there (its tests
   pin each case), and Castle Gate and Town Portal (E09 increment 8) and the Sanctuary and Quest
   Guard (E12) have stubs there (AI-STUB-22, -23).
+- 2026-11-28 (the town lane, E09 T59b2, `town/e09-t59b2`, `cross-lane` with the user's
+  consent, E09 decision 229; **in your paths, for your review; no hash of yours changed**): a
+  town's Skeleton Transformer (TWN-TRF-001). (1) `h3-game`'s `lib.rs` re-exports
+  **`TownArmy`** (`h3_towns`' `Visitor` or `Garrison`, the army `TownCommand::Transform { town,
+  army, slot }` names); (2) the replay word `town transform <town> visitor|garrison <slot>`
+  (`h3-files`): **replay format v31**, the 130 goldens' `format` lines only (every hash
+  reproduced); (3) `h3-map`'s plans probe and play a transformation (`check_town_transform`, the
+  refusals' probe). The write is the town lane's `h3-adventure` `town/transform.rs`
+  (`AdventureState::transform_stack`: a stack's creature in a hero's army, on the map or in a
+  garrison, or in a town's garrison). The env's encoding is v26, the protocol v89.
 - 2026-11-28 (the town lane, E09 T59b1, `town/e09-t59b1`, `cross-lane` with the user's
   consent, E09 decision 228; **in your paths, for your review; game state hash v42 taken**): a
   town's Magic University (TWN-UNI-001) opens your University decision (GAM-DEC-006 amended).

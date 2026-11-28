@@ -2382,3 +2382,36 @@ quirks   = ["TWN-QUIRK-16"]
   url        = "https://github.com/vcmi/vcmi/tree/1.7.5"
   retrieved  = "2026-11-24"
   confidence = "medium"
+
+[[rule]]
+id       = "TWN-TRF-001"
+title    = "The Necropolis's Skeleton Transformer: one whole stack transformed"
+context  = "town"
+status   = "implemented"
+summary  = "TownCommand::Transform { town, army, slot } transforms the stack in slot of army at a standing Skeleton Transformer (a building of role transformer) of a town of the actor's: army Visitor, the army of the actor's hero on the town's entrance, or Garrison, the upper bar's (the garrison hero's army where one stands, else the town's garrison; no hero needed) (decision 207: the original's default, the visitor's army else the upper bar's, and its selection override become the command's choice). The stack's creature becomes its target by the part's table (TWN-TRD-001: transformer_dragons_into, the Bone Dragon, for the packs' dragons, the original's ten dragons and the two hydras; transformer_into, the Skeleton, for every other creature, the undead included: Skeleton Warriors, Bone and Ghost Dragons become Skeletons), its count kept, nothing merged (a second Skeleton stack may stand beside the first), the army's last stack allowed, free, no mark, any number a turn. One command one whole stack: the original's dialog with its holding army, its moves, Convert and its close in one atomic change, so a timed turn's end loses nothing (TWN-QUIRK-23: T-26 fixed by construction). Refused, in this order, each changing nothing: the actor's turn without a decision (GameState::check_ready), the town in the store (UnknownTown), its owner the actor (NotOwner; the original tests none: an ally's town waits for E10's teams, TWN-STUB-21), a standing Transformer (NoTransformer), for Visitor the actor's hero on the entrance (NoVisitor: an ally's visitor's army is not the town owner's to change), the slot one of the adventure part's army slots (UnknownSlot), a stack there (EmptySlot), its creature other than its target (NothingToTransform: the original's Skeleton, which keeps Convert disabled). Applied: StackChanged of the slot to the actor, then each view of the town the change made told to its viewer. legal_commands lists each stack that changes, the visitor's army's in slot order, then the upper bar's, after the town's University. E09 T59b2 (the town epic's design note section 113, decisions 207, 228, 229): h3_towns::TownArmy, check_transformer, TransformerSale::target, may_transform; h3-adventure's town/transform.rs (AdventureState::transform_stack); h3-game's town/transform.rs; no hash changed; the replay word `town transform <town> visitor|garrison <slot>` (format v31), protocol v89, the env's 14 TOWN_TRANSFORM entries (encoding v26)."
+numeric  = "integer"
+quirks   = ["TWN-QUIRK-23"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T52; survey E09-trades.md section 7): town_screen_proc 0x5D3240's case 22 for the Necropolis opens town_skeleton_transformer_open 0x5D2F90 (the visitor's army, else town_garrison_army 0x5C1460's, the garrison hero's or the town's; a selected upper-bar stack picks the upper bar; no owner, human, hero or day test) with transformer_dialog_create 0x5654F0's holding army; transformer_convert 0x566C20 sets each holding slot's type to skeleton_transformer_targets 0x6412FC's entry (Bone Dragon 68 for creatures 26, 27, 82, 83, 110, 111 and 132 to 135, Skeleton 56 for every other creature, the Skeleton its own), its count unchanged, no resource, no mark; transformer_close 0x566B30 returns every stack to its own empty slot, else the first of its type, else the first empty; dialog_close_on_time_expired 0x5F1180 loses the holding army (T-26)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 (survey E09-trades.md section 9): the hero's army (the visitor, else the garrison hero), else the garrison; the same ten dragons and hydras to Bone Dragons by a bonus in the base config, every other creature to Skeletons; whole stacks, free, the last stack allowed"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5"
+  retrieved  = "2026-11-24"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Skeleton Transformer (survey E09-trades.md section 9): every creature to Skeletons but the living dragons and hydras to Bone Dragons; Bone and Ghost Dragons to Skeletons"
+  url        = "https://heroes.thelazy.net/index.php/Skeleton_Transformer"
+  retrieved  = "2026-11-24"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 113; E09 decisions 207, 228 and 229"
+  confidence = "high"

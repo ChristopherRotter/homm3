@@ -4023,6 +4023,18 @@ Decision 210 (the original's town University runs the map's dialog functions, §
   merged (§7.7). **T-26 fixed by construction:** one command transforms one whole stack at once;
   there is no holding army to lose.
 - Any number a turn, no mark (§7.5). The war machines are not in an army.
+- *As built* (T59b2, decision 229): `h3_towns::TownArmy` (`Visitor`, `Garrison`) in
+  `command.rs`; `check_transformer` → `TransformerSale { into, dragons_into, dragons }` with
+  `target` (a binary search of the part's dragons, in handle order), `service_offers`'
+  `transformer`, `may_transform` (the record's derived roles alone: the listing's first test of a
+  town without a hero there), the derived `ServiceRoles::transformer` (unhashed). The refusals
+  `UnknownTown`, `NotOwner`, `NoTransformer`, then `NoVisitor` (the actor's hero on the entrance:
+  an ally's visitor's army is not the owner's to change), `UnknownSlot` (the adventure part's army
+  slots), `EmptySlot`, `NothingToTransform`, the tavern's two slot refusals reused with their texts
+  made general. The write `AdventureState::transform_stack(town, (hero, slot), creature)` in
+  `h3-adventure`'s `town/transform.rs` (a hero's army on the map or in the garrison, else the
+  town's garrison); `h3-game`'s `town/transform.rs` tells `StackChanged`, then the town's changed
+  views (`Told`). **`TWN-QUIRK-23`** (T-26) entered. No hash changed.
 
 ### 114. The views and events (TWN-VEW-005)
 
@@ -4076,7 +4088,13 @@ Decision 210 (the original's town University runs the map's dialog functions, §
   **v25**; the protocol **v88** (`TownCommand::University`, `TownReject::NoUniversity`,
   `NotTownHero`, `UniversitySeen` in `UniversityVisit` and `GameEvent::UniversityOpened`); the
   word `town university <town> <hero>` (format **v30**); the 130 goldens re-recorded from their
-  commands (only the hash lines, `format` and `game_state_hash_version` moved).
+  commands (only the hash lines, `format` and `game_state_hash_version` moved). *As built* (T59b2,
+  decision 229): the transformation's 14 from `TOWN_TRANSFORM` (173: the visitor's army's slots 0
+  to 6 by `ARMY_SLOTS`, then the upper bar's, `TOWN_ARMIES` 2), by the town's entrance, building
+  0, listed per stack that changes, the visitor's army first; `ENTRY_COUNT` 187, encoding
+  **v26**; the protocol **v89** (`TownCommand::Transform` with `TownArmy`,
+  `TownReject::NoTransformer`, `NothingToTransform`); the word `town transform <town>
+  visitor|garrison <slot>` (format **v31**: the 130 goldens' `format` lines only).
 - **The protocol** (the server lane's paths, `cross-lane`): the decisions' places (`MarketWindow`'s
   object or town, its hero optional; the University's), `SellArtifact` with its refusals, the five
   commands with their refusals, the events' places; the next version per task at merge.

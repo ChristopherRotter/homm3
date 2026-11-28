@@ -38,8 +38,8 @@ pub use command::{
     ArmyRef, ArmyReject, ArmySlot, ArtifactAt, ArtifactPlace, CastReject, ChestChoice,
     CombineReject, Consent, GameCommand, GameReject, HillFortAnswer, HillFortReject, HireAnswer,
     HireReject, Manage, ManageReject, MarketAnswer, MarketReject, MoveReject, SchoolChoice,
-    SkillOffer, SpellReject, StandReject, SystemCommand, TavernAnswer, TavernReject, TownCommand,
-    TownHeroChange, TownReject, UniversityAnswer,
+    SkillOffer, SpellReject, StandReject, SystemCommand, TavernAnswer, TavernReject, TownArmy,
+    TownCommand, TownHeroChange, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, CastFailure, GameEvent, HeroChange, NothingWhy, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};

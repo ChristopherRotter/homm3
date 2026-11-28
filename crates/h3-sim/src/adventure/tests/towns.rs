@@ -590,3 +590,74 @@ fn a_university_action_names_its_town_by_the_entrance_and_the_student_by_its_ent
     });
     assert_eq!(action::encode(state, rules, red, &stranger), None);
 }
+
+/// A town's transformation by its entrance and its army's slot's entry (E09 T59b2, encoding v26;
+/// TWN-TRF-001): red's random town on the town map made a Necropolis with its Skeleton
+/// Transformer (map slot 20), Valeska moved onto its entrance; each listed transformation of the
+/// town (her army's stacks, the upper bar's where its garrison holds one) encodes as its army's
+/// [`TOWN_TRANSFORM`] entry for its slot at the entrance, decodes back and is legal by the masks;
+/// a tile that is no town's entrance and a building other than 0 decode to nothing.
+#[test]
+fn a_transformation_action_names_its_town_by_the_entrance_and_the_stack_by_its_entry() {
+    let rules = &*FAITHFUL;
+    let necropolis = rules.core().faction_by_key("base:necropolis").unwrap();
+    let plain = town_setup(rules, 1);
+    let probe = AdventureEnv::new(rules.clone(), plain.clone(), 173, 21).unwrap();
+    let entrance = entrances(probe.state())[1];
+    let mut setup = (*plain).clone();
+    setup.towns[1].faction = h3_towns::TownFaction::Fixed(necropolis);
+    setup.towns[1].buildings = h3_towns::BuildingsSetup::Custom {
+        built: h3_towns::SlotSet::EMPTY.with(20),
+        forbidden: h3_towns::SlotSet::EMPTY,
+    };
+    let valeska = setup
+        .heroes
+        .iter_mut()
+        .find(|hero| hero.pos == Pos::new(11, 8, 0))
+        .unwrap();
+    valeska.pos = entrance;
+    let env = AdventureEnv::new(rules.clone(), Arc::new(setup), 173, 21).unwrap();
+    let (state, red) = (env.state(), PlayerId::new(0));
+    let town = TownId::new(1);
+    let hero = state.adventure().town_visitor(town).unwrap();
+    let first = state.adventure().hero(hero).unwrap().army[0].slot;
+    let listed: Vec<GameCommand> = legal_commands(state, rules, Actor::Player(red))
+        .into_iter()
+        .filter(|command| matches!(command, GameCommand::Town(TownCommand::Transform { .. })))
+        .collect();
+    let visitor = GameCommand::Town(TownCommand::Transform {
+        town,
+        army: h3_towns::TownArmy::Visitor,
+        slot: first,
+    });
+    assert!(listed.contains(&visitor), "{listed:?}");
+    let gate = town_tile(state, town).unwrap();
+    assert_eq!(
+        action::encode(state, rules, red, &visitor),
+        Some(Action::town_transform(gate, 0, usize::from(first)))
+    );
+    for command in &listed {
+        let action = action::encode(state, rules, red, command).unwrap();
+        assert_eq!(
+            action::decode(state, rules, red, action).as_ref(),
+            Some(command)
+        );
+        assert!(
+            legal_by_masks(&env, Seat::Player(red), action),
+            "{action:?}"
+        );
+    }
+    // Another tile or building names nothing.
+    let count = u32::try_from(env.tile_count()).unwrap();
+    let elsewhere = (0..count).find(|&t| town_of(state, t).is_none()).unwrap();
+    for none in [
+        Action::town_transform(elsewhere, 0, usize::from(first)),
+        Action::Adventure(MapAction {
+            entry: TOWN_TRANSFORM,
+            tile: gate,
+            building: 1,
+        }),
+    ] {
+        assert_eq!(action::decode(state, rules, red, none), None, "{none:?}");
+    }
+}

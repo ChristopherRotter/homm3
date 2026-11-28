@@ -48,7 +48,8 @@
 //! the place as the management lines', E09 T58b; v29 `town machine <town> <building>`, a war
 //! machine bought at the building, and `town boat <town>`, a boat built at its Shipyard, E09 T59a;
 //! v30 `town university <town> <hero>`, a town's Magic University opened for its hero, E09
-//! T59b1):
+//! T59b1; v31 `town transform <town> visitor|garrison <slot>`, a stack of the town's visitor's
+//! army or of its upper bar's transformed at its Skeleton Transformer, E09 T59b2):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -77,6 +78,8 @@
 //!     "0 town machine 2 16",          #   `<player> town machine <town> <building>`, `<player>
 //!     "0 town boat 2",                #   town boat <town>` (format 29)
 //!     "0 town university 2 1",        #   `<player> town university <town> <hero>` (30)
+//!     "0 town transform 2 garrison 0",#   `<player> town transform <town> visitor|garrison
+//!                                     #   <slot>` (format 31)
 //!     "0 revisit 1",                  #   `<player> revisit <hero>` (format 12)
 //!     "0 cast 1 6",                   #   `<player> cast <hero> <spell> [<x>,<y>,<level>]`
 //!     "0 cast 1 8 12,4,0",            #   (format 26)
@@ -131,7 +134,7 @@ use h3_game::{
     ALTAR_SLOTS, Actor, AltarAnswer, AltarPlaces, Answer, ArenaChoice, ArmyCommand, ArmyRef,
     ArmySlot, ArtifactPlace, BuildingId, ChestChoice, Consent, FactionChoice, GameCommand,
     GameRuleset, GameSetup, HillFortAnswer, HireAnswer, Manage, MarketAnswer, Position,
-    SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownCommand, TownHeroChange,
+    SchoolChoice, SkillOffer, SystemCommand, TavernAnswer, TownArmy, TownCommand, TownHeroChange,
     UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
@@ -333,7 +336,8 @@ fn parse_hex64(s: &str) -> Result<u64> {
 /// bars (format v16, E09 T28a) by its town and move; a town's hire (format v17, E09 T38a1) by its
 /// town and slot; a town screen's opening (format v24, E09 T49a2) by its town; a cast on the
 /// map (format v26, E08 T142a) by its hero, its spell's index and its target, if any; a town's
-/// University (format v30, E09 T59b1) by its town and hero.
+/// University (format v30, E09 T59b1) by its town and hero; a town's transformation (format v31,
+/// E09 T59b2) by its town, army and slot.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -421,6 +425,14 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         // Format v30 (E09 T59b1).
         GameCommand::Town(TownCommand::University { town, hero }) => {
             format!("{player} town university {} {}", town.raw(), hero.raw())
+        }
+        // Format v31 (E09 T59b2).
+        GameCommand::Town(TownCommand::Transform { town, army, slot }) => {
+            let army = match army {
+                TownArmy::Visitor => "visitor",
+                TownArmy::Garrison => "garrison",
+            };
+            format!("{player} town transform {} {army} {slot}", town.raw())
         }
         // Format v26 (E08 T142a).
         GameCommand::Cast {
@@ -890,6 +902,22 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
             let town = town.parse().map(TownId::new).map_err(|_| bad())?;
             let hero = hero.parse().map(HeroId::new).map_err(|_| bad())?;
             GameCommand::Town(TownCommand::University { town, hero })
+        }
+        // Format v31 (E09 T59b2): a stack of a town's army transformed at its Transformer.
+        Some("town") if words.clone().next() == Some("transform") => {
+            let (_, Some(town), Some(army), Some(slot)) =
+                (words.next(), words.next(), words.next(), words.next())
+            else {
+                return Err(bad());
+            };
+            let town = town.parse().map(TownId::new).map_err(|_| bad())?;
+            let army = match army {
+                "visitor" => TownArmy::Visitor,
+                "garrison" => TownArmy::Garrison,
+                _ => return Err(bad()),
+            };
+            let slot = slot.parse().map_err(|_| bad())?;
+            GameCommand::Town(TownCommand::Transform { town, army, slot })
         }
         // Format v24 (E09 T49a2): a town screen's opening; v25 (E09 T49b) a spell book's
         // purchase at its Mage Guild; v27 (E09 T58a1) a market window's opening; v29 (E09 T59a)

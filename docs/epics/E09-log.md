@@ -7092,3 +7092,61 @@ recommended; the map client's two literals consented with it.
 
 **The queue:** T59b2 next (the Transformer). Ids: decisions next 229; quirks planned `-23`, a new
 one `-24`; stubs `TWN-STUB-23`.
+
+### T59b2 — the Skeleton Transformer at a town: the rule, the listing, the wire, the word, the env's 14 entries, the plans (2026-11-28)
+
+One session, the user present at the start; branch `town/e09-t59b2`, `cross-lane` (the adventure
+lane's `h3-game` `lib.rs` (the `TownArmy` re-export), `h3-files`' word, `h3-sim`'s replay version
+and `tests/hiring.rs`, the 130 goldens' `format` lines, `h3-map`'s plans; the AI lane's `h3-sim`
+`adventure/action.rs`, `mod.rs`, `tests.rs`, `tests/towns.rs`; the server lane's `h3-protocol`).
+Starting point: `master` at 1bbf5ff (#1224, T59b1, merged a minute before the session); the
+setup's light gates only (CI's fingerprint on `master`'s code). The user's computer was online:
+seven files staged (`Heroes3.exe`, the four LODs, `maps.tar`, `extracted.tar`). **The cut**
+(decision 229): the user named T59b2 one pull request ("a one-shot command with no hash change and
+14 env entries"); the agent agreed.
+
+- **The town part** (`h3-towns`): `TownCommand::Transform { town, army, slot }` with `TownArmy`
+  (`Visitor`, `Garrison`; `command.rs`); the refusals `NoTransformer`, `NothingToTransform`, the
+  tavern's `UnknownSlot` and `EmptySlot` reused (their texts made general); `service.rs`'
+  `check_transformer` → `TransformerSale { into, dragons_into, dragons }` with `target` (the part's
+  dragons by a binary search, handle order), `service_offers`' `transformer`, `may_transform`
+  (the record's derived roles alone); `ServiceRoles::transformer` and `read()` (unhashed).
+- **The adventure** (`town/transform.rs`, the town lane's): `AdventureState::transform_stack(town,
+  (hero, slot), creature)`: a hero's army on the map or in a garrison (`hero_or_held_mut`), else
+  the town's garrison (`set_army_left`); the slot told by the game, no adventure event.
+- **The game:** `town/transform.rs` (`transform`: the town, its owner, the part's check, the army
+  (`army_of`: the actor's visitor, else `NoVisitor`; the upper bar always), the slot against the
+  adventure part's army slots, the stack, its target; then `StackChanged` and the town's changed
+  views by `Told`; `changing`: the listing's mask of the slots that change); `town/services.rs`
+  lists the transformations after the University, the visitor's army first, in slot order (two
+  `u8` masks in the `Services` iterator), and asks the town part of a town without a hero or a
+  spot where its record has a Transformer (`may_transform`: its garrison needs no hero).
+- **The wire** (protocol **v89**): `TownCommand::Transform` with `TownArmy` both ways,
+  `TownReject::NoTransformer`, `NothingToTransform` (178 rejections). **Replays:** the word `town
+  transform <town> visitor|garrison <slot>` (format **v31**); the 130 goldens' `format` lines only,
+  every hash reproduced. **The env** (encoding **v26**): `TOWN_TRANSFORM` (173) and its 13 next
+  (`TOWN_ARMIES` 2 × `ARMY_SLOTS` 7, army then slot, by the town's entrance, building 0);
+  `ENTRY_COUNT` 187; the layout test, the masks' check, and
+  `a_transformation_action_names_its_town_by_the_entrance_and_the_stack_by_its_entry` (the town
+  map's random town made a Necropolis with its Transformer, a hero on its entrance). The town
+  map's games unchanged (no Transformer stands there in the searched seed's game).
+- **The plans** (`h3-map`'s `play.rs`): `town_builds` probes each army's slots that hold a stack,
+  the visitor's (any player's) then the upper bar's, and one past the army's slots;
+  `check_town_transform` reads a listed one independently (the Transformer standing, the army,
+  the part's table, the stack's count kept, the first event its `StackChanged`, every other army,
+  the towns and the treasury unchanged); `Step::Town` plays a listed transformation in one step of
+  sixteen (n % 16 == 3); `check_guild_refusals` the command.
+- **Rules:** TWN-TRF-001 entered `implemented` (the code reading, VCMI and the wiki agree; no
+  batch row); **`TWN-QUIRK-23`** (T-26, state-corrupting, fixed by construction) entered.
+- **Tests:** `h3-towns`' (`service/tests.rs`: the table's targets, standing, superseded, missing,
+  `may_transform`; the offers against the four questions; the command), `h3-game`'s three
+  (`town/tests/transform.rs`: the visitor's stacks into their targets for free and nothing merged,
+  the garrison's; the refusals in order; the garrison hero's army as the upper bar), the words'
+  round trips and five refusals, the protocol's (both armies).
+- **The bench:** `legal-towns-36` on the same games (the town map stands no Transformer): `master`
+  50 342 950 in the same sandbox (a worktree under `target/wt-master`; the committed baseline
+  50 085 106, +0.51 %), the branch 50 495 243 (+0.30 %; +0.82 % on the committed baseline): the
+  listing's `services::listed` +69 k, `service_offers` +34 k, the town's chain +73 k, an inlining
+  move between `Roles::of` (+407 k) and `holds_capitol` (−361 k); inside the gate, not
+  re-baselined.
+- *Agent's calls* (change freely): decision 229's list.

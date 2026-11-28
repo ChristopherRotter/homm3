@@ -291,3 +291,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = fixed, strict-fixed = fixed
 - Regression test: `crates/h3-game/src/town/tests/smith.rs`, `a_purchase_gives_the_visitor_the_machine_for_its_creatures_price` (a cart of gold and wood); `crates/h3-towns/src/service/tests.rs`, `a_standing_smith_sells_its_war_machine_at_its_creatures_cost`
 - Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 207); entered by E09 T59a, 2026-11-27
+
+### TWN-QUIRK-23 — The Transformer's stacks lost when the turn's time runs out
+- Class: fix, no flag (state-corrupting, which AGENTS.md always fixes; quirk candidate T-26, fixed by construction by the user's acceptance of the agent's calls, 2026-11-24, TWN-Q35; the epic's decision 207)
+- Context / rules affected: town, the Necropolis's Skeleton Transformer (TWN-TRF-001, E09 T59b2)
+- Original behavior: the Transformer's dialog (`transformer_dialog_create` 0x5654F0) holds an army of its own; the player moves stacks into it, converts them (`transformer_convert` 0x566C20) and the close (`transformer_close` 0x566B30) returns every holding stack to the given army. When a timed game's turn runs out, `dialog_proc_base` 0x41B1C0 calls `dialog_close_on_time_expired` 0x5F1180, which ends the dialog without the close's return: the stacks lying in the holding army are lost, and a hero whose stacks all lay there is left with an empty army (the Altar's A-48 class, `ADV-QUIRK-50`).
+- Intended/expected behavior: a transformation names one whole stack of the town's visitor's army or of its upper bar's (`TownCommand::Transform { town, army, slot }`) and changes it in place in one command; nothing lies in a dialog between commands, so a turn's end loses nothing.
+- Impact: a timed game's player who left stacks in the original's dialog loses them; untimed games and every transformation's result are the original's.
+- Community status: not documented (the survey's comparison with VCMI 1.7.5 and the wiki, `docs/rules/surveys/E09-trades.md` §9, has no row for the turn's end).
+- Sources: code reading (E09 T52; survey `docs/rules/surveys/E09-trades.md` §7.3, §7.6, §10 T-26); no batch row (moot by construction).
+- Flag: none (fixed in every profile, by construction)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-game/src/town/tests/transform.rs`, `the_visitor_transforms_a_whole_stack_into_its_target_for_free` (one command, one stack, changed in place)
+- Decided by / date: the user, 2026-11-24 (TWN-Q35; decision 207); entered by E09 T59b2, 2026-11-28

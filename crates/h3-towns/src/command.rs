@@ -11,8 +11,9 @@
 //! place ([`crate::check_market`], TWN-MKT-002); since E09 T59a a war machine is bought at the
 //! Blacksmith or the Ballista Yard ([`crate::check_war_machine`], TWN-SMT-001) and a boat built at
 //! the Shipyard ([`crate::check_boat`], TWN-SHY-001); since E09 T59b1 the Magic University opens
-//! for the hero the command names ([`crate::check_university`], TWN-UNI-001). A refused command
-//! changes nothing.
+//! for the hero the command names ([`crate::check_university`], TWN-UNI-001); since E09 T59b2 a
+//! stack of one of the town's armies is transformed at the Skeleton Transformer
+//! ([`crate::check_transformer`], TWN-TRF-001). A refused command changes nothing.
 
 use core::fmt;
 
@@ -25,7 +26,7 @@ use crate::building::BuildingId;
 /// that the game and the wire match every variant (SRV-Q25; E09 T18b1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 // rule: TWN-BLD-001, TWN-REC-001, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004, TWN-TAV-003
-// rule: TWN-GLD-006, TWN-MKT-002, TWN-SMT-001, TWN-SHY-001, TWN-UNI-001
+// rule: TWN-GLD-006, TWN-MKT-002, TWN-SMT-001, TWN-SHY-001, TWN-UNI-001, TWN-TRF-001
 pub enum TownCommand {
     /// Builds `building` in `town`, the player's, as its hall offers it ([`crate::buildable`]),
     /// for the part's price (TWN-BLD-001): no hero, no visit, no field trusted but the two ids.
@@ -130,6 +131,36 @@ pub enum TownCommand {
         /// The student: the town's visitor or garrison hero.
         hero: HeroId,
     },
+    /// Transforms the stack in `slot` of `army` at `town`'s Skeleton Transformer, the town the
+    /// player's (TWN-TRF-001; E09 T59b2, design §113: the original's Necropolis building 22
+    /// clicked on the town screen, `town_skeleton_transformer_open` 0x5D2F90 with its dialog, a
+    /// stack moved to the holding side, `transformer_convert` 0x566C20, the close): the stack's
+    /// creature becomes its target ([`crate::TransformerSale::target`]), its count kept, free.
+    /// One command one whole stack (`TWN-QUIRK-23`, T-26 fixed by construction: no holding army
+    /// to lose). No hero
+    /// needed for [`TownArmy::Garrison`], no visit, no movement points, no mark, any number a
+    /// turn; no field trusted but the town's id, the army and the slot.
+    Transform {
+        /// The town.
+        town: TownId,
+        /// The army: the visitor's or the upper bar's.
+        army: TownArmy,
+        /// The army's slot, from 0.
+        slot: u8,
+    },
+}
+
+/// Which of a town's armies a transformation names (TWN-TRF-001; E09 T59b2, design §113,
+/// decision 207: the original's default, the visitor's army else the upper bar's, and its
+/// selection override, a stack of the upper bar selected, both become the command's choice;
+/// survey `E09-trades.md` §7.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TownArmy {
+    /// The army of the player's hero on the town's entrance.
+    Visitor,
+    /// The upper bar's: the garrison hero's army where one stands, else the town's garrison
+    /// (`HireTarget::Garrison`'s meaning; no hero needed).
+    Garrison,
 }
 
 /// A hero's move between a town's two bars (TWN-ROW-002 to -004; E09 T28a, design §53).
@@ -162,7 +193,10 @@ pub enum TownHeroChange {
 /// [`Self::NotStanding`], then the game [`Self::NoVisitor`], [`Self::HasWarMachine`] (E09 T59a,
 /// TWN-SMT-001); for a boat [`crate::check_boat`] [`Self::NotStanding`], then the game
 /// [`Self::BoatSpotTaken`] (E09 T59a, TWN-SHY-001); for the University [`crate::check_university`]
-/// [`Self::NoUniversity`], then the game [`Self::NotTownHero`] (E09 T59b1, TWN-UNI-001).
+/// [`Self::NoUniversity`], then the game [`Self::NotTownHero`] (E09 T59b1, TWN-UNI-001); for a
+/// transformation [`crate::check_transformer`] [`Self::NoTransformer`], then the game
+/// [`Self::NoVisitor`], [`Self::UnknownSlot`], [`Self::EmptySlot`], [`Self::NothingToTransform`]
+/// (E09 T59b2, TWN-TRF-001).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TownCommandError {
     /// The town is not in the game's store.
@@ -215,9 +249,11 @@ pub enum TownCommandError {
     /// The town has no standing Tavern (TWN-TAV-003: the Tavern, or Castle's Brotherhood of the
     /// Sword over it).
     NoTavern,
-    /// The slot is not one of the player's two tavern slots (TWN-TAV-003).
+    /// The slot is not one of the player's two tavern slots (TWN-TAV-003); since E09 T59b2 not
+    /// one of an army's slots (TWN-TRF-001: the adventure part's army slots).
     UnknownSlot,
-    /// The slot holds no hero (TWN-TAV-003: no type was free at its last fill).
+    /// The slot holds no hero (TWN-TAV-003: no type was free at its last fill); since E09 T59b2
+    /// the army's slot holds no stack (TWN-TRF-001).
     EmptySlot,
     /// No Mage Guild stands in the town (TWN-GLD-007: a building of role `guild`, any level), or
     /// the ruleset has no spell book to sell.
@@ -244,6 +280,12 @@ pub enum TownCommandError {
     /// The hero is neither the town's visitor nor its garrison hero, or not the player's
     /// (TWN-UNI-001).
     NotTownHero,
+    /// No Skeleton Transformer stands in the town (TWN-TRF-001: a building of role
+    /// `transformer`).
+    NoTransformer,
+    /// The stack's creature is its own target (TWN-TRF-001: the original's Skeleton, which keeps
+    /// Convert disabled, survey `E09-trades.md` §7.5).
+    NothingToTransform,
 }
 
 impl fmt::Display for TownCommandError {
@@ -273,8 +315,8 @@ impl fmt::Display for TownCommandError {
             Self::TooManyHeroes => f.write_str("the player has the most heroes on the map"),
             Self::EmptyArmy => f.write_str("the garrison hero's army is empty"),
             Self::NoTavern => f.write_str("the town has no standing Tavern"),
-            Self::UnknownSlot => f.write_str("no such tavern slot"),
-            Self::EmptySlot => f.write_str("the tavern slot holds no hero"),
+            Self::UnknownSlot => f.write_str("no such slot"),
+            Self::EmptySlot => f.write_str("the slot is empty"),
             Self::NoGuild => f.write_str("no mage guild sells a spell book in the town"),
             Self::NoHero => f.write_str("no hero stands in the town"),
             Self::HasSpellBook => f.write_str("the town's hero has a spell book"),
@@ -284,6 +326,8 @@ impl fmt::Display for TownCommandError {
             Self::BoatSpotTaken => f.write_str("the town's boat spot is taken"),
             Self::NoUniversity => f.write_str("no Magic University stands in the town"),
             Self::NotTownHero => f.write_str("the hero is not the player's hero in the town"),
+            Self::NoTransformer => f.write_str("no Skeleton Transformer stands in the town"),
+            Self::NothingToTransform => f.write_str("the stack is its own transformation"),
         }
     }
 }
@@ -335,6 +379,8 @@ mod tests {
             TownCommandError::BoatSpotTaken,
             TownCommandError::NoUniversity,
             TownCommandError::NotTownHero,
+            TownCommandError::NoTransformer,
+            TownCommandError::NothingToTransform,
         ];
         for error in errors {
             assert!(!error.to_string().is_empty(), "{error:?}");
@@ -403,5 +449,21 @@ mod tests {
             hero: HeroId::new(3),
         };
         assert_ne!(university, boat);
+        // covers: TWN-TRF-001
+        let transform = TownCommand::Transform {
+            town: TownId::new(2),
+            army: TownArmy::Garrison,
+            slot: 6,
+        };
+        assert_ne!(transform, university);
+        assert_ne!(
+            transform,
+            TownCommand::Transform {
+                town: TownId::new(2),
+                army: TownArmy::Visitor,
+                slot: 6,
+            }
+        );
+        assert!(TownArmy::Visitor < TownArmy::Garrison);
     }
 }

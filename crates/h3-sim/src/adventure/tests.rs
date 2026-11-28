@@ -178,8 +178,8 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 25);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 173));
+    assert_eq!(ACTION_ENCODING_VERSION, 26);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 187));
     // E09 T59a (v24): a town's two war machines' purchases by their buildings' places, then its
     // boat, after the artifact sale.
     assert_eq!((WAR_MACHINE, WAR_MACHINES, TOWN_BOAT), (168, 2, 170));
@@ -201,6 +201,23 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(
         [Action::town_university(9, 0), Action::town_university(9, 1)],
         [Action::map(171, 9), Action::map(172, 9)]
+    );
+    // E09 T59b2 (v26): a town's transformations, the visitor's army's seven slots, then the upper
+    // bar's, after the University.
+    assert_eq!((TOWN_TRANSFORM, TOWN_ARMIES, ARMY_SLOTS), (173, 2, 7));
+    assert_eq!(
+        [
+            Action::town_transform(9, 0, 0),
+            Action::town_transform(9, 0, 6),
+            Action::town_transform(9, 1, 0),
+            Action::town_transform(9, 1, 6)
+        ],
+        [
+            Action::map(173, 9),
+            Action::map(179, 9),
+            Action::map(180, 9),
+            Action::map(186, 9)
+        ]
     );
     // E09 T58b (v23): a town's artifact sale after the window, the worn positions 0 to 13, then
     // the backpack's 0 to 7, each by its place, none past them, whatever the resource.
@@ -689,7 +706,8 @@ fn check_build_boat(
 /// [`TOWN_MARKET`]'s with the listed market windows (E09 T58a2), a [`WAR_MACHINE`] entry's with the
 /// listed purchases of its building's place ([`machine_place`]) and [`TOWN_BOAT`]'s with the
 /// listed boats (E09 T59a), a [`TOWN_UNIVERSITY`] entry's with the listed openings for its
-/// student, the town's visitor or garrison hero (E09 T59b1).
+/// student, the town's visitor or garrison hero (E09 T59b1), a [`TOWN_TRANSFORM`] entry's with the
+/// listed transformations of its army and slot (E09 T59b2).
 fn check_town_heroes(
     env: &AdventureEnv,
     (player, entry): (PlayerId, usize),
@@ -735,6 +753,14 @@ fn check_town_heroes(
                 ];
                 let k = students.iter().position(|&s| s == Some(hero))?;
                 (TOWN_UNIVERSITY + k == entry).then(|| town_tile(state, town))?
+            }
+            GameCommand::Town(TownCommand::Transform { town, army, slot }) => {
+                let a = match army {
+                    h3_towns::TownArmy::Visitor => 0,
+                    h3_towns::TownArmy::Garrison => 1,
+                };
+                let k = TOWN_TRANSFORM + a * ARMY_SLOTS + usize::from(slot);
+                (k == entry).then(|| town_tile(state, town))?
             }
             _ => None,
         })

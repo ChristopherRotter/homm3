@@ -290,7 +290,12 @@ pub mod wire;
 /// garrison hero the student) and its refusals `TownReject::NoUniversity` and `NotTownHero`;
 /// `UniversityVisit` and `GameEvent::UniversityOpened` name their place (`UniversitySeen`: a map
 /// University by type and anchor, or a town) in place of the object's type and anchor.
-pub const PROTOCOL_VERSION: u32 = 88;
+/// v89 (E09 T59b2, the town lane's, `cross-lane`; the town epic's design note §113, §115): a
+/// town's Skeleton Transformer, `TownCommand::Transform` (a town of the actor's, the army by
+/// `TownArmy`, the visitor's or the upper bar's, and its slot) and its refusals
+/// `TownReject::NoTransformer` and `NothingToTransform`; no new event (the stack is
+/// `StackChanged`).
+pub const PROTOCOL_VERSION: u32 = 89;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes, with its reader ([`record`], every client's: E24 M5 T2c) in the same

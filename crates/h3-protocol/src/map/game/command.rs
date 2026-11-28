@@ -20,8 +20,8 @@ use h3_game::{
     HireError, Manage as EngineManage, ManageError, MapCastError, MarketAnswer as EngineMarket,
     MarketError, Position, SchoolChoice as EngineSchool, SkillOffer as EngineOffer,
     SystemCommand as EngineSystem, TavernAnswer as EngineTavern, TavernError,
-    TownCommand as EngineTown, TownCommandError, TownHeroChange as EngineHeroChange,
-    UniversityAnswer as EngineUniversity,
+    TownArmy as EngineTownArmy, TownCommand as EngineTown, TownCommandError,
+    TownHeroChange as EngineHeroChange, UniversityAnswer as EngineUniversity,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -34,7 +34,7 @@ use crate::wire::game::{
     CombineReject, Consent, Formation, GameCommand, GameReject, HillFortAnswer, HillFortReject,
     HireAnswer, HireReject, Manage, ManageReject, MarketAnswer, MarketReject, MoveReject, Pos,
     SchoolChoice, SkillOffer, SpellReject, StandReject, SystemCommand, TavernAnswer, TavernReject,
-    TownCommand, TownHeroChange, TownReject, UniversityAnswer,
+    TownArmy, TownCommand, TownHeroChange, TownReject, UniversityAnswer,
 };
 
 /// An engine command on the wire (a legal list's, the echo of an applied command).
@@ -101,6 +101,15 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                 EngineTown::University { town, hero } => TownCommand::University {
                     town: town.raw(),
                     hero: hero.raw(),
+                },
+                // E09 T59b2 (v89).
+                EngineTown::Transform { town, army, slot } => TownCommand::Transform {
+                    town: town.raw(),
+                    army: match army {
+                        EngineTownArmy::Visitor => TownArmy::Visitor {},
+                        EngineTownArmy::Garrison => TownArmy::Garrison {},
+                    },
+                    slot,
                 },
             },
         },
@@ -417,6 +426,15 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                     town: TownId::new(town),
                     hero: HeroId::new(hero),
                 },
+                // E09 T59b2 (v89).
+                TownCommand::Transform { town, army, slot } => EngineTown::Transform {
+                    town: TownId::new(town),
+                    army: match army {
+                        TownArmy::Visitor {} => EngineTownArmy::Visitor,
+                        TownArmy::Garrison {} => EngineTownArmy::Garrison,
+                    },
+                    slot,
+                },
             })
         }
         // E16 M5 T14 (v56): the engine refuses it from a seat (`SystemOnly`).
@@ -692,6 +710,9 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 // E09 T59b1 (v88).
                 TownCommandError::NoUniversity => TownReject::NoUniversity {},
                 TownCommandError::NotTownHero => TownReject::NotTownHero {},
+                // E09 T59b2 (v89).
+                TownCommandError::NoTransformer => TownReject::NoTransformer {},
+                TownCommandError::NothingToTransform => TownReject::NothingToTransform {},
             },
         },
         E::Tavern(error) => GameReject::Tavern {

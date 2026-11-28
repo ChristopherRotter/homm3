@@ -168,6 +168,27 @@ pub enum TownCommand {
         /// The student.
         hero: u16,
     },
+    /// Transforms the stack in a slot of an army of a town of the actor's at its Skeleton
+    /// Transformer, the part's target of its creature, its count kept (TWN-TRF-001; E09 T59b2,
+    /// v89).
+    Transform {
+        /// The town.
+        town: u16,
+        /// The army: the visitor's or the upper bar's.
+        army: TownArmy,
+        /// The army's slot.
+        slot: u8,
+    },
+}
+
+/// The army of a town a transformation names (`h3_towns::TownArmy`; E09 T59b2, v89).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum TownArmy {
+    /// The army of the actor's hero on the town's entrance.
+    Visitor {},
+    /// The upper bar's: the garrison hero's army, else the town's garrison.
+    Garrison {},
 }
 
 /// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v64).
@@ -853,6 +874,10 @@ pub enum TownReject {
     /// The hero is neither the town's visitor nor its garrison hero, or not the actor's
     /// (TWN-UNI-001; v88).
     NotTownHero {},
+    /// No Skeleton Transformer stands in the town (TWN-TRF-001; E09 T59b2, v89).
+    NoTransformer {},
+    /// The stack's creature is its own target (TWN-TRF-001; v89).
+    NothingToTransform {},
 }
 
 /// Why the adventure map refused a command (`h3_adventure::AdventureCommandError`); a step is

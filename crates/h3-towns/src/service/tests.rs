@@ -1,6 +1,7 @@
 //! Tests of the services' town part (E09 T59a, design §110, §111): the war machines' purchase
 //! (TWN-SMT-001) and the boat (TWN-SHY-001) on the fixture's Keep; since E09 T59b1 the Magic
-//! University's opening (TWN-UNI-001, design §112).
+//! University's opening (TWN-UNI-001, design §112); since E09 T59b2 the Skeleton Transformer's
+//! table (TWN-TRF-001, design §113).
 
 use super::*;
 use crate::fixture::*;
@@ -113,16 +114,18 @@ fn the_listing_reads_the_standing_smiths_in_the_records_order() {
 #[test]
 fn the_listings_offers_are_the_two_questions_answers() {
     // covers: TWN-SMT-001, TWN-SHY-001
-    // covers: TWN-UNI-001
+    // covers: TWN-UNI-001, TWN-TRF-001
     let smiths = part_with_keep(|keep| {
         keep.buildings[TAVERN].war_machine = Some(BALLISTA);
         keep.buildings[BROTHERHOOD].war_machine = Some(CART);
         keep.buildings[ESCAPE_TUNNEL].supersedes = set(&[SHIPYARD]);
         keep.buildings[LOOKOUT].roles.university = true;
         keep.buildings[OBELISK].supersedes = set(&[LOOKOUT]);
+        keep.buildings[FOUNTAIN].roles.transformer = true;
+        keep.buildings[MYSTIC_POND].supersedes = set(&[FOUNTAIN]);
     });
     let parts = [smiths, part(), empty_part()];
-    let built: [&[usize]; 8] = [
+    let built: [&[usize]; 10] = [
         &[],
         &[TAVERN],
         &[TAVERN, BROTHERHOOD, SHIPYARD],
@@ -131,6 +134,8 @@ fn the_listings_offers_are_the_two_questions_answers() {
         &[BROTHERHOOD],
         &[LOOKOUT, TAVERN],
         &[LOOKOUT, OBELISK],
+        &[FOUNTAIN, SILO],
+        &[FOUNTAIN, MYSTIC_POND],
     ];
     for part in &parts {
         for faction in [KEEP, MARSH, WILD] {
@@ -140,6 +145,7 @@ fn the_listings_offers_are_the_two_questions_answers() {
                 assert_eq!(offers.machines, war_machine_buildings(&town, part));
                 assert_eq!(offers.boat, check_boat(&town, part).ok());
                 assert_eq!(offers.university, check_university(&town, part).ok());
+                assert_eq!(offers.transformer, check_transformer(&town, part).ok());
             }
         }
     }
@@ -200,5 +206,61 @@ fn a_standing_university_teaches_the_parts_skills_at_its_price() {
             check_university(&town, part),
             Err(TownCommandError::NoUniversity)
         );
+    }
+}
+
+#[test]
+fn a_standing_transformer_makes_the_dragons_its_dragon_and_the_rest_its_skeleton() {
+    // covers: TWN-TRF-001
+    let (skeleton, bone_dragon) = (creature(50), creature(51));
+    let dragons = [creature(3), creature(7)];
+    let transformer = part_changed(
+        |params| {
+            params.transformer_into = skeleton;
+            params.transformer_dragons_into = bone_dragon;
+            params.transformer_dragons = dragons.to_vec();
+        },
+        |keep| {
+            keep.buildings[FOUNTAIN].roles.transformer = true;
+            keep.buildings[MYSTIC_POND].supersedes = set(&[FOUNTAIN]);
+        },
+    );
+    let sale = check_transformer(&town(&[FOUNTAIN]), &transformer).unwrap();
+    assert_eq!(
+        sale,
+        TransformerSale {
+            into: skeleton,
+            dragons_into: bone_dragon,
+            dragons: &dragons,
+        }
+    );
+    // The dragons their dragon, every other creature the skeleton, the undead too; the skeleton
+    // its own target.
+    for (creature, target) in [
+        (dragons[0], bone_dragon),
+        (dragons[1], bone_dragon),
+        (creature(5), skeleton),
+        (bone_dragon, skeleton),
+        (skeleton, skeleton),
+    ] {
+        assert_eq!(sale.target(creature), target, "{creature:?}");
+    }
+    assert!(may_transform(KEEP, &transformer));
+    // Never built; superseded (no original record supersedes its Transformer: the test's); a
+    // faction without a record; a record without the role.
+    for (town, part) in [
+        (town(&[FORT]), &transformer),
+        (town(&[FOUNTAIN, MYSTIC_POND]), &transformer),
+        (town_of(WILD, &[FOUNTAIN]), &transformer),
+        (town(&[FOUNTAIN]), &part()),
+        (town(&[FOUNTAIN]), &empty_part()),
+    ] {
+        assert_eq!(
+            check_transformer(&town, part),
+            Err(TownCommandError::NoTransformer)
+        );
+    }
+    for (faction, part) in [(WILD, &transformer), (KEEP, &part()), (KEEP, &empty_part())] {
+        assert!(!may_transform(faction, part));
     }
 }

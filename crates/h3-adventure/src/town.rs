@@ -8,7 +8,8 @@
 //! the step onto the town or onto that visitor the same siege, against the visitor (TWN-SIE-001,
 //! TWN-VIS-002), with the garrison merged into its army first (TWN-SIE-002, [`merge`]). Since
 //! E09 T38a1 a hired hero's placement on its town's entrance (TWN-TAV-003, `hire`); since E09 T59a
-//! a boat built at its Shipyard on its spot (TWN-SHY-001, `boat`).
+//! a boat built at its Shipyard on its spot (TWN-SHY-001, `boat`); since E09 T59b2 a stack of the
+//! town's armies transformed at its Skeleton Transformer (TWN-TRF-001, `transform`).
 
 use alloc::vec::Vec;
 
@@ -16,6 +17,7 @@ mod boat;
 mod hire;
 mod merchants;
 mod rows;
+mod transform;
 
 pub use hire::TavernVisit;
 pub(crate) use merchants::Merchants;

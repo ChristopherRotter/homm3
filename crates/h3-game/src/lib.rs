@@ -117,8 +117,10 @@ pub use h3_heroes::{Position, equip, positions, takes, wearing};
 pub use h3_towns::WeekKind;
 /// The town context's command and its refusals (E09 T18b1; `h3_towns`' types): what
 /// [`GameCommand::Town`], [`GameCommandError::Town`] and [`GameEvent::TownBuilt`] carry, and a
-/// [`TownBuildingsView`]'s sets (E09 T18b2a).
-pub use h3_towns::{BuildingId, BuildingSet, TownCommand, TownCommandError, TownHeroChange};
+/// [`TownBuildingsView`]'s sets (E09 T18b2a); since E09 T59b2 the army a transformation names.
+pub use h3_towns::{
+    BuildingId, BuildingSet, TownArmy, TownCommand, TownCommandError, TownHeroChange,
+};
 /// A town's setup as the map gives it (E09 T7a1; `h3_towns`' types): what a [`GameSetup`]'s towns
 /// hold, re-exported so that a map's import builds them through this crate.
 pub use h3_towns::{
