@@ -361,6 +361,8 @@ fn every_rejection() -> Vec<GameCommandError> {
             HireError::NotOffered(CreatureTypeId::from_raw(13)),
             HireError::Amount(0),
             HireError::NoRoom,
+            // E10 T3b1 (v88).
+            HireError::ReadOnly,
         ]
         .map(E::Hire),
     );
@@ -470,6 +472,8 @@ fn every_rejection() -> Vec<GameCommandError> {
         ]
         .map(E::Cast),
     );
+    // E10 T3b1 (v88): no gift to a meeting's ally's hero.
+    errors.push(E::AllyHero(HeroId::new(6)));
     errors
 }
 
@@ -779,7 +783,7 @@ fn every_rejection_maps_back_and_round_trips() {
     let errors = every_rejection();
     // 16 of the game's own (E16 M5 T14: `SystemOnly`), 31 of the battle's, 22 of the adventure's
     // (E08 T105b2: `NothingToRevisit`), 13 of the army's (E08 T114a2: `NoGarrison`, `NotOwn`,
-    // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 4 of a hire's, 31 of a town's
+    // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 5 of a hire's, 31 of a town's
     // (E09 T27: `NotRecruiting`, `NotStanding`, `NothingSummoned`; E09 T28a: `GarrisonHeld` to
     // `EmptyArmy`; E09 T38a1: `NoTavern`, `UnknownSlot`, `EmptySlot`; E09 T49b: `NoGuild`,
     // `NoHero`, `HasSpellBook`; E09 T58a1: `NoMarket`; E09 T59a: `NoWarMachine`,
@@ -788,8 +792,9 @@ fn every_rejection_maps_back_and_round_trips() {
     // `Place` worn and in the backpack, `NotTradable`), 7 of an
     // Altar's (E08 T134a), 3 of a Hill Fort's (E08 T134b1), 18 of a cast's (E08 T142a: 7 of the
     // game's, 5 of the spell's own; T143a: `NoWater`, `OutOfWindow`, `NoBoat`; T143b: `NoPoints`,
-    // `NoCastsLeft`, `NotFree`, `WrongKind`, `NotBuilt` gone).
-    assert_eq!(errors.len(), 174);
+    // `NoCastsLeft`, `NotFree`, `WrongKind`, `NotBuilt` gone); E10 T3b1: a hire's `ReadOnly`, the
+    // game's `AllyHero`.
+    assert_eq!(errors.len(), 176);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {
