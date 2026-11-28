@@ -18,6 +18,7 @@ use h3_content::{
 use h3_kernel::rng::CrtRand;
 
 use crate::cells::Cells;
+use crate::guards::{GuardInput, guard_creatures};
 use crate::layout::{LayoutInput, ZoneGenerator, lay_out};
 use crate::objects::{Object, ObjectFault, Objects};
 use crate::painter::{PaintFault, Pictures};
@@ -25,7 +26,7 @@ use crate::part::RmgRuleset;
 use crate::partition::{
     MemoryZone, Partition, PartitionFault, PartitionInput, ZoneMemory, partition,
 };
-use crate::plan::{PlanInput, plan};
+use crate::plan::{Connected, PlanInput, plan};
 use crate::settings::{COLOURS, Settings, SettingsError, Water};
 use crate::template::{Fit, KeptTemplate, PositionError, kept_templates, positions};
 use crate::terrain::{TerrainFault, TerrainInput, paint};
@@ -199,9 +200,9 @@ impl fmt::Display for GenerateError {
     }
 }
 
-/// A generated map: so far what the frame and steps 1 to 5 make, with step 6's plan (stub
-/// RMG-STUB-1: step 6's connections, steps 7 to 15 and the writer's content come with increments
-/// 4 to 7).
+/// A generated map: so far what the frame and steps 1 to 5 make, with step 6's plan and its
+/// connections by land (stub RMG-STUB-1: step 6's shipyards, gates, monoliths and Border Guards,
+/// steps 7 to 15 and the writer's content come with increments 4 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
     /// The settings as the generator ran them: water drawn, and under two players in all one
@@ -227,6 +228,8 @@ pub struct GeneratedMap {
     pub objects: Objects,
     /// Steps 4 and 5's towns and the road targets (+0x14B0).
     pub placed: Placed,
+    /// Step 6's passages (+0x404) and guard monsters.
+    pub connected: Connected,
 }
 
 /// The stream: `CrtRand` seeded once, each draw reported with its call site.
@@ -268,15 +271,17 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// (`rmg_zones_lay_out` 0x53BCB0); steps 2 and 3; the prototypes (`rmg_objects_read` 0x536200,
 /// read by the constructor; nothing draws there) for the steps that place objects; steps 4 and
 /// 5, the towns (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0 per zone
-/// generator); step 6's plan (`rmg_paths_and_connections` 0x544920: the lanes, the zone walls,
-/// the cells of no zone, the islets, the joining, the shores' seal), step 6 not yet ended.
+/// generator); step 6 (`rmg_paths_and_connections` 0x544920: the lanes, the zone walls, the
+/// cells of no zone, the islets, the joining, the shores' seal, the connections by land and their
+/// guard monsters), step 6 not yet ended (its shipyards, gates, monoliths and Border Guards).
 ///
 /// # Errors
 ///
 /// A [`GenerateError`]: refused settings, a part of another core or without the generator's
 /// tables, no template kept, the drawn template's positions outside the original's arrays, the
 /// steps' divisions by zero (RMG-QUIRK-3), reads and writes outside the original's arrays
-/// (RMG-QUIRK-4) and step 6's zone without an empty cell before any had one (RMG-QUIRK-5).
+/// (RMG-QUIRK-4), step 6's zone without an empty cell before any had one (RMG-QUIRK-5) and its
+/// object faults.
 // rule: RMG-SET-005, RMG-SET-006, RMG-SET-007, RMG-SET-010, RMG-TPL-007
 pub fn generate<T: Trace>(
     core: &Ruleset,
@@ -454,15 +459,24 @@ pub fn generate<T: Trace>(
         );
     }
     let pictures = Pictures::new(tables);
-    plan(
+    let creatures = guard_creatures(core);
+    let connected = plan(
         &mut stream,
-        &PlanInput {
+        &mut PlanInput {
             zones: &template.zones,
             connections: &template.connections,
             gens: &zones,
-            objects: &objects,
+            objects: &mut objects,
             pictures: &pictures,
             cosmetic: quirks.is_enabled(RMG_COSMETIC),
+            guards: GuardInput {
+                creatures: &creatures,
+                format: run.format,
+                strength: run.monsters.strength(),
+                // stub: RMG-STUB-2 — RMG-QUIRK-10's flag (`quirk.rmg.roe_guard_walk`) registered
+                // at T4d2; every profile as faithful until then.
+                roe_guard_walk: true,
+            },
         },
         &mut cells,
     )?;
@@ -479,5 +493,6 @@ pub fn generate<T: Trace>(
         partition,
         objects,
         placed,
+        connected,
     })
 }

@@ -5,11 +5,12 @@
 use std::collections::BTreeMap;
 
 use h3_rmg::{
-    Choices, CrtRand, Fit, GenerateError, GeneratedMap, MapFormat, MapSize, MemoryZone, Monsters,
-    Objects, PaintFault, PartitionFault, PositionError, SITE_ISLET_CENTRE, SITE_TEMPLATE,
-    SITE_TOWN_CENTRAL_CELL, SITE_TOWN_TYPE_ANY, SITE_WATER, SITE_ZONE_POSITION,
-    SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError, StepState, TerrainFault,
-    Trace, Water, ZoneGenerator, ZoneMemory, generate, kept_templates, resolve_random,
+    Choices, CrtRand, Fit, GUARD_CREATURES, GenerateError, GeneratedMap, GuardCreature, MapFormat,
+    MapSize, MemoryZone, Monsters, Objects, PaintFault, PartitionFault, PositionError,
+    SITE_ISLET_CENTRE, SITE_TEMPLATE, SITE_TOWN_CENTRAL_CELL, SITE_TOWN_TYPE_ANY, SITE_WATER,
+    SITE_ZONE_POSITION, SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE, Settings, SettingsError,
+    StepState, TerrainFault, Trace, Water, ZoneGenerator, ZoneMemory, generate, guard_creatures,
+    kept_templates, resolve_random,
 };
 use proptest::prelude::*;
 use std::sync::LazyLock;
@@ -564,9 +565,10 @@ fn any_choices() -> impl Strategy<Value = Choices> {
 proptest! {
     #![proptest_config(ProptestConfig { cases: 64, ..ProptestConfig::default() })]
 
-    /// Arbitrary choices, seeds and either profile run the frame and steps 1 to 5 over the
-    /// original tables without a panic (exit criterion (d)); a map's template is kept, its
-    /// positions' colours distinct, one per player and computer (or the error says why not).
+    /// Arbitrary choices, seeds and either profile run the frame, steps 1 to 5 and step 6 as
+    /// ported over the original tables without a panic (exit criterion (d)); a map's template is
+    /// kept, its positions' colours distinct, one per player and computer (or the error says why
+    /// not).
     #[test]
     fn arbitrary_settings_never_panic(
         c in any_choices(),
@@ -631,8 +633,12 @@ proptest! {
             // serial the next, its owner neutral or a position's colour, its zone with a first
             // town whose entrance is that zone's first road target.
             let placed = &map.placed;
+            let guards = &map.connected.monsters;
             prop_assert_eq!(placed.towns.len(), placed.road_targets.len());
-            prop_assert_eq!(map.objects.serial(), placed.towns.len() as i32 + 1);
+            prop_assert_eq!(
+                map.objects.serial(),
+                (placed.towns.len() + guards.len()) as i32 + 1
+            );
             for (k, t) in placed.towns.iter().enumerate() {
                 let o = &map.objects.placed()[t.object];
                 prop_assert_eq!(o.class, 98);
@@ -649,7 +655,63 @@ proptest! {
                 let cell = map.cells.get(x, y, z).unwrap();
                 prop_assert_eq!(i32::from(cell.zone_byte() as i8), map.template.zones[map.zones[t.zone].zone].id);
             }
+            // Step 6: each guard monster an object of class 54 after the towns, its serial the
+            // next, of a count of 1 or more; each passage end of its zone generator's zone, on
+            // its level.
+            for (k, m) in guards.iter().enumerate() {
+                prop_assert_eq!(map.objects.placed()[m.object].class, 54);
+                prop_assert_eq!(m.serial, (placed.towns.len() + k) as i32 + 1);
+                prop_assert!(m.count >= 1);
+            }
+            prop_assert_eq!(map.connected.passages.len(), map.zones.len());
+            for (g, ends) in map.zones.iter().zip(&map.connected.passages) {
+                for &[x, y] in ends {
+                    let cell = map.cells.get(x, y, g.position[2]).unwrap();
+                    prop_assert_eq!(
+                        i32::from(cell.zone_byte() as i8),
+                        map.template.zones[g.zone].id
+                    );
+                }
+            }
         }
+    }
+}
+
+// covers: RMG-CON-021
+/// The guards' creature table from the original packs, by the original's ids 0 to 144: the
+/// packs' handles are not those ids (`base` lists the war machines after 117, `ab` its creatures
+/// after them), their keys are; the four ids CRTRAITS.TXT leaves unused have none (level -1,
+/// never fitting), every other id a monster prototype; the town and the level as the creature
+/// table holds them (0x6747B0's records: levels from 0), the AI value and the counts as the
+/// packs harvested them.
+#[test]
+fn the_guards_read_the_creature_table_by_the_originals_ids() {
+    let (core, part) = original("base:faithful");
+    let table = guard_creatures(core);
+    assert_eq!(table.len(), GUARD_CREATURES);
+    let unused: Vec<usize> = (0..GUARD_CREATURES)
+        .filter(|&c| table[c] == GuardCreature::UNUSED)
+        .collect();
+    assert_eq!(unused, [122, 124, 126, 128]);
+    let row = |faction, level, ai_value, counts| GuardCreature {
+        faction,
+        level,
+        ai_value,
+        counts,
+    };
+    assert_eq!(table[0], row(0, 0, 80, [20, 50]));
+    assert_eq!(table[117], row(-1, 5, 775, [8, 12]));
+    assert_eq!(table[118], row(8, 0, 55, [20, 50]));
+    assert_eq!(table[144], row(-1, 4, 1024, [8, 12]));
+    let tables = part.generator().unwrap();
+    let objects = Objects::new(
+        part.object_templates(),
+        &tables.object_settings,
+        MapFormat::SoD,
+        0,
+    );
+    for c in (0..GUARD_CREATURES).filter(|c| !unused.contains(c)) {
+        assert!(objects.with_subclass(54, c as u32).next().is_some(), "{c}");
     }
 }
 
@@ -658,7 +720,7 @@ proptest! {
 /// below 232, AB's format those below 222 but SoD's monoliths and gates past subclass 2, RoE's
 /// below 165 likewise; AB's and SoD's decorations 165 to 205 file among RoE's 114 to 161 (their
 /// class group); the monsters' prototypes rise by subclass. A generated map has them, its
-/// placed objects steps 4 and 5's towns.
+/// placed objects steps 4 and 5's towns and step 6's guard monsters.
 #[test]
 fn the_originals_prototypes_are_filed_by_the_format() {
     let (_, part) = original("base:faithful");
@@ -706,9 +768,14 @@ fn the_originals_prototypes_are_filed_by_the_format() {
     let (core, part) = original("base:faithful");
     let (_, s, seed, _) = corpus_settings(0);
     let map = generate(core, part, &s, seed, &mut Log::default()).unwrap();
-    // Steps 4 and 5 placed towns only.
+    // Steps 4 and 5 placed towns, step 6 guard monsters.
     assert!(!map.objects.placed().is_empty());
-    assert!(map.objects.placed().iter().all(|o| o.class == 98));
+    assert!(
+        map.objects
+            .placed()
+            .iter()
+            .all(|o| o.class == 98 || o.class == 54)
+    );
     let filed = |o: &Objects| -> Vec<_> {
         o.prototypes()
             .iter()
@@ -716,9 +783,12 @@ fn the_originals_prototypes_are_filed_by_the_format() {
             .collect()
     };
     assert_eq!(filed(&map.objects), filed(&sod));
-    // The towns' prototypes are used (+0x8) once per town.
+    // The prototypes are used (+0x8) once per town and per guard monster.
     let used: i32 = map.objects.prototypes().iter().map(|p| p.used).sum();
-    assert_eq!(used as usize, map.placed.towns.len());
+    assert_eq!(
+        used as usize,
+        map.placed.towns.len() + map.connected.monsters.len()
+    );
     assert_eq!(map.objects.zone_count(map.zones.len() - 1).len(), 232);
 }
 
@@ -806,36 +876,50 @@ fn kept_plan() -> BTreeMap<String, KeptPlan> {
 
 // covers: RMG-CON-001, RMG-CON-002, RMG-CON-003, RMG-CON-004, RMG-CON-005, RMG-CON-006
 // covers: RMG-CON-007, RMG-CON-008, RMG-CON-009, RMG-CON-010, RMG-CON-011, RMG-CON-012
-// covers: RMG-TER-005
-/// Step 6's plan over the oracle's corpus (`clients/capture/rmg/plan.txt`, E14 T4c), step 2's
-/// unwritten bytes as measured (`zones.txt`): the port's first draws after step 5's end are the
-/// original's lanes (`rmg_free_lanes_draw`'s, their count and digest), and its draws after step
-/// 5 are the plan's whole (count and digest) in all 25 cases: the walls, the cells of no zone
-/// and the joining draw nothing, the islets (4 cases) and the sealed shores (11 cases, their
-/// painters flushed from one land to the next) draw as the original's.
+// covers: RMG-CON-013, RMG-CON-014, RMG-CON-018, RMG-CON-020, RMG-CON-021, RMG-TER-005
+/// Step 6 over the oracle's corpus (`clients/capture/rmg/plan.txt`, E14 T4c; `phases.txt`),
+/// step 2's unwritten bytes as measured (`zones.txt`): the port's first draws after step 5's end
+/// are the original's lanes (`rmg_free_lanes_draw`'s, their count and digest), then the plan's
+/// whole (count and digest) in all 25 cases: the walls, the cells of no zone and the joining
+/// draw nothing, the islets (4 cases) and the sealed shores (11 cases, their painters flushed
+/// from one land to the next) draw as the original's. Where step 6 makes its connections by land
+/// alone (4 cases: the passages, their guard monsters), its draws and its dump after it are the
+/// phase oracle's; the others go on to a shipyard, gates or monoliths (E14 T4d2, T4d3), whose
+/// draws the port does not make yet (their prefix checked against the oracle's whole logs, E14
+/// T4d1).
 #[test]
 fn the_corpus_draws_step_6s_plan_as_the_original() {
     let packs = original("base:faithful");
     let kept = kept_plan();
+    let phases = kept_phases();
     let memory = kept_zone_memory();
     assert_eq!(kept.len(), CORPUS.len());
+    let mut whole = Vec::new();
     for case in 0..CORPUS.len() {
         let (id, s, seed, _) = corpus_settings(case);
         let mut t = Phases {
             memory: memory.get(id).cloned().unwrap_or_default(),
             ..Phases::default()
         };
-        generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap_or_else(|e| panic!("{id}: {e}"));
+        let map =
+            generate(&packs.0, &packs.1, &s, seed, &mut t).unwrap_or_else(|e| panic!("{id}: {e}"));
         let ((lanes, digest), plan) = &kept[id];
         let after = &t.log.draws[t.log.ends[5]..];
-        assert!(after.len() >= *lanes, "{id}: {} draws", after.len());
+        assert!(after.len() >= plan.0, "{id}: {} draws", after.len());
         assert_eq!(
             lines_digest(&after[..*lanes]),
             (*lanes, digest.clone()),
             "{id}"
         );
-        assert_eq!(lines_digest(after), *plan, "{id}");
+        assert_eq!(lines_digest(&after[..plan.0]), *plan, "{id}");
+        let (steps, cells) = &phases[id];
+        if Some(&lines_digest(after)) == steps.get("6")
+            && Some(&digest12(&map.cells.dump(6, map.objects.placed()))) == cells.get(&6)
+        {
+            whole.push(id);
+        }
     }
+    assert_eq!(whole, ["s1-2p", "s1-2p-dry", "m1-4p", "s1-3p-2sm2i2"]);
 }
 
 // covers: RMG-ZON-010, RMG-ZON-011

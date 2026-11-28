@@ -987,18 +987,25 @@ connection to that land zone: its 3×3 becomes obstacles, its 5×5 empties lose 
 cells are painted to that land's terrain: water cannot be used to reach a zone it is not connected
 to.
 
-**The connections** (`rmg_zone_connections_make`). The crossing cells: every land cell, passable,
-entered by another zone's flood, whose cell back is land of another zone. **Pass 1**, per land zone
-generator in order (the boat reach, bit 24, cleared on its level first), per connection of its zone in order not yet made (+0xA): by land, else by a
-shipyard (only this end marked), else, the other zone being land, by gates. **Pass 2**, per land
-zone with one left: the boat reach (bit 24) cleared on its level and flooded from the water beside
-each of its shipyards; per connection left: by a shipyard, else, the other zone being land, by
-monoliths, **both ends marked made whatever was placed**. The ways:
+**The connections** (`rmg_zone_connections_make`). The crossing cells: every cell neither water
+nor rock, passable, entered by another zone's flood, whose cell back is not water and of another
+zone (T4d1: rock is not tested on the cell back). **Pass 1**, per land zone generator in order (the
+boat reach, bit 24, cleared on its level first), per connection of its zone in order not yet made
+(+0xA): by land, else by a shipyard (only this end marked), else, the other zone being land, by
+gates; the other end marked is the first entry of the far zone's list naming this zone generator's
+index (T4d1: not the same connection's when two connections join the same zones). **Pass 2**, per
+land zone with one left: the boat reach (bit 24) cleared on its level and flooded from each placed
+shipyard (type 87) whose anchor's zone byte is its index, from the first of `rmg_side_steps`' cells
+whose column is on the map (its row unchecked) and which is water; per connection left from the
+first: by a shipyard, else, the other zone being land, by monoliths, **both ends marked made
+whatever was placed**. The ways:
 
 - **By land** (same level, both land): the crossing cells P of this zone entered by the other's
   flood, P and its cell back Q empty, n of them; the candidates are those of least entering cost
-  (at most 100); none: refused. k = min(candidates, (n + 39) / 40) passages, each a candidate drawn:
-  paths carved from P and from Q, P and Q into the zones' +0x404, the candidate removed.
+  (at most 100); none: refused. A least cost of 1 with no guard and no Border Guard: made with no
+  passage (T4d1; never reached: an entering cost is at least 10). Else k = min(candidates, (n + 39)
+  / 40) passages, each a candidate drawn: paths carved from P and from Q, P into this zone
+  generator's +0x404 and Q into the other's, the candidate removed.
 - **By a shipyard** (same level): a shipyard prototype drawn first; this zone's cells entered by
   the other's flood: one already reached by boat ends it (made); else per land cell the positions
   x..x+2 of its row where the shipyard fits (`rmg_map_can_place` 0x531CF0 and the site test: a
@@ -1043,9 +1050,11 @@ obstacles marked with the colour, and once one is placed g = 0. Else, when g > 0
 (`rmg_guard_monster_create`): a land passage one, at P or Q by `rand() & 1`; a shipyard one, below
 its entrance; gates one below each; monoliths one below each entrance. The monster: the creatures
 of an allowed town (the zone's town type when its monsters match it, else its neutral and town bytes
-+0x95..+0x9E), level 0 or more, with AI value × (map low + high) / 2 ≤ g ≤ AI value × 100, one
-drawn; count n = (g + AI/2) / AI, then n + `rand() % s` − `rand() % s` with s = n/4 + 1 when s > 1;
-the object takes the serial +0xF44.
++0x95..+0x9E), level 0 or more (the unused ids 122, 124, 126, 128 are level -1), with AI value ×
+((map low + high) / 2) ≤ g ≤ AI value × 100 (T4d1: the halving first), counted from 144 (RoE 116)
+down; r = `rand() %` that count, the (r + 1)-th with a monster prototype from 144 down (RoE drops
+the prototypes from 118, not 117's: RMG-QUIRK-10); count n = (g + AI/2) / AI, then n + `rand() %
+s` − `rand() % s` with s = n/4 + 1 when s > 1; the object takes the serial +0xF44.
 
 **Step 6's plan as ported (T4c).** `h3-rmg`'s `plan` module, parts (1) to (6) of the order (the
 lanes, the walls, the cells of no zone; the islets, `plan/islets.rs`; the joining, `plan/join.rs`;
@@ -2406,7 +2415,7 @@ bit 0) is skipped by both unless placing it.
 | RMG-CON-018 | Guard value: 0 when wide; (v − low[s]) × fl[s] / 4 above low plus (v − high[s]) × fh[s] / 4 above high; none under 2000; the four tables of §2.3. | — | §2.3 |
 | RMG-CON-019 | Border Guard (the flag): this side, tent in the other zone, then the other side, tent here (shipyard: three before its entrance; monolith: after CON-009 again); next Keymaster colour; 3×3 obstacles marked; one placed: g = 0. Fails: monster. *(QC: two guards in a row, keys crossed; a shipyard's tent in the water zone, fitting only on its land; five cells unchecked)* | per tent 0x542A8F %positions | §2.3 |
 | RMG-CON-020 | Guard monsters (g > 0, no Border Guard): land one at P or Q; shipyard one; gates and monoliths one per side, each full value. *(QC: counts differ by way)* | land 0x541673 &1; CON-021's | §2.3 |
-| RMG-CON-021 | The monster: an allowed town's creatures, AI × (low + high) / 2 ≤ g ≤ AI × 100, the r-th from the top; n = (g + AI/2) / AI, ± rand % (n/4 + 1) when > 1; serial +0xF44. *(QC: RoE counts 0–116, walks from 144)* | 0x540C61 %fitting; 0x540CCE, 0x540CD8 %s | §2.3 |
+| RMG-CON-021 | The monster: an allowed town's creatures, AI × ((low + high) / 2) ≤ g ≤ AI × 100, the r-th from the top; n = (g + AI/2) / AI, ± rand % (n/4 + 1) when > 1; serial +0xF44. *(QC: RoE counts 0–116, walks from 144)* | 0x540C61 %fitting; 0x540CCE, 0x540CD8 %s | §2.3 |
 
 Within a connection: the way's draws, then per guard the tent's or the side and the monster's.
 Reads: connections (value, wide, guard flag), object settings +0..+2, creature table, guard

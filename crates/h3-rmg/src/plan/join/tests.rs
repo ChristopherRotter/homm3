@@ -12,7 +12,7 @@ use crate::layout::ZoneGenerator;
 use crate::painter::Pictures;
 use crate::painter::tests::tables;
 use crate::part::{OBJECT_TYPES, ObjectSettings, ObjectTemplate};
-use crate::plan::tests::{bits, drawn, generator, no_objects, pend, zone};
+use crate::plan::tests::{bits, drawn, generator, no_guards, no_objects, pend, zone};
 use crate::settings::MapFormat;
 
 /// The unreached cost of a cell as reset (`rmg_map_cell_reset`).
@@ -174,6 +174,7 @@ fn the_cost_flood_enters_and_leaves_entrances_as_their_settings_allow() {
 /// A carve walks back from its start while the cost is above 0: each cell kept free, the
 /// obstacles of its 3 × 3 in the start's zone cleared but a pending guard's and another zone's;
 /// the cell of cost 0 it reaches is left. A start of cost 0 or of 30000 and more carves nothing.
+/// With the Border Guard flag (a land connection's) the 3 × 3s keep their obstacles.
 #[test]
 fn a_carve_walks_back_to_cost_0() {
     let mut cells = drawn(&[&["00001", "00001", "00000", ".....", "....."]]);
@@ -188,11 +189,21 @@ fn a_carve_walks_back_to_cost_0() {
     let before = marks(&cells);
     for cost in [0, REACHED] {
         cells.get_mut(3, 0, 0).unwrap().movement = cost;
-        carve(&mut cells, [3, 0, 0]);
+        carve(&mut cells, [3, 0, 0], false);
         assert_eq!(marks(&cells), before);
     }
     cells.get_mut(3, 0, 0).unwrap().movement = 3;
-    carve(&mut cells, [3, 0, 0]);
+    let mut flagged = cells.clone();
+    carve(&mut flagged, [3, 0, 0], true);
+    assert_eq!(
+        bits(&flagged, 0, KEPT),
+        [".###.", ".....", ".....", ".....", "....."]
+    );
+    assert_eq!(
+        bits(&flagged, 0, OBSTACLES),
+        ["#...#", "#####", "#####", ".....", "....."]
+    );
+    carve(&mut cells, [3, 0, 0], false);
     assert_eq!(
         bits(&cells, 0, KEPT),
         [".###.", ".....", ".....", ".....", "....."]
@@ -211,9 +222,10 @@ fn join_of(cells: &mut Cells, gens: &[ZoneGenerator], objects: &Objects) -> Resu
         zones: &zones,
         connections: &[],
         gens,
-        objects,
+        objects: &mut objects.clone(),
         pictures: &pictures,
         cosmetic: true,
+        guards: no_guards(),
     };
     join(&input, cells)
 }

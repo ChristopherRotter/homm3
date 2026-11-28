@@ -17,8 +17,9 @@
 //! the object model the steps from 4 place with ([`Objects`]: the prototypes, the placed objects
 //! and the cells' lists, the entrances' distance flood, the placing test; E14 T4b); steps 4 and
 //! 5, the towns ([`Placed`], E14 T4b); step 6's obstacle plan (the lanes, the zone walls, the
-//! cells of no zone, the islets, the zones' free cells joined, the water shores sealed; E14 T4c).
-//! Step 6's connections and the other steps come with increments 4 to 6, the writer's content
+//! cells of no zone, the islets, the zones' free cells joined, the water shores sealed; E14 T4c);
+//! step 6's connections by land with their guard monsters ([`Connected`], [`Monster`], E14 T4d1).
+//! Step 6's other ways and the other steps come with increments 4 to 6, the writer's content
 //! with 7.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
@@ -43,6 +44,7 @@ extern crate alloc;
 
 mod cells;
 mod generate;
+mod guards;
 mod layout;
 mod objects;
 mod painter;
@@ -59,6 +61,10 @@ pub use cells::{Cell, Cells};
 pub use generate::{
     GenerateError, GeneratedMap, NoTrace, RMG_GENERATOR_VERSION, SITE_TEMPLATE, SITE_WATER,
     StepState, Trace, generate,
+};
+pub use guards::{
+    GUARD_CREATURES, GuardCreature, Monster, SITE_GUARD_COUNT_MINUS, SITE_GUARD_COUNT_PLUS,
+    SITE_GUARD_CREATURE, guard_creatures,
 };
 pub use layout::{
     SITE_ZONE_POSITION, SITE_ZONE_TERRAIN, SITE_ZONE_TERRAIN_TOWN, SITE_ZONE_TOWN_TYPE,
@@ -79,8 +85,8 @@ pub use partition::{
     MemoryZone, Partition, PartitionFault, SITE_BORDER_JITTER, UNREACHED, ZoneMemory,
 };
 pub use plan::{
-    SITE_ISLET_CENTRE, SITE_ISLET_HEIGHTS, SITE_ISLET_RADIUS, SITE_ISLET_TERRAIN, SITE_LANE_JITTER,
-    SITE_LANE_ORIENTATION,
+    Connected, SITE_ISLET_CENTRE, SITE_ISLET_HEIGHTS, SITE_ISLET_RADIUS, SITE_ISLET_TERRAIN,
+    SITE_LANE_JITTER, SITE_LANE_ORIENTATION, SITE_PASSAGE_CELL, SITE_PASSAGE_GUARD_SIDE,
 };
 pub use settings::{
     COLOURS, Choices, MapFormat, MapSize, Monsters, Settings, SettingsError, TOWN_TYPES, Water,
