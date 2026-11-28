@@ -97,6 +97,11 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                     building: building.raw(),
                 },
                 EngineTown::BuildBoat { town } => TownCommand::BuildBoat { town: town.raw() },
+                // E09 T59b1 (v88).
+                EngineTown::University { town, hero } => TownCommand::University {
+                    town: town.raw(),
+                    hero: hero.raw(),
+                },
             },
         },
         // E08 T142a (v82).
@@ -407,6 +412,11 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                 TownCommand::BuildBoat { town } => EngineTown::BuildBoat {
                     town: TownId::new(town),
                 },
+                // E09 T59b1 (v88).
+                TownCommand::University { town, hero } => EngineTown::University {
+                    town: TownId::new(town),
+                    hero: HeroId::new(hero),
+                },
             })
         }
         // E16 M5 T14 (v56): the engine refuses it from a seat (`SystemOnly`).
@@ -679,6 +689,8 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 TownCommandError::NoWarMachine => TownReject::NoWarMachine {},
                 TownCommandError::HasWarMachine => TownReject::HasWarMachine {},
                 TownCommandError::BoatSpotTaken => TownReject::BoatSpotTaken {},
+                TownCommandError::NoUniversity => TownReject::NoUniversity {},
+                TownCommandError::NotTownHero => TownReject::NotTownHero {},
             },
         },
         E::Tavern(error) => GameReject::Tavern {

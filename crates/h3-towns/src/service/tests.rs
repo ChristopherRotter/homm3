@@ -1,5 +1,6 @@
 //! Tests of the services' town part (E09 T59a, design §110, §111): the war machines' purchase
-//! (TWN-SMT-001) and the boat (TWN-SHY-001) on the fixture's Keep.
+//! (TWN-SMT-001) and the boat (TWN-SHY-001) on the fixture's Keep; since E09 T59b1 the Magic
+//! University's opening (TWN-UNI-001, design §112).
 
 use super::*;
 use crate::fixture::*;
@@ -112,19 +113,24 @@ fn the_listing_reads_the_standing_smiths_in_the_records_order() {
 #[test]
 fn the_listings_offers_are_the_two_questions_answers() {
     // covers: TWN-SMT-001, TWN-SHY-001
+    // covers: TWN-UNI-001
     let smiths = part_with_keep(|keep| {
         keep.buildings[TAVERN].war_machine = Some(BALLISTA);
         keep.buildings[BROTHERHOOD].war_machine = Some(CART);
         keep.buildings[ESCAPE_TUNNEL].supersedes = set(&[SHIPYARD]);
+        keep.buildings[LOOKOUT].roles.university = true;
+        keep.buildings[OBELISK].supersedes = set(&[LOOKOUT]);
     });
     let parts = [smiths, part(), empty_part()];
-    let built: [&[usize]; 6] = [
+    let built: [&[usize]; 8] = [
         &[],
         &[TAVERN],
         &[TAVERN, BROTHERHOOD, SHIPYARD],
         &[SHIPYARD, ESCAPE_TUNNEL],
         &[SHIPYARD, SILO],
         &[BROTHERHOOD],
+        &[LOOKOUT, TAVERN],
+        &[LOOKOUT, OBELISK],
     ];
     for part in &parts {
         for faction in [KEEP, MARSH, WILD] {
@@ -133,6 +139,7 @@ fn the_listings_offers_are_the_two_questions_answers() {
                 let offers = service_offers(&town, part);
                 assert_eq!(offers.machines, war_machine_buildings(&town, part));
                 assert_eq!(offers.boat, check_boat(&town, part).ok());
+                assert_eq!(offers.university, check_university(&town, part).ok());
             }
         }
     }
@@ -166,4 +173,32 @@ fn a_standing_shipyard_builds_the_parts_boat_for_its_price() {
         Err(TownCommandError::NotStanding)
     );
     assert_eq!(check_boat(&town(&[SHIPYARD]), &over), Ok(sale));
+}
+
+#[test]
+fn a_standing_university_teaches_the_parts_skills_at_its_price() {
+    // covers: TWN-UNI-001
+    let university = part_with_keep(|keep| {
+        keep.buildings[LOOKOUT].roles.university = true;
+        keep.buildings[OBELISK].supersedes = set(&[LOOKOUT]);
+    });
+    let sale = UniversitySale {
+        skills: &[SkillId::from_raw(0)],
+        price: &[(GOLD, 2000)],
+    };
+    assert_eq!(check_university(&town(&[LOOKOUT]), &university), Ok(sale));
+    // Never built; superseded (no original record supersedes its University: the test's); a
+    // faction without a record; a record without the role.
+    for (town, part) in [
+        (town(&[FORT]), &university),
+        (town(&[LOOKOUT, OBELISK]), &university),
+        (town_of(WILD, &[LOOKOUT]), &university),
+        (town(&[LOOKOUT]), &part()),
+        (town(&[LOOKOUT]), &empty_part()),
+    ] {
+        assert_eq!(
+            check_university(&town, part),
+            Err(TownCommandError::NoUniversity)
+        );
+    }
 }

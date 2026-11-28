@@ -9,7 +9,9 @@ use h3_contracts::{PlayerId, TownId};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use super::view::Told;
-use super::{Draws, boat, guild, hire, holds_capitol, market, portal, recruit, rows, smith};
+use super::{
+    Draws, boat, guild, hire, holds_capitol, market, portal, recruit, rows, smith, university,
+};
 use crate::command::{GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
@@ -22,7 +24,8 @@ use crate::{GameRuleset, GameState};
 /// opening opens E08's market decision with the town as its place (TWN-MKT-002; E09 T58a1,
 /// [`market::open`]); a war machine's purchase gives the town's hero the machine (TWN-SMT-001;
 /// E09 T59a, [`smith::buy`]); a boat's build launches one on the town's spot (TWN-SHY-001; E09
-/// T59a, [`boat::build`]); a build (TWN-BLD-001),
+/// T59a, [`boat::build`]); the University's opening opens E08's University decision with the town
+/// as its place (TWN-UNI-001; E09 T59b1, [`university::open`]); a build (TWN-BLD-001),
 /// checked in this order, each refusal changing nothing:
 ///
 /// 1. the town in the store of towns, else [`TownCommandError::UnknownTown`];
@@ -72,6 +75,9 @@ pub(crate) fn command<S: Sink>(
             return smith::buy(state, rules, player, (town, building), sink);
         }
         TownCommand::BuildBoat { town } => return boat::build(state, rules, player, town, sink),
+        TownCommand::University { town, hero } => {
+            return university::open(state, rules, player, (town, hero), sink);
+        }
     };
     let part = rules.towns();
     let record = state

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     ArmySlot, ArmyStack, Artifact, ArtifactPlace, DaySpells, Formation, HireSeen, HireTarget,
-    MarketSeen, Month, Week,
+    MarketSeen, Month, UniversitySeen, Week,
 };
 use super::{
     GarrisonStack, GuildPart, HiredPart, OfferLevels, Pos, PrimarySkill, TavernHeroHead,
@@ -164,11 +164,11 @@ pub enum GameEvent {
         object_type: u16,
         anchor: Pos,
     },
+    /// The place a town's too since E09 T59b1 (v88).
     UniversityOpened {
         player: u8,
         hero: u16,
-        object_type: u16,
-        anchor: Pos,
+        place: UniversitySeen,
     },
     HireOpened {
         player: u8,

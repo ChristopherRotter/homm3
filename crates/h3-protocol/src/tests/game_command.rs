@@ -658,6 +658,8 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
             w::TownReject::NoGuild {} => TownCommandError::NoGuild,
             w::TownReject::NoHero {} => TownCommandError::NoHero,
             w::TownReject::HasSpellBook {} => TownCommandError::HasSpellBook,
+            w::TownReject::NoUniversity {} => TownCommandError::NoUniversity,
+            w::TownReject::NotTownHero {} => TownCommandError::NotTownHero,
             w::TownReject::NoMarket {} => TownCommandError::NoMarket,
             w::TownReject::NoWarMachine {} => TownCommandError::NoWarMachine,
             w::TownReject::HasWarMachine {} => TownCommandError::HasWarMachine,

@@ -14,7 +14,7 @@ use h3_heroes::{ArtifactInstance, HeroChange, HeroDetails, PrimarySkill, Scholar
 
 use super::draws::{object, rules_with};
 use super::*;
-use crate::command::{Choice, ChoiceKind, HeroGains, Pick, UniversityVisit};
+use crate::command::{Choice, ChoiceKind, HeroGains, Pick, UniversityPlace, UniversityVisit};
 use crate::observe::{Known, KnownObject};
 use crate::ruleset::{
     FindContentDef, FindDef, GiftDef, Gives, ObjectKindDef, ObjectTypeDef, OnceBonus, TurnDef,
@@ -925,8 +925,10 @@ fn a_university_opens_over_its_skills_at_its_price() {
         opened.university,
         Some(UniversityVisit {
             hero: HERO,
-            object_type: university,
-            anchor: AT,
+            place: UniversityPlace::Object {
+                object_type: university,
+                anchor: AT,
+            },
             skills: vec![PATHFINDING, LOGISTICS],
             price: vec![(GOLD, 2000)],
         })

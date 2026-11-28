@@ -226,12 +226,13 @@ fn a_hire_dialog_is_answered_through_the_env() {
 /// a hero's dismissal; v19 since E09 T39a, a map Tavern's answers; v20 since E27 M4 T3a, the
 /// players' choices; v21 since E08 T133b, a market's answers; v22 since E08 T134a, an Altar's
 /// answers; v26 since E08 T142a, a cast on the map; v27 since E09 T58a1, a town's market window;
-/// v28 since E09 T58b, a town's artifact sale; v29 since E09 T59a, a town's war machine and boat):
+/// v28 since E09 T58b, a town's artifact sale; v29 since E09 T59a, a town's war machine and boat;
+/// v30 since E09 T59b1, a town's University):
 /// a recorded game of a hire dialog's answers, a purchase and its `Close`,
 /// verifies.
 #[test]
 fn a_replay_records_a_hire_dialogs_answers() {
-    assert_eq!(replay::REPLAY_FORMAT_VERSION, 29);
+    assert_eq!(replay::REPLAY_FORMAT_VERSION, 30);
     let (mut env, mut commands) = hired("t:several");
     for action in [Action::hire(2), Action::decline()] {
         let (_, command) = env.step_decoded(RED, action, &mut Vec::new()).unwrap();
