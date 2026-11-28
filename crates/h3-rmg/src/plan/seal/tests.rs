@@ -90,6 +90,8 @@ fn seal_of(cells: &mut Cells, tables: &GeneratorTables) -> (Result<(), PaintFaul
         cosmetic: true,
         guards: no_guards(),
         shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     let mut log = Log::default();
     let sealed = seal(&mut Stream::new(6, &mut log), &input, cells);

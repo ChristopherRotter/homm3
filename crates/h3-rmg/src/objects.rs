@@ -62,8 +62,9 @@ pub enum ObjectFault {
     /// reads its list's first from nowhere (RMG-QUIRK-4); the test refuses.
     NoObject,
     /// A prototype taken by its index in a class group's vector past its end (steps 4 and 5's
-    /// town of a type without its line: `rmg_town_place_central`'s +0x658 vector, RMG-QUIRK-4):
-    /// nothing placed.
+    /// town of a type without its line: `rmg_town_place_central`'s +0x658 vector; step 6's
+    /// one-way monolith exit with fewer exits than entrances: `rmg_connection_by_monoliths`'
+    /// +0x2F8; RMG-QUIRK-4): nothing placed.
     Prototype,
     /// A town's owner read from the colours by a zone's position (Ownership less 1) outside -1 to
     /// 7: the original reads the generator's next fields (RMG-QUIRK-4); the town is neutral.
@@ -74,8 +75,10 @@ pub enum ObjectFault {
     /// below its array; RMG-QUIRK-4), or a creature of AI value 0 (its count divides by zero,
     /// RMG-QUIRK-3): no monster.
     Creature,
-    /// Step 6's monolith index taken `mod 0` (`rmg_zone_connections_make` 0x543957): no two-way
-    /// and no one-way monolith prototype (RMG-QUIRK-3); the index is kept.
+    /// Step 6's monoliths without any two-way or one-way monolith prototype: the original reads
+    /// class 43's empty vector (`rmg_connection_by_monoliths` 0x542D62, RMG-QUIRK-4), then takes
+    /// the index `mod 0` (`rmg_zone_connections_make` 0x543957, RMG-QUIRK-3); nothing placed, the
+    /// index kept.
     NoMonolith,
     /// Step 6's shipyard prototype drawn `mod 0` (`rmg_connection_by_shipyard` 0x541B85): no
     /// prototype of class 87 (RMG-QUIRK-3); no shipyard, the connection not made that way.

@@ -158,13 +158,14 @@ fn the_synthetic_tables_compile_as_written() {
         ["synth_blank.def", "synth_mine.def", "synth_tree.def"]
     );
     // The nine towns, subclasses 0 to 8 (steps 4 and 5 take them by the town type's index), a
-    // shipyard and a gate (step 6's).
+    // shipyard, a gate and the monoliths: a one-way entrance and exit and a two-way one (step
+    // 6's).
     let lines: Vec<(u32, u32)> = part.object_templates()[3..]
         .iter()
         .map(|t| (t.class, t.subclass))
         .collect();
     let mut towns: Vec<(u32, u32)> = (0..9).map(|t| (98, t)).collect();
-    towns.extend([(87, 0), (103, 0)]);
+    towns.extend([(87, 0), (103, 0), (43, 0), (44, 0), (45, 0)]);
     assert_eq!(lines, towns);
     let mine = &part.object_templates()[1];
     assert_eq!(mine.passability, (1u64 << 48) - 2);
@@ -506,6 +507,9 @@ fn a_later_pack_inserts_replaces_appends_and_overrides() {
             "synth_town8.def",
             "synth_shipyard.def",
             "synth_gate.def",
+            "synth_monolith_in.def",
+            "synth_monolith_out.def",
+            "synth_monolith_two.def",
             "ext_c.def"
         ]
     );
@@ -678,21 +682,21 @@ fn references_must_be_of_the_table_and_the_closure() {
     assert_eq!(
         two(&format!(
             "object_template_overrides = [{}]",
-            line("line = 14, ", "a.def")
+            line("line = 17, ", "a.def")
         )),
         RmgCompileError::ObjectLine {
             pack: pack(),
-            line: 14
+            line: 17
         }
     );
     assert_eq!(
         two(&format!(
             "object_templates = [{}]",
-            line("before = 15, ", "a.def")
+            line("before = 18, ", "a.def")
         )),
         RmgCompileError::ObjectLine {
             pack: pack(),
-            line: 15
+            line: 18
         }
     );
     assert_eq!(

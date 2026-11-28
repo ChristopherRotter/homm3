@@ -377,7 +377,7 @@ epic   = "E31"
 [[stub]]
 id     = "RMG-STUB-1"
 where  = "crates/h3-rmg/src/generate.rs::generate"
-reason = "generate stops after step 5 (the frame, E14 T2c: the settings as run, the seed, water's Random, the templates kept and drawn, the banned heroes, the positions; E14 T3c: the generator's map reset and step 1's zone generators; E14 T3d: step 2's zone cells, water zones, polygons and water connections; E14 T3e: step 3's boxes, centroids, islands and terrain; E14 T4b: steps 4 and 5's towns and road targets; E14 T4c: step 6's plan, the lanes, the zone walls, the cells of no zone, the islets, the joining and the shores' seal; E14 T4d1: step 6's connections' frame, by land, by a shipyard, by gates, with their guard monsters, step 6 not ended): GeneratedMap holds no other objects and no teams yet. The rest of step 6 (plan/connect.rs's monoliths, T4d1's last part, and Border Guards, T4d2, each marked there and placing nothing; the carve's pending Border Guards, plan/join.rs's marked place, which step 9's joining needs) and steps 7 to 15 come with increments 4 to 6 (each step's cells checked against the phase oracle), the writer's content (the header, players, teams' draw, tiles, objects) with increment 7"
+reason = "generate stops after step 6 (the frame, E14 T2c: the settings as run, the seed, water's Random, the templates kept and drawn, the banned heroes, the positions; E14 T3c: the generator's map reset and step 1's zone generators; E14 T3d: step 2's zone cells, water zones, polygons and water connections; E14 T3e: step 3's boxes, centroids, islands and terrain; E14 T4b: steps 4 and 5's towns and road targets; E14 T4c: step 6's plan, the lanes, the zone walls, the cells of no zone, the islets, the joining and the shores' seal; E14 T4d1: step 6's connections by land, by a shipyard, by gates and by monoliths, with their guard monsters, step 6 ended): GeneratedMap holds no other objects and no teams yet. Step 6's Border Guards (T4d2: plan/connect.rs's border_guard and monolith_border_guard, the latter with the joining run again, each placing nothing and drawing nothing; the carve's pending Border Guards, plan/join.rs's marked place, which step 9's joining needs) and steps 7 to 15 come with increments 4 to 6 (each step's cells checked against the phase oracle), the writer's content (the header, players, teams' draw, tiles, objects) with increment 7"
 epic   = "E14"
 
 [[stub]]
@@ -389,7 +389,7 @@ epic   = "E14"
 [[stub]]
 id     = "RMG-STUB-2"
 where  = "crates/h3-rmg/src/generate.rs::generate"
-reason = "The flags of RMG-QUIRK-9 (quirk.rmg.underground_wide_walled), -10 (quirk.rmg.roe_guard_walk), -19 (quirk.rmg.shipyard_sites_repeated) and -26 (the one-way monoliths' shared channel) are registered with -7's and -8's at T4d2, in one re-hash (the user, 2026-11-28, E14 decision 16; -19 joined them as the same case): until then step 6 runs the original's behaviour for them (every profile as faithful), each behind a plain boolean that generate sets"
+reason = "The flags of RMG-QUIRK-9 (quirk.rmg.underground_wide_walled), -10 (quirk.rmg.roe_guard_walk), -19 (quirk.rmg.shipyard_sites_repeated) and -26 (quirk.rmg.monolith_channels_shared) are registered with -7's and -8's at T4d2, in one re-hash (the user, 2026-11-28, E14 decision 16; -19 joined them as the same case): until then step 6 runs the original's behaviour for them (every profile as faithful), each behind a plain boolean that generate sets"
 epic   = "E14"
 
 [[stub]]

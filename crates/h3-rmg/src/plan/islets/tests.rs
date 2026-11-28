@@ -161,6 +161,8 @@ fn an_islet_is_painted_and_its_land_made_obstacles() {
         cosmetic: true,
         guards: no_guards(),
         shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     let mut log = Log::default();
     let before = cells.clone();
@@ -218,6 +220,8 @@ fn islets_of(
         cosmetic: true,
         guards: no_guards(),
         shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     let mut log = Log::default();
     let painted = islets(&mut Stream::new(5, &mut log), &input, cells);

@@ -29,6 +29,8 @@ struct World {
     road_targets: Vec<[i32; 3]>,
     /// RMG-QUIRK-19's flag.
     repeated: bool,
+    /// RMG-QUIRK-26's flag.
+    shared: bool,
 }
 
 impl World {
@@ -61,6 +63,7 @@ impl World {
             cells,
             road_targets: Vec::new(),
             repeated: true,
+            shared: true,
         }
     }
 
@@ -86,6 +89,8 @@ impl World {
                 roe_guard_walk: true,
             },
             shipyard_sites_repeated: self.repeated,
+            underground_wide_walled: true,
+            monolith_channels_shared: self.shared,
         };
         let mut log = Log::default();
         let r = f(&mut Connect::new(
@@ -415,7 +420,13 @@ fn the_passes_make_each_connection_once_from_either_end() {
         ..line(class, 0)
     };
     world.objects = Objects::new(
-        &[monolith(45), monolith(45), monolith(43), shipyard()],
+        &[
+            monolith(45),
+            monolith(45),
+            monolith(43),
+            monolith(44),
+            shipyard(),
+        ],
         &settings(),
         MapFormat::SoD,
         4,
@@ -820,4 +831,264 @@ fn gates_take_the_farthest_common_position_and_guard_both_levels() {
     assert_eq!(made, [true, true]);
     assert_eq!(out.monsters, []);
     assert_eq!(world.objects.take_fault(), Some(ObjectFault::Outside));
+}
+
+/// A monolith line of class `class` and subclass `subclass`, `width` × `height`, its anchor
+/// blocked and its entrance.
+fn monolith(class: u32, subclass: u32, width: u8, height: u8) -> ObjectTemplate {
+    ObjectTemplate {
+        actions: 1,
+        width,
+        height,
+        ..line(class, subclass)
+    }
+}
+
+/// The objects of a world of `n` zones: its monster (0), then `lines`.
+fn with(n: usize, lines: &[ObjectTemplate]) -> Objects {
+    let monster = ObjectTemplate {
+        actions: 1,
+        ..line(54, 0)
+    };
+    let mut all = vec![monster];
+    all.extend_from_slice(lines);
+    Objects::new(&all, &settings(), MapFormat::SoD, n)
+}
+
+/// The first connection by monoliths between zone generators 0 and 1 with the index `index`.
+fn monoliths(c: &mut Connect<'_, '_, '_, Log>, index: usize) -> usize {
+    let connections = c.input.connections;
+    c.by_monoliths(0, 1, &connections[0].row, index)
+}
+
+/// Each placed object of the classes 43 to 45 as (class, subclass, its anchor's zone byte).
+fn placed_monoliths(world: &World) -> Vec<(u32, u32, i32)> {
+    world
+        .objects
+        .placed()
+        .iter()
+        .filter(|o| (43..=45).contains(&o.class))
+        .map(|o| {
+            let [x, y, z] = o.position;
+            let zone = world.cells.get(x, y, z).unwrap().zone_index();
+            (o.class, o.subclass, zone)
+        })
+        .collect()
+}
+
+// covers: RMG-CON-017
+/// An object placed at random in a zone: the anchors of its zone generator's box (columns 1 to
+/// 3) from its least x + width − 1 (a 2 × 2: from column 2, so not (1, 1), where it would fit)
+/// and y + height − 1, of its zone (not (3, 2), zone 1's) and fitting (not (3, 1), its entrance's
+/// cell below zone 1's, nor row 3, the map's last): (2, 1) and (2, 2). One drawn (0x542A8F), the
+/// object created and placed. A box too narrow for the footprint draws nothing.
+#[test]
+fn an_object_is_placed_at_random_where_it_fits_in_its_zone() {
+    let map = || drawn(&[&["1000", "1000", "1001", "1000"]]);
+    let mut picked = [false; 2];
+    for seed in 0..8 {
+        let mut world = World::new(2, Vec::new(), map());
+        world.objects = with(2, &[monolith(45, 0, 2, 2)]);
+        world.gens[0].bounds = [1, 0, 4, 4];
+        let (found, draws) = world.run(seed, |c| c.place_in_zone(1, 0));
+        assert_eq!(draws.len(), 1);
+        assert_eq!(draws[0].0, SITE_ZONE_OBJECT_CELL);
+        let i = draws[0].1 as usize % 2;
+        picked[i] = true;
+        let at = [[2, 1, 0], [2, 2, 0]][i];
+        assert_eq!(found, Some((0, at)));
+        assert_eq!(world.objects.placed()[0].position, at);
+        assert_eq!(world.objects.prototypes()[1].used, 1);
+    }
+    assert_eq!(picked, [true, true]);
+    let mut world = World::new(2, Vec::new(), map());
+    world.objects = with(2, &[monolith(45, 0, 2, 2)]);
+    world.gens[1].bounds = [0, 0, 1, 4];
+    let (found, draws) = world.run(0, |c| c.place_in_zone(1, 1));
+    assert_eq!((found, draws), (None, Vec::new()));
+    assert_eq!(world.objects.prototypes()[1].used, 0);
+}
+
+/// Zones 0 (columns 0 to 2) and 1 (3 to 5) on 6 × 6, each zone generator's box its columns.
+fn two_boxes(connection: KeptConnection) -> World {
+    let mut world = World::new(2, vec![connection], drawn(&[&["000111"; 6]]));
+    world.gens[0].bounds = [0, 0, 3, 6];
+    world.gens[1].bounds = [3, 0, 6, 6];
+    world
+}
+
+// covers: RMG-CON-017, RMG-CON-018, RMG-CON-020
+/// Two-way monoliths: index 0 below the two-way prototypes' count takes the first for both ends,
+/// index 1 the second; an entrance in zone 0, worth 2000 a guard monster below it (the Border
+/// Guard placing none, E14 T4d2), then one in zone 1 with its own; both listed in +0x14D0 and
+/// each anchor into its zone generator's passages; one index taken. Unguarded without a guard
+/// value; a zone without room gets none, the other its own.
+#[test]
+fn two_way_monoliths_join_the_zones_and_guard_their_entrances() {
+    let lines = [monolith(45, 0, 1, 1), monolith(45, 1, 1, 1)];
+    for (index, flag) in [(0, false), (1, true)] {
+        let mut world = two_boxes(row(0, 1, 3_000, false, flag));
+        world.objects = with(2, &lines);
+        let ((used, out), draws) = world.run(u32::from(flag), |c| {
+            (monoliths(c, index), core::mem::take(&mut c.out))
+        });
+        assert_eq!(used, 1);
+        let monster = [
+            SITE_GUARD_CREATURE,
+            crate::guards::SITE_GUARD_COUNT_PLUS,
+            crate::guards::SITE_GUARD_COUNT_MINUS,
+        ];
+        let mut expected = vec![SITE_ZONE_OBJECT_CELL];
+        expected.extend(monster);
+        expected.push(SITE_ZONE_OBJECT_CELL);
+        expected.extend(monster);
+        assert_eq!(draws.iter().map(|d| d.0).collect::<Vec<_>>(), expected);
+        let placed = world.objects.placed();
+        assert_eq!(out.two_way, [0, 2]);
+        assert_eq!(out.one_way, []);
+        let [a, b] = [placed[0].position, placed[2].position];
+        assert_eq!(
+            (placed[0].subclass, placed[2].subclass),
+            (index as u32, index as u32)
+        );
+        assert_eq!(placed[1].position, [a[0], a[1] + 1, 0]);
+        assert_eq!(placed[3].position, [b[0], b[1] + 1, 0]);
+        assert_eq!(out.passages, [vec![[a[0], a[1]]], vec![[b[0], b[1]]]]);
+        assert_eq!(out.monsters.len(), 2);
+        assert_eq!(placed_monoliths(&world)[1].2, 1);
+        assert_eq!(world.objects.prototypes()[1 + index].used, 2);
+    }
+    let mut world = two_boxes(connection(0, 1, false));
+    world.objects = with(2, &lines);
+    world.gens[1].bounds = ZoneGenerator::NO_BOUNDS;
+    let ((used, out), draws) = world.run(0, |c| (monoliths(c, 0), core::mem::take(&mut c.out)));
+    assert_eq!(used, 1);
+    assert_eq!(draws.len(), 1);
+    assert_eq!(out.two_way, [0]);
+    assert_eq!(out.monsters, []);
+    assert!(out.passages[1].is_empty());
+    assert_eq!(world.objects.take_fault(), None);
+}
+
+/// One two-way line, then the one-way entrances and exits of subclasses 0 and 1, all 1 × 1.
+fn channels() -> [ObjectTemplate; 5] {
+    [
+        monolith(45, 0, 1, 1),
+        monolith(43, 0, 1, 1),
+        monolith(43, 1, 1, 1),
+        monolith(44, 0, 1, 1),
+        monolith(44, 1, 1, 1),
+    ]
+}
+
+// covers: RMG-CON-017
+/// One-way monoliths (RMG-QUIRK-26), index i past the n45 = 1 two-way prototype: channel j =
+/// i − 1 for an entrance in each zone, then an exit in zone 0 and one in zone 1, all four in
+/// +0x14C0, each into its zone's passages. On, one channel: each entrance leads to both exits,
+/// its own zone's among them; one index taken. Off, channel 0 with a next one free: zone 1's
+/// entrance and zone 0's exit take channel 1, so each entrance's only exit is in the other zone;
+/// two indices taken. At the last channel (j = 1) off keeps one.
+#[test]
+fn one_way_monoliths_share_a_channel_or_take_two_by_the_flag() {
+    for (shared, index, used, subclasses) in [
+        (true, 1, 1, [0, 0, 0, 0]),
+        (false, 1, 2, [0, 1, 1, 0]),
+        (false, 2, 1, [1, 1, 1, 1]),
+    ] {
+        let mut world = two_boxes(connection(0, 1, false));
+        world.objects = with(2, &channels());
+        world.shared = shared;
+        let ((taken, out), draws) =
+            world.run(0, |c| (monoliths(c, index), core::mem::take(&mut c.out)));
+        assert_eq!(taken, used);
+        assert_eq!(draws.len(), 4);
+        assert!(draws.iter().all(|d| d.0 == SITE_ZONE_OBJECT_CELL));
+        assert_eq!(out.one_way, [0, 1, 2, 3]);
+        assert_eq!(out.two_way, []);
+        let found = placed_monoliths(&world);
+        let expected: Vec<(u32, u32, i32)> = [43, 43, 44, 44]
+            .into_iter()
+            .zip(subclasses)
+            .zip([0, 1, 0, 1])
+            .map(|((class, subclass), zone)| (class, subclass, zone))
+            .collect();
+        assert_eq!(found, expected);
+        assert_eq!(
+            out.passages.iter().map(Vec::len).collect::<Vec<_>>(),
+            [2, 2]
+        );
+        // Where each entrance leads: its channel's exits' zones.
+        for &(_, channel, from) in &found[..2] {
+            let to: Vec<i32> = found[2..]
+                .iter()
+                .filter(|e| e.1 == channel)
+                .map(|e| e.2)
+                .collect();
+            if used == 1 {
+                assert_eq!(to, [0, 1]);
+            } else {
+                assert_eq!(to, [1 - from]);
+            }
+        }
+    }
+}
+
+// covers: RMG-CON-013, RMG-CON-017
+/// Pass 2's monolith index by RMG-QUIRK-26's flag: three one-way channels and no two-way, zone
+/// 0's two connections by monoliths (each way tried before draws a shipyard prototype and finds
+/// no site). On: channels 0 then 1. Off: the first takes channels 0 and 1 (the index moves by
+/// 2), the second the last, 2, alone.
+#[test]
+fn pass_2_moves_the_monolith_index_by_the_channels_taken() {
+    for (shared, first, second) in [(true, [0, 0, 0, 0], [1; 4]), (false, [0, 1, 1, 0], [2; 4])] {
+        let connections = vec![connection(0, 1, false), connection(0, 2, false)];
+        let mut world = World::new(3, connections, drawn(&[&["000111222"; 9]]));
+        for (k, g) in world.gens.iter_mut().enumerate() {
+            let x = 3 * k as i32;
+            g.bounds = [x, 0, x + 3, 9];
+        }
+        let mut lines = vec![shipyard()];
+        lines.extend((0..3).map(|s| monolith(43, s, 1, 1)));
+        lines.extend((0..3).map(|s| monolith(44, s, 1, 1)));
+        world.objects = with(3, &lines);
+        world.shared = shared;
+        let (out, draws) = world.connect(0);
+        let sites: Vec<u32> = draws.iter().map(|d| d.0).collect();
+        let mut expected = vec![SITE_SHIPYARD_PROTOTYPE; 4];
+        for _ in 0..2 {
+            expected.push(SITE_SHIPYARD_PROTOTYPE);
+            expected.extend([SITE_ZONE_OBJECT_CELL; 4]);
+        }
+        assert_eq!(sites, expected);
+        let channels: Vec<u32> = placed_monoliths(&world).iter().map(|m| m.1).collect();
+        assert_eq!(channels[..4], first);
+        assert_eq!(channels[4..], second);
+        assert_eq!(out.one_way.len(), 8);
+        assert_eq!(world.objects.take_fault(), None);
+    }
+}
+
+// covers: RMG-CON-017
+/// The faults: without any monolith prototype the original reads class 43's empty vector, with
+/// fewer exits than entrances past the exits' vector; nothing placed, one index taken.
+#[test]
+fn monoliths_without_their_lines_are_faults() {
+    for (lines, fault) in [
+        (Vec::new(), ObjectFault::NoMonolith),
+        (vec![monolith(43, 0, 1, 1)], ObjectFault::Prototype),
+    ] {
+        let mut world = two_boxes(connection(0, 1, false));
+        world.objects = with(2, &lines);
+        let ((used, out), draws) = world.run(0, |c| (monoliths(c, 0), core::mem::take(&mut c.out)));
+        assert_eq!(used, 1);
+        assert_eq!(draws, []);
+        assert_eq!(
+            out,
+            Connected {
+                passages: vec![Vec::new(); 2],
+                ..Connected::default()
+            }
+        );
+        assert_eq!(world.objects.take_fault(), Some(fault));
+    }
 }

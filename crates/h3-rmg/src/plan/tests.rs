@@ -414,6 +414,11 @@ fn the_lanes_free_objects_water_and_rock_and_skip_pending_guards() {
 }
 
 fn walls_of(cells: &mut Cells, zones: usize, connections: &[KeptConnection]) {
+    walls_by(cells, zones, connections, true);
+}
+
+/// The walls of `zones` zones with `connections`, RMG-QUIRK-9 on or off (`underground`).
+fn walls_by(cells: &mut Cells, zones: usize, connections: &[KeptConnection], underground: bool) {
     let zones: Vec<Zone> = (0..zones as i32).map(zone).collect();
     let gens: Vec<ZoneGenerator> = (0..zones.len()).map(generator).collect();
     walls(
@@ -427,6 +432,8 @@ fn walls_of(cells: &mut Cells, zones: usize, connections: &[KeptConnection]) {
             cosmetic: true,
             guards: no_guards(),
             shipyard_sites_repeated: true,
+            underground_wide_walled: underground,
+            monolith_channels_shared: true,
         },
         cells,
     );
@@ -434,9 +441,9 @@ fn walls_of(cells: &mut Cells, zones: usize, connections: &[KeptConnection]) {
 
 // covers: RMG-CON-005
 /// The walls: a zone cell is walled beside water of no zone, a zone it has no connection to or
-/// one whose connection is not wide, and on level 1 beside any other zone; not beside land of
-/// no zone or along a wide connection on level 0. Water of a zone and cells of no zone are not
-/// walled.
+/// one whose connection is not wide, and on level 1 beside any other zone (RMG-QUIRK-9 on; off,
+/// level 1 as level 0); not beside land of no zone or along a wide connection on level 0. Water
+/// of a zone and cells of no zone are not walled.
 #[test]
 fn zones_are_walled_except_along_wide_connections_on_level_0() {
     let mut cells = drawn(&[
@@ -447,6 +454,14 @@ fn zones_are_walled_except_along_wide_connections_on_level_0() {
     walls_of(&mut cells, 3, &connections);
     assert_eq!(bits(&cells, 0, OBSTACLES), ["....", "###.", "####", ".#.."]);
     assert_eq!(bits(&cells, 1, OBSTACLES), [".##.", ".###", ".###", "...."]);
+    // RMG-QUIRK-9 off: level 1 as level 0, open along the wide connection.
+    let mut cells = drawn(&[
+        &["0011", "0011", "2200", "22~."],
+        &["0011", "0011", "0000", "0000"],
+    ]);
+    walls_by(&mut cells, 3, &connections, false);
+    assert_eq!(bits(&cells, 0, OBSTACLES), ["....", "###.", "####", ".#.."]);
+    assert_eq!(bits(&cells, 1, OBSTACLES), ["....", "....", "....", "...."]);
     let mut cells = drawn(&[&["w0..", "0w0.", "....", "...."]]);
     walls_of(&mut cells, 1, &[]);
     assert_eq!(bits(&cells, 0, OBSTACLES), ["....", "....", "....", "...."]);
@@ -498,6 +513,8 @@ fn a_zone_byte_past_the_generators_is_left_unwalled() {
         cosmetic: true,
         guards: no_guards(),
         shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     let mut log = Log::default();
     assert_eq!(
@@ -526,7 +543,7 @@ fn a_zone_byte_past_the_generators_is_left_unwalled() {
         plan(&mut Stream::new(0, &mut log), &mut input, &mut cells),
         Ok(Connected {
             passages: alloc::vec![Vec::new()],
-            monsters: Vec::new(),
+            ..Connected::default()
         })
     );
     assert_eq!(tile_data(&cells, 0, 0, 0) & (KEPT | OBSTACLES), KEPT);
@@ -565,6 +582,8 @@ fn the_connections_object_fault_ends_the_plan() {
         cosmetic: true,
         guards: no_guards(),
         shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     let mut log = Log::default();
     assert_eq!(

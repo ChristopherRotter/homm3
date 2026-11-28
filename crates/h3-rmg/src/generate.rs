@@ -3,8 +3,9 @@
 //! the banned heroes and the positions, the generator's map, then the steps (step 1 since E14
 //! T3c, step 2 since T3d, step 3 since T3e), each draw and each step's end reported to a
 //! [`Trace`]. Steps 4 and 5, the towns, since T4b; step 6's obstacle plan (the lanes, the zone
-//! walls, the cells of no zone, the islets, the joining, the shores' seal) since T4c, step 6 not
-//! ended; its connections, steps 7 to 15 and the writer's content come with increments 4 to 7.
+//! walls, the cells of no zone, the islets, the joining, the shores' seal) since T4c, its
+//! connections since T4d1 (by land, by a shipyard, by gates, by monoliths; the Border Guards
+//! T4d2's); steps 7 to 15 and the writer's content come with increments 4 to 7.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -200,9 +201,8 @@ impl fmt::Display for GenerateError {
     }
 }
 
-/// A generated map: so far what the frame and steps 1 to 5 make, with step 6's plan and its
-/// connections by land, by a shipyard and by gates (stub RMG-STUB-1: step 6's monoliths and
-/// Border Guards, steps 7 to 15 and the writer's content come with increments 4 to 7).
+/// A generated map: so far what the frame and steps 1 to 6 make, step 6's Border Guards aside
+/// (stub RMG-STUB-1: they, steps 7 to 15 and the writer's content come with increments 4 to 7).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedMap {
     /// The settings as the generator ran them: water drawn, and under two players in all one
@@ -228,7 +228,7 @@ pub struct GeneratedMap {
     pub objects: Objects,
     /// Steps 4 and 5's towns and the road targets (+0x14B0).
     pub placed: Placed,
-    /// Step 6's passages (+0x404) and guard monsters.
+    /// Step 6's passages (+0x404), guard monsters and monoliths (+0x14C0, +0x14D0).
     pub connected: Connected,
 }
 
@@ -273,8 +273,7 @@ impl<'t, T: Trace> Stream<'t, T> {
 /// 5, the towns (`rmg_zone_first_town` 0x544A50, `rmg_zone_towns_place` 0x544AE0 per zone
 /// generator); step 6 (`rmg_paths_and_connections` 0x544920: the lanes, the zone walls, the
 /// cells of no zone, the islets, the joining, the shores' seal, the connections by land, by a
-/// shipyard and by gates and their guard monsters), step 6 not yet ended (its monoliths and
-/// Border Guards).
+/// shipyard, by gates and by monoliths and their guard monsters; its Border Guards not yet).
 ///
 /// # Errors
 ///
@@ -482,9 +481,23 @@ pub fn generate<T: Trace>(
             // stub: RMG-STUB-2 — RMG-QUIRK-19's flag (`quirk.rmg.shipyard_sites_repeated`)
             // registered at T4d2; every profile as faithful until then.
             shipyard_sites_repeated: true,
+            // stub: RMG-STUB-2 — RMG-QUIRK-9's flag (`quirk.rmg.underground_wide_walled`)
+            // registered at T4d2; every profile as faithful until then.
+            underground_wide_walled: true,
+            // stub: RMG-STUB-2 — RMG-QUIRK-26's flag (`quirk.rmg.monolith_channels_shared`)
+            // registered at T4d2; every profile as faithful until then.
+            monolith_channels_shared: true,
         },
         &mut cells,
     )?;
+    stream.trace.step_end(
+        6,
+        StepState {
+            cells: &cells,
+            zones: &zones,
+            objects: objects.placed(),
+        },
+    );
     // stub: RMG-STUB-1
     Ok(GeneratedMap {
         settings: run,

@@ -4,8 +4,8 @@
 //! original's order: the lanes (`rmg_free_lanes_draw` 0x543E20), the zone walls
 //! (`rmg_zone_borders_close` 0x53F880), the land cells of no zone made obstacles, the islets
 //! ([`islets`]), the zones' free cells joined ([`join`]), the water shores sealed ([`seal`]); then
-//! the connections ([`connect`], E14 T4d1: the frame, by land, by a shipyard, by gates, the
-//! guard monsters; the monoliths T4d1's last part, the Border Guards T4d2's), which end step 6.
+//! the connections ([`connect`], E14 T4d1: by land, by a shipyard, by gates, by monoliths, the
+//! guard monsters; the Border Guards T4d2's), which end step 6.
 //!
 //! A cell with +0x2C bit 0 (a pending Border Guard) keeps its bits 26 and 27 through every mark
 //! here but the carve's, which places the guard first (not ported: none is pending before the
@@ -33,7 +33,7 @@ mod seal;
 
 pub use connect::{
     Connected, SITE_GATE_PROTOTYPE, SITE_GATE_SITE, SITE_PASSAGE_CELL, SITE_PASSAGE_GUARD_SIDE,
-    SITE_SHIPYARD_PROTOTYPE, SITE_SHIPYARD_SITE,
+    SITE_SHIPYARD_PROTOTYPE, SITE_SHIPYARD_SITE, SITE_ZONE_OBJECT_CELL,
 };
 pub use islets::{SITE_ISLET_CENTRE, SITE_ISLET_HEIGHTS, SITE_ISLET_RADIUS, SITE_ISLET_TERRAIN};
 
@@ -69,6 +69,13 @@ pub(crate) struct PlanInput<'a> {
     /// `quirk.rmg.shipyard_sites_repeated` (RMG-QUIRK-19): a shipyard site enters the list once
     /// per land cell it is found from (on), or once (off).
     pub shipyard_sites_repeated: bool,
+    /// `quirk.rmg.underground_wide_walled` (RMG-QUIRK-9): on level 1 a zone is walled along a
+    /// wide connection too (on), or as on level 0 (off).
+    pub underground_wide_walled: bool,
+    /// `quirk.rmg.monolith_channels_shared` (RMG-QUIRK-26): a one-way monolith connection is one
+    /// channel, its entrances leading to both exits (on), or two where the next is free, each
+    /// entrance leading to the other zone's exit (off).
+    pub monolith_channels_shared: bool,
 }
 
 /// +0x2C bit 0: a pending Border Guard, whose cell keeps its bits 26 and 27.
@@ -342,10 +349,10 @@ fn connection_lists(input: &PlanInput<'_>) -> Vec<Vec<(i32, bool)>> {
 /// zone byte not negative) and not water is walled when its 3 × 3 clamped to the map holds a
 /// water cell of no zone, or a cell of another zone whose id is not the far end of any of the
 /// cell's zone's connections, or is that of the first such connection (in the zone's list: the
-/// template's row order, step 2's appended) when it is not wide or the level is 1 (RMG-QUIRK-9
-/// as `faithful` has it; its flag, `quirk.rmg.underground_wide_walled`, comes with T4d). A walled
-/// cell takes bit 26 and loses 27 (unless +0x2C bit 0; an object on it or not), and every cell
-/// of its 3 × 3 without an object and without +0x2C bit 0 loses bit 27. The original's second
+/// template's row order, step 2's appended) when it is not wide or, RMG-QUIRK-9 on
+/// (`underground_wide_walled`), the level is 1. A walled cell takes bit 26 and loses 27 (unless
+/// +0x2C bit 0; an object on it or not), and every cell of its 3 × 3 without an object and
+/// without +0x2C bit 0 loses bit 27. The original's second
 /// pass over [y, y + 1) × [x, x + 1) marks the cell alone again when it holds no object: no
 /// change, not ported. The original takes the zone generator by the zone byte unchecked
 /// (+0x10E4, RMG-QUIRK-4): a byte past the zone generators, which step 2 never writes (its
@@ -369,18 +376,18 @@ fn walls(input: &PlanInput<'_>, cells: &mut Cells) {
                 let Some(list) = list else {
                     continue;
                 };
-                let walled = around(w, h, x, y).any(|(u, v)| {
-                    let n = cells.clamped(u, v, z);
-                    let other = n.zone_index();
-                    if other < 0 {
-                        return n.land() == u32::from(WATER);
-                    }
-                    other != own
-                        && list
-                            .iter()
-                            .find(|&&(far, _)| far == other)
-                            .is_none_or(|&(_, wide)| z == 1 || !wide)
-                });
+                let walled =
+                    around(w, h, x, y).any(|(u, v)| {
+                        let n = cells.clamped(u, v, z);
+                        let other = n.zone_index();
+                        if other < 0 {
+                            return n.land() == u32::from(WATER);
+                        }
+                        other != own
+                            && list.iter().find(|&&(far, _)| far == other).is_none_or(
+                                |&(_, wide)| !wide || (z == 1 && input.underground_wide_walled),
+                            )
+                    });
                 if !walled {
                     continue;
                 }

@@ -228,6 +228,8 @@ fn join_of(cells: &mut Cells, gens: &[ZoneGenerator], objects: &Objects) -> Resu
         cosmetic: true,
         guards: no_guards(),
         shipyard_sites_repeated: true,
+        underground_wide_walled: true,
+        monolith_channels_shared: true,
     };
     join(&input, cells)
 }

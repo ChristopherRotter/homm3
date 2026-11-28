@@ -4,9 +4,9 @@
 //! (`rmg_connection_by_land` 0x541140), else by a shipyard (`rmg_connection_by_shipyard`
 //! 0x541AD0), else, the other zone being land, by gates (`rmg_connection_by_gate` 0x542080); then
 //! per land zone generator with one left, by a shipyard, else, the other zone being land, by
-//! monoliths. The monoliths (`rmg_connection_by_monoliths` 0x542CE0) are E14 T4d1's last part and
-//! the Border Guards (`rmg_border_guard_place` 0x540D60) T4d2's (RMG-STUB-1): they place nothing
-//! and draw nothing.
+//! monoliths (`rmg_connection_by_monoliths` 0x542CE0). The Border Guards
+//! (`rmg_border_guard_place` 0x540D60, `rmg_monolith_border_guard` 0x542B00) are E14 T4d2's
+//! (RMG-STUB-1): they place nothing and draw nothing.
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -44,6 +44,11 @@ pub const SITE_GATE_PROTOTYPE: u32 = 0x0054_21BC;
 /// `rand() %` the positions of greatest distance sum.
 pub const SITE_GATE_SITE: u32 = 0x0054_2387;
 
+/// The call site of an object's position draw in a zone (`rmg_object_place_in_zone`,
+/// `rmg_zone_object_cell_draw`): `rand() %` the fitting positions (unsigned), only when one fits;
+/// per monolith (and per Keymaster's Tent, T4d2).
+pub const SITE_ZONE_OBJECT_CELL: u32 = 0x0054_2A8F;
+
 /// +0x28 bit 24: reached by boat (`rmg_boat_reach_flood` 0x541780).
 const BOAT: u32 = 1 << 24;
 
@@ -58,6 +63,9 @@ const TWO_WAY: usize = 45;
 
 /// The one-way monolith entrances' class group (43, +0x2E8).
 const ONE_WAY: usize = 43;
+
+/// The one-way monolith exits' class group (44, +0x2F8).
+const EXITS: usize = 44;
 
 /// `rmg_side_steps` 0x69CE00 (`rmg_side_steps_init` 0x541910): left and right of a 3-wide
 /// footprint, on its row and the one below.
@@ -75,6 +83,12 @@ pub struct Connected {
     pub passages: Vec<Vec<[i32; 2]>>,
     /// The guard monsters placed, in placing order.
     pub monsters: Vec<Monster>,
+    /// The generator's +0x14C0: the one-way monoliths placed, entrances and exits, by their index
+    /// among the placed objects, in placing order (step 14's road flood joins those of a
+    /// subclass).
+    pub one_way: Vec<usize>,
+    /// The generator's +0x14D0: the two-way monoliths placed, alike.
+    pub two_way: Vec<usize>,
 }
 
 /// An entry of a zone's connection list (+0xC4, 0x1C bytes): the connection and its far zone,
@@ -206,6 +220,18 @@ fn border_guard(_at: [i32; 3], _count: i32, _tent: usize, value: i32) -> i32 {
     value
 }
 
+/// `rmg_monolith_border_guard` 0x542B00 before a monolith anchored at `at`: the zones' free cells
+/// joined again (`rmg_zone_paths_connect` 0x5405D0, every zone flooded anew), then one guard at
+/// the monolith's cell back or beside it, the tent in zone generator `tent`'s zone, and on
+/// success five cells around the monolith made obstacles: the guard value 0 once placed (no
+/// monster below the monolith then), else `value`.
+fn monolith_border_guard(_at: [i32; 3], _tent: usize, value: i32) -> i32 {
+    // stub: RMG-STUB-1 — E14 T4d2: the joining again (its draws at 0x546154 per pending guard
+    // crossed), the Border Guard and its tent (0x542A8F); joins nothing, places nothing and
+    // draws nothing.
+    value
+}
+
 /// `rmg_shipyard_site_fits` 0x541960 for a shipyard anchored at (x, y, z): the row below on the
 /// map; the 3 × 2 cells x − 2..x, y..y + 1 not water, without an entrance (bit 22), free (bit 25)
 /// and not rock; the first of its [`SIDE_STEPS`] cells (its column on the map) that is water and
@@ -304,7 +330,7 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
             made,
             out: Connected {
                 passages: vec![Vec::new(); gens],
-                monsters: Vec::new(),
+                ..Connected::default()
             },
         }
     }
@@ -373,8 +399,9 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
     /// Pass 2 (0x5435BC to 0x543987): per land zone generator k with an entry not made, the
     /// boat reach cleared on its level and flooded from its shipyards ([`Connect::yards`]); per
     /// entry not made from the first: by a shipyard (this end), else, the other's terrain not
-    /// water, by monoliths, both ends made whatever was placed, the monolith index i becoming
-    /// (i + 1) mod (the two-way and one-way entrance prototypes' count).
+    /// water, by monoliths ([`Connect::by_monoliths`]), both ends made whatever was placed, the
+    /// monolith index i from 0 becoming (i + 1) mod (the two-way and one-way entrance
+    /// prototypes' count; i + 2 for a connection RMG-QUIRK-26's fix gives two channels).
     // rule: RMG-CON-013
     fn pass_2(&mut self) {
         let (gens, connections) = (self.input.gens, self.input.connections);
@@ -401,11 +428,11 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
                 let row = &connections[connection].row;
                 let mut ends = self.by_shipyard(k, f, row);
                 if !ends[0] && gens[f].terrain != i32::from(WATER) {
-                    self.by_monoliths(k, f, row, monolith);
+                    let used = self.by_monoliths(k, f, row, monolith);
                     ends = [true, true];
                     let objects = &mut *self.input.objects;
                     let n = objects.group(TWO_WAY).len() + objects.group(ONE_WAY).len();
-                    match monolith.wrapping_add(1).checked_rem(n) {
+                    match monolith.wrapping_add(used).checked_rem(n) {
                         Some(next) => monolith = next,
                         None => objects.fail(ObjectFault::NoMonolith),
                     }
@@ -525,7 +552,8 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
     /// A guard monster worth `value` at `at` when it holds no object (0x541692 to 0x541746, the
     /// other ways' alike): for the zone generator of its zone byte (unchecked: P's is this zone
     /// generator's, Q's the other's, below a shipyard's or gate's entrance the zone its
-    /// `rmg_map_can_place` tested; `owner`, which a byte past them falls back to), created
+    /// `rmg_map_can_place` tested, below a monolith's anchor any zone's or none; `owner`, which a
+    /// byte past them falls back to), created
     /// ([`crate::guards::create`]) and placed through the generator's slot 1.
     fn guard(&mut self, at: [i32; 3], owner: usize, value: i32) {
         let [x, y, z] = at;
@@ -782,12 +810,126 @@ impl<'r, 'a, 't, T: Trace> Connect<'r, 'a, 't, T> {
         [true, true]
     }
 
-    /// `rmg_connection_by_monoliths` 0x542CE0 for zone generators `k` and `f` with the monolith
-    /// index `index`: both ends are made whatever it places.
-    fn by_monoliths(&mut self, _k: usize, _f: usize, _row: &Connection, _index: usize) {
-        // stub: RMG-STUB-1 — E14 T4d1 (its last part): the index's two-way or one-way
-        // prototypes, an entrance at random in each zone (0x542A8F), for one-way an exit in
-        // each; their guards. Places nothing, draws nothing.
+    /// `rmg_object_place_in_zone` 0x542930: `prototype` at random in zone generator `g`'s zone.
+    /// The anchors (x, y) of g's box from its least x plus the footprint's width less 1 and its
+    /// least y plus its height less 1, row by row, on g's level, whose cell is of g's zone (its
+    /// zone byte g's zone's id; read unchecked, on the map for a footprint of a column and a row
+    /// at least) and where `rmg_map_can_place` allows it (in g's zone); none: nothing, no draw.
+    /// One `rand() %` them (0x542A8F, unsigned); the object created (its use count raised: the
+    /// original creates it before and its deleting on failure lowers it again) and placed
+    /// through the generator's slot 1. Its index among the placed objects and its anchor.
+    // rule: RMG-CON-017
+    fn place_in_zone(&mut self, prototype: usize, g: usize) -> Option<(usize, [i32; 3])> {
+        let place = self.place_zone(g);
+        let zone = &self.input.gens[g];
+        let ([x0, y0, x1, y1], z) = (zone.bounds, zone.position[2]);
+        let shape = self.input.objects.prototypes()[prototype].shape;
+        let mut sites: Vec<[i32; 3]> = Vec::new();
+        for y in y0.wrapping_add(shape.height).wrapping_sub(1)..y1 {
+            for x in x0.wrapping_add(shape.width).wrapping_sub(1)..x1 {
+                let at = [x, y, z];
+                if self
+                    .cells
+                    .get(x, y, z)
+                    .is_some_and(|c| c.zone_index() == place.id)
+                    && self
+                        .input
+                        .objects
+                        .can_place(self.cells, prototype, at, place)
+                {
+                    sites.push(at);
+                }
+            }
+        }
+        if sites.is_empty() {
+            return None;
+        }
+        // `rand()` is at most 0x7FFF: an unsigned division.
+        let at = sites[self.stream.draw(SITE_ZONE_OBJECT_CELL) as usize % sites.len()];
+        let objects = &mut *self.input.objects;
+        objects.created(prototype);
+        Some((objects.add(self.cells, prototype, at), at))
+    }
+
+    /// A monolith of `prototype` placed in zone generator `g`'s zone ([`Connect::place_in_zone`]):
+    /// listed in +0x14C0 (`one_way`) or +0x14D0, its anchor's (x, y) into g's +0x404. Its anchor;
+    /// none when no position fits.
+    fn monolith(&mut self, prototype: usize, g: usize, one_way: bool) -> Option<[i32; 3]> {
+        let (object, at) = self.place_in_zone(prototype, g)?;
+        if one_way {
+            self.out.one_way.push(object);
+        } else {
+            self.out.two_way.push(object);
+        }
+        self.out.passages[g].push([at[0], at[1]]);
+        Some(at)
+    }
+
+    /// `rmg_connection_by_monoliths` 0x542CE0 between the land zone generators `k` and `f` (pass
+    /// 2 calls it for f on land, k being; its own test of both, 0x542D0B, is not ported) for the
+    /// connection `row` with the monolith index i (`index`). i below the two-way prototypes'
+    /// count n45 takes two-way prototype i (class group 45) for both ends; else one-way channel
+    /// j = i − n45: entrance and exit prototypes j (class groups 43 and 44, whose subclasses
+    /// agree in the shipped tables). Without any monolith prototype the original reads class
+    /// 43's empty vector ([`ObjectFault::NoMonolith`]), with fewer exits than entrances past the
+    /// exits' ([`ObjectFault::Prototype`]): nothing placed. The guard value g
+    /// ([`Connect::value`]; the inline copy at 0x542D80 is [`guard_value`]'s). An entrance in
+    /// k's zone ([`Connect::monolith`]), then with the Border Guard flag its Border Guard (the
+    /// tent in f's zone; once placed g is 0), then, g above 0, a guard monster below its anchor
+    /// ([`Connect::guard`]); the same in f's zone, the tent in k's; for one-way an exit in k's
+    /// zone, then one in f's, unguarded. A monolith that finds no position is skipped. So a
+    /// one-way connection is one channel whose entrances lead to either exit, its own zone's
+    /// among them (RMG-QUIRK-26 on). Off (`monolith_channels_shared` clear), a one-way connection
+    /// whose channel j is not the last takes the next, j + 1, for f's entrance and k's exit:
+    /// each entrance leads to the other zone's exit alone; at the last channel (no next one free
+    /// in the cycle) it keeps one. Returns the indices it took: 2 then, else 1.
+    // rule: RMG-CON-017, RMG-CON-020
+    fn by_monoliths(&mut self, k: usize, f: usize, row: &Connection, index: usize) -> usize {
+        let objects = &mut *self.input.objects;
+        let two_way = objects.group(TWO_WAY);
+        let mut used = 1;
+        let (entrances, exits) = if let Some(&p) = two_way.get(index) {
+            ([p, p], None)
+        } else {
+            let j = index.wrapping_sub(two_way.len());
+            let Some(&entrance) = objects.group(ONE_WAY).get(j) else {
+                objects.fail(ObjectFault::NoMonolith);
+                return used;
+            };
+            let Some(&exit) = objects.group(EXITS).get(j) else {
+                objects.fail(ObjectFault::Prototype);
+                return used;
+            };
+            let next = j.wrapping_add(1);
+            let back = match (
+                self.input.monolith_channels_shared,
+                objects.group(ONE_WAY).get(next),
+                objects.group(EXITS).get(next),
+            ) {
+                (false, Some(&e), Some(&x)) => {
+                    used = 2;
+                    [e, x]
+                }
+                _ => [entrance, exit],
+            };
+            ([entrance, back[0]], Some([back[1], exit]))
+        };
+        let mut value = self.value(row);
+        for ((g, tent), prototype) in [(k, f), (f, k)].into_iter().zip(entrances) {
+            let Some([x, y, z]) = self.monolith(prototype, g, exits.is_some()) else {
+                continue;
+            };
+            if row.border_guard {
+                value = monolith_border_guard([x, y, z], tent, value);
+            }
+            if value > 0 {
+                self.guard([x, y.wrapping_add(1), z], g, value);
+            }
+        }
+        for (g, prototype) in [k, f].into_iter().zip(exits.into_iter().flatten()) {
+            self.monolith(prototype, g, true);
+        }
+        used
     }
 }
 
