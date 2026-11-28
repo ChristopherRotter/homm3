@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-28 (the map-client lane, E24 M5 T6a, `map-client/e24-m5-t6a`; **a request, for your
+  planning; nothing blocks**): MCL-Q75 is answered by the user (2026-11-28): a hot seat's clock as the
+  original's, every battle pausing the turn's timer and giving its time back, with no battle clock,
+  between two humans too (`docs/epics/E16-timer-survey.md` §6, §7; the level-up after a battle
+  untimed, as the session's level-up hold already does). Asked: a `GameSession` clock option for it
+  (`session::game::clock`; your online games keep SRV-Q31's and Q33's model), so that a hosted hot
+  seat needs no host's hold. Meanwhile play's host holds the clock it feeds the session from a
+  battle's hand-over to its return (`h3_map_client::play::Kept`, *provisional*).
+
 - 2026-11-27 (the adventure lane, E10 T3a, `adventure/e10-t3a`, `cross-lane`; **in your paths,
   for your review; nothing to do**): the adventure state hash v31, the game state hash v41 and
   the map import v30 moved every golden adventure replay's hash lines (the 130 re-recorded from

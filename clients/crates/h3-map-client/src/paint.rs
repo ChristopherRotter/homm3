@@ -613,11 +613,44 @@ pub fn live_reply(
             .take(nth + 1)
             .map(|(_, e)| e.as_slice()),
     );
+    // The battle it began (E24 M5 T6a, design §5.33), on the visit's object.
+    let object = placed(hover, visit, &played.moves, Some(&[])).map(|p| p.object);
     Ok(Some(Answer {
         gain: engine::visits::gain(events),
         taken,
+        fight: object.and_then(|o| answer_fight(visit, nth, o)),
         ..Answer::default()
     }))
+}
+
+/// Live, the fight of the battle `visit`'s answer `nth` began on its object `object` (E24 M5
+/// T6a, design §5.33, *provisional*: `engine::visits::answer_fight`): the battle's switch at the
+/// answer's box's close (no attack drawn: the question's own picture stands), then the object
+/// taken off the map after a win where the battle's end takes it (a monster beaten), the hero
+/// gone after a loss; its result the host's until it hosted the battle. None where the answer
+/// began none.
+// stub: MCL-STUB-10 (an answer's battle's aftermath a monster's: Pandora's Box's rewards after its
+// guards not shown)
+fn answer_fight(visit: &engine::Visit, nth: usize, object: usize) -> Option<Fight> {
+    let Some(engine::visits::Told::Fight {
+        battle,
+        winner,
+        taken,
+        lost,
+        experience,
+    }) = engine::visits::answer_fight(visit, nth)
+    else {
+        return None;
+    };
+    Some(Fight {
+        attacker: 0,
+        battle,
+        winner,
+        after: AfterBattle::of_fight(taken, lost),
+        experience,
+        object: (object != engine::visits::NO_OBJECT).then_some(object),
+        army: None,
+    })
 }
 
 /// A wandering monster's class.
@@ -659,7 +692,9 @@ fn as_recorded(answer: &mut Answer, events: &[GameEvent], hover: &Hover) {
 /// whose entrance is its walk's last tile, from beside where the engine's walk stops one short of
 /// it; live (`open` given), a decision the engine opened on the way (a monster's zone entered:
 /// its offer, the walk stopped there) where the engine's walk ended, on the decision's object
-/// (by its anchor, [`anchor_of`]).
+/// (by its anchor, [`anchor_of`]); since E24 M5 T6a (design §5.33, *provisional*) a battle the
+/// walk began on the way the same, on the object of the battle's tile (the defender's: a savage
+/// monster whose zone the walk entered).
 fn placed(
     hover: &Hover,
     visit: &engine::Visit,
@@ -681,8 +716,12 @@ fn placed(
     {
         return Some(on(visit.at, o, tile, beside));
     }
-    let (_, decision) = open?.iter().find(|(w, _)| *w == visit.walk)?;
-    let tile = tile_of(anchor_of(decision)?)?;
+    let decided = open?.iter().find(|(w, _)| *w == visit.walk);
+    let fought = visit.battle.as_ref().and_then(|b| b.tile);
+    let tile = match decided {
+        Some((_, decision)) => tile_of(anchor_of(decision)?)?,
+        None => tile_of(fought?)?,
+    };
     // The engine's walk's end (never its path's last tile: TRAPS): before its first step not
     // taken.
     let end = walk.and_then(|m| match m.stops {
@@ -1989,12 +2028,29 @@ impl<'a> Painter<'a> {
                     lost,
                     experience,
                 } => {
+                    // Live (E24 M5 T6a, design §5.33): the monster the fight's own, and told
+                    // where the walk stopped (its zone entered) its attack's frame from its own
+                    // tile, plus 1 with the hero left of it.
+                    let object = open.is_some().then_some(o);
+                    let attacker = match (blocks, raw.objects.get(o)) {
+                        (false, Some(monster)) if open.is_some() => {
+                            let subclass = usize::try_from(monster.template)
+                                .ok()
+                                .and_then(|t| raw.templates.get(t))
+                                .map_or(0, |t| t.subclass);
+                            let left = u32::from(pos.x < monster.pos.x);
+                            subclass.saturating_mul(2) + left
+                        }
+                        _ => subclass.saturating_mul(2),
+                    };
                     found.fight = Some(Fight {
-                        attacker: subclass.saturating_mul(2),
+                        attacker,
                         battle,
                         winner,
                         after: AfterBattle::of_fight(taken, lost),
                         experience,
+                        object,
+                        army: None,
                     });
                 }
                 // A neutral mine's guards fought after their question (E24 M4 T5b2, design §5.21):
@@ -2044,6 +2100,8 @@ impl<'a> Painter<'a> {
                             winner,
                             after,
                             experience,
+                            object: None,
+                            army: None,
                         }),
                         flag: flag.map(|colour| (o, colour)),
                     });
@@ -2111,6 +2169,16 @@ impl<'a> Painter<'a> {
                                 .flatten()
                             {
                                 as_recorded(kept, events, hover);
+                            }
+                        }
+                        // The battle the record's answer began (E24 M5 T6a, design §5.33): at
+                        // its box's close the battle's switch, its result once hosted.
+                        if let Some(fight) = visit.and_then(|v| answer_fight(v, 0, o)) {
+                            for kept in [&mut question.yes, &mut question.second, &mut question.no]
+                                .into_iter()
+                                .flatten()
+                            {
+                                kept.fight = Some(fight.clone());
                             }
                         }
                     }

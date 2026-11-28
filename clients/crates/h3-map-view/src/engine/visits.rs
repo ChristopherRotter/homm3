@@ -65,7 +65,7 @@ use h3_protocol::wire::game::{
 };
 use h3_protocol::wire::{Outcome, Side};
 
-use super::played::{Held, Visit};
+use super::played::{Battled, Held, Visit};
 use crate::asks::{Ask, Offer as AskOffer, Reveal};
 use crate::finds::{Find, FindArt, Gain};
 use crate::live::Stack;
@@ -984,6 +984,9 @@ fn laid(
         }
     }
     let blocks = match &told {
+        // Live, a fight from beside where the engine's walk stops one short of the tile; told
+        // where the walk stopped, not (E24 M5 T6a: a monster's zone entered).
+        Told::Fight { .. } if open.is_some() => beside,
         Told::Fight { .. } | Told::Taken => true,
         Told::Guarded { .. } | Told::Flagged { .. } | Told::Levels { .. } | Told::Notice(_) => {
             false
@@ -1026,6 +1029,7 @@ fn laid_live(
         .find(|(walk, _)| *walk == visit.walk)
         .and_then(|(_, decision)| live(visit, decision, (class, word), hero));
     asked
+        .or_else(|| fighting(visit, class[0]))
         .or_else(|| told(visit, class, hero))
         .or_else(|| {
             (!visit.levels.is_empty()).then(|| Told::Levels {
@@ -1033,6 +1037,58 @@ fn laid_live(
             })
         })
         .or_else(|| (class[0] == TOWN).then_some(Told::Notice(Notice::Town)))
+}
+
+/// Live, a wandering monster's battle `visit`'s walk began (on an object of `class`) that the
+/// record has not ended yet (E24 M5 T6a, design §5.33, *provisional*): its fight with no result
+/// yet (a winner of none, nothing taken), which the host gives once it hosted the battle (the
+/// timeline's `Loop::add_battle`); none for another visit (an answer's battle is its answer's).
+fn fighting(visit: &Visit, class: u32) -> Option<Told> {
+    let battle = visit.battle.as_ref().filter(|b| b.ended.is_empty())?;
+    (class == MONSTER && visit.answers.is_empty()).then(|| fight_of(battle))
+}
+
+/// Live, the fight of the battle `visit`'s answer `nth` began (E24 M5 T6a, design §5.33,
+/// *provisional*: a monster's offer declined, its pursuit accepted, Pandora's Box opened on its
+/// guards; the answer's events hold its `BattleStarted`), as [`Told::Fight`] tells a monster's:
+/// its result once the record ended it, else none yet (the host's); none where that answer began
+/// none.
+#[must_use]
+pub fn answer_fight(visit: &Visit, nth: usize) -> Option<Told> {
+    let (_, events) = visit.answers.get(nth)?;
+    let began = events
+        .iter()
+        .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
+    visit.battle.as_ref().filter(|_| began).map(fight_of)
+}
+
+/// `battle`'s fight (E24 M5 T6a): once the record ended it its winner, whether its end took an
+/// object off the map (`ObjectRemoved`) and the hero (`HeroRemoved`), the experience gained; else
+/// a winner of none and nothing taken (its result the host's, given once it hosted the battle).
+fn fight_of(battle: &Battled) -> Told {
+    let ended = &battle.ended;
+    let winner = match ended.first() {
+        Some(GameEvent::BattleEnded { result, .. }) => winner(result),
+        _ => -1,
+    };
+    let removes = |hero: bool| {
+        ended.iter().any(|e| match e {
+            GameEvent::Adventure {
+                event: AdventureEvent::ObjectRemoved { .. },
+            } => !hero,
+            GameEvent::Adventure {
+                event: AdventureEvent::HeroRemoved { .. },
+            } => hero,
+            _ => false,
+        })
+    };
+    Told::Fight {
+        battle: battle.started,
+        winner,
+        taken: removes(false),
+        lost: removes(true),
+        experience: gain(ended).experience,
+    }
 }
 
 /// The notice of the decision the host held open at `visit`'s walk (live, `open` given; E24 M5

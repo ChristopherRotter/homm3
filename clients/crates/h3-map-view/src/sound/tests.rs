@@ -777,3 +777,27 @@ fn a_hot_seat_s_cover_fades_the_music_and_plays_its_sound() {
     s.select(9, [1, 1, 0], Pos { x: 1, y: 1, z: 0 }, true);
     assert!(s.take().iter().any(|(_, c)| matches!(c, Cue::Music(_))));
 }
+
+#[test]
+fn the_walk_s_end_asks_the_terrain_s_track_again_after_a_battle() {
+    // E24 M5 T6a (design §5.33, MCL-Q47): the music's terrain's track asked with no condition (the
+    // one asked last too), its own line; nothing before a terrain is asked or on rock.
+    let mut s = sound(tiles(10, |x, _| if x == 6 { 9 } else { 2 }, |_, _| None));
+    s.again(1);
+    assert!(s.take().is_empty());
+    s.start(2, [1, 1, 0], None);
+    s.again(3);
+    s.again(4);
+    assert_eq!(
+        names(&s.take()),
+        [
+            "2 music Grass",
+            "3 music-again Grass",
+            "4 music-again Grass"
+        ]
+    );
+    s.step_end(5, [6, 1, 0], pos(6, 1), true, 0);
+    s.take();
+    s.again(6);
+    assert!(s.take().is_empty());
+}

@@ -4060,3 +4060,54 @@ window's clock was played at once (the expiry's box left 15 s early). **Gates:**
 coverage 0 lines, 0 regions missed (`H3_INSTALL` unset); clippy; `check.sh --no-coverage`. New:
 MCL-Q76 (the hot seat's timer from the turn's passing), MCL-Q77 (a warning silent under a walk's
 step sound).
+
+### M5 T6a, part one — the cut, the reading, the host (2026-11-28)
+
+T6 cut in four by the user at its start (T6a now; T6b the defended and two humans' battles read and
+recorded; T6c built; T6d Auto Combat; the battle client's parts of T6c and T6d this lane's in
+`cross-lane` pull requests); MCL-Q75 answered (b), the original's clock (every battle pauses the
+turn's timer). Run by a runner and three worker sub-agents in turn. **Read** (a sub-agent, design
+§5.33): MCL-Q47's restart is the walk's end's unconditional request for +0x58's track (0x408153),
+taken after a battle because the playing name is the result's tune; a key's step onto a monster
+asks none; "from its start" inferred (MCL-Q78). **Built** (`hot_seat`, `play`, the `Session`
+trait): the host keeps the battling human's messages from `BattleStarted`, gives a `GameSeat`
+fed with them, serves it (the seat's commands as the player's, its queries, the unowned side by
+`h3_battle_ai::choose` on `StreamId::AGENT`, the computers' turns), sets the seat's view to the
+engine's at the battle's end (SRV-STUB-9), refuses a battle between two players (T6c); `Kept`
+holds the clock from the hand-over to the return. **Tests** (six new): a won battle (the seat's
+record equals the player's record's battle, the view the engine's), a lost hero, losses, a
+level-up left open, two players' battles refused, a timed game's 40-s battle given back (the
+expiry from 61 s to 101 s). Asked: the server lane for a session option of the original's hot-seat
+clock; told: the client lane of T6c's and T6d's changes. New: MCL-Q78.
+
+### M5 T6a, part two — the battles hosted in play's window (2026-11-28)
+
+A worker. **Built** (design §5.33's "The window"): `Loop::battle_asked` at the record player's
+hand-over points, the window hosting the seat (`battles::host_game`, the host's pass at most 10 ms
+apart) and giving the result from the record laid out again (`fought_after`, `Loop::add_battle`,
+`reach::Fought`; `Action::BattleClosed` at a switch); the headless check's host facts
+(`Hosted::battles`, `Start::add_battle`); a fight with no result until hosted; a battle begun on
+the way placed by `Battled::tile`; the army after it the seat's (`Session::army`, `Fight::army`); a
+monster's join offer declined fought. A zone's entry and every answer's battle go through the
+switch (*provisional*, `battle_start` fades every shown battle; the record player keeps its plain
+cut: T6e). **Checked** under Xvfb, `play --humans 0,1 --check`: a walk onto Peasants, a zone's step,
+an offer declined, a hero lost (every view's frames read back exact, 98 to 125 for Red's two
+days); play's record in the record player 172 of 172 exact; `drawn` 56 situations and the
+sequences the same. **Tests:** h3-map-view 568 (5 new) and its engine tests 44 (1 new),
+h3-map-client 52; h3-map-view's coverage 100 %. New: `MCL-STUB-9`, `-10`; `MCL-STUB-7` narrowed to
+the guards' questions (T6e, cut out of T6a here).
+
+### M5 T6a, part three — the music and the loops at the return (2026-11-28)
+
+A worker. **Built** (design §5.33's "The music and the loops at the return"): `Cue::Again`
+(`music-again`) by `Loop::music_again` where the visit's rest ends, due by how the move began
+(`By::Walk`, `By::Key`, `By::Space`; `asks_again` at the switch); `Player::take_back_cut` (a plain
+cut's return: the loops kept at the hand-over again, the map's last track asked); the cues' `heard`
+line, play's `--cues`. Before, the return asked for nothing (MCL-Q47's first answer). **Checked**
+under Xvfb with the disk audio: play's click onto Peasants asks at 6 779 (the fade in's end and
+the dissolve), Grass heard at 7 678; a key's step onto them asks none; a lost battle on another
+terrain the choice's track first; the record player's `battle-won` (1 822), `battle-mine` (2 836, as
+its last box closes), `dwellings-guards-s1`'s two plain cuts (the loop back, which stayed silent to
+5 330 before); every frame read back exact; `drawn` 56 situations and 124 sequences the same.
+**Tests:** h3-map-view 575, 44 and 7 (7 new), its coverage 100 % (31 334 regions); h3-map-client 52.
+Not built: the track from its start (`MCL-STUB-11`: `h3_ui::music` and `HostSound`, MCL-Q78).

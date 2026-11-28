@@ -22,6 +22,14 @@
 //!   read again before each battle (E24 M4 T6, the reviewer's R5-10: one battle's options the
 //!   next's), a failed write of them told as a line.
 //!
+//! - **Play's battles** (E24 M5 T6a, design §5.33, *provisional*): a battle of the viewer's in
+//!   play is hosted live ([`host_game`]): the battle client's element over the session's seat
+//!   (`battle::Ground::load_game`: the player's side human, the mouse's, or an unattended run's
+//!   presses), loaded with the game's packs (the repository's, as play's rules,
+//!   `h3_battle_client::maps::rules`); the host's pass (`window::Session::serve`) before each of
+//!   the element's passes, which wait for no more than [`SERVE_MS`] while the seat plays (the
+//!   in-process host answers at once); the keys and the settings as a record's.
+//!
 //! An adapter: it reads files and drives the window.
 
 use std::fs;
@@ -29,6 +37,7 @@ use std::path::{Path, PathBuf};
 
 use h3_battle_client::audio::HostSound;
 use h3_battle_client::battle::{Ground, Source};
+use h3_battle_client::game_seat::GameSeat;
 use h3_battle_client::live::Computer;
 use h3_battle_client::window::{Flow, Frame, Hosted, Prepared, Presses, Setup, Took};
 use h3_render::screen::{Screen, Widening};
@@ -42,6 +51,11 @@ use h3_view::options::Settings;
 
 /// The combat options' file looked for in the working directory (`h3-view window`'s).
 const SETTINGS_FILE: &str = "settings.toml";
+
+/// The longest a live battle's pass waits for input (E24 M5 T6a, *provisional*): the host serves
+/// the seat before each pass, so its answers and the other side's turns come within it (the
+/// element's own wait for a server's seat, `POLL_MS`, is the same).
+pub const SERVE_MS: u32 = 10;
 
 /// A record's battles and what each is loaded with.
 #[derive(Debug)]
@@ -69,6 +83,30 @@ impl Battles {
     ) -> Result<Self, String> {
         let text = fs::read_to_string(record).map_err(|e| format!("{}: {e}", record.display()))?;
         let game = game_record::parse(&text).map_err(|e| format!("{}: {e}", record.display()))?;
+        let mut battles = Self::of(record, packs, install, keys)?;
+        battles.list = game.battles();
+        Ok(battles)
+    }
+
+    /// Play's battles (E24 M5 T6a, design §5.33): none of a record's, each hosted live from the
+    /// session's seat ([`host_game`]) with the packs of `packs` and the archives of `install`; the
+    /// keys and the settings as [`Battles::read`]'s.
+    ///
+    /// # Errors
+    /// The keys file or the settings unreadable.
+    pub fn live(packs: &Path, install: &Path, keys: Option<&Path>) -> Result<Self, String> {
+        // No record: the seat's battle is the session's (`Ground::load_game` reads no input).
+        Self::of(Path::new(""), packs, install, keys)
+    }
+
+    /// The battles of `record` (none listed yet) loaded with `packs` and `install`, the keys of
+    /// the file `keys` and the settings read.
+    fn of(
+        record: &Path,
+        packs: &Path,
+        install: &Path,
+        keys: Option<&Path>,
+    ) -> Result<Self, String> {
         let keys = match keys {
             Some(path) => {
                 let text =
@@ -95,7 +133,7 @@ impl Battles {
             battle: 0,
         };
         Ok(Self {
-            list: game.battles(),
+            list: Vec::new(),
             source,
             keys,
             settings,
@@ -219,7 +257,67 @@ pub fn host(
             return Ok((not.sound, Shown::default()));
         }
     };
-    let shown = pass(win, &mut hosted, run, lines);
+    let shown = pass(win, &mut hosted, run, lines, None);
+    let sound = hosted.take_sound();
+    lines.extend(hosted.take_unsaved());
+    let mut shown = shown?;
+    shown.outcome = hosted.outcome().map(|o| format!("{o:?}"));
+    shown.last = hosted.shown().map(|f| f.screen.clone());
+    shown.pointer = hosted.pointer();
+    Ok((sound, shown))
+}
+
+/// Runs the viewer's battle in play (E24 M5 T6a, design §5.33) in `win` from the session's `seat`
+/// to its closed result window (or the window's quit, or an unattended run's end), as [`host`]
+/// runs a record's: `serve` (the session's host pass, `window::Session::serve`) before each of
+/// its passes, the engine's refusals of the seat's commands noted in `lines`; the sound handed
+/// back and how it went.
+///
+/// # Errors
+/// The battle does not load or start (the engine's battle stays open: play cannot go on), a
+/// frame does not show, the session's.
+pub fn host_game(
+    win: &mut Window,
+    battles: &mut Battles,
+    seat: GameSeat,
+    serve: &mut dyn FnMut(&mut GameSeat) -> Result<Vec<String>, String>,
+    (sound, run): (Option<HostSound>, Run),
+    lines: &mut Vec<String>,
+) -> Result<(Option<HostSound>, Shown), String> {
+    let settings = battles.settings_now(lines);
+    let ground = Ground::load_game(&battles.source, seat)
+        .map_err(|e| format!("the battle does not load: {e}"))?;
+    let prepared = Prepared::new(&ground).map_err(|e| format!("the battle does not load: {e}"))?;
+    let setup = Setup {
+        keys: battles.keys.clone(),
+        settings,
+        settings_path: battles.settings_path.clone(),
+        from: 0,
+        sound,
+        install: battles.source.install.clone(),
+        seed: battles.source.seed,
+        unattended: run.unattended,
+        presses: run.unattended.then_some(Presses {
+            close_result: true,
+            ..Presses::default()
+        }),
+    };
+    let mut hosted = prepared
+        .start(setup, &|| win.ticks_ns(), lines)
+        .map_err(|not| format!("the battle does not start: {}", not.error))?;
+    let mut refused = Vec::new();
+    let mut served = || -> Result<(), String> {
+        if let Some(seat) = ground.game_seat() {
+            let why = serve(&mut seat.borrow_mut())?;
+            refused.extend(
+                why.into_iter()
+                    .map(|w| format!("battle: the engine refused {w}")),
+            );
+        }
+        Ok(())
+    };
+    let shown = pass(win, &mut hosted, run, lines, Some(&mut served));
+    lines.append(&mut refused);
     let sound = hosted.take_sound();
     lines.extend(hosted.take_unsaved());
     let mut shown = shown?;
@@ -230,12 +328,14 @@ pub fn host(
 }
 
 /// The host's passes (E17 design §13.2's order, `h3-view window`'s loop) until the battle's
-/// screen closes, the window quits or an unattended run ends.
+/// screen closes, the window quits or an unattended run ends; since E24 M5 T6a a live battle's
+/// host pass `serve` before each (its wait no longer than [`SERVE_MS`]).
 fn pass(
     win: &mut Window,
     hosted: &mut Hosted<'_>,
     run: Run,
     lines: &mut Vec<String>,
+    mut serve: Option<&mut dyn FnMut() -> Result<(), String>>,
 ) -> Result<Shown, String> {
     let mut shown = Shown::default();
     let mut drawn_cursor = run.drawn_cursor;
@@ -258,7 +358,11 @@ fn pass(
         if run.stop_ns.is_some_and(|s| now >= s) {
             return Ok(shown);
         }
-        let timeout = hosted.timeout(now);
+        let mut timeout = hosted.timeout(now);
+        if let Some(serve) = serve.as_mut() {
+            serve()?;
+            timeout = timeout.min(SERVE_MS);
+        }
         let mut redraw = false;
         if hosted.before(&|| win.ticks_ns(), lines)? == Flow::Again {
             continue;
@@ -360,17 +464,49 @@ pub fn first_frame(
     let Some(battle) = battles.list.get(k).cloned() else {
         return Ok(None);
     };
-    let ground = match Ground::load_battle(&battles.source, battle) {
-        Ok(ground) => ground,
+    let name = format!("battle {}", k + 1);
+    match Ground::load_battle(&battles.source, battle) {
+        Ok(ground) => start_frame(battles, &ground, &name, lines),
         Err(e) => {
-            lines.push(format!("battle {}: {e}; its first frame not drawn", k + 1));
-            return Ok(None);
+            lines.push(format!("{name}: {e}; its first frame not drawn"));
+            Ok(None)
         }
-    };
-    let prepared = match Prepared::new(&ground) {
+    }
+}
+
+/// The first frame of the viewer's battle in play from the session's `seat` (E24 M5 T6a, design
+/// §5.33: a switch's fade in), as [`first_frame`] draws a record's; none where it does not load or
+/// start (noted in `lines`).
+///
+/// # Errors
+/// The frame does not draw.
+pub fn first_game_frame(
+    battles: &Battles,
+    seat: GameSeat,
+    lines: &mut Vec<String>,
+) -> Result<Option<Screen>, String> {
+    let name = "the battle";
+    match Ground::load_game(&battles.source, seat) {
+        Ok(ground) => start_frame(battles, &ground, name, lines),
+        Err(e) => {
+            lines.push(format!("{name}: {e}; its first frame not drawn"));
+            Ok(None)
+        }
+    }
+}
+
+/// The first frame of the battle `ground` holds (its `name` in `lines`), as its element draws it
+/// at its start: unattended, no sound, a stopped clock, the settings read at the window's start.
+fn start_frame(
+    battles: &Battles,
+    ground: &Ground,
+    name: &str,
+    lines: &mut Vec<String>,
+) -> Result<Option<Screen>, String> {
+    let prepared = match Prepared::new(ground) {
         Ok(prepared) => prepared,
         Err(e) => {
-            lines.push(format!("battle {}: {e}; its first frame not drawn", k + 1));
+            lines.push(format!("{name}: {e}; its first frame not drawn"));
             return Ok(None);
         }
     };
@@ -391,11 +527,7 @@ pub fn first_frame(
     let mut hosted = match prepared.start(setup, &|| 0, lines) {
         Ok(hosted) => hosted,
         Err(not) => {
-            lines.push(format!(
-                "battle {}: {}; its first frame not drawn",
-                k + 1,
-                not.error
-            ));
+            lines.push(format!("{name}: {}; its first frame not drawn", not.error));
             return Ok(None);
         }
     };

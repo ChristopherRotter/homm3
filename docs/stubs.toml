@@ -240,18 +240,11 @@ epic   = "E16"
 # reason = "A computer colour of a hot-seat game takes no turn (E24 M5 T3a; the user at M5 T0): whenever a computer may act, the host ends its turn at once with its End Turn, so any map plays with its computers idle (one that may act but not end its turn, an open decision of its, stops play with an error). Lifted by E31's increment 2 (a computer turn that ends: the host calls `h3_game::computer::choose` for each computer colour, the ai lane's entry point, its battles' sides by `h3_battle_ai::choose`)"
 # epic   = "E24"
 
-# MCL-STUB-6, a comment for the same reason; its marker `// stub: MCL-STUB-6` is in the code.
-# [[stub]]
-# id     = "MCL-STUB-6"
-# where  = "clients/crates/h3-map-client/src/window.rs::run"
-# reason = "A walk in play that begins a battle (a guard's zone entered, a monster or a hero attacked) ends play with an error (E24 M5 T4a, design section 5.26): the engine's battle runs, but the map hands it to no battle client in play yet. Lifted by M5 T6 (a human's attack played live in the window through the battle client's seat on the in-process session)"
-# epic   = "E24"
-
 # MCL-STUB-7, a comment for the same reason; its marker `// stub: MCL-STUB-7` is in the code.
 # [[stub]]
 # id     = "MCL-STUB-7"
 # where  = "clients/crates/h3-map-view/src/notice.rs::Notice"
-# reason = "A screen of M6 or M7 is a notice in the client's words in play (E24 M5 T4c, design section 5.28): the hero screen, the town screen (a hero's entry into a town too), the spell book, the kingdom overview, the quest log and the adventure options show a box with one OK; a decision the view does not ask (a hire dialog or a dwelling's or a Refugee Camp's hire question, a Shipyard's boat, a University, a market, an Altar, a Hill Fort, a map Tavern, a meeting, an army dialog, a garrison's exchange, and a guarded object's or a dwelling's guards' fight) shows its window's notice, whose OK closes the decision through the host (the offer declined, the window left or closed). A recording refuses them as before. Lifted screen by screen by M6 (the hero's screens) and M7 (the town screen), the fights by M5 T6 (the battles in play)"
+# reason = "A screen of M6 or M7 is a notice in the client's words in play (E24 M5 T4c, design section 5.28): the hero screen, the town screen (a hero's entry into a town too), the spell book, the kingdom overview, the quest log and the adventure options show a box with one OK; a decision the view does not ask (a hire dialog or a dwelling's or a Refugee Camp's hire question, a Shipyard's boat, a University, a market, an Altar, a Hill Fort, a map Tavern, a meeting, an army dialog, a garrison's exchange, and a guarded object's or a dwelling's guards' fight: a mine's, a dwelling's, a bank's, a guarded pile's question) shows its window's notice, whose OK closes the decision through the host (the offer declined, the window left or closed; a monster's join or flee offer is played since M5 T6a, its fight hosted). A recording refuses them as before. Lifted screen by screen by M6 (the hero's screens) and M7 (the town screen), the guards' fights by M5 T6e (their questions asked, an OK that fights, each object's boxes after the battle)"
 # epic   = "E24"
 
 # MCL-STUB-8, a comment for the same reason; its marker `// stub: MCL-STUB-8` is in the code.
@@ -259,6 +252,27 @@ epic   = "E16"
 # id     = "MCL-STUB-8"
 # where  = "clients/crates/h3-map-client/src/paint.rs::Painter::play_seat"
 # reason = "A timed event's box at a hot seat's human's start is not shown in play (E24 M5 T5 part three, design section 5.31, MCL-Q71): a recording's comes from the map's timed events (paint::Painter::timed_events), but play reads no map text and the record's TimedEventFired events are not read by the view yet (their resources come with the turn's kingdom). Lifted when engine::played reads them and their text has a source in play"
+# epic   = "E24"
+
+# MCL-STUB-9, a comment for the same reason; its marker `// stub: MCL-STUB-9` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-9"
+# where  = "clients/crates/h3-map-client/src/window.rs::fought_after"
+# reason = "A battle in play that no find of the map's begins (an event's guards, a battle the view tells nothing of) is hosted live but handed over by the plain cut, and the map after it is the record's as the timeline folds it (E24 M5 T6a, design section 5.33): no fight's aftermath (no killfade, no boxes). Lifted when the view tells that find (the event's guards with E24 M5 T6e's guards' questions)"
+# epic   = "E24"
+
+# MCL-STUB-10, a comment for the same reason; its marker `// stub: MCL-STUB-10` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-10"
+# where  = "clients/crates/h3-map-client/src/paint.rs::answer_fight"
+# reason = "An answer's battle in play shows a monster's aftermath only (E24 M5 T6a, design section 5.33): the object taken off after a win where the battle's end takes it, the hero gone after a loss; Pandora's Box's rewards after its guards' battle (and any object's boxes after its guards) are not shown. Lifted by E24 M5 T6e (each object's boxes after its guards' battle)"
+# epic   = "E24"
+
+# MCL-STUB-11, a comment for the same reason; its marker `// stub: MCL-STUB-11` is in the code.
+# [[stub]]
+# id     = "MCL-STUB-11"
+# where  = "clients/crates/h3-map-client/src/audio.rs::ask"
+# reason = "The terrain's track asked again at a battle's return (E24 M5 T6a, design section 5.33, `Cue::Again`) comes back where its name's last fade began, not from its start as the user heard it (MCL-Q78 (b)): the host's music (`h3_ui::music` and the battle client's `HostSound`, the client lane's) forgets no track's place. Lifted with MCL-Q78's answer: a request that forgets the place when it is taken, additive in `h3_ui::music` and `HostSound` (with the client lane), or every reopened track from its start under (a)"
 # epic   = "E24"
 
 # --- town (TWN-STUB-<n>) ---

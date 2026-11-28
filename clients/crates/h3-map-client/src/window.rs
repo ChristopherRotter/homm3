@@ -44,22 +44,24 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use h3_battle_client::audio::HostSound;
+use h3_battle_client::game_seat::GameSeat;
 use h3_game::GameRuleset;
 use h3_map_view::clock::ChatLine;
 use h3_map_view::damage::{Held, tidy};
-use h3_map_view::engine::{GameRecord, Live, REVISIT};
+use h3_map_view::engine::{Creatures, GameRecord, Live, REVISIT};
 use h3_map_view::keys::{Command, Context, Keys, Playback, refuse_shift};
+use h3_map_view::live::Stack;
 use h3_map_view::notice;
-use h3_map_view::reach::{Hosted, Pick, Reach};
+use h3_map_view::reach::{Fought, Hosted, Pick, Reach};
 use h3_map_view::replay::{Change, Replay};
 use h3_map_view::sequence::Sequences;
 use h3_map_view::sound;
 use h3_map_view::timeline::{
-    self, Action, Answer, CURSOR_TYPE, Cursor, Found, LevelBox, Rules, Start, Unplayable,
+    self, Action, Answer, CURSOR_TYPE, Cursor, Fight, Found, LevelBox, Rules, Start, Unplayable,
 };
 use h3_protocol::wire::game::{
-    Answer as WireAnswer, ArenaChoice, ChestChoice, ChoiceKind, Consent, Decision, Moves,
-    Pos as WirePos, SchoolChoice, SkillOffer,
+    Answer as WireAnswer, ArenaChoice, ArmyStack, ChestChoice, ChoiceKind, Consent, Decision,
+    Moves, Pos as WirePos, SchoolChoice, SkillOffer,
 };
 use h3_render::Bugs;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
@@ -105,8 +107,9 @@ pub struct Options {
     pub(crate) run: Option<(u32, bool)>,
     /// No sound (E24 M2 T5).
     mute: bool,
-    /// Where each cue played is written (the cue's line and the clock's millisecond it played at).
-    cues: Option<PathBuf>,
+    /// Where each cue played is written (the cue's line and the clock's millisecond it played at;
+    /// since E24 M5 T6a also `<ms> heard <track>` where the music heard changes, `-` silence).
+    pub(crate) cues: Option<PathBuf>,
     /// A whole game's record played without a recording (E24 M4 T4c): the record, its map file
     /// and the packs' folder.
     record: Option<(PathBuf, PathBuf, PathBuf)>,
@@ -278,6 +281,50 @@ pub(crate) trait Session {
     /// The view's turn's timer started at the host's `now` (ms): the session's clock, held while
     /// no human's turn ran on the screen, runs again.
     fn started(&mut self, _now: u64) {}
+    /// The viewer's battle the host holds (E24 M5 T6a, design §5.33: a walk's or an answer's
+    /// battle against a monster, guards or a neutral), asked once the walk or the answer that
+    /// began it was played: its battle client's seat, opened (the window loads it with
+    /// `h3_battle_client::battle::Ground::load_game` and hosts the element), the session's clock
+    /// held from the host's `now` (ms) until [`Session::returned`] (MCL-Q75 (b), the user at
+    /// T6a, *provisional* in play's host: every battle pauses the turn's timer and gives its time
+    /// back, no battle clock). None without one (each source but play's).
+    fn battle(&mut self, _now: u64) -> Option<GameSeat> {
+        None
+    }
+    /// The viewer's hero `hero`'s army as the engine projects it now (E24 M5 T6a: after its
+    /// battle, SRV-STUB-9: the record tells no survivors), by slot; none for a hero not the
+    /// viewer's on the map.
+    fn army(&self, _hero: u16) -> Option<Vec<ArmyStack>> {
+        None
+    }
+    /// The viewer's battle the host holds as [`Session::battle`] gives it, the clock not held (E24
+    /// M5 T6a: its first frame, which a switch fades in before the battle is handed over); none
+    /// without one.
+    fn opening(&mut self) -> Option<GameSeat> {
+        None
+    }
+    /// A host pass for the viewer's battle `seat` (E24 M5 T6a), between the battle's passes (as
+    /// the battle client's own test host serves its seat): what it sent played as the viewer's
+    /// and answered, the other side's turns played (the original's battle AI), the viewer's
+    /// messages since handed to it; the engine's refusals of its commands (told to the seat too).
+    ///
+    /// # Errors
+    /// No battle held; the session's.
+    fn serve(&mut self, _seat: &mut GameSeat) -> Result<Vec<String>, String> {
+        Err("no battle is held here".into())
+    }
+    /// The viewer's battle handed back at the host's `now` (ms; E24 M5 T6a), once the battle
+    /// client closed (the result window's OK): the session's clock running again, the battle's
+    /// messages no longer kept; whether the viewer's turn still runs (a battle's end may pass it
+    /// on: a player left with no hero and no town). Its aftermath (a level-up's offer, the hero
+    /// lost) is the viewer's record's, as a walk's; a level-up after it is untimed (the session
+    /// stops the turn's timer while one holds the game, as the original's pause holds it).
+    ///
+    /// # Errors
+    /// The session's.
+    fn returned(&mut self, _now: u64) -> Result<bool, String> {
+        Ok(true)
+    }
 }
 
 /// The host's facts a live start keeps (E24 M5 T4a): the headless check plays them as the loop did.
@@ -874,11 +921,28 @@ pub(crate) fn window(
         }
         None => None,
     };
+    // Play's battles (E24 M5 T6a, design §5.33): each of the viewer's hosted live from the
+    // session's seat, with the game's packs (play's rules', `h3_battle_client::maps::rules`).
+    let mut live_battles = match &session {
+        Some(_) => {
+            let here = Path::new(KEYS_FILE);
+            let keys = options
+                .keys
+                .as_deref()
+                .or_else(|| here.exists().then_some(here));
+            let packs = h3_battle_client::assets::clients_dir().join("../packs");
+            Some(Battles::live(&packs, &options.install, keys)?)
+        }
+        None => None,
+    };
     // The battles handed over so far (their places among the replay's, the walks', and among the
     // answers'), and a whole redraw after one; since E24 M4 T6 (R5-5) the mouse given again after
     // one, and (R5-9) how many came due and how many of them closed.
     let mut handed = (0, 0);
     let mut after_battle = false;
+    // The hero of the last walk asked (E24 M5 T6a): a battle's visitor, whose army the engine
+    // projects after it.
+    let mut fighter: Option<u16> = None;
     let mut mouse_again = false;
     let mut hosting = Hosting::default();
     let Setup {
@@ -942,6 +1006,9 @@ pub(crate) fn window(
         _ => None,
     };
     let mut cue_lines: Vec<String> = Vec::new();
+    // The track the music plays as heard, for the cues' log (E24 M5 T6a: a fade's end shows as
+    // the next track's line).
+    let mut heard: Option<String> = None;
     // The cues at 0 taken now, their music decoded before the window opens; played at its first
     // turn.
     let mut first_cues = Vec::new();
@@ -1315,6 +1382,10 @@ pub(crate) fn window(
                 }
             }
             player.service(library, &mut lines);
+            if options.cues.is_some() && player.playing() != heard.as_deref() {
+                heard = player.playing().map(str::to_owned);
+                cue_lines.push(format!("{ms} heard {}", heard.as_deref().unwrap_or("-")));
+            }
         }
         // A hardware cursor SDL could not remake (a new scale) is drawn instead.
         if look.hardware() && hw.is_some_and(|(_, on)| on) && !win.hardware_cursor() {
@@ -1433,6 +1504,7 @@ pub(crate) fn window(
                 .iter()
                 .find(|&&(_, i)| i == asked.stand.hero)
                 .map(|&(id, _)| id);
+            fighter = id;
             let refused = match id {
                 Some(id) => s.walk(id, asked.path())?,
                 None => Some("no hero of the view's there".to_owned()),
@@ -1468,12 +1540,6 @@ pub(crate) fn window(
                     "{t} ms: the session told no walk after the one taken"
                 ));
             }
-            // stub: MCL-STUB-6 (a battle in play ends play: M5 T6)
-            if added.iter().any(|m| m.battle.is_some()) {
-                return Err(format!(
-                    "{t} ms: a walk began a battle (MCL-STUB-6: play's battles, M5 T6)"
-                ));
-            }
             let found: Vec<Found> = finds
                 .into_iter()
                 .filter(|f| f.walk.is_some_and(|w| w >= known))
@@ -1486,6 +1552,12 @@ pub(crate) fn window(
                     .map(|m| m.stops.unwrap_or(m.tiles.len()))
                     .sum::<usize>()
             ));
+            // A battle the walk began (E24 M5 T6a, design §5.33): its first frame, which its
+            // switch fades in; the battle handed over where the map does (`replay.battle_asked`).
+            if let (Some(n), Some(list)) = (added.iter().find_map(|m| m.battle), &live_battles) {
+                lines.push(format!("{t} ms: the walk began a battle"));
+                first_live(s, list, n, &mut painter, &mut lines)?;
+            }
             start.moves.get_or_insert_default().extend_from_slice(added);
             start.finds.extend_from_slice(&found);
             replay.add_walks(t, added, &found);
@@ -1576,6 +1648,12 @@ pub(crate) fn window(
                     (shown, levels)
                 }
             };
+            // A battle the answer began (E24 M5 T6a, design §5.33): its first frame, which its
+            // switch at the box's close fades in.
+            if let (Some(fight), Some(list)) = (&shown.fight, &live_battles) {
+                lines.push(format!("{t} ms: the answer began a battle"));
+                first_live(s, list, fight.battle, &mut painter, &mut lines)?;
+            }
             hosted(&mut start).answers.push((key, shown.clone()));
             if let Some(found) = start.finds.get_mut(key.find) {
                 found.levels.clone_from(&levels);
@@ -1719,6 +1797,131 @@ pub(crate) fn window(
             texture.held = None;
         }
         let mut presented = false;
+        // A battle of the viewer's in play the map hands over (E24 M5 T6a, design §5.33,
+        // *provisional*): where the record player hands a record's over (a walk's end's plain cut,
+        // a switch's battle whole), before the map's frame at that millisecond, the session's seat
+        // hosted live in the window through the battle client (`battles::host_game`: the
+        // session's host pass before each of its passes), its sound on the host's as a record's,
+        // to its result window's OK; then the session's clock released (MCL-Q75 (b)), the record
+        // read again and the battle's result laid out from it (`fought_after`), kept with the
+        // host's facts and given to the replay (the walk's or the answer's rest laid out again,
+        // the loop run again from before the hand-over), a switch's battle closed in that
+        // millisecond (`Action::BattleClosed`, as the record player closes a record's); the map's
+        // clock on from there as if the battle took none.
+        if let (Some(s), Some(list)) = (session.as_deref_mut(), &mut live_battles)
+            && let Some(asked) = replay.battle_asked()
+            && asked.at <= ms
+            && pending.is_empty()
+            && next.as_ref().is_none_or(|f| f.change.t >= asked.at)
+        {
+            let t = asked.at;
+            let Some(seat) = s.battle(host_ms(win)) else {
+                return Err(format!(
+                    "{t} ms: the map handed over a battle the session does not hold (the record's \
+                     events {})",
+                    asked.battle
+                ));
+            };
+            let paused = clock.paused();
+            let sound = audio.as_mut().and_then(|(_, player)| {
+                if paused {
+                    player.pause(false);
+                }
+                player.lend()
+            });
+            let run = battles::Run {
+                unattended,
+                drawn_cursor: !look.hardware,
+                stop_ns: stop_ns.map(|s| started.saturating_add(s)),
+            };
+            let mut serve = |seat: &mut GameSeat| s.serve(seat);
+            let (sound, shown) =
+                battles::host_game(&mut *win, list, seat, &mut serve, (sound, run), &mut lines)?;
+            // A plain cut's return (MCL-STUB-9's battles) plays the loops and the map's track
+            // again (E24 M5 T6a, design §5.24, §5.33); a switch's the map's return does.
+            if let (Some((library, player)), Some(sound)) = (&mut *audio, sound) {
+                if asked.switch {
+                    player.take_back(sound);
+                } else {
+                    for cue in player.take_back_cut(sound, library, &mut lines) {
+                        if options.cues.is_some() {
+                            cue_lines.push(format!("{t} {}", sound::line(t, &cue)));
+                        }
+                    }
+                }
+                if paused {
+                    player.pause(true);
+                }
+            }
+            lines.push(format!(
+                "{t} ms: the battle hosted, {} frames shown, {}",
+                shown.frames,
+                shown
+                    .outcome
+                    .as_ref()
+                    .map_or_else(|| "not closed".to_owned(), |o| format!("closed: {o}"))
+            ));
+            // The window quit, or an unattended run's end, during it: the engine's battle stays
+            // open, play ends.
+            if shown.quit {
+                end = End::Quit;
+                break 'run;
+            }
+            if shown.outcome.is_none() {
+                break 'run;
+            }
+            let runs = s.returned(host_ms(win))?;
+            let mut fought = fought_after(&mut painter, s, (&start, &opened), asked.battle)?;
+            // Its army as the engine projects it (SRV-STUB-9: the record tells no survivors).
+            if let Some(fought) = &mut fought {
+                let creatures = Creatures::new(s.rules());
+                fought.fight.army = fighter
+                    .and_then(|hero| s.army(hero))
+                    .map(|stacks| by_slot(&stacks, &creatures));
+            }
+            lines.push(format!(
+                "{t} ms: the battle's result laid out: {}",
+                fought.as_ref().map_or_else(
+                    || "no find of it, the map as folded".to_owned(),
+                    |f| {
+                        let army: Vec<_> = f.fight.army.iter().flatten().flatten().collect();
+                        format!(
+                            "won by {}, {:?}, the army {army:?}",
+                            f.fight.winner, f.fight.after
+                        )
+                    }
+                )
+            ));
+            start.add_battle(asked.battle, fought.as_ref());
+            replay.add_battle(asked, fought.as_ref());
+            if asked.switch {
+                // Its last frame, which the switch's fade out fades.
+                if let Some(last) = &shown.last {
+                    painter.battle_frame(asked.battle, true, last.clone());
+                }
+                replay.give(t, Action::BattleClosed);
+            }
+            maker.recycle(next.take());
+            let has_focus = win.focused();
+            if has_focus != focused
+                && let Some((library, player)) = &mut *audio
+            {
+                player.focus(library, has_focus, &mut lines);
+            }
+            focused = has_focus;
+            mouse = Some(mouse_after(shown.pointer, look.frame));
+            mouse_again = true;
+            // The battle's end passed the turn on (a player left with no hero and no town).
+            if !runs {
+                s.leave(facings(&replay, &ids));
+                lines.push(format!("{t} ms: the battle's end passed the turn on"));
+                break 'run;
+            }
+            clock.seek(win.ticks_ns(), t);
+            hw = None;
+            (renew, after_battle) = (true, true);
+            continue 'run;
+        }
         // A battle the map handed over (E24 M4 T5b1, design §5.20, *provisional*): a walk's end's
         // and a plain answer's as a cut, a switch's where it shows the battle whole (T5b2, design
         // §5.21: the map's fades). Hosted before the map's frame at its millisecond, its sound on
@@ -1769,8 +1972,19 @@ pub(crate) fn window(
                 stop_ns: stop_ns.map(|s| started.saturating_add(s)),
             };
             let (sound, shown) = battles::host(&mut *win, list, k, sound, run, &mut lines)?;
-            if let (Some((_, player)), Some(sound)) = (&mut *audio, sound) {
-                player.take_back(sound);
+            // A plain cut's return (an answer's battle, a walk's no switch handed over) plays the
+            // loops and the map's track again (E24 M5 T6a, design §5.24, §5.33); a switch's the
+            // map's return does.
+            if let (Some((library, player)), Some(sound)) = (&mut *audio, sound) {
+                if walked && replay.switched(n) {
+                    player.take_back(sound);
+                } else {
+                    for cue in player.take_back_cut(sound, library, &mut lines) {
+                        if options.cues.is_some() {
+                            cue_lines.push(format!("{t} {}", sound::line(t, &cue)));
+                        }
+                    }
+                }
                 if paused {
                     player.pause(true);
                 }
@@ -2004,6 +2218,110 @@ pub(crate) fn window(
 /// frame where it saw none (outside the window).
 fn mouse_after(pointer: Option<(i32, i32)>, frame: [u32; 2]) -> [i32; 2] {
     pointer.map_or(OFF, |(x, y)| [clamp(x, frame[0]), clamp(y, frame[1])])
+}
+
+/// `stacks` by slot (E24 M5 T6a), each creature by the original's number (`creatures`: a wire
+/// creature is a content handle, the lane's TRAPS).
+fn by_slot(stacks: &[ArmyStack], creatures: &Creatures) -> [Option<Stack>; 7] {
+    let mut army = [None; 7];
+    for stack in stacks {
+        if let Some(slot) = army.get_mut(usize::from(stack.slot)) {
+            *slot = Some(Stack {
+                creature: creatures.number(stack.creature),
+                count: i32::try_from(stack.count).unwrap_or(i32::MAX),
+            });
+        }
+    }
+    army
+}
+
+/// The first frame of the viewer's battle numbered `n` the session `s` holds (E24 M5 T6a, design
+/// §5.33), which its switch fades in, drawn by `list`'s element for `painter` (none drawn where
+/// the session holds none or it does not load: noted in `lines`).
+fn first_live(
+    s: &mut dyn Session,
+    list: &Battles,
+    n: u32,
+    painter: &mut Painter<'_>,
+    lines: &mut Vec<String>,
+) -> Result<(), String> {
+    if let Some(seat) = s.opening()
+        && let Some(screen) = battles::first_game_frame(list, seat, lines)?
+    {
+        painter.battle_frame(n, false, screen);
+    }
+    Ok(())
+}
+
+/// The result of the viewer's battle `battle` as its record tells it once the session hosted it
+/// (E24 M5 T6a, design §5.33, *provisional*): the record since read again and its visits laid
+/// out (`paint::live_walks`, `start`'s mouse-over, the decisions `opened`): the find whose fight
+/// it is (a walk's: a monster attacked, its zone entered), else the hosted answer whose fight it
+/// is with its reply laid out again as the answer's was, its fight apart (a monster's offer
+/// declined, its pursuit); none where neither is.
+// stub: MCL-STUB-9 (a battle no find of the map's begins: the map as the record folds it after it)
+fn fought_after(
+    painter: &mut Painter<'_>,
+    s: &mut dyn Session,
+    (start, opened): (&Start, &[(usize, Decision)]),
+    battle: u32,
+) -> Result<Option<Fought>, String> {
+    let label = format!("play: colour {}'s view", s.colour());
+    let (record, live) = s.record()?;
+    let (_, finds) = paint::live_walks(
+        painter,
+        s.map(),
+        (record, s.rules(), live),
+        (start.hover.as_deref(), opened),
+        label.clone(),
+    )?;
+    let of = |f: Option<&Fight>| f.is_some_and(|f| f.battle == battle);
+    if let Some(found) = finds.iter().find(|f| of(f.fight.as_ref())) {
+        return Ok(found.fight.clone().map(|fight| Fought {
+            fight,
+            answer: None,
+            levels: found.levels.clone(),
+        }));
+    }
+    let key = start
+        .host
+        .as_ref()
+        .and_then(|h| h.answers.iter().find(|(_, a)| of(a.fight.as_ref())))
+        .map(|&(key, _)| key);
+    let Some(key) = key else {
+        return Ok(None);
+    };
+    let walk = start.finds.get(key.find).and_then(|f| f.walk);
+    let found = finds
+        .into_iter()
+        .find(|f| f.walk.is_some() && f.walk == walk);
+    let levels = found.as_ref().map(|f| f.levels.clone()).unwrap_or_default();
+    let reply = match (key.nth, &start.hover, walk) {
+        (0, ..) => found.and_then(|f| f.ask).and_then(|q| match key.pick {
+            Pick::Yes => q.yes,
+            Pick::Second => q.second,
+            Pick::No => q.no,
+        }),
+        (nth, Some(hover), Some(w)) => {
+            let (record, live) = s.record()?;
+            paint::live_reply(
+                painter,
+                s.map(),
+                (record, s.rules(), live),
+                (hover, w, usize::from(nth)),
+                label,
+            )?
+        }
+        _ => None,
+    };
+    Ok(reply.and_then(|mut answer| {
+        let fight = answer.fight.take()?;
+        Some(Fought {
+            fight,
+            answer: Some(answer),
+            levels,
+        })
+    }))
 }
 
 /// The battles a record's window hosted (E24 M4 T6, the reviewer's R5-9): how many came due and

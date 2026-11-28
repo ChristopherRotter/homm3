@@ -4,8 +4,9 @@
 //!
 //! - **The device and the music are the host's sound** (E24 M4 T5b1, *provisional*:
 //!   `h3_battle_client::audio::HostSound`, E17 design §13.6), lent to a battle the window hosts
-//!   and handed back once it closed ([`Player::lend`], [`Player::take_back`]): one music for the
-//!   map and its battles, as the original's one sound manager. The music on one stream as the
+//!   and handed back once it closed ([`Player::lend`], [`Player::take_back`]; after a plain cut
+//!   with its loops and the map's track again, [`Player::take_back_cut`], E24 M5 T6a): one music
+//!   for the map and its battles, as the original's one sound manager. The music on one stream as the
 //!   original's music thread plays it (M2 T6a2: `h3_ui::music`, the model of `play_music`
 //!   0x59ACB0, `music_thread` 0x59A840 and `music_stop_fade` 0x59B080): a request dropped for the
 //!   name pending or playing, the old track faded out (its place kept where the fade began) after
@@ -227,6 +228,12 @@ pub struct Player {
     /// effects'), and the music faded at the cover until a track is asked again.
     cover: Lane,
     faded: bool,
+    /// The map's track asked for last (its `Cue::Music`'s or `Cue::Again`'s name), and the ambient
+    /// slots' loops and volumes as a battle's hand-over found them (the manager's slots, +0x228,
+    /// stand through the battle: E24 M5 T1c, design §5.24): a plain cut's return plays both
+    /// again ([`Player::take_back_cut`], E24 M5 T6a).
+    track: Option<String>,
+    kept: Vec<Option<(String, u8)>>,
     /// Whether the music and the effects are heard.
     pub music_on: bool,
     pub effects_on: bool,
@@ -283,6 +290,8 @@ impl Player {
             effect,
             cover,
             faded: false,
+            track: None,
+            kept: Vec::new(),
             music_on: true,
             effects_on: true,
             played: 0,
@@ -298,15 +307,12 @@ impl Player {
         self.played += 1;
         let on = self.effects_on;
         match cue {
-            Cue::Music(name) => {
-                // After a hot seat's cover the music comes back first (`music_resume`, as a
-                // regained focus asks it), then the track asked (E24 M5 T5, *provisional*).
-                if core::mem::take(&mut self.faded) {
-                    host.focus(true);
-                }
-                library.request(name, host);
-                library.collect(host, lines);
-                host.request(name, false);
+            // The terrain's track after a battle (E24 M5 T6a, design §5.33, MCL-Q47) as any
+            // request: the result's tune fading out for it, a repeat of the track playing or
+            // pending dropped.
+            Cue::Music(name) | Cue::Again(name) => {
+                ask(host, &mut self.faded, library, name, lines);
+                self.track = Some(name.clone());
             }
             // A hot seat's cover (E24 M5 T5, *provisional*): the music faded out as a lost focus
             // fades it (its place kept), and the cover's sound on its own channel.
@@ -366,6 +372,8 @@ impl Player {
             host.reset();
         }
         self.stop_effects();
+        self.track = None;
+        self.kept.clear();
     }
 
     /// The effects heard or not: the step's and the slots' gains.
@@ -435,19 +443,57 @@ impl Player {
 
     /// The host's sound lent to a battle (E24 M4 T5b1, design §5.19: the adventure manager's
     /// exit stops the effects, `adventure_manager_exit` 0x4077E0, and lets the map's track play
-    /// on into the battle); none if it is lent already.
+    /// on into the battle); none if it is lent already. The ambient slots' loops kept as they
+    /// stand (E24 M5 T6a: the manager's slots, +0x228, design §5.24), for a plain cut's return.
     pub fn lend(&mut self) -> Option<HostSound> {
+        if self.host.is_some() {
+            self.kept = self
+                .slots
+                .iter()
+                .map(|lane| lane.clip.clone().map(|clip| (clip, lane.volume)))
+                .collect();
+        }
         self.stop_effects();
         self.host.take()
     }
 
     /// The host's sound handed back by the battle (its own streams removed, the map's streams
-    /// still its first). The map's music is not asked for again (MCL-Q47 (a), design §5.19): the
-    /// battle's result's tune plays out and nothing follows until the map asks for a track.
+    /// still its first). Nothing is asked for here: after a switch's battle the map's return
+    /// does it (E24 M5 T6a, design §5.33, MCL-Q47: the lift's loops at the fade in's end, the
+    /// terrain's music at the walk's end after the visit's rest, `Cue::Again`; until then the
+    /// result's tune plays).
     pub fn take_back(&mut self, host: HostSound) {
         self.host = Some(host);
         let on = self.effects_on;
         self.set_effects(on);
+    }
+
+    /// The host's sound handed back by a battle the map handed over by a plain cut (E24 M5 T6a,
+    /// design §5.24's "not built", §5.33, *provisional*: a record's walk's or answer's battle the
+    /// record player cuts to, play's with no find of it), as [`Player::take_back`], then what the
+    /// original's switch and walk's end do after it, which a cut's map (the record's as it
+    /// stood, the battle taking none of its time) does not: the ambient loops the hand-over
+    /// stopped started again from their starts at their volumes (`hero_select`'s restart,
+    /// 0x4180FF: each slot stopped, then the scan, which finds them again around the same
+    /// middle) and the map's track asked for again as `Cue::Again` asks it (0x408141; MCL-Q47),
+    /// at once (*provisional*: the cut's visit's rest, a box after its battle, not waited for).
+    /// The cues it played (for the cues' log).
+    pub fn take_back_cut(
+        &mut self,
+        host: HostSound,
+        library: &mut Library,
+        lines: &mut Vec<String>,
+    ) -> Vec<Cue> {
+        self.take_back(host);
+        let kept = core::mem::take(&mut self.kept).into_iter().enumerate();
+        let mut cues: Vec<Cue> = kept
+            .filter_map(|(slot, kept)| kept.map(|(name, volume)| Cue::Loop { slot, name, volume }))
+            .collect();
+        cues.extend(self.track.clone().map(Cue::Again));
+        for cue in &cues {
+            self.cue(library, cue, lines);
+        }
+        cues
     }
 
     /// The host's sound handed back to whom lent it (E24 M5 T2b, as a battle hands it back to the
@@ -468,12 +514,40 @@ impl Player {
         Some(host)
     }
 
+    /// The track the music opened last as heard (fading out too), none while a battle has the
+    /// sound (the cues' log, E24 M5 T6a).
+    #[must_use]
+    pub fn playing(&self) -> Option<&str> {
+        self.host.as_ref().and_then(HostSound::playing)
+    }
+
     /// The device, for the report.
     pub fn describe(&self) -> String {
         self.host
             .as_ref()
             .map_or_else(|| "sound lent to a battle".to_owned(), HostSound::describe)
     }
+}
+
+/// `play_music` of the map's track `name` on `host` (`Cue::Music`, `Cue::Again`): decoded first
+/// if it is not yet; after a hot seat's cover (`faded`) the music comes back first
+/// (`music_resume`, as a regained focus asks it), then the track asked (E24 M5 T5,
+/// *provisional*).
+fn ask(
+    host: &mut HostSound,
+    faded: &mut bool,
+    library: &mut Library,
+    name: &str,
+    lines: &mut Vec<String>,
+) {
+    if core::mem::take(faded) {
+        host.focus(true);
+    }
+    library.request(name, host);
+    library.collect(host, lines);
+    // stub: MCL-STUB-11 (the terrain's track after a battle from its start, MCL-Q78 (b): the
+    // host's music forgets no place, so `Cue::Again`'s comes back where its fade began)
+    host.request(name, false);
 }
 
 /// A lane's clip started from its beginning, looping, at `volume` (0 while the effects are off).
