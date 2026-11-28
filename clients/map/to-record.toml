@@ -60,7 +60,7 @@ hero_speed = 1
 points = 2000
 sound = true
 seed = 1
-why = "a long walk (16 steps at hero speed 1) across the last warnings and the turn's end: the walk's frames draw the lines, the expiry box after the walk's end"
+why = "a long walk (16 steps at hero speed 1, (4, 4) to (20, 8), 57 300 to 60 500) across the last warnings and the turn's end: the walk's frames draw the lines, the expiry box at the walk's end"
 inputs = [
     { at = 57000, click = [216, 280] }, { at = 57000, pointer = [700, 300] },
     { at = 57300, click = [216, 280] }, { at = 57300, pointer = [700, 300] },

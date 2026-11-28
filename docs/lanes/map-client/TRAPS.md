@@ -257,7 +257,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   build it again (`seat-new-day-quick`: day 1's window over day 2's bar, no `newday.wav`); a
   sequence of the usual hand-over ends the turn after it (the redraw after 7 360 when the start
   came at 4 360: the `seat-*` End Turn at 7 500). Each OK in the cover's first 1 759 ms adds the
-  4-s wait. A sample's channel (the game's handle) is not always the same from run to run where
+  4-s wait; a later one waits for `NewWeek.wav`'s end, 5 759 ms after the cover (part four:
+  `seat-clock-ok`'s OK 2 000 ms into it started Blue's turn 3 759 ms later), so an input meant
+  for the next turn goes after that. A sample's channel (the game's handle) is not always the same from run to run where
   it starts while another plays (`seat-new-month`'s click at 12 300: 0, then 7); its time and
   length are.
 - **A hot seat's views and choices** (M5 T5 part three, design §5.31): the live part's
@@ -271,6 +273,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   millisecond reads as 4 billion ms ago (the expiry's box at the step to 0, the redraw never
   due). `h3map.py` pauses a timed hot seat's timer through the staging (+0x10) and restarts it
   only once the clock stands at 0 (§5.32's sequences build on it).
+- **The clock's sequences are long** (M5 T5 part four, design §5.32): a one-minute turn's expiry
+  box opens at 60 001 and closes itself at 75 001, the next cover in that millisecond, so an
+  input after it is placed by a first run's timeline; record them with `frames --sparse` (about
+  23 ms a step, an 83-s run 29 minutes plus the staging; 55 to 75 ms a step without it) and chain
+  the runs in one script waited for once. A long run's `states.jsonl` and frames take 50 to 70 MB
+  under `--out`: size the ballast with room below (the free bytes modulo 4 GiB toward 1.4 GiB).
+  A step's cost was half `cycle_now`'s tables and DEF palettes read again each millisecond
+  (cached since part four); the rest is the clock's 500 reads and three acknowledgements.
 - **A hero's secondary skills written show at the walk** (M4 T2c, design §5.5): a situation's
   `secondary` is written without a selection (none of another hero to make), after the status
   window at 0 was built; the walk's first step builds it again from the hero. So the skills

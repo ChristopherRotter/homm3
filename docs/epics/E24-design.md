@@ -5554,17 +5554,52 @@ test, the boxes' 15 s: survey `E16-timer-survey.md` §3 to §5, not repeated.
   less than 20 s before the cover's draw stand over the covered view, its box and into the next
   turn, one leaving at each later draw (MCL-Q70): after a box left its 15 s eight of the nine at
   most (the cover's draw takes one), after an OK at once all nine.
-- **The recordings** (as §5.31's; the duration index 0, 1 minute):
-  - `seat-clock`: Red idle for 80 s: each warning's line at the redraw after its due time and its
-    `timeover.wav`, the lines leaving one per draw, the expiry box after 60 s and its own close
-    15 s later, Blue's cover with Red's last lines on it, Blue's OK, the lines leaving in Blue's
-    turn.
-  - `seat-clock-ok`: the same, the expiry box's OK pressed at once (all nine lines on the cover).
-  - `seat-clock-box`: a visit's box open from 45 s to 55 s: the lines written under it show at the
-    first redraw after it, stamped then.
-  - `seat-clock-walk`: a long walk across the last warnings (the walk's frames draw the lines; the
-    box after the walk's end).
-  - **The harness**, beyond §5.31's: the duration set in the hot seat's setup; `Mem` readers and
-    timeline lines for `turn_timer` 0x69D630 (the start, the next warning) and the chat's entries
-    (each line's text, its first draw, its removal); long sequences (`ms` of 80 000 or more) with
-    no input for tens of seconds, the frames only at the screen's changes.
+- **The recordings** (as §5.31's; the duration index 0, 1 minute; part four, in
+  `clients/map/to-record.toml` until part five):
+  - `seat-clock` (83 000 ms): Red idle: each warning's line at the redraw after its due time and
+    its `timeover.wav`, the lines leaving one per draw, the expiry box after 60 s and its own
+    close 15 s later, Blue's cover with Red's last lines on it, Blue's OK 6 s after it
+    (`NewWeek.wav` over: no wait), the lines leaving in Blue's turn.
+  - `seat-clock-ok` (80 000 ms): the same, the expiry box's OK pressed at once (all nine lines on
+    the cover), Blue's OK 2 s after its cover (the start at `NewWeek.wav`'s end).
+  - `seat-clock-box` (61 000 ms): a box over the map from 45 s to 55 s, End Turn's question
+    (`move_reminder`, a hero able to move; Escape) in place of a visit's: the lines written under
+    it show at the first redraw after it, stamped then.
+  - `seat-clock-walk` (62 000 ms): a 16-step walk at hero speed 1 from 57 300 across the last
+    warnings (the walk's frames draw the lines; the box at the walk's end).
+  - `seat-clock-two` (61 000 ms): a 2-minute turn's first warnings (1.5 minutes, 59 seconds).
+  - **The harness**, beyond §5.31's: `Mem.chat`; the timeline's `<ms> warning <next>` (the poll's
+    warning, the timer's +0xC after it) and `<ms> chat <n> <drawn> ...` (each line by its first
+    draw, −1 before it), the live part's `[[chat]]` tables (`text` by its records, `values` the
+    numbers the warning shows); `frames --sparse`, the screen dumped only where the state in
+    memory or an input changed (the same timeline as 1 ms at a time; about 23 ms a step on a
+    still map: an 83-s run 29 minutes); `capture/README.md`, "The turn's clock".
+- **Seen (the recordings, part four)**, each twice alike:
+  - **The schedule** (1 minute, the timer started at 0): the poll's warnings at 30 059 ("30
+    seconds", 29 941 ms left), 50 039 ("9 seconds"), then 1 020 ms apart (the tick's 60-ms grid: a
+    second rounds up to 17 ticks) to 58 199 ("1 second", 1 801 ms left, `next` 0 after it): nine
+    after the first, 627 once, 628 for the rest, so the "every second" warnings drift 20 ms each.
+    Each `timeover.wav` (921 ms) starts in the poll's millisecond on one channel, under a box too
+    (`seat-clock-box`: 50 039 to 54 119 sound, nothing drawn); each line shows at the next view
+    draw (the idle redraw on its 180-ms grid: 30 060, 50 040, 51 120, …, 58 320; the walk's
+    frames, `seat-clock-walk`: 58 199 drawn at 58 200). A 2-minute turn (`seat-clock-two`): "1.5
+    minutes" (630, 89 941 ms left) at 30 059, `next` 29 941; "59 seconds" at 60 059, `next`
+    49 941 (to the 10-s point): the survey's table, each due point met at the tick after it.
+  - **Their lifetime:** "30 seconds", first drawn at 30 060, leaves at 50 220 (50 040 was 19 980 ms
+    after it); in Blue's turn after an OK at once (`seat-clock-ok`) each of the nine leaves at the
+    first of Blue's redraws past its own 20 s (70 099 to 78 379, a second apart: Blue's redraws on a
+    grid from its start, 66 319 + 180 k).
+  - **The box over the map** (`seat-clock-box`): the five lines written under End Turn's question
+    show in its release's millisecond (55 060), all stamped then, and that same draw removes "30
+    seconds" (25 000 ms old); the idle redraw's grid starts again there (55 240, 56 320, …).
+  - **The expiry:** the box at 60 001 (the first millisecond past the limit), GENRLTXT 202 at (240,
+    204), 320 × 192, OK, no sample; a walk under way finishes first (`seat-clock-walk`: its last
+    step at 60 300, the box at the walk's end at 60 500). Left alone it closes itself at 75 001
+    (15 000 ms), the turn's end, Blue's cover and its box in that millisecond, the cover's draw
+    taking one line (eight on the cover, `seat-clock`); its OK at 60 500 (released 60 560) gives
+    the cover with all nine (`seat-clock-ok`).
+  - **Blue's start ages the chat four times:** in `seat-clock` its millisecond (81 060) leaves
+    four of the eight (four view draws in that millisecond, not read: §5.31 counts three builds
+    by their `newday.wav`), then one per redraw (81 240 to 81 780); in `seat-clock-ok` none was
+    old enough then. After an OK 2 000 ms into the cover the start waits for `NewWeek.wav`'s end (66 319 =
+    the cover's 60 560 + 5 759), as §5.31 read.

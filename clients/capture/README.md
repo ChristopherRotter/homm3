@@ -1704,8 +1704,9 @@ kept, `system` 1 for a warning), before that millisecond's box. `frames --sparse
 screen only in a millisecond whose state read from memory differs from the one before (every
 value of the state, the due times among them; the box, the level-up dialog and the status
 window's kind on top) and in an input's millisecond and the next: the same screens at the same
-times (`seat-hand-over-late` gave its recorded timeline, samples and frames), about 29 ms a
-step on a still map instead of 55 to 75; a sequence with a `battle` is refused. The clock's
+times (`seat-hand-over-late` gave its recorded timeline, samples and frames), about 23 ms a
+step on a still map instead of 55 to 75 (the clock's 500 reads and three acknowledgements; the
+palettes' files are read once a run since); a sequence with a `battle` is refused. The clock's
 sequences (`seat-clock*`) wait in `map/to-record.toml`, recorded with it, until part five.
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the

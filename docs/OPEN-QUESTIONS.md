@@ -561,7 +561,9 @@ and into its turn (design §5.31, §5.32). Built as the original's meanwhile. Op
 original's; (b) the client empties the chat's system lines at a hot seat's hand-over, the
 original's behind `--bugs original` for the comparisons. **Recommended (b)** (the lines tell the
 next human of a clock that is not its own; a carry-over the cover's draw makes by accident).
-Blocks nothing; T5's recordings show it (`seat-clock`, `seat-clock-ok`).
+Blocks nothing; T5's recordings show it (part four: `seat-clock`, eight lines on the cover after
+the box's own close, four of them leaving in Blue's start's millisecond, its four view draws;
+`seat-clock-ok`, all nine after an OK at once, each leaving at its own 20 s in Blue's turn).
 
 #### MCL-Q71 — The start's boxes over the covered picture, on the clock (E24 M5 T5, a reading)
 
