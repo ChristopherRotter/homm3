@@ -85,6 +85,56 @@ pub struct Live {
     /// *provisional*: a comparison's `[[cast]]` tables, what the original's memory showed of each;
     /// the engine's from Part B).
     pub casts: Vec<Cast>,
+    /// A hot seat's hand-overs a recording reaches, in order (E24 M5 T5, design §5.31,
+    /// *provisional*: a comparison's `[[seat]]` tables): each new human's view as its start shows
+    /// it.
+    pub seats: Vec<Seat>,
+    /// A hot seat's covered view drawn (E24 M5 T5, design §5.31); none: the view as it is.
+    pub covered: Option<Covered>,
+    /// The screen chat's lines over the view, oldest first (E24 M5 T5 part five, design §5.32:
+    /// a timeline's turn's warnings); none in a still.
+    pub chat: Vec<crate::clock::Warning>,
+}
+
+/// A hot seat's hand-over (E24 M5 T5, design §5.31, *provisional*): a comparison's `[[seat]]`
+/// table, read in the millisecond the colour shown changed (`h3map.py`'s `seat_toml`): what the
+/// new human's start shows after its cover.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Seat {
+    /// The recording's millisecond.
+    pub at: u32,
+    /// The colour shown from then (`shown_player` 0x69778C), the new current player's.
+    pub shown: u8,
+    /// The humans the game was begun with (`begin_humans` 0x699274).
+    pub humans: u8,
+    /// Its kingdom as memory holds it then (no selection yet: its start chooses one).
+    pub kingdom: Kingdom,
+    /// The tiles it has explored.
+    pub explored: Explored,
+    /// Its selection's window as its start's date window first gives way to it (the table's
+    /// `selection`, E24 M5 T5 part three); none: not shown in the recording.
+    pub selection: Option<Status>,
+}
+
+/// A hot seat's covered view as the screen shows it (E24 M5 T5, design §5.31,
+/// `covered_view_new_week` 0x4CA840, *provisional*): every tile drawn unexplored from the map's
+/// corner, the lists' slots empty, the resource bar blank but the date, the shield in the
+/// minimap's place; the buttons as the last draw left them in the new viewer's colours
+/// ([`Live::viewer`]), the frame's picture in the colours it was last drawn in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Covered {
+    /// The colour the frame's picture was last drawn in (the cover draws no frame).
+    pub frame: u8,
+    /// The resource bar's date (the new turn's).
+    pub date: Date,
+    /// The quest log's button's state by the new viewer (`quest_log_state` 0x4039B0).
+    pub quests: bool,
+    /// The resource bar drawn with these amounts (a timed event's resources at the start,
+    /// MCL-Q71: recorded, `seat-timed-event`); none: blank.
+    pub resources: Option<[i32; 7]>,
+    /// The start's first steps done (`minimap_redraw` 0x4C786C over the shield, sleep, cast and
+    /// End Turn enabled 0x4C787C, move hero as it stood): what a start's box shows over the cover.
+    pub started: bool,
 }
 
 /// A spell cast on the map through the spell book (E24 M4 T2d3, design §5.8, *provisional*): a
@@ -1465,6 +1515,9 @@ impl Live {
             level_ups: Vec::new(),
             casts: Vec::new(),
             computer: false,
+            seats: Vec::new(),
+            covered: None,
+            chat: Vec::new(),
         }
     }
 }

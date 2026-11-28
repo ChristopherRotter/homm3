@@ -429,6 +429,16 @@ OUT_OF_GAME, TEAMS, SHOWN_PLAYER, HALL_BITS = 0x1F636, 0x1F879, 0x69778C, (13, 1
 # the resource, +0x3A4 the amount, +0x3A8 the text (the game's string: its characters' pointer
 # at +0x4, its length at +0x8), as status_resource_set 0x416060 writes them for a pile's visit.
 FOUND_RESOURCE, FOUND_TEXT = 0x3A0, 0x3A8
+# The hot seat's hand-over (E24 M5 T5, design §5.31): `covered_view` (set only around a covered
+# draw, cleared before the cover's box), `begin_humans` (the humans the game was begun or loaded
+# with), the game's turn duration (game +0x1F843, 0 to 10: turndur.txt's record, 10 unlimited) and
+# the turn timer's record (E16 timer survey §1: the last warning, the turn's start, the limit, the
+# time to the next warning, the pause's start; clock times, 0 none).
+COVERED_VIEW, BEGIN_HUMANS, TURN_DURATION, TURN_TIMER = 0x699538, 0x699274, 0x1F843, 0x69D630
+TURN_TIMER_FIELDS = ("last", "start", "limit", "next", "paused")
+# The screen chat (E24 M5 T5 part four, design §5.32; structs.toml screen_chat, chat_entry): its
+# capacity's offset (+0x1C, 20) and an entry's size.
+SCREEN_CHAT, CHAT_CAPACITY, CHAT_ENTRY_SIZE = 0x69D7B0, 0x1C, 0x88
 # The message box's buttons (message_box_build 0x4F6990; E17 design §7.19): 0x7801 to 0x780A.
 BOX_BUTTONS = range(0x7801, 0x780B)
 # The box's style (message_box_style 0x699520) and, in styles 7 and 10, the picture chosen
@@ -1622,6 +1632,49 @@ class Mem:
         """The status window's kind shown (the manager's +0x394; E24 M3 T5b2)."""
         return self.i32(self.u32(ADVENTURE_MANAGER_POINTER) + STATUS_SHOWN)
 
+    # -- the hot seat (E24 M5 T5, design §5.31, §5.32) -----------------------------------------
+    def shown_player(self):
+        """The colour the adventure screen is shown for (`shown_player` 0x69778C: a hot seat's
+        current human from its hand-over on; the resource bar's, the buttons' colours)."""
+        return self.i32(SHOWN_PLAYER)
+
+    def covered_view(self):
+        """1 while the view is drawn covered (`covered_view` 0x699538), else 0."""
+        return self.read(COVERED_VIEW, 1)[0]
+
+    def begin_humans(self):
+        """The humans the game was begun or loaded with (`begin_humans` 0x699274): the hand-over
+        covers the view when above 1."""
+        return self.i32(BEGIN_HUMANS)
+
+    def turn_duration(self):
+        """The game's turn duration (game +0x1F843): turndur.txt's record 0 to 10, 10 unlimited."""
+        return struct.unpack("<b", self.read(self.game() + TURN_DURATION, 1))[0]
+
+    def turn_timer(self):
+        """The turn timer's record (0x69D630, E16 timer survey §1) by `TURN_TIMER_FIELDS`."""
+        return dict(zip(TURN_TIMER_FIELDS, struct.unpack("<5I", self.read(TURN_TIMER, 20))))
+
+    def write_turn_timer(self, **fields):
+        """Writes fields of the turn timer's record by their `TURN_TIMER_FIELDS` names (E24 M5
+        T5: the harness's pause through a hot seat's staging, its restart at a sequence's 0)."""
+        for name, value in fields.items():
+            self.write_u32(TURN_TIMER + 4 * TURN_TIMER_FIELDS.index(name), value)
+
+    def chat(self):
+        """The screen chat's lines (`screen_chat` 0x69D7B0, structs.toml; E24 M5 T5 part four,
+        design §5.32), oldest first: (text, the clock at its first draw or 0, system 0 or 1)
+        each; the text as the entry holds it (a warning's trailing tab kept)."""
+        entries, first, count = struct.unpack("<IiI", self.read(SCREEN_CHAT, 12))
+        capacity = self.i32(SCREEN_CHAT + CHAT_CAPACITY)
+        lines = []
+        for k in range(count if 0 < capacity <= 64 else 0):
+            raw = self.read(entries + CHAT_ENTRY_SIZE * ((first + k) % capacity), CHAT_ENTRY_SIZE)
+            text = raw[:0x80].split(b"\0", 1)[0].decode("latin-1")
+            shown_at, system = struct.unpack_from("<IB", raw, 0x80)
+            lines.append((text, shown_at, system))
+        return lines
+
     def found(self):
         """What the status window of a resource found shows (kind 6; E24 M4 T2a1, design §5.3):
         {resource, amount, text}, the manager's +0x3A0, +0x3A4 and +0x3A8 (the last pile's)."""
@@ -2702,6 +2755,14 @@ class Mem:
             kind, = struct.unpack_from("<i", raw, at + 0x1E)
             if kind in (HERO_OBJECT, BOAT_OBJECT) and raw[at + 0xD] & ENTRANCE and word != 0xFFFFFFFF:
                 out[(i % side, i // side)] = ("hero" if kind == HERO_OBJECT else "boat", word)
+        # A hot seat's start (E24 M5 T5 part three, `h3map.stage_start`): the current player's
+        # selected hero, lifted off its tile under the cover, on its record's tile.
+        if getattr(self, "lifted_standing", False):
+            index = self.player(self.current_player())["selected"]
+            if index >= 0:
+                x, y, level = self.hero(index)["tile"]
+                if level == z:
+                    out.setdefault((x, y), ("hero", index))
         return out
 
     def map_heroes(self, z=0):

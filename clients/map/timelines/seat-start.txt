@@ -1,0 +1,59 @@
+0 view -5 -4 0
+0 objects 0
+0 cycles 0 0
+0 cursor 0 0 700 300
+0 buttons 1 1
+0 points 1700
+200 cycles 1 1
+400 cycles 2 2
+500 screen 368,367,432,397
+560 screen 272,172,536,436
+600 cycles 3 3
+800 cycles 4 4
+1000 cycles 5 5
+1200 cycles 6 6
+1400 cycles 7 7
+1600 cycles 8 8
+1800 cycles 9 9
+2000 cycles 10 10
+2200 cycles 11 11
+2400 cycles 12 12
+2600 cycles 13 13
+2800 cycles 14 14
+3000 cycles 15 15
+3200 cycles 16 16
+3400 cycles 17 17
+3600 cycles 18 18
+3800 cycles 19 19
+4000 cycles 20 20
+4200 cycles 21 21
+4400 cycles 22 22
+4560 objects 2
+4560 cursor 1 0 700 300
+4560 buttons 0 1
+4560 timer 1 0
+4560 screen 8,8,795,591
+4600 cycles 23 23
+4740 objects 3
+4740 screen 288,241,789,548
+4800 cycles 24 24
+4920 objects 4
+4920 screen 288,241,789,549
+5000 cycles 25 25
+5100 objects 5
+5100 screen 288,240,789,549
+5200 cycles 26 26
+5280 objects 6
+5280 screen 288,240,789,550
+5400 cycles 27 27
+5460 objects 7
+5460 screen 288,241,789,556
+5600 cycles 28 28
+5640 objects 8
+5640 screen 288,241,789,563
+5800 cycles 29 29
+5820 objects 9
+5820 screen 289,240,789,566
+6000 objects 10
+6000 cycles 30 30
+6000 screen 288,240,789,566

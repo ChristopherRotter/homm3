@@ -9,13 +9,15 @@
 //! read the last start's in the other players' turns.
 //!
 //! Not here: the Eye value, 0 while the engine has no Eye of the Magi (`AI-STUB-10`; the vision
-//! circle with T2h); the threat fold's search is the engine's reach (`AI-STUB-11`) and its
-//! defence recruits wait for increment 3 (`AI-STUB-12`); the Grail target (`AI-STUB-15`, T2i). The
+//! circle with T2h); the threat fold's defence recruits wait for increment 3 (`AI-STUB-12`); the
+//! Grail target (`AI-STUB-15`, T2i). Since T2i0 the fold searches with the computer's search
+//! (`h3_adventure::search`, mode 3; `AI-STUB-11` lifted). The
 //! difficulty's weights are a function of the difficulty alone (`fight::blend`).
 
 use alloc::vec;
 use alloc::vec::Vec;
 
+use h3_adventure::{NoAsks, SearchFog, SearchJumps, SearchMode, SearchStart};
 use h3_battle::estimate::{CasterRecord, EstimateHero};
 use h3_content::{CreatureTypeId, ResourceId};
 use h3_contracts::{HeroId, PlayerId, TownId};
@@ -123,9 +125,12 @@ type Threats = (Vec<(HeroId, i32)>, Vec<(TownId, u8)>);
 
 /// The threat fold (`ai_enemy_reach_fold` 0x4280E0 with `ai_town_threat_vtable` 0x63B670 through
 /// `ai_reach_fold_towns` 0x4282B0; CPU-STA-004): every town's count cleared and every enemy hero's
-/// threat; then from each hero on the map of a player not of `player`'s team, its search with its
-/// day's maximum now plus 800 (`AdventureState::reach_with`, the engine's reach: `AI-STUB-11`),
-/// and for each of `player`'s towns whose entrance it reaches and that it would take
+/// threat; then from each hero on the map of a player not of `player`'s team, the computer's
+/// search from its tile (mode 3, an enemy's reach: `AdventureState::computer_search`, CPU-PTH-001;
+/// in a boat as a boat node) with its day's maximum now plus 800 as its bound and its points (at
+/// `ai_enemy_reach_fold` 0x4281F8, with no danger map: none is set at the turn's start), and for
+/// each of `player`'s towns whose entrance's place node it reaches (`ai_reach_fold_towns` 0x4282B0,
+/// node +4 bit 0 of the place slot) and that it would take
 /// ([`fight::captures`]), the hero's threat 5 000 000 over `player`'s count of towns and the
 /// town's count one more (a byte). The engine has no defeated player before E10.
 // rule: CPU-STA-004
@@ -151,12 +156,23 @@ fn threats(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Threats 
         .filter(|hero| !adventure.allied(hero.owner, player))
         .filter_map(|hero| state.hero(hero.id).map(|details| (hero, details)));
     for (hero, details) in enemies {
-        // stub: AI-STUB-11
         let reach = adventure
             .day_maximum_of(core, part, state.heroes(), hero.id)
             .and_then(|most| {
                 let points = most.saturating_add(REACH_BEYOND);
-                adventure.reach_with(core, part, state.heroes(), (hero.id, points))
+                let start = SearchStart {
+                    player,
+                    hero: hero.id,
+                    from: hero.pos,
+                    boat: hero.boat.is_some(),
+                    bound: points,
+                    points,
+                    mode: SearchMode::Threat,
+                    fog: SearchFog::Computer,
+                    window: None,
+                    jumps: SearchJumps::default(),
+                };
+                adventure.computer_search(core, part, state.heroes(), &start, &NoAsks)
             });
         let enemy = Fighter {
             on_map: hero,
@@ -168,7 +184,7 @@ fn threats(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Threats 
         for ((&town, entrance), count) in own.iter().zip(&entrances).zip(&mut counts) {
             let reached = entrance
                 .zip(reach.as_ref())
-                .is_some_and(|(pos, reach)| reach.points_left(pos).is_some());
+                .is_some_and(|(pos, reach)| reach.node(pos).is_some());
             if reached {
                 let (battle, spells) =
                     attacker.get_or_insert_with(|| fight::battle_hero(rules, enemy));

@@ -86,7 +86,26 @@ pub struct Sequence {
     /// `"retreat"`, or a list of them, one per battle): the harness plays the original's battle
     /// by it; the viewer plays the record's (E24 M4 T5b2), so it only accepts it.
     pub battle: Option<BattlePlan>,
+    /// A hot seat's humans' names from Red on (E24 M5 T5, design §5.31: the situation's colours
+    /// with a hero in their order, the first ones; the rest computers): each human's hand-over
+    /// asks for its seat by its name ([`Sequence::names`]). None: a single human's game.
+    pub hot_seat: Option<Vec<String>>,
+    /// A hot seat's turn duration (`turndur.txt`'s record, 0 to 10, [`UNLIMITED`] none; E24 M5
+    /// T5): a timed turn's clock runs from each human's start ([`Sequence::timed`]).
+    pub duration: Option<u8>,
+    /// A hot seat's game's start (E24 M5 T5, `seat-start`): its 0 is the first human's cover with
+    /// its box, the map under it its own.
+    #[serde(default)]
+    pub start: bool,
+    /// A sound run (E24 M4 T1b2's harness; read since E24 M5 T5 part three): the original waits
+    /// for its samples (the hand-over's `NewWeek.wav`), and its samples are compared
+    /// (`timelines/<id>-sounds.txt`).
+    #[serde(default)]
+    pub sound: bool,
 }
+
+/// `turndur.txt`'s record of an unlimited turn (E24 M5 T5: the harness's `DURATION_UNLIMITED`).
+pub const UNLIMITED: u8 = 10;
 
 /// A sequence's battle plan (E24 M4 T5b2): one plan, or one per battle in order.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -245,6 +264,42 @@ impl Sequence {
             Some(1) => Ok(true),
             Some(other) => Err(format!("{}: `blackout` {other} is not 0 or 1", self.id)),
         }
+    }
+
+    /// A hot seat's humans' names (E24 M5 T5), checked as the harness checks them (`h3map.py`'s
+    /// `hot_seat_of`): two to eight names of ASCII letters and digits, `duration` 0 to
+    /// [`UNLIMITED`] and `start` only with them. None: a single human's game.
+    ///
+    /// # Errors
+    /// What breaks a rule.
+    pub fn names(&self) -> Result<Option<&[String]>, String> {
+        let Some(names) = &self.hot_seat else {
+            if self.duration.is_some() || self.start {
+                return Err(format!(
+                    "{}: `duration` or `start` without a `hot_seat`",
+                    self.id
+                ));
+            }
+            return Ok(None);
+        };
+        let named = |n: &String| !n.is_empty() && n.chars().all(|c| c.is_ascii_alphanumeric());
+        if !(2..=8).contains(&names.len()) || !names.iter().all(named) {
+            return Err(format!(
+                "{}: `hot_seat` is two to eight names of letters and digits",
+                self.id
+            ));
+        }
+        if self.duration.is_some_and(|d| d > UNLIMITED) {
+            return Err(format!("{}: `duration` is 0 to {UNLIMITED}", self.id));
+        }
+        Ok(Some(names))
+    }
+
+    /// Whether a hot seat's turns are timed (E24 M5 T5: a `duration` but [`UNLIMITED`]): the turn's
+    /// clock runs from each human's start to its turn's end (the timeline's `timer` lines).
+    #[must_use]
+    pub fn timed(&self) -> bool {
+        self.hot_seat.is_some() && self.duration.is_some_and(|d| d != UNLIMITED)
     }
 
     /// Whether the sequence walks a hero (a click, a direction key without Ctrl, the hero's

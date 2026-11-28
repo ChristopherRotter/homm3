@@ -21,7 +21,7 @@ use h3_map_view::engine;
 use h3_map_view::hover::{self, Facts, Hover};
 use h3_map_view::levels::LevelUp;
 use h3_map_view::live::{
-    Arrow, Buttons, Cast, Chosen, Drawn, Explored, Kingdom, Live, LiveBoat, LiveHero, Moment,
+    Arrow, Buttons, Cast, Chosen, Drawn, Explored, Kingdom, Live, LiveBoat, LiveHero, Moment, Seat,
     Status, TOWN_CLASS, Turn,
 };
 use h3_map_view::objects::{self, DrawLists};
@@ -609,8 +609,16 @@ pub fn apply_live(
     if let Some(cycles) = number("river_cycles")? {
         live.moment.river_cycles = cycles;
     }
-    if let Some(frames) = number("frames")? {
-        live.moment.frames = frames;
+    // The objects' frame steps the screen shows: memory's less one, so −1 where nothing was
+    // drawn at the frozen clock since they were written 0 (E24 M5 T5 part three: a hot seat's
+    // start, its cover over the map; the start's redraw then draws step 0), taken modulo 2³².
+    if let Some(value) = table.get("frames") {
+        let frames = value
+            .as_integer()
+            .and_then(|n| i32::try_from(n).ok())
+            .filter(|&n| n >= -1)
+            .ok_or_else(|| failed("`frames` is not a count (or -1)"))?;
+        live.moment.frames = frames.cast_unsigned();
     }
     if let Some(viewer) = number("viewer")? {
         live.viewer = u8::try_from(viewer)
@@ -889,6 +897,18 @@ pub fn apply_live(
             )
         })?;
     }
+    if let Some(value) = table.get("seat") {
+        // A hot seat's hand-overs the recording reached (E24 M5 T5, design §5.31).
+        let seats: Option<Vec<Seat>> = value
+            .as_array()
+            .and_then(|a| a.iter().map(|v| seat(v, art.size, art.levels)).collect());
+        live.seats = seats.ok_or_else(|| {
+            failed(
+                "`[[seat]]` is not at, shown, current, humans, kingdom = { ... } and explored \
+                 (rows), with a selection = { ... } maybe",
+            )
+        })?;
+    }
     if let Some(value) = table.get("level_up") {
         // The level-ups the recording reached (E24 M4 T2c, design §5.5).
         live.level_ups = LevelUp::read_all(value).ok_or_else(|| {
@@ -981,6 +1001,36 @@ fn explored(value: &toml::Value, size: usize, levels: usize) -> Option<Explored>
         }
     }
     Some(explored)
+}
+
+/// A `[[seat]]` table of a map of `size` and `levels` (E24 M5 T5, `h3map.py`'s `seat_toml`):
+/// `at`, `shown` (a colour), `current` (the same colour: the new current player's), `humans`,
+/// `kingdom` ([`Kingdom::read`]), `explored` (as the live part's) and maybe `selection` (a
+/// status, [`Status::read`]); none for anything else.
+fn seat(value: &toml::Value, size: usize, levels: usize) -> Option<Seat> {
+    let table = value.as_table()?;
+    let int = |key: &str| table.get(key)?.as_integer();
+    let colour = |key: &str| {
+        int(key)
+            .and_then(|n| u8::try_from(n).ok())
+            .filter(|&c| c < 8)
+    };
+    let shown = colour("shown")?;
+    if colour("current")? != shown {
+        return None;
+    }
+    let selection = match table.get("selection") {
+        Some(value) => Some(Status::read(value)?),
+        None => None,
+    };
+    Some(Seat {
+        at: u32::try_from(int("at")?).ok()?,
+        shown,
+        humans: u8::try_from(int("humans")?).ok()?,
+        kingdom: Kingdom::read(table.get("kingdom")?)?,
+        explored: explored(table.get("explored")?, size, levels)?,
+        selection,
+    })
 }
 
 /// An arrow of `live.toml`'s `path` (1 to 50: the path DEF's frames).

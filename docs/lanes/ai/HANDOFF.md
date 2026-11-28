@@ -32,18 +32,19 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `hexconv` run sets `accumulate = 4`, `chunk_align = 32` (T31); a long run stops early (`[gate]
   futility`, T36); a bench A/B sets `same_start` (T38b; `TRAPS.md`, Python). **Paused after
   increment 10** (the user at T45, AI-Q23): increment 11 is expert iteration when E25 resumes.
-- **Open pull requests:** `ai/e31-t2h` (T2h, `cross-lane`). Merged: #1208 (T2g), #1203 (T2f),
+- **Open pull requests:** #1222 (`ai/e31-t2i0`, T2i0, `cross-lane`). Merged: #1212 (T2h), #1208 (T2g), #1203 (T2f),
   #1197 (T2e), #1192 (`master`'s build after #1190), #1190 (T2d), #1184 (T2c), #1177 (T2b),
   #1172 (T2a), #1163 (the shared module PR); #1195 (the same fix) closed. **Pending for the lane's next `shared/` pull request:** the
   `benches/README.md` row of T2a's workload; ADR-0030's note that the simulated combat (AI-Q34)
-  and the spell values (AI-Q36) are `h3_battle::estimate`'s.
+  and the spell values (AI-Q36) are `h3_battle::estimate`'s, and point 4's that the computer's
+  query is the ai lane's `h3_adventure::search` (AI-Q41).
 - **Versions:** battle action encoding v13, observation encoding v23 (E25 T38a: the reach
-  block), replay format v32 (CLT-Q40), the adventure env's action encoding v22 (E09 T58a2), C ABI
+  block), replay format v32 (CLT-Q40), the adventure env's action encoding v24 (E09 T59a), C ABI
   v38 (E25 T38a; v37 `h3_batch_choice`); the computer player's `POLICY_VERSION` 1 and memory
   encoding v4 (`MEMORY_ENCODING_VERSION`, E31 T2f: the artifacts' mean) (`docs/08-work-process.md`,
-  "Versions"). Next ids: AI-Q41, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-22;
+  "Versions"). Next ids: AI-Q42, AI-QUIRK-5 (AI-QUIRK-1 reserved for the slips), AI-STUB-24;
   CPU-SIM-013, CPU-STA-009, CPU-SPL-008, CPU-SKL-004, CPU-ART-012, CPU-ARM-006, CPU-TWN-006,
-  CPU-OBJ-013; the survey's §5.5 #74.
+  CPU-OBJ-013, CPU-PTH-008; the survey's §5.5 #80.
 - **E31 in progress** (the original's computer player; refined 2026-11-21, AI-Q22:
   `docs/epics/E31-original-computer-player.md`, record `E31-log.md`, closed increments
   `E31-archive.md`, the survey `docs/rules/surveys/E31-computer-player.md`, the design note
@@ -65,11 +66,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   dwelling and town values (`armies.rs`, `towns.rs`, CPU-ARM-001 to -005, CPU-TWN-001 to -005,
   AI-QUIRK-2 fixed; not cut, AI-Q38); the object value and the vision circle (`objects.rs` with
   `fights.rs` and `visits.rs`, `vision.rs`, CPU-OBJ-001 to -012; not cut, AI-Q39;
-  `AdventureState::tile_index` public, AI-Q40), all `expect(dead_code)` until T2i calls them.
-  `computer-turns-towns-36` at 309 M Ir (the threat fold's searches, the gains, the mean).
-  **Next: T2i**, the planning (`QUEUE.md`): propose a cut by size (the user asked for smaller
-  sessions). Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is
-  done whole.
+  `AdventureState::tile_index` public, AI-Q40), all `expect(dead_code)` until T2i calls them;
+  **T2i0** inserted and done (AI-Q41): the original's computer pathfinder in `h3-adventure`
+  (`h3_adventure::search`, `cross-lane`, CPU-PTH-001 to -007; survey §1.11), the threat fold on it
+  (AI-STUB-11 lifted). `computer-turns-towns-36` re-baselined at T2i0 (the fold's searches).
+  **Next: T2i**, the planning, whole (AI-Q41; `QUEUE.md` says which search each part runs).
+  Then E13 (refined in shape, `docs/epics/E13-adventure-ai.md`) once E10 is done whole.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -77,6 +79,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **The computer player (E31)** (its coverage, its workload, the memory), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-27 — E31 T2i0: the computer's search
+
+- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
+  the user's repo folder at the start (the PC left mid-session). T2i measured 2 860 instructions,
+  but its searches are the original's computer pathfinder: the user chose it first and whole, in
+  `h3-adventure`, the fog by the variant, T2i then whole (AI-Q41). Three fresh readers, a blind
+  re-read of the five slips, two worker sub-agents in turn on a fixed design, one for the speed.
+  The human reach's workloads flat; `computer-turns-towns-36` +300.6 % (re-baselined: the threat
+  fold's computer search, halved by a tuning pass with every search's result unchanged).
 
 ### 2026-11-27 — E31 T2h: the object value
 
@@ -96,14 +108,3 @@ Moved to `TRAPS.md`, in four groups: **Ownership** (cross-lane encodings and rep
   The town fixtures needed their starting gold cleared and fight values set (`TRAPS.md`). Five of
   my hand expectations were wrong, the port right. The workload +0.00 %; the scoped verify with
   the original data passed (coverage 31 minutes, bench-check 27).
-
-### 2026-11-26 — E31 T2f: the artifacts
-
-- A cloud clone; `Heroes3.exe`, the two bitmap LODs, `maps.tar` and `extracted.tar` staged from
-  the user's repo folder at the start. Measured 7.0 KB, about 2 600 instructions: the user chose
-  no cut, the morale value moved into `h3_battle::estimate`, the equipped value to increment 3
-  (AI-Q37); the bans reader they approved was not needed (the mean reads the setup's flag, not
-  the map's bans). The VM restarted during the setup's baseline; `master` had moved to dc70cf8
-  (T57 merged), whose CI stood for it. The test core refuses foreign keys: the content is read by
-  the original packs' handles (`TRAPS.md`). First build +64 % on the workload; two wastes removed
-  (+34.8 %, re-baselined). Four of my test expectations were wrong, the port right.

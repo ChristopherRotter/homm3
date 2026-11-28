@@ -16,21 +16,7 @@ since T4a, `MCL-STUB-7` (a screen of M6 or M7 or a decision the view does not as
 since T4c. T1 was cut in three at its start
 (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done 2026-11-25), T3 in two (T3a done
 2026-11-25, T3b 2026-11-26), T4 in three (T4a done 2026-11-26, T4b 2026-11-26 in two sessions, T4c 2026-11-27 kept whole,
-in four parts). Next: T5.
-
-### E24 M5 T5 — the hand-over and the clock
-
-- **Scope:** the original's human start in a hot seat read whole (`next_player_turn` 0x4C6FE0's
-  human branch at 0x4C7710: the covered view 0x699538, GENRLTXT 14 "%s's turn.",
-  `turn_start_screen` 0x419E00; GENRLTXT 352 "It's %s's turn." read for its caller) and its turn
-  timer (`turn_time_expired_end` 0x4087F3: GENRLTXT 202; the warnings, GENRLTXT 627 to 630),
-  recorded under Wine in hot seat (the harness's `hot_seat`, two humans and a turn's duration),
-  built on the session's clock (the duration from `begin::Game`, CLT-STUB-11's lift with the
-  client lane).
-- **Acceptance:** the hand-over and the clock's boxes as recorded, frame by frame; the scoped
-  verify.
-- **Depends on:** T3b (T4a for the clock's input). **Status:** queued; original data and Wine
-  needed.
+in four parts), T5 kept whole (done 2026-11-28 in five parts). Next: T6.
 
 ### E24 M5 T6 — the battles in play
 
@@ -42,7 +28,10 @@ in four parts). Next: T5.
   AI); the result in each human's view. With them a plain cut's battle (a record's walk's, an
   answer's the record player passes over: a dwelling's guards, Pandora's Box; design §5.20)
   restarting the ambient loops at its hand-back as a switch's lift does (T1c built it for the
-  switch's battles only, design §5.24: `dwellings-guards-s1`'s loop silent after its won battle).
+  switch's battles only, design §5.24: `dwellings-guards-s1`'s loop silent after its won battle); and the
+  terrain's music at the return as the original's, which restarts the track from its start at once
+  (MCL-Q47, answered by the user's ear at the M4 hand test, 2026-11-27: the reading's silence was
+  wrong; where the restart comes from read first, then built).
 - **Acceptance:** each kind played in a hot-seat game; the switches as recorded; the scoped
   verify.
 - **Depends on:** T4; the client lane's part of `CLT-STUB-4` and `-5`. **Status:** queued; cut
@@ -65,6 +54,12 @@ in four parts). Next: T5.
 - **Depends on:** T7. **Status:** queued.
 
 ## Inbox
+
+- 2026-11-27 (this lane, E24 M5 T5; **for the user to place**): MCL-Q11 (c) is settled by ear
+  (the M4 hand test's part 5: each `HORSE2x` is its terrain's `HORSE0x` with more footsteps, as on a
+  road). The option it asked for: a step on a road of terrain x plays `HORSE2x` (no 28: water), the
+  original's set by default and for the comparisons. A small task (the sound's settings, the step's
+  road read from the view's tile); not in M5's scope.
 
 - 2026-11-27 (the town lane, E09 T58b, `town/e09-t58b`, `cross-lane`; **in your paths, one line;
   for your review**): protocol **v86** adds `MarketWindow::artifact_sales` (a town's artifact sale:

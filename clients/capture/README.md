@@ -31,7 +31,7 @@ adventure).
 | `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond, the DLL's dequantizers (below, "The clips"), when a clip's sound starts on the stand-in Miles (E27 M2 T5b2: `start`, below, "The clips' sound on the game's run"); at the game's x87 control word 0x27F (E17 M6 T6c1). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `test_h3drive.py` | Checks of the driver's parts that need no game, Wine or display, its commands recorded (E17 M7 T4: a key or button an action holds let go at the game's stop and start; E24 M4 T6: the game's disk check before the start): `python3 -m unittest test_h3drive` from here. |
-| `test_h3map.py` | The same for `h3map.py` and `h3lod.py` (E24 M4 T6): the staging's checks and writes, `frames`' kept live parts, the engine's binaries checked, the kept texts' alphabet against `h3-map-view`'s `tests/texts.rs`: `python3 -m unittest test_h3map` from here. |
+| `test_h3map.py` | The same for `h3map.py` and `h3lod.py` (E24 M4 T6): the staging's checks and writes, `frames`' kept live parts, the engine's binaries checked, the kept texts' alphabet against `h3-map-view`'s `tests/texts.rs`; since E24 M5 T5 the hot seat's set-up, checks and timeline lines: `python3 -m unittest test_h3map` from here. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`); since E08 T90 the dwellings' records, the players' teams, the map objects' class and subclass, a tile's blocked and visitable bits, a Refugee Camp's words, the hire dialog (`dwellings`, `teams`, `objects`, `access`, `camp`, `recruit_dialog`), the status bar's text, a player's human flag; since E09 T54 the Artifact Merchants' stock and the town screen's town (`stock`, `screen_town`). |
@@ -1531,8 +1531,9 @@ recorded silent. Sequences recorded before the viewer plays them wait in a
 file of their own: `frames --sequences <file> --no-check` records them (the frame check left out),
 each moved into `sequences.toml` once the viewer plays it (T1b1's in `map/to-record.toml`, moved by
 T1b2, the file removed). Since E24 M4 T6 (the reviewer's R6-7) only a run of `sequences.toml`'s
-own sequences that is not a sound run keeps its live part in `timelines/` (as recorded or new and
-exact at 0); another's stays under `<out>/<id>/live.toml`, and once its entry is in
+own sequences keeps its live part in `timelines/` (as recorded or new and exact at 0; a sound
+run's too since E24 M5 T5 part three, a hot seat's start's with its frame at 0 left to the frame
+check); another's stays under `<out>/<id>/live.toml`, and once its entry is in
 `sequences.toml`, `frames --only <id> --reuse` (the same `--out`) keeps it and runs the frame
 check. A run with an
 `xdd.dll` built before T1b1 fails as stale where it reads the acknowledgement whole (15 fields,
@@ -1661,6 +1662,54 @@ part gets a `[[battle]]` table (`at`, `winner` 0 the attacker, 1 the defender, �
 without losses, a retreat): the battle's own draws follow real time. A sound run's samples during
 the battle are left out. T5a's sequences (`battle-*`) waited in `map/to-record.toml` until T5b2
 moved them into `sequences.toml` as scripted games (the file removed).
+
+**A hot seat** (E24 M5 T5, design §5.31): a sequence's `hot_seat` (the humans' names from Red on,
+two to eight, letters and digits: typed into the hot-seat dialog, `h3adv.to_hot_seat`; the
+situation's other colours with a hero are computers) begins the map as a hot seat, its
+`duration` (turndur.txt's record 0 to 10, 10 Unlimited: the advanced options' bar, its left
+arrow pressed from 10 before Begin; `seed` set just before Begin) its turns' clock; `stage`
+checks the humans, `begin_humans` and the game's duration (`check_hot_seat`) and stages Red's
+first turn as a single scenario's (with sound after the start box's samples played out: its OK
+holds the start while `NewWeek.wav` plays, and a click meanwhile is lost). A timed turn's clock
+is paused through the staging (the timer's +0x10) and restarted at the sequence's 0, once the
+clock stands there (a start ahead of the clock reads as expired). With `start = true` the
+sequence's 0 is the first human's cover at the game's start instead (`stage_start`: the clock
+frozen on the scenario list, Begin clicked, the map loaded and covered on the frozen clock; a
+situation that stages nothing after the start, `start_staged`; the samples since Begin listed,
+the cover's at −1; its frame at 0 compared by the frame check alone, the still at 0 not: since
+E24 M5 T5 part three the viewer draws the cover; its live part holds the first human's selected
+hero, lifted under the cover, on its record's tile: `Mem.lifted_standing`, and `frames` −1:
+nothing drawn at the frozen clock since the steps were written 0). The timeline
+has, a hot seat's only, `<ms> shown <colour>` (`shown_player` 0x69778C), `<ms> covered <0|1>`
+(`covered_view` 0x699538: cleared before the cover's box, so never seen on the frozen clock)
+and `<ms> timer <started> <paused>` (the turn timer's +4 and +0x10 set) where they change; in
+each millisecond the colour shown changes the live part gets a `[[seat]]` table after the
+`[[turn]]` tables (`seat_toml`: `at`, `shown`, `current`, `humans`, the shown colour's
+`kingdom` and `explored` rows as memory holds them, what its start shows; since part three its
+`selection`, the status window its selection shows when its start's date window first gives way
+to it, none when the run ends before). A situation may give
+the map's timed events (`events`, each `message`, `resources`, `players` by colour and `day`;
+once, for humans). The hand-over's sequences are sound runs of `sequences.toml` since E24 M5 T5
+part three (their timelines and samples kept by hand as `timelines/<id>.txt` and
+`<id>-sounds.txt`; the viewer's `sequences` compares its samples with the second without the
+channels).
+
+**The turn's clock** (E24 M5 T5 part four, design §5.32): a hot seat's timeline has too `<ms>
+warning <next>` in each millisecond the turn timer gave a warning (its +0 moved, its start not;
+`next` its +0xC, the time to the next warning, 0 none) and `<ms> chat <n> <drawn> ...` where the
+screen chat changes (`Mem.chat`, `screen_chat` 0x69D7B0: its `n` lines oldest first, each by the
+millisecond of its first draw, −1 until then); each line the chat takes appends a `[[chat]]`
+table to the live part in its millisecond (`at`, `text` by its records as the boxes' texts are
+kept, `system` 1 for a warning), before that millisecond's box. `frames --sparse` dumps the
+screen only in a millisecond whose state read from memory differs from the one before (every
+value of the state, the due times among them; the box, the level-up dialog and the status
+window's kind on top) and in an input's millisecond and the next: the same screens at the same
+times (`seat-hand-over-late` gave its recorded timeline, samples and frames), about 23 ms a
+step on a still map instead of 55 to 75 (the clock's 500 reads and three acknowledgements; the
+palettes' files are read once a run since); a sequence with a `battle` is refused. The clock's
+sequences (`seat-clock*`), recorded with it, waited in `map/to-record.toml` until part five moved
+them into `sequences.toml` (the file removed; a step sound's loop among a sound run's samples
+compared since, its loops 0).
 
 **The frame check** (E24 M2 T2, design §3.6): after each run `frames` has the viewer replay the
 sequence without the original (`h3-map-view sequences <id> --frames <out>/<id> --live
