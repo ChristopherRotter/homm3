@@ -16,26 +16,54 @@ since T4a, `MCL-STUB-7` (a screen of M6 or M7 or a decision the view does not as
 since T4c. T1 was cut in three at its start
 (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done 2026-11-25), T3 in two (T3a done
 2026-11-25, T3b 2026-11-26), T4 in three (T4a done 2026-11-26, T4b 2026-11-26 in two sessions, T4c 2026-11-27 kept whole,
-in four parts), T5 kept whole (done 2026-11-28 in five parts). Next: T6.
+in four parts), T5 kept whole (done 2026-11-28 in five parts), T6 in four by the user at its start
+(2026-11-28: T6a now, then T6b to T6d; the battle client's parts of T6c and T6d this lane's, in
+`cross-lane` pull requests). Next: T6a's rest.
 
-### E24 M5 T6 — the battles in play
+### E24 M5 T6a — a human's attack played live
 
-- **Scope:** a human's attack played live in the window (the battle client's `GameSeat` on the
-  in-process session, the human's commands from the battle's screen); a defended battle (another
-  human's hero attacking: the original's switch read and recorded, `MCL-STUB-3` lifted); a battle
-  between two humans (`CLT-STUB-5`, with the client lane: one seat over both sides, each command
-  its side's player's); Auto Combat (`CLT-STUB-4`: the host plays the human's side by the battle
-  AI); the result in each human's view. With them a plain cut's battle (a record's walk's, an
-  answer's the record player passes over: a dwelling's guards, Pandora's Box; design §5.20)
-  restarting the ambient loops at its hand-back as a switch's lift does (T1c built it for the
-  switch's battles only, design §5.24: `dwellings-guards-s1`'s loop silent after its won battle); and the
-  terrain's music at the return as the original's, which restarts the track from its start at once
-  (MCL-Q47, answered by the user's ear at the M4 hand test, 2026-11-27: the reading's silence was
-  wrong; where the restart comes from read first, then built).
-- **Acceptance:** each kind played in a hot-seat game; the switches as recorded; the scoped
+- **Scope:** a walk's or an answer's battle against a monster, guards or a neutral (the human
+  attacking) played live in play's window: the battle client's `GameSeat` on the in-process
+  session, the human's commands from the battle's screen, the other side the host's (the original's
+  battle AI, `h3_battle_ai::choose`); the map after it laid out from the record, each human's view
+  the engine's; the hot seat's clock held through it (MCL-Q75 (b), the user 2026-11-28); a plain
+  cut's battle restarting the ambient loops at its hand-back as a switch's lift does (design §5.24:
+  `dwellings-guards-s1`'s loop silent after its won battle); the terrain's music at the return as
+  the original's (MCL-Q47, read at T6a: design §5.33); `MCL-STUB-6` lifted.
+- **Acceptance:** each kind (a monster attacked, a guard zone entered, an answer's fight) played in
+  a hot-seat game under Xvfb, `--check` exact; the sounds by `--cues`; `drawn` as recorded; the
+  scoped verify.
+- **Depends on:** T5. **Status:** in progress (`map-client/e24-m5-t6a`; part one, the session's
+  side, done 2026-11-28).
+
+### E24 M5 T6b — the defended and the two humans' battles read and recorded
+
+- **Scope:** another human's hero attacking a human's hero and town in a hot seat, read and
+  recorded under Wine (`h3map.py`'s `hot_seat`): the cover before it (`adventure_battle` 0x4AE194
+  to 0x4AE233: GENRLTXT 48 with 49, 50 or 430, the cover with the defender's colour; design §5.31,
+  "A defended battle's cover"), the one combat screen with both sides by mouse, the return to the
+  attacker's view; what `MCL-STUB-3` and `CLT-STUB-5` need; `seat-*` sequences.
+- **Acceptance:** each recorded twice the same; the readings in the design.
+- **Depends on:** T6a. **Status:** queued.
+
+### E24 M5 T6c — the defended and the two humans' battles built
+
+- **Scope:** `MCL-STUB-3` (play and the record player hand a defended battle over, with its
+  cover) and `CLT-STUB-5` (one battle seat over both humans' sides, each command its side's
+  player's: this lane's change in `h3-battle-client`, a `cross-lane` pull request with the user's
+  consent of 2026-11-28, the client lane's inbox told); the result in each human's view.
+- **Acceptance:** both played in a hot-seat game as T6b recorded them; the scoped verify and the
+  client lane's check.
+- **Depends on:** T6b. **Status:** queued.
+
+### E24 M5 T6d — Auto Combat in play
+
+- **Scope:** `CLT-STUB-4`: the battle panel's Auto Combat in a live battle, the host playing the
+  human's side by the battle AI (the seat's request: this lane's change in `h3-battle-client`, a
+  `cross-lane` pull request with the user's consent of 2026-11-28).
+- **Acceptance:** a battle played under Auto Combat to its end in a hot-seat game; the scoped
   verify.
-- **Depends on:** T4; the client lane's part of `CLT-STUB-4` and `-5`. **Status:** queued; cut
-  likely (the defended battle's reading and recording first).
+- **Depends on:** T6a. **Status:** queued.
 
 ### E24 M5 T7 — a whole game
 
@@ -44,7 +72,7 @@ in four parts), T5 kept whole (done 2026-11-28 in five parts). Next: T6.
   gaps found placed (a question, a stub or a fix).
 - **Acceptance:** the game played both ways with every command the engine's; no rules table or
   map text read in play.
-- **Depends on:** T6. **Status:** queued.
+- **Depends on:** T6a to T6d. **Status:** queued.
 
 ### E24 M5 T8 — M5's closure
 

@@ -5646,3 +5646,64 @@ test, the boxes' 15 s: survey `E16-timer-survey.md` §3 to §5, not repeated.
   kept in `TurnClock::expiry` for it). *Differs:* play's next view opens with two draws in its 0
   (its first and its cover's), so a line more leaves there than the original's one (seven on
   Blue's cover after the box's 15 s, the original's eight).
+
+### 5.33 A human's attack played live (M5 T6a)
+
+T6 cut in four by the user at its start (2026-11-28): T6a a human's attack played live, T6b the
+defended and the two humans' battles read and recorded, T6c those built (`MCL-STUB-3`, `CLT-STUB-5`),
+T6d Auto Combat (`CLT-STUB-4`); the battle client's parts of T6c and T6d this lane's, in `cross-lane`
+pull requests. MCL-Q75 answered (b): every battle pauses the hot seat's turn timer, no battle clock.
+
+Read (MCL-Q47, a sub-agent's reading): `hero_move_loop` 0x407B80's end (0x4080E9 to 0x408153, and
+0x40872B), `adventure_key_down` 0x408C40's step (0x40908D, 0x4090A9) and its Space (0x408E65),
+`manager_run` 0x4B0C70's return, `adventure_battle` 0x4AD470's rest again (`mobilize_hero`,
+`hero_select`'s test at 0x418113), `battle_end` 0x477905 and 0x4779B4 (the result's tune),
+`play_music` 0x59ACB0's repeat test, `music_thread` 0x59A830 and `music_stop_fade` 0x59B080 again,
+the writers of the adventure manager's +0x58.
+
+- **Where the restart comes from (MCL-Q47):** not the battle's code. `manager_run` keeps the
+  adventure manager (+0x34 = 2, so `adventure_manager_exit` does not run) and on the return sets it
+  active again, the full update, `window_menu_set`, the mouse, the status window's kind 0 and the
+  fade in, with no music. `adventure_battle`'s rest ends with `mobilize_hero(0, 0, 1)`, whose
+  `hero_select` asks for nothing when the hero's terrain is +0x58's (0x418113); +0x58 is never reset
+  (its writers: `town_select`, `hero_select`, `adventure_view_enter`, `hero_relocate`,
+  `hero_move_step`). The battle runs inside the walk (a guard zone in `hero_move_step`,
+  `after_step_guard_check` 0x48169D; a monster or guarded object returned by the last step and
+  visited at 0x4080E9), and the walk's end asks for +0x58's track with no condition (0x408141 to
+  0x408153; 0x40872B at case 7's end). The playing name then is the result's tune (`battle_end`:
+  loop count 1), so `play_music` takes the request: `music_thread` fades the tune out (10 × 100 ms),
+  opens the terrain's track at the place kept when the combat music began (0x59AAF7) and starts it
+  (0x59AB2F) with its 900-ms fade in. The user heard it from its start: `AIL_start_stream` likely
+  rewinds (inferred, MCL-Q78).
+- **When:** after the map's fade in and the visit's rest (a wandering monster's dissolve, about
+  1 330 ms after the fade's start in `battle-won`; a mine's boxes, closed), not at the tune's end.
+  A guard zone, a monster attacked and a visit's guards (a mine, a bank) by a click's walk all
+  restart. A key's step: a guard zone's battle (inside the step) is followed by the request at
+  0x40908D; a monster attacked by the key is not (the request comes before the visit at 0x4090A9):
+  the tune plays out, then silence (read, not observed). Space's visit (0x408E65) asks for no track.
+  A lost battle's next hero or town on another terrain asks for that terrain's track first
+  (`hero_select` 0x41811D, `town_select` 0x417AE8), the walk's request then a repeat; on the same
+  terrain the walk's request restarts it.
+- **The host** (part one; `h3_map_client::hot_seat`): from the `GameEvents` whose `BattleStarted`
+  opens a battle with a human's side the host keeps that player's messages; `HotSeat::battle` gives a
+  `GameSeat` fed with them (`opened`), `serve` is a host's pass (the seat's commands played as the
+  player's with the seat's own numbers, which the in-process session only echoes: a record's
+  `GameAccepted` numbers are two sequences; its queries answered from the battle's state by
+  `h3_protocol::map::query`; the unowned side's turns played by the system actor with
+  `h3_battle_ai::choose`, the all-seeing original's as `h3_sim::computer`'s, on the stream
+  `StreamId::AGENT` of the game's seed, its first legal command if the engine refuses a choice; the
+  computers' turns ended; the player's new messages handed over), `returned` drops the kept
+  messages. During the battle the human's turn runs with battle commands only (no End Turn). A
+  battle's `Snapshot` is numbered, not folded into the adventure view. `BattleEnded` tells no
+  survivors (SRV-STUB-9), so at a human's battle's end the host sets that seat's view to the
+  engine's projection. A win leaves the hero on its own tile and the monster gone; a loss takes the
+  hero out of the view and its list; a win that reaches a level leaves the level-up open (only
+  `Answer` legal). A battle against another player's hero, town or garrison (a computer's idle
+  hero, another human's) is refused with an error naming T6c (`CLT-STUB-5`, `MCL-STUB-3`).
+- **The clock (MCL-Q75 (b)):** play's host holds the clock it feeds the session (`play::Kept`) from
+  the battle's hand-over (`Session::battle(now)`) to its return (`Session::returned(now)`): no timer
+  runs (a 40-s battle moves a one-minute turn's expiry from 61 s to 101 s, the test's). The level-up
+  after it is untimed by the session's own level-up hold, as the original's (E16 timer survey §6).
+  The battle client shows no clock (`h3_view::game_record` reads no `GameClock`).
+- *Provisional:* the names; the seat's numbers echoed as they come; the battle AI's stream; the
+  kept messages from the battle's start to its return; the view set to the engine's at the end.

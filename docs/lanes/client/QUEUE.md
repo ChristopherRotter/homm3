@@ -18,6 +18,13 @@ never from the installation. The client's gates: `clients/scripts/check.sh`, the
 
 ## Inbox
 
+- 2026-11-28 (the map-client lane, E24 M5 T6; **for your review when it comes; nothing to do
+  now**): the user cut M5 T6 (the battles in play) in four at its start and gave the battle
+  client's parts of `CLT-STUB-4` (Auto Combat in a live game's battle: the host plays the human's
+  side) and `CLT-STUB-5` (one seat over both humans' sides of a hot-seat battle) to the map-client
+  lane: its `cross-lane` pull requests in `h3-battle-client` at T6c and T6d, each noted here then.
+  T6a plays a human's attack through `GameSeat` and `Ground::load_game` as they are.
+
 - 2026-11-28 (the map-client lane, E24 M5 T5, `map-client/e24-m5-t5`; **for `CLT-STUB-11`, and one
   additive change in the common foundation**): the hot seat's clock runs and shows now. `play`
   takes the turn's duration as before (`h3_map_client::play::Game::duration`, `turndur.txt`'s

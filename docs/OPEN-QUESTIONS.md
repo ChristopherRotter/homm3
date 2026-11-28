@@ -622,26 +622,6 @@ the original's behind `--bugs original` for the comparisons. **Recommended (b)**
 the wrong day on a screen whose bar names the right one; an accident of the chooser's test, as
 MCL-Q72's). Blocks nothing; recorded (`seat-new-day-quick`).
 
-#### MCL-Q75 — The hot seat's clock in battles and level-ups: the original's or the server's (E24 M5 T5, a reading)
-
-Play hosts the hot seat's session in-process and builds its clock itself (`h3_map_client::hot_seat::clock`):
-the turn's duration from the eleven, the level-up waited for (`level_up_ms` none), the server's default
-battle allowance (*provisional*, "T5 reads the original's"). The original's hot seat (the E16 survey
-`docs/epics/E16-timer-survey.md` §6, §7): **every battle pauses the turn's timer** and gives its time
-back, with **no battle clock**, also between two humans; a level-up is on the turn's time (15 s when
-opened with less than 15 s left) and untimed after a battle (inside the pause). The session's clock
-follows SRV-Q31/Q33 (the server's online games, kept by the user there): the turn's timer runs on in a
-battle against a monster or a neutral garrison (at its end the computer plays the side), Fischer's
-chess clocks between two players' sides (the attacker's turn timer stopped), a level-up's own time with
-every other timer stopped. Nothing differs on the map; it matters from M5 T6 (the battles in play) on.
-Options: (a) the server's model in the hot seat too (as built: a hot seat timed as an online game);
-(b) the original's for the hot seat: a clock option of the session's for "battles pause the turn, no
-chess clock" (a request in the server lane's inbox; its online games keep SRV-Q31's), the level-up
-waited for as now; (c) (a) by default, (b) as a game option of the hot seat's. **Recommended (b)**: the
-hot seat is the original's own mode on one machine, and the turn's limit the original's slider names
-is "when not in combat" (the manual, p. 11). Built as (a) meanwhile (no battle is played in play before
-T6, `MCL-STUB-6`). Blocks nothing before T6.
-
 #### MCL-Q76 — The hot seat's turn timer: from the turn's passing or from the cover's start (E24 M5 T5 part five, a build)
 
 The original starts a hot seat's human's turn timer after its cover's box and the wait
@@ -669,6 +649,25 @@ the walk's `horse02.wav` looping since 57 300) (design §5.32). Built as the ori
 original's behind `--bugs original` for the comparisons. **Recommended (b)** (the last seconds'
 warnings are the ones a walking player needs; the silence is an accident of the shared sample).
 Blocks nothing.
+
+#### MCL-Q78 — A looping track's kept place: does the original ever resume it? (E24 M5 T6a, a reading)
+
+`music_thread` 0x59A830 keeps a looping track's place under its name when it fades out
+(`music_positions` 0x69FEC0) and, opening that name again, sets the stream there
+(`AIL_set_stream_position` at 0x59AAF7) before `AIL_start_stream` (0x59AB2F); E24 M2 T6a2 built the
+viewer's music so (a track asked for again resumes where its last fade began: `h3_map_client::audio`,
+E17 design §8.2's common model too). T6a's reading of MCL-Q47 (design §5.33) found the terrain's track
+opened again after a battle with the place kept when the combat music began, yet the user heard it
+start from its start (the M4 hand test's part 4). Miles' `AIL_start_stream` likely rewinds the stream
+(inferred: Panda3D's Miles wrapper starts a stream normally, then skips to a place), so the kept place
+may never take effect anywhere (a town's screen left, a terrain crossed and crossed back, the focus
+regained through `music_resume` 0x59AC00). Options: (a) as heard: every looping track the thread opens
+starts from its start (the client's kept places dropped, the map's and the common model's, the latter
+with the client lane); (b) as read: the place kept and resumed, only a battle's return from the start
+as heard; (c) (b) until the user listens once more in the original (a town left after half a minute;
+a terrain crossed and crossed back within its track), then (a) or (b). **Recommended (c)**: one
+listening settles it. Built at T6a as (b): the return from a battle starts the terrain's track from its
+start (the user's ear), every other resume as built. Blocks nothing.
 
 ### RMG lane (`RMG-Q<n>`)
 
