@@ -13,13 +13,16 @@
 //! frame (T2a: the passes, the order of heroes, a hero's turn with its garrison step); the rest
 //! of a turn is stubbed by `AI-STUB-2` to `-6` (`docs/stubs.toml`). The fight estimate (T2c,
 //! `fight`) on the simulated combat, which lives in `h3_battle::estimate` (T2b and T2c, AI-Q34),
-//! waits for the values that ask for it (T2h, T2i); the turn start's records (T2d, `start`); a
+//! asked by the values (T2h) and the danger map (T2i); the turn start's records (T2d, `start`); a
 //! hero's spell gains (T2e, `spells`, on `h3_battle::estimate`'s caster record, AI-Q36) and its
 //! skills' values (T2e, `skills`, the flag-set path of `h3_heroes::choice`'s switch); the artifacts'
 //! values (T2f, `artifacts`: the effects' table, the values to a hero and to a player, the turn
 //! start's mean); the army plan's values (T2g, `armies`: a stack's worth, the exchange, the
-//! purchase) and the dwelling and town values on them (T2g, `towns`), waiting for the object value
-//! that asks for them (T2h).
+//! purchase) and the dwelling and town values on them (T2g, `towns`); the object value (T2h,
+//! `objects`, with the vision circle, `vision`); since T2i the planning (`plan`: the danger map,
+//! the hero's search with its jumps and its colleagues' claims, the candidates, their value
+//! field, the score and the choice, up to five runs of the search), its kept plans in the memory;
+//! the walk (T2j) still stubbed, so every hero is done after its plan.
 //!
 //! [`GameCommand`]: crate::GameCommand
 

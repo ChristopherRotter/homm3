@@ -60,36 +60,6 @@ fn flat(state: &GameState, value: i32) -> Danger {
     }
 }
 
-/// `f` of the planner of the hero `on_map` (its details the game's) with the case's record and
-/// weights, the danger map `danger` and the turn's flag `flag`.
-fn planning<T>(
-    case: &Case<'_>,
-    on_map: &HeroOnMap,
-    (danger, flag): (&Danger, bool),
-    f: impl FnOnce(&Planner<'_>) -> T,
-) -> T {
-    let details = case.state.hero(on_map.id).unwrap();
-    let fighter = Fighter { on_map, details };
-    let valued = Valued::new(
-        case.state,
-        case.rules,
-        (&case.record, &case.weights),
-        fighter,
-    );
-    let planner = Planner::new(
-        (case.state, case.rules),
-        &valued,
-        (&case.record, danger, flag),
-    );
-    f(&planner)
-}
-
-/// [`planning`] of red's hero 0 as it stands.
-fn red<T>(case: &Case<'_>, danger: &Danger, flag: bool, f: impl FnOnce(&Planner<'_>) -> T) -> T {
-    let on_map = case.state.adventure().hero(HERO).unwrap();
-    planning(case, on_map, (danger, flag), f)
-}
-
 /// The object value fixture's game with `objects` (each type `k` on its tile) and `edit`.
 fn world(
     rules: &GameRuleset,
@@ -184,7 +154,7 @@ fn the_claims_take_the_classes_0_to_36_and_the_numbers_part_the_merged_classes()
         gives: h3_adventure::Gives::Level,
         ..match kind(&rules, "t:marletto") {
             ObjectKind::Gift(gift) => gift,
-            _ => unreachable!(),
+            _ => panic!("a gift"),
         }
     });
     assert_eq!(of("t:marletto", Class::OneLevel, &level, false), 23);
@@ -197,7 +167,7 @@ fn the_claims_take_the_classes_0_to_36_and_the_numbers_part_the_merged_classes()
             points: 800,
             drain,
         },
-        _ => unreachable!(),
+        _ => panic!("a bonus"),
     };
     assert_eq!(of("t:youth", Class::Oasis, &oasis, false), 56);
     let faerie = kind(&rules, "t:faerie");
@@ -700,7 +670,7 @@ fn the_candidates_are_the_reached_entrances_of_value_but_the_hero_s_own_tile() {
     assert_eq!(at_tile(&list, p(0, 0)), None);
     assert!(list.iter().all(|c| {
         c.pos
-            .is_some_and(|pos| crate::computer::objects::at(&state, &rules, pos).is_some())
+            .is_some_and(|pos| objects::at(&state, &rules, pos).is_some())
     }));
     // In danger on its own tile, the chart's 0 counts: a place to flee to.
     let fled = Reads {
@@ -1428,18 +1398,16 @@ fn a_hero_on_a_town_waits_there_on_the_week_s_last_day_for_a_poor_destination() 
     });
     let mut late = state.clone();
     while late.weekday(&rules).get() != 7 {
-        for player in [RED] {
-            let mut events = Vec::new();
-            let end = GameCommand::EndTurn;
-            crate::apply(
-                &mut late,
-                &rules,
-                crate::Actor::Player(player),
-                end,
-                &mut events,
-            )
-            .unwrap();
-        }
+        let mut events = Vec::new();
+        let end = GameCommand::EndTurn;
+        crate::apply(
+            &mut late,
+            &rules,
+            crate::Actor::Player(RED),
+            end,
+            &mut events,
+        )
+        .unwrap();
     }
     let outcome = |state: &GameState| {
         town_reads(state, vec![]).red((state, &rules), |planner| {
