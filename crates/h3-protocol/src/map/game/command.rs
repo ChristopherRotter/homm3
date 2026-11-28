@@ -689,6 +689,7 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 TownCommandError::NoWarMachine => TownReject::NoWarMachine {},
                 TownCommandError::HasWarMachine => TownReject::HasWarMachine {},
                 TownCommandError::BoatSpotTaken => TownReject::BoatSpotTaken {},
+                // E09 T59b1 (v88).
                 TownCommandError::NoUniversity => TownReject::NoUniversity {},
                 TownCommandError::NotTownHero => TownReject::NotTownHero {},
             },

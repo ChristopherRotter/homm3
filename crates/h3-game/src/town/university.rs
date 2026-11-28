@@ -1,10 +1,10 @@
-//! The Conflux's Magic University in the game (TWN-UNI-001; E09 T59b1, the town epic's design note
-//! §112, decision 210; survey `E09-trades.md` §6): `TownCommand::University` opens E08's University
-//! decision (GAM-DEC-006, amended) for the town's hero the command names, with the town as its
-//! place (the original's town University runs the map's dialog functions, survey §6.3): its
-//! answers, slots, price and payer are the map's University's (`GameState`'s `buy`). The legal
-//! listing offers each opening `open` accepts whose University sells a slot the treasury pays
-//! (`town::services`).
+//! The Conflux's Magic University in the game (TWN-UNI-001; E09 T59b1, the town epic's design
+//! note §112, decision 210; survey `E09-trades.md` §6): `TownCommand::University` opens E08's
+//! University decision (GAM-DEC-006, amended) for the town's hero the command names, with the
+//! town as its place (the original's town University runs the map's dialog functions, survey
+//! §6.3): its answers, slots, price and payer are the map's University's (`GameState`'s `buy`).
+//! The legal listing offers each opening `open` accepts whose University sells a slot the
+//! treasury pays (`town::services`).
 
 use h3_adventure::{UniversityPlace, UniversityVisit};
 use h3_content::{SkillId, UNIVERSITY_IGNORES_MAP_BANS};
