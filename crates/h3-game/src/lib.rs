@@ -91,7 +91,7 @@ pub use h3_adventure::{
 };
 /// A choice's and a University's views (E08 T63a; `h3_adventure`'s types): what
 /// [`DecisionView::Choice`] and [`DecisionView::University`] show.
-pub use h3_adventure::{Choice, ChoiceKind, UniversityVisit};
+pub use h3_adventure::{Choice, ChoiceKind, UniversityPlace, UniversityVisit};
 /// A Hill Fort's visit, its rows and its refusals (E08 T134b1; `h3_adventure`'s types): what
 /// [`GameState::hill_fort`], [`GameCommandError::HillFort`] and [`DecisionView::HillFort`] carry.
 pub use h3_adventure::{HillFortError, HillFortRow, HillFortVisit};
@@ -213,5 +213,7 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// are not. v40 (E09 T58a1, the town lane's, `cross-lane`; GAM-DEC-011 amended): a market's
 /// decision writes its hero as an option (0 for none, else 1 and the hero) and its place's tag
 /// before the place's fields (0: a map object's index, type and anchor; 1: a town's id). v41 (E10
-/// T3a, E10 design note §2): each player's team after its human flag (GAM-TEM-001).
-pub const GAME_STATE_HASH_VERSION: u32 = 41;
+/// T3a, E10 design note §2): each player's team after its human flag (GAM-TEM-001). v42 (E09
+/// T59b1, the town lane's, `cross-lane`; GAM-DEC-006 amended): a University's decision writes its
+/// place's tag before the place's fields (0: a map object's type and anchor; 1: a town's id).
+pub const GAME_STATE_HASH_VERSION: u32 = 42;

@@ -18,7 +18,7 @@ use h3_adventure::{
     HireTarget as EngineHireTarget, Known as EngineKnown, KnownObject, MonsterView, ObjectTypeId,
     ObjectView, Offer as EngineOffer, OfferKind as EngineOfferKind, OwnHeroView,
     RevealedTile as EngineRevealedTile, StaticTile, TileMask, TileView,
-    UniversityVisit as EngineVisit,
+    UniversityPlace as EngineUniversityPlace, UniversityVisit as EngineVisit,
 };
 use h3_content::{CreatureTypeId, Formation as EngineFormation, ResourceId, SpellId};
 use h3_contracts::{ArmyStack as EngineStack, FortLevel};
@@ -49,7 +49,7 @@ use crate::wire::game::{
     Object, ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill,
     ResourceLot, RevealedArea, RevealedView, SaleLots, SkillLevel, SlotState, StockEntry, Summoned,
     TavernHero, TavernHeroHead, TavernPart, ThievesGuild, Tile, Town, TownBuildings,
-    TownOwnerFacts, TradeLot, UniversityVisit, VisitBonus, Week,
+    TownOwnerFacts, TradeLot, UniversitySeen, UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -358,16 +358,14 @@ fn decision_view(d: &DecisionView) -> Decision {
         DecisionView::University { visit, slots } => {
             let EngineVisit {
                 hero,
-                object_type,
-                anchor,
+                place,
                 skills,
                 price,
             } = visit;
             Decision::University {
                 visit: UniversityVisit {
                     hero: hero.raw(),
-                    object_type: object_type.raw(),
-                    anchor: pos(*anchor),
+                    place: university_seen(*place),
                     skills: skills.iter().map(|&s| s.raw()).collect(),
                     price: amounts(price),
                 },
@@ -1080,6 +1078,19 @@ pub(crate) const fn market_seen(place: EngineMarketSeen) -> MarketSeen {
             object: object_ref((object_type, anchor)),
         },
         EngineMarketSeen::Town(town) => MarketSeen::Town { town: town.raw() },
+    }
+}
+
+/// A University's place on the wire (E09 T59b1, v88).
+pub(crate) const fn university_seen(place: EngineUniversityPlace) -> UniversitySeen {
+    match place {
+        EngineUniversityPlace::Object {
+            object_type,
+            anchor,
+        } => UniversitySeen::Object {
+            object: object_ref((object_type, anchor)),
+        },
+        EngineUniversityPlace::Town(town) => UniversitySeen::Town { town: town.raw() },
     }
 }
 

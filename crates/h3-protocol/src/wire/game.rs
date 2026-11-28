@@ -1024,21 +1024,35 @@ pub enum ChoiceKind {
     },
 }
 
-/// A University a visit opens (ADV-TCH-007): its skills in the draw's order, each sold at the
-/// price.
+/// A University a visit opens (ADV-TCH-007), or since E09 T59b1 a town's Magic University
+/// (TWN-UNI-001, v88): its skills in the draw's order, each sold at the price.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UniversityVisit {
-    /// The hero whose visit opened it.
+    /// The student: the hero whose visit opened it, or the town's hero the command named.
     pub hero: u16,
-    /// The object's type handle.
-    pub object_type: u16,
-    /// The object's anchor.
-    pub anchor: Pos,
+    /// The University's place: one on the map by type and anchor, or a town (E09 T59b1, v88).
+    pub place: UniversitySeen,
     /// The skills' handles.
     pub skills: Vec<u16>,
     /// The price of each, by resource.
     pub price: Vec<Amount>,
+}
+
+/// A University's place (`h3_game::UniversityPlace`; E09 T59b1, v88): a University on the map by
+/// type and anchor, or a town's Magic University by the town.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UniversitySeen {
+    /// A University on the map.
+    Object {
+        /// The University by type and anchor.
+        object: ObjectRef,
+    },
+    /// A town.
+    Town {
+        /// The town.
+        town: u16,
+    },
 }
 
 /// The state of a University's slot for a hero.

@@ -61,6 +61,13 @@ in four parts), T5 kept whole (done 2026-11-28 in five parts). Next: T6.
   original's set by default and for the comparisons. A small task (the sound's settings, the step's
   road read from the view's tile); not in M5's scope.
 
+- 2026-11-28 (the town lane, E09 T59b1, `town/e09-t59b1`, `cross-lane` with the user's consent;
+  **in your paths, two test literals; for your review**): protocol **v88**'s `UniversityVisit`
+  names its place (`place: UniversitySeen`, `Object { object: ObjectRef }` or `Town { town }`) in
+  place of `object_type` and `anchor`, as does `GameEvent::UniversityOpened`: a town's Magic
+  University (TWN-UNI-001) opens the same decision. Your `h3-map-client` `window.rs` test literal
+  and `h3-map-view` `notice/tests.rs`' (now a town's University) follow so that the workspace
+  builds; the notice of a University is unchanged.
 - 2026-11-27 (the town lane, E09 T58b, `town/e09-t58b`, `cross-lane`; **in your paths, one line;
   for your review**): protocol **v86** adds `MarketWindow::artifact_sales` (a town's artifact sale:
   each place of the hero's that sells, its artifact and price per resource), `MarketScreen::SellArtifact`,

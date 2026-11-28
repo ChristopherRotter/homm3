@@ -838,13 +838,19 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
         G::UniversityOpened {
             player,
             hero,
-            object_type,
-            anchor,
+            place,
         } => GameEvent::UniversityOpened {
             player: p(player),
             hero: id(hero),
-            object_type: ty(object_type),
-            anchor: pos_back(anchor),
+            place: match place {
+                w::UniversitySeen::Object { object } => h3_game::UniversityPlace::Object {
+                    object_type: ty(object.object_type),
+                    anchor: pos_back(object.anchor),
+                },
+                w::UniversitySeen::Town { town } => {
+                    h3_game::UniversityPlace::Town(TownId::new(town))
+                }
+            },
         },
         G::HireOpened {
             player,
@@ -1335,8 +1341,16 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         GameEvent::UniversityOpened {
             player: P0,
             hero,
-            object_type: ty,
-            anchor: at,
+            place: h3_game::UniversityPlace::Object {
+                object_type: ty,
+                anchor: at,
+            },
+        },
+        // E09 T59b1 (v88).
+        GameEvent::UniversityOpened {
+            player: P0,
+            hero,
+            place: h3_game::UniversityPlace::Town(TownId::new(2)),
         },
         GameEvent::HireOpened {
             player: P0,

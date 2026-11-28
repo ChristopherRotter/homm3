@@ -5,7 +5,7 @@
 
 use h3_adventure::{
     AdventureEvent, AdventureEventKind, Guards, Holds, MonsterSetup, ObjectSetup, OfferKind,
-    TileMask, Viewers,
+    TileMask, UniversityPlace, Viewers,
 };
 use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSide, HeroOutcome};
 use h3_heroes::SlotState;
@@ -284,8 +284,10 @@ fn a_university_sells_its_open_slots_until_it_is_left() {
     let opened = GameEvent::UniversityOpened {
         player: RED,
         hero: HERO,
-        object_type: university,
-        anchor: AT,
+        place: UniversityPlace::Object {
+            object_type: university,
+            anchor: AT,
+        },
     };
     assert_eq!(visit(&mut state, &rules), [opened]);
     assert_eq!(project(&opened, Viewer::Player(BLUE)), None);

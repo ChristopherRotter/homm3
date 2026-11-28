@@ -3907,9 +3907,12 @@ fn visit_town(
     // E09 T59a: a listed war machine's purchase (TWN-SMT-001) in one step of sixteen and a listed
     // boat (TWN-SHY-001) in another, each in a Swap's or a Leave's place, so that heroes carry the
     // machines into battles and boats lie on the towns' spots.
+    // E09 T59b1: a listed University (TWN-UNI-001) in a third, its answers settled as a map
+    // University's.
     let service = legal.iter().find(|c| match c {
         GameCommand::Town(TownCommand::BuyWarMachine { .. }) => n % 16 == 11,
         GameCommand::Town(TownCommand::BuildBoat { .. }) => n % 16 == 9,
+        GameCommand::Town(TownCommand::University { .. }) => n % 16 == 1,
         _ => false,
     });
     if let Some(service) = service {
@@ -6960,6 +6963,23 @@ fn town_builds<'a>(
             .filter(move |&b| b.index() == 0 || b.index() == buildings || sells(b))
             .map(move |building| TownCommand::BuyWarMachine { town, building });
         let boat = core::iter::once(TownCommand::BuildBoat { town });
+        // E09 T59b1: its University for its visitor, its garrison hero, then a hero that is
+        // neither (TWN-UNI-001: the student the town's, the visitor's opening listed first).
+        let adventure = state.adventure();
+        let students = [
+            adventure.town_visitor(town),
+            adventure.town_hero(town).map(|on| on.id),
+        ];
+        let stranger = adventure
+            .heroes()
+            .iter()
+            .map(|on| on.id)
+            .find(|&id| !students.contains(&Some(id)));
+        let universities = students
+            .into_iter()
+            .flatten()
+            .chain(stranger)
+            .map(move |hero| TownCommand::University { town, hero });
         // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
         let rows = [
             TownHeroChange::Enter,
@@ -6975,6 +6995,7 @@ fn town_builds<'a>(
             .chain(market)
             .chain(machines)
             .chain(boat)
+            .chain(universities)
             .chain(rows)
             .map(move |command| (town, GameCommand::Town(command)))
     })
@@ -6985,7 +7006,9 @@ fn town_builds<'a>(
 /// order, as `legal_commands` must list them; since E09 T49a2 an opening only where the probe
 /// changed the state (TWN-GLD-006: an opening that changes nothing is accepted but not listed);
 /// since E09 T58a2 a market window only where the window the probe opened lists an answer but its
-/// `Leave` (TWN-MKT-002, ADR-0017 point 6: [`trades::trade_answers`]' oracle of its listing).
+/// `Leave` (TWN-MKT-002, ADR-0017 point 6: [`trades::trade_answers`]' oracle of its listing);
+/// since E09 T59b1 a University only where the one the probe opened lists an answer but its
+/// `Leave` (TWN-UNI-001: a slot open for the student at a price the treasury pays).
 fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
     town_builds(state, rules)
         .map(|(_, command)| command)
@@ -6994,10 +7017,12 @@ fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> 
             let actor = Actor::Player(player);
             let opening = matches!(command, GameCommand::Town(TownCommand::Open { .. }));
             let window = matches!(command, GameCommand::Town(TownCommand::Market { .. }));
+            let university = matches!(command, GameCommand::Town(TownCommand::University { .. }));
             apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
                 && (!opening || probe != *state)
                 && (!window
                     || trades::trade_answers(&probe, rules, player).is_some_and(|a| a.len() > 1))
+                && (!university || university_answers(&probe, rules, player) > 1)
         })
         .collect()
 }
@@ -7689,6 +7714,83 @@ fn check_town_market(
     Ok(())
 }
 
+/// The answers `player`'s open University lists (E09 T59b1): its purchases and its `Leave`; 0
+/// without one.
+fn university_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> usize {
+    if state.university(player).is_none() {
+        return 0;
+    }
+    legal_commands(state, rules, Actor::Player(player))
+        .iter()
+        .filter(|c| matches!(c, GameCommand::Answer(Answer::University(_))))
+        .count()
+}
+
+/// A University `apply` accepted at `actor`'s `town` for `hero` (E09 T59b1; TWN-UNI-001, design
+/// note §112), from `state` to `probe`, by an independent reading: the town is the actor's, a
+/// building of role `university` stands there, and `hero` is its visitor or its garrison hero, the
+/// actor's; the one event `UniversityOpened` with the town as its place; the open University the
+/// part's skills (those the map bans left out with `TWN-QUIRK-16`'s flag off) at the part's
+/// price; the towns, the treasury and the adventure unchanged; and an answer listed but its
+/// `Leave` exactly when the opening was `listed`.
+fn check_town_university(
+    (state, probe): (&GameState, &GameState),
+    rules: &GameRuleset,
+    (actor, town, hero): (PlayerId, TownId, HeroId),
+    events: &[GameEvent],
+    listed: bool,
+) -> Result<(), TestCaseError> {
+    let was = state.adventure();
+    let index = was.map().town_object(town).unwrap();
+    prop_assert_eq!(was.owner(index), Some(actor));
+    let part = rules.towns();
+    let record = state.towns().get(town).unwrap();
+    let faction = part.town(record.faction()).unwrap();
+    prop_assert!(
+        record
+            .standing(faction)
+            .iter()
+            .any(|b| faction.building(b).is_some_and(|b| b.roles.university)),
+        "no University in {:?}",
+        town
+    );
+    let own = was.hero(hero).is_some_and(|on| on.owner == actor);
+    let here =
+        was.town_visitor(town) == Some(hero) || was.town_hero(town).is_some_and(|on| on.id == hero);
+    prop_assert!(own && here, "{:?} is no student at {:?}", hero, town);
+    let place = h3_game::UniversityPlace::Town(town);
+    let opened = GameEvent::UniversityOpened {
+        player: actor,
+        hero,
+        place,
+    };
+    prop_assert_eq!(events, &[opened][..]);
+    let params = part.params().unwrap();
+    let ignores = rules
+        .core()
+        .quirks()
+        .is_enabled(h3_content::UNIVERSITY_IGNORES_MAP_BANS);
+    let skills: Vec<_> = params
+        .university_skills
+        .iter()
+        .copied()
+        .filter(|skill| ignores || !state.banned_skills().contains(skill))
+        .collect();
+    let visit = h3_game::UniversityVisit {
+        hero,
+        place,
+        skills,
+        price: params.university_price.clone(),
+    };
+    prop_assert_eq!(probe.university(actor), Some(&visit));
+    prop_assert_eq!(probe.towns().get(town), state.towns().get(town));
+    prop_assert_eq!(probe.treasury(actor), state.treasury(actor));
+    prop_assert_eq!(probe.adventure(), was);
+    let answers = university_answers(probe, rules, actor);
+    prop_assert_eq!(answers > 1, listed, "{} answers", answers);
+    Ok(())
+}
+
 fn check_town_builds(
     state: &GameState,
     rules: &GameRuleset,
@@ -7715,6 +7817,20 @@ fn check_town_builds(
             // answer but its `Leave` (TWN-MKT-002: an empty treasury, nothing to sell).
             if result.is_ok() && matches!(command, GameCommand::Town(TownCommand::Market { .. })) {
                 check_town_market((state, &probe), rules, (actor, town), &events, false)?;
+                continue;
+            }
+            // E09 T59b1: an unlisted University `apply` accepts opens one that lists no answer
+            // but its `Leave` (TWN-UNI-001: no slot open for the student, or the price unpaid).
+            if let (Ok(()), GameCommand::Town(TownCommand::University { hero, .. })) =
+                (&result, &command)
+            {
+                check_town_university(
+                    (state, &probe),
+                    rules,
+                    (actor, town, *hero),
+                    &events,
+                    false,
+                )?;
                 continue;
             }
             // E09 T49a2: an unlisted opening is accepted when it changes nothing (TWN-GLD-006).
@@ -7796,6 +7912,12 @@ fn check_town_builds(
             }
             GameCommand::Town(TownCommand::BuildBoat { .. }) => {
                 check_town_boat((state, &probe), rules, actor, town)?;
+                continue;
+            }
+            // E09 T59b1: a listed University, by an independent reading of the town's heroes,
+            // the part's skills and price and the map's bans.
+            GameCommand::Town(TownCommand::University { hero, .. }) => {
+                check_town_university((state, &probe), rules, (actor, town, hero), &events, true)?;
                 continue;
             }
             _ => return Err(fail(format!("{command:?}"))),
@@ -9009,7 +9131,8 @@ fn check_conservation(
 
 /// The object a step visited (E08 T64b), by index: a move's, the live typed object visited from
 /// its last tile when it stops before it (ADV-OBJ-003) or from the tile it ends on, the event
-/// that fired there; an answer's, the object of the offer, choice or University it answers.
+/// that fired there; an answer's, the object of the offer, choice or University it answers (none
+/// for a town's University, E09 T59b1).
 fn visited(before: &GameState, command: &GameCommand, events: &[GameEvent]) -> Option<usize> {
     let adventure = before.adventure();
     let map = adventure.map();
@@ -9078,8 +9201,14 @@ fn visited(before: &GameState, command: &GameCommand, events: &[GameEvent]) -> O
             } else if let Some(choice) = before.choice(player) {
                 named((choice.object_type, choice.anchor))
             } else {
-                let visit = before.university(player)?;
-                named((visit.object_type, visit.anchor))
+                // A town's University (E09 T59b1) visits no object.
+                match before.university(player)?.place {
+                    h3_game::UniversityPlace::Object {
+                        object_type,
+                        anchor,
+                    } => named((object_type, anchor)),
+                    h3_game::UniversityPlace::Town(_) => None,
+                }
             }
         }
         _ => None,
@@ -10753,7 +10882,8 @@ fn check_guild_refusals(
     let mut hashed = false;
     for (k, actor) in (0..).zip(actors) {
         let &town = spread(&towns, 1, hash.wrapping_add(k)).next().unwrap();
-        // E09 T59a: and a war machine's purchase and a boat (TWN-SMT-001, TWN-SHY-001).
+        // E09 T59a: and a war machine's purchase and a boat (TWN-SMT-001, TWN-SHY-001); E09
+        // T59b1 a University (TWN-UNI-001).
         let commands = [
             TownCommand::Open { town },
             TownCommand::BuySpellBook { town },
@@ -10762,6 +10892,11 @@ fn check_guild_refusals(
                 building: BuildingId::from_index(0).unwrap(),
             },
             TownCommand::BuildBoat { town },
+            // E09 T59b1 (TWN-UNI-001).
+            TownCommand::University {
+                town,
+                hero: HeroId::new(0),
+            },
         ];
         for command in commands.map(GameCommand::Town) {
             let (mut probe, mut events) = (state.clone(), Vec::new());

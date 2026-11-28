@@ -57,6 +57,7 @@ pub(crate) mod siege;
 pub(crate) mod smith;
 pub(crate) mod tavern;
 pub(crate) mod thieves;
+pub(crate) mod university;
 pub(crate) mod view;
 
 pub(crate) use build::{adventure_reveal, build_towns, draw_towns, without_water};

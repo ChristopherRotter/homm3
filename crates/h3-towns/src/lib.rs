@@ -105,8 +105,8 @@ pub use ruleset::{
     TownParamsDef, TownPatch, TownRecord, TownRuleset, WeekParams,
 };
 pub use service::{
-    BoatSale, ServiceOffers, WarMachineSale, check_boat, check_war_machine, service_offers,
-    war_machine_buildings,
+    BoatSale, ServiceOffers, UniversitySale, WarMachineSale, check_boat, check_university,
+    check_war_machine, service_offers, war_machine_buildings,
 };
 pub use setup::{
     BuildingsSetup, BuiltTown, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup,
