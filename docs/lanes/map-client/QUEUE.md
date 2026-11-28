@@ -16,21 +16,7 @@ since T4a, `MCL-STUB-7` (a screen of M6 or M7 or a decision the view does not as
 since T4c. T1 was cut in three at its start
 (T1a to T1c done 2026-11-24 and 25), T2 too (T2a to T2c done 2026-11-25), T3 in two (T3a done
 2026-11-25, T3b 2026-11-26), T4 in three (T4a done 2026-11-26, T4b 2026-11-26 in two sessions, T4c 2026-11-27 kept whole,
-in four parts). Next: T5.
-
-### E24 M5 T5 — the hand-over and the clock
-
-- **Scope:** the original's human start in a hot seat read whole (`next_player_turn` 0x4C6FE0's
-  human branch at 0x4C7710: the covered view 0x699538, GENRLTXT 14 "%s's turn.",
-  `turn_start_screen` 0x419E00; GENRLTXT 352 "It's %s's turn." read for its caller) and its turn
-  timer (`turn_time_expired_end` 0x4087F3: GENRLTXT 202; the warnings, GENRLTXT 627 to 630),
-  recorded under Wine in hot seat (the harness's `hot_seat`, two humans and a turn's duration),
-  built on the session's clock (the duration from `begin::Game`, CLT-STUB-11's lift with the
-  client lane).
-- **Acceptance:** the hand-over and the clock's boxes as recorded, frame by frame; the scoped
-  verify.
-- **Depends on:** T3b (T4a for the clock's input). **Status:** queued; original data and Wine
-  needed.
+in four parts), T5 kept whole (done 2026-11-28 in five parts). Next: T6.
 
 ### E24 M5 T6 — the battles in play
 

@@ -14,31 +14,27 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   screens, M7 the town screen, M8 live play sketched): the user's rules there bind every task,
   above all **the engine and the server the only authority** (no rules table or map text read in
   play; the pictures from the map file until an ADR) and **the shell on top** (`h3-map-client`
-  this lane's adapters library, the shell's own crate the client lane's). **T1** to **T3** done
-  2026-11-24 to 26, each cut at its start by the user (T1a to T1c, T2a to T2c, T3a and T3b: the
-  epic's M5 task line, the log's entries): `h3-map-client` the adapters library, `play` the
-  shell's entry, `h3_protocol::record` the shared reader, `hot_seat` the session in-process, each
-  human's view in turn in the window. **M5 T4 cut in three** by the user at its start:
-  **T4a done** 2026-11-26 (design §5.26: the walks through the engine, `h3_map_view::reach`).
-  **T4b done** 2026-11-26 in two sessions (kept whole by the user; design §5.27: a visit's
-  questions, choices and level-ups and Space's visit answered through the host, the client's own
-  random picks `h3_map_view::picks`; MCL-Q59, MCL-Q60). **T4c done** 2026-11-27 (kept whole by the user; four parts, design §5.28 to §5.30: the
-  screens' notice closing every decision the view does not ask, fights declined, `h3_map_view::notice`;
-  the facts audit, play's replies from the record, MCL-Q61 to Q69 asked of the engine lanes; a
-  wire creature read by the original's number, `engine::Creatures`; T4's game, two humans on
-  `Barbarian Breakout` for eight days by keys and mouse). **Next: M5 T5** (the hand-over and the
-  clock; its cut confirmed with the user at its start). The M4 hand-test notes
-  (`clients/out/win/map-m4-notes.txt`) still blank on 2026-11-27.
-  Open questions: MCL-Q29 to MCL-Q49, MCL-Q58 to MCL-Q69 (none blocks). Stubs: `MCL-STUB-1` (a
-  random artifact's picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days
-  without a town on a record, E10), `MCL-STUB-5` (a computer's turn ended at once, E31's
-  increment 2), `MCL-STUB-6` (a battle in play ends play, M5 T6), `MCL-STUB-7` (a screen of M6 or
-  M7 or an unasked decision: its notice, M5 T6, M6, M7), `MCL-STUB-8` (no timed event's box in
-  play). Next ids **MCL-Q78**, **MCL-STUB-9**.
-- **Open pull requests** (2026-11-27): T4c's (`map-client/e24-m5-t4c`; T4b's #1201 merged): check it
-  first.
-  The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging. Merged
-  branches are the user's to delete (the proxy refuses it).
+  this lane's adapters library, the shell's own crate the client lane's). **T1** to **T4** done
+  2026-11-24 to 27, each cut at its start by the user (the epic's M5 task line, the log's entries):
+  `h3-map-client` the adapters library, `play` the shell's entry, `h3_protocol::record` the shared
+  reader, `hot_seat` the session in-process, each human's view in turn, the walks and the boxes
+  through the engine (`reach`, `picks`), the screens' notice (`notice`), the facts audit, T4's game.
+  **T5 done** 2026-11-28 (kept whole by the user; five parts, design §5.31 and §5.32): the hot
+  seat's covered hand-over and the turn's clock (warnings in the screen chat, the expiry box)
+  read, recorded under Wine (`hot_seat` in `h3map.py`, the 14 `seat-*` sequences) and built
+  (`timeline::hand`, `h3_map_view::clock`), every frame and sample as recorded, play checked under
+  Xvfb. **Next: M5 T6** (the battles in play, with MCL-Q47's music at the return; its cut
+  confirmed with the user at its start). The M4 hand test placed at T5 (the log).
+  Open questions: MCL-Q29 to MCL-Q46, MCL-Q48, MCL-Q49, MCL-Q58 to MCL-Q77 (none blocks; MCL-Q75
+  decides the hot seat's clock in T6's battles). Stubs: `MCL-STUB-1` (a random artifact's
+  picture), `MCL-STUB-3` (a defended battle, M5 T6), `MCL-STUB-4` (no days without a town on a
+  record, E10), `MCL-STUB-5` (a computer's turn ended at once, E31's increment 2), `MCL-STUB-6`
+  (a battle in play ends play, M5 T6), `MCL-STUB-7` (a screen of M6 or M7 or an unasked
+  decision: its notice), `MCL-STUB-8` (no timed event's box in play). Next ids **MCL-Q78**,
+  **MCL-STUB-9**.
+- **Open pull requests** (2026-11-28): T5's (`map-client/e24-m5-t5`; T4c's #1213 merged): check it
+  first. The review branches `map-client/e24-m3-t7-review`, `-m4-t6-review` are not for merging.
+  Merged branches are the user's to delete (the proxy refuses it).
 - **Ownership** (`lanes.toml`): this lane's crates in the client workspace (`clients/crates/h3-map…`: `h3-map-view`, `h3-map-client`), its data folder `clients/map/`, `docs/epics/E24*` and this folder; branches `map-client/<task>`; ids `MCL-Q<n>`, `MCL-QUIRK-<n>` (asset fixes), `MCL-STUB-<n>`; ADR drafts in `adr-drafts/`. **Common** with the client lane: the foundation (`h3-assets`, `h3-render`, `h3-sdl`, `h3-ui`, the workspace's `Cargo.toml`, `deny.toml`, `.gitignore`, `README.md`, `scripts/`, the string catalogue `clients/text/`, kept common by the user at T0) and the capture harness `clients/capture/` (the adventure lane changes it too): an additive change freely, a change in behaviour noted in the client lane's inbox. The rest of `clients/` is the client lane's (`h3-view` included).
 - **The writer:** this lane adds what its situations need to `h3_map::writer` (the adventure lane's) in additive `cross-lane` pull requests, noted in that lane's inbox (`docs/formats/h3m.md`). It refuses an owner that is no player: a situation gives each owning colour a hero.
 - **From E17** (`clients/README.md`; ADR-0020, ADR-0024): the decoders, the compositor, the SDL 3 adapter, the string catalogue, the gate, the harness (the original under Wine, `h3mem.py`, `h3map.py`: the runbook `clients/capture/README.md`).
@@ -62,17 +58,14 @@ The user's dictation (2026-10-12): `docs/lanes/client/ASSET-NOTES.md`; this lane
 
 ## Recent sessions
 
-- **2026-11-27, E24 M5 T5, in progress** (kept whole by the user at its start; branch
-  `map-client/e24-m5-t5`): part one the reading (2834a0a: design §5.31 the hand-over, §5.32 the
-  clock; MCL-Q70 to Q73); part two the hot seat recorded (15e2ba3: `hot_seat` in `h3map.py`,
-  nine `seat-*` sequences in `clients/map/to-record.toml`, MCL-Q74; next id MCL-Q75). Next: part
-  three, the hand-over built (the log's "M5 T5, part three": the nine `seat-*` in
-  `sequences.toml`, every frame and sample as recorded; play covers each human's turn, checked
-  under Xvfb; `MCL-STUB-8`); part four the clock recorded (4f4482b, MCL-Q75); part five the
-  clock built (the log's "M5 T5, part five": the five `seat-clock*` in `sequences.toml`, every
-  frame and sample as recorded; play's expiry and warnings under Xvfb; MCL-Q76, Q77). Next: T5's
-  closure (the runner's). The M4 hand test (parts 3 to 5 only, the user) placed: MCL-Q47
-  answered (T6), MCL-Q11 (c) queued, two kit traps.
+- **2026-11-27 to 28, E24 M5 T5** (kept whole by the user at its start; one runner, five
+  worker sub-agents in turn): the reading, the hot seat recorded, the hand-over built, the clock
+  recorded and built (the log's five parts); MCL-Q70 to Q77 asked, MCL-Q47 answered and MCL-Q11
+  (c) settled by the user's M4 hand test (parts 3 to 5; the kit's packs and ADPCM samples: TRAPS).
+  The PC up at the start (58 originals, sums checked); the session's server restarted four times
+  (the VM kept, each worker resumed from its transcript); the disk watched (prune `incremental`
+  and `llvm-cov-target` between builds). `master` merged in after E10 T3a (two doc conflicts).
+
 - **2026-11-27, E24 M5 T4c** (kept whole by the user at its start, "use subagents efficiently";
   one runner, five worker sub-agents in turn): a read-only audit of play's facts; the notice
   (`MCL-STUB-7`, 17 keys in `clients/text/map/`, MCL-Q68); the audit's class-A rows (a price paid

@@ -3961,6 +3961,37 @@ the panels is not a small option, not built. By their commands (play's `--seed` 
 (MCL-STUB-6). **Gates:** the tests (the notice's on v85's market window), clippy, `h3-map-view`'s
 coverage (0 lines, 0 regions missed), the scoped verify with the original data.
 
+### M5 T5, parts one and two: the cut, the reading, the hot seat recorded (2026-11-27)
+
+On `map-client/e24-m5-t5`, `master` at 66aaa28 (#1213 merged; CI green). The PC up at the start
+only: the 58 originals (their recorded SHA-256 sums checked), the saves, the SoD tables and the
+manuals staged; the setup's baseline stopped at coverage (fmt, clippy, the doc tests and deny
+passed; CI's Clients on `master` standing in). One runner and five worker sub-agents in turn; the
+session's server restarted four times (the VM kept; each worker resumed from its transcript).
+
+- **The cut** (the user at the start): T5 **kept whole** over the runner's proposed T5a/T5b seam.
+- **The M4 hand test** (the user's notes, `clients/out/win/map-m4-notes.txt`; the user counted
+  parts 3 to 5 only, its parts 1 and 2 being before M5's fixes and T6's): parts 1 and 2 never ran
+  (the kit's binary refused the checkout's newer packs: TRAPS); part 3's music, focus and loops as
+  the original (the scroll moves no loop's centre, `view_scroll` 0x4195C0: the kit's text was
+  wrong, not the viewer); part 4 answered **MCL-Q47** (the original restarts the terrain's track
+  from its start at once after a battle won without moving: the reading's silence wrong, read and
+  built at T6); part 5 settled **MCL-Q11** (each `HORSE2x` its terrain's `HORSE0x` with faster
+  steps: the road's; (c) queued in the inbox). Part 5's samples were IMA ADPCM, which PowerShell's
+  `Media.SoundPlayer` refuses: PCM copies and `map-m4-part5.cmd` put beside the kit (TRAPS).
+- **Part one, the reading** (2834a0a; design §5.31, §5.32): the human start in a hot seat at
+  0x4C7710 and `covered_view_new_week` 0x4CA840 whole, `turn_start_screen` 0x419E00 for GENRLTXT
+  352 (a network game's chat only), `chat_system_message` 0x553960 and the screen chat
+  (`screen_chat` in `structs.toml`), the expiry box at 0x4087F3; 21 map entries; MCL-Q70 to Q73.
+- **Part two, the hot seat recorded** (b826071, 15e2ba3): `h3map.py`'s hot-seat start
+  (`hot_seat`, `duration`, `start`; the timer paused while the harness stages), the `shown`,
+  `covered` and `timer` lines and the `[[seat]]` tables; situations' timed events; nine `seat-*`
+  sequences recorded twice alike; §5.31's "Seen" bullet; MCL-Q74. `seat-start` from a loaded save
+  not recorded (not cheap).
+- **MCL-Q75** (the runner, from the E16 survey): the hot seat's clock in battles and level-ups,
+  the original's or the server's model; built as the server's meanwhile (no battle in play
+  before T6).
+
 ### M5 T5, part three: the hand-over built (2026-11-27)
 
 A worker (the user away: *provisional*). **Built** (design §5.31's "Built"): the `Loop`'s
