@@ -6,8 +6,8 @@
 //! beside it the town's capture estimate of the turn's start (`ai_town_capture_sim` 0x428410,
 //! [`captures`]), the first caller of the simulated combat outside the tests.
 //!
-//! The fight estimate itself has no caller until the values that ask for it (T2h's object value,
-//! T2i's danger map): the module is `expect(dead_code)` outside its tests until then.
+//! The fight estimate's callers are the values (T2h's object value) and the danger map (T2i,
+//! `super::plan`).
 
 use alloc::vec::Vec;
 
