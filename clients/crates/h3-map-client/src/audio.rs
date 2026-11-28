@@ -477,25 +477,23 @@ impl Player {
     /// 0x4180FF: each slot stopped, then the scan, which finds them again around the same
     /// middle) and the map's track asked for again as `Cue::Again` asks it (0x408141; MCL-Q47),
     /// at once (*provisional*: the cut's visit's rest, a box after its battle, not waited for).
+    /// The cues it played (for the cues' log).
     pub fn take_back_cut(
         &mut self,
         host: HostSound,
         library: &mut Library,
         lines: &mut Vec<String>,
-    ) {
+    ) -> Vec<Cue> {
         self.take_back(host);
-        let Some(host) = self.host.as_mut() else {
-            return;
-        };
-        let on = self.effects_on;
-        for (lane, kept) in self.slots.iter_mut().zip(core::mem::take(&mut self.kept)) {
-            if let Some((clip, volume)) = kept {
-                play(host.audio(), lane, library, &clip, volume, on);
-            }
+        let kept = core::mem::take(&mut self.kept).into_iter().enumerate();
+        let mut cues: Vec<Cue> = kept
+            .filter_map(|(slot, kept)| kept.map(|(name, volume)| Cue::Loop { slot, name, volume }))
+            .collect();
+        cues.extend(self.track.clone().map(Cue::Again));
+        for cue in &cues {
+            self.cue(library, cue, lines);
         }
-        if let Some(name) = &self.track {
-            ask(host, &mut self.faded, library, name, lines);
-        }
+        cues
     }
 
     /// The host's sound handed back to whom lent it (E24 M5 T2b, as a battle hands it back to the
@@ -514,6 +512,13 @@ impl Player {
         }
         out.pause(false);
         Some(host)
+    }
+
+    /// The track the music opened last as heard (fading out too), none while a battle has the
+    /// sound (the cues' log, E24 M5 T6a).
+    #[must_use]
+    pub fn playing(&self) -> Option<&str> {
+        self.host.as_ref().and_then(HostSound::playing)
     }
 
     /// The device, for the report.

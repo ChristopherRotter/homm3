@@ -107,8 +107,9 @@ pub struct Options {
     pub(crate) run: Option<(u32, bool)>,
     /// No sound (E24 M2 T5).
     mute: bool,
-    /// Where each cue played is written (the cue's line and the clock's millisecond it played at).
-    cues: Option<PathBuf>,
+    /// Where each cue played is written (the cue's line and the clock's millisecond it played at;
+    /// since E24 M5 T6a also `<ms> heard <track>` where the music heard changes, `-` silence).
+    pub(crate) cues: Option<PathBuf>,
     /// A whole game's record played without a recording (E24 M4 T4c): the record, its map file
     /// and the packs' folder.
     record: Option<(PathBuf, PathBuf, PathBuf)>,
@@ -1005,6 +1006,9 @@ pub(crate) fn window(
         _ => None,
     };
     let mut cue_lines: Vec<String> = Vec::new();
+    // The track the music plays as heard, for the cues' log (E24 M5 T6a: a fade's end shows as
+    // the next track's line).
+    let mut heard: Option<String> = None;
     // The cues at 0 taken now, their music decoded before the window opens; played at its first
     // turn.
     let mut first_cues = Vec::new();
@@ -1378,6 +1382,10 @@ pub(crate) fn window(
                 }
             }
             player.service(library, &mut lines);
+            if options.cues.is_some() && player.playing() != heard.as_deref() {
+                heard = player.playing().map(str::to_owned);
+                cue_lines.push(format!("{ms} heard {}", heard.as_deref().unwrap_or("-")));
+            }
         }
         // A hardware cursor SDL could not remake (a new scale) is drawn instead.
         if look.hardware() && hw.is_some_and(|(_, on)| on) && !win.hardware_cursor() {
@@ -1835,7 +1843,11 @@ pub(crate) fn window(
                 if asked.switch {
                     player.take_back(sound);
                 } else {
-                    player.take_back_cut(sound, library, &mut lines);
+                    for cue in player.take_back_cut(sound, library, &mut lines) {
+                        if options.cues.is_some() {
+                            cue_lines.push(format!("{t} {}", sound::line(t, &cue)));
+                        }
+                    }
                 }
                 if paused {
                     player.pause(true);
@@ -1967,7 +1979,11 @@ pub(crate) fn window(
                 if walked && replay.switched(n) {
                     player.take_back(sound);
                 } else {
-                    player.take_back_cut(sound, library, &mut lines);
+                    for cue in player.take_back_cut(sound, library, &mut lines) {
+                        if options.cues.is_some() {
+                            cue_lines.push(format!("{t} {}", sound::line(t, &cue)));
+                        }
+                    }
                 }
                 if paused {
                     player.pause(true);

@@ -162,12 +162,18 @@ fn played(
     if humans.len() > 1 {
         kept.hold(started / 1_000_000);
     }
+    let mut views = 0_usize;
     loop {
         let Some(player) = hot.turn() else {
             lines.push("no human's turn runs: play ends".into());
             return Ok((lines, ok, End::MainMenu));
         };
         let mut options = options.clone();
+        // Each view's cues a file of its own (E24 M5 T6a).
+        options.cues = options
+            .cues
+            .map(|p| PathBuf::from(format!("{}.{views}", p.display())));
+        views += 1;
         if let Some((seconds, read)) = options.run {
             let spent = window.ticks_ns().saturating_sub(started) / 1_000_000_000;
             let rest = u64::from(seconds).saturating_sub(spent);
@@ -463,12 +469,15 @@ pub struct Options {
     turns: Option<u32>,
     /// Where each human's record is written at the end.
     records: Option<PathBuf>,
+    /// Where each view's cues are written (E24 M5 T6a: the window's `--cues`, the view's number
+    /// in play appended, `<file>.0`, `<file>.1`, …).
+    cues: Option<PathBuf>,
 }
 
 impl Options {
     /// Parses `<map.h3m> [--seed <n>] [--humans <c>,...] [--duration <record>] [--keys <file>]
     /// [--scale <n>] [--mute] [--bugs fixed|original] [--install <dir>] [--map <dir>] [--check <s>
-    /// | --measure <s> | --turns <n>] [--records <dir>]`.
+    /// | --measure <s> | --turns <n>] [--records <dir>] [--cues <file>]`.
     ///
     /// # Errors
     /// An unknown option, a bad value, no map file.
@@ -477,6 +486,7 @@ impl Options {
         let (mut keys, mut bugs, mut install, mut folder, mut run) =
             (None, Bugs::Fixed, None, None, None);
         let (mut duration, mut turns, mut records) = (hot_seat::UNLIMITED, None, None);
+        let mut cues = None;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -505,6 +515,7 @@ impl Options {
                 }
                 "--turns" => turns = Some(small(&value()?)?),
                 "--records" => records = Some(PathBuf::from(value()?)),
+                "--cues" => cues = Some(PathBuf::from(value()?)),
                 "--keys" => keys = Some(PathBuf::from(value()?)),
                 "--scale" => scale = Some(small(&value()?)?.clamp(1, 16)),
                 "--mute" => mute = true,
@@ -545,6 +556,7 @@ impl Options {
             run,
             turns,
             records,
+            cues,
         })
     }
 }
@@ -668,8 +680,9 @@ fn in_window(
             .map_err(|e| eprintln!("play: no sound ({e})"))
             .ok()
     };
-    let window_options =
+    let mut window_options =
         window::Options::for_play(game, &options.folders, options.run, options.mute);
+    window_options.cues.clone_from(&options.cues);
     let (mut lines, ok, end) = played(game, rules, hot, (&mut win, &mut sound), &window_options)?;
     // The sound handed back (the shell's to use again), as play promises.
     lines.push(format!(
@@ -944,6 +957,8 @@ pub(crate) mod tests {
         assert_eq!(o.duration, hot_seat::UNLIMITED);
         let o = Options::parse(&args(&["m.h3m", "--turns", "6", "--records", "r"])).unwrap();
         assert_eq!((o.turns, o.records), (Some(6), Some(PathBuf::from("r"))));
+        let o = Options::parse(&args(&["m.h3m", "--cues", "c.txt"])).unwrap();
+        assert_eq!(o.cues, Some(PathBuf::from("c.txt")));
     }
 
     #[test]
