@@ -219,7 +219,16 @@ hero's details and army shown to the visitor while the meeting is open.
   refusal, the listing, Scholar between allies; `hiring.rs`: the read-only dialog), the
   protocol's (the round trip with an ally's hero's army, the fold of the parts, 56 event kinds);
   `h3-map`'s view property knows the new event (its plans have no allies).
+- **Measured** (`homm3-bench-regression`; `master` 8f023a7 in `target/wt-master`): the gate's
+  workloads all pass; `manage-army-12` (the listing in a meeting) is the one the change reaches.
+  `master` 412 489 552 Ir (+1.03 % on the baseline, another change's), the first build +0.96 % on
+  it (a `filter` on the receiver's places, re-run for every source place), then +0.58 % (the test
+  in the pairs' filter), final 414 174 232 (+0.41 %, +1.44 % on the baseline: the ally's gifts
+  kept by a cold `retain` after the listing, `gifts_only`; the rest inlining). No baseline moved.
 - **The sweep:** the catalog's GAM-MET-001 ("allied heroes (teams, E10)" not modelled) and
   ADV-DWL-004's T3b mark rewritten; the design note's §4, §5 "as built", §16 to §18 and §20's
   versions (E09 T59a took protocol v87 and replay format v29: T4b takes v89, T6 v30).
   `docs/06-security.md`'s line on the meeting's view waits for T7's `shared/` amendments.
+- **Verify:** `cargo xtask verify --scope adventure --summary --with-original-data` and
+  `--scope server`: every step passes but `check-lane`, which fails by design for the
+  `cross-lane` paths (the server lane's 12). **Next:** T3b2.

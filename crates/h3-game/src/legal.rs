@@ -452,23 +452,11 @@ pub fn legal_management(
         };
         details.map(|d| (id, d))
     });
-    let gift = move |id: HeroId, other: &HeroDetails, to: ArtifactPlace| {
-        ally != Some(id)
-            || match to {
-                ArtifactPlace::Worn(Position(at)) => {
-                    other.worn.get(at).is_some_and(Option::is_none)
-                }
-                ArtifactPlace::Backpack(_) => true,
-            }
-    };
-    let targets =
-        places(details, 1)
-            .map(|to| (hero, to, None))
-            .chain(receiver.into_iter().flat_map(move |(id, other)| {
-                places(other, 1)
-                    .filter(move |&to| gift(id, other, to))
-                    .map(move |to| (id, to, Some(other)))
-            }));
+    let targets = places(details, 1).map(|to| (hero, to, None)).chain(
+        receiver
+            .into_iter()
+            .flat_map(|(id, other)| places(other, 1).map(move |to| (id, to, Some(other)))),
+    );
     let moves = places(details, 0)
         .flat_map(|from| {
             targets
@@ -495,7 +483,8 @@ pub fn legal_management(
         .flatten()
         .filter(|on| crate::town::leave::check_dismissal(adventure, player, on).is_ok())
         .map(|_| Manage::Dismiss { hero });
-    army.into_iter()
+    let mut listed: Vec<Manage> = army
+        .into_iter()
         .chain(grouped)
         .map(Manage::Army)
         .chain(formations)
@@ -504,7 +493,33 @@ pub fn legal_management(
         .chain(assemblies)
         .chain(disassemblies)
         .chain(dismissal)
-        .collect()
+        .collect();
+    // rule: GAM-TEM-003
+    if let Some(ally) = ally {
+        gifts_only(state, ally, &mut listed);
+    }
+    listed
+}
+
+/// Keeps of `listed`, the commands of a meeting with the ally's hero `ally`, the artifacts' gifts
+/// alone (GAM-TEM-003; E10 T3b1): a move onto a worn position of it only when that position is
+/// empty (its backpack takes any; nothing is taken from it, as its own commands are none, and the
+/// army's by the one owner rule). Out of line, after the listing, so an own meeting's listing
+/// keeps its plain shape (`bench-check`, manage-army-12: a test among the targets cost +0.5 % to
+/// +0.8 %).
+#[cold]
+#[inline(never)]
+fn gifts_only(state: &GameState, ally: HeroId, listed: &mut Vec<Manage>) {
+    let worn = state.hero(ally).map(|details| &details.worn[..]);
+    listed.retain(|command| match *command {
+        Manage::Artifact {
+            to: (to, ArtifactPlace::Worn(Position(at))),
+            ..
+        } if to == ally => worn
+            .and_then(|worn| worn.get(at))
+            .is_some_and(Option::is_none),
+        _ => true,
+    });
 }
 
 /// The army of a town's other bar that `player`'s hero `hero` meets outside a decision
